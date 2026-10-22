@@ -1,0 +1,45 @@
+{
+  "assetId": "bb_set_mini_fridge",
+  "category": "environment_prop",
+  "description": "Original static dressing prop, metres and bottom-centre origin; full PBR GLB and explicit Unity texture companion. Existing support point and envelope retained. No interaction or collider is introduced. Native Unity acceptance pending.",
+  "displayName": "bb_set_mini_fridge",
+  "files": [
+    {
+      "bytes": 1695316,
+      "kind": "model",
+      "path": "model.glb",
+      "sha256": "c5bd7e4d3ae5b48da08f18e3d3d670f78232644a7770bcb067cc1ea94ca36195"
+    },
+    {
+      "bytes": 2017,
+      "kind": "metadata",
+      "path": "metadata.json",
+      "sha256": "e7328f29b25cc4000f8097ec7208e7b0d476dfd07cb31aba746378293a62d840"
+    },
+    {
+      "bytes": 1096,
+      "kind": "provenance",
+      "path": "provenance.json",
+      "sha256": "d02d187d0d3c191acdff4f29f95b1703163bd0bc4cec273fb5ed1f6a4468ac9d"
+    },
+    {
+      "bytes": 4167,
+      "kind": "validation",
+      "path": "validation.json",
+      "sha256": "f9adc5489f1db4b2295f6431395b72f879da1102a139dd25a55a8c3521d3ded3"
+    }
+  ],
+  "license": "LicenseRef-GameSim-Original",
+  "model": "model.glb",
+  "packageId": "pkg_8ef8ad98e6d1712769e4fd2b",
+  "provenance": {
+    "origin": "authored"
+  },
+  "schema": "game_dev.asset_package.v1",
+  "validation": {
+    "errorCount": 0,
+    "passed": true,
+    "warningCount": 0
+  },
+  "version": "1.0.0"
+}

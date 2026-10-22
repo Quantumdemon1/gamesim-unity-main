@@ -1,0 +1,1233 @@
+{
+  "schema": "gamesim.integration_handoff.v1",
+  "status": "staged only; source freeze active",
+  "coordinationSource": "GameSim Dev ownership confirmation relayed by the user in this chat",
+  "ownership": {
+    "GameSim Dev": [
+      "storage-bin package for three bedroom instances",
+      "shared scene integration"
+    ],
+    "thisBatch": [
+      "14 original house models for 16 placements",
+      "39 competition geometry parts and their code integration"
+    ],
+    "researchedOnlyNotReserved": [
+      "laundry",
+      "shoe boxes",
+      "suitcase",
+      "gift box"
+    ]
+  },
+  "constraints": [
+    "Preserve completed art.",
+    "Do not edit or import into D:/GamesimConsolidation while the validation source freeze is active.",
+    "Review this manifest before integration.",
+    "Recheck source guards and ownership after the freeze; stale postimages must be rebased."
+  ],
+  "sealedBundle": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\outputs\\gamesim-props-20261020\\GameSim-props-equipment-candidate-02",
+  "archive": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\outputs\\gamesim-props-20261020\\GameSim-props-equipment-candidate-20261020-02.zip",
+  "archiveSha256": "8ed432440382c409e2b1cebd96986fad47e9136cac8ecd00838a63091cb0fd66",
+  "counts": {
+    "overlayFiles": 108,
+    "modifiedExistingFiles": 4,
+    "newFiles": 104,
+    "fbxModels": 53,
+    "textureFiles": 46,
+    "csharpFiles": 9,
+    "canonicalPackages": 19,
+    "generatedMaterials": 30
+  },
+  "files": [
+    {
+      "projectPath": "Assets/Gamesim/Art/Authored/Competition/bb_comp_DiceTray_Die.fbx",
+      "bundlePath": "ProjectOverlay/Assets/Gamesim/Art/Authored/Competition/bb_comp_DiceTray_Die.fbx",
+      "kind": "FBX model",
+      "operation": "add new file",
+      "preimageSha256": null,
+      "sha256": "dbfe03e8df681646fbceae1459dacf3f977a622ef46c418371c8a11415806677",
+      "bytes": 16812
+    },
+    {
+      "projectPath": "Assets/Gamesim/Art/Authored/Competition/bb_comp_DiceTray_ProgressBacking.fbx",
+      "bundlePath": "ProjectOverlay/Assets/Gamesim/Art/Authored/Competition/bb_comp_DiceTray_ProgressBacking.fbx",
+      "kind": "FBX model",
+      "operation": "add new file",
+      "preimageSha256": null,
+      "sha256": "121acf0b2afb6d193f1d14ec695d1e0f9a53594f85ec4a0ff43ee85087a134d6",
+      "bytes": 16572
+    },
+    {
+      "projectPath": "Assets/Gamesim/Art/Authored/Competition/bb_comp_DiceTray_StanceRail.fbx",
+      "bundlePath": "ProjectOverlay/Assets/Gamesim/Art/Authored/Competition/bb_comp_DiceTray_StanceRail.fbx",
+      "kind": "FBX model",
+      "operation": "add new file",
+      "preimageSha256": null,
+      "sha256": "56651ed23273d0b4e611798e84b951dc54469a8f6d440c86761e140f42d7d966",
+      "bytes": 16412
+    },
+    {
+      "projectPath": "Assets/Gamesim/Art/Authored/Competition/bb_comp_DiceTray_TrayBackRail.fbx",
+      "bundlePath": "ProjectOverlay/Assets/Gamesim/Art/Authored/Competition/bb_comp_DiceTray_TrayBackRail.fbx",
+      "kind": "FBX model",
+      "operation": "add new file",
+      "preimageSha256": null,
+      "sha256": "ae18e13e7a6104a1930a1268b97417b32cf1285cb24aaec998d93af4f5173b07",
+      "bytes": 17388
+    },
+    {
+      "projectPath": "Assets/Gamesim/Art/Authored/Competition/bb_comp_DiceTray_TrayBed.fbx",
+      "bundlePath": "ProjectOverlay/Assets/Gamesim/Art/Authored/Competition/bb_comp_DiceTray_TrayBed.fbx",
+      "kind": "FBX model",
+      "operation": "add new file",
+      "preimageSha256": null,
+      "sha256": "574d39dc1f9b6005a31d5b2dc9cc2a0d9ada66405565a59111b932cf573f4ea1",
+      "bytes": 19596
+    },
+    {
+      "projectPath": "Assets/Gamesim/Art/Authored/Competition/bb_comp_DiceTray_TrayPedestal.fbx",
+      "bundlePath": "ProjectOverlay/Assets/Gamesim/Art/Authored/Competition/bb_comp_DiceTray_TrayPedestal.fbx",
+      "kind": "FBX model",
+      "operation": "add new file",
+      "preimageSha256": null,
+      "sha256": "d76ce643a118b9bb2e90c6705527637d32a3cda6d160488642c4df2be622339f",
+      "bytes": 20284
+    },
+    {
+      "projectPath": "Assets/Gamesim/Art/Authored/Competition/bb_comp_DiceTray_TraySideRail.fbx",
+      "bundlePath": "ProjectOverlay/Assets/Gamesim/Art/Authored/Competition/bb_comp_DiceTray_TraySideRail.fbx",
+      "kind": "FBX model",
+      "operation": "add new file",
+      "preimageSha256": null,
+      "sha256": "b98e141633b1499bed73de8a45b5dff3d7dd1eb64b9c63a5e39ede8fc1ab4ea7",
+      "bytes": 17308
+    },
+    {
+      "projectPath": "Assets/Gamesim/Art/Authored/Competition/bb_comp_GripRig_Counterweight.fbx",
+      "bundlePath": "ProjectOverlay/Assets/Gamesim/Art/Authored/Competition/bb_comp_GripRig_Counterweight.fbx",
+      "kind": "FBX model",
+      "operation": "add new file",
+      "preimageSha256": null,
+      "sha256": "65c6f66740742295e139bb9c69bab9d6497a6121a7aa586f7737b52e9364ee86",
+      "bytes": 26492
+    },
+    {
+      "projectPath": "Assets/Gamesim/Art/Authored/Competition/bb_comp_GripRig_CounterweightGuide.fbx",
+      "bundlePath": "ProjectOverlay/Assets/Gamesim/Art/Authored/Competition/bb_comp_GripRig_CounterweightGuide.fbx",
+      "kind": "FBX model",
+      "operation": "add new file",
+      "preimageSha256": null,
+      "sha256": "0a6af7ae89c4163f5658ea85036be283537153980ea74611f5060d7d6a628fab",
+      "bytes": 16428
+    },
+    {
+      "projectPath": "Assets/Gamesim/Art/Authored/Competition/bb_comp_GripRig_GripHandle.fbx",
+      "bundlePath": "ProjectOverlay/Assets/Gamesim/Art/Authored/Competition/bb_comp_GripRig_GripHandle.fbx",
+      "kind": "FBX model",
+      "operation": "add new file",
+      "preimageSha256": null,
+      "sha256": "300858fe102a666a93be20e4910764c2192753d20ab5ecaf486af6e4d47658b9",
+      "bytes": 19980
+    },
+    {
+      "projectPath": "Assets/Gamesim/Art/Authored/Competition/bb_comp_GripRig_GripRemaining.fbx",
+      "bundlePath": "ProjectOverlay/Assets/Gamesim/Art/Authored/Competition/bb_comp_GripRig_GripRemaining.fbx",
+      "kind": "FBX model",
+      "operation": "add new file",
+      "preimageSha256": null,
+      "sha256": "e95487894eac5ec498d302191a7f824f779e02371087322c0746910132d59bec",
+      "bytes": 16556
+    },
+    {
+      "projectPath": "Assets/Gamesim/Art/Authored/Competition/bb_comp_GripRig_GripTick.fbx",
+      "bundlePath": "ProjectOverlay/Assets/Gamesim/Art/Authored/Competition/bb_comp_GripRig_GripTick.fbx",
+      "kind": "FBX model",
+      "operation": "add new file",
+      "preimageSha256": null,
+      "sha256": "a84b71e7e032ba41346c6b60db469385f1bcba73b2d66cbfc4c825acae437bd5",
+      "bytes": 16428
+    },
+    {
+      "projectPath": "Assets/Gamesim/Art/Authored/Competition/bb_comp_GripRig_GripTrack.fbx",
+      "bundlePath": "ProjectOverlay/Assets/Gamesim/Art/Authored/Competition/bb_comp_GripRig_GripTrack.fbx",
+      "kind": "FBX model",
+      "operation": "add new file",
+      "preimageSha256": null,
+      "sha256": "5795f7052a7bbde359d27dd5335c5f5c89ba8796ebae23112c5e470cdfb3e9a5",
+      "bytes": 16460
+    },
+    {
+      "projectPath": "Assets/Gamesim/Art/Authored/Competition/bb_comp_GripRig_ProgressBacking.fbx",
+      "bundlePath": "ProjectOverlay/Assets/Gamesim/Art/Authored/Competition/bb_comp_GripRig_ProgressBacking.fbx",
+      "kind": "FBX model",
+      "operation": "add new file",
+      "preimageSha256": null,
+      "sha256": "8f9f8059bb3a40277ca3e867f012d14d8e1c898f3970fc185a544f94470455a7",
+      "bytes": 16572
+    },
+    {
+      "projectPath": "Assets/Gamesim/Art/Authored/Competition/bb_comp_GripRig_RigBrace.fbx",
+      "bundlePath": "ProjectOverlay/Assets/Gamesim/Art/Authored/Competition/bb_comp_GripRig_RigBrace.fbx",
+      "kind": "FBX model",
+      "operation": "add new file",
+      "preimageSha256": null,
+      "sha256": "0854338b1510b58f2f85709ea072942a8b1d1af6050171a9b451968d824cf9e0",
+      "bytes": 17164
+    },
+    {
+      "projectPath": "Assets/Gamesim/Art/Authored/Competition/bb_comp_GripRig_RigUpright.fbx",
+      "bundlePath": "ProjectOverlay/Assets/Gamesim/Art/Authored/Competition/bb_comp_GripRig_RigUpright.fbx",
+      "kind": "FBX model",
+      "operation": "add new file",
+      "preimageSha256": null,
+      "sha256": "90fa6298cc5eb81561db471fa3a77bbf2884966396366cdbb843248f84da1d09",
+      "bytes": 21036
+    },
+    {
+      "projectPath": "Assets/Gamesim/Art/Authored/Competition/bb_comp_GripRig_StanceRail.fbx",
+      "bundlePath": "ProjectOverlay/Assets/Gamesim/Art/Authored/Competition/bb_comp_GripRig_StanceRail.fbx",
+      "kind": "FBX model",
+      "operation": "add new file",
+      "preimageSha256": null,
+      "sha256": "1edd076c67ba00dd0beafb79fbd8c008a568b46da3a8eb0fca778c57b9760e66",
+      "bytes": 16412
+    },
+    {
+      "projectPath": "Assets/Gamesim/Art/Authored/Competition/bb_comp_PairConsole_AwardHeader.fbx",
+      "bundlePath": "ProjectOverlay/Assets/Gamesim/Art/Authored/Competition/bb_comp_PairConsole_AwardHeader.fbx",
+      "kind": "FBX model",
+      "operation": "add new file",
+      "preimageSha256": null,
+      "sha256": "d45da2113ccd6248b99317fb6eb2cb2451766c6f63b55071ac9ecf5bcfe2d6cc",
+      "bytes": 16460
+    },
+    {
+      "projectPath": "Assets/Gamesim/Art/Authored/Competition/bb_comp_PairConsole_ConsoleHousing.fbx",
+      "bundlePath": "ProjectOverlay/Assets/Gamesim/Art/Authored/Competition/bb_comp_PairConsole_ConsoleHousing.fbx",
+      "kind": "FBX model",
+      "operation": "add new file",
+      "preimageSha256": null,
+      "sha256": "2ca020a550920704e23cdb1c1f3d997a23fc4ff142b548f295e26c6bfa8dde4e",
+      "bytes": 27884
+    },
+    {
+      "projectPath": "Assets/Gamesim/Art/Authored/Competition/bb_comp_PairConsole_ConsoleLeg.fbx",
+      "bundlePath": "ProjectOverlay/Assets/Gamesim/Art/Authored/Competition/bb_comp_PairConsole_ConsoleLeg.fbx",
+      "kind": "FBX model",
+      "operation": "add new file",
+      "preimageSha256": null,
+      "sha256": "8500afeeb60763741c6e71ad886c448e8f296e58e201335d4d31d374744f0f43",
+      "bytes": 20700
+    },
+    {
+      "projectPath": "Assets/Gamesim/Art/Authored/Competition/bb_comp_PairConsole_MemoryTile.fbx",
+      "bundlePath": "ProjectOverlay/Assets/Gamesim/Art/Authored/Competition/bb_comp_PairConsole_MemoryTile.fbx",
+      "kind": "FBX model",
+      "operation": "add new file",
+      "preimageSha256": null,
+      "sha256": "4cd27d3a663c4ec19139f63cc4f2f820a4969a124c1f2b429480354f3a838183",
+      "bytes": 19644
+    },
+    {
+      "projectPath": "Assets/Gamesim/Art/Authored/Competition/bb_comp_PairConsole_ProgressBacking.fbx",
+      "bundlePath": "ProjectOverlay/Assets/Gamesim/Art/Authored/Competition/bb_comp_PairConsole_ProgressBacking.fbx",
+      "kind": "FBX model",
+      "operation": "add new file",
+      "preimageSha256": null,
+      "sha256": "7b630eeaa2976c4f49a20da5e2609151d60d39599d3236298010db2565fff362",
+      "bytes": 16588
+    },
+    {
+      "projectPath": "Assets/Gamesim/Art/Authored/Competition/bb_comp_PairConsole_RecessedDisplay.fbx",
+      "bundlePath": "ProjectOverlay/Assets/Gamesim/Art/Authored/Competition/bb_comp_PairConsole_RecessedDisplay.fbx",
+      "kind": "FBX model",
+      "operation": "add new file",
+      "preimageSha256": null,
+      "sha256": "f231b5cea0e7c28ffc12bbc695a5a1b4f3dc92ff55f371912155aedb78640869",
+      "bytes": 16492
+    },
+    {
+      "projectPath": "Assets/Gamesim/Art/Authored/Competition/bb_comp_PairConsole_StanceRail.fbx",
+      "bundlePath": "ProjectOverlay/Assets/Gamesim/Art/Authored/Competition/bb_comp_PairConsole_StanceRail.fbx",
+      "kind": "FBX model",
+      "operation": "add new file",
+      "preimageSha256": null,
+      "sha256": "7232e8476be0842ac24284bdc3417891ffe7fd4e468adf19c3074ed8342025f1",
+      "bytes": 16428
+    },
+    {
+      "projectPath": "Assets/Gamesim/Art/Authored/Competition/bb_comp_Signals_AwardHeader.fbx",
+      "bundlePath": "ProjectOverlay/Assets/Gamesim/Art/Authored/Competition/bb_comp_Signals_AwardHeader.fbx",
+      "kind": "FBX model",
+      "operation": "add new file",
+      "preimageSha256": null,
+      "sha256": "fced5773757369ca75c55dad2e6cd01a90d5566ea9c072863d4b113fce0743a2",
+      "bytes": 16332
+    },
+    {
+      "projectPath": "Assets/Gamesim/Art/Authored/Competition/bb_comp_Signals_ConsoleHousing.fbx",
+      "bundlePath": "ProjectOverlay/Assets/Gamesim/Art/Authored/Competition/bb_comp_Signals_ConsoleHousing.fbx",
+      "kind": "FBX model",
+      "operation": "add new file",
+      "preimageSha256": null,
+      "sha256": "2fc5d71f5430d1ba510118b9e5ec72d983df5ad7b9a745fbd5229fde3a30ac71",
+      "bytes": 27932
+    },
+    {
+      "projectPath": "Assets/Gamesim/Art/Authored/Competition/bb_comp_Signals_ConsoleLeg.fbx",
+      "bundlePath": "ProjectOverlay/Assets/Gamesim/Art/Authored/Competition/bb_comp_Signals_ConsoleLeg.fbx",
+      "kind": "FBX model",
+      "operation": "add new file",
+      "preimageSha256": null,
+      "sha256": "35221c8d84fb3e52f0daacf598032a10c79cb54add19ae6c67f3de8afcec0825",
+      "bytes": 20684
+    },
+    {
+      "projectPath": "Assets/Gamesim/Art/Authored/Competition/bb_comp_Signals_ProgressBacking.fbx",
+      "bundlePath": "ProjectOverlay/Assets/Gamesim/Art/Authored/Competition/bb_comp_Signals_ProgressBacking.fbx",
+      "kind": "FBX model",
+      "operation": "add new file",
+      "preimageSha256": null,
+      "sha256": "c4c466d5cf917c3b1fd52b64dff2994ccd37b8cbc82f2151ccb5d86240f54a89",
+      "bytes": 16572
+    },
+    {
+      "projectPath": "Assets/Gamesim/Art/Authored/Competition/bb_comp_Signals_RecessedDisplay.fbx",
+      "bundlePath": "ProjectOverlay/Assets/Gamesim/Art/Authored/Competition/bb_comp_Signals_RecessedDisplay.fbx",
+      "kind": "FBX model",
+      "operation": "add new file",
+      "preimageSha256": null,
+      "sha256": "6b38b14942a5f560c1728bff0800726f05c4dcf00ff4d20c94c75458c00b1a49",
+      "bytes": 16460
+    },
+    {
+      "projectPath": "Assets/Gamesim/Art/Authored/Competition/bb_comp_Signals_ResponsePad.fbx",
+      "bundlePath": "ProjectOverlay/Assets/Gamesim/Art/Authored/Competition/bb_comp_Signals_ResponsePad.fbx",
+      "kind": "FBX model",
+      "operation": "add new file",
+      "preimageSha256": null,
+      "sha256": "a7aa94fe210da704ca8d510a73b0757310b6dfc546f93feb3cb3c0f39553ebbf",
+      "bytes": 17404
+    },
+    {
+      "projectPath": "Assets/Gamesim/Art/Authored/Competition/bb_comp_Signals_SignalTarget.fbx",
+      "bundlePath": "ProjectOverlay/Assets/Gamesim/Art/Authored/Competition/bb_comp_Signals_SignalTarget.fbx",
+      "kind": "FBX model",
+      "operation": "add new file",
+      "preimageSha256": null,
+      "sha256": "281983b62ba41e4bc1be1ae4343c3f8ac5ee6c6cf46c26981a9eaf84611cf627",
+      "bytes": 19308
+    },
+    {
+      "projectPath": "Assets/Gamesim/Art/Authored/Competition/bb_comp_Signals_StanceRail.fbx",
+      "bundlePath": "ProjectOverlay/Assets/Gamesim/Art/Authored/Competition/bb_comp_Signals_StanceRail.fbx",
+      "kind": "FBX model",
+      "operation": "add new file",
+      "preimageSha256": null,
+      "sha256": "3915ca7678fe4ceb6a251b2d53d78e0b93061b487a735e8d2bc86c3a4de95b9b",
+      "bytes": 16412
+    },
+    {
+      "projectPath": "Assets/Gamesim/Art/Authored/Competition/bb_comp_WordConsole_AwardHeader.fbx",
+      "bundlePath": "ProjectOverlay/Assets/Gamesim/Art/Authored/Competition/bb_comp_WordConsole_AwardHeader.fbx",
+      "kind": "FBX model",
+      "operation": "add new file",
+      "preimageSha256": null,
+      "sha256": "e8439275079161ce1f656ef05f2c394f3827f2150f82b224fb251c1fb04c13e6",
+      "bytes": 16316
+    },
+    {
+      "projectPath": "Assets/Gamesim/Art/Authored/Competition/bb_comp_WordConsole_ConsoleHousing.fbx",
+      "bundlePath": "ProjectOverlay/Assets/Gamesim/Art/Authored/Competition/bb_comp_WordConsole_ConsoleHousing.fbx",
+      "kind": "FBX model",
+      "operation": "add new file",
+      "preimageSha256": null,
+      "sha256": "a33b5bfcd1a11ef3526ab9992e4f86ce4788da34efed35ced02f6ac90e5c7a62",
+      "bytes": 27996
+    },
+    {
+      "projectPath": "Assets/Gamesim/Art/Authored/Competition/bb_comp_WordConsole_ConsoleLeg.fbx",
+      "bundlePath": "ProjectOverlay/Assets/Gamesim/Art/Authored/Competition/bb_comp_WordConsole_ConsoleLeg.fbx",
+      "kind": "FBX model",
+      "operation": "add new file",
+      "preimageSha256": null,
+      "sha256": "88b1b6299d4b77d4044f7d014facdf4997b689dc156c01525b6c7c5a789443b7",
+      "bytes": 20700
+    },
+    {
+      "projectPath": "Assets/Gamesim/Art/Authored/Competition/bb_comp_WordConsole_LetterTile.fbx",
+      "bundlePath": "ProjectOverlay/Assets/Gamesim/Art/Authored/Competition/bb_comp_WordConsole_LetterTile.fbx",
+      "kind": "FBX model",
+      "operation": "add new file",
+      "preimageSha256": null,
+      "sha256": "a4cf652ef819304d408ee6165f67476896a611ce9aeffc61201e97346a6ee1e8",
+      "bytes": 19692
+    },
+    {
+      "projectPath": "Assets/Gamesim/Art/Authored/Competition/bb_comp_WordConsole_ProgressBacking.fbx",
+      "bundlePath": "ProjectOverlay/Assets/Gamesim/Art/Authored/Competition/bb_comp_WordConsole_ProgressBacking.fbx",
+      "kind": "FBX model",
+      "operation": "add new file",
+      "preimageSha256": null,
+      "sha256": "fe5c3fca6cc46f384ba030f46926b8fb972586347fc2e0c50a6409848cf1b1b1",
+      "bytes": 16588
+    },
+    {
+      "projectPath": "Assets/Gamesim/Art/Authored/Competition/bb_comp_WordConsole_RecessedDisplay.fbx",
+      "bundlePath": "ProjectOverlay/Assets/Gamesim/Art/Authored/Competition/bb_comp_WordConsole_RecessedDisplay.fbx",
+      "kind": "FBX model",
+      "operation": "add new file",
+      "preimageSha256": null,
+      "sha256": "3670e2328bb2560457bc742d2c7995dcd0a7f03afec483a943de47c7f39f6860",
+      "bytes": 16476
+    },
+    {
+      "projectPath": "Assets/Gamesim/Art/Authored/Competition/bb_comp_WordConsole_StanceRail.fbx",
+      "bundlePath": "ProjectOverlay/Assets/Gamesim/Art/Authored/Competition/bb_comp_WordConsole_StanceRail.fbx",
+      "kind": "FBX model",
+      "operation": "add new file",
+      "preimageSha256": null,
+      "sha256": "1ca5587faa524bde221ae41d2bab7709b05ddc16efbec237838af95db90c780d",
+      "bytes": 16428
+    },
+    {
+      "projectPath": "Assets/Gamesim/Art/Authored/HouseSmallProps/bb_set_cereal_carton.fbm/bb_set_cereal_carton_albedo.png",
+      "bundlePath": "ProjectOverlay/Assets/Gamesim/Art/Authored/HouseSmallProps/bb_set_cereal_carton.fbm/bb_set_cereal_carton_albedo.png",
+      "kind": "texture",
+      "operation": "add new file",
+      "preimageSha256": null,
+      "sha256": "a0dd55889be7aff1d557eb9c31ed1c63d70361db7cfbb0b8cc4689ca0dcd0144",
+      "bytes": 213083
+    },
+    {
+      "projectPath": "Assets/Gamesim/Art/Authored/HouseSmallProps/bb_set_cereal_carton.fbx",
+      "bundlePath": "ProjectOverlay/Assets/Gamesim/Art/Authored/HouseSmallProps/bb_set_cereal_carton.fbx",
+      "kind": "FBX model",
+      "operation": "add new file",
+      "preimageSha256": null,
+      "sha256": "a66ad574bf3838feebc39755f1f1d0d5e3e551eedbba3b9d8a7b2cc1115dfcd2",
+      "bytes": 31292
+    },
+    {
+      "projectPath": "Assets/Gamesim/Art/Authored/HouseSmallProps/bb_set_coffee_tin.fbm/bb_set_coffee_tin_albedo.png",
+      "bundlePath": "ProjectOverlay/Assets/Gamesim/Art/Authored/HouseSmallProps/bb_set_coffee_tin.fbm/bb_set_coffee_tin_albedo.png",
+      "kind": "texture",
+      "operation": "add new file",
+      "preimageSha256": null,
+      "sha256": "ec1a7590ec5d72faf1e15b1ac733a4574aeb8ec2ce0667a43d275398a422fc9f",
+      "bytes": 210725
+    },
+    {
+      "projectPath": "Assets/Gamesim/Art/Authored/HouseSmallProps/bb_set_coffee_tin.fbx",
+      "bundlePath": "ProjectOverlay/Assets/Gamesim/Art/Authored/HouseSmallProps/bb_set_coffee_tin.fbx",
+      "kind": "FBX model",
+      "operation": "add new file",
+      "preimageSha256": null,
+      "sha256": "07e59d9b0437c2f45923ce14f4fdca02546650bd49d28a094ac4c23a410f24da",
+      "bytes": 52444
+    },
+    {
+      "projectPath": "Assets/Gamesim/Art/Authored/HouseSmallProps/bb_set_cosmetic.fbm/bb_set_cosmetic_albedo.png",
+      "bundlePath": "ProjectOverlay/Assets/Gamesim/Art/Authored/HouseSmallProps/bb_set_cosmetic.fbm/bb_set_cosmetic_albedo.png",
+      "kind": "texture",
+      "operation": "add new file",
+      "preimageSha256": null,
+      "sha256": "45a4ba0c4d2240cf1df68eec64c5a1e83d07ae3fd5c2dfbde0f7856fa1b0ef51",
+      "bytes": 217442
+    },
+    {
+      "projectPath": "Assets/Gamesim/Art/Authored/HouseSmallProps/bb_set_cosmetic.fbx",
+      "bundlePath": "ProjectOverlay/Assets/Gamesim/Art/Authored/HouseSmallProps/bb_set_cosmetic.fbx",
+      "kind": "FBX model",
+      "operation": "add new file",
+      "preimageSha256": null,
+      "sha256": "290a006e5361c3800115b86105078c0455e7ecfbf96c0b8a1dd068674eeef265",
+      "bytes": 38732
+    },
+    {
+      "projectPath": "Assets/Gamesim/Art/Authored/HouseSmallProps/bb_set_food_jar.fbm/bb_set_food_jar_albedo.png",
+      "bundlePath": "ProjectOverlay/Assets/Gamesim/Art/Authored/HouseSmallProps/bb_set_food_jar.fbm/bb_set_food_jar_albedo.png",
+      "kind": "texture",
+      "operation": "add new file",
+      "preimageSha256": null,
+      "sha256": "0e1f97a89b07c1f7d3c46e5423b01c7e7dd57823b906604f02aae841f6a85238",
+      "bytes": 212462
+    },
+    {
+      "projectPath": "Assets/Gamesim/Art/Authored/HouseSmallProps/bb_set_food_jar.fbx",
+      "bundlePath": "ProjectOverlay/Assets/Gamesim/Art/Authored/HouseSmallProps/bb_set_food_jar.fbx",
+      "kind": "FBX model",
+      "operation": "add new file",
+      "preimageSha256": null,
+      "sha256": "7ab202b3524f3c2ca709c3f11ca768e8ddec1b9c09c7f45b92a108ad32d0ead4",
+      "bytes": 46300
+    },
+    {
+      "projectPath": "Assets/Gamesim/Art/Authored/HouseSmallProps/bb_set_game_alliance.fbm/bb_set_game_alliance_albedo.png",
+      "bundlePath": "ProjectOverlay/Assets/Gamesim/Art/Authored/HouseSmallProps/bb_set_game_alliance.fbm/bb_set_game_alliance_albedo.png",
+      "kind": "texture",
+      "operation": "add new file",
+      "preimageSha256": null,
+      "sha256": "289713a1e5c201388f4d8114a0b81cacf43d005cd6d20dea6cfa0b8f1089418b",
+      "bytes": 191871
+    },
+    {
+      "projectPath": "Assets/Gamesim/Art/Authored/HouseSmallProps/bb_set_game_alliance.fbx",
+      "bundlePath": "ProjectOverlay/Assets/Gamesim/Art/Authored/HouseSmallProps/bb_set_game_alliance.fbx",
+      "kind": "FBX model",
+      "operation": "add new file",
+      "preimageSha256": null,
+      "sha256": "4f4cc77879545d705d9bbbbc0af97a41e8d3e7bf444e57797f6eda2816080a29",
+      "bytes": 26268
+    },
+    {
+      "projectPath": "Assets/Gamesim/Art/Authored/HouseSmallProps/bb_set_game_social.fbm/bb_set_game_social_albedo.png",
+      "bundlePath": "ProjectOverlay/Assets/Gamesim/Art/Authored/HouseSmallProps/bb_set_game_social.fbm/bb_set_game_social_albedo.png",
+      "kind": "texture",
+      "operation": "add new file",
+      "preimageSha256": null,
+      "sha256": "d15c46948c0a9e7d5cd867806c314d6dcdbafe235ca69be951cd7a6245dfe037",
+      "bytes": 192144
+    },
+    {
+      "projectPath": "Assets/Gamesim/Art/Authored/HouseSmallProps/bb_set_game_social.fbx",
+      "bundlePath": "ProjectOverlay/Assets/Gamesim/Art/Authored/HouseSmallProps/bb_set_game_social.fbx",
+      "kind": "FBX model",
+      "operation": "add new file",
+      "preimageSha256": null,
+      "sha256": "8b2e24005c44ce8ea181c6785a1ce5fb9faff79774278b5f6383ddf12b2369ea",
+      "bytes": 26220
+    },
+    {
+      "projectPath": "Assets/Gamesim/Art/Authored/HouseSmallProps/bb_set_game_strategy.fbm/bb_set_game_strategy_albedo.png",
+      "bundlePath": "ProjectOverlay/Assets/Gamesim/Art/Authored/HouseSmallProps/bb_set_game_strategy.fbm/bb_set_game_strategy_albedo.png",
+      "kind": "texture",
+      "operation": "add new file",
+      "preimageSha256": null,
+      "sha256": "32f2a1ae6d7d63a4b5b5deded12584bf1ffbda5d3815ea7135b99664279b081b",
+      "bytes": 191948
+    },
+    {
+      "projectPath": "Assets/Gamesim/Art/Authored/HouseSmallProps/bb_set_game_strategy.fbx",
+      "bundlePath": "ProjectOverlay/Assets/Gamesim/Art/Authored/HouseSmallProps/bb_set_game_strategy.fbx",
+      "kind": "FBX model",
+      "operation": "add new file",
+      "preimageSha256": null,
+      "sha256": "ee320717271adb6fdb83c48a6c5cfe5cd29e90876e3975d9bbbcd1146104ff4e",
+      "bytes": 26252
+    },
+    {
+      "projectPath": "Assets/Gamesim/Art/Authored/HouseSmallProps/bb_set_headphone_case.fbm/bb_set_headphone_case_albedo.png",
+      "bundlePath": "ProjectOverlay/Assets/Gamesim/Art/Authored/HouseSmallProps/bb_set_headphone_case.fbm/bb_set_headphone_case_albedo.png",
+      "kind": "texture",
+      "operation": "add new file",
+      "preimageSha256": null,
+      "sha256": "60d0992dcbc20a3c50ec6e6ab75cf508c275ddfb4e9bca47841b9a95138bffab",
+      "bytes": 1189862
+    },
+    {
+      "projectPath": "Assets/Gamesim/Art/Authored/HouseSmallProps/bb_set_headphone_case.fbm/bb_set_headphone_case_normal.png",
+      "bundlePath": "ProjectOverlay/Assets/Gamesim/Art/Authored/HouseSmallProps/bb_set_headphone_case.fbm/bb_set_headphone_case_normal.png",
+      "kind": "texture",
+      "operation": "add new file",
+      "preimageSha256": null,
+      "sha256": "65def035d61f912e42a6784f3f1fcf1edfe5bc185c57972c266822cb2fd88ba8",
+      "bytes": 39586
+    },
+    {
+      "projectPath": "Assets/Gamesim/Art/Authored/HouseSmallProps/bb_set_headphone_case.fbx",
+      "bundlePath": "ProjectOverlay/Assets/Gamesim/Art/Authored/HouseSmallProps/bb_set_headphone_case.fbx",
+      "kind": "FBX model",
+      "operation": "add new file",
+      "preimageSha256": null,
+      "sha256": "4c5618775da308879c0902ce2d7e3715db4db378a0803a97f4f430dd85623e61",
+      "bytes": 78300
+    },
+    {
+      "projectPath": "Assets/Gamesim/Art/Authored/HouseSmallProps/bb_set_hoh_snack_blue.fbm/bb_set_hoh_snack_blue_albedo.png",
+      "bundlePath": "ProjectOverlay/Assets/Gamesim/Art/Authored/HouseSmallProps/bb_set_hoh_snack_blue.fbm/bb_set_hoh_snack_blue_albedo.png",
+      "kind": "texture",
+      "operation": "add new file",
+      "preimageSha256": null,
+      "sha256": "55be4a0f1273eeade33a8b2bdf34069f6d0d0dc14364f0bb4c0da3116ab08d11",
+      "bytes": 214181
+    },
+    {
+      "projectPath": "Assets/Gamesim/Art/Authored/HouseSmallProps/bb_set_hoh_snack_blue.fbx",
+      "bundlePath": "ProjectOverlay/Assets/Gamesim/Art/Authored/HouseSmallProps/bb_set_hoh_snack_blue.fbx",
+      "kind": "FBX model",
+      "operation": "add new file",
+      "preimageSha256": null,
+      "sha256": "7d590ff2fe4257c69a383067175c735392605855a724f4b7b4aed67fb5ed229c",
+      "bytes": 51612
+    },
+    {
+      "projectPath": "Assets/Gamesim/Art/Authored/HouseSmallProps/bb_set_hoh_snack_gold.fbm/bb_set_hoh_snack_gold_albedo.png",
+      "bundlePath": "ProjectOverlay/Assets/Gamesim/Art/Authored/HouseSmallProps/bb_set_hoh_snack_gold.fbm/bb_set_hoh_snack_gold_albedo.png",
+      "kind": "texture",
+      "operation": "add new file",
+      "preimageSha256": null,
+      "sha256": "0a7df302189dc390c3989351e718b4dd9295f3db0ce538a5eb94cf7ea26b7f11",
+      "bytes": 213423
+    },
+    {
+      "projectPath": "Assets/Gamesim/Art/Authored/HouseSmallProps/bb_set_hoh_snack_gold.fbx",
+      "bundlePath": "ProjectOverlay/Assets/Gamesim/Art/Authored/HouseSmallProps/bb_set_hoh_snack_gold.fbx",
+      "kind": "FBX model",
+      "operation": "add new file",
+      "preimageSha256": null,
+      "sha256": "0f7f610dd87fab2fffc4b5746b8eb5e03129cb4afa1cec6be3d3fe280f5fdef2",
+      "bytes": 51612
+    },
+    {
+      "projectPath": "Assets/Gamesim/Art/Authored/HouseSmallProps/bb_set_mini_fridge.fbm/bb_set_mini_fridge_albedo.png",
+      "bundlePath": "ProjectOverlay/Assets/Gamesim/Art/Authored/HouseSmallProps/bb_set_mini_fridge.fbm/bb_set_mini_fridge_albedo.png",
+      "kind": "texture",
+      "operation": "add new file",
+      "preimageSha256": null,
+      "sha256": "677e2c974b6258ef79891ce70e3b6d8640148e42c1d61eaa4a608b1939b82f16",
+      "bytes": 809129
+    },
+    {
+      "projectPath": "Assets/Gamesim/Art/Authored/HouseSmallProps/bb_set_mini_fridge.fbm/bb_set_mini_fridge_normal.png",
+      "bundlePath": "ProjectOverlay/Assets/Gamesim/Art/Authored/HouseSmallProps/bb_set_mini_fridge.fbm/bb_set_mini_fridge_normal.png",
+      "kind": "texture",
+      "operation": "add new file",
+      "preimageSha256": null,
+      "sha256": "cc920eb7d9300b800e83a315285fa503d1aef69c75516daea2f754555b9b012d",
+      "bytes": 66554
+    },
+    {
+      "projectPath": "Assets/Gamesim/Art/Authored/HouseSmallProps/bb_set_mini_fridge.fbx",
+      "bundlePath": "ProjectOverlay/Assets/Gamesim/Art/Authored/HouseSmallProps/bb_set_mini_fridge.fbx",
+      "kind": "FBX model",
+      "operation": "add new file",
+      "preimageSha256": null,
+      "sha256": "191111bf96e239e22054bf30ced58d49c7b262b5f6597ce66401df0ecf5617c1",
+      "bytes": 114620
+    },
+    {
+      "projectPath": "Assets/Gamesim/Art/Authored/HouseSmallProps/bb_set_snack_blue.fbm/bb_set_snack_blue_albedo.png",
+      "bundlePath": "ProjectOverlay/Assets/Gamesim/Art/Authored/HouseSmallProps/bb_set_snack_blue.fbm/bb_set_snack_blue_albedo.png",
+      "kind": "texture",
+      "operation": "add new file",
+      "preimageSha256": null,
+      "sha256": "80a2322f675956c900b5aa02b00149f5d28b0c1ad6acb1af771c1f605a2e6769",
+      "bytes": 215327
+    },
+    {
+      "projectPath": "Assets/Gamesim/Art/Authored/HouseSmallProps/bb_set_snack_blue.fbx",
+      "bundlePath": "ProjectOverlay/Assets/Gamesim/Art/Authored/HouseSmallProps/bb_set_snack_blue.fbx",
+      "kind": "FBX model",
+      "operation": "add new file",
+      "preimageSha256": null,
+      "sha256": "01d2c555304029bb7bd21c96e731204fc56d707e1a0a40d7c56766f532f425d2",
+      "bytes": 51500
+    },
+    {
+      "projectPath": "Assets/Gamesim/Art/Authored/HouseSmallProps/bb_set_snack_gold.fbm/bb_set_snack_gold_albedo.png",
+      "bundlePath": "ProjectOverlay/Assets/Gamesim/Art/Authored/HouseSmallProps/bb_set_snack_gold.fbm/bb_set_snack_gold_albedo.png",
+      "kind": "texture",
+      "operation": "add new file",
+      "preimageSha256": null,
+      "sha256": "f6bfa9afc6bbb98f391eb0369d53dc725363df2f9d4924cb52d0e136a073b0ac",
+      "bytes": 214085
+    },
+    {
+      "projectPath": "Assets/Gamesim/Art/Authored/HouseSmallProps/bb_set_snack_gold.fbx",
+      "bundlePath": "ProjectOverlay/Assets/Gamesim/Art/Authored/HouseSmallProps/bb_set_snack_gold.fbx",
+      "kind": "FBX model",
+      "operation": "add new file",
+      "preimageSha256": null,
+      "sha256": "714ae079a56e9f70986eb9441920cea626d9adf4739a25fcf836fa8da45e7bc9",
+      "bytes": 51500
+    },
+    {
+      "projectPath": "Assets/Gamesim/Art/Authored/HouseSmallProps/bb_set_toiletry.fbm/bb_set_toiletry_albedo.png",
+      "bundlePath": "ProjectOverlay/Assets/Gamesim/Art/Authored/HouseSmallProps/bb_set_toiletry.fbm/bb_set_toiletry_albedo.png",
+      "kind": "texture",
+      "operation": "add new file",
+      "preimageSha256": null,
+      "sha256": "23f28c00fac348d2cf86eb94048cdd8bc33792dfa58919149a1104b50739f24e",
+      "bytes": 217763
+    },
+    {
+      "projectPath": "Assets/Gamesim/Art/Authored/HouseSmallProps/bb_set_toiletry.fbx",
+      "bundlePath": "ProjectOverlay/Assets/Gamesim/Art/Authored/HouseSmallProps/bb_set_toiletry.fbx",
+      "kind": "FBX model",
+      "operation": "add new file",
+      "preimageSha256": null,
+      "sha256": "0ed6c5ad0769201c311654bf3879fe86ccf0040e614b318cffcc6b53af3b26d8",
+      "bytes": 41260
+    },
+    {
+      "projectPath": "Assets/Gamesim/Art/Authored/HouseSmallProps/Textures/bb_set_cereal_carton_albedo.png",
+      "bundlePath": "ProjectOverlay/Assets/Gamesim/Art/Authored/HouseSmallProps/Textures/bb_set_cereal_carton_albedo.png",
+      "kind": "texture",
+      "operation": "add new file",
+      "preimageSha256": null,
+      "sha256": "a0dd55889be7aff1d557eb9c31ed1c63d70361db7cfbb0b8cc4689ca0dcd0144",
+      "bytes": 213083
+    },
+    {
+      "projectPath": "Assets/Gamesim/Art/Authored/HouseSmallProps/Textures/bb_set_cereal_carton_metallic.png",
+      "bundlePath": "ProjectOverlay/Assets/Gamesim/Art/Authored/HouseSmallProps/Textures/bb_set_cereal_carton_metallic.png",
+      "kind": "texture",
+      "operation": "add new file",
+      "preimageSha256": null,
+      "sha256": "f28f2b423865868848ed74cf4d008746e1bb7647b8445039aa72114d71462387",
+      "bytes": 222692
+    },
+    {
+      "projectPath": "Assets/Gamesim/Art/Authored/HouseSmallProps/Textures/bb_set_coffee_tin_albedo.png",
+      "bundlePath": "ProjectOverlay/Assets/Gamesim/Art/Authored/HouseSmallProps/Textures/bb_set_coffee_tin_albedo.png",
+      "kind": "texture",
+      "operation": "add new file",
+      "preimageSha256": null,
+      "sha256": "ec1a7590ec5d72faf1e15b1ac733a4574aeb8ec2ce0667a43d275398a422fc9f",
+      "bytes": 210725
+    },
+    {
+      "projectPath": "Assets/Gamesim/Art/Authored/HouseSmallProps/Textures/bb_set_coffee_tin_metallic.png",
+      "bundlePath": "ProjectOverlay/Assets/Gamesim/Art/Authored/HouseSmallProps/Textures/bb_set_coffee_tin_metallic.png",
+      "kind": "texture",
+      "operation": "add new file",
+      "preimageSha256": null,
+      "sha256": "626b76673dd350b4953b7d080f24e268f6ba1858492ce795cb9b689bf1d34daa",
+      "bytes": 230497
+    },
+    {
+      "projectPath": "Assets/Gamesim/Art/Authored/HouseSmallProps/Textures/bb_set_cosmetic_albedo.png",
+      "bundlePath": "ProjectOverlay/Assets/Gamesim/Art/Authored/HouseSmallProps/Textures/bb_set_cosmetic_albedo.png",
+      "kind": "texture",
+      "operation": "add new file",
+      "preimageSha256": null,
+      "sha256": "45a4ba0c4d2240cf1df68eec64c5a1e83d07ae3fd5c2dfbde0f7856fa1b0ef51",
+      "bytes": 217442
+    },
+    {
+      "projectPath": "Assets/Gamesim/Art/Authored/HouseSmallProps/Textures/bb_set_cosmetic_metallic.png",
+      "bundlePath": "ProjectOverlay/Assets/Gamesim/Art/Authored/HouseSmallProps/Textures/bb_set_cosmetic_metallic.png",
+      "kind": "texture",
+      "operation": "add new file",
+      "preimageSha256": null,
+      "sha256": "7fa99fc177af5b24bb97c70255980af374e2404bd283a1bc0c2e70b3b10014a0",
+      "bytes": 229628
+    },
+    {
+      "projectPath": "Assets/Gamesim/Art/Authored/HouseSmallProps/Textures/bb_set_food_jar_albedo.png",
+      "bundlePath": "ProjectOverlay/Assets/Gamesim/Art/Authored/HouseSmallProps/Textures/bb_set_food_jar_albedo.png",
+      "kind": "texture",
+      "operation": "add new file",
+      "preimageSha256": null,
+      "sha256": "0e1f97a89b07c1f7d3c46e5423b01c7e7dd57823b906604f02aae841f6a85238",
+      "bytes": 212462
+    },
+    {
+      "projectPath": "Assets/Gamesim/Art/Authored/HouseSmallProps/Textures/bb_set_food_jar_metallic.png",
+      "bundlePath": "ProjectOverlay/Assets/Gamesim/Art/Authored/HouseSmallProps/Textures/bb_set_food_jar_metallic.png",
+      "kind": "texture",
+      "operation": "add new file",
+      "preimageSha256": null,
+      "sha256": "ef356f52e42fc8c6bb4496fb1fe047a0dc404895993e7c03ba5fd709d2d374da",
+      "bytes": 222181
+    },
+    {
+      "projectPath": "Assets/Gamesim/Art/Authored/HouseSmallProps/Textures/bb_set_game_alliance_albedo.png",
+      "bundlePath": "ProjectOverlay/Assets/Gamesim/Art/Authored/HouseSmallProps/Textures/bb_set_game_alliance_albedo.png",
+      "kind": "texture",
+      "operation": "add new file",
+      "preimageSha256": null,
+      "sha256": "289713a1e5c201388f4d8114a0b81cacf43d005cd6d20dea6cfa0b8f1089418b",
+      "bytes": 191871
+    },
+    {
+      "projectPath": "Assets/Gamesim/Art/Authored/HouseSmallProps/Textures/bb_set_game_alliance_metallic.png",
+      "bundlePath": "ProjectOverlay/Assets/Gamesim/Art/Authored/HouseSmallProps/Textures/bb_set_game_alliance_metallic.png",
+      "kind": "texture",
+      "operation": "add new file",
+      "preimageSha256": null,
+      "sha256": "61993f0f6ac85a816340084fd346696a8551f0c20b144f831244b3666229cf52",
+      "bytes": 215337
+    },
+    {
+      "projectPath": "Assets/Gamesim/Art/Authored/HouseSmallProps/Textures/bb_set_game_social_albedo.png",
+      "bundlePath": "ProjectOverlay/Assets/Gamesim/Art/Authored/HouseSmallProps/Textures/bb_set_game_social_albedo.png",
+      "kind": "texture",
+      "operation": "add new file",
+      "preimageSha256": null,
+      "sha256": "d15c46948c0a9e7d5cd867806c314d6dcdbafe235ca69be951cd7a6245dfe037",
+      "bytes": 192144
+    },
+    {
+      "projectPath": "Assets/Gamesim/Art/Authored/HouseSmallProps/Textures/bb_set_game_social_metallic.png",
+      "bundlePath": "ProjectOverlay/Assets/Gamesim/Art/Authored/HouseSmallProps/Textures/bb_set_game_social_metallic.png",
+      "kind": "texture",
+      "operation": "add new file",
+      "preimageSha256": null,
+      "sha256": "4926e992bf3285efbade573aae4430df22597180413689e5bcd0c2ab1cda147e",
+      "bytes": 215707
+    },
+    {
+      "projectPath": "Assets/Gamesim/Art/Authored/HouseSmallProps/Textures/bb_set_game_strategy_albedo.png",
+      "bundlePath": "ProjectOverlay/Assets/Gamesim/Art/Authored/HouseSmallProps/Textures/bb_set_game_strategy_albedo.png",
+      "kind": "texture",
+      "operation": "add new file",
+      "preimageSha256": null,
+      "sha256": "32f2a1ae6d7d63a4b5b5deded12584bf1ffbda5d3815ea7135b99664279b081b",
+      "bytes": 191948
+    },
+    {
+      "projectPath": "Assets/Gamesim/Art/Authored/HouseSmallProps/Textures/bb_set_game_strategy_metallic.png",
+      "bundlePath": "ProjectOverlay/Assets/Gamesim/Art/Authored/HouseSmallProps/Textures/bb_set_game_strategy_metallic.png",
+      "kind": "texture",
+      "operation": "add new file",
+      "preimageSha256": null,
+      "sha256": "f7cd6ad2c1565d92456eb9677f7b93641c7a0b84c3f58a7e051edecfa3ffd137",
+      "bytes": 215348
+    },
+    {
+      "projectPath": "Assets/Gamesim/Art/Authored/HouseSmallProps/Textures/bb_set_headphone_case_albedo.png",
+      "bundlePath": "ProjectOverlay/Assets/Gamesim/Art/Authored/HouseSmallProps/Textures/bb_set_headphone_case_albedo.png",
+      "kind": "texture",
+      "operation": "add new file",
+      "preimageSha256": null,
+      "sha256": "60d0992dcbc20a3c50ec6e6ab75cf508c275ddfb4e9bca47841b9a95138bffab",
+      "bytes": 1189862
+    },
+    {
+      "projectPath": "Assets/Gamesim/Art/Authored/HouseSmallProps/Textures/bb_set_headphone_case_metallic.png",
+      "bundlePath": "ProjectOverlay/Assets/Gamesim/Art/Authored/HouseSmallProps/Textures/bb_set_headphone_case_metallic.png",
+      "kind": "texture",
+      "operation": "add new file",
+      "preimageSha256": null,
+      "sha256": "be1aa521739ab360c8a1d156315311c8d1f4c1aa847374da59d4386ae47ed9ef",
+      "bytes": 410200
+    },
+    {
+      "projectPath": "Assets/Gamesim/Art/Authored/HouseSmallProps/Textures/bb_set_headphone_case_normal.png",
+      "bundlePath": "ProjectOverlay/Assets/Gamesim/Art/Authored/HouseSmallProps/Textures/bb_set_headphone_case_normal.png",
+      "kind": "texture",
+      "operation": "add new file",
+      "preimageSha256": null,
+      "sha256": "65def035d61f912e42a6784f3f1fcf1edfe5bc185c57972c266822cb2fd88ba8",
+      "bytes": 39586
+    },
+    {
+      "projectPath": "Assets/Gamesim/Art/Authored/HouseSmallProps/Textures/bb_set_hoh_snack_blue_albedo.png",
+      "bundlePath": "ProjectOverlay/Assets/Gamesim/Art/Authored/HouseSmallProps/Textures/bb_set_hoh_snack_blue_albedo.png",
+      "kind": "texture",
+      "operation": "add new file",
+      "preimageSha256": null,
+      "sha256": "55be4a0f1273eeade33a8b2bdf34069f6d0d0dc14364f0bb4c0da3116ab08d11",
+      "bytes": 214181
+    },
+    {
+      "projectPath": "Assets/Gamesim/Art/Authored/HouseSmallProps/Textures/bb_set_hoh_snack_blue_metallic.png",
+      "bundlePath": "ProjectOverlay/Assets/Gamesim/Art/Authored/HouseSmallProps/Textures/bb_set_hoh_snack_blue_metallic.png",
+      "kind": "texture",
+      "operation": "add new file",
+      "preimageSha256": null,
+      "sha256": "90cd555a046f17abf20c5d9283f6ed5f86d53863f8876f7b0421ff80be35069b",
+      "bytes": 224025
+    },
+    {
+      "projectPath": "Assets/Gamesim/Art/Authored/HouseSmallProps/Textures/bb_set_hoh_snack_gold_albedo.png",
+      "bundlePath": "ProjectOverlay/Assets/Gamesim/Art/Authored/HouseSmallProps/Textures/bb_set_hoh_snack_gold_albedo.png",
+      "kind": "texture",
+      "operation": "add new file",
+      "preimageSha256": null,
+      "sha256": "0a7df302189dc390c3989351e718b4dd9295f3db0ce538a5eb94cf7ea26b7f11",
+      "bytes": 213423
+    },
+    {
+      "projectPath": "Assets/Gamesim/Art/Authored/HouseSmallProps/Textures/bb_set_hoh_snack_gold_metallic.png",
+      "bundlePath": "ProjectOverlay/Assets/Gamesim/Art/Authored/HouseSmallProps/Textures/bb_set_hoh_snack_gold_metallic.png",
+      "kind": "texture",
+      "operation": "add new file",
+      "preimageSha256": null,
+      "sha256": "cc03911927d88f94073a9709f1d900e92aeb563ade4c63615f999fa7a6b1431a",
+      "bytes": 223759
+    },
+    {
+      "projectPath": "Assets/Gamesim/Art/Authored/HouseSmallProps/Textures/bb_set_mini_fridge_albedo.png",
+      "bundlePath": "ProjectOverlay/Assets/Gamesim/Art/Authored/HouseSmallProps/Textures/bb_set_mini_fridge_albedo.png",
+      "kind": "texture",
+      "operation": "add new file",
+      "preimageSha256": null,
+      "sha256": "677e2c974b6258ef79891ce70e3b6d8640148e42c1d61eaa4a608b1939b82f16",
+      "bytes": 809129
+    },
+    {
+      "projectPath": "Assets/Gamesim/Art/Authored/HouseSmallProps/Textures/bb_set_mini_fridge_metallic.png",
+      "bundlePath": "ProjectOverlay/Assets/Gamesim/Art/Authored/HouseSmallProps/Textures/bb_set_mini_fridge_metallic.png",
+      "kind": "texture",
+      "operation": "add new file",
+      "preimageSha256": null,
+      "sha256": "75d3190b5cf6861ad8a9beb2e2d7058f9d9b5af7d1ba1d06c76db0173762c5f3",
+      "bytes": 449174
+    },
+    {
+      "projectPath": "Assets/Gamesim/Art/Authored/HouseSmallProps/Textures/bb_set_mini_fridge_normal.png",
+      "bundlePath": "ProjectOverlay/Assets/Gamesim/Art/Authored/HouseSmallProps/Textures/bb_set_mini_fridge_normal.png",
+      "kind": "texture",
+      "operation": "add new file",
+      "preimageSha256": null,
+      "sha256": "cc920eb7d9300b800e83a315285fa503d1aef69c75516daea2f754555b9b012d",
+      "bytes": 66554
+    },
+    {
+      "projectPath": "Assets/Gamesim/Art/Authored/HouseSmallProps/Textures/bb_set_snack_blue_albedo.png",
+      "bundlePath": "ProjectOverlay/Assets/Gamesim/Art/Authored/HouseSmallProps/Textures/bb_set_snack_blue_albedo.png",
+      "kind": "texture",
+      "operation": "add new file",
+      "preimageSha256": null,
+      "sha256": "80a2322f675956c900b5aa02b00149f5d28b0c1ad6acb1af771c1f605a2e6769",
+      "bytes": 215327
+    },
+    {
+      "projectPath": "Assets/Gamesim/Art/Authored/HouseSmallProps/Textures/bb_set_snack_blue_metallic.png",
+      "bundlePath": "ProjectOverlay/Assets/Gamesim/Art/Authored/HouseSmallProps/Textures/bb_set_snack_blue_metallic.png",
+      "kind": "texture",
+      "operation": "add new file",
+      "preimageSha256": null,
+      "sha256": "c6406105efa4da19c7ecc80895c8aa25661d07e5371909770f71fea5a31da13f",
+      "bytes": 225396
+    },
+    {
+      "projectPath": "Assets/Gamesim/Art/Authored/HouseSmallProps/Textures/bb_set_snack_gold_albedo.png",
+      "bundlePath": "ProjectOverlay/Assets/Gamesim/Art/Authored/HouseSmallProps/Textures/bb_set_snack_gold_albedo.png",
+      "kind": "texture",
+      "operation": "add new file",
+      "preimageSha256": null,
+      "sha256": "f6bfa9afc6bbb98f391eb0369d53dc725363df2f9d4924cb52d0e136a073b0ac",
+      "bytes": 214085
+    },
+    {
+      "projectPath": "Assets/Gamesim/Art/Authored/HouseSmallProps/Textures/bb_set_snack_gold_metallic.png",
+      "bundlePath": "ProjectOverlay/Assets/Gamesim/Art/Authored/HouseSmallProps/Textures/bb_set_snack_gold_metallic.png",
+      "kind": "texture",
+      "operation": "add new file",
+      "preimageSha256": null,
+      "sha256": "06d563009544f65e51f873c9c7deb7ddd97ce2891f3ee939522620a846d7da01",
+      "bytes": 224450
+    },
+    {
+      "projectPath": "Assets/Gamesim/Art/Authored/HouseSmallProps/Textures/bb_set_toiletry_albedo.png",
+      "bundlePath": "ProjectOverlay/Assets/Gamesim/Art/Authored/HouseSmallProps/Textures/bb_set_toiletry_albedo.png",
+      "kind": "texture",
+      "operation": "add new file",
+      "preimageSha256": null,
+      "sha256": "23f28c00fac348d2cf86eb94048cdd8bc33792dfa58919149a1104b50739f24e",
+      "bytes": 217763
+    },
+    {
+      "projectPath": "Assets/Gamesim/Art/Authored/HouseSmallProps/Textures/bb_set_toiletry_metallic.png",
+      "bundlePath": "ProjectOverlay/Assets/Gamesim/Art/Authored/HouseSmallProps/Textures/bb_set_toiletry_metallic.png",
+      "kind": "texture",
+      "operation": "add new file",
+      "preimageSha256": null,
+      "sha256": "abbbcbb20cc19b0c5b89c7e1ad64deec5af4de096467b8506dc9db489afe96ed",
+      "bytes": 229317
+    },
+    {
+      "projectPath": "Assets/Gamesim/Editor/CompetitionApparatusMeshKitAssets.cs",
+      "bundlePath": "ProjectOverlay/Assets/Gamesim/Editor/CompetitionApparatusMeshKitAssets.cs",
+      "kind": "C# source",
+      "operation": "add new file",
+      "preimageSha256": null,
+      "sha256": "da145236bc99f937d59d34ed8937c30d08cfdabc9c412ac718fe863905ab7c20",
+      "bytes": 9130
+    },
+    {
+      "projectPath": "Assets/Gamesim/Editor/HouseRoomFinish.cs",
+      "bundlePath": "ProjectOverlay/Assets/Gamesim/Editor/HouseRoomFinish.cs",
+      "kind": "C# source",
+      "operation": "modify existing file",
+      "preimageSha256": "65400a2012efec8f89ab91f7241736cfeb8ba03db25e0c851655ff92457cf171",
+      "sha256": "fc0b90717d670456eced144ba18cd224e42b7d99a2a6128e9a7f88506a8e2e9c",
+      "bytes": 86348
+    },
+    {
+      "projectPath": "Assets/Gamesim/Editor/HouseSmallPropMaterials.cs",
+      "bundlePath": "ProjectOverlay/Assets/Gamesim/Editor/HouseSmallPropMaterials.cs",
+      "kind": "C# source",
+      "operation": "add new file",
+      "preimageSha256": null,
+      "sha256": "0362bb724fd6e7b58287b8e67b3cb256741a4ffbdc006ee1f85c08f6a3458bb0",
+      "bytes": 15440
+    },
+    {
+      "projectPath": "Assets/Gamesim/Runtime/Presentation/CompetitionApparatus.cs",
+      "bundlePath": "ProjectOverlay/Assets/Gamesim/Runtime/Presentation/CompetitionApparatus.cs",
+      "kind": "C# source",
+      "operation": "modify existing file",
+      "preimageSha256": "886545c4de6a6312f507abde93e7ea963c7bf9eb75be876d903499924a65c117",
+      "sha256": "1edaf50eeedcb765a6bdd8ddfe685c35357a959d08464cb8c538bce96ee1308e",
+      "bytes": 30965
+    },
+    {
+      "projectPath": "Assets/Gamesim/Runtime/Presentation/CompetitionApparatusMeshKit.cs",
+      "bundlePath": "ProjectOverlay/Assets/Gamesim/Runtime/Presentation/CompetitionApparatusMeshKit.cs",
+      "kind": "C# source",
+      "operation": "add new file",
+      "preimageSha256": null,
+      "sha256": "0ba34516de43093f36adc272e71faed11737eff44bce69fffe23fe37bacecbf0",
+      "bytes": 3960
+    },
+    {
+      "projectPath": "Assets/Gamesim/Tests/EditMode/HouseSmallPropAssetTests.cs",
+      "bundlePath": "ProjectOverlay/Assets/Gamesim/Tests/EditMode/HouseSmallPropAssetTests.cs",
+      "kind": "C# source",
+      "operation": "add new file",
+      "preimageSha256": null,
+      "sha256": "3feeb46efb627d3df316435864b98f60e5d97272bb51175abca78a075d35ce1e",
+      "bytes": 16404
+    },
+    {
+      "projectPath": "Assets/Gamesim/Tests/EditMode/RoomFinishTests.cs",
+      "bundlePath": "ProjectOverlay/Assets/Gamesim/Tests/EditMode/RoomFinishTests.cs",
+      "kind": "C# source",
+      "operation": "modify existing file",
+      "preimageSha256": "8541b494cbfd48321906be6ea65fb15e8efa7a3447a285ac2284c852d368b8b4",
+      "sha256": "dd9508c3af55d2cdde1f386379e4f50547de551a257be277719954ae510ca36a",
+      "bytes": 59308
+    },
+    {
+      "projectPath": "Assets/Gamesim/Tests/PlayMode/CompetitionApparatusMeshKitPlayModeTests.cs",
+      "bundlePath": "ProjectOverlay/Assets/Gamesim/Tests/PlayMode/CompetitionApparatusMeshKitPlayModeTests.cs",
+      "kind": "C# source",
+      "operation": "add new file",
+      "preimageSha256": null,
+      "sha256": "f86762ed3284cc72458566160e5a764e11f3f572ac9676814f4217cdfcb589e9",
+      "bytes": 23633
+    },
+    {
+      "projectPath": "Assets/Gamesim/Tests/PlayMode/CompetitionApparatusPlayModeTests.cs",
+      "bundlePath": "ProjectOverlay/Assets/Gamesim/Tests/PlayMode/CompetitionApparatusPlayModeTests.cs",
+      "kind": "C# source",
+      "operation": "modify existing file",
+      "preimageSha256": "9059386efa57439b23dd07d47433fb493fa54d62bfbd2935312e99de58dab413",
+      "sha256": "ba889149e97645d99617902fbb7ca9273d503c2acc90d876301358a9c88195d1",
+      "bytes": 43026
+    }
+  ],
+  "canonicalPackages": [
+    {
+      "assetId": "bb_comp_dicetray",
+      "packageId": "pkg_dd7dcb5f12c4dda89894061e",
+      "version": "1.0.0",
+      "bundlePath": "CanonicalPackages/bb_comp_dicetray/1.0.0",
+      "manifestSha256": "d1384c499df6c9687e4988c6f37c5338a51acc79edcc535e8f4061e4ed26f2fc",
+      "proposedAdmissionDirectory": "ArtSource/Packages/game-dev/bb_comp_dicetray/1.0.0",
+      "status": "separate package admission; not copied to the project"
+    },
+    {
+      "assetId": "bb_comp_griprig",
+      "packageId": "pkg_f398a120ae5e745156271992",
+      "version": "1.0.0",
+      "bundlePath": "CanonicalPackages/bb_comp_griprig/1.0.0",
+      "manifestSha256": "9b3590548a773bae375fc159c7e98084d27c4b6c242f8558383dd06d16905dc8",
+      "proposedAdmissionDirectory": "ArtSource/Packages/game-dev/bb_comp_griprig/1.0.0",
+      "status": "separate package admission; not copied to the project"
+    },
+    {
+      "assetId": "bb_comp_pairconsole",
+      "packageId": "pkg_f5ebfb4870ba5c011b38e544",
+      "version": "1.0.0",
+      "bundlePath": "CanonicalPackages/bb_comp_pairconsole/1.0.0",
+      "manifestSha256": "9ee8580aca0e754fed11afb04d57ffcf152fbc939930f190b26447e47a4ee020",
+      "proposedAdmissionDirectory": "ArtSource/Packages/game-dev/bb_comp_pairconsole/1.0.0",
+      "status": "separate package admission; not copied to the project"
+    },
+    {
+      "assetId": "bb_comp_signals",
+      "packageId": "pkg_e9f764f449a6878f4277e1a0",
+      "version": "1.0.0",
+      "bundlePath": "CanonicalPackages/bb_comp_signals/1.0.0",
+      "manifestSha256": "0596549ee6964e78f961fd8439a9ab589f9950a0998bba24ed4a640c5ccfb3e7",
+      "proposedAdmissionDirectory": "ArtSource/Packages/game-dev/bb_comp_signals/1.0.0",
+      "status": "separate package admission; not copied to the project"
+    },
+    {
+      "assetId": "bb_comp_wordconsole",
+      "packageId": "pkg_6d5c9db23d3cb1209078384d",
+      "version": "1.0.0",
+      "bundlePath": "CanonicalPackages/bb_comp_wordconsole/1.0.0",
+      "manifestSha256": "0005873dff57afe95cde4385b1db8c83ebe16b2e9dc838b6cb2c527b793a772b",
+      "proposedAdmissionDirectory": "ArtSource/Packages/game-dev/bb_comp_wordconsole/1.0.0",
+      "status": "separate package admission; not copied to the project"
+    },
+    {
+      "assetId": "bb_set_cereal_carton",
+      "packageId": "pkg_48aead78cf21ced2d57ba664",
+      "version": "1.0.0",
+      "bundlePath": "CanonicalPackages/bb_set_cereal_carton/1.0.0",
+      "manifestSha256": "73b4e1713acb1cda157a976bf0e66c4408d1a8307d2530b86f1b50082b382577",
+      "proposedAdmissionDirectory": "ArtSource/Packages/game-dev/bb_set_cereal_carton/1.0.0",
+      "status": "separate package admission; not copied to the project"
+    },
+    {
+      "assetId": "bb_set_coffee_tin",
+      "packageId": "pkg_48d70ea613ca5e9d463e71df",
+      "version": "1.0.0",
+      "bundlePath": "CanonicalPackages/bb_set_coffee_tin/1.0.0",
+      "manifestSha256": "5dd777bdcd0e4cc62e7d048fce295866acb14be7d749431c6c5a1aa36f2b59b8",
+      "proposedAdmissionDirectory": "ArtSource/Packages/game-dev/bb_set_coffee_tin/1.0.0",
+      "status": "separate package admission; not copied to the project"
+    },
+    {
+      "assetId": "bb_set_cosmetic",
+      "packageId": "pkg_406f86f29a6d0498f3baceb5",
+      "version": "1.0.0",
+      "bundlePath": "CanonicalPackages/bb_set_cosmetic/1.0.0",
+      "manifestSha256": "0aa6b89d0e5779e33c98b5ef7c0a817ef48461ff80b1f053bad4f37c5b0cf465",
+      "proposedAdmissionDirectory": "ArtSource/Packages/game-dev/bb_set_cosmetic/1.0.0",
+      "status": "separate package admission; not copied to the project"
+    },
+    {
+      "assetId": "bb_set_food_jar",
+      "packageId": "pkg_0af9a6d279d98bd0d5ed1476",
+      "version": "1.0.0",
+      "bundlePath": "CanonicalPackages/bb_set_food_jar/1.0.0",
+      "manifestSha256": "40417efd7af04eceacf777592f3e20e3181486a9a555f3c50f4c381f40487cc2",
+      "proposedAdmissionDirectory": "ArtSource/Packages/game-dev/bb_set_food_jar/1.0.0",
+      "status": "separate package admission; not copied to the project"
+    },
+    {
+      "assetId": "bb_set_game_alliance",
+      "packageId": "pkg_cd542da241d01327172555b1",
+      "version": "1.0.0",
+      "bundlePath": "CanonicalPackages/bb_set_game_alliance/1.0.0",
+      "manifestSha256": "88360139c40899578c97bf0add1d63ed5f1d284ec8f2d04bcccbcbb1f44a15bf",
+      "proposedAdmissionDirectory": "ArtSource/Packages/game-dev/bb_set_game_alliance/1.0.0",
+      "status": "separate package admission; not copied to the project"
+    },
+    {
+      "assetId": "bb_set_game_social",
+      "packageId": "pkg_97b148f41743f9d61da30023",
+      "version": "1.0.0",
+      "bundlePath": "CanonicalPackages/bb_set_game_social/1.0.0",
+      "manifestSha256": "0d0e300dbbc9d108d41826211cb3f7e9fcc476cbb81332abde5400a421c266d0",
+      "proposedAdmissionDirectory": "ArtSource/Packages/game-dev/bb_set_game_social/1.0.0",
+      "status": "separate package admission; not copied to the project"
+    },
+    {
+      "assetId": "bb_set_game_strategy",
+      "packageId": "pkg_1fa1457a0cfc4107acb931f0",
+      "version": "1.0.0",
+      "bundlePath": "CanonicalPackages/bb_set_game_strategy/1.0.0",
+      "manifestSha256": "6443c5e58fd8310cbfa6f455a0f73b70e30aa4e81a35dec7e24637ce162213d1",
+      "proposedAdmissionDirectory": "ArtSource/Packages/game-dev/bb_set_game_strategy/1.0.0",
+      "status": "separate package admission; not copied to the project"
+    },
+    {
+      "assetId": "bb_set_headphone_case",
+      "packageId": "pkg_ae9ae6601c9315715280a86a",
+      "version": "1.0.1",
+      "bundlePath": "CanonicalPackages/bb_set_headphone_case/1.0.1",
+      "manifestSha256": "eebc636b65e1d168d75a72139ef8c4439725f81077b531f38c76a6782982dd44",
+      "proposedAdmissionDirectory": "ArtSource/Packages/game-dev/bb_set_headphone_case/1.0.1",
+      "status": "separate package admission; not copied to the project"
+    },
+    {
+      "assetId": "bb_set_hoh_snack_blue",
+      "packageId": "pkg_5951944e396edc7a88a07f1a",
+      "version": "1.0.0",
+      "bundlePath": "CanonicalPackages/bb_set_hoh_snack_blue/1.0.0",
+      "manifestSha256": "ff59aa2d0362be3d4b7fad031567c6dc1674cb598d58686ef1fd7884bf58eb33",
+      "proposedAdmissionDirectory": "ArtSource/Packages/game-dev/bb_set_hoh_snack_blue/1.0.0",
+      "status": "separate package admission; not copied to the project"
+    },
+    {
+      "assetId": "bb_set_hoh_snack_gold",
+      "packageId": "pkg_6152e9335009dd9162245aac",
+      "version": "1.0.0",
+      "bundlePath": "CanonicalPackages/bb_set_hoh_snack_gold/1.0.0",
+      "manifestSha256": "265c9fcb0e724bc96523c5427597a9182c8a2894043a66f0d1f0fff92b3bf0ba",
+      "proposedAdmissionDirectory": "ArtSource/Packages/game-dev/bb_set_hoh_snack_gold/1.0.0",
+      "status": "separate package admission; not copied to the project"
+    },
+    {
+      "assetId": "bb_set_mini_fridge",
+      "packageId": "pkg_b12fcbcec0371d1f9c2e2566",
+      "version": "1.0.1",
+      "bundlePath": "CanonicalPackages/bb_set_mini_fridge/1.0.1",
+      "manifestSha256": "0fcca579c8631c1802c2acbf779b845099e8f60c5e1355362e66a75d784ea833",
+      "proposedAdmissionDirectory": "ArtSource/Packages/game-dev/bb_set_mini_fridge/1.0.1",
+      "status": "separate package admission; not copied to the project"
+    },
+    {
+      "assetId": "bb_set_snack_blue",
+      "packageId": "pkg_0deddf894983306e10a9710d",
+      "version": "1.0.0",
+      "bundlePath": "CanonicalPackages/bb_set_snack_blue/1.0.0",
+      "manifestSha256": "e61d9d80d6867883d8f79c0ccb438d7896e6a79765cc6e28a243317b5bbd8763",
+      "proposedAdmissionDirectory": "ArtSource/Packages/game-dev/bb_set_snack_blue/1.0.0",
+      "status": "separate package admission; not copied to the project"
+    },
+    {
+      "assetId": "bb_set_snack_gold",
+      "packageId": "pkg_1c69c8673ab9b4589dff9ad9",
+      "version": "1.0.0",
+      "bundlePath": "CanonicalPackages/bb_set_snack_gold/1.0.0",
+      "manifestSha256": "c2c2c0cbbb67467984b94268eafceb8b7f7245579b742b2f28db175781797eac",
+      "proposedAdmissionDirectory": "ArtSource/Packages/game-dev/bb_set_snack_gold/1.0.0",
+      "status": "separate package admission; not copied to the project"
+    },
+    {
+      "assetId": "bb_set_toiletry",
+      "packageId": "pkg_314a38f0f77e530cf69fdc0e",
+      "version": "1.0.0",
+      "bundlePath": "CanonicalPackages/bb_set_toiletry/1.0.0",
+      "manifestSha256": "0ba6398a9498fc82506ec92fbf80ae9ba3ead617c07e50d607d580bfc50209cf",
+      "proposedAdmissionDirectory": "ArtSource/Packages/game-dev/bb_set_toiletry/1.0.0",
+      "status": "separate package admission; not copied to the project"
+    }
+  ],
+  "laterGeneratedFiles": {
+    "materialPaths": [
+      "Assets/Gamesim/Art/Authored/HouseSmallProps/Materials/bb_mat_bb_set_cereal_carton.mat",
+      "Assets/Gamesim/Art/Authored/HouseSmallProps/Materials/bb_mat_bb_set_cereal_carton_base.mat",
+      "Assets/Gamesim/Art/Authored/HouseSmallProps/Materials/bb_mat_bb_set_cereal_carton_trim.mat",
+      "Assets/Gamesim/Art/Authored/HouseSmallProps/Materials/bb_mat_bb_set_coffee_tin.mat",
+      "Assets/Gamesim/Art/Authored/HouseSmallProps/Materials/bb_mat_bb_set_coffee_tin_trim.mat",
+      "Assets/Gamesim/Art/Authored/HouseSmallProps/Materials/bb_mat_bb_set_cosmetic.mat",
+      "Assets/Gamesim/Art/Authored/HouseSmallProps/Materials/bb_mat_bb_set_cosmetic_trim.mat",
+      "Assets/Gamesim/Art/Authored/HouseSmallProps/Materials/bb_mat_bb_set_food_jar.mat",
+      "Assets/Gamesim/Art/Authored/HouseSmallProps/Materials/bb_mat_bb_set_food_jar_trim.mat",
+      "Assets/Gamesim/Art/Authored/HouseSmallProps/Materials/bb_mat_bb_set_game_alliance.mat",
+      "Assets/Gamesim/Art/Authored/HouseSmallProps/Materials/bb_mat_bb_set_game_alliance_base.mat",
+      "Assets/Gamesim/Art/Authored/HouseSmallProps/Materials/bb_mat_bb_set_game_alliance_trim.mat",
+      "Assets/Gamesim/Art/Authored/HouseSmallProps/Materials/bb_mat_bb_set_game_social.mat",
+      "Assets/Gamesim/Art/Authored/HouseSmallProps/Materials/bb_mat_bb_set_game_social_base.mat",
+      "Assets/Gamesim/Art/Authored/HouseSmallProps/Materials/bb_mat_bb_set_game_social_trim.mat",
+      "Assets/Gamesim/Art/Authored/HouseSmallProps/Materials/bb_mat_bb_set_game_strategy.mat",
+      "Assets/Gamesim/Art/Authored/HouseSmallProps/Materials/bb_mat_bb_set_game_strategy_base.mat",
+      "Assets/Gamesim/Art/Authored/HouseSmallProps/Materials/bb_mat_bb_set_game_strategy_trim.mat",
+      "Assets/Gamesim/Art/Authored/HouseSmallProps/Materials/bb_mat_bb_set_hoh_snack_blue.mat",
+      "Assets/Gamesim/Art/Authored/HouseSmallProps/Materials/bb_mat_bb_set_hoh_snack_blue_trim.mat",
+      "Assets/Gamesim/Art/Authored/HouseSmallProps/Materials/bb_mat_bb_set_hoh_snack_gold.mat",
+      "Assets/Gamesim/Art/Authored/HouseSmallProps/Materials/bb_mat_bb_set_hoh_snack_gold_trim.mat",
+      "Assets/Gamesim/Art/Authored/HouseSmallProps/Materials/bb_mat_bb_set_snack_blue.mat",
+      "Assets/Gamesim/Art/Authored/HouseSmallProps/Materials/bb_mat_bb_set_snack_blue_trim.mat",
+      "Assets/Gamesim/Art/Authored/HouseSmallProps/Materials/bb_mat_bb_set_snack_gold.mat",
+      "Assets/Gamesim/Art/Authored/HouseSmallProps/Materials/bb_mat_bb_set_snack_gold_trim.mat",
+      "Assets/Gamesim/Art/Authored/HouseSmallProps/Materials/bb_mat_bb_set_toiletry.mat",
+      "Assets/Gamesim/Art/Authored/HouseSmallProps/Materials/bb_mat_bb_set_toiletry_trim.mat",
+      "Assets/Gamesim/Art/Authored/HouseSmallProps/Materials/bb_mat_headphone_case_atlas.mat",
+      "Assets/Gamesim/Art/Authored/HouseSmallProps/Materials/bb_mat_mini_fridge_atlas.mat"
+    ],
+    "competitionKit": "Assets/Gamesim/Resources/Gamesim/Competition/ApparatusMeshKit.asset",
+    "unityMetadata": "Unity will create .meta files for new assets/folders and update only listed batch import settings; retain existing GUIDs.",
+    "savedScene": "No scene postimage supplied. Shared scene integration remains GameSim Dev owned."
+  },
+  "validation": {
+    "canonicalPackagesPassed": 19,
+    "wholeNoUmaOfflineAssembliesPassed": 5,
+    "unityImportsRun": false,
+    "nativeTestsRun": false,
+    "umaCompilationRun": false,
+    "performanceMeasured": false
+  },
+  "notification": "Direct chat messaging is unavailable. This file prepares the handoff; it does not claim a message was sent."
+}

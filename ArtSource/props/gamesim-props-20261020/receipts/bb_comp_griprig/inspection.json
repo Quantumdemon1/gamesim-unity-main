@@ -1,0 +1,54 @@
+{
+  "schema": "game_dev.result.v1",
+  "operation": "asset.inspect",
+  "ok": true,
+  "data": {
+    "filePath": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\competition-art-02\\Assemblies\\bb_comp_GripRig.glb",
+    "fileBytes": 134696,
+    "generator": "glTF-Transform v4.5.1",
+    "meshCount": 17,
+    "primitiveCount": 17,
+    "vertexCount": 3504,
+    "triangleCount": 2076,
+    "undrawnMeshCount": 0,
+    "undrawnPrimitiveCount": 0,
+    "undrawnTriangleCount": 0,
+    "sceneGraphFallback": false,
+    "materialCount": 4,
+    "textureCount": 0,
+    "textureResolutions": [],
+    "boundingBox": {
+      "min": [
+        -0.47999998927116394,
+        0,
+        -0.2550000064074993
+      ],
+      "max": [
+        0.47999998927116394,
+        1.810000017285347,
+        0.7949999794363976
+      ],
+      "sizeMeters": [
+        0.9599999785423279,
+        1.810000017285347,
+        1.0499999858438969
+      ]
+    },
+    "boundingBoxEmpty": false,
+    "hasUVs": true,
+    "hasNormals": true,
+    "hasTangents": false,
+    "pbr": {
+      "hasBaseColorTexture": false,
+      "hasMetallicRoughnessTexture": false,
+      "hasNormalTexture": false,
+      "hasOcclusionTexture": false,
+      "hasEmissiveTexture": false
+    },
+    "animationCount": 0,
+    "hasSkin": false,
+    "warnings": [
+      "no base colour texture on any material: the asset is untextured and will read as flat colour"
+    ]
+  }
+}

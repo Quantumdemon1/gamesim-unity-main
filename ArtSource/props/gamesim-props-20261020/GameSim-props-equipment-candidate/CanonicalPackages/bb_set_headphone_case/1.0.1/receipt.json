@@ -1,0 +1,23 @@
+{
+  "completedAt": "2026-10-21T04:08:08.989Z",
+  "destination": {
+    "assetId": "bb_set_headphone_case",
+    "version": "1.0.1"
+  },
+  "evidence": {
+    "blenderNormalizationPerformed": false,
+    "gpuImportTestPerformed": false,
+    "humanVisualReviewPerformed": false,
+    "modelBytesCopiedAndHashed": true,
+    "policyValidationCompleted": true,
+    "staticInspectionCompleted": true
+  },
+  "manifestSha256": "eebc636b65e1d168d75a72139ef8c4439725f81077b531f38c76a6782982dd44",
+  "packageId": "pkg_ae9ae6601c9315715280a86a",
+  "schema": "game_dev.package_receipt.v1",
+  "source": {
+    "bytes": 1797000,
+    "fileName": "bb_set_headphone_case.glb",
+    "sha256": "eb090bf7e45da02f0afe5d21d319a6820bce0317ceeddf0c2f87a9aeef588ae8"
+  }
+}

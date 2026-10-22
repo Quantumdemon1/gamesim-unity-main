@@ -1,0 +1,99 @@
+{
+  "schema": "game_dev.result.v1",
+  "operation": "package.build",
+  "ok": true,
+  "data": {
+    "schema": "game_dev.package_build_plan.v1",
+    "dryRun": true,
+    "sourcePath": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\competition-art-02\\Assemblies\\bb_comp_Signals.glb",
+    "sourceSha256": "121df92f5afc158a8a21555222424be491a5f515453d17e59364aba92f6ba88f",
+    "sourceBytes": 151316,
+    "assetId": "bb_comp_signals",
+    "version": "1.0.0",
+    "license": "LicenseRef-GameSim-Original",
+    "destination": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\outputs\\gamesim-props-20261020\\.game-dev\\packages\\bb_comp_signals\\1.0.0",
+    "destinationExists": false,
+    "validation": {
+      "passed": true,
+      "errorCount": 0,
+      "warningCount": 0,
+      "checks": [
+        {
+          "id": "uvs_present",
+          "severity": "error",
+          "passed": true,
+          "actual": "every primitive has TEXCOORD_0",
+          "expected": "every primitive carries UV coordinates",
+          "consequence": "Without UVs the mesh cannot be textured at all — not by a generator, not by hand."
+        },
+        {
+          "id": "normals_present",
+          "severity": "error",
+          "passed": true,
+          "actual": "every primitive has NORMAL",
+          "expected": "every primitive carries normals",
+          "consequence": "Missing normals leave lighting to a renderer guess, usually reading as faceted or black."
+        },
+        {
+          "id": "triangle_budget",
+          "severity": "error",
+          "passed": true,
+          "actual": "2240 triangles",
+          "expected": "at most 16000",
+          "consequence": "Over budget costs frame time on every instance drawn."
+        },
+        {
+          "id": "material_count",
+          "severity": "warning",
+          "passed": true,
+          "actual": "4 materials",
+          "expected": "at most 4",
+          "consequence": "Each material is a separate draw call unless the pipeline batches them."
+        },
+        {
+          "id": "bounding_box_finite",
+          "severity": "error",
+          "passed": true,
+          "actual": "0.960 x 1.603 x 0.973 m",
+          "expected": "finite bounds",
+          "consequence": "Non-finite bounds produce a NaN view matrix in anything that frames the asset."
+        },
+        {
+          "id": "max_dimension",
+          "severity": "warning",
+          "passed": true,
+          "actual": "largest edge 1.603 m",
+          "expected": "at most 3 m",
+          "consequence": "An asset far larger than expected usually means the export used the wrong unit scale."
+        },
+        {
+          "id": "min_dimension",
+          "severity": "error",
+          "passed": true,
+          "actual": "smallest edge 0.960000 m",
+          "expected": "at least 0.001 m",
+          "consequence": "A collapsed axis means the mesh is flat or empty, whatever its triangle count says."
+        },
+        {
+          "id": "has_geometry",
+          "severity": "error",
+          "passed": true,
+          "actual": "2240 triangles",
+          "expected": "at least one triangle",
+          "consequence": "A file can parse cleanly and still contain nothing to draw."
+        }
+      ],
+      "inspectorWarnings": [
+        "no base colour texture on any material: the asset is untextured and will read as flat colour"
+      ]
+    },
+    "wouldWrite": true,
+    "evidence": {
+      "staticInspectionCompleted": true,
+      "policyValidationCompleted": true,
+      "packageIdComputed": false,
+      "nothingWritten": true
+    },
+    "evidenceCeiling": "A plan reports what the build would validate and where it would land. The packageId hashes the staged file set, so it cannot be computed without performing the write this plan exists to avoid. When the destination already holds a package, the build reuses it if identical and refuses if not."
+  }
+}

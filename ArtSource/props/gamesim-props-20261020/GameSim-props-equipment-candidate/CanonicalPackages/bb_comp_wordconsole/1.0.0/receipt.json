@@ -1,0 +1,23 @@
+{
+  "completedAt": "2026-10-21T04:01:06.038Z",
+  "destination": {
+    "assetId": "bb_comp_wordconsole",
+    "version": "1.0.0"
+  },
+  "evidence": {
+    "blenderNormalizationPerformed": false,
+    "gpuImportTestPerformed": false,
+    "humanVisualReviewPerformed": false,
+    "modelBytesCopiedAndHashed": true,
+    "policyValidationCompleted": true,
+    "staticInspectionCompleted": true
+  },
+  "manifestSha256": "0005873dff57afe95cde4385b1db8c83ebe16b2e9dc838b6cb2c527b793a772b",
+  "packageId": "pkg_6d5c9db23d3cb1209078384d",
+  "schema": "game_dev.package_receipt.v1",
+  "source": {
+    "bytes": 247364,
+    "fileName": "bb_comp_WordConsole.glb",
+    "sha256": "58a804e75efc5319ba527eb13dc4bcfd62ad955f06186bc64dc1379eebe7e79b"
+  }
+}

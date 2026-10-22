@@ -1,0 +1,60 @@
+{
+  "schema": "game_dev.receipt.v1",
+  "operation": "package.verify",
+  "result": {
+    "schema": "game_dev.package_verification.v1",
+    "packagePath": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\outputs\\gamesim-props-20261020\\.game-dev\\packages\\bb_set_cereal_carton\\1.0.0",
+    "manifest": {
+      "assetId": "bb_set_cereal_carton",
+      "category": "environment_prop",
+      "description": "Original house packaging prop, metre dimensions and floor-centre origin. Self-contained PBR GLB; native FBX material slots use the bound separate material map. Existing placement envelope retained. Native Unity appearance/placement acceptance pending.",
+      "displayName": "bb_set_cereal_carton",
+      "files": [
+        {
+          "bytes": 550852,
+          "kind": "model",
+          "path": "model.glb",
+          "sha256": "2ce6b8022d498b71fb2f9fb0a778fa3fce4934467553b5d1f1c856dd585e8ef2"
+        },
+        {
+          "bytes": 2088,
+          "kind": "metadata",
+          "path": "metadata.json",
+          "sha256": "af2e24d230be4fb91e735351de7a6f63b7e689d80fb2b2402a605c8d41f9aafa"
+        },
+        {
+          "bytes": 1296,
+          "kind": "provenance",
+          "path": "provenance.json",
+          "sha256": "06099dc410b0ce5a333a36037643d05c058c3ceb810db181ece82a7777b17f2d"
+        },
+        {
+          "bytes": 3912,
+          "kind": "validation",
+          "path": "validation.json",
+          "sha256": "0d97fbbda80c32bd3a661c2dc614e48b462403f277049ab57deb1dbb82f134b7"
+        }
+      ],
+      "license": "LicenseRef-GameSim-Original",
+      "model": "model.glb",
+      "packageId": "pkg_48aead78cf21ced2d57ba664",
+      "provenance": {
+        "origin": "authored"
+      },
+      "schema": "game_dev.asset_package.v1",
+      "validation": {
+        "errorCount": 0,
+        "passed": true,
+        "warningCount": 0
+      },
+      "version": "1.0.0"
+    },
+    "hashesVerified": true,
+    "evidence": {
+      "packageBytesVerified": true,
+      "gpuImportTestPerformed": false,
+      "humanVisualReviewPerformed": false
+    }
+  },
+  "completedAt": "2026-10-21T04:06:01.578Z"
+}

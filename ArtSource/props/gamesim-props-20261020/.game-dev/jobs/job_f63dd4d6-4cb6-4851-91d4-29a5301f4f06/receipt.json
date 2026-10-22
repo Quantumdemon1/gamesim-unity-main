@@ -1,0 +1,60 @@
+{
+  "schema": "game_dev.receipt.v1",
+  "operation": "package.verify",
+  "result": {
+    "schema": "game_dev.package_verification.v1",
+    "packagePath": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\outputs\\gamesim-props-20261020\\.game-dev\\packages\\bb_set_food_jar\\1.0.0",
+    "manifest": {
+      "assetId": "bb_set_food_jar",
+      "category": "environment_prop",
+      "description": "Original house packaging prop, metre dimensions and floor-centre origin. Self-contained PBR GLB; native FBX material slots use the bound separate material map. Existing placement envelope retained. Native Unity appearance/placement acceptance pending.",
+      "displayName": "bb_set_food_jar",
+      "files": [
+        {
+          "bytes": 537148,
+          "kind": "model",
+          "path": "model.glb",
+          "sha256": "c3bc097522257e4c8743b733e61c73c4fb421f1f4968cc072617c095c7cf69db"
+        },
+        {
+          "bytes": 2062,
+          "kind": "metadata",
+          "path": "metadata.json",
+          "sha256": "d3992dad41678f59ff9ba780d70fe3734fc6d06fdb9d6d92cf1e278bd987368c"
+        },
+        {
+          "bytes": 1281,
+          "kind": "provenance",
+          "path": "provenance.json",
+          "sha256": "684279e9a0d79f72aa230ab1b6c778f9f1d0a61fb7d6b249cb5b243e6e241037"
+        },
+        {
+          "bytes": 3904,
+          "kind": "validation",
+          "path": "validation.json",
+          "sha256": "536b3923d28451d357fe618456d5d197703cb86c2ea858525588c5d99d1aa2a9"
+        }
+      ],
+      "license": "LicenseRef-GameSim-Original",
+      "model": "model.glb",
+      "packageId": "pkg_0af9a6d279d98bd0d5ed1476",
+      "provenance": {
+        "origin": "authored"
+      },
+      "schema": "game_dev.asset_package.v1",
+      "validation": {
+        "errorCount": 0,
+        "passed": true,
+        "warningCount": 0
+      },
+      "version": "1.0.0"
+    },
+    "hashesVerified": true,
+    "evidence": {
+      "packageBytesVerified": true,
+      "gpuImportTestPerformed": false,
+      "humanVisualReviewPerformed": false
+    }
+  },
+  "completedAt": "2026-10-21T04:05:59.543Z"
+}

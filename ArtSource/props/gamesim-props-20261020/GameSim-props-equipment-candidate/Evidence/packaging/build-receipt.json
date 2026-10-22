@@ -1,0 +1,469 @@
+{
+  "blender": "5.2.2 LTS",
+  "seed": 20261020,
+  "count": 12,
+  "placements": 13,
+  "models": [
+    {
+      "name": "bb_set_coffee_tin",
+      "kind": "coffee",
+      "expectedUnityXYZ": [
+        0.12,
+        0.16,
+        0.12
+      ],
+      "blenderBoundsXYZ": [
+        0.11999999731779099,
+        0.11999999731779099,
+        0.1599999964237213
+      ],
+      "triangles": 1344,
+      "materials": [
+        "bb_mat_bb_set_coffee_tin",
+        "bb_mat_bb_set_coffee_tin_trim"
+      ],
+      "uvLayers": 1,
+      "origin": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "sourceBlend": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\packaging\\Sources\\bb_set_coffee_tin.blend",
+      "glb": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\packaging\\GLB\\bb_set_coffee_tin.glb",
+      "fbx": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\packaging\\FBX\\bb_set_coffee_tin.fbx",
+      "previews": [
+        "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\packaging\\Previews\\bb_set_coffee_tin_threequarter.png",
+        "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\packaging\\Previews\\bb_set_coffee_tin_front.png",
+        "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\packaging\\Previews\\bb_set_coffee_tin_back.png"
+      ],
+      "sha256": {
+        "bb_set_coffee_tin.glb": "25f1256493ecb74bca8e51a46f39a9dbf4b284a3292bfee11fcfde9870b2eacd",
+        "bb_set_coffee_tin.fbx": "07e59d9b0437c2f45923ce14f4fdca02546650bd49d28a094ac4c23a410f24da"
+      },
+      "art": "Original authored geometry and deterministic procedural PBR textures; no external assets or generators. Rights reserved for GameSim project; no CC0 grant implied."
+    },
+    {
+      "name": "bb_set_food_jar",
+      "kind": "food",
+      "expectedUnityXYZ": [
+        0.11,
+        0.14,
+        0.11
+      ],
+      "blenderBoundsXYZ": [
+        0.10999999940395355,
+        0.10999999940395355,
+        0.14000000059604645
+      ],
+      "triangles": 1056,
+      "materials": [
+        "bb_mat_bb_set_food_jar",
+        "bb_mat_bb_set_food_jar_trim"
+      ],
+      "uvLayers": 1,
+      "origin": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "sourceBlend": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\packaging\\Sources\\bb_set_food_jar.blend",
+      "glb": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\packaging\\GLB\\bb_set_food_jar.glb",
+      "fbx": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\packaging\\FBX\\bb_set_food_jar.fbx",
+      "previews": [
+        "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\packaging\\Previews\\bb_set_food_jar_threequarter.png",
+        "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\packaging\\Previews\\bb_set_food_jar_front.png",
+        "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\packaging\\Previews\\bb_set_food_jar_back.png"
+      ],
+      "sha256": {
+        "bb_set_food_jar.glb": "c3bc097522257e4c8743b733e61c73c4fb421f1f4968cc072617c095c7cf69db",
+        "bb_set_food_jar.fbx": "7ab202b3524f3c2ca709c3f11ca768e8ddec1b9c09c7f45b92a108ad32d0ead4"
+      },
+      "art": "Original authored geometry and deterministic procedural PBR textures; no external assets or generators. Rights reserved for GameSim project; no CC0 grant implied."
+    },
+    {
+      "name": "bb_set_cereal_carton",
+      "kind": "cereal",
+      "expectedUnityXYZ": [
+        0.2,
+        0.3,
+        0.07
+      ],
+      "blenderBoundsXYZ": [
+        0.20000000298023224,
+        0.07000000029802322,
+        0.30000001192092896
+      ],
+      "triangles": 432,
+      "materials": [
+        "bb_mat_bb_set_cereal_carton",
+        "bb_mat_bb_set_cereal_carton_trim",
+        "bb_mat_bb_set_cereal_carton_base"
+      ],
+      "uvLayers": 1,
+      "origin": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "sourceBlend": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\packaging\\Sources\\bb_set_cereal_carton.blend",
+      "glb": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\packaging\\GLB\\bb_set_cereal_carton.glb",
+      "fbx": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\packaging\\FBX\\bb_set_cereal_carton.fbx",
+      "previews": [
+        "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\packaging\\Previews\\bb_set_cereal_carton_threequarter.png",
+        "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\packaging\\Previews\\bb_set_cereal_carton_front.png",
+        "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\packaging\\Previews\\bb_set_cereal_carton_back.png"
+      ],
+      "sha256": {
+        "bb_set_cereal_carton.glb": "2ce6b8022d498b71fb2f9fb0a778fa3fce4934467553b5d1f1c856dd585e8ef2",
+        "bb_set_cereal_carton.fbx": "a66ad574bf3838feebc39755f1f1d0d5e3e551eedbba3b9d8a7b2cc1115dfcd2"
+      },
+      "art": "Original authored geometry and deterministic procedural PBR textures; no external assets or generators. Rights reserved for GameSim project; no CC0 grant implied."
+    },
+    {
+      "name": "bb_set_snack_blue",
+      "kind": "snack",
+      "expectedUnityXYZ": [
+        0.16,
+        0.22,
+        0.05
+      ],
+      "blenderBoundsXYZ": [
+        0.1599999964237213,
+        0.04999999701976776,
+        0.2199999988079071
+      ],
+      "triangles": 1424,
+      "materials": [
+        "bb_mat_bb_set_snack_blue",
+        "bb_mat_bb_set_snack_blue_trim"
+      ],
+      "uvLayers": 1,
+      "origin": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "sourceBlend": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\packaging\\Sources\\bb_set_snack_blue.blend",
+      "glb": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\packaging\\GLB\\bb_set_snack_blue.glb",
+      "fbx": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\packaging\\FBX\\bb_set_snack_blue.fbx",
+      "previews": [
+        "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\packaging\\Previews\\bb_set_snack_blue_threequarter.png",
+        "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\packaging\\Previews\\bb_set_snack_blue_front.png",
+        "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\packaging\\Previews\\bb_set_snack_blue_back.png"
+      ],
+      "sha256": {
+        "bb_set_snack_blue.glb": "a7ec00973d925a1c1ac5dad0bd6bc8df9d4618a69d20ed748e90c406d5eb2a28",
+        "bb_set_snack_blue.fbx": "01d2c555304029bb7bd21c96e731204fc56d707e1a0a40d7c56766f532f425d2"
+      },
+      "art": "Original authored geometry and deterministic procedural PBR textures; no external assets or generators. Rights reserved for GameSim project; no CC0 grant implied."
+    },
+    {
+      "name": "bb_set_snack_gold",
+      "kind": "snack",
+      "expectedUnityXYZ": [
+        0.16,
+        0.22,
+        0.05
+      ],
+      "blenderBoundsXYZ": [
+        0.1599999964237213,
+        0.04999999701976776,
+        0.2199999988079071
+      ],
+      "triangles": 1424,
+      "materials": [
+        "bb_mat_bb_set_snack_gold",
+        "bb_mat_bb_set_snack_gold_trim"
+      ],
+      "uvLayers": 1,
+      "origin": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "sourceBlend": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\packaging\\Sources\\bb_set_snack_gold.blend",
+      "glb": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\packaging\\GLB\\bb_set_snack_gold.glb",
+      "fbx": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\packaging\\FBX\\bb_set_snack_gold.fbx",
+      "previews": [
+        "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\packaging\\Previews\\bb_set_snack_gold_threequarter.png",
+        "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\packaging\\Previews\\bb_set_snack_gold_front.png",
+        "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\packaging\\Previews\\bb_set_snack_gold_back.png"
+      ],
+      "sha256": {
+        "bb_set_snack_gold.glb": "605225bc059ee4bba2880e1ea656de24c23533d29505b974294f83b50232ecd3",
+        "bb_set_snack_gold.fbx": "714ae079a56e9f70986eb9441920cea626d9adf4739a25fcf836fa8da45e7bc9"
+      },
+      "art": "Original authored geometry and deterministic procedural PBR textures; no external assets or generators. Rights reserved for GameSim project; no CC0 grant implied."
+    },
+    {
+      "name": "bb_set_hoh_snack_blue",
+      "kind": "snack",
+      "expectedUnityXYZ": [
+        0.14,
+        0.2,
+        0.05
+      ],
+      "blenderBoundsXYZ": [
+        0.14000000059604645,
+        0.04999999701976776,
+        0.20000000298023224
+      ],
+      "triangles": 1424,
+      "materials": [
+        "bb_mat_bb_set_hoh_snack_blue",
+        "bb_mat_bb_set_hoh_snack_blue_trim"
+      ],
+      "uvLayers": 1,
+      "origin": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "sourceBlend": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\packaging\\Sources\\bb_set_hoh_snack_blue.blend",
+      "glb": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\packaging\\GLB\\bb_set_hoh_snack_blue.glb",
+      "fbx": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\packaging\\FBX\\bb_set_hoh_snack_blue.fbx",
+      "previews": [
+        "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\packaging\\Previews\\bb_set_hoh_snack_blue_threequarter.png",
+        "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\packaging\\Previews\\bb_set_hoh_snack_blue_front.png",
+        "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\packaging\\Previews\\bb_set_hoh_snack_blue_back.png"
+      ],
+      "sha256": {
+        "bb_set_hoh_snack_blue.glb": "0e7ea4f2c1cccbf4afb79dd7398ae9c805d6e2a0fd7c78401457dd8d4839cf5e",
+        "bb_set_hoh_snack_blue.fbx": "7d590ff2fe4257c69a383067175c735392605855a724f4b7b4aed67fb5ed229c"
+      },
+      "art": "Original authored geometry and deterministic procedural PBR textures; no external assets or generators. Rights reserved for GameSim project; no CC0 grant implied."
+    },
+    {
+      "name": "bb_set_hoh_snack_gold",
+      "kind": "snack",
+      "expectedUnityXYZ": [
+        0.14,
+        0.2,
+        0.05
+      ],
+      "blenderBoundsXYZ": [
+        0.14000000059604645,
+        0.04999999701976776,
+        0.20000000298023224
+      ],
+      "triangles": 1424,
+      "materials": [
+        "bb_mat_bb_set_hoh_snack_gold",
+        "bb_mat_bb_set_hoh_snack_gold_trim"
+      ],
+      "uvLayers": 1,
+      "origin": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "sourceBlend": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\packaging\\Sources\\bb_set_hoh_snack_gold.blend",
+      "glb": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\packaging\\GLB\\bb_set_hoh_snack_gold.glb",
+      "fbx": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\packaging\\FBX\\bb_set_hoh_snack_gold.fbx",
+      "previews": [
+        "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\packaging\\Previews\\bb_set_hoh_snack_gold_threequarter.png",
+        "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\packaging\\Previews\\bb_set_hoh_snack_gold_front.png",
+        "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\packaging\\Previews\\bb_set_hoh_snack_gold_back.png"
+      ],
+      "sha256": {
+        "bb_set_hoh_snack_gold.glb": "b9f430fe2f04edc635ccdbe42a4fd36108b22c863eeb133cecd457442b76d7f1",
+        "bb_set_hoh_snack_gold.fbx": "0f7f610dd87fab2fffc4b5746b8eb5e03129cb4afa1cec6be3d3fe280f5fdef2"
+      },
+      "art": "Original authored geometry and deterministic procedural PBR textures; no external assets or generators. Rights reserved for GameSim project; no CC0 grant implied."
+    },
+    {
+      "name": "bb_set_game_strategy",
+      "kind": "game",
+      "expectedUnityXYZ": [
+        0.3,
+        0.05,
+        0.2
+      ],
+      "blenderBoundsXYZ": [
+        0.30000001192092896,
+        0.20000000298023224,
+        0.05000000447034836
+      ],
+      "triangles": 216,
+      "materials": [
+        "bb_mat_bb_set_game_strategy_base",
+        "bb_mat_bb_set_game_strategy",
+        "bb_mat_bb_set_game_strategy_trim"
+      ],
+      "uvLayers": 1,
+      "origin": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "sourceBlend": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\packaging\\Sources\\bb_set_game_strategy.blend",
+      "glb": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\packaging\\GLB\\bb_set_game_strategy.glb",
+      "fbx": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\packaging\\FBX\\bb_set_game_strategy.fbx",
+      "previews": [
+        "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\packaging\\Previews\\bb_set_game_strategy_threequarter.png",
+        "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\packaging\\Previews\\bb_set_game_strategy_front.png",
+        "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\packaging\\Previews\\bb_set_game_strategy_back.png"
+      ],
+      "sha256": {
+        "bb_set_game_strategy.glb": "238628b0b473b24114d0f585b3a8b7773663a154741691869d5bd50cc454c11a",
+        "bb_set_game_strategy.fbx": "ee320717271adb6fdb83c48a6c5cfe5cd29e90876e3975d9bbbcd1146104ff4e"
+      },
+      "art": "Original authored geometry and deterministic procedural PBR textures; no external assets or generators. Rights reserved for GameSim project; no CC0 grant implied."
+    },
+    {
+      "name": "bb_set_game_alliance",
+      "kind": "game",
+      "expectedUnityXYZ": [
+        0.3,
+        0.05,
+        0.2
+      ],
+      "blenderBoundsXYZ": [
+        0.30000001192092896,
+        0.20000000298023224,
+        0.05000000447034836
+      ],
+      "triangles": 216,
+      "materials": [
+        "bb_mat_bb_set_game_alliance_base",
+        "bb_mat_bb_set_game_alliance",
+        "bb_mat_bb_set_game_alliance_trim"
+      ],
+      "uvLayers": 1,
+      "origin": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "sourceBlend": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\packaging\\Sources\\bb_set_game_alliance.blend",
+      "glb": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\packaging\\GLB\\bb_set_game_alliance.glb",
+      "fbx": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\packaging\\FBX\\bb_set_game_alliance.fbx",
+      "previews": [
+        "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\packaging\\Previews\\bb_set_game_alliance_threequarter.png",
+        "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\packaging\\Previews\\bb_set_game_alliance_front.png",
+        "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\packaging\\Previews\\bb_set_game_alliance_back.png"
+      ],
+      "sha256": {
+        "bb_set_game_alliance.glb": "e6c09da2beb6ce566c23423e800466ba61d59be54daac2363a802d61105fd8b3",
+        "bb_set_game_alliance.fbx": "4f4cc77879545d705d9bbbbc0af97a41e8d3e7bf444e57797f6eda2816080a29"
+      },
+      "art": "Original authored geometry and deterministic procedural PBR textures; no external assets or generators. Rights reserved for GameSim project; no CC0 grant implied."
+    },
+    {
+      "name": "bb_set_game_social",
+      "kind": "game",
+      "expectedUnityXYZ": [
+        0.3,
+        0.05,
+        0.2
+      ],
+      "blenderBoundsXYZ": [
+        0.30000001192092896,
+        0.20000000298023224,
+        0.05000000447034836
+      ],
+      "triangles": 216,
+      "materials": [
+        "bb_mat_bb_set_game_social_base",
+        "bb_mat_bb_set_game_social",
+        "bb_mat_bb_set_game_social_trim"
+      ],
+      "uvLayers": 1,
+      "origin": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "sourceBlend": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\packaging\\Sources\\bb_set_game_social.blend",
+      "glb": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\packaging\\GLB\\bb_set_game_social.glb",
+      "fbx": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\packaging\\FBX\\bb_set_game_social.fbx",
+      "previews": [
+        "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\packaging\\Previews\\bb_set_game_social_threequarter.png",
+        "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\packaging\\Previews\\bb_set_game_social_front.png",
+        "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\packaging\\Previews\\bb_set_game_social_back.png"
+      ],
+      "sha256": {
+        "bb_set_game_social.glb": "da2e7889b37e1b824cee7662655976ea7b15c51bf435d7e4dcaeb3e360434cba",
+        "bb_set_game_social.fbx": "8b2e24005c44ce8ea181c6785a1ce5fb9faff79774278b5f6383ddf12b2369ea"
+      },
+      "art": "Original authored geometry and deterministic procedural PBR textures; no external assets or generators. Rights reserved for GameSim project; no CC0 grant implied."
+    },
+    {
+      "name": "bb_set_toiletry",
+      "kind": "care",
+      "expectedUnityXYZ": [
+        0.06,
+        0.1,
+        0.06
+      ],
+      "blenderBoundsXYZ": [
+        0.05999999865889549,
+        0.05999999865889549,
+        0.10000000149011612
+      ],
+      "triangles": 864,
+      "materials": [
+        "bb_mat_bb_set_toiletry",
+        "bb_mat_bb_set_toiletry_trim"
+      ],
+      "uvLayers": 1,
+      "origin": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "sourceBlend": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\packaging\\Sources\\bb_set_toiletry.blend",
+      "glb": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\packaging\\GLB\\bb_set_toiletry.glb",
+      "fbx": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\packaging\\FBX\\bb_set_toiletry.fbx",
+      "previews": [
+        "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\packaging\\Previews\\bb_set_toiletry_threequarter.png",
+        "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\packaging\\Previews\\bb_set_toiletry_front.png",
+        "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\packaging\\Previews\\bb_set_toiletry_back.png"
+      ],
+      "sha256": {
+        "bb_set_toiletry.glb": "dd89d4187020b34ee2838890f2ad46bb8b1785cefde308fbdf6f2b78b24c2475",
+        "bb_set_toiletry.fbx": "0ed6c5ad0769201c311654bf3879fe86ccf0040e614b318cffcc6b53af3b26d8"
+      },
+      "art": "Original authored geometry and deterministic procedural PBR textures; no external assets or generators. Rights reserved for GameSim project; no CC0 grant implied."
+    },
+    {
+      "name": "bb_set_cosmetic",
+      "kind": "care",
+      "expectedUnityXYZ": [
+        0.06,
+        0.1,
+        0.06
+      ],
+      "blenderBoundsXYZ": [
+        0.05999999865889549,
+        0.05999999865889549,
+        0.10000000149011612
+      ],
+      "triangles": 768,
+      "materials": [
+        "bb_mat_bb_set_cosmetic",
+        "bb_mat_bb_set_cosmetic_trim"
+      ],
+      "uvLayers": 1,
+      "origin": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "sourceBlend": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\packaging\\Sources\\bb_set_cosmetic.blend",
+      "glb": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\packaging\\GLB\\bb_set_cosmetic.glb",
+      "fbx": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\packaging\\FBX\\bb_set_cosmetic.fbx",
+      "previews": [
+        "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\packaging\\Previews\\bb_set_cosmetic_threequarter.png",
+        "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\packaging\\Previews\\bb_set_cosmetic_front.png",
+        "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\packaging\\Previews\\bb_set_cosmetic_back.png"
+      ],
+      "sha256": {
+        "bb_set_cosmetic.glb": "6736612d29b2ef7a46aed0f9e8b6be3e00d84df0b91b9675554e07ff662d481b",
+        "bb_set_cosmetic.fbx": "290a006e5361c3800115b86105078c0455e7ecfbf96c0b8a1dd068674eeef265"
+      },
+      "art": "Original authored geometry and deterministic procedural PBR textures; no external assets or generators. Rights reserved for GameSim project; no CC0 grant implied."
+    }
+  ],
+  "scriptSha256": "043951fbfb212c3a92a6f2e34c884c4e7ac6b97ac125c8b8ec4642a668036748"
+}

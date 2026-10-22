@@ -1,0 +1,60 @@
+{
+  "schema": "game_dev.result.v1",
+  "operation": "package.verify",
+  "ok": true,
+  "data": {
+    "schema": "game_dev.package_verification.v1",
+    "packagePath": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\outputs\\gamesim-props-20261020\\.game-dev\\packages\\bb_comp_griprig\\1.0.0",
+    "manifest": {
+      "assetId": "bb_comp_griprig",
+      "category": "environment_prop",
+      "description": "Assembled reference station in metres. Unity consumes the separate normalized FBX part kit; runtime owns visible text, tint, moving parts and game state. Canonical GLB is an art reference, not a static runtime replacement.",
+      "displayName": "bb_comp_griprig",
+      "files": [
+        {
+          "bytes": 134696,
+          "kind": "model",
+          "path": "model.glb",
+          "sha256": "b47810b48aba451f11a57e138f3cc56eb3411e29de9ee4b4c00dfa9e798c34df"
+        },
+        {
+          "bytes": 1668,
+          "kind": "metadata",
+          "path": "metadata.json",
+          "sha256": "a3f5e20fc49fa099ceac3f874bf7a61e09cf61548c005811873677cc446bc3cf"
+        },
+        {
+          "bytes": 1164,
+          "kind": "provenance",
+          "path": "provenance.json",
+          "sha256": "3168606be33fe8eac4fd0b8c9e359bbb68d97033d95524f01e722124adfec8f0"
+        },
+        {
+          "bytes": 2924,
+          "kind": "validation",
+          "path": "validation.json",
+          "sha256": "2cdabf9fcdfa257b18f5649e8ba89856cdab1414d88869adb54360c7df588355"
+        }
+      ],
+      "license": "LicenseRef-GameSim-Original",
+      "model": "model.glb",
+      "packageId": "pkg_f398a120ae5e745156271992",
+      "provenance": {
+        "origin": "authored"
+      },
+      "schema": "game_dev.asset_package.v1",
+      "validation": {
+        "errorCount": 0,
+        "passed": true,
+        "warningCount": 0
+      },
+      "version": "1.0.0"
+    },
+    "hashesVerified": true,
+    "evidence": {
+      "packageBytesVerified": true,
+      "gpuImportTestPerformed": false,
+      "humanVisualReviewPerformed": false
+    }
+  }
+}

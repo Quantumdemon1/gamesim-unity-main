@@ -1,0 +1,23 @@
+{
+  "completedAt": "2026-10-21T04:06:18.844Z",
+  "destination": {
+    "assetId": "bb_set_toiletry",
+    "version": "1.0.0"
+  },
+  "evidence": {
+    "blenderNormalizationPerformed": false,
+    "gpuImportTestPerformed": false,
+    "humanVisualReviewPerformed": false,
+    "modelBytesCopiedAndHashed": true,
+    "policyValidationCompleted": true,
+    "staticInspectionCompleted": true
+  },
+  "manifestSha256": "0ba6398a9498fc82506ec92fbf80ae9ba3ead617c07e50d607d580bfc50209cf",
+  "packageId": "pkg_314a38f0f77e530cf69fdc0e",
+  "schema": "game_dev.package_receipt.v1",
+  "source": {
+    "bytes": 545912,
+    "fileName": "bb_set_toiletry.glb",
+    "sha256": "dd89d4187020b34ee2838890f2ad46bb8b1785cefde308fbdf6f2b78b24c2475"
+  }
+}

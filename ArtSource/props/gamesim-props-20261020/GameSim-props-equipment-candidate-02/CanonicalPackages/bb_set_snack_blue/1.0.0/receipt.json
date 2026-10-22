@@ -1,0 +1,23 @@
+{
+  "completedAt": "2026-10-21T04:06:03.175Z",
+  "destination": {
+    "assetId": "bb_set_snack_blue",
+    "version": "1.0.0"
+  },
+  "evidence": {
+    "blenderNormalizationPerformed": false,
+    "gpuImportTestPerformed": false,
+    "humanVisualReviewPerformed": false,
+    "modelBytesCopiedAndHashed": true,
+    "policyValidationCompleted": true,
+    "staticInspectionCompleted": true
+  },
+  "manifestSha256": "e61d9d80d6867883d8f79c0ccb438d7896e6a79765cc6e28a243317b5bbd8763",
+  "packageId": "pkg_0deddf894983306e10a9710d",
+  "schema": "game_dev.package_receipt.v1",
+  "source": {
+    "bytes": 548264,
+    "fileName": "bb_set_snack_blue.glb",
+    "sha256": "a7ec00973d925a1c1ac5dad0bd6bc8df9d4618a69d20ed748e90c406d5eb2a28"
+  }
+}

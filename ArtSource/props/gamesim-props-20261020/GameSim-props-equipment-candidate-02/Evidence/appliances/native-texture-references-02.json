@@ -1,0 +1,122 @@
+[
+  {
+    "file": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\appliances\\mini-fridge-02\\bb_set_mini_fridge.fbx",
+    "fbx_version": 7400,
+    "relative_texture_references_verified": [
+      "bb_set_mini_fridge.fbm\\bb_set_mini_fridge_albedo.png",
+      "bb_set_mini_fridge.fbm\\bb_set_mini_fridge_normal.png",
+      "bb_set_mini_fridge.fbm\\bb_set_mini_fridge_albedo.png",
+      "bb_set_mini_fridge.fbm\\bb_set_mini_fridge_normal.png"
+    ],
+    "embedded_path_fields": [
+      {
+        "field": "FileName",
+        "values": [
+          "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\appliances\\mini-fridge-02\\bb_set_mini_fridge.fbm\\bb_set_mini_fridge_albedo.png"
+        ]
+      },
+      {
+        "field": "RelativeFilename",
+        "values": [
+          "bb_set_mini_fridge.fbm\\bb_set_mini_fridge_albedo.png"
+        ]
+      },
+      {
+        "field": "FileName",
+        "values": [
+          "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\appliances\\mini-fridge-02\\bb_set_mini_fridge.fbm\\bb_set_mini_fridge_normal.png"
+        ]
+      },
+      {
+        "field": "RelativeFilename",
+        "values": [
+          "bb_set_mini_fridge.fbm\\bb_set_mini_fridge_normal.png"
+        ]
+      },
+      {
+        "field": "Filename",
+        "values": [
+          "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\appliances\\mini-fridge-02\\bb_set_mini_fridge.fbm\\bb_set_mini_fridge_albedo.png"
+        ]
+      },
+      {
+        "field": "RelativeFilename",
+        "values": [
+          "bb_set_mini_fridge.fbm\\bb_set_mini_fridge_albedo.png"
+        ]
+      },
+      {
+        "field": "Filename",
+        "values": [
+          "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\appliances\\mini-fridge-02\\bb_set_mini_fridge.fbm\\bb_set_mini_fridge_normal.png"
+        ]
+      },
+      {
+        "field": "RelativeFilename",
+        "values": [
+          "bb_set_mini_fridge.fbm\\bb_set_mini_fridge_normal.png"
+        ]
+      }
+    ]
+  },
+  {
+    "file": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\appliances\\headphone-case-02\\bb_set_headphone_case.fbx",
+    "fbx_version": 7400,
+    "relative_texture_references_verified": [
+      "bb_set_headphone_case.fbm\\bb_set_headphone_case_albedo.png",
+      "bb_set_headphone_case.fbm\\bb_set_headphone_case_normal.png",
+      "bb_set_headphone_case.fbm\\bb_set_headphone_case_albedo.png",
+      "bb_set_headphone_case.fbm\\bb_set_headphone_case_normal.png"
+    ],
+    "embedded_path_fields": [
+      {
+        "field": "FileName",
+        "values": [
+          "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\appliances\\headphone-case-02\\bb_set_headphone_case.fbm\\bb_set_headphone_case_albedo.png"
+        ]
+      },
+      {
+        "field": "RelativeFilename",
+        "values": [
+          "bb_set_headphone_case.fbm\\bb_set_headphone_case_albedo.png"
+        ]
+      },
+      {
+        "field": "FileName",
+        "values": [
+          "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\appliances\\headphone-case-02\\bb_set_headphone_case.fbm\\bb_set_headphone_case_normal.png"
+        ]
+      },
+      {
+        "field": "RelativeFilename",
+        "values": [
+          "bb_set_headphone_case.fbm\\bb_set_headphone_case_normal.png"
+        ]
+      },
+      {
+        "field": "Filename",
+        "values": [
+          "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\appliances\\headphone-case-02\\bb_set_headphone_case.fbm\\bb_set_headphone_case_albedo.png"
+        ]
+      },
+      {
+        "field": "RelativeFilename",
+        "values": [
+          "bb_set_headphone_case.fbm\\bb_set_headphone_case_albedo.png"
+        ]
+      },
+      {
+        "field": "Filename",
+        "values": [
+          "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\appliances\\headphone-case-02\\bb_set_headphone_case.fbm\\bb_set_headphone_case_normal.png"
+        ]
+      },
+      {
+        "field": "RelativeFilename",
+        "values": [
+          "bb_set_headphone_case.fbm\\bb_set_headphone_case_normal.png"
+        ]
+      }
+    ]
+  }
+]

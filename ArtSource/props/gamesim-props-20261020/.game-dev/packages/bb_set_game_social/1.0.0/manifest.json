@@ -1,0 +1,45 @@
+{
+  "assetId": "bb_set_game_social",
+  "category": "environment_prop",
+  "description": "Original house packaging prop, metre dimensions and floor-centre origin. Self-contained PBR GLB; native FBX material slots use the bound separate material map. Existing placement envelope retained. Native Unity appearance/placement acceptance pending.",
+  "displayName": "bb_set_game_social",
+  "files": [
+    {
+      "bytes": 492728,
+      "kind": "model",
+      "path": "model.glb",
+      "sha256": "da2e7889b37e1b824cee7662655976ea7b15c51bf435d7e4dcaeb3e360434cba"
+    },
+    {
+      "bytes": 2075,
+      "kind": "metadata",
+      "path": "metadata.json",
+      "sha256": "3fb5808f3f26af355066b9eb8e74d74b678b3698d716dd091a11c5dbdf448a40"
+    },
+    {
+      "bytes": 1290,
+      "kind": "provenance",
+      "path": "provenance.json",
+      "sha256": "598f7cc76982ac9cced3fb60d4824a29c5000861b3b467a23569f314e9a47c45"
+    },
+    {
+      "bytes": 3908,
+      "kind": "validation",
+      "path": "validation.json",
+      "sha256": "4bdf10752bff166ec841c8f99ad8f414f6ad6cbe52b3ecd843b9728c7cf0ef7c"
+    }
+  ],
+  "license": "LicenseRef-GameSim-Original",
+  "model": "model.glb",
+  "packageId": "pkg_97b148f41743f9d61da30023",
+  "provenance": {
+    "origin": "authored"
+  },
+  "schema": "game_dev.asset_package.v1",
+  "validation": {
+    "errorCount": 0,
+    "passed": true,
+    "warningCount": 0
+  },
+  "version": "1.0.0"
+}

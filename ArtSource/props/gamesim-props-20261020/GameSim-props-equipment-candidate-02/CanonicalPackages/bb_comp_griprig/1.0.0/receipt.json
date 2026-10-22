@@ -1,0 +1,23 @@
+{
+  "completedAt": "2026-10-21T04:00:59.114Z",
+  "destination": {
+    "assetId": "bb_comp_griprig",
+    "version": "1.0.0"
+  },
+  "evidence": {
+    "blenderNormalizationPerformed": false,
+    "gpuImportTestPerformed": false,
+    "humanVisualReviewPerformed": false,
+    "modelBytesCopiedAndHashed": true,
+    "policyValidationCompleted": true,
+    "staticInspectionCompleted": true
+  },
+  "manifestSha256": "9b3590548a773bae375fc159c7e98084d27c4b6c242f8558383dd06d16905dc8",
+  "packageId": "pkg_f398a120ae5e745156271992",
+  "schema": "game_dev.package_receipt.v1",
+  "source": {
+    "bytes": 134696,
+    "fileName": "bb_comp_GripRig.glb",
+    "sha256": "b47810b48aba451f11a57e138f3cc56eb3411e29de9ee4b4c00dfa9e798c34df"
+  }
+}

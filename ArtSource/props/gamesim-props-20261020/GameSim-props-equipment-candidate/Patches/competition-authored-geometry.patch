@@ -1,0 +1,779 @@
+diff --git a/Assets/Gamesim/Editor/CompetitionApparatusMeshKitAssets.cs b/Assets/Gamesim/Editor/CompetitionApparatusMeshKitAssets.cs
+new file mode 100644
+--- /dev/null
++++ b/Assets/Gamesim/Editor/CompetitionApparatusMeshKitAssets.cs
+@@ -0,0 +1,139 @@
++using System;
++using System.Collections.Generic;
++using System.Linq;
++using Gamesim.Presentation;
++using UnityEditor;
++using UnityEngine;
++using UnityEngine.Rendering;
++using PartKind = Gamesim.Presentation.CompetitionApparatusMeshKit.PartKind;
++using Family = Gamesim.Presentation.CompetitionApparatus.Family;
++
++namespace Gamesim.Editor
++{
++    /// <summary>
++    /// Explicitly builds only the optional geometry kit. No scene, prefab, renderer material,
++    /// contact setting or navigation is changed. All imported parts are checked before the
++    /// existing kit is touched. Source: ArtSource/competition-apparatus/part-manifest.json.
++    /// </summary>
++    public static class CompetitionApparatusMeshKitAssets
++    {
++        public const string MeshFolder = "Assets/Gamesim/Art/Authored/Competition";
++        public const string Folder = "Assets/Gamesim/Resources/Gamesim/Competition";
++        public const string KitPath = Folder + "/ApparatusMeshKit.asset";
++
++        [MenuItem("Gamesim/Competition/Build authored apparatus mesh kit")]
++        public static void Build()
++        {
++            var entries = Specifications().Select(LoadPiece).ToArray();
++            var probe = ScriptableObject.CreateInstance<CompetitionApparatusMeshKit>();
++            try
++            {
++                probe.entries = entries;
++                foreach (var entry in entries)
++                    if (!probe.TryGetMesh(entry.family, entry.partKind, entry.referenceDimensions, out _))
++                        throw new InvalidOperationException("Incompatible authored competition mesh: " + entry.family + "/" + entry.partKind);
++            }
++            finally { UnityEngine.Object.DestroyImmediate(probe); }
++
++            EnsureFolder(Folder);
++            var kit = AssetDatabase.LoadAssetAtPath<CompetitionApparatusMeshKit>(KitPath);
++            if (kit == null)
++            {
++                kit = ScriptableObject.CreateInstance<CompetitionApparatusMeshKit>();
++                kit.entries = entries;
++                AssetDatabase.CreateAsset(kit, KitPath);
++            }
++            else
++            {
++                kit.entries = entries;
++                EditorUtility.SetDirty(kit);
++            }
++            AssetDatabase.SaveAssetIfDirty(kit);
++            Debug.Log("[Gamesim] Authored competition geometry kit built: " + entries.Length + " compatible parts at " + KitPath);
++        }
++
++        private static CompetitionApparatusMeshKit.Entry LoadPiece(CompetitionApparatusMeshKit.Entry entry)
++        {
++            string path = MeshFolder + "/bb_comp_" + entry.family + "_" + entry.partKind + ".fbx";
++            var model = AssetDatabase.LoadAssetAtPath<GameObject>(path);
++            if (model == null) throw new InvalidOperationException("Missing authored competition model: " + path);
++            var filters = model.GetComponentsInChildren<MeshFilter>(true);
++            var meshes = AssetDatabase.LoadAllAssetsAtPath(path).OfType<Mesh>().ToArray();
++            if (filters.Length != 1 || meshes.Length != 1 || filters[0].sharedMesh == null
++                || filters[0].sharedMesh != meshes[0] || filters[0].GetComponent<MeshRenderer>() == null
++                || model.GetComponentsInChildren<MeshRenderer>(true).Length != 1
++                || model.GetComponentsInChildren<SkinnedMeshRenderer>(true).Length != 0
++                || model.GetComponentsInChildren<Collider>(true).Length != 0)
++                throw new InvalidOperationException("A competition part must contain exactly one static mesh, one renderer and no collider: " + path);
++
++            // The kit borrows mesh vertices only. A model transform must not secretly supply
++            // scale, rotation or offset that would be lost when attached to the existing Part.
++            Matrix4x4 matrix = filters[0].transform.localToWorldMatrix;
++            for (int row = 0; row < 4; row++) for (int column = 0; column < 4; column++)
++                if (Mathf.Abs(matrix[row,column] - (row == column ? 1f : 0f)) > .0001f)
++                    throw new InvalidOperationException("Bake the competition part's axis conversion and transforms into its mesh: " + path);
++            Mesh mesh = meshes[0];
++            if (!mesh.HasVertexAttribute(VertexAttribute.Normal) || !mesh.HasVertexAttribute(VertexAttribute.TexCoord0))
++                throw new InvalidOperationException("Authored competition geometry needs imported normals and UV0: " + path);
++            entry.mesh = mesh;
++            return entry;
++        }
++
++        private static void EnsureFolder(string path)
++        {
++            if (AssetDatabase.IsValidFolder(path)) return;
++            int slash = path.LastIndexOf('/');
++            string parent = path.Substring(0, slash);
++            EnsureFolder(parent);
++            AssetDatabase.CreateFolder(parent, path.Substring(slash + 1));
++        }
++
++        private static CompetitionApparatusMeshKit.Entry Spec(Family family, PartKind kind, float x, float y, float z)
++            => new CompetitionApparatusMeshKit.Entry { family = family, partKind = kind, referenceDimensions = new Vector3(x,y,z) };
++
++        private static IEnumerable<CompetitionApparatusMeshKit.Entry> Specifications()
++        {
++            // Generated from the reviewed 39-entry manifest. Values are each Part's initial
++            // metre scale; dynamic fitting remains owned exclusively by CompetitionApparatus.
++            yield return Spec(Family.Signals, PartKind.StanceRail, 0.035f, 0.025f, 0.55f);
++            yield return Spec(Family.Signals, PartKind.ProgressBacking, 0.96f, 0.16f, 0.008f);
++            yield return Spec(Family.PairConsole, PartKind.StanceRail, 0.035f, 0.025f, 0.55f);
++            yield return Spec(Family.PairConsole, PartKind.ProgressBacking, 0.96f, 0.16f, 0.008f);
++            yield return Spec(Family.GripRig, PartKind.StanceRail, 0.035f, 0.025f, 0.55f);
++            yield return Spec(Family.GripRig, PartKind.ProgressBacking, 0.96f, 0.16f, 0.008f);
++            yield return Spec(Family.DiceTray, PartKind.StanceRail, 0.035f, 0.025f, 0.55f);
++            yield return Spec(Family.DiceTray, PartKind.ProgressBacking, 0.96f, 0.16f, 0.008f);
++            yield return Spec(Family.WordConsole, PartKind.StanceRail, 0.035f, 0.025f, 0.55f);
++            yield return Spec(Family.WordConsole, PartKind.ProgressBacking, 0.96f, 0.16f, 0.008f);
++            yield return Spec(Family.Signals, PartKind.ConsoleLeg, 0.07f, 0.84f, 0.14f);
++            yield return Spec(Family.Signals, PartKind.ConsoleHousing, 0.95f, 0.8f, 0.14f);
++            yield return Spec(Family.Signals, PartKind.RecessedDisplay, 0.86f, 0.69f, 0.025f);
++            yield return Spec(Family.Signals, PartKind.AwardHeader, 0.95f, 0.045f, 0.03f);
++            yield return Spec(Family.PairConsole, PartKind.ConsoleLeg, 0.07f, 0.84f, 0.14f);
++            yield return Spec(Family.PairConsole, PartKind.ConsoleHousing, 0.92f, 0.8f, 0.14f);
++            yield return Spec(Family.PairConsole, PartKind.RecessedDisplay, 0.83f, 0.69f, 0.025f);
++            yield return Spec(Family.PairConsole, PartKind.AwardHeader, 0.92f, 0.045f, 0.03f);
++            yield return Spec(Family.WordConsole, PartKind.ConsoleLeg, 0.07f, 0.84f, 0.14f);
++            yield return Spec(Family.WordConsole, PartKind.ConsoleHousing, 1.02f, 0.8f, 0.14f);
++            yield return Spec(Family.WordConsole, PartKind.RecessedDisplay, 0.93f, 0.69f, 0.025f);
++            yield return Spec(Family.WordConsole, PartKind.AwardHeader, 1.02f, 0.045f, 0.03f);
++            yield return Spec(Family.Signals, PartKind.SignalTarget, 0.2f, 0.17f, 0.03f);
++            yield return Spec(Family.Signals, PartKind.ResponsePad, 0.14f, 0.065f, 0.15f);
++            yield return Spec(Family.PairConsole, PartKind.MemoryTile, 0.16f, 0.13f, 0.025f);
++            yield return Spec(Family.WordConsole, PartKind.LetterTile, 0.125f, 0.16f, 0.025f);
++            yield return Spec(Family.GripRig, PartKind.RigUpright, 0.065f, 1.56f, 0.09f);
++            yield return Spec(Family.GripRig, PartKind.RigBrace, 0.91f, 0.07f, 0.1f);
++            yield return Spec(Family.GripRig, PartKind.GripHandle, 0.78f, 0.045f, 0.055f);
++            yield return Spec(Family.GripRig, PartKind.GripTrack, 0.055f, 0.69f, 0.04f);
++            yield return Spec(Family.GripRig, PartKind.GripRemaining, 0.035f, 0.69f, 0.025f);
++            yield return Spec(Family.GripRig, PartKind.CounterweightGuide, 0.03f, 0.76f, 0.03f);
++            yield return Spec(Family.GripRig, PartKind.Counterweight, 0.25f, 0.16f, 0.17f);
++            yield return Spec(Family.GripRig, PartKind.GripTick, 0.06f, 0.012f, 0.03f);
++            yield return Spec(Family.DiceTray, PartKind.TrayPedestal, 0.2f, 1.1f, 0.25f);
++            yield return Spec(Family.DiceTray, PartKind.TrayBed, 0.91f, 0.08f, 0.42f);
++            yield return Spec(Family.DiceTray, PartKind.TrayBackRail, 0.96f, 0.13f, 0.05f);
++            yield return Spec(Family.DiceTray, PartKind.TraySideRail, 0.05f, 0.13f, 0.44f);
++            yield return Spec(Family.DiceTray, PartKind.Die, 0.17f, 0.17f, 0.17f);
++        }
++    }
++}
+diff --git a/Assets/Gamesim/Runtime/Presentation/CompetitionApparatus.cs b/Assets/Gamesim/Runtime/Presentation/CompetitionApparatus.cs
+--- a/Assets/Gamesim/Runtime/Presentation/CompetitionApparatus.cs
++++ b/Assets/Gamesim/Runtime/Presentation/CompetitionApparatus.cs
+@@ -5,6 +5,7 @@
+ using TMPro;
+ using UnityEngine;
+ using UnityEngine.Rendering;
++using PartKind = Gamesim.Presentation.CompetitionApparatusMeshKit.PartKind;
+ 
+ namespace Gamesim.Presentation
+ {
+@@ -38,6 +39,7 @@
+         private MaterialPropertyBlock tint;
+         private Material frame, accent, dark, paper, readoutFontMaterial;
+         private Mesh box;
++        private CompetitionApparatusMeshKit meshKit;
+         private TMP_Text progress;
+         private Transform progressFrontBacking,progressAudienceBacking;
+         private Transform weight, gripBar, gripTrack, weightGuide;
+@@ -64,6 +66,12 @@
+ 
+         public static CompetitionApparatus Create(Transform anchor, CompetitionDefinition definition,
+             string category, string actorId, Color award)
++            => Create(anchor, definition, category, actorId, award,
++                Resources.Load<CompetitionApparatusMeshKit>(CompetitionApparatusMeshKit.ResourceName));
++
++        /// <summary>An explicit kit, including null for primitive-only previews and isolated tests.</summary>
++        public static CompetitionApparatus Create(Transform anchor, CompetitionDefinition definition,
++            string category, string actorId, Color award, CompetitionApparatusMeshKit kit)
+         {
+             var root = new GameObject("Competition apparatus · " + For(definition, category));
+             root.transform.SetParent(anchor, false);
+@@ -71,6 +79,7 @@
+             apparatus.Instrument = For(definition, category);
+             apparatus.DefinitionId = definition?.Id;
+             apparatus.ActorId = actorId;
++            apparatus.meshKit = kit;
+             apparatus.Build(award);
+             return apparatus;
+         }
+@@ -87,8 +96,8 @@
+             box = BoxMesh();
+             meshes.Add(box);
+             // An open-footed stance mark belongs to the instrument, rather than a generic disc.
+-            Part("Left stance rail", new Vector3(-.30f, .016f, .02f), new Vector3(.035f, .025f, .55f), accent, clearsActor:false);
+-            Part("Right stance rail", new Vector3(.30f, .016f, .02f), new Vector3(.035f, .025f, .55f), accent, clearsActor:false);
++            Part(PartKind.StanceRail, "Left stance rail", new Vector3(-.30f, .016f, .02f), new Vector3(.035f, .025f, .55f), accent, clearsActor:false);
++            Part(PartKind.StanceRail, "Right stance rail", new Vector3(.30f, .016f, .02f), new Vector3(.035f, .025f, .55f), accent, clearsActor:false);
+             switch (Instrument)
+             {
+                 case Family.PairConsole: BuildPairs(); break;
+@@ -107,8 +116,8 @@
+             progress = Words("Instrument progress", new Vector3(0, progressHeight, progressFront), .90f, .13f, "Ready");
+             // Each opposing plane has its own dark face. Saved yard lights and pillars
+             // can remain behind the words without washing out their public progress.
+-            progressFrontBacking=Part("Progress front backing", new Vector3(0, progressHeight, progressFront + .006f), new Vector3(.96f, .16f, .008f), dark).transform;
+-            progressAudienceBacking=Part("Progress audience backing", new Vector3(0, progressHeight, Front + .154f), new Vector3(.96f, .16f, .008f), dark).transform;
++            progressFrontBacking=Part(PartKind.ProgressBacking, "Progress front backing", new Vector3(0, progressHeight, progressFront + .006f), new Vector3(.96f, .16f, .008f), dark).transform;
++            progressAudienceBacking=Part(PartKind.ProgressBacking, "Progress audience backing", new Vector3(0, progressHeight, Front + .154f), new Vector3(.96f, .16f, .008f), dark).transform;
+             // The show's wide camera sees the audience-facing readout on the back of a console.
+             // Repeat only the same public information, rather than turning the actor away from it.
+             foreach (TMP_Text glyph in glyphs) RepeatWord(glyph);
+@@ -117,18 +126,20 @@
+                 foreach(Renderer indicator in indicators)
+                 {
+                     Vector3 at=indicator.transform.localPosition;at.x=-at.x;at.z=Front+.13f;
+-                    repeaters[indicator]=Part(indicator.name+" audience face",at,indicator.transform.localScale,paper);
++                    PartKind faceKind = Instrument == Family.PairConsole ? PartKind.MemoryTile
++                        : Instrument == Family.Signals ? PartKind.SignalTarget : PartKind.LetterTile;
++                    repeaters[indicator]=Part(faceKind,indicator.name+" audience face",at,indicator.transform.localScale,paper);
+                 }
+             nearestRaisedZ=NearestRaisedSolid();
+         }
+ 
+         private void Console(float height, float width)
+         {
+-            Part("Console left leg", new Vector3(-width * .37f, .42f, Front + .08f), new Vector3(.07f, .84f, .14f), frame);
+-            Part("Console right leg", new Vector3(width * .37f, .42f, Front + .08f), new Vector3(.07f, .84f, .14f), frame);
+-            Part("Console housing", new Vector3(0, height, Front + .04f), new Vector3(width, .80f, .14f), frame);
+-            Part("Recessed display", new Vector3(0, height, Front - .039f), new Vector3(width - .09f, .69f, .025f), dark);
+-            Part("Award header", new Vector3(0, height + .38f, Front - .04f), new Vector3(width, .045f, .03f), accent);
++            Part(PartKind.ConsoleLeg, "Console left leg", new Vector3(-width * .37f, .42f, Front + .08f), new Vector3(.07f, .84f, .14f), frame);
++            Part(PartKind.ConsoleLeg, "Console right leg", new Vector3(width * .37f, .42f, Front + .08f), new Vector3(.07f, .84f, .14f), frame);
++            Part(PartKind.ConsoleHousing, "Console housing", new Vector3(0, height, Front + .04f), new Vector3(width, .80f, .14f), frame);
++            Part(PartKind.RecessedDisplay, "Recessed display", new Vector3(0, height, Front - .039f), new Vector3(width - .09f, .69f, .025f), dark);
++            Part(PartKind.AwardHeader, "Award header", new Vector3(0, height + .38f, Front - .04f), new Vector3(width, .045f, .03f), accent);
+         }
+ 
+         private void BuildPairs()
+@@ -137,7 +148,7 @@
+             for (int i = 0; i < 16; i++)
+             {
+                 Vector3 at = new Vector3((i % 4 - 1.5f) * .19f, 1.28f - (i / 4 - 1.5f) * .16f, Front - .064f);
+-                indicators.Add(Part("Memory tile " + i, at, new Vector3(.16f, .13f, .025f), paper));
++                indicators.Add(Part(PartKind.MemoryTile, "Memory tile " + i, at, new Vector3(.16f, .13f, .025f), paper));
+                 glyphs.Add(Words("Memory face " + i, at + Vector3.back * .018f, .14f, .11f, "?"));
+             }
+         }
+@@ -150,38 +161,38 @@
+             for (int i = 0; i < places.Length; i++)
+             {
+                 Vector3 at = new Vector3(places[i].x, 1.22f + places[i].y, Front - .065f);
+-                indicators.Add(Part("Signal target " + labels[i], at, new Vector3(.20f, .17f, .03f), paper));
++                indicators.Add(Part(PartKind.SignalTarget, "Signal target " + labels[i], at, new Vector3(.20f, .17f, .03f), paper));
+                 glyphs.Add(Words("Signal direction " + labels[i], at + Vector3.back * .02f, .18f, .12f, labels[i]));
+             }
+-            responsePad=Part("Response pad", new Vector3(0, 1.16f, .39f), new Vector3(.14f, .065f, .15f), accent).transform;
++            responsePad=Part(PartKind.ResponsePad, "Response pad", new Vector3(0, 1.16f, .39f), new Vector3(.14f, .065f, .15f), accent).transform;
+         }
+ 
+         private void BuildGrip()
+         {
+-            leftUpright=Part("Rig left upright", new Vector3(-.42f, .78f, Front), new Vector3(.065f, 1.56f, .09f), frame).transform;
+-            rightUpright=Part("Rig right upright", new Vector3(.42f, .78f, Front), new Vector3(.065f, 1.56f, .09f), frame).transform;
+-            topBrace=Part("Rig top brace", new Vector3(0, 1.56f, Front), new Vector3(.91f, .07f, .10f), accent).transform;
+-            handle=Part("Grip handle", new Vector3(0, 1.16f, Front - .055f), new Vector3(.78f, .045f, .055f), accent).transform;
+-            gripTrack=Part("Grip scale track", new Vector3(.30f, 1.09f, Front - .075f), new Vector3(.055f, .69f, .04f), dark).transform;
+-            gripBar = Part("Grip remaining", new Vector3(.30f, 1.09f, Front - .085f), new Vector3(.035f, .69f, .025f), paper).transform;
++            leftUpright=Part(PartKind.RigUpright, "Rig left upright", new Vector3(-.42f, .78f, Front), new Vector3(.065f, 1.56f, .09f), frame).transform;
++            rightUpright=Part(PartKind.RigUpright, "Rig right upright", new Vector3(.42f, .78f, Front), new Vector3(.065f, 1.56f, .09f), frame).transform;
++            topBrace=Part(PartKind.RigBrace, "Rig top brace", new Vector3(0, 1.56f, Front), new Vector3(.91f, .07f, .10f), accent).transform;
++            handle=Part(PartKind.GripHandle, "Grip handle", new Vector3(0, 1.16f, Front - .055f), new Vector3(.78f, .045f, .055f), accent).transform;
++            gripTrack=Part(PartKind.GripTrack, "Grip scale track", new Vector3(.30f, 1.09f, Front - .075f), new Vector3(.055f, .69f, .04f), dark).transform;
++            gripBar = Part(PartKind.GripRemaining, "Grip remaining", new Vector3(.30f, 1.09f, Front - .085f), new Vector3(.035f, .69f, .025f), paper).transform;
+             gripRenderer=gripBar.GetComponent<Renderer>();
+-            weightGuide=Part("Counterweight guide", new Vector3(0, 1.10f, Front + .15f), new Vector3(.03f, .76f, .03f), frame).transform;
+-            weight = Part("Pressure counterweight", new Vector3(0, .85f, Front + .15f), new Vector3(.25f, .16f, .17f), frame).transform;
++            weightGuide=Part(PartKind.CounterweightGuide, "Counterweight guide", new Vector3(0, 1.10f, Front + .15f), new Vector3(.03f, .76f, .03f), frame).transform;
++            weight = Part(PartKind.Counterweight, "Pressure counterweight", new Vector3(0, .85f, Front + .15f), new Vector3(.25f, .16f, .17f), frame).transform;
+             for (int i = 0; i < 5; i++)
+-                gripTicks.Add(Part("Grip scale tick " + i, new Vector3(.35f, .77f + i * .16f, Front - .085f), new Vector3(.06f, .012f, .03f), accent).transform);
++                gripTicks.Add(Part(PartKind.GripTick, "Grip scale tick " + i, new Vector3(.35f, .77f + i * .16f, Front - .085f), new Vector3(.06f, .012f, .03f), accent).transform);
+         }
+ 
+         private void BuildDice()
+         {
+-            trayPedestal=Part("Tray pedestal", new Vector3(0, .55f, Front), new Vector3(.20f, 1.10f, .25f), frame).transform;
+-            trayBed=Part("Dice tray bed", new Vector3(0, 1.14f, Front), new Vector3(.91f, .08f, .42f), dark).transform;
+-            trayBack=Part("Tray back rail", new Vector3(0, 1.21f, Front + .20f), new Vector3(.96f, .13f, .05f), accent).transform;
+-            trayLeft=Part("Tray left rail", new Vector3(-.455f, 1.21f, Front), new Vector3(.05f, .13f, .44f), accent).transform;
+-            trayRight=Part("Tray right rail", new Vector3(.455f, 1.21f, Front), new Vector3(.05f, .13f, .44f), accent).transform;
++            trayPedestal=Part(PartKind.TrayPedestal, "Tray pedestal", new Vector3(0, .55f, Front), new Vector3(.20f, 1.10f, .25f), frame).transform;
++            trayBed=Part(PartKind.TrayBed, "Dice tray bed", new Vector3(0, 1.14f, Front), new Vector3(.91f, .08f, .42f), dark).transform;
++            trayBack=Part(PartKind.TrayBackRail, "Tray back rail", new Vector3(0, 1.21f, Front + .20f), new Vector3(.96f, .13f, .05f), accent).transform;
++            trayLeft=Part(PartKind.TraySideRail, "Tray left rail", new Vector3(-.455f, 1.21f, Front), new Vector3(.05f, .13f, .44f), accent).transform;
++            trayRight=Part(PartKind.TraySideRail, "Tray right rail", new Vector3(.455f, 1.21f, Front), new Vector3(.05f, .13f, .44f), accent).transform;
+             for (int i = 0; i < 3; i++)
+             {
+                 Vector3 at = new Vector3((i - 1) * .25f, 1.28f, Front - .115f);
+-                indicators.Add(Part("Die " + i, at, Vector3.one * .17f, paper, sweepsYaw:true));
++                indicators.Add(Part(PartKind.Die, "Die " + i, at, Vector3.one * .17f, paper, sweepsYaw:true));
+                 glyphs.Add(Words("Die face " + i, at + Vector3.back * .09f, .14f, .14f, "—"));
+             }
+         }
+@@ -192,7 +203,7 @@
+             for (int i = 0; i < 12; i++)
+             {
+                 Vector3 at = new Vector3((i % 6 - 2.5f) * .145f, i < 6 ? 1.30f : 1.08f, Front - .064f);
+-                indicators.Add(Part("Letter tile " + i, at, new Vector3(.125f, .16f, .025f), paper));
++                indicators.Add(Part(PartKind.LetterTile, "Letter tile " + i, at, new Vector3(.125f, .16f, .025f), paper));
+                 glyphs.Add(Words("Letter " + i, at + Vector3.back * .018f, .11f, .14f, ""));
+             }
+             Words("Word tray label", new Vector3(0, 1.51f, Front - .07f), .85f, .12f, "LETTER TRAY");
+@@ -380,13 +391,17 @@
+             return true;
+         }
+ 
+-        private Renderer Part(string name, Vector3 position, Vector3 scale, Material material,bool clearsActor=true,bool sweepsYaw=false)
++        private Renderer Part(PartKind kind, string name, Vector3 position, Vector3 scale, Material material,bool clearsActor=true,bool sweepsYaw=false)
+         {
+             var part = new GameObject(name, typeof(MeshFilter), typeof(MeshRenderer));
+             part.transform.SetParent(transform, false);
+             part.transform.localPosition = position;
+             part.transform.localScale = scale;
+-            var mesh=part.GetComponent<MeshFilter>();mesh.sharedMesh = box;solidMeshes.Add(mesh);
++            var mesh=part.GetComponent<MeshFilter>();
++            // Only geometry is borrowed. The original named transform, live material and all
++            // clearance registries remain the same; shared assets never enter owned disposal.
++            mesh.sharedMesh = meshKit != null && meshKit.TryGetMesh(Instrument, kind, scale, out var authored) ? authored : box;
++            solidMeshes.Add(mesh);
+             if(clearsActor)raisedMeshes.Add(mesh);
+             if(sweepsYaw)yawingMeshes.Add(mesh);
+             var renderer = part.GetComponent<MeshRenderer>();
+diff --git a/Assets/Gamesim/Runtime/Presentation/CompetitionApparatusMeshKit.cs b/Assets/Gamesim/Runtime/Presentation/CompetitionApparatusMeshKit.cs
+new file mode 100644
+--- /dev/null
++++ b/Assets/Gamesim/Runtime/Presentation/CompetitionApparatusMeshKit.cs
+@@ -0,0 +1,82 @@
++using System;
++using UnityEngine;
++
++namespace Gamesim.Presentation
++{
++    /// <summary>
++    /// Optional authored geometry for the existing named instrument parts. Each mesh is authored
++    /// in its reference dimensions, then normalized offline to the existing centred unit box.
++    /// The apparatus retains its transforms, materials, readouts, fitting and mesh registration.
++    /// These are borrowed asset references: an apparatus must never destroy or modify them.
++    /// </summary>
++    public sealed class CompetitionApparatusMeshKit : ScriptableObject
++    {
++        public const string ResourceName = "Gamesim/Competition/ApparatusMeshKit";
++
++        // Serialized keys: append new kinds instead of reordering existing values.
++        public enum PartKind
++        {
++            StanceRail = 0, ConsoleLeg = 1, ConsoleHousing = 2, RecessedDisplay = 3,
++            AwardHeader = 4, MemoryTile = 5, SignalTarget = 6, ResponsePad = 7,
++            RigUpright = 8, RigBrace = 9, GripHandle = 10, GripTrack = 11,
++            GripRemaining = 12, CounterweightGuide = 13, Counterweight = 14,
++            GripTick = 15, TrayPedestal = 16, TrayBed = 17, TrayBackRail = 18,
++            TraySideRail = 19, Die = 20, LetterTile = 21, ProgressBacking = 22
++        }
++
++        [Serializable]
++        public sealed class Entry
++        {
++            public CompetitionApparatus.Family family;
++            public PartKind partKind;
++            public Vector3 referenceDimensions;
++            public Mesh mesh;
++        }
++
++        public Entry[] entries = Array.Empty<Entry>();
++
++        /// <summary>
++        /// Resolve only an unambiguous, compatible part. No fit-to-bounds scaling is performed:
++        /// a part authored for a different aspect ratio falls back to the original block.
++        /// Imported meshes need not retain a CPU-readable vertex copy in the shipped game.
++        /// </summary>
++        public bool TryGetMesh(CompetitionApparatus.Family family, PartKind partKind,
++            Vector3 referenceDimensions, out Mesh mesh)
++        {
++            mesh = null;
++            if (entries == null || !PositiveFinite(referenceDimensions)) return false;
++            Entry found = null;
++            foreach (Entry entry in entries)
++            {
++                if (entry == null || entry.family != family || entry.partKind != partKind) continue;
++                if (found != null) return false;
++                found = entry;
++            }
++            if (found == null || !PositiveFinite(found.referenceDimensions)
++                || !Matches(found.referenceDimensions, referenceDimensions) || found.mesh == null
++                || found.mesh.vertexCount < 3 || found.mesh.subMeshCount != 1
++                || found.mesh.GetTopology(0) != MeshTopology.Triangles || found.mesh.GetIndexCount(0) < 3) return false;
++
++            Bounds bounds = found.mesh.bounds;
++            if (!Finite(bounds.center) || !PositiveFinite(bounds.size)
++                || !Matches(bounds.center, Vector3.zero, .0001f)
++                || !Matches(bounds.size, Vector3.one, .0001f)) return false;
++            Vector3 min = bounds.min, max = bounds.max;
++            const float limit = .5001f;
++            if (min.x < -limit || min.y < -limit || min.z < -limit
++                || max.x > limit || max.y > limit || max.z > limit) return false;
++            mesh = found.mesh;
++            return true;
++        }
++
++        private static bool Matches(Vector3 a, Vector3 b, float tolerance = .00001f)
++            => Mathf.Abs(a.x - b.x) <= tolerance && Mathf.Abs(a.y - b.y) <= tolerance
++                && Mathf.Abs(a.z - b.z) <= tolerance;
++
++        private static bool PositiveFinite(Vector3 value)
++            => Finite(value) && value.x > 0 && value.y > 0 && value.z > 0;
++
++        private static bool Finite(Vector3 value) => Finite(value.x) && Finite(value.y) && Finite(value.z);
++        private static bool Finite(float value) => !float.IsNaN(value) && !float.IsInfinity(value);
++    }
++}
+diff --git a/Assets/Gamesim/Tests/PlayMode/CompetitionApparatusMeshKitPlayModeTests.cs b/Assets/Gamesim/Tests/PlayMode/CompetitionApparatusMeshKitPlayModeTests.cs
+new file mode 100644
+--- /dev/null
++++ b/Assets/Gamesim/Tests/PlayMode/CompetitionApparatusMeshKitPlayModeTests.cs
+@@ -0,0 +1,348 @@
++using System;
++using System.Collections;
++using System.Collections.Generic;
++using System.Linq;
++using System.Reflection;
++using Gamesim.Presentation;
++using Gamesim.Simulation;
++using NUnit.Framework;
++using TMPro;
++using UnityEngine;
++using UnityEngine.TestTools;
++using Object = UnityEngine.Object;
++using PartKind = Gamesim.Presentation.CompetitionApparatusMeshKit.PartKind;
++
++namespace Gamesim.Tests.PlayMode
++{
++    /// <summary>Borrowed geometry must remain ordinary registered, fitted, live instrument parts.</summary>
++    public sealed class CompetitionApparatusMeshKitPlayModeTests
++    {
++        private readonly List<GameObject> owners = new List<GameObject>();
++        private readonly List<Object> assets = new List<Object>();
++
++        [UnityTearDown]
++        public IEnumerator Cleanup()
++        {
++            foreach (var owner in owners) if (owner != null) Object.Destroy(owner);
++            yield return null;
++            yield return null;
++            foreach (var asset in assets) if (asset != null) Object.Destroy(asset);
++            owners.Clear(); assets.Clear();
++            yield return null;
++        }
++
++        private CompetitionApparatus Make(string category, CompetitionApparatusMeshKit kit)
++        {
++            var owner = new GameObject("Authored instrument test anchor");
++            owners.Add(owner);
++            owner.transform.SetPositionAndRotation(new Vector3(4, 2, 6), Quaternion.Euler(0, 37, 0));
++            // Create before first activation, as a real reserved stage does.
++            owner.SetActive(false);
++            var definition = CompetitionDefinitions.All.First(item => item.Category == category);
++            var instrument = CompetitionApparatus.Create(owner.transform, definition, category, "entrant", UiTheme.Gold, kit);
++            owner.SetActive(true);
++            return instrument;
++        }
++
++        private CompetitionApparatusMeshKit Kit(params CompetitionApparatusMeshKit.Entry[] entries)
++        {
++            var kit = ScriptableObject.CreateInstance<CompetitionApparatusMeshKit>();
++            kit.entries = entries; assets.Add(kit); return kit;
++        }
++
++        private CompetitionApparatusMeshKit.Entry Entry(CompetitionApparatus.Family family,
++            PartKind kind, Vector3 dimensions, Mesh mesh)
++            => new CompetitionApparatusMeshKit.Entry { family = family, partKind = kind, referenceDimensions = dimensions, mesh = mesh };
++
++        private static MeshFilter Part(CompetitionApparatus instrument, string name)
++            => instrument.GetComponentsInChildren<MeshFilter>(true).Single(part => part.name == name);
++
++        // A chamfered prism with real corner cuts. Tests must not rename the primitive mesh
++        // and then infer that an authored part was used from the same object name.
++        private Mesh AuthoredMesh()
++        {
++            Vector2[] ring = { new Vector2(-.35f,-.5f), new Vector2(.35f,-.5f), new Vector2(.5f,-.35f),
++                new Vector2(.5f,.35f), new Vector2(.35f,.5f), new Vector2(-.35f,.5f),
++                new Vector2(-.5f,.35f), new Vector2(-.5f,-.35f) };
++            var vertices = new List<Vector3>();
++            for (int layer = 0; layer < 2; layer++)
++                foreach (Vector2 point in ring) vertices.Add(new Vector3(point.x, layer == 0 ? -.5f : .5f, point.y));
++            var triangles = new List<int>();
++            for (int i = 0; i < 8; i++)
++            {
++                int next = (i + 1) % 8;
++                triangles.AddRange(new[] { i, i + 8, next, next, i + 8, next + 8 });
++            }
++            for (int i = 1; i < 7; i++) triangles.AddRange(new[] { 0, i, i + 1, 8, i + 9, i + 8 });
++            var mesh = new Mesh { name = "Authored chamfered instrument test mesh" };
++            mesh.SetVertices(vertices); mesh.SetTriangles(triangles, 0);
++            mesh.RecalculateBounds(); mesh.RecalculateNormals(); assets.Add(mesh); return mesh;
++        }
++
++        [UnityTest]
++        public IEnumerator Kit_MissingInvalidAndAmbiguousEntriesRetainTheOriginalPartGeometry()
++        {
++            var mesh = AuthoredMesh();
++            var dimensions = new Vector3(.14f, .065f, .15f);
++            var good = Entry(CompetitionApparatus.Family.Signals, PartKind.ResponsePad, dimensions, mesh);
++            var wrongAspect = Entry(CompetitionApparatus.Family.Signals, PartKind.ResponsePad, new Vector3(.15f,.065f,.14f), mesh);
++            var otherFamily = Entry(CompetitionApparatus.Family.PairConsole, PartKind.ResponsePad, dimensions, mesh);
++            var undersized = AuthoredMesh();
++            undersized.vertices = undersized.vertices.Select(vertex => vertex * .8f).ToArray();
++            undersized.RecalculateBounds();
++            var offsetInsideEnvelope = AuthoredMesh();
++            // Size and containment still pass, so only the pivot check rejects this mesh.
++            offsetInsideEnvelope.vertices = offsetInsideEnvelope.vertices.Select(vertex => vertex * .99992f + Vector3.right * .00011f).ToArray();
++            offsetInsideEnvelope.RecalculateBounds();
++            Assert.That(Mathf.Abs(offsetInsideEnvelope.bounds.size.x - 1f), Is.LessThan(.0001f));
++            Assert.That(offsetInsideEnvelope.bounds.max.x, Is.LessThan(.5001f));
++            Assert.That(offsetInsideEnvelope.bounds.center.x, Is.GreaterThan(.0001f));
++            foreach (var kit in new[] { null, Kit(), Kit(wrongAspect), Kit(otherFamily), Kit(good, good),
++                Kit(Entry(good.family,good.partKind,dimensions,undersized)),
++                Kit(Entry(good.family,good.partKind,dimensions,offsetInsideEnvelope)) })
++            {
++                var instrument = Make("Skill", kit);
++                var pad = Part(instrument, "Response pad");
++                Assert.That(pad.sharedMesh.name, Is.EqualTo("Competition instrument block"));
++                Assert.That(pad.sharedMesh.bounds, Is.EqualTo(new Bounds(Vector3.zero, Vector3.one)));
++                Assert.That(instrument.GetComponentsInChildren<Collider>(true), Is.Empty);
++            }
++            var partlyAuthored = Make("Skill", Kit(good));
++            Assert.That(Part(partlyAuthored, "Response pad").sharedMesh, Is.SameAs(mesh));
++            Assert.That(Part(partlyAuthored, "Console housing").sharedMesh.name, Is.EqualTo("Competition instrument block"));
++            yield return null;
++        }
++
++        [UnityTest]
++        public IEnumerator Kit_RejectsUnsafeBoundsTopologyAndDimensionsWithoutRequiringReadableAssets()
++        {
++            var mesh = AuthoredMesh();
++            var entry = Entry(CompetitionApparatus.Family.Signals, PartKind.ResponsePad, new Vector3(.14f,.065f,.15f), mesh);
++            var kit = Kit(entry);
++            Func<bool> resolve = () => kit.TryGetMesh(entry.family, entry.partKind, new Vector3(.14f,.065f,.15f), out _);
++            Assert.That(resolve(), Is.True);
++            mesh.bounds = new Bounds(Vector3.zero, Vector3.one*.8f); Assert.That(resolve(), Is.False, "Contained geometry is insufficient: hand contacts assume the authored unit extent.");
++            mesh.bounds = new Bounds(new Vector3(.05f,0,0), Vector3.one*.8f); Assert.That(resolve(), Is.False, "A contained but off-centre mesh violates the part pivot contract.");
++            mesh.bounds = new Bounds(new Vector3(.00011f,0,0), Vector3.one*.99992f); Assert.That(resolve(), Is.False, "Size tolerance and containment passing must not bypass the separate pivot tolerance.");
++            mesh.bounds = new Bounds(new Vector3(.02f,0,0), Vector3.one); Assert.That(resolve(), Is.False, "Offset geometry exceeds the reserved unit envelope.");
++            mesh.bounds = new Bounds(Vector3.zero, new Vector3(1,1,1.1f)); Assert.That(resolve(), Is.False);
++            mesh.bounds = new Bounds(Vector3.zero, new Vector3(1,0,1)); Assert.That(resolve(), Is.False);
++            mesh.bounds = new Bounds(Vector3.zero, Vector3.one);
++            entry.referenceDimensions = new Vector3(float.NaN,.065f,.15f); Assert.That(resolve(), Is.False);
++            entry.referenceDimensions = new Vector3(.14f,-.065f,.15f); Assert.That(resolve(), Is.False);
++            entry.referenceDimensions = new Vector3(.14f,.065f,.15f);
++            mesh.subMeshCount = 2; Assert.That(resolve(), Is.False, "One live material cannot silently cover an arbitrary material layout.");
++            mesh.subMeshCount = 1;
++            mesh.SetIndices(new[] { 0, 1 }, MeshTopology.Lines, 0); Assert.That(resolve(), Is.False);
++            mesh = AuthoredMesh(); entry.mesh = mesh;
++            mesh.UploadMeshData(true);
++            Assert.That(mesh.isReadable, Is.False);
++            Assert.That(resolve(), Is.True, "Imported production assets can discard their CPU vertex copy.");
++            yield return null;
++        }
++
++        [UnityTest]
++        public IEnumerator Kit_AuthoredMovingPartsKeepTheirIdentityFitsContactsAndOverlayOwnership()
++        {
++            var mesh = AuthoredMesh();
++            var kit = Kit(
++                Entry(CompetitionApparatus.Family.Signals, PartKind.ResponsePad, new Vector3(.14f,.065f,.15f), mesh),
++                Entry(CompetitionApparatus.Family.PairConsole, PartKind.MemoryTile, new Vector3(.16f,.13f,.025f), mesh),
++                Entry(CompetitionApparatus.Family.GripRig, PartKind.GripHandle, new Vector3(.78f,.045f,.055f), mesh),
++                Entry(CompetitionApparatus.Family.GripRig, PartKind.RigUpright, new Vector3(.065f,1.56f,.09f), mesh),
++                Entry(CompetitionApparatus.Family.GripRig, PartKind.GripRemaining, new Vector3(.035f,.69f,.025f), mesh),
++                Entry(CompetitionApparatus.Family.DiceTray, PartKind.Die, Vector3.one*.17f, mesh),
++                Entry(CompetitionApparatus.Family.DiceTray, PartKind.TrayPedestal, new Vector3(.20f,1.10f,.25f), mesh),
++                Entry(CompetitionApparatus.Family.WordConsole, PartKind.LetterTile, new Vector3(.125f,.16f,.025f), mesh));
++            foreach (string category in new[] { "Skill", "Mental", "Endurance", "Luck", "Social" })
++            {
++                var baseline = Make(category, null); var authored = Make(category, kit);
++                var before = PartsByName(baseline); var after = PartsByName(authored);
++                Assert.That(after.Keys, Is.EquivalentTo(before.Keys), "Authored geometry retains every named part and text transform.");
++                Assert.That(after.Values.Count(part => part.sharedMesh == mesh), Is.GreaterThan(0));
++                foreach (var pair in before)
++                {
++                    var changed = after[pair.Key];
++                    Assert.That(changed.transform.localPosition, Is.EqualTo(pair.Value.transform.localPosition));
++                    Assert.That(changed.transform.localRotation, Is.EqualTo(pair.Value.transform.localRotation));
++                    Assert.That(changed.transform.localScale, Is.EqualTo(pair.Value.transform.localScale));
++                    Assert.That(changed.GetComponent<Renderer>().sharedMaterial.name, Is.EqualTo(pair.Value.GetComponent<Renderer>().sharedMaterial.name));
++                }
++                var definition = CompetitionDefinitions.All.First(item => item.Category == category);
++                var run = new MiniGameRun(CompetitionMiniGames.For(category), 123, 4, definition);
++                if (run.Kind == CompetitionMiniGames.Kind.Dice) Assert.That(run.Roll(), Is.True);
++                if (run.Kind == CompetitionMiniGames.Kind.Endurance) run.SetHolding(true);
++                run.Tick(.225);
++                string fingerprint = Fingerprint(run);
++                foreach (var instrument in new[] { baseline, authored })
++                {
++                    var anchor = instrument.transform.parent;
++                    var position = anchor.position; var rotation = anchor.rotation;
++                    instrument.FitActorClearance(.40f, new Vector3(.13f,0,-.23f));
++                    instrument.FitGrip(1.4f,-.19f,.60f,.32f,new Vector3(.13f,0,-.23f));
++                    instrument.FitPress(new Vector3(.18f,1.53f,.08f),.62f);
++                    instrument.Sync(run,true,false,false,false);
++                    Assert.That(instrument.Fits(CompetitionStageFootprint.Station(instrument.Instrument,position,
++                        rotation.eulerAngles.y,.40f,1.9f)),Is.True);
++                    instrument.SetOverlaysVisible(false);
++                    Assert.That(instrument.OverlayRenderers.All(renderer => !renderer.enabled), Is.True);
++                    Assert.That(PartsByName(instrument).Values.All(part => part.GetComponent<Renderer>().enabled), Is.True);
++                    Assert.That(instrument.GetComponentsInChildren<Collider>(true), Is.Empty);
++                    Assert.That(anchor.position, Is.EqualTo(position)); Assert.That(anchor.rotation, Is.EqualTo(rotation));
++                }
++                Assert.That(Fingerprint(run), Is.EqualTo(fingerprint));
++                Assert.That(authored.HandContact(true), Is.EqualTo(baseline.HandContact(true)));
++                Assert.That(authored.HandContact(false), Is.EqualTo(baseline.HandContact(false)));
++                foreach (string name in before.Keys)
++                {
++                    Assert.That(after[name].transform.localPosition, Is.EqualTo(before[name].transform.localPosition), name);
++                    Assert.That(after[name].transform.localRotation, Is.EqualTo(before[name].transform.localRotation), name);
++                    Assert.That(after[name].transform.localScale, Is.EqualTo(before[name].transform.localScale), name);
++                }
++                if (category == "Luck")
++                {
++                    Assert.That(Quaternion.Angle(Quaternion.identity, after["Die 0"].transform.localRotation), Is.GreaterThan(1));
++                    authored.Sync(run,true,false,true,false);
++                    Assert.That(after["Die 0"].transform.localRotation, Is.EqualTo(Quaternion.identity));
++                    authored.Sync(run,true,false,false,true);
++                    Assert.That(after["Die 0"].transform.localRotation, Is.EqualTo(Quaternion.identity));
++                }
++            }
++            yield return null;
++        }
++
++        [UnityTest]
++        public IEnumerator Kit_AuthoredDiceRemainRegisteredForClearanceYawSweepAndWholeStationContainment()
++        {
++            var mesh = AuthoredMesh();
++            var kit = Kit(Entry(CompetitionApparatus.Family.DiceTray,PartKind.Die,Vector3.one*.17f,mesh));
++            var instrument = Make("Luck",kit);
++            var anchor = instrument.transform.parent;
++            var die = Part(instrument,"Die 0");
++            var footprint = CompetitionStageFootprint.Station(instrument.Instrument,anchor.position,anchor.eulerAngles.y,.40f,1.9f);
++            var definition = CompetitionDefinitions.All.First(item => item.Category == "Luck");
++            var run = new MiniGameRun(CompetitionMiniGames.Kind.Dice,123,4,definition);
++            Assert.That(run.Roll(),Is.True);
++            Vector3 bodyOffset = new Vector3(.13f,0,-.23f);
++            instrument.FitActorClearance(.40f,bodyOffset);
++            Vector3 fitted = instrument.transform.localPosition;
++            for (int frame = 0; frame < 5; frame++)
++            {
++                if(frame > 0)run.Tick(.1125);
++                instrument.Sync(run,true,false,false,false);
++                instrument.FitActorClearance(.40f,bodyOffset);
++                Assert.That(instrument.transform.localPosition,Is.EqualTo(fitted));
++                foreach(var part in PartsByName(instrument).Values.Where(part => !part.name.Contains("stance rail")))
++                    foreach(var vertex in part.sharedMesh.vertices)
++                    {
++                        Vector3 point = anchor.InverseTransformPoint(part.transform.TransformPoint(vertex))-bodyOffset;
++                        Assert.That(point.z,Is.GreaterThanOrEqualTo(.499f),"The borrowed die must participate in the original full-yaw reservation.");
++                    }
++                Assert.That(instrument.Fits(footprint),Is.True);
++            }
++            Vector3 originalPosition = die.transform.localPosition;
++            die.transform.localPosition += Vector3.right*4;
++            Assert.That(instrument.Fits(footprint),Is.False,"A borrowed mesh remains in the complete solid registry; its name is irrelevant.");
++            die.transform.localPosition=originalPosition;
++            Assert.That(instrument.Fits(footprint),Is.True);
++            yield return null;
++        }
++
++        [UnityTest]
++        public IEnumerator Kit_AuthoredFacesRepeatOnlyPublicInformationAndTintTheOriginalRenderers()
++        {
++            var mesh=AuthoredMesh();
++            var kit=Kit(
++                Entry(CompetitionApparatus.Family.PairConsole,PartKind.MemoryTile,new Vector3(.16f,.13f,.025f),mesh),
++                Entry(CompetitionApparatus.Family.WordConsole,PartKind.LetterTile,new Vector3(.125f,.16f,.025f),mesh));
++            var instrument=Make("Mental",kit);
++            var definition=CompetitionDefinitions.All.First(item=>item.Category=="Mental");
++            var run=new MiniGameRun(CompetitionMiniGames.Kind.Memory,7,4,definition);
++            instrument.Sync(run,false,false,false,false);
++            Assert.That(instrument.VisibleMemoryFaces,Is.Zero);
++            Assert.That(instrument.GetComponentsInChildren<TMP_Text>(true).Where(t=>t.name.StartsWith("Memory face")).All(t=>t.text=="?"),Is.True);
++            run.Flip(0);string fingerprint=Fingerprint(run);
++            instrument.Sync(run,true,false,false,false);
++            Assert.That(instrument.VisibleMemoryFaces,Is.EqualTo(1));
++            var front=Part(instrument,"Memory tile 0");var back=Part(instrument,"Memory tile 0 audience face");
++            Assert.That(front.sharedMesh,Is.SameAs(mesh));Assert.That(back.sharedMesh,Is.SameAs(mesh));
++            var frontTint=new MaterialPropertyBlock();var backTint=new MaterialPropertyBlock();
++            front.GetComponent<Renderer>().GetPropertyBlock(frontTint);back.GetComponent<Renderer>().GetPropertyBlock(backTint);
++            Assert.That(frontTint.GetColor("_BaseColor"),Is.EqualTo(UiTheme.Accent));
++            Assert.That(backTint.GetColor("_BaseColor"),Is.EqualTo(frontTint.GetColor("_BaseColor")));
++            Assert.That(Fingerprint(run),Is.EqualTo(fingerprint));
++
++            instrument=Make("Social",kit);definition=CompetitionDefinitions.All.First(item=>item.Category=="Social");
++            run=new MiniGameRun(CompetitionMiniGames.Kind.Words,123,4,definition);
++            instrument.Sync(run,true,false,false,false);
++            var letters=instrument.GetComponentsInChildren<TMP_Text>(true).Where(t=>t.name.StartsWith("Letter ")).ToArray();
++            Assert.That(letters.Any(t=>t.text!="?" && t.text!=""),Is.True);
++            fingerprint=Fingerprint(run);instrument.Sync(run,true,false,true,false);
++            Assert.That(letters.All(t=>t.text=="?" || t.text==""),Is.True,"Both borrowed console faces obey pause disclosure.");
++            Assert.That(Fingerprint(run),Is.EqualTo(fingerprint));
++            yield return null;
++        }
++
++        [UnityTest]
++        public IEnumerator Kit_ReleasingOneApparatusDestroysOnlyItsOwnedResourcesAndLeavesSharedGeometryUsable()
++        {
++            var mesh=AuthoredMesh();
++            var kit=Kit(Entry(CompetitionApparatus.Family.Signals,PartKind.ResponsePad,new Vector3(.14f,.065f,.15f),mesh));
++            var first=Make("Skill",kit);var second=Make("Skill",kit);
++            var fallback=Part(first,"Console housing").sharedMesh;
++            var material=Part(first,"Response pad").GetComponent<Renderer>().sharedMaterial;
++            Object.Destroy(first.transform.parent.gameObject);
++            yield return null;yield return null;
++            Assert.That(fallback==null,Is.True);Assert.That(material==null,Is.True);
++            Assert.That(mesh!=null,Is.True,"The kit's imported mesh is borrowed, never stage-owned.");
++            Assert.That(kit!=null,Is.True);Assert.That(Part(second,"Response pad").sharedMesh,Is.SameAs(mesh));
++            second.FitPress(new Vector3(.18f,1.53f,.08f),.62f);
++            Assert.That(Part(second,"Response pad").GetComponent<Renderer>().enabled,Is.True);
++            Assert.That(mesh.vertexCount,Is.GreaterThan(8));
++        }
++
++        [UnityTest, Explicit("Run after importing all authored FBXs and building the optional kit; absence must fail this production asset gate.")]
++        public IEnumerator Kit_InstalledAuthoredAssetsCoverEveryFamilyAndFitTheExistingReservations()
++        {
++            var kit=Resources.Load<CompetitionApparatusMeshKit>(CompetitionApparatusMeshKit.ResourceName);
++            Assert.That(kit,Is.Not.Null,"Run the authored kit builder before this explicit acceptance gate.");
++            Assert.That(kit.entries.Select(entry=>(entry.family,entry.partKind)).Distinct().Count(),Is.EqualTo(kit.entries.Length));
++            var referenced=new HashSet<Mesh>(kit.entries.Select(entry=>entry.mesh));
++            var used=new HashSet<Mesh>();
++            foreach(var definition in CompetitionDefinitions.All)
++            {
++                var instrument=Make(definition.Category,kit);
++                var anchor=instrument.transform.parent;
++                foreach(var part in PartsByName(instrument).Values)
++                {
++                    Assert.That(referenced.Contains(part.sharedMesh),Is.True,definition.Id+" / "+part.name+": no primitive fallback in the complete installed kit.");
++                    used.Add(part.sharedMesh);
++                }
++                foreach(float shoulder in new[]{1.25f,1.65f})
++                {
++                    instrument.FitActorClearance(.40f,new Vector3(.13f,0,-.12f));
++                    instrument.FitGrip(shoulder,.04f,.70f,.40f,new Vector3(.13f,0,-.12f));
++                    instrument.FitPress(new Vector3(.18f,shoulder,.08f),.62f);
++                    var run=new MiniGameRun(CompetitionMiniGames.For(definition.Category),123,4,definition);
++                    if(run.Kind==CompetitionMiniGames.Kind.Dice){Assert.That(run.Roll(),Is.True);run.Tick(.225);}
++                    instrument.Sync(run,true,false,false,false);
++                    Assert.That(instrument.Fits(CompetitionStageFootprint.Station(instrument.Instrument,
++                        anchor.position,anchor.eulerAngles.y,.40f,1.9f)),Is.True,definition.Id);
++                }
++            }
++            Assert.That(used,Is.EquivalentTo(referenced),"Every referenced mesh must be exercised by a real family, not merely stored in an unused entry.");
++            yield return null;
++        }
++
++        private static Dictionary<string,MeshFilter> PartsByName(CompetitionApparatus instrument)
++            => instrument.GetComponentsInChildren<MeshFilter>(true).Where(part=>part.transform.parent==instrument.transform && part.GetComponent<TMP_Text>()==null).ToDictionary(part=>part.name);
++
++        private static string Fingerprint(MiniGameRun run)
++        {
++            var random=(SeededRandom)typeof(MiniGameRun).GetField("random",BindingFlags.Instance|BindingFlags.NonPublic).GetValue(run);
++            return string.Join("/",run.Elapsed,run.Finished,run.Score,random.State,run.Meter,run.Held,run.Holding,
++                run.Hits,run.Spawned,run.TargetLive,run.TargetDirection,run.MatchedPairs,run.FirstFlip,run.SecondFlip,
++                run.RollsUsed,run.RollTotal,run.KeptTotal,run.Word,run.Scrambled,run.Spelled,run.WordsSolved,run.WordPoints);
++        }
++    }
++}
+diff --git a/Assets/Gamesim/Tests/PlayMode/CompetitionApparatusPlayModeTests.cs b/Assets/Gamesim/Tests/PlayMode/CompetitionApparatusPlayModeTests.cs
+--- a/Assets/Gamesim/Tests/PlayMode/CompetitionApparatusPlayModeTests.cs
++++ b/Assets/Gamesim/Tests/PlayMode/CompetitionApparatusPlayModeTests.cs
+@@ -34,7 +34,7 @@
+             owner=new GameObject("Apparatus clearance anchor");
+             owner.transform.SetPositionAndRotation(new Vector3(4,2,6),Quaternion.Euler(0,37,0));
+             owner.SetActive(!inactive);
+-            return CompetitionApparatus.Create(owner.transform,definition,definition.Category,"entrant",UiTheme.Gold);
++            return CompetitionApparatus.Create(owner.transform,definition,definition.Category,"entrant",UiTheme.Gold,null);
+         }
+ 
+         [UnityTest]

@@ -1,0 +1,60 @@
+{
+  "schema": "game_dev.result.v1",
+  "operation": "package.verify",
+  "ok": true,
+  "data": {
+    "schema": "game_dev.package_verification.v1",
+    "packagePath": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\outputs\\gamesim-props-20261020\\.game-dev\\packages\\bb_set_toiletry\\1.0.0",
+    "manifest": {
+      "assetId": "bb_set_toiletry",
+      "category": "environment_prop",
+      "description": "Original house packaging prop, metre dimensions and floor-centre origin. Self-contained PBR GLB; native FBX material slots use the bound separate material map. Existing placement envelope retained. Native Unity appearance/placement acceptance pending.",
+      "displayName": "bb_set_toiletry",
+      "files": [
+        {
+          "bytes": 545912,
+          "kind": "model",
+          "path": "model.glb",
+          "sha256": "dd89d4187020b34ee2838890f2ad46bb8b1785cefde308fbdf6f2b78b24c2475"
+        },
+        {
+          "bytes": 2061,
+          "kind": "metadata",
+          "path": "metadata.json",
+          "sha256": "4c4086df7db77fd0fedd8b4b4655e04d40cdd39f536ace39689162d1e68e546e"
+        },
+        {
+          "bytes": 1281,
+          "kind": "provenance",
+          "path": "provenance.json",
+          "sha256": "cc32deab4c5214a989b661d4083bf79f961ff5d7778f17b24691c9ecad4f0bcc"
+        },
+        {
+          "bytes": 3902,
+          "kind": "validation",
+          "path": "validation.json",
+          "sha256": "7da3a7fae0a47481be835dd9389ea7f10b4ca6c01aa94296e40fef5b10fcdf07"
+        }
+      ],
+      "license": "LicenseRef-GameSim-Original",
+      "model": "model.glb",
+      "packageId": "pkg_314a38f0f77e530cf69fdc0e",
+      "provenance": {
+        "origin": "authored"
+      },
+      "schema": "game_dev.asset_package.v1",
+      "validation": {
+        "errorCount": 0,
+        "passed": true,
+        "warningCount": 0
+      },
+      "version": "1.0.0"
+    },
+    "hashesVerified": true,
+    "evidence": {
+      "packageBytesVerified": true,
+      "gpuImportTestPerformed": false,
+      "humanVisualReviewPerformed": false
+    }
+  }
+}

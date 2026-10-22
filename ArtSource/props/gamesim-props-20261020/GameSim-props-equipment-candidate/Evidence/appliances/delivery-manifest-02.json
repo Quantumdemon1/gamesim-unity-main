@@ -1,0 +1,135 @@
+{
+  "status": "Supersedes -01 export; tangent fix; old assets preserved",
+  "files": [
+    {
+      "path": "mini-fridge-02\\bb_set_mini_fridge.fbx",
+      "bytes": 114620,
+      "sha256": "191111bf96e239e22054bf30ced58d49c7b262b5f6597ce66401df0ecf5617c1"
+    },
+    {
+      "path": "mini-fridge-02\\bb_set_mini_fridge.glb",
+      "bytes": 1695316,
+      "sha256": "c5bd7e4d3ae5b48da08f18e3d3d670f78232644a7770bcb067cc1ea94ca36195"
+    },
+    {
+      "path": "mini-fridge-02\\bb_set_mini_fridge_source.blend",
+      "bytes": 1392057,
+      "sha256": "eb3b852f78a098e4aeadd9ee04978f82e2f014da682ce66c2802856677c96328"
+    },
+    {
+      "path": "mini-fridge-02\\provenance.json",
+      "bytes": 622,
+      "sha256": "a537b49637bd0594a5e998bbb45e6ef51af561836c0db31cbe268fc4eda799e5"
+    },
+    {
+      "path": "mini-fridge-02\\technical-receipt.json",
+      "bytes": 6313,
+      "sha256": "9d9630a09aabe9b05763d9e09d69fee5e7a87e99bd1e34de4abdf2b6460acc62"
+    },
+    {
+      "path": "mini-fridge-02\\bb_set_mini_fridge.fbm\\bb_set_mini_fridge_albedo.png",
+      "bytes": 809129,
+      "sha256": "677e2c974b6258ef79891ce70e3b6d8640148e42c1d61eaa4a608b1939b82f16"
+    },
+    {
+      "path": "mini-fridge-02\\bb_set_mini_fridge.fbm\\bb_set_mini_fridge_normal.png",
+      "bytes": 66554,
+      "sha256": "cc920eb7d9300b800e83a315285fa503d1aef69c75516daea2f754555b9b012d"
+    },
+    {
+      "path": "mini-fridge-02\\Textures\\bb_set_mini_fridge_albedo.png",
+      "bytes": 809129,
+      "sha256": "677e2c974b6258ef79891ce70e3b6d8640148e42c1d61eaa4a608b1939b82f16"
+    },
+    {
+      "path": "mini-fridge-02\\Textures\\bb_set_mini_fridge_metallic.png",
+      "bytes": 449174,
+      "sha256": "75d3190b5cf6861ad8a9beb2e2d7058f9d9b5af7d1ba1d06c76db0173762c5f3"
+    },
+    {
+      "path": "mini-fridge-02\\Textures\\bb_set_mini_fridge_normal.png",
+      "bytes": 66554,
+      "sha256": "cc920eb7d9300b800e83a315285fa503d1aef69c75516daea2f754555b9b012d"
+    },
+    {
+      "path": "mini-fridge-02\\Textures\\bb_set_mini_fridge_orm.png",
+      "bytes": 445010,
+      "sha256": "a87e342f7abc685a30a4e6954f45c8601a7fbf5e4ea0f361cb3452c35a34a919"
+    },
+    {
+      "path": "headphone-case-02\\bb_set_headphone_case.fbx",
+      "bytes": 78300,
+      "sha256": "4c5618775da308879c0902ce2d7e3715db4db378a0803a97f4f430dd85623e61"
+    },
+    {
+      "path": "headphone-case-02\\bb_set_headphone_case.glb",
+      "bytes": 1797000,
+      "sha256": "eb090bf7e45da02f0afe5d21d319a6820bce0317ceeddf0c2f87a9aeef588ae8"
+    },
+    {
+      "path": "headphone-case-02\\bb_set_headphone_case_source.blend",
+      "bytes": 1675272,
+      "sha256": "3d1cb54aef1a2ae2281450186bfe4d039f2baa03b5778f954ff5a3ff59e1a953"
+    },
+    {
+      "path": "headphone-case-02\\provenance.json",
+      "bytes": 628,
+      "sha256": "6f8c1455e913efdbba8d481428ccb911e9d5c286b33253688f709641dc4e8138"
+    },
+    {
+      "path": "headphone-case-02\\technical-receipt.json",
+      "bytes": 7918,
+      "sha256": "8754e02ab25e5276ee4d711d38fbf0591c156102cd99a3f0344bdaf407f35a45"
+    },
+    {
+      "path": "headphone-case-02\\bb_set_headphone_case.fbm\\bb_set_headphone_case_albedo.png",
+      "bytes": 1189862,
+      "sha256": "60d0992dcbc20a3c50ec6e6ab75cf508c275ddfb4e9bca47841b9a95138bffab"
+    },
+    {
+      "path": "headphone-case-02\\bb_set_headphone_case.fbm\\bb_set_headphone_case_normal.png",
+      "bytes": 39586,
+      "sha256": "65def035d61f912e42a6784f3f1fcf1edfe5bc185c57972c266822cb2fd88ba8"
+    },
+    {
+      "path": "headphone-case-02\\Textures\\bb_set_headphone_case_albedo.png",
+      "bytes": 1189862,
+      "sha256": "60d0992dcbc20a3c50ec6e6ab75cf508c275ddfb4e9bca47841b9a95138bffab"
+    },
+    {
+      "path": "headphone-case-02\\Textures\\bb_set_headphone_case_metallic.png",
+      "bytes": 410200,
+      "sha256": "be1aa521739ab360c8a1d156315311c8d1f4c1aa847374da59d4386ae47ed9ef"
+    },
+    {
+      "path": "headphone-case-02\\Textures\\bb_set_headphone_case_normal.png",
+      "bytes": 39586,
+      "sha256": "65def035d61f912e42a6784f3f1fcf1edfe5bc185c57972c266822cb2fd88ba8"
+    },
+    {
+      "path": "headphone-case-02\\Textures\\bb_set_headphone_case_orm.png",
+      "bytes": 404188,
+      "sha256": "4989d7681c26e8aa57feb72306450ff83d5c3fc187ce4598124f09a1131facf5"
+    },
+    {
+      "path": "author_appliances_v2.py",
+      "bytes": 20125,
+      "sha256": "7d65c0a0043ac8af6ddcf72a1f5e60d01b3dbed05af602b2c9f7083270f7e27f"
+    },
+    {
+      "path": "roundtrip-validation-02.json",
+      "bytes": 8179,
+      "sha256": "280967134dc9081ba2773bf97e7e8d5413cecf5ba442348838ab9b9cfa0ef718"
+    },
+    {
+      "path": "native-texture-references-02.json",
+      "bytes": 4491,
+      "sha256": "ae669b7fb24a857fc8563426e951c04b7f46e2a426b23fee1189a41ba54a931e"
+    },
+    {
+      "path": "tangent-export-fix-02.json",
+      "bytes": 2053,
+      "sha256": "9709fd2d4de8946d06d49f51be9590bb6690d6573772bde9f8bec4d09b41788d"
+    }
+  ]
+}

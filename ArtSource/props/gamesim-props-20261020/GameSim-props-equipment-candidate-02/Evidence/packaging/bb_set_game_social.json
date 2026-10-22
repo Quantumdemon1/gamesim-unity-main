@@ -1,0 +1,39 @@
+{
+  "name": "bb_set_game_social",
+  "kind": "game",
+  "expectedUnityXYZ": [
+    0.3,
+    0.05,
+    0.2
+  ],
+  "blenderBoundsXYZ": [
+    0.30000001192092896,
+    0.20000000298023224,
+    0.05000000447034836
+  ],
+  "triangles": 216,
+  "materials": [
+    "bb_mat_bb_set_game_social_base",
+    "bb_mat_bb_set_game_social",
+    "bb_mat_bb_set_game_social_trim"
+  ],
+  "uvLayers": 1,
+  "origin": [
+    0.0,
+    0.0,
+    0.0
+  ],
+  "sourceBlend": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\packaging\\Sources\\bb_set_game_social.blend",
+  "glb": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\packaging\\GLB\\bb_set_game_social.glb",
+  "fbx": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\packaging\\FBX\\bb_set_game_social.fbx",
+  "previews": [
+    "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\packaging\\Previews\\bb_set_game_social_threequarter.png",
+    "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\packaging\\Previews\\bb_set_game_social_front.png",
+    "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\packaging\\Previews\\bb_set_game_social_back.png"
+  ],
+  "sha256": {
+    "bb_set_game_social.glb": "da2e7889b37e1b824cee7662655976ea7b15c51bf435d7e4dcaeb3e360434cba",
+    "bb_set_game_social.fbx": "8b2e24005c44ce8ea181c6785a1ce5fb9faff79774278b5f6383ddf12b2369ea"
+  },
+  "art": "Original authored geometry and deterministic procedural PBR textures; no external assets or generators. Rights reserved for GameSim project; no CC0 grant implied."
+}

@@ -1,0 +1,39 @@
+{
+  "checkedUtc": "2026-10-21T04:11:56.700074+00:00",
+  "project": "D:\\GamesimConsolidation",
+  "scope": "Four prospective code/test targets plus saved EpisodeHouse; not a whole-project unchanged claim while GameSim Dev is working.",
+  "checks": [
+    {
+      "path": "Assets/Gamesim/Runtime/Presentation/CompetitionApparatus.cs",
+      "expectedSha256": "886545c4de6a6312f507abde93e7ea963c7bf9eb75be876d903499924a65c117",
+      "observedSha256": "886545c4de6a6312f507abde93e7ea963c7bf9eb75be876d903499924a65c117",
+      "matches": true
+    },
+    {
+      "path": "Assets/Gamesim/Tests/PlayMode/CompetitionApparatusPlayModeTests.cs",
+      "expectedSha256": "9059386efa57439b23dd07d47433fb493fa54d62bfbd2935312e99de58dab413",
+      "observedSha256": "9059386efa57439b23dd07d47433fb493fa54d62bfbd2935312e99de58dab413",
+      "matches": true
+    },
+    {
+      "path": "Assets/Gamesim/Editor/HouseRoomFinish.cs",
+      "expectedSha256": "65400a2012efec8f89ab91f7241736cfeb8ba03db25e0c851655ff92457cf171",
+      "observedSha256": "65400a2012efec8f89ab91f7241736cfeb8ba03db25e0c851655ff92457cf171",
+      "matches": true
+    },
+    {
+      "path": "Assets/Gamesim/Tests/EditMode/RoomFinishTests.cs",
+      "expectedSha256": "8541b494cbfd48321906be6ea65fb15e8efa7a3447a285ac2284c852d368b8b4",
+      "observedSha256": "8541b494cbfd48321906be6ea65fb15e8efa7a3447a285ac2284c852d368b8b4",
+      "matches": true
+    },
+    {
+      "path": "Assets/Gamesim/Scenes/EpisodeHouse.unity",
+      "expectedSha256": "c9e136884f0c00b37e62c13dcdfc2923df48da85a5b914f087f409145a4bec93",
+      "observedSha256": "c9e136884f0c00b37e62c13dcdfc2923df48da85a5b914f087f409145a4bec93",
+      "matches": true
+    }
+  ],
+  "allMatch": true,
+  "candidateWrites": "Only the separate Codex task/output directories. No Unity project write or Unity MCP/editor action was performed."
+}

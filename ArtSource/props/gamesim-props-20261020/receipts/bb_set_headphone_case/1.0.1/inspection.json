@@ -1,0 +1,74 @@
+{
+  "schema": "game_dev.result.v1",
+  "operation": "asset.inspect",
+  "ok": true,
+  "data": {
+    "filePath": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\appliances\\headphone-case-02\\bb_set_headphone_case.glb",
+    "fileBytes": 1797000,
+    "generator": "glTF-Transform v4.5.1",
+    "meshCount": 1,
+    "primitiveCount": 1,
+    "vertexCount": 3074,
+    "triangleCount": 2308,
+    "undrawnMeshCount": 0,
+    "undrawnPrimitiveCount": 0,
+    "undrawnTriangleCount": 0,
+    "sceneGraphFallback": false,
+    "materialCount": 1,
+    "textureCount": 3,
+    "textureResolutions": [
+      {
+        "name": "bb_set_headphone_case_normal",
+        "width": 1024,
+        "height": 1024,
+        "mimeType": "image/png",
+        "bytes": 39586
+      },
+      {
+        "name": "bb_set_headphone_case_albedo",
+        "width": 1024,
+        "height": 1024,
+        "mimeType": "image/png",
+        "bytes": 1189862
+      },
+      {
+        "name": "bb_set_headphone_case_orm",
+        "width": 1024,
+        "height": 1024,
+        "mimeType": "image/png",
+        "bytes": 404188
+      }
+    ],
+    "boundingBox": {
+      "min": [
+        -0.07999999821186066,
+        0,
+        -0.07999999821186066
+      ],
+      "max": [
+        0.07999999821186066,
+        0.05999999865889549,
+        0.07999999821186066
+      ],
+      "sizeMeters": [
+        0.1599999964237213,
+        0.05999999865889549,
+        0.1599999964237213
+      ]
+    },
+    "boundingBoxEmpty": false,
+    "hasUVs": true,
+    "hasNormals": true,
+    "hasTangents": true,
+    "pbr": {
+      "hasBaseColorTexture": true,
+      "hasMetallicRoughnessTexture": true,
+      "hasNormalTexture": true,
+      "hasOcclusionTexture": false,
+      "hasEmissiveTexture": false
+    },
+    "animationCount": 0,
+    "hasSkin": false,
+    "warnings": []
+  }
+}

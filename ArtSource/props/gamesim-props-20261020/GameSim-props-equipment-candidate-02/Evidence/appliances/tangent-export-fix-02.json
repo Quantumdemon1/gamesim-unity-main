@@ -1,0 +1,68 @@
+[
+  {
+    "path": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\appliances\\mini-fridge-01\\bb_set_mini_fridge.glb",
+    "sha256": "4dcae16ead2b6c8e7b1f9cd9f07e3862ca73257d03b5d22befc6fb674bf8ff7b",
+    "generator": "Khronos glTF Blender I/O v5.2.40",
+    "attributes": [
+      [
+        "POSITION",
+        "NORMAL",
+        "TEXCOORD_0"
+      ]
+    ]
+  },
+  {
+    "path": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\appliances\\mini-fridge-02\\bb_set_mini_fridge.glb",
+    "sha256": "c5bd7e4d3ae5b48da08f18e3d3d670f78232644a7770bcb067cc1ea94ca36195",
+    "generator": "Khronos glTF Blender I/O v5.2.40",
+    "attributes": [
+      [
+        "POSITION",
+        "NORMAL",
+        "TEXCOORD_0",
+        "TANGENT"
+      ]
+    ],
+    "tangents": [
+      {
+        "count": 7280,
+        "finite": true,
+        "max_length_error": 6.110331644104683e-05,
+        "handedness_signed_one": true
+      }
+    ]
+  },
+  {
+    "path": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\appliances\\headphone-case-01\\bb_set_headphone_case.glb",
+    "sha256": "87747dec17903cf61f090163a0f960f7e194038a6552c888285f79c877ef3c96",
+    "generator": "Khronos glTF Blender I/O v5.2.40",
+    "attributes": [
+      [
+        "POSITION",
+        "NORMAL",
+        "TEXCOORD_0"
+      ]
+    ]
+  },
+  {
+    "path": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\appliances\\headphone-case-02\\bb_set_headphone_case.glb",
+    "sha256": "eb090bf7e45da02f0afe5d21d319a6820bce0317ceeddf0c2f87a9aeef588ae8",
+    "generator": "Khronos glTF Blender I/O v5.2.40",
+    "attributes": [
+      [
+        "POSITION",
+        "NORMAL",
+        "TEXCOORD_0",
+        "TANGENT"
+      ]
+    ],
+    "tangents": [
+      {
+        "count": 3074,
+        "finite": true,
+        "max_length_error": 6.048626551269365e-05,
+        "handedness_signed_one": true
+      }
+    ]
+  }
+]

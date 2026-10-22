@@ -1,0 +1,45 @@
+{
+  "assetId": "bb_comp_pairconsole",
+  "category": "environment_prop",
+  "description": "Assembled reference station in metres. Unity consumes the separate normalized FBX part kit; runtime owns visible text, tint, moving parts and game state. Canonical GLB is an art reference, not a static runtime replacement.",
+  "displayName": "bb_comp_pairconsole",
+  "files": [
+    {
+      "bytes": 301700,
+      "kind": "model",
+      "path": "model.glb",
+      "sha256": "c47dc453565c8a7927578afcb5ec5562b26ae802cf814625ea26980792538c51"
+    },
+    {
+      "bytes": 1698,
+      "kind": "metadata",
+      "path": "metadata.json",
+      "sha256": "7fd078238ba284e29475261264aef2e27654c0e0acb1ca69f9efb87333fd7caf"
+    },
+    {
+      "bytes": 1172,
+      "kind": "provenance",
+      "path": "provenance.json",
+      "sha256": "54bb385b6d36400f576059c02bbae7cda9e40d049167fcc21eb831ada0535f5c"
+    },
+    {
+      "bytes": 2924,
+      "kind": "validation",
+      "path": "validation.json",
+      "sha256": "ff9e43a8ad9731cfe5913d42dffd1bcb7cc3b1833f04ce9e7206f1ce85d078fc"
+    }
+  ],
+  "license": "LicenseRef-GameSim-Original",
+  "model": "model.glb",
+  "packageId": "pkg_f5ebfb4870ba5c011b38e544",
+  "provenance": {
+    "origin": "authored"
+  },
+  "schema": "game_dev.asset_package.v1",
+  "validation": {
+    "errorCount": 0,
+    "passed": true,
+    "warningCount": 0
+  },
+  "version": "1.0.0"
+}

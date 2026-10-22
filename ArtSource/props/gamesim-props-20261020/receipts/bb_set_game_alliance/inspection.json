@@ -1,0 +1,69 @@
+{
+  "schema": "game_dev.result.v1",
+  "operation": "asset.inspect",
+  "ok": true,
+  "data": {
+    "filePath": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\packaging\\GLB\\bb_set_game_alliance.glb",
+    "fileBytes": 492164,
+    "generator": "glTF-Transform v4.5.1",
+    "meshCount": 1,
+    "primitiveCount": 3,
+    "vertexCount": 554,
+    "triangleCount": 216,
+    "undrawnMeshCount": 0,
+    "undrawnPrimitiveCount": 0,
+    "undrawnTriangleCount": 0,
+    "sceneGraphFallback": false,
+    "materialCount": 3,
+    "textureCount": 2,
+    "textureResolutions": [
+      {
+        "name": "bb_set_game_alliance_albedo",
+        "width": 512,
+        "height": 512,
+        "mimeType": "image/png",
+        "bytes": 191871
+      },
+      {
+        "name": "bb_set_game_alliance_orm",
+        "width": 512,
+        "height": 512,
+        "mimeType": "image/png",
+        "bytes": 268463
+      }
+    ],
+    "boundingBox": {
+      "min": [
+        -0.15000000596046448,
+        0,
+        -0.10000000149011612
+      ],
+      "max": [
+        0.15000000596046448,
+        0.05000000447034836,
+        0.10000000149011612
+      ],
+      "sizeMeters": [
+        0.30000001192092896,
+        0.05000000447034836,
+        0.20000000298023224
+      ]
+    },
+    "boundingBoxEmpty": false,
+    "hasUVs": true,
+    "hasNormals": true,
+    "hasTangents": true,
+    "pbr": {
+      "hasBaseColorTexture": true,
+      "hasMetallicRoughnessTexture": true,
+      "hasNormalTexture": false,
+      "hasOcclusionTexture": false,
+      "hasEmissiveTexture": false
+    },
+    "animationCount": 0,
+    "hasSkin": false,
+    "warnings": [
+      "texture is below 1024px on an axis and will blur at close range: bb_set_game_alliance_albedo (512x512), bb_set_game_alliance_orm (512x512)"
+    ]
+  }
+}

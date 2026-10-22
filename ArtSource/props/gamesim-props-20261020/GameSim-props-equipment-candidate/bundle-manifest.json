@@ -1,0 +1,2105 @@
+{
+  "schema": "gamesim.art_candidate_bundle.v1",
+  "files": [
+    {
+      "path": "Authoring/appliances/author_appliances_v2.py",
+      "sha256": "7d65c0a0043ac8af6ddcf72a1f5e60d01b3dbed05af602b2c9f7083270f7e27f",
+      "bytes": 20125
+    },
+    {
+      "path": "Authoring/appliances/bb_set_headphone_case_source.blend",
+      "sha256": "3d1cb54aef1a2ae2281450186bfe4d039f2baa03b5778f954ff5a3ff59e1a953",
+      "bytes": 1675272
+    },
+    {
+      "path": "Authoring/appliances/bb_set_mini_fridge_source.blend",
+      "sha256": "eb3b852f78a098e4aeadd9ee04978f82e2f014da682ce66c2802856677c96328",
+      "bytes": 1392057
+    },
+    {
+      "path": "Authoring/appliances/Textures/bb_set_headphone_case_albedo.png",
+      "sha256": "60d0992dcbc20a3c50ec6e6ab75cf508c275ddfb4e9bca47841b9a95138bffab",
+      "bytes": 1189862
+    },
+    {
+      "path": "Authoring/appliances/Textures/bb_set_headphone_case_metallic.png",
+      "sha256": "be1aa521739ab360c8a1d156315311c8d1f4c1aa847374da59d4386ae47ed9ef",
+      "bytes": 410200
+    },
+    {
+      "path": "Authoring/appliances/Textures/bb_set_headphone_case_normal.png",
+      "sha256": "65def035d61f912e42a6784f3f1fcf1edfe5bc185c57972c266822cb2fd88ba8",
+      "bytes": 39586
+    },
+    {
+      "path": "Authoring/appliances/Textures/bb_set_headphone_case_orm.png",
+      "sha256": "4989d7681c26e8aa57feb72306450ff83d5c3fc187ce4598124f09a1131facf5",
+      "bytes": 404188
+    },
+    {
+      "path": "Authoring/appliances/Textures/bb_set_mini_fridge_albedo.png",
+      "sha256": "677e2c974b6258ef79891ce70e3b6d8640148e42c1d61eaa4a608b1939b82f16",
+      "bytes": 809129
+    },
+    {
+      "path": "Authoring/appliances/Textures/bb_set_mini_fridge_metallic.png",
+      "sha256": "75d3190b5cf6861ad8a9beb2e2d7058f9d9b5af7d1ba1d06c76db0173762c5f3",
+      "bytes": 449174
+    },
+    {
+      "path": "Authoring/appliances/Textures/bb_set_mini_fridge_normal.png",
+      "sha256": "cc920eb7d9300b800e83a315285fa503d1aef69c75516daea2f754555b9b012d",
+      "bytes": 66554
+    },
+    {
+      "path": "Authoring/appliances/Textures/bb_set_mini_fridge_orm.png",
+      "sha256": "a87e342f7abc685a30a4e6954f45c8601a7fbf5e4ea0f361cb3452c35a34a919",
+      "bytes": 445010
+    },
+    {
+      "path": "Authoring/appliances/validate_native_references_v2.py",
+      "sha256": "b866b481a153bccb7e8368f95759adb353863a13e22fbbb54fc216c09d6347a2",
+      "bytes": 1484
+    },
+    {
+      "path": "Authoring/appliances/validate_roundtrips_v2.py",
+      "sha256": "c50dcd41023b3d0edae555f6927b6cf8be8507b7bd441dacecc1e12d455943a5",
+      "bytes": 4630
+    },
+    {
+      "path": "Authoring/competition/authoring-receipt.json",
+      "sha256": "adf74e4363deba2d0a9736353506f4f96a2d85de1383f6a5651da85e3f78a04a",
+      "bytes": 29266
+    },
+    {
+      "path": "Authoring/competition/competition_parts.blend",
+      "sha256": "c3017c0e45b51d48009f877d05702b9a32fa67ab04f2480bc319bb1b347eaba4",
+      "bytes": 207453
+    },
+    {
+      "path": "Authoring/competition/inspect_parts.py",
+      "sha256": "042ce9d523ebf489302b571d12617c738778dceb144ee7e6e86aa9ec22a9a299",
+      "bytes": 5749
+    },
+    {
+      "path": "Authoring/competition/part-manifest.json",
+      "sha256": "fb2f66743329ed850816f78dd457f23a12b1f25ea0bcd25a64949ae531b24898",
+      "bytes": 15330
+    },
+    {
+      "path": "Authoring/packaging/audit_packaging.py",
+      "sha256": "e56797f6425643e39101715f7e032854b4954dbff64d0bacc39cfe23835c1a04",
+      "bytes": 6611
+    },
+    {
+      "path": "Authoring/packaging/build_packaging.py",
+      "sha256": "043951fbfb212c3a92a6f2e34c884c4e7ac6b97ac125c8b8ec4642a668036748",
+      "bytes": 20839
+    },
+    {
+      "path": "Authoring/packaging/finish_packaging.py",
+      "sha256": "4f46a7fc5f28eefb2234c563bac475eff3e053a0e7ba290acc68df8cfeca2c61",
+      "bytes": 5269
+    },
+    {
+      "path": "Authoring/packaging/README.md",
+      "sha256": "fca90c0979f838225b7a252d8b263cdca99dc76e03f2a5e4690963e85472aed1",
+      "bytes": 4168
+    },
+    {
+      "path": "Authoring/packaging/Sources/bb_set_cereal_carton.blend",
+      "sha256": "1933dbdce10f59383aea2806f64844e1fb9574b250f901ea66d0903b3321d89c",
+      "bytes": 592315
+    },
+    {
+      "path": "Authoring/packaging/Sources/bb_set_coffee_tin.blend",
+      "sha256": "3a3e8f4cdc4f766c7cb57c4a45c537206fba3bfd538da3a33a5c3297eb571a14",
+      "bytes": 618720
+    },
+    {
+      "path": "Authoring/packaging/Sources/bb_set_cosmetic.blend",
+      "sha256": "32e19039052fc750474e0a97de727707a4d9df551aab55e0e07c9b1320f509b9",
+      "bytes": 612327
+    },
+    {
+      "path": "Authoring/packaging/Sources/bb_set_food_jar.blend",
+      "sha256": "ceb12ce5456188b8bf1e22800a89a54f2949a81d2b405dac5af7e1a54862d413",
+      "bytes": 605466
+    },
+    {
+      "path": "Authoring/packaging/Sources/bb_set_game_alliance.blend",
+      "sha256": "eb671ed566a1da3b1a1ae61af654200a13bbd3163077a76a06f6757e7db662fe",
+      "bytes": 557794
+    },
+    {
+      "path": "Authoring/packaging/Sources/bb_set_game_social.blend",
+      "sha256": "cf402a874ae17154fc5e8e6dd9cb9abf82d6bde1cfa248589f11f6786b3a7caf",
+      "bytes": 558515
+    },
+    {
+      "path": "Authoring/packaging/Sources/bb_set_game_strategy.blend",
+      "sha256": "59e1d12ef530b0eacc1724ecb6dafbfb3cd68d815620982128aa6688c2e0e171",
+      "bytes": 557985
+    },
+    {
+      "path": "Authoring/packaging/Sources/bb_set_hoh_snack_blue.blend",
+      "sha256": "e6e3483781fa3a647d6811a97e29e6b7623aa05d7cda362e86fd0023f4a14321",
+      "bytes": 614821
+    },
+    {
+      "path": "Authoring/packaging/Sources/bb_set_hoh_snack_gold.blend",
+      "sha256": "2cbfcdd9330c671e988d72ede4ed78e7897a76d2645562016ba9861b20cfc33a",
+      "bytes": 613756
+    },
+    {
+      "path": "Authoring/packaging/Sources/bb_set_snack_blue.blend",
+      "sha256": "22753df6881a3e1e519caa3d2504c1864546b0d00e87b0d55d75dac1d5497b8f",
+      "bytes": 617630
+    },
+    {
+      "path": "Authoring/packaging/Sources/bb_set_snack_gold.blend",
+      "sha256": "8460cc6045f141662989b98fce179507bb6e2744f1e98dc496ce8b07ef3d1caf",
+      "bytes": 615743
+    },
+    {
+      "path": "Authoring/packaging/Sources/bb_set_toiletry.blend",
+      "sha256": "92a938926fa5969e20f8e6c8194b4e61f4314ecc2e7a9ec758aec27c56f82d57",
+      "bytes": 614841
+    },
+    {
+      "path": "Authoring/packaging/Textures/bb_set_cereal_carton_albedo.png",
+      "sha256": "a0dd55889be7aff1d557eb9c31ed1c63d70361db7cfbb0b8cc4689ca0dcd0144",
+      "bytes": 213083
+    },
+    {
+      "path": "Authoring/packaging/Textures/bb_set_cereal_carton_metallic.png",
+      "sha256": "f28f2b423865868848ed74cf4d008746e1bb7647b8445039aa72114d71462387",
+      "bytes": 222692
+    },
+    {
+      "path": "Authoring/packaging/Textures/bb_set_cereal_carton_orm.png",
+      "sha256": "639c2270db93213fc4d513c0ecd4c1f7ea6b117564af856b47e2b53df32d18a0",
+      "bytes": 276987
+    },
+    {
+      "path": "Authoring/packaging/Textures/bb_set_coffee_tin_albedo.png",
+      "sha256": "ec1a7590ec5d72faf1e15b1ac733a4574aeb8ec2ce0667a43d275398a422fc9f",
+      "bytes": 210725
+    },
+    {
+      "path": "Authoring/packaging/Textures/bb_set_coffee_tin_metallic.png",
+      "sha256": "626b76673dd350b4953b7d080f24e268f6ba1858492ce795cb9b689bf1d34daa",
+      "bytes": 230497
+    },
+    {
+      "path": "Authoring/packaging/Textures/bb_set_coffee_tin_orm.png",
+      "sha256": "f7e7a225f930bd1f17e48438860962a8b2685d5e283b80d56fb9224aa247ce38",
+      "bytes": 285668
+    },
+    {
+      "path": "Authoring/packaging/Textures/bb_set_cosmetic_albedo.png",
+      "sha256": "45a4ba0c4d2240cf1df68eec64c5a1e83d07ae3fd5c2dfbde0f7856fa1b0ef51",
+      "bytes": 217442
+    },
+    {
+      "path": "Authoring/packaging/Textures/bb_set_cosmetic_metallic.png",
+      "sha256": "7fa99fc177af5b24bb97c70255980af374e2404bd283a1bc0c2e70b3b10014a0",
+      "bytes": 229628
+    },
+    {
+      "path": "Authoring/packaging/Textures/bb_set_cosmetic_orm.png",
+      "sha256": "256729fe69878278b7afba2353fdbe0e7920c78674cb524a65a20f0955058137",
+      "bytes": 285522
+    },
+    {
+      "path": "Authoring/packaging/Textures/bb_set_food_jar_albedo.png",
+      "sha256": "0e1f97a89b07c1f7d3c46e5423b01c7e7dd57823b906604f02aae841f6a85238",
+      "bytes": 212462
+    },
+    {
+      "path": "Authoring/packaging/Textures/bb_set_food_jar_metallic.png",
+      "sha256": "ef356f52e42fc8c6bb4496fb1fe047a0dc404895993e7c03ba5fd709d2d374da",
+      "bytes": 222181
+    },
+    {
+      "path": "Authoring/packaging/Textures/bb_set_food_jar_orm.png",
+      "sha256": "2d961e5e6a1f969fd460d0b7b7a2aacd694ba2fabe02b720e04a8719126061f0",
+      "bytes": 276258
+    },
+    {
+      "path": "Authoring/packaging/Textures/bb_set_game_alliance_albedo.png",
+      "sha256": "289713a1e5c201388f4d8114a0b81cacf43d005cd6d20dea6cfa0b8f1089418b",
+      "bytes": 191871
+    },
+    {
+      "path": "Authoring/packaging/Textures/bb_set_game_alliance_metallic.png",
+      "sha256": "61993f0f6ac85a816340084fd346696a8551f0c20b144f831244b3666229cf52",
+      "bytes": 215337
+    },
+    {
+      "path": "Authoring/packaging/Textures/bb_set_game_alliance_orm.png",
+      "sha256": "65fff5ec377d14f896c41d82a29d9aff7e41d09a6ae7149b2de36588ef47d353",
+      "bytes": 268463
+    },
+    {
+      "path": "Authoring/packaging/Textures/bb_set_game_social_albedo.png",
+      "sha256": "d15c46948c0a9e7d5cd867806c314d6dcdbafe235ca69be951cd7a6245dfe037",
+      "bytes": 192144
+    },
+    {
+      "path": "Authoring/packaging/Textures/bb_set_game_social_metallic.png",
+      "sha256": "4926e992bf3285efbade573aae4430df22597180413689e5bcd0c2ab1cda147e",
+      "bytes": 215707
+    },
+    {
+      "path": "Authoring/packaging/Textures/bb_set_game_social_orm.png",
+      "sha256": "cc92ff59475fedbbca6adadc89fa8222bfe60f3c43b95a9b2cc72e11f2c2bfe8",
+      "bytes": 268866
+    },
+    {
+      "path": "Authoring/packaging/Textures/bb_set_game_strategy_albedo.png",
+      "sha256": "32f2a1ae6d7d63a4b5b5deded12584bf1ffbda5d3815ea7135b99664279b081b",
+      "bytes": 191948
+    },
+    {
+      "path": "Authoring/packaging/Textures/bb_set_game_strategy_metallic.png",
+      "sha256": "f7cd6ad2c1565d92456eb9677f7b93641c7a0b84c3f58a7e051edecfa3ffd137",
+      "bytes": 215348
+    },
+    {
+      "path": "Authoring/packaging/Textures/bb_set_game_strategy_orm.png",
+      "sha256": "314fcb6af26a973754c7281a7911418a7d209be4d5ac484f64631d58930e9756",
+      "bytes": 268595
+    },
+    {
+      "path": "Authoring/packaging/Textures/bb_set_hoh_snack_blue_albedo.png",
+      "sha256": "55be4a0f1273eeade33a8b2bdf34069f6d0d0dc14364f0bb4c0da3116ab08d11",
+      "bytes": 214181
+    },
+    {
+      "path": "Authoring/packaging/Textures/bb_set_hoh_snack_blue_metallic.png",
+      "sha256": "90cd555a046f17abf20c5d9283f6ed5f86d53863f8876f7b0421ff80be35069b",
+      "bytes": 224025
+    },
+    {
+      "path": "Authoring/packaging/Textures/bb_set_hoh_snack_blue_orm.png",
+      "sha256": "ab90ce238a8e8d7d87b2a6c98fa31b034643548aa502de6fa8244ff43626438b",
+      "bytes": 278360
+    },
+    {
+      "path": "Authoring/packaging/Textures/bb_set_hoh_snack_gold_albedo.png",
+      "sha256": "0a7df302189dc390c3989351e718b4dd9295f3db0ce538a5eb94cf7ea26b7f11",
+      "bytes": 213423
+    },
+    {
+      "path": "Authoring/packaging/Textures/bb_set_hoh_snack_gold_metallic.png",
+      "sha256": "cc03911927d88f94073a9709f1d900e92aeb563ade4c63615f999fa7a6b1431a",
+      "bytes": 223759
+    },
+    {
+      "path": "Authoring/packaging/Textures/bb_set_hoh_snack_gold_orm.png",
+      "sha256": "ea14a90615bb8b049ad0eb70d4ed7b786b66fe499b46111c70d4b2c967a08453",
+      "bytes": 278354
+    },
+    {
+      "path": "Authoring/packaging/Textures/bb_set_snack_blue_albedo.png",
+      "sha256": "80a2322f675956c900b5aa02b00149f5d28b0c1ad6acb1af771c1f605a2e6769",
+      "bytes": 215327
+    },
+    {
+      "path": "Authoring/packaging/Textures/bb_set_snack_blue_metallic.png",
+      "sha256": "c6406105efa4da19c7ecc80895c8aa25661d07e5371909770f71fea5a31da13f",
+      "bytes": 225396
+    },
+    {
+      "path": "Authoring/packaging/Textures/bb_set_snack_blue_orm.png",
+      "sha256": "eea61633e7d9e271c1df20c941edec06900a00f2488f4a1d455d94cbeb94ecd9",
+      "bytes": 280454
+    },
+    {
+      "path": "Authoring/packaging/Textures/bb_set_snack_gold_albedo.png",
+      "sha256": "f6bfa9afc6bbb98f391eb0369d53dc725363df2f9d4924cb52d0e136a073b0ac",
+      "bytes": 214085
+    },
+    {
+      "path": "Authoring/packaging/Textures/bb_set_snack_gold_metallic.png",
+      "sha256": "06d563009544f65e51f873c9c7deb7ddd97ce2891f3ee939522620a846d7da01",
+      "bytes": 224450
+    },
+    {
+      "path": "Authoring/packaging/Textures/bb_set_snack_gold_orm.png",
+      "sha256": "05b44fbf09479aab3dd7ba8819a9fc45bfc4a7577a8eef20127d96d06fcfe2fe",
+      "bytes": 279314
+    },
+    {
+      "path": "Authoring/packaging/Textures/bb_set_toiletry_albedo.png",
+      "sha256": "23f28c00fac348d2cf86eb94048cdd8bc33792dfa58919149a1104b50739f24e",
+      "bytes": 217763
+    },
+    {
+      "path": "Authoring/packaging/Textures/bb_set_toiletry_metallic.png",
+      "sha256": "abbbcbb20cc19b0c5b89c7e1ad64deec5af4de096467b8506dc9db489afe96ed",
+      "bytes": 229317
+    },
+    {
+      "path": "Authoring/packaging/Textures/bb_set_toiletry_orm.png",
+      "sha256": "877aa179732e7ed3f0f7ed25fbf6f7ea31585df0bd2dc7b10633b196e9e53e07",
+      "bytes": 285502
+    },
+    {
+      "path": "Authoring/tools/assemble_delivery.py",
+      "sha256": "bb6dc9ded86219a334023665264c08796d2f3629f35c2c30ff3ecd35be79d4d8",
+      "bytes": 6986
+    },
+    {
+      "path": "Authoring/tools/build_competition_art.py",
+      "sha256": "d9a2e0461426647a22e36742753561d7f69d8f7677d2e7d564fe0e094778f05e",
+      "bytes": 12775
+    },
+    {
+      "path": "Authoring/tools/package_candidates.py",
+      "sha256": "de821fc3b16195f6226439380f28f166731083003741941898abb1921dc1b550",
+      "bytes": 4852
+    },
+    {
+      "path": "Authoring/tools/render_grip_review.py",
+      "sha256": "1150e823c2c8e6d97f114beac39b0c96c9055805fed00fd85212314e3de45b2d",
+      "bytes": 2565
+    },
+    {
+      "path": "CanonicalPackages/bb_comp_dicetray/1.0.0/manifest.json",
+      "sha256": "d1384c499df6c9687e4988c6f37c5338a51acc79edcc535e8f4061e4ed26f2fc",
+      "bytes": 1377
+    },
+    {
+      "path": "CanonicalPackages/bb_comp_dicetray/1.0.0/metadata.json",
+      "sha256": "e813bb82f2305871af8b00f7efe35600647661a39ef30862b845bd1e0c8b467a",
+      "bytes": 1669
+    },
+    {
+      "path": "CanonicalPackages/bb_comp_dicetray/1.0.0/model.glb",
+      "sha256": "f58fa69f7c1e99212af0aa535e77feb87ac64784d194431d34111b89a039c889",
+      "bytes": 84680
+    },
+    {
+      "path": "CanonicalPackages/bb_comp_dicetray/1.0.0/provenance.json",
+      "sha256": "b423d49495afbdfa48e92c5277b99243b1d130d884b604d3887094637cd1f105",
+      "bytes": 1165
+    },
+    {
+      "path": "CanonicalPackages/bb_comp_dicetray/1.0.0/receipt.json",
+      "sha256": "920201c75156e56ec7f6bf312811c0d92b79314afa3949c7a1aa4bd2f48ad516",
+      "bytes": 727
+    },
+    {
+      "path": "CanonicalPackages/bb_comp_dicetray/1.0.0/validation.json",
+      "sha256": "0fe181266d55071f99ee7e7f1823070862cec4fa16fc487cdc53a6baa0ab501f",
+      "bytes": 2924
+    },
+    {
+      "path": "CanonicalPackages/bb_comp_griprig/1.0.0/manifest.json",
+      "sha256": "9b3590548a773bae375fc159c7e98084d27c4b6c242f8558383dd06d16905dc8",
+      "bytes": 1376
+    },
+    {
+      "path": "CanonicalPackages/bb_comp_griprig/1.0.0/metadata.json",
+      "sha256": "a3f5e20fc49fa099ceac3f874bf7a61e09cf61548c005811873677cc446bc3cf",
+      "bytes": 1668
+    },
+    {
+      "path": "CanonicalPackages/bb_comp_griprig/1.0.0/model.glb",
+      "sha256": "b47810b48aba451f11a57e138f3cc56eb3411e29de9ee4b4c00dfa9e798c34df",
+      "bytes": 134696
+    },
+    {
+      "path": "CanonicalPackages/bb_comp_griprig/1.0.0/provenance.json",
+      "sha256": "3168606be33fe8eac4fd0b8c9e359bbb68d97033d95524f01e722124adfec8f0",
+      "bytes": 1164
+    },
+    {
+      "path": "CanonicalPackages/bb_comp_griprig/1.0.0/receipt.json",
+      "sha256": "1e3d082c7d07760fcca53ac19247385705d659f8affcab41c94ae38464a347fb",
+      "bytes": 726
+    },
+    {
+      "path": "CanonicalPackages/bb_comp_griprig/1.0.0/validation.json",
+      "sha256": "2cdabf9fcdfa257b18f5649e8ba89856cdab1414d88869adb54360c7df588355",
+      "bytes": 2924
+    },
+    {
+      "path": "CanonicalPackages/bb_comp_pairconsole/1.0.0/manifest.json",
+      "sha256": "9ee8580aca0e754fed11afb04d57ffcf152fbc939930f190b26447e47a4ee020",
+      "bytes": 1384
+    },
+    {
+      "path": "CanonicalPackages/bb_comp_pairconsole/1.0.0/metadata.json",
+      "sha256": "7fd078238ba284e29475261264aef2e27654c0e0acb1ca69f9efb87333fd7caf",
+      "bytes": 1698
+    },
+    {
+      "path": "CanonicalPackages/bb_comp_pairconsole/1.0.0/model.glb",
+      "sha256": "c47dc453565c8a7927578afcb5ec5562b26ae802cf814625ea26980792538c51",
+      "bytes": 301700
+    },
+    {
+      "path": "CanonicalPackages/bb_comp_pairconsole/1.0.0/provenance.json",
+      "sha256": "54bb385b6d36400f576059c02bbae7cda9e40d049167fcc21eb831ada0535f5c",
+      "bytes": 1172
+    },
+    {
+      "path": "CanonicalPackages/bb_comp_pairconsole/1.0.0/receipt.json",
+      "sha256": "82adbde800a3e466e0f61225f14d2a575c90afa40b9e4b9292be0c33683f31ae",
+      "bytes": 734
+    },
+    {
+      "path": "CanonicalPackages/bb_comp_pairconsole/1.0.0/validation.json",
+      "sha256": "ff9e43a8ad9731cfe5913d42dffd1bcb7cc3b1833f04ce9e7206f1ce85d078fc",
+      "bytes": 2924
+    },
+    {
+      "path": "CanonicalPackages/bb_comp_signals/1.0.0/manifest.json",
+      "sha256": "0596549ee6964e78f961fd8439a9ab589f9950a0998bba24ed4a640c5ccfb3e7",
+      "bytes": 1376
+    },
+    {
+      "path": "CanonicalPackages/bb_comp_signals/1.0.0/metadata.json",
+      "sha256": "6805cd954fd1d6567774ae720b2c7ab05bc901a06b65fced58bcd1379c4f8823",
+      "bytes": 1689
+    },
+    {
+      "path": "CanonicalPackages/bb_comp_signals/1.0.0/model.glb",
+      "sha256": "121df92f5afc158a8a21555222424be491a5f515453d17e59364aba92f6ba88f",
+      "bytes": 151316
+    },
+    {
+      "path": "CanonicalPackages/bb_comp_signals/1.0.0/provenance.json",
+      "sha256": "fc28e0b19260a6b93e295b9ba794e767b4b7f5228fb2959f615826216badbaaa",
+      "bytes": 1164
+    },
+    {
+      "path": "CanonicalPackages/bb_comp_signals/1.0.0/receipt.json",
+      "sha256": "481d160f6bdbace3fd9d163c0223aa63bf4d155da9a784cdc6d7843deb0883a6",
+      "bytes": 726
+    },
+    {
+      "path": "CanonicalPackages/bb_comp_signals/1.0.0/validation.json",
+      "sha256": "06f13761a3bd3307f22dd2b208847430d536d70586a0aa9686601174e92a7dad",
+      "bytes": 2924
+    },
+    {
+      "path": "CanonicalPackages/bb_comp_wordconsole/1.0.0/manifest.json",
+      "sha256": "0005873dff57afe95cde4385b1db8c83ebe16b2e9dc838b6cb2c527b793a772b",
+      "bytes": 1384
+    },
+    {
+      "path": "CanonicalPackages/bb_comp_wordconsole/1.0.0/metadata.json",
+      "sha256": "2ba8c7be39432411c0da4626d8e16eb58d2bee85e29365ba1d525c0f55dc9a3a",
+      "bytes": 1696
+    },
+    {
+      "path": "CanonicalPackages/bb_comp_wordconsole/1.0.0/model.glb",
+      "sha256": "58a804e75efc5319ba527eb13dc4bcfd62ad955f06186bc64dc1379eebe7e79b",
+      "bytes": 247364
+    },
+    {
+      "path": "CanonicalPackages/bb_comp_wordconsole/1.0.0/provenance.json",
+      "sha256": "8127a344b00e377cf9b061c88e3213bfcb514c9d9d28881ce9c0e699dae18266",
+      "bytes": 1172
+    },
+    {
+      "path": "CanonicalPackages/bb_comp_wordconsole/1.0.0/receipt.json",
+      "sha256": "a6d55998982915eff423ca567a616390c90e22083d6d5f5c10d50fb5df0b8478",
+      "bytes": 734
+    },
+    {
+      "path": "CanonicalPackages/bb_comp_wordconsole/1.0.0/validation.json",
+      "sha256": "d68b4cecf1ec66757678115ac6b9ac56fc71fe27c5a11f6a9147a8d6b5539c5f",
+      "bytes": 2924
+    },
+    {
+      "path": "CanonicalPackages/bb_set_cereal_carton/1.0.0/manifest.json",
+      "sha256": "73b4e1713acb1cda157a976bf0e66c4408d1a8307d2530b86f1b50082b382577",
+      "bytes": 1415
+    },
+    {
+      "path": "CanonicalPackages/bb_set_cereal_carton/1.0.0/metadata.json",
+      "sha256": "af2e24d230be4fb91e735351de7a6f63b7e689d80fb2b2402a605c8d41f9aafa",
+      "bytes": 2088
+    },
+    {
+      "path": "CanonicalPackages/bb_set_cereal_carton/1.0.0/model.glb",
+      "sha256": "2ce6b8022d498b71fb2f9fb0a778fa3fce4934467553b5d1f1c856dd585e8ef2",
+      "bytes": 550852
+    },
+    {
+      "path": "CanonicalPackages/bb_set_cereal_carton/1.0.0/provenance.json",
+      "sha256": "06099dc410b0ce5a333a36037643d05c058c3ceb810db181ece82a7777b17f2d",
+      "bytes": 1296
+    },
+    {
+      "path": "CanonicalPackages/bb_set_cereal_carton/1.0.0/receipt.json",
+      "sha256": "ba99385dbad86bec56ecf61591d80842241affc27c0209912dcf3ca90db4cd57",
+      "bytes": 736
+    },
+    {
+      "path": "CanonicalPackages/bb_set_cereal_carton/1.0.0/validation.json",
+      "sha256": "0d97fbbda80c32bd3a661c2dc614e48b462403f277049ab57deb1dbb82f134b7",
+      "bytes": 3912
+    },
+    {
+      "path": "CanonicalPackages/bb_set_coffee_tin/1.0.0/manifest.json",
+      "sha256": "5dd777bdcd0e4cc62e7d048fce295866acb14be7d749431c6c5a1aa36f2b59b8",
+      "bytes": 1409
+    },
+    {
+      "path": "CanonicalPackages/bb_set_coffee_tin/1.0.0/metadata.json",
+      "sha256": "43f69409f74bf9ad774492e2f0a4cd72145ce8f9316914713551b43b4e4a3001",
+      "bytes": 2069
+    },
+    {
+      "path": "CanonicalPackages/bb_set_coffee_tin/1.0.0/model.glb",
+      "sha256": "25f1256493ecb74bca8e51a46f39a9dbf4b284a3292bfee11fcfde9870b2eacd",
+      "bytes": 555768
+    },
+    {
+      "path": "CanonicalPackages/bb_set_coffee_tin/1.0.0/provenance.json",
+      "sha256": "e859016adaa3ba01ffcc211ec2fefaebc3318aa047a142c1dd111a92125fa462",
+      "bytes": 1287
+    },
+    {
+      "path": "CanonicalPackages/bb_set_coffee_tin/1.0.0/receipt.json",
+      "sha256": "57d029412c1ecad3614f3cb77c39207afda97397baa2f58d25f3ac67b71b69ca",
+      "bytes": 730
+    },
+    {
+      "path": "CanonicalPackages/bb_set_coffee_tin/1.0.0/validation.json",
+      "sha256": "c669d857e26adaa6c7669802f3c2a4b71f913ff80a2ce1a39e04ffda6b3e5d84",
+      "bytes": 3908
+    },
+    {
+      "path": "CanonicalPackages/bb_set_cosmetic/1.0.0/manifest.json",
+      "sha256": "0aa6b89d0e5779e33c98b5ef7c0a817ef48461ff80b1f053bad4f37c5b0cf465",
+      "bytes": 1405
+    },
+    {
+      "path": "CanonicalPackages/bb_set_cosmetic/1.0.0/metadata.json",
+      "sha256": "c5d0294351d157259b16e04d806a6e09edd73a767f21b712cd460d2fee44b852",
+      "bytes": 2061
+    },
+    {
+      "path": "CanonicalPackages/bb_set_cosmetic/1.0.0/model.glb",
+      "sha256": "6736612d29b2ef7a46aed0f9e8b6be3e00d84df0b91b9675554e07ff662d481b",
+      "bytes": 542736
+    },
+    {
+      "path": "CanonicalPackages/bb_set_cosmetic/1.0.0/provenance.json",
+      "sha256": "9d2e20470b4c2dff04a17b27123c6391f9f6e83f5cce3c76f6d7cc0e0bc4d890",
+      "bytes": 1281
+    },
+    {
+      "path": "CanonicalPackages/bb_set_cosmetic/1.0.0/receipt.json",
+      "sha256": "a5614bab3ac25d87fb1aa23970dc6fb51e84bb6fc60759daf93faf64a6030586",
+      "bytes": 726
+    },
+    {
+      "path": "CanonicalPackages/bb_set_cosmetic/1.0.0/validation.json",
+      "sha256": "ccda39bc4d3fe77b4c082a0e7ada39895e2cd3fb1f83da8ff2194a381fbafa25",
+      "bytes": 3902
+    },
+    {
+      "path": "CanonicalPackages/bb_set_food_jar/1.0.0/manifest.json",
+      "sha256": "40417efd7af04eceacf777592f3e20e3181486a9a555f3c50f4c381f40487cc2",
+      "bytes": 1405
+    },
+    {
+      "path": "CanonicalPackages/bb_set_food_jar/1.0.0/metadata.json",
+      "sha256": "d3992dad41678f59ff9ba780d70fe3734fc6d06fdb9d6d92cf1e278bd987368c",
+      "bytes": 2062
+    },
+    {
+      "path": "CanonicalPackages/bb_set_food_jar/1.0.0/model.glb",
+      "sha256": "c3bc097522257e4c8743b733e61c73c4fb421f1f4968cc072617c095c7cf69db",
+      "bytes": 537148
+    },
+    {
+      "path": "CanonicalPackages/bb_set_food_jar/1.0.0/provenance.json",
+      "sha256": "684279e9a0d79f72aa230ab1b6c778f9f1d0a61fb7d6b249cb5b243e6e241037",
+      "bytes": 1281
+    },
+    {
+      "path": "CanonicalPackages/bb_set_food_jar/1.0.0/receipt.json",
+      "sha256": "d2bd5d2de2a08243f47e635cc7ac6efe1c7d915e1bcbd8b53f7531c61161b674",
+      "bytes": 726
+    },
+    {
+      "path": "CanonicalPackages/bb_set_food_jar/1.0.0/validation.json",
+      "sha256": "536b3923d28451d357fe618456d5d197703cb86c2ea858525588c5d99d1aa2a9",
+      "bytes": 3904
+    },
+    {
+      "path": "CanonicalPackages/bb_set_game_alliance/1.0.0/manifest.json",
+      "sha256": "88360139c40899578c97bf0add1d63ed5f1d284ec8f2d04bcccbcbb1f44a15bf",
+      "bytes": 1415
+    },
+    {
+      "path": "CanonicalPackages/bb_set_game_alliance/1.0.0/metadata.json",
+      "sha256": "bb5c4fa1ccfad1b430bf0c6de218c5d716eb7c85b171d22f864c57d58e416ed8",
+      "bytes": 2087
+    },
+    {
+      "path": "CanonicalPackages/bb_set_game_alliance/1.0.0/model.glb",
+      "sha256": "e6c09da2beb6ce566c23423e800466ba61d59be54daac2363a802d61105fd8b3",
+      "bytes": 492164
+    },
+    {
+      "path": "CanonicalPackages/bb_set_game_alliance/1.0.0/provenance.json",
+      "sha256": "1c7393ee8735210089b736f7b2b52e4ce7eede444637d96be8a3c23a04519f76",
+      "bytes": 1296
+    },
+    {
+      "path": "CanonicalPackages/bb_set_game_alliance/1.0.0/receipt.json",
+      "sha256": "2a7ffbb845dd0fd3a864d5e721b9352a43f85f1cb6c64851541ba7bcc4d9dd6b",
+      "bytes": 736
+    },
+    {
+      "path": "CanonicalPackages/bb_set_game_alliance/1.0.0/validation.json",
+      "sha256": "f56d00f73f0c869dbd1724a4afe2f9b0b75e50fb52dba1549aee0baecb714c43",
+      "bytes": 3912
+    },
+    {
+      "path": "CanonicalPackages/bb_set_game_social/1.0.0/manifest.json",
+      "sha256": "0d0e300dbbc9d108d41826211cb3f7e9fcc476cbb81332abde5400a421c266d0",
+      "bytes": 1411
+    },
+    {
+      "path": "CanonicalPackages/bb_set_game_social/1.0.0/metadata.json",
+      "sha256": "3fb5808f3f26af355066b9eb8e74d74b678b3698d716dd091a11c5dbdf448a40",
+      "bytes": 2075
+    },
+    {
+      "path": "CanonicalPackages/bb_set_game_social/1.0.0/model.glb",
+      "sha256": "da2e7889b37e1b824cee7662655976ea7b15c51bf435d7e4dcaeb3e360434cba",
+      "bytes": 492728
+    },
+    {
+      "path": "CanonicalPackages/bb_set_game_social/1.0.0/provenance.json",
+      "sha256": "598f7cc76982ac9cced3fb60d4824a29c5000861b3b467a23569f314e9a47c45",
+      "bytes": 1290
+    },
+    {
+      "path": "CanonicalPackages/bb_set_game_social/1.0.0/receipt.json",
+      "sha256": "3cba3943ac3a8d5251763c44c711471d875c906ca6566387a3ea6abd5f2b3309",
+      "bytes": 732
+    },
+    {
+      "path": "CanonicalPackages/bb_set_game_social/1.0.0/validation.json",
+      "sha256": "4bdf10752bff166ec841c8f99ad8f414f6ad6cbe52b3ecd843b9728c7cf0ef7c",
+      "bytes": 3908
+    },
+    {
+      "path": "CanonicalPackages/bb_set_game_strategy/1.0.0/manifest.json",
+      "sha256": "6443c5e58fd8310cbfa6f455a0f73b70e30aa4e81a35dec7e24637ce162213d1",
+      "bytes": 1415
+    },
+    {
+      "path": "CanonicalPackages/bb_set_game_strategy/1.0.0/metadata.json",
+      "sha256": "821b0047656ef0d3f765c73b65422cc67e1eee840b90d973b4c0c037a262ac1a",
+      "bytes": 2087
+    },
+    {
+      "path": "CanonicalPackages/bb_set_game_strategy/1.0.0/model.glb",
+      "sha256": "238628b0b473b24114d0f585b3a8b7773663a154741691869d5bd50cc454c11a",
+      "bytes": 492272
+    },
+    {
+      "path": "CanonicalPackages/bb_set_game_strategy/1.0.0/provenance.json",
+      "sha256": "a5ad6109c9f4df0ff948b274f49c23d3431d7dc182719ea3b22a40f7e5796ffa",
+      "bytes": 1296
+    },
+    {
+      "path": "CanonicalPackages/bb_set_game_strategy/1.0.0/receipt.json",
+      "sha256": "1e5247b121944f302823ed154b90520aa51e742b305251bb3403900aae33e63f",
+      "bytes": 736
+    },
+    {
+      "path": "CanonicalPackages/bb_set_game_strategy/1.0.0/validation.json",
+      "sha256": "f0e93cb17a32d36ef5bb6378fdbd804c8b7a23e242bdcb1edb0533766ef238b6",
+      "bytes": 3912
+    },
+    {
+      "path": "CanonicalPackages/bb_set_headphone_case/1.0.1/manifest.json",
+      "sha256": "eebc636b65e1d168d75a72139ef8c4439725f81077b531f38c76a6782982dd44",
+      "bytes": 1402
+    },
+    {
+      "path": "CanonicalPackages/bb_set_headphone_case/1.0.1/metadata.json",
+      "sha256": "1b32beed66c8dc4e996d671006d0689e5ce528bad7c96a724cb2bda933ed3363",
+      "bytes": 2096
+    },
+    {
+      "path": "CanonicalPackages/bb_set_headphone_case/1.0.1/model.glb",
+      "sha256": "eb090bf7e45da02f0afe5d21d319a6820bce0317ceeddf0c2f87a9aeef588ae8",
+      "bytes": 1797000
+    },
+    {
+      "path": "CanonicalPackages/bb_set_headphone_case/1.0.1/provenance.json",
+      "sha256": "853c7c058db6b88e16c7d034f915988b2107c4e37ad0f7f171e37c85c3817722",
+      "bytes": 1111
+    },
+    {
+      "path": "CanonicalPackages/bb_set_headphone_case/1.0.1/receipt.json",
+      "sha256": "43bdf4305e785d25f565d8acf86d98263d8de563692e84e504647a9caf40eaa5",
+      "bytes": 739
+    },
+    {
+      "path": "CanonicalPackages/bb_set_headphone_case/1.0.1/validation.json",
+      "sha256": "a7d52030864c71082baba4ce62ab0bc4df4f28b07c60f43f70580f008d153923",
+      "bytes": 4167
+    },
+    {
+      "path": "CanonicalPackages/bb_set_hoh_snack_blue/1.0.0/manifest.json",
+      "sha256": "ff59aa2d0362be3d4b7fad031567c6dc1674cb598d58686ef1fd7884bf58eb33",
+      "bytes": 1417
+    },
+    {
+      "path": "CanonicalPackages/bb_set_hoh_snack_blue/1.0.0/metadata.json",
+      "sha256": "28fa70fbc60e4933544c9b0ed0f9bed3b10576f7a4b22305240696c58e23d354",
+      "bytes": 2094
+    },
+    {
+      "path": "CanonicalPackages/bb_set_hoh_snack_blue/1.0.0/model.glb",
+      "sha256": "0e7ea4f2c1cccbf4afb79dd7398ae9c805d6e2a0fd7c78401457dd8d4839cf5e",
+      "bytes": 545052
+    },
+    {
+      "path": "CanonicalPackages/bb_set_hoh_snack_blue/1.0.0/provenance.json",
+      "sha256": "fd8db76019f0e61c99639eb0f5c5cc0ffa320ba3006490ef660e592e2333b4dd",
+      "bytes": 1299
+    },
+    {
+      "path": "CanonicalPackages/bb_set_hoh_snack_blue/1.0.0/receipt.json",
+      "sha256": "e2e2cc26a2ae50bd97a15505fa5665685f586cf3a17a29d5678004fea17a7323",
+      "bytes": 738
+    },
+    {
+      "path": "CanonicalPackages/bb_set_hoh_snack_blue/1.0.0/validation.json",
+      "sha256": "70742d3b6754e3fc56dbe428067009599b54acbc8a3b8b5bd86605789ae98c92",
+      "bytes": 3916
+    },
+    {
+      "path": "CanonicalPackages/bb_set_hoh_snack_gold/1.0.0/manifest.json",
+      "sha256": "265c9fcb0e724bc96523c5427597a9182c8a2894043a66f0d1f0fff92b3bf0ba",
+      "bytes": 1417
+    },
+    {
+      "path": "CanonicalPackages/bb_set_hoh_snack_gold/1.0.0/metadata.json",
+      "sha256": "5c6471d6de90422df1b2a624d504d3470dc1feb30de6e6bb28c489db2de4300a",
+      "bytes": 2094
+    },
+    {
+      "path": "CanonicalPackages/bb_set_hoh_snack_gold/1.0.0/model.glb",
+      "sha256": "b9f430fe2f04edc635ccdbe42a4fd36108b22c863eeb133cecd457442b76d7f1",
+      "bytes": 544288
+    },
+    {
+      "path": "CanonicalPackages/bb_set_hoh_snack_gold/1.0.0/provenance.json",
+      "sha256": "7b51578e892dff1f09a92f8b0095d32d6205cf21a1b473f39e9a01acf425eb8d",
+      "bytes": 1299
+    },
+    {
+      "path": "CanonicalPackages/bb_set_hoh_snack_gold/1.0.0/receipt.json",
+      "sha256": "1a74db15c65b510833d36d9c8c880386c9ec2f74811b7e2a4ab2a14276258f6a",
+      "bytes": 738
+    },
+    {
+      "path": "CanonicalPackages/bb_set_hoh_snack_gold/1.0.0/validation.json",
+      "sha256": "ff868f706d1e1fdbc4195f5ed1de784463f27d1b9f4a7868d86856e27a54f182",
+      "bytes": 3916
+    },
+    {
+      "path": "CanonicalPackages/bb_set_mini_fridge/1.0.1/manifest.json",
+      "sha256": "0fcca579c8631c1802c2acbf779b845099e8f60c5e1355362e66a75d784ea833",
+      "bytes": 1396
+    },
+    {
+      "path": "CanonicalPackages/bb_set_mini_fridge/1.0.1/metadata.json",
+      "sha256": "e7328f29b25cc4000f8097ec7208e7b0d476dfd07cb31aba746378293a62d840",
+      "bytes": 2017
+    },
+    {
+      "path": "CanonicalPackages/bb_set_mini_fridge/1.0.1/model.glb",
+      "sha256": "c5bd7e4d3ae5b48da08f18e3d3d670f78232644a7770bcb067cc1ea94ca36195",
+      "bytes": 1695316
+    },
+    {
+      "path": "CanonicalPackages/bb_set_mini_fridge/1.0.1/provenance.json",
+      "sha256": "6d574d583133208947e1bbb9b51e539091307e4b021f004d1e5833b75beb2959",
+      "bytes": 1096
+    },
+    {
+      "path": "CanonicalPackages/bb_set_mini_fridge/1.0.1/receipt.json",
+      "sha256": "2aa18129b3a00deb78af9ffae9a9f0cef739f9c015b838e91000f5055677a546",
+      "bytes": 733
+    },
+    {
+      "path": "CanonicalPackages/bb_set_mini_fridge/1.0.1/validation.json",
+      "sha256": "f9adc5489f1db4b2295f6431395b72f879da1102a139dd25a55a8c3521d3ded3",
+      "bytes": 4167
+    },
+    {
+      "path": "CanonicalPackages/bb_set_snack_blue/1.0.0/manifest.json",
+      "sha256": "e61d9d80d6867883d8f79c0ccb438d7896e6a79765cc6e28a243317b5bbd8763",
+      "bytes": 1409
+    },
+    {
+      "path": "CanonicalPackages/bb_set_snack_blue/1.0.0/metadata.json",
+      "sha256": "8bf711e470263c339d1bf3043bd7f5a9eab33aaf854f179a8708a39f1cba7597",
+      "bytes": 2067
+    },
+    {
+      "path": "CanonicalPackages/bb_set_snack_blue/1.0.0/model.glb",
+      "sha256": "a7ec00973d925a1c1ac5dad0bd6bc8df9d4618a69d20ed748e90c406d5eb2a28",
+      "bytes": 548264
+    },
+    {
+      "path": "CanonicalPackages/bb_set_snack_blue/1.0.0/provenance.json",
+      "sha256": "65e29e12f2ec48c2ff3ceac86ef21fd66536ec4371af87d742b232ff26e19ee8",
+      "bytes": 1287
+    },
+    {
+      "path": "CanonicalPackages/bb_set_snack_blue/1.0.0/receipt.json",
+      "sha256": "7bf521195a1ddc6e4b117ed99e3b8b5a463b0b2d8b7013079339599422d00c4e",
+      "bytes": 730
+    },
+    {
+      "path": "CanonicalPackages/bb_set_snack_blue/1.0.0/validation.json",
+      "sha256": "3c774f36d82acfcb373b5cd265dfaa38749cce69fed0be9c06cc0a7733ad42a9",
+      "bytes": 3908
+    },
+    {
+      "path": "CanonicalPackages/bb_set_snack_gold/1.0.0/manifest.json",
+      "sha256": "c2c2c0cbbb67467984b94268eafceb8b7f7245579b742b2f28db175781797eac",
+      "bytes": 1409
+    },
+    {
+      "path": "CanonicalPackages/bb_set_snack_gold/1.0.0/metadata.json",
+      "sha256": "6b30ebf56af8b119beec5b60217c76255fc1476b7ac22bc488660a57ed5633d0",
+      "bytes": 2067
+    },
+    {
+      "path": "CanonicalPackages/bb_set_snack_gold/1.0.0/model.glb",
+      "sha256": "605225bc059ee4bba2880e1ea656de24c23533d29505b974294f83b50232ecd3",
+      "bytes": 545888
+    },
+    {
+      "path": "CanonicalPackages/bb_set_snack_gold/1.0.0/provenance.json",
+      "sha256": "e2f146376894dd1c3011087d083d2006f9d80992c866a1b9b02dd67aa858e54e",
+      "bytes": 1287
+    },
+    {
+      "path": "CanonicalPackages/bb_set_snack_gold/1.0.0/receipt.json",
+      "sha256": "abcafc427c577dd9a8d95ba8386a24008e2f519ae54d2e613cc7911245b3a457",
+      "bytes": 730
+    },
+    {
+      "path": "CanonicalPackages/bb_set_snack_gold/1.0.0/validation.json",
+      "sha256": "830075dcd1ec4e09181d706d7d8e363bb7f706f99c36c5f33f1071cffc4faa20",
+      "bytes": 3908
+    },
+    {
+      "path": "CanonicalPackages/bb_set_toiletry/1.0.0/manifest.json",
+      "sha256": "0ba6398a9498fc82506ec92fbf80ae9ba3ead617c07e50d607d580bfc50209cf",
+      "bytes": 1405
+    },
+    {
+      "path": "CanonicalPackages/bb_set_toiletry/1.0.0/metadata.json",
+      "sha256": "4c4086df7db77fd0fedd8b4b4655e04d40cdd39f536ace39689162d1e68e546e",
+      "bytes": 2061
+    },
+    {
+      "path": "CanonicalPackages/bb_set_toiletry/1.0.0/model.glb",
+      "sha256": "dd89d4187020b34ee2838890f2ad46bb8b1785cefde308fbdf6f2b78b24c2475",
+      "bytes": 545912
+    },
+    {
+      "path": "CanonicalPackages/bb_set_toiletry/1.0.0/provenance.json",
+      "sha256": "cc32deab4c5214a989b661d4083bf79f961ff5d7778f17b24691c9ecad4f0bcc",
+      "bytes": 1281
+    },
+    {
+      "path": "CanonicalPackages/bb_set_toiletry/1.0.0/receipt.json",
+      "sha256": "9e00fce27f19ac016213314560f521186e721f0f9ba95e79c01249f7d2be7941",
+      "bytes": 726
+    },
+    {
+      "path": "CanonicalPackages/bb_set_toiletry/1.0.0/validation.json",
+      "sha256": "7da3a7fae0a47481be835dd9389ea7f10b4ca6c01aa94296e40fef5b10fcdf07",
+      "bytes": 3902
+    },
+    {
+      "path": "Evidence/appliances/ASSET_SPEC_AND_HANDOFF.md",
+      "sha256": "604244c8785d2ab14d1c96bb293d1351ad247df049137950164df26e45577227",
+      "bytes": 4782
+    },
+    {
+      "path": "Evidence/appliances/delivery-manifest-02.json",
+      "sha256": "8a12a3105270961da4837c00029580434294d198bf3a62f8df5c6d1b9386d985",
+      "bytes": 5045
+    },
+    {
+      "path": "Evidence/appliances/native-texture-references-02.json",
+      "sha256": "ae669b7fb24a857fc8563426e951c04b7f46e2a426b23fee1189a41ba54a931e",
+      "bytes": 4491
+    },
+    {
+      "path": "Evidence/appliances/roundtrip-validation-02.json",
+      "sha256": "280967134dc9081ba2773bf97e7e8d5413cecf5ba442348838ab9b9cfa0ef718",
+      "bytes": 8179
+    },
+    {
+      "path": "Evidence/appliances/tangent-export-fix-02.json",
+      "sha256": "9709fd2d4de8946d06d49f51be9590bb6690d6573772bde9f8bec4d09b41788d",
+      "bytes": 2053
+    },
+    {
+      "path": "Evidence/appliances-package-index.json",
+      "sha256": "520f33c0bc5e36fc00b74b3fc9deedc19e3aa30676c6f83a218f9acf71c91165",
+      "bytes": 9619
+    },
+    {
+      "path": "Evidence/competition-code/baseline-hashes.json",
+      "sha256": "7e16c220987451e23ef8c2393b0bbe4eb0d4ef1c5f37fd3bad66a60a7445da7c",
+      "bytes": 280
+    },
+    {
+      "path": "Evidence/competition-code/baseline-no-uma.log",
+      "sha256": "cab82f030a96883ea3f48cdaf4c2789a9354f04e646a85e52ab72ea971a3acac",
+      "bytes": 474
+    },
+    {
+      "path": "Evidence/competition-code/candidate-followup-no-uma.log",
+      "sha256": "cab82f030a96883ea3f48cdaf4c2789a9354f04e646a85e52ab72ea971a3acac",
+      "bytes": 474
+    },
+    {
+      "path": "Evidence/competition-code/candidate-uma.log",
+      "sha256": "2b26edc623116e5159e2d2f5e7b7d1b37bdf1981e19735af614e3f133446f837",
+      "bytes": 479
+    },
+    {
+      "path": "Evidence/competition-code/handoff-manifest.json",
+      "sha256": "4385345c551afe2016b237f542ef549de87f993790acec85de2505b7ab781a61",
+      "bytes": 3005
+    },
+    {
+      "path": "Evidence/competition-code/house-partial-probes/Gamesim.Editor.dll",
+      "sha256": "809f23d4794b892876661b3dcdcb8a2bbb0a6dc8dcb5816b7556939994b13858",
+      "bytes": 500736
+    },
+    {
+      "path": "Evidence/competition-code/house-partial-probes/Gamesim.Editor.log",
+      "sha256": "e482a7b011ba796953fc9d9d8ad028c823cbc6b7aea17e66ea76891ac433a3c0",
+      "bytes": 4478
+    },
+    {
+      "path": "Evidence/competition-code/house-partial-probes/Gamesim.Editor.pdb",
+      "sha256": "dc64025d7b22c6465e670791a8e86d34bb060be82814fa38a33c4e7ddbfea238",
+      "bytes": 106388
+    },
+    {
+      "path": "Evidence/competition-code/house-partial-probes/Gamesim.Editor.rsp",
+      "sha256": "3b66d1281289bf8214c11ca7395d6ca0028a7e6c01207c83b93802f6c3123bdb",
+      "bytes": 50845
+    },
+    {
+      "path": "Evidence/competition-code/house-partial-probes/Gamesim.Editor.sarif",
+      "sha256": "dd0b986fcf440d30ce812d24966c7a9dad0d6a709940133fb7e5f521edecf2e6",
+      "bytes": 12154
+    },
+    {
+      "path": "Evidence/competition-code/house-partial-probes/HouseStagedEditModeProbe.dll",
+      "sha256": "530e7c7977296fb7a39ccc723857635194a537e8d723c6228fc26452b93f5444",
+      "bytes": 91136
+    },
+    {
+      "path": "Evidence/competition-code/house-partial-probes/HouseStagedEditModeProbe.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    {
+      "path": "Evidence/competition-code/house-partial-probes/HouseStagedEditModeProbe.pdb",
+      "sha256": "db036269dd2d0f66f893f87961f2eead8fda8a209afa5cb47a5e6ca1d6ee5951",
+      "bytes": 37424
+    },
+    {
+      "path": "Evidence/competition-code/house-partial-probes/HouseStagedEditModeProbe.rsp",
+      "sha256": "d45855617b28334834d9ce4324e3dcf4b4035b1a8e20b444f0755ad2fb1780fc",
+      "bytes": 45469
+    },
+    {
+      "path": "Evidence/competition-code/house-partial-probes/HouseStagedEditModeProbe.sarif",
+      "sha256": "4f7ba1dd68781688fb8a8fb43d935154eaa0736783fba7911ed7de8a73482ef4",
+      "bytes": 379
+    },
+    {
+      "path": "Evidence/competition-code/house-partial-probes/probe-results.json",
+      "sha256": "1026681d0affe8043930a53533c75c6d147cf932841d6a5761dbf767572b1394",
+      "bytes": 1713
+    },
+    {
+      "path": "Evidence/competition-code/INTEGRATION.md",
+      "sha256": "05f49c1a93f17fb37390dc9dff8330ee1ae09eee2c054f8d24a21b569667ead1",
+      "bytes": 5984
+    },
+    {
+      "path": "Evidence/competition-code/part-manifest.json",
+      "sha256": "fb2f66743329ed850816f78dd457f23a12b1f25ea0bcd25a64949ae531b24898",
+      "bytes": 15330
+    },
+    {
+      "path": "Evidence/competition-code/partial-probes/AuthoredEditorProbe.dll",
+      "sha256": "5ef930549432bc0a9ab0f613aa4d9a55f7558d68703c5a2b4ab4d36ed372de0f",
+      "bytes": 12800
+    },
+    {
+      "path": "Evidence/competition-code/partial-probes/AuthoredEditorProbe.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    {
+      "path": "Evidence/competition-code/partial-probes/AuthoredEditorProbe.pdb",
+      "sha256": "69998e503fa606fa00e8cf5426b9899728a51023b68a94b7b66056803b9eac33",
+      "bytes": 25580
+    },
+    {
+      "path": "Evidence/competition-code/partial-probes/AuthoredEditorProbe.rsp",
+      "sha256": "0e0519120157b27ab0069d7e346519898aa8dccecdb9619e7790fbaf8a820e02",
+      "bytes": 47788
+    },
+    {
+      "path": "Evidence/competition-code/partial-probes/AuthoredEditorProbe.sarif",
+      "sha256": "4f7ba1dd68781688fb8a8fb43d935154eaa0736783fba7911ed7de8a73482ef4",
+      "bytes": 379
+    },
+    {
+      "path": "Evidence/competition-code/partial-probes/AuthoredKitProbe.dll",
+      "sha256": "0337f5f26cb04b01ad5541222b15f774c631d559684582806e173e15f1862f44",
+      "bytes": 7168
+    },
+    {
+      "path": "Evidence/competition-code/partial-probes/AuthoredKitProbe.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    {
+      "path": "Evidence/competition-code/partial-probes/AuthoredKitProbe.pdb",
+      "sha256": "af254cd91467beb01a369586da19c2f3ed4a57e4dffc97d93bd85a02233e82ba",
+      "bytes": 23408
+    },
+    {
+      "path": "Evidence/competition-code/partial-probes/AuthoredKitProbe.rsp",
+      "sha256": "c50523c5e0776e933add304a961ce828520230513f1bc14651aad8760f0e0c14",
+      "bytes": 43836
+    },
+    {
+      "path": "Evidence/competition-code/partial-probes/AuthoredKitProbe.sarif",
+      "sha256": "4f7ba1dd68781688fb8a8fb43d935154eaa0736783fba7911ed7de8a73482ef4",
+      "bytes": 379
+    },
+    {
+      "path": "Evidence/competition-code/partial-probes/AuthoredTestsProbe.log",
+      "sha256": "5204c836a570419fff370f8ce14944a0ec66195f06d085cf2e86649d46c83e09",
+      "bytes": 489
+    },
+    {
+      "path": "Evidence/competition-code/partial-probes/AuthoredTestsProbe.rsp",
+      "sha256": "ff0efabe0af287a2d179f2c4b43e61a212d7fd7a4962c57817d2122804ec71f3",
+      "bytes": 44153
+    },
+    {
+      "path": "Evidence/competition-code/partial-probes/AuthoredTestsProbe.sarif",
+      "sha256": "07602b007fa83c5758ddd90610e78578ad7ecde15655780bd63d4e07cbd2f46e",
+      "bytes": 2188
+    },
+    {
+      "path": "Evidence/competition-code/partial-probes/probe-results.json",
+      "sha256": "03009fac3bc9345edabe926fe4c1f09bfa504774c6fe189f5146d85447d7e21f",
+      "bytes": 705
+    },
+    {
+      "path": "Evidence/competition-code/static-validation.json",
+      "sha256": "a7e840a3d17e0ee976061db969ac772ac5af97f6c585c7dcf5f2913cc97957f8",
+      "bytes": 957
+    },
+    {
+      "path": "Evidence/competition-independent-check.json",
+      "sha256": "d5013fe5d21875ea13f3366bd5ce67cd17200c1098fbb290e9df9bbaca075667",
+      "bytes": 119929
+    },
+    {
+      "path": "Evidence/equipment-package-index.json",
+      "sha256": "2bdfa3f44420d39609bec7af051ea0812a8d936ce0947a6d35f7ec1aed371129",
+      "bytes": 21707
+    },
+    {
+      "path": "Evidence/house-code/asset-input-manifest.json",
+      "sha256": "253de033fa8b7ef994ccca84abd17a2d561b204250dfa0ed961ae4e06e826112",
+      "bytes": 45074
+    },
+    {
+      "path": "Evidence/house-code/delivery-manifest.json",
+      "sha256": "59145a57aabf5cba12d3ba64420f266fa8ebc9bf82230dd5709a95cf845f4890",
+      "bytes": 1136
+    },
+    {
+      "path": "Evidence/house-code/house-room-finish.patch",
+      "sha256": "4d4cab82d2731051ba450c78abaef921fea54cbb99bd57f7d588be66bb6f91d6",
+      "bytes": 7552
+    },
+    {
+      "path": "Evidence/house-code/independent-review.json",
+      "sha256": "5b2c70633248f23ad71947c3d928a50094383ac211b84d1193b3d8f6e8100d65",
+      "bytes": 654
+    },
+    {
+      "path": "Evidence/house-code/README.md",
+      "sha256": "8c7ff1e566d63722ddbdfc000486155bc6098ba6176cd1c8b094c9da3e797432",
+      "bytes": 6297
+    },
+    {
+      "path": "Evidence/house-code/room-finish-tests.patch",
+      "sha256": "b16d36a0a22f87c6b9c4989de96ef389f9fb6309e9ec576c684eb27bd6136f98",
+      "bytes": 3626
+    },
+    {
+      "path": "Evidence/house-code/source-guard.json",
+      "sha256": "07bf19f9ce9edb1a713c5a521c10364a4b6a87acfb200a034e00bf4ac76f4b37",
+      "bytes": 723
+    },
+    {
+      "path": "Evidence/house-code/validation-receipt.json",
+      "sha256": "4ef5eba03b97c8a1bca8673bc2b705bc75335b4d1bc7e11e2ff0279e32005d3a",
+      "bytes": 1486
+    },
+    {
+      "path": "Evidence/packaging/bb_set_cereal_carton.json",
+      "sha256": "ebfb98772007d31b7aa907b9f9b4910549e6e33a1f7f7ed1a2b7e66476111517",
+      "bytes": 1744
+    },
+    {
+      "path": "Evidence/packaging/bb_set_coffee_tin.json",
+      "sha256": "507c7ca19310c789de147368db37c8cc48e2e4b1baf468f92d20d7000fbcb15f",
+      "bytes": 1672
+    },
+    {
+      "path": "Evidence/packaging/bb_set_cosmetic.json",
+      "sha256": "6e8dfd34006eb0553e29e3e936ca4feca678f2aeaf536d19c10c4bfcee3ffa61",
+      "bytes": 1647
+    },
+    {
+      "path": "Evidence/packaging/bb_set_food_jar.json",
+      "sha256": "d98d36edbe2097666fae74af771686f66f3323e72861ba078becbc5081425563",
+      "bytes": 1649
+    },
+    {
+      "path": "Evidence/packaging/bb_set_game_alliance.json",
+      "sha256": "f9d3d6f35118ccaf787abcc6b9016751b744395fa8d6c50f01be5292a1eed3d1",
+      "bytes": 1742
+    },
+    {
+      "path": "Evidence/packaging/bb_set_game_social.json",
+      "sha256": "4da624334fdf0f11cbec73930a0886ea080af8f6997b1bf41cbace9a7512b764",
+      "bytes": 1718
+    },
+    {
+      "path": "Evidence/packaging/bb_set_game_strategy.json",
+      "sha256": "bab25d6d200e0214afceef3100b8221b4c62074247572e4a05cc2271c9d4722b",
+      "bytes": 1742
+    },
+    {
+      "path": "Evidence/packaging/bb_set_hoh_snack_blue.json",
+      "sha256": "95dba2e83e08067e2bec36f336e7db7002d22c19ac6ef516accd738f61e77c60",
+      "bytes": 1715
+    },
+    {
+      "path": "Evidence/packaging/bb_set_hoh_snack_gold.json",
+      "sha256": "5cb3b8353da6ccd55054ad26bd18a96258feb5d81c01c5380cdee23fa31d4128",
+      "bytes": 1715
+    },
+    {
+      "path": "Evidence/packaging/bb_set_snack_blue.json",
+      "sha256": "57a406bd2181b3011ac5f546971109af6ab75051d43fc0c557cf8117f5ac5c5f",
+      "bytes": 1670
+    },
+    {
+      "path": "Evidence/packaging/bb_set_snack_gold.json",
+      "sha256": "6013ff9ba0c47c757ea87be4faec7fa89566921a10c7601d1e6d72a3bffaed12",
+      "bytes": 1670
+    },
+    {
+      "path": "Evidence/packaging/bb_set_toiletry.json",
+      "sha256": "6eb2261d01b3a66dbb843e72e573664ad82375f7f9b9e7cd75fbddd78515945b",
+      "bytes": 1647
+    },
+    {
+      "path": "Evidence/packaging/build-receipt.json",
+      "sha256": "eb4439863ca095dcfb33a94554f747b62ab183b0d85c408330978c346478e379",
+      "bytes": 22402
+    },
+    {
+      "path": "Evidence/packaging/build.log",
+      "sha256": "87a75bb38fb91a5461ef012a87eaed955ebf8445ac5159bc10fbfd2915d55fae",
+      "bytes": 32607
+    },
+    {
+      "path": "Evidence/packaging/final-refinement.log",
+      "sha256": "54c7b5ef80fd45a2ddc802025e0a5decffa8fc1c03c68d4eb1b5622477d68fe6",
+      "bytes": 11186
+    },
+    {
+      "path": "Evidence/packaging/independent-audit.json",
+      "sha256": "ef4ba3686d6eba640f43ec19f463ccea8d55d67fb21ea66fa708e2e90f990408",
+      "bytes": 47224
+    },
+    {
+      "path": "Evidence/packaging/independent-audit.log",
+      "sha256": "3873f7d5d419621b42cb306dd64247afc74f2c67c63fd75b7337359ffa1c13cf",
+      "bytes": 3013
+    },
+    {
+      "path": "Evidence/packaging/initial-audit.log",
+      "sha256": "59a8564fa625fd419a776e7621b71b82c0b5f0c95ab55059176aecaa2fcb8cbd",
+      "bytes": 997
+    },
+    {
+      "path": "Evidence/packaging/initial-build-corrected.log",
+      "sha256": "810759af9b6ba568bdce5f7213be24b54bb31b7e9aaee34cda6d82157b398532",
+      "bytes": 5945
+    },
+    {
+      "path": "Evidence/packaging/initial-build.log",
+      "sha256": "1243b22461204f5351f52a5e84c5e624981020ea89ccfa253deb8ee06fa34696",
+      "bytes": 5944
+    },
+    {
+      "path": "Evidence/packaging/material-map.json",
+      "sha256": "5fea2dbad0c809fec3170c2b68b465f267e4c5f6c1f22fa0993d9fe0a5a2617c",
+      "bytes": 20383
+    },
+    {
+      "path": "Evidence/packaging/uv-seam-audit.log",
+      "sha256": "8a9fe59970fab8b50f379df59fb18156314d1e7e966579f8d22638a25deaf5a9",
+      "bytes": 547
+    },
+    {
+      "path": "Evidence/packaging/uv-seam-refinement.log",
+      "sha256": "60bfa56ce730db7491302137e9272aff68da54a3368773acec122acbc25a4322",
+      "bytes": 11131
+    },
+    {
+      "path": "Evidence/packaging-package-index.json",
+      "sha256": "8d36dbb983809dd09de693d089ea9898665a97fd14c940c78792a1857be11254",
+      "bytes": 57017
+    },
+    {
+      "path": "native-bridge.json",
+      "sha256": "763022379209c27cf4677415d054727c27581efa30ea58c3e58334a9907c29c0",
+      "bytes": 26566
+    },
+    {
+      "path": "ORIGINAL-ASSET-NOTICE.txt",
+      "sha256": "44f0d0a6fc6a0365d2799d787d3c0d6092909cb52d67b6ae040414f1d97b0cc0",
+      "bytes": 906
+    },
+    {
+      "path": "Patches/all-house-source.patch",
+      "sha256": "3567179209e2b7787bd08ba6923001eb7146e452da9988e193df656946adbb6f",
+      "bytes": 43661
+    },
+    {
+      "path": "Patches/competition-authored-geometry.patch",
+      "sha256": "29f473e9bc96137d6b6c3035d8e38d5d7d9e39c8518cee1dfcffed26aee8fef1",
+      "bytes": 52782
+    },
+    {
+      "path": "Previews/appliances.png",
+      "sha256": "f9e0fb7abd15ec8c8a0d9a3a7d41fb5da04c7906342c7e9fbb51ad5cbd7df389",
+      "bytes": 1587863
+    },
+    {
+      "path": "Previews/competition/DiceTray-preview.png",
+      "sha256": "410db87b6352d6c91a3a56bbcea969d02ce3a5c2c32caebe7e8a71f8ebd45b9c",
+      "bytes": 859593
+    },
+    {
+      "path": "Previews/competition/GripRig-full-preview.png",
+      "sha256": "3ab3e9a8a7d69ceca0af865ee9041b0f79768da40711fb589be6c76a554ab761",
+      "bytes": 845358
+    },
+    {
+      "path": "Previews/competition/GripRig-preview.png",
+      "sha256": "7b067608796426e1ee2853dae0ae974f0db79bab0f9ef6ef5f60ff205e07f4c0",
+      "bytes": 882210
+    },
+    {
+      "path": "Previews/competition/PairConsole-preview.png",
+      "sha256": "f3f8b723a8ef4a64b5b5aed906c20125ac08ae941fade329bba06fc0ce833f27",
+      "bytes": 906608
+    },
+    {
+      "path": "Previews/competition/Signals-preview.png",
+      "sha256": "a2f67e318f57268dd4b8374de2fb657bb6e2b506a74b73825d1428002181b6aa",
+      "bytes": 881318
+    },
+    {
+      "path": "Previews/competition/WordConsole-preview.png",
+      "sha256": "9a5cd58f5ec89d119a7769801ab919ec7182c36d163c232b9b1b450fe88dc4fc",
+      "bytes": 898054
+    },
+    {
+      "path": "Previews/packaging/bb_set_cereal_carton_back.png",
+      "sha256": "68750ec2db14061a08fb6603b15fab0f4dc9f4ce0359ea8853a5902e548f26bf",
+      "bytes": 210000
+    },
+    {
+      "path": "Previews/packaging/bb_set_cereal_carton_front.png",
+      "sha256": "9df365fc60cf3ff826195516a897f57777d6b1a11ec5cb1b7f6ba0f3f43d0c88",
+      "bytes": 221258
+    },
+    {
+      "path": "Previews/packaging/bb_set_cereal_carton_threequarter.png",
+      "sha256": "4aa92063e86223834f02ea10b747df8f51c061ae3b5870feebfcc603f4307ed7",
+      "bytes": 235689
+    },
+    {
+      "path": "Previews/packaging/bb_set_coffee_tin_back.png",
+      "sha256": "3098edcdd9d5bd98433560c14ed6efb03502176bcd2554c13f8038961579e5db",
+      "bytes": 229349
+    },
+    {
+      "path": "Previews/packaging/bb_set_coffee_tin_front.png",
+      "sha256": "fda87c04c69bbdd6e2b644ee3a434b9cea33bae1b2954f76c99ac11355367f67",
+      "bytes": 228303
+    },
+    {
+      "path": "Previews/packaging/bb_set_coffee_tin_threequarter.png",
+      "sha256": "05044147169e5002461f3c2787559d6761d98d424272234d7be55e274897c100",
+      "bytes": 247407
+    },
+    {
+      "path": "Previews/packaging/bb_set_cosmetic_back.png",
+      "sha256": "af2da327db8c2c2f8571386aff1a56d578747cbfff30b8d5aa7f6f9577d99c4d",
+      "bytes": 220518
+    },
+    {
+      "path": "Previews/packaging/bb_set_cosmetic_front.png",
+      "sha256": "137f4d0b35ff6340771bd17c17060bf5ebf619873357859c7175bcdfe4c9c8d0",
+      "bytes": 223020
+    },
+    {
+      "path": "Previews/packaging/bb_set_cosmetic_threequarter.png",
+      "sha256": "a2f680a72be581077ee6572fd628efe96d7ce0c7490e9369f0b114c99a7f07fa",
+      "bytes": 239770
+    },
+    {
+      "path": "Previews/packaging/bb_set_food_jar_back.png",
+      "sha256": "e227d65246ad300cbc576405213b166643d0ab8eb21ac946d2f839aac7ac3d5f",
+      "bytes": 225266
+    },
+    {
+      "path": "Previews/packaging/bb_set_food_jar_front.png",
+      "sha256": "27d088903fa5ac09a77bd123a39b6461406bc64d687bf16f5f02b324a668ea9e",
+      "bytes": 230499
+    },
+    {
+      "path": "Previews/packaging/bb_set_food_jar_threequarter.png",
+      "sha256": "b6597bc49335a14a798e41244fc9631bc4105b8ab3e8be077eb6646dbc0d622b",
+      "bytes": 248707
+    },
+    {
+      "path": "Previews/packaging/bb_set_game_alliance_back.png",
+      "sha256": "0c28473cfa321796350c0edf3b606fe3aae38bf1e554278ce97714d1f3b55965",
+      "bytes": 236297
+    },
+    {
+      "path": "Previews/packaging/bb_set_game_alliance_front.png",
+      "sha256": "32c035c4631b729971d6b37e1b7a5053618f6a848134fc529086125463f73ad3",
+      "bytes": 183232
+    },
+    {
+      "path": "Previews/packaging/bb_set_game_alliance_threequarter.png",
+      "sha256": "57861f29cb1eaf0a6a093434946d62f30ad4f1a2d5e49e9decab21f3f0ab163b",
+      "bytes": 238448
+    },
+    {
+      "path": "Previews/packaging/bb_set_game_social_back.png",
+      "sha256": "7316ee265bd09cb201644a5e3897e7a5a50af2f6b8404d60389d33806c1a6397",
+      "bytes": 231388
+    },
+    {
+      "path": "Previews/packaging/bb_set_game_social_front.png",
+      "sha256": "21ec9d6376dfe36e0e416a3a000cf31a38f0e1744686cef2260f783a8ba39f92",
+      "bytes": 182177
+    },
+    {
+      "path": "Previews/packaging/bb_set_game_social_threequarter.png",
+      "sha256": "3bd3d6a8b971ade84f57b9742079b0ca1af05d485b73efe90da116b015491eb0",
+      "bytes": 233995
+    },
+    {
+      "path": "Previews/packaging/bb_set_game_strategy_back.png",
+      "sha256": "3754b54e6e01a8a616fcc4e44aeee31c294d1442977dc80380037ba37428a45a",
+      "bytes": 232104
+    },
+    {
+      "path": "Previews/packaging/bb_set_game_strategy_front.png",
+      "sha256": "d4e9989c635bbd560f7cb47808e7c4a57ae46ee456a9136fd7e53b43452bf683",
+      "bytes": 182254
+    },
+    {
+      "path": "Previews/packaging/bb_set_game_strategy_threequarter.png",
+      "sha256": "3aaa6afae4d2f9d49c982d8e1e6f999117b50af2f196d7aff0517f8d016da69c",
+      "bytes": 235043
+    },
+    {
+      "path": "Previews/packaging/bb_set_hoh_snack_blue_back.png",
+      "sha256": "469b38ba15da8a5d09245cb4694ff5895f039201aa86da84c7d0263e34182a63",
+      "bytes": 210852
+    },
+    {
+      "path": "Previews/packaging/bb_set_hoh_snack_blue_front.png",
+      "sha256": "fcc1436d6ae84cdecaa28046b4a7c2a2e7a913de93c798a0c6737dd12f6b0e09",
+      "bytes": 223538
+    },
+    {
+      "path": "Previews/packaging/bb_set_hoh_snack_blue_threequarter.png",
+      "sha256": "4230d1e7121f2a409864cd45d7c808d4cb2af5008e77908fb592b365d28807e4",
+      "bytes": 230936
+    },
+    {
+      "path": "Previews/packaging/bb_set_hoh_snack_gold_back.png",
+      "sha256": "c04572c82e22f840f72fd9997405e483e476c4d54d0aa6013dec96e6229750ef",
+      "bytes": 212053
+    },
+    {
+      "path": "Previews/packaging/bb_set_hoh_snack_gold_front.png",
+      "sha256": "368d95717fb49605d82709145510dfa098cdf70e38afd0c67ce2d4e51a3e2fa0",
+      "bytes": 224031
+    },
+    {
+      "path": "Previews/packaging/bb_set_hoh_snack_gold_threequarter.png",
+      "sha256": "53497024ea09a6deff3cde1f842cd42d870ce25ef4f0a5ed4b531ba19f339bce",
+      "bytes": 233083
+    },
+    {
+      "path": "Previews/packaging/bb_set_snack_blue_back.png",
+      "sha256": "0ed991b8ea9266be28f48712a1516cdace9479e70f2841b6e2b1711369d69a01",
+      "bytes": 211132
+    },
+    {
+      "path": "Previews/packaging/bb_set_snack_blue_front.png",
+      "sha256": "6ed92f1a9d9a31530abc2b7e7b036a7de8a8fd4087f4ebb2a42f3a8362954986",
+      "bytes": 224149
+    },
+    {
+      "path": "Previews/packaging/bb_set_snack_blue_threequarter.png",
+      "sha256": "52227d36d2b5f8b761de4e9afe2c486ee76144b86d20deaeca493e00704c1505",
+      "bytes": 232267
+    },
+    {
+      "path": "Previews/packaging/bb_set_snack_gold_back.png",
+      "sha256": "669f132af79d4328178a3fc282441a29ba4b7846d3354a280642c805a45dfaaa",
+      "bytes": 212362
+    },
+    {
+      "path": "Previews/packaging/bb_set_snack_gold_front.png",
+      "sha256": "b4b4c0299d54702718d70f5efd52e587dbd39cc1eabd2cecce9724bf9e0d9347",
+      "bytes": 225298
+    },
+    {
+      "path": "Previews/packaging/bb_set_snack_gold_threequarter.png",
+      "sha256": "451381925104459c28ac0278bd7db434fd1f40be1b8c6bbf2fbc7fbbf984c911",
+      "bytes": 234541
+    },
+    {
+      "path": "Previews/packaging/bb_set_toiletry_back.png",
+      "sha256": "7b2402ca2b14495b7290c207b0fc5a6ebb0c41c86b2f498fb63b95dbccca4180",
+      "bytes": 215411
+    },
+    {
+      "path": "Previews/packaging/bb_set_toiletry_front.png",
+      "sha256": "9c50bb05cafb56266a59e1cca9222fc58e0e0c2ae690d4f9fdfc7458aa116ab4",
+      "bytes": 219215
+    },
+    {
+      "path": "Previews/packaging/bb_set_toiletry_threequarter.png",
+      "sha256": "17d5be607d6d32f06e718d489633929d3060d6894ed31c8b09aece1683b237ea",
+      "bytes": 235607
+    },
+    {
+      "path": "Previews/packaging/packaging-multiangle-1.jpg",
+      "sha256": "fa2c674d1a0fb3e88ff8011d4681c0e39b98300d7e611cd3381adc2f743c7612",
+      "bytes": 184053
+    },
+    {
+      "path": "Previews/packaging/packaging-multiangle-2.jpg",
+      "sha256": "f37ebd37dfbcdf565d801be80430ffe6d87fab329fab15ae0449f8ebb1fa0957",
+      "bytes": 176213
+    },
+    {
+      "path": "Previews/packaging/packaging-overview.jpg",
+      "sha256": "562b3e5c985686924725800f4ddcbb0a8e50c999b46ab164c95c57a776f1edcb",
+      "bytes": 242297
+    },
+    {
+      "path": "ProjectOverlay/Assets/Gamesim/Art/Authored/Competition/bb_comp_DiceTray_Die.fbx",
+      "sha256": "dbfe03e8df681646fbceae1459dacf3f977a622ef46c418371c8a11415806677",
+      "bytes": 16812
+    },
+    {
+      "path": "ProjectOverlay/Assets/Gamesim/Art/Authored/Competition/bb_comp_DiceTray_ProgressBacking.fbx",
+      "sha256": "121acf0b2afb6d193f1d14ec695d1e0f9a53594f85ec4a0ff43ee85087a134d6",
+      "bytes": 16572
+    },
+    {
+      "path": "ProjectOverlay/Assets/Gamesim/Art/Authored/Competition/bb_comp_DiceTray_StanceRail.fbx",
+      "sha256": "56651ed23273d0b4e611798e84b951dc54469a8f6d440c86761e140f42d7d966",
+      "bytes": 16412
+    },
+    {
+      "path": "ProjectOverlay/Assets/Gamesim/Art/Authored/Competition/bb_comp_DiceTray_TrayBackRail.fbx",
+      "sha256": "ae18e13e7a6104a1930a1268b97417b32cf1285cb24aaec998d93af4f5173b07",
+      "bytes": 17388
+    },
+    {
+      "path": "ProjectOverlay/Assets/Gamesim/Art/Authored/Competition/bb_comp_DiceTray_TrayBed.fbx",
+      "sha256": "574d39dc1f9b6005a31d5b2dc9cc2a0d9ada66405565a59111b932cf573f4ea1",
+      "bytes": 19596
+    },
+    {
+      "path": "ProjectOverlay/Assets/Gamesim/Art/Authored/Competition/bb_comp_DiceTray_TrayPedestal.fbx",
+      "sha256": "d76ce643a118b9bb2e90c6705527637d32a3cda6d160488642c4df2be622339f",
+      "bytes": 20284
+    },
+    {
+      "path": "ProjectOverlay/Assets/Gamesim/Art/Authored/Competition/bb_comp_DiceTray_TraySideRail.fbx",
+      "sha256": "b98e141633b1499bed73de8a45b5dff3d7dd1eb64b9c63a5e39ede8fc1ab4ea7",
+      "bytes": 17308
+    },
+    {
+      "path": "ProjectOverlay/Assets/Gamesim/Art/Authored/Competition/bb_comp_GripRig_Counterweight.fbx",
+      "sha256": "65c6f66740742295e139bb9c69bab9d6497a6121a7aa586f7737b52e9364ee86",
+      "bytes": 26492
+    },
+    {
+      "path": "ProjectOverlay/Assets/Gamesim/Art/Authored/Competition/bb_comp_GripRig_CounterweightGuide.fbx",
+      "sha256": "0a6af7ae89c4163f5658ea85036be283537153980ea74611f5060d7d6a628fab",
+      "bytes": 16428
+    },
+    {
+      "path": "ProjectOverlay/Assets/Gamesim/Art/Authored/Competition/bb_comp_GripRig_GripHandle.fbx",
+      "sha256": "300858fe102a666a93be20e4910764c2192753d20ab5ecaf486af6e4d47658b9",
+      "bytes": 19980
+    },
+    {
+      "path": "ProjectOverlay/Assets/Gamesim/Art/Authored/Competition/bb_comp_GripRig_GripRemaining.fbx",
+      "sha256": "e95487894eac5ec498d302191a7f824f779e02371087322c0746910132d59bec",
+      "bytes": 16556
+    },
+    {
+      "path": "ProjectOverlay/Assets/Gamesim/Art/Authored/Competition/bb_comp_GripRig_GripTick.fbx",
+      "sha256": "a84b71e7e032ba41346c6b60db469385f1bcba73b2d66cbfc4c825acae437bd5",
+      "bytes": 16428
+    },
+    {
+      "path": "ProjectOverlay/Assets/Gamesim/Art/Authored/Competition/bb_comp_GripRig_GripTrack.fbx",
+      "sha256": "5795f7052a7bbde359d27dd5335c5f5c89ba8796ebae23112c5e470cdfb3e9a5",
+      "bytes": 16460
+    },
+    {
+      "path": "ProjectOverlay/Assets/Gamesim/Art/Authored/Competition/bb_comp_GripRig_ProgressBacking.fbx",
+      "sha256": "8f9f8059bb3a40277ca3e867f012d14d8e1c898f3970fc185a544f94470455a7",
+      "bytes": 16572
+    },
+    {
+      "path": "ProjectOverlay/Assets/Gamesim/Art/Authored/Competition/bb_comp_GripRig_RigBrace.fbx",
+      "sha256": "0854338b1510b58f2f85709ea072942a8b1d1af6050171a9b451968d824cf9e0",
+      "bytes": 17164
+    },
+    {
+      "path": "ProjectOverlay/Assets/Gamesim/Art/Authored/Competition/bb_comp_GripRig_RigUpright.fbx",
+      "sha256": "90fa6298cc5eb81561db471fa3a77bbf2884966396366cdbb843248f84da1d09",
+      "bytes": 21036
+    },
+    {
+      "path": "ProjectOverlay/Assets/Gamesim/Art/Authored/Competition/bb_comp_GripRig_StanceRail.fbx",
+      "sha256": "1edd076c67ba00dd0beafb79fbd8c008a568b46da3a8eb0fca778c57b9760e66",
+      "bytes": 16412
+    },
+    {
+      "path": "ProjectOverlay/Assets/Gamesim/Art/Authored/Competition/bb_comp_PairConsole_AwardHeader.fbx",
+      "sha256": "d45da2113ccd6248b99317fb6eb2cb2451766c6f63b55071ac9ecf5bcfe2d6cc",
+      "bytes": 16460
+    },
+    {
+      "path": "ProjectOverlay/Assets/Gamesim/Art/Authored/Competition/bb_comp_PairConsole_ConsoleHousing.fbx",
+      "sha256": "2ca020a550920704e23cdb1c1f3d997a23fc4ff142b548f295e26c6bfa8dde4e",
+      "bytes": 27884
+    },
+    {
+      "path": "ProjectOverlay/Assets/Gamesim/Art/Authored/Competition/bb_comp_PairConsole_ConsoleLeg.fbx",
+      "sha256": "8500afeeb60763741c6e71ad886c448e8f296e58e201335d4d31d374744f0f43",
+      "bytes": 20700
+    },
+    {
+      "path": "ProjectOverlay/Assets/Gamesim/Art/Authored/Competition/bb_comp_PairConsole_MemoryTile.fbx",
+      "sha256": "4cd27d3a663c4ec19139f63cc4f2f820a4969a124c1f2b429480354f3a838183",
+      "bytes": 19644
+    },
+    {
+      "path": "ProjectOverlay/Assets/Gamesim/Art/Authored/Competition/bb_comp_PairConsole_ProgressBacking.fbx",
+      "sha256": "7b630eeaa2976c4f49a20da5e2609151d60d39599d3236298010db2565fff362",
+      "bytes": 16588
+    },
+    {
+      "path": "ProjectOverlay/Assets/Gamesim/Art/Authored/Competition/bb_comp_PairConsole_RecessedDisplay.fbx",
+      "sha256": "f231b5cea0e7c28ffc12bbc695a5a1b4f3dc92ff55f371912155aedb78640869",
+      "bytes": 16492
+    },
+    {
+      "path": "ProjectOverlay/Assets/Gamesim/Art/Authored/Competition/bb_comp_PairConsole_StanceRail.fbx",
+      "sha256": "7232e8476be0842ac24284bdc3417891ffe7fd4e468adf19c3074ed8342025f1",
+      "bytes": 16428
+    },
+    {
+      "path": "ProjectOverlay/Assets/Gamesim/Art/Authored/Competition/bb_comp_Signals_AwardHeader.fbx",
+      "sha256": "fced5773757369ca75c55dad2e6cd01a90d5566ea9c072863d4b113fce0743a2",
+      "bytes": 16332
+    },
+    {
+      "path": "ProjectOverlay/Assets/Gamesim/Art/Authored/Competition/bb_comp_Signals_ConsoleHousing.fbx",
+      "sha256": "2fc5d71f5430d1ba510118b9e5ec72d983df5ad7b9a745fbd5229fde3a30ac71",
+      "bytes": 27932
+    },
+    {
+      "path": "ProjectOverlay/Assets/Gamesim/Art/Authored/Competition/bb_comp_Signals_ConsoleLeg.fbx",
+      "sha256": "35221c8d84fb3e52f0daacf598032a10c79cb54add19ae6c67f3de8afcec0825",
+      "bytes": 20684
+    },
+    {
+      "path": "ProjectOverlay/Assets/Gamesim/Art/Authored/Competition/bb_comp_Signals_ProgressBacking.fbx",
+      "sha256": "c4c466d5cf917c3b1fd52b64dff2994ccd37b8cbc82f2151ccb5d86240f54a89",
+      "bytes": 16572
+    },
+    {
+      "path": "ProjectOverlay/Assets/Gamesim/Art/Authored/Competition/bb_comp_Signals_RecessedDisplay.fbx",
+      "sha256": "6b38b14942a5f560c1728bff0800726f05c4dcf00ff4d20c94c75458c00b1a49",
+      "bytes": 16460
+    },
+    {
+      "path": "ProjectOverlay/Assets/Gamesim/Art/Authored/Competition/bb_comp_Signals_ResponsePad.fbx",
+      "sha256": "a7aa94fe210da704ca8d510a73b0757310b6dfc546f93feb3cb3c0f39553ebbf",
+      "bytes": 17404
+    },
+    {
+      "path": "ProjectOverlay/Assets/Gamesim/Art/Authored/Competition/bb_comp_Signals_SignalTarget.fbx",
+      "sha256": "281983b62ba41e4bc1be1ae4343c3f8ac5ee6c6cf46c26981a9eaf84611cf627",
+      "bytes": 19308
+    },
+    {
+      "path": "ProjectOverlay/Assets/Gamesim/Art/Authored/Competition/bb_comp_Signals_StanceRail.fbx",
+      "sha256": "3915ca7678fe4ceb6a251b2d53d78e0b93061b487a735e8d2bc86c3a4de95b9b",
+      "bytes": 16412
+    },
+    {
+      "path": "ProjectOverlay/Assets/Gamesim/Art/Authored/Competition/bb_comp_WordConsole_AwardHeader.fbx",
+      "sha256": "e8439275079161ce1f656ef05f2c394f3827f2150f82b224fb251c1fb04c13e6",
+      "bytes": 16316
+    },
+    {
+      "path": "ProjectOverlay/Assets/Gamesim/Art/Authored/Competition/bb_comp_WordConsole_ConsoleHousing.fbx",
+      "sha256": "a33b5bfcd1a11ef3526ab9992e4f86ce4788da34efed35ced02f6ac90e5c7a62",
+      "bytes": 27996
+    },
+    {
+      "path": "ProjectOverlay/Assets/Gamesim/Art/Authored/Competition/bb_comp_WordConsole_ConsoleLeg.fbx",
+      "sha256": "88b1b6299d4b77d4044f7d014facdf4997b689dc156c01525b6c7c5a789443b7",
+      "bytes": 20700
+    },
+    {
+      "path": "ProjectOverlay/Assets/Gamesim/Art/Authored/Competition/bb_comp_WordConsole_LetterTile.fbx",
+      "sha256": "a4cf652ef819304d408ee6165f67476896a611ce9aeffc61201e97346a6ee1e8",
+      "bytes": 19692
+    },
+    {
+      "path": "ProjectOverlay/Assets/Gamesim/Art/Authored/Competition/bb_comp_WordConsole_ProgressBacking.fbx",
+      "sha256": "fe5c3fca6cc46f384ba030f46926b8fb972586347fc2e0c50a6409848cf1b1b1",
+      "bytes": 16588
+    },
+    {
+      "path": "ProjectOverlay/Assets/Gamesim/Art/Authored/Competition/bb_comp_WordConsole_RecessedDisplay.fbx",
+      "sha256": "3670e2328bb2560457bc742d2c7995dcd0a7f03afec483a943de47c7f39f6860",
+      "bytes": 16476
+    },
+    {
+      "path": "ProjectOverlay/Assets/Gamesim/Art/Authored/Competition/bb_comp_WordConsole_StanceRail.fbx",
+      "sha256": "1ca5587faa524bde221ae41d2bab7709b05ddc16efbec237838af95db90c780d",
+      "bytes": 16428
+    },
+    {
+      "path": "ProjectOverlay/Assets/Gamesim/Art/Authored/HouseSmallProps/bb_set_cereal_carton.fbm/bb_set_cereal_carton_albedo.png",
+      "sha256": "a0dd55889be7aff1d557eb9c31ed1c63d70361db7cfbb0b8cc4689ca0dcd0144",
+      "bytes": 213083
+    },
+    {
+      "path": "ProjectOverlay/Assets/Gamesim/Art/Authored/HouseSmallProps/bb_set_cereal_carton.fbx",
+      "sha256": "a66ad574bf3838feebc39755f1f1d0d5e3e551eedbba3b9d8a7b2cc1115dfcd2",
+      "bytes": 31292
+    },
+    {
+      "path": "ProjectOverlay/Assets/Gamesim/Art/Authored/HouseSmallProps/bb_set_coffee_tin.fbm/bb_set_coffee_tin_albedo.png",
+      "sha256": "ec1a7590ec5d72faf1e15b1ac733a4574aeb8ec2ce0667a43d275398a422fc9f",
+      "bytes": 210725
+    },
+    {
+      "path": "ProjectOverlay/Assets/Gamesim/Art/Authored/HouseSmallProps/bb_set_coffee_tin.fbx",
+      "sha256": "07e59d9b0437c2f45923ce14f4fdca02546650bd49d28a094ac4c23a410f24da",
+      "bytes": 52444
+    },
+    {
+      "path": "ProjectOverlay/Assets/Gamesim/Art/Authored/HouseSmallProps/bb_set_cosmetic.fbm/bb_set_cosmetic_albedo.png",
+      "sha256": "45a4ba0c4d2240cf1df68eec64c5a1e83d07ae3fd5c2dfbde0f7856fa1b0ef51",
+      "bytes": 217442
+    },
+    {
+      "path": "ProjectOverlay/Assets/Gamesim/Art/Authored/HouseSmallProps/bb_set_cosmetic.fbx",
+      "sha256": "290a006e5361c3800115b86105078c0455e7ecfbf96c0b8a1dd068674eeef265",
+      "bytes": 38732
+    },
+    {
+      "path": "ProjectOverlay/Assets/Gamesim/Art/Authored/HouseSmallProps/bb_set_food_jar.fbm/bb_set_food_jar_albedo.png",
+      "sha256": "0e1f97a89b07c1f7d3c46e5423b01c7e7dd57823b906604f02aae841f6a85238",
+      "bytes": 212462
+    },
+    {
+      "path": "ProjectOverlay/Assets/Gamesim/Art/Authored/HouseSmallProps/bb_set_food_jar.fbx",
+      "sha256": "7ab202b3524f3c2ca709c3f11ca768e8ddec1b9c09c7f45b92a108ad32d0ead4",
+      "bytes": 46300
+    },
+    {
+      "path": "ProjectOverlay/Assets/Gamesim/Art/Authored/HouseSmallProps/bb_set_game_alliance.fbm/bb_set_game_alliance_albedo.png",
+      "sha256": "289713a1e5c201388f4d8114a0b81cacf43d005cd6d20dea6cfa0b8f1089418b",
+      "bytes": 191871
+    },
+    {
+      "path": "ProjectOverlay/Assets/Gamesim/Art/Authored/HouseSmallProps/bb_set_game_alliance.fbx",
+      "sha256": "4f4cc77879545d705d9bbbbc0af97a41e8d3e7bf444e57797f6eda2816080a29",
+      "bytes": 26268
+    },
+    {
+      "path": "ProjectOverlay/Assets/Gamesim/Art/Authored/HouseSmallProps/bb_set_game_social.fbm/bb_set_game_social_albedo.png",
+      "sha256": "d15c46948c0a9e7d5cd867806c314d6dcdbafe235ca69be951cd7a6245dfe037",
+      "bytes": 192144
+    },
+    {
+      "path": "ProjectOverlay/Assets/Gamesim/Art/Authored/HouseSmallProps/bb_set_game_social.fbx",
+      "sha256": "8b2e24005c44ce8ea181c6785a1ce5fb9faff79774278b5f6383ddf12b2369ea",
+      "bytes": 26220
+    },
+    {
+      "path": "ProjectOverlay/Assets/Gamesim/Art/Authored/HouseSmallProps/bb_set_game_strategy.fbm/bb_set_game_strategy_albedo.png",
+      "sha256": "32f2a1ae6d7d63a4b5b5deded12584bf1ffbda5d3815ea7135b99664279b081b",
+      "bytes": 191948
+    },
+    {
+      "path": "ProjectOverlay/Assets/Gamesim/Art/Authored/HouseSmallProps/bb_set_game_strategy.fbx",
+      "sha256": "ee320717271adb6fdb83c48a6c5cfe5cd29e90876e3975d9bbbcd1146104ff4e",
+      "bytes": 26252
+    },
+    {
+      "path": "ProjectOverlay/Assets/Gamesim/Art/Authored/HouseSmallProps/bb_set_headphone_case.fbm/bb_set_headphone_case_albedo.png",
+      "sha256": "60d0992dcbc20a3c50ec6e6ab75cf508c275ddfb4e9bca47841b9a95138bffab",
+      "bytes": 1189862
+    },
+    {
+      "path": "ProjectOverlay/Assets/Gamesim/Art/Authored/HouseSmallProps/bb_set_headphone_case.fbm/bb_set_headphone_case_normal.png",
+      "sha256": "65def035d61f912e42a6784f3f1fcf1edfe5bc185c57972c266822cb2fd88ba8",
+      "bytes": 39586
+    },
+    {
+      "path": "ProjectOverlay/Assets/Gamesim/Art/Authored/HouseSmallProps/bb_set_headphone_case.fbx",
+      "sha256": "4c5618775da308879c0902ce2d7e3715db4db378a0803a97f4f430dd85623e61",
+      "bytes": 78300
+    },
+    {
+      "path": "ProjectOverlay/Assets/Gamesim/Art/Authored/HouseSmallProps/bb_set_hoh_snack_blue.fbm/bb_set_hoh_snack_blue_albedo.png",
+      "sha256": "55be4a0f1273eeade33a8b2bdf34069f6d0d0dc14364f0bb4c0da3116ab08d11",
+      "bytes": 214181
+    },
+    {
+      "path": "ProjectOverlay/Assets/Gamesim/Art/Authored/HouseSmallProps/bb_set_hoh_snack_blue.fbx",
+      "sha256": "7d590ff2fe4257c69a383067175c735392605855a724f4b7b4aed67fb5ed229c",
+      "bytes": 51612
+    },
+    {
+      "path": "ProjectOverlay/Assets/Gamesim/Art/Authored/HouseSmallProps/bb_set_hoh_snack_gold.fbm/bb_set_hoh_snack_gold_albedo.png",
+      "sha256": "0a7df302189dc390c3989351e718b4dd9295f3db0ce538a5eb94cf7ea26b7f11",
+      "bytes": 213423
+    },
+    {
+      "path": "ProjectOverlay/Assets/Gamesim/Art/Authored/HouseSmallProps/bb_set_hoh_snack_gold.fbx",
+      "sha256": "0f7f610dd87fab2fffc4b5746b8eb5e03129cb4afa1cec6be3d3fe280f5fdef2",
+      "bytes": 51612
+    },
+    {
+      "path": "ProjectOverlay/Assets/Gamesim/Art/Authored/HouseSmallProps/bb_set_mini_fridge.fbm/bb_set_mini_fridge_albedo.png",
+      "sha256": "677e2c974b6258ef79891ce70e3b6d8640148e42c1d61eaa4a608b1939b82f16",
+      "bytes": 809129
+    },
+    {
+      "path": "ProjectOverlay/Assets/Gamesim/Art/Authored/HouseSmallProps/bb_set_mini_fridge.fbm/bb_set_mini_fridge_normal.png",
+      "sha256": "cc920eb7d9300b800e83a315285fa503d1aef69c75516daea2f754555b9b012d",
+      "bytes": 66554
+    },
+    {
+      "path": "ProjectOverlay/Assets/Gamesim/Art/Authored/HouseSmallProps/bb_set_mini_fridge.fbx",
+      "sha256": "191111bf96e239e22054bf30ced58d49c7b262b5f6597ce66401df0ecf5617c1",
+      "bytes": 114620
+    },
+    {
+      "path": "ProjectOverlay/Assets/Gamesim/Art/Authored/HouseSmallProps/bb_set_snack_blue.fbm/bb_set_snack_blue_albedo.png",
+      "sha256": "80a2322f675956c900b5aa02b00149f5d28b0c1ad6acb1af771c1f605a2e6769",
+      "bytes": 215327
+    },
+    {
+      "path": "ProjectOverlay/Assets/Gamesim/Art/Authored/HouseSmallProps/bb_set_snack_blue.fbx",
+      "sha256": "01d2c555304029bb7bd21c96e731204fc56d707e1a0a40d7c56766f532f425d2",
+      "bytes": 51500
+    },
+    {
+      "path": "ProjectOverlay/Assets/Gamesim/Art/Authored/HouseSmallProps/bb_set_snack_gold.fbm/bb_set_snack_gold_albedo.png",
+      "sha256": "f6bfa9afc6bbb98f391eb0369d53dc725363df2f9d4924cb52d0e136a073b0ac",
+      "bytes": 214085
+    },
+    {
+      "path": "ProjectOverlay/Assets/Gamesim/Art/Authored/HouseSmallProps/bb_set_snack_gold.fbx",
+      "sha256": "714ae079a56e9f70986eb9441920cea626d9adf4739a25fcf836fa8da45e7bc9",
+      "bytes": 51500
+    },
+    {
+      "path": "ProjectOverlay/Assets/Gamesim/Art/Authored/HouseSmallProps/bb_set_toiletry.fbm/bb_set_toiletry_albedo.png",
+      "sha256": "23f28c00fac348d2cf86eb94048cdd8bc33792dfa58919149a1104b50739f24e",
+      "bytes": 217763
+    },
+    {
+      "path": "ProjectOverlay/Assets/Gamesim/Art/Authored/HouseSmallProps/bb_set_toiletry.fbx",
+      "sha256": "0ed6c5ad0769201c311654bf3879fe86ccf0040e614b318cffcc6b53af3b26d8",
+      "bytes": 41260
+    },
+    {
+      "path": "ProjectOverlay/Assets/Gamesim/Art/Authored/HouseSmallProps/Textures/bb_set_cereal_carton_albedo.png",
+      "sha256": "a0dd55889be7aff1d557eb9c31ed1c63d70361db7cfbb0b8cc4689ca0dcd0144",
+      "bytes": 213083
+    },
+    {
+      "path": "ProjectOverlay/Assets/Gamesim/Art/Authored/HouseSmallProps/Textures/bb_set_cereal_carton_metallic.png",
+      "sha256": "f28f2b423865868848ed74cf4d008746e1bb7647b8445039aa72114d71462387",
+      "bytes": 222692
+    },
+    {
+      "path": "ProjectOverlay/Assets/Gamesim/Art/Authored/HouseSmallProps/Textures/bb_set_coffee_tin_albedo.png",
+      "sha256": "ec1a7590ec5d72faf1e15b1ac733a4574aeb8ec2ce0667a43d275398a422fc9f",
+      "bytes": 210725
+    },
+    {
+      "path": "ProjectOverlay/Assets/Gamesim/Art/Authored/HouseSmallProps/Textures/bb_set_coffee_tin_metallic.png",
+      "sha256": "626b76673dd350b4953b7d080f24e268f6ba1858492ce795cb9b689bf1d34daa",
+      "bytes": 230497
+    },
+    {
+      "path": "ProjectOverlay/Assets/Gamesim/Art/Authored/HouseSmallProps/Textures/bb_set_cosmetic_albedo.png",
+      "sha256": "45a4ba0c4d2240cf1df68eec64c5a1e83d07ae3fd5c2dfbde0f7856fa1b0ef51",
+      "bytes": 217442
+    },
+    {
+      "path": "ProjectOverlay/Assets/Gamesim/Art/Authored/HouseSmallProps/Textures/bb_set_cosmetic_metallic.png",
+      "sha256": "7fa99fc177af5b24bb97c70255980af374e2404bd283a1bc0c2e70b3b10014a0",
+      "bytes": 229628
+    },
+    {
+      "path": "ProjectOverlay/Assets/Gamesim/Art/Authored/HouseSmallProps/Textures/bb_set_food_jar_albedo.png",
+      "sha256": "0e1f97a89b07c1f7d3c46e5423b01c7e7dd57823b906604f02aae841f6a85238",
+      "bytes": 212462
+    },
+    {
+      "path": "ProjectOverlay/Assets/Gamesim/Art/Authored/HouseSmallProps/Textures/bb_set_food_jar_metallic.png",
+      "sha256": "ef356f52e42fc8c6bb4496fb1fe047a0dc404895993e7c03ba5fd709d2d374da",
+      "bytes": 222181
+    },
+    {
+      "path": "ProjectOverlay/Assets/Gamesim/Art/Authored/HouseSmallProps/Textures/bb_set_game_alliance_albedo.png",
+      "sha256": "289713a1e5c201388f4d8114a0b81cacf43d005cd6d20dea6cfa0b8f1089418b",
+      "bytes": 191871
+    },
+    {
+      "path": "ProjectOverlay/Assets/Gamesim/Art/Authored/HouseSmallProps/Textures/bb_set_game_alliance_metallic.png",
+      "sha256": "61993f0f6ac85a816340084fd346696a8551f0c20b144f831244b3666229cf52",
+      "bytes": 215337
+    },
+    {
+      "path": "ProjectOverlay/Assets/Gamesim/Art/Authored/HouseSmallProps/Textures/bb_set_game_social_albedo.png",
+      "sha256": "d15c46948c0a9e7d5cd867806c314d6dcdbafe235ca69be951cd7a6245dfe037",
+      "bytes": 192144
+    },
+    {
+      "path": "ProjectOverlay/Assets/Gamesim/Art/Authored/HouseSmallProps/Textures/bb_set_game_social_metallic.png",
+      "sha256": "4926e992bf3285efbade573aae4430df22597180413689e5bcd0c2ab1cda147e",
+      "bytes": 215707
+    },
+    {
+      "path": "ProjectOverlay/Assets/Gamesim/Art/Authored/HouseSmallProps/Textures/bb_set_game_strategy_albedo.png",
+      "sha256": "32f2a1ae6d7d63a4b5b5deded12584bf1ffbda5d3815ea7135b99664279b081b",
+      "bytes": 191948
+    },
+    {
+      "path": "ProjectOverlay/Assets/Gamesim/Art/Authored/HouseSmallProps/Textures/bb_set_game_strategy_metallic.png",
+      "sha256": "f7cd6ad2c1565d92456eb9677f7b93641c7a0b84c3f58a7e051edecfa3ffd137",
+      "bytes": 215348
+    },
+    {
+      "path": "ProjectOverlay/Assets/Gamesim/Art/Authored/HouseSmallProps/Textures/bb_set_headphone_case_albedo.png",
+      "sha256": "60d0992dcbc20a3c50ec6e6ab75cf508c275ddfb4e9bca47841b9a95138bffab",
+      "bytes": 1189862
+    },
+    {
+      "path": "ProjectOverlay/Assets/Gamesim/Art/Authored/HouseSmallProps/Textures/bb_set_headphone_case_metallic.png",
+      "sha256": "be1aa521739ab360c8a1d156315311c8d1f4c1aa847374da59d4386ae47ed9ef",
+      "bytes": 410200
+    },
+    {
+      "path": "ProjectOverlay/Assets/Gamesim/Art/Authored/HouseSmallProps/Textures/bb_set_headphone_case_normal.png",
+      "sha256": "65def035d61f912e42a6784f3f1fcf1edfe5bc185c57972c266822cb2fd88ba8",
+      "bytes": 39586
+    },
+    {
+      "path": "ProjectOverlay/Assets/Gamesim/Art/Authored/HouseSmallProps/Textures/bb_set_hoh_snack_blue_albedo.png",
+      "sha256": "55be4a0f1273eeade33a8b2bdf34069f6d0d0dc14364f0bb4c0da3116ab08d11",
+      "bytes": 214181
+    },
+    {
+      "path": "ProjectOverlay/Assets/Gamesim/Art/Authored/HouseSmallProps/Textures/bb_set_hoh_snack_blue_metallic.png",
+      "sha256": "90cd555a046f17abf20c5d9283f6ed5f86d53863f8876f7b0421ff80be35069b",
+      "bytes": 224025
+    },
+    {
+      "path": "ProjectOverlay/Assets/Gamesim/Art/Authored/HouseSmallProps/Textures/bb_set_hoh_snack_gold_albedo.png",
+      "sha256": "0a7df302189dc390c3989351e718b4dd9295f3db0ce538a5eb94cf7ea26b7f11",
+      "bytes": 213423
+    },
+    {
+      "path": "ProjectOverlay/Assets/Gamesim/Art/Authored/HouseSmallProps/Textures/bb_set_hoh_snack_gold_metallic.png",
+      "sha256": "cc03911927d88f94073a9709f1d900e92aeb563ade4c63615f999fa7a6b1431a",
+      "bytes": 223759
+    },
+    {
+      "path": "ProjectOverlay/Assets/Gamesim/Art/Authored/HouseSmallProps/Textures/bb_set_mini_fridge_albedo.png",
+      "sha256": "677e2c974b6258ef79891ce70e3b6d8640148e42c1d61eaa4a608b1939b82f16",
+      "bytes": 809129
+    },
+    {
+      "path": "ProjectOverlay/Assets/Gamesim/Art/Authored/HouseSmallProps/Textures/bb_set_mini_fridge_metallic.png",
+      "sha256": "75d3190b5cf6861ad8a9beb2e2d7058f9d9b5af7d1ba1d06c76db0173762c5f3",
+      "bytes": 449174
+    },
+    {
+      "path": "ProjectOverlay/Assets/Gamesim/Art/Authored/HouseSmallProps/Textures/bb_set_mini_fridge_normal.png",
+      "sha256": "cc920eb7d9300b800e83a315285fa503d1aef69c75516daea2f754555b9b012d",
+      "bytes": 66554
+    },
+    {
+      "path": "ProjectOverlay/Assets/Gamesim/Art/Authored/HouseSmallProps/Textures/bb_set_snack_blue_albedo.png",
+      "sha256": "80a2322f675956c900b5aa02b00149f5d28b0c1ad6acb1af771c1f605a2e6769",
+      "bytes": 215327
+    },
+    {
+      "path": "ProjectOverlay/Assets/Gamesim/Art/Authored/HouseSmallProps/Textures/bb_set_snack_blue_metallic.png",
+      "sha256": "c6406105efa4da19c7ecc80895c8aa25661d07e5371909770f71fea5a31da13f",
+      "bytes": 225396
+    },
+    {
+      "path": "ProjectOverlay/Assets/Gamesim/Art/Authored/HouseSmallProps/Textures/bb_set_snack_gold_albedo.png",
+      "sha256": "f6bfa9afc6bbb98f391eb0369d53dc725363df2f9d4924cb52d0e136a073b0ac",
+      "bytes": 214085
+    },
+    {
+      "path": "ProjectOverlay/Assets/Gamesim/Art/Authored/HouseSmallProps/Textures/bb_set_snack_gold_metallic.png",
+      "sha256": "06d563009544f65e51f873c9c7deb7ddd97ce2891f3ee939522620a846d7da01",
+      "bytes": 224450
+    },
+    {
+      "path": "ProjectOverlay/Assets/Gamesim/Art/Authored/HouseSmallProps/Textures/bb_set_toiletry_albedo.png",
+      "sha256": "23f28c00fac348d2cf86eb94048cdd8bc33792dfa58919149a1104b50739f24e",
+      "bytes": 217763
+    },
+    {
+      "path": "ProjectOverlay/Assets/Gamesim/Art/Authored/HouseSmallProps/Textures/bb_set_toiletry_metallic.png",
+      "sha256": "abbbcbb20cc19b0c5b89c7e1ad64deec5af4de096467b8506dc9db489afe96ed",
+      "bytes": 229317
+    },
+    {
+      "path": "ProjectOverlay/Assets/Gamesim/Editor/CompetitionApparatusMeshKitAssets.cs",
+      "sha256": "da145236bc99f937d59d34ed8937c30d08cfdabc9c412ac718fe863905ab7c20",
+      "bytes": 9130
+    },
+    {
+      "path": "ProjectOverlay/Assets/Gamesim/Editor/HouseRoomFinish.cs",
+      "sha256": "fc0b90717d670456eced144ba18cd224e42b7d99a2a6128e9a7f88506a8e2e9c",
+      "bytes": 86348
+    },
+    {
+      "path": "ProjectOverlay/Assets/Gamesim/Editor/HouseSmallPropMaterials.cs",
+      "sha256": "0362bb724fd6e7b58287b8e67b3cb256741a4ffbdc006ee1f85c08f6a3458bb0",
+      "bytes": 15440
+    },
+    {
+      "path": "ProjectOverlay/Assets/Gamesim/Runtime/Presentation/CompetitionApparatus.cs",
+      "sha256": "1edaf50eeedcb765a6bdd8ddfe685c35357a959d08464cb8c538bce96ee1308e",
+      "bytes": 30965
+    },
+    {
+      "path": "ProjectOverlay/Assets/Gamesim/Runtime/Presentation/CompetitionApparatusMeshKit.cs",
+      "sha256": "0ba34516de43093f36adc272e71faed11737eff44bce69fffe23fe37bacecbf0",
+      "bytes": 3960
+    },
+    {
+      "path": "ProjectOverlay/Assets/Gamesim/Tests/EditMode/HouseSmallPropAssetTests.cs",
+      "sha256": "3feeb46efb627d3df316435864b98f60e5d97272bb51175abca78a075d35ce1e",
+      "bytes": 16404
+    },
+    {
+      "path": "ProjectOverlay/Assets/Gamesim/Tests/EditMode/RoomFinishTests.cs",
+      "sha256": "dd9508c3af55d2cdde1f386379e4f50547de551a257be277719954ae510ca36a",
+      "bytes": 59308
+    },
+    {
+      "path": "ProjectOverlay/Assets/Gamesim/Tests/PlayMode/CompetitionApparatusMeshKitPlayModeTests.cs",
+      "sha256": "f86762ed3284cc72458566160e5a764e11f3f572ac9676814f4217cdfcb589e9",
+      "bytes": 23633
+    },
+    {
+      "path": "ProjectOverlay/Assets/Gamesim/Tests/PlayMode/CompetitionApparatusPlayModeTests.cs",
+      "sha256": "ba889149e97645d99617902fbb7ca9273d503c2acc90d876301358a9c88195d1",
+      "bytes": 43026
+    },
+    {
+      "path": "README.md",
+      "sha256": "d2b7424d5b44304e34168897158a6fef2f15ae5fd2f213dab220b2c12239a61b",
+      "bytes": 7782
+    },
+    {
+      "path": "verify_bundle.py",
+      "sha256": "1d3ec54841ce88151da616d83fbd3b8586d244bd674f8a1106adcaca702e2e00",
+      "bytes": 3694
+    }
+  ]
+}

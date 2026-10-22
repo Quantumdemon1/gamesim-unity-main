@@ -1,0 +1,23 @@
+{
+  "completedAt": "2026-10-21T04:05:58.999Z",
+  "destination": {
+    "assetId": "bb_set_food_jar",
+    "version": "1.0.0"
+  },
+  "evidence": {
+    "blenderNormalizationPerformed": false,
+    "gpuImportTestPerformed": false,
+    "humanVisualReviewPerformed": false,
+    "modelBytesCopiedAndHashed": true,
+    "policyValidationCompleted": true,
+    "staticInspectionCompleted": true
+  },
+  "manifestSha256": "40417efd7af04eceacf777592f3e20e3181486a9a555f3c50f4c381f40487cc2",
+  "packageId": "pkg_0af9a6d279d98bd0d5ed1476",
+  "schema": "game_dev.package_receipt.v1",
+  "source": {
+    "bytes": 537148,
+    "fileName": "bb_set_food_jar.glb",
+    "sha256": "c3bc097522257e4c8743b733e61c73c4fb421f1f4968cc072617c095c7cf69db"
+  }
+}

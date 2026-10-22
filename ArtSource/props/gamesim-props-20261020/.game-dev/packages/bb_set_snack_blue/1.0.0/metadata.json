@@ -1,0 +1,72 @@
+{
+  "assetId": "bb_set_snack_blue",
+  "category": "environment_prop",
+  "description": "Original house packaging prop, metre dimensions and floor-centre origin. Self-contained PBR GLB; native FBX material slots use the bound separate material map. Existing placement envelope retained. Native Unity appearance/placement acceptance pending.",
+  "displayName": "bb_set_snack_blue",
+  "inspection": {
+    "animationCount": 0,
+    "boundingBox": {
+      "max": [
+        0.07999999821186066,
+        0.2199999988079071,
+        0.02499999850988388
+      ],
+      "min": [
+        -0.07999999821186066,
+        0,
+        -0.02499999850988388
+      ],
+      "sizeMeters": [
+        0.1599999964237213,
+        0.2199999988079071,
+        0.04999999701976776
+      ]
+    },
+    "boundingBoxEmpty": false,
+    "fileBytes": 548264,
+    "filePath": "model.glb",
+    "generator": "glTF-Transform v4.5.1",
+    "hasNormals": true,
+    "hasSkin": false,
+    "hasTangents": true,
+    "hasUVs": true,
+    "materialCount": 2,
+    "meshCount": 1,
+    "pbr": {
+      "hasBaseColorTexture": true,
+      "hasEmissiveTexture": false,
+      "hasMetallicRoughnessTexture": true,
+      "hasNormalTexture": false,
+      "hasOcclusionTexture": false
+    },
+    "primitiveCount": 2,
+    "sceneGraphFallback": false,
+    "textureCount": 2,
+    "textureResolutions": [
+      {
+        "bytes": 215327,
+        "height": 512,
+        "mimeType": "image/png",
+        "name": "bb_set_snack_blue_albedo",
+        "width": 512
+      },
+      {
+        "bytes": 280454,
+        "height": 512,
+        "mimeType": "image/png",
+        "name": "bb_set_snack_blue_orm",
+        "width": 512
+      }
+    ],
+    "triangleCount": 1424,
+    "undrawnMeshCount": 0,
+    "undrawnPrimitiveCount": 0,
+    "undrawnTriangleCount": 0,
+    "vertexCount": 857,
+    "warnings": [
+      "texture is below 1024px on an axis and will blur at close range: bb_set_snack_blue_albedo (512x512), bb_set_snack_blue_orm (512x512)"
+    ]
+  },
+  "license": "LicenseRef-GameSim-Original",
+  "schema": "game_dev.asset_metadata.v1"
+}

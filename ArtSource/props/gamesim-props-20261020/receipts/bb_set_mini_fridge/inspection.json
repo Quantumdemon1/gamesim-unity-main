@@ -1,0 +1,74 @@
+{
+  "schema": "game_dev.result.v1",
+  "operation": "asset.inspect",
+  "ok": true,
+  "data": {
+    "filePath": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\appliances\\mini-fridge-02\\bb_set_mini_fridge.glb",
+    "fileBytes": 1695316,
+    "generator": "glTF-Transform v4.5.1",
+    "meshCount": 1,
+    "primitiveCount": 1,
+    "vertexCount": 7280,
+    "triangleCount": 3880,
+    "undrawnMeshCount": 0,
+    "undrawnPrimitiveCount": 0,
+    "undrawnTriangleCount": 0,
+    "sceneGraphFallback": false,
+    "materialCount": 1,
+    "textureCount": 3,
+    "textureResolutions": [
+      {
+        "name": "bb_set_mini_fridge_normal",
+        "width": 1024,
+        "height": 1024,
+        "mimeType": "image/png",
+        "bytes": 66554
+      },
+      {
+        "name": "bb_set_mini_fridge_albedo",
+        "width": 1024,
+        "height": 1024,
+        "mimeType": "image/png",
+        "bytes": 809129
+      },
+      {
+        "name": "bb_set_mini_fridge_orm",
+        "width": 1024,
+        "height": 1024,
+        "mimeType": "image/png",
+        "bytes": 445010
+      }
+    ],
+    "boundingBox": {
+      "min": [
+        -0.25,
+        0,
+        -0.25
+      ],
+      "max": [
+        0.25,
+        0.7000000476837158,
+        0.2500000298023224
+      ],
+      "sizeMeters": [
+        0.5,
+        0.7000000476837158,
+        0.5000000298023224
+      ]
+    },
+    "boundingBoxEmpty": false,
+    "hasUVs": true,
+    "hasNormals": true,
+    "hasTangents": true,
+    "pbr": {
+      "hasBaseColorTexture": true,
+      "hasMetallicRoughnessTexture": true,
+      "hasNormalTexture": true,
+      "hasOcclusionTexture": false,
+      "hasEmissiveTexture": false
+    },
+    "animationCount": 0,
+    "hasSkin": false,
+    "warnings": []
+  }
+}

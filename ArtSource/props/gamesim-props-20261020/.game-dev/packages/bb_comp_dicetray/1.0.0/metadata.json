@@ -1,0 +1,57 @@
+{
+  "assetId": "bb_comp_dicetray",
+  "category": "environment_prop",
+  "description": "Assembled reference station in metres. Unity consumes the separate normalized FBX part kit; runtime owns visible text, tint, moving parts and game state. Canonical GLB is an art reference, not a static runtime replacement.",
+  "displayName": "bb_comp_dicetray",
+  "inspection": {
+    "animationCount": 0,
+    "boundingBox": {
+      "max": [
+        0.4800000134855509,
+        1.3649999722838402,
+        0.7849999908357859
+      ],
+      "min": [
+        -0.4800000134855509,
+        0,
+        -0.2550000064074993
+      ],
+      "sizeMeters": [
+        0.9600000269711018,
+        1.3649999722838402,
+        1.0399999972432852
+      ]
+    },
+    "boundingBoxEmpty": false,
+    "fileBytes": 84680,
+    "filePath": "model.glb",
+    "generator": "glTF-Transform v4.5.1",
+    "hasNormals": true,
+    "hasSkin": false,
+    "hasTangents": false,
+    "hasUVs": true,
+    "materialCount": 4,
+    "meshCount": 12,
+    "pbr": {
+      "hasBaseColorTexture": false,
+      "hasEmissiveTexture": false,
+      "hasMetallicRoughnessTexture": false,
+      "hasNormalTexture": false,
+      "hasOcclusionTexture": false
+    },
+    "primitiveCount": 12,
+    "sceneGraphFallback": false,
+    "textureCount": 0,
+    "textureResolutions": [],
+    "triangleCount": 1264,
+    "undrawnMeshCount": 0,
+    "undrawnPrimitiveCount": 0,
+    "undrawnTriangleCount": 0,
+    "vertexCount": 2160,
+    "warnings": [
+      "no base colour texture on any material: the asset is untextured and will read as flat colour"
+    ]
+  },
+  "license": "LicenseRef-GameSim-Original",
+  "schema": "game_dev.asset_metadata.v1"
+}

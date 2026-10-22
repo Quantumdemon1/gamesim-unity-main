@@ -1,0 +1,14 @@
+{
+  "author": "[redacted]",
+  "model": "Blender 5.2.2 LTS",
+  "notes": "Original static dressing prop, metres and bottom-centre origin; full PBR GLB and explicit Unity texture companion. Existing support point and envelope retained. No interaction or collider is introduced. Native Unity acceptance pending. No third-party assets or provider services. appliances/author_appliances_v2.py sha256=7d65c0a0043ac8af6ddcf72a1f5e60d01b3dbed05af602b2c9f7083270f7e27f; appliances/mini-fridge-02/bb_set_mini_fridge_source.blend sha256=eb3b852f78a098e4aeadd9ee04978f82e2f014da682ce66c2802856677c96328",
+  "origin": "authored",
+  "prompt": "Original GameSim house dressing and competition equipment within existing placement and motion envelopes.",
+  "schema": "game_dev.asset_provenance.v1",
+  "source": {
+    "bytes": 1695316,
+    "fileName": "bb_set_mini_fridge.glb",
+    "sha256": "c5bd7e4d3ae5b48da08f18e3d3d670f78232644a7770bcb067cc1ea94ca36195"
+  },
+  "sourceUri": "file:///C:/Users/kelli/Documents/Codex/2026-09-20/re/work/house-equipment-20261020/appliances/mini-fridge-02/bb_set_mini_fridge.glb"
+}

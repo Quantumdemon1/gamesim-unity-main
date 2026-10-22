@@ -1,0 +1,1809 @@
+{
+  "blender": "5.2.2 LTS",
+  "models": [
+    {
+      "name": "bb_set_coffee_tin",
+      "expectedUnityXYZ": [
+        0.12,
+        0.16,
+        0.12
+      ],
+      "container": {
+        "triangles": 1344,
+        "materials": 2,
+        "embeddedImages": [
+          {
+            "width": 512,
+            "height": 512,
+            "sha256": "ec1a7590ec5d72faf1e15b1ac733a4574aeb8ec2ce0667a43d275398a422fc9f"
+          },
+          {
+            "width": 512,
+            "height": 512,
+            "sha256": "f7e7a225f930bd1f17e48438860962a8b2685d5e283b80d56fb9224aa247ce38"
+          }
+        ],
+        "attributes": [
+          [
+            "NORMAL",
+            "POSITION",
+            "TANGENT",
+            "TEXCOORD_0"
+          ],
+          [
+            "NORMAL",
+            "POSITION",
+            "TANGENT",
+            "TEXCOORD_0"
+          ]
+        ],
+        "byteLength": 555768,
+        "sha256": "25f1256493ecb74bca8e51a46f39a9dbf4b284a3292bfee11fcfde9870b2eacd"
+      },
+      "glbImport": {
+        "meshCount": 1,
+        "blenderWorldMin": [
+          -0.05999999865889549,
+          -0.05999999865889549,
+          0.0
+        ],
+        "blenderWorldMax": [
+          0.05999999865889549,
+          0.05999999865889549,
+          0.1599999964237213
+        ],
+        "blenderBoundsXYZ": [
+          0.11999999731779099,
+          0.11999999731779099,
+          0.1599999964237213
+        ],
+        "unityBoundsXYZ": [
+          0.11999999731779099,
+          0.1599999964237213,
+          0.11999999731779099
+        ],
+        "originWorld": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "triangles": 1344,
+        "materials": 2,
+        "uvLayers": 1,
+        "maxCylindricalLabelTriangleUSpan": 0.020833373069763184,
+        "degenerateFaces": 0,
+        "boundaryEdgesAfterSeamWeld": 0,
+        "nonmanifoldEdgesAfterSeamWeld": 0,
+        "textureNodes": [
+          {
+            "name": "bb_set_coffee_tin_albedo",
+            "size": [
+              512,
+              512
+            ],
+            "packed": true
+          },
+          {
+            "name": "bb_set_coffee_tin_orm",
+            "size": [
+              512,
+              512
+            ],
+            "packed": true
+          }
+        ],
+        "sha256": "25f1256493ecb74bca8e51a46f39a9dbf4b284a3292bfee11fcfde9870b2eacd"
+      },
+      "fbxImport": {
+        "meshCount": 1,
+        "blenderWorldMin": [
+          -0.05999999865889549,
+          -0.05999999865889549,
+          -4.258081887087428e-09
+        ],
+        "blenderWorldMax": [
+          0.05999999865889549,
+          0.06000000983476639,
+          0.1599999964237213
+        ],
+        "blenderBoundsXYZ": [
+          0.11999999731779099,
+          0.12000000849366188,
+          0.1600000006818032
+        ],
+        "unityBoundsXYZ": [
+          0.11999999731779099,
+          0.1600000006818032,
+          0.12000000849366188
+        ],
+        "originWorld": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "triangles": 1344,
+        "materials": 2,
+        "uvLayers": 1,
+        "maxCylindricalLabelTriangleUSpan": 0.020833373069763184,
+        "degenerateFaces": 0,
+        "boundaryEdgesAfterSeamWeld": 0,
+        "nonmanifoldEdgesAfterSeamWeld": 0,
+        "textureNodes": [
+          {
+            "name": "bb_set_coffee_tin_albedo.png",
+            "size": [
+              512,
+              512
+            ],
+            "packed": false
+          },
+          {
+            "name": "bb_set_coffee_tin_albedo.png.001",
+            "size": [
+              512,
+              512
+            ],
+            "packed": false
+          }
+        ],
+        "sha256": "07e59d9b0437c2f45923ce14f4fdca02546650bd49d28a094ac4c23a410f24da"
+      }
+    },
+    {
+      "name": "bb_set_food_jar",
+      "expectedUnityXYZ": [
+        0.11,
+        0.14,
+        0.11
+      ],
+      "container": {
+        "triangles": 1056,
+        "materials": 2,
+        "embeddedImages": [
+          {
+            "width": 512,
+            "height": 512,
+            "sha256": "0e1f97a89b07c1f7d3c46e5423b01c7e7dd57823b906604f02aae841f6a85238"
+          },
+          {
+            "width": 512,
+            "height": 512,
+            "sha256": "2d961e5e6a1f969fd460d0b7b7a2aacd694ba2fabe02b720e04a8719126061f0"
+          }
+        ],
+        "attributes": [
+          [
+            "NORMAL",
+            "POSITION",
+            "TANGENT",
+            "TEXCOORD_0"
+          ],
+          [
+            "NORMAL",
+            "POSITION",
+            "TANGENT",
+            "TEXCOORD_0"
+          ]
+        ],
+        "byteLength": 537148,
+        "sha256": "c3bc097522257e4c8743b733e61c73c4fb421f1f4968cc072617c095c7cf69db"
+      },
+      "glbImport": {
+        "meshCount": 1,
+        "blenderWorldMin": [
+          -0.054999999701976776,
+          -0.054999999701976776,
+          0.0
+        ],
+        "blenderWorldMax": [
+          0.054999999701976776,
+          0.054999999701976776,
+          0.14000000059604645
+        ],
+        "blenderBoundsXYZ": [
+          0.10999999940395355,
+          0.10999999940395355,
+          0.14000000059604645
+        ],
+        "unityBoundsXYZ": [
+          0.10999999940395355,
+          0.14000000059604645,
+          0.10999999940395355
+        ],
+        "originWorld": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "triangles": 1056,
+        "materials": 2,
+        "uvLayers": 1,
+        "maxCylindricalLabelTriangleUSpan": 0.020833373069763184,
+        "degenerateFaces": 0,
+        "boundaryEdgesAfterSeamWeld": 0,
+        "nonmanifoldEdgesAfterSeamWeld": 0,
+        "textureNodes": [
+          {
+            "name": "bb_set_food_jar_albedo",
+            "size": [
+              512,
+              512
+            ],
+            "packed": true
+          },
+          {
+            "name": "bb_set_food_jar_orm",
+            "size": [
+              512,
+              512
+            ],
+            "packed": true
+          }
+        ],
+        "sha256": "c3bc097522257e4c8743b733e61c73c4fb421f1f4968cc072617c095c7cf69db"
+      },
+      "fbxImport": {
+        "meshCount": 1,
+        "blenderWorldMin": [
+          -0.054999999701976776,
+          -0.054999999701976776,
+          -3.737146148097281e-09
+        ],
+        "blenderWorldMax": [
+          0.054999999701976776,
+          0.05500000715255737,
+          0.14000000059604645
+        ],
+        "blenderBoundsXYZ": [
+          0.10999999940395355,
+          0.11000000685453415,
+          0.1400000043331926
+        ],
+        "unityBoundsXYZ": [
+          0.10999999940395355,
+          0.1400000043331926,
+          0.11000000685453415
+        ],
+        "originWorld": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "triangles": 1056,
+        "materials": 2,
+        "uvLayers": 1,
+        "maxCylindricalLabelTriangleUSpan": 0.020833373069763184,
+        "degenerateFaces": 0,
+        "boundaryEdgesAfterSeamWeld": 0,
+        "nonmanifoldEdgesAfterSeamWeld": 0,
+        "textureNodes": [
+          {
+            "name": "bb_set_food_jar_albedo.png",
+            "size": [
+              512,
+              512
+            ],
+            "packed": false
+          },
+          {
+            "name": "bb_set_food_jar_albedo.png.001",
+            "size": [
+              512,
+              512
+            ],
+            "packed": false
+          }
+        ],
+        "sha256": "7ab202b3524f3c2ca709c3f11ca768e8ddec1b9c09c7f45b92a108ad32d0ead4"
+      }
+    },
+    {
+      "name": "bb_set_cereal_carton",
+      "expectedUnityXYZ": [
+        0.2,
+        0.3,
+        0.07
+      ],
+      "container": {
+        "triangles": 432,
+        "materials": 3,
+        "embeddedImages": [
+          {
+            "width": 512,
+            "height": 512,
+            "sha256": "a0dd55889be7aff1d557eb9c31ed1c63d70361db7cfbb0b8cc4689ca0dcd0144"
+          },
+          {
+            "width": 512,
+            "height": 512,
+            "sha256": "639c2270db93213fc4d513c0ecd4c1f7ea6b117564af856b47e2b53df32d18a0"
+          }
+        ],
+        "attributes": [
+          [
+            "NORMAL",
+            "POSITION",
+            "TANGENT",
+            "TEXCOORD_0"
+          ],
+          [
+            "NORMAL",
+            "POSITION",
+            "TANGENT",
+            "TEXCOORD_0"
+          ],
+          [
+            "NORMAL",
+            "POSITION",
+            "TANGENT",
+            "TEXCOORD_0"
+          ]
+        ],
+        "byteLength": 550852,
+        "sha256": "2ce6b8022d498b71fb2f9fb0a778fa3fce4934467553b5d1f1c856dd585e8ef2"
+      },
+      "glbImport": {
+        "meshCount": 1,
+        "blenderWorldMin": [
+          -0.10000000149011612,
+          -0.03500000014901161,
+          0.0
+        ],
+        "blenderWorldMax": [
+          0.10000000149011612,
+          0.03500000014901161,
+          0.30000001192092896
+        ],
+        "blenderBoundsXYZ": [
+          0.20000000298023224,
+          0.07000000029802322,
+          0.30000001192092896
+        ],
+        "unityBoundsXYZ": [
+          0.20000000298023224,
+          0.30000001192092896,
+          0.07000000029802322
+        ],
+        "originWorld": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "triangles": 432,
+        "materials": 3,
+        "uvLayers": 1,
+        "maxCylindricalLabelTriangleUSpan": null,
+        "degenerateFaces": 0,
+        "boundaryEdgesAfterSeamWeld": 0,
+        "nonmanifoldEdgesAfterSeamWeld": 0,
+        "textureNodes": [
+          {
+            "name": "bb_set_cereal_carton_albedo",
+            "size": [
+              512,
+              512
+            ],
+            "packed": true
+          },
+          {
+            "name": "bb_set_cereal_carton_orm",
+            "size": [
+              512,
+              512
+            ],
+            "packed": true
+          }
+        ],
+        "sha256": "2ce6b8022d498b71fb2f9fb0a778fa3fce4934467553b5d1f1c856dd585e8ef2"
+      },
+      "fbxImport": {
+        "meshCount": 1,
+        "blenderWorldMin": [
+          -0.10000000149011612,
+          -0.03500000014901161,
+          -2.5065303166371677e-09
+        ],
+        "blenderWorldMax": [
+          0.10000000149011612,
+          0.0350000225007534,
+          0.30000001192092896
+        ],
+        "blenderBoundsXYZ": [
+          0.20000000298023224,
+          0.07000002264976501,
+          0.30000001442745927
+        ],
+        "unityBoundsXYZ": [
+          0.20000000298023224,
+          0.30000001442745927,
+          0.07000002264976501
+        ],
+        "originWorld": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "triangles": 432,
+        "materials": 3,
+        "uvLayers": 1,
+        "maxCylindricalLabelTriangleUSpan": null,
+        "degenerateFaces": 0,
+        "boundaryEdgesAfterSeamWeld": 0,
+        "nonmanifoldEdgesAfterSeamWeld": 0,
+        "textureNodes": [
+          {
+            "name": "bb_set_cereal_carton_albedo.png",
+            "size": [
+              512,
+              512
+            ],
+            "packed": false
+          },
+          {
+            "name": "bb_set_cereal_carton_albedo.png.001",
+            "size": [
+              512,
+              512
+            ],
+            "packed": false
+          }
+        ],
+        "sha256": "a66ad574bf3838feebc39755f1f1d0d5e3e551eedbba3b9d8a7b2cc1115dfcd2"
+      }
+    },
+    {
+      "name": "bb_set_snack_blue",
+      "expectedUnityXYZ": [
+        0.16,
+        0.22,
+        0.05
+      ],
+      "container": {
+        "triangles": 1424,
+        "materials": 2,
+        "embeddedImages": [
+          {
+            "width": 512,
+            "height": 512,
+            "sha256": "80a2322f675956c900b5aa02b00149f5d28b0c1ad6acb1af771c1f605a2e6769"
+          },
+          {
+            "width": 512,
+            "height": 512,
+            "sha256": "eea61633e7d9e271c1df20c941edec06900a00f2488f4a1d455d94cbeb94ecd9"
+          }
+        ],
+        "attributes": [
+          [
+            "NORMAL",
+            "POSITION",
+            "TANGENT",
+            "TEXCOORD_0"
+          ],
+          [
+            "NORMAL",
+            "POSITION",
+            "TANGENT",
+            "TEXCOORD_0"
+          ]
+        ],
+        "byteLength": 548264,
+        "sha256": "a7ec00973d925a1c1ac5dad0bd6bc8df9d4618a69d20ed748e90c406d5eb2a28"
+      },
+      "glbImport": {
+        "meshCount": 1,
+        "blenderWorldMin": [
+          -0.07999999821186066,
+          -0.02499999850988388,
+          0.0
+        ],
+        "blenderWorldMax": [
+          0.07999999821186066,
+          0.02499999850988388,
+          0.2199999988079071
+        ],
+        "blenderBoundsXYZ": [
+          0.1599999964237213,
+          0.04999999701976776,
+          0.2199999988079071
+        ],
+        "unityBoundsXYZ": [
+          0.1599999964237213,
+          0.2199999988079071,
+          0.04999999701976776
+        ],
+        "originWorld": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "triangles": 1424,
+        "materials": 2,
+        "uvLayers": 1,
+        "maxCylindricalLabelTriangleUSpan": null,
+        "degenerateFaces": 0,
+        "boundaryEdgesAfterSeamWeld": 0,
+        "nonmanifoldEdgesAfterSeamWeld": 0,
+        "textureNodes": [
+          {
+            "name": "bb_set_snack_blue_albedo",
+            "size": [
+              512,
+              512
+            ],
+            "packed": true
+          },
+          {
+            "name": "bb_set_snack_blue_orm",
+            "size": [
+              512,
+              512
+            ],
+            "packed": true
+          }
+        ],
+        "sha256": "a7ec00973d925a1c1ac5dad0bd6bc8df9d4618a69d20ed748e90c406d5eb2a28"
+      },
+      "fbxImport": {
+        "meshCount": 1,
+        "blenderWorldMin": [
+          -0.07999999821186066,
+          -0.024999989196658134,
+          -2.9676425206126567e-10
+        ],
+        "blenderWorldMax": [
+          0.07999999821186066,
+          0.025000007823109627,
+          0.2199999988079071
+        ],
+        "blenderBoundsXYZ": [
+          0.1599999964237213,
+          0.04999999701976776,
+          0.21999999910467136
+        ],
+        "unityBoundsXYZ": [
+          0.1599999964237213,
+          0.21999999910467136,
+          0.04999999701976776
+        ],
+        "originWorld": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "triangles": 1424,
+        "materials": 2,
+        "uvLayers": 1,
+        "maxCylindricalLabelTriangleUSpan": null,
+        "degenerateFaces": 0,
+        "boundaryEdgesAfterSeamWeld": 0,
+        "nonmanifoldEdgesAfterSeamWeld": 0,
+        "textureNodes": [
+          {
+            "name": "bb_set_snack_blue_albedo.png",
+            "size": [
+              512,
+              512
+            ],
+            "packed": false
+          },
+          {
+            "name": "bb_set_snack_blue_albedo.png.001",
+            "size": [
+              512,
+              512
+            ],
+            "packed": false
+          }
+        ],
+        "sha256": "01d2c555304029bb7bd21c96e731204fc56d707e1a0a40d7c56766f532f425d2"
+      }
+    },
+    {
+      "name": "bb_set_snack_gold",
+      "expectedUnityXYZ": [
+        0.16,
+        0.22,
+        0.05
+      ],
+      "container": {
+        "triangles": 1424,
+        "materials": 2,
+        "embeddedImages": [
+          {
+            "width": 512,
+            "height": 512,
+            "sha256": "f6bfa9afc6bbb98f391eb0369d53dc725363df2f9d4924cb52d0e136a073b0ac"
+          },
+          {
+            "width": 512,
+            "height": 512,
+            "sha256": "05b44fbf09479aab3dd7ba8819a9fc45bfc4a7577a8eef20127d96d06fcfe2fe"
+          }
+        ],
+        "attributes": [
+          [
+            "NORMAL",
+            "POSITION",
+            "TANGENT",
+            "TEXCOORD_0"
+          ],
+          [
+            "NORMAL",
+            "POSITION",
+            "TANGENT",
+            "TEXCOORD_0"
+          ]
+        ],
+        "byteLength": 545888,
+        "sha256": "605225bc059ee4bba2880e1ea656de24c23533d29505b974294f83b50232ecd3"
+      },
+      "glbImport": {
+        "meshCount": 1,
+        "blenderWorldMin": [
+          -0.07999999821186066,
+          -0.02499999850988388,
+          0.0
+        ],
+        "blenderWorldMax": [
+          0.07999999821186066,
+          0.02499999850988388,
+          0.2199999988079071
+        ],
+        "blenderBoundsXYZ": [
+          0.1599999964237213,
+          0.04999999701976776,
+          0.2199999988079071
+        ],
+        "unityBoundsXYZ": [
+          0.1599999964237213,
+          0.2199999988079071,
+          0.04999999701976776
+        ],
+        "originWorld": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "triangles": 1424,
+        "materials": 2,
+        "uvLayers": 1,
+        "maxCylindricalLabelTriangleUSpan": null,
+        "degenerateFaces": 0,
+        "boundaryEdgesAfterSeamWeld": 0,
+        "nonmanifoldEdgesAfterSeamWeld": 0,
+        "textureNodes": [
+          {
+            "name": "bb_set_snack_gold_albedo",
+            "size": [
+              512,
+              512
+            ],
+            "packed": true
+          },
+          {
+            "name": "bb_set_snack_gold_orm",
+            "size": [
+              512,
+              512
+            ],
+            "packed": true
+          }
+        ],
+        "sha256": "605225bc059ee4bba2880e1ea656de24c23533d29505b974294f83b50232ecd3"
+      },
+      "fbxImport": {
+        "meshCount": 1,
+        "blenderWorldMin": [
+          -0.07999999821186066,
+          -0.024999989196658134,
+          -2.9676425206126567e-10
+        ],
+        "blenderWorldMax": [
+          0.07999999821186066,
+          0.025000007823109627,
+          0.2199999988079071
+        ],
+        "blenderBoundsXYZ": [
+          0.1599999964237213,
+          0.04999999701976776,
+          0.21999999910467136
+        ],
+        "unityBoundsXYZ": [
+          0.1599999964237213,
+          0.21999999910467136,
+          0.04999999701976776
+        ],
+        "originWorld": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "triangles": 1424,
+        "materials": 2,
+        "uvLayers": 1,
+        "maxCylindricalLabelTriangleUSpan": null,
+        "degenerateFaces": 0,
+        "boundaryEdgesAfterSeamWeld": 0,
+        "nonmanifoldEdgesAfterSeamWeld": 0,
+        "textureNodes": [
+          {
+            "name": "bb_set_snack_gold_albedo.png",
+            "size": [
+              512,
+              512
+            ],
+            "packed": false
+          },
+          {
+            "name": "bb_set_snack_gold_albedo.png.001",
+            "size": [
+              512,
+              512
+            ],
+            "packed": false
+          }
+        ],
+        "sha256": "714ae079a56e9f70986eb9441920cea626d9adf4739a25fcf836fa8da45e7bc9"
+      }
+    },
+    {
+      "name": "bb_set_hoh_snack_blue",
+      "expectedUnityXYZ": [
+        0.14,
+        0.2,
+        0.05
+      ],
+      "container": {
+        "triangles": 1424,
+        "materials": 2,
+        "embeddedImages": [
+          {
+            "width": 512,
+            "height": 512,
+            "sha256": "55be4a0f1273eeade33a8b2bdf34069f6d0d0dc14364f0bb4c0da3116ab08d11"
+          },
+          {
+            "width": 512,
+            "height": 512,
+            "sha256": "ab90ce238a8e8d7d87b2a6c98fa31b034643548aa502de6fa8244ff43626438b"
+          }
+        ],
+        "attributes": [
+          [
+            "NORMAL",
+            "POSITION",
+            "TANGENT",
+            "TEXCOORD_0"
+          ],
+          [
+            "NORMAL",
+            "POSITION",
+            "TANGENT",
+            "TEXCOORD_0"
+          ]
+        ],
+        "byteLength": 545052,
+        "sha256": "0e7ea4f2c1cccbf4afb79dd7398ae9c805d6e2a0fd7c78401457dd8d4839cf5e"
+      },
+      "glbImport": {
+        "meshCount": 1,
+        "blenderWorldMin": [
+          -0.07000000029802322,
+          -0.02499999850988388,
+          0.0
+        ],
+        "blenderWorldMax": [
+          0.07000000029802322,
+          0.02499999850988388,
+          0.20000000298023224
+        ],
+        "blenderBoundsXYZ": [
+          0.14000000059604645,
+          0.04999999701976776,
+          0.20000000298023224
+        ],
+        "unityBoundsXYZ": [
+          0.14000000059604645,
+          0.20000000298023224,
+          0.04999999701976776
+        ],
+        "originWorld": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "triangles": 1424,
+        "materials": 2,
+        "uvLayers": 1,
+        "maxCylindricalLabelTriangleUSpan": null,
+        "degenerateFaces": 0,
+        "boundaryEdgesAfterSeamWeld": 0,
+        "nonmanifoldEdgesAfterSeamWeld": 0,
+        "textureNodes": [
+          {
+            "name": "bb_set_hoh_snack_blue_albedo",
+            "size": [
+              512,
+              512
+            ],
+            "packed": true
+          },
+          {
+            "name": "bb_set_hoh_snack_blue_orm",
+            "size": [
+              512,
+              512
+            ],
+            "packed": true
+          }
+        ],
+        "sha256": "0e7ea4f2c1cccbf4afb79dd7398ae9c805d6e2a0fd7c78401457dd8d4839cf5e"
+      },
+      "fbxImport": {
+        "meshCount": 1,
+        "blenderWorldMin": [
+          -0.07000000029802322,
+          -0.024999989196658134,
+          -2.9676425206126567e-10
+        ],
+        "blenderWorldMax": [
+          0.07000000029802322,
+          0.025000007823109627,
+          0.20000000298023224
+        ],
+        "blenderBoundsXYZ": [
+          0.14000000059604645,
+          0.04999999701976776,
+          0.2000000032769965
+        ],
+        "unityBoundsXYZ": [
+          0.14000000059604645,
+          0.2000000032769965,
+          0.04999999701976776
+        ],
+        "originWorld": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "triangles": 1424,
+        "materials": 2,
+        "uvLayers": 1,
+        "maxCylindricalLabelTriangleUSpan": null,
+        "degenerateFaces": 0,
+        "boundaryEdgesAfterSeamWeld": 0,
+        "nonmanifoldEdgesAfterSeamWeld": 0,
+        "textureNodes": [
+          {
+            "name": "bb_set_hoh_snack_blue_albedo.png",
+            "size": [
+              512,
+              512
+            ],
+            "packed": false
+          },
+          {
+            "name": "bb_set_hoh_snack_blue_albedo.png.001",
+            "size": [
+              512,
+              512
+            ],
+            "packed": false
+          }
+        ],
+        "sha256": "7d590ff2fe4257c69a383067175c735392605855a724f4b7b4aed67fb5ed229c"
+      }
+    },
+    {
+      "name": "bb_set_hoh_snack_gold",
+      "expectedUnityXYZ": [
+        0.14,
+        0.2,
+        0.05
+      ],
+      "container": {
+        "triangles": 1424,
+        "materials": 2,
+        "embeddedImages": [
+          {
+            "width": 512,
+            "height": 512,
+            "sha256": "0a7df302189dc390c3989351e718b4dd9295f3db0ce538a5eb94cf7ea26b7f11"
+          },
+          {
+            "width": 512,
+            "height": 512,
+            "sha256": "ea14a90615bb8b049ad0eb70d4ed7b786b66fe499b46111c70d4b2c967a08453"
+          }
+        ],
+        "attributes": [
+          [
+            "NORMAL",
+            "POSITION",
+            "TANGENT",
+            "TEXCOORD_0"
+          ],
+          [
+            "NORMAL",
+            "POSITION",
+            "TANGENT",
+            "TEXCOORD_0"
+          ]
+        ],
+        "byteLength": 544288,
+        "sha256": "b9f430fe2f04edc635ccdbe42a4fd36108b22c863eeb133cecd457442b76d7f1"
+      },
+      "glbImport": {
+        "meshCount": 1,
+        "blenderWorldMin": [
+          -0.07000000029802322,
+          -0.02499999850988388,
+          0.0
+        ],
+        "blenderWorldMax": [
+          0.07000000029802322,
+          0.02499999850988388,
+          0.20000000298023224
+        ],
+        "blenderBoundsXYZ": [
+          0.14000000059604645,
+          0.04999999701976776,
+          0.20000000298023224
+        ],
+        "unityBoundsXYZ": [
+          0.14000000059604645,
+          0.20000000298023224,
+          0.04999999701976776
+        ],
+        "originWorld": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "triangles": 1424,
+        "materials": 2,
+        "uvLayers": 1,
+        "maxCylindricalLabelTriangleUSpan": null,
+        "degenerateFaces": 0,
+        "boundaryEdgesAfterSeamWeld": 0,
+        "nonmanifoldEdgesAfterSeamWeld": 0,
+        "textureNodes": [
+          {
+            "name": "bb_set_hoh_snack_gold_albedo",
+            "size": [
+              512,
+              512
+            ],
+            "packed": true
+          },
+          {
+            "name": "bb_set_hoh_snack_gold_orm",
+            "size": [
+              512,
+              512
+            ],
+            "packed": true
+          }
+        ],
+        "sha256": "b9f430fe2f04edc635ccdbe42a4fd36108b22c863eeb133cecd457442b76d7f1"
+      },
+      "fbxImport": {
+        "meshCount": 1,
+        "blenderWorldMin": [
+          -0.07000000029802322,
+          -0.024999989196658134,
+          -2.9676425206126567e-10
+        ],
+        "blenderWorldMax": [
+          0.07000000029802322,
+          0.025000007823109627,
+          0.20000000298023224
+        ],
+        "blenderBoundsXYZ": [
+          0.14000000059604645,
+          0.04999999701976776,
+          0.2000000032769965
+        ],
+        "unityBoundsXYZ": [
+          0.14000000059604645,
+          0.2000000032769965,
+          0.04999999701976776
+        ],
+        "originWorld": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "triangles": 1424,
+        "materials": 2,
+        "uvLayers": 1,
+        "maxCylindricalLabelTriangleUSpan": null,
+        "degenerateFaces": 0,
+        "boundaryEdgesAfterSeamWeld": 0,
+        "nonmanifoldEdgesAfterSeamWeld": 0,
+        "textureNodes": [
+          {
+            "name": "bb_set_hoh_snack_gold_albedo.png",
+            "size": [
+              512,
+              512
+            ],
+            "packed": false
+          },
+          {
+            "name": "bb_set_hoh_snack_gold_albedo.png.001",
+            "size": [
+              512,
+              512
+            ],
+            "packed": false
+          }
+        ],
+        "sha256": "0f7f610dd87fab2fffc4b5746b8eb5e03129cb4afa1cec6be3d3fe280f5fdef2"
+      }
+    },
+    {
+      "name": "bb_set_game_strategy",
+      "expectedUnityXYZ": [
+        0.3,
+        0.05,
+        0.2
+      ],
+      "container": {
+        "triangles": 216,
+        "materials": 3,
+        "embeddedImages": [
+          {
+            "width": 512,
+            "height": 512,
+            "sha256": "32f2a1ae6d7d63a4b5b5deded12584bf1ffbda5d3815ea7135b99664279b081b"
+          },
+          {
+            "width": 512,
+            "height": 512,
+            "sha256": "314fcb6af26a973754c7281a7911418a7d209be4d5ac484f64631d58930e9756"
+          }
+        ],
+        "attributes": [
+          [
+            "NORMAL",
+            "POSITION",
+            "TANGENT",
+            "TEXCOORD_0"
+          ],
+          [
+            "NORMAL",
+            "POSITION",
+            "TANGENT",
+            "TEXCOORD_0"
+          ],
+          [
+            "NORMAL",
+            "POSITION",
+            "TANGENT",
+            "TEXCOORD_0"
+          ]
+        ],
+        "byteLength": 492272,
+        "sha256": "238628b0b473b24114d0f585b3a8b7773663a154741691869d5bd50cc454c11a"
+      },
+      "glbImport": {
+        "meshCount": 1,
+        "blenderWorldMin": [
+          -0.15000000596046448,
+          -0.10000000149011612,
+          0.0
+        ],
+        "blenderWorldMax": [
+          0.15000000596046448,
+          0.10000000149011612,
+          0.05000000447034836
+        ],
+        "blenderBoundsXYZ": [
+          0.30000001192092896,
+          0.20000000298023224,
+          0.05000000447034836
+        ],
+        "unityBoundsXYZ": [
+          0.30000001192092896,
+          0.05000000447034836,
+          0.20000000298023224
+        ],
+        "originWorld": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "triangles": 216,
+        "materials": 3,
+        "uvLayers": 1,
+        "maxCylindricalLabelTriangleUSpan": null,
+        "degenerateFaces": 0,
+        "boundaryEdgesAfterSeamWeld": 0,
+        "nonmanifoldEdgesAfterSeamWeld": 0,
+        "textureNodes": [
+          {
+            "name": "bb_set_game_strategy_albedo",
+            "size": [
+              512,
+              512
+            ],
+            "packed": true
+          },
+          {
+            "name": "bb_set_game_strategy_orm",
+            "size": [
+              512,
+              512
+            ],
+            "packed": true
+          }
+        ],
+        "sha256": "238628b0b473b24114d0f585b3a8b7773663a154741691869d5bd50cc454c11a"
+      },
+      "fbxImport": {
+        "meshCount": 1,
+        "blenderWorldMin": [
+          -0.15000000596046448,
+          -0.10000000149011612,
+          -7.395019707701067e-09
+        ],
+        "blenderWorldMax": [
+          0.15000000596046448,
+          0.10000000149011612,
+          0.050000011920928955
+        ],
+        "blenderBoundsXYZ": [
+          0.30000001192092896,
+          0.20000000298023224,
+          0.05000001931594866
+        ],
+        "unityBoundsXYZ": [
+          0.30000001192092896,
+          0.05000001931594866,
+          0.20000000298023224
+        ],
+        "originWorld": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "triangles": 216,
+        "materials": 3,
+        "uvLayers": 1,
+        "maxCylindricalLabelTriangleUSpan": null,
+        "degenerateFaces": 0,
+        "boundaryEdgesAfterSeamWeld": 0,
+        "nonmanifoldEdgesAfterSeamWeld": 0,
+        "textureNodes": [
+          {
+            "name": "bb_set_game_strategy_albedo.png",
+            "size": [
+              512,
+              512
+            ],
+            "packed": false
+          },
+          {
+            "name": "bb_set_game_strategy_albedo.png.001",
+            "size": [
+              512,
+              512
+            ],
+            "packed": false
+          }
+        ],
+        "sha256": "ee320717271adb6fdb83c48a6c5cfe5cd29e90876e3975d9bbbcd1146104ff4e"
+      }
+    },
+    {
+      "name": "bb_set_game_alliance",
+      "expectedUnityXYZ": [
+        0.3,
+        0.05,
+        0.2
+      ],
+      "container": {
+        "triangles": 216,
+        "materials": 3,
+        "embeddedImages": [
+          {
+            "width": 512,
+            "height": 512,
+            "sha256": "289713a1e5c201388f4d8114a0b81cacf43d005cd6d20dea6cfa0b8f1089418b"
+          },
+          {
+            "width": 512,
+            "height": 512,
+            "sha256": "65fff5ec377d14f896c41d82a29d9aff7e41d09a6ae7149b2de36588ef47d353"
+          }
+        ],
+        "attributes": [
+          [
+            "NORMAL",
+            "POSITION",
+            "TANGENT",
+            "TEXCOORD_0"
+          ],
+          [
+            "NORMAL",
+            "POSITION",
+            "TANGENT",
+            "TEXCOORD_0"
+          ],
+          [
+            "NORMAL",
+            "POSITION",
+            "TANGENT",
+            "TEXCOORD_0"
+          ]
+        ],
+        "byteLength": 492164,
+        "sha256": "e6c09da2beb6ce566c23423e800466ba61d59be54daac2363a802d61105fd8b3"
+      },
+      "glbImport": {
+        "meshCount": 1,
+        "blenderWorldMin": [
+          -0.15000000596046448,
+          -0.10000000149011612,
+          0.0
+        ],
+        "blenderWorldMax": [
+          0.15000000596046448,
+          0.10000000149011612,
+          0.05000000447034836
+        ],
+        "blenderBoundsXYZ": [
+          0.30000001192092896,
+          0.20000000298023224,
+          0.05000000447034836
+        ],
+        "unityBoundsXYZ": [
+          0.30000001192092896,
+          0.05000000447034836,
+          0.20000000298023224
+        ],
+        "originWorld": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "triangles": 216,
+        "materials": 3,
+        "uvLayers": 1,
+        "maxCylindricalLabelTriangleUSpan": null,
+        "degenerateFaces": 0,
+        "boundaryEdgesAfterSeamWeld": 0,
+        "nonmanifoldEdgesAfterSeamWeld": 0,
+        "textureNodes": [
+          {
+            "name": "bb_set_game_alliance_albedo",
+            "size": [
+              512,
+              512
+            ],
+            "packed": true
+          },
+          {
+            "name": "bb_set_game_alliance_orm",
+            "size": [
+              512,
+              512
+            ],
+            "packed": true
+          }
+        ],
+        "sha256": "e6c09da2beb6ce566c23423e800466ba61d59be54daac2363a802d61105fd8b3"
+      },
+      "fbxImport": {
+        "meshCount": 1,
+        "blenderWorldMin": [
+          -0.15000000596046448,
+          -0.10000000149011612,
+          -7.395019707701067e-09
+        ],
+        "blenderWorldMax": [
+          0.15000000596046448,
+          0.10000000149011612,
+          0.050000011920928955
+        ],
+        "blenderBoundsXYZ": [
+          0.30000001192092896,
+          0.20000000298023224,
+          0.05000001931594866
+        ],
+        "unityBoundsXYZ": [
+          0.30000001192092896,
+          0.05000001931594866,
+          0.20000000298023224
+        ],
+        "originWorld": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "triangles": 216,
+        "materials": 3,
+        "uvLayers": 1,
+        "maxCylindricalLabelTriangleUSpan": null,
+        "degenerateFaces": 0,
+        "boundaryEdgesAfterSeamWeld": 0,
+        "nonmanifoldEdgesAfterSeamWeld": 0,
+        "textureNodes": [
+          {
+            "name": "bb_set_game_alliance_albedo.png",
+            "size": [
+              512,
+              512
+            ],
+            "packed": false
+          },
+          {
+            "name": "bb_set_game_alliance_albedo.png.001",
+            "size": [
+              512,
+              512
+            ],
+            "packed": false
+          }
+        ],
+        "sha256": "4f4cc77879545d705d9bbbbc0af97a41e8d3e7bf444e57797f6eda2816080a29"
+      }
+    },
+    {
+      "name": "bb_set_game_social",
+      "expectedUnityXYZ": [
+        0.3,
+        0.05,
+        0.2
+      ],
+      "container": {
+        "triangles": 216,
+        "materials": 3,
+        "embeddedImages": [
+          {
+            "width": 512,
+            "height": 512,
+            "sha256": "d15c46948c0a9e7d5cd867806c314d6dcdbafe235ca69be951cd7a6245dfe037"
+          },
+          {
+            "width": 512,
+            "height": 512,
+            "sha256": "cc92ff59475fedbbca6adadc89fa8222bfe60f3c43b95a9b2cc72e11f2c2bfe8"
+          }
+        ],
+        "attributes": [
+          [
+            "NORMAL",
+            "POSITION",
+            "TANGENT",
+            "TEXCOORD_0"
+          ],
+          [
+            "NORMAL",
+            "POSITION",
+            "TANGENT",
+            "TEXCOORD_0"
+          ],
+          [
+            "NORMAL",
+            "POSITION",
+            "TANGENT",
+            "TEXCOORD_0"
+          ]
+        ],
+        "byteLength": 492728,
+        "sha256": "da2e7889b37e1b824cee7662655976ea7b15c51bf435d7e4dcaeb3e360434cba"
+      },
+      "glbImport": {
+        "meshCount": 1,
+        "blenderWorldMin": [
+          -0.15000000596046448,
+          -0.10000000149011612,
+          0.0
+        ],
+        "blenderWorldMax": [
+          0.15000000596046448,
+          0.10000000149011612,
+          0.05000000447034836
+        ],
+        "blenderBoundsXYZ": [
+          0.30000001192092896,
+          0.20000000298023224,
+          0.05000000447034836
+        ],
+        "unityBoundsXYZ": [
+          0.30000001192092896,
+          0.05000000447034836,
+          0.20000000298023224
+        ],
+        "originWorld": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "triangles": 216,
+        "materials": 3,
+        "uvLayers": 1,
+        "maxCylindricalLabelTriangleUSpan": null,
+        "degenerateFaces": 0,
+        "boundaryEdgesAfterSeamWeld": 0,
+        "nonmanifoldEdgesAfterSeamWeld": 0,
+        "textureNodes": [
+          {
+            "name": "bb_set_game_social_albedo",
+            "size": [
+              512,
+              512
+            ],
+            "packed": true
+          },
+          {
+            "name": "bb_set_game_social_orm",
+            "size": [
+              512,
+              512
+            ],
+            "packed": true
+          }
+        ],
+        "sha256": "da2e7889b37e1b824cee7662655976ea7b15c51bf435d7e4dcaeb3e360434cba"
+      },
+      "fbxImport": {
+        "meshCount": 1,
+        "blenderWorldMin": [
+          -0.15000000596046448,
+          -0.10000000149011612,
+          -7.395019707701067e-09
+        ],
+        "blenderWorldMax": [
+          0.15000000596046448,
+          0.10000000149011612,
+          0.050000011920928955
+        ],
+        "blenderBoundsXYZ": [
+          0.30000001192092896,
+          0.20000000298023224,
+          0.05000001931594866
+        ],
+        "unityBoundsXYZ": [
+          0.30000001192092896,
+          0.05000001931594866,
+          0.20000000298023224
+        ],
+        "originWorld": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "triangles": 216,
+        "materials": 3,
+        "uvLayers": 1,
+        "maxCylindricalLabelTriangleUSpan": null,
+        "degenerateFaces": 0,
+        "boundaryEdgesAfterSeamWeld": 0,
+        "nonmanifoldEdgesAfterSeamWeld": 0,
+        "textureNodes": [
+          {
+            "name": "bb_set_game_social_albedo.png",
+            "size": [
+              512,
+              512
+            ],
+            "packed": false
+          },
+          {
+            "name": "bb_set_game_social_albedo.png.001",
+            "size": [
+              512,
+              512
+            ],
+            "packed": false
+          }
+        ],
+        "sha256": "8b2e24005c44ce8ea181c6785a1ce5fb9faff79774278b5f6383ddf12b2369ea"
+      }
+    },
+    {
+      "name": "bb_set_toiletry",
+      "expectedUnityXYZ": [
+        0.06,
+        0.1,
+        0.06
+      ],
+      "container": {
+        "triangles": 864,
+        "materials": 2,
+        "embeddedImages": [
+          {
+            "width": 512,
+            "height": 512,
+            "sha256": "23f28c00fac348d2cf86eb94048cdd8bc33792dfa58919149a1104b50739f24e"
+          },
+          {
+            "width": 512,
+            "height": 512,
+            "sha256": "877aa179732e7ed3f0f7ed25fbf6f7ea31585df0bd2dc7b10633b196e9e53e07"
+          }
+        ],
+        "attributes": [
+          [
+            "NORMAL",
+            "POSITION",
+            "TANGENT",
+            "TEXCOORD_0"
+          ],
+          [
+            "NORMAL",
+            "POSITION",
+            "TANGENT",
+            "TEXCOORD_0"
+          ]
+        ],
+        "byteLength": 545912,
+        "sha256": "dd89d4187020b34ee2838890f2ad46bb8b1785cefde308fbdf6f2b78b24c2475"
+      },
+      "glbImport": {
+        "meshCount": 1,
+        "blenderWorldMin": [
+          -0.029999999329447746,
+          -0.029999999329447746,
+          0.0
+        ],
+        "blenderWorldMax": [
+          0.029999999329447746,
+          0.029999999329447746,
+          0.10000000149011612
+        ],
+        "blenderBoundsXYZ": [
+          0.05999999865889549,
+          0.05999999865889549,
+          0.10000000149011612
+        ],
+        "unityBoundsXYZ": [
+          0.05999999865889549,
+          0.10000000149011612,
+          0.05999999865889549
+        ],
+        "originWorld": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "triangles": 864,
+        "materials": 2,
+        "uvLayers": 1,
+        "maxCylindricalLabelTriangleUSpan": 0.020833373069763184,
+        "degenerateFaces": 0,
+        "boundaryEdgesAfterSeamWeld": 0,
+        "nonmanifoldEdgesAfterSeamWeld": 0,
+        "textureNodes": [
+          {
+            "name": "bb_set_toiletry_albedo",
+            "size": [
+              512,
+              512
+            ],
+            "packed": true
+          },
+          {
+            "name": "bb_set_toiletry_orm",
+            "size": [
+              512,
+              512
+            ],
+            "packed": true
+          }
+        ],
+        "sha256": "dd89d4187020b34ee2838890f2ad46bb8b1785cefde308fbdf6f2b78b24c2475"
+      },
+      "fbxImport": {
+        "meshCount": 1,
+        "blenderWorldMin": [
+          -0.029999999329447746,
+          -0.029999999329447746,
+          -1.947845884586741e-09
+        ],
+        "blenderWorldMax": [
+          0.029999999329447746,
+          0.030000004917383194,
+          0.10000000149011612
+        ],
+        "blenderBoundsXYZ": [
+          0.05999999865889549,
+          0.06000000424683094,
+          0.100000003437962
+        ],
+        "unityBoundsXYZ": [
+          0.05999999865889549,
+          0.100000003437962,
+          0.06000000424683094
+        ],
+        "originWorld": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "triangles": 864,
+        "materials": 2,
+        "uvLayers": 1,
+        "maxCylindricalLabelTriangleUSpan": 0.020833373069763184,
+        "degenerateFaces": 0,
+        "boundaryEdgesAfterSeamWeld": 0,
+        "nonmanifoldEdgesAfterSeamWeld": 0,
+        "textureNodes": [
+          {
+            "name": "bb_set_toiletry_albedo.png",
+            "size": [
+              512,
+              512
+            ],
+            "packed": false
+          },
+          {
+            "name": "bb_set_toiletry_albedo.png.001",
+            "size": [
+              512,
+              512
+            ],
+            "packed": false
+          }
+        ],
+        "sha256": "0ed6c5ad0769201c311654bf3879fe86ccf0040e614b318cffcc6b53af3b26d8"
+      }
+    },
+    {
+      "name": "bb_set_cosmetic",
+      "expectedUnityXYZ": [
+        0.06,
+        0.1,
+        0.06
+      ],
+      "container": {
+        "triangles": 768,
+        "materials": 2,
+        "embeddedImages": [
+          {
+            "width": 512,
+            "height": 512,
+            "sha256": "45a4ba0c4d2240cf1df68eec64c5a1e83d07ae3fd5c2dfbde0f7856fa1b0ef51"
+          },
+          {
+            "width": 512,
+            "height": 512,
+            "sha256": "256729fe69878278b7afba2353fdbe0e7920c78674cb524a65a20f0955058137"
+          }
+        ],
+        "attributes": [
+          [
+            "NORMAL",
+            "POSITION",
+            "TANGENT",
+            "TEXCOORD_0"
+          ],
+          [
+            "NORMAL",
+            "POSITION",
+            "TANGENT",
+            "TEXCOORD_0"
+          ]
+        ],
+        "byteLength": 542736,
+        "sha256": "6736612d29b2ef7a46aed0f9e8b6be3e00d84df0b91b9675554e07ff662d481b"
+      },
+      "glbImport": {
+        "meshCount": 1,
+        "blenderWorldMin": [
+          -0.029999999329447746,
+          -0.029999999329447746,
+          0.0
+        ],
+        "blenderWorldMax": [
+          0.029999999329447746,
+          0.029999999329447746,
+          0.10000000149011612
+        ],
+        "blenderBoundsXYZ": [
+          0.05999999865889549,
+          0.05999999865889549,
+          0.10000000149011612
+        ],
+        "unityBoundsXYZ": [
+          0.05999999865889549,
+          0.10000000149011612,
+          0.05999999865889549
+        ],
+        "originWorld": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "triangles": 768,
+        "materials": 2,
+        "uvLayers": 1,
+        "maxCylindricalLabelTriangleUSpan": 0.020833373069763184,
+        "degenerateFaces": 0,
+        "boundaryEdgesAfterSeamWeld": 0,
+        "nonmanifoldEdgesAfterSeamWeld": 0,
+        "textureNodes": [
+          {
+            "name": "bb_set_cosmetic_albedo",
+            "size": [
+              512,
+              512
+            ],
+            "packed": true
+          },
+          {
+            "name": "bb_set_cosmetic_orm",
+            "size": [
+              512,
+              512
+            ],
+            "packed": true
+          }
+        ],
+        "sha256": "6736612d29b2ef7a46aed0f9e8b6be3e00d84df0b91b9675554e07ff662d481b"
+      },
+      "fbxImport": {
+        "meshCount": 1,
+        "blenderWorldMin": [
+          -0.029999999329447746,
+          -0.029999999329447746,
+          -2.0384434140652274e-09
+        ],
+        "blenderWorldMax": [
+          0.029999999329447746,
+          0.030000006780028343,
+          0.10000000149011612
+        ],
+        "blenderBoundsXYZ": [
+          0.05999999865889549,
+          0.06000000610947609,
+          0.10000000352855953
+        ],
+        "unityBoundsXYZ": [
+          0.05999999865889549,
+          0.10000000352855953,
+          0.06000000610947609
+        ],
+        "originWorld": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "triangles": 768,
+        "materials": 2,
+        "uvLayers": 1,
+        "maxCylindricalLabelTriangleUSpan": 0.020833373069763184,
+        "degenerateFaces": 0,
+        "boundaryEdgesAfterSeamWeld": 0,
+        "nonmanifoldEdgesAfterSeamWeld": 0,
+        "textureNodes": [
+          {
+            "name": "bb_set_cosmetic_albedo.png",
+            "size": [
+              512,
+              512
+            ],
+            "packed": false
+          },
+          {
+            "name": "bb_set_cosmetic_albedo.png.001",
+            "size": [
+              512,
+              512
+            ],
+            "packed": false
+          }
+        ],
+        "sha256": "290a006e5361c3800115b86105078c0455e7ecfbf96c0b8a1dd068674eeef265"
+      }
+    }
+  ],
+  "count": 12,
+  "passed": true,
+  "scriptSha256": "e56797f6425643e39101715f7e032854b4954dbff64d0bacc39cfe23835c1a04",
+  "limits": "Fresh Blender imports verify export integrity, not Unity rendering, interaction or human placement acceptance."
+}

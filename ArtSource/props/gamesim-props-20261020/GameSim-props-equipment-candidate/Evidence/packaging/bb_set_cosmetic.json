@@ -1,0 +1,38 @@
+{
+  "name": "bb_set_cosmetic",
+  "kind": "care",
+  "expectedUnityXYZ": [
+    0.06,
+    0.1,
+    0.06
+  ],
+  "blenderBoundsXYZ": [
+    0.05999999865889549,
+    0.05999999865889549,
+    0.10000000149011612
+  ],
+  "triangles": 768,
+  "materials": [
+    "bb_mat_bb_set_cosmetic",
+    "bb_mat_bb_set_cosmetic_trim"
+  ],
+  "uvLayers": 1,
+  "origin": [
+    0.0,
+    0.0,
+    0.0
+  ],
+  "sourceBlend": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\packaging\\Sources\\bb_set_cosmetic.blend",
+  "glb": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\packaging\\GLB\\bb_set_cosmetic.glb",
+  "fbx": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\packaging\\FBX\\bb_set_cosmetic.fbx",
+  "previews": [
+    "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\packaging\\Previews\\bb_set_cosmetic_threequarter.png",
+    "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\packaging\\Previews\\bb_set_cosmetic_front.png",
+    "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\packaging\\Previews\\bb_set_cosmetic_back.png"
+  ],
+  "sha256": {
+    "bb_set_cosmetic.glb": "6736612d29b2ef7a46aed0f9e8b6be3e00d84df0b91b9675554e07ff662d481b",
+    "bb_set_cosmetic.fbx": "290a006e5361c3800115b86105078c0455e7ecfbf96c0b8a1dd068674eeef265"
+  },
+  "art": "Original authored geometry and deterministic procedural PBR textures; no external assets or generators. Rights reserved for GameSim project; no CC0 grant implied."
+}

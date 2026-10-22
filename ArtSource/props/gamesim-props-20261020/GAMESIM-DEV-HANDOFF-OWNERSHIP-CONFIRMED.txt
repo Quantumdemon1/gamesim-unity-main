@@ -1,0 +1,27 @@
+GameSim Dev — remaining props / competition equipment handoff
+
+Ownership confirmed through the user's relay:
+- GameSim Dev retains the storage-bin package for three bedroom instances and all shared scene integration.
+- This staged batch does not overlap its current art claims.
+- Laundry, shoe boxes, suitcase and gift-box candidates were researched only, not reserved. They are not in this batch.
+- Preserve completed art. No edit/import into D:\GamesimConsolidation while the current validation run holds the source freeze.
+
+Staged implementation: 14 house models for 16 placements; 39 parts across all five competition families.
+Project overlay: 108 files = 53 FBX + 46 textures + 9 C#.
+Four existing C# files change; the other 104 files are additions. The manifest includes every destination, byte count, candidate SHA256 and existing-source guard.
+Separate canonical packages: 19. Native import later produces 30 scoped materials, one competition kit and Unity metadata. No saved-scene edit is included.
+
+Full asset/file manifest:
+C:\Users\kelli\Documents\Codex\2026-09-20\re\outputs\gamesim-props-20261020\integration-file-manifest-ownership-confirmed-01.json
+Spreadsheet-friendly file list:
+C:\Users\kelli\Documents\Codex\2026-09-20\re\outputs\gamesim-props-20261020\integration-file-manifest-ownership-confirmed-01.csv
+Sealed bundle:
+C:\Users\kelli\Documents\Codex\2026-09-20\re\outputs\gamesim-props-20261020\GameSim-props-equipment-candidate-20261020-02.zip
+Bundle SHA256: 8ed432440382c409e2b1cebd96986fad47e9136cac8ecd00838a63091cb0fd66
+Detailed integration sequence:
+C:\Users\kelli\Documents\Codex\2026-09-20\re\outputs\gamesim-props-20261020\GameSim-props-equipment-candidate-02\README.md
+
+Verified: 19 canonical packages; five freshly compiled NoUMA assemblies with all nine candidate code files; geometry/import audits in Blender; patch applicability and sealed bundle hashes.
+Pending: Unity imports, native EditMode/PlayMode execution, UMA compilation, saved-scene adoption, visual acceptance and performance.
+
+This note supersedes only the older bundle README's statement that ownership had not been acknowledged. The sealed bundle is unchanged. No project writes or Unity operations were performed. Direct chat messaging remains unavailable; this is the prepared handoff, not a delivery receipt to another chat.

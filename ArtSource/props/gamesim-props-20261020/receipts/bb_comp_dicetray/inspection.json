@@ -1,0 +1,54 @@
+{
+  "schema": "game_dev.result.v1",
+  "operation": "asset.inspect",
+  "ok": true,
+  "data": {
+    "filePath": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\competition-art-02\\Assemblies\\bb_comp_DiceTray.glb",
+    "fileBytes": 84680,
+    "generator": "glTF-Transform v4.5.1",
+    "meshCount": 12,
+    "primitiveCount": 12,
+    "vertexCount": 2160,
+    "triangleCount": 1264,
+    "undrawnMeshCount": 0,
+    "undrawnPrimitiveCount": 0,
+    "undrawnTriangleCount": 0,
+    "sceneGraphFallback": false,
+    "materialCount": 4,
+    "textureCount": 0,
+    "textureResolutions": [],
+    "boundingBox": {
+      "min": [
+        -0.4800000134855509,
+        0,
+        -0.2550000064074993
+      ],
+      "max": [
+        0.4800000134855509,
+        1.3649999722838402,
+        0.7849999908357859
+      ],
+      "sizeMeters": [
+        0.9600000269711018,
+        1.3649999722838402,
+        1.0399999972432852
+      ]
+    },
+    "boundingBoxEmpty": false,
+    "hasUVs": true,
+    "hasNormals": true,
+    "hasTangents": false,
+    "pbr": {
+      "hasBaseColorTexture": false,
+      "hasMetallicRoughnessTexture": false,
+      "hasNormalTexture": false,
+      "hasOcclusionTexture": false,
+      "hasEmissiveTexture": false
+    },
+    "animationCount": 0,
+    "hasSkin": false,
+    "warnings": [
+      "no base colour texture on any material: the asset is untextured and will read as flat colour"
+    ]
+  }
+}

@@ -1,0 +1,69 @@
+{
+  "schema": "game_dev.result.v1",
+  "operation": "asset.inspect",
+  "ok": true,
+  "data": {
+    "filePath": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\packaging\\GLB\\bb_set_coffee_tin.glb",
+    "fileBytes": 555768,
+    "generator": "glTF-Transform v4.5.1",
+    "meshCount": 1,
+    "primitiveCount": 2,
+    "vertexCount": 1010,
+    "triangleCount": 1344,
+    "undrawnMeshCount": 0,
+    "undrawnPrimitiveCount": 0,
+    "undrawnTriangleCount": 0,
+    "sceneGraphFallback": false,
+    "materialCount": 2,
+    "textureCount": 2,
+    "textureResolutions": [
+      {
+        "name": "bb_set_coffee_tin_albedo",
+        "width": 512,
+        "height": 512,
+        "mimeType": "image/png",
+        "bytes": 210725
+      },
+      {
+        "name": "bb_set_coffee_tin_orm",
+        "width": 512,
+        "height": 512,
+        "mimeType": "image/png",
+        "bytes": 285668
+      }
+    ],
+    "boundingBox": {
+      "min": [
+        -0.05999999865889549,
+        0,
+        -0.05999999865889549
+      ],
+      "max": [
+        0.05999999865889549,
+        0.1599999964237213,
+        0.05999999865889549
+      ],
+      "sizeMeters": [
+        0.11999999731779099,
+        0.1599999964237213,
+        0.11999999731779099
+      ]
+    },
+    "boundingBoxEmpty": false,
+    "hasUVs": true,
+    "hasNormals": true,
+    "hasTangents": true,
+    "pbr": {
+      "hasBaseColorTexture": true,
+      "hasMetallicRoughnessTexture": true,
+      "hasNormalTexture": false,
+      "hasOcclusionTexture": false,
+      "hasEmissiveTexture": false
+    },
+    "animationCount": 0,
+    "hasSkin": false,
+    "warnings": [
+      "texture is below 1024px on an axis and will blur at close range: bb_set_coffee_tin_albedo (512x512), bb_set_coffee_tin_orm (512x512)"
+    ]
+  }
+}

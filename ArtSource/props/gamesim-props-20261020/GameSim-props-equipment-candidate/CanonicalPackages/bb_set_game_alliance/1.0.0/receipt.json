@@ -1,0 +1,23 @@
+{
+  "completedAt": "2026-10-21T04:06:14.264Z",
+  "destination": {
+    "assetId": "bb_set_game_alliance",
+    "version": "1.0.0"
+  },
+  "evidence": {
+    "blenderNormalizationPerformed": false,
+    "gpuImportTestPerformed": false,
+    "humanVisualReviewPerformed": false,
+    "modelBytesCopiedAndHashed": true,
+    "policyValidationCompleted": true,
+    "staticInspectionCompleted": true
+  },
+  "manifestSha256": "88360139c40899578c97bf0add1d63ed5f1d284ec8f2d04bcccbcbb1f44a15bf",
+  "packageId": "pkg_cd542da241d01327172555b1",
+  "schema": "game_dev.package_receipt.v1",
+  "source": {
+    "bytes": 492164,
+    "fileName": "bb_set_game_alliance.glb",
+    "sha256": "e6c09da2beb6ce566c23423e800466ba61d59be54daac2363a802d61105fd8b3"
+  }
+}

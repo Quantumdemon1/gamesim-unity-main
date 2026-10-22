@@ -1,0 +1,65 @@
+{
+  "schema": "game_dev.job.v1",
+  "id": "job_2e6df0ad-2375-4554-949b-cbf9e715649c",
+  "operation": "package.build",
+  "status": "completed",
+  "request": {
+    "positionals": [
+      "package",
+      "build",
+      "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\packaging\\GLB\\bb_set_hoh_snack_gold.glb"
+    ],
+    "flags": {
+      "output-dir": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\outputs\\gamesim-props-20261020"
+    },
+    "input": {
+      "name": "bb_set_hoh_snack_gold",
+      "version": "1.0.0",
+      "category": "environment_prop",
+      "license": "LicenseRef-GameSim-Original",
+      "description": "Original house packaging prop, metre dimensions and floor-centre origin. Self-contained PBR GLB; native FBX material slots use the bound separate material map. Existing placement envelope retained. Native Unity appearance/placement acceptance pending.",
+      "policy": {
+        "requireUVs": true,
+        "requireNormals": true,
+        "requireTangentsWithNormalMap": true,
+        "requireBaseColorTexture": true,
+        "maxTriangles": 2500,
+        "maxMaterials": 3,
+        "minTextureSize": 256,
+        "requirePowerOfTwoTextures": true,
+        "maxDimensionMeters": 3,
+        "minDimensionMeters": 0.001
+      },
+      "provenance": {
+        "origin": "authored",
+        "author": "[redacted]",
+        "model": "Blender 5.2.2 LTS",
+        "sourceUri": "file:///C:/Users/kelli/Documents/Codex/2026-09-20/re/work/house-equipment-20261020/packaging/GLB/bb_set_hoh_snack_gold.glb",
+        "prompt": "Original GameSim house dressing and competition equipment within existing placement and motion envelopes.",
+        "notes": "Original house packaging prop, metre dimensions and floor-centre origin. Self-contained PBR GLB; native FBX material slots use the bound separate material map. Existing placement envelope retained. Native Unity appearance/placement acceptance pending. No third-party assets or provider services. packaging/build_packaging.py sha256=043951fbfb212c3a92a6f2e34c884c4e7ac6b97ac125c8b8ec4642a668036748; packaging/finish_packaging.py sha256=4f46a7fc5f28eefb2234c563bac475eff3e053a0e7ba290acc68df8cfeca2c61; packaging/Sources/bb_set_hoh_snack_gold.blend sha256=2cbfcdd9330c671e988d72ede4ed78e7897a76d2645562016ba9861b20cfc33a; packaging/Reports/material-map.json sha256=5fea2dbad0c809fec3170c2b68b465f267e4c5f6c1f22fa0993d9fe0a5a2617c"
+      }
+    }
+  },
+  "attempts": 1,
+  "eventCount": 2,
+  "artifacts": [
+    {
+      "path": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\outputs\\gamesim-props-20261020\\.game-dev\\packages\\bb_set_hoh_snack_gold\\1.0.0",
+      "kind": "asset_package"
+    },
+    {
+      "path": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\outputs\\gamesim-props-20261020\\.game-dev\\packages\\bb_set_hoh_snack_gold\\1.0.0\\manifest.json",
+      "kind": "manifest",
+      "sha256": "265c9fcb0e724bc96523c5427597a9182c8a2894043a66f0d1f0fff92b3bf0ba"
+    },
+    {
+      "path": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\outputs\\gamesim-props-20261020\\.game-dev\\packages\\bb_set_hoh_snack_gold\\1.0.0\\receipt.json",
+      "kind": "receipt"
+    }
+  ],
+  "createdAt": "2026-10-21T04:06:09.400Z",
+  "updatedAt": "2026-10-21T04:06:09.522Z",
+  "startedAt": "2026-10-21T04:06:09.420Z",
+  "completedAt": "2026-10-21T04:06:09.522Z",
+  "receiptPath": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\outputs\\gamesim-props-20261020\\.game-dev\\jobs\\job_2e6df0ad-2375-4554-949b-cbf9e715649c\\receipt.json"
+}

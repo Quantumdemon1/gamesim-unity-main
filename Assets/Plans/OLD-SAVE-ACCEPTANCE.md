@@ -816,6 +816,9 @@ This section records the integration increment and its pending gates, not an acc
     (`FrozenEpisodeV28IntegrationTests`), not on the old fixtures, and no record-mode sweep of the owner's real saves
     (on copies) has run on a schema-29 build. Section 6's step 5 is not done either: `OldSaveTrace.Newest` is 28 and
     there are no schema-29 fixtures.
-  - Whether this shape is the schema 29 the main line claimed (§5: the Frozen28 freeze with the role/AP records) is
-    the owner's call. Main and `claude/consolidation` are still at 28, so a save written by this branch cannot load
-    on them.
+  - **Decided 2026-10-22 under the owner's delegation of schema 29, and confirmed by the owner**
+    (OWNER-DECISIONS-2026-10-22 §5 and its addendum): this shape is the schema 29 the main line claimed (the Frozen28
+    freeze with the role/AP records). The `dialogue` store is the role, dialogue and time contract of
+    `ROLE_DIALOGUE_ECONOMY_20261012.md`. Schema 29 freezes when PR #28 merges, and any later persisted field takes 30.
+    Main and `claude/consolidation` are still at 28, so a save written by this branch cannot load on them until it
+    merges.

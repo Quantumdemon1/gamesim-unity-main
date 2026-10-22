@@ -506,7 +506,21 @@ namespace Gamesim.Tests.EditMode
         [Test]
         public void CompletedEvidenceRemainsValidAfterItsNpcActuallyDepartsOnOneBoundedLegalRoute()
         {
-            var cited = Cited(); var citation = cited.dialogue.episodes.Single().evidence.Single();
+            // This case has its own carrier. On the shared one (week 5, final four) the cited NPC, Alex, is the only
+            // voter: on every dialogue ending he evicts the player (by a margin of about 10, mostly the player's
+            // threat score of -19), then reaches the final two and finishes RunnerUp, so no legal choice after the
+            // citation can make him depart. departure-carrier.json comes from the shared carrier's own producer
+            // (seed 13, 8 players, Avery, the same walk, overlays and public-field recorder), which on this source's
+            // Simulation build reproduces the shared carrier byte for byte, with ONE player decision changed: at the
+            // week-3 veto meeting the player, as HoH, names Alex as the replacement nominee (the plain walk's own
+            // first choice; the producer's rescuer-protection overlay had named Riley). Alex survives that vote, and
+            // the producer captures its witness at the week-4 Campaign: the player nominated, Alex one of two
+            // voters, his week-2 rescue the record to cite. It was chosen offline from the single player-decision
+            // variants of that walk; the route below is unchanged and fixed, and on this carrier it ends with
+            // Quinn's final eviction of Alex. Nothing here searches or falls back at run time.
+            var departure = DepartureCarrier(out string voter); // This carrier's cited NPC; it shadows the shared carrier's on purpose.
+            string departureImage = Image(departure);
+            var cited = CitedOn(departure, voter); var citation = cited.dialogue.episodes.Single().evidence.Single();
             int citationRevision = citation.capturedRevision, sequenceAfterCitation = cited.nextSequence;
             var engine = new EpisodeEngine(cited); var state = Accepted(engine, Choice(engine.Snapshot, DialogueCampaignV1.Leave));
             string proof = Image(state.dialogue.episodes.Single().evidence.Single()); bool observedDeparture = false;
@@ -566,6 +580,51 @@ namespace Gamesim.Tests.EditMode
             Assert.That(state.Find(voter).status == ContestantStatus.Jury
                 || state.Find(voter).status == ContestantStatus.Evicted, Is.True);
             Assert.That(Image(state.dialogue.episodes.Single().evidence.Single()), Is.EqualTo(proof)); Valid(state);
+            Assert.That(Image(departure), Is.EqualTo(departureImage), "The retained departure carrier is never mutated.");
+        }
+
+        // The departure case's own retained carrier, admitted as the shared one is: its declared bytes, an exact typed
+        // round trip and the sole pilot activation. Returns its cited NPC, the week-2 rescuer.
+        private static EpisodeState DepartureCarrier(out string cited)
+        {
+            string path = Path.Combine(Application.dataPath, "Gamesim/Tests/EditMode/Fixtures/DialoguePublicRescueV2/departure-carrier.json");
+            Assert.That(File.Exists(path), Is.True, "The departure carrier must be explicitly admitted; no generation fallback.");
+            var carrier = JObject.Parse(File.ReadAllText(path, new UTF8Encoding(false, true)));
+            Assert.That((string)carrier["kind"], Is.EqualTo("immutable-diagnostic-public-field-dto-carrier-not-savewire"));
+            byte[] bytes = Convert.FromBase64String((string)carrier["base64"]);
+            Assert.That(bytes.Length, Is.EqualTo((int)carrier["bytes"]));
+            Assert.That(Sha(bytes), Is.EqualTo((string)carrier["sha256"]));
+            Assert.That(Convert.ToBase64String(bytes), Is.EqualTo((string)carrier["base64"]));
+            string original = new UTF8Encoding(false, true).GetString(bytes);
+            var actual = JsonConvert.DeserializeObject<EpisodeState>(original, Fields);
+            Assert.That(Image(actual), Is.EqualTo(original), "Exact typed original round trip BEFORE any declared rule change.");
+            Assert.That(actual.week, Is.EqualTo(4)); Assert.That(actual.revision, Is.EqualTo(62));
+            Assert.That(actual.phase, Is.EqualTo(EpisodePhase.Campaign));
+            Assert.That(actual.dialogueRulesVersion, Is.Zero, "The retained original is not silently reinterpreted as shipping-v2.");
+            Valid(actual);
+            var departure = actual.Clone();
+            Assert.That(Image(departure), Is.EqualTo(original), "The clone itself may not alter any original field or number.");
+            departure.dialogueRulesVersion = 1; // Declared pilot test activation ONLY, as for the shared carrier.
+            var allowed = Parse(original); allowed["dialogueRulesVersion"] = 1;
+            Assert.That(ExactCapturedJson.Equal(Parse(Image(departure)), allowed), Is.True,
+                "Complete ordered/type/value equality after the SOLE declared pilot activation.");
+            Valid(departure);
+            var rescue = departure.ledger.power.Single(p => p.week == 2);
+            Assert.That(rescue.vetoUsed, Is.True); Assert.That(rescue.savedId, Is.EqualTo(departure.playerId));
+            cited = rescue.vetoHolderId;
+            Assert.That(departure.Find(cited).name, Does.StartWith("Alex"));
+            Assert.That(departure.nominees, Does.Contain(departure.playerId));
+            Assert.That(EpisodeEngine.Voters(departure).Select(p => p.id), Does.Contain(cited));
+            return departure;
+        }
+
+        // The departure carrier's citation, made as Cited() makes the shared carrier's: Enter, then Cite.
+        private static EpisodeState CitedOn(EpisodeState carrier, string npc)
+        {
+            var engine = new EpisodeEngine(carrier); var current = engine.Snapshot;
+            Assert.That(DialogueRules.TryBuildEntryCommand(current, npc, out var command), Is.True);
+            Assert.That(command.text, Is.EqualTo(V2)); command.id = "rescue-v2-entry-" + current.revision;
+            return Accepted(engine, Choice(Accepted(engine, command), DialogueCampaignV2.Cite));
         }
 
         [TestCase("identical-complete-values")]

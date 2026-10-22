@@ -183,7 +183,9 @@ namespace Gamesim.Tests.PlayMode
                     && item.bounds.min.x >= deck.min.x && item.bounds.max.x <= deck.max.x
                     && item.bounds.min.y <= deck.max.y + EpisodeDirector.CompetitionSignLineCeiling)
                 .ToList();
-            Assert.That(inTheWay.Select(item => item.renderer.name), Does.Contain("Arch lintel"), "The entrance arch stands between the deck and the words.");
+            // The authored arch (the art brief's A3): one mesh, its lintel and stepped crown included.
+            bool Arch(Transform t) { for (; t != null; t = t.parent) if (t.name == "bb_set_entrancearch") return true; return false; }
+            Assert.That(inTheWay.Any(item => Arch(item.renderer.transform)), Is.True, "The entrance arch stands between the deck and the words.");
             var tallest = inTheWay.OrderByDescending(item => item.bounds.max.y).First();
             float obstacle = tallest.bounds.max.y;
             Assert.That(obstacle, Is.GreaterThanOrEqualTo(gateTop - .01f), "Nothing in the way is lower than the gate's head.");

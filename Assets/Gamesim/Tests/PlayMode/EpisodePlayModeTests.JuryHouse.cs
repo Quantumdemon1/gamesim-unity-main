@@ -89,9 +89,9 @@ namespace Gamesim.Tests.PlayMode
                     && state.Active.Any(actor => actor.isPlayer) && state.pendingDiary == null,
                 "the player in the window at three");
             yield return PutAwayTheCards();
-            foreach (bool larger in new[] { false, true })
+            foreach (var (textSize, larger) in TextScales.Steps)
             {
-                yield return ApplyTextSize(larger);
+                yield return ApplyTextSize(textSize);
                 yield return OpenFreeTime();
                 var before = director.Snapshot;
                 var tile = ButtonWithCaption(EpisodeDirector.JuryHouseCaption);
@@ -103,10 +103,10 @@ namespace Gamesim.Tests.PlayMode
                 AssertEquivalent(before, director.Snapshot);
                 // A station screen at three (UI-UX-PASS-PLAN E0): the window's way on and its
                 // unused-actions note, which cut the juror cards mid-sentence, are not pinned under it.
-                string where = "The jury house at three" + (larger ? " at the larger text" : "");
+                string where = "The jury house at three" + (larger ? " " + TextScales.At(textSize) : "");
                 AssertAStationScreen(where);
                 if (Application.isBatchMode)
-                    yield return CaptureFraming(larger ? "endgame-jury-house-three-large" : "endgame-jury-house-three", settle: false,
+                    yield return CaptureFraming("endgame-jury-house-three" + TextScales.Suffix(textSize), settle: false,
                         inspect: frame => LogTheFit(where + " on the 16:9 frame"));
                 ButtonWithCaption(EpisodeDirector.LeaveJuryHouseCaption).onClick.Invoke();
                 yield return null; yield return null;

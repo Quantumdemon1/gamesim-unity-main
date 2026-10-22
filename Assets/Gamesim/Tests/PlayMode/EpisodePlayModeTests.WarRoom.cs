@@ -2,6 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using Gamesim.Episode;
+using Gamesim.Presentation;
 using Gamesim.Simulation;
 using NUnit.Framework;
 using TMPro;
@@ -124,15 +125,16 @@ namespace Gamesim.Tests.PlayMode
         public IEnumerator WarRoom_ThePlanCardFitsInEveryHouseAtBothTextSizes()
         {
             foreach (int size in new[] { 6, 8, 12 })
-            foreach (bool larger in new[] { false, true })
+            foreach (var textSize in TextSizes.All)
             {
-                string where = "The war room's card in a house of " + size + (larger ? " at the larger text" : " at the standard text");
+                string where = "The war room's card in a house of " + size + " " + TextScales.At(textSize);
                 yield return InstallTalkingHouse(size, true, WarRoomHouse(true));
                 yield return SettleCast();
-                yield return ApplyTextSize(larger);
+                yield return ApplyTextSize(textSize);
                 var listener = Listener(director.Snapshot);
                 Assert.That(WarRoomPact().members, Has.Member(listener.id), where + ": precondition, the one talked to was at the meeting.");
                 yield return TalkInRoom(listener.id, "Bedroom");
+                yield return EnterConversationCategory(EpisodeDirector.DealsCategoryCaption);
                 Assert.That(director.IsConversationOpen, Is.True, where + ": the conversation opens.");
                 var state = director.Snapshot;
                 var pact = WarRoomPact();
@@ -160,13 +162,13 @@ namespace Gamesim.Tests.PlayMode
                 Assert.That(director.GetComponentsInChildren<UnityEngine.UI.Button>().Where(b => b.IsActive())
                     .SelectMany(b => b.GetComponentsInChildren<TMP_Text>(true)).Any(t => t.text.StartsWith("Call the vote in " + WarRoomPactName, System.StringComparison.Ordinal)),
                     Is.False, where + ": a pact of three takes no call of its own.");
-                AssertConversationFits(larger, where);
+                AssertConversationFits(textSize, where);
                 AssertTagsHaveRoom(where);
                 foreach (var label in director.GetComponentsInChildren<TMP_Text>()
                              .Where(label => label.gameObject.activeInHierarchy && (label.text == PactPlans.Heading(WarRoomPactName)
                                  || answers.Any(a => a.caption == label.text))))
                     AssertLineHasRoom(label, where);
-                if (size == 8) yield return CaptureConversation("conversation-war-room" + (larger ? "-large" : ""), where, null);
+                if (size == 8) yield return CaptureConversation("conversation-war-room" + TextScales.Suffix(textSize), where, null);
                 director.ClosePanels();
                 yield return null;
             }
@@ -231,6 +233,7 @@ namespace Gamesim.Tests.PlayMode
 
             // The card, in the conversation the player comes back to.
             yield return TalkInRoom(listener.id, "Bedroom");
+            yield return EnterConversationCategory(EpisodeDirector.DealsCategoryCaption);
             string other = met.nominees[1];
             string counter = EpisodeDirector.PlanCounterCaption(met.Find(other).name);
             // Read once the conversation is open: opening a panel can commit the house's own tick.
@@ -280,6 +283,7 @@ namespace Gamesim.Tests.PlayMode
                 Is.EqualTo(PactPlans.OpenPlan(before, WarRoomPactId).says.Select(say => (say.memberId, say.targetId))), "with its says.");
             var listener = Listener(loaded);
             yield return TalkInRoom(listener.id, "Bedroom");
+            yield return EnterConversationCategory(EpisodeDirector.DealsCategoryCaption);
             Assert.That(ButtonWithCaptionOrNull(EpisodeDirector.PlanLieLowCaption), Is.Not.Null, "and the card redraws from it.");
             director.ClosePanels();
             yield return null;

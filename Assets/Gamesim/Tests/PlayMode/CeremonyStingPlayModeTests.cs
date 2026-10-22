@@ -97,9 +97,11 @@ namespace Gamesim.Tests.PlayMode
             var group = sting.GetComponent<CanvasGroup>();
             sting.Play(CeremonySting.EvictionKind, "Jamie Roberts has been evicted.", false);
 
-            // The entrance and the hold are 2.22 s; 2.40 s is about halfway down the fade-out.
-            yield return new WaitForSecondsRealtime(2.40f);
-            Assert.That(sting.IsPlaying, Is.True, "The card should still be fading out at 2.40 s.");
+            // The entrance and the hold - as long as the strip's words take to read (A10), 3 s for
+            // these six - and 0.18 s more is about halfway down the fade-out.
+            float midFade = CeremonySting.FadeIn + sting.HoldSeconds + .18f;
+            yield return new WaitForSecondsRealtime(midFade);
+            Assert.That(sting.IsPlaying, Is.True, "The card should still be fading out at " + midFade.ToString("0.00") + " s.");
             Assert.That(group.alpha, Is.GreaterThan(0.02f).And.LessThan(0.99f),
                 "The card should be mid-fade here; that is the state this test strands it from.");
 
@@ -215,9 +217,43 @@ namespace Gamesim.Tests.PlayMode
             yield return null;
             Assert.That(VisibleText(), Does.Contain("VETO MEETING"));
 
-            // Fade in, hold and fade out total 2.6s; allow a margin for frame granularity.
-            yield return new WaitForSecondsRealtime(3.1f);
+            // Fade in, the hold its seven words take to read (A10, 3.3 s) and fade out; allow a
+            // margin for frame granularity.
+            yield return new WaitForSecondsRealtime(CeremonySting.FadeIn + sting.HoldSeconds + CeremonySting.FadeOut + .5f);
             Assert.That(VisibleText(), Is.Empty, "The card should take itself down without being told.");
+        }
+
+        /// <summary>
+        /// The strip holds long enough to read (PLAN A, A10): its authored two seconds, or 1.2 seconds
+        /// and 0.3 a word of its headline and its sentence when that is longer, and half as long again
+        /// under the "Longer" caption time. Near the end of its hold it is still up, still takes no
+        /// input, and under reduced motion still has not moved; then it goes by itself.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator Sting_HoldsForItsReadingTime_AndHalfAsLongAgainWhenLonger()
+        {
+            const string sentence = "Maya Hassan nominated Taylor Kim and Jamie Roberts.";
+            sting.Play(CeremonySting.NominationKind, sentence, false);
+            // "NOMINATION CEREMONY" and eight words: ten, read in 4.2 s, past the authored 2.
+            Assert.That(sting.HoldSeconds, Is.EqualTo(1.2f + 0.3f * 10).Within(1e-4f));
+            sting.Play(CeremonySting.VetoKind, "", false);
+            Assert.That(sting.HoldSeconds, Is.EqualTo(CeremonySting.AuthoredHold).Within(1e-4f),
+                "The headline alone reads in 1.8 s: the authored 2 s stands.");
+            yield return null;
+
+            sting.CaptionTime = CaptionTime.Longer;
+            sting.Play(CeremonySting.NominationKind, sentence, true);
+            Assert.That(sting.HoldSeconds, Is.EqualTo((1.2f + 0.3f * 10) * 1.5f).Within(1e-4f), "Longer: half as long again.");
+            yield return null;
+            var card = CardRect();
+            var settled = card.anchoredPosition;
+            yield return new WaitForSecondsRealtime(sting.HoldSeconds - .6f);
+            Assert.That(sting.IsPlaying, Is.True, "Still up near the end of its reading time.");
+            Assert.That(VisibleText(), Does.Contain(sentence));
+            Assert.That(card.anchoredPosition, Is.EqualTo(settled), "Reduced motion: it holds where it landed.");
+            Assert.That(sting.GetComponent<CanvasGroup>().blocksRaycasts, Is.False, "and it takes no input however long it holds.");
+            yield return new WaitForSecondsRealtime(CeremonySting.FadeIn + CeremonySting.FadeOut + 1f);
+            Assert.That(sting.IsPlaying, Is.False, "and then it goes by itself.");
         }
 
         [UnityTest]
@@ -233,11 +269,6 @@ namespace Gamesim.Tests.PlayMode
         }
 
         /// <summary>
-        /// The card renders on a higher canvas than the HUD, so anything it covers is invisible even
-        /// though it stays clickable. The episode panel's top edge and its Close button reach y=330
-        /// in the 1600x900 reference, so the card has to stay above that at every text size.
-        /// </summary>
-        /// <summary>
         /// The headline has to be drawn, not only set. In a box a pixel shorter than Inter's line
         /// TextMesh Pro truncates the whole line, and every sting showed its detail under a band of
         /// empty glass while its text still said NOMINATION CEREMONY - which is all the other
@@ -246,7 +277,7 @@ namespace Gamesim.Tests.PlayMode
         [UnityTest]
         public IEnumerator Play_DrawsTheHeadlineAtEveryTextSize()
         {
-            foreach (float scale in new[] { 1f, 1.2f })
+            foreach (float scale in TextScales.All)
             {
                 sting.FontScale = scale;
                 sting.Play(CeremonySting.NominationKind, "Maya Hassan nominated Taylor Kim.", true);
@@ -275,7 +306,7 @@ namespace Gamesim.Tests.PlayMode
         {
             var canvas = (RectTransform)sting.transform;
 
-            foreach (float scale in new[] { 1f, 1.2f })
+            foreach (float scale in TextScales.All)
             {
                 sting.FontScale = scale;
                 sting.Play(CeremonySting.NominationKind, "Maya Hassan nominated Taylor Kim.", false);
@@ -377,22 +408,28 @@ namespace Gamesim.Tests.PlayMode
             float baseHeight = CardRect().rect.height;
             float baseFont = Headline().fontSize;
 
-            sting.FontScale = 1.2f;
-            sting.Play(CeremonySting.EvictionKind, "Casey Wilson has been evicted.", false);
-            yield return null;
+            // Each size up from the last: the larger text over the standard, the largest over the larger.
+            foreach (float scale in TextScales.All.Skip(1))
+            {
+                sting.FontScale = scale;
+                sting.Play(CeremonySting.EvictionKind, "Casey Wilson has been evicted.", false);
+                yield return null;
 
-            Assert.That(Headline().fontSize, Is.GreaterThan(baseFont), "Large text should enlarge the headline.");
-            Assert.That(CardRect().rect.height, Is.GreaterThan(baseHeight), "The card should grow with it.");
-            Assert.That(Headline().rectTransform.rect.height,
-                Is.GreaterThanOrEqualTo(Headline().fontSize * 1.2f),
-                "The headline needs a full line box or it renders truncated.");
+                Assert.That(Headline().fontSize, Is.GreaterThan(baseFont), "Text at " + scale + " should enlarge the headline.");
+                Assert.That(CardRect().rect.height, Is.GreaterThan(baseHeight), "The card should grow with it at " + scale + ".");
+                Assert.That(Headline().rectTransform.rect.height,
+                    Is.GreaterThanOrEqualTo(Headline().fontSize * 1.2f),
+                    "The headline needs a full line box or it renders truncated, at " + scale + ".");
+                baseHeight = CardRect().rect.height;
+                baseFont = Headline().fontSize;
+            }
         }
 
         /// <summary>
         /// The strip on the kit (UI-UX-PASS-PLAN V0, decision 14): every beat leads with its
         /// medallion where the accent bar stood - the veto meeting with its own mark, drawn as
         /// authored, every other beat with a ring of its colour round its glyph - and its name beside
-        /// it, every letter drawn and ending inside the card, at both text sizes on the 4:3 batch
+        /// it, every letter drawn and ending inside the card, at every text size on the 4:3 batch
         /// canvas, which narrows the strip to about 525, and on the 16:9 frame. The old bar is gone.
         /// </summary>
         [UnityTest]
@@ -404,7 +441,7 @@ namespace Gamesim.Tests.PlayMode
                 CeremonySting.NominationKind, CeremonySting.VetoKind, CeremonySting.EvictionKind,
                 CeremonySting.WinnerKind, CeremonySting.FinalEvictionKind, CeremonySting.WalkOutKind,
             };
-            foreach (float scale in new[] { 1f, 1.2f })
+            foreach (float scale in TextScales.All)
             foreach (var kind in kinds)
             {
                 sting.FontScale = scale;
@@ -450,10 +487,17 @@ namespace Gamesim.Tests.PlayMode
         /// <summary>
         /// The longest sentence a veto meeting's strip says, from the cast's three longest names -
         /// "{holder} saves {saved}; {replacement} is the replacement nominee.", the engine's own
-        /// shape - said whole at both text sizes on the 4:3 batch canvas and the 16:9 frame: on two
+        /// shape - said whole at every text size on the 4:3 batch canvas and the 16:9 frame: on two
         /// lines where one will not hold it, in a box 1.3 times its type a line, every letter drawn
         /// (UI-UX-PASS-PLAN V0 review: at 4:3 and the larger text it was cut after "is the" while the
         /// status line that used to carry it stood down). A short sentence keeps the one line.
+        ///
+        /// <para>At the largest text (the owner's contract of 2026-10-15) the sentence keeps the
+        /// largest text's own size, 27 points, and the strip takes the lines it needs, each frame's
+        /// count asserted as measured: four on the 4:3 canvas, where the words have 381 beside the
+        /// medallion, and two on the 16:9 frame, where they have 595. Held to one line or two on the
+        /// 4:3 canvas, it shrank to the shrink's floor and still wrapped to a third line, at about
+        /// the standard text's size, in a box made for two.</para>
         /// </summary>
         [UnityTest]
         public IEnumerator TheLongestVetoSentence_IsSaidWholeAtEveryTextSize([Values(1200, 1600)] int frameWidth)
@@ -461,7 +505,7 @@ namespace Gamesim.Tests.PlayMode
             yield return OnAFrame(frameWidth, 900);
             var names = CastTemplates.Everyone.Select(template => template.Name).OrderByDescending(name => name.Length).Take(3).ToArray();
             string longest = names[0] + " saves " + names[1] + "; " + names[2] + " is the replacement nominee.";
-            foreach (float scale in new[] { 1f, 1.2f })
+            foreach (float scale in TextScales.All)
             {
                 string where = "At font scale " + scale + " on the " + frameWidth + " by 900 frame";
                 sting.FontScale = scale;
@@ -483,18 +527,121 @@ namespace Gamesim.Tests.PlayMode
                 Assert.That(detail.isTextTruncated, Is.False, where + ": '" + longest + "' is cut at " + detail.fontSize.ToString("0.#") + " points.");
                 Assert.That(drawn, Is.EqualTo(longest.Count(letter => !char.IsWhiteSpace(letter))), where + ": every letter of the sentence is drawn.");
                 int lines = detail.textInfo.lineCount;
-                Assert.That(lines, Is.InRange(1, 2), where + ": the sentence takes one line or two.");
+                if (LargestPages.At(scale))
+                {
+                    Photograph("ceremony-sting-veto-largest-" + frameWidth + "x900");
+                    Assert.That(lines, Is.EqualTo(frameWidth == 1200 ? 4 : 2), where + ": the sentence takes the lines measured for this frame at the largest text.");
+                    Assert.That(detail.fontSize, Is.EqualTo(27f), where + ": the sentence is said at the largest text's own size, never shrunk toward the standard's.");
+                }
+                else Assert.That(lines, Is.InRange(1, 2), where + ": the sentence takes one line or two.");
                 Assert.That(detail.rectTransform.rect.height, Is.GreaterThanOrEqualTo(lines * detail.fontSize * 1.3f - .01f),
                     where + ": a box " + detail.rectTransform.rect.height.ToString("0.#") + " high holds " + lines + " lines of " + detail.fontSize.ToString("0.#") + " points.");
-                if (lines == 2)
-                    Assert.That(CardRect().rect.height, Is.GreaterThan(oneLine), where + ": the strip grows for the second line rather than cutting it.");
+                if (lines >= 2)
+                    Assert.That(CardRect().rect.height, Is.GreaterThan(oneLine), where + ": the strip grows for the lines past the first rather than cutting them.");
                 var box = InCard(CardRect(), detail.rectTransform);
                 Assert.That(box.yMin, Is.GreaterThanOrEqualTo(CardRect().rect.yMin - .5f), where + ": the sentence's box stands inside the strip.");
                 sting.Cancel();
             }
         }
 
+        /// <summary>
+        /// The strip is the largest text's one fit exception (the owner's contract of 2026-10-15): a
+        /// timed overlay, it can neither page nor scroll, so at the largest text it grows to the lines
+        /// its sentence needs at the largest text's own 27 points, up to
+        /// <see cref="CeremonySting.MostLargestLines"/>, and a sentence longer than those shrinks into
+        /// them, as one longer than two lines always has at the other sizes. Beside the veto
+        /// meeting's (above), the engine's other long sentences, in its own shapes with the cast's
+        /// longest names: the final Head of Household's choice (EpisodeEngine.FinalEvict), an
+        /// eviction the Head of Household's vote decided (the eviction's line with CountTail's tie,
+        /// which the strip says when the vote reveal declines its block) and a juror's goodbye at the
+        /// door with the longest first name (EpisodeDirector.GoodbyeLine) - each said whole at the
+        /// largest text, every letter drawn, on the lines and at the size measured for each frame.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator TheLongestOtherSentences_AreSaidWholeAtTheLargestText([Values(1200, 1600)] int frameWidth)
+        {
+            yield return OnAFrame(frameWidth, 900);
+            var names = CastTemplates.Everyone.Select(template => template.Name).OrderByDescending(name => name.Length).Take(3).ToArray();
+            string first = CastTemplates.Everyone.Select(template => template.Name.Split(' ')[0]).OrderByDescending(name => name.Length).First();
+            var sentences = new[]
+            {
+                (kind: CeremonySting.FinalEvictionKind, words: names[0] + " takes " + names[1] + " to the final two. " + names[2] + " joins the jury."),
+                (kind: CeremonySting.EvictionKind, words: names[0] + " is evicted and joins the jury. By a vote of 6 to 6; " + names[1] + " broke the tie."),
+                (kind: CeremonySting.WalkOutKind, words: first + " pauses at the door and turns to you… They'll be waiting in the jury house."),
+            };
+            // Measured on each frame at the largest text (lines, points): the 4:3 canvas gives the words
+            // 381 beside the medallion, the 16:9 frame 595. None of them shrinks.
+            var expected = frameWidth == 1200
+                ? new[] { (lines: 4, size: 27f), (lines: 4, size: 27f), (lines: 3, size: 27f) }
+                : new[] { (lines: 2, size: 27f), (lines: 3, size: 27f), (lines: 2, size: 27f) };
+            sting.FontScale = TextSizes.Scale(TextSize.Largest);
+            var measured = new (int lines, float size, bool cut, int drawn, float box, bool grew, bool inside)[sentences.Length];
+            sting.Play(CeremonySting.EvictionKind, "Jamie Roberts is evicted.", true);
+            yield return null;
+            Canvas.ForceUpdateCanvases();
+            float oneLine = CardRect().rect.height;
+            for (int i = 0; i < sentences.Length; i++)
+            {
+                sting.Play(sentences[i].kind, sentences[i].words, true);
+                yield return null;
+                Canvas.ForceUpdateCanvases();
+                var detail = Detail();
+                detail.ForceMeshUpdate(true);
+                int lines = detail.textInfo.lineCount;
+                measured[i] = (lines, detail.fontSize, detail.isTextTruncated,
+                    detail.textInfo.characterInfo.Take(detail.textInfo.characterCount).Count(glyph => glyph.isVisible),
+                    detail.rectTransform.rect.height, CardRect().rect.height > oneLine,
+                    InCard(CardRect(), detail.rectTransform).yMin >= CardRect().rect.yMin - .5f);
+                Debug.Log("[Gamesim] strip at the largest text on the " + frameWidth + " by 900 frame: '" + sentences[i].words + "' takes "
+                    + lines + " lines at " + detail.fontSize.ToString("0.##") + " points, the strip " + CardRect().rect.height.ToString("0.#") + " tall.");
+                Photograph("ceremony-sting-" + sentences[i].kind + "-largest-" + frameWidth + "x900");
+                sting.Cancel();
+            }
+            for (int i = 0; i < sentences.Length; i++)
+            {
+                string where = "At the largest text on the " + frameWidth + " by 900 frame, '" + sentences[i].words + "'";
+                var m = measured[i];
+                Assert.That(m.cut, Is.False, where + " is cut at " + m.size.ToString("0.##") + " points.");
+                Assert.That(m.drawn, Is.EqualTo(sentences[i].words.Count(letter => !char.IsWhiteSpace(letter))), where + ": every letter is drawn.");
+                Assert.That(m.lines, Is.InRange(1, CeremonySting.MostLargestLines), where + " takes " + m.lines + " lines, no more than the strip's most.");
+                Assert.That(m.box, Is.GreaterThanOrEqualTo(m.lines * m.size * 1.3f - .01f),
+                    where + ": a box " + m.box.ToString("0.#") + " high holds " + m.lines + " lines of " + m.size.ToString("0.##") + " points.");
+                Assert.That(m.inside, Is.True, where + ": the sentence's box stands inside the strip.");
+                if (m.lines >= 2) Assert.That(m.grew, Is.True, where + ": the strip grows for the lines past the first rather than cutting them.");
+                Assert.That((m.lines, m.size), Is.EqualTo(expected[i]),
+                    where + " takes " + m.lines + " lines at " + m.size.ToString("0.##") + " points, measured " + expected[i].lines + " at " + expected[i].size + ".");
+            }
+        }
+
         private TMP_Text Detail() => sting.GetComponentsInChildren<TMP_Text>(true).Single(label => label.name == "Sting detail");
+
+        /// <summary>
+        /// The strip as the frame's camera draws it (<see cref="OnAFrame"/>), into <c>{name}.png</c>
+        /// beside the project, for a person to read; the headless harness only, as the card's own
+        /// render is. The active render target is put back.
+        /// </summary>
+        private void Photograph(string name)
+        {
+            if (!Application.isBatchMode || frameCamera == null || frameTexture == null) return;
+            var readback = new Texture2D(frameTexture.width, frameTexture.height, TextureFormat.RGB24, false);
+            var previous = RenderTexture.active;
+            try
+            {
+                Canvas.ForceUpdateCanvases();
+                frameCamera.Render();
+                RenderTexture.active = frameTexture;
+                readback.ReadPixels(new Rect(0, 0, frameTexture.width, frameTexture.height), 0, 0);
+                readback.Apply();
+                var path = System.IO.Path.GetFullPath(System.IO.Path.Combine(Application.dataPath, "..", name + ".png"));
+                System.IO.File.WriteAllBytes(path, readback.EncodeToPNG());
+                Debug.Log("[Gamesim] strip capture -> " + path);
+            }
+            finally
+            {
+                RenderTexture.active = previous;
+                Object.Destroy(readback);
+            }
+        }
 
         /// <summary>A rect's box in the card's own space.</summary>
         private static Rect InCard(RectTransform card, RectTransform rect)

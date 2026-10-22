@@ -292,17 +292,17 @@ namespace Gamesim.Tests.PlayMode
         }
 
         [UnityTest]
-        public IEnumerator AmbientCaption_LongNamesWrapWithoutShrinkingLargerTextOrCoveringChrome()
+        public IEnumerator AmbientCaption_LongNamesWrapWithoutShrinkingLargerTextOrCoveringChrome([Values(1.2f, 1.4f)] float scale)
         {
             director.ClosePanels();yield return null;
             var caption=SceneComponents<Gamesim.Episode.HouseConversationCaption>().First();
             var camera=Camera.main;
-            caption.Show("Alexandria Alexandra Montgomery", "Christopher Nathaniel Rutherford", "alliance_talk",1.2f,
+            caption.Show("Alexandria Alexandra Montgomery", "Christopher Nathaniel Rutherford", "alliance_talk",scale,
                 camera.transform.position+camera.transform.forward*6);
             Canvas.ForceUpdateCanvases();
             var panel=caption.GetComponentsInChildren<RectTransform>().Single(rect=>rect.name==Gamesim.Episode.HouseConversationCaption.PanelName);
             var label=panel.GetComponentInChildren<TMP_Text>();label.ForceMeshUpdate();
-            Assert.That(label.fontSize,Is.EqualTo(23));Assert.That(label.enableAutoSizing,Is.False);
+            Assert.That(label.fontSize,Is.EqualTo(Mathf.RoundToInt(19*scale)));Assert.That(label.enableAutoSizing,Is.False);
             Assert.That(label.isTextOverflowing,Is.False,"The bubble grows around the requested text size.");
             foreach(var name in new[]{"Objective","Status","House pill",EpisodeDirector.LiveFeedCardName})
             {
@@ -315,29 +315,30 @@ namespace Gamesim.Tests.PlayMode
         [UnityTest]
         public IEnumerator AmbientCaption_OverviewRoomListRemainsClearAtBothTextSizesAndHudDensities()
         {
-            bool originalLarge=director.LargeText,originalCompact=director.CompactHud;
+            var originalSize=director.TextSize;bool originalCompact=director.CompactHud;
             var caption=SceneComponents<HouseConversationCaption>().First();
             try
             {
                 foreach(bool compact in new[]{false,true})
-                foreach(bool larger in new[]{false,true})
+                foreach(var textSize in TextSizes.All)
                 {
-                    director.SetLargeText(larger);director.SetCompactHud(compact);
+                    director.SetTextSize(textSize);director.SetCompactHud(compact);
+                    float scale=TextSizes.Scale(textSize);
                     Assert.That(director.ShowOverview(),Is.True);
                     yield return null;Canvas.ForceUpdateCanvases();
                     var column=ActiveRect(EpisodeHud.OverviewColumnName);
                     Assert.That(column,Is.Not.Null,"The room list is useful in either HUD density.");
                     // Place an observed pair behind the room list. The visible caption must clamp
                     // left of the whole list, not only left of the narrower exploration-help card.
-                    caption.Show("Maya Hassan","Riley Johnson","strategy",larger ? 1.2f : 1f,
+                    caption.Show("Maya Hassan","Riley Johnson","strategy",scale,
                         Camera.main.ViewportToWorldPoint(new Vector3(.98f,.65f,6f)));
                     Canvas.ForceUpdateCanvases();
                     var panel=caption.GetComponentsInChildren<RectTransform>().Single(rect=>rect.name==HouseConversationCaption.PanelName);
                     var label=panel.GetComponentInChildren<TMP_Text>();label.ForceMeshUpdate();
                     Assert.That(ScreenRect(panel).Overlaps(ScreenRect(column)),Is.False,
-                        "Overview captions must not cover occupants at compact="+compact+", larger="+larger);
+                        "Overview captions must not cover occupants at compact="+compact+", text="+TextSizes.Name(textSize));
                     Assert.That(ScreenRect(panel).xMax,Is.LessThan(ScreenRect(column).xMin));
-                    Assert.That(label.fontSize,Is.EqualTo(larger ? 23 : 19));
+                    Assert.That(label.fontSize,Is.EqualTo(Mathf.RoundToInt(19*scale)));
                     Assert.That(label.enableAutoSizing,Is.False);
                     Assert.That(label.isTextOverflowing,Is.False);
                     caption.Hide();director.EndOverview();yield return null;
@@ -346,7 +347,7 @@ namespace Gamesim.Tests.PlayMode
             finally
             {
                 caption.Hide();director.EndOverview();
-                director.SetLargeText(originalLarge);director.SetCompactHud(originalCompact);
+                director.SetTextSize(originalSize);director.SetCompactHud(originalCompact);
             }
         }
 

@@ -221,10 +221,10 @@ namespace Gamesim.Tests.PlayMode
             var forgottenTapes = SeasonBallots.Read(forgotten);
             var canvas = Report().GetComponent<Canvas>();
             var camera = cameraRig.ViewCamera;
-            foreach (bool larger in new[] { false, true })
+            foreach (var textSize in TextSizes.All)
             {
-                string where = "A week forgotten, on the batch canvas" + (larger ? " at the larger text" : " at resting text");
-                Report().FontScale = larger ? 1.2f : 1f;
+                string where = "A week forgotten, on the batch canvas " + TextScales.At(textSize);
+                Report().FontScale = TextSizes.Scale(textSize);
                 yield return null;
                 Report().Show(forgotten, _ => null, null);
                 yield return null;
@@ -234,10 +234,10 @@ namespace Gamesim.Tests.PlayMode
                 Report().Hide();
             }
             foreach (bool wide in new[] { false, true })
-                foreach (bool larger in new[] { false, true })
+                foreach (var textSize in TextSizes.All)
                 {
-                    string where = (wide ? "On the 16:9 frame" : "On the batch canvas") + (larger ? " at the larger text" : " at resting text");
-                    Report().FontScale = larger ? 1.2f : 1f;
+                    string where = (wide ? "On the 16:9 frame " : "On the batch canvas ") + TextScales.At(textSize);
+                    Report().FontScale = TextSizes.Scale(textSize);
                     var previousTarget = camera.targetTexture;
                     RenderTexture frame = null;
                     if (wide)
@@ -274,7 +274,7 @@ namespace Gamesim.Tests.PlayMode
                             float travel = Mathf.Max(0f, scroll.content.rect.height - scroll.viewport.rect.height);
                             scroll.StopMovement();
                             scroll.content.anchoredPosition = new Vector2(scroll.content.anchoredPosition.x, Mathf.Clamp(-section.anchoredPosition.y - 48f, 0f, travel));
-                            yield return CaptureFraming(larger ? "season-report-ballots-large" : "season-report-ballots");
+                            yield return CaptureFraming("season-report-ballots" + TextScales.Suffix(textSize));
                         }
                         Report().Hide();
                     }
@@ -320,10 +320,10 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(unknown, Is.Not.Empty, "A ballot the player cannot place, or the sentinel guards nothing.");
             Assert.That(SeasonBallots.Read(shown), Is.Empty, "The reader is sealed,");
 
-            foreach (bool larger in new[] { false, true })
+            foreach (var (textSize, larger) in TextScales.Steps)
             {
-                string size = larger ? " at the large text" : "";
-                director.SetLargeText(larger);
+                string size = larger ? " " + TextScales.At(textSize) : "";
+                director.SetTextSize(textSize);
                 yield return null;
                 director.ShowSeasonReport();
                 yield return null;

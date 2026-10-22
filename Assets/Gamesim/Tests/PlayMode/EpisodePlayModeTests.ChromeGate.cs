@@ -202,10 +202,10 @@ namespace Gamesim.Tests.PlayMode
             HoldTheHouseForTheFixture();
             var maya = SceneComponents<HouseNpc>().Single(npc => npc.Id == ContentCatalog.MayaId);
             PutBeforeThePlayer(live => live.deals.Add(WaitingOffer(live, maya.Id, DealKind.SafetyAgreement, "deal-ask-gate")));
-            foreach (bool larger in new[] { false, true })
+            foreach (var textSize in TextSizes.All)
             {
-                yield return ApplyTextSize(larger);
-                string where = larger ? " at the larger text" : " at the resting text";
+                yield return ApplyTextSize(textSize);
+                string where = " " + TextScales.At(textSize);
                 director.ClosePanels();
                 yield return Frames(3);
                 Assert.That(director.IsHouseUnderChrome, Is.False, "Nothing stands over the house" + where + ".");
@@ -328,10 +328,10 @@ namespace Gamesim.Tests.PlayMode
             var maya = SceneComponents<HouseNpc>().Single(npc => npc.Id == ContentCatalog.MayaId);
             var disc = player.GetComponentsInChildren<Transform>(true)
                 .Where(part => part.name == EpisodeDirector.PlayerMarkerName).Select(part => part.GetComponent<Renderer>()).FirstOrDefault(renderer => renderer != null);
-            foreach (bool larger in new[] { false, true })
+            foreach (var (textSize, larger) in TextScales.Steps)
             {
-                yield return ApplyTextSize(larger);
-                string where = larger ? " at the larger text" : " at the resting text";
+                yield return ApplyTextSize(textSize);
+                string where = " " + TextScales.At(textSize);
                 // Beside somebody, so the prompt has something to say.
                 WarpPlayer(maya.transform.position + Vector3.right * 1.2f);
                 director.ClosePanels();
@@ -655,11 +655,11 @@ namespace Gamesim.Tests.PlayMode
         public IEnumerator ChromeGate_NothingTheHouseDrawsProjectsIntoTheFinalThreeObjectives()
         {
             yield return InstallTheFinalThree();
-            foreach (bool larger in new[] { false, true })
+            foreach (var textSize in TextSizes.All)
             {
-                yield return ApplyTextSize(larger);
+                yield return ApplyTextSize(textSize);
                 yield return PutAwayTheCards();
-                string where = larger ? " at the larger text" : " at the resting text";
+                string where = " " + TextScales.At(textSize);
                 director.ClosePanels();
                 yield return PullBackOverTheHouse();
                 yield return Frames(3);
@@ -796,10 +796,10 @@ namespace Gamesim.Tests.PlayMode
             const string said = "Maya Hassan: Build a dependable voting partnership without making promises she cannot keep, and keep the house guessing about where the numbers really stand this week.";
             PutBeforeThePlayer(live => live.events.Add(new EpisodeEvent
                 { sequence = live.nextSequence++, week = live.week, phase = live.phase, kind = "conversation", text = said }));
-            foreach (bool larger in new[] { false, true })
+            foreach (var textSize in TextSizes.All)
             {
-                yield return ApplyTextSize(larger);
-                string where = larger ? " at the larger text" : " at the resting text";
+                yield return ApplyTextSize(textSize);
+                string where = " " + TextScales.At(textSize);
                 director.ClosePanels();
                 yield return Frames(2);
                 Canvas.ForceUpdateCanvases();

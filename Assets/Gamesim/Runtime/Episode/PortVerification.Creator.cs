@@ -25,6 +25,14 @@ namespace Gamesim.Episode
         private Keyboard creatorKeyboard;
         private Gamepad creatorGamepad;
         private Mouse creatorMouse;
+        private static readonly Vector2Int[] CreatorDetailedFrames =
+        { new Vector2Int(1280, 720), new Vector2Int(1600, 900), new Vector2Int(1920, 1080) };
+        private static readonly Vector2Int[] CreatorQuickFrames =
+        { new Vector2Int(1280, 720), new Vector2Int(1920, 1080), new Vector2Int(1200, 900) };
+
+        private static bool CreatorResolutionCapturesComplete(int detailed, int quick) =>
+            detailed == CreatorDetailedFrames.Length * TextSizes.All.Length
+            && quick == CreatorQuickFrames.Length * TextSizes.All.Length;
 
         private IEnumerator RunCreatorVerification(EpisodeDirector director)
         {
@@ -34,7 +42,7 @@ namespace Gamesim.Episode
                 processor = SystemInfo.processorType, gpu = SystemInfo.graphicsDeviceName,
                 systemMemoryMB = SystemInfo.systemMemorySize, graphicsMemoryMB = SystemInfo.graphicsMemorySize,
                 visualStatus = "Pending inspection of captured frames",
-                workload = "Fresh Quick entry, native InputSystem pointer preset selection, independent body choice with Undo/Redo and keyboard/controller mode navigation, unchanged draft across modes, six Quick resolution/text captures including 4:3; then the Detailed Customise route, both bodies at supported slider bounds in front/profile views, restored appearance, pointer-handler slider input, six Detailed resolution/text combinations, isolated library save/load, repeated custom cast and NPC-only edit, new season, save/reload, isolated portrait. Detailed route buttons use direct UI callbacks. Automated checks do not establish visual quality or human usability.",
+                workload = "Fresh Quick entry, native InputSystem pointer preset selection, independent body choice with Undo/Redo and keyboard/controller mode navigation, unchanged draft across modes, " + (CreatorQuickFrames.Length * TextSizes.All.Length) + " Quick resolution/text captures including 4:3; then the Detailed Customise route, both bodies at supported slider bounds in front/profile views, restored appearance, pointer-handler slider input, " + (CreatorDetailedFrames.Length * TextSizes.All.Length) + " Detailed resolution/text combinations, isolated library save/load, repeated custom cast and NPC-only edit, new season, save/reload, isolated portrait. Detailed route buttons use direct UI callbacks. Automated checks do not establish visual quality or human usability.",
             };
             creatorReport.workloadLimitSeconds = CreatorWorkloadSeconds;
             creatorDeadline = Time.realtimeSinceStartupAsDouble + CreatorWorkloadSeconds;
@@ -65,7 +73,7 @@ namespace Gamesim.Episode
                 && creatorReport.isolatedLibrary && creatorReport.librarySaveLoadEqual && creatorReport.customCastRepeatedAndEdited
                 && creatorReport.playerPreservedDuringNpcEdit && creatorReport.libraryUnaffectedByCastEdit && creatorReport.customCastSaveReloadEqual
                 && creatorReport.bodyBoundsCaptures == 8 && creatorReport.bodyBoundsAppearanceRestored
-                && creatorReport.resolutionCaptures == 6 && creatorReport.quickResolutionCaptures == 6
+                && CreatorResolutionCapturesComplete(creatorReport.resolutionCaptures, creatorReport.quickResolutionCaptures)
                 && creatorReport.quickDraftPreserved && creatorReport.keyboardModeSwitch && creatorReport.controllerModeSwitch
                 && creatorReport.controllerNavigation && creatorReport.quickPointerPresetChanged
                 && creatorReport.quickBodyChangedIndependently
@@ -157,25 +165,27 @@ namespace Gamesim.Episode
             CreatorRequire(director.Snapshot.randomState == randomBefore, "Creator cosmetics must not consume season RNG.");
             creatorReport.cosmeticsPreservedGameplayAndRng = true;
 
-            foreach (var size in new[] { new Vector2Int(1280, 720), new Vector2Int(1600, 900), new Vector2Int(1920, 1080) })
-                foreach (bool large in new[] { false, true })
+            foreach (var size in CreatorDetailedFrames)
+                foreach (var textSize in TextSizes.All)
                 {
                     Screen.SetResolution(size.x, size.y, FullScreenMode.Windowed);
-                    creator.FontScale = large ? 1.2f : 1f;
+                    // Each of the settings' own sizes (A8): the standard, the larger and the largest.
+                    creator.FontScale = TextSizes.Scale(textSize);
                     for (int frame = 0; frame < 20; frame++) yield return null;
                     var capture = new CreatorCapture { requestedWidth = size.x, requestedHeight = size.y,
-                        actualWidth = Screen.width, actualHeight = Screen.height, largerText = large, mode = "Detailed" };
+                        actualWidth = Screen.width, actualHeight = Screen.height, largerText = textSize != TextSize.Standard,
+                        textSize = TextSizes.Name(textSize), mode = "Detailed" };
                     CreatorRequire(Screen.width == size.x && Screen.height == size.y,
                         "The requested " + size.x + "x" + size.y + " capture actually rendered " + Screen.width + "x" + Screen.height + ".");
                     foreach (string caption in new[] { "Appearance", "Identity", "Personality", "My Houseguests", "Review", CharacterCreator.QuickCaption, CharacterCreator.DetailedCaption, CharacterCreator.StartCaption, CharacterCreator.BackCaption })
                     {
                         var control = CreatorButton(caption);
                         CreatorRequire(control != null && CreatorRectVisible(control.GetComponent<RectTransform>()),
-                            caption + " is outside the viewport at " + Screen.width + "x" + Screen.height + (large ? " larger text" : " standard text"));
+                            caption + " is outside the viewport at " + Screen.width + "x" + Screen.height + " " + TextSizes.Name(textSize) + " text");
                     }
                     capture.fixedControlsInsideViewport = true;
                     creatorReport.captures.Add(capture);
-                    yield return CaptureCreator("creator-" + size.x + "x" + size.y + (large ? "-large" : "-normal"), capture, creator);
+                    yield return CaptureCreator("creator-" + size.x + "x" + size.y + CreatorSizeSuffix(textSize), capture, creator);
                     creatorReport.resolutionCaptures++;
                 }
             creator.FontScale = 1f;
@@ -434,25 +444,26 @@ namespace Gamesim.Episode
             CreatorRequire(creatorReport.controllerNavigation, "Controller navigation did not stay on and move through the creator.");
             creatorReport.quickDraftPreserved = JsonUtility.ToJson(creator.Draft) == draftBefore;
             CreatorRequire(creatorReport.quickDraftPreserved, "Changing creator mode changed the authored draft.");
-            foreach (var size in new[] { new Vector2Int(1280, 720), new Vector2Int(1920, 1080), new Vector2Int(1200, 900) })
-                foreach (bool large in new[] { false, true })
+            foreach (var size in CreatorQuickFrames)
+                foreach (var textSize in TextSizes.All)
                 {
                     Screen.SetResolution(size.x, size.y, FullScreenMode.Windowed);
-                    creator.FontScale = large ? 1.2f : 1f;
+                    creator.FontScale = TextSizes.Scale(textSize);
                     for (int frame = 0; frame < 20; frame++) yield return null;
                     var capture = new CreatorCapture { requestedWidth = size.x, requestedHeight = size.y,
-                        actualWidth = Screen.width, actualHeight = Screen.height, largerText = large, mode = "Quick" };
+                        actualWidth = Screen.width, actualHeight = Screen.height, largerText = textSize != TextSize.Standard,
+                        textSize = TextSizes.Name(textSize), mode = "Quick" };
                     CreatorRequire(Screen.width == size.x && Screen.height == size.y, "Quick capture rendered at the wrong resolution.");
                     foreach (string caption in new[] { CharacterCreator.QuickPageCaption, "My Houseguests", "Review", CharacterCreator.QuickCaption,
                         CharacterCreator.DetailedCaption, CharacterCreator.StartCaption, CharacterCreator.BackCaption, "Undo" })
                     {
                         var control = CreatorButton(caption);
                         CreatorRequire(control != null && CreatorRectVisible(control.GetComponent<RectTransform>()),
-                            "Quick " + caption + " is outside the viewport at " + size + (large ? " larger text" : " standard text"));
+                            "Quick " + caption + " is outside the viewport at " + size + " " + TextSizes.Name(textSize) + " text");
                     }
                     capture.fixedControlsInsideViewport = true;
                     creatorReport.captures.Add(capture);
-                    yield return CaptureCreator("creator-quick-" + size.x + "x" + size.y + (large ? "-large" : "-normal"), capture, creator);
+                    yield return CaptureCreator("creator-quick-" + size.x + "x" + size.y + CreatorSizeSuffix(textSize), capture, creator);
                     creatorReport.quickResolutionCaptures++;
                 }
             creator.FontScale = 1f;
@@ -460,6 +471,10 @@ namespace Gamesim.Episode
             yield return CreatorNativeSubmit(CharacterCreator.BackCaption);
             CreatorRequire(!creator.IsShowing, "Quick Back did not return to the cast screen.");
         }
+
+        /// <summary>A creator frame's name for the size: "-normal", "-large" and "-largest", as the frames have been named.</summary>
+        private static string CreatorSizeSuffix(TextSize size) =>
+            size == TextSize.Largest ? "-largest" : size == TextSize.Larger ? "-large" : "-normal";
 
         private IEnumerator CreatorNativeSubmit(string caption, bool controller = false)
         {
@@ -636,7 +651,9 @@ namespace Gamesim.Episode
         [Serializable] private sealed class CreatorCapture
         {
             public string path, mode; public int requestedWidth, requestedHeight, actualWidth, actualHeight;
+            /// <summary>Whether the capture is above the standard size; <see cref="textSize"/> says which (A8).</summary>
             public bool largerText, fixedControlsInsideViewport;
+            public string textSize;
         }
         [Serializable] private sealed class CreatorFrameEvidence
         {

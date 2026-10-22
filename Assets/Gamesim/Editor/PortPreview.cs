@@ -122,7 +122,10 @@ namespace Gamesim.Editor
 
         private static void ApplySaveIsolation()
         {
-            if (IsIsolatedPreview) EpisodeDirector.SaveRootOverride = PreviewDirectory;
+            if (!IsIsolatedPreview) return;
+            EpisodeDirector.SaveRootOverride = PreviewDirectory;
+            // The protocol's route: the preview keeps its own settings beside its saves (A13).
+            EpisodeDirector.PreferencesBesideSaves = true;
         }
 
         private static void OnPlayModeChanged(PlayModeStateChange state)
@@ -153,6 +156,7 @@ namespace Gamesim.Editor
         private static void RestoreSceneSetup()
         {
             EpisodeDirector.SaveRootOverride = null;
+            EpisodeDirector.PreferencesBesideSaves = false;
             if (!IsIsolatedPreview) return;
             try
             {

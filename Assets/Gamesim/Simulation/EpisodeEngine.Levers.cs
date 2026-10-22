@@ -60,7 +60,8 @@ namespace Gamesim.Simulation
             if (voter == null) return terms;
             double scale = Math.Max(0, Math.Min(1, s.Score(voterId, s.playerId) / ObligationFullView));
             double word = voter.traits.Contains("Sneaky") ? 0 : voter.traits.Contains("Loyal") ? LoyalObligation : 1;
-            foreach (var deal in s.deals.Where(d => d.status == DealStatus.Active
+            // Mode 2 (vote family V5b): mode 1's raw list, its vote deals the canonical rows.
+            foreach (var deal in CommitmentReferences.RawDeals(s).Where(d => d.status == DealStatus.Active
                          && (d.type == DealKind.VoteSave || d.type == DealKind.VoteEvict)
                          && d.targetId != null && s.nominees.Contains(d.targetId)
                          && ((d.proposerId == s.playerId && d.recipientId == voterId) || (d.proposerId == voterId && d.recipientId == s.playerId))))

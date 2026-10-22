@@ -28,7 +28,7 @@ namespace Gamesim.Tests.PlayMode
             var saved = creator.Draft.Copy();
             saved.Name = "Review Guest";
             Assert.That(creator.ProfileStore.Save(CharacterProfile.FromDraft(System.Guid.NewGuid().ToString("N"), saved), out var error), Is.True, error);
-            foreach (float scale in new[] { 1f, 1.2f })
+            foreach (float scale in TextScales.All)
             {
                 creator.FontScale = scale;
                 yield return null; yield return null;
@@ -371,7 +371,7 @@ namespace Gamesim.Tests.PlayMode
             var textures = new List<RenderTexture>();
             try
             {
-                foreach (var (width, height, scale) in new[] { (1280, 540, 1.2f), (1280, 360, 1f) })
+                foreach (var (width, height, scale) in new[] { (1280, 540, 1.2f), (1280, 540, 1.4f), (1280, 360, 1f) })
                 {
                     var texture = new RenderTexture(width, height, 24);
                     textures.Add(texture);

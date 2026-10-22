@@ -50,8 +50,10 @@ namespace Gamesim.Episode
                     // The floor grew a band. The strip and the caption above it are both fixed
                     // chrome a world bubble must clear, and the caption used to be low enough that
                     // the default floor covered it.
+                    // The save's confirmation is a bottom card only in the full HUD: the compact HUD
+                    // puts it in the top bar, which the ceiling above already clears.
                     bool bottomCard=item.name=="Interaction prompt" || item.name==CastRail.RootName
-                        || item.name=="Status" || item.name==CastRail.StripName || item.name==SpeechBarName;
+                        || item.name=="Status" || (item.name==SaveFeedbackName && !Compact) || item.name==CastRail.StripName || item.name==SpeechBarName;
                     // The follow chip is anchored TOP-centre, under the house pill, and was being
                     // counted as a bottom card: it pushed `bottom` to 834 while `top` was 796, so
                     // MinMaxRect returned an inverted rect and every world bubble was pinned above
@@ -159,9 +161,9 @@ namespace Gamesim.Episode
         private RectTransform conversationColumn;
 
         /// <summary>The share of the stage the conversation's reading column takes, and the widest it runs at the resting text size.</summary>
-        private const float ConversationColumnShare = .52f, ConversationColumnMax = 760f;
+        private const float ConversationColumnShare = .42f, ConversationColumnMax = 760f;
         /// <summary>How much of the house shows through a conversation: dimmed, not gone, so the pair stay behind the dial.</summary>
-        private const float ConversationScrim = .72f;
+        private const float ConversationScrim = .28f;
 
         /// <summary>
         /// Where the conversation leaves the pair: the middle of the stage right of its column, in
@@ -198,7 +200,11 @@ namespace Gamesim.Episode
                     child.gameObject.SetActive(false);
             HideStageChrome();
 
-            float columnWidth = Mathf.Min(stage.width, Mathf.Clamp(stage.width * ConversationColumnShare, 420f, ConversationColumnMax * FontScale));
+            // The column's 58 units of scroll, viewport and content padding are outside a
+            // row. Keep 200 units beside the caption for its portrait and readings; putting
+            // a tag underneath cannot recover the room those pieces already reserve.
+            float minimumColumn = Mathf.Max(420f, MinCaptionWidth * FontScale + 200f + 14f + 10f + 18f + 16f);
+            float columnWidth = Mathf.Min(stage.width, Mathf.Clamp(stage.width * ConversationColumnShare, minimumColumn, ConversationColumnMax * FontScale));
             float window = stage.x + columnWidth + 12f + (stage.width - columnWidth - 12f) * .5f;
             ConversationWindowOffset = Mathf.Max(0f, (window - canvasWidth * .5f) / (canvasHeight * .5f));
 
@@ -539,6 +545,9 @@ namespace Gamesim.Episode
             MarkChromeChanged();
         }
 
+        /// <summary>The controls card's height while it is open: the toggle's row over the five lines of the card.</summary>
+        private const float ExpandedHelpHeight = 180f;
+
         private void BuildExplorationHelp()
         {
             if (explorationHelp != null)
@@ -549,22 +558,29 @@ namespace Gamesim.Episode
             // Collapsed, a pill the size of its words: the mockups have no controls box at all, and
             // a 285-wide panel spent a whole corner of the frame on a reference card most players
             // read once. Expanded, the card it always was, growing up from the same corner.
-            float height = helpExpanded ? 180f : 40f;
+            float height = helpExpanded ? ExpandedHelpHeight : 40f;
             float width = helpExpanded ? HelpWidth : 196f;
             explorationHelp = Chrome("Exploration controls", canvas.transform);
             // Stays bottom right, and rises with the rest of the floor: the cast strip owns the band
             // under it now. Moving it to the empty bottom-LEFT band looks right with nothing open and
             // is wrong the moment anything is - the activity layout claims that band exactly, so it
             // would trade an overlap with the right column for an overlap with the modal. It cannot
-            // rise any further either: the vibe card above it ends fifteen units from its expanded
-            // top on the canvas the tests measure. The column is what grew - see RecentEventRows.
+            // rise any further either: on a frame as short as 16:9 the right column's foot comes
+            // down past its expanded top, so the column gives way while it is open - see
+            // FoldColumn - and takes its rows back as it closes.
             Anchor(explorationHelp,new Vector2(1,0),new Vector2(1,0),new Vector2(-24,HelpBottom),new Vector2(width,height));
             var toggle = FixedButton(explorationHelp, helpExpanded ? "Hide controls" : "Help · controls",
                 helpExpanded ? new Vector2(10,-8) : new Vector2(4,-3),
                 helpExpanded ? new Vector2(265,38) : new Vector2(width - 8f,34), () =>
                 {
                     helpExpanded = !helpExpanded;
-                    BuildExplorationHelp();
+                    // Where the column has to give way to the card, or may take its rows back, the
+                    // house lays the frame out again (the card with it); elsewhere the card alone.
+                    // Never with a panel open: Begin closes the card under one, so laying the frame
+                    // out again would close the card this press opened. The pill stays up over a
+                    // docked card, and there the card alone is built, over the column, as before.
+                    if (modal == null && ColumnGivesWayToTheControls) director.RenderChrome();
+                    else BuildExplorationHelp();
                     preferredSelection = helpExpanded ? "Hide controls" : "Help · controls";
                     restoreSelection = true;
                 });

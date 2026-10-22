@@ -209,7 +209,8 @@ namespace Gamesim.Tests.PlayMode
             float social = Time.realtimeSinceStartup + 1.5f;
             while (Time.realtimeSinceStartup < social && director.WalkingOutId != null) yield return null;
             Assert.That(director.NpcAutonomyDiagnostic, Is.Null, "The house's world runs beside the walk out,");
-            Assert.That(director.WalkingOutId, Is.EqualTo(leaving), "and they are still on their way.");
+            Assert.That(director.WalkingOutId, Is.EqualTo(leaving), "and they are still on their way (" + (director.LastWalkOutFailure ?? "no failure recorded")
+                + ", " + (Time.realtimeSinceStartup - began).ToString("F1") + " s after the walk began).");
 
             // A panel pauses the house, and a decision commits under it: neither stops the one walking out.
             var motion = body.GetComponent<HouseNpcMotion>();

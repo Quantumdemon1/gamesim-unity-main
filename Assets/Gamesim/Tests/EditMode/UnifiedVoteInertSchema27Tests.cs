@@ -70,10 +70,24 @@ namespace Gamesim.Tests.EditMode
             Assert.That(Json(s), Is.EqualTo(before)); Refused(s);
         }
 
-        [TestCase(-1, false)] [TestCase(2, false)] [TestCase(3, false)]
-        [TestCase(-1, true)] [TestCase(2, true)] [TestCase(3, true)]
+        [TestCase(-1, false)] [TestCase(3, false)]
+        [TestCase(-1, true)] [TestCase(3, true)]
         public void NewStorageHeaderNeverEnablesUnknownFamilyAuthority(int authority, bool hearing)
         { var s = Write(hearing, false); s.unifiedCommitmentRulesVersion = authority; Refused(s); }
+
+        /// <summary>
+        /// Vote family V6 took 2 out of the unknown headers above: it is the unified vote rules, judged by their own complete core.
+        /// A season relabelled 2 by hand - which nothing in the game does (D6) - is held to that core as it stands: with zero markers
+        /// and canonical Safety only before any reveal it is a mode-2 season; with a marker on its Safety row it is refused.
+        /// </summary>
+        [TestCase(false)] [TestCase(true)]
+        public void TheUnifiedVoteHeaderIsJudgedByItsOwnCore(bool hearing)
+        {
+            var s = Write(hearing, false); s.unifiedCommitmentRulesVersion = 2;
+            Accepted(s);
+            var marked = s.Clone(); marked.unifiedCommitments.First(r => r.kind == UnifiedCommitments.Safety).voteBindingWeek = 1;
+            Refused(marked);
+        }
 
         [TestCase(false, false)] [TestCase(false, true)] [TestCase(true, false)] [TestCase(true, true)]
         public void NonemptyOrNullRevealArchiveCannotBeLaunderedByZeroMarkers(bool hearing, bool nullArchive)

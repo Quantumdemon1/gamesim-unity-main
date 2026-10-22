@@ -56,7 +56,9 @@ namespace Gamesim.House
             if (disposed || HasCompetitionStage || HasOpeningStage || departing != null)
             { reason = "The house cannot spare anyone to walk out now."; return false; }
             if (!CanWalk(id)) { reason = "That houseguest cannot walk now."; return false; }
-            YieldWander(id);
+            // A walk out has the house: a storm under way, whoever's it is, ends where they stand.
+            EndStorm();
+            YieldWander(id); YieldAct(id);
             var actor = actors[id];
             leaseBuffer.Clear(); leaseBuffer.AddRange(leases.Values);
             foreach (var lease in leaseBuffer)

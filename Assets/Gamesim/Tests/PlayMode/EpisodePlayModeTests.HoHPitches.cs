@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using Gamesim.Episode;
 using Gamesim.Persistence;
+using Gamesim.Presentation;
 using Gamesim.Simulation;
 using NUnit.Framework;
 using TMPro;
@@ -96,12 +97,12 @@ namespace Gamesim.Tests.PlayMode
             foreach (int size in new[] { 8, 16 })
             {
                 yield return InstallHoHPitches(size);
-                foreach (bool large in new[] { false, true })
+                foreach (var textSize in TextSizes.All)
                 {
-                    yield return ApplyTextSize(large);
+                    yield return ApplyTextSize(textSize);
                     yield return OpenStation(); yield return null;
                     var before = director.Snapshot;
-                    string where = "HoH pitches at " + size + " contestants / large=" + large;
+                    string where = "HoH pitches at " + size + " contestants / text=" + TextSizes.Name(textSize);
                     AssertNominationScreen(where, EpisodeHud.BackToNomineesCaption);
                     Assert.That(ActiveRect(EpisodeHud.NomineeGridName), Is.Null, "The first pending pitch is the current view, not a buried row.");
                     var panel = ActiveRect("Episode panel");

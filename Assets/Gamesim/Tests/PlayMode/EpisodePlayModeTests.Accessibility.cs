@@ -19,8 +19,9 @@ namespace Gamesim.Tests.PlayMode
     /// The accessibility criteria that can be decided by measurement rather than by eye.
     ///
     /// The large-text preference is the interesting case: the HUD's fixed chrome keeps its size
-    /// while the copy inside it grows by 20%, so this is exactly where text starts getting clipped
-    /// and panels start colliding. Both are checked here at both ends of the range.
+    /// while the copy inside it grows by 20% - 40% at the largest size (PLAN A, A8) - so this is
+    /// exactly where text starts getting clipped and panels start colliding. Both are checked here
+    /// at every size the settings offer.
     /// </summary>
     public sealed partial class EpisodePlayModeTests
     {
@@ -30,9 +31,10 @@ namespace Gamesim.Tests.PlayMode
         [UnityTest]
         public IEnumerator Accessibility_NoCopyIsClippedAtEitherTextSize()
         {
-            foreach (bool larger in new[] { false, true })
+            foreach (var size in TextSizes.All)
             {
-                yield return ApplyTextSize(larger);
+                yield return ApplyTextSize(size);
+                Assert.That(director.TextSize, Is.EqualTo(size), "The settings chose " + TextSizes.Name(size) + " text.");
                 yield return OpenNotebook();
 
                 Canvas.ForceUpdateCanvases();
@@ -45,23 +47,25 @@ namespace Gamesim.Tests.PlayMode
                     .ToArray();
 
                 Assert.That(clipped, Is.Empty,
-                    "At " + (larger ? "larger" : "standard") + " text, copy is clipped: "
+                    "At " + TextSizes.Name(size) + " text, copy is clipped: "
                     + string.Join(" | ", clipped));
 
                 director.ClosePanels();
                 yield return null;
             }
+            yield return ApplyTextSize(TextSize.Standard);
         }
 
         [UnityTest]
         public IEnumerator Accessibility_FixedChromeNeverOverlapsAtEitherTextSize()
         {
-            foreach (bool larger in new[] { false, true })
+            foreach (var size in TextSizes.All)
             {
-                yield return ApplyTextSize(larger);
+                yield return ApplyTextSize(size);
+                Assert.That(director.TextSize, Is.EqualTo(size), "The settings chose " + TextSizes.Name(size) + " text.");
                 director.ClosePanels();
                 yield return null;
-                AssertFixedChromeDoesNotOverlap(larger);
+                AssertFixedChromeDoesNotOverlap(size);
 
                 // And with the controls box open, which is where the floor is tightest. The cast
                 // strip moved to the bottom of the frame and pushed the caption and the controls box
@@ -71,10 +75,11 @@ namespace Gamesim.Tests.PlayMode
                 // measurement - and an argument is what put 'Status' on top of 'Cast rail'.
                 ButtonWithCaption(ExpandControlsCaption).onClick.Invoke();
                 yield return null;
-                AssertFixedChromeDoesNotOverlap(larger);
+                AssertFixedChromeDoesNotOverlap(size);
                 ButtonWithCaption(CollapseControlsCaption).onClick.Invoke();
                 yield return null;
             }
+            yield return ApplyTextSize(TextSize.Standard);
         }
 
         private const string ExpandControlsCaption = "Help \u00b7 controls";
@@ -86,9 +91,10 @@ namespace Gamesim.Tests.PlayMode
             var seenBodies = typeof(EpisodeDirector).GetField("seenBodiesCompleted",
                 BindingFlags.Instance | BindingFlags.NonPublic);
             Assert.That(seenBodies, Is.Not.Null);
-            foreach (bool larger in new[] { false, true })
+            foreach (var size in TextSizes.All)
             {
-                yield return ApplyTextSize(larger);
+                yield return ApplyTextSize(size);
+                Assert.That(director.TextSize, Is.EqualTo(size), "The settings chose " + TextSizes.Name(size) + " text.");
                 director.ClosePanels();
                 Canvas.ForceUpdateCanvases();
                 var before = ActiveChromePanel("Brand");
@@ -101,15 +107,18 @@ namespace Gamesim.Tests.PlayMode
                 yield return null;
                 Assert.That(ActiveChromePanel("Brand"), Is.Not.SameAs(before),
                     "A newly observed body completion must rebuild the chrome after the earlier layout pass.");
-                AssertFixedChromeDoesNotOverlap(larger);
+                AssertFixedChromeDoesNotOverlap(size);
             }
+            yield return ApplyTextSize(TextSize.Standard);
         }
 
         private RectTransform ActiveChromePanel(string name) =>
             director.GetComponentsInChildren<RectTransform>(true)
                 .FirstOrDefault(rect => rect.name == name && rect.gameObject.activeInHierarchy);
 
-        private void AssertFixedChromeDoesNotOverlap(bool larger)
+        private void AssertFixedChromeDoesNotOverlap(bool larger) => AssertFixedChromeDoesNotOverlap(larger ? TextSize.Larger : TextSize.Standard);
+
+        private void AssertFixedChromeDoesNotOverlap(TextSize size)
         {
             // Flush the hierarchy that will be measured. A yield after this pass would allow
             // UMA completion to replace it in Update, before LateUpdate / willRenderCanvases
@@ -128,7 +137,7 @@ namespace Gamesim.Tests.PlayMode
                 var first = ScreenRect(panels[a]);
                 var second = ScreenRect(panels[b]);
                 Assert.That(first.Overlaps(second), Is.False,
-                    "At " + (larger ? "larger" : "standard") + " text, '" + panels[a].name +
+                    "At " + TextSizes.Name(size) + " text, '" + panels[a].name +
                     "' " + first + " overlaps '" + panels[b].name + "' " + second + ".");
             }
         }
@@ -159,7 +168,9 @@ namespace Gamesim.Tests.PlayMode
                 .FirstOrDefault(c => c.renderMode == RenderMode.ScreenSpaceOverlay && c.isActiveAndEnabled);
             Assert.That(canvas, Is.Not.Null, "The HUD canvas should be a screen-space overlay.");
 
-            foreach (var size in new[] { new Vector2Int(1280, 720), new Vector2Int(1600, 900), new Vector2Int(2560, 1440) })
+            // And 16:10 and 21:9 (PLAN A, A12): the frames the display options can now choose.
+            foreach (var size in new[] { new Vector2Int(1280, 720), new Vector2Int(1600, 900), new Vector2Int(2560, 1440),
+                new Vector2Int(1280, 800), new Vector2Int(2560, 1080) })
             {
                 var lens = new CaptureLens(cameraRig.ViewCamera, size.x, size.y);
                 Texture2D readback = null;
@@ -444,8 +455,69 @@ namespace Gamesim.Tests.PlayMode
             yield return null;
         }
 
+        [Test]
+        public void CapturePortraitWait_BodyOnlyProviderDoesNotWaitForUnavailableFace()
+        {
+            var previous = CharacterBodySource.Provider;
+            var provider = new CaptureBodyOnlyProvider();
+            var face = new GameObject("Unavailable capture portrait", typeof(RectTransform),
+                typeof(RawImage), typeof(CharacterPortraitBinding));
+            try
+            {
+                CharacterBodySource.Register(provider);
+                var image = face.GetComponent<RawImage>();
+                image.enabled = false;
+                Assert.That(image.texture, Is.Null, "The unavailable face remains a real missing binding, not invented pixels.");
+                Assert.That(AnyBoundFaceIsStillMissing(), Is.False,
+                    "A body-only provider cannot build a portrait; a capture must not wait for one.");
+            }
+            finally
+            {
+                CharacterBodySource.Unregister(provider);
+                Object.DestroyImmediate(face);
+            }
+            Assert.That(CharacterBodySource.Provider, Is.SameAs(previous), "The capture test restores the prior provider owner.");
+        }
+
+        [Test]
+        public void CapturePortraitWait_ModularProviderKeepsMissingFaceWait()
+        {
+            var previous = CharacterBodySource.Provider;
+            var provider = new CaptureModularProvider();
+            var face = new GameObject("Pending capture portrait", typeof(RectTransform),
+                typeof(RawImage), typeof(CharacterPortraitBinding));
+            try
+            {
+                CharacterBodySource.Register(provider);
+                face.GetComponent<RawImage>().enabled = false;
+                Assert.That(AnyBoundFaceIsStillMissing(), Is.True,
+                    "A portrait-capable provider retains the existing bounded wait for missing faces.");
+            }
+            finally
+            {
+                CharacterBodySource.Unregister(provider);
+                Object.DestroyImmediate(face);
+            }
+            Assert.That(CharacterBodySource.Provider, Is.SameAs(previous), "The capture test restores the prior provider owner.");
+        }
+
+        private class CaptureBodyOnlyProvider : ICharacterBodyProvider
+        {
+            public bool TryCreate(string appearanceId, Transform parent, Color wardrobe, out CharacterBody body)
+            { body = default; return false; }
+            public void SetWardrobeColor(in CharacterBody body, Color wardrobe) { }
+        }
+
+        private sealed class CaptureModularProvider : CaptureBodyOnlyProvider, IModularCharacterBodyProvider
+        {
+            public ICharacterAppearanceCatalog Catalog => null;
+            public bool TryCreate(in CharacterBodyRequest request, Transform parent, Color wardrobe, out CharacterBody body)
+            { body = default; return false; }
+        }
+
         private static bool AnyBoundFaceIsStillMissing() =>
-            Object.FindObjectsByType<CharacterPortraitBinding>(FindObjectsInactive.Exclude, FindObjectsSortMode.None)
+            CharacterBodySource.Provider is IModularCharacterBodyProvider
+            && Object.FindObjectsByType<CharacterPortraitBinding>(FindObjectsInactive.Exclude, FindObjectsSortMode.None)
                 .Select(binding => binding.GetComponent<RawImage>())
                 .Any(face => face != null && face.gameObject.activeInHierarchy && (face.texture == null || !face.enabled));
 
@@ -553,14 +625,15 @@ namespace Gamesim.Tests.PlayMode
             };
 
             var unreached = new List<string>();
-            foreach (bool larger in new[] { false, true })
+            foreach (var size in TextSizes.All)
             {
-                yield return ApplyTextSize(larger);
+                yield return ApplyTextSize(size);
+                Assert.That(director.TextSize, Is.EqualTo(size), "The settings chose " + TextSizes.Name(size) + " text.");
                 foreach (var opener in openers)
                 {
                     director.ClosePanels();
                     yield return null;
-                    if (!opener.Open()) { unreached.Add(opener.Name + " at " + (larger ? "larger" : "standard") + " text"); continue; }
+                    if (!opener.Open()) { unreached.Add(opener.Name + " at " + TextSizes.Name(size) + " text"); continue; }
 
                     // Let asynchronous content land before measuring. This is not politeness: a
                     // panel whose picture had not arrived used to draw a DIFFERENT layout -
@@ -580,7 +653,7 @@ namespace Gamesim.Tests.PlayMode
                         .Select(label => "'" + Excerpt(label.text) + "'")
                         .ToArray();
                     Assert.That(clipped, Is.Empty,
-                        "On " + opener.Name + " at " + (larger ? "larger" : "standard")
+                        "On " + opener.Name + " at " + TextSizes.Name(size)
                         + " text, this copy is cut off: " + string.Join(" | ", clipped));
                     director.ClosePanels();
                     yield return null;
@@ -613,14 +686,20 @@ namespace Gamesim.Tests.PlayMode
             for (int i = 0; i < 5; i++) yield return null;
         }
 
-        private IEnumerator ApplyTextSize(bool larger)
+        private IEnumerator ApplyTextSize(bool larger) => ApplyTextSize(larger ? TextSize.Larger : TextSize.Standard);
+
+        /// <summary>
+        /// The size chosen as a player chooses it: the settings opened, and the size's own control
+        /// pressed (A8). The settings offer the two sizes not in use, so a size with no control up
+        /// is the one in use already.
+        /// </summary>
+        private IEnumerator ApplyTextSize(TextSize size)
         {
             director.OpenSettings();
             yield return null; yield return null;
-            var wanted = larger ? LargerTextCaption : StandardTextCaption;
+            var wanted = TextSizes.Caption(size);
             var toggle = director.GetComponentsInChildren<Button>(true)
                 .FirstOrDefault(button => button.IsActive() && button.name == wanted);
-            // Already in the requested state when the opposite caption is showing.
             if (toggle != null) { toggle.onClick.Invoke(); yield return null; yield return null; }
             director.ClosePanels();
             yield return null;

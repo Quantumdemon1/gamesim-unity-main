@@ -287,6 +287,7 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(listener.name, Is.Not.EqualTo(EpisodeDirector.VentPickerCaption).And.Not.EqualTo(AfterThePicker),
                 "The player talks to somebody with an ordinary name.");
             yield return TalkTo(listener.id);
+            yield return EnterConversationCategory(EpisodeDirector.PressureCategoryCaption);
             Assert.That(ButtonWithCaption(AfterThePicker), Is.Not.Null, "The row is offered after the scheming pickers.");
             yield return PressRow(EpisodeDirector.VentPickerCaption);
             // The render is done, and anything it drew that the pass took off is gone.
@@ -298,10 +299,18 @@ namespace Gamesim.Tests.PlayMode
                 var card = FindButton(EpisodeDirector.VentCaption(named));
                 Assert.That(card.transform.IsChildOf(ActiveRect(EpisodeHud.PersonPickerPrefix + EpisodeDirector.VentPickerCaption)), Is.True,
                     where + ": '" + EpisodeDirector.VentCaption(named) + "' is a card in the picker.");
-                Assert.That(card.transform.Find(EpisodeHud.PickerNameName) == null, Is.True,
-                    where + ": '" + named + "' is a caption on the page, and is not drawn over the card.");
-                Assert.That(ActiveButtons(named).Count, Is.EqualTo(1), where + ": '" + named + "' finds one control,");
-                Assert.That(FindButton(named).name, Is.EqualTo(named), "the one called that.");
+                bool collides = LiveCaptionsBut(card).Contains(named);
+                var name = card.transform.Find(EpisodeHud.PickerNameName);
+                Assert.That(name == null, Is.EqualTo(collides),
+                    where + ": names are suppressed only when they collide with another currently visible control.");
+                Assert.That(ActiveButtons(named).Count, Is.EqualTo(1), where + ": '" + named + "' identifies one current control.");
+                if (collides)
+                    Assert.That(FindButton(named).name, Is.EqualTo(named), "The real verb retains its unambiguous caption.");
+                else
+                {
+                    Assert.That(name.GetComponent<TMP_Text>().text, Is.EqualTo(named), "A caption hidden by nesting does not hide the person's name.");
+                    Assert.That(FindButton(named), Is.SameAs(card), "The visible name belongs to its person card.");
+                }
             }
             foreach (var cell in PickerCells(EpisodeDirector.VentPickerCaption, where))
             {
@@ -343,12 +352,12 @@ namespace Gamesim.Tests.PlayMode
                 var verbs = campaign
                     ? new[] { EpisodeDirector.PromiseToEvictPickerCaption, EpisodeDirector.TargetDealPickerCaption }
                     : new[] { EpisodeDirector.VentPickerCaption, EpisodeDirector.LiePickerCaption, EpisodeDirector.CalloutPickerCaption, EpisodeDirector.TargetDealPickerCaption };
-                foreach (bool larger in new[] { false, true })
+                foreach (var (textSize, larger) in TextScales.Steps)
                 {
-                    yield return ApplyTextSize(larger);
+                    yield return ApplyTextSize(textSize);
                     var listener = Listener(director.Snapshot);
                     yield return TalkTo(listener.id);
-                    string where = (campaign ? "The campaign" : "Free time") + " in a house of 16" + (larger ? " at the larger text" : "");
+                    string where = (campaign ? "The campaign" : "Free time") + " in a house of 16" + (larger ? " " + TextScales.At(textSize) : "");
                     foreach (string verb in verbs)
                     {
                         yield return PressRow(verb);
@@ -357,7 +366,9 @@ namespace Gamesim.Tests.PlayMode
                         yield return AtBothFrames(frame =>
                         {
                             string at = open + " on the " + frame + " frame";
-                            AssertRowsHaveRoom(larger, at);
+                            AssertRowsHaveRoom(textSize, at, EpisodeDirector.ConversationTopicsBackCaption, verb);
+                            AssertPickerChoices(verb,
+                                ExpectedPickers(director.Snapshot, listener.id).Single(picker => picker.verb == verb).people, at);
                             AssertCopyHolds(at);
                             AssertPickerFits(verb, at);
                             // The promise's people are the nominees; every other picker holds the long name.

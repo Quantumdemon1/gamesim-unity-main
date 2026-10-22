@@ -176,13 +176,13 @@ namespace Gamesim.Tests.PlayMode
             yield return PlayUntilTheCeremony();
             Assert.That(director.IsCeremonyStaged, Is.True, "The nomination is staged in the house.");
             float captionAtOne = 0f;
-            foreach (bool large in new[] { false, true })
+            foreach (var (textSize, large) in TextScales.Steps)
             {
-                director.SetLargeText(large);
+                director.SetTextSize(textSize);
                 yield return Frames(2);
                 Assert.That(director.CeremonySkipShowing, Is.True, "The chip is up while the stage runs.");
                 Canvas.ForceUpdateCanvases();
-                string where = "The skip chip at " + (large ? "the larger" : "the resting") + " text size";
+                string where = "The skip chip " + TextScales.At(textSize);
                 var chip = SkipChip();
                 foreach (var label in chip.GetComponentsInChildren<TMP_Text>())
                     Assert.That(label.rectTransform.rect.height, Is.GreaterThanOrEqualTo(label.fontSize * 1.3f - 0.01f),
@@ -192,6 +192,8 @@ namespace Gamesim.Tests.PlayMode
                 var caption = SkipChipLabel(CeremonySkipChip.Caption);
                 if (!large) captionAtOne = caption.fontSize;
                 else Assert.That(caption.fontSize, Is.GreaterThan(captionAtOne), where + ": the words grow with the preference.");
+                // Each size over the last: the largest's words over the larger's.
+                captionAtOne = caption.fontSize;
 
                 var canvas = chip.GetComponentInParent<Canvas>().rootCanvas;
                 var space = (RectTransform)canvas.transform;
@@ -290,11 +292,11 @@ namespace Gamesim.Tests.PlayMode
             yield return SkipToTheStagedWalkOut();
             string evicted = director.WalkingOutId;
             var chrome = new List<Rect>();
-            foreach (bool large in new[] { false, true })
+            foreach (var textSize in TextSizes.All)
             {
-                director.SetLargeText(large);
+                director.SetTextSize(textSize);
                 yield return Frames(3);
-                string where = "The skip chip through the walk out at " + (large ? "the larger" : "the resting") + " text size";
+                string where = "The skip chip through the walk out " + TextScales.At(textSize);
                 Assert.That(director.WalkingOutId, Is.EqualTo(evicted), where + ": they are still walking,");
                 Assert.That(director.CeremonySkipShowing, Is.True, where + ": the chip is up,");
                 Assert.That(Hud.IsHeldForReveal, Is.True, where + ": the chrome is aside for the walk.");

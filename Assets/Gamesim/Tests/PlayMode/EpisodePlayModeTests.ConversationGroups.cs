@@ -151,6 +151,7 @@ namespace Gamesim.Tests.PlayMode
         /// <summary>Presses a row the way a pointer does: brought into view, taken by the selection, then clicked.</summary>
         private IEnumerator PressRow(string caption)
         {
+            yield return EnterCategoryForLeaf(caption);
             var row = ButtonWithCaption(caption);
             EventSystem.current.SetSelectedGameObject(row.gameObject);
             row.onClick.Invoke();
@@ -171,72 +172,51 @@ namespace Gamesim.Tests.PlayMode
         private bool PickerShows(string verb, string line) => PickerCells(verb, "'" + verb + "'").Any(cell => cell.Find(line) != null);
 
         [UnityTest]
-        public IEnumerator ConversationGroups_FourGroupsUnderTheDialAndEachVerbIsOneRow()
+        public IEnumerator ConversationGroups_EachCategoryHoldsItsOwnVerbsAndTargetsStayFolded()
         {
             var maya = SceneComponents<HouseNpc>().Single(npc => npc.Id == ContentCatalog.MayaId);
             yield return OpenNearbyNpc(maya);
             var state = director.Snapshot;
-            var content = ButtonWithCaption(EpisodeHud.DiscussGameCaption).transform.parent;
-            int Index(string name)
-            {
-                var child = content.Find(name);
-                Assert.That(child, Is.Not.Null, "The conversation draws '" + name + "'.");
-                return child.GetSiblingIndex();
-            }
-            int bond = Index(EpisodeHud.ConversationGroupPrefix + EpisodeDirector.BondGroupTitle);
-            int learn = Index(EpisodeHud.ConversationGroupPrefix + EpisodeDirector.LearnGroupTitle);
-            int scheme = Index(EpisodeHud.ConversationGroupPrefix + EpisodeDirector.SchemeGroupTitle);
-            int bargain = Index(EpisodeHud.ConversationGroupPrefix + EpisodeDirector.BargainGroupTitle);
-            Assert.That(Index(EpisodeHud.DialSeatName), Is.LessThan(bond), "The groups stand under the dial.");
-            Assert.That(new[] { bond, learn, scheme, bargain }, Is.Ordered.Ascending, "Bond, learn, scheme, bargain, in that order.");
-            void Within(string caption, int from, int to)
-            {
-                int at = Index(caption);
-                Assert.That(at > from && at < to, Is.True, "'" + caption + "' belongs to the group it is for.");
-            }
-            Within(EpisodeHud.DiscussGameCaption, bond, learn);
-            Within("Ask what they have heard", learn, scheme);
-            Within(EpisodeHud.ReadPersonCaption, learn, scheme);
-            Within("Share something I know", learn, scheme);
-            foreach (var verb in new[] { EpisodeDirector.VentPickerCaption, EpisodeDirector.LiePickerCaption,
-                EpisodeDirector.WhisperPickerCaption, EpisodeDirector.CalloutPickerCaption, "Work against them quietly" })
-                Within(verb, scheme, bargain);
             var pickers = ExpectedPickers(state, maya.Id);
-            var bargains = new List<string> { "Promise safety", "Propose a final-two promise", "Propose an alliance" };
-            if (pickers.Any(picker => picker.verb == EpisodeDirector.TargetDealPickerCaption)) bargains.Add(EpisodeDirector.TargetDealPickerCaption);
-            foreach (var caption in bargains)
-                Assert.That(Index(caption), Is.GreaterThan(bargain), "'" + caption + "' is a bargain.");
-            // What carries no chance comes first - the promises and the pact - then the deal table,
-            // whose note on the odds speaks only for the rows under it.
-            var promises = new[] { "Promise safety", "Propose a final-two promise", "Propose an alliance" };
-            if (pickers.Any(picker => picker.verb == EpisodeDirector.TargetDealPickerCaption))
-                foreach (var caption in promises)
-                    Assert.That(Index(caption), Is.LessThan(Index(EpisodeDirector.TargetDealPickerCaption)),
-                        "'" + caption + "' comes before the deal table's target agreements.");
-            foreach (var kind in PlayerDeals.Available(state, maya.Id)
-                         .Where(kind => kind != DealKind.TargetAgreement && kind != DealKind.VoteSave && kind != DealKind.VoteEvict))
-                Assert.That(Index(EpisodeHud.DealProposeCaption(DealKind.Title(kind).ToLowerInvariant())), Is.GreaterThan(Index(promises.Last())),
-                    "The deal table's '" + DealKind.Title(kind) + "' comes after the promises and the pact.");
-
-            // Shut, nobody's row is on the screen: each verb is one row.
-            foreach (var picker in pickers)
-                foreach (var caption in picker.people)
-                    Assert.That(ButtonWithCaptionOrNull(caption), Is.Null, "'" + caption + "' waits behind '" + picker.verb + "'.");
-
-            // Each verb's pill says what it is for, and the free ones say so.
-            Assert.That(TagOn(ButtonWithCaption(EpisodeDirector.VentPickerCaption)), Is.EqualTo(EpisodeDirector.RiskTag),
-                "Venting can cost ten with the listener; it was tagged social.");
-            Assert.That(TagOn(ButtonWithCaption(EpisodeHud.DiscussGameCaption)), Is.EqualTo(EpisodeDirector.RiskTag));
-            Assert.That(TagOn(ButtonWithCaption(EpisodeHud.SmallTalkCaption)), Is.EqualTo(EpisodeDirector.WarmthTag));
-            Assert.That(TagOn(ButtonWithCaption("Ask what they have heard")), Is.EqualTo(EpisodeDirector.LearnTag));
+            foreach (var (category, leaves) in new[]
+            {
+                (EpisodeDirector.ConnectCategoryCaption, new[] { EpisodeHud.SmallTalkCaption, EpisodeHud.PersonalChatCaption, EpisodeHud.RelationshipBuildingCaption, EpisodeHud.ShareSecretCaption, "Spend time together" }),
+                (EpisodeDirector.GameCategoryCaption, new[] { EpisodeHud.StrategicDiscussionCaption, EpisodeHud.DiscussGameCaption }),
+                (EpisodeDirector.LearnCategoryCaption, new[] { "Ask what they have heard", EpisodeHud.ReadPersonCaption, "Share something I know" }),
+                (EpisodeDirector.PressureCategoryCaption, new[] { EpisodeDirector.VentPickerCaption, EpisodeDirector.LiePickerCaption, EpisodeDirector.WhisperPickerCaption, EpisodeDirector.CalloutPickerCaption, "Work against them quietly" }),
+                (EpisodeDirector.DealsCategoryCaption, new[] { "Promise safety", "Propose a final-two promise", "Propose an alliance" }),
+            })
+            {
+                yield return EnterConversationCategory(category);
+                foreach (string caption in leaves)
+                    Assert.That(ButtonWithCaption(caption), Is.Not.Null, category + ": '" + caption + "' has one control.");
+                Assert.That(ActiveRect(EpisodeHud.DialName), Is.Null, category + ": the choices replace the wheel.");
+                foreach (var picker in pickers)
+                    foreach (string caption in picker.people)
+                        Assert.That(ButtonWithCaptionOrNull(caption), Is.Null, "'" + caption + "' waits behind its verb.");
+                Assert.That(JsonUtility.ToJson(director.Snapshot), Is.EqualTo(JsonUtility.ToJson(state)), "Choosing a category spends nothing.");
+            }
+            yield return EnterConversationCategory(EpisodeDirector.PressureCategoryCaption);
+            Assert.That(TagOn(ButtonWithCaption(EpisodeDirector.VentPickerCaption)), Does.Contain(EpisodeDirector.RiskTag));
+            yield return EnterConversationCategory(EpisodeDirector.GameCategoryCaption);
+            Assert.That(TagOn(ButtonWithCaption(EpisodeHud.DiscussGameCaption)), Does.Contain(EpisodeDirector.RiskTag));
+            yield return EnterConversationCategory(EpisodeDirector.ConnectCategoryCaption);
+            Assert.That(TagOn(ButtonWithCaption(EpisodeHud.SmallTalkCaption)), Does.Contain(EpisodeDirector.WarmthTag));
+            yield return EnterConversationCategory(EpisodeDirector.LearnCategoryCaption);
+            Assert.That(TagOn(ButtonWithCaption("Ask what they have heard")), Does.Contain(EpisodeDirector.LearnTag));
             Assert.That(TagOn(ButtonWithCaption(EpisodeHud.ReadPersonCaption)),
-                Is.EqualTo(EpisodeDirector.LearnTag + " · " + EpisodeDirector.RiskTag + " · " + EpisodeDirector.FreeTag),
-                "A read is free, and one they notice costs three with them.");
+                Is.EqualTo(EpisodeDirector.LearnTag + " · " + EpisodeDirector.RiskTag + " · " + EpisodeDirector.FreeTag));
+            yield return EnterConversationCategory(EpisodeDirector.DealsCategoryCaption);
             Assert.That(TagOn(ButtonWithCaption("Promise safety")), Is.EqualTo(EpisodeDirector.BindsYouTag));
+            var content = FindButton("Promise safety").transform.parent;
+            int Row(string caption) => FindButton(caption).transform.GetSiblingIndex();
+            if (pickers.Any(picker => picker.verb == EpisodeDirector.TargetDealPickerCaption))
+                foreach (string caption in new[] { "Promise safety", "Propose a final-two promise", "Propose an alliance" })
+                    Assert.That(Row(caption), Is.LessThan(Row(EpisodeDirector.TargetDealPickerCaption)),
+                        "Promises and the pact precede the target deal table.");
             director.ClosePanels();
             yield return null;
         }
-
         [UnityTest]
         public IEnumerator ConversationGroups_EveryCaptionIsStillOneControlInFreeTimeAndTheCampaign()
         {
@@ -251,7 +231,7 @@ namespace Gamesim.Tests.PlayMode
                 string where = (campaign ? "The campaign" : "Free time") + " in a house of " + houseguests;
 
                 // What the walks and the other tests press directly is still a row of its own, once.
-                var direct = PetalCaptions.Concat(RowCaptions)
+                var direct = new[] { EpisodeHud.SmallTalkCaption, EpisodeHud.StrategicDiscussionCaption, EpisodeHud.PersonalChatCaption, EpisodeHud.RelationshipBuildingCaption, EpisodeHud.ShareSecretCaption, "Spend time together" }.Concat(RowCaptions)
                     .Concat(new[] { EpisodeHud.ReadPersonCaption, "Propose an alliance", "Work against them quietly" }).ToList();
                 if (campaign) direct.Add(EpisodeHud.AskVoteCaption);
                 foreach (var kind in PlayerDeals.Available(state, listener.id)
@@ -261,13 +241,17 @@ namespace Gamesim.Tests.PlayMode
                     foreach (var nominee in state.nominees)
                         direct.Add(EpisodeHud.VoteDealCaption(DealKind.VoteEvict, state.Find(nominee).name));
                 foreach (var caption in direct)
+                {
+                    yield return EnterCategoryForLeaf(caption);
                     Assert.That(ButtonWithCaption(caption), Is.Not.Null, where + ": '" + caption + "'.");
+                }
 
                 var pickers = ExpectedPickers(state, listener.id);
                 Assert.That(pickers.Any(p => p.verb == EpisodeDirector.PromiseToEvictPickerCaption), Is.EqualTo(campaign),
                     where + ": a promise about the vote is offered in the campaign only.");
                 foreach (var (verb, people) in pickers)
                 {
+                    yield return EnterCategoryForLeaf(verb);
                     foreach (var caption in people)
                         Assert.That(ButtonWithCaptionOrNull(caption), Is.Null, where + ": '" + caption + "' waits until its verb is opened.");
                     ButtonWithCaption(verb).onClick.Invoke();
@@ -291,6 +275,7 @@ namespace Gamesim.Tests.PlayMode
                 {
                     // A person's button commits exactly what its row did, and the picker shuts behind it.
                     var about = state.Active.First(c => !c.isPlayer && c.id != listener.id);
+                    yield return EnterCategoryForLeaf(EpisodeDirector.VentPickerCaption);
                     ButtonWithCaption(EpisodeDirector.VentPickerCaption).onClick.Invoke();
                     yield return null;
                     int revision = director.Snapshot.revision;
@@ -357,6 +342,7 @@ namespace Gamesim.Tests.PlayMode
             var second = state.Find(state.nominees[1]);
 
             yield return TalkTo(first.id);
+            yield return EnterConversationCategory(EpisodeDirector.DealsCategoryCaption);
             ButtonWithCaption(EpisodeDirector.PromiseToEvictPickerCaption).onClick.Invoke();
             yield return null;
             Assert.That(ButtonWithCaptionOrNull(EpisodeDirector.PromiseToEvictCaption(first.name)), Is.Null,
@@ -364,6 +350,7 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(ButtonWithCaption(EpisodeDirector.PromiseToEvictCaption(second.name)), Is.Not.Null, "The other nominee is on offer.");
 
             yield return TalkTo(Listener(state).id);
+            yield return EnterConversationCategory(EpisodeDirector.DealsCategoryCaption);
             ButtonWithCaption(EpisodeDirector.PromiseToEvictPickerCaption).onClick.Invoke();
             yield return null;
             foreach (var nominee in new[] { first, second })
@@ -381,6 +368,7 @@ namespace Gamesim.Tests.PlayMode
             {
                 yield return InstallTalkingHouse(8, campaign, shape);
                 yield return TalkTo(Listener(director.Snapshot).id);
+                yield return EnterConversationCategory(EpisodeDirector.DealsCategoryCaption);
                 Assert.That(ButtonWithCaptionOrNull(EpisodeDirector.PromiseToEvictPickerCaption), Is.Null, "No promise to evict " + who + ".");
                 Assert.That(PanelControls().Any(button => button.name.StartsWith("Promise to evict")), Is.False, "No promise about the vote of any kind " + who + ".");
                 director.ClosePanels();
@@ -441,7 +429,7 @@ namespace Gamesim.Tests.PlayMode
             var maya = SceneComponents<HouseNpc>().Single(npc => npc.Id == ContentCatalog.MayaId);
             yield return OpenNearbyNpc(maya);
             yield return AssertKeyboardRing("the conversation, every picker shut", ModalRoot);
-
+            yield return KeyboardSubmit(EpisodeDirector.PressureCategoryCaption);
             yield return KeyboardSubmit(EpisodeDirector.VentPickerCaption);
             Assert.That(director.ConversationPicker, Is.EqualTo(EpisodeDirector.VentPickerCaption), "Enter on a verb row opens its people.");
             yield return AssertKeyboardRing("the conversation with venting open", ModalRoot);
@@ -468,8 +456,10 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(after.events.Last(entry => entry.kind == "vent").text, Does.StartWith("You vented about " + subject + " to " + listener),
                 "about the person the button named, to the houseguest in front of the player.");
             Assert.That(director.ConversationPicker, Is.Null, "and the picker shuts.");
-            Assert.That(EventSystem.current.currentSelectedGameObject.name, Is.EqualTo(EpisodeDirector.VentPickerCaption),
-                "The keyboard stays on the verb it came from, not back at the head of the dial.");
+            Assert.That(director.IsConversationExchangePlaying, Is.True,
+                "The accepted choice hands the floor to the speakers before returning to its category.");
+            yield return EnterCategoryForLeaf(EpisodeDirector.VentPickerCaption);
+            Assert.That(ButtonWithCaption(EpisodeDirector.VentPickerCaption), Is.Not.Null, "The same verb remains reachable after the exchange.");
             director.ClosePanels();
             yield return null;
         }
@@ -520,17 +510,18 @@ namespace Gamesim.Tests.PlayMode
                 });
                 // A body that finishes assembling renders the HUD again; measure in a house that has.
                 yield return SettleCast();
-                foreach (bool larger in new[] { false, true })
+                foreach (var (textSize, larger) in TextScales.Steps)
                 {
-                    yield return ApplyTextSize(larger);
+                    yield return ApplyTextSize(textSize);
                     var listener = Listener(director.Snapshot);
                     yield return TalkTo(listener.id);
+                    yield return EnterConversationCategory(EpisodeDirector.PressureCategoryCaption);
                     var state = director.Snapshot;
-                    string where = "Free time in a house of " + houseguests + (larger ? " at the larger text" : "");
-                    AssertConversationFits(larger, where);
+                    string where = "Free time in a house of " + houseguests + (larger ? " " + TextScales.At(textSize) : "");
+                    AssertConversationFits(textSize, where);
                     AssertTagsHaveRoom(where);
                     if (houseguests == 16)
-                        yield return CaptureConversation(larger ? "conversation-grouped-large" : "conversation-grouped", where, null);
+                        yield return CaptureConversation("conversation-grouped" + TextScales.Suffix(textSize), where, null);
                     Assert.That(PlayerDeals.Subjects(state, listener.id), Is.Not.Empty, where + ": the deal table has target agreements to fold.");
                     foreach (var (verb, frame) in new[]
                     {
@@ -542,7 +533,8 @@ namespace Gamesim.Tests.PlayMode
                         string open = where + " with '" + verb + "' open";
                         // Before anything else scrolls the column.
                         AssertVerbAtTop(verb, open);
-                        AssertConversationFits(larger, open);
+                        AssertPickerConversationFits(textSize, open, verb,
+                            ExpectedPickers(state, listener.id).Single(picker => picker.verb == verb).people);
                         AssertTagsHaveRoom(open);
                         AssertPickerFits(verb, open);
                         if (AllyIn(state) != listener.id)
@@ -551,7 +543,7 @@ namespace Gamesim.Tests.PlayMode
                             Assert.That(PickerCells(verb, open).All(cell => cell.Find(EpisodeHud.PickerTagName) != null && ChanceOn(cell.GetComponent<Button>()) != null), Is.True,
                                 open + ": every target agreement carries the table's stakes on a chip and the player's read of the odds beside it.");
                         if (houseguests == 16)
-                            yield return CaptureConversation(frame + (larger ? "-large" : ""), open, verb);
+                            yield return CaptureConversation(frame + TextScales.Suffix(textSize), open, verb);
                     }
                     director.ClosePanels();
                     yield return null;
@@ -571,13 +563,14 @@ namespace Gamesim.Tests.PlayMode
         {
             yield return InstallTalkingHouse(16, true, AlliedWith(season => season.nominees[1]));
             yield return SettleCast();
-            foreach (bool larger in new[] { false, true })
+            foreach (var (textSize, larger) in TextScales.Steps)
             {
-                yield return ApplyTextSize(larger);
+                yield return ApplyTextSize(textSize);
                 var listener = Listener(director.Snapshot);
                 yield return TalkTo(listener.id);
-                string where = "The campaign in a house of 16" + (larger ? " at the larger text" : "");
-                AssertConversationFits(larger, where);
+                yield return EnterConversationCategory(EpisodeDirector.DealsCategoryCaption);
+                string where = "The campaign in a house of 16" + (larger ? " " + TextScales.At(textSize) : "");
+                AssertConversationFits(textSize, where);
                 AssertTagsHaveRoom(where);
                 // The vote deals' rows ("Propose a vote to keep ...") carry the player's own reading,
                 // said so, clear of the chevron (UI-UX-PASS-PLAN T0).
@@ -587,13 +580,17 @@ namespace Gamesim.Tests.PlayMode
                     yield return PressRow(verb);
                     string open = where + " with '" + verb + "' open";
                     AssertVerbAtTop(verb, open);
-                    AssertConversationFits(larger, open);
+                    AssertPickerConversationFits(textSize, open, verb,
+                        ExpectedPickers(director.Snapshot, listener.id).Single(picker => picker.verb == verb).people);
                     AssertTagsHaveRoom(open);
                     AssertPickerFits(verb, open);
-                    AssertReadingsClearOfChevrons(open, true);
+                    // The selected picker has no sibling vote-deal rows. Its exact eligible
+                    // cards carry the readings on their feet, checked above with their bars
+                    // and ALLY marks; any inline reading must still clear its chevron.
+                    AssertReadingsClearOfChevrons(open, false);
                     Assert.That(PickerShows(verb, EpisodeHud.PickerAllyName), Is.True, open + ": the nominee in a pact with the player shows it on their foot.");
                     if (verb == EpisodeDirector.PromiseToEvictPickerCaption)
-                        yield return CaptureConversation(larger ? "conversation-grouped-promise-large" : "conversation-grouped-promise", open, verb);
+                        yield return CaptureConversation("conversation-grouped-promise" + TextScales.Suffix(textSize), open, verb);
                 }
                 director.ClosePanels();
                 yield return null;
@@ -626,30 +623,17 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(director.ConversationIntent, Is.EqualTo(EpisodeDirector.IntentDeal), "on what the player came for.");
             var state = director.Snapshot;
 
-            var content = FindButton(EpisodeHud.DiscussGameCaption).transform.parent;
+            var content = FindButton("Promise safety").transform.parent;
             int Row(string caption) => FindButton(caption).transform.GetSiblingIndex();
-            int Says(string words)
-            {
-                for (int i = 0; i < content.childCount; i++)
-                {
-                    var child = content.GetChild(i);
-                    if (child.gameObject.activeInHierarchy && child.GetComponentsInChildren<TMP_Text>().Any(text => text.text == words)) return i;
-                }
-                Assert.Fail(where + ": the conversation says '" + words + "'.");
-                return -1;
-            }
-            var dial = content.Find(EpisodeHud.DialSeatName);
-            Assert.That(dial != null, Is.True, where + ": the dial has its seat.");
-            // FindButton is Single(): each of these is drawn once, above the dial and not again below it.
+            Assert.That(ActiveRect(EpisodeHud.DialName), Is.Null, where + ": the intent opens its category, without a second wheel.");
+            Assert.That(director.CurrentConversationCategory, Is.Not.Null);
+            // FindButton is Single(): each promise is drawn once, before the folded deal table.
             Assert.That(new[]
                 {
-                    Says("WHAT YOU CAME TO PUT TO THEM"), Row("Promise safety"), Row("Propose a final-two promise"), Row("Propose an alliance"),
-                    Row(EpisodeDirector.TargetDealPickerCaption), dial.GetSiblingIndex(),
+                    Row("Promise safety"), Row("Propose a final-two promise"), Row("Propose an alliance"), Row(EpisodeDirector.TargetDealPickerCaption),
                 },
-                Is.Ordered.Ascending, where + ": what the player came for comes first - the promises and the pact, then the deal "
-                    + "table with its target agreements folded - and the dial after it.");
-            Assert.That(ActiveRect(EpisodeHud.ConversationGroupPrefix + EpisodeDirector.BargainGroupTitle) == null, Is.True,
-                where + ": free time has nothing left to bargain with under the dial.");
+                Is.Ordered.Ascending, where + ": the promises and the pact precede the folded target table.");
+            Assert.That(ButtonWithCaptionOrNull(EpisodeHud.DiscussGameCaption), Is.Null, where + ": another category's verbs stay hidden.");
 
             var subjects = PlayerDeals.Subjects(state, listener.id);
             Assert.That(subjects, Is.Not.Empty, where + ": there is somebody to name in a target agreement.");
@@ -670,7 +654,8 @@ namespace Gamesim.Tests.PlayMode
                 Assert.That(ChanceOn(card), Is.EqualTo(KnownOdds.CardWord(KnownOdds.Deal(state, listener.id, DealKind.TargetAgreement, id))),
                     "and the player's read of the odds beside it, 'no read' where it has nothing behind it.");
             }
-            AssertConversationFits(false, where + " with its target agreements open");
+            AssertPickerConversationFits(TextSize.Standard, where + " with its target agreements open",
+                EpisodeDirector.TargetDealPickerCaption, subjects.Select(Against));
             AssertTagsHaveRoom(where);
             AssertPickerFits(EpisodeDirector.TargetDealPickerCaption, where);
 
@@ -700,7 +685,7 @@ namespace Gamesim.Tests.PlayMode
         /// promise about a vote that nobody is casting yet.
         /// </summary>
         [UnityTest]
-        public IEnumerator ConversationGroups_InAStrategyWindowTheGroupsHoldWhatTheWindowAllows()
+        public IEnumerator ConversationGroups_InAStrategyWindowTheCategoriesHoldWhatTheWindowAllows()
         {
             string hoh = null;
             yield return InstallStrategySeason(41, season =>
@@ -710,57 +695,56 @@ namespace Gamesim.Tests.PlayMode
             });
             yield return TalkTo(hoh);
             const string where = "A word with the Head of Household before nominations";
-            Assert.That(director.IsConversationOpen, Is.True, where + ": the conversation opens.");
             var state = director.Snapshot;
-            var content = FindButton(EpisodeHud.DiscussGameCaption).transform.parent;
-            int Index(string name)
-            {
-                var child = content.Find(name);
-                Assert.That(child != null, Is.True, where + ": the conversation draws '" + name + "'.");
-                return child.GetSiblingIndex();
-            }
-            int dial = Index(EpisodeHud.DialSeatName);
-            Assert.That(FindButton(EpisodeHud.LobbyAskCaption(state, state.Find(hoh).name, LobbyAsk.Spare, state.playerId)).transform.GetSiblingIndex(),
-                Is.LessThan(dial), where + ": the plea stands above the dial, as it always did.");
-            int bond = Index(EpisodeHud.ConversationGroupPrefix + EpisodeDirector.BondGroupTitle);
-            int learn = Index(EpisodeHud.ConversationGroupPrefix + EpisodeDirector.LearnGroupTitle);
-            int scheme = Index(EpisodeHud.ConversationGroupPrefix + EpisodeDirector.SchemeGroupTitle);
-            int bargain = Index(EpisodeHud.ConversationGroupPrefix + EpisodeDirector.BargainGroupTitle);
-            Assert.That(new[] { dial, bond, learn, scheme, bargain }, Is.Ordered.Ascending, where + ": the four groups under the dial, in order.");
+            yield return EnterConversationCategory(EpisodeDirector.GameCategoryCaption);
+            Assert.That(ButtonWithCaption(EpisodeHud.LobbyAskCaption(state, state.Find(hoh).name, LobbyAsk.Spare, state.playerId)),
+                Is.Not.Null, where + ": the nomination plea remains reachable.");
+            Assert.That(ActiveRect(EpisodeHud.DialName), Is.Null, "The plea category leaves the wheel hidden.");
 
-            // LEARN: the question, without the read, and a line that says why.
-            Assert.That(Index("Ask what they have heard"), Is.GreaterThan(learn).And.LessThan(scheme), where + ": what they have heard can be asked.");
-            Assert.That(ButtonWithCaptionOrNull(EpisodeHud.ReadPersonCaption) == null, Is.True, where + ": the read waits for free time and the campaign,");
-            Assert.That(ShownText(), Does.Contain(EpisodeDirector.LearnWindowLine), "and the group's line says so,");
-            Assert.That(ShownText(), Does.Not.Contain(EpisodeDirector.LearnLine), "rather than offering a read the window does not.");
-            Assert.That(ButtonWithCaptionOrNull(EpisodeHud.AskVoteCaption) == null, Is.True, where + ": there is no vote yet to ask about.");
+            yield return EnterConversationCategory(EpisodeDirector.LearnCategoryCaption);
+            Assert.That(ButtonWithCaption("Ask what they have heard"), Is.Not.Null);
+            Assert.That(ButtonWithCaptionOrNull(EpisodeHud.ReadPersonCaption), Is.Null, where + ": the read waits for free time and the campaign.");
+            Assert.That(ButtonWithCaptionOrNull(EpisodeHud.AskVoteCaption), Is.Null, where + ": there is no vote yet to ask about.");
 
-            // SCHEME: what is said to the person in front of the player, and nothing told to the house.
+            yield return EnterConversationCategory(EpisodeDirector.PressureCategoryCaption);
             foreach (string verb in new[] { EpisodeDirector.VentPickerCaption, EpisodeDirector.LiePickerCaption })
-                Assert.That(Index(verb), Is.GreaterThan(scheme).And.LessThan(bargain), where + ": '" + verb + "' is said to them alone.");
+                Assert.That(ButtonWithCaption(verb), Is.Not.Null, where + ": '" + verb + "' is said to them alone.");
             foreach (string later in new[] { EpisodeDirector.WhisperPickerCaption, EpisodeDirector.CalloutPickerCaption, "Work against them quietly" })
-                Assert.That(ButtonWithCaptionOrNull(later) == null, Is.True, where + ": '" + later + "' waits for free time.");
+                Assert.That(ButtonWithCaptionOrNull(later), Is.Null, where + ": '" + later + "' waits for free time.");
 
-            // BARGAIN: the promises, the pact and the table, and no promise about the vote.
+            yield return EnterConversationCategory(EpisodeDirector.DealsCategoryCaption);
             foreach (string caption in new[] { "Promise safety", "Propose a final-two promise", "Propose an alliance" })
-                Assert.That(Index(caption), Is.GreaterThan(bargain), where + ": '" + caption + "' is a bargain.");
-            Assert.That(ButtonWithCaptionOrNull(EpisodeDirector.PromiseToEvictPickerCaption) == null, Is.True, where + ": nobody is casting a vote yet.");
-
-            // Venting opens the house, all but the one being talked to.
+                Assert.That(ButtonWithCaption(caption), Is.Not.Null, where + ": '" + caption + "' remains reachable.");
+            Assert.That(ButtonWithCaptionOrNull(EpisodeDirector.PromiseToEvictPickerCaption), Is.Null, where + ": nobody is casting a vote yet.");
             yield return PressRow(EpisodeDirector.VentPickerCaption);
             Assert.That(PickerCells(EpisodeDirector.VentPickerCaption, where).Select(cell => cell.name),
                 Is.EquivalentTo(state.Active.Where(c => !c.isPlayer && c.id != hoh).Select(c => EpisodeDirector.VentCaption(c.name))),
-                where + ": venting opens everybody else, each under the caption their row had.");
-            AssertConversationFits(false, where + " with venting open");
+                where + ": venting opens everyone except the person hearing it.");
+            AssertPickerConversationFits(TextSize.Standard, where + " with venting open", EpisodeDirector.VentPickerCaption,
+                state.Active.Where(person => !person.isPlayer && person.id != hoh).Select(person => EpisodeDirector.VentCaption(person.name)));
             AssertPickerFits(EpisodeDirector.VentPickerCaption, where);
             director.ClosePanels();
             yield return null;
         }
-
-        private void AssertConversationFits(bool larger, string where)
+        private void AssertConversationFits(TextSize textSize, string where, params string[] expectedRowCaptions)
         {
-            AssertRowsHaveRoom(larger, where);
+            AssertRowsHaveRoom(textSize, where, expectedRowCaptions);
             AssertCopyHolds(where);
+        }
+
+        private void AssertPickerConversationFits(TextSize textSize, string where, string verb, IEnumerable<string> expectedChoices)
+        {
+            AssertConversationFits(textSize, where, EpisodeDirector.ConversationTopicsBackCaption, verb);
+            AssertPickerChoices(verb, expectedChoices, where);
+        }
+
+        private void AssertPickerChoices(string verb, IEnumerable<string> expectedChoices, string where)
+        {
+            var expected = expectedChoices.ToArray();
+            Assert.That(expected, Is.Not.Empty, where + ": the fixture has eligible choices.");
+            Assert.That(director.ConversationPicker, Is.EqualTo(verb), where + ": this verb owns the selected page.");
+            CollectionAssert.AreEquivalent(expected, PickerCells(verb, where).Select(cell => cell.name).ToArray(),
+                where + ": every eligible person's exact caption is present, with no extra people.");
         }
 
         /// <summary>Nothing on the screen is cut off, and every label on the panel draws its words.</summary>
@@ -826,7 +810,7 @@ namespace Gamesim.Tests.PlayMode
         /// <paramref name="wrappedAbove"/> only where lines above the row wrap: a reveal worked out
         /// before the rows took their heights put the row wherever the rows above it grew it to.
         /// </summary>
-        private void AssertVerbAtTop(string verb, string where, bool wrappedAbove = true)
+        private void AssertVerbAtTop(string verb, string where, bool wrappedAbove = false)
         {
             Canvas.ForceUpdateCanvases();
             var row = (RectTransform)FindButton(verb).transform;
@@ -954,6 +938,8 @@ namespace Gamesim.Tests.PlayMode
                 var reading = cell.Find(EpisodeHud.PickerReadingName);
                 Assert.That(reading != null, Is.True, about + " says the player's reading of them, as its row did.");
                 var readingText = reading.GetComponent<TMP_Text>();
+                Assert.That(reading.gameObject.activeInHierarchy && readingText.enabled, Is.True,
+                    about + ": the eligible card's trust reading is visible on its foot.");
                 Assert.That(readingText.text, Is.EqualTo(EpisodeHud.TrustReading(score)),
                     about + ": the reading is the player's own, said so, never theirs of the player.");
                 Assert.That(track != null, Is.True, about + " carries the player's trust of them as a bar.");

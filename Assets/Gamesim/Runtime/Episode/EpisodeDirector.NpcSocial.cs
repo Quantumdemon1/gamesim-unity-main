@@ -84,7 +84,9 @@ namespace Gamesim.Episode
         /// </summary>
         private void TickNearby()
         {
-            if (hud != null) hud.SetNearby(!IsPanelOpen && !string.IsNullOrEmpty(ObservedNpcConversation) && CanListenIn);
+            // While the pair is being witnessed: a line left up only to be read (A10) offers nothing.
+            if (hud != null) hud.SetNearby(!IsPanelOpen && !string.IsNullOrEmpty(ObservedNpcConversation)
+                && !(npcCaption != null && npcCaption.IsReleasing) && CanListenIn);
         }
         public string NpcAutonomyDiagnostic => npcWorldFailure;
         /// <summary>Read-only proof for explicit QA; never a command or UI knowledge source.</summary>
@@ -130,7 +132,7 @@ namespace Gamesim.Episode
             state.npcSocial != null && !NpcSocialState.IsEligiblePhase(state.phase) && !FinaleNight(state.phase)
             && NpcSocialState.AutonomyHasBegun(state) && state.Find(state.playerId)?.status == ContestantStatus.Active
             && state.Active.Count(actor => !actor.isPlayer) >= 2
-            && (!Application.isBatchMode || StagesInBatchRuns || WalkOutsInBatchRuns);
+            && (!Application.isBatchMode || StagesInBatchRuns || WalkOutsInBatchRuns || ActsInBatchRuns);
 
         /// <summary>
         /// Editor-only: builds the house's world now, as a season's first social phase does and a
@@ -181,10 +183,19 @@ namespace Gamesim.Episode
 
         private void TickNpcSocialRuntime(float delta)
         {
-            // Hide an existing caption every frame when its physical witness proof
-            // expires. Topic selection/showing remains on the 10 Hz world cadence.
-            if (npcShownLease != null && (!NpcCanAdvance || !npcMeetings.CanWitness(player, npcShownLease)))
-            { npcCaption?.Hide(); npcShownLease = null; }
+            // Every frame, the witness of the line on screen is checked again (topic selection and
+            // showing stay on the 10 Hz world cadence). The house stopping - a panel, a load, a pause -
+            // takes the line down at once; the pair leaving sight lets it go, to stay up until it has
+            // been read (A10, D3): it used to be hidden here the same frame, before the 10 Hz pass
+            // could release it. Either way the witness is over, and the Nearby card goes with it now.
+            if (npcShownLease != null)
+            {
+                bool ended = true;
+                if (!NpcCanAdvance) npcCaption?.Hide();
+                else if (!npcMeetings.CanWitness(player, npcShownLease)) npcCaption?.Release();
+                else ended = false;
+                if (ended) { npcShownLease = null; TickNearby(); }
+            }
             if (!IsReady || npcDiagnosticsSuspended) return;
             if (competitionArenaStaging) { TickCompetitionArena(); return; }
             EnsureNpcSocialWorld();
@@ -264,32 +275,23 @@ namespace Gamesim.Episode
         private void PlanNpcApproaches()
         {
             var state = projected;
-            var unavailable = new HashSet<string>(state.npcSocial.pending.SelectMany(row => new[] { row.firstId, row.secondId }));
-            foreach (var approach in npcApproaches) { unavailable.Add(approach.lease.FirstId); unavailable.Add(approach.lease.SecondId); }
+            // Pending pairs and cooldowns are the saved world's (NpcPairing.Busy); approaches under way are this one's.
+            var busy = NpcPairing.Busy(state);
+            foreach (var approach in npcApproaches) { busy.Add(approach.lease.FirstId); busy.Add(approach.lease.SecondId); }
             // Whoever the player has asked over to talk is on their way to the player, not free to
             // be paired: a pairing tried on them would only take their partner off their furniture.
-            if (talkSpot != null) unavailable.Add(talkSpot.NpcId);
-            foreach (var cooldown in state.npcSocial.cooldowns.Where(row => row.untilTick > state.npcSocial.clockTick)) unavailable.Add(cooldown.npcId);
-            var idle = state.Active.Where(actor => !actor.isPlayer && !unavailable.Contains(actor.id)).ToArray();
-            for (int first = 0; first < idle.Length; first++)
+            if (talkSpot != null) busy.Add(talkSpot.NpcId);
+            // The two of a staged act stand where it happens (EpisodeDirector.AllWeek): not free to be paired.
+            foreach (var actor in state.Active) if (npcMeetings.ActHoldsActor(actor.id)) busy.Add(actor.id);
+            // Who tries whom, and in what order, is NpcPairing's (the balance lab pairs its house the same way);
+            // each try mints one lease token and asks the coordinator for a route.
+            NpcPairing.Plan(state, busy, (firstId, secondId) =>
             {
-                if (unavailable.Contains(idle[first].id)) continue;
-                // Under agency each houseguest tries the one their agenda points at before the next
-                // idle body in cast order (NPC-AGENCY-PLAN.md §4); without it, cast order as always.
-                var order = new List<int>();
-                string wanted = NpcAgendas.PreferredPartner(state, idle[first].id);
-                int at = wanted == null ? -1 : Array.FindIndex(idle, actor => actor.id == wanted);
-                if (at >= 0 && at != first) order.Add(at);
-                for (int second = first + 1; second < idle.Length; second++) if (second != at) order.Add(second);
-                foreach (int second in order)
-                {
-                    if (unavailable.Contains(idle[second].id)) continue;
-                    string token = NpcWorldGeneration + ":approach:" + (++npcLeaseCounter).ToString(CultureInfo.InvariantCulture);
-                    if (!npcMeetings.TryReservePair(token, idle[first].id, idle[second].id, out var lease, out _)) continue;
-                    npcApproaches.Add(new NpcApproach { lease = lease, expiresAt = npcFreeSeconds + 20 });
-                    unavailable.Add(idle[first].id); unavailable.Add(idle[second].id); break;
-                }
-            }
+                string token = NpcWorldGeneration + ":approach:" + (++npcLeaseCounter).ToString(CultureInfo.InvariantCulture);
+                if (!npcMeetings.TryReservePair(token, firstId, secondId, out var lease, out _)) return false;
+                npcApproaches.Add(new NpcApproach { lease = lease, expiresAt = npcFreeSeconds + 20 });
+                return true;
+            });
         }
 
         private void ExpireNpcApproaches()
@@ -374,7 +376,7 @@ namespace Gamesim.Episode
             var result = engine.PrepareNpcOperation(request);
             if (!result.accepted) return false;
             if (!TryPersistCandidate(result.candidate, out var installed, out var failure))
-            { message = failure; SetNpcWorldPaused(true); npcCaption?.Hide(); Render(); return false; }
+            { message = failure; BeginPersistenceNotice(failure); SetNpcWorldPaused(true); npcCaption?.Hide(); Render(); return false; }
             if (queued.Generation != loadGeneration) { StopNpcWorld("A stale world operation cannot publish into a loaded session."); return false; }
             if (startLease != null) npcPendingWorld[request.sequence] = startLease;
             engine = new EpisodeEngine(installed);
@@ -452,13 +454,15 @@ namespace Gamesim.Episode
                     // Use the same current body endpoints that passed visibility. Navigation
                     // approaches stay reserved; they are not where seated faces are rendered.
                     var between = visibleMidpoint+Vector3.up*(lease.Seated ? .35f : CaptionHeadHeight-1.15f);
+                    npcCaption.CaptionTime = captionTime;
                     npcCaption.Show(projected.Find(pending.firstId).name, projected.Find(pending.secondId).name,
-                        pending.topic, largeText ? 1.2f : 1, between);
+                        pending.topic, TextScale, between);
                     npcShownLease = lease;
                     witnessed = true;
                 }
             }
-            if (!witnessed) { npcCaption?.Hide(); npcShownLease = null; }
+            // Out of sight, the line stays up until it has been read (A10); the witness is over at once.
+            if (!witnessed) { npcCaption?.Release(); npcShownLease = null; }
             npcSatDown.RemoveWhere(lease => !npcMeetings.TryGetLease(lease.Token, out var current) || !ReferenceEquals(current, lease));
             // Arrived pairs talk; at a seated venue they sit; either way each settles on the lease's
             // heading. A pair still travelling, or released, has none of the three.
@@ -509,6 +513,7 @@ namespace Gamesim.Episode
             npcWorldFailed = true; npcWorldFailure = reason ?? "Housemate navigation is unavailable.";
             SetNpcWorldPaused(true); npcCaption?.Hide();
             message = "Housemate activity is paused: " + npcWorldFailure + " Your episode and saved history remain available.";
+            BeginSystemNotice(message);
         }
         private void ResetNpcSocialForLoad()
         {
@@ -517,6 +522,7 @@ namespace Gamesim.Episode
         }
         private void DisposeNpcSocialWorld()
         {
+            ResetNpcInvitationsForLoad();
             // The talk spot is the world's: it goes with it, the player's seat with it.
             EndTalkSpot();
             EndDiaryVisit(true);

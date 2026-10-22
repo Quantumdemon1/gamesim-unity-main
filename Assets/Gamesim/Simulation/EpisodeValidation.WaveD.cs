@@ -4,8 +4,8 @@ using System.Linq;
 namespace Gamesim.Simulation
 {
     /// <summary>
-    /// Schema 28 (WAVE-D-NPC-PACTS-PLAN §0.3): Wave D's three start weeks, and the lines and the
-    /// receipt each design alone may write. D2's cadence is checked with the NPC world
+    /// Schema 28 (WAVE-D-NPC-PACTS-PLAN §0.3): Wave D's three start weeks, and the lines, the
+    /// receipt and the talk records each design alone may write. D2's cadence is checked with the NPC world
     /// (EpisodeNpcSocialValidation) and D3's plans with the ledger (EpisodeLedgerValidation).
     /// While a design's start week is 0 it has left nothing behind; once set, nothing it wrote
     /// predates it.
@@ -28,6 +28,17 @@ namespace Gamesim.Simulation
             if (s.relationships.Any(r => r.events.Any(e => e.type == StoryReceipts.DoubleDealt
                     && (s.allianceLeakRulesStartWeek == 0 || e.week < s.allianceLeakRulesStartWeek))))
                 return Fail(out error, "A season without the leak rules has none of their receipts.");
+            // D2's records of the house's talk (EpisodeEngine.CompletionChange) and of a veto's moves between two houseguests
+            // (EpisodeEngine.ChangeBetween), which feed trust between houseguests. A lie's and a scheme's records keep the types
+            // the engine's own path always wrote.
+            if (s.relationships.Any(r => r.events.Any(e => EpisodeEngine.AllWeekRecord(e.type)
+                    && (s.allWeekRulesStartWeek == 0 || e.week < s.allWeekRulesStartWeek))))
+                return Fail(out error, "A season without the all-week rules has none of their records.");
+            // Both write them only between two houseguests: a change with the player keeps the engine's own path, which records
+            // none of them, as it has since each was introduced (the consolidation check's ARCS2-4), so no season the engine
+            // played holds one on an edge of the player's.
+            if (s.relationships.Any(r => (r.fromId == s.playerId || r.toId == s.playerId) && r.events.Any(e => EpisodeEngine.AllWeekRecord(e.type))))
+                return Fail(out error, "The all-week rules' records are only ever between two houseguests.");
             return true;
         }
 

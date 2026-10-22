@@ -52,7 +52,12 @@ namespace Gamesim.Episode
 
             if (!seasonDirector.IsWeeklyRecapOpen)
             {
-                RequireSeason(!owed, "The week " + (state.week - 1) + " recap never opened after its eviction.");
+                // At the night's results the week has not moved on yet, so the recap owed is this
+                // week's; in the next week's social phase it is last week's. (rc1 and r2-walk's first
+                // walk both said "week 4" for the final four's week 5.)
+                int owedWeek = state.phase == EpisodePhase.Eviction ? state.week : state.week - 1;
+                RequireSeason(!owed, "The week " + owedWeek + " recap never opened after its eviction (revision "
+                    + state.revision + ", " + state.events.Count + " lines in the season's log).");
                 yield break;
             }
 
@@ -305,15 +310,22 @@ namespace Gamesim.Episode
                 yield break;
             }
 
+            yield return EnterSeasonConversationCategory(EpisodeDirector.DealsCategoryCaption);
             // An offer on the table is answered before anything is put to them.
             var offer = NpcDeals.Pending(before).FirstOrDefault(deal => deal.proposerId == chosen.Id);
             if (offer != null && HasSeasonButtonText(EpisodeHud.DealAcceptCaption))
             {
                 yield return CaptureSeason("deal-offer", graphical);
                 yield return ClickSeasonButton(EpisodeHud.DealAcceptCaption);
-                var answered = seasonDirector.Snapshot.deals.FirstOrDefault(deal => deal.id == offer.id);
-                RequireSeason(answered != null && answered.status != DealStatus.Proposed, "Accepting an offer must settle its status.");
+                var answeredState = seasonDirector.Snapshot;
+                var answered = SeasonDeal(answeredState, offer.id);
+                RequireSeason(answeredState.revision == before.revision + 1
+                    && answered != null && answered.status != DealStatus.Proposed,
+                    "Accepting the exact offer must settle it with one command.");
                 seasonReport.dealsAnswered++;
+                seasonReport.commands++;
+                yield return DrainSeasonConversationExchange("deal-accepted", graphical);
+                yield return EnterSeasonConversationCategory(EpisodeDirector.DealsCategoryCaption);
                 before = seasonDirector.Snapshot;
             }
 
@@ -328,20 +340,22 @@ namespace Gamesim.Episode
             {
                 yield return ClickSeasonButton(EpisodeHud.DealProposeCaption(DealKind.Title(chosenKind).ToLowerInvariant()));
                 var after = seasonDirector.Snapshot;
-                var deal = after.deals.FirstOrDefault(d => d.proposerId == after.playerId && d.recipientId == chosen.Id && d.type == chosenKind);
+                var deal = CommitmentReferences.Deals(after).FirstOrDefault(d => d.proposerId == after.playerId && d.recipientId == chosen.Id && d.type == chosenKind);
                 // A refusal records no deal - the engine adds one only when the housemate agrees - but
                 // the proposal is a committed command either way: one revision, and the house says
                 // something about it. The first standalone run to reach this branch failed here for
                 // demanding a record of a deal the housemate had turned down.
-                bool said = after.events.Skip(before.events.Count).Any(e => e.kind == "deal");
+                bool said = EpisodeDirector.CommittedEvents(after, before.nextSequence).Any(e => e.kind == "deal");
                 RequireSeason(after.revision == before.revision + 1 && said,
                     "A proposal control must commit the proposal it names: " + chosenKind
                     + " (revision " + before.revision + " -> " + after.revision + "; status: " + seasonDirector.StatusMessage + ")");
                 seasonReport.dealsProposed++;
+                seasonReport.commands++;
                 seasonReport.dealKind = chosenKind;
                 seasonReport.dealOutcome = deal != null ? deal.status : "Refused";
                 seasonReport.dealNote = "Put to " + chosen.Id + " through the conversation panel; the housemate's answer is the season's own.";
                 yield return CaptureSeason("deal-proposed", graphical);
+                yield return DrainSeasonConversationExchange("deal-answer", graphical);
             }
             yield return CloseSeasonPanel();
         }
@@ -352,11 +366,17 @@ namespace Gamesim.Episode
         {
             seasonReport.storylinesBegun = finale.storylines.Count;
             seasonReport.houseEventsSeen = finale.houseEvents.Count;
-            seasonReport.dealsRecorded = finale.deals.Count;
+            seasonReport.dealsRecorded = CommitmentReferences.Deals(finale).Count;
             seasonReport.modifiersCarried = finale.activeModifiers.Count;
         }
 
         // ---------------------------------------------------------------- helpers
+
+        /// <summary>
+        /// A deal of the season by its id, wherever it is held: the raw list, or a canonical row through the view (vote family
+        /// V5f) - an accepted canonical Safety offer in mode 1, and in mode 2 every vote deal, which the raw list never holds.
+        /// </summary>
+        public static DealState SeasonDeal(EpisodeState state, string id) => CommitmentReferences.FindDeal(state, id);
 
         private bool HasSeasonButtonText(string caption) => VisibleSeasonButtons()
             .Any(button => button.IsActive() && button.IsInteractable()

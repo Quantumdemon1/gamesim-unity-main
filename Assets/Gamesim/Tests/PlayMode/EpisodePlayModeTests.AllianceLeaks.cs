@@ -101,7 +101,7 @@ namespace Gamesim.Tests.PlayMode
 
         /// <summary>
         /// The leak rules (D4-4's enable line) on a season the director starts, from its first week, and
-        /// across a save. The war rooms (D3-S5) start in week one beside them; the all-week rules' stay 0.
+        /// across a save. The war rooms (D3-S5) and the house's turns all week (D2-S4) start in week one beside them.
         /// </summary>
         [UnityTest]
         public IEnumerator AllianceLeaks_ASeasonTheDirectorStartsPlaysThem()
@@ -113,7 +113,7 @@ namespace Gamesim.Tests.PlayMode
                 yield return SettleCast();
                 Assert.That(director.Snapshot.allianceLeakRulesStartWeek, Is.EqualTo(1), which + " plays the leak rules from week one.");
                 Assert.That(director.Snapshot.pactPlanRulesStartWeek, Is.EqualTo(1), which + ": D3's war rooms from week one too,");
-                Assert.That(director.Snapshot.allWeekRulesStartWeek, Is.Zero, which + ": D2's waits.");
+                Assert.That(director.Snapshot.allWeekRulesStartWeek, Is.EqualTo(1), which + ": and D2's all-week beats.");
                 Assert.That(AllianceLeaks.On(director.Snapshot), Is.True, which);
             }
             director.SaveNow();
@@ -155,10 +155,10 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(WaveDEventKinds.All.Select(kind => (string)glyph.Invoke(null, new object[] { kind })),
                 Is.EqualTo(new[] { "eye", "ear", "people", "handshake" }), "Each of Wave D's kinds has its own glyph from the set.");
 
-            foreach (bool larger in new[] { false, true })
+            foreach (var textSize in TextSizes.All)
             {
-                yield return ApplyTextSize(larger);
-                string where = "the alliances page at " + (larger ? "the larger text" : "the standard text");
+                yield return ApplyTextSize(textSize);
+                string where = "the alliances page " + TextScales.At(textSize);
                 director.ShowNotebookSection(EpisodeDirector.NotebookSection.Alliances);
                 yield return null; yield return null;
                 int revision = director.Snapshot.revision;
@@ -187,7 +187,7 @@ namespace Gamesim.Tests.PlayMode
 
                 if (Application.isBatchMode)
                 {
-                    string size = larger ? "-large" : "";
+                    string size = TextScales.Suffix(textSize);
                     ScrollNotebookTo(juggledCard);
                     yield return CaptureFraming("alliances-double-dealt" + size, arrange: () => ScrollNotebookTo(juggledCard));
                     yield return CaptureFraming("alliances-double-dealt" + size + "-4x3", arrange: () => ScrollNotebookTo(juggledCard), width: 1200, height: 900);

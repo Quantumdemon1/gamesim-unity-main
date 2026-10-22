@@ -270,8 +270,13 @@ namespace Gamesim.Simulation
             bool Final(PowerRow p) => p.tally.Count == 0 && p.evicteeId != null && p.vetoHolderId == null;
             void Add(string category, string kind, string id, int week) => found.Add(new Receipt { category = category, kind = kind, id = id, week = week });
 
-            // Accountability: a promise the player broke to them, or a deal between them the player broke.
-            var brokenOwners = new HashSet<string>(UnifiedCommitmentHistory.Breaches(s).Select(incident => incident.EffectOwnerId), StringComparer.Ordinal);
+            // Accountability: a promise the player broke to them, or a deal between them the player broke. A canonical row is
+            // a receipt only as its incident's owner - a Safety one's, and in mode 2 a Vote one's (vote family V5e): a row
+            // that owned no consequence of its reveal is never asked about. A Vote row owns the player's breach of this juror
+            // (the pre-V6 save-contract review): a deal both of them broke may own only the juror's breach of the player.
+            var brokenOwners = new HashSet<string>(UnifiedCommitmentHistory.Breaches(s).Select(incident => incident.EffectOwnerId)
+                .Concat(UnifiedVoteHistory.Incidents(s).Where(incident => incident.ActorId == player && incident.WrongedId == jurorId)
+                    .Select(incident => incident.OwnerId)), StringComparer.Ordinal);
             bool IsOwner(string id) => CommitmentReferences.FindCanonical(s, id) == null || brokenOwners.Contains(id);
             int When(string id, int original) => CommitmentReferences.ReceiptWeek(s, id, original);
             var brokenWord = CommitmentReferences.Promises(s).Where(p => p.fromId == player && p.toId == jurorId
@@ -316,8 +321,12 @@ namespace Gamesim.Simulation
                 || ledger.power.Any(p => p.week == b.week && p.evicteeId != null && p.evicteeId != b.targetId))).OrderBy(b => b.week).LastOrDefault();
             if (miss != null) Add(Mistake, BallotReceipt, W(miss.week), miss.week);
 
-            // Personal: a promise the player kept to them, an alliance they shared, a deal they kept.
-            var keptWord = CommitmentReferences.Promises(s).Where(p => p.fromId == player && p.toId == jurorId && p.status == PromiseStatus.Fulfilled).OrderBy(p => p.week).LastOrDefault();
+            // Personal: a promise the player kept to them, an alliance they shared, a deal they kept. A canonical row is a
+            // receipt only as its group's owner, as a breach is (a canonical promise kept is mode 2's Vote one alone).
+            var keptOwners = new HashSet<string>(UnifiedCommitmentHistory.Fulfillments(s).Select(receipt => receipt.EffectOwnerId)
+                .Concat(UnifiedVoteHistory.Fulfillments(s).Select(receipt => receipt.OwnerId)), StringComparer.Ordinal);
+            var keptWord = CommitmentReferences.Promises(s).Where(p => p.fromId == player && p.toId == jurorId && p.status == PromiseStatus.Fulfilled
+                && (CommitmentReferences.FindCanonical(s, p.id) == null || keptOwners.Contains(p.id))).OrderBy(p => p.week).LastOrDefault();
             // An alliance that still stands, or that ended only because the juror left the house -
             // not one that broke, which is no bond to ask about.
             int? leftWeek = JuryHouseRead.LeftWeek(s, jurorId);
@@ -328,7 +337,6 @@ namespace Gamesim.Simulation
             // Under the commitment rules a deal the vote settled - a partnership too (C1) - is a receipt
             // only once the player knows the ballot that kept it (KnownBallots).
             bool rules = EpisodeEngine.CommitmentRulesOn(s);
-            var keptOwners = new HashSet<string>(UnifiedCommitmentHistory.Fulfillments(s).Select(receipt => receipt.EffectOwnerId), StringComparer.Ordinal);
             var keptDeal = CommitmentReferences.Deals(s).Where(d => d.status == DealStatus.Fulfilled && (d.proposerId == player || d.recipientId == player)
                 && (d.proposerId == jurorId || d.recipientId == jurorId) && (!rules || KnownBallots.DealOutcomeKnown(s, d))
                 && (CommitmentReferences.FindCanonical(s, d.id) == null || keptOwners.Contains(d.id))).OrderBy(d => When(d.id, d.week)).LastOrDefault();
@@ -438,9 +446,10 @@ namespace Gamesim.Simulation
 
         // Saved IDs are provenance, not permission to inspect an unrelated canonical agreement.
         // Preserve legacy receipt interpretation; strict enabled-save reference validation is separate.
+        // Wherever rows are canonical - Safety in modes 1 and 2, and mode 2's Vote rows (vote family V5e).
         private static bool CanonicalReceiptBelongsToPlayerAndJuror(EpisodeState s, string id, string juror, string policy)
         {
-            if (!UnifiedCommitments.RulesOn(s)) return true;
+            if (!UnifiedCommitments.SafetyAuthorityOn(s)) return true;
             var row = CommitmentReferences.FindCanonical(s, id);
             if (row == null) return true;
             if (row.sourcePolicy != policy) return false;
@@ -489,7 +498,8 @@ namespace Gamesim.Simulation
         /// <para>A legacy promise or deal is dated by the week it was made, and its words say so. It is
         /// kept or broken later - a final two at the final eviction, a safety promise at a
         /// nomination - and the record holds no week for that, so the week never stands on the
-        /// break or the keeping. Canonical outcomes retain the actual settlement week instead.
+        /// break or the keeping. Canonical Safety outcomes retain the actual settlement week instead;
+        /// mode 2's canonical Vote rows keep mode 1's legacy dating (vote family V5e).
         /// <see cref="ReceiptLine"/> words it the same way.</para>
         /// </summary>
         public static string Kicker(EpisodeState s, JuryExchangeState exchange)

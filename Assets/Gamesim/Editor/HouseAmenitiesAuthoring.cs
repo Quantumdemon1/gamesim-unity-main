@@ -303,8 +303,13 @@ namespace Gamesim.Editor
             prop.transform.position += target - new Vector3(bounds.center.x, bounds.min.y, bounds.center.z);
             foreach (var renderer in renderers)
             {
-                // Existing baked room probes provide indirect light; the new pieces receive live
-                // direct light and shadows without invalidating the house's accepted lightmaps.
+                // Placed on their own (the amenities authoring), the new pieces stay out of the bake:
+                // the existing baked room probes provide indirect light and they receive live direct
+                // light and shadows, without invalidating the house's accepted lightmaps. The full
+                // rebuild (HouseLivingGallery.BuildFromCommandLine) runs the lighting pass after this
+                // and rebakes, and that pass marks them lightmap-static like every other set piece
+                // (9faf00d7: a probe-lit set piece is a regression), so there they are lightmapped,
+                // and the light towers' lenses and the studio camera's tally light bake their glow.
                 GameObjectUtility.SetStaticEditorFlags(renderer.gameObject, 0);
                 renderer.lightProbeUsage = LightProbeUsage.BlendProbes;
                 renderer.reflectionProbeUsage = ReflectionProbeUsage.BlendProbes;

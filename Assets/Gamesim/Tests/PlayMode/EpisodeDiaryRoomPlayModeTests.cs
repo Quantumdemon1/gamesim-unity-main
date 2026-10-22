@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using System.IO;
 using System.Linq;
+using System.Reflection;
 using Gamesim.Episode;
 using Gamesim.House;
 using Gamesim.Persistence;
@@ -89,18 +90,39 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(unchanged.relationships.Select(edge => edge.fromId + ":" + edge.toId),
                 Is.EqualTo(before.relationships.Select(edge => edge.fromId + ":" + edge.toId)),
                 "Autonomy cannot add/remove/reorder the authored directed relationship graph.");
+            int recorded = 0;
             for (int index = 0; index < unchanged.relationships.Count; index++)
             {
                 var edge = unchanged.relationships[index];
                 var original = before.relationships[index];
                 if (edge.fromId == before.playerId || edge.toId == before.playerId) continue;
-                // Source NPC completion writes only score and lastInteractionWeek.
-                // IDs, notes and event histories remain subject to the full comparison.
+                // Source NPC completion writes only score and lastInteractionWeek. Under D2's rules (every
+                // season the director starts) it moves the pair through the ledger, which also appends a
+                // fading record of the talk. IDs, notes and older event histories remain subject to the
+                // full comparison.
                 Assert.That(edge.lastInteractionWeek,
                     Is.EqualTo(original.lastInteractionWeek).Or.EqualTo(after.week));
                 edge.score = original.score;
                 edge.lastInteractionWeek = original.lastInteractionWeek;
+                var appended = edge.events.Skip(original.events.Count).ToList();
+                if (appended.Count == 0) continue;
+                Assert.That(EpisodeEngine.AllWeekOn(before), Is.True, "Only D2's rules record a conversation in the ledger.");
+                foreach (var entry in appended)
+                {
+                    Assert.That(entry.type == EpisodeEngine.NpcConversationEvent || entry.type == EpisodeEngine.NpcGossipEvent, Is.True, entry.type);
+                    Assert.That(entry.week, Is.EqualTo(after.week));
+                    Assert.That(entry.decayable, Is.True);
+                    Assert.That(entry.sequence, Is.GreaterThanOrEqualTo(before.nextSequence).And.LessThan(after.nextSequence));
+                }
+                edge.events.RemoveRange(original.events.Count, appended.Count);
+                recorded += appended.Count;
             }
+            Assert.That(after.nextSequence, Is.EqualTo(before.nextSequence + recorded), "Only the ledger's records take sequence numbers.");
+            unchanged.nextSequence = before.nextSequence;
+            // Under D2's rules a completed conversation writes no arc (the balance review's finding 3): arcs are the player's.
+            if (EpisodeEngine.AllWeekOn(before))
+                Assert.That(after.relationshipArcs.Select(arc => JsonUtility.ToJson(arc)),
+                    Is.EqualTo(before.relationshipArcs.Select(arc => JsonUtility.ToJson(arc))), "No arc moves under D2's rules.");
 
             Assert.That(after.relationshipArcs.Select(arc => arc.npcId).Take(before.relationshipArcs.Count),
                 Is.EqualTo(before.relationshipArcs.Select(arc => arc.npcId)),
@@ -226,6 +248,9 @@ namespace Gamesim.Tests.PlayMode
             ButtonWithCaption(EpisodeHud.DiaryCancelCaption).onClick.Invoke();
             yield return null; yield return null;
             Assert.That(director.HasDiaryDecisionDraft, Is.False);
+            // What became of the choice is said where the player reads it (D10).
+            Assert.That(ExchangeFlowStatusText(), Does.Contain("Unconfirmed diary choice discarded. The episode is unchanged."),
+                "The discard reaches the visible status line. It showed: " + ExchangeFlowStatusText());
             AssertEquivalent(before,director.Snapshot);
             yield return ReviewDiaryNominations(before);
             yield return PressDiaryKey(Key.Escape);
@@ -246,6 +271,79 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(DiaryHasButton("Continue episode"), Is.False);
             Assert.That(new EpisodeSaveStore(director.SavePath).TryLoad(out var saved,out var message), Is.True,message);
             AssertEquivalent(after,saved);
+        }
+
+        /// <summary>
+        /// A save made in the diary (F5): it lets go of the diary's own notice, so the status line is
+        /// back on the phase's guidance and only a line that is a notice of its own can take it.
+        /// </summary>
+        private IEnumerator SaveInTheDiary()
+        {
+            director.SaveNow();
+            yield return null; yield return null;
+            Assert.That(director.IsDiaryOpen, Is.True, "Still in the diary.");
+            Assert.That(ExchangeFlowStatusText(), Does.StartWith(EpisodeDirector.PhaseLine(director.Snapshot.phase, director.Snapshot.week)),
+                "After the save no notice holds the status line. It showed: " + ExchangeFlowStatusText());
+        }
+
+        /// <summary>
+        /// D10, one of the two diary lines the lane left unproven: a review with one nominee picked is
+        /// refused, and why is said where the player reads it - after a save has let go of the diary's
+        /// own notice, so the line is said by its own. Nothing is staged, committed or written.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator DiaryNomination_AReviewOfOneNomineeIsRefusedOnTheStatusLine()
+        {
+            yield return InstallDiaryFixture(state => state.phase == EpisodePhase.Nomination
+                && state.hohId == state.playerId && state.nominees.Count == 0, "player HoH nominations");
+            yield return OpenDiaryFixturePanel();
+            yield return SaveInTheDiary();
+            var before = director.Snapshot;
+            var bytes = File.ReadAllBytes(director.SavePath);
+            var candidates = EpisodeEngine.NominationCandidates(before).Take(2).ToArray();
+            ButtonWithCaption(candidates[0].name).onClick.Invoke();
+            ButtonWithCaption(EpisodeHud.DiaryReviewNominationsCaption).onClick.Invoke();
+            yield return null; yield return null;
+            Assert.That(director.HasDiaryDecisionDraft, Is.False, "Nothing is staged to confirm.");
+            Assert.That(ExchangeFlowStatusText(), Does.Contain("Choose two different eligible nominees before reviewing the decision."),
+                "The refusal reaches the visible status line. It showed: " + ExchangeFlowStatusText());
+            AssertEquivalent(before,director.Snapshot);
+            Assert.That(File.ReadAllBytes(director.SavePath), Is.EqualTo(bytes), "Nothing was written.");
+        }
+
+        /// <summary>
+        /// D10, the other: a reviewed pair confirmed after the episode has moved past the revision it was
+        /// reviewed on is discarded, and why is said where the player reads it - after a save has let go
+        /// of the diary's own notice, as a commit between the review and the confirm would. Nothing is
+        /// committed or written.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator DiaryNomination_AStaleConfirmIsDiscardedOnTheStatusLine()
+        {
+            yield return InstallDiaryFixture(state => state.phase == EpisodePhase.Nomination
+                && state.hohId == state.playerId && state.nominees.Count == 0, "player HoH nominations");
+            yield return OpenDiaryFixturePanel();
+            yield return SaveInTheDiary();
+            var before = director.Snapshot;
+            var bytes = File.ReadAllBytes(director.SavePath);
+            yield return ReviewDiaryNominations(before);
+            Assert.That(director.HasDiaryDecisionDraft, Is.True, "The pair is reviewed.");
+
+            // Reviewed on a revision the episode has since moved past - as a house commit between the
+            // review and the confirm leaves it - the confirm discards the choice and says why.
+            var draft = typeof(EpisodeDirector).GetField("diaryDraft", BindingFlags.Instance | BindingFlags.NonPublic).GetValue(director);
+            Assert.That(draft, Is.Not.Null);
+            var origin = draft.GetType().GetField("origin");
+            var stale = ((EpisodeState)origin.GetValue(draft)).Clone();
+            stale.revision -= 1;
+            origin.SetValue(draft, stale);
+            ButtonWithCaption(EpisodeHud.DiaryConfirmCaption).onClick.Invoke();
+            yield return null; yield return null;
+            Assert.That(director.HasDiaryDecisionDraft, Is.False, "The stale choice is discarded.");
+            Assert.That(ExchangeFlowStatusText(), Does.Contain("The episode changed. Review a new diary choice before confirming."),
+                "The discard reaches the visible status line. It showed: " + ExchangeFlowStatusText());
+            AssertEquivalent(before,director.Snapshot);
+            Assert.That(File.ReadAllBytes(director.SavePath), Is.EqualTo(bytes), "Nothing was written.");
         }
 
         [UnityTest]
@@ -285,16 +383,16 @@ namespace Gamesim.Tests.PlayMode
             // made (UI-UX-PASS-PLAN T0).
             Assert.That(director.GetComponentInChildren<EpisodeHud>().CurrentActivityLayout,
                 Is.EqualTo(EpisodeHud.ActivityLayout.Ballot), "A ballot in the diary is the eviction vote's panel.");
-            AssertTheDecisionFitsAtScrollZero("The ballot with a choice waiting", true, false);
+            AssertTheDecisionFitsAtScrollZero("The ballot with a choice waiting", true, Gamesim.Presentation.TextSize.Standard);
             // Mockup-08's bar under the vote, in the strip's place.
             Assert.That(director.GetComponentsInChildren<RectTransform>().Any(rect => rect.name == EpisodeHud.SpeechBarName && rect.gameObject.activeInHierarchy),
                 Is.True, "The ballot has its bar.");
             Assert.That(director.GetComponentsInChildren<RectTransform>().Any(rect => rect.name == Gamesim.Presentation.CastRail.RootName && rect.gameObject.activeInHierarchy),
                 Is.False, "The bar stands in the strip's place.");
-            // The ballot takes the stage, so the strip's quote card stands down with the strip, and the
-            // bar runs under the whole vote; the vote's foot stays above the status line.
+            // The ballot takes the stage, and the decorative quote is absent from house play.
+            // The bar runs under the whole vote; the vote's foot stays above the status line.
             Assert.That(director.GetComponentsInChildren<RectTransform>().Any(rect => rect.name == Gamesim.Presentation.CastRail.QuoteName && rect.gameObject.activeInHierarchy),
-                Is.False, "The quote card stands down with the strip.");
+                Is.False, "House play does not create the decorative quote card.");
             var ballotPanel = ScreenRect(director.GetComponentsInChildren<RectTransform>().First(rect => rect.name == "Episode panel" && rect.gameObject.activeInHierarchy));
             Assert.That(ballotPanel.width * ballotPanel.height, Is.GreaterThan(Screen.width * Screen.height * .5f), "The vote takes most of the frame: " + ballotPanel + ".");
             var statusLine = director.GetComponentsInChildren<RectTransform>().FirstOrDefault(rect => rect.name == "Status" && rect.gameObject.activeInHierarchy);
@@ -564,9 +662,11 @@ namespace Gamesim.Tests.PlayMode
 
             var before = director.Snapshot;
             Assert.That(EpisodeEngine.SocialActionBudget(before), Is.GreaterThan(0));
+            yield return EnterConversationCategory(EpisodeDirector.ConnectCategoryCaption);
             ButtonWithCaption("Spend time together").onClick.Invoke();
             yield return null; yield return null;
             Assert.That(director.Snapshot.revision, Is.EqualTo(before.revision + 1));
+            yield return EnterConversationCategory(EpisodeDirector.DealsCategoryCaption);
 
             Assert.That(director.Snapshot.oathOpportunities, Does.Contain(npc.Id),
                 "Crossing the source milestone through a real conversation must offer the declaration.");

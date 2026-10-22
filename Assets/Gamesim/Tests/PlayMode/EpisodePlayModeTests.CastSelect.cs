@@ -705,8 +705,10 @@ namespace Gamesim.Tests.PlayMode
                 var shapes = new[]
                 {
                     (wide: 2560, high: 1080, text: 1.2f, shape: "21:9 at the larger text size"),
+                    (wide: 2560, high: 1080, text: 1.4f, shape: "21:9 at the largest text size"),
                     (wide: 5120, high: 1440, text: 1f, shape: "32:9 at the standard text size"),
                     (wide: 1920, high: 1080, text: 1.2f, shape: "16:9 at the larger text size"),
+                    (wide: 1920, high: 1080, text: 1.4f, shape: "16:9 at the largest text size"),
                 };
                 foreach (var frame in shapes)
                 {

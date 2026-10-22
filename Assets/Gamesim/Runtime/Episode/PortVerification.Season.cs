@@ -140,8 +140,9 @@ namespace Gamesim.Episode
             // A lost EnableAllianceLeaks would keep every secret pact secret and the whisper's two names (WAVE-D D4).
             RequireSeason(fresh.allianceLeakRulesStartWeek == 1,"The cast screen's season must play the leak rules from its first week.");
             // A lost EnablePactPlans would leave a pact of three calling and meeting as a pair (WAVE-D D3).
-            // The all-week rules' start week stays 0 until its own slices.
             RequireSeason(fresh.pactPlanRulesStartWeek == 1,"The cast screen's season must play the war rooms from its first week.");
+            // A lost EnableAllWeek would leave the house's turns all at the social week's opening (WAVE-D D2).
+            RequireSeason(fresh.allWeekRulesStartWeek == 1,"The cast screen's season must play the house's turns all week from its first week.");
             CheckSaveIsIsolated();
             seasonReport.sessionId = fresh.sessionId; seasonReport.seed = fresh.seed.ToString();
             seasonReport.profileSavePath = previousSlot; seasonReport.seasonSavePath = seasonDirector.SavePath;
@@ -250,7 +251,17 @@ namespace Gamesim.Episode
                 && (state.vetoHolderId == state.playerId || state.hohId == state.playerId && EpisodeEngine.NpcVetoSave(state) != null))
             {
                 var replacement = EpisodeEngine.ReplacementCandidates(state).FirstOrDefault();
-                if (replacement == null) { yield return ClickSeasonButton("Do not use the veto"); yield break; }
+                // At the final four a holder who is not on the block may not use the veto
+                // (EpisodeEngine.VetoIsLockedAtFinalFour), and the meeting offers that holder only the
+                // way to keep the block, under the lock's line. The replacement candidates do not know
+                // the lock - the fourth houseguest is still one - so a player who was Head of
+                // Household and won the veto at four was walked into a name the screen rightly never
+                // drew (rc2, seed 2959573182). The PlayMode driver learned the lock when it came in
+                // (EpisodePlayModeTests.NextCommand); this is the same rule. The walk presses what the
+                // screen offers, and holds the screen to offering nothing else.
+                bool locked = EpisodeEngine.VetoIsLockedAtFinalFour(state);
+                if (locked) RequireSeason(!SeasonVetoUseOffered(state),"A veto locked at the final four must offer no way to use it.");
+                if (replacement == null || locked) { yield return ClickSeasonButton("Do not use the veto"); yield break; }
                 if (state.hohId == state.playerId) yield return ClickSeasonButton(replacement.name,true);
                 else yield return ClickSeasonButton(EpisodeDirector.VetoSaveCaption(state, state.nominees[0]));
                 yield break;
@@ -397,20 +408,30 @@ namespace Gamesim.Episode
             {
                 var before = seasonDirector.Snapshot;
                 if (before.phase != EpisodePhase.Social
-                    || EpisodeEngine.SocialActionsSpent(before) >= EpisodeEngine.SocialActionBudget(before)
-                    || !HasSeasonButton("Spend time together")) break;
+                    || EpisodeEngine.SocialActionsSpent(before) >= EpisodeEngine.SocialActionBudget(before)) break;
                 // Plain +4 conversations climb slowly from a neutral start.
                 // Use the same legal alliance opportunity as the live Play Mode fixture - once. Under the
                 // commitment rules (ACTIONS-DEALS-ALLIANCES-PLAN C4) the proposal rolls on the invitation's
                 // odds and a no spends the action, so asking again would spend the oath's budget on the
                 // roll; before them a proposal at this score was never refused, so once is all it took.
-                string action = !proposed && !before.Allied(before.playerId,npc.Id) && before.Score(npc.Id,before.playerId) >= 8
-                    && HasSeasonButton("Propose an alliance") ? "Propose an alliance" : "Spend time together";
+                string action = "Spend time together";
+                if (!proposed && !before.Allied(before.playerId,npc.Id) && before.Score(npc.Id,before.playerId) >= 8)
+                {
+                    yield return EnterSeasonConversationCategory(EpisodeDirector.DealsCategoryCaption);
+                    if (HasSeasonButton("Propose an alliance")) action = "Propose an alliance";
+                }
+                if (action == "Spend time together")
+                    yield return EnterSeasonConversationCategory(EpisodeDirector.ConnectCategoryCaption);
+                if (!HasSeasonButton(action)) break;
                 proposed |= action == "Propose an alliance";
                 yield return ClickSeasonButton(action);
                 if (seasonDirector.Snapshot.revision != before.revision + 1) break;
                 seasonReport.optionalSocialCommands++;
+                seasonReport.commands++;
+                yield return DrainSeasonConversationExchange("oath-social-" + spent, graphical);
             }
+            if (seasonDirector.Snapshot.oathOpportunities.Contains(npc.Id))
+                yield return EnterSeasonConversationCategory(EpisodeDirector.DealsCategoryCaption);
             if (seasonDirector.Snapshot.oathOpportunities.Contains(npc.Id) && HasSeasonButton(EpisodeHud.OathDeclareCaption))
             {
                 yield return CaptureSeason("oath-opportunity",graphical);
@@ -418,9 +439,11 @@ namespace Gamesim.Episode
                 yield return ClickSeasonButton(EpisodeHud.OathDeclareCaption);
                 RequireSeason(seasonDirector.Snapshot.revision == before.revision + 1
                     && seasonDirector.Snapshot.loyaltyOaths.Any(oath => oath.playerId == before.playerId && oath.targetId == npc.Id),"An available oath button must commit the player's declaration.");
+                seasonReport.commands++;
                 seasonReport.oathOutcome = "Legally earned and declared";
                 seasonReport.oathNote = "Earned through at most eighteen actual social actions, at most one of them an alliance proposal, whatever its answer; no fabricated role, score, seed, or oath state.";
                 yield return CaptureSeason("oath-recorded",graphical);
+                yield return DrainSeasonConversationExchange("oath-declared", graphical);
             }
             else seasonReport.oathNote = verifyStudy
                 ? "Five confirmed study actions left " + studyReport.socialActionsRemainingForOptionalOath + " social actions for this optional oath attempt; no opportunity was reached and oath coverage is not asserted as passed."
@@ -518,12 +541,36 @@ namespace Gamesim.Episode
         private bool HasSeasonButton(string caption) => VisibleSeasonButtons()
             .Any(button => button.IsActive() && button.IsInteractable() && button.name == caption);
 
+        /// <summary>Whether the veto meeting offers any way to use the veto: a save, a pick of whom to save, or a replacement's name.</summary>
+        private bool SeasonVetoUseOffered(EpisodeState state) =>
+            state.nominees.Any(id => HasSeasonButtonText(EpisodeDirector.VetoSaveCaption(state, id))
+                || HasSeasonButtonText(EpisodeDirector.VetoSavePickCaption(state.Find(id).name)))
+            || EpisodeEngine.ReplacementCandidates(state).Any(candidate => HasSeasonButtonText(candidate.name));
+
+        /// <summary>
+        /// What the screen offered when a caption was missing: the phase, and the captions of the
+        /// pressable controls the walk could see, so a failed step says what was there instead of
+        /// only what was not (rc2's "found 0" took a save file to read).
+        /// </summary>
+        private string SeasonButtonsOnOffer()
+        {
+            var captions = VisibleSeasonButtons()
+                .Select(button => button.GetComponentsInChildren<TMPro.TMP_Text>().Select(label => label.text)
+                    .FirstOrDefault(text => !string.IsNullOrEmpty(text)) ?? button.name)
+                .ToList();
+            var state = seasonDirector != null ? seasonDirector.Snapshot : null;
+            return " Phase " + (state != null ? state.phase + ", week " + state.week : "unknown") + "; on offer ("
+                + captions.Count + "): " + string.Join(" | ", captions.Take(24).Select(text => text.Length > 60 ? text.Substring(0, 60) + "..." : text))
+                + (captions.Count > 24 ? " | ..." : "") + ".";
+        }
+
         private IEnumerator ClickSeasonButton(string caption,bool allowFirstEquivalent = false)
         {
             CheckSeasonDeadline();
             if(caption!="Continue")yield return DismissSeasonCompetitionResult();
             var buttons = SeasonButtonsCarrying(caption);
-            RequireSeason(buttons.Length > 0 && (allowFirstEquivalent || buttons.Length == 1),"Expected a reachable actual button: " + caption + " (found " + buttons.Length + ").");
+            if (buttons.Length == 0 || !allowFirstEquivalent && buttons.Length != 1)
+                RequireSeason(false,"Expected a reachable actual button: " + caption + " (found " + buttons.Length + ")." + SeasonButtonsOnOffer());
             // Selection exercises the modal's keyboard-focus/scroll adapter before activation;
             // do not invoke an off-screen content button without bringing it into view first.
             buttons[0].Select(); yield return null; yield return null;
@@ -532,7 +579,8 @@ namespace Gamesim.Episode
             // control that was selected is destroyed by that rebuild. A player presses whatever is
             // on screen when they press, so this does too.
             buttons = SeasonButtonsCarrying(caption);
-            RequireSeason(buttons.Length > 0 && (allowFirstEquivalent || buttons.Length == 1),"The selected button became unavailable: " + caption + " (found " + buttons.Length + ").");
+            if (buttons.Length == 0 || !allowFirstEquivalent && buttons.Length != 1)
+                RequireSeason(false,"The selected button became unavailable: " + caption + " (found " + buttons.Length + ")." + SeasonButtonsOnOffer());
             var before = seasonDirector.Snapshot;
             buttons[0].onClick.Invoke();
             yield return null; yield return null;
@@ -608,6 +656,7 @@ namespace Gamesim.Episode
             public int weeklyRecaps, houseEventsResolved, dealsProposed, dealsAnswered, minigameInputs, storylinesBegun, houseEventsSeen, dealsRecorded, modifiersCarried;
             public int replyCardsAnswered;
             public int votesAsked, peopleRead;
+            public int conversationNavigations, conversationPlaybackControls;
             public string readNote;
             public int playsTaken;
             public string playNote;

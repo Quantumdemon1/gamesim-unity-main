@@ -59,12 +59,12 @@ namespace Gamesim.Tests.PlayMode
         [UnityTest, Timeout(600000)]
         public IEnumerator WordInTheHouse_TheReadingHeadsYourWordAndEndsTheOddsNote()
         {
-            foreach (bool larger in new[] { false, true })
+            foreach (var (textSize, larger) in TextScales.Steps)
             {
-                string size = larger ? " at the larger text" : "";
+                string size = larger ? " " + TextScales.At(textSize) : "";
                 yield return InstallTalkingHouse(8, false, WordHeardOf(true));
                 yield return SettleCast();
-                yield return ApplyTextSize(larger);
+                yield return ApplyTextSize(textSize);
                 var state = director.Snapshot;
                 Assert.That(YourWord.On(state), Is.True, "Precondition: the house keeps the player's word.");
                 Assert.That(YourWord.Hearings(state), Is.EqualTo(3), "Precondition: three have heard of the breach.");
@@ -74,6 +74,7 @@ namespace Gamesim.Tests.PlayMode
                 // The conversation: the one note over the chances says whose read they are first, and the reading last.
                 var listener = Listener(state);
                 yield return TalkTo(listener.id);
+                yield return EnterConversationCategory(EpisodeDirector.DealsCategoryCaption);
                 string where = "A conversation with the player's word heard of" + size;
                 Assert.That(director.IsConversationOpen, Is.True, where + ": the conversation opens.");
                 var notes = LiveRects(EpisodeHud.OddsNoteName);
@@ -81,9 +82,9 @@ namespace Gamesim.Tests.PlayMode
                 string note = notes[0].GetComponent<TMP_Text>().text;
                 Assert.That(note, Does.StartWith(EpisodeDirector.OddsReadLine(FinalistRead.FirstName(listener.name))), where + ": whose read the chances are, first,");
                 Assert.That(note, Does.EndWith(odds), where + ": and the reading the roll takes too, last.");
-                AssertConversationFits(larger, where);
+                AssertConversationFits(textSize, where);
                 AssertTagsHaveRoom(where);
-                yield return CaptureConversation("conversation-word-heard" + (larger ? "-large" : ""), where, null);
+                yield return CaptureConversation("conversation-word-heard" + TextScales.Suffix(textSize), where, null);
                 director.ClosePanels();
                 yield return null;
 
@@ -117,19 +118,19 @@ namespace Gamesim.Tests.PlayMode
                 // Every label at least 1.3 times its words, by the size an auto-sized one is set at, and drawn whole.
                 foreach (var label in card.GetComponentsInChildren<TMP_Text>()) AssertLineHasRoom(label, where);
                 AssertEveryLabelDraws(ActiveRect("Episode panel"), where);
-                if (Application.isBatchMode) yield return CaptureFraming("your-word-in-the-house" + (larger ? "-large" : ""));
+                if (Application.isBatchMode) yield return CaptureFraming("your-word-in-the-house" + TextScales.Suffix(textSize));
                 director.ClosePanels();
                 yield return null;
             }
 
             // Under the rules with nothing broken: the page's default state, "Your word is good" over the
             // empty state, the eyebrow carrying the mark.
-            foreach (bool larger in new[] { false, true })
+            foreach (var (textSize, larger) in TextScales.Steps)
             {
-                string size = larger ? " at the larger text" : "";
+                string size = larger ? " " + TextScales.At(textSize) : "";
                 yield return InstallTalkingHouse(8, false, WordUnheard);
                 yield return SettleCast();
-                yield return ApplyTextSize(larger);
+                yield return ApplyTextSize(textSize);
                 var clean = director.Snapshot;
                 Assert.That(YourWord.On(clean), Is.True, "Precondition: the house keeps the player's word.");
                 Assert.That((YourWord.Word(clean), YourWord.Summary(clean)), Is.EqualTo((YourWord.Good, YourWord.NothingHeard)));
@@ -154,7 +155,7 @@ namespace Gamesim.Tests.PlayMode
                 Assert.That(card.GetComponentsInChildren<Button>(), Is.Empty, where + ": the reading is not a control.");
                 foreach (var label in card.GetComponentsInChildren<TMP_Text>()) AssertLineHasRoom(label, where);
                 AssertEveryLabelDraws(ActiveRect("Episode panel"), where);
-                if (Application.isBatchMode) yield return CaptureFraming("your-word-good" + (larger ? "-large" : ""));
+                if (Application.isBatchMode) yield return CaptureFraming("your-word-good" + TextScales.Suffix(textSize));
                 director.ClosePanels();
                 yield return null;
             }
@@ -167,6 +168,7 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(YourWord.On(plain), Is.False);
             var them = Listener(plain);
             yield return TalkTo(them.id);
+            yield return EnterConversationCategory(EpisodeDirector.DealsCategoryCaption);
             Assert.That(director.IsConversationOpen, Is.True, "Without the rules: the conversation opens.");
             var plainNotes = LiveRects(EpisodeHud.OddsNoteName);
             Assert.That(plainNotes, Has.Count.EqualTo(1));

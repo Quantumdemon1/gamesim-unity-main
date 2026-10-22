@@ -38,8 +38,8 @@ namespace Gamesim.Episode
         private const float DrawColumnWidth = 190f, DrawSeparator = 44f;
         /// <summary>The widest a card on the draw runs, at the resting text size: the mockup's.</summary>
         private const float DrawCardWidest = 150f;
-        /// <summary>A column's heading, its rule, and the gap under them before the cards.</summary>
-        private const float DrawHeadingBox = 20f, DrawCardsTop = 34f;
+        /// <summary>The heading's 20 units, its rule ending at 26, then one clear unit before the cards.</summary>
+        private const float DrawHeadingBox = 20f, DrawCardsTop = 27f;
         /// <summary>
         /// The bag's column at the resting text size: the least and the most the bag stands, the chips
         /// under it, the line under them, and how far the column's frame stands proud of it all.
@@ -102,36 +102,74 @@ namespace Gamesim.Episode
         {
             if (content == null || playing == null || playing.Count == 0) return null;
             float s = FontScale, gap = FaceGap * s, sep = DrawSeparator * s, drawWidth = DrawColumnWidth * s;
-            float width = ContentWidth(), top = DrawCardsTop * s;
+            float width = ContentWidth(), top;
             int others = eligible != null ? eligible.Count : 0;
+            // This runs inside a render: an exception here left the HUD half-built every time the
+            // panel was drawn (PR-11). A heading it was not given is left out, as the draw always
+            // left an empty one out, and a measurement that cannot be taken falls back below.
 
             // What the step has left under the rows above it, measured as the column lays them out.
             LayoutRebuilder.ForceRebuildLayoutImmediate(content);
             var column = content.GetComponent<VerticalLayoutGroup>();
             float spacing = column != null ? column.spacing : 12f;
             float budget = VetoDrawBodyHeight() - content.rect.height - spacing - 2f;
-            float floorCard = FaceCardFloor * s * 1.12f + 50f * s;
-            float cardsHeight = Mathf.Max(floorCard, budget - top);
+            var row = new GameObject(VetoDrawBoardName, typeof(RectTransform), typeof(LayoutElement)).GetComponent<RectTransform>();
+            row.SetParent(content, false);
+            var draw = EndScreenKit.Box(DrawColumnName, row, 0f, 0f, drawWidth, 0f);
+            var area = EndScreenKit.Box("Draw area", draw, 0f, 0f, drawWidth, 0f);
+            var frameArt = EndScreenKit.Frame(area, PackArt.Pack8DrawArea, 12f * s, new Color(Surface.r, Surface.g, Surface.b, .6f),
+                new Color(UiTheme.Gold.r, UiTheme.Gold.g, UiTheme.Gold.b, .45f));
+            Vector2 frameBefore = -frameArt.rectTransform.offsetMin, frameAfter = frameArt.rectTransform.offsetMax;
+            if (!(frameBefore.x >= 0f) || !(frameBefore.y >= 0f) || !(frameAfter.x >= 0f) || !(frameAfter.y >= 0f)
+                || float.IsInfinity(frameBefore.x) || float.IsInfinity(frameBefore.y) || float.IsInfinity(frameAfter.x) || float.IsInfinity(frameAfter.y))
+            {
+                // A frame whose overhang cannot be read is laid out as if it stood flush.
+                Debug.LogWarning("Veto draw: the bag's frame overhang could not be measured; laying it out flush.");
+                frameBefore = frameAfter = Vector2.zero;
+            }
+            var playingLabel = VetoDrawColumnHeading(row, playingHeading);
+            var drawLabel = VetoDrawColumnHeading(row, drawHeading);
+            var eligibleLabel = others > 0 ? VetoDrawColumnHeading(row, eligibleHeading) : null;
+            var chipsLabel = FixedText(row, chipsLine, 17, Paper, Vector2.zero, new Vector2(drawWidth, DrawChipsLineBox * s));
+            chipsLabel.name = "Chips line";
+            chipsLabel.alignment = TextAlignmentOptions.Center;
+            Vector2 playingMeasure = VetoDrawHeadingMeasure(playingLabel), drawMeasure = VetoDrawHeadingMeasure(drawLabel);
+            Vector2 eligibleMeasure = VetoDrawHeadingMeasure(eligibleLabel), chipsMeasure = VetoDrawHeadingMeasure(chipsLabel);
+            float headingBox = Mathf.Max(DrawHeadingBox * s, playingMeasure.y, drawMeasure.y, eligibleMeasure.y);
+            top = Mathf.Max(DrawCardsTop * s, headingBox + 7f * s);
+            float cardsHeight = Mathf.Max(0f, budget - top);
+            int chipCount = Mathf.Clamp(toDraw, 0, 6);
+            float chipWidth = chipCount * DrawChipSide * s + Mathf.Max(0, chipCount - 1) * 6f * s;
+            float middleMinimum = Mathf.Max(drawMeasure.x, chipsMeasure.x, chipWidth, (DrawBagMost + 2f * DrawAreaProud) * s);
+            drawWidth = Mathf.Max(drawWidth, middleMinimum);
+            bool sharedHeading = false;
 
             float playingWidth, eligibleWidth = 0f, playingCard, eligibleCard = 0f;
             int playingColumns, eligibleColumns = 0;
             if (others > 0)
             {
-                // The three by right in one row. The pool beside them in the same band when its cards
-                // still read comfortably there - the mockup's one row - and otherwise in as many rows
-                // as the height holds. Either way the pair of widths whose smaller card is largest,
-                // the cards by right never smaller than the pool's: they are the ones the draw is about.
-                float room = width - 2f * sep - drawWidth;
-                float best = SplitDraw(playing.Count, others, room, cardsHeight, true, out playingCard, out eligibleCard, out eligibleColumns);
+                // Prefer the three by right in one row with a comfortable pool beside them. If
+                // that cannot fit, reflow both groups within the actual height, keeping every name
+                // at its readable floor and the playing cards no smaller than the pool's.
+                var headings = new VetoDrawHeadingSpace(playingMeasure.x, drawMeasure.x, eligibleMeasure.x, top, drawWidth,
+                    frameAfter.y, frameBefore.y, frameBefore.x, frameAfter.x);
+                float best = VetoDrawConstrainedSplit(playing.Count, others, width - 2f * sep - drawWidth, cardsHeight, s, true, headings,
+                    out playingCard, out eligibleCard, out playingColumns, out eligibleColumns, out sharedHeading);
                 if (best < DrawBandComfort * s)
-                    best = SplitDraw(playing.Count, others, room, cardsHeight, false, out playingCard, out eligibleCard, out eligibleColumns);
+                {
+                    drawWidth = middleMinimum;
+                    headings = new VetoDrawHeadingSpace(playingMeasure.x, drawMeasure.x, eligibleMeasure.x, top, drawWidth,
+                        frameAfter.y, frameBefore.y, frameBefore.x, frameAfter.x);
+                    best = VetoDrawConstrainedSplit(playing.Count, others, width - 2f * sep - drawWidth, cardsHeight, s, false, headings,
+                        out playingCard, out eligibleCard, out playingColumns, out eligibleColumns, out sharedHeading);
+                }
                 if (best < 0f)
                 {
                     // Narrower than any split: the floor on both sides, and the row runs long.
                     playingCard = eligibleCard = FaceCardFloor * s;
+                    playingColumns = playing.Count;
                     eligibleColumns = Mathf.Max(1, Mathf.FloorToInt((width * .4f + gap) / (eligibleCard + gap)));
                 }
-                playingColumns = playing.Count;
                 eligibleWidth = eligibleColumns * eligibleCard + (eligibleColumns - 1) * gap;
             }
             else
@@ -147,22 +185,21 @@ namespace Gamesim.Episode
             // The bag's column: the bag, a row of chips under it, and how many there are, with its
             // frame inside the height the cards were solved for.
             float chip = DrawChipSide * s, wordsBox = DrawChipsLineBox * s, proud = DrawAreaProud * s;
-            VetoDrawBagColumn(playingTall, eligibleTall, cardsHeight, s, out float bag, out float bagDrop, out float cardsTall);
+            VetoDrawHeadingBagColumn(playingTall, eligibleTall, cardsHeight, s, sharedHeading, top, frameAfter.y, frameBefore.y,
+                out float bag, out float bagDrop, out float cardsTall);
             float bagTall = bag + DrawUnderBag(s);
 
             float total = playingWidth + sep + drawWidth + (others > 0 ? sep + eligibleWidth : 0f);
             float x = Mathf.Max(0f, (width - total) * .5f);
             float height = top + cardsTall;
 
-            var row = new GameObject(VetoDrawBoardName, typeof(RectTransform), typeof(LayoutElement)).GetComponent<RectTransform>();
-            row.SetParent(content, false);
             var size = row.GetComponent<LayoutElement>();
             size.minHeight = size.preferredHeight = height;
             var state = director != null ? director.Snapshot : null;
 
             // By right.
             var left = EndScreenKit.Box(DrawPlayingName, row, x, 0f, playingWidth, height);
-            VetoDrawColumnHeading(left, playingHeading, playingWidth);
+            VetoDrawPlaceHeading(playingLabel, row, x, 0f, sharedHeading ? playingWidth + sep + drawWidth : playingWidth, headingBox);
             for (int i = 0; i < playing.Count; i++)
             {
                 var face = playing[i];
@@ -177,17 +214,14 @@ namespace Gamesim.Episode
             x += sep;
 
             // The bag, framed as the row's middle.
-            var draw = EndScreenKit.Box(DrawColumnName, row, x, 0f, drawWidth, height);
-            VetoDrawColumnHeading(draw, drawHeading, drawWidth);
+            EndScreenKit.Place(draw, x, 0f, drawWidth, height);
+            VetoDrawPlaceHeading(drawLabel, row, x, sharedHeading ? top : 0f, drawWidth, headingBox);
             float bagTop = top + bagDrop;
-            var area = EndScreenKit.Box("Draw area", draw, 0f, bagTop - proud, drawWidth, bagTall + 2f * proud);
-            EndScreenKit.Frame(area, PackArt.Pack8DrawArea, 12f * s, new Color(Surface.r, Surface.g, Surface.b, .6f),
-                new Color(UiTheme.Gold.r, UiTheme.Gold.g, UiTheme.Gold.b, .45f));
+            EndScreenKit.Place(area, 0f, bagTop - proud, drawWidth, bagTall + 2f * proud);
             ChipBagIn(draw, toDraw, drawWidth, bagTop, bag, chip);
-            var words = FixedText(draw, chipsLine, 17, Paper, new Vector2(0f, -(bagTop + bag + 10f * s + chip + 10f * s)), new Vector2(drawWidth, wordsBox));
-            words.name = "Chips line";
-            words.alignment = TextAlignmentOptions.Center;
-            AutoSize(words, 12);
+            chipsLabel.rectTransform.SetParent(draw, false);
+            EndScreenKit.Place(chipsLabel.rectTransform, 0f, bagTop + bag + 10f * s + chip + 10f * s, drawWidth, wordsBox);
+            AutoSize(chipsLabel, 12);
             x += drawWidth;
 
             // The pool.
@@ -196,7 +230,7 @@ namespace Gamesim.Episode
                 VetoDrawChevron(row, x + sep * .5f, middle);
                 x += sep;
                 var right = EndScreenKit.Box(DrawEligibleName, row, x, 0f, eligibleWidth, height);
-                VetoDrawColumnHeading(right, eligibleHeading, eligibleWidth);
+                VetoDrawPlaceHeading(eligibleLabel, row, x, 0f, eligibleWidth, headingBox);
                 for (int i = 0; i < others; i++)
                     VetoDrawCard(right, state, eligible[i], (i % eligibleColumns) * (eligibleCard + gap),
                         top + (i / eligibleColumns) * (DrawCardHeight(eligibleCard) + gap), eligibleCard, PackArt.Pack8VetoEligible);
@@ -227,37 +261,111 @@ namespace Gamesim.Episode
             float proud = DrawAreaProud * scale, under = DrawUnderBag(scale);
             bag = Mathf.Clamp(Mathf.Min(playingTall, cardsHeight) - under - 2f * proud, DrawBagLeast * scale, DrawBagMost * scale);
             float column = bag + under;
-            columnTop = Mathf.Max(0f, (playingTall - column) * .5f);
+            columnTop = Mathf.Max(proud, (playingTall - column) * .5f);
             rowTall = Mathf.Max(playingTall, Mathf.Max(eligibleTall, columnTop + column + proud));
         }
 
         /// <summary>
         /// Splits <paramref name="room"/> - the row less the bag's column and its chevrons - between
-        /// <paramref name="byRight"/> cards in one row and a grid of <paramref name="others"/>, trying
-        /// every width for the cards by right from the widest the height allows down to the floor, and
-        /// keeping the one whose smaller card is largest. With <paramref name="oneBand"/> the pool is
-        /// held to the height of the row by right, so the draw reads as one band. Returns that smaller
+        /// <paramref name="byRight"/> cards and a grid of <paramref name="others"/>, trying widths and,
+        /// outside the preferred single band, column counts for the cards by right. Keeps the split
+        /// whose smaller card is largest. With <paramref name="oneBand"/> the playing cards stay in
+        /// one row and the pool is held to its height. Returns that smaller
         /// card's width, or -1 when no split fits.
         /// </summary>
-        private float SplitDraw(int byRight, int others, float room, float cardsHeight, bool oneBand,
-            out float card, out float fitted, out int across)
+        /// <summary>
+        /// The draw's split, without a HUD. The preferred single band keeps the playing cards
+        /// together; otherwise their columns may reflow as well as the pool's. Only a full fit,
+        /// including every row gap and the bag's frame, competes for the widest smaller card.
+        /// Returns -1 when the readable floor cannot fit the actual remaining height.
+        /// </summary>
+        public static float VetoDrawSplit(int byRight, int others, float room, float cardsHeight, float scale, bool oneBand,
+            out float card, out float fitted, out int playingColumns, out int across) =>
+            VetoDrawConstrainedSplit(byRight, others, room, cardsHeight, scale, oneBand,
+                new VetoDrawHeadingSpace(0f, 0f, 0f, DrawCardsTop * scale, DrawColumnWidth * scale),
+                out card, out fitted, out playingColumns, out across, out _);
+
+        /// <summary>Measured unshrunk heading space, middle allocation and actual retained frame-image overhang.</summary>
+        public struct VetoDrawHeadingSpace
         {
-            float s = FontScale, gap = FaceGap * s, floor = FaceCardFloor * s;
-            float widest = Mathf.Min(DrawCardWidest * s, (cardsHeight - 50f * s) / 1.12f);
+            public readonly float PlayingWidth, DrawWidth, EligibleWidth, Top, MiddleWidth, FrameTop, FrameBottom, FrameLeft, FrameRight;
+            public VetoDrawHeadingSpace(float playingWidth, float drawWidth, float eligibleWidth, float top, float middleWidth,
+                float frameTop = 0f, float frameBottom = 0f, float frameLeft = 0f, float frameRight = 0f)
+            {
+                PlayingWidth = playingWidth; DrawWidth = drawWidth; EligibleWidth = eligibleWidth; Top = top; MiddleWidth = middleWidth;
+                FrameTop = frameTop; FrameBottom = frameBottom; FrameLeft = frameLeft; FrameRight = frameRight;
+            }
+        }
+
+        /// <summary>The same finite card search with complete heading and frame separation constraints.</summary>
+        public static float VetoDrawConstrainedSplit(int byRight, int others, float room, float cardsHeight, float scale, bool oneBand,
+            VetoDrawHeadingSpace headings, out float card, out float fitted, out int playingColumns, out int across, out bool sharedHeading)
+        {
+            float s = scale, gap = FaceGap * s, floor = FaceCardFloor * s;
             float best = -1f;
             card = fitted = floor;
+            playingColumns = byRight;
             across = 1;
-            for (float width = widest; width >= floor - .01f; width -= 2f * s)
+            sharedHeading = false;
+            if (byRight < 1 || others < 1 || !(s > 0f) || !(room > 0f) || !(cardsHeight > 0f)
+                || float.IsInfinity(s) || float.IsInfinity(room) || float.IsInfinity(cardsHeight)) return best;
+            if (!(headings.PlayingWidth >= 0f) || !(headings.DrawWidth >= 0f) || !(headings.EligibleWidth >= 0f)
+                || !(headings.Top >= 0f) || !(headings.MiddleWidth > 0f)
+                || float.IsInfinity(headings.PlayingWidth) || float.IsInfinity(headings.DrawWidth) || float.IsInfinity(headings.EligibleWidth)
+                || float.IsInfinity(headings.Top) || float.IsInfinity(headings.MiddleWidth)
+                || headings.DrawWidth > headings.MiddleWidth + .01f) return best;
+            if (!(headings.FrameTop >= 0f) || !(headings.FrameBottom >= 0f) || !(headings.FrameLeft >= 0f) || !(headings.FrameRight >= 0f)
+                || float.IsInfinity(headings.FrameTop) || float.IsInfinity(headings.FrameBottom)
+                || float.IsInfinity(headings.FrameLeft) || float.IsInfinity(headings.FrameRight)
+                || headings.FrameLeft > DrawSeparator * s || headings.FrameRight > DrawSeparator * s) return best;
+            for (int leftColumns = byRight; leftColumns >= (oneBand ? byRight : 1); leftColumns--)
             {
-                float pool = room - (byRight * width + (byRight - 1) * gap);
-                if (pool < floor) continue;
-                FaceGrid(others, pool, width, oneBand ? DrawCardHeight(width) : cardsHeight, s, out float cards, out int columns);
-                // At the floor FaceGrid gives up the height, which a band cannot.
-                if (oneBand && Mathf.CeilToInt(others / (float)columns) * DrawCardHeight(cards) > DrawCardHeight(width) + .5f) continue;
-                float score = Mathf.Min(width, cards);
-                if (score > best + .01f) { best = score; card = width; fitted = cards; across = columns; }
+                int leftRows = Mathf.CeilToInt(byRight / (float)leftColumns);
+                float byHeight = ((cardsHeight - (leftRows - 1) * gap) / leftRows - 50f * s) / 1.12f;
+                float widest = Mathf.Min(DrawCardWidest * s, byHeight);
+                if (widest < floor) continue;
+                // Keep the two-unit preference search and always include the exact floor.
+                int steps = Mathf.CeilToInt((widest - floor) / (2f * s));
+                for (int step = 0; step <= steps; step++)
+                {
+                    float width = Mathf.Max(floor, widest - step * 2f * s);
+                    float playingTall = leftRows * (width * 1.12f + 50f * s) + (leftRows - 1) * gap;
+                    float pool = room - (leftColumns * width + (leftColumns - 1) * gap);
+                    if (pool < floor) continue;
+                    FaceGrid(others, pool, width, oneBand ? playingTall : cardsHeight, s, out float cards, out int columns);
+                    int rows = Mathf.CeilToInt(others / (float)columns);
+                    float poolWidth = columns * cards + (columns - 1) * gap;
+                    float poolTall = rows * (cards * 1.12f + 50f * s) + (rows - 1) * gap;
+                    // FaceGrid keeps names readable when its floor is too tall. That fallback
+                    // must not outrank a feasible split, even outside the preferred single band.
+                    if (poolWidth > pool + .01f || playingTall > cardsHeight + .01f || poolTall > cardsHeight + .01f) continue;
+                    if (oneBand && poolTall > playingTall + .5f) continue;
+                    float playingWidth = leftColumns * width + (leftColumns - 1) * gap;
+                    if (headings.EligibleWidth > poolWidth + .01f) continue;
+                    bool shared = headings.PlayingWidth > playingWidth + .01f;
+                    if (shared && (oneBand || headings.PlayingWidth > playingWidth + DrawSeparator * s + headings.MiddleWidth + .01f)) continue;
+                    VetoDrawHeadingBagColumn(playingTall, poolTall, cardsHeight, s, shared, headings.Top, headings.FrameTop, headings.FrameBottom,
+                        out _, out _, out float rowTall);
+                    if (rowTall > cardsHeight + .01f) continue;
+                    float score = Mathf.Min(width, cards);
+                    if (score > best + .01f)
+                    {
+                        best = score; card = width; fitted = cards; playingColumns = leftColumns; across = columns; sharedHeading = shared;
+                    }
+                }
             }
             return best;
+        }
+
+
+        /// <summary>Reserve the moved draw heading above, never overlapping, its complete bag frame.</summary>
+        public static void VetoDrawHeadingBagColumn(float playingTall, float eligibleTall, float cardsHeight, float scale,
+            bool sharedHeading, float headingTop, float frameTop, float frameBottom, out float bag, out float columnTop, out float rowTall)
+        {
+            VetoDrawBagColumn(playingTall, eligibleTall, cardsHeight, scale, out bag, out columnTop, out rowTall);
+            float proud = DrawAreaProud * scale;
+            columnTop = Mathf.Max(columnTop, (sharedHeading ? headingTop : 0f) + proud + frameTop);
+            rowTall = Mathf.Max(rowTall, columnTop + bag + DrawUnderBag(scale) + proud + frameBottom);
         }
 
         /// <summary>The narrowest the pool's cards may run and still share one band with the cards by right, at the resting text size.</summary>
@@ -267,21 +375,42 @@ namespace Gamesim.Episode
         private float DrawCardHeight(float width) => width * 1.12f + 50f * FontScale;
 
         /// <summary>A column's heading in the accent, letterspaced, over a rule the column's width.</summary>
-        private void VetoDrawColumnHeading(RectTransform column, string words, float width)
+        private TMP_Text VetoDrawColumnHeading(RectTransform parent, string words)
         {
-            if (string.IsNullOrEmpty(words)) return;
-            float s = FontScale;
-            var label = FixedText(column, words, 15, Accent, Vector2.zero, new Vector2(width, DrawHeadingBox * s));
+            if (string.IsNullOrEmpty(words)) return null;
+            var label = FixedText(parent, words, 15, Accent, Vector2.zero, Vector2.zero);
             label.name = "Column heading";
             label.alignment = TextAlignmentOptions.Center;
             label.characterSpacing = 4f;
             label.textWrappingMode = TextWrappingModes.NoWrap;
-            label.overflowMode = TextOverflowModes.Ellipsis;
+            label.overflowMode = TextOverflowModes.Overflow;
+            label.enableAutoSizing = false;
             var semibold = UiTheme.Font(UiTheme.Weight.SemiBold);
             if (semibold != null) label.font = semibold;
-            AutoSize(label, 11);
-            var rule = HudPrimitives.Fill("Column rule", column, new Color(Accent.r, Accent.g, Accent.b, .45f), 1);
-            EndScreenKit.Place(rule, 0f, (DrawHeadingBox + 4f) * s, width, Mathf.Max(1f, 2f * s));
+            return label;
+        }
+
+        private Vector2 VetoDrawHeadingMeasure(TMP_Text label)
+        {
+            // No copy takes no room: the heading or line it would have been is left out.
+            if (label == null || string.IsNullOrEmpty(label.text)) return Vector2.zero;
+            Vector2 required = label.GetPreferredValues(label.text);
+            if (!(required.x >= 0f) || !(required.y > 0f) || float.IsInfinity(required.x) || float.IsInfinity(required.y))
+            {
+                // A font that cannot measure its copy keeps the box the layout was drawn for,
+                // rather than throwing from inside the render (PR-11).
+                Debug.LogWarning("Veto draw: '" + label.text + "' could not be measured; keeping its resting box.");
+                return new Vector2(Mathf.Max(0f, label.rectTransform.rect.width), DrawHeadingBox * FontScale);
+            }
+            return new Vector2(Mathf.Ceil(required.x) + 2f * FontScale, Mathf.Ceil(required.y));
+        }
+
+        private void VetoDrawPlaceHeading(TMP_Text label, RectTransform row, float x, float y, float width, float box)
+        {
+            if (label == null) return;
+            EndScreenKit.Place(label.rectTransform, x, y, width, box);
+            var rule = HudPrimitives.Fill("Column rule", row, new Color(Accent.r, Accent.g, Accent.b, .45f), 1);
+            EndScreenKit.Place(rule, x, y + box + 4f * FontScale, width, Mathf.Max(1f, 2f * FontScale));
         }
 
         /// <summary>The mockup's chevron between two columns: Pack 8's arrow, or the drawn one without the pack.</summary>

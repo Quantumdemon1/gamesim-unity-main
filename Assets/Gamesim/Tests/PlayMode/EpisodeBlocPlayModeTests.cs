@@ -334,6 +334,7 @@ namespace Gamesim.Tests.PlayMode
 
         private IEnumerator ClickBlocCommand(string caption)
         {
+            if (director.IsConversationOpen) yield return EnterCategoryForLeaf(caption);
             int revision = director.Snapshot.revision;
             var button = ButtonWithCaption(caption);
             Assert.That(button.IsInteractable(), Is.True, caption);

@@ -94,8 +94,21 @@ namespace Gamesim.Episode
             // The picks a render restored, warned of in the footer it just built (EpisodeDirector.YourWord).
             if (picking && !pitching && current.kind == NominationSteps.Kind.Picker && !nominationBackdoorView)
                 WarnOfThePicks(state, nominationFirst, nominationSecond);
+            // At the largest text a step that cannot fit the stage is dealt onto pages, with the
+            // pager at each page's foot (EpisodeHud.NominationPages.cs); at the other sizes, and
+            // wherever the step fits, this leaves it as it was built.
+            hud.PageNominationStep(NominationPagesKey(state, current, beat, pitching), Render);
             return true;
         }
+
+        /// <summary>
+        /// Which of the nomination's views a page of the largest text's belongs to: the week, the
+        /// step, the beat and its second press, the pitch, the backdoor view and the block. A
+        /// rebuild of the same view keeps its page; another view starts on its first.
+        /// </summary>
+        private string NominationPagesKey(EpisodeState state, NominationSteps.Step current, HouseEventState beat, bool pitching) =>
+            "Nomination · " + state.week + " · " + current.kind + " · " + (beat != null ? beat.id + " · " + storyStepOption + " · " + storyStepPick : "-")
+            + (pitching ? " · pitch" : "") + (nominationBackdoorView ? " · backdoor" : "") + " · " + state.nominees.Count;
 
         private Action PitchNavigation(EpisodeState state, bool show)
         {

@@ -55,9 +55,9 @@ namespace Gamesim.Tests.PlayMode
             var bodies = state.finalSpeeches.Select(speech =>
                 Localisation.Text(string.IsNullOrEmpty(speech.text) ? "No final speech was given." : speech.text)).ToList();
 
-            foreach (bool larger in new[] { false, true })
+            foreach (var (textSize, larger) in TextScales.Steps)
             {
-                yield return ApplyTextSize(larger);
+                yield return ApplyTextSize(textSize);
                 yield return OpenFinalePanel();
                 yield return Frames(2);
                 Canvas.ForceUpdateCanvases();
@@ -110,7 +110,7 @@ namespace Gamesim.Tests.PlayMode
                     Assert.That(versus, Is.Not.Null, "The two cases are set against each other.");
                     Assert.That(Words(versus), Does.Not.Contain("JOURNEYS"), "No tagline the owner has not approved (decision 10).");
                 }
-                AssertEveryLabelDraws(LastActive(EpisodeHud.FinalistColumnsName), "The juror's cases (" + (larger ? "larger" : "resting") + " text)");
+                AssertEveryLabelDraws(LastActive(EpisodeHud.FinalistColumnsName), "The juror's cases (" + TextSizes.Name(textSize) + " text)");
                 Assert.That(LastActive(EpisodeHud.JurorMattersName), Is.Not.Null, "What matters to you.");
                 // Whichever words a reading wears - "Trust N" on a card, "Your trust N" on a row - and
                 // only a reading: a finalist's quoted speech may well say "trust".

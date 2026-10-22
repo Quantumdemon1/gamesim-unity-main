@@ -168,7 +168,7 @@ namespace Gamesim.Presentation
         /// <summary>A finalist card's trait words and the dots before them, so a test can find them.</summary>
         public const string TraitName = "Trait", TraitDotName = "Trait dot";
 
-        /// <summary>The strip's full-width glass, and the quote card at its far end.</summary>
+        /// <summary>The strip's full-width glass and the jury card's retained layout name.</summary>
         public const string StripName = "Cast strip";
         public const string QuoteName = "Strip quote";
         private const float QuoteWidth = 290f;
@@ -236,8 +236,8 @@ namespace Gamesim.Presentation
         }
 
         /// <param name="jury">
-        /// At the endgame, the jurors, whose card takes the quote card's slot; null or empty keeps
-        /// the quote. Handed in rather than counted here, so the card counts the jury exactly as
+        /// At the endgame, the jurors, whose card uses the spare space beside the cast; null or empty
+        /// leaves that space clear. Handed in rather than counted here, so the card counts the jury exactly as
         /// the frame's other jury readings do.
         /// </param>
         public static RectTransform Build(
@@ -276,15 +276,11 @@ namespace Gamesim.Presentation
                 else Entry(root, state, order[index], index, scale, font, portrait, onSelect, followedId, waiting);
             }
 
-            // The mockups end the strip on a line of the show's own voice, where there is room for
-            // it past the last chip. At the endgame the same slot is the jury's (mockup 60): the
-            // number every last decision turns on, and the faces that will make it.
+            // Spare space stays clear during house play. At the endgame it can show the jury:
+            // the faces that will decide the winner.
             float spare = canvas != null ? canvas.rect.width - 2f * SideMargin - width : 0f;
-            if (spare >= (QuoteWidth + 16f) * scale)
-            {
-                if (jury != null && jury.Count > 0) JuryCard(parent, state, jury, scale, font);
-                else Quote(parent, scale);
-            }
+            if (jury != null && jury.Count > 0 && spare >= (QuoteWidth + 16f) * scale)
+                JuryCard(parent, state, jury, scale, font);
             return root;
         }
 
@@ -322,40 +318,6 @@ namespace Gamesim.Presentation
         /// season report reads it to dim the corner the strip runs under beside the rail.
         /// </summary>
         public static float GroundTop(float scale) => Bottom + EntryHeight * scale + 6f;
-
-        /// <summary>The mockups' quote card at the strip's right-hand end.</summary>
-        private static void Quote(Transform parent, float scale)
-        {
-            var card = HudPrimitives.Fill(QuoteName, parent, UiTheme.CardFill, ChipRadius);
-            card.anchorMin = card.anchorMax = new Vector2(1f, 0f);
-            card.pivot = new Vector2(1f, 0f);
-            card.anchoredPosition = new Vector2(-SideMargin, Bottom + ChipBottom * scale);
-            card.sizeDelta = new Vector2(QuoteWidth * scale, (EntryHeight - ChipTop - ChipBottom) * scale);
-            card.GetComponent<Image>().raycastTarget = false;
-            UiTheme.AddBorder(card, ChipRadius, UiTheme.Edge(UiTheme.Emphasis.Resting));
-
-            var mark = HudPrimitives.Label("Quote mark", card, Mathf.Round(44f * scale), UiTheme.Heading, TextAlignmentOptions.TopLeft);
-            var bold = UiTheme.Font(UiTheme.Weight.Bold);
-            if (bold != null) mark.font = bold;
-            mark.text = "\u201C";
-            mark.rectTransform.anchorMin = mark.rectTransform.anchorMax = new Vector2(0f, 1f);
-            mark.rectTransform.pivot = new Vector2(0f, 1f);
-            mark.rectTransform.anchoredPosition = new Vector2(12f * scale, -2f * scale);
-            // Inter's line at 44 is 53 tall: a box shorter than that clips the mark it holds.
-            mark.rectTransform.sizeDelta = new Vector2(44f * scale, 58f * scale);
-            mark.enableAutoSizing = true; mark.fontSizeMax = mark.fontSize; mark.fontSizeMin = Mathf.Min(24f, mark.fontSize);
-
-            var line = HudPrimitives.Label("Quote line", card, Mathf.Round(14f * scale),
-                new Color(UiTheme.Paper.r, UiTheme.Paper.g, UiTheme.Paper.b, .88f), TextAlignmentOptions.MidlineLeft);
-            line.fontStyle = FontStyles.Italic;
-            line.text = Localisation.Text("Same house.\nDifferent stories.\nWho will you become?");
-            line.enableAutoSizing = true;
-            line.fontSizeMax = line.fontSize;
-            line.fontSizeMin = Mathf.Min(10f, line.fontSize);
-            line.rectTransform.anchorMin = Vector2.zero; line.rectTransform.anchorMax = Vector2.one;
-            line.rectTransform.offsetMin = new Vector2(58f * scale, 8f * scale);
-            line.rectTransform.offsetMax = new Vector2(-14f * scale, -8f * scale);
-        }
 
         /// <summary>
         /// The jury in the quote card's slot at the endgame (MOCKUP-PASS M14, mockup 60): 'The Jury

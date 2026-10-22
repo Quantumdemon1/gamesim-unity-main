@@ -16,7 +16,7 @@ namespace Gamesim.Simulation
     /// <para>Tokens: <c>{ROLE}</c> is the name of whoever plays the role; <c>{ROLE.they}</c>,
     /// <c>{ROLE.them}</c>, <c>{ROLE.their}</c> and <c>{ROLE.themselves}</c> are their pronouns, and a
     /// capital first letter after the dot capitalises the pronoun (<c>{ROLE.They}</c>). Authored
-    /// text avoids pronoun subjects, so no verb ever has to agree with one.</para>
+    /// sentences with variable verb agreement are corrected by the display layer.</para>
     /// </summary>
     public static class StoryText
     {
@@ -68,7 +68,7 @@ namespace Gamesim.Simulation
         {
             var beat = BeatOf(item);
             if (beat == null || string.IsNullOrEmpty(beat.text)) return item?.narrative;
-            return Fill(state, Phrasing(beat, item.week), item.cast);
+            return FillDisplay(state, Phrasing(beat, item.week), item.cast);
         }
 
         /// <summary>An option's description with names in it.</summary>
@@ -76,7 +76,7 @@ namespace Gamesim.Simulation
         {
             var option = BeatOf(item)?.Option(choice?.optionId);
             if (option == null || string.IsNullOrEmpty(option.description)) return choice?.description;
-            return Fill(state, option.description, item.cast);
+            return FillDisplay(state, option.description, item.cast);
         }
 
         /// <summary>The phrasing for a week: the text the first week, then each alternate in turn. Never keyed on a roll.</summary>
@@ -100,6 +100,19 @@ namespace Gamesim.Simulation
                 if (who == null) return form == null ? "someone" : Pronoun(null, form);
                 return form == null ? who.name : Pronoun(who, form);
             });
+        }
+
+        /// <summary>The named display sentence with known agreement corrections; canonical composition remains Fill's.</summary>
+        public static string FillDisplay(EpisodeState state, string text, IEnumerable<StoryRoleState> cast)
+        {
+            if (string.IsNullOrEmpty(text) || text.IndexOf('{') < 0) return text;
+            var parts = (cast ?? Enumerable.Empty<StoryRoleState>()).ToArray();
+            string corrected = NarrativeDisplay.StoryTemplate(text, role =>
+            {
+                var part = parts.FirstOrDefault(r => r.role == role);
+                return part == null ? null : state?.Find(part.contestantId);
+            });
+            return corrected ?? Fill(state, text, parts);
         }
 
         /// <summary>
@@ -193,7 +206,7 @@ namespace Gamesim.Simulation
                         ? option?.backfireOutcome ?? option?.outcome : option?.outcome;
                     if (string.IsNullOrEmpty(outcome)) return entry.text;
                     string title = arc.Beat(step.beatId)?.title;
-                    return (string.IsNullOrEmpty(title) ? "" : title + ": ") + Fill(state, outcome, cycle.cast);
+                    return (string.IsNullOrEmpty(title) ? "" : title + ": ") + FillDisplay(state, outcome, cycle.cast);
                 }
             }
             return entry.text;

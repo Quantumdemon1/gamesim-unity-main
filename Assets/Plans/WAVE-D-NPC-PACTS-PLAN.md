@@ -407,7 +407,7 @@ Nothing is drawn. C6's single ally claim is not written at a war room (Q8).
 
   The odds:
   - `ComeRoundOdds = reach ≤ 0 ? 0 : clamp01((reach − margin) / reach)`;
-  - `reach = 8 × clamp(Score(id→player)/50, 0, 1) × (Loyal 1.5 | Sneaky 0 | 1)`, at most 12;
+  - `reach = 20 × clamp(Score(id→player)/10, 0, 1) × (Loyal 1.5 | Sneaky 0 | 1)`, at most 30 (amended in place from 8 × clamp(…/50) at most 12 for BALANCE plan §4 Q1, 575d9420 and 7c46efcc);
   - `margin = EvaluateNative(s, id).margin` at answer time.
 
   **The tally:** the player, plus those who came round, plus those who already said C, against what is left for M. More says wins.

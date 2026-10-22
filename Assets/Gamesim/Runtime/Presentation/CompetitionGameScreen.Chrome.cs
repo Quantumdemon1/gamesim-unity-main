@@ -91,7 +91,9 @@ namespace Gamesim.Presentation
                 case CompetitionMiniGames.Kind.Memory:
                     return rules + " Arrows / D-pad move; Enter / A flips. Each mistake costs 0.15; clearing early adds up to one point.";
                 case CompetitionMiniGames.Kind.Endurance:
-                    return rules + " Holding spends grip; releasing recovers it. An empty grip ends the attempt. Space / right trigger hold; the button toggles.";
+                    // The grip's key and button as the player has them (A5); as shipped, the words as written.
+                    return rules + " Holding spends grip; releasing recovers it. An empty grip ends the attempt. "
+                        + KeyBindings.BoardKey("Hold", false, "Space") + " / " + KeyBindings.BoardKey("Hold", true, "right trigger") + " hold; the button toggles.";
                 case CompetitionMiniGames.Kind.Reaction:
                     return rules + " Click the target, or press its direction (arrow keys, WASD, D-pad or left stick). Early input and incorrect aim cost accuracy.";
                 case CompetitionMiniGames.Kind.Dice:
@@ -100,7 +102,8 @@ namespace Gamesim.Presentation
                     // A names board that is filled out says so: the rule says names, and a house
                     // word under it with no warning read as the wrong game (UI-UX-PASS-PLAN M0).
                     return rules + (run.DealsHouseWords ? " " + HouseWordsFollowTheNames : string.Empty)
-                        + " Click, type or press A on a letter; Backspace / X takes one back; a wrong spelling clears. "
+                        + " Click, type or press A on a letter; " + KeyBindings.BoardKey("Undo", false, "Backspace") + " / " + KeyBindings.BoardKey("Undo", true, "X")
+                        + " takes one back; a wrong spelling clears. "
                         + "Typing spells, so P is a letter here: Start or the Pause button pauses.";
                 default: return rules;
             }
@@ -360,7 +363,7 @@ namespace Gamesim.Presentation
                     if (!usingPad) yield return ("Click", "Hit the target");
                     break;
                 case CompetitionMiniGames.Kind.Endurance:
-                    yield return usingPad ? ("RT", "Hold") : ("Space", "Hold");
+                    yield return (KeyBindings.BoardKey("Hold", usingPad, usingPad ? "RT" : "Space"), "Hold");
                     yield return usingPad ? ("A", "Toggle grip") : ("Enter", "Toggle grip");
                     break;
                 case CompetitionMiniGames.Kind.Dice:
@@ -369,7 +372,7 @@ namespace Gamesim.Presentation
                     break;
                 case CompetitionMiniGames.Kind.Words:
                     yield return usingPad ? ("A", "Choose letter") : ("A–Z", "Spell");
-                    yield return usingPad ? ("X", "Take back") : ("Backspace", "Take back");
+                    yield return (KeyBindings.BoardKey("Undo", usingPad, usingPad ? "X" : "Backspace"), "Take back");
                     break;
             }
             yield return usingPad ? ("LB / RB", "Controls") : ("Tab", "Controls");

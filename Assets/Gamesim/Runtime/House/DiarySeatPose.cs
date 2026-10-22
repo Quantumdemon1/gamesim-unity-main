@@ -154,14 +154,29 @@ namespace Gamesim.House
             DestroyBranding();
             studio=new GameObject("Diary interview backdrop");
             studio.transform.SetParent(anchor.transform,false);
-            var panel=GameObject.CreatePrimitive(PrimitiveType.Cube);
-            panel.name="Upholstered interview wall";
-            panel.transform.SetParent(studio.transform,false);
-            panel.transform.localPosition=new Vector3(0,1.45f,-.85f);
-            // Wider than the shot, so the confessional fills the frame instead of showing the next
-            // room's walls and neon at both edges.
-            panel.transform.localScale=new Vector3(4.6f,2.9f,.10f);
-            var collider=panel.GetComponent<Collider>();collider.enabled=false;Destroy(collider);
+            GameObject panel;
+            var tufted=HouseBrandingPalette.Current!=null?HouseBrandingPalette.Current.diaryWallMesh:null;
+            if(tufted!=null)
+            {
+                // The authored wall (ArtSource/setpieces/bb_set_diarywall.py): the same 4.6 by 2.9 m by
+                // 0.10 m, its origin on the floor under its middle and its tufts' crowns at the
+                // branding's WallFace, square biscuits on the pack texture's own grid.
+                panel=new GameObject(DiaryStudioBranding.WallName,typeof(MeshFilter),typeof(MeshRenderer));
+                panel.GetComponent<MeshFilter>().sharedMesh=tufted;
+                panel.transform.SetParent(studio.transform,false);
+                panel.transform.localPosition=new Vector3(0,0,-.85f);
+            }
+            else
+            {
+                panel=GameObject.CreatePrimitive(PrimitiveType.Cube);
+                panel.name=DiaryStudioBranding.WallName;
+                panel.transform.SetParent(studio.transform,false);
+                panel.transform.localPosition=new Vector3(0,1.45f,-.85f);
+                // Wider than the shot, so the confessional fills the frame instead of showing the next
+                // room's walls and neon at both edges.
+                panel.transform.localScale=new Vector3(4.6f,2.9f,.10f);
+                var collider=panel.GetComponent<Collider>();collider.enabled=false;Destroy(collider);
+            }
             var shader=Shader.Find("Universal Render Pipeline/Lit") ?? Shader.Find("Standard");
             if(shader!=null)
             {

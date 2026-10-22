@@ -5,6 +5,7 @@
     "Gamesim.Uma",
     "Gamesim.Runtime",
     "Gamesim.Simulation",
+    "Gamesim.PlayModeTests",
     "UMA_Core"
   ],
   "includePlatforms": [],

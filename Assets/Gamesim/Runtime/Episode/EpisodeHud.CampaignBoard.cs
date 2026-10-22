@@ -707,38 +707,14 @@ namespace Gamesim.Episode
 
         /// <summary>
         /// The pager at the right-hand end of a tab's line, when its houseguests run past one page:
-        /// where the page is, and a way back and on, each only where there is somewhere to go.
-        /// Returns the width it took.
+        /// where the page is, and a way back and on, each only where there is somewhere to go - the
+        /// one pager row (PagerRow, EpisodeHud.LargestPages.cs). Returns the width it took.
         /// </summary>
         private float CampaignPager(RectTransform body, float width, float line, int page, int pages, CampaignBoardSpec spec)
         {
             if (pages <= 1) return 0f;
-            float s = FontScale, gap = 8f * s, x = width;
-            // Made in reading order, the way back before the way on, and laid from the right.
-            var pills = new List<RectTransform>();
-            if (page > 0)
-            {
-                int previous = page - 1;
-                pills.Add((RectTransform)FilterPill(body, CampaignPreviousCaption, false, () => spec.ChoosePage?.Invoke(previous), line).transform);
-            }
-            if (page < pages - 1)
-            {
-                int next = page + 1;
-                pills.Add((RectTransform)FilterPill(body, CampaignNextCaption, false, () => spec.ChoosePage?.Invoke(next), line).transform);
-            }
-            for (int i = pills.Count - 1; i >= 0; i--)
-            {
-                x -= pills[i].sizeDelta.x;
-                Anchor(pills[i], new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(x, 0f), pills[i].sizeDelta);
-                x -= gap;
-            }
-            float where = 90f * s;
-            x -= where;
-            var at = FixedText(body, "Page " + (page + 1) + " of " + pages, 12, UiTheme.Muted, new Vector2(x, -(line - 17f * s) * .5f), new Vector2(where, 17f * s));
-            at.name = "Page";
-            at.alignment = TextAlignmentOptions.Right;
-            AutoSize(at, 9);
-            return width - x + gap;
+            return PagerRow(body, width, line, 90f * FontScale, CampaignPreviousCaption, CampaignNextCaption, "Page",
+                "Page " + (page + 1) + " of " + pages, page, pages, to => spec.ChoosePage?.Invoke(to));
         }
 
         // ------------------------------------------------------------ the tabs' bodies

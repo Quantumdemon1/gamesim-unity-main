@@ -168,7 +168,8 @@ namespace Gamesim.Tests.EditMode
                 case "null-input": s = null; break;
                 case "schema": s.schemaVersion = 24; break;
                 case "canonical-off": s.unifiedCommitmentRulesVersion = 0; break;
-                case "canonical-unknown": s.unifiedCommitmentRulesVersion = 2; break;
+                // 3, not 2: since vote family V6 mode 2 is the unified vote rules, a known mode with its own core.
+                case "canonical-unknown": s.unifiedCommitmentRulesVersion = 3; break;
                 case "hearing-unknown": s.unifiedHearingRulesVersion = 2; break;
                 case "canonical-null": s.unifiedCommitments = null; break;
                 case "canonical-null-row": s.unifiedCommitments.Add(null); break;

@@ -79,9 +79,9 @@ namespace Gamesim.Tests.PlayMode
             var runnerUp = state.Find(state.runnerUpId);
             var record = new CareerRecord();
             record.seasons.Add(new CareerSeason { sessionId = "a", outcome = "Runner-up", placement = 2, hohWins = 1, vetoWins = 1 });
-            foreach (bool larger in new[] { false, true })
+            foreach (var textSize in TextSizes.All)
             {
-                Report().FontScale = larger ? 1.2f : 1f;
+                Report().FontScale = TextSizes.Scale(textSize);
                 yield return null;
                 Report().Show(state, _ => null, null, CareerSummary.Of(record));
                 yield return null;
@@ -166,7 +166,7 @@ namespace Gamesim.Tests.PlayMode
 
                 foreach (var part in new[] { SeasonReport.StandingsName, SeasonReport.JuryColumnName, SeasonReport.TimelineName, SeasonReport.CareerStripName })
                     AssertDecisionCopyFits(ReportPart(part));
-                if (Application.isBatchMode) yield return CaptureFraming(larger ? "season-complete-large" : "season-complete");
+                if (Application.isBatchMode) yield return CaptureFraming("season-complete" + TextScales.Suffix(textSize));
                 Report().Hide();
             }
             Report().FontScale = 1f;
@@ -234,21 +234,53 @@ namespace Gamesim.Tests.PlayMode
         }
 
         /// <summary>
+        /// The rows Season Complete's four ways on stand in at the largest text, on the 16:9 frame and
+        /// on the 4:3 (the batch canvas is 4:3): the suite's literals for the owner's contract of
+        /// 2026-10-15, measured on 2026-10-16. At the standard and the larger text they are one row.
+        /// </summary>
+        private static readonly (int At16x9, int At4x3) ReportFooterRowsLargest = (1, 2);
+
+        /// <summary>
+        /// How many rows the report's ways on stand in, each way inside the footer and the ways read in
+        /// their order, row by row: measured in the footer's own units, so it holds in a capture's frame.
+        /// </summary>
+        private int ReportFooterRows(string where)
+        {
+            var footer = ReportPart(SeasonReport.FooterName);
+            Assert.That(footer, Is.Not.Null, where + "the ways on have their footer.");
+            var ways = footer.GetComponentsInChildren<Button>().Where(button => button.IsActive()).ToList();
+            var corners = new Vector3[4];
+            Vector2 Corner(Button way, int index)
+            {
+                ((RectTransform)way.transform).GetWorldCorners(corners);
+                return footer.InverseTransformPoint(corners[index]);
+            }
+            foreach (var way in ways)
+                Assert.That(Inside(footer, (RectTransform)way.transform), Is.True, where + "'" + way.name + "' is inside the footer.");
+            var reading = ways.OrderByDescending(way => Mathf.Round(Corner(way, 1).y)).ThenBy(way => Corner(way, 0).x).Select(way => way.name).ToList();
+            Assert.That(reading, Is.EqualTo(ways.Select(way => way.name).ToList()), where + "the ways on read in their order, row by row.");
+            return ways.Select(way => Mathf.Round(Corner(way, 1).y)).Distinct().Count();
+        }
+
+        /// <summary>
         /// The head of Season Complete (MOCKUP-PASS M5): the season's number over the title, the
         /// season's numbers in tiles, its counts in a line, and the card beside the house's rail
         /// rather than over it at both text sizes - the rail dimmed down to the cast strip, the
         /// corner under it dimmed as the house is, the scrim still taking every click, and the
-        /// brand line in that corner.
+        /// brand line in that corner. The ways on in one row at the standard and the larger text; at
+        /// the largest, where one row cannot draw every caption whole, in the suite's literal rows for
+        /// the frame (<see cref="ReportFooterRowsLargest"/>), the season scrolling under them with its
+        /// scrollbar and its hint, photographed on the 16:9 frame and the 4:3 in a batch run.
         /// </summary>
         [UnityTest]
         public IEnumerator EndScreens_TheHeadCarriesTheSeasonNumberAndTheCardStandsBesideTheRail()
         {
             var state = FinishedWithWeeks();
             var hud = director.GetComponentsInChildren<Canvas>(true).First(canvas => canvas.name == "Gamesim Episode HUD");
-            foreach (bool larger in new[] { false, true })
+            foreach (var textSize in TextSizes.All)
             {
-                string size = larger ? "At the larger text, " : "At resting text, ";
-                Report().FontScale = larger ? 1.2f : 1f;
+                string size = "At the " + TextSizes.Name(textSize) + " text, ";
+                Report().FontScale = TextSizes.Scale(textSize);
                 yield return null;
                 Report().Show(state, _ => null, () => { }, null, () => { }, () => { }, () => { }, 3);
                 yield return null;
@@ -270,6 +302,24 @@ namespace Gamesim.Tests.PlayMode
                     "One winner a competition, the final parts included.");
                 foreach (var part in new[] { title, numbers, ReportPart(SeasonReport.FooterName) })
                     AssertDecisionCopyFits(part);
+                // The ways on: one row, or at the largest text the suite's rows for the frame the
+                // report is laid out on (a batch run's canvas is 4:3), read from its canvas's shape.
+                bool largest = textSize == TextSize.Largest;
+                int rows = largest ? PagesOn(LargestFrameOf(ReportPart(SeasonReport.FooterName)), ReportFooterRowsLargest) : 1;
+                Assert.That(ReportFooterRows(size), Is.EqualTo(rows),
+                    size + "the ways on stand in " + (largest ? rows + " rows" : "one row") + ".");
+                if (largest)
+                {
+                    // The season still scrolls, under the taller footer, and says so.
+                    var scroll = Report().GetComponentsInChildren<ScrollRect>().First();
+                    Assert.That(scroll.content.rect.height, Is.GreaterThan(scroll.viewport.rect.height), size + "the season scrolls under the ways on.");
+                    Assert.That(scroll.verticalScrollbar != null && scroll.verticalScrollbar.gameObject.activeInHierarchy, Is.True,
+                        size + "its scrollbar shows there is more.");
+                    Assert.That(ReportPart("Scroll hint"), Is.Not.Null, size + "and the line under the tabs says how to move through it.");
+                    var view = new Vector3[4]; var foot = new Vector3[4];
+                    scroll.viewport.GetWorldCorners(view); ReportPart(SeasonReport.FooterName).GetWorldCorners(foot);
+                    Assert.That(view[0].y, Is.GreaterThanOrEqualTo(foot[1].y - .5f), size + "the season's view ends over the ways on.");
+                }
 
                 // Clear of the rail's ground, which runs 8 to 220 HUD units whatever the text size.
                 var sheet = ReportPart("Report card");
@@ -290,7 +340,7 @@ namespace Gamesim.Tests.PlayMode
                 // top is where the HUD draws it at the report's text size; the HUD here may be at
                 // resting text, and a strip at resting text only stands lower.
                 var stripDim = ReportPart("Strip dim").GetComponent<Image>();
-                float stripTop = CastRail.GroundTop(larger ? 1.2f : 1f) * hud.scaleFactor;
+                float stripTop = CastRail.GroundTop(TextSizes.Scale(textSize)) * hud.scaleFactor;
                 Assert.That(stripDim.color.a, Is.EqualTo(houseDim.color.a), size + "the strip under the rail is dimmed as the house is.");
                 Assert.That(stripDim.raycastTarget, Is.False, "The clear scrim under it takes the clicks.");
                 Assert.That(ScreenRect(stripDim.rectTransform).yMax, Is.GreaterThanOrEqualTo(stripTop - .5f), size + "the corner's dim covers the strip.");
@@ -298,7 +348,20 @@ namespace Gamesim.Tests.PlayMode
                 var brandRect = ScreenRect(brand.rectTransform);
                 Assert.That(brandRect.yMax, Is.LessThanOrEqualTo(ScreenRect(stripDim.rectTransform).yMax + .5f), size + "the brand line stands in the dark corner.");
                 Assert.That(brandRect.xMax, Is.LessThanOrEqualTo(ScreenRect(stripDim.rectTransform).xMax + .5f), size + "the brand line stands in the dark corner.");
-                if (Application.isBatchMode) yield return CaptureFraming(larger ? "season-complete-head-large" : "season-complete-head");
+                if (Application.isBatchMode) yield return CaptureFraming("season-complete-head" + TextScales.Suffix(textSize));
+                // At the largest text the report laid again for the 16:9 frame and the 4:3, and
+                // photographed on each: its ways on in the suite's rows for the frame, every caption whole.
+                if (Application.isBatchMode && largest)
+                    foreach (var frame in new[] { (Width: 1600, Height: 900, Name: "16x9", Rows: ReportFooterRowsLargest.At16x9),
+                        (Width: 1200, Height: 900, Name: "4x3", Rows: ReportFooterRowsLargest.At4x3) })
+                        yield return CaptureFraming("season-complete-head-largest-" + frame.Name, width: frame.Width, height: frame.Height,
+                            arrange: () => Report().Show(state, _ => null, () => { }, null, () => { }, () => { }, () => { }, 3),
+                            inspect: picture =>
+                            {
+                                string there = size + "on the " + frame.Name + " frame, ";
+                                Assert.That(ReportFooterRows(there), Is.EqualTo(frame.Rows), there + "the ways on stand in the suite's " + frame.Rows + " rows.");
+                                AssertDecisionCopyFits(ReportPart(SeasonReport.FooterName));
+                            });
                 Report().Hide();
             }
             Report().FontScale = 1f;
@@ -329,10 +392,10 @@ namespace Gamesim.Tests.PlayMode
                 var ballots = SeasonReport.JuryBallots(state);
                 Assert.That(ballots.Count, Is.EqualTo(house - 2), "A jury of " + (house - 2) + ".");
                 int forChampion = ballots.Count(b => b.FinalistId == champion.id), forRunnerUp = ballots.Count(b => b.FinalistId == runnerUp.id);
-                foreach (bool larger in new[] { false, true })
+                foreach (var (textSize, larger) in TextScales.Steps)
                 {
-                    string where = ballots.Count + " jurors" + (larger ? " at the larger text" : "") + ": ";
-                    Report().FontScale = larger ? 1.2f : 1f;
+                    string where = ballots.Count + " jurors" + (larger ? " " + TextScales.At(textSize) : "") + ": ";
+                    Report().FontScale = TextSizes.Scale(textSize);
                     yield return null;
                     Report().Show(state, _ => null, null, null, null, null, null, 2);
                     yield return null;
@@ -389,7 +452,7 @@ namespace Gamesim.Tests.PlayMode
                     Assert.That(LabelsUnder(tally), Does.Contain(forChampion.ToString()).And.Contain(forRunnerUp.ToString())
                         .And.Contain(champion.name).And.Contain(runnerUp.name), where + "the count at the bar's ends, and whose it is.");
                     foreach (var part in new[] { strip, stats, tally }) AssertDecisionCopyFits(part);
-                    if (Application.isBatchMode && house == 16) yield return CaptureFraming(larger ? "season-complete-hero-14-large" : "season-complete-hero-14");
+                    if (Application.isBatchMode && house == 16) yield return CaptureFraming("season-complete-hero-14" + TextScales.Suffix(textSize));
                     Report().Hide();
                 }
             }
@@ -433,9 +496,9 @@ namespace Gamesim.Tests.PlayMode
             var gone = state.Find(recap.evictedId);
             Assert.That(gone, Is.Not.Null, "The week closed with an eviction.");
             string before = JsonUtility.ToJson(state);
-            foreach (bool larger in new[] { false, true })
+            foreach (var textSize in TextSizes.All)
             {
-                screen.FontScale = larger ? 1.2f : 1f;
+                screen.FontScale = TextSizes.Scale(textSize);
                 yield return null;
                 screen.Show(state, () => { });
                 yield return Frames(2);
@@ -462,9 +525,9 @@ namespace Gamesim.Tests.PlayMode
                     Assert.That(LastActive(WeeklyRecapScreen.TabBodyName), Is.Not.Null);
                     if (tab == 0)
                         Assert.That(LabelsUnder(LastActive(WeeklyRecapScreen.TabBodyName)), Does.Contain(changedTag),
-                            (larger ? "Larger text" : "Resting text") + ": the ally's face on THE VOTE card says the vote changed, never a lie.");
+                            TextScales.At(textSize) + ": the ally's face on THE VOTE card says the vote changed, never a lie.");
                     AssertDecisionCopyFits(LastActive(WeeklyRecapScreen.TabBodyName));
-                    if (tab == 0 && Application.isBatchMode) yield return CaptureFraming(larger ? "weekly-recap-overview-large" : "weekly-recap-overview");
+                    if (tab == 0 && Application.isBatchMode) yield return CaptureFraming("weekly-recap-overview" + TextScales.Suffix(textSize));
                 }
                 screen.Hide();
                 yield return null;

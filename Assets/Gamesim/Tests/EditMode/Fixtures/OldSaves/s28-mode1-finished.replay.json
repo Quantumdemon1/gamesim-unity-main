@@ -1,0 +1,17 @@
+{
+ "id": "s28-mode1-finished",
+ "referenceBuild": "42e34f4d",
+ "referenceSchema": 28,
+ "digest": "acfaf62b33a916ca",
+ "checkpoints": [
+  {
+   "i": 0,
+   "week": 6,
+   "phase": "Finished",
+   "revision": 124,
+   "randomState": 4141665795,
+   "season": "fe85f5b48f4728af"
+  }
+ ],
+ "commands": []
+}

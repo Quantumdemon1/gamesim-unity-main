@@ -3,6 +3,7 @@ using System.IO;
 using System.Linq;
 using Gamesim.Episode;
 using Gamesim.Persistence;
+using Gamesim.Presentation;
 using Gamesim.Simulation;
 using NUnit.Framework;
 using UnityEngine;
@@ -24,10 +25,12 @@ namespace Gamesim.Tests.PlayMode
                 if (beforeVeto) { s.phase = EpisodePhase.VetoMeeting; s.vetoResolved = false; }
             });
             yield return TalkTo(Listener(director.Snapshot).id);
+            yield return EnterConversationCategory(EpisodeDirector.LearnCategoryCaption);
         }
 
         private IEnumerator OpenNomineeQuestion()
         {
+            yield return EnterCategoryForLeaf(EpisodeDirector.NomineeIntelPickerCaption);
             ButtonWithCaption(EpisodeDirector.NomineeIntelPickerCaption).onClick.Invoke();
             yield return null;
             Assert.That(director.ConversationPicker, Is.EqualTo(EpisodeDirector.NomineeIntelPickerCaption));
@@ -95,6 +98,7 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(director.ConversationPicker, Is.EqualTo(EpisodeDirector.NomineeIntelPickerCaption));
             AssertIntelUnchanged(before);
             var switched = ButtonWithCaption(caption).onClick;
+            yield return EnterConversationCategory(EpisodeDirector.PressureCategoryCaption);
             ButtonWithCaption(EpisodeDirector.VentPickerCaption).onClick.Invoke();
             switched.Invoke();
             Assert.That(director.ConversationPicker, Is.EqualTo(EpisodeDirector.VentPickerCaption));
@@ -105,10 +109,11 @@ namespace Gamesim.Tests.PlayMode
         public IEnumerator NomineeIntel_KeyboardCanOpenReachBothNomineesAndCancelAtBothTextSizes()
         {
             yield return InstallNomineeQuestion(16);
-            foreach (bool larger in new[] { false, true })
+            foreach (var textSize in TextSizes.All)
             {
-                yield return ApplyTextSize(larger);
+                yield return ApplyTextSize(textSize);
                 yield return TalkTo(Listener(director.Snapshot).id);
+                yield return EnterConversationCategory(EpisodeDirector.LearnCategoryCaption);
                 var before = director.Snapshot;
                 yield return KeyboardSubmit(EpisodeDirector.NomineeIntelPickerCaption);
                 yield return null;
@@ -122,7 +127,7 @@ namespace Gamesim.Tests.PlayMode
                     Assert.That(control.IsInteractable(), Is.True);
                     Assert.That(control.navigation.mode, Is.Not.EqualTo(Navigation.Mode.None));
                 }
-                yield return AssertKeyboardRing("Targeted nominee question at " + (larger ? "large" : "standard") + " text", ModalRoot);
+                yield return AssertKeyboardRing("Targeted nominee question " + TextScales.At(textSize), ModalRoot);
                 yield return KeyboardSubmit(EpisodeDirector.NomineeIntelPickerCaption);
                 Assert.That(director.ConversationPicker, Is.Null);
                 AssertIntelUnchanged(before);
@@ -139,9 +144,15 @@ namespace Gamesim.Tests.PlayMode
             string caption = EpisodeDirector.NomineeIntelCaption(before.Find(before.nominees[0]).name);
             var oldPick = ButtonWithCaption(caption).onClick;
             yield return PressKey(Key.Escape);
-            Assert.That(director.IsPanelOpen, Is.False);
+            Assert.That(director.IsPanelOpen, Is.True, "Escape returns from the target picker to its category.");
+            Assert.That(director.ConversationPicker, Is.Null);
             oldPick.Invoke(); AssertIntelUnchanged(before);
+            yield return PressKey(Key.Escape);
+            Assert.That(director.CurrentConversationCategory, Is.Null, "The next Escape returns to topics.");
+            yield return PressKey(Key.Escape);
+            Assert.That(director.IsPanelOpen, Is.False);
             yield return TalkTo(listener);
+            yield return EnterConversationCategory(EpisodeDirector.LearnCategoryCaption);
             Assert.That(director.ConversationPicker, Is.Null);
             yield return OpenNomineeQuestion();
             oldPick = ButtonWithCaption(caption).onClick;
@@ -163,6 +174,7 @@ namespace Gamesim.Tests.PlayMode
             var reloaded = director.Snapshot;
             oldPick.Invoke(); AssertIntelUnchanged(reloaded);
             yield return TalkTo(Listener(reloaded).id);
+            yield return EnterConversationCategory(EpisodeDirector.LearnCategoryCaption);
             yield return OpenNomineeQuestion();
             oldPick = ButtonWithCaption(EpisodeDirector.NomineeIntelCaption(reloaded.Find(reloaded.nominees[0]).name)).onClick;
             yield return ReloadEpisode(); HoldTheHouseForTheFixture();
@@ -195,6 +207,7 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(ButtonWithCaption("Ask what they have heard"), Is.Not.Null);
             yield return InstallTalkingHouse(8, false, s => { EpisodeEngine.EnableWeek(s); s.economyRulesVersion = 1; });
             yield return TalkTo(Listener(director.Snapshot).id);
+            yield return EnterConversationCategory(EpisodeDirector.LearnCategoryCaption);
             Assert.That(ButtonWithCaptionOrNull(EpisodeDirector.NomineeIntelPickerCaption), Is.Null);
             Assert.That(ButtonWithCaption("Ask what they have heard"), Is.Not.Null);
         }

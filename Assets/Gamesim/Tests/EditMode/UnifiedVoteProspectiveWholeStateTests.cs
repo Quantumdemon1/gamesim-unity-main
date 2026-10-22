@@ -21,8 +21,9 @@ namespace Gamesim.Tests.EditMode
             var s = Opening(); var row = OpeningDeal(s); s.unifiedCommitments.Add(row);
             var opportunity = Opportunity(s, row, reconciled); s.ledger.opportunities.Add(opportunity);
             Check(s, true);
-            Assert.That(EpisodeValidation.TryValidate(s, out _), Is.False);
-            Assert.Throws<ArgumentException>(() => new EpisodeEngine(s));
+            // Flipped at vote family V6: public validation takes mode 2 to the same complete core (it refused it until V6).
+            Assert.That(EpisodeValidation.TryValidate(s, out var publicError), Is.True, publicError);
+            Assert.DoesNotThrow(() => new EpisodeEngine(s));
             Assert.That(UnifiedCommitments.RulesOn(s), Is.False);
             Assert.That(UnifiedCommitmentHearings.RulesOn(s), Is.False);
         }

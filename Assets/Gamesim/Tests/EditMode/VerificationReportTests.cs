@@ -107,6 +107,8 @@ namespace Gamesim.Tests.EditMode
             Assert.That((int)report["sampledVSyncCount"], Is.Zero);
             Assert.That((int)report["sampledFrameCapMismatchCount"], Is.Zero);
             Assert.That((string)report["requestedDisplayMode"], Is.EqualTo("Windowed"));
+            Assert.That((string)report["requestedDisplayRoute"], Is.EqualTo(EpisodeDirector.DisplayRoute),
+                "The profile's window is set through the settings' own call (A12).");
             Assert.That((string)report["sampledDisplayMode"], Is.EqualTo("Windowed"));
             Assert.That((int)report["sampledDisplayModeMismatchCount"], Is.Zero);
             Assert.That((bool)report["uncapped"], Is.True);
@@ -388,6 +390,16 @@ namespace Gamesim.Tests.EditMode
         }
 
         [Test]
+        public void TheDisplayRouteIsReportedOnlyOnceTheProfileHasTakenIt()
+        {
+            // A run with no graphical window to set never calls the settings' SetDisplay: its report
+            // names no route, rather than the constant every report used to carry (A12).
+            InstallProfileEvidence(windowSet: false);
+            var report = ProfileReport(graphical: false);
+            Assert.That((string)report["requestedDisplayRoute"], Is.Empty, "No window was set, so no route is reported.");
+        }
+
+        [Test]
         public void CorrectResolutionDoesNotDiscardSharedRuntimeErrors()
         {
             InstallProfileEvidence();
@@ -432,10 +444,12 @@ namespace Gamesim.Tests.EditMode
             return field;
         }
 
-        private void InstallProfileEvidence(int displaySamples = 101)
+        private void InstallProfileEvidence(int displaySamples = 101, bool windowSet = true)
         {
             Field("seconds").SetValue(runner, 10d);
             // Synthetic contract data only: no native frame, window, capture or performance claim.
+            // The window set as the graphical profile sets it, through the settings' own call (A12).
+            if (windowSet) Field("profileDisplayRoute").SetValue(runner, EpisodeDirector.DisplayRoute);
             var samples = (List<float>)Field("frames").GetValue(runner);
             for (int i = 0; i < 101; i++) samples.Add(100);
             for (int i = 0; i < displaySamples; i++) RecordDisplay(1920, 1080, -1, 0);
@@ -478,6 +492,27 @@ namespace Gamesim.Tests.EditMode
             var layouts = (IList)layoutsField.GetValue(report);
             for (int i = 0; i < 31; i++)
                 layouts.Add(Activator.CreateInstance(layoutsField.FieldType.GetGenericArguments()[0], true));
+            // Explicit nonvisual sentinel records test only the completion contract. They are
+            // not rendered frames or visual acceptance, just like the twelve route sentinels above.
+            var conversationField = reportType.GetField("conversationLayouts");
+            var conversation = (IList)conversationField.GetValue(report);
+            var conversationFrames = (IList)reportType.GetField("conversationFrames").GetValue(report);
+            foreach (string view in new[] { "selected-game", "selected-connect", "exchange-player", "exchange-npc" })
+            foreach (var viewport in new[] { new Vector2Int(1280,720), new Vector2Int(1600,900), new Vector2Int(1920,1080),
+                new Vector2Int(1200,900), new Vector2Int(2560,1080) })
+            foreach (Gamesim.Presentation.TextSize text in Gamesim.Presentation.TextSizes.All)
+            foreach (bool compact in new[] { false, true })
+            {
+                var row = Activator.CreateInstance(conversationField.FieldType.GetGenericArguments()[0], true);
+                string path = Path.Combine(temporary, "conversation-contract-" + conversation.Count + ".png");
+                File.WriteAllBytes(path, new byte[] { 1 });
+                var rowType = row.GetType();
+                rowType.GetField("view").SetValue(row, view);
+                rowType.GetField("width").SetValue(row, viewport.x); rowType.GetField("height").SetValue(row, viewport.y);
+                rowType.GetField("textSize").SetValue(row, text); rowType.GetField("compactHud").SetValue(row, compact);
+                rowType.GetField("path").SetValue(row, path); rowType.GetField("npcId").SetValue(row, "unit-sentinel-npc");
+                conversation.Add(row); conversationFrames.Add(path);
+            }
             Field("lookReport").SetValue(runner, report);
             return report;
         }

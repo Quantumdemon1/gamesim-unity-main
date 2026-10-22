@@ -46,10 +46,10 @@ namespace Gamesim.Simulation
         }
 
         public static Breakdown Assess(EpisodeState state, string evaluatorId, string targetId)
-            => AssessBeforeSafetyEffects(state, evaluatorId, targetId, null);
+            => AssessBeforeCommitmentEffects(state, evaluatorId, targetId, null, null);
 
-        private static Breakdown AssessBeforeSafetyEffects(EpisodeState state, string evaluatorId, string targetId,
-            IReadOnlyList<string> excludedSafetyEffects)
+        private static Breakdown AssessBeforeCommitmentEffects(EpisodeState state, string evaluatorId, string targetId,
+            IReadOnlyList<string> excludedSafetyEffects, IReadOnlyCollection<string> excludedVoteEffects)
         {
             var target = state?.Find(targetId);
             if (target == null) return new Breakdown(0, 0, 0, 0, 0);
@@ -58,7 +58,7 @@ namespace Gamesim.Simulation
                 SocialThreat(state, target),
                 AllianceThreat(state, evaluatorId, targetId),
                 PotentialThreat(target),
-                ReputationThreat(state, evaluatorId, targetId, excludedSafetyEffects));
+                ReputationThreat(state, evaluatorId, targetId, excludedSafetyEffects, excludedVoteEffects));
         }
 
         public static double Total(EpisodeState state, string evaluatorId, string targetId) =>
@@ -69,7 +69,17 @@ namespace Gamesim.Simulation
         // Prior incidents still count. This is not a public player-facing reputation override.
         internal static double TotalBeforeSafetyEffects(EpisodeState state, string evaluatorId, string targetId,
             IReadOnlyList<string> excludedSafetyEffects) =>
-            AssessBeforeSafetyEffects(state, evaluatorId, targetId, excludedSafetyEffects).Total;
+            AssessBeforeCommitmentEffects(state, evaluatorId, targetId, excludedSafetyEffects, null).Total;
+
+        /// <summary>
+        /// The same, a reveal's own Vote effects excluded too (vote family V5c, the approved Rule2 policy's current-reveal
+        /// exclusion): every Vote row the reveal decides - those stamped later in it included - is the decision whose grudge
+        /// this scales, never part of the breaker's reputation; an earlier reveal's breach still counts. Typed apart from
+        /// the Safety exclusions: a Safety effect key never names a Vote row, nor a Vote key a Safety row.
+        /// </summary>
+        internal static double TotalBeforeCommitmentEffects(EpisodeState state, string evaluatorId, string targetId,
+            IReadOnlyList<string> excludedSafetyEffects, IReadOnlyCollection<string> excludedVoteEffects) =>
+            AssessBeforeCommitmentEffects(state, evaluatorId, targetId, excludedSafetyEffects, excludedVoteEffects).Total;
 
         /// <summary>
         /// The house ranked by how dangerous the evaluator finds them, most first.
@@ -137,13 +147,19 @@ namespace Gamesim.Simulation
         /// the one component that differs by who is asking.</para>
         /// </summary>
         private static double ReputationThreat(EpisodeState state, string evaluatorId, string targetId,
-            IReadOnlyList<string> excludedSafetyEffects)
+            IReadOnlyList<string> excludedSafetyEffects, IReadOnlyCollection<string> excludedVoteEffects)
         {
             // The promises held against them: under the commitment rules the ones they broke (C0, X3);
             // before them every broken promise they were either side of.
             int broken = state.promises.Count(p => Breaches.CountsAgainst(state, p, targetId));
+            // Mode 2 (vote family V5c): the vote promises mode 1's raw list held, canonical there, row by row as it counted
+            // them - from the rows alone, so in the middle of a reveal too - less a reveal's own (excludedVoteEffects).
+            if (UnifiedVoteStore.On(state))
+                broken += state.unifiedCommitments.Count(row => row.kind == UnifiedVoteTogether.Vote
+                    && row.sourcePolicy == UnifiedCommitments.PromisePolicy && row.status == DealStatus.Broken && row.brokenById == targetId
+                    && (excludedVoteEffects == null || !excludedVoteEffects.Contains(row.settlementEffectKey)));
             // Unified Safety promises/deals are evidence of the same act, not separate reputations.
-            if (UnifiedCommitments.RulesOn(state))
+            if (UnifiedCommitments.SafetyAuthorityOn(state))
                 broken += UnifiedCommitmentHistory.Breaches(state).Count(incident => incident.ActorId == targetId
                     && (excludedSafetyEffects == null || !excludedSafetyEffects.Contains(incident.EffectKey)));
             double threat = Math.Min(8, broken * 3);

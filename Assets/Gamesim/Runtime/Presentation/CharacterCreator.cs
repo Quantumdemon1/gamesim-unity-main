@@ -46,6 +46,9 @@ namespace Gamesim.Presentation
         private CanvasGroup group;
         private CanvasScaler scaler;
 
+        /// <summary>The text size the form was last magnified for (<see cref="FontScale"/>): 1, 1.2 or 1.4.</summary>
+        private float fontScale = 1f;
+
         private CharacterDraft draft = CharacterDraft.Blank();
         private SeasonBuilder.Choice pending;
         private Action<SeasonBuilder.Choice> onStart;
@@ -60,6 +63,7 @@ namespace Gamesim.Presentation
             {
                 if (scaler == null) return;
                 float scale = Mathf.Clamp(value, 0.5f, 2f);
+                fontScale = scale;
                 scaler.referenceResolution = new Vector2(1920f / scale, 1080f / scale);
                 if (IsShowing) Rebuild();
             }
@@ -78,7 +82,7 @@ namespace Gamesim.Presentation
         public static CharacterCreator Attach(GameObject owner)
         {
             var root = new GameObject("Gamesim Character Creator",
-                typeof(RectTransform), typeof(Canvas), typeof(CanvasScaler),
+                typeof(RectTransform), typeof(Canvas), typeof(FrameScaler),
                 typeof(GraphicRaycaster), typeof(CanvasGroup));
             root.transform.SetParent(owner.transform, false);
 

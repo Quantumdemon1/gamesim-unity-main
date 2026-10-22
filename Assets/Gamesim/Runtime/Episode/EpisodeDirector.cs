@@ -24,6 +24,15 @@ namespace Gamesim.Episode
         [SerializeField] private HouseNpc[] housemates;
         private readonly List<HouseNpc> spareHousemates = new List<HouseNpc>();
         public static string SaveRootOverride { get; set; }
+        /// <summary>
+        /// Whether an isolated <see cref="SaveRootOverride"/> keeps its own preferences in
+        /// <c>preferences.json</c> beside its saves (A13). Opted into, never inferred from the root:
+        /// set by the command line's <c>--gamesim-save-root</c> (not under <c>--gamesim-verify</c>)
+        /// and by the editor's Isolated Preview; a test sets it only to test it. Without it an
+        /// isolated root reads the defaults and writes nothing.
+        /// </summary>
+        public static bool PreferencesBesideSaves { get; set; }
+        private IPreferenceStore preferences;
         private EpisodeEngine engine;
         private EpisodeState projected;
         private EpisodeSaveStore saves;
@@ -47,7 +56,11 @@ namespace Gamesim.Episode
         // What the last social command actually moved, so the panel can say so.
         private double lastSocialDelta;
         private string saveRoot, message = "Welcome home. Meet the houseguests, then visit the living-room screen.";
-        private bool blockedRecovery, reducedMotion, muted, largeText, phaseOpen, settingsOpen, journalOpen;
+        private bool blockedRecovery, reducedMotion, muted, phaseOpen, settingsOpen, journalOpen;
+        /// <summary>The text size the settings chose (A8): standard, larger or largest.</summary>
+        private TextSize textSize;
+        /// <summary>How long the captions the game takes down by itself stay up (A10): standard, or half as long again.</summary>
+        private CaptionTime captionTime;
         /// <summary>Which page of the notebook is showing. The rail picks it; Render obeys it.</summary>
         private string journalSection = NotebookSection.Network;
         private bool challengeActive;
@@ -68,6 +81,8 @@ namespace Gamesim.Episode
         /// reachable in HouseAudio but only mute was ever exposed, so a player could silence the
         /// game or leave it alone and nothing in between.</summary>
         private int volumePercent = 35;
+        /// <summary>The music's, the effects' and the interface's shares of the master, as percentages (A11).</summary>
+        private int musicVolumePercent = SoundPictures.DefaultVolume, effectsVolumePercent = SoundPictures.DefaultVolume, interfaceVolumePercent = SoundPictures.DefaultVolume;
         private bool musicOn = true;
         private HouseNpc promptNpc;
         private string npcPrompt;
@@ -124,8 +139,11 @@ namespace Gamesim.Episode
                 if (rootArgument + 1 >= launchArguments.Length || !Path.IsPathRooted(launchArguments[rootArgument + 1]))
                 { Debug.LogError("--gamesim-save-root requires an absolute directory path."); yield break; }
                 SaveRootOverride = Path.GetFullPath(launchArguments[rootArgument + 1]);
+                // A playtest's root keeps its own settings beside its saves (A13); the verifier's never does.
+                PreferencesBesideSaves = PreferenceRouting.BesideSavesForCommandLine(launchArguments);
             }
             saveRoot = SaveRootOverride ?? Path.Combine(Application.persistentDataPath, "Gamesim");
+            preferences = PreferenceStores.Open(PreferenceRouting.For(SaveRootOverride, PreferencesBesideSaves), saveRoot);
             var slot = SaveRootOverride == null ? PlayerPrefs.GetString("Gamesim.ActiveSave", "episode.json") : "episode.json";
             if (slot != Path.GetFileName(slot) || !slot.EndsWith(".json", StringComparison.OrdinalIgnoreCase)) slot = "episode.json";
             saves = new EpisodeSaveStore(Path.Combine(saveRoot, slot));
@@ -145,14 +163,24 @@ namespace Gamesim.Episode
 
             audioBed = HouseAudio.Attach(gameObject);
             liveFeed = LiveFeed.Attach(gameObject);
-            reducedMotion = SaveRootOverride == null && PlayerPrefs.GetInt("Gamesim.ReducedMotion", 0) == 1;
-            reducedAudio = SaveRootOverride == null && PlayerPrefs.GetInt("Gamesim.ReducedAudio", 0) == 1;
-            muted = SaveRootOverride == null && PlayerPrefs.GetInt("Gamesim.Muted", 0) == 1;
-            largeText = SaveRootOverride == null && PlayerPrefs.GetInt("Gamesim.LargeText", 0) == 1;
-            volumePercent = SaveRootOverride == null ? Mathf.Clamp(PlayerPrefs.GetInt("Gamesim.Volume", 35), 0, 100) : 35;
-            musicOn = SaveRootOverride != null || PlayerPrefs.GetInt("Gamesim.Music", 1) == 1;
-            ceremonyPace = SaveRootOverride == null && PlayerPrefs.GetInt("Gamesim.CeremonyPace", 0) == 1
-                ? CeremonyPace.Quick : CeremonyPace.Suspenseful;
+            // Through the session's store (A13): PlayerPrefs on an ordinary install, the root's own
+            // file for a playtest root that asked for one, and the defaults - every read its
+            // fallback, nothing written - for any other isolated root, as it has always been.
+            reducedMotion = preferences.GetInt("Gamesim.ReducedMotion", 0) == 1;
+            reducedAudio = preferences.GetInt("Gamesim.ReducedAudio", 0) == 1;
+            muted = preferences.GetInt("Gamesim.Muted", 0) == 1;
+            // The size kept as 0 to 2 since the third size (A8), or the larger text an earlier build kept as a boolean.
+            textSize = TextSizes.FromRecord(preferences.HasKey(TextSizes.SizeKey) ? preferences.GetInt(TextSizes.SizeKey, 0) : (int?)null,
+                preferences.HasKey(TextSizes.LegacyKey) ? preferences.GetInt(TextSizes.LegacyKey, 0) : (int?)null);
+            captionTime = CaptionTiming.FromRecord(preferences.GetInt(CaptionTiming.Key, 0));
+            // The player's own keys and buttons (A5), on every copy of the actions from the start.
+            HouseBindings.Load(preferences);
+            musicVolumePercent = SoundPictures.Clamp(preferences.GetInt(SoundPictures.MusicVolumeKey, SoundPictures.DefaultVolume));
+            effectsVolumePercent = SoundPictures.Clamp(preferences.GetInt(SoundPictures.EffectsVolumeKey, SoundPictures.DefaultVolume));
+            interfaceVolumePercent = SoundPictures.Clamp(preferences.GetInt(SoundPictures.InterfaceVolumeKey, SoundPictures.DefaultVolume));
+            volumePercent = Mathf.Clamp(preferences.GetInt("Gamesim.Volume", 35), 0, 100);
+            musicOn = preferences.GetInt("Gamesim.Music", 1) == 1;
+            ceremonyPace = preferences.GetInt("Gamesim.CeremonyPace", 0) == 1 ? CeremonyPace.Quick : CeremonyPace.Suspenseful;
             LoadDisplayPreferences();
             hud = gameObject.AddComponent<EpisodeHud>(); hud.Initialize(this);
             sting = CeremonySting.Attach(gameObject);
@@ -197,6 +225,9 @@ namespace Gamesim.Episode
             hud.RegisterOverlay(characterCreator.GetComponent<CanvasGroup>());
             hud.RegisterOverlay(mainMenu.GetComponent<CanvasGroup>());
             ApplyPreferences(); Project(); Render(); IsReady = true;
+            // The settings the session starts with: the baseline every change is logged against,
+            // and the session's line in the player log when it keeps its own preferences (A13).
+            NoteSettingsAtStart();
             // A real launch opens at the front door. A run with an explicit save root is a test or
             // the standalone verification driving the house directly, and a menu it never asked for
             // would block every one of them — so those keep the previous behaviour and reach the
@@ -339,6 +370,7 @@ namespace Gamesim.Episode
 
         private void Update()
         {
+            TickDisplayEvidence();
             // Which device the hints speak of, before anything this frame words one (A4).
             NoteInputDevice();
             // First, and whatever else returns early: the dip is only a clock, and a frame that
@@ -369,6 +401,8 @@ namespace Gamesim.Episode
             // A story's Pull (plan §5.1), then the Nearby card (mockup-06), which is up exactly
             // while a conversation is being witnessed and no Pull has the week card's place.
             TickStoryPull();
+            // Before the scene's staging: an embrace a peace has just asked for holds the scene first.
+            TickStoryReactions();
             TickSceneStage();
             TickNearby();
             // ] and [ (or the shoulders) cycle who the camera follows, out in the house with no panel
@@ -417,9 +451,12 @@ namespace Gamesim.Episode
             // A dismissing key is consumed for the whole frame, even if the result updated first.
             if (competitionCard != null && competitionCard.OwnsInput) return;
             if (competitionInputSuspended) SyncCompetitionResultInput();
+            TickNpcInvitations();
             TickNpcSocialRuntime(Time.unscaledDeltaTime);
+            TickConversationPresentation();
             TickHouseActivities();
             TickProximityWatch(Time.unscaledDeltaTime);
+            TickAllWeekActs(Time.unscaledDeltaTime);
             frameAverage = Mathf.Lerp(frameAverage, Time.unscaledDeltaTime, 0.03f);
             if (diaryOpen && (!CanUseDiary || diarySeat == null || !diarySeat.Active)) { ClosePanels(); return; }
             // The house's shortcuts come through the actions map's second page: each key has a
@@ -435,6 +472,10 @@ namespace Gamesim.Episode
                 hud.SetChallenge(challengeValue, challengeHits);
                 if (shortcuts != null && shortcuts.Hit.WasPressedThisFrame()) RecordChallengeHit();
             }
+            // A rebinding listening for its press, or the frame its press ended it (A5): the press is
+            // the rebinding's - Esc cancels it without closing the settings, a key is the new one -
+            // and nothing else in the house acts on it.
+            if (HouseBindings.Busy) return;
             // Escape or Start: the priority chain, topmost first (EpisodeDirector.Controls.cs).
             if (shortcuts != null && shortcuts.Menu.WasPressedThisFrame()) { MenuPressed(); return; }
             // The pad's B: the same chain, and nothing at all with nothing open (PLAN A, A2).
@@ -466,6 +507,7 @@ namespace Gamesim.Episode
                 if (npc != promptNpc) { promptNpc = npc; npcPrompt = npc != null ? "E  ·  Talk to " + npc.DisplayName : null; }
                 string prompt = "", hint = null;
                 if (IsPlayerHouseActivityActive && playerActivityInHouse) prompt = HouseFurniture.StopPrompt(playerActivityKind);
+                else if (choice == InteractTarget.Invitation) prompt = "E  ·  Hear " + npc.DisplayName + " out";
                 else if (choice == InteractTarget.Diary) prompt = "E  ·  Enter private diary room";
                 else if (choice == InteractTarget.Station) prompt = "E  ·  Open episode screen";
                 else if (choice == InteractTarget.Talk)
@@ -497,6 +539,9 @@ namespace Gamesim.Episode
             if (IsPlayerHouseActivityActive && playerActivityInHouse) { FinishPlayerHouseActivity(); return; }
             switch (ChooseInteraction(out var target))
             {
+                case InteractTarget.Invitation:
+                    TryHearVisibleNpcInvitation();
+                    break;
                 case InteractTarget.Diary:
                     if (TryOpenDiary()) break;
                     if (target != null) TryOpenNpc(target.Id); else TryOpenPhasePanel();
@@ -550,6 +595,14 @@ namespace Gamesim.Episode
             }
         }
 
+        /// <summary>
+        /// Where a promise stands as the player can know it: a houseguest's vote promise to them, kept or broken by a ballot
+        /// they do not know, is <see cref="KnownBallots.Unresolved"/> until they know it (<see cref="KnownBallots.PromiseOutcomeKnown"/>,
+        /// decision 4), as their notes, the web and the Your word page tell it (the consolidation check's D14).
+        /// </summary>
+        private static string KnownPromiseStanding(EpisodeState state, PromiseState promise) =>
+            KnownBallots.PromiseOutcomeKnown(state, promise) ? PromiseStanding(promise.status) : KnownBallots.Unresolved;
+
         public Vector3 StationPosition => ResolveStationPosition();
         private bool CanUseStation() => !playerIsActive ||
             Vector3.Distance(player.transform.position, StationPosition) < 3;
@@ -567,11 +620,13 @@ namespace Gamesim.Episode
         /// </summary>
         private bool headingToStation;
 
-        private enum InteractTarget { None, Diary, Talk, Station, StepIn }
+        private enum InteractTarget { None, Diary, Talk, Station, StepIn, Invitation }
 
         /// <summary>What the E key would do right now, and the houseguest it would do it to.</summary>
         private InteractTarget ChooseInteraction(out HouseNpc npc)
         {
+            npc = VisibleNpcInvitationSpeaker();
+            if (npc != null) return InteractTarget.Invitation;
             npc = NearestNpc();
             if (CanUseDiary) return InteractTarget.Diary;
             // Whoever was clicked outranks whoever happens to be standing closest, exactly as the
@@ -617,7 +672,11 @@ namespace Gamesim.Episode
             EndDiaryVisit(true);CloseHouseActivities(true);
             if (projected.Find(projected.playerId).status != ContestantStatus.Active) { TryOpenPhasePanel(); return; }
             if (pressedAgainAtTheScreen && TryOpenPhasePanel()) return;
-            if (!TryTravel(StationPosition)) message = "The episode screen is not reachable from here.";
+            if (!TryTravel(StationPosition))
+            {
+                message = "The episode screen is not reachable from here.";
+                BeginSystemNotice();
+            }
             else
             {
                 // TryTravel puts the camera on them, walking, running or warped.
@@ -625,8 +684,12 @@ namespace Gamesim.Episode
                 // Shorter than it was, because it no longer has to narrate the camera. It used to
                 // read "Walk to the highlighted room, then press E to open the episode screen" - a
                 // full sentence of instructions for a walk you can now watch happen.
-                message = LastTravel == TravelKind.Warp ? "At the episode screen  ·  E to open"
-                    : "Heading to the episode screen  ·  E to open";
+                // In the words of the device that pressed (A4f): a pad's A on the rail's button
+                // reaches here through the UI module, before this frame's NoteInputDevice.
+                message = InputGlossary.StationLine(LastTravel == TravelKind.Warp, PressWasPad);
+                // Travel guidance, as the diary's way in is: the key that opens the screen is the
+                // line's whole point, and phase guidance in its place said nothing of it (D10).
+                BeginSystemNotice();
             }
             Render();
         }
@@ -635,6 +698,14 @@ namespace Gamesim.Episode
 
         private void ClosePanelsInternal(bool render)
         {
+            CancelNpcInvitation();
+            ResetConversationNavigation();
+            CancelConversationExchange(false);
+            acceptedExchangeWasPresented = false;
+            conversationNarration = null;
+            commandNotice = false;
+            // A rebinding listening in the settings goes with them (A5), with nothing changed.
+            if (HouseBindings.Listening) { HouseBindings.Cancel(); rebindMessage = null; }
             CloseHouseActivities(!render);
             if (focusedNpc != null) focusedNpc.GetComponent<CharacterPresentation>()?.SetTalking(false);
             // What the player came into a conversation for goes with the conversation; a houseguest's
@@ -691,7 +762,7 @@ namespace Gamesim.Episode
             if (render && hud != null) Render();
         }
 
-        public void OpenSettings() { PauseNpcSocialForPanel(); ClosePanels(); settingsOpen = true; player.SetInputEnabled(false); cameraRig.ControlsEnabled = false; Render(); }
+        public void OpenSettings() { PauseNpcSocialForPanel(); ClosePanels(); settingsOpen = true; player.SetInputEnabled(false); cameraRig.ControlsEnabled = false; RefreshDisplayRecordFromWindow(); Render(); }
         /// <summary>The notebook, on its own page: your notes on each houseguest. The rail's rows are the other pages.</summary>
         public void OpenJournal() => OpenNotebookAt(NotebookSection.Notes, scroll: false);
 
@@ -734,10 +805,14 @@ namespace Gamesim.Episode
         {
             if (durableCommitInProgress) return new CommandResult { reason = "A save transaction is already running.", state = Snapshot };
             if (blockedRecovery) return new CommandResult { reason = "Recover the save or start a new slot before playing.", state = Snapshot };
+            var exchangeBefore = engine.Snapshot;
             bool wasYard = EpisodeEngine.IsCompetition(projected.phase);
-            // A single command can append several events. Remembering where the log ended lets the
-            // ceremony card look at everything this commit produced rather than only its last line.
-            int knownEvents = engine.Snapshot.events.Count;
+            // A single command can append several events. Remembering where the log's numbering stood
+            // lets the ceremony card look at everything this commit produced rather than only its
+            // last line (CommittedEvents). Never where the log ended: it keeps its last 256 lines
+            // (EpisodeEngine.Log), so once it is full a commit's lines push out as many as they add,
+            // and counting from the old end found none of them - no reveal, no card, no recap.
+            int knownSequence = exchangeBefore.nextSequence;
             // Who was still playing before this command. An eviction event says what happened
             // but not to whom, and diffing is more reliable than parsing the sentence back.
             var wasPhase = engine.Snapshot.phase;
@@ -762,10 +837,12 @@ namespace Gamesim.Episode
             var result = candidate.Apply(command);
             if (result.accepted)
             {
+                CancelNpcInvitation();
                 if (TryPersistCandidate(result.state, out var installed, out var failure))
                 { engine = new EpisodeEngine(installed); result.state = engine.Snapshot; }
                 else
                 {
+                    BeginPersistenceNotice(failure);
                     message = failure;
                     PauseNpcSocialForPanel();
                     Render();
@@ -774,10 +851,17 @@ namespace Gamesim.Episode
             }
             // The one event the player is entitled to see drives both the status line and the
             // ceremony card, so a title card can never announce something the notebook withholds.
+            // Under the all-week rules it names the step, not the house's beats after it (D2's
+            // decision 10): the last line before the commit's catch-up began.
             var visible = result.accepted
-                ? result.state.events.LastOrDefault(e => e.audienceIds.Count == 0 || e.audienceIds.Contains(result.state.playerId))
+                ? result.state.events.LastOrDefault(e => (e.audienceIds.Count == 0 || e.audienceIds.Contains(result.state.playerId))
+                    && !KnownBallots.TellsAnUnknownBallot(result.state, e)
+                    && (result.beatsFromSequence <= 0 || e.sequence < result.beatsFromSequence))
                 : null;
             message = result.accepted ? StatusLine(result.state, visible) ?? "Decision committed." : result.reason;
+            commandNotice = !result.accepted;
+            systemNotice = null;
+            activityNotice = null;
             if (result.accepted)
             {
                 diaryDraft = null; // A draft never survives a different committed revision.
@@ -798,16 +882,21 @@ namespace Gamesim.Episode
                 // house reacts to them, and they go when the card does (TickCeremonies).
                 var evictedNow = EvictedThisCommit(result.state, wasActive);
                 departingId = evictedNow != null && evictedNow != result.state.playerId ? evictedNow : null;
-                message += "  ·  Saved locally."; Project();
-                // A finale joins the career record the moment it is durable, and not before.
-                RecordCareer(result.state);
+                // So does whoever production removed, while the removal's card plays (TickRemoval).
+                removingId = RemovedThisCommit(result.state, wasActive);
+                message += "  ·  Saved locally.";
+                MarkSaveFeedback();
+                Project();
                 if (phaseOpen && wasYard != EpisodeEngine.IsCompetition(result.state.phase)) ClosePanels();
+                // A finale joins the career record the moment it is durable, and not before.
+                // Keep any failure visible after the phase transition closes its old panel.
+                RecordCareer(result.state);
                 // The commit's sound, from everything it appended (CommitCue). It plays once the beat's
                 // cards are known: a key ceremony and a live eviction make their own sounds as they
                 // reach the block and the result, and a commit that played the result's sound first
                 // announced it before the card had counted to it. A beat of the opening is
                 // bookkeeping and makes none; an introduction clicks through the opening's own hook.
-                var commitCue = CommitCue(result.state.events.Skip(knownEvents)
+                var commitCue = CommitCue(CommittedEvents(result.state, knownSequence)
                     .Where(entry => entry.audienceIds.Count == 0 || entry.audienceIds.Contains(result.state.playerId))
                     .Select(entry => entry.kind));
                 bool revealed = false, vetoStaged = false;
@@ -818,7 +907,7 @@ namespace Gamesim.Episode
                 // card carries words.
                 // A competition is not a CeremonySting kind — it has no strip — so it is searched
                 // for separately. Same audience rule: the standings name everyone who competed.
-                var competition = result.state.events.Skip(knownEvents)
+                var competition = CommittedEvents(result.state, knownSequence)
                     .LastOrDefault(entry => entry.kind == "competition"
                         && (entry.audienceIds.Count == 0 || entry.audienceIds.Contains(result.state.playerId)));
                 if (competition != null)
@@ -840,7 +929,7 @@ namespace Gamesim.Episode
                 }
 
                 // The veto field. Previously the one phase the episode passed through in silence.
-                var field = result.state.events.Skip(knownEvents)
+                var field = CommittedEvents(result.state, knownSequence)
                     .LastOrDefault(entry => entry.kind == CeremonyTakeover.VetoSelectionKind
                         && (entry.audienceIds.Count == 0 || entry.audienceIds.Contains(result.state.playerId)));
                 if (field != null && takeover != null)
@@ -855,7 +944,7 @@ namespace Gamesim.Episode
                             VetoField(result.state), reducedMotion, null, VetoFieldLine(result.state));
                 }
 
-                var ceremony = result.state.events.Skip(knownEvents)
+                var ceremony = CommittedEvents(result.state, knownSequence)
                     .LastOrDefault(entry => CeremonySting.IsCeremony(entry.kind)
                         && (entry.audienceIds.Count == 0 || entry.audienceIds.Contains(result.state.playerId)));
                 if (ceremony != null)
@@ -936,7 +1025,7 @@ namespace Gamesim.Episode
                 else
                 {
                     // Fallout (plan §5.1): a story's ceremony, when the show's own has not taken the screen.
-                    var fallout = result.state.events.Skip(knownEvents)
+                    var fallout = CommittedEvents(result.state, knownSequence)
                         .LastOrDefault(entry => StoryFallout.IsFallout(entry.kind)
                             && (entry.audienceIds.Count == 0 || entry.audienceIds.Contains(result.state.playerId)));
                     if (fallout != null) PlayFallout(result.state, fallout, wasActive);
@@ -961,8 +1050,19 @@ namespace Gamesim.Episode
                 if ((!revealed || vetoStaged) && command.kind != EpisodeCommandKind.MarkOpeningBeat && command.kind != EpisodeCommandKind.Introduce)
                     audioBed.PlayCue(commitCue);
             }
+            BeginConversationExchange(exchangeBefore, result, command);
             Render(); return result;
         }
+
+        /// <summary>
+        /// The lines a commit appended to the season's log, in order: those numbered from where the
+        /// log's numbering stood before it (<paramref name="fromSequence"/>, that state's
+        /// <c>nextSequence</c>). The log keeps only its last 256 lines, so the commit that fills it
+        /// leaves it no longer than before, and a count of what was there says nothing about what
+        /// is new; the numbers do.
+        /// </summary>
+        public static IEnumerable<EpisodeEvent> CommittedEvents(EpisodeState after, int fromSequence) =>
+            after.events.Where(entry => entry.sequence >= fromSequence);
 
         /// <summary>
         /// The generic card for a ceremony: the takeover opens the scene, the strip reports the
@@ -1156,11 +1256,12 @@ namespace Gamesim.Episode
         public static bool RoutedByTheHouse(ContestantStatus status, bool departing, bool walkingOut, bool onJuryBench, bool stageHolds) =>
             KeepsBody(status, departing, walkingOut, onJuryBench) && (status == ContestantStatus.Active || walkingOut || stageHolds);
 
+        // Somebody production removed counts as departing while the removal's card plays: shown, never routed.
         private bool KeepsBody(EpisodeState state, ContestantState model) =>
-            KeepsBody(model.status, model.id == departingId, model.id == walkingOutId, OnJuryBench(state, model));
+            KeepsBody(model.status, model.id == departingId || model.id == removingId, model.id == walkingOutId, OnJuryBench(state, model));
 
         private bool RoutedByTheHouse(EpisodeState state, ContestantState model) =>
-            RoutedByTheHouse(model.status, model.id == departingId, model.id == walkingOutId, OnJuryBench(state, model),
+            RoutedByTheHouse(model.status, model.id == departingId || model.id == removingId, model.id == walkingOutId, OnJuryBench(state, model),
                 CeremonyStageHolds(model.id));
 
 
@@ -1184,16 +1285,7 @@ namespace Gamesim.Episode
             hud.Paragraph("Your mood: " + state.Find(state.playerId).mood + " · Stress: " + state.Find(state.playerId).stressLevel);
             // Aggregate source arcs have no participant/knowledge provenance.
             // NPC-only conversations must not masquerade as the player's bonds.
-            foreach (var promise in CommitmentReferences.Promises(state).Where(p => p.fromId == state.playerId || p.toId == state.playerId))
-            {
-                // Was the raw enum on both ends: "AllianceLoyalty - Dana -> You - Active". The
-                // vocabulary the player was given when they made the promise already exists.
-                bool mine = promise.fromId == state.playerId;
-                string who = mine ? state.Find(promise.toId).name : state.Find(promise.fromId).name;
-                hud.Paragraph((mine ? "You promised " + who : who + " promised you")
-                    + " " + Presentation.RelationshipWeb.PromiseWord(promise.kind)
-                    + "  ·  " + PromiseStanding(promise.status));
-            }
+            foreach (var line in NotebookPromises(state)) hud.Paragraph(line);
             foreach (var alliance in state.alliances.Where(a => a.members.Contains(state.playerId))) hud.Paragraph(alliance.name + (alliance.active ? " · active" : " · ended"));
             hud.Heading("YOUR LOYALTY DECLARATIONS");
             // Said as the conversation says it (X12): no promise from them, and binding both ways.
@@ -1208,14 +1300,45 @@ namespace Gamesim.Episode
             RenderStorySoFar(state);
         }
 
+        /// <summary>
+        /// The notebook's Story section's promises: every promise the player made or was made, where each stands - a
+        /// houseguest's vote promise to the player told only once the player knows the ballot that ended it
+        /// (<see cref="KnownPromiseStanding"/>).
+        /// </summary>
+        private static List<string> NotebookPromises(EpisodeState state)
+        {
+            var lines = new List<string>();
+            foreach (var promise in CommitmentReferences.Promises(state).Where(p => p.fromId == state.playerId || p.toId == state.playerId))
+            {
+                // Was the raw enum on both ends: "AllianceLoyalty - Dana -> You - Active". The
+                // vocabulary the player was given when they made the promise already exists.
+                bool mine = promise.fromId == state.playerId;
+                string who = mine ? state.Find(promise.toId).name : state.Find(promise.fromId).name;
+                lines.Add((mine ? "You promised " + who : who + " promised you")
+                    + " " + Presentation.RelationshipWeb.PromiseWord(promise.kind)
+                    + "  ·  " + KnownPromiseStanding(state, promise));
+            }
+            return lines;
+        }
+
         private static Color Palette(int i)
         {
             var colors = new[] { new Color(.2f,.55f,.65f), new Color(.85f,.34f,.26f), new Color(.6f,.4f,.7f), new Color(.88f,.68f,.26f), new Color(.3f,.48f,.7f) };
             return colors[i % colors.Length];
         }
 
+        /// <summary>
+        /// The HUD's own chrome asking to be laid out again: the controls card opening or closing on
+        /// a frame where the right column gives way to it (EpisodeHud.RecentSlotsShown). Never while
+        /// a panel is open: Begin closes the card under one, so the card alone is rebuilt there, as
+        /// before.
+        /// </summary>
+        internal void RenderChrome() => Render();
+
         private void Render()
         {
+            conversationNavigationShowing = false;
+            conversationMenuToken = null;
             pitchNavigationView = null;
             blockSpeechView = null;
             if (hud == null || engine == null) return;
@@ -1249,7 +1372,16 @@ namespace Gamesim.Episode
             // The jury house the strip opened goes the moment the house can no longer open it from
             // there - a load, the vote begun - and takes the pause it put on the house with it.
             if (juryHouseOverHouse && !JuryStripDoorAvailable(state)) ClosePanelsInternal(false);
-            hud.Begin(state, message, blockedRecovery, phaseOpen || focusedNpc != null || settingsOpen || journalOpen || diaryOpen || houseActivitiesOpen || sceneCardOpen || juryHouseOverHouse);
+            string statusCopy = HudStatusMessage(state);
+            // Only a blocked save is a recovery: it is what the panel (the settings, opened below)
+            // and the locked travel are for. A stopped house world or a save that failed is a
+            // warning - amber, and kept on the status line below - with nothing to draw a panel
+            // for: passed as a recovery it built the episode panel empty over the house, Close
+            // built it again, and the diary's way there went grey (D9).
+            hud.Begin(state, statusCopy, blockedRecovery, phaseOpen || focusedNpc != null || settingsOpen || journalOpen || diaryOpen || houseActivitiesOpen || sceneCardOpen || juryHouseOverHouse,
+                warning: npcSaveSuspended || npcWorldFailed);
+            hud.SetStatusGuidanceVisible(!string.IsNullOrEmpty(statusCopy), blockedRecovery || npcSaveSuspended || npcWorldFailed || commandNotice);
+            hud.ShowSaveFeedback(!blockedRecovery && !npcSaveSuspended && !npcWorldFailed && !commandNotice && saveFeedbackUntil > Time.unscaledTime);
             // The Pull's card and the Nearby card are rebuilt hidden with the rest of the chrome, and a
             // render that Update orders (a body finishing assembly) comes after this frame's ticks: put
             // them back now, or they are gone for the rest of the frame and a press on one lands on
@@ -1351,6 +1483,7 @@ namespace Gamesim.Episode
             if (focusedNpc != null)
             {
                 var npc = state.Find(focusedNpc.Id);
+                if (RenderConversationExchangeIfOpen(state)) return;
                 // The two-shot keeps its usual place unless the conversation's own screen says where
                 // it has left room for the pair (below, once the stage is laid out).
                 if (cameraRig != null) cameraRig.ConversationWindowOffset = 0f;
@@ -1389,93 +1522,10 @@ namespace Gamesim.Episode
                 // screen right up until the moment it mattered.
                 // A story beat this conversation raised is answered in it (plan §5.1): while one is
                 // open with them it is the conversation, and the dial comes back once it is answered.
-                if (ConversationBeat(state, npc.id)) return;
-                hud.SpeakerTitle(npc.id, npc.name.ToUpperInvariant(),
-                    npc.pronouns + " · " + string.Join(" / ", npc.traits));
-                if (cameraRig != null) cameraRig.ConversationWindowOffset = hud.ConversationWindowOffset;
-                // On its own line, not appended to the identity one. Four facts in a fixed-width
-                // subtitle fitted at the standard text size and was cut off at the larger one -
-                // which is the whole reason this panel now has a clipped-copy guard, and the guard
-                // caught it on the first run. Who somebody is and where you stand with them are
-                // two different questions anyway.
-                // And their mood, when it is not the everyday one, with whom it is about.
-                string mood = npc.mood != "Neutral" ? MoodLine(state, npc) : null;
-                hud.Paragraph(Standing(state, npc.id) + (mood != null ? "  ·  " + mood.Substring("Mood: ".Length) : "")
-                    + "  ·  " + ActionsLeft(state) + " left");
-                hud.NpcDialogue(state, npc.id, lastSocialAction, standingLineBefore);
-                if (lastSocialAction.HasValue) hud.OutcomeChips(lastSocialDelta);
-                // A counter to the proposal just turned down (C7) is answered here or not at all: first.
-                CounterCard(state, npc);
-                // A war room's open plan (WAVE-D-NPC-PACTS-PLAN D3) stands until the campaign closes: after it (D3-L3).
-                PactPlanCard(state, npc);
-                // What the player came for, first (their screen's "Ask for information" or "Pitch a
-                // deal"): the rows it names are drawn here and not again below.
-                bool cameToAsk = conversationIntent == IntentAsk, cameToDeal = conversationIntent == IntentDeal;
-                if (cameToAsk)
-                {
-                    hud.Heading("WHAT YOU CAME TO ASK");
-                    AskRows(state, npc, window);
-                }
-                else if (cameToDeal)
-                {
-                    hud.Heading("WHAT YOU CAME TO PUT TO THEM");
-                    DealRows(state, npc, allied: state.Allied(state.playerId, npc.id));
-                    FoldedDealPanel(state, npc);
-                }
-                // The declaration binds the two of them, whoever made it (X12): the copy says what the
-                // engine does (EpisodeDirector.ConversationGroups.cs, OathOfferLine).
-                if (state.oathOpportunities.Contains(npc.id))
-                {
-                    hud.Heading("A PERSONAL LOYALTY DECLARATION");
-                    hud.Paragraph(OathOfferLine(npc.name));
-                    hud.Tag(hud.Action(EpisodeHud.OathDeclareCaption, () => Commit(state, EpisodeCommandKind.SwearLoyalty, npc.id)),
-                        Category(EpisodeCommandKind.SwearLoyalty));
-                    hud.Tag(hud.Action(EpisodeHud.OathDeclineCaption, () => Commit(state, EpisodeCommandKind.DeclineLoyalty, npc.id)),
-                        Category(EpisodeCommandKind.DeclineLoyalty));
-                }
-                else if (state.loyaltyOaths.Any(oath => oath.playerId == state.playerId && oath.targetId == npc.id))
-                    hud.Paragraph(OathRecordedLine(npc.name));
-                if (window || StrategyRules.CanBeAskedForTheirVote(state, npc.id)) LobbyPanel(state, npc);
-                // The category is a chip pinned to the button, never part of its caption. Baking it
-                // into the label broke every test that finds a control by the words on it — and the
-                // web build draws it as a separate pill anyway, so the caption was the wrong place.
-                bool allied = state.Allied(state.playerId, npc.id);
-                // The dial (mockup-06, mockup-12): the speaker's face at the hub, and seven petals
-                // around it in the mockups' order and colours - chat, strategize, flirt, more,
-                // reassure, gossip, joke, clockwise from the top. The captions on them are the
-                // build's own, unshortened, because that is what a test and a screen reader identify
-                // a control by; the mockup's single words survive as the glyph and the tint.
-                //
-                // The petals are the six openings a conversation actually has here. Everything else
-                // - the promises, the alliance, the rumours, the deals - is beneath the dial in the
-                // group it belongs to, and the seventh petal moves the keyboard to the first row.
-                // Fresh E2 seasons move plain Talk to BOND below the dial; old saves retain all
-                // seven petals. The six-seat ring still keeps every other caption and command.
-                bool intentRules = EpisodeEngine.EconomyRulesOn(state);
-                hud.ConversationRadial(npc.id, intentRules ? 6 : 7);
-                hud.Tag(hud.Petal(EpisodeHud.SmallTalkCaption, "chat", UiTheme.Accent,
-                        () => Commit(state, EpisodeCommandKind.SmallTalk, npc.id)),
-                    Category(EpisodeCommandKind.SmallTalk), EpisodeHud.TagSeat.CardFoot);
-                hud.Tag(hud.Petal(EpisodeHud.StrategicDiscussionCaption, "bulb", UiTheme.Strategic,
-                        () => Commit(state, EpisodeCommandKind.StrategicDiscussion, npc.id)),
-                    Category(EpisodeCommandKind.StrategicDiscussion), EpisodeHud.TagSeat.CardFoot);
-                hud.Tag(hud.Petal(EpisodeHud.PersonalChatCaption, "heart", UiTheme.Flirt,
-                        () => Commit(state, EpisodeCommandKind.PersonalChat, npc.id)),
-                    VerbTag(state, EpisodeCommandKind.PersonalChat), EpisodeHud.TagSeat.CardFoot);
-                hud.Petal(EpisodeHud.MorePetalCaption, "journal", UiTheme.Muted, hud.RevealBeyondRadial);
-                hud.Tag(hud.Petal(EpisodeHud.RelationshipBuildingCaption, "handshake", UiTheme.Allied,
-                        () => Commit(state, EpisodeCommandKind.RelationshipBuilding, npc.id)),
-                    Category(EpisodeCommandKind.RelationshipBuilding), EpisodeHud.TagSeat.CardFoot);
-                hud.Tag(hud.Petal(EpisodeHud.ShareSecretCaption, "gossip", UiTheme.Strategic,
-                        () => Commit(state, EpisodeCommandKind.ShareSecret, npc.id)),
-                    Category(EpisodeCommandKind.ShareSecret), EpisodeHud.TagSeat.CardFoot);
-                if (!intentRules) hud.Tag(hud.Petal("Spend time together", "star", UiTheme.Joke,
-                        () => Commit(state, EpisodeCommandKind.Talk, npc.id)),
-                    Category(EpisodeCommandKind.Talk), EpisodeHud.TagSeat.CardFoot);
-                // Everything else, under the dial in four groups by what it is for - bond, learn,
-                // scheme, bargain - with each verb aimed at a third houseguest one row that opens its
-                // people (EpisodeDirector.ConversationGroups.cs).
-                ConversationGroups(state, npc, window, allied, cameToAsk, cameToDeal);
+                bool invitedOffer = invitedDealId != null && NpcDeals.Pending(state)
+                    .Any(offer => offer.proposerId == npc.id && offer.id == invitedDealId);
+                if (!invitedOffer && ConversationBeat(state, npc.id)) return;
+                RenderConversationNavigation(state, npc, window);
                 return;
             }
             if (sceneCardOpen) { SceneCard(state); return; }
@@ -1681,6 +1731,7 @@ namespace Gamesim.Episode
 
         private void OnDestroy()
         {
+            HouseBindings.Cancel();
             CastRail.CompetitionField = null;
             CastRail.PlayerProgress = null;
             EndDiaryVisit(true);

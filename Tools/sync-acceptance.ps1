@@ -1,11 +1,35 @@
 # Mirrors only named project folders into the pre-existing, idle acceptance copy.
-param([switch]$DisableGpuResidentDrawer, [switch]$WithoutUma)
+# -Diagnostics adds the GAMESIM_DIAGNOSTICS Standalone define to the copy (never to the source), so
+# the diagnostics test assemblies compile there; without it the copy never carries that define. When
+# the switch is not passed, GAMESIM_DIAGNOSTICS=1 in the environment asks for it.
+param([switch]$DisableGpuResidentDrawer, [switch]$WithoutUma, [switch]$RetainInstalledUma,
+    [object]$ValidationLease, [object]$Snapshot, [switch]$Diagnostics)
 $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot 'review-evidence.ps1')
+. (Join-Path $PSScriptRoot 'review-workflow.ps1')
+$diagnosticsDefine = if ($PSBoundParameters.ContainsKey('Diagnostics')) { [bool]$Diagnostics } else { $env:GAMESIM_DIAGNOSTICS -ceq '1' }
 $sourceRoot = [IO.Path]::GetFullPath((Split-Path -Parent $PSScriptRoot)).TrimEnd('\','/')
-$destinationRoot = (Resolve-Path -LiteralPath $(if ($env:GAMESIM_ACCEPTANCE) { $env:GAMESIM_ACCEPTANCE } else { 'D:\GamesimAcceptance' })).Path.TrimEnd('\','/')
-if ($destinationRoot -eq $sourceRoot -or $destinationRoot.StartsWith($sourceRoot + '\', [StringComparison]::OrdinalIgnoreCase) -or
-    $sourceRoot.StartsWith($destinationRoot + '\', [StringComparison]::OrdinalIgnoreCase) -or
+$originalSource = $sourceRoot
+$destinationRoot = Get-ReviewDestination $sourceRoot
+$ownLease = -not $ValidationLease; $syncEvidence = $null; $syncFailure = $null; $synced = $false
+try {
+if ($ownLease) {
+    $syncEvidence = New-ReviewRunRoot $destinationRoot 'sync'
+    $ValidationLease = Enter-ReviewLease $destinationRoot
+    Assert-ReviewEditorIdle $destinationRoot
+    if ($Snapshot) { throw 'Direct sync may not substitute an externally supplied snapshot.' }
+    $Snapshot = New-ReviewSnapshot $sourceRoot $syncEvidence
+}
+Assert-ReviewLease $ValidationLease $destinationRoot
+if (-not $Snapshot) { throw 'Sync requires a verified immutable source snapshot.' }
+Assert-ReviewSnapshot $Snapshot
+$sourceRoot = Assert-ReviewPlainPath $Snapshot.root
+foreach ($folder in @('Assets','ProjectSettings','Packages','ArtSource')) {
+    $target = Join-Path $destinationRoot $folder
+    if (Test-Path -LiteralPath $target) { [void](Get-ReviewFiles $target) }
+}
+if ($destinationRoot -eq $originalSource -or $destinationRoot.StartsWith($originalSource + '\', [StringComparison]::OrdinalIgnoreCase) -or
+    $originalSource.StartsWith($destinationRoot + '\', [StringComparison]::OrdinalIgnoreCase) -or
     -not (Test-Path -LiteralPath (Join-Path $destinationRoot 'ProjectSettings\ProjectVersion.txt'))) {
     throw 'The destination must be a separate existing Unity acceptance project.'
 }
@@ -20,9 +44,14 @@ if ($WithoutUma -and (Test-Path -LiteralPath (Join-Path $destinationRoot 'Assets
 # The converse: Assets\UMA is gitignored, so a worktree or fresh clone has none, and /MIR from one
 # would delete it from an acceptance copy that has it. That is a 6,100-file reimport to undo.
 if (-not $WithoutUma -and (Test-Path -LiteralPath (Join-Path $destinationRoot 'Assets\UMA')) -and
-    -not (Test-Path -LiteralPath (Join-Path $sourceRoot 'Assets\UMA'))) {
+    -not (Test-Path -LiteralPath (Join-Path $sourceRoot 'Assets\UMA')) -and -not $RetainInstalledUma) {
     throw 'The source has no Assets\UMA and the acceptance copy does; mirroring would remove UMA from it. Run from the main checkout, or use -WithoutUma into the UMA-free copy.'
 }
+if ($RetainInstalledUma -and ($WithoutUma -or -not (Test-Path -LiteralPath (Join-Path $destinationRoot 'Assets/UMA') -PathType Container))) {
+    throw 'Retained UMA mode requires the separately installed destination vendor, and cannot be used for NoUMA.'
+}
+$projection = New-ReviewInputManifest -ProjectRoot $sourceRoot -WorkflowRoot $sourceRoot -PreviewSync -RetainedRoot $destinationRoot -WithoutUma:$WithoutUma -RetainInstalledUma:$RetainInstalledUma -Diagnostics:$diagnosticsDefine
+if ($syncEvidence) { Write-ReviewNewJson $projection (Join-Path $syncEvidence 'projection-before.json') }
 $projectUmaOverrides = @(Get-ReviewProjectUmaOverrides -ProjectRoot $sourceRoot -WithoutUma:$WithoutUma)
 if ($WithoutUma) {
     # /XD preserves an existing excluded destination. Preflight all four exact targets
@@ -77,8 +106,10 @@ foreach ($folder in @('Assets','ProjectSettings','ArtSource','Packages')) {
         foreach ($retained in @('Resources','UMAProjectData')) {
             $copyOptions += @((Join-Path $sourcePath $retained),(Join-Path $destinationPath $retained))
         }
-        if ($WithoutUma) {
+        if ($WithoutUma -or $RetainInstalledUma) {
             $copyOptions += @((Join-Path $sourcePath 'UMA'),(Join-Path $destinationPath 'UMA'))
+        }
+        if ($WithoutUma) {
             foreach ($relative in @(Get-ReviewOptionalUmaContentPaths | Where-Object { -not $_.EndsWith('.meta') })) {
                 $copyOptions += @((Join-Path $sourceRoot $relative),(Join-Path $destinationRoot $relative))
             }
@@ -87,8 +118,10 @@ foreach ($folder in @('Assets','ProjectSettings','ArtSource','Packages')) {
         foreach ($retained in @('Resources.meta','UMAProjectData.meta')) {
             $copyOptions += @((Join-Path $sourcePath $retained),(Join-Path $destinationPath $retained))
         }
+        if ($WithoutUma -or $RetainInstalledUma) {
+            $copyOptions += @((Join-Path $sourcePath 'UMA.meta'),(Join-Path $destinationPath 'UMA.meta'))
+        }
         if ($WithoutUma) {
-            $copyOptions += (Join-Path $sourcePath 'UMA.meta')
             foreach ($relative in @(Get-ReviewOptionalUmaContentPaths | Where-Object { $_.EndsWith('.meta') })) {
                 $copyOptions += @((Join-Path $sourceRoot $relative),(Join-Path $destinationRoot $relative))
             }
@@ -110,7 +143,7 @@ foreach ($relativeOverride in $projectUmaOverrides) {
     Copy-Item -LiteralPath $sourceOverride -Destination $destinationOverride -Force
 }
 $settings = Join-Path $destinationRoot 'ProjectSettings\ProjectSettings.asset'
-$content = ConvertTo-ReviewAcceptanceSettings ([IO.File]::ReadAllText($settings)) ([bool]$WithoutUma)
+$content = ConvertTo-ReviewAcceptanceSettings ([IO.File]::ReadAllText($settings)) ([bool]$WithoutUma) ([bool]$RetainInstalledUma) ([bool]$diagnosticsDefine)
 [IO.File]::WriteAllText($settings,$content,[Text.UTF8Encoding]::new($false))
 if ($DisableGpuResidentDrawer) {
     $pipeline = Join-Path $destinationRoot 'Assets\Settings\PC_RPAsset.asset'
@@ -118,4 +151,31 @@ if ($DisableGpuResidentDrawer) {
     [IO.File]::WriteAllText($pipeline,$content,[Text.UTF8Encoding]::new($false))
 }
 if ($WithoutUma) { Assert-ReviewNoUmaContentAbsent $destinationRoot }
-Write-Output "Snapshot ready: $destinationRoot; GPU Resident Drawer disabled for tests: $DisableGpuResidentDrawer"
+$actual = New-ReviewInputManifest -ProjectRoot $destinationRoot -WorkflowRoot $sourceRoot -WithoutUma:$WithoutUma
+# Compare actual test GPU0 towards the predicted shipping GPU1; no other projection drift.
+$projectionDrift = @(Compare-ReviewInputs -Before $actual -After $projection -AllowShippingGpu -RequireWorkflowStable)
+Assert-ReviewRetainedVendorEqual $projection $actual
+if ($syncEvidence) {
+    Write-ReviewNewJson $actual (Join-Path $syncEvidence 'projection-after.json')
+    Write-ReviewNewJson $projectionDrift (Join-Path $syncEvidence 'projection-drift.json')
+}
+if (@($projectionDrift | Where-Object {-not $_.allowed}).Count) {
+    throw ('Mirrored inputs do not match the exact UMA/NoUMA source projection: '+(@($projectionDrift | Where-Object {-not $_.allowed} | ForEach-Object {$_.path}) -join ', '))
+}
+Assert-ReviewSnapshot $Snapshot
+$synced = $true
+Write-Output "Snapshot ready: $destinationRoot; GPU Resident Drawer disabled for tests: $DisableGpuResidentDrawer; GAMESIM_DIAGNOSTICS: $diagnosticsDefine"
+} catch { $syncFailure = $_.Exception.Message; throw }
+finally {
+    try {
+        if ($syncEvidence) {
+            $sourceDrift = $null
+            try { Assert-ReviewManifestEqual $Snapshot.original (New-ReviewRawManifest $originalSource); Assert-ReviewSourceIdentity $Snapshot }
+            catch { $sourceDrift = $_.Exception.Message; $synced = $false }
+            Write-ReviewNewJson ([ordered]@{schema=1;status=$(if ($synced) {'Synced'} else {'Failed'});destination=$destinationRoot;
+                snapshot=$(if ($Snapshot) {$Snapshot.root} else {$null});retainedInstalledUma=[bool]$RetainInstalledUma;diagnostics=[bool]$diagnosticsDefine;
+                failure=$syncFailure;sourceFailure=$sourceDrift;nativeTestsExecuted=$false;leaseToken=$(if ($ValidationLease) {$ValidationLease.token} else {$null})}) (Join-Path $syncEvidence 'sync-receipt.json')
+            if ($sourceDrift -and -not $syncFailure) { throw $sourceDrift }
+        }
+    } finally { if ($ownLease) { Exit-ReviewLease $ValidationLease } }
+}

@@ -30,6 +30,13 @@ namespace Gamesim.House
         public int SceneStageCount => sceneLeases.Count;
 
         /// <summary>
+        /// Whether the house could take a scene now: its people bound, not paused, no stage of its
+        /// own up and no meeting held. <see cref="BeginSceneStage"/> refuses whenever this is false,
+        /// so the director spends a beat's one try only while it holds.
+        /// </summary>
+        public bool CanBeginSceneStage => IsReady && !paused && !HasCompetitionStage && !HasOpeningStage && !HasCeremonyStage && leases.Count == 0;
+
+        /// <summary>
         /// Borrows the free ones among these houseguests and walks each to the first of the offered
         /// places it can reserve: on the floor, with its own body clear of other actors and of what
         /// blocks sight. Furniture is not part of that test; the director's places have already been
@@ -40,14 +47,13 @@ namespace Gamesim.House
         public int BeginSceneStage(string key, IReadOnlyList<string> ids, IReadOnlyList<Vector3> places)
         {
             EndSceneStage();
-            if (string.IsNullOrEmpty(key) || !IsReady || paused || HasCompetitionStage || HasOpeningStage || HasCeremonyStage
-                || leases.Count != 0 || ids == null || places == null || places.Count == 0) return 0;
+            if (string.IsNullOrEmpty(key) || !CanBeginSceneStage || ids == null || places == null || places.Count == 0) return 0;
             var taken = new bool[places.Count];
             for (int i = 0; i < ids.Count; i++)
             {
                 if (ids[i] == null || sceneLeases.ContainsKey(ids[i]) || !actors.TryGetValue(ids[i], out var actor) || !eligible.Contains(ids[i])
                     || actor.motion == null || !actor.motion.IsBound) continue;
-                YieldActivity(ids[i]);YieldWander(ids[i]);
+                YieldActivity(ids[i]);YieldWander(ids[i]);YieldAct(ids[i]);
                 if (actor.motion.LeaseId != null) continue;
                 string token = "scene:" + key + ":" + i;
                 if (token.Length > 128) token = "scene:" + i + ":" + key.GetHashCode();
@@ -71,9 +77,72 @@ namespace Gamesim.House
 
         public bool SceneHoldsActor(string id) => sceneLeases.ContainsKey(id);
 
+        /// <summary>
+        /// Walks two of the scene's people to stand <paramref name="apart"/> metres apart about
+        /// <paramref name="centre"/>, along the line between where they stand now - the "come
+        /// together" step before an embrace (the art brief's R5). Both must be held by this scene,
+        /// and both re-path or neither does. Returns whether both are on their way.
+        /// </summary>
+        public bool TryBringTogether(string key, string first, string second, Vector3 centre, float apart)
+        {
+            if (string.IsNullOrEmpty(key) || SceneStageKey != key || first == second
+                || !sceneLeases.TryGetValue(first ?? "", out var a) || !sceneLeases.TryGetValue(second ?? "", out var b)
+                || a.actor.motion == null || b.actor.motion == null) return false;
+            var line = b.actor.motion.transform.position - a.actor.motion.transform.position;
+            line.y = 0f;
+            if (line.sqrMagnitude < 1e-4f) line = Vector3.right;
+            line.Normalize();
+            var aAt = centre - line * (apart * .5f);
+            var bAt = centre + line * (apart * .5f);
+            string aToken = a.token + ":together", bToken = b.token + ":together";
+            if (aToken.Length > 128 || bToken.Length > 128) return false;
+            a.actor.motion.Release(a.token);
+            b.actor.motion.Release(b.token);
+            bool aOk = a.actor.motion.TryReserveAndPath(aToken, aAt);
+            bool bOk = aOk && b.actor.motion.TryReserveAndPath(bToken, bAt);
+            if (!bOk)
+            {
+                // Neither, then: each goes back to holding where it stands under its own token.
+                if (aOk) a.actor.motion.Release(aToken);
+                a.actor.motion.TryReserveAndPath(a.token, a.actor.motion.transform.position);
+                b.actor.motion.TryReserveAndPath(b.token, b.actor.motion.transform.position);
+                return false;
+            }
+            a.token = aToken; b.token = bToken;
+            return true;
+        }
+
+        /// <summary>Whether both of two people the scene holds stand on the places it last walked them to.</summary>
+        public bool SceneActorsArrived(string first, string second) => SceneActorArrived(first) && SceneActorArrived(second);
+
+        /// <summary>
+        /// Holds the scene's people while two of them embrace: the director's stale check leaves a
+        /// held scene up, so nobody is walked off mid-embrace, until the hold is let go.
+        /// </summary>
+        public bool SceneHeldForEmbrace { get; private set; }
+
+        public void HoldSceneForEmbrace(bool hold) => SceneHeldForEmbrace = hold && sceneLeases.Count > 0;
+
+        /// <summary>
+        /// Lets one of the scene's people go - a storm-off takes them out of it - and keeps the rest;
+        /// the scene ends with its last.
+        /// </summary>
+        public void ReleaseFromSceneStage(string id)
+        {
+            if (id == null || !sceneLeases.TryGetValue(id, out var lease)) return;
+            if (lease.actor.motion != null)
+            {
+                lease.actor.motion.Release(lease.token);
+                lease.actor.motion.SetPaused(paused);
+            }
+            sceneLeases.Remove(id);
+            if (sceneLeases.Count == 0) EndSceneStage();
+        }
+
         /// <summary>Lets everybody the scene borrowed go back to their own day.</summary>
         public void EndSceneStage()
         {
+            SceneHeldForEmbrace = false;
             foreach (var lease in sceneLeases.Values)
                 if (lease.actor.motion != null)
                 {

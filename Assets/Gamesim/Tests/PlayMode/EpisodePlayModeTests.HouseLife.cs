@@ -431,6 +431,9 @@ namespace Gamesim.Tests.PlayMode
             director.StartActivityInHouse(hohBed, HouseFurnitureActivity.Sleep);
             Assert.That(director.PlayerActivity, Is.Null);
             Assert.That(director.StatusMessage, Does.Contain("Head of Household"));
+            // The refusal is said where the player can read it, not only kept in the field (D10).
+            Assert.That(ExchangeFlowStatusText(), Does.Contain("Only the Head of Household uses the HoH suite's furniture."),
+                "The refusal reaches the visible status line. It showed: " + ExchangeFlowStatusText());
         }
 
         /// <summary>

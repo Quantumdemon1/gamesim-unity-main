@@ -416,7 +416,7 @@ namespace Gamesim.Episode
             if (play == null) return null;
             string eventId = item.id;
             string until = StoryText.ClosesAt(play.deadline);
-            string goal = StoryText.Fill(state, play.goal, cycle.cast);
+            string goal = StoryText.FillDisplay(state, play.goal, cycle.cast);
             bool offer = !EpisodeEngine.TakenOn(cycle);
             return new EpisodeHud.StoryPull
             {
@@ -455,7 +455,9 @@ namespace Gamesim.Episode
         private void TickStoryPull()
         {
             if (hud == null) return;
-            bool free = IsReady && !IsPanelOpen && !challengeActive && !CeremonyOverlays.OnScreen && playerIsActive;
+            // An invitation already up keeps the floor (D18): the two never share the screen.
+            bool free = IsReady && !IsPanelOpen && !challengeActive && !CeremonyOverlays.OnScreen && playerIsActive
+                && !NpcInvitationIsVisible;
             string walkIn = walkInFirst == null ? null : WalkInKey(walkInWeek, walkInRoom, walkInFirst, walkInSecond);
             if (!ReferenceEquals(pullFor, projected) || pullFree != free || pullWalkIn != walkIn || pullDeclined != declinedPulls.Count)
             {
@@ -542,10 +544,19 @@ namespace Gamesim.Episode
             {
                 bool stale = !wanted || npcMeetings.SceneStageKey != beat.id
                     || (!IsPanelOpen && Time.unscaledTime - sceneStagedAt > SceneHoldSeconds);
-                if (stale) npcMeetings.EndSceneStage();
+                // Two of its people embracing keep the scene up until they let go (EpisodeDirector.Embrace.cs).
+                if (stale && !npcMeetings.SceneHeldForEmbrace) npcMeetings.EndSceneStage();
                 return;
             }
             if (!wanted || sceneStagedBeat == beat.id || IsPanelOpen || challengeActive || OpeningOwnsHouse) return;
+            // The beat's one try waits for a house that could take it. As a season loads its people
+            // are still binding, and the frame a panel closes the house is still paused (its world
+            // ticks after this): a try spent then was refused, and the scene was never staged.
+            if (!npcMeetings.CanBeginSceneStage) return;
+            // Nor over an invitation on its way to the player or up in front of them: whichever is up
+            // keeps the floor until it is answered (D18). Spent on a later frame than the beat's first,
+            // the try would otherwise withdraw an invitation the player had already been offered.
+            if (npcInvitationNow != null) return;
             sceneStagedBeat = beat.id;
             string room = VenueRoom(beat.venue);
             var ids = beat.involvedIds.Concat(beat.cast.Select(role => role.contestantId))
@@ -553,6 +564,7 @@ namespace Gamesim.Episode
                 .Distinct().Take(SceneCastLimit).ToList();
             var places = ScenePlaces(room, SceneCandidates);
             if (places.Count == 0) return;
+            CancelNpcInvitation();
             if (npcMeetings.BeginSceneStage(beat.id, ids, places) > 0) sceneStagedAt = Time.unscaledTime;
         }
 
@@ -601,6 +613,24 @@ namespace Gamesim.Episode
         private bool InsideFurniture(Vector3 feet) =>
             gameObject.scene.GetPhysicsScene().OverlapCapsule(feet + Vector3.up * 0.35f, feet + Vector3.up * 1.5f, 0.3f,
                 sceneFurniture, 1 << HouseLayers.Furniture, QueryTriggerInteraction.Ignore) > 0;
+
+        /// <summary>
+        /// A seam for tests, never called by the game (PLAN A, A7): stages a walk-in as the proximity
+        /// watch finds one - this pair, in this room, this week - without walking two bodies into a
+        /// room beside the player, so a test can reach the Pull's Step in and press E on it. Offered
+        /// only, as the watch offers one: nothing is written until the player steps in, and the watch's
+        /// clock starts again so its next look does not withdraw the offer under the test. False, and
+        /// nothing staged, when the engine would not take the pair there (the story system off, or no
+        /// walk-in arc for them this week).
+        /// </summary>
+        public bool StageWalkInForDiagnostics(string first, string second, string room)
+        {
+            var state = projected;
+            if (!IsReady || state == null || !EpisodeEngine.StoryOn(state) || !EpisodeEngine.ProximityOpen(state, first, second, room)) return false;
+            walkInFirst = first; walkInSecond = second; walkInRoom = room; walkInWeek = state.week;
+            proximityWatch = 0f;
+            return true;
+        }
 
         /// <summary>
         /// Step in on a walk-in: the engine's own walk-in, committed now with the pair the player
@@ -715,7 +745,7 @@ namespace Gamesim.Episode
             var decided = ending == null ? null : state.events.LastOrDefault(e => e.kind == StoryLog.Play && Mine(e));
             if (decided != null) hud.Paragraph(decided.text);
             else if (ending == null)
-                hud.Paragraph("Goal: " + StoryText.Fill(state, play.goal, cycle.cast) + " It is decided by " + StoryText.ClosesAt(play.deadline) + ".");
+                hud.Paragraph("Goal: " + StoryText.FillDisplay(state, play.goal, cycle.cast) + " It is decided by " + StoryText.ClosesAt(play.deadline) + ".");
             foreach (var receipt in state.events.Where(e => e.kind == StoryLog.Receipt && Mine(e)))
                 hud.Paragraph(receipt.text);
             hud.Action(SceneCardDoneCaption, ClosePanels);

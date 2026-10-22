@@ -81,10 +81,17 @@ namespace Gamesim.Editor
         /// <para>Nothing else is here on suspicion. A prop that might seal a doorway is a question the
         /// reachability check answers in a second, and a name added to this list on a hunch is a
         /// piece of furniture that stays walk-through forever without anybody remembering why.</para>
+        ///
+        /// <para>The yard's roped entrance (<see cref="HouseSetPieces.EntranceGroup"/>) is set dressing
+        /// by design - no collider, no static flag, so placing it needs no NavMesh or lightmap bake
+        /// (EpisodeHouseYardTests pins it) - and its own rebuild never fits collision. The full pass
+        /// walked into its group and boxed the arch and the six stanchions on its first run after the
+        /// entrance was authored, so the group is named here.</para>
         /// </summary>
         private static readonly HashSet<string> Never = new HashSet<string>(StringComparer.Ordinal)
         {
             "bb_shell_house",
+            HouseSetPieces.EntranceGroup,
         };
 
         [MenuItem(Fit)]

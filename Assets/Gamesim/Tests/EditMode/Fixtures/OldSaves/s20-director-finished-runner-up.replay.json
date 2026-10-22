@@ -1,0 +1,17 @@
+{
+ "id": "s20-director-finished-runner-up",
+ "referenceBuild": "7f398b94",
+ "referenceSchema": 20,
+ "digest": "fdac6c82847f9fb9",
+ "checkpoints": [
+  {
+   "i": 0,
+   "week": 6,
+   "phase": "Finished",
+   "revision": 127,
+   "randomState": 1049434106,
+   "season": "8524b115722fe39b"
+  }
+ ],
+ "commands": []
+}

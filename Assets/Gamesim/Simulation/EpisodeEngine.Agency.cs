@@ -133,7 +133,11 @@ namespace Gamesim.Simulation
             foreach (var npc in s.contestants.Where(c => c.status == ContestantStatus.Active && !c.isPlayer && c.id != s.hohId).ToList())
             {
                 var agenda = NpcAgendas.Of(s, npc.id);
-                if (agenda != null && agenda.kind == Agendas.Court) NpcSocialActions.Court(s, npc, hoh);
+                if (agenda == null || agenda.kind != Agendas.Court) continue;
+                NpcSocialActions.Court(s, npc, hoh);
+                // Under the all-week rules (D2) the court is one of the week's acts, recorded with no draw;
+                // it is the week's court, and their building, holding or hunting keeps its own beat.
+                if (AllWeekOn(s)) RecordAct(s, NpcActKinds.Court, s.week + "-" + Windows.AfterHoH + "-court-" + npc.id, npc.id, hoh.id, null);
             }
         }
     }

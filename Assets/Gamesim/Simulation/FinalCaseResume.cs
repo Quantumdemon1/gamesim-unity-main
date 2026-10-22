@@ -80,14 +80,15 @@ namespace Gamesim.Simulation
             resume.alliances = pacts.OrderByDescending(p => p.length).ThenBy(p => p.started).Take(MostAlliances).Select(p => p.text).ToList();
             resume.moreAlliances = pacts.Count - resume.alliances.Count;
 
-            // Broken word both ways, counted as the argument's old résumé counted it.
+            // Broken word both ways, counted as the argument's old résumé counted it: mode 1's raw rows, one by one (in mode 2
+            // its Vote rows too, vote family V5e), and canonical Safety by incident wherever it is canonical.
             var broken = new List<(int week, string text)>();
-            foreach (var promise in s.promises.Where(p => p.status == PromiseStatus.Broken))
+            foreach (var promise in CommitmentReferences.RawPromises(s).Where(p => p.status == PromiseStatus.Broken))
             {
                 if (promise.fromId == player) { resume.brokenByYou++; broken.Add((promise.week, "You broke your word to " + Name(s, promise.toId) + ".")); }
                 else if (promise.toId == player) { resume.brokenAgainstYou++; broken.Add((promise.week, Name(s, promise.fromId) + " broke their word to you.")); }
             }
-            foreach (var deal in s.deals)
+            foreach (var deal in CommitmentReferences.RawDeals(s))
             {
                 string by = FinalistRead.DealBreaker(s, deal);
                 if (by == null) continue;
@@ -96,7 +97,7 @@ namespace Gamesim.Simulation
                 if (by == player) { resume.brokenByYou++; broken.Add((deal.week, "You broke your " + title + " with " + Name(s, other) + ".")); }
                 else { resume.brokenAgainstYou++; broken.Add((deal.week, Name(s, other) + " broke your " + title + ".")); }
             }
-            if (UnifiedCommitments.RulesOn(s))
+            if (UnifiedCommitments.SafetyAuthorityOn(s))
             {
                 var rows = UnifiedCommitmentHistory.Records(s).ToDictionary(row => row.id, StringComparer.Ordinal);
                 foreach (var incident in UnifiedCommitmentHistory.Breaches(s)

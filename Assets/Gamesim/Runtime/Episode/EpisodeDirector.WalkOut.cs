@@ -232,6 +232,10 @@ namespace Gamesim.Episode
             if (projected == null || FinaleNight(projected.phase)) return RefuseWalkOut("There is no weekly departure on finale night.");
             if (housemates == null || !housemates.Any(npc => npc != null && npc.Id == id && npc.gameObject.activeInHierarchy))
                 return RefuseWalkOut("The departing houseguest has no active body.");
+            // The goodbye's short noncontact farewell lets go before the walk takes the evicted:
+            // both agents unparked, both bodies easing home. The goodbye is never an embrace (the
+            // owner's decision); the 3.8 s embrace is the peace's alone (EpisodeDirector.Embrace.cs).
+            ReleaseGoodbyeFarewell("the walk out");
             walkingOutId = id;
             walkOutLeg = 0;
             walkOutUntil = Time.unscaledTime + WalkOutSeconds;
@@ -591,6 +595,7 @@ namespace Gamesim.Episode
         /// </summary>
         private void SkipTheGoodbye()
         {
+            ReleaseGoodbyeFarewell("the goodbye skipped");
             string leaving = departingId;
             if (leaving == null) return;
             if (walkOutDoor != null) walkOutDoor.Close(true);
@@ -709,6 +714,7 @@ namespace Gamesim.Episode
         /// <summary>Forgets a walk out and the jury's places when the season is replaced under them.</summary>
         private void ResetWalkOut()
         {
+            ReleaseGoodbyeFarewell("the season replaced");
             if (npcMeetings != null && walkingOutId != null) { npcMeetings.EndDeparture(); npcMeetings.DepartureCandidate = null; }
             walkingOutId = null;
             LastWalkOutFailure = null;
@@ -741,7 +747,8 @@ namespace Gamesim.Episode
         {
             if (state == null || id == null || state.Find(id) == null) return GoodbyeKind.Neutral;
             string you = state.playerId;
-            bool dealt = state.deals != null && state.deals.Any(d => DealStatus.Binds(d.status) && d.status != DealStatus.Proposed
+            // Mode 1's raw deals - in mode 2 the view of them, its Vote rows included (vote family V5f).
+            bool dealt = state.deals != null && CommitmentReferences.RawDeals(state).Any(d => DealStatus.Binds(d.status) && d.status != DealStatus.Proposed
                 && ((d.proposerId == id && d.recipientId == you) || (d.proposerId == you && d.recipientId == id)));
             if (dealt) return GoodbyeKind.Dealt;
             bool nominated = state.hohId == you && state.nominees != null && state.nominees.Contains(id);

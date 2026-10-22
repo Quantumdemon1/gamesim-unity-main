@@ -39,6 +39,8 @@ namespace Gamesim.Tests.PlayMode
                 Assert.That(Vector3.Distance(player.transform.position, before), Is.LessThan(.01f), "And nobody was moved for it.");
                 Assert.That(director.IsTravelDipShowing, Is.False, "Nor did the screen blink.");
                 Assert.That(director.StatusMessage, Does.Contain("obstructed"));
+                Assert.That(ExchangeFlowStatusText(), Does.Contain(director.StatusMessage),
+                    "The refusal reaches the visible status line (D10). It showed: " + ExchangeFlowStatusText());
             }
             finally { Object.Destroy(obstacle); }
             yield return null;

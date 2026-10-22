@@ -141,15 +141,97 @@ namespace Gamesim.Tests.EditMode
                 case "missing-breaker": deal.Remove("brokenById"); break;
                 case "missing-settlement": deal.Remove("settledWeek"); break;
                 case "future-settlement": deal["settledWeek"] = 2; break;
-                case "missing-link": deal.Remove("linkedDealId"); break;
+                // A row without the field beside one that has it: neither of schema 22's two shapes (FrozenEpisodeV22.WithLaterFields).
+                case "missing-link": ((JArray)old["deals"]).Add(Copy(deal, "test-deal-2")); deal.Remove("linkedDealId"); break;
                 case "invalid-link": deal["linkedDealId"] = 42; break;
                 case "future-deal-kind": deal["type"] = "future-kind"; break;
-                case "missing-joined": alliance.Remove("playerJoined"); break;
+                case "missing-joined": ((JArray)old["alliances"]).Add(Copy(alliance, "test-alliance-2")); alliance.Remove("playerJoined"); break;
                 case "invalid-joined": alliance["playerJoined"] = "false"; break;
                 case "overspent-window": old["windowActions"][0] = 25; break;
                 default: Assert.Fail("Unexercised defect"); break;
             }
-            Assert.Throws<InvalidDataException>(() => EpisodeSaveMigrations.PrepareCurrentPayload(old, out _));
+            var refusal = Assert.Throws<InvalidDataException>(() => EpisodeSaveMigrations.PrepareCurrentPayload(old, out _));
+            if (defect.StartsWith("missing-", StringComparison.Ordinal) && defect != "missing-boundary")
+                Assert.That(refusal.Message, Does.Contain("Invalid historical schema 22 data"), "Refused by the schema-22 contract itself.");
+        }
+
+        private static JObject Copy(JObject row, string id)
+        {
+            var copy = (JObject)row.DeepClone();
+            copy["id"] = id;
+            return copy;
+        }
+
+        /// <summary>
+        /// Schema 22's first shape (5eedae12, 2026-10-02): no deal's linkedDealId, which C7 added at c55a4535, and no
+        /// alliance's playerJoined, which the C5 review fix added at d44bf492, both inside the version. Such a file
+        /// loads, its deals unlinked and its pacts their founders', and migrates exactly as the same season written by a
+        /// later schema-22 build: the two literals are the only difference, and the input is never changed.
+        /// </summary>
+        [Test]
+        public void ASchema22SaveFromTheVersionsFirstBuildsGainsTheTwoLaterFieldsAsLiterals()
+        {
+            var s = EconomyRulesTests.Fresh(enable: false);
+            var npcs = s.Active.Where(c => !c.isPlayer).Select(c => c.id).ToList();
+            s.deals.Add(new DealState { id = "early-deal", type = DealKind.SafetyAgreement, proposerId = s.playerId,
+                recipientId = npcs[0], week = 1, status = DealStatus.Active, trustImpact = DealTrust.High });
+            s.deals.Add(new DealState { id = "early-deal-2", type = DealKind.InformationSharing, proposerId = npcs[1],
+                recipientId = s.playerId, week = 1, status = DealStatus.Active, trustImpact = DealTrust.Medium });
+            s.alliances.Add(new AllianceState { id = "early-alliance", name = "Early", active = true, members = new List<string> { npcs[0], s.playerId } });
+            var late = AsV22(s);
+            var early = (JObject)late.DeepClone();
+            foreach (JObject deal in (JArray)early["deals"]) deal.Remove("linkedDealId");
+            foreach (JObject alliance in (JArray)early["alliances"]) alliance.Remove("playerJoined");
+            string original = early.ToString(Formatting.None);
+
+            var fromEarly = EpisodeSaveMigrations.PrepareCurrentPayload(early, out bool migrated);
+            Assert.That(migrated, Is.True);
+            Assert.That(early.ToString(Formatting.None), Is.EqualTo(original), "The original payload is never changed.");
+            Assert.That(JToken.DeepEquals(fromEarly, EpisodeSaveMigrations.PrepareCurrentPayload(late, out _)), Is.True,
+                "The first shape migrates exactly as the last: the two literals are all that differs.");
+            var state = Read(early);
+            Assert.That(state.deals.Select(d => d.linkedDealId), Is.All.Null, "No deal of the first builds was a negotiation's.");
+            Assert.That(state.alliances.Select(a => a.playerJoined), Is.All.False, "and no pact was joined after its founder.");
+        }
+
+        /// <summary>
+        /// Schema 22's middle shape (c55a4535 to d44bf492^, the last of them ce5b3d95): every deal carries C7's
+        /// linkedDealId, no alliance the C5 review fix's playerJoined. Such a file loads with its links kept and only
+        /// playerJoined added, false on every pact, and migrates exactly as the same season written by a last-shape build.
+        /// False keeps the middle builds' own founder reading: their FinalistRead.FoundedByPlayer read the row's reason and
+        /// the member order alone, and today's is that expression behind !playerJoined. Its real-shape fixture is
+        /// OldSaveAcceptanceTests' s22-director-middle-w3-nomination.
+        /// </summary>
+        [Test]
+        public void ASchema22SaveFromTheVersionsMiddleBuildsGainsOnlyTheJoinedLiteral()
+        {
+            var s = EconomyRulesTests.Fresh(enable: false);
+            EpisodeEngine.EnableCommitments(s);
+            var npcs = s.Active.Where(c => !c.isPlayer).Select(c => c.id).ToList();
+            s.deals.Add(new DealState { id = "pact", type = DealKind.SafetyAgreement, proposerId = s.playerId,
+                recipientId = npcs[0], status = DealStatus.Broken, trustImpact = DealTrust.High, week = 1,
+                expiresWeek = 2, brokenById = npcs[0], settledWeek = 1, linkedDealId = "deal-price-pact" });
+            s.deals.Add(new DealState { id = "deal-price-pact", type = DealKind.InformationSharing, proposerId = npcs[0],
+                recipientId = s.playerId, status = DealStatus.Active, trustImpact = DealTrust.Low, week = 1,
+                expiresWeek = 2, linkedDealId = "pact" });
+            s.alliances.Add(new AllianceState { id = "own", name = "Own pact", active = true, members = new List<string> { s.playerId, npcs[1] } });
+            s.alliances.Add(new AllianceState { id = "theirs", name = "Their pact", active = true, members = new List<string> { npcs[2], s.playerId } });
+            EpisodeSaveValidation.Validate(s);
+            var late = AsV22(s);
+            var middle = (JObject)late.DeepClone();
+            foreach (JObject alliance in (JArray)middle["alliances"]) alliance.Remove("playerJoined");
+            Assert.That(((JArray)middle["deals"]).All(d => d["linkedDealId"] != null), Is.True, "The middle shape keeps C7's field.");
+            string original = middle.ToString(Formatting.None);
+
+            var fromMiddle = EpisodeSaveMigrations.PrepareCurrentPayload(middle, out bool migrated);
+            Assert.That(migrated, Is.True);
+            Assert.That(middle.ToString(Formatting.None), Is.EqualTo(original), "The original payload is never changed.");
+            Assert.That(JToken.DeepEquals(fromMiddle, EpisodeSaveMigrations.PrepareCurrentPayload(late, out _)), Is.True,
+                "The middle shape migrates exactly as the last: playerJoined false is all that differs.");
+            var state = Read(middle);
+            Assert.That(state.deals.Select(d => d.linkedDealId), Is.EqualTo(new[] { "deal-price-pact", "pact" }), "A negotiation's links are kept.");
+            Assert.That(state.alliances.Select(a => a.playerJoined), Is.All.False, "No pact was joined after its founder.");
+            Assert.That(state.alliances.Select(a => a.members[0]), Is.EqualTo(new[] { s.playerId, npcs[2] }), "Each pact's founder is still first.");
         }
 
         [TestCase(0)] [TestCase(27)] [TestCase(-1)]

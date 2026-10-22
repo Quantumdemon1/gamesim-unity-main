@@ -134,7 +134,7 @@ namespace Gamesim.Tests.PlayMode
             string longest = allStars.events.Last(entry => entry.kind == "arrival").text;
             Assert.That(longest, Does.Contain("played before"), "The All-Stars line, the builder's longest.");
             var sequence = Opening();
-            foreach (float scale in new[] { 1f, 1.2f })
+            foreach (float scale in TextScales.All)
             {
                 sequence.FontScale = scale;
                 string at = " at text scale " + scale;

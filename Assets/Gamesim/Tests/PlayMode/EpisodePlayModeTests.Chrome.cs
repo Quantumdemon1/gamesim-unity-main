@@ -1,4 +1,5 @@
 using System.Collections;
+using System.Collections.Generic;
 using System.Linq;
 using Gamesim.Episode;
 using Gamesim.House;
@@ -63,16 +64,15 @@ namespace Gamesim.Tests.PlayMode
             Mathf.Abs(a.r - b.r) < .004f && Mathf.Abs(a.g - b.g) < .004f
             && Mathf.Abs(a.b - b.b) < .004f && Mathf.Abs(a.a - b.a) < .004f;
 
-        /// <summary>The seven seats of the dial, in the order the director fills them.</summary>
+        /// <summary>The six topic categories, in the order the director fills the root wheel.</summary>
         private static readonly string[] PetalCaptions =
         {
-            EpisodeHud.SmallTalkCaption,
-            EpisodeHud.StrategicDiscussionCaption,
-            EpisodeHud.PersonalChatCaption,
-            EpisodeHud.MorePetalCaption,
-            EpisodeHud.RelationshipBuildingCaption,
-            EpisodeHud.ShareSecretCaption,
-            "Spend time together",
+            EpisodeDirector.ConnectCategoryCaption,
+            EpisodeDirector.GameCategoryCaption,
+            EpisodeDirector.LearnCategoryCaption,
+            EpisodeDirector.DealsCategoryCaption,
+            EpisodeDirector.PressureCategoryCaption,
+            EpisodeDirector.TogetherCategoryCaption,
         };
 
         /// <summary>Actions the dial does not seat. They stay ordinary rows, one level in.</summary>
@@ -91,32 +91,31 @@ namespace Gamesim.Tests.PlayMode
         /// under indistinguishable captions. Each is on the dial exactly once.
         /// </summary>
         [UnityTest]
-        public IEnumerator Chrome_TheTwoSpendTimePetalsAreToldApart()
+        public IEnumerator Chrome_TheTwoSpendTimeChoicesAreToldApartInsideConnect()
         {
             var maya = SceneComponents<HouseNpc>().Single(npc => npc.Id == ContentCatalog.MayaId);
             yield return OpenNearbyNpc(maya);
-            var dial = ActiveRect(EpisodeHud.DialName);
-            Assert.That(dial, Is.Not.Null, "A conversation is drawn as a dial.");
+            yield return EnterConversationCategory(EpisodeDirector.ConnectCategoryCaption);
+            Assert.That(ActiveRect(EpisodeHud.DialName), Is.Null, "The category replaces the root wheel.");
 
             Assert.That(EpisodeHud.RelationshipBuildingCaption, Is.EqualTo("Build the bond"));
             var bond = ButtonWithCaption("Build the bond");
             var together = ButtonWithCaption("Spend time together");
-            Assert.That(bond.transform.IsChildOf(dial), Is.True, "'Build the bond' is a petal,");
-            Assert.That(together.transform.IsChildOf(dial), Is.True, "and so is 'Spend time together',");
+            Assert.That(bond.transform.parent, Is.EqualTo(together.transform.parent), "Both choices belong to the same category.");
             Assert.That(bond, Is.Not.SameAs(together), "two controls.");
             Assert.That(ButtonWithCaptionOrNull("Spend real time with them"), Is.Null, "The old caption is nowhere.");
-            // Once each on the dial, by the suite's own rule for what carries a caption.
-            var petals = dial.GetComponentsInChildren<Button>().Where(button => button.IsActive()).ToList();
+            // Once each on the category page, by the suite's own rule for what carries a caption.
+            var petals = PanelControls();
             foreach (var caption in new[] { "Build the bond", "Spend time together" })
                 Assert.That(petals.Count(button => button.GetComponentsInChildren<TMP_Text>(true).Any(text => text.text == caption)), Is.EqualTo(1),
-                    "'" + caption + "' is on the dial once.");
+                    "'" + caption + "' is in the category once.");
 
             director.ClosePanels();
             yield return null;
         }
 
         [UnityTest]
-        public IEnumerator Chrome_ConversationDialSeatsSevenPetalsAndKeepsEveryCaption()
+        public IEnumerator Chrome_ConversationDialSeatsSixCategoriesAndHidesLeafLists()
         {
             var maya = SceneComponents<HouseNpc>().Single(npc => npc.Id == ContentCatalog.MayaId);
             yield return OpenNearbyNpc(maya);
@@ -127,7 +126,7 @@ namespace Gamesim.Tests.PlayMode
             var petals = dial.GetComponentsInChildren<Button>()
                 .Where(button => button.IsActive()).ToArray();
             Assert.That(petals.Length, Is.EqualTo(PetalCaptions.Length),
-                "The dial seats the mockups' seven petals; it seated " + petals.Length + ".");
+                "The root wheel seats six categories; it seated " + petals.Length + ".");
 
             // Every caption still finds exactly one control - Single() is what the suite's own
             // lookup does, so a duplicated or reworded caption fails here rather than six tests later.
@@ -139,10 +138,11 @@ namespace Gamesim.Tests.PlayMode
             }
             foreach (var caption in RowCaptions)
             {
-                var button = ButtonWithCaption(caption);
-                Assert.That(button.transform.IsChildOf(dial), Is.False,
-                    "'" + caption + "' is one of the actions the dial does not seat, so it stays a row.");
+                Assert.That(ButtonWithCaptionOrNull(caption), Is.Null,
+                    "'" + caption + "' waits inside its category.");
             }
+            Assert.That(ActiveRect(EpisodeHud.ConversationColumnName), Is.Null,
+                "The root wheel does not share the frame with an open options column.");
 
             // A ring of petals is only a ring if they do not sit on one another.
             Canvas.ForceUpdateCanvases();
@@ -161,7 +161,7 @@ namespace Gamesim.Tests.PlayMode
         }
 
         [UnityTest]
-        public IEnumerator Chrome_MorePetalMovesTheKeyboardToTheRowsBeneathTheDial()
+        public IEnumerator Chrome_CategoryOpensItsChoicesAndBackReturnsToTheWheelWithoutCost()
         {
             var maya = SceneComponents<HouseNpc>().Single(npc => npc.Id == ContentCatalog.MayaId);
             yield return OpenNearbyNpc(maya);
@@ -170,20 +170,24 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(dial, Is.Not.Null);
 
             var before = director.Snapshot;
-            ButtonWithCaption(EpisodeHud.MorePetalCaption).onClick.Invoke();
+            ButtonWithCaption(EpisodeDirector.GameCategoryCaption).onClick.Invoke();
             yield return null;
 
             var selected = EventSystem.current.currentSelectedGameObject;
-            Assert.That(selected, Is.Not.Null, "The More petal must hand the keyboard somewhere.");
-            Assert.That(selected.transform.IsChildOf(dial), Is.False,
-                "The More petal hands the keyboard to the first row beneath the dial, not back to a petal.");
+            Assert.That(selected, Is.Not.Null, "Opening a category takes keyboard focus.");
+            Assert.That(ActiveRect(EpisodeHud.DialName), Is.Null, "The category hides the wheel.");
+            Assert.That(ButtonWithCaption(EpisodeHud.DiscussGameCaption), Is.Not.Null);
 
             var panel = ActiveRect("Episode panel");
             Assert.That(selected.transform.IsChildOf(panel), Is.True,
                 "It must stay inside the panel; focus outside it is focus the ring cannot walk.");
             Assert.That(director.Snapshot.revision, Is.EqualTo(before.revision),
-                "Pressing More is navigation. It commits nothing and spends no action.");
+                "Choosing a category is navigation. It commits nothing and spends no action.");
             Assert.That(director.Snapshot.socialActions, Is.EqualTo(before.socialActions));
+            yield return KeyboardSubmit(EpisodeDirector.ConversationTopicsBackCaption);
+            Assert.That(ActiveRect(EpisodeHud.DialName), Is.Not.Null);
+            Assert.That(ActiveRect(EpisodeHud.ConversationColumnName), Is.Null);
+            Assert.That(JsonUtility.ToJson(director.Snapshot), Is.EqualTo(JsonUtility.ToJson(before)));
 
             director.ClosePanels();
             yield return null;
@@ -210,6 +214,8 @@ namespace Gamesim.Tests.PlayMode
             var rail = ActiveRect(IconRail.RootName);
             Assert.That(brand, Is.Not.Null); Assert.That(pill, Is.Not.Null); Assert.That(week, Is.Not.Null);
             Assert.That(objective, Is.Not.Null); Assert.That(navigation, Is.Not.Null); Assert.That(rail, Is.Not.Null);
+            Assert.That(ActiveRect("Tagline"), Is.Null, "The top bar leaves decorative slogan space clear.");
+            Assert.That(ActiveRect(CastRail.QuoteName), Is.Null, "The house cast strip leaves decorative quote space clear.");
 
             // One band: the mockups' top bar is a row of chips, not panels at different heights -
             // and a row in the mockups' order, brand, week, objective, the house's numbers.
@@ -331,7 +337,7 @@ namespace Gamesim.Tests.PlayMode
         [UnityTest]
         public IEnumerator Conversation_EveryRowKeepsRoomForItsWords()
         {
-            foreach (bool larger in new[] { false, true })
+            foreach (var textSize in TextSizes.All)
             {
                 string hoh = null;
                 yield return InstallStrategySeason(41, state =>
@@ -339,26 +345,28 @@ namespace Gamesim.Tests.PlayMode
                     state.phase = EpisodePhase.Nomination;
                     hoh = state.hohId = state.Active.First(actor => !actor.isPlayer).id;
                 });
-                yield return ApplyTextSize(larger);
+                yield return ApplyTextSize(textSize);
                 yield return TalkTo(hoh);
-                AssertRowsHaveRoom(larger, "the conversation with the Head of Household");
+                yield return EnterConversationCategory(EpisodeDirector.GameCategoryCaption);
+                AssertRowsHaveRoom(textSize, "the conversation with the Head of Household");
                 var state = director.Snapshot;
                 ButtonWithCaption(EpisodeHud.LobbyAskCaption(state, state.Find(hoh).name, LobbyAsk.Spare, state.playerId)).onClick.Invoke();
                 yield return null;
-                AssertRowsHaveRoom(larger, "the plea's approaches");
+                AssertRowsHaveRoom(textSize, "the plea's approaches");
                 director.ClosePanels();
                 yield return null;
             }
         }
 
-        private void AssertRowsHaveRoom(bool larger, string where)
+        private void AssertRowsHaveRoom(TextSize textSize, string where, params string[] expectedRowCaptions)
         {
             Canvas.ForceUpdateCanvases();
-            float scale = larger ? 1.2f : 1f;
+            float scale = TextSizes.Scale(textSize);
             var column = ActiveRect(EpisodeHud.ConversationColumnName);
             Assert.That(column, Is.Not.Null, "A conversation is open: " + where + ".");
             var dial = ActiveRect(EpisodeHud.DialName);
             int rows = 0;
+            var rowCaptions = new List<string>();
             foreach (var button in column.GetComponentsInChildren<Button>().Where(button => button.IsActive()))
             {
                 // The rows: in the column's scrolling list, not the dial and not its Close.
@@ -367,8 +375,9 @@ namespace Gamesim.Tests.PlayMode
                     .FirstOrDefault(text => text.transform.parent == button.transform && text.text == button.name);
                 if (caption == null || button.GetComponent<LayoutElement>() == null) continue;
                 rows++;
+                rowCaptions.Add(button.name);
                 var row = (RectTransform)button.transform;
-                string about = "'" + button.name + "' in " + where + " at " + (larger ? "larger" : "standard") + " text";
+                string about = "'" + button.name + "' in " + where + " " + TextScales.At(textSize);
                 Assert.That(caption.rectTransform.rect.width, Is.GreaterThanOrEqualTo(EpisodeHud.MinCaptionWidth * scale - .5f),
                     about + " was left " + caption.rectTransform.rect.width.ToString("0") + " units for its words in a row "
                     + row.rect.width.ToString("0") + " wide.");
@@ -385,7 +394,14 @@ namespace Gamesim.Tests.PlayMode
                     Assert.That(ScreenRect(pieces[a]).Overlaps(ScreenRect(pieces[b])), Is.False,
                         about + ": " + Piece(pieces[a]) + " and " + Piece(pieces[b]) + " are drawn over each other.");
             }
-            Assert.That(rows, Is.GreaterThan(3), "The rows were found: " + where + ".");
+            if (expectedRowCaptions.Length == 0)
+                Assert.That(rows, Is.GreaterThan(3), "The rows were found: " + where + ".");
+            else
+            {
+                Assert.That(rows, Is.EqualTo(expectedRowCaptions.Length), "The selected page has exactly its expected rows: " + where + ".");
+                CollectionAssert.AreEquivalent(expectedRowCaptions, rowCaptions,
+                    "Every expected row remains present, with no unrelated page's actions: " + where + ".");
+            }
             var panel = ActiveRect("Episode panel");
             var canvas = panel.GetComponentInParent<Canvas>().rootCanvas.GetComponent<RectTransform>();
             Assert.That(panel.rect.width, Is.GreaterThan(canvas.rect.width * .55f),

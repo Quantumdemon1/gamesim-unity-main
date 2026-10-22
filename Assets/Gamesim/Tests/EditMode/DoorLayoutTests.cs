@@ -25,6 +25,41 @@ namespace Gamesim.Tests.EditMode
                 "The complete .7 m wide body corridor must clear both leaves before the walk begins.");
         }
 
+        /// <summary>
+        /// The authored door (the art brief's A4) keeps the box door's limits: each leaf 1.10 by 2.60
+        /// by 0.08 m to within 5 mm, standing on the floor about its own middle, which is how the
+        /// set hangs it and the opening's leaf watch measures it; a handle no more than 0.065 m proud
+        /// of either face; and a frame 2.40 by 2.80 m that leaves the whole 2.20 by 2.60 m doorway
+        /// open. Each mesh's submeshes are named for the materials the set maps them to.
+        /// </summary>
+        [Test]
+        public void TheDoorKitKeepsTheLeafAndHandleLimits()
+        {
+            var kit = Resources.Load<OpeningDoorKit>(OpeningDoorKit.ResourceName);
+            Assert.That(kit != null && kit.frame != null && kit.leaf != null && kit.handle != null, Is.True,
+                "Build it with Gamesim/Sets/Build the opening door kit.");
+            var leaf = kit.leaf.bounds;
+            Assert.That(leaf.size.z, Is.EqualTo(OpeningDoorSet.LeafWidth).Within(.005f), "as wide as the box leaf");
+            Assert.That(leaf.size.y, Is.EqualTo(OpeningDoorSet.ApertureHeight).Within(.005f), "as tall");
+            Assert.That(leaf.size.x, Is.EqualTo(.08f).Within(.005f), "as thick: no panel stands proud of it");
+            Assert.That(leaf.min.y, Is.EqualTo(0f).Within(.001f), "on the floor");
+            Assert.That(leaf.center.x, Is.EqualTo(0f).Within(.001f), "about its middle");
+            Assert.That(leaf.center.z, Is.EqualTo(0f).Within(.001f), "about its middle");
+            var handle = kit.handle.bounds;
+            Assert.That(handle.extents.x - .04f, Is.LessThanOrEqualTo(.065f), "the lever stands at most 0.065 m off each face");
+            Assert.That(handle.center.x, Is.EqualTo(0f).Within(.001f), "the pair straddles the leaf");
+            var frame = kit.frame.bounds;
+            Assert.That(frame.size.z, Is.EqualTo(2.4f).Within(.01f), "a 2.40 m frame");
+            Assert.That(frame.size.y, Is.EqualTo(2.8f).Within(.01f), "2.80 m tall");
+            float half = (OpeningDoorSet.ApertureMaxZ - OpeningDoorSet.ApertureMinZ) / 2f;
+            foreach (var v in kit.frame.vertices)
+                Assert.That(Mathf.Abs(v.z) < half - .001f && v.y < OpeningDoorSet.ApertureHeight - .001f, Is.False,
+                    "The frame keeps out of the 2.20 by 2.60 m doorway: a vertex at " + v.ToString("F3"));
+            Assert.That(kit.leafSlots, Has.Some.Contains("gold").And.Some.Contains("panel"), "the leaf's rail and fields are their own submeshes");
+            Assert.That(kit.frameSlots, Has.Some.Contains("gold"), "the frame's gold is its own submesh");
+            Assert.That(kit.leafSlots.Length, Is.EqualTo(kit.leaf.subMeshCount));
+        }
+
         [Test]
         public void OpenLeavesClearTheOpeningRouteAndTheMovedLivingDoor()
         {

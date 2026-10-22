@@ -133,7 +133,7 @@ namespace Gamesim.Presentation
         public static void Ghost(RectTransform panel, Canvas source, bool reducedMotion)
         {
             if (panel == null || source == null || reducedMotion) return;
-            var host = new GameObject(GhostName, typeof(RectTransform), typeof(Canvas), typeof(CanvasScaler), typeof(CanvasGroup));
+            var host = new GameObject(GhostName, typeof(RectTransform), typeof(Canvas), typeof(FrameScaler), typeof(CanvasGroup));
             var canvas = host.GetComponent<Canvas>();
             canvas.renderMode = source.renderMode;
             canvas.sortingOrder = source.sortingOrder;

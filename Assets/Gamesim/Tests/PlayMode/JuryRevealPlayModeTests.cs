@@ -140,13 +140,13 @@ namespace Gamesim.Tests.PlayMode
         }
 
         [UnityTest]
-        public IEnumerator JuryReveal_TheResultHoldsAtLargeTextWithAFullJury()
+        public IEnumerator JuryReveal_TheResultHoldsAtLargeTextWithAFullJury([Values(1.2f, 1.4f)] float scale)
         {
-            // Fourteen jurors, the most a house of sixteen seats, at the large text size.
+            // Fourteen jurors, the most a house of sixteen seats, at the larger and the largest text sizes.
             var votes = Enumerable.Range(0, 14).Select(i => i % 7 == 3 || i % 2 == 0 ? Alex : Casey).ToArray();
             int forAlex = votes.Count(vote => vote == Alex), forCasey = votes.Length - forAlex;
             Assert.That(forAlex, Is.GreaterThan(forCasey), "Alex wins this one.");
-            var reveal = Reveal(votes, Alex, fontScale: 1.2f);
+            var reveal = Reveal(votes, Alex, fontScale: scale);
             AssertEveryLabelDraws(reveal, "at large text, before the first vote");
             yield return SkipToTheResult(reveal);
             Assert.That(Text(reveal, "Count").text, Is.EqualTo(forAlex + " TO " + forCasey));
@@ -157,13 +157,13 @@ namespace Gamesim.Tests.PlayMode
         }
 
         [UnityTest]
-        public IEnumerator JuryReveal_TheCardFitsAScreenWiderThanSixteenByNine()
+        public IEnumerator JuryReveal_TheCardFitsAScreenWiderThanSixteenByNine([Values(1.2f, 1.4f)] float scale)
         {
             // A 21:9 screen leaves the canvas about 780 units tall, where the card at large text
             // with fourteen jurors and the count's headline wants about 900. The canvas's height is
             // pinned to 780 so the run stands in for that screen, whatever shape its own screen is.
             var votes = Enumerable.Range(0, 14).Select(i => i % 7 == 3 || i % 2 == 0 ? Alex : Casey).ToArray();
-            var reveal = Reveal(votes, Alex, fontScale: 1.2f, canvasHeight: 780f);
+            var reveal = Reveal(votes, Alex, fontScale: scale, canvasHeight: 780f);
             yield return SkipToTheResult(reveal);
             yield return null;
             Assert.That(((RectTransform)reveal.transform).rect.height, Is.EqualTo(780f).Within(1f), "The canvas stands in for a 21:9 screen's.");

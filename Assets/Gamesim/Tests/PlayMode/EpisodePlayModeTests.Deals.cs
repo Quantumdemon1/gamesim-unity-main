@@ -25,6 +25,7 @@ namespace Gamesim.Tests.PlayMode
         {
             var maya = SceneComponents<HouseNpc>().Single(npc => npc.Id == ContentCatalog.MayaId);
             yield return OpenNearbyNpc(maya);
+            yield return EnterConversationCategory(EpisodeDirector.DealsCategoryCaption);
 
             var before = director.Snapshot;
             Assert.That(before.dealRulesStartWeek, Is.EqualTo(1), "A fresh season deals from week one.");
@@ -60,11 +61,13 @@ namespace Gamesim.Tests.PlayMode
         {
             var maya = SceneComponents<HouseNpc>().Single(npc => npc.Id == ContentCatalog.MayaId);
             yield return OpenNearbyNpc(maya);
+            yield return EnterConversationCategory(EpisodeDirector.DealsCategoryCaption);
 
             // Put an offer on the table the way the house would, then reopen so the panel draws it.
             var offer = Seed(maya.Id, DealKind.SafetyAgreement);
             director.ClosePanels();
             yield return OpenNearbyNpc(maya);
+            yield return EnterConversationCategory(EpisodeDirector.DealsCategoryCaption);
 
             var before = director.Snapshot;
             Assert.That(NpcDeals.Pending(before).Any(d => d.id == offer.id), Is.True);

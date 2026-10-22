@@ -1,5 +1,7 @@
+using System;
 using Gamesim.House;
 using Gamesim.Presentation;
+using UnityEngine;
 
 namespace Gamesim.Episode
 {
@@ -23,15 +25,61 @@ namespace Gamesim.Episode
         /// </summary>
         public bool HintsForPad => padHints;
 
+        /// <summary>
+        /// Whether a line worded now names the pad's buttons (A4f): the device of this frame's press,
+        /// or the hints' device when nothing was pressed. Read at the press, not from the hints alone:
+        /// a pad's A on a HUD control reaches its handler through the UI module, which can run before
+        /// this frame's <see cref="NoteInputDevice"/>.
+        /// </summary>
+        private bool PressWasPad => HouseInput.PadUsed() ?? padHints;
+
         /// <summary>A press on the other kind of device rewords the hints: the prompt on its next line, the HUD at once.</summary>
         private void NoteInputDevice()
         {
             var pad = HouseInput.PadUsed();
             if (!pad.HasValue || pad.Value == padHints) return;
             padHints = pad.Value;
+            // The player log says which device the session is on, each time it changes (A13).
+            Debug.Log(SettingsEvidence.DeviceLine(padHints));
             // The talk prompt is kept for the houseguest it names; worded afresh for the device.
             promptNpc = null;
             if (hud != null) hud.SetPadHints(padHints);
+            // The status line, the settings' CEREMONIES paragraph and the house challenge's are
+            // worded for a device too (A4f): a line in the other device's words is worded again, and
+            // a panel showing one of those paragraphs is drawn again, its focus kept as a render keeps it.
+            bool reworded = RewordStatusForDevice(padHints);
+            if (!IsReady || hud == null) return;
+            if (reworded || settingsOpen || (challengeActive && challengeRun == null)) Render();
+        }
+
+        /// <summary>
+        /// The status line in the other device's words, worded again for <paramref name="pad"/>: the
+        /// way to the episode screen or the diary, or a piece of furniture's line - the message, and
+        /// the furniture's notice, which keeps its line apart from the message (S2A-R1). Whether
+        /// either changed.
+        /// </summary>
+        private bool RewordStatusForDevice(bool pad)
+        {
+            string line = Reworded(message, pad), notice = Reworded(activityNotice, pad);
+            if (line != null) message = line;
+            if (notice != null) activityNotice = notice;
+            return line != null || (notice != null && commandNotice);
+        }
+
+        /// <summary>A line in the other device's words, worded for <paramref name="pad"/>; null when it is none of those lines, or already is.</summary>
+        private static string Reworded(string line, bool pad)
+        {
+            if (string.IsNullOrEmpty(line)) return null;
+            string reworded = null;
+            foreach (bool warp in new[] { true, false })
+            {
+                if (line == InputGlossary.StationLine(warp, !pad)) reworded = InputGlossary.StationLine(warp, pad);
+                else if (line == InputGlossary.DiaryWayLine(warp, !pad)) reworded = InputGlossary.DiaryWayLine(warp, pad);
+            }
+            if (reworded == null)
+                foreach (HouseFurnitureActivity kind in Enum.GetValues(typeof(HouseFurnitureActivity)))
+                    if (line == ActivityStatus(kind, !pad)) { reworded = ActivityStatus(kind, pad); break; }
+            return reworded == null || reworded == line ? null : reworded;
         }
 
         /// <summary>The settings' disclosure that shows every control, and hides them again.</summary>
@@ -64,6 +112,68 @@ namespace Gamesim.Episode
                 if (line.Context != context) { context = line.Context; hud.Heading(context); }
                 hud.NamedParagraph(line.Name, line.Text);
             }
+            // Rebinding (A5): each of the house's actions given a key, or a pad button, of the
+            // player's own. The device that presses "Rebind ..." is the one it listens to, and the
+            // lines above say what each answers to now.
+            hud.Heading(RebindHeading);
+            hud.Paragraph(RebindLine());
+            foreach (var target in KeyBindings.Targets)
+            {
+                var each = target;
+                hud.Action(each.Caption, () => StartRebind(each));
+            }
+            hud.Action(KeyBindings.ResetCaption, ResetBindings);
+        }
+
+        /// <summary>The heading over the rebinding controls.</summary>
+        public const string RebindHeading = "Change a control";
+
+        /// <summary>What the last rebinding came to, in the player's words, or null for the section's own line.</summary>
+        private string rebindMessage;
+
+        /// <summary>
+        /// The line under the heading: what to press while a rebinding listens, what the last one came
+        /// to, or how it is done. Its way out follows the device (D16, lane-input-5): a rebinding
+        /// listening on the pad takes a pad button and B cancels it, as it cancels a camera key's the
+        /// pad asked for; otherwise Esc, as written.
+        /// </summary>
+        private string RebindLine()
+        {
+            var listening = HouseBindings.ListeningFor;
+            if (listening != null && HouseBindings.ListeningOnPad) return "Press the new button for " + listening.Name + ". B cancels.";
+            // The camera's keys are the keyboard's alone: the pad turns, zooms and pans with its sticks.
+            if (listening != null)
+                return "Press the new " + (listening.OnPad ? "key or button" : "key") + " for " + listening.Name + ". " + (HouseBindings.PadCancels ? "B" : "Esc") + " cancels.";
+            return rebindMessage ?? "Choose an action below, then press the key - or the pad button - it should answer to. " + (padHints ? "B" : "Esc") + " cancels.";
+        }
+
+        /// <summary>Listens for the next press for <paramref name="target"/> on the device that pressed the control.</summary>
+        private void StartRebind(KeyBindings.Target target)
+        {
+            // The press that ended the last rebinding - Enter on this very control among them - starts none.
+            if (HouseBindings.Busy) return;
+            rebindMessage = null;
+            HouseBindings.Listen(target, PressWasPad, Preferences, (said, changed) =>
+            {
+                rebindMessage = said;
+                if (changed) LogSettingChanges();
+                if (!settingsOpen || hud == null) return;
+                Render();
+                hud.FocusWhenWired(target.Caption);
+            });
+            Render();
+            hud.FocusWhenWired(target.Caption);
+        }
+
+        /// <summary>Every key and button back as shipped, kept, and said.</summary>
+        private void ResetBindings()
+        {
+            if (HouseBindings.Busy) return;
+            HouseBindings.ResetAll(Preferences);
+            rebindMessage = "Every control is back as it was shipped.";
+            LogSettingChanges();
+            Render();
+            hud.FocusWhenWired(KeyBindings.ResetCaption);
         }
 
         /// <summary>The house's actions: the rig's, or the shared copy when there is no rig (HouseInput).</summary>
@@ -147,6 +257,8 @@ namespace Gamesim.Episode
             else if (IsSeasonReportOpen) seasonReport.Close();
             else
             {
+                if (TryDeferVisibleNpcInvitation()) return true;
+                if (BackConversationNavigation()) return true;
                 // A panel closes. With nothing open at all, Escape and Start are the pause menu,
                 // and B is nothing - not even a redraw; the overview, your moves or a chip's card
                 // close first and the press stops there.

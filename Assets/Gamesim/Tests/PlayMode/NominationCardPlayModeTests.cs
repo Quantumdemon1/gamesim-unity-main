@@ -40,8 +40,6 @@ namespace Gamesim.Tests.PlayMode
         /// <summary>The block, in every test: Jordan Taylor and Casey Wilson.</summary>
         private const string Jordan = "a", Casey = "b", Hoh = "Maya Hassan";
 
-        private const float LargeText = 1.2f;
-
         private GameObject owner;
         private readonly List<Object> props = new List<Object>();
 
@@ -69,7 +67,7 @@ namespace Gamesim.Tests.PlayMode
         [UnityTest]
         public IEnumerator TheKeyHangsLeftOfTheWholeTitleOnEveryPlay()
         {
-            foreach (float fontScale in new[] { 1f, LargeText })
+            foreach (float fontScale in TextScales.All)
             {
                 var keys = Keys(3, CeremonyPace.Quick, fontScale);
                 yield return null;
@@ -178,7 +176,7 @@ namespace Gamesim.Tests.PlayMode
         [UnityTest]
         public IEnumerator EveryLabelStandsInsideTheCardOnBothFramesAtBothSizes()
         {
-            foreach (float fontScale in new[] { 1f, LargeText })
+            foreach (float fontScale in TextScales.All)
             {
                 string size = " at " + fontScale;
                 var keys = Keys(3, CeremonyPace.Quick, fontScale);
@@ -415,7 +413,7 @@ namespace Gamesim.Tests.PlayMode
                 AssertNamesAreOneSize(keys, "Nominee", 28f, where + ", the block");
                 keys.Cancel();
             }
-            foreach (float fontScale in new[] { 1f, LargeText })
+            foreach (float fontScale in TextScales.All)
             {
                 var hud = Keys(3, CeremonyPace.Quick, fontScale);
                 yield return null;

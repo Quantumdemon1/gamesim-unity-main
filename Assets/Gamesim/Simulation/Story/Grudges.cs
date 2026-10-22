@@ -140,9 +140,14 @@ namespace Gamesim.Simulation
 
         internal static double ThreatScaledBeforeSafetyEffects(EpisodeState state, double severity, string holderId,
             string breakerId, IReadOnlyList<string> excludedSafetyEffects)
+            => ThreatScaledBeforeCommitmentEffects(state, severity, holderId, breakerId, excludedSafetyEffects, null);
+
+        /// <summary>The same, a reveal's own Vote effects excluded from the breaker's reputation too (vote family V5c).</summary>
+        internal static double ThreatScaledBeforeCommitmentEffects(EpisodeState state, double severity, string holderId,
+            string breakerId, IReadOnlyList<string> excludedSafetyEffects, IReadOnlyCollection<string> excludedVoteEffects)
         {
             double threat = Math.Max(0, Math.Min(100,
-                ThreatAssessment.TotalBeforeSafetyEffects(state, holderId, breakerId, excludedSafetyEffects)));
+                ThreatAssessment.TotalBeforeCommitmentEffects(state, holderId, breakerId, excludedSafetyEffects, excludedVoteEffects)));
             return Math.Round(severity * (1 + threat / 200));
         }
     }

@@ -254,7 +254,7 @@ namespace Gamesim.Tests.PlayMode
         private static IEnumerator CheckBrowserTextScale(Component screen, Action<float> setScale)
         {
             float standardHeight = 0f;
-            foreach (float scale in new[] { 1f, 1.2f })
+            foreach (float scale in TextScales.All)
             {
                 setScale(scale);
                 yield return null; // CanvasScaler observes the changed reference resolution in Update.
@@ -289,8 +289,8 @@ namespace Gamesim.Tests.PlayMode
                 ((RectTransform)search.transform).GetWorldCorners(corners);
                 float renderedHeight = Vector3.Distance(corners[0], corners[1]);
                 if (scale == 1f) standardHeight = renderedHeight;
-                else Assert.That(renderedHeight / standardHeight, Is.EqualTo(1.2f).Within(.01f),
-                    "The entire search row, including its text, must inherit larger-text magnification exactly once.");
+                else Assert.That(renderedHeight / standardHeight, Is.EqualTo(scale).Within(.01f),
+                    "The entire search row, including its text, must inherit the text size's magnification exactly once (" + scale + ").");
             }
         }
 

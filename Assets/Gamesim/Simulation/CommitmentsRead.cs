@@ -140,12 +140,13 @@ namespace Gamesim.Simulation
         private static string Named(EpisodeState s, string id) => s != null && id == s.playerId ? "you" : First(s, id);
 
         // Detached provenance views, not a second writer or a summed mechanical obligation.
-        // Legacy seasons retain their original list order and null-handling branches.
+        // Legacy seasons retain their original list order and null-handling branches. Wherever
+        // Safety is canonical - mode 2 too, whose views are mode 1's lists (vote family V5f).
         private static IEnumerable<PromiseState> ReadPromises(EpisodeState s) =>
-            UnifiedCommitments.RulesOn(s) ? CommitmentReferences.Promises(s) : s.promises;
+            UnifiedCommitments.SafetyAuthorityOn(s) ? CommitmentReferences.Promises(s) : s.promises;
 
         private static IEnumerable<DealState> ReadDeals(EpisodeState s) =>
-            UnifiedCommitments.RulesOn(s) ? CommitmentReferences.Deals(s) : s.deals;
+            UnifiedCommitments.SafetyAuthorityOn(s) ? CommitmentReferences.Deals(s) : s.deals;
 
         private static void AddPromises(EpisodeState s, List<Commitment> into)
         {
@@ -168,7 +169,7 @@ namespace Gamesim.Simulation
                     // A promise is one-sided: only whoever gave it can break it, and the engine
                     // breaks it only on their act (a nomination, a ballot, the final choice).
                     brokenById = !withheld && p.status == PromiseStatus.Broken ? p.fromId : null,
-                    settledWeek = !withheld && UnifiedCommitments.RulesOn(s) && p.kind == PromiseKind.Safety ? p.settledWeek : 0,
+                    settledWeek = !withheld && UnifiedCommitments.SafetyAuthorityOn(s) && p.kind == PromiseKind.Safety ? p.settledWeek : 0,
                 };
                 c.binds = PromiseBinds(s, p, yours);
                 c.status = withheld ? KnownBallots.Unresolved
@@ -197,7 +198,7 @@ namespace Gamesim.Simulation
                     title = Capitalise(DealNoun(d.type)) + (yours ? " you proposed" : " they offered"),
                     week = d.week, untilWeek = Math.Max(0, d.expiresWeek),
                     outcome = withheld ? Outcomes.Unresolved : DealOutcome(d.status),
-                    settledWeek = !withheld && UnifiedCommitments.RulesOn(s) && d.type == DealKind.SafetyAgreement ? d.settledWeek : 0,
+                    settledWeek = !withheld && UnifiedCommitments.SafetyAuthorityOn(s) && d.type == DealKind.SafetyAgreement ? d.settledWeek : 0,
                 };
                 if (d.status == DealStatus.Broken && !withheld) c.brokenById = FinalistRead.DealBreaker(s, d);
                 c.binds = DealBinds(s, d);
@@ -598,7 +599,8 @@ namespace Gamesim.Simulation
             {
                 // The engine clones what it is given, and so does every command it applies: the
                 // season this was read from is never touched, and the copy's stream is its own.
-                result = new EpisodeEngine(state).Apply(command);
+                // A mode-2 season runs on the engine that holds it (vote family V5f).
+                result = (UnifiedVoteStore.On(state) ? EpisodeEngine.ProspectiveVote(state) : new EpisodeEngine(state)).Apply(command);
             }
             catch (Exception)
             {
@@ -643,16 +645,17 @@ namespace Gamesim.Simulation
         {
             var breaches = new List<Breach>();
             string player = before.playerId;
-            var deals = after.deals.ToDictionary(x => x.id, StringComparer.Ordinal);
-            foreach (var deal in before.deals)
+            // Mode 1's raw lists, before and after - in mode 2 the views of them (vote family V5f).
+            var deals = CommitmentReferences.RawDeals(after).ToDictionary(x => x.id, StringComparer.Ordinal);
+            foreach (var deal in CommitmentReferences.RawDeals(before))
             {
                 if (deal.status != DealStatus.Active || (deal.proposerId != player && deal.recipientId != player)) continue;
                 if (!deals.TryGetValue(deal.id, out var now) || now.status != DealStatus.Broken) continue;
                 if (!SettledByThePlayer(before, d, deal.type)) continue;
                 breaches.Add(DealBreach(before, deal, d));
             }
-            var promises = after.promises.ToDictionary(x => x.id, StringComparer.Ordinal);
-            foreach (var promise in before.promises)
+            var promises = CommitmentReferences.RawPromises(after).ToDictionary(x => x.id, StringComparer.Ordinal);
+            foreach (var promise in CommitmentReferences.RawPromises(before))
             {
                 if (promise.status != PromiseStatus.Active || promise.fromId != player) continue;
                 if (!promises.TryGetValue(promise.id, out var now) || now.status != PromiseStatus.Broken) continue;
@@ -661,7 +664,7 @@ namespace Gamesim.Simulation
             foreach (var oath in before.loyaltyOaths.Where(o => o.playerId == player || o.targetId == player))
                 if (!after.loyaltyOaths.Any(o => o.playerId == oath.playerId && o.targetId == oath.targetId && o.week == oath.week && o.timestamp == oath.timestamp))
                     breaches.Add(OathBreach(before, oath, d));
-            if (UnifiedCommitments.RulesOn(before) && UnifiedCommitments.RulesOn(after))
+            if (UnifiedCommitments.SafetyAuthorityOn(before) && UnifiedCommitments.SafetyAuthorityOn(after))
             {
                 // Once the engine is activated, use its actual canonical transitions, not every
                 // broken historical row. In particular another HoH's replacement is not ours.
@@ -794,7 +797,7 @@ namespace Gamesim.Simulation
         private static void NominationRules(EpisodeState s, List<string> named, Decision decision, List<Breach> breaches)
         {
             string player = s.playerId;
-            if (UnifiedCommitments.RulesOn(s))
+            if (UnifiedCommitments.SafetyAuthorityOn(s))
             {
                 // Exactly the action's named nominees: old nominees and a veto-saved guest
                 // must not be treated as replacement nominations. Evaluation is read-only.
@@ -826,17 +829,18 @@ namespace Gamesim.Simulation
         {
             string player = s.playerId, target = decision.firstId;
             if (!CanCast(s) || string.IsNullOrEmpty(target) || !s.nominees.Contains(target) || target == player) return breaches;
-            foreach (var promise in s.promises.Where(p => p.status == PromiseStatus.Active && p.kind == PromiseKind.Vote && p.fromId == player))
+            // Mode 1's raw lists - in mode 2 the views of them, its Vote rows included (vote family V5f).
+            foreach (var promise in CommitmentReferences.RawPromises(s).Where(p => p.status == PromiseStatus.Active && p.kind == PromiseKind.Vote && p.fromId == player))
                 if (promise.targetId != target) breaches.Add(PromiseBreach(s, promise, decision));
             var oath = s.loyaltyOaths.FirstOrDefault(o => (o.playerId == player && o.targetId == target) || (o.playerId == target && o.targetId == player));
             if (oath != null) breaches.Add(OathBreach(s, oath, decision));
             var ballot = new List<VoteState> { new VoteState { voterId = player, targetId = target, reason = "dry run" } };
             if (EpisodeEngine.CommitmentRulesOn(s))
-                foreach (var deal in s.deals.Where(d => d.status == DealStatus.Active && d.type == DealKind.Partnership && (d.proposerId == player || d.recipientId == player)))
+                foreach (var deal in CommitmentReferences.RawDeals(s).Where(d => d.status == DealStatus.Active && d.type == DealKind.Partnership && (d.proposerId == player || d.recipientId == player)))
                     if (DealResolution.PartnershipAtTheVote(deal, ballot, s.nominees, out string actor) == DealStatus.Broken && actor == player)
                         breaches.Add(DealBreach(s, deal, decision));
             if (!EpisodeEngine.LeverRulesOn(s)) return breaches;
-            foreach (var deal in s.deals.Where(d => d.status == DealStatus.Active && (d.proposerId == player || d.recipientId == player)))
+            foreach (var deal in CommitmentReferences.RawDeals(s).Where(d => d.status == DealStatus.Active && (d.proposerId == player || d.recipientId == player)))
             {
                 if (deal.type != DealKind.VoteSave && deal.type != DealKind.VoteEvict) continue;
                 if (DealResolution.VoteDeal(deal, ballot, s.nominees, out string actor) == DealStatus.Broken && actor == player)

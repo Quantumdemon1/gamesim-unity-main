@@ -1,0 +1,140 @@
+using System;
+using System.Collections;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Reflection;
+using Gamesim.Episode;
+using Gamesim.House;
+using Gamesim.Persistence;
+using Gamesim.Presentation;
+using Gamesim.Simulation;
+using NUnit.Framework;
+using TMPro;
+using UnityEngine;
+using UnityEngine.EventSystems;
+using UnityEngine.InputSystem;
+using UnityEngine.TestTools;
+using UnityEngine.UI;
+
+namespace Gamesim.Tests.PlayMode
+{
+    /// <summary>
+    /// The NPC invitation bubble and the Story Pull (lane S2a, D18): captions of the bubble's own, and the
+    /// two never on screen together.
+    /// </summary>
+    public sealed partial class EpisodePlayModeTests
+    {
+        /// <summary>
+        /// D18: the invitation bubble has captions of its own, and it and the Story Pull never share the
+        /// screen: whichever is up keeps the floor until it is answered. Here the invitation is up when a
+        /// walk-in is found; the Pull waits, and comes up once the invitation is turned down - and no
+        /// other invitation comes up over it, nor is sent for, for as long as it stays up.
+        /// </summary>
+        [UnityTest, Timeout(300000)]
+        public IEnumerator HudStatus_TheInvitationBubbleAndTheStoryPullNeverShareTheScreen()
+        {
+            var pullCaptions = new[] { EpisodeHud.StepInCaption, EpisodeHud.StayOutCaption, EpisodeHud.HearThemOutCaption,
+                EpisodeHud.NotNowCaption, EpisodeHud.JoinMeetingCaption, EpisodeHud.TakeItOnCaption };
+            foreach (string own in new[] { HouseNpcInvitationBubble.HearCaption, HouseNpcInvitationBubble.NotNowCaption })
+                Assert.That(pullCaptions, Has.No.Member(own), "The bubble's '" + own + "' is a caption of its own.");
+            Assert.That(HouseNpcInvitationBubble.HearCaption, Is.Not.EqualTo(HouseNpcInvitationBubble.NotNowCaption));
+
+            var state = ContentCatalog.Create(6123);
+            state.dealRulesStartWeek = 1;
+            foreach (var edge in state.relationships) edge.score = 0;
+            foreach (var npc in state.Active.Where(person => !person.isPlayer))
+            {
+                state.relationships.Single(edge => edge.fromId == npc.id && edge.toId == state.playerId).score = 10;
+                state.relationships.Single(edge => edge.fromId == state.playerId && edge.toId == npc.id).score = 60;
+            }
+            state.relationships.Single(edge => edge.fromId == ContentCatalog.MayaId && edge.toId == state.playerId).score = 90;
+            state.relationships.Single(edge => edge.fromId == "jamie-roberts" && edge.toId == state.playerId).score = 35;
+            NpcDeals.Propose(state);
+            Assert.That(NpcDeals.Pending(state).Count, Is.GreaterThanOrEqualTo(2), "More than one offer could come to the player.");
+            state.socialActions = EpisodeEngine.SocialActionBudget(state);
+            // The story system on, with nothing open: a Pull comes only from the walk-in this test stages.
+            EpisodeEngine.EnableStory(state, state.week);
+            Assert.That(EpisodeEngine.OpenStoryBeats(state), Is.Empty);
+            Assert.That(EpisodeValidation.TryValidate(state, out string reason), Is.True, reason);
+            new EpisodeSaveStore(director.SavePath).Save(state);
+            yield return ReloadEpisode();
+            Assert.That(NpcRead<bool>("npcDiagnosticsSuspended"), Is.False, "The house's own world runs: it is what brings the invitation.");
+            // The walk-in watch's clock held off, so the staged walk-in is the only one offered.
+            NpcWrite("proximityWatch", -1e6f);
+            // In the house's own view, not the map: the Pull's card is built only there (RightColumn
+            // builds the overview's column in its place), so only there can the two share the screen.
+            Assert.That(director.ShowOverview(), Is.True);
+            director.EndOverview();
+            yield return null;
+            Assert.That(director.IsOverview || director.IsBriefing, Is.False, "The house's own view.");
+            float deadline = Time.realtimeSinceStartup + 35f;
+            while (!director.NpcInvitationIsVisible && Time.realtimeSinceStartup < deadline) yield return null;
+            Assert.That(director.NpcAutonomyReady, Is.True, director.NpcAutonomyDiagnostic);
+            Assert.That(director.NpcInvitationIsVisible, Is.True, "A motivated houseguest reaches the player and the bubble is up.");
+            Assert.That(director.GetComponentsInChildren<RectTransform>(true).Any(rect => rect.name == EpisodeHud.PullCardName), Is.True,
+                "The Pull's card is built in this view, so its being on screen can be seen.");
+            var bubble = director.GetComponent<HouseNpcInvitationBubble>();
+            string firstInviter = director.CurrentNpcInvitationNpcId;
+            Assert.That(FindButton(HouseNpcInvitationBubble.HearCaption), Is.SameAs(bubble.HearControl), "One control wears the bubble's yes.");
+            Assert.That(FindButton(HouseNpcInvitationBubble.NotNowCaption), Is.SameAs(bubble.NotNowControl), "One control wears its no.");
+
+            // A walk-in found while the bubble is up. The engine takes none in a season's first week
+            // (EpisodeEngine.BeforeTheFirstAsk), so StageWalkInForDiagnostics refuses this fixture; and
+            // what a walk-in would become is not this test's subject, what is on screen is. The offer
+            // is set as the proximity watch sets it - a pair, the room, the week - and, as the watch's
+            // offer, writes nothing.
+            var now = director.Snapshot;
+            var pair = now.Active.Where(actor => !actor.isPlayer && actor.id != director.CurrentNpcInvitationNpcId)
+                .Select(actor => actor.id).OrderBy(id => id, StringComparer.Ordinal).Take(2).ToList();
+            Assert.That(pair, Has.Count.EqualTo(2), "Two others to walk in on.");
+            Assert.That(EpisodeEngine.StoryOn(now), Is.True, "A walk-in is offered as a Pull only under the story system.");
+            NpcWrite("walkInFirst", pair[0]);
+            NpcWrite("walkInSecond", pair[1]);
+            NpcWrite("walkInRoom", "Living");
+            NpcWrite("walkInWeek", now.week);
+            NpcWrite("proximityWatch", -1e6f);
+
+            int together = 0, frames = 0;
+            void Sample()
+            {
+                frames++;
+                // On screen, both: the bubble drawn and the Pull's card up.
+                if (director.NpcInvitationIsVisible && ActiveRect(EpisodeHud.PullCardName) != null) together++;
+            }
+            for (int frame = 0; frame < 30; frame++) { yield return null; Sample(); }
+            Assert.That(together, Is.Zero, "The bubble and the Pull were on screen together on " + together + " of " + frames + " frames.");
+            Assert.That(director.NpcInvitationIsVisible, Is.True, "The invitation already up keeps the floor,");
+            Assert.That(director.PullOffered, Is.Null, "and the walk-in's Pull waits.");
+
+            bubble.NotNowControl.onClick.Invoke();
+            Assert.That(director.NpcInvitationIsVisible, Is.False, "Turned down, the bubble goes.");
+            float until = Time.realtimeSinceStartup + 2.5f;
+            while (Time.realtimeSinceStartup < until) { yield return null; Sample(); }
+            Assert.That(together, Is.Zero, "The bubble and the Pull were on screen together on " + together + " of " + frames + " frames.");
+            Assert.That(director.PullOffered, Is.EqualTo(EpisodeHud.StepInCaption), "The walk-in's Pull takes its turn,");
+            Assert.That(ActiveRect(EpisodeHud.PullCardName), Is.Not.Null, "on screen,");
+            Assert.That(director.NpcInvitationIsVisible, Is.False, "and no other invitation comes up over it.");
+
+            // The exclusion's other half (NpcInvitationHouseAvailable): while the Pull is up the next
+            // houseguest with an offer is held back - not even sent for. Let through, the invitation
+            // scan sends for them within its second and their bubble is up once they reach the player,
+            // so the watch is held well past both, and only while the Pull is on screen.
+            int sentFor = 0, shown = 0;
+            float watchedFrom = Time.realtimeSinceStartup, watchUntil = watchedFrom + 12f;
+            while (Time.realtimeSinceStartup < watchUntil && ActiveRect(EpisodeHud.PullCardName) != null)
+            {
+                yield return null; Sample();
+                if (director.CurrentNpcInvitationNpcId != null) sentFor++;
+                if (director.NpcInvitationIsVisible) shown++;
+            }
+            float watched = Time.realtimeSinceStartup - watchedFrom;
+            Assert.That(watched, Is.GreaterThanOrEqualTo(10f), "The unanswered Pull keeps the screen to be watched; it went after " + watched + " s.");
+            Assert.That(NpcDeals.Pending(director.Snapshot).Any(offer => offer.proposerId != firstInviter), Is.True,
+                "Somebody besides the first to come still has an offer to bring.");
+            Assert.That(sentFor, Is.Zero, "Under the Pull an invitation was sent for on " + sentFor + " frames.");
+            Assert.That(shown, Is.Zero, "Under the Pull an invitation was on screen on " + shown + " frames.");
+            Assert.That(together, Is.Zero, "The bubble and the Pull were on screen together on " + together + " of " + frames + " frames.");
+        }
+    }
+}

@@ -66,12 +66,12 @@ namespace Gamesim.Tests.PlayMode
             var jurors = state.contestants.Where(EpisodeHud.IsJuror).ToList();
             Assume.That(jurors, Is.Not.Empty, "A jury is seated by the Final 3.");
 
-            foreach (bool larger in new[] { false, true })
+            foreach (var textSize in TextSizes.All)
             {
-                yield return ApplyTextSize(larger);
+                yield return ApplyTextSize(textSize);
                 yield return PutAwayTheCards();
-                float scale = larger ? 1.2f : 1f;
-                string where = larger ? " at the larger text" : " at the resting text";
+                float scale = TextSizes.Scale(textSize);
+                string where = " " + TextScales.At(textSize);
 
                 // The pins the frame at three already had: one rail child per actor, each with its parts.
                 var rail = TheRail();
@@ -105,6 +105,8 @@ namespace Gamesim.Tests.PlayMode
                 Assert.That(strip, Is.Not.Null, "The objectives card keeps its strip" + where + ".");
                 Assert.That(strip.GetComponentsInChildren<Image>().Count(image => image.name == "Juror"), Is.EqualTo(jurors.Count), "One face per juror on the strip.");
                 var card = LastActive(CastRail.QuoteName);
+                if (cards && band - rail.rect.width >= 306f * scale)
+                    Assert.That(card, Is.Not.Null, "Removing the decorative quote keeps the jury card when the finalists leave room" + where + ".");
                 if (card != null)
                 {
                     var labels = card.GetComponentsInChildren<TMP_Text>().ToList();

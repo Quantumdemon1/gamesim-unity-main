@@ -25,6 +25,15 @@ namespace Gamesim.Episode
     /// The two columns are measured together, so the cards end level and the controls under them
     /// stand level whatever each card holds.</para>
     ///
+    /// <para>At the largest text a page that holds only by giving up the line of what the choice does
+    /// pages instead (the owner's contract of 2026-10-15; EpisodeHud.LargestPages.cs), decided before
+    /// anything is built: the first page is what the player knows of each finalist - the portrait
+    /// card, the tiles, the jury read and the chips' legend - and the second what taking each one
+    /// means - the name over the bullets, the either-way line, and under each card the breach, the
+    /// warning, what the choice does and the control. Both keep the two columns side by side as
+    /// equals with the VS between them, and the line under the band; the pager stands at each page's
+    /// foot. At the standard and the larger text the page is one, laid as it always was.</para>
+    ///
     /// <para>An Enter the player did not aim commits nothing: the page opens with the keyboard on
     /// Close, never on a choice (<see cref="MayFocusOnItsOwn"/>), and a card is lit while its control
     /// holds the keyboard, so Enter only ever presses the lit control (<see cref="ChoiceLight"/>).</para>
@@ -73,7 +82,15 @@ namespace Gamesim.Episode
         {
             public string Line, EitherWay;
             public IList<FinalChoiceColumn> Columns;
+            /// <summary>Renders the page again: the largest text's pager has turned its page (EpisodeHud.LargestPages.cs). View state.</summary>
+            public Action Redraw;
         }
+
+        /// <summary>
+        /// The largest text's two pages of the choice, and the one page that holds it all: what the
+        /// player knows of each finalist, then what taking each one means.
+        /// </summary>
+        private const int ChoiceWholePage = -1, ChoiceKnowPage = 0, ChoiceTakePage = 1, ChoicePages = 2;
 
         // Sizes at the resting text size; each is multiplied by the text scale.
         private const float ChoicePad = 14f, ChoiceRowGap = 12f, ChoiceSectionGap = 10f, ChoicePhotoGap = 14f,
@@ -101,6 +118,9 @@ namespace Gamesim.Episode
                 Photo = photo; Archetype = archetype; Record = record; Bullet = bullet; Chip = chip; ChipType = chipType; Gaps = gaps;
                 Consequence = consequence; Control = control;
             }
+
+            /// <summary>The same tier saying what the choice does: the largest text's pages always say it.</summary>
+            public ChoiceTier Saying() => new ChoiceTier(Photo, Archetype, Record, Bullet, Chip, ChipType, Gaps, true, Control);
         }
 
         /// <summary>
@@ -140,6 +160,19 @@ namespace Gamesim.Episode
             public float HeadH, EitherY, EitherH, ColumnsY, LegendY, LegendH, Total;
             public List<ChipSpot>[] Chips;
             public List<float>[] BulletHeights;
+            /// <summary>
+            /// Which page this lays: <see cref="ChoiceWholePage"/> for the one page that holds it all,
+            /// or one of the largest text's two (<see cref="ChoiceKnowPage"/>, <see cref="ChoiceTakePage"/>).
+            /// </summary>
+            public int Page = ChoiceWholePage;
+            /// <summary>The name over the bullets on the second page, where the portrait card is not.</summary>
+            public float NameH;
+            /// <summary>Whether the card carries the photo, who they are, the tiles and the jury read: every page but the second.</summary>
+            public bool ShowsWhoTheyAre => Page != ChoiceTakePage;
+            /// <summary>Whether the card carries the bullets and the column the words and the control under it: every page but the first.</summary>
+            public bool ShowsTheChoice => Page != ChoiceKnowPage;
+
+            public ChoiceLayout Copy() => (ChoiceLayout)MemberwiseClone();
         }
 
         /// <summary>
@@ -167,6 +200,29 @@ namespace Gamesim.Episode
                 if (layout.Total <= room + .5f) break;
             }
 
+            // Whether the page holds on one page, decided here with the height known and nothing
+            // built: at the largest text a page that would hold only at the tier that gives up the
+            // line of what the choice does - or not at all - pages instead (the owner's contract,
+            // EpisodeHud.LargestPages.cs). Only the last tier gives that line up, so the loop above
+            // stopping on it says so. Each page takes the largest tier at which both hold, saying
+            // what the choice does at every tier; where none does, the smallest, and the panel's
+            // scroll is the last resort, as it always was.
+            bool paged = LargestTextPages && !layout.Tier.Consequence;
+            int choicePage = 0;
+            if (paged)
+            {
+                float pageRoom = Mathf.Max(0f, room - LargestPagerHeight);
+                choicePage = LargestPageOf(FinalChoicePageName, ChoicePages);
+                foreach (var tier in ChoiceTiers)
+                {
+                    var whole = ChoiceMeasure(spec, probe, width, tier.Saying());
+                    var know = ChoicePageOf(whole, ChoiceKnowPage);
+                    var take = ChoicePageOf(whole, ChoiceTakePage);
+                    layout = choicePage == ChoiceKnowPage ? know : take;
+                    if (know.Total <= pageRoom + .5f && take.Total <= pageRoom + .5f) break;
+                }
+            }
+
             if (layout.HeadH > 0f)
             {
                 var head = EndScreenKit.Box(ScreenHeadName, page, 0f, 0f, width, layout.HeadH);
@@ -185,16 +241,25 @@ namespace Gamesim.Episode
             // The columns' lights answer to one another, so one card is lit at a time.
             var lights = row.GetComponentsInChildren<ChoiceLight>(true);
             foreach (var light in lights) light.Group = lights;
-            // Two people and one choice between them: the VS in the gap, level with their faces.
-            Versus(row, layout.Gap, ChoicePad * s + layout.PhotoH * .5f);
-            var legend = FixedText(page, FinalChoiceWords.Legend, 12, UiTheme.Muted, new Vector2(0f, -layout.LegendY), new Vector2(width, layout.LegendH));
-            legend.name = ChipLegendName;
-            legend.alignment = TextAlignmentOptions.Top;
+            // Two people and one choice between them: the VS in the gap, level with their faces - or,
+            // on the largest text's second page, with their names.
+            Versus(row, layout.Gap, ChoicePad * s + (layout.ShowsWhoTheyAre ? layout.PhotoH : layout.NameH) * .5f);
+            if (layout.LegendH > 0f)
+            {
+                var legend = FixedText(page, FinalChoiceWords.Legend, 12, UiTheme.Muted, new Vector2(0f, -layout.LegendY), new Vector2(width, layout.LegendH));
+                legend.name = ChipLegendName;
+                legend.alignment = TextAlignmentOptions.Top;
+            }
 
             probe.gameObject.SetActive(false);
             Destroy(probe.gameObject);
+            // The largest text's pager at the page's foot, where it stands on both pages, so the press
+            // that turned one page can turn it back; built last, after the controls, as the ring follows
+            // the hierarchy.
+            float height = paged ? Mathf.Max(room, layout.Total + LargestPagerHeight) : layout.Total;
+            if (paged) LargestPager(page, 0f, height - LargestPagerPill * s, width, FinalChoicePageName, choicePage, ChoicePages, spec.Redraw);
             var size = page.GetComponent<LayoutElement>();
-            size.minHeight = size.preferredHeight = layout.Total;
+            size.minHeight = size.preferredHeight = height;
         }
 
         // ------------------------------------------------------------ measuring
@@ -340,6 +405,68 @@ namespace Gamesim.Episode
             return layout;
         }
 
+        /// <summary>
+        /// One of the largest text's two pages, from the whole page measured at a tier that says what
+        /// the choice does: the same columns, widths, chips and bullets, laid for the page's own parts.
+        /// The first: the line under the band, each card's photo, who they are, the tiles and the jury
+        /// read, and the chips' legend under the columns. The second: the line under the band, the
+        /// either-way line, each card's name over the bullets, and under each card the breach, the
+        /// warning, what the choice does and the control, each the taller of the two columns', so the
+        /// cards end level and the controls stand level as on the one page.
+        /// </summary>
+        private ChoiceLayout ChoicePageOf(ChoiceLayout whole, int pageIndex)
+        {
+            float s = FontScale, pad = ChoicePad * s, section = ChoiceSectionGap * s * whole.Tier.Gaps, between = ChoiceRowGap * s * whole.Tier.Gaps;
+            var layout = whole.Copy();
+            layout.Page = pageIndex;
+            float y;
+            if (pageIndex == ChoiceKnowPage)
+            {
+                // The card ends under the chips; nothing stands under it but the legend.
+                layout.Bullets = false;
+                layout.CardH = layout.ChipsY + layout.ChipsH + pad;
+                layout.BreachH = layout.WarningH = layout.ConsequenceH = layout.ControlH = 0f;
+                layout.ColumnsH = layout.CardH;
+                layout.EitherY = layout.EitherH = 0f;
+                y = layout.HeadH > 0f ? layout.HeadH + between : 0f;
+                layout.ColumnsY = y;
+                layout.LegendY = y + layout.ColumnsH + between;
+                layout.Total = layout.LegendY + layout.LegendH;
+                return layout;
+            }
+
+            // The name where the portrait card was, then the bullets under their eyebrow.
+            layout.NameH = BoardLine(20);
+            y = pad + layout.NameH;
+            if (layout.Bullets)
+            {
+                layout.BulletsY = y + section;
+                layout.BulletsListY = layout.BulletsY + 20f * s + 4f * s;
+                y = layout.BulletsListY + layout.BulletsH;
+            }
+            layout.CardH = y + pad;
+            // Under the card, as on the one page: the breach, the warning, what the choice does, the control.
+            y = layout.CardH + section;
+            if (layout.BreachH > 0f) { layout.BreachY = y; y += layout.BreachH + 6f * s; }
+            layout.WarningY = y;
+            if (layout.WarningH > 0f) y += layout.WarningH + 4f * s;
+            layout.ConsequenceY = y;
+            if (layout.ConsequenceH > 0f) y += layout.ConsequenceH + 8f * s;
+            layout.ControlY = y;
+            layout.ColumnsH = y + layout.ControlH;
+            // The line under the band, the either-way line, and the columns; the legend is the first page's.
+            y = layout.HeadH > 0f ? layout.HeadH + between : 0f;
+            if (layout.EitherH > 0f)
+            {
+                layout.EitherY = y;
+                y += layout.EitherH + 8f * s;
+            }
+            layout.ColumnsY = y;
+            layout.LegendY = layout.LegendH = 0f;
+            layout.Total = y + layout.ColumnsH;
+            return layout;
+        }
+
         /// <summary>A chip's width: its name at the chip's type and weight between its insets, never wider than the row.</summary>
         private float ChipWidth(TMP_Text probe, string name, ChoiceTier tier, float width, TMP_FontAsset weight) =>
             Mathf.Min(width, BoardWidthOf(probe, name, tier.ChipType, weight) + 18f * FontScale + 2f);
@@ -395,12 +522,13 @@ namespace Gamesim.Episode
         /// <summary>
         /// One finalist's column: the card - the photo beside who they are, the tiles, the jury read
         /// and the bullets - and under it the breach, the warning, what the choice does and the control.
+        /// On the largest text's pages, the first page's card is who they are and the jury read, with
+        /// nothing under it; the second's is their name over the bullets, with everything under it.
         /// </summary>
         private void FinalChoiceColumnIn(RectTransform row, FinalChoiceColumn column, ChoiceLayout layout, int index, TMP_Text probe)
         {
             float s = FontScale, pad = ChoicePad * s;
             var actor = column.Actor;
-            var read = column.Read;
             var box = EndScreenKit.Box("Finalist column · " + actor.name, row, index * (layout.ColumnWidth + layout.Gap), 0f, layout.ColumnWidth, layout.ColumnsH);
             var card = EndScreenKit.Box(FinalistCardPrefix + actor.name, box, 0f, 0f, layout.ColumnWidth, layout.CardH);
             // The pack's finalist card, as the finale's final two wear it, and the gold edge the
@@ -410,6 +538,72 @@ namespace Gamesim.Episode
                 null, UiTheme.CardFill);
             var chosen = ChosenEdge(card);
 
+            // Who they are and the jury's read, on every page but the largest text's second, where
+            // the card names them over what taking them means.
+            if (layout.ShowsWhoTheyAre) FinalChoiceWhoTheyAre(card, column, layout, index, probe);
+            else
+            {
+                var name = FixedText(card, actor.name, 20, Paper, new Vector2(pad, -pad), new Vector2(layout.Inner, layout.NameH));
+                name.name = "Name";
+                var semibold = UiTheme.Font(UiTheme.Weight.SemiBold);
+                if (semibold != null) name.font = semibold;
+                OneLine(name, 12f);
+                name.overflowMode = TextOverflowModes.Ellipsis;
+            }
+
+            // What taking them means: the read's own bullets.
+            if (layout.Bullets && column.Bullets != null && column.Bullets.Count > 0)
+            {
+                float side = 16f * s;
+                float x = Mark("Eyebrow mark", card, PackArt.IconTrophy, null, UiTheme.Gold, new Vector2(pad, -(layout.BulletsY + 2f * s)), side) != null ? side + 8f * s : 0f;
+                var eyebrow = FixedText(card, column.BulletsHeading ?? FinalChoiceWords.BulletsEyebrow(actor.name, null), 12, Accent,
+                    new Vector2(pad + x, -layout.BulletsY), new Vector2(Mathf.Max(10f, layout.Inner - x), 20f * s));
+                eyebrow.name = BulletsEyebrowName;
+                eyebrow.characterSpacing = 4f;
+                eyebrow.alignment = TextAlignmentOptions.MidlineLeft;
+                OneLine(eyebrow, 8f);
+                float y = layout.BulletsListY;
+                var heights = layout.BulletHeights[index];
+                for (int b = 0; b < column.Bullets.Count; b++)
+                {
+                    var bullet = FixedText(card, ChoiceBullet(column.Bullets[b]), layout.Tier.Bullet, Paper, new Vector2(pad, -y), new Vector2(layout.Inner, heights[b]));
+                    bullet.name = FinalistBulletName;
+                    y += heights[b] + 2f * s;
+                }
+            }
+
+            if (!layout.ShowsTheChoice) return;
+
+            // Under the card, level with the other column's: what this choice alone would break of the
+            // player's word (ACTIONS-DEALS-ALLIANCES-PLAN V1), the warning, what the choice does.
+            if (!string.IsNullOrEmpty(column.Breach))
+            {
+                var breach = FixedText(box, column.Breach, 13, UiTheme.Warning, new Vector2(0f, -layout.BreachY), new Vector2(layout.ColumnWidth, layout.BreachH));
+                breach.name = BreachWarningName;
+                breach.alignment = TextAlignmentOptions.Top;
+            }
+            if (!string.IsNullOrEmpty(column.Warning)) ChoiceWarning(box, column.Warning, layout, probe);
+            if (layout.ConsequenceH > 0f && !string.IsNullOrEmpty(column.Consequence))
+            {
+                var line = FixedText(box, column.Consequence, 13, UiTheme.Muted, new Vector2(0f, -layout.ConsequenceY), new Vector2(layout.ColumnWidth, layout.ConsequenceH));
+                line.name = FinalistConsequenceName;
+                line.alignment = TextAlignmentOptions.Top;
+            }
+            // The column's one control, its caption the choice's two halves.
+            if (!string.IsNullOrEmpty(column.Caption) && column.Choose != null)
+                FinalChoiceControl(box, column.Caption, column.Choose, layout.ControlY, layout.ColumnWidth, layout.ControlH, chosen);
+        }
+
+        /// <summary>
+        /// A card's portrait half: the photo, and beside it who they are and where the player stands,
+        /// the three public tiles, and the jury read - the jurors as chips, grouped and coloured by
+        /// the lean the player can tell.
+        /// </summary>
+        private void FinalChoiceWhoTheyAre(RectTransform card, FinalChoiceColumn column, ChoiceLayout layout, int index, TMP_Text probe)
+        {
+            float s = FontScale, pad = ChoicePad * s;
+            var actor = column.Actor;
+            var read = column.Read;
             // The portrait card: the photo, and beside it who they are and where the player stands.
             var photo = HudPrimitives.RectPortrait(card, "Photo", Portrait(actor.id), actor, new Vector2(layout.PhotoW, layout.PhotoH), 10);
             EndScreenKit.Place(photo, pad, pad, layout.PhotoW, layout.PhotoH);
@@ -449,46 +643,6 @@ namespace Gamesim.Episode
                     OneLine(label, 8f);
                 }
             }
-
-            // What taking them means: the read's own bullets.
-            if (layout.Bullets && column.Bullets != null && column.Bullets.Count > 0)
-            {
-                float side = 16f * s;
-                float x = Mark("Eyebrow mark", card, PackArt.IconTrophy, null, UiTheme.Gold, new Vector2(pad, -(layout.BulletsY + 2f * s)), side) != null ? side + 8f * s : 0f;
-                var eyebrow = FixedText(card, column.BulletsHeading ?? FinalChoiceWords.BulletsEyebrow(actor.name, null), 12, Accent,
-                    new Vector2(pad + x, -layout.BulletsY), new Vector2(Mathf.Max(10f, layout.Inner - x), 20f * s));
-                eyebrow.name = BulletsEyebrowName;
-                eyebrow.characterSpacing = 4f;
-                eyebrow.alignment = TextAlignmentOptions.MidlineLeft;
-                OneLine(eyebrow, 8f);
-                float y = layout.BulletsListY;
-                var heights = layout.BulletHeights[index];
-                for (int b = 0; b < column.Bullets.Count; b++)
-                {
-                    var bullet = FixedText(card, ChoiceBullet(column.Bullets[b]), layout.Tier.Bullet, Paper, new Vector2(pad, -y), new Vector2(layout.Inner, heights[b]));
-                    bullet.name = FinalistBulletName;
-                    y += heights[b] + 2f * s;
-                }
-            }
-
-            // Under the card, level with the other column's: what this choice alone would break of the
-            // player's word (ACTIONS-DEALS-ALLIANCES-PLAN V1), the warning, what the choice does.
-            if (!string.IsNullOrEmpty(column.Breach))
-            {
-                var breach = FixedText(box, column.Breach, 13, UiTheme.Warning, new Vector2(0f, -layout.BreachY), new Vector2(layout.ColumnWidth, layout.BreachH));
-                breach.name = BreachWarningName;
-                breach.alignment = TextAlignmentOptions.Top;
-            }
-            if (!string.IsNullOrEmpty(column.Warning)) ChoiceWarning(box, column.Warning, layout, probe);
-            if (layout.ConsequenceH > 0f && !string.IsNullOrEmpty(column.Consequence))
-            {
-                var line = FixedText(box, column.Consequence, 13, UiTheme.Muted, new Vector2(0f, -layout.ConsequenceY), new Vector2(layout.ColumnWidth, layout.ConsequenceH));
-                line.name = FinalistConsequenceName;
-                line.alignment = TextAlignmentOptions.Top;
-            }
-            // The column's one control, its caption the choice's two halves.
-            if (!string.IsNullOrEmpty(column.Caption) && column.Choose != null)
-                FinalChoiceControl(box, column.Caption, column.Choose, layout.ControlY, layout.ColumnWidth, layout.ControlH, chosen);
         }
 
         /// <summary>

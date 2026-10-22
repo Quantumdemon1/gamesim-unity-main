@@ -293,7 +293,7 @@ namespace Gamesim.Tests.PlayMode
         public IEnumerator Chrome_TheCardsSayTheGameItsRulesAndTheClock()
         {
             owner = new GameObject("Chrome test"); screen = CompetitionGameScreen.Attach(owner);
-            foreach (float scale in new[] { 1f, 1.2f })
+            foreach (float scale in TextScales.All)
             foreach (var definition in CompetitionDefinitions.All)
             {
                 screen.FontScale = scale;

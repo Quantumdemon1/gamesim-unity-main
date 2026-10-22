@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using Gamesim.Episode;
 using Gamesim.Persistence;
+using Gamesim.Presentation;
 using Gamesim.Simulation;
 using NUnit.Framework;
 using TMPro;
@@ -77,11 +78,11 @@ namespace Gamesim.Tests.PlayMode
             foreach (bool privateRoom in new[] { false, true })
             {
                 yield return InstallBlockSpeechHouse(16);
-                foreach (bool large in new[] { false, true })
+                foreach (var textSize in TextSizes.All)
                 {
-                    yield return ApplyTextSize(large); yield return OpenBlockSpeech(privateRoom);
+                    yield return ApplyTextSize(textSize); yield return OpenBlockSpeech(privateRoom);
                     var before = director.Snapshot;
-                    string where = "Block speech diary=" + privateRoom + " large=" + large;
+                    string where = "Block speech diary=" + privateRoom + " text=" + TextSizes.Name(textSize);
                     var row = ActiveRect(EpisodeHud.BlockSpeechApproachesName);
                     Assert.That(row, Is.Not.Null, where);
                     Assert.That(row.GetComponentsInChildren<Button>().Length, Is.EqualTo(4));

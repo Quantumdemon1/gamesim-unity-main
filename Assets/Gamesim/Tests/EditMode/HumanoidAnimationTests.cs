@@ -39,11 +39,12 @@ namespace Gamesim.Tests.EditMode
         [Test]
         public void TheMocapTakesImportAsHumanoidAndTheLoopsLoop()
         {
-            // Twenty-seven: the twelve mocap takes, the walk and its stop - the walk is the one that
+            // Thirty-two: the twelve mocap takes, the walk and its stop - the walk is the one that
             // mattered, because without an authored take the Walk state was a key for UMA to fill,
             // and UMA's Locomotion controller has no walk, so it filled it with a run - then three
-            // dances, three seated takes and the seven standing stills the living poses come from.
-            Assert.That(HumanoidClipWiring.Takes.Length, Is.EqualTo(27), "twenty-seven takes arrived");
+            // dances, three seated takes, the seven standing stills the living poses come from, and
+            // the story's five reactions, authored in Blender on the same skeleton.
+            Assert.That(HumanoidClipWiring.Takes.Length, Is.EqualTo(33), "the original thirty-two takes plus the separate grounded farewell");
             foreach (var take in HumanoidClipWiring.Takes)
             {
                 var path = HumanoidClipWiring.Path(take);
@@ -274,8 +275,9 @@ namespace Gamesim.Tests.EditMode
                         + "does not declare, and that is what keeps the body still rather than wrong");
             }
             Assert.That(HumanoidClipWiring.WiredReactions.Select(r => r.trigger).ToArray(),
-                Is.EqualTo(new[] { "ReactNominated", "ReactSaved", "ReactEvicted", "ReactWon", "ReactCheered" }),
-                "every beat now has a distinct authored or captured motion");
+                Is.EqualTo(new[] { "ReactNominated", "ReactSaved", "ReactEvicted", "ReactWon", "ReactCheered",
+                    "ReactShocked", "ReactTearful", "ReactEmbrace", "ReactFurious", "ReactStormOff", "ReactFarewell" }),
+                "every beat, the story's five included, has a distinct authored or captured motion, in the enum's order");
             Assert.That(HumanoidClipWiring.Reactions.Single(r => r.trigger == "ReactSaved").state,
                 Is.EqualTo("ReactSaved"));
             Assert.That(HumanoidClipWiring.Reactions.Single(r => r.trigger == "ReactNominated").state,
@@ -394,7 +396,16 @@ namespace Gamesim.Tests.EditMode
                     && c.mode == AnimatorConditionMode.IfNot), Is.True, stateName + " only while standing");
                 Assert.That(state.transitions.Any(t => t.destinationState == idle && t.hasExitTime), Is.True,
                     stateName + " returns to idle");
+                // Tagged, so a body knows it is acting a beat out (CharacterPresentation.IsReacting),
+                // and handed back where its take is back in the base pose.
+                Assert.That(state.tag, Is.EqualTo(CharacterPresentation.ReactionStateTag), stateName + " carries the reaction tag");
+                var back = state.transitions.Single(t => t.destinationState == idle && t.hasExitTime);
+                Assert.That(back.exitTime, Is.EqualTo(HumanoidClipWiring.ReactionExitTime(stateName)).Within(1e-4f),
+                    stateName + " hands back to idle at its take's own exit point");
             }
+            Assert.That(HumanoidClipWiring.ReactionExitTime("ReactNominated"), Is.EqualTo(.9f));
+            Assert.That(HumanoidClipWiring.ReactionExitTime("ReactShocked"), Is.EqualTo(.95f));
+            Assert.That(HumanoidClipWiring.ReactionExitTime("ReactEmbrace"), Is.EqualTo(.97f));
         }
 
         /// <summary>
@@ -636,11 +647,26 @@ namespace Gamesim.Tests.EditMode
                 Assert.That(Leads(state, walk, HumanoidClipWiring.SpeedParameter), Is.True, stateName + " gives way to a walk");
                 Assert.That(state.transitions.Any(t => t.destinationState == idle && t.hasExitTime), Is.True, stateName + " returns to idle");
             }
-            // The ceremony beats keep playing over a step, and gain no walk: they fire at a commit,
-            // on bodies that may still be easing to a halt.
-            foreach (var (_, stateName) in HumanoidClipWiring.WiredReactions)
+            // The ceremony beats, and the story's shock, tears and fury, keep playing over a step and
+            // gain no walk: they fire at a commit, on bodies that may still be easing to a halt. An
+            // embrace let go of and a storm-off are ways of leaving, and give way at once.
+            var playOut = new[] { "ReactNominated", "ReactSaved", "ReactEvicted", "ReactWon", "ReactCheered",
+                "ReactShocked", "ReactTearful", "ReactFurious" };
+            var leave = new[] { "ReactEmbrace", "ReactStormOff", "ReactFarewell" };
+            Assert.That(HumanoidClipWiring.WiredReactions.Select(r => r.state).OrderBy(s => s, StringComparer.Ordinal),
+                Is.EqualTo(playOut.Concat(leave).OrderBy(s => s, StringComparer.Ordinal)), "every wired beat is in one list or the other");
+            Assert.That(HumanoidClipWiring.ReactionsThatGiveWay, Is.EqualTo(leave));
+            foreach (var stateName in playOut)
                 Assert.That(Leads(State(controller, stateName), walk, HumanoidClipWiring.SpeedParameter), Is.False,
                     stateName + " plays out rather than being cut short by a body still coming to a stop");
+            foreach (var stateName in leave)
+            {
+                var state = State(controller, stateName);
+                Assert.That(Leads(state, walk, HumanoidClipWiring.SpeedParameter), Is.True, stateName + " gives way to a walk");
+                var toWalk = state.transitions.Single(t => t.destinationState == walk);
+                Assert.That(toWalk.hasExitTime, Is.False, stateName + " goes the moment the body is sent");
+                Assert.That(toWalk.duration, Is.LessThanOrEqualTo(.15f), stateName + " crosses into the walk quickly");
+            }
 
             foreach (var seat in new[] { "SitIdle", "SitTalk" })
             {
@@ -698,6 +724,115 @@ namespace Gamesim.Tests.EditMode
             }
         }
 
+        /// <summary>The story's five takes, by the beat each acts out: React_shocked for Shocked and so on.</summary>
+        private static readonly CharacterPresentation.Reaction[] StoryBeats =
+        {
+            CharacterPresentation.Reaction.Shocked, CharacterPresentation.Reaction.Tearful, CharacterPresentation.Reaction.Embrace,
+            CharacterPresentation.Reaction.Furious, CharacterPresentation.Reaction.StormOff,
+        };
+
+        private static string StoryTake(CharacterPresentation.Reaction beat) => "React_" + beat.ToString().ToLowerInvariant();
+
+        /// <summary>
+        /// Each story take is regenerated from its own Blender script (ArtSource/animation), one
+        /// script per export: a take with no script could not be remade, and a script with no take
+        /// is a take nobody imported.
+        /// </summary>
+        [Test]
+        public void EveryStoryTakeHasItsScript()
+        {
+            string folder = Path.Combine(Directory.GetCurrentDirectory(), "ArtSource", "animation");
+            Assert.That(Directory.Exists(folder), Is.True, "ArtSource/animation sits beside Assets, and the acceptance mirror carries it.");
+            foreach (var beat in StoryBeats)
+            {
+                string take = StoryTake(beat);
+                Assert.That(HumanoidClipWiring.Takes, Does.Contain(take), take + " is wired");
+                Assert.That(File.Exists(HumanoidClipWiring.Path(take)), Is.True, HumanoidClipWiring.Path(take));
+                Assert.That(File.Exists(Path.Combine(folder, "bb_anim_" + take.ToLowerInvariant() + ".py")), Is.True,
+                    take + " is exported by ArtSource/animation/bb_anim_" + take.ToLowerInvariant() + ".py");
+            }
+            var scripts = Directory.GetFiles(folder, "bb_anim_*.py").Select(file => Path.GetFileNameWithoutExtension(file))
+                .OrderBy(name => name, StringComparer.Ordinal).ToArray();
+            Assert.That(scripts, Is.EqualTo(StoryBeats.Select(b => "bb_anim_" + StoryTake(b).ToLowerInvariant())
+                    .Concat(new[] { "bb_anim_react_farewell" }).OrderBy(name => name, StringComparer.Ordinal)),
+                "the five story sources and the separate grounded farewell are the exact source inventory");
+        }
+
+        /// <summary>
+        /// The story takes stand where their root is, face the way their body faces, end where they
+        /// began and breathe while they hold - the rules bb_anim.check() asserts in Blender, read
+        /// again from the clips Unity imported, so a re-export or an import rule cannot drift them.
+        /// Hold windows are the art brief's, in frames at 30 fps.
+        /// </summary>
+        [Test]
+        public void EveryStoryTakeStandsStillFacesForwardAndBreathes()
+        {
+            var holds = new System.Collections.Generic.Dictionary<string, (int from, int to)[]>
+            {
+                ["React_shocked"] = new[] { (14, 54) },
+                ["React_tearful"] = new[] { (20, 96) },
+                ["React_embrace"] = new[] { (21, 84) },
+                ["React_furious"] = new[] { (68, 80) },
+                ["React_stormoff"] = new (int, int)[0],
+            };
+            var still = AssetDatabase.LoadAssetAtPath<AnimationClip>(HumanoidClipWiring.Path("PoseAtEase_loop"));
+            Assert.That(still, Is.Not.Null);
+            float standing = Curve(still, "RootT.y").Evaluate(0f);
+            var muscles = HumanTrait.MuscleName;
+            foreach (var beat in StoryBeats)
+            {
+                string take = StoryTake(beat);
+                var clip = AssetDatabase.LoadAllAssetsAtPath(HumanoidClipWiring.Path(take)).OfType<AnimationClip>()
+                    .First(c => !c.name.StartsWith("__preview", StringComparison.Ordinal));
+                Assert.That(clip.humanMotion, Is.True, take);
+                Assert.That(clip.isLooping, Is.False, take + " is a one-shot");
+                float length = clip.length;
+                var tx = Curve(clip, "RootT.x"); var ty = Curve(clip, "RootT.y"); var tz = Curve(clip, "RootT.z");
+                float minX = 9f, maxX = -9f, minZ = 9f, maxZ = -9f, lowest = 9f, early = 0f, overall = 0f;
+                var start = RootQ(clip, 0f);
+                for (int i = 0; i <= 120; i++)
+                {
+                    float t = length * i / 120f;
+                    minX = Mathf.Min(minX, tx.Evaluate(t)); maxX = Mathf.Max(maxX, tx.Evaluate(t));
+                    minZ = Mathf.Min(minZ, tz.Evaluate(t)); maxZ = Mathf.Max(maxZ, tz.Evaluate(t));
+                    lowest = Mathf.Min(lowest, ty.Evaluate(t));
+                    var turned = RootQ(clip, t) * Quaternion.Inverse(start) * Vector3.forward;
+                    turned.y = 0f;
+                    float yaw = Mathf.Abs(Vector3.SignedAngle(Vector3.forward, turned, Vector3.up));
+                    overall = Mathf.Max(overall, yaw);
+                    if (t >= .2f && t <= .7f) early = Mathf.Max(early, yaw);
+                }
+                Assert.That(maxX - minX, Is.LessThanOrEqualTo(.03f), take + " keeps its body over its root (x)");
+                Assert.That(maxZ - minZ, Is.LessThanOrEqualTo(.03f), take + " keeps its body over its root (z)");
+                Assert.That(lowest, Is.GreaterThanOrEqualTo(.95f * standing), take + " stands: its root at " + lowest + " against the base's " + standing);
+                Assert.That(early, Is.LessThanOrEqualTo(15f), take + " faces forward as it starts (0.2-0.7 s)");
+                Assert.That(overall, Is.LessThanOrEqualTo(20f), take + " faces forward throughout");
+                foreach (var muscle in muscles)
+                {
+                    var curve = AnimationUtility.GetEditorCurve(clip, EditorCurveBinding.FloatCurve("", typeof(Animator), muscle));
+                    if (curve == null) continue;
+                    Assert.That(curve.Evaluate(length), Is.EqualTo(curve.Evaluate(0f)).Within(.03f), take + " ends where it began: " + muscle);
+                }
+                var chest = Curve(clip, "Chest Front-Back");
+                foreach (var (from, to) in holds[take])
+                {
+                    float lo = 9f, hi = -9f;
+                    for (int f = from; f <= to; f++) { float v = chest.Evaluate(f / 30f); lo = Mathf.Min(lo, v); hi = Mathf.Max(hi, v); }
+                    Assert.That(hi - lo, Is.GreaterThanOrEqualTo(.01f), take + " breathes through its hold f" + from + "-f" + to);
+                }
+            }
+        }
+
+        private static AnimationCurve Curve(AnimationClip clip, string attribute)
+        {
+            var curve = AnimationUtility.GetEditorCurve(clip, EditorCurveBinding.FloatCurve("", typeof(Animator), attribute));
+            Assert.That(curve, Is.Not.Null, clip.name + " has a " + attribute + " curve");
+            return curve;
+        }
+
+        private static Quaternion RootQ(AnimationClip clip, float t) => new Quaternion(Curve(clip, "RootQ.x").Evaluate(t),
+            Curve(clip, "RootQ.y").Evaluate(t), Curve(clip, "RootQ.z").Evaluate(t), Curve(clip, "RootQ.w").Evaluate(t)).normalized;
+
         [Test]
         public void NothingInTheCommittedControllerLeavesThisRepository()
         {
@@ -724,6 +859,18 @@ namespace Gamesim.Tests.EditMode
             Assert.That(handle.runtimeAnimatorController, Is.SameAs(Controller()), "the handle carries the controller");
             Assert.That(Resources.Load<AnimatorOverrideController>(HumanoidClipWiring.HandleResource),
                 Is.SameAs(handle), "and UmaBodyProvider can load it by that name");
+
+            // Wiring an already correct Resources handle must be a no-op, including its dirty
+            // flag. SaveAssets would otherwise rewrite its retained serialization unnecessarily.
+            Assert.That(EditorUtility.IsDirty(handle), Is.False, "the imported handle starts clean");
+            var handleBytes = File.ReadAllBytes(HumanoidClipWiring.Handle);
+            var wireHandle = typeof(HumanoidClipWiring).GetMethod("WireHandle",
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
+            Assert.That(wireHandle, Is.Not.Null, "exercise the real wiring path, not a test substitute");
+            wireHandle.Invoke(null, new object[] { Controller() });
+            Assert.That(EditorUtility.IsDirty(handle), Is.False, "same-base wiring must not dirty the handle");
+            CollectionAssert.AreEqual(handleBytes, File.ReadAllBytes(HumanoidClipWiring.Handle),
+                "same-base wiring leaves all serialized bytes intact");
 
             // The two states UMA fills in are wired to takes nothing else plays, so overriding them
             // at runtime cannot disturb a state that has a take of its own.

@@ -114,15 +114,16 @@ namespace Gamesim.Tests.PlayMode
         [UnityTest, Timeout(900000)]
         public IEnumerator Negotiation_ACounterStandsAtTheHeadOfTheConversationAndIsAnsweredThere()
         {
-            foreach (bool larger in new[] { false, true })
+            foreach (var (textSize, larger) in TextScales.Steps)
             foreach (bool take in new[] { true, false })
             {
-                string size = larger ? " at the larger text" : "";
+                string size = larger ? " " + TextScales.At(textSize) : "";
                 var listener = new string[1];
                 yield return InstallNegotiatingHouse(CounterStands, listener);
-                yield return ApplyTextSize(larger);
+                yield return ApplyTextSize(textSize);
                 string id = listener[0];
                 yield return TalkTo(id);
+                yield return EnterConversationCategory(EpisodeDirector.DealsCategoryCaption);
                 string where = "A counter standing" + size + (take ? ", taken" : ", turned down");
                 Assert.That(director.IsConversationOpen, Is.True, where + ": the conversation opens.");
                 var open = director.Snapshot;
@@ -138,9 +139,9 @@ namespace Gamesim.Tests.PlayMode
                 var no = ButtonWithCaption(EpisodeHud.CounterDeclineCaption(first));
                 Assert.That(TagOn(yes), Is.EqualTo(EpisodeDirector.CounterAcceptTag), where + ": taking it binds the player, with no roll;");
                 Assert.That(TagOn(no), Is.EqualTo(EpisodeDirector.CounterDeclineTag), where + ": turning it down is free.");
-                AssertConversationFits(larger, where);
+                AssertConversationFits(textSize, where);
                 AssertTagsHaveRoom(where);
-                if (take) yield return CaptureConversation("conversation-counter" + (larger ? "-large" : ""), where, null);
+                if (take) yield return CaptureConversation("conversation-counter" + TextScales.Suffix(textSize), where, null);
 
                 int revision = director.Snapshot.revision, deals = director.Snapshot.deals.Count;
                 // CaptureFraming explicitly re-renders for each canvas and again afterward.
@@ -190,6 +191,7 @@ namespace Gamesim.Tests.PlayMode
             }, listener);
             string npc = listener[0];
             yield return TalkTo(npc);
+            yield return EnterConversationCategory(EpisodeDirector.DealsCategoryCaption);
             Assert.That(director.IsConversationOpen, Is.True, "The conversation opens.");
             var open = director.Snapshot;
             Assert.That((open.nextSequence, open.randomState), Is.EqualTo((shaped[0], drawn[0])),
@@ -205,6 +207,7 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(refused.deals.Count, Is.EqualTo(deals), "turned down,");
             var counter = Negotiation.OpenCounter(refused, npc);
             Assert.That(counter, Is.Not.Null, "and it comes back as a counter.");
+            yield return EnterConversationCategory(EpisodeDirector.DealsCategoryCaption);
             Assert.That(director.IsConversationOpen, Is.True, "The conversation answers at its head:");
             string shown = ShownText();
             Assert.That(shown, Does.Contain(EpisodeDirector.CounterHeading(name)), "the counter, who it is from,");
@@ -235,14 +238,15 @@ namespace Gamesim.Tests.PlayMode
         [UnityTest, Timeout(900000)]
         public IEnumerator Negotiation_ThePromiseOfAFinalTwoCalledInFitsAtBothTextSizes()
         {
-            foreach (bool larger in new[] { false, true })
+            foreach (var (textSize, larger) in TextScales.Steps)
             {
                 var listener = new string[1];
                 yield return InstallNegotiatingHouse(OwedAFinalTwo, listener);
-                yield return ApplyTextSize(larger);
+                yield return ApplyTextSize(textSize);
                 string id = listener[0];
                 yield return TalkTo(id);
-                string where = "A promise of a final two owed" + (larger ? " at the larger text" : "");
+                yield return EnterConversationCategory(EpisodeDirector.DealsCategoryCaption);
+                string where = "A promise of a final two owed" + (larger ? " " + TextScales.At(textSize) : "");
                 Assert.That(director.IsConversationOpen, Is.True, where + ": the conversation opens.");
                 var open = director.Snapshot;
                 string first = FinalistRead.FirstName(open.Find(id).name);
@@ -252,9 +256,9 @@ namespace Gamesim.Tests.PlayMode
                 foreach (string approach in Negotiation.Approaches)
                     Assert.That(TagOn(ButtonWithCaption(EpisodeHud.CallInCaption(approach, first, Negotiation.PromiseWords(promise.kind)))),
                         Is.EqualTo(EpisodeDirector.CallInTag(approach) + " · " + Negotiation.ShownWord(open, id, approach)), where + ": " + approach);
-                AssertConversationFits(larger, where);
+                AssertConversationFits(textSize, where);
                 AssertTagsHaveRoom(where);
-                yield return CaptureConversation("conversation-negotiation-final-two" + (larger ? "-large" : ""), where, null);
+                yield return CaptureConversation("conversation-negotiation-final-two" + TextScales.Suffix(textSize), where, null);
                 director.ClosePanels();
                 yield return null;
             }
@@ -275,12 +279,12 @@ namespace Gamesim.Tests.PlayMode
                     status = DealStatus.Proposed, week = state.week, expiresWeek = state.week, trustImpact = DealKind.DefaultTrust(DealKind.VetoUse),
                 });
             });
-            foreach (bool larger in new[] { false, true })
+            foreach (var (textSize, larger) in TextScales.Steps)
             {
-                yield return ApplyTextSize(larger);
+                yield return ApplyTextSize(textSize);
                 yield return OpenStation();
                 yield return null;
-                string where = "The veto meeting with a nominee's ask" + (larger ? " at the larger text" : "");
+                string where = "The veto meeting with a nominee's ask" + (larger ? " " + TextScales.At(textSize) : "");
                 var shown = director.Snapshot;
                 var asked = shown.deals.Single(deal => deal.id == "deal-veto-9");
                 string offers = Negotiation.AskPriceLine(shown, asked);
@@ -290,7 +294,7 @@ namespace Gamesim.Tests.PlayMode
                 var panel = ActiveRect("Episode panel");
                 AssertEveryLabelDraws(panel, where);
                 AssertNoMeetingLabelOverflows(panel, where);
-                if (Application.isBatchMode) yield return CaptureFraming("veto-meeting-ask-price" + (larger ? "-large" : ""));
+                if (Application.isBatchMode) yield return CaptureFraming("veto-meeting-ask-price" + TextScales.Suffix(textSize));
                 director.ClosePanels();
                 yield return null;
             }
@@ -315,14 +319,15 @@ namespace Gamesim.Tests.PlayMode
         [UnityTest, Timeout(900000)]
         public IEnumerator Negotiation_APromiseOwedAndABreachOfYoursAreOfferedAsMovesAndEachCommits()
         {
-            foreach (bool larger in new[] { false, true })
+            foreach (var (textSize, larger) in TextScales.Steps)
             {
-                string size = larger ? " at the larger text" : "";
+                string size = larger ? " " + TextScales.At(textSize) : "";
                 var listener = new string[1];
                 yield return InstallNegotiatingHouse(OwedAndWronged, listener);
-                yield return ApplyTextSize(larger);
+                yield return ApplyTextSize(textSize);
                 string id = listener[0];
                 yield return TalkTo(id);
+                yield return EnterConversationCategory(EpisodeDirector.DealsCategoryCaption);
                 string where = "A promise owed and a breach of the player's" + size;
                 Assert.That(director.IsConversationOpen, Is.True, where + ": the conversation opens.");
                 var open = director.Snapshot;
@@ -339,9 +344,9 @@ namespace Gamesim.Tests.PlayMode
                 Assert.That(ButtonWithCaptionOrNull(EpisodeHud.VetoPriceCaption(first, DealKind.VoteSave)), Is.Null,
                     where + ": nobody holds the veto, so there is no price to name for it.");
                 Assert.That(LiveRects(EpisodeHud.OddsNoteName), Has.Count.EqualTo(1), where + ": one note says whose read the chances are.");
-                AssertConversationFits(larger, where);
+                AssertConversationFits(textSize, where);
                 AssertTagsHaveRoom(where);
-                yield return CaptureConversation("conversation-negotiation" + (larger ? "-large" : ""), where, null);
+                yield return CaptureConversation("conversation-negotiation" + TextScales.Suffix(textSize), where, null);
 
                 int revision = director.Snapshot.revision;
                 ButtonWithCaption(EpisodeHud.CallInCaption(Negotiation.Remind, first, Negotiation.PromiseWords(promise.kind))).onClick.Invoke();
@@ -353,6 +358,7 @@ namespace Gamesim.Tests.PlayMode
                 Assert.That(ButtonWithCaptionOrNull(EpisodeHud.CallInCaption(Negotiation.Demand, first, Negotiation.PromiseWords(promise.kind))), Is.Null,
                     where + ": and called in for the week.");
 
+                yield return EnterCategoryForLeaf(EpisodeHud.MendFencesCaption(first));
                 ButtonWithCaption(EpisodeHud.MendFencesCaption(first)).onClick.Invoke();
                 yield return null;
                 var mended = director.Snapshot;
@@ -383,11 +389,12 @@ namespace Gamesim.Tests.PlayMode
                     if (new SeededRandom(n * 2654435761u).NextDouble() * 100 < chance) { state.randomState = n * 2654435761u; break; }
             });
             HoldTheHouseForTheFixture();
-            foreach (bool larger in new[] { false, true })
+            foreach (var (textSize, larger) in TextScales.Steps)
             {
-                yield return ApplyTextSize(larger);
+                yield return ApplyTextSize(textSize);
                 yield return TalkTo(nominee);
-                string where = "A word with a nominee, holding the veto" + (larger ? " at the larger text" : "");
+                yield return EnterConversationCategory(EpisodeDirector.DealsCategoryCaption);
+                string where = "A word with a nominee, holding the veto" + (larger ? " " + TextScales.At(textSize) : "");
                 Assert.That(director.IsConversationOpen, Is.True, where + ": in the week's window a word with a nominee is open.");
                 var shown = director.Snapshot;
                 string name = FinalistRead.FirstName(shown.Find(nominee).name);
@@ -396,14 +403,15 @@ namespace Gamesim.Tests.PlayMode
                 foreach (string kind in named)
                     Assert.That(TagOn(ButtonWithCaption(EpisodeHud.VetoPriceCaption(name, kind))),
                         Is.EqualTo(EpisodeDirector.BindsYouTag + " · " + Negotiation.ShownWord(shown, nominee, Negotiation.VetoForAPrice)), where + ": " + kind);
-                AssertConversationFits(larger, where);
+                AssertConversationFits(textSize, where);
                 AssertTagsHaveRoom(where);
-                yield return CaptureConversation("conversation-veto-price" + (larger ? "-large" : ""), where, null);
+                yield return CaptureConversation("conversation-veto-price" + TextScales.Suffix(textSize), where, null);
                 director.ClosePanels();
                 yield return null;
             }
             yield return ApplyTextSize(false);
             yield return TalkTo(nominee);
+            yield return EnterConversationCategory(EpisodeDirector.DealsCategoryCaption);
             var open = director.Snapshot;
             string first = FinalistRead.FirstName(open.Find(nominee).name);
             var prices = Negotiation.VetoPrices(open, nominee);

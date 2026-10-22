@@ -61,7 +61,7 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(field, Has.Count.EqualTo(2));
             var entrants = field.Select(c => new CompetitionEntrant(c.id, c.name, c.isPlayer, null, c)).ToList();
             string listed = string.Join("\n", field.Select(c => HudPrimitives.WithYou(c.name, c.isPlayer)));
-            foreach (float scale in new[] { 1f, 1.2f })
+            foreach (float scale in TextScales.All)
             {
                 screen.FontScale = scale;
                 var run = new MiniGameRun(CompetitionMiniGames.Kind.Memory, 5, 3, CompetitionDefinitions.HouseMemory);

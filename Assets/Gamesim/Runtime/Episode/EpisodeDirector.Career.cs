@@ -43,11 +43,18 @@ namespace Gamesim.Episode
             try
             {
                 if (career.Record(state)) message += "  ·  Added to your career record.";
-                else if (career.Notice != null) message += "  ·  " + career.Notice;
+                else if (career.Notice != null)
+                {
+                    string notice = career.Notice;
+                    message += "  ·  " + notice;
+                    BeginSystemNotice(notice);
+                }
             }
             catch (Exception error) when (SaveJson.IsExpected(error))
             {
-                message += "  ·  The career record could not be updated. " + SaveJson.Explain(error);
+                string notice = "The career record could not be updated. " + SaveJson.Explain(error);
+                message += "  ·  " + notice;
+                BeginSystemNotice(notice);
             }
         }
 
@@ -95,6 +102,7 @@ namespace Gamesim.Episode
         {
             careerResetArmed = false;
             if (career == null) return;
+            BeginSystemNotice();
             var archived = career.Reset();
             ForgetSeasonNumber();
             message = archived != null
@@ -102,6 +110,7 @@ namespace Gamesim.Episode
                 : File.Exists(career.FilePath)
                     ? "The career record could not be set aside; it is left as it is."
                     : "There was no career record to reset.";
+            if (archived == null && File.Exists(career.FilePath)) BeginSystemNotice(message);
             Render();
         }
     }

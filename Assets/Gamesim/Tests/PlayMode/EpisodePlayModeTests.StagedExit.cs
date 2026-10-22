@@ -31,6 +31,71 @@ namespace Gamesim.Tests.PlayMode
 
         private static CharacterPresentation Presentation(Component body) => body != null ? body.GetComponent<CharacterPresentation>() : null;
 
+        /// <summary>Read-only endpoint observations of the peace's embrace, not a reconstructed inside-call refusal.</summary>
+        private string HugEndpoint(string firstId, string secondId)
+        {
+            var bodies = SceneComponents<HouseNpc>().Where(body => body.Id == firstId || body.Id == secondId).ToArray();
+            var first = bodies.FirstOrDefault(body => body.Id == firstId)?.GetComponent<CharacterPresentation>();
+            var second = bodies.FirstOrDefault(body => body.Id == secondId)?.GetComponent<CharacterPresentation>();
+            string Side(string id, CharacterPresentation body)
+            {
+                if (body == null) return id + ": missing presentation";
+                var seat = body.GetComponent<HouseSeatPresentation>();
+                var motion = body.GetComponent<HouseNpcMotion>();
+                var animator = body.VisualRoot != null ? body.VisualRoot.GetComponentInChildren<Animator>() : null;
+                return id + ": primitive=" + body.IsPrimitiveBody + ", supports=" + body.Supports(CharacterPresentation.Reaction.Embrace)
+                    + ", assembling=" + body.IsBodyAssembling + ", dressing=" + body.IsChangingOutfit
+                    + ", seated=" + body.IsSeated + ", seatActive=" + (seat != null && seat.Active)
+                    + ", seatExiting=" + (seat != null && seat.IsExiting) + ", activity=" + body.Activity
+                    + ", still=" + body.IsStill + ", reacting=" + body.IsReacting + ", last=" + body.LastReaction
+                    + ", root=" + body.transform.position.ToString("F3")
+                    + ", visual=" + (body.VisualRoot != null ? body.VisualRoot.position.ToString("F3") : "missing")
+                    + ", animator=" + (animator != null ? animator.isHuman + "/" + animator.isActiveAndEnabled : "missing")
+                    + ", motion=" + (motion != null ? motion.State + ", lease=" + motion.LeaseId + ", parked=" + motion.IsParked
+                        + ", route=" + motion.RouteLength.ToString("F3") + ", destination=" + motion.ReservedDestination.ToString("F3")
+                        + ", arrival=" + motion.ArrivalFailure + ", routeFailure=" + motion.LastRouteFailure : "none");
+            }
+            var worldField = typeof(EpisodeDirector).GetField("npcMeetings",
+                System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+            var meetings = worldField?.GetValue(director) as HouseMeetingCoordinator;
+            var pair = director.CurrentEmbrace;
+            return "Endpoint only at frame " + Time.frameCount + ", unscaled=" + Time.unscaledTime.ToString("F3")
+                + ", delta=" + Time.deltaTime.ToString("F3") + ", timeScale=" + Time.timeScale
+                + ", phase=" + director.CeremonyStagePhase + ", card=" + director.IsSceneCardOpen
+                + ", panel=" + director.IsPanelOpen + ", pendingFirst=" + director.PendingEmbraceFirst
+                + ", world=" + (meetings != null ? "scene=" + meetings.SceneStageKey + ", held=" + meetings.SceneHeldForEmbrace : "none")
+                + ", worldDiagnostic=" + director.NpcAutonomyDiagnostic
+                + "\n" + Side(firstId, first) + "\n" + Side(secondId, second)
+                + "\nflatRootGap=" + (first != null && second != null ? Flat(first.transform.position, second.transform.position).ToString("F3") : "unknown")
+                + ", currentRefusal=" + EmbracePair.Refusal(first, second, director.Snapshot.playerId)
+                + ", pair=" + (pair != null ? pair.Stage + ", fired=" + pair.Fired + ", released=" + pair.Released
+                    + ", reason=" + pair.ReleaseReason : "none");
+        }
+
+        private IEnumerator WaitForHugEndpoint(System.Func<bool> condition, float seconds,
+            string what, string firstId, string secondId)
+        {
+            float until = Time.realtimeSinceStartup + seconds;
+            while (!condition() && Time.realtimeSinceStartup < until) yield return null;
+            bool reached = condition();
+            Assert.That(reached, Is.True, what + (reached ? "" : "\n" + HugEndpoint(firstId, secondId)));
+        }
+
+        /// <summary>
+        /// The goodbye is noncontact (the owner's decision): no embrace in the scene and neither of
+        /// the two playing one. Null while that holds; otherwise the first time it did not, said.
+        /// </summary>
+        private static string GoodbyeEmbraceSeen(CharacterPresentation leaving, CharacterPresentation staying, string when)
+        {
+            var pairs = Object.FindObjectsByType<EmbracePair>(FindObjectsSortMode.None);
+            if (pairs.Length > 0)
+                return when + ": an embrace is in the scene (" + string.Join(", ", pairs.Select(pair => pair.name)) + ") at frame " + Time.frameCount;
+            foreach (var body in new[] { leaving, staying })
+                if (body != null && body.LastReaction == CharacterPresentation.Reaction.Embrace)
+                    return when + ": " + body.CharacterId + "'s last beat is an embrace, at frame " + Time.frameCount;
+            return null;
+        }
+
         /// <summary>
         /// The result is taken in the chairs, and the goodbye comes between the card and the walk:
         /// the evicted stand and face the house, every seated head turns to them, whoever sits
@@ -45,6 +110,7 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(director.IsCeremonyStaged, Is.True, "The eviction is staged in the living room.");
             Assert.That(director.CeremonyStageKind, Is.EqualTo(CeremonySting.EvictionKind));
             var committed = director.Snapshot;
+            var farewellGraph = UvPayload(committed);
             string evicted = director.DepartingId;
             Assert.That(evicted, Is.Not.Null, "A houseguest is evicted.");
             string survivor = committed.nominees.Single(id => id != evicted);
@@ -118,7 +184,18 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(director.CeremonySkipShowing, Is.True, "the chip names the press that moves it on,");
             Assert.That(director.EvictionKeyLightShowing, Is.True, "and the key light is still on.");
             Assert.That(Presentation(leaving).IsSeated, Is.False, "They are up out of the chair.");
-            foreach (var npc in SceneComponents<HouseNpc>().Where(each => each.gameObject.activeInHierarchy && each.Id != evicted))
+            // The goodbye is noncontact (the owner's decision): watched on every frame from the card
+            // going down to the house getting up - the farewell's own frames among them - not only at the end.
+            string embraceSeen = null;
+            void WatchTheGoodbye(string when)
+            {
+                if (embraceSeen == null) embraceSeen = GoodbyeEmbraceSeen(Presentation(leaving), Presentation(staying), when);
+            }
+            WatchTheGoodbye("as the goodbye began");
+            // Owner-selected NONCONTACT shorter greeting, not the old full hug; the player is never borrowed.
+            bool embraces = survivor != director.Snapshot.playerId && evicted != director.Snapshot.playerId;
+            foreach (var npc in SceneComponents<HouseNpc>().Where(each => each.gameObject.activeInHierarchy && each.Id != evicted
+                && !(embraces && each.Id == survivor)))
             {
                 var visual = Presentation(npc);
                 if (!visual.IsSeated) continue;
@@ -130,7 +207,29 @@ namespace Gamesim.Tests.PlayMode
                 if (!Presentation(npc).IsSeated)
                     Assert.That(Presentation(npc).LastReaction, Is.Not.EqualTo(CharacterPresentation.Reaction.Cheered), npc.Id + " stands, and only looks.");
             Assert.That(Presentation(player).LastReaction, Is.Not.EqualTo(CharacterPresentation.Reaction.Cheered), "The player's body is the player's.");
-            Assert.That(survivorSeat.Active, Is.True, "The survivor is still in red.");
+            if (embraces)
+                yield return WaitForFarewellEndpoint(() =>
+                    {
+                        WatchTheGoodbye("while the one who stays stood");
+                        return !survivorSeat.Active && (director.GoodbyeFarewell != null
+                            || Presentation(staying).IsPrimitiveBody && Presentation(leaving).IsPrimitiveBody
+                            && Presentation(staying).LastReaction == CharacterPresentation.Reaction.Farewell
+                            && Presentation(leaving).LastReaction == CharacterPresentation.Reaction.Farewell);
+                    },
+                    2f, "the one who stays stands for the short reciprocal farewell", evicted, survivor);
+            else Assert.That(survivorSeat.Active, Is.True, "The survivor, the player's body, is still in red.");
+            if (director.GoodbyeFarewell != null)
+            {
+                // The farewell's own frames are watched too, each as it plays: an embrace begun and let
+                // go inside it would leave nothing for a later look to find (S2D-R3).
+                var farewell = ObserveFarewellToIdle(director.GoodbyeFarewell, closedAt + EpisodeDirector.GoodbyeSeconds, farewellGraph);
+                while (farewell.MoveNext())
+                {
+                    WatchTheGoodbye("during the farewell");
+                    Assert.That(embraceSeen, Is.Null, "The farewell is the short noncontact one: " + embraceSeen);
+                    yield return farewell.Current;
+                }
+            }
             var face = leaving.transform.position + Vector3.up * 1.55f;
             Assert.That(cameraRig.HasShot, Is.True, "The camera is the goodbye's,");
             Assert.That(Vector3.Distance(cameraRig.DesiredFocus, face), Is.LessThan(0.3f), "on the evicted's face.");
@@ -141,7 +240,22 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(strip, Has.None.EqualTo(EpisodeDirector.GoodbyeLine(director.Snapshot, evicted)), "The doorway's words wait for a body at the door.");
 
             // Then the walk, and not before the goodbye is over.
-            yield return WaitFor(() => director.WalkingOutId != null, EpisodeDirector.GoodbyeSeconds + 1f, "the goodbye gives way to the walk out");
+            yield return WaitFor(() =>
+                {
+                    WatchTheGoodbye("before the walk");
+                    return director.WalkingOutId != null;
+                }, EpisodeDirector.GoodbyeSeconds + 1f, "the goodbye gives way to the walk out");
+            WatchTheGoodbye("as the walk began");
+            Assert.That(embraceSeen, Is.Null,
+                "Nobody embraces at the goodbye: it is the short noncontact farewell, and the 3.8 s embrace is the peace's alone.");
+            Assert.That(director.GoodbyeFarewell, Is.Null, "The short transaction was cleaned before the departure acquired its route.");
+            Assert.That(Newtonsoft.Json.Linq.JToken.DeepEquals(farewellGraph, UvPayload(director.Snapshot)), Is.True,
+                "Standing, greeting, camera and departure handover change no saved field, ballot knowledge, receipt or RNG.");
+            foreach (var id in new[] { evicted, survivor })
+            {
+                var agent = HouseguestBody(id).GetComponent<HouseNpcMotion>();
+                Assert.That(agent == null || !agent.IsParked, Is.True, "and " + id + "'s agent is unparked.");
+            }
             float goodbye = Time.unscaledTime - closedAt;
             Assert.That(goodbye, Is.InRange(EpisodeDirector.GoodbyeSeconds - 0.1f, EpisodeDirector.GoodbyeSeconds + 0.5f),
                 "The goodbye holds about four seconds.");
@@ -151,12 +265,22 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(Hud.IsHeldForReveal, Is.True, "the chrome is still aside,");
             Assert.That(director.EvictionKeyLightShowing, Is.False, "and the key light went with the goodbye.");
             var motion = leaving.GetComponent<HouseNpcMotion>();
-            yield return WaitFor(() => motion.LeaseId != null && motion.LeaseId.StartsWith("departure:"), 3f, "the walk out takes its first route");
+            yield return WaitFor(() =>
+                {
+                    WatchTheGoodbye("on the walk out");
+                    return motion.LeaseId != null && motion.LeaseId.StartsWith("departure:");
+                }, 3f, "the walk out takes its first route");
             Assert.That(motion.Speed, Is.LessThanOrEqualTo(EpisodeDirector.StagedWalkSpeed + 0.05f), "They walk slowly while the house watches.");
 
             director.SkipWalkOut();
-            yield return WaitFor(() => !director.IsCeremonyStaged, 3f, "the house gets up");
+            yield return WaitFor(() =>
+                {
+                    WatchTheGoodbye("as the door shut");
+                    return !director.IsCeremonyStaged;
+                }, 3f, "the house gets up");
             yield return null;
+            WatchTheGoodbye("once the house got up");
+            Assert.That(embraceSeen, Is.Null, "and nobody embraces after it either.");
             Assert.That(Hud.IsHeldForReveal, Is.False, "The chrome is back once the door is shut behind them,");
             Assert.That(director.transform.Find(EpisodeDirector.EvictionKeyLightName), Is.Null, "the key light is gone,");
             Assert.That(director.NpcAutonomyDiagnostic, Is.Null, "and the house's world runs on.");

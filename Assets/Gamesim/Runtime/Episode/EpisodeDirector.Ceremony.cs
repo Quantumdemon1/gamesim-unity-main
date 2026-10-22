@@ -305,13 +305,11 @@ namespace Gamesim.Episode
                     TurnHeads(state, EvictedThisCommit(state, wasActive), null);
                     break;
                 case CeremonySting.WinnerKind:
-                    React(state.winnerId, CharacterPresentation.Reaction.Won);
-                    TurnHeads(state, state.winnerId, null);
+                    // At the jury card's result, not as it starts (EpisodeDirector.StoryReactions.cs).
+                    ReactToWinner(state);
                     break;
                 case CeremonySting.FinalEvictionKind:
-                    string juror = EvictedThisCommit(state, wasActive);
-                    React(juror, CharacterPresentation.Reaction.Evicted);
-                    TurnHeads(state, juror, null);
+                    ReactToFinalEviction(state, wasActive);
                     break;
             }
         }

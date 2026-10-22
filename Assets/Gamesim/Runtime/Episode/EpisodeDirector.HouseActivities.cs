@@ -183,15 +183,15 @@ namespace Gamesim.Episode
         {
             if(!IsReady || blockedRecovery || !playerIsActive || challengeActive || npcMeetings==null || player==null || anchor==null)return;
             if(!NpcSocialState.IsEligible(projected))
-            {message="House activities are available during free time and campaigning.";Render();return;}
-            if(!MayUse(anchor,out var refusal)){message=refusal;Render();return;}
+            {RefuseActivity("House activities are available during free time and campaigning.");return;}
+            if(!MayUse(anchor,out var refusal)){RefuseActivity(refusal);return;}
             CancelTravel();ClosePanels();EndDiaryVisit(true);CloseHouseActivities(true);
             if(!npcMeetings.ActivityAnchorAvailable(anchor))
                 anchor=HouseInteractionAnchors.InScene(gameObject.scene).FirstOrDefault(other=>other.VenueId==anchor.VenueId
                     && other.transform.parent==anchor.transform.parent && npcMeetings.ActivityAnchorAvailable(other)) ?? anchor;
             // Asked before the warp: a player put across the house for a place that then turns out
             // to be taken is a player moved for nothing.
-            if(!npcMeetings.PlayerActivityPossible(player,anchor,out var refused)){message=refused;Render();return;}
+            if(!npcMeetings.PlayerActivityPossible(player,anchor,out var refused)){RefuseActivity(refused);return;}
             // Whatever walk the player was on ends here. The activity's move keeps the walk it
             // interrupted and resumes it on release, which is right for a panel opened mid-walk
             // and wrong for getting out of bed: the player would set off after the old errand.
@@ -200,15 +200,34 @@ namespace Gamesim.Episode
                 && player.TryWarpTo(anchor.Approach))
             {cameraRig?.CutTo(player.transform);BeginTravelDip();}
             if(!npcMeetings.TryReservePlayerActivity(player,anchor,out var lease,out var reason))
-            {message=reason;Render();return;}
+            {RefuseActivity(reason);return;}
             playerActivity=lease;playerActivityInHouse=true;playerActivityKind=kind;
             BeginFurniturePose(player.gameObject,lease,kind,HouseFurniture.UntilMoved(kind) ? float.PositiveInfinity : 14f);
-            if(!IsPlayerHouseActivityActive){message="That place is not reachable from here.";Render();return;}
+            if(!IsPlayerHouseActivityActive){RefuseActivity("That place is not reachable from here.");return;}
             // Changed on the way there, behind the body walking to it.
             DressPlayer(projected);
             // In close enough to see what they are doing: from the far view a swimmer is a dot.
             cameraRig?.FocusSubject(player.transform);
-            message=ActivityStatus(kind);
+            // Guidance in the device's words, as the diary's way in is: on the status line for as
+            // long as they are at it, never replaced by the phase's own line (D10). The notice keeps
+            // the line itself (S2A-R1): what the message says next while they are there - a
+            // housemate joining the hot tub, a move - is narration the bodies show, so it neither
+            // takes the line nor, by changing the message, keeps the notice from being let go.
+            message=ActivityStatus(kind,PressWasPad);
+            BeginSystemNotice();
+            activityNotice=message;
+            Render();
+        }
+
+        /// <summary>
+        /// Why a piece of furniture said no, on the status line: a refusal the player cannot see is
+        /// a click that did nothing (D10). The status line shows only notices over the phase's own
+        /// guidance, so every refusal is one.
+        /// </summary>
+        private void RefuseActivity(string why)
+        {
+            message=why;
+            BeginSystemNotice();
             Render();
         }
 
@@ -222,21 +241,14 @@ namespace Gamesim.Episode
             string caption=null;
             if(anchor!=null && HouseIsTheView && playerIsActive && HouseFurniture.TryClick(anchor,out _,out var said))caption=said;
             if(caption!=null && travelBeacons==null)TickTravelBeacons();
-            travelBeacons?.ShowFurnitureTip(caption,screen,largeText ? 1.2f : 1f);
+            travelBeacons?.ShowFurnitureTip(caption,screen,TextScale);
         }
 
-        private static string ActivityStatus(HouseFurnitureActivity kind)
-        {
-            switch(kind)
-            {
-                case HouseFurnitureActivity.Sleep:return "Off to bed  ·  E or a click to get up";
-                case HouseFurnitureActivity.Swim:return "Going for a swim  ·  E or a click to get out";
-                case HouseFurnitureActivity.Soak:return "Into the hot tub  ·  E or a click to get out";
-                case HouseFurnitureActivity.Cook:return "Cooking a meal  ·  E or a click to stop";
-                case HouseFurnitureActivity.Dance:return "Dancing  ·  E or a click to stop";
-                default:return "At the furniture  ·  E to finish";
-            }
-        }
+        /// <summary>The status line at a piece of furniture, in the device's words: "E or a click to get up", or X on a pad (A4f).</summary>
+        private static string ActivityStatus(HouseFurnitureActivity kind,bool pad)=>InputGlossary.ActivityLine(kind.ToString(),pad);
+
+        /// <summary>Whether the status line is the furniture's, in either device's words.</summary>
+        private static bool IsActivityStatus(string line,HouseFurnitureActivity kind)=>line==ActivityStatus(kind,false) || line==ActivityStatus(kind,true);
 
         /// <summary>
         /// A click on the house while the player is busy at a piece of furniture: they get up the
@@ -255,7 +267,7 @@ namespace Gamesim.Episode
             if(!houseActivitiesOpen || blockedRecovery || npcMeetings==null || IsPlayerHouseActivityActive
                 || !HouseFurniture.TryDescribe(anchor,out var kind,out _))return;
             if(!npcMeetings.TryReservePlayerActivity(player,anchor,out var lease,out var reason))
-            {message=reason;Render();return;}
+            {RefuseActivity(reason);return;}
             playerActivity=lease;playerActivityInHouse=false;playerActivityKind=kind;
             BeginFurniturePose(player.gameObject,lease,kind,18f);
             Render();
@@ -279,7 +291,11 @@ namespace Gamesim.Episode
                             playerActivityInHouse=false;
                             // Back into the day's clothes, behind the body getting up.
                             DressPlayer(projected);
-                            if(message==ActivityStatus(playerActivityKind))message="";
+                            // Up again, the furniture's line goes, and the notice that kept it - whatever
+                            // the message has said since (S2A-R1). A newer notice let go of the
+                            // furniture's line as it began, and is left where it is.
+                            if(IsActivityStatus(message,playerActivityKind))message="";
+                            if(commandNotice && activityNotice!=null)EndSystemNotice();
                             // The click that got them up, now that they are up.
                             var click=clickAfterActivity;clickAfterActivity=null;
                             if(click.HasValue && player!=null)player.DispatchClick(click.Value,clickAfterActivityScreen);

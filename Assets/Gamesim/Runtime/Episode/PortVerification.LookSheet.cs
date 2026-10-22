@@ -48,6 +48,10 @@ namespace Gamesim.Episode
             public uint seed;
             public List<LookShot> shots = new List<LookShot>();
             public List<LayoutCapture> layouts = new List<LayoutCapture>();
+            public List<string> conversationFrames = new List<string>();
+            public List<ConversationLayoutCapture> conversationLayouts = new List<ConversationLayoutCapture>();
+            public int requiredConversationLayouts = ExpectedConversationLayouts;
+            public string conversationLayoutStatus = "Pending captures";
             public List<VerificationFrameEvidence> capturedFrames = new List<VerificationFrameEvidence>();
             public List<string> errors = new List<string>();
         }
@@ -58,6 +62,24 @@ namespace Gamesim.Episode
             public int shot, width, height;
             public bool largeText, compactHud;
             public string path;
+        }
+
+        private const int ExpectedConversationLayouts = 120;
+        private static readonly string[] ConversationCaptureViews =
+            { "selected-game", "selected-connect", "exchange-player", "exchange-npc" };
+        private static readonly Vector2Int[] ConversationCaptureViewports =
+        {
+            new Vector2Int(1280,720), new Vector2Int(1600,900), new Vector2Int(1920,1080),
+            new Vector2Int(1200,900), new Vector2Int(2560,1080),
+        };
+
+        [Serializable]
+        private sealed class ConversationLayoutCapture
+        {
+            public string view, path, npcId, speakerId;
+            public int width, height;
+            public TextSize textSize;
+            public bool compactHud;
         }
 
         private LookSheetReport lookReport;
@@ -127,8 +149,10 @@ namespace Gamesim.Episode
         {
             lookReport.errors.AddRange(errors);
             int written = lookReport.shots.Count(s => s.path != null && File.Exists(s.path) && new FileInfo(s.path).Length > 0);
+            bool conversationComplete = ConversationLayoutsComplete();
+            lookReport.conversationLayoutStatus = conversationComplete ? "Captured; pending visual inspection" : "Incomplete";
             lookReport.status = written == 12 && lookReport.shots.All(s => s.reached)
-                && lookReport.layouts.Count == 31 && lookReport.errors.Count == 0 ? "Passed" : "Failed";
+                && lookReport.layouts.Count == 31 && conversationComplete && lookReport.errors.Count == 0 ? "Passed" : "Failed";
             lookReport.finishedUtc = DateTime.UtcNow.ToString("O");
             return written;
         }
@@ -166,17 +190,45 @@ namespace Gamesim.Episode
         {
             var stack = new Stack<IEnumerator>();
             stack.Push(inner);
-            while (stack.Count > 0)
+            try
             {
-                var top = stack.Peek();
-                bool moved;
-                try { moved = top.MoveNext(); }
-                catch (Exception error) { shot.reached = false; shot.reason = Append(shot.reason, error.Message); yield break; }
-                if (!moved) { stack.Pop(); continue; }
-                // A nested routine (a wait, a walk, a click) is driven here; anything else - a null,
-                // a YieldInstruction - is Unity's to wait on.
-                if (top.Current is IEnumerator nested) { stack.Push(nested); continue; }
-                yield return top.Current;
+                while (stack.Count > 0)
+                {
+                    var top = stack.Peek();
+                    bool moved;
+                    object current = null;
+                    try { moved = top.MoveNext(); if (moved) current = top.Current; }
+                    catch (Exception error) { shot.reached = false; shot.reason = Append(shot.reason, error.Message); yield break; }
+                    if (!moved)
+                    {
+                        if (!DisposeLookCoroutine(stack.Pop(), shot)) yield break;
+                        continue;
+                    }
+                    // The same guard drives children and owns their disposal. A rejected child
+                    // must unwind suspended parents so their display/preference finally blocks run.
+                    if (current is IEnumerator nested) { stack.Push(nested); continue; }
+                    yield return current;
+                }
+            }
+            finally
+            {
+                if (stack.Count > 0 && shot.reached)
+                {
+                    shot.reached = false;
+                    shot.reason = Append(shot.reason, "The route was cancelled before its nested work completed.");
+                }
+                while (stack.Count > 0) DisposeLookCoroutine(stack.Pop(), shot);
+            }
+        }
+
+        private static bool DisposeLookCoroutine(IEnumerator inner, LookShot shot)
+        {
+            try { (inner as IDisposable)?.Dispose(); return true; }
+            catch (Exception error)
+            {
+                shot.reached = false;
+                shot.reason = Append(shot.reason, "Cleanup failed: " + error.Message);
+                return false;
             }
         }
 
@@ -197,6 +249,128 @@ namespace Gamesim.Episode
                 lookReport.errors.Add(reason); shot.reason = Append(shot.reason, "capture rejected");
             });
             shot.path = path;
+        }
+
+        private IEnumerator CaptureLookConversationFrame(string label)
+        {
+            string view = label.EndsWith("-player", StringComparison.Ordinal) ? "exchange-player"
+                : label.EndsWith("-npc", StringComparison.Ordinal) ? "exchange-npc" : null;
+            RequireSeason(view != null, "A conversation beat capture needs its actual speaker label.");
+            // All variants photograph this same already-accepted beat. No command, Advance or
+            // Skip occurs until the matrix finishes; text and compact controls only rebuild its view.
+            yield return CaptureConversationLayoutMatrix(view);
+        }
+
+        private void RequireConversationCaptureView(string view)
+        {
+            RequireSeason(seasonDirector.IsConversationOpen && !string.IsNullOrEmpty(seasonDirector.TalkingToId),
+                "Conversation matrix requires the actual focused pair.");
+            if (view == "selected-game" || view == "selected-connect")
+                RequireSeason(!seasonDirector.IsConversationExchangePlaying
+                    && seasonDirector.CurrentConversationCategory == (view == "selected-game"
+                        ? EpisodeDirector.GameCategoryCaption : EpisodeDirector.ConnectCategoryCaption),
+                    "Conversation matrix must retain its selected category: " + view);
+            else
+                RequireSeason(seasonDirector.IsConversationExchangePlaying
+                    && seasonDirector.ConversationExchangeSpeakerId == (view == "exchange-player"
+                        ? seasonDirector.Snapshot.playerId : seasonDirector.TalkingToId),
+                    "Conversation matrix must retain the same actual speaker: " + view);
+        }
+
+        private IEnumerator CaptureConversationLayoutMatrix(string view)
+        {
+            RequireConversationCaptureView(view);
+            var baseline = ConversationBaseline();
+            TextSize originalText = seasonDirector.TextSize;
+            bool originalCompact = seasonDirector.CompactHud;
+            int originalWidth = Screen.width, originalHeight = Screen.height;
+            var originalMode = Screen.fullScreenMode;
+            try
+            {
+                foreach (var viewport in ConversationCaptureViewports)
+                {
+                    CheckSeasonDeadline();
+                    Screen.SetResolution(viewport.x, viewport.y, FullScreenMode.Windowed);
+                    for (int frame = 0; frame < 15; frame++) yield return null;
+                    foreach (TextSize text in TextSizes.All)
+                    foreach (bool compact in new[] { false, true })
+                    {
+                        CheckSeasonDeadline();
+                        seasonDirector.SetTextSize(text);
+                        seasonDirector.SetCompactHud(compact);
+                        yield return WaitForShot();
+                        Canvas.ForceUpdateCanvases();
+                        for (int frame = 0; frame < 5; frame++) yield return null;
+                        RequireConversationCaptureView(view);
+                        RequireConversationUnchanged(baseline, "Reframing " + view);
+                        RequireSeason(Screen.width == viewport.x && Screen.height == viewport.y,
+                            "Conversation viewport " + viewport.x + "x" + viewport.y
+                            + " rendered at " + Screen.width + "x" + Screen.height + "; coverage is not qualified.");
+                        string filename = "conversation-" + view + "-" + Screen.width + "x" + Screen.height
+                            + "-" + TextSizes.Name(text) + (compact ? "-compact" : "-regular") + ".png";
+                        string path = Path.Combine(outputDirectory, filename);
+                        yield return CaptureVerifiedFrame(path, lookReport.capturedFrames.Add,
+                            reason => RequireSeason(false, reason));
+                        RequireConversationCaptureView(view);
+                        RequireConversationUnchanged(baseline, "Capturing " + view);
+                        lookReport.conversationFrames.Add(path);
+                        lookReport.conversationLayouts.Add(new ConversationLayoutCapture
+                        {
+                            view = view, path = path, width = Screen.width, height = Screen.height,
+                            textSize = text, compactHud = compact, npcId = seasonDirector.TalkingToId,
+                            speakerId = seasonDirector.ConversationExchangeSpeakerId,
+                        });
+                    }
+                }
+            }
+            finally
+            {
+                // Attempt every owned restoration. Recording cleanup separately, rather than
+                // throwing from finally, keeps a matrix-owned operation's original exception intact.
+                try { seasonDirector.SetTextSize(originalText); }
+                catch (Exception error) { RecordConversationRestoreFailure("text", error); }
+                try { seasonDirector.SetCompactHud(originalCompact); }
+                catch (Exception error) { RecordConversationRestoreFailure("compact HUD", error); }
+                try { Screen.SetResolution(originalWidth, originalHeight, originalMode); }
+                catch (Exception error) { RecordConversationRestoreFailure("display", error); }
+            }
+            for (int frame = 0; frame < 15; frame++) yield return null;
+            RequireConversationCaptureView(view);
+            RequireConversationUnchanged(baseline, "Restoring the conversation viewport and preferences");
+            RequireSeason(seasonDirector.TextSize == originalText && seasonDirector.CompactHud == originalCompact
+                && Screen.width == originalWidth && Screen.height == originalHeight && Screen.fullScreenMode == originalMode,
+                "Conversation matrix must restore the exact original text, compact and desktop display settings.");
+        }
+
+        private void RecordConversationRestoreFailure(string setting, Exception error)
+        {
+            // Any cleanup error prevents final completion even when the visible fields happen to
+            // match; the original operation error remains with its guarded route.
+            lookReport.errors.Add("Conversation matrix restore failed (" + setting + "): "
+                + error.GetType().Name + ": " + error.Message);
+        }
+
+        private bool ConversationLayoutsComplete()
+        {
+            if (lookReport.conversationLayouts.Count != ExpectedConversationLayouts
+                || lookReport.conversationFrames.Count != ExpectedConversationLayouts
+                || lookReport.conversationFrames.Distinct(StringComparer.Ordinal).Count() != ExpectedConversationLayouts
+                || TextSizes.All.Length != 3) return false;
+            foreach (string view in ConversationCaptureViews)
+            foreach (var viewport in ConversationCaptureViewports)
+            foreach (TextSize text in TextSizes.All)
+            foreach (bool compact in new[] { false, true })
+            {
+                var rows = lookReport.conversationLayouts.Where(row => row.view == view
+                    && row.width == viewport.x && row.height == viewport.y
+                    && row.textSize == text && row.compactHud == compact).ToArray();
+                if (rows.Length != 1 || string.IsNullOrEmpty(rows[0].npcId)
+                    || string.IsNullOrEmpty(rows[0].path)
+                    || !lookReport.conversationFrames.Contains(rows[0].path)
+                    || !File.Exists(rows[0].path) || new FileInfo(rows[0].path).Length <= 0) return false;
+            }
+            return lookReport.conversationLayouts.Select(row => row.path).Distinct(StringComparer.Ordinal).Count()
+                == ExpectedConversationLayouts;
         }
 
         // Render the existing interaction at each supported viewport/text size. These are visual
@@ -374,6 +548,9 @@ namespace Gamesim.Episode
             if (npc == null) throw new InvalidOperationException("No active houseguest to select.");
             seasonDirector.FollowHouseguest(npc.Id);
             yield return ApproachAndOpen(npc, shot);
+            yield return EnterSeasonConversationCategory(EpisodeDirector.GameCategoryCaption);
+            yield return CaptureConversationLayoutMatrix("selected-game");
+            yield return ReturnSeasonConversationTopics();
             shot.reason = "Conversation controls use the activity layout; relationship details remain in the notebook. "
                 + "Compare the visible pair, house and cast clearance with the reference.";
         }
@@ -415,8 +592,14 @@ namespace Gamesim.Episode
             }, 60);
             if (npc == null) throw new InvalidOperationException("No houseguest in the kitchen.");
             yield return ApproachAndOpen(npc, shot);
+            yield return EnterSeasonConversationCategory(EpisodeDirector.ConnectCategoryCaption);
+            yield return CaptureConversationLayoutMatrix("selected-connect");
             if (seasonDirector.Snapshot.phase == EpisodePhase.Social && HasSeasonButtonText(EpisodeHud.SmallTalkCaption))
+            {
                 yield return ClickSeasonButton(EpisodeHud.SmallTalkCaption);
+                yield return DrainSeasonConversationExchange("look-kitchen", true, CaptureLookConversationFrame);
+                yield return EnterSeasonConversationCategory(EpisodeDirector.ConnectCategoryCaption);
+            }
             if (NearestRoom(npc.transform.position) != "Kitchen") shot.reason = "the pair was not in the kitchen";
         }
 
@@ -508,7 +691,8 @@ namespace Gamesim.Episode
             var npc = ActiveNpcs().FirstOrDefault();
             if (npc == null) throw new InvalidOperationException("Nobody to discuss nominations with.");
             yield return ApproachAndOpen(npc, shot);
-            shot.reason = "The player is not HoH in this route; this frame shows the available conversation, not the nomination comparison.";
+            yield return EnterSeasonConversationCategory(EpisodeDirector.GameCategoryCaption);
+            shot.reason = "The player is not HoH in this route; this frame shows the available game category, not the nomination comparison.";
         }
 
         private IEnumerator KeyCeremonyShot(LookShot shot)

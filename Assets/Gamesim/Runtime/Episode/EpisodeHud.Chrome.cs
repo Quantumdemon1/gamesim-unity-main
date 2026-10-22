@@ -43,8 +43,6 @@ namespace Gamesim.Episode
         private const float PillX = ObjectiveX + ObjectiveChipWidth + TopBarGap;
         /// <summary>The compact HUD's objective card, which keeps the travel buttons.</summary>
         private const float ObjectiveWidth = 330f;
-        /// <summary>How wide a canvas has to be before the tagline has room at the band's end.</summary>
-        private const float TaglineCanvas = 1500f;
 
         /// <summary>
         /// The week · house · HoH chip, and one of its three cells.
@@ -81,6 +79,103 @@ namespace Gamesim.Episode
         // card was unlucky. Four events was never the point; not colliding is.
         private const int RecentEventRows = 3;
         private const int EndgameEventRows = 2;
+        private const float RecentEventRowHeight = 58f;
+
+        /// <summary>The Recent Events card's height for this many rows: its heading alone at none.</summary>
+        private static float RecentEventsHeight(int slots) => 42f + slots * RecentEventRowHeight + 2f;
+
+        /// <summary>The relationships card's height for this many rows.</summary>
+        private static float RelationshipsHeight(int rows) => 44f + rows * RelationshipRowHeight + 6f;
+
+        /// <summary>The live feed card's height: the feed's own 16:9 at the column's width, with a two-line caption under it.</summary>
+        private static float LiveFeedHeight => 42f + Mathf.Round((RightColumnWidth - 24f) * LiveFeed.Height / LiveFeed.Width) + 8f + 38f;
+
+        /// <summary>
+        /// How the right column was last laid out against the controls card: which card folds (Recent
+        /// Events, or the relationships card while somebody is in focus), the rows it holds and the
+        /// fewest it may fold to, the rows it shows and whether the live feed was let go, and the
+        /// shape its foot is reckoned from - so the controls card's toggle can tell whether opening or
+        /// closing it changes the column.
+        /// </summary>
+        private readonly struct ColumnFold
+        {
+            public readonly bool Relationships, FeedShed;
+            public readonly int Rows, Least, Shown;
+            /// <summary>Where the column starts, the live feed's room above the folding card (none without a feed), and the card under it.</summary>
+            public readonly float Top, Feed, WeekHeight;
+            public ColumnFold(bool relationships, int rows, int least, int shown, bool feedShed, float top, float feed, float weekHeight)
+            {
+                Relationships = relationships; Rows = rows; Least = least; Shown = shown; FeedShed = feedShed;
+                Top = top; Feed = feed; WeekHeight = weekHeight;
+            }
+        }
+
+        /// <summary>The column's last layout against the controls card, or null when it built none (the overview, compact).</summary>
+        private ColumnFold? columnFold;
+
+        /// <summary>
+        /// The rows the right column's folding card shows - Recent Events, or the relationships card
+        /// while somebody is in focus - and whether the live feed stays. Everything it holds, unless
+        /// the controls card is open and the column's foot - the feed, this card, the gap and the week
+        /// card under it - would come down onto it: then the card gives way a row at a time, to its
+        /// heading alone (the one in focus, for the relationships card) if need be, until the week
+        /// card ends a gap above the controls card. The column never moves on a frame where the two
+        /// already clear each other (4:3 among them), and every row comes back as the controls card
+        /// closes; 'View all' and 'See all' keep the whole list a press away meanwhile.
+        ///
+        /// <para>At 16:9, the reference frame, the live feed, two events and the week card ended at
+        /// y 654 of 900 while the open controls card began at 596 (577 at the larger text), so it
+        /// lay over the week card's last rows; the 16:10 frame's chrome check found it (PLAN A,
+        /// A12). The card cannot move instead: the status band holds its left and the cast strip
+        /// its foot.</para>
+        ///
+        /// <para>Where the folded column would still come down onto the card - the Final 3's
+        /// objectives with their tagline or the spectator's line are 224 tall, and at the larger text
+        /// on 16:9 even Recent Events' heading alone ended 9 units into the card - the live feed goes
+        /// too, and the rows its room buys come back. Only there: a column that clears the card once
+        /// folded keeps its feed (the fix lane's review, finding 2).</para>
+        ///
+        /// <para>Two thresholds, on purpose. A column that already clears the open card - flush
+        /// included - stays exactly as it is: asking it for the fold's gap too would fold 4:3 at
+        /// the larger text, whose three rows end four units above the card (712 against 716). A
+        /// column that has to fold folds to a whole gap, so a folded column never sits touching
+        /// the card. The one state on the line between them is 16:9's one row at the standard text,
+        /// which meets the card flush at 596; a canvas that a 16:9 screen other than 1600x900 scales
+        /// to a float's hair under 900 folds that row to the heading instead. Clear either way.</para>
+        /// </summary>
+        private (int Shown, bool FeedShed) FoldColumn(bool relationships, int rows, int least, float top, float feed, float weekHeight, bool controlsOpen)
+        {
+            if (!controlsOpen) return (rows, false);
+            var bounds = ((RectTransform)canvas.transform).rect;
+            float floor = (bounds.height > 0f ? bounds.height : 900f) - HelpBottom - ExpandedHelpHeight;
+            float Foot(int shown, bool shed) => top + (shed ? 0f : feed)
+                + (relationships ? RelationshipsHeight(shown) : RecentEventsHeight(shown)) + RightColumnGap + weekHeight;
+            if (Foot(rows, false) <= floor) return (rows, false);
+            int kept = rows;
+            while (kept > least && Foot(kept, false) + RightColumnGap > floor) kept--;
+            if (feed <= 0f || Foot(kept, false) <= floor) return (kept, false);
+            // Folded as far as it goes and still over the card: the feed goes, and its room's rows come back.
+            if (Foot(rows, true) <= floor) return (rows, true);
+            kept = rows;
+            while (kept > least && Foot(kept, true) + RightColumnGap > floor) kept--;
+            return (kept, true);
+        }
+
+        /// <summary>Whether the controls card, open or closed as it is now, changes what the column shows.</summary>
+        private bool ColumnGivesWayToTheControls
+        {
+            get
+            {
+                if (!columnFold.HasValue) return false;
+                var was = columnFold.Value;
+                var now = FoldColumn(was.Relationships, was.Rows, was.Least, was.Top, was.Feed, was.WeekHeight, helpExpanded);
+                return now.Shown != was.Shown || now.FeedShed != was.FeedShed;
+            }
+        }
+
+        /// <summary>The card under Recent Events: the week's vibe, or the endgame's objectives at three and at two.</summary>
+        private static float WeekCardHeight(EpisodeState state) =>
+            state == null ? 0f : IsFinalThree(state) || IsFinalTwo(state) ? EndgameCardHeight(state) : VibeCardHeight;
 
         /// <summary>An event's line on the Recent Events card, so a test can find it.</summary>
         public const string RecentEventLineName = "Event line";
@@ -289,18 +384,31 @@ namespace Gamesim.Episode
         /// </summary>
         private void CompactObjective(EpisodeState state, bool recovery)
         {
+            // The next stop's box, and what the card grows by under it (CompactLargestNextStop).
+            float nextStop = LargestTextPages ? CompactLargestNextStop : 48f, grow = nextStop - 48f;
             var objective = Chrome("Objective", canvas.transform);
             Anchor(objective, new Vector2(0, 1), new Vector2(0, 1), new Vector2(LeftColumnX, -IconRail.Top),
-                new Vector2(ObjectiveWidth, 238f));
+                new Vector2(ObjectiveWidth, 238f + grow));
             string waiting = WaitingLine(state);
             var heading = CardHeading(objective, waiting ?? ObjectiveTitle(state));
             if (waiting != null) WaitingStyle(heading);
-            FixedText(objective, NextStop(state), 18, Paper, new Vector2(18f, -44f), new Vector2(294f, 48f));
-            ActionChip(objective, state, -94f);
-            FixedButton(objective,"Go to episode screen",new Vector2(18,-126),new Vector2(294,44),director.GoToStation);
-            FixedButton(objective,DiaryTravelCaption,new Vector2(18,-178),new Vector2(294,44),director.GoToDiary).interactable=
+            FixedText(objective, NextStop(state), 18, Paper, new Vector2(18f, -44f), new Vector2(294f, nextStop));
+            ActionChip(objective, state, -94f - grow);
+            FixedButton(objective,"Go to episode screen",new Vector2(18,-126 - grow),new Vector2(294,44),director.GoToStation);
+            FixedButton(objective,DiaryTravelCaption,new Vector2(18,-178 - grow),new Vector2(294,44),director.GoToDiary).interactable=
                 director.HasDiaryRoom && !recovery && state.Find(state.playerId)?.status==ContestantStatus.Active;
         }
+
+        /// <summary>
+        /// The compact objective's next stop at the largest text (the owner's contract of
+        /// 2026-10-15): a box two of its lines tall - 25 points, 1.32 times each - where the other
+        /// sizes keep the 48 that holds their one line, and the card grows by the difference, the
+        /// actions and the two ways on moving down with it. At 48 the line wrapped at 25 points
+        /// ("Next stop: episode screen" is wider than the card's 294 at that size), and two lines
+        /// did not fit 48, so it stepped itself down to 23.75 to fit one: short of the largest
+        /// text's 25, the size the compact HUD promises to keep.
+        /// </summary>
+        private const float CompactLargestNextStop = 66f;
 
         // ---------------------------------------------------------------- the endgame (ENDGAME-PLAN F1)
 
@@ -478,25 +586,6 @@ namespace Gamesim.Episode
         }
 
         /// <summary>
-        /// The mockups' tagline at the band's far end, where there is room for it: a wide window has
-        /// 130 units spare past the house pill, a 4:3 one has none and goes without.
-        /// </summary>
-        private void Tagline()
-        {
-            var bounds = ((RectTransform)canvas.transform).rect;
-            float width = bounds.width > 0 ? bounds.width : 1600f;
-            if (width < TaglineCanvas) return;
-            var line = FixedText((RectTransform)canvas.transform, "GOOD PEOPLE\nBIGGER STORIES", 11, UiTheme.Muted,
-                Vector2.zero, new Vector2(200f, 34f));
-            line.name = "Tagline";
-            Anchor(line.rectTransform, new Vector2(1, 1), new Vector2(1, 1), new Vector2(-24f, -TopBarTop - 9f), new Vector2(200f, 34f));
-            line.alignment = TextAlignmentOptions.TopRight;
-            line.characterSpacing = 10f;
-            var medium = UiTheme.Font(UiTheme.Weight.Medium);
-            if (medium != null) line.font = medium;
-        }
-
-        /// <summary>
         /// The left gutter (mockup-01): one glass ground under three lists of the same kind of row -
         /// the notebook's pages and the overview, the two places to go next, and the notebook, save
         /// and settings - each list after the first under its name (the style guide's rail).
@@ -508,6 +597,7 @@ namespace Gamesim.Episode
         /// </summary>
         private void LeftGutter(EpisodeState state, bool recovery)
         {
+            railScale = RailFit();
             var ground = Chrome("Rail ground", canvas.transform);
             IconRail.Build(canvas.transform, new[]
             {
@@ -517,8 +607,8 @@ namespace Gamesim.Episode
                 new IconRail.Entry(IconRail.Mark.Rooms,    EpisodeDirector.NotebookSection.Rooms,   "Who is where"),
                 new IconRail.Entry(IconRail.Mark.Votes,    EpisodeDirector.NotebookSection.Votes,   "The vote"),
                 new IconRail.Entry(IconRail.Mark.Story,    EpisodeDirector.NotebookSection.Story,   "The story so far"),
-            }, FontScale, director.ShowNotebookSection, director.ActiveSection);
-            float y = IconRail.Top + IconRail.Height(6, FontScale);
+            }, railScale, director.ShowNotebookSection, director.ActiveSection);
+            float y = IconRail.Top + IconRail.Height(6, railScale);
 
             if (!Compact)
             {
@@ -540,19 +630,51 @@ namespace Gamesim.Episode
 
             Anchor(ground, new Vector2(0, 1), new Vector2(0, 1), new Vector2(8f, -(IconRail.Top - 6f)),
                 new Vector2(IconRail.Width + 12f, y - IconRail.Top + 12f));
+            railFoot = y + 6f;
         }
+
+        /// <summary>
+        /// How far down from the canvas's top edge the left gutter's glass reaches, as this render
+        /// laid it out: the save confirmation reads it to stay off the gutter's foot.
+        /// </summary>
+        private float railFoot;
 
         private RectTransform RailGroup(string name, float top, int rows)
         {
             var group = new GameObject(name, typeof(RectTransform)).GetComponent<RectTransform>();
             group.SetParent(canvas.transform, false);
             Anchor(group, new Vector2(0, 1), new Vector2(0, 1), new Vector2(14f, -top),
-                new Vector2(IconRail.Width, IconRail.Height(rows, FontScale)));
+                new Vector2(IconRail.Width, IconRail.Height(rows, railScale)));
             return group;
         }
 
         /// <summary>A rail label's band, at the resting text size.</summary>
         private const float RailLabelBand = 16f;
+
+        /// <summary>The scale the left gutter was last laid out at (<see cref="RailFit"/>).</summary>
+        private float railScale = 1f;
+
+        /// <summary>
+        /// The scale the left gutter is laid out at: the text size's, unless its rows would come down
+        /// onto the cast strip, and then the largest that leaves them clear of it (PLAN A, A8). The
+        /// gutter's eleven rows - the notebook's pages, the two ways on, the notebook, save and
+        /// settings - and its two labels grow with the text, and so does the strip under them: at the
+        /// largest size (1.4) on a 900-tall canvas (16:9, and 21:9 laid out by height) the rows would
+        /// have ended 101 units into the strip, so there they stop growing at about the larger size
+        /// (1.19). On every frame at the standard and the larger size, and on a 4:3 frame at the
+        /// largest, they fit, and the scale is the text size's exactly as it always was.
+        /// </summary>
+        private float RailFit()
+        {
+            var bounds = ((RectTransform)canvas.transform).rect;
+            float height = bounds.height > 0f ? bounds.height : 900f;
+            // Every row and label band in the gutter, at a scale of one; the ground reaches 6 past
+            // the last row, and 6 more keep it off the strip.
+            float rows = IconRail.Height(6, 1f) + RailLabelBand + IconRail.Height(3, 1f)
+                + (Compact ? 0f : RailLabelBand + IconRail.Height(2, 1f));
+            float room = height - (CastRail.Bottom + CastRail.Height * FontScale) - IconRail.Top - 12f;
+            return Mathf.Max(1f, Mathf.Min(FontScale, room / rows));
+        }
 
         /// <summary>
         /// A group's name over its rows, in place of the hairline that used to divide the lists -
@@ -561,7 +683,7 @@ namespace Gamesim.Episode
         /// </summary>
         private float RailLabel(string words, float y)
         {
-            float band = RailLabelBand * FontScale;
+            float band = RailLabelBand * railScale;
             var label = FixedText((RectTransform)canvas.transform, words, 10, UiTheme.Muted, new Vector2(30f, -(y + 1f)), new Vector2(IconRail.Width - 30f, band));
             label.gameObject.name = "Rail label";
             label.characterSpacing = 6f;
@@ -575,7 +697,7 @@ namespace Gamesim.Episode
         private Button RailButton(RectTransform group, string caption, Sprite icon, int index, System.Action action,
             bool primary = false, bool on = false) =>
             IconRail.Row(group, caption, icon, null, on,
-                (IconRail.Pad + index * (IconRail.RowHeight + IconRail.Gap)) * FontScale, FontScale,
+                (IconRail.Pad + index * (IconRail.RowHeight + IconRail.Gap)) * railScale, railScale,
                 () => action(), primary);
 
         /// <summary>
@@ -631,6 +753,7 @@ namespace Gamesim.Episode
         /// <summary>The vibe card's name, so a test can find it without guessing.</summary>
         public const string HouseVibeCardName = "House vibe";
         private const float VibeRowHeight = 36f;
+        private const float VibeCardHeight = 44f + 3f * VibeRowHeight + 24f;
 
         /// <summary>
         /// What the house has been doing this week, as counts rather than a mood - in the mockups'
@@ -646,7 +769,7 @@ namespace Gamesim.Episode
         {
             if (state == null) return 0f;
             var reading = HouseVibe.Of(state);
-            float width = RightColumnWidth, height = 44f + 3f * VibeRowHeight + 24f;
+            float width = RightColumnWidth, height = VibeCardHeight;
             var card = Chrome(HouseVibeCardName, parent);
             Anchor(card, new Vector2(1, 1), new Vector2(1, 1), new Vector2(-RightColumnInset, -top),
                 new Vector2(width, height));
@@ -709,6 +832,21 @@ namespace Gamesim.Episode
             public Objective(string word, string status, bool done) { Word = word; Status = status; Done = done; }
         }
 
+        /// <summary>The endgame card's rows' top, its jury strip's and its height: a line under the heading when it carries the spectator's or the tagline.</summary>
+        private static float EndgameCardShape(int objectives, bool line, out float rowsTop, out float juryTop)
+        {
+            rowsTop = line ? 60f : 42f;
+            juryTop = rowsTop + 2f + objectives * ObjectiveRowHeight + 6f;
+            return juryTop + 18f + JurorDisc + 14f;
+        }
+
+        /// <summary>How tall <see cref="EndgameCard"/> builds for this state.</summary>
+        private static float EndgameCardHeight(EpisodeState state)
+        {
+            bool watching = EpisodeDirector.Spectating(state);
+            return EndgameCardShape(EndgameObjectives(state).Count, watching || ObjectivesTaglineShows(state), out _, out _);
+        }
+
         /// <summary>
         /// The Final 3's and the Final 2's objectives (ENDGAME-PLAN F1, mockup-28) in the vibe card's
         /// place: three rows with a mark each, and the jury's faces under them, since the jury is
@@ -733,9 +871,7 @@ namespace Gamesim.Episode
             // A player out of the game reads it here, in the frame, with no panel open (ENDGAME-PLAN F6).
             bool watching = EpisodeDirector.Spectating(state);
             bool tagline = !watching && ObjectivesTaglineShows(state);
-            float rowsTop = watching || tagline ? 60f : 42f;
-            float juryTop = rowsTop + 2f + rows.Count * ObjectiveRowHeight + 6f;
-            float height = juryTop + 18f + JurorDisc + 14f;
+            float height = EndgameCardShape(rows.Count, watching || tagline, out float rowsTop, out float juryTop);
             var card = Chrome(ObjectivesCardName, parent);
             Anchor(card, new Vector2(1, 1), new Vector2(1, 1), new Vector2(-RightColumnInset, -top), new Vector2(width, height));
             // The card's own hairline turned gold, not a second edge drawn over it: every card
@@ -1019,6 +1155,7 @@ namespace Gamesim.Episode
         /// </summary>
         private void RightColumn(EpisodeState state)
         {
+            columnFold = null;
             if (director.IsOverview)
             {
                 float at = RightColumnTop;
@@ -1032,14 +1169,29 @@ namespace Gamesim.Episode
             }
             if(Compact)return;
             float top = RightColumnTop;
+            float weekHeight = WeekCardHeight(state);
             string focus = director.TalkingToId ?? director.FollowedId;
             if (!string.IsNullOrEmpty(focus) && state.Find(focus) != null && focus != state.playerId)
-                top += RelationshipsCard(canvas.transform, state, top, focus) + RightColumnGap;
-            else
             {
-                if (director.LiveFeedTexture != null) top += LiveFeedCard(canvas.transform, top) + RightColumnGap;
-                top += RecentEventsCard(canvas.transform, state, top) + RightColumnGap;
+                // The one in focus stays whatever the card gives way to the controls (FoldColumn).
+                var people = RelationshipPeople(state, focus);
+                int least = Mathf.Min(1, people.Count);
+                var fold = FoldColumn(true, people.Count, least, top, 0f, weekHeight, helpExpanded);
+                columnFold = new ColumnFold(true, people.Count, least, fold.Shown, false, top, 0f, weekHeight);
+                top += RelationshipsCard(canvas.transform, state, top, focus, people.Take(fold.Shown).ToList()) + RightColumnGap;
             }
+            else if (state != null)
+            {
+                var entries = RecentEntries(state);
+                // A row's room, or the empty card's one line.
+                int slots = Mathf.Max(1, entries.Count);
+                float feed = director.LiveFeedTexture != null ? LiveFeedHeight + RightColumnGap : 0f;
+                var fold = FoldColumn(false, slots, 0, top, feed, weekHeight, helpExpanded);
+                columnFold = new ColumnFold(false, slots, 0, fold.Shown, fold.FeedShed, top, feed, weekHeight);
+                if (feed > 0f && !fold.FeedShed) top += LiveFeedCard(canvas.transform, top) + RightColumnGap;
+                top += RecentEventsCard(canvas.transform, state, top, entries, fold.Shown) + RightColumnGap;
+            }
+            else if (director.LiveFeedTexture != null) top += LiveFeedCard(canvas.transform, top) + RightColumnGap;
             // The endgame's objectives and the jury's faces take the vibe card's place at three and
             // at two (ENDGAME-PLAN F1); the finished season keeps the week it just had.
             if (IsFinalThree(state) || IsFinalTwo(state)) EndgameCard(canvas.transform, top, state);
@@ -1118,15 +1270,21 @@ namespace Gamesim.Episode
         {
             // A story's Pull outranks it: both borrow the week card's place, and the Pull is rarer.
             bool visible = nearbyWanted && !PullShowing;
-            if (nearbyCard == null || nearbyCard.gameObject.activeSelf == visible) return;
-            nearbyCard.gameObject.SetActive(visible);
-            SyncWeekCard();
+            if (nearbyCard == null) return;
+            bool changed = nearbyCard.gameObject.activeSelf != visible;
+            if (changed)
+            {
+                nearbyCard.gameObject.SetActive(visible);
+                SyncWeekCard();
+            }
             if (nearbyBar != null)
             {
-                nearbyBar.gameObject.SetActive(visible);
+                bool barVisible = visible && !statusNoticePriority;
+                if (nearbyBar.gameObject.activeSelf != barVisible)
+                { nearbyBar.gameObject.SetActive(barVisible); changed = true; }
                 ApplyStatusLine();
             }
-            MarkChromeChanged();
+            if (changed) MarkChromeChanged();
         }
 
         /// <summary>
@@ -1181,7 +1339,8 @@ namespace Gamesim.Episode
         private void ApplyStatusLine()
         {
             if (statusRoot == null) return;
-            bool show = (nearbyBar == null || !nearbyBar.gameObject.activeSelf) && !StatusSaysTheCard;
+            bool show = statusGuidanceVisible && (statusNoticePriority
+                || ((nearbyBar == null || !nearbyBar.gameObject.activeSelf) && !StatusSaysTheCard));
             if (statusRoot.gameObject.activeSelf == show) return;
             statusRoot.gameObject.SetActive(show);
             MarkChromeChanged();
@@ -1201,18 +1360,10 @@ namespace Gamesim.Episode
         /// - the same boundary as <see cref="CastRail.StandingOf"/>. What any of them think of the
         /// player is exactly what the game does not tell you, so it is not drawn.</para>
         /// </summary>
-        private float RelationshipsCard(Transform parent, EpisodeState state, float top, string focusId)
+        private float RelationshipsCard(Transform parent, EpisodeState state, float top, string focusId, System.Collections.Generic.List<ContestantState> people)
         {
-            var bounds = ((RectTransform)canvas.transform).rect;
-            int most = (bounds.height > 0 ? bounds.height : 900f) < 1000f ? 7 : 8;
-            var people = RelationshipWeb.Others(state)
-                .OrderByDescending(actor => actor.id == focusId)
-                .ThenByDescending(actor => System.Math.Abs(state.Score(state.playerId, actor.id)))
-                .Take(most)
-                .ToList();
-
             float width = RightColumnWidth;
-            float height = 44f + people.Count * RelationshipRowHeight + 6f;
+            float height = RelationshipsHeight(people.Count);
             var card = Chrome(RelationshipsCardName, parent);
             Anchor(card, new Vector2(1, 1), new Vector2(1, 1), new Vector2(-RightColumnInset, -top), new Vector2(width, height));
             CardHeading(card, "Relationships");
@@ -1234,6 +1385,21 @@ namespace Gamesim.Episode
             for (int i = 0; i < people.Count; i++)
                 RelationshipRow(card, state, people[i], -(40f + i * RelationshipRowHeight), people[i].id == focusId);
             return height;
+        }
+
+        /// <summary>
+        /// The houseguests the relationships card can hold, the one in focus first and then by how
+        /// strongly the player feels either way: seven on a canvas under 1000 tall, eight on a taller.
+        /// </summary>
+        private System.Collections.Generic.List<ContestantState> RelationshipPeople(EpisodeState state, string focusId)
+        {
+            var bounds = ((RectTransform)canvas.transform).rect;
+            int most = (bounds.height > 0 ? bounds.height : 900f) < 1000f ? 7 : 8;
+            return RelationshipWeb.Others(state)
+                .OrderByDescending(actor => actor.id == focusId)
+                .ThenByDescending(actor => System.Math.Abs(state.Score(state.playerId, actor.id)))
+                .Take(most)
+                .ToList();
         }
 
         private void RelationshipRow(RectTransform card, EpisodeState state, ContestantState actor, float y, bool focused)
@@ -1299,25 +1465,28 @@ namespace Gamesim.Episode
         /// <para>"When" is the beat of the week, not the mockups' clock time: the simulation keeps
         /// no clock, and a time it does not have is a fact it would be making up.</para>
         /// </summary>
-        private float RecentEventsCard(Transform parent, EpisodeState state, float top)
-        {
-            if (state == null) return 0f;
-            var entries = state.events
-                .Where(entry => entry.audienceIds.Count == 0 || entry.audienceIds.Contains(state.playerId))
-                // Phase markers are the engine's scaffolding, not something that happened - the
-                // story page leaves them out for the same reason. They filled the card with
-                // "Week 1 · Nomination" where the nomination itself should have been. So are the
-                // competition's committed standings and performance arithmetic: the record's
-                // numbers, which nobody in the house sees (UI-UX-PASS-PLAN decision 12).
-                .Where(entry => !EpisodeEngine.IsScaffolding(entry.kind))
-                .Reverse()
-                // A quieter house at the endgame: two rows, as the outline asks (ENDGAME-PLAN F1).
-                .Take(IsEndgame(state) ? EndgameEventRows : RecentEventRows)
-                .ToList();
+        /// <summary>The events the card can hold, newest first: only what the player may have seen, and none of the engine's scaffolding.</summary>
+        private static System.Collections.Generic.List<EpisodeEvent> RecentEntries(EpisodeState state) => state.events
+            .Where(entry => entry.audienceIds.Count == 0 || entry.audienceIds.Contains(state.playerId))
+            // The fit calculation and drawn rows obey the same hidden-ballot gate (V7).
+            .Where(entry => !KnownBallots.TellsAnUnknownBallot(state, entry))
+            // Phase markers are the engine's scaffolding, not something that happened - the
+            // story page leaves them out for the same reason. They filled the card with
+            // "Week 1 · Nomination" where the nomination itself should have been. So are the
+            // competition's committed standings and performance arithmetic: the record's
+            // numbers, which nobody in the house sees (UI-UX-PASS-PLAN decision 12).
+            .Where(entry => !EpisodeEngine.IsScaffolding(entry.kind))
+            .Reverse()
+            // A quieter house at the endgame: two rows, as the outline asks (ENDGAME-PLAN F1).
+            .Take(IsEndgame(state) ? EndgameEventRows : RecentEventRows)
+            .ToList();
 
-            const float RowHeight = 58f;
+        private float RecentEventsCard(Transform parent, EpisodeState state, float top, System.Collections.Generic.List<EpisodeEvent> entries, int shown)
+        {
             float width = RightColumnWidth;
-            float height = 42f + Mathf.Max(1, entries.Count) * RowHeight + 2f;
+            // A row's room, or the empty card's one line; fewer while the controls card is open on
+            // a frame too short for both (see FoldColumn).
+            float height = RecentEventsHeight(shown);
             var card = Chrome(RecentEventsCardName, parent);
             Anchor(card, new Vector2(1, 1), new Vector2(1, 1), new Vector2(-RightColumnInset, -top),
                 new Vector2(width, height));
@@ -1326,15 +1495,17 @@ namespace Gamesim.Episode
 
             if (entries.Count == 0)
             {
-                FixedText(card, "Nothing has happened yet.", 13, UiTheme.Muted, new Vector2(14f, -44f),
-                    new Vector2(width - 28f, 22f));
+                if (shown > 0)
+                    FixedText(card, "Nothing has happened yet.", 13, UiTheme.Muted, new Vector2(14f, -44f),
+                        new Vector2(width - 28f, 22f));
                 return height;
             }
 
+            if (shown < entries.Count) entries = entries.Take(shown).ToList();
             for (int i = 0; i < entries.Count; i++)
             {
                 var entry = entries[i];
-                float y = -(42f + i * RowHeight);
+                float y = -(42f + i * RecentEventRowHeight);
                 var tile = Panel("Event tile", card, UiTheme.SurfaceRaised, 8);
                 Anchor(tile, new Vector2(0, 1), new Vector2(0, 1), new Vector2(12f, y - 2f), new Vector2(34f, 34f));
                 tile.GetComponent<Image>().raycastTarget = false;
@@ -1351,7 +1522,7 @@ namespace Gamesim.Episode
                 if (i + 1 < entries.Count)
                 {
                     var rule = Panel("Event divider", card, new Color(UiTheme.Outline.r, UiTheme.Outline.g, UiTheme.Outline.b, .45f), 0);
-                    Anchor(rule, new Vector2(0, 1), new Vector2(0, 1), new Vector2(12f, y - RowHeight + 3f), new Vector2(width - 24f, 1f));
+                    Anchor(rule, new Vector2(0, 1), new Vector2(0, 1), new Vector2(12f, y - RecentEventRowHeight + 3f), new Vector2(width - 24f, 1f));
                     rule.GetComponent<Image>().raycastTarget = false;
                 }
             }

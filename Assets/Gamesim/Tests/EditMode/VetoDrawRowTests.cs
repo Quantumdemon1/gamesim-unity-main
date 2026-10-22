@@ -69,5 +69,131 @@ namespace Gamesim.Tests.EditMode
             }
             Assert.That(misses, Is.Empty, misses.Count + " rows miss, among them: " + string.Join(" | ", misses.Take(8)));
         }
+
+        /// <summary>The 1200x900 largest-text geometry inferred from retained failure3331 needs both groups to reflow.</summary>
+        [Test]
+        public void TheLargestDrawReflowsBothGroupsWithinItsActualBudget()
+        {
+            const float scale = 1.4f, canvasWidth = 1385.640646f, viewport = 761.430359f, beforeBoard = 158.8f;
+            float room = canvasWidth - EpisodeHud.LeftColumnX - EpisodeHud.StrategyEdge - 74f - (2f * 44f + 190f) * scale;
+            float height = viewport - beforeBoard - 12f - 2f - 27f * scale;
+            float score = EpisodeHud.VetoDrawSplit(3, 13, room, height, scale, false,
+                out float playing, out float eligible, out int playingColumns, out int columns);
+            Assert.That(score, Is.GreaterThanOrEqualTo(EpisodeHud.FaceCardFloor * scale),
+                "A real split exists without changing a font, card floor, viewport or safety reserve.");
+            Assert.That(playingColumns, Is.EqualTo(1), "The three playing cards must reflow at this width and height.");
+            Assert.That(columns, Is.EqualTo(5), "The thirteen eligible faces use three rows.");
+            AssertDrawSplitFits(3, 13, room, height, scale, playing, eligible, playingColumns, columns);
+        }
+
+        /// <summary>The two-unit preference steps must not miss an exact-floor-only feasible split.</summary>
+        [Test]
+        public void AFeasibleExactFloorIsTriedAfterTheTwoUnitSteps()
+        {
+            const float scale = 1f, room = 284f, height = 150f;
+            float score = EpisodeHud.VetoDrawSplit(3, 1, room, height, scale, false,
+                out float playing, out float eligible, out int playingColumns, out int columns);
+            Assert.That(score, Is.EqualTo(EpisodeHud.FaceCardFloor).Within(.001f),
+                "Only four exact-floor cards plus the two playing-side gaps fit this width.");
+            AssertDrawSplitFits(3, 1, room, height, scale, playing, eligible, playingColumns, columns);
+        }
+
+        /// <summary>Thirteen eligible faces cannot fit this height even at the unchanged readable floor.</summary>
+        [Test]
+        public void AFullDrawThatCannotFitReportsNoSplit()
+        {
+            float score = EpisodeHud.VetoDrawSplit(3, 13, 900f, 500f, 1.4f, false,
+                out _, out _, out _, out _);
+            Assert.That(score, Is.LessThan(0f), "An overflowing floor fallback must not be reported as a feasible split.");
+        }
+
+        /// <summary>Cards that fit alone do not license a bag frame taller than the row budget.</summary>
+        [Test]
+        public void ABagFrameThatCannotFitReportsNoSplit()
+        {
+            float score = EpisodeHud.VetoDrawSplit(3, 1, 900f, 190f, 1.4f, false,
+                out _, out _, out _, out _);
+            Assert.That(score, Is.LessThan(0f), "Even the minimum bag's frame needs more than 190 at this scale.");
+        }
+
+        private static void AssertDrawSplitFits(int byRight, int others, float room, float height, float scale,
+            float playing, float eligible, int playingColumns, int columns)
+        {
+            float gap = EpisodeHud.FaceGap * scale;
+            int leftRows = Mathf.CeilToInt(byRight / (float)playingColumns);
+            int rows = Mathf.CeilToInt(others / (float)columns);
+            float playingTall = leftRows * CardTall(playing, scale) + (leftRows - 1) * gap;
+            float eligibleTall = rows * CardTall(eligible, scale) + (rows - 1) * gap;
+            Assert.That(playing, Is.GreaterThanOrEqualTo(EpisodeHud.FaceCardFloor * scale));
+            Assert.That(eligible, Is.GreaterThanOrEqualTo(EpisodeHud.FaceCardFloor * scale));
+            Assert.That(playingColumns, Is.InRange(1, byRight));
+            Assert.That(columns, Is.InRange(1, others));
+            Assert.That(playingColumns * playing + (playingColumns - 1) * gap + columns * eligible + (columns - 1) * gap,
+                Is.LessThanOrEqualTo(room + .01f), "Both card groups and all horizontal gaps fit.");
+            Assert.That(playingTall, Is.LessThanOrEqualTo(height + .01f));
+            Assert.That(eligibleTall, Is.LessThanOrEqualTo(height + .01f), "All eligible rows and vertical gaps fit.");
+            EpisodeHud.VetoDrawBagColumn(playingTall, eligibleTall, height, scale, out _, out float columnTop, out float rowTall);
+            Assert.That(columnTop - 8f * scale, Is.GreaterThanOrEqualTo(-.01f), "The bag's frame cannot rise into its heading.");
+            Assert.That(rowTall, Is.LessThanOrEqualTo(height + .01f), "The bag's full frame also fits.");
+        }
+
+        /// <summary>Illustrative full-copy widths constrain the narrow Largest frame; native TMP metrics remain the runtime authority.</summary>
+        [Test]
+        public void CompleteHeadingsConstrainLargestFourThreePacking()
+        {
+            const float scale = 1.4f, top = 37.8f, height = 550.830359f, middle = 201f;
+            const float room = 1071.640646f - 2f * 44f * scale - middle;
+            var headings = new EpisodeHud.VetoDrawHeadingSpace(304f, 201f, 226f, top, middle, 4.2f, 4.2f, 4.2f, 4.2f);
+            float score = EpisodeHud.VetoDrawConstrainedSplit(3, 13, room, height, scale, false, headings,
+                out float playing, out float eligible, out int playingColumns, out int columns, out bool shared);
+            Assert.That(score, Is.GreaterThanOrEqualTo(EpisodeHud.FaceCardFloor * scale));
+            Assert.That(shared, Is.True, "The complete automatic heading needs the shared allocation.");
+            AssertCompleteHeadingLayout(3, 13, room, height, scale, headings, playing, eligible, playingColumns, columns, shared);
+        }
+
+        /// <summary>The fixed bag width cannot fit this two-row case; measured full-copy middle width201 can.</summary>
+        [Test]
+        public void CompleteHeadingsConstrainLargestSixteenNinePacking()
+        {
+            const float scale = 1.4f, top = 37.8f, height = 411.6f, middle = 201f;
+            const float room = 1286f - 2f * 44f * scale - middle;
+            var headings = new EpisodeHud.VetoDrawHeadingSpace(304f, 201f, 226f, top, middle, 4.2f, 4.2f, 4.2f, 4.2f);
+            float score = EpisodeHud.VetoDrawConstrainedSplit(3, 13, room, height, scale, false, headings,
+                out float playing, out float eligible, out int playingColumns, out int columns, out bool shared);
+            Assert.That(score, Is.GreaterThanOrEqualTo(EpisodeHud.FaceCardFloor * scale));
+            Assert.That(Mathf.CeilToInt(3f / playingColumns), Is.EqualTo(2));
+            Assert.That(Mathf.CeilToInt(13f / columns), Is.EqualTo(2));
+            AssertCompleteHeadingLayout(3, 13, room, height, scale, headings, playing, eligible, playingColumns, columns, shared);
+            var tooWide = new EpisodeHud.VetoDrawHeadingSpace(304f, 220f, 226f, top, middle);
+            Assert.That(EpisodeHud.VetoDrawConstrainedSplit(3, 13, room, height, scale, false, tooWide,
+                out _, out _, out _, out _, out _), Is.LessThan(0f), "Unknown wider actual copy cannot be declared fitted.");
+            var tooTall = new EpisodeHud.VetoDrawHeadingSpace(304f, 201f, 226f, top, middle, 500f, 4.2f, 4.2f, 4.2f);
+            Assert.That(EpisodeHud.VetoDrawConstrainedSplit(3, 13, room, height, scale, false, tooTall,
+                out _, out _, out _, out _, out _), Is.LessThan(0f), "Actual frame overhang cannot be hidden behind its host's smaller bounds.");
+        }
+
+        private static void AssertCompleteHeadingLayout(int byRight, int others, float room, float height, float scale,
+            EpisodeHud.VetoDrawHeadingSpace headings, float playing, float eligible, int playingColumns, int columns, bool shared)
+        {
+            AssertDrawSplitFits(byRight, others, room, height, scale, playing, eligible, playingColumns, columns);
+            float gap = EpisodeHud.FaceGap * scale;
+            float playingWidth = playingColumns * playing + (playingColumns - 1) * gap;
+            float eligibleWidth = columns * eligible + (columns - 1) * gap;
+            Assert.That(headings.PlayingWidth, Is.LessThanOrEqualTo(playingWidth + (shared ? 44f * scale + headings.MiddleWidth : 0f) + .01f));
+            Assert.That(headings.DrawWidth, Is.LessThanOrEqualTo(headings.MiddleWidth + .01f));
+            Assert.That(headings.EligibleWidth, Is.LessThanOrEqualTo(eligibleWidth + .01f));
+            int leftRows = Mathf.CeilToInt(byRight / (float)playingColumns), rows = Mathf.CeilToInt(others / (float)columns);
+            float playingTall = leftRows * CardTall(playing, scale) + (leftRows - 1) * gap;
+            float eligibleTall = rows * CardTall(eligible, scale) + (rows - 1) * gap;
+            EpisodeHud.VetoDrawHeadingBagColumn(playingTall, eligibleTall, height, scale, shared, headings.Top,
+                headings.FrameTop, headings.FrameBottom, out float bag, out float bagTop, out float rowTall);
+            Assert.That(bag, Is.InRange(60f * scale, 124f * scale), "The frame reservation cannot change the permitted bag sizes.");
+            Assert.That(rowTall, Is.LessThanOrEqualTo(height + .01f));
+            Assert.That(bagTop - 8f * scale - headings.FrameTop, Is.GreaterThanOrEqualTo((shared ? headings.Top : 0f) - .01f),
+                "Every heading and rule clears the actual frame quad, not merely its host.");
+            Assert.That(bagTop + bag + UnderTheBag(scale) + 8f * scale + headings.FrameBottom, Is.LessThanOrEqualTo(rowTall + .01f));
+            Assert.That(headings.FrameLeft, Is.LessThanOrEqualTo(44f * scale));
+            Assert.That(headings.FrameRight, Is.LessThanOrEqualTo(44f * scale));
+        }
     }
 }

@@ -69,6 +69,9 @@ namespace Gamesim.Tests.PlayMode
         {
             var maya = SceneComponents<HouseNpc>().Single(npc => npc.Id == ContentCatalog.MayaId);
             yield return OpenNearbyNpc(maya);
+            Assert.That(LastActive(EpisodeHud.DialName), Is.Not.Null, "The conversation opens on its topic wheel.");
+            Assert.That(LastActive(EpisodeHud.ConversationColumnName), Is.Null, "The root leaves the actors clear of an options column.");
+            yield return EnterConversationCategory(EpisodeDirector.ConnectCategoryCaption);
             yield return Settle(() => !cameraRig.IsTravelling && cameraRig.HasArrived(0.05f), 4f);
             yield return null;
             Canvas.ForceUpdateCanvases();

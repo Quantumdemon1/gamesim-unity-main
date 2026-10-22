@@ -65,9 +65,9 @@ namespace Gamesim.Tests.PlayMode
                 Is.EqualTo(new[] { EpisodeHud.JurySkipCaption, EpisodeDirector.FinalCaseCaption, EpisodeDirector.JuryHouseCaption }),
                 "One thin row of ways on after the live layout, in that order (MOCKUP-PASS M11).");
 
-            foreach (bool larger in new[] { false, true })
+            foreach (var (textSize, larger) in TextScales.Steps)
             {
-                yield return ApplyTextSize(larger);
+                yield return ApplyTextSize(textSize);
                 yield return OpenFinalePanel();
                 ButtonWithCaption(EpisodeDirector.FinalCaseCaption).onClick.Invoke();
                 yield return Frames(2);
@@ -84,12 +84,12 @@ namespace Gamesim.Tests.PlayMode
                 AssertDecisionCopyFits(LastActive(EpisodeHud.FinalCaseThemesName));
                 AssertDecisionCopyFits(LastActive(EpisodeHud.FinalCaseResumeName));
                 AssertTheFinalCaseScreen(state, panel, moments, required);
-                string where = "The final case" + (larger ? " at the larger text" : "");
+                string where = "The final case" + (larger ? " " + TextScales.At(textSize) : "");
                 AssertEveryLabelDraws(where, panel);
                 AssertAStationScreen(where);
                 AssertTheCloseUnderTheTray(early: false);
                 if (Application.isBatchMode)
-                    yield return CaptureFraming(larger ? "endgame-final-case-large" : "endgame-final-case", settle: false,
+                    yield return CaptureFraming("endgame-final-case" + TextScales.Suffix(textSize), settle: false,
                         inspect: frame => LogTheFit(where + " on the 16:9 frame"));
                 ButtonWithCaption(EpisodeDirector.LeaveFinalCaseCaption).onClick.Invoke();
                 yield return Frames(1);
@@ -296,9 +296,9 @@ namespace Gamesim.Tests.PlayMode
             HoldTheHouseForTheFixture();
             yield return InstallTheWindowAtThreeUnderTheFinaleRules();
             yield return PutAwayTheCards();
-            foreach (bool larger in new[] { false, true })
+            foreach (var (textSize, larger) in TextScales.Steps)
             {
-                yield return ApplyTextSize(larger);
+                yield return ApplyTextSize(textSize);
                 yield return OpenFreeTime();
                 var before = director.Snapshot;
                 Assert.That(EpisodeDirector.FinalCaseEarlyAvailable(before), Is.True, "The window at three, under the finale rules.");
@@ -329,14 +329,14 @@ namespace Gamesim.Tests.PlayMode
                     Assert.That(ButtonWithCaption(moment.text).transform.IsChildOf(LastActive(EpisodeHud.FinalCaseMomentsName)), Is.True, moment.reference);
                 AssertDecisionCopyFits(LastActive(EpisodeHud.FinalCaseThemesName));
                 AssertDecisionCopyFits(LastActive(EpisodeHud.FinalCaseResumeName));
-                string where = "The final case at three" + (larger ? " at the larger text" : "");
+                string where = "The final case at three" + (larger ? " " + TextScales.At(textSize) : "");
                 AssertEveryLabelDraws(where, panel);
                 // A station screen at three (UI-UX-PASS-PLAN E0): the window's way on and its
                 // unused-actions note, which cut the columns at the bar, are not pinned under it.
                 AssertAStationScreen(where);
                 AssertTheCloseUnderTheTray(early: true);
                 if (Application.isBatchMode)
-                    yield return CaptureFraming(larger ? "endgame-final-case-three-large" : "endgame-final-case-three", settle: false,
+                    yield return CaptureFraming("endgame-final-case-three" + TextScales.Suffix(textSize), settle: false,
                         inspect: frame => LogTheFit(where + " on the 16:9 frame"));
 
                 // Choosing is view state: nothing commits, and closing lets it go.
@@ -383,9 +383,9 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(exchange.category, Is.Not.Null, "A question from the season's history.");
             var offered = FinaleQuestions.Offered(exchange.category, exchange.receiptKind);
 
-            foreach (bool larger in new[] { false, true })
+            foreach (var (textSize, larger) in TextScales.Steps)
             {
-                yield return ApplyTextSize(larger);
+                yield return ApplyTextSize(textSize);
                 yield return OpenFinalePanel();
                 yield return Frames(2);
                 Canvas.ForceUpdateCanvases();

@@ -50,14 +50,14 @@ namespace Gamesim.Tests.PlayMode
         public IEnumerator CampaignBoard_TheCampaignIsOneScreenAtBothTextSizes()
         {
             yield return InstallCampaign(46);
-            yield return AtBothTextSizes(larger =>
+            yield return AtEveryTextSize(larger =>
             {
                 // The state the open panel was drawn from, read once it is open: opening it flushes
                 // the house's ticks, and a houseguest's move toward the player moves the player's own
                 // reading of them, which is what the heroes print.
                 var state = director.Snapshot;
                 var hoh = state.Find(state.hohId);
-                string where = "The campaign" + (larger ? " at the larger text" : "");
+                string where = "The campaign" + (larger ? " " + TextScales.At(director.TextSize) : "");
                 AssertOnTheStrategyStage(CloseCampaigning, where);
                 AssertCampaignFits(where);
                 Assert.That(ActiveRect(EpisodeHud.CeremonyTitleName).GetComponent<TMP_Text>().text, Is.EqualTo("Campaign"), "The title keeps its word,");
@@ -207,7 +207,7 @@ namespace Gamesim.Tests.PlayMode
             var state = director.Snapshot;
             int expected = EpisodeEngine.Voters(state).Count(actor => !actor.isPlayer) + (state.Find(state.hohId).isPlayer ? 0 : 1);
             // Sixteen in the house still fit the stage at the larger text, before the pages are walked at the resting size.
-            yield return AtBothTextSizes(larger => AssertCampaignFits("A full house's campaign" + (larger ? " at the larger text" : "")));
+            yield return AtEveryTextSize(larger => AssertCampaignFits("A full house's campaign" + (larger ? " " + TextScales.At(director.TextSize) : "")));
             yield return OpenStation();
             yield return null;
             AssertOnTheStrategyStage(CloseCampaigning, "A full house's campaign");
@@ -309,9 +309,9 @@ namespace Gamesim.Tests.PlayMode
                 state.haveNots.Add(state.playerId);
                 state.replyCards.Add(new ReplyCardState { id = "reply-8", week = state.week, kind = ReplyCards.Plea, fromId = state.nominees[0], aboutId = state.nominees[1] });
             });
-            yield return AtBothTextSizes(larger =>
+            yield return AtEveryTextSize(larger =>
             {
-                string where = "The campaign with a plea and a Have-Not's line" + (larger ? " at the larger text" : "");
+                string where = "The campaign with a plea and a Have-Not's line" + (larger ? " " + TextScales.At(director.TextSize) : "");
                 AssertOnTheStrategyStage(CloseCampaigning, where);
                 AssertCampaignFits(where);
                 var plea = ActiveRect(EpisodeHud.CampaignPleaName);
@@ -384,9 +384,9 @@ namespace Gamesim.Tests.PlayMode
         {
             yield return InstallCampaignWithABeat();
             Assert.That(EpisodeEngine.OpenStoryBeats(director.Snapshot), Has.Count.EqualTo(1), "The fixture has a beat waiting.");
-            yield return AtBothTextSizes(larger =>
+            yield return AtEveryTextSize(larger =>
             {
-                string where = "The campaign with a beat waiting" + (larger ? " at the larger text" : "");
+                string where = "The campaign with a beat waiting" + (larger ? " " + TextScales.At(director.TextSize) : "");
                 AssertOnTheStrategyStage(CloseCampaigning, where);
                 AssertCampaignFits(where);
                 var choices = ActiveRect(EpisodeHud.StoryChoicesName);

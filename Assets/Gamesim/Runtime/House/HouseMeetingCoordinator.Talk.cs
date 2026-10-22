@@ -73,7 +73,7 @@ namespace Gamesim.House
                 || actor.npc == null || actor.motion == null || !actor.motion.IsBound)
                 return Fail(out reason, "Nobody is free to walk to a conversation spot.");
             // A conversation, a stage or a walk out has them; furniture or a stroll gives way, as it does to a meeting.
-            if (actor.motion.LeaseId != null && !ActivityOwnsMotion(actor.motion) && !WanderOwnsMotion(actor.motion))
+            if (actor.motion.LeaseId != null && !ActivityOwnsMotion(actor.motion) && !WanderOwnsMotion(actor.motion) && !ActOwnsMotion(actor.motion))
                 return Fail(out reason, actor.npc.DisplayName + " is busy.");
             var body = actor.npc.GetComponent<CapsuleCollider>();
             if (body == null) return Fail(out reason, actor.npc.DisplayName + " has no body to walk.");
@@ -97,7 +97,7 @@ namespace Gamesim.House
                 }
                 if (best == null) continue;
                 // Only now is anybody disturbed: off their furniture or their stroll, and on their way.
-                YieldActivity(npcId); YieldWander(npcId);
+                YieldActivity(npcId); YieldWander(npcId); YieldAct(npcId);
                 if (actor.motion.LeaseId != null) return Fail(out reason, actor.npc.DisplayName + " is busy.");
                 var npcPlace = npcFirst ? best.a : best.b;
                 var playerPlace = npcFirst ? best.b : best.a;

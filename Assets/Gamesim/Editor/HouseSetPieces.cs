@@ -197,7 +197,10 @@ namespace Gamesim.Editor
             new Prop("Bedroom floor", "pillowBlue",             0.28f,  0.45f, 180f, 0.10f, 0.52f),
             new Prop("Bedroom floor", "cabinetBedDrawer",      -0.05f,  0.42f,   0f, 0.52f),
             new Prop("Bedroom floor", "cabinetBedDrawer",       0.17f,  0.42f,   0f, 0.52f),
-            new Prop("Bedroom floor", "cabinetBedDrawer",      -0.42f, -0.28f,  90f, 0.52f),
+            // Between the double beds below, against the west wall, a centimetre clear of each
+            // (HouseRoomArrangement): it stood at (-12.88, 2.20) by the wardrobe, then at
+            // (-13.70, 1.84) between the beds at their old size.
+            new Prop("Bedroom floor", "cabinetBedDrawer",      -0.478571f, -0.3434f,  90f, 0.52f),
             new Prop("Bedroom floor", "sideTableDrawers",      -0.34f,  0.02f,   0f, 0.62f),
             new Prop("Bedroom floor", "bb_set_photoframe",     -0.34f,  0.02f, 160f, 0f, 0.62f),
             new Prop("Bedroom floor", "lampSquareTable",       -0.34f,  0.02f,   0f, 0.45f, 0.62f),
@@ -205,10 +208,23 @@ namespace Gamesim.Editor
             new Prop("Bedroom floor", "lampSquareTable",        0.16f,  0.02f,   0f, 0.45f, 0.62f),
             new Prop("Bedroom floor", "coatRackStanding",      -0.44f,  0.40f,   0f, 1.70f),
             new Prop("Bedroom floor", "plantSmall2",            0.43f, -0.40f,   0f, 0.50f),
-            new Prop("Bedroom floor", "bookcaseOpen",           0.43f,  0.34f, 270f, 1.60f),
+            // Against the east partition's north segment, its open front to the room: at 270 it
+            // faced the partition, and at (-0.98, 8.40) it narrowed the walk to the yard door.
+            new Prop("Bedroom floor", "bookcaseOpen",           0.465714f, 0.227f,  90f, 1.60f),
             new Prop("Bedroom floor", "rugSquare",             -0.10f, -0.22f,   0f, -3.0f),
             new Prop("Bedroom floor", "lampRoundFloor",         0.42f, -0.06f,   0f, 1.45f),
             new Prop("Bedroom floor", "trashcan",               0.40f, -0.42f,   0f, 0.55f),
+            // The owner's arrangement (HouseRoomArrangement): the prototype's two double beds, which
+            // stood side by side in the middle of the room, go into the south-west corner where the
+            // wardrobe stood, heads to the west wall (on its skirting), the south one on the south
+            // wall's. The owner asked on 2026-10-16 for full-size doubles, about 1.4 x 2.0 m, where
+            // they stood at the 0.94 x 1.18 m the bed frames had fitted them to: these are the
+            // largest the corner takes, 1.20 x 1.50 m, three quarters of the authored 1.6 x 2.0 m bed
+            // (0.6375 m to the headboard's top). The lower bunk's sleeper walking in past the north
+            // bed's foot is what stops them growing; HouseRoomArrangement has the measurements. No
+            // one sleeps in them: the beds the cast lie on are the singles and the bunks.
+            new Prop("Bedroom floor", "bedDouble",             -0.436071f, -0.4255f, 90f, 0.6375f),
+            new Prop("Bedroom floor", "bedDouble",             -0.436071f, -0.2613f, 90f, 0.6375f),
 
             // ---------------------------------------------------------------- Private room
             new Prop("Private room floor", "lampRoundFloor",   -0.42f,  0.40f,   0f, 1.50f),
@@ -242,18 +258,29 @@ namespace Gamesim.Editor
             new Prop("HoH floor", "cabinetBedDrawer",           0.09f,  0.40f,   0f, 0.52f),
             new Prop("HoH floor", "lampSquareTable",            0.09f,  0.40f,   0f, 0.42f, 0.52f),
             new Prop("HoH floor", "rugRectangle",              -0.12f, -0.06f,   0f, -3.4f),
-            new Prop("HoH floor", "loungeDesignSofa",          -0.42f, -0.20f,  90f, 0.78f),
+            // Facing into the room, not the west wall, square to it: the owner left it at -86.80,
+            // 3.2 degrees off, outside the arrangement's three-degree rule, and on 2026-10-16 asked
+            // for it squared (HouseRoomArrangement).
+            new Prop("HoH floor", "loungeDesignSofa",          -0.42f, -0.20f, 270f, 0.78f),
             new Prop("HoH floor", "loungeChairRelax",          -0.14f, -0.34f,   0f, 0.88f),
             new Prop("HoH floor", "tableCoffee",               -0.30f, -0.34f,   0f, 0.42f),
             new Prop("HoH floor", "cabinetTelevision",         -0.12f, -0.44f, 180f, 0f),
             new Prop("HoH floor", "lampSquareFloor",           -0.42f,  0.42f,   0f, 1.05f),
             new Prop("HoH floor", "pottedPlant",                0.42f, -0.42f,   0f, 0.90f),
             new Prop("HoH floor", "bookcaseOpen",              -0.42f,  0.06f,  90f, 1.05f),
-            // The ensuite, along the east wall.
+            // The ensuite, in the suite's south-east corner (the owner's arrangement,
+            // HouseRoomArrangement): the bath and the shower along the east divider, the shower
+            // north of the door's open leaf, which swung through where it stood at (0.40, 0.14);
+            // the basin and the toilet on the south wall facing into the suite. On the east divider
+            // at 270 both faced the wall.
             new Prop("HoH floor", "bathtub",                    0.38f,  0.38f, 270f, 0.60f),
-            new Prop("HoH floor", "showerRound",                0.40f,  0.14f, 270f, 1.05f),
-            new Prop("HoH floor", "bathroomSink",               0.42f, -0.08f, 270f, 0.85f),
-            new Prop("HoH floor", "toilet",                     0.42f, -0.26f, 270f, 0.72f),
+            new Prop("HoH floor", "showerRound",                0.418650f, 0.196f, 270f, 1.05f),
+            new Prop("HoH floor", "bathroomSink",               0.276909f, -0.415f, 180f, 0.85f),
+            new Prop("HoH floor", "toilet",                     0.356838f, -0.398f, 180f, 0.72f),
+            // The nomination room's west speaker, which the owner carried in here and left under
+            // the floor inside the shower's new place; on the floor at the nearest clear spot, north
+            // of the shower's tiled back, facing into the suite.
+            new Prop("HoH floor", "speaker",                    0.434636f, 0.257f,  90f, 0.90f),
 
             // ---------------------------------------------------------------- Nomination room
             // Was empty. One table, one chair per houseguest, and nothing else to look at.
@@ -269,7 +296,8 @@ namespace Gamesim.Editor
             new Prop("Nomination floor", "lampSquareFloor",     0.40f,  0.42f,   0f, 1.05f),
             new Prop("Nomination floor", "pottedPlant",        -0.40f, -0.40f,   0f, 0.95f),
             new Prop("Nomination floor", "pottedPlant",         0.40f, -0.40f,   0f, 0.95f),
-            new Prop("Nomination floor", "speaker",            -0.42f,  0.10f,  90f, 0.90f),
+            // One speaker: its west twin, which stood in front of the suite's doorway, is the one
+            // the owner carried into the ensuite (see the HoH rows).
             new Prop("Nomination floor", "speaker",             0.42f,  0.10f, 270f, 0.90f),
 
             // ---------------------------------------------------------------- Game room
@@ -284,15 +312,22 @@ namespace Gamesim.Editor
             new Prop("Games floor", "stoolBar",                 0.20f,  0.06f,  90f, 0.78f),
             new Prop("Games floor", "stoolBar",                 0.20f, -0.06f,  90f, 0.78f),
             new Prop("Games floor", "stoolBar",                 0.20f, -0.18f,  90f, 0.78f),
-            new Prop("Games floor", "loungeChairRelax",        -0.40f,  0.16f,  70f, 0.88f),
+            // Turned out of the west divider's face and into the room (it stood at 70), and 0.115 m
+            // east of where it stood (-0.40): turned, its corner still reached 0.105 m into the
+            // stride kept clear in front of the divider's doorway, though not into the gap itself
+            // (HouseRoomArrangement). An owner's call: -0.40f puts it back on the owner's spot.
+            new Prop("Games floor", "loungeChairRelax",        -0.387744f, 0.16f, 270f, 0.88f),
             new Prop("Games floor", "bookcaseOpen",            -0.42f,  0.40f,  90f, 1.05f),
+            // The study corner faces itself (HouseRoomArrangement): the laptop's screen to the chair,
+            // at the 82.29 the owner left it, the books squared to the desk, and the chair below
+            // turned to the desk.
             new Prop("Games floor", "desk",                     0.40f, -0.36f, 270f, 0.74f),
-            new Prop("Games floor", "bb_set_laptop",            0.40f, -0.33f, 270f, 0f, 0.74f),
-            new Prop("Games floor", "bb_set_bookstack",         0.40f, -0.40f, 280f, 0f, 0.74f),
+            new Prop("Games floor", "bb_set_laptop",            0.40f, -0.33f,  82.286f, 0f, 0.74f),
+            new Prop("Games floor", "bb_set_bookstack",         0.40f, -0.40f,  90f, 0f, 0.74f),
             new Prop("Games floor", "bb_set_tray",              0.36f, -0.02f, 270f, 0f, 1.05f),
             new Prop("Games floor", "bb_set_remote",            0.10f, -0.22f, 300f, 0f, 0.42f),
             new Prop("Games floor", "bb_set_cable",             0.46f, -0.46f,   0f, 0f),
-            new Prop("Games floor", "loungeDesignChair",        0.26f, -0.36f,  90f, 0.82f),
+            new Prop("Games floor", "loungeDesignChair",        0.26f, -0.36f, 270f, 0.82f),
             new Prop("Games floor", "lampRoundFloor",          -0.42f, -0.42f,   0f, 1.05f),
             // The have-not end: two steel cots along the south wall, cold and hard. Dressing only.
             new Prop("Games floor", "bb_set_havenot_cot",      -0.28f, -0.44f,  90f, 0f),
@@ -372,6 +407,10 @@ namespace Gamesim.Editor
             // dressing runs after the planting, too late for that.
             int doorway = HouseLivingGallery.StrikeTheDoorway(world.transform);
             if (doorway > 0) Debug.Log("[Gamesim] set pieces · the living room's exit door: " + doorway + " prototype pieces struck from its doorway");
+            // The bedroom's double beds are plan rows now; the prototype's bed frames, their boxes
+            // and the wardrobe go before the collision and the bake (HouseRoomArrangement).
+            int bedroom = HouseRoomArrangement.StrikeTheBedroomPrototype(world.transform, root);
+            if (bedroom > 0) Debug.Log("[Gamesim] set pieces · the bedroom's arrangement: " + bedroom + " prototype pieces struck (the bed frames, their boxes and the wardrobe)");
             int greenery = Greenery(world.transform, root);
             int podiums = Podiums(world.transform, root);
             int rings = Rings(world.transform, root);
@@ -578,58 +617,82 @@ namespace Gamesim.Editor
             return count;
         }
 
+        /// <summary>The scene group the entrance is built under, and the three authored pieces it is built from (ArtSource/setpieces).</summary>
+        public const string EntranceGroup = "Entrance";
+        public const string EntranceArch = "bb_set_entrancearch", EntranceStanchion = "bb_set_stanchion", EntranceRope = "bb_set_velvetrope";
+        /// <summary>How high a rope's lowest point hangs over the deck: its ends then meet the stanchions' eyes at 0.86 m.</summary>
+        public const float EntranceRopeLift = 0.72f;
+
         /// <summary>
-        /// The roped entrance at the yard's outer edge: a gold arch and a run of stanchions, which
-        /// is how the house announces itself in every broadcast of this format.
+        /// The roped entrance at the yard's outer edge: a gold Art-Deco arch and a run of brass
+        /// stanchions with red velvet ropes between them, which is how the house announces itself in
+        /// every broadcast of this format. Authored in Blender (the art brief's A3) and placed as
+        /// set dressing: no collider, no static flag, so placing it needs no NavMesh or lightmap bake.
+        /// The arch keeps the box arch's footprint and centre line - it is the HoH competition's gate.
         /// </summary>
         private static int Entrance(Transform world, Transform root)
         {
             var yard = Room(world, "Competition yard floor");
-            var gold = AssetDatabase.LoadAssetAtPath<Material>(ArtRoot + "Emissive/Neon Gold.mat");
-            var brass = AssetDatabase.LoadAssetAtPath<Material>(ArtRoot + "Brass.mat");
-            var red = AssetDatabase.LoadAssetAtPath<Material>(ArtRoot + "Emissive/Neon Red.mat");
-            if (yard == null || gold == null || red == null) return 0;
-            if (brass == null) brass = gold;
+            if (yard == null) return 0;
 
             var bounds = yard.bounds;
             float z = bounds.max.z - 0.9f;          // just inside the far edge
             float centre = bounds.center.x;
-            const float openWidth = 4.6f, height = 3.1f, post = 0.22f;
+            const float openWidth = 4.6f;
 
-            var group = new GameObject("Entrance").transform;
+            var group = new GameObject(EntranceGroup).transform;
             group.SetParent(root, false);
 
-            int parts = 0;
-            // Two uprights and a lintel.
-            parts += Box(group, "Arch post left", gold,
-                new Vector3(post, height, post), new Vector3(centre - openWidth * 0.5f, bounds.max.y + height * 0.5f, z));
-            parts += Box(group, "Arch post right", gold,
-                new Vector3(post, height, post), new Vector3(centre + openWidth * 0.5f, bounds.max.y + height * 0.5f, z));
-            parts += Box(group, "Arch lintel", gold,
-                new Vector3(openWidth + post * 2f, post * 1.4f, post),
-                new Vector3(centre, bounds.max.y + height, z));
-
-            // Stanchions and rope, running out to either side of the opening. The posts are turned
-            // cylinders with a cap and a base plate rather than single boxes: a square stanchion is
-            // the clearest tell there is that a set was blocked out and never finished.
+            int parts = EntrancePiece(group, EntranceArch, new Vector3(centre, bounds.max.y, z));
+            // Stanchions and rope, running out to either side of the opening, 1.6 m apart.
             for (int side = -1; side <= 1; side += 2)
             {
                 float from = centre + side * (openWidth * 0.5f + 1.4f);
                 for (int i = 0; i < 3; i++)
                 {
                     float x = from + side * i * 1.6f;
-                    parts += Shape(group, "Stanchion", brass, PrimitiveType.Cylinder,
-                        new Vector3(0.09f, 0.5f, 0.09f), new Vector3(x, bounds.max.y + 0.5f, z));
-                    parts += Shape(group, "Stanchion cap", gold, PrimitiveType.Sphere,
-                        new Vector3(0.14f, 0.14f, 0.14f), new Vector3(x, bounds.max.y + 1.04f, z));
-                    parts += Shape(group, "Stanchion base", brass, PrimitiveType.Cylinder,
-                        new Vector3(0.30f, 0.02f, 0.30f), new Vector3(x, bounds.max.y + 0.02f, z));
+                    parts += EntrancePiece(group, EntranceStanchion, new Vector3(x, bounds.max.y, z));
                     if (i == 2) continue;
-                    parts += Box(group, "Rope", red,
-                        new Vector3(1.6f, 0.07f, 0.07f), new Vector3(x + side * 0.8f, bounds.max.y + 0.82f, z));
+                    parts += EntrancePiece(group, EntranceRope, new Vector3(x + side * 0.8f, bounds.max.y + EntranceRopeLift, z));
                 }
             }
             return parts;
+        }
+
+        /// <summary>One authored entrance piece, its bottom-centre on a point, with no collider and no static flag.</summary>
+        private static int EntrancePiece(Transform group, string model, Vector3 bottomCentre)
+        {
+            var instance = Model(model, group, 0f, 0f);
+            if (instance == null) return 0;
+            var placed = Measure(instance);
+            instance.transform.position += bottomCentre - new Vector3(placed.center.x, placed.min.y, placed.center.z);
+            foreach (var collider in instance.GetComponentsInChildren<Collider>(true)) UnityEngine.Object.DestroyImmediate(collider);
+            foreach (var node in instance.GetComponentsInChildren<Transform>(true)) GameObjectUtility.SetStaticEditorFlags(node.gameObject, 0);
+            return 1;
+        }
+
+        /// <summary>
+        /// Rebuilds the yard's entrance alone, in place: the full pass also fits collision, resolves
+        /// the doorways and bakes the NavMesh, none of which the entrance - set dressing without
+        /// collision - touches. Batch entry: -executeMethod Gamesim.Editor.HouseSetPieces.RebuildEntrance.
+        /// </summary>
+        [MenuItem("Gamesim/U07/Rebuild the yard entrance")]
+        public static void RebuildEntrance()
+        {
+            var scene = EditorSceneManager.OpenScene(EpisodeScene, OpenSceneMode.Single);
+            var world = scene.GetRootGameObjects().FirstOrDefault(r => r.name == WorldRoot);
+            if (world == null) throw new InvalidOperationException("No '" + WorldRoot + "' root in the episode scene.");
+            var root = world.transform.Find(RootName);
+            if (root == null) throw new InvalidOperationException("No '" + RootName + "' under the house; run the full set-piece pass.");
+            int order = -1;
+            var old = root.Find(EntranceGroup);
+            if (old != null) { order = old.GetSiblingIndex(); UnityEngine.Object.DestroyImmediate(old.gameObject); }
+            int parts = Entrance(world.transform, root);
+            var fresh = root.Find(EntranceGroup);
+            if (fresh != null && order >= 0) fresh.SetSiblingIndex(order);
+            EditorSceneManager.MarkSceneDirty(scene);
+            EditorSceneManager.SaveScene(scene);
+            Debug.Log("[Gamesim] set pieces · the yard entrance rebuilt: " + parts + " authored pieces.");
         }
 
         /// <summary>
@@ -640,9 +703,11 @@ namespace Gamesim.Editor
         /// switched off, and a kit plant dropped in its place at the same centre and height, so the
         /// planting plan somebody chose is kept and only the geometry changes.</para>
         ///
-        /// <para>The wide planters keep their box and get three small plants standing in it, because
-        /// the box in that case is a raised bed and not a pot — deleting it would leave the plants
-        /// floating over a hole in the yard's edging.</para>
+        /// <para>The wide planters keep their box, because the box in that case is a raised bed and
+        /// not a pot, and grow nothing. They grew three small plants each until the owner's
+        /// arrangement of 2026-09-23 (<see cref="HouseRoomArrangement"/>) deleted all twelve: the
+        /// plants stood on the top of the sphere the placeholder had, 1.9 m up, floating 1.3 m over
+        /// the bed's 0.6 m box.</para>
         /// </summary>
         private static int Greenery(Transform world, Transform root)
         {
@@ -663,14 +728,11 @@ namespace Gamesim.Editor
                 else if (stem == "Pot" || stem == "Planter") pots.Add(renderer);
             }
 
-            int swapped = 0, order = 0;
+            int swapped = 0;
             foreach (var leaf in leaves)
             {
-                // Each bed's plants are picked by its place in this order, and a struck leaf keeps
-                // its place: given up, every bed after it would grow different plants on the next
-                // run. A struck piece is not planted, though - the living room's doorway planter,
-                // switched off for the exit door, grew three plants floating where its bed had been.
-                int place = order++;
+                // A struck piece is not planted - the living room's doorway planter, switched off
+                // for the exit door, grew three plants floating where its bed had been.
                 if (!leaf.gameObject.activeInHierarchy) continue;
                 var slot = leaf.bounds;
                 var pot = pots
@@ -680,20 +742,18 @@ namespace Gamesim.Editor
                     .FirstOrDefault();
                 if (pot != null) slot.Encapsulate(pot.bounds);
 
-                // A wide planter reads as a bed of small plants; a narrow pot reads as one plant.
+                // A wide planter is a raised bed and stands as its box; a narrow pot reads as one plant.
                 bool bed = slot.size.x > 1.2f;
-                string model = bed ? "plantSmall" + (place % 3 + 1) : "pottedPlant";
-                int copies = bed ? 3 : 1;
-
-                for (int i = 0; i < copies; i++)
+                if (!bed)
                 {
-                    var instance = Model(model, group, i * 47f, slot.size.y * (bed ? 0.8f : 1f));
-                    if (instance == null) break;
-                    var scaled = Measure(instance);
-                    float offset = copies == 1 ? 0f : (i - (copies - 1) * 0.5f) * (slot.size.x / (copies + 1));
-                    instance.transform.position +=
-                        new Vector3(slot.center.x + offset, bed ? slot.max.y : slot.min.y, slot.center.z)
-                        - new Vector3(scaled.center.x, scaled.min.y, scaled.center.z);
+                    var instance = Model("pottedPlant", group, 0f, slot.size.y);
+                    if (instance != null)
+                    {
+                        var scaled = Measure(instance);
+                        instance.transform.position +=
+                            new Vector3(slot.center.x, slot.min.y, slot.center.z)
+                            - new Vector3(scaled.center.x, scaled.min.y, scaled.center.z);
+                    }
                 }
 
                 leaf.enabled = false;

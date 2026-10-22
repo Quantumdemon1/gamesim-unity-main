@@ -103,6 +103,43 @@ namespace Gamesim.Tests.EditMode
             Assert.That(Json(s), Is.EqualTo(before));
         }
 
+        /// <summary>
+        /// The consolidation check's D14 (the V7 review's V7-2): a houseguest's profile and the notebook's Story section tell a
+        /// houseguest's vote promise's ending as their notes, the web, the comparison and the Your word page tell it - "unresolved"
+        /// while the ballot that ended it is hidden from the player, the ending once they know it
+        /// (<see cref="KnownBallots.PromiseOutcomeKnown"/>, decision 4) - before mode 2 (<see cref="DecisionContextTests.LegacyVoteWord"/>)
+        /// and in mode 2's flip pair (<see cref="ModeTwoReaderSweep.Flip"/>), whose two seasons the two pages read alike.
+        /// </summary>
+        [Test]
+        public void ActualProfileRecordsAndNotebookStoryTellAVotePromisesEndingOnlyWhereItsBallotIsKnown()
+        {
+            string First(EpisodeState s, string who) => s.Find(who).name.Split(' ')[0];
+            List<string> Profile(EpisodeState s, string who) => ProfileRecords(s, who, First(s, who));
+            string InProfile(EpisodeState s, string who, string standing) => First(s, who) + " promised you a vote · " + standing;
+            string InStory(EpisodeState s, string who, string standing) => s.Find(who).name + " promised you a vote  ·  " + standing;
+            void Reads(EpisodeState s, string who, string standing, string other, string where)
+            {
+                string before = Json(s);
+                string profile = string.Join("\n", Profile(s, who)), story = string.Join("\n", NotebookPromises(s));
+                Assert.That(profile, Does.Contain(InProfile(s, who, standing)).And.Not.Contain(InProfile(s, who, other)), where + ": the profile.");
+                Assert.That(story, Does.Contain(InStory(s, who, standing)).And.Not.Contain(InStory(s, who, other)), where + ": the Story section.");
+                Assert.That(Json(s), Is.EqualTo(before), where + ": read only.");
+            }
+
+            var legacy = DecisionContextTests.LegacyVoteWord();
+            Reads(legacy.blind, legacy.promiser, KnownBallots.Unresolved, "broken", "Before mode 2, the ballot hidden");
+            Reads(legacy.told, legacy.promiser, "broken", KnownBallots.Unresolved, "Before mode 2, the ballot told");
+
+            var blind = ModeTwoReaderSweep.Flip(false, word: true);
+            foreach (var s in new[] { blind.Kept, blind.Broken })
+                Reads(s, blind.PartnerId, KnownBallots.Unresolved, "broken", "Mode 2, the ballot hidden");
+            blind.AssertBlind("The profile's records", s => Profile(s, blind.PartnerId));
+            blind.AssertBlind("The notebook's Story section", s => NotebookPromises(s));
+            var told = ModeTwoReaderSweep.Flip(true, word: true);
+            foreach (var s in new[] { told.Kept, told.Broken })
+                Reads(s, told.PartnerId, "broken", KnownBallots.Unresolved, "Mode 2, the ballot told and judged");
+        }
+
         [Test]
         public void BuiltRelationshipDetailsShowActualCanonicalPromiseAndBindingDealOnly()
         {
@@ -134,6 +171,54 @@ namespace Gamesim.Tests.EditMode
             string before = Json(s);
             Assert.That(RelationshipCopy(s, who), Is.EqualTo(baseline));
             Assert.That(Json(s), Is.EqualTo(before));
+        }
+
+        /// <summary>
+        /// The built details' "between you" lines tell a houseguest's vote promise's ending as their notes tell it (vote family
+        /// V6's review, finding 2; <see cref="KnownBallots.PromiseOutcomeKnown"/>, decision 4): "unresolved" while the ballot that
+        /// ended it is hidden from the player, the ending once they know that ballot - before mode 2
+        /// (<see cref="DecisionContextTests.LegacyVoteWord"/>) and in mode 2's flip pair (<see cref="ModeTwoReaderSweep.Flip"/>).
+        /// </summary>
+        [Test]
+        public void BuiltRelationshipDetailsTellAVotePromisesEndingOnlyWhereItsBallotIsKnown()
+        {
+            const string Word = " promised you a vote · ";
+            var legacy = DecisionContextTests.LegacyVoteWord();
+            Assert.That(RelationshipCopy(legacy.blind, legacy.promiser), Does.Contain(Word + KnownBallots.Unresolved).And.Not.Contain(Word + "Broken"));
+            Assert.That(RelationshipCopy(legacy.told, legacy.promiser), Does.Contain(Word + "Broken").And.Not.Contain(Word + KnownBallots.Unresolved));
+
+            var blind = ModeTwoReaderSweep.Flip(false, word: true);
+            foreach (var s in new[] { blind.Kept, blind.Broken })
+            {
+                string before = Json(s);
+                Assert.That(RelationshipCopy(s, blind.PartnerId), Does.Contain(Word + KnownBallots.Unresolved).And.Not.Contain(Word + "Broken"),
+                    "Mode 2, the ballot hidden.");
+                Assert.That(Json(s), Is.EqualTo(before));
+            }
+            var told = ModeTwoReaderSweep.Flip(true, word: true);
+            foreach (var s in new[] { told.Kept, told.Broken })
+                Assert.That(RelationshipCopy(s, told.PartnerId), Does.Contain(Word + "Broken"), "Mode 2, the ballot told and judged.");
+        }
+
+        /// <summary>
+        /// The built details' recent history is the player's record of the houseguest, where a Rule2 incident is its owner's line
+        /// (vote family V7). The player proposed a vote to evict and kept it, so the record holds "You honoured a vote to evict with
+        /// ..." exactly where the partner's hidden ballot kept it too: under mode 2 the history leaves it out while that ballot is
+        /// hidden, and tells it once the player was told and the reveal judged it.
+        /// </summary>
+        [Test]
+        public void BuiltRelationshipHistoryTellsAKeptVoteDealOnlyWhereThePartnersBallotIsKnown()
+        {
+            string Keep(EpisodeState s, string partner) => s.Find(s.playerId).name + " honoured a "
+                + DealKind.Title(DealKind.VoteEvict).ToLowerInvariant() + " with " + s.Find(partner).name + ".";
+            var blind = ModeTwoReaderSweep.Flip(false);
+            Assert.That(blind.Kept.relationships.Single(r => r.fromId == blind.Kept.playerId && r.toId == blind.PartnerId).events
+                .Any(e => e.description == Keep(blind.Kept, blind.PartnerId)), Is.True, "Fixture: the player's record holds the keep.");
+            string kept = RelationshipCopy(blind.Kept, blind.PartnerId);
+            Assert.That(kept, Does.Not.Contain(Keep(blind.Kept, blind.PartnerId)), "Mode 2, the ballot hidden: the history leaves the keep out.");
+            Assert.That(kept, Is.EqualTo(RelationshipCopy(blind.Broken, blind.PartnerId)), "The details read the flip pair alike.");
+            var told = ModeTwoReaderSweep.Flip(true);
+            Assert.That(RelationshipCopy(told.Kept, told.PartnerId), Does.Contain(Keep(told.Kept, told.PartnerId)), "Mode 2, the ballot told and judged.");
         }
 
         [TestCase(false)]
@@ -284,6 +369,14 @@ namespace Gamesim.Tests.EditMode
                 catch (TargetInvocationException error) { throw error.InnerException ?? error; }
             }
             finally { Object.DestroyImmediate(host); }
+        }
+
+        private static List<string> NotebookPromises(EpisodeState s)
+        {
+            var method = typeof(EpisodeDirector).GetMethod("NotebookPromises", BindingFlags.NonPublic | BindingFlags.Static);
+            Assert.That(method, Is.Not.Null, "Call the notebook's actual Story section reader, not a test-only seam.");
+            try { return (List<string>)method.Invoke(null, new object[] { s }); }
+            catch (TargetInvocationException error) { throw error.InnerException ?? error; }
         }
 
         private static string RelationshipCopy(EpisodeState s, string who)

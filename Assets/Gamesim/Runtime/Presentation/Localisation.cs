@@ -26,11 +26,17 @@ namespace Gamesim.Presentation
         public static bool HasTable => table.Count > 0;
         public static int TableSize => table.Count;
 
-        /// <summary>The text a player sees for an English caption: its translation, or itself.</summary>
+        /// <summary>
+        /// The text a player sees for an English caption: its translation, or itself - and any key it
+        /// names, in the key the player chose for it (PLAN A, A5, the lead's decision A-2). The
+        /// control keeps the English caption as its name; with every key as shipped the words are
+        /// exactly the caption's.
+        /// </summary>
         public static string Text(string english)
         {
-            if (string.IsNullOrEmpty(english) || table.Count == 0) return english;
-            return table.TryGetValue(english, out var translated) && !string.IsNullOrEmpty(translated) ? translated : english;
+            if (string.IsNullOrEmpty(english)) return english;
+            string words = table.Count > 0 && table.TryGetValue(english, out var translated) && !string.IsNullOrEmpty(translated) ? translated : english;
+            return KeyBindings.Substitute(words);
         }
 
         /// <summary>

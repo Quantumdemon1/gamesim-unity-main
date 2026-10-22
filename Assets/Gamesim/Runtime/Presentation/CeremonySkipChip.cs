@@ -82,7 +82,7 @@ namespace Gamesim.Presentation
         /// <summary>Creates the chip in <paramref name="owner"/>'s scene, as a root of its own.</summary>
         public static CeremonySkipChip Attach(GameObject owner)
         {
-            var root = new GameObject(RootName, typeof(RectTransform), typeof(Canvas), typeof(CanvasScaler), typeof(CanvasGroup),
+            var root = new GameObject(RootName, typeof(RectTransform), typeof(Canvas), typeof(FrameScaler), typeof(CanvasGroup),
                 typeof(GraphicRaycaster));
             if (owner != null && owner.scene.IsValid()) SceneManager.MoveGameObjectToScene(root, owner.scene);
 

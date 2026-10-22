@@ -2,6 +2,7 @@ using System.Collections;
 using System.IO;
 using System.Linq;
 using Gamesim.Episode;
+using Gamesim.Presentation;
 using Gamesim.Simulation;
 using NUnit.Framework;
 using TMPro;
@@ -120,9 +121,10 @@ namespace Gamesim.Tests.PlayMode
             foreach (string kind in ReplyCards.LegacyKinds)
             {
                 yield return InstallReplyPayoff(kind, size: 16);
-                foreach (bool large in new[] { false, true })
+                foreach (var textSize in TextSizes.All)
                 {
-                    yield return ApplyTextSize(large); yield return OpenStation();
+                    string large = TextSizes.Name(textSize);
+                    yield return ApplyTextSize(textSize); yield return OpenStation();
                     Canvas.ForceUpdateCanvases(); yield return null;
                     var before = director.Snapshot; var card = before.replyCards[0];
                     foreach (var reply in ReplyCards.Replies(kind))

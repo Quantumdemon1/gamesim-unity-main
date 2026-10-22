@@ -87,7 +87,7 @@ namespace Gamesim.Tests.PlayMode
         /// one, the voters' row follows the cards and the record and the reflections follow it, a
         /// scroll away. Measured in the HUD's own units, so it holds on either frame.
         /// </summary>
-        private void AssertTheDecisionFitsAtScrollZero(string where, bool reviewing, bool larger)
+        private void AssertTheDecisionFitsAtScrollZero(string where, bool reviewing, TextSize textSize, bool snug = false)
         {
             Canvas.ForceUpdateCanvases();
             var panel = LastActive("Episode panel");
@@ -111,7 +111,7 @@ namespace Gamesim.Tests.PlayMode
             InTheWindow(Part(EpisodeHud.BallotLineName), "the line");
             var row = Part(EpisodeHud.BallotRowName);
             InTheWindow(row, "the cards' row");
-            float floor = EpisodeHud.BallotCardHeight * EpisodeHud.BallotCardFloor * (larger ? 1.2f : 1f);
+            float floor = EpisodeHud.BallotCardHeight * EpisodeHud.BallotCardFloor * TextSizes.Scale(textSize);
             var cards = row.GetComponentsInChildren<Button>().Where(button => button.transform.parent == row).ToList();
             Assert.That(cards.Count, Is.GreaterThanOrEqualTo(2), where + ": a card per nominee.");
             foreach (var card in cards)
@@ -141,6 +141,11 @@ namespace Gamesim.Tests.PlayMode
                 Assert.That(OnTheHud(viewport).yMin, Is.GreaterThanOrEqualTo(pairTop - .5f), where + ": the scroll runs under the pair.");
                 Assert.That(content.rect.height, Is.LessThanOrEqualTo(window + .5f),
                     where + " scrolls: " + content.rect.height.ToString("0") + " in " + window.ToString("0") + ".");
+                // The owner's contract (2026-10-15), literally per frame: only where the window is too
+                // short for the cards' floor with the column's foot under them - the largest text on
+                // 16:9 - do the cards take that foot; everywhere else the column keeps it.
+                Assert.That(content.GetComponent<VerticalLayoutGroup>().padding.bottom == 0, Is.EqualTo(snug),
+                    where + (snug ? ": the cards take the column's foot, which the window cannot hold with their floor." : ": the column keeps its foot under the cards."));
                 return;
             }
             // The context follows: the voters' row under the cards, the record under the row, the
@@ -285,22 +290,29 @@ namespace Gamesim.Tests.PlayMode
                 Assert.That(before.contestants.Count, Is.EqualTo(houseguests), "A house of " + houseguests + ".");
                 string caption = "Vote to evict " + before.Find(before.nominees[0]).name;
                 var voters = EpisodeEngine.Voters(before).Where(voter => !voter.isPlayer).ToList();
-                foreach (bool larger in new[] { false, true })
+                foreach (var (textSize, larger) in TextScales.Steps)
                 {
-                    yield return ApplyTextSize(larger);
+                    yield return ApplyTextSize(textSize);
                     yield return OpenDiaryFixturePanel();
-                    string where = "The ballot in a house of " + houseguests + (larger ? " at the larger text" : "");
+                    string where = "The ballot in a house of " + houseguests + (larger ? " " + TextScales.At(textSize) : "");
                     var roster = LastActive(EpisodeDirector.VotersRowName);
                     Assert.That(roster, Is.Not.Null, where + ": the voters are a row of chips.");
                     Assert.That(roster.GetComponentsInChildren<Button>().Select(chip => chip.name),
                         Is.EquivalentTo(voters.Select(voter => "Thoughts · " + voter.name)), where + ": a chip a voter who is not the player.");
                     AssertEveryLabelDraws(roster, where + "'s voters");
-                    yield return AtBothFrames(frame => AssertTheDecisionFitsAtScrollZero(where + " on the " + frame + " frame", false, larger));
+                    yield return AtBothFrames(frame => AssertTheDecisionFitsAtScrollZero(where + " on the " + frame + " frame", false, textSize));
 
                     ButtonWithCaption(caption).onClick.Invoke();
                     yield return null; yield return null;
                     Assert.That(director.HasDiaryDecisionDraft, Is.True, where + ": the choice waits.");
-                    yield return AtBothFrames(frame => AssertTheDecisionFitsAtScrollZero(where + " with a choice waiting on the " + frame + " frame", true, larger));
+                    yield return AtBothFrames(frame => AssertTheDecisionFitsAtScrollZero(where + " with a choice waiting on the " + frame + " frame", true, textSize,
+                        snug: textSize == TextSize.Largest && frame == "16:9"));
+                    // The largest text's review on both frames, photographed for review.
+                    if (textSize == TextSize.Largest && houseguests == 6 && Application.isBatchMode)
+                    {
+                        yield return CaptureFraming("ballot-review-6-largest-16x9", settle: false);
+                        yield return CaptureFraming("ballot-review-6-largest-4x3", settle: false, width: 1200, height: 900);
+                    }
                     Assert.That(ActiveDiaryText(), Does.Contain(EpisodeDirector.DraftBarLine), where + ": the bar says what a draft is.");
                     AssertEquivalent(before, director.Snapshot);
                     ButtonWithCaption(EpisodeHud.DiaryCancelCaption).onClick.Invoke();
@@ -326,13 +338,13 @@ namespace Gamesim.Tests.PlayMode
         {
             var screen = director.GetComponentInChildren<WeeklyRecapScreen>(true);
             var state = FirstWeekClosed();
-            foreach (bool larger in new[] { false, true })
+            foreach (var (textSize, larger) in TextScales.Steps)
             {
-                screen.FontScale = larger ? 1.2f : 1f;
+                screen.FontScale = TextSizes.Scale(textSize);
                 yield return null;
                 screen.Show(state, () => { });
                 yield return Frames(3);
-                string where = "The recap" + (larger ? " at the larger text" : "");
+                string where = "The recap" + (larger ? " " + TextScales.At(textSize) : "");
                 AssertRecapOnItsScreen(screen, where);
                 yield return AtBothFrames(frame => AssertRecapOnItsScreen(screen, where + " on the " + frame + " frame"));
                 yield return Frames(2);
@@ -374,26 +386,84 @@ namespace Gamesim.Tests.PlayMode
             var canvas = screen.GetComponent<Canvas>();
             try
             {
+                // Each frame with the cards it stands to a row, and whether the roster runs past the
+                // grid's window - literals, measured per frame (the owner's contract of 2026-10-15):
+                // four to a row at the standard and the larger text everywhere, and at the largest
+                // three on 4:3, where four left Taylor Kim's "Competitive" cut short, under the
+                // scrollbar that says there is more.
                 foreach (var frame in new[]
                 {
-                    (wide: 1600, high: 900, text: 1f, shape: "16:9"),
-                    (wide: 1600, high: 900, text: 1.2f, shape: "16:9 at the larger text"),
-                    (wide: 1024, high: 768, text: 1f, shape: "4:3"),
-                    (wide: 1024, high: 768, text: 1.2f, shape: "4:3 at the larger text"),
+                    (wide: 1600, high: 900, text: 1f, shape: "16:9", across: 4, scrolls: false),
+                    (wide: 1600, high: 900, text: 1.2f, shape: "16:9 at the larger text", across: 4, scrolls: true),
+                    (wide: 1600, high: 900, text: 1.4f, shape: "16:9 at the largest text", across: CastLargestAcrossWide, scrolls: true),
+                    (wide: 1024, high: 768, text: 1f, shape: "4:3", across: 4, scrolls: false),
+                    (wide: 1024, high: 768, text: 1.2f, shape: "4:3 at the larger text", across: 4, scrolls: CastLargerScrollsSquare),
+                    (wide: 1024, high: 768, text: 1.4f, shape: "4:3 at the largest text", across: 3, scrolls: true),
                 })
                 {
+                    // The size as the settings set it, and the frame it magnifies the screen to.
+                    screen.FontScale = frame.text;
                     yield return LayCastScreenOutAt(frame.wide, frame.high, frame.text);
                     AssertTheHouseSizeBlockReads(screen, frame.shape);
                     AssertEveryTraitPillInsideItsCard(screen, frame.shape);
+                    yield return AssertTheCastGrid(frame.across, frame.scrolls, frame.shape);
                 }
             }
             finally
             {
                 canvas.renderMode = RenderMode.ScreenSpaceOverlay;
+                screen.FontScale = TextSizes.Scale(director.TextSize);
+            }
+            // The largest text on both frames, photographed for review.
+            if (Application.isBatchMode)
+            {
+                screen.FontScale = TextSizes.Scale(TextSize.Largest);
+                try
+                {
+                    yield return Frames(2);
+                    yield return CaptureFraming("cast-select-largest-16x9", settle: false);
+                    yield return CaptureFraming("cast-select-largest-4x3", settle: false, width: 1200, height: 900);
+                }
+                finally
+                {
+                    screen.FontScale = TextSizes.Scale(director.TextSize);
+                }
             }
             yield return null;
             screen.Dismiss();
             yield return null;
+        }
+
+        /// <summary>The cast grid at the largest text on 16:9: how many cards to a row, as measured; and whether the roster scrolls at the larger text on 4:3.</summary>
+        private const int CastLargestAcrossWide = 4;
+        private const bool CastLargerScrollsSquare = true;
+
+        /// <summary>
+        /// The cast grid on this frame: <paramref name="across"/> cards to a row, and the roster past
+        /// the grid's window - with the scrollbar beside it saying so - exactly when
+        /// <paramref name="scrolls"/>. The bar's showing follows the scroll's own pass, so it is
+        /// waited for, never counted in frames.
+        /// </summary>
+        private IEnumerator AssertTheCastGrid(int across, bool scrolls, string shape)
+        {
+            var scroll = CastGridScroll();
+            float settled = Time.realtimeSinceStartup + 2f;
+            while (scroll.verticalScrollbar.gameObject.activeSelf != scrolls && Time.realtimeSinceStartup < settled)
+            {
+                yield return null;
+                scroll = CastGridScroll();
+            }
+            Canvas.ForceUpdateCanvases();
+            var cards = scroll.content.Cast<Transform>().Where(card => card.gameObject.activeSelf && card.Find("Name plate") != null)
+                .Select(card => (RectTransform)card).ToList();
+            Assert.That(cards, Is.Not.Empty, "The cast grid has its cards on " + shape + ".");
+            Assert.That(cards.Select(card => Mathf.Round(card.anchoredPosition.x)).Distinct().Count(), Is.EqualTo(across),
+                "The cast grid stands " + across + " cards to a row on " + shape + ".");
+            Assert.That(scroll.content.rect.height > scroll.viewport.rect.height + .5f, Is.EqualTo(scrolls),
+                "The roster " + (scrolls ? "runs past" : "fits") + " the grid's window on " + shape + ": "
+                + scroll.content.rect.height.ToString("0") + " in " + scroll.viewport.rect.height.ToString("0") + ".");
+            Assert.That(scroll.verticalScrollbar.gameObject.activeSelf, Is.EqualTo(scrolls),
+                "and the scrollbar beside it " + (scrolls ? "says there is more" : "is not there") + " on " + shape + ".");
         }
 
         private void AssertTheHouseSizeBlockReads(CastSelect screen, string shape)

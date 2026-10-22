@@ -54,9 +54,35 @@ namespace Gamesim.Tests.PlayMode
         /// taken, and a breach line over a control only where that choice alone breaks it; every label
         /// drawn, in a box at least 1.3 times its type. Measured in the canvas's own units, so it holds
         /// on the batch canvas, inside AtFrame and in a capture's frame. <paramref name="consequenceMayGo"/>
-        /// lets the page's smallest tier drop the line of what the choice does (the worst case).
+        /// lets the one page's smallest tier drop the line of what the choice does (the worst case).
+        ///
+        /// <para>At the standard and the larger text that is one page. At the largest it is exactly
+        /// <paramref name="largestPages"/> - the suite's literal for the frame, measured, never the
+        /// renderer's arithmetic (the owner's contract, EpisodeHud.LargestPages.cs) - each holding
+        /// without a scroll, with the line under the band on each. Two pages are what the player knows
+        /// of each finalist - the portrait card, the tiles, the jury read and the chips' legend, and
+        /// nothing under the cards - then what taking each one means - the card naming them over the
+        /// bullets, the either-way line, and under each card the breach, the warning, what the choice
+        /// does, never given up there, and the control. Ends on the first page.</para>
         /// </summary>
-        private void AssertTheFinalChoicePage(EpisodeState state, string where, bool consequenceMayGo = false)
+        private void AssertTheFinalChoicePage(EpisodeState state, string where, int largestPages, bool consequenceMayGo = false)
+        {
+            Canvas.ForceUpdateCanvases();
+            bool paged = largestPages > 1 && director.TextSize == TextSize.Largest;
+            AssertLargestPages(where, largestPages, page =>
+            {
+                string here = paged ? where + ", page " + page + " of " + largestPages : where;
+                AssertTheFinalChoiceParts(state, here, !paged || page == 1, !paged || page == 2, !paged && consequenceMayGo);
+            });
+        }
+
+        /// <summary>
+        /// One page of the final choice: <paramref name="knows"/> - its cards say who the finalists are
+        /// and the jury's read of them, under the chips' legend - and <paramref name="chooses"/> - its
+        /// cards say what taking each means and its columns carry the words and the control under the
+        /// cards; the one page does both. A part a page does not carry is not on it.
+        /// </summary>
+        private void AssertTheFinalChoiceParts(EpisodeState state, string where, bool knows, bool chooses, bool consequenceMayGo)
         {
             Canvas.ForceUpdateCanvases();
             Assert.That(Hud.CurrentActivityLayout, Is.EqualTo(EpisodeHud.ActivityLayout.Strategy), where + " takes the strategy stage.");
@@ -74,11 +100,14 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(Words(head), Does.Contain(EpisodeDirector.FinalTwoHeadLine), where + ": nothing on it is a prediction.");
             string status = EpisodeDirector.HouseStatus(state);
             if (status != null) Assert.That(Words(LastActive("Episode panel")), Does.Not.Contain(status), where + ": the house's status line stands down.");
-            Assert.That(Words(page), Does.Contain(FinalChoiceWords.Legend), where + ": what a chip's fill says.");
-            // What breaks whichever finalist is taken is said once, over both cards.
+            if (knows) Assert.That(Words(page), Does.Contain(FinalChoiceWords.Legend), where + ": what a chip's fill says.");
+            else Assert.That(page.GetComponentsInChildren<TMP_Text>().Any(label => label.name == EpisodeHud.ChipLegendName), Is.False,
+                where + ": the chips' legend is with the chips, on the first page.");
+            // What breaks whichever finalist is taken is said once, over both cards, with the choice.
             string eitherWay = FinalChoiceWords.EitherWay(FinalistRead.BrokenEitherWay(state));
             var either = page.GetComponentsInChildren<TMP_Text>().SingleOrDefault(label => label.name == EpisodeHud.EitherWayName);
             if (eitherWay == null) Assert.That(either, Is.Null, where + ": nothing breaks either way, and nothing says so.");
+            else if (!chooses) Assert.That(either, Is.Null, where + ": what breaks either way is said with the choice, on the second page.");
             else
             {
                 Assert.That(either, Is.Not.Null, where + ": the either-way line.");
@@ -108,68 +137,88 @@ namespace Gamesim.Tests.PlayMode
                 string words = Words(card);
                 Assert.That(words, Does.Contain(take.name), who + ": the card names them.");
                 Assert.That(words, Does.Not.Contain("FINAL HEAD OF HOUSEHOLD"), who + ": the crown is the player's tonight, not a finalist's.");
-                Assert.That(card.GetComponentsInChildren<CharacterPortraitBinding>(true), Has.Length.EqualTo(1), who + ": a photo bound to them.");
-                Assert.That(card.GetComponentsInChildren<TMP_Text>().Single(label => label.name == EpisodeHud.RelationshipWordName).text,
-                    Is.EqualTo(FinalistRead.StandingWord(state, take.id)), who + ": where the player stands, in the web's word.");
+                Assert.That(card.GetComponentsInChildren<CharacterPortraitBinding>(true), Has.Length.EqualTo(knows ? 1 : 0),
+                    who + (knows ? ": a photo bound to them." : ": the photo is the first page's."));
                 Assert.That(card.GetComponentsInChildren<Image>(true).Count(image => image.name == EpisodeHud.ChosenEdgeName), Is.EqualTo(1),
                     who + ": one gold edge, lit by the control.");
-
-                // The three public numbers, at the record's own counts.
-                var read = FinalistRead.Read(state, take.id);
-                var stats = card.GetComponentsInChildren<RectTransform>().Last(rect => rect.name == EpisodeHud.FinalistStatsName);
-                Assert.That(stats.GetComponentsInChildren<TMP_Text>().Where(label => label.name == "Stat label").Select(label => label.text),
-                    Is.EqualTo(new[] { "Comp wins", "Votes survived", "Times on block" }), who + ": the three public tiles.");
-                Assert.That(stats.GetComponentsInChildren<TMP_Text>().Where(label => label.name == "Stat value").Select(label => label.text),
-                    Is.EqualTo(new[] { read.wins.ToString(), read.votesSurvived.ToString(), take.timesNominated.ToString() }), who + ": at the record's numbers.");
-                AssertWithin(cardRect, CanvasRect(stats), who + "'s tiles", "the card");
-
-                // A chip a juror, in the colour of the lean the player can tell, filled only where they saw it.
-                Assert.That(words, Does.Contain(FinalChoiceWords.JuryEyebrow(jurors.Count)), who + ": the jury read, with the jury's size.");
                 var chips = card.GetComponentsInChildren<RectTransform>().Where(rect => rect.name.StartsWith(EpisodeHud.JurorChipPrefix, System.StringComparison.Ordinal)).ToList();
-                Assert.That(chips.Select(chip => chip.name.Substring(EpisodeHud.JurorChipPrefix.Length)), Is.EquivalentTo(jurors.Select(juror => juror.id)),
-                    who + ": a chip a juror.");
-                int lastRank = -1;
-                foreach (var chip in chips.OrderByDescending(chip => Mathf.Round(CanvasRect(chip).yMax)).ThenBy(chip => CanvasRect(chip).xMin))
+
+                if (knows)
                 {
-                    string id = chip.name.Substring(EpisodeHud.JurorChipPrefix.Length);
-                    var juror = state.Find(id);
-                    var lean = FinalistRead.Lean(state, id, take.id);
-                    var ground = chip.GetComponent<Image>();
-                    Assert.That(SameHue(ground.color, ExpectedLeanColour(lean.lean)), Is.True,
-                        who + ": " + juror.name + "'s chip is " + ground.color + " for a lean of '" + lean.lean + "' (" + lean.reason + ").");
-                    bool filled = lean.lean != FinalistRead.Uncertain && lean.certainty == FinalistRead.Confirmed;
-                    Assert.That(filled ? ground.color.a > .9f : ground.color.a < .3f, Is.True,
-                        who + ": " + juror.name + "'s chip should be " + (filled ? "filled, seen" : "outlined, " + lean.certainty) + "; its ground is " + ground.color + ".");
-                    Assert.That(chip.GetComponentsInChildren<TMP_Text>().Single(label => label.name == EpisodeHud.JurorChipWordName).text,
-                        Is.EqualTo(chipNames[jurors.FindIndex(other => other.id == id)]), who + ": the chip carries the name the house calls them.");
-                    int rank = FinalChoiceWords.LeanRank(lean.lean);
-                    Assert.That(rank, Is.GreaterThanOrEqualTo(lastRank), who + ": the chips stand close, then a grudge, then no read.");
-                    lastRank = rank;
-                    AssertWithin(cardRect, CanvasRect(chip), who + ": " + juror.name + "'s chip", "the card");
+                    Assert.That(card.GetComponentsInChildren<TMP_Text>().Single(label => label.name == EpisodeHud.RelationshipWordName).text,
+                        Is.EqualTo(FinalistRead.StandingWord(state, take.id)), who + ": where the player stands, in the web's word.");
+
+                    // The three public numbers, at the record's own counts.
+                    var read = FinalistRead.Read(state, take.id);
+                    var stats = card.GetComponentsInChildren<RectTransform>().Last(rect => rect.name == EpisodeHud.FinalistStatsName);
+                    Assert.That(stats.GetComponentsInChildren<TMP_Text>().Where(label => label.name == "Stat label").Select(label => label.text),
+                        Is.EqualTo(new[] { "Comp wins", "Votes survived", "Times on block" }), who + ": the three public tiles.");
+                    Assert.That(stats.GetComponentsInChildren<TMP_Text>().Where(label => label.name == "Stat value").Select(label => label.text),
+                        Is.EqualTo(new[] { read.wins.ToString(), read.votesSurvived.ToString(), take.timesNominated.ToString() }), who + ": at the record's numbers.");
+                    AssertWithin(cardRect, CanvasRect(stats), who + "'s tiles", "the card");
+
+                    // A chip a juror, in the colour of the lean the player can tell, filled only where they saw it.
+                    Assert.That(words, Does.Contain(FinalChoiceWords.JuryEyebrow(jurors.Count)), who + ": the jury read, with the jury's size.");
+                    Assert.That(chips.Select(chip => chip.name.Substring(EpisodeHud.JurorChipPrefix.Length)), Is.EquivalentTo(jurors.Select(juror => juror.id)),
+                        who + ": a chip a juror.");
+                    int lastRank = -1;
+                    foreach (var chip in chips.OrderByDescending(chip => Mathf.Round(CanvasRect(chip).yMax)).ThenBy(chip => CanvasRect(chip).xMin))
+                    {
+                        string id = chip.name.Substring(EpisodeHud.JurorChipPrefix.Length);
+                        var juror = state.Find(id);
+                        var lean = FinalistRead.Lean(state, id, take.id);
+                        var ground = chip.GetComponent<Image>();
+                        Assert.That(SameHue(ground.color, ExpectedLeanColour(lean.lean)), Is.True,
+                            who + ": " + juror.name + "'s chip is " + ground.color + " for a lean of '" + lean.lean + "' (" + lean.reason + ").");
+                        bool filled = lean.lean != FinalistRead.Uncertain && lean.certainty == FinalistRead.Confirmed;
+                        Assert.That(filled ? ground.color.a > .9f : ground.color.a < .3f, Is.True,
+                            who + ": " + juror.name + "'s chip should be " + (filled ? "filled, seen" : "outlined, " + lean.certainty) + "; its ground is " + ground.color + ".");
+                        Assert.That(chip.GetComponentsInChildren<TMP_Text>().Single(label => label.name == EpisodeHud.JurorChipWordName).text,
+                            Is.EqualTo(chipNames[jurors.FindIndex(other => other.id == id)]), who + ": the chip carries the name the house calls them.");
+                        int rank = FinalChoiceWords.LeanRank(lean.lean);
+                        Assert.That(rank, Is.GreaterThanOrEqualTo(lastRank), who + ": the chips stand close, then a grudge, then no read.");
+                        lastRank = rank;
+                        AssertWithin(cardRect, CanvasRect(chip), who + ": " + juror.name + "'s chip", "the card");
+                    }
+                    // The word over each group says the lean as the colour does, so the colour is never the only telling.
+                    foreach (var lean in jurors.Select(juror => FinalistRead.Lean(state, juror.id, take.id).lean).Distinct())
+                    {
+                        string word = FinalChoiceWords.GroupWord(lean);
+                        var label = card.GetComponentsInChildren<TMP_Text>().SingleOrDefault(text => text.name == EpisodeHud.ChipGroupPrefix + word);
+                        Assert.That(label, Is.Not.Null, who + ": the " + word + " chips stand under their word.");
+                        Assert.That(SameHue(label.color, ExpectedLeanColour(lean)), Is.True, who + ": the word is in its chips' colour.");
+                    }
                 }
-                // The word over each group says the lean as the colour does, so the colour is never the only telling.
-                foreach (var lean in jurors.Select(juror => FinalistRead.Lean(state, juror.id, take.id).lean).Distinct())
+                else
                 {
-                    string word = FinalChoiceWords.GroupWord(lean);
-                    var label = card.GetComponentsInChildren<TMP_Text>().SingleOrDefault(text => text.name == EpisodeHud.ChipGroupPrefix + word);
-                    Assert.That(label, Is.Not.Null, who + ": the " + word + " chips stand under their word.");
-                    Assert.That(SameHue(label.color, ExpectedLeanColour(lean)), Is.True, who + ": the word is in its chips' colour.");
+                    Assert.That(chips, Is.Empty, who + ": the jury read is the first page's.");
+                    Assert.That(card.GetComponentsInChildren<RectTransform>().Any(rect => rect.name == EpisodeHud.FinalistStatsName), Is.False,
+                        who + ": the tiles are the first page's.");
+                }
+
+                var buttons = column.GetComponentsInChildren<Button>().Where(button => button.IsActive() && button.IsInteractable()).ToList();
+                var warning = column.GetComponentsInChildren<TMP_Text>().SingleOrDefault(label => label.name == EpisodeHud.FinalistWarningName);
+                var bullets = card.GetComponentsInChildren<TMP_Text>().Where(label => label.name == EpisodeHud.FinalistBulletName).Select(label => label.text).ToList();
+                if (!chooses)
+                {
+                    Assert.That(bullets, Is.Empty, who + ": what taking them means is the second page's.");
+                    Assert.That(warning, Is.Null, who + ": the warning stands with the control, on the second page.");
+                    Assert.That(buttons, Is.Empty, who + ": its control is on the second page, with what taking them means.");
+                    continue;
                 }
 
                 // What taking them means: every bullet of the read's own.
                 Assert.That(words, Does.Contain(FinalChoiceWords.BulletsEyebrow(take.name, cut.name)), who + ": what taking them means, headed.");
-                Assert.That(card.GetComponentsInChildren<TMP_Text>().Where(label => label.name == EpisodeHud.FinalistBulletName).Select(label => label.text),
-                    Is.EqualTo(FinalistRead.IfYouTake(state, take.id, cut.id).Select(line => "• " + line)), who + ": every bullet, in order.");
+                Assert.That(bullets, Is.EqualTo(FinalistRead.IfYouTake(state, take.id, cut.id).Select(line => "• " + line)), who + ": every bullet, in order.");
 
                 // Under the card: any breach, the warning, what the choice does, and the one control, its caption both halves of the choice.
-                var warning = column.GetComponentsInChildren<TMP_Text>().Single(label => label.name == EpisodeHud.FinalistWarningName);
+                Assert.That(warning, Is.Not.Null, who + ": the warning.");
                 Assert.That(warning.text, Is.EqualTo(EpisodeDirector.FinalChoiceWarning), who + ": the warning.");
                 var consequence = column.GetComponentsInChildren<TMP_Text>().SingleOrDefault(label => label.name == EpisodeHud.FinalistConsequenceName);
                 if (consequence == null) Assert.That(consequenceMayGo, Is.True, who + ": what the choice does is said over the control.");
                 else Assert.That(consequence.text, Is.EqualTo(EpisodeDirector.FinalChoiceConsequence(take, cut)), who + ": what the choice does.");
                 string caption = FinalChoiceWords.Caption(take.name, cut.name);
                 Assert.That(caption, Is.EqualTo(FinalChoiceWords.CaptionToEvict(state, cut.id)), who + ": the control that takes them evicts the other.");
-                var buttons = column.GetComponentsInChildren<Button>().Where(button => button.IsActive() && button.IsInteractable()).ToList();
                 Assert.That(buttons.Select(button => button.name), Is.EqualTo(new[] { caption }), who + ": its one control, captioned with the choice's two halves.");
                 var control = (RectTransform)buttons[0].transform;
                 var captionLabel = control.GetComponentsInChildren<TMP_Text>().First(text => text.text == caption);
@@ -201,8 +250,11 @@ namespace Gamesim.Tests.PlayMode
             // Two people and one choice between them: side by side as equals, the VS in the gap.
             Assert.That(columns[1].xMin, Is.GreaterThanOrEqualTo(columns[0].xMax - .5f), where + ": the two side by side.");
             Assert.That(Mathf.Abs(columns[0].width - columns[1].width), Is.LessThan(1f), where + ": as equals.");
-            Assert.That(Mathf.Abs(controls[0].yMin - controls[1].yMin), Is.LessThan(.5f), where + ": the two controls level.");
-            Assert.That(Mathf.Abs(warnings[0].yMin - warnings[1].yMin), Is.LessThan(.5f), where + ": the two warnings level.");
+            if (chooses)
+            {
+                Assert.That(Mathf.Abs(controls[0].yMin - controls[1].yMin), Is.LessThan(.5f), where + ": the two controls level.");
+                Assert.That(Mathf.Abs(warnings[0].yMin - warnings[1].yMin), Is.LessThan(.5f), where + ": the two warnings level.");
+            }
             var versus = LastActive(EpisodeHud.VersusName);
             Assert.That(versus, Is.Not.Null, where + ": the two are set against each other.");
             float middle = CanvasRect(versus).center.x;
@@ -217,6 +269,63 @@ namespace Gamesim.Tests.PlayMode
                 Assert.That(label.rectTransform.rect.height, Is.GreaterThanOrEqualTo(size * 1.3f - .5f),
                     where + ": '" + label.text + "' (" + label.name + ") has a box Inter draws in: " + label.rectTransform.rect.height.ToString("0.#") + " for " + size + ".");
             }
+        }
+
+        /// <summary>
+        /// The pages each fixture's final choice has at the largest text, on the 16:9 frame and on the
+        /// 4:3 (the batch canvas is 4:3): the suite's literals for the owner's contract
+        /// (EpisodeHud.LargestPages.cs), measured on 2026-10-16, never the renderer's arithmetic. At the
+        /// standard and the larger text every one is one page.
+        /// </summary>
+        private static readonly (int At16x9, int At4x3) FinalChoiceEightPages = (1, 1), FinalChoiceThirteenPages = (2, 1),
+            FinalChoiceEveryDealPages = (2, 2);
+
+        /// <summary>A fixture's literal for a frame AtBothFrames names, "16:9" or "4:3".</summary>
+        private static int PagesOn(string frame, (int At16x9, int At4x3) pages) => frame == "16:9" ? pages.At16x9 : pages.At4x3;
+
+        /// <summary>
+        /// The frame <paramref name="part"/> is laid out on now, by its root canvas's shape, in the
+        /// names AtBothFrames gives the frames and the suite's literals are kept under: "16:9" or "4:3"
+        /// (a batch run's canvas is 4:3; an editor's Game view may be either). Any other shape has no
+        /// literal, and fails saying so rather than borrowing one (review S4C-R3).
+        /// </summary>
+        private static string LargestFrameOf(Component part)
+        {
+            var root = ((RectTransform)part.GetComponentInParent<Canvas>().rootCanvas.transform).rect;
+            float aspect = root.width / root.height;
+            if (Mathf.Abs(aspect - 16f / 9f) < .02f) return "16:9";
+            if (Mathf.Abs(aspect - 4f / 3f) < .02f) return "4:3";
+            Assert.Fail("The suite names the largest text's pages for the 16:9 and 4:3 frames only; this canvas is " + root.size + ".");
+            return null;
+        }
+
+        /// <summary>A fixture's literal for the frame the HUD is laid out on now (<see cref="LargestFrameOf"/>), never the batch canvas's assumed.</summary>
+        private int PagesOnTheHudNow((int At16x9, int At4x3) pages) => PagesOn(LargestFrameOf(HudCanvas()), pages);
+
+        /// <summary>
+        /// In a batch run at the largest text: the screen open now photographed on the 16:9 frame and on
+        /// the 4:3, every one of the pages the suite names for each (<paramref name="pages"/>), as
+        /// <c>{name}-largest-{16x9|4x3}-p{n}.png</c>, so the pages can be read as a player sees them;
+        /// each frame's pager is read to say that page of that many. Named for its per-frame literals,
+        /// apart from the nomination suite's own capture helper.
+        /// </summary>
+        private IEnumerator CaptureLargestPagesPerFrame(string name, (int At16x9, int At4x3) pages)
+        {
+            foreach (var frame in new[] { (Width: 1600, Height: 900, Name: "16x9", Pages: pages.At16x9), (Width: 1200, Height: 900, Name: "4x3", Pages: pages.At4x3) })
+                for (int page = 1; page <= frame.Pages; page++)
+                {
+                    int turns = page - 1, shown = page, of = frame.Pages;
+                    yield return CaptureFraming(name + "-largest-" + frame.Name + "-p" + page, settle: false, width: frame.Width, height: frame.Height,
+                        arrange: () =>
+                        {
+                            ShowFirstPage();
+                            for (int turn = 0; turn < turns; turn++) LivePageControl(EpisodeHud.NextPageCaption).onClick.Invoke();
+                            Canvas.ForceUpdateCanvases();
+                        },
+                        inspect: picture => Assert.That(LargestPageIndicator(), Is.EqualTo((shown, of)),
+                            name + " on the " + frame.Name + " frame: page " + shown + " of the suite's " + of + "."));
+                }
+            ShowFirstPage();
         }
 
         /// <summary>
@@ -245,17 +354,17 @@ namespace Gamesim.Tests.PlayMode
             foreach (var text in chip.GetComponentsInChildren<TMP_Text>())
                 Assert.That(ShowsAllOf(text), Is.True, "The week chip loses the end of \"" + text.text + "\".");
 
-            foreach (bool larger in new[] { false, true })
+            foreach (var (textSize, larger) in TextScales.Steps)
             {
-                yield return ApplyTextSize(larger);
+                yield return ApplyTextSize(textSize);
                 yield return OpenFinalePanel();
                 yield return Frames(3);
-                string where = "The final choice" + (larger ? " at the larger text" : "");
-                AssertTheFinalChoicePage(state, where + " on the batch canvas");
-                yield return AtBothFrames(frame => AssertTheFinalChoicePage(state, where + " on the " + frame + " frame"));
+                string where = "The final choice" + (larger ? " " + TextScales.At(textSize) : "");
+                AssertTheFinalChoicePage(state, where + " on the run's canvas", PagesOnTheHudNow(FinalChoiceEightPages));
+                yield return AtBothFrames(frame => AssertTheFinalChoicePage(state, where + " on the " + frame + " frame", PagesOn(frame, FinalChoiceEightPages)));
                 if (Application.isBatchMode)
-                    yield return CaptureFraming(larger ? "endgame-final-choice-large" : "endgame-final-choice", settle: false,
-                        inspect: frame => AssertTheFinalChoicePage(state, where + " in the capture's 16:9 frame"));
+                    yield return CaptureFraming("endgame-final-choice" + TextScales.Suffix(textSize), settle: false,
+                        inspect: frame => AssertTheFinalChoicePage(state, where + " in the capture's 16:9 frame", FinalChoiceEightPages.At16x9));
 
                 if (!larger)
                 {
@@ -432,7 +541,9 @@ namespace Gamesim.Tests.PlayMode
         /// <see cref="AssertTheFinalChoicePage"/>, the chips in rows inside their card, and on the first
         /// finalist's card a chip of every kind - filled red, outlined green, filled green, outlined grey -
         /// each as the player's read says; in a batch run photographed on the 16:9 frame at the larger
-        /// text, the tightest the page is laid.
+        /// text, the tightest the one page is laid. At the largest text the page is one on the 4:3 and
+        /// two on the 16:9 (<see cref="FinalChoiceThirteenPages"/>), where one page would hold only by
+        /// giving up the line of what the choice does, and in a batch run each page is photographed.
         /// </summary>
         [UnityTest]
         public IEnumerator Endgame_TheFinalChoiceHoldsAJuryOfThirteenEveryChipThePlayersRead()
@@ -448,14 +559,14 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(leans.Count(lean => lean.lean == FinalistRead.Support && lean.certainty == FinalistRead.Confirmed), Is.EqualTo(1), "one they were part of,");
             Assert.That(leans.Count(lean => lean.lean == FinalistRead.Uncertain), Is.EqualTo(9), "and no read on the rest.");
 
-            foreach (bool larger in new[] { false, true })
+            foreach (var (textSize, larger) in TextScales.Steps)
             {
-                yield return ApplyTextSize(larger);
+                yield return ApplyTextSize(textSize);
                 yield return OpenFinalePanel();
                 yield return Frames(3);
-                string where = "A jury of thirteen" + (larger ? " at the larger text" : "");
-                AssertTheFinalChoicePage(state, where + " on the batch canvas");
-                yield return AtBothFrames(frame => AssertTheFinalChoicePage(state, where + " on the " + frame + " frame"));
+                string where = "A jury of thirteen" + (larger ? " " + TextScales.At(textSize) : "");
+                AssertTheFinalChoicePage(state, where + " on the run's canvas", PagesOnTheHudNow(FinalChoiceThirteenPages));
+                yield return AtBothFrames(frame => AssertTheFinalChoicePage(state, where + " on the " + frame + " frame", PagesOn(frame, FinalChoiceThirteenPages)));
                 // Every kind of chip on the first finalist's card, as the read says it.
                 var card = LastActive(EpisodeHud.FinalistCardPrefix + first.name);
                 var grounds = card.GetComponentsInChildren<RectTransform>()
@@ -465,9 +576,11 @@ namespace Gamesim.Tests.PlayMode
                 Assert.That(grounds.Count(colour => SameHue(colour, UiTheme.Allied) && colour.a < .3f), Is.EqualTo(1), where + ": one outlined green,");
                 Assert.That(grounds.Count(colour => SameHue(colour, UiTheme.Allied) && colour.a > .9f), Is.EqualTo(1), where + ": one filled green,");
                 Assert.That(grounds.Count(colour => SameHue(colour, UiTheme.Muted) && colour.a < .3f), Is.EqualTo(9), where + ": nine outlined grey.");
-                if (Application.isBatchMode && larger)
+                if (Application.isBatchMode && textSize == TextSize.Larger)
                     yield return CaptureFraming("endgame-final-choice-13", settle: false,
-                        inspect: frame => AssertTheFinalChoicePage(state, where + " in the capture's 16:9 frame"));
+                        inspect: frame => AssertTheFinalChoicePage(state, where + " in the capture's 16:9 frame", FinalChoiceThirteenPages.At16x9));
+                if (Application.isBatchMode && textSize == TextSize.Largest)
+                    yield return CaptureLargestPagesPerFrame("endgame-final-choice-13", FinalChoiceThirteenPages);
                 director.ClosePanels();
                 yield return null;
             }
@@ -496,7 +609,10 @@ namespace Gamesim.Tests.PlayMode
         /// assertion of <see cref="AssertTheFinalChoicePage"/> - no scroll among them - with the line of
         /// what the choice does free to go at the page's smallest tier; a breach over each control,
         /// since taking either finalist breaks the deal with the other; and the either-way line for the
-        /// juror's deal, said once over both. In a batch run photographed at the larger text.
+        /// juror's deal, said once over both. In a batch run photographed at the larger text. At the
+        /// largest text the page is the suite's literal pages on each frame (<see cref="FinalChoiceEveryDealPages"/>),
+        /// the line of what the choice does said on the second page, and in a batch run each page is
+        /// photographed.
         /// </summary>
         [UnityTest]
         public IEnumerator Endgame_TheFinalChoiceHoldsEveryDealBothBreachesAndAJuryOfThirteen()
@@ -511,27 +627,181 @@ namespace Gamesim.Tests.PlayMode
                 Assert.That(FinalistRead.IfYouTake(state, take.id, others.Single(other => other.id != take.id).id), Has.Count.GreaterThanOrEqualTo(5),
                     take.name + "'s column carries the deals' bullets beside the jury's.");
 
-            foreach (bool larger in new[] { false, true })
+            foreach (var (textSize, larger) in TextScales.Steps)
             {
-                yield return ApplyTextSize(larger);
+                yield return ApplyTextSize(textSize);
                 yield return OpenFinalePanel();
                 yield return Frames(3);
-                string where = "Every deal and a jury of thirteen" + (larger ? " at the larger text" : "");
-                AssertTheFinalChoicePage(state, where + " on the batch canvas", consequenceMayGo: true);
-                yield return AtBothFrames(frame => AssertTheFinalChoicePage(state, where + " on the " + frame + " frame", consequenceMayGo: true));
+                string where = "Every deal and a jury of thirteen" + (larger ? " " + TextScales.At(textSize) : "");
+                AssertTheFinalChoicePage(state, where + " on the run's canvas", PagesOnTheHudNow(FinalChoiceEveryDealPages), consequenceMayGo: true);
+                yield return AtBothFrames(frame => AssertTheFinalChoicePage(state, where + " on the " + frame + " frame", PagesOn(frame, FinalChoiceEveryDealPages), consequenceMayGo: true));
+                // The breaches and the either-way line stand with the choice: on its page, where the largest text pages.
+                ShowPageWith(EpisodeHud.EitherWayName);
                 foreach (var take in others)
                     Assert.That(LastActive("Finalist column · " + take.name).GetComponentsInChildren<TMP_Text>().Count(label => label.name == EpisodeHud.BreachWarningName),
                         Is.EqualTo(1), where + ": " + take.name + "'s column warns of the deal its control alone breaks.");
                 Assert.That(LastActive(EpisodeHud.FinalChoicePageName).GetComponentsInChildren<TMP_Text>().Count(label => label.name == EpisodeHud.EitherWayName),
                     Is.EqualTo(1), where + ": the either-way line, once, over both cards.");
-                if (Application.isBatchMode && larger)
+                ShowFirstPage();
+                if (Application.isBatchMode && textSize == TextSize.Larger)
                     yield return CaptureFraming("endgame-final-choice-every-deal", settle: false,
-                        inspect: frame => AssertTheFinalChoicePage(state, where + " in the capture's 16:9 frame", consequenceMayGo: true));
+                        inspect: frame => AssertTheFinalChoicePage(state, where + " in the capture's 16:9 frame", FinalChoiceEveryDealPages.At16x9, consequenceMayGo: true));
+                if (Application.isBatchMode && textSize == TextSize.Largest)
+                    yield return CaptureLargestPagesPerFrame("endgame-final-choice-every-deal", FinalChoiceEveryDealPages);
                 director.ClosePanels();
                 yield return null;
             }
             yield return ApplyTextSize(false);
             Assert.That(director.Snapshot.revision, Is.EqualTo(state.revision), "Reading the page commits nothing.");
+        }
+
+        /// <summary>
+        /// The owner's contract of 2026-10-15 at the final choice, where it matters most: at the largest
+        /// text the worst case - every deal and a jury of thirteen - is two pages on either frame
+        /// (<see cref="FinalChoiceEveryDealPages"/>, read for the frame the run is laid out on) and its
+        /// irreversible choice is on the second.
+        /// The page opens on the first, which has no choice on it, with the keyboard on a control that
+        /// commits nothing, so an Enter the player did not aim commits nothing and leaves the keyboard
+        /// off the choices, wherever it turns. The mouse's press on "Next page" turns to
+        /// the choice, the keyboard staying on the pager and no card lit; Enter there turns back. Opened
+        /// again, the d-pad walks the ring from where the page opens down to "Next page" and the pad's A
+        /// turns on again; on the choice's page the d-pad walks from the pager to a choice, whose card
+        /// lights, and on round the ring back to the pager. Every turn and walk leaves the season, both
+        /// random streams and every save byte as they were. Tab then takes the keyboard to a choice,
+        /// whose card lights, and Enter commits that one choice and nothing else.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator Endgame_AtTheLargestTextTheChoiceIsTheSecondPageAndTheMouseKeyboardAndPadReachIt()
+        {
+            yield return InstallBuiltFinale(FinalChoiceHouseWithEveryDeal());
+            yield return PutAwayTheCards();
+            var state = director.Snapshot;
+            var others = FinalistRead.Others(state);
+            Assert.That(others, Has.Count.EqualTo(2), "Two finalists to choose between.");
+            int pages = PagesOnTheHudNow(FinalChoiceEveryDealPages);
+            Assert.That(pages, Is.EqualTo(2), "The worst case is two pages on the frame this run is laid out on.");
+            bool Lit(ContestantState finalist) => LastActive(EpisodeHud.FinalistCardPrefix + finalist.name).Find(EpisodeHud.ChosenEdgeName).gameObject.activeSelf;
+            bool AnyChoiceLive() => director.GetComponentsInChildren<Button>().Any(button => button.IsActive() && button.IsInteractable() && IsFinalChoiceControl(button.name));
+            yield return ApplyTextSize(TextSize.Largest);
+            yield return OpenFinalePanel();
+            yield return Frames(3);
+            string where = "Every deal and a jury of thirteen " + TextScales.At(TextSize.Largest);
+            Assert.That(LargestPageIndicator(), Is.EqualTo((1, pages)), where + ": the page opens on the first of its " + pages + ".");
+            Assert.That(AnyChoiceLive(), Is.False, where + ": the first page has no choice on it.");
+            var opened = EventSystem.current.currentSelectedGameObject;
+            Assert.That(opened != null && !IsFinalChoiceControl(opened.name), Is.True, where + ": the page opens on a control that commits nothing.");
+            yield return PressKey(Key.Enter);
+            yield return Frames(2);
+            Assert.That(director.Snapshot.revision, Is.EqualTo(state.revision), where + ": Enter as the page opens commits nothing.");
+            if (!director.IsPanelOpen) { yield return OpenFinalePanel(); yield return Frames(3); }
+            // Wherever that Enter left the keyboard - on the pager, at most a page on - never on a choice.
+            var afterEnter = EventSystem.current.currentSelectedGameObject;
+            Assert.That(afterEnter == null || !IsFinalChoiceControl(afterEnter.name), Is.True,
+                where + ": an Enter the player did not aim leaves the keyboard off the choices, on '" + (afterEnter != null ? afterEnter.name : "nothing") + "'.");
+            Assert.That(others.Any(Lit), Is.False, where + ": and lights no card.");
+            ShowFirstPage();
+            Assert.That(LargestPageIndicator(), Is.EqualTo((1, pages)), where + ": back on the first page.");
+
+            // The mouse: a press where "Next page" stands turns to the choice, committing nothing - the
+            // season, both random streams and every save byte as they were - once the last render has
+            // been drawn, as a player's press always comes after.
+            yield return null; yield return null;
+            var before = FreeTimePagerStateNow11();
+            var next = ButtonWithCaption(EpisodeHud.NextPageCaption);
+            Assert.That(PressAt(ScreenCentre(next)), Is.SameAs(next.gameObject), where + ": the press lands on '" + EpisodeHud.NextPageCaption + "'.");
+            Assert.That(LargestPageIndicator(), Is.EqualTo((2, pages)), where + ": the press turns to the choice's page,");
+            Assert.That(director.Snapshot.revision, Is.EqualTo(state.revision), "committing nothing.");
+            FreeTimeAssertPagerNeutral11(before, where + ", the mouse on '" + EpisodeHud.NextPageCaption + "'");
+            Assert.That(AnyChoiceLive(), Is.True, where + ": the choice is on the second page.");
+            yield return null; yield return null;
+            var focus = EventSystem.current.currentSelectedGameObject;
+            Assert.That(focus != null ? focus.name : "nothing", Is.EqualTo(EpisodeHud.PreviousPageCaption),
+                where + ": the keyboard stays on the pager as it turns, never on a choice.");
+            Assert.That(others.Any(Lit), Is.False, where + ": no card is lit as the choice's page opens.");
+
+            // The keyboard: Enter on the way back turns back, and commits nothing.
+            before = FreeTimePagerStateNow11();
+            yield return PressKey(Key.Enter);
+            yield return null;
+            Assert.That(LargestPageIndicator(), Is.EqualTo((1, pages)), where + ": Enter on '" + EpisodeHud.PreviousPageCaption + "' turns back,");
+            Assert.That(director.Snapshot.revision, Is.EqualTo(state.revision), "committing nothing.");
+            FreeTimeAssertPagerNeutral11(before, where + ", Enter on '" + EpisodeHud.PreviousPageCaption + "'");
+
+            // The pad, from where the page opens: the d-pad walks the panel's ring down to the way on -
+            // the pager is in the ring like any control, and the first page has no choice to pass - and
+            // A on it turns to the choice. Opened again on its first page, committing nothing.
+            director.ClosePanels();
+            yield return null;
+            yield return OpenFinalePanel();
+            yield return Frames(3);
+            Assert.That(LargestPageIndicator(), Is.EqualTo((1, pages)), where + ": opened again, the page is on its first.");
+            Assert.That(director.Snapshot.revision, Is.EqualTo(state.revision), where + ": opening it again commits nothing.");
+            before = FreeTimePagerStateNow11();
+            var walked = new List<string> { SelectedName() };
+            for (int step = 0; step < 40 && SelectedName() != EpisodeHud.NextPageCaption; step++)
+            {
+                yield return PressOnPad(UnityEngine.InputSystem.LowLevel.GamepadButton.DpadDown);
+                walked.Add(SelectedName());
+            }
+            Assert.That(SelectedName(), Is.EqualTo(EpisodeHud.NextPageCaption),
+                where + ": the d-pad walks down to '" + EpisodeHud.NextPageCaption + "'. Walked: [" + string.Join(" | ", walked) + "].");
+            Assert.That(LargestPageIndicator(), Is.EqualTo((1, pages)), where + ": walking to the pager turns nothing.");
+            yield return PressOnPad(UnityEngine.InputSystem.LowLevel.GamepadButton.South);
+            yield return Frames(2);
+            Assert.That(LargestPageIndicator(), Is.EqualTo((2, pages)), where + ": the pad's A on '" + EpisodeHud.NextPageCaption + "' turns to the choice.");
+            Assert.That(director.Snapshot.revision, Is.EqualTo(state.revision), "Still nothing committed.");
+            FreeTimeAssertPagerNeutral11(before, where + ", the d-pad's walk and A on '" + EpisodeHud.NextPageCaption + "'");
+            Assert.That(SelectedName(), Is.EqualTo(EpisodeHud.PreviousPageCaption), where + ": the pad's turn leaves the keyboard on the pager,");
+            Assert.That(others.Any(Lit), Is.False, where + ": and lights no card.");
+
+            // On the choice's page the d-pad walks from the pager to a choice - its card lights, and A is
+            // never pressed on it - and on round the ring back to the pager, turning and committing nothing.
+            before = FreeTimePagerStateNow11();
+            walked = new List<string> { SelectedName() };
+            for (int step = 0; step < 40 && !IsFinalChoiceControl(SelectedName()); step++)
+            {
+                yield return PressOnPad(UnityEngine.InputSystem.LowLevel.GamepadButton.DpadDown);
+                walked.Add(SelectedName());
+            }
+            Assert.That(IsFinalChoiceControl(SelectedName()), Is.True,
+                where + ": the d-pad walks from the pager to a choice. Walked: [" + string.Join(" | ", walked) + "].");
+            string padOn = SelectedName();
+            var padLit = others.Single(finalist => padOn == FinalChoiceWords.Caption(finalist.name, others.Single(other => other.id != finalist.id).name));
+            Assert.That(Lit(padLit), Is.True, where + ": the card of the choice the pad is on is lit.");
+            for (int step = 0; step < 40 && SelectedName() != EpisodeHud.PreviousPageCaption; step++)
+            {
+                yield return PressOnPad(UnityEngine.InputSystem.LowLevel.GamepadButton.DpadDown);
+                walked.Add(SelectedName());
+            }
+            Assert.That(SelectedName(), Is.EqualTo(EpisodeHud.PreviousPageCaption),
+                where + ": and on round the ring back to the pager. Walked: [" + string.Join(" | ", walked) + "].");
+            Assert.That(LargestPageIndicator(), Is.EqualTo((2, pages)), where + ": walking the choice's page turns nothing.");
+            Assert.That(director.Snapshot.revision, Is.EqualTo(state.revision), "Still nothing committed.");
+            FreeTimeAssertPagerNeutral11(before, where + ", the d-pad's walk from the pager to a choice and back");
+
+            // Tab to a choice: its card lights, and Enter commits that one and nothing else.
+            GameObject selected = null;
+            for (int step = 0; step < 8; step++)
+            {
+                yield return PressKey(Key.Tab);
+                selected = EventSystem.current.currentSelectedGameObject;
+                if (selected != null && IsFinalChoiceControl(selected.name)) break;
+            }
+            Assert.That(selected != null && IsFinalChoiceControl(selected.name), Is.True, where + ": Tab reaches a choice on its page.");
+            string chosen = selected.name;
+            var kept = others.Single(finalist => chosen == FinalChoiceWords.Caption(finalist.name, others.Single(other => other.id != finalist.id).name));
+            var gone = others.Single(finalist => finalist.id != kept.id);
+            Assert.That(Lit(kept), Is.True, where + ": the card of the control the keyboard is on is lit,");
+            Assert.That(Lit(gone), Is.False, "and only that one.");
+            yield return PressKey(Key.Enter);
+            yield return Frames(2);
+            var after = director.Snapshot;
+            Assert.That(after.revision, Is.EqualTo(state.revision + 1), where + ": Enter on the lit choice commits it, once.");
+            Assert.That(after.Find(gone.id).status, Is.EqualTo(ContestantStatus.Jury), "Enter took the lit card's choice: " + gone.name + " joins the jury,");
+            Assert.That(after.Find(kept.id).status, Is.EqualTo(ContestantStatus.Active), "and " + kept.name + " sits in the Final 2.");
+            yield return PutAwayTheCards();
+            director.ClosePanels();
+            yield return ApplyTextSize(false);
         }
 
         /// <summary>

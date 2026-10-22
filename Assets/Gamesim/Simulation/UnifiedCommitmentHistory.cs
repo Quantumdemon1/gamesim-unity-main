@@ -49,14 +49,15 @@ namespace Gamesim.Simulation
         {
             if (state?.unifiedCommitmentRulesVersion == UnifiedVoteFamilyValidation.Version)
             {
-                if (!UnifiedVoteFamilyValidation.TryValidate(state, state.unifiedVoteReveals, out string aggregateError))
-                    throw new ArgumentException(aggregateError, nameof(state));
+                // The storage only (vote family V5a): a reader may run in the middle of a command.
+                if (!UnifiedVoteFamilyValidation.TryValidateStorage(state, out string storageError))
+                    throw CommitmentReferences.StorageRefusal(storageError, nameof(state));
             }
             else
             {
                 if (!UnifiedCommitments.RulesOn(state)) return Array.Empty<UnifiedCommitmentState>();
                 if (!UnifiedCommitments.ValidateRecords(state, out string error))
-                    throw new ArgumentException(error, nameof(state));
+                    throw CommitmentReferences.StorageRefusal(error, nameof(state));
             }
             return Array.AsReadOnly(state.unifiedCommitments.Where(row => row.kind == UnifiedCommitments.Safety).OrderBy(row => row.id, StringComparer.Ordinal)
                 .Select(row => row.Clone()).ToArray());
@@ -74,7 +75,7 @@ namespace Gamesim.Simulation
             {
                 string wronged = row.brokenById == row.makerId ? row.beneficiaryId : row.makerId;
                 if (!ValidKey(row.settlementEffectKey, row.settledWeek, row.brokenById, wronged))
-                    throw new ArgumentException("Safety breach evidence does not name its actual decision, week and parties.", nameof(state));
+                    throw CommitmentReferences.StorageRefusal("Safety breach evidence does not name its actual decision, week and parties.", nameof(state));
             }
             return Array.AsReadOnly(broken.GroupBy(row => row.settlementEffectKey, StringComparer.Ordinal)
                 .OrderBy(group => group.Key, StringComparer.Ordinal).Select(group =>

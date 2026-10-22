@@ -50,10 +50,11 @@ namespace Gamesim.Tests.PlayMode
             public bool HoldAgain = true;
         }
 
-        [UnityTest, Timeout(1500000)]
+        [UnityTest, Timeout(1800000)]
         public IEnumerator Back_EveryOverlayClosesOrSkipsTheSameWayByKeyAndPad()
         {
             KeyCeremony keys = null;
+            VoteReveal votes = null;
             CompetitionGameScreen board = null;
             CompetitionResult results = null;
             var cases = new List<BackCase>
@@ -80,6 +81,11 @@ namespace Gamesim.Tests.PlayMode
                 // the key ceremony stands for them all: the first press skips, the second closes.
                 new BackCase { Name = "key ceremony", Presses = 2, MayCommit = true,
                     Open = () => OpenKeyCeremonyForBack(found => keys = found), Done = () => keys != null && !keys.IsPlaying },
+                // And one more card for the claim the key ceremony's row rests on (A4f; the
+                // source scan CeremonyCardInputScanTests guards the rest): the live eviction's
+                // reveal, whose first press shows the result and whose second closes it.
+                new BackCase { Name = "vote reveal", Presses = 2, MayCommit = true,
+                    Open = () => OpenVoteRevealForBack(found => votes = found), Done = () => votes != null && !votes.IsPlaying },
                 new BackCase { Name = "competition board", Open = () => OpenPracticeBoardForBack(found => board = found),
                     Done = () => board != null && !board.IsShowing && director.IsPanelOpen },
                 // Paused, the board's focus is on Resume and its clock is stopped: the press still
@@ -289,6 +295,18 @@ namespace Gamesim.Tests.PlayMode
             float readable = Time.realtimeSinceStartup + 1.2f;
             while (Time.realtimeSinceStartup < readable) yield return null;
             Assert.That(keys.IsPlaying && !keys.ShowingBlock, Is.True, "The keys are still coming out.");
+        }
+
+        private IEnumerator OpenVoteRevealForBack(Action<VoteReveal> found)
+        {
+            var reveal = SceneComponents<VoteReveal>().Single();
+            found(reveal);
+            yield return PlayUntilTheVoteReveal(reveal);
+            // Past the card's read-first delay (its fade and a third of a second on the unscaled
+            // clock), still before the first vote: the fixture's suspenseful pace reads none for 2.5 s.
+            float readable = Time.realtimeSinceStartup + 1.2f;
+            while (Time.realtimeSinceStartup < readable) yield return null;
+            Assert.That(reveal.IsPlaying && !reveal.ShowingResult, Is.True, "The votes are still being read.");
         }
 
         private IEnumerator OpenPracticeBoardForBack(Action<CompetitionGameScreen> found, bool paused = false)

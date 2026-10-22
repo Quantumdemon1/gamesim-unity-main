@@ -128,6 +128,7 @@ namespace Gamesim.Episode
             message = !going ? "The " + name + " is not reachable from here."
                 : LastTravel == TravelKind.Warp ? ArrivalLine() ?? "In the " + name + "."
                 : "Heading to the " + name + ".";
+            if (!going) BeginSystemNotice();
             // On foot, the room says who is in it when the player gets there.
             if (going && LastTravel != TravelKind.Warp) arrivingIn = room;
             Render();
@@ -278,7 +279,7 @@ namespace Gamesim.Episode
             // icon's square and the room's name under it as one rect each.
             if (chromeCovers == null) chromeCovers = hud.Covers;
             if (chromeCoversBox == null) chromeCoversBox = box => hud.CoversAny(box);
-            travelBeacons.Request(true, cameraRig, largeText ? 1.2f : 1f, StationRoomId(),
+            travelBeacons.Request(true, cameraRig, TextScale, StationRoomId(),
                 EpisodeEngine.IsCompetition(projected?.phase ?? EpisodePhase.Social), playerIsActive ? beaconPlayerRoom : null,
                 BeaconAnchor, chromeCovers, chromeCoversBox);
         }

@@ -1,0 +1,711 @@
+{
+ "id": "s06-default-w2-social",
+ "referenceBuild": "7f398b94",
+ "referenceSchema": 20,
+ "digest": "7d8b4b2e363b59aa",
+ "checkpoints": [
+  {
+   "i": 0,
+   "week": 2,
+   "phase": "Social",
+   "revision": 31,
+   "randomState": 2227897605,
+   "season": "f81dcb5e2109ef8d"
+  },
+  {
+   "i": 1,
+   "week": 2,
+   "phase": "Social",
+   "revision": 32,
+   "randomState": 4059463418,
+   "season": "877c3b3da83b2140"
+  },
+  {
+   "i": 2,
+   "week": 2,
+   "phase": "Social",
+   "revision": 33,
+   "randomState": 1596061935,
+   "season": "ac13accbc4b60a4e"
+  },
+  {
+   "i": 3,
+   "week": 3,
+   "phase": "HoH",
+   "revision": 34,
+   "randomState": 1596061935,
+   "season": "288bb3f1fc7e66ab"
+  },
+  {
+   "i": 4,
+   "week": 3,
+   "phase": "HoH",
+   "revision": 35,
+   "randomState": 2795792078,
+   "season": "5892e1059cfc9738"
+  },
+  {
+   "i": 5,
+   "week": 3,
+   "phase": "Nomination",
+   "revision": 36,
+   "randomState": 900285068,
+   "season": "f8c4855f6a9c7f0a"
+  },
+  {
+   "i": 6,
+   "week": 3,
+   "phase": "Nomination",
+   "revision": 37,
+   "randomState": 900285068,
+   "season": "6ad32b12cb25839d"
+  },
+  {
+   "i": 7,
+   "week": 3,
+   "phase": "VetoSelection",
+   "revision": 38,
+   "randomState": 900285068,
+   "season": "c1f581b1a239bfa2"
+  },
+  {
+   "i": 8,
+   "week": 3,
+   "phase": "Veto",
+   "revision": 39,
+   "randomState": 900285068,
+   "season": "cc07e385f7c2d209"
+  },
+  {
+   "i": 9,
+   "week": 3,
+   "phase": "Veto",
+   "revision": 40,
+   "randomState": 3931581024,
+   "season": "d398fc027d68f157"
+  },
+  {
+   "i": 10,
+   "week": 3,
+   "phase": "VetoMeeting",
+   "revision": 41,
+   "randomState": 3931581024,
+   "season": "a62af52473f7d550"
+  },
+  {
+   "i": 11,
+   "week": 3,
+   "phase": "VetoMeeting",
+   "revision": 42,
+   "randomState": 3931581024,
+   "season": "fba508f2463dbbeb"
+  },
+  {
+   "i": 12,
+   "week": 3,
+   "phase": "Campaign",
+   "revision": 43,
+   "randomState": 3931581024,
+   "season": "c8edf03212b280d1"
+  },
+  {
+   "i": 13,
+   "week": 3,
+   "phase": "Eviction",
+   "revision": 44,
+   "randomState": 3931581024,
+   "season": "675e76d0f35190df"
+  },
+  {
+   "i": 14,
+   "week": 3,
+   "phase": "Eviction",
+   "revision": 45,
+   "randomState": 3931581024,
+   "season": "41075d1e808501ab"
+  },
+  {
+   "i": 15,
+   "week": 3,
+   "phase": "Eviction",
+   "revision": 46,
+   "randomState": 3931581024,
+   "season": "2a57f539d14aca89"
+  },
+  {
+   "i": 16,
+   "week": 3,
+   "phase": "Eviction",
+   "revision": 47,
+   "randomState": 3931581024,
+   "season": "531c272b9a1b235c"
+  },
+  {
+   "i": 17,
+   "week": 3,
+   "phase": "Social",
+   "revision": 48,
+   "randomState": 1404238344,
+   "season": "e855165996b284ae"
+  },
+  {
+   "i": 18,
+   "week": 3,
+   "phase": "Social",
+   "revision": 49,
+   "randomState": 3235804157,
+   "season": "6f610f183a38a230"
+  },
+  {
+   "i": 19,
+   "week": 4,
+   "phase": "FinalHoHPart1",
+   "revision": 50,
+   "randomState": 3235804157,
+   "season": "1d8b8110b3907d1d"
+  },
+  {
+   "i": 20,
+   "week": 4,
+   "phase": "FinalHoHPart1",
+   "revision": 51,
+   "randomState": 708461477,
+   "season": "b0211c850951cc46"
+  },
+  {
+   "i": 21,
+   "week": 4,
+   "phase": "FinalHoHPart2",
+   "revision": 52,
+   "randomState": 708461477,
+   "season": "f00bce2d23cb5591"
+  },
+  {
+   "i": 22,
+   "week": 4,
+   "phase": "FinalHoHPart2",
+   "revision": 53,
+   "randomState": 76625807,
+   "season": "bdacd9ce564b20e9"
+  },
+  {
+   "i": 23,
+   "week": 4,
+   "phase": "FinalHoHPart3",
+   "revision": 54,
+   "randomState": 76625807,
+   "season": "344d8fd2d3f48ca5"
+  },
+  {
+   "i": 24,
+   "week": 4,
+   "phase": "FinalHoHPart3",
+   "revision": 55,
+   "randomState": 3739757433,
+   "season": "1af8e024963edf64"
+  },
+  {
+   "i": 25,
+   "week": 4,
+   "phase": "FinalEviction",
+   "revision": 56,
+   "randomState": 3739757433,
+   "season": "328d8ce770113fd3"
+  },
+  {
+   "i": 26,
+   "week": 4,
+   "phase": "JuryQuestioning",
+   "revision": 57,
+   "randomState": 3739757433,
+   "season": "518bddf80338fb23"
+  },
+  {
+   "i": 27,
+   "week": 4,
+   "phase": "JuryQuestioning",
+   "revision": 58,
+   "randomState": 1276355950,
+   "season": "25b048c5ffc9a9f0"
+  },
+  {
+   "i": 28,
+   "week": 4,
+   "phase": "JuryQuestioning",
+   "revision": 59,
+   "randomState": 1276355950,
+   "season": "4605119c81fe54c3"
+  },
+  {
+   "i": 29,
+   "week": 4,
+   "phase": "JuryQuestioning",
+   "revision": 60,
+   "randomState": 3107921763,
+   "season": "6fdffe7a970bf3f5"
+  },
+  {
+   "i": 30,
+   "week": 4,
+   "phase": "FinalSpeeches",
+   "revision": 61,
+   "randomState": 2476086093,
+   "season": "e487fbed0b440305"
+  },
+  {
+   "i": 31,
+   "week": 4,
+   "phase": "Jury",
+   "revision": 62,
+   "randomState": 2476086093,
+   "season": "79c35bee37716a8a"
+  },
+  {
+   "i": 32,
+   "week": 4,
+   "phase": "Jury",
+   "revision": 63,
+   "randomState": 2476086093,
+   "season": "63cc130f7935d8c8"
+  },
+  {
+   "i": 33,
+   "week": 4,
+   "phase": "Finished",
+   "revision": 64,
+   "randomState": 580579083,
+   "season": "fea947ace5e9ccea"
+  }
+ ],
+ "commands": [
+  {
+   "id": "oldsave-0001",
+   "actorId": "player",
+   "targetId": "maya-hassan",
+   "secondTargetId": null,
+   "text": null,
+   "expectedRevision": 31,
+   "expectedPhase": 0,
+   "kind": 6,
+   "useVeto": false,
+   "performance": 0.0,
+   "kindName": "Talk"
+  },
+  {
+   "id": "oldsave-0002",
+   "actorId": "player",
+   "targetId": "riley-johnson",
+   "secondTargetId": null,
+   "text": null,
+   "expectedRevision": 32,
+   "expectedPhase": 0,
+   "kind": 6,
+   "useVeto": false,
+   "performance": 0.0,
+   "kindName": "Talk"
+  },
+  {
+   "id": "oldsave-0003",
+   "actorId": "player",
+   "targetId": null,
+   "secondTargetId": null,
+   "text": null,
+   "expectedRevision": 33,
+   "expectedPhase": 0,
+   "kind": 0,
+   "useVeto": false,
+   "performance": 0.0,
+   "kindName": "Advance"
+  },
+  {
+   "id": "oldsave-0004",
+   "actorId": "player",
+   "targetId": null,
+   "secondTargetId": null,
+   "text": null,
+   "expectedRevision": 34,
+   "expectedPhase": 1,
+   "kind": 1,
+   "useVeto": false,
+   "performance": 0.5,
+   "kindName": "Compete"
+  },
+  {
+   "id": "oldsave-0005",
+   "actorId": "player",
+   "targetId": null,
+   "secondTargetId": null,
+   "text": null,
+   "expectedRevision": 35,
+   "expectedPhase": 1,
+   "kind": 0,
+   "useVeto": false,
+   "performance": 0.0,
+   "kindName": "Advance"
+  },
+  {
+   "id": "oldsave-0006",
+   "actorId": "player",
+   "targetId": "maya-hassan",
+   "secondTargetId": "casey-wilson",
+   "text": null,
+   "expectedRevision": 36,
+   "expectedPhase": 2,
+   "kind": 2,
+   "useVeto": false,
+   "performance": 0.0,
+   "kindName": "Nominate"
+  },
+  {
+   "id": "oldsave-0007",
+   "actorId": "player",
+   "targetId": null,
+   "secondTargetId": null,
+   "text": null,
+   "expectedRevision": 37,
+   "expectedPhase": 2,
+   "kind": 0,
+   "useVeto": false,
+   "performance": 0.0,
+   "kindName": "Advance"
+  },
+  {
+   "id": "oldsave-0008",
+   "actorId": "player",
+   "targetId": null,
+   "secondTargetId": null,
+   "text": null,
+   "expectedRevision": 38,
+   "expectedPhase": 3,
+   "kind": 0,
+   "useVeto": false,
+   "performance": 0.0,
+   "kindName": "Advance"
+  },
+  {
+   "id": "oldsave-0009",
+   "actorId": "player",
+   "targetId": null,
+   "secondTargetId": null,
+   "text": null,
+   "expectedRevision": 39,
+   "expectedPhase": 4,
+   "kind": 1,
+   "useVeto": false,
+   "performance": 0.5,
+   "kindName": "Compete"
+  },
+  {
+   "id": "oldsave-0010",
+   "actorId": "player",
+   "targetId": null,
+   "secondTargetId": null,
+   "text": null,
+   "expectedRevision": 40,
+   "expectedPhase": 4,
+   "kind": 0,
+   "useVeto": false,
+   "performance": 0.0,
+   "kindName": "Advance"
+  },
+  {
+   "id": "oldsave-0011",
+   "actorId": "player",
+   "targetId": "maya-hassan",
+   "secondTargetId": "riley-johnson",
+   "text": null,
+   "expectedRevision": 41,
+   "expectedPhase": 5,
+   "kind": 3,
+   "useVeto": false,
+   "performance": 0.0,
+   "kindName": "ResolveVeto"
+  },
+  {
+   "id": "oldsave-0012",
+   "actorId": "player",
+   "targetId": null,
+   "secondTargetId": null,
+   "text": null,
+   "expectedRevision": 42,
+   "expectedPhase": 5,
+   "kind": 0,
+   "useVeto": false,
+   "performance": 0.0,
+   "kindName": "Advance"
+  },
+  {
+   "id": "oldsave-0013",
+   "actorId": "player",
+   "targetId": null,
+   "secondTargetId": null,
+   "text": null,
+   "expectedRevision": 43,
+   "expectedPhase": 6,
+   "kind": 0,
+   "useVeto": false,
+   "performance": 0.0,
+   "kindName": "Advance"
+  },
+  {
+   "id": "oldsave-0014",
+   "actorId": "player",
+   "targetId": null,
+   "secondTargetId": null,
+   "text": null,
+   "expectedRevision": 44,
+   "expectedPhase": 7,
+   "kind": 0,
+   "useVeto": false,
+   "performance": 0.0,
+   "kindName": "Advance"
+  },
+  {
+   "id": "oldsave-0015",
+   "actorId": "player",
+   "targetId": null,
+   "secondTargetId": null,
+   "text": null,
+   "expectedRevision": 45,
+   "expectedPhase": 7,
+   "kind": 0,
+   "useVeto": false,
+   "performance": 0.0,
+   "kindName": "Advance"
+  },
+  {
+   "id": "oldsave-0016",
+   "actorId": "player",
+   "targetId": "diary-post_eviction-3",
+   "secondTargetId": null,
+   "text": null,
+   "expectedRevision": 46,
+   "expectedPhase": 7,
+   "kind": 17,
+   "useVeto": false,
+   "performance": 0.0,
+   "kindName": "SkipDiary"
+  },
+  {
+   "id": "oldsave-0017",
+   "actorId": "player",
+   "targetId": null,
+   "secondTargetId": null,
+   "text": null,
+   "expectedRevision": 47,
+   "expectedPhase": 7,
+   "kind": 0,
+   "useVeto": false,
+   "performance": 0.0,
+   "kindName": "Advance"
+  },
+  {
+   "id": "oldsave-0018",
+   "actorId": "player",
+   "targetId": "maya-hassan",
+   "secondTargetId": null,
+   "text": null,
+   "expectedRevision": 48,
+   "expectedPhase": 0,
+   "kind": 6,
+   "useVeto": false,
+   "performance": 0.0,
+   "kindName": "Talk"
+  },
+  {
+   "id": "oldsave-0020",
+   "actorId": "player",
+   "targetId": null,
+   "secondTargetId": null,
+   "text": null,
+   "expectedRevision": 49,
+   "expectedPhase": 0,
+   "kind": 0,
+   "useVeto": false,
+   "performance": 0.0,
+   "kindName": "Advance"
+  },
+  {
+   "id": "oldsave-0021",
+   "actorId": "player",
+   "targetId": null,
+   "secondTargetId": null,
+   "text": null,
+   "expectedRevision": 50,
+   "expectedPhase": 8,
+   "kind": 1,
+   "useVeto": false,
+   "performance": 0.5,
+   "kindName": "Compete"
+  },
+  {
+   "id": "oldsave-0022",
+   "actorId": "player",
+   "targetId": null,
+   "secondTargetId": null,
+   "text": null,
+   "expectedRevision": 51,
+   "expectedPhase": 8,
+   "kind": 0,
+   "useVeto": false,
+   "performance": 0.0,
+   "kindName": "Advance"
+  },
+  {
+   "id": "oldsave-0023",
+   "actorId": "player",
+   "targetId": null,
+   "secondTargetId": null,
+   "text": null,
+   "expectedRevision": 52,
+   "expectedPhase": 9,
+   "kind": 0,
+   "useVeto": false,
+   "performance": 0.0,
+   "kindName": "Advance"
+  },
+  {
+   "id": "oldsave-0024",
+   "actorId": "player",
+   "targetId": null,
+   "secondTargetId": null,
+   "text": null,
+   "expectedRevision": 53,
+   "expectedPhase": 9,
+   "kind": 0,
+   "useVeto": false,
+   "performance": 0.0,
+   "kindName": "Advance"
+  },
+  {
+   "id": "oldsave-0025",
+   "actorId": "player",
+   "targetId": null,
+   "secondTargetId": null,
+   "text": null,
+   "expectedRevision": 54,
+   "expectedPhase": 10,
+   "kind": 1,
+   "useVeto": false,
+   "performance": 0.5,
+   "kindName": "Compete"
+  },
+  {
+   "id": "oldsave-0026",
+   "actorId": "player",
+   "targetId": null,
+   "secondTargetId": null,
+   "text": null,
+   "expectedRevision": 55,
+   "expectedPhase": 10,
+   "kind": 0,
+   "useVeto": false,
+   "performance": 0.0,
+   "kindName": "Advance"
+  },
+  {
+   "id": "oldsave-0027",
+   "actorId": "player",
+   "targetId": null,
+   "secondTargetId": null,
+   "text": null,
+   "expectedRevision": 56,
+   "expectedPhase": 11,
+   "kind": 0,
+   "useVeto": false,
+   "performance": 0.0,
+   "kindName": "Advance"
+  },
+  {
+   "id": "oldsave-0028",
+   "actorId": "player",
+   "targetId": "maya-hassan",
+   "secondTargetId": "neutral",
+   "text": null,
+   "expectedRevision": 57,
+   "expectedPhase": 14,
+   "kind": 13,
+   "useVeto": false,
+   "performance": 0.0,
+   "kindName": "AnswerJury"
+  },
+  {
+   "id": "oldsave-0029",
+   "actorId": "player",
+   "targetId": null,
+   "secondTargetId": null,
+   "text": null,
+   "expectedRevision": 58,
+   "expectedPhase": 14,
+   "kind": 0,
+   "useVeto": false,
+   "performance": 0.0,
+   "kindName": "Advance"
+  },
+  {
+   "id": "oldsave-0030",
+   "actorId": "player",
+   "targetId": "riley-johnson",
+   "secondTargetId": "neutral",
+   "text": null,
+   "expectedRevision": 59,
+   "expectedPhase": 14,
+   "kind": 13,
+   "useVeto": false,
+   "performance": 0.0,
+   "kindName": "AnswerJury"
+  },
+  {
+   "id": "oldsave-0031",
+   "actorId": "player",
+   "targetId": null,
+   "secondTargetId": null,
+   "text": null,
+   "expectedRevision": 60,
+   "expectedPhase": 14,
+   "kind": 0,
+   "useVeto": false,
+   "performance": 0.0,
+   "kindName": "Advance"
+  },
+  {
+   "id": "oldsave-0032",
+   "actorId": "player",
+   "targetId": null,
+   "secondTargetId": null,
+   "text": null,
+   "expectedRevision": 61,
+   "expectedPhase": 15,
+   "kind": 0,
+   "useVeto": false,
+   "performance": 0.0,
+   "kindName": "Advance"
+  },
+  {
+   "id": "oldsave-0033",
+   "actorId": "player",
+   "targetId": "maya-hassan",
+   "secondTargetId": null,
+   "text": null,
+   "expectedRevision": 62,
+   "expectedPhase": 12,
+   "kind": 4,
+   "useVeto": false,
+   "performance": 0.0,
+   "kindName": "CastVote"
+  },
+  {
+   "id": "oldsave-0034",
+   "actorId": "player",
+   "targetId": null,
+   "secondTargetId": null,
+   "text": null,
+   "expectedRevision": 63,
+   "expectedPhase": 12,
+   "kind": 0,
+   "useVeto": false,
+   "performance": 0.0,
+   "kindName": "Advance"
+  }
+ ]
+}

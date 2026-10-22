@@ -88,6 +88,7 @@ namespace Gamesim.Tests.PlayMode
             yield return null;
             Assert.That(director.TryOpenNpc(npc.Id), Is.True);
             yield return null;
+            yield return EnterConversationCategory(EpisodeDirector.ConnectCategoryCaption);
 
             var hud = director.GetComponent<EpisodeHud>();
             Assert.That(hud, Is.Not.Null);

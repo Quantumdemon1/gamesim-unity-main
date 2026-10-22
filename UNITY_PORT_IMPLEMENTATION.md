@@ -1,5 +1,483 @@
 # Integrated Unity port — implementation and acceptance record
 
+## Release candidate r1: the triage's fixes - 2026-10-16
+
+The release-candidate validation r1 of `claude/consolidation` (5d824c73) passed every shipping suite at
+its floor but one test; its triage found no failure from a lane merge. Its slices, on `claude/r1-fixes`:
+
+- **T1 (8552f6ed).** `Tour_PhaseStepPrefersTheDecisionAndFallsBackToTheCurrentObjective` hung its stand-in
+  decision under the HUD's canvas, which `EpisodeHud.Begin` empties on every rebuild; on the UMA cast a body
+  finishing assembly rebuilds it mid-test, so it failed in every UMA run that held it. The stand-in now lives
+  on a canvas of the test's own, and a forced rebuild after the panel closes is a permanent witness. Red
+  first on NoUMA (run r1fix-t1red: 12 of the 13 `Tour_` tests passed and the phase step failed, on the same
+  `MissingReferenceException` in its finally; the commit message's "failed 12 of 13" is a slip for that),
+  then 13 of 13 on NoUMA (r1fix-t1green) and on the UMA copy (r1fix-t1greenu).
+- **F (1711bcb1).** The UMA build of `Gamesim.PlayModeTests` has its own floor, `Gamesim.PlayModeTests.UmaBuild
+  1270` (r1 ran 1270 against the shared 1230: 40 tests compile only under `GAMESIM_UMA`), read by a plan built
+  without `-WithoutUma`; the deadline table and the fixture's `$measured` carry r1's whole-process times.
+  Tooling and comments only.
+- **D1, the lead's choice (b): the two refuted probe families assert what they measure.** The inert-stream
+  probes (`InertStream_*RefuseAtTheSwapBoundaryBecauseTheAnimatorRebuildsItsGraph`) expect
+  `inert-attachment:unexpected-node-membership` at `swap-boundary` on body 0, the probe's own cleanup refused,
+  and the graph valid and the body held afterwards. Source21's copied-Idle Foot IK probes
+  (`CopiedIdleFootIk_*DriftPastOneMillimetreWithTheFootGoalsUnweighted`) expect `LANDMARK_DRIFT_<n>` inside the
+  2 s window on the first landmark past 1 mm, with every foot goal at zero position and rotation weight. Why:
+  every run on record, both builds, measured exactly these outcomes; the farewell no longer needs either route
+  (S5's stance hold plants the feet); and an expected red hides a new one, where a pinned measurement turns red
+  when Unity or the Idle changes. Runs: NoUMA diagnostics 7 of 7 (r1fix-d1diag); UMA diagnostics 8 passed and
+  2 Inconclusive, the D2 readiness tests (r1fix-d12umadiag). With each pinned expectation mutated (the refusal
+  expected as `inert-attachment:unexpected-node`, the code as `ROOT_DRIFT`), exactly the four mutated tests
+  went red, each on its own message, and nothing else changed (r1fix-d1mut, r1fix-d1mutu). The diagnostics
+  floors stay 7 and 10.
+- **D2: a natural combination that did not occur is no measurement.** The three UMA readiness diagnostics
+  (`FarewellReadinessDiagnosticPlayModeTests`) read the director's captured endpoints without asserting them;
+  when the requested combination is not what occurred they are `Assert.Inconclusive`, naming the endpoints
+  that did, and `DoesNotRestart` accepts a WalkStop to Idle crossing as its witness only while
+  `farewellIdleAttemptUsed` is still false (a crossing after it is Inconclusive; no crossing at all inside the
+  observation window, 2 s or the farewell's 1.5 s deadline, whichever comes first, stays the hard "MISSING
+  genuine global transition witness" failure it was, since it has never been seen and the triage made only the
+  late crossing Inconclusive). Every assertion after
+  a combination occurs stays hard; `AssertCapturedFarewellBranch`, the shipping tests' check, is unchanged.
+  Run r1fix-d12umadiag (and again r1fix-d1mutu): `BothWalkStop` Inconclusive, "the requested combination,
+  evicted=WalkStop survivor=WalkStop, did not occur; the endpoints that did: evicted=WalkStop survivor=Idle";
+  `DoesNotRestart` Inconclusive, "the crossing came after authorization, once the director had already used
+  its Idle attempt (evicted=WalkStop survivor=Idle)"; `BothIdle` passed both times. An Inconclusive hides a
+  regression as failed=0 and exit 2 (it is acceptable only because these are diagnostics and the forced
+  decision tests in `Gamesim.Uma.PlayModeTests` carry acceptance), so read these runs by case name.
+
+## Consolidation - 2026-10-15
+
+Every agent's work now has one line: branch `claude/consolidation` (a4fdfa38) holds GitHub main, the
+lead branch (waves A-D, vote V1-V6, input A0-A13, balance B0-B7), the lanes V7 (through a3d116db),
+input's later group, arcs2 and the art reactions, and Codex's phase-and-dialogue work. The wave-1 lanes
+branch from it; the lead lands them. The entries below this one are the historical record and are not
+rewritten.
+
+**Codex's phase-and-dialogue work** (`D:\GamesimIntegration20261010`, uncommitted on top of 515246bf)
+was ported byte for byte by 4cef3e0b: 213 of its 221 entries, each copy's sha256 checked.
+- Separate phase guidance, system and save feedback, and accepted dialogue. The grammar repairs are
+  display-time only (`NarrativeDisplay`, `StoryText.FillDisplay`): recorded narration and saved Fill text
+  are never rewritten.
+- Six conversation categories with only the chosen surface shown, nested person and plea choices, and
+  spoken player and NPC turns for accepted receipts (`ConversationExchange`), behind the knowledge gate:
+  only receipts the player was shown, filtered by `KnownBallots.TellsAnUnknownBallot`, never odds.
+  Command costs are unchanged.
+- Physical invitations from real pending NPC offers (`NpcInvitation`, `HouseNpcInvitationBubble`).
+- The farewell as a noncontact one-second beat (the owner's decision), with the original 3.8 s Embrace
+  and its regression coverage kept; the veto draw's heading reservation; the creator verifier's nine
+  captures with their test; the Free Time metrics (FT11).
+- `YourWeek` under mode 2: an information-sharing deal's breach, which the vote's settlement writes
+  afterwards, keeps its recorded place after the reveal's lane (the `afterVote` list).
+- **A removed caption, at the owner's request (2026-10-15):** the radial's "More ways to talk" petal
+  (`EpisodeHud.MorePetalCaption`) and `RevealBeyondRadial` are gone with the category redesign. This is an
+  accepted caption-contract change, the only removal; no other caption changed or was appended to.
+
+Eight files keep 515246bf's bytes, not the candidate's: the six HouseGarments slot and overlay assets,
+the UMA asset index and the URP global settings. An editor opened without Assets/UMA had rewritten them
+(the KnitCrew slot then read half its bones-per-vertex; the URP runtime list was emptied).
+
+**Nine PlayMode tests were renamed by the redesign** (old full name, then new; all in
+`Gamesim.Tests.PlayMode.EpisodePlayModeTests`), so a reconciliation of failures across runs can follow
+them:
+
+| Old | New |
+| --- | --- |
+| `Chrome_TheTwoSpendTimePetalsAreToldApart` | `Chrome_TheTwoSpendTimeChoicesAreToldApartInsideConnect` |
+| `Chrome_ConversationDialSeatsSevenPetalsAndKeepsEveryCaption` | `Chrome_ConversationDialSeatsSixCategoriesAndHidesLeafLists` |
+| `Chrome_MorePetalMovesTheKeyboardToTheRowsBeneathTheDial` | `Chrome_CategoryOpensItsChoicesAndBackReturnsToTheWheelWithoutCost` |
+| `ConversationGroups_FourGroupsUnderTheDialAndEachVerbIsOneRow` | `ConversationGroups_EachCategoryHoldsItsOwnVerbsAndTargetsStayFolded` |
+| `ConversationGroups_InAStrategyWindowTheGroupsHoldWhatTheWindowAllows` | `ConversationGroups_InAStrategyWindowTheCategoriesHoldWhatTheWindowAllows` |
+| `ConversationIntent_FreshDialHasSixNonoverlappingPetalsAndThePlainTalkRowAtBothTextSizes` | `ConversationIntent_FreshRootHasSixNonoverlappingCategoriesAndConnectKeepsThePlainTalkChoice` |
+| `ConversationIntent_LegacyKeepsSevenPetalsAndItsOriginalPersonalWarmthTag` | `ConversationIntent_LegacyUsesTheSameCategoriesAndKeepsItsOriginalPersonalWarmthTag` |
+| `Conversation_TheRingsFootLeadsToTheRowsAndTheRowsLeadBack` | `Conversation_KeyboardEntersACategoryAndBackReturnsToTheRoot` |
+| `Conversation_ATalkThatMovesThemSaysWhereTheyStandNow` | `Conversation_ATalkThatMovesThemKeepsTheChangedStandingAndSpeaksItsAcknowledgementOnce` |
+
+**The suites (lane S3).** Tests that cannot pass by design left the shipping suites:
+- The farewell's feasibility and diagnostic probes moved, unchanged, to two assemblies that compile only
+  under `GAMESIM_DIAGNOSTICS` (a diagnostic run adds it to the test copy; it is never committed), each with
+  its own floor: `Gamesim.DiagnosticsPlayModeTests` (`Gamesim.Tests.Diagnostics`) and
+  `Gamesim.Uma.DiagnosticsPlayModeTests` (`Gamesim.Uma.Tests.Diagnostics`, also `GAMESIM_UMA`). Old to new:
+  `Gamesim.Tests.PlayMode.GroundedFarewellPlumbingPlayModeTests.{CalibratedIk_*, DynamicIk_*, InertStream_*,
+  StreamTopology_*, PassiveIk_*, UntouchedIdle_*}` to `Gamesim.Tests.Diagnostics.GroundedFarewellDiagnosticPlayModeTests`
+  (same method names); `Gamesim.Uma.Tests.UmaGroundedFarewellPlayModeTests.{the same six}` to
+  `Gamesim.Uma.Tests.Diagnostics.UmaGroundedFarewellDiagnosticPlayModeTests`; `Gamesim.Tests.PlayMode.Source21ProvidedIdleFootIkPlayModeTests`
+  to `Gamesim.Tests.Diagnostics.Source21ProvidedIdleFootIkPlayModeTests`; `Gamesim.Uma.Tests.Source21UmaIdleFootIkPlayModeTests`
+  to `Gamesim.Uma.Tests.Diagnostics.Source21UmaIdleFootIkPlayModeTests`. Source21 now builds its Idle Foot IK
+  controller in memory (nothing is written under Assets/) and no longer pins the shipping controller's
+  SHA, state count or IK pass.
+- The 14 farewell readiness tests (`FarewellProvidedReadiness`, `FarewellReadinessControlledNegative`)
+  compile only under `GAMESIM_UMA` and are judged on the UMA cast. The UMA-free fixture that borrowed the
+  mesh-less animation skeleton as the cast is gone (the owner's decision: UMA bodies only).
+- On the UMA cast the staged eviction always stands its two principals into the same endpoints: the
+  evicted into WalkStop, the survivor into Idle. The evicted left the committed state at the commit, so
+  the summons cannot send them (`Not gathered: taylor-kim (no body to walk)`); the stage's retry sends them
+  late and `SeatArrivals` seats them the frame they reach their mark (`IsOnMark`), before `HouseNpcMotion`
+  has counted its two settled frames, so their motion is still `Walking` under the seat and they finish
+  that walk into WalkStop when they stand. The survivor, gathered at the summons and `Arrived`, stands into
+  Idle. Six readiness tests requested another combination and refuse, by design, to force one (9e983425):
+  - Three now read the combination the cast stands into and keep what they are about.
+    `AfterBothCallsPreservesANewerCue`: after the preparation completes (at least one returned write, the
+    exact captured clips and call count) a newer cue survives the stale cleanup.
+    `AfterFirstBoundaryIsOnceOnlyAndDoesNotDriveSecond`: at the after-first-write boundary the first endpoint
+    is a captured WalkStop and the second whatever it stood into; for the activity and fresh-token cases
+    the refusal must come from the recheck between the endpoints ("Idle preparation interrupted after first
+    endpoint"), because a second write that never came says nothing when the second endpoint is an Idle
+    no-op. `DisabledPresentationsCannotWriteOrEraseANewerOwner`: before control both endpoints stand in a
+    positive, nontransitioning Idle or WalkStop on its exact clip and a write is due, so the disabled
+    component is the only refusal cause. The newer-cue windows in the first and third now sample every
+    frame and tolerate a miss only on the natural zero-weight handoff (`FarewellForeignHandoff`: crossing
+    into the cue's exact state and clip at weight 0, frames 3518 and 27842 of run w1s3c1); any other miss
+    fails, and the cue must still be held at cleanup. Since e6e7c597 (review S3-2) a window counts its
+    handoff frames and fails on a second one; every one of the five windows of run r3s3a read exactly one.
+  - Three wait for a combination the cast does not reliably stand into: `BothWalkStopCallsOnlyOnce`,
+    `BothIdleStillRequiresNewEvaluations` and `DoesNotRestartAnExistingGlobalStopExit` (the authorization
+    comes while the evicted's WalkStop still plays, never after its exit to Idle has begun). Kept for a
+    gather that would produce them, never acceptance. 9e983425 left them in `Gamesim.PlayModeTests`
+    behind `GAMESIM_DIAGNOSTICS`, outside every floor; by the lead's ruling below they are now in
+    `Gamesim.Uma.DiagnosticsPlayModeTests`, and the branches they name are acceptance-tested directly.
+  - So the UMA build of `Gamesim.PlayModeTests` holds 11 of the 14; the UMA-free build holds none, and its
+    floor is unchanged. No floor line counts those 11: `Gamesim.PlayModeTests 1197` is the UMA-free count,
+    and the UMA run of the same assembly is held to it, a gap every `GAMESIM_UMA` test in that assembly
+    already shared. 463a865c's "every moved test keeps a floor" holds for the moved probes, not for these
+    (review S3-4). A UMA-mode floor for `Gamesim.PlayModeTests` is the release run's (R1) to measure and add.
+- Kept in the shipping suites: the behaviour tests, among them `TwoActualTakesEnterTogetherStayPlantedAndReturnToIdle`
+  and `BothUmaBodiesGiveTheGroundedGestureAndReturnToIdle`, and FT11, which asserts the eight Largest
+  receipts fit (the Free Time slice fixes the board). Its receipts are the acceptance measure of lane S4a,
+  which owns FT11 and makes it assert the owner's Largest contract (a fit, or a page or scroll with a
+  visible indicator) with Standard and Larger unchanged; a plain fit would assert the wrong contract
+  (review S3-7, for the lead to confirm).
+- The review runner gives each suite a deadline at least twice its measured duration (PlayMode 14,400 s)
+  and never kills a late Unity; it runs every suite before failing. `Tools/README.md` has the table and
+  the diagnostics run commands.
+
+**The lead's ruling on the readiness tests (2026-10-16, review S3-1), applied in 4911cf63.**
+1. The three readiness tests that wait for an Idle/WalkStop combination the cast does not reliably stand
+   into left the shipping assembly for `Gamesim.Uma.DiagnosticsPlayModeTests`:
+   `Gamesim.Uma.Tests.Diagnostics.FarewellReadinessDiagnosticPlayModeTests` (category
+   `FarewellReadinessDiagnostic`), same method names. That assembly compiles under `GAMESIM_UMA` and
+   `GAMESIM_DIAGNOSTICS`, the two conditions the tests need, and its floor now counts them (7 to 10). The
+   bodies are the old ones but for reaching the fixture through its helper (a script checked them
+   identical after that substitution). The shared helper is composition: the new fixtures construct an
+   `EpisodePlayModeTests` and run its own `LoadIsolatedEpisode` / `CleanUpIsolatedEpisode`, and the
+   readiness route and its witnesses (`BeginProvidedFarewellReadiness`, `FarewellReadiness`,
+   `WaitForFarewellBeforeCommit`, `WaitForFarewellAuthorization`, `AssertCapturedFarewellBranch`,
+   `ObserveFarewellIdleBeforeCut`, `AssertNoFarewellPreparation`, `ReadFarewellField`,
+   `ReadFarewellAnimator`, `ReadFarewellIdleClip`, `ReadFarewellSelectedClip`) are public in the
+   `GAMESIM_UMA` build. A derived fixture was not an option: NUnit runs a base fixture's tests again in a
+   derived one. No test in `Gamesim.PlayModeTests` is behind `GAMESIM_DIAGNOSTICS` any more. On the UMA
+   copy (run r3s3b) `BothIdleStillRequiresNewEvaluations` passed: the evicted settled into Idle within its
+   .35 s card reading, which it had not in w1s3b1 or w1s3c1. So the combinations are rare and
+   timing-dependent rather than impossible, which is why they are diagnostics; the other two failed as
+   before: "MISSING requested SECOND ordinary state combination", and, for the crossing, a preparation
+   already attempted (the only WalkStop-to-Idle crossing it found was the director's own write).
+2. The three tests 9e983425 rewrote each still assert their product branch, and are ratified:
+   - `AfterFirstBoundaryIsOnceOnlyAndDoesNotDriveSecond`: the recheck between the endpoints refuses before
+     the second endpoint is asked ("Idle preparation interrupted after first endpoint"), the preparation
+     never completes, one write and no retry. Mutation M1 turned it red on exactly that witness.
+   - `DisabledPresentationsCannotWriteOrEraseANewerOwner`: before control a write is due (the evicted's
+     WalkStop), so no call with either component disabled shows the dual preflight refuses before any
+     write; after the first write the recheck refuses; the newer cue survives the old cleanup. M1 turned it
+     red.
+   - `AfterBothCallsPreservesANewerCue`: the preparation completed (the attempt spent, at least one
+     returned write, the exact captured clips and call count), and afterwards the stale ceremony never
+     writes again: the newer cue is held on every frame of its window and through the same-frame cleanup,
+     with no new take and no retry. On the cast the cue lands on the survivor, whose endpoint was the Idle
+     no-op rather than a written crossing; the product's path after the preparation (the observation
+     refuses, the cleanup releases only its own cue) is the same either way.
+3. The three branches the moved tests named are acceptance-tested directly:
+   `Gamesim.Uma.Tests.UmaFarewellReadinessDecisionPlayModeTests` (category `FarewellReadinessDecision`) in
+   `Gamesim.Uma.PlayModeTests`, whose floor counts them (82 to 85). Each stages the real eviction and, on
+   the frame before the director authorizes (`farewellReadyFrames == 1`), puts the two principals'
+   Animators into its combination (`Animator.Play` and a zero-length `Animator.Update`), then lets the
+   unchanged director decide. The code allows it: the decision reads only the live Animator, so no product
+   change was needed.
+   - `BothWalkStopEndpointsAreEachWrittenOnceAndNeverAgain`: one attempt and exactly two writes; on the next
+     evaluation both bodies cross from a WalkStop still short of its own .55 exit into Idle, and neither
+     crossing is ever begun again (50 frames in r3s3a); then two new Idle evaluations, the cut, still two
+     writes.
+   - `BothIdleEndpointsWriteNothingAndStillWaitForTwoNewEvaluations`: no attempt and no write; neither body
+     crosses, each Idle runs on from its captured phase, there is no cut on the first evaluation after the
+     authorization, and the cut follows two new evaluated Idle frames.
+   - `AnExistingStopExitIsWaitedOutAndNeverRestarted`: the evicted's WalkStop is evaluated across its own
+     .55 exit, so the controller's WalkStop-to-Idle crossing already runs; the director tries and is
+     refused at the first endpoint's capture on every frame of the crossing it reaches (5 of 6 in r3s3a; the
+     first precedes its second standing frame), writes nothing, the crossing never goes back, and the
+     endpoint is captured as the Idle it lands in.
+   Each forced its combination with about 0.79 s of the original 1.5 s readiness window left, and the
+   crossing case was authorized with 0.64 s left.
+4. This record.
+
+**Measured after the ruling (2026-10-16, locked runner, the UMA copy unless named).**
+- r3s3a: the three decision tests 3/3; the 14 `GroundedFarewell_` tests of the UMA build of
+  `Gamesim.PlayModeTests` 12 passed, the same two foot-drift failures as before (S5); the full
+  `Gamesim.Uma.PlayModeTests` 85 run, 84 passed, the one failure `BothUmaBodiesGiveTheGroundedGestureAndReturnToIdle`
+  (1.09 mm, S5), 208 s for the Unity process.
+- r3s3b, with `GAMESIM_DIAGNOSTICS`: `Gamesim.Uma.DiagnosticsPlayModeTests` 10 run, 5 passed, 220 s. The
+  seven probes as before the move (four pass; dynamic IK, inert stream and Source21's landmark drift fail),
+  Source21 among them after its relaxed precondition (e6e7c597); the three readiness diagnostics as above.
+- r3s3c, the UMA-free copy with `GAMESIM_DIAGNOSTICS`: `Gamesim.DiagnosticsPlayModeTests` 7 run, 4 passed,
+  121 s; the same three failures as before the move (dynamic IK, inert stream, and Source21's landmark
+  drift, which it reaches past the relaxed precondition, as on the UMA copy).
+- r3s3d, mutations of the product (applied together, each pinned by its own witness, then restored byte for
+  byte: `EpisodeDirector.Farewell.cs` sha256 271e6b2d..., `CharacterPresentation.Farewell.cs` 6e3ef7f2...):
+  M2, the second endpoint's preparation is checked but its WalkStop write never made; M3, with nothing
+  written the observation lets the cut through at once; M4, `TryCaptureFarewellIdle` no longer waits out a
+  transition. All three decision tests went red on their own witnesses: `BothWalkStop...` on "Endpoint 1:
+  the director's write ... must cross it into Idle" (M2), `BothIdle...` on a cut at the frame after the
+  authorization (M3), `AnExistingStopExit...` on an attempt spent during the crossing (M4). The 14
+  `GroundedFarewell_` tests of the UMA build ran beside them: M2 and M3 cannot act on the cast's natural
+  endpoints (its second endpoint is the Idle no-op, and the evicted's WalkStop always spends the attempt),
+  and none of those tests failed beyond the two foot-drift failures but one: M4 also turned
+  `RefusesSecondForeignOwnersBeforeCommit` red (the shrug's zero-weight handoff, captured as Idle). So the
+  transition guard was already covered for a foreign cue, the other two branches only by the moved
+  diagnostics, which acceptance never runs; the decision tests now cover all three.
+
+**For the lead and the later lanes (review S3-3, S3-6, S3-8).**
+- The ratified readiness tests read the cast's natural endpoints, and the evicted's WalkStop comes from the
+  stage: seated the frame they reach their mark while their motion is still `Walking`, they finish that
+  walk into WalkStop when they stand. `AfterFirstBoundary` and `DisabledPresentations` (after the first
+  write) need that WalkStop as the first endpoint, and `AfterBothCalls` needs one written WalkStop.
+  Whoever changes ceremony seating or settling (S5 or the stage's owner) re-judges those three in the same
+  change; the decision tests force their states and do not depend on it.
+- The UMA-mode deadline of `Gamesim.PlayModeTests` (14,400 s) rests on 4,305 s measured for 1,081 tests on
+  an older source. No full UMA-mode run of that assembly has run on this source, which adds the 11
+  readiness tests (452 s together on the UMA copy, run r3s3a). R1's combined UMA run records its
+  whole-process time and updates `Tools/README.md`, the `review-workflow.ps1` comment and
+  `test-review-suite-runs.ps1`.
+- Merge hotspots: `Tools/baseline.txt` (recompute floors arithmetically at landing: this lane's 85 and 10
+  plus what other lanes add); the re-indented teardown in `EpisodePlayModeTests.cs`; the inserts at the top
+  of this file and the roadmap; and the plumbing files that lost the moved probes (port any incoming probe
+  edit to `Assets/Gamesim/Tests/Diagnostics`). `EpisodePlayModeTests.GroundedFarewell.cs` now has public
+  readiness helpers that two other assemblies call: a lane renaming one breaks
+  `Gamesim.Uma.PlayModeTests`. Land S3 before S5.
+
+**Floors** (`Tools/baseline.txt`): at 4cef3e0b the counts observed on that source, EditMode 7846, PlayMode
+1218, UMA 89, the subset 5336 (the candidate's file said 7840/1211/89/5336). After S3: EditMode 7846,
+PlayMode 1197 (1218 less the 7 moved probes and the 14 readiness tests now UMA-only), UMA 82 (89 less 7),
+the subset 5336, and the new lines `Gamesim.DiagnosticsPlayModeTests` 7 and `Gamesim.Uma.DiagnosticsPlayModeTests` 7.
+After the lead's ruling (2026-10-16): UMA 85 (82 and the three readiness decision tests) and
+`Gamesim.Uma.DiagnosticsPlayModeTests` 10 (7 and the three moved readiness tests), both measured (runs
+r3s3a and r3s3b); the rest unchanged.
+
+**Measured on the S3 branch (d510cb92, 2026-10-15, through the locked runner).**
+- NoUMA `Gamesim.PlayModeTests`: 1197 run, 1177 passed, 20 failed, no test in a diagnostic category,
+  5,557 s for the Unity process. The 20 are the 19 Largest-text layouts (S4) and
+  `TwoActualTakesEnterTogetherStayPlantedAndReturnToIdle` (a 4.6 mm foot gap at the farewell blend, S5):
+  the earlier 32 less the 9 readiness and 3 probe failures that left.
+- UMA `Gamesim.Uma.PlayModeTests`: 82 run, 81 passed; the one failure is
+  `BothUmaBodiesGiveTheGroundedGestureAndReturnToIdle` (1.15 mm, S5). The four garment tests the editor
+  rewrite had broken pass on 515246bf's bytes.
+- The 17 `GroundedFarewell_` tests on UMA bodies (`Gamesim.PlayModeTests` under `GAMESIM_UMA`, filtered):
+  9 passed, 8 failed. Passed: the three always-compiled ones (both PTP-7 tests now on their provided-body
+  branch) and six readiness tests, the Dress case among them (the UMA catalog exists). Failed: two on the
+  farewell's foot drift (`KeepsActualCameraTakeAndWholeGoodbye`, `SkipAndReducedMotion...`, S5), and six
+  whose requested ordinary Idle/WalkStop combination did not occur naturally (`BothWalkStop`, `BothIdle`,
+  `AfterBothCalls`, `AfterFirstBoundary`, `DisabledPresentations`, `DoesNotRestartAnExistingGlobalStopExit`):
+  they refuse to force a state by design, so they depend on the walk's timing. The three rewritten and
+  the three made diagnostic-only above answer these six; see the next item.
+- After that (4de38b4e, run w1s3c2, the UMA copy without the diagnostics define): the 14 `GroundedFarewell_`
+  tests of the UMA build, 12 passed. `AfterBothCalls` and `DisabledPresentations`, red in w1s3c1 on the
+  zero-weight handoff, pass; `AfterFirstBoundary` passes all four scenarios with the second endpoint a
+  captured Idle. The two failures are the farewell's foot drift, S5's: `KeepsActualCameraTakeAndWholeGoodbye`
+  (the take is released at 2% progress with a toe 10.4 mm off its base, "actual foot drift") and
+  `SkipAndReducedMotionKeepTheirOriginalWindows` (no pair stays playing long enough to be cancelled).
+  Mutation (run w1s3d1, the UMA copy): with the recheck between the endpoints removed from
+  `EpisodeDirector.Farewell.cs`, `AfterFirstBoundary` fails on its new witness ("second Idle preparation
+  refused" where the recheck's refusal is required; every earlier assertion, the old witness among them,
+  held) and `DisabledPresentations` fails ("Idle preparation lost authority after commit"). The file was
+  restored byte for byte (sha256 271e6b2d...).
+- The three diagnostic-only readiness tests compile with `GAMESIM_UMA` and `GAMESIM_DIAGNOSTICS` (an
+  offline compile of `Gamesim.PlayModeTests` from 4de38b4e's sources, all three present).
+- Diagnostics: 7 and 7 run (4 passed, 3 failed each: the dynamic-IK and inert-stream experiments and
+  Source21's landmark drift, as before the move), 261 s and 294 s. Source21's in-memory controller copy
+  plays like the old on-disk one (43 states, 122 transitions, the same 1 mm drift rate).
+- Nothing was written under `Assets/` by any of these runs; the 2026-10-15 run before them had imported
+  `__Source21NormalIdleFootIk{Provided,Uma}.controller` there.
+
+**IK pass: pending S5.** The shipping controller's base layer now has `iKPass` on
+(`HumanoidClipWiring`, `GamesimHumanoid.controller` `m_IKPass: 1`), and the EditMode
+`GroundedFarewellAnimationTests` pins it. Codex's record calls it diagnostic only. The farewell slice (S5)
+either adopts it with a 1080p/60 FPS profile (owner gate O4) or reverts it to 0 and drops the pin.
+
+**Fake null (PTP-13 and the product).** Besides the three test sites, four product sites added a component
+as `GetComponent<T>() ?? AddComponent<T>()`: the diary seat (`EpisodeDirector.DiaryRoom.cs`,
+`FrameDiaryChair`), both `CharacterPortraits.Bind` overloads, and the HoH photo in
+`HousePublicDisplays.Refresh`. Each now adds on an explicit `== null` (4de38b4e). The change is defensive:
+a red-first EditMode test (bind a RawImage twice outside Play mode, expect one binding) passed against the
+unfixed code (run w1s3c1): in edit mode Unity 6000.6 handed the missing component back as a true null.
+Only edit mode was measured. Play mode was not, and this project's own record has `??` failing PlayMode
+tests through a CanvasGroup (2026-09-26), so the sites may matter there; 4de38b4e's message, which says
+"in edit mode as in Play mode", claims more than was measured (review S3-5). The red-first test cannot tell
+the fix from the bug and was not kept. The diary-seat hunk is in `EpisodeDirector.DiaryRoom.cs`, which lane
+S2a also edits: check it against S2a's hunks at landing, as a tooling lane touched product files. Eight PlayMode tests over
+those sites (the diary seat and room, the public displays, the event context, the profile portraits) pass
+on the UMA-free copy (run w1s3c3b).
+
+**Still open** (the check report's sections 4 and 5): Largest-text layouts (19 tests, S4), two feet 1-4 mm
+off at the farewell blend (S5; on the UMA cast it also fails the two readiness tests that need a take to
+play, `KeepsActualCameraTakeAndWholeGoodbye` and `SkipAndReducedMotionKeepTheirOriginalWindows`), the HUD,
+input, reader and art defects of wave 1, and the release run.
+
+**Later V06 closure, 2026-10-11 UTC:** bound V06 root3684 closed exit1 before
+run-directory creation/compiler/game capture, reporting a SequenceEqual overload
+error. The exact old compiler-name expression reproduces that error with
+String[] versus Object[]; its typed equivalent matches all eight original names.
+The later walk-name comparison has the same risk. Exact original stack location
+was not captured, so this is source-backed reproduction, not invented telemetry.
+Three original procedures and failure.json are physically preserved in external
+frozen28-corpus-v06-prelaunch-failure01. No game calls, walks, commands, saves or
+corpus files ran; no whole Frozen28/native/user-save/schema29 acceptance follows.
+
+## Applied short farewell and strict failed gates - 2026-10-11 UTC
+
+This is a new dated record, not a rewrite of older pending/failure evidence.
+The selected one-second noncontact farewell is installed only in the isolated
+integration copy. Its actual generated controller/Human metadata and reviewed
+runtime/ceremony/cancellation code are present, with24 authored cases. The
+original3.8-second Embrace and its bytes remain unchanged; no gathering, scene,
+save, live-project or play-copy mutation is made. Jury-note02 and the episode
+test's missing namespace import are applied, not ordinary Play96 acceptance.
+
+Generation03 remains Hold despite Unity natural0: its extra handle newline and
+existing package analytics-token writes were not promoted. Artifact integration04
+promoted only the reviewed controller/new metadata plus matching-handle producer
+idempotence and the stronger existing regression. That native handle test passed.
+The original controller graph remains preserved: only the declared Farewell
+state/parameter/transitions were added. Full git diff --check still exits2 on
+Unity's generated YAML whitespace; the C# check exits0. No formatting or check
+waiver is used to manufacture a clean result.
+
+Native Edit43 attempt02 discovered/executed the exact43:42P1F/0skip-inc, natural
+Unity2/root1,169.6384018s within5400+single5, zero source/vendor/input drift.
+The unchanged neutral test reports LeftHandQ.w at29/30 expected-.865538955,
+actual-.866555452: difference.001016497 exceeds.001. Ordinary Play96 was not
+reached. Separate unfiltered UMA82 attempt01 executed exact82:81P1F/0skip-inc,
+natural Unity2/root1,192.9358443s within the same boundary, zero drift. All old80
+passed and the new cancellation passed; new two-body playback fails at its first
+TryReadFarewell observation, before planted-feet checks or any Farewell PNG.
+There is no logged actual state/clip-weight cause. Both exact XML audits and
+independent physical reviews preserve these native results as FAILED.
+
+Current native1179/eight-assembly graph is retained, not the older1172 corpus.
+Closed UMA82 preservation contains1357 copies/752,623,579B including831 PNGs;
+only5 names appear in the run log,0 are new Farewell pictures. Preservation is
+not whole visual acceptance. The graph's sources/references/outputs and original
+closed snapshots are physically bound; no all-module-fresh timestamp is claimed.
+
+Compression integration05 changes exactly AuthoredAssetImporter.cs,
+GroundedFarewellAnimationTests.cs and bb_anim_React_farewell.fbx.meta. Only the
+exact Farewell path selects Off; the metadata compression1 becomes0, and the
+existing test asserts Off. Four identities, neutral .001, root locks, FBX,
+controller, other importer policies and full Embrace remain exact. Other8748
+source tuples are unchanged. Current8751 records/367,599,537B/1179 Gamesim C#,
+dirty87, HEAD515246bf/index42d2a36a remain source-only authority. It is an
+unproven compression trial; a narrow playback-boundary repair is pending.
+The first after-report serialization failure is separately retained; report02
+uses plain-string Git messages and does not repeat edits or retag product tests.
+
+The historical1172-source compiler03 independently closed all eight targets0
+with74 warnings, not warning-clean or current native acceptance. Bound V06
+initial capture is now running against that immutable image; no capture or
+whole Frozen28 result is claimed. The literal77-DTO/583-field reader, complete
+semantic closure and additional genuine public save witnesses precede schema29
+and remaining D1 owner changes. D2-D4 features are already built; their integrated
+acceptance remains separate. The reviewed flight-case numerical round-trip is
+not Unity asset/scene/render acceptance and is still unapplied.
+
+Authored floors7741/1146/82/5233 do not establish full native/pure execution.
+Remaining real assets/apparatus, full suites, separately verified desktop build,
+actual GTX1060 1920x1080 at60 FPS, visual/accessibility/balance and0/3 human
+results remain open. B9's Q2 target is agreed; Q1 population/Q3 bands and tuning
+authority remain owner-selected, Q4 stays no-tune. Three testers are arranged.
+Evidence locations are listed in PORT_COMPLETION_20261010.md; none of these
+scoped source/compile/test/preservation results establishes whole port completion.
+
+## Current closed presentation evidence and open gates - 2026-10-11 UTC
+
+The new scoped pure6 union passed5,335 actual executions against6,297 source
+records; current source inventory contains1,172 Gamesim C# files. Native69
+closed Failed65P4F/0skip-inc, Unity9888 naturalexit2/kernelclosed/no stop-timeout,
+outercontroller60700 tool exit1 and zero source/vendor/drift. All four failures
+are the nominal-width JuryReactWords note; new bold-receipt assertions passed.
+Source-only jury-note02 awaits application; separate UMA80/session80529 remains
+pending. No post-repair, full native-suite, fresh build or visual pass is claimed.
+
+The selected short farewell is one-second NONCONTACT/planted-root/no gather at
+original3.34m roots: source121/363 geometry checks passed, while Farewell02's24
+authored cases are STATIC CLEAR only, not installed/native. Normal03 completed
+43,320-corner observations with all short codes NOP; the stock1e-5 normal guard
+still fails. WholeFrozen28/D1/remaining art/B9/full suites/new build/GTX1060
+1920x1080@60 and three first-time human gates(0/3) remain open. Authored floors
+stay Edit7726/Play1128/UMA80/regular pure5233. Dated evidence is appended below.
+
+## Presentation integration checkpoint before native69 - 2026-10-11 UTC
+
+The earlier checkpoint below retains its original source/results and obsolete
+short-contact/gather proposal. Current evidence supersedes those pending claims,
+not any historical receipt, protected full Embrace, source or floor history.
+
+This record accompanies the reviewed ten-path Dice/jury/manifest source
+increment, not a new executed compiler/native/build pass. Its pre-increment
+candidate was local515246bf in D:/GamesimIntegration20261010. Regular pure5,233
+and five required source/DLL-linked NoBuild scopes28/58/14/1/1 passed102, accepted
+as5,335 actual executions in declared union04. Default143 Explicit NotExecuted
+leaves are not passes;41 remain intentionally unrequested. Full-suite acceptance
+is false, and these prior passes must not be retagged as the presentation image.
+
+Native repaired focus02 closed Failed:actual45/48 Play passed,3 failed,0skipped/
+inconclusive,naturalexit2;UMA not reached. Dice lacked changed source-owned text
+in the sound-request frame; both mode1/2 jury copies exceeded the existing strict
+.1-unit bounds. Existing failures and receipts remain unchanged.
+
+Initial-scope genuine28 CaptureV05 closed Failed with compiler natural0 and
+capture43744 natural1 after6.35144s/no timeout or owned stop. Actual initial
+dependencies passed, including exact original package Newtonsoft. Catalog()
+then refused System.Single before any commands,walks,aliases,rawfiles or saves.
+The retained34files/11,509,370B/five directories are not a corpus. Future
+NeedLiteralFloatOnly work must explicitly bind source AppearanceValue.value and
+AppearanceColor.r/g/b/a only, without changing source/storage shape or waiving
+literal guards. Whole Frozen28 remains incomplete.
+
+SemanticV02 closed Failed before all4 scopes. Child67312 natural1 after
+380.9394025s<900,no stop/timeout/cleanup failure,6895 physical inputs unchanged.
+PowerShell's preloaded Roslyn5.0 differs from required original Unity4.10; the
+identity guard correctly refused. Empty diagnostics and baseline/stagedErrors0
+are not successful semantic calls. Keep all scripts/guards/receipts. The optional
+unusable PS no-Emit route is replaced by actual isolated Unity fresh-Bee
+compilation and exact-membership native validation before accepting the source
+increment. This new execution remains pending; no bundled compiler waiver.
+
+Material changes comprise CompetitionGameScreen main/Dice/Finish cue lifecycle,
+NEW CompetitionSurfacePlayModeTests.DiceCue plus unique meta, ranked Dice test,
+EpisodeHud.JuryLive resolved receipt layout and its played-mode tests, plus
+Tools/run-review-suites and Tools/build-review-candidate. Full ten paths are
+listed in PORT_COMPLETION_20261010.md. Dice queues only accepted Keep's ephemeral
+cue and publishes it once after visible finished text, preserving score/RNG/
+outcome authority. Jury keeps actual words/fonts/privacy and strict.1 bounds
+with tally/receipt direct siblings. Four non-PreviewSync destination manifest
+calls now forward RetainInstalledUma: selected metadata becomes truthful; actual
+file inventories/vendor checks/projection/leases/deadlines remain unchanged and
+old receipts are not repaired. Fourteen authored leaves(11DiceCue+1ranked+2jury)
+raise only Play1114→1128;Edit7726/UMA80/pure5233 unchanged. New discovery/pass/
+visual approval must come from actual new-source evidence, not attribute counts.
+
+D1 remains more than canonical Safety/Vote: remaining raw promise/deal families,
+mixed links,FinalTwo/endgame,oaths/calls need all actual owner/read/full-save/
+durable once-effect compatibility paths. Preserve dormant Information promise
+shape without inventing a producer. D3 PactPlan/war-room/readers are built;
+NPC PlanCallThisWeek is detached saved-plan projection,not ledger.calls writer.
+Complete whole independent literal FrozenEpisodeV28 with genuine public
+plan/player/NPC caller/oath/call save witnesses before29. Keep current tripwire,
+recorded old rules and historical authority boundaries; initial catalog or
+capture subset is not the full contract.
+
+The owner chose a shorter farewell beat; proposed implementation is separate
+short-contact take plus gathering. Protect full3.8s Embrace/mocap; cuts,radius/wait
+waivers or forced contact are not approved. That implementation/native proof,
+B9 owner bands/populations,full Edit/Play/UMA,desktop/standalone,real art/exits,
+GTX1060 actual1080p60,accessibility and first-time human acceptance remain open.
+Older dated implementation/acceptance history below stays byte-preserved.
+
 ## Combined Vote prerequisites and replay repair,2026-10-06 UTC
 
 This new local candidate combines integration969dfd00c63d2cfaddfb1c5566338ca48dda9cd2
@@ -1084,3 +1562,571 @@ Post-leaf Unity Play Mode regression **84 passed, zero failed/skipped**, runfea0
 4. First-time human playtests, 30–45-minute pacing acceptance and target-hardware coverage beyond this machine. Automated tests cannot sign these off.
 
 This record intentionally separates a playable local slice/season from a complete feature-equivalent original game or an approved AAA-quality release.
+
+## 2026-10-11 UTC - closed presentation69 and external geometry observations
+
+The new six-run pure union is5,233 regular +102 required named =5,335 actual
+Passed executions, source-bound to6,297 records and current1,172 Gamesim C# files.
+143 default Explicit NotExecuted leaves remain non-passes;41 are unrequested.
+Old6,295/1,171 evidence retains its own image. Counts alone do not verify a fresh
+native response graph. Floors remain7726Edit/1128Play/80UMA/5233regular pure.
+
+Native port-presentation-play69-01 closed Failed65/69P4F,0skipped/inconclusive.
+Unity9888 exited naturally2/kernel-signaled/closed/noStop/noTimeout; controller
+60700 actually exited tool1, with zero source/vendor/drift changes. Both modes
+of JuryReceipt_ThePlayedWordUsesItsResolvedWidthAndWrappedHeight and
+UnifiedVotePages_TheJuryAsksAboutTheWordThePlayerBrokeInTheRecordsWords failed
+only the nominal-width JuryReactWords note(130.606628 >130.53331 allowed).
+The new bold-receipt asserts passed. The reviewed source-only jury-note02 is
+unapplied and adds0cases: no fixed-source native result is inferred. Separate
+UMA80/session80529 is scheduled/pending, with no observed outcome recorded.
+
+Native69 preservation copied834files/629,096,384B, including831PNGs(288 logged,
+543 historical/unmentioned), manifest SHA256
+4bd836280364723c6e2128e5b71a2bd8696dfb52174e90823b9aa746c71d83e9.
+This closes preservation only, not visual approval. Source-only farewell
+geometry passed121 quarterframes/363 pair checks for a real1s NONCONTACT take
+without gathering at original3.34m roots. Farewell02 is STATIC CLEAR with24
+authored cases, not installed/native/visual. Protected full3.8s Embrace and
+earlier obsolete short-contact/gather proposals/failures remain untouched.
+
+Normal03 naturally exited0 after20.1696183s, observationalComplete only.
+All43,320 raw source-space position/UV/normal comparisons were exact, all encoded
+short codes NOP. Imported normal errors still reached9.250640869140625e-5 and
+6.35385513305664e-5, exceeding the unchanged1e-5 asset guard. No packed-short-
+quantization proof, guard waiver, installation or asset acceptance follows.
+Whole independent Frozen28, broaderD1, remaining real art, B9 approved bands/
+populations, full native suites/new desktop build, GTX1060 actual1080p60 and
+three first-time human gates(0/3) remain open. This entry changes records only;
+it preserves every old run/source/floor and failed-apparatus evidence boundary.
+
+## 2026-10-11 UTC - applied short farewell, closed diagnostic scopes, next repair
+
+Additive current-state receipt; preceding dated bodies are unchanged. Candidate
+only: live C:/Users/kelli/Gamesim Big Brother and open D:/GamesimPlay untouched.
+
+The user-selected shorter farewell is a real authored1s NONCONTACT palm-and-nod,
+with no gather/contact; full3.8s Embrace protected. Farewell-only compressionOff,
+idempotent animation-handle wiring and exact typed zero-weight Idle/Farewell
+boundaries are applied. Zero-weight boundaries never count as entry/palm/neutral/
+completion. Original foot/root0.001, heading0.05, entry0.5s, completion2s and
+standing/framing1.5s guards, two local observations and later actual camera frame
+remain enforced. No pose warp, Animator injection or new primitive fallback.
+
+Jury-note02 and batch relay isolation are applied. Native04's four mode1/2 jury
+cases and full Embrace checks passed. Root viewed actual Largest mode2 receipt
+PNGs at1600x900 and2560x1080: receipt/question/first response readable, no observed
+receipt overlap. Those two observations do not close full visuals/accessibility.
+
+Native03 stopped before test discovery with8 obsolete GetInstanceID compile
+errors; no XML/test count. Integration07 changed only diagnostic identities to
+installed EntityId strings. Native04 then closed naturally: Edit43P0F and ordinary
+Play91P5F/0skip-inc, wholeFAILED. Separate UMA82-02 closed naturally81P1F/0skip-inc,
+wholeFAILED. Wrong-motion fixture looked up PoseAtEase_loop instead of the actual
+bb_anim_PoseAtEase_loop. Other failures show readiness/pair cancellation and actual
+foot gaps0.00437299162m ordinary /0.00103916635m UMA exceeding0.001m. Anonymous
+gaps and post-cleanup leases do not prove cause. No Farewell capture was produced.
+
+Native04 preservation02 and UMA02 preservation01 retain the complete raw scopes;
+independent physical checks cover all8751 source tuples, tested/vendor/metadata
+and eight fresh compiled source groups exactly once. UMA02 root physical audit02
+closed0. Both sources retain1179 Gamesim C#; its523 graph/config files match the
+observed native04 graph byte-for-byte, not by assumption. All887 UMA PNGs match
+native04; five logged older captures are not fresh Farewell views. XML auditor03
+confirms exact43/96/82 leaves and truthful natural child exits; only Edit43 passes.
+Original pretest/product/apparatus failures remain retained, not retagged.
+
+Actual farewell-diagnostics-fixture-integration08 changes five existing files:
+the exact source clip-name selector, bounded first-refusal Pair telemetry,
+pre-cleanup Director readiness/camera telemetry, and named actor/landmark/frame/
+phase/weight diagnostics in ordinary+UMA planted assertions. Diagnostics execute
+only after the original predicate refuses, never repeat owned readiness/arrival/
+physics callbacks, and do not change original assertion order/baselines/limits.
+Root and independent FULL static reviews,50 physical pins and20 forward/inverse
+hunks pass; all16 protected method bodies and existing attribute sequences remain
+exact. Actual new compilation/runtime is pending; this is not a product fix.
+
+Integration08 source-after:8751files/367647733B/1179 Gamesim C#, SHA256
+8252796664b7b041ee7ef8e5b583f9b76f8e849b3a7b35160f8112e9db005cae.
+Exactly five changed tuples/all8746 others unchanged, HEAD515/status87 and actual
+index42d2a36a01c995434689b7ddcd0a77042724d4810214183e867ea196f11ba272 unchanged.
+Floors7741Edit/1146Play/82UMA/5233pure are authored minima, not full execution.
+C# diff-check0; full check2 retains existing generated YAML whitespace.
+
+Next: after root-owned historical1172 V07 capture WHOLE closure (no accepted
+capture result at this entry), fresh unchanged Edit43/Play96 and separate UMA82;
+retain each complete graph/inputs/results/captures before resync, then choose a
+measured minimal product correction. Native full suites, complete literal Frozen28
+and storage migration/broaderD1, real flight-case and other props/apparatus,
+B9 owner bands, new verified desktop build, actual GTX1060 1920x1080@60FPS,
+final visuals/accessibility and three first-time human playtests0/3 remain open.
+
+## Progress record10 — untouched-Idle integration09 (2026-10-11)
+
+Whole original UMA04 closed outerexit1, Unity67652 naturalexit2/kernelclosed
+166.3810968seconds under original5400+ONE5; exact82 was81Passed/1Failed/0Skipped.
+The new1s Farewell failed Alex LeftFoot1.39304122mm at incoming weight.06642097.
+Readiness and incoming-foot failures from native06 remain separate/open.
+Full Embrace3.8s, global WalkStop->Idle .55/.25 edge, standing1.5/take2/goodbye4
+and strict original foot/root/heading assertions are unchanged.
+
+UMA04 RAW11 owner58912 and currentgraph01 owner63408 both naturally closed0
+under180+ONE5. All1426 raw copies/all887 currentPNG and finite968 graph payloads,
+1195 snapshot links, current selected eight-module inputs/outputs and full source/
+vendor/meta scopes cleared root/independent preservation review AS FAILED.
+All eight Csc completions are explicit; IL/Copy outputs are incremental/reused.
+XML auditor03 result06 proves exact original82 names/counters/soleassembly/child
+closure; only the actualfailedleaf remains an issue. Earlier audit05's caller
+63-character SHA parameter refusal left no output root and remains preserved.
+These barriers permit the next source increment, not native/product/full acceptance.
+
+Applied source09 is precisely Idle02's two140-line observational test insertions
+and baseline Play1146->1147 / UMA82->83. Edit7741 and pure5233 are unchanged.
+Source-after.json:1959749B/da9be3bf37abea7951d1fc3280063c75e724ec84d2afac75973f9b31ccec7fe7;
+8751files/367671760B/1179C#, with exactly3 changed existing source files and all8748
+other tuples unchanged. Old source08 manifest, two original fixture preimages,
+baseline and docs09 are retained; current postimages match the independently
+reviewed proposal exactly. No production, scene, clip/controller, meta/GUID,
+index, live/open play, save/build or original test body/threshold mutation.
+The three progress-record appends are documentation-only outside the five-root manifest.
+
+Run existing unchanged run-review-suites.ps1 with the frozen integration09 two
+exact single-leaf filters, retainedUMA/GPU0 and5400+ONE5 per child under one canonical
+destination lease. Observe whole closure before output inspection or resync.
+A failed first scope makes the second unreached, not accepted. Do not use original
+82-membership auditor on UMA83 or the1-leaf control. Retain full partial/refusal
+observations, actual XML/log/process/source/vendor/meta/current compiled graph
+and captures. No control has executed at this receipt. UntouchedIdle completion
+requires actual>=2s/strict phase advance and ONE captured baseline/body, not a driven
+or reset pose; its four-foot maxima are measurements, never planted acceptance.
+
+The separately frozen readiness proposal is conditional/unapplied with only two
+additive tests toward nine required groups. Read actual Idle controls before any
+production readiness/foot strategy; no tolerance waiver, globalIdle change, snapping,
+IK, mask, zero fade or full-hug change is silently authorized by this increment.
+Complete Frozen28/storage/native companion parity, broaderD1, real props/apparatus,
+B9 owner bands, full suites/new desktop build, GTX1060 1920x1080@60FPS and final
+visual/accessibility/human0of3/shipping acceptance remain open.
+
+## Progress record11 — actual source09 execution and preservation (2026-10-11)
+
+Closed run port-farewell-idle-control-01-20261011T142201421Z-b1fb64bb0d424180817032b5174aae16:
+whole outer68416 exited0; ordinary child27036 and UMA child64432 closed naturally
+under5400+ONE5. Both exact one-leaf scopes passed without skips/inconclusive.
+Ordinary3082 samples/body over2.000482s yielded14.0529852mm maximum four-foot gap;
+UMA2796 samples/body over2.00025415s yielded23.9446573mm. Root/heading deltas0.
+Observers did not React, reset, drive or correct animation. Measurement completion
+is not calibration, planting, Farewell, full-suite or standalone acceptance.
+
+All19 raw files (24001029B),8751-file source/snapshot, retained vendor/meta and
+all11756 finite ordered measurement rows cleared root/independent physical review.
+Source09 remains8751files/367671760B/1179C#, floors7741/1147/83/pure5233.
+RAW12 output native-farewell-idle-control-01-preservation01 retained1429 copies
+including887 captures; its proof and owner closed and matched. Current graph02
+output native-farewell-idle-control-01-current-graph-preservation02 retained987
+payloads and1195 snapshot links with exact991-file inventory; outer10643 exited0,
+child15476 closed naturally under180+ONE5. Root and independent current/copy/link
+audits found zero drift. All product/full/planting/visual/shipping acceptance flags
+remain false. Old graph01 precision HOLD is preserved/unexecuted, not rewritten.
+Original source08 failures and historical compiled/raw evidence remain intact.
+
+Next bounded increment is external passive IK proposal01, still unapplied:
+existing generator/controller layer0 IKPass prerequisite only, one graph Edit test
+and two observation-only native tests with same-frame callback/final-bone samples.
+No controller state foot-IK flag, animation asset/timing, vendor option or production
+solver is changed at this record. Existing enabled UMA expression players can write
+look-at goals when callbacks become active; inventory/actual behavior must be
+reported, never disabled or represented as sole-writer/no-effect proof. Global
+enablement and Idle/full-Embrace noninterference stay HOLD pending native evidence.
+Conditional readiness and nine required control groups remain unapplied/incomplete.
+Frozen28 foundation07 corrected source-only narrative metadata and cleared review;
+all17 reader/storage/corpus/native labels remain HOLD. Documentation10 preimages
+were backed up before these append-only records. Index, scenes, saves/builds and
+live/open play copies are preserved. Real props/apparatus, B9 choices, full suites,
+desktop build/GTX1060 1920x1080@60FPS, visuals/accessibility and human0of3 remain open.
+
+## Progress record12 — applied source10 and closed passive diagnostics (2026-10-11)
+
+Source10 application changes six existing files only: HumanoidClipWiring.cs and
+GamesimHumanoid.controller layer0 IKPass, GroundedFarewellAnimationTests.cs,
+GroundedFarewellPlumbingPlayModeTests.cs, UmaGroundedFarewellPlayModeTests.cs,
+and Tools/baseline.txt. Source8751files/367723988B/1179C#, floors7742/1148/84/5233;
+the other8745 source tuples match exactly. Player-capable UMA Editor APIs are
+guarded in applied successor02. Historical proposal01's guard-related semantic
+HOLD is retained, unapplied and unexecuted. Animation assets, timings, state foot-IK,
+metas/GUIDs/asmdefs, production Farewell/readiness, scenes, saves/builds and index
+are unchanged. Base callback enablement is diagnostic only, not production adoption.
+
+Actual run port-farewell-passive-ik-01-20261011T153640010Z-4ad5fea5af1d412aab4519ef3007106a:
+whole session17138/pid56864 closed0. Native children42264/18572/64936 closed
+naturally0 in78.4288166/44.8118609/48.3513815s under5400+ONE5. Three exact
+filtered leaves passed1/1 each,0failed/0skipped/0inconclusive; fullSuiteAcceptance=false.
+Summary5039B/SHAfe275998e3756318969d18818bf20ff205a3d2a88829d2ee2b9562bbb69bd100.
+All22 raw files and native source/configuration evidence remain preserved.
+
+Four genuine provided/UMA bodies produced476 sparse observations across advancing
+Idle, with actual callback/same-frame sampled-Late correspondence, foot position/
+rotation weights0 and exact recorded raw-pose equality. Sampled Late is not known
+whole-frame final or exclusive writer order. Per-frame equality is not temporal
+planting; root independently computed all8 positional-offset diameters,11.535–23.476mm.
+Those observations refute the fixed d,q prerequisite. Frozen direct-IK one-shot
+PLAN01 remains HOLD before setters; no substitute fit, baseline reset, active IK
+or stream job is applied. Existing UMAExpressionPlayer callbacks remain enabled;
+global Idle/head/gaze/full-Embrace noninterference remains an unpassed gate.
+
+Separate physical receipt passive10-physical-audit01.json8178B/SHAf31ae8aeb8934e64d77aac7c824f026641cb92901bd2b3726e136a9c0f176642
+cleared source/snapshot/tested/vendor/meta/index/docs consistency with zero drift.
+RAW13 output native-farewell-passive-ik-01-preservation01 retained1432 payloads/
+958421246B, including887 unchanged prior PNGs and no Farewell visual. Current
+graph output native-farewell-passive-ik-01-current-graph-preservation01 retained
+1009 payloads488524402B plus1195 new snapshot links; exact1013files490382878B.
+Whole copy session64345 exited0; child23096 closed naturally0 in50.9245052s
+under180+ONE5. Result441199B/SHA9471667d9b324b2ea23b86c2d77968bb77a9d596307582c5fe71d0e975f9c23a.
+Root and independent current/copy/snapshot/membership checks found zero drift.
+All8 Csc completions are explicit; only4 modules have fresh IL/8 DLL+PDB copies,
+the other4 are qualified incremental reuse. The22 current raw proofs and46
+historical predecessor proofs remain distinct. Preservation is not product acceptance.
+
+Next topology program/proposal is external/unapplied/uncompiled/unexecuted:
+two existing-fixture observation leaves, actual public graph equality/reads only,
+no graph mutation or controller-object-lineage/safe-insertion qualification.
+The one-second noncontact Farewell is not accepted; full3.8-second Embrace assets/
+timing are intact. Source08 Play92/96 and UMA81/82 remain FAILED as originally reached.
+Conditional readiness/nine control groups, all17 Frozen28 reader labels, real art/
+apparatus, remaining B9 owner bands, full suites, separate desktop build/GTX1060
+1920x1080@60FPS, inspected final visuals/accessibility and human0of3 remain open.
+Documentation11 preimages were held-copied before these append-only records;
+the live C: project and open play copy remain untouched.
+
+## Progress record13 — applied source11, closed read-only topology diagnostics (2026-10-11)
+
+Source11 applies exactly GroundedFarewellPlumbingPlayModeTests.cs,
+UmaGroundedFarewellPlayModeTests.cs and Tools/baseline.txt: one UnityTest and
+normalized fixture-only public graph reader per fixture; floors7742/1149/85/5233.
+Source8751files/367768443B/1179C#, other8748 tuples exact. Existing test bodies,
+helpers/guards, runtime, controller/generator, animation, metadata/GUID/asmdef,
+scene, save, build, index and retained failures are unchanged by this increment.
+
+Actual run port-farewell-stream-topology-01-20261011T162501295Z-ffc78fc025c740678e0cf28e73f3183f:
+root whole79462 closed0; exact provided and UMA single-leaf scopes passed1/1
+each,0failed/skipped/inconclusive. Native51488/19896 naturally closed0 under
+5400+ONE5 in85.3804254/45.3955515s. Summary4159B/SHA94c935fef4f1eaec9c12f94868753b0b68c64fbc9ae15adf84e476f93482f06d.
+All19 actual top-level raw files are preserved separately from native snapshots.
+
+Player/Maya genuine imported bodies and AlexChen/EmmaBrown genuine UMA bodies
+each expose stable10-node/19-edge valid playing GameTime graphs, one captured
+Animator output, advancing native Idle and zero sampled root/heading drift.
+No setter, React, graph mutation, inserted job or manual evaluation occurred.
+The exact output source/explicit port is readable; controller-object association
+and opposite internal connection ports remain opaque. Host callback inventories
+do not establish invocation, exclusive writer order or whole-frame finality.
+Every result retains insertionFeasible=false; planting/Farewell/noninterference
+and full-suite/build/visual/human acceptance remain false.
+
+Whole source/snapshot/tested/vendor/meta/control evidence cleared root and
+independent physical audits. RAW14 retained1429payloads957115650B with887
+unchanged prior PNGs and no new Farewell visual. Current eight-module graph01
+retained1028payloads507576222B plus1195snapshot links; exact1032files509442396B.
+Root whole72322 exited0, child9320 naturally closed0 in51.9040087s under180+ONE5;
+copy-result445599B/SHA682b4d48d869df97c2af05289adaa36f6695debbcebb5c1ad0ed8c1e27c89653.
+Root4452 current/copy/snapshot/procedure tuple checks and independent before/final
+physical/inventory/control review found zero drift. All8 current Csc completions,
+only2 fresh IL/4 DLL+PDB copies and six byte-equal incremental chains are explicit.
+Current19 native raw proofs versus68 historical predecessor proofs stay distinct.
+Preservation closes only this exact retention barrier, not any product gate.
+
+Next stateless attachment/restoration program02 is external only; concrete adapter
+not applied/executed here. It narrows program01 by removing native buffer/counter
+storage and keeping invocation/equivalence unqualified. One empty owned node,
+explicit captured source port, once-only attempts and reached-stage cleanup must
+prove exact original restoration; partial creation or foreign/throwing ownership
+cannot be relabeled successful cleanup. No active stream solver is added.
+
+The shorter farewell request has an authored one-second noncontact candidate,
+not accepted choreography. Full3.8-second Embrace is preserved. Source08 Play92/96
+and UMA81/82 remain FAILED; direct one-shot IK's fixed d,q prerequisite remains
+refuted/HOLD. Conditional readiness/nine groups, all17 Frozen28/storage/corpus/
+native labels, real props/apparatus, remaining owner B9 bands, full suites/new
+desktop build, actual GTX1060 1920x1080@60FPS, inspected visuals/accessibility and
+three first-time human playtests0/3 remain open. Docs12 preimages were preserved
+before this append; live/open play copies and all old scenes/saves/builds/evidence
+and source-control index remain untouched.
+
+## Progress record14 — failed seam experiments and next staged boundary (2026-10-11)
+
+Source12 added stateless empty-node attachment/restoration fixtures and raised only
+Play1149->1150 and UMA85->86 run-count floors. Source13 added read-only body-refusal
+facts to those two fixtures; Source14 added exactly two natural post-refusal frames,
+retaining the original guard failure and original cleanup before those observations.
+Current source is8751files/367875426B/1179GamesimC#. Source14 changes only the two
+diagnostic fixtures; its other8749 source tuples match Source13. No production
+runtime/controller/animation/asset/scene/save/build/metadata/assembly change is
+introduced by these increments. Edit7742 and pure5233 suite floors are unchanged.
+
+All three native experiments remain FAILED: each provided-body leaf ran0/1,
+with0skipped/inconclusive, natural Unity exit2 and requested UMA UNREACHED.
+Root whole sessions76297/3931/52133 exited1; children24100/11080/67876 naturally
+closed in87.1539891/125.3378692/103.7412333s under unchanged5400+ONE5.
+Successful preservation is not successful attachment, restoration or a full suite.
+
+Source14 captured-body guard refused after the original output-source setter at
+frame14. Separate nullable facts reported initializedFalse at14, then True at15/16,
+with the same sampled body/Animator/controller/avatar references. Later aggregate,
+phase and topology were UNOBSERVED; no guard retry or extra graph mutation occurred.
+These non-atomic observations do not prove the failing branch, cause or recovery.
+Cleanup stayed blocked, without restoration/disconnect/destroy attempts. Original
+failed artifacts and fixture teardown remain unqualified, not reclamation proof.
+
+Whole source/vendor/meta/snapshot and all three RAW/current-eight-module retention
+groups have separately closed root and independent physical reviews, with zero drift.
+Current Source14 RAW17 preserves1426payloads957228553B plus its proof, exact1427files
+957875654B. Current eight-module graph preserves1076payloads564522288B and1195
+source/snapshot links. Sixteen current native files remain separate from119 historical
+proofs. All8Csc completions are explicit; only2IL/4Copy completions are fresh. Twelve
+output tuples changed, not fourteen; both PlayMode ref.dll tuples stayed unchanged.
+All887 prior PNGs are unchanged from Source13, with no new Farewell render or review.
+Actual outside-owner receipts and root/peer audits are under
+D:/CodexGamesimEvidence/port-completion-20261010/native-farewell-post-refusal-01*
+and work/port-presentation-repair-20261011/inert14-*; copy closure accepts retention
+only, not graph/runtime/pass-through/planting/product or visual acceptance.
+
+Next is a separately reviewed external two-fixture staged-boundary proposal, not
+applied or executed at this entry. It waits exactly two direct natural frames after
+each normal swap/restore, checks a finite nonnegative5.0s cap and strictly later
+frames, then requires the complete original guard/topology/pose/phase checks plus
+one successful exact-shape endpoint scan. Distinct swap/restoration qualification
+flags cannot be supplied by structural latches or fallback. Original fallback,
+baseline, tolerances and once-only authority remain unchanged. No poll, readiness
+retry, recapture/reset, manual evaluation, vendor disabling or solver is introduced.
+Non-atomic endpoints and cancellation/abandonment remain unqualified. A fresh plan
+must bind these latest THREE documents (DocEpoch14, not fourteen files) and the
+current source/index/HEAD/status before any candidate application or native run.
+
+The one-second noncontact farewell candidate remains unaccepted; full3.8-second
+Embrace is preserved. Source08 Play92/96 and UMA81/82 remain FAILED; fixed d,q direct
+IK remains refuted/HOLD. Conditional readiness/nine groups, all17 Frozen28 readers,
+Store16's fresh binding/native/storage and genuine historical-save corpus, real
+props/apparatus, remaining owner B9 bands, full suites/new desktop build, actual
+GTX1060 1920x1080@60FPS, visual/accessibility and three human playtests0/3 stay open.
+Doc13 raw preimages are retained. Live/open play copies, source-control index,
+baseline scenes, saves, builds and earlier evidence remain untouched.
+
+## Progress 15 — Source17 closed, delegated B9 targets (2026-10-12 UTC)
+
+This status supersedes the open-state wording in Progress14; its original bytes
+are retained in D:/CodexGamesimEvidence/port-completion-20261010/documents15/preimages.
+Live C:/Users/kelli/Gamesim Big Brother and the open D:/GamesimPlay remain untouched.
+No scene, asset, controller, save, test floor, branch, commit or index changed in
+this documentation increment. Future work must bind these THREE DocEpoch15
+documents, not reuse an old uninvoked workflow's Doc14 assumptions.
+
+Source15 Store16's filtered16 native leaves passed naturally, but those derived
+current mode0/1 and fixed schema27 fixtures are not a genuine historical-save
+corpus or whole Frozen28 acceptance. Earlier failed results remain retained.
+
+Source16 readiness actually ran six EditMode leaves (6P/0F) and17 PlayMode leaves
+(8P/9F), with natural owned process closure and no source/vendor/meta drift.
+The whole workflow FAILED. Its original logs, XML, source snapshots, raw byte
+catalogue and copies were retained and independently checked. Retained compiler
+bytes are not fresh graph/producer admission. Grounding still failed the original
+1mm endpoint bounds; idle controls also measured foot drift. Fixed d,q remains
+refuted/HOLD. Neither facts nor tolerances were changed to make a pass.
+
+Source17 changes only the existing GroundedFarewell fixture's TWO reviewed hunks:
+cache the same native reads for truthful diagnostics, and require a genuine
+foreign owner immediately before and synchronously after public Skip in the
+same frame, within the original .25-second window. All8750 other source tuples,
+production, floors, test identities and Git index stayed exact. Root native
+whole70435/final5b692a closed naturally0. The exact filtered ownership leaf passed
+1/1, 0failed/0skipped/0inconclusive; UnityPID65716 closed naturally0 in185.0456572s
+under its original5400s plus ONE5s cleanup. Four source manifests stayed Source17,
+drift was empty, and the16 native files plus two opaque DLL/PDB bytes were retained.
+Root and independent finite actual reviews closed successfully.
+
+Three instrumented cues showed44/45/44 observations with43/44/43 positive witnesses;
+each had one natural handoff gap before the terminal same-frame positive pair.
+The fourth Cooking case and boundary labels are source-control-flow inference,
+not direct instrumented evidence. This is ONE scoped diagnostic pass, not four
+standalone passes, all readiness groups, planting, a full suite or a shipped game.
+Actual receipt: work/port-presentation-repair-20261011/foreign-owner-source17-native-result-independent-actual-review01/review.json.
+Retained result: D:/CodexGamesimEvidence/port-completion-20261010/native-farewell-foreign-owner-source17-01-retention01/result.json.
+
+The owner delegated B9 metric/competition judgment after selecting actual counter
+attempts. Primary counter target is35–50% carried counter-deal transactions divided
+by ALL accepted Countered transactions. Member conversions, predicted raw/effective
+odds, lapses, policy/cast-size rates and sample uncertainty remain separately labeled
+diagnostics; refused commands, eligible opportunities and member records are not
+the transaction denominator. Historical16%/33% were predicted member odds, not
+this outcome. Historical35/52 carried deals (~67.3%) is not a fresh current baseline.
+The frozen earlier mean-odds proposal is superseded as a primary criterion.
+
+Competition targets for a fixed-.50 replenishing Studier are60–70% COMBINED eligible
+HoH/Veto wins per cast size, season8 25–35%, season12 18–28%. Each competition phase
+is separately diagnostic. These are adopted design targets only: no tuning, rule5,
+save/schema change or fresh lab result has been applied. Next balance work is
+reporting-only denominator correction/tests and source/rule-pinned untuned cohorts;
+whole Frozen28/save compatibility remains required before fresh-only tuning.
+
+A test-only dynamic per-evaluation foot-IK proposal is staged externally for actual
+provided and masculine/feminine UMA bodies, with count-increase-only test hygiene.
+It is NOT yet applied, compiled or invoked. Observation at LateUpdate200 is not
+whole-frame-final/all-writer proof or production admission. No manual leg/hips
+locking, forced Animator evaluation, asset rewrite or tolerance waiver is adopted.
+
+Remaining gates: actual farewell planting/readiness/cancellation/new-owner/release;
+untouched full3.8-second Embrace noninterference; whole17-label Frozen28 and safe
+legacy/current save acceptance including genuine historical material; remaining
+real art/props/apparatus and visual/accessibility checks; fresh B9 measured/tuned
+acceptance; full pure/EditMode/PlayMode/UMA suites; separately verified clean desktop
+build; actual GTX1060 1920x1080@60FPS profiling; three first-time human playtests0/3.
+No full-port completion, shipping, visual, performance or human acceptance is claimed.
+
+## Progress 16 — measured baseline and two native diagnostics (2026-10-12 UTC)
+
+This append supersedes the pending-state wording in Progress15 without rewriting
+its evidence. The three exact Doc15 preimages are retained under
+D:/CodexGamesimEvidence/port-completion-20261010/documents16/preimages.
+Live C:/Users/kelli/Gamesim Big Brother and open D:/GamesimPlay remain preserved.
+HEAD515246bf and the shared Git index are not changed by this documentation work.
+
+Source19 reporting separates accepted/carrying counter transactions, member
+conversions, predicted odds and lapses. Its six reporting tests are qualified.
+The complete ordinary pure suite passed5239/0failed/0skipped with all143 known
+Explicit exclusions accounted for and naturally closed test/Root processes.
+This is not Unity runtime, a build, tuning or human acceptance.
+
+The untuned population is now independently qualified as retained DATA:
+1600 competition seasons and1000 war-room seasons. Original400 were rechecked
+and imported byte-for-byte; only remaining2200 were run. All2600 raw records,
+exact rule strings/seeds/projections, five imports and eleven owned test closures
+were verified; retention02 whole0,5551 held EOF reads, zero drift.
+Actual receipt: work/b9-successor02-retained-population-review02-20261012/review.json.
+Original failed controller/XML check and successor Root wrapper1 remain failed.
+Successor controller exit was unobserved; saved absent environment became
+present-empty at Root restoration. A separate process-local correction passed
+four absent/empty/zero/one cases. Successful retained-data review is not a green
+replacement workflow, cohort replay, controller-exit invention or tuning authority.
+
+Fixed-.50 Studier baseline per cast: eight contestants weekly1339/1406=95.23%,
+Winner147/200=73.5%; twelve weekly1651/1743=94.72%, Winner96/200=48%.
+Agreed targets remain weekly60-70% each, Winner8 25-35%, Winner12 18-28%.
+Primary counter transactions14/14carried=100% are sparse; member conversions2/10
+and odds remain separate. Twelve carries had no conversion, including five
+zero-member attempts. Settlement counts player/existing says and founder ties:
+reach reduction alone cannot remove those twelve at identical pre-answer states.
+The12/14fixed-state floor is not a full-season counterfactual. Command-driven
+all-week strategy was active; free-roam NPC world ticks/operations were zero.
+Narrow analyst-only standing-support/settlement sidecar and feasibility measurement
+come before coefficient selection; no rule5/schema29 or gameplay tuning is applied.
+All17whole Frozen28 reader holds still precede fresh-only persisted rule changes.
+
+Source20 actually applies ONLY two test-private diagnostic files and two expected
+test-count minima in Tools/baseline.txt. Other8748 source tuples, production,
+Doc15 and index were exact at application/native closure. Application guard03
+and independent actual extent review both naturally closed0. The stronger old
+Root0 prerequisite was not silently waived: a distinct Source19 closed-custody
+decision scoped this private application, while the old B9 workflow remained1.
+
+Two separate native diagnostic workflows now passed, with independent raw review:
+Provided soleleaf1/1, UnityPID4644 natural0 and Root whole0; UMA soleleaf1/1,
+UnityPID40852 natural0 and Root whole0. Both used unchanged canonical Acceptance,
+retained installed UMA, original5400s owned cap/ONE5cleanup, no retry, zero
+source/vendor/import drift and exact four-variable process environment restoration.
+Actual receipts:
+work/source20-provided-native-raw-review01-20261012/review.json;
+work/source20-uma-native-raw-review01-20261012/review.json.
+Filtered1/1 is not a full assembly pass or its expected-count floor.
+
+Train sample0 and fixed local holdouts1/2 were distinct with frozen per-body
+coefficients. Provided strict trial maxima .273/.183mm; actual masculine/feminine
+UMA .797/.784mm, each within original1mm, stable roots/headings, first incoming
+zero frame, positive entry, palms, neutral, returned Idle and two later zero-weight
+release observations qualified in their scoped test-private traces.
+Warm landmark movement was31.26/31.48mm Provided and29.91/29.46mm UMA within
+separate50mm safety;10mm was the calibration GOAL command cap, not planting.
+C-to-A was1.59/1.62mm Provided and.55/.74mm UMA. Post-trial released A-to-Late
+was approximately3.28/3.35mm and7.97/7.83mm respectively from printed coordinates,
+excluded from the strict trial maximum. Do not claim whole-window planting.
+
+Fixtures were AlwaysAnimate, far parked3.34m apart, observed at LateUpdate200,
+not game-route/contact/all-writer/whole-frame-final/visual acceptance. UMA identities
+and distinct masculine/feminine Avatars are actual; existing test-only floor is
+not new production primitive art. Retained warnings/licensing rows prevent a clean
+Console claim. Old failed Source18 leaves, production foot ownership, pre-cue
+baseline/zero-weight handoff, natural readiness/cancel/skip/foreign owner, original
+3.8s Embrace noninterference and full native suites remain separate open work.
+Focused next mechanism: per-live-body initialization before frozen pre-cue baseline
+plus safe zero-weight Idle handoff; do not transplant30mm warm motion into ceremony,
+recapture a convenient baseline, hold weights forever or relax endpoint bounds.
+
+The offline occurrence/merge helper's45manual cases/12scenarios passed and
+independent retention is clear; it closes none of the17whole historical reader paths.
+Fixed benign lifecycle fixture01 remains uninvoked. Four-region TEMP/TMP correction
+and finite207provider admission are source-reviewed only; runtime loader closure,
+fatal-owner and originalL01-L16 are not qualified. A distinct corrected fixed
+fixture/binding is the next ownership dependency, not another broad DTO mapping.
+The owner waived supplying genuine historical save files only; real-file
+compatibility stays unverified, while automated frozen contracts/safe loading remain.
+
+Remaining queue: whole Frozen28 references/storage/public-command witnesses and
+real SaveStore companions; measured justified fresh-only B9 tuning; actual production
+farewell grounding/release; coherent licensed real art (27room placements plus five
+apparatus families); combined gameplay/full EditMode/PlayMode/UMA and all-screen
+Largest/input/caption/audio/16:9/21:9 validation; fresh clean standalone Windows
+build and actual GTX1060 1920x1080@60FPS measurement; three first-time human E1-E5
+playtests0/3 and controlled promotion only after acceptance. Required game-dev1.0.2+
+asset-production/vendoring executable path is missing; do not bypass package/license
+gates, buy assets or publish/push an unconfigured project.
+No port completion, production grounding, shipping, performance or human acceptance
+is claimed. Detailed task handoff:
+REMAINING_WORK_20261012.md (in this repository; Codex's queue as of 2026-10-12,
+superseded for planning by the consolidation of 2026-10-15).
+
+
+## Doc17 checkpoint: actual Source22/23 changes and preserved validation failures
+
+This append preserves every Doc16 prefix byte. Candidate: D:/GamesimIntegration20261010, HEAD515246bfeb8633a99630e8088cb92ca60ba54ce6. Index1311495/42d2a36a01c995434689b7ddcd0a77042724d4810214183e867ea196f11ba272 is unchanged. The deliberate Source23 addition of two previously clean test files gives92 ordered status rows/36d756d89feeb756eb6114d25cf14c82915bf3d4e905117f1b669a84cac566a3; the prior90 rows remain exact. Live C:, the open D:/GamesimPlay editor, baseline scenes, assets, saves, snapshots and builds were not changed by this checkpoint. No shipping acceptance is claimed.
+
+### Material changes: four test-only files, five literal sites
+
+Source22 changed GroundedFarewellPlumbingPlayModeTests.cs and UmaGroundedFarewellPlayModeTests.cs at three literal sites. Unsupported Assert.Multiple wrappers were removed while retaining all ten cleanup assertions, predicates, order, guards and messages; reporting is now fail-fast, not aggregate. The UMA helper's nonexistent Person return type became ContestantState; its body stayed exact. Application and independent inverse/extent review closed naturally0. The checked precheckpoint Source22 inventory was8751 files/368300212 bytes, declared Gamesim C# metric1179. No production controller/gameplay/scene/art/package/save/balance coefficient changed.
+
+Source23 replaced precisely two obsolete reflection assertion expressions: UnifiedVoteObligationsTests checks SerializableAttribute via IsDefined(...,false), retaining Is.False; ModeTwoHouseReaderTests checks NonSerializedAttribute via IsDefined(...,false), retaining Is.True and its exact message. Other serialization/immutability/Newtonsoft predicates and serializer annotations remain intact. No warning suppression, skipped test, changed expectation or gate relaxation. The original whole-file preimages were preserved before apply_patch, and both inverses are byte-exact. All8749 other selected source tuples, index and HEAD stayed exact. Post inventory8751/368300226, declared Gamesim C# metric1179; the independent raw .cs-suffix count is1184 before and after, not substituted for that historical metric.
+
+Source23 preparation01 ended naturally0 but its external original120s whole budget expired before application; no product edit or Post occurred there. That phase remains immutable and was not adopted. Fresh02 alone completed Prepare -> two apply_patch replacements -> Post -> published Root witness under one original QPC clock, natural0,33.6547149 seconds after witness publication against120 seconds. Independent actual extent review is work/source23-metadata-warning-correction02-actual-extent-review01-20261012/review.json,5462/ded279eff7beca2ca2d5d44fb76742e95e77ba40f4a7123660d36f71274e002c. This qualifies only the application extent, not compilation, Unity runtime or shipping.
+
+### Actual Source22 Unity result: one private Provided leaf failed
+
+Distinct Source22 workflow ended naturally whole1 with captured Unity kernel2, no timeout/forced stop and no C# compilation-error rows. Selected XML: zero passed/one failed/zero skipped or inconclusive, no replay. LANDMARK_DRIFT_1 measured body1 at.00105183828m(1.05183828mm) against unchanged.001m(1mm). One baseline at naturally advancing frame13 was never recaptured; failure at frame151 after.07184768s did not reach the required2s endpoint. Root and heading movement were0; both bodies recorded139 phase-matched callbacks/completed LateUpdates and138 samples. Observed goal weights, fixture setters and ownership mask were0, which does not prove absence of foreign writers or whole-frame finality.
+
+Only the test-private copied Idle state's Foot IK was enabled; other42states and40 effective overrides stayed exact. Private assets cleaned up; production controller/source and tested source/vendor/environment custody remained exact. Idle-only Foot IK is not sufficient in this Provided comparison. Cause, UMA result, production correction and visual acceptance remain unproved. No tolerance/timing/floor was lowered. Preserve the original3.8s Embrace.
+
+Raw facts and independent review: work/source22-provided-native01-20261012/root-actual-failed-entry01.json; work/source22-provided-native-actual-failure-review01-20261012/review.json. The new same-pose FarewellStand handoff idea in work/farewell-same-pose-handoff-proposal01-20261012/REPORT.md is source-only, not adopted, applied or run. Hidden full-scale prebaseline readiness, exact-body cache invalidation and observed owned-zero release remain needed; no baseline recapture, graph forcing or indefinite weights may substitute.
+
+### B9 diagnostics: compilation is not validation or tuning
+
+Five staged offline-only C# sources remain outside the product, with30 mandatory diagnostic requirements. Compile01/02/03/04/05 each entered once and all remain retained failures; no consumed entry or failed cohort was replayed. Compile02 rejected mixed newlines before restore. Compile03 reached restore but NuGet failed path1-null; exact installed source proved omitted APPDATA at the unconditional Windows user-settings path. The distinct04 private output-owned APPDATA correction restored naturally0/0warnings, but its post-restore allowlist rejected the new private NuGet directory/config before compilation. Actual source proves eager proxy-settings initialization can create that default config independently of explicit root --configfile; no host profile/config/credential was inherited. Private config exact210B/3bdb050540ecdd6fe717cbb9028c0ff9e2af5e1544afa71b6bade80140c7a236 was admitted as a specific fixed artifact in05, not a namespace wildcard.
+
+Compile05 restored and compiled naturally0 with0errors, but2 existing SYSLIB0050 warnings caused the unchanged zero-warning guard to fail at BUILD. Whole exit1/46.7208278s; no Root stop/capture failure; streams reached EOF. Discovery, tests, TRX and final attestations did not run. The two Source23 assertions address those observed warnings; they do not retag05 as passing.
+
+Distinct compile06 then consumed one reviewed entry and ended naturally whole1/6.2179489s, no Root stop, bothEOF. First sentinel STAGED/GUARD_REFUSED/InvalidOperationException reports outputCreatedfalse and no possible restore/compile; the D output/claim/temp prefix stayed absent. Actual first rejected predicate was not emitted. Source review and a context-faithful one-time file-top-level probe proved a separate deterministic bug: lowercase expectedMetadataRegressionTests aliased script-scoped ExpectedMetadataRegressionTests, replacing Int32(2) with String[2] before the count check. Distinct local metadataRegressionNames preserves Int32(2) and the same predicate becomesTrue. Compile06 remains failed/unreplayed. Root retained witness1951/ecb25b208f741da894d818573489ce7045d5b704560b4c82f103b34b7a0d96ad; independent facts8068/8285b4390571e13dff4851cd345df58ee6cab9f2cf52428714963320668baf3f.
+
+Compile07 changed only7 lowercase local-name tokens and fresh attempt identities; five script count references/value2, all30 diagnostic names plus2 metadata regressions, exact32filter/discovery/TRX/warning/cap/deadline controls remained unchanged. After complete independent source and actualbinding/capture/entry reviews, it consumed exactly one entry and ended naturally whole1/54.7058677s, no Root stop, bothEOF. Restore0/4.7920369s and build0/17.9521387s passed with0warnings/0errors. Discovery process0/4.9382146s returned an unfiltered catalogue:5412 NUnit display names plus2 adapter messages after one marker, zero whole-line expectedFQNs. The emitted first failure remains generic DISCOVERY/GUARD_REFUSED/InvalidOperationException. Source order plus retained bytes derive the first false diagnostic-text check from2 display names containing Warning, and the later unreached parser would see5414 rather than32. Do not reinterpret those names as diagnostics, bypass the warning gate, posthoc select a subset or retag07. No focused receipt, TRX, provisional/final result or executed leaf exists: diagnostic0/30 and metadata0/2. Rootwitness2198/0c3416bd5b3adb0637592dec98d830b85dbe1d60441493378354b1447360fa30; independent retained-failure peer8481/d422bd4ecc7aceac12d3a75752fe9886cd49aa1a06dcf9a7ff43af4e200977d0.
+
+Exact SDK VMR-source-backed filtered-FQN successor is adopted only for task-local compile08 source authoring: one pinned VSTest front-end, one capped preabsent/postpresent held-EOF UTF8 FQN file, exact32ordinal set and unchanged30/2partitions/focusedTRX/warning/cap/deadline gates. Explicit eighth tool pin is planned; do not claim seven unchanged when adding that input. Source-only authoring is underway when this suffix is frozen; no final guard review, actualbinding/entry or result is released by this checkpoint. StagedfiveC# sources remain outside product source. All32 tests, any pilot and tuning remain open; compiler0warning is qualified limited build evidence only, not a full validated image or Unity pass.
+
+Evidence: work/b9-diagnostic-compile05-20261012/root-actual-failed-entry05.json; work/b9-diagnostic-compile05-actual-review-source23-proposal01-20261012/ACTUAL_REVIEW.json. No pilot, balance coefficient, persisted version, save schema, season rule or all17 acceptance changed. Compiler success alone cannot authorize tuning.
+
+### Remaining required completion gates
+
+1. Historical schema28 immutable reader/corpus plus real Unity SaveStore lifecycle: all17 holds remain open. Source07's failed exact-job fixture is retained. Frozen28 Source08 precompiled GUI-host handoff programme is a proposal only, distinct from B9 compile08 discovery; no host C#, compile/binary/binding/run or lifecycle acceptance exists. Exact Owner-target identity and Root40+ONE5 cleanup remain review obligations; do not weaken job counts, natural15/deadline40/whole60/final10 or handle ownership. Genuine mode0/1 file supply was owner-waived only; historical-file compatibility is still unverified.
+2. B9: qualify30 diagnostics and the2 separate metadata regressions, measure source-produced pre-settlement inputs/paired mechanism, then only after all17 holds close implement justified fresh-season persisted-version tuning and rerun agreed cohorts/native NPC-world evidence. Targets: carried/all accepted Countered transactions35–50% including zero-member attempts; fixed.50 Studier weekly60–70% EACH cast; season Winner25–35%(eight),18–28%(twelve). Lapses excluded, zero denominator unavailable, old seasons preserved. Prior95.23%/94.72% weekly and73.5%/48% season rates remain untuned; sparse14/14 counter carries and member2/10 are separate diagnostics.
+3. Farewell: genuine prebaseline initialization and same-baseline observed zero handoff, cancellations/skip/repeat/rebuild/avatar/controller replacement/disable/destroy/foreign ownership, normal culling/camera/floor contact and rendered inspection; then reviewed production integration and original Embrace regression.
+4. Actual art:27 room placements(10boxes/4snackbags/5tins-jars-toiletries/2minifridges/3flightcases/1suitcase/1headphonecase/1laundrybasket) and5 apparatus families(Signals/PairConsole/GripRig/DiceTray/WordConsole). The required game-dev1.0.2+ CLI path/trusted installation source is missing. Do not bypass license/canonical-package gates with loose downloads, primitives or purchases. Preserve6 completed towel/bottle/book/magazine replacements; retained flight-case export still needs fresh integration binding. Check URP renders, materials/scale/pivot/colliders/navigation/LODs/moving parts/readouts/reduced motion/contact/clearance/seeded outcomes.
+5. Combined current-source EditMode/PlayMode/UMA and four larger features together, every screen/text size including Largest, longer captions, every sound's visual cue, separate volume sliders, truthful rebound-key captions without renamed actions, gamepad/back, repaired16:9 and21:9. Earlier pure5239/5239 or individual lane renders do not replace native/combined acceptance.
+6. Fresh clean Windows desktop build: startup/new/reload/recovery/progression/finale/exit and actual GTX1060 1920x1080@60FPS representative/stress paired profiles. Keep build identity, frame-time/CPU/GPU/memory and visual checks distinct. Old1600x900 prototype limits/builds do not qualify.
+7. Three first-time E1–E5 human playtests remain0/3; record/fix/retest blockers, then deliberate promotion only after D:/GamesimPlay closes safely and local edits are preserved. No unconfigured remote publication or historical PR action.
+
+Read-only MCP still targets saved idle D:/GamesimPlay Bootstrap, not the candidate. A malformed Console-query Types argument produced MCP own parameter-conversion errors; those are infrastructure-query errors, not proved game exceptions. No Console was cleared. A separate process-status query accidentally printed Unity launch credentials in tool output; the owner was notified to treat them as exposed and renew the affected Unity Hub session. No credential values are reproduced/saved here and no account/session/access controls were changed; revocation/expiry is not claimed. Future process inspection must emit only filtered non-sensitive fields.
+
+Implementation, source-fixture parity, Unity runtime, render evidence, desktop profiling and human acceptance remain separate. The port is incomplete.

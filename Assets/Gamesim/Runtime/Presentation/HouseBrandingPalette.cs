@@ -36,6 +36,14 @@ namespace Gamesim.Presentation
         /// <summary>The red tally light opposite it.</summary>
         public Texture2D diaryTally;
 
+        [Header("Diary Room (authored)")]
+        /// <summary>
+        /// The upholstered interview wall, tufted (ArtSource/setpieces/bb_set_diarywall.py): 4.6 by
+        /// 2.9 m, its origin on the floor under its middle, UVs 0..1 across its front. Null on a
+        /// clone without it, where DiarySeatPose stands the box it always did.
+        /// </summary>
+        public Mesh diaryWallMesh;
+
         private static HouseBrandingPalette current;
 
         /// <summary>The palette, or null on a clone that has not built it - callers then dress nothing.</summary>

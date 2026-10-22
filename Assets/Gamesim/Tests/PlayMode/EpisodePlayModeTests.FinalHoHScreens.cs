@@ -54,9 +54,9 @@ namespace Gamesim.Tests.PlayMode
         /// <summary>The sheet's new pieces fit at both text sizes; it is left open at the resting size.</summary>
         private IEnumerator AssertTheFinalPartSheetFitsAtBothTextSizes()
         {
-            foreach (bool larger in new[] { false, true })
+            foreach (var textSize in TextSizes.All)
             {
-                yield return ApplyTextSize(larger);
+                yield return ApplyTextSize(textSize);
                 yield return OpenFinalePanel();
                 Canvas.ForceUpdateCanvases();
                 foreach (var name in new[] { FinalBracketView.BracketName, FinalBracketView.BandName, EpisodeHud.CompetitorCardsName, EpisodeHud.BriefingHeroName })
@@ -65,7 +65,7 @@ namespace Gamesim.Tests.PlayMode
                     if (rect == null) continue;
                     foreach (var text in rect.GetComponentsInChildren<TMP_Text>())
                         Assert.That(ShowsAllOf(text), Is.True,
-                            "At " + (larger ? "larger" : "standard") + " text '" + text.text + "' (" + text.name + " in " + name + ") is cut short.");
+                            "At " + TextSizes.Name(textSize) + " text '" + text.text + "' (" + text.name + " in " + name + ") is cut short.");
                 }
             }
             yield return ApplyTextSize(false);

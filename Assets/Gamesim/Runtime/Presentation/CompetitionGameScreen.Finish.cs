@@ -78,6 +78,7 @@ namespace Gamesim.Presentation
                 selectOnUp=finishAction,selectOnDown=finishAction };
             if (hideCancel) finishAction.navigation = new Navigation { mode = Navigation.Mode.None };
             if(EventSystem.current!=null) EventSystem.current.SetSelectedGameObject(finishAction.gameObject);
+            PublishKeptRollCue();
         }
 
         /// <summary>
@@ -93,6 +94,7 @@ namespace Gamesim.Presentation
             pause.gameObject.SetActive(false); finishAction.gameObject.SetActive(false);
             cancel.interactable = false;
             if (EventSystem.current != null) EventSystem.current.SetSelectedGameObject(null);
+            PublishKeptRollCue();
         }
 
         private void PaintFinish(string summary)
@@ -174,6 +176,7 @@ namespace Gamesim.Presentation
         /// <summary>Forgets the last attempt's controls: they went with its studio.</summary>
         private void ForgetGames()
         {
+            keptRollCuePending = false;
             Array.Clear(cards, 0, cards.Length);
             Array.Clear(pairShown, 0, pairShown.Length);
             target = null; reactionFocus = null; effortControl = null;

@@ -86,19 +86,28 @@ namespace Gamesim.Tests.PlayMode
                 ? EpisodeHud.PanelHintScrollCopy : EpisodeHud.PanelHintCopy), "and still says \"Scroll for more\" exactly when there is more.");
         }
 
-        /// <summary>Opens the station's panel at the resting text size, then at the larger, running <paramref name="check"/> at each.</summary>
-        private IEnumerator AtBothTextSizes(System.Action<bool> check)
+        /// <summary>
+        /// Opens the station's panel at the resting text size, then at the larger and the largest,
+        /// running <paramref name="check"/> at each with whether the size is above the resting one.
+        /// The flag is true at both the larger and the largest, so a check names the size in its
+        /// messages from the director - <c>TextScales.At(director.TextSize)</c> - never from the
+        /// flag: "at the larger text" on a failure at the largest sent its reader to the wrong size.
+        /// </summary>
+        private IEnumerator AtEveryTextSize(System.Action<bool> check) => AtEachTextSize(size => check(size != TextSize.Standard));
+
+        /// <summary>Opens the station's panel at each text size, smallest first, running <paramref name="check"/> at each.</summary>
+        private IEnumerator AtEachTextSize(System.Action<TextSize> check)
         {
-            foreach (bool larger in new[] { false, true })
+            foreach (var textSize in TextSizes.All)
             {
-                if (larger)
+                if (textSize != TextSize.Standard)
                 {
                     director.ClosePanels();
-                    yield return ApplyTextSize(true);
+                    yield return ApplyTextSize(textSize);
                 }
                 yield return OpenStation();
                 yield return null;
-                check(larger);
+                check(textSize);
             }
             director.ClosePanels();
             yield return ApplyTextSize(false);
@@ -117,9 +126,9 @@ namespace Gamesim.Tests.PlayMode
             var before = director.Snapshot;
             Assert.That(EpisodeEngine.OpenStoryBeats(before), Has.Count.EqualTo(1), "The fixture has a beat waiting.");
             bool lapses = EpisodeEngine.LapsingOnAdvance(before).Count > 0;
-            yield return AtBothTextSizes(larger =>
+            yield return AtEveryTextSize(larger =>
             {
-                string where = "The nomination" + (larger ? " at the larger text" : "");
+                string where = "The nomination" + (larger ? " " + TextScales.At(director.TextSize) : "");
                 AssertOnTheStrategyStage("Continue episode", where);
                 var choices = ActiveRect(EpisodeHud.StoryChoicesName);
                 Assert.That(choices, Is.Not.Null, "The beat's choices are on the screen.");
@@ -156,9 +165,9 @@ namespace Gamesim.Tests.PlayMode
                 state.hohId = npcs[0];
                 state.nominees = new List<string> { npcs[1], npcs[2] };
             });
-            yield return AtBothTextSizes(larger =>
+            yield return AtEveryTextSize(larger =>
             {
-                AssertOnTheStrategyStage("Continue episode", "The veto's draw" + (larger ? " at the larger text" : ""));
+                AssertOnTheStrategyStage("Continue episode", "The veto's draw" + (larger ? " " + TextScales.At(director.TextSize) : ""));
                 Assert.That(ActiveRect(EpisodeHud.ChipBagName), Is.Not.Null, "The draw keeps its bag.");
                 Assert.That(ActiveRect(EpisodeHud.CeremonyTitleName).GetComponent<TMP_Text>().text, Is.EqualTo("Power of Veto Player Selection"));
             });
@@ -176,10 +185,10 @@ namespace Gamesim.Tests.PlayMode
         public IEnumerator StrategyStage_TheVetoMeetingTakesTheFrame()
         {
             yield return InstallStrategySeason(47, state => AtVetoMeeting(state, false));
-            yield return AtBothTextSizes(larger =>
+            yield return AtEveryTextSize(larger =>
             {
-                AssertOnTheStrategyStage("Continue episode", "The veto meeting" + (larger ? " at the larger text" : ""));
-                AssertTheBandNamesTheMeeting("The veto meeting" + (larger ? " at the larger text" : ""));
+                AssertOnTheStrategyStage("Continue episode", "The veto meeting" + (larger ? " " + TextScales.At(director.TextSize) : ""));
+                AssertTheBandNamesTheMeeting("The veto meeting" + (larger ? " " + TextScales.At(director.TextSize) : ""));
             });
             if (Application.isBatchMode)
             {
@@ -200,9 +209,9 @@ namespace Gamesim.Tests.PlayMode
                 state.phase = EpisodePhase.Campaign;
                 state.vetoResolved = true;
             });
-            yield return AtBothTextSizes(larger =>
+            yield return AtEveryTextSize(larger =>
             {
-                AssertOnTheStrategyStage("Close campaigning and open voting", "The campaign" + (larger ? " at the larger text" : ""));
+                AssertOnTheStrategyStage("Close campaigning and open voting", "The campaign" + (larger ? " " + TextScales.At(director.TextSize) : ""));
                 Assert.That(ActiveRect(EpisodeHud.CampaignVotersName), Is.Not.Null, "The campaign keeps its votes as cards.");
             });
             if (Application.isBatchMode)
@@ -332,33 +341,39 @@ namespace Gamesim.Tests.PlayMode
         }
 
         /// <summary>
-        /// The status line under the rail with a line as long as a story's outcome with "Saved
-        /// locally." after it, at both text sizes: it grows up towards the rail, stays clear of the
-        /// rail and of the stage, and says every word. It was a box 148 units wide and two short
-        /// lines deep, and the end of what a commit did was cut off.
+        /// The status line under the rail with a real long system notice, at all three text sizes:
+        /// it grows up towards the rail, stays clear of the rail and of the stage, and says every
+        /// word. It was a box 148 units wide and two short lines deep, and long notices were cut off.
+        /// Committed narration and save feedback have their own surfaces.
         /// </summary>
         [UnityTest]
         public IEnumerator StrategyStage_TheStatusLineUnderTheRailSaysALongLineWhole()
         {
-            const string line = "The episode changed. Review a new diary choice before confirming.  ·  Saved locally.";
+            const string line = "The diary visit ended because its chair became unavailable. Unconfirmed choices were discarded.";
             yield return InstallStrategySeason(47, state => AtVetoMeeting(state, false));
-            foreach (bool larger in new[] { false, true })
+            foreach (var (textSize, larger) in TextScales.Steps)
             {
                 if (larger)
                 {
                     director.ClosePanels();
-                    yield return ApplyTextSize(true);
+                    yield return ApplyTextSize(textSize);
                 }
-                // The director's line, as a commit leaves it, and then the panel rendered over it; a
-                // frame after, so the stage is drawn as a player sees it.
-                NpcWrite("message", line);
                 yield return OpenStation();
+                // Opening the station clears old notices. Install this real notice afterwards,
+                // then explicitly render it before the next frame's full-copy and layout checks.
+                NpcWrite("message", line);
+                NpcInvoke("BeginSystemNotice", line);
+                NpcInvoke("Render");
                 yield return null;
                 Assert.That(director.StatusMessage, Is.EqualTo(line), "Nothing has said anything else since.");
-                AssertOnTheStrategyStage("Continue episode", "The veto meeting under a long status line" + (larger ? " at the larger text" : ""));
+                AssertOnTheStrategyStage("Continue episode", "The veto meeting under a long status line" + (larger ? " " + TextScales.At(textSize) : ""));
                 var status = ActiveRect("Status");
-                Assert.That(status.GetComponentsInChildren<TMP_Text>().Single().text, Is.EqualTo(line), "The line is the one the director holds,");
-                Assert.That(status.rect.height, Is.GreaterThan(50f * (larger ? 1.2f : 1f) + .5f), "and it grew to hold it.");
+                var label = status.GetComponentsInChildren<TMP_Text>().Single();
+                Assert.That(label.text, Is.EqualTo(line), "The line is the one the director holds,");
+                Assert.That(status.rect.height, Is.GreaterThan(50f * Hud.FontScale + .5f), "and it grew to hold it " + TextScales.At(textSize) + ".");
+                label.ForceMeshUpdate();
+                Assert.That(label.isTextOverflowing, Is.False, "The complete notice fits at " + TextScales.At(textSize) + ".");
+                Assert.That(label.isTextTruncated, Is.False, "Every notice word is drawn at " + TextScales.At(textSize) + ".");
             }
             director.ClosePanels();
             yield return ApplyTextSize(false);

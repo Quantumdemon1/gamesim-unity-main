@@ -137,6 +137,8 @@ namespace Gamesim.Episode
                 Line = FinalTwoHeadLine,
                 EitherWay = FinalChoiceWords.EitherWay(FinalistRead.BrokenEitherWay(state)),
                 Columns = new List<EpisodeHud.FinalChoiceColumn>(),
+                // The largest text's pager turns the page and renders it again; nothing is committed.
+                Redraw = Render,
             };
             // The jurors by the names their chips carry: first names, whole where two share one.
             var jurors = FinalistRead.Jurors(state);

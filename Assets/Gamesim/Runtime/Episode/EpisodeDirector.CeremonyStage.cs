@@ -104,6 +104,7 @@ namespace Gamesim.Episode
             // in every audited walk (and a failure wherever a test asks for a log with nothing
             // unexpected in it).
             if (!CeremonyStages || reducedMotion || (Application.isBatchMode && !StagesInBatchRuns) || state == null) return false;
+            CancelNpcInvitation();
             // Past it, a house that cannot stage says why. Every guard below used to decline in
             // silence, and a world stopped after the first staged eviction kept every later
             // ceremony on the HUD with nothing in the log to say so.
@@ -331,6 +332,9 @@ namespace Gamesim.Episode
             /// <summary>The eviction's evicted and its survivor, once the result is read.</summary>
             private string leavingId, survivorId;
             private float goodbyeUntil;
+            /// <summary>Whether the goodbye awaits its owned two-party noncontact gesture, and until when.</summary>
+            private bool farewellAtGoodbye;
+            private float farewellAtGoodbyeBy;
             /// <summary>The warm spot over the hot seats, from the vote's card to the end of the goodbye.</summary>
             private Light keyLight;
             /// <summary>
@@ -711,6 +715,7 @@ namespace Gamesim.Episode
                         // A press is one step: from the goodbye straight to the door shut behind
                         // them, as a press on the walk is. The press that closed the card is not one.
                         if (now >= pressGuardUntil && CeremonyTakeover.SkipPressed()) { director.SkipWalkOut(); break; }
+                        TickTheGoodbyeFarewell(now);
                         if (now >= goodbyeUntil) Release();
                         break;
                     case CeremonyStageStep.Release:
@@ -1238,14 +1243,14 @@ namespace Gamesim.Episode
                 visual.LookAtPoint(lookMark, seconds);
             }
 
-            /// <summary>The evicted get up out of the hot seat; their lease goes with them, so the walk-out can take them.</summary>
-            private void StandUp(string id)
+            /// <summary>Stand from the hot seat; only the qualified short goodbye retains its original lease until release.</summary>
+            private void StandUp(string id, bool retainCeremonyLease = false)
             {
                 if (id == null || !stoodUp.Add(id)) return;
                 var seat = SeatOf(id);
                 if (seat != null && seat.Active) seat.RequestExit();
                 if (id == state.playerId) ReleaseThePlayer();
-                else if (director.npcMeetings != null) director.npcMeetings.ReleaseCeremonyActor(id);
+                else if (!retainCeremonyLease && director.npcMeetings != null) director.npcMeetings.ReleaseCeremonyActor(id);
                 var visual = Visual(id);
                 if (visual != null) visual.SetFacing(float.NaN);
             }
@@ -1292,7 +1297,14 @@ namespace Gamesim.Episode
                 float now = Time.unscaledTime;
                 goodbyeUntil = now + GoodbyeSeconds;
                 pressGuardUntil = now + PressGuard;
-                StandUp(id);
+                // The selected shorter goodbye is a NONCONTACT gesture over the original roots.
+                farewellAtGoodbye = PrepareTheGoodbyeFarewell(id);
+                StandUp(id, farewellAtGoodbye);
+                if (farewellAtGoodbye)
+                {
+                    StandUp(survivorId, true);
+                    farewellAtGoodbyeBy = now + GoodbyeFarewellWait;
+                }
                 var body = director.BodyFor(id);
                 var visual = Visual(id);
                 // Turned to the middle of the house: everybody still in their places.
@@ -1311,13 +1323,15 @@ namespace Gamesim.Episode
                     toward.y = 0f;
                     if (toward.sqrMagnitude > 0.01f) facing = Mathf.Atan2(toward.x, toward.z) * Mathf.Rad2Deg;
                 }
-                if (visual != null) visual.SetFacing(facing);
+                if (visual != null && !farewellAtGoodbye) visual.SetFacing(facing);
                 if (body != null)
                     foreach (var pair in places)
                     {
                         if (pair.Key == id) continue;
                         var other = Visual(pair.Key);
                         if (other == null) continue;
+                        // The other principal stands for the reciprocal farewell, not a seated clap.
+                        if (farewellAtGoodbye && pair.Key == survivorId) continue;
                         other.LookAt(body, 2f);
                         if (pair.Key != state.playerId && other.IsSeated && other.SupportsSeated(CharacterPresentation.Reaction.Cheered))
                             other.React(CharacterPresentation.Reaction.Cheered);
@@ -1334,7 +1348,7 @@ namespace Gamesim.Episode
                     var closer = close;
                     closer.Distance = 2.4f;
                     closer.Seconds = 2f;
-                    Schedule(0.05f, () => director.cameraRig.MoveTo(closer));
+                    if (!farewellAtGoodbye || farewellPrimitive) Schedule(0.05f, () => director.cameraRig.MoveTo(closer));
                 }
                 // Their line, worded for where they are: standing before the house, not at the door
                 // (UI-UX-PASS-PLAN W0). The walk out does not say it again.
@@ -1343,6 +1357,8 @@ namespace Gamesim.Episode
                 // room for the walk to come (MOCKUP-PASS-PLAN M23), the yard's at the dip later.
                 director.OnStagedGoodbye(id);
             }
+
+            private const float GoodbyeFarewellWait = 1.5f;
 
             /// <summary>The goodbye over, from the director's side: a press that went straight to the shut door.</summary>
             public void EndTheGoodbye()
@@ -1373,7 +1389,8 @@ namespace Gamesim.Episode
                 Cut(Wide(CutSeconds));
                 string staying = survivorId;
                 if (staying == null || !placeOf.ContainsKey(staying)) return;
-                Schedule(watchSeconds, () => Cut(SeatShot(staying)));
+                // Up for the goodbye's embrace, the survivor is framed on their feet, not in the chair.
+                Schedule(watchSeconds, () => Cut(stoodUp.Contains(staying) ? StandingShot(staying) : SeatShot(staying)));
                 Schedule(watchSeconds + 2f, () => Cut(Wide(CutSeconds)));
             }
 
@@ -1473,6 +1490,19 @@ namespace Gamesim.Episode
                 };
             }
 
+            /// <summary>Somebody on their feet, framed on their face from where they look: the survivor after the goodbye's embrace.</summary>
+            private HouseCameraRig.Shot StandingShot(string id)
+            {
+                var visual = Visual(id);
+                var body = visual != null && visual.VisualRoot != null ? visual.VisualRoot : director.BodyFor(id);
+                if (body == null) return SeatShot(id);
+                return new HouseCameraRig.Shot
+                {
+                    Focus = body.position + Vector3.up * StandingFace, Distance = 2.6f, Pitch = 10f, Yaw = body.eulerAngles.y + 180f,
+                    FieldOfView = Lens, Seconds = CutSeconds, DepthOfFieldWeight = 0.5f,
+                };
+            }
+
             /// <summary>The two-shot over two places side by side - the hot seats - from in front.</summary>
             private HouseCameraRig.Shot PairShot(string a, string b)
             {
@@ -1554,6 +1584,7 @@ namespace Gamesim.Episode
             private void Release()
             {
                 if (!Active || Step == CeremonyStageStep.Release) return;
+                EndTheGoodbyeFarewell("the goodbye released");
                 Step = CeremonyStageStep.Release;
                 releasedAt = Time.unscaledTime;
                 Debug.Log(Report("release"));
@@ -1586,6 +1617,7 @@ namespace Gamesim.Episode
             public void End(bool playCardIfUnplayed)
             {
                 if (ended) return;
+                EndTheGoodbyeFarewell("the ceremony ended");
                 // A stage ending before its card played is the report's own subject: who never got there.
                 if (begun && !cardStarted) Debug.Log(Report("ended before the card"));
                 ended = true;

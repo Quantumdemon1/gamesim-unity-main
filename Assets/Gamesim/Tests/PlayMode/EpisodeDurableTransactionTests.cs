@@ -97,6 +97,8 @@ namespace Gamesim.Tests.PlayMode
         public IEnumerator FailedUiDecisionBeforeWrite_PreservesFullStateFilesAndBothRandomStreams()
         {
             yield return OpenNearbyMaya();
+            ButtonWithCaption(EpisodeDirector.ConnectCategoryCaption).onClick.Invoke();
+            yield return null;
             var before = director.Snapshot;
             var files = CaptureFiles();
             int writes = 0;
@@ -357,6 +359,8 @@ namespace Gamesim.Tests.PlayMode
         public IEnumerator OldNpcButtonCannotCommitIntoAnotherSessionWithMatchingRevisionAndPhase()
         {
             yield return OpenNearbyMaya();
+            ButtonWithCaption(EpisodeDirector.ConnectCategoryCaption).onClick.Invoke();
+            yield return null;
             var oldState = director.Snapshot;
             // Retain the actual event delegate across a synchronous panel rebuild/load.
             // There is no fabricated player command or altered authoritative engine here.

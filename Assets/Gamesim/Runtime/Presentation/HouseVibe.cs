@@ -52,6 +52,8 @@ namespace Gamesim.Presentation
                 if (entry == null || entry.week != state.week) continue;
                 if (entry.audienceIds != null && entry.audienceIds.Count > 0
                     && !entry.audienceIds.Contains(state.playerId)) continue;
+                // A line telling a ballot the player cannot know is not one of theirs either (vote family V7).
+                if (KnownBallots.TellsAnUnknownBallot(state, entry)) continue;
                 if (CommitmentKinds.Contains(entry.kind)) commitments++;
                 else if (StakesKinds.Contains(entry.kind)) stakes++;
                 else activity++;

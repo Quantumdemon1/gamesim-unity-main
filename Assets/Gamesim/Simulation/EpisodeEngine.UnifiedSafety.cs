@@ -88,7 +88,7 @@ namespace Gamesim.Simulation
 
         // The gateways' detached source-shaped views. Mode 1's are CommitmentReferences' as they always were;
         // in mode 2, once CheckUnifiedSafetyContext has checked the Safety authority and the hearing storage
-        // (whose mode-2 check judges the Vote family's rows too), the unchecked projection of both families.
+        // (whose mode-2 check reads the Vote rows' storage too, vote family V5a), the unchecked projection of both families.
         private static IReadOnlyList<PromiseState> SafetyPromises(EpisodeState s) =>
             UnifiedVoteStore.On(s) ? UnifiedVoteReferences.PromisesUnchecked(s) : CommitmentReferences.Promises(s);
 
@@ -98,13 +98,13 @@ namespace Gamesim.Simulation
         private static void CheckUnifiedSafetyContext(EpisodeState s)
         {
             if (!CommitmentRulesOn(s) || !UnifiedCommitments.ValidateSafetyAuthority(s, out _))
-                throw new ArgumentException("A valid enabled commitment context is required for safety settlement.");
+                throw CommitmentReferences.StorageRefusal("A valid enabled commitment context is required for safety settlement.");
             if (!UnifiedCommitmentHearings.ValidateStorage(s, out string hearingError))
-                throw new ArgumentException(hearingError, nameof(s));
+                throw CommitmentReferences.StorageRefusal(hearingError, nameof(s));
             var ids = s.promises.Select(row => row.id).Concat(s.deals.Select(row => row.id))
                 .Concat(s.unifiedCommitments.Select(row => row.id)).ToList();
             if (ids.Any(string.IsNullOrEmpty) || ids.Distinct(StringComparer.Ordinal).Count() != ids.Count)
-                throw new ArgumentException("Safety settlement needs unambiguous commitment identities.");
+                throw CommitmentReferences.StorageRefusal("Safety settlement needs unambiguous commitment identities.");
         }
 
         private static List<UnifiedCommitmentState> StageUnifiedSafety(EpisodeState s, UnifiedCommitmentEvaluation evaluation)

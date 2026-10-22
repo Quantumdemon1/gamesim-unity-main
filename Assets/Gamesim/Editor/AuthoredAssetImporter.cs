@@ -232,6 +232,10 @@ namespace Gamesim.Editor
             if (assetPath == LibraryPath) { ImportLibrary((ModelImporter)assetImporter); return; }
             if (!IsAnimation(assetPath)) return;
             var importer = (ModelImporter)assetImporter;
+            // Preserve this purposeful take's return-to-base samples without lossy key reduction.
+            // Its .001 neutral-pose guard stays unchanged; every other take keeps its own policy.
+            if (assetPath == Root + "Animation/Humanoid/bb_anim_React_farewell.fbx")
+                importer.animationCompression = ModelImporterAnimationCompression.Off;
             var clips = importer.clipAnimations.Length > 0 ? importer.clipAnimations : importer.defaultClipAnimations;
             string humanoidTake = HumanoidTake(assetPath);
             foreach (var clip in clips)

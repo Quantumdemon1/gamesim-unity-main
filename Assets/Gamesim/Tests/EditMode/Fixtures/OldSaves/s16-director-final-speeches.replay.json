@@ -1,0 +1,81 @@
+{
+ "id": "s16-director-final-speeches",
+ "referenceBuild": "7f398b94",
+ "referenceSchema": 20,
+ "digest": "21258c21059b4959",
+ "checkpoints": [
+  {
+   "i": 0,
+   "week": 6,
+   "phase": "FinalSpeeches",
+   "revision": 118,
+   "randomState": 1907287566,
+   "season": "57ba098f1d1b3f3e"
+  },
+  {
+   "i": 1,
+   "week": 6,
+   "phase": "FinalSpeeches",
+   "revision": 119,
+   "randomState": 1907287566,
+   "season": "5861181556d2c7a0"
+  },
+  {
+   "i": 2,
+   "week": 6,
+   "phase": "Jury",
+   "revision": 120,
+   "randomState": 1907287566,
+   "season": "df81911454124aae"
+  },
+  {
+   "i": 3,
+   "week": 6,
+   "phase": "Finished",
+   "revision": 121,
+   "randomState": 2411240842,
+   "season": "855d734669b7faf4"
+  }
+ ],
+ "commands": [
+  {
+   "id": "oldsave-0001",
+   "actorId": "player",
+   "targetId": null,
+   "secondTargetId": null,
+   "text": "I stood by my choices. Thank you for sharing this season.",
+   "expectedRevision": 118,
+   "expectedPhase": 15,
+   "kind": 15,
+   "useVeto": false,
+   "performance": 0.0,
+   "kindName": "SubmitSpeech"
+  },
+  {
+   "id": "oldsave-0002",
+   "actorId": "player",
+   "targetId": null,
+   "secondTargetId": null,
+   "text": null,
+   "expectedRevision": 119,
+   "expectedPhase": 15,
+   "kind": 0,
+   "useVeto": false,
+   "performance": 0.0,
+   "kindName": "Advance"
+  },
+  {
+   "id": "oldsave-0003",
+   "actorId": "player",
+   "targetId": null,
+   "secondTargetId": null,
+   "text": null,
+   "expectedRevision": 120,
+   "expectedPhase": 12,
+   "kind": 0,
+   "useVeto": false,
+   "performance": 0.0,
+   "kindName": "Advance"
+  }
+ ]
+}

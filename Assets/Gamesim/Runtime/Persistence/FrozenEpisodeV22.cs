@@ -55,6 +55,34 @@ namespace Gamesim.Persistence
             FrozenEpisodeV21.Validate(previous);
         }
 
+        /// <summary>
+        /// Schema 22 has two shapes. Its first builds (50ebd57c, 2026-10-02) saved no <c>linkedDealId</c> on a deal - C7
+        /// added it at c55a4535 that afternoon - and no <c>playerJoined</c> on an alliance - the C5 review fix added it at
+        /// d44bf492 the next morning - and neither change took a new version: the v21-to-v22 step was rewritten to add
+        /// both, so a file those first builds wrote, holding a deal or an alliance, was refused as "Invalid historical
+        /// schema 22 data" (Assets/Plans/OLD-SAVE-ACCEPTANCE.md, the s22 early fixture).
+        ///
+        /// <para>This gives such a file the two fields, as hand-written literals: a deal no negotiation linked (null),
+        /// and a pact nobody joined after its founder (false) - what the build that wrote it had no field for, read
+        /// as it read it, the order of a pact's members saying who founded it. Only where a list holds the older shape
+        /// whole: a list where every row lacks the field gains it on every row; one where any row carries it is left as
+        /// it is, so a mix still fails <see cref="Validate"/>. The input is never changed; the result is a clone.</para>
+        /// </summary>
+        internal static JObject WithLaterFields(JObject original)
+        {
+            if (original == null) throw new InvalidDataException("Expected simulation schema version 22.");
+            var result = (JObject)original.DeepClone();
+            Complete(result["deals"] as JArray, "linkedDealId", JValue.CreateNull());
+            Complete(result["alliances"] as JArray, "playerJoined", new JValue(false));
+            return result;
+        }
+
+        private static void Complete(JArray rows, string field, JValue literal)
+        {
+            if (rows == null || rows.Count == 0 || !rows.All(row => row is JObject o && o.Property(field) == null)) return;
+            foreach (JObject row in rows) row.Add(field, literal.DeepClone());
+        }
+
         private static bool Integer(JToken value, long min, long max) => value?.Type == JTokenType.Integer
             && long.TryParse(value.ToString(), NumberStyles.AllowLeadingSign, CultureInfo.InvariantCulture, out long number)
             && number >= min && number <= max;

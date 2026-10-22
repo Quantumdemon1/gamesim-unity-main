@@ -225,6 +225,7 @@ namespace Gamesim.Episode
             float fitsWidth = (ContentWidth() - (across - 1) * 24f * FontScale) / (across * BallotCardWidth);
             float floor = Mathf.Min(BallotCardFloor * FontScale, fitsWidth);
             float fitsHeight = float.MaxValue;
+            bool snug = false;
             if (modal != null && modalScroll != null)
             {
                 var scroll = (RectTransform)modalScroll.transform;
@@ -233,7 +234,7 @@ namespace Gamesim.Episode
                 // heading and the gap after it, the line as it wraps and the gap after it, and a
                 // warning with its own; and the row's slack.
                 float padTop = column != null ? column.padding.top : 6f, padFoot = column != null ? column.padding.bottom : 18f;
-                float room = viewport - padTop - 40f * FontScale - spacing - lineHeight - spacing - warned - 4f;
+                float room = viewport - padTop - 40f * FontScale - spacing - lineHeight - spacing - warned - BallotRowSlack;
                 // What has to stand in the window under the cards as well.
                 float tail = over >= 0 ? 0f : under < 0f ? 57f * FontScale + spacing : under > 0f ? under + spacing : padFoot;
                 fitsHeight = (room - tail) / BallotCardHeight;
@@ -245,9 +246,22 @@ namespace Gamesim.Episode
                     float withRows = (room - beside) / BallotCardHeight;
                     if (withRows >= floor) fitsHeight = withRows;
                 }
+                // At the largest text (the owner's contract of 2026-10-15), with Confirm and its way
+                // back pinned under the scroll, a short frame (16:9) leaves the cards less than their
+                // floor: they stood 19 units past the window at scroll 0, over nothing but the
+                // column's foot and the row's slack. There the decision takes those two - decided
+                // here, before a card is built - and the cards stand whole in the window at their
+                // floor or above, with nothing to scroll. At the standard and the larger text, and
+                // wherever the floor fits, nothing changes.
+                if (LargestTextPages && under == 0f && over < 0 && column != null && fitsHeight < floor)
+                {
+                    snug = true;
+                    fitsHeight = (room + BallotRowSlack) / BallotCardHeight;
+                    column.padding = new RectOffset(column.padding.left, column.padding.right, column.padding.top, 0);
+                }
             }
             float scale = Mathf.Max(floor, Mathf.Min(1.4f * FontScale, Mathf.Min(fitsWidth, fitsHeight)));
-            row.GetComponent<LayoutElement>().minHeight = BallotCardHeight * scale + 4f;
+            row.GetComponent<LayoutElement>().minHeight = BallotCardHeight * scale + (snug ? 0f : BallotRowSlack);
             foreach (var id in nominees)
             {
                 string captured = id;
@@ -261,6 +275,9 @@ namespace Gamesim.Episode
                 for (int i = lead; i < content.childCount; i++) content.GetChild(i).SetSiblingIndex(at + (i - lead));
             }
         }
+
+        /// <summary>The cards' row's room under its cards, past their height.</summary>
+        private const float BallotRowSlack = 4f;
 
         /// <summary>How many rows the column holds now: the index a caller takes before building rows the cards will stand over.</summary>
         public int ColumnRows => content != null ? content.childCount : 0;

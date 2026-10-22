@@ -25,6 +25,8 @@ namespace Gamesim.Episode
         public const string SpeechSubmitCaption = "Submit final speech";
         public const string EvictionSpeechCaption = "Deliver your speech";
         public const string EvictionSpeechSkipCaption = "Say nothing";
+        /// <summary>The block speech a pad can give without typing (PLAN A, A6): the chosen approach's own authored line.</summary>
+        public const string PreparedSpeechCaption = "Deliver a prepared speech";
         public const string BlockSpeechDraftName = "Block speech draft";
         public const string BlockSpeechApproachesName = "Block speech approaches";
         public const string BlockSpeechReadbackHeading = "SPEECHES FROM THE BLOCK";
@@ -280,7 +282,7 @@ namespace Gamesim.Episode
             // The mockups' face (VISUAL-TARGET.md §4). UiTheme.Font falls back to the TMP default,
             // so a clone without Resources/Fonts still draws every label.
             font = UiTheme.Font(UiTheme.Weight.Regular);
-            var root = new GameObject("Gamesim Episode HUD", typeof(RectTransform), typeof(Canvas), typeof(CanvasScaler), typeof(GraphicRaycaster));
+            var root = new GameObject("Gamesim Episode HUD", typeof(RectTransform), typeof(Canvas), typeof(FrameScaler), typeof(GraphicRaycaster));
             root.transform.SetParent(transform, false); canvas = root.GetComponent<Canvas>(); canvas.renderMode = RenderMode.ScreenSpaceOverlay; canvas.sortingOrder = 70;
             var scaler = root.GetComponent<CanvasScaler>(); scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
             scaler.referenceResolution = new Vector2(ReferenceWidth,ReferenceHeight); scaler.matchWidthOrHeight = .5f;
@@ -303,8 +305,16 @@ namespace Gamesim.Episode
         /// </summary>
         public const float LeftColumnX = 14f + IconRail.Width + 12f;
 
-        public void Begin(EpisodeState state, string message, bool recovery, bool open)
+        /// <summary>
+        /// Rebuilds the chrome, and the panel when <paramref name="open"/>. <paramref name="recovery"/>
+        /// is a blocked save only: it builds the panel the recovery is made in and locks the travel.
+        /// <paramref name="warning"/> tints the status line amber - a stopped house world, a save
+        /// that failed - and changes nothing else.
+        /// </summary>
+        public void Begin(EpisodeState state, string message, bool recovery, bool open, bool warning = false)
         {
+            statusGuidanceVisible = !string.IsNullOrEmpty(message);
+            statusNoticePriority = recovery || warning;
             var selected = EventSystem.current != null ? EventSystem.current.currentSelectedGameObject : null;
             // Whatever had the keyboard keeps it by name, chrome as well as panel. The HUD rebuilds
             // itself for reasons that have nothing to do with the player - a houseguest's body
@@ -322,6 +332,8 @@ namespace Gamesim.Episode
             // A panel arriving has no finalist's column the player lit on it yet; a rebuild of an
             // open one keeps the one they did.
             if (!open || modal == null) litChoice = null;
+            // Nor a page of the largest text's turned on it yet (EpisodeHud.LargestPages.cs).
+            if (!open || modal == null) ForgetLargestPages();
             foreach (Transform child in canvas.transform) { child.gameObject.SetActive(false); Destroy(child.gameObject); }
             MarkChromeChanged();
             challengeMeter = null; challengeCaption = null;
@@ -334,7 +346,7 @@ namespace Gamesim.Episode
             // The dial belongs to the panel that was just thrown away; a stale one would seat the
             // next screen's petals on a destroyed rectangle.
             dialRoot = null; dialSeat = null; conversationColumn = null; topicSeats = topicTaken = 0;
-            tagUnder.Clear(); readingRows.Clear();
+            tagUnder.Clear(); readingRows.Clear(); readingUnder.Clear();
             // So do a person picker and a row it asked to bring to the top (EpisodeHud.ConversationGroups.cs).
             picker = null; revealAtTop = null;
             // Brand and Objective used to be placed at hard-coded offsets, so Objective's -143
@@ -351,8 +363,8 @@ namespace Gamesim.Episode
                 director.FollowedId, endgame, endgame ? state.contestants.Where(IsJuror).ToList() : null);
             FollowChip(director.FollowedName);
 
-            // The top bar (mockup-01): the brand, the week, the objective, the house's numbers
-            // and the tagline, as separate chips on one band - never a button among them. The
+            // The top bar: the brand, the week, the objective and the house's numbers,
+            // as separate chips on one band - never a button among them. The
             // buttons that lived at its right-hand end are rows of the left rail now, which is
             // where every mockup puts navigation.
             TopShade();
@@ -360,13 +372,14 @@ namespace Gamesim.Episode
             WeekChip(state);
             if (!Compact) ObjectiveChip(state);
             HousePill(state);
-            Tagline();
 
             // The left gutter: the notebook's pages, the two places to go next and the notebook,
             // save and settings, as one list on one ground.
             LeftGutter(state, recovery);
             if (Compact) CompactObjective(state, recovery);
 
+            // Settled before the column, which gives way to an open controls card (FoldColumn).
+            if (open || Compact) helpExpanded = false;
             RightColumn(state);
 
             // Five lines, not four, because click-to-follow had to be added without lengthening a
@@ -374,7 +387,6 @@ namespace Gamesim.Episode
             // clips at either text size. Thirty-five characters is the proven ceiling — a forty
             // character line is what broke it — so the panel grew downward instead. It stays in the
             // lower right, well clear of the ceremony banner that must not overlap the chrome.
-            if (open || Compact) helpExpanded = false;
             BuildExplorationHelp();
             // Spans the viewport with margins instead of assuming a 1200px width, so the caption
             // still fits when the window is narrower than the reference resolution.
@@ -395,10 +407,11 @@ namespace Gamesim.Episode
             if (message != lastStatusMessage) { HudReveal.Play(status,ReducedMotion,10f); lastStatusMessage = message; }
             // Lower third: a coloured rule leads the caption, and turns amber on recovery so the
             // state of the save is legible at a glance rather than only in the wording.
-            var rule = Panel("Caption rule",status,recovery ? UiTheme.Warning : Accent,2);
+            bool amber = recovery || warning;
+            var rule = Panel("Caption rule",status,amber ? UiTheme.Warning : Accent,2);
             Anchor(rule,new Vector2(0,.5f),new Vector2(0,.5f),new Vector2(16,0),new Vector2(4,28*FontScale));
             rule.GetComponent<Image>().raycastTarget = false;
-            var caption = FixedText(status,message,16,recovery ? UiTheme.Warning : Paper,new Vector2(32,-9),new Vector2(1150,48));
+            var caption = FixedText(status,message,16,amber ? UiTheme.Warning : Paper,new Vector2(32,-9),new Vector2(1150,48));
             AutoSize(caption,12);
             float wanted = caption.GetPreferredValues(caption.text).x + 64f;
             float statusWidth = Mathf.Clamp(wanted, Mathf.Min(420f, statusRoom), statusRoom);
@@ -844,7 +857,8 @@ namespace Gamesim.Episode
             // The feed's own 16:9 at the column's width, with a two-line caption under it.
             float pictureWidth = RightColumnWidth - 24f;
             float pictureHeight = Mathf.Round(pictureWidth * LiveFeed.Height / LiveFeed.Width);
-            float height = 42f + pictureHeight + 8f + 38f;
+            // 42 + the picture + 8 + 38: the column's fold reckons with the same (LiveFeedHeight).
+            float height = LiveFeedHeight;
             var card = Chrome(EpisodeDirector.LiveFeedCardName, parent);
             Anchor(card, new Vector2(1, 1), new Vector2(1, 1), new Vector2(-RightColumnInset, -top), new Vector2(RightColumnWidth, height));
             liveFeedHeading = CardHeading(card, "Live Feed", Paper);
@@ -1178,14 +1192,19 @@ namespace Gamesim.Episode
             return input;
         }
 
-        /// <summary>A nominee's speech from the block, using the editor the finale uses.</summary>
-        public void EvictionSpeech(string draft, Action<string> changed, Action deliver, Action skip)
+        /// <summary>
+        /// A nominee's speech from the block, using the editor the finale uses. With
+        /// <paramref name="prepared"/>, a third way after "Say nothing": the prepared speech a pad
+        /// player gives without typing (PLAN A, A6).
+        /// </summary>
+        public void EvictionSpeech(string draft, Action<string> changed, Action deliver, Action skip, Action prepared = null)
         {
             Paragraph("Up to 2,000 characters. Enter adds a line; Tab or Shift+Tab moves to another control.");
             SpeechDraft(BlockSpeechDraftName,
                 "What do you want the house to have heard before it votes?","Block speech character count", draft, changed);
             Action(EvictionSpeechCaption, deliver);
             Action(EvictionSpeechSkipCaption, skip);
+            if (prepared != null) Action(PreparedSpeechCaption, prepared);
         }
 
         private TMP_Text FlowText(string value,int size,Color color)
@@ -1268,11 +1287,16 @@ namespace Gamesim.Episode
                 // nothing - so the words stood one letter a line in a row grown 860 tall (playtest,
                 // 2026-09-27). The caption keeps what the row's right-hand end already reserved.
                 chip.anchorMin = chip.anchorMax = Vector2.zero; chip.pivot = Vector2.zero;
-                chip.anchoredPosition = new Vector2(left, TagUnderInset * FontScale);
+                float readingLift = readingUnder.TryGetValue(target, out float footerLift) ? footerLift : 0f;
+                chip.anchoredPosition = new Vector2(left, readingLift + TagUnderInset * FontScale);
                 float lift = size.y + 2f * TagUnderInset * FontScale;
                 caption.rectTransform.offsetMin = new Vector2(left, caption.rectTransform.offsetMin.y + lift);
                 var element = target.GetComponent<LayoutElement>();
-                if (element != null) { element.minHeight += lift; tagUnder[element] = lift; }
+                if (element != null)
+                {
+                    element.minHeight += lift;
+                    tagUnder[element] = (tagUnder.TryGetValue(element, out float priorLift) ? priorLift : 0f) + lift;
+                }
             }
         }
 
@@ -1293,6 +1317,8 @@ namespace Gamesim.Episode
         /// end the reading, the chevron and any ALLY tag take between them; cleared with each rebuild.
         /// </summary>
         private readonly Dictionary<Button, float> readingRows = new Dictionary<Button, float>();
+        /// <summary>Conversation rows whose reading moved under the caption, and the vertical room it reserves.</summary>
+        private readonly Dictionary<Button, float> readingUnder = new Dictionary<Button, float>();
 
         /// <summary>The name of the trust reading on an annotated row, so a test can find it beside the chevron.</summary>
         public const string TrustReadingName = "Trust reading";
@@ -1585,18 +1611,37 @@ namespace Gamesim.Episode
 
             // Keep a long caption from running underneath the chips.
             var caption = button.GetComponentInChildren<TMP_Text>();
+            bool footer = activityLayout == ActivityLayout.Conversation && caption != null
+                && ContentWidth() - caption.rectTransform.offsetMin.x - reserved < MinCaptionWidth * s;
+            float captionReserve = footer ? readingRight + RowEndAir : reserved;
             if (caption != null)
-                caption.rectTransform.offsetMax = new Vector2(-reserved, caption.rectTransform.offsetMax.y);
+                caption.rectTransform.offsetMax = new Vector2(-captionReserve, caption.rectTransform.offsetMax.y);
+            if (footer)
+            {
+                // The trust reading and ALLY mark remain readable without taking the caption's
+                // minimum width. A later tag takes a separate line above this same footer.
+                float lift = box + 2f * TagUnderInset * s;
+                readingUnder[button] = lift;
+                caption.rectTransform.offsetMin += Vector2.up * lift;
+                var element = button.GetComponent<LayoutElement>();
+                if (element != null)
+                {
+                    element.minHeight += lift;
+                    tagUnder[element] = (tagUnder.TryGetValue(element, out float priorLift) ? priorLift : 0f) + lift;
+                }
+            }
+            var readingAnchor = new Vector2(1f, footer ? 0f : .5f);
+            float readingY = footer ? TagUnderInset * s : 0f;
 
             if (allied)
             {
                 var tag = NewText(rect,"ALLY",14,UiTheme.Allied);
-                Anchor(tag.rectTransform,new Vector2(1,.5f),new Vector2(1,.5f),new Vector2(-allyRight,0f),new Vector2(allyWidth,box));
+                Anchor(tag.rectTransform,readingAnchor,readingAnchor,new Vector2(-allyRight,readingY),new Vector2(allyWidth,box));
                 tag.alignment = TextAlignmentOptions.Right;
             }
 
-            readingRows[button] = reserved;
-            Anchor(reading.rectTransform,new Vector2(1,.5f),new Vector2(1,.5f),new Vector2(-readingRight,0f),new Vector2(readingWidth,box));
+            readingRows[button] = captionReserve;
+            Anchor(reading.rectTransform,readingAnchor,readingAnchor,new Vector2(-readingRight,readingY),new Vector2(readingWidth,box));
             reading.alignment = TextAlignmentOptions.Right;
         }
 
@@ -1629,7 +1674,7 @@ namespace Gamesim.Episode
         public void PathInput(string placeholder,Action<string> submit)
         {
             var rect = Panel("Import path",content,Surface); var element = rect.gameObject.AddComponent<LayoutElement>(); element.minHeight = 58;
-            var input = rect.gameObject.AddComponent<TMP_InputField>(); var text = NewText(rect,"",19,Paper); Stretch(text.rectTransform,14,9,14,9);
+            var input = rect.gameObject.AddComponent<EpisodeTextField>(); var text = NewText(rect,"",19,Paper); Stretch(text.rectTransform,14,9,14,9);
             var hint = NewText(rect,placeholder,19,UiTheme.Muted); Stretch(hint.rectTransform,14,9,14,9);
             input.textComponent = text; input.placeholder = hint; input.characterLimit = 1024; input.lineType = TMP_InputField.LineType.SingleLine;
             input.text = retainedImportPath;
@@ -1676,6 +1721,60 @@ namespace Gamesim.Episode
             if (!ReducedMotion && Mathf.Abs(shown - target) > 0.001f) fill.gameObject.AddComponent<HudFill>().Play(shown, target);
         }
         private readonly Dictionary<string, float> meterShown = new Dictionary<string, float>();
+
+        /// <summary>
+        /// A literal whole-percent control; left/right adjust it, up/down leave it in the panel's focus
+        /// ring. <paramref name="changed"/> hears every value as it moves. <paramref name="settled"/>,
+        /// when given, hears a value once it is chosen: at once for a key, a pad or a value set in code,
+        /// and for a pointer drag only once it is let go - so what is kept is written once a drag, not
+        /// once a percent (PR-10).
+        /// </summary>
+        public Slider VolumeSlider(string caption, int percent, Color tint, Action<int> changed, Action<int> settled = null)
+        {
+            var row = Panel(caption + " slider", content, Surface);
+            // Before the slider, so it hears a press before the slider moves on it: the jump a click
+            // makes is part of the drag, not a value of its own.
+            var drag = settled != null ? row.gameObject.AddComponent<SliderSettle>() : null;
+            row.gameObject.AddComponent<LayoutElement>().minHeight = Mathf.RoundToInt(78 * FontScale);
+            var label = NewText(row, caption, 16, Paper);
+            var count = NewText(row, SoundPictures.Clamp(percent) + "%", 16, tint);
+            float top = 10 * FontScale, line = 24 * FontScale;
+            label.rectTransform.anchorMin = new Vector2(0, 1); label.rectTransform.anchorMax = new Vector2(1, 1);
+            label.rectTransform.offsetMin = new Vector2(16, -top - line); label.rectTransform.offsetMax = new Vector2(-100 * FontScale, -top);
+            count.alignment = TextAlignmentOptions.Right;
+            count.rectTransform.anchorMin = new Vector2(1, 1); count.rectTransform.anchorMax = new Vector2(1, 1);
+            count.rectTransform.pivot = new Vector2(1, 1);
+            count.rectTransform.anchoredPosition = new Vector2(-16, -top - line / 2);
+            count.rectTransform.sizeDelta = new Vector2(80 * FontScale, line);
+
+            var track = Panel("Track", row, UiTheme.Outline, 3);
+            track.anchorMin = new Vector2(0, 0); track.anchorMax = new Vector2(1, 0);
+            track.offsetMin = new Vector2(28, 22 * FontScale); track.offsetMax = new Vector2(-28, 30 * FontScale);
+            track.GetComponent<Image>().raycastTarget = false;
+            var fill = Panel("Fill", track, tint, 3);
+            Stretch(fill, 0, 0, 0, 0); fill.GetComponent<Image>().raycastTarget = false;
+            var handles = new GameObject("Handle area", typeof(RectTransform)).GetComponent<RectTransform>();
+            handles.SetParent(row, false);
+            handles.anchorMin = new Vector2(0, 0); handles.anchorMax = new Vector2(1, 0);
+            handles.offsetMin = new Vector2(28, 12 * FontScale); handles.offsetMax = new Vector2(-28, 40 * FontScale);
+            var handle = Panel("Handle", handles, Paper);
+            handle.sizeDelta = new Vector2(24 * FontScale, 0);
+            var slider = row.gameObject.AddComponent<Slider>();
+            slider.targetGraphic = handle.GetComponent<Image>(); slider.handleRect = handle; slider.fillRect = fill;
+            slider.direction = Slider.Direction.LeftToRight; slider.minValue = 0; slider.maxValue = 100; slider.wholeNumbers = true;
+            slider.SetValueWithoutNotify(SoundPictures.Clamp(percent));
+            if (drag != null) drag.Settled = () => settled(Mathf.RoundToInt(slider.value));
+            slider.onValueChanged.AddListener(value =>
+            {
+                int held = Mathf.RoundToInt(value);
+                count.text = held + "%";
+                changed?.Invoke(held);
+                if (drag == null) return;
+                if (drag.Dragging) drag.Pending = true;
+                else settled(held);
+            });
+            return slider;
+        }
 
         public const string FollowChipName = "Follow chip";
 
@@ -2465,10 +2564,37 @@ namespace Gamesim.Episode
     }
 
     /// <summary>
-    /// Runtime-created speech field. The director owns Escape and the HUD owns Tab; do not let
-    /// uGUI's default Escape rollback discard the retained draft or Tab insert a literal tab.
+    /// A runtime-created text field a pad can pass over (PLAN A, A6, Risk R7). TMP starts editing a
+    /// field the moment it is selected and drops every UI move while it edits, so a d-pad or a stick
+    /// that reached one could never leave it: the settings' import path held the pad's walk down the
+    /// settings, the block speech's draft its walk down the speech. A pad cannot type, so a move that
+    /// is not the keyboard's ends the edit and moves on. The keyboard's arrows stay the field's own -
+    /// TMP takes them as caret keys before any move is sent - and Tab is the HUD's.
     /// </summary>
-    public sealed class EpisodeSpeechInputField : TMP_InputField
+    public class EpisodeTextField : TMP_InputField
+    {
+        public override void OnMove(AxisEventData eventData)
+        {
+            if (isFocused && !MovedByKeyboard()) DeactivateInputField();
+            base.OnMove(eventData);
+        }
+
+        /// <summary>Whether this frame's UI move came from the keyboard, read off the UI module's own Move action.</summary>
+        private static bool MovedByKeyboard()
+        {
+            var module = EventSystem.current != null ? EventSystem.current.currentInputModule as UnityEngine.InputSystem.UI.InputSystemUIInputModule : null;
+            var move = module != null && module.move != null ? module.move.action : null;
+            var control = move != null ? move.activeControl : null;
+            return control != null && control.device is UnityEngine.InputSystem.Keyboard;
+        }
+    }
+
+    /// <summary>
+    /// Runtime-created speech field. The director owns Escape and the HUD owns Tab; do not let
+    /// uGUI's default Escape rollback discard the retained draft or Tab insert a literal tab. A pad's
+    /// d-pad passes over it, as over every HUD field (<see cref="EpisodeTextField"/>).
+    /// </summary>
+    public sealed class EpisodeSpeechInputField : EpisodeTextField
     {
         public override void OnUpdateSelected(BaseEventData eventData)
         {

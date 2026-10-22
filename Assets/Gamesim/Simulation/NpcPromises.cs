@@ -38,7 +38,15 @@ namespace Gamesim.Simulation
         /// <para>Checked in the source's order, because the order <i>is</i> the rule: desperation
         /// first, then power, then warmth, then the endgame.</para>
         /// </summary>
-        public static PromiseKind? Offer(EpisodeState state, string npcId, string targetId)
+        public static PromiseKind? Offer(EpisodeState state, string npcId, string targetId) => Offer(state, npcId, targetId, true);
+
+        /// <summary>
+        /// The same, with the two positional branches - a nominee's word on the vote, a word of safety to
+        /// the Head of Household - only where <paramref name="positional"/>: under the all-week rules (D2's
+        /// decision 7) those belong to the window the block is set in, as <see cref="Settle"/> at the
+        /// campaign's opening does, and a beat before the veto offers only loyalty and a final two.
+        /// </summary>
+        public static PromiseKind? Offer(EpisodeState state, string npcId, string targetId, bool positional)
         {
             var npc = state.Find(npcId);
             var target = state.Find(targetId);
@@ -58,7 +66,7 @@ namespace Gamesim.Simulation
             // were counted days ago, and the whole house courts an outgoing Head of Household whose
             // power is spent — they have nominated, the veto has been used and the vote is in. Both
             // branches belong to campaigning, and that is the other moment this pass runs.
-            bool blockStillStands = !state.evictionResolved;
+            bool blockStillStands = positional && !state.evictionResolved;
 
             // On the block, and talking to somebody who is not.
             if (blockStillStands && state.nominees.Contains(npcId) && !state.nominees.Contains(targetId))
@@ -110,20 +118,25 @@ namespace Gamesim.Simulation
         /// houseguest can walk up and offer the player something the player can answer, a promise
         /// made to them is a line in a file they never see.</para>
         /// </summary>
-        public static bool TryGive(EpisodeState state, string npcId)
+        public static bool TryGive(EpisodeState state, string npcId) => TryGive(state, npcId, true, out _);
+
+        /// <summary>The same, the positional branches only where <paramref name="positional"/> (<see cref="Offer(EpisodeState, string, string, bool)"/>), and who was given it.</summary>
+        public static bool TryGive(EpisodeState state, string npcId, bool positional, out string toId)
         {
+            toId = null;
             if (UnifiedVoteStore.PromiseCount(state) >= PromiseCeiling) return false;
 
             var chosen = state.contestants
                 .Where(other => other.status == ContestantStatus.Active && !other.isPlayer && other.id != npcId)
-                .Select(other => new { other.id, kind = Offer(state, npcId, other.id) })
+                .Select(other => new { other.id, kind = Offer(state, npcId, other.id, positional) })
                 .Where(candidate => candidate.kind.HasValue && !AlreadyPromised(state, npcId, candidate.id, candidate.kind.Value))
                 .OrderByDescending(candidate => state.Score(npcId, candidate.id))
                 .ThenBy(candidate => candidate.id, StringComparer.Ordinal)
                 .FirstOrDefault();
 
-            if (chosen == null) return false;
-            return Give(state, npcId, chosen.id, chosen.kind.Value);
+            if (chosen == null || !Give(state, npcId, chosen.id, chosen.kind.Value)) return false;
+            toId = chosen.id;
+            return true;
         }
 
         /// <summary>What validation allows a season to hold, so the pass stops short of it.</summary>

@@ -2,6 +2,7 @@ using System.Collections;
 using System.IO;
 using System.Linq;
 using Gamesim.Episode;
+using Gamesim.Presentation;
 using Gamesim.Simulation;
 using NUnit.Framework;
 using TMPro;
@@ -36,8 +37,8 @@ namespace Gamesim.Tests.PlayMode
         [UnityTest]
         public IEnumerator ConversationInformation_OpenGameButtonEarnsOpinionsOnceAndReloadsTheExactCommit()
         {
-            yield return InstallInformationHouse(); yield return TalkTo(informationListenerId);
-            Assert.That(TagOn(ButtonWithCaption(EpisodeHud.DiscussGameCaption)), Is.EqualTo(EpisodeDirector.LearnTag + " · " + EpisodeDirector.RiskTag));
+            yield return InstallInformationHouse(); yield return TalkTo(informationListenerId); yield return EnterConversationCategory(EpisodeDirector.GameCategoryCaption);
+            Assert.That(TagOn(ButtonWithCaption(EpisodeHud.DiscussGameCaption)), Does.Contain(EpisodeDirector.LearnTag + " · " + EpisodeDirector.RiskTag));
             var before = director.Snapshot; var click = ButtonWithCaption(EpisodeHud.DiscussGameCaption).onClick;
             click.Invoke(); var after = director.Snapshot;
             Assert.That(after.ledger.standings.Count - before.ledger.standings.Count, Is.EqualTo(2));
@@ -51,7 +52,7 @@ namespace Gamesim.Tests.PlayMode
         [UnityTest]
         public IEnumerator ConversationInformation_OpenGameBackfireSpendsOnceButDisclosesNothing()
         {
-            yield return InstallInformationHouse(lands: false); yield return TalkTo(informationListenerId);
+            yield return InstallInformationHouse(lands: false); yield return TalkTo(informationListenerId); yield return EnterConversationCategory(EpisodeDirector.GameCategoryCaption);
             var before = director.Snapshot;
             ButtonWithCaption(EpisodeHud.DiscussGameCaption).onClick.Invoke();
             var after = director.Snapshot;
@@ -64,7 +65,7 @@ namespace Gamesim.Tests.PlayMode
         [UnityTest]
         public IEnumerator ConversationInformation_FailedSavePublishesNeitherOpinionsNorMeetingReads()
         {
-            yield return InstallInformationHouse(); yield return TalkTo(informationListenerId);
+            yield return InstallInformationHouse(); yield return TalkTo(informationListenerId); yield return EnterConversationCategory(EpisodeDirector.GameCategoryCaption);
             var before = director.Snapshot; byte[] bytes = File.ReadAllBytes(director.SavePath);
             using (new FileStream(director.SavePath, FileMode.Open, FileAccess.Read, FileShare.None))
                 ButtonWithCaption(EpisodeHud.DiscussGameCaption).onClick.Invoke();
@@ -134,8 +135,8 @@ namespace Gamesim.Tests.PlayMode
             var before = director.Snapshot; ButtonWithCaption(EpisodeHud.AirLaundryCaption).onClick.Invoke();
             Assert.That(AiringReads(director.Snapshot), Is.Zero);
             AssertIntentCommand(before, EpisodeCommandKind.HouseMeeting, null, EpisodeEngine.AirDirtyLaundry);
-            yield return InstallInformationHouse(fresh: false); yield return TalkTo(informationListenerId);
-            Assert.That(TagOn(ButtonWithCaption(EpisodeHud.DiscussGameCaption)), Is.EqualTo(EpisodeDirector.VerbTag(EpisodeCommandKind.DiscussGame)));
+            yield return InstallInformationHouse(fresh: false); yield return TalkTo(informationListenerId); yield return EnterConversationCategory(EpisodeDirector.GameCategoryCaption);
+            Assert.That(TagOn(ButtonWithCaption(EpisodeHud.DiscussGameCaption)), Does.Contain(EpisodeDirector.VerbTag(EpisodeCommandKind.DiscussGame)));
             Assert.That(EpisodeDirector.AiringRiskLabel(director.Snapshot), Is.EqualTo("High risk"));
             before = director.Snapshot; ButtonWithCaption(EpisodeHud.DiscussGameCaption).onClick.Invoke();
             Assert.That(director.Snapshot.ledger.standings.Count, Is.EqualTo(before.ledger.standings.Count));
@@ -146,14 +147,16 @@ namespace Gamesim.Tests.PlayMode
         public IEnumerator ConversationInformation_InformationControlsRemainKeyboardReachableAtBothTextSizes()
         {
             yield return InstallInformationHouse(size: 16);
-            foreach (bool large in new[] { false, true })
+            foreach (var textSize in TextSizes.All)
             {
-                yield return ApplyTextSize(large); yield return TalkTo(informationListenerId);
-                Assert.That(TagOn(ButtonWithCaption(EpisodeHud.DiscussGameCaption)), Is.EqualTo(EpisodeDirector.LearnTag + " · " + EpisodeDirector.RiskTag));
-                yield return AssertKeyboardRing("Information conversation " + large, ModalRoot);
+                yield return ApplyTextSize(textSize); yield return TalkTo(informationListenerId); yield return EnterConversationCategory(EpisodeDirector.GameCategoryCaption);
+                Assert.That(TagOn(ButtonWithCaption(EpisodeHud.DiscussGameCaption)), Does.Contain(EpisodeDirector.LearnTag + " · " + EpisodeDirector.RiskTag));
+                yield return AssertKeyboardRing("Information conversation " + TextSizes.Name(textSize), ModalRoot);
                 director.ClosePanels(); yield return OpenStation();
+                // At the largest text free time's board pages, and the moves are on its second (EpisodeHud.LargestPages.cs).
+                ShowPageWith(EpisodeHud.HouseMovesName);
                 Assert.That(ButtonWithCaption(EpisodeHud.AirLaundryCaption).IsInteractable(), Is.True);
-                yield return AssertKeyboardRing("Information house moves " + large, ModalRoot);
+                yield return AssertKeyboardRing("Information house moves " + TextSizes.Name(textSize), ModalRoot);
             }
         }
 

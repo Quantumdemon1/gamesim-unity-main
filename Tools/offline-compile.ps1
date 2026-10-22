@@ -1,17 +1,21 @@
 # Compiles the Gamesim assemblies outside Unity by replaying the response files Unity's Bee build
 # already generated, so a change can be type-checked in seconds without the editor. Nothing is
-# written back into Library/; all output goes to %LOCALAPPDATA%\Gamesim\offline-compile.
+# written back into Library/; output defaults to %LOCALAPPDATA%\Gamesim\offline-compile.
+# Use -OutputRoot <existing-or-new evidence directory> to retain unique outputs on another drive.
+# Assembly-definition/reference changes require a freshly regenerated matching Unity Bee graph;
+# replaying an older response file does not evaluate updated asmdef dependency declarations.
 #
 #   powershell -NoProfile -File Tools\offline-compile.ps1
 #
 # Overrides: GAMESIM_ACCEPTANCE (the batchmode copy, default D:\GamesimAcceptance) and
 # GAMESIM_UNITY_EDITOR (the editor folder, default derived from ProjectSettings/ProjectVersion.txt).
-param([switch]$WithoutUma)
+param([switch]$WithoutUma,[string]$OutputRoot)
 $ErrorActionPreference = 'Stop'
 
 $Project    = Split-Path -Parent $PSScriptRoot
 $Acceptance = if ($env:GAMESIM_ACCEPTANCE) { $env:GAMESIM_ACCEPTANCE } else { 'D:\GamesimAcceptance' }
-$Out        = Join-Path $env:LOCALAPPDATA ('Gamesim\offline-compile\' + [Guid]::NewGuid().ToString('N'))
+$compileBase = if ($OutputRoot) { [IO.Path]::GetFullPath($OutputRoot) } else { Join-Path $env:LOCALAPPDATA 'Gamesim\offline-compile' }
+$Out        = Join-Path $compileBase ([Guid]::NewGuid().ToString('N'))
 
 # The acceptance copy's dag is preferred because it has response files for every assembly, including
 # ones created after the last compile on the live project. Sources still come from $Project, so this

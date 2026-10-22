@@ -81,6 +81,8 @@ namespace Gamesim.Tests.PlayMode
         [UnityTest]
         public IEnumerator EnablingReducedMotion_StopsInFlightAutomaticReframing()
         {
+            rig.ViewCamera.aspect = 16f / 9f;
+            rig.ConversationWindowOffset = .5f;
             rig.SetConversationFocus(player, npc);
             yield return null;
             yield return null;
@@ -88,9 +90,28 @@ namespace Gamesim.Tests.PlayMode
             var position = rig.transform.position;
             var cameraPosition = rig.ViewCamera.transform.localPosition;
             var rotation = rig.transform.rotation;
+            float frozenFieldOfView = rig.ViewCamera.fieldOfView;
             yield return null;
             yield return null;
             AssertViewUnchanged(position, cameraPosition, rotation);
+            Assert.That(rig.ViewCamera.fieldOfView, Is.EqualTo(frozenFieldOfView).Within(.0001f),
+                "Enabling reduced motion freezes the in-flight lens when the layout stays unchanged.");
+            Assert.That(rig.DesiredFieldOfView, Is.EqualTo(frozenFieldOfView).Within(.0001f));
+
+            // Same published offset, new aspect: keep the eye/pivot fixed, but adapt the lens to
+            // the newly narrow actor window. A frozen preference must not retain the old aspect's lens.
+            rig.ViewCamera.aspect = 4f / 3f;
+            yield return null;
+            yield return null;
+            AssertViewUnchanged(position, cameraPosition, rotation);
+            Assert.That(rig.DesiredFieldOfView, Is.EqualTo(HouseCameraRig.TwoShotNarrowCategoryFieldOfView));
+            Assert.That(rig.ViewCamera.fieldOfView, Is.EqualTo(HouseCameraRig.TwoShotNarrowCategoryFieldOfView).Within(.0001f));
+            rig.ViewCamera.aspect = 16f / 9f;
+            yield return null;
+            yield return null;
+            AssertViewUnchanged(position, cameraPosition, rotation);
+            Assert.That(rig.DesiredFieldOfView, Is.EqualTo(HouseCameraRig.TwoShotFieldOfView));
+            Assert.That(rig.ViewCamera.fieldOfView, Is.EqualTo(HouseCameraRig.TwoShotFieldOfView).Within(.0001f));
             rig.SetReducedMotion(false);
             yield return null;
             yield return null;

@@ -92,6 +92,8 @@ namespace Gamesim.Tests.PlayMode
                 .And.Contain("3 chips to draw"), "The mockup's headings, and how many chips there are.");
             Assert.That(row.GetComponentsInChildren<Selectable>(), Is.Empty, "Nothing on the row is a control: the draw is the way on.");
             AssertEveryLabelDraws(row, "The veto's draw");
+            AssertVetoDrawHeadingsComplete(row, (RectTransform)ActiveRect("Episode content").parent,
+                ActiveRect("Episode panel"), director.TextSize, "The veto's draw in a house of eight");
 
             var wayOn = FindButton("Continue episode");
             Assert.That(wayOn.GetComponentInChildren<TMP_Text>().text, Is.EqualTo("Continue episode"), "The caption stays the way on's first label,");
@@ -135,9 +137,10 @@ namespace Gamesim.Tests.PlayMode
             foreach (int houseguests in new[] { 7, 16 })
             {
                 yield return InstallVetoDraw(49, houseguests);
-                yield return AtBothTextSizes(larger =>
+                yield return AtEachTextSize(textSize =>
                 {
-                    string where = "The veto's draw in a house of " + houseguests + (larger ? " at the larger text" : "");
+                    bool larger = textSize != TextSize.Standard;
+                    string where = "The veto's draw in a house of " + houseguests + (larger ? " " + TextScales.At(textSize) : "");
                     AssertOnTheStrategyStage("Continue episode", where);
                     var content = ActiveRect("Episode content");
                     var viewport = (RectTransform)content.parent;
@@ -147,7 +150,7 @@ namespace Gamesim.Tests.PlayMode
                     var row = ActiveRect(EpisodeHud.VetoDrawBoardName);
                     var cards = row.GetComponentsInChildren<RectTransform>().Where(rect => rect.name.StartsWith("Face · ")).ToList();
                     Assert.That(cards, Has.Count.EqualTo(houseguests), where + " shows the whole house.");
-                    float scale = larger ? 1.2f : 1f;
+                    float scale = TextSizes.Scale(textSize);
                     foreach (var card in cards)
                     {
                         AssertInside(window, card, where + "'s '" + card.name + "'");
@@ -155,6 +158,7 @@ namespace Gamesim.Tests.PlayMode
                             where + "'s '" + card.name + "' is narrower than a name reads at.");
                     }
                     AssertEveryLabelDraws(row, where);
+                    AssertVetoDrawHeadingsComplete(row, viewport, ActiveRect("Episode panel"), textSize, where);
                     var wayOn = (RectTransform)FindButton("Continue episode").transform;
                     Assert.That(wayOn.GetComponentsInChildren<TMP_Text>().Single(label => label.name == EpisodeHud.DrawWayOnHeadlineName).text,
                         Is.EqualTo("REVEAL THE DRAW"), where + "'s way on wears the draw it makes.");
@@ -165,12 +169,13 @@ namespace Gamesim.Tests.PlayMode
                 // and the panel (UI-UX-PASS-PLAN T0; the capture read it as cut, and its pixels
                 // put it 46 units short of the shell's edge).
                 if (houseguests != 16) continue;
-                foreach (bool larger in new[] { false, true })
+                foreach (var (textSize, larger) in TextScales.Steps)
                 {
-                    yield return ApplyTextSize(larger);
+                    yield return ApplyTextSize(textSize);
                     yield return OpenStation();
                     yield return null;
-                    string size = larger ? " at the larger text" : "";
+                    string size = larger ? " " + TextScales.At(textSize) : "";
+                    var headingFrames = new HashSet<string>(System.StringComparer.Ordinal);
                     yield return AtBothFrames(frame =>
                     {
                         string where = "The draw of sixteen" + size + " on the " + frame + " frame";
@@ -189,7 +194,14 @@ namespace Gamesim.Tests.PlayMode
                         Assert.That(content.rect.height, Is.LessThanOrEqualTo(viewport.rect.height + .5f),
                             where + " scrolls: " + content.rect.height.ToString("0") + " in " + viewport.rect.height.ToString("0") + ".");
                         AssertEveryLabelDraws(row, where);
+                        if (textSize == TextSize.Largest)
+                        {
+                            Assert.That(headingFrames.Add(frame), Is.True, "Each required Largest frame is observed once.");
+                            AssertVetoDrawHeadingsComplete(row, viewport, panel, textSize, where);
+                        }
                     });
+                    if (textSize == TextSize.Largest)
+                        Assert.That(headingFrames, Is.EquivalentTo(new[] { "16:9", "4:3" }), "Neither required full-heading frame may be skipped.");
                     director.ClosePanels();
                     yield return null;
                 }
@@ -315,6 +327,8 @@ namespace Gamesim.Tests.PlayMode
                 var takeover = SceneComponents<CeremonyTakeover>().Single();
                 yield return OpenStation();
                 yield return null;
+                AssertVetoDrawHeadingsComplete(ActiveRect(EpisodeHud.VetoDrawBoardName), (RectTransform)ActiveRect("Episode content").parent,
+                    ActiveRect("Episode panel"), director.TextSize, why + " shows the veto draw");
                 ButtonWithCaption("Continue episode").onClick.Invoke();
                 yield return null;
                 Assert.That(director.Snapshot.phase, Is.EqualTo(EpisodePhase.Veto));
@@ -324,6 +338,84 @@ namespace Gamesim.Tests.PlayMode
                 director.ClosePanels();
                 yield return null;
             }
+        }
+
+        /// <summary>Every heading is complete at its requested type size, including inactive/missing-label failures.</summary>
+        private void AssertVetoDrawHeadingsComplete(RectTransform row, RectTransform viewport, RectTransform panel, TextSize textSize, string where)
+        {
+            Assert.That(row != null && viewport != null && panel != null, Is.True, where + " has complete heading bounds.");
+            var board = VetoDraw.Before(director.Snapshot);
+            var expected = new List<string> { VetoDraw.PlayingHeading(board), VetoDraw.DrawHeading(board) };
+            if (board.Eligible.Count > 0) expected.Add(VetoDraw.EligibleHeading);
+            var headings = row.GetComponentsInChildren<TMP_Text>(true).Where(label => label.name == "Column heading").ToArray();
+            Assert.That(headings, Has.Length.EqualTo(expected.Count), where + " has every required heading and no hidden duplicate.");
+            Canvas.ForceUpdateCanvases();
+            var boxes = new List<Rect>();
+            foreach (string copy in expected)
+            {
+                Assert.That(copy, Is.Not.Null.And.Not.Empty, where + " has required heading copy.");
+                var found = headings.Where(label => label.text == copy).ToArray();
+                Assert.That(found, Has.Length.EqualTo(1), where + " has exactly one complete '" + copy + "'.");
+                var label = found[0];
+                Assert.That(label.enabled && label.gameObject.activeInHierarchy, Is.True, where + " does not skip a hidden '" + copy + "'.");
+                label.ForceMeshUpdate(true);
+                Assert.That(label.enableAutoSizing, Is.False, where + " cannot shrink the heading to license its allocation.");
+                Assert.That(label.fontSize, Is.EqualTo(Mathf.RoundToInt(15f * TextSizes.Scale(textSize))).Within(.01f), where + " retains requested heading type.");
+                Assert.That(label.isTextOverflowing || label.isTextTruncated, Is.False, where + " does not cut '" + copy + "'.");
+                Assert.That(label.textInfo.lineCount, Is.EqualTo(1), where + " keeps '" + copy + "' on one complete line.");
+                var glyphs = label.textInfo.characterInfo.Take(label.textInfo.characterCount).Where(character => character.isVisible).ToArray();
+                Assert.That(glyphs.Select(character => character.character).ToArray(), Is.EqualTo(copy.Where(character => !char.IsWhiteSpace(character)).ToArray()),
+                    where + " draws the full character sequence of '" + copy + "', not an ellipsis or fragment.");
+                var rect = OnTheHud(label.rectTransform);
+                Assert.That(rect.width > 0f && rect.height > 0f, Is.True, where + " has a real box for '" + copy + "'.");
+                AssertWithin(OnTheHud(row), rect, copy, "the draw row");
+                AssertWithin(OnTheHud(viewport), rect, copy, "the viewport");
+                AssertWithin(OnTheHud(panel), rect, copy, "the panel");
+                foreach (var glyph in glyphs)
+                {
+                    var drawn = GlyphRect(label, glyph);
+                    AssertWithin(rect, drawn, copy + "'s glyph '" + glyph.character + "'", "its complete heading allocation");
+                    AssertWithin(OnTheHud(row), drawn, copy + "'s glyph '" + glyph.character + "'", "the draw row");
+                    AssertWithin(OnTheHud(viewport), drawn, copy + "'s glyph '" + glyph.character + "'", "the viewport");
+                    AssertWithin(OnTheHud(panel), drawn, copy + "'s glyph '" + glyph.character + "'", "the panel");
+                }
+                boxes.Add(rect);
+            }
+            for (int i = 0; i < boxes.Count; i++)
+                for (int j = i + 1; j < boxes.Count; j++)
+                    Assert.That(boxes[i].Overlaps(boxes[j]), Is.False, where + " keeps its complete headings separate.");
+            var parts = row.GetComponentsInChildren<RectTransform>(true);
+            var rules = parts.Where(part => part.name == "Column rule").ToArray();
+            Assert.That(rules, Has.Length.EqualTo(expected.Count), where + " retains every heading's rule.");
+            foreach (var rule in rules)
+            {
+                Assert.That(rule.gameObject.activeInHierarchy, Is.True, where + " has an active heading rule.");
+                var rect = OnTheHud(rule);
+                AssertWithin(OnTheHud(row), rect, "the column rule", "the draw row");
+                AssertWithin(OnTheHud(viewport), rect, "the column rule", "the viewport");
+                boxes.Add(rect);
+            }
+            Assert.That(parts.Count(part => part.name == "Draw area"), Is.EqualTo(1), where + " has its complete bag frame.");
+            Assert.That(parts.Count(part => part.name == "Bag"), Is.EqualTo(1), where + " has its bag image.");
+            Assert.That(parts.Count(part => part.name == "Chips line"), Is.EqualTo(1), where + " has its chips copy.");
+            var area = parts.Single(part => part.name == "Draw area");
+            var frameImages = area.GetComponentsInChildren<Image>(true).Where(image => image.transform.parent == area
+                && (image.name == "Art" || image.name == EndScreenKit.DrawnFrameName)).ToArray();
+            Assert.That(frameImages, Has.Length.EqualTo(1), where + " retains exactly its actual packed/drawn frame image.");
+            var frame = frameImages[0];
+            Assert.That(frame.enabled && frame.gameObject.activeInHierarchy, Is.True, where + " cannot hide its frame quad.");
+            var frameBounds = OnTheHud(frame.rectTransform);
+            Assert.That(frameBounds.width > 0f && frameBounds.height > 0f, Is.True, where + " has a real frame image quad.");
+            AssertWithin(OnTheHud(row), frameBounds, "the actual frame image", "the draw row");
+            AssertWithin(OnTheHud(viewport), frameBounds, "the actual frame image", "the viewport");
+            AssertWithin(OnTheHud(panel), frameBounds, "the actual frame image", "the panel");
+            foreach (var box in boxes)
+                Assert.That(box.Overlaps(frameBounds), Is.False, where + " keeps full heading copy/rules clear of the actual frame image quad.");
+            var occupied = parts.Where(part => part.name.StartsWith("Face · ") || part.name == "Draw area"
+                || part.name == "Bag" || part.name == "Chips line" || part.name == "Chip").ToArray();
+            foreach (var part in occupied)
+                foreach (var box in boxes)
+                    Assert.That(box.Overlaps(OnTheHud(part)), Is.False, where + " keeps all heading copy/rules clear of '" + part.name + "'.");
         }
     }
 }

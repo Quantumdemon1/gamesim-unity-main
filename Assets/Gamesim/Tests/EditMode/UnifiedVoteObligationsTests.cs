@@ -256,7 +256,7 @@ namespace Gamesim.Tests.EditMode
             var fields = typeof(UnifiedVoteObligationVerdict).GetFields(BindingFlags.Public | BindingFlags.Instance);
             Assert.That(fields.Select(field => field.Name).OrderBy(name => name), Is.EqualTo(new[] { "ActorId", "Status" }));
             Assert.That(fields.All(field => field.IsInitOnly && field.FieldType == typeof(string)), Is.True);
-            Assert.That(typeof(UnifiedVoteObligationVerdict).IsSerializable, Is.False);
+            Assert.That(typeof(UnifiedVoteObligationVerdict).IsDefined(typeof(SerializableAttribute), false), Is.False);
         }
 
         [Test]

@@ -70,7 +70,8 @@ namespace Gamesim.Tests.EditMode
                     point.ledger.power.Any(row => row.week == frame.week && row.tally.Count == 2)));
                 Assert.That(ProspectiveVoteFacade.TryValidateProspectiveUnifiedVote(projected, out var error), Is.True,
                     "week " + point.week + " " + point.phase + ": " + error);
-                Assert.That(EpisodeValidation.TryValidate(projected, out _), Is.False, "Public mode 2 remains refused.");
+                // Flipped at vote family V6: public validation takes mode 2 to the same complete core (it refused it until V6).
+                Assert.That(EpisodeValidation.TryValidate(projected, out error), Is.True, "A public season since V6. " + error);
                 if (!player)
                 {
                     var deal = CommitmentReferences.FindDeal(projected, w.DealId);
@@ -119,8 +120,49 @@ namespace Gamesim.Tests.EditMode
                 "What the player was shown before the rules stays shown.");
         }
 
+        /// <summary>
+        /// Vote family V5e: a voter production removed is never a juror. The season walked on to the jury's questions: no question
+        /// is theirs, the jury readers leave them out, and in the mode-2 projection every Vote row they were a party to reads as
+        /// ended - none binds, none waits on the player.
+        /// </summary>
+        [Test]
+        public void AnExpelledVoterAsksNoQuestionAndTheirVoteRowsReadAsEnded()
+        {
+            var w = Witness(1, false, true);
+            var walk = new PinnedVoteSeason(w.Seed, w.Later.Clone());
+            walk.Frames.AddRange(w.Frames.Select(frame => frame.Clone()));
+            foreach (var pair in w.Owners) walk.Owners.Add(pair.Key, pair.Value.Clone());
+            for (int step = 0; step < 1024; step++)
+            {
+                var s = walk.State;
+                if (s.phase == EpisodePhase.JuryQuestioning || s.phase == EpisodePhase.Jury || s.phase == EpisodePhase.Finished) break;
+                if (s.Find(s.playerId).status == ContestantStatus.Active && PinnedVoteSeason.OpenVote(s) && s.nominees.Contains(s.playerId))
+                { walk.PlayPinnedVote(s.nominees.First(id => id != s.playerId)); continue; }
+                walk.Step(ModeTwoReaderSweep.Next(s));
+            }
+            var jury = walk.State;
+            Assert.That(jury.phase == EpisodePhase.JuryQuestioning || jury.phase == EpisodePhase.Jury, Is.True, "Fixture: the jury sits (" + jury.phase + ").");
+            Assert.That(walk.Supported, Is.True, walk.FirstUnsupported);
+            Assert.That(jury.Find(w.Voter).status, Is.EqualTo(ContestantStatus.Expelled));
+            Assert.That(jury.juryExchanges, Is.Not.Empty, "Fixture: the jury asks its questions.");
+            Assert.That(jury.juryExchanges.Select(e => e.questionerId), Does.Not.Contain(w.Voter), "The expelled voter asks nothing.");
+            var projected = PinnedVoteSeason.Project(jury, walk.Owners, walk.Frames);
+            Assert.That(ProspectiveVoteFacade.TryValidateProspectiveUnifiedVote(projected, out var error), Is.True, error);
+            Assert.That(FinalistRead.Jurors(projected).Select(c => c.id), Does.Not.Contain(w.Voter));
+            Assert.That(JuryHouseRead.Read(projected).jurors.Select(j => j.id), Does.Not.Contain(w.Voter));
+            var theirs = projected.unifiedCommitments.Where(row => row.kind == UnifiedVoteTogether.Vote
+                && (row.makerId == w.Voter || row.beneficiaryId == w.Voter)).ToList();
+            Assert.That(theirs.Select(row => row.id), Does.Contain(w.DealId), "Fixture: the deal they broke is a canonical Vote row.");
+            Assert.That(theirs.Where(row => DealStatus.Binds(row.status) || row.status == DealStatus.Proposed).Select(row => row.id), Is.Empty,
+                "Every Vote row of theirs has ended.");
+            Assert.That(CommitmentReferences.Deals(projected).Where(d => d.proposerId == w.Voter || d.recipientId == w.Voter)
+                .Where(d => DealStatus.Binds(d.status) || d.status == DealStatus.Proposed).Select(d => d.id), Is.Empty, "The views read them ended.");
+            Assert.That(NpcDeals.Pending(projected).Where(d => d.proposerId == w.Voter), Is.Empty, "None waits on the player.");
+        }
+
         private sealed class RemovalWitness
         {
+            internal uint Seed;
             internal int Week;
             internal string Voter, DealId;
             internal EpisodeState Pending, Expelled, Later;
@@ -218,7 +260,7 @@ namespace Gamesim.Tests.EditMode
                     out miss)) return null;
             if (!walk.Supported) { miss = "an actual birth this observer cannot order: " + walk.FirstUnsupported; return null; }
             miss = null;
-            return new RemovalWitness { Week = week, Voter = voter, DealId = deal, Pending = pending, Expelled = expelled,
+            return new RemovalWitness { Seed = seed, Week = week, Voter = voter, DealId = deal, Pending = pending, Expelled = expelled,
                 Later = walk.State, Frames = walk.Frames.Select(frame => frame.Clone()).ToList(),
                 Owners = walk.Owners.ToDictionary(pair => pair.Key, pair => pair.Value.Clone(), StringComparer.Ordinal) };
         }

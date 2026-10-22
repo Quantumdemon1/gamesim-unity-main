@@ -94,7 +94,7 @@ namespace Gamesim.Presentation
         public static CompetitionGameScreen Attach(GameObject owner)
         {
             var root = new GameObject("Gamesim Competition Surface", typeof(RectTransform), typeof(Canvas),
-                typeof(CanvasScaler), typeof(CanvasGroup), typeof(GraphicRaycaster));
+                typeof(FrameScaler), typeof(CanvasGroup), typeof(GraphicRaycaster));
             if (owner != null && owner.scene.IsValid()) SceneManager.MoveGameObjectToScene(root, owner.scene);
             var canvas = root.GetComponent<Canvas>();
             canvas.renderMode = RenderMode.ScreenSpaceOverlay; canvas.sortingOrder = 104;
@@ -405,6 +405,7 @@ namespace Gamesim.Presentation
             if (IsShowing) dismissedFrame = Time.frameCount;
             IsAssembling=false; if(assemblyPanel!=null)assemblyPanel.gameObject.SetActive(false);
             IsShowing=false; playing=false; Paused=false; held=false; holdingFinish=false;
+            keptRollCuePending=false;
             if(group!=null) { group.alpha=0;group.interactable=false;group.blocksRaycasts=false; }
             if(EventSystem.current!=null && EventSystem.current.currentSelectedGameObject!=null
                 && EventSystem.current.currentSelectedGameObject.transform.IsChildOf(transform))

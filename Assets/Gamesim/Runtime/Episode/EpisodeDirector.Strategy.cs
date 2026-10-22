@@ -83,7 +83,11 @@ namespace Gamesim.Episode
                         }
                         else Commit(state, EpisodeCommandKind.Lobby, decider, subject, text: LobbyAsk.Encode(ask, how));
                     }) : hud.LockedAction(caption);
-                    hud.Tag(button, available ? tag : "Finish the existing house moment first");
+                    // A locked entry says why, in CanStart's own words: an active dialogue, a used occasion, an
+                    // unanswered house moment or a full path each read differently. The caption stays as it is.
+                    string refusal = null;
+                    if (!available && DialogueRules.CanStart(state, decider, out refusal)) refusal = null;
+                    hud.Tag(button, available ? tag : string.IsNullOrEmpty(refusal) ? "This plea cannot start now" : refusal.TrimEnd('.'));
                 }
                 hud.Action(EpisodeHud.LobbyBackCaption, () => { ClearLobbyDraft(); Render(); });
                 return;

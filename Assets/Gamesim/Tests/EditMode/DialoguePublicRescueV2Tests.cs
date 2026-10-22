@@ -517,7 +517,13 @@ namespace Gamesim.Tests.EditMode
             // the producer captures its witness at the week-4 Campaign: the player nominated, Alex one of two
             // voters, his week-2 rescue the record to cite. It was chosen offline from the single player-decision
             // variants of that walk; the route below is unchanged and fixed, and on this carrier it ends with
-            // Quinn's final eviction of Alex. Nothing here searches or falls back at run time.
+            // Quinn's final eviction of Alex. Nothing here searches or falls back at run time. What this carrier does
+            // not reach: the player is evicted in week 4, a few commands after the citation, so the player-HoH final
+            // choice below never runs on it (Alex leaves by an NPC HoH's Advance). Of the 62 variants only 4 give a
+            // carrier on which Alex departs, every one with him on the week-3 block. The producer is not in this
+            // repository, for either carrier: it is Codex's DiscoverSingle13Final4PlayerKeep01, kept with Codex's R2
+            // work (r2-single13-final4-player-keep-next01). To regenerate this carrier, run it with its module pins
+            // dropped and the one decision above changed; the carrier's playerDecisionChanged field records it.
             var departure = DepartureCarrier(out string voter); // This carrier's cited NPC; it shadows the shared carrier's on purpose.
             string departureImage = Image(departure);
             var cited = CitedOn(departure, voter); var citation = cited.dialogue.episodes.Single().evidence.Single();

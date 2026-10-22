@@ -171,9 +171,9 @@ namespace Gamesim.Tests.EditMode
             var payload = (JObject)JObject.Parse(File.ReadAllText(slot.Store.SavePath))["state"];
             Assert.That((int)payload["schemaVersion"], Is.EqualTo(schema));
 
-            // The current schema is OldSaveTrace.Newest, the newest the projection knows: a new schema adds its literals
-            // there (the plan's section 6, step 6) and every fixture here then migrates through the new step.
-            const int current = OldSaveTrace.Newest;
+            // The retained recorder remains literal28; the source-bound current adapter owns29 admission.
+            // Historical fixtures and their reference-schema checkpoint algorithm are not rewritten.
+            const int current = CurrentOldSaveTrace.Current;
             Assert.That(slot.Store.TryLoad(out var loaded, out string message), Is.True, message);
             if (schema < current) Assert.That(message, Does.Contain("Schema " + schema + " history was migrated to schema " + current + " in memory."));
             else Assert.That(message, Does.Not.Contain("migrated"));
@@ -196,7 +196,7 @@ namespace Gamesim.Tests.EditMode
             Assert.That(File.ReadAllBytes(slot.Store.BackupPath), Is.EqualTo(slot.Original), "The pre-migration bytes are kept as the backup.");
             Assert.That(slot.Store.TryLoad(out var again, out message), Is.True, message);
             Assert.That(message, Does.Not.Contain("migrated"));
-            Assert.That(OldSaveTrace.Checkpoint(again, current), Is.EqualTo(OldSaveTrace.Checkpoint(loaded, current)), "Saved and loaded again, the season is unchanged.");
+            Assert.That(CurrentOldSaveTrace.Checkpoint(again, current), Is.EqualTo(CurrentOldSaveTrace.Checkpoint(loaded, current)), "Saved and loaded again, the season is unchanged.");
         }
 
         /// <summary>
@@ -251,7 +251,7 @@ namespace Gamesim.Tests.EditMode
             var text = new List<string>();
             void Check(EpisodeState s, int index)
             {
-                var (g, b, t) = OldSaveTrace.Checkpoint(s, schema);
+                var (g, b, t) = CurrentOldSaveTrace.Checkpoint(s, schema);
                 season.Add(g); state.Add(b); text.Add(t);
                 Assert.That(g.Substring(0, 16), Is.EqualTo((string)expected[index]["season"]),
                     id + ": checkpoint " + index + " (week " + s.week + " " + s.phase + ", revision " + s.revision + ") is not the reference build's.");
@@ -486,7 +486,7 @@ namespace Gamesim.Tests.EditMode
             Ask("UnifiedSafetySaveReferences.TryValidate", () => UnifiedSafetySaveReferences.TryValidate(s, out string error) + " " + error);
             Ask("UnifiedSafetySaveReferences.TryValidateProspectiveVote", () => Internal(typeof(UnifiedSafetySaveReferences), "TryValidateProspectiveVote", s));
             Ask("UnifiedVoteFamilyValidation.TryValidate", () => UnifiedVoteFamilyValidation.TryValidate(s, s.unifiedVoteReveals, out string error) + " " + error);
-            Ask("UnifiedVoteHistory.FindDecision", () => new JArray(s.unifiedCommitments.Select(row => Fields(UnifiedVoteHistory.FindDecision(s, row.id)))));
+            Ask("UnifiedVoteHistory.FindDecision", () => LegacyDigestSchema29Observer.FindDecisionAnswers28(s));
             Ask("UnifiedVoteHistory.Fulfillments", () => Each(UnifiedVoteHistory.Fulfillments(s)));
             Ask("UnifiedVoteHistory.Incidents", () => Each(UnifiedVoteHistory.Incidents(s)));
             return OldSaveTrace.Canonical(answers, false);

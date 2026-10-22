@@ -131,6 +131,179 @@ namespace Gamesim.Tests.EditMode
             LogAssert.NoUnexpectedReceived();
         }
 
+        [Test]
+        public void PortraitQueueShutdownOutsidePlayRetiresOnlyItsOwnStudioCameraAndTarget()
+        {
+            GameObject queueRoot = null;
+            CharacterStudioPreview portrait = null;
+            RenderTexture portraitTarget = null;
+            try
+            {
+                queueRoot = new GameObject("Owned portrait shutdown queue");
+                var queue = queueRoot.AddComponent<CharacterPortraitQueue>();
+                var appearance = CharacterAppearance.Preset("player");
+                string key = appearance.ContentKey();
+                StartQueuedPortrait(queue, "owned-portrait-shutdown", appearance, out portrait);
+                var studioRoot = portrait.gameObject;
+                var target = (RenderTexture)portrait.Texture;
+                portraitTarget = target;
+                var camera = portrait.GetComponentInChildren<Camera>();
+                Assert.That(studioRoot != null && target != null && target.IsCreated() && camera != null, Is.True);
+                Assert.That(camera.targetTexture, Is.SameAs(target));
+                Assert.That(provider.Roots, Is.Empty, "Enqueue/queue Update requests a studio; this test does not force a body build.");
+
+                // Invoke the existing production cleanup method explicitly; EditMode dispatcher behavior is not assumed.
+                Assert.That(!Application.isPlaying && portrait.enabled && studioRoot.activeInHierarchy
+                    && (studioRoot.hideFlags & HideFlags.DontSave) == HideFlags.DontSave, Is.True,
+                    "The exact queue-created studio must be an active transient EditMode component before callback opt-in.");
+                bool foreignEditMode = preview.runInEditMode;
+                portrait.runInEditMode = true;
+                Assert.That(portrait.runInEditMode, Is.True, "Only this exact owned studio opts in to Editor callbacks.");
+                var queueOwner = typeof(CharacterPortraitQueue).GetField("preview", BindingFlags.Instance | BindingFlags.NonPublic);
+                Assert.That(queueOwner != null && object.ReferenceEquals(queueOwner.GetValue(queue), portrait), Is.True,
+                    "Activation must not replace the real queue owner.");
+                Assert.That(portrait != null && portrait.enabled && portrait.gameObject == studioRoot && studioRoot.activeInHierarchy
+                    && (studioRoot.hideFlags & HideFlags.DontSave) == HideFlags.DontSave
+                    && portrait.Texture == target && target != null && target.IsCreated()
+                    && camera != null && portrait.GetComponentInChildren<Camera>() == camera && camera.targetTexture == target, Is.True,
+                    "Opt-in must not pre-clean or replace the exact studio/camera/native target before the owner cleanup.");
+                Assert.That(provider.Roots.Count == 0 && portrait.IsBuilding, Is.True,
+                    "The original queued request remains pending and activation must not create any extra provider body.");
+                Assert.That(preview != null && preview.runInEditMode == foreignEditMode
+                    && ownedTexture != null && ownedTexture.IsCreated() && preview.Texture == ownedTexture, Is.True,
+                    "The separate studio and its target/Editor mode are untouched.");
+                AssertUnrelatedResourcesSurvive();
+                InvokeQueueShutdown(queue);
+                TestContext.WriteLine("GAMESIM_PORTRAIT_CLEANUP_OPTIN02 plain queueRootGone=" + (queueRoot == null)
+                    + " studioRootGone=" + (studioRoot == null) + " studioGone=" + (portrait == null)
+                    + " cameraGone=" + (camera == null) + " targetGone=" + (target == null));
+
+                Assert.That(studioRoot == null && portrait == null && camera == null && target == null, Is.True,
+                    "The queue must immediately retire the exact studio/camera/target that it created when no Play loop can drain Destroy.");
+                Assert.That(appearance.ContentKey(), Is.EqualTo(key));
+                Assert.That(preview != null && ownedTexture != null && ownedTexture.IsCreated(), Is.True,
+                    "A different studio and its target are not owned by this queue.");
+                Assert.That(preview.GetComponentInChildren<Camera>().targetTexture, Is.SameAs(ownedTexture));
+                AssertUnrelatedResourcesSurvive();
+                InvokeQueueShutdown(queue);
+                AssertUnrelatedResourcesSurvive();
+                Object.DestroyImmediate(queueRoot);
+                LogAssert.NoUnexpectedReceived();
+            }
+            finally { DestroyPortraitFixture(queueRoot, portrait, portraitTarget); }
+        }
+
+        [Test]
+        public void PortraitQueueShutdownOutsidePlayRetiresItsActualPendingRevision()
+        {
+            GameObject queueRoot = null;
+            CharacterStudioPreview portrait = null;
+            RenderTexture portraitTarget = null;
+            try
+            {
+                queueRoot = new GameObject("Owned pending portrait shutdown queue");
+                var queue = queueRoot.AddComponent<CharacterPortraitQueue>();
+                var appearance = CharacterAppearance.Preset("player");
+                string key = appearance.ContentKey();
+                StartQueuedPortrait(queue, "owned-pending-portrait-shutdown", appearance, out portrait);
+                var target = (RenderTexture)portrait.Texture;
+                portraitTarget = target;
+                var build = typeof(CharacterStudioPreview).GetMethod("Build", BindingFlags.Instance | BindingFlags.NonPublic,
+                    null, Type.EmptyTypes, null);
+                Assert.That(build, Is.Not.Null, "Use the existing real studio build entry point.");
+                build.Invoke(portrait, null);
+                Assert.That(provider.Roots.Count, Is.EqualTo(1));
+                Assert.That(provider.Last.Purpose, Is.EqualTo(CharacterBuildPurpose.Studio));
+                var body = provider.Roots[0];
+                var revision = body.transform.parent.gameObject;
+                Assert.That(portrait.IsBuilding && body != null && revision != null, Is.True);
+                Assert.That(revision.transform.parent, Is.SameAs(portrait.transform));
+
+                var studioRoot = portrait.gameObject;
+                var camera = portrait.GetComponentInChildren<Camera>();
+                var builtRevision = provider.Last.Revision;
+                Assert.That(!Application.isPlaying && portrait.enabled && studioRoot.activeInHierarchy
+                    && (studioRoot.hideFlags & HideFlags.DontSave) == HideFlags.DontSave
+                    && target != null && target.IsCreated() && camera != null && camera.targetTexture == target, Is.True,
+                    "The exact built studio and its target must exist in active transient EditMode before callback opt-in.");
+                bool foreignEditMode = preview.runInEditMode;
+                portrait.runInEditMode = true;
+                Assert.That(portrait.runInEditMode, Is.True, "Only this exact owned studio opts in to Editor callbacks.");
+                var queueOwner = typeof(CharacterPortraitQueue).GetField("preview", BindingFlags.Instance | BindingFlags.NonPublic);
+                Assert.That(queueOwner != null && object.ReferenceEquals(queueOwner.GetValue(queue), portrait), Is.True,
+                    "Activation must not replace the real queue owner.");
+                Assert.That(portrait != null && portrait.enabled && portrait.gameObject == studioRoot && studioRoot.activeInHierarchy
+                    && (studioRoot.hideFlags & HideFlags.DontSave) == HideFlags.DontSave
+                    && portrait.Texture == target && target != null && target.IsCreated()
+                    && camera != null && portrait.GetComponentInChildren<Camera>() == camera && camera.targetTexture == target, Is.True,
+                    "Opt-in must not pre-clean or replace the exact studio/camera/native target before the owner cleanup.");
+                Assert.That(provider.Roots.Count == 1 && provider.Roots[0] == body && provider.Last.Revision == builtRevision
+                    && provider.Last.Purpose == CharacterBuildPurpose.Studio && portrait.IsBuilding
+                    && body != null && revision != null && body.transform.parent.gameObject == revision
+                    && revision.transform.parent == portrait.transform, Is.True,
+                    "The exact original pending body/revision/provider request must survive activation without extra builds or pre-cleaning.");
+                Assert.That(preview != null && preview.runInEditMode == foreignEditMode
+                    && ownedTexture != null && ownedTexture.IsCreated() && preview.Texture == ownedTexture, Is.True,
+                    "The separate studio and its target/Editor mode are untouched.");
+                AssertUnrelatedResourcesSurvive();
+                InvokeQueueShutdown(queue);
+                TestContext.WriteLine("GAMESIM_PORTRAIT_CLEANUP_OPTIN02 pending queueRootGone=" + (queueRoot == null)
+                    + " studioRootGone=" + (studioRoot == null) + " studioGone=" + (portrait == null)
+                    + " cameraGone=" + (camera == null) + " targetGone=" + (target == null)
+                    + " bodyGone=" + (body == null) + " revisionGone=" + (revision == null));
+
+                Assert.That(portrait == null && body == null && revision == null && target == null, Is.True,
+                    "Queue teardown must run the actual studio's pending-revision and render-target cleanup, not only discard its queue field.");
+                Assert.That(appearance.ContentKey(), Is.EqualTo(key));
+                Assert.That(preview != null && ownedTexture != null && ownedTexture.IsCreated(), Is.True);
+                AssertUnrelatedResourcesSurvive();
+                InvokeQueueShutdown(queue);
+                AssertUnrelatedResourcesSurvive();
+                Object.DestroyImmediate(queueRoot);
+                LogAssert.NoUnexpectedReceived();
+            }
+            finally { DestroyPortraitFixture(queueRoot, portrait, portraitTarget); }
+        }
+
+        private static void StartQueuedPortrait(CharacterPortraitQueue queue, string key, CharacterAppearance appearance, out CharacterStudioPreview actual)
+        {
+            actual = null;
+            queue.Enqueue(key, appearance);
+            var update = typeof(CharacterPortraitQueue).GetMethod("Update", BindingFlags.Instance | BindingFlags.NonPublic,
+                null, Type.EmptyTypes, null);
+            Assert.That(update, Is.Not.Null, "EditMode has no ordinary MonoBehaviour Update loop; invoke the existing queue producer once.");
+            var field = typeof(CharacterPortraitQueue).GetField("preview", BindingFlags.Instance | BindingFlags.NonPublic);
+            Assert.That(field, Is.Not.Null);
+            try { update.Invoke(queue, null); }
+            finally { actual = field.GetValue(queue) as CharacterStudioPreview; }
+            Assert.That(actual != null && actual.gameObject != queue.gameObject
+                && (actual.gameObject.hideFlags & HideFlags.DontSave) == HideFlags.DontSave, Is.True,
+                "Observe the exact real transient studio created by this queue; never inject an owner or search foreign objects.");
+        }
+
+        private static void InvokeQueueShutdown(CharacterPortraitQueue queue)
+        {
+            var shutdown = typeof(CharacterPortraitQueue).GetMethod("OnDestroy", BindingFlags.Instance | BindingFlags.NonPublic,
+                null, Type.EmptyTypes, null);
+            Assert.That(shutdown, Is.Not.Null, "Invoke the existing real queue cleanup method; do not assume EditMode lifecycle dispatch.");
+            shutdown.Invoke(queue, null);
+        }
+
+        private static void DestroyPortraitFixture(GameObject queueRoot, CharacterStudioPreview portrait, RenderTexture portraitTarget)
+        {
+            try { if (queueRoot != null) Object.DestroyImmediate(queueRoot); }
+            finally
+            {
+                // Also release the held studio on the original red baseline where Queue.OnDestroy rejected Destroy.
+                try { if (portrait != null) Object.DestroyImmediate(portrait.gameObject); }
+                finally
+                {
+                    // A failed nested cleanup assertion must not leak this exact test-owned native target.
+                    if (portraitTarget != null) { portraitTarget.Release(); Object.DestroyImmediate(portraitTarget); }
+                }
+            }
+        }
+
         private void Build(CharacterAppearance appearance)
         {
             preview.Show(appearance);

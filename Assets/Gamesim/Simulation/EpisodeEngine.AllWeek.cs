@@ -128,9 +128,12 @@ namespace Gamesim.Simulation
         /// on the table (C7) catches the house up without a word to the player, which would lapse it (D2's decision 6).
         /// </summary>
         public static void CatchUp(EpisodeState s, bool playerFree)
+            => CatchUp(s, playerFree, null);
+
+        private static void CatchUp(EpisodeState s, bool playerFree, PendingDialogueCommand pending)
         {
             if (s == null) throw new ArgumentNullException(nameof(s));
-            Beats(s, false, playerFree);
+            Beats(s, false, playerFree, pending);
         }
 
         /// <summary>
@@ -153,7 +156,7 @@ namespace Gamesim.Simulation
         /// </summary>
         public static bool CloseLeavesThePlayerOut(int window) => window == Windows.AfterVeto || window == Windows.AfterEviction;
 
-        private static void Beats(EpisodeState s, bool closing, bool playerFree)
+        private static void Beats(EpisodeState s, bool closing, bool playerFree, PendingDialogueCommand pending = null)
         {
             if (!AllWeekOn(s) || IsFirstNight(s)) return;
             int window = Window(s);
@@ -165,7 +168,7 @@ namespace Gamesim.Simulation
             while (social.beatsFired < due)
             {
                 int k = social.beatsFired++;
-                Beat(s, window, k, tick, playerFree);
+                Beat(s, window, k, tick, playerFree, pending);
             }
         }
 
@@ -203,7 +206,7 @@ namespace Gamesim.Simulation
         /// keyed stream, kept as an act. A slot whose houseguest has gone, has had the week's beats or does
         /// nothing still counts.
         /// </summary>
-        private static void Beat(EpisodeState s, int window, int k, int tick, bool playerFree)
+        private static void Beat(EpisodeState s, int window, int k, int tick, bool playerFree, PendingDialogueCommand pending = null)
         {
             var social = s.npcSocial;
             string npcId = social.beatPlan[k];
@@ -211,7 +214,7 @@ namespace Gamesim.Simulation
             if (npc == null || npc.status != ContestantStatus.Active || BeatsThisWeek(s, npcId) >= BeatQuota(s, npcId)) return;
             if (social.acts.Count >= MostActs(s)) return;
             var act = NpcSocialActions.Beat(s, npcId, StoryRandom.Stream(s, "allweek:beat:" + s.week + ":" + window + ":" + k),
-                playerFree, window == Windows.AfterVeto);
+                playerFree, window == Windows.AfterVeto, pending);
             if (act == null) return;
             act.id = s.week + "-" + window + "-" + k;
             act.week = s.week;

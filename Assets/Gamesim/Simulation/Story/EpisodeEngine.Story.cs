@@ -202,11 +202,20 @@ namespace Gamesim.Simulation
             if (s.houseEvents.Count >= HouseEvents.Ceiling) return false;
             if (s.Find(s.playerId)?.status != ContestantStatus.Active) return false;
             if (surface == StorySurfaces.Npc) return true;
+            if (!StoryEventSlotAvailable(s)) return false;
+            return StoryAskAirtime(s, surface, mustFire, play, playStep);
+        }
+
+        private static bool StoryAskAirtime(EpisodeState s, string surface, bool mustFire, bool play, bool playStep)
+        {
             if (play) return OpenPlayAsk(s) == null && (playStep || PlayOffersThisWeek(s) < PlayOffersFor(s));
             if (surface == StorySurfaces.Summons)
                 return OpenSummons(s) == null && (mustFire || SummonsesThisWeek(s) < SummonsesAWeek);
             return OpenArcAsk(s) == null && (mustFire || AsksThisWeek(s) < AsksAWeek);
         }
+
+        private static bool StoryEventSlotAvailable(EpisodeState s) => !DialogueRules.On(s)
+            || s.houseEvents.Count + 1 + DialogueRules.ReservedEvents(s) <= DialogueRules.MaximumEvents;
 
         // ---------------------------------------------------------------- the anchors
 
@@ -215,14 +224,15 @@ namespace Gamesim.Simulation
         /// beat's window names the Advance that closes it, and its lapse option resolves inside that
         /// same command. Nothing expires in real time and nothing piles up.
         /// </summary>
-        internal static void StoryLapse(EpisodeState s, string anchor)
+        internal static void StoryLapse(EpisodeState s, string anchor, PendingDialogueCommand pending = null)
         {
             if (s?.story == null) return;
             foreach (var item in s.houseEvents.Where(e => e.IsStory && !e.resolved
                          && (e.closesAnchor == anchor || anchor == StoryAnchors.SocialClose || e.week < s.week - 1)).ToList())
             {
+                if (pending?.LapseAt(s, item) == true) continue;
                 int index = item.choices.FindIndex(c => c.optionId == item.lapseOptionId);
-                ResolveStoryBeat(s, item, index, true, null);
+                ResolveStoryBeat(s, item, index, true, null, pending?.SealedFor(s));
             }
         }
 
@@ -230,14 +240,14 @@ namespace Gamesim.Simulation
         /// The story system's pulse at an anchor, after the anchor's own engine work: departures,
         /// scheduled beats, pulses, and at most one new arc from the pool.
         /// </summary>
-        internal static void StoryAnchor(EpisodeState s, string anchor)
+        internal static void StoryAnchor(EpisodeState s, string anchor, PendingDialogueCommand pending = null)
         {
             if (!StoryOn(s)) return;
             var ctx = new StoryContext(s, anchor);
             EndDepartedCycles(s);
             StorySystemsAt(s, anchor);
             // Plays first: one decided here opens nothing further below.
-            DecidePlays(s, anchor);
+            DecidePlays(s, anchor, pending);
             // A season's threads are seeded at its first eviction nights (plan 31).
             SeedThreads(s, anchor);
 
@@ -246,14 +256,14 @@ namespace Gamesim.Simulation
                 var template = StoryCatalog.Find(cycle.templateId);
                 if (template == null || s.houseEvents.Any(e => !e.resolved && e.cycleId == cycle.id)) continue;
                 // A thread asks nothing itself: it runs its chapters and its climax (plan 31).
-                if (template.thread != null) { ThreadPulse(s, new StoryCycle(cycle, template), anchor); continue; }
+                if (template.thread != null) { ThreadPulse(s, new StoryCycle(cycle, template), anchor, pending); continue; }
                 // A play taken on with nothing scheduled is waiting for its goal or its deadline,
                 // which DecidePlays settles: it neither blows over nor goes stale meanwhile.
                 if (template.play != null && TakenOn(cycle) && cycle.nextAnchor == null) continue;
                 var view = new StoryCycle(cycle, template);
                 if (cycle.nextAnchor == anchor && cycle.nextWeek <= s.week)
                 {
-                    FireScheduled(s, view, anchor);
+                    FireScheduled(s, view, anchor, pending);
                     continue;
                 }
                 // A beat waiting on a conversation the player never has goes stale like any other:
@@ -274,12 +284,12 @@ namespace Gamesim.Simulation
                     string beatId = template.pulse(ctx, view);
                     if (beatId != null && beatId.StartsWith("end:", StringComparison.Ordinal)) { EndCycle(s, cycle, beatId.Substring(4)); continue; }
                     var beat = beatId == null ? null : template.Beat(beatId);
-                    if (beat != null) Fire(s, view, beat, anchor, false);
+                    if (beat != null) Fire(s, view, beat, anchor, false, pending: pending);
                 }
             }
 
-            TryStartFromPool(s, ctx);
-            TryStartPlayFromPool(s, ctx);
+            TryStartFromPool(s, ctx, pending);
+            TryStartPlayFromPool(s, ctx, pending);
         }
 
         /// <summary>The running story cycles, in id order.</summary>
@@ -287,7 +297,7 @@ namespace Gamesim.Simulation
             s.storylines.Where(x => x.beatId != null && StorylineStatus.Running(x.status))
                 .OrderBy(x => x.id, StringComparer.Ordinal);
 
-        private static void FireScheduled(EpisodeState s, StoryCycle cycle, string anchor)
+        private static void FireScheduled(EpisodeState s, StoryCycle cycle, string anchor, PendingDialogueCommand pending = null)
         {
             var beat = cycle.template.Beat(cycle.record.beatId);
             if (beat == null) { EndCycle(s, cycle.record, "lost"); return; }
@@ -299,7 +309,7 @@ namespace Gamesim.Simulation
                 Postpone(s, cycle.record, anchor);
                 return;
             }
-            Fire(s, cycle, beat, anchor, true);
+            Fire(s, cycle, beat, anchor, true, pending: pending);
         }
 
         /// <summary>
@@ -324,7 +334,7 @@ namespace Gamesim.Simulation
 
         // ---------------------------------------------------------------- starting a cycle
 
-        private static void TryStartFromPool(EpisodeState s, StoryContext ctx)
+        private static void TryStartFromPool(EpisodeState s, StoryContext ctx, PendingDialogueCommand pending = null)
         {
             var candidates = new List<(ArcTemplate template, ArcBinding binding, double weight)>();
             foreach (var template in StoryCatalog.All)
@@ -349,7 +359,7 @@ namespace Gamesim.Simulation
             {
                 if (roll < candidate.weight)
                 {
-                    StartCycle(s, candidate.template, candidate.binding, ctx.anchor);
+                    StartCycle(s, candidate.template, candidate.binding, ctx.anchor, pending: pending);
                     return;
                 }
                 roll -= candidate.weight;
@@ -371,7 +381,7 @@ namespace Gamesim.Simulation
         /// their own and within their own budget, so plays neither crowd out the house's arcs nor
         /// wait behind them. A season before the plays rules casts none, so its pool is untouched.
         /// </summary>
-        private static void TryStartPlayFromPool(EpisodeState s, StoryContext ctx)
+        private static void TryStartPlayFromPool(EpisodeState s, StoryContext ctx, PendingDialogueCommand pending = null)
         {
             var candidates = new List<(ArcTemplate template, ArcBinding binding, double weight)>();
             foreach (var template in StoryCatalog.All)
@@ -389,7 +399,7 @@ namespace Gamesim.Simulation
             {
                 if (roll < candidate.weight)
                 {
-                    StartCycle(s, candidate.template, candidate.binding, ctx.anchor);
+                    StartCycle(s, candidate.template, candidate.binding, ctx.anchor, pending: pending);
                     return;
                 }
                 roll -= candidate.weight;
@@ -404,6 +414,7 @@ namespace Gamesim.Simulation
         public static ArcBinding Castable(EpisodeState s, StoryContext ctx, ArcTemplate template)
         {
             if (!StoryOn(s) || template == null || template.rulesVersion > s.story.rulesVersion) return null;
+            if (DialogueRules.On(s) && s.storylines.Count >= DialogueRules.MaximumEpisodes) return null;
             if (BeforeTheFirstAsk(s) && template.id != FirstNightArc) return null;
             if (s.week < template.minWeek || s.Active.Count() < template.minActive) return null;
             if (s.Find(s.playerId)?.status != ContestantStatus.Active) return null;
@@ -420,12 +431,23 @@ namespace Gamesim.Simulation
             if (template.playerNeeds == StoryPeople.Sensitivity.Romance && !s.story.romanceStorylines) return null;
             var opener = template.beats.FirstOrDefault();
             if (opener == null) return null;
+            if (!opener.NpcHeld && !StoryEventSlotAvailable(s)) return null;
             // The first beat the player will be asked: the opener, or - when a houseguest holds the
             // opener, deciding the tone - the first one after it. An arc the house has no room to
             // put to the player does not start.
             var firstAsk = opener.NpcHeld ? template.beats.FirstOrDefault(b => !b.NpcHeld) : opener;
-            if (firstAsk != null && !AirtimeFor(s, firstAsk.surface, template.lane == StoryLanes.Production || template.urgent,
-                    template.play != null, false)) return null;
+            if (firstAsk != null)
+            {
+                bool mustFire = template.lane == StoryLanes.Production || template.urgent;
+                // An NPC opener allocates no event. Keep the original first-ask pacing gates, but
+                // reserve an event only when Fire reaches the actual player-held beat.
+                if (opener.NpcHeld)
+                {
+                    if (s.houseEvents.Count >= HouseEvents.Ceiling
+                        || !StoryAskAirtime(s, firstAsk.surface, mustFire, template.play != null, false)) return null;
+                }
+                else if (!AirtimeFor(s, firstAsk.surface, mustFire, template.play != null, false)) return null;
+            }
             var binding = template.cast?.Invoke(ctx);
             if (binding == null) return null;
             foreach (var role in template.roles)
@@ -459,6 +481,7 @@ namespace Gamesim.Simulation
         /// </summary>
         public static bool StartStory(EpisodeState s, string arcId, string anchor)
         {
+            if (DialogueRules.IsCampaignTemplate(arcId)) return false;
             var template = StoryCatalog.Find(arcId);
             if (template == null || !StoryAt(s, template.rulesVersion)) return false;
             var binding = Castable(s, new StoryContext(s, anchor), template);
@@ -472,11 +495,14 @@ namespace Gamesim.Simulation
         /// opener could not be put to the player.
         /// </summary>
         internal static StorylineState StartCycle(EpisodeState s, ArcTemplate template, ArcBinding binding, string anchor,
-            string openerId = null)
+            string openerId = null, PendingDialogueCommand pending = null)
         {
+            if (DialogueRules.IsCampaignTemplate(template.id)) return null;
+            if (DialogueRules.On(s) && s.storylines.Count >= DialogueRules.MaximumEpisodes) return null;
             // An arc the engine starts at a particular point - production's ladder at the rung the
             // strike landed on - names its opener; everything else opens on its first beat.
             var opener = (openerId == null ? null : template.Beat(openerId)) ?? template.beats[0];
+            if (!opener.NpcHeld && !StoryEventSlotAvailable(s)) return null;
             var cycle = new StorylineState
             {
                 id = Mint(s, "story"),
@@ -494,7 +520,7 @@ namespace Gamesim.Simulation
             };
             s.storylines.Add(cycle);
             if (binding.headliner != null && template.oncePerHeadliner) Cool(s, "once:" + template.id + ":" + binding.headliner, s.week + 100);
-            Fire(s, new StoryCycle(cycle, template), opener, anchor, true);
+            Fire(s, new StoryCycle(cycle, template), opener, anchor, true, pending: pending);
             return cycle;
         }
 
@@ -505,16 +531,18 @@ namespace Gamesim.Simulation
         /// - one that follows the last at once, in the same conversation - is not a new ask, so the
         /// weekly budget does not stop it; one open card at a time still does.
         /// </summary>
-        private static void Fire(EpisodeState s, StoryCycle cycle, BeatTemplate beat, string anchor, bool scheduled, bool chained = false)
+        private static void Fire(EpisodeState s, StoryCycle cycle, BeatTemplate beat, string anchor, bool scheduled, bool chained = false,
+            PendingDialogueCommand pending = null)
         {
             cycle.record.beatId = beat.id;
             cycle.record.nextAnchor = null;
             cycle.record.nextWeek = 0;
             if (beat.NpcHeld)
             {
-                PlayNpcBeat(s, cycle, beat, anchor);
+                PlayNpcBeat(s, cycle, beat, anchor, pending);
                 return;
             }
+            if (!StoryEventSlotAvailable(s)) { Postpone(s, cycle.record, anchor); return; }
             if ((BeforeTheFirstAsk(s) && cycle.template.id != FirstNightArc)
                 || !AirtimeFor(s, beat.surface, chained || cycle.template.lane == StoryLanes.Production || cycle.template.urgent,
                     cycle.template.play != null, TakenOn(cycle.record)))
@@ -650,7 +678,7 @@ namespace Gamesim.Simulation
         }
 
         /// <summary>An NPC holds this choice: they pick by their axes, and it plays out without a card.</summary>
-        private static void PlayNpcBeat(EpisodeState s, StoryCycle cycle, BeatTemplate beat, string anchor)
+        private static void PlayNpcBeat(EpisodeState s, StoryCycle cycle, BeatTemplate beat, string anchor, PendingDialogueCommand pending = null)
         {
             var ctx = new StoryContext(s, anchor);
             string optionId = beat.npc?.Invoke(ctx, cycle, beat.options);
@@ -672,7 +700,7 @@ namespace Gamesim.Simulation
             var effects = chosen.effects.AsEnumerable();
             if (chosen.extra != null) effects = effects.Concat(chosen.extra(ctx, cycle) ?? Enumerable.Empty<Fx>());
             foreach (var effect in effects.Select(fx => ResolveFx(s, cycle, fx)).Where(e => e != null).ToList())
-                ApplyStoryEffect(s, effect, cycle.record, null, cycle.Id + ":" + beat.id + ":" + chosen.id, 0, false);
+                ApplyStoryEffectWithPending(s, effect, cycle.record, null, cycle.Id + ":" + beat.id + ":" + chosen.id, 0, false, pending);
             int sequence = s.nextSequence;
             // An NPC choice is theirs: its line reaches only the houseguests in it. A choice with no
             // outcome line - a beat that only decides which way the story goes - writes nothing, since
@@ -681,7 +709,7 @@ namespace Gamesim.Simulation
             if (chosen.outcome != null && audience.Length > 0)
                 Log(s, StoryLog.Outcome, StoryText.Neutral(chosen.outcome), audience);
             AddStep(cycle.record, beat.id, chosen.id, StoryResults.Npc, s.week, chosen.outcome != null && audience.Length > 0 ? sequence : 0);
-            AdvanceCycle(s, cycle, chosen.next, anchor);
+            AdvanceCycle(s, cycle, chosen.next, anchor, pending);
         }
 
         // ---------------------------------------------------------------- answering
@@ -697,6 +725,8 @@ namespace Gamesim.Simulation
                 "Evicted players can follow the season but cannot influence it.");
             var item = s.houseEvents.FirstOrDefault(e => e.id == c.targetId && e.IsStory && !e.resolved);
             Require(item != null, "That moment has already passed.");
+            Require(!DialogueRules.IsCampaignTemplate(s.storylines.FirstOrDefault(x => x.id == item.cycleId)?.templateId),
+                "Use the paid dialogue command to answer this conversation.");
             int index = item.choices.FindIndex(x => x.optionId == c.secondTargetId);
             Require(index >= 0, "Choose one of this moment's options.");
             var choice = item.choices[index];
@@ -726,7 +756,8 @@ namespace Gamesim.Simulation
         /// Resolves a beat, answered or lapsed: the check, the out-of-character price, a hidden
         /// hot-button, every effect, the record, and what comes next.
         /// </summary>
-        private static void ResolveStoryBeat(EpisodeState s, HouseEventState item, int index, bool lapsed, string picked)
+        private static void ResolveStoryBeat(EpisodeState s, HouseEventState item, int index, bool lapsed, string picked,
+            PendingDialogueCommand pending = null)
         {
             var cycleRecord = s.storylines.FirstOrDefault(x => x.id == item.cycleId);
             var template = StoryCatalog.Find(cycleRecord?.templateId);
@@ -781,7 +812,7 @@ namespace Gamesim.Simulation
             {
                 var resolved = Substitute(effect, picked);
                 RememberSpreadPact(s, resolved, spread);
-                ApplyStoryEffect(s, resolved, cycleRecord, subject?.id, key, reception, result == StoryResults.Backfire);
+                ApplyStoryEffectWithPending(s, resolved, cycleRecord, subject?.id, key, reception, result == StoryResults.Backfire, pending);
                 applied.Add(resolved);
             }
 
@@ -806,7 +837,7 @@ namespace Gamesim.Simulation
             if (template.play != null) Receipts(s, applied, spread);
 
             string next = result == StoryResults.Backfire ? choice.nextOnBackfire ?? choice.next : choice.next;
-            AdvanceCycle(s, cycle, next, CurrentAnchor(s));
+            AdvanceCycle(s, cycle, next, CurrentAnchor(s), pending);
         }
 
         private static StoryEffectState Substitute(StoryEffectState effect, string picked)
@@ -829,7 +860,7 @@ namespace Gamesim.Simulation
         public const string Waits = "wait";
 
         /// <summary>Moves a cycle on to its next beat, or ends it.</summary>
-        private static void AdvanceCycle(EpisodeState s, StoryCycle cycle, string next, string anchor)
+        private static void AdvanceCycle(EpisodeState s, StoryCycle cycle, string next, string anchor, PendingDialogueCommand pending = null)
         {
             if (!StorylineStatus.Running(cycle.record.status)) return;
             if (string.IsNullOrEmpty(next) || next.StartsWith("end:", StringComparison.Ordinal))
@@ -853,7 +884,7 @@ namespace Gamesim.Simulation
                 // once the player has answered part of it. After a houseguest's own beat (the tone
                 // of a confrontation) the first card is a new ask, and the week's budget holds.
                 bool sameAsk = cycle.record.path.Any(step => step.result != StoryResults.Npc);
-                Fire(s, cycle, beat, anchor ?? CurrentAnchor(s), true, chained: sameAsk);
+                Fire(s, cycle, beat, anchor ?? CurrentAnchor(s), true, chained: sameAsk, pending: pending);
                 return;
             }
             cycle.record.nextAnchor = beat.anchor;

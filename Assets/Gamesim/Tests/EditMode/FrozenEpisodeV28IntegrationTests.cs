@@ -12,7 +12,7 @@ using NUnit.Framework;
 namespace Gamesim.Tests.EditMode
 {
     /// <summary>
-    /// B+ integration, while schema 28 remains current. Reflection reaches the actual internal
+    /// B+ integration retained across schema29. Reflection reaches the actual internal
     /// frozen reader, direct calls prove dispatch wiring, and real temporary slots prove the
     /// checksum/load/save/recovery boundary. The 4,781 internal pure cases remain outside Unity.
     /// Retained fixtures are read-only; all refusal edits are detached JSON controls.
@@ -36,10 +36,13 @@ namespace Gamesim.Tests.EditMode
             var before = new TokenImage(payload);
             Frozen(28, payload);
             var result = EpisodeSaveMigrations.PrepareCurrentPayload(payload, out bool migrated);
-            Assert.That(migrated, Is.False);
+            Assert.That(migrated, Is.True, "Literal28 is historical and must pass its original frozen gate before inert29 defaults.");
             Assert.That(result, Is.Not.SameAs(payload));
-            Assert.That(JToken.DeepEquals(result, payload), Is.True);
-            Assert.That((int)result["schemaVersion"], Is.EqualTo(28));
+            Assert.That(result.ToString(Formatting.None),
+                Is.EqualTo(EpisodeSaveMigrations.UpgradeV28ToV29(payload).ToString(Formatting.None)));
+            Assert.That((int)result["schemaVersion"], Is.EqualTo(29));
+            var inverse28 = (JObject)result.DeepClone(); PersistenceMigrationTests.StripSchema29(inverse28);
+            Assert.That(inverse28.ToString(Formatting.None), Is.EqualTo(payload.ToString(Formatting.None)));
             Assert.That((int)result["unifiedCommitmentRulesVersion"], Is.EqualTo(id.Contains("mode2") ? 2 : 1));
             if (id.Contains("mode2"))
             {
@@ -50,11 +53,9 @@ namespace Gamesim.Tests.EditMode
                 else Assert.That((int)result["phase"], Is.EqualTo(13));
             }
             // No nested token of the detached return belongs to the original tree.
-            var originals = payload.DescendantsAndSelf().ToArray();
-            var copies = result.DescendantsAndSelf().ToArray();
-            Assert.That(result.ToString(Formatting.None), Is.EqualTo(payload.ToString(Formatting.None)));
-            Assert.That(copies.Length, Is.EqualTo(originals.Length));
-            for (int i = 0; i < copies.Length; i++) Assert.That(copies[i], Is.Not.SameAs(originals[i]));
+            var originals = new HashSet<JToken>(payload.DescendantsAndSelf(), TokenIdentity.Instance);
+            foreach (var copy in result.DescendantsAndSelf())
+                Assert.That(originals.Contains(copy), Is.False, "No returned old or new token aliases any retained input token.");
             ((JArray)result["npcSocial"]["beatPlan"]).Add("caller mutation");
             before.AssertUnchanged(payload);
         }
@@ -78,7 +79,9 @@ namespace Gamesim.Tests.EditMode
             for (int attempt = 0; attempt < 2; attempt++)
             {
                 var frozen = Assert.Throws<InvalidDataException>(() => Frozen(28, bad));
-                var dispatch = Assert.Throws<InvalidDataException>(() => EpisodeSaveMigrations.PrepareCurrentPayload(bad, out _));
+                bool migrated = true;
+                var dispatch = Assert.Throws<InvalidDataException>(() => EpisodeSaveMigrations.PrepareCurrentPayload(bad, out migrated));
+                Assert.That(migrated, Is.False);
                 Assert.That(dispatch.Message, Is.EqualTo(frozen.Message));
                 if (defect == "player-edge") Assert.That(dispatch.Message, Is.EqualTo(EdgeReason));
                 before.AssertUnchanged(bad);
@@ -97,8 +100,9 @@ namespace Gamesim.Tests.EditMode
             var current = EpisodeSaveMigrations.PrepareCurrentPayload(original, out bool migrated);
             Assert.That(migrated, Is.True);
             Assert.That(current, Is.Not.SameAs(original));
-            Assert.That(JToken.DeepEquals(current, expected), Is.True);
-            Assert.That((int)current["schemaVersion"], Is.EqualTo(28));
+            Assert.That(current.ToString(Formatting.None),
+                Is.EqualTo(EpisodeSaveMigrations.UpgradeV28ToV29(expected).ToString(Formatting.None)));
+            Assert.That((int)current["schemaVersion"], Is.EqualTo(29));
             Assert.That((int)current["allWeekRulesStartWeek"], Is.Zero);
             Assert.That((int)current["allianceLeakRulesStartWeek"], Is.Zero);
             Assert.That((int)current["pactPlanRulesStartWeek"], Is.Zero);
@@ -137,7 +141,9 @@ namespace Gamesim.Tests.EditMode
             Assert.That(slot.Store.TryLoad(out var loaded, out string message), Is.True, message);
             Assert.That(File.ReadAllBytes(slot.Store.SavePath), Is.EqualTo(source), "Loading is read-only.");
             var loadedImage = Payload(loaded);
-            Frozen(28, loadedImage);
+            Assert.That((int)loadedImage["schemaVersion"], Is.EqualTo(29));
+            var historical28 = (JObject)loadedImage.DeepClone(); PersistenceMigrationTests.StripSchema29(historical28);
+            Frozen(28, historical28);
             slot.Store.Save(loaded);
             Assert.That(File.ReadAllBytes(slot.Store.BackupPath), Is.EqualTo(source), "Rotation retains the exact writer envelope.");
             Assert.That(slot.Store.TryLoad(out var again, out message), Is.True, message);
@@ -263,10 +269,13 @@ namespace Gamesim.Tests.EditMode
             Assert.That(witnessed.allWeekRulesStartWeek, Is.EqualTo(1));
             var payload = Payload(witnessed);
             var beforePayload = new TokenImage(payload);
-            Frozen(28, payload);
-            var prepared = EpisodeSaveMigrations.PrepareCurrentPayload(payload, out bool migrated);
-            Assert.That(migrated, Is.False);
-            Assert.That(JToken.DeepEquals(prepared, payload), Is.True);
+            var historical28 = (JObject)payload.DeepClone(); PersistenceMigrationTests.StripSchema29(historical28);
+            var beforeHistorical = new TokenImage(historical28);
+            Frozen(28, historical28);
+            var prepared = EpisodeSaveMigrations.PrepareCurrentPayload(historical28, out bool migrated);
+            Assert.That(migrated, Is.True);
+            Assert.That(prepared.ToString(Formatting.None), Is.EqualTo(payload.ToString(Formatting.None)));
+            beforeHistorical.AssertUnchanged(historical28);
             beforePayload.AssertUnchanged(payload);
             using var slot = new Slot();
             slot.Store.Save(witnessed);
@@ -315,6 +324,13 @@ namespace Gamesim.Tests.EditMode
             var serializer = (JsonSerializer)typeof(EpisodeSaveStore).Assembly.GetType("Gamesim.Persistence.SaveJson", true)
                 .GetMethod("Serializer", BindingFlags.Public | BindingFlags.Static).Invoke(null, null);
             return JObject.FromObject(state, serializer);
+        }
+
+        private sealed class TokenIdentity : IEqualityComparer<JToken>
+        {
+            internal static readonly TokenIdentity Instance = new TokenIdentity();
+            public bool Equals(JToken first, JToken second) => ReferenceEquals(first, second);
+            public int GetHashCode(JToken token) => System.Runtime.CompilerServices.RuntimeHelpers.GetHashCode(token);
         }
 
         private sealed class TokenImage

@@ -61,16 +61,29 @@ namespace Gamesim.Episode
                 hud.Paragraph(EpisodeHud.LobbyAskCaption(state, npc.name, ask, subject) + ". How do you put it?");
                 OddsAreYourRead(state, npc);
                 bool forYourself = subject == state.playerId;
+                bool paidCampaign = DialogueRules.On(state) && state.phase == EpisodePhase.Campaign
+                    && ask == LobbyAsk.Vote && forYourself;
+                if (paidCampaign)
+                    hud.Paragraph("A desperate plea starts a conversation for one action. Its replies and final plea cost no further actions; you can walk away and return.");
                 foreach (string approach in LobbyApproach.All)
                 {
                     string how = approach;
                     string tag = KnownOdds.Plea(state, decider, ask, subject, how).word
                         + (how == LobbyApproach.Deal ? " · binds you next week" : how == LobbyApproach.Pressure ? " · can backfire" : "");
-                    hud.Tag(hud.Action(EpisodeHud.LobbyApproachCaption(how, forYourself), () =>
+                    bool entry = paidCampaign && how == LobbyApproach.Emotional;
+                    bool available = !entry || DialogueRules.TryBuildEntryCommand(state, decider, out _);
+                    string caption = EpisodeHud.LobbyApproachCaption(how, forYourself);
+                    var button = available ? hud.Action(caption, () =>
                     {
                         ClearLobbyDraft();
-                        Commit(state, EpisodeCommandKind.Lobby, decider, subject, text: LobbyAsk.Encode(ask, how));
-                    }), tag);
+                        if (entry)
+                        {
+                            if (DialogueRules.TryBuildEntryCommand(state, decider, out var plan))
+                                Commit(state, plan.kind, plan.targetId, plan.secondTargetId, text: plan.text);
+                        }
+                        else Commit(state, EpisodeCommandKind.Lobby, decider, subject, text: LobbyAsk.Encode(ask, how));
+                    }) : hud.LockedAction(caption);
+                    hud.Tag(button, available ? tag : "Finish the existing house moment first");
                 }
                 hud.Action(EpisodeHud.LobbyBackCaption, () => { ClearLobbyDraft(); Render(); });
                 return;
@@ -123,8 +136,7 @@ namespace Gamesim.Episode
                 hud.Heading("AN OFFER FROM " + from.name.ToUpperInvariant());
                 hud.Paragraph(DealSentence(state, offer));
                 OfferAccept(state, offer);
-                hud.ActionFor(id, EpisodeHud.DealDeclineCaption,
-                    () => Commit(state, EpisodeCommandKind.RespondToDeal, id, text: "decline"));
+                OfferDecline(state, offer);
             }
         }
 
@@ -144,14 +156,21 @@ namespace Gamesim.Episode
             if (offer.type == DealKind.AllianceInvite && EpisodeEngine.InvitationPastPactCap(state, offer.proposerId))
             {
                 hud.Paragraph(PactCapOfferLine(state, offer.proposerId));
-                return hud.LockedAction(EpisodeHud.DealAcceptCaption);
+                return hud.DescribeOfferControl(hud.LockedAction(EpisodeHud.DealAcceptCaption), state, offer, true);
             }
             string promised = offer.type == DealKind.VetoUse ? VetoPromisedTo(state, offer.proposerId) : null;
             if (promised == null)
-                return hud.ActionFor(id, EpisodeHud.DealAcceptCaption,
-                    () => Commit(state, EpisodeCommandKind.RespondToDeal, id, text: EpisodeEngine.AcceptDeal));
+                return hud.DescribeOfferControl(hud.ActionFor(id, EpisodeHud.DealAcceptCaption,
+                    () => Commit(state, EpisodeCommandKind.RespondToDeal, id, text: EpisodeEngine.AcceptDeal)), state, offer, true);
             hud.Paragraph(VetoSavesOneLine(state, promised, offer.proposerId));
-            return hud.LockedAction(EpisodeHud.DealAcceptCaption);
+            return hud.DescribeOfferControl(hud.LockedAction(EpisodeHud.DealAcceptCaption), state, offer, true);
+        }
+
+        private UnityEngine.UI.Button OfferDecline(EpisodeState state, DealState offer)
+        {
+            string id = offer.id;
+            return hud.DescribeOfferControl(hud.ActionFor(id, EpisodeHud.DealDeclineCaption,
+                () => Commit(state, EpisodeCommandKind.RespondToDeal, id, text: "decline")), state, offer, false);
         }
 
         /// <summary>

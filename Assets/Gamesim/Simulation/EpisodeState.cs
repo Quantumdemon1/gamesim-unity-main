@@ -244,7 +244,7 @@ namespace Gamesim.Simulation
     [Serializable]
     public sealed class EpisodeState
     {
-        public int schemaVersion = 28;
+        public int schemaVersion = 29;
         public int competitionRulesVersion = 1;
         public string sessionId;
         public uint seed, randomState;
@@ -510,6 +510,11 @@ namespace Gamesim.Simulation
         /// <summary>Schema 28: the week D2's all-week NPC beats (<see cref="NpcSocialState.beatPlan"/>) begin; 0 for never.</summary>
         public int allWeekRulesStartWeek;
 
+        // Schema 29: append-only storage for the reviewed dialogue contract. This foundation
+        // admits only rule 0 and empty storage; fresh enrollment is not implemented here.
+        public int dialogueRulesVersion;
+        public DialogueState dialogue = new DialogueState();
+
         public ContestantState Find(string id) => contestants.FirstOrDefault(c => c.id == id);
         public IEnumerable<ContestantState> Active => contestants.Where(c => c.status == ContestantStatus.Active);
         public double Score(string from, string to) => relationships.FirstOrDefault(r => r.fromId == from && r.toId == to)?.score ?? 0;
@@ -567,6 +572,7 @@ namespace Gamesim.Simulation
             // Deep, like every list above: a rejected candidate command must leave nothing behind.
             copy.story = story?.Clone();
             copy.ledger = ledger?.Clone();
+            copy.dialogue = dialogue?.Clone();
             copy.windowActions = windowActions == null ? null : new List<int>(windowActions);
             return copy;
         }
@@ -687,7 +693,11 @@ namespace Gamesim.Simulation
         /// D2: the house telling the engine the player saw an NPC act - <c>targetId</c> the actor,
         /// <c>secondTargetId</c> the partner, <c>text</c> the act's id. Free, like <see cref="WitnessProximity"/>.
         /// </summary>
-        WitnessNpcAct
+        WitnessNpcAct,
+        /// <summary>Accept the first paid dialogue choice, under its explicit saved rule.</summary>
+        StartDialogue,
+        /// <summary>Continue an already funded dialogue by its exact episode, node and option.</summary>
+        ChooseDialogue
     }
 
     /// <summary>

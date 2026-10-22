@@ -121,7 +121,11 @@ namespace Gamesim.Simulation
         public static bool TryGive(EpisodeState state, string npcId) => TryGive(state, npcId, true, out _);
 
         /// <summary>The same, the positional branches only where <paramref name="positional"/> (<see cref="Offer(EpisodeState, string, string, bool)"/>), and who was given it.</summary>
-        public static bool TryGive(EpisodeState state, string npcId, bool positional, out string toId)
+        public static bool TryGive(EpisodeState state, string npcId, bool positional, out string toId) =>
+            TryGive(state, npcId, positional, null, out toId);
+
+        internal static bool TryGive(EpisodeState state, string npcId, bool positional,
+            EpisodeEngine.PendingDialogueCommand pending, out string toId)
         {
             toId = null;
             if (UnifiedVoteStore.PromiseCount(state) >= PromiseCeiling) return false;
@@ -134,7 +138,7 @@ namespace Gamesim.Simulation
                 .ThenBy(candidate => candidate.id, StringComparer.Ordinal)
                 .FirstOrDefault();
 
-            if (chosen == null || !Give(state, npcId, chosen.id, chosen.kind.Value)) return false;
+            if (chosen == null || !Give(state, npcId, chosen.id, chosen.kind.Value, pending)) return false;
             toId = chosen.id;
             return true;
         }
@@ -146,7 +150,8 @@ namespace Gamesim.Simulation
             UnifiedVoteStore.Promises(state).Any(p => p.fromId == from && p.toId == to && p.kind == kind
                                     && p.status == PromiseStatus.Active);
 
-        private static bool Give(EpisodeState state, string from, string to, PromiseKind kind)
+        private static bool Give(EpisodeState state, string from, string to, PromiseKind kind,
+            EpisodeEngine.PendingDialogueCommand pending)
         {
             var promise = new PromiseState
             {
@@ -170,7 +175,7 @@ namespace Gamesim.Simulation
             // given, as a refused safety word is not, and its ledger line is never written.
             else if (UnifiedVoteStore.On(state) && kind == PromiseKind.Vote)
             {
-                if (!UnifiedVoteStore.TryAddPromise(state, promise, UnifiedCommitments.NpcPromise, out _)) return false;
+                if (!UnifiedVoteStore.TryAddPromise(state, promise, UnifiedCommitments.NpcPromise, pending, out _)) return false;
             }
             else state.promises.Add(promise);
 

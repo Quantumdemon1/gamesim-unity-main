@@ -16,7 +16,13 @@
 # Studio shutdown ownership adds three native Edit cases (8104 + 3).
 # Frozen28 dispatch/SaveStore integration adds 23 native cases (8107 + 23 = 8130).
 # Frozen28 resolver cache safety adds three shared native/pure cases (8130 + 3 = 8133).
-Gamesim.EditModeTests 8133
+# R1 inert schema29 shape/clone controls add30 shared and strict migration/store adds35 native.
+# This is the unpublished rule0 foundation, not enabled dialogue/role/AP acceptance.
+# Source-bound current29/retained28 observer controls add32 shared; strict native inverse adds8.
+# Existing current/historical oracle and live-harness cases are preserved, not removed or skipped.
+# Typed current-only historical reader controls add13 shared; exact full-wire controls add2 native.
+# Retain every original case and add all15; no historical oracle, reader or golden is rebaselined.
+Gamesim.EditModeTests 8253
 # The UMA-free build. 1215 = 1236, the count after the consolidation's lanes (S2a, S2b, S4a), less the 7
 # farewell probes moved to Gamesim.DiagnosticsPlayModeTests and the 14 farewell readiness tests that now
 # compile only under GAMESIM_UMA (judged on the UMA cast); 1230 = 1215 + S2d's 7, S4b's 2, S4c's 2 and
@@ -67,4 +73,7 @@ Gamesim.Uma.DiagnosticsPlayModeTests 10
 # The same 17 display-name cases are included in this subset (5358 + 17).
 # Frozen28 retains 4781 archived cases plus 26 independent literal cases (5375 + 4781 + 26 = 10182).
 # The same three resolver cache cases are additive here (10182 + 3 = 10185).
-Gamesim.SimulationTests 10185
+# R1's same30 shared schema29 shape/clone/foundation controls are additive (10185 + 30).
+# The same32 source-bound observer controls are additive here (10215 + 32).
+# The same13 typed current-only observer controls are additive here (10247 + 13).
+Gamesim.SimulationTests 10260

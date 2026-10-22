@@ -38,6 +38,16 @@ namespace Gamesim.Tests.EditMode
             return trace26;
         }
 
+        /// <summary>Literal28 field checks only; current29 callers must first bind and validate their own source.</summary>
+        internal static JObject CheckFields(JObject trace) => Fields(trace, out _);
+
+        /// <summary>The identical literal28 field checks, returning detached trace26 with getters retained.</summary>
+        internal static JObject ProjectFields(JObject trace)
+        {
+            Fields(trace, out var trace26);
+            return trace26;
+        }
+
         private static JObject Check(EpisodeState state, JObject trace, out JObject trace26)
         {
             trace26 = null;
@@ -45,8 +55,27 @@ namespace Gamesim.Tests.EditMode
             {
                 Require(state != null && trace != null, "A source state and its default trace are required.");
                 LegacyDigestSchema27Observer.RequireValidSource(state);
-                Require(Integer(trace["schemaVersion"], 28), "Only literal schema28 is an observer input.");
                 string originalTrace = Json(trace), originalState = Json(JObject.FromObject(state));
+                var field28 = Fields(trace, out trace26);
+                // Bound last as before: unknown members reach the fixed contracts first.
+                LegacyDigestSchema27Observer.RequireOwnTrace(state, trace);
+                Require(Json(trace) == originalTrace && Json(JObject.FromObject(state)) == originalState,
+                    "The source state, trace, fields and property/list order must remain unchanged.");
+                return field28;
+            }
+            catch (Exception error) when (error is JsonException || error is OverflowException
+                || error is ArgumentException || error is InvalidOperationException || error is FormatException)
+            { throw new InvalidDataException("The schema28 digest observer exceeds its fixed contract.", error); }
+        }
+
+        private static JObject Fields(JObject trace, out JObject trace26)
+        {
+            trace26 = null;
+            try
+            {
+                Require(trace != null, "A default trace is required.");
+                Require(Integer(trace["schemaVersion"], 28), "Only literal schema28 is an observer input.");
+                string originalTrace = Json(trace);
 
                 Require(trace["npcSocial"] is JObject && trace["ledger"] is JObject, "The NPC world and the ledger must be stored objects.");
                 foreach (string name in RootFields) Require(Integer(trace[name], 0), "A Wave D start week must be present integer zero: " + name);
@@ -67,10 +96,7 @@ namespace Gamesim.Tests.EditMode
                     "The historical projection must have the exact Wave D literal/header structural and order inverse.");
 
                 trace26 = LegacyDigestSchema27Observer.ProjectFields(trace27);
-                // Bound last, so no unknown member was filtered away before the fixed contracts saw it.
-                LegacyDigestSchema27Observer.RequireOwnTrace(state, trace);
-                Require(Json(trace) == originalTrace && Json(JObject.FromObject(state)) == originalState,
-                    "The source state, trace, fields and property/list order must remain unchanged.");
+                Require(Json(trace) == originalTrace, "The trace, fields and property/list order must remain unchanged.");
                 return field28;
             }
             catch (Exception error) when (error is JsonException || error is OverflowException

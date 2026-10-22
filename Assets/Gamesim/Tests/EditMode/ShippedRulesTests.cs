@@ -62,6 +62,7 @@ namespace Gamesim.Tests.EditMode
             { "allianceLeakRulesStartWeek", 1 },
             { "pactPlanRulesStartWeek", 1 },
             { "allWeekRulesStartWeek", 1 },
+            { "dialogueRulesVersion", 0 },
             { "npcSocial.rulesStartWeek", 1 },
             { "story.rulesStartWeek", 1 },
             { "story.rulesVersion", 9 },
@@ -141,16 +142,16 @@ namespace Gamesim.Tests.EditMode
         }
 
         /// <summary>
-        /// The schema-29 tripwire (vote family V6's review). Since V6 every fresh season plays mode 2, so players'
-        /// schema-28 saves hold the whole mode-2 Vote core, which no frozen contract holds yet: the save contract
-        /// freezes at 28 (the lead's decision D2). Whoever bumps the live schema must freeze that core into
-        /// FrozenEpisodeV28 and load a mode-2 schema-28 save through it, then move this pin with them.
+        /// The schema-29 tripwire (vote family V6's review) is now discharged by the independent
+        /// FrozenEpisodeV28 contract and literal mode-2 save migration controls. Keep this original
+        /// case identifier as the historical gate; pin only the current header here. The unpublished
+        /// schema29 foundation deliberately leaves dialogue off until the full semantic owner lands.
         /// </summary>
         [Test]
         public void TheLiveSchemaStaysAt28UntilFrozenEpisodeV28FreezesTheModeTwoCore()
         {
-            Assert.That(new EpisodeState().schemaVersion, Is.EqualTo(28),
-                "Bumping past 28: FrozenEpisodeV28 must freeze the whole mode-2 core (vote family V6, D2) and load a mode-2 schema-28 save.");
+            Assert.That(new EpisodeState().schemaVersion, Is.EqualTo(29),
+                "The independent frozen28 gate and real literal mode-2 migration controls are required before this current pin moves.");
         }
 
         /// <summary>Fresh seasons only: the economy refuses a season that has been played, so ApplyFresh does too.</summary>

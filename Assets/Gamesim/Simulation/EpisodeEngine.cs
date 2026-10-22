@@ -61,9 +61,12 @@ namespace Gamesim.Simulation
             if (double.IsNaN(command.performance) || double.IsInfinity(command.performance) || command.performance < 0 || command.performance > 1)
                 return Rejected("Competition input must be between zero and one.");
             var next = current.Clone();
+            PendingDialogueCommand pending = null;
             try
             {
-                Execute(next, command);
+                applyingDialogueCandidate = next;
+                pending = PreparePaidCampaignCommand(next, command);
+                Execute(next, command, pending);
                 // Under the all-week rules (D2, WAVE-D-NPC-PACTS-PLAN §1) the house catches up after the
                 // command's own effects, inside the same candidate, so a pact a beat forms is reconciled and
                 // validated with it. Player-free where the command put a counter on the table (decision 6).
@@ -71,13 +74,15 @@ namespace Gamesim.Simulation
                 if (AllWeekOn(next))
                 {
                     beatsFrom = next.nextSequence;
-                    CatchUp(next, CounterOnTheTable(next, current.nextSequence));
+                    CatchUp(next, CounterOnTheTable(next, current.nextSequence), pending?.SealedFor(next));
                 }
                 CancelInvalidNpcConversations(next);
                 ReconcileAllianceRows(next);
+                if (pending != null) Require(pending.Verify(next, out string pendingError), pendingError);
                 next.revision = checked(current.revision + 1);
                 next.acceptedCommandIds.Add(command.id);
                 if (next.acceptedCommandIds.Count > 256) next.acceptedCommandIds.RemoveAt(0);
+                pending?.Retire();
                 if (!Valid(next, out var error)) throw new RuleException("Candidate rejected: " + error);
                 current = next;
                 return new CommandResult { accepted = true, reason = "Committed", state = Snapshot, beatsFromSequence = beatsFrom };
@@ -90,16 +95,21 @@ namespace Gamesim.Simulation
             // escapes, as every one does in modes 0 and 1, which keep their error path exactly.
             catch (ArgumentException error) when (UnifiedVoteStore.On(current) && CommitmentReferences.IsStorageRefusal(error))
             { return Rejected(error.Message); }
+            finally { pending?.Retire(); applyingDialogueCandidate = null; }
         }
 
         private CommandResult Rejected(string reason) => new CommandResult { reason = reason, state = Snapshot };
 
-        private static void Execute(EpisodeState s, EpisodeCommand c)
+        private static void Execute(EpisodeState s, EpisodeCommand c, PendingDialogueCommand pending = null)
         {
             Require(s.phase != EpisodePhase.Finished, "This season is complete. Start a new season to play again.");
             switch (c.kind)
             {
-                case EpisodeCommandKind.Advance: Advance(s); break;
+                case EpisodeCommandKind.Advance: Advance(s, pending); break;
+                case EpisodeCommandKind.StartDialogue:
+                case EpisodeCommandKind.ChooseDialogue:
+                    Require(pending != null, "A source-owned dialogue command is required.");
+                    pending.ResolveChoice(s); break;
                 case EpisodeCommandKind.Compete:
                     Require(IsCompetition(s.phase) && !s.competitionResolved, "No unresolved competition is available.");
                     ResolveCompetition(s, c.performance); break;
@@ -216,7 +226,7 @@ namespace Gamesim.Simulation
                 case EpisodeCommandKind.SkipDiary: ResolveDiary(s, c, false); break;
                 case EpisodeCommandKind.SwearLoyalty: ResolveOathOpportunity(s, c, true); break;
                 case EpisodeCommandKind.DeclineLoyalty: ResolveOathOpportunity(s, c, false); break;
-                case EpisodeCommandKind.Lobby: Lobby(s, c); break;
+                case EpisodeCommandKind.Lobby: Lobby(s, c, pending); break;
                 // Not a social action: the houseguest came to the player, as an offer does.
                 case EpisodeCommandKind.ReplyToHouseguest: ReplyToHouseguest(s, c); break;
                 // Free, like a reply: a question is not an action, and the read is the play.
@@ -273,7 +283,7 @@ namespace Gamesim.Simulation
                                        && !(StoryAt(s, StoryRules.Production) && Production.SitsOut(s, c.id)));
         }
 
-        private static void Advance(EpisodeState s)
+        private static void Advance(EpisodeState s, PendingDialogueCommand pending = null)
         {
             switch (s.phase)
             {
@@ -406,7 +416,7 @@ namespace Gamesim.Simulation
                 case EpisodePhase.Campaign:
                     // The campaign's last beats, before the house votes (D2, §1).
                     Close(s);
-                    if (StoryOn(s)) StoryLapse(s, StoryAnchors.EvictionEve);
+                    if (StoryOn(s)) StoryLapse(s, StoryAnchors.EvictionEve, pending);
                     // Campaigning IS the reference build's interaction stage — last conversations
                     // and vote-wrangling — so eviction night opens on the speeches rather than
                     // repeating a stage the season has just spent a whole phase on.
@@ -417,7 +427,7 @@ namespace Gamesim.Simulation
                     // to describe a new stage would break a replay comparison for no gain.
                     Log(s, "campaign-close", "Campaigning has closed. The house votes privately to evict.");
                     Phase(s, EpisodePhase.Eviction);
-                    StoryAnchor(s, StoryAnchors.EvictionEve);
+                    StoryAnchor(s, StoryAnchors.EvictionEve, pending?.SealedFor(s));
                     // Under the commitment rules (C1) an information deal passes its reading: last in
                     // the step, as the house is about to vote and nothing more is campaigned.
                     if (CommitmentRulesOn(s)) PassTheReadings(s);
@@ -1649,6 +1659,7 @@ namespace Gamesim.Simulation
         private static void OfferHouseEvent(EpisodeState s)
         {
             if (!HouseEvents.Ready(s)) return;
+            if (!DialogueRoomForEvent(s)) return;
 
             // The season's own state first. An emergent situation is about something the player has
             // spent weeks building, and a catalogue entry drawn over the top of it would be the
@@ -1686,6 +1697,7 @@ namespace Gamesim.Simulation
         {
             if (!HouseEvents.Ready(s)) return;
             if (!Storylines.Ready(s)) return;
+            if (!DialogueRoomForEvent(s) || DialogueRules.On(s) && s.storylines.Count >= 100) return;
             if (!Storylines.Begin(s, Roll(s), s.nextSequence, out var story, out var chapter)) return;
 
             // Both or neither. A record whose chapter went missing is a story nobody can answer.
@@ -1705,6 +1717,7 @@ namespace Gamesim.Simulation
         {
             if (s.week < s.eventRulesStartWeek) return;
             if (s.houseEvents.Count >= HouseEvents.Ceiling) return;
+            if (!DialogueRoomForEvent(s)) return;
             if (s.Active.Count(c => !c.isPlayer) == 0) return;
             if (s.houseEvents.Any(e => e.kind == HouseEventKind.Ambient && e.week == s.week)) return;
 
@@ -1770,12 +1783,16 @@ namespace Gamesim.Simulation
         {
             if (StoryOn(s)) { StoryProximity(s, c); return; }
             Require(HouseEvents.Ready(s), "Nothing more is going to happen this week.");
+            Require(DialogueRoomForEvent(s), "The remaining event space is reserved for your conversation.");
             Require(HouseEvents.Pending(s) == null, "Deal with what is already in front of you first.");
             var drawn = HouseEventSources.Proximity(s, c.targetId, c.secondTargetId, c.text, s.nextSequence);
             Require(drawn != null, "There is nobody there to walk in on.");
             s.houseEvents.Add(drawn);
             Log(s, "house-event", drawn.title + ". " + drawn.narrative, s.playerId);
         }
+
+        private static bool DialogueRoomForEvent(EpisodeState s) => !DialogueRules.On(s)
+            || s.houseEvents.Count + 1 + DialogueRules.ReservedEvents(s) <= 400;
 
         /// <summary>
         /// The player answering a situation.

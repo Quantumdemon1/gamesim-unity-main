@@ -14,7 +14,7 @@ using NUnit.Framework;
 namespace Gamesim.Tests.EditMode
 {
     /// <summary>
-    /// Current schema28 mode0/1 compatibility with the complete fixed former25 contract.
+    /// Current schema29 mode0/1 compatibility with the complete fixed former25 contract.
     /// Every positive role, election, duty and hearing is factory/public-Apply produced. Only
     /// fresh rule selection precedes construction; later JSON corruption is explicitly negative.
     /// The explicit neutral bridge is NOT retained historical evidence; the separate immutable
@@ -480,7 +480,7 @@ namespace Gamesim.Tests.EditMode
         {
             string original = Text(payload);
             Assert.That(payload["schemaVersion"]?.Type, Is.EqualTo(JTokenType.Integer));
-            Assert.That((int)payload["schemaVersion"], Is.EqualTo(28));
+            Assert.That((int)payload["schemaVersion"], Is.EqualTo(29));
             Assert.DoesNotThrow(() => ValidateCurrentShape(payload));
             var state = payload.ToObject<EpisodeState>(Serializer()); string beforeState = Text(Payload(state));
             Assert.That(EpisodeValidation.TryValidate(state, out string reason), Is.True, reason);
@@ -500,6 +500,7 @@ namespace Gamesim.Tests.EditMode
             {
                 row.Add("targetId", JValue.CreateNull()); row.Add("subtype", JValue.CreateNull());
                 row.Add("voteBindingWeek", 0); row.Add("voteFirstRevealWeek", 0);
+                row.Add("conditionalVeto", JValue.CreateNull());
             }
             current.Add("unifiedVoteReveals", new JArray());
             // Schema 28's inert Wave D storage: three zero start weeks, D2's empty cadence, D3's empty plans.
@@ -508,7 +509,12 @@ namespace Gamesim.Tests.EditMode
             social.Add("beatWeek", 0); social.Add("beatWindow", -1); social.Add("beatsFired", 0); social.Add("beatSeats", 0);
             social.Add("beatPlan", new JArray()); social.Add("acts", new JArray());
             ((JObject)current["ledger"]).Add("plans", new JArray());
-            current["schemaVersion"] = 28;
+            // Schema29's shape-only companion literals preserve even a malformed former
+            // semantic tree. This is not production migration or authority to repair it.
+            current.Add("dialogueRulesVersion", 0);
+            current.Add("dialogue", new JObject {
+                ["episodes"] = new JArray(), ["grants"] = new JArray(), ["vetoOccasions"] = new JArray() });
+            current["schemaVersion"] = 29;
             Assert.That(Text(former), Is.EqualTo(original)); return current;
         }
         private static JObject NeutralFormer25(JObject current)
@@ -520,9 +526,12 @@ namespace Gamesim.Tests.EditMode
             Assert.That((int)current["unifiedHearingRulesVersion"], Is.InRange(0, 1));
             Assert.That(current["unifiedVoteReveals"], Is.TypeOf<JArray>());
             Assert.That((JArray)current["unifiedVoteReveals"], Is.Empty);
-            // The native current28->27->26 helpers prove actual full validation, fixed27 and fixed26
-            // acceptance and the real additive migration inverses BEFORE removing anything.
-            var former = (JObject)current.DeepClone(); PersistenceMigrationTests.StripSchema27(former);
+            // The native current29->28 admission proves complete current validity and literal
+            // new-field neutrality before complete Frozen28 sees the historical view. The
+            // following exact28->27->26 chain retains the independent older contracts.
+            var former = (JObject)current.DeepClone(); PersistenceMigrationTests.StripSchema29(former);
+            Assert.That((int)former["schemaVersion"], Is.EqualTo(28));
+            PersistenceMigrationTests.StripSchema27(former);
             Assert.That((int)former["schemaVersion"], Is.EqualTo(26)); former.Remove("unifiedVoteReveals");
             foreach (JObject row in (JArray)former["unifiedCommitments"])
             {
@@ -568,7 +577,7 @@ namespace Gamesim.Tests.EditMode
         {
             string original = Text(payload);
             JObject former;
-            if (payload["schemaVersion"]?.Type == JTokenType.Integer && (int)payload["schemaVersion"] == 28)
+            if (payload["schemaVersion"]?.Type == JTokenType.Integer && (int)payload["schemaVersion"] == 29)
                 former = NeutralFormer25(payload);
             else
             {
@@ -594,9 +603,14 @@ namespace Gamesim.Tests.EditMode
             var current = LiftFormer25(payload); string currentOriginal = Text(current);
             Assert.DoesNotThrow(() => ValidateCurrentShape(current));
             var state = current.ToObject<EpisodeState>(Serializer());
+            Assert.That(state.schemaVersion, Is.EqualTo(29), "The semantic companion must reach the supported current owner.");
+            string beforeState = Text(Payload(state));
             Assert.That(EpisodeValidation.TryValidate(state, out string reason), Is.False, "The source-valid baseline has a real former25 invariant defect.");
             Assert.That(reason, Is.Not.Empty);
-            Assert.That(reason, Does.Not.Contain("Unsupported episode schema"), "The companion's literal28 header must not substitute for the intended semantic defect.");
+            Assert.That(reason, Does.Not.Contain("Unsupported episode schema"), "The companion's current header must not substitute for the intended semantic defect.");
+            var native = Assert.Throws<InvalidDataException>(() => EpisodeSaveValidation.Validate(state));
+            Assert.That(native.Message, Is.EqualTo(reason), "Native validation must preserve the actual current semantic refusal.");
+            Assert.That(Text(Payload(state)), Is.EqualTo(beforeState));
             Assert.That(Text(current), Is.EqualTo(currentOriginal));
             Assert.That(Text(payload), Is.EqualTo(original));
             Reject(payload);
@@ -835,7 +849,7 @@ namespace Gamesim.Tests.EditMode
 
         private static void AssertMode(EpisodeState state, int mode)
         {
-            Assert.That(state.schemaVersion, Is.EqualTo(28));
+            Assert.That(state.schemaVersion, Is.EqualTo(29));
             Assert.That((int)NeutralFormer25(Payload(state))["schemaVersion"], Is.EqualTo(25));
             Assert.That(state.unifiedCommitmentRulesVersion, Is.EqualTo(mode == 0 ? 0 : 1));
             Assert.That(state.unifiedHearingRulesVersion, Is.EqualTo(mode == 2 ? 1 : 0));

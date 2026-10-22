@@ -18,7 +18,12 @@ namespace Gamesim.Tests.EditMode
         {
             var state = ContentCatalog.Create(seed);
             // A fresh season is written at whatever the current schema is, not at this file's step.
-            Assert.That(state.schemaVersion, Is.EqualTo(28));
+            Assert.That(state.schemaVersion, Is.EqualTo(29));
+            Assert.That(state.dialogueRulesVersion, Is.Zero);
+            Assert.That(state.dialogue, Is.Not.Null);
+            Assert.That(state.dialogue.episodes, Is.Not.Null.And.Empty);
+            Assert.That(state.dialogue.grants, Is.Not.Null.And.Empty);
+            Assert.That(state.dialogue.vetoOccasions, Is.Not.Null.And.Empty);
             Assert.That(state.npcSocial.rulesStartWeek, Is.EqualTo(1));
             Assert.That(state.npcSocial.randomState, Is.EqualTo(SeededRandom.HashSeed("gamesim:npc-social:v1:" + seed.ToString("x8", System.Globalization.CultureInfo.InvariantCulture))));
             Assert.That(state.randomState, Is.EqualTo(seed == 0 ? 0x6D2B79F5u : seed));

@@ -183,7 +183,11 @@ namespace Gamesim.Simulation
         /// the window the block is set in. Returns the act, without the id, room, window or tick the engine
         /// gives it; it moves what the verb moves and records nothing of its own.</para>
         /// </summary>
-        public static NpcActState Beat(EpisodeState state, string npcId, Func<double> roll, bool playerFree, bool positional)
+        public static NpcActState Beat(EpisodeState state, string npcId, Func<double> roll, bool playerFree, bool positional) =>
+            Beat(state, npcId, roll, playerFree, positional, null);
+
+        internal static NpcActState Beat(EpisodeState state, string npcId, Func<double> roll, bool playerFree, bool positional,
+            EpisodeEngine.PendingDialogueCommand pending)
         {
             if (state == null) throw new ArgumentNullException(nameof(state));
             if (roll == null) throw new ArgumentNullException(nameof(roll));
@@ -205,7 +209,7 @@ namespace Gamesim.Simulation
                 return new NpcActState { kind = NpcActKinds.Pact, actorId = npcId, partnerId = formed.members.FirstOrDefault(id => id != npcId) };
             }
             // A word, once a week.
-            if (!mine.Any(a => a.kind == NpcActKinds.Promise) && NpcPromises.TryGive(state, npcId, positional, out string toId))
+            if (!mine.Any(a => a.kind == NpcActKinds.Promise) && NpcPromises.TryGive(state, npcId, positional, pending, out string toId))
                 return new NpcActState { kind = NpcActKinds.Promise, actorId = npcId, partnerId = toId };
             // The agenda's pursuit, once a week, so a fixed target cannot compound.
             if (!PursuitSpent(state, npcId, mine))

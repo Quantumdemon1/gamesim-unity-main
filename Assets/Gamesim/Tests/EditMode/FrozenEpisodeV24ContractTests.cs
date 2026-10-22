@@ -44,12 +44,12 @@ namespace Gamesim.Tests.EditMode
             if (payload["schemaVersion"]?.Type == JTokenType.Integer && (long)payload["schemaVersion"] == 27)
             {
                 // Keep literal former-current27 refusal, plus separate proofs that the former27 dispatch
-                // refuses an unknown 28 and the actual current28 dispatch an unknown 29 (W28).
+                // refuses an unknown28 and the actual current29 dispatch an unknown30.
                 Assert.Throws<InvalidDataException>(() => EpisodeSaveMigrations.PrepareV26Payload(payload, out _));
                 Assert.Throws<InvalidDataException>(() => EpisodeSaveMigrations.PrepareCurrentPayload(payload, out _));
                 var former27Future = (JObject)payload.DeepClone(); former27Future["schemaVersion"] = 28;
                 Assert.Throws<InvalidDataException>(() => EpisodeSaveMigrations.PrepareV27Payload(former27Future, out _));
-                var future = (JObject)payload.DeepClone(); future["schemaVersion"] = 29;
+                var future = (JObject)payload.DeepClone(); future["schemaVersion"] = 30;
                 Assert.Throws<InvalidDataException>(() => EpisodeSaveMigrations.PrepareCurrentPayload(future, out _));
             }
             else Assert.Throws<InvalidDataException>(() => EpisodeSaveMigrations.PrepareCurrentPayload(payload, out _));

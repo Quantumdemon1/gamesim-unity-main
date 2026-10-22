@@ -484,8 +484,7 @@ namespace Gamesim.Episode
                 // A locked yes is not a strategic move the player can make, so it carries no category.
                 var accept = OfferAccept(state, offer);
                 if (accept.interactable) hud.Tag(accept, Category(EpisodeCommandKind.RespondToDeal));
-                hud.ActionFor(id, EpisodeHud.DealDeclineCaption,
-                    () => Commit(state, EpisodeCommandKind.RespondToDeal, id, text: "decline"));
+                OfferDecline(state, offer);
             }
 
             var offers = PlayerDeals.Available(state, npc.id);

@@ -25,7 +25,7 @@ namespace Gamesim.Tests.EditMode
             var old = V12(); string original = old.ToString();
             var migrated = EpisodeSaveMigrations.PrepareCurrentPayload(old, out var changed);
             Assert.That(changed, Is.True);
-            Assert.That((int)migrated["schemaVersion"], Is.EqualTo(28));
+            Assert.That((int)migrated["schemaVersion"], Is.EqualTo(29));
             Assert.That((int)migrated["competitionRulesVersion"], Is.EqualTo(1));
             foreach (var person in (JArray)migrated["contestants"])
             {
@@ -120,7 +120,14 @@ namespace Gamesim.Tests.EditMode
             string frozen27 = current27.ToString();
             var current28 = EpisodeSaveMigrations.UpgradeV27ToV28(current27);
             Assert.That(current27.ToString(), Is.EqualTo(frozen27));
-            var loaded = current28.ToObject<EpisodeState>(Serializer());
+            Assert.That((int)current28["schemaVersion"], Is.EqualTo(28), "The frozen step still ends at literal28.");
+            string frozen28 = current28.ToString(Formatting.None);
+            var current29 = EpisodeSaveMigrations.UpgradeV28ToV29(current28);
+            Assert.That((int)current29["schemaVersion"], Is.EqualTo(29));
+            Assert.That(JToken.DeepEquals(PersistenceMigrationTests.StripSchema29((JObject)current29.DeepClone()), current28), Is.True,
+                "The supported-current semantic companion adds only the reviewed inert29 literals.");
+            Assert.That(current28.ToString(Formatting.None), Is.EqualTo(frozen28));
+            var loaded = current29.ToObject<EpisodeState>(Serializer());
             Assert.That(field == "socialActions" ? loaded.socialActions : loaded.outOfPhaseSocialActions, Is.EqualTo(count));
             Assert.That(EpisodeEngine.EconomyRulesOn(loaded), Is.False, "Historical seasons keep the old action economy.");
             Assert.That(EpisodeValidation.TryValidate(loaded, out var error), Is.True, error);

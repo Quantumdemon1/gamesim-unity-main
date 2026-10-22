@@ -27,10 +27,15 @@ namespace Gamesim.Simulation
     public static class UnifiedVoteAdmission
     {
         public static bool TryPromise(EpisodeState s, PromiseState sourceDraft, string origin,
+            out UnifiedCommitmentState row, out string error) =>
+            TryPromise(s, sourceDraft, origin, null, out row, out error);
+
+        internal static bool TryPromise(EpisodeState s, PromiseState sourceDraft, string origin,
+            EpisodeEngine.PendingDialogueCommand pending,
             out UnifiedCommitmentState row, out string error)
         {
             row = null; error = null;
-            if (!Ready(s, out error)) return false;
+            if (!Ready(s, origin, pending, out error)) return false;
             if (sourceDraft == null || sourceDraft.kind != PromiseKind.Vote || sourceDraft.status != PromiseStatus.Active
                 || sourceDraft.week != s.week || sourceDraft.expiresWeek != s.week || sourceDraft.impact != DealTrust.Medium
                 || sourceDraft.brokenById != null || sourceDraft.settledWeek != 0
@@ -68,10 +73,15 @@ namespace Gamesim.Simulation
         }
 
         public static bool TryDeal(EpisodeState s, DealState sourceDraft, string origin,
+            out UnifiedCommitmentState row, out string error) =>
+            TryDeal(s, sourceDraft, origin, null, out row, out error);
+
+        internal static bool TryDeal(EpisodeState s, DealState sourceDraft, string origin,
+            EpisodeEngine.PendingDialogueCommand pending,
             out UnifiedCommitmentState row, out string error)
         {
             row = null; error = null;
-            if (!Ready(s, out error)) return false;
+            if (!Ready(s, origin, pending, out error)) return false;
             if (sourceDraft == null || !UnifiedVoteFamilyValidation.IsVoteType(sourceDraft.type)
                 || sourceDraft.week != s.week || sourceDraft.expiresWeek != s.week
                 || sourceDraft.brokenById != null || sourceDraft.settledWeek != 0 || sourceDraft.linkedDealId != null
@@ -267,6 +277,14 @@ namespace Gamesim.Simulation
         }
         private static bool Ready(EpisodeState s, out string error) =>
             EpisodeValidation.TryValidateProspectiveUnifiedVote(s, out error);
+
+        private static bool Ready(EpisodeState s, string origin, EpisodeEngine.PendingDialogueCommand pending, out string error)
+        {
+            if (pending == null) return Ready(s, out error);
+            if (!pending.Authorizes(s, origin))
+                return Fail(out error, "This pending dialogue command does not authorize the Vote source origin.");
+            return EpisodeValidation.TryValidatePendingVote(s, pending, out error);
+        }
         private static bool Active(EpisodeState s, string id) => s.Find(id)?.status == ContestantStatus.Active;
         private static int DealCount(EpisodeState s) => s.deals.Count + s.unifiedCommitments.Count(row => row.sourcePolicy == UnifiedCommitments.DealPolicy);
         private static IEnumerable<DealState> Between(EpisodeState s, string a, string b) => UnifiedVoteReferences.DealsUnchecked(s)

@@ -38,6 +38,15 @@
     <Compile Include="$(EditMode)NarrativeDisplayTests.cs" />
     <Compile Include="$(EditMode)ConversationExchangeTests.cs" />
     <Compile Include="$(EditMode)ConversationExchangeResponseTests.cs" />
+    <Compile Include="$(EditMode)DialogueSchema29ShapeTests.cs" />
+    <Compile Include="$(EditMode)DialogueCampaignRulesTests.cs" />
+    <Compile Include="$(EditMode)DialogueCampaignEngineTests.cs" />
+    <Compile Include="$(EditMode)DialoguePendingNpcTests.cs" />
+    <Compile Include="$(EditMode)DialogueCampaignDealClosureTests.cs" />
+    <Compile Include="$(EditMode)DialogueAdvanceAcceptedShapeLegacyTests.cs" />
+    <Compile Include="$(EditMode)DialogueCampaignFreeOfferTests.cs" />
+    <Compile Include="$(EditMode)DialogueCampaignEmotionalResponseTests.cs" />
+    <Compile Include="$(EditMode)DialogueCampaignCapacityTests.cs" />
     <!-- NpcInvitation.cs is included by the whole Simulation glob above. -->
     <Compile Include="$(EditMode)NpcInvitationTests.cs" />
 
@@ -85,6 +94,10 @@
     <Compile Include="$(EditMode)WaveDInertSchema28Tests.cs" />
     <Compile Include="$(EditMode)LegacyDigestSchema28Observer.cs" />
     <Compile Include="$(EditMode)LegacyDigestSchema28ObserverTests.cs" />
+    <Compile Include="$(EditMode)LegacyDigestSchema29Observer.cs" />
+    <Compile Include="$(EditMode)LegacyDigestSchema29ObserverTests.cs" />
+    <Compile Include="$(EditMode)OldSaveTrace.cs" />
+    <Compile Include="$(EditMode)CurrentOldSaveTrace.cs" />
     <Compile Include="$(EditMode)FrozenEpisodeV27ContractTests.cs" />
     <Compile Include="$(EditMode)UnifiedVoteTogetherTests.cs" />
     <Compile Include="$(EditMode)UnifiedVoteCompletedRevealTests.cs" />

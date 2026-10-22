@@ -1,0 +1,54 @@
+{
+  "schema": 1,
+  "integration": "triangle-reader-fence01",
+  "supportedUnity": "6000.6.0f1",
+  "patch": {
+    "path": "Tools/UmaPatches/triangle-reader-fence01.apply_patch.txt",
+    "bytes": 4226,
+    "sha256": "5F52B743213967D15873E59CC9AB70DC0C5BA3C9CA134D220CEC12E2B1BA8089"
+  },
+  "targets": [
+    {
+      "path": "Assets/UMA/Core/StandardAssets/UMA/Scripts/UMAMeshData.cs",
+      "before": {
+        "bytes": 123217,
+        "sha256": "B6838DCAE209BEFD08CCD535370148A446001B4E42952329F30D360EF90A4E59"
+      },
+      "after": {
+        "bytes": 123660,
+        "sha256": "297EAB5B8B1D015239773888453049A2BF2DFE785A72D46B11C5967B0BD197F5"
+      }
+    },
+    {
+      "path": "Assets/UMA/Core/StandardAssets/UMA/Scripts/SkinnedMeshCombinerMeshAPI.cs",
+      "before": {
+        "bytes": 238918,
+        "sha256": "4AE265D609A43DEFB0FE7A1B579D3534A14CC5F743A3615FCD03B09510F51538"
+      },
+      "after": {
+        "bytes": 239931,
+        "sha256": "8B19123E8C5997EB92B5D519F81D5AA722AE62CD314EF7CEF9BAEB86EFDC5433"
+      }
+    },
+    {
+      "path": "Assets/UMA/Core/StandardAssets/UMA/Scripts/SkinnedMeshCombinerIncrementalPreparation.cs",
+      "before": {
+        "bytes": 62194,
+        "sha256": "13DBCA6A5C9676227AC33525959076B452AB46320D43F22E3EBFC59389272411"
+      },
+      "after": {
+        "bytes": 62394,
+        "sha256": "52E8471A2B75BCA2842275AC0B32AD71FC45EF98F063597D3A0D5E00844398C6"
+      }
+    }
+  ],
+  "requirements": [
+    "UMA remains a separately acquired local dependency; do not commit its source or GAMESIM_UMA.",
+    "Resolve the intended local project explicitly and verify every whole preimage before applying any target; refuse different versions or local edits.",
+    "After application verify all three whole postimages and every unrelated retained dependency; preserve original bytes and existing user edits/saves.",
+    "Run the source-owned two-entrypoint original-vendor red, complete 38-case green regression, unchanged dialogue cohorts, and full native/UMA suites with complete post-result logs.",
+    "No job drain, queue clear, exception suppression, unknown external borrower or binary-layout compatibility guarantee is provided.",
+    "Do not patch GamesimPlay or any live Editor automatically; qualify and promote its source/dependency checkpoint separately."
+  ],
+  "kind": "portable-review-and-reproduction-data-not-an-installer-or-test-result"
+}

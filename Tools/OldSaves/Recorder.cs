@@ -11,6 +11,9 @@
 //   shape                                    every saved field path of that build (OLDSAVE_DEFINES=OLDSAVE_SHAPE_ONLY compiles only this)
 //   migrate <save> <out>                     the schema-28 payload this build's chain hands on (what a schema-29 step would validate)
 //   resave  <save> <out>                     load with that build's store and save again, as the next autosave would
+//   recover <save> <out>                     the save as that build's store's backup, with no primary and with the primary torn
+//                                            in half, in a slot under <out>: recovery must say what loading the save says and
+//                                            give the season it loads as
 //   reseal22 <save> <out>                    a schema-22 file of the version's earlier shapes, given the two later fields as
 //                                            the literals FrozenEpisodeV22.WithLaterFields writes and sealed again, so a
 //                                            build of the last shape (d44bf492 on) can load it and be its reference
@@ -64,12 +67,13 @@ namespace Gamesim.OldSaves
 #if !OLDSAVE_SHAPE_ONLY
                 if (args.Length >= 3 && args[0] == "record") return Record(args[1], args[2]);
                 if (args.Length >= 3 && args[0] == "replay") return Replay(args[1], args[2]);
+                if (args.Length >= 3 && args[0] == "recover") return Recover(args[1], args[2]);
                 if (args.Length >= 7 && args[0] == "generate")
                     return Generate(args[1], uint.Parse(args[2]), int.Parse(args[3]), args[4], int.Parse(args[5]), (EpisodePhase)Enum.Parse(typeof(EpisodePhase), args[6]));
                 if (args.Length >= 5 && args[0] == "continue")
                     return Continue(args[1], args[2], int.Parse(args[3]), (EpisodePhase)Enum.Parse(typeof(EpisodePhase), args[4]));
 #endif
-                Console.Error.WriteLine("usage: record <save> <out> | generate <out> <seed> <size> <rules> <week> <phase> | continue <save> <out> <week> <phase>");
+                Console.Error.WriteLine("usage: record <save> <out> | recover <save> <out> | generate <out> <seed> <size> <rules> <week> <phase> | continue <save> <out> <week> <phase>");
                 return 2;
             }
             catch (Exception error)
@@ -246,6 +250,87 @@ namespace Gamesim.OldSaves
             var fields = OldSaveTrace.Project(OldSaveTrace.Fields(engine.Snapshot), schema);
             File.WriteAllText(outFile, JToken.Parse(OldSaveTrace.Canonical(fields, false)).ToString(Formatting.Indented));
             Directory.Delete(slot, true);
+        }
+
+        // ------------------------------------------------------------------ recover
+
+        /// <summary>
+        /// What a player whose season survives only as the backup gets from that build's store: TryRecoverBackup, which
+        /// no other mode reaches. The save's bytes are first loaded as a primary, the reference. Then, in a fresh slot
+        /// under <paramref name="outDir"/>, they are the store's backup twice over: with no primary (A), and with the
+        /// primary cut to half the save's bytes, an interrupted write (B). In each, loading must fail, say why ("No local
+        /// save exists in this slot." in A, "Local save could not be loaded: " in B) and offer the backup; recovery must
+        /// succeed, say what loading the file as the primary says (with, in B, that the previous file was kept) and give
+        /// the season the reference loaded (OldSaveTrace.Checkpoint at the loaded schema); the backup must keep its bytes
+        /// and the primary become them; in B the damaged primary must be kept beside it, byte for byte, as a
+        /// .before-recovery-* file, and nothing else may be left; and the recovered primary must load again with the
+        /// reference's message and checkpoint. Nothing is written beside <paramref name="save"/>.
+        /// Exit 0, or 3 (the bytes do not load as a primary), 5 (recovery not offered), 6 (recovery refused), 7 (another
+        /// season recovered, or the recovered primary reloads as another), 8 (the slot's files are not what recovery
+        /// leaves) or 9 (a message is not the one loading the file gives); the slot is kept on a failure.
+        /// </summary>
+        private static int Recover(string save, string outDir)
+        {
+            const string Loaded = "Local episode loaded and validated.";
+            const string Offer = " A validated backup is available; choose Recover backup to restore it.";
+            var bytes = File.ReadAllBytes(save);
+            var slot = Path.Combine(outDir, "slot-recover");
+            if (Directory.Exists(slot)) Directory.Delete(slot, true);
+            var reference = new EpisodeSaveStore(Path.Combine(slot, "reference", "episode.json"));
+            Directory.CreateDirectory(Path.GetDirectoryName(reference.SavePath));
+            File.WriteAllBytes(reference.SavePath, bytes);
+            if (!reference.TryLoad(out var loaded, out var loadMessage)) { Console.Error.WriteLine("LOAD REFUSED: " + loadMessage); return 3; }
+            if (!loadMessage.StartsWith(Loaded, StringComparison.Ordinal)) { Console.Error.WriteLine("LOAD MESSAGE: " + loadMessage); return 9; }
+            int schema = loaded.schemaVersion;
+            var expected = OldSaveTrace.Checkpoint(loaded, schema);
+            var torn = bytes.Take(bytes.Length / 2).ToArray();
+            string Heads((string g, string b, string t) c) => c.g.Substring(0, 16) + "/" + c.b.Substring(0, 16) + "/" + c.t.Substring(0, 16);
+            string recovered = null;
+            foreach (bool damaged in new[] { false, true })
+            {
+                string sub = damaged ? "B, the primary torn to " + torn.Length + " of " + bytes.Length + " bytes" : "A, no primary";
+                var folder = Path.Combine(slot, damaged ? "b" : "a");
+                Directory.CreateDirectory(folder);
+                var store = new EpisodeSaveStore(Path.Combine(folder, "episode.json"));
+                File.WriteAllBytes(store.BackupPath, bytes);
+                if (damaged) File.WriteAllBytes(store.SavePath, torn);
+
+                if (store.TryLoad(out var refused, out var message) || refused != null
+                    || !message.StartsWith(damaged ? "Local save could not be loaded: " : "No local save exists in this slot.", StringComparison.Ordinal)
+                    || !message.EndsWith(Offer, StringComparison.Ordinal))
+                { Console.Error.WriteLine("NOT OFFERED (" + sub + "): " + message); return 5; }
+                if (!store.TryRecoverBackup(out var state, out message))
+                { Console.Error.WriteLine("RECOVERY REFUSED (" + sub + "): " + message); return 6; }
+                string said = "Backup restored and validated. The backup remains available."
+                    + (damaged ? " Your previous save file was kept alongside it." : "") + loadMessage.Substring(Loaded.Length);
+                if (message != said)
+                { Console.Error.WriteLine("RECOVERY MESSAGE (" + sub + "): " + message + " | loading the file as the primary: " + loadMessage); return 9; }
+                var got = OldSaveTrace.Checkpoint(state, schema);
+                if (state.schemaVersion != schema || got != expected)
+                {
+                    Console.Error.WriteLine("RECOVERED OTHERWISE (" + sub + "): schema " + state.schemaVersion + " checkpoint " + Heads(got)
+                        + ", loaded as the primary: schema " + schema + " checkpoint " + Heads(expected) + " | " + message);
+                    return 7;
+                }
+
+                var kept = Directory.GetFiles(folder, "episode.json.before-recovery-*");
+                string wrong = !File.ReadAllBytes(store.BackupPath).SequenceEqual(bytes) ? "the backup's bytes changed"
+                    : !File.ReadAllBytes(store.SavePath).SequenceEqual(bytes) ? "the primary is not the backup's bytes"
+                    : kept.Length != (damaged ? 1 : 0) ? kept.Length + " files kept as .before-recovery-*"
+                    : damaged && !File.ReadAllBytes(kept[0]).SequenceEqual(torn) ? "the kept primary is not the damaged primary's bytes"
+                    : Directory.GetFiles(folder).Length != 2 + kept.Length ? "other files were left in the slot"
+                    : null;
+                if (wrong != null) { Console.Error.WriteLine("FILES (" + sub + "): " + wrong + " | " + message); return 8; }
+                recovered = message;
+
+                if (!store.TryLoad(out var again, out message) || OldSaveTrace.Checkpoint(again, schema) != expected)
+                { Console.Error.WriteLine("RELOADED OTHERWISE (" + sub + "): " + message); return 7; }
+                if (message != loadMessage)
+                { Console.Error.WriteLine("RELOAD MESSAGE (" + sub + "): " + message + " | loading the file as the primary: " + loadMessage); return 9; }
+            }
+            Directory.Delete(slot, true);
+            Console.WriteLine("recovered schema " + schema + " with no primary and with a torn one, checkpoint " + Heads(expected) + " | " + recovered);
+            return 0;
         }
 #endif
 

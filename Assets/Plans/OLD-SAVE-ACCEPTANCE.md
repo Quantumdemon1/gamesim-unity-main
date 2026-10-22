@@ -731,7 +731,9 @@ runs in the Unity Test Framework and Tools/OldSaves. So every case is custody or
 | Shape | BCL and Newtonsoft, never a live DTO | The same |
 | Registration | Wired into the chain | B+ schema-28 dispatch integration prepared below; integrated proof pending |
 
-The live pin `ShippedRulesTests.TheLiveSchemaStaysAt28UntilFrozenEpisodeV28FreezesTheModeTwoCore` is exactly this.
+The live pin `ShippedRulesTests.TheLiveSchemaStaysAt28UntilFrozenEpisodeV28FreezesTheModeTwoCore` was exactly this. Since
+the reader was wired through `UpgradeV28ToV29` it pins schema 29 and a shipped season's dialogue rules 0, as
+`TheLiveSchemaIs29AndAShippedSeasonStartsOnDialogueRules0` (renamed 2026-10-22).
 
 **2026-10-18 sequencing amendment: close the real persistence gate at schema 28 first (B+).**
 

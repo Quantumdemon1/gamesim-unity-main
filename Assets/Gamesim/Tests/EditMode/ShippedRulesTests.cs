@@ -142,16 +142,21 @@ namespace Gamesim.Tests.EditMode
         }
 
         /// <summary>
-        /// The schema-29 tripwire (vote family V6's review) is now discharged by the independent
-        /// FrozenEpisodeV28 contract and literal mode-2 save migration controls. Keep this original
-        /// case identifier as the historical gate; pin only the current header here. The unpublished
-        /// schema29 foundation deliberately leaves dialogue off until the full semantic owner lands.
+        /// The live save schema is 29: every schema 1 to 28 save reaches it through
+        /// EpisodeSaveMigrations.UpgradeV28ToV29, which runs the frozen schema-28 reader
+        /// (FrozenEpisodeV28.Validate) first. A season the game starts today still plays on dialogue
+        /// rules 0, so the schema-29 dialogue store stays off. Vote family V6's review set this pin as
+        /// TheLiveSchemaStaysAt28UntilFrozenEpisodeV28FreezesTheModeTwoCore; it was renamed once the reader was wired.
         /// </summary>
         [Test]
-        public void TheLiveSchemaStaysAt28UntilFrozenEpisodeV28FreezesTheModeTwoCore()
+        public void TheLiveSchemaIs29AndAShippedSeasonStartsOnDialogueRules0()
         {
             Assert.That(new EpisodeState().schemaVersion, Is.EqualTo(29),
-                "The independent frozen28 gate and real literal mode-2 migration controls are required before this current pin moves.");
+                "The live save schema is 29. Another persisted field needs the next schema, its migration and old-save fixtures.");
+            var s = SeasonBuilder.Create(new SeasonBuilder.Choice { HouseSize = 8 }, 2929u);
+            ShippedRules.ApplyFresh(s);
+            Assert.That(s.schemaVersion, Is.EqualTo(29), "A shipped season saves at the live schema.");
+            Assert.That(s.dialogueRulesVersion, Is.Zero, "A shipped season starts with the dialogue rules off.");
         }
 
         /// <summary>Fresh seasons only: the economy refuses a season that has been played, so ApplyFresh does too.</summary>

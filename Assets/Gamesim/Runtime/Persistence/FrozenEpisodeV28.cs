@@ -1,5 +1,5 @@
-// UNWIRED fixed28 whole reader. This file does not register a loader or migration route.
-// The complete isolated semantic closure is staged beside it; release remains separately gated.
+// The fixed28 whole reader, wired: EpisodeSaveMigrations.UpgradeV28ToV29 calls Validate on every schema 1 to 28
+// save before it adds schema 29's literals. The isolated semantic closure it reads is in the Frozen28 files beside it.
 using System;
 using System.IO;
 using Newtonsoft.Json.Linq;

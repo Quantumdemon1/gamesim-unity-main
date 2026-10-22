@@ -36,6 +36,12 @@ Gamesim.EditModeTests 8558
 # Trait effect ink adds one shared all-frame/all-scale regression (1239 + 1 = 1240).
 # Tendency button/focus ink adds one shared all-frame/all-scale regression (1240 + 1 = 1241).
 # A plan built with -WithoutUma reads this line. These are required run minima, not a claim of a pass.
+# Not yet run on the dialogue V2 source (pc/v2-lifecycle-20261022, draft PR #28): that source is qualified in
+# EditMode and the subset only. It changes runtime UI (every offer row now renders through
+# EpisodeHud.DescribeOfferControl, which throws on a mismatch; the portrait queue's scene lifetime; the
+# paid-choice wiring) and adds PlayMode tests that have not run on it, so this line, the UMA build's and
+# Gamesim.Uma.PlayModeTests keep their earlier counts until a NoUMA and a UMA PlayMode run there raise them,
+# before the PR leaves draft.
 Gamesim.PlayModeTests 1241
 # The UMA build of the same assembly, read by a plan built without -WithoutUma. 1281 = the 1241 above + the
 # 40 tests that compile only under GAMESIM_UMA, as run at r1 (2026-10-16): in EpisodePlayModeTests,

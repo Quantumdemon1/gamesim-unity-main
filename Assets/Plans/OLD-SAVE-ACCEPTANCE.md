@@ -802,3 +802,20 @@ This section records the integration increment and its pending gates, not an acc
     next milestone.
 - The B9 tuning and the All-Star rebuild may proceed past this gate only with schema 29 claimed, and with this
   acceptance extended as in section 6, step 6.
+- **The dialogue V2 source already writes schema 29** (branch `pc/v2-lifecycle-20261022`, draft PR #28; recorded
+  2026-10-22). Its commit, 9d87b59e, and the 21 Oct Codex handoff say "no ... schema change". That is wrong, and the
+  commit is not amended; this note corrects the record.
+  - What 9d87b59e changed: `EpisodeState.schemaVersion` 28 to 29, with `dialogueRulesVersion` and a `dialogue`
+    store (episodes, role grants, veto occasions) on the root and `conditionalVeto` on every commitment row.
+    `PrepareCurrentPayload` takes 29 directly and sends every schema 1 to 28 save through `UpgradeV28ToV29`, which
+    runs `FrozenEpisodeV28.Validate` first and adds only off/empty/null literals; `EpisodeSaveValidation` accepts
+    29 only; the live pin `ShippedRulesTests` now expects 29. Shipping seasons stay on dialogue rules 0 with empty
+    storage, so nothing in the new store is enabled.
+  - What is still open, so the branch must not merge: the owner's 22 Oct gate before schema 29 ships
+    (OWNER-DECISIONS-2026-10-22 §4) has an ordinary `TryRecoverBackup` test on one schema-28 fixture only
+    (`FrozenEpisodeV28IntegrationTests`), not on the old fixtures, and no record-mode sweep of the owner's real saves
+    (on copies) has run on a schema-29 build. Section 6's step 5 is not done either: `OldSaveTrace.Newest` is 28 and
+    there are no schema-29 fixtures.
+  - Whether this shape is the schema 29 the main line claimed (§5: the Frozen28 freeze with the role/AP records) is
+    the owner's call. Main and `claude/consolidation` are still at 28, so a save written by this branch cannot load
+    on them.

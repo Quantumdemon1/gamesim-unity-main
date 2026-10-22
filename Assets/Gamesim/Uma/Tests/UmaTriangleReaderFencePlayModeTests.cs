@@ -55,9 +55,7 @@ namespace Gamesim.Uma.Tests
                 AssertScheduledReader(pending, fixture.Cache, lod);
                 if (global)
                 {
-                    AssertOnlyOwnedCacheRegistered(fixture.Cache);
-                    Assert.DoesNotThrow(SubMeshTriangles.DisposeAllNativeTriangles,
-                        "Exact owned source readers must retire before global cache disposal.");
+                    DisposeAllWithForeignCachesSetAside(fixture.Cache);
                 }
                 else
                 {
@@ -162,14 +160,73 @@ namespace Gamesim.Uma.Tests
             // Deliberately no Complete/IsCompleted wait or output read before tested disposal.
         }
 
-        private static void AssertOnlyOwnedCacheRegistered(SubMeshTriangles owned)
+        // A full run leaves earlier fixtures' library caches registered. They are set aside, never
+        // disposed, for exactly one synchronous global call (never in SetUp, never across a yield).
+        // That call sees only test-owned caches: the owned reader cache between two reader-free
+        // decoys, so a loop that frees or fences only its first or last entry still goes red.
+        private static void DisposeAllWithForeignCachesSetAside(SubMeshTriangles owned)
+        {
+            var live = SubMeshTriangles.nativeTrianglesAllocated;
+            Assert.That(live, Is.Not.Null);
+            Assert.That(live.FindAll(item => ReferenceEquals(item, owned)).Count, Is.EqualTo(1),
+                "The exact owned cache must be registered once before global disposal.");
+            var foreign = live.FindAll(item => !ReferenceEquals(item, owned));
+            var foreignCreated = foreign.ConvertAll(item => item.nativeTriangles.IsCreated);
+            var first = new SubMeshTriangles(new[] { 0, 1, 2 });
+            var last = new SubMeshTriangles(new[] { 2, 1, 0 });
+            SubMeshTriangles.nativeTrianglesAllocated = new List<SubMeshTriangles>();
+            try
+            {
+                first.GetTriangles(0);
+                SubMeshTriangles.nativeTrianglesAllocated.Add(owned);
+                last.GetTriangles(0);
+                AssertOnlyOwnedCachesRegistered(first, owned, last);
+                Assert.DoesNotThrow(SubMeshTriangles.DisposeAllNativeTriangles,
+                    "Exact owned source readers must retire before global cache disposal.");
+                Assert.That(first.nativeTriangles.IsCreated, Is.False,
+                    "Global disposal must free the first registered cache.");
+                Assert.That(last.nativeTriangles.IsCreated, Is.False,
+                    "Global disposal must free the last registered cache.");
+            }
+            finally
+            {
+                // Mirror only the owned cache's membership, as the call left the field.
+                var left = SubMeshTriangles.nativeTrianglesAllocated ?? new List<SubMeshTriangles>();
+                SubMeshTriangles.nativeTrianglesAllocated = live;
+                if (!left.Exists(item => ReferenceEquals(item, owned)))
+                    live.Remove(owned);
+                foreach (var item in left)
+                {
+                    if (!ReferenceEquals(item, owned) && !ReferenceEquals(item, first) &&
+                        !ReferenceEquals(item, last))
+                        live.Add(item);
+                }
+                first.DisposeNativeTriangles(true);
+                last.DisposeNativeTriangles(true);
+            }
+            var restored = live.FindAll(item => !ReferenceEquals(item, owned));
+            Assert.That(restored.Count, Is.EqualTo(foreign.Count),
+                "Global disposal must not register caches while foreign caches are set aside.");
+            for (int i = 0; i < foreign.Count; i++)
+            {
+                Assert.That(ReferenceEquals(restored[i], foreign[i]), Is.True,
+                    "Foreign UMA caches must return in their original order.");
+                Assert.That(foreign[i].nativeTriangles.IsCreated, Is.EqualTo(foreignCreated[i]),
+                    "Foreign UMA caches must never be disposed by this fixture.");
+            }
+        }
+
+        private static void AssertOnlyOwnedCachesRegistered(params SubMeshTriangles[] owned)
         {
             var registry = SubMeshTriangles.nativeTrianglesAllocated;
             Assert.That(registry, Is.Not.Null);
-            Assert.That(registry.Count, Is.EqualTo(1),
-                "Foreign UMA caches make this global-disposal fixture unqualified; never clear them.");
-            Assert.That(ReferenceEquals(registry[0], owned), Is.True,
-                "Global disposal is permitted only for the exact test-owned cache instance.");
+            Assert.That(registry.Count, Is.EqualTo(owned.Length),
+                "The set-aside window must hold exactly the test-owned caches; foreign caches never reach global disposal.");
+            for (int i = 0; i < owned.Length; i++)
+            {
+                Assert.That(ReferenceEquals(registry[i], owned[i]), Is.True,
+                    "Global disposal is permitted only for exact test-owned cache instances.");
+            }
         }
 
         private static void AssertOutput(

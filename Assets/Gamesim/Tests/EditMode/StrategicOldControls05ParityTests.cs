@@ -173,7 +173,10 @@ namespace Gamesim.Tests.EditMode
             Assert.That(ExactCapturedJson.Equal(expected, actual), Is.EqualTo(equal), change + " / symmetric");
         }
 
-        private static JObject Floating(double value) => new JObject(new JProperty("value", new JValue(value)));
+        // Boxed on purpose: under Json.NET 13.0.2, JValue(double) routes through a cached boxed zero and
+        // turns -0.0 into +0.0, so the signed-zero control would compare two positive zeros.
+        // JValue(object) keeps the caller's bits. Never "simplify" this back to new JValue(value).
+        private static JObject Floating(double value) => new JObject(new JProperty("value", new JValue((object)value)));
 
         private static string Original(JObject pack)
         {

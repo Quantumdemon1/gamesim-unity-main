@@ -107,7 +107,11 @@ namespace Gamesim.Tests.EditMode
             Assert.That((int)EpisodeCommandKind.Negotiate, Is.EqualTo(61));
             Assert.That((int)EpisodeCommandKind.AnswerPactPlan, Is.EqualTo(62));
             Assert.That((int)EpisodeCommandKind.WitnessNpcAct, Is.EqualTo(63));
-            Assert.That(Enum.GetValues(typeof(EpisodeCommandKind)).Cast<int>().Max(), Is.EqualTo(63));
+            // Dialogue V2 (schema 29) appends its two kinds after these; nothing above is renumbered,
+            // so recorded seasons replay as they were.
+            Assert.That((int)EpisodeCommandKind.StartDialogue, Is.EqualTo(64));
+            Assert.That((int)EpisodeCommandKind.ChooseDialogue, Is.EqualTo(65));
+            Assert.That(Enum.GetValues(typeof(EpisodeCommandKind)).Cast<int>().Max(), Is.EqualTo(65));
         }
 
         /// <summary>

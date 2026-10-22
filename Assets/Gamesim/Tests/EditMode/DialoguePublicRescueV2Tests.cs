@@ -204,6 +204,55 @@ namespace Gamesim.Tests.EditMode
             Assert.That(Active(answered), Is.Null);
         }
 
+        /// <summary>
+        /// The owner's check (OWNER-DECISIONS-2026-10-22 §4): a public Cite at AP 0 must not deliver a paid plea's effect
+        /// for free. At AP 0 the paid plea itself, a vote plea to the same voter in any approach, is refused for want of a
+        /// conversation. The Cite is accepted there and writes only its command, conversation, event and log line: no plea
+        /// record, relationship, arc, memory, ballot, deal, promise or commitment moves, no roll is drawn and nothing is
+        /// spent. The one plea this conversation delivers is the one its paid entry funded, once, at the end: it closes the
+        /// conversation, and a vote plea to the same voter is refused after it in every approach.
+        /// </summary>
+        [Test]
+        public void PublicCiteAtAp0DeliversNoneOfAPaidPleasEffectForFree()
+        {
+            var engine = new EpisodeEngine(source); var entered = Enter(engine);
+            var talk = Command(entered, EpisodeCommandKind.Talk);
+            talk.targetId = entered.Active.First(p => !p.isPlayer && p.id != voter).id;
+            var exhausted = Accepted(engine, talk);
+            Assert.That(Ap(exhausted), Is.Zero, "One actual legal Talk, not counter mutation.");
+            foreach (string approach in LobbyApproach.All)
+            {
+                Assert.That(new EpisodeEngine(exhausted).Apply(VotePlea(exhausted, approach)).reason, Is.EqualTo("You have no conversations left this week."),
+                    approach + ": the plea is paid.");
+                RefusedUnchanged(engine, VotePlea(exhausted, approach));
+            }
+
+            var cited = Accepted(engine, Choice(exhausted, DialogueCampaignV2.Cite));
+            JObject before = Parse(Image(exhausted)), after = Parse(Image(cited));
+            Assert.That(after.Properties().Select(p => p.Name), Is.EqualTo(before.Properties().Select(p => p.Name)));
+            Assert.That(after.Properties().Where(p => !ExactCapturedJson.Equal(p.Value, before[p.Name])).Select(p => p.Name),
+                Is.EquivalentTo(new[] { "revision", "nextSequence", "acceptedCommandIds", "events", "houseEvents", "storylines", "dialogue" }),
+                "The Cite writes only its command, its own conversation, its event and its log line.");
+            foreach (string field in new[] { "lobbies", "relationships", "relationshipArcs", "memories", "votes", "deals", "promises",
+                         "unifiedCommitments", "randomState", "npcSocial", "windowActions", "outOfPhaseSocialActions", "socialActions" })
+            {
+                Assert.That(before.Property(field), Is.Not.Null, field);
+                Assert.That(ExactCapturedJson.Equal(after[field], before[field]), Is.True, field + ": a paid plea's effect, delivered free by the Cite.");
+            }
+            Assert.That(Active(cited).responses.Last().responseKey, Is.EqualTo(V2 + "/explain-that-record"), "The voter answers the record, not a plea.");
+
+            var answered = Accepted(engine, Choice(cited, DialogueCampaignV1.Plea));
+            Assert.That(answered.lobbies.Count, Is.EqualTo(cited.lobbies.Count + 1), "The plea the paid entry funded, delivered once.");
+            var lobby = answered.lobbies.Last();
+            Assert.That(new[] { lobby.deciderId, lobby.ask, lobby.approach, lobby.subjectId },
+                Is.EqualTo(new[] { voter, LobbyAsk.Vote, LobbyApproach.Strategic, answered.playerId }));
+            Assert.That(answered.randomState, Is.Not.EqualTo(cited.randomState), "A plea's answer is a roll; the Cite drew none.");
+            Assert.That(answered.windowActions, Is.EqualTo(cited.windowActions));
+            Assert.That(answered.outOfPhaseSocialActions, Is.EqualTo(cited.outOfPhaseSocialActions));
+            Assert.That(Active(answered), Is.Null, "The plea closes the conversation; nothing is left open to deliver another.");
+            foreach (string approach in LobbyApproach.All) RefusedUnchanged(engine, VotePlea(answered, approach));
+        }
+
         [TestCase("week")]
         [TestCase("hohId")]
         [TestCase("vetoHolderId")]
@@ -710,6 +759,11 @@ namespace Gamesim.Tests.EditMode
         private static int Ap(EpisodeState state) => EpisodeEngine.SocialActionBudget(state) - EpisodeEngine.SocialActionsSpent(state);
         private static EpisodeCommand Command(EpisodeState state, EpisodeCommandKind kind) => new EpisodeCommand
         { id = "rescue-v2-" + state.revision + "-" + kind, actorId = state.playerId, kind = kind, expectedRevision = state.revision, expectedPhase = state.phase };
+        private EpisodeCommand VotePlea(EpisodeState state, string approach)
+        {
+            var command = Command(state, EpisodeCommandKind.Lobby); command.id += "-" + approach;
+            command.targetId = voter; command.secondTargetId = state.playerId; command.text = LobbyAsk.Encode(LobbyAsk.Vote, approach); return command;
+        }
         private static EpisodeCommand Choice(EpisodeState state, string option)
         {
             var episode = Active(state); var cycle = Cycle(state, episode); var command = Command(state, EpisodeCommandKind.ChooseDialogue);

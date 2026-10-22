@@ -530,6 +530,8 @@ All tests run in EditMode. None are in the dotnet subset, which excludes the sav
 | `EveryReaderRendersAnOldSaveWithoutAHiddenBallotOrOdds` | 56 | See below. |
 | `TheSeventeenHistoricalReadersGiveTheirPinnedAnswersOnEveryOldSave` | 56 | Section 5. |
 | `AnOldSaveFromABranchsOwnSchemaNumberIsRefusedAndLeftAsItWas` | 1 | F4. |
+| `AnOldSaveKeptAsTheBackupIsRecoveredWhetherThePrimaryIsMissingOrDamaged` | 56 | Recovery from the backup (2026-10-22). See below. |
+| `AnOldSaveFromABranchsOwnSchemaNumberIsNeverRecoveredFromTheBackup` | 1 | F4 as the backup (2026-10-22). See below. |
 | `AnOldCareerFileLoadsAndAddsUp` | 2 | Read, not set aside. The summary lines. A finished old season recorded once. |
 | `PersistenceV23MigrationTests.ASchema22SaveFromTheVersionsFirstBuildsGainsTheTwoLaterFieldsAsLiterals` | 1 | F1, the first shape. |
 | `PersistenceV23MigrationTests.ASchema22SaveFromTheVersionsMiddleBuildsGainsOnlyTheJoinedLiteral` | 1 | F1, the middle shape (review m1). |
@@ -551,6 +553,28 @@ All tests run in EditMode. None are in the dotnet subset, which excludes the sav
 Of its 56 cases, the eight read-only saves (1.3) replay three commands or none: for them the case is a load, a
 validation and a check of the end state, not replay coverage. The replay coverage is the 48 cells' mid-season
 fixtures.
+
+`AnOldSaveKeptAsTheBackupIsRecoveredWhetherThePrimaryIsMissingOrDamaged` (added 2026-10-22, the owner's gate before
+schema 29, OWNER-DECISIONS-2026-10-22 §4 item 2) calls `TryRecoverBackup` on every old fixture. One case per fixture
+installs the save's bytes as the backup of a temporary slot, twice: once with no primary, and once with the primary cut
+off halfway, as an interrupted write leaves it. Each time it checks:
+
+1. Loading refuses the primary and offers the backup ("choose Recover backup").
+2. `TryRecoverBackup` succeeds. Its message is loading's own message for the same file, with the migration to 29 in
+   memory, plus, for the damaged primary, that the previous file was kept.
+3. The recovered state is at schema 29 and validates.
+4. It equals `PrepareCurrentPayload` of the save's payload, read through the store's serializer: the frozen schema-28
+   gate and `UpgradeV28ToV29`, in memory.
+5. Its checkpoint digests equal those of the same file loaded as the primary.
+6. For the schema-28 saves, `StripSchema29` of it is the save's payload, token for token.
+7. The backup's bytes are unchanged. The primary is now the backup's own bytes: recovery does not rewrite it at 29.
+8. The damaged primary is kept as `episode.json.before-recovery-*.json`, byte for byte. With no primary nothing is
+   kept. Nothing else is left in the slot.
+9. The recovered primary loads again with the same message and the same checkpoint.
+
+`AnOldSaveFromABranchsOwnSchemaNumberIsNeverRecoveredFromTheBackup` installs the refused story-arcs 14 save as the
+backup, with the same two primaries. Loading does not offer it, `TryRecoverBackup` refuses with the save's own
+reason, and nothing in the slot changes. With both, OldSaveAcceptanceTests is 229 cases: the 172 and the 57 new ones.
 
 `EveryReaderRendersAnOldSaveWithoutAHiddenBallotOrOdds` reads every phase and stage the season passes through, and its
 end, through every simulation and presentation reader the screens print through. It does not run the screens' own
@@ -633,6 +657,24 @@ the frozen one none.
   the sentinel narrowed to the juror lean; PersistenceV23MigrationTests 26 of 26 apart from the two cases that read
   `Application.dataPath`, which only fail outside Unity. The 49 earlier fixtures' seventeen-reader pins were
   recomputed and all matched. The subset: 5337 of 5337.
+- **Recovery from the backup under the Mono harness** (2026-10-22, `pc/v2-lifecycle-20261022` at 0d2f6d2e with the new
+  tests). The assemblies are offline-compiled, with the engine's module assemblies beside them so the presentation
+  readers' types load. The harness build of the test assembly adds one shim that stands in for `Application.dataPath`,
+  which cannot be called outside the editor; nothing else is changed.
+  - OldSaveAcceptanceTests: 229 of 229, the 57 new cases among them. FrozenEpisodeV28IntegrationTests: 23 of 23.
+    PersistenceTests: 24 of 24. DialoguePublicRescueV2Tests: 69 of 69. The subset: 10445 of 10445 (none of these
+    classes is in it).
+  - **Mutations**, each staged in its own folder of assemblies, the source never edited:
+    - Recovery returns the backup's raw payload instead of the migrated one: all 56 recovery cases are red, each on
+      the schema ("Expected: 29", and the save's own schema). The refused case stays green.
+    - Recovery does not keep the damaged primary: all 56 are red on the damaged primary ("Expected: property Length
+      equal to 1 But was: 0"). The refused case stays green.
+  - **Re-run after the review** (2026-10-22, the AP-0 pin's two closing checks added; a fresh offline compile of the
+    working tree): OldSaveAcceptanceTests 229 of 229, FrozenEpisodeV28IntegrationTests 23 of 23, PersistenceTests 24
+    of 24, DialoguePublicRescueV2Tests 69 of 69, StrategicOldControls05ParityTests 28 of 28, ShippedRulesTests 16 of
+    16. The subset: 10445 of 10445. Recovery returning the backup's raw payload again turns all 56 recovery cases red
+    on the schema, and the refused case stays green.
+  - The full Unity EditMode run is still to come; it qualifies these cases, not the harness.
 
 ## 5. Codex's 17 holds and L01–L16
 
@@ -814,10 +856,48 @@ This section records the integration increment and its pending gates, not an acc
     29 only; the live pin `ShippedRulesTests` now expects 29. Shipping seasons stay on dialogue rules 0 with empty
     storage, so nothing in the new store is enabled.
   - What is still open, so the branch must not merge: the owner's 22 Oct gate before schema 29 ships
-    (OWNER-DECISIONS-2026-10-22 §4) has an ordinary `TryRecoverBackup` test on one schema-28 fixture only
-    (`FrozenEpisodeV28IntegrationTests`), not on the old fixtures, and no record-mode sweep of the owner's real saves
-    (on copies) has run on a schema-29 build. Section 6's step 5 is not done either: `OldSaveTrace.Newest` is 28 and
-    there are no schema-29 fixtures.
+    (OWNER-DECISIONS-2026-10-22 §4).
+    - §4 item 2 is now covered by `OldSaveAcceptanceTests.AnOldSaveKeptAsTheBackupIsRecoveredWhetherThePrimaryIsMissingOrDamaged`
+      (2026-10-22): `TryRecoverBackup` on every old fixture, with the primary missing and damaged, and
+      `AnOldSaveFromABranchsOwnSchemaNumberIsNeverRecoveredFromTheBackup` for the refused save (section 4). It is
+      pending the lead's full Unity EditMode run; until then the evidence is the Mono harness (section 4).
+    - The AP-0 Cite pin, the first half of §4's substantive check, is
+      `DialoguePublicRescueV2Tests.PublicCiteAtAp0DeliversNoneOfAPaidPleasEffectForFree`
+      (`Assets/Gamesim/Tests/EditMode/DialoguePublicRescueV2Tests.cs:216`, added 2026-10-22). At AP 0 a vote plea to
+      the same voter is refused in every approach for want of a conversation. The public Cite is accepted there and
+      changes only its own conversation, event, log line and command id: no plea record, relationship, arc, memory,
+      ballot, deal, promise or commitment, no roll and no spend. The only plea is the one the paid entry funded, once:
+      it closes the conversation, and a vote plea to the same voter is refused after it in every approach.
+      The nearest earlier test, `ActualCitationAtAp0CapturesOneDeepProofWithoutBonusOrExtraTickAndResumes` (line 164),
+      pins the captured record and counts the lobbies, but did not show that the plea is paid at AP 0, nor that no
+      deal, promise or commitment moves. The pin is EditMode only (its retained carrier is read through
+      `Application.dataPath`), so the dotnet subset does not run it.
+    - Its mutations under the Mono harness (2026-10-22), each staged alone, the source never edited:
+      - The paid plea's AP guard removed (both copies): the pin is the only DialoguePublicRescueV2Tests case to turn
+        red ("emotional: the plea is paid", the plea accepted at AP 0). `StrategicOldControls05ParityTests`' two
+        ap0-refusal cases (the ordinary paid Lobby, no conversation open) turn red too; DialogueCampaignEngineTests
+        and DialogueCampaignDealClosureTests stay green. The new pin is the only test that refuses the plea while a
+        V2 conversation is open. Removing either copy alone does not reach it: a Lobby sent while the conversation is
+        open passes both guards.
+      - The Cite draws the plea's roll, or leaves the plea's memory: the pin is red, naming `randomState` or
+        `memories`, and so is `ActualCitationAtAp0…`.
+      - The Cite resolves the plea, writes a lobby row or moves the relationship: the engine's own checks refuse the
+        Cite, so every citing case is red (37), the pin among them.
+      - A second plea after the plea closes the conversation is refused three times over: the voter "has already
+        heard you out", the ordinary plea's AP guard, and the closed conversation's check that its voter has exactly
+        one vote lobby row. With the first two removed the pin stays green. With all three removed its last check is
+        red (the second plea accepted), while its refusals before the Cite stay green.
+    - The second half, that seasons on the old rules play as before, has no new test; existing ones hold it.
+      `OldSaveAcceptanceTests.AnOldSaveLoadsMigratesValidatesAndReplaysToItsRecordedDigest` replays every old save,
+      upgraded to 29 with dialogue rules 0, to the reference build's checkpoints and season digest (the 48 cells'
+      mid-season fixtures carry the replay). `ShippedRulesTests.TheLiveSchemaIs29AndAShippedSeasonStartsOnDialogueRules0`
+      starts a new shipped season on dialogue rules 0.
+      `StrategicOldControls05ParityTests.CompleteOrdinaryApplyAndReadMatchImmutableOldReference` holds the ordinary
+      paid plea on the old rules (legacy-off and mode 2 all-week, the two AP-0 refusals among them) to its captured
+      old result. All three are green on this source under the Mono harness (2026-10-22); the full Unity EditMode run
+      qualifies them.
+    - Still open: no record-mode sweep of the owner's real saves (on copies) has run on a schema-29 build (§4 item 3).
+      Section 6's step 5 is not done either: `OldSaveTrace.Newest` is 28 and there are no schema-29 fixtures.
   - **Decided 2026-10-22 under the owner's delegation of schema 29, and confirmed by the owner**
     (OWNER-DECISIONS-2026-10-22 §5 and its addendum): this shape is the schema 29 the main line claimed (the Frozen28
     freeze with the role/AP records). The `dialogue` store is the role, dialogue and time contract of

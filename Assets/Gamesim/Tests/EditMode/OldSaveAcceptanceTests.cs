@@ -35,7 +35,10 @@ namespace Gamesim.Tests.EditMode
     /// save's, so an older build plays on under fewer of them by design - or a later one where an unversioned change moved
     /// such a season (the plan lists each). Schema 22's earlier shapes are recorded by the last-shape build c2725b53 from
     /// the save given the two literals the migration writes. Tools/OldSaves recorded every script and digest with that
-    /// build's own sources, under the editor's Mono.</para>
+    /// build's own sources, under the editor's Mono. Schema 29's fixtures are this build's own files, one for each
+    /// commitment mode at dialogue rules 0: the default scene's season and a fresh shipped season played to mid-season,
+    /// and a schema-28 mode-1 season carried on, each saved by this build's store and recorded by this build; they load
+    /// as they are, with no migration.</para>
     ///
     /// <para>Three digests (<see cref="OldSaveTrace"/>): the season's - the cross-build gate - must be the reference
     /// build's; the whole state's, blind to prose, and the verbatim text are this build's, pinned when the fixture was
@@ -80,6 +83,9 @@ namespace Gamesim.Tests.EditMode
             "s25-director-w2-eviction", "s25-default-w2-social", "s26-mode1-w2-veto", "s27-mode1-w3-social", "s27-default-w2-social",
             "s28-mode1-waved-off-w2-hoh", "s28-mode1-leaks-w2-eviction", "s28-mode1-war-rooms-w3-veto-meeting",
             "s28-mode1-allweek-w2-campaign", "s28-mode2-allweek-w3-campaign",
+            // Written by this build, schema 29 at dialogue rules 0: the default scene's season (mode 0), a schema-28 mode-1
+            // season carried on and saved again, and a fresh shipped season (mode 2).
+            "s29-default-w2-social", "s29-mode1-allweek-w3-veto-meeting", "s29-mode2-allweek-w3-campaign",
         };
 
         /// <summary>
@@ -120,13 +126,17 @@ namespace Gamesim.Tests.EditMode
                 else
                     Assert.That((string)entry["writer"], Does.Match("^([0-9a-f]{8}|codex-port:unity-v[2-5]-source-202609(10|13))$"),
                         (string)entry["id"] + ": the build that wrote it, a commit or the Codex port's source snapshot.");
+                // A real save names no writer, so only a generated one is held to its writer here.
+                if ((string)entry["origin"] != "real" && (int)entry["schema"] == CurrentOldSaveTrace.Current)
+                    Assert.That((string)entry["referenceBuild"], Is.EqualTo((string)entry["writer"]),
+                        (string)entry["id"] + ": a generated schema-29 fixture is written and recorded by the build that writes schema 29.");
             }
             // One replayed fixture per cell of the plan's matrix: every schema a build wrote (not 1 or 8, which no surviving
             // build did), in each profile it shipped - the director's fresh season and the default scene's; before 6 the
             // director played the default scene's catalogue - with the unified commitment mode (uc), the all-week rules,
-            // Wave D's leaks and war rooms where they branch, and schema 22's three shapes. A cell counts only a fixture
-            // saved in a week, before the finale, with a script to play: one saved at the finale or after it is read, never
-            // a cell's replay.
+            // Wave D's leaks and war rooms where they branch, and schema 22's three shapes; from schema 29 the dialogue rules
+            // too, each commitment mode at dialogue rules 0. A cell counts only a fixture saved in a week, before the finale,
+            // with a script to play: one saved at the finale or after it is read, never a cell's replay.
             var replayed = Manifest["episodes"].Where(e => (int)e["commands"] > 0 && !FinalePhases.Contains((string)e["phase"])).ToList();
             Assert.That(Manifest["episodes"].Except(replayed).Select(e => (string)e["id"]), Is.EquivalentTo(ReadOnly),
                 "A fixture saved at the finale or after it reads an end state; it is never a cell's replay.");
@@ -148,10 +158,12 @@ namespace Gamesim.Tests.EditMode
                 "26/director/uc1/allweek0", "26/default/uc0/allweek0", "27/director/uc1/allweek0", "27/default/uc0/allweek0",
                 "28/director/uc1/allweek0", "28/director/uc1/allweek0/leaks1/plans0", "28/director/uc1/allweek0/leaks1/plans1",
                 "28/director/uc1/allweek1/leaks1/plans1", "28/director/uc2/allweek1/leaks1/plans1", "28/default/uc0/allweek0",
+                "29/default/uc0/allweek0/dialogue0", "29/director/uc1/allweek1/leaks1/plans1/dialogue0",
+                "29/director/uc2/allweek1/leaks1/plans1/dialogue0",
             }));
         }
 
-        /// <summary>A fixture's cell: schema, profile, the rules the readers branch on, and for the director's schema 22 which of its shapes.</summary>
+        /// <summary>A fixture's cell: schema, profile, the rules the readers branch on, for the director's schema 22 which of its shapes, and from schema 29 the dialogue rules.</summary>
         private static string Cell(JToken e)
         {
             int On(string rule) => Math.Min(1, (int?)e["rules"][rule] ?? 0);
@@ -159,7 +171,8 @@ namespace Gamesim.Tests.EditMode
             string profile = (string)e["profile"], id = (string)e["id"];
             return schema + "/" + profile + "/uc" + ((int?)e["rules"]["unifiedCommitmentRulesVersion"] ?? 0) + "/allweek" + On("allWeekRulesStartWeek")
                 + (On("allianceLeakRulesStartWeek") + On("pactPlanRulesStartWeek") > 0 ? "/leaks" + On("allianceLeakRulesStartWeek") + "/plans" + On("pactPlanRulesStartWeek") : "")
-                + (schema == 22 && profile == "director" ? (id.Contains("-early-") ? "/early" : id.Contains("-middle-") ? "/middle" : "/late") : "");
+                + (schema == 22 && profile == "director" ? (id.Contains("-early-") ? "/early" : id.Contains("-middle-") ? "/middle" : "/late") : "")
+                + (schema >= CurrentOldSaveTrace.Current ? "/dialogue" + (int)e["rules"]["dialogueRulesVersion"] : "");
         }
 
         // ------------------------------------------------------------------ load, migrate, validate, replay
@@ -173,8 +186,8 @@ namespace Gamesim.Tests.EditMode
             var payload = (JObject)JObject.Parse(File.ReadAllText(slot.Store.SavePath))["state"];
             Assert.That((int)payload["schemaVersion"], Is.EqualTo(schema));
 
-            // The retained recorder remains literal28; the source-bound current adapter owns29 admission.
-            // Historical fixtures and their reference-schema checkpoint algorithm are not rewritten.
+            // The source-bound current adapter owns29 admission; a schema-29 fixture is this build's own file and loads
+            // without a migration. Historical fixtures and their reference-schema checkpoint algorithm are not rewritten.
             const int current = CurrentOldSaveTrace.Current;
             Assert.That(slot.Store.TryLoad(out var loaded, out string message), Is.True, message);
             if (schema < current) Assert.That(message, Does.Contain("Schema " + schema + " history was migrated to schema " + current + " in memory."));
@@ -532,10 +545,10 @@ namespace Gamesim.Tests.EditMode
         /// Recovery on the old fixtures (OWNER-DECISIONS-2026-10-22 §4, item 2). Every old save, kept as the backup, is
         /// recovered through the real store twice: with no primary, and with the primary cut off halfway, as an
         /// interrupted write leaves it. Loading refuses the primary and offers the backup. Recovery reads the backup as
-        /// loading reads a primary - the frozen schema-28 gate and the step to 29, in memory - and gives the season that
-        /// loading the same file as the primary gives, valid at 29. It puts the backup's own bytes back as the primary,
-        /// not rewritten at 29, and leaves the backup as it was. A damaged primary is kept beside them as
-        /// .before-recovery-*, byte for byte; a missing one leaves nothing to keep.
+        /// loading reads a primary - for an older save the frozen schema-28 gate and the step to 29, in memory; a schema-29
+        /// save as it is - and gives the season that loading the same file as the primary gives, valid at 29. It puts the
+        /// backup's own bytes back as the primary, not rewritten at 29, and leaves the backup as it was. A damaged primary
+        /// is kept beside them as .before-recovery-*, byte for byte; a missing one leaves nothing to keep.
         /// </summary>
         [TestCaseSource(nameof(Episodes))]
         public void AnOldSaveKeptAsTheBackupIsRecoveredWhetherThePrimaryIsMissingOrDamaged(string id)
@@ -578,6 +591,9 @@ namespace Gamesim.Tests.EditMode
                 if (schema == 28)
                     Assert.That(PersistenceMigrationTests.StripSchema29(Payload(recovered)).ToString(Formatting.None),
                         Is.EqualTo(payload.ToString(Formatting.None)), primary + ": without schema 29's literals, the schema-28 save token for token as its build wrote it.");
+                else if (schema == current)
+                    Assert.That(Payload(recovered).ToString(Formatting.None), Is.EqualTo(payload.ToString(Formatting.None)),
+                        primary + ": a schema-29 save is this build's own, recovered token for token as it wrote it.");
 
                 Assert.That(File.ReadAllBytes(slot.Store.BackupPath), Is.EqualTo(slot.Original), primary + ": recovery never rewrites or rotates the backup.");
                 Assert.That(File.ReadAllBytes(slot.Store.SavePath), Is.EqualTo(slot.Original),

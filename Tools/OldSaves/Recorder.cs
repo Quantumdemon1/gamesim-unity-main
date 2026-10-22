@@ -6,6 +6,8 @@
 //   record  <save> <out>                     load a save with that build's store, play it to its end, write the script and digest
 //   replay  <save> <record folder>           what the EditMode test does: apply a recorded script, say where it parts (OLDSAVE_RESULT, OLDSAVE_DUMP)
 //   generate <out> <seed> <size> <rules> <week> <phase>   play a fresh seeded season to a point and save it with that build's store
+//   continue <save> <out> <week> <phase>     load an older save with that build's store, play it on to a point and save it
+//                                            with that store: the file a player who carried the season on has, at that build's schema
 //   shape                                    every saved field path of that build (OLDSAVE_DEFINES=OLDSAVE_SHAPE_ONLY compiles only this)
 //   migrate <save> <out>                     the schema-28 payload this build's chain hands on (what a schema-29 step would validate)
 //   resave  <save> <out>                     load with that build's store and save again, as the next autosave would
@@ -64,8 +66,10 @@ namespace Gamesim.OldSaves
                 if (args.Length >= 3 && args[0] == "replay") return Replay(args[1], args[2]);
                 if (args.Length >= 7 && args[0] == "generate")
                     return Generate(args[1], uint.Parse(args[2]), int.Parse(args[3]), args[4], int.Parse(args[5]), (EpisodePhase)Enum.Parse(typeof(EpisodePhase), args[6]));
+                if (args.Length >= 5 && args[0] == "continue")
+                    return Continue(args[1], args[2], int.Parse(args[3]), (EpisodePhase)Enum.Parse(typeof(EpisodePhase), args[4]));
 #endif
-                Console.Error.WriteLine("usage: record <save> <out> | generate <out> <seed> <size> <rules> <week> <phase>");
+                Console.Error.WriteLine("usage: record <save> <out> | generate <out> <seed> <size> <rules> <week> <phase> | continue <save> <out> <week> <phase>");
                 return 2;
             }
             catch (Exception error)
@@ -326,8 +330,35 @@ namespace Gamesim.OldSaves
             else if (rules == "default") fresh = ContentCatalog.Create(seed);
             else throw new ArgumentException("rules is director or default");
             fresh.sessionId = "oldsave-" + rules + "-" + seed + "-" + size;
-            var engine = new EpisodeEngine(fresh);
-            var walker = new Walker("generate-");
+            return PlayOnAndSave(fresh, new Walker("generate-"), outFile, week, phase);
+        }
+
+        /// <summary>
+        /// An older save carried on by this build, as a player carries it: <paramref name="save"/> loaded by that build's
+        /// store from a slot copy (so the file is never touched) - migrated in memory, if it is older - played by the
+        /// walker to the first state at <paramref name="week"/> and <paramref name="phase"/>, then saved by that build's
+        /// store at its own schema. The walker names its commands "continue-", so they meet neither the save's own ids
+        /// nor those of a script recorded from the result.
+        /// </summary>
+        private static int Continue(string save, string outFile, int week, EpisodePhase phase)
+        {
+            var slot = Path.Combine(Path.GetTempPath(), "oldsave-continue-" + Guid.NewGuid().ToString("N"));
+            Directory.CreateDirectory(slot);
+            try
+            {
+                var file = Path.Combine(slot, "episode.json");
+                File.WriteAllBytes(file, File.ReadAllBytes(save));
+                if (!new EpisodeSaveStore(file).TryLoad(out var state, out var message)) { Console.Error.WriteLine("LOAD REFUSED: " + message); return 3; }
+                Console.WriteLine("loaded week " + state.week + " " + state.phase + " revision " + state.revision + ": " + message);
+                return PlayOnAndSave(state, new Walker("continue-"), outFile, week, phase);
+            }
+            finally { Directory.Delete(slot, true); }
+        }
+
+        /// <summary>Plays a season by the walker to the first state at <paramref name="week"/> and <paramref name="phase"/> and saves it with that build's store.</summary>
+        private static int PlayOnAndSave(EpisodeState start, Walker walker, string outFile, int week, EpisodePhase phase)
+        {
+            var engine = new EpisodeEngine(start);
             for (int step = 0; step < 4000; step++)
             {
                 var s = engine.Snapshot;
@@ -367,7 +398,7 @@ namespace Gamesim.OldSaves
         private readonly string prefix;
         private int sequence;
 
-        /// <summary>A walker naming its commands <paramref name="prefix"/>0001 on: "oldsave-" records a script, "generate-" plays a fresh season to its save point, so a script's ids never meet the save's own.</summary>
+        /// <summary>A walker naming its commands <paramref name="prefix"/>0001 on: "oldsave-" records a script, "generate-" plays a fresh season to its save point and "continue-" an older save on to its, so a script's ids never meet the save's own.</summary>
         public Walker(string prefix = "oldsave-") { this.prefix = prefix; }
 
         public bool MayRefuse(EpisodeCommand command) => command.kind == EpisodeCommandKind.Talk

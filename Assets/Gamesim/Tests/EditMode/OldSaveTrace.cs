@@ -100,7 +100,7 @@ namespace Gamesim.Tests.EditMode
 
         /// <summary>
         /// What each schema from 21 on added, as its migration wrote it (EpisodeSaveMigrations.UpgradeV20ToV21 to
-        /// UpgradeV27ToV28), with the literal value it wrote. Every one is a rule switched off or storage that stays
+        /// UpgradeV28ToV29), with the literal value it wrote. Every one is a rule switched off or storage that stays
         /// empty while it is, so a season saved before it plays with each still at that value to its end: removing
         /// them gives back the schema the reference build stored. A value that moved is refused, never dropped.
         /// </summary>
@@ -122,10 +122,13 @@ namespace Gamesim.Tests.EditMode
             (28, "allianceLeakRulesStartWeek", 0), (28, "pactPlanRulesStartWeek", 0), (28, "allWeekRulesStartWeek", 0),
             (28, "npcSocial.beatWeek", 0), (28, "npcSocial.beatWindow", -1), (28, "npcSocial.beatsFired", 0), (28, "npcSocial.beatSeats", 0),
             (28, "npcSocial.beatPlan", new JArray()), (28, "npcSocial.acts", new JArray()), (28, "ledger.plans", new JArray()),
+            (29, "dialogueRulesVersion", 0),
+            (29, "dialogue", new JObject { ["episodes"] = new JArray(), ["grants"] = new JArray(), ["vetoOccasions"] = new JArray() }),
+            (29, "unifiedCommitments[].conditionalVeto", JValue.CreateNull()),
         };
 
         /// <summary>The newest schema <see cref="Project"/> knows: a state above it is refused rather than guessed at.</summary>
-        internal const int Newest = 28;
+        internal const int Newest = 29;
 
         /// <summary>The oldest schema a projection reaches: the first whose later additions are all switched off (schema 20).</summary>
         internal const int Oldest = 20;

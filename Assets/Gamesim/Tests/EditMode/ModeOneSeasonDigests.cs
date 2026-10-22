@@ -162,7 +162,7 @@ namespace Gamesim.Tests.EditMode
         /// <summary>The whole state, and every reader vote family V5 moves that a test can call.</summary>
         private static void Checkpoint(EpisodeState s, StringBuilder trace)
         {
-            trace.Append(JsonConvert.SerializeObject(s)).Append('\n');
+            trace.Append(WholeState(s)).Append('\n');
             var people = s.contestants.ToList();
             foreach (var a in people)
             {
@@ -217,6 +217,35 @@ namespace Gamesim.Tests.EditMode
             var house = JuryHouseRead.Read(s);
             foreach (var juror in house.jurors) trace.Append(juror.id).Append(':').Append(juror.band).Append(':').Append(juror.reason).Append('|');
             trace.Append('\n');
+        }
+
+        /// <summary>
+        /// The whole state as the recorded builds wrote it. <see cref="Recorded"/> holds schema-28 digests; since the
+        /// dialogue V2 source the live schema is 29, and every state carries the pilot's storage: dialogueRulesVersion,
+        /// the dialogue lists and each commitment row's conditionalVeto. A schema-29 state goes through the same
+        /// observer <see cref="CommitmentRulesSeasonDigests"/> uses, at its schema-28 step
+        /// (LegacyDigestSchema29Observer.ProjectTrace28): it refuses unless that storage is present and inert, removes
+        /// exactly those three additions and writes schemaVersion 28. Any older state serializes as it always did.
+        /// Reached by reflection, as the commitment digests reach it, so this file still compiles against the older
+        /// builds that recorded the digests.
+        /// </summary>
+        private static string WholeState(EpisodeState s)
+        {
+            string direct = JsonConvert.SerializeObject(s);
+            var o = JObject.FromObject(s);
+            Assert.That(o["schemaVersion"]?.Type, Is.EqualTo(JTokenType.Integer));
+            if ((long)o["schemaVersion"] < 29) return direct;
+            Assert.That((long)o["schemaVersion"], Is.EqualTo(29), "Only schema 29's dialogue storage has a projection to the recorded schema 28.");
+            Assert.That(o.ToString(Formatting.None), Is.EqualTo(direct),
+                "The JSON tree must write the state exactly as SerializeObject does, or the projection would hash other bytes.");
+            var observer29 = typeof(ModeOneSeasonDigests).Assembly.GetType("Gamesim.Tests.EditMode.LegacyDigestSchema29Observer", true);
+            var project28 = observer29.GetMethod("ProjectTrace28", BindingFlags.NonPublic | BindingFlags.Static,
+                null, new[] { typeof(EpisodeState), typeof(JObject) }, null);
+            Assert.That(project28, Is.Not.Null, "Schema 29 requires its observer; an absent one never skips the digest.");
+            Assert.That(project28.ReturnType, Is.EqualTo(typeof(JObject)));
+            var projected = (JObject)project28.Invoke(null, new object[] { s, o });
+            Assert.That((long)projected["schemaVersion"], Is.EqualTo(28), "The schema-28 step writes the recorded schema.");
+            return projected.ToString(Formatting.None);
         }
 
         /// <summary>A reader's answer, or the refusal it gives the state: either is the reader's own, and digested.</summary>

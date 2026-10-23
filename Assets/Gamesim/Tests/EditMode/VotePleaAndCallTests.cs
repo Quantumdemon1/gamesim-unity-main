@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Gamesim.Simulation;
+using Newtonsoft.Json;
 using NUnit.Framework;
 
 namespace Gamesim.Tests.EditMode
@@ -76,6 +77,165 @@ namespace Gamesim.Tests.EditMode
             week = s.week, phase = s.phase, deciderId = voterId, ask = LobbyAsk.Vote, subjectId = s.playerId,
             approach = LobbyApproach.Emotional, response = response, influence = influence,
         };
+
+        private static string Json(object value) => JsonConvert.SerializeObject(value);
+
+        private static string SourceResponse(double chance, double roll) => roll * 100 < chance * .6
+            ? LobbyResponse.Receptive : roll * 100 < chance ? LobbyResponse.Open
+            : roll * 100 < chance + 20 ? LobbyResponse.Skeptical : LobbyResponse.Hostile;
+
+        // This deliberately isolates the legacy leaf, not the later paid dialogue/NPC cadence.
+        // The campaign is played; window rules expose its real debit, while all-week stays off.
+        private static EpisodeState EmotionalCampaign(string response, out string voterId)
+        {
+            var s = OnTheBlock(31);
+            EpisodeEngine.EnableWeek(s);
+            Assert.That(s.unifiedCommitmentRulesVersion, Is.Zero, "An isolated legacy-leaf cohort, not mode2 qualification.");
+            Assert.That(s.allWeekRulesStartWeek, Is.Zero);
+            Assert.That(EpisodeEngine.AllWeekOn(s), Is.False);
+            var voter = NpcVoters(s).First(); voterId = voter.id;
+            voter.traits.Clear();
+            SetScore(s, s.playerId, voter.id, response == LobbyResponse.Hostile ? -99 : 99);
+            SetScore(s, voter.id, s.playerId, response == LobbyResponse.Hostile ? -99 : response == LobbyResponse.Skeptical ? 0 : 99);
+            Assert.That(StrategyRules.CanLobby(s, voter.id, LobbyAsk.Vote, s.playerId, out var reason), Is.True, reason);
+            Assert.That(EpisodeEngine.SocialActionsSpent(s), Is.LessThan(EpisodeEngine.SocialActionBudget(s)));
+            double chance = StrategyRules.Chance(s, voter.id, LobbyAsk.Vote, s.playerId, LobbyApproach.Emotional);
+            uint seed = 1;
+            for (; seed <= 4096; seed++)
+                if (SourceResponse(chance, new SeededRandom(seed).NextDouble()) == response) break;
+            Assert.That(seed, Is.LessThanOrEqualTo(4096u), "Select the input roll, never retry a command until it passes.");
+            s.randomState = seed;
+            Assert.That(EpisodeValidation.TryValidate(s, out reason), Is.True, reason);
+            return s;
+        }
+
+        [TestCase(LobbyResponse.Receptive, 4)]
+        [TestCase(LobbyResponse.Open, 3)]
+        [TestCase(LobbyResponse.Skeptical, 1)]
+        [TestCase(LobbyResponse.Hostile, 4)]
+        public void EmotionalVotePleaKeepsTheSourceLeafAndOneWindowDebit(string response, int draws)
+        {
+            var s = EmotionalCampaign(response, out string voterId);
+            var voter = s.Find(voterId);
+            var command = Command(s, EpisodeCommandKind.Lobby, voterId, s.playerId, LobbyAsk.Encode(LobbyAsk.Vote, LobbyApproach.Emotional));
+            string original = Json(s), request = Json(command);
+            var rng = new SeededRandom(s.randomState);
+            double chance = StrategyRules.Chance(s, voterId, LobbyAsk.Vote, s.playerId, LobbyApproach.Emotional);
+            Assert.That(SourceResponse(chance, rng.NextDouble()), Is.EqualTo(response));
+            double influence = response == LobbyResponse.Receptive ? 40 + 20 * rng.NextDouble()
+                : response == LobbyResponse.Open ? 15 : response == LobbyResponse.Skeptical ? -5 : -(30 + 20 * rng.NextDouble());
+            double impact = response == LobbyResponse.Receptive ? 5 : response == LobbyResponse.Open ? 3
+                : response == LobbyResponse.Skeptical ? 0 : -8;
+            double adjusted = WebRules.RelationshipDelta(impact, s.Find(s.playerId).stats.social, true);
+            double reciprocalEvent = impact == 0 ? 0 : WebRules.ReciprocalDelta(impact, rng.NextDouble());
+            double reciprocalScore = impact == 0 ? 0 : WebRules.ReciprocalDelta(impact, rng.NextDouble());
+            var counted = new SeededRandom(s.randomState);
+            for (int i = 0; i < draws; i++) counted.NextDouble();
+            Assert.That(rng.State, Is.EqualTo(counted.State), "One response draw, conditional size, and two distinct Change draws.");
+            string note = "Lobbying: asked to vote to keep you (" + response + ")";
+            var expectedArcs = impact == 0 ? s.relationshipArcs
+                : WebRelationshipArcs.Update(s.relationshipArcs, voterId, voter.name, adjusted, note, s.week).arcs;
+
+            var engine = new EpisodeEngine(s);
+            var result = engine.Apply(command);
+            Assert.That(result.accepted, Is.True, result.reason);
+            var after = engine.Snapshot;
+            var plea = after.lobbies.Last();
+            Assert.That(after.lobbies.Count, Is.EqualTo(s.lobbies.Count + 1));
+            Assert.That((plea.week, plea.phase, plea.deciderId, plea.ask, plea.subjectId, plea.approach, plea.response),
+                Is.EqualTo((s.week, s.phase, voterId, LobbyAsk.Vote, s.playerId, LobbyApproach.Emotional, response)));
+            Assert.That(plea.influence, Is.EqualTo(Math.Max(-StrategyRules.MostInfluence, Math.Min(StrategyRules.MostInfluence, influence))));
+            Assert.That(after.randomState, Is.EqualTo(counted.State));
+            Assert.That(Json(after.npcSocial), Is.EqualTo(Json(s.npcSocial)), "No all-week/NPC-stream coverage is claimed here.");
+            Assert.That(after.Score(s.playerId, voterId), Is.EqualTo(WebRules.ClampScore(s.Score(s.playerId, voterId) + adjusted)));
+            Assert.That(after.Score(voterId, s.playerId), Is.EqualTo(WebRules.ClampScore(s.Score(voterId, s.playerId) + reciprocalScore)));
+            foreach (bool reverse in new[] { false, true })
+            {
+                string from = reverse ? voterId : s.playerId, to = reverse ? s.playerId : voterId;
+                var beforeRow = s.relationships.Single(r => r.fromId == from && r.toId == to);
+                var afterRow = after.relationships.Single(r => r.fromId == from && r.toId == to);
+                Assert.That(afterRow.events.Count, Is.EqualTo(beforeRow.events.Count + (impact == 0 ? 0 : 1)));
+                if (impact == 0) { Assert.That(Json(afterRow), Is.EqualTo(Json(beforeRow))); continue; }
+                var receipt = afterRow.events.Last();
+                Assert.That((receipt.sequence, receipt.week, receipt.type, receipt.description, receipt.decayable),
+                    Is.EqualTo((s.nextSequence + (reverse ? 1 : 0), s.week, "lobby", note, RelationshipLedger.Decays("lobby"))));
+                Assert.That(receipt.impactScore, Is.EqualTo(reverse ? reciprocalEvent : adjusted));
+                Assert.That(afterRow.lastInteractionWeek, Is.EqualTo(s.week));
+                Assert.That(afterRow.notes.Last(), Is.EqualTo(note));
+            }
+            Assert.That(Json(after.relationshipArcs), Is.EqualTo(Json(expectedArcs)));
+            var memory = after.memories.Last(m => m.ownerId == voterId && m.subjectId == s.playerId);
+            Assert.That((memory.week, memory.isPrivate, memory.text),
+                Is.EqualTo((s.week, true, "Asked me to vote to keep you in week " + s.week + ". I was " + response + ".")));
+            var lines = after.events.Where(e => e.sequence >= s.nextSequence).ToArray();
+            Assert.That(lines.Select(e => e.kind), Is.EqualTo(new[] { "lobby", "lever" }));
+            Assert.That(lines[0].text, Is.EqualTo("You asked " + voter.name + " to vote to keep you: “"
+                + StrategyRules.Pitch(s, LobbyAsk.Vote, s.playerId, LobbyApproach.Emotional) + "” " + voter.name + ": “"
+                + StrategyRules.Answer(s, LobbyAsk.Vote, s.playerId, LobbyApproach.Emotional, response) + "”"));
+            Assert.That(lines[1].text, Does.StartWith(voter.name + ": ").And.Contain("your plea"));
+            foreach (var line in lines) Assert.That(line.audienceIds, Is.EquivalentTo(new[] { s.playerId, voterId }));
+            Assert.That(after.nextSequence - s.nextSequence, Is.EqualTo(impact == 0 ? 2 : 4));
+            Assert.That(Json(after.deals), Is.EqualTo(Json(s.deals)));
+            Assert.That(Json(after.promises), Is.EqualTo(Json(s.promises)));
+            Assert.That(Json(after.unifiedCommitments), Is.EqualTo(Json(s.unifiedCommitments)));
+            Assert.That(after.outOfPhaseSocialActions, Is.EqualTo(s.outOfPhaseSocialActions + 1));
+            Assert.That(after.socialActions, Is.EqualTo(s.socialActions));
+            Assert.That(EpisodeEngine.SocialActionsSpent(after), Is.EqualTo(EpisodeEngine.SocialActionsSpent(s) + 1));
+            for (int window = 0; window < Windows.Count; window++)
+                Assert.That(after.windowActions[window], Is.EqualTo(s.windowActions[window] + (window == Windows.AfterVeto ? 1 : 0)));
+            Assert.That(Json(s), Is.EqualTo(original));
+            Assert.That(Json(command), Is.EqualTo(request));
+        }
+
+        [Test]
+        public void EmotionalVotePleaDuplicateCannotSpendOrResolveAgain()
+        {
+            var s = EmotionalCampaign(LobbyResponse.Open, out string voterId);
+            var command = Command(s, EpisodeCommandKind.Lobby, voterId, s.playerId, LobbyAsk.Encode(LobbyAsk.Vote, LobbyApproach.Emotional));
+            string original = Json(s), request = Json(command);
+            var engine = new EpisodeEngine(s);
+            var first = engine.Apply(command);
+            Assert.That(first.accepted, Is.True, first.reason);
+            string committed = Json(engine.Snapshot);
+            var duplicate = engine.Apply(command); // Its revision is now stale; committed ID wins first.
+            Assert.That(duplicate.duplicate, Is.True);
+            Assert.That(duplicate.accepted, Is.False);
+            Assert.That(Json(duplicate.state), Is.EqualTo(committed));
+            Assert.That(Json(engine.Snapshot), Is.EqualTo(committed));
+            Assert.That(Json(s), Is.EqualTo(original));
+            Assert.That(Json(command), Is.EqualTo(request));
+        }
+
+        [TestCase("ap0")]
+        [TestCase("already-asked")]
+        [TestCase("stale")]
+        public void EmotionalVotePleaRefusalPreservesTheWholeStateAndRequest(string refusal)
+        {
+            var s = EmotionalCampaign(LobbyResponse.Open, out string voterId);
+            if (refusal == "ap0")
+            {
+                int spent = EpisodeEngine.SocialActionBudget(s);
+                s.windowActions[Windows.AfterVeto] = spent; s.outOfPhaseSocialActions = spent;
+            }
+            var engine = new EpisodeEngine(s);
+            if (refusal == "already-asked")
+            {
+                var first = engine.Apply(Command(s, EpisodeCommandKind.Lobby, voterId, s.playerId, LobbyAsk.Encode(LobbyAsk.Vote, LobbyApproach.Emotional)));
+                Assert.That(first.accepted, Is.True, first.reason);
+            }
+            var current = engine.Snapshot;
+            var command = Command(current, EpisodeCommandKind.Lobby, voterId, current.playerId, LobbyAsk.Encode(LobbyAsk.Vote, LobbyApproach.Emotional));
+            if (refusal == "stale") command.expectedRevision--;
+            string unchanged = Json(current), request = Json(command), original = Json(s);
+            var result = engine.Apply(command);
+            Assert.That(result.accepted || result.duplicate, Is.False);
+            Assert.That(result.reason, Does.Contain(refusal == "ap0" ? "no conversations left"
+                : refusal == "already-asked" ? "already heard you out" : "episode changed"));
+            Assert.That(Json(result.state), Is.EqualTo(unchanged));
+            Assert.That(Json(engine.Snapshot), Is.EqualTo(unchanged));
+            Assert.That(Json(s), Is.EqualTo(original));
+            Assert.That(Json(command), Is.EqualTo(request));
+        }
 
         [Test]
         public void APleaForYourVoteIsThereWhenYouAreOnTheBlock()

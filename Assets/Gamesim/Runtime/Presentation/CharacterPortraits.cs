@@ -74,10 +74,21 @@ namespace Gamesim.Presentation
         {
             if (queue == null)
             {
-                var root = new GameObject("Gamesim Portrait Queue") { hideFlags = HideFlags.DontSave };
-                queue = root.AddComponent<CharacterPortraitQueue>();
+                var root = new GameObject("Gamesim Portrait Queue");
+                // DontSave can detach a transient root from its scene. Keep its real creation owner.
+                var owner = root.scene;
+                root.hideFlags = HideFlags.DontSave;
+                var created = root.AddComponent<CharacterPortraitQueue>();
+                if (!created.BindOwnerScene(owner)) { Destroy(root); return; }
+                queue = created;
             }
             queue.Enqueue(key, appearance);
+        }
+
+        internal static void DetachQueue(CharacterPortraitQueue retired)
+        {
+            // An older deferred OnDestroy must not clear a replacement from the next scene.
+            if (object.ReferenceEquals(queue, retired)) queue = null;
         }
 
         public static void Bind(RawImage image, ContestantState contestant)

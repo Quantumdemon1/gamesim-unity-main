@@ -1,0 +1,10 @@
+*** Begin Patch
+*** Update File: D:/GamesimConsolidation/Assets/Gamesim/Tests/EditMode/DialoguePublicRescueV2Tests.cs
+@@
+-        private static JObject Floating(double value) => new JObject(new JProperty("value", new JValue(value)));
++        private static JObject Floating(double value) => new JObject(new JProperty("value", new JValue((object)value)));
+*** Update File: D:/GamesimConsolidation/Assets/Gamesim/Tests/EditMode/StrategicOldControls05ParityTests.cs
+@@
+-        private static JObject Floating(double value) => new JObject(new JProperty("value", new JValue(value)));
++        private static JObject Floating(double value) => new JObject(new JProperty("value", new JValue((object)value)));
+*** End Patch

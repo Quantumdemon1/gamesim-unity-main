@@ -1,0 +1,13 @@
+{
+  "reviewer": "independent packaging and integration agent",
+  "result": "No blocking code defect found in bounded review.",
+  "checks": [
+    "28 packaging material slots and factors match final material map",
+    "60 native dependencies and unique destinations match hashes",
+    "Both house source guards and postimage hashes match",
+    "Placement supports/yaw and collision/static/shadow rules preserved",
+    "Competition mesh bounds/fallback and borrowed ownership preserved"
+  ],
+  "documentationFix": "Corrected packaging README: game-box labels use slot 1; mapping is by name, not fixed slot.",
+  "nativeUnityTests": "not run"
+}

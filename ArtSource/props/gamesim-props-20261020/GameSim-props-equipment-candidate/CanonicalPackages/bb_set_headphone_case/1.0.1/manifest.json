@@ -1,0 +1,45 @@
+{
+  "assetId": "bb_set_headphone_case",
+  "category": "environment_prop",
+  "description": "Original static dressing prop, metres and bottom-centre origin; full PBR GLB and explicit Unity texture companion. Existing support point and envelope retained. No interaction or collider is introduced. Native Unity acceptance pending.",
+  "displayName": "bb_set_headphone_case",
+  "files": [
+    {
+      "bytes": 1797000,
+      "kind": "model",
+      "path": "model.glb",
+      "sha256": "eb090bf7e45da02f0afe5d21d319a6820bce0317ceeddf0c2f87a9aeef588ae8"
+    },
+    {
+      "bytes": 2096,
+      "kind": "metadata",
+      "path": "metadata.json",
+      "sha256": "1b32beed66c8dc4e996d671006d0689e5ce528bad7c96a724cb2bda933ed3363"
+    },
+    {
+      "bytes": 1111,
+      "kind": "provenance",
+      "path": "provenance.json",
+      "sha256": "853c7c058db6b88e16c7d034f915988b2107c4e37ad0f7f171e37c85c3817722"
+    },
+    {
+      "bytes": 4167,
+      "kind": "validation",
+      "path": "validation.json",
+      "sha256": "a7d52030864c71082baba4ce62ab0bc4df4f28b07c60f43f70580f008d153923"
+    }
+  ],
+  "license": "LicenseRef-GameSim-Original",
+  "model": "model.glb",
+  "packageId": "pkg_ae9ae6601c9315715280a86a",
+  "provenance": {
+    "origin": "authored"
+  },
+  "schema": "game_dev.asset_package.v1",
+  "validation": {
+    "errorCount": 0,
+    "passed": true,
+    "warningCount": 0
+  },
+  "version": "1.0.1"
+}

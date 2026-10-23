@@ -1,0 +1,24 @@
+{
+  "schema": "game_dev.job.v1",
+  "id": "job_0b82f7e9-e888-4668-b5b5-7d7dfa8928f0",
+  "operation": "package.verify",
+  "status": "completed",
+  "request": {
+    "positionals": [
+      "package",
+      "verify",
+      "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\outputs\\gamesim-props-20261020\\.game-dev\\packages\\bb_comp_griprig\\1.0.0"
+    ],
+    "flags": {
+      "output-dir": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\outputs\\gamesim-props-20261020"
+    }
+  },
+  "attempts": 1,
+  "eventCount": 1,
+  "artifacts": [],
+  "createdAt": "2026-10-21T04:00:59.652Z",
+  "updatedAt": "2026-10-21T04:00:59.731Z",
+  "startedAt": "2026-10-21T04:00:59.679Z",
+  "completedAt": "2026-10-21T04:00:59.731Z",
+  "receiptPath": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\outputs\\gamesim-props-20261020\\.game-dev\\jobs\\job_0b82f7e9-e888-4668-b5b5-7d7dfa8928f0\\receipt.json"
+}

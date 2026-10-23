@@ -62,24 +62,40 @@ namespace Gamesim.Simulation
 
         /// <summary>Reservation only: whether this promise draft would be admitted now. Writes nothing.</summary>
         internal static bool CanAddPromise(EpisodeState s, PromiseState draft, string origin, out string error) =>
-            UnifiedVoteAdmission.TryPromise(s, draft, origin, out _, out error);
+            CanAddPromise(s, draft, origin, null, out error);
+
+        internal static bool CanAddPromise(EpisodeState s, PromiseState draft, string origin,
+            EpisodeEngine.PendingDialogueCommand pending, out string error) =>
+            UnifiedVoteAdmission.TryPromise(s, draft, origin, pending, out _, out error);
 
         /// <summary>Admits the promise draft and appends its canonical row, or refuses and writes nothing.</summary>
-        internal static bool TryAddPromise(EpisodeState s, PromiseState draft, string origin, out string error)
+        internal static bool TryAddPromise(EpisodeState s, PromiseState draft, string origin, out string error) =>
+            TryAddPromise(s, draft, origin, null, out error);
+
+        internal static bool TryAddPromise(EpisodeState s, PromiseState draft, string origin,
+            EpisodeEngine.PendingDialogueCommand pending, out string error)
         {
-            if (!UnifiedVoteAdmission.TryPromise(s, draft, origin, out var row, out error)) return Refused(s);
+            if (!UnifiedVoteAdmission.TryPromise(s, draft, origin, pending, out var row, out error)) return Refused(s, origin, pending);
             s.unifiedCommitments.Add(row);
             return true;
         }
 
         /// <summary>Reservation only: whether this immediate or proposed deal draft would be admitted now. Writes nothing.</summary>
         internal static bool CanAddDeal(EpisodeState s, DealState draft, string origin, out string error) =>
-            UnifiedVoteAdmission.TryDeal(s, draft, origin, out _, out error);
+            CanAddDeal(s, draft, origin, null, out error);
+
+        internal static bool CanAddDeal(EpisodeState s, DealState draft, string origin,
+            EpisodeEngine.PendingDialogueCommand pending, out string error) =>
+            UnifiedVoteAdmission.TryDeal(s, draft, origin, pending, out _, out error);
 
         /// <summary>Admits the deal draft and appends its canonical row, or refuses and writes nothing.</summary>
-        internal static bool TryAddDeal(EpisodeState s, DealState draft, string origin, out string error)
+        internal static bool TryAddDeal(EpisodeState s, DealState draft, string origin, out string error) =>
+            TryAddDeal(s, draft, origin, null, out error);
+
+        internal static bool TryAddDeal(EpisodeState s, DealState draft, string origin,
+            EpisodeEngine.PendingDialogueCommand pending, out string error)
         {
-            if (!UnifiedVoteAdmission.TryDeal(s, draft, origin, out var row, out error)) return Refused(s);
+            if (!UnifiedVoteAdmission.TryDeal(s, draft, origin, pending, out var row, out error)) return Refused(s, origin, pending);
             s.unifiedCommitments.Add(row);
             return true;
         }
@@ -178,6 +194,16 @@ namespace Gamesim.Simulation
         private static bool Refused(EpisodeState s)
         {
             if (!EpisodeValidation.TryValidateProspectiveUnifiedVote(s, out var stateError))
+                throw EpisodeEngine.Refusal("The unified vote state fails its core in the middle of the command: " + stateError);
+            return false;
+        }
+
+        private static bool Refused(EpisodeState s, string origin, EpisodeEngine.PendingDialogueCommand pending)
+        {
+            if (pending == null) return Refused(s);
+            if (!pending.Authorizes(s, origin))
+                throw EpisodeEngine.Refusal("This pending dialogue command does not authorize the Vote source origin.");
+            if (!EpisodeValidation.TryValidatePendingVote(s, pending, out var stateError))
                 throw EpisodeEngine.Refusal("The unified vote state fails its core in the middle of the command: " + stateError);
             return false;
         }

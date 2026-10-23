@@ -25,8 +25,15 @@ namespace Gamesim.Simulation
         // no owner infers either binding or disclosure from a migrated historical record.
         public int voteBindingWeek, voteFirstRevealWeek;
 
-        // All members are scalars or immutable strings. Deep-copy any collections added in a later family.
-        public UnifiedCommitmentState Clone() => (UnifiedCommitmentState)MemberwiseClone();
+        // Schema 29 storage only. Every existing Safety/Vote row retains literal null terms.
+        public ConditionalVetoTermsState conditionalVeto;
+
+        public UnifiedCommitmentState Clone()
+        {
+            var copy = (UnifiedCommitmentState)MemberwiseClone();
+            copy.conditionalVeto = conditionalVeto?.Clone();
+            return copy;
+        }
     }
 
     /// <summary>A detached proposed change, never installed in an EpisodeState by these helpers.</summary>

@@ -10,6 +10,7 @@ using System.Text.RegularExpressions;
 using Gamesim.Persistence;
 using Gamesim.Presentation;
 using Gamesim.Simulation;
+using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using NUnit.Framework;
 
@@ -19,7 +20,8 @@ namespace Gamesim.Tests.EditMode
     /// Old-save acceptance (the owner's decision; Assets/Plans/OLD-SAVE-ACCEPTANCE.md): every committed save, one per
     /// save version and rules combination, loads in this build, migrates in memory, validates, replays the command script
     /// its reference build recorded to that build's season digest, byte for byte, and every simulation and presentation
-    /// reader the screens print through renders it without an exception, a hidden ballot or a number for odds. The
+    /// reader the screens print through renders it without an exception, a hidden ballot or a number for odds. Kept as
+    /// the backup, each save is also recovered through the store as loading reads it (the owner's 22 October gate). The
     /// screens' own text assembly in the Runtime assembly (the director's notebook pages and diary room, the HUD's
     /// roster) is not run here: it formats what these readers return.
     ///
@@ -33,7 +35,10 @@ namespace Gamesim.Tests.EditMode
     /// save's, so an older build plays on under fewer of them by design - or a later one where an unversioned change moved
     /// such a season (the plan lists each). Schema 22's earlier shapes are recorded by the last-shape build c2725b53 from
     /// the save given the two literals the migration writes. Tools/OldSaves recorded every script and digest with that
-    /// build's own sources, under the editor's Mono.</para>
+    /// build's own sources, under the editor's Mono. Schema 29's fixtures are this build's own files, one for each
+    /// commitment mode at dialogue rules 0: the default scene's season and a fresh shipped season played to mid-season,
+    /// and a schema-28 mode-1 season carried on, each saved by this build's store and recorded by this build; they load
+    /// as they are, with no migration.</para>
     ///
     /// <para>Three digests (<see cref="OldSaveTrace"/>): the season's - the cross-build gate - must be the reference
     /// build's; the whole state's, blind to prose, and the verbatim text are this build's, pinned when the fixture was
@@ -78,6 +83,9 @@ namespace Gamesim.Tests.EditMode
             "s25-director-w2-eviction", "s25-default-w2-social", "s26-mode1-w2-veto", "s27-mode1-w3-social", "s27-default-w2-social",
             "s28-mode1-waved-off-w2-hoh", "s28-mode1-leaks-w2-eviction", "s28-mode1-war-rooms-w3-veto-meeting",
             "s28-mode1-allweek-w2-campaign", "s28-mode2-allweek-w3-campaign",
+            // Written by this build, schema 29 at dialogue rules 0: the default scene's season (mode 0), a schema-28 mode-1
+            // season carried on and saved again, and a fresh shipped season (mode 2).
+            "s29-default-w2-social", "s29-mode1-allweek-w3-veto-meeting", "s29-mode2-allweek-w3-campaign",
         };
 
         /// <summary>
@@ -118,13 +126,17 @@ namespace Gamesim.Tests.EditMode
                 else
                     Assert.That((string)entry["writer"], Does.Match("^([0-9a-f]{8}|codex-port:unity-v[2-5]-source-202609(10|13))$"),
                         (string)entry["id"] + ": the build that wrote it, a commit or the Codex port's source snapshot.");
+                // A real save names no writer, so only a generated one is held to its writer here.
+                if ((string)entry["origin"] != "real" && (int)entry["schema"] == CurrentOldSaveTrace.Current)
+                    Assert.That((string)entry["referenceBuild"], Is.EqualTo((string)entry["writer"]),
+                        (string)entry["id"] + ": a generated schema-29 fixture is written and recorded by the build that writes schema 29.");
             }
             // One replayed fixture per cell of the plan's matrix: every schema a build wrote (not 1 or 8, which no surviving
             // build did), in each profile it shipped - the director's fresh season and the default scene's; before 6 the
             // director played the default scene's catalogue - with the unified commitment mode (uc), the all-week rules,
-            // Wave D's leaks and war rooms where they branch, and schema 22's three shapes. A cell counts only a fixture
-            // saved in a week, before the finale, with a script to play: one saved at the finale or after it is read, never
-            // a cell's replay.
+            // Wave D's leaks and war rooms where they branch, and schema 22's three shapes; from schema 29 the dialogue rules
+            // too, each commitment mode at dialogue rules 0. A cell counts only a fixture saved in a week, before the finale,
+            // with a script to play: one saved at the finale or after it is read, never a cell's replay.
             var replayed = Manifest["episodes"].Where(e => (int)e["commands"] > 0 && !FinalePhases.Contains((string)e["phase"])).ToList();
             Assert.That(Manifest["episodes"].Except(replayed).Select(e => (string)e["id"]), Is.EquivalentTo(ReadOnly),
                 "A fixture saved at the finale or after it reads an end state; it is never a cell's replay.");
@@ -146,10 +158,12 @@ namespace Gamesim.Tests.EditMode
                 "26/director/uc1/allweek0", "26/default/uc0/allweek0", "27/director/uc1/allweek0", "27/default/uc0/allweek0",
                 "28/director/uc1/allweek0", "28/director/uc1/allweek0/leaks1/plans0", "28/director/uc1/allweek0/leaks1/plans1",
                 "28/director/uc1/allweek1/leaks1/plans1", "28/director/uc2/allweek1/leaks1/plans1", "28/default/uc0/allweek0",
+                "29/default/uc0/allweek0/dialogue0", "29/director/uc1/allweek1/leaks1/plans1/dialogue0",
+                "29/director/uc2/allweek1/leaks1/plans1/dialogue0",
             }));
         }
 
-        /// <summary>A fixture's cell: schema, profile, the rules the readers branch on, and for the director's schema 22 which of its shapes.</summary>
+        /// <summary>A fixture's cell: schema, profile, the rules the readers branch on, for the director's schema 22 which of its shapes, and from schema 29 the dialogue rules.</summary>
         private static string Cell(JToken e)
         {
             int On(string rule) => Math.Min(1, (int?)e["rules"][rule] ?? 0);
@@ -157,7 +171,8 @@ namespace Gamesim.Tests.EditMode
             string profile = (string)e["profile"], id = (string)e["id"];
             return schema + "/" + profile + "/uc" + ((int?)e["rules"]["unifiedCommitmentRulesVersion"] ?? 0) + "/allweek" + On("allWeekRulesStartWeek")
                 + (On("allianceLeakRulesStartWeek") + On("pactPlanRulesStartWeek") > 0 ? "/leaks" + On("allianceLeakRulesStartWeek") + "/plans" + On("pactPlanRulesStartWeek") : "")
-                + (schema == 22 && profile == "director" ? (id.Contains("-early-") ? "/early" : id.Contains("-middle-") ? "/middle" : "/late") : "");
+                + (schema == 22 && profile == "director" ? (id.Contains("-early-") ? "/early" : id.Contains("-middle-") ? "/middle" : "/late") : "")
+                + (schema >= CurrentOldSaveTrace.Current ? "/dialogue" + (int)e["rules"]["dialogueRulesVersion"] : "");
         }
 
         // ------------------------------------------------------------------ load, migrate, validate, replay
@@ -171,9 +186,9 @@ namespace Gamesim.Tests.EditMode
             var payload = (JObject)JObject.Parse(File.ReadAllText(slot.Store.SavePath))["state"];
             Assert.That((int)payload["schemaVersion"], Is.EqualTo(schema));
 
-            // The current schema is OldSaveTrace.Newest, the newest the projection knows: a new schema adds its literals
-            // there (the plan's section 6, step 6) and every fixture here then migrates through the new step.
-            const int current = OldSaveTrace.Newest;
+            // The source-bound current adapter owns29 admission; a schema-29 fixture is this build's own file and loads
+            // without a migration. Historical fixtures and their reference-schema checkpoint algorithm are not rewritten.
+            const int current = CurrentOldSaveTrace.Current;
             Assert.That(slot.Store.TryLoad(out var loaded, out string message), Is.True, message);
             if (schema < current) Assert.That(message, Does.Contain("Schema " + schema + " history was migrated to schema " + current + " in memory."));
             else Assert.That(message, Does.Not.Contain("migrated"));
@@ -196,7 +211,7 @@ namespace Gamesim.Tests.EditMode
             Assert.That(File.ReadAllBytes(slot.Store.BackupPath), Is.EqualTo(slot.Original), "The pre-migration bytes are kept as the backup.");
             Assert.That(slot.Store.TryLoad(out var again, out message), Is.True, message);
             Assert.That(message, Does.Not.Contain("migrated"));
-            Assert.That(OldSaveTrace.Checkpoint(again, current), Is.EqualTo(OldSaveTrace.Checkpoint(loaded, current)), "Saved and loaded again, the season is unchanged.");
+            Assert.That(CurrentOldSaveTrace.Checkpoint(again, current), Is.EqualTo(CurrentOldSaveTrace.Checkpoint(loaded, current)), "Saved and loaded again, the season is unchanged.");
         }
 
         /// <summary>
@@ -251,7 +266,7 @@ namespace Gamesim.Tests.EditMode
             var text = new List<string>();
             void Check(EpisodeState s, int index)
             {
-                var (g, b, t) = OldSaveTrace.Checkpoint(s, schema);
+                var (g, b, t) = CurrentOldSaveTrace.Checkpoint(s, schema);
                 season.Add(g); state.Add(b); text.Add(t);
                 Assert.That(g.Substring(0, 16), Is.EqualTo((string)expected[index]["season"]),
                     id + ": checkpoint " + index + " (week " + s.week + " " + s.phase + ", revision " + s.revision + ") is not the reference build's.");
@@ -486,7 +501,7 @@ namespace Gamesim.Tests.EditMode
             Ask("UnifiedSafetySaveReferences.TryValidate", () => UnifiedSafetySaveReferences.TryValidate(s, out string error) + " " + error);
             Ask("UnifiedSafetySaveReferences.TryValidateProspectiveVote", () => Internal(typeof(UnifiedSafetySaveReferences), "TryValidateProspectiveVote", s));
             Ask("UnifiedVoteFamilyValidation.TryValidate", () => UnifiedVoteFamilyValidation.TryValidate(s, s.unifiedVoteReveals, out string error) + " " + error);
-            Ask("UnifiedVoteHistory.FindDecision", () => new JArray(s.unifiedCommitments.Select(row => Fields(UnifiedVoteHistory.FindDecision(s, row.id)))));
+            Ask("UnifiedVoteHistory.FindDecision", () => LegacyDigestSchema29Observer.FindDecisionAnswers28(s));
             Ask("UnifiedVoteHistory.Fulfillments", () => Each(UnifiedVoteHistory.Fulfillments(s)));
             Ask("UnifiedVoteHistory.Incidents", () => Each(UnifiedVoteHistory.Incidents(s)));
             return OldSaveTrace.Canonical(answers, false);
@@ -522,6 +537,109 @@ namespace Gamesim.Tests.EditMode
             var fresh = SeasonBuilder.Create(new SeasonBuilder.Choice { HouseSize = 8 }, 1402u);
             Assert.Throws<InvalidDataException>(() => slot.Store.Save(fresh), "A save over an unreadable file is refused.");
             Assert.That(File.ReadAllBytes(slot.Store.SavePath), Is.EqualTo(slot.Original), "and the file stays as it was.");
+        }
+
+        // ------------------------------------------------------------------ recovered from the backup
+
+        /// <summary>
+        /// Recovery on the old fixtures (OWNER-DECISIONS-2026-10-22 §4, item 2). Every old save, kept as the backup, is
+        /// recovered through the real store twice: with no primary, and with the primary cut off halfway, as an
+        /// interrupted write leaves it. Loading refuses the primary and offers the backup. Recovery reads the backup as
+        /// loading reads a primary - for an older save the frozen schema-28 gate and the step to 29, in memory; a schema-29
+        /// save as it is - and gives the season that loading the same file as the primary gives, valid at 29. It puts the
+        /// backup's own bytes back as the primary, not rewritten at 29, and leaves the backup as it was. A damaged primary
+        /// is kept beside them as .before-recovery-*, byte for byte; a missing one leaves nothing to keep.
+        /// </summary>
+        [TestCaseSource(nameof(Episodes))]
+        public void AnOldSaveKeptAsTheBackupIsRecoveredWhetherThePrimaryIsMissingOrDamaged(string id)
+        {
+            var entry = Entry(id);
+            int schema = (int)entry["schema"];
+            const int current = CurrentOldSaveTrace.Current;
+            using var reference = new Slot((string)entry["save"]);
+            var payload = (JObject)Envelope(reference.Store.SavePath)["state"];
+            Assert.That(reference.Store.TryLoad(out var loaded, out string loadMessage), Is.True, loadMessage);
+            var migrated = EpisodeSaveMigrations.PrepareCurrentPayload((JObject)payload.DeepClone(), out bool stepped);
+            Assert.That(stepped, Is.EqualTo(schema < current));
+            // Read as the store reads it: a saved 0.62 is a double in the tree and a float in the state.
+            var expected = Payload(migrated.ToObject<EpisodeState>(Serializer()));
+
+            foreach (bool damaged in new[] { false, true })
+            {
+                string primary = id + (damaged ? ", a damaged primary" : ", no primary");
+                using var slot = new Slot((string)entry["save"]);
+                File.Move(slot.Store.SavePath, slot.Store.BackupPath);
+                byte[] torn = Torn(slot.Original);
+                if (damaged) File.WriteAllBytes(slot.Store.SavePath, torn);
+
+                Assert.That(slot.Store.TryLoad(out var refused, out string message), Is.False, primary);
+                Assert.That(refused, Is.Null);
+                Assert.That(message, Does.StartWith(damaged ? "Local save could not be loaded: " : "No local save exists in this slot.")
+                    .And.EndWith(" A validated backup is available; choose Recover backup to restore it."), primary);
+
+                Assert.That(slot.Store.TryRecoverBackup(out var recovered, out message), Is.True, primary + ": " + message);
+                Assert.That(message, Is.EqualTo("Backup restored and validated. The backup remains available."
+                    + (damaged ? " Your previous save file was kept alongside it." : "")
+                    + loadMessage.Substring("Local episode loaded and validated.".Length)), primary + ": recovery says what loading the file says.");
+                if (schema < current) Assert.That(message, Does.Contain("Schema " + schema + " history was migrated to schema " + current + " in memory."));
+                Assert.That(recovered.schemaVersion, Is.EqualTo(current), primary);
+                Assert.That(EpisodeValidation.TryValidate(recovered, out var error), Is.True, primary + ": " + error);
+                Assert.That(JToken.DeepEquals(Payload(recovered), expected), Is.True,
+                    primary + ": the recovered season is the save's own, through the frozen schema-28 gate and the step to 29.");
+                Assert.That(CurrentOldSaveTrace.Checkpoint(recovered, current), Is.EqualTo(CurrentOldSaveTrace.Checkpoint(loaded, current)),
+                    primary + ": the season loading the same file as the primary gives.");
+                if (schema == 28)
+                    Assert.That(PersistenceMigrationTests.StripSchema29(Payload(recovered)).ToString(Formatting.None),
+                        Is.EqualTo(payload.ToString(Formatting.None)), primary + ": without schema 29's literals, the schema-28 save token for token as its build wrote it.");
+                else if (schema == current)
+                    Assert.That(Payload(recovered).ToString(Formatting.None), Is.EqualTo(payload.ToString(Formatting.None)),
+                        primary + ": a schema-29 save is this build's own, recovered token for token as it wrote it.");
+
+                Assert.That(File.ReadAllBytes(slot.Store.BackupPath), Is.EqualTo(slot.Original), primary + ": recovery never rewrites or rotates the backup.");
+                Assert.That(File.ReadAllBytes(slot.Store.SavePath), Is.EqualTo(slot.Original),
+                    primary + ": the primary is the backup's own bytes; the disk format changes only on the next save.");
+                var kept = Directory.GetFiles(slot.Folder, "episode.json.before-recovery-*.json");
+                Assert.That(kept, Has.Length.EqualTo(damaged ? 1 : 0), primary + ": a damaged primary is kept beside it; a missing one leaves nothing to keep.");
+                if (damaged) Assert.That(File.ReadAllBytes(kept[0]), Is.EqualTo(torn), primary + ": the damaged primary is kept byte for byte.");
+                Assert.That(Directory.GetFiles(slot.Folder).Select(Path.GetFileName),
+                    Is.EquivalentTo(new[] { "episode.json", "episode.json.backup" }.Concat(kept.Select(Path.GetFileName))), primary + ": nothing else is left in the slot.");
+
+                Assert.That(slot.Store.TryLoad(out var again, out message), Is.True, primary + ": " + message);
+                Assert.That(message, Is.EqualTo(loadMessage));
+                Assert.That(CurrentOldSaveTrace.Checkpoint(again, current), Is.EqualTo(CurrentOldSaveTrace.Checkpoint(loaded, current)),
+                    primary + ": the recovered primary loads as the old save does.");
+            }
+        }
+
+        /// <summary>
+        /// A save this build refuses (F4) is never recovered either. Kept as the backup, it is not offered, and recovery
+        /// refuses with the save's own reason and changes nothing: no primary installed, a damaged one left as it was,
+        /// nothing kept beside it, the backup as it was.
+        /// </summary>
+        [TestCaseSource(nameof(Refused))]
+        public void AnOldSaveFromABranchsOwnSchemaNumberIsNeverRecoveredFromTheBackup(string id)
+        {
+            var entry = Entry(id);
+            foreach (bool damaged in new[] { false, true })
+            {
+                string primary = id + (damaged ? ", a damaged primary" : ", no primary");
+                using var slot = new Slot((string)entry["save"]);
+                File.Move(slot.Store.SavePath, slot.Store.BackupPath);
+                byte[] torn = Torn(slot.Original);
+                if (damaged) File.WriteAllBytes(slot.Store.SavePath, torn);
+
+                Assert.That(slot.Store.TryLoad(out var loaded, out string message), Is.False, primary);
+                Assert.That(loaded, Is.Null);
+                Assert.That(message, Does.Not.Contain("Recover backup"), primary + ": a backup this build refuses is not offered.");
+                Assert.That(slot.Store.TryRecoverBackup(out var recovered, out message), Is.False, primary);
+                Assert.That(recovered, Is.Null);
+                Assert.That(message, Does.StartWith("Backup recovery unavailable: ").And.Contain((string)entry["refusal"]), primary);
+                Assert.That(Directory.GetFiles(slot.Folder).Select(Path.GetFileName),
+                    Is.EquivalentTo(damaged ? new[] { "episode.json", "episode.json.backup" } : new[] { "episode.json.backup" }),
+                    primary + ": nothing installed, kept or left pending.");
+                Assert.That(File.ReadAllBytes(slot.Store.BackupPath), Is.EqualTo(slot.Original), primary);
+                if (damaged) Assert.That(File.ReadAllBytes(slot.Store.SavePath), Is.EqualTo(torn), primary + ": the damaged primary is left as it was.");
+            }
         }
 
         // ------------------------------------------------------------------ the career
@@ -573,12 +691,31 @@ namespace Gamesim.Tests.EditMode
             using (var sha = SHA256.Create()) return BitConverter.ToString(sha.ComputeHash(bytes)).Replace("-", "").ToLowerInvariant();
         }
 
+        /// <summary>A save's envelope as the store reads it: no date parsing, so every string stays a string.</summary>
+        private static JObject Envelope(string path)
+        {
+            using var reader = new JsonTextReader(new StringReader(File.ReadAllText(path))) { DateParseHandling = DateParseHandling.None };
+            return JObject.Load(reader);
+        }
+
+        /// <summary>The store's own serializer. It is internal, so the test assembly reaches it by reflection.</summary>
+        private static JsonSerializer Serializer() =>
+            (JsonSerializer)typeof(EpisodeSaveStore).Assembly.GetType("Gamesim.Persistence.SaveJson", true)
+                .GetMethod("Serializer", BindingFlags.Public | BindingFlags.Static).Invoke(null, null);
+
+        /// <summary>A state as the store writes it.</summary>
+        private static JObject Payload(EpisodeState state) => JObject.FromObject(state, Serializer());
+
+        /// <summary>A save cut off halfway, as an interrupted write leaves it.</summary>
+        private static byte[] Torn(byte[] save) => save.Take(save.Length / 2).ToArray();
+
         /// <summary>A fixture's bytes in a slot of its own, deleted afterwards.</summary>
         private sealed class Slot : IDisposable
         {
             private readonly string directory = Path.Combine(Path.GetTempPath(), "GamesimOldSave-" + Guid.NewGuid().ToString("N"));
             public readonly EpisodeSaveStore Store;
             public readonly byte[] Original;
+            public string Folder => directory;
 
             public Slot(string save)
             {

@@ -792,7 +792,7 @@ namespace Gamesim.Tests.EditMode
             {
                 var s = Fresh(seed, hearing, 3, true);
                 var npcs = s.Active.Where(c => !c.isPlayer).Select(c => c.id).ToArray();
-                Call(typeof(NpcPromises), "Give", s, npcs[0], npcs[1], PromiseKind.Safety);
+                Call(typeof(NpcPromises), "Give", s, npcs[0], npcs[1], PromiseKind.Safety, null);
                 foreach (string npc in npcs)
                 {
                     Call(typeof(EpisodeEngine), "StoryPromise", s, s.Find(npc), s.Find(s.playerId), "Safety");
@@ -985,7 +985,7 @@ namespace Gamesim.Tests.EditMode
         {
             string before = Json(s);
             var next = s.Clone();
-            Call(typeof(EpisodeEngine), "Execute", next, command);
+            Call(typeof(EpisodeEngine), "Execute", next, command, null);
             Call(typeof(EpisodeEngine), "CancelInvalidNpcConversations", next);
             EpisodeEngine.ReconcileAllianceRows(next);
             Assert.That(Json(s), Is.EqualTo(before), "Actual source progression owns a detached copy.");
@@ -1081,6 +1081,8 @@ namespace Gamesim.Tests.EditMode
             return accepted;
         }
 
+        // Dialogue V2 threads a pending paid-dialogue handle through Execute and NpcPromises.Give. Reflection
+        // fills no defaults, so the callers pass it: null, which is what Apply passes for every ordinary command.
         private static object Call(Type owner, string name, params object[] args)
         {
             var method = owner.GetMethod(name, BindingFlags.NonPublic | BindingFlags.Static);

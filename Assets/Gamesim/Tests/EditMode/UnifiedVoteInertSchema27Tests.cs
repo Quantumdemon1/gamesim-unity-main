@@ -15,7 +15,7 @@ namespace Gamesim.Tests.EditMode
         public void ActualFactoriesRetainDisabledEmptyStorageAtCurrent27(bool builder)
         {
             var s = builder ? SeasonBuilder.Create(new SeasonBuilder.Choice(), 2505) : ContentCatalog.Create(2505);
-            Accepted(s); Assert.That(s.schemaVersion, Is.EqualTo(28));
+            Accepted(s); Assert.That(s.schemaVersion, Is.EqualTo(29));
             Assert.That(s.unifiedCommitmentRulesVersion, Is.Zero); Assert.That(s.unifiedHearingRulesVersion, Is.Zero);
             Assert.That(s.unifiedCommitments, Is.Not.Null.And.Empty); Assert.That(s.unifiedVoteReveals, Is.Not.Null.And.Empty);
             Assert.That(s.unifiedHearingEvidence, Is.Empty); Assert.That(s.unifiedHearingReceipts, Is.Empty);
@@ -24,7 +24,7 @@ namespace Gamesim.Tests.EditMode
         [TestCase(false, false)] [TestCase(true, false)] [TestCase(false, true)] [TestCase(true, true)]
         public void ActualPublicSafetyOwnersNeverBindFutureVoteChronology(bool hearing, bool deal)
         {
-            var s = Write(hearing, deal); Accepted(s); Assert.That(s.schemaVersion, Is.EqualTo(28));
+            var s = Write(hearing, deal); Accepted(s); Assert.That(s.schemaVersion, Is.EqualTo(29));
             var row = s.unifiedCommitments.Single(r => r.origin == (deal ? UnifiedCommitments.PlayerDeal : UnifiedCommitments.PlayerPromise));
             Assert.That(row.kind, Is.EqualTo(UnifiedCommitments.Safety)); Assert.That(row.voteBindingWeek, Is.Zero);
             Assert.That(row.voteFirstRevealWeek, Is.Zero); Assert.That(row.targetId, Is.Null); Assert.That(row.subtype, Is.Null);
@@ -101,7 +101,14 @@ namespace Gamesim.Tests.EditMode
         public void TheAdditiveMarkerFieldsAreExactlyTwoIntegersNotPersistedReceipts()
         {
             var fields = typeof(UnifiedCommitmentState).GetFields(BindingFlags.Public | BindingFlags.Instance);
-            Assert.That(fields, Has.Length.EqualTo(19));
+            Assert.That(fields, Has.Length.EqualTo(20));
+            Assert.That(fields.Where(field => field.Name != "conditionalVeto").Select(field => field.Name),
+                Is.EquivalentTo(new[] { "id", "kind", "sourcePolicy", "origin", "makerId", "beneficiaryId", "reciprocal",
+                    "createdWeek", "expiresWeek", "status", "settledWeek", "brokenById", "trustImpact",
+                    "linkedCommitmentId", "settlementEffectKey", "targetId", "subtype", "voteBindingWeek", "voteFirstRevealWeek" }));
+            Assert.That(fields.Single(field => field.Name == "conditionalVeto").FieldType, Is.EqualTo(typeof(ConditionalVetoTermsState)));
+            Assert.That(new UnifiedCommitmentState().conditionalVeto, Is.Null,
+                "The current29 row adds only nullable, disabled conditional terms; the two literal27 markers remain integers.");
             foreach (string name in new[] { "voteBindingWeek", "voteFirstRevealWeek" })
                 Assert.That(fields.Single(f => f.Name == name).FieldType, Is.EqualTo(typeof(int)));
             Assert.That(typeof(UnifiedVoteRevealState).GetFields(BindingFlags.Public | BindingFlags.Instance).Select(f => f.Name),

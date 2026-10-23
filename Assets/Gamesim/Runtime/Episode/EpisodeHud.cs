@@ -69,6 +69,98 @@ namespace Gamesim.Episode
         /// </summary>
         public const string DealAcceptCaption = "Accept this offer";
         public const string DealDeclineCaption = "Turn this offer down";
+
+        /// <summary>Identity of one actually rendered offer control; never a command or callback.</summary>
+        public sealed class OfferControlDescription
+        {
+            public string OfferId { get; }
+            public string ProposerId { get; }
+            public string RecipientId { get; }
+            public bool Accept { get; }
+            public string SessionId { get; }
+            public int Revision { get; }
+            public EpisodePhase Phase { get; }
+            public long RenderGeneration { get; }
+            internal OfferControlDescription(DealState offer, bool accept, string sessionId,
+                int revision, EpisodePhase phase, long generation)
+            {
+                OfferId = offer.id; ProposerId = offer.proposerId; RecipientId = offer.recipientId;
+                Accept = accept; SessionId = sessionId; Revision = revision; Phase = phase;
+                RenderGeneration = generation;
+            }
+        }
+
+        private readonly Dictionary<UnityEngine.UI.Button, OfferControlDescription> offerControls =
+            new Dictionary<UnityEngine.UI.Button, OfferControlDescription>();
+        private string offerRenderSession;
+        private int offerRenderRevision = -1;
+        private EpisodePhase offerRenderPhase;
+        private long offerRenderGeneration;
+
+        // Only the real offer producers in this assembly register their already-created rows.
+        // Registration adds no listener, changes no interactability and carries no state authority.
+        internal UnityEngine.UI.Button DescribeOfferControl(UnityEngine.UI.Button button,
+            EpisodeState state, DealState offer, bool accept)
+        {
+            if (button == null || modal == null || !button.transform.IsChildOf(modal)
+                || state == null || offer == null || string.IsNullOrEmpty(offer.id)
+                || state.sessionId != offerRenderSession || state.revision != offerRenderRevision
+                || state.phase != offerRenderPhase || offer.status != DealStatus.Proposed
+                || !NpcDeals.Pending(state).Any(row => row.id == offer.id && row.proposerId == offer.proposerId
+                    && row.recipientId == offer.recipientId)
+                || !button.GetComponentsInChildren<TMP_Text>().Any(label =>
+                    label.text == Localisation.Text(accept ? DealAcceptCaption : DealDeclineCaption)))
+                throw new InvalidOperationException("Only a current HUD-rendered proposed offer may describe its control.");
+            offerControls.Add(button, new OfferControlDescription(offer, accept, offerRenderSession,
+                offerRenderRevision, offerRenderPhase, offerRenderGeneration));
+            return button;
+        }
+
+        /// <summary>Read current HUD-owned semantics, including a genuine disabled lock row.</summary>
+        public bool TryDescribeOfferControl(UnityEngine.UI.Button button, out OfferControlDescription description)
+        {
+            description = null;
+            if (button == null || !button.IsActive() || !button.gameObject.activeInHierarchy
+                || modal == null || !button.transform.IsChildOf(modal) || ActiveOverlay() != null
+                || !OfferControlPresentationOwned(button)
+                || !offerControls.TryGetValue(button, out var row) || row.RenderGeneration != offerRenderGeneration)
+                return false;
+            var current = director != null ? director.Snapshot : null;
+            if (current == null || current.sessionId != row.SessionId || current.revision != row.Revision
+                || current.phase != row.Phase) return false;
+            description = row;
+            return true;
+        }
+        // A readable lock is a disabled Button in an otherwise visible/input-owned HUD, not
+        // a live Button behind a cinematic, reveal or non-owning CanvasGroup. Never change the
+        // row, group, focus or callbacks to obtain these facts.
+        private bool OfferControlPresentationOwned(UnityEngine.UI.Button button)
+        {
+            if (canvas == null || !canvas.isActiveAndEnabled || IsCinematic || IsHeldForReveal)
+                return false;
+            var ownerGroup = canvas.GetComponent<CanvasGroup>();
+            if (ownerGroup != null && ownerGroup.enabled
+                && (!(ownerGroup.alpha > .01f) || !ownerGroup.interactable || !ownerGroup.blocksRaycasts))
+                return false;
+            var renderer = button.GetComponent<CanvasRenderer>();
+            if (renderer == null || !(renderer.GetInheritedAlpha() > .01f)) return false;
+
+            // Use the real ancestry for input inheritance. A child may ignore other parent
+            // groups, but cannot turn this HUD's explicit ownership/suppression back on.
+            bool parentInput = true;
+            for (Transform current = button.transform; current != null; current = current.parent)
+            {
+                bool ignoreAbove = false;
+                foreach (var group in current.GetComponents<CanvasGroup>())
+                {
+                    if (!group.enabled) continue;
+                    if (parentInput && (!group.interactable || !group.blocksRaycasts)) return false;
+                    if (parentInput && group.ignoreParentGroups) ignoreAbove = true;
+                }
+                if (ignoreAbove) parentInput = false;
+            }
+            return true;
+        }
         public static string DealProposeCaption(string title) => "Propose " + Article(title) + title;
         /// <summary>A vote deal names who it is about: "Propose a vote to keep Jo", "Propose a vote to evict Jo".</summary>
         public static string VoteDealCaption(string kind, string who) =>
@@ -313,6 +405,11 @@ namespace Gamesim.Episode
         /// </summary>
         public void Begin(EpisodeState state, string message, bool recovery, bool open, bool warning = false)
         {
+            offerControls.Clear();
+            offerRenderGeneration = checked(offerRenderGeneration + 1);
+            offerRenderSession = state?.sessionId;
+            offerRenderRevision = state?.revision ?? -1;
+            offerRenderPhase = state != null ? state.phase : default;
             statusGuidanceVisible = !string.IsNullOrEmpty(message);
             statusNoticePriority = recovery || warning;
             var selected = EventSystem.current != null ? EventSystem.current.currentSelectedGameObject : null;
@@ -974,7 +1071,7 @@ namespace Gamesim.Episode
                 // Trimmed: a room holding the whole house is a line of eight names, and this row is
                 // 192 px wide beside the room's mark, at a size that has nowhere left to shrink to.
                 string who = room.Occupants.Count == 0 ? "empty"
-                    : Excerpt(string.Join(", ", room.Occupants.Select(o => o.Name.Split(' ')[0])), 30);
+                    : Excerpt(string.Join(", ", room.Occupants.Select(o => CharacterNames.FirstName(o.Name))), 30);
                 FixedText(column, who, 13, UiTheme.Muted, new Vector2(40, y - 19), new Vector2(RightColumnWidth - 56f, 18));
             }
         }
@@ -2069,7 +2166,7 @@ namespace Gamesim.Episode
             return Rect.MinMaxRect(left, bottom, right, top);
         }
 
-        private void OnDestroy() { if(canvas!=null) Destroy(canvas.gameObject); }
+        private void OnDestroy() { offerControls.Clear(); if(canvas!=null) Destroy(canvas.gameObject); }
 
         // Full-screen screens that sit over the HUD: the weekly recap and the season report. While
         // one is up it is the keyboard's whole world - its controls get the ring and the HUD's get

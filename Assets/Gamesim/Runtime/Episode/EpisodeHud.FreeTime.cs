@@ -380,7 +380,7 @@ namespace Gamesim.Episode
                 note.alignment = TextAlignmentOptions.Center;
                 note.name = "Note line";
                 AutoSize(note, 9);
-                string first = (actor.name ?? "").Split(' ')[0];
+                string first = CharacterNames.FirstName(actor.name ?? "");
                 var talkButton = FixedButton(card, CastTalkCaption(first), new Vector2(8f * s, -(photo + 70f * s)),
                     new Vector2(width - 16f * s, 36f * s), () => talk(captured));
                 var words = talkButton.GetComponentInChildren<TMP_Text>();

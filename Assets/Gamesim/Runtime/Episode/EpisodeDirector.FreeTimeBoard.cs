@@ -487,7 +487,7 @@ namespace Gamesim.Episode
             var here = HouseOccupancy(state).FirstOrDefault(room => room.Occupants != null && room.Occupants.Any(person => person.IsPlayer));
             if (string.IsNullOrEmpty(here.Name)) return null;
             var others = (here.Occupants ?? new List<HouseMap.Occupant>()).Where(person => !person.IsPlayer)
-                .Select(person => (person.Name ?? "").Split(' ')[0]).ToArray();
+                .Select(person => CharacterNames.FirstName(person.Name ?? "")).ToArray();
             string company = others.Length == 0 ? "you have it to yourself"
                 : others.Length + (others.Length == 1 ? " houseguest here: " : " houseguests here: ") + string.Join(", ", others);
             return RoomLabels.Name(here.Name) + "  ·  " + company;

@@ -1,0 +1,45 @@
+{
+  "schema": "game_dev.result.v1",
+  "operation": "package.build",
+  "ok": true,
+  "data": {
+    "schema": "game_dev.package_build_result.v1",
+    "packageId": "pkg_ae9ae6601c9315715280a86a",
+    "packagePath": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\outputs\\gamesim-props-20261020\\.game-dev\\packages\\bb_set_headphone_case\\1.0.1",
+    "manifestPath": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\outputs\\gamesim-props-20261020\\.game-dev\\packages\\bb_set_headphone_case\\1.0.1\\manifest.json",
+    "receiptPath": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\outputs\\gamesim-props-20261020\\.game-dev\\packages\\bb_set_headphone_case\\1.0.1\\receipt.json",
+    "manifestSha256": "eebc636b65e1d168d75a72139ef8c4439725f81077b531f38c76a6782982dd44",
+    "reused": false,
+    "validation": {
+      "passed": true,
+      "errorCount": 0,
+      "warningCount": 0
+    },
+    "catalog": {
+      "packageId": "pkg_ae9ae6601c9315715280a86a",
+      "assetId": "bb_set_headphone_case",
+      "version": "1.0.1",
+      "displayName": "bb_set_headphone_case",
+      "description": "Original static dressing prop, metres and bottom-centre origin; full PBR GLB and explicit Unity texture companion. Existing support point and envelope retained. No interaction or collider is introduced. Native Unity acceptance pending.",
+      "category": "environment_prop",
+      "license": "LicenseRef-GameSim-Original",
+      "packagePath": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\outputs\\gamesim-props-20261020\\.game-dev\\packages\\bb_set_headphone_case\\1.0.1",
+      "modelPath": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\outputs\\gamesim-props-20261020\\.game-dev\\packages\\bb_set_headphone_case\\1.0.1\\model.glb",
+      "modelSha256": "eb090bf7e45da02f0afe5d21d319a6820bce0317ceeddf0c2f87a9aeef588ae8",
+      "manifestSha256": "eebc636b65e1d168d75a72139ef8c4439725f81077b531f38c76a6782982dd44",
+      "validationPassed": true,
+      "validationErrors": 0,
+      "validationWarnings": 0,
+      "origin": "authored",
+      "indexedAt": "2026-10-21T04:08:09.019Z"
+    },
+    "evidence": {
+      "portableGlbCopiedAndHashed": true,
+      "staticInspectionCompleted": true,
+      "policyValidationCompleted": true,
+      "blenderNormalizationPerformed": false,
+      "gpuImportTestPerformed": false,
+      "humanVisualReviewPerformed": false
+    }
+  }
+}

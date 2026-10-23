@@ -1,0 +1,38 @@
+{
+  "name": "bb_set_hoh_snack_blue",
+  "kind": "snack",
+  "expectedUnityXYZ": [
+    0.14,
+    0.2,
+    0.05
+  ],
+  "blenderBoundsXYZ": [
+    0.14000000059604645,
+    0.04999999701976776,
+    0.20000000298023224
+  ],
+  "triangles": 1424,
+  "materials": [
+    "bb_mat_bb_set_hoh_snack_blue",
+    "bb_mat_bb_set_hoh_snack_blue_trim"
+  ],
+  "uvLayers": 1,
+  "origin": [
+    0.0,
+    0.0,
+    0.0
+  ],
+  "sourceBlend": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\packaging\\Sources\\bb_set_hoh_snack_blue.blend",
+  "glb": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\packaging\\GLB\\bb_set_hoh_snack_blue.glb",
+  "fbx": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\packaging\\FBX\\bb_set_hoh_snack_blue.fbx",
+  "previews": [
+    "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\packaging\\Previews\\bb_set_hoh_snack_blue_threequarter.png",
+    "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\packaging\\Previews\\bb_set_hoh_snack_blue_front.png",
+    "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\packaging\\Previews\\bb_set_hoh_snack_blue_back.png"
+  ],
+  "sha256": {
+    "bb_set_hoh_snack_blue.glb": "0e7ea4f2c1cccbf4afb79dd7398ae9c805d6e2a0fd7c78401457dd8d4839cf5e",
+    "bb_set_hoh_snack_blue.fbx": "7d590ff2fe4257c69a383067175c735392605855a724f4b7b4aed67fb5ed229c"
+  },
+  "art": "Original authored geometry and deterministic procedural PBR textures; no external assets or generators. Rights reserved for GameSim project; no CC0 grant implied."
+}

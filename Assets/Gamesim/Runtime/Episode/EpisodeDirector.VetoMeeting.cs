@@ -207,14 +207,16 @@ namespace Gamesim.Episode
             }
 
             bool alsoHoh = state.hohId == state.playerId;
-            hud.MeetingTitle(null, alsoHoh
-                ? "You hold the Golden Power of Veto, and as Head of Household you name the replacement too."
-                : "You hold the Golden Power of Veto and must decide whether to use it.");
+            bool locked = EpisodeEngine.VetoIsLockedAtFinalFour(state);
+            hud.MeetingTitle(null, locked
+                ? "You hold the Golden Power of Veto, but at the final four these nominations must stay."
+                : alsoHoh
+                    ? "You hold the Golden Power of Veto, and as Head of Household you name the replacement too."
+                    : "You hold the Golden Power of Veto and must decide whether to use it.");
             int at = hud.MeetingColumnMark();
             var cards = MeetingCardsBefore(state, null);
             // Nominees who asked for it, answered where the decision is made.
             VetoOffers(state);
-            bool locked = EpisodeEngine.VetoIsLockedAtFinalFour(state);
             if (locked || !EpisodeEngine.ReplacementCandidates(state).Any())
             {
                 KeepTheBlock(state);

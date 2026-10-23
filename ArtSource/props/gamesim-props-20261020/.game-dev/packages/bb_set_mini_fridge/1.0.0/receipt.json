@@ -1,0 +1,23 @@
+{
+  "completedAt": "2026-10-21T04:01:58.676Z",
+  "destination": {
+    "assetId": "bb_set_mini_fridge",
+    "version": "1.0.0"
+  },
+  "evidence": {
+    "blenderNormalizationPerformed": false,
+    "gpuImportTestPerformed": false,
+    "humanVisualReviewPerformed": false,
+    "modelBytesCopiedAndHashed": true,
+    "policyValidationCompleted": true,
+    "staticInspectionCompleted": true
+  },
+  "manifestSha256": "02ebb76e0d9f1d8d4773a5496509eb3b2dc97cb7b2fd4661840351c4d19b6b0c",
+  "packageId": "pkg_8ef8ad98e6d1712769e4fd2b",
+  "schema": "game_dev.package_receipt.v1",
+  "source": {
+    "bytes": 1695316,
+    "fileName": "bb_set_mini_fridge.glb",
+    "sha256": "c5bd7e4d3ae5b48da08f18e3d3d670f78232644a7770bcb067cc1ea94ca36195"
+  }
+}

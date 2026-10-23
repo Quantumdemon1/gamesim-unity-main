@@ -1,0 +1,60 @@
+{
+  "schema": "game_dev.receipt.v1",
+  "operation": "package.verify",
+  "result": {
+    "schema": "game_dev.package_verification.v1",
+    "packagePath": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\outputs\\gamesim-props-20261020\\.game-dev\\packages\\bb_comp_wordconsole\\1.0.0",
+    "manifest": {
+      "assetId": "bb_comp_wordconsole",
+      "category": "environment_prop",
+      "description": "Assembled reference station in metres. Unity consumes the separate normalized FBX part kit; runtime owns visible text, tint, moving parts and game state. Canonical GLB is an art reference, not a static runtime replacement.",
+      "displayName": "bb_comp_wordconsole",
+      "files": [
+        {
+          "bytes": 247364,
+          "kind": "model",
+          "path": "model.glb",
+          "sha256": "58a804e75efc5319ba527eb13dc4bcfd62ad955f06186bc64dc1379eebe7e79b"
+        },
+        {
+          "bytes": 1696,
+          "kind": "metadata",
+          "path": "metadata.json",
+          "sha256": "2ba8c7be39432411c0da4626d8e16eb58d2bee85e29365ba1d525c0f55dc9a3a"
+        },
+        {
+          "bytes": 1172,
+          "kind": "provenance",
+          "path": "provenance.json",
+          "sha256": "8127a344b00e377cf9b061c88e3213bfcb514c9d9d28881ce9c0e699dae18266"
+        },
+        {
+          "bytes": 2924,
+          "kind": "validation",
+          "path": "validation.json",
+          "sha256": "d68b4cecf1ec66757678115ac6b9ac56fc71fe27c5a11f6a9147a8d6b5539c5f"
+        }
+      ],
+      "license": "LicenseRef-GameSim-Original",
+      "model": "model.glb",
+      "packageId": "pkg_6d5c9db23d3cb1209078384d",
+      "provenance": {
+        "origin": "authored"
+      },
+      "schema": "game_dev.asset_package.v1",
+      "validation": {
+        "errorCount": 0,
+        "passed": true,
+        "warningCount": 0
+      },
+      "version": "1.0.0"
+    },
+    "hashesVerified": true,
+    "evidence": {
+      "packageBytesVerified": true,
+      "gpuImportTestPerformed": false,
+      "humanVisualReviewPerformed": false
+    }
+  },
+  "completedAt": "2026-10-21T04:01:06.605Z"
+}

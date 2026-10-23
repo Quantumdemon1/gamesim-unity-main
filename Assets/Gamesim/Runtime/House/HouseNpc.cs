@@ -1,3 +1,4 @@
+using Gamesim.Simulation;
 using Gamesim.Presentation;
 using TMPro;
 using UnityEngine;
@@ -189,9 +190,7 @@ namespace Gamesim.House
                 plateWord.overflowMode = TextOverflowModes.Overflow;
                 plateWord.raycastTarget = false; plateWord.richText = false;
             }
-            string given = displayName ?? string.Empty;
-            int space = given.IndexOf(' ');
-            if (space > 0) given = given.Substring(0, space);
+            string given = CharacterNames.FirstName(displayName);
             plateWord.text = given;
             float width = Mathf.Max(80f, Mathf.Ceil(plateWord.GetPreferredValues(given).x) + 40f);
             plate.sizeDelta = new Vector2(width, 48f);

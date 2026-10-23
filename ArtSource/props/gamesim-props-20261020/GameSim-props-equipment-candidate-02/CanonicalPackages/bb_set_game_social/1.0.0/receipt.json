@@ -1,0 +1,23 @@
+{
+  "completedAt": "2026-10-21T04:06:16.513Z",
+  "destination": {
+    "assetId": "bb_set_game_social",
+    "version": "1.0.0"
+  },
+  "evidence": {
+    "blenderNormalizationPerformed": false,
+    "gpuImportTestPerformed": false,
+    "humanVisualReviewPerformed": false,
+    "modelBytesCopiedAndHashed": true,
+    "policyValidationCompleted": true,
+    "staticInspectionCompleted": true
+  },
+  "manifestSha256": "0d0e300dbbc9d108d41826211cb3f7e9fcc476cbb81332abde5400a421c266d0",
+  "packageId": "pkg_97b148f41743f9d61da30023",
+  "schema": "game_dev.package_receipt.v1",
+  "source": {
+    "bytes": 492728,
+    "fileName": "bb_set_game_social.glb",
+    "sha256": "da2e7889b37e1b824cee7662655976ea7b15c51bf435d7e4dcaeb3e360434cba"
+  }
+}

@@ -115,7 +115,7 @@ namespace Gamesim.Tests.EditMode
         {
             var s = LobbyState(lands); var old = Legacy(s);
             var command = Command(EpisodeCommandKind.Lobby, s.hohId, s.playerId, LobbyAsk.Encode(LobbyAsk.Spare, LobbyApproach.Deal));
-            Invoke(typeof(EpisodeEngine), "Lobby", s, command); Invoke(typeof(EpisodeEngine), "Lobby", old, command);
+            Invoke(typeof(EpisodeEngine), "Lobby", s, command, null); Invoke(typeof(EpisodeEngine), "Lobby", old, command, null);
             Assert.That(StrategyRules.Landed(s.lobbies.Single().response), Is.EqualTo(lands));
             Assert.That(s.unifiedCommitments.Count, Is.EqualTo(lands ? 1 : 0));
             if (lands)
@@ -124,7 +124,7 @@ namespace Gamesim.Tests.EditMode
                 Assert.That(row.expiresWeek, Is.EqualTo(s.week + 1));
             }
             Assert.That(Normalized(s), Is.EqualTo(Json(old)));
-            string before = Json(s); Refused(() => Invoke(typeof(EpisodeEngine), "Lobby", s, command));
+            string before = Json(s); Refused(() => Invoke(typeof(EpisodeEngine), "Lobby", s, command, null));
             Assert.That(Json(s), Is.EqualTo(before));
         }
 
@@ -133,7 +133,7 @@ namespace Gamesim.Tests.EditMode
         {
             var s = LobbyState(true); Fill(s, false, 200); string before = Json(s);
             Refused(() => Invoke(typeof(EpisodeEngine), "Lobby", s,
-                Command(EpisodeCommandKind.Lobby, s.hohId, s.playerId, LobbyAsk.Encode(LobbyAsk.Spare, LobbyApproach.Deal))));
+                Command(EpisodeCommandKind.Lobby, s.hohId, s.playerId, LobbyAsk.Encode(LobbyAsk.Spare, LobbyApproach.Deal)), null));
             Assert.That(Json(s), Is.EqualTo(before));
         }
 
@@ -272,7 +272,7 @@ namespace Gamesim.Tests.EditMode
         {
             switch (writer)
             {
-                case "npc-promise": Invoke(typeof(NpcPromises), "Give", s, A(s), B(s), PromiseKind.Safety); break;
+                case "npc-promise": Invoke(typeof(NpcPromises), "Give", s, A(s), B(s), PromiseKind.Safety, null); break;
                 case "npc-deal": Invoke(typeof(NpcDeals), "Strike", s, A(s), B(s), DealKind.SafetyAgreement); break;
                 case "story-promise": Invoke(typeof(EpisodeEngine), "StoryPromise", s, s.Find(s.playerId), s.Find(A(s)), "Safety"); break;
                 case "story-deal": Invoke(typeof(EpisodeEngine), "StoryDeal", s, s.Find(s.playerId), s.Find(A(s)), null, DealKind.SafetyAgreement); break;
@@ -312,6 +312,8 @@ namespace Gamesim.Tests.EditMode
             var error = Assert.Throws<Exception>(() => { try { action(); } catch (Exception ex) { throw new Exception(ex.GetType().Name, ex); } });
             Assert.That(error.Message, Is.EqualTo("RuleException"));
         }
+        // Dialogue V2 threads a pending paid-dialogue handle through Lobby and NpcPromises.Give. Reflection
+        // fills no defaults, so the callers pass it: null, which is what Apply passes for every ordinary command.
         private static object Invoke(Type owner, string method, params object[] arguments)
         {
             var hook = owner.GetMethod(method, BindingFlags.NonPublic | BindingFlags.Static);

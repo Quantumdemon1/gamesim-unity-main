@@ -376,6 +376,24 @@ namespace Gamesim.Tests.EditMode
         private static void Checkpoint(EpisodeState s, StringBuilder trace)
         {
             var o = JObject.FromObject(s);
+            // Current29 admission is separate from every retained literal28/27 observer.
+            // JSON/reflection keeps this recorder source compilable against recorded older assemblies.
+            bool dialogue = o.Property("dialogueRulesVersion") != null || o.Property("dialogue") != null
+                || (o["unifiedCommitments"] is JArray currentRows && currentRows.OfType<JObject>()
+                    .Any(row => row.Property("conditionalVeto") != null));
+            Assert.That(o["schemaVersion"]?.Type, Is.EqualTo(JTokenType.Integer));
+            if ((long)o["schemaVersion"] >= 29 || dialogue)
+            {
+                Assert.That((long)o["schemaVersion"], Is.EqualTo(29), "Do not project future or wrongly grouped dialogue storage.");
+                var observer29 = typeof(CommitmentRulesSeasonDigests).Assembly
+                    .GetType("Gamesim.Tests.EditMode.LegacyDigestSchema29Observer", true);
+                var project29 = observer29.GetMethod("ProjectTrace", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static,
+                    null, new[] { typeof(EpisodeState), typeof(JObject) }, null);
+                Assert.That(project29, Is.Not.Null, "Exact29 requires complete current admission; an absent dependency never skips coverage.");
+                Assert.That(project29.ReturnType, Is.EqualTo(typeof(JObject)));
+                o = (JObject)project29.Invoke(null, new object[] { s, o });
+                Assert.That((long)o["schemaVersion"], Is.EqualTo(26), "The source-bound29 adapter preserves the literal28/27 chain.");
+            }
             // Schema 28's Wave D storage, by its JSON names so the file still compiles against older
             // recorded assemblies: only exact28 requires its observer, which checks every new field is
             // present and inert, strips them, and hands the schema-27 projection on to the exact27

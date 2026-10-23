@@ -1,0 +1,97 @@
+*** Begin Patch
+*** Update File: Assets/UMA/Core/StandardAssets/UMA/Scripts/UMAMeshData.cs
+@@
+ using Unity.Collections;
++using Unity.Jobs;
+ using UnityEngine.Serialization;
+@@
+     public NativeArray<int> nativeTriangles;
++    [NonSerialized]
++    private JobHandle nativeTriangleReaders;
++
++        internal void RegisterTriangleReader(JobHandle reader)
++        {
++            nativeTriangleReaders =
++                JobHandle.CombineDependencies(nativeTriangleReaders, reader);
++        }
+@@
+ 		public void DisposeNativeTriangles(bool remove)
+ 		{
++			// Completing even an already-finished handle releases its safety ownership.
++			nativeTriangleReaders.Complete();
+ 			if (nativeTriangles.IsCreated)
+@@
+-            if (remove)
++            nativeTriangleReaders = default;
++            if (remove)
+@@
+-			triangles = tris;
+ 			DisposeNativeTriangles(true);
++			triangles = tris;
+*** Update File: Assets/UMA/Core/StandardAssets/UMA/Scripts/SkinnedMeshCombinerMeshAPI.cs
+@@
+-                        NativeArray<int> srcTris = GetTrianglesForLOD(src.submeshes[sm], lod);
++                        SubMeshTriangles triangleOwner = src.submeshes[sm];
++                        NativeArray<int> srcTris = GetTrianglesForLOD(triangleOwner, lod);
+@@
+-                            scheduledJobs = JobHandle.CombineDependencies(scheduledJobs, indexHandle);
+-                            jobsScheduled = true;
++                            RetainTriangleReader(triangleOwner, indexHandle, ref scheduledJobs, ref jobsScheduled);
+                             subWrite[dstSub] += writeCount;
+@@
+-                            scheduledJobs = JobHandle.CombineDependencies(scheduledJobs, indexHandle);
+-                            jobsScheduled = true;
++                            RetainTriangleReader(triangleOwner, indexHandle, ref scheduledJobs, ref jobsScheduled);
+                             subWrite[dstSub] += writeCount;
+@@
+-        private static NativeArray<int> GetTrianglesForLOD(SubMeshTriangles submesh, int lodLevel)
++        private static void RetainTriangleReader(
++            SubMeshTriangles triangleOwner,
++            JobHandle reader,
++            ref JobHandle scheduledJobs,
++            ref bool jobsScheduled)
++        {
++            try
++            {
++                // Preserve the pending combine's ownership before publishing the cache fence.
++                scheduledJobs = JobHandle.CombineDependencies(scheduledJobs, reader);
++                jobsScheduled = true;
++                triangleOwner.RegisterTriangleReader(reader);
++            }
++            catch (Exception registrationFailure)
++            {
++                // A returned schedule handle must not escape if either retention step fails.
++                try
++                {
++                    reader.Complete();
++                }
++                catch (Exception completionFailure)
++                {
++                    throw new AggregateException(registrationFailure, completionFailure);
++                }
++                throw;
++            }
++        }
++
++        private static NativeArray<int> GetTrianglesForLOD(SubMeshTriangles submesh, int lodLevel)
+*** Update File: Assets/UMA/Core/StandardAssets/UMA/Scripts/SkinnedMeshCombinerIncrementalPreparation.cs
+@@
+-                    NativeArray<int> sourceTriangles =
+-                        GetTrianglesForLOD(
+-                            source.submeshes[subMesh],
+-                            lodLevel);
++                    SubMeshTriangles triangleOwner =
++                        source.submeshes[subMesh];
++                    NativeArray<int> sourceTriangles =
++                        GetTrianglesForLOD(
++                            triangleOwner,
++                            lodLevel);
+@@
+-                        CombineScheduledJob(handle);
++                        RetainTriangleReader(triangleOwner, handle, ref scheduledJobs, ref jobsScheduled);
+                         subWrite[destination] += writeCount;
+@@
+-                        CombineScheduledJob(handle);
++                        RetainTriangleReader(triangleOwner, handle, ref scheduledJobs, ref jobsScheduled);
+                         subWrite[destination] += writeCount;
+*** End Patch

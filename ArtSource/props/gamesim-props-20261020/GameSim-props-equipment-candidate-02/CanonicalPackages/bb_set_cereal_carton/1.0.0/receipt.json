@@ -1,0 +1,23 @@
+{
+  "completedAt": "2026-10-21T04:06:01.029Z",
+  "destination": {
+    "assetId": "bb_set_cereal_carton",
+    "version": "1.0.0"
+  },
+  "evidence": {
+    "blenderNormalizationPerformed": false,
+    "gpuImportTestPerformed": false,
+    "humanVisualReviewPerformed": false,
+    "modelBytesCopiedAndHashed": true,
+    "policyValidationCompleted": true,
+    "staticInspectionCompleted": true
+  },
+  "manifestSha256": "73b4e1713acb1cda157a976bf0e66c4408d1a8307d2530b86f1b50082b382577",
+  "packageId": "pkg_48aead78cf21ced2d57ba664",
+  "schema": "game_dev.package_receipt.v1",
+  "source": {
+    "bytes": 550852,
+    "fileName": "bb_set_cereal_carton.glb",
+    "sha256": "2ce6b8022d498b71fb2f9fb0a778fa3fce4934467553b5d1f1c856dd585e8ef2"
+  }
+}

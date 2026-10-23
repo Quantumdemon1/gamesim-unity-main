@@ -1,0 +1,24 @@
+{
+  "schema": "game_dev.job.v1",
+  "id": "job_8e19021e-8971-4e8c-91d2-4a7e739d302c",
+  "operation": "package.verify",
+  "status": "completed",
+  "request": {
+    "positionals": [
+      "package",
+      "verify",
+      "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\outputs\\gamesim-props-20261020\\.game-dev\\packages\\bb_comp_dicetray\\1.0.0"
+    ],
+    "flags": {
+      "output-dir": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\outputs\\gamesim-props-20261020"
+    }
+  },
+  "attempts": 1,
+  "eventCount": 1,
+  "artifacts": [],
+  "createdAt": "2026-10-21T04:00:32.969Z",
+  "updatedAt": "2026-10-21T04:00:33.043Z",
+  "startedAt": "2026-10-21T04:00:32.991Z",
+  "completedAt": "2026-10-21T04:00:33.043Z",
+  "receiptPath": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\outputs\\gamesim-props-20261020\\.game-dev\\jobs\\job_8e19021e-8971-4e8c-91d2-4a7e739d302c\\receipt.json"
+}

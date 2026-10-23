@@ -21,10 +21,32 @@ namespace Gamesim.Persistence
             if (original == null || original["schemaVersion"]?.Type != JTokenType.Integer)
                 throw new InvalidDataException("Simulation schema version must be an integer.");
             long version = (long)original["schemaVersion"];
-            if (version == 28) return (JObject)original.DeepClone();
-            if (version < 1 || version > 27) throw new InvalidDataException("Unsupported simulation schema version.");
-            var result = UpgradeV27ToV28(version == 27 ? original : PrepareV27Payload(original, out _));
+            if (version == 29) return (JObject)original.DeepClone();
+            if (version < 1 || version > 28) throw new InvalidDataException("Unsupported simulation schema version.");
+            var historical = version == 28 ? original
+                : UpgradeV27ToV28(version == 27 ? original : PrepareV27Payload(original, out _));
+            var result = UpgradeV28ToV29(historical);
             migrated = true;
+            return result;
+        }
+
+        /// <summary>
+        /// Adds only schema29's dialogue-off/empty-store/null-conditional literals. The complete
+        /// frozen28 contract must accept the untouched original before cloning or defaults. This
+        /// also holds the end of every older chain to frozen28; no rule is inferred or enrolled.
+        /// </summary>
+        public static JObject UpgradeV28ToV29(JObject original)
+        {
+            FrozenEpisodeV28.Validate(original);
+            var result = (JObject)original.DeepClone();
+            result.Add("dialogueRulesVersion", 0);
+            result.Add("dialogue", new JObject
+            {
+                ["episodes"] = new JArray(), ["grants"] = new JArray(), ["vetoOccasions"] = new JArray()
+            });
+            foreach (JObject row in (JArray)result["unifiedCommitments"])
+                row.Add("conditionalVeto", JValue.CreateNull());
+            result["schemaVersion"] = 29;
             return result;
         }
 

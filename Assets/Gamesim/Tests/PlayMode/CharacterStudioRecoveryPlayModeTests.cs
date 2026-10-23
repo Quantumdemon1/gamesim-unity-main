@@ -169,9 +169,25 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(preview.Status, Does.Contain("too long"));
             Assert.That(preview.CompletedKey, Is.EqualTo(key));
             Assert.That(provider.Roots[0] == null, Is.True, "Timed-out revision must release its entire body.");
+            string failure = preview.LastFailureDiagnostic;
+            Assert.That(failure, Does.Contain("; body=" + provider.LastRootEntityId + ";"),
+                "The diagnostic retains the original body ID after its deferred destruction.");
+            Assert.That(failure, Does.Contain("; revision=" + provider.Last.Revision + ";"));
+            Assert.That(failure, Does.Contain("; stateRevision=" + provider.Last.Revision + ";"));
+            Assert.That(failure, Does.Contain("; bodyActive=True;"));
+            Assert.That(failure, Does.Contain("; stateReady=False;"),
+                "The fallback has a renderer but no build state; these fields describe the original pending body.");
+            Assert.That(failure, Does.Contain("; renderers=1;"));
+            Assert.That(failure, Does.StartWith("frame="));
+            Assert.That(failure, Does.Contain("; buildElapsedMs="));
+            preview.Show(appearance);
+            Assert.That(preview.LastFailureDiagnostic, Is.SameAs(failure),
+                "Polling an unchanged request must not erase its failure evidence.");
             provider.CompleteImmediately = true;
             preview.Retry();
+            Assert.That(preview.LastFailureDiagnostic, Is.Null, "Retry begins a fresh request with no stale failure.");
             yield return Until(() => !preview.IsBuilding);
+            Assert.That(preview.LastFailureDiagnostic, Is.Null, "A successful retry cannot inherit the previous failure.");
             Assert.That(provider.Roots.Count, Is.EqualTo(2));
             Assert.That(preview.CanRetry, Is.False);
             Assert.That(preview.Status, Is.EqualTo("Preview ready"));
@@ -188,6 +204,9 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(preview.Status, Does.Contain("could not be built"));
             Assert.That(provider.Roots[0] == null, Is.True);
             Assert.That(preview.GetComponentsInChildren<Renderer>(), Is.Not.Empty, "Recovery shows a plain placeholder.");
+            Assert.That(preview.LastFailureDiagnostic, Does.Contain("; body=0;"),
+                "An exception before the provider returns a subject cannot claim the fallback was the original body.");
+            Assert.That(preview.LastFailureDiagnostic, Does.Contain("; stateReady=missing;"));
         }
 
         [UnityTest]
@@ -199,6 +218,12 @@ namespace Gamesim.Tests.PlayMode
             yield return Until(() => preview.CanRetry && !preview.IsBuilding);
             Assert.That(preview.Status, Does.Contain("too long"));
             Assert.That(provider.Roots[0] == null, Is.True);
+            Assert.That(preview.LastFailureDiagnostic, Does.Contain("; body=" + provider.LastRootEntityId + ";"));
+            Assert.That(preview.LastFailureDiagnostic, Does.Contain("; stateReady=True;"),
+                "A ready flag without geometry was already true on the original, not invented by fallback.");
+            Assert.That(preview.LastFailureDiagnostic, Does.Contain("; renderers=0;"));
+            preview.Show(CharacterAppearance.Preset("emma-brown"));
+            Assert.That(preview.LastFailureDiagnostic, Is.Null, "A genuinely different appearance clears the old failure.");
         }
 
         [UnityTest]
@@ -249,6 +274,7 @@ namespace Gamesim.Tests.PlayMode
         {
             public bool CompleteImmediately, ThrowAfterAllocation, NoRenderer;
             public CharacterBodyRequest Last;
+            public string LastRootEntityId;
             public readonly List<GameObject> Roots = new List<GameObject>();
             public ICharacterAppearanceCatalog Catalog => null;
             public bool TryCreate(in CharacterBodyRequest request, Transform parent, Color color, out CharacterBody body)
@@ -257,6 +283,7 @@ namespace Gamesim.Tests.PlayMode
                 var root = NoRenderer ? new GameObject("Empty pending body") : GameObject.CreatePrimitive(PrimitiveType.Capsule);
                 root.transform.SetParent(parent, false);
                 Roots.Add(root);
+                LastRootEntityId = root.GetEntityId().ToString();
                 if (ThrowAfterAllocation) throw new InvalidOperationException("Test provider failed after allocation");
                 var state = root.AddComponent<CharacterBodyBuildState>();
                 state.Revision = request.Revision; state.Ready = CompleteImmediately;

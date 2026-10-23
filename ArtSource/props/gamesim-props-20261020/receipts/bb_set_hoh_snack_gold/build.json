@@ -1,0 +1,45 @@
+{
+  "schema": "game_dev.result.v1",
+  "operation": "package.build",
+  "ok": true,
+  "data": {
+    "schema": "game_dev.package_build_result.v1",
+    "packageId": "pkg_6152e9335009dd9162245aac",
+    "packagePath": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\outputs\\gamesim-props-20261020\\.game-dev\\packages\\bb_set_hoh_snack_gold\\1.0.0",
+    "manifestPath": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\outputs\\gamesim-props-20261020\\.game-dev\\packages\\bb_set_hoh_snack_gold\\1.0.0\\manifest.json",
+    "receiptPath": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\outputs\\gamesim-props-20261020\\.game-dev\\packages\\bb_set_hoh_snack_gold\\1.0.0\\receipt.json",
+    "manifestSha256": "265c9fcb0e724bc96523c5427597a9182c8a2894043a66f0d1f0fff92b3bf0ba",
+    "reused": false,
+    "validation": {
+      "passed": true,
+      "errorCount": 0,
+      "warningCount": 0
+    },
+    "catalog": {
+      "packageId": "pkg_6152e9335009dd9162245aac",
+      "assetId": "bb_set_hoh_snack_gold",
+      "version": "1.0.0",
+      "displayName": "bb_set_hoh_snack_gold",
+      "description": "Original house packaging prop, metre dimensions and floor-centre origin. Self-contained PBR GLB; native FBX material slots use the bound separate material map. Existing placement envelope retained. Native Unity appearance/placement acceptance pending.",
+      "category": "environment_prop",
+      "license": "LicenseRef-GameSim-Original",
+      "packagePath": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\outputs\\gamesim-props-20261020\\.game-dev\\packages\\bb_set_hoh_snack_gold\\1.0.0",
+      "modelPath": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\outputs\\gamesim-props-20261020\\.game-dev\\packages\\bb_set_hoh_snack_gold\\1.0.0\\model.glb",
+      "modelSha256": "b9f430fe2f04edc635ccdbe42a4fd36108b22c863eeb133cecd457442b76d7f1",
+      "manifestSha256": "265c9fcb0e724bc96523c5427597a9182c8a2894043a66f0d1f0fff92b3bf0ba",
+      "validationPassed": true,
+      "validationErrors": 0,
+      "validationWarnings": 0,
+      "origin": "authored",
+      "indexedAt": "2026-10-21T04:06:09.508Z"
+    },
+    "evidence": {
+      "portableGlbCopiedAndHashed": true,
+      "staticInspectionCompleted": true,
+      "policyValidationCompleted": true,
+      "blenderNormalizationPerformed": false,
+      "gpuImportTestPerformed": false,
+      "humanVisualReviewPerformed": false
+    }
+  }
+}

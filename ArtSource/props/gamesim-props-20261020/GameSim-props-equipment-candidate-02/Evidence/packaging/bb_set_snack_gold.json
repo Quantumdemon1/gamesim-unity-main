@@ -1,0 +1,38 @@
+{
+  "name": "bb_set_snack_gold",
+  "kind": "snack",
+  "expectedUnityXYZ": [
+    0.16,
+    0.22,
+    0.05
+  ],
+  "blenderBoundsXYZ": [
+    0.1599999964237213,
+    0.04999999701976776,
+    0.2199999988079071
+  ],
+  "triangles": 1424,
+  "materials": [
+    "bb_mat_bb_set_snack_gold",
+    "bb_mat_bb_set_snack_gold_trim"
+  ],
+  "uvLayers": 1,
+  "origin": [
+    0.0,
+    0.0,
+    0.0
+  ],
+  "sourceBlend": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\packaging\\Sources\\bb_set_snack_gold.blend",
+  "glb": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\packaging\\GLB\\bb_set_snack_gold.glb",
+  "fbx": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\packaging\\FBX\\bb_set_snack_gold.fbx",
+  "previews": [
+    "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\packaging\\Previews\\bb_set_snack_gold_threequarter.png",
+    "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\packaging\\Previews\\bb_set_snack_gold_front.png",
+    "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\packaging\\Previews\\bb_set_snack_gold_back.png"
+  ],
+  "sha256": {
+    "bb_set_snack_gold.glb": "605225bc059ee4bba2880e1ea656de24c23533d29505b974294f83b50232ecd3",
+    "bb_set_snack_gold.fbx": "714ae079a56e9f70986eb9441920cea626d9adf4739a25fcf836fa8da45e7bc9"
+  },
+  "art": "Original authored geometry and deterministic procedural PBR textures; no external assets or generators. Rights reserved for GameSim project; no CC0 grant implied."
+}

@@ -1,0 +1,1213 @@
+{
+  "blender": "5.2.2 LTS",
+  "sourceSha256": "d9a2e0461426647a22e36742753561d7f69d8f7677d2e7d564fe0e094778f05e",
+  "manifestSha256": "fb2f66743329ed850816f78dd457f23a12b1f25ea0bcd25a64949ae531b24898",
+  "entries": [
+    {
+      "family": "Signals",
+      "familyValue": 0,
+      "partKind": "StanceRail",
+      "partKindValue": 0,
+      "meshName": "Signals_StanceRail",
+      "referenceDimensions": [
+        0.035,
+        0.025,
+        0.55
+      ],
+      "material": "Award trim",
+      "fbx": "bb_comp_Signals_StanceRail.fbx",
+      "sha256": "3915ca7678fe4ceb6a251b2d53d78e0b93061b487a735e8d2bc86c3a4de95b9b",
+      "triangles": 60,
+      "boundsBlender": [
+        [
+          -0.5,
+          -0.5,
+          -0.5
+        ],
+        [
+          0.5,
+          0.5,
+          0.5
+        ]
+      ],
+      "uv": true,
+      "submeshes": 1
+    },
+    {
+      "family": "Signals",
+      "familyValue": 0,
+      "partKind": "ProgressBacking",
+      "partKindValue": 22,
+      "meshName": "Signals_ProgressBacking",
+      "referenceDimensions": [
+        0.96,
+        0.16,
+        0.008
+      ],
+      "material": "Instrument face",
+      "notes": "Front and audience text backings; retain opaque central face. No raised decoration.",
+      "fbx": "bb_comp_Signals_ProgressBacking.fbx",
+      "sha256": "c4c466d5cf917c3b1fd52b64dff2994ccd37b8cbc82f2151ccb5d86240f54a89",
+      "triangles": 60,
+      "boundsBlender": [
+        [
+          -0.5,
+          -0.5,
+          -0.5
+        ],
+        [
+          0.5,
+          0.5,
+          0.5
+        ]
+      ],
+      "uv": true,
+      "submeshes": 1
+    },
+    {
+      "family": "PairConsole",
+      "familyValue": 1,
+      "partKind": "StanceRail",
+      "partKindValue": 0,
+      "meshName": "PairConsole_StanceRail",
+      "referenceDimensions": [
+        0.035,
+        0.025,
+        0.55
+      ],
+      "material": "Award trim",
+      "fbx": "bb_comp_PairConsole_StanceRail.fbx",
+      "sha256": "7232e8476be0842ac24284bdc3417891ffe7fd4e468adf19c3074ed8342025f1",
+      "triangles": 60,
+      "boundsBlender": [
+        [
+          -0.5,
+          -0.5,
+          -0.5
+        ],
+        [
+          0.5,
+          0.5,
+          0.5
+        ]
+      ],
+      "uv": true,
+      "submeshes": 1
+    },
+    {
+      "family": "PairConsole",
+      "familyValue": 1,
+      "partKind": "ProgressBacking",
+      "partKindValue": 22,
+      "meshName": "PairConsole_ProgressBacking",
+      "referenceDimensions": [
+        0.96,
+        0.16,
+        0.008
+      ],
+      "material": "Instrument face",
+      "notes": "Front and audience text backings; retain opaque central face. No raised decoration.",
+      "fbx": "bb_comp_PairConsole_ProgressBacking.fbx",
+      "sha256": "7b630eeaa2976c4f49a20da5e2609151d60d39599d3236298010db2565fff362",
+      "triangles": 60,
+      "boundsBlender": [
+        [
+          -0.5,
+          -0.5,
+          -0.5
+        ],
+        [
+          0.5,
+          0.5,
+          0.5
+        ]
+      ],
+      "uv": true,
+      "submeshes": 1
+    },
+    {
+      "family": "GripRig",
+      "familyValue": 2,
+      "partKind": "StanceRail",
+      "partKindValue": 0,
+      "meshName": "GripRig_StanceRail",
+      "referenceDimensions": [
+        0.035,
+        0.025,
+        0.55
+      ],
+      "material": "Award trim",
+      "fbx": "bb_comp_GripRig_StanceRail.fbx",
+      "sha256": "1edd076c67ba00dd0beafb79fbd8c008a568b46da3a8eb0fca778c57b9760e66",
+      "triangles": 60,
+      "boundsBlender": [
+        [
+          -0.5,
+          -0.5,
+          -0.5
+        ],
+        [
+          0.5,
+          0.5,
+          0.5
+        ]
+      ],
+      "uv": true,
+      "submeshes": 1
+    },
+    {
+      "family": "GripRig",
+      "familyValue": 2,
+      "partKind": "ProgressBacking",
+      "partKindValue": 22,
+      "meshName": "GripRig_ProgressBacking",
+      "referenceDimensions": [
+        0.96,
+        0.16,
+        0.008
+      ],
+      "material": "Instrument face",
+      "notes": "Front and audience text backings; retain opaque central face. No raised decoration.",
+      "fbx": "bb_comp_GripRig_ProgressBacking.fbx",
+      "sha256": "8f9f8059bb3a40277ca3e867f012d14d8e1c898f3970fc185a544f94470455a7",
+      "triangles": 60,
+      "boundsBlender": [
+        [
+          -0.5,
+          -0.5,
+          -0.5
+        ],
+        [
+          0.5,
+          0.5,
+          0.5
+        ]
+      ],
+      "uv": true,
+      "submeshes": 1
+    },
+    {
+      "family": "DiceTray",
+      "familyValue": 3,
+      "partKind": "StanceRail",
+      "partKindValue": 0,
+      "meshName": "DiceTray_StanceRail",
+      "referenceDimensions": [
+        0.035,
+        0.025,
+        0.55
+      ],
+      "material": "Award trim",
+      "fbx": "bb_comp_DiceTray_StanceRail.fbx",
+      "sha256": "56651ed23273d0b4e611798e84b951dc54469a8f6d440c86761e140f42d7d966",
+      "triangles": 60,
+      "boundsBlender": [
+        [
+          -0.5,
+          -0.5,
+          -0.5
+        ],
+        [
+          0.5,
+          0.5,
+          0.5
+        ]
+      ],
+      "uv": true,
+      "submeshes": 1
+    },
+    {
+      "family": "DiceTray",
+      "familyValue": 3,
+      "partKind": "ProgressBacking",
+      "partKindValue": 22,
+      "meshName": "DiceTray_ProgressBacking",
+      "referenceDimensions": [
+        0.96,
+        0.16,
+        0.008
+      ],
+      "material": "Instrument face",
+      "notes": "Front and audience text backings; retain opaque central face. No raised decoration.",
+      "fbx": "bb_comp_DiceTray_ProgressBacking.fbx",
+      "sha256": "121acf0b2afb6d193f1d14ec695d1e0f9a53594f85ec4a0ff43ee85087a134d6",
+      "triangles": 60,
+      "boundsBlender": [
+        [
+          -0.5,
+          -0.5,
+          -0.5
+        ],
+        [
+          0.5,
+          0.5,
+          0.5
+        ]
+      ],
+      "uv": true,
+      "submeshes": 1
+    },
+    {
+      "family": "WordConsole",
+      "familyValue": 4,
+      "partKind": "StanceRail",
+      "partKindValue": 0,
+      "meshName": "WordConsole_StanceRail",
+      "referenceDimensions": [
+        0.035,
+        0.025,
+        0.55
+      ],
+      "material": "Award trim",
+      "fbx": "bb_comp_WordConsole_StanceRail.fbx",
+      "sha256": "1ca5587faa524bde221ae41d2bab7709b05ddc16efbec237838af95db90c780d",
+      "triangles": 60,
+      "boundsBlender": [
+        [
+          -0.5,
+          -0.5,
+          -0.5
+        ],
+        [
+          0.5,
+          0.5,
+          0.5
+        ]
+      ],
+      "uv": true,
+      "submeshes": 1
+    },
+    {
+      "family": "WordConsole",
+      "familyValue": 4,
+      "partKind": "ProgressBacking",
+      "partKindValue": 22,
+      "meshName": "WordConsole_ProgressBacking",
+      "referenceDimensions": [
+        0.96,
+        0.16,
+        0.008
+      ],
+      "material": "Instrument face",
+      "notes": "Front and audience text backings; retain opaque central face. No raised decoration.",
+      "fbx": "bb_comp_WordConsole_ProgressBacking.fbx",
+      "sha256": "fe5c3fca6cc46f384ba030f46926b8fb972586347fc2e0c50a6409848cf1b1b1",
+      "triangles": 60,
+      "boundsBlender": [
+        [
+          -0.5,
+          -0.5,
+          -0.5
+        ],
+        [
+          0.5,
+          0.5,
+          0.5
+        ]
+      ],
+      "uv": true,
+      "submeshes": 1
+    },
+    {
+      "family": "Signals",
+      "familyValue": 0,
+      "partKind": "ConsoleLeg",
+      "partKindValue": 1,
+      "meshName": "Signals_ConsoleLeg",
+      "referenceDimensions": [
+        0.07,
+        0.84,
+        0.14
+      ],
+      "material": "Arena graphite",
+      "fbx": "bb_comp_Signals_ConsoleLeg.fbx",
+      "sha256": "35221c8d84fb3e52f0daacf598032a10c79cb54add19ae6c67f3de8afcec0825",
+      "triangles": 240,
+      "boundsBlender": [
+        [
+          -0.5,
+          -0.5,
+          -0.4999999701976776
+        ],
+        [
+          0.5,
+          0.5,
+          0.4999999701976776
+        ]
+      ],
+      "uv": true,
+      "submeshes": 1
+    },
+    {
+      "family": "Signals",
+      "familyValue": 0,
+      "partKind": "ConsoleHousing",
+      "partKindValue": 2,
+      "meshName": "Signals_ConsoleHousing",
+      "referenceDimensions": [
+        0.95,
+        0.8,
+        0.14
+      ],
+      "material": "Arena graphite",
+      "fbx": "bb_comp_Signals_ConsoleHousing.fbx",
+      "sha256": "2fc5d71f5430d1ba510118b9e5ec72d983df5ad7b9a745fbd5229fde3a30ac71",
+      "triangles": 572,
+      "boundsBlender": [
+        [
+          -0.5,
+          -0.5,
+          -0.5
+        ],
+        [
+          0.5,
+          0.5,
+          0.5
+        ]
+      ],
+      "uv": true,
+      "submeshes": 1
+    },
+    {
+      "family": "Signals",
+      "familyValue": 0,
+      "partKind": "RecessedDisplay",
+      "partKindValue": 3,
+      "meshName": "Signals_RecessedDisplay",
+      "referenceDimensions": [
+        0.86,
+        0.69,
+        0.025
+      ],
+      "material": "Instrument face",
+      "fbx": "bb_comp_Signals_RecessedDisplay.fbx",
+      "sha256": "6b38b14942a5f560c1728bff0800726f05c4dcf00ff4d20c94c75458c00b1a49",
+      "triangles": 60,
+      "boundsBlender": [
+        [
+          -0.5,
+          -0.5,
+          -0.5
+        ],
+        [
+          0.5,
+          0.5,
+          0.5
+        ]
+      ],
+      "uv": true,
+      "submeshes": 1
+    },
+    {
+      "family": "Signals",
+      "familyValue": 0,
+      "partKind": "AwardHeader",
+      "partKindValue": 4,
+      "meshName": "Signals_AwardHeader",
+      "referenceDimensions": [
+        0.95,
+        0.045,
+        0.03
+      ],
+      "material": "Award trim",
+      "fbx": "bb_comp_Signals_AwardHeader.fbx",
+      "sha256": "fced5773757369ca75c55dad2e6cd01a90d5566ea9c072863d4b113fce0743a2",
+      "triangles": 60,
+      "boundsBlender": [
+        [
+          -0.5,
+          -0.5,
+          -0.5
+        ],
+        [
+          0.5,
+          0.5,
+          0.5
+        ]
+      ],
+      "uv": true,
+      "submeshes": 1
+    },
+    {
+      "family": "PairConsole",
+      "familyValue": 1,
+      "partKind": "ConsoleLeg",
+      "partKindValue": 1,
+      "meshName": "PairConsole_ConsoleLeg",
+      "referenceDimensions": [
+        0.07,
+        0.84,
+        0.14
+      ],
+      "material": "Arena graphite",
+      "fbx": "bb_comp_PairConsole_ConsoleLeg.fbx",
+      "sha256": "8500afeeb60763741c6e71ad886c448e8f296e58e201335d4d31d374744f0f43",
+      "triangles": 240,
+      "boundsBlender": [
+        [
+          -0.5,
+          -0.5,
+          -0.4999999701976776
+        ],
+        [
+          0.5,
+          0.5,
+          0.4999999701976776
+        ]
+      ],
+      "uv": true,
+      "submeshes": 1
+    },
+    {
+      "family": "PairConsole",
+      "familyValue": 1,
+      "partKind": "ConsoleHousing",
+      "partKindValue": 2,
+      "meshName": "PairConsole_ConsoleHousing",
+      "referenceDimensions": [
+        0.92,
+        0.8,
+        0.14
+      ],
+      "material": "Arena graphite",
+      "fbx": "bb_comp_PairConsole_ConsoleHousing.fbx",
+      "sha256": "2ca020a550920704e23cdb1c1f3d997a23fc4ff142b548f295e26c6bfa8dde4e",
+      "triangles": 572,
+      "boundsBlender": [
+        [
+          -0.5,
+          -0.5,
+          -0.5
+        ],
+        [
+          0.5,
+          0.5,
+          0.5
+        ]
+      ],
+      "uv": true,
+      "submeshes": 1
+    },
+    {
+      "family": "PairConsole",
+      "familyValue": 1,
+      "partKind": "RecessedDisplay",
+      "partKindValue": 3,
+      "meshName": "PairConsole_RecessedDisplay",
+      "referenceDimensions": [
+        0.8300000000000001,
+        0.69,
+        0.025
+      ],
+      "material": "Instrument face",
+      "fbx": "bb_comp_PairConsole_RecessedDisplay.fbx",
+      "sha256": "f231b5cea0e7c28ffc12bbc695a5a1b4f3dc92ff55f371912155aedb78640869",
+      "triangles": 60,
+      "boundsBlender": [
+        [
+          -0.5,
+          -0.5,
+          -0.5
+        ],
+        [
+          0.5,
+          0.5,
+          0.5
+        ]
+      ],
+      "uv": true,
+      "submeshes": 1
+    },
+    {
+      "family": "PairConsole",
+      "familyValue": 1,
+      "partKind": "AwardHeader",
+      "partKindValue": 4,
+      "meshName": "PairConsole_AwardHeader",
+      "referenceDimensions": [
+        0.92,
+        0.045,
+        0.03
+      ],
+      "material": "Award trim",
+      "fbx": "bb_comp_PairConsole_AwardHeader.fbx",
+      "sha256": "d45da2113ccd6248b99317fb6eb2cb2451766c6f63b55071ac9ecf5bcfe2d6cc",
+      "triangles": 60,
+      "boundsBlender": [
+        [
+          -0.5,
+          -0.5,
+          -0.5
+        ],
+        [
+          0.5,
+          0.5,
+          0.5
+        ]
+      ],
+      "uv": true,
+      "submeshes": 1
+    },
+    {
+      "family": "WordConsole",
+      "familyValue": 4,
+      "partKind": "ConsoleLeg",
+      "partKindValue": 1,
+      "meshName": "WordConsole_ConsoleLeg",
+      "referenceDimensions": [
+        0.07,
+        0.84,
+        0.14
+      ],
+      "material": "Arena graphite",
+      "fbx": "bb_comp_WordConsole_ConsoleLeg.fbx",
+      "sha256": "88b1b6299d4b77d4044f7d014facdf4997b689dc156c01525b6c7c5a789443b7",
+      "triangles": 240,
+      "boundsBlender": [
+        [
+          -0.5,
+          -0.5,
+          -0.4999999701976776
+        ],
+        [
+          0.5,
+          0.5,
+          0.4999999701976776
+        ]
+      ],
+      "uv": true,
+      "submeshes": 1
+    },
+    {
+      "family": "WordConsole",
+      "familyValue": 4,
+      "partKind": "ConsoleHousing",
+      "partKindValue": 2,
+      "meshName": "WordConsole_ConsoleHousing",
+      "referenceDimensions": [
+        1.02,
+        0.8,
+        0.14
+      ],
+      "material": "Arena graphite",
+      "fbx": "bb_comp_WordConsole_ConsoleHousing.fbx",
+      "sha256": "a33b5bfcd1a11ef3526ab9992e4f86ce4788da34efed35ced02f6ac90e5c7a62",
+      "triangles": 572,
+      "boundsBlender": [
+        [
+          -0.5,
+          -0.5,
+          -0.5
+        ],
+        [
+          0.5,
+          0.5,
+          0.5
+        ]
+      ],
+      "uv": true,
+      "submeshes": 1
+    },
+    {
+      "family": "WordConsole",
+      "familyValue": 4,
+      "partKind": "RecessedDisplay",
+      "partKindValue": 3,
+      "meshName": "WordConsole_RecessedDisplay",
+      "referenceDimensions": [
+        0.93,
+        0.69,
+        0.025
+      ],
+      "material": "Instrument face",
+      "fbx": "bb_comp_WordConsole_RecessedDisplay.fbx",
+      "sha256": "3670e2328bb2560457bc742d2c7995dcd0a7f03afec483a943de47c7f39f6860",
+      "triangles": 60,
+      "boundsBlender": [
+        [
+          -0.5,
+          -0.5,
+          -0.5
+        ],
+        [
+          0.5,
+          0.5,
+          0.5
+        ]
+      ],
+      "uv": true,
+      "submeshes": 1
+    },
+    {
+      "family": "WordConsole",
+      "familyValue": 4,
+      "partKind": "AwardHeader",
+      "partKindValue": 4,
+      "meshName": "WordConsole_AwardHeader",
+      "referenceDimensions": [
+        1.02,
+        0.045,
+        0.03
+      ],
+      "material": "Award trim",
+      "fbx": "bb_comp_WordConsole_AwardHeader.fbx",
+      "sha256": "e8439275079161ce1f656ef05f2c394f3827f2150f82b224fb251c1fb04c13e6",
+      "triangles": 60,
+      "boundsBlender": [
+        [
+          -0.5,
+          -0.5,
+          -0.5
+        ],
+        [
+          0.5,
+          0.5,
+          0.5
+        ]
+      ],
+      "uv": true,
+      "submeshes": 1
+    },
+    {
+      "family": "Signals",
+      "familyValue": 0,
+      "partKind": "SignalTarget",
+      "partKindValue": 6,
+      "meshName": "Signals_SignalTarget",
+      "referenceDimensions": [
+        0.2,
+        0.17,
+        0.03
+      ],
+      "material": "Indicator face",
+      "notes": "No directional/score glyphs in mesh; runtime renders real labels.",
+      "fbx": "bb_comp_Signals_SignalTarget.fbx",
+      "sha256": "281983b62ba41e4bc1be1ae4343c3f8ac5ee6c6cf46c26981a9eaf84611cf627",
+      "triangles": 184,
+      "boundsBlender": [
+        [
+          -0.5,
+          -0.5,
+          -0.5
+        ],
+        [
+          0.5,
+          0.5,
+          0.5
+        ]
+      ],
+      "uv": true,
+      "submeshes": 1
+    },
+    {
+      "family": "Signals",
+      "familyValue": 0,
+      "partKind": "ResponsePad",
+      "partKindValue": 7,
+      "meshName": "Signals_ResponsePad",
+      "referenceDimensions": [
+        0.14,
+        0.065,
+        0.15
+      ],
+      "material": "Award trim",
+      "notes": "Retain broad flat central top face at normalized y=.5. Height is fitted, scale unchanged.",
+      "fbx": "bb_comp_Signals_ResponsePad.fbx",
+      "sha256": "a7aa94fe210da704ca8d510a73b0757310b6dfc546f93feb3cb3c0f39553ebbf",
+      "triangles": 92,
+      "boundsBlender": [
+        [
+          -0.5,
+          -0.5,
+          -0.4999999701976776
+        ],
+        [
+          0.5,
+          0.5,
+          0.4999999701976776
+        ]
+      ],
+      "uv": true,
+      "submeshes": 1
+    },
+    {
+      "family": "PairConsole",
+      "familyValue": 1,
+      "partKind": "MemoryTile",
+      "partKindValue": 5,
+      "meshName": "PairConsole_MemoryTile",
+      "referenceDimensions": [
+        0.16,
+        0.13,
+        0.025
+      ],
+      "material": "Indicator face",
+      "notes": "Front/audience repeaters same mesh. No baked face/symbol/history; runtime owns disclosure.",
+      "fbx": "bb_comp_PairConsole_MemoryTile.fbx",
+      "sha256": "4cd27d3a663c4ec19139f63cc4f2f820a4969a124c1f2b429480354f3a838183",
+      "triangles": 184,
+      "boundsBlender": [
+        [
+          -0.5,
+          -0.4999999701976776,
+          -0.4999999701976776
+        ],
+        [
+          0.5,
+          0.4999999701976776,
+          0.4999999701976776
+        ]
+      ],
+      "uv": true,
+      "submeshes": 1
+    },
+    {
+      "family": "WordConsole",
+      "familyValue": 4,
+      "partKind": "LetterTile",
+      "partKindValue": 21,
+      "meshName": "WordConsole_LetterTile",
+      "referenceDimensions": [
+        0.125,
+        0.16,
+        0.025
+      ],
+      "material": "Indicator face",
+      "notes": "Front/audience repeaters same mesh. No baked letter; runtime owns disclosure.",
+      "fbx": "bb_comp_WordConsole_LetterTile.fbx",
+      "sha256": "a4cf652ef819304d408ee6165f67476896a611ce9aeffc61201e97346a6ee1e8",
+      "triangles": 184,
+      "boundsBlender": [
+        [
+          -0.5,
+          -0.4999999701976776,
+          -0.5
+        ],
+        [
+          0.5,
+          0.4999999701976776,
+          0.5
+        ]
+      ],
+      "uv": true,
+      "submeshes": 1
+    },
+    {
+      "family": "GripRig",
+      "familyValue": 2,
+      "partKind": "RigUpright",
+      "partKindValue": 8,
+      "meshName": "GripRig_RigUpright",
+      "referenceDimensions": [
+        0.065,
+        1.56,
+        0.09
+      ],
+      "material": "Arena graphite",
+      "intentionalDynamicYScale": true,
+      "notes": "Prismatic along Y; retain readable cross section across existing FitGrip/Sync scale range.",
+      "fbx": "bb_comp_GripRig_RigUpright.fbx",
+      "sha256": "90fa6298cc5eb81561db471fa3a77bbf2884966396366cdbb843248f84da1d09",
+      "triangles": 240,
+      "boundsBlender": [
+        [
+          -0.4999999701976776,
+          -0.5,
+          -0.5
+        ],
+        [
+          0.4999999701976776,
+          0.5,
+          0.5
+        ]
+      ],
+      "uv": true,
+      "submeshes": 1
+    },
+    {
+      "family": "GripRig",
+      "familyValue": 2,
+      "partKind": "RigBrace",
+      "partKindValue": 9,
+      "meshName": "GripRig_RigBrace",
+      "referenceDimensions": [
+        0.91,
+        0.07,
+        0.1
+      ],
+      "material": "Award trim",
+      "intentionalDynamicYScale": false,
+      "notes": "",
+      "fbx": "bb_comp_GripRig_RigBrace.fbx",
+      "sha256": "0854338b1510b58f2f85709ea072942a8b1d1af6050171a9b451968d824cf9e0",
+      "triangles": 92,
+      "boundsBlender": [
+        [
+          -0.5,
+          -0.5,
+          -0.5
+        ],
+        [
+          0.5,
+          0.5,
+          0.5
+        ]
+      ],
+      "uv": true,
+      "submeshes": 1
+    },
+    {
+      "family": "GripRig",
+      "familyValue": 2,
+      "partKind": "GripHandle",
+      "partKindValue": 10,
+      "meshName": "GripRig_GripHandle",
+      "referenceDimensions": [
+        0.78,
+        0.045,
+        0.055
+      ],
+      "material": "Award trim",
+      "intentionalDynamicYScale": false,
+      "notes": "GripHandle front contact plane z=-.5 at x=-.33 and +.33 must remain solid.",
+      "fbx": "bb_comp_GripRig_GripHandle.fbx",
+      "sha256": "300858fe102a666a93be20e4910764c2192753d20ab5ecaf486af6e4d47658b9",
+      "triangles": 212,
+      "boundsBlender": [
+        [
+          -0.4999999701976776,
+          -0.5,
+          -0.5
+        ],
+        [
+          0.4999999701976776,
+          0.5,
+          0.5
+        ]
+      ],
+      "uv": true,
+      "submeshes": 1
+    },
+    {
+      "family": "GripRig",
+      "familyValue": 2,
+      "partKind": "GripTrack",
+      "partKindValue": 11,
+      "meshName": "GripRig_GripTrack",
+      "referenceDimensions": [
+        0.055,
+        0.69,
+        0.04
+      ],
+      "material": "Instrument face",
+      "intentionalDynamicYScale": false,
+      "notes": "",
+      "fbx": "bb_comp_GripRig_GripTrack.fbx",
+      "sha256": "5795f7052a7bbde359d27dd5335c5f5c89ba8796ebae23112c5e470cdfb3e9a5",
+      "triangles": 60,
+      "boundsBlender": [
+        [
+          -0.5,
+          -0.5,
+          -0.5
+        ],
+        [
+          0.5,
+          0.5,
+          0.5
+        ]
+      ],
+      "uv": true,
+      "submeshes": 1
+    },
+    {
+      "family": "GripRig",
+      "familyValue": 2,
+      "partKind": "GripRemaining",
+      "partKindValue": 12,
+      "meshName": "GripRig_GripRemaining",
+      "referenceDimensions": [
+        0.035,
+        0.69,
+        0.025
+      ],
+      "material": "Indicator face",
+      "intentionalDynamicYScale": true,
+      "notes": "Prismatic along Y; retain readable cross section across existing FitGrip/Sync scale range.",
+      "fbx": "bb_comp_GripRig_GripRemaining.fbx",
+      "sha256": "e95487894eac5ec498d302191a7f824f779e02371087322c0746910132d59bec",
+      "triangles": 60,
+      "boundsBlender": [
+        [
+          -0.5,
+          -0.5,
+          -0.5
+        ],
+        [
+          0.5,
+          0.5,
+          0.5
+        ]
+      ],
+      "uv": true,
+      "submeshes": 1
+    },
+    {
+      "family": "GripRig",
+      "familyValue": 2,
+      "partKind": "CounterweightGuide",
+      "partKindValue": 13,
+      "meshName": "GripRig_CounterweightGuide",
+      "referenceDimensions": [
+        0.03,
+        0.76,
+        0.03
+      ],
+      "material": "Arena graphite",
+      "intentionalDynamicYScale": false,
+      "notes": "",
+      "fbx": "bb_comp_GripRig_CounterweightGuide.fbx",
+      "sha256": "0a6af7ae89c4163f5658ea85036be283537153980ea74611f5060d7d6a628fab",
+      "triangles": 60,
+      "boundsBlender": [
+        [
+          -0.5,
+          -0.5,
+          -0.5
+        ],
+        [
+          0.5,
+          0.5,
+          0.5
+        ]
+      ],
+      "uv": true,
+      "submeshes": 1
+    },
+    {
+      "family": "GripRig",
+      "familyValue": 2,
+      "partKind": "Counterweight",
+      "partKindValue": 14,
+      "meshName": "GripRig_Counterweight",
+      "referenceDimensions": [
+        0.25,
+        0.16,
+        0.17
+      ],
+      "material": "Arena graphite",
+      "intentionalDynamicYScale": false,
+      "notes": "",
+      "fbx": "bb_comp_GripRig_Counterweight.fbx",
+      "sha256": "65c6f66740742295e139bb9c69bab9d6497a6121a7aa586f7737b52e9364ee86",
+      "triangles": 572,
+      "boundsBlender": [
+        [
+          -0.5,
+          -0.5,
+          -0.5
+        ],
+        [
+          0.5,
+          0.4999999701976776,
+          0.5
+        ]
+      ],
+      "uv": true,
+      "submeshes": 1
+    },
+    {
+      "family": "GripRig",
+      "familyValue": 2,
+      "partKind": "GripTick",
+      "partKindValue": 15,
+      "meshName": "GripRig_GripTick",
+      "referenceDimensions": [
+        0.06,
+        0.012,
+        0.03
+      ],
+      "material": "Award trim",
+      "intentionalDynamicYScale": false,
+      "notes": "",
+      "fbx": "bb_comp_GripRig_GripTick.fbx",
+      "sha256": "a84b71e7e032ba41346c6b60db469385f1bcba73b2d66cbfc4c825acae437bd5",
+      "triangles": 60,
+      "boundsBlender": [
+        [
+          -0.5,
+          -0.5,
+          -0.5
+        ],
+        [
+          0.5,
+          0.5,
+          0.5
+        ]
+      ],
+      "uv": true,
+      "submeshes": 1
+    },
+    {
+      "family": "DiceTray",
+      "familyValue": 3,
+      "partKind": "TrayPedestal",
+      "partKindValue": 16,
+      "meshName": "DiceTray_TrayPedestal",
+      "referenceDimensions": [
+        0.2,
+        1.1,
+        0.25
+      ],
+      "material": "Arena graphite",
+      "intentionalDynamicYScale": true,
+      "notes": "Prismatic support along Y; FitPress intentionally scales height.",
+      "fbx": "bb_comp_DiceTray_TrayPedestal.fbx",
+      "sha256": "d76ce643a118b9bb2e90c6705527637d32a3cda6d160488642c4df2be622339f",
+      "triangles": 240,
+      "boundsBlender": [
+        [
+          -0.5,
+          -0.5,
+          -0.5
+        ],
+        [
+          0.5,
+          0.5,
+          0.5
+        ]
+      ],
+      "uv": true,
+      "submeshes": 1
+    },
+    {
+      "family": "DiceTray",
+      "familyValue": 3,
+      "partKind": "TrayBed",
+      "partKindValue": 17,
+      "meshName": "DiceTray_TrayBed",
+      "referenceDimensions": [
+        0.91,
+        0.08,
+        0.42
+      ],
+      "material": "Instrument face",
+      "intentionalDynamicYScale": false,
+      "notes": "",
+      "fbx": "bb_comp_DiceTray_TrayBed.fbx",
+      "sha256": "574d39dc1f9b6005a31d5b2dc9cc2a0d9ada66405565a59111b932cf573f4ea1",
+      "triangles": 184,
+      "boundsBlender": [
+        [
+          -0.5,
+          -0.4999999701976776,
+          -0.5
+        ],
+        [
+          0.5,
+          0.4999999701976776,
+          0.5
+        ]
+      ],
+      "uv": true,
+      "submeshes": 1
+    },
+    {
+      "family": "DiceTray",
+      "familyValue": 3,
+      "partKind": "TrayBackRail",
+      "partKindValue": 18,
+      "meshName": "DiceTray_TrayBackRail",
+      "referenceDimensions": [
+        0.96,
+        0.13,
+        0.05
+      ],
+      "material": "Award trim",
+      "intentionalDynamicYScale": false,
+      "notes": "",
+      "fbx": "bb_comp_DiceTray_TrayBackRail.fbx",
+      "sha256": "ae18e13e7a6104a1930a1268b97417b32cf1285cb24aaec998d93af4f5173b07",
+      "triangles": 92,
+      "boundsBlender": [
+        [
+          -0.5,
+          -0.5,
+          -0.4999999701976776
+        ],
+        [
+          0.5,
+          0.5,
+          0.4999999701976776
+        ]
+      ],
+      "uv": true,
+      "submeshes": 1
+    },
+    {
+      "family": "DiceTray",
+      "familyValue": 3,
+      "partKind": "TraySideRail",
+      "partKindValue": 19,
+      "meshName": "DiceTray_TraySideRail",
+      "referenceDimensions": [
+        0.05,
+        0.13,
+        0.44
+      ],
+      "material": "Award trim",
+      "intentionalDynamicYScale": false,
+      "notes": "",
+      "fbx": "bb_comp_DiceTray_TraySideRail.fbx",
+      "sha256": "b98e141633b1499bed73de8a45b5dff3d7dd1eb64b9c63a5e39ede8fc1ab4ea7",
+      "triangles": 92,
+      "boundsBlender": [
+        [
+          -0.5,
+          -0.5,
+          -0.4999999701976776
+        ],
+        [
+          0.5,
+          0.5,
+          0.4999999701976776
+        ]
+      ],
+      "uv": true,
+      "submeshes": 1
+    },
+    {
+      "family": "DiceTray",
+      "familyValue": 3,
+      "partKind": "Die",
+      "partKindValue": 20,
+      "meshName": "DiceTray_Die",
+      "referenceDimensions": [
+        0.17,
+        0.17,
+        0.17
+      ],
+      "material": "Indicator face",
+      "intentionalDynamicYScale": false,
+      "notes": "Centered pivot, flat front central face z=-.5, no pips/numbers. Sync owns yaw; glyphs own actual results.",
+      "fbx": "bb_comp_DiceTray_Die.fbx",
+      "sha256": "dbfe03e8df681646fbceae1459dacf3f977a622ef46c418371c8a11415806677",
+      "triangles": 108,
+      "boundsBlender": [
+        [
+          -0.5,
+          -0.5,
+          -0.5
+        ],
+        [
+          0.5,
+          0.5,
+          0.5
+        ]
+      ],
+      "uv": true,
+      "submeshes": 1
+    }
+  ],
+  "scope": "isolated art; no Unity import or runtime acceptance"
+}

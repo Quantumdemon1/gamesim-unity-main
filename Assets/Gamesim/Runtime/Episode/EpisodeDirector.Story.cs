@@ -14,7 +14,8 @@ namespace Gamesim.Episode
     ///
     /// <para>A beat is drawn from its content id at display time - names, pronouns and the
     /// description are rendered by <see cref="StoryText"/> from the save's cast - and answered by
-    /// its option id through <see cref="EpisodeCommandKind.ProgressStoryline"/>, never by its label.
+    /// its option id through its owned command, never by its label. Ordinary Story choices use
+    /// <see cref="EpisodeCommandKind.ProgressStoryline"/>; typed paid episodes use ChooseDialogue.
     /// Two kinds of option take a second press: one that names somebody asks who first, and a rule
     /// break asks to be confirmed, because production's ladder is signposted and never an accident.
     /// </para>
@@ -23,6 +24,7 @@ namespace Gamesim.Episode
     {
         /// <summary>A choice waiting on its second press: the beat, the option, and for a pick the person named.</summary>
         private string storyStepEvent, storyStepOption, storyStepPick;
+        private object paidStoryViewToken;
 
         /// <summary>Every story beat waiting on the player, on the episode screen. Returns whether any were drawn.</summary>
         private bool PendingStoryBeats(EpisodeState state)
@@ -61,17 +63,28 @@ namespace Gamesim.Episode
         private void RenderStoryBeat(EpisodeState state, HouseEventState item)
         {
             hud.StoryBeatHeader(StoryText.Eyebrow(item), StoryText.Title(item), StoryText.Narrative(state, item));
+            if (item.contentId?.StartsWith(DialogueCampaignV2.TemplateId + ":", StringComparison.Ordinal) == true
+                && DialogueRules.TryReadPublicRescue(state, item.id, out var record))
+            {
+                // Only this detached public projection reaches the HUD; never the cloned private proof.
+                hud.Paragraph("Week " + record.Week + ": " + state.Find(record.HolderId).name
+                    + " used the veto to save " + state.Find(record.SavedId).name + "; "
+                    + state.Find(record.ReplacementId).name + " went on the block.");
+            }
             if (storyStepEvent == item.id)
             {
                 var chosen = item.choices.FirstOrDefault(c => c.optionId == storyStepOption);
                 if (chosen != null) { RenderStoryStep(state, item, chosen); return; }
                 ClearStoryStep();
             }
-            hud.StoryChoices(item.choices.Select(choice => StoryChoiceFor(state, item, choice)).ToList());
+            var paid = DialogueRules.On(state) ? DialogueRules.Active(state) : null;
+            object paidView = paid != null && item.cycleId == paid.id ? new object() : null;
+            if (paidView != null) paidStoryViewToken = paidView;
+            hud.StoryChoices(item.choices.Select(choice => StoryChoiceFor(state, item, choice, paidView)).ToList());
             FrameHouseEvent(item);
         }
 
-        private EpisodeHud.StoryChoice StoryChoiceFor(EpisodeState state, HouseEventState item, HouseEventChoice choice)
+        private EpisodeHud.StoryChoice StoryChoiceFor(EpisodeState state, HouseEventState item, HouseEventChoice choice, object paidView = null)
         {
             bool costsTooMuch = choice.costsAction && !CanSpendAction(state);
             string note = choice.locked ? choice.lockReason
@@ -89,7 +102,15 @@ namespace Gamesim.Episode
                 Odds = choice.checkBase >= 0 ? StoryOdds.InTen(StoryOdds.Chance(state, item, choice)) : null,
                 Note = note,
                 Locked = choice.locked || costsTooMuch,
-                Choose = () => ChooseStoryOption(state, eventId, optionId),
+                Choose = () =>
+                {
+                    if (paidView != null)
+                    {
+                        if (!ReferenceEquals(paidView, paidStoryViewToken) || blockedRecovery || !IsCurrentDiaryRevision(state)) return;
+                        paidStoryViewToken = null; // Consume before a durable Submit can rebuild the view.
+                    }
+                    ChooseStoryOption(state, eventId, optionId);
+                },
             };
         }
 
@@ -114,6 +135,11 @@ namespace Gamesim.Episode
             var item = state.houseEvents.FirstOrDefault(e => e.id == eventId);
             var choice = item?.choices.FirstOrDefault(c => c.optionId == optionId);
             if (choice == null) return;
+            if (DialogueRules.TryBuildChoiceCommand(state, eventId, optionId, out var dialogueChoice))
+            {
+                Commit(state, dialogueChoice.kind, dialogueChoice.targetId, dialogueChoice.secondTargetId, text: dialogueChoice.text);
+                return;
+            }
             if (choice.pickPerson || choice.conduct)
             {
                 storyStepEvent = eventId; storyStepOption = optionId; storyStepPick = null;

@@ -62,6 +62,7 @@ namespace Gamesim.Tests.EditMode
             { "allianceLeakRulesStartWeek", 1 },
             { "pactPlanRulesStartWeek", 1 },
             { "allWeekRulesStartWeek", 1 },
+            { "dialogueRulesVersion", 0 },
             { "npcSocial.rulesStartWeek", 1 },
             { "story.rulesStartWeek", 1 },
             { "story.rulesVersion", 9 },
@@ -141,16 +142,21 @@ namespace Gamesim.Tests.EditMode
         }
 
         /// <summary>
-        /// The schema-29 tripwire (vote family V6's review). Since V6 every fresh season plays mode 2, so players'
-        /// schema-28 saves hold the whole mode-2 Vote core, which no frozen contract holds yet: the save contract
-        /// freezes at 28 (the lead's decision D2). Whoever bumps the live schema must freeze that core into
-        /// FrozenEpisodeV28 and load a mode-2 schema-28 save through it, then move this pin with them.
+        /// The live save schema is 29: every schema 1 to 28 save reaches it through
+        /// EpisodeSaveMigrations.UpgradeV28ToV29, which runs the frozen schema-28 reader
+        /// (FrozenEpisodeV28.Validate) first. A season the game starts today still plays on dialogue
+        /// rules 0, so the schema-29 dialogue store stays off. Vote family V6's review set this pin as
+        /// TheLiveSchemaStaysAt28UntilFrozenEpisodeV28FreezesTheModeTwoCore; it was renamed once the reader was wired.
         /// </summary>
         [Test]
-        public void TheLiveSchemaStaysAt28UntilFrozenEpisodeV28FreezesTheModeTwoCore()
+        public void TheLiveSchemaIs29AndAShippedSeasonStartsOnDialogueRules0()
         {
-            Assert.That(new EpisodeState().schemaVersion, Is.EqualTo(28),
-                "Bumping past 28: FrozenEpisodeV28 must freeze the whole mode-2 core (vote family V6, D2) and load a mode-2 schema-28 save.");
+            Assert.That(new EpisodeState().schemaVersion, Is.EqualTo(29),
+                "The live save schema is 29. Another persisted field needs the next schema, its migration and old-save fixtures.");
+            var s = SeasonBuilder.Create(new SeasonBuilder.Choice { HouseSize = 8 }, 2929u);
+            ShippedRules.ApplyFresh(s);
+            Assert.That(s.schemaVersion, Is.EqualTo(29), "A shipped season saves at the live schema.");
+            Assert.That(s.dialogueRulesVersion, Is.Zero, "A shipped season starts with the dialogue rules off.");
         }
 
         /// <summary>Fresh seasons only: the economy refuses a season that has been played, so ApplyFresh does too.</summary>

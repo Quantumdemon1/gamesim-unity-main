@@ -208,7 +208,12 @@ namespace Gamesim.Tests.EditMode
                 "transient dialogue identifies the player's incoming offer through the canonical mode-aware view"),
             new Site(Run + "Episode/EpisodeDirector.WalkOut.cs", null, 1, Why.Moved, "V5f: GoodbyeTone"),
             new Site(Run + "Presentation/WeeklyRecap.Ledger.cs", null, 2, Why.Moved, "V5f: the ledger's word count; the raw branch is mode 0's"),
-            new Site(Run + "Episode/PortVerification.Season.Systems.cs", null, 3, Why.Moved, "V5f: the verification's deal lookups, through the views"),
+            new Site(Run + "Episode/PortVerification.Season.Systems.cs", "state.deals.Count(row => row.id == projection.id)", 1, Why.ModeAware,
+                "the season verification checks a selected agreement has one owner, its canonical row or one raw row, by its id"),
+            new Site(Run + "Episode/PortVerification.Season.Systems.cs", "!after.deals.Any(raw => raw.id == receipt.id)", 1, Why.ModeAware,
+                "the season verification checks an accepted mode-2 named vote left no raw mirror, by its canonical id"),
+            new Site(Run + "Episode/PortVerification.Season.Systems.cs", null, 5, Why.Moved,
+                "V5f: the verification's deal lookups, through the views; the generic proposal's before/after reads came with the dialogue V2 leaves"),
         };
 
         /// <summary>Every read of the commitment lists, their mode-1 gates, their views or the Safety history.</summary>

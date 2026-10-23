@@ -31,7 +31,7 @@ namespace Gamesim.Episode
             var chip = CastChip(actor.name);
             if (chip == null) return;
 
-            string first = (actor.name ?? "").Split(' ')[0];
+            string first = CharacterNames.FirstName(actor.name ?? "");
             float scale = FontScale, width = CastMenuWidth * scale;
             float height = (CastMenuHead + 4f * (CastMenuRow + CastMenuGap) + 8f) * scale;
             var menu = CardOverChip(CastMenuName, chip, width, height);

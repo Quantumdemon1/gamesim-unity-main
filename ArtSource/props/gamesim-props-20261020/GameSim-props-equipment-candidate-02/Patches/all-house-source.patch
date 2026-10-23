@@ -1,0 +1,576 @@
+--- a/Assets/Gamesim/Editor/HouseRoomFinish.cs
++++ b/Assets/Gamesim/Editor/HouseRoomFinish.cs
+@@ -212,12 +212,12 @@
+                 if (Decal(group, "Dishwasher panel", panels + "appliance_panel_coffee.png", new Vector3(left + 1.40f, room.FloorTop + 0.78f, front - 0.012f), 0.60f, into) != null) count++;
+                 if (Decal(group, "Oven panel", panels + "appliance_panel_oven.png", new Vector3(left + 4.25f, room.FloorTop + 0.72f, front - 0.012f), 0.60f, into) != null) count++;
+                 // Coffee, beside the machine over the drawers.
+-                if (Tin(group, "Coffee tin", panels + "coffee_label.png", 0.06f, 0.16f, new Vector3(left + 3.00f, counter, mid + 0.05f)) != null) count++;
+-                if (Tin(group, "Jar", panels + "jar_label.png", 0.055f, 0.14f, new Vector3(left + 3.70f, counter, mid + 0.08f)) != null) count++;
++                if (PieceAt(group, "Coffee tin", "bb_set_coffee_tin", new Vector3(left + 3.00f, counter, mid + 0.05f), 0f) != null) count++;
++                if (PieceAt(group, "Jar", "bb_set_food_jar", new Vector3(left + 3.70f, counter, mid + 0.08f), 0f) != null) count++;
+                 // The pantry, beside the toaster.
+-                if (Carton(group, "Cereal", panels + "cereal_label.png", new Vector3(0.20f, 0.30f, 0.07f), new Vector3(left + 4.85f, counter, mid + 0.10f), 12f) != null) count++;
+-                if (Carton(group, "Snack bag", panels + "snack_label_red.png", new Vector3(0.16f, 0.22f, 0.05f), new Vector3(left + 5.08f, counter, mid + 0.06f), -8f) != null) count++;
+-                if (Carton(group, "Snack bag", panels + "snack_label_blue.png", new Vector3(0.16f, 0.22f, 0.05f), new Vector3(left + 5.50f, counter, mid + 0.02f), 20f) != null) count++;
++                if (PieceAt(group, "Cereal", "bb_set_cereal_carton", new Vector3(left + 4.85f, counter, mid + 0.10f), 12f) != null) count++;
++                if (PieceAt(group, "Snack bag", "bb_set_snack_gold", new Vector3(left + 5.08f, counter, mid + 0.06f), -8f) != null) count++;
++                if (PieceAt(group, "Snack bag", "bb_set_snack_blue", new Vector3(left + 5.50f, counter, mid + 0.02f), 20f) != null) count++;
+                 // A folded authored towel on the end panel. The room-finish layer keeps the same
+                 // support point, but the prop now has the thickness and folds of the set's model.
+                 if (PieceAt(group, "Dish towel", "bb_set_towel", new Vector3(left + 6.15f, counter, mid), 0f) != null) count++;
+@@ -427,12 +427,12 @@
+                 var letter = Finish("bb_mat_p6_decal_hoh_letter_sheet", Pack6 + "HOHRewards/hoh_letter_sheet.png", Vector2.one, Color.white, 0.2f, 0f, true, DecalGlow);
+                 if (letter != null) { Quad(group, "HoH letter", letter, new Vector3(cb.min.x + 0.40f, top + 0.006f, cb.center.z + 0.08f), new Vector2(0.21f, 0.16f), Vector3.up, Quaternion.Euler(0f, -6f, 0f) * Vector3.forward); count++; }
+                 if (Carton(group, "Gift box", Pack6 + "HOHRewards/gift_wrap_gold.png", new Vector3(0.22f, 0.16f, 0.16f), new Vector3(cb.max.x - 0.22f, top, cb.center.z), 15f) != null) count++;
+-                if (Carton(group, "Snack bag", Pack6 + "HOHRewards/snack_bag_gold.png", new Vector3(0.14f, 0.20f, 0.05f), new Vector3(cb.max.x - 0.48f, top, cb.center.z - 0.08f), -10f) != null) count++;
+-                if (Carton(group, "Snack bag", Pack6 + "HOHRewards/snack_bag_blue.png", new Vector3(0.14f, 0.20f, 0.05f), new Vector3(cb.max.x - 0.64f, top, cb.center.z + 0.04f), 25f) != null) count++;
++                if (PieceAt(group, "Snack bag", "bb_set_hoh_snack_gold", new Vector3(cb.max.x - 0.48f, top, cb.center.z - 0.08f), -10f) != null) count++;
++                if (PieceAt(group, "Snack bag", "bb_set_hoh_snack_blue", new Vector3(cb.max.x - 0.64f, top, cb.center.z + 0.04f), 25f) != null) count++;
+                 if (PieceAt(group, "HoH drink", "bb_set_bottle", new Vector3(cb.max.x - 0.36f, top, cb.center.z + 0.12f), 0f) != null) count++;
+                 // The mini fridge, on the floor beside the console, toward the room's middle.
+                 float fridgeX = cb.max.x + 0.40f < room.Bounds.max.x - 0.5f ? cb.max.x + 0.40f : cb.min.x - 0.40f;
+-                if (Carton(group, "Mini fridge", Pack6 + "GameRoom/mini_fridge_graphic.png", new Vector3(0.50f, 0.70f, 0.50f), new Vector3(fridgeX, room.FloorTop, cb.center.z), 0f) != null) count++;
++                if (PieceAt(group, "Mini fridge", "bb_set_mini_fridge", new Vector3(fridgeX, room.FloorTop, cb.center.z), 0f) != null) count++;
+             }
+ 
+             // The HoH neon by the door, on the divider's south segment.
+@@ -528,7 +528,7 @@
+                 if (bar != null)
+                 {
+                     var bb = Measure(bar.gameObject);
+-                    if (Carton(group, "Mini fridge", Pack6 + "GameRoom/mini_fridge_graphic.png", new Vector3(0.50f, 0.70f, 0.50f),
++                    if (PieceAt(group, "Mini fridge", "bb_set_mini_fridge",
+                         new Vector3(bb.center.x, room.FloorTop, bb.max.z + 0.45f), 0f) != null) count++;
+                 }
+             }
+@@ -550,9 +550,9 @@
+             {
+                 var tb = Measure(table.gameObject);
+                 float top = tb.max.y;
+-                var boxes = new[] { "boardgame_strategy", "boardgame_alliance", "cardgame_social" };
++                var boxes = new[] { "bb_set_game_strategy", "bb_set_game_alliance", "bb_set_game_social" };
+                 for (int i = 0; i < boxes.Length; i++)
+-                    if (Carton(group, "Game box", Pack6 + "GameRoom/" + boxes[i] + ".png", new Vector3(0.30f, 0.05f, 0.20f),
++                    if (PieceAt(group, "Game box", boxes[i],
+                         new Vector3(tb.center.x - 0.12f + i * 0.01f, top + i * 0.05f, tb.center.z + 0.04f - i * 0.015f), -8f + i * 9f) != null) count++;
+                 var centre = new Vector2(tb.center.x, tb.center.z);
+                 if (sofa != null) { var sb = Measure(sofa.gameObject); centre = (centre + new Vector2(sb.center.x, sb.center.z)) * 0.5f; }
+@@ -646,15 +646,15 @@
+                 else
+                 {
+                     if (PieceAt(group, "Book", "bb_set_bookstack", new Vector3(tb.center.x - 0.11f, top, tb.center.z + 0.08f), -12f) != null) count++;
+-                    if (Carton(group, "Headphone case", Pack6 + "BedroomClutter/headphone_case.png", new Vector3(0.16f, 0.06f, 0.16f), new Vector3(tb.center.x + 0.16f, top, tb.center.z - 0.08f), 30f) != null) count++;
++                    if (PieceAt(group, "Headphone case", "bb_set_headphone_case", new Vector3(tb.center.x + 0.16f, top, tb.center.z - 0.08f), 30f) != null) count++;
+                 }
+             }
+             var drawers = house.Pieces(room, "cabinetBedDrawer").OrderBy(t => t.position.x).ToList();
+             for (int i = 0; i < drawers.Count; i++)
+             {
+                 var db = Measure(drawers[i].gameObject);
+-                string label = i % 2 == 0 ? "cosmetic_label" : "toiletry_label";
+-                if (Tin(group, "Toiletry", Pack6 + "BedroomClutter/" + label + ".png", 0.03f, 0.10f, new Vector3(db.center.x + (i % 2 == 0 ? 0.12f : -0.12f), db.max.y, db.center.z)) != null) count++;
++                string model = i % 2 == 0 ? "bb_set_cosmetic" : "bb_set_toiletry";
++                if (PieceAt(group, "Toiletry", model, new Vector3(db.center.x + (i % 2 == 0 ? 0.12f : -0.12f), db.max.y, db.center.z), 0f) != null) count++;
+             }
+ 
+             // The corkboard goes on the segment of the east partition nothing tall stands in front
+--- /dev/null
++++ b/Assets/Gamesim/Editor/HouseSmallPropMaterials.cs
+@@ -0,0 +1,245 @@
++using System;
++using System.Collections.Generic;
++using System.IO;
++using System.Linq;
++using UnityEditor;
++using UnityEngine;
++using UnityEngine.Rendering;
++
++namespace Gamesim.Editor
++{
++    /// <summary>
++    /// Explicit material preparation for this fourteen-model batch. No import callback,
++    /// catalogue scan, scene rebuild or change to the shared authored-asset importer.
++    /// Run only after the native FBX files and external maps have been admitted.
++    /// </summary>
++    public static class HouseSmallPropMaterials
++    {
++        public const string Root = "Assets/Gamesim/Art/Authored/HouseSmallProps/";
++        public const string ShaderName = "Universal Render Pipeline/Lit";
++        public const string Materials = Root + "Materials/";
++        public const string Textures = Root + "Textures/";
++
++        private sealed class Slot
++        {
++            public readonly string Name;
++            public readonly Color LinearColor;
++            public readonly float Metallic, Roughness;
++            public readonly bool Mapped, Normal;
++            public Slot(string name, Color color, float metallic, float roughness, bool mapped, bool normal = false)
++            { Name = name; LinearColor = color; Metallic = metallic; Roughness = roughness; Mapped = mapped; Normal = normal; }
++        }
++        private sealed class Piece
++        {
++            public readonly string Id;
++            public readonly Slot[] Slots;
++            public Piece(string id, params Slot[] slots) { Id = id; Slots = slots; }
++        }
++
++        // Exact source material names and linear PBR factors from the delivered GLBs.
++        // The metallic maps already contain the final metallic and smoothness values.
++        private static readonly Piece[] Pieces =
++        {
++            new Piece("bb_set_coffee_tin",
++                new Slot("bb_mat_bb_set_coffee_tin", new Color(1f, 1f, 1f, 1f), 1f, 1f, true, false),
++                new Slot("bb_mat_bb_set_coffee_tin_trim", new Color(0.479320168f, 0.274677306f, 0.0528606474f, 1f), 0.280000001f, 0.379999995f, false, false)),
++            new Piece("bb_set_food_jar",
++                new Slot("bb_mat_bb_set_food_jar", new Color(1f, 1f, 1f, 1f), 1f, 1f, true, false),
++                new Slot("bb_mat_bb_set_food_jar_trim", new Color(0.064803265f, 0.278894275f, 0.366252601f, 1f), 0.280000001f, 0.379999995f, false, false)),
++            new Piece("bb_set_cereal_carton",
++                new Slot("bb_mat_bb_set_cereal_carton", new Color(1f, 1f, 1f, 1f), 1f, 1f, true, false),
++                new Slot("bb_mat_bb_set_cereal_carton_trim", new Color(0.479320168f, 0.274677306f, 0.0528606474f, 1f), 0f, 0.379999995f, false, false),
++                new Slot("bb_mat_bb_set_cereal_carton_base", new Color(0.0379999988f, 0.050999999f, 0.063000001f, 1f), 0f, 0.550000012f, false, false)),
++            new Piece("bb_set_snack_blue",
++                new Slot("bb_mat_bb_set_snack_blue", new Color(1f, 1f, 1f, 1f), 1f, 1f, true, false),
++                new Slot("bb_mat_bb_set_snack_blue_trim", new Color(0.064803265f, 0.278894275f, 0.366252601f, 1f), 0f, 0.379999995f, false, false)),
++            new Piece("bb_set_snack_gold",
++                new Slot("bb_mat_bb_set_snack_gold", new Color(1f, 1f, 1f, 1f), 1f, 1f, true, false),
++                new Slot("bb_mat_bb_set_snack_gold_trim", new Color(0.479320168f, 0.274677306f, 0.0528606474f, 1f), 0f, 0.379999995f, false, false)),
++            new Piece("bb_set_hoh_snack_blue",
++                new Slot("bb_mat_bb_set_hoh_snack_blue", new Color(1f, 1f, 1f, 1f), 1f, 1f, true, false),
++                new Slot("bb_mat_bb_set_hoh_snack_blue_trim", new Color(0.064803265f, 0.278894275f, 0.366252601f, 1f), 0f, 0.379999995f, false, false)),
++            new Piece("bb_set_hoh_snack_gold",
++                new Slot("bb_mat_bb_set_hoh_snack_gold", new Color(1f, 1f, 1f, 1f), 1f, 1f, true, false),
++                new Slot("bb_mat_bb_set_hoh_snack_gold_trim", new Color(0.479320168f, 0.274677306f, 0.0528606474f, 1f), 0f, 0.379999995f, false, false)),
++            new Piece("bb_set_game_strategy",
++                new Slot("bb_mat_bb_set_game_strategy_base", new Color(0.0379999988f, 0.050999999f, 0.063000001f, 1f), 0f, 0.550000012f, false, false),
++                new Slot("bb_mat_bb_set_game_strategy", new Color(1f, 1f, 1f, 1f), 1f, 1f, true, false),
++                new Slot("bb_mat_bb_set_game_strategy_trim", new Color(0.064803265f, 0.278894275f, 0.366252601f, 1f), 0f, 0.379999995f, false, false)),
++            new Piece("bb_set_game_alliance",
++                new Slot("bb_mat_bb_set_game_alliance_base", new Color(0.0379999988f, 0.050999999f, 0.063000001f, 1f), 0f, 0.550000012f, false, false),
++                new Slot("bb_mat_bb_set_game_alliance", new Color(1f, 1f, 1f, 1f), 1f, 1f, true, false),
++                new Slot("bb_mat_bb_set_game_alliance_trim", new Color(0.479320168f, 0.274677306f, 0.0528606474f, 1f), 0f, 0.379999995f, false, false)),
++            new Piece("bb_set_game_social",
++                new Slot("bb_mat_bb_set_game_social_base", new Color(0.0379999988f, 0.050999999f, 0.063000001f, 1f), 0f, 0.550000012f, false, false),
++                new Slot("bb_mat_bb_set_game_social", new Color(1f, 1f, 1f, 1f), 1f, 1f, true, false),
++                new Slot("bb_mat_bb_set_game_social_trim", new Color(0.064803265f, 0.278894275f, 0.366252601f, 1f), 0f, 0.379999995f, false, false)),
++            new Piece("bb_set_toiletry",
++                new Slot("bb_mat_bb_set_toiletry", new Color(1f, 1f, 1f, 1f), 1f, 1f, true, false),
++                new Slot("bb_mat_bb_set_toiletry_trim", new Color(0.064803265f, 0.278894275f, 0.366252601f, 1f), 0f, 0.379999995f, false, false)),
++            new Piece("bb_set_cosmetic",
++                new Slot("bb_mat_bb_set_cosmetic", new Color(1f, 1f, 1f, 1f), 1f, 1f, true, false),
++                new Slot("bb_mat_bb_set_cosmetic_trim", new Color(0.479320168f, 0.274677306f, 0.0528606474f, 1f), 0f, 0.379999995f, false, false)),
++            new Piece("bb_set_mini_fridge",
++                new Slot("bb_mat_mini_fridge_atlas", new Color(1f, 1f, 1f, 1f), 1f, 1f, true, true)),
++            new Piece("bb_set_headphone_case",
++                new Slot("bb_mat_headphone_case_atlas", new Color(1f, 1f, 1f, 1f), 1f, 1f, true, true)),
++        };
++
++        [MenuItem("Gamesim/U07/Prepare authored house small props (14 models)")]
++        public static void Prepare()
++        {
++            if (EditorApplication.isPlayingOrWillChangePlaymode || EditorApplication.isCompiling)
++                throw new InvalidOperationException("Prepare house props while the editor is idle.");
++            var shader = Shader.Find(ShaderName);
++            if (shader == null) throw new InvalidOperationException("URP/Lit is required.");
++            // Check the complete batch before writing any material or importer settings.
++            foreach (var piece in Pieces) Preflight(piece);
++            EnsureFolder(Materials.TrimEnd('/'));
++            foreach (var piece in Pieces)
++            {
++                PrepareTexture(piece.Id, "albedo", false, true);
++                PrepareTexture(piece.Id, "metallic", false, false);
++                if (piece.Slots.Any(slot => slot.Normal)) PrepareTexture(piece.Id, "normal", true, false);
++                var importer = (ModelImporter)AssetImporter.GetAtPath(ModelPath(piece.Id));
++                foreach (var slot in piece.Slots)
++                {
++                    var material = BuildMaterial(shader, piece.Id, slot);
++                    importer.AddRemap(new AssetImporter.SourceAssetIdentifier(typeof(Material), slot.Name), material);
++                }
++                // Keep the shared importer responsible for units, axes, rig and readability.
++                importer.importNormals = ModelImporterNormals.Import;
++                importer.importTangents = ModelImporterTangents.CalculateMikk;
++                importer.SaveAndReimport();
++                VerifyRemaps(piece);
++            }
++            Debug.Log("[Gamesim] Prepared 14 authored house props and their own materials. No scene was opened or saved.");
++        }
++
++        private static string ModelPath(string id) => Root + id + ".fbx";
++        private static string TexturePath(string id, string kind) => Textures + id + "_" + kind + ".png";
++
++        private static void Preflight(Piece piece)
++        {
++            string path = ModelPath(piece.Id);
++            var importer = AssetImporter.GetAtPath(path) as ModelImporter;
++            var model = AssetDatabase.LoadAssetAtPath<GameObject>(path);
++            if (importer == null || model == null) throw new InvalidOperationException("Missing imported model: " + path);
++            var names = model.GetComponentsInChildren<Renderer>(true).SelectMany(r => r.sharedMaterials)
++                .Select(m => m != null ? m.name : "<missing>").Distinct().OrderBy(n => n, StringComparer.Ordinal).ToArray();
++            var expected = piece.Slots.Select(s => s.Name).OrderBy(n => n, StringComparer.Ordinal).ToArray();
++            if (!names.SequenceEqual(expected))
++                throw new InvalidOperationException(path + " material slots differ from the reviewed batch: " + string.Join(", ", names));
++            foreach (string kind in new[] { "albedo", "metallic" }.Concat(piece.Slots.Any(s => s.Normal) ? new[] { "normal" } : Array.Empty<string>()))
++            {
++                string texture = TexturePath(piece.Id, kind);
++                if (!File.Exists(texture) || !(AssetImporter.GetAtPath(texture) is TextureImporter))
++                    throw new InvalidOperationException("Missing imported external map: " + texture);
++            }
++            foreach (var slot in piece.Slots)
++            {
++                var identifier = new AssetImporter.SourceAssetIdentifier(typeof(Material), slot.Name);
++                string target = Materials + slot.Name + ".mat";
++                if (importer.GetExternalObjectMap().TryGetValue(identifier, out var mapped)
++                    && mapped != null && AssetDatabase.GetAssetPath(mapped) != target)
++                    throw new InvalidOperationException(path + " already has an artist remap outside this batch: " + slot.Name);
++                var existing = AssetDatabase.LoadMainAssetAtPath(target);
++                if (existing != null && !(existing is Material)) throw new InvalidOperationException("Material path is occupied: " + target);
++            }
++        }
++
++        private static void PrepareTexture(string id, string kind, bool normal, bool color)
++        {
++            var importer = (TextureImporter)AssetImporter.GetAtPath(TexturePath(id, kind));
++            importer.textureType = normal ? TextureImporterType.NormalMap : TextureImporterType.Default;
++            importer.textureShape = TextureImporterShape.Texture2D;
++            importer.sRGBTexture = color;
++            importer.alphaSource = TextureImporterAlphaSource.FromInput;
++            importer.alphaIsTransparency = false;
++            importer.wrapMode = TextureWrapMode.Clamp;
++            importer.filterMode = FilterMode.Trilinear;
++            importer.mipmapEnabled = true;
++            importer.maxTextureSize = 1024;
++            importer.textureCompression = TextureImporterCompression.Compressed;
++            importer.isReadable = false;
++            importer.SaveAndReimport();
++        }
++
++        private static Material BuildMaterial(Shader shader, string id, Slot slot)
++        {
++            string path = Materials + slot.Name + ".mat";
++            var material = AssetDatabase.LoadAssetAtPath<Material>(path);
++            if (material == null)
++            {
++                material = new Material(shader) { name = slot.Name };
++                AssetDatabase.CreateAsset(material, path);
++            }
++            else
++            {
++                Undo.RecordObject(material, "Prepare house prop material");
++                material.shader = shader;
++            }
++            material.shaderKeywords = Array.Empty<string>();
++            // Match this project's glTFast ShaderGraphMaterialGenerator: baseColorLinear.gamma.
++            // Preserve that authoring convention for URP/Lit's ordinary _BaseColor property.
++            material.SetColor("_BaseColor", slot.LinearColor.gamma);
++            material.SetTexture("_BaseMap", slot.Mapped ? Map(id, "albedo") : null);
++            material.SetTextureScale("_BaseMap", Vector2.one);
++            material.SetTextureOffset("_BaseMap", Vector2.zero);
++            material.SetTexture("_MetallicGlossMap", slot.Mapped ? Map(id, "metallic") : null);
++            material.SetFloat("_Metallic", slot.Mapped ? 1f : slot.Metallic);
++            material.SetFloat("_Smoothness", slot.Mapped ? 1f : 1f - slot.Roughness);
++            material.SetFloat("_SmoothnessTextureChannel", 0f);
++            material.SetFloat("_WorkflowMode", 1f);
++            if (slot.Mapped) material.EnableKeyword("_METALLICSPECGLOSSMAP");
++            material.SetTexture("_BumpMap", slot.Normal ? Map(id, "normal") : null);
++            material.SetFloat("_BumpScale", slot.Normal ? 0.3f : 1f);
++            if (slot.Normal) material.EnableKeyword("_NORMALMAP");
++            material.SetTexture("_OcclusionMap", null);
++            material.SetTexture("_EmissionMap", null);
++            material.SetColor("_EmissionColor", Color.black);
++            material.SetFloat("_Surface", 0f);
++            material.SetFloat("_AlphaClip", 0f);
++            material.SetFloat("_Blend", 0f);
++            material.SetFloat("_Cull", (float)CullMode.Back);
++            material.SetFloat("_ZWrite", 1f);
++            material.SetFloat("_SrcBlend", (float)BlendMode.One);
++            material.SetFloat("_DstBlend", (float)BlendMode.Zero);
++            material.SetOverrideTag("RenderType", "Opaque");
++            material.renderQueue = (int)RenderQueue.Geometry;
++            material.doubleSidedGI = false;
++            material.globalIlluminationFlags = MaterialGlobalIlluminationFlags.EmissiveIsBlack;
++            material.SetShaderPassEnabled("ShadowCaster", true);
++            material.SetShaderPassEnabled("DepthOnly", true);
++            EditorUtility.SetDirty(material);
++            AssetDatabase.SaveAssetIfDirty(material);
++            return material;
++        }
++
++        private static Texture2D Map(string id, string kind)
++        {
++            string path = TexturePath(id, kind);
++            var texture = AssetDatabase.LoadAssetAtPath<Texture2D>(path);
++            if (texture == null) throw new InvalidOperationException("Texture did not import: " + path);
++            return texture;
++        }
++
++        private static void VerifyRemaps(Piece piece)
++        {
++            var model = AssetDatabase.LoadAssetAtPath<GameObject>(ModelPath(piece.Id));
++            foreach (var renderer in model.GetComponentsInChildren<Renderer>(true))
++            foreach (var material in renderer.sharedMaterials)
++                if (material == null || AssetDatabase.GetAssetPath(material) != Materials + material.name + ".mat"
++                    || material.shader == null || material.shader.name != ShaderName)
++                    throw new InvalidOperationException("External material did not survive import: " + piece.Id);
++        }
++
++        private static void EnsureFolder(string path)
++        {
++            if (AssetDatabase.IsValidFolder(path)) return;
++            string parent = Path.GetDirectoryName(path).Replace('\\', '/');
++            EnsureFolder(parent);
++            AssetDatabase.CreateFolder(parent, Path.GetFileName(path));
++        }
++    }
++}
+--- /dev/null
++++ b/Assets/Gamesim/Tests/EditMode/HouseSmallPropAssetTests.cs
+@@ -0,0 +1,211 @@
++using System;
++using System.Collections.Generic;
++using System.IO;
++using System.Linq;
++using System.Security.Cryptography;
++using Gamesim.Editor;
++using NUnit.Framework;
++using Unity.Collections;
++using UnityEditor;
++using UnityEditor.SceneManagement;
++using UnityEngine;
++using UnityEngine.Rendering;
++
++namespace Gamesim.Tests.EditMode
++{
++    // These cases inspect actual native imports. They do not create assets, change readability,
++    // rebuild a scene or require the saved scene to have adopted the new props yet.
++    public sealed class HouseSmallPropAssetTests
++    {
++        private const string Root = "Assets/Gamesim/Art/Authored/HouseSmallProps/";
++        public sealed class ExpectedAsset
++        {
++            public readonly string Id, FbxHash, LabelMaterial;
++            public readonly Vector3 Size;
++            public readonly int Triangles;
++            public readonly string[] Materials;
++            public readonly bool NormalMap;
++            public ExpectedAsset(string id, Vector3 size, int triangles, string hash, bool normal, string labelMaterial, params string[] materials)
++            { Id = id; Size = size; Triangles = triangles; FbxHash = hash; NormalMap = normal; LabelMaterial = labelMaterial; Materials = materials; }
++            public override string ToString() => Id;
++        }
++
++        // Independent asset receipt: fixed native bytes and authored dimensions, not production helper data.
++        public static IEnumerable<ExpectedAsset> Cases()
++        {
++            yield return new ExpectedAsset("bb_set_coffee_tin", new Vector3(0.12f, 0.16f, 0.12f), 1344, "07e59d9b0437c2f45923ce14f4fdca02546650bd49d28a094ac4c23a410f24da", false, "bb_mat_bb_set_coffee_tin", "bb_mat_bb_set_coffee_tin", "bb_mat_bb_set_coffee_tin_trim");
++            yield return new ExpectedAsset("bb_set_food_jar", new Vector3(0.11f, 0.14f, 0.11f), 1056, "7ab202b3524f3c2ca709c3f11ca768e8ddec1b9c09c7f45b92a108ad32d0ead4", false, "bb_mat_bb_set_food_jar", "bb_mat_bb_set_food_jar", "bb_mat_bb_set_food_jar_trim");
++            yield return new ExpectedAsset("bb_set_cereal_carton", new Vector3(0.2f, 0.3f, 0.07f), 432, "a66ad574bf3838feebc39755f1f1d0d5e3e551eedbba3b9d8a7b2cc1115dfcd2", false, "bb_mat_bb_set_cereal_carton", "bb_mat_bb_set_cereal_carton", "bb_mat_bb_set_cereal_carton_trim", "bb_mat_bb_set_cereal_carton_base");
++            yield return new ExpectedAsset("bb_set_snack_blue", new Vector3(0.16f, 0.22f, 0.05f), 1424, "01d2c555304029bb7bd21c96e731204fc56d707e1a0a40d7c56766f532f425d2", false, "bb_mat_bb_set_snack_blue", "bb_mat_bb_set_snack_blue", "bb_mat_bb_set_snack_blue_trim");
++            yield return new ExpectedAsset("bb_set_snack_gold", new Vector3(0.16f, 0.22f, 0.05f), 1424, "714ae079a56e9f70986eb9441920cea626d9adf4739a25fcf836fa8da45e7bc9", false, "bb_mat_bb_set_snack_gold", "bb_mat_bb_set_snack_gold", "bb_mat_bb_set_snack_gold_trim");
++            yield return new ExpectedAsset("bb_set_hoh_snack_blue", new Vector3(0.14f, 0.2f, 0.05f), 1424, "7d590ff2fe4257c69a383067175c735392605855a724f4b7b4aed67fb5ed229c", false, "bb_mat_bb_set_hoh_snack_blue", "bb_mat_bb_set_hoh_snack_blue", "bb_mat_bb_set_hoh_snack_blue_trim");
++            yield return new ExpectedAsset("bb_set_hoh_snack_gold", new Vector3(0.14f, 0.2f, 0.05f), 1424, "0f7f610dd87fab2fffc4b5746b8eb5e03129cb4afa1cec6be3d3fe280f5fdef2", false, "bb_mat_bb_set_hoh_snack_gold", "bb_mat_bb_set_hoh_snack_gold", "bb_mat_bb_set_hoh_snack_gold_trim");
++            yield return new ExpectedAsset("bb_set_game_strategy", new Vector3(0.3f, 0.05f, 0.2f), 216, "ee320717271adb6fdb83c48a6c5cfe5cd29e90876e3975d9bbbcd1146104ff4e", false, "bb_mat_bb_set_game_strategy", "bb_mat_bb_set_game_strategy_base", "bb_mat_bb_set_game_strategy", "bb_mat_bb_set_game_strategy_trim");
++            yield return new ExpectedAsset("bb_set_game_alliance", new Vector3(0.3f, 0.05f, 0.2f), 216, "4f4cc77879545d705d9bbbbc0af97a41e8d3e7bf444e57797f6eda2816080a29", false, "bb_mat_bb_set_game_alliance", "bb_mat_bb_set_game_alliance_base", "bb_mat_bb_set_game_alliance", "bb_mat_bb_set_game_alliance_trim");
++            yield return new ExpectedAsset("bb_set_game_social", new Vector3(0.3f, 0.05f, 0.2f), 216, "8b2e24005c44ce8ea181c6785a1ce5fb9faff79774278b5f6383ddf12b2369ea", false, "bb_mat_bb_set_game_social", "bb_mat_bb_set_game_social_base", "bb_mat_bb_set_game_social", "bb_mat_bb_set_game_social_trim");
++            yield return new ExpectedAsset("bb_set_toiletry", new Vector3(0.06f, 0.1f, 0.06f), 864, "0ed6c5ad0769201c311654bf3879fe86ccf0040e614b318cffcc6b53af3b26d8", false, "bb_mat_bb_set_toiletry", "bb_mat_bb_set_toiletry", "bb_mat_bb_set_toiletry_trim");
++            yield return new ExpectedAsset("bb_set_cosmetic", new Vector3(0.06f, 0.1f, 0.06f), 768, "290a006e5361c3800115b86105078c0455e7ecfbf96c0b8a1dd068674eeef265", false, "bb_mat_bb_set_cosmetic", "bb_mat_bb_set_cosmetic", "bb_mat_bb_set_cosmetic_trim");
++            yield return new ExpectedAsset("bb_set_mini_fridge", new Vector3(0.5f, 0.7f, 0.5f), 3880, "191111bf96e239e22054bf30ced58d49c7b262b5f6597ce66401df0ecf5617c1", true, "bb_mat_mini_fridge_atlas", "bb_mat_mini_fridge_atlas");
++            yield return new ExpectedAsset("bb_set_headphone_case", new Vector3(0.16f, 0.06f, 0.16f), 2308, "4c5618775da308879c0902ce2d7e3715db4db378a0803a97f4f430dd85623e61", true, "bb_mat_headphone_case_atlas", "bb_mat_headphone_case_atlas");
++        }
++
++        [TestCaseSource(nameof(Cases))]
++        public void NativeImportKeepsMetresBottomCentreTopologyAndSurfaceData(ExpectedAsset expected)
++        {
++            string path = Root + expected.Id + ".fbx";
++            Assert.That(File.Exists(path), Is.True, "Admit this reviewed native file before running import tests: " + path);
++            using (var sha = SHA256.Create())
++            using (var stream = File.OpenRead(path))
++                Assert.That(BitConverter.ToString(sha.ComputeHash(stream)).Replace("-", "").ToLowerInvariant(), Is.EqualTo(expected.FbxHash));
++            var root = AssetDatabase.LoadAssetAtPath<GameObject>(path);
++            Assert.That(root, Is.Not.Null, path);
++            Assert.That(root.GetComponentsInChildren<Collider>(true), Is.Empty);
++            Assert.That(root.GetComponentsInChildren<Animator>(true), Is.Empty);
++            Assert.That(root.transform.localPosition.sqrMagnitude, Is.LessThan(1e-10f));
++            Assert.That(Vector3.Distance(root.transform.localScale, Vector3.one), Is.LessThan(1e-5f));
++            var bounds = root.GetComponentsInChildren<Renderer>(true).Select(r => r.bounds)
++                .Aggregate((a, b) => { a.Encapsulate(b); return a; });
++            Assert.That(Vector3.Distance(bounds.size, expected.Size), Is.LessThan(0.0001f), "Unscaled Unity XYZ envelope.");
++            Assert.That(new Vector3(bounds.center.x, bounds.min.y, bounds.center.z).magnitude,
++                Is.LessThan(0.0001f), "The root is the support point, centred in XZ.");
++            int triangles = 0;
++            foreach (var filter in root.GetComponentsInChildren<MeshFilter>(true))
++            {
++                var mesh = filter.sharedMesh;
++                Assert.That(mesh, Is.Not.Null);
++                Assert.That(mesh.isReadable, Is.False, "No CPU copy added for a static prop.");
++                using (var array = MeshUtility.AcquireReadOnlyMeshData(mesh))
++                {
++                    var data = array[0];
++                    Assert.That(data.HasVertexAttribute(VertexAttribute.Normal), Is.True);
++                    Assert.That(data.HasVertexAttribute(VertexAttribute.TexCoord0), Is.True);
++                    Assert.That(data.HasVertexAttribute(VertexAttribute.Tangent), Is.True);
++                    using (var positions = new NativeArray<Vector3>(data.vertexCount, Allocator.Temp))
++                    using (var normals = new NativeArray<Vector3>(data.vertexCount, Allocator.Temp))
++                    using (var uvs = new NativeArray<Vector2>(data.vertexCount, Allocator.Temp))
++                    using (var tangents = new NativeArray<Vector4>(data.vertexCount, Allocator.Temp))
++                    {
++                        data.GetVertices(positions); data.GetNormals(normals); data.GetUVs(0, uvs); data.GetTangents(tangents);
++                        for (int v = 0; v < data.vertexCount; v++)
++                        {
++                            Assert.That(Finite(positions[v].x) && Finite(positions[v].y) && Finite(positions[v].z), Is.True);
++                            Assert.That(Finite(normals[v].x) && Finite(normals[v].y) && Finite(normals[v].z), Is.True);
++                            Assert.That(normals[v].sqrMagnitude, Is.EqualTo(1f).Within(0.002f));
++                            Assert.That(uvs[v].x, Is.InRange(-0.00001f, 1.00001f));
++                            Assert.That(uvs[v].y, Is.InRange(-0.00001f, 1.00001f));
++                            var t = tangents[v];
++                            Assert.That(Finite(t.x) && Finite(t.y) && Finite(t.z) && Finite(t.w), Is.True);
++                            Assert.That(t.x * t.x + t.y * t.y + t.z * t.z, Is.EqualTo(1f).Within(0.002f));
++                            Assert.That(Mathf.Abs(t.w), Is.EqualTo(1f).Within(0.00001f));
++                        }
++                        for (int submesh = 0; submesh < data.subMeshCount; submesh++)
++                        {
++                            var sub = data.GetSubMesh(submesh);
++                            Assert.That(sub.topology, Is.EqualTo(MeshTopology.Triangles));
++                            Assert.That(sub.indexCount % 3, Is.Zero);
++                            triangles += sub.indexCount / 3;
++                            using (var indices = new NativeArray<int>(sub.indexCount, Allocator.Temp))
++                            {
++                                data.GetIndices(indices, submesh, true);
++                                for (int i = 0; i < indices.Length; i++) Assert.That(indices[i], Is.InRange(0, data.vertexCount - 1));
++                                for (int i = 0; i < indices.Length; i += 3)
++                                {
++                                    var a = positions[indices[i]]; var b = positions[indices[i + 1]]; var c = positions[indices[i + 2]];
++                                    Assert.That(Vector3.Cross(b - a, c - a).sqrMagnitude, Is.GreaterThan(1e-24f), "No collapsed triangle.");
++                                }
++                            }
++                        }
++                    }
++                }
++            }
++            Assert.That(triangles, Is.EqualTo(expected.Triangles), "Import neither drops nor adds topology.");
++        }
++
++        [TestCaseSource(nameof(Cases))]
++        public void NativeSlotsUseTheExplicitExternalUrpMaterialsAndCorrectMapChannels(ExpectedAsset expected)
++        {
++            string path = Root + expected.Id + ".fbx";
++            var root = AssetDatabase.LoadAssetAtPath<GameObject>(path);
++            Assert.That(root, Is.Not.Null, path);
++            var materials = root.GetComponentsInChildren<Renderer>(true).SelectMany(r => r.sharedMaterials).Distinct().ToArray();
++            Assert.That(materials.All(m => m != null), Is.True);
++            Assert.That(materials.Select(m => m.name), Is.EquivalentTo(expected.Materials));
++            var remaps = AssetImporter.GetAtPath(path).GetExternalObjectMap();
++            foreach (var material in materials)
++            {
++                Assert.That(AssetDatabase.GetAssetPath(material), Is.EqualTo(Root + "Materials/" + material.name + ".mat"));
++                var id = new AssetImporter.SourceAssetIdentifier(typeof(Material), material.name);
++                Assert.That(remaps.TryGetValue(id, out var external) && external == material, Is.True);
++                Assert.That(material.shader.name, Is.EqualTo("Universal Render Pipeline/Lit"));
++                Assert.That(material.GetFloat("_Surface"), Is.Zero);
++                Assert.That(material.GetFloat("_Cull"), Is.EqualTo((float)CullMode.Back));
++                bool mapped = material.name == expected.LabelMaterial;
++                Assert.That(material.IsKeywordEnabled("_METALLICSPECGLOSSMAP"), Is.EqualTo(mapped));
++                Assert.That(material.IsKeywordEnabled("_NORMALMAP"), Is.EqualTo(mapped && expected.NormalMap));
++                if (!mapped)
++                {
++                    Assert.That(material.GetTexture("_BaseMap"), Is.Null, "Solid trim/base never receives label UV art.");
++                    Assert.That(material.GetTexture("_MetallicGlossMap"), Is.Null);
++                    continue;
++                }
++                CheckMap(material, "_BaseMap", expected.Id, "albedo", true, false);
++                CheckMap(material, "_MetallicGlossMap", expected.Id, "metallic", false, false);
++                Assert.That(material.GetFloat("_SmoothnessTextureChannel"), Is.Zero, "Metallic alpha, never albedo alpha.");
++                Assert.That(material.GetFloat("_Smoothness"), Is.EqualTo(1f));
++                Assert.That(material.GetFloat("_Metallic"), Is.EqualTo(1f));
++                if (expected.NormalMap)
++                {
++                    CheckMap(material, "_BumpMap", expected.Id, "normal", false, true);
++                    Assert.That(material.GetFloat("_BumpScale"), Is.EqualTo(0.3f));
++                }
++                else Assert.That(material.GetTexture("_BumpMap"), Is.Null);
++            }
++        }
++
++        [Test, Explicit("Run after the scene owner has admitted the props and saved the selected replacements.")]
++        public void SavedEpisodeUsesExactlyTheSixteenSelectedAuthoredProps()
++        {
++            var scene = EditorSceneManager.OpenPreviewScene(HouseRoomFinish.EpisodeScene);
++            try
++            {
++                var world = scene.GetRootGameObjects().Single(go => go.name == "House Architecture");
++                var finish = world.transform.Find(HouseRoomFinish.RootName);
++                Assert.That(finish, Is.Not.Null);
++                var selected = finish.Cast<Transform>().SelectMany(group => group.Cast<Transform>())
++                    .Where(t => (PrefabUtility.GetPrefabAssetPathOfNearestInstanceRoot(t.gameObject) ?? "").StartsWith(Root, StringComparison.Ordinal)).ToArray();
++                Assert.That(selected, Has.Length.EqualTo(16));
++                foreach (var expected in Cases())
++                {
++                    string asset = Root + expected.Id + ".fbx";
++                    int count = expected.Id == "bb_set_mini_fridge" || expected.Id == "bb_set_cosmetic" ? 2 : 1;
++                    Assert.That(selected.Count(t => PrefabUtility.GetPrefabAssetPathOfNearestInstanceRoot(t.gameObject) == asset), Is.EqualTo(count), expected.Id);
++                }
++                foreach (var instance in selected)
++                {
++                    Assert.That(instance.GetComponentsInChildren<Collider>(true), Is.Empty);
++                    foreach (var node in instance.GetComponentsInChildren<Transform>(true))
++                        Assert.That(GameObjectUtility.GetStaticEditorFlags(node.gameObject), Is.EqualTo((StaticEditorFlags)0));
++                    foreach (var renderer in instance.GetComponentsInChildren<Renderer>(true))
++                        Assert.That(renderer.shadowCastingMode, Is.EqualTo(ShadowCastingMode.Off));
++                }
++                // RoomFinishTests independently check original support surfaces, stack heights,
++                // room bounds and separation from the retained authored books and drinks.
++            }
++            finally { EditorSceneManager.ClosePreviewScene(scene); }
++        }
++
++        private static void CheckMap(Material material, string property, string id, string kind, bool srgb, bool normal)
++        {
++            string path = Root + "Textures/" + id + "_" + kind + ".png";
++            Assert.That(AssetDatabase.GetAssetPath(material.GetTexture(property)), Is.EqualTo(path));
++            var importer = AssetImporter.GetAtPath(path) as TextureImporter;
++            Assert.That(importer, Is.Not.Null);
++            Assert.That(importer.textureType, Is.EqualTo(normal ? TextureImporterType.NormalMap : TextureImporterType.Default));
++            Assert.That(importer.sRGBTexture, Is.EqualTo(srgb));
++            Assert.That(importer.mipmapEnabled, Is.True);
++            Assert.That(importer.alphaIsTransparency, Is.False);
++            Assert.That(importer.isReadable, Is.False);
++        }
++        private static bool Finite(float value) => !float.IsNaN(value) && !float.IsInfinity(value);
++    }
++}
+--- a/Assets/Gamesim/Tests/EditMode/RoomFinishTests.cs
++++ b/Assets/Gamesim/Tests/EditMode/RoomFinishTests.cs
+@@ -346,7 +346,7 @@
+                     AssertWithinXZ(bounds, cb, 0.02f, thing.name + " stays inside the console footprint.");
+                 }
+                 AssertAuthored(onTheConsole.Single(t => t.name == "HoH drink"), "bb_set_bottle");
+-                Assert.That(renderers.Count(r => r.name == "Mini fridge"), Is.EqualTo(1));
++                Assert.That(NamedChildren(suite, "Mini fridge"), Has.Length.EqualTo(1));
+                 var neon = renderers.Single(r => r.name == "HoH neon");
+                 Assert.That(neon.sharedMaterial.renderQueue, Is.GreaterThanOrEqualTo((int)RenderQueue.Transparent), "The HoH neon is lit.");
+                 Assert.That(neon.bounds.center.x, Is.GreaterThan(floor.max.x - 0.3f), "by the door on the east divider.");
+@@ -407,13 +407,13 @@
+                 var renderers = games.GetComponentsInChildren<Renderer>(true);
+                 Assert.That(renderers.Count(r => r.name == "Arcade marquee"), Is.EqualTo(1), "One neon focal piece, not six.");
+                 Assert.That(renderers.Count(r => r.sharedMaterial != null && r.sharedMaterial.renderQueue >= (int)RenderQueue.Transparent), Is.EqualTo(1), "and nothing else in the room glows.");
+-                Assert.That(renderers.Count(r => r.name == "Game box"), Is.EqualTo(3), "Three game boxes on the coffee table,");
+-                var boxes = renderers.Where(r => r.name == "Game box").OrderBy(r => r.bounds.min.y).ToList();
+-                Assert.That(boxes[1].bounds.min.y, Is.EqualTo(boxes[0].bounds.max.y).Within(0.01f), "stacked.");
++                Assert.That(NamedChildren(games, "Game box"), Has.Length.EqualTo(3), "Three game boxes on the coffee table,");
++                var boxes = NamedChildren(games, "Game box").Select(BoundsOf).OrderBy(b => b.min.y).ToList();
++                Assert.That(boxes[1].min.y, Is.EqualTo(boxes[0].max.y).Within(0.01f), "stacked.");
+                 Assert.That(renderers.Count(r => r.name == "Game poster"), Is.EqualTo(2), "Two posters,");
+                 Assert.That(renderers.Count(r => r.name == "Game poster frame"), Is.EqualTo(2), "framed.");
+                 Assert.That(renderers.Count(r => r.name == "Trophy plaque"), Is.EqualTo(1));
+-                Assert.That(renderers.Count(r => r.name == "Mini fridge"), Is.EqualTo(1));
++                Assert.That(NamedChildren(games, "Mini fridge"), Has.Length.EqualTo(1));
+                 Assert.That(renderers.Count(r => r.name == "Game room pattern"), Is.EqualTo(1));
+                 var rug = renderers.Single(r => r.name == "Game rug");
+                 Assert.That(floor.Contains(new Vector3(rug.bounds.center.x, floor.center.y, rug.bounds.center.z)), Is.True);
+@@ -469,7 +469,7 @@
+                 var waterTable = AssertSupportedByNearest(water, sideTables, 0.02f);
+                 var waterBook = books.Single(book => NearestSupport(book, sideTables) == waterTable);
+                 AssertSeparatedXZ(water, waterBook, "The water bottle does not intersect its book stack.");
+-                Assert.That(renderers.Count(r => r.name == "Toiletry"), Is.EqualTo(3), "toiletries on the three drawers");
++                Assert.That(NamedChildren(bedroom, "Toiletry"), Has.Length.EqualTo(3), "toiletries on the three drawers");
+                 Assert.That(renderers.Count(r => r.name == "Corkboard"), Is.EqualTo(1));
+                 Assert.That(renderers.Count(r => r.name == "Polaroid"), Is.EqualTo(3));
+                 Assert.That(renderers.Count(r => r.name == "Framed print"), Is.EqualTo(2));

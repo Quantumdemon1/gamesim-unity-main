@@ -1,0 +1,27 @@
+{
+  "name": "bb_comp_dicetray",
+  "version": "1.0.0",
+  "category": "environment_prop",
+  "license": "LicenseRef-GameSim-Original",
+  "description": "Assembled reference station in metres. Unity consumes the separate normalized FBX part kit; runtime owns visible text, tint, moving parts and game state. Canonical GLB is an art reference, not a static runtime replacement.",
+  "policy": {
+    "requireUVs": true,
+    "requireNormals": true,
+    "requireTangentsWithNormalMap": true,
+    "requireBaseColorTexture": false,
+    "maxTriangles": 16000,
+    "maxMaterials": 4,
+    "minTextureSize": 256,
+    "requirePowerOfTwoTextures": true,
+    "maxDimensionMeters": 3,
+    "minDimensionMeters": 0.001
+  },
+  "provenance": {
+    "origin": "authored",
+    "author": "GameSim original art batch",
+    "model": "Blender 5.2.2 LTS",
+    "sourceUri": "file:///C:/Users/kelli/Documents/Codex/2026-09-20/re/work/house-equipment-20261020/competition-art-02/Assemblies/bb_comp_DiceTray.glb",
+    "prompt": "Original GameSim house dressing and competition equipment within existing placement and motion envelopes.",
+    "notes": "Assembled reference station in metres. Unity consumes the separate normalized FBX part kit; runtime owns visible text, tint, moving parts and game state. Canonical GLB is an art reference, not a static runtime replacement. No third-party assets or provider services. build_competition_art.py sha256=d9a2e0461426647a22e36742753561d7f69d8f7677d2e7d564fe0e094778f05e; competition-code/part-manifest.json sha256=fb2f66743329ed850816f78dd457f23a12b1f25ea0bcd25a64949ae531b24898; competition-art-02/competition_parts.blend sha256=c3017c0e45b51d48009f877d05702b9a32fa67ab04f2480bc319bb1b347eaba4"
+  }
+}

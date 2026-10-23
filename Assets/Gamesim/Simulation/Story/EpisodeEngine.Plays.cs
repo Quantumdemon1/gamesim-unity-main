@@ -29,7 +29,7 @@ namespace Gamesim.Simulation
         /// is not. Before the deadline a play that is not won ends only when its goal can no longer
         /// be met (<see cref="PlayTemplate.failed"/>): being nominated ends staying off the block.
         /// </summary>
-        internal static void DecidePlays(EpisodeState s, string anchor)
+        internal static void DecidePlays(EpisodeState s, string anchor, PendingDialogueCommand pending = null)
         {
             if (!StoryOn(s)) return;
             foreach (var cycle in RunningCycles(s).ToList())
@@ -40,14 +40,14 @@ namespace Gamesim.Simulation
                 var view = new StoryCycle(cycle, template);
                 var context = new StoryContext(s, anchor ?? CurrentAnchor(s));
                 var progress = play.progress(context, view);
-                if (progress.Met) Decide(s, view, PlayEndings.Won);
+                if (progress.Met) Decide(s, view, PlayEndings.Won, pending);
                 else if ((anchor != null && anchor == play.deadline) || play.failed?.Invoke(context, view) == true)
-                    Decide(s, view, progress.have > 0 && play.PartCounts ? PlayEndings.Part : PlayEndings.Lost);
+                    Decide(s, view, progress.have > 0 && play.PartCounts ? PlayEndings.Part : PlayEndings.Lost, pending);
             }
         }
 
         /// <summary>A play's outcome: its consequences, its line, what changed, and the cycle's end.</summary>
-        private static void Decide(EpisodeState s, StoryCycle cycle, string ending)
+        private static void Decide(EpisodeState s, StoryCycle cycle, string ending, PendingDialogueCommand pending = null)
         {
             var play = cycle.template.play;
             var effects = ending == PlayEndings.Won ? play.won : ending == PlayEndings.Part ? play.part : play.lost;
@@ -60,7 +60,7 @@ namespace Gamesim.Simulation
                 var effect = ResolveFx(s, cycle, fx);
                 if (effect == null) continue;
                 RememberSpreadPact(s, effect, spread);
-                ApplyStoryEffect(s, effect, cycle.record, null, cycle.Id + ":" + ending, 0, false);
+                ApplyStoryEffectWithPending(s, effect, cycle.record, null, cycle.Id + ":" + ending, 0, false, pending);
                 applied.Add(effect);
             }
             EndCycle(s, cycle.record, ending);

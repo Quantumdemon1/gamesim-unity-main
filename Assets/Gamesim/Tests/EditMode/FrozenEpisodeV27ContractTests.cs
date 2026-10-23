@@ -194,7 +194,7 @@ namespace Gamesim.Tests.EditMode
         {
             var state = LegacyDigestSchema27TestStates.Witness(mode, kind);
             LegacyDigestSchema27TestStates.Valid(state);
-            var field28 = LegacyDigestSchema27TestStates.WithoutGetters(LegacyDigestSchema27TestStates.Trace(state));
+            var field28 = LegacyDigestSchema27TestStates.WithoutGetters(LegacyDigestSchema27TestStates.Trace28(state));
             return LegacyDigestSchema27TestStates.Neutral27(field28);
         }
 

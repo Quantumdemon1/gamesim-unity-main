@@ -35,6 +35,7 @@ namespace Gamesim.Simulation
             var ctx = new StoryContext(s, anchor);
             foreach (var template in StoryCatalog.All.Where(t => t.thread != null))
             {
+                if (DialogueRules.On(s) && s.storylines.Count >= DialogueRules.MaximumEpisodes) return;
                 if (s.storylines.Count(x => x.lane == StoryLanes.Thread) >= StoryLanes.MaxThreads) return;
                 if (s.storylines.Any(x => x.templateId == template.id)) continue;
                 var binding = template.cast?.Invoke(ctx);
@@ -45,6 +46,7 @@ namespace Gamesim.Simulation
 
         private static void BeginThread(EpisodeState s, ArcTemplate template, ArcBinding binding)
         {
+            if (DialogueRules.On(s) && s.storylines.Count >= DialogueRules.MaximumEpisodes) return;
             var cycle = new StorylineState
             {
                 id = Mint(s, "story"),
@@ -75,7 +77,7 @@ namespace Gamesim.Simulation
         /// its climax, a chapter the house already started for its people, or the next chapter that
         /// will cast; and a thread with nothing it could play for a month fades.
         /// </summary>
-        internal static void ThreadPulse(EpisodeState s, StoryCycle thread, string anchor)
+        internal static void ThreadPulse(EpisodeState s, StoryCycle thread, string anchor, PendingDialogueCommand pending = null)
         {
             var rules = thread.template.thread;
             var ctx = new StoryContext(s, anchor);
@@ -98,7 +100,7 @@ namespace Gamesim.Simulation
             if (AdoptChapter(s, thread, candidates)) return;
             if (Chapters(thread.record) < ThreadChaptersMax)
                 foreach (var chapter in candidates)
-                    if (TryStartChapter(s, thread, chapter, anchor)) return;
+                    if (TryStartChapter(s, thread, chapter, anchor, pending)) return;
 
             int lastActive = Math.Max(thread.record.week, thread.record.path.Count == 0 ? 0 : thread.record.path.Max(p => p.week));
             if (rules.fades && lastActive + ThreadFadeWeeks < s.week) EndThread(s, thread, ThreadEndings.Faded);
@@ -146,7 +148,8 @@ namespace Gamesim.Simulation
         }
 
         /// <summary>Starts a chapter aimed at the thread's people, if the arc casts them here and the house has room for it.</summary>
-        private static bool TryStartChapter(EpisodeState s, StoryCycle thread, ThreadChapter chapter, string anchor)
+        private static bool TryStartChapter(EpisodeState s, StoryCycle thread, ThreadChapter chapter, string anchor,
+            PendingDialogueCommand pending = null)
         {
             var arc = StoryCatalog.Find(chapter.arcId);
             if (arc == null || arc.thread != null || !StoryAt(s, arc.rulesVersion)) return false;
@@ -155,7 +158,7 @@ namespace Gamesim.Simulation
             var focus = chapter.focus?.Invoke(new StoryContext(s, anchor), thread);
             var binding = Castable(s, new StoryContext(s, anchor, focus: focus), arc);
             if (binding == null) return false;
-            var cycle = StartCycle(s, arc, binding, anchor);
+            var cycle = StartCycle(s, arc, binding, anchor, pending: pending);
             if (cycle == null) return false;
             OpenChapter(s, thread, cycle);
             return true;

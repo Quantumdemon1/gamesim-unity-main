@@ -1,0 +1,17 @@
+[
+  {
+    "responseFile": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\competition-code\\partial-probes\\AuthoredKitProbe.rsp",
+    "name": "AuthoredKitProbe",
+    "compilerExit": 0
+  },
+  {
+    "responseFile": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\competition-code\\partial-probes\\AuthoredEditorProbe.rsp",
+    "name": "AuthoredEditorProbe",
+    "compilerExit": 0
+  },
+  {
+    "responseFile": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\competition-code\\partial-probes\\AuthoredTestsProbe.rsp",
+    "name": "AuthoredTestsProbe",
+    "compilerExit": 1
+  }
+]

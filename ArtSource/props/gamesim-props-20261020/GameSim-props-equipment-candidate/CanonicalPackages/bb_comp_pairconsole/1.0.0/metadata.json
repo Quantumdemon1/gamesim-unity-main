@@ -1,0 +1,57 @@
+{
+  "assetId": "bb_comp_pairconsole",
+  "category": "environment_prop",
+  "description": "Assembled reference station in metres. Unity consumes the separate normalized FBX part kit; runtime owns visible text, tint, moving parts and game state. Canonical GLB is an art reference, not a static runtime replacement.",
+  "displayName": "bb_comp_pairconsole",
+  "inspection": {
+    "animationCount": 0,
+    "boundingBox": {
+      "max": [
+        0.47999998927116394,
+        1.6724999770522118,
+        0.7179999868385494
+      ],
+      "min": [
+        -0.47999998927116394,
+        2.5033950024067053e-8,
+        -0.2550000064074993
+      ],
+      "sizeMeters": [
+        0.9599999785423279,
+        1.6724999520182617,
+        0.9729999932460487
+      ]
+    },
+    "boundingBoxEmpty": false,
+    "fileBytes": 301700,
+    "filePath": "model.glb",
+    "generator": "glTF-Transform v4.5.1",
+    "hasNormals": true,
+    "hasSkin": false,
+    "hasTangents": false,
+    "hasUVs": true,
+    "materialCount": 4,
+    "meshCount": 25,
+    "pbr": {
+      "hasBaseColorTexture": false,
+      "hasEmissiveTexture": false,
+      "hasMetallicRoughnessTexture": false,
+      "hasNormalTexture": false,
+      "hasOcclusionTexture": false
+    },
+    "primitiveCount": 25,
+    "sceneGraphFallback": false,
+    "textureCount": 0,
+    "textureResolutions": [],
+    "triangleCount": 4356,
+    "undrawnMeshCount": 0,
+    "undrawnPrimitiveCount": 0,
+    "undrawnTriangleCount": 0,
+    "vertexCount": 8542,
+    "warnings": [
+      "no base colour texture on any material: the asset is untextured and will read as flat colour"
+    ]
+  },
+  "license": "LicenseRef-GameSim-Original",
+  "schema": "game_dev.asset_metadata.v1"
+}

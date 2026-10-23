@@ -1,0 +1,23 @@
+{
+  "completedAt": "2026-10-21T04:06:09.485Z",
+  "destination": {
+    "assetId": "bb_set_hoh_snack_gold",
+    "version": "1.0.0"
+  },
+  "evidence": {
+    "blenderNormalizationPerformed": false,
+    "gpuImportTestPerformed": false,
+    "humanVisualReviewPerformed": false,
+    "modelBytesCopiedAndHashed": true,
+    "policyValidationCompleted": true,
+    "staticInspectionCompleted": true
+  },
+  "manifestSha256": "265c9fcb0e724bc96523c5427597a9182c8a2894043a66f0d1f0fff92b3bf0ba",
+  "packageId": "pkg_6152e9335009dd9162245aac",
+  "schema": "game_dev.package_receipt.v1",
+  "source": {
+    "bytes": 544288,
+    "fileName": "bb_set_hoh_snack_gold.glb",
+    "sha256": "b9f430fe2f04edc635ccdbe42a4fd36108b22c863eeb133cecd457442b76d7f1"
+  }
+}

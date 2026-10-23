@@ -1,0 +1,3 @@
+# Original pre-v2 writer saves and baseline: byte-exact fixtures, never normalize.
+*.json -text -eol
+.gitattributes -text -eol

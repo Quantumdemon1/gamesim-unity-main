@@ -1,0 +1,1586 @@
+[
+  {
+    "name": "bb_set_coffee_tin",
+    "source": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\packaging\\GLB\\bb_set_coffee_tin.glb",
+    "sourceSha256": "25f1256493ecb74bca8e51a46f39a9dbf4b284a3292bfee11fcfde9870b2eacd",
+    "packagePath": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\outputs\\gamesim-props-20261020\\.game-dev\\packages\\bb_set_coffee_tin\\1.0.0",
+    "packageId": "pkg_48d70ea613ca5e9d463e71df",
+    "manifestSha256": "5dd777bdcd0e4cc62e7d048fce295866acb14be7d749431c6c5a1aa36f2b59b8",
+    "validation": {
+      "passed": true,
+      "errorCount": 0,
+      "warningCount": 0
+    },
+    "inspection": {
+      "filePath": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\packaging\\GLB\\bb_set_coffee_tin.glb",
+      "fileBytes": 555768,
+      "generator": "glTF-Transform v4.5.1",
+      "meshCount": 1,
+      "primitiveCount": 2,
+      "vertexCount": 1010,
+      "triangleCount": 1344,
+      "undrawnMeshCount": 0,
+      "undrawnPrimitiveCount": 0,
+      "undrawnTriangleCount": 0,
+      "sceneGraphFallback": false,
+      "materialCount": 2,
+      "textureCount": 2,
+      "textureResolutions": [
+        {
+          "name": "bb_set_coffee_tin_albedo",
+          "width": 512,
+          "height": 512,
+          "mimeType": "image/png",
+          "bytes": 210725
+        },
+        {
+          "name": "bb_set_coffee_tin_orm",
+          "width": 512,
+          "height": 512,
+          "mimeType": "image/png",
+          "bytes": 285668
+        }
+      ],
+      "boundingBox": {
+        "min": [
+          -0.05999999865889549,
+          0,
+          -0.05999999865889549
+        ],
+        "max": [
+          0.05999999865889549,
+          0.1599999964237213,
+          0.05999999865889549
+        ],
+        "sizeMeters": [
+          0.11999999731779099,
+          0.1599999964237213,
+          0.11999999731779099
+        ]
+      },
+      "boundingBoxEmpty": false,
+      "hasUVs": true,
+      "hasNormals": true,
+      "hasTangents": true,
+      "pbr": {
+        "hasBaseColorTexture": true,
+        "hasMetallicRoughnessTexture": true,
+        "hasNormalTexture": false,
+        "hasOcclusionTexture": false,
+        "hasEmissiveTexture": false
+      },
+      "animationCount": 0,
+      "hasSkin": false,
+      "warnings": [
+        "texture is below 1024px on an axis and will blur at close range: bb_set_coffee_tin_albedo (512x512), bb_set_coffee_tin_orm (512x512)"
+      ]
+    },
+    "verification": {
+      "schema": "game_dev.package_verification.v1",
+      "packagePath": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\outputs\\gamesim-props-20261020\\.game-dev\\packages\\bb_set_coffee_tin\\1.0.0",
+      "manifest": {
+        "assetId": "bb_set_coffee_tin",
+        "category": "environment_prop",
+        "description": "Original house packaging prop, metre dimensions and floor-centre origin. Self-contained PBR GLB; native FBX material slots use the bound separate material map. Existing placement envelope retained. Native Unity appearance/placement acceptance pending.",
+        "displayName": "bb_set_coffee_tin",
+        "files": [
+          {
+            "bytes": 555768,
+            "kind": "model",
+            "path": "model.glb",
+            "sha256": "25f1256493ecb74bca8e51a46f39a9dbf4b284a3292bfee11fcfde9870b2eacd"
+          },
+          {
+            "bytes": 2069,
+            "kind": "metadata",
+            "path": "metadata.json",
+            "sha256": "43f69409f74bf9ad774492e2f0a4cd72145ce8f9316914713551b43b4e4a3001"
+          },
+          {
+            "bytes": 1287,
+            "kind": "provenance",
+            "path": "provenance.json",
+            "sha256": "e859016adaa3ba01ffcc211ec2fefaebc3318aa047a142c1dd111a92125fa462"
+          },
+          {
+            "bytes": 3908,
+            "kind": "validation",
+            "path": "validation.json",
+            "sha256": "c669d857e26adaa6c7669802f3c2a4b71f913ff80a2ce1a39e04ffda6b3e5d84"
+          }
+        ],
+        "license": "LicenseRef-GameSim-Original",
+        "model": "model.glb",
+        "packageId": "pkg_48d70ea613ca5e9d463e71df",
+        "provenance": {
+          "origin": "authored"
+        },
+        "schema": "game_dev.asset_package.v1",
+        "validation": {
+          "errorCount": 0,
+          "passed": true,
+          "warningCount": 0
+        },
+        "version": "1.0.0"
+      },
+      "hashesVerified": true,
+      "evidence": {
+        "packageBytesVerified": true,
+        "gpuImportTestPerformed": false,
+        "humanVisualReviewPerformed": false
+      }
+    }
+  },
+  {
+    "name": "bb_set_food_jar",
+    "source": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\packaging\\GLB\\bb_set_food_jar.glb",
+    "sourceSha256": "c3bc097522257e4c8743b733e61c73c4fb421f1f4968cc072617c095c7cf69db",
+    "packagePath": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\outputs\\gamesim-props-20261020\\.game-dev\\packages\\bb_set_food_jar\\1.0.0",
+    "packageId": "pkg_0af9a6d279d98bd0d5ed1476",
+    "manifestSha256": "40417efd7af04eceacf777592f3e20e3181486a9a555f3c50f4c381f40487cc2",
+    "validation": {
+      "passed": true,
+      "errorCount": 0,
+      "warningCount": 0
+    },
+    "inspection": {
+      "filePath": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\packaging\\GLB\\bb_set_food_jar.glb",
+      "fileBytes": 537148,
+      "generator": "glTF-Transform v4.5.1",
+      "meshCount": 1,
+      "primitiveCount": 2,
+      "vertexCount": 818,
+      "triangleCount": 1056,
+      "undrawnMeshCount": 0,
+      "undrawnPrimitiveCount": 0,
+      "undrawnTriangleCount": 0,
+      "sceneGraphFallback": false,
+      "materialCount": 2,
+      "textureCount": 2,
+      "textureResolutions": [
+        {
+          "name": "bb_set_food_jar_albedo",
+          "width": 512,
+          "height": 512,
+          "mimeType": "image/png",
+          "bytes": 212462
+        },
+        {
+          "name": "bb_set_food_jar_orm",
+          "width": 512,
+          "height": 512,
+          "mimeType": "image/png",
+          "bytes": 276258
+        }
+      ],
+      "boundingBox": {
+        "min": [
+          -0.054999999701976776,
+          0,
+          -0.054999999701976776
+        ],
+        "max": [
+          0.054999999701976776,
+          0.14000000059604645,
+          0.054999999701976776
+        ],
+        "sizeMeters": [
+          0.10999999940395355,
+          0.14000000059604645,
+          0.10999999940395355
+        ]
+      },
+      "boundingBoxEmpty": false,
+      "hasUVs": true,
+      "hasNormals": true,
+      "hasTangents": true,
+      "pbr": {
+        "hasBaseColorTexture": true,
+        "hasMetallicRoughnessTexture": true,
+        "hasNormalTexture": false,
+        "hasOcclusionTexture": false,
+        "hasEmissiveTexture": false
+      },
+      "animationCount": 0,
+      "hasSkin": false,
+      "warnings": [
+        "texture is below 1024px on an axis and will blur at close range: bb_set_food_jar_albedo (512x512), bb_set_food_jar_orm (512x512)"
+      ]
+    },
+    "verification": {
+      "schema": "game_dev.package_verification.v1",
+      "packagePath": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\outputs\\gamesim-props-20261020\\.game-dev\\packages\\bb_set_food_jar\\1.0.0",
+      "manifest": {
+        "assetId": "bb_set_food_jar",
+        "category": "environment_prop",
+        "description": "Original house packaging prop, metre dimensions and floor-centre origin. Self-contained PBR GLB; native FBX material slots use the bound separate material map. Existing placement envelope retained. Native Unity appearance/placement acceptance pending.",
+        "displayName": "bb_set_food_jar",
+        "files": [
+          {
+            "bytes": 537148,
+            "kind": "model",
+            "path": "model.glb",
+            "sha256": "c3bc097522257e4c8743b733e61c73c4fb421f1f4968cc072617c095c7cf69db"
+          },
+          {
+            "bytes": 2062,
+            "kind": "metadata",
+            "path": "metadata.json",
+            "sha256": "d3992dad41678f59ff9ba780d70fe3734fc6d06fdb9d6d92cf1e278bd987368c"
+          },
+          {
+            "bytes": 1281,
+            "kind": "provenance",
+            "path": "provenance.json",
+            "sha256": "684279e9a0d79f72aa230ab1b6c778f9f1d0a61fb7d6b249cb5b243e6e241037"
+          },
+          {
+            "bytes": 3904,
+            "kind": "validation",
+            "path": "validation.json",
+            "sha256": "536b3923d28451d357fe618456d5d197703cb86c2ea858525588c5d99d1aa2a9"
+          }
+        ],
+        "license": "LicenseRef-GameSim-Original",
+        "model": "model.glb",
+        "packageId": "pkg_0af9a6d279d98bd0d5ed1476",
+        "provenance": {
+          "origin": "authored"
+        },
+        "schema": "game_dev.asset_package.v1",
+        "validation": {
+          "errorCount": 0,
+          "passed": true,
+          "warningCount": 0
+        },
+        "version": "1.0.0"
+      },
+      "hashesVerified": true,
+      "evidence": {
+        "packageBytesVerified": true,
+        "gpuImportTestPerformed": false,
+        "humanVisualReviewPerformed": false
+      }
+    }
+  },
+  {
+    "name": "bb_set_cereal_carton",
+    "source": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\packaging\\GLB\\bb_set_cereal_carton.glb",
+    "sourceSha256": "2ce6b8022d498b71fb2f9fb0a778fa3fce4934467553b5d1f1c856dd585e8ef2",
+    "packagePath": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\outputs\\gamesim-props-20261020\\.game-dev\\packages\\bb_set_cereal_carton\\1.0.0",
+    "packageId": "pkg_48aead78cf21ced2d57ba664",
+    "manifestSha256": "73b4e1713acb1cda157a976bf0e66c4408d1a8307d2530b86f1b50082b382577",
+    "validation": {
+      "passed": true,
+      "errorCount": 0,
+      "warningCount": 0
+    },
+    "inspection": {
+      "filePath": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\packaging\\GLB\\bb_set_cereal_carton.glb",
+      "fileBytes": 550852,
+      "generator": "glTF-Transform v4.5.1",
+      "meshCount": 1,
+      "primitiveCount": 3,
+      "vertexCount": 1130,
+      "triangleCount": 432,
+      "undrawnMeshCount": 0,
+      "undrawnPrimitiveCount": 0,
+      "undrawnTriangleCount": 0,
+      "sceneGraphFallback": false,
+      "materialCount": 3,
+      "textureCount": 2,
+      "textureResolutions": [
+        {
+          "name": "bb_set_cereal_carton_albedo",
+          "width": 512,
+          "height": 512,
+          "mimeType": "image/png",
+          "bytes": 213083
+        },
+        {
+          "name": "bb_set_cereal_carton_orm",
+          "width": 512,
+          "height": 512,
+          "mimeType": "image/png",
+          "bytes": 276987
+        }
+      ],
+      "boundingBox": {
+        "min": [
+          -0.10000000149011612,
+          0,
+          -0.03500000014901161
+        ],
+        "max": [
+          0.10000000149011612,
+          0.30000001192092896,
+          0.03500000014901161
+        ],
+        "sizeMeters": [
+          0.20000000298023224,
+          0.30000001192092896,
+          0.07000000029802322
+        ]
+      },
+      "boundingBoxEmpty": false,
+      "hasUVs": true,
+      "hasNormals": true,
+      "hasTangents": true,
+      "pbr": {
+        "hasBaseColorTexture": true,
+        "hasMetallicRoughnessTexture": true,
+        "hasNormalTexture": false,
+        "hasOcclusionTexture": false,
+        "hasEmissiveTexture": false
+      },
+      "animationCount": 0,
+      "hasSkin": false,
+      "warnings": [
+        "texture is below 1024px on an axis and will blur at close range: bb_set_cereal_carton_albedo (512x512), bb_set_cereal_carton_orm (512x512)"
+      ]
+    },
+    "verification": {
+      "schema": "game_dev.package_verification.v1",
+      "packagePath": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\outputs\\gamesim-props-20261020\\.game-dev\\packages\\bb_set_cereal_carton\\1.0.0",
+      "manifest": {
+        "assetId": "bb_set_cereal_carton",
+        "category": "environment_prop",
+        "description": "Original house packaging prop, metre dimensions and floor-centre origin. Self-contained PBR GLB; native FBX material slots use the bound separate material map. Existing placement envelope retained. Native Unity appearance/placement acceptance pending.",
+        "displayName": "bb_set_cereal_carton",
+        "files": [
+          {
+            "bytes": 550852,
+            "kind": "model",
+            "path": "model.glb",
+            "sha256": "2ce6b8022d498b71fb2f9fb0a778fa3fce4934467553b5d1f1c856dd585e8ef2"
+          },
+          {
+            "bytes": 2088,
+            "kind": "metadata",
+            "path": "metadata.json",
+            "sha256": "af2e24d230be4fb91e735351de7a6f63b7e689d80fb2b2402a605c8d41f9aafa"
+          },
+          {
+            "bytes": 1296,
+            "kind": "provenance",
+            "path": "provenance.json",
+            "sha256": "06099dc410b0ce5a333a36037643d05c058c3ceb810db181ece82a7777b17f2d"
+          },
+          {
+            "bytes": 3912,
+            "kind": "validation",
+            "path": "validation.json",
+            "sha256": "0d97fbbda80c32bd3a661c2dc614e48b462403f277049ab57deb1dbb82f134b7"
+          }
+        ],
+        "license": "LicenseRef-GameSim-Original",
+        "model": "model.glb",
+        "packageId": "pkg_48aead78cf21ced2d57ba664",
+        "provenance": {
+          "origin": "authored"
+        },
+        "schema": "game_dev.asset_package.v1",
+        "validation": {
+          "errorCount": 0,
+          "passed": true,
+          "warningCount": 0
+        },
+        "version": "1.0.0"
+      },
+      "hashesVerified": true,
+      "evidence": {
+        "packageBytesVerified": true,
+        "gpuImportTestPerformed": false,
+        "humanVisualReviewPerformed": false
+      }
+    }
+  },
+  {
+    "name": "bb_set_snack_blue",
+    "source": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\packaging\\GLB\\bb_set_snack_blue.glb",
+    "sourceSha256": "a7ec00973d925a1c1ac5dad0bd6bc8df9d4618a69d20ed748e90c406d5eb2a28",
+    "packagePath": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\outputs\\gamesim-props-20261020\\.game-dev\\packages\\bb_set_snack_blue\\1.0.0",
+    "packageId": "pkg_0deddf894983306e10a9710d",
+    "manifestSha256": "e61d9d80d6867883d8f79c0ccb438d7896e6a79765cc6e28a243317b5bbd8763",
+    "validation": {
+      "passed": true,
+      "errorCount": 0,
+      "warningCount": 0
+    },
+    "inspection": {
+      "filePath": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\packaging\\GLB\\bb_set_snack_blue.glb",
+      "fileBytes": 548264,
+      "generator": "glTF-Transform v4.5.1",
+      "meshCount": 1,
+      "primitiveCount": 2,
+      "vertexCount": 857,
+      "triangleCount": 1424,
+      "undrawnMeshCount": 0,
+      "undrawnPrimitiveCount": 0,
+      "undrawnTriangleCount": 0,
+      "sceneGraphFallback": false,
+      "materialCount": 2,
+      "textureCount": 2,
+      "textureResolutions": [
+        {
+          "name": "bb_set_snack_blue_albedo",
+          "width": 512,
+          "height": 512,
+          "mimeType": "image/png",
+          "bytes": 215327
+        },
+        {
+          "name": "bb_set_snack_blue_orm",
+          "width": 512,
+          "height": 512,
+          "mimeType": "image/png",
+          "bytes": 280454
+        }
+      ],
+      "boundingBox": {
+        "min": [
+          -0.07999999821186066,
+          0,
+          -0.02499999850988388
+        ],
+        "max": [
+          0.07999999821186066,
+          0.2199999988079071,
+          0.02499999850988388
+        ],
+        "sizeMeters": [
+          0.1599999964237213,
+          0.2199999988079071,
+          0.04999999701976776
+        ]
+      },
+      "boundingBoxEmpty": false,
+      "hasUVs": true,
+      "hasNormals": true,
+      "hasTangents": true,
+      "pbr": {
+        "hasBaseColorTexture": true,
+        "hasMetallicRoughnessTexture": true,
+        "hasNormalTexture": false,
+        "hasOcclusionTexture": false,
+        "hasEmissiveTexture": false
+      },
+      "animationCount": 0,
+      "hasSkin": false,
+      "warnings": [
+        "texture is below 1024px on an axis and will blur at close range: bb_set_snack_blue_albedo (512x512), bb_set_snack_blue_orm (512x512)"
+      ]
+    },
+    "verification": {
+      "schema": "game_dev.package_verification.v1",
+      "packagePath": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\outputs\\gamesim-props-20261020\\.game-dev\\packages\\bb_set_snack_blue\\1.0.0",
+      "manifest": {
+        "assetId": "bb_set_snack_blue",
+        "category": "environment_prop",
+        "description": "Original house packaging prop, metre dimensions and floor-centre origin. Self-contained PBR GLB; native FBX material slots use the bound separate material map. Existing placement envelope retained. Native Unity appearance/placement acceptance pending.",
+        "displayName": "bb_set_snack_blue",
+        "files": [
+          {
+            "bytes": 548264,
+            "kind": "model",
+            "path": "model.glb",
+            "sha256": "a7ec00973d925a1c1ac5dad0bd6bc8df9d4618a69d20ed748e90c406d5eb2a28"
+          },
+          {
+            "bytes": 2067,
+            "kind": "metadata",
+            "path": "metadata.json",
+            "sha256": "8bf711e470263c339d1bf3043bd7f5a9eab33aaf854f179a8708a39f1cba7597"
+          },
+          {
+            "bytes": 1287,
+            "kind": "provenance",
+            "path": "provenance.json",
+            "sha256": "65e29e12f2ec48c2ff3ceac86ef21fd66536ec4371af87d742b232ff26e19ee8"
+          },
+          {
+            "bytes": 3908,
+            "kind": "validation",
+            "path": "validation.json",
+            "sha256": "3c774f36d82acfcb373b5cd265dfaa38749cce69fed0be9c06cc0a7733ad42a9"
+          }
+        ],
+        "license": "LicenseRef-GameSim-Original",
+        "model": "model.glb",
+        "packageId": "pkg_0deddf894983306e10a9710d",
+        "provenance": {
+          "origin": "authored"
+        },
+        "schema": "game_dev.asset_package.v1",
+        "validation": {
+          "errorCount": 0,
+          "passed": true,
+          "warningCount": 0
+        },
+        "version": "1.0.0"
+      },
+      "hashesVerified": true,
+      "evidence": {
+        "packageBytesVerified": true,
+        "gpuImportTestPerformed": false,
+        "humanVisualReviewPerformed": false
+      }
+    }
+  },
+  {
+    "name": "bb_set_snack_gold",
+    "source": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\packaging\\GLB\\bb_set_snack_gold.glb",
+    "sourceSha256": "605225bc059ee4bba2880e1ea656de24c23533d29505b974294f83b50232ecd3",
+    "packagePath": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\outputs\\gamesim-props-20261020\\.game-dev\\packages\\bb_set_snack_gold\\1.0.0",
+    "packageId": "pkg_1c69c8673ab9b4589dff9ad9",
+    "manifestSha256": "c2c2c0cbbb67467984b94268eafceb8b7f7245579b742b2f28db175781797eac",
+    "validation": {
+      "passed": true,
+      "errorCount": 0,
+      "warningCount": 0
+    },
+    "inspection": {
+      "filePath": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\packaging\\GLB\\bb_set_snack_gold.glb",
+      "fileBytes": 545888,
+      "generator": "glTF-Transform v4.5.1",
+      "meshCount": 1,
+      "primitiveCount": 2,
+      "vertexCount": 857,
+      "triangleCount": 1424,
+      "undrawnMeshCount": 0,
+      "undrawnPrimitiveCount": 0,
+      "undrawnTriangleCount": 0,
+      "sceneGraphFallback": false,
+      "materialCount": 2,
+      "textureCount": 2,
+      "textureResolutions": [
+        {
+          "name": "bb_set_snack_gold_albedo",
+          "width": 512,
+          "height": 512,
+          "mimeType": "image/png",
+          "bytes": 214085
+        },
+        {
+          "name": "bb_set_snack_gold_orm",
+          "width": 512,
+          "height": 512,
+          "mimeType": "image/png",
+          "bytes": 279314
+        }
+      ],
+      "boundingBox": {
+        "min": [
+          -0.07999999821186066,
+          0,
+          -0.02499999850988388
+        ],
+        "max": [
+          0.07999999821186066,
+          0.2199999988079071,
+          0.02499999850988388
+        ],
+        "sizeMeters": [
+          0.1599999964237213,
+          0.2199999988079071,
+          0.04999999701976776
+        ]
+      },
+      "boundingBoxEmpty": false,
+      "hasUVs": true,
+      "hasNormals": true,
+      "hasTangents": true,
+      "pbr": {
+        "hasBaseColorTexture": true,
+        "hasMetallicRoughnessTexture": true,
+        "hasNormalTexture": false,
+        "hasOcclusionTexture": false,
+        "hasEmissiveTexture": false
+      },
+      "animationCount": 0,
+      "hasSkin": false,
+      "warnings": [
+        "texture is below 1024px on an axis and will blur at close range: bb_set_snack_gold_albedo (512x512), bb_set_snack_gold_orm (512x512)"
+      ]
+    },
+    "verification": {
+      "schema": "game_dev.package_verification.v1",
+      "packagePath": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\outputs\\gamesim-props-20261020\\.game-dev\\packages\\bb_set_snack_gold\\1.0.0",
+      "manifest": {
+        "assetId": "bb_set_snack_gold",
+        "category": "environment_prop",
+        "description": "Original house packaging prop, metre dimensions and floor-centre origin. Self-contained PBR GLB; native FBX material slots use the bound separate material map. Existing placement envelope retained. Native Unity appearance/placement acceptance pending.",
+        "displayName": "bb_set_snack_gold",
+        "files": [
+          {
+            "bytes": 545888,
+            "kind": "model",
+            "path": "model.glb",
+            "sha256": "605225bc059ee4bba2880e1ea656de24c23533d29505b974294f83b50232ecd3"
+          },
+          {
+            "bytes": 2067,
+            "kind": "metadata",
+            "path": "metadata.json",
+            "sha256": "6b30ebf56af8b119beec5b60217c76255fc1476b7ac22bc488660a57ed5633d0"
+          },
+          {
+            "bytes": 1287,
+            "kind": "provenance",
+            "path": "provenance.json",
+            "sha256": "e2f146376894dd1c3011087d083d2006f9d80992c866a1b9b02dd67aa858e54e"
+          },
+          {
+            "bytes": 3908,
+            "kind": "validation",
+            "path": "validation.json",
+            "sha256": "830075dcd1ec4e09181d706d7d8e363bb7f706f99c36c5f33f1071cffc4faa20"
+          }
+        ],
+        "license": "LicenseRef-GameSim-Original",
+        "model": "model.glb",
+        "packageId": "pkg_1c69c8673ab9b4589dff9ad9",
+        "provenance": {
+          "origin": "authored"
+        },
+        "schema": "game_dev.asset_package.v1",
+        "validation": {
+          "errorCount": 0,
+          "passed": true,
+          "warningCount": 0
+        },
+        "version": "1.0.0"
+      },
+      "hashesVerified": true,
+      "evidence": {
+        "packageBytesVerified": true,
+        "gpuImportTestPerformed": false,
+        "humanVisualReviewPerformed": false
+      }
+    }
+  },
+  {
+    "name": "bb_set_hoh_snack_blue",
+    "source": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\packaging\\GLB\\bb_set_hoh_snack_blue.glb",
+    "sourceSha256": "0e7ea4f2c1cccbf4afb79dd7398ae9c805d6e2a0fd7c78401457dd8d4839cf5e",
+    "packagePath": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\outputs\\gamesim-props-20261020\\.game-dev\\packages\\bb_set_hoh_snack_blue\\1.0.0",
+    "packageId": "pkg_5951944e396edc7a88a07f1a",
+    "manifestSha256": "ff59aa2d0362be3d4b7fad031567c6dc1674cb598d58686ef1fd7884bf58eb33",
+    "validation": {
+      "passed": true,
+      "errorCount": 0,
+      "warningCount": 0
+    },
+    "inspection": {
+      "filePath": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\packaging\\GLB\\bb_set_hoh_snack_blue.glb",
+      "fileBytes": 545052,
+      "generator": "glTF-Transform v4.5.1",
+      "meshCount": 1,
+      "primitiveCount": 2,
+      "vertexCount": 857,
+      "triangleCount": 1424,
+      "undrawnMeshCount": 0,
+      "undrawnPrimitiveCount": 0,
+      "undrawnTriangleCount": 0,
+      "sceneGraphFallback": false,
+      "materialCount": 2,
+      "textureCount": 2,
+      "textureResolutions": [
+        {
+          "name": "bb_set_hoh_snack_blue_albedo",
+          "width": 512,
+          "height": 512,
+          "mimeType": "image/png",
+          "bytes": 214181
+        },
+        {
+          "name": "bb_set_hoh_snack_blue_orm",
+          "width": 512,
+          "height": 512,
+          "mimeType": "image/png",
+          "bytes": 278360
+        }
+      ],
+      "boundingBox": {
+        "min": [
+          -0.07000000029802322,
+          0,
+          -0.02499999850988388
+        ],
+        "max": [
+          0.07000000029802322,
+          0.20000000298023224,
+          0.02499999850988388
+        ],
+        "sizeMeters": [
+          0.14000000059604645,
+          0.20000000298023224,
+          0.04999999701976776
+        ]
+      },
+      "boundingBoxEmpty": false,
+      "hasUVs": true,
+      "hasNormals": true,
+      "hasTangents": true,
+      "pbr": {
+        "hasBaseColorTexture": true,
+        "hasMetallicRoughnessTexture": true,
+        "hasNormalTexture": false,
+        "hasOcclusionTexture": false,
+        "hasEmissiveTexture": false
+      },
+      "animationCount": 0,
+      "hasSkin": false,
+      "warnings": [
+        "texture is below 1024px on an axis and will blur at close range: bb_set_hoh_snack_blue_albedo (512x512), bb_set_hoh_snack_blue_orm (512x512)"
+      ]
+    },
+    "verification": {
+      "schema": "game_dev.package_verification.v1",
+      "packagePath": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\outputs\\gamesim-props-20261020\\.game-dev\\packages\\bb_set_hoh_snack_blue\\1.0.0",
+      "manifest": {
+        "assetId": "bb_set_hoh_snack_blue",
+        "category": "environment_prop",
+        "description": "Original house packaging prop, metre dimensions and floor-centre origin. Self-contained PBR GLB; native FBX material slots use the bound separate material map. Existing placement envelope retained. Native Unity appearance/placement acceptance pending.",
+        "displayName": "bb_set_hoh_snack_blue",
+        "files": [
+          {
+            "bytes": 545052,
+            "kind": "model",
+            "path": "model.glb",
+            "sha256": "0e7ea4f2c1cccbf4afb79dd7398ae9c805d6e2a0fd7c78401457dd8d4839cf5e"
+          },
+          {
+            "bytes": 2094,
+            "kind": "metadata",
+            "path": "metadata.json",
+            "sha256": "28fa70fbc60e4933544c9b0ed0f9bed3b10576f7a4b22305240696c58e23d354"
+          },
+          {
+            "bytes": 1299,
+            "kind": "provenance",
+            "path": "provenance.json",
+            "sha256": "fd8db76019f0e61c99639eb0f5c5cc0ffa320ba3006490ef660e592e2333b4dd"
+          },
+          {
+            "bytes": 3916,
+            "kind": "validation",
+            "path": "validation.json",
+            "sha256": "70742d3b6754e3fc56dbe428067009599b54acbc8a3b8b5bd86605789ae98c92"
+          }
+        ],
+        "license": "LicenseRef-GameSim-Original",
+        "model": "model.glb",
+        "packageId": "pkg_5951944e396edc7a88a07f1a",
+        "provenance": {
+          "origin": "authored"
+        },
+        "schema": "game_dev.asset_package.v1",
+        "validation": {
+          "errorCount": 0,
+          "passed": true,
+          "warningCount": 0
+        },
+        "version": "1.0.0"
+      },
+      "hashesVerified": true,
+      "evidence": {
+        "packageBytesVerified": true,
+        "gpuImportTestPerformed": false,
+        "humanVisualReviewPerformed": false
+      }
+    }
+  },
+  {
+    "name": "bb_set_hoh_snack_gold",
+    "source": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\packaging\\GLB\\bb_set_hoh_snack_gold.glb",
+    "sourceSha256": "b9f430fe2f04edc635ccdbe42a4fd36108b22c863eeb133cecd457442b76d7f1",
+    "packagePath": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\outputs\\gamesim-props-20261020\\.game-dev\\packages\\bb_set_hoh_snack_gold\\1.0.0",
+    "packageId": "pkg_6152e9335009dd9162245aac",
+    "manifestSha256": "265c9fcb0e724bc96523c5427597a9182c8a2894043a66f0d1f0fff92b3bf0ba",
+    "validation": {
+      "passed": true,
+      "errorCount": 0,
+      "warningCount": 0
+    },
+    "inspection": {
+      "filePath": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\packaging\\GLB\\bb_set_hoh_snack_gold.glb",
+      "fileBytes": 544288,
+      "generator": "glTF-Transform v4.5.1",
+      "meshCount": 1,
+      "primitiveCount": 2,
+      "vertexCount": 857,
+      "triangleCount": 1424,
+      "undrawnMeshCount": 0,
+      "undrawnPrimitiveCount": 0,
+      "undrawnTriangleCount": 0,
+      "sceneGraphFallback": false,
+      "materialCount": 2,
+      "textureCount": 2,
+      "textureResolutions": [
+        {
+          "name": "bb_set_hoh_snack_gold_albedo",
+          "width": 512,
+          "height": 512,
+          "mimeType": "image/png",
+          "bytes": 213423
+        },
+        {
+          "name": "bb_set_hoh_snack_gold_orm",
+          "width": 512,
+          "height": 512,
+          "mimeType": "image/png",
+          "bytes": 278354
+        }
+      ],
+      "boundingBox": {
+        "min": [
+          -0.07000000029802322,
+          0,
+          -0.02499999850988388
+        ],
+        "max": [
+          0.07000000029802322,
+          0.20000000298023224,
+          0.02499999850988388
+        ],
+        "sizeMeters": [
+          0.14000000059604645,
+          0.20000000298023224,
+          0.04999999701976776
+        ]
+      },
+      "boundingBoxEmpty": false,
+      "hasUVs": true,
+      "hasNormals": true,
+      "hasTangents": true,
+      "pbr": {
+        "hasBaseColorTexture": true,
+        "hasMetallicRoughnessTexture": true,
+        "hasNormalTexture": false,
+        "hasOcclusionTexture": false,
+        "hasEmissiveTexture": false
+      },
+      "animationCount": 0,
+      "hasSkin": false,
+      "warnings": [
+        "texture is below 1024px on an axis and will blur at close range: bb_set_hoh_snack_gold_albedo (512x512), bb_set_hoh_snack_gold_orm (512x512)"
+      ]
+    },
+    "verification": {
+      "schema": "game_dev.package_verification.v1",
+      "packagePath": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\outputs\\gamesim-props-20261020\\.game-dev\\packages\\bb_set_hoh_snack_gold\\1.0.0",
+      "manifest": {
+        "assetId": "bb_set_hoh_snack_gold",
+        "category": "environment_prop",
+        "description": "Original house packaging prop, metre dimensions and floor-centre origin. Self-contained PBR GLB; native FBX material slots use the bound separate material map. Existing placement envelope retained. Native Unity appearance/placement acceptance pending.",
+        "displayName": "bb_set_hoh_snack_gold",
+        "files": [
+          {
+            "bytes": 544288,
+            "kind": "model",
+            "path": "model.glb",
+            "sha256": "b9f430fe2f04edc635ccdbe42a4fd36108b22c863eeb133cecd457442b76d7f1"
+          },
+          {
+            "bytes": 2094,
+            "kind": "metadata",
+            "path": "metadata.json",
+            "sha256": "5c6471d6de90422df1b2a624d504d3470dc1feb30de6e6bb28c489db2de4300a"
+          },
+          {
+            "bytes": 1299,
+            "kind": "provenance",
+            "path": "provenance.json",
+            "sha256": "7b51578e892dff1f09a92f8b0095d32d6205cf21a1b473f39e9a01acf425eb8d"
+          },
+          {
+            "bytes": 3916,
+            "kind": "validation",
+            "path": "validation.json",
+            "sha256": "ff868f706d1e1fdbc4195f5ed1de784463f27d1b9f4a7868d86856e27a54f182"
+          }
+        ],
+        "license": "LicenseRef-GameSim-Original",
+        "model": "model.glb",
+        "packageId": "pkg_6152e9335009dd9162245aac",
+        "provenance": {
+          "origin": "authored"
+        },
+        "schema": "game_dev.asset_package.v1",
+        "validation": {
+          "errorCount": 0,
+          "passed": true,
+          "warningCount": 0
+        },
+        "version": "1.0.0"
+      },
+      "hashesVerified": true,
+      "evidence": {
+        "packageBytesVerified": true,
+        "gpuImportTestPerformed": false,
+        "humanVisualReviewPerformed": false
+      }
+    }
+  },
+  {
+    "name": "bb_set_game_strategy",
+    "source": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\packaging\\GLB\\bb_set_game_strategy.glb",
+    "sourceSha256": "238628b0b473b24114d0f585b3a8b7773663a154741691869d5bd50cc454c11a",
+    "packagePath": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\outputs\\gamesim-props-20261020\\.game-dev\\packages\\bb_set_game_strategy\\1.0.0",
+    "packageId": "pkg_1fa1457a0cfc4107acb931f0",
+    "manifestSha256": "6443c5e58fd8310cbfa6f455a0f73b70e30aa4e81a35dec7e24637ce162213d1",
+    "validation": {
+      "passed": true,
+      "errorCount": 0,
+      "warningCount": 0
+    },
+    "inspection": {
+      "filePath": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\packaging\\GLB\\bb_set_game_strategy.glb",
+      "fileBytes": 492272,
+      "generator": "glTF-Transform v4.5.1",
+      "meshCount": 1,
+      "primitiveCount": 3,
+      "vertexCount": 552,
+      "triangleCount": 216,
+      "undrawnMeshCount": 0,
+      "undrawnPrimitiveCount": 0,
+      "undrawnTriangleCount": 0,
+      "sceneGraphFallback": false,
+      "materialCount": 3,
+      "textureCount": 2,
+      "textureResolutions": [
+        {
+          "name": "bb_set_game_strategy_albedo",
+          "width": 512,
+          "height": 512,
+          "mimeType": "image/png",
+          "bytes": 191948
+        },
+        {
+          "name": "bb_set_game_strategy_orm",
+          "width": 512,
+          "height": 512,
+          "mimeType": "image/png",
+          "bytes": 268595
+        }
+      ],
+      "boundingBox": {
+        "min": [
+          -0.15000000596046448,
+          0,
+          -0.10000000149011612
+        ],
+        "max": [
+          0.15000000596046448,
+          0.05000000447034836,
+          0.10000000149011612
+        ],
+        "sizeMeters": [
+          0.30000001192092896,
+          0.05000000447034836,
+          0.20000000298023224
+        ]
+      },
+      "boundingBoxEmpty": false,
+      "hasUVs": true,
+      "hasNormals": true,
+      "hasTangents": true,
+      "pbr": {
+        "hasBaseColorTexture": true,
+        "hasMetallicRoughnessTexture": true,
+        "hasNormalTexture": false,
+        "hasOcclusionTexture": false,
+        "hasEmissiveTexture": false
+      },
+      "animationCount": 0,
+      "hasSkin": false,
+      "warnings": [
+        "texture is below 1024px on an axis and will blur at close range: bb_set_game_strategy_albedo (512x512), bb_set_game_strategy_orm (512x512)"
+      ]
+    },
+    "verification": {
+      "schema": "game_dev.package_verification.v1",
+      "packagePath": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\outputs\\gamesim-props-20261020\\.game-dev\\packages\\bb_set_game_strategy\\1.0.0",
+      "manifest": {
+        "assetId": "bb_set_game_strategy",
+        "category": "environment_prop",
+        "description": "Original house packaging prop, metre dimensions and floor-centre origin. Self-contained PBR GLB; native FBX material slots use the bound separate material map. Existing placement envelope retained. Native Unity appearance/placement acceptance pending.",
+        "displayName": "bb_set_game_strategy",
+        "files": [
+          {
+            "bytes": 492272,
+            "kind": "model",
+            "path": "model.glb",
+            "sha256": "238628b0b473b24114d0f585b3a8b7773663a154741691869d5bd50cc454c11a"
+          },
+          {
+            "bytes": 2087,
+            "kind": "metadata",
+            "path": "metadata.json",
+            "sha256": "821b0047656ef0d3f765c73b65422cc67e1eee840b90d973b4c0c037a262ac1a"
+          },
+          {
+            "bytes": 1296,
+            "kind": "provenance",
+            "path": "provenance.json",
+            "sha256": "a5ad6109c9f4df0ff948b274f49c23d3431d7dc182719ea3b22a40f7e5796ffa"
+          },
+          {
+            "bytes": 3912,
+            "kind": "validation",
+            "path": "validation.json",
+            "sha256": "f0e93cb17a32d36ef5bb6378fdbd804c8b7a23e242bdcb1edb0533766ef238b6"
+          }
+        ],
+        "license": "LicenseRef-GameSim-Original",
+        "model": "model.glb",
+        "packageId": "pkg_1fa1457a0cfc4107acb931f0",
+        "provenance": {
+          "origin": "authored"
+        },
+        "schema": "game_dev.asset_package.v1",
+        "validation": {
+          "errorCount": 0,
+          "passed": true,
+          "warningCount": 0
+        },
+        "version": "1.0.0"
+      },
+      "hashesVerified": true,
+      "evidence": {
+        "packageBytesVerified": true,
+        "gpuImportTestPerformed": false,
+        "humanVisualReviewPerformed": false
+      }
+    }
+  },
+  {
+    "name": "bb_set_game_alliance",
+    "source": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\packaging\\GLB\\bb_set_game_alliance.glb",
+    "sourceSha256": "e6c09da2beb6ce566c23423e800466ba61d59be54daac2363a802d61105fd8b3",
+    "packagePath": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\outputs\\gamesim-props-20261020\\.game-dev\\packages\\bb_set_game_alliance\\1.0.0",
+    "packageId": "pkg_cd542da241d01327172555b1",
+    "manifestSha256": "88360139c40899578c97bf0add1d63ed5f1d284ec8f2d04bcccbcbb1f44a15bf",
+    "validation": {
+      "passed": true,
+      "errorCount": 0,
+      "warningCount": 0
+    },
+    "inspection": {
+      "filePath": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\packaging\\GLB\\bb_set_game_alliance.glb",
+      "fileBytes": 492164,
+      "generator": "glTF-Transform v4.5.1",
+      "meshCount": 1,
+      "primitiveCount": 3,
+      "vertexCount": 554,
+      "triangleCount": 216,
+      "undrawnMeshCount": 0,
+      "undrawnPrimitiveCount": 0,
+      "undrawnTriangleCount": 0,
+      "sceneGraphFallback": false,
+      "materialCount": 3,
+      "textureCount": 2,
+      "textureResolutions": [
+        {
+          "name": "bb_set_game_alliance_albedo",
+          "width": 512,
+          "height": 512,
+          "mimeType": "image/png",
+          "bytes": 191871
+        },
+        {
+          "name": "bb_set_game_alliance_orm",
+          "width": 512,
+          "height": 512,
+          "mimeType": "image/png",
+          "bytes": 268463
+        }
+      ],
+      "boundingBox": {
+        "min": [
+          -0.15000000596046448,
+          0,
+          -0.10000000149011612
+        ],
+        "max": [
+          0.15000000596046448,
+          0.05000000447034836,
+          0.10000000149011612
+        ],
+        "sizeMeters": [
+          0.30000001192092896,
+          0.05000000447034836,
+          0.20000000298023224
+        ]
+      },
+      "boundingBoxEmpty": false,
+      "hasUVs": true,
+      "hasNormals": true,
+      "hasTangents": true,
+      "pbr": {
+        "hasBaseColorTexture": true,
+        "hasMetallicRoughnessTexture": true,
+        "hasNormalTexture": false,
+        "hasOcclusionTexture": false,
+        "hasEmissiveTexture": false
+      },
+      "animationCount": 0,
+      "hasSkin": false,
+      "warnings": [
+        "texture is below 1024px on an axis and will blur at close range: bb_set_game_alliance_albedo (512x512), bb_set_game_alliance_orm (512x512)"
+      ]
+    },
+    "verification": {
+      "schema": "game_dev.package_verification.v1",
+      "packagePath": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\outputs\\gamesim-props-20261020\\.game-dev\\packages\\bb_set_game_alliance\\1.0.0",
+      "manifest": {
+        "assetId": "bb_set_game_alliance",
+        "category": "environment_prop",
+        "description": "Original house packaging prop, metre dimensions and floor-centre origin. Self-contained PBR GLB; native FBX material slots use the bound separate material map. Existing placement envelope retained. Native Unity appearance/placement acceptance pending.",
+        "displayName": "bb_set_game_alliance",
+        "files": [
+          {
+            "bytes": 492164,
+            "kind": "model",
+            "path": "model.glb",
+            "sha256": "e6c09da2beb6ce566c23423e800466ba61d59be54daac2363a802d61105fd8b3"
+          },
+          {
+            "bytes": 2087,
+            "kind": "metadata",
+            "path": "metadata.json",
+            "sha256": "bb5c4fa1ccfad1b430bf0c6de218c5d716eb7c85b171d22f864c57d58e416ed8"
+          },
+          {
+            "bytes": 1296,
+            "kind": "provenance",
+            "path": "provenance.json",
+            "sha256": "1c7393ee8735210089b736f7b2b52e4ce7eede444637d96be8a3c23a04519f76"
+          },
+          {
+            "bytes": 3912,
+            "kind": "validation",
+            "path": "validation.json",
+            "sha256": "f56d00f73f0c869dbd1724a4afe2f9b0b75e50fb52dba1549aee0baecb714c43"
+          }
+        ],
+        "license": "LicenseRef-GameSim-Original",
+        "model": "model.glb",
+        "packageId": "pkg_cd542da241d01327172555b1",
+        "provenance": {
+          "origin": "authored"
+        },
+        "schema": "game_dev.asset_package.v1",
+        "validation": {
+          "errorCount": 0,
+          "passed": true,
+          "warningCount": 0
+        },
+        "version": "1.0.0"
+      },
+      "hashesVerified": true,
+      "evidence": {
+        "packageBytesVerified": true,
+        "gpuImportTestPerformed": false,
+        "humanVisualReviewPerformed": false
+      }
+    }
+  },
+  {
+    "name": "bb_set_game_social",
+    "source": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\packaging\\GLB\\bb_set_game_social.glb",
+    "sourceSha256": "da2e7889b37e1b824cee7662655976ea7b15c51bf435d7e4dcaeb3e360434cba",
+    "packagePath": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\outputs\\gamesim-props-20261020\\.game-dev\\packages\\bb_set_game_social\\1.0.0",
+    "packageId": "pkg_97b148f41743f9d61da30023",
+    "manifestSha256": "0d0e300dbbc9d108d41826211cb3f7e9fcc476cbb81332abde5400a421c266d0",
+    "validation": {
+      "passed": true,
+      "errorCount": 0,
+      "warningCount": 0
+    },
+    "inspection": {
+      "filePath": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\packaging\\GLB\\bb_set_game_social.glb",
+      "fileBytes": 492728,
+      "generator": "glTF-Transform v4.5.1",
+      "meshCount": 1,
+      "primitiveCount": 3,
+      "vertexCount": 552,
+      "triangleCount": 216,
+      "undrawnMeshCount": 0,
+      "undrawnPrimitiveCount": 0,
+      "undrawnTriangleCount": 0,
+      "sceneGraphFallback": false,
+      "materialCount": 3,
+      "textureCount": 2,
+      "textureResolutions": [
+        {
+          "name": "bb_set_game_social_albedo",
+          "width": 512,
+          "height": 512,
+          "mimeType": "image/png",
+          "bytes": 192144
+        },
+        {
+          "name": "bb_set_game_social_orm",
+          "width": 512,
+          "height": 512,
+          "mimeType": "image/png",
+          "bytes": 268866
+        }
+      ],
+      "boundingBox": {
+        "min": [
+          -0.15000000596046448,
+          0,
+          -0.10000000149011612
+        ],
+        "max": [
+          0.15000000596046448,
+          0.05000000447034836,
+          0.10000000149011612
+        ],
+        "sizeMeters": [
+          0.30000001192092896,
+          0.05000000447034836,
+          0.20000000298023224
+        ]
+      },
+      "boundingBoxEmpty": false,
+      "hasUVs": true,
+      "hasNormals": true,
+      "hasTangents": true,
+      "pbr": {
+        "hasBaseColorTexture": true,
+        "hasMetallicRoughnessTexture": true,
+        "hasNormalTexture": false,
+        "hasOcclusionTexture": false,
+        "hasEmissiveTexture": false
+      },
+      "animationCount": 0,
+      "hasSkin": false,
+      "warnings": [
+        "texture is below 1024px on an axis and will blur at close range: bb_set_game_social_albedo (512x512), bb_set_game_social_orm (512x512)"
+      ]
+    },
+    "verification": {
+      "schema": "game_dev.package_verification.v1",
+      "packagePath": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\outputs\\gamesim-props-20261020\\.game-dev\\packages\\bb_set_game_social\\1.0.0",
+      "manifest": {
+        "assetId": "bb_set_game_social",
+        "category": "environment_prop",
+        "description": "Original house packaging prop, metre dimensions and floor-centre origin. Self-contained PBR GLB; native FBX material slots use the bound separate material map. Existing placement envelope retained. Native Unity appearance/placement acceptance pending.",
+        "displayName": "bb_set_game_social",
+        "files": [
+          {
+            "bytes": 492728,
+            "kind": "model",
+            "path": "model.glb",
+            "sha256": "da2e7889b37e1b824cee7662655976ea7b15c51bf435d7e4dcaeb3e360434cba"
+          },
+          {
+            "bytes": 2075,
+            "kind": "metadata",
+            "path": "metadata.json",
+            "sha256": "3fb5808f3f26af355066b9eb8e74d74b678b3698d716dd091a11c5dbdf448a40"
+          },
+          {
+            "bytes": 1290,
+            "kind": "provenance",
+            "path": "provenance.json",
+            "sha256": "598f7cc76982ac9cced3fb60d4824a29c5000861b3b467a23569f314e9a47c45"
+          },
+          {
+            "bytes": 3908,
+            "kind": "validation",
+            "path": "validation.json",
+            "sha256": "4bdf10752bff166ec841c8f99ad8f414f6ad6cbe52b3ecd843b9728c7cf0ef7c"
+          }
+        ],
+        "license": "LicenseRef-GameSim-Original",
+        "model": "model.glb",
+        "packageId": "pkg_97b148f41743f9d61da30023",
+        "provenance": {
+          "origin": "authored"
+        },
+        "schema": "game_dev.asset_package.v1",
+        "validation": {
+          "errorCount": 0,
+          "passed": true,
+          "warningCount": 0
+        },
+        "version": "1.0.0"
+      },
+      "hashesVerified": true,
+      "evidence": {
+        "packageBytesVerified": true,
+        "gpuImportTestPerformed": false,
+        "humanVisualReviewPerformed": false
+      }
+    }
+  },
+  {
+    "name": "bb_set_toiletry",
+    "source": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\packaging\\GLB\\bb_set_toiletry.glb",
+    "sourceSha256": "dd89d4187020b34ee2838890f2ad46bb8b1785cefde308fbdf6f2b78b24c2475",
+    "packagePath": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\outputs\\gamesim-props-20261020\\.game-dev\\packages\\bb_set_toiletry\\1.0.0",
+    "packageId": "pkg_314a38f0f77e530cf69fdc0e",
+    "manifestSha256": "0ba6398a9498fc82506ec92fbf80ae9ba3ead617c07e50d607d580bfc50209cf",
+    "validation": {
+      "passed": true,
+      "errorCount": 0,
+      "warningCount": 0
+    },
+    "inspection": {
+      "filePath": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\packaging\\GLB\\bb_set_toiletry.glb",
+      "fileBytes": 545912,
+      "generator": "glTF-Transform v4.5.1",
+      "meshCount": 1,
+      "primitiveCount": 2,
+      "vertexCount": 722,
+      "triangleCount": 864,
+      "undrawnMeshCount": 0,
+      "undrawnPrimitiveCount": 0,
+      "undrawnTriangleCount": 0,
+      "sceneGraphFallback": false,
+      "materialCount": 2,
+      "textureCount": 2,
+      "textureResolutions": [
+        {
+          "name": "bb_set_toiletry_albedo",
+          "width": 512,
+          "height": 512,
+          "mimeType": "image/png",
+          "bytes": 217763
+        },
+        {
+          "name": "bb_set_toiletry_orm",
+          "width": 512,
+          "height": 512,
+          "mimeType": "image/png",
+          "bytes": 285502
+        }
+      ],
+      "boundingBox": {
+        "min": [
+          -0.029999999329447746,
+          0,
+          -0.029999999329447746
+        ],
+        "max": [
+          0.029999999329447746,
+          0.10000000149011612,
+          0.029999999329447746
+        ],
+        "sizeMeters": [
+          0.05999999865889549,
+          0.10000000149011612,
+          0.05999999865889549
+        ]
+      },
+      "boundingBoxEmpty": false,
+      "hasUVs": true,
+      "hasNormals": true,
+      "hasTangents": true,
+      "pbr": {
+        "hasBaseColorTexture": true,
+        "hasMetallicRoughnessTexture": true,
+        "hasNormalTexture": false,
+        "hasOcclusionTexture": false,
+        "hasEmissiveTexture": false
+      },
+      "animationCount": 0,
+      "hasSkin": false,
+      "warnings": [
+        "texture is below 1024px on an axis and will blur at close range: bb_set_toiletry_albedo (512x512), bb_set_toiletry_orm (512x512)"
+      ]
+    },
+    "verification": {
+      "schema": "game_dev.package_verification.v1",
+      "packagePath": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\outputs\\gamesim-props-20261020\\.game-dev\\packages\\bb_set_toiletry\\1.0.0",
+      "manifest": {
+        "assetId": "bb_set_toiletry",
+        "category": "environment_prop",
+        "description": "Original house packaging prop, metre dimensions and floor-centre origin. Self-contained PBR GLB; native FBX material slots use the bound separate material map. Existing placement envelope retained. Native Unity appearance/placement acceptance pending.",
+        "displayName": "bb_set_toiletry",
+        "files": [
+          {
+            "bytes": 545912,
+            "kind": "model",
+            "path": "model.glb",
+            "sha256": "dd89d4187020b34ee2838890f2ad46bb8b1785cefde308fbdf6f2b78b24c2475"
+          },
+          {
+            "bytes": 2061,
+            "kind": "metadata",
+            "path": "metadata.json",
+            "sha256": "4c4086df7db77fd0fedd8b4b4655e04d40cdd39f536ace39689162d1e68e546e"
+          },
+          {
+            "bytes": 1281,
+            "kind": "provenance",
+            "path": "provenance.json",
+            "sha256": "cc32deab4c5214a989b661d4083bf79f961ff5d7778f17b24691c9ecad4f0bcc"
+          },
+          {
+            "bytes": 3902,
+            "kind": "validation",
+            "path": "validation.json",
+            "sha256": "7da3a7fae0a47481be835dd9389ea7f10b4ca6c01aa94296e40fef5b10fcdf07"
+          }
+        ],
+        "license": "LicenseRef-GameSim-Original",
+        "model": "model.glb",
+        "packageId": "pkg_314a38f0f77e530cf69fdc0e",
+        "provenance": {
+          "origin": "authored"
+        },
+        "schema": "game_dev.asset_package.v1",
+        "validation": {
+          "errorCount": 0,
+          "passed": true,
+          "warningCount": 0
+        },
+        "version": "1.0.0"
+      },
+      "hashesVerified": true,
+      "evidence": {
+        "packageBytesVerified": true,
+        "gpuImportTestPerformed": false,
+        "humanVisualReviewPerformed": false
+      }
+    }
+  },
+  {
+    "name": "bb_set_cosmetic",
+    "source": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\packaging\\GLB\\bb_set_cosmetic.glb",
+    "sourceSha256": "6736612d29b2ef7a46aed0f9e8b6be3e00d84df0b91b9675554e07ff662d481b",
+    "packagePath": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\outputs\\gamesim-props-20261020\\.game-dev\\packages\\bb_set_cosmetic\\1.0.0",
+    "packageId": "pkg_406f86f29a6d0498f3baceb5",
+    "manifestSha256": "0aa6b89d0e5779e33c98b5ef7c0a817ef48461ff80b1f053bad4f37c5b0cf465",
+    "validation": {
+      "passed": true,
+      "errorCount": 0,
+      "warningCount": 0
+    },
+    "inspection": {
+      "filePath": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\packaging\\GLB\\bb_set_cosmetic.glb",
+      "fileBytes": 542736,
+      "generator": "glTF-Transform v4.5.1",
+      "meshCount": 1,
+      "primitiveCount": 2,
+      "vertexCount": 674,
+      "triangleCount": 768,
+      "undrawnMeshCount": 0,
+      "undrawnPrimitiveCount": 0,
+      "undrawnTriangleCount": 0,
+      "sceneGraphFallback": false,
+      "materialCount": 2,
+      "textureCount": 2,
+      "textureResolutions": [
+        {
+          "name": "bb_set_cosmetic_albedo",
+          "width": 512,
+          "height": 512,
+          "mimeType": "image/png",
+          "bytes": 217442
+        },
+        {
+          "name": "bb_set_cosmetic_orm",
+          "width": 512,
+          "height": 512,
+          "mimeType": "image/png",
+          "bytes": 285522
+        }
+      ],
+      "boundingBox": {
+        "min": [
+          -0.029999999329447746,
+          0,
+          -0.029999999329447746
+        ],
+        "max": [
+          0.029999999329447746,
+          0.10000000149011612,
+          0.029999999329447746
+        ],
+        "sizeMeters": [
+          0.05999999865889549,
+          0.10000000149011612,
+          0.05999999865889549
+        ]
+      },
+      "boundingBoxEmpty": false,
+      "hasUVs": true,
+      "hasNormals": true,
+      "hasTangents": true,
+      "pbr": {
+        "hasBaseColorTexture": true,
+        "hasMetallicRoughnessTexture": true,
+        "hasNormalTexture": false,
+        "hasOcclusionTexture": false,
+        "hasEmissiveTexture": false
+      },
+      "animationCount": 0,
+      "hasSkin": false,
+      "warnings": [
+        "texture is below 1024px on an axis and will blur at close range: bb_set_cosmetic_albedo (512x512), bb_set_cosmetic_orm (512x512)"
+      ]
+    },
+    "verification": {
+      "schema": "game_dev.package_verification.v1",
+      "packagePath": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\outputs\\gamesim-props-20261020\\.game-dev\\packages\\bb_set_cosmetic\\1.0.0",
+      "manifest": {
+        "assetId": "bb_set_cosmetic",
+        "category": "environment_prop",
+        "description": "Original house packaging prop, metre dimensions and floor-centre origin. Self-contained PBR GLB; native FBX material slots use the bound separate material map. Existing placement envelope retained. Native Unity appearance/placement acceptance pending.",
+        "displayName": "bb_set_cosmetic",
+        "files": [
+          {
+            "bytes": 542736,
+            "kind": "model",
+            "path": "model.glb",
+            "sha256": "6736612d29b2ef7a46aed0f9e8b6be3e00d84df0b91b9675554e07ff662d481b"
+          },
+          {
+            "bytes": 2061,
+            "kind": "metadata",
+            "path": "metadata.json",
+            "sha256": "c5d0294351d157259b16e04d806a6e09edd73a767f21b712cd460d2fee44b852"
+          },
+          {
+            "bytes": 1281,
+            "kind": "provenance",
+            "path": "provenance.json",
+            "sha256": "9d2e20470b4c2dff04a17b27123c6391f9f6e83f5cce3c76f6d7cc0e0bc4d890"
+          },
+          {
+            "bytes": 3902,
+            "kind": "validation",
+            "path": "validation.json",
+            "sha256": "ccda39bc4d3fe77b4c082a0e7ada39895e2cd3fb1f83da8ff2194a381fbafa25"
+          }
+        ],
+        "license": "LicenseRef-GameSim-Original",
+        "model": "model.glb",
+        "packageId": "pkg_406f86f29a6d0498f3baceb5",
+        "provenance": {
+          "origin": "authored"
+        },
+        "schema": "game_dev.asset_package.v1",
+        "validation": {
+          "errorCount": 0,
+          "passed": true,
+          "warningCount": 0
+        },
+        "version": "1.0.0"
+      },
+      "hashesVerified": true,
+      "evidence": {
+        "packageBytesVerified": true,
+        "gpuImportTestPerformed": false,
+        "humanVisualReviewPerformed": false
+      }
+    }
+  }
+]

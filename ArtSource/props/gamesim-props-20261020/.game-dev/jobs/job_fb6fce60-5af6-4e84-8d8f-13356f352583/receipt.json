@@ -1,0 +1,45 @@
+{
+  "schema": "game_dev.receipt.v1",
+  "operation": "package.build",
+  "result": {
+    "schema": "game_dev.package_build_result.v1",
+    "packageId": "pkg_f398a120ae5e745156271992",
+    "packagePath": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\outputs\\gamesim-props-20261020\\.game-dev\\packages\\bb_comp_griprig\\1.0.0",
+    "manifestPath": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\outputs\\gamesim-props-20261020\\.game-dev\\packages\\bb_comp_griprig\\1.0.0\\manifest.json",
+    "receiptPath": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\outputs\\gamesim-props-20261020\\.game-dev\\packages\\bb_comp_griprig\\1.0.0\\receipt.json",
+    "manifestSha256": "9b3590548a773bae375fc159c7e98084d27c4b6c242f8558383dd06d16905dc8",
+    "reused": false,
+    "validation": {
+      "passed": true,
+      "errorCount": 0,
+      "warningCount": 0
+    },
+    "catalog": {
+      "packageId": "pkg_f398a120ae5e745156271992",
+      "assetId": "bb_comp_griprig",
+      "version": "1.0.0",
+      "displayName": "bb_comp_griprig",
+      "description": "Assembled reference station in metres. Unity consumes the separate normalized FBX part kit; runtime owns visible text, tint, moving parts and game state. Canonical GLB is an art reference, not a static runtime replacement.",
+      "category": "environment_prop",
+      "license": "LicenseRef-GameSim-Original",
+      "packagePath": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\outputs\\gamesim-props-20261020\\.game-dev\\packages\\bb_comp_griprig\\1.0.0",
+      "modelPath": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\outputs\\gamesim-props-20261020\\.game-dev\\packages\\bb_comp_griprig\\1.0.0\\model.glb",
+      "modelSha256": "b47810b48aba451f11a57e138f3cc56eb3411e29de9ee4b4c00dfa9e798c34df",
+      "manifestSha256": "9b3590548a773bae375fc159c7e98084d27c4b6c242f8558383dd06d16905dc8",
+      "validationPassed": true,
+      "validationErrors": 0,
+      "validationWarnings": 0,
+      "origin": "authored",
+      "indexedAt": "2026-10-21T04:00:59.138Z"
+    },
+    "evidence": {
+      "portableGlbCopiedAndHashed": true,
+      "staticInspectionCompleted": true,
+      "policyValidationCompleted": true,
+      "blenderNormalizationPerformed": false,
+      "gpuImportTestPerformed": false,
+      "humanVisualReviewPerformed": false
+    }
+  },
+  "completedAt": "2026-10-21T04:00:59.145Z"
+}

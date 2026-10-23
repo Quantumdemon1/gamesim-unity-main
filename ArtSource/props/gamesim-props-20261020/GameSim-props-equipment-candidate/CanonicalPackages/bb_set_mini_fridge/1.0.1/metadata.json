@@ -1,0 +1,77 @@
+{
+  "assetId": "bb_set_mini_fridge",
+  "category": "environment_prop",
+  "description": "Original static dressing prop, metres and bottom-centre origin; full PBR GLB and explicit Unity texture companion. Existing support point and envelope retained. No interaction or collider is introduced. Native Unity acceptance pending.",
+  "displayName": "bb_set_mini_fridge",
+  "inspection": {
+    "animationCount": 0,
+    "boundingBox": {
+      "max": [
+        0.25,
+        0.7000000476837158,
+        0.2500000298023224
+      ],
+      "min": [
+        -0.25,
+        0,
+        -0.25
+      ],
+      "sizeMeters": [
+        0.5,
+        0.7000000476837158,
+        0.5000000298023224
+      ]
+    },
+    "boundingBoxEmpty": false,
+    "fileBytes": 1695316,
+    "filePath": "model.glb",
+    "generator": "glTF-Transform v4.5.1",
+    "hasNormals": true,
+    "hasSkin": false,
+    "hasTangents": true,
+    "hasUVs": true,
+    "materialCount": 1,
+    "meshCount": 1,
+    "pbr": {
+      "hasBaseColorTexture": true,
+      "hasEmissiveTexture": false,
+      "hasMetallicRoughnessTexture": true,
+      "hasNormalTexture": true,
+      "hasOcclusionTexture": false
+    },
+    "primitiveCount": 1,
+    "sceneGraphFallback": false,
+    "textureCount": 3,
+    "textureResolutions": [
+      {
+        "bytes": 66554,
+        "height": 1024,
+        "mimeType": "image/png",
+        "name": "bb_set_mini_fridge_normal",
+        "width": 1024
+      },
+      {
+        "bytes": 809129,
+        "height": 1024,
+        "mimeType": "image/png",
+        "name": "bb_set_mini_fridge_albedo",
+        "width": 1024
+      },
+      {
+        "bytes": 445010,
+        "height": 1024,
+        "mimeType": "image/png",
+        "name": "bb_set_mini_fridge_orm",
+        "width": 1024
+      }
+    ],
+    "triangleCount": 3880,
+    "undrawnMeshCount": 0,
+    "undrawnPrimitiveCount": 0,
+    "undrawnTriangleCount": 0,
+    "vertexCount": 7280,
+    "warnings": []
+  },
+  "license": "LicenseRef-GameSim-Original",
+  "schema": "game_dev.asset_metadata.v1"
+}

@@ -1,0 +1,45 @@
+{
+  "schema": "game_dev.result.v1",
+  "operation": "package.build",
+  "ok": true,
+  "data": {
+    "schema": "game_dev.package_build_result.v1",
+    "packageId": "pkg_b12fcbcec0371d1f9c2e2566",
+    "packagePath": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\outputs\\gamesim-props-20261020\\.game-dev\\packages\\bb_set_mini_fridge\\1.0.1",
+    "manifestPath": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\outputs\\gamesim-props-20261020\\.game-dev\\packages\\bb_set_mini_fridge\\1.0.1\\manifest.json",
+    "receiptPath": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\outputs\\gamesim-props-20261020\\.game-dev\\packages\\bb_set_mini_fridge\\1.0.1\\receipt.json",
+    "manifestSha256": "0fcca579c8631c1802c2acbf779b845099e8f60c5e1355362e66a75d784ea833",
+    "reused": false,
+    "validation": {
+      "passed": true,
+      "errorCount": 0,
+      "warningCount": 0
+    },
+    "catalog": {
+      "packageId": "pkg_b12fcbcec0371d1f9c2e2566",
+      "assetId": "bb_set_mini_fridge",
+      "version": "1.0.1",
+      "displayName": "bb_set_mini_fridge",
+      "description": "Original static dressing prop, metres and bottom-centre origin; full PBR GLB and explicit Unity texture companion. Existing support point and envelope retained. No interaction or collider is introduced. Native Unity acceptance pending.",
+      "category": "environment_prop",
+      "license": "LicenseRef-GameSim-Original",
+      "packagePath": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\outputs\\gamesim-props-20261020\\.game-dev\\packages\\bb_set_mini_fridge\\1.0.1",
+      "modelPath": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\outputs\\gamesim-props-20261020\\.game-dev\\packages\\bb_set_mini_fridge\\1.0.1\\model.glb",
+      "modelSha256": "c5bd7e4d3ae5b48da08f18e3d3d670f78232644a7770bcb067cc1ea94ca36195",
+      "manifestSha256": "0fcca579c8631c1802c2acbf779b845099e8f60c5e1355362e66a75d784ea833",
+      "validationPassed": true,
+      "validationErrors": 0,
+      "validationWarnings": 0,
+      "origin": "authored",
+      "indexedAt": "2026-10-21T04:08:06.790Z"
+    },
+    "evidence": {
+      "portableGlbCopiedAndHashed": true,
+      "staticInspectionCompleted": true,
+      "policyValidationCompleted": true,
+      "blenderNormalizationPerformed": false,
+      "gpuImportTestPerformed": false,
+      "humanVisualReviewPerformed": false
+    }
+  }
+}

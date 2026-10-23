@@ -1,0 +1,23 @@
+{
+  "completedAt": "2026-10-21T04:01:03.703Z",
+  "destination": {
+    "assetId": "bb_comp_signals",
+    "version": "1.0.0"
+  },
+  "evidence": {
+    "blenderNormalizationPerformed": false,
+    "gpuImportTestPerformed": false,
+    "humanVisualReviewPerformed": false,
+    "modelBytesCopiedAndHashed": true,
+    "policyValidationCompleted": true,
+    "staticInspectionCompleted": true
+  },
+  "manifestSha256": "0596549ee6964e78f961fd8439a9ab589f9950a0998bba24ed4a640c5ccfb3e7",
+  "packageId": "pkg_e9f764f449a6878f4277e1a0",
+  "schema": "game_dev.package_receipt.v1",
+  "source": {
+    "bytes": 151316,
+    "fileName": "bb_comp_Signals.glb",
+    "sha256": "121df92f5afc158a8a21555222424be491a5f515453d17e59364aba92f6ba88f"
+  }
+}

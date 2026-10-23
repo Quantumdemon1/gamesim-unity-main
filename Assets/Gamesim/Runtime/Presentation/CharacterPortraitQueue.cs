@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using Gamesim.Simulation;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 
 namespace Gamesim.Presentation
 {
@@ -12,15 +13,28 @@ namespace Gamesim.Presentation
         private CharacterStudioPreview preview;
         private string currentKey, currentContent;
         private float startedAt;
+        private Scene ownerScene;
+        private bool ownerBound, retired;
+
+        internal bool BindOwnerScene(Scene owner)
+        {
+            if (retired || !owner.IsValid() || !owner.isLoaded) return false;
+            if (ownerBound) return ownerScene == owner;
+            ownerScene = owner;
+            ownerBound = true;
+            SceneManager.sceneUnloaded += OnOwnerSceneUnloaded;
+            return true;
+        }
 
         public void Enqueue(string key, CharacterAppearance appearance)
         {
-            if (!requested.Add(key)) return;
+            if (retired || !requested.Add(key)) return;
             pending.Enqueue(new KeyValuePair<string, CharacterAppearance>(key, appearance.Clone()));
         }
 
         private void Update()
         {
+            if (retired) return;
             if (currentKey != null)
             {
                 if (preview != null && !preview.IsBuilding && preview.CompletedKey == currentContent)
@@ -50,7 +64,36 @@ namespace Gamesim.Presentation
             preview.Show(next.Value);
         }
 
-        private void OnDestroy()
-        { if (preview != null) Destroy(preview.gameObject); }
+        private void OnOwnerSceneUnloaded(Scene scene)
+        {
+            if (retired || !ownerBound || scene != ownerScene) return;
+            try { Retire(); }
+            finally { DestroyOwned(gameObject); }
+        }
+
+        private void OnDestroy() => Retire();
+
+        private void Retire()
+        {
+            if (retired) return;
+            retired = true;
+            SceneManager.sceneUnloaded -= OnOwnerSceneUnloaded;
+            CharacterPortraits.DetachQueue(this);
+            pending.Clear(); requested.Clear();
+            currentKey = currentContent = null;
+            if (preview == null) return;
+            var owned = preview.gameObject;
+            preview = null;
+            // Stop delayed builds now; deferred destruction still follows normal Play semantics.
+            try { owned.SetActive(false); }
+            finally { DestroyOwned(owned); }
+        }
+
+        private static void DestroyOwned(GameObject owned)
+        {
+            if (owned == null) return;
+            if (Application.isPlaying) Destroy(owned);
+            else DestroyImmediate(owned);
+        }
     }
 }

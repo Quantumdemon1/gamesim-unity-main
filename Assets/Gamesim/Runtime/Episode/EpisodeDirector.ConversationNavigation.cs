@@ -230,8 +230,7 @@ namespace Gamesim.Episode
             var accept = OfferAccept(state, offer);
             if (accept.interactable) hud.Tag(accept, FreeTag);
             string id = offer.id;
-            hud.Tag(hud.ActionFor(id, EpisodeHud.DealDeclineCaption,
-                () => Commit(state, EpisodeCommandKind.RespondToDeal, id, text: "decline")), FreeTag);
+            hud.Tag(OfferDecline(state, offer), FreeTag);
             return true;
         }
 

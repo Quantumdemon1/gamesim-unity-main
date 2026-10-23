@@ -48,7 +48,7 @@ namespace Gamesim.Tests.PlayMode
             yield return null;
             var after = director.Snapshot;
             Assert.That(after.revision, Is.EqualTo(revision + 1), "The row commits the proposal.");
-            Assert.That(after.events.Skip(state.events.Count).Any(e => e.kind == "deal"), Is.True, "and the house says something about it.");
+            Assert.That(after.events.Where(entry => entry.sequence >= state.nextSequence).Any(e => e.kind == "deal"), Is.True, "and the house says something about it.");
             var deal = after.deals.FirstOrDefault(d => d.proposerId == after.playerId && d.recipientId == voter.id && d.type == DealKind.VoteEvict);
             if (deal != null)
             {

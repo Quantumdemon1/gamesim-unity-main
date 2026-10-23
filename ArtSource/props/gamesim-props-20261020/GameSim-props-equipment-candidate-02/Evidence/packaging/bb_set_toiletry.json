@@ -1,0 +1,38 @@
+{
+  "name": "bb_set_toiletry",
+  "kind": "care",
+  "expectedUnityXYZ": [
+    0.06,
+    0.1,
+    0.06
+  ],
+  "blenderBoundsXYZ": [
+    0.05999999865889549,
+    0.05999999865889549,
+    0.10000000149011612
+  ],
+  "triangles": 864,
+  "materials": [
+    "bb_mat_bb_set_toiletry",
+    "bb_mat_bb_set_toiletry_trim"
+  ],
+  "uvLayers": 1,
+  "origin": [
+    0.0,
+    0.0,
+    0.0
+  ],
+  "sourceBlend": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\packaging\\Sources\\bb_set_toiletry.blend",
+  "glb": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\packaging\\GLB\\bb_set_toiletry.glb",
+  "fbx": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\packaging\\FBX\\bb_set_toiletry.fbx",
+  "previews": [
+    "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\packaging\\Previews\\bb_set_toiletry_threequarter.png",
+    "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\packaging\\Previews\\bb_set_toiletry_front.png",
+    "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\packaging\\Previews\\bb_set_toiletry_back.png"
+  ],
+  "sha256": {
+    "bb_set_toiletry.glb": "dd89d4187020b34ee2838890f2ad46bb8b1785cefde308fbdf6f2b78b24c2475",
+    "bb_set_toiletry.fbx": "0ed6c5ad0769201c311654bf3879fe86ccf0040e614b318cffcc6b53af3b26d8"
+  },
+  "art": "Original authored geometry and deterministic procedural PBR textures; no external assets or generators. Rights reserved for GameSim project; no CC0 grant implied."
+}

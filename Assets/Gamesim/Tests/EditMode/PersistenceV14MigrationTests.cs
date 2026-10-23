@@ -84,7 +84,14 @@ namespace Gamesim.Tests.EditMode
             string frozen27 = current27.ToString();
             var current28 = EpisodeSaveMigrations.UpgradeV27ToV28(current27);
             Assert.That(current27.ToString(), Is.EqualTo(frozen27));
-            var state = current28.ToObject<EpisodeState>(Serializer());
+            Assert.That((int)current28["schemaVersion"], Is.EqualTo(28), "The frozen step still ends at literal28.");
+            string frozen28 = current28.ToString(Formatting.None);
+            var current29 = EpisodeSaveMigrations.UpgradeV28ToV29(current28);
+            Assert.That((int)current29["schemaVersion"], Is.EqualTo(29));
+            Assert.That(JToken.DeepEquals(PersistenceMigrationTests.StripSchema29((JObject)current29.DeepClone()), current28), Is.True,
+                "The supported-current semantic companion adds only the reviewed inert29 literals.");
+            Assert.That(current28.ToString(Formatting.None), Is.EqualTo(frozen28));
+            var state = current29.ToObject<EpisodeState>(Serializer());
             Assert.That(state.haveNotRulesStartWeek, Is.Zero);
             Assert.That(state.haveNots, Is.Empty);
             Assert.That(EpisodeEngine.EconomyRulesOn(state), Is.False);
@@ -133,7 +140,7 @@ namespace Gamesim.Tests.EditMode
             old["schemaVersion"] = 12;
             var migrated = EpisodeSaveMigrations.PrepareCurrentPayload(old, out var changed);
             Assert.That(changed, Is.True);
-            Assert.That((int)migrated["schemaVersion"], Is.EqualTo(28), "The whole chain, not one step.");
+            Assert.That((int)migrated["schemaVersion"], Is.EqualTo(29), "The whole chain, not one step.");
             Assert.That((int)migrated["competitionRulesVersion"], Is.EqualTo(1));
             Assert.That((int)migrated["haveNotRulesStartWeek"], Is.Zero);
             Assert.That(EpisodeSaveMigrations.PrepareV13Payload(old, out _)["schemaVersion"].Value<int>(), Is.EqualTo(13),

@@ -1,0 +1,278 @@
+[
+  {
+    "name": "bb_set_mini_fridge",
+    "source": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\appliances\\mini-fridge-02\\bb_set_mini_fridge.glb",
+    "sourceSha256": "c5bd7e4d3ae5b48da08f18e3d3d670f78232644a7770bcb067cc1ea94ca36195",
+    "packagePath": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\outputs\\gamesim-props-20261020\\.game-dev\\packages\\bb_set_mini_fridge\\1.0.1",
+    "packageId": "pkg_b12fcbcec0371d1f9c2e2566",
+    "version": "1.0.1",
+    "manifestSha256": "0fcca579c8631c1802c2acbf779b845099e8f60c5e1355362e66a75d784ea833",
+    "validation": {
+      "passed": true,
+      "errorCount": 0,
+      "warningCount": 0
+    },
+    "inspection": {
+      "filePath": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\appliances\\mini-fridge-02\\bb_set_mini_fridge.glb",
+      "fileBytes": 1695316,
+      "generator": "glTF-Transform v4.5.1",
+      "meshCount": 1,
+      "primitiveCount": 1,
+      "vertexCount": 7280,
+      "triangleCount": 3880,
+      "undrawnMeshCount": 0,
+      "undrawnPrimitiveCount": 0,
+      "undrawnTriangleCount": 0,
+      "sceneGraphFallback": false,
+      "materialCount": 1,
+      "textureCount": 3,
+      "textureResolutions": [
+        {
+          "name": "bb_set_mini_fridge_normal",
+          "width": 1024,
+          "height": 1024,
+          "mimeType": "image/png",
+          "bytes": 66554
+        },
+        {
+          "name": "bb_set_mini_fridge_albedo",
+          "width": 1024,
+          "height": 1024,
+          "mimeType": "image/png",
+          "bytes": 809129
+        },
+        {
+          "name": "bb_set_mini_fridge_orm",
+          "width": 1024,
+          "height": 1024,
+          "mimeType": "image/png",
+          "bytes": 445010
+        }
+      ],
+      "boundingBox": {
+        "min": [
+          -0.25,
+          0,
+          -0.25
+        ],
+        "max": [
+          0.25,
+          0.7000000476837158,
+          0.2500000298023224
+        ],
+        "sizeMeters": [
+          0.5,
+          0.7000000476837158,
+          0.5000000298023224
+        ]
+      },
+      "boundingBoxEmpty": false,
+      "hasUVs": true,
+      "hasNormals": true,
+      "hasTangents": true,
+      "pbr": {
+        "hasBaseColorTexture": true,
+        "hasMetallicRoughnessTexture": true,
+        "hasNormalTexture": true,
+        "hasOcclusionTexture": false,
+        "hasEmissiveTexture": false
+      },
+      "animationCount": 0,
+      "hasSkin": false,
+      "warnings": []
+    },
+    "verification": {
+      "schema": "game_dev.package_verification.v1",
+      "packagePath": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\outputs\\gamesim-props-20261020\\.game-dev\\packages\\bb_set_mini_fridge\\1.0.1",
+      "manifest": {
+        "assetId": "bb_set_mini_fridge",
+        "category": "environment_prop",
+        "description": "Original static dressing prop, metres and bottom-centre origin; full PBR GLB and explicit Unity texture companion. Existing support point and envelope retained. No interaction or collider is introduced. Native Unity acceptance pending.",
+        "displayName": "bb_set_mini_fridge",
+        "files": [
+          {
+            "bytes": 1695316,
+            "kind": "model",
+            "path": "model.glb",
+            "sha256": "c5bd7e4d3ae5b48da08f18e3d3d670f78232644a7770bcb067cc1ea94ca36195"
+          },
+          {
+            "bytes": 2017,
+            "kind": "metadata",
+            "path": "metadata.json",
+            "sha256": "e7328f29b25cc4000f8097ec7208e7b0d476dfd07cb31aba746378293a62d840"
+          },
+          {
+            "bytes": 1096,
+            "kind": "provenance",
+            "path": "provenance.json",
+            "sha256": "6d574d583133208947e1bbb9b51e539091307e4b021f004d1e5833b75beb2959"
+          },
+          {
+            "bytes": 4167,
+            "kind": "validation",
+            "path": "validation.json",
+            "sha256": "f9adc5489f1db4b2295f6431395b72f879da1102a139dd25a55a8c3521d3ded3"
+          }
+        ],
+        "license": "LicenseRef-GameSim-Original",
+        "model": "model.glb",
+        "packageId": "pkg_b12fcbcec0371d1f9c2e2566",
+        "provenance": {
+          "origin": "authored"
+        },
+        "schema": "game_dev.asset_package.v1",
+        "validation": {
+          "errorCount": 0,
+          "passed": true,
+          "warningCount": 0
+        },
+        "version": "1.0.1"
+      },
+      "hashesVerified": true,
+      "evidence": {
+        "packageBytesVerified": true,
+        "gpuImportTestPerformed": false,
+        "humanVisualReviewPerformed": false
+      }
+    }
+  },
+  {
+    "name": "bb_set_headphone_case",
+    "source": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\appliances\\headphone-case-02\\bb_set_headphone_case.glb",
+    "sourceSha256": "eb090bf7e45da02f0afe5d21d319a6820bce0317ceeddf0c2f87a9aeef588ae8",
+    "packagePath": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\outputs\\gamesim-props-20261020\\.game-dev\\packages\\bb_set_headphone_case\\1.0.1",
+    "packageId": "pkg_ae9ae6601c9315715280a86a",
+    "version": "1.0.1",
+    "manifestSha256": "eebc636b65e1d168d75a72139ef8c4439725f81077b531f38c76a6782982dd44",
+    "validation": {
+      "passed": true,
+      "errorCount": 0,
+      "warningCount": 0
+    },
+    "inspection": {
+      "filePath": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\appliances\\headphone-case-02\\bb_set_headphone_case.glb",
+      "fileBytes": 1797000,
+      "generator": "glTF-Transform v4.5.1",
+      "meshCount": 1,
+      "primitiveCount": 1,
+      "vertexCount": 3074,
+      "triangleCount": 2308,
+      "undrawnMeshCount": 0,
+      "undrawnPrimitiveCount": 0,
+      "undrawnTriangleCount": 0,
+      "sceneGraphFallback": false,
+      "materialCount": 1,
+      "textureCount": 3,
+      "textureResolutions": [
+        {
+          "name": "bb_set_headphone_case_normal",
+          "width": 1024,
+          "height": 1024,
+          "mimeType": "image/png",
+          "bytes": 39586
+        },
+        {
+          "name": "bb_set_headphone_case_albedo",
+          "width": 1024,
+          "height": 1024,
+          "mimeType": "image/png",
+          "bytes": 1189862
+        },
+        {
+          "name": "bb_set_headphone_case_orm",
+          "width": 1024,
+          "height": 1024,
+          "mimeType": "image/png",
+          "bytes": 404188
+        }
+      ],
+      "boundingBox": {
+        "min": [
+          -0.07999999821186066,
+          0,
+          -0.07999999821186066
+        ],
+        "max": [
+          0.07999999821186066,
+          0.05999999865889549,
+          0.07999999821186066
+        ],
+        "sizeMeters": [
+          0.1599999964237213,
+          0.05999999865889549,
+          0.1599999964237213
+        ]
+      },
+      "boundingBoxEmpty": false,
+      "hasUVs": true,
+      "hasNormals": true,
+      "hasTangents": true,
+      "pbr": {
+        "hasBaseColorTexture": true,
+        "hasMetallicRoughnessTexture": true,
+        "hasNormalTexture": true,
+        "hasOcclusionTexture": false,
+        "hasEmissiveTexture": false
+      },
+      "animationCount": 0,
+      "hasSkin": false,
+      "warnings": []
+    },
+    "verification": {
+      "schema": "game_dev.package_verification.v1",
+      "packagePath": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\outputs\\gamesim-props-20261020\\.game-dev\\packages\\bb_set_headphone_case\\1.0.1",
+      "manifest": {
+        "assetId": "bb_set_headphone_case",
+        "category": "environment_prop",
+        "description": "Original static dressing prop, metres and bottom-centre origin; full PBR GLB and explicit Unity texture companion. Existing support point and envelope retained. No interaction or collider is introduced. Native Unity acceptance pending.",
+        "displayName": "bb_set_headphone_case",
+        "files": [
+          {
+            "bytes": 1797000,
+            "kind": "model",
+            "path": "model.glb",
+            "sha256": "eb090bf7e45da02f0afe5d21d319a6820bce0317ceeddf0c2f87a9aeef588ae8"
+          },
+          {
+            "bytes": 2096,
+            "kind": "metadata",
+            "path": "metadata.json",
+            "sha256": "1b32beed66c8dc4e996d671006d0689e5ce528bad7c96a724cb2bda933ed3363"
+          },
+          {
+            "bytes": 1111,
+            "kind": "provenance",
+            "path": "provenance.json",
+            "sha256": "853c7c058db6b88e16c7d034f915988b2107c4e37ad0f7f171e37c85c3817722"
+          },
+          {
+            "bytes": 4167,
+            "kind": "validation",
+            "path": "validation.json",
+            "sha256": "a7d52030864c71082baba4ce62ab0bc4df4f28b07c60f43f70580f008d153923"
+          }
+        ],
+        "license": "LicenseRef-GameSim-Original",
+        "model": "model.glb",
+        "packageId": "pkg_ae9ae6601c9315715280a86a",
+        "provenance": {
+          "origin": "authored"
+        },
+        "schema": "game_dev.asset_package.v1",
+        "validation": {
+          "errorCount": 0,
+          "passed": true,
+          "warningCount": 0
+        },
+        "version": "1.0.1"
+      },
+      "hashesVerified": true,
+      "evidence": {
+        "packageBytesVerified": true,
+        "gpuImportTestPerformed": false,
+        "humanVisualReviewPerformed": false
+      }
+    }
+  }
+]

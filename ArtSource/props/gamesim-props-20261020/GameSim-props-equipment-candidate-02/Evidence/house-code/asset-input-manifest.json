@@ -1,0 +1,960 @@
+{
+  "native_file_overlay": [
+    {
+      "source": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\packaging\\FBX\\bb_set_coffee_tin.fbx",
+      "destination": "Assets/Gamesim/Art/Authored/HouseSmallProps/bb_set_coffee_tin.fbx",
+      "sha256": "07e59d9b0437c2f45923ce14f4fdca02546650bd49d28a094ac4c23a410f24da"
+    },
+    {
+      "source": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\packaging\\Textures\\bb_set_coffee_tin_albedo.png",
+      "destination": "Assets/Gamesim/Art/Authored/HouseSmallProps/Textures/bb_set_coffee_tin_albedo.png",
+      "sha256": "ec1a7590ec5d72faf1e15b1ac733a4574aeb8ec2ce0667a43d275398a422fc9f"
+    },
+    {
+      "source": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\packaging\\Textures\\bb_set_coffee_tin_metallic.png",
+      "destination": "Assets/Gamesim/Art/Authored/HouseSmallProps/Textures/bb_set_coffee_tin_metallic.png",
+      "sha256": "626b76673dd350b4953b7d080f24e268f6ba1858492ce795cb9b689bf1d34daa"
+    },
+    {
+      "source": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\packaging\\FBX\\bb_set_coffee_tin.fbm\\bb_set_coffee_tin_albedo.png",
+      "destination": "Assets/Gamesim/Art/Authored/HouseSmallProps/bb_set_coffee_tin.fbm/bb_set_coffee_tin_albedo.png",
+      "sha256": "ec1a7590ec5d72faf1e15b1ac733a4574aeb8ec2ce0667a43d275398a422fc9f"
+    },
+    {
+      "source": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\packaging\\FBX\\bb_set_food_jar.fbx",
+      "destination": "Assets/Gamesim/Art/Authored/HouseSmallProps/bb_set_food_jar.fbx",
+      "sha256": "7ab202b3524f3c2ca709c3f11ca768e8ddec1b9c09c7f45b92a108ad32d0ead4"
+    },
+    {
+      "source": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\packaging\\Textures\\bb_set_food_jar_albedo.png",
+      "destination": "Assets/Gamesim/Art/Authored/HouseSmallProps/Textures/bb_set_food_jar_albedo.png",
+      "sha256": "0e1f97a89b07c1f7d3c46e5423b01c7e7dd57823b906604f02aae841f6a85238"
+    },
+    {
+      "source": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\packaging\\Textures\\bb_set_food_jar_metallic.png",
+      "destination": "Assets/Gamesim/Art/Authored/HouseSmallProps/Textures/bb_set_food_jar_metallic.png",
+      "sha256": "ef356f52e42fc8c6bb4496fb1fe047a0dc404895993e7c03ba5fd709d2d374da"
+    },
+    {
+      "source": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\packaging\\FBX\\bb_set_food_jar.fbm\\bb_set_food_jar_albedo.png",
+      "destination": "Assets/Gamesim/Art/Authored/HouseSmallProps/bb_set_food_jar.fbm/bb_set_food_jar_albedo.png",
+      "sha256": "0e1f97a89b07c1f7d3c46e5423b01c7e7dd57823b906604f02aae841f6a85238"
+    },
+    {
+      "source": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\packaging\\FBX\\bb_set_cereal_carton.fbx",
+      "destination": "Assets/Gamesim/Art/Authored/HouseSmallProps/bb_set_cereal_carton.fbx",
+      "sha256": "a66ad574bf3838feebc39755f1f1d0d5e3e551eedbba3b9d8a7b2cc1115dfcd2"
+    },
+    {
+      "source": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\packaging\\Textures\\bb_set_cereal_carton_albedo.png",
+      "destination": "Assets/Gamesim/Art/Authored/HouseSmallProps/Textures/bb_set_cereal_carton_albedo.png",
+      "sha256": "a0dd55889be7aff1d557eb9c31ed1c63d70361db7cfbb0b8cc4689ca0dcd0144"
+    },
+    {
+      "source": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\packaging\\Textures\\bb_set_cereal_carton_metallic.png",
+      "destination": "Assets/Gamesim/Art/Authored/HouseSmallProps/Textures/bb_set_cereal_carton_metallic.png",
+      "sha256": "f28f2b423865868848ed74cf4d008746e1bb7647b8445039aa72114d71462387"
+    },
+    {
+      "source": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\packaging\\FBX\\bb_set_cereal_carton.fbm\\bb_set_cereal_carton_albedo.png",
+      "destination": "Assets/Gamesim/Art/Authored/HouseSmallProps/bb_set_cereal_carton.fbm/bb_set_cereal_carton_albedo.png",
+      "sha256": "a0dd55889be7aff1d557eb9c31ed1c63d70361db7cfbb0b8cc4689ca0dcd0144"
+    },
+    {
+      "source": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\packaging\\FBX\\bb_set_snack_blue.fbx",
+      "destination": "Assets/Gamesim/Art/Authored/HouseSmallProps/bb_set_snack_blue.fbx",
+      "sha256": "01d2c555304029bb7bd21c96e731204fc56d707e1a0a40d7c56766f532f425d2"
+    },
+    {
+      "source": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\packaging\\Textures\\bb_set_snack_blue_albedo.png",
+      "destination": "Assets/Gamesim/Art/Authored/HouseSmallProps/Textures/bb_set_snack_blue_albedo.png",
+      "sha256": "80a2322f675956c900b5aa02b00149f5d28b0c1ad6acb1af771c1f605a2e6769"
+    },
+    {
+      "source": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\packaging\\Textures\\bb_set_snack_blue_metallic.png",
+      "destination": "Assets/Gamesim/Art/Authored/HouseSmallProps/Textures/bb_set_snack_blue_metallic.png",
+      "sha256": "c6406105efa4da19c7ecc80895c8aa25661d07e5371909770f71fea5a31da13f"
+    },
+    {
+      "source": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\packaging\\FBX\\bb_set_snack_blue.fbm\\bb_set_snack_blue_albedo.png",
+      "destination": "Assets/Gamesim/Art/Authored/HouseSmallProps/bb_set_snack_blue.fbm/bb_set_snack_blue_albedo.png",
+      "sha256": "80a2322f675956c900b5aa02b00149f5d28b0c1ad6acb1af771c1f605a2e6769"
+    },
+    {
+      "source": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\packaging\\FBX\\bb_set_snack_gold.fbx",
+      "destination": "Assets/Gamesim/Art/Authored/HouseSmallProps/bb_set_snack_gold.fbx",
+      "sha256": "714ae079a56e9f70986eb9441920cea626d9adf4739a25fcf836fa8da45e7bc9"
+    },
+    {
+      "source": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\packaging\\Textures\\bb_set_snack_gold_albedo.png",
+      "destination": "Assets/Gamesim/Art/Authored/HouseSmallProps/Textures/bb_set_snack_gold_albedo.png",
+      "sha256": "f6bfa9afc6bbb98f391eb0369d53dc725363df2f9d4924cb52d0e136a073b0ac"
+    },
+    {
+      "source": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\packaging\\Textures\\bb_set_snack_gold_metallic.png",
+      "destination": "Assets/Gamesim/Art/Authored/HouseSmallProps/Textures/bb_set_snack_gold_metallic.png",
+      "sha256": "06d563009544f65e51f873c9c7deb7ddd97ce2891f3ee939522620a846d7da01"
+    },
+    {
+      "source": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\packaging\\FBX\\bb_set_snack_gold.fbm\\bb_set_snack_gold_albedo.png",
+      "destination": "Assets/Gamesim/Art/Authored/HouseSmallProps/bb_set_snack_gold.fbm/bb_set_snack_gold_albedo.png",
+      "sha256": "f6bfa9afc6bbb98f391eb0369d53dc725363df2f9d4924cb52d0e136a073b0ac"
+    },
+    {
+      "source": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\packaging\\FBX\\bb_set_hoh_snack_blue.fbx",
+      "destination": "Assets/Gamesim/Art/Authored/HouseSmallProps/bb_set_hoh_snack_blue.fbx",
+      "sha256": "7d590ff2fe4257c69a383067175c735392605855a724f4b7b4aed67fb5ed229c"
+    },
+    {
+      "source": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\packaging\\Textures\\bb_set_hoh_snack_blue_albedo.png",
+      "destination": "Assets/Gamesim/Art/Authored/HouseSmallProps/Textures/bb_set_hoh_snack_blue_albedo.png",
+      "sha256": "55be4a0f1273eeade33a8b2bdf34069f6d0d0dc14364f0bb4c0da3116ab08d11"
+    },
+    {
+      "source": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\packaging\\Textures\\bb_set_hoh_snack_blue_metallic.png",
+      "destination": "Assets/Gamesim/Art/Authored/HouseSmallProps/Textures/bb_set_hoh_snack_blue_metallic.png",
+      "sha256": "90cd555a046f17abf20c5d9283f6ed5f86d53863f8876f7b0421ff80be35069b"
+    },
+    {
+      "source": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\packaging\\FBX\\bb_set_hoh_snack_blue.fbm\\bb_set_hoh_snack_blue_albedo.png",
+      "destination": "Assets/Gamesim/Art/Authored/HouseSmallProps/bb_set_hoh_snack_blue.fbm/bb_set_hoh_snack_blue_albedo.png",
+      "sha256": "55be4a0f1273eeade33a8b2bdf34069f6d0d0dc14364f0bb4c0da3116ab08d11"
+    },
+    {
+      "source": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\packaging\\FBX\\bb_set_hoh_snack_gold.fbx",
+      "destination": "Assets/Gamesim/Art/Authored/HouseSmallProps/bb_set_hoh_snack_gold.fbx",
+      "sha256": "0f7f610dd87fab2fffc4b5746b8eb5e03129cb4afa1cec6be3d3fe280f5fdef2"
+    },
+    {
+      "source": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\packaging\\Textures\\bb_set_hoh_snack_gold_albedo.png",
+      "destination": "Assets/Gamesim/Art/Authored/HouseSmallProps/Textures/bb_set_hoh_snack_gold_albedo.png",
+      "sha256": "0a7df302189dc390c3989351e718b4dd9295f3db0ce538a5eb94cf7ea26b7f11"
+    },
+    {
+      "source": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\packaging\\Textures\\bb_set_hoh_snack_gold_metallic.png",
+      "destination": "Assets/Gamesim/Art/Authored/HouseSmallProps/Textures/bb_set_hoh_snack_gold_metallic.png",
+      "sha256": "cc03911927d88f94073a9709f1d900e92aeb563ade4c63615f999fa7a6b1431a"
+    },
+    {
+      "source": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\packaging\\FBX\\bb_set_hoh_snack_gold.fbm\\bb_set_hoh_snack_gold_albedo.png",
+      "destination": "Assets/Gamesim/Art/Authored/HouseSmallProps/bb_set_hoh_snack_gold.fbm/bb_set_hoh_snack_gold_albedo.png",
+      "sha256": "0a7df302189dc390c3989351e718b4dd9295f3db0ce538a5eb94cf7ea26b7f11"
+    },
+    {
+      "source": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\packaging\\FBX\\bb_set_game_strategy.fbx",
+      "destination": "Assets/Gamesim/Art/Authored/HouseSmallProps/bb_set_game_strategy.fbx",
+      "sha256": "ee320717271adb6fdb83c48a6c5cfe5cd29e90876e3975d9bbbcd1146104ff4e"
+    },
+    {
+      "source": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\packaging\\Textures\\bb_set_game_strategy_albedo.png",
+      "destination": "Assets/Gamesim/Art/Authored/HouseSmallProps/Textures/bb_set_game_strategy_albedo.png",
+      "sha256": "32f2a1ae6d7d63a4b5b5deded12584bf1ffbda5d3815ea7135b99664279b081b"
+    },
+    {
+      "source": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\packaging\\Textures\\bb_set_game_strategy_metallic.png",
+      "destination": "Assets/Gamesim/Art/Authored/HouseSmallProps/Textures/bb_set_game_strategy_metallic.png",
+      "sha256": "f7cd6ad2c1565d92456eb9677f7b93641c7a0b84c3f58a7e051edecfa3ffd137"
+    },
+    {
+      "source": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\packaging\\FBX\\bb_set_game_strategy.fbm\\bb_set_game_strategy_albedo.png",
+      "destination": "Assets/Gamesim/Art/Authored/HouseSmallProps/bb_set_game_strategy.fbm/bb_set_game_strategy_albedo.png",
+      "sha256": "32f2a1ae6d7d63a4b5b5deded12584bf1ffbda5d3815ea7135b99664279b081b"
+    },
+    {
+      "source": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\packaging\\FBX\\bb_set_game_alliance.fbx",
+      "destination": "Assets/Gamesim/Art/Authored/HouseSmallProps/bb_set_game_alliance.fbx",
+      "sha256": "4f4cc77879545d705d9bbbbc0af97a41e8d3e7bf444e57797f6eda2816080a29"
+    },
+    {
+      "source": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\packaging\\Textures\\bb_set_game_alliance_albedo.png",
+      "destination": "Assets/Gamesim/Art/Authored/HouseSmallProps/Textures/bb_set_game_alliance_albedo.png",
+      "sha256": "289713a1e5c201388f4d8114a0b81cacf43d005cd6d20dea6cfa0b8f1089418b"
+    },
+    {
+      "source": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\packaging\\Textures\\bb_set_game_alliance_metallic.png",
+      "destination": "Assets/Gamesim/Art/Authored/HouseSmallProps/Textures/bb_set_game_alliance_metallic.png",
+      "sha256": "61993f0f6ac85a816340084fd346696a8551f0c20b144f831244b3666229cf52"
+    },
+    {
+      "source": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\packaging\\FBX\\bb_set_game_alliance.fbm\\bb_set_game_alliance_albedo.png",
+      "destination": "Assets/Gamesim/Art/Authored/HouseSmallProps/bb_set_game_alliance.fbm/bb_set_game_alliance_albedo.png",
+      "sha256": "289713a1e5c201388f4d8114a0b81cacf43d005cd6d20dea6cfa0b8f1089418b"
+    },
+    {
+      "source": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\packaging\\FBX\\bb_set_game_social.fbx",
+      "destination": "Assets/Gamesim/Art/Authored/HouseSmallProps/bb_set_game_social.fbx",
+      "sha256": "8b2e24005c44ce8ea181c6785a1ce5fb9faff79774278b5f6383ddf12b2369ea"
+    },
+    {
+      "source": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\packaging\\Textures\\bb_set_game_social_albedo.png",
+      "destination": "Assets/Gamesim/Art/Authored/HouseSmallProps/Textures/bb_set_game_social_albedo.png",
+      "sha256": "d15c46948c0a9e7d5cd867806c314d6dcdbafe235ca69be951cd7a6245dfe037"
+    },
+    {
+      "source": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\packaging\\Textures\\bb_set_game_social_metallic.png",
+      "destination": "Assets/Gamesim/Art/Authored/HouseSmallProps/Textures/bb_set_game_social_metallic.png",
+      "sha256": "4926e992bf3285efbade573aae4430df22597180413689e5bcd0c2ab1cda147e"
+    },
+    {
+      "source": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\packaging\\FBX\\bb_set_game_social.fbm\\bb_set_game_social_albedo.png",
+      "destination": "Assets/Gamesim/Art/Authored/HouseSmallProps/bb_set_game_social.fbm/bb_set_game_social_albedo.png",
+      "sha256": "d15c46948c0a9e7d5cd867806c314d6dcdbafe235ca69be951cd7a6245dfe037"
+    },
+    {
+      "source": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\packaging\\FBX\\bb_set_toiletry.fbx",
+      "destination": "Assets/Gamesim/Art/Authored/HouseSmallProps/bb_set_toiletry.fbx",
+      "sha256": "0ed6c5ad0769201c311654bf3879fe86ccf0040e614b318cffcc6b53af3b26d8"
+    },
+    {
+      "source": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\packaging\\Textures\\bb_set_toiletry_albedo.png",
+      "destination": "Assets/Gamesim/Art/Authored/HouseSmallProps/Textures/bb_set_toiletry_albedo.png",
+      "sha256": "23f28c00fac348d2cf86eb94048cdd8bc33792dfa58919149a1104b50739f24e"
+    },
+    {
+      "source": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\packaging\\Textures\\bb_set_toiletry_metallic.png",
+      "destination": "Assets/Gamesim/Art/Authored/HouseSmallProps/Textures/bb_set_toiletry_metallic.png",
+      "sha256": "abbbcbb20cc19b0c5b89c7e1ad64deec5af4de096467b8506dc9db489afe96ed"
+    },
+    {
+      "source": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\packaging\\FBX\\bb_set_toiletry.fbm\\bb_set_toiletry_albedo.png",
+      "destination": "Assets/Gamesim/Art/Authored/HouseSmallProps/bb_set_toiletry.fbm/bb_set_toiletry_albedo.png",
+      "sha256": "23f28c00fac348d2cf86eb94048cdd8bc33792dfa58919149a1104b50739f24e"
+    },
+    {
+      "source": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\packaging\\FBX\\bb_set_cosmetic.fbx",
+      "destination": "Assets/Gamesim/Art/Authored/HouseSmallProps/bb_set_cosmetic.fbx",
+      "sha256": "290a006e5361c3800115b86105078c0455e7ecfbf96c0b8a1dd068674eeef265"
+    },
+    {
+      "source": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\packaging\\Textures\\bb_set_cosmetic_albedo.png",
+      "destination": "Assets/Gamesim/Art/Authored/HouseSmallProps/Textures/bb_set_cosmetic_albedo.png",
+      "sha256": "45a4ba0c4d2240cf1df68eec64c5a1e83d07ae3fd5c2dfbde0f7856fa1b0ef51"
+    },
+    {
+      "source": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\packaging\\Textures\\bb_set_cosmetic_metallic.png",
+      "destination": "Assets/Gamesim/Art/Authored/HouseSmallProps/Textures/bb_set_cosmetic_metallic.png",
+      "sha256": "7fa99fc177af5b24bb97c70255980af374e2404bd283a1bc0c2e70b3b10014a0"
+    },
+    {
+      "source": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\packaging\\FBX\\bb_set_cosmetic.fbm\\bb_set_cosmetic_albedo.png",
+      "destination": "Assets/Gamesim/Art/Authored/HouseSmallProps/bb_set_cosmetic.fbm/bb_set_cosmetic_albedo.png",
+      "sha256": "45a4ba0c4d2240cf1df68eec64c5a1e83d07ae3fd5c2dfbde0f7856fa1b0ef51"
+    },
+    {
+      "source": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\appliances\\mini-fridge-02\\bb_set_mini_fridge.fbx",
+      "destination": "Assets/Gamesim/Art/Authored/HouseSmallProps/bb_set_mini_fridge.fbx",
+      "sha256": "191111bf96e239e22054bf30ced58d49c7b262b5f6597ce66401df0ecf5617c1"
+    },
+    {
+      "source": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\appliances\\mini-fridge-02\\Textures\\bb_set_mini_fridge_albedo.png",
+      "destination": "Assets/Gamesim/Art/Authored/HouseSmallProps/Textures/bb_set_mini_fridge_albedo.png",
+      "sha256": "677e2c974b6258ef79891ce70e3b6d8640148e42c1d61eaa4a608b1939b82f16"
+    },
+    {
+      "source": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\appliances\\mini-fridge-02\\Textures\\bb_set_mini_fridge_metallic.png",
+      "destination": "Assets/Gamesim/Art/Authored/HouseSmallProps/Textures/bb_set_mini_fridge_metallic.png",
+      "sha256": "75d3190b5cf6861ad8a9beb2e2d7058f9d9b5af7d1ba1d06c76db0173762c5f3"
+    },
+    {
+      "source": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\appliances\\mini-fridge-02\\Textures\\bb_set_mini_fridge_normal.png",
+      "destination": "Assets/Gamesim/Art/Authored/HouseSmallProps/Textures/bb_set_mini_fridge_normal.png",
+      "sha256": "cc920eb7d9300b800e83a315285fa503d1aef69c75516daea2f754555b9b012d"
+    },
+    {
+      "source": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\appliances\\mini-fridge-02\\bb_set_mini_fridge.fbm\\bb_set_mini_fridge_albedo.png",
+      "destination": "Assets/Gamesim/Art/Authored/HouseSmallProps/bb_set_mini_fridge.fbm/bb_set_mini_fridge_albedo.png",
+      "sha256": "677e2c974b6258ef79891ce70e3b6d8640148e42c1d61eaa4a608b1939b82f16"
+    },
+    {
+      "source": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\appliances\\mini-fridge-02\\bb_set_mini_fridge.fbm\\bb_set_mini_fridge_normal.png",
+      "destination": "Assets/Gamesim/Art/Authored/HouseSmallProps/bb_set_mini_fridge.fbm/bb_set_mini_fridge_normal.png",
+      "sha256": "cc920eb7d9300b800e83a315285fa503d1aef69c75516daea2f754555b9b012d"
+    },
+    {
+      "source": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\appliances\\headphone-case-02\\bb_set_headphone_case.fbx",
+      "destination": "Assets/Gamesim/Art/Authored/HouseSmallProps/bb_set_headphone_case.fbx",
+      "sha256": "4c5618775da308879c0902ce2d7e3715db4db378a0803a97f4f430dd85623e61"
+    },
+    {
+      "source": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\appliances\\headphone-case-02\\Textures\\bb_set_headphone_case_albedo.png",
+      "destination": "Assets/Gamesim/Art/Authored/HouseSmallProps/Textures/bb_set_headphone_case_albedo.png",
+      "sha256": "60d0992dcbc20a3c50ec6e6ab75cf508c275ddfb4e9bca47841b9a95138bffab"
+    },
+    {
+      "source": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\appliances\\headphone-case-02\\Textures\\bb_set_headphone_case_metallic.png",
+      "destination": "Assets/Gamesim/Art/Authored/HouseSmallProps/Textures/bb_set_headphone_case_metallic.png",
+      "sha256": "be1aa521739ab360c8a1d156315311c8d1f4c1aa847374da59d4386ae47ed9ef"
+    },
+    {
+      "source": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\appliances\\headphone-case-02\\Textures\\bb_set_headphone_case_normal.png",
+      "destination": "Assets/Gamesim/Art/Authored/HouseSmallProps/Textures/bb_set_headphone_case_normal.png",
+      "sha256": "65def035d61f912e42a6784f3f1fcf1edfe5bc185c57972c266822cb2fd88ba8"
+    },
+    {
+      "source": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\appliances\\headphone-case-02\\bb_set_headphone_case.fbm\\bb_set_headphone_case_albedo.png",
+      "destination": "Assets/Gamesim/Art/Authored/HouseSmallProps/bb_set_headphone_case.fbm/bb_set_headphone_case_albedo.png",
+      "sha256": "60d0992dcbc20a3c50ec6e6ab75cf508c275ddfb4e9bca47841b9a95138bffab"
+    },
+    {
+      "source": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\appliances\\headphone-case-02\\bb_set_headphone_case.fbm\\bb_set_headphone_case_normal.png",
+      "destination": "Assets/Gamesim/Art/Authored/HouseSmallProps/bb_set_headphone_case.fbm/bb_set_headphone_case_normal.png",
+      "sha256": "65def035d61f912e42a6784f3f1fcf1edfe5bc185c57972c266822cb2fd88ba8"
+    }
+  ],
+  "models": [
+    {
+      "id": "bb_set_coffee_tin",
+      "size": [
+        0.12,
+        0.16,
+        0.12
+      ],
+      "triangles": 1344,
+      "fbx": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\packaging\\FBX\\bb_set_coffee_tin.fbx",
+      "fbx_sha256": "07e59d9b0437c2f45923ce14f4fdca02546650bd49d28a094ac4c23a410f24da",
+      "materials": [
+        {
+          "name": "bb_mat_bb_set_coffee_tin",
+          "baseColorFactorLinear": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "metallicFactor": 1,
+          "roughnessFactor": 1,
+          "usesLabelTextures": true,
+          "unityMetallic": 1,
+          "unitySmoothness": 1.0,
+          "unitySmoothnessNote": "Use scalar 1 with the supplied alpha smoothness map; do not derive zero from glTF roughnessFactor 1."
+        },
+        {
+          "name": "bb_mat_bb_set_coffee_tin_trim",
+          "baseColorFactorLinear": [
+            0.4793201684951782,
+            0.2746773064136505,
+            0.052860647439956665,
+            1
+          ],
+          "metallicFactor": 0.2800000011920929,
+          "roughnessFactor": 0.3799999952316284,
+          "usesLabelTextures": false,
+          "unityMetallic": 0.2800000011920929,
+          "unitySmoothness": 0.6200000047683716,
+          "unitySmoothnessNote": "Solid material: 1 - glTF roughness factor."
+        }
+      ],
+      "normal": false,
+      "texture_folder": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\packaging\\Textures"
+    },
+    {
+      "id": "bb_set_food_jar",
+      "size": [
+        0.11,
+        0.14,
+        0.11
+      ],
+      "triangles": 1056,
+      "fbx": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\packaging\\FBX\\bb_set_food_jar.fbx",
+      "fbx_sha256": "7ab202b3524f3c2ca709c3f11ca768e8ddec1b9c09c7f45b92a108ad32d0ead4",
+      "materials": [
+        {
+          "name": "bb_mat_bb_set_food_jar",
+          "baseColorFactorLinear": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "metallicFactor": 1,
+          "roughnessFactor": 1,
+          "usesLabelTextures": true,
+          "unityMetallic": 1,
+          "unitySmoothness": 1.0,
+          "unitySmoothnessNote": "Use scalar 1 with the supplied alpha smoothness map; do not derive zero from glTF roughnessFactor 1."
+        },
+        {
+          "name": "bb_mat_bb_set_food_jar_trim",
+          "baseColorFactorLinear": [
+            0.06480326503515244,
+            0.2788942754268646,
+            0.366252601146698,
+            1
+          ],
+          "metallicFactor": 0.2800000011920929,
+          "roughnessFactor": 0.3799999952316284,
+          "usesLabelTextures": false,
+          "unityMetallic": 0.2800000011920929,
+          "unitySmoothness": 0.6200000047683716,
+          "unitySmoothnessNote": "Solid material: 1 - glTF roughness factor."
+        }
+      ],
+      "normal": false,
+      "texture_folder": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\packaging\\Textures"
+    },
+    {
+      "id": "bb_set_cereal_carton",
+      "size": [
+        0.2,
+        0.3,
+        0.07
+      ],
+      "triangles": 432,
+      "fbx": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\packaging\\FBX\\bb_set_cereal_carton.fbx",
+      "fbx_sha256": "a66ad574bf3838feebc39755f1f1d0d5e3e551eedbba3b9d8a7b2cc1115dfcd2",
+      "materials": [
+        {
+          "name": "bb_mat_bb_set_cereal_carton",
+          "baseColorFactorLinear": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "metallicFactor": 1,
+          "roughnessFactor": 1,
+          "usesLabelTextures": true,
+          "unityMetallic": 1,
+          "unitySmoothness": 1.0,
+          "unitySmoothnessNote": "Use scalar 1 with the supplied alpha smoothness map; do not derive zero from glTF roughnessFactor 1."
+        },
+        {
+          "name": "bb_mat_bb_set_cereal_carton_trim",
+          "baseColorFactorLinear": [
+            0.4793201684951782,
+            0.2746773064136505,
+            0.052860647439956665,
+            1
+          ],
+          "metallicFactor": 0,
+          "roughnessFactor": 0.3799999952316284,
+          "usesLabelTextures": false,
+          "unityMetallic": 0,
+          "unitySmoothness": 0.6200000047683716,
+          "unitySmoothnessNote": "Solid material: 1 - glTF roughness factor."
+        },
+        {
+          "name": "bb_mat_bb_set_cereal_carton_base",
+          "baseColorFactorLinear": [
+            0.03799999877810478,
+            0.050999999046325684,
+            0.06300000101327896,
+            1
+          ],
+          "metallicFactor": 0,
+          "roughnessFactor": 0.550000011920929,
+          "usesLabelTextures": false,
+          "unityMetallic": 0,
+          "unitySmoothness": 0.44999998807907104,
+          "unitySmoothnessNote": "Solid material: 1 - glTF roughness factor."
+        }
+      ],
+      "normal": false,
+      "texture_folder": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\packaging\\Textures"
+    },
+    {
+      "id": "bb_set_snack_blue",
+      "size": [
+        0.16,
+        0.22,
+        0.05
+      ],
+      "triangles": 1424,
+      "fbx": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\packaging\\FBX\\bb_set_snack_blue.fbx",
+      "fbx_sha256": "01d2c555304029bb7bd21c96e731204fc56d707e1a0a40d7c56766f532f425d2",
+      "materials": [
+        {
+          "name": "bb_mat_bb_set_snack_blue",
+          "baseColorFactorLinear": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "metallicFactor": 1,
+          "roughnessFactor": 1,
+          "usesLabelTextures": true,
+          "unityMetallic": 1,
+          "unitySmoothness": 1.0,
+          "unitySmoothnessNote": "Use scalar 1 with the supplied alpha smoothness map; do not derive zero from glTF roughnessFactor 1."
+        },
+        {
+          "name": "bb_mat_bb_set_snack_blue_trim",
+          "baseColorFactorLinear": [
+            0.06480326503515244,
+            0.2788942754268646,
+            0.366252601146698,
+            1
+          ],
+          "metallicFactor": 0,
+          "roughnessFactor": 0.3799999952316284,
+          "usesLabelTextures": false,
+          "unityMetallic": 0,
+          "unitySmoothness": 0.6200000047683716,
+          "unitySmoothnessNote": "Solid material: 1 - glTF roughness factor."
+        }
+      ],
+      "normal": false,
+      "texture_folder": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\packaging\\Textures"
+    },
+    {
+      "id": "bb_set_snack_gold",
+      "size": [
+        0.16,
+        0.22,
+        0.05
+      ],
+      "triangles": 1424,
+      "fbx": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\packaging\\FBX\\bb_set_snack_gold.fbx",
+      "fbx_sha256": "714ae079a56e9f70986eb9441920cea626d9adf4739a25fcf836fa8da45e7bc9",
+      "materials": [
+        {
+          "name": "bb_mat_bb_set_snack_gold",
+          "baseColorFactorLinear": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "metallicFactor": 1,
+          "roughnessFactor": 1,
+          "usesLabelTextures": true,
+          "unityMetallic": 1,
+          "unitySmoothness": 1.0,
+          "unitySmoothnessNote": "Use scalar 1 with the supplied alpha smoothness map; do not derive zero from glTF roughnessFactor 1."
+        },
+        {
+          "name": "bb_mat_bb_set_snack_gold_trim",
+          "baseColorFactorLinear": [
+            0.4793201684951782,
+            0.2746773064136505,
+            0.052860647439956665,
+            1
+          ],
+          "metallicFactor": 0,
+          "roughnessFactor": 0.3799999952316284,
+          "usesLabelTextures": false,
+          "unityMetallic": 0,
+          "unitySmoothness": 0.6200000047683716,
+          "unitySmoothnessNote": "Solid material: 1 - glTF roughness factor."
+        }
+      ],
+      "normal": false,
+      "texture_folder": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\packaging\\Textures"
+    },
+    {
+      "id": "bb_set_hoh_snack_blue",
+      "size": [
+        0.14,
+        0.2,
+        0.05
+      ],
+      "triangles": 1424,
+      "fbx": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\packaging\\FBX\\bb_set_hoh_snack_blue.fbx",
+      "fbx_sha256": "7d590ff2fe4257c69a383067175c735392605855a724f4b7b4aed67fb5ed229c",
+      "materials": [
+        {
+          "name": "bb_mat_bb_set_hoh_snack_blue",
+          "baseColorFactorLinear": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "metallicFactor": 1,
+          "roughnessFactor": 1,
+          "usesLabelTextures": true,
+          "unityMetallic": 1,
+          "unitySmoothness": 1.0,
+          "unitySmoothnessNote": "Use scalar 1 with the supplied alpha smoothness map; do not derive zero from glTF roughnessFactor 1."
+        },
+        {
+          "name": "bb_mat_bb_set_hoh_snack_blue_trim",
+          "baseColorFactorLinear": [
+            0.06480326503515244,
+            0.2788942754268646,
+            0.366252601146698,
+            1
+          ],
+          "metallicFactor": 0,
+          "roughnessFactor": 0.3799999952316284,
+          "usesLabelTextures": false,
+          "unityMetallic": 0,
+          "unitySmoothness": 0.6200000047683716,
+          "unitySmoothnessNote": "Solid material: 1 - glTF roughness factor."
+        }
+      ],
+      "normal": false,
+      "texture_folder": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\packaging\\Textures"
+    },
+    {
+      "id": "bb_set_hoh_snack_gold",
+      "size": [
+        0.14,
+        0.2,
+        0.05
+      ],
+      "triangles": 1424,
+      "fbx": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\packaging\\FBX\\bb_set_hoh_snack_gold.fbx",
+      "fbx_sha256": "0f7f610dd87fab2fffc4b5746b8eb5e03129cb4afa1cec6be3d3fe280f5fdef2",
+      "materials": [
+        {
+          "name": "bb_mat_bb_set_hoh_snack_gold",
+          "baseColorFactorLinear": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "metallicFactor": 1,
+          "roughnessFactor": 1,
+          "usesLabelTextures": true,
+          "unityMetallic": 1,
+          "unitySmoothness": 1.0,
+          "unitySmoothnessNote": "Use scalar 1 with the supplied alpha smoothness map; do not derive zero from glTF roughnessFactor 1."
+        },
+        {
+          "name": "bb_mat_bb_set_hoh_snack_gold_trim",
+          "baseColorFactorLinear": [
+            0.4793201684951782,
+            0.2746773064136505,
+            0.052860647439956665,
+            1
+          ],
+          "metallicFactor": 0,
+          "roughnessFactor": 0.3799999952316284,
+          "usesLabelTextures": false,
+          "unityMetallic": 0,
+          "unitySmoothness": 0.6200000047683716,
+          "unitySmoothnessNote": "Solid material: 1 - glTF roughness factor."
+        }
+      ],
+      "normal": false,
+      "texture_folder": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\packaging\\Textures"
+    },
+    {
+      "id": "bb_set_game_strategy",
+      "size": [
+        0.3,
+        0.05,
+        0.2
+      ],
+      "triangles": 216,
+      "fbx": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\packaging\\FBX\\bb_set_game_strategy.fbx",
+      "fbx_sha256": "ee320717271adb6fdb83c48a6c5cfe5cd29e90876e3975d9bbbcd1146104ff4e",
+      "materials": [
+        {
+          "name": "bb_mat_bb_set_game_strategy_base",
+          "baseColorFactorLinear": [
+            0.03799999877810478,
+            0.050999999046325684,
+            0.06300000101327896,
+            1
+          ],
+          "metallicFactor": 0,
+          "roughnessFactor": 0.550000011920929,
+          "usesLabelTextures": false,
+          "unityMetallic": 0,
+          "unitySmoothness": 0.44999998807907104,
+          "unitySmoothnessNote": "Solid material: 1 - glTF roughness factor."
+        },
+        {
+          "name": "bb_mat_bb_set_game_strategy",
+          "baseColorFactorLinear": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "metallicFactor": 1,
+          "roughnessFactor": 1,
+          "usesLabelTextures": true,
+          "unityMetallic": 1,
+          "unitySmoothness": 1.0,
+          "unitySmoothnessNote": "Use scalar 1 with the supplied alpha smoothness map; do not derive zero from glTF roughnessFactor 1."
+        },
+        {
+          "name": "bb_mat_bb_set_game_strategy_trim",
+          "baseColorFactorLinear": [
+            0.06480326503515244,
+            0.2788942754268646,
+            0.366252601146698,
+            1
+          ],
+          "metallicFactor": 0,
+          "roughnessFactor": 0.3799999952316284,
+          "usesLabelTextures": false,
+          "unityMetallic": 0,
+          "unitySmoothness": 0.6200000047683716,
+          "unitySmoothnessNote": "Solid material: 1 - glTF roughness factor."
+        }
+      ],
+      "normal": false,
+      "texture_folder": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\packaging\\Textures"
+    },
+    {
+      "id": "bb_set_game_alliance",
+      "size": [
+        0.3,
+        0.05,
+        0.2
+      ],
+      "triangles": 216,
+      "fbx": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\packaging\\FBX\\bb_set_game_alliance.fbx",
+      "fbx_sha256": "4f4cc77879545d705d9bbbbc0af97a41e8d3e7bf444e57797f6eda2816080a29",
+      "materials": [
+        {
+          "name": "bb_mat_bb_set_game_alliance_base",
+          "baseColorFactorLinear": [
+            0.03799999877810478,
+            0.050999999046325684,
+            0.06300000101327896,
+            1
+          ],
+          "metallicFactor": 0,
+          "roughnessFactor": 0.550000011920929,
+          "usesLabelTextures": false,
+          "unityMetallic": 0,
+          "unitySmoothness": 0.44999998807907104,
+          "unitySmoothnessNote": "Solid material: 1 - glTF roughness factor."
+        },
+        {
+          "name": "bb_mat_bb_set_game_alliance",
+          "baseColorFactorLinear": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "metallicFactor": 1,
+          "roughnessFactor": 1,
+          "usesLabelTextures": true,
+          "unityMetallic": 1,
+          "unitySmoothness": 1.0,
+          "unitySmoothnessNote": "Use scalar 1 with the supplied alpha smoothness map; do not derive zero from glTF roughnessFactor 1."
+        },
+        {
+          "name": "bb_mat_bb_set_game_alliance_trim",
+          "baseColorFactorLinear": [
+            0.4793201684951782,
+            0.2746773064136505,
+            0.052860647439956665,
+            1
+          ],
+          "metallicFactor": 0,
+          "roughnessFactor": 0.3799999952316284,
+          "usesLabelTextures": false,
+          "unityMetallic": 0,
+          "unitySmoothness": 0.6200000047683716,
+          "unitySmoothnessNote": "Solid material: 1 - glTF roughness factor."
+        }
+      ],
+      "normal": false,
+      "texture_folder": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\packaging\\Textures"
+    },
+    {
+      "id": "bb_set_game_social",
+      "size": [
+        0.3,
+        0.05,
+        0.2
+      ],
+      "triangles": 216,
+      "fbx": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\packaging\\FBX\\bb_set_game_social.fbx",
+      "fbx_sha256": "8b2e24005c44ce8ea181c6785a1ce5fb9faff79774278b5f6383ddf12b2369ea",
+      "materials": [
+        {
+          "name": "bb_mat_bb_set_game_social_base",
+          "baseColorFactorLinear": [
+            0.03799999877810478,
+            0.050999999046325684,
+            0.06300000101327896,
+            1
+          ],
+          "metallicFactor": 0,
+          "roughnessFactor": 0.550000011920929,
+          "usesLabelTextures": false,
+          "unityMetallic": 0,
+          "unitySmoothness": 0.44999998807907104,
+          "unitySmoothnessNote": "Solid material: 1 - glTF roughness factor."
+        },
+        {
+          "name": "bb_mat_bb_set_game_social",
+          "baseColorFactorLinear": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "metallicFactor": 1,
+          "roughnessFactor": 1,
+          "usesLabelTextures": true,
+          "unityMetallic": 1,
+          "unitySmoothness": 1.0,
+          "unitySmoothnessNote": "Use scalar 1 with the supplied alpha smoothness map; do not derive zero from glTF roughnessFactor 1."
+        },
+        {
+          "name": "bb_mat_bb_set_game_social_trim",
+          "baseColorFactorLinear": [
+            0.06480326503515244,
+            0.2788942754268646,
+            0.366252601146698,
+            1
+          ],
+          "metallicFactor": 0,
+          "roughnessFactor": 0.3799999952316284,
+          "usesLabelTextures": false,
+          "unityMetallic": 0,
+          "unitySmoothness": 0.6200000047683716,
+          "unitySmoothnessNote": "Solid material: 1 - glTF roughness factor."
+        }
+      ],
+      "normal": false,
+      "texture_folder": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\packaging\\Textures"
+    },
+    {
+      "id": "bb_set_toiletry",
+      "size": [
+        0.06,
+        0.1,
+        0.06
+      ],
+      "triangles": 864,
+      "fbx": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\packaging\\FBX\\bb_set_toiletry.fbx",
+      "fbx_sha256": "0ed6c5ad0769201c311654bf3879fe86ccf0040e614b318cffcc6b53af3b26d8",
+      "materials": [
+        {
+          "name": "bb_mat_bb_set_toiletry",
+          "baseColorFactorLinear": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "metallicFactor": 1,
+          "roughnessFactor": 1,
+          "usesLabelTextures": true,
+          "unityMetallic": 1,
+          "unitySmoothness": 1.0,
+          "unitySmoothnessNote": "Use scalar 1 with the supplied alpha smoothness map; do not derive zero from glTF roughnessFactor 1."
+        },
+        {
+          "name": "bb_mat_bb_set_toiletry_trim",
+          "baseColorFactorLinear": [
+            0.06480326503515244,
+            0.2788942754268646,
+            0.366252601146698,
+            1
+          ],
+          "metallicFactor": 0,
+          "roughnessFactor": 0.3799999952316284,
+          "usesLabelTextures": false,
+          "unityMetallic": 0,
+          "unitySmoothness": 0.6200000047683716,
+          "unitySmoothnessNote": "Solid material: 1 - glTF roughness factor."
+        }
+      ],
+      "normal": false,
+      "texture_folder": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\packaging\\Textures"
+    },
+    {
+      "id": "bb_set_cosmetic",
+      "size": [
+        0.06,
+        0.1,
+        0.06
+      ],
+      "triangles": 768,
+      "fbx": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\packaging\\FBX\\bb_set_cosmetic.fbx",
+      "fbx_sha256": "290a006e5361c3800115b86105078c0455e7ecfbf96c0b8a1dd068674eeef265",
+      "materials": [
+        {
+          "name": "bb_mat_bb_set_cosmetic",
+          "baseColorFactorLinear": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "metallicFactor": 1,
+          "roughnessFactor": 1,
+          "usesLabelTextures": true,
+          "unityMetallic": 1,
+          "unitySmoothness": 1.0,
+          "unitySmoothnessNote": "Use scalar 1 with the supplied alpha smoothness map; do not derive zero from glTF roughnessFactor 1."
+        },
+        {
+          "name": "bb_mat_bb_set_cosmetic_trim",
+          "baseColorFactorLinear": [
+            0.4793201684951782,
+            0.2746773064136505,
+            0.052860647439956665,
+            1
+          ],
+          "metallicFactor": 0,
+          "roughnessFactor": 0.3799999952316284,
+          "usesLabelTextures": false,
+          "unityMetallic": 0,
+          "unitySmoothness": 0.6200000047683716,
+          "unitySmoothnessNote": "Solid material: 1 - glTF roughness factor."
+        }
+      ],
+      "normal": false,
+      "texture_folder": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\packaging\\Textures"
+    },
+    {
+      "id": "bb_set_mini_fridge",
+      "size": [
+        0.5,
+        0.7,
+        0.5
+      ],
+      "triangles": 3880,
+      "fbx": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\appliances\\mini-fridge-02\\bb_set_mini_fridge.fbx",
+      "fbx_sha256": "191111bf96e239e22054bf30ced58d49c7b262b5f6597ce66401df0ecf5617c1",
+      "materials": [
+        {
+          "name": "bb_mat_mini_fridge_atlas",
+          "baseColorFactorLinear": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "metallicFactor": 1,
+          "roughnessFactor": 1,
+          "usesLabelTextures": true
+        }
+      ],
+      "normal": true,
+      "texture_folder": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\appliances\\mini-fridge-02\\Textures"
+    },
+    {
+      "id": "bb_set_headphone_case",
+      "size": [
+        0.16,
+        0.06,
+        0.16
+      ],
+      "triangles": 2308,
+      "fbx": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\appliances\\headphone-case-02\\bb_set_headphone_case.fbx",
+      "fbx_sha256": "4c5618775da308879c0902ce2d7e3715db4db378a0803a97f4f430dd85623e61",
+      "materials": [
+        {
+          "name": "bb_mat_headphone_case_atlas",
+          "baseColorFactorLinear": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "metallicFactor": 1,
+          "roughnessFactor": 1,
+          "usesLabelTextures": true
+        }
+      ],
+      "normal": true,
+      "texture_folder": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\appliances\\headphone-case-02\\Textures"
+    }
+  ]
+}

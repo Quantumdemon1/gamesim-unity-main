@@ -1,0 +1,23 @@
+{
+  "results": [
+    {
+      "sourceCount": 45,
+      "responseFile": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\competition-code\\house-partial-probes\\Gamesim.Editor.rsp",
+      "name": "Gamesim.Editor",
+      "compilerExit": 0
+    },
+    {
+      "sourceCount": 2,
+      "responseFile": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\competition-code\\house-partial-probes\\HouseStagedEditModeProbe.rsp",
+      "name": "HouseStagedEditModeProbe",
+      "compilerExit": 0
+    }
+  ],
+  "validationScope": "Partial: current Editor with staged overrides and two staged test files; cached NoUMA Runtime/Simulation dependencies; tests not executed",
+  "sourceSha256": {
+    "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\house-code\\postimage\\Assets\\Gamesim\\Tests\\EditMode\\HouseSmallPropAssetTests.cs": "3feeb46efb627d3df316435864b98f60e5d97272bb51175abca78a075d35ce1e",
+    "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\house-code\\postimage\\Assets\\Gamesim\\Tests\\EditMode\\RoomFinishTests.cs": "dd9508c3af55d2cdde1f386379e4f50547de551a257be277719954ae510ca36a",
+    "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\house-code\\postimage\\Assets\\Gamesim\\Editor\\HouseRoomFinish.cs": "fc0b90717d670456eced144ba18cd224e42b7d99a2a6128e9a7f88506a8e2e9c",
+    "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\house-code\\postimage\\Assets\\Gamesim\\Editor\\HouseSmallPropMaterials.cs": "0362bb724fd6e7b58287b8e67b3cb256741a4ffbdc006ee1f85c08f6a3458bb0"
+  }
+}

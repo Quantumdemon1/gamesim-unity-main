@@ -1,0 +1,23 @@
+{
+  "completedAt": "2026-10-21T04:01:01.413Z",
+  "destination": {
+    "assetId": "bb_comp_pairconsole",
+    "version": "1.0.0"
+  },
+  "evidence": {
+    "blenderNormalizationPerformed": false,
+    "gpuImportTestPerformed": false,
+    "humanVisualReviewPerformed": false,
+    "modelBytesCopiedAndHashed": true,
+    "policyValidationCompleted": true,
+    "staticInspectionCompleted": true
+  },
+  "manifestSha256": "9ee8580aca0e754fed11afb04d57ffcf152fbc939930f190b26447e47a4ee020",
+  "packageId": "pkg_f5ebfb4870ba5c011b38e544",
+  "schema": "game_dev.package_receipt.v1",
+  "source": {
+    "bytes": 301700,
+    "fileName": "bb_comp_PairConsole.glb",
+    "sha256": "c47dc453565c8a7927578afcb5ec5562b26ae802cf814625ea26980792538c51"
+  }
+}

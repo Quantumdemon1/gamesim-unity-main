@@ -1,0 +1,23 @@
+{
+  "completedAt": "2026-10-21T04:06:07.311Z",
+  "destination": {
+    "assetId": "bb_set_hoh_snack_blue",
+    "version": "1.0.0"
+  },
+  "evidence": {
+    "blenderNormalizationPerformed": false,
+    "gpuImportTestPerformed": false,
+    "humanVisualReviewPerformed": false,
+    "modelBytesCopiedAndHashed": true,
+    "policyValidationCompleted": true,
+    "staticInspectionCompleted": true
+  },
+  "manifestSha256": "ff59aa2d0362be3d4b7fad031567c6dc1674cb598d58686ef1fd7884bf58eb33",
+  "packageId": "pkg_5951944e396edc7a88a07f1a",
+  "schema": "game_dev.package_receipt.v1",
+  "source": {
+    "bytes": 545052,
+    "fileName": "bb_set_hoh_snack_blue.glb",
+    "sha256": "0e7ea4f2c1cccbf4afb79dd7398ae9c805d6e2a0fd7c78401457dd8d4839cf5e"
+  }
+}

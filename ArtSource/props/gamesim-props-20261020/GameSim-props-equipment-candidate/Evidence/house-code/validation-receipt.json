@@ -1,0 +1,28 @@
+{
+  "created_utc": "2026-10-21T04:07:56.214989+00:00",
+  "source_guard_check": "PASS: exact live source hashes, staged postimages, absent new destinations and both git apply --check operations. Nothing written to project.",
+  "combined_patch_check_exit": 0,
+  "all_60_native_input_hashes_still_match": true,
+  "compile_receipt": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\competition-code\\house-partial-probes\\probe-results.json",
+  "compile_receipt_sha256": "1026681d0affe8043930a53533c75c6d147cf932841d6a5761dbf767572b1394",
+  "compiled_postimage_hashes_match": true,
+  "compile_scope": "Partial: current Editor with staged overrides and two staged test files; cached NoUMA Runtime/Simulation dependencies; tests not executed",
+  "compile_results": [
+    {
+      "sourceCount": 45,
+      "responseFile": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\competition-code\\house-partial-probes\\Gamesim.Editor.rsp",
+      "name": "Gamesim.Editor",
+      "compilerExit": 0
+    },
+    {
+      "sourceCount": 2,
+      "responseFile": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\competition-code\\house-partial-probes\\HouseStagedEditModeProbe.rsp",
+      "name": "HouseStagedEditModeProbe",
+      "compilerExit": 0
+    }
+  ],
+  "unity_invoked": false,
+  "tests_executed": false,
+  "native_assets_imported": false,
+  "scene_modified": false
+}

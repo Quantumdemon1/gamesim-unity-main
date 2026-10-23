@@ -1,0 +1,31 @@
+{
+  "status": "staged only; Unity import/tests pending",
+  "postimages": [
+    {
+      "path": "Assets/Gamesim/Editor/HouseRoomFinish.cs",
+      "sha256": "fc0b90717d670456eced144ba18cd224e42b7d99a2a6128e9a7f88506a8e2e9c",
+      "bytes": 86348
+    },
+    {
+      "path": "Assets/Gamesim/Editor/HouseSmallPropMaterials.cs",
+      "sha256": "0362bb724fd6e7b58287b8e67b3cb256741a4ffbdc006ee1f85c08f6a3458bb0",
+      "bytes": 15440
+    },
+    {
+      "path": "Assets/Gamesim/Tests/EditMode/HouseSmallPropAssetTests.cs",
+      "sha256": "3feeb46efb627d3df316435864b98f60e5d97272bb51175abca78a075d35ce1e",
+      "bytes": 16404
+    },
+    {
+      "path": "Assets/Gamesim/Tests/EditMode/RoomFinishTests.cs",
+      "sha256": "dd9508c3af55d2cdde1f386379e4f50547de551a257be277719954ae510ca36a",
+      "bytes": 59308
+    }
+  ],
+  "new_source_files": [
+    "Assets/Gamesim/Editor/HouseSmallPropMaterials.cs",
+    "Assets/Gamesim/Tests/EditMode/HouseSmallPropAssetTests.cs"
+  ],
+  "source_guards": "source-guard.json",
+  "asset_input_manifest_sha256": "253de033fa8b7ef994ccca84abd17a2d561b204250dfa0ed961ae4e06e826112"
+}

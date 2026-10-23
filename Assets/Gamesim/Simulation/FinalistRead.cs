@@ -325,7 +325,10 @@ namespace Gamesim.Simulation
 
         /// <summary>
         /// The name a line calls someone by: the first word that is not a title ("Dr. Will Kirby"
-        /// is Will), as the cast screen's CastSelect.FirstName has it.
+        /// is Will). It splits on spaces only, as it did when the seasons now saved were played:
+        /// its words go into saved log text (Negotiation.PriceWords), so a name with a tab or an
+        /// ideographic space must give the same line it gave then. Display text, which is not
+        /// saved, uses <see cref="CharacterNames.FirstName"/>, which splits on any whitespace.
         /// </summary>
         public static string FirstName(string name)
         {

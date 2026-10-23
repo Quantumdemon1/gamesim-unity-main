@@ -499,7 +499,7 @@ namespace Gamesim.Tests.EditMode
                     NpcSocialActions.Court(s, s.Find(A(s)), s.Find(s.playerId));
                     Assert.That(s.replyCards, Has.Count.EqualTo(1));
                     Call(typeof(EpisodeEngine), "AnswerHoHPitch", s, s.replyCards.Single(), "promise-safety"); break;
-                case UnifiedCommitments.NpcPromise: Call(typeof(NpcPromises), "Give", s, A(s), B(s), PromiseKind.Safety); break;
+                case UnifiedCommitments.NpcPromise: Call(typeof(NpcPromises), "Give", s, A(s), B(s), PromiseKind.Safety, null); break;
                 case UnifiedCommitments.StoryPromise: Call(typeof(EpisodeEngine), "StoryPromise", s, s.Find(s.playerId), s.Find(A(s)), "Safety"); break;
                 case UnifiedCommitments.PlayerDeal:
                     SeedFor(s, roll => roll * 100 < PlayerDeals.AcceptanceChance(s, A(s), DealKind.SafetyAgreement, null));
@@ -513,7 +513,7 @@ namespace Gamesim.Tests.EditMode
                     s.phase = EpisodePhase.Nomination; s.hohId = A(s);
                     SeedFor(s, roll => roll * 100 < StrategyRules.Chance(s, A(s), LobbyAsk.Spare, s.playerId, LobbyApproach.Deal));
                     Call(typeof(EpisodeEngine), "Lobby", s, new EpisodeCommand { targetId = A(s), secondTargetId = s.playerId,
-                        text = LobbyAsk.Encode(LobbyAsk.Spare, LobbyApproach.Deal) }); break;
+                        text = LobbyAsk.Encode(LobbyAsk.Spare, LobbyApproach.Deal) }, null); break;
                 case UnifiedCommitments.StoryDeal: Call(typeof(EpisodeEngine), "StoryDeal", s, s.Find(s.playerId), s.Find(A(s)), null, DealKind.SafetyAgreement); break;
                 default: Assert.Fail("Unknown actual source writer: " + origin); break;
             }
@@ -595,6 +595,8 @@ namespace Gamesim.Tests.EditMode
             string before = Json(s); Assert.That(UnifiedSafetySaveReferences.TryValidate(s, out string error), Is.False);
             Assert.That(error, Is.Not.Null.And.Not.Empty); Assert.That(Json(s), Is.EqualTo(before));
         }
+        // Dialogue V2 threads a pending paid-dialogue handle through Lobby and NpcPromises.Give. Reflection
+        // fills no defaults, so the callers pass it: null, which is what Apply passes for every ordinary command.
         private static object Call(Type owner, string name, params object[] args)
         {
             var method = owner.GetMethod(name, BindingFlags.NonPublic | BindingFlags.Static);

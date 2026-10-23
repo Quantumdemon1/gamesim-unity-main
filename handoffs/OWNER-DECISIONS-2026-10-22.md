@@ -60,6 +60,18 @@ consistent with the owner's earlier confirmation that no other chat reserves it
 (`R2_INTEGRATION_20261018.md`). It comes before the R3/R4 persisted records, not at R5. Any other
 session that needs a schema takes the next free number after this claim.
 
+**Addendum, 22 Oct: the dialogue V2 storage is this schema 29 (delegated call, confirmed by the
+owner).** The dialogue V2 source (`9d87b59e`, PR #28) already writes schema 29: `dialogueRulesVersion`
+and a `dialogue` store (`DialogueState`: role grants, time receipts, veto occasions and dialogue
+episodes) on the root, and `conditionalVeto` on each commitment row. The main line accepted that
+shape as the schema 29 claimed here, and the owner confirmed it the same day. It is the role,
+dialogue and time contract of `ROLE_DIALOGUE_ECONOMY_20261012.md`, not speculative fields. The
+Frozen28 freeze is on the real save path: every schema 1 to 28 save goes through
+`UpgradeV28ToV29`, which runs `FrozenEpisodeV28.Validate` before it adds the off, empty and null
+literals. Shipping seasons stay on dialogue rules 0 with empty storage. Schema 29 freezes when
+PR #28 merges; any persisted field after that takes schema 30, including R3/R4 records that need
+more than this store. Section 4's gate still applies before PR #28 merges.
+
 ## 6. How long a season may take (owner)
 
 The owner: "no game should take longer than 45 minutes with 8 players; with 12, a longer limit

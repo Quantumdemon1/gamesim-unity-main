@@ -1,0 +1,23 @@
+{
+  "completedAt": "2026-10-21T04:06:21.112Z",
+  "destination": {
+    "assetId": "bb_set_cosmetic",
+    "version": "1.0.0"
+  },
+  "evidence": {
+    "blenderNormalizationPerformed": false,
+    "gpuImportTestPerformed": false,
+    "humanVisualReviewPerformed": false,
+    "modelBytesCopiedAndHashed": true,
+    "policyValidationCompleted": true,
+    "staticInspectionCompleted": true
+  },
+  "manifestSha256": "0aa6b89d0e5779e33c98b5ef7c0a817ef48461ff80b1f053bad4f37c5b0cf465",
+  "packageId": "pkg_406f86f29a6d0498f3baceb5",
+  "schema": "game_dev.package_receipt.v1",
+  "source": {
+    "bytes": 542736,
+    "fileName": "bb_set_cosmetic.glb",
+    "sha256": "6736612d29b2ef7a46aed0f9e8b6be3e00d84df0b91b9675554e07ff662d481b"
+  }
+}

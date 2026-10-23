@@ -1,0 +1,6213 @@
+{
+  "blender": "5.2.2 LTS",
+  "checked_count": 39,
+  "elapsed_seconds": 7.058306499995524,
+  "expected_file_count": 39,
+  "failures": [],
+  "manifest_sha256": "fb2f66743329ed850816f78dd457f23a12b1f25ea0bcd25a64949ae531b24898",
+  "parts": [
+    {
+      "degenerate_triangles": 0,
+      "errors": [],
+      "family": "Signals",
+      "fbx_axis_units": {
+        "CoordAxis": [
+          0
+        ],
+        "CoordAxisSign": [
+          1
+        ],
+        "FrontAxis": [
+          2
+        ],
+        "FrontAxisSign": [
+          1
+        ],
+        "UnitScaleFactor": [
+          100.0
+        ],
+        "UpAxis": [
+          1
+        ],
+        "UpAxisSign": [
+          1
+        ]
+      },
+      "fbx_geometry_bounds": {
+        "center": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "max": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "min": [
+          -0.5,
+          -0.5,
+          -0.5
+        ],
+        "size": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "file": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\competition-art-02\\Parts\\bb_comp_Signals_StanceRail.fbx",
+      "material_slots": 1,
+      "matrix_world": [
+        [
+          1.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          7.549790126404332e-08,
+          -1.0,
+          0.0
+        ],
+        [
+          0.0,
+          1.0,
+          7.549790126404332e-08,
+          0.0
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      ],
+      "name": "Signals_StanceRail",
+      "normals_finite": true,
+      "normals_unit": true,
+      "object_location": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "object_rotation_euler": [
+        1.570796251296997,
+        -0.0,
+        0.0
+      ],
+      "object_scale": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "partKind": "StanceRail",
+      "raw_mesh_bounds": {
+        "center": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "max": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "min": [
+          -0.5,
+          -0.5,
+          -0.5
+        ],
+        "size": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "raw_mesh_vertex_mean": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "sha256": "3915ca7678fe4ceb6a251b2d53d78e0b93061b487a735e8d2bc86c3a4de95b9b",
+      "triangles": 60,
+      "used_material_indices": [
+        0
+      ],
+      "uv_finite": true,
+      "uv_within_0_1": true,
+      "vertices": 32,
+      "world_bounds": {
+        "center": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "max": [
+          0.5,
+          0.5,
+          0.5000000596046448
+        ],
+        "min": [
+          -0.5,
+          -0.5,
+          -0.5000000596046448
+        ],
+        "size": [
+          1.0,
+          1.0,
+          1.0000001192092896
+        ]
+      },
+      "world_vertex_mean": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "degenerate_triangles": 0,
+      "errors": [],
+      "family": "Signals",
+      "fbx_axis_units": {
+        "CoordAxis": [
+          0
+        ],
+        "CoordAxisSign": [
+          1
+        ],
+        "FrontAxis": [
+          2
+        ],
+        "FrontAxisSign": [
+          1
+        ],
+        "UnitScaleFactor": [
+          100.0
+        ],
+        "UpAxis": [
+          1
+        ],
+        "UpAxisSign": [
+          1
+        ]
+      },
+      "fbx_geometry_bounds": {
+        "center": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "max": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "min": [
+          -0.5,
+          -0.5,
+          -0.5
+        ],
+        "size": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "file": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\competition-art-02\\Parts\\bb_comp_Signals_ProgressBacking.fbx",
+      "material_slots": 1,
+      "matrix_world": [
+        [
+          1.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          7.549790126404332e-08,
+          -1.0,
+          0.0
+        ],
+        [
+          0.0,
+          1.0,
+          7.549790126404332e-08,
+          0.0
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      ],
+      "name": "Signals_ProgressBacking",
+      "normals_finite": true,
+      "normals_unit": true,
+      "object_location": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "object_rotation_euler": [
+        1.570796251296997,
+        -0.0,
+        0.0
+      ],
+      "object_scale": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "partKind": "ProgressBacking",
+      "raw_mesh_bounds": {
+        "center": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "max": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "min": [
+          -0.5,
+          -0.5,
+          -0.5
+        ],
+        "size": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "raw_mesh_vertex_mean": [
+        -1.862645149230957e-09,
+        0.0,
+        0.0
+      ],
+      "sha256": "c4c466d5cf917c3b1fd52b64dff2994ccd37b8cbc82f2151ccb5d86240f54a89",
+      "triangles": 60,
+      "used_material_indices": [
+        0
+      ],
+      "uv_finite": true,
+      "uv_within_0_1": true,
+      "vertices": 32,
+      "world_bounds": {
+        "center": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "max": [
+          0.5,
+          0.5000000596046448,
+          0.5
+        ],
+        "min": [
+          -0.5,
+          -0.5000000596046448,
+          -0.5
+        ],
+        "size": [
+          1.0,
+          1.0000001192092896,
+          1.0
+        ]
+      },
+      "world_vertex_mean": [
+        -1.862645149230957e-09,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "degenerate_triangles": 0,
+      "errors": [],
+      "family": "PairConsole",
+      "fbx_axis_units": {
+        "CoordAxis": [
+          0
+        ],
+        "CoordAxisSign": [
+          1
+        ],
+        "FrontAxis": [
+          2
+        ],
+        "FrontAxisSign": [
+          1
+        ],
+        "UnitScaleFactor": [
+          100.0
+        ],
+        "UpAxis": [
+          1
+        ],
+        "UpAxisSign": [
+          1
+        ]
+      },
+      "fbx_geometry_bounds": {
+        "center": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "max": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "min": [
+          -0.5,
+          -0.5,
+          -0.5
+        ],
+        "size": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "file": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\competition-art-02\\Parts\\bb_comp_PairConsole_StanceRail.fbx",
+      "material_slots": 1,
+      "matrix_world": [
+        [
+          1.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          7.549790126404332e-08,
+          -1.0,
+          0.0
+        ],
+        [
+          0.0,
+          1.0,
+          7.549790126404332e-08,
+          0.0
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      ],
+      "name": "PairConsole_StanceRail",
+      "normals_finite": true,
+      "normals_unit": true,
+      "object_location": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "object_rotation_euler": [
+        1.570796251296997,
+        -0.0,
+        0.0
+      ],
+      "object_scale": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "partKind": "StanceRail",
+      "raw_mesh_bounds": {
+        "center": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "max": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "min": [
+          -0.5,
+          -0.5,
+          -0.5
+        ],
+        "size": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "raw_mesh_vertex_mean": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "sha256": "7232e8476be0842ac24284bdc3417891ffe7fd4e468adf19c3074ed8342025f1",
+      "triangles": 60,
+      "used_material_indices": [
+        0
+      ],
+      "uv_finite": true,
+      "uv_within_0_1": true,
+      "vertices": 32,
+      "world_bounds": {
+        "center": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "max": [
+          0.5,
+          0.5,
+          0.5000000596046448
+        ],
+        "min": [
+          -0.5,
+          -0.5,
+          -0.5000000596046448
+        ],
+        "size": [
+          1.0,
+          1.0,
+          1.0000001192092896
+        ]
+      },
+      "world_vertex_mean": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "degenerate_triangles": 0,
+      "errors": [],
+      "family": "PairConsole",
+      "fbx_axis_units": {
+        "CoordAxis": [
+          0
+        ],
+        "CoordAxisSign": [
+          1
+        ],
+        "FrontAxis": [
+          2
+        ],
+        "FrontAxisSign": [
+          1
+        ],
+        "UnitScaleFactor": [
+          100.0
+        ],
+        "UpAxis": [
+          1
+        ],
+        "UpAxisSign": [
+          1
+        ]
+      },
+      "fbx_geometry_bounds": {
+        "center": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "max": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "min": [
+          -0.5,
+          -0.5,
+          -0.5
+        ],
+        "size": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "file": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\competition-art-02\\Parts\\bb_comp_PairConsole_ProgressBacking.fbx",
+      "material_slots": 1,
+      "matrix_world": [
+        [
+          1.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          7.549790126404332e-08,
+          -1.0,
+          0.0
+        ],
+        [
+          0.0,
+          1.0,
+          7.549790126404332e-08,
+          0.0
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      ],
+      "name": "PairConsole_ProgressBacking",
+      "normals_finite": true,
+      "normals_unit": true,
+      "object_location": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "object_rotation_euler": [
+        1.570796251296997,
+        -0.0,
+        0.0
+      ],
+      "object_scale": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "partKind": "ProgressBacking",
+      "raw_mesh_bounds": {
+        "center": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "max": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "min": [
+          -0.5,
+          -0.5,
+          -0.5
+        ],
+        "size": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "raw_mesh_vertex_mean": [
+        -1.862645149230957e-09,
+        0.0,
+        0.0
+      ],
+      "sha256": "7b630eeaa2976c4f49a20da5e2609151d60d39599d3236298010db2565fff362",
+      "triangles": 60,
+      "used_material_indices": [
+        0
+      ],
+      "uv_finite": true,
+      "uv_within_0_1": true,
+      "vertices": 32,
+      "world_bounds": {
+        "center": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "max": [
+          0.5,
+          0.5000000596046448,
+          0.5
+        ],
+        "min": [
+          -0.5,
+          -0.5000000596046448,
+          -0.5
+        ],
+        "size": [
+          1.0,
+          1.0000001192092896,
+          1.0
+        ]
+      },
+      "world_vertex_mean": [
+        -1.862645149230957e-09,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "degenerate_triangles": 0,
+      "errors": [],
+      "family": "GripRig",
+      "fbx_axis_units": {
+        "CoordAxis": [
+          0
+        ],
+        "CoordAxisSign": [
+          1
+        ],
+        "FrontAxis": [
+          2
+        ],
+        "FrontAxisSign": [
+          1
+        ],
+        "UnitScaleFactor": [
+          100.0
+        ],
+        "UpAxis": [
+          1
+        ],
+        "UpAxisSign": [
+          1
+        ]
+      },
+      "fbx_geometry_bounds": {
+        "center": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "max": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "min": [
+          -0.5,
+          -0.5,
+          -0.5
+        ],
+        "size": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "file": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\competition-art-02\\Parts\\bb_comp_GripRig_StanceRail.fbx",
+      "material_slots": 1,
+      "matrix_world": [
+        [
+          1.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          7.549790126404332e-08,
+          -1.0,
+          0.0
+        ],
+        [
+          0.0,
+          1.0,
+          7.549790126404332e-08,
+          0.0
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      ],
+      "name": "GripRig_StanceRail",
+      "normals_finite": true,
+      "normals_unit": true,
+      "object_location": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "object_rotation_euler": [
+        1.570796251296997,
+        -0.0,
+        0.0
+      ],
+      "object_scale": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "partKind": "StanceRail",
+      "raw_mesh_bounds": {
+        "center": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "max": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "min": [
+          -0.5,
+          -0.5,
+          -0.5
+        ],
+        "size": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "raw_mesh_vertex_mean": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "sha256": "1edd076c67ba00dd0beafb79fbd8c008a568b46da3a8eb0fca778c57b9760e66",
+      "triangles": 60,
+      "used_material_indices": [
+        0
+      ],
+      "uv_finite": true,
+      "uv_within_0_1": true,
+      "vertices": 32,
+      "world_bounds": {
+        "center": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "max": [
+          0.5,
+          0.5,
+          0.5000000596046448
+        ],
+        "min": [
+          -0.5,
+          -0.5,
+          -0.5000000596046448
+        ],
+        "size": [
+          1.0,
+          1.0,
+          1.0000001192092896
+        ]
+      },
+      "world_vertex_mean": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "degenerate_triangles": 0,
+      "errors": [],
+      "family": "GripRig",
+      "fbx_axis_units": {
+        "CoordAxis": [
+          0
+        ],
+        "CoordAxisSign": [
+          1
+        ],
+        "FrontAxis": [
+          2
+        ],
+        "FrontAxisSign": [
+          1
+        ],
+        "UnitScaleFactor": [
+          100.0
+        ],
+        "UpAxis": [
+          1
+        ],
+        "UpAxisSign": [
+          1
+        ]
+      },
+      "fbx_geometry_bounds": {
+        "center": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "max": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "min": [
+          -0.5,
+          -0.5,
+          -0.5
+        ],
+        "size": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "file": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\competition-art-02\\Parts\\bb_comp_GripRig_ProgressBacking.fbx",
+      "material_slots": 1,
+      "matrix_world": [
+        [
+          1.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          7.549790126404332e-08,
+          -1.0,
+          0.0
+        ],
+        [
+          0.0,
+          1.0,
+          7.549790126404332e-08,
+          0.0
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      ],
+      "name": "GripRig_ProgressBacking",
+      "normals_finite": true,
+      "normals_unit": true,
+      "object_location": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "object_rotation_euler": [
+        1.570796251296997,
+        -0.0,
+        0.0
+      ],
+      "object_scale": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "partKind": "ProgressBacking",
+      "raw_mesh_bounds": {
+        "center": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "max": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "min": [
+          -0.5,
+          -0.5,
+          -0.5
+        ],
+        "size": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "raw_mesh_vertex_mean": [
+        -1.862645149230957e-09,
+        0.0,
+        0.0
+      ],
+      "sha256": "8f9f8059bb3a40277ca3e867f012d14d8e1c898f3970fc185a544f94470455a7",
+      "triangles": 60,
+      "used_material_indices": [
+        0
+      ],
+      "uv_finite": true,
+      "uv_within_0_1": true,
+      "vertices": 32,
+      "world_bounds": {
+        "center": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "max": [
+          0.5,
+          0.5000000596046448,
+          0.5
+        ],
+        "min": [
+          -0.5,
+          -0.5000000596046448,
+          -0.5
+        ],
+        "size": [
+          1.0,
+          1.0000001192092896,
+          1.0
+        ]
+      },
+      "world_vertex_mean": [
+        -1.862645149230957e-09,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "degenerate_triangles": 0,
+      "errors": [],
+      "family": "DiceTray",
+      "fbx_axis_units": {
+        "CoordAxis": [
+          0
+        ],
+        "CoordAxisSign": [
+          1
+        ],
+        "FrontAxis": [
+          2
+        ],
+        "FrontAxisSign": [
+          1
+        ],
+        "UnitScaleFactor": [
+          100.0
+        ],
+        "UpAxis": [
+          1
+        ],
+        "UpAxisSign": [
+          1
+        ]
+      },
+      "fbx_geometry_bounds": {
+        "center": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "max": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "min": [
+          -0.5,
+          -0.5,
+          -0.5
+        ],
+        "size": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "file": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\competition-art-02\\Parts\\bb_comp_DiceTray_StanceRail.fbx",
+      "material_slots": 1,
+      "matrix_world": [
+        [
+          1.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          7.549790126404332e-08,
+          -1.0,
+          0.0
+        ],
+        [
+          0.0,
+          1.0,
+          7.549790126404332e-08,
+          0.0
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      ],
+      "name": "DiceTray_StanceRail",
+      "normals_finite": true,
+      "normals_unit": true,
+      "object_location": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "object_rotation_euler": [
+        1.570796251296997,
+        -0.0,
+        0.0
+      ],
+      "object_scale": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "partKind": "StanceRail",
+      "raw_mesh_bounds": {
+        "center": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "max": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "min": [
+          -0.5,
+          -0.5,
+          -0.5
+        ],
+        "size": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "raw_mesh_vertex_mean": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "sha256": "56651ed23273d0b4e611798e84b951dc54469a8f6d440c86761e140f42d7d966",
+      "triangles": 60,
+      "used_material_indices": [
+        0
+      ],
+      "uv_finite": true,
+      "uv_within_0_1": true,
+      "vertices": 32,
+      "world_bounds": {
+        "center": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "max": [
+          0.5,
+          0.5,
+          0.5000000596046448
+        ],
+        "min": [
+          -0.5,
+          -0.5,
+          -0.5000000596046448
+        ],
+        "size": [
+          1.0,
+          1.0,
+          1.0000001192092896
+        ]
+      },
+      "world_vertex_mean": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "degenerate_triangles": 0,
+      "errors": [],
+      "family": "DiceTray",
+      "fbx_axis_units": {
+        "CoordAxis": [
+          0
+        ],
+        "CoordAxisSign": [
+          1
+        ],
+        "FrontAxis": [
+          2
+        ],
+        "FrontAxisSign": [
+          1
+        ],
+        "UnitScaleFactor": [
+          100.0
+        ],
+        "UpAxis": [
+          1
+        ],
+        "UpAxisSign": [
+          1
+        ]
+      },
+      "fbx_geometry_bounds": {
+        "center": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "max": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "min": [
+          -0.5,
+          -0.5,
+          -0.5
+        ],
+        "size": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "file": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\competition-art-02\\Parts\\bb_comp_DiceTray_ProgressBacking.fbx",
+      "material_slots": 1,
+      "matrix_world": [
+        [
+          1.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          7.549790126404332e-08,
+          -1.0,
+          0.0
+        ],
+        [
+          0.0,
+          1.0,
+          7.549790126404332e-08,
+          0.0
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      ],
+      "name": "DiceTray_ProgressBacking",
+      "normals_finite": true,
+      "normals_unit": true,
+      "object_location": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "object_rotation_euler": [
+        1.570796251296997,
+        -0.0,
+        0.0
+      ],
+      "object_scale": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "partKind": "ProgressBacking",
+      "raw_mesh_bounds": {
+        "center": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "max": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "min": [
+          -0.5,
+          -0.5,
+          -0.5
+        ],
+        "size": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "raw_mesh_vertex_mean": [
+        -1.862645149230957e-09,
+        0.0,
+        0.0
+      ],
+      "sha256": "121acf0b2afb6d193f1d14ec695d1e0f9a53594f85ec4a0ff43ee85087a134d6",
+      "triangles": 60,
+      "used_material_indices": [
+        0
+      ],
+      "uv_finite": true,
+      "uv_within_0_1": true,
+      "vertices": 32,
+      "world_bounds": {
+        "center": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "max": [
+          0.5,
+          0.5000000596046448,
+          0.5
+        ],
+        "min": [
+          -0.5,
+          -0.5000000596046448,
+          -0.5
+        ],
+        "size": [
+          1.0,
+          1.0000001192092896,
+          1.0
+        ]
+      },
+      "world_vertex_mean": [
+        -1.862645149230957e-09,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "degenerate_triangles": 0,
+      "errors": [],
+      "family": "WordConsole",
+      "fbx_axis_units": {
+        "CoordAxis": [
+          0
+        ],
+        "CoordAxisSign": [
+          1
+        ],
+        "FrontAxis": [
+          2
+        ],
+        "FrontAxisSign": [
+          1
+        ],
+        "UnitScaleFactor": [
+          100.0
+        ],
+        "UpAxis": [
+          1
+        ],
+        "UpAxisSign": [
+          1
+        ]
+      },
+      "fbx_geometry_bounds": {
+        "center": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "max": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "min": [
+          -0.5,
+          -0.5,
+          -0.5
+        ],
+        "size": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "file": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\competition-art-02\\Parts\\bb_comp_WordConsole_StanceRail.fbx",
+      "material_slots": 1,
+      "matrix_world": [
+        [
+          1.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          7.549790126404332e-08,
+          -1.0,
+          0.0
+        ],
+        [
+          0.0,
+          1.0,
+          7.549790126404332e-08,
+          0.0
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      ],
+      "name": "WordConsole_StanceRail",
+      "normals_finite": true,
+      "normals_unit": true,
+      "object_location": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "object_rotation_euler": [
+        1.570796251296997,
+        -0.0,
+        0.0
+      ],
+      "object_scale": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "partKind": "StanceRail",
+      "raw_mesh_bounds": {
+        "center": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "max": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "min": [
+          -0.5,
+          -0.5,
+          -0.5
+        ],
+        "size": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "raw_mesh_vertex_mean": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "sha256": "1ca5587faa524bde221ae41d2bab7709b05ddc16efbec237838af95db90c780d",
+      "triangles": 60,
+      "used_material_indices": [
+        0
+      ],
+      "uv_finite": true,
+      "uv_within_0_1": true,
+      "vertices": 32,
+      "world_bounds": {
+        "center": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "max": [
+          0.5,
+          0.5,
+          0.5000000596046448
+        ],
+        "min": [
+          -0.5,
+          -0.5,
+          -0.5000000596046448
+        ],
+        "size": [
+          1.0,
+          1.0,
+          1.0000001192092896
+        ]
+      },
+      "world_vertex_mean": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "degenerate_triangles": 0,
+      "errors": [],
+      "family": "WordConsole",
+      "fbx_axis_units": {
+        "CoordAxis": [
+          0
+        ],
+        "CoordAxisSign": [
+          1
+        ],
+        "FrontAxis": [
+          2
+        ],
+        "FrontAxisSign": [
+          1
+        ],
+        "UnitScaleFactor": [
+          100.0
+        ],
+        "UpAxis": [
+          1
+        ],
+        "UpAxisSign": [
+          1
+        ]
+      },
+      "fbx_geometry_bounds": {
+        "center": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "max": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "min": [
+          -0.5,
+          -0.5,
+          -0.5
+        ],
+        "size": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "file": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\competition-art-02\\Parts\\bb_comp_WordConsole_ProgressBacking.fbx",
+      "material_slots": 1,
+      "matrix_world": [
+        [
+          1.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          7.549790126404332e-08,
+          -1.0,
+          0.0
+        ],
+        [
+          0.0,
+          1.0,
+          7.549790126404332e-08,
+          0.0
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      ],
+      "name": "WordConsole_ProgressBacking",
+      "normals_finite": true,
+      "normals_unit": true,
+      "object_location": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "object_rotation_euler": [
+        1.570796251296997,
+        -0.0,
+        0.0
+      ],
+      "object_scale": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "partKind": "ProgressBacking",
+      "raw_mesh_bounds": {
+        "center": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "max": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "min": [
+          -0.5,
+          -0.5,
+          -0.5
+        ],
+        "size": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "raw_mesh_vertex_mean": [
+        -1.862645149230957e-09,
+        0.0,
+        0.0
+      ],
+      "sha256": "fe5c3fca6cc46f384ba030f46926b8fb972586347fc2e0c50a6409848cf1b1b1",
+      "triangles": 60,
+      "used_material_indices": [
+        0
+      ],
+      "uv_finite": true,
+      "uv_within_0_1": true,
+      "vertices": 32,
+      "world_bounds": {
+        "center": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "max": [
+          0.5,
+          0.5000000596046448,
+          0.5
+        ],
+        "min": [
+          -0.5,
+          -0.5000000596046448,
+          -0.5
+        ],
+        "size": [
+          1.0,
+          1.0000001192092896,
+          1.0
+        ]
+      },
+      "world_vertex_mean": [
+        -1.862645149230957e-09,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "degenerate_triangles": 0,
+      "errors": [],
+      "family": "Signals",
+      "fbx_axis_units": {
+        "CoordAxis": [
+          0
+        ],
+        "CoordAxisSign": [
+          1
+        ],
+        "FrontAxis": [
+          2
+        ],
+        "FrontAxisSign": [
+          1
+        ],
+        "UnitScaleFactor": [
+          100.0
+        ],
+        "UpAxis": [
+          1
+        ],
+        "UpAxisSign": [
+          1
+        ]
+      },
+      "fbx_geometry_bounds": {
+        "center": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "max": [
+          0.5,
+          0.4999999701976776,
+          0.5
+        ],
+        "min": [
+          -0.5,
+          -0.4999999701976776,
+          -0.5
+        ],
+        "size": [
+          1.0,
+          0.9999999403953552,
+          1.0
+        ]
+      },
+      "file": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\competition-art-02\\Parts\\bb_comp_Signals_ConsoleLeg.fbx",
+      "material_slots": 1,
+      "matrix_world": [
+        [
+          1.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          7.549790126404332e-08,
+          -1.0,
+          0.0
+        ],
+        [
+          0.0,
+          1.0,
+          7.549790126404332e-08,
+          0.0
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      ],
+      "name": "Signals_ConsoleLeg",
+      "normals_finite": true,
+      "normals_unit": true,
+      "object_location": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "object_rotation_euler": [
+        1.570796251296997,
+        -0.0,
+        0.0
+      ],
+      "object_scale": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "partKind": "ConsoleLeg",
+      "raw_mesh_bounds": {
+        "center": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "max": [
+          0.5,
+          0.4999999701976776,
+          0.5
+        ],
+        "min": [
+          -0.5,
+          -0.4999999701976776,
+          -0.5
+        ],
+        "size": [
+          1.0,
+          0.9999999403953552,
+          1.0
+        ]
+      },
+      "raw_mesh_vertex_mean": [
+        -1.1641532182693481e-10,
+        0.0,
+        0.11000000033527613
+      ],
+      "sha256": "35221c8d84fb3e52f0daacf598032a10c79cb54add19ae6c67f3de8afcec0825",
+      "triangles": 240,
+      "used_material_indices": [
+        0
+      ],
+      "uv_finite": true,
+      "uv_within_0_1": true,
+      "vertices": 128,
+      "world_bounds": {
+        "center": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "max": [
+          0.5,
+          0.5000000596046448,
+          0.5
+        ],
+        "min": [
+          -0.5,
+          -0.5000000596046448,
+          -0.5
+        ],
+        "size": [
+          1.0,
+          1.0000001192092896,
+          1.0
+        ]
+      },
+      "world_vertex_mean": [
+        -1.1641532182693481e-10,
+        -0.11000000080093741,
+        7.450580596923828e-09
+      ]
+    },
+    {
+      "degenerate_triangles": 0,
+      "errors": [],
+      "family": "Signals",
+      "fbx_axis_units": {
+        "CoordAxis": [
+          0
+        ],
+        "CoordAxisSign": [
+          1
+        ],
+        "FrontAxis": [
+          2
+        ],
+        "FrontAxisSign": [
+          1
+        ],
+        "UnitScaleFactor": [
+          100.0
+        ],
+        "UpAxis": [
+          1
+        ],
+        "UpAxisSign": [
+          1
+        ]
+      },
+      "fbx_geometry_bounds": {
+        "center": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "max": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "min": [
+          -0.5,
+          -0.5,
+          -0.5
+        ],
+        "size": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "file": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\competition-art-02\\Parts\\bb_comp_Signals_ConsoleHousing.fbx",
+      "material_slots": 1,
+      "matrix_world": [
+        [
+          1.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          7.549790126404332e-08,
+          -1.0,
+          0.0
+        ],
+        [
+          0.0,
+          1.0,
+          7.549790126404332e-08,
+          0.0
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      ],
+      "name": "Signals_ConsoleHousing",
+      "normals_finite": true,
+      "normals_unit": true,
+      "object_location": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "object_rotation_euler": [
+        1.570796251296997,
+        -0.0,
+        0.0
+      ],
+      "object_scale": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "partKind": "ConsoleHousing",
+      "raw_mesh_bounds": {
+        "center": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "max": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "min": [
+          -0.5,
+          -0.5,
+          -0.5
+        ],
+        "size": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "raw_mesh_vertex_mean": [
+        0.0,
+        0.025789472446041673,
+        0.40263157602595656
+      ],
+      "sha256": "2fc5d71f5430d1ba510118b9e5ec72d983df5ad7b9a745fbd5229fde3a30ac71",
+      "triangles": 572,
+      "used_material_indices": [
+        0
+      ],
+      "uv_finite": true,
+      "uv_within_0_1": true,
+      "vertices": 304,
+      "world_bounds": {
+        "center": [
+          0.0,
+          2.9802322387695312e-08,
+          0.0
+        ],
+        "max": [
+          0.5,
+          0.5000000596046448,
+          0.5
+        ],
+        "min": [
+          -0.5,
+          -0.5,
+          -0.5
+        ],
+        "size": [
+          1.0,
+          1.0000000596046448,
+          1.0
+        ]
+      },
+      "world_vertex_mean": [
+        0.0,
+        -0.40263157406527744,
+        0.02578950291622038
+      ]
+    },
+    {
+      "degenerate_triangles": 0,
+      "errors": [],
+      "family": "Signals",
+      "fbx_axis_units": {
+        "CoordAxis": [
+          0
+        ],
+        "CoordAxisSign": [
+          1
+        ],
+        "FrontAxis": [
+          2
+        ],
+        "FrontAxisSign": [
+          1
+        ],
+        "UnitScaleFactor": [
+          100.0
+        ],
+        "UpAxis": [
+          1
+        ],
+        "UpAxisSign": [
+          1
+        ]
+      },
+      "fbx_geometry_bounds": {
+        "center": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "max": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "min": [
+          -0.5,
+          -0.5,
+          -0.5
+        ],
+        "size": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "file": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\competition-art-02\\Parts\\bb_comp_Signals_RecessedDisplay.fbx",
+      "material_slots": 1,
+      "matrix_world": [
+        [
+          1.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          7.549790126404332e-08,
+          -1.0,
+          0.0
+        ],
+        [
+          0.0,
+          1.0,
+          7.549790126404332e-08,
+          0.0
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      ],
+      "name": "Signals_RecessedDisplay",
+      "normals_finite": true,
+      "normals_unit": true,
+      "object_location": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "object_rotation_euler": [
+        1.570796251296997,
+        -0.0,
+        0.0
+      ],
+      "object_scale": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "partKind": "RecessedDisplay",
+      "raw_mesh_bounds": {
+        "center": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "max": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "min": [
+          -0.5,
+          -0.5,
+          -0.5
+        ],
+        "size": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "raw_mesh_vertex_mean": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "sha256": "6b38b14942a5f560c1728bff0800726f05c4dcf00ff4d20c94c75458c00b1a49",
+      "triangles": 60,
+      "used_material_indices": [
+        0
+      ],
+      "uv_finite": true,
+      "uv_within_0_1": true,
+      "vertices": 32,
+      "world_bounds": {
+        "center": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "max": [
+          0.5,
+          0.5000000596046448,
+          0.5
+        ],
+        "min": [
+          -0.5,
+          -0.5000000596046448,
+          -0.5
+        ],
+        "size": [
+          1.0,
+          1.0000001192092896,
+          1.0
+        ]
+      },
+      "world_vertex_mean": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "degenerate_triangles": 0,
+      "errors": [],
+      "family": "Signals",
+      "fbx_axis_units": {
+        "CoordAxis": [
+          0
+        ],
+        "CoordAxisSign": [
+          1
+        ],
+        "FrontAxis": [
+          2
+        ],
+        "FrontAxisSign": [
+          1
+        ],
+        "UnitScaleFactor": [
+          100.0
+        ],
+        "UpAxis": [
+          1
+        ],
+        "UpAxisSign": [
+          1
+        ]
+      },
+      "fbx_geometry_bounds": {
+        "center": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "max": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "min": [
+          -0.5,
+          -0.5,
+          -0.5
+        ],
+        "size": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "file": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\competition-art-02\\Parts\\bb_comp_Signals_AwardHeader.fbx",
+      "material_slots": 1,
+      "matrix_world": [
+        [
+          1.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          7.549790126404332e-08,
+          -1.0,
+          0.0
+        ],
+        [
+          0.0,
+          1.0,
+          7.549790126404332e-08,
+          0.0
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      ],
+      "name": "Signals_AwardHeader",
+      "normals_finite": true,
+      "normals_unit": true,
+      "object_location": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "object_rotation_euler": [
+        1.570796251296997,
+        -0.0,
+        0.0
+      ],
+      "object_scale": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "partKind": "AwardHeader",
+      "raw_mesh_bounds": {
+        "center": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "max": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "min": [
+          -0.5,
+          -0.5,
+          -0.5
+        ],
+        "size": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "raw_mesh_vertex_mean": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "sha256": "fced5773757369ca75c55dad2e6cd01a90d5566ea9c072863d4b113fce0743a2",
+      "triangles": 60,
+      "used_material_indices": [
+        0
+      ],
+      "uv_finite": true,
+      "uv_within_0_1": true,
+      "vertices": 32,
+      "world_bounds": {
+        "center": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "max": [
+          0.5,
+          0.5000000596046448,
+          0.5
+        ],
+        "min": [
+          -0.5,
+          -0.5000000596046448,
+          -0.5
+        ],
+        "size": [
+          1.0,
+          1.0000001192092896,
+          1.0
+        ]
+      },
+      "world_vertex_mean": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "degenerate_triangles": 0,
+      "errors": [],
+      "family": "PairConsole",
+      "fbx_axis_units": {
+        "CoordAxis": [
+          0
+        ],
+        "CoordAxisSign": [
+          1
+        ],
+        "FrontAxis": [
+          2
+        ],
+        "FrontAxisSign": [
+          1
+        ],
+        "UnitScaleFactor": [
+          100.0
+        ],
+        "UpAxis": [
+          1
+        ],
+        "UpAxisSign": [
+          1
+        ]
+      },
+      "fbx_geometry_bounds": {
+        "center": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "max": [
+          0.5,
+          0.4999999701976776,
+          0.5
+        ],
+        "min": [
+          -0.5,
+          -0.4999999701976776,
+          -0.5
+        ],
+        "size": [
+          1.0,
+          0.9999999403953552,
+          1.0
+        ]
+      },
+      "file": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\competition-art-02\\Parts\\bb_comp_PairConsole_ConsoleLeg.fbx",
+      "material_slots": 1,
+      "matrix_world": [
+        [
+          1.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          7.549790126404332e-08,
+          -1.0,
+          0.0
+        ],
+        [
+          0.0,
+          1.0,
+          7.549790126404332e-08,
+          0.0
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      ],
+      "name": "PairConsole_ConsoleLeg",
+      "normals_finite": true,
+      "normals_unit": true,
+      "object_location": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "object_rotation_euler": [
+        1.570796251296997,
+        -0.0,
+        0.0
+      ],
+      "object_scale": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "partKind": "ConsoleLeg",
+      "raw_mesh_bounds": {
+        "center": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "max": [
+          0.5,
+          0.4999999701976776,
+          0.5
+        ],
+        "min": [
+          -0.5,
+          -0.4999999701976776,
+          -0.5
+        ],
+        "size": [
+          1.0,
+          0.9999999403953552,
+          1.0
+        ]
+      },
+      "raw_mesh_vertex_mean": [
+        -1.1641532182693481e-10,
+        0.0,
+        0.11000000033527613
+      ],
+      "sha256": "8500afeeb60763741c6e71ad886c448e8f296e58e201335d4d31d374744f0f43",
+      "triangles": 240,
+      "used_material_indices": [
+        0
+      ],
+      "uv_finite": true,
+      "uv_within_0_1": true,
+      "vertices": 128,
+      "world_bounds": {
+        "center": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "max": [
+          0.5,
+          0.5000000596046448,
+          0.5
+        ],
+        "min": [
+          -0.5,
+          -0.5000000596046448,
+          -0.5
+        ],
+        "size": [
+          1.0,
+          1.0000001192092896,
+          1.0
+        ]
+      },
+      "world_vertex_mean": [
+        -1.1641532182693481e-10,
+        -0.11000000080093741,
+        7.450580596923828e-09
+      ]
+    },
+    {
+      "degenerate_triangles": 0,
+      "errors": [],
+      "family": "PairConsole",
+      "fbx_axis_units": {
+        "CoordAxis": [
+          0
+        ],
+        "CoordAxisSign": [
+          1
+        ],
+        "FrontAxis": [
+          2
+        ],
+        "FrontAxisSign": [
+          1
+        ],
+        "UnitScaleFactor": [
+          100.0
+        ],
+        "UpAxis": [
+          1
+        ],
+        "UpAxisSign": [
+          1
+        ]
+      },
+      "fbx_geometry_bounds": {
+        "center": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "max": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "min": [
+          -0.5,
+          -0.5,
+          -0.5
+        ],
+        "size": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "file": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\competition-art-02\\Parts\\bb_comp_PairConsole_ConsoleHousing.fbx",
+      "material_slots": 1,
+      "matrix_world": [
+        [
+          1.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          7.549790126404332e-08,
+          -1.0,
+          0.0
+        ],
+        [
+          0.0,
+          1.0,
+          7.549790126404332e-08,
+          0.0
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      ],
+      "name": "PairConsole_ConsoleHousing",
+      "normals_finite": true,
+      "normals_unit": true,
+      "object_location": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "object_rotation_euler": [
+        1.570796251296997,
+        -0.0,
+        0.0
+      ],
+      "object_scale": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "partKind": "ConsoleHousing",
+      "raw_mesh_bounds": {
+        "center": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "max": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "min": [
+          -0.5,
+          -0.5,
+          -0.5
+        ],
+        "size": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "raw_mesh_vertex_mean": [
+        0.0,
+        0.025789472446041673,
+        0.40263157602595656
+      ],
+      "sha256": "2ca020a550920704e23cdb1c1f3d997a23fc4ff142b548f295e26c6bfa8dde4e",
+      "triangles": 572,
+      "used_material_indices": [
+        0
+      ],
+      "uv_finite": true,
+      "uv_within_0_1": true,
+      "vertices": 304,
+      "world_bounds": {
+        "center": [
+          0.0,
+          2.9802322387695312e-08,
+          0.0
+        ],
+        "max": [
+          0.5,
+          0.5000000596046448,
+          0.5
+        ],
+        "min": [
+          -0.5,
+          -0.5,
+          -0.5
+        ],
+        "size": [
+          1.0,
+          1.0000000596046448,
+          1.0
+        ]
+      },
+      "world_vertex_mean": [
+        0.0,
+        -0.40263157406527744,
+        0.02578950291622038
+      ]
+    },
+    {
+      "degenerate_triangles": 0,
+      "errors": [],
+      "family": "PairConsole",
+      "fbx_axis_units": {
+        "CoordAxis": [
+          0
+        ],
+        "CoordAxisSign": [
+          1
+        ],
+        "FrontAxis": [
+          2
+        ],
+        "FrontAxisSign": [
+          1
+        ],
+        "UnitScaleFactor": [
+          100.0
+        ],
+        "UpAxis": [
+          1
+        ],
+        "UpAxisSign": [
+          1
+        ]
+      },
+      "fbx_geometry_bounds": {
+        "center": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "max": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "min": [
+          -0.5,
+          -0.5,
+          -0.5
+        ],
+        "size": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "file": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\competition-art-02\\Parts\\bb_comp_PairConsole_RecessedDisplay.fbx",
+      "material_slots": 1,
+      "matrix_world": [
+        [
+          1.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          7.549790126404332e-08,
+          -1.0,
+          0.0
+        ],
+        [
+          0.0,
+          1.0,
+          7.549790126404332e-08,
+          0.0
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      ],
+      "name": "PairConsole_RecessedDisplay",
+      "normals_finite": true,
+      "normals_unit": true,
+      "object_location": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "object_rotation_euler": [
+        1.570796251296997,
+        -0.0,
+        0.0
+      ],
+      "object_scale": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "partKind": "RecessedDisplay",
+      "raw_mesh_bounds": {
+        "center": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "max": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "min": [
+          -0.5,
+          -0.5,
+          -0.5
+        ],
+        "size": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "raw_mesh_vertex_mean": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "sha256": "f231b5cea0e7c28ffc12bbc695a5a1b4f3dc92ff55f371912155aedb78640869",
+      "triangles": 60,
+      "used_material_indices": [
+        0
+      ],
+      "uv_finite": true,
+      "uv_within_0_1": true,
+      "vertices": 32,
+      "world_bounds": {
+        "center": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "max": [
+          0.5,
+          0.5000000596046448,
+          0.5
+        ],
+        "min": [
+          -0.5,
+          -0.5000000596046448,
+          -0.5
+        ],
+        "size": [
+          1.0,
+          1.0000001192092896,
+          1.0
+        ]
+      },
+      "world_vertex_mean": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "degenerate_triangles": 0,
+      "errors": [],
+      "family": "PairConsole",
+      "fbx_axis_units": {
+        "CoordAxis": [
+          0
+        ],
+        "CoordAxisSign": [
+          1
+        ],
+        "FrontAxis": [
+          2
+        ],
+        "FrontAxisSign": [
+          1
+        ],
+        "UnitScaleFactor": [
+          100.0
+        ],
+        "UpAxis": [
+          1
+        ],
+        "UpAxisSign": [
+          1
+        ]
+      },
+      "fbx_geometry_bounds": {
+        "center": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "max": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "min": [
+          -0.5,
+          -0.5,
+          -0.5
+        ],
+        "size": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "file": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\competition-art-02\\Parts\\bb_comp_PairConsole_AwardHeader.fbx",
+      "material_slots": 1,
+      "matrix_world": [
+        [
+          1.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          7.549790126404332e-08,
+          -1.0,
+          0.0
+        ],
+        [
+          0.0,
+          1.0,
+          7.549790126404332e-08,
+          0.0
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      ],
+      "name": "PairConsole_AwardHeader",
+      "normals_finite": true,
+      "normals_unit": true,
+      "object_location": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "object_rotation_euler": [
+        1.570796251296997,
+        -0.0,
+        0.0
+      ],
+      "object_scale": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "partKind": "AwardHeader",
+      "raw_mesh_bounds": {
+        "center": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "max": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "min": [
+          -0.5,
+          -0.5,
+          -0.5
+        ],
+        "size": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "raw_mesh_vertex_mean": [
+        -2.7939677238464355e-09,
+        0.0,
+        0.0
+      ],
+      "sha256": "d45da2113ccd6248b99317fb6eb2cb2451766c6f63b55071ac9ecf5bcfe2d6cc",
+      "triangles": 60,
+      "used_material_indices": [
+        0
+      ],
+      "uv_finite": true,
+      "uv_within_0_1": true,
+      "vertices": 32,
+      "world_bounds": {
+        "center": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "max": [
+          0.5,
+          0.5000000596046448,
+          0.5
+        ],
+        "min": [
+          -0.5,
+          -0.5000000596046448,
+          -0.5
+        ],
+        "size": [
+          1.0,
+          1.0000001192092896,
+          1.0
+        ]
+      },
+      "world_vertex_mean": [
+        -2.7939677238464355e-09,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "degenerate_triangles": 0,
+      "errors": [],
+      "family": "WordConsole",
+      "fbx_axis_units": {
+        "CoordAxis": [
+          0
+        ],
+        "CoordAxisSign": [
+          1
+        ],
+        "FrontAxis": [
+          2
+        ],
+        "FrontAxisSign": [
+          1
+        ],
+        "UnitScaleFactor": [
+          100.0
+        ],
+        "UpAxis": [
+          1
+        ],
+        "UpAxisSign": [
+          1
+        ]
+      },
+      "fbx_geometry_bounds": {
+        "center": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "max": [
+          0.5,
+          0.4999999701976776,
+          0.5
+        ],
+        "min": [
+          -0.5,
+          -0.4999999701976776,
+          -0.5
+        ],
+        "size": [
+          1.0,
+          0.9999999403953552,
+          1.0
+        ]
+      },
+      "file": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\competition-art-02\\Parts\\bb_comp_WordConsole_ConsoleLeg.fbx",
+      "material_slots": 1,
+      "matrix_world": [
+        [
+          1.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          7.549790126404332e-08,
+          -1.0,
+          0.0
+        ],
+        [
+          0.0,
+          1.0,
+          7.549790126404332e-08,
+          0.0
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      ],
+      "name": "WordConsole_ConsoleLeg",
+      "normals_finite": true,
+      "normals_unit": true,
+      "object_location": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "object_rotation_euler": [
+        1.570796251296997,
+        -0.0,
+        0.0
+      ],
+      "object_scale": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "partKind": "ConsoleLeg",
+      "raw_mesh_bounds": {
+        "center": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "max": [
+          0.5,
+          0.4999999701976776,
+          0.5
+        ],
+        "min": [
+          -0.5,
+          -0.4999999701976776,
+          -0.5
+        ],
+        "size": [
+          1.0,
+          0.9999999403953552,
+          1.0
+        ]
+      },
+      "raw_mesh_vertex_mean": [
+        -1.1641532182693481e-10,
+        0.0,
+        0.11000000033527613
+      ],
+      "sha256": "88b1b6299d4b77d4044f7d014facdf4997b689dc156c01525b6c7c5a789443b7",
+      "triangles": 240,
+      "used_material_indices": [
+        0
+      ],
+      "uv_finite": true,
+      "uv_within_0_1": true,
+      "vertices": 128,
+      "world_bounds": {
+        "center": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "max": [
+          0.5,
+          0.5000000596046448,
+          0.5
+        ],
+        "min": [
+          -0.5,
+          -0.5000000596046448,
+          -0.5
+        ],
+        "size": [
+          1.0,
+          1.0000001192092896,
+          1.0
+        ]
+      },
+      "world_vertex_mean": [
+        -1.1641532182693481e-10,
+        -0.11000000080093741,
+        7.450580596923828e-09
+      ]
+    },
+    {
+      "degenerate_triangles": 0,
+      "errors": [],
+      "family": "WordConsole",
+      "fbx_axis_units": {
+        "CoordAxis": [
+          0
+        ],
+        "CoordAxisSign": [
+          1
+        ],
+        "FrontAxis": [
+          2
+        ],
+        "FrontAxisSign": [
+          1
+        ],
+        "UnitScaleFactor": [
+          100.0
+        ],
+        "UpAxis": [
+          1
+        ],
+        "UpAxisSign": [
+          1
+        ]
+      },
+      "fbx_geometry_bounds": {
+        "center": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "max": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "min": [
+          -0.5,
+          -0.5,
+          -0.5
+        ],
+        "size": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "file": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\competition-art-02\\Parts\\bb_comp_WordConsole_ConsoleHousing.fbx",
+      "material_slots": 1,
+      "matrix_world": [
+        [
+          1.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          7.549790126404332e-08,
+          -1.0,
+          0.0
+        ],
+        [
+          0.0,
+          1.0,
+          7.549790126404332e-08,
+          0.0
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      ],
+      "name": "WordConsole_ConsoleHousing",
+      "normals_finite": true,
+      "normals_unit": true,
+      "object_location": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "object_rotation_euler": [
+        1.570796251296997,
+        -0.0,
+        0.0
+      ],
+      "object_scale": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "partKind": "ConsoleHousing",
+      "raw_mesh_bounds": {
+        "center": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "max": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "min": [
+          -0.5,
+          -0.5,
+          -0.5
+        ],
+        "size": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "raw_mesh_vertex_mean": [
+        0.0,
+        0.025789472446041673,
+        0.40263157602595656
+      ],
+      "sha256": "a33b5bfcd1a11ef3526ab9992e4f86ce4788da34efed35ced02f6ac90e5c7a62",
+      "triangles": 572,
+      "used_material_indices": [
+        0
+      ],
+      "uv_finite": true,
+      "uv_within_0_1": false,
+      "vertices": 304,
+      "world_bounds": {
+        "center": [
+          0.0,
+          2.9802322387695312e-08,
+          0.0
+        ],
+        "max": [
+          0.5,
+          0.5000000596046448,
+          0.5
+        ],
+        "min": [
+          -0.5,
+          -0.5,
+          -0.5
+        ],
+        "size": [
+          1.0,
+          1.0000000596046448,
+          1.0
+        ]
+      },
+      "world_vertex_mean": [
+        0.0,
+        -0.40263157406527744,
+        0.02578950291622038
+      ]
+    },
+    {
+      "degenerate_triangles": 0,
+      "errors": [],
+      "family": "WordConsole",
+      "fbx_axis_units": {
+        "CoordAxis": [
+          0
+        ],
+        "CoordAxisSign": [
+          1
+        ],
+        "FrontAxis": [
+          2
+        ],
+        "FrontAxisSign": [
+          1
+        ],
+        "UnitScaleFactor": [
+          100.0
+        ],
+        "UpAxis": [
+          1
+        ],
+        "UpAxisSign": [
+          1
+        ]
+      },
+      "fbx_geometry_bounds": {
+        "center": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "max": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "min": [
+          -0.5,
+          -0.5,
+          -0.5
+        ],
+        "size": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "file": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\competition-art-02\\Parts\\bb_comp_WordConsole_RecessedDisplay.fbx",
+      "material_slots": 1,
+      "matrix_world": [
+        [
+          1.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          7.549790126404332e-08,
+          -1.0,
+          0.0
+        ],
+        [
+          0.0,
+          1.0,
+          7.549790126404332e-08,
+          0.0
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      ],
+      "name": "WordConsole_RecessedDisplay",
+      "normals_finite": true,
+      "normals_unit": true,
+      "object_location": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "object_rotation_euler": [
+        1.570796251296997,
+        -0.0,
+        0.0
+      ],
+      "object_scale": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "partKind": "RecessedDisplay",
+      "raw_mesh_bounds": {
+        "center": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "max": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "min": [
+          -0.5,
+          -0.5,
+          -0.5
+        ],
+        "size": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "raw_mesh_vertex_mean": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "sha256": "3670e2328bb2560457bc742d2c7995dcd0a7f03afec483a943de47c7f39f6860",
+      "triangles": 60,
+      "used_material_indices": [
+        0
+      ],
+      "uv_finite": true,
+      "uv_within_0_1": true,
+      "vertices": 32,
+      "world_bounds": {
+        "center": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "max": [
+          0.5,
+          0.5000000596046448,
+          0.5
+        ],
+        "min": [
+          -0.5,
+          -0.5000000596046448,
+          -0.5
+        ],
+        "size": [
+          1.0,
+          1.0000001192092896,
+          1.0
+        ]
+      },
+      "world_vertex_mean": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "degenerate_triangles": 0,
+      "errors": [],
+      "family": "WordConsole",
+      "fbx_axis_units": {
+        "CoordAxis": [
+          0
+        ],
+        "CoordAxisSign": [
+          1
+        ],
+        "FrontAxis": [
+          2
+        ],
+        "FrontAxisSign": [
+          1
+        ],
+        "UnitScaleFactor": [
+          100.0
+        ],
+        "UpAxis": [
+          1
+        ],
+        "UpAxisSign": [
+          1
+        ]
+      },
+      "fbx_geometry_bounds": {
+        "center": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "max": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "min": [
+          -0.5,
+          -0.5,
+          -0.5
+        ],
+        "size": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "file": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\competition-art-02\\Parts\\bb_comp_WordConsole_AwardHeader.fbx",
+      "material_slots": 1,
+      "matrix_world": [
+        [
+          1.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          7.549790126404332e-08,
+          -1.0,
+          0.0
+        ],
+        [
+          0.0,
+          1.0,
+          7.549790126404332e-08,
+          0.0
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      ],
+      "name": "WordConsole_AwardHeader",
+      "normals_finite": true,
+      "normals_unit": true,
+      "object_location": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "object_rotation_euler": [
+        1.570796251296997,
+        -0.0,
+        0.0
+      ],
+      "object_scale": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "partKind": "AwardHeader",
+      "raw_mesh_bounds": {
+        "center": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "max": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "min": [
+          -0.5,
+          -0.5,
+          -0.5
+        ],
+        "size": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "raw_mesh_vertex_mean": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "sha256": "e8439275079161ce1f656ef05f2c394f3827f2150f82b224fb251c1fb04c13e6",
+      "triangles": 60,
+      "used_material_indices": [
+        0
+      ],
+      "uv_finite": true,
+      "uv_within_0_1": false,
+      "vertices": 32,
+      "world_bounds": {
+        "center": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "max": [
+          0.5,
+          0.5000000596046448,
+          0.5
+        ],
+        "min": [
+          -0.5,
+          -0.5000000596046448,
+          -0.5
+        ],
+        "size": [
+          1.0,
+          1.0000001192092896,
+          1.0
+        ]
+      },
+      "world_vertex_mean": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "degenerate_triangles": 0,
+      "errors": [],
+      "family": "Signals",
+      "fbx_axis_units": {
+        "CoordAxis": [
+          0
+        ],
+        "CoordAxisSign": [
+          1
+        ],
+        "FrontAxis": [
+          2
+        ],
+        "FrontAxisSign": [
+          1
+        ],
+        "UnitScaleFactor": [
+          100.0
+        ],
+        "UpAxis": [
+          1
+        ],
+        "UpAxisSign": [
+          1
+        ]
+      },
+      "fbx_geometry_bounds": {
+        "center": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "max": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "min": [
+          -0.5,
+          -0.5,
+          -0.5
+        ],
+        "size": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "file": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\competition-art-02\\Parts\\bb_comp_Signals_SignalTarget.fbx",
+      "material_slots": 1,
+      "matrix_world": [
+        [
+          1.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          7.549790126404332e-08,
+          -1.0,
+          0.0
+        ],
+        [
+          0.0,
+          1.0,
+          7.549790126404332e-08,
+          0.0
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      ],
+      "name": "Signals_SignalTarget",
+      "normals_finite": true,
+      "normals_unit": true,
+      "object_location": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "object_rotation_euler": [
+        1.570796251296997,
+        -0.0,
+        0.0
+      ],
+      "object_scale": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "partKind": "SignalTarget",
+      "raw_mesh_bounds": {
+        "center": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "max": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "min": [
+          -0.5,
+          -0.5,
+          -0.5
+        ],
+        "size": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "raw_mesh_vertex_mean": [
+        0.0,
+        0.0,
+        -0.04000000935047865
+      ],
+      "sha256": "281983b62ba41e4bc1be1ae4343c3f8ac5ee6c6cf46c26981a9eaf84611cf627",
+      "triangles": 184,
+      "used_material_indices": [
+        0
+      ],
+      "uv_finite": true,
+      "uv_within_0_1": true,
+      "vertices": 96,
+      "world_bounds": {
+        "center": [
+          0.0,
+          0.0,
+          2.9802322387695312e-08
+        ],
+        "max": [
+          0.5,
+          0.5000000596046448,
+          0.5000000596046448
+        ],
+        "min": [
+          -0.5,
+          -0.5000000596046448,
+          -0.5
+        ],
+        "size": [
+          1.0,
+          1.0000001192092896,
+          1.0000000596046448
+        ]
+      },
+      "world_vertex_mean": [
+        0.0,
+        0.04000000935047865,
+        6.20881716410319e-10
+      ]
+    },
+    {
+      "degenerate_triangles": 0,
+      "errors": [],
+      "family": "Signals",
+      "fbx_axis_units": {
+        "CoordAxis": [
+          0
+        ],
+        "CoordAxisSign": [
+          1
+        ],
+        "FrontAxis": [
+          2
+        ],
+        "FrontAxisSign": [
+          1
+        ],
+        "UnitScaleFactor": [
+          100.0
+        ],
+        "UpAxis": [
+          1
+        ],
+        "UpAxisSign": [
+          1
+        ]
+      },
+      "fbx_geometry_bounds": {
+        "center": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "max": [
+          0.5,
+          0.4999999701976776,
+          0.5
+        ],
+        "min": [
+          -0.5,
+          -0.4999999701976776,
+          -0.5
+        ],
+        "size": [
+          1.0,
+          0.9999999403953552,
+          1.0
+        ]
+      },
+      "file": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\competition-art-02\\Parts\\bb_comp_Signals_ResponsePad.fbx",
+      "material_slots": 1,
+      "matrix_world": [
+        [
+          1.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          7.549790126404332e-08,
+          -1.0,
+          0.0
+        ],
+        [
+          0.0,
+          1.0,
+          7.549790126404332e-08,
+          0.0
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      ],
+      "name": "Signals_ResponsePad",
+      "normals_finite": true,
+      "normals_unit": true,
+      "object_location": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "object_rotation_euler": [
+        1.570796251296997,
+        -0.0,
+        0.0
+      ],
+      "object_scale": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "partKind": "ResponsePad",
+      "raw_mesh_bounds": {
+        "center": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "max": [
+          0.5,
+          0.4999999701976776,
+          0.5
+        ],
+        "min": [
+          -0.5,
+          -0.4999999701976776,
+          -0.5
+        ],
+        "size": [
+          1.0,
+          0.9999999403953552,
+          1.0
+        ]
+      },
+      "raw_mesh_vertex_mean": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "sha256": "a7aa94fe210da704ca8d510a73b0757310b6dfc546f93feb3cb3c0f39553ebbf",
+      "triangles": 92,
+      "used_material_indices": [
+        0
+      ],
+      "uv_finite": true,
+      "uv_within_0_1": true,
+      "vertices": 48,
+      "world_bounds": {
+        "center": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "max": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "min": [
+          -0.5,
+          -0.5,
+          -0.5
+        ],
+        "size": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "world_vertex_mean": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "degenerate_triangles": 0,
+      "errors": [],
+      "family": "PairConsole",
+      "fbx_axis_units": {
+        "CoordAxis": [
+          0
+        ],
+        "CoordAxisSign": [
+          1
+        ],
+        "FrontAxis": [
+          2
+        ],
+        "FrontAxisSign": [
+          1
+        ],
+        "UnitScaleFactor": [
+          100.0
+        ],
+        "UpAxis": [
+          1
+        ],
+        "UpAxisSign": [
+          1
+        ]
+      },
+      "fbx_geometry_bounds": {
+        "center": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "max": [
+          0.5,
+          0.4999999701976776,
+          0.4999999701976776
+        ],
+        "min": [
+          -0.5,
+          -0.4999999701976776,
+          -0.4999999701976776
+        ],
+        "size": [
+          1.0,
+          0.9999999403953552,
+          0.9999999403953552
+        ]
+      },
+      "file": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\competition-art-02\\Parts\\bb_comp_PairConsole_MemoryTile.fbx",
+      "material_slots": 1,
+      "matrix_world": [
+        [
+          1.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          7.549790126404332e-08,
+          -1.0,
+          0.0
+        ],
+        [
+          0.0,
+          1.0,
+          7.549790126404332e-08,
+          0.0
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      ],
+      "name": "PairConsole_MemoryTile",
+      "normals_finite": true,
+      "normals_unit": true,
+      "object_location": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "object_rotation_euler": [
+        1.570796251296997,
+        -0.0,
+        0.0
+      ],
+      "object_scale": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "partKind": "MemoryTile",
+      "raw_mesh_bounds": {
+        "center": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "max": [
+          0.5,
+          0.4999999701976776,
+          0.4999999701976776
+        ],
+        "min": [
+          -0.5,
+          -0.4999999701976776,
+          -0.4999999701976776
+        ],
+        "size": [
+          1.0,
+          0.9999999403953552,
+          0.9999999403953552
+        ]
+      },
+      "raw_mesh_vertex_mean": [
+        0.0,
+        0.0,
+        -0.040000005547578134
+      ],
+      "sha256": "4cd27d3a663c4ec19139f63cc4f2f820a4969a124c1f2b429480354f3a838183",
+      "triangles": 184,
+      "used_material_indices": [
+        0
+      ],
+      "uv_finite": true,
+      "uv_within_0_1": true,
+      "vertices": 96,
+      "world_bounds": {
+        "center": [
+          0.0,
+          0.0,
+          1.4901161193847656e-08
+        ],
+        "max": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "min": [
+          -0.5,
+          -0.5,
+          -0.4999999701976776
+        ],
+        "size": [
+          1.0,
+          1.0,
+          0.9999999701976776
+        ]
+      },
+      "world_vertex_mean": [
+        0.0,
+        0.040000005547578134,
+        0.0
+      ]
+    },
+    {
+      "degenerate_triangles": 0,
+      "errors": [],
+      "family": "WordConsole",
+      "fbx_axis_units": {
+        "CoordAxis": [
+          0
+        ],
+        "CoordAxisSign": [
+          1
+        ],
+        "FrontAxis": [
+          2
+        ],
+        "FrontAxisSign": [
+          1
+        ],
+        "UnitScaleFactor": [
+          100.0
+        ],
+        "UpAxis": [
+          1
+        ],
+        "UpAxisSign": [
+          1
+        ]
+      },
+      "fbx_geometry_bounds": {
+        "center": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "max": [
+          0.5,
+          0.5,
+          0.4999999701976776
+        ],
+        "min": [
+          -0.5,
+          -0.5,
+          -0.4999999701976776
+        ],
+        "size": [
+          1.0,
+          1.0,
+          0.9999999403953552
+        ]
+      },
+      "file": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\competition-art-02\\Parts\\bb_comp_WordConsole_LetterTile.fbx",
+      "material_slots": 1,
+      "matrix_world": [
+        [
+          1.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          7.549790126404332e-08,
+          -1.0,
+          0.0
+        ],
+        [
+          0.0,
+          1.0,
+          7.549790126404332e-08,
+          0.0
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      ],
+      "name": "WordConsole_LetterTile",
+      "normals_finite": true,
+      "normals_unit": true,
+      "object_location": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "object_rotation_euler": [
+        1.570796251296997,
+        -0.0,
+        0.0
+      ],
+      "object_scale": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "partKind": "LetterTile",
+      "raw_mesh_bounds": {
+        "center": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "max": [
+          0.5,
+          0.5,
+          0.4999999701976776
+        ],
+        "min": [
+          -0.5,
+          -0.5,
+          -0.4999999701976776
+        ],
+        "size": [
+          1.0,
+          1.0,
+          0.9999999403953552
+        ]
+      },
+      "raw_mesh_vertex_mean": [
+        0.0,
+        0.0,
+        -0.040000005547578134
+      ],
+      "sha256": "a4cf652ef819304d408ee6165f67476896a611ce9aeffc61201e97346a6ee1e8",
+      "triangles": 184,
+      "used_material_indices": [
+        0
+      ],
+      "uv_finite": true,
+      "uv_within_0_1": true,
+      "vertices": 96,
+      "world_bounds": {
+        "center": [
+          0.0,
+          0.0,
+          2.9802322387695312e-08
+        ],
+        "max": [
+          0.5,
+          0.5,
+          0.5000000596046448
+        ],
+        "min": [
+          -0.5,
+          -0.5,
+          -0.5
+        ],
+        "size": [
+          1.0,
+          1.0,
+          1.0000000596046448
+        ]
+      },
+      "world_vertex_mean": [
+        0.0,
+        0.040000005547578134,
+        6.20881716410319e-10
+      ]
+    },
+    {
+      "degenerate_triangles": 0,
+      "errors": [],
+      "family": "GripRig",
+      "fbx_axis_units": {
+        "CoordAxis": [
+          0
+        ],
+        "CoordAxisSign": [
+          1
+        ],
+        "FrontAxis": [
+          2
+        ],
+        "FrontAxisSign": [
+          1
+        ],
+        "UnitScaleFactor": [
+          100.0
+        ],
+        "UpAxis": [
+          1
+        ],
+        "UpAxisSign": [
+          1
+        ]
+      },
+      "fbx_geometry_bounds": {
+        "center": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "max": [
+          0.4999999701976776,
+          0.5,
+          0.5
+        ],
+        "min": [
+          -0.4999999701976776,
+          -0.5,
+          -0.5
+        ],
+        "size": [
+          0.9999999403953552,
+          1.0,
+          1.0
+        ]
+      },
+      "file": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\competition-art-02\\Parts\\bb_comp_GripRig_RigUpright.fbx",
+      "material_slots": 1,
+      "matrix_world": [
+        [
+          1.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          7.549790126404332e-08,
+          -1.0,
+          0.0
+        ],
+        [
+          0.0,
+          1.0,
+          7.549790126404332e-08,
+          0.0
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      ],
+      "name": "GripRig_RigUpright",
+      "normals_finite": true,
+      "normals_unit": true,
+      "object_location": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "object_rotation_euler": [
+        1.570796251296997,
+        -0.0,
+        0.0
+      ],
+      "object_scale": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "partKind": "RigUpright",
+      "raw_mesh_bounds": {
+        "center": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "max": [
+          0.4999999701976776,
+          0.5,
+          0.5
+        ],
+        "min": [
+          -0.4999999701976776,
+          -0.5,
+          -0.5
+        ],
+        "size": [
+          0.9999999403953552,
+          1.0,
+          1.0
+        ]
+      },
+      "raw_mesh_vertex_mean": [
+        0.0,
+        0.0,
+        0.10999999986961484
+      ],
+      "sha256": "90fa6298cc5eb81561db471fa3a77bbf2884966396366cdbb843248f84da1d09",
+      "triangles": 240,
+      "used_material_indices": [
+        0
+      ],
+      "uv_finite": true,
+      "uv_within_0_1": false,
+      "vertices": 128,
+      "world_bounds": {
+        "center": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "max": [
+          0.4999999701976776,
+          0.5000000596046448,
+          0.5000000596046448
+        ],
+        "min": [
+          -0.4999999701976776,
+          -0.5000000596046448,
+          -0.5000000596046448
+        ],
+        "size": [
+          0.9999999403953552,
+          1.0000001192092896,
+          1.0000001192092896
+        ]
+      },
+      "world_vertex_mean": [
+        0.0,
+        -0.11000000033527613,
+        7.450580596923828e-09
+      ]
+    },
+    {
+      "degenerate_triangles": 0,
+      "errors": [],
+      "family": "GripRig",
+      "fbx_axis_units": {
+        "CoordAxis": [
+          0
+        ],
+        "CoordAxisSign": [
+          1
+        ],
+        "FrontAxis": [
+          2
+        ],
+        "FrontAxisSign": [
+          1
+        ],
+        "UnitScaleFactor": [
+          100.0
+        ],
+        "UpAxis": [
+          1
+        ],
+        "UpAxisSign": [
+          1
+        ]
+      },
+      "fbx_geometry_bounds": {
+        "center": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "max": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "min": [
+          -0.5,
+          -0.5,
+          -0.5
+        ],
+        "size": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "file": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\competition-art-02\\Parts\\bb_comp_GripRig_RigBrace.fbx",
+      "material_slots": 1,
+      "matrix_world": [
+        [
+          1.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          7.549790126404332e-08,
+          -1.0,
+          0.0
+        ],
+        [
+          0.0,
+          1.0,
+          7.549790126404332e-08,
+          0.0
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      ],
+      "name": "GripRig_RigBrace",
+      "normals_finite": true,
+      "normals_unit": true,
+      "object_location": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "object_rotation_euler": [
+        1.570796251296997,
+        -0.0,
+        0.0
+      ],
+      "object_scale": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "partKind": "RigBrace",
+      "raw_mesh_bounds": {
+        "center": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "max": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "min": [
+          -0.5,
+          -0.5,
+          -0.5
+        ],
+        "size": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "raw_mesh_vertex_mean": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "sha256": "0854338b1510b58f2f85709ea072942a8b1d1af6050171a9b451968d824cf9e0",
+      "triangles": 92,
+      "used_material_indices": [
+        0
+      ],
+      "uv_finite": true,
+      "uv_within_0_1": true,
+      "vertices": 48,
+      "world_bounds": {
+        "center": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "max": [
+          0.5,
+          0.5,
+          0.5000000596046448
+        ],
+        "min": [
+          -0.5,
+          -0.5,
+          -0.5000000596046448
+        ],
+        "size": [
+          1.0,
+          1.0,
+          1.0000001192092896
+        ]
+      },
+      "world_vertex_mean": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "degenerate_triangles": 0,
+      "errors": [],
+      "family": "GripRig",
+      "fbx_axis_units": {
+        "CoordAxis": [
+          0
+        ],
+        "CoordAxisSign": [
+          1
+        ],
+        "FrontAxis": [
+          2
+        ],
+        "FrontAxisSign": [
+          1
+        ],
+        "UnitScaleFactor": [
+          100.0
+        ],
+        "UpAxis": [
+          1
+        ],
+        "UpAxisSign": [
+          1
+        ]
+      },
+      "fbx_geometry_bounds": {
+        "center": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "max": [
+          0.4999999701976776,
+          0.5,
+          0.5
+        ],
+        "min": [
+          -0.4999999701976776,
+          -0.5,
+          -0.5
+        ],
+        "size": [
+          0.9999999403953552,
+          1.0,
+          1.0
+        ]
+      },
+      "file": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\competition-art-02\\Parts\\bb_comp_GripRig_GripHandle.fbx",
+      "material_slots": 1,
+      "matrix_world": [
+        [
+          1.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          7.549790126404332e-08,
+          -1.0,
+          0.0
+        ],
+        [
+          0.0,
+          1.0,
+          7.549790126404332e-08,
+          0.0
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      ],
+      "name": "GripRig_GripHandle",
+      "normals_finite": true,
+      "normals_unit": true,
+      "object_location": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "object_rotation_euler": [
+        1.570796251296997,
+        -0.0,
+        0.0
+      ],
+      "object_scale": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "partKind": "GripHandle",
+      "raw_mesh_bounds": {
+        "center": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "max": [
+          0.4999999701976776,
+          0.5,
+          0.5
+        ],
+        "min": [
+          -0.4999999701976776,
+          -0.5,
+          -0.5
+        ],
+        "size": [
+          0.9999999403953552,
+          1.0,
+          1.0
+        ]
+      },
+      "raw_mesh_vertex_mean": [
+        -2.0954757928848267e-09,
+        0.3015625011175871,
+        0.0
+      ],
+      "sha256": "300858fe102a666a93be20e4910764c2192753d20ab5ecaf486af6e4d47658b9",
+      "triangles": 212,
+      "used_material_indices": [
+        0
+      ],
+      "uv_finite": true,
+      "uv_within_0_1": true,
+      "vertices": 128,
+      "world_bounds": {
+        "center": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "max": [
+          0.4999999701976776,
+          0.5,
+          0.5
+        ],
+        "min": [
+          -0.4999999701976776,
+          -0.5,
+          -0.5
+        ],
+        "size": [
+          0.9999999403953552,
+          1.0,
+          1.0
+        ]
+      },
+      "world_vertex_mean": [
+        -2.0954757928848267e-09,
+        2.3283064365386963e-08,
+        0.3015624964609742
+      ]
+    },
+    {
+      "degenerate_triangles": 0,
+      "errors": [],
+      "family": "GripRig",
+      "fbx_axis_units": {
+        "CoordAxis": [
+          0
+        ],
+        "CoordAxisSign": [
+          1
+        ],
+        "FrontAxis": [
+          2
+        ],
+        "FrontAxisSign": [
+          1
+        ],
+        "UnitScaleFactor": [
+          100.0
+        ],
+        "UpAxis": [
+          1
+        ],
+        "UpAxisSign": [
+          1
+        ]
+      },
+      "fbx_geometry_bounds": {
+        "center": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "max": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "min": [
+          -0.5,
+          -0.5,
+          -0.5
+        ],
+        "size": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "file": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\competition-art-02\\Parts\\bb_comp_GripRig_GripTrack.fbx",
+      "material_slots": 1,
+      "matrix_world": [
+        [
+          1.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          7.549790126404332e-08,
+          -1.0,
+          0.0
+        ],
+        [
+          0.0,
+          1.0,
+          7.549790126404332e-08,
+          0.0
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      ],
+      "name": "GripRig_GripTrack",
+      "normals_finite": true,
+      "normals_unit": true,
+      "object_location": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "object_rotation_euler": [
+        1.570796251296997,
+        -0.0,
+        0.0
+      ],
+      "object_scale": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "partKind": "GripTrack",
+      "raw_mesh_bounds": {
+        "center": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "max": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "min": [
+          -0.5,
+          -0.5,
+          -0.5
+        ],
+        "size": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "raw_mesh_vertex_mean": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "sha256": "5795f7052a7bbde359d27dd5335c5f5c89ba8796ebae23112c5e470cdfb3e9a5",
+      "triangles": 60,
+      "used_material_indices": [
+        0
+      ],
+      "uv_finite": true,
+      "uv_within_0_1": true,
+      "vertices": 32,
+      "world_bounds": {
+        "center": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "max": [
+          0.5,
+          0.5000000596046448,
+          0.5
+        ],
+        "min": [
+          -0.5,
+          -0.5000000596046448,
+          -0.5
+        ],
+        "size": [
+          1.0,
+          1.0000001192092896,
+          1.0
+        ]
+      },
+      "world_vertex_mean": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "degenerate_triangles": 0,
+      "errors": [],
+      "family": "GripRig",
+      "fbx_axis_units": {
+        "CoordAxis": [
+          0
+        ],
+        "CoordAxisSign": [
+          1
+        ],
+        "FrontAxis": [
+          2
+        ],
+        "FrontAxisSign": [
+          1
+        ],
+        "UnitScaleFactor": [
+          100.0
+        ],
+        "UpAxis": [
+          1
+        ],
+        "UpAxisSign": [
+          1
+        ]
+      },
+      "fbx_geometry_bounds": {
+        "center": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "max": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "min": [
+          -0.5,
+          -0.5,
+          -0.5
+        ],
+        "size": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "file": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\competition-art-02\\Parts\\bb_comp_GripRig_GripRemaining.fbx",
+      "material_slots": 1,
+      "matrix_world": [
+        [
+          1.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          7.549790126404332e-08,
+          -1.0,
+          0.0
+        ],
+        [
+          0.0,
+          1.0,
+          7.549790126404332e-08,
+          0.0
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      ],
+      "name": "GripRig_GripRemaining",
+      "normals_finite": true,
+      "normals_unit": true,
+      "object_location": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "object_rotation_euler": [
+        1.570796251296997,
+        -0.0,
+        0.0
+      ],
+      "object_scale": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "partKind": "GripRemaining",
+      "raw_mesh_bounds": {
+        "center": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "max": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "min": [
+          -0.5,
+          -0.5,
+          -0.5
+        ],
+        "size": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "raw_mesh_vertex_mean": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "sha256": "e95487894eac5ec498d302191a7f824f779e02371087322c0746910132d59bec",
+      "triangles": 60,
+      "used_material_indices": [
+        0
+      ],
+      "uv_finite": true,
+      "uv_within_0_1": true,
+      "vertices": 32,
+      "world_bounds": {
+        "center": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "max": [
+          0.5,
+          0.5000000596046448,
+          0.5
+        ],
+        "min": [
+          -0.5,
+          -0.5000000596046448,
+          -0.5
+        ],
+        "size": [
+          1.0,
+          1.0000001192092896,
+          1.0
+        ]
+      },
+      "world_vertex_mean": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "degenerate_triangles": 0,
+      "errors": [],
+      "family": "GripRig",
+      "fbx_axis_units": {
+        "CoordAxis": [
+          0
+        ],
+        "CoordAxisSign": [
+          1
+        ],
+        "FrontAxis": [
+          2
+        ],
+        "FrontAxisSign": [
+          1
+        ],
+        "UnitScaleFactor": [
+          100.0
+        ],
+        "UpAxis": [
+          1
+        ],
+        "UpAxisSign": [
+          1
+        ]
+      },
+      "fbx_geometry_bounds": {
+        "center": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "max": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "min": [
+          -0.5,
+          -0.5,
+          -0.5
+        ],
+        "size": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "file": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\competition-art-02\\Parts\\bb_comp_GripRig_CounterweightGuide.fbx",
+      "material_slots": 1,
+      "matrix_world": [
+        [
+          1.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          7.549790126404332e-08,
+          -1.0,
+          0.0
+        ],
+        [
+          0.0,
+          1.0,
+          7.549790126404332e-08,
+          0.0
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      ],
+      "name": "GripRig_CounterweightGuide",
+      "normals_finite": true,
+      "normals_unit": true,
+      "object_location": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "object_rotation_euler": [
+        1.570796251296997,
+        -0.0,
+        0.0
+      ],
+      "object_scale": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "partKind": "CounterweightGuide",
+      "raw_mesh_bounds": {
+        "center": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "max": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "min": [
+          -0.5,
+          -0.5,
+          -0.5
+        ],
+        "size": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "raw_mesh_vertex_mean": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "sha256": "0a6af7ae89c4163f5658ea85036be283537153980ea74611f5060d7d6a628fab",
+      "triangles": 60,
+      "used_material_indices": [
+        0
+      ],
+      "uv_finite": true,
+      "uv_within_0_1": true,
+      "vertices": 32,
+      "world_bounds": {
+        "center": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "max": [
+          0.5,
+          0.5000000596046448,
+          0.5
+        ],
+        "min": [
+          -0.5,
+          -0.5000000596046448,
+          -0.5
+        ],
+        "size": [
+          1.0,
+          1.0000001192092896,
+          1.0
+        ]
+      },
+      "world_vertex_mean": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "degenerate_triangles": 0,
+      "errors": [],
+      "family": "GripRig",
+      "fbx_axis_units": {
+        "CoordAxis": [
+          0
+        ],
+        "CoordAxisSign": [
+          1
+        ],
+        "FrontAxis": [
+          2
+        ],
+        "FrontAxisSign": [
+          1
+        ],
+        "UnitScaleFactor": [
+          100.0
+        ],
+        "UpAxis": [
+          1
+        ],
+        "UpAxisSign": [
+          1
+        ]
+      },
+      "fbx_geometry_bounds": {
+        "center": [
+          0.0,
+          0.0,
+          1.4901161193847656e-08
+        ],
+        "max": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "min": [
+          -0.5,
+          -0.5,
+          -0.4999999701976776
+        ],
+        "size": [
+          1.0,
+          1.0,
+          0.9999999701976776
+        ]
+      },
+      "file": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\competition-art-02\\Parts\\bb_comp_GripRig_Counterweight.fbx",
+      "material_slots": 1,
+      "matrix_world": [
+        [
+          1.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          7.549790126404332e-08,
+          -1.0,
+          0.0
+        ],
+        [
+          0.0,
+          1.0,
+          7.549790126404332e-08,
+          0.0
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      ],
+      "name": "GripRig_Counterweight",
+      "normals_finite": true,
+      "normals_unit": true,
+      "object_location": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "object_rotation_euler": [
+        1.570796251296997,
+        -0.0,
+        0.0
+      ],
+      "object_scale": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "partKind": "Counterweight",
+      "raw_mesh_bounds": {
+        "center": [
+          0.0,
+          0.0,
+          1.4901161193847656e-08
+        ],
+        "max": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "min": [
+          -0.5,
+          -0.5,
+          -0.4999999701976776
+        ],
+        "size": [
+          1.0,
+          1.0,
+          0.9999999701976776
+        ]
+      },
+      "raw_mesh_vertex_mean": [
+        0.0,
+        0.025789474455737753,
+        0.4026315753397189
+      ],
+      "sha256": "65c6f66740742295e139bb9c69bab9d6497a6121a7aa586f7737b52e9364ee86",
+      "triangles": 572,
+      "used_material_indices": [
+        0
+      ],
+      "uv_finite": true,
+      "uv_within_0_1": true,
+      "vertices": 304,
+      "world_bounds": {
+        "center": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "max": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "min": [
+          -0.5,
+          -0.5,
+          -0.5
+        ],
+        "size": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "world_vertex_mean": [
+        0.0,
+        -0.4026315737711756,
+        0.025789504938170706
+      ]
+    },
+    {
+      "degenerate_triangles": 0,
+      "errors": [],
+      "family": "GripRig",
+      "fbx_axis_units": {
+        "CoordAxis": [
+          0
+        ],
+        "CoordAxisSign": [
+          1
+        ],
+        "FrontAxis": [
+          2
+        ],
+        "FrontAxisSign": [
+          1
+        ],
+        "UnitScaleFactor": [
+          100.0
+        ],
+        "UpAxis": [
+          1
+        ],
+        "UpAxisSign": [
+          1
+        ]
+      },
+      "fbx_geometry_bounds": {
+        "center": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "max": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "min": [
+          -0.5,
+          -0.5,
+          -0.5
+        ],
+        "size": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "file": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\competition-art-02\\Parts\\bb_comp_GripRig_GripTick.fbx",
+      "material_slots": 1,
+      "matrix_world": [
+        [
+          1.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          7.549790126404332e-08,
+          -1.0,
+          0.0
+        ],
+        [
+          0.0,
+          1.0,
+          7.549790126404332e-08,
+          0.0
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      ],
+      "name": "GripRig_GripTick",
+      "normals_finite": true,
+      "normals_unit": true,
+      "object_location": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "object_rotation_euler": [
+        1.570796251296997,
+        -0.0,
+        0.0
+      ],
+      "object_scale": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "partKind": "GripTick",
+      "raw_mesh_bounds": {
+        "center": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "max": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "min": [
+          -0.5,
+          -0.5,
+          -0.5
+        ],
+        "size": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "raw_mesh_vertex_mean": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "sha256": "a84b71e7e032ba41346c6b60db469385f1bcba73b2d66cbfc4c825acae437bd5",
+      "triangles": 60,
+      "used_material_indices": [
+        0
+      ],
+      "uv_finite": true,
+      "uv_within_0_1": true,
+      "vertices": 32,
+      "world_bounds": {
+        "center": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "max": [
+          0.5,
+          0.5,
+          0.5000000596046448
+        ],
+        "min": [
+          -0.5,
+          -0.5,
+          -0.5000000596046448
+        ],
+        "size": [
+          1.0,
+          1.0,
+          1.0000001192092896
+        ]
+      },
+      "world_vertex_mean": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "degenerate_triangles": 0,
+      "errors": [],
+      "family": "DiceTray",
+      "fbx_axis_units": {
+        "CoordAxis": [
+          0
+        ],
+        "CoordAxisSign": [
+          1
+        ],
+        "FrontAxis": [
+          2
+        ],
+        "FrontAxisSign": [
+          1
+        ],
+        "UnitScaleFactor": [
+          100.0
+        ],
+        "UpAxis": [
+          1
+        ],
+        "UpAxisSign": [
+          1
+        ]
+      },
+      "fbx_geometry_bounds": {
+        "center": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "max": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "min": [
+          -0.5,
+          -0.5,
+          -0.5
+        ],
+        "size": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "file": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\competition-art-02\\Parts\\bb_comp_DiceTray_TrayPedestal.fbx",
+      "material_slots": 1,
+      "matrix_world": [
+        [
+          1.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          7.549790126404332e-08,
+          -1.0,
+          0.0
+        ],
+        [
+          0.0,
+          1.0,
+          7.549790126404332e-08,
+          0.0
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      ],
+      "name": "DiceTray_TrayPedestal",
+      "normals_finite": true,
+      "normals_unit": true,
+      "object_location": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "object_rotation_euler": [
+        1.570796251296997,
+        -0.0,
+        0.0
+      ],
+      "object_scale": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "partKind": "TrayPedestal",
+      "raw_mesh_bounds": {
+        "center": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "max": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "min": [
+          -0.5,
+          -0.5,
+          -0.5
+        ],
+        "size": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "raw_mesh_vertex_mean": [
+        0.0,
+        0.0,
+        0.10999999940395355
+      ],
+      "sha256": "d76ce643a118b9bb2e90c6705527637d32a3cda6d160488642c4df2be622339f",
+      "triangles": 240,
+      "used_material_indices": [
+        0
+      ],
+      "uv_finite": true,
+      "uv_within_0_1": false,
+      "vertices": 128,
+      "world_bounds": {
+        "center": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "max": [
+          0.5,
+          0.5000000596046448,
+          0.5000000596046448
+        ],
+        "min": [
+          -0.5,
+          -0.5000000596046448,
+          -0.5000000596046448
+        ],
+        "size": [
+          1.0,
+          1.0000001192092896,
+          1.0000001192092896
+        ]
+      },
+      "world_vertex_mean": [
+        0.0,
+        -0.10999999986961484,
+        7.450580596923828e-09
+      ]
+    },
+    {
+      "degenerate_triangles": 0,
+      "errors": [],
+      "family": "DiceTray",
+      "fbx_axis_units": {
+        "CoordAxis": [
+          0
+        ],
+        "CoordAxisSign": [
+          1
+        ],
+        "FrontAxis": [
+          2
+        ],
+        "FrontAxisSign": [
+          1
+        ],
+        "UnitScaleFactor": [
+          100.0
+        ],
+        "UpAxis": [
+          1
+        ],
+        "UpAxisSign": [
+          1
+        ]
+      },
+      "fbx_geometry_bounds": {
+        "center": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "max": [
+          0.5,
+          0.5,
+          0.4999999701976776
+        ],
+        "min": [
+          -0.5,
+          -0.5,
+          -0.4999999701976776
+        ],
+        "size": [
+          1.0,
+          1.0,
+          0.9999999403953552
+        ]
+      },
+      "file": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\competition-art-02\\Parts\\bb_comp_DiceTray_TrayBed.fbx",
+      "material_slots": 1,
+      "matrix_world": [
+        [
+          1.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          7.549790126404332e-08,
+          -1.0,
+          0.0
+        ],
+        [
+          0.0,
+          1.0,
+          7.549790126404332e-08,
+          0.0
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      ],
+      "name": "DiceTray_TrayBed",
+      "normals_finite": true,
+      "normals_unit": true,
+      "object_location": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "object_rotation_euler": [
+        1.570796251296997,
+        -0.0,
+        0.0
+      ],
+      "object_scale": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "partKind": "TrayBed",
+      "raw_mesh_bounds": {
+        "center": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "max": [
+          0.5,
+          0.5,
+          0.4999999701976776
+        ],
+        "min": [
+          -0.5,
+          -0.5,
+          -0.4999999701976776
+        ],
+        "size": [
+          1.0,
+          1.0,
+          0.9999999403953552
+        ]
+      },
+      "raw_mesh_vertex_mean": [
+        -2.483526865641276e-09,
+        0.07500000887860854,
+        0.0
+      ],
+      "sha256": "574d39dc1f9b6005a31d5b2dc9cc2a0d9ada66405565a59111b932cf573f4ea1",
+      "triangles": 184,
+      "used_material_indices": [
+        0
+      ],
+      "uv_finite": true,
+      "uv_within_0_1": true,
+      "vertices": 96,
+      "world_bounds": {
+        "center": [
+          0.0,
+          -1.4901161193847656e-08,
+          0.0
+        ],
+        "max": [
+          0.5,
+          0.4999999701976776,
+          0.5000000596046448
+        ],
+        "min": [
+          -0.5,
+          -0.5,
+          -0.5000000596046448
+        ],
+        "size": [
+          1.0,
+          0.9999999701976776,
+          1.0000001192092896
+        ]
+      },
+      "world_vertex_mean": [
+        -2.483526865641276e-09,
+        4.967053731282552e-09,
+        0.07500000887860854
+      ]
+    },
+    {
+      "degenerate_triangles": 0,
+      "errors": [],
+      "family": "DiceTray",
+      "fbx_axis_units": {
+        "CoordAxis": [
+          0
+        ],
+        "CoordAxisSign": [
+          1
+        ],
+        "FrontAxis": [
+          2
+        ],
+        "FrontAxisSign": [
+          1
+        ],
+        "UnitScaleFactor": [
+          100.0
+        ],
+        "UpAxis": [
+          1
+        ],
+        "UpAxisSign": [
+          1
+        ]
+      },
+      "fbx_geometry_bounds": {
+        "center": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "max": [
+          0.5,
+          0.4999999701976776,
+          0.5
+        ],
+        "min": [
+          -0.5,
+          -0.4999999701976776,
+          -0.5
+        ],
+        "size": [
+          1.0,
+          0.9999999403953552,
+          1.0
+        ]
+      },
+      "file": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\competition-art-02\\Parts\\bb_comp_DiceTray_TrayBackRail.fbx",
+      "material_slots": 1,
+      "matrix_world": [
+        [
+          1.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          7.549790126404332e-08,
+          -1.0,
+          0.0
+        ],
+        [
+          0.0,
+          1.0,
+          7.549790126404332e-08,
+          0.0
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      ],
+      "name": "DiceTray_TrayBackRail",
+      "normals_finite": true,
+      "normals_unit": true,
+      "object_location": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "object_rotation_euler": [
+        1.570796251296997,
+        -0.0,
+        0.0
+      ],
+      "object_scale": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "partKind": "TrayBackRail",
+      "raw_mesh_bounds": {
+        "center": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "max": [
+          0.5,
+          0.4999999701976776,
+          0.5
+        ],
+        "min": [
+          -0.5,
+          -0.4999999701976776,
+          -0.5
+        ],
+        "size": [
+          1.0,
+          0.9999999403953552,
+          1.0
+        ]
+      },
+      "raw_mesh_vertex_mean": [
+        -3.725290298461914e-09,
+        0.0,
+        0.0
+      ],
+      "sha256": "ae18e13e7a6104a1930a1268b97417b32cf1285cb24aaec998d93af4f5173b07",
+      "triangles": 92,
+      "used_material_indices": [
+        0
+      ],
+      "uv_finite": true,
+      "uv_within_0_1": true,
+      "vertices": 48,
+      "world_bounds": {
+        "center": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "max": [
+          0.5,
+          0.5000000596046448,
+          0.5
+        ],
+        "min": [
+          -0.5,
+          -0.5000000596046448,
+          -0.5
+        ],
+        "size": [
+          1.0,
+          1.0000001192092896,
+          1.0
+        ]
+      },
+      "world_vertex_mean": [
+        -3.725290298461914e-09,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "degenerate_triangles": 0,
+      "errors": [],
+      "family": "DiceTray",
+      "fbx_axis_units": {
+        "CoordAxis": [
+          0
+        ],
+        "CoordAxisSign": [
+          1
+        ],
+        "FrontAxis": [
+          2
+        ],
+        "FrontAxisSign": [
+          1
+        ],
+        "UnitScaleFactor": [
+          100.0
+        ],
+        "UpAxis": [
+          1
+        ],
+        "UpAxisSign": [
+          1
+        ]
+      },
+      "fbx_geometry_bounds": {
+        "center": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "max": [
+          0.5,
+          0.4999999701976776,
+          0.5
+        ],
+        "min": [
+          -0.5,
+          -0.4999999701976776,
+          -0.5
+        ],
+        "size": [
+          1.0,
+          0.9999999403953552,
+          1.0
+        ]
+      },
+      "file": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\competition-art-02\\Parts\\bb_comp_DiceTray_TraySideRail.fbx",
+      "material_slots": 1,
+      "matrix_world": [
+        [
+          1.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          7.549790126404332e-08,
+          -1.0,
+          0.0
+        ],
+        [
+          0.0,
+          1.0,
+          7.549790126404332e-08,
+          0.0
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      ],
+      "name": "DiceTray_TraySideRail",
+      "normals_finite": true,
+      "normals_unit": true,
+      "object_location": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "object_rotation_euler": [
+        1.570796251296997,
+        -0.0,
+        0.0
+      ],
+      "object_scale": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "partKind": "TraySideRail",
+      "raw_mesh_bounds": {
+        "center": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "max": [
+          0.5,
+          0.4999999701976776,
+          0.5
+        ],
+        "min": [
+          -0.5,
+          -0.4999999701976776,
+          -0.5
+        ],
+        "size": [
+          1.0,
+          0.9999999403953552,
+          1.0
+        ]
+      },
+      "raw_mesh_vertex_mean": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "sha256": "b98e141633b1499bed73de8a45b5dff3d7dd1eb64b9c63a5e39ede8fc1ab4ea7",
+      "triangles": 92,
+      "used_material_indices": [
+        0
+      ],
+      "uv_finite": true,
+      "uv_within_0_1": true,
+      "vertices": 48,
+      "world_bounds": {
+        "center": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "max": [
+          0.5,
+          0.5000000596046448,
+          0.5
+        ],
+        "min": [
+          -0.5,
+          -0.5000000596046448,
+          -0.5
+        ],
+        "size": [
+          1.0,
+          1.0000001192092896,
+          1.0
+        ]
+      },
+      "world_vertex_mean": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "degenerate_triangles": 0,
+      "errors": [],
+      "family": "DiceTray",
+      "fbx_axis_units": {
+        "CoordAxis": [
+          0
+        ],
+        "CoordAxisSign": [
+          1
+        ],
+        "FrontAxis": [
+          2
+        ],
+        "FrontAxisSign": [
+          1
+        ],
+        "UnitScaleFactor": [
+          100.0
+        ],
+        "UpAxis": [
+          1
+        ],
+        "UpAxisSign": [
+          1
+        ]
+      },
+      "fbx_geometry_bounds": {
+        "center": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "max": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "min": [
+          -0.5,
+          -0.5,
+          -0.5
+        ],
+        "size": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "file": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\competition-art-02\\Parts\\bb_comp_DiceTray_Die.fbx",
+      "material_slots": 1,
+      "matrix_world": [
+        [
+          1.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          7.549790126404332e-08,
+          -1.0,
+          0.0
+        ],
+        [
+          0.0,
+          1.0,
+          7.549790126404332e-08,
+          0.0
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      ],
+      "name": "DiceTray_Die",
+      "normals_finite": true,
+      "normals_unit": true,
+      "object_location": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "object_rotation_euler": [
+        1.570796251296997,
+        -0.0,
+        0.0
+      ],
+      "object_scale": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "partKind": "Die",
+      "raw_mesh_bounds": {
+        "center": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "max": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "min": [
+          -0.5,
+          -0.5,
+          -0.5
+        ],
+        "size": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "raw_mesh_vertex_mean": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "sha256": "dbfe03e8df681646fbceae1459dacf3f977a622ef46c418371c8a11415806677",
+      "triangles": 108,
+      "used_material_indices": [
+        0
+      ],
+      "uv_finite": true,
+      "uv_within_0_1": true,
+      "vertices": 56,
+      "world_bounds": {
+        "center": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "max": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "min": [
+          -0.5,
+          -0.5,
+          -0.5
+        ],
+        "size": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "world_vertex_mean": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    }
+  ],
+  "scope": "Independent Blender import and direct FBX axis/geometry inspection; not a Unity importer acceptance test.",
+  "status": "PASS"
+}

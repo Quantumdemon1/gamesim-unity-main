@@ -9,8 +9,8 @@ namespace Gamesim.Episode
     /// <summary>
     /// The read in the season walk (STRATEGY-LOOP-PLAN.md §2): once a season, in a campaign, the
     /// walk asks a voter where their head is at and reads them, one commit each, through the
-    /// conversation panel the player uses. Tolerant of a season that never offers the chance: a
-    /// campaign the walk cannot reach a voter in is noted, not failed.
+    /// conversation panel the player uses. Ineligible/known-owner/unreachable chances are explicit
+    /// zero-coverage dispositions; a missing ordinary eligible leaf is a failure, never a skip.
     /// </summary>
     public sealed partial class PortVerification
     {
@@ -27,60 +27,112 @@ namespace Gamesim.Episode
         /// <summary>
         /// Asks, then reads, a voter with a body the walk can reach: a step of the walk's own, outside
         /// the one-decision accounting, because the approach is free roam. Each chance is taken once a
-        /// season whether or not it could be taken; a campaign with no reachable voter is noted.
+        /// season only after a real commit or a legitimate finite disposition. A missing eligible
+        /// leaf/no-op fails before consuming it; physical misses retain their three-approach bound.
         /// </summary>
         private IEnumerator ExerciseSeasonRead(EpisodeState state, bool graphical)
         {
+            if (seasonVoteAsked && seasonPersonRead) yield break;
             bool asking = !seasonVoteAsked;
-            // The chance is taken once the control is pressed, or given up after three approaches that
-            // found nobody: a voter who is not interactable this step may be the next.
+            string feature = asking ? "AskVote" : "ReadPerson";
             void Consume() { if (asking) seasonVoteAsked = true; else seasonPersonRead = true; }
-            void Missed() { if (++seasonReadMisses >= 3) { Consume(); seasonReadMisses = 0; } }
+            void Missed()
+            {
+                if (++seasonReadMisses < 3) return;
+                Consume(); seasonReadMisses = 0;
+            }
             string caption = asking ? EpisodeHud.AskVoteCaption : EpisodeHud.ReadPersonCaption;
-            var voterIds = EpisodeEngine.Voters(state).Where(v => !v.isPlayer).Select(v => v.id).ToList();
+            state = seasonDirector.Snapshot;
+            string owner = SeasonConversationBlocker(state, seasonDirector.TalkingToId);
+            if (owner != null)
+            {
+                seasonReport.readNote = "BlockedByOtherView: " + owner;
+                RecordSeasonConversationAttempt(feature, "BlockedByOtherView", state, seasonDirector.TalkingToId, caption, owner);
+                Consume(); yield break; // Finite scheduling, NOT a successful read.
+            }
+            var voterIds = EpisodeEngine.Voters(state).Where(v => !v.isPlayer
+                && SeasonReadIneligible(state, v.id, asking) == null).Select(v => v.id).ToList();
+            if (voterIds.Count == 0)
+            {
+                seasonReport.readNote = "Ineligible: no active voter eligible for this week's " + feature + ".";
+                RecordSeasonConversationAttempt(feature, "Ineligible", state, null, caption, seasonReport.readNote);
+                Consume(); yield break;
+            }
             var bodies = seasonDirector.gameObject.scene.GetRootGameObjects()
                 .SelectMany(root => root.GetComponentsInChildren<HouseNpc>(true))
-                .Where(actor => actor.gameObject.activeInHierarchy && voterIds.Contains(actor.Id))
-                .ToList();
-            if (bodies.Count == 0) { seasonReport.readNote = "No voter had a body to approach for the read."; Missed(); yield break; }
-
+                .Where(actor => actor.gameObject.activeInHierarchy && voterIds.Contains(actor.Id)).ToList();
+            if (bodies.Count == 0)
+            {
+                seasonReport.readNote = "Unreachable: no eligible voter body.";
+                RecordSeasonConversationAttempt(feature, "Unreachable", state, null, caption, seasonReport.readNote);
+                Missed(); yield break;
+            }
             yield return CloseSeasonPanel();
             HouseNpc chosen = null; var approach = Vector3.zero;
             foreach (var candidate in bodies)
                 if (FindSeasonNpcApproach(candidate, out approach)) { chosen = candidate; break; }
-            if (chosen == null) { seasonReport.readNote = "No safe approach to a voter; the read was skipped."; Missed(); yield break; }
-            if (!seasonPlayer.TryMoveTo(approach)) { seasonReport.readNote = "The read's approach was not accepted."; Missed(); yield break; }
-            yield return WaitSeasonWalk("read conversation", approach, false);
-            if (!seasonPlayer.HasArrived || Vector3.Distance(seasonPlayer.transform.position, approach) >= 1.1f)
-            { seasonReport.readNote = "The read's approach did not complete within its route deadline."; Missed(); yield break; }
-            if (!seasonDirector.TryOpenNpc(chosen.Id)) { seasonReport.readNote = chosen.Id + " was not interactable for the read."; Missed(); yield break; }
-            yield return null; yield return null;
-            yield return EnterSeasonConversationCategory(EpisodeDirector.LearnCategoryCaption);
-            if (!HasSeasonButtonText(caption))
+            string missed = null;
+            if (chosen == null) missed = "No safe eligible voter approach.";
+            else if (!seasonPlayer.TryMoveTo(approach)) missed = "The approach was not accepted.";
+            else
             {
-                seasonReport.readNote = "The conversation offered no \"" + caption + "\" to " + chosen.Id + ".";
-                Consume();
-                yield return CloseSeasonPanel();
-                yield break;
+                yield return WaitSeasonWalk("read conversation", approach, false);
+                if (!seasonPlayer.HasArrived || Vector3.Distance(seasonPlayer.transform.position, approach) >= 1.1f)
+                    missed = "The route deadline expired.";
+                else if (!seasonDirector.TryOpenNpc(chosen.Id)) missed = "The reached voter was not interactable.";
             }
-            Consume();
+            if (missed != null)
+            {
+                seasonReport.readNote = "Unreachable: " + missed;
+                RecordSeasonConversationAttempt(feature, "Unreachable", seasonDirector.Snapshot, chosen != null ? chosen.Id : null, caption, missed);
+                Missed(); yield break;
+            }
+            yield return null; yield return null;
+            yield return DrainSeasonConversationExchange("before-read", false);
             var before = seasonDirector.Snapshot;
+            string ineligible = SeasonReadIneligible(before, chosen.Id, asking);
+            owner = SeasonConversationBlocker(before, chosen.Id);
+            if (ineligible != null || owner != null)
+            {
+                seasonReport.readNote = owner != null ? "BlockedByOtherView: " + owner : "Ineligible: " + ineligible;
+                RecordSeasonConversationAttempt(feature, owner != null ? "BlockedByOtherView" : "Ineligible",
+                    before, chosen.Id, caption, owner ?? ineligible);
+                Consume(); yield return CloseSeasonPanel(); yield break;
+            }
+            yield return EnterSeasonConversationCategory(EpisodeDirector.LearnCategoryCaption);
+            RequireSeasonConversationLeaf(feature, chosen.Id, EpisodeDirector.LearnCategoryCaption, caption);
+            before = seasonDirector.Snapshot;
+            var baseline = ConversationBaseline();
             yield return CaptureSeason(asking ? "vote-asked" : "person-read", graphical);
+            RequireConversationUnchanged(baseline, "Capturing the available read");
             yield return ClickSeasonButton(caption);
             var after = seasonDirector.Snapshot;
-            RequireSeason(after.revision == before.revision + 1, "The read's control must commit exactly one command: " + caption);
-            RequireSeason(EpisodeValidation.TryValidate(after, out var reason), "The projected season must remain valid after the read: " + reason);
+            RequireSeasonConversationCommit(before, after, baseline, false, feature);
+            RequireSeason(EpisodeDirector.CommittedEvents(after, before.nextSequence).Any(e => e.kind == "vote-read")
+                && (asking ? EpisodeEngine.AskedThisWeek(after, chosen.Id) : EpisodeEngine.ReadThisWeek(after, chosen.Id)),
+                "The read must record this exact person's actual weekly attempt: " + caption);
+            // Missing/no-op eligible leaves throw BEFORE consuming their attempt or claiming coverage.
+            Consume(); seasonReadMisses = 0;
             seasonReport.commands++;
-            RequireSeason(EpisodeEngine.SocialActionsSpent(after) == EpisodeEngine.SocialActionsSpent(before), "Asking and reading are free.");
-            if (asking)
-            {
-                // By number, not by count: a full log keeps its length (EpisodeDirector.CommittedEvents).
-                RequireSeason(EpisodeDirector.CommittedEvents(after, before.nextSequence).Any(e => e.kind == "vote-read"), "Asking about the vote must say what came of it.");
-                seasonReport.votesAsked++;
-            }
-            else seasonReport.peopleRead++;
+            if (asking) seasonReport.votesAsked++; else seasonReport.peopleRead++;
+            seasonReport.readNote = "Committed: one free " + feature + " to " + chosen.Id + ".";
+            RecordSeasonConversationAttempt(feature, "Committed", before, chosen.Id, caption, seasonReport.readNote, after);
             yield return DrainSeasonConversationExchange(asking ? "vote-answer" : "person-reading", graphical);
             yield return CloseSeasonPanel();
+        }
+
+        private static string SeasonReadIneligible(EpisodeState state, string npcId, bool asking)
+        {
+            if (state.Find(state.playerId)?.status != ContestantStatus.Active) return "The player is not active.";
+            if (state.Find(npcId)?.status != ContestantStatus.Active || npcId == state.playerId) return "No active NPC.";
+            if (asking)
+            {
+                if (!VoteRead.Available(state) || !EpisodeEngine.Voters(state).Any(v => v.id == npcId))
+                    return "No current vote for this voter.";
+                return EpisodeEngine.AskedThisWeek(state, npcId) ? "Already asked this voter this week." : null;
+            }
+            if (state.phase != EpisodePhase.Social && state.phase != EpisodePhase.Campaign) return "Not a reading window.";
+            return EpisodeEngine.ReadThisWeek(state, npcId) ? "Already read this housemate this week." : null;
         }
 
         private bool seasonPlayTaken;

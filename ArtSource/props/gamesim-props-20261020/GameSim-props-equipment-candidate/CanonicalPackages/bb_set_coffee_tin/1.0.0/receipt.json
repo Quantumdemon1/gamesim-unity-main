@@ -1,0 +1,23 @@
+{
+  "completedAt": "2026-10-21T04:05:56.925Z",
+  "destination": {
+    "assetId": "bb_set_coffee_tin",
+    "version": "1.0.0"
+  },
+  "evidence": {
+    "blenderNormalizationPerformed": false,
+    "gpuImportTestPerformed": false,
+    "humanVisualReviewPerformed": false,
+    "modelBytesCopiedAndHashed": true,
+    "policyValidationCompleted": true,
+    "staticInspectionCompleted": true
+  },
+  "manifestSha256": "5dd777bdcd0e4cc62e7d048fce295866acb14be7d749431c6c5a1aa36f2b59b8",
+  "packageId": "pkg_48d70ea613ca5e9d463e71df",
+  "schema": "game_dev.package_receipt.v1",
+  "source": {
+    "bytes": 555768,
+    "fileName": "bb_set_coffee_tin.glb",
+    "sha256": "25f1256493ecb74bca8e51a46f39a9dbf4b284a3292bfee11fcfde9870b2eacd"
+  }
+}

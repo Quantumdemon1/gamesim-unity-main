@@ -474,7 +474,7 @@ namespace Gamesim.Episode
             hud.ScreenHead(stage ? null : "FREE TIME", left <= 0 ? "NO ACTIONS LEFT" : left == 1 ? "SPEND YOUR LAST ACTION" : "SPEND AN ACTION",
                 stage ? null : "Build relationships, gather information, or make a move. Choose who to interact with and how.");
             hud.HouseguestStrip(OthersHereFirst(state).Select(c => c.id).ToList(), who.id, OpenHouseguestScreen, stage ? StageStripCardWidth : 150f);
-            string first = (who.name ?? "").Split(' ')[0];
+            string first = CharacterNames.FirstName(who.name ?? "");
             string id = who.id;
             hud.BeginColumns(300f);
             hud.SectionHead("chat", "TALK TO " + who.name.ToUpperInvariant(), stage ? null : "Choose how you want to spend your action with " + first + ".");

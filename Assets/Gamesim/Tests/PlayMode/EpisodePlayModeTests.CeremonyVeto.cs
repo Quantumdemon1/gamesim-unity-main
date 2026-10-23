@@ -355,7 +355,7 @@ namespace Gamesim.Tests.PlayMode
                     Assert.That(before.phase, Is.Not.EqualTo(EpisodePhase.Finished), "The season ended before week 2's veto meeting.");
                     var result = director.Submit(NextCommand(before));
                     Assert.That(result.accepted, Is.True, before.phase + ": " + result.reason);
-                    committed = director.Snapshot.events.Skip(before.events.Count).Any(entry => entry.kind == CeremonySting.VetoKind
+                    committed = director.Snapshot.events.Where(entry => entry.sequence >= before.nextSequence).Any(entry => entry.kind == CeremonySting.VetoKind
                         && (entry.audienceIds.Count == 0 || entry.audienceIds.Contains(before.playerId)));
                     if (!committed) yield return null;
                 }
@@ -392,7 +392,7 @@ namespace Gamesim.Tests.PlayMode
             var before = director.Snapshot;
             var result = director.Submit(NextCommand(before));
             Assert.That(result.accepted, Is.True, result.reason);
-            var meeting = director.Snapshot.events.Skip(before.events.Count).Last(entry => entry.kind == CeremonySting.VetoKind);
+            var meeting = director.Snapshot.events.Where(entry => entry.sequence >= before.nextSequence).Last(entry => entry.kind == CeremonySting.VetoKind);
             if (Application.isBatchMode)
             {
                 Assert.That(director.IsCeremonyStaged, Is.False, "A batch run stages nothing unless asked.");

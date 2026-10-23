@@ -27,7 +27,7 @@ namespace Gamesim.Tests.EditMode
         {
             var s = builder ? SeasonBuilder.Create(new SeasonBuilder.Choice(), 2805) : ContentCatalog.Create(2805);
             Accepted(s);
-            Assert.That(s.schemaVersion, Is.EqualTo(28));
+            Assert.That(s.schemaVersion, Is.EqualTo(29));
             Inert(s);
         }
 
@@ -55,7 +55,10 @@ namespace Gamesim.Tests.EditMode
             Assert.That(Fields(typeof(PlanSay)), Is.EqualTo(new[] { "memberId", "targetId" }));
             Assert.That(Fields(typeof(NpcActState)), Is.EqualTo(new[]
                 { "id", "kind", "actorId", "partnerId", "subjectId", "room", "week", "window", "firedTick", "sighted", "overheard" }));
-            Assert.That(Fields(typeof(EpisodeState)).Skip(Fields(typeof(EpisodeState)).Length - 3), Is.EqualTo(StartWeeks));
+            var root = Fields(typeof(EpisodeState));
+            Assert.That(root.Skip(root.Length - 5).Take(3), Is.EqualTo(StartWeeks),
+                "The original Wave D segment stays in order immediately before schema29's two appended fields.");
+            Assert.That(root.Skip(root.Length - 2), Is.EqualTo(new[] { "dialogueRulesVersion", "dialogue" }));
             Assert.That(Fields(typeof(NpcSocialState)).Skip(Fields(typeof(NpcSocialState)).Length - 6),
                 Is.EqualTo(new[] { "beatWeek", "beatWindow", "beatsFired", "beatSeats", "beatPlan", "acts" }));
             Assert.That(Fields(typeof(SeasonLedger)).Last(), Is.EqualTo("plans"));
@@ -104,7 +107,11 @@ namespace Gamesim.Tests.EditMode
             Assert.That((int)EpisodeCommandKind.Negotiate, Is.EqualTo(61));
             Assert.That((int)EpisodeCommandKind.AnswerPactPlan, Is.EqualTo(62));
             Assert.That((int)EpisodeCommandKind.WitnessNpcAct, Is.EqualTo(63));
-            Assert.That(Enum.GetValues(typeof(EpisodeCommandKind)).Cast<int>().Max(), Is.EqualTo(63));
+            // Dialogue V2 (schema 29) appends its two kinds after these; nothing above is renumbered,
+            // so recorded seasons replay as they were.
+            Assert.That((int)EpisodeCommandKind.StartDialogue, Is.EqualTo(64));
+            Assert.That((int)EpisodeCommandKind.ChooseDialogue, Is.EqualTo(65));
+            Assert.That(Enum.GetValues(typeof(EpisodeCommandKind)).Cast<int>().Max(), Is.EqualTo(65));
         }
 
         /// <summary>

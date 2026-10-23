@@ -24,7 +24,7 @@ namespace Gamesim.Tests.PlayMode
     /// faults at the persistence boundary, never changes the authoritative engine,
     /// and is cleared before teardown. Only generated, isolated test slots are touched.
     /// </summary>
-    public sealed class EpisodeDurableTransactionTests
+    public sealed partial class EpisodeDurableTransactionTests
     {
         private const string EpisodeScene = "EpisodeHouse";
         private const BindingFlags PrivateInstance = BindingFlags.Instance | BindingFlags.NonPublic;

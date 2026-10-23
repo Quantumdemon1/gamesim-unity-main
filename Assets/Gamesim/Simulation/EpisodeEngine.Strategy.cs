@@ -16,7 +16,7 @@ namespace Gamesim.Simulation
         /// Household, about a replacement) before the meeting. A social action: it costs one of the
         /// week's conversations however it is taken.
         /// </summary>
-        private static void Lobby(EpisodeState s, EpisodeCommand c)
+        private static void Lobby(EpisodeState s, EpisodeCommand c, PendingDialogueCommand pending = null)
         {
             Require(StrategyRules.Apply(s), "This season has no strategy windows.");
             Require(s.Find(s.playerId).status == ContestantStatus.Active,
@@ -39,6 +39,18 @@ namespace Gamesim.Simulation
                 && !NpcDeals.Between(s, s.playerId, decider.id).Any(d => d.type == DealKind.VoteSave))
                 Require(UnifiedVoteStore.CanAddDeal(s, DraftLobbyVote(s, decider.id), UnifiedVoteFamilyValidation.VoteLobby,
                     out string voteRefusal), voteRefusal);
+            if (ask == LobbyAsk.Vote && approach == LobbyApproach.Emotional)
+            {
+                ResolveEmotionalVotePlea(s, decider.id, pending);
+                SpendSocialAction(s);
+                return;
+            }
+            if (ask == LobbyAsk.Vote && approach == LobbyApproach.Strategic)
+            {
+                ResolveStrategicVotePlea(s, decider.id, pending);
+                SpendSocialAction(s);
+                return;
+            }
             var read = ask == LobbyAsk.Vote ? LeverRead(s, decider.id) : null;
             double chance = StrategyRules.Chance(s, decider.id, ask, c.secondTargetId, approach);
             var answer = StrategyRules.Respond(chance, Roll(s), () => Roll(s));
@@ -48,6 +60,7 @@ namespace Gamesim.Simulation
                 approach = approach, response = answer.response,
                 influence = Math.Max(-StrategyRules.MostInfluence, Math.Min(StrategyRules.MostInfluence, answer.influence)),
             });
+            pending?.CloseForLobby(s, decider.id);
             string plea = StrategyRules.Describe(s, ask, c.secondTargetId);
             if (answer.impact != 0)
                 Change(s, s.playerId, decider.id, answer.impact, "Lobbying: asked " + plea + " (" + answer.response + ")", "lobby");
@@ -65,7 +78,7 @@ namespace Gamesim.Simulation
             {
                 var vote = DraftLobbyVote(s, decider.id);
                 if (UnifiedVoteStore.On(s))
-                    Require(UnifiedVoteStore.TryAddDeal(s, vote, UnifiedVoteFamilyValidation.VoteLobby, out string voteError), voteError);
+                    Require(UnifiedVoteStore.TryAddDeal(s, vote, UnifiedVoteFamilyValidation.VoteLobby, pending?.SealedFor(s), out string voteError), voteError);
                 else s.deals.Add(vote);
                 Log(s, "deal", decider.name + " has given you their vote: a vote to keep you, judged at the reveal.", s.playerId, decider.id);
             }
@@ -82,6 +95,69 @@ namespace Gamesim.Simulation
             if (ask == LobbyAsk.Vote) LeverLine(s, decider.id, read, s.nominees.FirstOrDefault(id => id != s.playerId), "your plea");
             SpendSocialAction(s);
         }
+
+        /// <summary>
+        /// The source Emotional vote-plea consequences, without command admission or funding.
+        /// The calling owner must first admit the voter and occasion, and owns the one debit.
+        /// Keep the read before the roll and the lever line immediately after the consequences.
+        /// </summary>
+        private static string ResolveEmotionalVotePlea(EpisodeState s, string voterId, PendingDialogueCommand pending = null)
+        {
+            const string ask = LobbyAsk.Vote, approach = LobbyApproach.Emotional;
+            string subjectId = s.playerId;
+            var decider = s.Find(voterId);
+            var read = LeverRead(s, decider.id);
+            double chance = StrategyRules.Chance(s, decider.id, ask, subjectId, approach);
+            var answer = StrategyRules.Respond(chance, Roll(s), () => Roll(s));
+            s.lobbies.Add(new LobbyState
+            {
+                week = s.week, phase = s.phase, deciderId = decider.id, ask = ask, subjectId = subjectId,
+                approach = approach, response = answer.response,
+                influence = Math.Max(-StrategyRules.MostInfluence, Math.Min(StrategyRules.MostInfluence, answer.influence)),
+            });
+            pending?.CloseForLobby(s, decider.id);
+            string plea = StrategyRules.Describe(s, ask, subjectId);
+            if (answer.impact != 0)
+                Change(s, s.playerId, decider.id, answer.impact, "Lobbying: asked " + plea + " (" + answer.response + ")", "lobby");
+            Remember(s, decider.id, s.playerId, "Asked me " + plea + " in week " + s.week + ". I was " + answer.response + ".", true);
+            Log(s, "lobby", "You asked " + decider.name + " " + plea + ": “" + StrategyRules.Pitch(s, ask, subjectId, approach)
+                + "” " + decider.name + ": “" + StrategyRules.Answer(s, ask, subjectId, approach, answer.response) + "”",
+                s.playerId, decider.id);
+            LeverLine(s, decider.id, read, s.nominees.FirstOrDefault(id => id != s.playerId), "your plea");
+            return answer.response;
+        }
+
+        /// <summary>
+        /// Distinct source Strategic Vote consequence, without admission, funding or generic Deal writes.
+        /// Preserve pre-read/roll/capped plea/independent closure/Change/Remember/Log/post-read order.
+        /// A funded dialogue calls with null pending; an ordinary Lobby keeps its exact closure hook.
+        /// </summary>
+        private static string ResolveStrategicVotePlea(EpisodeState s, string voterId, PendingDialogueCommand pending = null)
+        {
+            const string ask = LobbyAsk.Vote, approach = LobbyApproach.Strategic;
+            string subjectId = s.playerId;
+            var decider = s.Find(voterId);
+            var read = LeverRead(s, decider.id);
+            double chance = StrategyRules.Chance(s, decider.id, ask, subjectId, approach);
+            var answer = StrategyRules.Respond(chance, Roll(s), () => Roll(s));
+            s.lobbies.Add(new LobbyState
+            {
+                week = s.week, phase = s.phase, deciderId = decider.id, ask = ask, subjectId = subjectId,
+                approach = approach, response = answer.response,
+                influence = Math.Max(-StrategyRules.MostInfluence, Math.Min(StrategyRules.MostInfluence, answer.influence)),
+            });
+            pending?.CloseForLobby(s, decider.id);
+            string plea = StrategyRules.Describe(s, ask, subjectId);
+            if (answer.impact != 0)
+                Change(s, s.playerId, decider.id, answer.impact, "Lobbying: asked " + plea + " (" + answer.response + ")", "lobby");
+            Remember(s, decider.id, s.playerId, "Asked me " + plea + " in week " + s.week + ". I was " + answer.response + ".", true);
+            Log(s, "lobby", "You asked " + decider.name + " " + plea + ": “" + StrategyRules.Pitch(s, ask, subjectId, approach)
+                + "” " + decider.name + ": “" + StrategyRules.Answer(s, ask, subjectId, approach, answer.response) + "”",
+                s.playerId, decider.id);
+            LeverLine(s, decider.id, read, s.nominees.FirstOrDefault(id => id != s.playerId), "your plea");
+            return answer.response;
+        }
+
 
         /// <summary>A voter's word to keep the player on the block, as a landed plea for their vote writes it.</summary>
         private static DealState DraftLobbyVote(EpisodeState s, string deciderId) => new DealState

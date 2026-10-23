@@ -17,8 +17,7 @@ namespace Gamesim.Episode
 
         private IEnumerator ExerciseAutonomy(bool graphical)
         {
-            autonomyReport = new AutonomyReport { status = "Running" };
-            seasonReport.autonomy = autonomyReport;
+            autonomyReport.status = "Running";
             var baseline = seasonDirector.Snapshot;
             RequireSeason(baseline.npcSocial.rulesStartWeek == 1 && NpcSocialState.IsEligible(baseline),
                 "Autonomy QA requires a legal, freshly created eligible season.");
@@ -231,7 +230,8 @@ namespace Gamesim.Episode
         }
         [Serializable] private sealed class AutonomyReport
         {
-            public string status;
+            public bool requested;
+            public string status = "Not requested";
             public int actualStartProofChecks, sourceTransitionChecks, completedConversations;
             public int reunionPhysicalProofChecks, unreadyReunionFrames;
             public int captionPhysicalProofChecks;

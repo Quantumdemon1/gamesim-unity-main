@@ -67,16 +67,37 @@ namespace Gamesim.Simulation
             return TryValidateCore(s, UnifiedVoteFamilyValidation.Version, out error);
         }
 
+        internal static bool TryValidatePendingVote(EpisodeState s, EpisodeEngine.PendingDialogueCommand pending, out string error)
+        {
+            if (pending == null || !pending.Verify(s, out error))
+                return Fail(out error, "An exact registered pending dialogue command is required.");
+            if (s.unifiedCommitmentRulesVersion != UnifiedVoteFamilyValidation.Version || !YourWord.On(s) || s.dealRulesStartWeek != 1)
+                return Fail(out error, "Pending dialogue requires the complete active unified Vote rules.");
+            return TryValidateCore(s, UnifiedVoteFamilyValidation.Version, out error, pending);
+        }
+
         // Existing public/historical mode0/1 entries retain their exact selection and body.
         private static bool TryValidateCore(EpisodeState s, bool prospectiveSafety, out string error) =>
             TryValidateCore(s, prospectiveSafety ? UnifiedCommitments.ProspectiveVersion : 0, out error);
 
-        private static bool TryValidateCore(EpisodeState s, int canonicalMode, out string error)
+        private static bool TryValidateCore(EpisodeState s, int canonicalMode, out string error, EpisodeEngine.PendingDialogueCommand pending = null)
         {
             bool prospectiveVote = canonicalMode == UnifiedVoteFamilyValidation.Version;
             bool prospectiveSafety = canonicalMode == UnifiedCommitments.ProspectiveVersion || prospectiveVote;
             error = null;
-            if (s == null || s.schemaVersion != 28) return Fail(out error, "Unsupported episode schema.");
+            if (s == null || s.schemaVersion != 29) return Fail(out error, "Unsupported episode schema.");
+            // The unpublished pilot has a complete local semantic owner. Unknown versions still
+            // refuse; default/legacy rules stay inert and keep their original storage diagnostics.
+            if (s.dialogueRulesVersion != 0 && s.dialogueRulesVersion != DialogueRules.Version)
+                return Fail(out error, "Dialogue rules are not enabled in this build.");
+            if (s.dialogueRulesVersion == 0 && (s.dialogue == null || s.dialogue.episodes == null || s.dialogue.grants == null
+                || s.dialogue.vetoOccasions == null || s.dialogue.episodes.Count != 0
+                || s.dialogue.grants.Count != 0 || s.dialogue.vetoOccasions.Count != 0
+                || (s.unifiedCommitments != null && s.unifiedCommitments.Any(row => row?.conditionalVeto != null))))
+                return Fail(out error, "Disabled dialogue storage must remain complete and inert.");
+            // Pending exceptions are exact registered receipt objects, never a raised effective
+            // root revision. Every other invariant below sees the candidate's actual revision.
+            if (!DialogueRules.TryValidate(s, pending, out error)) return false;
             if (prospectiveSafety)
             {
                 if (s.unifiedCommitmentRulesVersion != canonicalMode

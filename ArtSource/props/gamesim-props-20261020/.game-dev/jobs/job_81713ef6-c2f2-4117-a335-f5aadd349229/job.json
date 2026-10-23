@@ -1,0 +1,65 @@
+{
+  "schema": "game_dev.job.v1",
+  "id": "job_81713ef6-c2f2-4117-a335-f5aadd349229",
+  "operation": "package.build",
+  "status": "completed",
+  "request": {
+    "positionals": [
+      "package",
+      "build",
+      "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\appliances\\mini-fridge-02\\bb_set_mini_fridge.glb"
+    ],
+    "flags": {
+      "output-dir": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\outputs\\gamesim-props-20261020"
+    },
+    "input": {
+      "name": "bb_set_mini_fridge",
+      "version": "1.0.1",
+      "category": "environment_prop",
+      "license": "LicenseRef-GameSim-Original",
+      "description": "Original static dressing prop, metres and bottom-centre origin; full PBR GLB and explicit Unity texture companion. Existing support point and envelope retained. No interaction or collider is introduced. Native Unity acceptance pending.",
+      "policy": {
+        "requireUVs": true,
+        "requireNormals": true,
+        "requireTangentsWithNormalMap": true,
+        "requireBaseColorTexture": true,
+        "maxTriangles": 4000,
+        "maxMaterials": 1,
+        "minTextureSize": 256,
+        "requirePowerOfTwoTextures": true,
+        "maxDimensionMeters": 3,
+        "minDimensionMeters": 0.001
+      },
+      "provenance": {
+        "origin": "authored",
+        "author": "[redacted]",
+        "model": "Blender 5.2.2 LTS",
+        "sourceUri": "file:///C:/Users/kelli/Documents/Codex/2026-09-20/re/work/house-equipment-20261020/appliances/mini-fridge-02/bb_set_mini_fridge.glb",
+        "prompt": "Original GameSim house dressing and competition equipment within existing placement and motion envelopes.",
+        "notes": "Original static dressing prop, metres and bottom-centre origin; full PBR GLB and explicit Unity texture companion. Existing support point and envelope retained. No interaction or collider is introduced. Native Unity acceptance pending. No third-party assets or provider services. appliances/author_appliances_v2.py sha256=7d65c0a0043ac8af6ddcf72a1f5e60d01b3dbed05af602b2c9f7083270f7e27f; appliances/mini-fridge-02/bb_set_mini_fridge_source.blend sha256=eb3b852f78a098e4aeadd9ee04978f82e2f014da682ce66c2802856677c96328"
+      }
+    }
+  },
+  "attempts": 1,
+  "eventCount": 2,
+  "artifacts": [
+    {
+      "path": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\outputs\\gamesim-props-20261020\\.game-dev\\packages\\bb_set_mini_fridge\\1.0.1",
+      "kind": "asset_package"
+    },
+    {
+      "path": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\outputs\\gamesim-props-20261020\\.game-dev\\packages\\bb_set_mini_fridge\\1.0.1\\manifest.json",
+      "kind": "manifest",
+      "sha256": "0fcca579c8631c1802c2acbf779b845099e8f60c5e1355362e66a75d784ea833"
+    },
+    {
+      "path": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\outputs\\gamesim-props-20261020\\.game-dev\\packages\\bb_set_mini_fridge\\1.0.1\\receipt.json",
+      "kind": "receipt"
+    }
+  ],
+  "createdAt": "2026-10-21T04:08:06.668Z",
+  "updatedAt": "2026-10-21T04:08:06.806Z",
+  "startedAt": "2026-10-21T04:08:06.686Z",
+  "completedAt": "2026-10-21T04:08:06.806Z",
+  "receiptPath": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\outputs\\gamesim-props-20261020\\.game-dev\\jobs\\job_81713ef6-c2f2-4117-a335-f5aadd349229\\receipt.json"
+}

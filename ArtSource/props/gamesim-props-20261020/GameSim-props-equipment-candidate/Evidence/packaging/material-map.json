@@ -1,0 +1,583 @@
+{
+  "version": 1,
+  "models": [
+    {
+      "name": "bb_set_coffee_tin",
+      "albedo": "Textures/bb_set_coffee_tin_albedo.png",
+      "gltfOrm": "Textures/bb_set_coffee_tin_orm.png",
+      "unityMetallicSmoothness": "Textures/bb_set_coffee_tin_metallic.png",
+      "roughnessChannel": "gltf ORM green",
+      "unitySmoothnessChannel": "metallic alpha = 255 - ORM green",
+      "albedoSRGB": true,
+      "ormSRGB": false,
+      "metallicSRGB": false,
+      "materials": [
+        {
+          "name": "bb_mat_bb_set_coffee_tin",
+          "baseColorFactorLinear": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "metallicFactor": 1,
+          "roughnessFactor": 1,
+          "usesLabelTextures": true,
+          "unityMetallic": 1,
+          "unitySmoothness": 1.0,
+          "unitySmoothnessNote": "Use scalar 1 with the supplied alpha smoothness map; do not derive zero from glTF roughnessFactor 1."
+        },
+        {
+          "name": "bb_mat_bb_set_coffee_tin_trim",
+          "baseColorFactorLinear": [
+            0.4793201684951782,
+            0.2746773064136505,
+            0.052860647439956665,
+            1
+          ],
+          "metallicFactor": 0.2800000011920929,
+          "roughnessFactor": 0.3799999952316284,
+          "usesLabelTextures": false,
+          "unityMetallic": 0.2800000011920929,
+          "unitySmoothness": 0.6200000047683716,
+          "unitySmoothnessNote": "Solid material: 1 - glTF roughness factor."
+        }
+      ]
+    },
+    {
+      "name": "bb_set_food_jar",
+      "albedo": "Textures/bb_set_food_jar_albedo.png",
+      "gltfOrm": "Textures/bb_set_food_jar_orm.png",
+      "unityMetallicSmoothness": "Textures/bb_set_food_jar_metallic.png",
+      "roughnessChannel": "gltf ORM green",
+      "unitySmoothnessChannel": "metallic alpha = 255 - ORM green",
+      "albedoSRGB": true,
+      "ormSRGB": false,
+      "metallicSRGB": false,
+      "materials": [
+        {
+          "name": "bb_mat_bb_set_food_jar",
+          "baseColorFactorLinear": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "metallicFactor": 1,
+          "roughnessFactor": 1,
+          "usesLabelTextures": true,
+          "unityMetallic": 1,
+          "unitySmoothness": 1.0,
+          "unitySmoothnessNote": "Use scalar 1 with the supplied alpha smoothness map; do not derive zero from glTF roughnessFactor 1."
+        },
+        {
+          "name": "bb_mat_bb_set_food_jar_trim",
+          "baseColorFactorLinear": [
+            0.06480326503515244,
+            0.2788942754268646,
+            0.366252601146698,
+            1
+          ],
+          "metallicFactor": 0.2800000011920929,
+          "roughnessFactor": 0.3799999952316284,
+          "usesLabelTextures": false,
+          "unityMetallic": 0.2800000011920929,
+          "unitySmoothness": 0.6200000047683716,
+          "unitySmoothnessNote": "Solid material: 1 - glTF roughness factor."
+        }
+      ]
+    },
+    {
+      "name": "bb_set_cereal_carton",
+      "albedo": "Textures/bb_set_cereal_carton_albedo.png",
+      "gltfOrm": "Textures/bb_set_cereal_carton_orm.png",
+      "unityMetallicSmoothness": "Textures/bb_set_cereal_carton_metallic.png",
+      "roughnessChannel": "gltf ORM green",
+      "unitySmoothnessChannel": "metallic alpha = 255 - ORM green",
+      "albedoSRGB": true,
+      "ormSRGB": false,
+      "metallicSRGB": false,
+      "materials": [
+        {
+          "name": "bb_mat_bb_set_cereal_carton",
+          "baseColorFactorLinear": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "metallicFactor": 1,
+          "roughnessFactor": 1,
+          "usesLabelTextures": true,
+          "unityMetallic": 1,
+          "unitySmoothness": 1.0,
+          "unitySmoothnessNote": "Use scalar 1 with the supplied alpha smoothness map; do not derive zero from glTF roughnessFactor 1."
+        },
+        {
+          "name": "bb_mat_bb_set_cereal_carton_trim",
+          "baseColorFactorLinear": [
+            0.4793201684951782,
+            0.2746773064136505,
+            0.052860647439956665,
+            1
+          ],
+          "metallicFactor": 0,
+          "roughnessFactor": 0.3799999952316284,
+          "usesLabelTextures": false,
+          "unityMetallic": 0,
+          "unitySmoothness": 0.6200000047683716,
+          "unitySmoothnessNote": "Solid material: 1 - glTF roughness factor."
+        },
+        {
+          "name": "bb_mat_bb_set_cereal_carton_base",
+          "baseColorFactorLinear": [
+            0.03799999877810478,
+            0.050999999046325684,
+            0.06300000101327896,
+            1
+          ],
+          "metallicFactor": 0,
+          "roughnessFactor": 0.550000011920929,
+          "usesLabelTextures": false,
+          "unityMetallic": 0,
+          "unitySmoothness": 0.44999998807907104,
+          "unitySmoothnessNote": "Solid material: 1 - glTF roughness factor."
+        }
+      ]
+    },
+    {
+      "name": "bb_set_snack_blue",
+      "albedo": "Textures/bb_set_snack_blue_albedo.png",
+      "gltfOrm": "Textures/bb_set_snack_blue_orm.png",
+      "unityMetallicSmoothness": "Textures/bb_set_snack_blue_metallic.png",
+      "roughnessChannel": "gltf ORM green",
+      "unitySmoothnessChannel": "metallic alpha = 255 - ORM green",
+      "albedoSRGB": true,
+      "ormSRGB": false,
+      "metallicSRGB": false,
+      "materials": [
+        {
+          "name": "bb_mat_bb_set_snack_blue",
+          "baseColorFactorLinear": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "metallicFactor": 1,
+          "roughnessFactor": 1,
+          "usesLabelTextures": true,
+          "unityMetallic": 1,
+          "unitySmoothness": 1.0,
+          "unitySmoothnessNote": "Use scalar 1 with the supplied alpha smoothness map; do not derive zero from glTF roughnessFactor 1."
+        },
+        {
+          "name": "bb_mat_bb_set_snack_blue_trim",
+          "baseColorFactorLinear": [
+            0.06480326503515244,
+            0.2788942754268646,
+            0.366252601146698,
+            1
+          ],
+          "metallicFactor": 0,
+          "roughnessFactor": 0.3799999952316284,
+          "usesLabelTextures": false,
+          "unityMetallic": 0,
+          "unitySmoothness": 0.6200000047683716,
+          "unitySmoothnessNote": "Solid material: 1 - glTF roughness factor."
+        }
+      ]
+    },
+    {
+      "name": "bb_set_snack_gold",
+      "albedo": "Textures/bb_set_snack_gold_albedo.png",
+      "gltfOrm": "Textures/bb_set_snack_gold_orm.png",
+      "unityMetallicSmoothness": "Textures/bb_set_snack_gold_metallic.png",
+      "roughnessChannel": "gltf ORM green",
+      "unitySmoothnessChannel": "metallic alpha = 255 - ORM green",
+      "albedoSRGB": true,
+      "ormSRGB": false,
+      "metallicSRGB": false,
+      "materials": [
+        {
+          "name": "bb_mat_bb_set_snack_gold",
+          "baseColorFactorLinear": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "metallicFactor": 1,
+          "roughnessFactor": 1,
+          "usesLabelTextures": true,
+          "unityMetallic": 1,
+          "unitySmoothness": 1.0,
+          "unitySmoothnessNote": "Use scalar 1 with the supplied alpha smoothness map; do not derive zero from glTF roughnessFactor 1."
+        },
+        {
+          "name": "bb_mat_bb_set_snack_gold_trim",
+          "baseColorFactorLinear": [
+            0.4793201684951782,
+            0.2746773064136505,
+            0.052860647439956665,
+            1
+          ],
+          "metallicFactor": 0,
+          "roughnessFactor": 0.3799999952316284,
+          "usesLabelTextures": false,
+          "unityMetallic": 0,
+          "unitySmoothness": 0.6200000047683716,
+          "unitySmoothnessNote": "Solid material: 1 - glTF roughness factor."
+        }
+      ]
+    },
+    {
+      "name": "bb_set_hoh_snack_blue",
+      "albedo": "Textures/bb_set_hoh_snack_blue_albedo.png",
+      "gltfOrm": "Textures/bb_set_hoh_snack_blue_orm.png",
+      "unityMetallicSmoothness": "Textures/bb_set_hoh_snack_blue_metallic.png",
+      "roughnessChannel": "gltf ORM green",
+      "unitySmoothnessChannel": "metallic alpha = 255 - ORM green",
+      "albedoSRGB": true,
+      "ormSRGB": false,
+      "metallicSRGB": false,
+      "materials": [
+        {
+          "name": "bb_mat_bb_set_hoh_snack_blue",
+          "baseColorFactorLinear": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "metallicFactor": 1,
+          "roughnessFactor": 1,
+          "usesLabelTextures": true,
+          "unityMetallic": 1,
+          "unitySmoothness": 1.0,
+          "unitySmoothnessNote": "Use scalar 1 with the supplied alpha smoothness map; do not derive zero from glTF roughnessFactor 1."
+        },
+        {
+          "name": "bb_mat_bb_set_hoh_snack_blue_trim",
+          "baseColorFactorLinear": [
+            0.06480326503515244,
+            0.2788942754268646,
+            0.366252601146698,
+            1
+          ],
+          "metallicFactor": 0,
+          "roughnessFactor": 0.3799999952316284,
+          "usesLabelTextures": false,
+          "unityMetallic": 0,
+          "unitySmoothness": 0.6200000047683716,
+          "unitySmoothnessNote": "Solid material: 1 - glTF roughness factor."
+        }
+      ]
+    },
+    {
+      "name": "bb_set_hoh_snack_gold",
+      "albedo": "Textures/bb_set_hoh_snack_gold_albedo.png",
+      "gltfOrm": "Textures/bb_set_hoh_snack_gold_orm.png",
+      "unityMetallicSmoothness": "Textures/bb_set_hoh_snack_gold_metallic.png",
+      "roughnessChannel": "gltf ORM green",
+      "unitySmoothnessChannel": "metallic alpha = 255 - ORM green",
+      "albedoSRGB": true,
+      "ormSRGB": false,
+      "metallicSRGB": false,
+      "materials": [
+        {
+          "name": "bb_mat_bb_set_hoh_snack_gold",
+          "baseColorFactorLinear": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "metallicFactor": 1,
+          "roughnessFactor": 1,
+          "usesLabelTextures": true,
+          "unityMetallic": 1,
+          "unitySmoothness": 1.0,
+          "unitySmoothnessNote": "Use scalar 1 with the supplied alpha smoothness map; do not derive zero from glTF roughnessFactor 1."
+        },
+        {
+          "name": "bb_mat_bb_set_hoh_snack_gold_trim",
+          "baseColorFactorLinear": [
+            0.4793201684951782,
+            0.2746773064136505,
+            0.052860647439956665,
+            1
+          ],
+          "metallicFactor": 0,
+          "roughnessFactor": 0.3799999952316284,
+          "usesLabelTextures": false,
+          "unityMetallic": 0,
+          "unitySmoothness": 0.6200000047683716,
+          "unitySmoothnessNote": "Solid material: 1 - glTF roughness factor."
+        }
+      ]
+    },
+    {
+      "name": "bb_set_game_strategy",
+      "albedo": "Textures/bb_set_game_strategy_albedo.png",
+      "gltfOrm": "Textures/bb_set_game_strategy_orm.png",
+      "unityMetallicSmoothness": "Textures/bb_set_game_strategy_metallic.png",
+      "roughnessChannel": "gltf ORM green",
+      "unitySmoothnessChannel": "metallic alpha = 255 - ORM green",
+      "albedoSRGB": true,
+      "ormSRGB": false,
+      "metallicSRGB": false,
+      "materials": [
+        {
+          "name": "bb_mat_bb_set_game_strategy_base",
+          "baseColorFactorLinear": [
+            0.03799999877810478,
+            0.050999999046325684,
+            0.06300000101327896,
+            1
+          ],
+          "metallicFactor": 0,
+          "roughnessFactor": 0.550000011920929,
+          "usesLabelTextures": false,
+          "unityMetallic": 0,
+          "unitySmoothness": 0.44999998807907104,
+          "unitySmoothnessNote": "Solid material: 1 - glTF roughness factor."
+        },
+        {
+          "name": "bb_mat_bb_set_game_strategy",
+          "baseColorFactorLinear": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "metallicFactor": 1,
+          "roughnessFactor": 1,
+          "usesLabelTextures": true,
+          "unityMetallic": 1,
+          "unitySmoothness": 1.0,
+          "unitySmoothnessNote": "Use scalar 1 with the supplied alpha smoothness map; do not derive zero from glTF roughnessFactor 1."
+        },
+        {
+          "name": "bb_mat_bb_set_game_strategy_trim",
+          "baseColorFactorLinear": [
+            0.06480326503515244,
+            0.2788942754268646,
+            0.366252601146698,
+            1
+          ],
+          "metallicFactor": 0,
+          "roughnessFactor": 0.3799999952316284,
+          "usesLabelTextures": false,
+          "unityMetallic": 0,
+          "unitySmoothness": 0.6200000047683716,
+          "unitySmoothnessNote": "Solid material: 1 - glTF roughness factor."
+        }
+      ]
+    },
+    {
+      "name": "bb_set_game_alliance",
+      "albedo": "Textures/bb_set_game_alliance_albedo.png",
+      "gltfOrm": "Textures/bb_set_game_alliance_orm.png",
+      "unityMetallicSmoothness": "Textures/bb_set_game_alliance_metallic.png",
+      "roughnessChannel": "gltf ORM green",
+      "unitySmoothnessChannel": "metallic alpha = 255 - ORM green",
+      "albedoSRGB": true,
+      "ormSRGB": false,
+      "metallicSRGB": false,
+      "materials": [
+        {
+          "name": "bb_mat_bb_set_game_alliance_base",
+          "baseColorFactorLinear": [
+            0.03799999877810478,
+            0.050999999046325684,
+            0.06300000101327896,
+            1
+          ],
+          "metallicFactor": 0,
+          "roughnessFactor": 0.550000011920929,
+          "usesLabelTextures": false,
+          "unityMetallic": 0,
+          "unitySmoothness": 0.44999998807907104,
+          "unitySmoothnessNote": "Solid material: 1 - glTF roughness factor."
+        },
+        {
+          "name": "bb_mat_bb_set_game_alliance",
+          "baseColorFactorLinear": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "metallicFactor": 1,
+          "roughnessFactor": 1,
+          "usesLabelTextures": true,
+          "unityMetallic": 1,
+          "unitySmoothness": 1.0,
+          "unitySmoothnessNote": "Use scalar 1 with the supplied alpha smoothness map; do not derive zero from glTF roughnessFactor 1."
+        },
+        {
+          "name": "bb_mat_bb_set_game_alliance_trim",
+          "baseColorFactorLinear": [
+            0.4793201684951782,
+            0.2746773064136505,
+            0.052860647439956665,
+            1
+          ],
+          "metallicFactor": 0,
+          "roughnessFactor": 0.3799999952316284,
+          "usesLabelTextures": false,
+          "unityMetallic": 0,
+          "unitySmoothness": 0.6200000047683716,
+          "unitySmoothnessNote": "Solid material: 1 - glTF roughness factor."
+        }
+      ]
+    },
+    {
+      "name": "bb_set_game_social",
+      "albedo": "Textures/bb_set_game_social_albedo.png",
+      "gltfOrm": "Textures/bb_set_game_social_orm.png",
+      "unityMetallicSmoothness": "Textures/bb_set_game_social_metallic.png",
+      "roughnessChannel": "gltf ORM green",
+      "unitySmoothnessChannel": "metallic alpha = 255 - ORM green",
+      "albedoSRGB": true,
+      "ormSRGB": false,
+      "metallicSRGB": false,
+      "materials": [
+        {
+          "name": "bb_mat_bb_set_game_social_base",
+          "baseColorFactorLinear": [
+            0.03799999877810478,
+            0.050999999046325684,
+            0.06300000101327896,
+            1
+          ],
+          "metallicFactor": 0,
+          "roughnessFactor": 0.550000011920929,
+          "usesLabelTextures": false,
+          "unityMetallic": 0,
+          "unitySmoothness": 0.44999998807907104,
+          "unitySmoothnessNote": "Solid material: 1 - glTF roughness factor."
+        },
+        {
+          "name": "bb_mat_bb_set_game_social",
+          "baseColorFactorLinear": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "metallicFactor": 1,
+          "roughnessFactor": 1,
+          "usesLabelTextures": true,
+          "unityMetallic": 1,
+          "unitySmoothness": 1.0,
+          "unitySmoothnessNote": "Use scalar 1 with the supplied alpha smoothness map; do not derive zero from glTF roughnessFactor 1."
+        },
+        {
+          "name": "bb_mat_bb_set_game_social_trim",
+          "baseColorFactorLinear": [
+            0.06480326503515244,
+            0.2788942754268646,
+            0.366252601146698,
+            1
+          ],
+          "metallicFactor": 0,
+          "roughnessFactor": 0.3799999952316284,
+          "usesLabelTextures": false,
+          "unityMetallic": 0,
+          "unitySmoothness": 0.6200000047683716,
+          "unitySmoothnessNote": "Solid material: 1 - glTF roughness factor."
+        }
+      ]
+    },
+    {
+      "name": "bb_set_toiletry",
+      "albedo": "Textures/bb_set_toiletry_albedo.png",
+      "gltfOrm": "Textures/bb_set_toiletry_orm.png",
+      "unityMetallicSmoothness": "Textures/bb_set_toiletry_metallic.png",
+      "roughnessChannel": "gltf ORM green",
+      "unitySmoothnessChannel": "metallic alpha = 255 - ORM green",
+      "albedoSRGB": true,
+      "ormSRGB": false,
+      "metallicSRGB": false,
+      "materials": [
+        {
+          "name": "bb_mat_bb_set_toiletry",
+          "baseColorFactorLinear": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "metallicFactor": 1,
+          "roughnessFactor": 1,
+          "usesLabelTextures": true,
+          "unityMetallic": 1,
+          "unitySmoothness": 1.0,
+          "unitySmoothnessNote": "Use scalar 1 with the supplied alpha smoothness map; do not derive zero from glTF roughnessFactor 1."
+        },
+        {
+          "name": "bb_mat_bb_set_toiletry_trim",
+          "baseColorFactorLinear": [
+            0.06480326503515244,
+            0.2788942754268646,
+            0.366252601146698,
+            1
+          ],
+          "metallicFactor": 0,
+          "roughnessFactor": 0.3799999952316284,
+          "usesLabelTextures": false,
+          "unityMetallic": 0,
+          "unitySmoothness": 0.6200000047683716,
+          "unitySmoothnessNote": "Solid material: 1 - glTF roughness factor."
+        }
+      ]
+    },
+    {
+      "name": "bb_set_cosmetic",
+      "albedo": "Textures/bb_set_cosmetic_albedo.png",
+      "gltfOrm": "Textures/bb_set_cosmetic_orm.png",
+      "unityMetallicSmoothness": "Textures/bb_set_cosmetic_metallic.png",
+      "roughnessChannel": "gltf ORM green",
+      "unitySmoothnessChannel": "metallic alpha = 255 - ORM green",
+      "albedoSRGB": true,
+      "ormSRGB": false,
+      "metallicSRGB": false,
+      "materials": [
+        {
+          "name": "bb_mat_bb_set_cosmetic",
+          "baseColorFactorLinear": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "metallicFactor": 1,
+          "roughnessFactor": 1,
+          "usesLabelTextures": true,
+          "unityMetallic": 1,
+          "unitySmoothness": 1.0,
+          "unitySmoothnessNote": "Use scalar 1 with the supplied alpha smoothness map; do not derive zero from glTF roughnessFactor 1."
+        },
+        {
+          "name": "bb_mat_bb_set_cosmetic_trim",
+          "baseColorFactorLinear": [
+            0.4793201684951782,
+            0.2746773064136505,
+            0.052860647439956665,
+            1
+          ],
+          "metallicFactor": 0,
+          "roughnessFactor": 0.3799999952316284,
+          "usesLabelTextures": false,
+          "unityMetallic": 0,
+          "unitySmoothness": 0.6200000047683716,
+          "unitySmoothnessNote": "Solid material: 1 - glTF roughness factor."
+        }
+      ]
+    }
+  ],
+  "trim": "Untextured trim/base factors are authored in the FBX/GLB; do not apply label maps to these material slots.",
+  "fbxCaveat": "FBX carries diffuse images in .fbm folders; the separated ORM graph is authoritative in GLB. Use the companion metallic PNG and this map for URP material remapping."
+}

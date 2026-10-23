@@ -1,0 +1,24 @@
+{
+  "schema": "game_dev.job.v1",
+  "id": "job_c20efdec-11df-488a-91df-2b7bdd1b56a3",
+  "operation": "package.verify",
+  "status": "completed",
+  "request": {
+    "positionals": [
+      "package",
+      "verify",
+      "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\outputs\\gamesim-props-20261020\\.game-dev\\packages\\bb_set_game_alliance\\1.0.0"
+    ],
+    "flags": {
+      "output-dir": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\outputs\\gamesim-props-20261020"
+    }
+  },
+  "attempts": 1,
+  "eventCount": 1,
+  "artifacts": [],
+  "createdAt": "2026-10-21T04:06:14.788Z",
+  "updatedAt": "2026-10-21T04:06:14.869Z",
+  "startedAt": "2026-10-21T04:06:14.808Z",
+  "completedAt": "2026-10-21T04:06:14.869Z",
+  "receiptPath": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\outputs\\gamesim-props-20261020\\.game-dev\\jobs\\job_c20efdec-11df-488a-91df-2b7bdd1b56a3\\receipt.json"
+}

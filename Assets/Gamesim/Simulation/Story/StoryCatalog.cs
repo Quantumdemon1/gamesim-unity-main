@@ -37,6 +37,10 @@ namespace Gamesim.Simulation
         public static ArcTemplate Find(string id)
         {
             if (string.IsNullOrEmpty(id)) return null;
+            // Initiated, funded content is never an ambient-pool candidate. A fresh definition
+            // also prevents a caller's catalogue mutation from becoming saved-state authority.
+            if (id == DialogueCampaignV1.TemplateId) return DialogueCampaignV1.CreateTemplate();
+            if (id == DialogueCampaignV2.TemplateId) return DialogueCampaignV2.CreateTemplate();
             var list = All;
             for (int i = 0; i < list.Count; i++)
                 if (list[i].id == id) return list[i];

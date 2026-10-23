@@ -95,18 +95,22 @@ namespace Gamesim.Episode
             RequireSeason(seasonDirector.IsConversationOpen, "A named topic requires an open conversation.");
             yield return DrainSeasonConversationExchange("before-topics", false);
             var baseline = ConversationBaseline();
-            if (seasonDirector.CurrentConversationCategory != caption)
+            // A category string does not identify its resting page: a person picker or an
+            // incoming offer can own the same category. Use at most one visible Back and one
+            // topic gesture to restore the ordinary page; never invoke hidden child controls.
+            if (HasSeasonButtonText(EpisodeDirector.ConversationTopicsBackCaption))
             {
-                if (HasSeasonButtonText(EpisodeDirector.ConversationTopicsBackCaption))
-                {
-                    yield return ClickSeasonButton(EpisodeDirector.ConversationTopicsBackCaption);
-                    seasonReport.conversationNavigations++;
-                    RequireConversationUnchanged(baseline, "Back to topics");
-                }
-                RequireSeason(HasSeasonButtonText(caption), "The actual topic control is unavailable: " + caption);
-                yield return ClickSeasonButton(caption);
+                yield return ClickSeasonButton(EpisodeDirector.ConversationTopicsBackCaption);
                 seasonReport.conversationNavigations++;
+                RequireSeason(seasonDirector.CurrentConversationCategory == null,
+                    "The actual Back gesture did not restore root topics.");
+                RequireConversationUnchanged(baseline, "Back to topics");
             }
+            RequireSeason(seasonDirector.CurrentConversationCategory == null,
+                "The current category needs its actual Back-to-topics control.");
+            RequireSeason(HasSeasonButtonText(caption), "The actual topic control is unavailable: " + caption);
+            yield return ClickSeasonButton(caption);
+            seasonReport.conversationNavigations++;
             RequireSeason(seasonDirector.CurrentConversationCategory == caption,
                 "The actual topic gesture did not reach " + caption + ".");
             RequireConversationUnchanged(baseline, "Selecting " + caption);

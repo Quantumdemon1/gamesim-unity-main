@@ -11,25 +11,53 @@
 #   <assembly> <minimum tests>
 # A key may also name one build of an assembly (<assembly>.UmaBuild): a key that names no real assembly,
 # read in the assembly's place by a plan built with UMA (Get-ReviewSuiteFloorKey in review-workflow.ps1).
-Gamesim.EditModeTests 8073
+# Display-name contracts add 17 cases to the R2 baseline (8073 + 17).
+# Verifier receipt identity/opt-in reporting adds 14 native Edit cases (8090 + 14).
+# Studio shutdown ownership adds three native Edit cases (8104 + 3).
+# Frozen28 dispatch/SaveStore integration adds 23 native cases (8107 + 23 = 8130).
+# Frozen28 resolver cache safety adds three shared native/pure cases (8130 + 3 = 8133).
+# R1 inert schema29 shape/clone controls add30 shared and strict migration/store adds35 native.
+# This is the unpublished rule0 foundation, not enabled dialogue/role/AP acceptance.
+# Source-bound current29/retained28 observer controls add32 shared; strict native inverse adds8.
+# Existing current/historical oracle and live-harness cases are preserved, not removed or skipped.
+# Typed current-only historical reader controls add13 shared; exact full-wire controls add2 native.
+# Retain every original case and add all15; no historical oracle, reader or golden is rebaselined.
+# 8558 = the full NoUMA run on the 22 Oct PC push (the 18-21 Oct dialogue V2 source with Part B's fixes):
+# every case it declared ran, the 96 V2 cases (DialoguePublicRescueV2 68, StrategicOldControls05 28) among them.
+# 8642 = 8558 + the 14 saved-text name cases (0d2f6d2e) + step c's 58 (57 old-save recovery cases and the AP-0
+# Cite pin) + step d's 12 schema-29 fixture cases: the full NoUMA run at the PR's head 832b562e (2026-10-22),
+# 8642 of 8642.
+Gamesim.EditModeTests 8642
 # The UMA-free build. 1215 = 1236, the count after the consolidation's lanes (S2a, S2b, S4a), less the 7
 # farewell probes moved to Gamesim.DiagnosticsPlayModeTests and the 14 farewell readiness tests that now
 # compile only under GAMESIM_UMA (judged on the UMA cast); 1230 = 1215 + S2d's 7, S4b's 2, S4c's 2 and
 # S4d's 4. R2 adds three shared, unparameterized UnityTests: two PortSeasonWalk final-four veto
 # regressions and WeeklyRecap_OpensAfterAnEvictionThatCommitsIntoAFullLog (1230 + 3 = 1233).
+# The R2 follow-up adds three shared regressions: full-log walk evidence, full-log competition
+# presentation, and the locked-veto guard under a result overlay (1233 + 3 = 1236).
+# Creator overflow/keyboard reachability add two and titled-name plates add one (1236 + 3 = 1239).
+# Trait effect ink adds one shared all-frame/all-scale regression (1239 + 1 = 1240).
+# Tendency button/focus ink adds one shared all-frame/all-scale regression (1240 + 1 = 1241).
 # A plan built with -WithoutUma reads this line. These are required run minima, not a claim of a pass.
-Gamesim.PlayModeTests 1233
-# The UMA build of the same assembly, read by a plan built without -WithoutUma. 1273 = the 1233 above + the
+# 1302 = 1241 + the 61 PlayMode tests the dialogue V2 source adds (draft PR #28): the full NoUMA run at
+# 0d2f6d2e (2026-10-22), 1302 of 1302. From there to the PR's head no runtime, simulation or PlayMode test
+# source changes outside Gamesim.Uma.PlayModeTests.
+Gamesim.PlayModeTests 1302
+# The UMA build of the same assembly, read by a plan built without -WithoutUma. 1281 = the 1241 above + the
 # 40 tests that compile only under GAMESIM_UMA, as run at r1 (2026-10-16): in EpisodePlayModeTests,
 # GroundedFarewell 11, Creator 9, HouseLife 8, Emotes 3, OpeningCaptures 2, and one each in CreatorEntry,
 # Director, Effects, HouseActivities, Moves, OpeningStage and StoryReactions. A shared test raises both
-# lines; a GAMESIM_UMA-only test raises this one.
-Gamesim.PlayModeTests.UmaBuild 1273
+# lines; a GAMESIM_UMA-only test raises this one. 1342 = 1281 + the same 61 shared V2 tests: the full UMA-build
+# run at 0d2f6d2e (2026-10-22), 1342 of 1342.
+Gamesim.PlayModeTests.UmaBuild 1342
 # The UMA bodies: runs only where the GAMESIM_UMA define is set (the working tree and the D: copy).
 # 82 = the 89 run on 2026-10-15, less the 7 farewell probes moved to Gamesim.Uma.DiagnosticsPlayModeTests;
 # 85 = 82 + the 3 farewell readiness decision tests (UmaFarewellReadinessDecisionPlayModeTests, 2026-10-16);
 # 90 = 85 + S5's 5 stance tests (UmaFarewellStancePlayModeTests).
-Gamesim.Uma.PlayModeTests 90
+# 129 = 90 + the dialogue V2 source's 39 (UmaTriangleReaderFencePlayModeTests 38, UmaAnimatorGraphLifetimePlayModeTests 1):
+# the full run at b26b28cc (2026-10-22), 129 of 129, on a vendor with Tools/UmaPatches/triangle-reader-fence01
+# applied. The 38 fail on an unpatched vendor by design; every UMA copy needs the patch applied by hand.
+Gamesim.Uma.PlayModeTests 129
 # Diagnostics: feasibility and diagnostic probes, never shipping acceptance. They compile only under
 # GAMESIM_DIAGNOSTICS, which only a diagnostic run adds to the test copy (GAMESIM_DIAGNOSTICS=1 with
 # sync-and-run.sh or the locked runner); the UMA one needs GAMESIM_UMA too. The floor counts that they
@@ -54,4 +82,12 @@ Gamesim.Uma.DiagnosticsPlayModeTests 10
 # Tools/SimulationTests: the Unity-free subset CI runs on every push (.github/workflows/ci.yml).
 # Most of it is cases generated from the web fixtures - a fixture that stops loading drops
 # hundreds of tests and would otherwise still read green.
-Gamesim.SimulationTests 5358
+# The same 17 display-name cases are included in this subset (5358 + 17).
+# Frozen28 retains 4781 archived cases plus 26 independent literal cases (5375 + 4781 + 26 = 10182).
+# The same three resolver cache cases are additive here (10182 + 3 = 10185).
+# R1's same30 shared schema29 shape/clone/foundation controls are additive (10185 + 30).
+# The same32 source-bound observer controls are additive here (10215 + 32).
+# The same13 typed current-only observer controls are additive here (10247 + 13).
+# 10431 = what dotnet test Tools/SimulationTests ran on the 22 Oct PC push (the dialogue V2 source).
+# 10445 = 10431 + the 14 CharacterNamesTests cases pinning FinalistRead.FirstName's saved-text split.
+Gamesim.SimulationTests 10445

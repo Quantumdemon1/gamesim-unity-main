@@ -575,7 +575,7 @@ namespace Gamesim.Episode
             if (juryCell && jurors > 0)
                 StatCell(pill, 2f * PillCell, "people", UiTheme.Gold, jurors.ToString(), JuryCellLabel);
             else
-                StatCell(pill, 2f * PillCell, "crown", UiTheme.Gold, holder == null ? "Awaiting" : holder.name.Split(' ')[0], "HoH");
+                StatCell(pill, 2f * PillCell, "crown", UiTheme.Gold, holder == null ? "Awaiting" : CharacterNames.FirstName(holder.name), "HoH");
             for (int i = 1; i < 3; i++)
             {
                 var rule = Panel("Stat divider", pill, new Color(UiTheme.Outline.r, UiTheme.Outline.g, UiTheme.Outline.b, .8f), 0);
@@ -964,7 +964,7 @@ namespace Gamesim.Episode
                 {
                     // No authored art for this persona, as the rail handles it: the initial on the
                     // surface tone, still a face-shaped slot.
-                    var initial = FixedText(ring, string.IsNullOrEmpty(jurors[i].name) ? "?" : jurors[i].name.Substring(0, 1),
+                    var initial = FixedText(ring, CharacterNames.Initial(jurors[i].name),
                         11, Paper, Vector2.zero, new Vector2(JurorDisc, JurorDisc));
                     initial.alignment = TextAlignmentOptions.Center;
                 }
@@ -1427,7 +1427,7 @@ namespace Gamesim.Episode
 
             var kind = RelationshipWeb.KindOf(state, actor.id);
             var tint = kind == RelationshipWeb.Kind.Neutral ? UiTheme.Muted : RelationshipWeb.StandingColour(kind);
-            var name = FixedText(card, actor.name.Split(' ')[0], 14, Paper, new Vector2(64f, y - 5f), new Vector2(width - 64f - 70f, 20f));
+            var name = FixedText(card, CharacterNames.FirstName(actor.name), 14, Paper, new Vector2(64f, y - 5f), new Vector2(width - 64f - 70f, 20f));
             var semibold = UiTheme.Font(UiTheme.Weight.SemiBold);
             if (semibold != null) name.font = semibold;
             FixedText(card, string.IsNullOrEmpty(actor.mood) ? "Neutral" : actor.mood, 12, RelationshipWeb.MoodColour(actor.mood),

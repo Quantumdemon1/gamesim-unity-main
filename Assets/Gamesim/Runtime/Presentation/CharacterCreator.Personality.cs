@@ -31,6 +31,8 @@ namespace Gamesim.Presentation
             { "luck", "star" }, { "competition", "trophy" }, { "strategic", "target" }, { "loyalty", "handshake" },
         };
 
+        private const float TendencyButtonSize = 40f, TendencyRowCentre = 13f;
+
         private void BuildPersonalityPage(RectTransform scrim)
         {
             var area = PageArea;
@@ -81,12 +83,39 @@ namespace Gamesim.Presentation
             float gap = 12f, card = (width - (columns - 1) * gap) / columns;
             int rows = (names.Count + columns - 1) / columns;
             float available = r.height - y - 48f;
-            float height = Mathf.Clamp((available - (rows - 1) * gap) / rows, 76f, 118f);
+            // Reserve room for the glyph, caption and two readable effect lines. Short frames
+            // scroll the cards; they must not squeeze the effect below its own card.
+            float height = Mathf.Clamp((available - (rows - 1) * gap) / rows, 136f, 160f);
             var content = ScrollArea(box, "Traits", new Rect(x, y, width, available), rows * (height + gap));
             for (int i = 0; i < names.Count; i++)
             {
                 string name = names[i];
                 TraitCard(content, name, new Rect((i % columns) * (card + gap), (i / columns) * (height + gap), card, height), crowded != null);
+            }
+            // Measure the actual font and complete effects at this unchanged width. Some narrow
+            // cards need more than two lines: the tallest effect sets the common row height.
+            float measuredHeight = height;
+            for (int i = 0; i < names.Count; i++)
+            {
+                var effect = content.GetChild(i).Find("Trait effect").GetComponent<TMP_Text>();
+                float copyHeight = Mathf.Ceil(effect.GetPreferredValues(effect.text, card - 16f, 0f).y);
+                // The effect begins at h/2 + 22, ends eight units above the edge, and gets
+                // four more units than the preferred line height for its generated glyphs.
+                measuredHeight = Mathf.Max(measuredHeight, 2f * (copyHeight + 34f));
+            }
+            if (measuredHeight > height)
+            {
+                float halfGrowth = (measuredHeight - height) * .5f;
+                height = measuredHeight;
+                content.SetSizeWithCurrentAnchors(RectTransform.Axis.Vertical, rows * (height + gap));
+                for (int i = 0; i < names.Count; i++)
+                {
+                    var tile = (RectTransform)content.GetChild(i);
+                    Place(tile, (i % columns) * (card + gap), (i / columns) * (height + gap), card, height);
+                    foreach (string part in new[] { "Label", "Trait glyph", "Trait effect" })
+                        ((RectTransform)tile.Find(part)).anchoredPosition += Vector2.down * halfGrowth;
+                    ((RectTransform)tile.Find("Trait effect")).sizeDelta += Vector2.up * halfGrowth;
+                }
             }
         }
 
@@ -123,8 +152,11 @@ namespace Gamesim.Presentation
             // wary of, says so where it is picked, or the first impressions would feel arbitrary.
             string reception = TraitAffinity.Reception.TryGetValue(name, out int liked) ? (liked > 0 ? "  ·  liked" : "  ·  disliked") : "";
             var effect = Words(card, "+" + WebTraits.PrimaryBoost + " " + Capitalised(boost.Primary) + "  ·  +" + WebTraits.SecondaryBoost + " " + Capitalised(boost.Secondary) + reception,
-                12f, held ? UiTheme.Paper : UiTheme.Muted, new Rect(8f, r.height * .5f + 22f, r.width - 16f, 18f), TextAlignmentOptions.Center, "Trait effect");
-            effect.textWrappingMode = TextWrappingModes.NoWrap; effect.enableAutoSizing = true; effect.fontSizeMax = 12f; effect.fontSizeMin = 10f;
+                14f, held ? UiTheme.Paper : UiTheme.Muted,
+                new Rect(8f, r.height * .5f + 22f, r.width - 16f, r.height * .5f - 30f), TextAlignmentOptions.Center, "Trait effect");
+            // The canvas already applies the chosen text scale. Wrap at a fixed readable size,
+            // with eight units left below the effect, rather than shrinking a long line to fit.
+            effect.textWrappingMode = TextWrappingModes.Normal;
             if (held)
                 Glyph(card, PackArt.KitIconCheck, UiTheme.Glow, new Rect(r.width - 30f, 8f, 22f, 22f), "Held mark");
             if (full && !held)
@@ -164,21 +196,28 @@ namespace Gamesim.Presentation
             // under the footer.
             float available = r.height - y - 16f, row = Mathf.Min(86f, available / WebTraits.StatNames.Length);
             Transform host = box;
-            float left = x;
+            float left = x, rightInset = 0f;
             if (row < 54f)
             {
                 row = 54f;
-                host = ScrollArea(box, "Tendency rows", new Rect(x, y, width, available), row * WebTraits.StatNames.Length);
-                left = 0f; y = 0f;
+                // Keep the circle and the selected control's existing focus decoration inside
+                // the mask. Fitting rows keep their original placement; only scrolling content
+                // gets derived inner clearance, without narrowing the row or the viewport.
+                rightInset = draft.PreserveStats ? 0f : CreatorFocusOutset + 1f;
+                float topInset = draft.PreserveStats ? 0f
+                    : Mathf.Max(0f, TendencyButtonSize * .5f + CreatorFocusOutset - TendencyRowCentre) + 1f;
+                host = ScrollArea(box, "Tendency rows", new Rect(x, y, width, available),
+                    row * WebTraits.StatNames.Length + topInset);
+                left = 0f; y = topInset;
             }
             foreach (var stat in WebTraits.StatNames)
             {
-                StatRow(host, stat, new Rect(left, y, width, row - 8f));
+                StatRow(host, stat, new Rect(left, y, width, row - 8f), rightInset);
                 y += row;
             }
         }
 
-        private void StatRow(Transform parent, string stat, Rect r)
+        private void StatRow(Transform parent, string stat, Rect r, float rightInset)
         {
             double value = WebTraits.Get(draft.Stats, stat);
             float glyph = 26f;
@@ -190,11 +229,12 @@ namespace Gamesim.Presentation
             if (boosters.Count > 0 && r.height >= 60f)
                 Words(parent, "Boosted by " + string.Join(", ", boosters), 12f, UiTheme.Heading, new Rect(r.x + glyph + 12f, r.y + 28f, 200f, 18f), name: "Stat boost")
                     .overflowMode = TextOverflowModes.Ellipsis;
-            float buttons = draft.PreserveStats ? 0f : 40f;
-            float barLeft = r.x + glyph + 12f + 190f, barRight = r.x + r.width - 50f - (buttons > 0f ? 2f * buttons + 16f : 0f);
+            float buttons = draft.PreserveStats ? 0f : TendencyButtonSize;
+            float right = r.x + r.width - rightInset;
+            float barLeft = r.x + glyph + 12f + 190f, barRight = right - 50f - (buttons > 0f ? 2f * buttons + 16f : 0f);
             float barWidth = Mathf.Max(60f, barRight - barLeft);
             // Ten segments, lit up to the value: the mockup's meter, read at a glance.
-            float segment = (barWidth - 9f * 4f) / 10f, centre = r.y + 13f;
+            float segment = (barWidth - 9f * 4f) / 10f, centre = r.y + TendencyRowCentre;
             for (int i = 0; i < 10; i++)
             {
                 bool lit = i < Math.Round(value);
@@ -205,7 +245,7 @@ namespace Gamesim.Presentation
             var number = Words(parent, value.ToString("0"), 22f, Color.white, new Rect(barLeft + barWidth + 8f, r.y - 2f, 42f, 30f), TextAlignmentOptions.Center, "Value");
             var bold = UiTheme.Font(UiTheme.Weight.Bold); if (bold != null) number.font = bold;
             if (draft.PreserveStats) return;
-            float bx = r.x + r.width - 2f * buttons - 8f;
+            float bx = right - 2f * buttons - 8f;
             Enable(GlyphButton(parent, LowerCaption(stat), new Rect(bx, centre - buttons * .5f, buttons, buttons), "−", null,
                 () => { draft.Lower(stat); Rebuild(); }), draft.CanLower(stat));
             Enable(GlyphButton(parent, RaiseCaption(stat), new Rect(bx + buttons + 8f, centre - buttons * .5f, buttons, buttons), "+", null,
@@ -264,6 +304,12 @@ namespace Gamesim.Presentation
             viewport.gameObject.AddComponent<SetupScrollFocus>();
             scroll.content = content; scroll.viewport = viewport; scroll.horizontal = false;
             scroll.movementType = ScrollRect.MovementType.Clamped; scroll.scrollSensitivity = 40f;
+            // Every caller leaves at least 12 units of panel margin. The six-unit bar fits
+            // beside the existing viewport, outside its mask, without narrowing any cards.
+            // AutoHide also follows content heights filled in after this helper returns.
+            scroll.verticalScrollbar = ControlsScrollbar((RectTransform)parent, r.xMax + 4f, r.y, r.height,
+                name + " scrollbar");
+            scroll.verticalScrollbarVisibility = UnityEngine.UI.ScrollRect.ScrollbarVisibility.AutoHide;
             return content;
         }
     }

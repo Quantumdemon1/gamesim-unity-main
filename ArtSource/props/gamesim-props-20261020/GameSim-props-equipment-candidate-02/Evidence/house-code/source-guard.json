@@ -1,0 +1,16 @@
+{
+  "source_root": "D:/GamesimConsolidation",
+  "relative_path": "Assets/Gamesim/Editor/HouseRoomFinish.cs",
+  "preimage_sha256": "65400a2012efec8f89ab91f7241736cfeb8ba03db25e0c851655ff92457cf171",
+  "postimage_sha256": "fc0b90717d670456eced144ba18cd224e42b7d99a2a6128e9a7f88506a8e2e9c",
+  "selected_current_placements": 16,
+  "model_ids": 14,
+  "changed_call_sites": 12,
+  "scene_modified": false,
+  "unity_run": false,
+  "existing_test_guard": {
+    "relative_path": "Assets/Gamesim/Tests/EditMode/RoomFinishTests.cs",
+    "preimage_sha256": "8541b494cbfd48321906be6ea65fb15e8efa7a3447a285ac2284c852d368b8b4",
+    "postimage_sha256": "dd9508c3af55d2cdde1f386379e4f50547de551a257be277719954ae510ca36a"
+  }
+}

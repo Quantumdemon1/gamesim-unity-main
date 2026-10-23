@@ -8,8 +8,8 @@ using NUnit.Framework;
 namespace Gamesim.Tests.EditMode
 {
     /// <summary>
-    /// The pure digest's schema-28 observer (WAVE-D-NPC-PACTS-PLAN §0.3, X3): the live trace bound to
-    /// its own state, every Wave D field present and inert, removed, the fixed27 neutral inverse, and
+    /// The retained literal28 observer (WAVE-D-NPC-PACTS-PLAN §0.3, X3): current29 admission binds
+    /// the real source first, then every Wave D field is present/inert, the fixed27 inverse holds, and
     /// the hand-off to the schema-27 field checks. Witnesses are the shared lawful public ones; altered
     /// JSON/state controls are detached diagnostics after a proved valid baseline.
     /// </summary>
@@ -20,12 +20,14 @@ namespace Gamesim.Tests.EditMode
         public void LiveTracesProjectThroughExact27ToTheLegacy26Trace(int mode, string kind)
         {
             var state = LegacyDigestSchema27TestStates.Witness(mode, kind);
-            var trace = LegacyDigestSchema27TestStates.Trace(state);
+            var trace = LegacyDigestSchema27TestStates.Trace28(state);
             string stateBefore = Text(state), before = Text(trace);
-            var field = LegacyDigestSchema28Observer.CheckFieldObserver(state, trace);
+            var field = LegacyDigestSchema28Observer.CheckFields(trace);
             Assert.That(Text(field), Is.EqualTo(Text(LegacyDigestSchema27TestStates.WithoutGetters(trace))));
             Assert.That(field["schemaVersion"].Value<int>(), Is.EqualTo(28));
-            var projected = LegacyDigestSchema28Observer.ProjectTrace(state, trace);
+            var projected = LegacyDigestSchema28Observer.ProjectFields(trace);
+            Assert.That(Text(projected), Is.EqualTo(Text(LegacyDigestSchema29Observer.ProjectTrace(
+                state, LegacyDigestSchema27TestStates.Trace(state)))), "Current admission reaches the identical retained field chain.");
             var expected = LegacyDigestSchema27TestStates.Neutral26(LegacyDigestSchema27TestStates.Neutral27(trace));
             Assert.That(Text(projected), Is.EqualTo(Text(expected)), "Compact JSON pins every retained property and list position.");
             Assert.That(JToken.DeepEquals(projected["Active"], trace["Active"]), Is.True, "Getters stay in the legacy trace.");
@@ -111,7 +113,8 @@ namespace Gamesim.Tests.EditMode
                 }
             }, defect.StartsWith("header-", StringComparison.Ordinal) ? "Only literal schema28 is an observer input."
                 // The fixed27 chain's frozen shape refuses the unknown member, before the trace binding.
-                : "contains missing or unknown schema25 fields.");
+                : "contains missing or unknown schema25 fields.",
+                defect == "header-29" ? (Action<JObject>)(live => live["schemaVersion"] = 30) : null);
         }
 
         /// <summary>
@@ -124,7 +127,7 @@ namespace Gamesim.Tests.EditMode
             var state = LegacyDigestSchema27TestStates.Witness(2, "promise");
             typeof(EpisodeState).GetField(name).SetValue(state, 1);
             Assert.That(EpisodeValidation.TryValidate(state, out string reason), Is.True, reason);
-            RefusedUnchanged(state, LegacyDigestSchema27TestStates.Trace(state), StartWeekRefusal + name);
+            RefusedLiveUnchanged(state, LegacyDigestSchema27TestStates.Trace(state), StartWeekRefusal + name);
         }
 
         [TestCase("session")] [TestCase("rng")] [TestCase("invalid")]
@@ -139,13 +142,13 @@ namespace Gamesim.Tests.EditMode
                 state.npcSocial.beatsFired = 1;
                 Assert.That(EpisodeValidation.TryValidate(state, out string reason), Is.False);
                 Assert.That(reason, Does.Contain("all-week"));
-                RefusedUnchanged(state, LegacyDigestSchema27TestStates.Trace(state), "The current source state is invalid: ");
+                RefusedLiveUnchanged(state, LegacyDigestSchema27TestStates.Trace(state), "The current source state is invalid: ");
                 return;
             }
             LegacyDigestSchema27TestStates.Valid(other);
             var otherTrace = LegacyDigestSchema27TestStates.Trace(other);
-            Assert.DoesNotThrow(() => LegacyDigestSchema28Observer.CheckFieldObserver(other, otherTrace));
-            RefusedUnchanged(state, otherTrace, "The trace is not the actual default JSON of this source state.");
+            Assert.DoesNotThrow(() => LegacyDigestSchema29Observer.ProjectTrace(other, otherTrace));
+            RefusedLiveUnchanged(state, otherTrace, "The JSON is not this current state's exact own view.");
         }
 
         private static void Scalar(JObject holder, string name, string defect)
@@ -166,26 +169,43 @@ namespace Gamesim.Tests.EditMode
 
         private const string StartWeekRefusal = "A Wave D start week must be present integer zero: ";
 
-        /// <summary>A proved baseline, then the defect on a detached copy of its own trace.</summary>
-        private static void Refused(EpisodeState state, Action<JObject> defect, string reason)
+        /// <summary>
+        /// Admit the complete current source before the historical control. Preserve its original
+        /// literal28 refusal reason, then independently refuse the corresponding malformed current view.
+        /// A literal28 future-header29 control maps explicitly to current29 future-header30.
+        /// </summary>
+        private static void Refused(EpisodeState state, Action<JObject> defect, string reason, Action<JObject> liveDefect = null)
         {
-            var trace = LegacyDigestSchema27TestStates.Trace(state);
-            Assert.DoesNotThrow(() => LegacyDigestSchema28Observer.CheckFieldObserver(state, trace));
+            var trace = LegacyDigestSchema27TestStates.Trace28(state);
+            Assert.DoesNotThrow(() => LegacyDigestSchema28Observer.CheckFields(trace));
             defect(trace);
-            RefusedUnchanged(state, trace, reason);
+            string stateBefore = Text(state), traceBefore = Text(trace);
+            var checkedError = Assert.Throws<InvalidDataException>(() => LegacyDigestSchema28Observer.CheckFields(trace));
+            Assert.That(checkedError.Message, Does.Contain(reason));
+            var projectedError = Assert.Throws<InvalidDataException>(() => LegacyDigestSchema28Observer.ProjectFields(trace));
+            Assert.That(projectedError.Message, Does.Contain(reason));
+            Assert.That(Text(trace), Is.EqualTo(traceBefore));
+            Assert.That(Text(state), Is.EqualTo(stateBefore));
+
+            var live = LegacyDigestSchema27TestStates.Trace(state);
+            Assert.DoesNotThrow(() => LegacyDigestSchema29Observer.ProjectTrace(state, live));
+            (liveDefect ?? defect)(live);
+            Assert.That(Text(live), Is.Not.EqualTo(Text(state)), "The current-view refusal control must actually change its input.");
+            RefusedLiveUnchanged(state, live);
         }
 
-        /// <summary>
-        /// Refused by the check named in <paramref name="reason"/>. Every edited trace also fails the
-        /// trace-to-state binding, which runs last; the reason proves the earlier check refused it first.
-        /// </summary>
-        private static void RefusedUnchanged(EpisodeState state, JObject trace, string reason)
+        /// <summary>The current source-bound chain refuses without changing source or supplied trace.</summary>
+        private static void RefusedLiveUnchanged(EpisodeState state, JObject trace, string reason = null)
         {
             string stateBefore = Text(state), traceBefore = Text(trace);
-            var checkedError = Assert.Throws<InvalidDataException>(() => LegacyDigestSchema28Observer.CheckFieldObserver(state, trace));
-            Assert.That(checkedError.Message, Does.Contain(reason));
-            var projectedError = Assert.Throws<InvalidDataException>(() => LegacyDigestSchema28Observer.ProjectTrace(state, trace));
-            Assert.That(projectedError.Message, Does.Contain(reason));
+            var checkedError = Assert.Throws<InvalidDataException>(() =>
+                LegacyDigestSchema28Observer.CheckFields(LegacyDigestSchema29Observer.ProjectTrace28(state, trace)));
+            var projectedError = Assert.Throws<InvalidDataException>(() => LegacyDigestSchema29Observer.ProjectTrace(state, trace));
+            if (reason != null)
+            {
+                Assert.That(checkedError.Message, Does.Contain(reason));
+                Assert.That(projectedError.Message, Does.Contain(reason));
+            }
             Assert.That(Text(trace), Is.EqualTo(traceBefore));
             Assert.That(Text(state), Is.EqualTo(stateBefore));
         }

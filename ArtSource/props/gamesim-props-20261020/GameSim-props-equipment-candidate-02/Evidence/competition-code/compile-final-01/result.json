@@ -1,0 +1,59 @@
+{
+  "completedUtc": "2026-10-21T04:12:01.668787+00:00",
+  "scope": "One NoUMA offline replay of all five normal assemblies, with nine external source postimages. Fresh local dependency outputs only. No Unity invocation or project writes.",
+  "wholeNoUmaOfflineReplayPassed": true,
+  "sourceInputCount": 1252,
+  "sourceInputChangesDuringReplay": [],
+  "stagedOriginalFilesUnchanged": true,
+  "stagedSnapshotFilesMatch": true,
+  "assemblies": [
+    {
+      "name": "Gamesim.Simulation",
+      "compiled": true,
+      "sha256": "d80122624b566ffa0a2d7238b5cbedb26cbef0a25867ece01738d5c12551f43d",
+      "compilerErrors": [],
+      "warningCount": 1,
+      "compilerLog": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\competition-code\\compile-final-01\\assemblies\\cd0624fd60f540bfb428ae46b58579ed\\Gamesim.Simulation.compiler.log",
+      "responseFile": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\competition-code\\compile-final-01\\assemblies\\cd0624fd60f540bfb428ae46b58579ed\\Gamesim.Simulation.rsp"
+    },
+    {
+      "name": "Gamesim.Runtime",
+      "compiled": true,
+      "sha256": "b8fbb1f98983237393fc4d89ecdc4908696500ab5d86dbca1afadfd933f3dc81",
+      "compilerErrors": [],
+      "warningCount": 0,
+      "compilerLog": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\competition-code\\compile-final-01\\assemblies\\cd0624fd60f540bfb428ae46b58579ed\\Gamesim.Runtime.compiler.log",
+      "responseFile": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\competition-code\\compile-final-01\\assemblies\\cd0624fd60f540bfb428ae46b58579ed\\Gamesim.Runtime.rsp"
+    },
+    {
+      "name": "Gamesim.Editor",
+      "compiled": true,
+      "sha256": "2cd21da6e3fb2cbf752e94f3c7074b22a9e55e71cdc09cf0a3a011769bfa0d0f",
+      "compilerErrors": [],
+      "warningCount": 13,
+      "compilerLog": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\competition-code\\compile-final-01\\assemblies\\cd0624fd60f540bfb428ae46b58579ed\\Gamesim.Editor.compiler.log",
+      "responseFile": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\competition-code\\compile-final-01\\assemblies\\cd0624fd60f540bfb428ae46b58579ed\\Gamesim.Editor.rsp"
+    },
+    {
+      "name": "Gamesim.PlayModeTests",
+      "compiled": true,
+      "sha256": "4677cc294c13a69fb95b4dba5c99e302987f70ad24b7fa2c32328fe54a06cede",
+      "compilerErrors": [],
+      "warningCount": 53,
+      "compilerLog": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\competition-code\\compile-final-01\\assemblies\\cd0624fd60f540bfb428ae46b58579ed\\Gamesim.PlayModeTests.compiler.log",
+      "responseFile": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\competition-code\\compile-final-01\\assemblies\\cd0624fd60f540bfb428ae46b58579ed\\Gamesim.PlayModeTests.rsp"
+    },
+    {
+      "name": "Gamesim.EditModeTests",
+      "compiled": true,
+      "sha256": "4005b0846133ee063df54c1ee786909496ae21607614687d7ae2e1194df94e4b",
+      "compilerErrors": [],
+      "warningCount": 6,
+      "compilerLog": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\competition-code\\compile-final-01\\assemblies\\cd0624fd60f540bfb428ae46b58579ed\\Gamesim.EditModeTests.compiler.log",
+      "responseFile": "C:\\Users\\kelli\\Documents\\Codex\\2026-09-20\\re\\work\\house-equipment-20261020\\competition-code\\compile-final-01\\assemblies\\cd0624fd60f540bfb428ae46b58579ed\\Gamesim.EditModeTests.rsp"
+    }
+  ],
+  "unityTestsRun": false,
+  "umaReplayPerformed": false,
+  "limitations": "Offline C# compilation only using existing Unity reference-cache configuration; does not run Unity, validate native asset imports, execute tests, or verify updated asmdef dependency declarations."
+}

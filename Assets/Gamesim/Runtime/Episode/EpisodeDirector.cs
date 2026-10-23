@@ -698,6 +698,7 @@ namespace Gamesim.Episode
 
         private void ClosePanelsInternal(bool render)
         {
+            paidStoryViewToken = null;
             CancelNpcInvitation();
             ResetConversationNavigation();
             CancelConversationExchange(false);
@@ -1337,6 +1338,7 @@ namespace Gamesim.Episode
 
         private void Render()
         {
+            paidStoryViewToken = null;
             conversationNavigationShowing = false;
             conversationMenuToken = null;
             pitchNavigationView = null;

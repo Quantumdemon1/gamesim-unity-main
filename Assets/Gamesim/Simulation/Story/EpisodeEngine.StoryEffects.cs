@@ -61,7 +61,11 @@ namespace Gamesim.Simulation
 
         /// <summary>Applies one resolved story effect.</summary>
         private static void ApplyStoryEffect(EpisodeState s, StoryEffectState e, StorylineState cycle, string subjectId,
-            string key, int reception, bool backfire)
+            string key, int reception, bool backfire) =>
+            ApplyStoryEffectWithPending(s, e, cycle, subjectId, key, reception, backfire, null);
+
+        private static void ApplyStoryEffectWithPending(EpisodeState s, StoryEffectState e, StorylineState cycle, string subjectId,
+            string key, int reception, bool backfire, PendingDialogueCommand pending)
         {
             if (e == null) return;
             if (e.fromId == StoryEffects.Picked || e.toId == StoryEffects.Picked || e.thirdId == StoryEffects.Picked) return;
@@ -149,10 +153,10 @@ namespace Gamesim.Simulation
                     return;
                 }
                 case StoryEffects.Promise:
-                    StoryPromise(s, from, to, e.type);
+                    StoryPromiseWithPending(s, from, to, e.type, pending);
                     return;
                 case StoryEffects.Deal:
-                    StoryDeal(s, from, to, s.Find(e.thirdId), e.type);
+                    StoryDealWithPending(s, from, to, s.Find(e.thirdId), e.type, pending);
                     return;
                 case StoryEffects.Fact:
                     if (StoryAt(s, StoryRules.Bonds))
@@ -321,7 +325,11 @@ namespace Gamesim.Simulation
         }
 
         /// <summary>A promise a story made, settled by the engine's own promise rules.</summary>
-        private static void StoryPromise(EpisodeState s, ContestantState from, ContestantState to, string kindName)
+        private static void StoryPromise(EpisodeState s, ContestantState from, ContestantState to, string kindName) =>
+            StoryPromiseWithPending(s, from, to, kindName, null);
+
+        private static void StoryPromiseWithPending(EpisodeState s, ContestantState from, ContestantState to, string kindName,
+            PendingDialogueCommand pending)
         {
             if (from == null || to == null || from.id == to.id || !Alive(from) || !Alive(to)) return;
             if (!Enum.TryParse(kindName, out PromiseKind kind)) return;
@@ -341,7 +349,7 @@ namespace Gamesim.Simulation
             // native story promise has none; refused, the story writes nothing for it and spends no id.
             else if (UnifiedVoteStore.On(s) && kind == PromiseKind.Vote)
             {
-                if (!UnifiedVoteStore.TryAddPromise(s, promise, UnifiedCommitments.StoryPromise, out _)) return;
+                if (!UnifiedVoteStore.TryAddPromise(s, promise, UnifiedCommitments.StoryPromise, pending, out _)) return;
             }
             else s.promises.Add(promise);
             s.nextSequence++;
@@ -356,7 +364,11 @@ namespace Gamesim.Simulation
         /// target, which is why a vote a story wins is a deal and never a promise: a promise carries
         /// no target, and one made to a voter who is not a nominee moves nothing.
         /// </summary>
-        private static void StoryDeal(EpisodeState s, ContestantState a, ContestantState b, ContestantState target, string type)
+        private static void StoryDeal(EpisodeState s, ContestantState a, ContestantState b, ContestantState target, string type) =>
+            StoryDealWithPending(s, a, b, target, type, null);
+
+        private static void StoryDealWithPending(EpisodeState s, ContestantState a, ContestantState b, ContestantState target, string type,
+            PendingDialogueCommand pending)
         {
             if (a == null || b == null || a.id == b.id || !Alive(a) || !Alive(b) || !DealKind.IsKnown(type)) return;
             // A final three deal is the commitment rules' own (C9): a story strikes one only under them.
@@ -378,7 +390,7 @@ namespace Gamesim.Simulation
             // order; refused, the story writes nothing for it and spends no id.
             else if (UnifiedVoteStore.On(s) && UnifiedVoteStore.IsVote(type))
             {
-                if (!UnifiedVoteStore.TryAddDeal(s, deal, UnifiedCommitments.StoryDeal, out _)) return;
+                if (!UnifiedVoteStore.TryAddDeal(s, deal, UnifiedCommitments.StoryDeal, pending, out _)) return;
             }
             else s.deals.Add(deal);
             s.nextSequence++;

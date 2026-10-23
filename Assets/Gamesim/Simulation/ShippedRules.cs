@@ -59,7 +59,7 @@ namespace Gamesim.Simulation
             // already active - every vote promise and deal one canonical row, settled at the reveal
             // under Rule2 and archived with its frame. Do not infer this opt-in while loading,
             // recovering, migrating or importing an existing season: a season recorded in mode 0 or 1
-            // keeps its mode (the lead's decision D6), and the schema stays 28 (D2).
+            // keeps its mode (the lead's decision D6). Dialogue remains off in the schema29 foundation.
             fresh.unifiedCommitmentRulesVersion = UnifiedVoteFamilyValidation.Version;
             fresh.unifiedHearingRulesVersion = UnifiedCommitmentHearings.ProspectiveVersion;
         }
@@ -96,6 +96,7 @@ namespace Gamesim.Simulation
                 Field("allianceLeakRulesStartWeek", s.allianceLeakRulesStartWeek),
                 Field("pactPlanRulesStartWeek", s.pactPlanRulesStartWeek),
                 Field("allWeekRulesStartWeek", s.allWeekRulesStartWeek),
+                Field("dialogueRulesVersion", s.dialogueRulesVersion),
                 Field("npcSocial.rulesStartWeek", s.npcSocial?.rulesStartWeek ?? 0),
                 Field("story.rulesStartWeek", s.story?.rulesStartWeek ?? 0),
                 Field("story.rulesVersion", s.story?.rulesVersion ?? 0),

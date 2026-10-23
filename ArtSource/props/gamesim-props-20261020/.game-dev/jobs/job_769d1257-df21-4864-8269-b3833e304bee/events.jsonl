@@ -1,0 +1,1 @@
+{"schema":"game_dev.event.v1","event_id":"evt_d9357556-4610-48e3-9da8-5291ae718c2b","job_id":"job_769d1257-df21-4864-8269-b3833e304bee","sequence":0,"timestamp":"2026-10-21T04:00:56.077Z","type":"started","operation":"package.build","data":{"version":"1.5.1"}}

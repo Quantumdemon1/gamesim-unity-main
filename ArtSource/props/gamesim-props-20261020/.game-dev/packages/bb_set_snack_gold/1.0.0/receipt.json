@@ -1,0 +1,23 @@
+{
+  "completedAt": "2026-10-21T04:06:05.200Z",
+  "destination": {
+    "assetId": "bb_set_snack_gold",
+    "version": "1.0.0"
+  },
+  "evidence": {
+    "blenderNormalizationPerformed": false,
+    "gpuImportTestPerformed": false,
+    "humanVisualReviewPerformed": false,
+    "modelBytesCopiedAndHashed": true,
+    "policyValidationCompleted": true,
+    "staticInspectionCompleted": true
+  },
+  "manifestSha256": "c2c2c0cbbb67467984b94268eafceb8b7f7245579b742b2f28db175781797eac",
+  "packageId": "pkg_1c69c8673ab9b4589dff9ad9",
+  "schema": "game_dev.package_receipt.v1",
+  "source": {
+    "bytes": 545888,
+    "fileName": "bb_set_snack_gold.glb",
+    "sha256": "605225bc059ee4bba2880e1ea656de24c23533d29505b974294f83b50232ecd3"
+  }
+}

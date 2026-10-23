@@ -43,7 +43,7 @@ namespace Gamesim.Episode
             var chip = CastChip(you.name);
             if (chip == null) return;
 
-            string first = (you.name ?? "").Split(' ')[0];
+            string first = CharacterNames.FirstName(you.name ?? "");
             var rows = new List<(string caption, System.Action action)>();
             foreach (EpisodeDirector.Emote kind in System.Enum.GetValues(typeof(EpisodeDirector.Emote)))
                 if (director.CanEmote(kind))

@@ -1,0 +1,29 @@
+{
+  "unchangedBehaviorMethodBodies": {
+    "For": true,
+    "Sync": true,
+    "Readout": true,
+    "FitActorClearance": true,
+    "NearestRaisedSolid": true,
+    "FitGrip": true,
+    "FitUpright": true,
+    "FitPartHeight": true,
+    "HandContact": true,
+    "FitPress": true,
+    "SetOverlaysVisible": true,
+    "IsOverlayRenderer": true,
+    "Fits": true,
+    "Words": true,
+    "Material": true,
+    "Colorize": true,
+    "RepeatWord": true,
+    "SetWord": true,
+    "BoxMesh": true,
+    "OnDestroy": true
+  },
+  "manifestEntries": 39,
+  "manifestEnumKeysMatch": true,
+  "gitApplyCheck": "Passed against current D:/GamesimConsolidation, no application performed",
+  "normalizedBoundsContract": "Finite center equals zero and size equals one within 1e-4, plus unit envelope containment",
+  "fallbackFixtures": "Actual undersized and off-center contained meshes added to the per-part fallback test; native execution pending"
+}

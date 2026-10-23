@@ -1,0 +1,49 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Source staging only. No compiler, restore or runner has been invoked. -->
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <LangVersion>9.0</LangVersion>
+    <Nullable>disable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <IsTestProject>true</IsTestProject>
+    <IsPackable>false</IsPackable>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="FrozenEpisodeV28.cs" />
+    <Compile Include="FrozenV28CommitmentReferences.cs" />
+    <Compile Include="FrozenV28Data.cs" />
+    <Compile Include="FrozenV28Input.cs" />
+    <Compile Include="FrozenV28ReadOnly.Core.cs" />
+    <Compile Include="FrozenV28ReadOnly.Leaves.cs" />
+    <Compile Include="FrozenV28ReadOnly.LiteralRows.cs" />
+    <Compile Include="FrozenV28ReadOnly.Privacy.cs" />
+    <Compile Include="FrozenV28ReadOnly.Safety.cs" />
+    <Compile Include="FrozenV28ReadOnly.SemanticTests.cs" />
+    <Compile Include="FrozenV28ReferenceRows.cs" />
+    <Compile Include="FrozenV28SafetyStorage.cs" />
+    <Compile Include="FrozenV28Shape.cs" />
+    <Compile Include="FrozenV28SocialHistory.cs" />
+    <Compile Include="FrozenV28VoteStorage.cs" />
+    <Compile Include="FrozenV28WholeBoundaryTests.cs" />
+    <Compile Include="vote-domain11/FrozenV28ReadOnly.VoteHistory.cs" />
+    <Compile Include="vote-domain11/FrozenV28UnifiedVoteCompletedReveal.cs" />
+    <Compile Include="vote-domain11/FrozenV28UnifiedVoteFamilyValidation.cs" />
+    <Compile Include="vote-domain11/FrozenV28UnifiedVoteRevealArchive.cs" />
+    <Compile Include="vote-domain11/FrozenV28VoteAggregateTests.cs" />
+    <Compile Include="vote-domain11/FrozenV28VoteHistoryTests.cs" />
+    <Compile Include="FrozenV28DataShapeTests.cs" />
+    <Compile Include="FrozenV28InputTests.cs" />
+    <Compile Include="FrozenV28SocialHistoryTests.cs" />
+    <Compile Include="FrozenV28SafetyStorageTests.cs" />
+    <Compile Include="FrozenV28VoteStorageTests.cs" />
+    <Compile Include="FrozenV28ReferenceTests.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+    <PackageReference Include="NUnit" Version="3.14.0" />
+    <PackageReference Include="NUnit3TestAdapter" Version="4.6.0" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.12.0" />
+  </ItemGroup>
+</Project>

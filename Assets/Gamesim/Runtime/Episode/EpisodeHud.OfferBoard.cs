@@ -14,7 +14,9 @@ namespace Gamesim.Episode
     /// cards on the campaign board's card and portrait pattern (<see cref="CampaignBoard"/>,
     /// <see cref="HudPrimitives.RectPortrait"/>) rather than a heading, a paragraph and two rows for each. Drawn at the
     /// veto meeting and in the Diary Room's veto column, under <see cref="EpisodeEngine.RolesOn"/> only; a season
-    /// without the role moments draws its rows as it always did.
+    /// without the role moments draws its rows as it always did. Under the role moments the Head of Household's pitches
+    /// are the same board (R5), on the nomination's screen and in the Diary Room's nomination: a card a pitch, with the
+    /// pitch's own four answers in place of the yes and the no (<see cref="OfferBoardCard.Answers"/>).
     ///
     /// <para>A card is the asker's face - from <see cref="CharacterPortraits"/> only, never an initials avatar - with
     /// their role's badge and its word on a pill, their name, the deal's chip and what it asks, the tone with its
@@ -48,33 +50,72 @@ namespace Gamesim.Episode
             OfferToneMarkName = "Tone mark", OfferToneWordName = "Tone word", OfferSituationName = "Offer situation", OfferReadName = "Offer read",
             OfferQuoteName = "Offer quote", OfferTermsName = "Offer terms", OfferStakesName = "Offer stakes", OfferHistoryName = "Offer history",
             OfferLockName = "Offer lock", OfferPagerName = "Offer pager", OfferCountName = "Offer count",
-            OfferSilenceName = "Offer silence line", OfferAnswersName = "Offer answers";
+            OfferSilenceName = "Offer silence line", OfferAnswersName = "Offer answers",
+            OfferRecommendsName = "Offer recommends", OfferAssessmentName = "Offer assessment";
 
         /// <summary>The board's own words: its eyebrow, and what answering costs.</summary>
         public const string OfferBoardEyebrow = "INCOMING OFFERS", OfferBoardFreeLine = "Answering uses no conversation";
 
+        /// <summary>The eyebrow of the Head of Household's pitch board (ROLE-MOMENTS-PLAN R5): the same board, its own word.</summary>
+        public const string PitchBoardEyebrow = "INCOMING PITCHES";
+
         /// <summary>The largest text's pager on the board, new captions of its own (§5.2).</summary>
         public const string PreviousOfferCaption = "Previous offer", NextOfferCaption = "Next offer";
 
-        /// <summary>One card: its words, the row it answers, why its yes is locked (null when it is not), and what each answer does.</summary>
+        /// <summary>
+        /// One card: its words, the row it answers, why its yes is locked (null when it is not), and what each answer does.
+        /// A card that answers something other than an offer - a pitch (ROLE-MOMENTS-PLAN R5) - gives its own
+        /// <see cref="Answers"/> instead of the yes and the no, and no row.
+        /// </summary>
         public sealed class OfferBoardCard
         {
             public RoleOffers.Card Card;
             public DealState Offer;
             public string LockReason;
             public Action Accept, Decline;
+            /// <summary>The card's own answers, in their order, where it has them; null for an offer's yes and no.</summary>
+            public IList<OfferBoardAnswer> Answers;
         }
 
         /// <summary>
-        /// What the director hands the board: the line under its eyebrow; what silence costs, beside the line, where the
-        /// board's offers make it true ("Silence costs more than a no.", ROLE-MOMENTS-PLAN R3) and null where they do not;
-        /// its cards in their order; and how to draw it again when a page turns.
+        /// One of a card's own answers (R5): its caption - the answer's, unchanged - the key it commits, whether it is locked,
+        /// and what pressing it does. A locked answer is drawn as the board draws a locked yes, and does nothing pressed.
+        /// </summary>
+        public sealed class OfferBoardAnswer
+        {
+            public string Caption, Key;
+            public bool Locked;
+            public Action Choose;
+        }
+
+        /// <summary>
+        /// What the director hands the board: its eyebrow where it is not "INCOMING OFFERS"; the line under it; what silence
+        /// costs, beside the line, where the board's offers make it true ("Silence costs more than a no.", ROLE-MOMENTS-PLAN
+        /// R3) and null where they do not; its cards in their order; and how to draw it again when a page turns.
         /// </summary>
         public sealed class OfferBoardSpec
         {
-            public string Line, Silence;
+            public string Eyebrow, Line, Silence;
             public IList<OfferBoardCard> Cards;
             public Action Redraw;
+        }
+
+        /// <summary>
+        /// Which card's answer each of this render's board answers is (R5): two cards carry the same captions, so a rebuild
+        /// puts the keyboard back on the same card's answer by these, as an offer's by <see cref="offerControls"/>. Begin clears it.
+        /// </summary>
+        private readonly Dictionary<Button, (string CardId, string Key)> boardAnswers = new Dictionary<Button, (string, string)>();
+
+        /// <summary>The card and the answer whose control had the keyboard when the HUD last rebuilt, beside its name.</summary>
+        private (string CardId, string Key) preferredBoardAnswer;
+
+        /// <summary>Which card's answer a control of this render's board is, and which answer (R5); false for any other control.</summary>
+        public bool TryDescribeBoardAnswer(Button button, out string cardId, out string key)
+        {
+            cardId = key = null;
+            if (button == null || !boardAnswers.TryGetValue(button, out var answer)) return false;
+            (cardId, key) = answer;
+            return true;
         }
 
         // At the resting text size; each is multiplied by the text scale.
@@ -104,7 +145,7 @@ namespace Gamesim.Episode
             float s = FontScale, width = ContentWidth(), gap = OfferGap * s;
             var board = new GameObject(OfferBoardName, typeof(RectTransform), typeof(LayoutElement)).GetComponent<RectTransform>();
             board.SetParent(content, false);
-            float y = OfferBoardHeader(board, width, spec.Line, spec.Silence) + gap;
+            float y = OfferBoardHeader(board, width, spec.Eyebrow ?? OfferBoardEyebrow, spec.Line, spec.Silence) + gap;
 
             int count = spec.Cards.Count;
             bool paged = LargestTextPages && count > 1;
@@ -140,11 +181,11 @@ namespace Gamesim.Episode
         /// line's right-hand end where both hold on the one row, as §5.1's mock has it, and under the line otherwise.
         /// Returns its height.
         /// </summary>
-        private float OfferBoardHeader(RectTransform board, float width, string line, string silence)
+        private float OfferBoardHeader(RectTransform board, float width, string eyebrowWords, string line, string silence)
         {
             float s = FontScale, eyebrowBox = OfferLineBox(13), freeBox = OfferLineBox(12);
             var head = EndScreenKit.Box(OfferBoardHeaderName, board, 0f, 0f, width, 10f);
-            var eyebrow = NewText(head, OfferBoardEyebrow, 13, UiTheme.Gold);
+            var eyebrow = NewText(head, eyebrowWords, 13, UiTheme.Gold);
             eyebrow.name = OfferEyebrowName;
             eyebrow.characterSpacing = 4f;
             var semibold = UiTheme.Font(UiTheme.Weight.SemiBold);
@@ -243,13 +284,17 @@ namespace Gamesim.Episode
             at += OfferFacts(card, words, pad, at, inner) + 6f * s;
             if (!string.IsNullOrEmpty(words.quote))
                 at += OfferText(card, OfferQuoteName, "“" + words.quote + "”", 13, Paper, pad, at, inner, style: FontStyles.Italic) + 4f * s;
-            at += OfferText(card, OfferTermsName, words.terms, 12, Paper, pad, at, inner) + 2f * s;
+            // A pitch's recommendation (R5), where the offers' terms stand; an offer has none.
+            if (!string.IsNullOrEmpty(words.recommends)) at += OfferText(card, OfferRecommendsName, words.recommends, 12, Paper, pad, at, inner) + 2f * s;
+            if (!string.IsNullOrEmpty(words.terms) || entry.Answers == null) at += OfferText(card, OfferTermsName, words.terms, 12, Paper, pad, at, inner) + 2f * s;
             at += OfferText(card, OfferStakesName, words.stakes, 12, UiTheme.Muted, pad, at, inner) + 2f * s;
             if (!string.IsNullOrEmpty(words.answers)) at += OfferText(card, OfferAnswersName, words.answers, 12, UiTheme.Muted, pad, at, inner) + 2f * s;
             if (!string.IsNullOrEmpty(words.history)) at += OfferText(card, OfferHistoryName, words.history, 12, UiTheme.Heading, pad, at, inner) + 2f * s;
+            // What feeling a pitcher out learned, once the player has (R5).
+            if (!string.IsNullOrEmpty(words.assessment)) at += OfferText(card, OfferAssessmentName, words.assessment, 12, UiTheme.Heading, pad, at, inner) + 2f * s;
             if (!string.IsNullOrEmpty(entry.LockReason)) at += OfferText(card, OfferLockName, entry.LockReason, 12, UiTheme.Warning, pad, at, inner) + 2f * s;
             at += 8f * s;
-            at += OfferAnswers(card, state, entry, pad, inner);
+            at += entry.Answers != null ? OfferOwnAnswers(card, entry, pad, inner) : OfferAnswers(card, state, entry, pad, inner);
             return (card, at + pad);
         }
 
@@ -329,6 +374,33 @@ namespace Gamesim.Episode
             offerReadings[accept] = RoleOffers.Spoken(DealAcceptCaption, entry.Card, entry.LockReason);
             offerReadings[decline] = RoleOffers.Spoken(DealDeclineCaption, entry.Card, entry.LockReason);
             return beside ? height : 2f * height + gap;
+        }
+
+        /// <summary>
+        /// A card's own answers at its foot (R5): each under its own caption, unchanged - locked where the answer is - two to a
+        /// row where the widest caption fits half the card and one to a row where it does not, in their order, the first at the
+        /// top. Each is registered as that card's answer, so a rebuild puts the keyboard back on the same card's, and given what
+        /// a screen reader says for it. Returns the height they take.
+        /// </summary>
+        private float OfferOwnAnswers(RectTransform card, OfferBoardCard entry, float x, float width)
+        {
+            float s = FontScale, height = OfferAnswerHeight * s, gap = 8f * s;
+            var answers = entry.Answers.Where(answer => answer != null && !string.IsNullOrEmpty(answer.Caption)).ToList();
+            if (answers.Count == 0) return 0f;
+            var buttons = answers.Select(answer => answer.Locked ? OfferLockedAnswer(card, answer.Caption) : OfferAnswer(card, answer.Caption, answer.Choose)).ToList();
+            float need = buttons.Select((button, i) => OfferCaptionWidth(button) + (answers[i].Locked ? OfferLockRoom : 0f)).Max()
+                + 2f * OfferAnswerInset * s;
+            int across = answers.Count > 1 && 2f * need + gap <= width ? 2 : 1;
+            float each = across == 2 ? (width - gap) * .5f : width;
+            int rows = (answers.Count + across - 1) / across;
+            for (int i = 0; i < buttons.Count; i++)
+            {
+                int row = i / across, column = i % across;
+                OfferAnswerAt(buttons[i], x + column * (each + gap), (rows - 1 - row) * (height + gap), each, height);
+                boardAnswers[buttons[i]] = (entry.Card.offerId, answers[i].Key);
+                offerReadings[buttons[i]] = RoleOffers.Spoken(answers[i].Caption, entry.Card, entry.LockReason);
+            }
+            return rows * height + (rows - 1) * gap;
         }
 
         /// <summary>An answer: the panel's interactive chrome, named and captioned by <paramref name="caption"/>, centred at its own size.</summary>

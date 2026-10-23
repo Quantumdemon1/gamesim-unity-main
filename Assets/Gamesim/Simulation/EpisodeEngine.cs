@@ -907,13 +907,18 @@ namespace Gamesim.Simulation
             s.replyCards.RemoveAll(card => card.kind == ReplyCards.Pitch);
             s.nominees = new List<string> { first, second };
             foreach (var nominee in s.nominees) NominationEffects(s, nominee);
+            // Under the role moments a nominee the player turned down at their pitch takes the ceremony's grudge easier (R5).
+            var honestNos = HonestNos(s, s.nominees);
             StoryNominated(s, s.nominees);
+            EaseHonestNos(s, honestNos);
             SettleDeals(s, DealResolution.Verdicts(s, DealResolution.Nominates, s.hohId, s.nominees.ToList()));
             ResolveUnifiedSafetyNomination(s, "nomination", s.hohId, s.nominees.ToList());
             Log(s, "nomination", Name(s, s.hohId) + Verb(s, s.hohId, " nominates ", " nominate ")
                 + Target(s, first, s.hohId) + " and " + Target(s, second, s.hohId) + ".");
             // Under the commitment rules (C2) an ally who puts the player up has turned on their pact.
             if (s.hohId != s.playerId && s.nominees.Contains(s.playerId)) Betrayal(s, s.hohId, Allegiance.Nominated, false);
+            // Under the role moments the player's pitch board settles with the names (R5): a promise kept pays.
+            SettleThePitchBoard(s);
         }
 
         private static void NominationEffects(EpisodeState s, string id, bool initial = true)
@@ -1027,7 +1032,10 @@ namespace Gamesim.Simulation
                 Require(ReplacementCandidates(s).Any(c => c.id == replacement), "Choose an eligible replacement; the HoH and veto holder are immune.");
                 s.nominees.Remove(saved); s.nominees.Add(replacement); NominationEffects(s, replacement, false);
                 MoodLift(s, saved);
+                // Under the role moments a replacement the player turned down at their pitch takes it easier (R5).
+                var honestNo = HonestNos(s, new[] { replacement });
                 StoryReplacement(s, replacement);
+                EaseHonestNos(s, honestNo);
                 // Between two houseguests, under D2's rules, through the ledger and no arc (ChangeBetween).
                 ChangeBetween(s, saved, s.vetoHolderId, 25, Name(s, s.vetoHolderId) + " used POV to save " + Target(s, saved, s.vetoHolderId), null, VetoSaveEvent);
                 ChangeBetween(s, replacement, s.hohId, -20, Name(s, s.hohId) + " named " + Target(s, replacement, s.hohId) + " as replacement nominee", null, VetoReplacementEvent);

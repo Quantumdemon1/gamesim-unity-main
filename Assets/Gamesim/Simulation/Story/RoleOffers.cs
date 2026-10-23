@@ -28,7 +28,8 @@ namespace Gamesim.Simulation
     ///
     /// <para>Pure and read-only: it neither mutates the state nor draws from its generator, and lives in the
     /// simulation so the Unity-free subset tests it. The HUD draws it (<c>EpisodeHud.OfferBoard</c>), at the
-    /// veto meeting and in the Diary Room's veto column, under <see cref="EpisodeEngine.RolesOn"/> only.</para>
+    /// veto meeting and in the Diary Room's veto column, under <see cref="EpisodeEngine.RolesOn"/> only - and, from R5,
+    /// the Head of Household's pitches as the same board (<see cref="PitchBoard"/>, §3.1).</para>
     /// </summary>
     public static class RoleOffers
     {
@@ -85,6 +86,13 @@ namespace Gamesim.Simulation
             public string answers;
             /// <summary>The player's latest settled word with them before this week, or null (<see cref="History"/>): "Your deal with them held in week 2".</summary>
             public string history;
+            /// <summary>
+            /// A pitch's recommendation (R5): "Recommends: Maya Torres", their own pick for the block, as the pitch card always
+            /// showed it; null on every other card, and on a pitch that recommends nobody.
+            /// </summary>
+            public string recommends;
+            /// <summary>What feeling a pitcher out learned, once the player has (<see cref="HoHPitches.Assessment"/>); null otherwise, and on every other card.</summary>
+            public string assessment;
         }
 
         // ---------------------------------------------------------------- the veto meeting's board
@@ -221,6 +229,86 @@ namespace Gamesim.Simulation
             };
         }
 
+        // ---------------------------------------------------------------- the Head of Household's pitch board (R5, §3.1)
+
+        /// <summary>A pitch's chip, and what it asks under it.</summary>
+        public const string PitchChip = "Nomination Pitch", PitchLine = "Keep me off the block";
+
+        /// <summary>The front of a pitch's recommendation: "Recommends: Maya Torres".</summary>
+        public const string RecommendsPrefix = "Recommends: ";
+
+        /// <summary>
+        /// The pitches waiting on the player as Head of Household, in the board's order: the order the board was dealt in
+        /// (<see cref="HoHPitches.HoldTheBoard"/>) - the two the player read warmest, then the one they read coolest, by their own
+        /// reading as the houseguests came to them - which stays put while the board is up, so an answer, or a word with one of
+        /// them, never shuffles the cards under the player. Only pitches from houseguests still in the game.
+        /// </summary>
+        public static List<ReplyCardState> PitchBoardCards(EpisodeState s) =>
+            s?.replyCards == null ? new List<ReplyCardState>()
+                : s.replyCards.Where(c => c != null && c.kind == ReplyCards.Pitch && s.Find(c.fromId)?.status == ContestantStatus.Active).ToList();
+
+        /// <summary>
+        /// Whether the Head of Household's pitches are drawn as the board: the role moments' pitch board
+        /// (<see cref="HoHPitches.OnTheBoard"/>) - the player Head of Household before naming anybody - with a pitch waiting
+        /// (<see cref="PitchBoardCards"/>). Without it the pitches come one at a time, as they always did. The director's gate
+        /// (<c>EpisodeDirector.PitchBoardShows</c>) reads it, so the Unity-free subset tests it.
+        /// </summary>
+        public static bool PitchBoardShows(EpisodeState s) => HoHPitches.OnTheBoard(s) && PitchBoardCards(s).Count > 0;
+
+        /// <summary>The pitch board's cards in words, in its order (<see cref="PitchBoardCards"/>).</summary>
+        public static List<Card> PitchBoard(EpisodeState s) =>
+            PitchBoardCards(s).Select(card => PitchCard(s, card)).Where(card => card != null).ToList();
+
+        /// <summary>
+        /// A pitch as a card (R5, §3.1): their face, "Nomination Pitch" and "Keep me off the block", their tone as one courting
+        /// the Head of Household with its situation word ("Never nominated", "Nominated before", or the endgame), the player's
+        /// read, their line - its target their own recommendation, keyed on the card's id, which names the week and the speaker
+        /// - "Recommends: {name}", what the answers stake and what a no and silence cost, the history, and what feeling them out
+        /// learned once the player has. Null for no card, a card of another kind, or one from nobody in the season.
+        /// </summary>
+        public static Card PitchCard(EpisodeState s, ReplyCardState card)
+        {
+            var who = card == null || card.kind != ReplyCards.Pitch ? null : s?.Find(card.fromId);
+            if (who == null || who.isPlayer) return null;
+            string moment = RoleQuotes.Pitch, role = RoleQuotes.RoleOf(moment), tone = RoleTone.Of(s, who.id, role);
+            return new Card
+            {
+                offerId = card.id, speakerId = who.id, name = who.name, role = role, moment = moment,
+                kind = ReplyCards.Pitch, chip = PitchChip, chipLine = PitchLine,
+                tone = tone, situation = RoleTone.Situation(s, who.id, role), read = RoleTone.ReadLine(s, who.id),
+                quote = RoleQuotes.Line(s, moment, tone, card.id, card.aboutId),
+                recommends = Recommends(s, card), stakes = PitchStakes(tone), answers = PitchAnswers(tone),
+                history = History(s, who.id), assessment = HoHPitches.Assessment(s, card),
+            };
+        }
+
+        /// <summary>"Recommends: Maya Torres": the houseguest the pitch puts forward for the block, by full name; null for one that names nobody.</summary>
+        public static string Recommends(EpisodeState s, ReplyCardState card)
+        {
+            var target = string.IsNullOrEmpty(card?.aboutId) ? null : s?.Find(card.aboutId);
+            return target == null ? null : RecommendsPrefix + target.name;
+        }
+
+        /// <summary>
+        /// What a pitch's answers stake, in at most <see cref="MostStakesWords"/> words and never a number: a promise pays only if
+        /// they stay off the player's block (<see cref="HoHPitches.KeptOffTheBlock"/>), and a no softens the blow of a nomination
+        /// (<see cref="HoHPitches.HonestNoEase"/>) - except for a Threatening one, whom it still stings.
+        /// </summary>
+        public static string PitchStakes(string tone) => tone == RoleTone.Threatening
+            ? "Promise: pays if they stay off your block. Turned down: nominating them still stings."
+            : "Promise: pays if they stay off your block. Turned down: nominating them stings less.";
+
+        /// <summary>
+        /// What turning a pitcher down and leaving them unanswered cost with them, in words: their tone's honest no
+        /// (<see cref="RoleTone.Stakes"/>), and nothing for silence - an unanswered pitch clears at the nominations. Null for a
+        /// tone this does not know.
+        /// </summary>
+        public static string PitchAnswers(string tone)
+        {
+            var stake = RoleTone.Stakes(tone);
+            return stake == null ? null : "Turn them down: costs " + CostWords(stake.decline) + ". Leave it unanswered: costs nothing.";
+        }
+
         // ---------------------------------------------------------------- the lines
 
         /// <summary>
@@ -349,7 +437,8 @@ namespace Gamesim.Simulation
         public static string Description(Card card, string lockReason = null)
         {
             if (card == null) return null;
-            var parts = new List<string> { "Tone: " + card.tone, card.situation, card.read, card.terms, card.stakes, card.answers, lockReason };
+            var parts = new List<string> { "Tone: " + card.tone, card.situation, card.read, card.recommends, card.terms, card.stakes, card.answers,
+                card.assessment, lockReason };
             return string.Join(" ", parts.Where(part => !string.IsNullOrWhiteSpace(part)).Select(Sentence));
         }
 

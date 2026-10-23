@@ -139,8 +139,11 @@ namespace Gamesim.Episode
         }
         /// <summary>Whether a control of this render answers the offer whose answer had the keyboard before it, the same way (<see cref="preferredOffer"/>).</summary>
         private bool AnswersThePreferredOffer(Selectable item) =>
-            preferredOffer.OfferId != null && item is UnityEngine.UI.Button button && offerControls.TryGetValue(button, out var row)
-            && row.OfferId == preferredOffer.OfferId && row.Accept == preferredOffer.Accept;
+            (preferredOffer.OfferId != null && item is UnityEngine.UI.Button button && offerControls.TryGetValue(button, out var row)
+                && row.OfferId == preferredOffer.OfferId && row.Accept == preferredOffer.Accept)
+            // Or a board card's own answer, the same card's and the same answer (R5).
+            || (preferredBoardAnswer.CardId != null && item is UnityEngine.UI.Button answerButton && boardAnswers.TryGetValue(answerButton, out var answer)
+                && answer.CardId == preferredBoardAnswer.CardId && answer.Key == preferredBoardAnswer.Key);
 
         // A readable lock is a disabled Button in an otherwise visible/input-owned HUD, not
         // a live Button behind a cinematic, reveal or non-owning CanvasGroup. Never change the
@@ -420,8 +423,12 @@ namespace Gamesim.Episode
             // An offer's answer that had the keyboard keeps it on the same offer, read before its control is forgotten.
             preferredOffer = selected != null && selected.TryGetComponent<Button>(out var held) && offerControls.TryGetValue(held, out var heldOffer)
                 ? (heldOffer.OfferId, heldOffer.Accept) : default;
+            // So does a board card's own answer, a pitch's (ROLE-MOMENTS-PLAN R5): the same card's, not the first of that caption.
+            preferredBoardAnswer = selected != null && selected.TryGetComponent<Button>(out var heldAnswer) && boardAnswers.TryGetValue(heldAnswer, out var answer)
+                ? answer : default;
             offerControls.Clear();
             offerReadings.Clear();
+            boardAnswers.Clear();
             offerRenderGeneration = checked(offerRenderGeneration + 1);
             offerRenderSession = state?.sessionId;
             offerRenderRevision = state?.revision ?? -1;

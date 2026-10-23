@@ -781,7 +781,9 @@ namespace Gamesim.Episode
                 if (nominationViewWeek != state.week) { ForgetNominationView(); nominationViewWeek = state.week; }
                 if (!nominationPitchesDismissed && ReplyCards.Pending(state)?.kind == ReplyCards.Pitch)
                 {
-                    PendingReplyCard(state, privateRoom);
+                    // Under the role moments the pitches are a board, in the diary's column too (R5).
+                    if (PitchBoardShows(state)) PitchOfferBoard(state);
+                    else PendingReplyCard(state, privateRoom);
                     hud.Action(EpisodeHud.BackToNomineesCaption, PitchNavigation(state, false));
                     return true;
                 }

@@ -188,6 +188,58 @@ namespace Gamesim.Episode
             state != null && EpisodeEngine.RolesOn(state) && state.phase == EpisodePhase.VetoMeeting && !state.vetoResolved
             && state.vetoHolderId == state.playerId && RoleOffers.BoardAsks(state).Count > 0;
 
+        /// <summary>The pitch board's line under its eyebrow (ROLE-MOMENTS-PLAN R5).</summary>
+        public const string PitchBoardLine = "Houseguests came to you before your nominations.";
+
+        /// <summary>
+        /// Whether the Head of Household's pitches are a board (ROLE-MOMENTS-PLAN R5): the role moments' pitch board
+        /// (<see cref="HoHPitches.OnTheBoard"/>) - the player Head of Household before naming anybody - with a pitch waiting.
+        /// Without it the pitches come one at a time, as they always did. The rule is <see cref="RoleOffers.PitchBoardShows"/>'s,
+        /// in the simulation, where the subset tests it.
+        /// </summary>
+        public static bool PitchBoardShows(EpisodeState state) => RoleOffers.PitchBoardShows(state);
+
+        /// <summary>
+        /// The Head of Household's pitches on the offer board (ROLE-MOMENTS-PLAN R5, §3.1): at most three cards, in the order
+        /// the board was dealt (<see cref="RoleOffers.PitchBoardCards"/>), each the pitcher's face, tone, situation, read, line,
+        /// recommendation, stakes, history and - once felt out - what they said, over the pitch's four answers under their own
+        /// captions, unchanged: "Promise safety", "Hear them without committing", "Turn them down" and "Feel them out (free)".
+        /// Any card can be answered first; each answer commits as it is pressed, as the pitch's always did. A promise the record
+        /// cannot hold is drawn locked under a line saying why, and a pitcher already felt out has the question locked, their
+        /// answer on the card. The head says no word about silence: an unanswered pitch clears at the nominations, at no cost.
+        /// </summary>
+        private void PitchOfferBoard(EpisodeState state)
+        {
+            object view = BeginReplyChoices();
+            var cards = new List<EpisodeHud.OfferBoardCard>();
+            foreach (var pitch in RoleOffers.PitchBoardCards(state))
+            {
+                var words = RoleOffers.PitchCard(state, pitch);
+                if (words == null) continue;
+                string id = pitch.id;
+                bool promiseLocked = !HoHPitches.CanPromiseSafety(state, pitch.fromId), assessed = HoHPitches.Assessed(state, pitch);
+                var answers = ReplyCards.Replies(ReplyCards.Pitch).Select(reply =>
+                {
+                    bool locked = reply.Key == HoHPitches.PromiseKey && promiseLocked;
+                    return new EpisodeHud.OfferBoardAnswer
+                    {
+                        Caption = EpisodeHud.ReplyCaption(reply.Label), Key = reply.Key, Locked = locked,
+                        Choose = locked ? null : ReplyChoice(state, id, reply.Key, view),
+                    };
+                }).ToList();
+                answers.Add(new EpisodeHud.OfferBoardAnswer
+                {
+                    Caption = EpisodeHud.FeelOutPitchCaption, Key = HoHPitches.FeelOutKey, Locked = assessed,
+                    Choose = assessed ? null : ReplyChoice(state, id, HoHPitches.FeelOutKey, view),
+                });
+                cards.Add(new EpisodeHud.OfferBoardCard
+                {
+                    Card = words, LockReason = promiseLocked ? HoHPitches.PromiseRecordFull : null, Answers = answers,
+                });
+            }
+            hud.OfferBoard(state, new EpisodeHud.OfferBoardSpec { Eyebrow = EpisodeHud.PitchBoardEyebrow, Line = PitchBoardLine, Cards = cards, Redraw = Render });
+        }
+
         /// <summary>
         /// An offer's accept. For a nominee's veto ask once the player has given another nominee
         /// their word on the veto this week, the same caption drawn locked, under a line saying why

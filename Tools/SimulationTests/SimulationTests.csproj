@@ -291,6 +291,8 @@
     <Compile Include="$(EditMode)RoleVetoBoardTests.cs" />
     <!-- R4: the Head of Household's keep-the-block deal - filing, the Hold verdict, its price, the defied HoH, its readers. -->
     <Compile Include="$(EditMode)RoleKeepTheBlockTests.cs" />
+    <!-- R5: the Head of Household's pitch board - the cap by the player's reading, any order, a promise paid when kept, the honest no. -->
+    <Compile Include="$(EditMode)RolePitchBoardTests.cs" />
     <Compile Include="$(EditMode)NominationStepsTests.cs" />
     <Compile Include="$(EditMode)ThreatAssessmentTests.cs" />
     <Compile Include="$(EditMode)WebDiaryParityTests.cs" />

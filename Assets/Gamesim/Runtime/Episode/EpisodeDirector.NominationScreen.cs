@@ -77,6 +77,8 @@ namespace Gamesim.Episode
             bool pitching = current.kind == NominationSteps.Kind.Picker && !nominationBackdoorView
                 && !nominationPitchesDismissed && HoHPitches.Available(state) && ReplyCards.Pending(state)?.kind == ReplyCards.Pitch;
             if (beat != null) NominationStory(state, beat);
+            // Under the role moments the pitches are one board of at most three cards, answered in any order (R5).
+            else if (pitching && PitchBoardShows(state)) PitchOfferBoard(state);
             else if (pitching) NominationPitch(state);
             else if (current.kind == NominationSteps.Kind.Picker)
             {

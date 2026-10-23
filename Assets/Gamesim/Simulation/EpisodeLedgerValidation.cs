@@ -57,8 +57,12 @@ namespace Gamesim.Simulation
                         || r.fromId == s.playerId || r.promised || r.listenerId == r.fromId || r.listenerId == s.playerId
                         || (r.replyKey == HoHPitches.FeelOutKey ? r.toThem != 0
                             : ReplyCards.Find(ReplyCards.Pitch, r.replyKey) == null
-                                || r.toThem != ReplyCards.Find(ReplyCards.Pitch, r.replyKey).ToThem))))
+                                // The answer's own number; in a week of the role moments' pitch board (R5) what the board's answer moves.
+                                || !HoHPitches.RecordedImpact(s, r)))))
                 || l.replies.Where(r => r.kind == ReplyCards.Pitch).GroupBy(r => r.week).Any(g => g.Count() > 48)
+                // The role moments' board brings a nomination at most three pitchers (R5).
+                || l.replies.Where(r => r.kind == ReplyCards.Pitch && EpisodeEngine.RolesOnIn(s, r.week)).GroupBy(r => r.week)
+                    .Any(g => g.Select(r => r.fromId).Distinct(System.StringComparer.Ordinal).Count() > HoHPitches.BoardSize)
                 || l.replies.Where(r => r.kind == ReplyCards.Pitch)
                     .GroupBy(r => new { r.week, r.fromId, inspected = r.replyKey == HoHPitches.FeelOutKey }).Any(g => g.Count() > 1))
                 return Fail(out error, "Invalid reply record data.");

@@ -154,6 +154,8 @@ namespace Gamesim.Episode
         /// Each card's answers do what the rows' do - the free answer, committed as it is pressed - and a card whose
         /// yes the veto cannot keep says why in the rows' own words (<see cref="VetoSavesOneLine"/>) over a disabled
         /// yes. Drawn only under <see cref="EpisodeEngine.RolesOn"/>, at the meeting and in the diary's veto column.
+        /// Its head says that silence costs more than a no (<see cref="RoleOffers.SilenceLine"/>), which the engine
+        /// makes true for these asks under the role moments (R3): a no costs its tone's, silence more at the decision.
         /// </summary>
         private void VetoOfferBoard(EpisodeState state)
         {
@@ -171,7 +173,7 @@ namespace Gamesim.Episode
                     Decline = () => Commit(state, EpisodeCommandKind.RespondToDeal, id, text: "decline"),
                 });
             }
-            hud.OfferBoard(state, new EpisodeHud.OfferBoardSpec { Line = VetoOfferBoardLine, Cards = cards, Redraw = Render });
+            hud.OfferBoard(state, new EpisodeHud.OfferBoardSpec { Line = VetoOfferBoardLine, Silence = RoleOffers.SilenceLine, Cards = cards, Redraw = Render });
         }
 
         /// <summary>

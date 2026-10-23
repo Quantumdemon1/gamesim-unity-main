@@ -287,6 +287,8 @@
     <Compile Include="$(EditMode)RoleToneTests.cs" />
     <!-- R2: the offer board's cards in words - their public order, terms, stakes, history and screen-reader line. -->
     <Compile Include="$(EditMode)RoleOffersTests.cs" />
+    <!-- R3: the veto board's economics - one word on the veto, the trap ask, a no and silence by tone, the riders. -->
+    <Compile Include="$(EditMode)RoleVetoBoardTests.cs" />
     <Compile Include="$(EditMode)NominationStepsTests.cs" />
     <Compile Include="$(EditMode)ThreatAssessmentTests.cs" />
     <Compile Include="$(EditMode)WebDiaryParityTests.cs" />

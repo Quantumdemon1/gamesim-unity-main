@@ -17,11 +17,11 @@ namespace Gamesim.Tests.PlayMode
     /// <summary>
     /// The offer board (ROLE-MOMENTS-PLAN R2, §5.1): under the role moments the nominees' veto asks are portrait cards at
     /// the veto decision and in the Diary Room's veto column - one an ask, in the order the block was named, each saying
-    /// the tone, the situation, the read, the quote, the terms and the stakes in labels of their own over the two
-    /// answers the rows always had, captioned as they always were and described as the offer's controls; a card whose
-    /// yes cannot be kept says why over a disabled yes; at the largest text the cards page; nothing on the board moves;
-    /// and a screen reader hears a control's caption, the card's heading and one line. A season without the role
-    /// moments draws the rows exactly as it did.
+    /// the tone, the situation, the read, the quote, the terms, the stakes and (R3) what a no and silence cost in labels
+    /// of their own over the two answers the rows always had, captioned as they always were and described as the offer's
+    /// controls, under a head that says silence costs more than a no (R3); a card whose yes cannot be kept says why over a
+    /// disabled yes; at the largest text the cards page; nothing on the board moves; and a screen reader hears a control's
+    /// caption, the card's heading and one line. A season without the role moments draws the rows exactly as it did.
     ///
     /// <para>The meeting is reached through the engine, as R1's tone tests reach it: an eight-house season under the
     /// shipped rules - at story rules Roles, or left at Threads - walked to week one's veto, the player handed it, and
@@ -193,7 +193,13 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(OfferLabel(board, EpisodeHud.OfferEyebrowName), Is.EqualTo(EpisodeHud.OfferBoardEyebrow));
             Assert.That(OfferLabel(board, EpisodeHud.OfferLineName), Is.EqualTo(EpisodeDirector.VetoOfferBoardLine));
             Assert.That(OfferLabel(board, EpisodeHud.OfferFreeName), Is.EqualTo(EpisodeHud.OfferBoardFreeLine));
-            Assert.That(ShownText(), Does.Not.Contain("Silence costs more"), "Nothing R3 has still to make true.");
+            Assert.That(OfferLabel(board, EpisodeHud.OfferSilenceName), Is.EqualTo(RoleOffers.SilenceLine),
+                "R3 makes silence cost more than a no, and the board's head says so in a label of its own.");
+            var head = board.GetComponentsInChildren<TMP_Text>();
+            Rect said = ScreenRect(head.Single(label => label.name == EpisodeHud.OfferLineName).rectTransform);
+            Rect silence = ScreenRect(head.Single(label => label.name == EpisodeHud.OfferSilenceName).rectTransform);
+            Assert.That(silence.xMin >= said.xMax - .5f || silence.yMax <= said.yMin + .5f, Is.True,
+                "Beside the board's line or under it, never over it: " + said + " / " + silence);
 
             var cards = OfferCards(board);
             Assert.That(cards.Select(card => card.name), Is.EqualTo(asks.Select(ask => EpisodeHud.OfferCardPrefix + state.Find(ask.proposerId).name)),
@@ -215,6 +221,7 @@ namespace Gamesim.Tests.PlayMode
                 Assert.That(OfferLabel(cards[i], EpisodeHud.OfferQuoteName), Is.EqualTo("“" + words.quote + "”"), who);
                 Assert.That(OfferLabel(cards[i], EpisodeHud.OfferTermsName), Is.EqualTo(words.terms), who);
                 Assert.That(OfferLabel(cards[i], EpisodeHud.OfferStakesName), Is.EqualTo(words.stakes), who);
+                Assert.That(OfferLabel(cards[i], EpisodeHud.OfferAnswersName), Is.Not.Null.And.EqualTo(words.answers), who + ": what a no and silence cost.");
                 Assert.That(OfferLabel(cards[i], EpisodeHud.OfferHistoryName), Is.EqualTo(words.history), who);
                 Assert.That(OfferLabel(cards[i], EpisodeHud.OfferLockName), Is.Null, who + "'s yes is open.");
                 // The face is the character's portrait, bound as every face in the house is - never an initials avatar.
@@ -318,6 +325,7 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(director.GetComponentsInChildren<Button>().Count(button => button.IsActive() && button.name == EpisodeHud.DealAcceptCaption), Is.EqualTo(2));
             Assert.That(director.GetComponentsInChildren<Button>().Count(button => button.IsActive() && button.name == EpisodeHud.DealDeclineCaption), Is.EqualTo(2));
             Assert.That(ShownText(), Does.Not.Contain(EpisodeHud.OfferBoardEyebrow));
+            Assert.That(ShownText(), Does.Not.Contain(RoleOffers.SilenceLine), "Without the role moments silence costs nothing, and nothing says it does.");
         }
 
         /// <summary>
@@ -440,7 +448,8 @@ namespace Gamesim.Tests.PlayMode
 
         /// <summary>
         /// A screen reader hears each of a card's controls as its caption, then the card's heading - "{name}, nominee,
-        /// veto commitment" - then one line saying the tone, the situation, the read, the terms and the stakes in words.
+        /// veto commitment" - then one line saying the tone, the situation, the read, the terms, the stakes and what a no
+        /// and silence cost, in words.
         /// A control off the board has no such line.
         /// </summary>
         [UnityTest]
@@ -462,7 +471,7 @@ namespace Gamesim.Tests.PlayMode
                     Assert.That(reading, Is.EqualTo(RoleOffers.Spoken(caption, words)));
                     Assert.That(reading, Does.StartWith(caption + ". " + words.name + ", nominee, veto commitment. Tone: " + words.tone + "."),
                         "The caption, the heading, then the line, which opens on the tone in words.");
-                    foreach (var part in new[] { words.situation, words.read, words.terms, words.stakes })
+                    foreach (var part in new[] { words.situation, words.read, words.terms, words.stakes, words.answers })
                         Assert.That(reading, Does.Contain(part), words.name + ": the line says '" + part + "'.");
                 }
             }

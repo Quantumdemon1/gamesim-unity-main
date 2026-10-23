@@ -700,8 +700,8 @@ namespace Gamesim.Simulation
         /// under the commitment rules, with room for the two deals it strikes under the player's ceiling
         /// (<see cref="PlayerDeals.PlayerDealCeiling"/>, refused in the deal table's own words); at the veto
         /// meeting before the decision, with the veto theirs to use; a nominee on the block who is not the
-        /// player; no word on the veto given already, to them or to the other nominee (it saves one); and a
-        /// price that fits (<see cref="VetoPriceFits"/>).
+        /// player; no word on the veto given already, to them or to the other nominee (it saves one,
+        /// <see cref="VetoWordGiven"/>); and a price that fits (<see cref="VetoPriceFits"/>).
         /// </summary>
         public static string VetoPriceRefusal(EpisodeState s, string nomineeId, string kind)
         {
@@ -711,15 +711,37 @@ namespace Gamesim.Simulation
                 return "Only the veto holder can name a price, before the veto meeting decides.";
             if (string.IsNullOrEmpty(nomineeId) || nomineeId == s.playerId || !s.nominees.Contains(nomineeId))
                 return "Name a price to somebody on the block.";
-            if (s.deals.Any(d => d.type == DealKind.VetoUse && d.week == s.week && (d.status == DealStatus.Active || d.status == DealStatus.Accepted)
-                    && (d.proposerId == s.playerId || d.recipientId == s.playerId)))
-                return "You have already given your word on the veto this week, and it saves one of them.";
+            if (VetoWordGiven(s)) return VetoSavesOneRefusal;
             if (kind != DealKind.FinalTwo && kind != DealKind.VoteSave) return "That is no price for the veto.";
             if (!VetoPriceFits(s, nomineeId, kind))
                 return kind == DealKind.FinalTwo ? "It is too early in the season to be talking about the final two."
                     : "They already owe you their vote, or the house does not bargain over votes this season.";
             return null;
         }
+
+        /// <summary>Why a second word on the veto in one week is refused: the veto saves one of them.</summary>
+        public const string VetoSavesOneRefusal = "You have already given your word on the veto this week, and it saves one of them.";
+
+        /// <summary>
+        /// Whether a deal of this kind is a word on the veto, of which the player gives one a week: a veto commitment.
+        /// The Head of Household's keep-the-block deal (ROLE-MOMENTS-PLAN R4, §3.3) is to join it here, so a yes to
+        /// either locks the other.
+        /// </summary>
+        public static bool IsVetoWord(string kind) => kind == DealKind.VetoUse;
+
+        /// <summary>
+        /// Whether the player has given their word on the veto this week (<see cref="IsVetoWord"/>): a deal of this
+        /// week, standing or accepted, with the player on either side of it - a nominee's ask they took, the price
+        /// they named for it, a story's promise. The one test behind the one-veto rule (ROLE-MOMENTS-PLAN R3, §3.2):
+        /// naming a price refuses on it in every season (<see cref="VetoPriceRefusal"/>), and under the role moments
+        /// a second yes to an ask (<c>EpisodeEngine.RespondToDeal</c>) and a story option that would give one (the
+        /// showmance's veto promise) do too. Read from the raw deal list, where every veto commitment lives in every
+        /// commitment mode.
+        /// </summary>
+        public static bool VetoWordGiven(EpisodeState s) =>
+            s?.deals != null && s.deals.Any(d => d != null && IsVetoWord(d.type) && d.week == s.week
+                && (d.status == DealStatus.Active || d.status == DealStatus.Accepted)
+                && (d.proposerId == s.playerId || d.recipientId == s.playerId));
 
         /// <summary>The prices this nominee could be asked for the veto right now, each a move of its own.</summary>
         public static List<string> VetoPrices(EpisodeState s, string nomineeId) =>

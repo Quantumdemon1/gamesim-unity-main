@@ -31,7 +31,7 @@ namespace Gamesim.Simulation
     ///
     /// <para>Pure and read-only: it neither mutates the state nor draws from its generator, and lives in the
     /// simulation so the Unity-free subset tests it. The offer board draws it (R2, <see cref="RoleOffers"/>), and
-    /// the veto board is to apply its stakes (R3), both under <see cref="EpisodeEngine.RolesOn"/>.</para>
+    /// the engine charges its stakes on the nominees' veto asks (R3), both under <see cref="EpisodeEngine.RolesOn"/>.</para>
     /// </summary>
     public static class RoleTone
     {
@@ -195,9 +195,9 @@ namespace Gamesim.Simulation
 
         /// <summary>
         /// One tone's stakes (§3.0, "What the tone stakes"): what an honest no costs with them, what leaving them
-        /// hanging costs once the decision lapses it, and the rider. Starting values, to tune. Data only: nothing
-        /// applies it yet (R3 does, under Roles). Without Roles a no stays at -3 and a lapse at 0, as today. A lapse
-        /// is a change in how they feel, never a breach.
+        /// hanging costs once the decision lapses it, and the rider. Starting values, to tune. The engine applies it to
+        /// the nominees' veto asks under Roles (R3, <c>EpisodeEngine.RoleMoments</c>); without Roles a no stays at -3
+        /// and a lapse at 0, as before. A lapse is a change in how they feel, never a breach.
         /// </summary>
         public sealed class Stake
         {

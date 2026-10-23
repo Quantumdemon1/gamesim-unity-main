@@ -364,12 +364,17 @@ namespace Gamesim.Simulation
         /// answer can still change something, and says so where the player will see it. Outside the
         /// weekly round, so it does not use up the week's three offers; roll-free, like the rest of
         /// this file.</para>
+        ///
+        /// <para>Under the role moments (ROLE-MOMENTS-PLAN R3, §3.2) nobody asks a holder who is on the block
+        /// too: their ask is a trap, since a holder who saves themselves breaks it at -45. Before them they
+        /// asked, as they always had.</para>
         /// </summary>
         public static void AskForTheVeto(EpisodeState state)
         {
             if (!StrategyRules.Apply(state) || state.week < state.dealRulesStartWeek) return;
             if (state.vetoHolderId != state.playerId || state.vetoResolved || !StrategyRules.VetoCanBeUsed(state)) return;
             if (state.Find(state.playerId)?.status != ContestantStatus.Active) return;
+            if (EpisodeEngine.RolesOn(state) && state.nominees.Contains(state.playerId)) return;
             var asking = state.nominees.Select(state.Find)
                 .Where(npc => npc != null && !npc.isPlayer && npc.status == ContestantStatus.Active
                               && Adjusted(state, npc.id, state.playerId) >= DealingFloor

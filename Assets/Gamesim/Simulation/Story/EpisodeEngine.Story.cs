@@ -743,6 +743,10 @@ namespace Gamesim.Simulation
             Require(index >= 0, "Choose one of this moment's options.");
             var choice = item.choices[index];
             Require(!choice.locked, choice.lockReason ?? "That option is not open to you.");
+            // Under the role moments a story's promise of the veto is a word on it, one a week (R3, §3.2): an option
+            // drawn before the player gave their word elsewhere is refused once they have, and drawn locked.
+            string vetoWord = VetoWordRefusal(s, choice);
+            Require(vetoWord == null, vetoWord);
             string picked = null;
             if (choice.pickPerson)
             {

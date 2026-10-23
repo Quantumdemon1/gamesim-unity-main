@@ -122,12 +122,14 @@ namespace Gamesim.Episode
 
             // A story beat's first option may be locked, may name somebody or may be a rule break;
             // those take a second press. The first option that answers in one press does, and the
-            // lapse option - never locked - always can.
+            // lapse option - never locked - always can. Under the role moments a promise of the veto
+            // after the player's word on it is drawn locked as well (R3).
             int index = 0;
             if (item.IsStory)
             {
                 bool actionsLeft = EpisodeEngine.SocialActionsSpent(state) < EpisodeEngine.SocialActionBudget(state);
-                bool Answers(HouseEventChoice c) => !c.locked && !c.pickPerson && !c.conduct && (!c.costsAction || actionsLeft);
+                bool Answers(HouseEventChoice c) => !c.locked && EpisodeEngine.VetoWordRefusal(state, c) == null
+                    && !c.pickPerson && !c.conduct && (!c.costsAction || actionsLeft);
                 // The first answer that is not the lapse: a play's step is played, not let go.
                 index = item.choices.FindIndex(c => !c.lapse && Answers(c));
                 if (index < 0) index = item.choices.FindIndex(c => Answers(c));

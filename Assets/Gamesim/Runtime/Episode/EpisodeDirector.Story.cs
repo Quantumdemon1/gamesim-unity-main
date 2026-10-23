@@ -84,10 +84,19 @@ namespace Gamesim.Episode
             FrameHouseEvent(item);
         }
 
+        /// <summary>
+        /// The note under a story's promise of the veto drawn before the player gave their word on it elsewhere, which
+        /// the role moments refuse once it is given (<see cref="EpisodeEngine.VetoWordRefusal"/>, R3): drawn locked, saying
+        /// why in a few words, as the tile's other notes do.
+        /// </summary>
+        public const string VetoWordGivenNote = "You gave your word on the veto";
+
         private EpisodeHud.StoryChoice StoryChoiceFor(EpisodeState state, HouseEventState item, HouseEventChoice choice, object paidView = null)
         {
             bool costsTooMuch = choice.costsAction && !CanSpendAction(state);
+            bool wordGiven = EpisodeEngine.VetoWordRefusal(state, choice) != null;
             string note = choice.locked ? choice.lockReason
+                : wordGiven ? VetoWordGivenNote
                 : costsTooMuch ? (EpisodeEngine.WeekRulesOn(state) ? "No conversations left in this window" : "No actions left this week")
                 : choice.conduct ? RuleBreakTag(state)
                 : choice.costsAction ? "Costs an action"
@@ -101,7 +110,7 @@ namespace Gamesim.Episode
                 Risk = EpisodeHud.RiskTag(choice.risk),
                 Odds = choice.checkBase >= 0 ? StoryOdds.InTen(StoryOdds.Chance(state, item, choice)) : null,
                 Note = note,
-                Locked = choice.locked || costsTooMuch,
+                Locked = choice.locked || wordGiven || costsTooMuch,
                 Choose = () =>
                 {
                     if (paidView != null)

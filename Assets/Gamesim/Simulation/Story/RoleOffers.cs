@@ -17,10 +17,12 @@ namespace Gamesim.Simulation
     /// waiting on the player, from houseguests still in the game.</para>
     ///
     /// <para><b>Only what is true now.</b> Every word is a public fact, the player's own reading or record,
-    /// or the row's own terms (§5.3). The stakes line says what keeping and breaking a word does today: a kept
-    /// word is remembered, a broken one may reach the house (<see cref="DealResolution"/>). The tone's riders
-    /// are R3's to settle, so until they do no card promises one (<see cref="RidersSettle"/>), and the board
-    /// never says that silence costs more than a no, which R3 makes true.</para>
+    /// or the row's own terms (§5.3). The stakes line says what keeping and breaking a word does: a kept word
+    /// is remembered, a broken one may reach the house (<see cref="DealResolution"/>), and the tone's rider
+    /// where it has one, which the veto decision settles (R3, <see cref="RidersSettle"/>). The answers line
+    /// says what an honest no and silence cost with them, in words, and the board's head that silence costs
+    /// more than a no (<see cref="SilenceLine"/>): the engine charges both, under the role moments, from the
+    /// tone the card shows (<see cref="ToneOf"/>).</para>
     ///
     /// <para>Pure and read-only: it neither mutates the state nor draws from its generator, and lives in the
     /// simulation so the Unity-free subset tests it. The HUD draws it (<c>EpisodeHud.OfferBoard</c>), at the
@@ -41,16 +43,23 @@ namespace Gamesim.Simulation
         public const int MostStakesWords = 14;
 
         /// <summary>
-        /// Whether a tone's rider settles yet (<see cref="RoleTone.Riders"/>). Not until R3 applies them: until
-        /// then a Desperate nominee owes nothing for a kept word and a Threatening one holds no grudge for a no,
-        /// so the stakes line says only what keeping and breaking do today.
+        /// Whether a tone's rider settles (<see cref="RoleTone.Riders"/>). It does since R3, which settles them at
+        /// the veto decision: a Desperate nominee whose word was kept owes the player a favour, a Bitter one's
+        /// grudge eases, and a Threatening one turned down or left hanging, and left on the block, holds a grudge.
+        /// Until then the stakes line said only what keeping and breaking did.
         /// </summary>
-        public const bool RidersSettle = false;
+        public const bool RidersSettle = true;
+
+        /// <summary>
+        /// The board's word on what answering costs, beside its line (§5.1): true under the role moments for every
+        /// tone, whose lapse costs more than its no (<see cref="RoleTone.Stakes"/>).
+        /// </summary>
+        public const string SilenceLine = "Silence costs more than a no.";
 
         /// <summary>One card of the board, in words.</summary>
         public sealed class Card
         {
-            /// <summary>The offer's own row id - the occasion the quote is keyed on - and who is asking.</summary>
+            /// <summary>The offer's own row id, and who is asking.</summary>
             public string offerId, speakerId;
             /// <summary>Their full name, as every card and row names a houseguest.</summary>
             public string name;
@@ -64,6 +73,8 @@ namespace Gamesim.Simulation
             public string quote;
             /// <summary>"In return: ..." and what keeping and breaking the word does.</summary>
             public string terms, stakes;
+            /// <summary>What turning it down and leaving it unanswered cost with them, in words (<see cref="Answers"/>).</summary>
+            public string answers;
             /// <summary>The player's latest settled word with them before this week, or null (<see cref="History"/>): "Your deal with them held in week 2".</summary>
             public string history;
         }
@@ -78,13 +89,45 @@ namespace Gamesim.Simulation
         public static List<DealState> VetoAsks(EpisodeState s)
         {
             if (s == null) return new List<DealState>();
-            return NpcDeals.Pending(s)
-                .Where(d => d.type == DealKind.VetoUse && d.week == s.week && s.Find(d.proposerId)?.status == ContestantStatus.Active)
-                .OrderBy(d => BlockPlace(s, d.proposerId))
-                .ThenBy(d => d.proposerId, StringComparer.Ordinal)
-                .ThenBy(d => d.id, StringComparer.Ordinal)
-                .ToList();
+            return InBoardOrder(s, NpcDeals.Pending(s).Where(d => IsVetoAsk(s, d) && s.Find(d.proposerId)?.status == ContestantStatus.Active)).ToList();
         }
+
+        /// <summary>Asks in the board's public order: nominees in the order they were named, then anybody else by id, a houseguest's own by their ids.</summary>
+        public static IEnumerable<DealState> InBoardOrder(EpisodeState s, IEnumerable<DealState> asks) =>
+            asks.OrderBy(d => BlockPlace(s, d.proposerId))
+                .ThenBy(d => d.proposerId, StringComparer.Ordinal)
+                .ThenBy(d => d.id, StringComparer.Ordinal);
+
+        /// <summary>
+        /// Whether a deal is one of this week's veto asks, answered or not: a veto commitment a nominee put to the
+        /// player this week, as <see cref="NpcDeals.AskForTheVeto"/> files one (<see cref="NpcDeals.VetoAskPrefix"/>).
+        /// The board draws a card for each while it waits (<see cref="VetoAsks"/>), and under the role moments the
+        /// engine charges a card's stakes on it - its no as it is given, its silence and its rider at the veto
+        /// decision (R3). Never a word a houseguest gave the player on a veto they hold - a favour called in, a
+        /// story's - which nobody asked the player to answer, and which was never a card (R3's review).
+        /// </summary>
+        public static bool IsVetoAsk(EpisodeState s, DealState d) =>
+            s != null && d != null && d.type == DealKind.VetoUse && d.week == s.week && d.recipientId == s.playerId && d.proposerId != s.playerId
+            && d.id != null && d.id.StartsWith(NpcDeals.VetoAskPrefix, StringComparison.Ordinal);
+
+        /// <summary>
+        /// The tone an ask's card wears: the asker's, as a nominee (<see cref="RoleTone.Of"/>). The card says it and the
+        /// engine charges its stakes from it - a no from the state it is given in, silence and the rider from the board as
+        /// it stood when the decision was made - so the cost the player is shown is the cost they are charged.
+        /// </summary>
+        public static string ToneOf(EpisodeState s, DealState ask) =>
+            ask == null ? null : RoleTone.Of(s, ask.proposerId, RoleQuotes.RoleOf(RoleQuotes.VetoAsk));
+
+        /// <summary>
+        /// The occasion an ask's quote is keyed on (<see cref="RoleQuotes.Line"/>): the moment, the week and who is asking,
+        /// every one public. Not the row's id, which R1 and R2 keyed it on (R2's review left the choice to R3): ids follow
+        /// the order the asks were filed in, and <see cref="NpcDeals.AskForTheVeto"/> files the warmest first - how each
+        /// nominee reads the player, which the player cannot see - so the same two nominees asking, their warmth the other
+        /// way round, swapped the ids and with them both cards' lines. A nominee asks once a week, so the week and the asker
+        /// name the occasion; a reload, a re-render and a replay show the same line, and nothing is stored.
+        /// </summary>
+        public static string QuoteOccasion(DealState ask) =>
+            ask == null || string.IsNullOrEmpty(ask.proposerId) ? null : RoleQuotes.VetoAsk + ":w" + ask.week + ":" + ask.proposerId;
 
         /// <summary>Where a houseguest stands in the order the block was named, or after everybody on it.</summary>
         private static int BlockPlace(EpisodeState s, string id)
@@ -102,14 +145,15 @@ namespace Gamesim.Simulation
         {
             var who = ask == null ? null : s?.Find(ask.proposerId);
             if (who == null || who.isPlayer) return null;
-            string role = RoleQuotes.RoleOf(RoleQuotes.VetoAsk), tone = RoleTone.Of(s, who.id, role);
+            string role = RoleQuotes.RoleOf(RoleQuotes.VetoAsk), tone = ToneOf(s, ask);
             return new Card
             {
                 offerId = ask.id, speakerId = who.id, name = who.name, role = role, moment = RoleQuotes.VetoAsk,
                 kind = ask.type, chip = DealKind.Title(ask.type), chipLine = VetoAskLine,
                 tone = tone, situation = RoleTone.Situation(s, who.id, role), read = RoleTone.ReadLine(s, who.id),
-                quote = RoleQuotes.Line(s, RoleQuotes.VetoAsk, tone, ask.id),
-                terms = Terms(s, ask), stakes = Stakes(RoleQuotes.VetoAsk, tone, RidersSettle), history = History(s, who.id),
+                quote = RoleQuotes.Line(s, RoleQuotes.VetoAsk, tone, QuoteOccasion(ask)),
+                terms = Terms(s, ask), stakes = Stakes(RoleQuotes.VetoAsk, tone, RidersSettle),
+                answers = Answers(RoleQuotes.VetoAsk, tone), history = History(s, who.id),
             };
         }
 
@@ -144,6 +188,23 @@ namespace Gamesim.Simulation
                 default: return "Keep it: they remember it. Break it: the house may hear.";
             }
         }
+
+        /// <summary>
+        /// What an honest no and silence cost with them, in at most <see cref="MostStakesWords"/> words and never a number
+        /// (§3.0, "What the tone stakes"): "Turn it down: costs a little goodwill. Leave it unanswered: costs some goodwill."
+        /// Silence costs more than a no for every tone, in these words too. Null for a moment without a board yet, or a
+        /// tone this does not know.
+        /// </summary>
+        public static string Answers(string moment, string tone)
+        {
+            var stake = moment == RoleQuotes.VetoAsk ? RoleTone.Stakes(tone) : null;
+            return stake == null ? null
+                : "Turn it down: costs " + CostWords(stake.decline) + ". Leave it unanswered: costs " + CostWords(stake.lapse) + ".";
+        }
+
+        /// <summary>A cost with somebody as a card says it: nothing, a little goodwill (one), some (up to three), a lot (more).</summary>
+        public static string CostWords(double delta) =>
+            delta >= 0 ? "nothing" : delta >= -1 ? "a little goodwill" : delta >= -3 ? "some goodwill" : "a lot of goodwill";
 
         /// <summary>A line's words, as the text caps count them.</summary>
         public static int WordCount(string line) =>
@@ -206,14 +267,15 @@ namespace Gamesim.Simulation
 
         /// <summary>
         /// The one line a screen reader says after a card's heading: the tone, the situation, the read, the terms,
-        /// the stakes and, on a locked card, why - every one in words, never only the colour or the mark the card
-        /// draws them with. "Tone: Desperate. On the block again. Your read: Neutral. In return: a final two. Keep
-        /// it: they remember it. Break it: the house may hear."
+        /// the stakes, what a no and silence cost and, on a locked card, why - every one in words, never only the
+        /// colour or the mark the card draws them with. "Tone: Desperate. On the block again. Your read: Neutral.
+        /// In return: a final two. Keep it: they owe you a favour. Break it: the house may hear. Turn it down: costs
+        /// some goodwill. Leave it unanswered: costs a lot of goodwill."
         /// </summary>
         public static string Description(Card card, string lockReason = null)
         {
             if (card == null) return null;
-            var parts = new List<string> { "Tone: " + card.tone, card.situation, card.read, card.terms, card.stakes, lockReason };
+            var parts = new List<string> { "Tone: " + card.tone, card.situation, card.read, card.terms, card.stakes, card.answers, lockReason };
             return string.Join(" ", parts.Where(part => !string.IsNullOrWhiteSpace(part)).Select(Sentence));
         }
 

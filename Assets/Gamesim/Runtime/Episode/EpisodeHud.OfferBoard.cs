@@ -18,9 +18,11 @@ namespace Gamesim.Episode
     ///
     /// <para>A card is the asker's face - from <see cref="CharacterPortraits"/> only, never an initials avatar - with
     /// their role's badge and its word on a pill, their name, the deal's chip and what it asks, the tone with its
-    /// mark, the situation word, the player's read, the quote, the terms, the stakes and the player's own history
-    /// with them, each a label of its own in <see cref="RoleOffers"/>' words, and under them the two answers the rows
-    /// always had, captioned as they always were and each described through <see cref="DescribeOfferControl"/>.
+    /// mark, the situation word, the player's read, the quote, the terms, the stakes, what a no and silence cost
+    /// (R3) and the player's own history with them, each a label of its own in <see cref="RoleOffers"/>' words, and
+    /// under them the two answers the rows always had, captioned as they always were and each described through
+    /// <see cref="DescribeOfferControl"/>. Where the director says it, the board's head says that silence costs more
+    /// than a no.
     /// Nothing is appended to a caption. A card whose yes cannot be kept - the player has given their word on the
     /// veto to the other nominee - says why in a label of its own over a disabled yes, and its no stays.</para>
     ///
@@ -45,7 +47,8 @@ namespace Gamesim.Episode
             OfferNameName = "Offer name", OfferChipName = "Offer chip", OfferChipLineName = "Offer chip line", OfferToneName = "Offer tone",
             OfferToneMarkName = "Tone mark", OfferToneWordName = "Tone word", OfferSituationName = "Offer situation", OfferReadName = "Offer read",
             OfferQuoteName = "Offer quote", OfferTermsName = "Offer terms", OfferStakesName = "Offer stakes", OfferHistoryName = "Offer history",
-            OfferLockName = "Offer lock", OfferPagerName = "Offer pager", OfferCountName = "Offer count";
+            OfferLockName = "Offer lock", OfferPagerName = "Offer pager", OfferCountName = "Offer count",
+            OfferSilenceName = "Offer silence line", OfferAnswersName = "Offer answers";
 
         /// <summary>The board's own words: its eyebrow, and what answering costs.</summary>
         public const string OfferBoardEyebrow = "INCOMING OFFERS", OfferBoardFreeLine = "Answering uses no conversation";
@@ -62,10 +65,14 @@ namespace Gamesim.Episode
             public Action Accept, Decline;
         }
 
-        /// <summary>What the director hands the board: the line under its eyebrow, its cards in their order, and how to draw it again when a page turns.</summary>
+        /// <summary>
+        /// What the director hands the board: the line under its eyebrow; what silence costs, beside the line, where the
+        /// board's offers make it true ("Silence costs more than a no.", ROLE-MOMENTS-PLAN R3) and null where they do not;
+        /// its cards in their order; and how to draw it again when a page turns.
+        /// </summary>
         public sealed class OfferBoardSpec
         {
-            public string Line;
+            public string Line, Silence;
             public IList<OfferBoardCard> Cards;
             public Action Redraw;
         }
@@ -97,7 +104,7 @@ namespace Gamesim.Episode
             float s = FontScale, width = ContentWidth(), gap = OfferGap * s;
             var board = new GameObject(OfferBoardName, typeof(RectTransform), typeof(LayoutElement)).GetComponent<RectTransform>();
             board.SetParent(content, false);
-            float y = OfferBoardHeader(board, width, spec.Line) + gap;
+            float y = OfferBoardHeader(board, width, spec.Line, spec.Silence) + gap;
 
             int count = spec.Cards.Count;
             bool paged = LargestTextPages && count > 1;
@@ -128,10 +135,12 @@ namespace Gamesim.Episode
 
         /// <summary>
         /// The board's head: "INCOMING OFFERS" with what answering costs at the right-hand end where the width
-        /// holds both, the line under them, and what answering costs under the line where it does not. Returns
-        /// its height.
+        /// holds both, the line under them, and what answering costs under the line where it does not. What silence
+        /// costs, where the spec says it (<paramref name="silence"/>), stands under what answering costs: at the
+        /// line's right-hand end where both hold on the one row, as §5.1's mock has it, and under the line otherwise.
+        /// Returns its height.
         /// </summary>
-        private float OfferBoardHeader(RectTransform board, float width, string line)
+        private float OfferBoardHeader(RectTransform board, float width, string line, string silence)
         {
             float s = FontScale, eyebrowBox = OfferLineBox(13), freeBox = OfferLineBox(12);
             var head = EndScreenKit.Box(OfferBoardHeaderName, board, 0f, 0f, width, 10f);
@@ -153,10 +162,38 @@ namespace Gamesim.Episode
                 EndScreenKit.Place(free.rectTransform, width - freeWidth, (eyebrowBox - freeBox) * .5f, freeWidth, freeBox);
                 free.alignment = TextAlignmentOptions.Right;
             }
-            if (!string.IsNullOrEmpty(line)) y += OfferText(head, OfferLineName, line, 13, Paper, 0f, y, width) + 2f * s;
+            TMP_Text quiet = null;
+            float quietWidth = 0f;
+            if (!string.IsNullOrEmpty(silence))
+            {
+                quiet = NewText(head, silence, 12, UiTheme.Muted);
+                quiet.name = OfferSilenceName;
+                quiet.textWrappingMode = TextWrappingModes.NoWrap;
+                quietWidth = Mathf.Ceil(quiet.GetPreferredValues(quiet.text).x) + 2f;
+            }
+            bool quietBeside = false;
+            var (said, lineHeight) = OfferLabel(head, OfferLineName, line, 13, Paper, 0f, y, width);
+            if (said != null)
+            {
+                // Beside the line only where the line still holds on one row, so nothing wraps under it.
+                float room = width - quietWidth - 24f * s;
+                quietBeside = quiet != null && beside && Mathf.Ceil(said.GetPreferredValues(said.text).x) + 2f <= room;
+                if (quietBeside)
+                {
+                    lineHeight = EndScreenKit.Wrapped(said, room);
+                    EndScreenKit.Place(quiet.rectTransform, width - quietWidth, y + (OfferLineBox(13) - freeBox) * .5f, quietWidth, freeBox);
+                    quiet.alignment = TextAlignmentOptions.Right;
+                }
+                y += lineHeight + 2f * s;
+            }
             if (!beside)
             {
                 EndScreenKit.Place(free.rectTransform, 0f, y, width, freeBox);
+                y += freeBox;
+            }
+            if (quiet != null && !quietBeside)
+            {
+                EndScreenKit.Place(quiet.rectTransform, 0f, y, width, freeBox);
                 y += freeBox;
             }
             head.sizeDelta = new Vector2(width, y);
@@ -166,8 +203,8 @@ namespace Gamesim.Episode
         /// <summary>
         /// One card at (<paramref name="x"/>, <paramref name="y"/>) of the board, <paramref name="width"/> wide: the
         /// face and its role, the name, the chip and what it asks beside it; the tone, the situation and the read;
-        /// the quote, the terms, the stakes, the history and any lock; and the answers at its foot. Returns the card
-        /// and the height its words need, which the row may make taller.
+        /// the quote, the terms, the stakes, what a no and silence cost, the history and any lock; and the answers at
+        /// its foot. Returns the card and the height its words need, which the row may make taller.
         /// </summary>
         private (RectTransform Card, float Height) OfferCard(RectTransform board, EpisodeState state, OfferBoardCard entry, float x, float y, float width)
         {
@@ -208,6 +245,7 @@ namespace Gamesim.Episode
                 at += OfferText(card, OfferQuoteName, "“" + words.quote + "”", 13, Paper, pad, at, inner, style: FontStyles.Italic) + 4f * s;
             at += OfferText(card, OfferTermsName, words.terms, 12, Paper, pad, at, inner) + 2f * s;
             at += OfferText(card, OfferStakesName, words.stakes, 12, UiTheme.Muted, pad, at, inner) + 2f * s;
+            if (!string.IsNullOrEmpty(words.answers)) at += OfferText(card, OfferAnswersName, words.answers, 12, UiTheme.Muted, pad, at, inner) + 2f * s;
             if (!string.IsNullOrEmpty(words.history)) at += OfferText(card, OfferHistoryName, words.history, 12, UiTheme.Heading, pad, at, inner) + 2f * s;
             if (!string.IsNullOrEmpty(entry.LockReason)) at += OfferText(card, OfferLockName, entry.LockReason, 12, UiTheme.Warning, pad, at, inner) + 2f * s;
             at += 8f * s;
@@ -393,9 +431,14 @@ namespace Gamesim.Episode
         /// nothing, and no height, without words.
         /// </summary>
         private float OfferText(RectTransform parent, string name, string words, int size, Color colour, float x, float y, float width,
-            TMP_FontAsset weight = null, FontStyles style = FontStyles.Normal, float spacing = 0f)
+            TMP_FontAsset weight = null, FontStyles style = FontStyles.Normal, float spacing = 0f) =>
+            OfferLabel(parent, name, words, size, colour, x, y, width, weight, style, spacing).Height;
+
+        /// <summary>The same label, and the label itself for a caller that measures it; no label, and no height, without words.</summary>
+        private (TMP_Text Label, float Height) OfferLabel(RectTransform parent, string name, string words, int size, Color colour, float x, float y,
+            float width, TMP_FontAsset weight = null, FontStyles style = FontStyles.Normal, float spacing = 0f)
         {
-            if (string.IsNullOrEmpty(words)) return 0f;
+            if (string.IsNullOrEmpty(words)) return (null, 0f);
             var label = NewText(parent, words, size, colour);
             label.name = name;
             if (weight != null) label.font = weight;
@@ -403,7 +446,7 @@ namespace Gamesim.Episode
             label.characterSpacing = spacing;
             label.alignment = TextAlignmentOptions.TopLeft;
             EndScreenKit.Place(label.rectTransform, x, y, width, 10f);
-            return EndScreenKit.Wrapped(label, width);
+            return (label, EndScreenKit.Wrapped(label, width));
         }
 
         /// <summary>A one-line box for type of this size at the text's scale: 1.32 times it, Inter's line and its margin.</summary>

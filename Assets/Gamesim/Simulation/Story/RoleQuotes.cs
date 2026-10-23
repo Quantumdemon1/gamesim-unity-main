@@ -20,9 +20,10 @@ namespace Gamesim.Simulation
     /// by first name; every pitch tone has a line that names nobody, which a pitch that recommends nobody says
     /// (<see cref="Line"/>). The lines start from the plan's own in §3.1 to §3.5.</para>
     ///
-    /// <para><b>The pick.</b> <see cref="StoryRandom.Index"/> on "role-quote:" and the occasion's own id - the
-    /// ask's deal id, the pitch's card id, the moment's storyline id - so a reload, a re-render or a replay shows
-    /// the same line, nothing is stored and the season's stream is never touched.</para>
+    /// <para><b>The pick.</b> <see cref="StoryRandom.Index"/> on "role-quote:" and the occasion's own key - the
+    /// ask's week and asker (<see cref="RoleOffers.QuoteOccasion"/>, R3: not its row id, whose order follows hidden
+    /// warmth), the pitch's card id, the moment's storyline id - so a reload, a re-render or a replay shows the same
+    /// line, nothing is stored and the season's stream is never touched.</para>
     ///
     /// <para>Pure and read-only. The offer board draws the veto ask's lines (R2, <see cref="RoleOffers"/>).</para>
     /// </summary>

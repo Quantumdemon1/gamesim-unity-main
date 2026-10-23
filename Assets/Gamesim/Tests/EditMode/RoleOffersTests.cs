@@ -11,8 +11,9 @@ namespace Gamesim.Tests.EditMode
     /// The offer board's cards in words (ROLE-MOMENTS-PLAN R2, §5.1): <see cref="RoleOffers"/>. The board holds the very
     /// asks the old rows held, in the order the block was named - never the order they were filed in, which follows a
     /// houseguest's hidden view of the player; a card says the row's terms, public facts and the player's own reading and
-    /// record, and nothing the player cannot see moves a word of it; its stakes promise no rider until R3 settles them; and
-    /// a screen reader hears a control's caption, the card's heading and one line in words. Pure simulation, so the
+    /// record, and nothing the player cannot see moves a word of it - its quote included, keyed on the week and the asker
+    /// (R3); its stakes name the rider R3 settles, and its answers line what a no and silence cost; and a screen reader
+    /// hears a control's caption, the card's heading and one line in words. Pure simulation, so the
     /// Unity-free subset runs it as well as the editor; the HUD that draws it is the PlayMode suite's.
     /// </summary>
     public sealed class RoleOffersTests
@@ -93,13 +94,68 @@ namespace Gamesim.Tests.EditMode
                 Assert.That(card.tone, Is.EqualTo(tone));
                 Assert.That(card.situation, Is.EqualTo(RoleTone.Situation(s, card.speakerId, RoleTone.Role.Nominee)));
                 Assert.That(card.read, Is.EqualTo(RoleTone.ReadLine(s, card.speakerId)));
-                Assert.That(card.quote, Is.Not.Null.And.EqualTo(RoleQuotes.Line(s, RoleQuotes.VetoAsk, tone, ask.id)), "The quote is keyed on the row's own id.");
+                Assert.That(card.quote, Is.Not.Null.And.EqualTo(RoleQuotes.Line(s, RoleQuotes.VetoAsk, tone, "veto-ask:w" + s.week + ":" + card.speakerId)),
+                    "The quote is keyed on the week and the asker (R3), never the row's id.");
                 Assert.That(card.terms, Is.EqualTo(RoleOffers.TermsPrefix + Negotiation.PriceWords(s, Negotiation.AskPrice(s, ask))));
                 Assert.That(Negotiation.AskPriceLine(s, ask), Does.Contain(card.terms.Substring(RoleOffers.TermsPrefix.Length)), "in the ask's own words.");
-                Assert.That(card.stakes, Is.EqualTo(BaseStakes));
+                Assert.That(card.stakes, Is.EqualTo(RoleOffers.Stakes(RoleQuotes.VetoAsk, tone, true)), "The stakes name the tone's rider, which R3 settles.");
+                Assert.That(card.answers, Is.Not.Null.And.EqualTo(RoleOffers.Answers(RoleQuotes.VetoAsk, tone)));
                 Assert.That(card.history, Is.EqualTo(RoleOffers.History(s, card.speakerId)));
             }
-            Assert.That(cards[0].tone, Is.EqualTo(RoleTone.Threatening), "The fixture's first nominee reads Threatening by their traits.");
+            Assert.That(cards[0].tone, Is.EqualTo(RoleTone.Threatening), "The fixture's first nominee reads Threatening by their traits,");
+            Assert.That(cards[0].stakes, Is.EqualTo("Keep it: they remember it. Refuse or ignore them, leave them up: a grudge."), "and says their rider.");
+        }
+
+        /// <summary>
+        /// A card's quote is keyed on what the player can see - the week and who is asking - never the row's id, whose
+        /// order follows the filing, which follows how warmly each nominee reads the player (R2's review left the key to
+        /// R3). The same two asks filed the other way round, the ids swapped, show every word of every card the same.
+        /// </summary>
+        [Test]
+        public void TheQuoteIsKeyedOnTheWeekAndTheAskerNeverTheFilingOrder()
+        {
+            var filed = AtTheMeeting(out string first, out string second, out _);
+            Ask(filed, "deal-veto-20", first);
+            Ask(filed, "deal-veto-21", second);
+            var swapped = AtTheMeeting(out _, out _, out _);
+            Ask(swapped, "deal-veto-20", second);
+            Ask(swapped, "deal-veto-21", first);
+            Assert.That(RoleOffers.VetoAsks(filed).Select(d => d.id), Is.Not.EqualTo(RoleOffers.VetoAsks(swapped).Select(d => d.id)), "The ids follow the filing.");
+            List<string> Words(EpisodeState s) => Board(s).Select(line => line.Substring(line.IndexOf(" | ", StringComparison.Ordinal))).ToList();
+            Assert.That(Words(swapped), Is.EqualTo(Words(filed)), "Every word of every card, the quote among them, stands.");
+            var ask = RoleOffers.VetoAsks(filed).First();
+            Assert.That(RoleOffers.QuoteOccasion(ask), Is.EqualTo("veto-ask:w" + filed.week + ":" + ask.proposerId));
+            Assert.That(RoleOffers.QuoteOccasion(null), Is.Null);
+        }
+
+        /// <summary>
+        /// Under the role moments silence costs more than a no, for every tone, and the board says so (§5.1): each card's
+        /// answers line names what an honest no and silence cost with them, in words and never a number, within the text
+        /// cap, silence always the dearer - the very stakes the engine charges (R3).
+        /// </summary>
+        [Test]
+        public void TheAnswersSaySilenceCostsMoreThanANoForEveryTone()
+        {
+            Assert.That(RoleOffers.SilenceLine, Is.EqualTo("Silence costs more than a no."));
+            var scale = new[] { "nothing", "a little goodwill", "some goodwill", "a lot of goodwill" };
+            foreach (string tone in RoleTone.Ladder)
+            {
+                var stake = RoleTone.Stakes(tone);
+                Assert.That(stake.lapse, Is.LessThan(stake.decline), tone + ": silence costs more than a no.");
+                string line = RoleOffers.Answers(RoleQuotes.VetoAsk, tone);
+                Assert.That(line, Is.EqualTo("Turn it down: costs " + RoleOffers.CostWords(stake.decline) + ". Leave it unanswered: costs " + RoleOffers.CostWords(stake.lapse) + "."), tone);
+                Assert.That(Array.IndexOf(scale, RoleOffers.CostWords(stake.lapse)), Is.GreaterThan(Array.IndexOf(scale, RoleOffers.CostWords(stake.decline))),
+                    tone + ": in words too.");
+                Assert.That(RoleOffers.WordCount(line), Is.LessThanOrEqualTo(RoleOffers.MostStakesWords), line);
+                Assert.That(line.Any(char.IsDigit), Is.False, line);
+            }
+            Assert.That(RoleOffers.Answers(RoleQuotes.VetoAsk, RoleTone.Calculated), Is.EqualTo("Turn it down: costs nothing. Leave it unanswered: costs a little goodwill."));
+            Assert.That(RoleOffers.Answers(RoleQuotes.VetoAsk, RoleTone.Bitter), Is.EqualTo("Turn it down: costs some goodwill. Leave it unanswered: costs a lot of goodwill."));
+            Assert.That(new[] { 0.0, -1, -2, -3, -4, -5 }.Select(RoleOffers.CostWords),
+                Is.EqualTo(new[] { "nothing", "a little goodwill", "some goodwill", "some goodwill", "a lot of goodwill", "a lot of goodwill" }));
+            foreach (string moment in RoleQuotes.Moments.Where(moment => moment != RoleQuotes.VetoAsk))
+                Assert.That(RoleOffers.Answers(moment, RoleTone.Pragmatic), Is.Null, moment + " has no board yet.");
+            Assert.That(RoleOffers.Answers(RoleQuotes.VetoAsk, "Gleeful"), Is.Null);
         }
 
         /// <summary>
@@ -129,18 +185,18 @@ namespace Gamesim.Tests.EditMode
         }
 
         /// <summary>
-        /// The stakes say only what keeping and breaking a word does today, for every tone, because R3 settles the
-        /// riders and R2 does not. Once they settle, each rider tone's line names its rider and the others stay as they
-        /// were; every line keeps to the text cap and states no number. No moment but the veto ask has a board yet.
+        /// The stakes name each rider tone's rider now the veto decision settles them (R3), and the other tones say what
+        /// keeping and breaking a word does; unsettled, every tone said only that. Every line keeps to the text cap and
+        /// states no number. No moment but the veto ask has a board yet.
         /// </summary>
         [Test]
-        public void TheStakesPromiseNoRiderUntilTheRidersSettle()
+        public void TheStakesNameTheRiderTheDecisionSettles()
         {
-            Assert.That(RoleOffers.RidersSettle, Is.False, "R3 settles the riders; until it does no card may promise one.");
+            Assert.That(RoleOffers.RidersSettle, Is.True, "R3 settles the riders, so a card names them.");
             foreach (string tone in RoleTone.Ladder)
             {
-                Assert.That(RoleOffers.Stakes(RoleQuotes.VetoAsk, tone, RoleOffers.RidersSettle), Is.EqualTo(BaseStakes), tone);
-                string settled = RoleOffers.Stakes(RoleQuotes.VetoAsk, tone, true);
+                Assert.That(RoleOffers.Stakes(RoleQuotes.VetoAsk, tone, false), Is.EqualTo(BaseStakes), tone);
+                string settled = RoleOffers.Stakes(RoleQuotes.VetoAsk, tone, RoleOffers.RidersSettle);
                 string rider = RoleTone.Stakes(tone).rider;
                 if (rider == null) Assert.That(settled, Is.EqualTo(BaseStakes), tone + " has no rider.");
                 else Assert.That(settled, Does.Contain(rider == RoleTone.Riders.OwesAFavour ? "favour" : "grudge"), tone + "'s rider, " + rider);
@@ -223,7 +279,8 @@ namespace Gamesim.Tests.EditMode
 
         /// <summary>
         /// A screen reader hears a control's caption, the card's heading and one line that says the tone, the
-        /// situation, the read, the terms, the stakes and any lock in words - never the colour or the mark alone.
+        /// situation, the read, the terms, the stakes, what a no and silence cost, and any lock in words - never the
+        /// colour or the mark alone.
         /// </summary>
         [Test]
         public void AScreenReaderHearsTheCaptionTheHeadingAndOneLine()
@@ -233,11 +290,13 @@ namespace Gamesim.Tests.EditMode
                 offerId = "deal-veto-9", speakerId = "danielle", name = "Danielle Reyes", role = RoleTone.Role.Nominee, moment = RoleQuotes.VetoAsk,
                 kind = DealKind.VetoUse, chip = "Veto Commitment", chipLine = RoleOffers.VetoAskLine, tone = RoleTone.Desperate,
                 situation = "On the block again", read = "Your read: Neutral", quote = "Save me and I'll owe you. I mean it.",
-                terms = "In return: a final two", stakes = BaseStakes, history = "Your deal with them held in week 2",
+                terms = "In return: a final two", stakes = RoleOffers.Stakes(RoleQuotes.VetoAsk, RoleTone.Desperate, true),
+                answers = RoleOffers.Answers(RoleQuotes.VetoAsk, RoleTone.Desperate), history = "Your deal with them held in week 2",
             };
             Assert.That(RoleOffers.Heading(card), Is.EqualTo("Danielle Reyes, nominee, veto commitment"));
             Assert.That(RoleOffers.Description(card), Is.EqualTo(
-                "Tone: Desperate. On the block again. Your read: Neutral. In return: a final two. Keep it: they remember it. Break it: the house may hear."));
+                "Tone: Desperate. On the block again. Your read: Neutral. In return: a final two. Keep it: they owe you a favour. Break it: the house may hear. "
+                + "Turn it down: costs some goodwill. Leave it unanswered: costs a lot of goodwill."));
             string locked = "The veto can only save one of them, and you have already given Marcus Webb your word. Turn Danielle down, or the offer lapses at the meeting.";
             Assert.That(RoleOffers.Description(card, locked), Is.EqualTo(RoleOffers.Description(card) + " " + locked), "A lock is said last.");
             Assert.That(RoleOffers.Spoken("Accept this offer", card, locked), Is.EqualTo(

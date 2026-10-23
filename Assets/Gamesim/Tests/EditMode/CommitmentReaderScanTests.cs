@@ -102,11 +102,12 @@ namespace Gamesim.Tests.EditMode
             new Site(Sim + "FinalistRead.cs", "DealKind.FinalTwo && d.status == DealStatus.Active && Between", 1, Why.RawKind, "final two"),
             new Site(Sim + "FinalistRead.cs", "PromiseKind.FinalTwo", 3, Why.RawKind, "final two"),
             new Site(Sim + "FinalistRead.cs", "d.type == DealKind.FinalTwo", 2, Why.RawKind, "final two"),
-            new Site(Sim + "Negotiation.cs", "d.type == DealKind.VetoUse", 1, Why.RawKind, "the veto"),
+            new Site(Sim + "Negotiation.cs", "IsVetoWord(d.type)", 1, Why.RawKind, "the veto: the one-word test, VetoWordGiven (R3)"),
             new Site(Sim + "NpcDeals.cs", "d.type == DealKind.VetoUse", 1, Why.RawKind, "the veto"),
             new Site(Sim + "NpcPromises.cs", "p.kind == PromiseKind.FinalTwo", 1, Why.RawKind, "final two"),
             new Site(Sim + "Story/StoryCatalog.BondsAndSecrets.cs", null, 2, Why.RawKind, "final two"),
             new Site(Sim + "Story/StoryConsumers.cs", "d.type == DealKind.VetoUse", 1, Why.RawKind, "the veto"),
+            new Site(Sim + "Story/EpisodeEngine.RoleMoments.cs", null, 2, Why.RawKind, "R3: the veto board's asks, read and settled at the decision"),
             new Site(Run + "Episode/EpisodeDirector.Strategy.cs", null, 1, Why.RawKind, "the veto"),
             new Site(Run + "Episode/EpisodeHud.Chrome.cs", null, 2, Why.RawKind, "final two and three on the chrome"),
 

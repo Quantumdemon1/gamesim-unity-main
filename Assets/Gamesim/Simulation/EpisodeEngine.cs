@@ -134,9 +134,13 @@ namespace Gamesim.Simulation
                         var saved = NpcVetoSave(s);
                         Require(saved != null && c.useVeto && c.targetId == saved, "The NPC veto decision must be preserved.");
                     }
+                    // Under the role moments (R3) the veto board as the player last saw it, before anything below moves
+                    // it, and what the decision left of it settled on those tones: silence costs, and the riders.
+                    var board = VetoBoardAsSeen(s);
                     // The house's last beats before the veto is used (D2, §1).
                     Close(s);
-                    ResolveVeto(s, c.useVeto, c.targetId, c.secondTargetId); break;
+                    ResolveVeto(s, c.useVeto, c.targetId, c.secondTargetId);
+                    SettleTheVetoBoard(s, board); break;
                 case EpisodeCommandKind.CastVote:
                     if (s.phase == EpisodePhase.Jury)
                     {
@@ -2170,6 +2174,9 @@ namespace Gamesim.Simulation
             string title = DealKind.Title(deal.type).ToLowerInvariant();
             if (string.Equals((c.text ?? string.Empty).Trim(), AcceptDeal, StringComparison.OrdinalIgnoreCase))
             {
+                // One word on the veto a week (ROLE-MOMENTS-PLAN R3, §3.2): under the role moments a second yes is
+                // refused, in the words a second price is. Before them only the meeting's row locked it.
+                Require(!SecondVetoWord(s, deal), Negotiation.VetoSavesOneRefusal);
                 // The player's three (ACTIONS-DEALS-ALLIANCES-PLAN C4, decision 10): under the
                 // commitment rules a yes that would bring them into a fourth pact is not theirs to give.
                 Require(!(deal.type == DealKind.AllianceInvite && InvitationPastPactCap(s, deal.proposerId)), PactCapRefusal);
@@ -2219,12 +2226,15 @@ namespace Gamesim.Simulation
                 return;
             }
 
+            // Under the role moments a veto ask's no costs what its card's tone stakes (R3, §3.0), read before the
+            // answer moves anything; every other no, and every no before them, costs what it always did.
+            double declined = DeclineCost(s, deal);
             if (modeTwo != null)
                 Require(UnifiedVoteStore.TryAnswerOffer(s, deal.id, false, out string voteDeclineError), voteDeclineError);
             else if (canonical != null)
                 Require(UnifiedCommitmentStore.TryRespond(s, deal.id, false, out string declineError), declineError);
             else deal.status = DealStatus.Declined;
-            Change(s, s.playerId, deal.proposerId, PlayerDeals.DeclineImpact,
+            Change(s, s.playerId, deal.proposerId, declined,
                 "Turned down my " + title + ".", "deal_declined");
             Log(s, "deal", "You declined a " + title + " from " + from.name + ".", s.playerId, deal.proposerId);
         }

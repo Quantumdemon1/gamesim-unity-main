@@ -30,8 +30,8 @@ namespace Gamesim.Simulation
     /// carries only an answer-time cost.</para>
     ///
     /// <para>Pure and read-only: it neither mutates the state nor draws from its generator, and lives in the
-    /// simulation so the Unity-free subset tests it. Nothing plays it yet: the offer board draws it (R2) and
-    /// the veto board applies its stakes (R3), both under <see cref="EpisodeEngine.RolesOn"/>.</para>
+    /// simulation so the Unity-free subset tests it. The offer board draws it (R2, <see cref="RoleOffers"/>), and
+    /// the veto board is to apply its stakes (R3), both under <see cref="EpisodeEngine.RolesOn"/>.</para>
     /// </summary>
     public static class RoleTone
     {
@@ -261,15 +261,16 @@ namespace Gamesim.Simulation
         {
             if (s == null || string.IsNullOrEmpty(id) || string.IsNullOrEmpty(s.playerId)) return false;
             return CommitmentsRead.With(s, id).Any(c => c.outcome == CommitmentsRead.Outcomes.Broken
-                && c.brokenById == s.playerId && BrokenIn(s, c) < s.week);
+                && c.brokenById == s.playerId && SettledIn(s, c) < s.week);
         }
 
         /// <summary>
-        /// The week a broken commitment broke: the page's own where it says, else the record's settlement
-        /// (every deal and promise under the commitment rules, which Roles plays under), else the week it was
-        /// made, for a record settled before the rules wrote one.
+        /// The week a settled commitment settled - a broken one, the week it broke: the page's own where it says,
+        /// else the record's settlement (every deal and promise under the commitment rules, which Roles plays
+        /// under), else the week it was made, for a record settled before the rules wrote one. The offer board's
+        /// history line reads it too (<see cref="RoleOffers.History"/>).
         /// </summary>
-        private static int BrokenIn(EpisodeState s, CommitmentsRead.Commitment c)
+        internal static int SettledIn(EpisodeState s, CommitmentsRead.Commitment c)
         {
             if (c.settledWeek > 0) return c.settledWeek;
             int settled = c.kind == CommitmentsRead.Kinds.Deal ? CommitmentReferences.FindDeal(s, c.id)?.settledWeek ?? 0

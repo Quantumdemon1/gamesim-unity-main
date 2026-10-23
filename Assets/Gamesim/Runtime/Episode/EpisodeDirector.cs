@@ -744,7 +744,7 @@ namespace Gamesim.Episode
             // The line said where the player was; once they have left, it says so. Anything the
             // visit put there since - a result, a discarded choice - stays.
             if (diaryOpen && (message == DiaryInsideMessage || message == DiaryPitchInsideMessage
-                || message == DiaryBlockSpeechInsideMessage)) message = "You left the private diary room.";
+                || message == DiaryBlockSpeechInsideMessage || message == DiaryOffersInsideMessage)) message = "You left the private diary room.";
             diaryOpen = false; diaryDraft = null;
             lastSocialAction = null;
             // The recap is a panel by IsPanelOpen's reckoning, so closing panels has to close it —

@@ -102,7 +102,8 @@ namespace Gamesim.Episode
             // press E" - for the whole visit. It says where the player is now.
             message = BlockSpeechPending(projected) ? DiaryBlockSpeechInsideMessage
                 : HoHPitches.Available(projected) && ReplyCards.Pending(projected)?.kind == ReplyCards.Pitch
-                    ? DiaryPitchInsideMessage : DiaryInsideMessage;
+                    ? DiaryPitchInsideMessage
+                    : VetoOfferBoardShows(projected) ? DiaryOffersInsideMessage : DiaryInsideMessage;
             BeginSystemNotice();
             player.SetInputEnabled(false); cameraRig.ControlsEnabled = false;
             // Physical arrival authorizes the visit. Seating is temporary presentation, restored
@@ -365,6 +366,10 @@ namespace Gamesim.Episode
         public const string DiaryInsideMessage = "In the private diary room. Nothing here is committed until you confirm it.";
         public const string DiaryPitchInsideMessage = "In the private diary room. Pitch answers and assessments save when pressed; nominations require confirmation.";
         public const string DiaryBlockSpeechInsideMessage = "In the private diary room. Delivering your block speech addresses the house and saves immediately; Say nothing records that choice immediately too.";
+        /// <summary>The line while the offer board is up in the chair (ROLE-MOMENTS-PLAN R2): an answer saves as it is pressed, as on the episode screen.</summary>
+        public const string DiaryOffersInsideMessage = "In the private diary room. Offer answers save when pressed; the veto decision requires confirmation.";
+        /// <summary>What the decision tab says of the board's answers, in the pitches' words for theirs.</summary>
+        public const string DiaryOffersSaveLine = "Offer answers save immediately. The veto decision requires confirmation.";
 
         private enum DiaryTab { Record, Memories, Pending }
         private DiaryTab diaryTab;
@@ -459,7 +464,7 @@ namespace Gamesim.Episode
                     + (BlockSpeechPending(state) ? BlockSpeechSaveLine
                         : ReplyCards.Pending(state)?.kind == ReplyCards.Pitch
                             ? "Pitch answers and assessments save immediately. Nominations require confirmation."
-                            : "Nothing is committed until you confirm it."));
+                            : VetoOfferBoardShows(state) ? DiaryOffersSaveLine : "Nothing is committed until you confirm it."));
             else
                 hud.DiaryStatusCard("No private decision pending", ballotCast
                     ? "Your ballot has already been recorded. Return to the episode screen for the eviction reveal."
@@ -513,6 +518,7 @@ namespace Gamesim.Episode
                 hud.Aside(BlockSpeechPending(state) ? BlockSpeechSaveLine
                     : !nominationPitchesDismissed && ReplyCards.Pending(state)?.kind == ReplyCards.Pitch
                         ? "Pitch answers and assessments save immediately. You can return to your nominees without answering."
+                        : VetoOfferBoardShows(state) ? DiaryOffersSaveLine + " Episode ceremonies continue only at the episode screen."
                         : "Choose an option to review it before confirming. Episode ceremonies continue only at the episode screen.");
                 any = true;
             }
@@ -826,6 +832,9 @@ namespace Gamesim.Episode
                 if (!privateRoom) return VetoMeetingDecision(state);
                 if (state.vetoHolderId == state.playerId)
                 {
+                    // Under the role moments the nominees' asks are answered here too, on the meeting's own board
+                    // (ROLE-MOMENTS-PLAN R2); a season without them keeps the column it always had.
+                    if (EpisodeEngine.RolesOn(state)) VetoOfferBoard(state);
                     hud.Action("Do not use the veto", () => OfferPlayerDecision(state, privateRoom,
                         EpisodeCommandKind.ResolveVeto, "Decline to use the veto. Both current nominees remain nominated."));
                     if (EpisodeEngine.VetoIsLockedAtFinalFour(state)) { hud.Paragraph(VetoLockedLine); return true; }

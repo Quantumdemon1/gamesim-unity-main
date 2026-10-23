@@ -106,6 +106,17 @@ namespace Gamesim.Tests.PlayMode
                 }
             }
             Assert.That(seen, Does.Contain("reveal"), "The season never reached an eviction's tally.");
+
+            // The offer board (ROLE-MOMENTS-PLAN R2): the veto decision's asks under the role moments, which no
+            // shipped season reaches yet, on a meeting of its own.
+            yield return InstallOfferBoardMeeting(true);
+            yield return OpenStation();
+            yield return null;
+            var board = LastActive(Gamesim.Episode.EpisodeHud.OfferBoardName);
+            Assert.That(board, Is.Not.Null, "The offer board is up.");
+            AssertEveryLabelDraws("The offer board", board);
+            director.ClosePanels();
+            yield return null;
         }
     }
 }

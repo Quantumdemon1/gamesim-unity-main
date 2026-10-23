@@ -285,6 +285,8 @@
     <Compile Include="$(EditMode)RoleRulesTests.cs" />
     <!-- R1: the role moments' tone ladder, situation word and read, stakes table and quote catalogue. -->
     <Compile Include="$(EditMode)RoleToneTests.cs" />
+    <!-- R2: the offer board's cards in words - their public order, terms, stakes, history and screen-reader line. -->
+    <Compile Include="$(EditMode)RoleOffersTests.cs" />
     <Compile Include="$(EditMode)NominationStepsTests.cs" />
     <Compile Include="$(EditMode)ThreatAssessmentTests.cs" />
     <Compile Include="$(EditMode)WebDiaryParityTests.cs" />

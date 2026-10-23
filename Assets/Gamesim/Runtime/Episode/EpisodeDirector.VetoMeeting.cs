@@ -215,8 +215,10 @@ namespace Gamesim.Episode
                     : "You hold the Golden Power of Veto and must decide whether to use it.");
             int at = hud.MeetingColumnMark();
             var cards = MeetingCardsBefore(state, null);
-            // Nominees who asked for it, answered where the decision is made.
-            VetoOffers(state);
+            // Nominees who asked for it, answered where the decision is made: under the role moments on the offer
+            // board (ROLE-MOMENTS-PLAN R2), and otherwise as the rows they always were.
+            if (EpisodeEngine.RolesOn(state)) VetoOfferBoard(state);
+            else VetoOffers(state);
             if (locked || !EpisodeEngine.ReplacementCandidates(state).Any())
             {
                 KeepTheBlock(state);

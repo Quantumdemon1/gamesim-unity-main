@@ -92,6 +92,12 @@ namespace Gamesim.Episode
 
         private readonly Dictionary<UnityEngine.UI.Button, OfferControlDescription> offerControls =
             new Dictionary<UnityEngine.UI.Button, OfferControlDescription>();
+        /// <summary>
+        /// The offer and the answer whose control had the keyboard when the HUD last rebuilt, beside its name
+        /// (<see cref="preferredSelection"/>): two offers' answers share their captions, so the name alone puts the
+        /// keyboard back on the first offer's, and Enter would answer somebody else (ROLE-MOMENTS-PLAN R2).
+        /// </summary>
+        private (string OfferId, bool Accept) preferredOffer;
         private string offerRenderSession;
         private int offerRenderRevision = -1;
         private EpisodePhase offerRenderPhase;
@@ -131,6 +137,11 @@ namespace Gamesim.Episode
             description = row;
             return true;
         }
+        /// <summary>Whether a control of this render answers the offer whose answer had the keyboard before it, the same way (<see cref="preferredOffer"/>).</summary>
+        private bool AnswersThePreferredOffer(Selectable item) =>
+            preferredOffer.OfferId != null && item is UnityEngine.UI.Button button && offerControls.TryGetValue(button, out var row)
+            && row.OfferId == preferredOffer.OfferId && row.Accept == preferredOffer.Accept;
+
         // A readable lock is a disabled Button in an otherwise visible/input-owned HUD, not
         // a live Button behind a cinematic, reveal or non-owning CanvasGroup. Never change the
         // row, group, focus or callbacks to obtain these facts.
@@ -405,14 +416,18 @@ namespace Gamesim.Episode
         /// </summary>
         public void Begin(EpisodeState state, string message, bool recovery, bool open, bool warning = false)
         {
+            var selected = EventSystem.current != null ? EventSystem.current.currentSelectedGameObject : null;
+            // An offer's answer that had the keyboard keeps it on the same offer, read before its control is forgotten.
+            preferredOffer = selected != null && selected.TryGetComponent<Button>(out var held) && offerControls.TryGetValue(held, out var heldOffer)
+                ? (heldOffer.OfferId, heldOffer.Accept) : default;
             offerControls.Clear();
+            offerReadings.Clear();
             offerRenderGeneration = checked(offerRenderGeneration + 1);
             offerRenderSession = state?.sessionId;
             offerRenderRevision = state?.revision ?? -1;
             offerRenderPhase = state != null ? state.phase : default;
             statusGuidanceVisible = !string.IsNullOrEmpty(message);
             statusNoticePriority = recovery || warning;
-            var selected = EventSystem.current != null ? EventSystem.current.currentSelectedGameObject : null;
             // Whatever had the keyboard keeps it by name, chrome as well as panel. The HUD rebuilds
             // itself for reasons that have nothing to do with the player - a houseguest's body
             // finishing its assembly is one - and a rebuild that moved the focus off the control
@@ -2284,6 +2299,7 @@ namespace Gamesim.Episode
                 // Never, of the HUD's own accord, a control that commits the final choice: the
                 // final Head of Household's page opens on Close (MayFocusOnItsOwn).
                 var focus = eligible.FirstOrDefault(item => current != null && item.gameObject == current)
+                    ?? eligible.FirstOrDefault(item => item.name == preferredSelection && MayFocusOnItsOwn(item) && AnswersThePreferredOffer(item))
                     ?? eligible.FirstOrDefault(item => item.name == preferredSelection && MayFocusOnItsOwn(item))
                     ?? OpeningControl(eligible.Where(MayFocusOnItsOwn).ToArray())
                     ?? PinnedSelectable(eligible)

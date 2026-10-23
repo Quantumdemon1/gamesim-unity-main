@@ -24,7 +24,7 @@ namespace Gamesim.Simulation
     /// ask's deal id, the pitch's card id, the moment's storyline id - so a reload, a re-render or a replay shows
     /// the same line, nothing is stored and the season's stream is never touched.</para>
     ///
-    /// <para>Pure and read-only. Nothing draws a line yet: the offer board does (R2).</para>
+    /// <para>Pure and read-only. The offer board draws the veto ask's lines (R2, <see cref="RoleOffers"/>).</para>
     /// </summary>
     public static class RoleQuotes
     {

@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using Gamesim.Presentation;
 using Gamesim.Simulation;
@@ -143,6 +144,44 @@ namespace Gamesim.Episode
                 OfferDecline(state, offer);
             }
         }
+
+        /// <summary>The offer board's line at the veto decision, under its eyebrow (ROLE-MOMENTS-PLAN §5.1).</summary>
+        public const string VetoOfferBoardLine = "Houseguests came to you before your veto decision.";
+
+        /// <summary>
+        /// The same asks as <see cref="VetoOffers"/>, on the offer board (ROLE-MOMENTS-PLAN R2): a card each, in the
+        /// order the block was named rather than the order they were filed in (<see cref="RoleOffers.VetoAsks"/>).
+        /// Each card's answers do what the rows' do - the free answer, committed as it is pressed - and a card whose
+        /// yes the veto cannot keep says why in the rows' own words (<see cref="VetoSavesOneLine"/>) over a disabled
+        /// yes. Drawn only under <see cref="EpisodeEngine.RolesOn"/>, at the meeting and in the diary's veto column.
+        /// </summary>
+        private void VetoOfferBoard(EpisodeState state)
+        {
+            var cards = new List<EpisodeHud.OfferBoardCard>();
+            foreach (var offer in RoleOffers.VetoAsks(state))
+            {
+                var words = RoleOffers.VetoAskCard(state, offer);
+                if (words == null) continue;
+                string id = offer.id, promised = VetoPromisedTo(state, offer.proposerId);
+                cards.Add(new EpisodeHud.OfferBoardCard
+                {
+                    Card = words, Offer = offer,
+                    LockReason = promised == null ? null : VetoSavesOneLine(state, promised, offer.proposerId),
+                    Accept = () => Commit(state, EpisodeCommandKind.RespondToDeal, id, text: EpisodeEngine.AcceptDeal),
+                    Decline = () => Commit(state, EpisodeCommandKind.RespondToDeal, id, text: "decline"),
+                });
+            }
+            hud.OfferBoard(state, new EpisodeHud.OfferBoardSpec { Line = VetoOfferBoardLine, Cards = cards, Redraw = Render });
+        }
+
+        /// <summary>
+        /// Whether the offer board is up in the player's veto decision: the role moments, the player holding the
+        /// veto before the meeting, and an ask waiting on them. The diary says then that an answer saves as it is
+        /// pressed, as the pitches' do.
+        /// </summary>
+        public static bool VetoOfferBoardShows(EpisodeState state) =>
+            state != null && EpisodeEngine.RolesOn(state) && state.phase == EpisodePhase.VetoMeeting && !state.vetoResolved
+            && state.vetoHolderId == state.playerId && RoleOffers.VetoAsks(state).Count > 0;
 
         /// <summary>
         /// An offer's accept. For a nominee's veto ask once the player has given another nominee

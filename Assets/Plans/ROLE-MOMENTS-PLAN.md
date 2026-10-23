@@ -490,6 +490,21 @@ You kept your word to them in week 2
 - **A locked card** (one veto word already given) shows the lock reason as its own label, and Accept is disabled.
 - **Text caps:** a quote of at most 15 words, and a stakes line of at most 14.
 
+**Built, 2026-10-23 (R2).** `EpisodeHud.OfferBoard` (Runtime/Episode/EpisodeHud.OfferBoard.cs) draws the words `RoleOffers` (Simulation/Story/RoleOffers.cs) gives it, at the veto decision and in the Diary Room's veto column, under `RolesOn` only; without it the meeting draws `VetoOffers`' rows as before and the diary's column is unchanged. These calls were made where this section left room:
+- **Only what is true at R2.** The header has no "Silence costs more than a no." The stakes line reads the stakes table, but the riders stay out of it until R3 settles them (`RoleOffers.RidersSettle`): today every card says "Keep it: they remember it. Break it: the house may hear." R3 flips the constant and checks the three rider lines, which are written and pinned at 14 words or fewer.
+- **The terms** use `Negotiation.AskPrice` in `PriceWords`' own words, the words `AskPriceLine` uses: "In return: their vote to keep you, the next time you are on the block", "In return: a final two", or "In return: nothing promised".
+- **The history line** is the player's latest kept or broken word with them, settled before this week, from the Your word page (`CommitmentsRead`). It never changes while a card is up. It says who kept a word only where the record does:
+  - a promise is one-sided, so "You kept your word to them" or "They kept their word to you";
+  - a deal binds both, and the page says only "honoured", so a kept one names nobody: "Your deal with them held in week 2". This includes the mock's case, a nominee's veto ask the player used the veto on, which is the nominee's proposal and the player's kept word;
+  - a call says "They followed your call" or "They ignored your call";
+  - a broken word names who broke it where the record can say, and otherwise says "A word between you broke".
+- **Focus stays on the card.** Both cards carry the same two captions. When the HUD rebuilds itself (a body finishing assembly is one cause), the keyboard goes back to the same offer's answer, not to the first control with that caption. Besides the control's name, the HUD remembers which offer and which answer had the keyboard, `(OfferId, Accept)`. This applies to the old rows too, which had the same fault.
+- **The tone's mark** is a plain character in a disc of the tone's colour beside the word: Bitter x, Threatening ^, Desperate !, Friendly +, Earnest *, Calculated #, Pragmatic =.
+- **Layout.** Cards stand side by side down to 300 units a card (scaled), and one over another below that, as in the diary's column. At the largest text they page one card at a time, with "Previous offer", "Next offer" and "1 of 2" on the HUD's one pager row. Nothing on the board animates under either motion setting: the cards cut in, and only the panel arrives.
+- **Screen readers.** `EpisodeHud.TryReadOfferControl` gives a board control's caption, the card's heading and the card's one line (`RoleOffers.Spoken`).
+- **The diary says how its answers save.** An offer's answer commits as it is pressed, as on the episode screen. While the board is up, the room's line and the decision tab say so (`DiaryOffersInsideMessage`, `DiaryOffersSaveLine`), in the pitches' manner. Before R2 they said that nothing commits until confirmed.
+- **The quote's key** is the ask's row id, as R1 chose. Row ids follow filing order, and filing order follows hidden warmth, so which line a card shows depends on that order through a keyed hash. No order or score is shown, and the player cannot see the line the other order would have given, so it reveals nothing. A key built only from public facts (week and asker) would remove even that dependence, if R3's review wants it.
+
 ### 5.2 Captions are a contract
 
 - **Unchanged:** "Accept this offer" / "Turn this offer down" (Runtime/Episode/EpisodeHud.cs:70-71). Repeated buttons are told apart by `OfferControlDescription`, which holds the offer id, proposer, recipient, session, revision, phase and render generation (Runtime/Episode/EpisodeHud.cs:73-117). The pitch answers are unchanged too.

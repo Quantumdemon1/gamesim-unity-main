@@ -33,7 +33,9 @@ namespace Gamesim.Tests.EditMode
                 Assert.That(arc.origin, Is.Not.Null.And.Not.Empty, arc.id + " must say where it comes from.");
                 Assert.That(arc.origin.StartsWith("web:") || arc.origin.StartsWith("native"), Is.True, arc.id + " origin is web: or native.");
                 Assert.That(StoryLanes.IsKnown(arc.lane), Is.True, arc.id + " lane");
-                Assert.That(arc.rulesVersion, Is.InRange(StoryRules.Spine, StoryRules.Current), arc.id);
+                // Latest, not Current: a milestone's arcs are written before its enrolment (ROLE-MOMENTS-PLAN §4.3).
+                Assert.That(arc.rulesVersion, Is.InRange(StoryRules.Spine, StoryRules.Latest), arc.id);
+                Assert.That(StoryRules.IsDefined(arc.rulesVersion), Is.True, arc.id + " plays under a milestone no code defines.");
                 Assert.That(arc.beats, Is.Not.Empty, arc.id);
                 Assert.That(arc.beats.GroupBy(b => b.id).Where(g => g.Count() > 1).Select(g => g.Key), Is.Empty, arc.id + " duplicate beat ids");
                 Assert.That(arc.startAnchors.All(StoryAnchors.IsKnown) && !arc.startAnchors.Contains(StoryAnchors.Conversation), Is.True, arc.id + " start anchors");

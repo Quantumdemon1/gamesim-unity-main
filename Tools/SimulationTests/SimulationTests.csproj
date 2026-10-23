@@ -281,6 +281,8 @@
     <Compile Include="$(EditMode)StoryPlayTests.cs" />
     <Compile Include="$(EditMode)StoryReachTests.cs" />
     <Compile Include="$(EditMode)StoryThreadTests.cs" />
+    <!-- The role moments' rule (ROLE-MOMENTS-PLAN R0): story rules 11, RolesOn, and the frozen readers' refusal of it. -->
+    <Compile Include="$(EditMode)RoleRulesTests.cs" />
     <Compile Include="$(EditMode)NominationStepsTests.cs" />
     <Compile Include="$(EditMode)ThreatAssessmentTests.cs" />
     <Compile Include="$(EditMode)WebDiaryParityTests.cs" />

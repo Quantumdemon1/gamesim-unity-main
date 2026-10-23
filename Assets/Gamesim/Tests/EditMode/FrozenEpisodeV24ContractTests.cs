@@ -180,7 +180,7 @@ namespace Gamesim.Tests.EditMode
         [TestCase("phase-enum")] [TestCase("contestant-enum")] [TestCase("promise-kind-enum")] [TestCase("promise-status-enum")]
         [TestCase("clock-ahead")] [TestCase("clock-cadence")] [TestCase("unsupported-topic")]
         [TestCase("appearance-version")] [TestCase("appearance-dna")]
-        [TestCase("unsupported-story")] [TestCase("future-grudge-cause")] [TestCase("unknown-standing-source")]
+        [TestCase("unsupported-story")] [TestCase("roles-story")] [TestCase("future-grudge-cause")] [TestCase("unknown-standing-source")]
         public void FrozenEnumsNpcClockAppearanceAndVocabularyRejectFutureOrCorruptData(string defect)
         {
             var state = PersistenceV25TestPayloads.Checkpoint("history");
@@ -209,6 +209,8 @@ namespace Gamesim.Tests.EditMode
                 case "appearance-version": player["appearance"]["version"] = 2; break;
                 case "appearance-dna": player["appearance"]["dna"][0]["value"] = 1.01; break;
                 case "unsupported-story": old["story"]["rulesVersion"] = 10; break;
+                // The live ladder's Roles (ROLE-MOMENTS-PLAN R0) is past the frozen one, which ends at threads.
+                case "roles-story": old["story"]["rulesVersion"] = StoryRules.Roles; break;
                 case "future-grudge-cause": ((JArray)old["story"]["grudges"]).Add(JObject.FromObject(new GrudgeState {
                     holderId = state.playerId, targetId = state.Active.First(c => !c.isPlayer).id,
                     cause = "future", originWeek = 1, count = 1, severity = 1 }, PersistenceV25TestPayloads.Serializer())); break;

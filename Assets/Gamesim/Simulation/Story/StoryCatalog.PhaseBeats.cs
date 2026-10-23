@@ -27,12 +27,16 @@ namespace Gamesim.Simulation
             yield return HouseDrama();
         }
 
-        /// <summary>A recurring one-card moment: rests a week, and anybody may headline it again.</summary>
+        /// <summary>
+        /// A recurring one-card moment: rests a week, and anybody may headline it again. Every web phase beat
+        /// plays from the grudge rules on; a later moment passes the milestone that brings it (Roles' quiet tears).
+        /// </summary>
         private static ArcTemplate PhaseMoment(string id, string title, string origin, string anchor, double webChance,
-            ArcRole[] roles, Func<StoryContext, ArcBinding> cast, BeatTemplate beat, int minActive = 3) => new ArcTemplate
+            ArcRole[] roles, Func<StoryContext, ArcBinding> cast, BeatTemplate beat, int minActive = 3,
+            int rulesVersion = StoryRules.Grudges) => new ArcTemplate
         {
             id = id, lane = StoryLanes.Moment, eyebrow = "This Week", title = title, origin = origin,
-            rulesVersion = StoryRules.Grudges, minActive = minActive, startAnchors = new[] { anchor },
+            rulesVersion = rulesVersion, minActive = minActive, startAnchors = new[] { anchor },
             oncePerHeadliner = false, cooldownWeeks = 1, pairCooldownWeeks = 1,
             roles = roles, cast = cast, weight = (c, b) => Web(webChance), beats = new[] { beat },
         };

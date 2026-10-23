@@ -25,8 +25,20 @@ namespace Gamesim.Simulation
         public static bool StoryAt(EpisodeState s, int version) => StoryOn(s) && s.story.rulesVersion >= version;
 
         /// <summary>
+        /// Whether the role moments play this week (ROLE-MOMENTS-PLAN §4.2): the story at
+        /// <see cref="StoryRules.Roles"/>, with the strategy windows, the commitment rules and the levers
+        /// they are built on. Every Roles rule reads this. The template pool filters on a template's version
+        /// alone (<see cref="Castable"/>, <see cref="StartStory"/>), so a Roles template asks this in its own
+        /// cast or weight (R6). The pitch board also needs what <see cref="HoHPitches.Available"/> already
+        /// asks: the economy and agency.
+        /// </summary>
+        public static bool RolesOn(EpisodeState s) =>
+            StoryAt(s, StoryRules.Roles) && StrategyRules.Apply(s) && CommitmentRulesOn(s) && LeverRulesOn(s);
+
+        /// <summary>
         /// Switches the story system on for a season: from <paramref name="fromWeek"/>, under every
-        /// milestone this build has, with each houseguest's lore snapshotted. The director calls this
+        /// enrolled milestone (<see cref="StoryRules.Current"/>; a later one waits for its enrolment),
+        /// with each houseguest's lore snapshotted. The director calls this
         /// for every season it starts; the save migration does the same from the week after a save's.
         /// </summary>
         public static void EnableStory(EpisodeState s, int fromWeek = 1)

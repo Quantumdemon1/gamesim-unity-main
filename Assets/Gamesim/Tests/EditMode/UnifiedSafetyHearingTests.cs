@@ -417,7 +417,8 @@ namespace Gamesim.Tests.EditMode
             var s = ContentCatalog.Create(17); s.week = 3; s.phase = EpisodePhase.Nomination; s.hohId = s.playerId;
             s.unifiedCommitmentRulesVersion = 1; s.unifiedHearingRulesVersion = 1;
             s.commitmentRulesStartWeek = s.strategyRulesStartWeek = 1;
-            s.story.rulesStartWeek = 1; s.story.rulesVersion = StoryRules.Current;
+            // Threads, not Current, so these keep their rules when a later milestone is enrolled (ROLE-MOMENTS-PLAN §4.3).
+            s.story.rulesStartWeek = 1; s.story.rulesVersion = StoryRules.Threads;
             return s;
         }
         private static UnifiedCommitmentState Row(EpisodeState s, string id, bool promise, string trust = DealTrust.Medium) =>

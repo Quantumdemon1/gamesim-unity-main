@@ -19,8 +19,11 @@ namespace Gamesim.Tests.EditMode
             return result.state;
         }
 
-        /// <summary>A real history played with the story off to the first moment this holds, the story switched on there.</summary>
-        private static EpisodeState At(Func<EpisodeState, bool> where, uint seed = 31, int rules = StoryRules.Current)
+        /// <summary>
+        /// A real history played with the story off to the first moment this holds, the story switched on there.
+        /// Threads, not Current, so these keep their rules when a later milestone is enrolled.
+        /// </summary>
+        private static EpisodeState At(Func<EpisodeState, bool> where, uint seed = 31, int rules = StoryRules.Threads)
         {
             var engine = new EpisodeEngine(SeasonBuilder.Create(new SeasonBuilder.Choice { HouseSize = 8 }, seed));
             for (int i = 0; i < 800 && !where(engine.Snapshot); i++)

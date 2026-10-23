@@ -295,6 +295,10 @@ namespace Gamesim.Tests.EditMode
             // Never the unified rules: the importer selects no canonical authority, though a fresh season is mode 2 (vote family V6).
             Assert.That((imported.unifiedCommitmentRulesVersion, imported.unifiedHearingRulesVersion, imported.unifiedVoteReveals.Count),
                 Is.EqualTo((0, 0, 0)), "The import is mode 0.");
+            // Story rules 9 whatever a fresh season gets, as the schema-16 step pins it: a later milestone's
+            // enrolment (Roles, ROLE-MOMENTS-PLAN decision 14) never reaches an import.
+            Assert.That((imported.story.rulesStartWeek, imported.story.rulesVersion), Is.EqualTo((imported.week + 1, StoryRules.Threads)),
+                "The importer's own literal, never a new season's StoryRules.Current.");
             var originals = Directory.GetFiles(archive);
             Assert.That(originals, Has.Length.EqualTo(1));
             Assert.That(File.ReadAllText(originals[0]), Is.EqualTo(json));

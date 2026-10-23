@@ -149,6 +149,7 @@ namespace Gamesim.Tests.EditMode
             new Site(Sim + "Negotiation.cs", "CommitmentReferences.FindDeal(s, d.linkedDealId)", 1, Why.ModeAware, "Linked"),
             new Site(Sim + "Negotiation.cs", "s.deals.FirstOrDefault(x => x.id == d.linkedDealId)", 1, Why.ModeAware, "Linked"),
             new Site(Sim + "SeasonAutopsy.cs", "UsesReferences(final)", 4, Why.ModeAware, "the autopsy's own mode-2 branch: its commitments and B7's first settled week"),
+            new Site(Sim + "Story/RoleTone.cs", null, 2, Why.ModeAware, "R1: the week a broken word on the Your word page broke, from its record, by its id"),
             new Site(Run + "Episode/EpisodeDirector.Conversation.cs", null, 1, Why.ModeAware, "the deal count"),
             new Site(Run + "Episode/EpisodeDirector.Journal.cs", null, 1, Why.ModeAware, "the promise view"),
             new Site(Run + "Episode/EpisodeDirector.cs", null, 1, Why.ModeAware, "the promise view"),

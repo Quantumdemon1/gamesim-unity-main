@@ -223,6 +223,20 @@ Together these replace the web's relationship band ("Tense"), which was the NPC'
 - In the jury phase, the Bitter and Threatening lines may name the jury, which is a public fact.
 - Starting lines are in each section below.
 
+**Built, 2026-10-22 (R1).** `RoleTone` and `RoleQuotes` (Simulation/Story/RoleTone.cs, RoleQuotes.cs) hold the ladder, the situation word, "Your read", the stakes table as data and the catalogue. Nothing reads them yet. These calls were made where this section left room:
+- **The holder is never Threatening.** The ladder table above does not list the holder for Threatening, but §3.4b gives the holder a Threatening line. R1 follows the table, so that line is not in the catalogue. If R8 wants it, the fix is one entry in `RoleTone`'s applies-to table plus three lines.
+- **Every line holds for every cause of its tone.** Bitter comes from a nomination or a broken word. Desperate comes from the endgame, an earlier nomination or a replacement. Four starting lines held for only one cause, or made a promise no rider keeps, so they were reworded:
+  - §3.2 Bitter "You put me up before..." became "After what you did, the least you can do is pull me off."
+  - §3.1 Bitter "You put me up once already..." became "You've burned me before. Don't do it again with your nominations."
+  - §3.1 Desperate "There's hardly anyone left..." became "Please don't put me up. I can't afford a week on the block."
+  - §3.1 Earnest "I'd never come after you..." became "I'm no threat to you. I'd put {TARGET} up."
+- **Quiet tears has lines.** Its subject is a nominee, so it has all seven tones and 21 lines, spoken as the player finds them. R6 may leave them unused. The player may have put that nominee up this week, which the ladder counts only from the next week, so they can read Friendly or Earnest. No line welcomes the player as the one they hoped to see, and the moment's own options already turn on who put them up (§3.5).
+- **A word broken this week counts from the next, whenever it was made.** Bitter reads the week the word broke: the record's settlement for a deal or a promise, the breach's week for an oath. A promise made last week and broken at this week's nominations does not turn its card Bitter mid-week.
+- **A pitch that recommends nobody names nobody.** Every pitch tone has at least one line without {TARGET}. With no target, the keyed pick steps on to the next such line, so no card says "someone else".
+- **The endgame counts the house as the week began.** The count includes anyone evicted or removed this week, so the eviction cannot flip Desperate or "Endgame: N left" while a card is still open. When the endgame applies, it wins over "On the block again" and "Nominated before".
+- **No jury lines yet.** The lint keeps "jury" out of every line, along with numbers, the price kinds (final, vote, bloc, safety) and "in return". A holder's line may still say there is a price or a cost; only the terms line says what it is. Only the Desperate veto ask may promise anything (the favour its rider writes), and only Threatening lines may threaten.
+- **Reloads.** The subset proves a Newtonsoft round trip. An EditMode test (`RoleTonePersistenceTests`) also round-trips the veto meeting through the shipping save store. R3's reload mid-board should go through the store too.
+
 **Consequences go through the writers that already exist:**
 - `EpisodeEngine.Change` for the player.
 - Deal settlement for kept and broken deals, with the breaker recorded and NPC breakers turned into Betrayals (Simulation/EpisodeEngine.cs:1032-1040).

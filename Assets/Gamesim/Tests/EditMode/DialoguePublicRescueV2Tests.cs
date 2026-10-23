@@ -239,6 +239,27 @@ namespace Gamesim.Tests.EditMode
                 Assert.That(before.Property(field), Is.Not.Null, field);
                 Assert.That(ExactCapturedJson.Equal(after[field], before[field]), Is.True, field + ": a paid plea's effect, delivered free by the Cite.");
             }
+            JObject dialogueBefore = (JObject)before["dialogue"], dialogueAfter = (JObject)after["dialogue"];
+            Assert.That(dialogueAfter.Properties().Select(p => p.Name), Is.EqualTo(dialogueBefore.Properties().Select(p => p.Name)));
+            foreach (string field in new[] { "grants", "vetoOccasions" })
+            {
+                Assert.That(dialogueBefore.Property(field), Is.Not.Null, "dialogue." + field);
+                Assert.That(ExactCapturedJson.Equal(dialogueAfter[field], dialogueBefore[field]), Is.True,
+                    "dialogue." + field + ": the Cite grants no role and opens no veto occasion.");
+            }
+            JArray episodesBefore = (JArray)dialogueBefore["episodes"], episodesAfter = (JArray)dialogueAfter["episodes"];
+            Assert.That(episodesAfter.Count, Is.EqualTo(episodesBefore.Count), "The Cite opens no conversation and closes none.");
+            string citing = Active(exhausted).id;
+            Assert.That(Active(cited).id, Is.EqualTo(citing));
+            for (int at = 0; at < episodesBefore.Count; at++)
+            {
+                string id = (string)episodesBefore[at]["id"];
+                Assert.That((string)episodesAfter[at]["id"], Is.EqualTo(id), "The conversations keep their order.");
+                Assert.That(ExactCapturedJson.Equal(episodesAfter[at], episodesBefore[at]), Is.EqualTo(id != citing),
+                    id == citing ? "The Cite writes its own conversation." : id + ": the Cite changes no other conversation.");
+            }
+            Assert.That(dialogueAfter.Properties().Where(p => !ExactCapturedJson.Equal(p.Value, dialogueBefore[p.Name])).Select(p => p.Name),
+                Is.EquivalentTo(new[] { "episodes" }), "Inside dialogue, the Cite writes only its own conversation.");
             Assert.That(Active(cited).responses.Last().responseKey, Is.EqualTo(V2 + "/explain-that-record"), "The voter answers the record, not a plea.");
 
             var answered = Accepted(engine, Choice(cited, DialogueCampaignV1.Plea));

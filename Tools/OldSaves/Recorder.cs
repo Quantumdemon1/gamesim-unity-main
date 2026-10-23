@@ -13,7 +13,7 @@
 //   resave  <save> <out>                     load with that build's store and save again, as the next autosave would
 //   recover <save> <out>                     the save as that build's store's backup, with no primary and with the primary torn
 //                                            in half, in a slot under <out>: recovery must say what loading the save says and
-//                                            give the season it loads as
+//                                            give the season it loads as; keep <out> short (it fails with exit 6 past MAX_PATH)
 //   reseal22 <save> <out>                    a schema-22 file of the version's earlier shapes, given the two later fields as
 //                                            the literals FrozenEpisodeV22.WithLaterFields writes and sealed again, so a
 //                                            build of the last shape (d44bf492 on) can load it and be its reference
@@ -44,15 +44,18 @@ namespace Gamesim.OldSaves
                 {
                     var slot = Path.Combine(Path.GetTempPath(), "oldsave-resave-" + Guid.NewGuid().ToString("N"));
                     Directory.CreateDirectory(slot);
-                    var file = Path.Combine(slot, "episode.json");
-                    File.WriteAllBytes(file, File.ReadAllBytes(args[1]));
-                    var store = new EpisodeSaveStore(file);
-                    if (!store.TryLoad(out var state, out var message)) { Console.Error.WriteLine("LOAD REFUSED: " + message); return 3; }
-                    store.Save(state);
-                    File.WriteAllBytes(args[2], File.ReadAllBytes(file));
-                    Directory.Delete(slot, true);
-                    Console.WriteLine("resaved at schema " + state.schemaVersion + ": " + message);
-                    return 0;
+                    try
+                    {
+                        var file = Path.Combine(slot, "episode.json");
+                        File.WriteAllBytes(file, File.ReadAllBytes(args[1]));
+                        var store = new EpisodeSaveStore(file);
+                        if (!store.TryLoad(out var state, out var message)) { Console.Error.WriteLine("LOAD REFUSED: " + message); return 3; }
+                        store.Save(state);
+                        File.WriteAllBytes(args[2], File.ReadAllBytes(file));
+                        Console.WriteLine("resaved at schema " + state.schemaVersion + ": " + message);
+                        return 0;
+                    }
+                    finally { Directory.Delete(slot, true); }
                 }
                 if (args.Length >= 3 && args[0] == "reseal22") return Reseal22(args[1], args[2]);
 #if !OLDSAVE_BEFORE_SCHEMA3
@@ -242,14 +245,17 @@ namespace Gamesim.OldSaves
         {
             var slot = Path.Combine(Path.GetTempPath(), "oldsave-dump-" + Guid.NewGuid().ToString("N"));
             Directory.CreateDirectory(slot);
-            var file = Path.Combine(slot, "episode.json");
-            File.WriteAllBytes(file, File.ReadAllBytes(save));
-            new EpisodeSaveStore(file).TryLoad(out var state, out _);
-            var engine = new EpisodeEngine(state);
-            for (int i = 0; i < index; i++) engine.Apply(((JObject)script[i]).ToObject<EpisodeCommand>());
-            var fields = OldSaveTrace.Project(OldSaveTrace.Fields(engine.Snapshot), schema);
-            File.WriteAllText(outFile, JToken.Parse(OldSaveTrace.Canonical(fields, false)).ToString(Formatting.Indented));
-            Directory.Delete(slot, true);
+            try
+            {
+                var file = Path.Combine(slot, "episode.json");
+                File.WriteAllBytes(file, File.ReadAllBytes(save));
+                new EpisodeSaveStore(file).TryLoad(out var state, out _);
+                var engine = new EpisodeEngine(state);
+                for (int i = 0; i < index; i++) engine.Apply(((JObject)script[i]).ToObject<EpisodeCommand>());
+                var fields = OldSaveTrace.Project(OldSaveTrace.Fields(engine.Snapshot), schema);
+                File.WriteAllText(outFile, JToken.Parse(OldSaveTrace.Canonical(fields, false)).ToString(Formatting.Indented));
+            }
+            finally { Directory.Delete(slot, true); }
         }
 
         // ------------------------------------------------------------------ recover
@@ -267,7 +273,8 @@ namespace Gamesim.OldSaves
         /// reference's message and checkpoint. Nothing is written beside <paramref name="save"/>.
         /// Exit 0, or 3 (the bytes do not load as a primary), 5 (recovery not offered), 6 (recovery refused), 7 (another
         /// season recovered, or the recovered primary reloads as another), 8 (the slot's files are not what recovery
-        /// leaves) or 9 (a message is not the one loading the file gives); the slot is kept on a failure.
+        /// leaves) or 9 (a message is not the one loading the file gives); the slot is kept on a failure. Keep
+        /// <paramref name="outDir"/> short: under Mono a .before-recovery-* path past MAX_PATH fails recovery, exit 6.
         /// </summary>
         private static int Recover(string save, string outDir)
         {

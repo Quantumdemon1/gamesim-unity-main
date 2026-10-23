@@ -117,6 +117,16 @@ namespace Gamesim.Tests.PlayMode
             AssertEveryLabelDraws("The offer board", board);
             director.ClosePanels();
             yield return null;
+
+            // And with the Head of Household's card after the nominees' (R4): its chip, its line and its stakes are its own.
+            yield return InstallKeepTheBlockMeeting();
+            yield return OpenStation();
+            yield return null;
+            board = LastActive(Gamesim.Episode.EpisodeHud.OfferBoardName);
+            Assert.That(board, Is.Not.Null, "The offer board is up, with the Head of Household's card.");
+            AssertEveryLabelDraws("The offer board with the Head of Household's card", board);
+            director.ClosePanels();
+            yield return null;
         }
     }
 }

@@ -93,7 +93,8 @@ namespace Gamesim.Simulation
                 if (!StillAnswerable(s, deal, lapses)) continue;
                 reading.items.Add(new Item
                 {
-                    kind = deal.type == DealKind.VetoUse ? Kind.VetoAsk : Kind.Offer,
+                    // A question about the veto: a nominee's, or under the role moments the Head of Household's (R4).
+                    kind = Negotiation.IsVetoWord(deal.type) ? Kind.VetoAsk : Kind.Offer,
                     id = deal.id, fromId = deal.proposerId, type = deal.type, week = deal.week,
                     lapses = lapses, lapsesOnAdvance = now,
                 });
@@ -168,11 +169,13 @@ namespace Gamesim.Simulation
         /// books are settled as a campaign opens, writing off whatever was put in an earlier week:
         /// this week's offers at next week's campaign, and last week's at this week's. (The round as
         /// free time opens never finds one from an earlier week: that week's campaign already did.)
+        /// The Head of Household's ask to keep the block (ROLE-MOMENTS-PLAN R4) is a question about the
+        /// veto too, and goes with the decision, as the engine lapses it.
         /// </summary>
         private static Lapse OfferLapse(EpisodeState s, DealState deal, out bool onAdvance)
         {
             onAdvance = false;
-            if (deal.type == DealKind.VetoUse && StrategyRules.Apply(s) && !s.vetoResolved)
+            if (Negotiation.IsVetoWord(deal.type) && StrategyRules.Apply(s) && !s.vetoResolved)
             {
                 onAdvance = s.phase == EpisodePhase.VetoMeeting && s.vetoHolderId != s.playerId;
                 return Lapse.VetoDecision;

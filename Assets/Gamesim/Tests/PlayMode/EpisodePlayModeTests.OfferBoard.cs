@@ -35,8 +35,10 @@ namespace Gamesim.Tests.PlayMode
         /// the first Threatening by their traits, the second Earnest, the player reading both at nothing. The second named
         /// is the warmer toward the player - a view the player cannot see - so their ask is filed first and the rows'
         /// order, which follows the filing, is not the block's: a board drawn in the rows' order shows. A seed whose ids
-        /// happen to sort the other way is passed over. At <paramref name="roles"/> the story plays at Roles; otherwise at
-        /// the Threads every shipped season plays.
+        /// happen to sort the other way is passed over. At <paramref name="roles"/> the story plays at Roles, the Head of
+        /// Household held at nothing toward the player so they never ask to keep the block (R4) and the board stays the
+        /// nominees' two cards, whatever the seed's Head of Household makes of the player; otherwise at the Threads every
+        /// shipped season plays.
         /// </summary>
         private static EpisodeState OfferBoardSeason(bool roles)
         {
@@ -56,7 +58,11 @@ namespace Gamesim.Tests.PlayMode
                 string first = s.nominees[0], second = s.nominees[1];
                 s.Find(first).traits = new List<string> { "Competitive", "Stubborn" };
                 s.Find(second).traits = new List<string> { "Emotional" };
-                foreach (var (holder, toward, score) in new[] { (first, s.playerId, 40.0), (second, s.playerId, 60.0), (s.playerId, first, 0.0), (s.playerId, second, 0.0) })
+                var scores = new List<(string, string, double)> { (first, s.playerId, 40.0), (second, s.playerId, 60.0), (s.playerId, first, 0.0), (s.playerId, second, 0.0) };
+                // A Head of Household warm enough toward the player asks to keep the block under the role moments (R4): held
+                // below the dealing floor, they never do here.
+                if (roles) scores.Add((s.hohId, s.playerId, 0.0));
+                foreach (var (holder, toward, score) in scores)
                 {
                     var edge = s.relationships.FirstOrDefault(r => r.fromId == holder && r.toId == toward);
                     if (edge == null) s.relationships.Add(edge = new RelationshipState { fromId = holder, toId = toward });
@@ -76,6 +82,7 @@ namespace Gamesim.Tests.PlayMode
                 Assert.That(meeting.state.phase, Is.EqualTo(EpisodePhase.VetoMeeting));
                 Assert.That(EpisodeEngine.RolesOn(meeting.state), Is.EqualTo(roles));
                 Assert.That(RoleOffers.VetoAsks(meeting.state).Select(ask => ask.proposerId), Is.EquivalentTo(new[] { first, second }), "Both nominees asked.");
+                Assert.That(meeting.state.deals.Where(deal => deal.type == DealKind.VetoHold), Is.Empty, "The Head of Household asked nothing: the board is the nominees'.");
                 if (!FiledAsks(meeting.state).SequenceEqual(new[] { second, first })) continue;
                 return meeting.state;
             }

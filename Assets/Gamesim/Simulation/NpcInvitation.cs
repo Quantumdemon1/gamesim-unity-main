@@ -77,6 +77,8 @@ namespace Gamesim.Simulation
             switch (offer.type)
             {
                 case DealKind.VetoUse: return "Can we talk? I need your help with the veto.";
+                // The Head of Household's ask to keep the block (ROLE-MOMENTS-PLAN R4), only under the role moments.
+                case DealKind.VetoHold: return "Can we talk about the veto? I'd like my nominations to stand.";
                 case DealKind.VoteSave: return "Can we talk about your vote to keep " + (about ?? "me") + "?";
                 case DealKind.VoteEvict: return "Can we talk about voting against " + (about ?? "the other nominee") + "?";
                 case DealKind.VoteTogether: return "Can we compare notes on this vote? I'd like us to vote together.";

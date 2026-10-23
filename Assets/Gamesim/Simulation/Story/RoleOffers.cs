@@ -14,7 +14,9 @@ namespace Gamesim.Simulation
     /// then anybody else by id. Never <see cref="NpcDeals.Pending"/>'s order: it sorts by id, ids follow the
     /// order the asks were filed, and <see cref="NpcDeals.AskForTheVeto"/> files the warmest nominee first -
     /// a houseguest's hidden view of the player. The set is the old rows' own: this week's veto asks still
-    /// waiting on the player, from houseguests still in the game.</para>
+    /// waiting on the player, from houseguests still in the game - and under the role moments the Head of
+    /// Household's ask to keep the block (R4, §3.3), whose card stands after the nominees': the Head of
+    /// Household is on no block.</para>
     ///
     /// <para><b>Only what is true now.</b> Every word is a public fact, the player's own reading or record,
     /// or the row's own terms (§5.3). The stakes line says what keeping and breaking a word does: a kept word
@@ -32,6 +34,12 @@ namespace Gamesim.Simulation
     {
         /// <summary>What a nominee's veto ask asks, under its chip ("Veto Commitment").</summary>
         public const string VetoAskLine = "Save me from the block with the Power of Veto";
+
+        /// <summary>
+        /// The Head of Household's ask to keep the block (R4, §3.3): its chip, and what it asks under it. Its chip is not the
+        /// deal's title ("Keep-the-Block Deal"), which the record's lines use, but what the card asks in the show's words.
+        /// </summary>
+        public const string KeepTheBlockChip = "Don't Use the Veto", KeepTheBlockLine = "Keep the nominations the same";
 
         /// <summary>The front of every terms line: "In return: a final two".</summary>
         public const string TermsPrefix = "In return: ";
@@ -92,6 +100,17 @@ namespace Gamesim.Simulation
             return InBoardOrder(s, NpcDeals.Pending(s).Where(d => IsVetoAsk(s, d) && s.Find(d.proposerId)?.status == ContestantStatus.Active)).ToList();
         }
 
+        /// <summary>
+        /// Every ask the board shows (R4): the nominees' veto asks (<see cref="VetoAsks"/>) and the Head of Household's ask
+        /// to keep the block (<see cref="IsKeepTheBlockAsk"/>), still waiting on the player, from houseguests still in the
+        /// game, in the board's public order - the nominees in the order they were named, then the Head of Household.
+        /// </summary>
+        public static List<DealState> BoardAsks(EpisodeState s)
+        {
+            if (s == null) return new List<DealState>();
+            return InBoardOrder(s, NpcDeals.Pending(s).Where(d => IsBoardAsk(s, d) && s.Find(d.proposerId)?.status == ContestantStatus.Active)).ToList();
+        }
+
         /// <summary>Asks in the board's public order: nominees in the order they were named, then anybody else by id, a houseguest's own by their ids.</summary>
         public static IEnumerable<DealState> InBoardOrder(EpisodeState s, IEnumerable<DealState> asks) =>
             asks.OrderBy(d => BlockPlace(s, d.proposerId))
@@ -111,23 +130,41 @@ namespace Gamesim.Simulation
             && d.id != null && d.id.StartsWith(NpcDeals.VetoAskPrefix, StringComparison.Ordinal);
 
         /// <summary>
-        /// The tone an ask's card wears: the asker's, as a nominee (<see cref="RoleTone.Of"/>). The card says it and the
-        /// engine charges its stakes from it - a no from the state it is given in, silence and the rider from the board as
-        /// it stood when the decision was made - so the cost the player is shown is the cost they are charged.
+        /// Whether a deal is this week's ask from the Head of Household to keep the block, answered or not (R4, §3.3): a
+        /// keep-the-block deal put to the player this week, as <see cref="NpcDeals.AskToKeepTheBlock"/> files one - keyed on
+        /// its id (<see cref="NpcDeals.KeepTheBlockPrefix"/>), never on the kind alone, so a keep-the-block deal anything else
+        /// wrote - a story's - is no card and settles nothing on the board.
+        /// </summary>
+        public static bool IsKeepTheBlockAsk(EpisodeState s, DealState d) =>
+            s != null && d != null && d.type == DealKind.VetoHold && d.week == s.week && d.recipientId == s.playerId && d.proposerId != s.playerId
+            && NpcDeals.IsKeepTheBlockId(d.id);
+
+        /// <summary>Whether a deal is a card of the veto board: a nominee's veto ask, or the Head of Household's ask to keep the block.</summary>
+        public static bool IsBoardAsk(EpisodeState s, DealState d) => IsVetoAsk(s, d) || IsKeepTheBlockAsk(s, d);
+
+        /// <summary>The moment an ask on the board is (<see cref="RoleQuotes.Moments"/>): the Head of Household's keep-the-block, or a nominee's veto ask.</summary>
+        public static string MomentOf(DealState ask) => ask?.type == DealKind.VetoHold ? RoleQuotes.KeepTheBlock : RoleQuotes.VetoAsk;
+
+        /// <summary>
+        /// The tone an ask's card wears: the asker's, in the role their moment gives them (<see cref="RoleTone.Of"/>) - a
+        /// nominee, or the Head of Household. The card says it and the engine charges its stakes from it - a no from the
+        /// state it is given in, silence and the rider from the board as it stood when the decision was made - so the cost
+        /// the player is shown is the cost they are charged.
         /// </summary>
         public static string ToneOf(EpisodeState s, DealState ask) =>
-            ask == null ? null : RoleTone.Of(s, ask.proposerId, RoleQuotes.RoleOf(RoleQuotes.VetoAsk));
+            ask == null ? null : RoleTone.Of(s, ask.proposerId, RoleQuotes.RoleOf(MomentOf(ask)));
 
         /// <summary>
         /// The occasion an ask's quote is keyed on (<see cref="RoleQuotes.Line"/>): the moment, the week and who is asking,
         /// every one public. Not the row's id, which R1 and R2 keyed it on (R2's review left the choice to R3): ids follow
         /// the order the asks were filed in, and <see cref="NpcDeals.AskForTheVeto"/> files the warmest first - how each
         /// nominee reads the player, which the player cannot see - so the same two nominees asking, their warmth the other
-        /// way round, swapped the ids and with them both cards' lines. A nominee asks once a week, so the week and the asker
-        /// name the occasion; a reload, a re-render and a replay show the same line, and nothing is stored.
+        /// way round, swapped the ids and with them both cards' lines. A nominee asks once a week, and so does the Head of
+        /// Household, whose occasion is their moment's (R4), so the moment, the week and the asker name the occasion; a
+        /// reload, a re-render and a replay show the same line, and nothing is stored.
         /// </summary>
         public static string QuoteOccasion(DealState ask) =>
-            ask == null || string.IsNullOrEmpty(ask.proposerId) ? null : RoleQuotes.VetoAsk + ":w" + ask.week + ":" + ask.proposerId;
+            ask == null || string.IsNullOrEmpty(ask.proposerId) ? null : MomentOf(ask) + ":w" + ask.week + ":" + ask.proposerId;
 
         /// <summary>Where a houseguest stands in the order the block was named, or after everybody on it.</summary>
         private static int BlockPlace(EpisodeState s, string id)
@@ -136,9 +173,36 @@ namespace Gamesim.Simulation
             return place >= 0 ? place : int.MaxValue;
         }
 
-        /// <summary>The veto meeting's board: a card for each of <see cref="VetoAsks"/>, in its order.</summary>
+        /// <summary>The veto meeting's board: a card for each of <see cref="BoardAsks"/>, in its order - the nominees', then the Head of Household's.</summary>
         public static List<Card> VetoBoard(EpisodeState s) =>
-            VetoAsks(s).Select(ask => VetoAskCard(s, ask)).Where(card => card != null).ToList();
+            BoardAsks(s).Select(ask => CardOf(s, ask)).Where(card => card != null).ToList();
+
+        /// <summary>An ask on the board as its card: the Head of Household's keep-the-block (<see cref="KeepTheBlockCard"/>), or a nominee's veto ask.</summary>
+        public static Card CardOf(EpisodeState s, DealState ask) =>
+            ask?.type == DealKind.VetoHold ? KeepTheBlockCard(s, ask) : VetoAskCard(s, ask);
+
+        /// <summary>
+        /// The Head of Household's ask to keep the block as a card (R4, §3.3, §5.1): their face under the crown, "Don't Use the
+        /// Veto" and "Keep the nominations the same", their tone as Head of Household with its situation word, the player's
+        /// read, their line, the terms - "In return: a final two" at the endgame, or "In return: nothing promised" - what
+        /// keeping it and using the veto anyway do, what a no and silence cost, and the history. Null for no ask, or one from
+        /// nobody in the season.
+        /// </summary>
+        public static Card KeepTheBlockCard(EpisodeState s, DealState ask)
+        {
+            var who = ask == null ? null : s?.Find(ask.proposerId);
+            if (who == null || who.isPlayer) return null;
+            string moment = RoleQuotes.KeepTheBlock, role = RoleQuotes.RoleOf(moment), tone = ToneOf(s, ask);
+            return new Card
+            {
+                offerId = ask.id, speakerId = who.id, name = who.name, role = role, moment = moment,
+                kind = ask.type, chip = KeepTheBlockChip, chipLine = KeepTheBlockLine,
+                tone = tone, situation = RoleTone.Situation(s, who.id, role), read = RoleTone.ReadLine(s, who.id),
+                quote = RoleQuotes.Line(s, moment, tone, QuoteOccasion(ask)),
+                terms = Terms(s, ask), stakes = Stakes(moment, tone, RidersSettle),
+                answers = Answers(moment, tone), history = History(s, who.id),
+            };
+        }
 
         /// <summary>A nominee's veto ask as a card; null for no ask, or one from nobody in the season.</summary>
         public static Card VetoAskCard(EpisodeState s, DealState ask)
@@ -173,13 +237,23 @@ namespace Gamesim.Simulation
         /// <summary>
         /// What the word stakes, in at most <see cref="MostStakesWords"/> words: for a nominee's veto ask, that a
         /// kept word is remembered and a broken one may reach the house - and, once <paramref name="ridersSettle"/>,
-        /// the tone's rider (<see cref="RoleTone.Stakes"/>) where the moment takes the riders. Null for a moment
-        /// without a board yet.
+        /// the tone's rider (<see cref="RoleTone.Stakes"/>) where the moment takes the riders. For the Head of
+        /// Household's ask to keep the block (R4, §3.3), that a kept word is remembered, or eases a Bitter one's grudge;
+        /// that a broken one - taken, then the veto used - may reach the house, as a nominee's may; and that the veto
+        /// used anyway without it - turned down or left hanging - they take personally, a Threatening one the more. Null
+        /// for a moment without a board yet.
         /// </summary>
         public static string Stakes(string moment, string tone, bool ridersSettle)
         {
-            if (moment != RoleQuotes.VetoAsk) return null;
+            if (moment != RoleQuotes.VetoAsk && moment != RoleQuotes.KeepTheBlock) return null;
             string rider = ridersSettle && RoleQuotes.TakesTheRiders(moment) ? RoleTone.Stakes(tone)?.rider : null;
+            if (moment == RoleQuotes.KeepTheBlock)
+                switch (rider)
+                {
+                    case RoleTone.Riders.EasesTheirGrudge: return "Keep it: their grudge eases. Break it: the house may hear. Veto anyway: personal.";
+                    case RoleTone.Riders.HoldsAGrudge: return "Keep it: they remember. Break it: the house may hear. Veto anyway: very personal.";
+                    default: return "Keep it: they remember it. Break it: the house may hear. Veto anyway: personal.";
+                }
             switch (rider)
             {
                 case RoleTone.Riders.OwesAFavour: return "Keep it: they owe you a favour. Break it: the house may hear.";
@@ -192,12 +266,12 @@ namespace Gamesim.Simulation
         /// <summary>
         /// What an honest no and silence cost with them, in at most <see cref="MostStakesWords"/> words and never a number
         /// (§3.0, "What the tone stakes"): "Turn it down: costs a little goodwill. Leave it unanswered: costs some goodwill."
-        /// Silence costs more than a no for every tone, in these words too. Null for a moment without a board yet, or a
-        /// tone this does not know.
+        /// Silence costs more than a no for every tone, in these words too. The Head of Household's ask to keep the block
+        /// (R4) costs its tone's too. Null for a moment without a board yet, or a tone this does not know.
         /// </summary>
         public static string Answers(string moment, string tone)
         {
-            var stake = moment == RoleQuotes.VetoAsk ? RoleTone.Stakes(tone) : null;
+            var stake = moment == RoleQuotes.VetoAsk || moment == RoleQuotes.KeepTheBlock ? RoleTone.Stakes(tone) : null;
             return stake == null ? null
                 : "Turn it down: costs " + CostWords(stake.decline) + ". Leave it unanswered: costs " + CostWords(stake.lapse) + ".";
         }

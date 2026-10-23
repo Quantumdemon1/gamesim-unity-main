@@ -517,8 +517,9 @@ namespace Gamesim.Episode
         {
             if (offer.type == DealKind.AllianceInvite && EpisodeEngine.InvitationPastPactCap(state, offer.proposerId))
                 return EpisodeDirector.PactCapOfferLine(state, offer.proposerId);
-            string promised = offer.type == DealKind.VetoUse ? EpisodeDirector.VetoPromisedTo(state, offer.proposerId) : null;
-            return promised == null ? null : EpisodeDirector.VetoSavesOneLine(state, promised, offer.proposerId);
+            // A second word on the veto this week, as the rows draw it: under the role moments the Head of Household's ask
+            // to keep the block is one too (ROLE-MOMENTS-PLAN R4).
+            return EpisodeDirector.VetoWordLockLine(state, offer);
         }
 
         private Button[] SeasonOfferControls(EpisodeState source, DealState offer, bool accept)

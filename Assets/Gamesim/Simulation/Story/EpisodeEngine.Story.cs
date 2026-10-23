@@ -36,6 +36,20 @@ namespace Gamesim.Simulation
             StoryAt(s, StoryRules.Roles) && StrategyRules.Apply(s) && CommitmentRulesOn(s) && LeverRulesOn(s);
 
         /// <summary>
+        /// Whether the role moments played in <paramref name="week"/> of this season: <see cref="RolesOn"/>'s own test,
+        /// read at that week - the story at <see cref="StoryRules.Roles"/>, and the story, the strategy windows, the
+        /// commitment rules and the levers each begun by then. At the season's own week it is <see cref="RolesOn"/>.
+        /// Validation reads it for the role moments' own records (R4: a keep-the-block deal), as it reads the commitment
+        /// rules' first week for theirs.
+        /// </summary>
+        public static bool RolesOnIn(EpisodeState s, int week)
+        {
+            bool Begun(int start) => start >= 1 && week >= start;
+            return s?.story != null && s.story.rulesVersion >= StoryRules.Roles && Begun(s.story.rulesStartWeek)
+                && Begun(s.strategyRulesStartWeek) && Begun(s.commitmentRulesStartWeek) && Begun(s.leverRulesStartWeek);
+        }
+
+        /// <summary>
         /// Switches the story system on for a season: from <paramref name="fromWeek"/>, under every
         /// enrolled milestone (<see cref="StoryRules.Current"/>; a later one waits for its enrolment),
         /// with each houseguest's lore snapshotted. The director calls this

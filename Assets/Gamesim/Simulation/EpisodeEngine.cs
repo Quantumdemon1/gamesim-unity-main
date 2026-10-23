@@ -353,8 +353,13 @@ namespace Gamesim.Simulation
                         : next == EpisodePhase.VetoMeeting ? StoryAnchors.VetoWon : null;
                     if (crossed != null && StoryOn(s)) StoryLapse(s, crossed);
                     s.competitionResolved = false; Phase(s, next);
-                    // A nominee asks the player for the veto while it is still theirs to use.
-                    if (next == EpisodePhase.VetoMeeting) NpcDeals.AskForTheVeto(s);
+                    // A nominee asks the player for the veto while it is still theirs to use; and under the role moments
+                    // the Head of Household, right after them, asks the player to leave the block alone (R4).
+                    if (next == EpisodePhase.VetoMeeting)
+                    {
+                        NpcDeals.AskForTheVeto(s);
+                        NpcDeals.AskToKeepTheBlock(s);
+                    }
                     // Under agency, whoever has no claim on the new Head of Household courts them
                     // before the nominations (NPC-AGENCY-PLAN.md §4).
                     if (next == EpisodePhase.Nomination) CourtTheHoH(s);
@@ -1058,9 +1063,10 @@ namespace Gamesim.Simulation
             // could never be broken and would always be kept, so an offer of one lapses. No roll, no line.
             if (CommitmentRulesOn(s) && s.Active.Count() == NpcDeals.FinalThreeSize + 1) ExpireFinalThreeOffers(s);
             RecordVeto(s, use, saved, replacement);
-            // A question about a decision already taken is no longer on the table.
+            // A question about a decision already taken is no longer on the table: a veto commitment, and under the role
+            // moments the Head of Household's keep-the-block ask (R4), the only other word on the veto there is.
             if (StrategyRules.Apply(s))
-                foreach (var offer in s.deals.Where(d => d.status == DealStatus.Proposed && d.type == DealKind.VetoUse))
+                foreach (var offer in s.deals.Where(d => d.status == DealStatus.Proposed && Negotiation.IsVetoWord(d.type)))
                     offer.status = DealStatus.Expired;
         }
 

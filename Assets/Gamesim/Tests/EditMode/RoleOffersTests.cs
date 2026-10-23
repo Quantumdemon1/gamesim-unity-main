@@ -153,7 +153,8 @@ namespace Gamesim.Tests.EditMode
             Assert.That(RoleOffers.Answers(RoleQuotes.VetoAsk, RoleTone.Bitter), Is.EqualTo("Turn it down: costs some goodwill. Leave it unanswered: costs a lot of goodwill."));
             Assert.That(new[] { 0.0, -1, -2, -3, -4, -5 }.Select(RoleOffers.CostWords),
                 Is.EqualTo(new[] { "nothing", "a little goodwill", "some goodwill", "some goodwill", "a lot of goodwill", "a lot of goodwill" }));
-            foreach (string moment in RoleQuotes.Moments.Where(moment => moment != RoleQuotes.VetoAsk))
+            // R4 puts the Head of Household's keep-the-block on the board (RoleKeepTheBlockTests); the others have none yet.
+            foreach (string moment in RoleQuotes.Moments.Where(moment => moment != RoleQuotes.VetoAsk && moment != RoleQuotes.KeepTheBlock))
                 Assert.That(RoleOffers.Answers(moment, RoleTone.Pragmatic), Is.Null, moment + " has no board yet.");
             Assert.That(RoleOffers.Answers(RoleQuotes.VetoAsk, "Gleeful"), Is.Null);
         }
@@ -187,7 +188,7 @@ namespace Gamesim.Tests.EditMode
         /// <summary>
         /// The stakes name each rider tone's rider now the veto decision settles them (R3), and the other tones say what
         /// keeping and breaking a word does; unsettled, every tone said only that. Every line keeps to the text cap and
-        /// states no number. No moment but the veto ask has a board yet.
+        /// states no number. No moment but the veto ask and (R4) the keep-the-block has a board yet.
         /// </summary>
         [Test]
         public void TheStakesNameTheRiderTheDecisionSettles()
@@ -206,7 +207,8 @@ namespace Gamesim.Tests.EditMode
                     Assert.That(line.Any(char.IsDigit), Is.False, line);
                 }
             }
-            foreach (string moment in RoleQuotes.Moments.Where(moment => moment != RoleQuotes.VetoAsk))
+            // R4 puts the Head of Household's keep-the-block on the board (RoleKeepTheBlockTests); the others have none yet.
+            foreach (string moment in RoleQuotes.Moments.Where(moment => moment != RoleQuotes.VetoAsk && moment != RoleQuotes.KeepTheBlock))
                 Assert.That(RoleOffers.Stakes(moment, RoleTone.Pragmatic, false), Is.Null, moment);
         }
 

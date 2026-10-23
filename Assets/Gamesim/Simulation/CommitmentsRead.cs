@@ -424,6 +424,8 @@ namespace Gamesim.Simulation
                 case DealKind.FinalTwo: return "final two deal";
                 case DealKind.AllianceInvite: return "alliance invitation";
                 case DealKind.FinalThree: return "final three deal";
+                // The role moments' own (ROLE-MOMENTS-PLAN R4): the Head of Household's ask to leave the block alone.
+                case DealKind.VetoHold: return "keep-the-block deal";
                 default: return "partnership";
             }
         }
@@ -454,6 +456,9 @@ namespace Gamesim.Simulation
                 case DealKind.AllianceInvite: return "to join forces in an alliance";
                 // The commitment rules' own (C9): what breaks it is a nomination, as a safety pact's.
                 case DealKind.FinalThree: return FinalThreeBinds;
+                // The role moments' own (R4): what breaks it is the veto used, by whichever of them holds it
+                // (DealResolution.Hold) - nobody is assumed to hold it, as with a veto deal.
+                case DealKind.VetoHold: return KeepTheBlockBinds;
                 default: return "to work together";
             }
         }
@@ -463,6 +468,9 @@ namespace Gamesim.Simulation
 
         /// <summary>A final three deal's term (C9): it runs until the house is down to three.</summary>
         public const string UntilTheFinalThree = "until the final three";
+
+        /// <summary>What a keep-the-block deal binds, in words (ROLE-MOMENTS-PLAN R4): the veto left unused, the nominations as the Head of Household set them.</summary>
+        public const string KeepTheBlockBinds = "whichever of you holds the veto leaves the nominations as they are";
 
         private static string DealStatusWord(DealState d, bool yours, string brokenBy, string player)
         {
@@ -551,8 +559,9 @@ namespace Gamesim.Simulation
                 case DecisionKinds.Nominate:
                     return DealStanding(s, DealKind.SafetyAgreement, DealKind.TargetAgreement, DealKind.FinalThree)
                         || PromiseStanding(s, PromiseKind.Safety, PromiseKind.AllianceLoyalty) || OathStanding(s);
+                // So is a keep-the-block deal (R4), by the veto, as a veto deal is.
                 case DecisionKinds.Veto:
-                    return DealStanding(s, DealKind.VetoUse, DealKind.SafetyAgreement, DealKind.TargetAgreement, DealKind.FinalThree)
+                    return DealStanding(s, DealKind.VetoUse, DealKind.SafetyAgreement, DealKind.TargetAgreement, DealKind.FinalThree, DealKind.VetoHold)
                         || PromiseStanding(s, PromiseKind.Safety, PromiseKind.AllianceLoyalty) || OathStanding(s);
                 case DecisionKinds.Vote:
                     return DealStanding(s, DealKind.VoteSave, DealKind.VoteEvict) || PromiseStanding(s, PromiseKind.Vote) || OathStanding(s)
@@ -698,7 +707,8 @@ namespace Gamesim.Simulation
             switch (d.kind)
             {
                 case DecisionKinds.Nominate: return nomination;
-                case DecisionKinds.Veto: return (type == DealKind.VetoUse && s.vetoHolderId == s.playerId) || (nomination && s.hohId == s.playerId);
+                // A word on the veto - a veto deal, or a keep-the-block deal (R4) - is the player's own veto's to settle.
+                case DecisionKinds.Veto: return (Negotiation.IsVetoWord(type) && s.vetoHolderId == s.playerId) || (nomination && s.hohId == s.playerId);
                 case DecisionKinds.FinalEviction: return type == DealKind.FinalTwo;
                 default: return false;
             }
@@ -883,7 +893,9 @@ namespace Gamesim.Simulation
             {
                 case DecisionKinds.Nominate: breach.act = Acts.Nominate; breach.causeId = partner; break;
                 case DecisionKinds.Veto:
-                    if (deal.type == DealKind.VetoUse) { breach.act = d.useVeto ? Acts.Save : Acts.Decline; breach.causeId = d.useVeto ? d.firstId : null; }
+                    // A keep-the-block deal (R4) breaks only by the veto used, so its breach is the save: "saving Maya breaks
+                    // your keep-the-block deal with Priya".
+                    if (Negotiation.IsVetoWord(deal.type)) { breach.act = d.useVeto ? Acts.Save : Acts.Decline; breach.causeId = d.useVeto ? d.firstId : null; }
                     else { breach.act = Acts.Replace; breach.causeId = d.secondId; }
                     break;
                 case DecisionKinds.Vote: breach.act = Acts.Vote; breach.causeId = d.firstId; break;

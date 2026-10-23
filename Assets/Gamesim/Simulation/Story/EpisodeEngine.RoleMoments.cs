@@ -32,10 +32,17 @@ namespace Gamesim.Simulation
     /// (<see cref="VetoBoardAsSeen"/>), and settled from that reading once the decision is made
     /// (<see cref="SettleTheVetoBoard"/>).</para>
     ///
-    /// <para><b>Only the board's asks.</b> A card is a nominee's ask (<see cref="RoleOffers.IsVetoAsk"/>), filed only
-    /// while the player holds the veto, so only the player's own decision settles a board. A houseguest's decision on a
-    /// veto they hold settles nothing here: a word they gave the player - a favour called in - was never a card, and
-    /// it pays no rider (R3's review: it gave back the favour the player had just spent).</para>
+    /// <para><b>Only the board's asks.</b> A card is a nominee's ask (<see cref="RoleOffers.IsVetoAsk"/>), or the Head of
+    /// Household's ask to keep the block (<see cref="RoleOffers.IsKeepTheBlockAsk"/>, R4), each filed only while the
+    /// player holds the veto, so only the player's own decision settles a board. A houseguest's decision on a veto they
+    /// hold settles nothing here: a word they gave the player - a favour called in - was never a card, and it pays no
+    /// rider (R3's review: it gave back the favour the player had just spent).</para>
+    ///
+    /// <para><b>The Head of Household's card</b> (ROLE-MOMENTS-PLAN R4, §3.3). A no and silence cost what its tone
+    /// stakes, as a nominee's do. Taken, the veto decision judges it (<see cref="DealResolution.Hold"/>): not used, kept,
+    /// and a Bitter Head of Household's grudge eases by thirty; used, the player broke it, with every consequence a
+    /// breach has. Turned down or left hanging, and the veto used anyway, they asked and were defied: -5 with them
+    /// (<see cref="RoleTone.DefiedCost"/>) and a grudge of fifteen, a Threatening one's thirty, their rider's.</para>
     ///
     /// <para>Every change goes through the writers the engine already has: <see cref="Change"/> for the player's
     /// standing, which draws the season's reciprocal roll - only a season at Roles reaches it - and the story effect
@@ -46,6 +53,12 @@ namespace Gamesim.Simulation
     {
         /// <summary>The ledger's type for an offer the player left unanswered until it lapsed: a change in how they feel, never a breach, and one that fades.</summary>
         public const string LapsedOfferEvent = "deal_lapsed";
+
+        /// <summary>
+        /// The ledger's type for the veto used after the Head of Household asked the player to leave the block alone, and was
+        /// turned down or left hanging (R4): a change in how they feel, never a breach - the player gave no word - and one that fades.
+        /// </summary>
+        public const string DefiedAskEvent = "veto_defied";
 
         /// <summary>One card of the veto board as the player last saw it: the ask, who made it, the tone the card wore, and how the ask stood.</summary>
         private sealed class BoardCard
@@ -61,12 +74,13 @@ namespace Gamesim.Simulation
             RolesOn(s) && offer != null && Negotiation.IsVetoWord(offer.type) && Negotiation.VetoWordGiven(s);
 
         /// <summary>
-        /// What an honest no to this offer costs with its maker: under the role moments, for a veto ask, its card's
-        /// tone's no (<see cref="RoleOffers.ToneOf"/>), read before the answer changes anything; otherwise, and for every
-        /// other offer, the no it always cost (<see cref="PlayerDeals.DeclineImpact"/>).
+        /// What an honest no to this offer costs with its maker: under the role moments, for a card of the veto board - a
+        /// nominee's veto ask, or the Head of Household's ask to keep the block (R4) - its card's tone's no
+        /// (<see cref="RoleOffers.ToneOf"/>), read before the answer changes anything; otherwise, and for every other
+        /// offer, the no it always cost (<see cref="PlayerDeals.DeclineImpact"/>).
         /// </summary>
         private static double DeclineCost(EpisodeState s, DealState offer) =>
-            RolesOn(s) && RoleOffers.IsVetoAsk(s, offer) && RoleTone.Stakes(RoleOffers.ToneOf(s, offer)) is RoleTone.Stake stake
+            RolesOn(s) && RoleOffers.IsBoardAsk(s, offer) && RoleTone.Stakes(RoleOffers.ToneOf(s, offer)) is RoleTone.Stake stake
                 ? stake.decline : PlayerDeals.DeclineImpact;
 
         /// <summary>
@@ -90,14 +104,15 @@ namespace Gamesim.Simulation
                 .Any(effect => effect != null && effect.kind == StoryEffects.Deal && Negotiation.IsVetoWord(effect.type) && effect.fromId == s.playerId);
 
         /// <summary>
-        /// The veto board as the player last saw it: every one of this week's veto asks, answered or not
-        /// (<see cref="RoleOffers.IsVetoAsk"/>), in the board's public order, each with the tone its card wore and how
-        /// it stood. Read before the decision's command moves anything - its last beats and the decision itself - so
-        /// silence and the riders settle on the tone the card showed. Null, reading nothing, without the role moments.
+        /// The veto board as the player last saw it: every one of this week's veto asks and the Head of Household's ask to
+        /// keep the block, answered or not (<see cref="RoleOffers.IsBoardAsk"/>), in the board's public order, each with the
+        /// tone its card wore and how it stood. Read before the decision's command moves anything - its last beats and the
+        /// decision itself - so silence and the riders settle on the tone the card showed. Null, reading nothing, without
+        /// the role moments.
         /// </summary>
         private static List<BoardCard> VetoBoardAsSeen(EpisodeState s) =>
             !RolesOn(s) ? null
-                : RoleOffers.InBoardOrder(s, s.deals.Where(d => RoleOffers.IsVetoAsk(s, d)))
+                : RoleOffers.InBoardOrder(s, s.deals.Where(d => RoleOffers.IsBoardAsk(s, d)))
                     .Select(d => new BoardCard { askId = d.id, askerId = d.proposerId, tone = RoleOffers.ToneOf(s, d), status = d.status }).ToList();
 
         /// <summary>
@@ -106,7 +121,8 @@ namespace Gamesim.Simulation
         /// waiting when it was made - costs the tone's lapse with its maker, through <see cref="Change"/>, and the player
         /// is told so; then the tone's rider, where it has one - kept, a Bitter maker's grudge eases and a Desperate one
         /// owes the player a favour; turned down or left hanging, and left on the block, a Threatening one holds a
-        /// grudge. Nothing for a maker no longer in the house, and nothing at all without the role moments.
+        /// grudge. The Head of Household's card (R4) settles its own way (<see cref="SettleTheHold"/>). Nothing for a
+        /// maker no longer in the house, and nothing at all without the role moments.
         /// </summary>
         private static void SettleTheVetoBoard(EpisodeState s, List<BoardCard> board)
         {
@@ -123,6 +139,11 @@ namespace Gamesim.Simulation
                 {
                     Change(s, s.playerId, asker.id, stake.lapse, "Left my " + title + " unanswered.", LapsedOfferEvent);
                     Log(s, "deal", "You left a " + title + " from " + asker.name + " unanswered.", s.playerId, asker.id);
+                }
+                if (NpcDeals.IsKeepTheBlockId(ask.id))
+                {
+                    SettleTheHold(s, ask, asker, stake, hanging, key);
+                    continue;
                 }
                 bool kept = ask.status == DealStatus.Fulfilled;
                 bool leftUp = (hanging || ask.status == DealStatus.Declined) && s.nominees.Contains(asker.id);
@@ -144,6 +165,28 @@ namespace Gamesim.Simulation
                 }
             }
         }
+
+        /// <summary>
+        /// The Head of Household's card, settled after the decision (R4, §3.3), its silence already charged: taken and kept -
+        /// the veto left unused - a Bitter one's grudge against the player eases by thirty; taken and broken, the breach was
+        /// settled with the decision (<see cref="DealResolution.Hold"/>) and nothing is added to it here. Turned down or left
+        /// hanging, and the veto used anyway, they asked and were defied: <see cref="RoleTone.DefiedCost"/> with them through
+        /// <see cref="Change"/>, never a breach - the player gave no word - and a grudge of <see cref="RoleTone.DefiedGrudge"/>,
+        /// or a Threatening one's rider, thirty; and the player is told. Left unused, a no or silence costs nothing more.
+        /// </summary>
+        private static void SettleTheHold(EpisodeState s, DealState ask, ContestantState hoh, RoleTone.Stake stake, bool hanging, string key)
+        {
+            if (stake.rider == RoleTone.Riders.EasesTheirGrudge && ask.status == DealStatus.Fulfilled)
+                Rider(s, StoryEffects.Ease, hoh.id, s.playerId, stake.riderAmount, null, key);
+            if (!(hanging || ask.status == DealStatus.Declined) || !VetoUsedThisWeek(s)) return;
+            Change(s, s.playerId, hoh.id, RoleTone.DefiedCost, "Used the veto after I asked them not to.", DefiedAskEvent);
+            Rider(s, StoryEffects.Grudge, hoh.id, s.playerId,
+                stake.rider == RoleTone.Riders.HoldsAGrudge ? stake.riderAmount : RoleTone.DefiedGrudge, GrudgeCauses.Story, key);
+            Log(s, "deal", "You used the veto after " + hoh.name + " asked you not to.", s.playerId, hoh.id);
+        }
+
+        /// <summary>Whether this week's veto was used, as the decision recorded it on the week's power row.</summary>
+        private static bool VetoUsedThisWeek(EpisodeState s) => s.ledger?.power?.LastOrDefault(p => p != null && p.week == s.week)?.vetoUsed == true;
 
         /// <summary>A rider, through the story effect router as a story option's consequence goes: no cycle, nobody's reception, no backfire.</summary>
         private static void Rider(EpisodeState s, string kind, string fromId, string toId, double amount, string type, string key) =>

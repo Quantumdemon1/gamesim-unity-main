@@ -182,7 +182,9 @@ namespace Gamesim.Tests.EditMode
             foreach (var npc in s.Active.Where(c => !c.isPlayer))
             {
                 string about = s.Active.Where(c => !c.isPlayer && c.id != npc.id).Select(c => c.id).FirstOrDefault();
-                foreach (var kind in DealKind.All)
+                // The kinds the recorded build knew: R4's keep-the-block deal (by its spelling), the role moments' own, which
+                // no player can propose, is not digested.
+                foreach (var kind in DealKind.All.Where(k => k != "veto_hold"))
                 {
                     string aboutId = kind == DealKind.VoteSave || kind == DealKind.VoteEvict ? s.nominees.FirstOrDefault(id => id != npc.id) ?? about : about;
                     trace.Append(Read(() => F(PlayerDeals.AcceptanceChance(s, npc.id, kind, aboutId)))).Append(',')

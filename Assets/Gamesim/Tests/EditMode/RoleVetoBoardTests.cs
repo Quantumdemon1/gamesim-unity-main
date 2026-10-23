@@ -119,13 +119,14 @@ namespace Gamesim.Tests.EditMode
         /// <summary>
         /// The one test behind the rule reads exactly what naming a price for the veto has always read inline: a veto
         /// commitment of this week, standing or accepted, with the player on either side - every kind, status, week and
-        /// side - and the price refuses on it in the same words in every season.
+        /// side - and the price refuses on it in the same words in every season. R4 adds the keep-the-block deal, a word
+        /// on the veto only the role moments write, so a season without them reads exactly what it always read.
         /// </summary>
         [Test]
         public void TheOneWordTestReadsWhatThePriceRefusalAlwaysRead()
         {
             var basis = Board(RoleTone.Pragmatic, out string first, out string second).Snapshot;
-            bool Inline(EpisodeState s) => s.deals.Any(d => d.type == DealKind.VetoUse && d.week == s.week
+            bool Inline(EpisodeState s) => s.deals.Any(d => (d.type == DealKind.VetoUse || d.type == DealKind.VetoHold) && d.week == s.week
                 && (d.status == DealStatus.Active || d.status == DealStatus.Accepted) && (d.proposerId == s.playerId || d.recipientId == s.playerId));
             int cases = 0;
             foreach (string kind in DealKind.All)
@@ -857,7 +858,7 @@ namespace Gamesim.Tests.EditMode
         /// to the player as the arc draws it: the named options (every one, without names) with their catalogue effects,
         /// the player and <paramref name="who"/> changing places in each with <paramref name="theirs"/>. Returns its event's id.
         /// </summary>
-        private static string StoryBeat(EpisodeState s, string templateId, string beatId, string role, string who, bool theirs, string name,
+        internal static string StoryBeat(EpisodeState s, string templateId, string beatId, string role, string who, bool theirs, string name,
             string description, params string[] optionIds)
         {
             var template = StoryCatalog.Find(templateId);
@@ -932,7 +933,7 @@ namespace Gamesim.Tests.EditMode
             return command;
         }
 
-        private static EpisodeCommand Progress(EpisodeState s, string eventId, string optionId) =>
+        internal static EpisodeCommand Progress(EpisodeState s, string eventId, string optionId) =>
             Command(s, EpisodeCommandKind.ProgressStoryline, eventId, optionId);
     }
 }

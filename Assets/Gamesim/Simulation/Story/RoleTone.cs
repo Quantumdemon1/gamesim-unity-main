@@ -194,6 +194,13 @@ namespace Gamesim.Simulation
         public const double ThreateningGrudge = 30;
 
         /// <summary>
+        /// What a Head of Household who asked the player to leave the block alone, and was turned down or left hanging, holds
+        /// against them once the veto is used anyway (ROLE-MOMENTS-PLAN R4, §3.3): this much less with the player, and a
+        /// grudge this deep - a Threatening one's is their rider's, <see cref="ThreateningGrudge"/>. Starting values, to tune.
+        /// </summary>
+        public const double DefiedCost = -5, DefiedGrudge = 15;
+
+        /// <summary>
         /// One tone's stakes (§3.0, "What the tone stakes"): what an honest no costs with them, what leaving them
         /// hanging costs once the decision lapses it, and the rider. Starting values, to tune. The engine applies it to
         /// the nominees' veto asks under Roles (R3, <c>EpisodeEngine.RoleMoments</c>); without Roles a no stays at -3

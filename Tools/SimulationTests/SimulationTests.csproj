@@ -289,6 +289,8 @@
     <Compile Include="$(EditMode)RoleOffersTests.cs" />
     <!-- R3: the veto board's economics - one word on the veto, the trap ask, a no and silence by tone, the riders. -->
     <Compile Include="$(EditMode)RoleVetoBoardTests.cs" />
+    <!-- R4: the Head of Household's keep-the-block deal - filing, the Hold verdict, its price, the defied HoH, its readers. -->
+    <Compile Include="$(EditMode)RoleKeepTheBlockTests.cs" />
     <Compile Include="$(EditMode)NominationStepsTests.cs" />
     <Compile Include="$(EditMode)ThreatAssessmentTests.cs" />
     <Compile Include="$(EditMode)WebDiaryParityTests.cs" />

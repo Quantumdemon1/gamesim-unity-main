@@ -1,3 +1,6 @@
+// RETIRED 2026-10-22, kept for the record, not run: it measured the interim schema-28 landing (it asserts schema 28
+// after a load and the 56-row manifest). Every load of its pre-29 fixtures now migrates to 29; the cost is measured in
+// Assets/Plans/OLD-SAVE-ACCEPTANCE.md section 6, step 3. Write a new diagnostic for 29 rather than re-pinning this one.
 #if UNITY_EDITOR && GAMESIM_DIAGNOSTICS
 using System;
 using System.Collections.Generic;

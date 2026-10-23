@@ -1,3 +1,5 @@
+// RETIRED 2026-10-22, kept for the record, not run: a diagnostic of the interim schema-28 landing that pins the old
+// 56-row manifest and its hash. See Assets/Plans/OLD-SAVE-ACCEPTANCE.md section 7.
 #if UNITY_EDITOR && GAMESIM_DIAGNOSTICS
 using System;
 using System.Collections.Generic;

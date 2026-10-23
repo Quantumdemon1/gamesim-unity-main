@@ -1,7 +1,10 @@
 // RETIRED 2026-10-22, kept for the record, not run: it measured the interim schema-28 landing (it asserts schema 28
 // after a load and the 56-row manifest). Every load of its pre-29 fixtures now migrates to 29; the cost is measured in
 // Assets/Plans/OLD-SAVE-ACCEPTANCE.md section 6, step 3. Write a new diagnostic for 29 rather than re-pinning this one.
-#if UNITY_EDITOR && GAMESIM_DIAGNOSTICS
+// The !UNITY_5_3_OR_NEWER clause keeps it out of every Unity compile, diagnostic runs included: the batch runner
+// executes [Explicit] tests, and this one would fail on the 59-row manifest. Frozen28PhasePilotDiagnostics, which
+// reads this class, is retired the same way.
+#if UNITY_EDITOR && GAMESIM_DIAGNOSTICS && !UNITY_5_3_OR_NEWER
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;

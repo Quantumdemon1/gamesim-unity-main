@@ -1,6 +1,7 @@
 // RETIRED 2026-10-22, kept for the record, not run: a diagnostic of the interim schema-28 landing that pins the old
-// 56-row manifest and its hash. See Assets/Plans/OLD-SAVE-ACCEPTANCE.md section 7.
-#if UNITY_EDITOR && GAMESIM_DIAGNOSTICS
+// 56-row manifest and its hash. See Assets/Plans/OLD-SAVE-ACCEPTANCE.md section 7. The !UNITY_5_3_OR_NEWER clause
+// keeps it out of every Unity compile, diagnostic runs included, since the batch runner executes [Explicit] tests.
+#if UNITY_EDITOR && GAMESIM_DIAGNOSTICS && !UNITY_5_3_OR_NEWER
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;

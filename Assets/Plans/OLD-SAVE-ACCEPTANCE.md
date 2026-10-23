@@ -1076,8 +1076,9 @@ This section recorded the integration increment and its gates before they ran. S
   `GAMESIM_DIAGNOSTICS`. `Frozen28PhasePilotDiagnostics` pins the manifest's hash, and both pin its 56 episode rows.
   **Retired 2026-10-22.** Both were written for the interim schema-28 landing. The cost diagnostic asserts schema 28
   after a store load, and every load of a pre-29 save now migrates to 29. Both pin the manifest's 56 rows, and the
-  pilot its hash; the manifest now has 59. They are kept for the record and not run; the save-path cost is measured
-  in section 6, step 3. A new diagnostic would be written for 29, not
+  pilot its hash; the manifest now has 59. They are kept for the record and no longer compile: their guard adds
+  `!UNITY_5_3_OR_NEWER`, because Unity's batch runner executes `[Explicit]` tests, so a diagnostic run would otherwise
+  run them red. The save-path cost is measured in section 6, step 3. A new diagnostic would be written for 29, not
   re-pinned.
 - **The dialogue V2 source already writes schema 29** (branch `pc/v2-lifecycle-20261022`, draft PR #28; recorded
   2026-10-22). Its commit, 9d87b59e, and the 21 Oct Codex handoff say "no ... schema change". That is wrong, and the

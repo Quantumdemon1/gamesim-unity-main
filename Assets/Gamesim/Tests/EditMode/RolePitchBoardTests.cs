@@ -487,8 +487,8 @@ namespace Gamesim.Tests.EditMode
                     Assert.That(RoleOffers.WordCount(line), Is.LessThanOrEqualTo(RoleOffers.MostStakesWords), tone + ": " + line);
                     Assert.That(line.Any(char.IsDigit), Is.False, tone + ": " + line);
                 }
-            Assert.That(RoleOffers.PitchAnswers(RoleTone.Calculated), Is.EqualTo("Turn them down: costs nothing. Leave it unanswered: costs nothing."));
-            Assert.That(RoleOffers.PitchAnswers(RoleTone.Bitter), Is.EqualTo("Turn them down: costs some goodwill. Leave it unanswered: costs nothing."));
+            Assert.That(RoleOffers.PitchAnswers(RoleTone.Calculated), Is.EqualTo("No: costs nothing. Silence: costs nothing."));
+            Assert.That(RoleOffers.PitchAnswers(RoleTone.Bitter), Is.EqualTo("No: costs some goodwill. Silence: costs nothing."));
             Assert.That(RoleOffers.PitchAnswers(null), Is.Null);
         }
 

@@ -291,22 +291,25 @@ namespace Gamesim.Simulation
 
         /// <summary>
         /// What a pitch's answers stake, in at most <see cref="MostStakesWords"/> words and never a number: a promise pays only if
-        /// they stay off the player's block (<see cref="HoHPitches.KeptOffTheBlock"/>), and a no softens the blow of a nomination
-        /// (<see cref="HoHPitches.HonestNoEase"/>) - except for a Threatening one, whom it still stings.
+        /// it is kept - they stay off the player's block (<see cref="HoHPitches.KeptOffTheBlock"/>) - and a no softens the blow of
+        /// a nomination (<see cref="HoHPitches.HonestNoEase"/>), except for a Threatening one, whom it still stings. One line of
+        /// the pitch card at the standard text (R5b): "Promise: pays if kept. No: a nomination stings less." The board's own
+        /// words, a no and silence, as its veto head says them (<see cref="SilenceLine"/>).
         /// </summary>
         public static string PitchStakes(string tone) => tone == RoleTone.Threatening
-            ? "Promise: pays if they stay off your block. Turned down: nominating them still stings."
-            : "Promise: pays if they stay off your block. Turned down: nominating them stings less.";
+            ? "Promise: pays if kept. No: a nomination still stings."
+            : "Promise: pays if kept. No: a nomination stings less.";
 
         /// <summary>
         /// What turning a pitcher down and leaving them unanswered cost with them, in words: their tone's honest no
-        /// (<see cref="RoleTone.Stakes"/>), and nothing for silence - an unanswered pitch clears at the nominations. Null for a
-        /// tone this does not know.
+        /// (<see cref="RoleTone.Stakes"/>), and nothing for silence - an unanswered pitch clears at the nominations. One line of
+        /// the pitch card at the standard text (R5b): "No: costs some goodwill. Silence: costs nothing." Null for a tone this
+        /// does not know.
         /// </summary>
         public static string PitchAnswers(string tone)
         {
             var stake = RoleTone.Stakes(tone);
-            return stake == null ? null : "Turn them down: costs " + CostWords(stake.decline) + ". Leave it unanswered: costs nothing.";
+            return stake == null ? null : "No: costs " + CostWords(stake.decline) + ". Silence: costs nothing.";
         }
 
         // ---------------------------------------------------------------- the lines

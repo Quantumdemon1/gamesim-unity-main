@@ -36,7 +36,7 @@ namespace Gamesim.Tests.PlayMode
         /// one and a Pragmatic one, each recommending somebody - under the role moments, or, without <paramref name="roles"/>, the
         /// shipped story rules; saved and loaded, with the house's own clock held so nothing commits under the test.
         /// </summary>
-        private IEnumerator InstallPitchBoard(bool roles)
+        private IEnumerator InstallPitchBoard(bool roles, bool fullRecord = false)
         {
             yield return InstallTalkingHouse(8, false, state =>
             {
@@ -64,6 +64,12 @@ namespace Gamesim.Tests.PlayMode
                     state.replyCards.Add(new ReplyCardState { id = "reply-pitch-" + state.week + "-" + npcs[i].id, week = state.week,
                         kind = ReplyCards.Pitch, fromId = npcs[i].id, aboutId = npcs[i + 3].id });
                 }
+                // A full promise record (R5b), settled promises to a houseguest who is not pitching: every card's "Promise safety"
+                // locked, and its lock line said.
+                if (fullRecord)
+                    for (int p = 0; p < NpcPromises.PromiseCeiling; p++)
+                        state.promises.Add(new PromiseState { id = "full-record-promise-" + p, fromId = state.playerId, toId = npcs[6].id,
+                            kind = PromiseKind.Safety, status = PromiseStatus.Expired, week = state.week, expiresWeek = state.week + 1 });
             });
             director.SuspendNpcAutonomyForDiagnostics();
             var installed = director.Snapshot;
@@ -266,6 +272,228 @@ namespace Gamesim.Tests.PlayMode
             }
             director.ClosePanels();
             yield return ApplyTextSize(false);
+        }
+
+        /// <summary>
+        /// The pitch board fits the stage (R5b), on the frame the game is played on, 16:9, photographed ("pitch-board-fit*.png"):
+        /// at the standard and the larger text the three cards, their every word and every answer are on the one page with no
+        /// scroll - the column no taller than the scroll that holds it - and at the largest each page holds its one card whole,
+        /// and its pager, with no scroll. The batch canvas's 4:3 frame holds it too at the standard and the largest text, so a run
+        /// without the photographs still pins the fit. At every size, on both frames, each card's four answers stand two to a row
+        /// in their order - "Promise safety" beside "Hear them without committing" over "Turn them down" beside "Feel them out
+        /// (free)" - inside the card, every caption on two lines at most, and every card's captions at the one size; at the
+        /// standard text the stakes and what a no and silence cost each take one line. Then a pitcher is felt out, and their card
+        /// carries their answer and the question locked ("pitch-board-felt*.png"): the same shape and the same stage at every
+        /// size. Every problem is gathered and said at once, with the stage's numbers.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator PitchBoard_FitsTheStageWithItsAnswersTwoByTwo()
+        {
+            yield return InstallPitchBoard(true);
+            var problems = new List<string>();
+            yield return PitchBoardFrames("The pitch board", "pitch-board-fit", null, problems);
+
+            yield return OpenStation();
+            LandThePanel();
+            yield return null;
+            var pitches = RoleOffers.PitchBoardCards(director.Snapshot);
+            var feel = OfferButton(OfferCards(LastActive(EpisodeHud.OfferBoardName))[1], EpisodeHud.FeelOutPitchCaption);
+            ScrollIntoView(feel);
+            AssertPressable(feel, EpisodeHud.FeelOutPitchCaption);
+            feel.onClick.Invoke();
+            yield return null; yield return null;
+            string felt = EpisodeHud.OfferCardPrefix + director.Snapshot.Find(pitches[1].fromId).name;
+            Assert.That(OfferLabel(OfferCards(LastActive(EpisodeHud.OfferBoardName)).Single(card => card.name == felt), EpisodeHud.OfferAssessmentName),
+                Is.Not.Null, "Felt out, the card says what they said.");
+            yield return PitchBoardFrames("With a pitcher felt out, the pitch board", "pitch-board-felt", felt, problems);
+            Assert.That(problems, Is.Empty, string.Join("\n", problems));
+        }
+
+        /// <summary>
+        /// With the player's promise record full, every card says so in its lock line over a locked "Promise safety" (R5b): the same
+        /// shape and the same stage at every size ("pitch-board-full-record*.png"), the locked caption at its neighbours' size.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator PitchBoard_AFullPromiseRecordStillFitsTheStage()
+        {
+            yield return InstallPitchBoard(true, fullRecord: true);
+            var installed = director.Snapshot;
+            Assert.That(installed.replyCards.Where(card => HoHPitches.CanPromiseSafety(installed, card.fromId)), Is.Empty, "The record is full for every pitcher.");
+            var problems = new List<string>();
+            yield return PitchBoardFrames("With a full promise record, the pitch board", "pitch-board-full-record", null, problems);
+            Assert.That(problems, Is.Empty, string.Join("\n", problems));
+        }
+
+        /// <summary>
+        /// Whether the screen is a frame the board is laid out for, 4:3 to 16:9 (R5b): the batch canvas is 4:3, and an editor's
+        /// game view can be any shape, where the fit says nothing.
+        /// </summary>
+        private static bool PitchBoardStageFrame()
+        {
+            float aspect = Screen.width / Mathf.Max(1f, Screen.height);
+            return aspect >= 4f / 3f - .01f && aspect <= 16f / 9f + .01f;
+        }
+
+        /// <summary>
+        /// The board at every size, on the 4:3 frame and photographed on the 16:9 one as <paramref name="frame"/>, its problems added
+        /// to <paramref name="problems"/>: every page at the largest text, or only the page of the card named <paramref name="only"/>.
+        /// The 16:9 frame holds it without a scroll at every size; the 4:3 at the standard and the largest text, its larger text
+        /// standing two cards to a row and scrolling, as it always has. Back at the standard text after.
+        /// </summary>
+        private IEnumerator PitchBoardFrames(string what, string frame, string only, List<string> problems)
+        {
+            foreach (var size in TextSizes.All)
+            {
+                director.ClosePanels();
+                yield return ApplyTextSize(size);
+                yield return OpenStation();
+                LandThePanel();
+                yield return null;
+                bool largest = size == TextSize.Largest;
+                int pages = largest ? RoleOffers.PitchBoardCards(director.Snapshot).Count : 1;
+                // From the first page, whichever the board kept.
+                for (int back = 0; largest && back < pages && ButtonWithCaptionOrNull(EpisodeHud.PreviousOfferCaption) != null; back++)
+                {
+                    ButtonWithCaption(EpisodeHud.PreviousOfferCaption).onClick.Invoke();
+                    yield return null; yield return null;
+                }
+                for (int page = 0; page < pages; page++)
+                {
+                    if (page > 0)
+                    {
+                        ButtonWithCaption(EpisodeHud.NextOfferCaption).onClick.Invoke();
+                        yield return null; yield return null;
+                    }
+                    if (largest && only != null && !OfferCards(LastActive(EpisodeHud.OfferBoardName)).Any(card => card.name == only)) continue;
+                    string where = what + " " + TextScales.At(size) + (largest ? ", page " + (page + 1) : "");
+                    PitchBoardShapeProblems(where + " on the 4:3 frame", size, problems);
+                    if (size != TextSize.Larger && PitchBoardStageFrame()) PitchBoardFitProblems(where + " on the 4:3 frame", problems);
+                    if (!Application.isBatchMode) continue;
+                    string framed = where + " on the 16:9 frame";
+                    yield return CaptureFraming(frame + TextScales.Suffix(size) + (largest ? "-page-" + (page + 1) : ""), inspect: _ =>
+                    {
+                        PitchBoardShapeProblems(framed, size, problems);
+                        PitchBoardFitProblems(framed, problems);
+                    });
+                }
+            }
+            director.ClosePanels();
+            yield return ApplyTextSize(TextSize.Standard);
+        }
+
+        /// <summary>
+        /// What is wrong with the board's shape on this frame, added to <paramref name="problems"/>: every card's answers two by two
+        /// (<see cref="TwoByTwoProblems"/>), every card's captions at one size, and at the standard text its stakes and what a no
+        /// and silence cost on one line each. The board's numbers go to the run's record first.
+        /// </summary>
+        private void PitchBoardShapeProblems(string where, TextSize size, List<string> problems)
+        {
+            var board = LastActive(EpisodeHud.OfferBoardName);
+            if (board == null) { problems.Add(where + ": no board is up."); return; }
+            TestContext.WriteLine("[R5b] " + where + ":\n" + PitchBoardNumbers(board));
+            foreach (var card in OfferCards(board))
+            {
+                TwoByTwoProblems(card, where, problems);
+                if (size != TextSize.Standard) continue;
+                foreach (string note in new[] { EpisodeHud.OfferStakesName, EpisodeHud.OfferAnswersName })
+                {
+                    var label = card.GetComponentsInChildren<TMP_Text>().SingleOrDefault(text => text.name == note);
+                    if (label == null) { problems.Add(where + ": " + card.name + " has no '" + note + "'."); continue; }
+                    label.ForceMeshUpdate(true);
+                    if (label.textInfo.lineCount != 1) problems.Add(where + ": " + card.name + "'s '" + label.text + "' takes " + label.textInfo.lineCount + " lines, not one.");
+                }
+            }
+            // Every card's captions at the one size where no lock is drawn: a locked answer keeps no room for a lock the icon set
+            // does not have, so a felt-out card, or a full record's every card, stands at its neighbours' size.
+            if (board.GetComponentsInChildren<RectTransform>(true).Any(rect => rect.name == EpisodeHud.LockMarkName)) return;
+            var captions = PitchBoardCaptions();
+            var sizes = OfferCards(board).SelectMany(card => card.GetComponentsInChildren<Button>(true))
+                .Where(button => captions.Contains(button.name)).Select(button => button.GetComponentInChildren<TMP_Text>())
+                .Where(label => label != null).Select(label => label.fontSizeMax).Distinct().ToList();
+            if (sizes.Count > 1) problems.Add(where + ": the answers' captions stand at " + string.Join(", ", sizes) + ", not one size.");
+        }
+
+        /// <summary>
+        /// What keeps a card's four answers from standing two to a row in their order, added to <paramref name="problems"/>: side
+        /// by side and level, the second row under the first in the same columns, each inside the card and on two lines at most.
+        /// </summary>
+        private static void TwoByTwoProblems(RectTransform card, string where, List<string> problems)
+        {
+            var captions = PitchBoardCaptions();
+            var buttons = captions.Select(caption => card.GetComponentsInChildren<Button>(true).SingleOrDefault(button => button.name == caption)).ToArray();
+            string who = where + ": " + card.name;
+            if (buttons.Any(button => button == null)) { problems.Add(who + " lacks one of " + string.Join(", ", captions) + "."); return; }
+            // In the card's own units (LocalRect, EpisodePlayModeTests.ConversationGroups.cs): a frame's numbers whatever its camera.
+            var rects = buttons.Select(button => LocalRect(card, (RectTransform)button.transform)).ToArray();
+            for (int row = 0; row < 2; row++)
+            {
+                Rect first = rects[2 * row], second = rects[2 * row + 1];
+                if (first.xMax > second.xMin + .5f) problems.Add(who + ": '" + captions[2 * row] + "' does not stand left of '" + captions[2 * row + 1] + "': " + first + " / " + second);
+                if (Mathf.Abs(first.yMax - second.yMax) > .5f || Mathf.Abs(first.yMin - second.yMin) > .5f)
+                    problems.Add(who + ": '" + captions[2 * row] + "' and '" + captions[2 * row + 1] + "' are not level: " + first + " / " + second);
+            }
+            if (rects[2].yMax > rects[0].yMin + .5f) problems.Add(who + ": the second row does not stand under the first.");
+            if (Mathf.Abs(rects[2].xMin - rects[0].xMin) > .5f || Mathf.Abs(rects[3].xMin - rects[1].xMin) > .5f) problems.Add(who + ": the rows do not share their columns.");
+            var inside = card.rect;
+            for (int i = 0; i < captions.Length; i++)
+            {
+                if (rects[i].xMin < inside.xMin - .5f || rects[i].xMax > inside.xMax + .5f || rects[i].yMin < inside.yMin - .5f || rects[i].yMax > inside.yMax + .5f)
+                    problems.Add(who + ": '" + captions[i] + "' stands outside the card: " + rects[i] + " in " + inside);
+                var label = buttons[i].GetComponentInChildren<TMP_Text>();
+                label.ForceMeshUpdate(true);
+                if (label.textInfo.lineCount < 1 || label.textInfo.lineCount > 2) problems.Add(who + ": '" + captions[i] + "' takes " + label.textInfo.lineCount + " lines.");
+            }
+        }
+
+        /// <summary>
+        /// What keeps the stage from holding the board without a scroll, added to <paramref name="problems"/>: the column taller
+        /// than its scroll, or a card or the pager not wholly inside the scroll's window.
+        /// </summary>
+        private void PitchBoardFitProblems(string where, List<string> problems)
+        {
+            Canvas.ForceUpdateCanvases();
+            var content = ActiveRect("Episode content");
+            var viewport = (RectTransform)content.parent;
+            if (content.rect.height > viewport.rect.height + .5f)
+                problems.Add(where + " scrolls: the column is " + content.rect.height.ToString("0.#") + " in " + viewport.rect.height.ToString("0.#") + ".");
+            var board = LastActive(EpisodeHud.OfferBoardName);
+            if (board == null) return;
+            var window = viewport.rect;
+            foreach (var part in OfferCards(board).Concat(board.GetComponentsInChildren<RectTransform>().Where(rect => rect.name == EpisodeHud.OfferPagerName)))
+            {
+                var at = LocalRect(viewport, part);
+                if (at.yMin < window.yMin - .5f || at.yMax > window.yMax + .5f)
+                    problems.Add(where + ": " + part.name + " is not wholly in the window: " + at + " in " + window + ".");
+            }
+        }
+
+        /// <summary>The stage's numbers, for the record of a run: the column's height in the scroll's, the board's, and each card's with its parts', from its top.</summary>
+        private string PitchBoardNumbers(RectTransform board)
+        {
+            Canvas.ForceUpdateCanvases();
+            var content = ActiveRect("Episode content");
+            var viewport = (RectTransform)content.parent;
+            var parts = new List<string> { "column " + content.rect.height.ToString("0.#") + " in " + viewport.rect.height.ToString("0.#") + ", board " + board.rect.height.ToString("0.#") };
+            float boardTop = board.rect.yMax;
+            foreach (Transform child in board)
+            {
+                if (!(child is RectTransform part) || !part.gameObject.activeInHierarchy) continue;
+                var at = LocalRect(board, part);
+                parts.Add(part.name + " @" + (boardTop - at.yMax).ToString("0.#") + " h" + at.height.ToString("0.#") + " w" + at.width.ToString("0.#"));
+                if (!part.name.StartsWith(EpisodeHud.OfferCardPrefix, System.StringComparison.Ordinal)) continue;
+                foreach (Transform inner in part)
+                {
+                    if (!(inner is RectTransform piece) || !piece.gameObject.activeInHierarchy) continue;
+                    var place = LocalRect(part, piece);
+                    // An explicit null test, not ??: a label is a UnityEngine.Object.
+                    var label = piece.GetComponent<TMP_Text>();
+                    if (label == null) label = piece.GetComponentInChildren<TMP_Text>();
+                    if (label != null) label.ForceMeshUpdate(true);
+                    parts.Add("  " + piece.name + " @" + (part.rect.yMax - place.yMax).ToString("0.#") + " h" + place.height.ToString("0.#") + " x" + (place.xMin - part.rect.xMin).ToString("0.#")
+                        + " w" + place.width.ToString("0.#") + (label != null ? " f" + label.fontSize.ToString("0.#") + " lines " + label.textInfo.lineCount : ""));
+                }
+            }
+            return string.Join("\n", parts);
         }
 
         /// <summary>Nothing on the pitch board travels or fades: under "Reduce character motion" the panel cuts in and the board stands still; with motion on, the cards still cut in.</summary>

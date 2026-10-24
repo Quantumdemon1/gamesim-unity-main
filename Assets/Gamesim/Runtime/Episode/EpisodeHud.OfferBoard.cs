@@ -32,7 +32,10 @@ namespace Gamesim.Episode
     /// over another below that (the diary's column). At the largest text they page instead (the owner's decision):
     /// one card a page, with "Previous offer" and "Next offer" and where the player is - "1 of 2" - at the board's
     /// foot, on the one pager row the HUD draws (<see cref="PagerRow"/>). At the standard and the larger text every
-    /// card is on the one page. Nothing on the board travels or fades: the cards cut in under every motion setting,
+    /// card is on the one page. The pitch board opens on the nomination's stage without a scroll at every size (R5b): its
+    /// head is one row where it holds one, a pitch's tone, situation and read start in the room beside its face, its four
+    /// answers stand two to a row, its gaps are a little closer than an offer's, and at the largest text its one card takes the page's width with its answers beside its
+    /// notes; the veto board is drawn as it always was. Nothing on the board travels or fades: the cards cut in under every motion setting,
     /// and only the panel arrives, as it always has. No label is set under ten units, twelve pixels at 1080p, and
     /// every box is at least 1.3 times its type.</para>
     ///
@@ -145,7 +148,10 @@ namespace Gamesim.Episode
             float s = FontScale, width = ContentWidth(), gap = OfferGap * s;
             var board = new GameObject(OfferBoardName, typeof(RectTransform), typeof(LayoutElement)).GetComponent<RectTransform>();
             board.SetParent(content, false);
-            float y = OfferBoardHeader(board, width, spec.Eyebrow ?? OfferBoardEyebrow, spec.Line, spec.Silence) + gap;
+            // The Head of Household's pitches (R5): every card answers with its own answers.
+            bool pitches = spec.Cards.All(card => card != null && card.Answers != null);
+            // The pitch board's head stands closer to its cards (R5b): the larger text's stage has no line to spare.
+            float y = OfferBoardHeader(board, width, spec.Eyebrow ?? OfferBoardEyebrow, spec.Line, spec.Silence, pitches) + (pitches ? 8f * s : gap);
 
             int count = spec.Cards.Count;
             bool paged = LargestTextPages && count > 1;
@@ -153,6 +159,9 @@ namespace Gamesim.Episode
             var shown = paged ? new List<OfferBoardCard> { spec.Cards[page] } : spec.Cards.ToList();
             int across = paged ? 1 : Mathf.Clamp(Mathf.FloorToInt((width + gap) / (OfferCardLeast * s + gap)), 1, count);
             float cardWidth = Mathf.Min(OfferCardMost * s, (width - (across - 1) * gap) / across);
+            // At the largest text a pitch's page gives its one card the column's width (R5b), so its answers can stand beside its
+            // notes and the card is no taller than its page (OfferPitchFoot). An offer's page keeps the card it always had.
+            if (paged && pitches) cardWidth = width;
             for (int first = 0; first < shown.Count; first += across)
             {
                 // A row's cards share its height, the tallest's, so their answers stand on one line.
@@ -179,9 +188,10 @@ namespace Gamesim.Episode
         /// holds both, the line under them, and what answering costs under the line where it does not. What silence
         /// costs, where the spec says it (<paramref name="silence"/>), stands under what answering costs: at the
         /// line's right-hand end where both hold on the one row, as §5.1's mock has it, and under the line otherwise.
-        /// Returns its height.
+        /// The pitch board's head (<paramref name="pitches"/>, R5b), which says nothing of silence, is one row where the
+        /// eyebrow, the line and what answering costs all hold it: the line beside the eyebrow. Returns its height.
         /// </summary>
-        private float OfferBoardHeader(RectTransform board, float width, string eyebrowWords, string line, string silence)
+        private float OfferBoardHeader(RectTransform board, float width, string eyebrowWords, string line, string silence, bool pitches = false)
         {
             float s = FontScale, eyebrowBox = OfferLineBox(13), freeBox = OfferLineBox(12);
             var head = EndScreenKit.Box(OfferBoardHeaderName, board, 0f, 0f, width, 10f);
@@ -214,6 +224,15 @@ namespace Gamesim.Episode
             }
             bool quietBeside = false;
             var (said, lineHeight) = OfferLabel(head, OfferLineName, line, 13, Paper, 0f, y, width);
+            float saidWidth = said != null ? Mathf.Ceil(said.GetPreferredValues(said.text).x) + 2f : 0f;
+            if (said != null && pitches && quiet == null && beside && eyebrowWidth + saidWidth + freeWidth + 48f * s <= width)
+            {
+                EndScreenKit.Place(eyebrow.rectTransform, 0f, 0f, eyebrowWidth, eyebrowBox);
+                EndScreenKit.Place(said.rectTransform, eyebrowWidth + 24f * s, 0f, saidWidth, eyebrowBox);
+                said.textWrappingMode = TextWrappingModes.NoWrap;
+                head.sizeDelta = new Vector2(width, y);
+                return y;
+            }
             if (said != null)
             {
                 // Beside the line only where the line still holds on one row, so nothing wraps under it.
@@ -280,36 +299,49 @@ namespace Gamesim.Episode
             top += OfferText(card, OfferChipName, (words.chip ?? "").ToUpperInvariant(), 12, Accent, left, top, column, semibold, spacing: 2f);
             top += OfferText(card, OfferChipLineName, words.chipLine, 12, UiTheme.Muted, left, top, column);
 
-            float at = Mathf.Max(top, pad + photoHeight) + 8f * s;
-            at += OfferFacts(card, words, pad, at, inner) + 6f * s;
+            // A pitch's tone, situation and read start beside its face, under the chip's line, on every line there that ends by the
+            // face's foot, each whole, and go on under the face (R5b): the room beside a face is otherwise empty, and a card that
+            // stands three to a row is otherwise taller than its stage. An offer's stand under the face, as they always have.
+            bool own = entry.Answers != null;
+            var facts = OfferFactParts(card, words);
+            int besideFace = 0;
+            while (own && besideFace < facts.Parts.Count && top + 2f * s + facts.Line <= pad + photoHeight + .5f)
+            {
+                int took = OfferFactsBeside(facts, besideFace, left, top + 2f * s, column);
+                if (took == 0) break;
+                besideFace += took;
+                top += 2f * s + facts.Line;
+            }
+            // A pitch's card stands its words a little closer under the face than an offer's (R5b), for the same stage.
+            float at = Mathf.Max(top, pad + photoHeight) + (own ? 4f : 8f) * s;
+            if (besideFace < facts.Parts.Count) at += OfferFactsAt(facts, besideFace, pad, at, inner) + (own ? 4f : 6f) * s;
+            // A pitch's notes and its own four answers (R5b); an offer's, below, as they always were.
+            if (own) return (card, OfferPitchFoot(card, entry, pad, at, inner) + pad);
             if (!string.IsNullOrEmpty(words.quote))
                 at += OfferText(card, OfferQuoteName, "“" + words.quote + "”", 13, Paper, pad, at, inner, style: FontStyles.Italic) + 4f * s;
-            // A pitch's recommendation (R5), where the offers' terms stand; an offer has none.
-            if (!string.IsNullOrEmpty(words.recommends)) at += OfferText(card, OfferRecommendsName, words.recommends, 12, Paper, pad, at, inner) + 2f * s;
-            if (!string.IsNullOrEmpty(words.terms) || entry.Answers == null) at += OfferText(card, OfferTermsName, words.terms, 12, Paper, pad, at, inner) + 2f * s;
+            at += OfferText(card, OfferTermsName, words.terms, 12, Paper, pad, at, inner) + 2f * s;
             at += OfferText(card, OfferStakesName, words.stakes, 12, UiTheme.Muted, pad, at, inner) + 2f * s;
             if (!string.IsNullOrEmpty(words.answers)) at += OfferText(card, OfferAnswersName, words.answers, 12, UiTheme.Muted, pad, at, inner) + 2f * s;
             if (!string.IsNullOrEmpty(words.history)) at += OfferText(card, OfferHistoryName, words.history, 12, UiTheme.Heading, pad, at, inner) + 2f * s;
-            // What feeling a pitcher out learned, once the player has (R5).
-            if (!string.IsNullOrEmpty(words.assessment)) at += OfferText(card, OfferAssessmentName, words.assessment, 12, UiTheme.Heading, pad, at, inner) + 2f * s;
             if (!string.IsNullOrEmpty(entry.LockReason)) at += OfferText(card, OfferLockName, entry.LockReason, 12, UiTheme.Warning, pad, at, inner) + 2f * s;
             at += 8f * s;
-            at += entry.Answers != null ? OfferOwnAnswers(card, entry, pad, inner) : OfferAnswers(card, state, entry, pad, inner);
+            at += OfferAnswers(card, state, entry, pad, inner);
             return (card, at + pad);
         }
 
         /// <summary>
-        /// The tone, the situation word and the player's read, one after another across the card and on as many
-        /// lines as the width needs: the tone as its mark in a disc of its colour and its word, never the colour
-        /// alone (§5.4). Returns the height they take.
+        /// The tone, the situation word and the player's read, built and measured but not yet placed (<see cref="OfferFactsAt"/>
+        /// and <see cref="OfferFactsBeside"/> place them): the tone as its mark in a disc of its colour and its word, never the
+        /// colour alone (§5.4). Each part's width is its own; under the face a situation or a read is held to the width it is
+        /// placed in (<c>Clamped</c>), as it always was.
         /// </summary>
-        private float OfferFacts(RectTransform card, RoleOffers.Card words, float x0, float y0, float width)
+        private (List<(RectTransform Rect, float Width, float Height, bool Clamped)> Parts, float Line) OfferFactParts(RectTransform card, RoleOffers.Card words)
         {
-            float s = FontScale, gap = 14f * s, disc = 18f * s, toneBox = OfferLineBox(13), factBox = OfferLineBox(12);
+            float s = FontScale, disc = 18f * s, toneBox = OfferLineBox(13), factBox = OfferLineBox(12);
             float line = Mathf.Max(disc, toneBox);
             var tint = ToneTint(words.tone);
             var semibold = UiTheme.Font(UiTheme.Weight.SemiBold);
-            var parts = new List<(RectTransform Rect, float Width, float Height)>();
+            var parts = new List<(RectTransform Rect, float Width, float Height, bool Clamped)>();
 
             var tone = EndScreenKit.Box(OfferToneName, card, 0f, 0f, 10f, line);
             var ground = new GameObject(OfferToneMarkName, typeof(RectTransform), typeof(Image)).GetComponent<Image>();
@@ -330,7 +362,7 @@ namespace Gamesim.Episode
             said.textWrappingMode = TextWrappingModes.NoWrap;
             float saidWidth = Mathf.Ceil(said.GetPreferredValues(said.text).x) + 2f;
             EndScreenKit.Place(said.rectTransform, disc + 6f * s, (line - toneBox) * .5f, saidWidth, toneBox);
-            parts.Add((tone, disc + 6f * s + saidWidth, line));
+            parts.Add((tone, disc + 6f * s + saidWidth, line, false));
 
             foreach (var (name, text, colour) in new[] { (OfferSituationName, words.situation, Paper), (OfferReadName, words.read, UiTheme.Muted) })
             {
@@ -339,15 +371,43 @@ namespace Gamesim.Episode
                 label.name = name;
                 label.textWrappingMode = TextWrappingModes.NoWrap;
                 label.overflowMode = TextOverflowModes.Ellipsis;
-                parts.Add((label.rectTransform, Mathf.Min(width, Mathf.Ceil(label.GetPreferredValues(label.text).x) + 2f), factBox));
+                parts.Add((label.rectTransform, Mathf.Ceil(label.GetPreferredValues(label.text).x) + 2f, factBox, true));
             }
+            return (parts, line);
+        }
 
-            float x = 0f, y = 0f;
-            foreach (var part in parts)
+        /// <summary>
+        /// Places on one line at (<paramref name="x0"/>, <paramref name="y0"/>) as many of the facts from <paramref name="from"/> on
+        /// as hold <paramref name="width"/> whole, in their order (R5b: beside a pitch's face). Returns how many it placed: none
+        /// where the first does not hold.
+        /// </summary>
+        private int OfferFactsBeside((List<(RectTransform Rect, float Width, float Height, bool Clamped)> Parts, float Line) facts, int from, float x0, float y0, float width)
+        {
+            float gap = 14f * FontScale, x = 0f;
+            int placed = 0;
+            for (int i = from; i < facts.Parts.Count && x + facts.Parts[i].Width <= width; i++, placed++)
             {
-                if (x > 0f && x + part.Width > width) { x = 0f; y += line + 2f * s; }
-                EndScreenKit.Place(part.Rect, x0 + x, y0 + y + (line - part.Height) * .5f, Mathf.Min(part.Width, width), part.Height);
+                var part = facts.Parts[i];
+                EndScreenKit.Place(part.Rect, x0 + x, y0 + (facts.Line - part.Height) * .5f, part.Width, part.Height);
                 x += part.Width + gap;
+            }
+            return placed;
+        }
+
+        /// <summary>
+        /// Places the tone, the situation word and the player's read - those from <paramref name="from"/> on - at
+        /// (<paramref name="x0"/>, <paramref name="y0"/>), one after another across <paramref name="width"/> and on as many lines
+        /// as it needs. Returns the height they take.
+        /// </summary>
+        private float OfferFactsAt((List<(RectTransform Rect, float Width, float Height, bool Clamped)> Parts, float Line) facts, int from, float x0, float y0, float width)
+        {
+            float s = FontScale, gap = 14f * s, line = facts.Line, x = 0f, y = 0f;
+            foreach (var part in facts.Parts.Skip(from))
+            {
+                float each = part.Clamped ? Mathf.Min(width, part.Width) : part.Width;
+                if (x > 0f && x + each > width) { x = 0f; y += line + 2f * s; }
+                EndScreenKit.Place(part.Rect, x0 + x, y0 + y + (line - part.Height) * .5f, Mathf.Min(each, width), part.Height);
+                x += each + gap;
             }
             return y + line;
         }
@@ -378,29 +438,208 @@ namespace Gamesim.Episode
 
         /// <summary>
         /// A card's own answers at its foot (R5): each under its own caption, unchanged - locked where the answer is - two to a
-        /// row where the widest caption fits half the card and one to a row where it does not, in their order, the first at the
-        /// top. Each is registered as that card's answer, so a rebuild puts the keyboard back on the same card's, and given what
-        /// a screen reader says for it. Returns the height they take.
+        /// row at every text size, in their order, the first at the top (R5b): the pitch's "Promise safety" beside "Hear them
+        /// without committing", over "Turn them down" beside "Feel them out (free)". The captions share one size and take two
+        /// lines at most, as <see cref="OfferAnswerGrid"/> lays them; the columns split the card evenly where both hold their
+        /// captions so, and otherwise each takes what its widest caption needs and half of what is left. A row is as tall as its
+        /// tallest caption needs, and never shorter than a one-line answer. Each is registered as that card's answer, so a
+        /// rebuild puts the keyboard back on the same card's, and given what a screen reader says for it. Built by
+        /// <see cref="OfferOwnAnswerButtons"/>; returns the height they take.
         /// </summary>
-        private float OfferOwnAnswers(RectTransform card, OfferBoardCard entry, float x, float width)
+        private float OfferOwnAnswers(OfferBoardCard entry, OwnAnswers built, float x, float width)
         {
-            float s = FontScale, height = OfferAnswerHeight * s, gap = 8f * s;
-            var answers = entry.Answers.Where(answer => answer != null && !string.IsNullOrEmpty(answer.Caption)).ToList();
+            // The rows stand a little closer than the columns: a pitch card is otherwise taller than the larger text's stage.
+            float s = FontScale, least = OfferAnswerHeight * s, gap = 8f * s, rowGap = 6f * s, inset = OfferGridInset * s, margin = 4f * s;
+            var answers = built.Answers;
             if (answers.Count == 0) return 0f;
-            var buttons = answers.Select(answer => answer.Locked ? OfferLockedAnswer(card, answer.Caption) : OfferAnswer(card, answer.Caption, answer.Choose)).ToList();
-            float need = buttons.Select((button, i) => OfferCaptionWidth(button) + (answers[i].Locked ? OfferLockRoom : 0f)).Max()
-                + 2f * OfferAnswerInset * s;
-            int across = answers.Count > 1 && 2f * need + gap <= width ? 2 : 1;
-            float each = across == 2 ? (width - gap) * .5f : width;
-            int rows = (answers.Count + across - 1) / across;
+            var buttons = built.Buttons;
+            var captions = built.Captions;
+            var rooms = built.Rooms;
+            var grid = OfferAnswerGrid(captions, rooms, width, gap, inset);
+            int across = answers.Count > 1 ? 2 : 1, rows = (answers.Count + across - 1) / across;
+            float line = Mathf.Ceil(grid.Size * 1.3f);
+            var heights = Enumerable.Repeat(least, rows).ToArray();
+            var wraps = new bool[buttons.Count];
+            for (int i = 0; i < buttons.Count; i++)
+            {
+                float each = i % across == 0 ? grid.Left : grid.Right;
+                // A caption takes a second line only where its one would not hold in its box.
+                wraps[i] = grid.Lines[i].One * grid.Size + 2f + rooms[i] + 2f * inset > each + .5f;
+                if (wraps[i]) heights[i / across] = Mathf.Max(heights[i / across], 2f * line + 2f * margin);
+            }
             for (int i = 0; i < buttons.Count; i++)
             {
                 int row = i / across, column = i % across;
-                OfferAnswerAt(buttons[i], x + column * (each + gap), (rows - 1 - row) * (height + gap), each, height);
+                float each = column == 0 ? grid.Left : grid.Right, fromFoot = 0f;
+                for (int below = row + 1; below < rows; below++) fromFoot += heights[below] + rowGap;
+                OfferAnswerAt(buttons[i], x + (column == 0 ? 0f : grid.Left + gap), fromFoot, each, heights[row]);
+                var caption = captions[i];
+                if (caption != null)
+                {
+                    caption.enableAutoSizing = false;
+                    caption.fontSize = grid.Size;
+                    AutoSize(caption, 12);
+                    caption.textWrappingMode = wraps[i] ? TextWrappingModes.Normal : TextWrappingModes.NoWrap;
+                    Stretch(caption.rectTransform, inset, margin, inset + rooms[i], margin);
+                }
                 boardAnswers[buttons[i]] = (entry.Card.offerId, answers[i].Key);
                 offerReadings[buttons[i]] = RoleOffers.Spoken(answers[i].Caption, entry.Card, entry.LockReason);
             }
-            return rows * height + (rows - 1) * gap;
+            return heights.Sum() + (rows - 1) * rowGap;
+        }
+
+        /// <summary>A card's own answers, built and not yet placed (R5b): the answers with a caption, their buttons, the buttons' captions and each one's lock room.</summary>
+        private sealed class OwnAnswers
+        {
+            public List<OfferBoardAnswer> Answers;
+            public List<Button> Buttons;
+            public List<TMP_Text> Captions;
+            public List<float> Rooms;
+        }
+
+        /// <summary>Builds a card's own answers under their captions, unchanged - a locked one as the board draws a locked yes - for <see cref="OfferOwnAnswers"/> to place.</summary>
+        private OwnAnswers OfferOwnAnswerButtons(RectTransform card, OfferBoardCard entry)
+        {
+            float inset = OfferGridInset * FontScale;
+            var answers = entry.Answers.Where(answer => answer != null && !string.IsNullOrEmpty(answer.Caption)).ToList();
+            var buttons = answers.Select(answer => answer.Locked ? OfferLockedAnswer(card, answer.Caption, inset) : OfferAnswer(card, answer.Caption, answer.Choose)).ToList();
+            return new OwnAnswers
+            {
+                Answers = answers, Buttons = buttons,
+                Captions = buttons.Select(button => button.GetComponentInChildren<TMP_Text>()).ToList(),
+                // Room for a lock only where one was drawn: the icon set may have none, and a room kept for nothing would shrink
+                // this card's type below its neighbours' and push its caption off the button's middle.
+                Rooms = answers.Select((answer, i) => answer.Locked && buttons[i].transform.Find(LockMarkName) != null ? OfferLockRoom : 0f).ToList(),
+            };
+        }
+
+        /// <summary>
+        /// The width a card's own answers take two to a row, in two columns of one width, with every caption on one line at its
+        /// full size, 16 at the text's scale (R5b): twice the widest caption's with its lock's room and its margins, and the gap
+        /// between them.
+        /// </summary>
+        private float OfferOneLineGridWidth(OwnAnswers built)
+        {
+            float s = FontScale, inset = OfferGridInset * s, widest = 0f;
+            int top = Mathf.RoundToInt(16f * s), count = built.Captions.Count;
+            for (int i = 0; i < count; i++)
+                widest = Mathf.Max(widest, OfferCaptionLines(built.Captions[i], top).One * top + 2f + built.Rooms[i] + 2f * inset);
+            return count > 1 ? 2f * widest + 8f * s : widest;
+        }
+
+        /// <summary>
+        /// A pitch card's notes and its own answers, from <paramref name="at"/> down (R5b): the quote, the recommendation, the stakes,
+        /// what a no and silence cost, the history, what feeling them out learned and any lock, each a label of its own in that
+        /// order, then the four answers two to a row at the card's foot (<see cref="OfferOwnAnswers"/>). Where the card is wide
+        /// enough for its answers to stand beside its notes - every caption on one line at its full size, and the stakes and what
+        /// a no and silence cost each on one line in what is left, as on the largest text's one card, which takes its page's width
+        /// - the answers stand at the foot to the right of the notes, and the card is as tall as the taller of the two; otherwise
+        /// the notes stand over the answers, as they did. Returns the height down to the answers' foot.
+        /// </summary>
+        private float OfferPitchFoot(RectTransform card, OfferBoardCard entry, float x, float at, float width)
+        {
+            float s = FontScale, gap = OfferGap * s;
+            var words = entry.Card;
+            var notes = new List<(TMP_Text Label, float After)>();
+            void Note(string name, string text, Color colour, int size = 12, FontStyles style = FontStyles.Normal, float after = 2f)
+            {
+                var (label, _) = OfferLabel(card, name, text, size, colour, x, at, width, style: style);
+                if (label != null) notes.Add((label, after * s));
+            }
+            Note(OfferQuoteName, string.IsNullOrEmpty(words.quote) ? null : "“" + words.quote + "”", Paper, 13, FontStyles.Italic, 4f);
+            Note(OfferRecommendsName, words.recommends, Paper);
+            Note(OfferTermsName, words.terms, Paper);
+            Note(OfferStakesName, words.stakes, UiTheme.Muted);
+            Note(OfferAnswersName, words.answers, UiTheme.Muted);
+            Note(OfferHistoryName, words.history, UiTheme.Heading);
+            // What feeling a pitcher out learned, once the player has (R5).
+            Note(OfferAssessmentName, words.assessment, UiTheme.Heading);
+            Note(OfferLockName, entry.LockReason, UiTheme.Warning);
+
+            var answers = OfferOwnAnswerButtons(card, entry);
+            float grid = OfferOneLineGridWidth(answers), room = width - grid - gap;
+            // The two notes the card's every answer is weighed by must each hold one line beside the answers.
+            float widest = notes.Where(note => note.Label.name == OfferStakesName || note.Label.name == OfferAnswersName)
+                .Select(note => Mathf.Ceil(note.Label.GetPreferredValues(note.Label.text).x) + 2f).DefaultIfEmpty(0f).Max();
+            bool beside = answers.Buttons.Count > 0 && notes.Count > 0 && room >= widest;
+            float column = beside ? room : width, y = at;
+            foreach (var (label, after) in notes)
+            {
+                EndScreenKit.Place(label.rectTransform, x, y, column, 10f);
+                y += EndScreenKit.Wrapped(label, column) + after;
+            }
+            if (!beside) return y + 4f * s + OfferOwnAnswers(entry, answers, x, width);
+            float notesHeight = y - at - notes[notes.Count - 1].After;
+            return at + Mathf.Max(notesHeight, OfferOwnAnswers(entry, answers, x + width - grid, grid));
+        }
+
+        /// <summary>The side margin of a caption in a card's grid of its own answers (R5b), at the resting text size.</summary>
+        private const float OfferGridInset = 8f;
+
+        /// <summary>
+        /// How a card's own answers stand two to a row in <paramref name="width"/> (R5b): their captions' one size, each caption's
+        /// width on one line and on its best two at that size's every unit (<see cref="OfferAnswerGrid"/>'s Lines, so a width is
+        /// <c>Lines[i].One * Size</c>), and the two columns' widths - <paramref name="rooms"/> is what stands beside a caption in
+        /// its box, a lock's room. The size is 16 at the text's scale where every caption holds one line. Where they do not, the
+        /// widest caption wraps first, and the size comes down toward 14 at the scale before the next widest wraps, so a caption
+        /// keeps its one line over a larger type; with every caption on two lines and still too wide, the size goes on down to 12.
+        /// Two lines are the most a caption takes, and the columns split the width evenly where both hold their captions so.
+        /// </summary>
+        private (int Size, float Left, float Right, (float One, float Two)[] Lines) OfferAnswerGrid(IList<TMP_Text> captions, IList<float> rooms,
+            float width, float gap, float inset)
+        {
+            int count = captions.Count, top = Mathf.RoundToInt(16f * FontScale);
+            int comfortable = Mathf.Min(top, Mathf.RoundToInt(14f * FontScale)), floor = Mathf.Min(top, 12);
+            // Each caption measured once at the top size, per unit of size: type's width goes as its size.
+            var lines = captions.Select(caption => OfferCaptionLines(caption, top)).ToArray();
+            // The widest first: the order the captions wrap in, the same at every size.
+            var order = Enumerable.Range(0, count).OrderByDescending(i => lines[i].One + rooms[i] / top).ThenBy(i => i).ToList();
+            float half = count > 1 ? (width - gap) * .5f : width;
+            (bool Fits, float Left, float Right) Fit(int size, int wrapped)
+            {
+                float left = 0f, right = 0f;
+                for (int i = 0; i < count; i++)
+                {
+                    bool wraps = order.IndexOf(i) < wrapped;
+                    float need = (wraps ? lines[i].Two : lines[i].One) * size + 2f + rooms[i] + 2f * inset;
+                    if (count == 1 || i % 2 == 0) left = Mathf.Max(left, need); else right = Mathf.Max(right, need);
+                }
+                if (count == 1) return (left <= width + .5f, width, 0f);
+                if (left + right + gap > width + .5f) return (false, 0f, 0f);
+                if (left <= half + .5f && right <= half + .5f) return (true, half, half);
+                float spare = (width - gap - left - right) * .5f;
+                return (true, left + spare, right + spare);
+            }
+            for (int wrapped = 0; wrapped <= count; wrapped++)
+                for (int size = top; size >= comfortable; size--)
+                {
+                    var fit = Fit(size, wrapped);
+                    if (fit.Fits) return (size, fit.Left, fit.Right, lines);
+                }
+            for (int size = comfortable - 1; size >= floor; size--)
+            {
+                var fit = Fit(size, count);
+                if (fit.Fits) return (size, fit.Left, fit.Right, lines);
+            }
+            // Nothing holds even at 12: even columns, and the captions' own auto-size takes them the rest of the way.
+            return (floor, half, half, lines);
+        }
+
+        /// <summary>
+        /// A caption's width per unit of type at <paramref name="size"/>: on one line, and on the best two its words break into -
+        /// the narrower of each break's two lines' wider - which is its one line where it has one word.
+        /// </summary>
+        private static (float One, float Two) OfferCaptionLines(TMP_Text caption, int size)
+        {
+            if (caption == null || size <= 0) return (0f, 0f);
+            caption.enableAutoSizing = false;
+            caption.fontSize = size;
+            string words = caption.text ?? "";
+            float Width(string part) => caption.GetPreferredValues(part).x;
+            float one = Width(words), two = one;
+            for (int at = words.IndexOf(' '); at > 0; at = words.IndexOf(' ', at + 1))
+                two = Mathf.Min(two, Mathf.Max(Width(words.Substring(0, at).TrimEnd()), Width(words.Substring(at + 1).TrimStart())));
+            return (one / size, two / size);
         }
 
         /// <summary>An answer: the panel's interactive chrome, named and captioned by <paramref name="caption"/>, centred at its own size.</summary>
@@ -421,11 +660,12 @@ namespace Gamesim.Episode
         /// A yes that cannot be given, drawn as the house draws a locked option (<see cref="LockedAction"/>): a
         /// resting edge, the caption muted, a lock where the icon set has one, and a disabled button named and
         /// captioned as the open one, so a test and a screen reader find it by the same words and learn it is
-        /// unavailable. It commits nothing even if something presses it.
+        /// unavailable. It commits nothing even if something presses it. <paramref name="side"/> is the caption's and the
+        /// lock's margin from the edges where it is not an answer's own (a card's grid of its own answers, R5b).
         /// </summary>
-        private Button OfferLockedAnswer(RectTransform card, string caption)
+        private Button OfferLockedAnswer(RectTransform card, string caption, float side = -1f)
         {
-            float s = FontScale, inset = OfferAnswerInset * s, lockSide = 16f * s;
+            float s = FontScale, inset = side >= 0f ? side : OfferAnswerInset * s, lockSide = 16f * s;
             var rect = Chrome(caption, card, UiTheme.Emphasis.Resting);
             var button = rect.gameObject.AddComponent<Button>();
             button.interactable = false;

@@ -2,7 +2,7 @@
 
 Design proposal v2, 2026-10-22. This version answers the feasibility and experience reviews; Appendix A lists what changed and what was rejected.
 
-**Approved by the owner, 2026-10-22.** Asked how to proceed with the fifteen decisions in §6.3, the owner chose "Adopt all, start building": every recommended answer stands as written. Building starts from main after PR #28's merge (eb092c67), on the frozen schema 29. Slices R0 to R6 land one at a time, each built, run in full on the suites it touches, independently reviewed, committed and pushed before the next (handoffs/OWNER-DECISIONS-2026-10-22.md §3). Enrolment in shipped seasons (R7) waits for the B9 balance work, and the holder's offer (R8) for B9 and a second sign-off, as §6 says.
+**Approved by the owner, 2026-10-22.** Asked how to proceed with the fifteen decisions in §6.3, the owner chose "Adopt all, start building": every recommended answer stands as written. Building starts from main after PR #28's merge (eb092c67), on the frozen schema 29. Slices R0 to R6 land one at a time, each built, run in full on the suites it touches, independently reviewed, committed and pushed before the next (handoffs/OWNER-DECISIONS-2026-10-22.md §3). On 2026-10-23 the owner allowed stacked qualification: a full set on the newest committed head qualifies every step beneath it, with at most three steps unqualified at once (same file, §3's amendment). Enrolment in shipped seasons (R7) waits for the B9 balance work, and the holder's offer (R8) for B9 and a second sign-off, as §6 says.
 
 **Evidence base**
 - Unity: D:/GamesimConsolidation at 6909f2bc, branch pc/v2-lifecycle-20261022. Code paths are relative to `Assets/Gamesim/`; story code is under `Simulation/Story/`. Documents at the repository root are named bare (`BALANCE_BASELINE.md`). Tests were read at git HEAD, because another lane is editing `Tests/EditMode`.
@@ -659,7 +659,7 @@ Quiet tears comes at most once a week, so the net is about **+0.05 to +0.1 story
 
 ### 6.1 Slices
 
-Each slice is built, fully tested, independently reviewed and landed on its own, and committed and pushed before the next begins.
+Each slice is built, fully tested, independently reviewed and landed on its own. Since 2026-10-23 (the owner's amendment to OWNER-DECISIONS §3) a slice may build on a committed slice not yet qualified, and one full set on the newest head qualifies every slice beneath it, with at most three unqualified at once.
 - R0 to R6 change nothing in shipping seasons: `Current` stays at Threads until R7.
 - "Subset" means `dotnet test Tools/SimulationTests`.
 - EditMode and PlayMode run on a D: copy, alone; PlayMode captures run on a screen of their own.

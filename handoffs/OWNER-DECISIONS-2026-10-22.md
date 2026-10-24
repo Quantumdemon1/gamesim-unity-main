@@ -38,6 +38,22 @@ permission documents. A step is qualified by a plain full run of the suites it t
 independent review. Each qualified step is committed and pushed before the next begins; nothing
 waits in an uncommitted tree.
 
+**Amended by the owner, 2026-10-23: stacked qualification.** Asked whether qualifying role-moments
+slices in pairs (R1 with R2, R4 with R5) and building on a step not yet qualified could stand, the
+owner chose to allow it, in this form:
+- A step is committed when its review's fixes land, and the next step may build on that commit.
+- Whenever the Unity lane is free it qualifies the newest committed head, which qualifies every step
+  beneath it. At most three steps may stand unqualified at once, counting the one being built.
+- A green set pushes every step it qualified; the PR says which set qualified which steps.
+- A red set is resolved by a fix on top and a new set over the whole stack.
+- A step that adds a persisted field is qualified alone.
+- Nothing waits in an uncommitted tree; the full runs and the one independent review per step are
+  unchanged.
+The same day the owner approved a pilot that changes no rule: the runner re-runs a failed case on the
+spot and pauses on an unexplained one, the UMA suite and the step's new tests run first, and a smoke
+run of PlayMode without UMA is shadowed beside its full run for two sets before any change to that
+run is brought back to the owner.
+
 ## 4. The save gate before schema 29 and role/AP (delegated)
 
 - The owner's 15 Oct old-save acceptance (committed fixture saves per save version and rules

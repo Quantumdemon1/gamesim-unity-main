@@ -293,6 +293,8 @@
     <Compile Include="$(EditMode)RoleKeepTheBlockTests.cs" />
     <!-- R5: the Head of Household's pitch board - the cap by the player's reading, any order, a promise paid when kept, the honest no. -->
     <Compile Include="$(EditMode)RolePitchBoardTests.cs" />
+    <!-- R6: the story moments - the pawn conversation in any week, quiet tears, the pool's "nothing" offset and the storyline ceiling. -->
+    <Compile Include="$(EditMode)RoleStoryMomentsTests.cs" />
     <Compile Include="$(EditMode)NominationStepsTests.cs" />
     <Compile Include="$(EditMode)ThreatAssessmentTests.cs" />
     <Compile Include="$(EditMode)WebDiaryParityTests.cs" />

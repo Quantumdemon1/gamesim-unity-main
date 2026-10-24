@@ -48,6 +48,14 @@ namespace Gamesim.Simulation
     /// standing, which draws the season's reciprocal roll - only a season at Roles reaches it - and the story effect
     /// router (<see cref="ApplyStoryEffect"/>) for a grudge, its easing and a favour. Filing the asks stays
     /// roll-free (<see cref="NpcDeals.AskForTheVeto"/>), and nothing new is stored: the tones are read again.</para>
+    ///
+    /// <para><b>The pawn conversation</b> (ROLE-MOMENTS-PLAN R6, §3.4a). A houseguest Head of Household who names the
+    /// player as one of the week's first two nominees may call them up and say they are only a pawn, in any week, on a
+    /// keyed coin, once per Head of Household a season, and only where the card can be put to them there and then
+    /// (<see cref="PawnTalkComes"/>). In a backdoor week the backdoor's own "Just a Pawn" plays it, its plan going quiet
+    /// when the coin says no; in any other week the pawn conversation does (<see cref="StartThePawnTalk"/>), with the
+    /// same card, so the card is a claim and never a tell. Neither holds the Game lane (<see cref="LeavesTheLaneOpen"/>).
+    /// It is stored as a storyline like any other, and the coin is drawn from the story's keyed stream, never the season's.</para>
     /// </summary>
     public sealed partial class EpisodeEngine
     {
@@ -191,5 +199,90 @@ namespace Gamesim.Simulation
         /// <summary>A rider, through the story effect router as a story option's consequence goes: no cycle, nobody's reception, no backfire.</summary>
         private static void Rider(EpisodeState s, string kind, string fromId, string toId, double amount, string type, string key) =>
             ApplyStoryEffect(s, new StoryEffectState { kind = kind, fromId = fromId, toId = toId, amount = amount, type = type }, null, null, key, 0, false);
+
+        // ---------------------------------------------------------------- the pawn conversation (R6, §3.4a)
+
+        /// <summary>The pawn conversation's arc: "Just a Pawn" in a week the Head of Household plans no backdoor (R6).</summary>
+        internal const string PawnTalkArc = "the-pawn-talk";
+
+        /// <summary>
+        /// The opener both variants share, and the route it takes to the card: the backdoor's plan and the pawn conversation's
+        /// record the same step, so <see cref="PawnTalkHad"/> reads either.
+        /// </summary>
+        internal const string PawnPlanBeat = "plan", PawnRoute = "pawn";
+
+        /// <summary>The coin's chance (§3.4a; tunable - §5.5 names 0.33 as the first saving if the season runs long).</summary>
+        public const double PawnTalkChance = 0.5;
+
+        /// <summary>
+        /// The fewest houseguests the pawn conversation comes with: the backdoor's own floor of six (<see cref="NpcBackdoorTarget"/>),
+        /// so the card comes only where a plan could stand behind it. Below that it dilutes no tell, and buys little: at the final
+        /// four there is one voter and no tie-break for a safety pact to weigh in. Its own constant (the owner's call to tune), so
+        /// moving it never moves an old season's backdoor.
+        /// </summary>
+        public const int PawnTalkMinActive = 6;
+
+        /// <summary>
+        /// Whether the pawn conversation comes this week (R6, §3.4a): under the role moments, once the names are said, when a
+        /// houseguest Head of Household has named the player as one of the week's first two nominees, first or second, with six or
+        /// more in the house (<see cref="PawnTalkMinActive"/>) and room to put the card to the player there and then
+        /// (<see cref="PawnTalkAirtime"/>), on the week's keyed coin (<c>w{week}:pawn-talk:{hohId}</c>, the story's stream, never the
+        /// season's), and at most once per Head of Household a season, whichever variant came before. The backdoor's plan reads it,
+        /// and goes quiet on a no; in any other week <see cref="StartThePawnTalk"/> does. Never whether a plan stands behind it.
+        /// </summary>
+        public static bool PawnTalkComes(EpisodeState s)
+        {
+            if (!RolesOn(s) || !s.nominees.Contains(s.playerId) || s.Active.Count() < PawnTalkMinActive || !PawnTalkAirtime(s)) return false;
+            var hoh = StoryPeople.NpcHoh(s);
+            return hoh != null && !PawnTalkHad(s, hoh.id) && StoryRandom.Chance(s, "w" + s.week + ":pawn-talk:" + hoh.id, PawnTalkChance);
+        }
+
+        /// <summary>
+        /// Whether Just a Pawn can be put to the player as the names are said (R6's review): past the story's first ask
+        /// (<see cref="BeforeTheFirstAsk"/>), with no other ask open and one of the week's two left - the airtime its card is drawn
+        /// on a moment later, so a conversation that comes is always on the table at once. Its words are "before the veto players
+        /// are drawn" and it closes at the veto competition, but a card put off never asks its pulse again: one put off in week one
+        /// surfaced after the eviction, and one put off with the week's asks spent at the next week's nominations, naming last
+        /// week's Head of Household, writing its promises a week late. So it does not wait. Without the room nobody is called up, in
+        /// either variant alike, nothing is recorded, and that Head of Household may call the player up in another week.
+        /// </summary>
+        private static bool PawnTalkAirtime(EpisodeState s) => !BeforeTheFirstAsk(s) && AirtimeFor(s, StorySurfaces.Conversation);
+
+        /// <summary>
+        /// Whether a running cycle leaves its lane to the house's other arcs (R6's review): under the role moments the backdoor and
+        /// the pawn conversation, which the rules start whatever the lane holds, run beside the Game lane rather than in it. Each
+        /// runs to eviction night, so in the very weeks the player is on the block it kept out Call in the Favour - the favour R3's
+        /// Desperate rider and quiet tears' "Sit with them a while" leave owed - and Final Plea; and both alike, so what else may come
+        /// never says which one is running. Every other season's backdoor holds the lane as it always did.
+        /// </summary>
+        private static bool LeavesTheLaneOpen(EpisodeState s, StorylineState cycle) =>
+            (cycle.templateId == BackdoorArc || cycle.templateId == PawnTalkArc) && RolesOn(s);
+
+        /// <summary>
+        /// Whether this Head of Household has had the pawn conversation with the player this season: a backdoor's plan or a pawn
+        /// conversation, with them in the chair, that took the route to the card - started, which under the role moments puts the
+        /// card to the player at once (an older week's backdoor card may have waited, or never found airtime). Read from the
+        /// season's storylines, which nothing prunes, so nothing new is stored.
+        /// </summary>
+        public static bool PawnTalkHad(EpisodeState s, string hohId) =>
+            hohId != null && s.storylines.Any(x => (x.templateId == BackdoorArc || x.templateId == PawnTalkArc)
+                && x.cast.Any(r => r.role == "HOH" && r.contestantId == hohId)
+                && x.path.Any(p => p.beatId == PawnPlanBeat && p.optionId == PawnRoute));
+
+        /// <summary>
+        /// The pawn conversation in a week the Head of Household plans no backdoor (R6, §3.4a): started where the backdoor starts,
+        /// as the names are said, so its card is put to the player at once, as the backdoor's Just a Pawn is under the role moments
+        /// (<see cref="PawnTalkAirtime"/>) - and rule-driven, like the backdoor, neither drawn from the pool nor held behind the Game
+        /// lane, nor holding it (<see cref="LeavesTheLaneOpen"/>). In a backdoor week the plan has already taken the same coin, and
+        /// on a yes recorded the conversation (<see cref="PawnTalkHad"/>), so this never starts a second. Nothing without the role
+        /// moments.
+        /// </summary>
+        private static void StartThePawnTalk(EpisodeState s)
+        {
+            if (!PawnTalkComes(s)) return;
+            var arc = StoryCatalog.Find(PawnTalkArc);
+            if (arc == null) return;
+            StartCycle(s, arc, StoryCatalog.Bind().With("HOH", s.hohId), StoryAnchors.NomsSet);
+        }
     }
 }

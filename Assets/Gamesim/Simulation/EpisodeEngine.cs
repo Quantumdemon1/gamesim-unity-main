@@ -383,6 +383,9 @@ namespace Gamesim.Simulation
                         var weakest = ranked.Where(c => c.id != backdoor).Take(2).ToArray();
                         Nominate(s, weakest[0].id, weakest[1].id);
                         if (backdoor != null) StartBackdoor(s, backdoor, weakest.Select(w => w.id).ToList());
+                        // Under the role moments a Head of Household who named the player may call them up as a pawn in
+                        // any week (R6, §3.4a); in a backdoor week the plan above has taken the coin already.
+                        StartThePawnTalk(s);
                         StoryAnchor(s, StoryAnchors.NomsSet);
                         return;
                     }

@@ -19,6 +19,7 @@ namespace Gamesim.Simulation
             yield return HohRoomVisit();
             yield return TheAccounting();
             yield return TheBackdoor();
+            yield return ThePawnTalk();
             yield return TheInviteList();
             yield return Confronted();
             yield return CampaignPitch();
@@ -217,13 +218,17 @@ namespace Gamesim.Simulation
             {
                 new BeatTemplate
                 {
-                    id = "plan", surface = StorySurfaces.Npc, title = "The Plan",
+                    id = EpisodeEngine.PawnPlanBeat, surface = StorySurfaces.Npc, title = "The Plan",
+                    // Under the role moments the pawn is called up as in any other week - on the pawn conversation's coin,
+                    // once per Head of Household a season, and only with room to ask at once - and the plan goes quiet on a
+                    // no (R6, §3.4a): its card never waits past its moment.
                     npc = (c, y, options) => y.Role("HOH") == null ? "yours"
-                        : y.Role("PAWN1") == null || y.Role("PAWN2") == null ? "pawn" : "quiet",
+                        : (y.Role("PAWN1") == null || y.Role("PAWN2") == null)
+                          && (!EpisodeEngine.RolesOn(c.state) || EpisodeEngine.PawnTalkComes(c.state)) ? EpisodeEngine.PawnRoute : "quiet",
                     options = new[]
                     {
                         Opt("yours", "Your plan", null, null).Then("your-pawns"),
-                        Opt("pawn", "You are a pawn", null, null).Then("just-a-pawn"),
+                        Opt(EpisodeEngine.PawnRoute, "You are a pawn", null, null).Then("just-a-pawn"),
                         Opt("quiet", "A quiet plan", null, null).Then(Waits),
                     },
                 },
@@ -245,25 +250,7 @@ namespace Gamesim.Simulation
                             "You said nothing, and both pawns are sweating.", View("PAWN1", Player, -4), View("PAWN2", Player, -4)).Then(Waits),
                     },
                 },
-                new BeatTemplate
-                {
-                    id = "just-a-pawn", surface = StorySurfaces.Conversation, venue = HohRoom, closes = StoryAnchors.VetoWon,
-                    title = "Just a Pawn", summary = "The Head of Household says you are only a pawn.",
-                    text = "{HOH} calls you up to the HoH room before the veto players are drawn. \"You're not the target. You're a pawn. I need you to trust me on this.\"",
-                    lapse = "say-nothing",
-                    options = new[]
-                    {
-                        Opt("take-word", "Take their word for it", Low, Warm, "Accept {HOH}'s promise of safety.",
-                            "{HOH} promised you are safe. You will find out on Thursday what that is worth.", Promise("HOH", Player, PromiseKind.Safety)).Then(Waits),
-                        Opt("in-writing", "Get it in writing", Medium, Calculated, "Make {HOH} commit: a safety pact, not a promise.",
-                            "{HOH} agreed to a safety pact. If {HOH} breaks it, the whole house, and the jury, will know.",
-                            Deal("HOH", Player, DealKind.SafetyAgreement)).LockUnless("Analytical").Then(Waits),
-                        Opt("call-it", "Call it what it is", High, Bold, "\"If I'm a pawn, who's the target?\"",
-                            "{HOH} finally admitted it: {TARGET} is the one {HOH} wants out.", View("HOH", Player, -6))
-                            .LockUnless("Confrontational").Then("warn-target"),
-                        Lapse("say-nothing", "Say nothing", "Nod and go back downstairs.", "You nodded and went back downstairs.").Then(Waits),
-                    },
-                },
+                JustAPawn(backdoor: true),
                 new BeatTemplate
                 {
                     id = "warn-target", anchor = StoryAnchors.Conversation, talkRole = "TARGET", surface = StorySurfaces.Conversation,
@@ -341,6 +328,103 @@ namespace Gamesim.Simulation
                             .Then("end:done"),
                     },
                 },
+            },
+        };
+
+        // ---------------------------------------------------------------- the-pawn-talk (ROLE-MOMENTS-PLAN R6, §3.4a)
+
+        /// <summary>
+        /// "Just a Pawn": the Head of Household calls the player up and says they are only a pawn. The backdoor's own beat, and
+        /// under the role moments the pawn conversation's too - the same title, text, captions, venue and closing anchor, so the
+        /// card is a claim and never says whether a plan stands behind it. Only what calling it out reveals differs, and only
+        /// once it is paid for: the target in a backdoor week, that there is no one else in any other.
+        ///
+        /// <para>Under the role moments two answers ask more (§3.4a), each a twin under the shipped caption, shown by
+        /// <see cref="OptionTemplate.showIf"/> so a season without them draws exactly the shipped four: taking their word gives
+        /// the player's own word of safety back to them through next week, and +3; getting it in writing costs the window's
+        /// seat, as a word with the person who decides does (IMPLEMENTATION-LOG, 2026-09-27). Both variants draw the twins
+        /// alike, under the same option ids, and the backdoor's card shows the Head of Household alone, as the pawn
+        /// conversation's does (<see cref="BeatTemplate.showsOnly"/>).</para>
+        /// </summary>
+        private static BeatTemplate JustAPawn(bool backdoor) => new BeatTemplate
+        {
+            id = "just-a-pawn", surface = StorySurfaces.Conversation, venue = HohRoom, closes = StoryAnchors.VetoWon,
+            title = "Just a Pawn", summary = "The Head of Household says you are only a pawn.",
+            text = "{HOH} calls you up to the HoH room before the veto players are drawn. \"You're not the target. You're a pawn. I need you to trust me on this.\"",
+            lapse = "say-nothing",
+            showsOnly = backdoor ? (c, y) => EpisodeEngine.RolesOn(c.state) ? new[] { "HOH" } : null : (Func<StoryContext, StoryCycle, string[]>)null,
+            options = backdoor
+                ? new[]
+                {
+                    Opt("take-word", "Take their word for it", Low, Warm, "Accept {HOH}'s promise of safety.",
+                        "{HOH} promised you are safe. You will find out on Thursday what that is worth.", Promise("HOH", Player, PromiseKind.Safety))
+                        .ShowIf(WithoutRoles).Then(Waits),
+                    TakeTheirWord(),
+                    Opt("in-writing", "Get it in writing", Medium, Calculated, "Make {HOH} commit: a safety pact, not a promise.",
+                        "{HOH} agreed to a safety pact. If {HOH} breaks it, the whole house, and the jury, will know.",
+                        Deal("HOH", Player, DealKind.SafetyAgreement)).LockUnless("Analytical").ShowIf(WithoutRoles).Then(Waits),
+                    InWriting(),
+                    Opt("call-it", "Call it what it is", High, Bold, "\"If I'm a pawn, who's the target?\"",
+                        "{HOH} finally admitted it: {TARGET} is the one {HOH} wants out.", View("HOH", Player, -6))
+                        .LockUnless("Confrontational").Then("warn-target"),
+                    SayNothing(),
+                }
+                : new[]
+                {
+                    TakeTheirWord(),
+                    InWriting(),
+                    // The truth about whether a plan exists, earned and paid for - never which nominee they would rather lose.
+                    Opt("call-it", "Call it what it is", High, Bold, "\"If I'm a pawn, who's the target?\"",
+                        "{HOH} stopped pretending. \"There's no one else. One of you two is going home.\"", View("HOH", Player, -6))
+                        .LockUnless("Confrontational").Then(Waits),
+                    SayNothing(),
+                },
+        };
+
+        private static bool WithoutRoles(StoryContext c, StoryCycle y) => !EpisodeEngine.RolesOn(c.state);
+        private static bool UnderRoles(StoryContext c, StoryCycle y) => EpisodeEngine.RolesOn(c.state);
+
+        /// <summary>Taking their word, under the role moments: their promise of safety, the player's own back to them through next week, and +3.</summary>
+        private static OptionTemplate TakeTheirWord() =>
+            Opt("take-word-roles", "Take their word for it", Low, Warm, "Accept {HOH}'s promise of safety, and promise {HOH.them} yours through next week.",
+                "{HOH} promised you are safe, and you promised {HOH.them} the same through next week. You will find out on Thursday what that is worth.",
+                Promise("HOH", Player, PromiseKind.Safety), Promise(Player, "HOH", PromiseKind.Safety), Move(Player, "HOH", 3))
+                .ShowIf(UnderRoles).Then(Waits);
+
+        /// <summary>Getting it in writing, under the role moments: the shipped safety pact, for the window's seat.</summary>
+        private static OptionTemplate InWriting() =>
+            Opt("in-writing-roles", "Get it in writing", Medium, Calculated, "Make {HOH} commit: a safety pact, not a promise.",
+                "{HOH} agreed to a safety pact. If {HOH} breaks it, the whole house, and the jury, will know.",
+                Deal("HOH", Player, DealKind.SafetyAgreement)).LockUnless("Analytical").CostsAction().ShowIf(UnderRoles).Then(Waits);
+
+        private static OptionTemplate SayNothing() =>
+            Lapse("say-nothing", "Say nothing", "Nod and go back downstairs.", "You nodded and went back downstairs.").Then(Waits);
+
+        /// <summary>
+        /// The pawn conversation (R6, §3.4a): a houseguest Head of Household who named the player as a nominee calls them up and
+        /// says they are only a pawn, in a week they plan no backdoor - the backdoor's own "Just a Pawn" (<see cref="JustAPawn"/>),
+        /// with its opener and its card, its arc's name and eyebrow, and its run to eviction night, so nothing the player sees
+        /// says which variant it is. Started by the rules once the names are said, on the coin the backdoor's plan takes
+        /// (<see cref="EpisodeEngine.PawnTalkComes"/>), never from the pool.
+        /// </summary>
+        private static ArcTemplate ThePawnTalk() => new ArcTemplate
+        {
+            id = EpisodeEngine.PawnTalkArc, lane = StoryLanes.Game, eyebrow = "The Backdoor", title = "The Backdoor",
+            origin = "native: ROLE-MOMENTS-PLAN §3.4a, the backdoor's Just a Pawn in any week a houseguest Head of Household nominates you",
+            rulesVersion = StoryRules.Roles, oncePerHeadliner = false, cooldownWeeks = 1, pairCooldownWeeks = 1,
+            roles = new[] { Optional("HOH") },
+            cast = c => null,
+            // It runs to the week's eviction night, as the backdoor does, so the storylines the player sees running never tell them apart.
+            pulse = (c, y) => c.anchor == StoryAnchors.EvictionNight ? "end:done" : null,
+            beats = new[]
+            {
+                new BeatTemplate
+                {
+                    id = EpisodeEngine.PawnPlanBeat, surface = StorySurfaces.Npc, title = "The Plan",
+                    npc = (c, y, options) => EpisodeEngine.PawnRoute,
+                    options = new[] { Opt(EpisodeEngine.PawnRoute, "You are a pawn", null, null).Then("just-a-pawn") },
+                },
+                JustAPawn(backdoor: false),
             },
         };
 

@@ -173,6 +173,14 @@ namespace Gamesim.Simulation
         /// <summary>For an NPC-held beat: the option they take (drawn from the story stream by the caller's weights).</summary>
         public Func<StoryContext, StoryCycle, OptionTemplate[], string> npc;
 
+        /// <summary>
+        /// The parts the drawn card names, frames and stages, when they are fewer than the cycle's whole cast: read as the beat
+        /// is drawn; null, the default, for the whole cast. Under the role moments the backdoor's "Just a Pawn" shows the Head
+        /// of Household alone, as the pawn conversation's does (ROLE-MOMENTS-PLAN R6, §3.4a): a card that put the real target
+        /// and the other pawn beside them would say a plan stood behind it. The cycle keeps its whole cast.
+        /// </summary>
+        public Func<StoryContext, StoryCycle, string[]> showsOnly;
+
         public OptionTemplate Option(string optionId) => options.FirstOrDefault(o => o.id == optionId);
         public bool NpcHeld => surface == StorySurfaces.Npc;
     }

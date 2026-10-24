@@ -22,6 +22,7 @@ namespace Gamesim.Simulation
             yield return TensionsRise();
             yield return VetoDilemma();
             yield return TheFallout();
+            yield return QuietTears();
             yield return FinalPleas();
             yield return LastMinuteCampaign();
             yield return HouseDrama();
@@ -132,7 +133,7 @@ namespace Gamesim.Simulation
 
         // ---------------------------------------------------------------- the fallout
 
-        private static ArcTemplate TheFallout() => PhaseMoment("the-fallout", "The Fallout",
+        private static ArcTemplate TheFallout() => ReplacedUnderRoles(PhaseMoment("the-fallout", "The Fallout",
             "web:src/systems/phase-event-system.ts:259-285 (post-VetoMeeting, 0.5)", StoryAnchors.BlockSet, 0.5,
             new[] { Role("NOMINEE") },
             c =>
@@ -154,7 +155,106 @@ namespace Gamesim.Simulation
                     Opt("distance", "Keep your distance", Low, Calculated, "Getting close to a nominee is dangerous.",
                         "You watched from across the room and did not go over. Self-preservation isn't pretty, but it works."),
                 },
-            });
+            }));
+
+        /// <summary>
+        /// A web phase beat quiet tears takes the place of under the role moments (ROLE-MOMENTS-PLAN §3.5, R6): it weighs nothing
+        /// there - a rules-gated weight, as Ride or Die's at the block is - and what it always weighed in every other season.
+        /// </summary>
+        private static ArcTemplate ReplacedUnderRoles(ArcTemplate arc)
+        {
+            var weight = arc.weight;
+            arc.weight = (c, b) => EpisodeEngine.RolesOn(c.state) ? 0 : weight(c, b);
+            return arc;
+        }
+
+        // ---------------------------------------------------------------- quiet tears (ROLE-MOMENTS-PLAN R6, §3.5)
+
+        /// <summary>
+        /// Quiet tears (screenshot 2): a nominee the player finds crying in the living room, answerable at the nominations, the veto
+        /// competition and the block, and at most once a week across all three - a moment rests a week. Only under the role moments,
+        /// where it takes The Fallout's place and weight. Never over the veto board (one interruption at a time), and never in week one
+        /// before its eviction night, by the story's first-ask rule. Who: a nominee - first named or the replacement - and not the
+        /// Head of Household nor the veto's holder, by a keyed pick weighted to the warm, at least one each (Manipulative and
+        /// Confrontational make Warm negative). No mood gate: a nomination leaves almost every nominee Angry.
+        ///
+        /// <para>Comforting them is warm and has a witness: when a houseguest Head of Household put them up, a keyed even chance
+        /// that the Head of Household notices. A Head of Household player who put them there cannot comfort them - they can only
+        /// say it was not personal, on a check. Sitting with them a while, at the block, costs the window's seat and leaves a
+        /// favour owed. Pretending not to see is free. The memory they keep names nobody, as a nomination's does.</para>
+        /// </summary>
+        private static ArcTemplate QuietTears()
+        {
+            var arc = PhaseMoment("quiet-tears", "Quiet Tears",
+                "web:src/systems/ambient-event-system.ts:94-221 (the crying moment, its choices' effects lost there); answerable at the role points of the week native (ROLE-MOMENTS-PLAN §3.5)",
+                StoryAnchors.NomsSet, 0.5,
+                new[] { Role("SUBJECT") },
+                c =>
+                {
+                    // Not while the player holds the veto with offers waiting on it: one interruption at a time.
+                    if (c.anchor == StoryAnchors.VetoWon && RoleOffers.BoardAsks(c.state).Count > 0) return null;
+                    var subject = Tearful(c);
+                    return subject == null ? null : Bind().With("SUBJECT", subject.id).Headlining(subject.id);
+                },
+                new BeatTemplate
+                {
+                    id = "tears", surface = StorySurfaces.Scene, venue = Living,
+                    title = "Quiet Tears", summary = "A nominee is crying quietly in the living room.",
+                    text = "You spot {SUBJECT} crying quietly in the living room.",
+                    lapse = "pretend",
+                    options = new[]
+                    {
+                        Opt("comfort", "Comfort them", Low, Warm, "Sit with them. The Head of Household may notice.",
+                            "You sat down beside {SUBJECT} until the worst of it passed.", Move(Player, "SUBJECT", 5))
+                            .Extra(Comforted).ShowIf((c, y) => !PlayerIsHoh(c)),
+                        Opt("not-personal", "Tell them it wasn't personal", Medium, Candid, "Tell {SUBJECT} it was the game, not them. It could clear the air, or land badly.",
+                            "{SUBJECT} heard you out, and some of the hurt went out of it.", Ease("SUBJECT", Player, 25), Move(Player, "SUBJECT", 2))
+                            .Checked(50, "SUBJECT", "\"Not personal? It's my game on the line.\" {SUBJECT} turned away.", Move(Player, "SUBJECT", -3))
+                            .ShowIf((c, y) => PlayerIsHoh(c)),
+                        Opt("sit-a-while", "Sit with them a while", Low, Warm, "Stay as long as it takes. They will owe you one, and the Head of Household may notice.",
+                            "You stayed with {SUBJECT} until it passed. {SUBJECT} owes you one, and both of you know it.",
+                            Move(Player, "SUBJECT", 5), Hook(Player, "SUBJECT"))
+                            .Extra(Comforted).CostsAction().ShowIf((c, y) => c.anchor == StoryAnchors.BlockSet && !PlayerIsHoh(c)),
+                        Lapse("pretend", "Pretend you didn't see", "Leave {SUBJECT} be.", "You walked past and left {SUBJECT} be."),
+                    },
+                },
+                rulesVersion: StoryRules.Roles);
+            arc.startAnchors = new[] { StoryAnchors.NomsSet, StoryAnchors.VetoWon, StoryAnchors.BlockSet };
+            return arc;
+        }
+
+        /// <summary>
+        /// Who is crying: a nominee who is a houseguest - first named or the replacement - and neither the Head of Household nor the
+        /// one who has just won the veto, who holds their own way off the block (R6's review), by a keyed pick weighted by
+        /// max(1, Warm + 1), in id order. Null with nobody else on the block but the player.
+        /// </summary>
+        private static ContestantState Tearful(StoryContext c)
+        {
+            var nominees = NpcNominees(c).Where(x => x.id != c.state.hohId && x.id != c.state.vetoHolderId)
+                .OrderBy(x => x.id, StringComparer.Ordinal).ToList();
+            if (nominees.Count == 0) return null;
+            double Weight(ContestantState x) => Math.Max(1, Personality.Of(x).Warm + 1);
+            double roll = StoryRandom.Unit(c.state, "w" + c.state.week + ":" + c.anchor + ":cast:tears") * nominees.Sum(x => Weight(x));
+            foreach (var nominee in nominees)
+            {
+                if (roll < Weight(nominee)) return nominee;
+                roll -= Weight(nominee);
+            }
+            return nominees[nominees.Count - 1];
+        }
+
+        /// <summary>
+        /// What comforting them leaves, worked out as the card is drawn: the memory they keep - "Comforted me in week 3.", which names
+        /// nobody, as a nomination's does, since a ballot counts a memory that names a nominee - and, when a houseguest Head of
+        /// Household put them up, the keyed even chance (<c>w{week}:tears-seen:{subjectId}</c>) that the Head of Household noticed: -3.
+        /// </summary>
+        private static IEnumerable<Fx> Comforted(StoryContext c, StoryCycle y)
+        {
+            yield return Memory("SUBJECT", Player, "Comforted me in week " + c.state.week + ".");
+            string hoh = NpcHoh(c), subject = y.Role("SUBJECT");
+            if (hoh != null && subject != null && StoryRandom.Chance(c.state, "w" + c.state.week + ":tears-seen:" + subject, 0.5))
+                yield return View("@" + hoh, Player, -3);
+        }
 
         // ---------------------------------------------------------------- final pleas
 

@@ -509,8 +509,9 @@ namespace Gamesim.Tests.EditMode
                 string about = s.Active.Where(c => !c.isPlayer && c.id != npc.id).Select(c => c.id).FirstOrDefault();
                 // The ten kinds the recorded build knew, in its order: C9's final three deal, the commitment
                 // rules' own kind (by its spelling, so the file still compiles against that build), is no
-                // reader a season without the rules has, and its odds are not digested.
-                foreach (var kind in DealKind.All.Where(k => k != "final_three"))
+                // reader a season without the rules has, and its odds are not digested; nor are R4's
+                // keep-the-block deal's, the role moments' own, which no player can propose.
+                foreach (var kind in DealKind.All.Where(k => k != "final_three" && k != "veto_hold"))
                 {
                     string aboutId = kind == DealKind.VoteSave || kind == DealKind.VoteEvict ? s.nominees.FirstOrDefault(id => id != npc.id) ?? about : about;
                     var known = KnownOdds.Deal(s, npc.id, kind, aboutId);

@@ -77,6 +77,16 @@ namespace Gamesim.Simulation
         /// </summary>
         public const string OfferPrefix = "deal-ask-", VetoAskPrefix = "deal-veto-";
 
+        /// <summary>
+        /// How the id of the Head of Household's keep-the-block ask begins (<see cref="AskToKeepTheBlock"/>,
+        /// ROLE-MOMENTS-PLAN R4): a question put to the player, like the two above, and the role moments' own -
+        /// validation refuses one in a season without them, as it refuses the kind.
+        /// </summary>
+        public const string KeepTheBlockPrefix = "deal-keep-";
+
+        /// <summary>Whether a deal's id is a keep-the-block ask's (<see cref="KeepTheBlockPrefix"/>).</summary>
+        public static bool IsKeepTheBlockId(string id) => id != null && id.StartsWith(KeepTheBlockPrefix, StringComparison.Ordinal);
+
         // ---------------------------------------------------------------- reading the room
 
         /// <summary>
@@ -364,12 +374,17 @@ namespace Gamesim.Simulation
         /// answer can still change something, and says so where the player will see it. Outside the
         /// weekly round, so it does not use up the week's three offers; roll-free, like the rest of
         /// this file.</para>
+        ///
+        /// <para>Under the role moments (ROLE-MOMENTS-PLAN R3, §3.2) nobody asks a holder who is on the block
+        /// too: their ask is a trap, since a holder who saves themselves breaks it at -45. Before them they
+        /// asked, as they always had.</para>
         /// </summary>
         public static void AskForTheVeto(EpisodeState state)
         {
             if (!StrategyRules.Apply(state) || state.week < state.dealRulesStartWeek) return;
             if (state.vetoHolderId != state.playerId || state.vetoResolved || !StrategyRules.VetoCanBeUsed(state)) return;
             if (state.Find(state.playerId)?.status != ContestantStatus.Active) return;
+            if (EpisodeEngine.RolesOn(state) && state.nominees.Contains(state.playerId)) return;
             var asking = state.nominees.Select(state.Find)
                 .Where(npc => npc != null && !npc.isPlayer && npc.status == ContestantStatus.Active
                               && Adjusted(state, npc.id, state.playerId) >= DealingFloor
@@ -399,6 +414,55 @@ namespace Gamesim.Simulation
         }
 
         /// <summary>
+        /// The Head of Household asking the player to leave the block alone (ROLE-MOMENTS-PLAN R4, §3.3): "Don't Use the
+        /// Veto", a keep-the-block deal (<see cref="DealKind.VetoHold"/>) filed right after the nominees' asks
+        /// (<see cref="AskForTheVeto"/>), under the role moments only.
+        ///
+        /// <para>Only a counter-offer, never a standalone bonus: the Head of Household asks when every one of these holds -
+        /// they are a houseguest, not the player; the player holds the veto, is not on the block, and the veto can still be
+        /// used; they read the player warmly enough to bargain at all (<see cref="DealingFloor"/>, on the adjusted warmth
+        /// every other ask reads); at least one nominee's ask is on the board this week, so the player has a choice to
+        /// make between them; the Head of Household plans no backdoor - a backdooring Head of Household wants the veto used
+        /// - read through the story's own plan (<see cref="EpisodeEngine.BackdoorPlanned"/>), not the player's backdoor
+        /// target, which only the player's own plan writes; nothing of theirs was filed this week already; and the season
+        /// has room for another deal (<see cref="DealCeiling"/>).</para>
+        ///
+        /// <para>The row is the ask the player answers: proposed by the Head of Household to the player, binding this
+        /// week, High at stake (<see cref="DealKind.DefaultTrust"/>). Its price - a final two at the endgame, where none
+        /// already binds them, and otherwise nothing - is the row's to say (<see cref="Negotiation.AskPrice"/>), and is
+        /// struck with the yes. Roll-free, like the rest of this file: which asks arrive is a function of the state.</para>
+        /// </summary>
+        public static void AskToKeepTheBlock(EpisodeState state)
+        {
+            if (!EpisodeEngine.RolesOn(state)) return;
+            var hoh = state.Find(state.hohId);
+            if (hoh == null || hoh.isPlayer || hoh.status != ContestantStatus.Active) return;
+            if (state.vetoHolderId != state.playerId || state.vetoResolved || state.nominees.Contains(state.playerId)) return;
+            if (state.Find(state.playerId)?.status != ContestantStatus.Active || !StrategyRules.VetoCanBeUsed(state)) return;
+            if (Adjusted(state, hoh.id, state.playerId) < DealingFloor) return;
+            if (!RoleOffers.VetoAsks(state).Any(ask => state.nominees.Contains(ask.proposerId))) return;
+            if (EpisodeEngine.BackdoorPlanned(state) != null) return;
+            // At most one a week: any of this week's, answered or not, counts.
+            if (state.deals.Any(d => IsKeepTheBlockId(d.id) && d.week == state.week)) return;
+            if (UnifiedVoteStore.DealCount(state) >= DealCeiling) return;
+            state.deals.Add(new DealState
+            {
+                id = KeepTheBlockPrefix + state.nextSequence,
+                type = DealKind.VetoHold,
+                proposerId = hoh.id,
+                recipientId = state.playerId,
+                status = DealStatus.Proposed,
+                week = state.week,
+                expiresWeek = state.week,
+                trustImpact = DealKind.DefaultTrust(DealKind.VetoHold),
+            });
+            RelationshipLedger.Record(state, hoh.id, state.playerId, "deal_proposed", 0,
+                hoh.name + " put a " + DealKind.Title(DealKind.VetoHold).ToLowerInvariant() + " to you.");
+            EpisodeEngine.Log(state, "deal", hoh.name + " is Head of Household and wants your word that the nominations stay as they are.",
+                state.playerId, hoh.id);
+        }
+
+        /// <summary>
         /// How loudly an offer asks to be heard first. The reference's <c>URGENCY_SCORES</c>.
         ///
         /// <para>Somebody on the block begging for the veto is not competing on warmth with somebody
@@ -410,6 +474,9 @@ namespace Gamesim.Simulation
             switch (kind)
             {
                 case DealKind.VetoUse: return 200;
+                // The role moments' own (R4): lapsing at the veto decision with the nominees' asks, and heard after them,
+                // as the board shows it - the Head of Household's counter-offer to theirs.
+                case DealKind.VetoHold: return 190;
                 case DealKind.VoteSave: return 150;
                 case DealKind.VoteEvict: return 140;
                 case DealKind.VoteTogether: return 100;

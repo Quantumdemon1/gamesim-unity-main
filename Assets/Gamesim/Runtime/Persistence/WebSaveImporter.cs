@@ -204,6 +204,10 @@ namespace Gamesim.Persistence
             // The story system switches on at the same boundary the voting blocs use: the week after
             // the import, so the week the web save was in plays under the rules it was written under.
             EpisodeEngine.EnableStory(result, checked(week + 1));
+            // Under story rules 9 (threads) whatever a new season gets, as the schema-16 step pins it. EnableStory
+            // gives StoryRules.Current, and once a later milestone is enrolled its templates would cast in an
+            // import, which has no strategy rules or economy: Roles is held to 9 here (ROLE-MOMENTS-PLAN decision 14).
+            result.story.rulesVersion = StoryRules.Threads;
             EpisodeEngine.EnableRead(result, checked(week + 1));
             EpisodeEngine.EnableLevers(result, checked(week + 1));
             EpisodeEngine.EnableWeek(result, checked(week + 1));

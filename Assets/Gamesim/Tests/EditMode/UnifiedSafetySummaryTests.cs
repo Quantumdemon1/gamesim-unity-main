@@ -618,7 +618,8 @@ namespace Gamesim.Tests.EditMode
         {
             var s = ContentCatalog.Create(17); s.week = 3; s.phase = EpisodePhase.Nomination; s.hohId = s.playerId;
             s.strategyRulesStartWeek = 1; s.commitmentRulesStartWeek = 1; s.unifiedCommitmentRulesVersion = 1;
-            s.agencyRulesStartWeek = 0; s.story.rulesStartWeek = 1; s.story.rulesVersion = StoryRules.Current;
+            // Threads, not Current, so these keep their rules when a later milestone is enrolled (ROLE-MOMENTS-PLAN §4.3).
+            s.agencyRulesStartWeek = 0; s.story.rulesStartWeek = 1; s.story.rulesVersion = StoryRules.Threads;
             return s;
         }
 

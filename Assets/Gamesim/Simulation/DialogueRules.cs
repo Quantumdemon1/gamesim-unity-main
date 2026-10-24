@@ -444,8 +444,9 @@ namespace Gamesim.Simulation
             return StrategyRules.CanLobby(s, npcId, LobbyAsk.Vote, s.playerId, out error);
         }
 
+        // Threads or any later story milestone: enrolling one (ROLE-MOMENTS-PLAN R7) must not switch the pilot off.
         private static bool Prerequisites(EpisodeState s) => s.unifiedCommitmentRulesVersion == 2 && s.unifiedHearingRulesVersion == 1
-            && s.economyRulesVersion == 1 && s.story != null && s.story.rulesVersion == StoryRules.Threads
+            && s.economyRulesVersion == 1 && s.story != null && s.story.rulesVersion >= StoryRules.Threads
             && s.readRulesStartWeek == 1 && s.leverRulesStartWeek == 1 && s.weekRulesStartWeek == 1
             && s.strategyRulesStartWeek == 1 && s.commitmentRulesStartWeek == 1 && s.agencyRulesStartWeek == 1
             && s.allWeekRulesStartWeek == 1 && s.dealRulesStartWeek == 1 && s.storyRulesStartWeek == 1

@@ -233,6 +233,20 @@ namespace Gamesim.Tests.EditMode
             Reject(s, "active-from-week-one");
         }
 
+        /// <summary>
+        /// Threads or any later story milestone (ROLE-MOMENTS-PLAN R0): enrolling Roles must not switch the pilot
+        /// off for good. An earlier milestone still refuses ("story-version" above).
+        /// </summary>
+        [TestCase(StoryRules.Threads)] [TestCase(StoryRules.Roles)]
+        public void ThePilotHoldsAtThreadsAndAtALaterStoryMilestone(int version)
+        {
+            foreach (var s in new[] { Empty(), Witness("active-case") })
+            {
+                s.story.rulesVersion = version;
+                Accept(s);
+            }
+        }
+
         [TestCase("content", "identity")] [TestCase("occasion", "identity")]
         [TestCase("future-start", "identity")] [TestCase("player-speaker", "identity")]
         [TestCase("entry", "entry receipt")] [TestCase("grant", "entry receipt")]

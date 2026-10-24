@@ -116,7 +116,8 @@ namespace Gamesim.Simulation
             bool Owns(string id) => incidents.Any(i => i.OwnerId == id && i.ActorId == finalistId && i.WrongedId == jurorId);
             foreach (var deal in CommitmentReferences.RawDeals(state).Where(d => Between(d.proposerId, d.recipientId, jurorId, finalistId)))
             {
-                if (deal.status == DealStatus.Fulfilled) score += 20 * DealTrust.Weight(deal.trustImpact);
+                // A kept deal weighs what keeping it weighs: its trust, and a keep-the-block deal Low (ROLE-MOMENTS-PLAN R4).
+                if (deal.status == DealStatus.Fulfilled) score += 20 * DealResolution.KeptWeight(deal);
                 else if (deal.status == DealStatus.Broken)
                 {
                     if (Breaches.CountsAgainst(state, deal, finalistId) && (!UnifiedVoteHistory.ByIncident(state, deal) || Owns(deal.id)))

@@ -84,6 +84,8 @@ namespace Gamesim.Simulation
                 case DealKind.InformationSharing: return 10;
                 // The port's own kind (C9): a safety pact's weight, since it binds the same act until the final three.
                 case DealKind.FinalThree: return 35;
+                // The rest weigh nothing, the role moments' keep-the-block deal (R4) among them: it binds the holder,
+                // never the Head of Household's own nominating - the replacement they name included.
                 default: return 0;
             }
         }

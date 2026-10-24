@@ -16,7 +16,8 @@ namespace Gamesim.Episode
             {
                 if (this == null || !isActiveAndEnabled || !IsPanelOpen || challengeActive
                     || !ReferenceEquals(replyCardView, view) || generation != loadGeneration
-                    || !IsCurrentDiaryRevision(state) || ReplyCards.Pending(projected)?.id != cardId) return;
+                    // The card waiting first, as always; under the role moments any pitch on the board (R5).
+                    || !IsCurrentDiaryRevision(state) || !HoHPitches.Answerable(projected, cardId)) return;
                 // Consume before the durable command. A refused write needs a new deliberate press
                 // on the newly rendered view, not a retry from a retained old callback.
                 replyCardView = null;

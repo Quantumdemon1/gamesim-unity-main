@@ -257,13 +257,20 @@ namespace Gamesim.Simulation
         /// (<see cref="VetoPrice"/>), or once the season holds as many deals as it may
         /// (<see cref="NpcDeals.DealCeiling"/>, validation's own bound): the ask is then put as it always
         /// was, and the yes is never refused for a price there is no room to strike.
+        ///
+        /// <para>Under the role moments the Head of Household's keep-the-block ask (ROLE-MOMENTS-PLAN R4, §3.3,
+        /// <see cref="NpcDeals.KeepTheBlockPrefix"/>) carries one too: a final two at the endgame, where none already
+        /// binds them, and otherwise nothing - never a vote, which the nominees' asks already hand out. A final two is a
+        /// plain deal in every commitment mode, so it is struck as the nominee's final two is.</para>
         /// </summary>
         public static Price AskPrice(EpisodeState s, DealState ask)
         {
-            if (!EpisodeEngine.CommitmentRulesOn(s) || ask == null || ask.type != DealKind.VetoUse || ask.recipientId != s.playerId
-                || ask.id == null || !ask.id.StartsWith(NpcDeals.VetoAskPrefix, StringComparison.Ordinal)) return null;
+            if (!EpisodeEngine.CommitmentRulesOn(s) || ask == null || ask.recipientId != s.playerId || ask.id == null) return null;
+            bool veto = ask.type == DealKind.VetoUse && ask.id.StartsWith(NpcDeals.VetoAskPrefix, StringComparison.Ordinal);
+            bool hold = ask.type == DealKind.VetoHold && NpcDeals.IsKeepTheBlockId(ask.id) && EpisodeEngine.RolesOn(s);
+            if (!veto && !hold) return null;
             if (UnifiedVoteStore.DealCount(s) >= NpcDeals.DealCeiling) return null;
-            return VetoPrice(s, ask.proposerId, null);
+            return VetoPrice(s, ask.proposerId, hold ? DealKind.FinalTwo : null);
         }
 
         /// <summary>
@@ -700,8 +707,8 @@ namespace Gamesim.Simulation
         /// under the commitment rules, with room for the two deals it strikes under the player's ceiling
         /// (<see cref="PlayerDeals.PlayerDealCeiling"/>, refused in the deal table's own words); at the veto
         /// meeting before the decision, with the veto theirs to use; a nominee on the block who is not the
-        /// player; no word on the veto given already, to them or to the other nominee (it saves one); and a
-        /// price that fits (<see cref="VetoPriceFits"/>).
+        /// player; no word on the veto given already, to them or to the other nominee (it saves one,
+        /// <see cref="VetoWordGiven"/>); and a price that fits (<see cref="VetoPriceFits"/>).
         /// </summary>
         public static string VetoPriceRefusal(EpisodeState s, string nomineeId, string kind)
         {
@@ -711,14 +718,143 @@ namespace Gamesim.Simulation
                 return "Only the veto holder can name a price, before the veto meeting decides.";
             if (string.IsNullOrEmpty(nomineeId) || nomineeId == s.playerId || !s.nominees.Contains(nomineeId))
                 return "Name a price to somebody on the block.";
-            if (s.deals.Any(d => d.type == DealKind.VetoUse && d.week == s.week && (d.status == DealStatus.Active || d.status == DealStatus.Accepted)
-                    && (d.proposerId == s.playerId || d.recipientId == s.playerId)))
-                return "You have already given your word on the veto this week, and it saves one of them.";
+            if (VetoWordGiven(s)) return VetoSavesOneRefusal;
             if (kind != DealKind.FinalTwo && kind != DealKind.VoteSave) return "That is no price for the veto.";
             if (!VetoPriceFits(s, nomineeId, kind))
                 return kind == DealKind.FinalTwo ? "It is too early in the season to be talking about the final two."
                     : "They already owe you their vote, or the house does not bargain over votes this season.";
             return null;
+        }
+
+        /// <summary>Why a second word on the veto in one week is refused: the veto saves one of them.</summary>
+        public const string VetoSavesOneRefusal = "You have already given your word on the veto this week, and it saves one of them.";
+
+        /// <summary>
+        /// Whether a deal of this kind is a word on the veto, of which the player gives one a week: a veto commitment, or
+        /// the Head of Household's keep-the-block deal (ROLE-MOMENTS-PLAN R4, §3.3), which only the role moments write -
+        /// so a yes to either locks the other, and both lapse at the veto decision. A season without the role moments
+        /// holds no keep-the-block deal, so there this is the veto commitment alone, as it always was.
+        /// </summary>
+        public static bool IsVetoWord(string kind) => kind == DealKind.VetoUse || kind == DealKind.VetoHold;
+
+        /// <summary>
+        /// Whether the player has given their word on the veto this week (<see cref="IsVetoWord"/>): a deal of this
+        /// week, standing or accepted, with the player on either side of it - a nominee's ask they took, the price
+        /// they named for it, a story's promise, the Head of Household's ask to keep the block (R4). The one test
+        /// behind the one-veto rule (ROLE-MOMENTS-PLAN R3, §3.2):
+        /// naming a price refuses on it in every season (<see cref="VetoPriceRefusal"/>), and under the role moments
+        /// a second yes to an ask (<c>EpisodeEngine.RespondToDeal</c>) and a story option that would give one (the
+        /// showmance's veto promise) do too. Read from the raw deal list, where every veto commitment lives in every
+        /// commitment mode.
+        /// </summary>
+        public static bool VetoWordGiven(EpisodeState s) =>
+            s?.deals != null && s.deals.Any(d => d != null && IsVetoWord(d.type) && d.week == s.week
+                && (d.status == DealStatus.Active || d.status == DealStatus.Accepted)
+                && (d.proposerId == s.playerId || d.recipientId == s.playerId));
+
+        // ---------------------------------------------------------------- a locked yes, in words
+
+        /// <summary>
+        /// Why an offer's yes is locked as a second word on the veto this week, in words, or null: what the rows, the offer
+        /// board and the season verification draw over a disabled yes (<c>EpisodeDirector.VetoWordLockLine</c>). A nominee's
+        /// veto ask once the player gave another nominee their word (<see cref="VetoSavesOneLine"/>), as it always was; and
+        /// under the role moments (ROLE-MOMENTS-PLAN R4), where the engine refuses any second word on the veto, a nominee's
+        /// ask once the player gave the Head of Household their word to keep the block (<see cref="BlockKeptLine"/>), and the
+        /// Head of Household's ask once the player gave a nominee theirs (<see cref="VetoGivenLine"/>).
+        /// </summary>
+        public static string VetoWordLockLine(EpisodeState s, DealState offer)
+        {
+            if (s == null || offer == null) return null;
+            if (offer.type == DealKind.VetoUse)
+            {
+                string promised = VetoPromisedTo(s, offer.proposerId);
+                if (promised != null) return VetoSavesOneLine(s, promised, offer.proposerId);
+                string kept = EpisodeEngine.RolesOn(s) ? BlockKeptFor(s) : null;
+                return kept == null ? null : BlockKeptLine(s, kept, offer.proposerId);
+            }
+            if (offer.type == DealKind.VetoHold && EpisodeEngine.RolesOn(s))
+            {
+                string promised = VetoPromisedTo(s, offer.proposerId);
+                return promised == null ? null : VetoGivenLine(s, promised, offer.proposerId);
+            }
+            return null;
+        }
+
+        /// <summary>
+        /// The nominee on this week's block the player has already given their word on the veto to, other than
+        /// <paramref name="askingId"/>, or null. Read from the player's own deals, either way round: a nominee's ask the
+        /// player took, or - under the commitment rules (C7) - a price the player named for the veto, which the player
+        /// proposed.
+        /// </summary>
+        public static string VetoPromisedTo(EpisodeState s, string askingId) =>
+            s == null ? null
+                : s.deals.Where(d => d.type == DealKind.VetoUse && d.week == s.week
+                        && (d.status == DealStatus.Active || d.status == DealStatus.Accepted))
+                    .Select(d => DealResolution.Partner(d, s.playerId))
+                    .FirstOrDefault(other => other != null && other != askingId && s.nominees.Contains(other));
+
+        /// <summary>
+        /// The Head of Household the player has given their word to keep the block this week (ROLE-MOMENTS-PLAN R4), or
+        /// null: a keep-the-block deal of this week, standing or accepted, with the player on either side of it.
+        /// </summary>
+        public static string BlockKeptFor(EpisodeState s) =>
+            s == null ? null
+                : s.deals.Where(d => d.type == DealKind.VetoHold && d.week == s.week
+                        && (d.status == DealStatus.Active || d.status == DealStatus.Accepted))
+                    .Select(d => DealResolution.Partner(d, s.playerId)).FirstOrDefault(other => other != null);
+
+        /// <summary>
+        /// Above the other nominee's locked accept, once the player has said yes to one veto ask: why it is locked, and both
+        /// ways the offer can still end. Turned down, it is the player's no; left alone, it lapses - at the veto decision from
+        /// the strategy windows, which expires every unanswered veto ask, and at the end of the week before them, as every
+        /// offer does.
+        /// </summary>
+        public static string VetoSavesOneLine(EpisodeState s, string promisedId, string askingId)
+        {
+            string promised = s?.Find(promisedId)?.name ?? "somebody";
+            string asking = FinalistRead.FirstName(s?.Find(askingId)?.name ?? "them");
+            return "The veto can only save one of them, and you have already given " + promised + " your word. Turn "
+                + asking + " down, or the offer lapses " + LapsesWhen(s) + ".";
+        }
+
+        /// <summary>
+        /// Above a nominee's locked accept once the player has given the Head of Household their word to keep the block (R4):
+        /// why, and both ways the offer can still end, in <see cref="VetoSavesOneLine"/>'s manner.
+        /// </summary>
+        public static string BlockKeptLine(EpisodeState s, string hohId, string askingId)
+        {
+            string hoh = s?.Find(hohId)?.name ?? "the Head of Household";
+            string asking = FinalistRead.FirstName(s?.Find(askingId)?.name ?? "them");
+            return "You have already given " + hoh + " your word to leave the nominations as they are. Turn "
+                + asking + " down, or the offer lapses " + LapsesWhen(s) + ".";
+        }
+
+        /// <summary>
+        /// Above the Head of Household's locked accept once the player has given a nominee their word on the veto (R4): why,
+        /// and both ways the offer can still end, in <see cref="VetoSavesOneLine"/>'s manner.
+        /// </summary>
+        public static string VetoGivenLine(EpisodeState s, string promisedId, string hohId)
+        {
+            string promised = s?.Find(promisedId)?.name ?? "somebody";
+            string hoh = FinalistRead.FirstName(s?.Find(hohId)?.name ?? "them");
+            return "You have already given " + promised + " your word on the veto. Turn " + hoh + " down, or the offer lapses "
+                + LapsesWhen(s) + ".";
+        }
+
+        /// <summary>When an unanswered word on the veto lapses: at the meeting from the strategy windows, before them at the end of the week.</summary>
+        private static string LapsesWhen(EpisodeState s) =>
+            StrategyRules.Apply(s) && !s.vetoResolved ? "at the meeting" : "at the end of the week";
+
+        /// <summary>
+        /// The Head of Household's keep-the-block ask in the rows' words (R4), with the final two it may carry at the endgame:
+        /// "Priya Shah is Head of Household and wants your word that you will not use the veto. In return, Priya Shah offers
+        /// you a final two."
+        /// </summary>
+        public static string KeepTheBlockSentence(EpisodeState s, DealState offer)
+        {
+            string price = AskPriceLine(s, offer);
+            return Name(s, offer.proposerId) + " is Head of Household and wants your word that you will not use the veto."
+                + (price == null ? "" : " " + price);
         }
 
         /// <summary>The prices this nominee could be asked for the veto right now, each a move of its own.</summary>

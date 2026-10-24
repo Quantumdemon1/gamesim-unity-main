@@ -169,7 +169,14 @@ namespace Gamesim.Simulation
                     options = new[]
                     {
                         Opt("promise-veto", "Promise to use it on them", Medium, Warm, "Tell {PARTNER} you will pull {PARTNER.them} off.",
-                            "You promised {PARTNER} the veto. The meeting will show whether you meant it.", Deal(Player, "PARTNER", DealKind.VetoUse)).Then(Waits),
+                            "You promised {PARTNER} the veto. The meeting will show whether you meant it.", Deal(Player, "PARTNER", DealKind.VetoUse))
+                            // Under the role moments the player gives one word on the veto a week (ROLE-MOMENTS-PLAN R3, §3.2):
+                            // once it is given, a promise of the veto is no option, and the engine refuses one drawn before. Nor
+                            // while the partner's own ask waits on the board, where a yes is that word: the promise would write
+                            // no deal beside the waiting ask, and the ask would lapse at its tone's cost (R3's review).
+                            .ShowIf((c, y) => !(EpisodeEngine.RolesOn(c.state) && (Negotiation.VetoWordGiven(c.state)
+                                || RoleOffers.VetoAsks(c.state).Any(ask => ask.proposerId == y.Role("PARTNER")))))
+                            .Then(Waits),
                         Lapse("undecided", "Keep your options open", "Decide in the room.", "You kept your options open.").Then(Waits),
                     },
                 },

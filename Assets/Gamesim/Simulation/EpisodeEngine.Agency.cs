@@ -139,6 +139,9 @@ namespace Gamesim.Simulation
                 // it is the week's court, and their building, holding or hunting keeps its own beat.
                 if (AllWeekOn(s)) RecordAct(s, NpcActKinds.Court, s.week + "-" + Windows.AfterHoH + "-court-" + npc.id, npc.id, hoh.id, null);
             }
+            // Under the role moments the player hears at most three of them, by their own reading of each, once every court
+            // has moved it (ROLE-MOMENTS-PLAN R5, §3.1). Every one of them still courted.
+            if (hoh.isPlayer) HoHPitches.HoldTheBoard(s);
         }
     }
 }

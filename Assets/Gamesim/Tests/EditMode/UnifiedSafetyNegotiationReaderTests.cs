@@ -467,7 +467,8 @@ namespace Gamesim.Tests.EditMode
         }
 
         private static string Other(EpisodeState s, int index = 0) => s.contestants.Where(c => c.id != s.playerId).Skip(index).First().id;
-        private static void EnableKnowledge(EpisodeState s) { s.story.rulesVersion = StoryRules.Current; s.story.rulesStartWeek = 1; }
+        // Threads, not Current, so these keep their rules when a later milestone is enrolled (ROLE-MOMENTS-PLAN §4.3).
+        private static void EnableKnowledge(EpisodeState s) { s.story.rulesVersion = StoryRules.Threads; s.story.rulesStartWeek = 1; }
 
         private static UnifiedCommitmentState Row(EpisodeState s, bool promise, string id, string maker = null, string beneficiary = null) => new UnifiedCommitmentState {
             id = id, kind = UnifiedCommitments.Safety, sourcePolicy = promise ? UnifiedCommitments.PromisePolicy : UnifiedCommitments.DealPolicy,

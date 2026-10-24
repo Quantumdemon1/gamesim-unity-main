@@ -179,6 +179,12 @@ namespace Gamesim.Simulation
                     source = Exact(current, "deal", "You " + (yes ? "accepted" : "declined") + " a " + title + " from " + npc.name + ".");
                     player = yes ? "Yes. I accept the " + title + "." : "No. I'm declining the " + title + ".";
                     response = yes ? "All right. We've agreed to those terms." : "All right. I hear your answer.";
+                    // The Head of Household's ask to keep the block (ROLE-MOMENTS-PLAN R4): said as what it asks, not by its title.
+                    if (offer.type == DealKind.VetoHold)
+                    {
+                        player = yes ? "Yes. I'll leave your nominations as they are." : "No. I can't promise you that about the veto.";
+                        response = yes ? "Good. Then we understand each other." : "All right. I hear your answer.";
+                    }
                     dramatic = true; break;
                 default: return null;
             }

@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Reflection;
 using Gamesim.Presentation;
 using UMA;
 using UMA.CharacterSystem;
@@ -32,6 +33,8 @@ namespace Gamesim.Uma
         private static readonly string[] FabricColorNames = { "Clothes", "Cloth", "Fabric", "Shirt", "Top", "Outfit" };
 
         private DynamicCharacterAvatar avatar;
+        /// <summary>The generator that last built this body, whose list of built avatars holds it (see <see cref="ForgetBuiltAvatar"/>).</summary>
+        private UMAGeneratorBase generator;
         private Color fabric;
         private Color appliedFabric;
         private bool hasApplied;
@@ -72,6 +75,9 @@ namespace Gamesim.Uma
 
         private void OnCharacterBegun(UMAData data)
         {
+            // A build begins inside the generator's own work, just after it has listed the avatar as
+            // built, so the generator in effect now is the one whose list it is on.
+            generator = data.umaGenerator;
             // Grown hair and accessories are fitted to the built mesh, and UMA otherwise hands that
             // mesh back with no copy the scan can read. Only bodies that wear them keep one.
             if (grownHair != null || (accessories != null && accessories.Count > 0)) data.markNotReadable = false;
@@ -416,8 +422,45 @@ namespace Gamesim.Uma
 
         private void OnDestroy()
         {
-            if (avatar != null) { avatar.OnCharacterUpdated -= OnCharacterUpdated; avatar.OnCharacterBegun -= OnCharacterBegun; }
+            // Not "avatar != null": an avatar destroyed before this runs compares equal to null, which
+            // left both handlers on it, and the destroyed avatar's managed shell holding this
+            // component. The event accessors touch only managed state (UMAData's OnCharacterUpdated
+            // and OnCharacterBegun remove through a UnityEvent), so they are safe on a destroyed avatar.
+            if (!ReferenceEquals(avatar, null))
+            {
+                avatar.OnCharacterUpdated -= OnCharacterUpdated;
+                avatar.OnCharacterBegun -= OnCharacterBegun;
+            }
+            ForgetBuiltAvatar(generator, avatar);
             avatar = null;
+            generator = null;
+        }
+
+        /// <summary>
+        /// Takes this body, and any other destroyed one, off the list UMA's generator keeps of every
+        /// avatar it has built. UMAGeneratorBuiltin starts with <c>#define UMA_DEBUG</c>, under which
+        /// each build adds its avatar to the public <c>umaDatasGenerated</c> and nothing removes one;
+        /// that generator lives for the session (the editor's until play stops, a player's until it
+        /// quits), so every houseguest built, dressed or rebuilt kept its destroyed avatar's managed
+        /// shell, and all it referenced, alive.
+        ///
+        /// <para>Here rather than in <see cref="GamesimUmaCast"/>: every UMA body the game makes
+        /// carries this component on its avatar's own object (see <see cref="UmaBodyProvider"/>), so
+        /// this runs once for each avatar as it goes - a change of clothes, an eviction, a rebuild -
+        /// while the cast is one per scene, goes only with it, and may go before the bodies do. This
+        /// avatar is removed by reference as well as by reading destroyed, because whether a sibling
+        /// component already reads as destroyed while its object is torn down is down to Unity's
+        /// teardown order, which it does not promise.</para>
+        ///
+        /// <para>Reached by reflection, so a UMA without the define, or the field, still compiles and
+        /// this does nothing.</para>
+        /// </summary>
+        private static void ForgetBuiltAvatar(UMAGeneratorBase generator, UMAData departing)
+        {
+            if (ReferenceEquals(generator, null)) return;
+            var field = generator.GetType().GetField("umaDatasGenerated", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+            if (!(field?.GetValue(generator) is List<UMAData> built)) return;
+            built.RemoveAll(data => data == null || ReferenceEquals(data, departing));
         }
     }
 }

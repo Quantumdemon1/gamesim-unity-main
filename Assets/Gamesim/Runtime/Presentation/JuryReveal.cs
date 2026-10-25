@@ -103,6 +103,16 @@ namespace Gamesim.Presentation
         private int majority, decidedAt = -1, shown = -1, seed;
         private CeremonyPace pace = CeremonyPace.Suspenseful;
         private float elapsed, upFor, speed = 1f;
+
+        /// <summary>
+        /// The frame the card was played in. Neither it nor the next is the card's own time, as on the
+        /// key ceremony and the live eviction: the first update's delta can be the frame before the
+        /// card was played, and the next's is the frame it was played in - the commit, the house's
+        /// render and this card's own build - before anybody had seen it. Counted, a long one spent the
+        /// fade, the finalists and even votes before the card was drawn, and made a press in flight
+        /// look read.
+        /// </summary>
+        private int playedFrame;
         private bool playing, reduced, usingPad, tied, resultShown;
         // The card's whole size with its glass, at full size, and the canvas size it was last fitted to.
         private Vector2 cardExtent, fittedTo;
@@ -185,6 +195,7 @@ namespace Gamesim.Presentation
             reduced = reducedMotion;
             elapsed = 0f;
             upFor = 0f;
+            playedFrame = Time.frameCount;
             shown = -1;
             resultShown = false;
             HoldingForDecidingVote = false;
@@ -239,9 +250,12 @@ namespace Gamesim.Presentation
         {
             if (!playing) return;
             CeremonyOverlays.Showing();
+            // The fit is the canvas's, not the card's time: it is kept from the card's first frame.
+            FitToCanvas();
+            // Nothing from before its first frame on screen is the card's time (playedFrame).
+            if (Time.frameCount - playedFrame <= 1) return;
             upFor += Time.unscaledDeltaTime;
             FollowDevice();
-            FitToCanvas();
 
             if (Dismissable && CeremonyTakeover.SpeedPressed()) SetSpeed(speed > 1f ? 1f : CeremonyPacing.SpeedUp);
             if (Dismissable && CeremonyTakeover.SkipPressed())

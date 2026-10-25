@@ -208,6 +208,23 @@ namespace Gamesim.Tests.PlayMode
         }
 
         [UnityTest]
+        public IEnumerator JuryReveal_ItsTimeStartsWhenItIsDrawn()
+        {
+            var reveal = Reveal(new[] { Alex, Casey, Alex }, Alex, reducedMotion: false);
+            InputSystem.QueueStateEvent(keyboard, new KeyboardState(Key.Enter));
+            System.Threading.Thread.Sleep(1600);
+            yield return null;
+            InputSystem.QueueStateEvent(keyboard, new KeyboardState());
+            // One frame of the card's own time, with the Enter let go: the first it counts. Any more
+            // would only spend its quick pace, which a slow frame of its own can run past.
+            yield return null;
+
+            Assert.That(reveal.IsPlaying, Is.True, "The card is still up,");
+            Assert.That(reveal.ShowingResult, Is.False, "and the Enter that landed before it was drawn has not skipped it to the winner.");
+            Assert.That(reveal.VotesShown, Is.Zero, "It is still on the finalists: no juror has been read.");
+        }
+
+        [UnityTest]
         public IEnumerator JuryReveal_ThrowsConfettiForTheWinnerUnlessMotionIsReduced()
         {
             var lively = Reveal(new[] { Alex, Casey, Alex }, Alex, reducedMotion: false);
@@ -232,6 +249,8 @@ namespace Gamesim.Tests.PlayMode
                 + 2 * CeremonyPacing.PerJuror(CeremonyPace.Quick, 3) + 2 * CeremonyPacing.DecidingBeat(CeremonyPace.Quick)
                 + CeremonyPacing.PerJuror(CeremonyPace.Quick, 3) + CeremonyPacing.WinnerHold(CeremonyPace.Quick) + CeremonyPacing.FadeOut;
             Assert.That(reveal.Duration, Is.EqualTo(expected).Within(1e-4f));
+            // The card's time starts on the frame after the one that played it, and so does this watch.
+            yield return null;
             float started = Time.realtimeSinceStartup;
             yield return Until(() => !reveal.IsPlaying, expected + 3f);
             Assert.That(reveal.IsPlaying, Is.False);
@@ -284,6 +303,9 @@ namespace Gamesim.Tests.PlayMode
 
         private IEnumerator SkipToTheResult(JuryReveal reveal)
         {
+            // Past the read-first delay. The card's time starts on the frame after the one that
+            // played it, and so does this wait.
+            yield return null;
             yield return Seconds(CeremonyPacing.FadeIn + 0.5f);
             yield return Press(Key.Enter);
             Assert.That(reveal.ShowingResult, Is.True, "Enter skips to the result.");

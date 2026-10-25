@@ -212,12 +212,12 @@ namespace Gamesim.Editor
                 if (Decal(group, "Dishwasher panel", panels + "appliance_panel_coffee.png", new Vector3(left + 1.40f, room.FloorTop + 0.78f, front - 0.012f), 0.60f, into) != null) count++;
                 if (Decal(group, "Oven panel", panels + "appliance_panel_oven.png", new Vector3(left + 4.25f, room.FloorTop + 0.72f, front - 0.012f), 0.60f, into) != null) count++;
                 // Coffee, beside the machine over the drawers.
-                if (Tin(group, "Coffee tin", panels + "coffee_label.png", 0.06f, 0.16f, new Vector3(left + 3.00f, counter, mid + 0.05f)) != null) count++;
-                if (Tin(group, "Jar", panels + "jar_label.png", 0.055f, 0.14f, new Vector3(left + 3.70f, counter, mid + 0.08f)) != null) count++;
+                if (PieceAt(group, "Coffee tin", "bb_set_coffee_tin", new Vector3(left + 3.00f, counter, mid + 0.05f), 0f) != null) count++;
+                if (PieceAt(group, "Jar", "bb_set_food_jar", new Vector3(left + 3.70f, counter, mid + 0.08f), 0f) != null) count++;
                 // The pantry, beside the toaster.
-                if (Carton(group, "Cereal", panels + "cereal_label.png", new Vector3(0.20f, 0.30f, 0.07f), new Vector3(left + 4.85f, counter, mid + 0.10f), 12f) != null) count++;
-                if (Carton(group, "Snack bag", panels + "snack_label_red.png", new Vector3(0.16f, 0.22f, 0.05f), new Vector3(left + 5.08f, counter, mid + 0.06f), -8f) != null) count++;
-                if (Carton(group, "Snack bag", panels + "snack_label_blue.png", new Vector3(0.16f, 0.22f, 0.05f), new Vector3(left + 5.50f, counter, mid + 0.02f), 20f) != null) count++;
+                if (PieceAt(group, "Cereal", "bb_set_cereal_carton", new Vector3(left + 4.85f, counter, mid + 0.10f), 12f) != null) count++;
+                if (PieceAt(group, "Snack bag", "bb_set_snack_gold", new Vector3(left + 5.08f, counter, mid + 0.06f), -8f) != null) count++;
+                if (PieceAt(group, "Snack bag", "bb_set_snack_blue", new Vector3(left + 5.50f, counter, mid + 0.02f), 20f) != null) count++;
                 // A folded authored towel on the end panel. The room-finish layer keeps the same
                 // support point, but the prop now has the thickness and folds of the set's model.
                 if (PieceAt(group, "Dish towel", "bb_set_towel", new Vector3(left + 6.15f, counter, mid), 0f) != null) count++;
@@ -427,12 +427,12 @@ namespace Gamesim.Editor
                 var letter = Finish("bb_mat_p6_decal_hoh_letter_sheet", Pack6 + "HOHRewards/hoh_letter_sheet.png", Vector2.one, Color.white, 0.2f, 0f, true, DecalGlow);
                 if (letter != null) { Quad(group, "HoH letter", letter, new Vector3(cb.min.x + 0.40f, top + 0.006f, cb.center.z + 0.08f), new Vector2(0.21f, 0.16f), Vector3.up, Quaternion.Euler(0f, -6f, 0f) * Vector3.forward); count++; }
                 if (Carton(group, "Gift box", Pack6 + "HOHRewards/gift_wrap_gold.png", new Vector3(0.22f, 0.16f, 0.16f), new Vector3(cb.max.x - 0.22f, top, cb.center.z), 15f) != null) count++;
-                if (Carton(group, "Snack bag", Pack6 + "HOHRewards/snack_bag_gold.png", new Vector3(0.14f, 0.20f, 0.05f), new Vector3(cb.max.x - 0.48f, top, cb.center.z - 0.08f), -10f) != null) count++;
-                if (Carton(group, "Snack bag", Pack6 + "HOHRewards/snack_bag_blue.png", new Vector3(0.14f, 0.20f, 0.05f), new Vector3(cb.max.x - 0.64f, top, cb.center.z + 0.04f), 25f) != null) count++;
+                if (PieceAt(group, "Snack bag", "bb_set_hoh_snack_gold", new Vector3(cb.max.x - 0.48f, top, cb.center.z - 0.08f), -10f) != null) count++;
+                if (PieceAt(group, "Snack bag", "bb_set_hoh_snack_blue", new Vector3(cb.max.x - 0.64f, top, cb.center.z + 0.04f), 25f) != null) count++;
                 if (PieceAt(group, "HoH drink", "bb_set_bottle", new Vector3(cb.max.x - 0.36f, top, cb.center.z + 0.12f), 0f) != null) count++;
                 // The mini fridge, on the floor beside the console, toward the room's middle.
                 float fridgeX = cb.max.x + 0.40f < room.Bounds.max.x - 0.5f ? cb.max.x + 0.40f : cb.min.x - 0.40f;
-                if (Carton(group, "Mini fridge", Pack6 + "GameRoom/mini_fridge_graphic.png", new Vector3(0.50f, 0.70f, 0.50f), new Vector3(fridgeX, room.FloorTop, cb.center.z), 0f) != null) count++;
+                if (PieceAt(group, "Mini fridge", "bb_set_mini_fridge", new Vector3(fridgeX, room.FloorTop, cb.center.z), 0f) != null) count++;
             }
 
             // The HoH neon by the door, on the divider's south segment.
@@ -528,7 +528,7 @@ namespace Gamesim.Editor
                 if (bar != null)
                 {
                     var bb = Measure(bar.gameObject);
-                    if (Carton(group, "Mini fridge", Pack6 + "GameRoom/mini_fridge_graphic.png", new Vector3(0.50f, 0.70f, 0.50f),
+                    if (PieceAt(group, "Mini fridge", "bb_set_mini_fridge",
                         new Vector3(bb.center.x, room.FloorTop, bb.max.z + 0.45f), 0f) != null) count++;
                 }
             }
@@ -550,9 +550,9 @@ namespace Gamesim.Editor
             {
                 var tb = Measure(table.gameObject);
                 float top = tb.max.y;
-                var boxes = new[] { "boardgame_strategy", "boardgame_alliance", "cardgame_social" };
+                var boxes = new[] { "bb_set_game_strategy", "bb_set_game_alliance", "bb_set_game_social" };
                 for (int i = 0; i < boxes.Length; i++)
-                    if (Carton(group, "Game box", Pack6 + "GameRoom/" + boxes[i] + ".png", new Vector3(0.30f, 0.05f, 0.20f),
+                    if (PieceAt(group, "Game box", boxes[i],
                         new Vector3(tb.center.x - 0.12f + i * 0.01f, top + i * 0.05f, tb.center.z + 0.04f - i * 0.015f), -8f + i * 9f) != null) count++;
                 var centre = new Vector2(tb.center.x, tb.center.z);
                 if (sofa != null) { var sb = Measure(sofa.gameObject); centre = (centre + new Vector2(sb.center.x, sb.center.z)) * 0.5f; }
@@ -646,15 +646,15 @@ namespace Gamesim.Editor
                 else
                 {
                     if (PieceAt(group, "Book", "bb_set_bookstack", new Vector3(tb.center.x - 0.11f, top, tb.center.z + 0.08f), -12f) != null) count++;
-                    if (Carton(group, "Headphone case", Pack6 + "BedroomClutter/headphone_case.png", new Vector3(0.16f, 0.06f, 0.16f), new Vector3(tb.center.x + 0.16f, top, tb.center.z - 0.08f), 30f) != null) count++;
+                    if (PieceAt(group, "Headphone case", "bb_set_headphone_case", new Vector3(tb.center.x + 0.16f, top, tb.center.z - 0.08f), 30f) != null) count++;
                 }
             }
             var drawers = house.Pieces(room, "cabinetBedDrawer").OrderBy(t => t.position.x).ToList();
             for (int i = 0; i < drawers.Count; i++)
             {
                 var db = Measure(drawers[i].gameObject);
-                string label = i % 2 == 0 ? "cosmetic_label" : "toiletry_label";
-                if (Tin(group, "Toiletry", Pack6 + "BedroomClutter/" + label + ".png", 0.03f, 0.10f, new Vector3(db.center.x + (i % 2 == 0 ? 0.12f : -0.12f), db.max.y, db.center.z)) != null) count++;
+                string model = i % 2 == 0 ? "bb_set_cosmetic" : "bb_set_toiletry";
+                if (PieceAt(group, "Toiletry", model, new Vector3(db.center.x + (i % 2 == 0 ? 0.12f : -0.12f), db.max.y, db.center.z), 0f) != null) count++;
             }
 
             // The corkboard goes on the segment of the east partition nothing tall stands in front

@@ -3,8 +3,63 @@
 `Assets/Gamesim/Runtime/Presentation/CompetitionApparatus.cs` is the canonical
 source for these original, modular runtime instruments. It constructs its own
 box mesh, owned materials, and named parts in metres under each leased house
-anchor. It creates no collider, serialized scene object, navigation surface,
-dependency asset or extra simulation rule.
+anchor. It creates no collider, serialized scene object, navigation surface
+or extra simulation rule.
+
+## Authored geometry
+
+Each named part can borrow an authored mesh in place of the box: 39 parts across
+the five families, from the 20 October props batch
+(`ArtSource/props/gamesim-props-20261020/GameSim-props-equipment-candidate-02`,
+LicenseRef-GameSim-Original; its `ORIGINAL-ASSET-NOTICE.txt` is copied beside the
+imported parts). The parts are
+`Assets/Gamesim/Art/CompetitionKit/bb_comp_<Family>_<PartKind>.fbx`, each
+normalised to the centred unit box the part scales, so only `MeshFilter.sharedMesh`
+changes: transforms, materials, readouts, fitting and the clearance registries
+stay as they are. `Gamesim/Competition/Build authored apparatus mesh kit`
+(`CompetitionApparatusMeshKitAssets.Build`) checks every import and writes
+`Assets/Gamesim/Resources/Gamesim/Competition/ApparatusMeshKit.asset`, which
+`CompetitionApparatus.Create` loads. `CompetitionApparatusMeshKit.TryGetMesh`
+takes a part only when its family, kind and reference dimensions match exactly.
+
+**Why not `Art/Authored`.** A part is a centred unit block an instrument scales
+into place, not a prop that stands on the floor, so it cannot meet the props'
+floor contract (`AuthoredAssetImportTests.EveryAuthoredModelStandsOnTheFloorWithABbName`:
+lowest point at y = 0), and that test's list of exceptions is not to grow. The
+parts have their own folder and their own import rule,
+`CompetitionApparatusMeshKitImporter`: the props' geometry settings (metres, no
+import scale, the axis conversion baked once, not readable, no collider), with
+no lightmap UVs (the apparatus is built at run time and never lightmapped) and
+no materials (the apparatus owns every material it draws).
+
+**The axis.** Unity design coordinates are (x width, y height, z depth), with
+the contestant at -z of every part and the audience at +z. Exported -Z forward,
+Y up with the transform baked (as `ArtSource/tools/bb_export.py` does), Blender
+(x, y, z) arrives in Unity as (x, z, y): the house's measured map
+(bb_set_kitchenrun, bb_set_comp_backdrop, the flight case 7fa9e69b). So the
+generator sends a design point to Blender as `bvec(v) = (v[0], v[2], v[1])`
+and it comes back unchanged. The batch's own map, `(v[0], -v[2], v[1])`, came
+back as (x, y, -z): every part mirrored front to back, the housings' rear lids
+and the keycaps' bases toward the contestant, and no bounds, identity or kit
+check could tell. The parts here were regenerated with the corrected map; each
+is the batch's part mirrored in z, vertex for vertex.
+`CompetitionApparatusMeshKitPlayModeTests`' installed-kit case reads the
+imported vertices and asserts the front of the twelve parts that have one.
+
+Sources beside this README: `build_competition_art.py` (the Blender generator),
+`part-manifest.json` (the 39 entries and their reference dimensions),
+`competition_parts.blend` (the scene the generator saves) and
+`authoring-receipt.json` (its record of the run: Blender 5.2.2, the generator's
+and manifest's hashes, and each FBX's hash and triangle count). Regenerate
+headless into a directory that does not exist yet, then copy `Parts/*.fbx` into
+`Assets/Gamesim/Art/CompetitionKit/`:
+
+    blender --background --factory-startup --python build_competition_art.py -- --manifest part-manifest.json --out <new directory>
+
+`CompetitionApparatusMeshKitPlayModeTests` covers the borrowed geometry, and its
+installed-kit case fails every suite when the shipped kit is missing or any part
+of any family falls back to the box. The null-kit path is only for isolated
+fixtures (`CompetitionApparatusPlayModeTests`).
 
 | Definition | Instrument |
 | --- | --- |

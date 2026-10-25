@@ -34,7 +34,7 @@ namespace Gamesim.Tests.PlayMode
             owner=new GameObject("Apparatus clearance anchor");
             owner.transform.SetPositionAndRotation(new Vector3(4,2,6),Quaternion.Euler(0,37,0));
             owner.SetActive(!inactive);
-            return CompetitionApparatus.Create(owner.transform,definition,definition.Category,"entrant",UiTheme.Gold);
+            return CompetitionApparatus.Create(owner.transform,definition,definition.Category,"entrant",UiTheme.Gold,null);
         }
 
         [UnityTest]

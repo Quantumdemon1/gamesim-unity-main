@@ -5,6 +5,7 @@ using Gamesim.Simulation;
 using TMPro;
 using UnityEngine;
 using UnityEngine.Rendering;
+using PartKind = Gamesim.Presentation.CompetitionApparatusMeshKit.PartKind;
 
 namespace Gamesim.Presentation
 {
@@ -38,6 +39,7 @@ namespace Gamesim.Presentation
         private MaterialPropertyBlock tint;
         private Material frame, accent, dark, paper, readoutFontMaterial;
         private Mesh box;
+        private CompetitionApparatusMeshKit meshKit;
         private TMP_Text progress;
         private Transform progressFrontBacking,progressAudienceBacking;
         private Transform weight, gripBar, gripTrack, weightGuide;
@@ -64,6 +66,12 @@ namespace Gamesim.Presentation
 
         public static CompetitionApparatus Create(Transform anchor, CompetitionDefinition definition,
             string category, string actorId, Color award)
+            => Create(anchor, definition, category, actorId, award,
+                Resources.Load<CompetitionApparatusMeshKit>(CompetitionApparatusMeshKit.ResourceName));
+
+        /// <summary>An explicit kit, including null for primitive-only previews and isolated tests.</summary>
+        public static CompetitionApparatus Create(Transform anchor, CompetitionDefinition definition,
+            string category, string actorId, Color award, CompetitionApparatusMeshKit kit)
         {
             var root = new GameObject("Competition apparatus · " + For(definition, category));
             root.transform.SetParent(anchor, false);
@@ -71,6 +79,7 @@ namespace Gamesim.Presentation
             apparatus.Instrument = For(definition, category);
             apparatus.DefinitionId = definition?.Id;
             apparatus.ActorId = actorId;
+            apparatus.meshKit = kit;
             apparatus.Build(award);
             return apparatus;
         }
@@ -87,8 +96,8 @@ namespace Gamesim.Presentation
             box = BoxMesh();
             meshes.Add(box);
             // An open-footed stance mark belongs to the instrument, rather than a generic disc.
-            Part("Left stance rail", new Vector3(-.30f, .016f, .02f), new Vector3(.035f, .025f, .55f), accent, clearsActor:false);
-            Part("Right stance rail", new Vector3(.30f, .016f, .02f), new Vector3(.035f, .025f, .55f), accent, clearsActor:false);
+            Part(PartKind.StanceRail, "Left stance rail", new Vector3(-.30f, .016f, .02f), new Vector3(.035f, .025f, .55f), accent, clearsActor:false);
+            Part(PartKind.StanceRail, "Right stance rail", new Vector3(.30f, .016f, .02f), new Vector3(.035f, .025f, .55f), accent, clearsActor:false);
             switch (Instrument)
             {
                 case Family.PairConsole: BuildPairs(); break;
@@ -107,8 +116,8 @@ namespace Gamesim.Presentation
             progress = Words("Instrument progress", new Vector3(0, progressHeight, progressFront), .90f, .13f, "Ready");
             // Each opposing plane has its own dark face. Saved yard lights and pillars
             // can remain behind the words without washing out their public progress.
-            progressFrontBacking=Part("Progress front backing", new Vector3(0, progressHeight, progressFront + .006f), new Vector3(.96f, .16f, .008f), dark).transform;
-            progressAudienceBacking=Part("Progress audience backing", new Vector3(0, progressHeight, Front + .154f), new Vector3(.96f, .16f, .008f), dark).transform;
+            progressFrontBacking=Part(PartKind.ProgressBacking, "Progress front backing", new Vector3(0, progressHeight, progressFront + .006f), new Vector3(.96f, .16f, .008f), dark).transform;
+            progressAudienceBacking=Part(PartKind.ProgressBacking, "Progress audience backing", new Vector3(0, progressHeight, Front + .154f), new Vector3(.96f, .16f, .008f), dark).transform;
             // The show's wide camera sees the audience-facing readout on the back of a console.
             // Repeat only the same public information, rather than turning the actor away from it.
             foreach (TMP_Text glyph in glyphs) RepeatWord(glyph);
@@ -117,18 +126,20 @@ namespace Gamesim.Presentation
                 foreach(Renderer indicator in indicators)
                 {
                     Vector3 at=indicator.transform.localPosition;at.x=-at.x;at.z=Front+.13f;
-                    repeaters[indicator]=Part(indicator.name+" audience face",at,indicator.transform.localScale,paper);
+                    PartKind faceKind = Instrument == Family.PairConsole ? PartKind.MemoryTile
+                        : Instrument == Family.Signals ? PartKind.SignalTarget : PartKind.LetterTile;
+                    repeaters[indicator]=Part(faceKind,indicator.name+" audience face",at,indicator.transform.localScale,paper);
                 }
             nearestRaisedZ=NearestRaisedSolid();
         }
 
         private void Console(float height, float width)
         {
-            Part("Console left leg", new Vector3(-width * .37f, .42f, Front + .08f), new Vector3(.07f, .84f, .14f), frame);
-            Part("Console right leg", new Vector3(width * .37f, .42f, Front + .08f), new Vector3(.07f, .84f, .14f), frame);
-            Part("Console housing", new Vector3(0, height, Front + .04f), new Vector3(width, .80f, .14f), frame);
-            Part("Recessed display", new Vector3(0, height, Front - .039f), new Vector3(width - .09f, .69f, .025f), dark);
-            Part("Award header", new Vector3(0, height + .38f, Front - .04f), new Vector3(width, .045f, .03f), accent);
+            Part(PartKind.ConsoleLeg, "Console left leg", new Vector3(-width * .37f, .42f, Front + .08f), new Vector3(.07f, .84f, .14f), frame);
+            Part(PartKind.ConsoleLeg, "Console right leg", new Vector3(width * .37f, .42f, Front + .08f), new Vector3(.07f, .84f, .14f), frame);
+            Part(PartKind.ConsoleHousing, "Console housing", new Vector3(0, height, Front + .04f), new Vector3(width, .80f, .14f), frame);
+            Part(PartKind.RecessedDisplay, "Recessed display", new Vector3(0, height, Front - .039f), new Vector3(width - .09f, .69f, .025f), dark);
+            Part(PartKind.AwardHeader, "Award header", new Vector3(0, height + .38f, Front - .04f), new Vector3(width, .045f, .03f), accent);
         }
 
         private void BuildPairs()
@@ -137,7 +148,7 @@ namespace Gamesim.Presentation
             for (int i = 0; i < 16; i++)
             {
                 Vector3 at = new Vector3((i % 4 - 1.5f) * .19f, 1.28f - (i / 4 - 1.5f) * .16f, Front - .064f);
-                indicators.Add(Part("Memory tile " + i, at, new Vector3(.16f, .13f, .025f), paper));
+                indicators.Add(Part(PartKind.MemoryTile, "Memory tile " + i, at, new Vector3(.16f, .13f, .025f), paper));
                 glyphs.Add(Words("Memory face " + i, at + Vector3.back * .018f, .14f, .11f, "?"));
             }
         }
@@ -150,38 +161,38 @@ namespace Gamesim.Presentation
             for (int i = 0; i < places.Length; i++)
             {
                 Vector3 at = new Vector3(places[i].x, 1.22f + places[i].y, Front - .065f);
-                indicators.Add(Part("Signal target " + labels[i], at, new Vector3(.20f, .17f, .03f), paper));
+                indicators.Add(Part(PartKind.SignalTarget, "Signal target " + labels[i], at, new Vector3(.20f, .17f, .03f), paper));
                 glyphs.Add(Words("Signal direction " + labels[i], at + Vector3.back * .02f, .18f, .12f, labels[i]));
             }
-            responsePad=Part("Response pad", new Vector3(0, 1.16f, .39f), new Vector3(.14f, .065f, .15f), accent).transform;
+            responsePad=Part(PartKind.ResponsePad, "Response pad", new Vector3(0, 1.16f, .39f), new Vector3(.14f, .065f, .15f), accent).transform;
         }
 
         private void BuildGrip()
         {
-            leftUpright=Part("Rig left upright", new Vector3(-.42f, .78f, Front), new Vector3(.065f, 1.56f, .09f), frame).transform;
-            rightUpright=Part("Rig right upright", new Vector3(.42f, .78f, Front), new Vector3(.065f, 1.56f, .09f), frame).transform;
-            topBrace=Part("Rig top brace", new Vector3(0, 1.56f, Front), new Vector3(.91f, .07f, .10f), accent).transform;
-            handle=Part("Grip handle", new Vector3(0, 1.16f, Front - .055f), new Vector3(.78f, .045f, .055f), accent).transform;
-            gripTrack=Part("Grip scale track", new Vector3(.30f, 1.09f, Front - .075f), new Vector3(.055f, .69f, .04f), dark).transform;
-            gripBar = Part("Grip remaining", new Vector3(.30f, 1.09f, Front - .085f), new Vector3(.035f, .69f, .025f), paper).transform;
+            leftUpright=Part(PartKind.RigUpright, "Rig left upright", new Vector3(-.42f, .78f, Front), new Vector3(.065f, 1.56f, .09f), frame).transform;
+            rightUpright=Part(PartKind.RigUpright, "Rig right upright", new Vector3(.42f, .78f, Front), new Vector3(.065f, 1.56f, .09f), frame).transform;
+            topBrace=Part(PartKind.RigBrace, "Rig top brace", new Vector3(0, 1.56f, Front), new Vector3(.91f, .07f, .10f), accent).transform;
+            handle=Part(PartKind.GripHandle, "Grip handle", new Vector3(0, 1.16f, Front - .055f), new Vector3(.78f, .045f, .055f), accent).transform;
+            gripTrack=Part(PartKind.GripTrack, "Grip scale track", new Vector3(.30f, 1.09f, Front - .075f), new Vector3(.055f, .69f, .04f), dark).transform;
+            gripBar = Part(PartKind.GripRemaining, "Grip remaining", new Vector3(.30f, 1.09f, Front - .085f), new Vector3(.035f, .69f, .025f), paper).transform;
             gripRenderer=gripBar.GetComponent<Renderer>();
-            weightGuide=Part("Counterweight guide", new Vector3(0, 1.10f, Front + .15f), new Vector3(.03f, .76f, .03f), frame).transform;
-            weight = Part("Pressure counterweight", new Vector3(0, .85f, Front + .15f), new Vector3(.25f, .16f, .17f), frame).transform;
+            weightGuide=Part(PartKind.CounterweightGuide, "Counterweight guide", new Vector3(0, 1.10f, Front + .15f), new Vector3(.03f, .76f, .03f), frame).transform;
+            weight = Part(PartKind.Counterweight, "Pressure counterweight", new Vector3(0, .85f, Front + .15f), new Vector3(.25f, .16f, .17f), frame).transform;
             for (int i = 0; i < 5; i++)
-                gripTicks.Add(Part("Grip scale tick " + i, new Vector3(.35f, .77f + i * .16f, Front - .085f), new Vector3(.06f, .012f, .03f), accent).transform);
+                gripTicks.Add(Part(PartKind.GripTick, "Grip scale tick " + i, new Vector3(.35f, .77f + i * .16f, Front - .085f), new Vector3(.06f, .012f, .03f), accent).transform);
         }
 
         private void BuildDice()
         {
-            trayPedestal=Part("Tray pedestal", new Vector3(0, .55f, Front), new Vector3(.20f, 1.10f, .25f), frame).transform;
-            trayBed=Part("Dice tray bed", new Vector3(0, 1.14f, Front), new Vector3(.91f, .08f, .42f), dark).transform;
-            trayBack=Part("Tray back rail", new Vector3(0, 1.21f, Front + .20f), new Vector3(.96f, .13f, .05f), accent).transform;
-            trayLeft=Part("Tray left rail", new Vector3(-.455f, 1.21f, Front), new Vector3(.05f, .13f, .44f), accent).transform;
-            trayRight=Part("Tray right rail", new Vector3(.455f, 1.21f, Front), new Vector3(.05f, .13f, .44f), accent).transform;
+            trayPedestal=Part(PartKind.TrayPedestal, "Tray pedestal", new Vector3(0, .55f, Front), new Vector3(.20f, 1.10f, .25f), frame).transform;
+            trayBed=Part(PartKind.TrayBed, "Dice tray bed", new Vector3(0, 1.14f, Front), new Vector3(.91f, .08f, .42f), dark).transform;
+            trayBack=Part(PartKind.TrayBackRail, "Tray back rail", new Vector3(0, 1.21f, Front + .20f), new Vector3(.96f, .13f, .05f), accent).transform;
+            trayLeft=Part(PartKind.TraySideRail, "Tray left rail", new Vector3(-.455f, 1.21f, Front), new Vector3(.05f, .13f, .44f), accent).transform;
+            trayRight=Part(PartKind.TraySideRail, "Tray right rail", new Vector3(.455f, 1.21f, Front), new Vector3(.05f, .13f, .44f), accent).transform;
             for (int i = 0; i < 3; i++)
             {
                 Vector3 at = new Vector3((i - 1) * .25f, 1.28f, Front - .115f);
-                indicators.Add(Part("Die " + i, at, Vector3.one * .17f, paper, sweepsYaw:true));
+                indicators.Add(Part(PartKind.Die, "Die " + i, at, Vector3.one * .17f, paper, sweepsYaw:true));
                 glyphs.Add(Words("Die face " + i, at + Vector3.back * .09f, .14f, .14f, "—"));
             }
         }
@@ -192,7 +203,7 @@ namespace Gamesim.Presentation
             for (int i = 0; i < 12; i++)
             {
                 Vector3 at = new Vector3((i % 6 - 2.5f) * .145f, i < 6 ? 1.30f : 1.08f, Front - .064f);
-                indicators.Add(Part("Letter tile " + i, at, new Vector3(.125f, .16f, .025f), paper));
+                indicators.Add(Part(PartKind.LetterTile, "Letter tile " + i, at, new Vector3(.125f, .16f, .025f), paper));
                 glyphs.Add(Words("Letter " + i, at + Vector3.back * .018f, .11f, .14f, ""));
             }
             Words("Word tray label", new Vector3(0, 1.51f, Front - .07f), .85f, .12f, "LETTER TRAY");
@@ -380,13 +391,17 @@ namespace Gamesim.Presentation
             return true;
         }
 
-        private Renderer Part(string name, Vector3 position, Vector3 scale, Material material,bool clearsActor=true,bool sweepsYaw=false)
+        private Renderer Part(PartKind kind, string name, Vector3 position, Vector3 scale, Material material,bool clearsActor=true,bool sweepsYaw=false)
         {
             var part = new GameObject(name, typeof(MeshFilter), typeof(MeshRenderer));
             part.transform.SetParent(transform, false);
             part.transform.localPosition = position;
             part.transform.localScale = scale;
-            var mesh=part.GetComponent<MeshFilter>();mesh.sharedMesh = box;solidMeshes.Add(mesh);
+            var mesh=part.GetComponent<MeshFilter>();
+            // Only geometry is borrowed. The original named transform, live material and all
+            // clearance registries remain the same; shared assets never enter owned disposal.
+            mesh.sharedMesh = meshKit != null && meshKit.TryGetMesh(Instrument, kind, scale, out var authored) ? authored : box;
+            solidMeshes.Add(mesh);
             if(clearsActor)raisedMeshes.Add(mesh);
             if(sweepsYaw)yawingMeshes.Add(mesh);
             var renderer = part.GetComponent<MeshRenderer>();

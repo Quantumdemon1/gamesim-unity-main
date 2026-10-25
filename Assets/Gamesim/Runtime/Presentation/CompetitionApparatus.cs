@@ -128,7 +128,11 @@ namespace Gamesim.Presentation
                     Vector3 at=indicator.transform.localPosition;at.x=-at.x;at.z=Front+.13f;
                     PartKind faceKind = Instrument == Family.PairConsole ? PartKind.MemoryTile
                         : Instrument == Family.Signals ? PartKind.SignalTarget : PartKind.LetterTile;
-                    repeaters[indicator]=Part(faceKind,indicator.name+" audience face",at,indicator.transform.localScale,paper);
+                    var repeater=Part(faceKind,indicator.name+" audience face",at,indicator.transform.localScale,paper);
+                    // An authored keycap's cap faces its part's -z, the contestant. The audience face turns
+                    // like the repeated words, so its cap faces the audience; the centred box is unchanged.
+                    repeater.transform.localRotation=Quaternion.Euler(0,180,0);
+                    repeaters[indicator]=repeater;
                 }
             nearestRaisedZ=NearestRaisedSolid();
         }

@@ -432,8 +432,23 @@ namespace Gamesim.Uma
                 avatar.OnCharacterBegun -= OnCharacterBegun;
             }
             ForgetBuiltAvatar(generator, avatar);
+            // UMA lists an avatar before it validates it, so a body whose builds never validated never
+            // began one, and never learnt its generator; the generator in effect is pruned as well,
+            // whenever it is not the one just done.
+            var current = CurrentGenerator();
+            if (!ReferenceEquals(current, generator)) ForgetBuiltAvatar(current, avatar);
             avatar = null;
             generator = null;
+        }
+
+        /// <summary>
+        /// The generator in effect, or null, reached as UMAData's own teardown reaches it: the creating
+        /// Instance and Generator accessors can make a replacement generator while a scene unloads.
+        /// </summary>
+        private static UMAGeneratorBase CurrentGenerator()
+        {
+            var indexer = UMAAssetIndexer.bareInstance;
+            return indexer != null ? indexer.bareGenerator : null;
         }
 
         /// <summary>

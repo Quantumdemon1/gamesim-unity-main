@@ -141,6 +141,41 @@ namespace Gamesim.Uma.Tests
             yield return null;
         }
 
+        /// <summary>
+        /// A body whose tint never heard a build begin still comes off UMA's generator. The tint learns
+        /// which generator built its avatar from CharacterBegun, but UMA lists an avatar before it
+        /// validates it, so a body whose builds never validate - one that times out to the primitive
+        /// rig - is listed and never begun. Here a built body's tint is made to forget its generator,
+        /// as if it had never heard, and is torn down at once, before any build could begin again: its
+        /// teardown prunes the generator in effect. Before, it pruned nothing, and the avatar stayed
+        /// listed until some other body's teardown swept it.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator ABodyWhoseBuildNeverBeganStillComesOffUmasGenerator()
+        {
+            yield return null;
+            var generated = Generated();
+            var body = Attach(ContentCatalog.Create(1).contestants.First(contestant => !contestant.isPlayer));
+            yield return Settle(body);
+            Assert.That(generated.Any(data => ReferenceEquals(data, body.Avatar)), Is.True,
+                "UMA lists the avatar it built; without that there is nothing here to prune.");
+            var learnt = body.Tint.GetType().GetField("generator", BindingFlags.Instance | BindingFlags.NonPublic);
+            Assert.That(learnt, Is.Not.Null, "The tint keeps the generator its avatar's build began on.");
+            Assert.That(learnt.GetValue(body.Tint), Is.InstanceOf<UMAGeneratorBase>(),
+                "The tint learnt its generator when the build began, so forgetting it below is a change.");
+
+            learnt.SetValue(body.Tint, null);
+            var avatar = body.Avatar;
+            Object.DestroyImmediate(body.Actor);
+            Assert.That(avatar == null, Is.True, "The body was torn down.");
+
+            Assert.That(generated.Any(data => ReferenceEquals(data, avatar)), Is.False,
+                "A destroyed avatar whose tint never heard its build begin is still listed on UMA's generator.");
+            int destroyed = generated.Count(data => data == null);
+            Assert.That(destroyed, Is.Zero, destroyed + " destroyed avatars are still listed on UMA's generator.");
+            yield return null;
+        }
+
         private Body Attach(ContestantState houseguest)
         {
             var actor = new GameObject("Retention houseguest " + actors.Count);

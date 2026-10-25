@@ -567,6 +567,12 @@ namespace Gamesim.Tests.PlayMode
             deadline=Time.realtimeSinceStartup+6f;
             while(director.Snapshot.revision==before.revision && Time.realtimeSinceStartup<deadline)yield return null;
             Assert.That(director.Snapshot.revision,Is.EqualTo(before.revision+1));
+            // The commit drops the director's hold on every apparatus and the stage in the same call...
+            Assert.That(NpcRead<Dictionary<string,CompetitionApparatus>>("competitionInstruments"),Is.Empty,"The commit releases the director's apparatus.");
+            Assert.That(director.CompetitionOverlaysShown,Is.False,"The commit drops the competition stage.");
+            // ...and the stage's objects are destroyed at the end of that frame: this resume can come first.
+            yield return null;
+            Assert.That(director.Snapshot.revision,Is.EqualTo(before.revision+1));
             Assert.That(SceneComponents<CompetitionApparatus>(),Is.Empty,"The finished result releases all apparatus.");
             Object.Destroy(bystander);
             var card=SceneComponents<CompetitionResult>().Single();

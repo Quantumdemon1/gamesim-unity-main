@@ -1,14 +1,16 @@
-# Dialogue: conversations that matter (dialogue rules 2)
+# Dialogue: conversations that matter (dialogue rules 2 to 5)
 
-Design note D0, 2026-10-25. Docs only: it changes no code, save, test or rule.
+Design note P0, 2026-10-25. It revises D0 (9d5b1f83) into the joint design note of the master plan's Stage 0. Docs only: it changes no code, save, test or rule.
+
+It settles dialogue's own rules, and the numbers dialogue shares with other work: the pooled schema 30 that the All-Star histories build (§6, final) and competition rules 5 (§9). The owner approves it once.
 
 **The owner's instruction, 2026-10-25.** About dialogue V2 the owner said: "Fix them so they work and implement these changes now." This plan therefore goes ahead on the defaults in §1, recorded here as the owner's instruction to implement now with these defaults. Each default stays open to the owner's change, and §1 says what changing it costs. Shipped seasons stay on dialogue rules 0 until D7.
 
-**Evidence base.** Branch `claude/dialogue-v2`, cut from main `b208d46d`. That commit includes role moments R0 to R6 and R5b: `StoryRules.Roles` is 11 and `RolesOn` exists, while `StoryRules.Current` stays at Threads (9). Code paths are relative to `Assets/Gamesim/`. "The ROLE doc" means `ROLE_DIALOGUE_ECONOMY_20261012.md` at the repository root, and "role moments" means `Assets/Plans/ROLE-MOMENTS-PLAN.md`.
+**Evidence base.** Branch `claude/dialogue-v2`, cut from main `b208d46d`. That commit includes role moments R0 to R6 and R5b: `StoryRules.Roles` is 11 and `RolesOn` exists, while `StoryRules.Current` stays at Threads (9). The All-Star histories plan is read at `cacc59e0` (`Assets/Plans/ALL-STAR-HISTORIES-PLAN.md`, branch `claude/all-star-histories`). Code paths are relative to `Assets/Gamesim/`. "The ROLE doc" means `ROLE_DIALOGUE_ECONOMY_20261012.md` at the repository root, and "role moments" means `Assets/Plans/ROLE-MOMENTS-PLAN.md`.
 
 **Names.**
 - *Dialogue rules 1* is the pilot merged in PR #28. Its two content versions are V1 (a personal appeal) and V2 (citing a public rescue). Earlier notes call this pilot "dialogue V2".
-- *Dialogue rules 2* is what this plan builds: the ROLE doc's consequences, conditional veto, role grants and conversation time.
+- *Dialogue rules 2 to 5* are this plan's ladder (§2): the ROLE doc's consequences, conditional veto, role grants and conversation time.
 
 ---
 
@@ -17,56 +19,112 @@ Design note D0, 2026-10-25. Docs only: it changes no code, save, test or rule.
 - **Today.** Rules 1 is one three-step conversation.
   - When the player is nominated and the campaign is on, the Emotional "Ask for their vote" opens "Make your case". The next step is "Appeal personally", or "Cite their public rescue". The last is "Make the plea", "Keep their vote open" or "Leave it there".
   - It costs one action. Its plea is the ordinary plea's roll, and every ending gives zero time (Simulation/EpisodeEngine.Dialogue.cs:177, 199; Simulation/DialogueRules.cs:274-280).
-  - No shipped season can reach it, because `ShippedRules.ApplyFresh` never sets `dialogueRulesVersion` (Simulation/ShippedRules.cs:26-64).
-  - Schema 29 already holds empty storage for everything else the ROLE doc asks for (Simulation/DialogueState.cs).
-- **D1, now.** A toggle on the cast screen, off by default, starts a season on dialogue rules 1. To be plain about it: rules 1 adds no new consequence. It is a three-step form of a plea the game already has.
-- **D2 to D5.** Rules 2, built inside the schema-29 store. Every field it needs is already there (§5), so there is no schema 30. Grants, consultations and time form one economy with role moments (§3).
-- **D6 and D7.** Measurement, run after role moments' B9, and then rules 2 on by default in new seasons.
+  - No shipped season can reach it. `ShippedRules.ApplyFresh` never sets `dialogueRulesVersion` (Simulation/ShippedRules.cs:26-65), and `DialogueRules.On` needs exactly version 1 at schema 29 (Simulation/DialogueRules.cs:19).
+- **D1, now.** A chip on the cast screen, off by default, starts a season on rules 1. To be plain about it: rules 1 adds no new consequence. It is a three-step form of a plea the game already has.
+- **The ladder.** Each later step is a new dialogue rules version, played through the same chip:
+  - 2: the first conversation whose answer moves the relationship;
+  - 3: the other campaign trees, and the appeal to the veto holder;
+  - 4: the conditional veto, the nominee's free conversation, and +1/-1 conversation time;
+  - 5: the HoH and veto consultations.
+
+  A version freezes the first time a shipped path can write it.
+- **Saves.** Dialogue needs no new field (§6). Rules 2 and later exist only from schema 30, the pooled bump the All-Star histories build. The frozen schema-29 reader therefore holds dialogue rules 0 and 1 only.
+- **One economy with role moments** (§4). A grant replaces a paid entry, and a conditional veto promise is a deal, beside every other word on the veto.
+- **D6 and D7.** Measurement after role moments' B9, and then dialogue on by default in new seasons.
 
 ## 1. Decisions
 
-The table below records the owner's 2026-10-25 instruction ("implement now") with these defaults. Each one is open to the owner's change.
+The table below records the owner's 2026-10-25 instruction ("implement now") with these defaults. Each one is open to the owner's change. Rows marked **P0** differ from D0.
 
 | # | Decision | Default adopted | If the owner changes it |
 |---|---|---|---|
-| 1 | How the merged pilot becomes playable | An opt-in on the cast screen, **off by default** (D1). The same toggle later selects rules 2. The shipped default stays 0 until D7. | Turning it on by default now reverses OWNER-DECISIONS-2026-10-22 §5 ("stay on dialogue rules 0"), and the lab goldens' rules tuple must be re-recorded. |
-| 2 | Grants and role moments | **One economy.** A dialogue role grant replaces a paid entry and never stacks with a paid plea (the owner's AP-0 rule, OWNER-DECISIONS §4). Grants are entered from the role-moment surfaces (§3). | A separate grant menu would be a second economy beside role moments. |
-| 3 | What records a conditional veto promise | `conditionalVeto` on a unified commitment row. The fields are already in schema 29, so there is **no schema 30**. Every reader of a veto word counts the row as one word (§3.1). | A conditional `veto_use` deal in `state.deals` probably needs a new field, which means schema 30. |
-| 4 | The ROLE doc's numbers | Unmeasured starting values (§4.4), tuned only through measurement (D6). | - |
-| 5 | Randomness | New dialogue outcomes draw **keyed coins** (`StoryRandom`), never the season's main stream, so starting or abandoning a conversation never re-rolls the season. The final plea keeps its existing main-stream roll. | Main-stream draws would re-roll every later event in a season whenever a conversation is added or dropped. |
+| 1 | How the merged pilot becomes playable | An opt-in on the cast screen, **off by default** (D1). It writes a fixed, pinned version (`Offered`), never the bound `Version`. The shipped default stays 0 until D7. | Turning it on by default now reverses OWNER-DECISIONS-2026-10-22 §5 ("stay on dialogue rules 0"), and the lab goldens' rules tuple must be re-recorded. |
+| 2 | Grants and role moments | **One economy.** A grant replaces a paid entry and never stacks with a paid plea (the owner's AP-0 rule, OWNER-DECISIONS §4). | A separate grant menu would be a second economy beside role moments. |
+| 3 | **P0.** What records a conditional veto promise | **A new deal kind, `veto_if`**, in `state.deals`, where every word on the veto already lives in every commitment mode (Simulation/Negotiation.cs:744-749). It needs no new field (§4.2). | D0's unified row with `conditionalVeto` also fits schema 29. But the mode-2 family knows only Safety and Vote (Simulation/UnifiedVoteFamilyValidation.cs:55-57), so it would be a second veto authority, and every veto reader would read two lists. |
+| 4 | The ROLE doc's numbers | Unmeasured starting values (§5.4), tuned only through measurement (D6). | - |
+| 5 | Randomness | New dialogue outcomes draw **keyed coins** (`StoryRandom`, `ChangeKeyed`), never the season's main stream. An existing act inside a conversation keeps its own roll: the final plea is the ordinary plea's main-stream roll. | Main-stream draws would re-roll every later event in a season whenever a conversation is added or dropped. |
 | 6 | B9 | Dialogue's B9 is a **successor** to role moments' R7, not a joint run. | A joint run would hold back the built role moments until dialogue is built. |
-| 7 | Schema | Rules 2 stays inside the schema-29 `DialogueState` store. If a needed field truly does not fit, the work **stops and reports**. It does not add schema 30. | Schema 30 means a large frozen schema-29 reader, a number claimed together with the story session, and a set qualified on its own. |
+| 7 | **P0.** Schema | Dialogue adds **no field to schema 30** (§6, final). Rules 2 and later are defined only at schema 30 or later. D2 therefore lands after the pooled bump, and the frozen schema-29 reader holds dialogue rules 0 and 1 only. A need that does not fit stops the work and is reported; it would take schema 31. | D2 at schema 29 if it is ready first (the All-Star plan's D-H6) lands sooner. But the frozen schema-29 reader must then carry the rules-2 validator, and H1b's reader waits for D2 or is redone after it (§6). |
 
-This note also makes the calls below under those defaults. They are open to the owner too.
+This note also makes the calls below. They are open to the owner too.
 
 | # | Call | Recommended | Alternative |
 |---|---|---|---|
-| 8 | When the toggle moves from rules 1 to rules 2 | When D5 lands and rules 2 is complete. D3 to D5 each qualify as usual, and until then they play only in tests. A saved rules-2 season therefore never holds a half-built rules 2. | Move it at D3, so each slice is playable as it lands. Every save of a half-built rules 2 must then keep loading as later slices land: grants are written when used, not when the role is won, and every later change gets a new content version. That means more validator branches. |
-| 9 | Rules 2 needs role moments | Rules 2 requires `RolesOn` (story rules at Roles or later), because its grants hang on the role-moment boards. A season the toggle starts on rules 2 also plays the role moments. Shipped seasons are not affected, and R7 still enrols them. | Rules 2 without role moments. The grants would then need entries on the older rows as well, so the entries get built twice. |
-| 10 | What the veto question costs | "If you win the veto, will you use it on me?" costs the window's action, and no grant pays for it. The ROLE doc's Nominee Appeal covers the plea to the actual holder and the campaign, not this question. | Let the Nominee Appeal grant pay for it. |
+| 8 | **P0.** When the chip moves to a new version | With each stack that brings something to play: 2 at Stack 3, 3 at Stack 4, 4 at Stack 5, 5 at Stack 7 (§2). | Moving only once rules 2 is complete (D0's call) shows the owner nothing between D1 and D5, and makes one very large version. |
+| 9 | **P0.** Dialogue and role moments | **No dialogue version requires `RolesOn`**, and the chip never writes a story rules version. Consultations open from the person's menu, and also from the pitch board and the offer board when role moments are on. | The chip also writes story rules Roles. Role moments would then freeze in the owner's saves at that merge, before B9 tunes them, and B9's changes would need story rules 12. |
+| 10 | What the veto question costs | "If you win the veto, will you use it on me?" costs the window's action, and no grant pays for it. | Let the nominee's grant pay for it. |
+| 11 | **P0.** Storyline budget | At most **32 conversations a season**, never in the last eight storylines. Nothing is pruned. A refused conversation leaves its plea available as the one-shot plea (§5.5). | No budget: dialogue and the story pool compete for the same 92, and late in a long season either one starves the other. |
+| 12 | **P0.** Consultation windows | **The existing windows and phases** (§4.1). | A new window changes the length of every save's `windowActions`, which validation checks (Simulation/EpisodeValidation.cs:148). That means a migration. |
+| 13 | **P0.** Competition rules 5 | Claimed for PC5, the competition part of B9 (§9). | - |
 
-## 2. The ROLE doc against today's code
+## 2. The version ladder
 
-| ROLE doc delivery step (:148-154) | Today | Slice |
+**The rules.**
+- **The bound.** `DialogueRules.Version` becomes the upper bound: the highest version this build defines.
+- **A closed set.** Validation accepts only defined versions (`IsDefined`), as `StoryRules.IsDefined` does: 0 and 1 today, and 0 to 5 at the end of the ladder. EpisodeValidation.cs:91 and DialogueRules.cs:109 call it instead of comparing with `Version`.
+- **Behaviour is keyed to the version that introduced it.** No code reads `Version` for behaviour. What rules 2 added runs at `>= Rules2`, and the closed rules-1 pairs only at `== Rules1`.
+- **Switching on.** `On(s)` holds when the schema is 29 or later, the version is defined, and it is at least 1.
+- **Freezing.** A version freezes the first time a shipped path can write it: the merge that lets the chip write it, or a default. After that it never changes. A change is a new version.
+- **Who writes what.** The chip writes `Offered`, a pinned constant moved by hand when a stack merges. `ApplyFresh`'s default writes `Shipped`, 0 until D7. Neither ever writes `Version`.
+- **Schema.** Rules 2 and later need schema 30 or later (`Rules2Schema` = 30, the schema that introduced them).
+- **Prerequisites.** Every version needs those of rules 1 (Simulation/DialogueRules.cs:448-453). None needs role moments (call 9).
+
+**The ladder.** The numbers assume the chip moves at every stack (call 8). If a stack does not move it, that stack's work joins the next version instead.
+
+| Rules | Slices | What it adds | Stack | Freezes when |
+|---|---|---|---|---|
+| 0 | - | Off. Every shipped season, and every migrated one. | - | Frozen |
+| 1 | PR #28, D1 | The pilot: V1 and V2 campaign conversations, one action, zero time | 2 | D1 merges |
+| 2 | D2 | The foundation (a closed content registry, per-version bounds, statement and memory evidence, entry funded by an action or a grant) and the vote-word campaign tree: a keyed NPC response, +3/0/-3 through `ChangeKeyed` | 3, after schema 30 | The chip first writes 2 |
+| 3 | D3 | The memory, pressure and neutral campaign trees, and the appeal to the veto holder | 4 | The chip first writes 3 |
+| 4 | D4, D5a, D5c | The veto question and the conditional promise, veto occasions, the nominee's grant, and +1/0/-1 time | 5 | The chip first writes 4 |
+| 5 | D5b | The HoH and veto consultations, with their grants | 7 | The chip first writes 5 |
+| - | D7 | `Shipped` becomes the latest frozen version | 10 | - |
+
+**Per-version bounds.** `MaximumSteps` stays 3 and keeps its meaning for rules 1 (Simulation/DialogueRules.cs:16). Rules 2 adds `StepsFor(version)`, and `ReservedEvents` reads the active conversation's own bound.
+
+| Bound | Rules 1 (frozen) | Rules 2 and later |
+|---|---|---|
+| Steps: path entries, house events and responses in one conversation | 3 | 5 |
+| House events reserved for the active conversation | 3, less those used | 5, less those used |
+| Consequential choices; options at a node | As authored in V1 and V2 | 3; 4 (ROLE doc :90) |
+| Evidence rows | 0 (V1) or 1 (V2) | 3 |
+| Statements in one conversation | 0 | 1 |
+| Conversations a season | 100 | 32 (§5.5) |
+| Occasion kinds | `campaign` | Adds `holder` (3), `veto-question` (4), `hoh-consult` and `veto-consult` (5) |
+| Entry | One action | One action, or one grant from 4 |
+| Grants; veto occasions | None | None below 4. From 4: at most 3 grants and 1 veto occasion a week |
+| Time | Zero | Zero below 4; +1, 0 or -1 from 4 |
+
+**Role moments' earmark.** ROLE-MOMENTS-PLAN.md:62 and :691 put Layer 2 "under dialogue rules version 2". On this ladder, 2 is the first consequential tree. Grants and time arrive in 4 (the nominee's grant and +1/-1) and in 5 (the HoH and veto grants).
+- When the owner approves this note, both lines change to: "under the dialogue rules version that first carries grants and time (4 on DIALOGUE-PLAN's ladder, and 5 for the consultations' grants)".
+- The rest of :691 stands. The tick-key fix at Simulation/DialogueRules.cs:182 lands in D2, before any grant exists.
+- §4.2's option C row (:467, "Kept for Layer 2") needs no change.
+
+**Pins that move.** Tests/EditMode/DialogueCampaignRulesTests.cs:500 uses 2 as the "unknown" version; when D2 defines 2, it moves to `Version + 1`. Tests that mean rules 1 already write the literal 1, so they stay on rules 1 when `Version` moves.
+
+## 3. The ROLE doc against today's code
+
+| ROLE doc delivery step (:148-154) | Today | Rules |
 |---|---|---|
 | 1. Presentation: six categories, speaker adapters | Shipped (Runtime/Episode/EpisodeDirector.ConversationNavigation.cs:10-15) | - |
-| 2a. A small campaign tree | Rules 1, with closed V1 and V2 content (Simulation/Story/DialogueCampaignV1.cs, DialogueCampaignV2.cs). Only the plea roll; zero time. | D1 makes it playable; D3 adds consequences |
-| 2b. A conditional-veto statement tree | Storage only: `DialogueStatementState`, `DialogueVetoOccasionState` and `conditionalVeto`. Nothing writes them, and rules 1 refuses any row (Simulation/DialogueRules.cs:111-112, 190). | D4 |
-| 3. Role grants and +1/0/-1 time | Storage only: `DialogueRoleGrantState` and `DialogueTimeReceiptState`. Rules 1 refuses grants (:120-122) and any time other than zero (:274-280). `SocialActionBudget` reads no time receipt (Simulation/EpisodeEngine.cs:796). | D5 |
+| 2a. A small campaign tree | Rules 1, with closed V1 and V2 content (Simulation/Story/DialogueCampaignV1.cs, DialogueCampaignV2.cs). Only the plea roll; zero time. | 1 playable (D1); consequences in 2 and 3 |
+| 2b. A conditional-veto statement tree | Storage only: `DialogueStatementState` and `DialogueVetoOccasionState`. Nothing writes them, and rules 1 refuses any row (Simulation/DialogueRules.cs:111-112, 190). | 4 |
+| 3. Role grants and +1/0/-1 time | Storage only: `DialogueRoleGrantState` and `DialogueTimeReceiptState`. Rules 1 refuses grants (:120-122) and any time other than zero (:274-280). `SocialActionBudget` reads no time receipt (Simulation/EpisodeEngine.cs:796). | 4 and 5 |
 | 4. Measurement after B9 | None. The balance lab never issues `StartDialogue` or `ChooseDialogue`. | D6 |
 | 5. Combined native validation | Only the rules-1 PlayMode suites. There is no season-walk route and no fixture of a save with dialogue on (OLD-SAVE-ACCEPTANCE.md §7). | D1 and D7 |
 
 D2 generalises what rules 1 hard-codes: the V1 and V2 beat ids, the single `campaign` occasion, the after-veto window and an entry paid with an action (Simulation/EpisodeEngine.Dialogue.cs:66-70, 183-199; Simulation/DialogueRules.cs:164-183, 318-321).
 
-## 3. One economy with role moments
+## 4. One economy with role moments
 
-Role moments (story rules 11) let the player answer what comes to them at the role points of a week. Rules 2 adds the conversations the player starts at those same points. Both draw on one budget, the window's seats.
+Role moments (story rules 11) let the player answer what comes to them at the role points of a week. Dialogue adds the conversations the player starts at those same points. Both draw on one budget, the window's seats.
 
-| The player is | Role moments: the answers, always free | Rules 2 adds (a conversation the player starts) | Paid by |
+| The player is | Role moments: the answers, always free | Dialogue adds (a conversation the player starts) | Paid by |
 |---|---|---|---|
-| Head of Household, before nominations | The pitch board: at most 3 pitches, answered with Promise safety, Hear them, Turn them down or Feel them out (R5) | **HoH Consultation**: one conversation with an active houseguest, opened from the pitch board or from the person's menu. A promise made in it is the pitch's own promise row, never a second one. | The HoH grant, or else the window's action |
-| Veto holder, before the decision | The offer board, with one veto word a week (R2 to R4) | **Veto Consultation**: one conversation with a nominee or the HoH, opened from the offer board. It ends in the answers or price that already exist (`RespondToDeal`, or a veto for a price) and cannot give a second veto word. | The veto grant, or else the action |
-| Nominated | Just a Pawn and quiet tears (R6) | **Nominee Appeal**: the plea to the actual holder, or a campaign conversation. Each ends in the ordinary plea's roll (D3). The player can also ask the veto question (D4). | The nominee grant, or else the action. The veto question always costs the action (call 10). |
+| Head of Household, before nominations | The pitch board: at most 3 pitches, answered with Promise safety, Hear them, Turn them down or Feel them out (R5) | **HoH Consultation** (5): one conversation with an active houseguest. A promise made in it is the pitch's own promise row, never a second one. | The HoH grant, or else the window's action |
+| Veto holder, before the decision | The offer board, with one veto word a week (R2 to R4) | **Veto Consultation** (5): one conversation with a nominee or the HoH. It ends in the answers or price that already exist (`RespondToDeal`, or a veto for a price) and cannot give a second veto word. | The veto grant, or else the action |
+| Nominated | Just a Pawn and quiet tears (R6) | **Nominee Appeal**: a campaign conversation (2), or the appeal to the veto holder (3). Each ends in the ordinary plea's roll. The player can also ask the veto question (4). | The nominee grant (from 4), or else the action. The veto question always costs the action (call 10). |
 
 **The rules** (ROLE doc :35-51; OWNER-DECISIONS §4):
 - A grant pays for one newly started conversation in place of an action. It pays for nothing else, never carries over to another week, and can never be saved up.
@@ -76,58 +134,62 @@ Role moments (story rules 11) let the player answer what comes to them at the ro
   - An independent plea to the same voter closes the conversation (Simulation/EpisodeEngine.Dialogue.cs:263-276).
   - At AP 0 without a grant, no route delivers a plea's effect. The AP-0 test (Tests/EditMode/DialoguePublicRescueV2Tests.cs:216) is extended to every kind of entry.
 - Answers stay free and use up no grant. That covers incoming offers, pitches, Feel them out and story asks.
-- "Answer the existing house moment first" stays (Simulation/DialogueRules.cs:52-53). A pawn talk or quiet tears is answered before a conversation can start.
-- Role moments add no time (ROLE-MOMENTS-PLAN §2.3). Rules 2's +1 and -1 receipts are the only way to gain or lose conversation time. `SocialActionBudget` reads them under rules 2, and they never go through the positive-only bank (`phaseEventSocialBonus`).
-- Capacity: storylines share validation's ceiling of 100, and the role-moment pool stops at 92. A conversation reserves its own house events, as rules 1 already does (Simulation/DialogueRules.cs:34-39).
+- **Counting is on attempt rows.** A grant is used up by the conversation's first accepted node, and stays used if the conversation lapses or is left. The one-occasion rule counts every started conversation. A greedy scripted player hunts for loops in D2 and D5.
+- "Answer the existing house moment first" stays for starting a conversation (Simulation/DialogueRules.cs:52-53). From rules 2 the plea it wraps stays available meanwhile (§5.5).
+- Role moments add no time (ROLE-MOMENTS-PLAN §2.3). Dialogue's +1 and -1 receipts are the only way to gain or lose conversation time. `WindowBudget` reads them from rules 4 (Simulation/EpisodeEngine.Week.cs:93-111):
+  - it adds the open window's +1s of this week and takes off its -1s;
+  - an action a +1 paid for (`spentWindowAction`) is not counted against the week's extras in a later window;
+  - they never go through the positive-only bank (`phaseEventSocialBonus`).
 
-### 3.1 The conditional veto (D4)
+### 4.1 Windows (call 12)
+
+| Occasion (rules) | Phase | Window and its seats | Opens from | Ends |
+|---|---|---|---|---|
+| Campaign appeal (2; V1 and V2 in 1) | Campaign | After the veto, 2 | As rules 1 | At the eviction |
+| Holder appeal (3) | Veto meeting, before the decision | After the nominations, 1 | The person's menu | At the decision |
+| Veto question (4) | Veto, after the draw and before the result. The players are drawn as Veto selection advances (Simulation/EpisodeEngine.cs:395-399). | After the nominations, 1 | The person's menu | At the result |
+| HoH consultation (5) | Nomination, before the original nominations | After the HoH, 2 | The person's menu; also the pitch board under Roles | When the original nominations commit. Not granted again for replacement nominations. |
+| Veto consultation (5) | Veto meeting, before the decision | After the nominations, 1 | The person's menu; also the offer board under Roles | At the decision, or when the veto cannot be used |
+
+- **No new window or phase.**
+  - `Windows.Count` (4) is part of every save (Simulation/EpisodeEngine.Week.cs:9-10; checked at Simulation/EpisodeValidation.cs:148).
+  - `EpisodePhase` is append-only, with frozen ordinals (Simulation/EpisodeState.cs:7-12).
+  - The master plan's "new windows and phases" for D5b become new occasion kinds inside these.
+- **The one seat after the nominations.** The veto question, the holder appeal and the veto consultation share it. A grant is how a nominee or a holder gets a second conversation there, within the two free a week.
+
+### 4.2 The conditional veto (D4, rules 4; decision 3)
 
 1. **The question.** The player is nominated, the veto players have been drawn, and the result is not yet known. The player asks a veto player "If you win the veto, will you use it on me?". The answer is yes, no, not committing, or a condition. It is drawn on a keyed coin inside the command and saved as the conversation's `DialogueStatementState`. It records what was said, not proof of a plan.
-2. **The promise.** After a yes, "Can we make that a promise?" writes one unified commitment row:
-   - a new closed kind value (`veto`) and a new origin value;
-   - the speaker as maker, and the player as both beneficiary and target;
-   - valid this week only;
-   - `conditionalVeto` holding the statement and the player's consent.
+2. **The promise.** After a yes, "Can we make that a promise?" writes one deal:
+   - kind `veto_if`, a new closed value, never proposed by the player. Validation refuses it below dialogue rules 4, as it refuses `veto_hold` outside Roles (Simulation/EpisodeValidation.cs:310);
+   - the veto player as proposer, and the player as recipient and target;
+   - valid this week only, at the Critical trust of a veto commitment (Simulation/DealState.cs:145-146);
+   - id `deal-vetoif-<n>`, where n is the log sequence of the promise step in the conversation's path. The id ties the deal to its conversation, statement and consent one to one, so no field holds the link. Deals are never removed.
 
-   No `veto_use` deal is written or reused.
-3. **The result.** At the veto result, `DialogueVetoOccasionState` records who holds the veto and who is on the block.
-4. **Settlement.**
-   - If the condition is unmet (the speaker did not win, the player is off the block, the veto cannot be used, or someone left), the row lapses with no effect and records its reason.
-   - If the condition is met, the actual decision keeps the promise (the veto used on the player) or breaks it. Settlement is the veto commitment's existing one, +24 kept and -45 broken (Simulation/DealResolution.cs:54 at the critical weight), charged to whoever broke it.
-5. **One word.** Every reader of a veto word counts a met conditional row as one word:
-   - the holder's pull (`StrategyRules.VetoWillingness`, Simulation/StrategyRules.cs:475);
-   - the Your word page (`CommitmentsRead`);
-   - Your Week (`YourWeek`);
-   - the jury and finale reads (`FinalistRead`);
-   - `Negotiation.VetoWordGiven`, wherever the player is the maker;
-   - R8's substitution, when it is built.
-6. **The largest risk.** Validation and admission for the mode-2 commitment family (`UnifiedVoteFamilyValidation`, `UnifiedVoteAdmission`) must learn the third kind. If that needs a field the row does not have, the work stops and reports (decision 7).
+   No `veto_use` row is written or reused (ROLE doc :78). Schema 29's `conditionalVeto` terms stay null in every version. Validation already requires that at rules 0 and 1 (Simulation/EpisodeValidation.cs:96; Simulation/DialogueRules.cs:111-112), and later versions keep the refusal.
+3. **The result.** At the veto result, `DialogueVetoOccasionState` records the holder, the veto players and the nominees. A `veto_if` whose maker did not win, or whose player is off the block, lapses: Expired, with no effect. The occasion row says why.
+4. **Settlement.** If the condition is met, the veto decision settles it by `DealResolution.Veto`'s rule (Simulation/DealResolution.cs:182). Used on the player, it is Fulfilled: +24. Otherwise the holder broke it: -45. These are 8 and -15 at the Critical weight 3 (:54). A party who leaves first ends it as the commitment rules end any deal whose party has left.
+5. **One word.** Each reader counts it once:
+   - the holder's pull, `StrategyRules.VetoWillingness` (Simulation/StrategyRules.cs:475), counts a `veto_use` or a met `veto_if` once;
+   - it is not the player's own word on the veto. `IsVetoWord` (Simulation/Negotiation.cs:738) stays `veto_use` and `veto_hold`, because the player is the beneficiary, never the maker;
+   - the Your word page, Your Week, and the jury and finale reads (`CommitmentsRead`, `YourWeek`, `FinalistRead`) get lines for a promise made to the player. A broken one is the holder's breach;
+   - R8's holder offer, when built, is refused while that holder's met `veto_if` stands;
+   - it is one more row under the deal ceiling of 40, which counts every deal row (Simulation/PlayerDeals.cs:51; Simulation/UnifiedVoteStore.cs:57-59). With no room left, the promise is refused in its own words, and the statement stands.
+6. **The largest risk** is now the readers' wording and settlement order, not the mode-2 family.
 
-## 4. What rules 2 is
+## 5. The conversations
 
-### 4.1 The version
-
-- **The value.** `dialogueRulesVersion` becomes 2, a new value in the existing field.
-- **The constants.**
-  - `Rules1` = 1 and `Rules2` = 2.
-  - `Latest` = 2, the bound that validation checks.
-  - `Offered` is what the toggle writes: 1 until the moment call 8 picks, then 2.
-  - `Shipped` stays 0 until D7.
-- **Switching on.** `On(s)` accepts both 1 and 2; today it checks `== Version` (Simulation/DialogueRules.cs:19). Each behaviour is keyed to the version that introduced it, so rules-1 seasons keep exactly the closed V1 and V2 pairs. `EpisodeValidation` accepts 2 (Simulation/EpisodeValidation.cs:91-92).
-- **Prerequisites.** Those of rules 1 (Simulation/DialogueRules.cs:448-453), plus `RolesOn` (call 9), on schema 29.
-- **Commands.** No new command kind. `StartDialogue` and `ChooseDialogue` carry every rules-2 conversation (Simulation/EpisodeState.cs:697-700). The next free kind stays 66.
-
-### 4.2 The content
+### 5.1 Content
 
 The content is a closed registry, keyed on template and content version.
 
-| Content | Occasion id | Window and phase | Who the player talks to | Ends in | Slice |
-|---|---|---|---|---|---|
-| Campaign appeal | `week:N:campaign:npc` | After the veto; Campaign | An eligible voter | The ordinary vote plea (Emotional, or Strategic after a citation), or a vote left open | D3 |
-| Holder appeal | `week:N:holder:npc` | After nominations; the veto meeting, before the decision | The veto holder | The ordinary save plea, or no ask | D3 |
-| Veto question | `week:N:veto-question:npc` | After nominations; from the veto draw until the result | A veto player | A statement, and optionally the conditional promise | D4 |
-| HoH consultation | `week:N:hoh-consult:npc` | After the HoH result, before nominations | Any active houseguest | Their case is heard. Any promise is the pitch's own. | D5 |
-| Veto consultation | `week:N:veto-consult:npc` | After nominations; the veto meeting, before the decision | A nominee or the HoH | The answer or price that already exists; one veto word | D5 |
+| Content (rules) | Occasion id | Who the player talks to | Ends in |
+|---|---|---|---|
+| Campaign appeal (2) | `week:N:campaign:npc` | An eligible voter | The ordinary vote plea (Emotional, or Strategic after a citation), or a vote left open |
+| Holder appeal (3) | `week:N:holder:npc` | The veto holder | The ordinary save plea, or no ask |
+| Veto question (4) | `week:N:veto-question:npc` | A veto player | A statement, and optionally the conditional promise |
+| HoH consultation (5) | `week:N:hoh-consult:npc` | Any active houseguest | Their case is heard. Any promise is the pitch's own. |
+| Veto consultation (5) | `week:N:veto-consult:npc` | A nominee or the HoH | The answer or price that already exists; one veto word |
 
 **How every tree runs** (the ROLE doc, :80-94):
 1. The player opens.
@@ -135,111 +197,156 @@ The content is a closed registry, keyed on template and content version.
 3. The player answers with a fact they know, a real commitment, the relationship, a respectful no, or pressure. Every node has a neutral exit.
 4. The NPC reacts, once.
 
-**Limits.** A conversation has at most three consequential choices, and a node at most four options.
-
 **Evidence** is a fact the player holds:
 - a public veto record (`power`, as in V2);
 - a memory;
-- the NPC's own statement this week.
+- the NPC's own statement, or the NPC's vote claim copied into the conversation's statement (§6).
 
 Hearsay never proves a ballot, and an old intention never proves today's choice. Previews show KnownOdds words, never a score.
 
-**What replaces V1 and V2.** In a rules-2 season the campaign is the rules-2 appeal, which takes in V2's citation. V1 and V2 stay frozen for rules-1 seasons.
+**What replaces V1 and V2.** In a season on rules 2 or later, the campaign is the rules-2 appeal, which takes in V2's citation. V1 and V2 stay frozen for rules-1 seasons.
 
-**Content is versioned like rules.** A slice that changes what a node does adds a content version, and a saved conversation keeps its own.
+**Content is versioned like rules.** A change to what a node does is a new content version, and a saved conversation keeps its own.
 
-### 4.3 Randomness (decision 5)
+### 5.2 Randomness (decision 5)
 
 | Draw | Source |
 |---|---|
-| The NPC's response at a node | `StoryRandom.Unit(s, "dialogue:{occasionId}:{pathIndex}")`. It is keyed on the occasion, not on sequence numbers, so doing something else first does not change the coin. |
-| A +3 or -3 relationship change | `EpisodeEngine.ChangeKeyed`, with the same key plus `:change`. The reducer's reciprocal draws then come from the keyed stream (Simulation/Story/EpisodeEngine.StoryEffects.cs:25-27). |
+| The NPC's response at a node | `StoryRandom.Unit(s, "dialogue:{occasionId}:{pathIndex}")`. It is keyed on the occasion, not on sequence numbers, so doing something else first does not change the coin. No story key uses the `dialogue:` prefix today. |
+| A +3 or -3 relationship change | `EpisodeEngine.ChangeKeyed` (Simulation/Story/EpisodeEngine.StoryEffects.cs:25-27), with the same key plus `:change`, never plain `Change`, which draws the main stream (Simulation/EpisodeEngine.cs:2438-2439) |
 | The answer to the veto question | The same rule as any response. Its occasion is `week:N:veto-question:{speakerId}`. |
-| Grants, time, lapses and closures | No draw: each is worked out from the state |
-| The final plea | Unchanged: the ordinary plea's main-stream roll (Simulation/EpisodeEngine.Strategy.cs:104-162) |
+| Grants, time, lapses, closures and the conditional promise | No draw: each is worked out from the state |
+| An existing act inside a conversation | Its own, unchanged: the final plea is the ordinary plea's main-stream roll (Simulation/EpisodeEngine.Strategy.cs:104-162) |
 
-Starting, leaving or abandoning a conversation draws nothing from the main stream. The plea is its one main-stream roll, the same roll an ordinary plea makes.
+Starting, leaving or abandoning a conversation draws nothing from the main stream. A test pins `randomState` unchanged across a conversation that ends without the plea.
 
-### 4.4 Numbers (decision 4: unmeasured starting values)
+### 5.3 The relationship is the player's
+
+Every change is how the NPC feels about the player, written by the engine's relationship reducer with a keyed roll (`ChangeKeyed`). A conversation never moves a pair of NPCs.
+
+### 5.4 Numbers (decision 4: unmeasured starting values)
 
 | What | Starting value | ROLE doc |
 |---|---|---|
 | How the NPC feels about the player | +3 for an earned result, 0 for a neutral or respectful one, -3 for a clear backfire. At most one change a conversation. | :110-118 |
-| Conversation time | +1 for an ending designated as earning time, -1 for one designated as losing it, otherwise 0. At most one +1 and one -1 a player a week, capped separately. A +1 is usable only in the window that is open. A -1 applies only when two opportunities remain after the conversation's cost. | :120-129 |
-| Grants | One per role a week; at most two free conversations a week | :35-51 |
-| Shape | At most 3 consequential choices; at most 4 options a node | :90 |
+| Conversation time (from 4) | +1 for an ending designated as earning time, -1 for one designated as losing it, otherwise 0. At most one +1 and one -1 a week, capped separately. A +1 is usable only in the window that is open. A -1 applies only when two opportunities remain after the conversation's cost. | :120-129 |
+| Grants (4 and 5) | One per role a week; at most two free conversations a week | :35-51 |
+| Shape | At most 3 consequential choices, 4 options a node and 5 steps | :90 |
 | Entry | One action at the first accepted node, or one grant. Later nodes are free. | :94 |
-| Conditional promise | Unmet: 0. Met: the veto commitment's settlement, +24 kept and -45 broken | :78 |
+| Conditional promise | Unmet: 0. Met: +24 kept, -45 broken | :78 |
 | Occasions | One per kind, NPC and week | as rules 1 (Simulation/DialogueRules.cs:47-48) |
 
 The numbers that already exist keep their meanings: pleas, deals, pitch answers and role-moment riders. The web reference's dialogue gives +2 to +8 and every fallback choice is positive, so it is not a model for these numbers.
 
-## 5. Does rules 2 fit the schema-29 store?
+### 5.5 Storyline budget and retention (call 11)
 
-Yes, field by field. None of it needs a new field. Three items, marked (a) to (c), need care in code.
+- **What the season holds.**
+  - Every conversation is a storyline; the two share an id (Simulation/DialogueRules.cs:21-25, 167).
+  - Validation allows 100 storylines (Simulation/EpisodeValidation.cs:339), and nothing prunes them (Simulation/Story/EpisodeEngine.Story.cs:39-40).
+  - Under Roles the story pool stops at 92 (:48), so the last eight stay with the backdoor, the pawn conversation and production.
+  - A conversation also holds up to five of the season's 400 house events (Simulation/EpisodeValidation.cs:318).
+- **The budget, from rules 2.** A conversation starts only while:
+  - (a) the season has started fewer than 32 conversations. Every started one counts, lapsed and abandoned ones included;
+  - (b) the season holds fewer than 92 storylines, under every story rules version;
+  - (c) its whole path fits the house events, with five reserved.
 
-| What the ROLE doc needs (:137-146) | Where schema 29 holds it | Fits |
+  Rules 1 keeps its frozen limits (Simulation/DialogueRules.cs:49-51).
+- **32 is an unmeasured starting value.** P1(d) measures the most storylines a 16-houseguest season reaches without dialogue, with the NPC world on. If that peak plus 32 passes 92, the budget is lowered to fit before rules 2 freezes.
+- **A refusal never takes a plea away.** From rules 2, when a conversation cannot start (the budget, or an unanswered house moment), the plea it wraps stays available as the ordinary one-shot plea, at its ordinary cost, and the refusal says why. P1(a) measures how often rules 1's frozen lock refuses.
+- **Retention: nothing is pruned**, at schema 29 or 30. Conversations, statements, grants, veto occasions, time receipts and `veto_if` deals stay for the whole season.
+  - Every once-per rule and weekly cap is a count over these rows, so a pruned row would let an expired occasion, grant or +1 be earned again (ROLE doc :146).
+  - The bounds keep the season small: at most 32 conversations, 3 grants and 1 veto occasion a week, and 1 statement a conversation.
+- **All-Star campaigns.** The route is the All-Star plan's call (AS2). If they are built in the story catalogue, they count in the pool's 92. If they are built on the dialogue layer:
+  - each campaign is a new occasion kind under a new dialogue version, and counts in the 32;
+  - the governor's caps count started campaigns (attempt rows), as dialogue's own caps do;
+  - they play only in chip seasons until D7 puts dialogue on by default.
+
+## 6. Schema 30: fields dialogue needs (final)
+
+**Conclusion: none.** Every dialogue need from D2 to D7 fits schema 29's `DialogueState` and the existing deal fields. The pooled schema 30 carries no dialogue field, no conditional-veto family and no dialogue rules version. The All-Star histories claim it for `alumniRulesVersion` and `alumniCatalogEdition` (ALL-STAR-HISTORIES-PLAN §5.1, §10).
+
+**What schema 30 does for dialogue, with no field:**
+1. Simulation/DialogueRules.cs:19 and :97 become `>= 29`, the schema that introduced the store. D1 makes this change, as the All-Star plan asks (§10); it is harmless at 29.
+2. Simulation/EpisodeValidation.cs:88 and Runtime/Persistence/EpisodeSaveValidation.cs:13 move to 30 with the bump. They are the live schema, and they belong to H1b.
+3. `UpgradeV29ToV30` carries `dialogueRulesVersion` and the dialogue store as they are. Nothing is inferred.
+4. `FrozenEpisodeV29`'s dialogue domain is rules 0 (the empty store) and rules 1 (the closed V1 and V2 pairs, with the stores the D1 chip writes). From D2 on, the live validator refuses rules 2 and later at schema 29, so the frozen copy never carries them.
+5. D2 lands after the bump. It is built against 29 now and rebased, so building it does not wait. D1 may land before the bump or after it.
+
+**The order is decision 7's, not the field list's.** The field list above is final under either order. Items 4 and 5 follow decision 7's default, which differs from the All-Star plan's D-H6 (D2 on main first if it is ready, ALL-STAR-HISTORIES-PLAN §10, §12). The reasons for this default:
+- The reader can be cut now, from rules 0 and 1 as main has them; D1 changes only the `>= 29` literal there. H1b neither waits for D2 nor redoes the reader after it.
+- A rules-2 validator never needs a frozen copy at 29.
+- If D2 reached main at 29 before the chip wrote 2, the reader would freeze a validator whose rules had not frozen.
+
+The lead settles the order, and the All-Star plan's §10 follows it.
+
+**The fit check.**
+
+| What dialogue needs (ROLE doc :137-146) | Where it lives | Fits |
 |---|---|---|
-| **Conversation:** occasion id and kind | `DialogueEpisodeState.occasionId` and `occasionKind` (new closed values, §4.2) | Yes |
+| **Conversation:** occasion id and kind | `DialogueEpisodeState.occasionId` and `occasionKind`, with new closed values (§5.1) | Yes |
 | Template and content version | The storyline's `templateId`, and `contentVersion` | Yes |
 | Player, NPC, week, window, phase | `s.playerId`; `npcId`, `week`, `window`, `startedPhase` | Yes |
-| The offer or occasion it came from | `occasionId`, `entryEventId` | Yes |
 | Current node and path | The owned storyline's `beatId`, `eventId` and `path`, and its house events | Yes |
-| NPC responses, including a saved concern | `responses[]` and `responseKey` (a closed vocabulary for each template) | Yes |
-| Evidence | `evidence[]`. `power` and `memory` keep copies; `statementId` cites a statement. | Yes, with care (a) |
-| Entry, paid by an action or a grant | `entry.kind`, `grantId`, `windowActionBefore` and `windowActionAfter` | Yes, with care (b) |
-| Settlement | `time`. The +3/-3 follows from the template, content version and response key, and `ChangeKeyed` writes it to the relationship and its events. | Yes |
-| **Grant:** player, week, role | `DialogueRoleGrantState.id`, `ownerId`, `week`, `role` | Yes |
-| What set the role | `sourceKind`, `sourceRevision`, `sourceSequence`, `sourcePhase`, `sourceNominees` | Yes |
-| The window it can be used in | Fixed by the role (§3) | Yes; no field needed |
-| What used it | `consumedEpisodeId`, `consumedRevision`, `status` | Yes |
-| Expiry | `expiryReason`, `expiredRevision` | Yes |
-| **Time receipt:** the outcome and its cap | `DialogueTimeReceiptState.proposedDelta` and `appliedDelta`. A +1 refused by the cap records proposed 1 and applied 0. The week's caps are counted from the week's receipts. | Yes |
-| Window, reason, rule version | `window`, `reason`, and the season's `dialogueRulesVersion` | Yes |
+| NPC responses, including a saved concern | `responses[]` and `responseKey`, a closed vocabulary for each template | Yes |
+| Evidence | `evidence[]`: `power` and `memory` keep copies, and `statementId` cites a statement | Yes |
+| Entry, paid by an action or a grant | `entry.kind`, `grantId`, `windowActionBefore` and `windowActionAfter`. A grant entry spends no tick, so rules 2 keys ticks by the kind of entry (the fix at Simulation/DialogueRules.cs:182). | Yes |
+| Settlement | `time`. The +3/-3 follows from the template, content version and response key, and `ChangeKeyed` writes it to the relationship. | Yes |
+| **One statement a conversation** | `statement` is a single row. That is enough: only the veto question makes a statement. A conversation that cites the NPC's vote claim copies it into its own statement: the claim is a ledger `ClaimRow` (week, voter, target, source) with no id, dropped past 512 rows (Simulation/SeasonLedger.cs:20, 135-139). Content that needs two statements is two occasions. | Yes |
+| **No weekly-cap field** | None is needed. Every weekly limit is a count over the week's retained rows: occasions (`occasionId` is unique, Simulation/DialogueRules.cs:47-48 and :129); grants used that week; the +1 and -1 from `time.appliedDelta` of the week's conversations. A +1 refused by its cap records proposed 1 and applied 0, so the same conversation never retries it. This needs the retention rule (§5.5). | Yes |
+| **Grant:** owner, week, role, what set the role | `DialogueRoleGrantState.id`, `ownerId`, `week`, `role`, `sourceKind`, `sourceRevision`, `sourceSequence`, `sourcePhase`, `sourceNominees` | Yes |
+| What used it, and expiry | `consumedEpisodeId`, `consumedRevision`, `status`, `expiryReason`, `expiredRevision`. The window a grant can be used in is fixed by its role (§4.1). | Yes |
+| **Time receipt:** the outcome, window and reason | `DialogueTimeReceiptState.proposedDelta`, `appliedDelta`, `window`, `reason`; the rule version is the season's | Yes |
 | When a +1 was spent | `spentRevision`, `spentSequence`, `spentWindowAction` | Yes |
-| **Statement:** speaker, audience, condition, target, time | `DialogueStatementState.speakerId`, `audienceIds`, `conditionKind`, `targetId`, `answer`, `week`, `revision`, `sequence` | Yes |
-| When the statement expires | Fixed by the condition: a veto condition ends at that week's veto decision | Yes; no field needed |
+| **Statement:** speaker, audience, condition, target, time | `DialogueStatementState.speakerId`, `audienceIds`, `conditionKind`, `targetId`, `answer`, `week`, `revision`, `sequence`. It expires by its condition: a veto condition ends at that week's result. | Yes |
 | **Veto occasion:** the result and the decision | `DialogueVetoOccasionState` (holder, HoH, veto players, nominees at the result) and its `decision` (used, saved, replacement) | Yes |
-| **Conditional promise** | A `UnifiedCommitmentState` row with new kind and origin values. `conditionalVeto` holds the statement, the consent's event, path and revision, and a `resolution` (reason, who left, revision, sequence, week). | Yes, with care (c) |
+| **Conditional promise** | A `veto_if` deal (§4.2): proposer, recipient, target, week, expiry, status, trust, who broke it, settled week. The link to its conversation is the deal's id. | Yes |
+| **Consultation windows** | The existing four windows and phases (§4.1) | Yes |
+| **The budget** | Counted from the store (§5.5) | Yes |
 
-(a) **A cited vote claim.** An AskVote claim is a ledger row with no id, and the ledger drops rows beyond 512 (Simulation/SeasonLedger.cs:20, 61-63). A conversation that cites the NPC's vote claim therefore copies it into its own statement first and cites that copy. A conversation holds one statement, so a campaign conversation never holds a veto statement. They are separate occasions in any case.
+**What would reopen this.** Each of the following would need a field, and would take schema 31, never this pooled 30:
+- pruning, with a summary kept in place of the rows;
+- two statements in one conversation;
+- a new window or phase;
+- time or a grant earned outside a conversation.
 
-(b) **Entry ticks.** The rules-1 validator keys an entry's tick on `windowActionAfter` (Simulation/DialogueRules.cs:177-183), which assumes one paid action. A grant entry spends no tick (`before` equals `after`), so rules 2 keys ticks by the kind of entry. Role moments named the same fix (ROLE-MOMENTS-PLAN §6.1, L2).
+## 7. Slices
 
-(c) **A third kind.** Unified rows have two kinds today, `safety` and `vote`. Adding `veto` touches the mode-2 family's validation and admission (§3.1, item 6).
+| Slice | Rules | What | What the player sees | Size |
+|---|---|---|---|---|
+| **P0** | - | This note | Nothing | S, docs only |
+| **P1** Probes | - | Headless measurements with the NPC world on: (a) how often rules 1's house-moment lock refuses; (b) how often V2's citation can appear; (c) how often Cody pleads in All-Stars houses of 8 and 12; (d) the most storylines at 16 houseguests (§5.5). | Nothing; numbers | S |
+| **P3** Recorder walk | 1 | The recorder's dialogue walk and the first rules-1 save | A save stopped at the campaign conversation | S |
+| **D1** The chip | 1 | `SeasonBuilder.Choice` gains an in-memory switch. `ApplyFresh(fresh, options)` writes `Offered` (1) when it is set, and 0 otherwise. The chip on the cast-screen footer, with a caption checked unused. The digest observer and `CurrentOldSaveTrace` accept rules 1 without loosening the rules-0 checks. A rules-1 fixture saved mid-conversation, with its manifest cell, at the schema D1's build writes (29 if it lands before the bump). DialogueRules.cs:19 and :97 become `>= 29`. StressHouseTests' regex, ShippedRulesTests and EpisodePlayModeTests.ShippedRules move. Layouts at text sizes 1.0, 1.2 and 1.4. | A new chip beside the house size, off. In a season started with it on, a nominated player still on the block in the Campaign gets the three-step conversation from the Emotional "Ask for their vote". It costs and rolls the same as the plea, and survives a reload. | M |
+| **D2** Foundation and the first consequences | 2 | `Version` as a bound with `IsDefined`; per-version bounds; the content registry; entry by action or grant (the tick fix); statement and memory evidence; rules 2 refused below schema 30. The vote-word campaign tree. Rules 0 and 1 stay byte-identical. | In a chip season, the voter answers with their claim, a deflection or a concern. The player replies with a fact they know, the relationship, pressure or a polite exit. The voter reacts ("They warmed to you", "That landed badly"). The player still chooses whether to make the plea. | L |
+| **D3** The other trees | 3 | Memory, pressure and neutral campaign trees; the holder appeal. Verification adapters list the choices hidden inside a category. | More branches, and a conversation with the veto holder | M-L |
+| **D4** The conditional veto | 4 | §4.2 | A nominated player can ask a veto player, before the veto, whether they would use it on them, and then ask them to promise. The promise shows on Your word. If that player wins, the veto meeting keeps or breaks it. If they do not, it lapses quietly. | L |
+| **D5a** The nominee's grant | 4 | Grants written when the player is nominated, used up by a conversation; at most two free a week | A line saying one conversation this week is on the house | M |
+| **D5c** Conversation time | 4 | The +1 and -1 receipts that `WindowBudget` reads (§4) | "One more conversation in this window", or "The argument cost you an opportunity" | M |
+| **D5b** Consultations | 5 | The HoH and veto consultations and their grants (§4.1) | As HoH or veto holder, one conversation on the house | L |
+| **D6** Measurement | - | Lab policies start and answer conversations. Paired 100-seed runs with dialogue on and off, after R7's B9, with NPC ticks on. The ROLE doc's diagnostics (:158). Pacing against 45 minutes at 8 players. The owner signs off the numbers. | Nothing; a report | L, mostly compute |
+| **D7** On by default | latest | `ApplyFresh` writes `Shipped`, the latest frozen version, together with R7. Goldens and digests are re-recorded with the reasons stated. The fixture and manifest cell for a shipped season, a season-walk route through a conversation, and the largest text size. The owner decides whether the chip stays as an opt-out. | Every new season | M |
 
-**Limits D2 still has to set** (no new field):
-- grants: at most 3 a week, within the 100-conversation limit;
-- statements and veto occasions: at most one of each kind a week;
-- the retention rule the ROLE doc asks for (:146). Nothing expired can earn again, because grants and occasions are keyed on week and role.
+None of these slices adds a persisted field. If one ever did, it would be qualified alone and take schema 31.
 
-## 6. Slices
+## 8. Old seasons and tests
 
-| Slice | What | What the player sees | Size and proof |
-|---|---|---|---|
-| **D0** | This note | Nothing | S. Docs only. |
-| **D1** Toggle for rules 1 | `SeasonBuilder.Choice` gains an in-memory switch. `ShippedRules.ApplyFresh(fresh, options)` writes `DialogueRules.Offered` when the switch is set, and 0 otherwise. A toggle on the cast-screen footer, with a caption checked unused. The digest observer and `CurrentOldSaveTrace` accept rules 1 without loosening the rules-0 checks. One schema-29 rules-1 fixture saved mid-conversation, with its manifest cell. The tests that pin `ApplyFresh` move: StressHouseTests' regex, ShippedRulesTests and EpisodePlayModeTests.ShippedRules. Layouts at text sizes 1.0, 1.2 and 1.4. | A new toggle beside the house size, off. In a season started with it on, a nominated player still on the block in the Campaign gets the three-step conversation from the Emotional "Ask for their vote". "Cite their public rescue" appears when that voter's veto saved the player before. It costs the same and rolls the same as the plea, and it survives a reload. | M. One full set. |
-| **D2** The rules-2 foundation | Split the validator and the pending command by version, with rules 1 frozen in place. Add the content registry, the occasion kinds, entry by action or grant (the tick fix), and statement and memory evidence. `On` and validation accept 2. No content yet. | Nothing | L. Every rules-0 and rules-1 test passes unchanged. |
-| **D3** Nominee appeals | The rules-2 campaign appeal and holder appeal (§4.2). NPC responses on keyed coins, evidence, +3/-3 through `ChangeKeyed`, zero time. Verification adapters that list the choices hidden inside a category. | In a rules-2 season (call 8), the voter answers with their claim, a deflection or a concern. The player replies with a fact they know, the relationship, pressure or a polite exit. The voter reacts ("They warmed to you", "That landed badly"). The player still chooses whether to make the plea. | L |
-| **D4** The conditional veto | §3.1 | A nominated player can ask a veto player, before the veto, whether they would use it on them, and then ask them to promise. The promise shows on Your word. If that player wins, the veto meeting keeps or breaks the promise. If they don't win, it lapses quietly. | L. Largest risk: the mode-2 family. |
-| **D5** Grants, time and consultations | Grants written when the role is won (owner, week, role) and used up by a conversation. The HoH and veto consultations. The +1/-1 receipts that `SocialActionBudget` reads. The ROLE doc's abuse checklist (:160). The toggle moves to rules 2 (call 8). | As HoH, veto holder or nominee, a line says one conversation this week is on the house (at most two a week). Some endings say "One more conversation in this window" or "The argument cost you an opportunity". | L |
-| **D6** Measurement | Lab policies start and answer conversations. Paired 100-seed runs with rules 2 on and off, after R7's B9, with NPC ticks on. The ROLE doc's diagnostics (:158). Pacing against 45 minutes at 8 players. The owner signs off the numbers. | Nothing; a report | L, mostly compute |
-| **D7** On by default | `ApplyFresh` writes rules 2 (`Shipped` = 2) once R7 has enrolled Roles. Goldens and digests are re-recorded, with the reasons stated. The fixture and manifest cell for a shipped rules-2 season, a season-walk route through a conversation, and the largest text size. The owner decides whether the toggle stays as an opt-out. | Every new season | M |
-
-D1 to D7 take about five or six full sets, not counting B9's compute. None of these slices adds a persisted field; if one ever did, it would be qualified alone.
-
-## 7. Old seasons and tests
-
-- **Gating.** Everything new is gated on `dialogueRulesVersion` 2 or later, and rules 1 keeps its exact `== 1` behaviour. Rules-0 seasons and every committed fixture replay byte for byte: no new draw, log, id or `Change`. The canary is `s29-mode1-allweek-w3-veto-meeting`.
-- **Saves.** Saves stay at schema 29, so there is no migration. However, every save with dialogue on that a player keeps widens what a future frozen schema-29 reader must accept: rules 1 from D1 on, and rules 2 from the moment call 8 picks. This comes on top of the role moments' values (ROLE-MOMENTS-PLAN §4.6).
+- **Gating.** Everything new is keyed to the version that introduced it, and rules 1 keeps its exact `== 1` behaviour. Rules-0 seasons and every committed fixture replay byte for byte: no new draw, log, id or `Change`. The canary is `s29-mode1-allweek-w3-veto-meeting`.
+- **Saves.** Each version that a shipped path writes needs its old-save fixture and manifest cell, written by its own build: rules 1 from D1, and each later version, at schema 30, as the chip first writes it. This is on top of the role moments' values (ROLE-MOMENTS-PLAN §4.6).
 - **EditMode-only tests.** Many dialogue tests run only in EditMode, which the dotnet subset never covers. Each slice runs them under Unity's Mono harness before its full set, and the pinned rules-1 cases stay unchanged.
-- **Schema literals.** Three places check the live schema number: Simulation/DialogueRules.cs:19 and :97, and Simulation/EpisodeValidation.cs:88. These are bounds and must move with any later schema, or dialogue switches off.
 
-## 8. Risks
+## 9. Competition rules 5
+
+- **The claim.** Competition rules 5 is claimed for PC5, the competition part of B9 (the props and competitions line), so no other slice takes it. PC6's new minigames take 6 or later.
+- **No field.** It lives in the existing `competitionRulesVersion`, which validation bounds by `CompetitionRules.Current` (Simulation/EpisodeValidation.cs:134) and `ApplyFresh` writes (Simulation/ShippedRules.cs:29). So it needs nothing from schema 30.
+- **When PC5 lands.** `CompetitionRules.Current` (Simulation/CompetitionRules.cs:41-42) and `CompetitionMiniGames.CurrentRules` (Runtime/Presentation/CompetitionMiniGames.cs:23) move together. Rules 5 freezes the first time `ApplyFresh` writes it.
+- **Dialogue** never reads or writes competition rules.
+
+## 10. Risks
 
 - **Balance.** The Studier policy already wins 95% of eligible weeks and 73.5% of seasons at 8 players, against targets of 60-70% and 25-35%. Grants and +1 time push those numbers the wrong way, so D7 waits for D6.
+- **The frozen reader.** Every dialogue-on save shipped at schema 29 widens `FrozenEpisodeV29`. Keeping rules 2 and later off schema 29 holds that to the pilot.
 - **Pacing.** Every node is another click. D6 measures against 45 minutes at 8 players.
-- **Free warmth.** The +3/-3 lands at most once a conversation, a conversation costs an action or a grant, and each NPC gives one occasion a week.
+- **Free warmth.** The +3/-3 lands at most once a conversation, a conversation costs an action or a grant, and each NPC gives one occasion of a kind a week.
 - **Privacy.** Previews show only public facts and what the player knows. Role moments' privacy tests (§5.3 of that plan) apply.
-- **Captions are a contract.** The toggle and every new answer get new captions, checked unused. Nothing is appended to an existing caption.
-- **Two sessions share the branch.** No schema number or command kind is claimed. Story rules 10, the story session's fix for the pariah rate, still stands between R7 and D7.
+- **Captions are a contract.** The chip and every new answer get new captions, checked unused. Nothing is appended to an existing caption.
+- **Two sessions share the branch.** This note claims dialogue rules 2 to 5, in dialogue's own field, and records competition rules 5 for PC5. It claims no schema number: schema 30 is the histories', provisional until the story session confirms it (ALL-STAR-HISTORIES-PLAN §10). It claims no command kind either: `StartDialogue` and `ChooseDialogue` carry every conversation (Simulation/EpisodeState.cs:697-700), and the next free kind stays 66. Story rules 10, the story session's fix for the pariah rate, still stands between R7 and D7.

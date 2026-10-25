@@ -106,6 +106,27 @@ namespace Gamesim.Tests.PlayMode
                 }
             }
             Assert.That(seen, Does.Contain("reveal"), "The season never reached an eviction's tally.");
+
+            // The offer board (ROLE-MOMENTS-PLAN R2): the veto decision's asks under the role moments, which no
+            // shipped season reaches yet, on a meeting of its own.
+            yield return InstallOfferBoardMeeting(true);
+            yield return OpenStation();
+            yield return null;
+            var board = LastActive(Gamesim.Episode.EpisodeHud.OfferBoardName);
+            Assert.That(board, Is.Not.Null, "The offer board is up.");
+            AssertEveryLabelDraws("The offer board", board);
+            director.ClosePanels();
+            yield return null;
+
+            // And with the Head of Household's card after the nominees' (R4): its chip, its line and its stakes are its own.
+            yield return InstallKeepTheBlockMeeting();
+            yield return OpenStation();
+            yield return null;
+            board = LastActive(Gamesim.Episode.EpisodeHud.OfferBoardName);
+            Assert.That(board, Is.Not.Null, "The offer board is up, with the Head of Household's card.");
+            AssertEveryLabelDraws("The offer board with the Head of Household's card", board);
+            director.ClosePanels();
+            yield return null;
         }
     }
 }

@@ -371,8 +371,10 @@ namespace Gamesim.Simulation
             PendingDialogueCommand pending)
         {
             if (a == null || b == null || a.id == b.id || !Alive(a) || !Alive(b) || !DealKind.IsKnown(type)) return;
-            // A final three deal is the commitment rules' own (C9): a story strikes one only under them.
+            // A final three deal is the commitment rules' own (C9): a story strikes one only under them. A keep-the-block
+            // deal is the role moments' own (ROLE-MOMENTS-PLAN R4), and the same holds.
             if (DealKind.CommitmentRulesOnly(type) && !CommitmentRulesOn(s)) return;
+            if (DealKind.RolesOnly(type) && !RolesOn(s)) return;
             if (DealKind.NamesATarget(type) && (target == null || !Alive(target))) return;
             if (UnifiedVoteStore.Deals(s).Any(d => DealStatus.Binds(d.status) && d.type == type
                                  && ((d.proposerId == a.id && d.recipientId == b.id) || (d.proposerId == b.id && d.recipientId == a.id))

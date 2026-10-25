@@ -104,17 +104,32 @@ namespace Gamesim.Simulation
         /// </summary>
         public const string FinalThree = "final_three";
 
+        /// <summary>
+        /// Native, the role moments' own (ROLE-MOMENTS-PLAN R4, §3.3): the Head of Household asks the player, who holds
+        /// the veto, to leave the nominations as they are - "Don't Use the Veto" - and the player's yes is a word on the
+        /// veto, one a week, as a yes to a nominee's ask is (<see cref="Negotiation.IsVetoWord"/>). The veto decision
+        /// judges it (<see cref="DealResolution.Hold"/>): not used, it is kept; used, the player broke it. Only the Head
+        /// of Household puts one (<see cref="NpcDeals.AskToKeepTheBlock"/>), never the player
+        /// (<see cref="PlayerDeals.CanPropose"/>), and only under the role moments: a season without them never holds
+        /// one, and validation refuses one there (<see cref="RolesOnly"/>). Appended last, so a reader that walks
+        /// <see cref="All"/> in order keeps every match it had.
+        /// </summary>
+        public const string VetoHold = "veto_hold";
+
         public static readonly string[] All =
         {
             TargetAgreement, SafetyAgreement, VoteTogether, VoteSave, VoteEvict,
             VetoUse, InformationSharing, FinalTwo, Partnership, AllianceInvite,
-            FinalThree,
+            FinalThree, VetoHold,
         };
 
         public static bool IsKnown(string type) => type != null && Array.IndexOf(All, type) >= 0;
 
         /// <summary>Whether this kind exists only under the commitment rules (<see cref="EpisodeEngine.CommitmentRulesOn"/>): the final three deal.</summary>
         public static bool CommitmentRulesOnly(string type) => type == FinalThree;
+
+        /// <summary>Whether this kind exists only under the role moments (<see cref="EpisodeEngine.RolesOn"/>): the keep-the-block deal.</summary>
+        public static bool RolesOnly(string type) => type == VetoHold;
 
         /// <summary>Whether this kind of deal is about a third houseguest rather than the pair.</summary>
         public static bool NamesATarget(string type) =>
@@ -133,7 +148,10 @@ namespace Gamesim.Simulation
                 case SafetyAgreement:
                 case AllianceInvite:
                 // The safety pact's weight: it is broken by the same act, a nomination.
-                case FinalThree: return DealTrust.High;
+                case FinalThree:
+                // The role moments' own (R4): a step under a nominee's veto commitment. Kept, it weighs Low
+                // (DealResolution.KeptWeight); broken after the player's yes, Critical (DealResolution.BreachWeight).
+                case VetoHold: return DealTrust.High;
                 case InformationSharing: return DealTrust.Low;
                 default: return DealTrust.Medium;
             }
@@ -159,6 +177,9 @@ namespace Gamesim.Simulation
                 case FinalTwo: return "Final Two Deal";
                 case AllianceInvite: return "Alliance Invitation";
                 case FinalThree: return "Final Three Deal";
+                // Its own (R4): the default would call it a partnership, and a reader that rebuilds the engine's line
+                // from the title (YourWeek.ReadDeal) would read its settlement as a partnership's.
+                case VetoHold: return "Keep-the-Block Deal";
                 default: return "Partnership";
             }
         }

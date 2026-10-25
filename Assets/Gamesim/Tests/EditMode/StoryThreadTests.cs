@@ -19,8 +19,11 @@ namespace Gamesim.Tests.EditMode
             return result.state;
         }
 
-        /// <summary>The first eviction settled, its night still to come, with the story switched on.</summary>
-        private static EpisodeState BeforeTheFirstEvictionNight(uint seed = 31, int rules = StoryRules.Current)
+        /// <summary>
+        /// The first eviction settled, its night still to come, with the story switched on. Threads, not
+        /// Current, so these keep their rules when a later milestone is enrolled.
+        /// </summary>
+        private static EpisodeState BeforeTheFirstEvictionNight(uint seed = 31, int rules = StoryRules.Threads)
         {
             var engine = new EpisodeEngine(SeasonBuilder.Create(new SeasonBuilder.Choice { HouseSize = 8 }, seed));
             bool Night(EpisodeState x) => x.week == 1 && x.phase == EpisodePhase.Eviction && x.evictionResolved;

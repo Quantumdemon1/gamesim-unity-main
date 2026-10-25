@@ -38,6 +38,9 @@ namespace Gamesim.Simulation
     /// <para><b>The final three deal</b> (C9), the rules' own kind, is broken as a safety pact is, by a
     /// nomination of the partner (<see cref="Nomination"/>), and kept by both when the two of them reach
     /// the final three (<see cref="FinalThreeReached"/>); a ballot never judges it.</para>
+    ///
+    /// <para><b>The keep-the-block deal</b> (ROLE-MOMENTS-PLAN R4), the role moments' own, is judged by the veto decision
+    /// (<see cref="Hold"/>): unused, kept at the Low weight (<see cref="KeptWeight"/>); used, broken by the holder.</para>
     /// </summary>
     public static class DealResolution
     {
@@ -58,7 +61,7 @@ namespace Gamesim.Simulation
 
         /// <summary>What a fulfilled or broken deal of this weight moves on the ledger.</summary>
         public static double Impact(DealState deal, string status) =>
-            (status == DealStatus.Fulfilled ? FulfilledBase : BrokenBase) * DealTrust.Weight(deal.trustImpact);
+            status == DealStatus.Fulfilled ? FulfilledBase * KeptWeight(deal) : BrokenBase * DealTrust.Weight(deal.trustImpact);
 
         /// <summary>
         /// The same in a season: a breach weighs <see cref="BreachWeight"/>, which under the
@@ -66,7 +69,16 @@ namespace Gamesim.Simulation
         /// every deal in a season without the rules, weighs what <see cref="Impact(DealState, string)"/> says.
         /// </summary>
         public static double Impact(EpisodeState s, DealState deal, string status) =>
-            status == DealStatus.Fulfilled ? FulfilledBase * DealTrust.Weight(deal.trustImpact) : BrokenBase * BreachWeight(s, deal);
+            status == DealStatus.Fulfilled ? FulfilledBase * KeptWeight(deal) : BrokenBase * BreachWeight(s, deal);
+
+        /// <summary>
+        /// What keeping this deal weighs, for every reader that weighs a kept one - the ledger at the settlement, the jury
+        /// (<see cref="WebJuryVoting.Obligations"/>): its own trust weight, except a keep-the-block deal's (ROLE-MOMENTS-PLAN
+        /// R4, §3.3), which weighs Low whatever it staked - leaving the block alone is what most holders do anyway, so
+        /// keeping it earns +8, while breaking it weighs its own, and one step more for the player's yes.
+        /// </summary>
+        public static double KeptWeight(DealState deal) =>
+            deal == null ? 0 : DealTrust.Weight(deal.type == DealKind.VetoHold ? DealTrust.Low : deal.trustImpact);
 
         /// <summary>
         /// What a breach of this deal stakes, for every reader that weighs one - the ledger at the
@@ -82,7 +94,8 @@ namespace Gamesim.Simulation
 
         /// <summary>
         /// Whether this deal is an offer the player accepted under the commitment rules: a question a
-        /// houseguest put to them (<see cref="NpcDeals.OfferPrefix"/>, <see cref="NpcDeals.VetoAskPrefix"/>),
+        /// houseguest put to them (<see cref="NpcDeals.OfferPrefix"/>, <see cref="NpcDeals.VetoAskPrefix"/>,
+        /// and under the role moments the Head of Household's <see cref="NpcDeals.KeepTheBlockPrefix"/>),
         /// which only the player's yes makes bind, and the price that question carried (C7) - part of the
         /// same bargain, struck by the same yes; or a counter the player took (C7,
         /// <see cref="Negotiation.FromACounter"/>), the deal they asked for at the houseguest's price and
@@ -97,10 +110,14 @@ namespace Gamesim.Simulation
             && (PutToThePlayer(s, deal) || PutToThePlayer(s, Negotiation.BoughtWith(s, deal)) || Negotiation.FromACounter(s, deal))
             && (deal.status == DealStatus.Active || deal.status == DealStatus.Accepted || deal.status == DealStatus.Fulfilled || deal.status == DealStatus.Broken);
 
-        /// <summary>A question a houseguest put to the player - an offer, or a nominee's veto ask - which only the player's yes makes bind.</summary>
+        /// <summary>
+        /// A question a houseguest put to the player - an offer, a nominee's veto ask, or the Head of Household's ask to keep
+        /// the block (R4) - which only the player's yes makes bind.
+        /// </summary>
         private static bool PutToThePlayer(EpisodeState s, DealState deal) =>
             deal != null && deal.id != null && deal.recipientId == s.playerId
-            && (deal.id.StartsWith(NpcDeals.OfferPrefix, StringComparison.Ordinal) || deal.id.StartsWith(NpcDeals.VetoAskPrefix, StringComparison.Ordinal));
+            && (deal.id.StartsWith(NpcDeals.OfferPrefix, StringComparison.Ordinal) || deal.id.StartsWith(NpcDeals.VetoAskPrefix, StringComparison.Ordinal)
+                || NpcDeals.IsKeepTheBlockId(deal.id));
 
         /// <summary>The other party to a deal, from one party's point of view.</summary>
         public static string Partner(DealState deal, string whoId) =>
@@ -171,6 +188,17 @@ namespace Gamesim.Simulation
             if (used && savedId == partner) return DealStatus.Fulfilled;
             if ((!used || savedId != partner) && partnerIsNominated) return DealStatus.Broken;
             return null;
+        }
+
+        /// <summary>
+        /// A veto decision, against a keep-the-block deal (ROLE-MOMENTS-PLAN R4, §3.3): the Head of Household asked the
+        /// holder to leave the nominations as they are. Not used, it is kept; used - on whichever nominee - the holder
+        /// broke it. Only a deal the holder is party to answers to their decision.
+        /// </summary>
+        public static string Hold(DealState deal, string holderId, bool used)
+        {
+            if (deal == null || deal.type != DealKind.VetoHold || Partner(deal, holderId) == null) return null;
+            return used ? DealStatus.Broken : DealStatus.Fulfilled;
         }
 
         /// <summary>
@@ -322,7 +350,9 @@ namespace Gamesim.Simulation
                         // the nominee list: a partner already lifted off the block by this very
                         // decision must still read as nominated here.
                         bool nominated = partner != null && nominees != null && nominees.Contains(partner);
-                        outcome = Veto(deal, actorId, savedId, used, nominated);
+                        // A keep-the-block deal (R4) is the veto's too: kept unused, broken used. Only the role moments
+                        // write one, so every other season is judged as it always was.
+                        outcome = deal.type == DealKind.VetoHold ? Hold(deal, actorId, used) : Veto(deal, actorId, savedId, used, nominated);
                         break;
                     case Votes:
                         outcome = VoteTogether(deal, state.votes);

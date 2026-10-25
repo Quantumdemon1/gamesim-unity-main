@@ -25,8 +25,46 @@ namespace Gamesim.Simulation
         public static bool StoryAt(EpisodeState s, int version) => StoryOn(s) && s.story.rulesVersion >= version;
 
         /// <summary>
+        /// Whether the role moments play this week (ROLE-MOMENTS-PLAN §4.2): the story at
+        /// <see cref="StoryRules.Roles"/>, with the strategy windows, the commitment rules and the levers
+        /// they are built on. Every Roles rule reads this. The template pool filtered on a template's version
+        /// alone, so a season at story rules Roles without those rules would have cast the role moments' arcs:
+        /// <see cref="Castable"/> asks this of every Roles arc (R6), and the pool, a thread's chapter, a
+        /// conversation and <see cref="StartStory"/> all cast through it. The pitch board also needs what
+        /// <see cref="HoHPitches.Available"/> already asks: the economy and agency.
+        /// </summary>
+        public static bool RolesOn(EpisodeState s) =>
+            StoryAt(s, StoryRules.Roles) && StrategyRules.Apply(s) && CommitmentRulesOn(s) && LeverRulesOn(s);
+
+        /// <summary>The most storylines a season may hold: validation's bound (EpisodeValidation), and nothing prunes them.</summary>
+        public const int StorylineCeiling = 100;
+
+        /// <summary>
+        /// Under the role moments the pool starts nothing new from here (ROLE-MOMENTS-PLAN §4.1): the last eight are kept for
+        /// the arcs the rules start themselves - the backdoor, the pawn conversation, production's ladder for the player - which
+        /// stop only at <see cref="StorylineCeiling"/>. Whatever is cast (<see cref="Castable"/>) stops here, a houseguest's
+        /// notice from production included: the strike lands, and only its storyline does not start.
+        /// </summary>
+        public const int PoolStorylineCeiling = StorylineCeiling - 8;
+
+        /// <summary>
+        /// Whether the role moments played in <paramref name="week"/> of this season: <see cref="RolesOn"/>'s own test,
+        /// read at that week - the story at <see cref="StoryRules.Roles"/>, and the story, the strategy windows, the
+        /// commitment rules and the levers each begun by then. At the season's own week it is <see cref="RolesOn"/>.
+        /// Validation reads it for the role moments' own records (R4: a keep-the-block deal), as it reads the commitment
+        /// rules' first week for theirs.
+        /// </summary>
+        public static bool RolesOnIn(EpisodeState s, int week)
+        {
+            bool Begun(int start) => start >= 1 && week >= start;
+            return s?.story != null && s.story.rulesVersion >= StoryRules.Roles && Begun(s.story.rulesStartWeek)
+                && Begun(s.strategyRulesStartWeek) && Begun(s.commitmentRulesStartWeek) && Begun(s.leverRulesStartWeek);
+        }
+
+        /// <summary>
         /// Switches the story system on for a season: from <paramref name="fromWeek"/>, under every
-        /// milestone this build has, with each houseguest's lore snapshotted. The director calls this
+        /// enrolled milestone (<see cref="StoryRules.Current"/>; a later one waits for its enrolment),
+        /// with each houseguest's lore snapshotted. The director calls this
         /// for every season it starts; the save migration does the same from the week after a save's.
         /// </summary>
         public static void EnableStory(EpisodeState s, int fromWeek = 1)
@@ -336,23 +374,9 @@ namespace Gamesim.Simulation
 
         private static void TryStartFromPool(EpisodeState s, StoryContext ctx, PendingDialogueCommand pending = null)
         {
-            var candidates = new List<(ArcTemplate template, ArcBinding binding, double weight)>();
-            foreach (var template in StoryCatalog.All)
-            {
-                // Plays draw from their own pool below.
-                if (template.play != null || Array.IndexOf(template.startAnchors, ctx.anchor) < 0) continue;
-                var binding = Castable(s, ctx, template);
-                if (binding == null) continue;
-                double weight = template.weight == null ? 10 : template.weight(ctx, binding);
-                if (!(weight > 0)) continue;
-                candidates.Add((template, binding, weight));
-            }
+            var candidates = PoolCandidates(s, ctx);
             if (candidates.Count == 0) return;
-            // How much "nothing new" weighs. The strategy windows took six arcs out of the house's pool,
-            // which left seasons at three asks against the plan's four to six (§5.2): under the reach
-            // rules the pause is shorter. The airtime's ceilings are unchanged.
-            bool reach = StoryAt(s, StoryRules.Reach);
-            double nothing = ctx.anchor == StoryAnchors.EvictionNight ? (reach ? 25 : 40) : (reach ? 40 : 60);
+            double nothing = PoolNothing(s, ctx.anchor, candidates);
             double total = candidates.Sum(c => c.weight) + nothing;
             double roll = StoryRandom.Unit(s, "w" + s.week + ":" + ctx.anchor + ":pool") * total;
             foreach (var candidate in candidates.OrderBy(c => c.template.id, StringComparer.Ordinal))
@@ -364,6 +388,41 @@ namespace Gamesim.Simulation
                 }
                 roll -= candidate.weight;
             }
+        }
+
+        /// <summary>
+        /// The house's pool at an anchor as it stands: every arc that may open there and casts now (<see cref="Castable"/>), with
+        /// what it weighs, in catalogue order; plays draw from their own pool. Pure - the pool's draw reads it, and so may a test.
+        /// </summary>
+        public static List<(ArcTemplate template, ArcBinding binding, double weight)> PoolCandidates(EpisodeState s, StoryContext ctx)
+        {
+            var candidates = new List<(ArcTemplate template, ArcBinding binding, double weight)>();
+            foreach (var template in StoryCatalog.All)
+            {
+                // Plays draw from their own pool below.
+                if (template.play != null || Array.IndexOf(template.startAnchors, ctx.anchor) < 0) continue;
+                var binding = Castable(s, ctx, template);
+                if (binding == null) continue;
+                double weight = template.weight == null ? 10 : template.weight(ctx, binding);
+                if (!(weight > 0)) continue;
+                candidates.Add((template, binding, weight));
+            }
+            return candidates;
+        }
+
+        /// <summary>
+        /// How much "nothing new" weighs in the house's pool at an anchor, beside these candidates. The strategy windows took six
+        /// arcs out of the house's pool, which left seasons at three asks against the plan's four to six (§5.2): under the reach
+        /// rules the pause is shorter. The airtime's ceilings are unchanged. And a role moment that casts weighs on "nothing" as
+        /// much as it weighs itself (ROLE-MOMENTS-PLAN §5.5, R6), so role moments mostly take the place of other moments rather
+        /// than add to them: a moment comes with (o + r) / (o + 2r + nothing). Only a Roles arc adds to it, and none casts
+        /// without the role moments (<see cref="Castable"/>), so every other season weighs "nothing" as it always did.
+        /// </summary>
+        public static double PoolNothing(EpisodeState s, string anchor, IEnumerable<(ArcTemplate template, ArcBinding binding, double weight)> candidates)
+        {
+            bool reach = StoryAt(s, StoryRules.Reach);
+            double nothing = anchor == StoryAnchors.EvictionNight ? (reach ? 25 : 40) : (reach ? 40 : 60);
+            return nothing + candidates.Where(c => c.template.rulesVersion >= StoryRules.Roles).Sum(c => c.weight);
         }
 
         /// <summary>How much "no new play" weighs in the plays' pool: low, so a castable play usually comes.</summary>
@@ -414,7 +473,12 @@ namespace Gamesim.Simulation
         public static ArcBinding Castable(EpisodeState s, StoryContext ctx, ArcTemplate template)
         {
             if (!StoryOn(s) || template == null || template.rulesVersion > s.story.rulesVersion) return null;
+            // A role moment plays only under the role moments, not at their story rules alone (R6, §4.2): RolesOn also wants
+            // the rules the moments are built on.
+            if (template.rulesVersion >= StoryRules.Roles && !RolesOn(s)) return null;
             if (DialogueRules.On(s) && s.storylines.Count >= DialogueRules.MaximumEpisodes) return null;
+            // Under the role moments the pool starts nothing new near the ceiling (§4.1): the last few are the rules' own.
+            if (RolesOn(s) && s.storylines.Count >= PoolStorylineCeiling) return null;
             if (BeforeTheFirstAsk(s) && template.id != FirstNightArc) return null;
             if (s.week < template.minWeek || s.Active.Count() < template.minActive) return null;
             if (s.Find(s.playerId)?.status != ContestantStatus.Active) return null;
@@ -424,7 +488,8 @@ namespace Gamesim.Simulation
                 if (RunningCycles(s).Count(x => x.lane == StoryLanes.Play) >= StoryLanes.MaxPlays) return null;
             }
             else if (template.lane != StoryLanes.Production
-                     && RunningCycles(s).Any(x => x.lane == template.lane)) return null;
+                     // Under the role moments the backdoor and the pawn conversation run beside the Game lane (R6's review).
+                     && RunningCycles(s).Any(x => x.lane == template.lane && !LeavesTheLaneOpen(s, x))) return null;
             if (Cooling(s, "tpl:" + template.id)) return null;
             if (template.group != null && Cooling(s, "grp:" + template.group)) return null;
             if (!StoryPeople.PlayerAllowed(s, template.playerNeeds)) return null;
@@ -499,6 +564,9 @@ namespace Gamesim.Simulation
         {
             if (DialogueRules.IsCampaignTemplate(template.id)) return null;
             if (DialogueRules.On(s) && s.storylines.Count >= DialogueRules.MaximumEpisodes) return null;
+            // Under the role moments an arc the rules start - the backdoor, the pawn conversation, production's ladder - never
+            // takes the season past the storylines validation holds it to (§4.1): it does not start.
+            if (RolesOn(s) && s.storylines.Count >= StorylineCeiling) return null;
             // An arc the engine starts at a particular point - production's ladder at the rung the
             // strike landed on - names its opener; everything else opens on its first beat.
             var opener = (openerId == null ? null : template.Beat(openerId)) ?? template.beats[0];
@@ -621,7 +689,10 @@ namespace Gamesim.Simulation
             // A beat always has something the player can take: the lapse option is never locked.
             foreach (var choice in choices.Where(c => c.lapse)) { choice.locked = false; choice.lockReason = null; }
 
-            var involved = cycle.record.cast.Select(r => r.contestantId).Where(id => id != s.playerId)
+            // The parts the card shows: the cycle's whole cast, or the few its beat names (R6).
+            var shown = beat.showsOnly?.Invoke(ctx, cycle);
+            var parts = cycle.record.cast.Where(r => shown == null || Array.IndexOf(shown, r.role) >= 0).ToList();
+            var involved = parts.Select(r => r.contestantId).Where(id => id != s.playerId)
                 .Distinct(StringComparer.Ordinal).ToList();
             return new HouseEventState
             {
@@ -639,7 +710,7 @@ namespace Gamesim.Simulation
                 surface = StorySurfaces.IsKnown(beat.surface) ? beat.surface : StorySurfaces.Scene,
                 venue = beat.venue,
                 lapseOptionId = beat.lapse,
-                cast = cycle.record.cast.Select(r => r.Clone()).ToList(),
+                cast = parts.Select(r => r.Clone()).ToList(),
                 choices = choices,
             };
         }
@@ -731,6 +802,10 @@ namespace Gamesim.Simulation
             Require(index >= 0, "Choose one of this moment's options.");
             var choice = item.choices[index];
             Require(!choice.locked, choice.lockReason ?? "That option is not open to you.");
+            // Under the role moments a story's promise of the veto is a word on it, one a week (R3, §3.2): an option
+            // drawn before the player gave their word elsewhere is refused once they have, and drawn locked.
+            string vetoWord = VetoWordRefusal(s, choice);
+            Require(vetoWord == null, vetoWord);
             string picked = null;
             if (choice.pickPerson)
             {

@@ -67,8 +67,11 @@ namespace Gamesim.Simulation
             if (state == null || target == null || target.isPlayer || target.status != ContestantStatus.Active)
                 return Refuse(out reason, "Approach an active housemate.");
             // A final three deal is the commitment rules' own (C9): without them it is refused in the words
-            // an unknown kind always was, so a season without the rules refuses exactly what it refused.
-            if (!DealKind.IsKnown(type) || (DealKind.CommitmentRulesOnly(type) && !EpisodeEngine.CommitmentRulesOn(state)))
+            // an unknown kind always was, so a season without the rules refuses exactly what it refused. A
+            // keep-the-block deal (ROLE-MOMENTS-PLAN R4) is the Head of Household's ask of the player, never the
+            // player's to put to anybody: refused so in every season, as it was before there was one.
+            if (!DealKind.IsKnown(type) || (DealKind.CommitmentRulesOnly(type) && !EpisodeEngine.CommitmentRulesOn(state))
+                || type == DealKind.VetoHold)
                 return Refuse(out reason, "That is not a deal anybody in this house would recognise.");
             if (state.week < state.dealRulesStartWeek)
                 return Refuse(out reason, "The house is not making deals this week.");

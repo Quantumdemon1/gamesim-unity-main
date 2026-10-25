@@ -810,6 +810,8 @@ namespace Gamesim.Simulation
                 case DealKind.FinalTwo: return "final two deal";
                 case DealKind.AllianceInvite: return "alliance invitation";
                 case DealKind.FinalThree: return "final three deal";
+                // The role moments' own (ROLE-MOMENTS-PLAN R4).
+                case DealKind.VetoHold: return "keep-the-block deal";
                 default: return "partnership";
             }
         }

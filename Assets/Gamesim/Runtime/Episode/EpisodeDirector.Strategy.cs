@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using Gamesim.Presentation;
 using Gamesim.Simulation;
@@ -144,13 +145,109 @@ namespace Gamesim.Episode
             }
         }
 
+        /// <summary>The offer board's line at the veto decision, under its eyebrow (ROLE-MOMENTS-PLAN §5.1).</summary>
+        public const string VetoOfferBoardLine = "Houseguests came to you before your veto decision.";
+
+        /// <summary>
+        /// The same asks as <see cref="VetoOffers"/>, on the offer board (ROLE-MOMENTS-PLAN R2): a card each, in the
+        /// order the block was named rather than the order they were filed in (<see cref="RoleOffers.VetoAsks"/>).
+        /// Each card's answers do what the rows' do - the free answer, committed as it is pressed - and a card whose
+        /// yes the veto cannot keep says why in the rows' own words (<see cref="VetoSavesOneLine"/>) over a disabled
+        /// yes. Drawn only under <see cref="EpisodeEngine.RolesOn"/>, at the meeting and in the diary's veto column.
+        /// Its head says that silence costs more than a no (<see cref="RoleOffers.SilenceLine"/>), which the engine
+        /// makes true for these asks under the role moments (R3): a no costs its tone's, silence more at the decision.
+        /// After the nominees' cards stands the Head of Household's (R4, <see cref="RoleOffers.BoardAsks"/>), asking the
+        /// player to leave the block alone, answered the same way; a word on the veto given locks the other cards' yes,
+        /// each saying why (<see cref="VetoWordLockLine"/>).
+        /// </summary>
+        private void VetoOfferBoard(EpisodeState state)
+        {
+            var cards = new List<EpisodeHud.OfferBoardCard>();
+            foreach (var offer in RoleOffers.BoardAsks(state))
+            {
+                var words = RoleOffers.CardOf(state, offer);
+                if (words == null) continue;
+                string id = offer.id;
+                cards.Add(new EpisodeHud.OfferBoardCard
+                {
+                    Card = words, Offer = offer,
+                    LockReason = VetoWordLockLine(state, offer),
+                    Accept = () => Commit(state, EpisodeCommandKind.RespondToDeal, id, text: EpisodeEngine.AcceptDeal),
+                    Decline = () => Commit(state, EpisodeCommandKind.RespondToDeal, id, text: "decline"),
+                });
+            }
+            hud.OfferBoard(state, new EpisodeHud.OfferBoardSpec { Line = VetoOfferBoardLine, Silence = RoleOffers.SilenceLine, Cards = cards, Redraw = Render });
+        }
+
+        /// <summary>
+        /// Whether the offer board is up in the player's veto decision: the role moments, the player holding the
+        /// veto before the meeting, and an ask waiting on them - a nominee's, or the Head of Household's (R4). The
+        /// diary says then that an answer saves as it is pressed, as the pitches' do.
+        /// </summary>
+        public static bool VetoOfferBoardShows(EpisodeState state) =>
+            state != null && EpisodeEngine.RolesOn(state) && state.phase == EpisodePhase.VetoMeeting && !state.vetoResolved
+            && state.vetoHolderId == state.playerId && RoleOffers.BoardAsks(state).Count > 0;
+
+        /// <summary>The pitch board's line under its eyebrow (ROLE-MOMENTS-PLAN R5).</summary>
+        public const string PitchBoardLine = "Houseguests came to you before your nominations.";
+
+        /// <summary>
+        /// Whether the Head of Household's pitches are a board (ROLE-MOMENTS-PLAN R5): the role moments' pitch board
+        /// (<see cref="HoHPitches.OnTheBoard"/>) - the player Head of Household before naming anybody - with a pitch waiting.
+        /// Without it the pitches come one at a time, as they always did. The rule is <see cref="RoleOffers.PitchBoardShows"/>'s,
+        /// in the simulation, where the subset tests it.
+        /// </summary>
+        public static bool PitchBoardShows(EpisodeState state) => RoleOffers.PitchBoardShows(state);
+
+        /// <summary>
+        /// The Head of Household's pitches on the offer board (ROLE-MOMENTS-PLAN R5, §3.1): at most three cards, in the order
+        /// the board was dealt (<see cref="RoleOffers.PitchBoardCards"/>), each the pitcher's face, tone, situation, read, line,
+        /// recommendation, stakes, history and - once felt out - what they said, over the pitch's four answers under their own
+        /// captions, unchanged: "Promise safety", "Hear them without committing", "Turn them down" and "Feel them out (free)".
+        /// Any card can be answered first; each answer commits as it is pressed, as the pitch's always did. A promise the record
+        /// cannot hold is drawn locked under a line saying why, and a pitcher already felt out has the question locked, their
+        /// answer on the card. The head says no word about silence: an unanswered pitch clears at the nominations, at no cost.
+        /// </summary>
+        private void PitchOfferBoard(EpisodeState state)
+        {
+            object view = BeginReplyChoices();
+            var cards = new List<EpisodeHud.OfferBoardCard>();
+            foreach (var pitch in RoleOffers.PitchBoardCards(state))
+            {
+                var words = RoleOffers.PitchCard(state, pitch);
+                if (words == null) continue;
+                string id = pitch.id;
+                bool promiseLocked = !HoHPitches.CanPromiseSafety(state, pitch.fromId), assessed = HoHPitches.Assessed(state, pitch);
+                var answers = ReplyCards.Replies(ReplyCards.Pitch).Select(reply =>
+                {
+                    bool locked = reply.Key == HoHPitches.PromiseKey && promiseLocked;
+                    return new EpisodeHud.OfferBoardAnswer
+                    {
+                        Caption = EpisodeHud.ReplyCaption(reply.Label), Key = reply.Key, Locked = locked,
+                        Choose = locked ? null : ReplyChoice(state, id, reply.Key, view),
+                    };
+                }).ToList();
+                answers.Add(new EpisodeHud.OfferBoardAnswer
+                {
+                    Caption = EpisodeHud.FeelOutPitchCaption, Key = HoHPitches.FeelOutKey, Locked = assessed,
+                    Choose = assessed ? null : ReplyChoice(state, id, HoHPitches.FeelOutKey, view),
+                });
+                cards.Add(new EpisodeHud.OfferBoardCard
+                {
+                    Card = words, LockReason = promiseLocked ? HoHPitches.PromiseRecordFull : null, Answers = answers,
+                });
+            }
+            hud.OfferBoard(state, new EpisodeHud.OfferBoardSpec { Eyebrow = EpisodeHud.PitchBoardEyebrow, Line = PitchBoardLine, Cards = cards, Redraw = Render });
+        }
+
         /// <summary>
         /// An offer's accept. For a nominee's veto ask once the player has given another nominee
         /// their word on the veto this week, the same caption drawn locked, under a line saying why
         /// and what becomes of the offer: the veto saves one of them, so a second yes is a word that
         /// cannot be kept (X13). Nothing is answered for the player - declining would cost them a
         /// little with the nominee, and that is theirs to choose - so the decline beside it stays as
-        /// it was, and an offer left alone lapses as any other does.
+        /// it was, and an offer left alone lapses as any other does. Under the role moments the Head of
+        /// Household's ask to keep the block is a word on the veto too (R4, <see cref="VetoWordLockLine"/>).
         /// </summary>
         private Button OfferAccept(EpisodeState state, DealState offer)
         {
@@ -162,13 +259,23 @@ namespace Gamesim.Episode
                 hud.Paragraph(PactCapOfferLine(state, offer.proposerId));
                 return hud.DescribeOfferControl(hud.LockedAction(EpisodeHud.DealAcceptCaption), state, offer, true);
             }
-            string promised = offer.type == DealKind.VetoUse ? VetoPromisedTo(state, offer.proposerId) : null;
-            if (promised == null)
+            string locked = VetoWordLockLine(state, offer);
+            if (locked == null)
                 return hud.DescribeOfferControl(hud.ActionFor(id, EpisodeHud.DealAcceptCaption,
                     () => Commit(state, EpisodeCommandKind.RespondToDeal, id, text: EpisodeEngine.AcceptDeal)), state, offer, true);
-            hud.Paragraph(VetoSavesOneLine(state, promised, offer.proposerId));
+            hud.Paragraph(locked);
             return hud.DescribeOfferControl(hud.LockedAction(EpisodeHud.DealAcceptCaption), state, offer, true);
         }
+
+        /// <summary>
+        /// Why an offer's yes is locked as a second word on the veto this week, in words, or null: the one test the rows,
+        /// the board and the season verification draw (<see cref="Negotiation.VetoWordLockLine"/>). A nominee's veto ask
+        /// once the player gave another nominee their word, as it always was; and under the role moments
+        /// (ROLE-MOMENTS-PLAN R4), where the engine refuses any second word on the veto, a nominee's ask once the player
+        /// gave the Head of Household their word to keep the block, and the Head of Household's ask once they gave a
+        /// nominee theirs.
+        /// </summary>
+        public static string VetoWordLockLine(EpisodeState state, DealState offer) => Negotiation.VetoWordLockLine(state, offer);
 
         private UnityEngine.UI.Button OfferDecline(EpisodeState state, DealState offer)
         {
@@ -187,32 +294,17 @@ namespace Gamesim.Episode
             + " down, or leave the offer unanswered.";
 
         /// <summary>
-        /// The nominee on this week's block the player has already given their word on the veto
-        /// to, other than <paramref name="askingId"/>, or null. Read from the player's own deals,
-        /// either way round: a nominee's ask the player took, or - under the commitment rules (C7) - a
-        /// price the player named for the veto, which the player proposed.
+        /// The nominee on this week's block the player has already given their word on the veto to, other than
+        /// <paramref name="askingId"/>, or null (<see cref="Negotiation.VetoPromisedTo"/>).
         /// </summary>
-        public static string VetoPromisedTo(EpisodeState state, string askingId) =>
-            state == null ? null
-                : state.deals.Where(d => d.type == DealKind.VetoUse && d.week == state.week
-                        && (d.status == DealStatus.Active || d.status == DealStatus.Accepted))
-                    .Select(d => DealResolution.Partner(d, state.playerId))
-                    .FirstOrDefault(other => other != null && other != askingId && state.nominees.Contains(other));
+        public static string VetoPromisedTo(EpisodeState state, string askingId) => Negotiation.VetoPromisedTo(state, askingId);
 
         /// <summary>
-        /// Above the other nominee's locked accept, once the player has said yes to one veto ask: why
-        /// it is locked, and both ways the offer can still end. Turned down, it is the player's no;
-        /// left alone, it lapses - at the veto decision from the strategy windows, which expires every
-        /// unanswered veto ask, and at the end of the week before them, as every offer does.
+        /// Above the other nominee's locked accept, once the player has said yes to one veto ask: why it is locked, and
+        /// both ways the offer can still end (<see cref="Negotiation.VetoSavesOneLine"/>).
         /// </summary>
-        public static string VetoSavesOneLine(EpisodeState state, string promisedId, string askingId)
-        {
-            string promised = state?.Find(promisedId)?.name ?? "somebody";
-            string asking = FinalistRead.FirstName(state?.Find(askingId)?.name ?? "them");
-            string lapses = StrategyRules.Apply(state) && !state.vetoResolved ? "at the meeting" : "at the end of the week";
-            return "The veto can only save one of them, and you have already given " + promised + " your word. Turn "
-                + asking + " down, or the offer lapses " + lapses + ".";
-        }
+        public static string VetoSavesOneLine(EpisodeState state, string promisedId, string askingId) =>
+            Negotiation.VetoSavesOneLine(state, promisedId, askingId);
 
         /// <summary>
         /// A houseguest who came to the player, waiting on an answer. Drawn before the week's

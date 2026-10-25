@@ -61,6 +61,18 @@ namespace Gamesim.Tests.PlayMode
             // Ordinary world movement/clock revisions are allowed during this physical approach.
             // The existing helper has a 35-real-second deadline and checks arrival/proximity.
             yield return WaitForVisibleNpcInvitation();
+            // Hearing opens the conversation, and opening it first flushes the house's free time not
+            // yet sampled: with a whole second due, that commits one NPC clock tick inside the press -
+            // the house's revision, not the press's. The bubble's 10 Hz check and the world's 100 ms
+            // sampler keep separate clocks, so the first visible frame can fall in that tail (late in
+            // a long run about one press in twenty did). Press on a frame with no second due, read and
+            // never written, so the strict check below holds the press alone to "commits nothing".
+            // The world samples within 0.1 s; nothing from here to the press yields.
+            float settle = Time.realtimeSinceStartup + 5f;
+            while ((!director.NpcInvitationIsVisible || NpcWholeSecondDue()) && Time.realtimeSinceStartup < settle)
+                yield return null;
+            Assert.That(director.NpcInvitationIsVisible, Is.True,
+                "The invitation should still be showing once the house's due second has committed.");
             Assert.That(director.CurrentNpcInvitationRecordId, Is.EqualTo(dialogueIncomingOfferId));
             Assert.That(director.CurrentNpcInvitationNpcId, Is.EqualTo(dialogueIncomingProposer));
             var waiting = director.Snapshot;
@@ -72,6 +84,8 @@ namespace Gamesim.Tests.PlayMode
             var hear = ButtonWithCaption(HouseNpcInvitationBubble.HearCaption);
             Assert.That(hear, Is.SameAs(bubble.HearControl), "Use the visible, raycast-reachable invitation control.");
             byte[] waitingBytes = File.ReadAllBytes(director.SavePath);
+            Assert.That(NpcWholeSecondDue(), Is.False,
+                "The house still owes a whole second of free time, so opening the conversation would commit its clock tick.");
             hear.onClick.Invoke();
             AssertDialogueUiUnchanged(waiting, waitingBytes);
             Assert.That(director.NpcInvitationIsVisible, Is.False);
@@ -229,6 +243,12 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(NpcRead<bool>("npcDiagnosticsSuspended"), Is.False);
             Assert.That(NpcRead<bool>("npcApproachDiagnosticsSuppressed"), Is.False);
         }
+
+        // Opening any panel flushes the house's unsampled free time (PauseNpcSocialForPanel ->
+        // FlushNpcWholeTicks), and that commits an NPC clock tick only when the carried fraction plus
+        // the unsampled remainder reaches a whole second. False means a panel opened now commits nothing.
+        private bool NpcWholeSecondDue() =>
+            NpcRead<double>("npcFrameFraction") + NpcRead<double>("npcWorldFraction") >= 1d;
 
         private static void AssertDialogueIncomingPause(EpisodeState before, EpisodeState after,
             string episodeId, string node, int steps)

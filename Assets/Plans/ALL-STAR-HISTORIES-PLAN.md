@@ -1044,8 +1044,12 @@ where feasible, and careful reading. The order is the owner's, histories first (
 gates). They follow H1b.
 - **AS1a**, the bio audit, is the master plan's Stack 1 slice, already approved (story plan 20, decision 10), and
   outside this track. Rachel's displayed bio quotes a romance-related catchphrase (`Simulation/CastTemplates.cs:236`),
-  and two other bios were flagged. It also keys `WebIntroductions`' alumni lines by template id. First freeze the
-  schema 2 to 15 lore cast in `UpgradeV15ToV16`, or the 48 old-save cases turn red (OLD-SAVE-ACCEPTANCE §3).
+  and two other bios were flagged. It also keys `WebIntroductions`' alumni lines by template id. Landed on this
+  branch with no freeze: it edits only All-Stars bios and lines, and `Lore.SheetFor` gives an alumnus the Legacy
+  sheet by template id before any bio check (the bio comparison is the regular roster's), so `Lore.Cast` is
+  unchanged. The freeze of the schema 2 to 15 lore cast in `UpgradeV15ToV16` (OLD-SAVE-ACCEPTANCE §3, F6) is still
+  owed before any edit to the lore sheets (`LoreLegacy`, `LoreSheets`), the regular cards' bios or motives, or a card's
+  name.
   **AS1b**, removing or replacing the photos, is dropped by the owner's decision 3.
 - **AS2 Campaign framework, inert.** The route the master plan assumes is its route C: the campaigns are gated by
   `alumniRulesVersion`, which these histories share. Route B, riding dialogue, is the alternative. Record the route

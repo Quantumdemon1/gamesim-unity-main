@@ -318,7 +318,7 @@ namespace Gamesim.Tests.PlayMode
             var card = (RectTransform)SequenceNode(sequence, "Card");
             Assert.That(card, Is.Not.Null);
             CollectionAssert.AreEqual(new[] { WebIntroductions.Prompt }, SequenceTexts(card, "Prompt"), "The question is asked.");
-            CollectionAssert.AreEqual(new[] { "\"" + WebIntroductions.IntroLine(plan.Seed, alex.id, alex.name, alex.traits) + "\"" },
+            CollectionAssert.AreEqual(new[] { "\"" + WebIntroductions.IntroLine(plan.Seed, alex) + "\"" },
                 SequenceTexts(card, "Quote"), "The houseguest's line is in straight quotes.");
             float asked = card.rect.height;
             var prompt = card.GetComponentsInChildren<TMP_Text>(true).Single(label => label.name == "Prompt").rectTransform;
@@ -329,7 +329,7 @@ namespace Gamesim.Tests.PlayMode
 
             Assert.That(SequenceTexts(sequence, "Prompt"), Is.Empty, "The question goes once it is answered.");
             Assert.That(SequenceNode(card, "Choices"), Is.Null, "and the choices with it.");
-            string reaction = WebIntroductions.Reaction(plan.Seed, alex.id, alex.name, alex.traits, WebIntroductions.Find(WebIntroductions.Warm));
+            string reaction = WebIntroductions.Reaction(plan.Seed, alex, WebIntroductions.Find(WebIntroductions.Warm));
             var replies = SequenceLabels(sequence).Where(label => label.name == "Reaction").ToArray();
             Assert.That(replies, Has.Length.EqualTo(1));
             Assert.That(replies[0].text, Is.EqualTo(alex.name + ": \"" + reaction + "\""), "The reply is Name: \"...\", in straight quotes.");

@@ -676,7 +676,7 @@ namespace Gamesim.Tests.PlayMode
                 .Select(label => label.text).ToList();
             CollectionAssert.AreEqual(alex.traits, chips, "Every trait is on the card: reading them is how the player chooses.");
             CollectionAssert.AreEqual(
-                new[] { "\"" + WebIntroductions.IntroLine(plan.Seed, alex.id, alex.name, alex.traits) + "\"" },
+                new[] { "\"" + WebIntroductions.IntroLine(plan.Seed, alex) + "\"" },
                 SequenceTexts(card, "Quote"), "The houseguest's own line, in straight quote marks as the reference build prints it.");
             CollectionAssert.AreEqual(new[] { WebIntroductions.Prompt }, SequenceTexts(card, "Prompt"));
 
@@ -730,7 +730,7 @@ namespace Gamesim.Tests.PlayMode
 
             CollectionAssert.AreEqual(new[] { alex.id + "/" + WebIntroductions.Calculated }, calls,
                 "The introduction is committed once, however many times it is pressed.");
-            string reaction = WebIntroductions.Reaction(plan.Seed, alex.id, alex.name, alex.traits,
+            string reaction = WebIntroductions.Reaction(plan.Seed, alex,
                 WebIntroductions.Find(WebIntroductions.Calculated));
             Assert.That(SequenceLabels(sequence).Select(label => label.text), Does.Contain(alex.name + ": \"" + reaction + "\""),
                 "The houseguest answers in their own words.");

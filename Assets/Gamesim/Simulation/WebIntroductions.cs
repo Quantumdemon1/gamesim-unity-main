@@ -12,9 +12,18 @@ namespace Gamesim.Simulation
     /// makes a bad one (-3), and anything else a neutral one (+1). Nothing is rolled; reading the
     /// traits is the skill.
     ///
-    /// <para>The lines are the reference build's own, word for word, with one exception: a reaction
+    /// <para>The lines are the reference build's own, word for word, with two exceptions. A reaction
     /// that ended in an emoji ends in "*eye roll*", in the style of its other stage directions, because
-    /// the house's type has no glyph for it.</para>
+    /// the house's type has no glyph for it. And three of the All-Stars' lines were rewritten in the
+    /// alumni audit (story plan 20 §3.10, decision 10): Rachel Reilly's third introduction quoted her
+    /// real showmance catchphrase and now speaks to her game record, and Janelle Pierzina's "three"
+    /// seasons are the four the project's record holds (BB6, BB7, BB14 and BB22). Each rewrite keeps
+    /// its place in its pool, so the seed and id pick the same slot they always did.</para>
+    ///
+    /// <para>An All-Star's own lines are keyed by template id, not by display name: they belong to an
+    /// identity-intact alumni card (<see cref="StoryPeople.IsRealPerson(ContestantState)"/>), wherever
+    /// it is cast - a renamed card speaks from its traits, and so does a houseguest who merely shares
+    /// a name with one. The reference build looked them up by name.</para>
     ///
     /// <para>The reference build picks a line at random each time the phase mounts. Here a line is
     /// picked from the season's seed and the houseguest's id instead - the same line every time the
@@ -28,7 +37,7 @@ namespace Gamesim.Simulation
     /// Confrontational and Social - a match, because they are Social - could be answered "Bring it
     /// on!". Here the answer comes in the voice of the trait that decided it
     /// (<see cref="DecidingTrait"/>); the reference build's voicing is kept as the overload of
-    /// <see cref="Reaction(int, string, string, IList{string}, Outcome)"/> that takes an outcome.</para>
+    /// <see cref="Reaction(int, string, CastTemplates.Template, IList{string}, Outcome)"/> that takes an outcome.</para>
     /// </summary>
     public static class WebIntroductions
     {
@@ -91,41 +100,70 @@ namespace Gamesim.Simulation
         public static string Word(Outcome outcome) =>
             outcome == Outcome.Match ? "match" : outcome == Outcome.Clash ? "clash" : "neutral";
 
-        /// <summary>The houseguest's own line: an All-Star's by name, otherwise by their first trait.</summary>
-        public static string IntroLine(int seed, string id, string name, IList<string> traits)
+        /// <summary>
+        /// The All-Star whose own lines somebody speaks: the template of an identity-intact alumni
+        /// card (<see cref="StoryPeople.IsRealPerson(ContestantState)"/>), whether it is cast as a
+        /// houseguest, a custom houseguest or the player. Null for anybody else, a renamed card included.
+        /// </summary>
+        public static CastTemplates.Template AlumnusOf(ContestantState who) =>
+            StoryPeople.IsRealPerson(who) ? StoryPeople.TemplateOf(who) : null;
+
+        /// <summary>The houseguest's own line: an All-Star's (<see cref="AlumnusOf"/>), otherwise by their first trait.</summary>
+        public static string IntroLine(int seed, ContestantState who) =>
+            IntroLine(seed, who?.id, AlumnusOf(who), who?.traits);
+
+        /// <summary>
+        /// The line of the houseguest with this id and these traits: <paramref name="alumnus"/>'s own,
+        /// by template id, when that is an All-Star with lines, otherwise by their first trait. The
+        /// caller vouches that they are that alumnus; <see cref="IntroLine(int, ContestantState)"/>
+        /// works it out.
+        /// </summary>
+        public static string IntroLine(int seed, string id, CastTemplates.Template alumnus, IList<string> traits)
         {
-            if (!string.IsNullOrEmpty(name) && AllStarIntro.TryGetValue(name, out var own)) return Pick(own, seed, id, "intro");
+            if (OwnLines(AllStarIntro, alumnus, out var own)) return Pick(own, seed, id, "intro");
             string lead = traits != null && traits.Count > 0 ? traits[0] : null;
             return Pick(lead != null && Intro.TryGetValue(lead, out var pool) ? pool : DefaultIntro, seed, id, "intro");
         }
 
         /// <summary>
-        /// How they answer, as the reference build voiced it: an All-Star's by name, otherwise by
-        /// first trait and outcome, Social's when the trait has none. Kept for the reference build's
-        /// behaviour; the meet-and-greet answers through the overload that takes the approach.
+        /// How they answer, as the reference build voiced it: an All-Star's own, by template id,
+        /// otherwise by first trait and outcome, Social's when the trait has none. Kept for the
+        /// reference build's behaviour; the meet-and-greet answers through the overload that takes the
+        /// approach.
         /// </summary>
-        public static string Reaction(int seed, string id, string name, IList<string> traits, Outcome outcome)
+        public static string Reaction(int seed, string id, CastTemplates.Template alumnus, IList<string> traits, Outcome outcome)
         {
-            if (!string.IsNullOrEmpty(name) && AllStarReactions.TryGetValue(name, out var own))
+            if (OwnLines(AllStarReactions, alumnus, out var own))
                 return Pick(own[(int)outcome], seed, id, "reaction");
             string lead = traits != null && traits.Count > 0 ? traits[0] : "Social";
             if (!Reactions.TryGetValue(lead, out var pools)) pools = Reactions["Social"];
             return Pick(pools[(int)outcome], seed, id, "reaction");
         }
 
+        /// <summary>How the houseguest answers <paramref name="approach"/>: an All-Star's own (<see cref="AlumnusOf"/>), otherwise in a trait's voice.</summary>
+        public static string Reaction(int seed, ContestantState who, Approach approach) =>
+            Reaction(seed, who?.id, AlumnusOf(who), who?.traits, approach);
+
         /// <summary>
-        /// How they answer <paramref name="approach"/>: an All-Star's by name, otherwise in the voice
-        /// of the trait that decided the outcome (<see cref="DecidingTrait"/>), Social's when that
-        /// trait has no lines of its own.
+        /// How they answer <paramref name="approach"/>: <paramref name="alumnus"/>'s own, by template
+        /// id, otherwise in the voice of the trait that decided the outcome
+        /// (<see cref="DecidingTrait"/>), Social's when that trait has no lines of its own.
         /// </summary>
-        public static string Reaction(int seed, string id, string name, IList<string> traits, Approach approach)
+        public static string Reaction(int seed, string id, CastTemplates.Template alumnus, IList<string> traits, Approach approach)
         {
             var outcome = Judge(approach, traits);
-            if (!string.IsNullOrEmpty(name) && AllStarReactions.TryGetValue(name, out var own))
+            if (OwnLines(AllStarReactions, alumnus, out var own))
                 return Pick(own[(int)outcome], seed, id, "reaction");
             string voice = DecidingTrait(approach, traits) ?? "Social";
             if (!Reactions.TryGetValue(voice, out var pools)) pools = Reactions["Social"];
             return Pick(pools[(int)outcome], seed, id, "reaction");
+        }
+
+        /// <summary>An alumnus's own lines, looked up by template id; false for no alumnus or one without lines.</summary>
+        private static bool OwnLines<T>(IReadOnlyDictionary<string, T> lines, CastTemplates.Template alumnus, out T own)
+        {
+            own = default;
+            return !string.IsNullOrEmpty(alumnus?.Id) && lines.TryGetValue(alumnus.Id, out own);
         }
 
         /// <summary>
@@ -205,20 +243,22 @@ namespace Gamesim.Simulation
             "Ready to make some moves and meet some amazing people!",
         };
 
+        // The All-Stars' own lines, keyed by template id (CastTemplates). A line about somebody's
+        // record says only what the project's record holds (ALL-STAR-HISTORIES-PLAN 3.4).
         private static readonly IReadOnlyDictionary<string, string[]> AllStarIntro = new Dictionary<string, string[]>(StringComparer.Ordinal)
         {
-            ["Dan Gheesling"] = new[] { "Welcome to the mist. By the time you figure out my game, it'll be too late.", "I coach football — reading people and calling plays is what I do.", "Dan's Funeral was just the beginning. I've got a whole new playbook." },
-            ["Dr. Will Kirby"] = new[] { "I hate you all. ...I'm kidding. Or am I?", "I've never won a competition and I never will. That's not a weakness — it's a flex.", "Chilltown is always open for new members. Maybe." },
-            ["Janelle Pierzina"] = new[] { "Floaters, grab a life vest! ...Just kidding. For now.", "I've been here before. Three times. And I'm still standing.", "Comp wins speak louder than words. Remember that." },
-            ["Rachel Reilly"] = new[] { "No one gets between me and this game! NO ONE!", "I'm not here to make friends — actually, I might cry about that later.", "Floaters, you better grab a life vest... oh wait, that's Janelle's line. NOBODY COMES BETWEEN ME AND MY MAN!" },
-            ["Derrick Levasseur"] = new[] { "Nice to meet you. I'm just a regular guy. Nothing to see here.", "I like to observe before I speak. Old habit.", "Undercover work taught me one thing: the best player is the one nobody suspects." },
-            ["Tyler Crispen"] = new[] { "Dude, this house is sick! Stoked to be here, bro.", "I'm just a chill surfer dude. Don't worry about me.", "I'll ride any wave this game throws at me. Let's go!" },
-            ["Vanessa Rousso"] = new[] { "Mathematically speaking, my odds of winning are very good.", "I read people for a living. Poker faces don't work on me.", "Emotions are just data points. I process them all." },
-            ["Cody Calafiore"] = new[] { "I learned from the best. This time I'm finishing what I started.", "Loyalty is everything. I don't flip, period.", "Last time I took someone else to the end. Not this time." },
-            ["Danielle Reyes"] = new[] { "I've been reading people since before half of you were born.", "I smile sweetly, but make no mistake — I'm always calculating.", "The original mastermind is back. Take notes." },
-            ["Xavier Prather"] = new[] { "I'm an attorney. I build cases, and I win them.", "I don't need to be the loudest in the room to be the most dangerous.", "Strategy is about patience. I've got plenty." },
-            ["Jun Song"] = new[] { "I'll be in the kitchen. That's where all the real conversations happen.", "Everyone underestimates the floater. That's exactly what I want.", "I won by floating to power, not fighting it. Some of you should try it." },
-            ["Chelsie Baham"] = new[] { "I connect with people — that's my superpower.", "I'm patient. The right moment always comes if you wait for it.", "Being genuine isn't a weakness. It's how you build an army." },
+            ["dan-gheesling"] = new[] { "Welcome to the mist. By the time you figure out my game, it'll be too late.", "I coach football — reading people and calling plays is what I do.", "Dan's Funeral was just the beginning. I've got a whole new playbook." },
+            ["dr-will-kirby"] = new[] { "I hate you all. ...I'm kidding. Or am I?", "I've never won a competition and I never will. That's not a weakness — it's a flex.", "Chilltown is always open for new members. Maybe." },
+            ["janelle-pierzina"] = new[] { "Floaters, grab a life vest! ...Just kidding. For now.", "I've been here before. Four times. And I'm still standing.", "Comp wins speak louder than words. Remember that." },
+            ["rachel-reilly"] = new[] { "No one gets between me and this game! NO ONE!", "I'm not here to make friends — actually, I might cry about that later.", "I came back once and WON. Don't think I can't do it again!" },
+            ["derrick-levasseur"] = new[] { "Nice to meet you. I'm just a regular guy. Nothing to see here.", "I like to observe before I speak. Old habit.", "Undercover work taught me one thing: the best player is the one nobody suspects." },
+            ["tyler-crispen"] = new[] { "Dude, this house is sick! Stoked to be here, bro.", "I'm just a chill surfer dude. Don't worry about me.", "I'll ride any wave this game throws at me. Let's go!" },
+            ["vanessa-rousso"] = new[] { "Mathematically speaking, my odds of winning are very good.", "I read people for a living. Poker faces don't work on me.", "Emotions are just data points. I process them all." },
+            ["cody-calafiore"] = new[] { "I learned from the best. This time I'm finishing what I started.", "Loyalty is everything. I don't flip, period.", "Last time I took someone else to the end. Not this time." },
+            ["danielle-reyes"] = new[] { "I've been reading people since before half of you were born.", "I smile sweetly, but make no mistake — I'm always calculating.", "The original mastermind is back. Take notes." },
+            ["xavier-prather"] = new[] { "I'm an attorney. I build cases, and I win them.", "I don't need to be the loudest in the room to be the most dangerous.", "Strategy is about patience. I've got plenty." },
+            ["jun-song"] = new[] { "I'll be in the kitchen. That's where all the real conversations happen.", "Everyone underestimates the floater. That's exactly what I want.", "I won by floating to power, not fighting it. Some of you should try it." },
+            ["chelsie-baham"] = new[] { "I connect with people — that's my superpower.", "I'm patient. The right moment always comes if you wait for it.", "Being genuine isn't a weakness. It's how you build an army." },
         };
 
         // Indexed by Outcome: match, neutral, clash.
@@ -243,20 +283,21 @@ namespace Gamesim.Simulation
             ["Impulsive"] = new[] { new[] { "YES! Let's go! I'm pumped!", "I love the energy!" }, new[] { "Cool cool cool! Let's do this!", "Sure, why not!" }, new[] { "Overthinking it much?", "Loosen up a little!" } },
         };
 
+        // Keyed by template id, and indexed by Outcome like the trait pools.
         private static readonly IReadOnlyDictionary<string, string[][]> AllStarReactions = new Dictionary<string, string[][]>(StringComparer.Ordinal)
         {
-            ["Dan Gheesling"] = new[] { new[] { "Welcome to the mist, my friend.", "I see potential in you. Let's talk strategy." }, new[] { "Interesting. I'll keep my eye on you.", "The mist works in mysterious ways." }, new[] { "Hmm. You might be a threat.", "I've dealt with bigger personalities. Trust me." } },
-            ["Dr. Will Kirby"] = new[] { new[] { "I hate that I like you. This is a problem.", "Chilltown might have room for one more." }, new[] { "Meh. I've seen better, I've seen worse.", "You're... adequate. For now." }, new[] { "How delightfully awful. I love it.", "You remind me of someone I evicted. Twice." } },
-            ["Janelle Pierzina"] = new[] { new[] { "I like your fire! We could dominate comps together.", "You've got that winner energy. I respect that." }, new[] { "We'll see if you can keep up.", "Not bad. But can you win when it counts?" }, new[] { "Ugh. Floater energy. Next!", "I've eaten people like you for breakfast. Three seasons' worth." } },
-            ["Rachel Reilly"] = new[] { new[] { "OH MY GOD, I love you already! *squeals*", "We're going to be BEST friends! No one can stop us!" }, new[] { "Okay... we'll see. But don't cross me.", "I'm watching you. WITH BOTH EYES." }, new[] { "*dramatic gasp* HOW DARE YOU!", "You do NOT want me as your enemy. Trust. Me." } },
-            ["Derrick Levasseur"] = new[] { new[] { "Good. Stay close. I've got a plan.", "You seem trustworthy. That's valuable." }, new[] { "Copy that. I'll file this away.", "Noted. Moving on." }, new[] { "Interesting approach. I'll remember that.", "You just showed me your cards. Bad move." } },
-            ["Tyler Crispen"] = new[] { new[] { "Sick, dude! We're gonna vibe so hard.", "Bro, I'm stoked! Let's ride this wave together!" }, new[] { "Chill, chill. We're all good.", "Cool beans, man. No worries." }, new[] { "Whoa, intense vibes. Not my wavelength.", "Dude... that's a lot. Let's just chill." } },
-            ["Vanessa Rousso"] = new[] { new[] { "The math checks out. We'd be a strong pair.", "I like your reasoning. Very logical." }, new[] { "Hmm, I need more data before I decide about you.", "Inconclusive. I'll recalculate later." }, new[] { "That was a -EV play. Poker term. Look it up.", "*tears up* That really hurt... strategically speaking." } },
-            ["Cody Calafiore"] = new[] { new[] { "Ride or die. That's what I'm about. You in?", "I got your back. Day one. Let's go." }, new[] { "Alright. Prove yourself and we'll talk.", "I respect the hustle. Let's see where it goes." }, new[] { "Nah, I don't trust that energy.", "I've seen snakes before. I know the signs." } },
-            ["Danielle Reyes"] = new[] { new[] { "Oh honey, I like you. Come sit with me.", "Smart move. The Black Widow approves." }, new[] { "Mmhmm. I see you.", "Interesting. Very interesting." }, new[] { "Chile... no. Just no.", "I've been playing this game since 2002. Try again." } },
-            ["Xavier Prather"] = new[] { new[] { "Strong opening statement. I like it.", "Consider this an alliance offer. Pro bono." }, new[] { "I'll take that under advisement.", "The jury's still out on you. Pun intended." }, new[] { "Objection. That approach won't work on me.", "I rest my case. About you, I mean." } },
-            ["Jun Song"] = new[] { new[] { "Pull up a chair. I made something. Let's talk.", "I like you. You're not trying too hard." }, new[] { "Want some food? I cook when I'm thinking.", "Mmm. I'll observe a bit more." }, new[] { "Yikes. Too aggressive for the kitchen.", "I'll just be over here... floating past you." } },
-            ["Chelsie Baham"] = new[] { new[] { "I feel like we just clicked! This is great!", "You're my kind of person. Genuine energy." }, new[] { "That's cool! Let's get to know each other more.", "I'm open to seeing where this goes." }, new[] { "Hmm, that didn't land for me. But I'm patient.", "I'll give you another chance. Everyone deserves one." } },
+            ["dan-gheesling"] = new[] { new[] { "Welcome to the mist, my friend.", "I see potential in you. Let's talk strategy." }, new[] { "Interesting. I'll keep my eye on you.", "The mist works in mysterious ways." }, new[] { "Hmm. You might be a threat.", "I've dealt with bigger personalities. Trust me." } },
+            ["dr-will-kirby"] = new[] { new[] { "I hate that I like you. This is a problem.", "Chilltown might have room for one more." }, new[] { "Meh. I've seen better, I've seen worse.", "You're... adequate. For now." }, new[] { "How delightfully awful. I love it.", "You remind me of someone I evicted. Twice." } },
+            ["janelle-pierzina"] = new[] { new[] { "I like your fire! We could dominate comps together.", "You've got that winner energy. I respect that." }, new[] { "We'll see if you can keep up.", "Not bad. But can you win when it counts?" }, new[] { "Ugh. Floater energy. Next!", "I've eaten people like you for breakfast. Four seasons' worth." } },
+            ["rachel-reilly"] = new[] { new[] { "OH MY GOD, I love you already! *squeals*", "We're going to be BEST friends! No one can stop us!" }, new[] { "Okay... we'll see. But don't cross me.", "I'm watching you. WITH BOTH EYES." }, new[] { "*dramatic gasp* HOW DARE YOU!", "You do NOT want me as your enemy. Trust. Me." } },
+            ["derrick-levasseur"] = new[] { new[] { "Good. Stay close. I've got a plan.", "You seem trustworthy. That's valuable." }, new[] { "Copy that. I'll file this away.", "Noted. Moving on." }, new[] { "Interesting approach. I'll remember that.", "You just showed me your cards. Bad move." } },
+            ["tyler-crispen"] = new[] { new[] { "Sick, dude! We're gonna vibe so hard.", "Bro, I'm stoked! Let's ride this wave together!" }, new[] { "Chill, chill. We're all good.", "Cool beans, man. No worries." }, new[] { "Whoa, intense vibes. Not my wavelength.", "Dude... that's a lot. Let's just chill." } },
+            ["vanessa-rousso"] = new[] { new[] { "The math checks out. We'd be a strong pair.", "I like your reasoning. Very logical." }, new[] { "Hmm, I need more data before I decide about you.", "Inconclusive. I'll recalculate later." }, new[] { "That was a -EV play. Poker term. Look it up.", "*tears up* That really hurt... strategically speaking." } },
+            ["cody-calafiore"] = new[] { new[] { "Ride or die. That's what I'm about. You in?", "I got your back. Day one. Let's go." }, new[] { "Alright. Prove yourself and we'll talk.", "I respect the hustle. Let's see where it goes." }, new[] { "Nah, I don't trust that energy.", "I've seen snakes before. I know the signs." } },
+            ["danielle-reyes"] = new[] { new[] { "Oh honey, I like you. Come sit with me.", "Smart move. The Black Widow approves." }, new[] { "Mmhmm. I see you.", "Interesting. Very interesting." }, new[] { "Chile... no. Just no.", "I've been playing this game since 2002. Try again." } },
+            ["xavier-prather"] = new[] { new[] { "Strong opening statement. I like it.", "Consider this an alliance offer. Pro bono." }, new[] { "I'll take that under advisement.", "The jury's still out on you. Pun intended." }, new[] { "Objection. That approach won't work on me.", "I rest my case. About you, I mean." } },
+            ["jun-song"] = new[] { new[] { "Pull up a chair. I made something. Let's talk.", "I like you. You're not trying too hard." }, new[] { "Want some food? I cook when I'm thinking.", "Mmm. I'll observe a bit more." }, new[] { "Yikes. Too aggressive for the kitchen.", "I'll just be over here... floating past you." } },
+            ["chelsie-baham"] = new[] { new[] { "I feel like we just clicked! This is great!", "You're my kind of person. Genuine energy." }, new[] { "That's cool! Let's get to know each other more.", "I'm open to seeing where this goes." }, new[] { "Hmm, that didn't land for me. But I'm patient.", "I'll give you another chance. Everyone deserves one." } },
         };
     }
 }

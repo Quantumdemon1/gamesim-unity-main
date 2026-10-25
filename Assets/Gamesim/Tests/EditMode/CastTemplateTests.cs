@@ -282,33 +282,90 @@ namespace Gamesim.Tests.EditMode
             Assert.That(CastTemplates.Find("rachel-reilly").Bio, Is.EqualTo(
                 "Brash, confrontational, and fiercely competitive. Came back for a second season and won it."));
             foreach (var card in CastTemplates.In(CastTemplates.Roster.AllStars))
-                foreach (var claim in new[] { "my man", "footage", "Three-time" })
+                foreach (var claim in new[] { "my man", "between me and", "footage", "Three-time" })
                     Assert.That(card.Bio, Does.Not.Contain(claim).IgnoreCase, card.Name + "'s bio");
+        }
+
+        /// <summary>
+        /// The three audited cards' words before the audit, exactly as the older build cast them
+        /// into its seasons. They are kept here only so a replay can stand in for that build; no
+        /// card and no line says them any more.
+        /// </summary>
+        internal static readonly IReadOnlyDictionary<string, string> BiosBeforeTheAudit = new Dictionary<string, string>(System.StringComparer.Ordinal)
+        {
+            ["janelle-pierzina"] = "Three-time player and undisputed competition queen. Her fierce loyalty and athletic dominance make her the ultimate competitor.",
+            ["danielle-reyes"] = "Pioneer strategist who played before the jury could watch footage. Her intuitive reads on people are legendary.",
+            ["rachel-reilly"] = "Brash, confrontational, and fiercely competitive. Her catchphrase \"No one gets between me and my man!\" echoes through BB history.",
+        };
+
+        /// <summary>A fresh twelve-house All-Stars season: eleven alumni and the newcomer.</summary>
+        internal static EpisodeState CastAllStars()
+        {
+            var s = SeasonBuilder.Create(new SeasonBuilder.Choice { Roster = CastTemplates.Roster.AllStars, HouseSize = 12 }, 4242u);
+            ShippedRules.ApplyFresh(s);
+            return s;
+        }
+
+        internal static List<ContestantState> AlumniOf(EpisodeState s) =>
+            s.contestants.Where(c => StoryPeople.TemplateOf(c)?.Roster == CastTemplates.Roster.AllStars).ToList();
+
+        /// <summary>Plays a season out with the engine tests' scripted player.</summary>
+        internal static EpisodeState PlayOut(EpisodeState start)
+        {
+            var engine = new EpisodeEngine(start);
+            for (int guard = 0; engine.Snapshot.phase != EpisodePhase.Finished && guard < 4000; guard++)
+            {
+                var command = EpisodeEngineTests.NextCommand(engine.Snapshot);
+                var result = engine.Apply(command);
+                Assert.That(result.accepted, Is.True, command.expectedPhase + ", " + command.kind + ": " + result.reason);
+            }
+            Assert.That(engine.Snapshot.phase, Is.EqualTo(EpisodePhase.Finished));
+            return engine.Snapshot;
+        }
+
+        internal static string Record(EpisodeState end) =>
+            "winner " + end.winnerId + "\n" + string.Join("\n", end.events.Select(e => e.sequence + " " + e.kind + " " + e.text));
+
+        /// <summary>
+        /// Runs <paramref name="play"/> while the audited cards hold their words from before the
+        /// audit, as the older build's did, and puts the audited words back afterwards. The cards
+        /// are shared statics, so this fixture must not run in parallel with another.
+        /// </summary>
+        internal static T OnTheCardsBeforeTheAudit<T>(System.Func<T> play)
+        {
+            var audited = BiosBeforeTheAudit.Keys.ToDictionary(id => id, id => CastTemplates.Find(id).Bio, System.StringComparer.Ordinal);
+            try
+            {
+                foreach (var pair in BiosBeforeTheAudit) CastTemplates.Find(pair.Key).Bio = pair.Value;
+                return play();
+            }
+            finally
+            {
+                foreach (var pair in audited) CastTemplates.Find(pair.Key).Bio = pair.Value;
+            }
         }
 
         /// <summary>
         /// A season keeps the bio it was cast with. <see cref="CastTemplates.ToContestant"/> copies
         /// the card's words into the season, and nothing reads an All-Star's bio back against the
-        /// card: who somebody is - the real-alumni rule, their lore sheet, their own lines - goes by
-        /// template and name. So a season cast before the audit, its alumni carrying the old words,
-        /// is still valid, still knows every one of them, and plays exactly as the same season with
-        /// the audited words does.
+        /// card, or reads the card's own words during play: who somebody is - the real-alumni rule,
+        /// their lore sheet, their own lines - goes by template and name. So a season cast before
+        /// the audit, its alumni carrying other words, is still valid, still knows every one of
+        /// them, and plays exactly as the same season with the audited words does - whether the
+        /// cards hold the audited words or, as in the older build, the words before the audit.
+        /// The save store's side of this is <c>AlumniAuditSaveTests</c>, which runs in
+        /// Unity only.
         /// </summary>
         [Test]
         public void ASeasonCastBeforeTheAuditKeepsItsBiosAndPlaysTheSame()
         {
-            EpisodeState Cast()
-            {
-                var s = SeasonBuilder.Create(new SeasonBuilder.Choice { Roster = CastTemplates.Roster.AllStars, HouseSize = 12 }, 4242u);
-                ShippedRules.ApplyFresh(s);
-                return s;
-            }
             string Older(string name) => "An older build's words about " + name + ".";
 
-            var audited = Cast();
-            var older = Cast();
-            var alumni = older.contestants.Where(c => StoryPeople.TemplateOf(c)?.Roster == CastTemplates.Roster.AllStars).ToList();
+            var audited = CastAllStars();
+            var older = CastAllStars();
+            var alumni = AlumniOf(older);
             Assert.That(alumni, Has.Count.EqualTo(11), "Eleven alumni and the newcomer.");
+            Assert.That(BiosBeforeTheAudit.Keys.All(id => alumni.Any(who => StoryPeople.TemplateOf(who).Id == id)), Is.True, "The house seats every audited card.");
             foreach (var who in alumni)
             {
                 var card = StoryPeople.TemplateOf(who);
@@ -322,29 +379,27 @@ namespace Gamesim.Tests.EditMode
             }
             Assert.That(EpisodeValidation.TryValidate(older, out var invalid), Is.True, invalid);
 
-            EpisodeState Play(EpisodeState start)
-            {
-                var engine = new EpisodeEngine(start);
-                for (int guard = 0; engine.Snapshot.phase != EpisodePhase.Finished && guard < 4000; guard++)
-                {
-                    var command = EpisodeEngineTests.NextCommand(engine.Snapshot);
-                    var result = engine.Apply(command);
-                    Assert.That(result.accepted, Is.True, command.expectedPhase + ", " + command.kind + ": " + result.reason);
-                }
-                Assert.That(engine.Snapshot.phase, Is.EqualTo(EpisodePhase.Finished));
-                return engine.Snapshot;
-            }
-            string Record(EpisodeState end) =>
-                "winner " + end.winnerId + "\n" + string.Join("\n", end.events.Select(e => e.sequence + " " + e.kind + " " + e.text));
-
-            var playedOlder = Play(older);
-            var playedAudited = Play(audited);
-            Assert.That(Record(playedOlder), Is.EqualTo(Record(playedAudited)), "The words on a card move nothing in the season.");
+            var playedOlder = PlayOut(older);
+            var playedAudited = PlayOut(audited);
+            Assert.That(Record(playedOlder), Is.EqualTo(Record(playedAudited)), "The words on a season move nothing in it.");
             foreach (var who in alumni)
             {
                 Assert.That(playedOlder.Find(who.id).bio, Is.EqualTo(Older(who.name)), "The season plays on with the words it was cast with.");
                 Assert.That(playedAudited.Find(who.id).bio, Is.EqualTo(StoryPeople.TemplateOf(who).Bio));
             }
+
+            var onTheOlderCards = OnTheCardsBeforeTheAudit(() =>
+            {
+                foreach (var pair in BiosBeforeTheAudit)
+                    Assert.That(CastTemplates.Find(pair.Key).Bio, Is.EqualTo(pair.Value));
+                return PlayOut(older);
+            });
+            foreach (var pair in BiosBeforeTheAudit)
+                Assert.That(CastTemplates.Find(pair.Key).Bio, Is.Not.EqualTo(pair.Value), "The audited words are back on the card.");
+            Assert.That(Record(onTheOlderCards), Is.EqualTo(Record(playedAudited)),
+                "The words on a card move nothing: the older build plays this season as this one does.");
+            foreach (var who in alumni)
+                Assert.That(onTheOlderCards.Find(who.id).bio, Is.EqualTo(Older(who.name)));
         }
     }
 }

@@ -243,14 +243,17 @@ namespace Gamesim.Simulation
             "Ready to make some moves and meet some amazing people!",
         };
 
-        // The All-Stars' own lines, keyed by template id (CastTemplates). A line about somebody's
-        // record says only what the project's record holds (ALL-STAR-HISTORIES-PLAN 3.4).
+        // The All-Stars' own lines, keyed by template id (CastTemplates). The alumni audit (story
+        // plan 20 §3.10, decision 10) covered Rachel's lines and Janelle's counts: those say only
+        // what the project's record holds (ALL-STAR-HISTORIES-PLAN 3.4), and Rachel's no longer
+        // play on her showmance catchphrase. The rest are the reference build's and are not yet
+        // audited (the plan's AS1a note lists what is open); nothing may cite them as record.
         private static readonly IReadOnlyDictionary<string, string[]> AllStarIntro = new Dictionary<string, string[]>(StringComparer.Ordinal)
         {
             ["dan-gheesling"] = new[] { "Welcome to the mist. By the time you figure out my game, it'll be too late.", "I coach football — reading people and calling plays is what I do.", "Dan's Funeral was just the beginning. I've got a whole new playbook." },
             ["dr-will-kirby"] = new[] { "I hate you all. ...I'm kidding. Or am I?", "I've never won a competition and I never will. That's not a weakness — it's a flex.", "Chilltown is always open for new members. Maybe." },
             ["janelle-pierzina"] = new[] { "Floaters, grab a life vest! ...Just kidding. For now.", "I've been here before. Four times. And I'm still standing.", "Comp wins speak louder than words. Remember that." },
-            ["rachel-reilly"] = new[] { "No one gets between me and this game! NO ONE!", "I'm not here to make friends — actually, I might cry about that later.", "I came back once and WON. Don't think I can't do it again!" },
+            ["rachel-reilly"] = new[] { "Nobody takes this game from me! NOBODY!", "I'm not here to make friends — actually, I might cry about that later.", "I came back once and WON. Don't think I can't do it again!" },
             ["derrick-levasseur"] = new[] { "Nice to meet you. I'm just a regular guy. Nothing to see here.", "I like to observe before I speak. Old habit.", "Undercover work taught me one thing: the best player is the one nobody suspects." },
             ["tyler-crispen"] = new[] { "Dude, this house is sick! Stoked to be here, bro.", "I'm just a chill surfer dude. Don't worry about me.", "I'll ride any wave this game throws at me. Let's go!" },
             ["vanessa-rousso"] = new[] { "Mathematically speaking, my odds of winning are very good.", "I read people for a living. Poker faces don't work on me.", "Emotions are just data points. I process them all." },

@@ -1049,7 +1049,19 @@ gates). They follow H1b.
   sheet by template id before any bio check (the bio comparison is the regular roster's), so `Lore.Cast` is
   unchanged. The freeze of the schema 2 to 15 lore cast in `UpgradeV15ToV16` (OLD-SAVE-ACCEPTANCE §3, F6) is still
   owed before any edit to the lore sheets (`LoreLegacy`, `LoreSheets`), the regular cards' bios or motives, or a card's
-  name.
+  name. Rachel's first introduction played on the same catchphrase, so it was rewritten in its slot too, under
+  decision 10 and the build addendum's caution about Rachel's lines (`StoryArcs/21-bb-build-addendum.md`, G8). The owner
+  may reverse that.
+  - **Still unaudited after AS1a.** AS1a audited only the three bios above, Rachel's first and third introductions and
+    Janelle's counts of her seasons. H1c, every campaign and every arc treat the rest as unsourced until it is sourced
+    in `Research/AllStars` or softened to 3.4's record. That includes:
+    - the nine other alumni bios;
+    - Dr. Will's bio claim that he "won without winning a single competition", and his second introduction ("I've
+      never won a competition"), where 3.4 holds only "won BB2";
+    - Cody's third introduction ("Last time I took someone else to the end"), where 3.4 holds only "runner-up BB16";
+    - Janelle's first introduction ("Floaters, grab a life vest!"), which may be another houseguest's phrase; the
+      research holds no source either way.
+
   **AS1b**, removing or replacing the photos, is dropped by the owner's decision 3.
 - **AS2 Campaign framework, inert.** The route the master plan assumes is its route C: the campaigns are gated by
   `alumniRulesVersion`, which these histories share. Route B, riding dialogue, is the alternative. Record the route

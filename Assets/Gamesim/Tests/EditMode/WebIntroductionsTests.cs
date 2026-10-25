@@ -134,9 +134,10 @@ namespace Gamesim.Tests.EditMode
 
         /// <summary>
         /// The alumni audit's lines (story plan 20 §3.10, decision 10). Rachel's third introduction
-        /// quoted her showmance catchphrase and now speaks to her record, and Janelle's "three" seasons
-        /// are the four the project's record holds. Each rewrite keeps its slot, so the rest of each
-        /// pool is the reference build's and every pick lands where it did.
+        /// quoted her showmance catchphrase and now speaks to her record, her first no longer plays on
+        /// it, and Janelle's "three" seasons are the four the project's record holds. Each rewrite
+        /// keeps its slot, so the rest of each pool is the reference build's and every pick lands
+        /// where it did.
         /// </summary>
         [Test]
         public void TheAuditedAlumniLinesSayOnlyWhatTheRecordHolds()
@@ -148,7 +149,7 @@ namespace Gamesim.Tests.EditMode
             {
                 "I came back once and WON. Don't think I can't do it again!",
                 "I'm not here to make friends — actually, I might cry about that later.",
-                "No one gets between me and this game! NO ONE!",
+                "Nobody takes this game from me! NOBODY!",
             }.OrderBy(text => text, System.StringComparer.Ordinal)));
             Assert.That(Said(seed => WebIntroductions.IntroLine(seed, "janelle-pierzina", janelle, null)), Is.EqualTo(new[]
             {
@@ -168,7 +169,7 @@ namespace Gamesim.Tests.EditMode
                 var spoken = Said(seed => WebIntroductions.IntroLine(seed, card.Id, card, null))
                     .Concat(outcomes.SelectMany(outcome => Said(seed => WebIntroductions.Reaction(seed, card.Id, card, null, outcome))));
                 foreach (var line in spoken)
-                    foreach (var claim in new[] { "my man", "Three times", "Three seasons" })
+                    foreach (var claim in new[] { "my man", "between me and", "Three times", "Three seasons" })
                         Assert.That(line, Does.Not.Contain(claim).IgnoreCase, card.Name);
             }
         }

@@ -16,7 +16,18 @@ namespace Gamesim.Simulation
         public const int Version = 1, MaximumEpisodes = 100, MaximumEvents = 400, MaximumSteps = 3;
         private const int MaximumAction = EpisodeEngine.LegacySocialActionBudget + WebSocialVocabulary.PurchaseCeiling;
 
-        public static bool On(EpisodeState s) => s != null && s.schemaVersion == 29 && s.dialogueRulesVersion == Version;
+        /// <summary>
+        /// The dialogue rules the cast screen's preview chip starts a season on (DIALOGUE-PLAN §2, D1): a pinned
+        /// literal, frozen the day a shipped path could first write it, and moved by hand only when a later stack
+        /// brings the chip a new version. Never <see cref="Version"/>, the bound: a season keeps the rules it began
+        /// on, so a chip that wrote the bound would change the rules of every opted-in season the day it moved.
+        /// Tests that mean rules 1 write the literal 1; only the chip's own tests read this, and pin its value.
+        /// </summary>
+        public const int Offered = 1;
+
+        // Schema 29 introduced the dialogue store, and a later schema carries it as it is (DIALOGUE-PLAN §6, item 1):
+        // a lower bound, so the next schema's bump cannot switch every rules-1 season off.
+        public static bool On(EpisodeState s) => s != null && s.schemaVersion >= 29 && s.dialogueRulesVersion == Version;
 
         public static StorylineState Cycle(EpisodeState s, DialogueEpisodeState episode)
         {
@@ -94,7 +105,7 @@ namespace Gamesim.Simulation
         {
             error = null;
             if (pending != null && !pending.Verify(s, out error)) return false;
-            if (s == null || s.schemaVersion != 29) return Fail(out error, "Unsupported dialogue schema.");
+            if (s == null || s.schemaVersion < 29) return Fail(out error, "Unsupported dialogue schema.");
             if (s.dialogue == null || s.dialogue.episodes == null || s.dialogue.grants == null || s.dialogue.vetoOccasions == null)
                 return Fail(out error, "Dialogue storage must be complete.");
             if (s.dialogueRulesVersion == 0)

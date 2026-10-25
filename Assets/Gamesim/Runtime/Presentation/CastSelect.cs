@@ -318,6 +318,7 @@ namespace Gamesim.Presentation
             pendingSlotFocus = null;
             resumeError = null;
             scrollToTop = true;
+            campaignConversations = false;
             houseSize = SeasonBuilder.ClampHouseSize(roster, SeasonBuilder.DefaultHouseSize);
             Rebuild();
             group.alpha = 1f;
@@ -1265,6 +1266,12 @@ namespace Gamesim.Presentation
         /// Who you will play as, the house size and the start, and a line on what size means. One row
         /// where the frame is wide enough - the house size on the left, the start and cancel on the
         /// right - and two where it is not.
+        ///
+        /// <para>The conversation preview (DIALOGUE-PLAN D1) fits inside the same two fixed heights, so
+        /// the roster above keeps every pixel it had. Wide, the footnote moves under the house size it
+        /// explains and the preview's chip and its line take the rest of that row, under the start; the
+        /// row ends at 144 of the footer's 150. Narrow, the chip stands first in the start's row, the
+        /// start and cancel close up beside it, and its line is one more line under them: 206 of 214.</para>
         /// </summary>
         private void Footer()
         {
@@ -1291,18 +1298,103 @@ namespace Gamesim.Presentation
                 // hold their words at thirteen.
                 HouseSizePanel(bar, left, 600f, true);
                 StartButtons(bar, left + 616f + 160f, 320f, left + 948f + 110f, 220f);
-                Text("A shorter season reaches the final three sooner; it does not simplify a week.",
-                    FootnoteSize, UiTheme.Muted, 20f, TextAlignmentOptions.Center);
+                // 500 for the footnote, which sets at 467 at thirteen; the chip's 280 holds its longer
+                // caption at sixteen; the line has the 364 left, two lines of thirteen in a box of 40.
+                var under = Row(ConversationPreviewRowHeight);
+                var footnote = RowLine(under, HouseSizeFootnote, left, 500f, 20f, TextAlignmentOptions.Left);
+                footnote.textWrappingMode = TextWrappingModes.NoWrap;
+                ConversationPreviewChip(under, left + 512f + 140f, 280f, ConversationPreviewRowHeight);
+                RowLine(under, ConversationPreviewLine, left + 804f, group - 804f, ConversationPreviewRowHeight,
+                    TextAlignmentOptions.Left).name = ConversationPreviewLineName;
             }
             else
             {
                 var bar = Row(64f);
                 HouseSizePanel(bar, -Mathf.Min(1040f, Width - Pad * 2f) * .5f, Mathf.Min(1040f, Width - Pad * 2f), false);
-                Text("A shorter season reaches the final three sooner; it does not simplify a week.",
-                    FootnoteSize, UiTheme.Muted, 20f, TextAlignmentOptions.Center);
-                StartButtons(Row(60f), -130f, 420f, 230f, 250f);
+                Text(HouseSizeFootnote, FootnoteSize, UiTheme.Muted, 20f, TextAlignmentOptions.Center);
+                // The chip, the start and cancel as one group of 834, which the narrowest frame's 844 holds.
+                var row = Row(60f);
+                const float group = 834f;
+                float left = -group * .5f;
+                ConversationPreviewChip(row, left + 130f, 260f, HouseSizeChipHeight);
+                StartButtons(row, left + 272f + 150f, 300f, left + 584f + 125f, 250f);
+                Text(ConversationPreviewLine, FootnoteSize, UiTheme.Muted, 20f, TextAlignmentOptions.Center).name = ConversationPreviewLineName;
             }
             Space(Pad * .5f);
+        }
+
+        private const string HouseSizeFootnote = "A shorter season reaches the final three sooner; it does not simplify a week.";
+
+        // ---------------------------------------------------------------- the conversation preview
+
+        /// <summary>
+        /// The preview chip's two captions (DIALOGUE-PLAN D1). Each says what pressing it does, as the
+        /// settings' own switches do ("Reduce character motion"): turn the preview on, or turn it off
+        /// again. They are the control's name for tests and screen readers, so neither carries the
+        /// state as a suffix; <see cref="ConversationPreviewLine"/> says it in words beside the chip.
+        /// </summary>
+        public const string ConversationPreviewOnCaption = "Preview campaign conversations";
+        public const string ConversationPreviewOffCaption = "Stop previewing conversations";
+        /// <summary>The line beside the chip, which says the state in words.</summary>
+        public const string ConversationPreviewLineName = "Conversation preview line";
+        /// <summary>
+        /// What the preview is, said plainly: the pilot adds no new consequence. It turns the nominee's
+        /// desperate plea into a short conversation that costs the same action and makes the same roll
+        /// (DIALOGUE-PLAN §0), and the season keeps it once started.
+        /// </summary>
+        public const string ConversationPreviewOffLine = "Off. A desperate plea is one click, as in every season.";
+        public const string ConversationPreviewOnLine = "On for this season: a desperate plea becomes a short talk, same cost and odds.";
+        /// <summary>The wide footer's last row: the footnote, the chip and its line.</summary>
+        private const float ConversationPreviewRowHeight = 40f;
+
+        /// <summary>
+        /// Whether the next season starts on the conversation preview. Off every time the screen opens,
+        /// and kept through a rebuild, a trip to the creator and back, and a failed start's return - as
+        /// the roster, the size and the pick are. Never stored: the season carries it once started.
+        /// </summary>
+        private bool campaignConversations;
+        private Button conversationChip;
+
+        /// <summary>Whether the screen's next start opens a season on the conversation preview: what its chip says.</summary>
+        public bool CampaignConversations => campaignConversations;
+
+        private string ConversationPreviewLine => campaignConversations ? ConversationPreviewOnLine : ConversationPreviewOffLine;
+
+        /// <summary>
+        /// The chip: the screen's pill, lit while the preview is on, its words never under thirteen. A
+        /// press rebuilds the screen, as every press here does, so the keyboard is put back on the chip
+        /// under its new caption rather than dropped on the first control.
+        /// </summary>
+        private void ConversationPreviewChip(RectTransform row, float x, float width, float height)
+        {
+            var chip = Chip(row, campaignConversations ? ConversationPreviewOffCaption : ConversationPreviewOnCaption,
+                x, width, campaignConversations, ToggleConversationPreview);
+            ((RectTransform)chip.transform).sizeDelta = new Vector2(width, height);
+            var words = chip.GetComponentInChildren<TMP_Text>();
+            if (words != null) words.fontSizeMin = FootnoteSize;
+            conversationChip = chip;
+        }
+
+        private void ToggleConversationPreview()
+        {
+            campaignConversations = !campaignConversations;
+            Rebuild();
+            var events = EventSystem.current;
+            if (events != null && !events.alreadySelecting && conversationChip != null)
+                events.SetSelectedGameObject(conversationChip.gameObject);
+        }
+
+        /// <summary>A label in a footer row, measured from the row's centre as the row's controls are, vertically centred in it.</summary>
+        private static TMP_Text RowLine(RectTransform row, string value, float left, float width, float height, TextAlignmentOptions align)
+        {
+            var label = HudPrimitives.Label("Text", row, FootnoteSize, UiTheme.Muted, align);
+            label.text = Localisation.Text(value);
+            var rect = label.rectTransform;
+            rect.anchorMin = rect.anchorMax = new Vector2(.5f, .5f);
+            rect.pivot = new Vector2(0f, .5f);
+            rect.sizeDelta = new Vector2(width, height);
+            rect.anchoredPosition = new Vector2(left, 0f);
+            return label;
         }
 
         /// <summary>The least the footer's lines are set at: the house-size range, the footnote and the chips' words.</summary>
@@ -1404,6 +1496,7 @@ namespace Gamesim.Presentation
                 PlayerTemplateId = selectedId,
                 HouseSize = SeasonBuilder.ClampHouseSize(roster, houseSize),
                 CustomHouseguests = customHouseguests.Select(profile => profile.Clone()).ToList(),
+                CampaignConversations = campaignConversations,
             };
             if (authored != null) choice.Authored = authored.Copy();
             else if (chosen != null)
@@ -1437,6 +1530,7 @@ namespace Gamesim.Presentation
                 PlayerTemplateId = selectedId,
                 HouseSize = SeasonBuilder.ClampHouseSize(roster, houseSize),
                 CustomHouseguests = customHouseguests.Select(profile => profile.Clone()).ToList(),
+                CampaignConversations = campaignConversations,
             };
             var customise = onCustomise;
             Hide();
@@ -1454,6 +1548,7 @@ namespace Gamesim.Presentation
             {
                 Roster = roster, PlayerTemplateId = selectedId, HouseSize = houseSize,
                 CustomHouseguests = customHouseguests.Select(value => value.Clone()).ToList(),
+                CampaignConversations = campaignConversations,
             };
             Hide();
             creator.ShowForCastSlot(choice, draft, changed =>
@@ -1646,12 +1741,13 @@ namespace Gamesim.Presentation
             return row;
         }
 
-        private void Text(string value, float size, Color colour, float height, TextAlignmentOptions align)
+        private TMP_Text Text(string value, float size, Color colour, float height, TextAlignmentOptions align)
         {
             var label = HudPrimitives.Label("Text", content, size, colour, align);
             label.text = Localisation.Text(value);
             Place(label.rectTransform, Width - Pad * 2f, height, -cursor);
             cursor += height;
+            return label;
         }
 
         private void Space(float amount) => cursor += amount;

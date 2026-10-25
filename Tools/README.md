@@ -5,6 +5,18 @@ Unity (it sits outside `Assets/`). Machine-specific paths are derived or overrid
 `GAMESIM_ACCEPTANCE` (the batchmode copy, default `D:\GamesimAcceptance`), `GAMESIM_UNITY_EDITOR` /
 `GAMESIM_UNITY` (the editor, default derived from `ProjectSettings/ProjectVersion.txt`).
 
+Every batch Unity the runners start (`run-review-suites.ps1` for each suite, and so `verify-review-candidate.ps1`
+and `sync-and-run.sh`; `build-review-candidate.ps1` for the build) gets `UNITY_MCP_DISABLE_BATCH=1`, for that
+process only (`$script:ReviewUnityEnvironment` in `review-workflow.ps1`; each receipt's `environment` records it).
+It is the AI Assistant package's own switch for its MCP bridge in batch mode. Left on, the bridge checks every
+MCP client that connects, and under Unity's Mono each check leaves about five times the client's executable
+(1.4-1.6 GiB for claude.exe or codex.exe) in a heap that never shrinks: batch runs sat at 15-26 GiB. Export it
+yourself for any batch Unity you start by hand. `Gamesim.Editor.BatchMcpBridgeIsolation` sets it at load in a
+batch editor whose launcher did not (it logs `the launcher did not set UNITY_MCP_DISABLE_BATCH` when it does),
+and `BatchMcpBridgeIsolationTests` fails a batch EditMode run whose bridge was built anyway. Never switch the
+MCP settings off instead: they are machine-wide EditorPrefs the interactive editor shares. The player
+(`profile-candidate.ps1`) needs nothing: the package is editor-only.
+
 | Script | What it does | Time |
 | --- | --- | --- |
 | `offline-compile.ps1` | Smoke-compiles all eight owned assemblies from current source lists using cached editor references. Missing assemblies/configuration mismatches fail; outputs and dependencies are unique to this invocation. `-OutputRoot <directory>` retains fresh outputs on another drive. `-WithoutUma` requires matching UMA-free cached responses. Changed asmdef dependencies require a freshly regenerated Unity Bee graph; stale cached references are not acceptance. | seconds |
@@ -18,7 +30,7 @@ Unity (it sits outside `Assets/`). Machine-specific paths are derived or overrid
 | `sync-acceptance.ps1` | Holds the shared destination file lease, verifies an immutable byte snapshot, then checks every mirror against the exact UMA/NoUMA projection. GPU Resident Drawer is disabled only for explicit test mode. | depends on input hashing |
 | `sync-and-run.sh` | Routes `name:Platform:Assembly[:filter]` to the same held PowerShell controller. Retains unique evidence; failures/skips/nonzero exits/shortfalls fail. Always diagnostic evidence, never a build gate. | depends on suites |
 | `test-review-workflow.ps1` | Isolated lock/snapshot/XML/failure-retention fixtures, including real controller refusal paths. No Unity or real acceptance-copy access. | seconds |
-| `test-review-suite-runs.ps1` | 56 isolated fixtures for how the controller runs suites, with a fake Unity (a `.cmd` writing NUnit XML): per-suite deadlines at least twice their measured durations, a late process recorded late and never killed (and abandoned, still running, past its grace), every suite run after a failure, the `GAMESIM_DIAGNOSTICS` define (refused for full acceptance, added to and taken off the copy), a source status probe that leaves `.git/index` byte for byte, and the UMA build's own floor (a UMA-build plan that runs 1269 stops with a SHORTFALL naming `Gamesim.PlayModeTests.UmaBuild`; a NoUMA plan still reads 1230). | about a minute |
+| `test-review-suite-runs.ps1` | 67 isolated fixtures for how the controller runs suites, with a fake Unity (a `.cmd` writing NUnit XML): per-suite deadlines at least twice their measured durations, a late process recorded late and never killed (and abandoned, still running, past its grace), every suite run after a failure, the `GAMESIM_DIAGNOSTICS` define (refused for full acceptance, added to and taken off the copy), a source status probe that leaves `.git/index` byte for byte, the UMA build's own floor (a UMA-build plan that runs 1269 stops with a SHORTFALL naming `Gamesim.PlayModeTests.UmaBuild`; a NoUMA plan still reads 1230), and the child-only environment (`-Environment` reaches the child and the caller's value or absence is restored; every suite Unity runs with `UNITY_MCP_DISABLE_BATCH=1`, and the build's one Unity call passes it too). | about a minute |
 | `test-asset-metadata.ps1` | Twelve isolated fixtures for metadata, GUID and binary-attribute enforcement, including the same Unity-ignored hidden-path missing-meta exemption as CI. No source or acceptance-copy mutation. | seconds |
 | `OldSaves/build.sh <commit> <temporary worktree> <out>` | Compiles the old-save recorder (`OldSaves/Recorder.cs` with `Assets/Gamesim/Tests/EditMode/OldSaveTrace.cs`) against one historical commit's own `Simulation` and `Runtime/Persistence`, in a detached sparse worktree it creates, with the editor's Roslyn; run the result with the editor's Mono (`record`, `replay`, `generate`, `shape`, `migrate`, `resave`; `Recorder.cs` says what each does). `OLDSAVE_SOURCE_TREE=1` builds a plain folder instead of a commit. How the old-save fixtures were recorded: `Assets/Plans/OLD-SAVE-ACCEPTANCE.md`. Remove the worktree with `git worktree remove --force` afterwards. | about 20 s a build |
 | `build-and-verify.sh` | Retired and fail-closed. It never builds, launches an old executable, or recursively removes a named output folder. Use the current PowerShell runners. | immediate |
@@ -209,10 +221,11 @@ It found exactly that on its first run.
   and `grep -c 'Crash!!!'`; a run that neither completed nor crashed is a stale log from a previous
   day — check its timestamp before believing it.
 - **Never sync while a run is live.** The script serialises on `waitfree` for that reason.
-- **While a run is live, the Unity MCP may be attached to it.** The acceptance copy carries the
-  same MCP package, and the relay serves the most recent editor instance - a batchmode run is
-  one. Check `GetProjectRoot` before any scene or asset call, and do editor-side work on C:
-  before launching a run or after it exits.
+- **While a run is live, the Unity MCP may be attached to it** if its launcher left out
+  `UNITY_MCP_DISABLE_BATCH` (see the top of this file) and the copy's compiled `Gamesim.Editor`
+  predates `BatchMcpBridgeIsolation`. The acceptance copy carries the same MCP package, and the
+  relay serves the most recent editor instance - a batchmode run with its bridge on is one. Check `GetProjectRoot` before any scene or
+  asset call, and do editor-side work on C: before launching a run or after it exits.
 - **Compile errors come back from the editor's console as type `Log`.** When reading the Unity
   console over the MCP, ask for `Types: ["All"]`.
 - **`GAMESIM_UMA` must never be committed** in `ProjectSettings/ProjectSettings.asset`; the editor

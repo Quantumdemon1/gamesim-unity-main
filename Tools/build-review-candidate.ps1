@@ -77,7 +77,8 @@ try {
     $arguments=@('-batchmode','-quit','-accept-apiupdate','-projectPath',('"'+$destination+'"'),'-executeMethod',
         'Gamesim.Editor.U01ProjectSetup.BuildReviewCandidate','-logFile',('"'+$log+'"'))
     $buildStarted=[DateTime]::UtcNow
-    $process=Invoke-ReviewOwnedProcess $unity $arguments $BuildTimeoutSeconds (Join-Path $runRoot 'build-process.json')
+    # UNITY_MCP_DISABLE_BATCH=1 keeps the MCP bridge, whose client checks held batch runs at 15-26 GiB, off (review-workflow.ps1).
+    $process=Invoke-ReviewOwnedProcess $unity $arguments $BuildTimeoutSeconds (Join-Path $runRoot 'build-process.json') -Environment $script:ReviewUnityEnvironment
     if ($process.failure -or -not $process.closed -or $process.stopped -or $process.timedOut -or $process.exit -ne 0) { throw 'Owned build did not finish normally within its deadline.' }
     if (-not (Test-Path -LiteralPath $rawReport) -or (Get-Item -LiteralPath $rawReport).LastWriteTimeUtc -lt $buildStarted) { throw 'Missing fresh build report.' }
     [void](Get-ReviewFileRecord $rawReport 'build-report.json' (Join-Path $runRoot 'build-report.json'))

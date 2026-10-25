@@ -42,14 +42,17 @@ Gamesim.EditModeTests 8642
 # 1302 = 1241 + the 61 PlayMode tests the dialogue V2 source adds (draft PR #28): the full NoUMA run at
 # 0d2f6d2e (2026-10-22), 1302 of 1302. From there to the PR's head no runtime, simulation or PlayMode test
 # source changes outside Gamesim.Uma.PlayModeTests.
-Gamesim.PlayModeTests 1302
+# 1303 = 1302 + CeremonyRevealPlayModeTests.Cards_TheirTimeStartsWhenTheyAreDrawn (e99df811): the full NoUMA
+# run at e99df811 (2026-10-24), 1303 of 1303.
+Gamesim.PlayModeTests 1303
 # The UMA build of the same assembly, read by a plan built without -WithoutUma. 1281 = the 1241 above + the
 # 40 tests that compile only under GAMESIM_UMA, as run at r1 (2026-10-16): in EpisodePlayModeTests,
 # GroundedFarewell 11, Creator 9, HouseLife 8, Emotes 3, OpeningCaptures 2, and one each in CreatorEntry,
 # Director, Effects, HouseActivities, Moves, OpeningStage and StoryReactions. A shared test raises both
 # lines; a GAMESIM_UMA-only test raises this one. 1342 = 1281 + the same 61 shared V2 tests: the full UMA-build
-# run at 0d2f6d2e (2026-10-22), 1342 of 1342.
-Gamesim.PlayModeTests.UmaBuild 1342
+# run at 0d2f6d2e (2026-10-22), 1342 of 1342. 1343 = 1342 + the same shared ceremony test: the full UMA-build
+# run at e99df811 (2026-10-25, as six process groups whose union was checked case by case), 1343 of 1343.
+Gamesim.PlayModeTests.UmaBuild 1343
 # The UMA bodies: runs only where the GAMESIM_UMA define is set (the working tree and the D: copy).
 # 82 = the 89 run on 2026-10-15, less the 7 farewell probes moved to Gamesim.Uma.DiagnosticsPlayModeTests;
 # 85 = 82 + the 3 farewell readiness decision tests (UmaFarewellReadinessDecisionPlayModeTests, 2026-10-16);

@@ -134,9 +134,13 @@ namespace Gamesim.Simulation
                         var saved = NpcVetoSave(s);
                         Require(saved != null && c.useVeto && c.targetId == saved, "The NPC veto decision must be preserved.");
                     }
+                    // Under the role moments (R3) the veto board as the player last saw it, before anything below moves
+                    // it, and what the decision left of it settled on those tones: silence costs, and the riders.
+                    var board = VetoBoardAsSeen(s);
                     // The house's last beats before the veto is used (D2, §1).
                     Close(s);
-                    ResolveVeto(s, c.useVeto, c.targetId, c.secondTargetId); break;
+                    ResolveVeto(s, c.useVeto, c.targetId, c.secondTargetId);
+                    SettleTheVetoBoard(s, board); break;
                 case EpisodeCommandKind.CastVote:
                     if (s.phase == EpisodePhase.Jury)
                     {
@@ -349,8 +353,13 @@ namespace Gamesim.Simulation
                         : next == EpisodePhase.VetoMeeting ? StoryAnchors.VetoWon : null;
                     if (crossed != null && StoryOn(s)) StoryLapse(s, crossed);
                     s.competitionResolved = false; Phase(s, next);
-                    // A nominee asks the player for the veto while it is still theirs to use.
-                    if (next == EpisodePhase.VetoMeeting) NpcDeals.AskForTheVeto(s);
+                    // A nominee asks the player for the veto while it is still theirs to use; and under the role moments
+                    // the Head of Household, right after them, asks the player to leave the block alone (R4).
+                    if (next == EpisodePhase.VetoMeeting)
+                    {
+                        NpcDeals.AskForTheVeto(s);
+                        NpcDeals.AskToKeepTheBlock(s);
+                    }
                     // Under agency, whoever has no claim on the new Head of Household courts them
                     // before the nominations (NPC-AGENCY-PLAN.md §4).
                     if (next == EpisodePhase.Nomination) CourtTheHoH(s);
@@ -374,6 +383,9 @@ namespace Gamesim.Simulation
                         var weakest = ranked.Where(c => c.id != backdoor).Take(2).ToArray();
                         Nominate(s, weakest[0].id, weakest[1].id);
                         if (backdoor != null) StartBackdoor(s, backdoor, weakest.Select(w => w.id).ToList());
+                        // Under the role moments a Head of Household who named the player may call them up as a pawn in
+                        // any week (R6, §3.4a); in a backdoor week the plan above has taken the coin already.
+                        StartThePawnTalk(s);
                         StoryAnchor(s, StoryAnchors.NomsSet);
                         return;
                     }
@@ -898,13 +910,18 @@ namespace Gamesim.Simulation
             s.replyCards.RemoveAll(card => card.kind == ReplyCards.Pitch);
             s.nominees = new List<string> { first, second };
             foreach (var nominee in s.nominees) NominationEffects(s, nominee);
+            // Under the role moments a nominee the player turned down at their pitch takes the ceremony's grudge easier (R5).
+            var honestNos = HonestNos(s, s.nominees);
             StoryNominated(s, s.nominees);
+            EaseHonestNos(s, honestNos);
             SettleDeals(s, DealResolution.Verdicts(s, DealResolution.Nominates, s.hohId, s.nominees.ToList()));
             ResolveUnifiedSafetyNomination(s, "nomination", s.hohId, s.nominees.ToList());
             Log(s, "nomination", Name(s, s.hohId) + Verb(s, s.hohId, " nominates ", " nominate ")
                 + Target(s, first, s.hohId) + " and " + Target(s, second, s.hohId) + ".");
             // Under the commitment rules (C2) an ally who puts the player up has turned on their pact.
             if (s.hohId != s.playerId && s.nominees.Contains(s.playerId)) Betrayal(s, s.hohId, Allegiance.Nominated, false);
+            // Under the role moments the player's pitch board settles with the names (R5): a promise kept pays.
+            SettleThePitchBoard(s);
         }
 
         private static void NominationEffects(EpisodeState s, string id, bool initial = true)
@@ -1018,7 +1035,10 @@ namespace Gamesim.Simulation
                 Require(ReplacementCandidates(s).Any(c => c.id == replacement), "Choose an eligible replacement; the HoH and veto holder are immune.");
                 s.nominees.Remove(saved); s.nominees.Add(replacement); NominationEffects(s, replacement, false);
                 MoodLift(s, saved);
+                // Under the role moments a replacement the player turned down at their pitch takes it easier (R5).
+                var honestNo = HonestNos(s, new[] { replacement });
                 StoryReplacement(s, replacement);
+                EaseHonestNos(s, honestNo);
                 // Between two houseguests, under D2's rules, through the ledger and no arc (ChangeBetween).
                 ChangeBetween(s, saved, s.vetoHolderId, 25, Name(s, s.vetoHolderId) + " used POV to save " + Target(s, saved, s.vetoHolderId), null, VetoSaveEvent);
                 ChangeBetween(s, replacement, s.hohId, -20, Name(s, s.hohId) + " named " + Target(s, replacement, s.hohId) + " as replacement nominee", null, VetoReplacementEvent);
@@ -1054,9 +1074,10 @@ namespace Gamesim.Simulation
             // could never be broken and would always be kept, so an offer of one lapses. No roll, no line.
             if (CommitmentRulesOn(s) && s.Active.Count() == NpcDeals.FinalThreeSize + 1) ExpireFinalThreeOffers(s);
             RecordVeto(s, use, saved, replacement);
-            // A question about a decision already taken is no longer on the table.
+            // A question about a decision already taken is no longer on the table: a veto commitment, and under the role
+            // moments the Head of Household's keep-the-block ask (R4), the only other word on the veto there is.
             if (StrategyRules.Apply(s))
-                foreach (var offer in s.deals.Where(d => d.status == DealStatus.Proposed && d.type == DealKind.VetoUse))
+                foreach (var offer in s.deals.Where(d => d.status == DealStatus.Proposed && Negotiation.IsVetoWord(d.type)))
                     offer.status = DealStatus.Expired;
         }
 
@@ -2170,6 +2191,9 @@ namespace Gamesim.Simulation
             string title = DealKind.Title(deal.type).ToLowerInvariant();
             if (string.Equals((c.text ?? string.Empty).Trim(), AcceptDeal, StringComparison.OrdinalIgnoreCase))
             {
+                // One word on the veto a week (ROLE-MOMENTS-PLAN R3, §3.2): under the role moments a second yes is
+                // refused, in the words a second price is. Before them only the meeting's row locked it.
+                Require(!SecondVetoWord(s, deal), Negotiation.VetoSavesOneRefusal);
                 // The player's three (ACTIONS-DEALS-ALLIANCES-PLAN C4, decision 10): under the
                 // commitment rules a yes that would bring them into a fourth pact is not theirs to give.
                 Require(!(deal.type == DealKind.AllianceInvite && InvitationPastPactCap(s, deal.proposerId)), PactCapRefusal);
@@ -2219,12 +2243,15 @@ namespace Gamesim.Simulation
                 return;
             }
 
+            // Under the role moments a veto ask's no costs what its card's tone stakes (R3, §3.0), read before the
+            // answer moves anything; every other no, and every no before them, costs what it always did.
+            double declined = DeclineCost(s, deal);
             if (modeTwo != null)
                 Require(UnifiedVoteStore.TryAnswerOffer(s, deal.id, false, out string voteDeclineError), voteDeclineError);
             else if (canonical != null)
                 Require(UnifiedCommitmentStore.TryRespond(s, deal.id, false, out string declineError), declineError);
             else deal.status = DealStatus.Declined;
-            Change(s, s.playerId, deal.proposerId, PlayerDeals.DeclineImpact,
+            Change(s, s.playerId, deal.proposerId, declined,
                 "Turned down my " + title + ".", "deal_declined");
             Log(s, "deal", "You declined a " + title + " from " + from.name + ".", s.playerId, deal.proposerId);
         }

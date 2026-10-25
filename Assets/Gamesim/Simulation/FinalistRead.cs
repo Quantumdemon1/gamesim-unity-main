@@ -417,7 +417,8 @@ namespace Gamesim.Simulation
         /// which the player can say only once they know the other's ballot (<see cref="KnownBallots"/>,
         /// decision 4). A Final 2 deal is settled by the final Head of Household. A voting block is
         /// settled by both at once, so by neither. A final three deal (C9), which only the commitment
-        /// rules make, says who broke it on its record. Anything else, by nobody the record names.
+        /// rules make, says who broke it on its record, and so does a keep-the-block deal (R4), which
+        /// only the role moments make. Anything else, by nobody the record names.
         /// </summary>
         public static string DealBreaker(EpisodeState s, DealState deal)
         {
@@ -502,6 +503,9 @@ namespace Gamesim.Simulation
                 case DealKind.FinalThree:
                     // The commitment rules' own (C9), so always on the record: broken only by a nomination,
                     // in front of the house.
+                case DealKind.VetoHold:
+                    // The role moments' own (ROLE-MOMENTS-PLAN R4), played under the commitment rules, so on the record
+                    // too: broken only by the veto used, at the meeting, in front of the house.
                     return deal.settledWeek > 0 ? deal.brokenById : null;
                 default:
                     return null;

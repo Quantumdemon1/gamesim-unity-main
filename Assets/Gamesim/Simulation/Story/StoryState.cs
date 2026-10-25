@@ -283,9 +283,30 @@ namespace Gamesim.Simulation
         public const int Reach = 8;
         /// <summary>Threads (plan 31): two or three season-long stories seeded from the cast, told in chapters.</summary>
         public const int Threads = 9;
+        /// <summary>
+        /// Roles (ROLE-MOMENTS-PLAN): what comes to the player when they win the HoH or the veto, or are
+        /// nominated. Claimed as 11 on 2026-10-22; 10 is the story session's, for the pariah fix. Read
+        /// through <see cref="EpisodeEngine.RolesOn"/>, which also wants the rules the moments are built on.
+        /// </summary>
+        public const int Roles = 11;
 
-        /// <summary>What a season switched on today plays under.</summary>
+        /// <summary>What a season switched on today plays under. Roles waits for its enrolment (R7), and that for every milestone below it.</summary>
         public const int Current = Threads;
+
+        /// <summary>
+        /// The last milestone this build defines: the bound a saved season and the catalogue are held to,
+        /// never a behaviour (<c>CompetitionMiniGames.CurrentRules</c>' rule). A season plays above
+        /// <see cref="Current"/> only when a test opts it in.
+        /// </summary>
+        public const int Latest = Roles;
+
+        /// <summary>
+        /// Whether this build defines the version: 0 (off), every milestone to <see cref="Threads"/>, and
+        /// <see cref="Roles"/>. Up to Threads the ladder had no gap, so a bound was enough; 10 is claimed
+        /// but no code defines it, and a season may not hold a version nothing reads. The story session's
+        /// milestone closes the gap when it lands.
+        /// </summary>
+        public static bool IsDefined(int version) => version >= 0 && version <= Latest && (version <= Threads || version >= Roles);
 
         public const int Lenient = 0, Standard = 1;
     }

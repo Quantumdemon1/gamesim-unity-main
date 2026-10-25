@@ -305,6 +305,10 @@ namespace Gamesim.Simulation
             // Nor a final three deal, their own kind (C9), struck before they began.
             if (s.deals.Any(d => DealKind.CommitmentRulesOnly(d.type) && (s.commitmentRulesStartWeek == 0 || d.week < s.commitmentRulesStartWeek)))
                 return Fail(out error, "A season without the commitment rules has none of their records.");
+            // Nor a keep-the-block deal, the role moments' own (ROLE-MOMENTS-PLAN R4), by its kind or by its id, from a
+            // week they did not play in.
+            if (s.deals.Any(d => (DealKind.RolesOnly(d.type) || NpcDeals.IsKeepTheBlockId(d.id)) && !EpisodeEngine.RolesOnIn(s, d.week)))
+                return Fail(out error, "A season without the role moments has none of their records.");
             if (s.dealRulesStartWeek < 1 || s.dealRulesStartWeek > Math.Min(101, s.week + 1))
                 return Fail(out error, "A deal rules boundary cannot be further off than next week.");
             // Bought actions are bounded like everything else a player can accumulate: nothing
@@ -396,7 +400,13 @@ namespace Gamesim.Simulation
                         : s.phase != EpisodePhase.Social && s.phase != EpisodePhase.Campaign))
                 || s.replyCards.Select(r => r.id).Distinct(StringComparer.Ordinal).Count() != s.replyCards.Count
                 || s.replyCards.Where(r => r.kind == ReplyCards.Pitch).Select(r => r.fromId).Distinct(StringComparer.Ordinal).Count()
-                    != s.replyCards.Count(r => r.kind == ReplyCards.Pitch))
+                    != s.replyCards.Count(r => r.kind == ReplyCards.Pitch)
+                // Under the role moments a nomination brings at most three pitchers to the player (R5): those still waiting
+                // on the board and those already answered this week together.
+                || (EpisodeEngine.RolesOn(s) && s.replyCards.Where(r => r.kind == ReplyCards.Pitch).Select(r => r.fromId)
+                    .Concat(s.ledger?.replies?.Where(r => r != null && r.week == s.week && r.kind == ReplyCards.Pitch).Select(r => r.fromId)
+                        ?? Enumerable.Empty<string>())
+                    .Distinct(StringComparer.Ordinal).Count() > HoHPitches.BoardSize))
                 return Fail(out error, "Invalid reply card data.");
             if (s.strategyRulesStartWeek == 0 && (s.lobbies.Count > 0 || s.replyCards.Count > 0))
                 return Fail(out error, "A season without the strategy windows has none of their records.");

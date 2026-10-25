@@ -25,7 +25,7 @@ namespace Gamesim.Simulation
 
             if (w.rulesStartWeek != 0 && (w.rulesStartWeek < 1 || w.rulesStartWeek > Math.Min(101, s.week + 1)))
                 return Fail(out error, "A story rules boundary cannot be further off than next week.");
-            if (w.rulesVersion < 0 || w.rulesVersion > StoryRules.Current || (w.rulesStartWeek != 0 && w.rulesVersion < StoryRules.Spine))
+            if (!StoryRules.IsDefined(w.rulesVersion) || (w.rulesStartWeek != 0 && w.rulesVersion < StoryRules.Spine))
                 return Fail(out error, "Unsupported story rules version.");
             if (w.productionStrictness != StoryRules.Lenient && w.productionStrictness != StoryRules.Standard)
                 return Fail(out error, "Unsupported production strictness.");

@@ -12,10 +12,13 @@ It is the AI Assistant package's own switch for its MCP bridge in batch mode. Le
 MCP client that connects, and under Unity's Mono each check leaves about five times the client's executable
 (1.4-1.6 GiB for claude.exe or codex.exe) in a heap that never shrinks: batch runs sat at 15-26 GiB. Export it
 yourself for any batch Unity you start by hand. `Gamesim.Editor.BatchMcpBridgeIsolation` sets it at load in a
-batch editor whose launcher did not (it logs `the launcher did not set UNITY_MCP_DISABLE_BATCH` when it does),
-and `BatchMcpBridgeIsolationTests` fails a batch EditMode run whose bridge was built anyway. Never switch the
-MCP settings off instead: they are machine-wide EditorPrefs the interactive editor shares. The player
-(`profile-candidate.ps1`) needs nothing: the package is editor-only.
+batch editor whose launcher did not (never in an asset import worker, which belongs to the editor that started
+it). When it does, it logs `the launcher did not set UNITY_MCP_DISABLE_BATCH`, and on the first editor update
+one verdict on the load order: `load order confirmed`, `the load order was not exercised` (the MCP settings
+keep the bridge off anyway), or an error if the bridge's Init ran first. `BatchMcpBridgeIsolationTests` fails a
+batch EditMode run whose bridge was built anyway, and any run whose package no longer reads the variable in an
+`[InitializeOnLoadMethod]` Init. Never switch the MCP settings off instead: they are machine-wide EditorPrefs
+the interactive editor shares. The player (`profile-candidate.ps1`) needs nothing: the package is editor-only.
 
 | Script | What it does | Time |
 | --- | --- | --- |

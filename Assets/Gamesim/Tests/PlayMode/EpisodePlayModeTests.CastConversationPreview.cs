@@ -43,9 +43,13 @@ namespace Gamesim.Tests.PlayMode
             var before = director.Snapshot;
             string slot = director.SavePath;
             new Gamesim.Persistence.EpisodeSaveStore(slot).Save(before);
-            byte[] bytes = File.ReadAllBytes(slot);
 
             yield return OpenCastScreen();
+            // The slot as it stands with the screen up and the house held, so that only the chip could move it: opening
+            // a panel may commit the house's pending tick, which is the panel's doing, not the chip's.
+            HoldTheHouseForTheFixture();
+            yield return null;
+            byte[] bytes = File.ReadAllBytes(slot);
             AssertPreviewReads(false, "Opened");
             PreviewChip(false)[0].onClick.Invoke();
             yield return null;

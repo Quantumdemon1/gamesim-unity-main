@@ -32,7 +32,8 @@
 # 8963 = 8932 + dialogue D1's 31 shared cases, first run under the Mono harness (2026-10-25): ShippedRulesTests 14 (the
 # cast screen's options), StressHouseTests 1 (the chip writes the pinned version) and LegacyDigestSchema29ObserverTests
 # 16 (the native-29 arm; the old enabled-dialogue refusal case became an admission test). Not yet counted by a full run.
-Gamesim.EditModeTests 8963
+# 8967 = 8963 + the 4 OldSaveAcceptanceTests cases of D1's fixture, s29-mode2-dialogue1-w2-campaign (Mono harness).
+Gamesim.EditModeTests 8967
 # The UMA-free build. 1215 = 1236, the count after the consolidation's lanes (S2a, S2b, S4a), less the 7
 # farewell probes moved to Gamesim.DiagnosticsPlayModeTests and the 14 farewell readiness tests that now
 # compile only under GAMESIM_UMA (judged on the UMA cast); 1230 = 1215 + S2d's 7, S4b's 2, S4c's 2 and

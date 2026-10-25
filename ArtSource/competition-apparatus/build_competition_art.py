@@ -201,7 +201,7 @@ def main():
         if a.render:preview(fam,copies,out/'Previews')
         for o in copies:bpy.data.objects.remove(o,do_unlink=True)
     select([]);bpy.ops.wm.save_as_mainfile(filepath=str(out/'competition_parts.blend'))
-    (out/'authoring-receipt.json').write_text(json.dumps({'blender':bpy.app.version_string,'sourceSha256':sha(__file__),'manifestSha256':sha(a.manifest),'entries':report,'scope':'isolated art; no Unity import or runtime acceptance'},indent=2),encoding='utf-8')
+    (out/'authoring-receipt.json').write_text(json.dumps({'blender':bpy.app.version_string,'sourceSha256':sha(__file__),'manifestSha256':sha(a.manifest),'entries':report,'scope':'isolated art; no Unity import or runtime acceptance'},indent=2),encoding='utf-8',newline='\n')
     print('COMPETITION_EXPORT_COMPLETE',len(report),str(out))
 
 if __name__=='__main__':main()

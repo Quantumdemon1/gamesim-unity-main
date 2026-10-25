@@ -56,6 +56,11 @@ headless into a directory that does not exist yet, then copy `Parts/*.fbx` into
 
     blender --background --factory-startup --python build_competition_art.py -- --manifest part-manifest.json --out <new directory>
 
+A rerun reproduces the generator and manifest hashes in the receipt, but not the
+FBX hashes. Blender writes the export time into each FBX, and it keys object ids
+on Python's per-process string hash. So two runs differ in bytes while matching
+node for node. Compare a rerun's geometry with the parts, not its hashes.
+
 `CompetitionApparatusMeshKitPlayModeTests` covers the borrowed geometry, and its
 installed-kit case fails every suite when the shipped kit is missing or any part
 of any family falls back to the box. The null-kit path is only for isolated

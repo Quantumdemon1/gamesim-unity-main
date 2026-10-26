@@ -1633,7 +1633,7 @@ namespace Gamesim.Presentation
             pill.sizeDelta = new Vector2(width, 38f);
             pill.anchoredPosition = new Vector2(x, 0f);
 
-            // The active pill is the bright one, and it is the only one that glows. The resting pills
+            // The active pill is the bright one, and (unless halo is false) the only one that glows. The resting pills
             // keep the cyan hairline every panel edge carries.
             if (active)
             {

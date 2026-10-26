@@ -194,17 +194,29 @@ namespace Gamesim.Tests.PlayMode
             AssertPreviewReads(on, shape);
             var root = (RectTransform)screen.transform;
             var footer = screen.GetComponentsInChildren<RectTransform>().Last(rect => rect.name == "Fixed season footer" && rect.gameObject.activeInHierarchy);
+            // A part as drawn: its rect and every child's, so a lit pill's glow, ten past its edge, counts. These checks
+            // count the glow on purpose (it is drawn), where UiTheme.Glass's layout checks read the rect alone.
             Rect In(RectTransform rect) { var b = RectTransformUtility.CalculateRelativeRectTransformBounds(root, rect); return new Rect(b.min, b.size); }
+            // A container by its own rect, children left out. In(footer) and In(root) take in every child, the chip and the
+            // line among them, so they always held both: D1's run measured the lit chip's glow 4 under the screen's foot, and
+            // neither check below, though both run before the overlap, said so.
+            Rect Own(RectTransform rect)
+            {
+                var corners = new Vector3[4];
+                rect.GetWorldCorners(corners);
+                Vector2 low = root.InverseTransformPoint(corners[0]), high = root.InverseTransformPoint(corners[2]);
+                return Rect.MinMaxRect(Mathf.Min(low.x, high.x), Mathf.Min(low.y, high.y), Mathf.Max(low.x, high.x), Mathf.Max(low.y, high.y));
+            }
             var chip = (RectTransform)PreviewChip(on)[0].transform;
             var line = PreviewLine();
             Assert.That(chip.rect.height, Is.GreaterThanOrEqualTo(38f - .5f), shape + ": the chip is tall enough to press.");
-            var bounds = In(footer);
+            var bounds = Own(footer);
             foreach (var part in new[] { chip, line.rectTransform })
             {
                 var at = In(part);
                 Assert.That(at.xMin >= bounds.xMin - .5f && at.xMax <= bounds.xMax + .5f && at.yMin >= bounds.yMin - .5f && at.yMax <= bounds.yMax + .5f, Is.True,
                     shape + ": '" + part.name + "' lies inside the footer: " + at + " in " + bounds + ".");
-                Assert.That(at.yMin, Is.GreaterThanOrEqualTo(In(root).yMin - .5f), shape + ": '" + part.name + "' is on the screen.");
+                Assert.That(at.yMin, Is.GreaterThanOrEqualTo(Own(root).yMin - .5f), shape + ": '" + part.name + "' is on the screen.");
             }
             // Clear of every other control and line the footer draws.
             var others = new List<RectTransform>();

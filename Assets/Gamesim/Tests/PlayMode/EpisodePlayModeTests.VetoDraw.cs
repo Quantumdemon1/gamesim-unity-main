@@ -10,6 +10,7 @@ using NUnit.Framework;
 using TMPro;
 using UnityEngine;
 using UnityEngine.InputSystem;
+using UnityEngine.InputSystem.LowLevel;
 using UnityEngine.TestTools;
 using UnityEngine.UI;
 
@@ -240,8 +241,9 @@ namespace Gamesim.Tests.PlayMode
 
             // The card opens inside the commit, so its opening is read before the next frame. It runs
             // on the unscaled clock, which Time.captureDeltaTime does not pin, and the frame after a
-            // commit carries the save, the render and the panel closing for the competition: one
-            // that long would already have brought a chip out of the bag.
+            // commit carries the save, the render and the panel closing for the competition. The card
+            // no longer counts that frame (VetoDraw_TheRevealsTimeStartsWhenItIsDrawn), and its
+            // opening is read inside the commit all the same.
             var committed = director.Snapshot;
             var reveal = director.DrawRevealCard;
             Assert.That(reveal != null && reveal.IsPlaying, Is.True, "The draw plays as chips turning into faces,");
@@ -300,6 +302,38 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(result.accepted, Is.True, result.reason);
             yield return null;
             Assert.That(reveal.IsPlaying, Is.False, "The veto's result takes the draw's card down.");
+            director.ClosePanels();
+            yield return null;
+        }
+
+        /// <summary>
+        /// The draw's time starts when it is drawn. The commit plays the card, and its frame - the
+        /// commit, its save, the house's render and the card's own build - is not the card's however
+        /// long it runs: a frame of 1.6 seconds, past the fade and the beat before the first chip, with
+        /// an Enter landing in it, leaves every chip in the bag and the card up.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator VetoDraw_TheRevealsTimeStartsWhenItIsDrawn()
+        {
+            yield return InstallVetoDraw(50, 8);
+            director.DrawRevealsInBatchRuns = true;
+            yield return OpenStation();
+            yield return null;
+            if (testKeyboard == null) testKeyboard = InputSystem.AddDevice<Keyboard>();
+            ButtonWithCaption("Continue episode").onClick.Invoke();
+            var reveal = director.DrawRevealCard;
+            Assert.That(reveal != null && reveal.IsPlaying, Is.True, "The draw plays.");
+            InputSystem.QueueStateEvent(testKeyboard, new KeyboardState(Key.Enter));
+            System.Threading.Thread.Sleep(1600);
+            yield return null;
+            InputSystem.QueueStateEvent(testKeyboard, new KeyboardState());
+            // One frame of the card's own time, with the Enter let go: the first it counts.
+            yield return null;
+
+            Assert.That(reveal.IsPlaying, Is.True, "The draw is still up,");
+            Assert.That(reveal.ShowingField, Is.False, "and the Enter that landed before it was drawn has not turned every chip.");
+            Assert.That(reveal.ChipsOut, Is.Zero, "Every chip is still in the bag.");
+            reveal.Cancel();
             director.ClosePanels();
             yield return null;
         }

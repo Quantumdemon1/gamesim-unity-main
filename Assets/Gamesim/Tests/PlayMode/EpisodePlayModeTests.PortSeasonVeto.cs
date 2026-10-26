@@ -127,6 +127,9 @@ namespace Gamesim.Tests.PlayMode
                 Assert.That(resultCard.Play("Veto", "Guard fixture", before.week,
                     new[] { new CompetitionResult.Standing(before.Find(before.playerId).name, 1, true, true, null) }, true), Is.True);
                 Assert.That(resultCard.IsPlaying, Is.True);
+                // The card's time starts on the frame after the one that played it, and so does the
+                // walk's wait to press its Continue, as it does after the walk's own presses.
+                yield return null;
 
                 stack.Push(PortConversationRoutine(runner, "PerformSeasonDecision", before, false));
                 System.Exception failure = null;

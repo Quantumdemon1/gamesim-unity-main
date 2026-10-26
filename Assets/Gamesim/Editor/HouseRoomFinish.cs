@@ -30,9 +30,16 @@ namespace Gamesim.Editor
     /// keeps its lightmap. Those two edits live on the pieces rather than under the root, so a
     /// re-run cannot undo them - <c>git checkout</c> of the scene can.</para>
     ///
-    /// <para>Idempotent: the root is destroyed and rebuilt, materials are re-applied by name under
-    /// <see cref="MaterialFolder"/>, and a second run saves the same scene. Runs from the menu or in
-    /// batchmode with <c>-executeMethod Gamesim.Editor.HouseRoomFinish.Apply</c>.</para>
+    /// <para>Idempotent, and kind to the scene file: a run keeps what an earlier run made rather
+    /// than rebuilding it. The root, its room groups and every piece in them are found by parent,
+    /// name, kind and order (<see cref="Kept"/>) and set to what this run computes; only what is
+    /// missing is made, and only what this run no longer makes is destroyed. An object that is kept
+    /// keeps its file ID, so a run on a scene the pass saved leaves every object and value as it was,
+    /// and a changed placement changes that object's lines alone - not the whole root's, as the
+    /// destroy-and-rebuild this replaced did. The screens' idle boards are kept the same way, with
+    /// their static flags and their place in the bake. Materials are re-applied by name under
+    /// <see cref="MaterialFolder"/>. Runs from the menu or in batchmode with
+    /// <c>-executeMethod Gamesim.Editor.HouseRoomFinish.Apply</c>.</para>
     /// </summary>
     public static class HouseRoomFinish
     {
@@ -76,38 +83,130 @@ namespace Gamesim.Editor
             Debug.Log("[Gamesim] room finish · " + count + " pieces dressed, hidden or re-skinned under '" + RootName + "'");
         }
 
-        /// <summary>Rebuilds the root in <paramref name="scene"/> and returns how many edits it made.</summary>
+        /// <summary>
+        /// Brings the root in <paramref name="scene"/> to what the pass makes - keeping every object
+        /// an earlier run made that it still makes (<see cref="Kept"/>) - and returns how many edits it made.
+        /// </summary>
         public static int Apply(Scene scene)
         {
             var world = scene.GetRootGameObjects().FirstOrDefault(go => go.name == WorldRoot);
             if (world == null) throw new InvalidOperationException("No '" + WorldRoot + "' root in " + scene.path);
 
-            var existing = world.transform.Find(RootName);
-            if (existing != null) UnityEngine.Object.DestroyImmediate(existing.gameObject);
-            var root = new GameObject(RootName).transform;
-            root.SetParent(world.transform, false);
-
-            var house = new House(world.transform, root);
-            int count = 0;
-            foreach (var name in RoomGroups)
+            kept = new Kept();
+            try
             {
-                var group = new GameObject(name).transform;
-                group.SetParent(root, false);
-                switch (name)
+                // The root stays where it is among the house's children; a new one goes last, as before.
+                var root = world.transform.Find(RootName);
+                if (root == null)
                 {
-                    case "Diary room": count += DiaryRoom(house, group); break;
-                    case "Kitchen": count += Kitchen(house, group); break;
-                    case "Living room": count += LivingRoom(house, group); break;
-                    case "HoH suite": count += HohSuite(house, group); break;
-                    case "Nomination room": count += NominationRoom(house, group); break;
-                    case "Game room": count += GameRoom(house, group); break;
-                    case "Bedroom": count += Bedroom(house, group); break;
-                    case "Competition yard": count += CompetitionYard(house, group); break;
+                    root = new GameObject(RootName).transform;
+                    root.SetParent(world.transform, false);
+                }
+                AsMade(root);
+
+                var house = new House(world.transform, root);
+                int count = 0;
+                foreach (var name in RoomGroups)
+                {
+                    var group = Group(root, name);
+                    switch (name)
+                    {
+                        case "Diary room": count += DiaryRoom(house, group); break;
+                        case "Kitchen": count += Kitchen(house, group); break;
+                        case "Living room": count += LivingRoom(house, group); break;
+                        case "HoH suite": count += HohSuite(house, group); break;
+                        case "Nomination room": count += NominationRoom(house, group); break;
+                        case "Game room": count += GameRoom(house, group); break;
+                        case "Bedroom": count += Bedroom(house, group); break;
+                        case "Competition yard": count += CompetitionYard(house, group); break;
+                    }
+                }
+                // Pass 8: the perimeter neon comes down, room by room, to a supporting brightness.
+                foreach (var (floor, factor) in NeonBalance) count += Dim(house, floor, factor);
+                // What this run no longer makes - an earlier run's piece of another kind under the
+                // same name, a piece the pass has dropped - goes now, after its place was taken.
+                kept.Sweep(root);
+                return count;
+            }
+            finally { kept = null; }
+        }
+
+        /// <summary>What the run in progress found under the root and kept (null between runs).</summary>
+        private static Kept kept;
+
+        /// <summary>
+        /// The objects one run of the pass found under the root and kept, so that they - and their
+        /// file IDs in the saved scene - outlive the run. A parent's children are claimed in the
+        /// order the run makes them: each call takes the first child of its name and kind that no
+        /// call has taken yet, or makes one, and moves it to the parent's next sibling index (where
+        /// it already is, on a scene the pass saved). A child no call claimed is destroyed at the
+        /// end of the run (<see cref="Sweep"/>). The screens' idle boards, which hang under set
+        /// pieces rather than the root, are kept by <see cref="IdleBoard"/> instead.
+        /// </summary>
+        private sealed class Kept
+        {
+            private readonly HashSet<Transform> claimed = new HashSet<Transform>();
+            private readonly Dictionary<Transform, int> next = new Dictionary<Transform, int>();
+
+            /// <summary>The first unclaimed child of <paramref name="parent"/> named <paramref name="name"/> that <paramref name="fits"/>, claimed; null when there is none.</summary>
+            public Transform Find(Transform parent, string name, Func<Transform, bool> fits)
+            {
+                for (int i = 0; i < parent.childCount; i++)
+                {
+                    var child = parent.GetChild(i);
+                    if (claimed.Contains(child) || child.name != name || !fits(child)) continue;
+                    Claim(parent, child);
+                    return child;
+                }
+                return null;
+            }
+
+            /// <summary>Claims <paramref name="child"/> - found, or just made - at <paramref name="parent"/>'s next sibling index.</summary>
+            public void Claim(Transform parent, Transform child)
+            {
+                claimed.Add(child);
+                next.TryGetValue(parent, out int index);
+                if (child.GetSiblingIndex() != index) child.SetSiblingIndex(index);
+                next[parent] = index + 1;
+            }
+
+            /// <summary>Destroys every child of <paramref name="parent"/> no call claimed, and below it, inside each group it claimed.</summary>
+            public void Sweep(Transform parent)
+            {
+                for (int i = parent.childCount - 1; i >= 0; i--)
+                {
+                    var child = parent.GetChild(i);
+                    if (!claimed.Contains(child)) UnityEngine.Object.DestroyImmediate(child.gameObject);
+                    else if (IsGroup(child)) Sweep(child);
                 }
             }
-            // Pass 8: the perimeter neon comes down, room by room, to a supporting brightness.
-            foreach (var (floor, factor) in NeonBalance) count += Dim(house, floor, factor);
-            return count;
+        }
+
+        /// <summary>A plain group under <paramref name="parent"/>: an earlier run's, or a new one.</summary>
+        private static Transform Group(Transform parent, string name)
+        {
+            var group = kept.Find(parent, name, IsGroup);
+            if (group == null)
+            {
+                group = new GameObject(name).transform;
+                group.SetParent(parent, false);
+                kept.Claim(parent, group);
+            }
+            AsMade(group);
+            return group;
+        }
+
+        /// <summary>A transform and nothing else, outside any prefab: what the pass makes its root and room groups of.</summary>
+        private static bool IsGroup(Transform node) =>
+            node.GetComponents<Component>().Length == 1 && !PrefabUtility.IsPartOfAnyPrefab(node.gameObject);
+
+        /// <summary>A kept group set back to how a new one is made: at its parent's origin, unturned, unscaled and active.</summary>
+        private static void AsMade(Transform group)
+        {
+            group.localPosition = Vector3.zero;
+            group.localRotation = Quaternion.identity;
+            group.localScale = Vector3.one;
+            if (!group.gameObject.activeSelf) group.gameObject.SetActive(true);
         }
 
         /// <summary>Per room, how far the perimeter neon comes down (plan §7); the yard keeps its own.</summary>
@@ -214,10 +313,12 @@ namespace Gamesim.Editor
                 // Coffee, beside the machine over the drawers.
                 if (PieceAt(group, "Coffee tin", "bb_set_coffee_tin", new Vector3(left + 3.00f, counter, mid + 0.05f), 0f) != null) count++;
                 if (PieceAt(group, "Jar", "bb_set_food_jar", new Vector3(left + 3.70f, counter, mid + 0.08f), 0f) != null) count++;
-                // The pantry, beside the toaster.
+                // The pantry, beside the toaster, every label to the room (a model's front is its -z,
+                // and the run faces -z). The blue bag stands past the toaster's end: at 5.50 its corner
+                // was 2 cm inside the toaster and its label half behind it; the bottle is beyond it.
                 if (PieceAt(group, "Cereal", "bb_set_cereal_carton", new Vector3(left + 4.85f, counter, mid + 0.10f), 12f) != null) count++;
                 if (PieceAt(group, "Snack bag", "bb_set_snack_gold", new Vector3(left + 5.08f, counter, mid + 0.06f), -8f) != null) count++;
-                if (PieceAt(group, "Snack bag", "bb_set_snack_blue", new Vector3(left + 5.50f, counter, mid + 0.02f), 20f) != null) count++;
+                if (PieceAt(group, "Snack bag", "bb_set_snack_blue", new Vector3(left + 5.55f, counter, mid + 0.02f), 20f) != null) count++;
                 // A folded authored towel on the end panel. The room-finish layer keeps the same
                 // support point, but the prop now has the thickness and folds of the set's model.
                 if (PieceAt(group, "Dish towel", "bb_set_towel", new Vector3(left + 6.15f, counter, mid), 0f) != null) count++;
@@ -298,10 +399,8 @@ namespace Gamesim.Editor
                     var idle = Finish("bb_mat_p6_decal_display_idle_gamesim", Pack5 + "DigitalDisplays/display_idle_gamesim.png", Vector2.one, Color.white, 0.2f, 0f, true);
                     if (idle != null)
                     {
-                        foreach (var old in screen.GetComponentsInChildren<Transform>(true).Where(t => t.name == ScreenSurface.IdleDisplayName).ToList())
-                            UnityEngine.Object.DestroyImmediate(old.gameObject);
                         float w = Mathf.Min(face.Width * 0.94f, face.Height * 0.94f * 1920f / 1080f);
-                        Quad(screen, ScreenSurface.IdleDisplayName, idle, face.Centre + face.Normal * 0.006f, new Vector2(w, w * 1080f / 1920f), face.Normal, Vector3.up);
+                        IdleBoard(screen, idle, face.Centre + face.Normal * 0.006f, new Vector2(w, w * 1080f / 1920f), face.Normal);
                         count++;
                     }
                 }
@@ -427,12 +526,18 @@ namespace Gamesim.Editor
                 var letter = Finish("bb_mat_p6_decal_hoh_letter_sheet", Pack6 + "HOHRewards/hoh_letter_sheet.png", Vector2.one, Color.white, 0.2f, 0f, true, DecalGlow);
                 if (letter != null) { Quad(group, "HoH letter", letter, new Vector3(cb.min.x + 0.40f, top + 0.006f, cb.center.z + 0.08f), new Vector2(0.21f, 0.16f), Vector3.up, Quaternion.Euler(0f, -6f, 0f) * Vector3.forward); count++; }
                 if (Carton(group, "Gift box", Pack6 + "HOHRewards/gift_wrap_gold.png", new Vector3(0.22f, 0.16f, 0.16f), new Vector3(cb.max.x - 0.22f, top, cb.center.z), 15f) != null) count++;
-                if (PieceAt(group, "Snack bag", "bb_set_hoh_snack_gold", new Vector3(cb.max.x - 0.48f, top, cb.center.z - 0.08f), -10f) != null) count++;
-                if (PieceAt(group, "Snack bag", "bb_set_hoh_snack_blue", new Vector3(cb.max.x - 0.64f, top, cb.center.z + 0.04f), 25f) != null) count++;
+                // The snacks stand in front of the screen with their labels to the room: a model's
+                // front is its -z, and this console stands against the south wall, so they turn about
+                // 180. They stand off the television's 2 cm foot plate, whose front edge is 6 cm in
+                // front of the console's middle, and clear of the drink and the gift.
+                if (PieceAt(group, "Snack bag", "bb_set_hoh_snack_gold", new Vector3(cb.max.x - 0.50f, top, cb.center.z + 0.15f), 170f) != null) count++;
+                if (PieceAt(group, "Snack bag", "bb_set_hoh_snack_blue", new Vector3(cb.max.x - 0.67f, top, cb.center.z + 0.15f), 205f) != null) count++;
                 if (PieceAt(group, "HoH drink", "bb_set_bottle", new Vector3(cb.max.x - 0.36f, top, cb.center.z + 0.12f), 0f) != null) count++;
-                // The mini fridge, on the floor beside the console, toward the room's middle.
+                // The mini fridge, on the floor beside the console, toward the room's middle, its door
+                // to the room (yaw 180, as the snacks). It stands 0.65 m out from the wall, its back
+                // clear of the floor neon that runs 0.26-0.39 m out along this wall.
                 float fridgeX = cb.max.x + 0.40f < room.Bounds.max.x - 0.5f ? cb.max.x + 0.40f : cb.min.x - 0.40f;
-                if (PieceAt(group, "Mini fridge", "bb_set_mini_fridge", new Vector3(fridgeX, room.FloorTop, cb.center.z), 0f) != null) count++;
+                if (PieceAt(group, "Mini fridge", "bb_set_mini_fridge", new Vector3(fridgeX, room.FloorTop, s.Centre.z) + s.Normal * 0.65f, 180f) != null) count++;
             }
 
             // The HoH neon by the door, on the divider's south segment.
@@ -473,10 +578,8 @@ namespace Gamesim.Editor
                     var idle = Finish("bb_mat_p6_decal_nomination_idle_display", Pack6 + "NominationRoom/nomination_idle_display.png", Vector2.one, Color.white, 0.2f, 0f, true);
                     if (idle != null)
                     {
-                        foreach (var old in screen.GetComponentsInChildren<Transform>(true).Where(t => t.name == ScreenSurface.IdleDisplayName).ToList())
-                            UnityEngine.Object.DestroyImmediate(old.gameObject);
                         float w = face.Width * 0.92f;
-                        Quad(screen, ScreenSurface.IdleDisplayName, idle, face.Centre + face.Normal * 0.006f, new Vector2(w, w * 420f / 1200f), face.Normal, Vector3.up);
+                        IdleBoard(screen, idle, face.Centre + face.Normal * 0.006f, new Vector2(w, w * 420f / 1200f), face.Normal);
                         count++;
                     }
                     if (Decal(group, "Stage ornament", Pack6 + "NominationRoom/screen_frame_ornament.png",
@@ -527,9 +630,11 @@ namespace Gamesim.Editor
                 if (Sign(group, "Arcade marquee", east.Value, Pack6 + "GameRoom/arcade_marquee_game_on.png", new Color(1.00f, 0.62f, 0.92f) * 1.3f, 1.6f, along, 0.82f) != null) count++;
                 if (bar != null)
                 {
+                    // Past the bar's north end, its door to the open room: yaw 90 turns a model's -z
+                    // front to -x, away from the east wall, where yaw 0 put it 0.2 m from the bar's end.
                     var bb = Measure(bar.gameObject);
                     if (PieceAt(group, "Mini fridge", "bb_set_mini_fridge",
-                        new Vector3(bb.center.x, room.FloorTop, bb.max.z + 0.45f), 0f) != null) count++;
+                        new Vector3(bb.center.x, room.FloorTop, bb.max.z + 0.45f), 90f) != null) count++;
                 }
             }
 
@@ -550,10 +655,12 @@ namespace Gamesim.Editor
             {
                 var tb = Measure(table.gameObject);
                 float top = tb.max.y;
+                // A box's front is its -z and its lid's art reads upright from that side; the room's
+                // middle is north of the table, so the stack is turned about 180 to face it.
                 var boxes = new[] { "bb_set_game_strategy", "bb_set_game_alliance", "bb_set_game_social" };
                 for (int i = 0; i < boxes.Length; i++)
                     if (PieceAt(group, "Game box", boxes[i],
-                        new Vector3(tb.center.x - 0.12f + i * 0.01f, top + i * 0.05f, tb.center.z + 0.04f - i * 0.015f), -8f + i * 9f) != null) count++;
+                        new Vector3(tb.center.x - 0.12f + i * 0.01f, top + i * 0.05f, tb.center.z + 0.04f - i * 0.015f), 172f + i * 9f) != null) count++;
                 var centre = new Vector2(tb.center.x, tb.center.z);
                 if (sofa != null) { var sb = Measure(sofa.gameObject); centre = (centre + new Vector2(sb.center.x, sb.center.z)) * 0.5f; }
                 count += HideRugsUnder(house, room, centre, 3.2f);
@@ -654,7 +761,11 @@ namespace Gamesim.Editor
             {
                 var db = Measure(drawers[i].gameObject);
                 string model = i % 2 == 0 ? "bb_set_cosmetic" : "bb_set_toiletry";
-                if (PieceAt(group, "Toiletry", model, new Vector3(db.center.x + (i % 2 == 0 ? 0.12f : -0.12f), db.max.y, db.center.z), 0f) != null) count++;
+                // Each turned to the room's middle: a wrapped label's middle is on the model's -z and
+                // its seam on +z, and the drawer between the double beds stands by the west wall,
+                // where yaw 0 showed the room the label's far side and its seam.
+                var at = new Vector3(db.center.x + (i % 2 == 0 ? 0.12f : -0.12f), db.max.y, db.center.z);
+                if (PieceAt(group, "Toiletry", model, at, Facing(room, at)) != null) count++;
             }
 
             // The corkboard goes on the segment of the east partition nothing tall stands in front
@@ -888,10 +999,7 @@ namespace Gamesim.Editor
         /// <summary>A primitive with no collider and no static flag; small things cast their shadows, as the set pieces do.</summary>
         private static GameObject Shape(Transform parent, string name, Material material, PrimitiveType type, Vector3 size, Vector3 centre, float yaw)
         {
-            var shape = GameObject.CreatePrimitive(type);
-            shape.name = name;
-            UnityEngine.Object.DestroyImmediate(shape.GetComponent<Collider>());
-            shape.transform.SetParent(parent, false);
+            var shape = Primitive(parent, name, type);
             shape.transform.SetPositionAndRotation(centre, Quaternion.Euler(0f, yaw, 0f));
             shape.transform.localScale = size;
             shape.GetComponent<Renderer>().sharedMaterial = material;
@@ -934,12 +1042,14 @@ namespace Gamesim.Editor
         /// <summary>A catalogue piece at a floor fraction, the way a set-piece row is placed; no collider, no static flags.</summary>
         private static GameObject Piece(House house, Room room, Transform group, string model, float x, float z, float yaw, float height, float lift = 0f)
         {
-            var instance = HouseSetPieces.Model(model, group, yaw, height);
-            if (instance == null) return null;
             var b = room.Bounds;
-            var scaled = Measure(instance);
             var target = new Vector3(b.center.x + x * b.size.x, b.max.y + lift, b.center.z + z * b.size.z);
-            instance.transform.position += target - new Vector3(scaled.center.x, scaled.min.y, scaled.center.z);
+            var instance = Placed(group, model, model, yaw, height, made =>
+            {
+                var scaled = Measure(made);
+                made.transform.position += target - new Vector3(scaled.center.x, scaled.min.y, scaled.center.z);
+            });
+            if (instance == null) return null;
             foreach (var collider in instance.GetComponentsInChildren<Collider>(true)) UnityEngine.Object.DestroyImmediate(collider);
             foreach (var node in instance.GetComponentsInChildren<Transform>(true)) GameObjectUtility.SetStaticEditorFlags(node.gameObject, 0);
             return instance;
@@ -952,15 +1062,113 @@ namespace Gamesim.Editor
         /// </summary>
         private static GameObject PieceAt(Transform group, string name, string model, Vector3 bottomCentre, float yaw)
         {
-            var instance = HouseSetPieces.Model(model, group, yaw, 0f);
+            var instance = Placed(group, name, model, yaw, 0f, made =>
+            {
+                var bounds = Measure(made);
+                made.transform.position += bottomCentre - new Vector3(bounds.center.x, bounds.min.y, bounds.center.z);
+            });
             if (instance == null) return null;
-            var bounds = Measure(instance);
-            instance.transform.position += bottomCentre - new Vector3(bounds.center.x, bounds.min.y, bounds.center.z);
             instance.name = name;
             foreach (var collider in instance.GetComponentsInChildren<Collider>(true)) UnityEngine.Object.DestroyImmediate(collider);
             foreach (var node in instance.GetComponentsInChildren<Transform>(true)) GameObjectUtility.SetStaticEditorFlags(node.gameObject, 0);
             foreach (var renderer in instance.GetComponentsInChildren<Renderer>(true)) renderer.shadowCastingMode = ShadowCastingMode.Off;
             return instance;
+        }
+
+        /// <summary>
+        /// The yaw that turns a model's front - its -z, where an authored prop's label, door or
+        /// printed lid faces - from <paramref name="at"/> toward the room's middle.
+        /// </summary>
+        private static float Facing(Room room, Vector3 at) =>
+            Mathf.Atan2(-(room.Bounds.center.x - at.x), -(room.Bounds.center.z - at.z)) * Mathf.Rad2Deg;
+
+        /// <summary>
+        /// The catalogue model's instance named <paramref name="name"/> in <paramref name="group"/>,
+        /// where <paramref name="place"/> puts it. The placement is always worked out on a new
+        /// instance (<see cref="HouseSetPieces.Model"/>), so it is bit for bit what a new run makes.
+        /// When an earlier run's instance of the same model is there, it takes the new one's local
+        /// position, rotation and scale - on a scene the pass saved, the values it already has, so
+        /// nothing about it changes, not even for a moment - and the new one goes before the scene
+        /// is ever saved. Otherwise the new one stays. Whatever <see cref="Piece"/> or
+        /// <see cref="PieceAt"/> then strips (colliders) or sets (static flags, shadows, name) a
+        /// kept instance already has, so its overrides do not change.
+        /// </summary>
+        private static GameObject Placed(Transform group, string name, string model, float yaw, float height, Action<GameObject> place)
+        {
+            var source = HouseCatalogue.Resolve(model, out _);
+            if (source == null) { Debug.LogWarning("[Gamesim] set pieces · missing model: " + model); return null; }
+            var found = kept.Find(group, name, node => PrefabUtility.IsOutermostPrefabInstanceRoot(node.gameObject)
+                && PrefabUtility.GetCorrespondingObjectFromSource(node.gameObject) == source);
+            var made = HouseSetPieces.Model(model, group, yaw, height);
+            if (made == null) return null;
+            place(made);
+            if (found == null)
+            {
+                kept.Claim(group, made.transform);
+                return made;
+            }
+            found.localPosition = made.transform.localPosition;
+            found.localRotation = made.transform.localRotation;
+            found.localScale = made.transform.localScale;
+            UnityEngine.Object.DestroyImmediate(made);
+            return found.gameObject;
+        }
+
+        /// <summary>
+        /// Unity's primitive named <paramref name="name"/> under <paramref name="parent"/>, its
+        /// collider gone: the one an earlier run made of the same shape, or a new one.
+        /// </summary>
+        private static GameObject Primitive(Transform parent, string name, PrimitiveType type)
+        {
+            // A primitive's mesh is named after its type: Quad, Cube, Cylinder.
+            string mesh = type.ToString();
+            var found = kept.Find(parent, name, node => IsPrimitive(node, mesh));
+            if (found != null) return found.gameObject;
+            var made = GameObject.CreatePrimitive(type);
+            made.name = name;
+            UnityEngine.Object.DestroyImmediate(made.GetComponent<Collider>());
+            made.transform.SetParent(parent, false);
+            kept.Claim(parent, made.transform);
+            return made;
+        }
+
+        /// <summary>Whether <paramref name="node"/> is a primitive of that mesh as the pass makes one, outside any prefab.</summary>
+        private static bool IsPrimitive(Transform node, string mesh) =>
+            IsShape(node, mesh) && !PrefabUtility.IsPartOfAnyPrefab(node.gameObject);
+
+        /// <summary>A mesh of that name and its renderer, with no collider and no children.</summary>
+        private static bool IsShape(Transform node, string mesh)
+        {
+            var filter = node.GetComponent<MeshFilter>();
+            return filter != null && filter.sharedMesh != null && filter.sharedMesh.name == mesh
+                && node.GetComponent<MeshRenderer>() != null && node.GetComponent<Collider>() == null && node.childCount == 0;
+        }
+
+        /// <summary>
+        /// A screen's idle board. The board an earlier run hung is kept - its object, its file ID, its
+        /// static flags and so its entry in the committed bake (both boards are lightmapped) - and set
+        /// to this run's place and material; any further board on the screen goes. A screen without
+        /// one gets a new quad with no static flags, which the lighting pass the full rebuild runs
+        /// after this marks lightmap-static with the set (<see cref="Quad"/>). The board hangs under
+        /// a set piece, so it is never moved among the piece's children.
+        /// </summary>
+        private static GameObject IdleBoard(Transform screen, Material material, Vector3 centre, Vector2 size, Vector3 normal)
+        {
+            var boards = screen.GetComponentsInChildren<Transform>(true).Where(t => t.name == ScreenSurface.IdleDisplayName).ToList();
+            var board = boards.FirstOrDefault(t => t.parent == screen && IsShape(t, "Quad"));
+            foreach (var other in boards)
+                if (other != board) UnityEngine.Object.DestroyImmediate(other.gameObject);
+            if (board == null)
+            {
+                var made = GameObject.CreatePrimitive(PrimitiveType.Quad);
+                made.name = ScreenSurface.IdleDisplayName;
+                UnityEngine.Object.DestroyImmediate(made.GetComponent<Collider>());
+                made.transform.SetParent(screen, false);
+                GameObjectUtility.SetStaticEditorFlags(made, 0);
+                board = made.transform;
+            }
+            Lay(board, material, centre, size, normal, Vector3.up);
+            return board.gameObject;
         }
 
         /// <summary>Disables the renderers of every placed piece named <paramref name="pieceName"/> in the room. Returns how many it switched off.</summary>
@@ -1072,25 +1280,31 @@ namespace Gamesim.Editor
         ///
         /// <para>Under the Room Finish root a quad stays that way: the lighting pass leaves the root
         /// out of the bake (ROOM-FINISH-PLAN 4.3). The screens' idle boards hang under the screen
-        /// prop instead, so the lighting pass the full rebuild runs after this
-        /// (HouseLivingGallery.BuildFromCommandLine) marks them lightmap-static with the rest of the
-        /// set pieces, as every full rebuild before b1cfccdd left them.</para>
+        /// prop instead and are not made here but by <see cref="IdleBoard"/>, which keeps a board
+        /// already hung with its static flags (81, lightmap-static, on both boards in the committed
+        /// scene) and its bake entry. Only a new board starts with none, and the lighting pass the
+        /// full rebuild runs after this (HouseLivingGallery.BuildFromCommandLine) marks it
+        /// lightmap-static with the rest of the set pieces, as every full rebuild before b1cfccdd
+        /// left them.</para>
         /// </summary>
         private static GameObject Quad(Transform parent, string name, Material material, Vector3 centre, Vector2 size, Vector3 normal, Vector3 up)
         {
-            var quad = GameObject.CreatePrimitive(PrimitiveType.Quad);
-            quad.name = name;
-            UnityEngine.Object.DestroyImmediate(quad.GetComponent<Collider>());
-            quad.transform.SetParent(parent, false);
-            quad.transform.SetPositionAndRotation(centre, Quaternion.LookRotation(-normal, up));
-            quad.transform.localScale = new Vector3(size.x, size.y, 1f);
+            var quad = Primitive(parent, name, PrimitiveType.Quad);
+            Lay(quad.transform, material, centre, size, normal, up);
+            GameObjectUtility.SetStaticEditorFlags(quad, 0);
+            return quad;
+        }
+
+        /// <summary>Puts a quad at <paramref name="centre"/> facing <paramref name="normal"/>, <paramref name="size"/> across, in <paramref name="material"/>, probe-lit and casting no shadow.</summary>
+        private static void Lay(Transform quad, Material material, Vector3 centre, Vector2 size, Vector3 normal, Vector3 up)
+        {
+            quad.SetPositionAndRotation(centre, Quaternion.LookRotation(-normal, up));
+            quad.localScale = new Vector3(size.x, size.y, 1f);
             var renderer = quad.GetComponent<MeshRenderer>();
             renderer.sharedMaterial = material;
             renderer.shadowCastingMode = ShadowCastingMode.Off;
             renderer.receiveShadows = true;
             renderer.lightProbeUsage = LightProbeUsage.BlendProbes;
-            GameObjectUtility.SetStaticEditorFlags(quad, 0);
-            return quad;
         }
 
         // ---------------------------------------------------------------- materials

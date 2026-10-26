@@ -17,7 +17,7 @@ namespace Gamesim.Tests.EditMode
     /// the NavMesh or the anchors - no collider, no shadow, no static flag - and every surface
     /// inside its room, under its wall's height, wearing a material the pass made.
     /// </summary>
-    public sealed class RoomFinishTests
+    public sealed partial class RoomFinishTests
     {
         private const string EpisodeScene = HouseRoomFinish.EpisodeScene;
         /// <summary>Where the diary chair stands and has stood: the pass dresses around it and never moves it.</summary>
@@ -555,7 +555,10 @@ namespace Gamesim.Tests.EditMode
             finally { EditorSceneManager.ClosePreviewScene(scene); }
         }
 
-        /// <summary>The pass is idempotent: run on the saved scene it rebuilds the same root.</summary>
+        /// <summary>
+        /// The pass is idempotent: run on the saved scene it makes the same root - the same renderers,
+        /// places and materials. It keeps the very objects too (ARunOnTheSavedSceneKeepsEveryObjectInPlaceAndTheIdleBoardsWithTheirFlags).
+        /// </summary>
         [Test]
         public void RunningThePassAgainRebuildsTheSameRoot()
         {

@@ -60,10 +60,17 @@ namespace Gamesim.Tests.EditMode
             /// alumni rules 0 as a harness may hold one. Shipping never does.
             /// </summary>
             public bool alumniOff;
+            /// <summary>
+            /// The histories' second control (§9, "both together"): agency's first impressions left out as well. The agency
+            /// boundary is set to week one before ApplyFresh, so EnableAgency switches agency on from week one without
+            /// seeding them; every other rule is as shipped. With <see cref="alumniOff"/>, the season starts with neither.
+            /// A harness's control only: shipping never does.
+            /// </summary>
+            public bool impressionsOff;
 
-            /// <summary>The house; a player card and the histories' control are named only when set, so every earlier cell keeps its name.</summary>
+            /// <summary>The house; a player card and the histories' controls are named only when set, so every earlier cell keeps its name.</summary>
             public string House => roster + "/" + size.ToString(CultureInfo.InvariantCulture) + "/npc" + npcTicks.ToString(CultureInfo.InvariantCulture)
-                + (playerTemplate == null ? "" : "/as-" + playerTemplate) + (alumniOff ? "/alumni0" : "");
+                + (playerTemplate == null ? "" : "/as-" + playerTemplate) + (alumniOff ? "/alumni0" : "") + (impressionsOff ? "/impressions0" : "");
             /// <summary>The house the season's seed is drawn for: the roster and size at budget nought, whatever the cell's budget, so budgets pair.</summary>
             public string SeedHouse => roster + "/" + size.ToString(CultureInfo.InvariantCulture) + "/npc0";
             public string Key => policy + "/" + House + "/" + performance;
@@ -203,12 +210,22 @@ namespace Gamesim.Tests.EditMode
             return run;
         }
 
+        /// <summary>
+        /// A cell's fresh season under the shipped rules. The histories' controls leave only their own parts out: the
+        /// histories' step (ShippedRules.ApplyFresh's internal form) and, for "both together", agency's first impressions.
+        /// </summary>
+        internal static EpisodeState Fresh(Cell cell, uint seed)
+        {
+            var fresh = SeasonBuilder.Create(new SeasonBuilder.Choice { HouseSize = cell.size, Roster = cell.roster, PlayerTemplateId = cell.playerTemplate }, seed);
+            if (cell.impressionsOff) fresh.agencyRulesStartWeek = 1;
+            ShippedRules.ApplyFresh(fresh, alumniHistories: !cell.alumniOff);
+            return fresh;
+        }
+
         private static void PlayInto(SeasonRun run)
         {
             var cell = run.cell;
-            var fresh = SeasonBuilder.Create(new SeasonBuilder.Choice { HouseSize = cell.size, Roster = cell.roster, PlayerTemplateId = cell.playerTemplate }, run.seed);
-            // The shipped rules; the histories' control leaves only their step out (ShippedRules.ApplyFresh's internal form).
-            ShippedRules.ApplyFresh(fresh, alumniHistories: !cell.alumniOff);
+            var fresh = Fresh(cell, run.seed);
             var engine = new EpisodeEngine(fresh);
             // The NPC world (B5b): every operation installs a new engine, and every command goes to the world's.
             var world = cell.npcTicks > 0 ? new BalanceLabNpcWorld(engine, cell.npcTicks, run) : null;

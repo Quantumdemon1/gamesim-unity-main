@@ -19,6 +19,9 @@ All-Star (2026-10-25, against main `b208d46d`; "the master plan" below). What ch
 
 **H1b built** (2026-10-26, section 13): the histories' opening state at alumni rules 1, with H1a's edition folded in,
 measured against section 9's gate (no headline rate moved), so fresh seasons that seat an alumnus enrol.
+Its review fix pins edition 1's words, the week-one rule and the breach rule's types. It adds the "both together" and
+pacing rows to the gate, and the `ApplyFresh` merge rule with D1 (8.5). Two calls are left open: the breach rule's
+width (7.4) and D-H2 (section 12).
 
 **Evidence base**
 - Unity: `D:/GamesimAllStars` at `b208d46d`. Code paths are relative to `Assets/Gamesim/`. Documents at the repository
@@ -517,6 +520,30 @@ at about 38, outside the "dangerous" band below 35; without it, 33.
 - It inherits the engine's knowledge rules. A hidden ballot writes no entry on the holder's edge until it is known.
 - Negative receipts are never cancelled: an old grievance does not heal by being betrayed again.
 
+**As built in H1b, and still to be settled.** H1b reads "a breach" as any permanent negative entry on the same edge
+that is not a receipt, whatever its type. `AlumniHistoriesTests.ABreachThisSeasonEndsInheritedGoodwillButNeverHealsAnOldGrievance`
+pins that reading type by type:
+- **ends the goodwill:**
+  - `deal_broken`: the deal settlement's two-way record, `RecordBreach`'s one-way record and the unified vote's atoms
+    all write this type;
+  - `promise-broken`: the legacy and the unified writer;
+  - `alliance-betrayed`. Its only writer today is the player's own record, which never holds a receipt;
+  - mending fences' rebuff, `amends-refused`;
+  - D4's `story:double-dealt`;
+  - the negative permanent story receipts: `story:sold-out`, `story:secret-exposed`, `story:showmance-betrayed` and
+    `story:public-blowup`;
+  - the ledger's other permanent negatives, `nominated` and `voted-against`. Nothing writes them as ledger types
+    today; the grudges keep their own store;
+- **keeps it:**
+  - anything that fades: a `deal_broken` written off the commitment rules, `story:snubbed`, `story:argued`, hearsay;
+  - the breaker's own zero-weight `deal_broken`;
+  - anything positive.
+
+This is wider than the examples above. It also counts the story receipts, the rebuff and the two reference-table
+types. **The lead or the owner settles the list before the branch ships.** Once an alumni-1 season is saved, it
+replays by this rule. After that, narrowing or widening it is a new alumni rules value for fresh seasons, never an
+edit: as a type list in plan and code, pinned type by type the same way.
+
 ### 7.5 Career reputation and pair risk (H1d, after B9)
 
 Both are new terms in the threat rule, so both wait for B9 (section 9). They are designed here so that H1a's edition
@@ -711,6 +738,26 @@ them, in the same commit:
   The merge also conflicts in `CurrentOldSaveTrace.cs`, `LegacyDigestSchema29Observer.cs`, its tests and
   `Tools/baseline.txt` (a `git merge-tree` preview at `9f8305fe`), and adds D1's rows beside SCH30's in
   `OldSaveAcceptanceTests`' fixture and cell lists.
+- **`ShippedRules.ApplyFresh`, the director, and the files around them (from H1b).** H1b and D1 both change these.
+  - D1 (at `9f8305fe`):
+    - turns `ApplyFresh(fresh)` into `ApplyFresh(fresh, null)` and adds a public
+      `ApplyFresh(EpisodeState, SeasonBuilder.Choice options)`, which writes the preview chip last;
+    - has the director's `StartSeason` call `ShippedRules.ApplyFresh(fresh, choice)`
+      (`Runtime/Episode/EpisodeDirector.Season.cs:319` on that branch);
+    - changes `ShippedRulesTests.cs`, `StressHouseTests.cs` and `EpisodeValidation.cs`.
+  - H1b turns `ApplyFresh(fresh)` into `ApplyFresh(fresh, alumniHistories: true)`, over an internal
+    `ApplyFresh(fresh, bool alumniHistories)`. It changes the same two test files and `EpisodeValidation.cs`, adds
+    `EnableAlumniHistories` to the director-setup copy in `ShippedRulesTests`, and the lab's `BalanceLab.Fresh` calls
+    the internal form.
+  - **The trap.** Suppose the merge keeps H1b's one-argument form beside D1's options overload. That overload has no
+    histories step. Every test that calls `ApplyFresh(fresh)` stays green, and the director's real path never enrols
+    a season.
+  - **The rule.** Keep one internal body, `ApplyFresh(fresh, options, alumniHistories)`. Its steps are D1's, then
+    the histories as the very last step (section 6). `ApplyFresh(fresh)` and `ApplyFresh(fresh, options)` both
+    delegate to it with `alumniHistories: true`. Only the lab's control passes false.
+  - **The merge commit adds a test:** `ApplyFresh(fresh, new SeasonBuilder.Choice { Roster = AllStars, HouseSize = 8 })`
+    builds the same state as `ApplyFresh(fresh)`, histories included. The director-setup copy keeps
+    `EnableAlumniHistories` last, after D1's chip.
 
 ### 8.6 The EditMode pin list (the Unity-free subset runs none of it)
 
@@ -1186,7 +1233,7 @@ edition.
 | # | Question | Recommendation |
 |---|---|---|
 | D-H1 (owner) | Edition 1's scope: shared Big Brother seasons only, or also Reindeer Games, Snake in the Grass and The Traitors? | **Big Brother seasons only** (3.3). Other shows are allowed by the owner's rule and can come as a later edition; owner's call if wanted |
-| D-H2 | What enrols a season: the cast (at least one intact, unique alumnus) or the All-Stars tab? | **The cast** (section 6): the state stores no roster, and `ApplyFresh` takes only the state |
+| D-H2 | What enrols a season: the cast (at least one intact, unique alumnus) or the All-Stars tab? | **The cast** (section 6): the state stores no roster, and `ApplyFresh` takes only the state. H1b built this. **Open: the lead confirms it.** H1b's brief said "fresh All-Stars seasons only"; by the cast, the verification stress house and a Regular season with an alumni custom slot enrol too, and the gate measured All-Stars rosters only (section 13). The alternative is to narrow enrolment to the All-Stars tab once D1's options form lets `ApplyFresh` see the roster. Enrolment happens only when a season is created, so narrowing changes fresh seasons only, and saved seasons keep their value |
 | D-H3 | Pairs with the player on an alumni card | **The NPC's view only**, through one receipt; no `Move`, no `Change`, no arc, no seeded row (7.2) |
 | D-H4 | Will and Janelle's row | **Held out whole** (3.3): the eviction's only project source is not a game source (rule 4), and the reading fails rule 3 as well. It comes back only with a game-register source already in the project, or by the owner's explicit call, recorded in section 1 |
 | D-H5 (owner) | An in-game on/off switch for histories (Codex's `playerHistoriesEnabled`) | **None for now**. If the owner wants one, it is alumni rules 0 on a fresh season and needs no field |
@@ -1255,6 +1302,9 @@ below under Unity's Mono. The full sets are the lead's.
   breaker's own entry is 0), `promise-broken`, the unified vote ledger's atoms, mending fences' rebuff, D4's
   `story:double-dealt` and the story receipts.
 
+Which types count is listed in 7.4 ("As built in H1b, and still to be settled"), pinned type by type. The rule is
+wider than 7.4's examples, and the lead or the owner settles it before the branch ships.
+
 **What stays off until B9** (section 9, H1d). Career reputation and pair risk exist only as edition data
 (`AlumniEdition.CareerReputation`, `AlumniEditions.FinalTwoPairRisk` and `AlliancePairRisk`), and no decision reads
 them. The vote shield, Will's throw, the repertoires and the stat overrides are not built. Each waits for its own
@@ -1262,9 +1312,10 @@ alumni rules value after B9, defined only at schema 30 or later; the throw also 
 claimed with the competitions topic. Alumni rules 1 never reads any of them.
 
 **The balance gate** (section 9). `BalanceLabAlumniReport.AlumniHistoriesGate` (dotnet only, Explicit): All-Stars 8
-and 12, alumni rules 1 against the same 100 seeds at 0, 1,600 seasons in 15.6 minutes. The gated rows were fixed
-before the run: Q3 season wins (passive, studier), Q4 nomination rate (passive) and the weekly competition win rate
-(passive, studier).
+and 12, alumni rules 1 against the same 100 seeds at 0. The first run played 1,600 seasons in 15.6 minutes. The
+review fix's run adds a third arm and the pacing rows (below): 2,400 seasons in 17.3 minutes, with every
+histories-alone row unchanged to the last digit. The gated rows were fixed before the run: Q3 season wins (passive,
+studier), Q4 nomination rate (passive) and the weekly competition win rate (passive, studier).
 
 | player | size | Q3 season wins | Q4 nomination rate | weekly competition wins |
 |---|---|---|---|---|
@@ -1280,6 +1331,49 @@ No gated rate moved beyond seed noise, so fresh seasons that seat an alumnus enr
 - The passive player on Cody's card moves on no metric at either size. The receipts about them reach the weekly offer
   pass only through trust.
 - With ten gated comparisons at 95%, a chance crossing was about a 40% risk; none crossed.
+- **The gate holds for every reported player type, not only the gated ones.** No social or on-card row's Q3, Q4 or
+  weekly competition interval excludes zero. The nearest is the social newcomer's Q4 at 12, +0.051 [-0.008, +0.111].
+  The widest reading of section 9's headline rates passes too.
+
+**Pacing** (section 9: "report it anyway"; histories alone, every player type). Nothing moves that a session would
+notice:
+- weeks a season: 6 at 8 and 10 at 12 in both arms, a difference of exactly 0;
+- the player's decisions a week in the house: 0.0 in every cell;
+- commands a season: within noise everywhere. The largest are the social newcomer's, +3.4 [-0.7, +7.4] at 8 and
+  +9.6 [-0.2, +19.5] at 12 on about 250 commands;
+- ceremony seconds a regular week: within ±0.1 s of about 45 s (8) and 50 s (12). Two rows cross zero by less than
+  a tenth of a second: the studier at 8, +0.1 [0.0, +0.2], and the player on Cody's card at 12.
+
+The 45-minute target for 8 players is unaffected, as section 9 expected.
+
+**Both together** (section 9: "not stacked unmeasured with agency's first impressions"). This compares the shipped
+season with a second control that starts with neither the histories nor the first impressions. The lab's
+`impressionsOff` sets the agency boundary to week one before `ApplyFresh`, so agency is on from week one but seeds no
+first impression. Every other rule is as shipped, and a probe checks that such a season starts with no standing and
+no entry. Reported, not gated:
+- Q3 and the weekly competition win rate stay inside noise for every player type. The largest is the social newcomer
+  at 8, whose season wins are -0.120 [-0.251, +0.011].
+- **Q4 falls beyond noise in five cells**, the newcomer being nominated less often by an NPC Head of Household:
+  - the passive newcomer: -0.110 [-0.202, -0.018] at 8 and -0.079 [-0.152, -0.006] at 12;
+  - the studier: -0.069 [-0.136, -0.003] at 12;
+  - the passive player on Cody's card: -0.168 [-0.260, -0.075] at 8 and -0.191 [-0.264, -0.118] at 12.
+  - "times nominated" falls with it in the same cells, and the player on Cody's card stays longer in the house
+    (+0.93 weeks at 8, +1.54 at 12).
+- The histories alone move none of these, so the fall is the first impressions' doing. They have shipped in every
+  season since agency (schema 20), and H1b does not change them. It is still news for the owner's report: in an
+  All-Stars house the two opening states together make the newcomer a less likely nominee, and the histories add
+  nothing measurable to that.
+- Pacing: commands a season rise slightly in three cells (the social newcomer at 8, +5.8 [+0.1, +11.5]; the player on
+  Cody's card, +2.3 at 8 and +3.2 at 12). The weeks are unchanged.
+
+**What enrols, and what the gate measured** (D-H2, open in section 12). By the cast, three kinds of fresh season
+enrol:
+- All-Stars seasons, the only ones the gate measured;
+- the verification stress house: enrolled, played to its finale by `StressHouseTests`, not measured;
+- a Regular season with an alumni custom slot: enrolled, not measured. When it seats no edition pair, it is at alumni
+  rules 1 with no receipt and no deal. By reading, it then plays exactly as at 0: every reader keyed to the rules
+  (`RecentImpact`, `WeightedImpact`'s breach rule, `Trim`, the recap's `Movements` and validation) acts only on
+  receipts.
 
 The opening state is measured here, not tuned. A retune is a new edition or a later alumni rules value, for fresh
 seasons only.
@@ -1337,6 +1431,40 @@ alumni rules 1 and edition 1, saved at the week-3 campaign with the Hitmen's fin
 commands to its end. Seed 3004, because the alumni-0 fixture's seed 3002 had evicted Derrick by then. It is the 55th
 cell. `CurrentOldSaveTrace` and the historical `FindDecision` reader admit a season on the alumni rules natively at
 30, since it has no 29 view.
+
+**The review fix** (2026-10-26, the commit after `274fefa5`). Tests, the lab and this plan only. No simulation or
+runtime source changed, and no test case was added, so the floors stand.
+- **Edition 1's words are part of the save format.** Validation compares each receipt's description with its part's,
+  character for character (5.3). `EditionOneHoldsFivePairs` (in the subset) now pins verbatim:
+  - all seven parts' `Description`s;
+  - the five pairs' `Act`s;
+  - the twelve career `Record`s.
+
+  Its message says the edition is immutable, and that a wording change needs a new edition id, selected for fresh
+  seasons only. The pin matters most for the BB22 receipts (the Committee both ways, Tyler's nomination of Janelle).
+  The alumni-1 fixture is an eight-house season and holds none of them, so before this pin an edit in place to their
+  words passed every test. After such an edit, no saved 9-to-12-house alumni season, or its backup, would load. This
+  applies to any later wording audit of the edition in the style of AS1a: it is a new edition, never an edit.
+- **Week one** (5.3) is pinned. A receipt redated to week two, in a season in week two where the ledger allows that
+  week, is refused with "Invalid alumni history receipt.". The review's one-line form could not work: in week one the
+  general ledger check refuses a week-two entry first, with "Invalid relationship history.".
+- **The breach rule** is pinned type by type (7.4's "As built" list), with what keeps the goodwill beside it. Its
+  width is the lead's or the owner's to settle before the branch ships.
+- **The gate report** adds the "both together" arm, the pacing rows and the all-player-types line (above).
+- **The merge with D1** gets its `ApplyFresh` rule and its trap in 8.5.
+- **D-H2** is marked open for the lead in section 12. The kinds of season that enrol without being measured are listed
+  above.
+- **Not done: a twelve-house alumni-1 save fixture**, which the review marked optional. The verbatim pin catches the
+  wording edit it guards against, in the subset and in seconds. A fixture needs the recorder run from an archive of
+  the build that writes it, and four more EditMode cases. Record it if the lead wants the BB22 receipts in a saved
+  file: a `director-allstars` season of 12 at the next seed that keeps Cody, Tyler and Janelle in the house to its save
+  point.
+
+Evidence for the review fix (C: scratch, not committed):
+- three mutations, each caught by its named test and restored by SHA-256: the Committee part's words, `receipt.week`'s
+  check, and the breach rule narrowed to `deal_broken`;
+- a fourth mutation, the breach rule counting zero-weight entries, also caught;
+- the 2,400-season gate report.
 
 **For the lead: PlayMode and visual checks.** No PlayMode file changed.
 - `EpisodePlayModeTests.CastSelect` starts All-Stars seasons through `StartSeason`, so they are now enrolled. Expected

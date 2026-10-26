@@ -66,6 +66,45 @@ namespace Gamesim.Tests.EditMode
                     "bb7-chilltown-renomination dr-will-kirby/danielle-reyes BB7 standing 0 [danielle-reyes->dr-will-kirby -12.5] - row will-danielle-bb7 sources bb7-danielle-exit-2006,bb7-cast-2006",
                     "bb7-danielle-nominated-janelle danielle-reyes/janelle-pierzina BB7 standing 0 [janelle-pierzina->danielle-reyes -12.5] - row danielle-janelle-bb7 sources bb7-danielle-nominations-2006",
                 }));
+            // Edition 1's words, verbatim. Validation holds every saved receipt to its part's Description character for
+            // character (§5.3), so these words are part of the save format: an edit in place - a wording audit, a typo
+            // fix - would refuse every saved season that holds the receipt, and its backup with it. The acts and the
+            // career record are pinned with them, so the edition changes only as a whole.
+            const string Immutable = "Edition 1 is immutable: saved seasons hold its words, and validation compares a receipt's character for character. "
+                + "A wording change needs a new edition id, selected for fresh seasons only.";
+            Assert.That(One.Pairs.SelectMany(p => p.Parts).Select(x => x.HolderId + "->" + x.AboutId + ": " + x.Description), Is.EqualTo(new[]
+            {
+                "derrick-levasseur->cody-calafiore: In Big Brother 16, the Hitmen alliance with Cody Calafiore reached the final two.",
+                "cody-calafiore->derrick-levasseur: In Big Brother 16, the Hitmen alliance with Derrick Levasseur reached the final two.",
+                "cody-calafiore->tyler-crispen: In Big Brother 22, Tyler Crispen worked with Cody Calafiore in the Committee alliance.",
+                "tyler-crispen->cody-calafiore: In Big Brother 22, Cody Calafiore worked with Tyler Crispen in the Committee alliance.",
+                "janelle-pierzina->tyler-crispen: In Big Brother 22, Tyler Crispen nominated Janelle Pierzina for eviction.",
+                "danielle-reyes->dr-will-kirby: In Big Brother 7, Dr. Will Kirby's Chilltown helped persuade the Head of Household to nominate Danielle Reyes in Janelle Pierzina's place, before Danielle's eviction.",
+                "janelle-pierzina->danielle-reyes: In Big Brother 7, Danielle Reyes nominated Janelle Pierzina for eviction.",
+            }), Immutable);
+            Assert.That(One.Pairs.Select(p => p.Id + ": " + p.Act), Is.EqualTo(new[]
+            {
+                "bb16-hitmen: Derrick and Cody's Hitmen alliance reached the Big Brother 16 final two.",
+                "bb22-committee: Cody and Tyler worked together in the Committee alliance in Big Brother 22.",
+                "bb22-tyler-nominated-janelle: Tyler nominated Janelle in Big Brother 22.",
+                "bb7-chilltown-renomination: In Big Brother 7, Will's Chilltown helped persuade the Head of Household to nominate Danielle in Janelle's place before Danielle's eviction.",
+                "bb7-danielle-nominated-janelle: Danielle nominated Janelle in Big Brother 7.",
+            }), Immutable);
+            Assert.That(One.Careers.Select(c => c.TemplateId + ": " + c.Record), Is.EqualTo(new[]
+            {
+                "dan-gheesling: Won Big Brother 10; a finalist in Big Brother 14.",
+                "dr-will-kirby: Won Big Brother 2.",
+                "derrick-levasseur: Won Big Brother 16.",
+                "janelle-pierzina: Played Big Brother 6, 7, 14 and 22.",
+                "cody-calafiore: Runner-up in Big Brother 16; won Big Brother 22.",
+                "danielle-reyes: Runner-up in Big Brother 3; played Big Brother 7.",
+                "vanessa-rousso: Third in Big Brother 17.",
+                "tyler-crispen: Runner-up in Big Brother 20; played Big Brother 22.",
+                "chelsie-baham: Won Big Brother 26.",
+                "rachel-reilly: Played Big Brother 12; won Big Brother 13.",
+                "xavier-prather: Won Big Brother 23.",
+                "jun-song: Won Big Brother 4.",
+            }), Immutable);
             Assert.That(One.Pairs.Select(p => p.Id), Is.Ordered.Using((IComparer<string>)StringComparer.Ordinal), "Fact-id order is the writer's order.");
             Assert.That(One.Pairs.All(p => p.Show == "Big Brother"), Is.True, "Edition 1 is shared Big Brother seasons only (D-H1).");
             var known = new HashSet<string>(One.Identities.Select(i => i.TemplateId));
@@ -413,6 +452,17 @@ namespace Gamesim.Tests.EditMode
             Refused("another weight", bad => Receipt(bad, Janelle, Tyler).impactScore = -12);
             Refused("other words", bad => Receipt(bad, Cody, Tyler).description += " Again.");
             Refused("fading", bad => Receipt(bad, Derrick, Cody).decayable = true);
+            // Week one only: in week two the ledger allows an entry dated week two, and the receipt's own check refuses it.
+            var later = new EpisodeEngine(s.Clone());
+            for (int i = 0; i < 400 && later.Snapshot.week < 2; i++)
+                Assert.That(later.Apply(EpisodeEngineTests.NextCommand(later.Snapshot)).accepted, Is.True);
+            var weekTwo = later.Snapshot;
+            Assert.That(weekTwo.week, Is.EqualTo(2));
+            Assert.That(EpisodeValidation.TryValidate(weekTwo, out error), Is.True, error);
+            var dated = weekTwo.Clone();
+            Receipt(dated, Janelle, Tyler).week = 2;
+            Assert.That(EpisodeValidation.TryValidate(dated, out string datedReason), Is.False, "another week");
+            Assert.That(datedReason, Is.EqualTo("Invalid alumni history receipt."), "another week");
             Refused("twice on an edge", bad =>
             {
                 var edge = bad.relationships.Single(r => r.fromId == On(bad, Danielle) && r.toId == On(bad, Will));
@@ -512,6 +562,40 @@ namespace Gamesim.Tests.EditMode
             off.alumniRulesVersion = AlumniRules.Off;
             off.alumniCatalogEdition = null;
             Assert.That(ThreatAssessment.TrustScore(off, derrick, cody), Is.EqualTo(50 + 13 / 3.0).Within(1e-9), "Off the rules, every entry counts as it always did.");
+
+            // The rule as built, type by type (§7.4, section 13). Once an alumni-1 season is saved it replays by this
+            // list, so narrowing or widening it is a new alumni rules value, never an edit; the lead or the owner settles
+            // it before the branch ships. Every permanent negative entry of this season that is not a receipt ends the
+            // goodwill, whatever its type: deal_broken (the settlement's two-way record, RecordBreach's one-way record and
+            // the unified vote's atoms all write it), a broken promise (the legacy and the unified writer), a betrayal,
+            // mending fences' rebuff, D4's double-dealing, every negative permanent story receipt, and the ledger's other
+            // permanent negatives.
+            foreach (string type in new[]
+                     {
+                         "deal_broken", "promise-broken", Allegiance.BetrayedType, Negotiation.RebuffType, StoryReceipts.DoubleDealt,
+                         StoryReceipts.SoldOut, StoryReceipts.SecretExposed, StoryReceipts.ShowmanceBetrayed, StoryReceipts.PublicBlowup,
+                         "nominated", "voted-against",
+                     })
+            {
+                var breach = s.Clone();
+                RelationshipLedger.RecordOneWay(breach, cody, derrick, type, -20, "A breach: " + type, permanent: true);
+                Assert.That(ThreatAssessment.TrustScore(breach, derrick, cody), Is.EqualTo(50 + (18 - 20) / 3.0).Within(1e-9), type + " ends the inherited goodwill.");
+            }
+            // And what keeps it: nothing that fades, nothing at zero, nothing positive.
+            foreach (var (type, impact, permanent, why) in new[]
+                     {
+                         ("deal_broken", 0.0, true, "The breaker's own zero-weight record of the deal they broke (the commitment rules)"),
+                         ("deal_broken", -20.0, false, "A broken deal recorded off the commitment rules, which fades"),
+                         (StoryReceipts.Snubbed, StoryReceipts.Impact(StoryReceipts.Snubbed), false, "A fading story receipt"),
+                         (StoryReceipts.Argued, StoryReceipts.Impact(StoryReceipts.Argued), false, "Another fading story receipt"),
+                         ("heard_about_betrayal", -10.0, false, "Hearsay"),
+                         ("promise-kept", 25.0, true, "A kept promise"),
+                     })
+            {
+                var kept = s.Clone();
+                RelationshipLedger.RecordOneWay(kept, cody, derrick, type, impact, "Not a breach: " + type, permanent);
+                Assert.That(ThreatAssessment.TrustScore(kept, derrick, cody), Is.EqualTo(50 + (33 + impact) / 3.0).Within(1e-9), why + " keeps the inherited goodwill.");
+            }
         }
 
         [Test]

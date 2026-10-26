@@ -223,6 +223,42 @@
     <Compile Include="Frozen28/FrozenV28VoteHistoryTests.cs" />
     <Compile Include="Frozen28/Frozen28LiteralFixtureTests.cs" />
     <Compile Include="$(EditMode)FrozenV28SerializerCacheTests.cs" />
+    <!--
+      SCH30 step 1, the fixed29 whole reader: Frozen28's production files carried forward by exactly the live
+      validators' changes from 515246bf to b208d46d, plus the dialogue domain, and Frozen28's archived internal
+      tests carried with them to schema 29. Frozen29/Frozen29.Tests.csproj holds it to warnings-as-errors.
+    -->
+    <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Persistence/FrozenEpisodeV29.cs" />
+    <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Persistence/FrozenV29CommitmentReferences.cs" />
+    <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Persistence/FrozenV29Data.cs" />
+    <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Persistence/FrozenV29Input.cs" />
+    <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Persistence/FrozenV29ReadOnly.Core.cs" />
+    <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Persistence/FrozenV29ReadOnly.Dialogue.cs" />
+    <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Persistence/FrozenV29ReadOnly.Leaves.cs" />
+    <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Persistence/FrozenV29ReadOnly.LiteralRows.cs" />
+    <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Persistence/FrozenV29ReadOnly.Privacy.cs" />
+    <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Persistence/FrozenV29ReadOnly.Safety.cs" />
+    <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Persistence/FrozenV29ReferenceRows.cs" />
+    <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Persistence/FrozenV29SafetyStorage.cs" />
+    <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Persistence/FrozenV29Shape.cs" />
+    <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Persistence/FrozenV29SocialHistory.cs" />
+    <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Persistence/FrozenV29VoteStorage.cs" />
+    <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Persistence/FrozenV29ReadOnly.VoteHistory.cs" />
+    <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Persistence/FrozenV29UnifiedVoteCompletedReveal.cs" />
+    <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Persistence/FrozenV29UnifiedVoteFamilyValidation.cs" />
+    <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Persistence/FrozenV29UnifiedVoteRevealArchive.cs" />
+    <Compile Include="Frozen29/FrozenV29DataShapeTests.cs" />
+    <Compile Include="Frozen29/FrozenV29InputTests.cs" />
+    <Compile Include="Frozen29/FrozenV29ReadOnly.SemanticTests.cs" />
+    <Compile Include="Frozen29/FrozenV29ReferenceTests.cs" />
+    <Compile Include="Frozen29/FrozenV29SafetyStorageTests.cs" />
+    <Compile Include="Frozen29/FrozenV29SocialHistoryTests.cs" />
+    <Compile Include="Frozen29/FrozenV29VoteStorageTests.cs" />
+    <Compile Include="Frozen29/FrozenV29WholeBoundaryTests.cs" />
+    <Compile Include="Frozen29/FrozenV29VoteAggregateTests.cs" />
+    <Compile Include="Frozen29/FrozenV29VoteHistoryTests.cs" />
+    <Compile Include="Frozen29/Frozen29LiteralFixtureTests.cs" />
+    <Compile Include="$(EditMode)FrozenV29SerializerCacheTests.cs" />
     <!-- Explicit, and compiled out of Unity: the final Head of Household's choice over sampled seasons (C9), run on demand. -->
     <Compile Include="$(EditMode)FinalChoiceSeasonHarness.cs" />
     <Compile Include="$(EditMode)CampaignBriefTests.cs" />

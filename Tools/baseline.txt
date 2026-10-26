@@ -31,7 +31,9 @@
 # cases on top of 8642. R6's 38 RoleStoryMomentsTests cases raise it once R6's own full run has counted them.
 # 8936 = 8932 + AS1a's four shared cases, the alumni audit (WebIntroductionsTests 2, CastTemplateTests 2).
 # 8937 = 8936 + AS1a's EditMode-only save-store case (AlumniAuditSaveTests 1).
-Gamesim.EditModeTests 8937
+# 9088 = 8937 + SCH30 step 1's 151: FrozenEpisodeV29IntegrationTests 126, FreshSeasonStateDigestTests 22 and the
+# shared FrozenV29SerializerCacheTests 3, run under Unity's Mono (2026-10-25); the lead's full run counts them.
+Gamesim.EditModeTests 9088
 # The UMA-free build. 1215 = 1236, the count after the consolidation's lanes (S2a, S2b, S4a), less the 7
 # farewell probes moved to Gamesim.DiagnosticsPlayModeTests and the 14 farewell readiness tests that now
 # compile only under GAMESIM_UMA (judged on the UMA cast); 1230 = 1215 + S2d's 7, S4b's 2, S4c's 2 and
@@ -104,4 +106,6 @@ Gamesim.Uma.DiagnosticsPlayModeTests 10
 # 10768 = what dotnet test Tools/SimulationTests ran at role moments R6 (2026-10-23): R0 to R6's subset cases
 # on top of 10445 (R5's commit message says 10731 for R5; the run counted 10730).
 # 10772 = 10768 + AS1a's same four shared cases (WebIntroductionsTests 2, CastTemplateTests 2).
-Gamesim.SimulationTests 10772
+# 16198 = 10772 + SCH30 step 1's Frozen29 reader: Frozen28's archived internal cases and literal fixture controls
+# carried to schema 29 (5423) and the same three cache cases: what dotnet test Tools/SimulationTests ran (2026-10-25).
+Gamesim.SimulationTests 16198

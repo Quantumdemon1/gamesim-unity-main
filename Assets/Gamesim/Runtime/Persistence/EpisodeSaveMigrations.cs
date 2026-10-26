@@ -21,11 +21,18 @@ namespace Gamesim.Persistence
             if (original == null || original["schemaVersion"]?.Type != JTokenType.Integer)
                 throw new InvalidDataException("Simulation schema version must be an integer.");
             long version = (long)original["schemaVersion"];
-            if (version == 29) return (JObject)original.DeepClone();
+            // SCH30 step 1 (ALL-STAR-HISTORIES-PLAN 8.3): the frozen schema-29 whole reader holds every direct-29
+            // save, and the end of every older chain, before the live schema moves on. Schema 29 is closed from here.
+            if (version == 29)
+            {
+                FrozenEpisodeV29.Validate(original);
+                return (JObject)original.DeepClone();
+            }
             if (version < 1 || version > 28) throw new InvalidDataException("Unsupported simulation schema version.");
             var historical = version == 28 ? original
                 : UpgradeV27ToV28(version == 27 ? original : PrepareV27Payload(original, out _));
             var result = UpgradeV28ToV29(historical);
+            FrozenEpisodeV29.Validate(result);
             migrated = true;
             return result;
         }

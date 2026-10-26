@@ -91,8 +91,8 @@ namespace Gamesim.Tests.PlayMode
         /// The longest frame a key's turn is read over. The camera turns at most 240 degrees a second
         /// (the stick's and Q/C's 120, at <see cref="Gamesim.House.HouseCameraRig.FastestOrbitSpeed"/>
         /// times its own speed), and two yaws a frame apart say how far and which way only while the
-        /// frame turned less than half a turn: 0.75 s at that speed. Half a second keeps a third of a
-        /// turn to spare; a longer frame - a hitch on a busy machine - is held through, not read.
+        /// frame turned less than half a turn: 0.75 s at that speed. Half a second turns 120 degrees,
+        /// 60 short of the wrap; a longer frame - a hitch on a busy machine - is held through, not read.
         /// </summary>
         private const float LongestReadFrame = .5f;
 
@@ -107,11 +107,19 @@ namespace Gamesim.Tests.PlayMode
 
             public int Frames, LongFrames;
 
+            /// <summary>
+            /// The frames read while the rig was holding the camera (its controls off, or a
+            /// conversation framed), so its LateUpdate read no input. They are read all the same - a
+            /// camera held where it should not be is what the turn is there to catch - and named here.
+            /// </summary>
+            public int Held;
+
             /// <summary>Degrees a second, signed; a hold with no frame read turns at nothing.</summary>
             public float Rate => Seconds > 0f ? Degrees / Seconds : 0f;
 
             public override string ToString() => Degrees.ToString("0.###") + " degrees in " + Frames + " frames, "
-                + Seconds.ToString("0.####") + " s" + (LongFrames > 0 ? ", " + LongFrames + " longer held through" : "");
+                + Seconds.ToString("0.####") + " s" + (Held > 0 ? ", " + Held + " of them with the camera held" : "")
+                + (LongFrames > 0 ? ", " + LongFrames + " longer held through" : "");
         }
 
         /// <summary>
@@ -139,6 +147,7 @@ namespace Gamesim.Tests.PlayMode
             {
                 float yaw = cameraRig.Yaw, dt = Time.unscaledDeltaTime;
                 bool down = control.isPressed, read = down && dt <= LongestReadFrame;
+                bool held = !cameraRig.ControlsEnabled || cameraRig.IsConversationFocused;
                 bool last = read && turn.Seconds + dt >= .25f || Time.realtimeSinceStartup >= giveUp;
                 // Let go with the next frame's input: this frame's LateUpdate still turns, and is read.
                 if (last) InputSystem.QueueStateEvent(testKeyboard, new KeyboardState());
@@ -148,6 +157,7 @@ namespace Gamesim.Tests.PlayMode
                     turn.Degrees += Turned(yaw, cameraRig.Yaw);
                     turn.Seconds += dt;
                     turn.Frames++;
+                    if (held) turn.Held++;
                 }
                 else if (down) turn.LongFrames++;
                 if (last) yield break;
@@ -165,8 +175,8 @@ namespace Gamesim.Tests.PlayMode
             KeyTurn left = new KeyTurn(), right = new KeyTurn();
             yield return HoldKeyTurning(Key.Q, left);
             yield return HoldKeyTurning(Key.C, right);
-            Assert.That(left.Degrees, Is.LessThan(-1f), "Q turns the camera one way.");
-            Assert.That(right.Degrees, Is.GreaterThan(1f), "C turns it the other.");
+            Assert.That(left.Degrees, Is.LessThan(-1f), "Q turns the camera one way (" + left + ").");
+            Assert.That(right.Degrees, Is.GreaterThan(1f), "C turns it the other (" + right + ").");
             Assert.That(cameraRig.Actions.OrbitRate.bindings.Any(binding => binding.path == "<Keyboard>/q"), Is.True);
 
             // A panel holds the camera still: a field typed into under a panel - a name, a speech,
@@ -299,7 +309,7 @@ namespace Gamesim.Tests.PlayMode
                 yield return HoldKeyTurning(Key.Q, speed == 1f ? slowTurn : fastTurn);
             }
             float slow = -slowTurn.Rate, fast = -fastTurn.Rate;
-            Assert.That(slow, Is.GreaterThan(1f), "Q turns the camera.");
+            Assert.That(slow, Is.GreaterThan(1f), "Q turns the camera (" + slowTurn + ").");
             Assert.That(fast / slow, Is.InRange(1.5f, 2.6f), "Q turns about twice as fast at twice the speed: " + slow + " then " + fast + " degrees a second ("
                 + slowTurn + "; " + fastTurn + ").");
 

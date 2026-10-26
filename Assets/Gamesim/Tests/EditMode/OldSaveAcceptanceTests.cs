@@ -35,10 +35,12 @@ namespace Gamesim.Tests.EditMode
     /// save's, so an older build plays on under fewer of them by design - or a later one where an unversioned change moved
     /// such a season (the plan lists each). Schema 22's earlier shapes are recorded by the last-shape build c2725b53 from
     /// the save given the two literals the migration writes. Tools/OldSaves recorded every script and digest with that
-    /// build's own sources, under the editor's Mono. Schema 29's fixtures are this build's own files, one for each
-    /// commitment mode at dialogue rules 0: the default scene's season and a fresh shipped season played to mid-season,
-    /// and a schema-28 mode-1 season carried on, each saved by this build's store and recorded by this build; they load
-    /// as they are, with no migration.</para>
+    /// build's own sources, under the editor's Mono. Schema 29's fixtures are the schema-29 build's own files (60d8f629),
+    /// one for each commitment mode at dialogue rules 0: the default scene's season and a fresh shipped season played to
+    /// mid-season, and a schema-28 mode-1 season carried on, each saved by that build's store and recorded by that build;
+    /// since SCH30 they migrate to 30 in memory like every older one. Schema 30's are the SCH30 build's own (936b73a4),
+    /// every pooled field off: the default scene's season and a fresh shipped season of each roster, Regular and
+    /// All-Stars, at alumni rules 0; they load as they are, with no migration.</para>
     ///
     /// <para>Three digests (<see cref="OldSaveTrace"/>): the season's - the cross-build gate - must be the reference
     /// build's; the whole state's, blind to prose, and the verbatim text are this build's, pinned when the fixture was
@@ -86,6 +88,9 @@ namespace Gamesim.Tests.EditMode
             // Written by this build, schema 29 at dialogue rules 0: the default scene's season (mode 0), a schema-28 mode-1
             // season carried on and saved again, and a fresh shipped season (mode 2).
             "s29-default-w2-social", "s29-mode1-allweek-w3-veto-meeting", "s29-mode2-allweek-w3-campaign",
+            // Written by the SCH30 build (936b73a4), schema 30 at dialogue rules 0 and alumni rules 0, the pooled fields off:
+            // the default scene's season (mode 0), a fresh shipped Regular season and a fresh shipped All-Stars season (mode 2).
+            "s30-default-w2-social", "s30-mode2-allweek-w3-campaign", "s30-mode2-allstars-w3-campaign",
         };
 
         /// <summary>
@@ -131,13 +136,23 @@ namespace Gamesim.Tests.EditMode
                 if ((string)entry["origin"] != "real" && (int)entry["schema"] >= 29)
                     Assert.That((string)entry["referenceBuild"], Is.EqualTo((string)entry["writer"]),
                         (string)entry["id"] + ": a generated schema-29-or-later fixture is written and recorded by the build that writes its schema.");
+                // From schema 30 a cell also names the alumni rules and the cast (ALL-STAR-HISTORIES-PLAN 8.7). Both are read
+                // from the save itself, so a row cannot name a cell its file is not.
+                if ((string)entry["kind"] == "episode" && (int)entry["schema"] >= 30)
+                {
+                    var saved = (JObject)JObject.Parse(File.ReadAllText(Path.Combine(Root, (string)entry["save"])))["state"];
+                    bool alumni = saved["contestants"].Any(c => CastTemplates.Find((string)c["sourceTemplateId"])?.Roster == CastTemplates.Roster.AllStars);
+                    Assert.That((string)entry["cast"], Is.EqualTo(alumni ? "allstars" : "regular"), (string)entry["id"] + ": the cast the save seats.");
+                    Assert.That((int)entry["rules"]["alumniRulesVersion"], Is.EqualTo((int)saved["alumniRulesVersion"]), (string)entry["id"] + ": the save's own alumni rules.");
+                }
             }
             // One replayed fixture per cell of the plan's matrix: every schema a build wrote (not 1 or 8, which no surviving
             // build did), in each profile it shipped - the director's fresh season and the default scene's; before 6 the
             // director played the default scene's catalogue - with the unified commitment mode (uc), the all-week rules,
             // Wave D's leaks and war rooms where they branch, and schema 22's three shapes; from schema 29 the dialogue rules
-            // too, each commitment mode at dialogue rules 0. A cell counts only a fixture saved in a week, before the finale,
-            // with a script to play: one saved at the finale or after it is read, never a cell's replay.
+            // too, each commitment mode at dialogue rules 0; from schema 30 the alumni rules and the cast too, the default
+            // scene's season and the shipped season of each roster at alumni rules 0. A cell counts only a fixture saved in a
+            // week, before the finale, with a script to play: one saved at the finale or after it is read, never a cell's replay.
             var replayed = Manifest["episodes"].Where(e => (int)e["commands"] > 0 && !FinalePhases.Contains((string)e["phase"])).ToList();
             Assert.That(Manifest["episodes"].Except(replayed).Select(e => (string)e["id"]), Is.EquivalentTo(ReadOnly),
                 "A fixture saved at the finale or after it reads an end state; it is never a cell's replay.");
@@ -161,10 +176,12 @@ namespace Gamesim.Tests.EditMode
                 "28/director/uc1/allweek1/leaks1/plans1", "28/director/uc2/allweek1/leaks1/plans1", "28/default/uc0/allweek0",
                 "29/default/uc0/allweek0/dialogue0", "29/director/uc1/allweek1/leaks1/plans1/dialogue0",
                 "29/director/uc2/allweek1/leaks1/plans1/dialogue0",
+                "30/default/uc0/allweek0/dialogue0/alumni0/regular", "30/director/uc2/allweek1/leaks1/plans1/dialogue0/alumni0/regular",
+                "30/director/uc2/allweek1/leaks1/plans1/dialogue0/alumni0/allstars",
             }));
         }
 
-        /// <summary>A fixture's cell: schema, profile, the rules the readers branch on, for the director's schema 22 which of its shapes, and from schema 29 the dialogue rules.</summary>
+        /// <summary>A fixture's cell: schema, profile, the rules the readers branch on, for the director's schema 22 which of its shapes, from schema 29 the dialogue rules, and from schema 30 the alumni rules and the cast.</summary>
         private static string Cell(JToken e)
         {
             int On(string rule) => Math.Min(1, (int?)e["rules"][rule] ?? 0);
@@ -173,7 +190,8 @@ namespace Gamesim.Tests.EditMode
             return schema + "/" + profile + "/uc" + ((int?)e["rules"]["unifiedCommitmentRulesVersion"] ?? 0) + "/allweek" + On("allWeekRulesStartWeek")
                 + (On("allianceLeakRulesStartWeek") + On("pactPlanRulesStartWeek") > 0 ? "/leaks" + On("allianceLeakRulesStartWeek") + "/plans" + On("pactPlanRulesStartWeek") : "")
                 + (schema == 22 && profile == "director" ? (id.Contains("-early-") ? "/early" : id.Contains("-middle-") ? "/middle" : "/late") : "")
-                + (schema >= 29 ? "/dialogue" + (int)e["rules"]["dialogueRulesVersion"] : "");
+                + (schema >= 29 ? "/dialogue" + (int)e["rules"]["dialogueRulesVersion"] : "")
+                + (schema >= 30 ? "/alumni" + (int)e["rules"]["alumniRulesVersion"] + "/" + (string)e["cast"] : "");
         }
 
         // ------------------------------------------------------------------ load, migrate, validate, replay

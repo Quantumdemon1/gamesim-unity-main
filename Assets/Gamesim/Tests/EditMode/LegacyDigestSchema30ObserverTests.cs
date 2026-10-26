@@ -65,7 +65,11 @@ namespace Gamesim.Tests.EditMode
                 case "edition": trace[field] = "allstar-histories-1"; break;
                 default: trace[field] = ""; break;
             }
-            Refused(state, trace);
+            // Each field's own check runs before the own-view binding, so its words pin it: the binding alone would
+            // refuse every edited trace too.
+            Refused(state, trace, field == "alumniRulesVersion" ? "Only present integer-zero alumni rules"
+                : field == "alumniCatalogEdition" ? "Only a present-null alumni edition"
+                : "Only present integer-zero tuning rules");
         }
 
         [TestCase("first")] [TestCase("swapped")] [TestCase("after-getter")]

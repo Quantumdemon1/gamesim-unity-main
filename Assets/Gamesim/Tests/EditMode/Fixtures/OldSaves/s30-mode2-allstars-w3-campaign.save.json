@@ -1,0 +1,6542 @@
+{
+  "format": "gamesim-unity-save",
+  "version": 1,
+  "savedAt": "2026-10-26T05:33:22.1113824Z",
+  "checksum": "1ad007ebd5d8a7c40f6123f606ba196c76ed58ca6c5a07fd933520d04ba4fa67",
+  "state": {
+    "schemaVersion": 30,
+    "competitionRulesVersion": 4,
+    "sessionId": "oldsave-director-allstars-3002-8",
+    "seed": 3002,
+    "randomState": 2895840264,
+    "revision": 45,
+    "week": 3,
+    "nextSequence": 317,
+    "socialActions": 0,
+    "phase": 6,
+    "playerId": "player",
+    "hohId": "player",
+    "previousHohId": "dan-gheesling",
+    "vetoHolderId": "dan-gheesling",
+    "winnerId": null,
+    "runnerUpId": null,
+    "finalPart1WinnerId": null,
+    "finalPart2WinnerId": null,
+    "competitionResolved": false,
+    "vetoResolved": true,
+    "evictionResolved": false,
+    "contestants": [
+      {
+        "id": "player",
+        "name": "You",
+        "pronouns": "they/them",
+        "motive": "Choose who to trust, survive the vote, and build a game you can explain.",
+        "homeRoom": "Living",
+        "occupation": "Houseguest",
+        "archetype": "The Newcomer",
+        "hometown": null,
+        "bio": null,
+        "sourceTemplateId": null,
+        "appearance": {
+          "version": 1,
+          "provider": "auto",
+          "presetId": "player",
+          "bodyId": "",
+          "fallbackId": "player",
+          "activeOutfit": "Everyday",
+          "dna": [],
+          "colors": [],
+          "outfits": []
+        },
+        "age": 30,
+        "mood": "Happy",
+        "stressLevel": "Relaxed",
+        "isPlayer": true,
+        "status": 0,
+        "stats": {
+          "physical": 6.0,
+          "mental": 6.0,
+          "endurance": 6.0,
+          "social": 6.0,
+          "luck": 6.0,
+          "competition": 6.0,
+          "strategic": 6.0,
+          "loyalty": 6.0
+        },
+        "traits": [],
+        "hohWins": 2,
+        "vetoWins": 1,
+        "timesNominated": 0,
+        "nominationWeeks": []
+      },
+      {
+        "id": "dan-gheesling",
+        "name": "Dan Gheesling",
+        "pronouns": "he/him",
+        "motive": "Get people to carry his game for him, and make each of them believe it was their idea.",
+        "homeRoom": "Private",
+        "occupation": "Football Coach",
+        "archetype": "The Funeral Director",
+        "hometown": "Dearborn, MI",
+        "bio": "Two-time finalist and mastermind of the legendary \"Dan's Funeral.\" Manipulates through loyalty and calculated betrayals that leave houseguests stunned.",
+        "sourceTemplateId": "dan-gheesling",
+        "appearance": {
+          "version": 1,
+          "provider": "auto",
+          "presetId": "dan-gheesling",
+          "bodyId": "",
+          "fallbackId": "dan-gheesling",
+          "activeOutfit": "Everyday",
+          "dna": [],
+          "colors": [],
+          "outfits": []
+        },
+        "age": 35,
+        "mood": "Happy",
+        "stressLevel": "Overwhelmed",
+        "isPlayer": false,
+        "status": 0,
+        "stats": {
+          "physical": 4.0,
+          "mental": 9.0,
+          "endurance": 4.0,
+          "social": 4.0,
+          "luck": 4.0,
+          "competition": 4.0,
+          "strategic": 9.0,
+          "loyalty": 4.0
+        },
+        "traits": [
+          "Strategic",
+          "Manipulative"
+        ],
+        "hohWins": 1,
+        "vetoWins": 1,
+        "timesNominated": 2,
+        "nominationWeeks": [
+          1,
+          3
+        ]
+      },
+      {
+        "id": "dr-will-kirby",
+        "name": "Dr. Will Kirby",
+        "pronouns": "he/him",
+        "motive": "Tell everyone the truth about lying to them, and watch them keep him anyway.",
+        "homeRoom": "Living",
+        "occupation": "Dermatologist",
+        "archetype": "The Puppet Master",
+        "hometown": "Los Angeles, CA",
+        "bio": "The original puppet master who won without winning a single competition. His charm and deception are unmatched in Big Brother history.",
+        "sourceTemplateId": "dr-will-kirby",
+        "appearance": {
+          "version": 1,
+          "provider": "auto",
+          "presetId": "dr-will-kirby",
+          "bodyId": "",
+          "fallbackId": "dr-will-kirby",
+          "activeOutfit": "Everyday",
+          "dna": [],
+          "colors": [],
+          "outfits": []
+        },
+        "age": 42,
+        "mood": "Upset",
+        "stressLevel": "Overwhelmed",
+        "isPlayer": false,
+        "status": 2,
+        "stats": {
+          "physical": 4.0,
+          "mental": 4.0,
+          "endurance": 4.0,
+          "social": 9.0,
+          "luck": 4.0,
+          "competition": 4.0,
+          "strategic": 9.0,
+          "loyalty": 4.0
+        },
+        "traits": [
+          "Charming",
+          "Deceptive"
+        ],
+        "hohWins": 0,
+        "vetoWins": 1,
+        "timesNominated": 2,
+        "nominationWeeks": [
+          1,
+          2
+        ]
+      },
+      {
+        "id": "derrick-levasseur",
+        "name": "Derrick Levasseur",
+        "pronouns": "he/him",
+        "motive": "Never let the house see the version of him that is actually running the season.",
+        "homeRoom": "Kitchen",
+        "occupation": "Police Sergeant",
+        "archetype": "The Undercover Boss",
+        "hometown": "Providence, RI",
+        "bio": "Undercover cop who controlled the entire house without ever being nominated. His analytical mind dissects every social dynamic.",
+        "sourceTemplateId": "derrick-levasseur",
+        "appearance": {
+          "version": 1,
+          "provider": "auto",
+          "presetId": "derrick-levasseur",
+          "bodyId": "",
+          "fallbackId": "derrick-levasseur",
+          "activeOutfit": "Everyday",
+          "dna": [],
+          "colors": [],
+          "outfits": []
+        },
+        "age": 40,
+        "mood": "Neutral",
+        "stressLevel": "Normal",
+        "isPlayer": false,
+        "status": 2,
+        "stats": {
+          "physical": 4.0,
+          "mental": 9.0,
+          "endurance": 4.0,
+          "social": 4.0,
+          "luck": 4.0,
+          "competition": 4.0,
+          "strategic": 9.0,
+          "loyalty": 4.0
+        },
+        "traits": [
+          "Analytical",
+          "Manipulative"
+        ],
+        "hohWins": 0,
+        "vetoWins": 0,
+        "timesNominated": 1,
+        "nominationWeeks": [
+          1
+        ]
+      },
+      {
+        "id": "janelle-pierzina",
+        "name": "Janelle Pierzina",
+        "pronouns": "she/her",
+        "motive": "Take safety off the board by winning it, every week, until nobody can afford her.",
+        "homeRoom": "Yard",
+        "occupation": "Real Estate Agent",
+        "archetype": "The Comp Queen",
+        "hometown": "Minneapolis, MN",
+        "bio": "Four-time player and undisputed competition queen. Her fierce loyalty and athletic dominance make her the ultimate competitor.",
+        "sourceTemplateId": "janelle-pierzina",
+        "appearance": {
+          "version": 1,
+          "provider": "auto",
+          "presetId": "janelle-pierzina",
+          "bodyId": "",
+          "fallbackId": "janelle-pierzina",
+          "activeOutfit": "Everyday",
+          "dna": [],
+          "colors": [],
+          "outfits": []
+        },
+        "age": 43,
+        "mood": "Upset",
+        "stressLevel": "Tense",
+        "isPlayer": false,
+        "status": 0,
+        "stats": {
+          "physical": 8.0,
+          "mental": 4.0,
+          "endurance": 6.0,
+          "social": 8.0,
+          "luck": 6.0,
+          "competition": 4.0,
+          "strategic": 4.0,
+          "loyalty": 4.0
+        },
+        "traits": [
+          "Competitive",
+          "Social"
+        ],
+        "hohWins": 0,
+        "vetoWins": 0,
+        "timesNominated": 2,
+        "nominationWeeks": [
+          2,
+          3
+        ]
+      },
+      {
+        "id": "cody-calafiore",
+        "name": "Cody Calafiore",
+        "pronouns": "he/him",
+        "motive": "Find one person worth trusting completely, and win everything standing beside them.",
+        "homeRoom": "Yard",
+        "occupation": "Sales Executive",
+        "archetype": "The Hitman's Partner",
+        "hometown": "Howell, NJ",
+        "bio": "Returned to dominate All-Stars with a perfect game. His unwavering loyalty and competitive fire make him a dual threat.",
+        "sourceTemplateId": "cody-calafiore",
+        "appearance": {
+          "version": 1,
+          "provider": "auto",
+          "presetId": "cody-calafiore",
+          "bodyId": "",
+          "fallbackId": "cody-calafiore",
+          "activeOutfit": "Everyday",
+          "dna": [],
+          "colors": [],
+          "outfits": []
+        },
+        "age": 33,
+        "mood": "Neutral",
+        "stressLevel": "Relaxed",
+        "isPlayer": false,
+        "status": 0,
+        "stats": {
+          "physical": 8.0,
+          "mental": 4.0,
+          "endurance": 6.0,
+          "social": 6.0,
+          "luck": 4.0,
+          "competition": 4.0,
+          "strategic": 4.0,
+          "loyalty": 8.0
+        },
+        "traits": [
+          "Loyal",
+          "Competitive"
+        ],
+        "hohWins": 0,
+        "vetoWins": 0,
+        "timesNominated": 1,
+        "nominationWeeks": [
+          3
+        ]
+      },
+      {
+        "id": "danielle-reyes",
+        "name": "Danielle Reyes",
+        "pronouns": "she/her",
+        "motive": "Read the room better than anyone in it, and keep every reading to herself.",
+        "homeRoom": "Bedroom",
+        "occupation": "Nonprofit Director",
+        "archetype": "The Black Widow",
+        "hometown": "Edmonds, WA",
+        "bio": "Pioneer strategist who reached the final two in her first season and came back for All-Stars. Her intuitive reads on people are legendary.",
+        "sourceTemplateId": "danielle-reyes",
+        "appearance": {
+          "version": 1,
+          "provider": "auto",
+          "presetId": "danielle-reyes",
+          "bodyId": "",
+          "fallbackId": "danielle-reyes",
+          "activeOutfit": "Everyday",
+          "dna": [],
+          "colors": [],
+          "outfits": []
+        },
+        "age": 52,
+        "mood": "Neutral",
+        "stressLevel": "Relaxed",
+        "isPlayer": false,
+        "status": 0,
+        "stats": {
+          "physical": 4.0,
+          "mental": 10.0,
+          "endurance": 4.0,
+          "social": 4.0,
+          "luck": 6.0,
+          "competition": 4.0,
+          "strategic": 6.0,
+          "loyalty": 4.0
+        },
+        "traits": [
+          "Strategic",
+          "Intuitive"
+        ],
+        "hohWins": 0,
+        "vetoWins": 0,
+        "timesNominated": 0,
+        "nominationWeeks": []
+      },
+      {
+        "id": "vanessa-rousso",
+        "name": "Vanessa Rousso",
+        "pronouns": "she/her",
+        "motive": "Work out everyone's odds out loud, then bet against the version they showed her.",
+        "homeRoom": "Private",
+        "occupation": "Professional Poker Player",
+        "archetype": "The Poker Player",
+        "hometown": "Las Vegas, NV",
+        "bio": "Poker pro who brought game theory to Big Brother. Emotional on the surface but calculating every probability underneath.",
+        "sourceTemplateId": "vanessa-rousso",
+        "appearance": {
+          "version": 1,
+          "provider": "auto",
+          "presetId": "vanessa-rousso",
+          "bodyId": "",
+          "fallbackId": "vanessa-rousso",
+          "activeOutfit": "Everyday",
+          "dna": [],
+          "colors": [],
+          "outfits": []
+        },
+        "age": 41,
+        "mood": "Neutral",
+        "stressLevel": "Tense",
+        "isPlayer": false,
+        "status": 0,
+        "stats": {
+          "physical": 4.0,
+          "mental": 8.0,
+          "endurance": 4.0,
+          "social": 8.0,
+          "luck": 4.0,
+          "competition": 4.0,
+          "strategic": 6.0,
+          "loyalty": 6.0
+        },
+        "traits": [
+          "Analytical",
+          "Emotional"
+        ],
+        "hohWins": 0,
+        "vetoWins": 0,
+        "timesNominated": 1,
+        "nominationWeeks": [
+          2
+        ]
+      }
+    ],
+    "relationships": [
+      {
+        "fromId": "player",
+        "toId": "dan-gheesling",
+        "score": 0.64963621683418893,
+        "lastInteractionWeek": 3,
+        "notes": [
+          "Dan Gheesling courted you before the nominations",
+          "Dan Gheesling spent time with you",
+          "Dan Gheesling courted you before the nominations"
+        ],
+        "events": [
+          {
+            "sequence": 14,
+            "week": 1,
+            "type": "talk",
+            "description": "Dan Gheesling courted you before the nominations",
+            "impactScore": 4.4337680000811819,
+            "decayable": true
+          },
+          {
+            "sequence": 167,
+            "week": 2,
+            "type": "talk",
+            "description": "Dan Gheesling spent time with you",
+            "impactScore": 4.6856525760144,
+            "decayable": true
+          },
+          {
+            "sequence": 254,
+            "week": 3,
+            "type": "talk",
+            "description": "Dan Gheesling courted you before the nominations",
+            "impactScore": 3.7928382057696584,
+            "decayable": true
+          },
+          {
+            "sequence": 269,
+            "week": 3,
+            "type": "rumor",
+            "description": "Danielle Reyes told you Dan Gheesling is the biggest threat in this house.",
+            "impactScore": -15.0,
+            "decayable": true
+          }
+        ]
+      },
+      {
+        "fromId": "player",
+        "toId": "dr-will-kirby",
+        "score": 8.0169832631014284,
+        "lastInteractionWeek": 2,
+        "notes": [
+          "Dr. Will Kirby courted you before the nominations",
+          "Dr. Will Kirby campaigned to stay"
+        ],
+        "events": [
+          {
+            "sequence": 17,
+            "week": 1,
+            "type": "talk",
+            "description": "Dr. Will Kirby courted you before the nominations",
+            "impactScore": 4.20472702011466,
+            "decayable": true
+          },
+          {
+            "sequence": 190,
+            "week": 2,
+            "type": "campaign",
+            "description": "Dr. Will Kirby campaigned to stay",
+            "impactScore": 4.81224600225687,
+            "decayable": true
+          }
+        ]
+      },
+      {
+        "fromId": "player",
+        "toId": "derrick-levasseur",
+        "score": -16.455297523364425,
+        "lastInteractionWeek": 1,
+        "notes": [
+          "Derrick Levasseur courted you before the nominations",
+          "You named Derrick Levasseur as replacement nominee"
+        ],
+        "events": [
+          {
+            "sequence": 20,
+            "week": 1,
+            "type": "talk",
+            "description": "Derrick Levasseur courted you before the nominations",
+            "impactScore": 4.0149726457893848,
+            "decayable": true
+          }
+        ]
+      },
+      {
+        "fromId": "player",
+        "toId": "janelle-pierzina",
+        "score": -12.716631613112991,
+        "lastInteractionWeek": 3,
+        "notes": [
+          "Janelle Pierzina courted you before the nominations",
+          "You used POV forcing Janelle Pierzina on the block",
+          "Janelle Pierzina courted you before the nominations",
+          "Janelle Pierzina had words with you"
+        ],
+        "events": [
+          {
+            "sequence": 23,
+            "week": 1,
+            "type": "talk",
+            "description": "Janelle Pierzina courted you before the nominations",
+            "impactScore": 4.3858164679259062,
+            "decayable": true
+          },
+          {
+            "sequence": 257,
+            "week": 3,
+            "type": "talk",
+            "description": "Janelle Pierzina courted you before the nominations",
+            "impactScore": 4.2823156874626882,
+            "decayable": true
+          },
+          {
+            "sequence": 277,
+            "week": 3,
+            "type": "confrontation",
+            "description": "Janelle Pierzina had words with you",
+            "impactScore": -8.8586056254804149,
+            "decayable": true
+          }
+        ]
+      },
+      {
+        "fromId": "player",
+        "toId": "cody-calafiore",
+        "score": -0.50506596602499343,
+        "lastInteractionWeek": 3,
+        "notes": [
+          "Cody Calafiore courted you before the nominations",
+          "Cody Calafiore spent time with you",
+          "Cody Calafiore courted you before the nominations",
+          "You named Cody Calafiore as replacement nominee"
+        ],
+        "events": [
+          {
+            "sequence": 26,
+            "week": 1,
+            "type": "talk",
+            "description": "Cody Calafiore courted you before the nominations",
+            "impactScore": 4.2983545511960983,
+            "decayable": true
+          },
+          {
+            "sequence": 41,
+            "week": 1,
+            "type": "talk",
+            "description": "Cody Calafiore spent time with you",
+            "impactScore": 3.3084502629935741,
+            "decayable": true
+          },
+          {
+            "sequence": 260,
+            "week": 3,
+            "type": "talk",
+            "description": "Cody Calafiore courted you before the nominations",
+            "impactScore": 3.6386662479490042,
+            "decayable": true
+          }
+        ]
+      },
+      {
+        "fromId": "player",
+        "toId": "danielle-reyes",
+        "score": 12.99991356506944,
+        "lastInteractionWeek": 3,
+        "notes": [
+          "Danielle Reyes courted you before the nominations",
+          "Danielle Reyes spent time with you",
+          "Danielle Reyes courted you before the nominations"
+        ],
+        "events": [
+          {
+            "sequence": 29,
+            "week": 1,
+            "type": "talk",
+            "description": "Danielle Reyes courted you before the nominations",
+            "impactScore": 4.0736184198409324,
+            "decayable": true
+          },
+          {
+            "sequence": 235,
+            "week": 2,
+            "type": "talk",
+            "description": "Danielle Reyes spent time with you",
+            "impactScore": 3.2344111718237403,
+            "decayable": true
+          },
+          {
+            "sequence": 263,
+            "week": 3,
+            "type": "talk",
+            "description": "Danielle Reyes courted you before the nominations",
+            "impactScore": 3.2683252565562726,
+            "decayable": true
+          }
+        ]
+      },
+      {
+        "fromId": "player",
+        "toId": "vanessa-rousso",
+        "score": 33.3988696904853,
+        "lastInteractionWeek": 3,
+        "notes": [
+          "Vanessa Rousso courted you before the nominations",
+          "You used POV to save Vanessa Rousso",
+          "Vanessa Rousso courted you before the nominations"
+        ],
+        "events": [
+          {
+            "sequence": 32,
+            "week": 1,
+            "type": "talk",
+            "description": "Vanessa Rousso courted you before the nominations",
+            "impactScore": 4.5389252919703722,
+            "decayable": true
+          },
+          {
+            "sequence": 266,
+            "week": 3,
+            "type": "talk",
+            "description": "Vanessa Rousso courted you before the nominations",
+            "impactScore": 3.5562539376318458,
+            "decayable": true
+          },
+          {
+            "sequence": 307,
+            "week": 3,
+            "type": "deal_proposed",
+            "description": "Vanessa Rousso put a target agreement to you.",
+            "impactScore": 0.0,
+            "decayable": true
+          }
+        ]
+      },
+      {
+        "fromId": "dan-gheesling",
+        "toId": "player",
+        "score": 1.7388802226632833,
+        "lastInteractionWeek": 3,
+        "notes": [
+          "Dan Gheesling courted you before the nominations",
+          "Something Dan Gheesling heard about you",
+          "Dan Gheesling spent time with you",
+          "Dan Gheesling courted you before the nominations"
+        ],
+        "events": [
+          {
+            "sequence": 13,
+            "week": 1,
+            "type": "talk",
+            "description": "Dan Gheesling courted you before the nominations",
+            "impactScore": 4.0,
+            "decayable": true
+          },
+          {
+            "sequence": 34,
+            "week": 1,
+            "type": "rumor",
+            "description": "Something Dan Gheesling heard about you",
+            "impactScore": -15.0,
+            "decayable": true
+          },
+          {
+            "sequence": 166,
+            "week": 2,
+            "type": "talk",
+            "description": "Dan Gheesling spent time with you",
+            "impactScore": 4.0,
+            "decayable": true
+          },
+          {
+            "sequence": 253,
+            "week": 3,
+            "type": "talk",
+            "description": "Dan Gheesling courted you before the nominations",
+            "impactScore": 4.0,
+            "decayable": true
+          }
+        ]
+      },
+      {
+        "fromId": "dan-gheesling",
+        "toId": "dr-will-kirby",
+        "score": 7.0,
+        "lastInteractionWeek": 2,
+        "notes": [],
+        "events": [
+          {
+            "sequence": 54,
+            "week": 1,
+            "type": "talk",
+            "description": "Dan Gheesling spent time with Dr. Will Kirby",
+            "impactScore": 4.0,
+            "decayable": true
+          },
+          {
+            "sequence": 130,
+            "week": 2,
+            "type": "talk",
+            "description": "Dr. Will Kirby courted Dan Gheesling before the nominations",
+            "impactScore": 3.0,
+            "decayable": true
+          }
+        ]
+      },
+      {
+        "fromId": "dan-gheesling",
+        "toId": "derrick-levasseur",
+        "score": -9.0,
+        "lastInteractionWeek": 0,
+        "notes": [],
+        "events": []
+      },
+      {
+        "fromId": "dan-gheesling",
+        "toId": "janelle-pierzina",
+        "score": -36.0,
+        "lastInteractionWeek": 2,
+        "notes": [],
+        "events": [
+          {
+            "sequence": 132,
+            "week": 2,
+            "type": "talk",
+            "description": "Janelle Pierzina courted Dan Gheesling before the nominations",
+            "impactScore": 4.0,
+            "decayable": true
+          },
+          {
+            "sequence": 154,
+            "week": 2,
+            "type": "rumor",
+            "description": "Something Janelle Pierzina heard about Dan Gheesling",
+            "impactScore": -15.0,
+            "decayable": true
+          },
+          {
+            "sequence": 156,
+            "week": 2,
+            "type": "confrontation",
+            "description": "Janelle Pierzina had words with Dan Gheesling",
+            "impactScore": -8.0,
+            "decayable": true
+          },
+          {
+            "sequence": 172,
+            "week": 2,
+            "type": "veto-replacement",
+            "description": "Dan Gheesling named Janelle Pierzina as replacement nominee",
+            "impactScore": -20.0,
+            "decayable": true
+          }
+        ]
+      },
+      {
+        "fromId": "dan-gheesling",
+        "toId": "cody-calafiore",
+        "score": 14.0,
+        "lastInteractionWeek": 3,
+        "notes": [],
+        "events": [
+          {
+            "sequence": 62,
+            "week": 1,
+            "type": "promise-made",
+            "description": "Dan Gheesling gave Cody Calafiore their word",
+            "impactScore": 15.0,
+            "decayable": false
+          },
+          {
+            "sequence": 68,
+            "week": 1,
+            "type": "campaign",
+            "description": "Dan Gheesling campaigned to stay",
+            "impactScore": 5.0,
+            "decayable": true
+          },
+          {
+            "sequence": 119,
+            "week": 1,
+            "type": "talk",
+            "description": "Dan Gheesling spent time with Cody Calafiore",
+            "impactScore": 6.0,
+            "decayable": true
+          },
+          {
+            "sequence": 134,
+            "week": 2,
+            "type": "talk",
+            "description": "Cody Calafiore courted Dan Gheesling before the nominations",
+            "impactScore": 3.0,
+            "decayable": true
+          },
+          {
+            "sequence": 180,
+            "week": 2,
+            "type": "promise-made",
+            "description": "Cody Calafiore gave Dan Gheesling their word",
+            "impactScore": 15.0,
+            "decayable": false
+          },
+          {
+            "sequence": 194,
+            "week": 2,
+            "type": "talk",
+            "description": "Dan Gheesling spent time with Cody Calafiore",
+            "impactScore": 6.0,
+            "decayable": true
+          },
+          {
+            "sequence": 293,
+            "week": 3,
+            "type": "veto-forced",
+            "description": "Dan Gheesling used POV forcing Cody Calafiore on the block",
+            "impactScore": -15.0,
+            "decayable": true
+          }
+        ]
+      },
+      {
+        "fromId": "dan-gheesling",
+        "toId": "danielle-reyes",
+        "score": 8.0,
+        "lastInteractionWeek": 2,
+        "notes": [],
+        "events": [
+          {
+            "sequence": 66,
+            "week": 1,
+            "type": "campaign",
+            "description": "Dan Gheesling campaigned to stay",
+            "impactScore": 5.0,
+            "decayable": true
+          },
+          {
+            "sequence": 136,
+            "week": 2,
+            "type": "talk",
+            "description": "Danielle Reyes courted Dan Gheesling before the nominations",
+            "impactScore": 3.0,
+            "decayable": true
+          },
+          {
+            "sequence": 182,
+            "week": 2,
+            "type": "promise-made",
+            "description": "Danielle Reyes gave Dan Gheesling their word",
+            "impactScore": 15.0,
+            "decayable": false
+          }
+        ]
+      },
+      {
+        "fromId": "dan-gheesling",
+        "toId": "vanessa-rousso",
+        "score": 3.0,
+        "lastInteractionWeek": 2,
+        "notes": [],
+        "events": [
+          {
+            "sequence": 138,
+            "week": 2,
+            "type": "talk",
+            "description": "Vanessa Rousso courted Dan Gheesling before the nominations",
+            "impactScore": 3.0,
+            "decayable": true
+          },
+          {
+            "sequence": 184,
+            "week": 2,
+            "type": "promise-made",
+            "description": "Vanessa Rousso gave Dan Gheesling their word",
+            "impactScore": 15.0,
+            "decayable": false
+          }
+        ]
+      },
+      {
+        "fromId": "dr-will-kirby",
+        "toId": "player",
+        "score": -6.0,
+        "lastInteractionWeek": 2,
+        "notes": [
+          "Dr. Will Kirby courted you before the nominations",
+          "Something Dr. Will Kirby heard about you",
+          "Dr. Will Kirby campaigned to stay"
+        ],
+        "events": [
+          {
+            "sequence": 16,
+            "week": 1,
+            "type": "talk",
+            "description": "Dr. Will Kirby courted you before the nominations",
+            "impactScore": 4.0,
+            "decayable": true
+          },
+          {
+            "sequence": 35,
+            "week": 1,
+            "type": "rumor",
+            "description": "Something Dr. Will Kirby heard about you",
+            "impactScore": -15.0,
+            "decayable": true
+          },
+          {
+            "sequence": 189,
+            "week": 2,
+            "type": "campaign",
+            "description": "Dr. Will Kirby campaigned to stay",
+            "impactScore": 5.0,
+            "decayable": true
+          }
+        ]
+      },
+      {
+        "fromId": "dr-will-kirby",
+        "toId": "dan-gheesling",
+        "score": 1.0,
+        "lastInteractionWeek": 2,
+        "notes": [],
+        "events": [
+          {
+            "sequence": 55,
+            "week": 1,
+            "type": "talk",
+            "description": "Dan Gheesling spent time with Dr. Will Kirby",
+            "impactScore": 4.0,
+            "decayable": true
+          },
+          {
+            "sequence": 129,
+            "week": 2,
+            "type": "talk",
+            "description": "Dr. Will Kirby courted Dan Gheesling before the nominations",
+            "impactScore": 3.0,
+            "decayable": true
+          }
+        ]
+      },
+      {
+        "fromId": "dr-will-kirby",
+        "toId": "derrick-levasseur",
+        "score": -21.0,
+        "lastInteractionWeek": 1,
+        "notes": [],
+        "events": [
+          {
+            "sequence": 59,
+            "week": 1,
+            "type": "veto-forced",
+            "description": "Dr. Will Kirby used POV forcing Derrick Levasseur on the block",
+            "impactScore": -15.0,
+            "decayable": true
+          }
+        ]
+      },
+      {
+        "fromId": "dr-will-kirby",
+        "toId": "janelle-pierzina",
+        "score": 11.0,
+        "lastInteractionWeek": 1,
+        "notes": [],
+        "events": [
+          {
+            "sequence": 80,
+            "week": 1,
+            "type": "talk",
+            "description": "Dr. Will Kirby spent time with Janelle Pierzina",
+            "impactScore": 5.0,
+            "decayable": true
+          }
+        ]
+      },
+      {
+        "fromId": "dr-will-kirby",
+        "toId": "cody-calafiore",
+        "score": 3.0,
+        "lastInteractionWeek": 0,
+        "notes": [],
+        "events": [
+          {
+            "sequence": 175,
+            "week": 2,
+            "type": "promise-made",
+            "description": "Dr. Will Kirby gave Cody Calafiore their word",
+            "impactScore": 15.0,
+            "decayable": false
+          }
+        ]
+      },
+      {
+        "fromId": "dr-will-kirby",
+        "toId": "danielle-reyes",
+        "score": 1.0,
+        "lastInteractionWeek": 2,
+        "notes": [],
+        "events": [
+          {
+            "sequence": 169,
+            "week": 2,
+            "type": "talk",
+            "description": "Dr. Will Kirby spent time with Danielle Reyes",
+            "impactScore": 4.0,
+            "decayable": true
+          }
+        ]
+      },
+      {
+        "fromId": "dr-will-kirby",
+        "toId": "vanessa-rousso",
+        "score": -6.0,
+        "lastInteractionWeek": 2,
+        "notes": [],
+        "events": [
+          {
+            "sequence": 38,
+            "week": 1,
+            "type": "talk",
+            "description": "Dr. Will Kirby spent time with Vanessa Rousso",
+            "impactScore": 4.0,
+            "decayable": true
+          },
+          {
+            "sequence": 148,
+            "week": 2,
+            "type": "rumor",
+            "description": "Something Vanessa Rousso heard about Dr. Will Kirby",
+            "impactScore": -15.0,
+            "decayable": true
+          },
+          {
+            "sequence": 187,
+            "week": 2,
+            "type": "campaign",
+            "description": "Dr. Will Kirby campaigned to stay",
+            "impactScore": 5.0,
+            "decayable": true
+          }
+        ]
+      },
+      {
+        "fromId": "derrick-levasseur",
+        "toId": "player",
+        "score": -16.0,
+        "lastInteractionWeek": 1,
+        "notes": [
+          "Derrick Levasseur courted you before the nominations",
+          "You named Derrick Levasseur as replacement nominee"
+        ],
+        "events": [
+          {
+            "sequence": 19,
+            "week": 1,
+            "type": "talk",
+            "description": "Derrick Levasseur courted you before the nominations",
+            "impactScore": 4.0,
+            "decayable": true
+          }
+        ]
+      },
+      {
+        "fromId": "derrick-levasseur",
+        "toId": "dan-gheesling",
+        "score": -6.0,
+        "lastInteractionWeek": 0,
+        "notes": [],
+        "events": []
+      },
+      {
+        "fromId": "derrick-levasseur",
+        "toId": "dr-will-kirby",
+        "score": -15.0,
+        "lastInteractionWeek": 1,
+        "notes": [],
+        "events": [
+          {
+            "sequence": 58,
+            "week": 1,
+            "type": "veto-forced",
+            "description": "Dr. Will Kirby used POV forcing Derrick Levasseur on the block",
+            "impactScore": -15.0,
+            "decayable": true
+          }
+        ]
+      },
+      {
+        "fromId": "derrick-levasseur",
+        "toId": "janelle-pierzina",
+        "score": -5.0,
+        "lastInteractionWeek": 1,
+        "notes": [],
+        "events": [
+          {
+            "sequence": 37,
+            "week": 1,
+            "type": "confrontation",
+            "description": "Janelle Pierzina had words with Derrick Levasseur",
+            "impactScore": -8.0,
+            "decayable": true
+          }
+        ]
+      },
+      {
+        "fromId": "derrick-levasseur",
+        "toId": "cody-calafiore",
+        "score": 9.0,
+        "lastInteractionWeek": 0,
+        "notes": [],
+        "events": [
+          {
+            "sequence": 64,
+            "week": 1,
+            "type": "promise-made",
+            "description": "Derrick Levasseur gave Cody Calafiore their word",
+            "impactScore": 15.0,
+            "decayable": false
+          }
+        ]
+      },
+      {
+        "fromId": "derrick-levasseur",
+        "toId": "danielle-reyes",
+        "score": 5.0,
+        "lastInteractionWeek": 1,
+        "notes": [],
+        "events": [
+          {
+            "sequence": 72,
+            "week": 1,
+            "type": "campaign",
+            "description": "Derrick Levasseur campaigned to stay",
+            "impactScore": 5.0,
+            "decayable": true
+          },
+          {
+            "sequence": 74,
+            "week": 1,
+            "type": "promise-made",
+            "description": "Derrick Levasseur gave Danielle Reyes their word",
+            "impactScore": 15.0,
+            "decayable": false
+          }
+        ]
+      },
+      {
+        "fromId": "derrick-levasseur",
+        "toId": "vanessa-rousso",
+        "score": 5.0,
+        "lastInteractionWeek": 1,
+        "notes": [],
+        "events": [
+          {
+            "sequence": 70,
+            "week": 1,
+            "type": "campaign",
+            "description": "Derrick Levasseur campaigned to stay",
+            "impactScore": 5.0,
+            "decayable": true
+          }
+        ]
+      },
+      {
+        "fromId": "janelle-pierzina",
+        "toId": "player",
+        "score": -26.132345772162079,
+        "lastInteractionWeek": 3,
+        "notes": [
+          "Janelle Pierzina courted you before the nominations",
+          "You used POV forcing Janelle Pierzina on the block",
+          "Janelle Pierzina courted you before the nominations",
+          "Janelle Pierzina had words with you",
+          "Something Janelle Pierzina heard about you"
+        ],
+        "events": [
+          {
+            "sequence": 22,
+            "week": 1,
+            "type": "talk",
+            "description": "Janelle Pierzina courted you before the nominations",
+            "impactScore": 4.0,
+            "decayable": true
+          },
+          {
+            "sequence": 256,
+            "week": 3,
+            "type": "talk",
+            "description": "Janelle Pierzina courted you before the nominations",
+            "impactScore": 4.0,
+            "decayable": true
+          },
+          {
+            "sequence": 276,
+            "week": 3,
+            "type": "confrontation",
+            "description": "Janelle Pierzina had words with you",
+            "impactScore": -8.0,
+            "decayable": true
+          },
+          {
+            "sequence": 289,
+            "week": 3,
+            "type": "rumor",
+            "description": "Something Janelle Pierzina heard about you",
+            "impactScore": -15.0,
+            "decayable": true
+          }
+        ]
+      },
+      {
+        "fromId": "janelle-pierzina",
+        "toId": "dan-gheesling",
+        "score": -42.0,
+        "lastInteractionWeek": 2,
+        "notes": [],
+        "events": [
+          {
+            "sequence": 131,
+            "week": 2,
+            "type": "talk",
+            "description": "Janelle Pierzina courted Dan Gheesling before the nominations",
+            "impactScore": 4.0,
+            "decayable": true
+          },
+          {
+            "sequence": 153,
+            "week": 2,
+            "type": "rumor",
+            "description": "Something Janelle Pierzina heard about Dan Gheesling",
+            "impactScore": -15.0,
+            "decayable": true
+          },
+          {
+            "sequence": 155,
+            "week": 2,
+            "type": "confrontation",
+            "description": "Janelle Pierzina had words with Dan Gheesling",
+            "impactScore": -8.0,
+            "decayable": true
+          },
+          {
+            "sequence": 171,
+            "week": 2,
+            "type": "veto-replacement",
+            "description": "Dan Gheesling named Janelle Pierzina as replacement nominee",
+            "impactScore": -20.0,
+            "decayable": true
+          }
+        ]
+      },
+      {
+        "fromId": "janelle-pierzina",
+        "toId": "dr-will-kirby",
+        "score": 8.0,
+        "lastInteractionWeek": 1,
+        "notes": [],
+        "events": [
+          {
+            "sequence": 81,
+            "week": 1,
+            "type": "talk",
+            "description": "Dr. Will Kirby spent time with Janelle Pierzina",
+            "impactScore": 5.0,
+            "decayable": true
+          }
+        ]
+      },
+      {
+        "fromId": "janelle-pierzina",
+        "toId": "derrick-levasseur",
+        "score": -14.0,
+        "lastInteractionWeek": 1,
+        "notes": [],
+        "events": [
+          {
+            "sequence": 36,
+            "week": 1,
+            "type": "confrontation",
+            "description": "Janelle Pierzina had words with Derrick Levasseur",
+            "impactScore": -8.0,
+            "decayable": true
+          }
+        ]
+      },
+      {
+        "fromId": "janelle-pierzina",
+        "toId": "cody-calafiore",
+        "score": 33.0,
+        "lastInteractionWeek": 3,
+        "notes": [],
+        "events": [
+          {
+            "sequence": 76,
+            "week": 1,
+            "type": "talk",
+            "description": "Janelle Pierzina spent time with Cody Calafiore",
+            "impactScore": 6.0,
+            "decayable": true
+          },
+          {
+            "sequence": 116,
+            "week": 1,
+            "type": "talk",
+            "description": "Cody Calafiore spent time with Janelle Pierzina",
+            "impactScore": 5.0,
+            "decayable": true
+          },
+          {
+            "sequence": 144,
+            "week": 2,
+            "type": "talk",
+            "description": "Cody Calafiore spent time with Janelle Pierzina",
+            "impactScore": 5.0,
+            "decayable": true
+          },
+          {
+            "sequence": 177,
+            "week": 2,
+            "type": "promise-made",
+            "description": "Janelle Pierzina gave Cody Calafiore their word",
+            "impactScore": 15.0,
+            "decayable": false
+          },
+          {
+            "sequence": 199,
+            "week": 2,
+            "type": "talk",
+            "description": "Cody Calafiore spent time with Janelle Pierzina",
+            "impactScore": 5.0,
+            "decayable": true
+          },
+          {
+            "sequence": 227,
+            "week": 2,
+            "type": "deal_accepted",
+            "description": "Janelle Pierzina and Cody Calafiore agreed a target agreement",
+            "impactScore": 18.0,
+            "decayable": true
+          },
+          {
+            "sequence": 230,
+            "week": 2,
+            "type": "deal_accepted",
+            "description": "Cody Calafiore and Janelle Pierzina agreed a target agreement",
+            "impactScore": 18.0,
+            "decayable": true
+          },
+          {
+            "sequence": 272,
+            "week": 3,
+            "type": "alliance-formed",
+            "description": "The Janelle and Cody Pact was formed",
+            "impactScore": 30.0,
+            "decayable": false
+          },
+          {
+            "sequence": 291,
+            "week": 3,
+            "type": "alliance-meeting",
+            "description": "The Janelle and Cody Pact met in week 3",
+            "impactScore": 3.0,
+            "decayable": true
+          },
+          {
+            "sequence": 300,
+            "week": 3,
+            "type": "deal_accepted",
+            "description": "Janelle Pierzina and Cody Calafiore agreed a target agreement",
+            "impactScore": 18.0,
+            "decayable": true
+          },
+          {
+            "sequence": 303,
+            "week": 3,
+            "type": "deal_accepted",
+            "description": "Cody Calafiore and Janelle Pierzina agreed a target agreement",
+            "impactScore": 18.0,
+            "decayable": true
+          }
+        ]
+      },
+      {
+        "fromId": "janelle-pierzina",
+        "toId": "danielle-reyes",
+        "score": 28.0,
+        "lastInteractionWeek": 2,
+        "notes": [],
+        "events": [
+          {
+            "sequence": 57,
+            "week": 1,
+            "type": "talk",
+            "description": "Danielle Reyes spent time with Janelle Pierzina",
+            "impactScore": 5.0,
+            "decayable": true
+          },
+          {
+            "sequence": 79,
+            "week": 1,
+            "type": "talk",
+            "description": "Danielle Reyes spent time with Janelle Pierzina",
+            "impactScore": 5.0,
+            "decayable": true
+          },
+          {
+            "sequence": 117,
+            "week": 1,
+            "type": "talk",
+            "description": "Janelle Pierzina spent time with Danielle Reyes",
+            "impactScore": 5.0,
+            "decayable": true
+          },
+          {
+            "sequence": 145,
+            "week": 2,
+            "type": "talk",
+            "description": "Janelle Pierzina spent time with Danielle Reyes",
+            "impactScore": 5.0,
+            "decayable": true
+          },
+          {
+            "sequence": 201,
+            "week": 2,
+            "type": "talk",
+            "description": "Danielle Reyes spent time with Janelle Pierzina",
+            "impactScore": 5.0,
+            "decayable": true
+          },
+          {
+            "sequence": 232,
+            "week": 2,
+            "type": "deal_accepted",
+            "description": "Danielle Reyes and Janelle Pierzina agreed a target agreement",
+            "impactScore": 18.0,
+            "decayable": true
+          },
+          {
+            "sequence": 296,
+            "week": 3,
+            "type": "promise-made",
+            "description": "Janelle Pierzina gave Danielle Reyes their word",
+            "impactScore": 15.0,
+            "decayable": false
+          },
+          {
+            "sequence": 305,
+            "week": 3,
+            "type": "deal_accepted",
+            "description": "Danielle Reyes and Janelle Pierzina agreed a target agreement",
+            "impactScore": 18.0,
+            "decayable": true
+          }
+        ]
+      },
+      {
+        "fromId": "janelle-pierzina",
+        "toId": "vanessa-rousso",
+        "score": 15.0,
+        "lastInteractionWeek": 3,
+        "notes": [],
+        "events": [
+          {
+            "sequence": 192,
+            "week": 2,
+            "type": "campaign",
+            "description": "Janelle Pierzina campaigned to stay",
+            "impactScore": 5.0,
+            "decayable": true
+          },
+          {
+            "sequence": 240,
+            "week": 2,
+            "type": "talk",
+            "description": "Vanessa Rousso spent time with Janelle Pierzina",
+            "impactScore": 5.0,
+            "decayable": true
+          },
+          {
+            "sequence": 311,
+            "week": 3,
+            "type": "campaign",
+            "description": "Janelle Pierzina campaigned to stay",
+            "impactScore": 5.0,
+            "decayable": true
+          },
+          {
+            "sequence": 315,
+            "week": 3,
+            "type": "promise-made",
+            "description": "Janelle Pierzina gave Vanessa Rousso their word",
+            "impactScore": 15.0,
+            "decayable": false
+          }
+        ]
+      },
+      {
+        "fromId": "cody-calafiore",
+        "toId": "player",
+        "score": -34.017654682323339,
+        "lastInteractionWeek": 3,
+        "notes": [
+          "Cody Calafiore courted you before the nominations",
+          "Cody Calafiore spent time with you",
+          "Something Cody Calafiore heard about you",
+          "Something Cody Calafiore heard about you",
+          "Cody Calafiore courted you before the nominations",
+          "You named Cody Calafiore as replacement nominee"
+        ],
+        "events": [
+          {
+            "sequence": 25,
+            "week": 1,
+            "type": "talk",
+            "description": "Cody Calafiore courted you before the nominations",
+            "impactScore": 4.0,
+            "decayable": true
+          },
+          {
+            "sequence": 40,
+            "week": 1,
+            "type": "talk",
+            "description": "Cody Calafiore spent time with you",
+            "impactScore": 4.0,
+            "decayable": true
+          },
+          {
+            "sequence": 196,
+            "week": 2,
+            "type": "rumor",
+            "description": "Something Cody Calafiore heard about you",
+            "impactScore": -15.0,
+            "decayable": true
+          },
+          {
+            "sequence": 243,
+            "week": 2,
+            "type": "rumor",
+            "description": "Something Cody Calafiore heard about you",
+            "impactScore": -15.0,
+            "decayable": true
+          },
+          {
+            "sequence": 259,
+            "week": 3,
+            "type": "talk",
+            "description": "Cody Calafiore courted you before the nominations",
+            "impactScore": 4.0,
+            "decayable": true
+          }
+        ]
+      },
+      {
+        "fromId": "cody-calafiore",
+        "toId": "dan-gheesling",
+        "score": -4.0,
+        "lastInteractionWeek": 3,
+        "notes": [],
+        "events": [
+          {
+            "sequence": 63,
+            "week": 1,
+            "type": "promise-made",
+            "description": "Dan Gheesling gave Cody Calafiore their word",
+            "impactScore": 15.0,
+            "decayable": false
+          },
+          {
+            "sequence": 69,
+            "week": 1,
+            "type": "campaign",
+            "description": "Dan Gheesling campaigned to stay",
+            "impactScore": 5.0,
+            "decayable": true
+          },
+          {
+            "sequence": 120,
+            "week": 1,
+            "type": "talk",
+            "description": "Dan Gheesling spent time with Cody Calafiore",
+            "impactScore": 6.0,
+            "decayable": true
+          },
+          {
+            "sequence": 133,
+            "week": 2,
+            "type": "talk",
+            "description": "Cody Calafiore courted Dan Gheesling before the nominations",
+            "impactScore": 3.0,
+            "decayable": true
+          },
+          {
+            "sequence": 179,
+            "week": 2,
+            "type": "promise-made",
+            "description": "Cody Calafiore gave Dan Gheesling their word",
+            "impactScore": 15.0,
+            "decayable": false
+          },
+          {
+            "sequence": 195,
+            "week": 2,
+            "type": "talk",
+            "description": "Dan Gheesling spent time with Cody Calafiore",
+            "impactScore": 6.0,
+            "decayable": true
+          },
+          {
+            "sequence": 292,
+            "week": 3,
+            "type": "veto-forced",
+            "description": "Dan Gheesling used POV forcing Cody Calafiore on the block",
+            "impactScore": -15.0,
+            "decayable": true
+          }
+        ]
+      },
+      {
+        "fromId": "cody-calafiore",
+        "toId": "dr-will-kirby",
+        "score": -6.0,
+        "lastInteractionWeek": 0,
+        "notes": [],
+        "events": [
+          {
+            "sequence": 176,
+            "week": 2,
+            "type": "promise-made",
+            "description": "Dr. Will Kirby gave Cody Calafiore their word",
+            "impactScore": 15.0,
+            "decayable": false
+          }
+        ]
+      },
+      {
+        "fromId": "cody-calafiore",
+        "toId": "derrick-levasseur",
+        "score": -12.0,
+        "lastInteractionWeek": 0,
+        "notes": [],
+        "events": [
+          {
+            "sequence": 65,
+            "week": 1,
+            "type": "promise-made",
+            "description": "Derrick Levasseur gave Cody Calafiore their word",
+            "impactScore": 15.0,
+            "decayable": false
+          }
+        ]
+      },
+      {
+        "fromId": "cody-calafiore",
+        "toId": "janelle-pierzina",
+        "score": 30.0,
+        "lastInteractionWeek": 3,
+        "notes": [],
+        "events": [
+          {
+            "sequence": 77,
+            "week": 1,
+            "type": "talk",
+            "description": "Janelle Pierzina spent time with Cody Calafiore",
+            "impactScore": 6.0,
+            "decayable": true
+          },
+          {
+            "sequence": 115,
+            "week": 1,
+            "type": "talk",
+            "description": "Cody Calafiore spent time with Janelle Pierzina",
+            "impactScore": 5.0,
+            "decayable": true
+          },
+          {
+            "sequence": 143,
+            "week": 2,
+            "type": "talk",
+            "description": "Cody Calafiore spent time with Janelle Pierzina",
+            "impactScore": 5.0,
+            "decayable": true
+          },
+          {
+            "sequence": 178,
+            "week": 2,
+            "type": "promise-made",
+            "description": "Janelle Pierzina gave Cody Calafiore their word",
+            "impactScore": 15.0,
+            "decayable": false
+          },
+          {
+            "sequence": 198,
+            "week": 2,
+            "type": "talk",
+            "description": "Cody Calafiore spent time with Janelle Pierzina",
+            "impactScore": 5.0,
+            "decayable": true
+          },
+          {
+            "sequence": 228,
+            "week": 2,
+            "type": "deal_accepted",
+            "description": "Janelle Pierzina and Cody Calafiore agreed a target agreement",
+            "impactScore": 18.0,
+            "decayable": true
+          },
+          {
+            "sequence": 229,
+            "week": 2,
+            "type": "deal_accepted",
+            "description": "Cody Calafiore and Janelle Pierzina agreed a target agreement",
+            "impactScore": 18.0,
+            "decayable": true
+          },
+          {
+            "sequence": 273,
+            "week": 3,
+            "type": "alliance-formed",
+            "description": "The Janelle and Cody Pact was formed",
+            "impactScore": 30.0,
+            "decayable": false
+          },
+          {
+            "sequence": 290,
+            "week": 3,
+            "type": "alliance-meeting",
+            "description": "The Janelle and Cody Pact met in week 3",
+            "impactScore": 3.0,
+            "decayable": true
+          },
+          {
+            "sequence": 301,
+            "week": 3,
+            "type": "deal_accepted",
+            "description": "Janelle Pierzina and Cody Calafiore agreed a target agreement",
+            "impactScore": 18.0,
+            "decayable": true
+          },
+          {
+            "sequence": 302,
+            "week": 3,
+            "type": "deal_accepted",
+            "description": "Cody Calafiore and Janelle Pierzina agreed a target agreement",
+            "impactScore": 18.0,
+            "decayable": true
+          }
+        ]
+      },
+      {
+        "fromId": "cody-calafiore",
+        "toId": "danielle-reyes",
+        "score": 3.0,
+        "lastInteractionWeek": 0,
+        "notes": [],
+        "events": []
+      },
+      {
+        "fromId": "cody-calafiore",
+        "toId": "vanessa-rousso",
+        "score": 14.0,
+        "lastInteractionWeek": 3,
+        "notes": [],
+        "events": [
+          {
+            "sequence": 114,
+            "week": 1,
+            "type": "talk",
+            "description": "Vanessa Rousso spent time with Cody Calafiore",
+            "impactScore": 6.0,
+            "decayable": true
+          },
+          {
+            "sequence": 298,
+            "week": 3,
+            "type": "promise-made",
+            "description": "Cody Calafiore gave Vanessa Rousso their word",
+            "impactScore": 15.0,
+            "decayable": false
+          },
+          {
+            "sequence": 313,
+            "week": 3,
+            "type": "campaign",
+            "description": "Cody Calafiore campaigned to stay",
+            "impactScore": 5.0,
+            "decayable": true
+          }
+        ]
+      },
+      {
+        "fromId": "danielle-reyes",
+        "toId": "player",
+        "score": -3.0,
+        "lastInteractionWeek": 3,
+        "notes": [
+          "Danielle Reyes courted you before the nominations",
+          "Danielle Reyes spent time with you",
+          "Danielle Reyes courted you before the nominations",
+          "Something Danielle Reyes heard about you"
+        ],
+        "events": [
+          {
+            "sequence": 28,
+            "week": 1,
+            "type": "talk",
+            "description": "Danielle Reyes courted you before the nominations",
+            "impactScore": 4.0,
+            "decayable": true
+          },
+          {
+            "sequence": 234,
+            "week": 2,
+            "type": "talk",
+            "description": "Danielle Reyes spent time with you",
+            "impactScore": 4.0,
+            "decayable": true
+          },
+          {
+            "sequence": 262,
+            "week": 3,
+            "type": "talk",
+            "description": "Danielle Reyes courted you before the nominations",
+            "impactScore": 4.0,
+            "decayable": true
+          },
+          {
+            "sequence": 279,
+            "week": 3,
+            "type": "rumor",
+            "description": "Something Danielle Reyes heard about you",
+            "impactScore": -15.0,
+            "decayable": true
+          }
+        ]
+      },
+      {
+        "fromId": "danielle-reyes",
+        "toId": "dan-gheesling",
+        "score": 2.0,
+        "lastInteractionWeek": 2,
+        "notes": [],
+        "events": [
+          {
+            "sequence": 67,
+            "week": 1,
+            "type": "campaign",
+            "description": "Dan Gheesling campaigned to stay",
+            "impactScore": 5.0,
+            "decayable": true
+          },
+          {
+            "sequence": 135,
+            "week": 2,
+            "type": "talk",
+            "description": "Danielle Reyes courted Dan Gheesling before the nominations",
+            "impactScore": 3.0,
+            "decayable": true
+          },
+          {
+            "sequence": 181,
+            "week": 2,
+            "type": "promise-made",
+            "description": "Danielle Reyes gave Dan Gheesling their word",
+            "impactScore": 15.0,
+            "decayable": false
+          }
+        ]
+      },
+      {
+        "fromId": "danielle-reyes",
+        "toId": "dr-will-kirby",
+        "score": -2.0,
+        "lastInteractionWeek": 2,
+        "notes": [],
+        "events": [
+          {
+            "sequence": 170,
+            "week": 2,
+            "type": "talk",
+            "description": "Dr. Will Kirby spent time with Danielle Reyes",
+            "impactScore": 4.0,
+            "decayable": true
+          }
+        ]
+      },
+      {
+        "fromId": "danielle-reyes",
+        "toId": "derrick-levasseur",
+        "score": -1.0,
+        "lastInteractionWeek": 1,
+        "notes": [],
+        "events": [
+          {
+            "sequence": 73,
+            "week": 1,
+            "type": "campaign",
+            "description": "Derrick Levasseur campaigned to stay",
+            "impactScore": 5.0,
+            "decayable": true
+          },
+          {
+            "sequence": 75,
+            "week": 1,
+            "type": "promise-made",
+            "description": "Derrick Levasseur gave Danielle Reyes their word",
+            "impactScore": 15.0,
+            "decayable": false
+          }
+        ]
+      },
+      {
+        "fromId": "danielle-reyes",
+        "toId": "janelle-pierzina",
+        "score": 28.0,
+        "lastInteractionWeek": 2,
+        "notes": [],
+        "events": [
+          {
+            "sequence": 56,
+            "week": 1,
+            "type": "talk",
+            "description": "Danielle Reyes spent time with Janelle Pierzina",
+            "impactScore": 5.0,
+            "decayable": true
+          },
+          {
+            "sequence": 78,
+            "week": 1,
+            "type": "talk",
+            "description": "Danielle Reyes spent time with Janelle Pierzina",
+            "impactScore": 5.0,
+            "decayable": true
+          },
+          {
+            "sequence": 118,
+            "week": 1,
+            "type": "talk",
+            "description": "Janelle Pierzina spent time with Danielle Reyes",
+            "impactScore": 5.0,
+            "decayable": true
+          },
+          {
+            "sequence": 146,
+            "week": 2,
+            "type": "talk",
+            "description": "Janelle Pierzina spent time with Danielle Reyes",
+            "impactScore": 5.0,
+            "decayable": true
+          },
+          {
+            "sequence": 200,
+            "week": 2,
+            "type": "talk",
+            "description": "Danielle Reyes spent time with Janelle Pierzina",
+            "impactScore": 5.0,
+            "decayable": true
+          },
+          {
+            "sequence": 231,
+            "week": 2,
+            "type": "deal_accepted",
+            "description": "Danielle Reyes and Janelle Pierzina agreed a target agreement",
+            "impactScore": 18.0,
+            "decayable": true
+          },
+          {
+            "sequence": 297,
+            "week": 3,
+            "type": "promise-made",
+            "description": "Janelle Pierzina gave Danielle Reyes their word",
+            "impactScore": 15.0,
+            "decayable": false
+          },
+          {
+            "sequence": 304,
+            "week": 3,
+            "type": "deal_accepted",
+            "description": "Danielle Reyes and Janelle Pierzina agreed a target agreement",
+            "impactScore": 18.0,
+            "decayable": true
+          }
+        ]
+      },
+      {
+        "fromId": "danielle-reyes",
+        "toId": "cody-calafiore",
+        "score": 6.0,
+        "lastInteractionWeek": 0,
+        "notes": [],
+        "events": []
+      },
+      {
+        "fromId": "danielle-reyes",
+        "toId": "vanessa-rousso",
+        "score": 3.0,
+        "lastInteractionWeek": 0,
+        "notes": [],
+        "events": []
+      },
+      {
+        "fromId": "vanessa-rousso",
+        "toId": "player",
+        "score": 36.807429429888728,
+        "lastInteractionWeek": 3,
+        "notes": [
+          "Vanessa Rousso courted you before the nominations",
+          "You used POV to save Vanessa Rousso",
+          "Vanessa Rousso courted you before the nominations"
+        ],
+        "events": [
+          {
+            "sequence": 31,
+            "week": 1,
+            "type": "talk",
+            "description": "Vanessa Rousso courted you before the nominations",
+            "impactScore": 4.0,
+            "decayable": true
+          },
+          {
+            "sequence": 265,
+            "week": 3,
+            "type": "talk",
+            "description": "Vanessa Rousso courted you before the nominations",
+            "impactScore": 4.0,
+            "decayable": true
+          },
+          {
+            "sequence": 306,
+            "week": 3,
+            "type": "deal_proposed",
+            "description": "Vanessa Rousso put a target agreement to you.",
+            "impactScore": 0.0,
+            "decayable": true
+          }
+        ]
+      },
+      {
+        "fromId": "vanessa-rousso",
+        "toId": "dan-gheesling",
+        "score": -3.0,
+        "lastInteractionWeek": 2,
+        "notes": [],
+        "events": [
+          {
+            "sequence": 137,
+            "week": 2,
+            "type": "talk",
+            "description": "Vanessa Rousso courted Dan Gheesling before the nominations",
+            "impactScore": 3.0,
+            "decayable": true
+          },
+          {
+            "sequence": 183,
+            "week": 2,
+            "type": "promise-made",
+            "description": "Vanessa Rousso gave Dan Gheesling their word",
+            "impactScore": 15.0,
+            "decayable": false
+          }
+        ]
+      },
+      {
+        "fromId": "vanessa-rousso",
+        "toId": "dr-will-kirby",
+        "score": -6.0,
+        "lastInteractionWeek": 2,
+        "notes": [],
+        "events": [
+          {
+            "sequence": 39,
+            "week": 1,
+            "type": "talk",
+            "description": "Dr. Will Kirby spent time with Vanessa Rousso",
+            "impactScore": 4.0,
+            "decayable": true
+          },
+          {
+            "sequence": 147,
+            "week": 2,
+            "type": "rumor",
+            "description": "Something Vanessa Rousso heard about Dr. Will Kirby",
+            "impactScore": -15.0,
+            "decayable": true
+          },
+          {
+            "sequence": 188,
+            "week": 2,
+            "type": "campaign",
+            "description": "Dr. Will Kirby campaigned to stay",
+            "impactScore": 5.0,
+            "decayable": true
+          }
+        ]
+      },
+      {
+        "fromId": "vanessa-rousso",
+        "toId": "derrick-levasseur",
+        "score": -4.0,
+        "lastInteractionWeek": 1,
+        "notes": [],
+        "events": [
+          {
+            "sequence": 71,
+            "week": 1,
+            "type": "campaign",
+            "description": "Derrick Levasseur campaigned to stay",
+            "impactScore": 5.0,
+            "decayable": true
+          }
+        ]
+      },
+      {
+        "fromId": "vanessa-rousso",
+        "toId": "janelle-pierzina",
+        "score": 18.0,
+        "lastInteractionWeek": 3,
+        "notes": [],
+        "events": [
+          {
+            "sequence": 193,
+            "week": 2,
+            "type": "campaign",
+            "description": "Janelle Pierzina campaigned to stay",
+            "impactScore": 5.0,
+            "decayable": true
+          },
+          {
+            "sequence": 239,
+            "week": 2,
+            "type": "talk",
+            "description": "Vanessa Rousso spent time with Janelle Pierzina",
+            "impactScore": 5.0,
+            "decayable": true
+          },
+          {
+            "sequence": 312,
+            "week": 3,
+            "type": "campaign",
+            "description": "Janelle Pierzina campaigned to stay",
+            "impactScore": 5.0,
+            "decayable": true
+          },
+          {
+            "sequence": 316,
+            "week": 3,
+            "type": "promise-made",
+            "description": "Janelle Pierzina gave Vanessa Rousso their word",
+            "impactScore": 15.0,
+            "decayable": false
+          }
+        ]
+      },
+      {
+        "fromId": "vanessa-rousso",
+        "toId": "cody-calafiore",
+        "score": 20.0,
+        "lastInteractionWeek": 3,
+        "notes": [],
+        "events": [
+          {
+            "sequence": 113,
+            "week": 1,
+            "type": "talk",
+            "description": "Vanessa Rousso spent time with Cody Calafiore",
+            "impactScore": 6.0,
+            "decayable": true
+          },
+          {
+            "sequence": 299,
+            "week": 3,
+            "type": "promise-made",
+            "description": "Cody Calafiore gave Vanessa Rousso their word",
+            "impactScore": 15.0,
+            "decayable": false
+          },
+          {
+            "sequence": 314,
+            "week": 3,
+            "type": "campaign",
+            "description": "Cody Calafiore campaigned to stay",
+            "impactScore": 5.0,
+            "decayable": true
+          }
+        ]
+      },
+      {
+        "fromId": "vanessa-rousso",
+        "toId": "danielle-reyes",
+        "score": 3.0,
+        "lastInteractionWeek": 0,
+        "notes": [],
+        "events": []
+      }
+    ],
+    "promises": [],
+    "alliances": [
+      {
+        "id": "alliance-npc-271",
+        "name": "The Janelle and Cody Pact",
+        "members": [
+          "janelle-pierzina",
+          "cody-calafiore"
+        ],
+        "active": true,
+        "playerJoined": false
+      }
+    ],
+    "memories": [
+      {
+        "ownerId": "cody-calafiore",
+        "subjectId": "player",
+        "text": "We spent time talking in week 1.",
+        "week": 1,
+        "isPrivate": true
+      },
+      {
+        "ownerId": "dan-gheesling",
+        "subjectId": "player",
+        "text": "We spent time talking in week 1.",
+        "week": 1,
+        "isPrivate": true
+      },
+      {
+        "ownerId": "dan-gheesling",
+        "subjectId": "player",
+        "text": "Nominated me in week 1.",
+        "week": 1,
+        "isPrivate": false
+      },
+      {
+        "ownerId": "dr-will-kirby",
+        "subjectId": "player",
+        "text": "Nominated me in week 1.",
+        "week": 1,
+        "isPrivate": false
+      },
+      {
+        "ownerId": "derrick-levasseur",
+        "subjectId": "vanessa-rousso",
+        "text": "I overheard Vanessa Rousso and Danielle Reyes in week 1. They sounded careful with each other.",
+        "week": 1,
+        "isPrivate": true
+      },
+      {
+        "ownerId": "vanessa-rousso",
+        "subjectId": "danielle-reyes",
+        "text": "I overheard Danielle Reyes and Dan Gheesling in week 1. They sounded careful with each other.",
+        "week": 1,
+        "isPrivate": true
+      },
+      {
+        "ownerId": "derrick-levasseur",
+        "subjectId": "player",
+        "text": "Nominated me in week 1.",
+        "week": 1,
+        "isPrivate": false
+      },
+      {
+        "ownerId": "vanessa-rousso",
+        "subjectId": "dr-will-kirby",
+        "text": "I overheard Dr. Will Kirby and Danielle Reyes in week 2. They sounded careful with each other.",
+        "week": 2,
+        "isPrivate": true
+      },
+      {
+        "ownerId": "vanessa-rousso",
+        "subjectId": "dan-gheesling",
+        "text": "Nominated me in week 2.",
+        "week": 2,
+        "isPrivate": false
+      },
+      {
+        "ownerId": "dr-will-kirby",
+        "subjectId": "dan-gheesling",
+        "text": "Nominated me in week 2.",
+        "week": 2,
+        "isPrivate": false
+      },
+      {
+        "ownerId": "janelle-pierzina",
+        "subjectId": "dan-gheesling",
+        "text": "Nominated me in week 2.",
+        "week": 2,
+        "isPrivate": false
+      },
+      {
+        "ownerId": "player",
+        "subjectId": "dan-gheesling",
+        "text": "The Head of Household planned to backdoor me.",
+        "week": 2,
+        "isPrivate": true
+      },
+      {
+        "ownerId": "janelle-pierzina",
+        "subjectId": "player",
+        "text": "We spent time talking in week 2.",
+        "week": 2,
+        "isPrivate": true
+      },
+      {
+        "ownerId": "vanessa-rousso",
+        "subjectId": "player",
+        "text": "We spent time talking in week 2.",
+        "week": 2,
+        "isPrivate": true
+      },
+      {
+        "ownerId": "vanessa-rousso",
+        "subjectId": "dan-gheesling",
+        "text": "I overheard Dan Gheesling and Janelle Pierzina in week 3. They sounded like they cannot stand each other.",
+        "week": 3,
+        "isPrivate": true
+      },
+      {
+        "ownerId": "player",
+        "subjectId": "dan-gheesling",
+        "text": "Danielle Reyes told me in week 3 that Dan Gheesling is the biggest threat in this house.",
+        "week": 3,
+        "isPrivate": true
+      },
+      {
+        "ownerId": "dan-gheesling",
+        "subjectId": "player",
+        "text": "Nominated me in week 3.",
+        "week": 3,
+        "isPrivate": false
+      },
+      {
+        "ownerId": "janelle-pierzina",
+        "subjectId": "player",
+        "text": "Nominated me in week 3.",
+        "week": 3,
+        "isPrivate": false
+      },
+      {
+        "ownerId": "cody-calafiore",
+        "subjectId": "player",
+        "text": "Nominated me in week 3.",
+        "week": 3,
+        "isPrivate": false
+      }
+    ],
+    "nominees": [
+      "janelle-pierzina",
+      "cody-calafiore"
+    ],
+    "vetoPlayers": [
+      "player",
+      "dan-gheesling",
+      "janelle-pierzina",
+      "cody-calafiore",
+      "danielle-reyes",
+      "vanessa-rousso"
+    ],
+    "votes": [],
+    "ledger": {
+      "opportunities": [
+        {
+          "id": "read-1",
+          "kind": "read",
+          "anchor": "EvictionNight",
+          "source": null,
+          "response": "ignored",
+          "outcome": "na",
+          "currency": null,
+          "note": null,
+          "week": 1,
+          "payoff": 0.0,
+          "steps": []
+        },
+        {
+          "id": "story-105",
+          "kind": "play",
+          "anchor": "eviction-night",
+          "source": "their-word",
+          "response": "expired",
+          "outcome": "na",
+          "currency": "trust",
+          "note": "declined",
+          "week": 1,
+          "payoff": 0.0,
+          "steps": []
+        },
+        {
+          "id": "read-2",
+          "kind": "read",
+          "anchor": "EvictionNight",
+          "source": null,
+          "response": "ignored",
+          "outcome": "na",
+          "currency": null,
+          "note": null,
+          "week": 2,
+          "payoff": 0.0,
+          "steps": []
+        }
+      ],
+      "competitions": [
+        {
+          "week": 1,
+          "field": 8,
+          "placement": 1,
+          "kind": "HoH",
+          "entry": "played",
+          "performance": 0.5,
+          "expectedWin": 0.18644831497335343
+        },
+        {
+          "week": 1,
+          "field": 6,
+          "placement": 2,
+          "kind": "Veto",
+          "entry": "played",
+          "performance": 0.5,
+          "expectedWin": 0.11209971061667297
+        },
+        {
+          "week": 2,
+          "field": 6,
+          "placement": 0,
+          "kind": "HoH",
+          "entry": "watched",
+          "performance": 0.0,
+          "expectedWin": 0.0
+        },
+        {
+          "week": 2,
+          "field": 6,
+          "placement": 1,
+          "kind": "Veto",
+          "entry": "played",
+          "performance": 0.5,
+          "expectedWin": 0.14898945830605881
+        },
+        {
+          "week": 3,
+          "field": 5,
+          "placement": 1,
+          "kind": "HoH",
+          "entry": "played",
+          "performance": 0.5,
+          "expectedWin": 0.177063113163003
+        },
+        {
+          "week": 3,
+          "field": 6,
+          "placement": 3,
+          "kind": "Veto",
+          "entry": "played",
+          "performance": 0.5,
+          "expectedWin": 0.12430557001359878
+        }
+      ],
+      "power": [
+        {
+          "week": 1,
+          "hohId": "player",
+          "vetoHolderId": "dr-will-kirby",
+          "savedId": "dr-will-kirby",
+          "replacementId": "derrick-levasseur",
+          "evicteeId": "derrick-levasseur",
+          "backdoorTargetId": null,
+          "backdoorResult": null,
+          "vetoUsed": true,
+          "nominees": [
+            "dan-gheesling",
+            "derrick-levasseur"
+          ],
+          "tally": [
+            1,
+            4
+          ]
+        },
+        {
+          "week": 2,
+          "hohId": "dan-gheesling",
+          "vetoHolderId": "player",
+          "savedId": "vanessa-rousso",
+          "replacementId": "janelle-pierzina",
+          "evicteeId": "dr-will-kirby",
+          "backdoorTargetId": "player",
+          "backdoorResult": "missed",
+          "vetoUsed": true,
+          "nominees": [
+            "dr-will-kirby",
+            "janelle-pierzina"
+          ],
+          "tally": [
+            4,
+            0
+          ]
+        },
+        {
+          "week": 3,
+          "hohId": "player",
+          "vetoHolderId": "dan-gheesling",
+          "savedId": "dan-gheesling",
+          "replacementId": "cody-calafiore",
+          "evicteeId": null,
+          "backdoorTargetId": null,
+          "backdoorResult": null,
+          "vetoUsed": true,
+          "nominees": [],
+          "tally": []
+        }
+      ],
+      "ballots": [
+        {
+          "week": 2,
+          "voterId": "player",
+          "targetId": "dr-will-kirby",
+          "readBefore": null,
+          "correct": false
+        }
+      ],
+      "claims": [],
+      "alliances": [
+        {
+          "id": "alliance-npc-271",
+          "why": "npc",
+          "startedWeek": 3,
+          "endedWeek": 0
+        }
+      ],
+      "standings": [
+        {
+          "week": 1,
+          "fromId": "derrick-levasseur",
+          "toId": "player",
+          "source": "juror",
+          "score": -16.0
+        },
+        {
+          "week": 2,
+          "fromId": "dr-will-kirby",
+          "toId": "player",
+          "source": "juror",
+          "score": -6.0
+        }
+      ],
+      "replies": [],
+      "calls": [],
+      "dropped": 0,
+      "plans": []
+    },
+    "readRulesStartWeek": 1,
+    "leverRulesStartWeek": 1,
+    "weekRulesStartWeek": 1,
+    "windowActions": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "economyRulesVersion": 1,
+    "moveInExtrasSpent": 0,
+    "agencyRulesStartWeek": 1,
+    "finaleRulesStartWeek": 1,
+    "commitmentRulesStartWeek": 1,
+    "unifiedCommitmentRulesVersion": 2,
+    "unifiedCommitments": [
+      {
+        "id": "promise-npc-62",
+        "kind": "vote",
+        "sourcePolicy": "promise",
+        "origin": "npc-promise",
+        "makerId": "dan-gheesling",
+        "beneficiaryId": "cody-calafiore",
+        "reciprocal": false,
+        "createdWeek": 1,
+        "expiresWeek": 1,
+        "status": "expired",
+        "settledWeek": 0,
+        "brokenById": null,
+        "trustImpact": "medium",
+        "linkedCommitmentId": null,
+        "settlementEffectKey": null,
+        "targetId": "derrick-levasseur",
+        "subtype": null,
+        "voteBindingWeek": 1,
+        "voteFirstRevealWeek": 1,
+        "conditionalVeto": null
+      },
+      {
+        "id": "promise-npc-64",
+        "kind": "vote",
+        "sourcePolicy": "promise",
+        "origin": "npc-promise",
+        "makerId": "derrick-levasseur",
+        "beneficiaryId": "cody-calafiore",
+        "reciprocal": false,
+        "createdWeek": 1,
+        "expiresWeek": 1,
+        "status": "expired",
+        "settledWeek": 0,
+        "brokenById": null,
+        "trustImpact": "medium",
+        "linkedCommitmentId": null,
+        "settlementEffectKey": null,
+        "targetId": "dan-gheesling",
+        "subtype": null,
+        "voteBindingWeek": 1,
+        "voteFirstRevealWeek": 1,
+        "conditionalVeto": null
+      },
+      {
+        "id": "promise-npc-74",
+        "kind": "vote",
+        "sourcePolicy": "promise",
+        "origin": "npc-promise",
+        "makerId": "derrick-levasseur",
+        "beneficiaryId": "danielle-reyes",
+        "reciprocal": false,
+        "createdWeek": 1,
+        "expiresWeek": 1,
+        "status": "expired",
+        "settledWeek": 0,
+        "brokenById": null,
+        "trustImpact": "medium",
+        "linkedCommitmentId": null,
+        "settlementEffectKey": null,
+        "targetId": "dan-gheesling",
+        "subtype": null,
+        "voteBindingWeek": 1,
+        "voteFirstRevealWeek": 1,
+        "conditionalVeto": null
+      },
+      {
+        "id": "promise-npc-175",
+        "kind": "vote",
+        "sourcePolicy": "promise",
+        "origin": "npc-promise",
+        "makerId": "dr-will-kirby",
+        "beneficiaryId": "cody-calafiore",
+        "reciprocal": false,
+        "createdWeek": 2,
+        "expiresWeek": 2,
+        "status": "expired",
+        "settledWeek": 0,
+        "brokenById": null,
+        "trustImpact": "medium",
+        "linkedCommitmentId": null,
+        "settlementEffectKey": null,
+        "targetId": "janelle-pierzina",
+        "subtype": null,
+        "voteBindingWeek": 2,
+        "voteFirstRevealWeek": 2,
+        "conditionalVeto": null
+      },
+      {
+        "id": "promise-npc-177",
+        "kind": "vote",
+        "sourcePolicy": "promise",
+        "origin": "npc-promise",
+        "makerId": "janelle-pierzina",
+        "beneficiaryId": "cody-calafiore",
+        "reciprocal": false,
+        "createdWeek": 2,
+        "expiresWeek": 2,
+        "status": "expired",
+        "settledWeek": 0,
+        "brokenById": null,
+        "trustImpact": "medium",
+        "linkedCommitmentId": null,
+        "settlementEffectKey": null,
+        "targetId": "dr-will-kirby",
+        "subtype": null,
+        "voteBindingWeek": 2,
+        "voteFirstRevealWeek": 2,
+        "conditionalVeto": null
+      },
+      {
+        "id": "promise-npc-179",
+        "kind": "safety",
+        "sourcePolicy": "promise",
+        "origin": "npc-promise",
+        "makerId": "cody-calafiore",
+        "beneficiaryId": "dan-gheesling",
+        "reciprocal": false,
+        "createdWeek": 2,
+        "expiresWeek": 3,
+        "status": "active",
+        "settledWeek": 0,
+        "brokenById": null,
+        "trustImpact": "medium",
+        "linkedCommitmentId": null,
+        "settlementEffectKey": null,
+        "targetId": null,
+        "subtype": null,
+        "voteBindingWeek": 0,
+        "voteFirstRevealWeek": 0,
+        "conditionalVeto": null
+      },
+      {
+        "id": "promise-npc-181",
+        "kind": "safety",
+        "sourcePolicy": "promise",
+        "origin": "npc-promise",
+        "makerId": "danielle-reyes",
+        "beneficiaryId": "dan-gheesling",
+        "reciprocal": false,
+        "createdWeek": 2,
+        "expiresWeek": 3,
+        "status": "active",
+        "settledWeek": 0,
+        "brokenById": null,
+        "trustImpact": "medium",
+        "linkedCommitmentId": null,
+        "settlementEffectKey": null,
+        "targetId": null,
+        "subtype": null,
+        "voteBindingWeek": 0,
+        "voteFirstRevealWeek": 0,
+        "conditionalVeto": null
+      },
+      {
+        "id": "promise-npc-183",
+        "kind": "safety",
+        "sourcePolicy": "promise",
+        "origin": "npc-promise",
+        "makerId": "vanessa-rousso",
+        "beneficiaryId": "dan-gheesling",
+        "reciprocal": false,
+        "createdWeek": 2,
+        "expiresWeek": 3,
+        "status": "active",
+        "settledWeek": 0,
+        "brokenById": null,
+        "trustImpact": "medium",
+        "linkedCommitmentId": null,
+        "settlementEffectKey": null,
+        "targetId": null,
+        "subtype": null,
+        "voteBindingWeek": 0,
+        "voteFirstRevealWeek": 0,
+        "conditionalVeto": null
+      },
+      {
+        "id": "promise-npc-296",
+        "kind": "vote",
+        "sourcePolicy": "promise",
+        "origin": "npc-promise",
+        "makerId": "janelle-pierzina",
+        "beneficiaryId": "danielle-reyes",
+        "reciprocal": false,
+        "createdWeek": 3,
+        "expiresWeek": 3,
+        "status": "active",
+        "settledWeek": 0,
+        "brokenById": null,
+        "trustImpact": "medium",
+        "linkedCommitmentId": null,
+        "settlementEffectKey": null,
+        "targetId": "cody-calafiore",
+        "subtype": null,
+        "voteBindingWeek": 3,
+        "voteFirstRevealWeek": 3,
+        "conditionalVeto": null
+      },
+      {
+        "id": "promise-npc-298",
+        "kind": "vote",
+        "sourcePolicy": "promise",
+        "origin": "npc-promise",
+        "makerId": "cody-calafiore",
+        "beneficiaryId": "vanessa-rousso",
+        "reciprocal": false,
+        "createdWeek": 3,
+        "expiresWeek": 3,
+        "status": "active",
+        "settledWeek": 0,
+        "brokenById": null,
+        "trustImpact": "medium",
+        "linkedCommitmentId": null,
+        "settlementEffectKey": null,
+        "targetId": "janelle-pierzina",
+        "subtype": null,
+        "voteBindingWeek": 3,
+        "voteFirstRevealWeek": 3,
+        "conditionalVeto": null
+      },
+      {
+        "id": "promise-npc-315",
+        "kind": "vote",
+        "sourcePolicy": "promise",
+        "origin": "npc-promise",
+        "makerId": "janelle-pierzina",
+        "beneficiaryId": "vanessa-rousso",
+        "reciprocal": false,
+        "createdWeek": 3,
+        "expiresWeek": 3,
+        "status": "active",
+        "settledWeek": 0,
+        "brokenById": null,
+        "trustImpact": "medium",
+        "linkedCommitmentId": null,
+        "settlementEffectKey": null,
+        "targetId": "cody-calafiore",
+        "subtype": null,
+        "voteBindingWeek": 3,
+        "voteFirstRevealWeek": 3,
+        "conditionalVeto": null
+      }
+    ],
+    "unifiedHearingRulesVersion": 1,
+    "unifiedHearingEvidence": [],
+    "unifiedHearingReceipts": [],
+    "unifiedVoteReveals": [
+      {
+        "week": 1,
+        "ballots": [
+          {
+            "voterId": "dr-will-kirby",
+            "targetId": "derrick-levasseur"
+          },
+          {
+            "voterId": "janelle-pierzina",
+            "targetId": "derrick-levasseur"
+          },
+          {
+            "voterId": "cody-calafiore",
+            "targetId": "derrick-levasseur"
+          },
+          {
+            "voterId": "danielle-reyes",
+            "targetId": "derrick-levasseur"
+          },
+          {
+            "voterId": "vanessa-rousso",
+            "targetId": "dan-gheesling"
+          }
+        ]
+      },
+      {
+        "week": 2,
+        "ballots": [
+          {
+            "voterId": "player",
+            "targetId": "dr-will-kirby"
+          },
+          {
+            "voterId": "cody-calafiore",
+            "targetId": "dr-will-kirby"
+          },
+          {
+            "voterId": "danielle-reyes",
+            "targetId": "dr-will-kirby"
+          },
+          {
+            "voterId": "vanessa-rousso",
+            "targetId": "dr-will-kirby"
+          }
+        ]
+      }
+    ],
+    "competitionScores": [
+      {
+        "contestantId": "player",
+        "score": 7.2763580394163734
+      },
+      {
+        "contestantId": "dan-gheesling",
+        "score": 8.4447869957564414
+      },
+      {
+        "contestantId": "janelle-pierzina",
+        "score": 7.0617046008771291
+      },
+      {
+        "contestantId": "cody-calafiore",
+        "score": 6.6731547321472329
+      },
+      {
+        "contestantId": "danielle-reyes",
+        "score": 5.7592974832281474
+      },
+      {
+        "contestantId": "vanessa-rousso",
+        "score": 7.6469819919392465
+      }
+    ],
+    "events": [
+      {
+        "sequence": 1,
+        "week": 1,
+        "phase": 0,
+        "kind": "arrival",
+        "text": "Eight houseguests, one new game, and every one of them has played before. Meet the cast, decide who to trust, and prepare for the first competition.",
+        "audienceIds": [
+          "player",
+          "dan-gheesling",
+          "dr-will-kirby",
+          "derrick-levasseur",
+          "janelle-pierzina",
+          "cody-calafiore",
+          "danielle-reyes",
+          "vanessa-rousso"
+        ]
+      },
+      {
+        "sequence": 2,
+        "week": 1,
+        "phase": 0,
+        "kind": "conversation",
+        "text": "You and Cody Calafiore talked about the game.",
+        "audienceIds": [
+          "player",
+          "cody-calafiore"
+        ]
+      },
+      {
+        "sequence": 3,
+        "week": 1,
+        "phase": 0,
+        "kind": "story-lore",
+        "text": "You learned something about Cody Calafiore: Picks one person to trust completely, and wins beside them.",
+        "audienceIds": [
+          "player",
+          "cody-calafiore"
+        ]
+      },
+      {
+        "sequence": 4,
+        "week": 1,
+        "phase": 0,
+        "kind": "conversation",
+        "text": "You and Dan Gheesling talked about the game.",
+        "audienceIds": [
+          "player",
+          "dan-gheesling"
+        ]
+      },
+      {
+        "sequence": 5,
+        "week": 1,
+        "phase": 0,
+        "kind": "story-lore",
+        "text": "You learned something about Dan Gheesling: Gets people to carry his game for him, and lets them think it was their idea.",
+        "audienceIds": [
+          "player",
+          "dan-gheesling"
+        ]
+      },
+      {
+        "sequence": 6,
+        "week": 1,
+        "phase": 1,
+        "kind": "phase",
+        "text": "Week 1 · HoH",
+        "audienceIds": []
+      },
+      {
+        "sequence": 7,
+        "week": 1,
+        "phase": 1,
+        "kind": "competition-definition",
+        "text": "pressure-cooker-v3 · Pressure Cooker · Endurance. Every 6 seconds, a 1.5 second pressure wave drains grip 70% faster while holding. The wave countdown lets you plan recovery. Full marks still require 19.5 seconds of effort.",
+        "audienceIds": []
+      },
+      {
+        "sequence": 8,
+        "week": 1,
+        "phase": 1,
+        "kind": "competition-standings",
+        "text": "Committed competition standings: 1. You 8.97; 2. Janelle Pierzina 6.38; 3. Cody Calafiore 5.95; 4. Danielle Reyes 5.77; 5. Dan Gheesling 4.41; 6. Derrick Levasseur 4.24; 7. Vanessa Rousso 3.83; 8. Dr. Will Kirby 3.78.",
+        "audienceIds": []
+      },
+      {
+        "sequence": 9,
+        "week": 1,
+        "phase": 1,
+        "kind": "have-nots",
+        "text": "This week's Have-Nots: Dr. Will Kirby and Vanessa Rousso. Slop, cold showers and the Have-Not room until the next Head of Household, and a point off their veto.",
+        "audienceIds": []
+      },
+      {
+        "sequence": 10,
+        "week": 1,
+        "phase": 1,
+        "kind": "competition-performance",
+        "text": "Played: performance 50%. Your weighted stats: physical 1.8; mental 0.6; endurance 3; social 0; luck 0.6. Chance +1.47 (sampled multiplier 1.245355); nominee 0; preparation 0; event 0; storyline 0; performance +1.5; rounding 0. Sum = 8.97. All displayed terms add to this committed score. Total player bonus +1.5. Zero performance can still win; full marks do not guarantee first place.",
+        "audienceIds": []
+      },
+      {
+        "sequence": 11,
+        "week": 1,
+        "phase": 1,
+        "kind": "competition",
+        "text": "Competition winner: You · Endurance.",
+        "audienceIds": []
+      },
+      {
+        "sequence": 12,
+        "week": 1,
+        "phase": 2,
+        "kind": "phase",
+        "text": "Week 1 · Nomination",
+        "audienceIds": []
+      },
+      {
+        "sequence": 15,
+        "week": 1,
+        "phase": 2,
+        "kind": "conversation",
+        "text": "Dan Gheesling came to see you before the nominations.",
+        "audienceIds": [
+          "player",
+          "dan-gheesling"
+        ]
+      },
+      {
+        "sequence": 18,
+        "week": 1,
+        "phase": 2,
+        "kind": "conversation",
+        "text": "Dr. Will Kirby came to see you before the nominations.",
+        "audienceIds": [
+          "player",
+          "dr-will-kirby"
+        ]
+      },
+      {
+        "sequence": 21,
+        "week": 1,
+        "phase": 2,
+        "kind": "conversation",
+        "text": "Derrick Levasseur came to see you before the nominations.",
+        "audienceIds": [
+          "player",
+          "derrick-levasseur"
+        ]
+      },
+      {
+        "sequence": 24,
+        "week": 1,
+        "phase": 2,
+        "kind": "conversation",
+        "text": "Janelle Pierzina came to see you before the nominations.",
+        "audienceIds": [
+          "player",
+          "janelle-pierzina"
+        ]
+      },
+      {
+        "sequence": 27,
+        "week": 1,
+        "phase": 2,
+        "kind": "conversation",
+        "text": "Cody Calafiore came to see you before the nominations.",
+        "audienceIds": [
+          "player",
+          "cody-calafiore"
+        ]
+      },
+      {
+        "sequence": 30,
+        "week": 1,
+        "phase": 2,
+        "kind": "conversation",
+        "text": "Danielle Reyes came to see you before the nominations.",
+        "audienceIds": [
+          "player",
+          "danielle-reyes"
+        ]
+      },
+      {
+        "sequence": 33,
+        "week": 1,
+        "phase": 2,
+        "kind": "conversation",
+        "text": "Vanessa Rousso came to see you before the nominations.",
+        "audienceIds": [
+          "player",
+          "vanessa-rousso"
+        ]
+      },
+      {
+        "sequence": 42,
+        "week": 1,
+        "phase": 2,
+        "kind": "conversation",
+        "text": "Cody Calafiore sought you out this week.",
+        "audienceIds": [
+          "player"
+        ]
+      },
+      {
+        "sequence": 43,
+        "week": 1,
+        "phase": 2,
+        "kind": "nomination",
+        "text": "You nominate Dan Gheesling and Dr. Will Kirby.",
+        "audienceIds": []
+      },
+      {
+        "sequence": 44,
+        "week": 1,
+        "phase": 3,
+        "kind": "phase",
+        "text": "Week 1 · VetoSelection",
+        "audienceIds": []
+      },
+      {
+        "sequence": 45,
+        "week": 1,
+        "phase": 3,
+        "kind": "veto-selection",
+        "text": "Veto players drawn: You, Dan Gheesling, Dr. Will Kirby, Derrick Levasseur, Cody Calafiore, Vanessa Rousso.",
+        "audienceIds": []
+      },
+      {
+        "sequence": 46,
+        "week": 1,
+        "phase": 4,
+        "kind": "phase",
+        "text": "Week 1 · Veto",
+        "audienceIds": []
+      },
+      {
+        "sequence": 47,
+        "week": 1,
+        "phase": 4,
+        "kind": "competition-definition",
+        "text": "houseguest-scramble-v4 · Houseguest Scramble · Social. Unscramble the first names of this season's houseguests by choosing their letters in order. A longer name scores more: 1.5 points for four letters, 2 for five or six, 2.5 for seven or eight.",
+        "audienceIds": []
+      },
+      {
+        "sequence": 48,
+        "week": 1,
+        "phase": 4,
+        "kind": "competition-standings",
+        "text": "Committed competition standings: 1. Dr. Will Kirby 7.24; 2. You 6.92; 3. Dan Gheesling 6.28; 4. Vanessa Rousso 4.83; 5. Cody Calafiore 4.19; 6. Derrick Levasseur 3.83.",
+        "audienceIds": []
+      },
+      {
+        "sequence": 49,
+        "week": 1,
+        "phase": 4,
+        "kind": "veto-prize",
+        "text": "You came second in the veto and won $5,000.",
+        "audienceIds": []
+      },
+      {
+        "sequence": 50,
+        "week": 1,
+        "phase": 4,
+        "kind": "veto-prize",
+        "text": "Derrick Levasseur finished last in the veto and takes a punishment: a banana suit until the eviction.",
+        "audienceIds": []
+      },
+      {
+        "sequence": 51,
+        "week": 1,
+        "phase": 4,
+        "kind": "competition-performance",
+        "text": "Played: performance 50%. Your weighted stats: physical 0; mental 1.2; endurance 0; social 3.6; luck 1.2. Chance -0.58 (sampled multiplier 0.903465); nominee 0; preparation 0; event 0; storyline 0; performance +1.5; rounding 0. Sum = 6.92. All displayed terms add to this committed score. Total player bonus +1.5. Zero performance can still win; full marks do not guarantee first place.",
+        "audienceIds": []
+      },
+      {
+        "sequence": 52,
+        "week": 1,
+        "phase": 4,
+        "kind": "competition",
+        "text": "Competition winner: Dr. Will Kirby · Social.",
+        "audienceIds": []
+      },
+      {
+        "sequence": 53,
+        "week": 1,
+        "phase": 5,
+        "kind": "phase",
+        "text": "Week 1 · VetoMeeting",
+        "audienceIds": []
+      },
+      {
+        "sequence": 60,
+        "week": 1,
+        "phase": 5,
+        "kind": "veto",
+        "text": "Dr. Will Kirby saves himself; Derrick Levasseur is the replacement nominee.",
+        "audienceIds": []
+      },
+      {
+        "sequence": 61,
+        "week": 1,
+        "phase": 6,
+        "kind": "phase",
+        "text": "Week 1 · Campaign",
+        "audienceIds": []
+      },
+      {
+        "sequence": 82,
+        "week": 1,
+        "phase": 6,
+        "kind": "campaign-close",
+        "text": "Campaigning has closed. The house votes privately to evict.",
+        "audienceIds": []
+      },
+      {
+        "sequence": 83,
+        "week": 1,
+        "phase": 7,
+        "kind": "phase",
+        "text": "Week 1 · Eviction",
+        "audienceIds": []
+      },
+      {
+        "sequence": 84,
+        "week": 1,
+        "phase": 7,
+        "kind": "block-speech:strategic",
+        "text": "I'd like to stay, and I'd rather ask you honestly than work you for it. That's my speech. Keeping me gives you another option in this game. Think about what helps your next move.",
+        "audienceIds": [
+          "dan-gheesling",
+          "player",
+          "dr-will-kirby",
+          "derrick-levasseur",
+          "janelle-pierzina",
+          "cody-calafiore",
+          "danielle-reyes",
+          "vanessa-rousso"
+        ]
+      },
+      {
+        "sequence": 85,
+        "week": 1,
+        "phase": 7,
+        "kind": "block-speech:strategic",
+        "text": "I'd like to stay, and I'd rather ask you honestly than work you for it. That's my speech. Keeping me gives you another option in this game. Think about what helps your next move.",
+        "audienceIds": [
+          "derrick-levasseur",
+          "player",
+          "dan-gheesling",
+          "dr-will-kirby",
+          "janelle-pierzina",
+          "cody-calafiore",
+          "danielle-reyes",
+          "vanessa-rousso"
+        ]
+      },
+      {
+        "sequence": 86,
+        "week": 1,
+        "phase": 7,
+        "kind": "eviction-stage",
+        "text": "The house votes privately to evict.",
+        "audienceIds": []
+      },
+      {
+        "sequence": 87,
+        "week": 1,
+        "phase": 7,
+        "kind": "private-vote",
+        "text": "Your eviction vote was recorded.",
+        "audienceIds": [
+          "dr-will-kirby"
+        ]
+      },
+      {
+        "sequence": 88,
+        "week": 1,
+        "phase": 7,
+        "kind": "private-vote",
+        "text": "Your eviction vote was recorded.",
+        "audienceIds": [
+          "janelle-pierzina"
+        ]
+      },
+      {
+        "sequence": 89,
+        "week": 1,
+        "phase": 7,
+        "kind": "private-vote",
+        "text": "Your eviction vote was recorded.",
+        "audienceIds": [
+          "cody-calafiore"
+        ]
+      },
+      {
+        "sequence": 90,
+        "week": 1,
+        "phase": 7,
+        "kind": "private-vote",
+        "text": "Your eviction vote was recorded.",
+        "audienceIds": [
+          "danielle-reyes"
+        ]
+      },
+      {
+        "sequence": 91,
+        "week": 1,
+        "phase": 7,
+        "kind": "private-vote",
+        "text": "Your eviction vote was recorded.",
+        "audienceIds": [
+          "vanessa-rousso"
+        ]
+      },
+      {
+        "sequence": 92,
+        "week": 1,
+        "phase": 7,
+        "kind": "eviction",
+        "text": "Derrick Levasseur is evicted and joins the jury. By a vote of 4 to 1.",
+        "audienceIds": []
+      },
+      {
+        "sequence": 93,
+        "week": 1,
+        "phase": 7,
+        "kind": "vote-reveal",
+        "text": "Dr. Will Kirby voted to evict Derrick Levasseur. Keeping Dan Gheesling is better for my game right now.",
+        "audienceIds": [
+          "dr-will-kirby"
+        ]
+      },
+      {
+        "sequence": 94,
+        "week": 1,
+        "phase": 7,
+        "kind": "vote-reveal",
+        "text": "Janelle Pierzina voted to evict Derrick Levasseur. Keeping Dan Gheesling is better for my game right now.",
+        "audienceIds": [
+          "janelle-pierzina"
+        ]
+      },
+      {
+        "sequence": 95,
+        "week": 1,
+        "phase": 7,
+        "kind": "vote-reveal",
+        "text": "Cody Calafiore voted to evict Derrick Levasseur. Keeping Dan Gheesling is better for my game right now.",
+        "audienceIds": [
+          "cody-calafiore"
+        ]
+      },
+      {
+        "sequence": 96,
+        "week": 1,
+        "phase": 7,
+        "kind": "vote-reveal",
+        "text": "Danielle Reyes voted to evict Derrick Levasseur. Keeping Dan Gheesling is better for my game right now.",
+        "audienceIds": [
+          "danielle-reyes"
+        ]
+      },
+      {
+        "sequence": 97,
+        "week": 1,
+        "phase": 7,
+        "kind": "vote-reveal",
+        "text": "Vanessa Rousso voted to evict Dan Gheesling. Dan Gheesling is the bigger threat and needs to go.",
+        "audienceIds": [
+          "vanessa-rousso"
+        ]
+      },
+      {
+        "sequence": 98,
+        "week": 1,
+        "phase": 7,
+        "kind": "diary-invitation",
+        "text": "A private post-eviction reflection is ready in the Diary Room. You may also skip it.",
+        "audienceIds": [
+          "player"
+        ]
+      },
+      {
+        "sequence": 99,
+        "week": 1,
+        "phase": 7,
+        "kind": "diary-skip",
+        "text": "You skipped this private reflection. No persona or impression change was applied.",
+        "audienceIds": [
+          "player"
+        ]
+      },
+      {
+        "sequence": 100,
+        "week": 1,
+        "phase": 0,
+        "kind": "phase",
+        "text": "Week 1 · Social",
+        "audienceIds": []
+      },
+      {
+        "sequence": 102,
+        "week": 1,
+        "phase": 0,
+        "kind": "story-thread",
+        "text": "Your bond with Cody Calafiore: Cody Calafiore could be the one person in this house you trust to the end.",
+        "audienceIds": [
+          "player"
+        ]
+      },
+      {
+        "sequence": 104,
+        "week": 1,
+        "phase": 0,
+        "kind": "story-thread",
+        "text": "Your rivalry with Dan Gheesling: Dan Gheesling has had it in for you from the start. It ends in peace or a showdown.",
+        "audienceIds": [
+          "player"
+        ]
+      },
+      {
+        "sequence": 107,
+        "week": 1,
+        "phase": 0,
+        "kind": "story",
+        "text": "Their Word. A play is on offer.",
+        "audienceIds": [
+          "player"
+        ]
+      },
+      {
+        "sequence": 108,
+        "week": 1,
+        "phase": 0,
+        "kind": "story-thread",
+        "text": "Your bond with Cody Calafiore: chapter 1, Their Word.",
+        "audienceIds": [
+          "player"
+        ]
+      },
+      {
+        "sequence": 111,
+        "week": 1,
+        "phase": 0,
+        "kind": "story",
+        "text": "Overheard Conversation. You walk into the storage room and overhear a houseguest telling a houseguest that you're their next target. They haven't noticed you yet.",
+        "audienceIds": [
+          "player"
+        ]
+      },
+      {
+        "sequence": 112,
+        "week": 1,
+        "phase": 0,
+        "kind": "house-ambient",
+        "text": "Cody Calafiore and Dan Gheesling are whispering in the dining table. They stop when they see you.",
+        "audienceIds": [
+          "player"
+        ]
+      },
+      {
+        "sequence": 121,
+        "week": 1,
+        "phase": 0,
+        "kind": "story-outcome",
+        "text": "Their Word: You left it for now.",
+        "audienceIds": [
+          "player",
+          "cody-calafiore"
+        ]
+      },
+      {
+        "sequence": 122,
+        "week": 1,
+        "phase": 0,
+        "kind": "story-outcome",
+        "text": "Overheard Conversation: You let it pass.",
+        "audienceIds": [
+          "player",
+          "vanessa-rousso",
+          "cody-calafiore"
+        ]
+      },
+      {
+        "sequence": 123,
+        "week": 2,
+        "phase": 1,
+        "kind": "phase",
+        "text": "Week 2 · HoH",
+        "audienceIds": []
+      },
+      {
+        "sequence": 124,
+        "week": 2,
+        "phase": 1,
+        "kind": "competition-definition",
+        "text": "first-impressions-v3 · First Impressions · Mental. Study all cards during a 3 second preview, then match eight pairs in 24 seconds. The preview begins only after the arena is ready.",
+        "audienceIds": []
+      },
+      {
+        "sequence": 125,
+        "week": 2,
+        "phase": 1,
+        "kind": "competition-standings",
+        "text": "Committed competition standings: 1. Dan Gheesling 8.33; 2. Danielle Reyes 6.98; 3. Vanessa Rousso 5.99; 4. Janelle Pierzina 4.89; 5. Dr. Will Kirby 4.40; 6. Cody Calafiore 3.54.",
+        "audienceIds": []
+      },
+      {
+        "sequence": 126,
+        "week": 2,
+        "phase": 1,
+        "kind": "have-nots",
+        "text": "This week's Have-Nots: Cody Calafiore and Dr. Will Kirby. Slop, cold showers and the Have-Not room until the next Head of Household, and a point off their veto.",
+        "audienceIds": []
+      },
+      {
+        "sequence": 127,
+        "week": 2,
+        "phase": 1,
+        "kind": "competition",
+        "text": "Competition winner: Dan Gheesling · Mental.",
+        "audienceIds": []
+      },
+      {
+        "sequence": 128,
+        "week": 2,
+        "phase": 2,
+        "kind": "phase",
+        "text": "Week 2 · Nomination",
+        "audienceIds": []
+      },
+      {
+        "sequence": 139,
+        "week": 2,
+        "phase": 2,
+        "kind": "story-thread",
+        "text": "Your bond with Cody Calafiore: Their Word never came to anything.",
+        "audienceIds": [
+          "player"
+        ]
+      },
+      {
+        "sequence": 142,
+        "week": 2,
+        "phase": 2,
+        "kind": "story",
+        "text": "The Target on Their Back. A past winner knows the house is coming for them.",
+        "audienceIds": [
+          "player"
+        ]
+      },
+      {
+        "sequence": 149,
+        "week": 2,
+        "phase": 2,
+        "kind": "story-outcome",
+        "text": "The Target on Their Back: You kept it vague.",
+        "audienceIds": [
+          "player",
+          "cody-calafiore"
+        ]
+      },
+      {
+        "sequence": 150,
+        "week": 2,
+        "phase": 2,
+        "kind": "nomination",
+        "text": "Dan Gheesling nominates Vanessa Rousso and Dr. Will Kirby.",
+        "audienceIds": []
+      },
+      {
+        "sequence": 152,
+        "week": 2,
+        "phase": 3,
+        "kind": "phase",
+        "text": "Week 2 · VetoSelection",
+        "audienceIds": []
+      },
+      {
+        "sequence": 157,
+        "week": 2,
+        "phase": 3,
+        "kind": "veto-selection",
+        "text": "Veto players drawn: You, Dan Gheesling, Dr. Will Kirby, Janelle Pierzina, Danielle Reyes, Vanessa Rousso.",
+        "audienceIds": []
+      },
+      {
+        "sequence": 158,
+        "week": 2,
+        "phase": 4,
+        "kind": "phase",
+        "text": "Week 2 · Veto",
+        "audienceIds": []
+      },
+      {
+        "sequence": 159,
+        "week": 2,
+        "phase": 4,
+        "kind": "competition-definition",
+        "text": "switchback-signals-v3 · Switchback Signals · Skill. Targets alternate between 0.65 and 1.15 second windows. The current target shows its full window; every target counts equally.",
+        "audienceIds": []
+      },
+      {
+        "sequence": 160,
+        "week": 2,
+        "phase": 4,
+        "kind": "competition-standings",
+        "text": "Committed competition standings: 1. You 8.95; 2. Vanessa Rousso 7.79; 3. Danielle Reyes 6.58; 4. Janelle Pierzina 5.64; 5. Dan Gheesling 5.30; 6. Dr. Will Kirby 4.81.",
+        "audienceIds": []
+      },
+      {
+        "sequence": 161,
+        "week": 2,
+        "phase": 4,
+        "kind": "veto-prize",
+        "text": "Vanessa Rousso came second in the veto and won $5,000.",
+        "audienceIds": []
+      },
+      {
+        "sequence": 162,
+        "week": 2,
+        "phase": 4,
+        "kind": "veto-prize",
+        "text": "Dr. Will Kirby finished last in the veto and takes a punishment: a banana suit until the eviction.",
+        "audienceIds": []
+      },
+      {
+        "sequence": 163,
+        "week": 2,
+        "phase": 4,
+        "kind": "competition-performance",
+        "text": "Played: performance 50%. Your weighted stats: physical 1.8; mental 1.8; endurance 0.6; social 0; luck 1.8. Chance +1.45 (sampled multiplier 1.241312); nominee 0; preparation 0; event 0; storyline 0; performance +1.5; rounding 0. Sum = 8.95. All displayed terms add to this committed score. Total player bonus +1.5. Zero performance can still win; full marks do not guarantee first place.",
+        "audienceIds": []
+      },
+      {
+        "sequence": 164,
+        "week": 2,
+        "phase": 4,
+        "kind": "competition",
+        "text": "Competition winner: You · Skill.",
+        "audienceIds": []
+      },
+      {
+        "sequence": 165,
+        "week": 2,
+        "phase": 5,
+        "kind": "phase",
+        "text": "Week 2 · VetoMeeting",
+        "audienceIds": []
+      },
+      {
+        "sequence": 168,
+        "week": 2,
+        "phase": 5,
+        "kind": "conversation",
+        "text": "Dan Gheesling sought you out this week.",
+        "audienceIds": [
+          "player"
+        ]
+      },
+      {
+        "sequence": 173,
+        "week": 2,
+        "phase": 5,
+        "kind": "veto",
+        "text": "You save Vanessa Rousso; Janelle Pierzina is the replacement nominee.",
+        "audienceIds": []
+      },
+      {
+        "sequence": 174,
+        "week": 2,
+        "phase": 6,
+        "kind": "phase",
+        "text": "Week 2 · Campaign",
+        "audienceIds": []
+      },
+      {
+        "sequence": 186,
+        "week": 2,
+        "phase": 6,
+        "kind": "story",
+        "text": "You Were the Target. One of this week's pawns tells you who the week was really aimed at.",
+        "audienceIds": [
+          "player"
+        ]
+      },
+      {
+        "sequence": 191,
+        "week": 2,
+        "phase": 6,
+        "kind": "campaign",
+        "text": "Dr. Will Kirby came to you asking to stay this week.",
+        "audienceIds": [
+          "player"
+        ]
+      },
+      {
+        "sequence": 197,
+        "week": 2,
+        "phase": 6,
+        "kind": "gossip",
+        "text": "You found out Vanessa Rousso has been talking about you to Cody Calafiore.",
+        "audienceIds": [
+          "player"
+        ]
+      },
+      {
+        "sequence": 202,
+        "week": 2,
+        "phase": 6,
+        "kind": "story-outcome",
+        "text": "You Were the Target: You filed it away.",
+        "audienceIds": [
+          "player",
+          "dan-gheesling",
+          "vanessa-rousso",
+          "dr-will-kirby"
+        ]
+      },
+      {
+        "sequence": 203,
+        "week": 2,
+        "phase": 6,
+        "kind": "campaign-close",
+        "text": "Campaigning has closed. The house votes privately to evict.",
+        "audienceIds": []
+      },
+      {
+        "sequence": 204,
+        "week": 2,
+        "phase": 7,
+        "kind": "phase",
+        "text": "Week 2 · Eviction",
+        "audienceIds": []
+      },
+      {
+        "sequence": 205,
+        "week": 2,
+        "phase": 7,
+        "kind": "block-speech:emotional",
+        "text": "I'd like to stay. I've played fair and I'll keep playing fair. I'm asking you to remember the person you have lived with, and give me another week.",
+        "audienceIds": [
+          "dr-will-kirby",
+          "player",
+          "dan-gheesling",
+          "janelle-pierzina",
+          "cody-calafiore",
+          "danielle-reyes",
+          "vanessa-rousso"
+        ]
+      },
+      {
+        "sequence": 206,
+        "week": 2,
+        "phase": 7,
+        "kind": "block-speech:emotional",
+        "text": "I'd like to stay. I've played fair and I'll keep playing fair. I'm asking you to remember the person you have lived with, and give me another week.",
+        "audienceIds": [
+          "janelle-pierzina",
+          "player",
+          "dan-gheesling",
+          "dr-will-kirby",
+          "cody-calafiore",
+          "danielle-reyes",
+          "vanessa-rousso"
+        ]
+      },
+      {
+        "sequence": 207,
+        "week": 2,
+        "phase": 7,
+        "kind": "eviction-stage",
+        "text": "The house votes privately to evict.",
+        "audienceIds": []
+      },
+      {
+        "sequence": 208,
+        "week": 2,
+        "phase": 7,
+        "kind": "private-vote",
+        "text": "Your eviction vote was recorded.",
+        "audienceIds": [
+          "player"
+        ]
+      },
+      {
+        "sequence": 209,
+        "week": 2,
+        "phase": 7,
+        "kind": "private-vote",
+        "text": "Your eviction vote was recorded.",
+        "audienceIds": [
+          "cody-calafiore"
+        ]
+      },
+      {
+        "sequence": 210,
+        "week": 2,
+        "phase": 7,
+        "kind": "private-vote",
+        "text": "Your eviction vote was recorded.",
+        "audienceIds": [
+          "danielle-reyes"
+        ]
+      },
+      {
+        "sequence": 211,
+        "week": 2,
+        "phase": 7,
+        "kind": "private-vote",
+        "text": "Your eviction vote was recorded.",
+        "audienceIds": [
+          "vanessa-rousso"
+        ]
+      },
+      {
+        "sequence": 212,
+        "week": 2,
+        "phase": 7,
+        "kind": "eviction",
+        "text": "Dr. Will Kirby is evicted and joins the jury. By a vote of 4 to 0.",
+        "audienceIds": []
+      },
+      {
+        "sequence": 213,
+        "week": 2,
+        "phase": 7,
+        "kind": "vote-reveal",
+        "text": "You voted to evict Dr. Will Kirby. Player's decision",
+        "audienceIds": [
+          "player"
+        ]
+      },
+      {
+        "sequence": 214,
+        "week": 2,
+        "phase": 7,
+        "kind": "vote-reveal",
+        "text": "Cody Calafiore voted to evict Dr. Will Kirby. Dr. Will Kirby is the bigger threat and needs to go.",
+        "audienceIds": [
+          "cody-calafiore"
+        ]
+      },
+      {
+        "sequence": 215,
+        "week": 2,
+        "phase": 7,
+        "kind": "vote-reveal",
+        "text": "Danielle Reyes voted to evict Dr. Will Kirby. Dr. Will Kirby is the bigger threat and needs to go.",
+        "audienceIds": [
+          "danielle-reyes"
+        ]
+      },
+      {
+        "sequence": 216,
+        "week": 2,
+        "phase": 7,
+        "kind": "vote-reveal",
+        "text": "Vanessa Rousso voted to evict Dr. Will Kirby. Dr. Will Kirby is the bigger threat and needs to go.",
+        "audienceIds": [
+          "vanessa-rousso"
+        ]
+      },
+      {
+        "sequence": 217,
+        "week": 2,
+        "phase": 7,
+        "kind": "diary-invitation",
+        "text": "A private post-eviction reflection is ready in the Diary Room. You may also skip it.",
+        "audienceIds": [
+          "player"
+        ]
+      },
+      {
+        "sequence": 218,
+        "week": 2,
+        "phase": 7,
+        "kind": "diary-skip",
+        "text": "You skipped this private reflection. No persona or impression change was applied.",
+        "audienceIds": [
+          "player"
+        ]
+      },
+      {
+        "sequence": 219,
+        "week": 2,
+        "phase": 0,
+        "kind": "phase",
+        "text": "Week 2 · Social",
+        "audienceIds": []
+      },
+      {
+        "sequence": 222,
+        "week": 2,
+        "phase": 0,
+        "kind": "story",
+        "text": "Settle It. A play is on offer.",
+        "audienceIds": [
+          "player"
+        ]
+      },
+      {
+        "sequence": 223,
+        "week": 2,
+        "phase": 0,
+        "kind": "story-thread",
+        "text": "Your rivalry with Dan Gheesling: chapter 1, Settle It.",
+        "audienceIds": [
+          "player"
+        ]
+      },
+      {
+        "sequence": 226,
+        "week": 2,
+        "phase": 0,
+        "kind": "story",
+        "text": "Goodbye Message. Record a goodbye message for the houseguest just evicted.",
+        "audienceIds": [
+          "player"
+        ]
+      },
+      {
+        "sequence": 233,
+        "week": 2,
+        "phase": 0,
+        "kind": "house-ambient",
+        "text": "Another restless night in the house.",
+        "audienceIds": [
+          "player"
+        ]
+      },
+      {
+        "sequence": 236,
+        "week": 2,
+        "phase": 0,
+        "kind": "conversation",
+        "text": "Danielle Reyes sought you out this week.",
+        "audienceIds": [
+          "player"
+        ]
+      },
+      {
+        "sequence": 237,
+        "week": 2,
+        "phase": 0,
+        "kind": "conversation",
+        "text": "You and Janelle Pierzina talked about the game.",
+        "audienceIds": [
+          "player",
+          "janelle-pierzina"
+        ]
+      },
+      {
+        "sequence": 238,
+        "week": 2,
+        "phase": 0,
+        "kind": "story-lore",
+        "text": "You learned something about Janelle Pierzina: Does not betray a ride-or-die.",
+        "audienceIds": [
+          "player",
+          "janelle-pierzina"
+        ]
+      },
+      {
+        "sequence": 241,
+        "week": 2,
+        "phase": 0,
+        "kind": "conversation",
+        "text": "You and Vanessa Rousso talked about the game.",
+        "audienceIds": [
+          "player",
+          "vanessa-rousso"
+        ]
+      },
+      {
+        "sequence": 242,
+        "week": 2,
+        "phase": 0,
+        "kind": "story-lore",
+        "text": "You learned something about Vanessa Rousso: Works out everyone's odds out loud, then bets against the version they showed her.",
+        "audienceIds": [
+          "player",
+          "vanessa-rousso"
+        ]
+      },
+      {
+        "sequence": 244,
+        "week": 2,
+        "phase": 0,
+        "kind": "story-outcome",
+        "text": "Settle It: You left it for now.",
+        "audienceIds": [
+          "player",
+          "dan-gheesling"
+        ]
+      },
+      {
+        "sequence": 245,
+        "week": 2,
+        "phase": 0,
+        "kind": "story-outcome",
+        "text": "Goodbye Message: You skipped it.",
+        "audienceIds": [
+          "player",
+          "dr-will-kirby"
+        ]
+      },
+      {
+        "sequence": 246,
+        "week": 3,
+        "phase": 1,
+        "kind": "phase",
+        "text": "Week 3 · HoH",
+        "audienceIds": []
+      },
+      {
+        "sequence": 247,
+        "week": 3,
+        "phase": 1,
+        "kind": "competition-definition",
+        "text": "word-scramble-v4 · Word Scramble · Social. Unscramble Big Brother words by choosing their letters in order. Longer words score more: 2 points for five or six letters, 2.5 for seven or eight, 3 for nine or more.",
+        "audienceIds": []
+      },
+      {
+        "sequence": 248,
+        "week": 3,
+        "phase": 1,
+        "kind": "competition-standings",
+        "text": "Committed competition standings: 1. You 8.32; 2. Vanessa Rousso 8.15; 3. Janelle Pierzina 6.68; 4. Danielle Reyes 6.10; 5. Cody Calafiore 4.70.",
+        "audienceIds": []
+      },
+      {
+        "sequence": 249,
+        "week": 3,
+        "phase": 1,
+        "kind": "have-nots",
+        "text": "This week's Have-Nots: Cody Calafiore and Danielle Reyes. Slop, cold showers and the Have-Not room until the next Head of Household, and a point off their veto.",
+        "audienceIds": []
+      },
+      {
+        "sequence": 250,
+        "week": 3,
+        "phase": 1,
+        "kind": "competition-performance",
+        "text": "Played: performance 50%. Your weighted stats: physical 0; mental 1.2; endurance 0; social 3.6; luck 1.2. Chance +0.82 (sampled multiplier 1.137361); nominee 0; preparation 0; event 0; storyline 0; performance +1.5; rounding 0. Sum = 8.32. All displayed terms add to this committed score. Total player bonus +1.5. Zero performance can still win; full marks do not guarantee first place.",
+        "audienceIds": []
+      },
+      {
+        "sequence": 251,
+        "week": 3,
+        "phase": 1,
+        "kind": "competition",
+        "text": "Competition winner: You · Social.",
+        "audienceIds": []
+      },
+      {
+        "sequence": 252,
+        "week": 3,
+        "phase": 2,
+        "kind": "phase",
+        "text": "Week 3 · Nomination",
+        "audienceIds": []
+      },
+      {
+        "sequence": 255,
+        "week": 3,
+        "phase": 2,
+        "kind": "conversation",
+        "text": "Dan Gheesling came to see you before the nominations.",
+        "audienceIds": [
+          "player",
+          "dan-gheesling"
+        ]
+      },
+      {
+        "sequence": 258,
+        "week": 3,
+        "phase": 2,
+        "kind": "conversation",
+        "text": "Janelle Pierzina came to see you before the nominations.",
+        "audienceIds": [
+          "player",
+          "janelle-pierzina"
+        ]
+      },
+      {
+        "sequence": 261,
+        "week": 3,
+        "phase": 2,
+        "kind": "conversation",
+        "text": "Cody Calafiore came to see you before the nominations.",
+        "audienceIds": [
+          "player",
+          "cody-calafiore"
+        ]
+      },
+      {
+        "sequence": 264,
+        "week": 3,
+        "phase": 2,
+        "kind": "conversation",
+        "text": "Danielle Reyes came to see you before the nominations.",
+        "audienceIds": [
+          "player",
+          "danielle-reyes"
+        ]
+      },
+      {
+        "sequence": 267,
+        "week": 3,
+        "phase": 2,
+        "kind": "conversation",
+        "text": "Vanessa Rousso came to see you before the nominations.",
+        "audienceIds": [
+          "player",
+          "vanessa-rousso"
+        ]
+      },
+      {
+        "sequence": 268,
+        "week": 3,
+        "phase": 2,
+        "kind": "story-thread",
+        "text": "Your rivalry with Dan Gheesling: Settle It never came to anything.",
+        "audienceIds": [
+          "player"
+        ]
+      },
+      {
+        "sequence": 270,
+        "week": 3,
+        "phase": 2,
+        "kind": "information",
+        "text": "Danielle Reyes told you Dan Gheesling is the biggest threat in this house.",
+        "audienceIds": [
+          "player"
+        ]
+      },
+      {
+        "sequence": 274,
+        "week": 3,
+        "phase": 2,
+        "kind": "nomination",
+        "text": "You nominate Dan Gheesling and Janelle Pierzina.",
+        "audienceIds": []
+      },
+      {
+        "sequence": 275,
+        "week": 3,
+        "phase": 3,
+        "kind": "phase",
+        "text": "Week 3 · VetoSelection",
+        "audienceIds": []
+      },
+      {
+        "sequence": 278,
+        "week": 3,
+        "phase": 3,
+        "kind": "confrontation",
+        "text": "Janelle Pierzina confronted you in front of the house.",
+        "audienceIds": [
+          "player"
+        ]
+      },
+      {
+        "sequence": 280,
+        "week": 3,
+        "phase": 3,
+        "kind": "veto-selection",
+        "text": "Everyone remaining in the house is eligible for the veto competition.",
+        "audienceIds": []
+      },
+      {
+        "sequence": 281,
+        "week": 3,
+        "phase": 4,
+        "kind": "phase",
+        "text": "Week 3 · Veto",
+        "audienceIds": []
+      },
+      {
+        "sequence": 282,
+        "week": 3,
+        "phase": 4,
+        "kind": "competition-definition",
+        "text": "roll-the-dice-v4 · Roll the Dice · Luck. Three dice, up to three rolls. Every re-roll replaces the roll you have, so keep a good one when you see it. Your kept total, 3 to 18, is your score.",
+        "audienceIds": []
+      },
+      {
+        "sequence": 283,
+        "week": 3,
+        "phase": 4,
+        "kind": "competition-standings",
+        "text": "Committed competition standings: 1. Dan Gheesling 8.44; 2. Vanessa Rousso 7.65; 3. You 7.28; 4. Janelle Pierzina 7.06; 5. Cody Calafiore 6.67; 6. Danielle Reyes 5.76.",
+        "audienceIds": []
+      },
+      {
+        "sequence": 284,
+        "week": 3,
+        "phase": 4,
+        "kind": "veto-prize",
+        "text": "Vanessa Rousso came second in the veto and won a Have-Not pass.",
+        "audienceIds": []
+      },
+      {
+        "sequence": 285,
+        "week": 3,
+        "phase": 4,
+        "kind": "veto-prize",
+        "text": "Danielle Reyes finished last in the veto and takes a punishment: a banana suit until the eviction.",
+        "audienceIds": []
+      },
+      {
+        "sequence": 286,
+        "week": 3,
+        "phase": 4,
+        "kind": "competition-performance",
+        "text": "Played: performance 50%. Your weighted stats: physical 0; mental 0.6; endurance 0; social 0; luck 4.68 (6 squeezed to 5.2). Chance -0.52 (sampled multiplier 0.902162); second roll +1.01 (0.337648 × 3); nominee 0; preparation 0; event 0; storyline 0; performance +1.5; rounding +0.01. Sum = 7.28. All displayed terms add to this committed score. Total player bonus +1.5. Zero performance can still win; full marks do not guarantee first place.",
+        "audienceIds": []
+      },
+      {
+        "sequence": 287,
+        "week": 3,
+        "phase": 4,
+        "kind": "competition",
+        "text": "Competition winner: Dan Gheesling · Luck.",
+        "audienceIds": []
+      },
+      {
+        "sequence": 288,
+        "week": 3,
+        "phase": 5,
+        "kind": "phase",
+        "text": "Week 3 · VetoMeeting",
+        "audienceIds": []
+      },
+      {
+        "sequence": 294,
+        "week": 3,
+        "phase": 5,
+        "kind": "veto",
+        "text": "Dan Gheesling saves himself; Cody Calafiore is the replacement nominee.",
+        "audienceIds": []
+      },
+      {
+        "sequence": 295,
+        "week": 3,
+        "phase": 6,
+        "kind": "phase",
+        "text": "Week 3 · Campaign",
+        "audienceIds": []
+      },
+      {
+        "sequence": 310,
+        "week": 3,
+        "phase": 6,
+        "kind": "story",
+        "text": "The Fallout. The veto meeting has left a nominee barely holding it together.",
+        "audienceIds": [
+          "player"
+        ]
+      }
+    ],
+    "acceptedCommandIds": [
+      "generate-0001",
+      "generate-0002",
+      "generate-0003",
+      "generate-0004",
+      "generate-0005",
+      "generate-0006",
+      "generate-0007",
+      "generate-0008",
+      "generate-0009",
+      "generate-0010",
+      "generate-0011",
+      "generate-0012",
+      "generate-0013",
+      "generate-0014",
+      "generate-0015",
+      "generate-0016",
+      "generate-0017",
+      "generate-0018",
+      "generate-0019",
+      "generate-0020",
+      "generate-0021",
+      "generate-0022",
+      "generate-0023",
+      "generate-0024",
+      "generate-0025",
+      "generate-0026",
+      "generate-0027",
+      "generate-0028",
+      "generate-0029",
+      "generate-0030",
+      "generate-0031",
+      "generate-0032",
+      "generate-0033",
+      "generate-0034",
+      "generate-0035",
+      "generate-0036",
+      "generate-0037",
+      "generate-0038",
+      "generate-0039",
+      "generate-0040",
+      "generate-0041",
+      "generate-0042",
+      "generate-0043",
+      "generate-0044",
+      "generate-0045"
+    ],
+    "juryExchanges": [],
+    "juryQuestionIndex": 0,
+    "finalSpeeches": [],
+    "finalArgument": null,
+    "relationshipArcs": [
+      {
+        "npcId": "cody-calafiore",
+        "npcName": "Cody Calafiore",
+        "arcType": "rivalry",
+        "intensity": 81.0,
+        "escalationLevel": 3,
+        "weeklyHistory": [
+          {
+            "week": 1,
+            "delta": 4.0,
+            "reason": "Relationship changed by 4"
+          },
+          {
+            "week": 1,
+            "delta": 4.0,
+            "reason": "Cody Calafiore courted you before the nominations"
+          },
+          {
+            "week": 1,
+            "delta": 4.0,
+            "reason": "Cody Calafiore spent time with you"
+          },
+          {
+            "week": 2,
+            "delta": -15.0,
+            "reason": "Something Cody Calafiore heard about you"
+          },
+          {
+            "week": 2,
+            "delta": -15.0,
+            "reason": "Something Cody Calafiore heard about you"
+          },
+          {
+            "week": 3,
+            "delta": 4.0,
+            "reason": "Cody Calafiore courted you before the nominations"
+          },
+          {
+            "week": 3,
+            "delta": -8.0,
+            "reason": "Nominated Cody Calafiore in week 3"
+          },
+          {
+            "week": 3,
+            "delta": -20.0,
+            "reason": "You named Cody Calafiore as replacement nominee"
+          }
+        ]
+      },
+      {
+        "npcId": "dan-gheesling",
+        "npcName": "Dan Gheesling",
+        "arcType": "rivalry",
+        "intensity": 63.0,
+        "escalationLevel": 2,
+        "weeklyHistory": [
+          {
+            "week": 1,
+            "delta": 4.0,
+            "reason": "Relationship changed by 4"
+          },
+          {
+            "week": 1,
+            "delta": 4.0,
+            "reason": "Dan Gheesling courted you before the nominations"
+          },
+          {
+            "week": 1,
+            "delta": -15.0,
+            "reason": "Something Dan Gheesling heard about you"
+          },
+          {
+            "week": 1,
+            "delta": -8.0,
+            "reason": "Nominated Dan Gheesling in week 1"
+          },
+          {
+            "week": 2,
+            "delta": 4.0,
+            "reason": "Dan Gheesling spent time with you"
+          },
+          {
+            "week": 3,
+            "delta": 4.0,
+            "reason": "Dan Gheesling courted you before the nominations"
+          },
+          {
+            "week": 3,
+            "delta": -8.0,
+            "reason": "Nominated Dan Gheesling in week 3"
+          }
+        ]
+      },
+      {
+        "npcId": "dr-will-kirby",
+        "npcName": "Dr. Will Kirby",
+        "arcType": "neutral",
+        "intensity": 40.5,
+        "escalationLevel": 1,
+        "weeklyHistory": [
+          {
+            "week": 1,
+            "delta": 4.0,
+            "reason": "Dr. Will Kirby courted you before the nominations"
+          },
+          {
+            "week": 1,
+            "delta": -15.0,
+            "reason": "Something Dr. Will Kirby heard about you"
+          },
+          {
+            "week": 1,
+            "delta": -8.0,
+            "reason": "Nominated Dr. Will Kirby in week 1"
+          },
+          {
+            "week": 2,
+            "delta": 5.0,
+            "reason": "Dr. Will Kirby campaigned to stay"
+          }
+        ]
+      },
+      {
+        "npcId": "derrick-levasseur",
+        "npcName": "Derrick Levasseur",
+        "arcType": "rivalry",
+        "intensity": 33.0,
+        "escalationLevel": 1,
+        "weeklyHistory": [
+          {
+            "week": 1,
+            "delta": 4.0,
+            "reason": "Derrick Levasseur courted you before the nominations"
+          },
+          {
+            "week": 1,
+            "delta": -8.0,
+            "reason": "Nominated Derrick Levasseur in week 1"
+          },
+          {
+            "week": 1,
+            "delta": -20.0,
+            "reason": "You named Derrick Levasseur as replacement nominee"
+          }
+        ]
+      },
+      {
+        "npcId": "janelle-pierzina",
+        "npcName": "Janelle Pierzina",
+        "arcType": "rivalry",
+        "intensity": 72.0,
+        "escalationLevel": 2,
+        "weeklyHistory": [
+          {
+            "week": 1,
+            "delta": 4.0,
+            "reason": "Janelle Pierzina courted you before the nominations"
+          },
+          {
+            "week": 2,
+            "delta": -15.0,
+            "reason": "You used POV forcing Janelle Pierzina on the block"
+          },
+          {
+            "week": 2,
+            "delta": 4.0,
+            "reason": "Relationship changed by 4"
+          },
+          {
+            "week": 3,
+            "delta": 4.0,
+            "reason": "Janelle Pierzina courted you before the nominations"
+          },
+          {
+            "week": 3,
+            "delta": -8.0,
+            "reason": "Nominated Janelle Pierzina in week 3"
+          },
+          {
+            "week": 3,
+            "delta": -8.0,
+            "reason": "Janelle Pierzina had words with you"
+          },
+          {
+            "week": 3,
+            "delta": -15.0,
+            "reason": "Something Janelle Pierzina heard about you"
+          }
+        ]
+      },
+      {
+        "npcId": "danielle-reyes",
+        "npcName": "Danielle Reyes",
+        "arcType": "neutral",
+        "intensity": 33.0,
+        "escalationLevel": 1,
+        "weeklyHistory": [
+          {
+            "week": 1,
+            "delta": 4.0,
+            "reason": "Danielle Reyes courted you before the nominations"
+          },
+          {
+            "week": 2,
+            "delta": 4.0,
+            "reason": "Danielle Reyes spent time with you"
+          },
+          {
+            "week": 3,
+            "delta": 4.0,
+            "reason": "Danielle Reyes courted you before the nominations"
+          },
+          {
+            "week": 3,
+            "delta": -15.0,
+            "reason": "Something Danielle Reyes heard about you"
+          }
+        ]
+      },
+      {
+        "npcId": "vanessa-rousso",
+        "npcName": "Vanessa Rousso",
+        "arcType": "friendship",
+        "intensity": 33.0,
+        "escalationLevel": 1,
+        "weeklyHistory": [
+          {
+            "week": 1,
+            "delta": 4.0,
+            "reason": "Vanessa Rousso courted you before the nominations"
+          },
+          {
+            "week": 2,
+            "delta": 25.0,
+            "reason": "You used POV to save Vanessa Rousso"
+          },
+          {
+            "week": 2,
+            "delta": 4.0,
+            "reason": "Relationship changed by 4"
+          },
+          {
+            "week": 3,
+            "delta": 4.0,
+            "reason": "Vanessa Rousso courted you before the nominations"
+          }
+        ]
+      }
+    ],
+    "playerPersona": {
+      "current": "Neutral",
+      "scores": [
+        {
+          "persona": "Neutral",
+          "score": 0
+        },
+        {
+          "persona": "Remorseful",
+          "score": 0
+        },
+        {
+          "persona": "Ruthless",
+          "score": 0
+        },
+        {
+          "persona": "Calculated",
+          "score": 0
+        },
+        {
+          "persona": "Social Butterfly",
+          "score": 0
+        }
+      ],
+      "history": []
+    },
+    "jurySentiment": {
+      "jurors": [
+        {
+          "jurorId": "derrick-levasseur",
+          "jurorName": "Derrick Levasseur",
+          "sentiment": -8.0,
+          "events": [
+            {
+              "week": 0,
+              "delta": 0.0,
+              "reason": "Entered jury"
+            }
+          ]
+        },
+        {
+          "jurorId": "dr-will-kirby",
+          "jurorName": "Dr. Will Kirby",
+          "sentiment": 4.0,
+          "events": [
+            {
+              "week": 0,
+              "delta": 0.0,
+              "reason": "Entered jury"
+            }
+          ]
+        }
+      ],
+      "overallSentiment": -2.0
+    },
+    "pendingDiary": null,
+    "lastDiaryRoomWeek": 2,
+    "phaseEventSocialBonus": 0,
+    "phaseEventCompBonus": 0,
+    "resolvedDiaryIds": [
+      "diary-post_eviction-1",
+      "diary-post_eviction-2"
+    ],
+    "loyaltyOaths": [],
+    "oathOpportunities": [],
+    "shownOathMilestones": [],
+    "playerStudyBonus": 0,
+    "blocRulesStartWeek": 1,
+    "npcSocial": {
+      "rulesStartWeek": 1,
+      "clockTick": 0,
+      "nextScanTick": 3,
+      "nextConversationSequence": 1,
+      "randomState": 2022224521,
+      "pending": [],
+      "cooldowns": [],
+      "pairMemory": [],
+      "beatWeek": 3,
+      "beatWindow": 2,
+      "beatsFired": 1,
+      "beatSeats": 2,
+      "beatPlan": [
+        "janelle-pierzina",
+        "dan-gheesling",
+        "danielle-reyes"
+      ],
+      "acts": [
+        {
+          "id": "3-0-court-dan-gheesling",
+          "kind": "court",
+          "actorId": "dan-gheesling",
+          "partnerId": "player",
+          "subjectId": null,
+          "room": null,
+          "week": 3,
+          "window": 0,
+          "firedTick": 0,
+          "sighted": false,
+          "overheard": false
+        },
+        {
+          "id": "3-0-court-janelle-pierzina",
+          "kind": "court",
+          "actorId": "janelle-pierzina",
+          "partnerId": "player",
+          "subjectId": null,
+          "room": null,
+          "week": 3,
+          "window": 0,
+          "firedTick": 0,
+          "sighted": false,
+          "overheard": false
+        },
+        {
+          "id": "3-0-court-cody-calafiore",
+          "kind": "court",
+          "actorId": "cody-calafiore",
+          "partnerId": "player",
+          "subjectId": null,
+          "room": null,
+          "week": 3,
+          "window": 0,
+          "firedTick": 0,
+          "sighted": false,
+          "overheard": false
+        },
+        {
+          "id": "3-0-court-danielle-reyes",
+          "kind": "court",
+          "actorId": "danielle-reyes",
+          "partnerId": "player",
+          "subjectId": null,
+          "room": null,
+          "week": 3,
+          "window": 0,
+          "firedTick": 0,
+          "sighted": false,
+          "overheard": false
+        },
+        {
+          "id": "3-0-court-vanessa-rousso",
+          "kind": "court",
+          "actorId": "vanessa-rousso",
+          "partnerId": "player",
+          "subjectId": null,
+          "room": null,
+          "week": 3,
+          "window": 0,
+          "firedTick": 0,
+          "sighted": false,
+          "overheard": false
+        },
+        {
+          "id": "3-0-0",
+          "kind": "eavesdrop",
+          "actorId": "vanessa-rousso",
+          "partnerId": "dan-gheesling",
+          "subjectId": "janelle-pierzina",
+          "room": null,
+          "week": 3,
+          "window": 0,
+          "firedTick": 0,
+          "sighted": false,
+          "overheard": false
+        },
+        {
+          "id": "3-0-1",
+          "kind": "rumour",
+          "actorId": "danielle-reyes",
+          "partnerId": "player",
+          "subjectId": "dan-gheesling",
+          "room": null,
+          "week": 3,
+          "window": 0,
+          "firedTick": 0,
+          "sighted": false,
+          "overheard": false
+        },
+        {
+          "id": "3-0-2",
+          "kind": "pact",
+          "actorId": "janelle-pierzina",
+          "partnerId": "cody-calafiore",
+          "subjectId": null,
+          "room": "Bedroom",
+          "week": 3,
+          "window": 0,
+          "firedTick": 0,
+          "sighted": false,
+          "overheard": false
+        },
+        {
+          "id": "3-1-0",
+          "kind": "confront",
+          "actorId": "janelle-pierzina",
+          "partnerId": "player",
+          "subjectId": null,
+          "room": null,
+          "week": 3,
+          "window": 1,
+          "firedTick": 0,
+          "sighted": false,
+          "overheard": false
+        },
+        {
+          "id": "3-1-1",
+          "kind": "rumour",
+          "actorId": "dan-gheesling",
+          "partnerId": "danielle-reyes",
+          "subjectId": "player",
+          "room": null,
+          "week": 3,
+          "window": 1,
+          "firedTick": 0,
+          "sighted": false,
+          "overheard": false
+        },
+        {
+          "id": "3-1-2",
+          "kind": "rumour",
+          "actorId": "vanessa-rousso",
+          "partnerId": "janelle-pierzina",
+          "subjectId": "player",
+          "room": null,
+          "week": 3,
+          "window": 1,
+          "firedTick": 0,
+          "sighted": false,
+          "overheard": false
+        },
+        {
+          "id": "3-1-3",
+          "kind": "meet",
+          "actorId": "cody-calafiore",
+          "partnerId": "janelle-pierzina",
+          "subjectId": "alliance-npc-271",
+          "room": "Yard",
+          "week": 3,
+          "window": 1,
+          "firedTick": 0,
+          "sighted": false,
+          "overheard": false
+        },
+        {
+          "id": "3-2-campaign-janelle-pierzina-vanessa-rousso",
+          "kind": "campaign",
+          "actorId": "janelle-pierzina",
+          "partnerId": "vanessa-rousso",
+          "subjectId": null,
+          "room": "Kitchen",
+          "week": 3,
+          "window": 2,
+          "firedTick": 0,
+          "sighted": false,
+          "overheard": false
+        },
+        {
+          "id": "3-2-campaign-cody-calafiore-vanessa-rousso",
+          "kind": "campaign",
+          "actorId": "cody-calafiore",
+          "partnerId": "vanessa-rousso",
+          "subjectId": null,
+          "room": "Kitchen",
+          "week": 3,
+          "window": 2,
+          "firedTick": 0,
+          "sighted": false,
+          "overheard": false
+        },
+        {
+          "id": "3-2-0",
+          "kind": "promise",
+          "actorId": "janelle-pierzina",
+          "partnerId": "vanessa-rousso",
+          "subjectId": null,
+          "room": "Yard",
+          "week": 3,
+          "window": 2,
+          "firedTick": 0,
+          "sighted": false,
+          "overheard": false
+        }
+      ]
+    },
+    "evictionStage": 0,
+    "evictionSpeeches": [],
+    "backdoorTargetId": null,
+    "outOfPhaseSocialActions": 0,
+    "openingBeatsSeen": [],
+    "socialBudgetRulesStartWeek": 1,
+    "deals": [
+      {
+        "id": "deal-npc-227",
+        "type": "target_agreement",
+        "proposerId": "janelle-pierzina",
+        "recipientId": "cody-calafiore",
+        "targetId": "player",
+        "status": "expired",
+        "week": 2,
+        "expiresWeek": 2,
+        "trustImpact": "high",
+        "brokenById": null,
+        "settledWeek": 0,
+        "linkedDealId": null
+      },
+      {
+        "id": "deal-npc-229",
+        "type": "target_agreement",
+        "proposerId": "cody-calafiore",
+        "recipientId": "janelle-pierzina",
+        "targetId": "player",
+        "status": "expired",
+        "week": 2,
+        "expiresWeek": 2,
+        "trustImpact": "high",
+        "brokenById": null,
+        "settledWeek": 0,
+        "linkedDealId": null
+      },
+      {
+        "id": "deal-npc-231",
+        "type": "target_agreement",
+        "proposerId": "danielle-reyes",
+        "recipientId": "janelle-pierzina",
+        "targetId": "player",
+        "status": "expired",
+        "week": 2,
+        "expiresWeek": 2,
+        "trustImpact": "high",
+        "brokenById": null,
+        "settledWeek": 0,
+        "linkedDealId": null
+      },
+      {
+        "id": "deal-npc-300",
+        "type": "target_agreement",
+        "proposerId": "janelle-pierzina",
+        "recipientId": "cody-calafiore",
+        "targetId": "player",
+        "status": "active",
+        "week": 3,
+        "expiresWeek": 3,
+        "trustImpact": "high",
+        "brokenById": null,
+        "settledWeek": 0,
+        "linkedDealId": null
+      },
+      {
+        "id": "deal-npc-302",
+        "type": "target_agreement",
+        "proposerId": "cody-calafiore",
+        "recipientId": "janelle-pierzina",
+        "targetId": "player",
+        "status": "active",
+        "week": 3,
+        "expiresWeek": 3,
+        "trustImpact": "high",
+        "brokenById": null,
+        "settledWeek": 0,
+        "linkedDealId": null
+      },
+      {
+        "id": "deal-npc-304",
+        "type": "target_agreement",
+        "proposerId": "danielle-reyes",
+        "recipientId": "janelle-pierzina",
+        "targetId": "player",
+        "status": "active",
+        "week": 3,
+        "expiresWeek": 3,
+        "trustImpact": "high",
+        "brokenById": null,
+        "settledWeek": 0,
+        "linkedDealId": null
+      },
+      {
+        "id": "deal-ask-306",
+        "type": "target_agreement",
+        "proposerId": "vanessa-rousso",
+        "recipientId": "player",
+        "targetId": "dan-gheesling",
+        "status": "proposed",
+        "week": 3,
+        "expiresWeek": 3,
+        "trustImpact": "high",
+        "brokenById": null,
+        "settledWeek": 0,
+        "linkedDealId": null
+      }
+    ],
+    "dealRulesStartWeek": 1,
+    "boughtActionPoints": 0,
+    "houseEvents": [
+      {
+        "id": "house-event-106",
+        "kind": "story",
+        "title": "Their Word",
+        "narrative": "A play is on offer.",
+        "involvedIds": [
+          "cody-calafiore"
+        ],
+        "choices": [
+          {
+            "label": "Take it on",
+            "description": "Go after it.",
+            "risk": "low",
+            "impacts": [],
+            "trustChange": 0.0,
+            "optionId": "take-it-on",
+            "glyph": null,
+            "approach": null,
+            "checkBase": -1.0,
+            "subjectId": null,
+            "lapse": false,
+            "costsAction": false,
+            "conduct": false,
+            "pickPerson": false,
+            "eligibleIds": [],
+            "locked": false,
+            "lockReason": null,
+            "bonusTraits": [],
+            "against": [],
+            "effects": [],
+            "backfire": [],
+            "next": "ask",
+            "nextOnBackfire": null
+          },
+          {
+            "label": "Not now",
+            "description": "Leave it for now.",
+            "risk": "low",
+            "impacts": [],
+            "trustChange": 0.0,
+            "optionId": "not-now",
+            "glyph": null,
+            "approach": null,
+            "checkBase": -1.0,
+            "subjectId": null,
+            "lapse": true,
+            "costsAction": false,
+            "conduct": false,
+            "pickPerson": false,
+            "eligibleIds": [],
+            "locked": false,
+            "lockReason": null,
+            "bonusTraits": [],
+            "against": [],
+            "effects": [],
+            "backfire": [],
+            "next": "end:declined",
+            "nextOnBackfire": null
+          }
+        ],
+        "week": 1,
+        "resolved": true,
+        "chosenIndex": 1,
+        "outcome": "You left it for now.",
+        "contentId": "their-word:offer",
+        "cycleId": "story-105",
+        "closesAnchor": "eviction-night",
+        "surface": "approach",
+        "venue": "backyard",
+        "lapseOptionId": "not-now",
+        "cast": [
+          {
+            "role": "FRIEND",
+            "contestantId": "cody-calafiore"
+          }
+        ]
+      },
+      {
+        "id": "house-event-110",
+        "kind": "story",
+        "title": "Overheard Conversation",
+        "narrative": "You walk into the storage room and overhear a houseguest telling a houseguest that you're their next target. They haven't noticed you yet.",
+        "involvedIds": [
+          "vanessa-rousso",
+          "cody-calafiore"
+        ],
+        "choices": [
+          {
+            "label": "Confront them",
+            "description": "Call them out directly in front of everyone",
+            "risk": "medium",
+            "impacts": [],
+            "trustChange": 0.0,
+            "optionId": "option-1",
+            "glyph": null,
+            "approach": null,
+            "checkBase": -1.0,
+            "subjectId": null,
+            "lapse": false,
+            "costsAction": false,
+            "conduct": false,
+            "pickPerson": false,
+            "eligibleIds": [],
+            "locked": false,
+            "lockReason": null,
+            "bonusTraits": [],
+            "against": [],
+            "effects": [
+              {
+                "kind": "move",
+                "fromId": "player",
+                "toId": "vanessa-rousso",
+                "thirdId": null,
+                "type": null,
+                "text": null,
+                "amount": -12.0,
+                "weeks": 0
+              },
+              {
+                "kind": "move",
+                "fromId": "player",
+                "toId": "cody-calafiore",
+                "thirdId": null,
+                "type": null,
+                "text": null,
+                "amount": 5.0,
+                "weeks": 0
+              },
+              {
+                "kind": "trust",
+                "fromId": "vanessa-rousso",
+                "toId": "player",
+                "thirdId": null,
+                "type": null,
+                "text": "Confront them",
+                "amount": 3.0,
+                "weeks": 0
+              },
+              {
+                "kind": "trust",
+                "fromId": "cody-calafiore",
+                "toId": "player",
+                "thirdId": null,
+                "type": null,
+                "text": "Confront them",
+                "amount": 3.0,
+                "weeks": 0
+              }
+            ],
+            "backfire": [],
+            "next": null,
+            "nextOnBackfire": null
+          },
+          {
+            "label": "Tell your alliance",
+            "description": "Report back to your allies about the plot",
+            "risk": "low",
+            "impacts": [],
+            "trustChange": 0.0,
+            "optionId": "option-2",
+            "glyph": null,
+            "approach": null,
+            "checkBase": -1.0,
+            "subjectId": null,
+            "lapse": false,
+            "costsAction": false,
+            "conduct": false,
+            "pickPerson": false,
+            "eligibleIds": [],
+            "locked": false,
+            "lockReason": null,
+            "bonusTraits": [],
+            "against": [],
+            "effects": [
+              {
+                "kind": "move",
+                "fromId": "player",
+                "toId": "cody-calafiore",
+                "thirdId": null,
+                "type": null,
+                "text": null,
+                "amount": 8.0,
+                "weeks": 0
+              },
+              {
+                "kind": "trust",
+                "fromId": "vanessa-rousso",
+                "toId": "player",
+                "thirdId": null,
+                "type": null,
+                "text": "Tell your alliance",
+                "amount": 5.0,
+                "weeks": 0
+              },
+              {
+                "kind": "trust",
+                "fromId": "cody-calafiore",
+                "toId": "player",
+                "thirdId": null,
+                "type": null,
+                "text": "Tell your alliance",
+                "amount": 5.0,
+                "weeks": 0
+              }
+            ],
+            "backfire": [],
+            "next": null,
+            "nextOnBackfire": null
+          },
+          {
+            "label": "Stay quiet",
+            "description": "Keep this intel to yourself for now",
+            "risk": "low",
+            "impacts": [],
+            "trustChange": 0.0,
+            "optionId": "option-3",
+            "glyph": null,
+            "approach": null,
+            "checkBase": -1.0,
+            "subjectId": null,
+            "lapse": false,
+            "costsAction": false,
+            "conduct": false,
+            "pickPerson": false,
+            "eligibleIds": [],
+            "locked": false,
+            "lockReason": null,
+            "bonusTraits": [],
+            "against": [],
+            "effects": [],
+            "backfire": [],
+            "next": null,
+            "nextOnBackfire": null
+          },
+          {
+            "label": "Let it pass",
+            "description": "Do nothing about it.",
+            "risk": "low",
+            "impacts": [],
+            "trustChange": 0.0,
+            "optionId": "let-it-pass",
+            "glyph": null,
+            "approach": null,
+            "checkBase": -1.0,
+            "subjectId": null,
+            "lapse": true,
+            "costsAction": false,
+            "conduct": false,
+            "pickPerson": false,
+            "eligibleIds": [],
+            "locked": false,
+            "lockReason": null,
+            "bonusTraits": [],
+            "against": [],
+            "effects": [],
+            "backfire": [],
+            "next": null,
+            "nextOnBackfire": null
+          }
+        ],
+        "week": 1,
+        "resolved": true,
+        "chosenIndex": 3,
+        "outcome": "You let it pass.",
+        "contentId": "legacy-overheard-conversation:situation",
+        "cycleId": "story-109",
+        "closesAnchor": "social-close",
+        "surface": "scene",
+        "venue": null,
+        "lapseOptionId": "let-it-pass",
+        "cast": [
+          {
+            "role": "RIVAL",
+            "contestantId": "vanessa-rousso"
+          },
+          {
+            "role": "ALLY",
+            "contestantId": "cody-calafiore"
+          }
+        ]
+      },
+      {
+        "id": "house-event-112",
+        "kind": "ambient",
+        "title": "In the house",
+        "narrative": "Cody Calafiore and Dan Gheesling are whispering in the dining table. They stop when they see you.",
+        "involvedIds": [
+          "cody-calafiore",
+          "dan-gheesling"
+        ],
+        "choices": [],
+        "week": 1,
+        "resolved": true,
+        "chosenIndex": -1,
+        "outcome": null,
+        "contentId": null,
+        "cycleId": null,
+        "closesAnchor": null,
+        "surface": null,
+        "venue": null,
+        "lapseOptionId": null,
+        "cast": []
+      },
+      {
+        "id": "house-event-141",
+        "kind": "story",
+        "title": "The Target on Their Back",
+        "narrative": "A past winner knows the house is coming for them.",
+        "involvedIds": [
+          "cody-calafiore"
+        ],
+        "choices": [
+          {
+            "label": "Promise to protect them",
+            "description": "Give a houseguest your word: not from you.",
+            "risk": "medium",
+            "impacts": [],
+            "trustChange": 0.0,
+            "optionId": "protect",
+            "glyph": null,
+            "approach": "warm",
+            "checkBase": -1.0,
+            "subjectId": null,
+            "lapse": false,
+            "costsAction": false,
+            "conduct": false,
+            "pickPerson": false,
+            "eligibleIds": [],
+            "locked": false,
+            "lockReason": null,
+            "bonusTraits": [],
+            "against": [],
+            "effects": [
+              {
+                "kind": "promise",
+                "fromId": "player",
+                "toId": "cody-calafiore",
+                "thirdId": null,
+                "type": "Safety",
+                "text": null,
+                "amount": 0.0,
+                "weeks": 0
+              },
+              {
+                "kind": "move",
+                "fromId": "player",
+                "toId": "cody-calafiore",
+                "thirdId": null,
+                "type": null,
+                "text": null,
+                "amount": 4.0,
+                "weeks": 0
+              }
+            ],
+            "backfire": [],
+            "next": null,
+            "nextOnBackfire": null
+          },
+          {
+            "label": "Tell them it's fair",
+            "description": "\"You won. That's the price.\"",
+            "risk": "low",
+            "impacts": [],
+            "trustChange": 0.0,
+            "optionId": "fair",
+            "glyph": null,
+            "approach": "candid",
+            "checkBase": -1.0,
+            "subjectId": null,
+            "lapse": false,
+            "costsAction": false,
+            "conduct": false,
+            "pickPerson": false,
+            "eligibleIds": [],
+            "locked": false,
+            "lockReason": null,
+            "bonusTraits": [],
+            "against": [],
+            "effects": [
+              {
+                "kind": "receipt",
+                "fromId": "cody-calafiore",
+                "toId": "player",
+                "thirdId": null,
+                "type": "story:heard-out",
+                "text": null,
+                "amount": 0.0,
+                "weeks": 0
+              }
+            ],
+            "backfire": [],
+            "next": null,
+            "nextOnBackfire": null
+          },
+          {
+            "label": "Offer them the numbers",
+            "description": "Vote together, and make the house think twice.",
+            "risk": "medium",
+            "impacts": [],
+            "trustChange": 0.0,
+            "optionId": "numbers",
+            "glyph": null,
+            "approach": "calculated",
+            "checkBase": -1.0,
+            "subjectId": null,
+            "lapse": false,
+            "costsAction": false,
+            "conduct": false,
+            "pickPerson": false,
+            "eligibleIds": [],
+            "locked": false,
+            "lockReason": null,
+            "bonusTraits": [],
+            "against": [],
+            "effects": [
+              {
+                "kind": "deal",
+                "fromId": "player",
+                "toId": "cody-calafiore",
+                "thirdId": null,
+                "type": "vote_together",
+                "text": null,
+                "amount": 0.0,
+                "weeks": 0
+              }
+            ],
+            "backfire": [],
+            "next": null,
+            "nextOnBackfire": null
+          },
+          {
+            "label": "Keep it vague",
+            "description": "\"We'll see how the week goes.\"",
+            "risk": "low",
+            "impacts": [],
+            "trustChange": 0.0,
+            "optionId": "noncommittal",
+            "glyph": null,
+            "approach": null,
+            "checkBase": -1.0,
+            "subjectId": null,
+            "lapse": true,
+            "costsAction": false,
+            "conduct": false,
+            "pickPerson": false,
+            "eligibleIds": [],
+            "locked": false,
+            "lockReason": null,
+            "bonusTraits": [],
+            "against": [],
+            "effects": [],
+            "backfire": [],
+            "next": null,
+            "nextOnBackfire": null
+          }
+        ],
+        "week": 2,
+        "resolved": true,
+        "chosenIndex": 3,
+        "outcome": "You kept it vague.",
+        "contentId": "the-target-on-their-back:big-name",
+        "cycleId": "story-140",
+        "closesAnchor": "noms-set",
+        "surface": "approach",
+        "venue": "backyard",
+        "lapseOptionId": "noncommittal",
+        "cast": [
+          {
+            "role": "BIGNAME",
+            "contestantId": "cody-calafiore"
+          }
+        ]
+      },
+      {
+        "id": "house-event-185",
+        "kind": "story",
+        "title": "You Were the Target",
+        "narrative": "One of this week's pawns tells you who the week was really aimed at.",
+        "involvedIds": [
+          "dan-gheesling",
+          "vanessa-rousso",
+          "dr-will-kirby"
+        ],
+        "choices": [
+          {
+            "label": "Go straight to the HoH",
+            "description": "Let a houseguest know you know.",
+            "risk": "high",
+            "impacts": [],
+            "trustChange": 0.0,
+            "optionId": "confront-hoh",
+            "glyph": null,
+            "approach": "bold",
+            "checkBase": -1.0,
+            "subjectId": null,
+            "lapse": false,
+            "costsAction": false,
+            "conduct": false,
+            "pickPerson": false,
+            "eligibleIds": [],
+            "locked": false,
+            "lockReason": null,
+            "bonusTraits": [],
+            "against": [],
+            "effects": [
+              {
+                "kind": "move",
+                "fromId": "player",
+                "toId": "dan-gheesling",
+                "thirdId": null,
+                "type": null,
+                "text": null,
+                "amount": -8.0,
+                "weeks": 0
+              },
+              {
+                "kind": "receipt",
+                "fromId": "dan-gheesling",
+                "toId": "player",
+                "thirdId": null,
+                "type": "story:argued",
+                "text": null,
+                "amount": 0.0,
+                "weeks": 0
+              }
+            ],
+            "backfire": [],
+            "next": "wait",
+            "nextOnBackfire": null
+          },
+          {
+            "label": "File it away",
+            "description": "Say nothing, and remember it.",
+            "risk": "low",
+            "impacts": [],
+            "trustChange": 0.0,
+            "optionId": "file-away",
+            "glyph": null,
+            "approach": null,
+            "checkBase": -1.0,
+            "subjectId": null,
+            "lapse": true,
+            "costsAction": false,
+            "conduct": false,
+            "pickPerson": false,
+            "eligibleIds": [],
+            "locked": false,
+            "lockReason": null,
+            "bonusTraits": [],
+            "against": [],
+            "effects": [
+              {
+                "kind": "memory",
+                "fromId": "player",
+                "toId": "dan-gheesling",
+                "thirdId": null,
+                "type": null,
+                "text": "The Head of Household planned to backdoor me.",
+                "amount": 0.0,
+                "weeks": 0
+              }
+            ],
+            "backfire": [],
+            "next": "wait",
+            "nextOnBackfire": null
+          }
+        ],
+        "week": 2,
+        "resolved": true,
+        "chosenIndex": 1,
+        "outcome": "You filed it away.",
+        "contentId": "the-backdoor:you-were-the-target",
+        "cycleId": "story-151",
+        "closesAnchor": "eviction-eve",
+        "surface": "approach",
+        "venue": "hallway",
+        "lapseOptionId": "file-away",
+        "cast": [
+          {
+            "role": "HOH",
+            "contestantId": "dan-gheesling"
+          },
+          {
+            "role": "PAWN1",
+            "contestantId": "vanessa-rousso"
+          },
+          {
+            "role": "PAWN2",
+            "contestantId": "dr-will-kirby"
+          }
+        ]
+      },
+      {
+        "id": "house-event-221",
+        "kind": "story",
+        "title": "Settle It",
+        "narrative": "A play is on offer.",
+        "involvedIds": [
+          "dan-gheesling"
+        ],
+        "choices": [
+          {
+            "label": "Take it on",
+            "description": "Go after it.",
+            "risk": "low",
+            "impacts": [],
+            "trustChange": 0.0,
+            "optionId": "take-it-on",
+            "glyph": null,
+            "approach": null,
+            "checkBase": -1.0,
+            "subjectId": null,
+            "lapse": false,
+            "costsAction": false,
+            "conduct": false,
+            "pickPerson": false,
+            "eligibleIds": [],
+            "locked": false,
+            "lockReason": null,
+            "bonusTraits": [],
+            "against": [],
+            "effects": [],
+            "backfire": [],
+            "next": "approach",
+            "nextOnBackfire": null
+          },
+          {
+            "label": "Not now",
+            "description": "Leave it for now.",
+            "risk": "low",
+            "impacts": [],
+            "trustChange": 0.0,
+            "optionId": "not-now",
+            "glyph": null,
+            "approach": null,
+            "checkBase": -1.0,
+            "subjectId": null,
+            "lapse": true,
+            "costsAction": false,
+            "conduct": false,
+            "pickPerson": false,
+            "eligibleIds": [],
+            "locked": false,
+            "lockReason": null,
+            "bonusTraits": [],
+            "against": [],
+            "effects": [],
+            "backfire": [],
+            "next": "end:declined",
+            "nextOnBackfire": null
+          }
+        ],
+        "week": 2,
+        "resolved": true,
+        "chosenIndex": 1,
+        "outcome": "You left it for now.",
+        "contentId": "settle-it:offer",
+        "cycleId": "story-220",
+        "closesAnchor": "eviction-night",
+        "surface": "approach",
+        "venue": "living-room",
+        "lapseOptionId": "not-now",
+        "cast": [
+          {
+            "role": "RIVAL",
+            "contestantId": "dan-gheesling"
+          }
+        ]
+      },
+      {
+        "id": "house-event-225",
+        "kind": "story",
+        "title": "Goodbye Message",
+        "narrative": "Record a goodbye message for the houseguest just evicted.",
+        "involvedIds": [
+          "dr-will-kirby"
+        ],
+        "choices": [
+          {
+            "label": "Keep it classy",
+            "description": "Wish a houseguest well, and mean it.",
+            "risk": "low",
+            "impacts": [],
+            "trustChange": 0.0,
+            "optionId": "classy",
+            "glyph": null,
+            "approach": "warm",
+            "checkBase": -1.0,
+            "subjectId": null,
+            "lapse": false,
+            "costsAction": false,
+            "conduct": false,
+            "pickPerson": false,
+            "eligibleIds": [],
+            "locked": false,
+            "lockReason": null,
+            "bonusTraits": [],
+            "against": [],
+            "effects": [
+              {
+                "kind": "view",
+                "fromId": "dr-will-kirby",
+                "toId": "player",
+                "thirdId": null,
+                "type": null,
+                "text": null,
+                "amount": 4.0,
+                "weeks": 0
+              }
+            ],
+            "backfire": [],
+            "next": null,
+            "nextOnBackfire": null
+          },
+          {
+            "label": "Tell them why",
+            "description": "Explain the move, straight.",
+            "risk": "medium",
+            "impacts": [],
+            "trustChange": 0.0,
+            "optionId": "tell-why",
+            "glyph": null,
+            "approach": "candid",
+            "checkBase": -1.0,
+            "subjectId": null,
+            "lapse": false,
+            "costsAction": false,
+            "conduct": false,
+            "pickPerson": false,
+            "eligibleIds": [],
+            "locked": false,
+            "lockReason": null,
+            "bonusTraits": [],
+            "against": [],
+            "effects": [
+              {
+                "kind": "view",
+                "fromId": "dr-will-kirby",
+                "toId": "player",
+                "thirdId": null,
+                "type": null,
+                "text": null,
+                "amount": 2.0,
+                "weeks": 0
+              }
+            ],
+            "backfire": [],
+            "next": null,
+            "nextOnBackfire": null
+          },
+          {
+            "label": "Rub it in",
+            "description": "Enjoy it. On camera.",
+            "risk": "high",
+            "impacts": [],
+            "trustChange": 0.0,
+            "optionId": "rub-it-in",
+            "glyph": null,
+            "approach": "hardball",
+            "checkBase": -1.0,
+            "subjectId": null,
+            "lapse": false,
+            "costsAction": false,
+            "conduct": false,
+            "pickPerson": false,
+            "eligibleIds": [],
+            "locked": true,
+            "lockReason": "Not in your character: Confrontational",
+            "bonusTraits": [],
+            "against": [],
+            "effects": [
+              {
+                "kind": "view",
+                "fromId": "dr-will-kirby",
+                "toId": "player",
+                "thirdId": null,
+                "type": null,
+                "text": null,
+                "amount": -8.0,
+                "weeks": 0
+              },
+              {
+                "kind": "stress",
+                "fromId": "player",
+                "toId": null,
+                "thirdId": null,
+                "type": null,
+                "text": null,
+                "amount": -1.0,
+                "weeks": 0
+              }
+            ],
+            "backfire": [],
+            "next": null,
+            "nextOnBackfire": null
+          },
+          {
+            "label": "Skip it",
+            "description": "Say nothing on camera.",
+            "risk": "low",
+            "impacts": [],
+            "trustChange": 0.0,
+            "optionId": "skip",
+            "glyph": null,
+            "approach": null,
+            "checkBase": -1.0,
+            "subjectId": null,
+            "lapse": true,
+            "costsAction": false,
+            "conduct": false,
+            "pickPerson": false,
+            "eligibleIds": [],
+            "locked": false,
+            "lockReason": null,
+            "bonusTraits": [],
+            "against": [],
+            "effects": [],
+            "backfire": [],
+            "next": null,
+            "nextOnBackfire": null
+          }
+        ],
+        "week": 2,
+        "resolved": true,
+        "chosenIndex": 3,
+        "outcome": "You skipped it.",
+        "contentId": "goodbye-message:message",
+        "cycleId": "story-224",
+        "closesAnchor": "social-close",
+        "surface": "summons",
+        "venue": "diary-room",
+        "lapseOptionId": "skip",
+        "cast": [
+          {
+            "role": "EVICTEE",
+            "contestantId": "dr-will-kirby"
+          }
+        ]
+      },
+      {
+        "id": "house-event-233",
+        "kind": "ambient",
+        "title": "In the house",
+        "narrative": "Another restless night in the house.",
+        "involvedIds": [],
+        "choices": [],
+        "week": 2,
+        "resolved": true,
+        "chosenIndex": -1,
+        "outcome": null,
+        "contentId": null,
+        "cycleId": null,
+        "closesAnchor": null,
+        "surface": null,
+        "venue": null,
+        "lapseOptionId": null,
+        "cast": []
+      },
+      {
+        "id": "house-event-309",
+        "kind": "story",
+        "title": "The Fallout",
+        "narrative": "The veto meeting has left a nominee barely holding it together.",
+        "involvedIds": [
+          "janelle-pierzina"
+        ],
+        "choices": [
+          {
+            "label": "Offer comfort",
+            "description": "Catch up with a houseguest and offer support.",
+            "risk": "low",
+            "impacts": [],
+            "trustChange": 0.0,
+            "optionId": "comfort",
+            "glyph": null,
+            "approach": "warm",
+            "checkBase": -1.0,
+            "subjectId": null,
+            "lapse": false,
+            "costsAction": false,
+            "conduct": false,
+            "pickPerson": false,
+            "eligibleIds": [],
+            "locked": false,
+            "lockReason": null,
+            "bonusTraits": [],
+            "against": [],
+            "effects": [
+              {
+                "kind": "move",
+                "fromId": "player",
+                "toId": "janelle-pierzina",
+                "thirdId": null,
+                "type": null,
+                "text": null,
+                "amount": 7.0,
+                "weeks": 0
+              }
+            ],
+            "backfire": [],
+            "next": null,
+            "nextOnBackfire": null
+          },
+          {
+            "label": "Keep your distance",
+            "description": "Getting close to a nominee is dangerous.",
+            "risk": "low",
+            "impacts": [],
+            "trustChange": 0.0,
+            "optionId": "distance",
+            "glyph": null,
+            "approach": "calculated",
+            "checkBase": -1.0,
+            "subjectId": null,
+            "lapse": true,
+            "costsAction": false,
+            "conduct": false,
+            "pickPerson": false,
+            "eligibleIds": [],
+            "locked": false,
+            "lockReason": null,
+            "bonusTraits": [],
+            "against": [],
+            "effects": [],
+            "backfire": [],
+            "next": null,
+            "nextOnBackfire": null
+          }
+        ],
+        "week": 3,
+        "resolved": false,
+        "chosenIndex": -1,
+        "outcome": null,
+        "contentId": "the-fallout:fallout",
+        "cycleId": "story-308",
+        "closesAnchor": "eviction-eve",
+        "surface": "scene",
+        "venue": "living-room",
+        "lapseOptionId": "distance",
+        "cast": [
+          {
+            "role": "NOMINEE",
+            "contestantId": "janelle-pierzina"
+          }
+        ]
+      }
+    ],
+    "eventRulesStartWeek": 1,
+    "storylines": [
+      {
+        "id": "story-101",
+        "templateId": "thread-bond",
+        "category": "Your Story",
+        "title": "The Bond",
+        "eventId": null,
+        "status": "active",
+        "week": 1,
+        "endedWeek": 0,
+        "beatId": "thread",
+        "lane": "thread",
+        "variant": 0,
+        "cast": [
+          {
+            "role": "FRIEND",
+            "contestantId": "cody-calafiore"
+          }
+        ],
+        "path": [
+          {
+            "beatId": "begin",
+            "optionId": null,
+            "result": "plain",
+            "week": 1,
+            "logSequence": 102
+          },
+          {
+            "beatId": "chapter:their-word",
+            "optionId": "story-105",
+            "result": "lapsed",
+            "week": 2,
+            "logSequence": 139
+          }
+        ],
+        "vars": [],
+        "nextWeek": 0,
+        "nextAnchor": null,
+        "endingId": null
+      },
+      {
+        "id": "story-103",
+        "templateId": "thread-rivalry",
+        "category": "Your Story",
+        "title": "The Rivalry",
+        "eventId": null,
+        "status": "active",
+        "week": 1,
+        "endedWeek": 0,
+        "beatId": "thread",
+        "lane": "thread",
+        "variant": 0,
+        "cast": [
+          {
+            "role": "RIVAL",
+            "contestantId": "dan-gheesling"
+          }
+        ],
+        "path": [
+          {
+            "beatId": "begin",
+            "optionId": null,
+            "result": "plain",
+            "week": 1,
+            "logSequence": 104
+          },
+          {
+            "beatId": "chapter:settle-it",
+            "optionId": "story-220",
+            "result": "lapsed",
+            "week": 3,
+            "logSequence": 268
+          }
+        ],
+        "vars": [],
+        "nextWeek": 0,
+        "nextAnchor": null,
+        "endingId": null
+      },
+      {
+        "id": "story-105",
+        "templateId": "their-word",
+        "category": "Trust",
+        "title": "Their Word",
+        "eventId": "house-event-106",
+        "status": "completed",
+        "week": 1,
+        "endedWeek": 1,
+        "beatId": "offer",
+        "lane": "play",
+        "variant": 0,
+        "cast": [
+          {
+            "role": "FRIEND",
+            "contestantId": "cody-calafiore"
+          }
+        ],
+        "path": [
+          {
+            "beatId": "offer",
+            "optionId": "not-now",
+            "result": "lapsed",
+            "week": 1,
+            "logSequence": 121
+          }
+        ],
+        "vars": [],
+        "nextWeek": 0,
+        "nextAnchor": null,
+        "endingId": "declined"
+      },
+      {
+        "id": "story-109",
+        "templateId": "legacy-overheard-conversation",
+        "category": "In the House",
+        "title": "Overheard Conversation",
+        "eventId": "house-event-110",
+        "status": "completed",
+        "week": 1,
+        "endedWeek": 1,
+        "beatId": "situation",
+        "lane": "moment",
+        "variant": 0,
+        "cast": [
+          {
+            "role": "RIVAL",
+            "contestantId": "vanessa-rousso"
+          },
+          {
+            "role": "ALLY",
+            "contestantId": "cody-calafiore"
+          }
+        ],
+        "path": [
+          {
+            "beatId": "situation",
+            "optionId": "let-it-pass",
+            "result": "lapsed",
+            "week": 1,
+            "logSequence": 122
+          }
+        ],
+        "vars": [],
+        "nextWeek": 0,
+        "nextAnchor": null,
+        "endingId": "done"
+      },
+      {
+        "id": "story-140",
+        "templateId": "the-target-on-their-back",
+        "category": "All-Stars",
+        "title": "The Target on Their Back",
+        "eventId": "house-event-141",
+        "status": "completed",
+        "week": 2,
+        "endedWeek": 2,
+        "beatId": "big-name",
+        "lane": "game",
+        "variant": 0,
+        "cast": [
+          {
+            "role": "BIGNAME",
+            "contestantId": "cody-calafiore"
+          }
+        ],
+        "path": [
+          {
+            "beatId": "big-name",
+            "optionId": "noncommittal",
+            "result": "lapsed",
+            "week": 2,
+            "logSequence": 149
+          }
+        ],
+        "vars": [],
+        "nextWeek": 0,
+        "nextAnchor": null,
+        "endingId": "done"
+      },
+      {
+        "id": "story-151",
+        "templateId": "the-backdoor",
+        "category": "The Backdoor",
+        "title": "The Backdoor",
+        "eventId": "house-event-185",
+        "status": "completed",
+        "week": 2,
+        "endedWeek": 2,
+        "beatId": "pawn-home",
+        "lane": "game",
+        "variant": 0,
+        "cast": [
+          {
+            "role": "HOH",
+            "contestantId": "dan-gheesling"
+          },
+          {
+            "role": "PAWN1",
+            "contestantId": "vanessa-rousso"
+          },
+          {
+            "role": "PAWN2",
+            "contestantId": "dr-will-kirby"
+          }
+        ],
+        "path": [
+          {
+            "beatId": "plan",
+            "optionId": "quiet",
+            "result": "npc",
+            "week": 2,
+            "logSequence": 0
+          },
+          {
+            "beatId": "you-were-the-target",
+            "optionId": "file-away",
+            "result": "lapsed",
+            "week": 2,
+            "logSequence": 202
+          },
+          {
+            "beatId": "pawn-home",
+            "optionId": "reckoning",
+            "result": "npc",
+            "week": 2,
+            "logSequence": 0
+          }
+        ],
+        "vars": [
+          {
+            "key": "planned",
+            "value": 1
+          }
+        ],
+        "nextWeek": 0,
+        "nextAnchor": null,
+        "endingId": "done"
+      },
+      {
+        "id": "story-220",
+        "templateId": "settle-it",
+        "category": "Trust",
+        "title": "Settle It",
+        "eventId": "house-event-221",
+        "status": "completed",
+        "week": 2,
+        "endedWeek": 2,
+        "beatId": "offer",
+        "lane": "play",
+        "variant": 0,
+        "cast": [
+          {
+            "role": "RIVAL",
+            "contestantId": "dan-gheesling"
+          }
+        ],
+        "path": [
+          {
+            "beatId": "offer",
+            "optionId": "not-now",
+            "result": "lapsed",
+            "week": 2,
+            "logSequence": 244
+          }
+        ],
+        "vars": [],
+        "nextWeek": 0,
+        "nextAnchor": null,
+        "endingId": "declined"
+      },
+      {
+        "id": "story-224",
+        "templateId": "goodbye-message",
+        "category": "Eviction Night",
+        "title": "Goodbye Message",
+        "eventId": "house-event-225",
+        "status": "completed",
+        "week": 2,
+        "endedWeek": 2,
+        "beatId": "message",
+        "lane": "moment",
+        "variant": 0,
+        "cast": [
+          {
+            "role": "EVICTEE",
+            "contestantId": "dr-will-kirby"
+          }
+        ],
+        "path": [
+          {
+            "beatId": "message",
+            "optionId": "skip",
+            "result": "lapsed",
+            "week": 2,
+            "logSequence": 245
+          }
+        ],
+        "vars": [],
+        "nextWeek": 0,
+        "nextAnchor": null,
+        "endingId": "done"
+      },
+      {
+        "id": "story-308",
+        "templateId": "the-fallout",
+        "category": "This Week",
+        "title": "The Fallout",
+        "eventId": "house-event-309",
+        "status": "active",
+        "week": 3,
+        "endedWeek": 0,
+        "beatId": "fallout",
+        "lane": "moment",
+        "variant": 0,
+        "cast": [
+          {
+            "role": "NOMINEE",
+            "contestantId": "janelle-pierzina"
+          }
+        ],
+        "path": [],
+        "vars": [],
+        "nextWeek": 0,
+        "nextAnchor": null,
+        "endingId": null
+      }
+    ],
+    "activeModifiers": [],
+    "storyRulesStartWeek": 1,
+    "haveNotRulesStartWeek": 1,
+    "haveNots": [
+      "cody-calafiore",
+      "danielle-reyes"
+    ],
+    "haveNotPasses": [
+      "vanessa-rousso"
+    ],
+    "punishedHaveNots": [],
+    "vetoPrizes": [
+      {
+        "week": 1,
+        "contestantId": "player",
+        "prizeId": "cash"
+      },
+      {
+        "week": 1,
+        "contestantId": "derrick-levasseur",
+        "prizeId": "costume"
+      },
+      {
+        "week": 2,
+        "contestantId": "vanessa-rousso",
+        "prizeId": "cash"
+      },
+      {
+        "week": 2,
+        "contestantId": "dr-will-kirby",
+        "prizeId": "costume"
+      },
+      {
+        "week": 3,
+        "contestantId": "vanessa-rousso",
+        "prizeId": "have-not-pass"
+      },
+      {
+        "week": 3,
+        "contestantId": "danielle-reyes",
+        "prizeId": "costume"
+      }
+    ],
+    "strategyRulesStartWeek": 1,
+    "lobbies": [],
+    "replyCards": [],
+    "story": {
+      "rulesStartWeek": 1,
+      "rulesVersion": 9,
+      "productionStrictness": 1,
+      "romanceStorylines": true,
+      "grudges": [
+        {
+          "holderId": "dan-gheesling",
+          "targetId": "player",
+          "cause": "nominated",
+          "severity": 100.0,
+          "originWeek": 1,
+          "count": 2
+        },
+        {
+          "holderId": "dr-will-kirby",
+          "targetId": "player",
+          "cause": "nominated",
+          "severity": 66.0,
+          "originWeek": 1,
+          "count": 1
+        },
+        {
+          "holderId": "derrick-levasseur",
+          "targetId": "player",
+          "cause": "replacement",
+          "severity": 66.0,
+          "originWeek": 1,
+          "count": 1
+        },
+        {
+          "holderId": "derrick-levasseur",
+          "targetId": "dr-will-kirby",
+          "cause": "replacement-veto",
+          "severity": 36.0,
+          "originWeek": 1,
+          "count": 1
+        },
+        {
+          "holderId": "vanessa-rousso",
+          "targetId": "dan-gheesling",
+          "cause": "nominated",
+          "severity": 68.0,
+          "originWeek": 2,
+          "count": 1
+        },
+        {
+          "holderId": "dr-will-kirby",
+          "targetId": "dan-gheesling",
+          "cause": "nominated",
+          "severity": 68.0,
+          "originWeek": 2,
+          "count": 1
+        },
+        {
+          "holderId": "janelle-pierzina",
+          "targetId": "dan-gheesling",
+          "cause": "replacement",
+          "severity": 68.0,
+          "originWeek": 2,
+          "count": 1
+        },
+        {
+          "holderId": "janelle-pierzina",
+          "targetId": "player",
+          "cause": "nominated",
+          "severity": 73.0,
+          "originWeek": 2,
+          "count": 2
+        },
+        {
+          "holderId": "cody-calafiore",
+          "targetId": "player",
+          "cause": "replacement",
+          "severity": 70.0,
+          "originWeek": 3,
+          "count": 1
+        },
+        {
+          "holderId": "cody-calafiore",
+          "targetId": "dan-gheesling",
+          "cause": "replacement-veto",
+          "severity": 40.0,
+          "originWeek": 3,
+          "count": 1
+        }
+      ],
+      "facts": [
+        {
+          "id": "fact-271",
+          "kind": "alliance",
+          "actorId": "janelle-pierzina",
+          "subjectId": "cody-calafiore",
+          "refId": "alliance-npc-271",
+          "visibility": "private",
+          "week": 3,
+          "knowers": [
+            "janelle-pierzina",
+            "cody-calafiore"
+          ]
+        }
+      ],
+      "bonds": [],
+      "hooks": [],
+      "contacts": [
+        {
+          "npcId": "cody-calafiore",
+          "rapport": 1,
+          "weekCount": 0,
+          "lastWeek": 1
+        },
+        {
+          "npcId": "dan-gheesling",
+          "rapport": 1,
+          "weekCount": 0,
+          "lastWeek": 1
+        },
+        {
+          "npcId": "janelle-pierzina",
+          "rapport": 2,
+          "weekCount": 0,
+          "lastWeek": 2
+        },
+        {
+          "npcId": "vanessa-rousso",
+          "rapport": 1,
+          "weekCount": 0,
+          "lastWeek": 2
+        }
+      ],
+      "lore": [
+        {
+          "contestantId": "dan-gheesling",
+          "sheetKey": "dan-gheesling",
+          "source": "legacy",
+          "factIds": [
+            "dan-gheesling:legacy",
+            "dan-gheesling:respects",
+            "dan-gheesling:hot",
+            "dan-gheesling:conflict",
+            "dan-gheesling:tendency"
+          ]
+        },
+        {
+          "contestantId": "dr-will-kirby",
+          "sheetKey": "dr-will-kirby",
+          "source": "legacy",
+          "factIds": [
+            "dr-will-kirby:legacy",
+            "dr-will-kirby:respects",
+            "dr-will-kirby:hot",
+            "dr-will-kirby:conflict",
+            "dr-will-kirby:tendency"
+          ]
+        },
+        {
+          "contestantId": "derrick-levasseur",
+          "sheetKey": "derrick-levasseur",
+          "source": "legacy",
+          "factIds": [
+            "derrick-levasseur:legacy",
+            "derrick-levasseur:respects",
+            "derrick-levasseur:hot",
+            "derrick-levasseur:conflict",
+            "derrick-levasseur:tendency"
+          ]
+        },
+        {
+          "contestantId": "janelle-pierzina",
+          "sheetKey": "janelle-pierzina",
+          "source": "legacy",
+          "factIds": [
+            "janelle-pierzina:legacy",
+            "janelle-pierzina:respects",
+            "janelle-pierzina:hot",
+            "janelle-pierzina:conflict",
+            "janelle-pierzina:tendency"
+          ]
+        },
+        {
+          "contestantId": "cody-calafiore",
+          "sheetKey": "cody-calafiore",
+          "source": "legacy",
+          "factIds": [
+            "cody-calafiore:legacy",
+            "cody-calafiore:respects",
+            "cody-calafiore:hot",
+            "cody-calafiore:conflict",
+            "cody-calafiore:tendency"
+          ]
+        },
+        {
+          "contestantId": "danielle-reyes",
+          "sheetKey": "danielle-reyes",
+          "source": "legacy",
+          "factIds": [
+            "danielle-reyes:legacy",
+            "danielle-reyes:respects",
+            "danielle-reyes:hot",
+            "danielle-reyes:conflict",
+            "danielle-reyes:tendency"
+          ]
+        },
+        {
+          "contestantId": "vanessa-rousso",
+          "sheetKey": "vanessa-rousso",
+          "source": "legacy",
+          "factIds": [
+            "vanessa-rousso:legacy",
+            "vanessa-rousso:respects",
+            "vanessa-rousso:hot",
+            "vanessa-rousso:conflict",
+            "vanessa-rousso:tendency"
+          ]
+        }
+      ],
+      "knownFacts": [
+        "cody-calafiore:tendency",
+        "dan-gheesling:tendency",
+        "janelle-pierzina:tendency",
+        "vanessa-rousso:tendency"
+      ],
+      "conduct": [],
+      "removals": [],
+      "pendingRemovalId": null,
+      "cooldowns": [
+        {
+          "key": "tpl:legacy-overheard-conversation",
+          "untilWeek": 4
+        },
+        {
+          "key": "once:the-target-on-their-back:cody-calafiore",
+          "untilWeek": 102
+        },
+        {
+          "key": "tpl:the-target-on-their-back",
+          "untilWeek": 6
+        },
+        {
+          "key": "once:goodbye-message:dr-will-kirby",
+          "untilWeek": 102
+        },
+        {
+          "key": "tpl:goodbye-message",
+          "untilWeek": 6
+        }
+      ],
+      "reckonings": []
+    },
+    "allianceLeakRulesStartWeek": 1,
+    "pactPlanRulesStartWeek": 1,
+    "allWeekRulesStartWeek": 1,
+    "dialogueRulesVersion": 0,
+    "dialogue": {
+      "episodes": [],
+      "grants": [],
+      "vetoOccasions": []
+    },
+    "alumniRulesVersion": 0,
+    "alumniCatalogEdition": null,
+    "tuningRulesVersion": 0
+  }
+}

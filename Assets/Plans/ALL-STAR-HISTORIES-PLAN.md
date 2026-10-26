@@ -593,8 +593,11 @@ the frozen reader refuses. Three rules keep the reader whole:
    only the live validator accepts fails to load, so any save-and-reload test of that value catches it.
 2. **From that landing, schema 29 is closed.** A new value in any closed vocabulary is defined only at
    `schemaVersion >= 30`. That covers story rules 10, R7's values, R8's origin value, a new deal kind or deal-id
-   prefix, a new storyline ceiling, and any change to the dialogue validator. The story session and role moments are
-   told (section 10).
+   prefix, a new storyline ceiling, any change to the dialogue validator, and the competition rules above 4: PC5's
+   competition rules 5, PC6's 6 and later, and Will's throw value. Frozen29 freezes `CompetitionRules.Current` at 4
+   (`FrozenV29ReadOnly.Leaves.cs:1527-1533`) and refuses a save above it (`FrozenV29ReadOnly.Core.cs:190`), so a
+   schema-29 save at competition rules 5 would be refused by its next load (rule 1), and for good once step 2 lands.
+   The story session, role moments and the competitions topic are told (section 10).
    - One named exception: D1 may still land at 29, because its chip writes dialogue rules 1, which the reader already
      accepts. Its `>= 29` literals change nothing at 29.
    - If D1 also changes what a rules-1 store may hold (for example the rules-2 fallback the joint note's P1(a) may
@@ -676,6 +679,35 @@ The master plan's list of live literals that must become bounds: `DialogueRules.
 | `Runtime/Persistence/EpisodeSaveValidation.cs:13` | `== 29` | the same constant |
 | `Simulation/DialogueRules.cs:19` (`On`) and `:97` (`TryValidate`) | `== 29` and `!= 29` | `>= 29`: the schema that introduced the store. Pinned to 29, the bump would switch dialogue off for good, and `TryValidate` would refuse every season. D1 makes this change itself (the joint note's §6 item 1); if D1 has not landed when SCH30 does, SCH30 makes it |
 | `Simulation/ShippedRules.cs:74-104` (`Fields`) | — | lists `alumniRulesVersion` and `tuningRulesVersion`, in that order, after `dialogueRulesVersion`. Its completeness test requires both, because it marks every int named `*RulesVersion`; 8.6 lists what moves with them. The edition is content, not a rule field |
+
+**At the merge with `claude/dialogue-v2`** (the joint note's §6 items 6 and 7, read at `9f8305fe`). These pins are
+on that branch only (D1 and D2), so SCH30 cannot move them on this one; the merge that brings the two together moves
+them, in the same commit:
+- **`DialogueRules.cs`** conflicts on the `On` line. Take D2's `On`, `Admits` and `IsDefined`: its `On` reads
+  `dialogueRulesVersion >= Rules1 && Admits(version, schemaVersion)`, which holds SCH30's `>= 29` for rules 1. The
+  `TryValidate` line (`< 29`) is the same on both sides.
+- **D1's native-29 arm** (`CurrentOldSaveTrace`'s `NativeSchema` = 29, `LegacyDigestSchema29Observer.IsNative29`,
+  `NativeFields29` and `NativeTrace29`) binds a live state at 29. At 30 the committed
+  `s29-mode2-dialogue1-w2-campaign` fixture loads to a schema-30 state, so the arm gets a 30-to-29 layer:
+  `LegacyDigestSchema30Observer.ProjectFields29` already passes a rules-1 store through (it runs Frozen29, which
+  accepts rules 1), and the native contract takes that projection as a plain schema-29 object, the way the retained
+  entry does. `ProjectRetained28` refuses rules 1 (its 'rule-1' case), so a rules-1 projection goes to the native arm,
+  never to 28.
+- **`s29-mode2-dialogue1-w2-campaign`** joins `FrozenEpisodeV29IntegrationTests`' direct-29 cases. The SCH30 review
+  ran `FrozenEpisodeV29.Validate` on it: accepted unchanged (schema 29, rules 1, one conversation); with rules 2 it is
+  refused with "Dialogue rules are not enabled in this build.", and with story rules 10 with "Unsupported story rules
+  version.".
+- **`DialogueRules2LadderTests.AtSchema29ALaterVersionIsRefusedInTheFrozenReadersWords`**: its whole-state wording pin
+  moves to `FrozenEpisodeV29.Validate`, whose words it already uses; at 30 the live validator refuses any schema-29
+  state with "Unsupported episode schema.".
+- **`DialogueRules2Season.HeldBelowItsSchema`** switches D2's engine and rescue cases to their conversation arm by
+  itself once a new season is written at 30. **`DialogueRules2PublicRescueTests.Enrolled`** loads its schema-29
+  carrier through the real migration to 30 instead of assigning the live schema.
+- **Then D2's own set runs at 30 on the merge**: `DialogueRules2LadderTests`, `DialogueRules2ValidatorTests` and
+  `DialogueRules2EngineTests` in the dotnet subset, and `DialogueRules2PublicRescueTests` under Unity's Mono first.
+  The merge also conflicts in `CurrentOldSaveTrace.cs`, `LegacyDigestSchema29Observer.cs`, its tests and
+  `Tools/baseline.txt` (a `git merge-tree` preview at `9f8305fe`), and adds D1's rows beside SCH30's in
+  `OldSaveAcceptanceTests`' fixture and cell lists.
 
 ### 8.6 The EditMode pin list (the Unity-free subset runs none of it)
 
@@ -860,9 +892,16 @@ the tests 8.6 lists for H1b. It is re-pinned with that reason; any other move is
 
 ### 8.9 SCH30 as built (2026-10-25, branch `claude/all-star-histories`)
 
-Two commits, so step 1 can land on main alone (8.2, closing rule 1): step 1 wires the frozen reader at the live 29;
-step 2 is the bump. Offline-compiled; the dotnet subset, the Frozen29 warnings-as-errors project and the EditMode
-fixtures named in each commit ran under Unity's Mono; the full sets are the lead's.
+Two commits, so step 1 can land on main before the bump (8.2, closing rule 1): step 1 wires the frozen reader at the
+live 29; step 2 is the bump. Offline-compiled; the dotnet subset, the Frozen29 warnings-as-errors project and the
+EditMode fixtures named in each commit ran under Unity's Mono; the full sets are the lead's.
+
+**Step 1's PR carries the branch up to `f600afae`, not `f600afae` alone:** H0's plan commits (`cacc59e0`, `6d179b01`,
+`74fa06b6`), AS1a (`b127cc05`, `751d6bca`) and step 1. Step 1's fresh-season digests for `regular/8/AllStars` and
+`stress/16/Regular` (seeds 1, 77 and 4242) were recorded on top of AS1a, so they hash AS1a's audited bios:
+`CastTemplates.ToContestant` copies a card's bio into the save, and the stress house seats alumni
+(`SeasonBuilder.cs:113-119`). A cherry-pick of `f600afae` alone onto main fails those six cases. Re-recording them on
+a main-based cherry-pick would work, but it records digests of cards the branch has already corrected.
 
 - **How Frozen29 was cut.** Frozen28's 17 production files, carried by name, then by exactly the live validators'
   changes since its image. The delta was found mechanically: every member Frozen28 copied (its `SOURCE` spans in
@@ -885,11 +924,24 @@ fixtures named in each commit ran under Unity's Mono; the full sets are the lead
   observer's state-bound entries, which compose it; `LegacyDigestSchema30ObserverTests` call the retained entry
   directly on the schema-29 fixtures.
 - **What schema 30 carries:** exactly 5.1's three root fields, off. The joint note's §6 stayed final with no dialogue
-  field (re-read at `c003ded2`). AS3's association was not added: its derivation proof has not run (D-H9 is the
-  lead's).
-- **Not yet built:** 8.7's three new schema-30 fixtures (the default scene, a Regular and an All-Stars director
-  season, written by the 30 build through `Tools/OldSaves`), and closing rule 3's re-diff against main's tip before
-  step 2 lands.
+  field (re-read at `c003ded2`, and again at `9f8305fe`, D2 and its review). AS3's association was not added: its
+  derivation proof has not run (D-H9 is the lead's).
+- **The review's fixes** (the fix commit after `936b73a4`):
+  - 8.7's three schema-30 fixtures, written and recorded by `936b73a4` through `Tools/OldSaves`
+    (OLD-SAVE-ACCEPTANCE 2.4): `s30-default-w2-social`, `s30-mode2-allweek-w3-campaign` (Regular) and
+    `s30-mode2-allstars-w3-campaign`, all at alumni rules 0. From schema 30 a cell names the alumni rules and the
+    cast, both read back from the save, so H1b's alumni-1 All-Stars cell is distinct. The recorder gained the
+    `director-allstars` rules value for it.
+  - `LegacyDigestSchema30ObserverTests.EveryPooledFieldRefusesMissingNullOrNonInertJson` asserts each field's own
+    refusal, so a deleted value check fails it; the own-view binding alone would refuse every edited trace too.
+  - The editor's v5 QA save (`LegacySaveFixtures`) is a byte copy of the `s05-default-w3-hoh` fixture, a file the
+    schema-5 build wrote, in place of a live capture stripped by hand: that capture had not stripped the fields added
+    since schema 14, so `FrozenEpisodeV5` refused it, and it needed an edit on every bump.
+  - The closing list (8.2 rule 2, section 10, D-H11) names the competition rules above 4, and section 10 tells the
+    competitions topic; 8.5 lists what the merge with `claude/dialogue-v2` moves.
+- **Closing rule 3, re-checked:** `origin/main` is `772828ba`. It changes no file under `Simulation/` or
+  `Runtime/Persistence/` since `b208d46d`, and `git merge-tree` of it into this branch is clean. Fetch and run both
+  again before step 2 lands.
 
 ---
 
@@ -1008,8 +1060,9 @@ histories-first order, and it carries every field in 5.1.
   (OWNER-DECISIONS §3's amendment), and SCH30 is that step.
 - **Schema 29 closes when step 1 lands on main** (8.2). From then on, every track defines a new value in a closed
   vocabulary only at `schemaVersion >= 30`. That covers story rules 10, R7's and R8's values, deal kinds and id
-  prefixes, storyline ceilings and dialogue validator changes. D1's chip is the one named exception. This binds the
-  story session and role moments, so it is a peer-session decision for the owner (D-H11).
+  prefixes, storyline ceilings, dialogue validator changes, and competition rules above 4 (PC5's 5, PC6's 6 and
+  later, and Will's throw value). D1's chip is the one named exception. This binds the story session, role moments
+  and the competitions topic, so it is a peer-session decision for the owner (D-H11).
 - **Not claimed:** no command kind (the next free stays 66), no story milestone (10 stays the story session's, 11 is
   Roles), no dialogue rules version (the joint note claims 2 to 5 in dialogue's own field), and no competition rules
   version (5 is PC5's; the throw's is claimed with the competitions topic at H1d).
@@ -1044,8 +1097,14 @@ If B9's plan needs another field, it joins the pool before the list closes.
 either lands at 29 before step 1 lands on main, its values join the frozen reader in the same step. After that, they
 are defined only at `schemaVersion >= 30` (8.2).
 
-**With the competitions topic:** PC5 is competition rules 5, and PC6's minigames take 6 or later. Will's throw takes
-the next free value when H1d lands, and is measured with PC5's lab runs.
+**With the competitions topic** (tell it when it next runs): PC5 is competition rules 5, and PC6's minigames take 6 or
+later. Will's throw takes the next free value when H1d lands, and is measured with PC5's lab runs.
+- **PC5 defines competition rules 5 only at `schemaVersion >= 30`**, and so do PC6's 6 and later and the throw's value.
+  Frozen29 freezes the competition rules at 4 (`CompetitionRules.Current = Widened = 4`) and refuses a schema-29 save
+  above it, so a season at 29 must keep being refused 5 or later by the live validator too, with the bound keyed to
+  the schema (`a-current-version-constant-is-a-bound-not-a-gate`).
+- If PC5 reaches main at 29 before SCH30's step 1 lands, its value joins the frozen reader in that step, as role
+  moments' R7 and R8 would (above). After that, never.
 
 **With the story session** (tell it when it next runs):
 - schema 30 is pooled and built here;
@@ -1133,4 +1192,4 @@ edition.
 | D-H8 | Where the line falls for "the parts that move balance wait for B9" | **New terms in a decision rule wait** (career reputation, pair risk, the vote shield, Will's throw, the repertoires, the stats). **The opening state is built in H1b**, measured and not tuned. It enrols fresh seasons only if no headline rate in the alumni cells moves beyond seed noise. Otherwise H1b lands with `ApplyFresh` not enrolling until B9, unless the owner decides otherwise (section 9). A stricter reading would hold enrolment back in every case; the gate keeps that protection wherever it matters |
 | D-H9 | AS3's commitment association, if its derivation proof has not run when SCH30's list closes | **Run the proof first**: it needs no Unity. If it cannot run in time, the lead chooses between adding the null field to 30 as insurance and accepting a later schema 31 for it |
 | D-H10 | Reserve B9's `tuningRulesVersion` in 30 before B9 has a plan | **Yes**, at 0, with validation accepting only 0 until B9 defines a value. An unused int costs far less than a schema 31 (5.1). The joint note's §6 recommends the same |
-| D-H11 (owner, peer sessions) | Close schema 29 when SCH30's step 1 lands on main (8.2) | **Yes.** From that landing, story rules 10, R7, R8 and every other new closed value are defined only at `schemaVersion >= 30`, with D1's chip as the one named exception. It binds the story session and role moments, so it is recorded as "delegated call, confirmed by the owner" |
+| D-H11 (owner, peer sessions) | Close schema 29 when SCH30's step 1 lands on main (8.2) | **Yes.** From that landing, story rules 10, R7, R8, competition rules 5 (PC5), PC6's 6 and later, Will's throw value and every other new closed value are defined only at `schemaVersion >= 30`, with D1's chip as the one named exception. It binds the story session, role moments and the competitions topic, so it is recorded as "delegated call, confirmed by the owner" |

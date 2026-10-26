@@ -50,8 +50,20 @@ namespace Gamesim.Tests.EditMode
             public string performance = PerformanceModel.ByPolicy;
             /// <summary>NPC-world ticks a week (B5b's budget, <see cref="BalanceLabNpcWorld"/>); 0 plays no NPC world.</summary>
             public int npcTicks;
+            /// <summary>
+            /// The card the player plays (ALL-STAR-HISTORIES-PLAN §9: the player on an alumni card), or null for the
+            /// newcomer the lab has always seated.
+            /// </summary>
+            public string playerTemplate;
+            /// <summary>
+            /// The All-Star histories' paired control (§9): the season built without ApplyFresh's histories step, held at
+            /// alumni rules 0 as a harness may hold one. Shipping never does.
+            /// </summary>
+            public bool alumniOff;
 
-            public string House => roster + "/" + size.ToString(CultureInfo.InvariantCulture) + "/npc" + npcTicks.ToString(CultureInfo.InvariantCulture);
+            /// <summary>The house; a player card and the histories' control are named only when set, so every earlier cell keeps its name.</summary>
+            public string House => roster + "/" + size.ToString(CultureInfo.InvariantCulture) + "/npc" + npcTicks.ToString(CultureInfo.InvariantCulture)
+                + (playerTemplate == null ? "" : "/as-" + playerTemplate) + (alumniOff ? "/alumni0" : "");
             /// <summary>The house the season's seed is drawn for: the roster and size at budget nought, whatever the cell's budget, so budgets pair.</summary>
             public string SeedHouse => roster + "/" + size.ToString(CultureInfo.InvariantCulture) + "/npc0";
             public string Key => policy + "/" + House + "/" + performance;
@@ -194,8 +206,9 @@ namespace Gamesim.Tests.EditMode
         private static void PlayInto(SeasonRun run)
         {
             var cell = run.cell;
-            var fresh = SeasonBuilder.Create(new SeasonBuilder.Choice { HouseSize = cell.size, Roster = cell.roster }, run.seed);
-            ShippedRules.ApplyFresh(fresh);
+            var fresh = SeasonBuilder.Create(new SeasonBuilder.Choice { HouseSize = cell.size, Roster = cell.roster, PlayerTemplateId = cell.playerTemplate }, run.seed);
+            // The shipped rules; the histories' control leaves only their step out (ShippedRules.ApplyFresh's internal form).
+            ShippedRules.ApplyFresh(fresh, alumniHistories: !cell.alumniOff);
             var engine = new EpisodeEngine(fresh);
             // The NPC world (B5b): every operation installs a new engine, and every command goes to the world's.
             var world = cell.npcTicks > 0 ? new BalanceLabNpcWorld(engine, cell.npcTicks, run) : null;

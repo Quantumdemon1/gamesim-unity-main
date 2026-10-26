@@ -61,18 +61,32 @@ namespace Gamesim.Tests.EditMode
             Assert.That(EpisodeValidation.TryValidate(state, out string reason), Is.True, reason);
         }
 
-        [TestCase("alumniRulesVersion", 1)] [TestCase("alumniRulesVersion", -1)] [TestCase("alumniRulesVersion", int.MaxValue)]
-        [TestCase("tuningRulesVersion", 1)] [TestCase("tuningRulesVersion", -1)]
-        [TestCase("alumniCatalogEdition", "allstar-histories-1")] [TestCase("alumniCatalogEdition", "")]
-        public void LiveValidationAcceptsOnlyTheOffValuesUntilEachSliceDefinesOne(string field, object value)
+        private const string NotEnabled = "Schema 30's pooled rules are not enabled in this build.";
+        private const string NoEdition = "The alumni rules need the edition their season was built from.";
+
+        /// <summary>
+        /// Live validation accepts only the values a slice has defined (5.3): the tuning rules 0 until B9; the alumni rules
+        /// 0 with no edition, or from H1b 1 with edition 1, where a fresh All-Stars season now starts. Earlier name, at
+        /// SCH30, when only the off values were defined: LiveValidationAcceptsOnlyTheOffValuesUntilEachSliceDefinesOne.
+        /// </summary>
+        [TestCase(true, "alumniRulesVersion", 2, NotEnabled)] [TestCase(true, "alumniRulesVersion", -1, NotEnabled)]
+        [TestCase(true, "alumniRulesVersion", int.MaxValue, NotEnabled)]
+        [TestCase(true, "tuningRulesVersion", 1, NotEnabled)] [TestCase(true, "tuningRulesVersion", -1, NotEnabled)]
+        [TestCase(true, "alumniCatalogEdition", "allstar-histories-2", NoEdition)] [TestCase(true, "alumniCatalogEdition", "", NoEdition)]
+        [TestCase(true, "alumniCatalogEdition", null, NoEdition)]
+        [TestCase(false, "alumniCatalogEdition", "allstar-histories-1", NotEnabled)] [TestCase(false, "alumniCatalogEdition", "", NotEnabled)]
+        [TestCase(false, "alumniRulesVersion", 1, NoEdition)] [TestCase(false, "tuningRulesVersion", 1, NotEnabled)]
+        public void LiveValidationAcceptsOnlyTheValuesASliceHasDefined(bool allStars, string field, object value, string expected)
         {
-            var state = SeasonBuilder.Create(new SeasonBuilder.Choice { HouseSize = 8, Roster = CastTemplates.Roster.AllStars }, 3002u);
+            var state = SeasonBuilder.Create(new SeasonBuilder.Choice { HouseSize = 8, Roster = allStars ? CastTemplates.Roster.AllStars : CastTemplates.Roster.Regular }, 3002u);
             ShippedRules.ApplyFresh(state);
+            Assert.That(state.alumniRulesVersion, Is.EqualTo(allStars ? AlumniRules.Histories : AlumniRules.Off), "H1b: the cast decides.");
+            Assert.That(state.alumniCatalogEdition, Is.EqualTo(allStars ? AlumniEditions.Histories1Id : null));
             Assert.That(EpisodeValidation.TryValidate(state, out string reason), Is.True, reason);
             var bad = state.Clone();
             Member(field).SetValue(bad, value);
             Assert.That(EpisodeValidation.TryValidate(bad, out reason), Is.False, field + " = " + value);
-            Assert.That(reason, Is.EqualTo("Schema 30's pooled rules are not enabled in this build."));
+            Assert.That(reason, Is.EqualTo(expected));
             Assert.That(EpisodeValidation.TryValidate(state, out reason), Is.True, "The control is untouched: " + reason);
         }
 

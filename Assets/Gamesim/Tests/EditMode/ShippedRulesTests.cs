@@ -63,13 +63,29 @@ namespace Gamesim.Tests.EditMode
             { "pactPlanRulesStartWeek", 1 },
             { "allWeekRulesStartWeek", 1 },
             { "dialogueRulesVersion", 0 },
-            // Schema 30's pooled rule fields (SCH30): off in every fresh season until their own slices.
+            // Schema 30's pooled rule fields (SCH30): the tuning rules off until B9. The alumni rules are the cast's: 0
+            // here, for a season that seats no alumnus; a season that seats one starts at 1 (H1b, AlumniShipped).
             { "alumniRulesVersion", 0 },
             { "tuningRulesVersion", 0 },
             { "npcSocial.rulesStartWeek", 1 },
             { "story.rulesStartWeek", 1 },
             { "story.rulesVersion", 9 },
         };
+
+        /// <summary>
+        /// Whether a builder's season seats an alumnus, and so starts on the alumni rules (H1b, ALL-STAR-HISTORIES-PLAN §6):
+        /// the All-Stars roster, and the stress house, which seats both rosters. The Shipped map splits by cast there.
+        /// </summary>
+        private static bool SeatsAlumni(string builder, CastTemplates.Roster roster) => roster == CastTemplates.Roster.AllStars || builder == "stress";
+
+        /// <summary>What a season that seats an alumnus plays under beside <see cref="Shipped"/>: the histories' rules value.</summary>
+        private static readonly Dictionary<string, int> AlumniShipped = new Dictionary<string, int>(StringComparer.Ordinal)
+        {
+            { "alumniRulesVersion", AlumniRules.Histories },
+        };
+
+        private static int ShippedValue(string builder, CastTemplates.Roster roster, string field) =>
+            SeatsAlumni(builder, roster) && AlumniShipped.TryGetValue(field, out int alumni) ? alumni : Shipped[field];
 
         [TestCaseSource(nameof(Builders))]
         public void ApplyFreshSwitchesOnEveryShippedRuleFromWeekOne(string builder, int size, CastTemplates.Roster roster)
@@ -79,7 +95,9 @@ namespace Gamesim.Tests.EditMode
             var fields = ShippedRules.Fields(s);
             Assert.That(fields.Select(f => f.Key), Is.EquivalentTo(Shipped.Keys), "Every boundary is pinned.");
             foreach (var field in fields)
-                Assert.That(field.Value, Is.EqualTo(Shipped[field.Key]), builder + " " + size + ": " + field.Key);
+                Assert.That(field.Value, Is.EqualTo(ShippedValue(builder, roster, field.Key)), builder + " " + size + ": " + field.Key);
+            // The edition is content, not a rule field: checked beside the map.
+            Assert.That(s.alumniCatalogEdition, Is.EqualTo(SeatsAlumni(builder, roster) ? AlumniEditions.Histories1Id : null), builder + " " + size + ": the edition.");
             Assert.That(s.competitionRulesVersion, Is.EqualTo(CompetitionRules.Current));
             Assert.That(s.story.rulesVersion, Is.EqualTo(StoryRules.Current));
             Assert.That(s.unifiedCommitmentRulesVersion, Is.EqualTo(UnifiedVoteFamilyValidation.Version), "The unified vote rules (V6).");
@@ -94,7 +112,8 @@ namespace Gamesim.Tests.EditMode
         /// public field of it, first impressions and lore included. A rule the shipped game gains later goes
         /// into ApplyFresh and is added to this copy in the same commit, so the two stay one list: D3's war
         /// rooms are the first, added as the two lanes landed together, D2's all-week beats the next, and the
-        /// unified vote rules (vote family V6: mode 2 in place of mode 1) the third.
+        /// unified vote rules (vote family V6: mode 2 in place of mode 1) the third, and the All-Star histories
+        /// (ALL-STAR-HISTORIES-PLAN H1b) the fourth, last.
         /// </summary>
         [TestCaseSource(nameof(Builders))]
         public void ApplyFreshGivesTheSeasonTheDirectorsInlineSetupGave(string builder, int size, CastTemplates.Roster roster)
@@ -128,6 +147,7 @@ namespace Gamesim.Tests.EditMode
             EpisodeEngine.EnableAllWeek(fresh);
             fresh.unifiedCommitmentRulesVersion = UnifiedVoteFamilyValidation.Version;
             fresh.unifiedHearingRulesVersion = UnifiedCommitmentHearings.ProspectiveVersion;
+            EpisodeEngine.EnableAlumniHistories(fresh);
         }
 
         [Test]
@@ -147,13 +167,14 @@ namespace Gamesim.Tests.EditMode
         /// <summary>
         /// The live save schema is 30 (SCH30, the pooled schema): every schema 1 to 29 save reaches it through
         /// EpisodeSaveMigrations.UpgradeV29ToV30, which runs the frozen schema-29 reader (FrozenEpisodeV29.Validate)
-        /// first, as UpgradeV28ToV29 runs Frozen28's. A season the game starts today still plays on dialogue rules 0,
-        /// and every pooled field is off in every fresh season, Regular and All-Stars alike, until its own slice.
-        /// Earlier names: TheLiveSchemaStaysAt28UntilFrozenEpisodeV28FreezesTheModeTwoCore, then
-        /// TheLiveSchemaIs29AndAShippedSeasonStartsOnDialogueRules0.
+        /// first, as UpgradeV28ToV29 runs Frozen28's. A season the game starts today still plays on dialogue rules 0
+        /// and tuning rules 0. From H1b a season that seats an alumnus (All-Stars, and the stress house) starts on alumni
+        /// rules 1 with edition 1; a season that seats none stays at 0 with no edition. Earlier names:
+        /// TheLiveSchemaStaysAt28UntilFrozenEpisodeV28FreezesTheModeTwoCore, TheLiveSchemaIs29AndAShippedSeasonStartsOnDialogueRules0,
+        /// then TheLiveSchemaIs30AndAShippedSeasonStartsWithEveryPooledFieldOff (SCH30).
         /// </summary>
         [TestCaseSource(nameof(Builders))]
-        public void TheLiveSchemaIs30AndAShippedSeasonStartsWithEveryPooledFieldOff(string builder, int size, CastTemplates.Roster roster)
+        public void TheLiveSchemaIs30AndOnlyASeasonThatSeatsAnAlumnusStartsOnTheAlumniRules(string builder, int size, CastTemplates.Roster roster)
         {
             Assert.That(new EpisodeState().schemaVersion, Is.EqualTo(30),
                 "The live save schema is 30. Another persisted field needs the next schema, its migration and old-save fixtures.");
@@ -164,8 +185,9 @@ namespace Gamesim.Tests.EditMode
                 ShippedRules.ApplyFresh(s);
                 Assert.That(s.schemaVersion, Is.EqualTo(30), "A shipped season saves at the live schema.");
                 Assert.That(s.dialogueRulesVersion, Is.Zero, "A shipped season starts with the dialogue rules off.");
-                Assert.That(s.alumniRulesVersion, Is.Zero, builder + " " + size + " " + roster + ": the alumni rules are off until H1b.");
-                Assert.That(s.alumniCatalogEdition, Is.Null, "No alumni edition until H1b.");
+                bool alumni = SeatsAlumni(builder, roster);
+                Assert.That(s.alumniRulesVersion, Is.EqualTo(alumni ? AlumniRules.Histories : AlumniRules.Off), builder + " " + size + " " + roster + ": the cast's alumni rules.");
+                Assert.That(s.alumniCatalogEdition, Is.EqualTo(alumni ? AlumniEditions.Histories1Id : null), "Edition 1 with the alumni rules, none without.");
                 Assert.That(s.tuningRulesVersion, Is.Zero, "The tuning rules are off until B9.");
                 Assert.That(EpisodeValidation.TryValidate(s, out string error), Is.True, error);
             }

@@ -2487,7 +2487,8 @@ namespace Gamesim.Simulation
                 // re-rolls every season and breaks every replay fixture, so it lands once, with the
                 // NPC writes in Phase C, rather than twice.
                 decayable = RelationshipLedger.Decays(type) });
-            if (relation.events.Count > 512) relation.events.RemoveAt(0);
+            // The oldest entry past the edge's 512 goes, a past-game receipt kept under the alumni rules (H1b).
+            RelationshipLedger.Trim(s, relation);
         }
 
         private static void Arc(EpisodeState s, string npcId, double delta, string reason)

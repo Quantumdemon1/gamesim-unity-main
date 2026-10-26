@@ -124,14 +124,17 @@ namespace Gamesim.Tests.EditMode
             Assert.That(Text(Payload(recovered)), Is.EqualTo(Text(Payload(loaded))), "The 29 backup recovers to the same 30 season.");
         }
 
-        [TestCase("alumni-rule")] [TestCase("alumni-edition")] [TestCase("tuning-rule")] [TestCase("future-header")]
+        // From H1b the alumni rules define 1, with its edition: "alumni-rule" holds the undefined 2 (it held 1 at SCH30),
+        // and "alumni-unedited" holds 1 without the edition its season was built from.
+        [TestCase("alumni-rule")] [TestCase("alumni-unedited")] [TestCase("alumni-edition")] [TestCase("tuning-rule")] [TestCase("future-header")]
         [TestCase("missing-pooled")]
         public void TheStoreRefusesAThirtyHoldingAPooledValueOrAFutureSchemaWithoutChangingAFile(string defect)
         {
             var current = EpisodeSaveMigrations.UpgradeV29ToV30(Fixture("s29-mode2-allweek-w3-campaign"));
             switch (defect)
             {
-                case "alumni-rule": current["alumniRulesVersion"] = 1; break;
+                case "alumni-rule": current["alumniRulesVersion"] = 2; break;
+                case "alumni-unedited": current["alumniRulesVersion"] = 1; break;
                 case "alumni-edition": current["alumniCatalogEdition"] = "allstar-histories-1"; break;
                 case "tuning-rule": current["tuningRulesVersion"] = 1; break;
                 case "future-header": current["schemaVersion"] = 31; break;
@@ -146,6 +149,7 @@ namespace Gamesim.Tests.EditMode
                 Assert.That(refused, Is.Null);
                 Assert.That(message, Does.Not.Contain("checksum"));
                 if (defect == "future-header") Assert.That(message, Does.Contain("Unsupported simulation schema version."));
+                else if (defect == "alumni-unedited") Assert.That(message, Does.Contain("The alumni rules need the edition their season was built from."));
                 else if (defect != "missing-pooled") Assert.That(message, Does.Contain("Schema 30's pooled rules are not enabled in this build."));
                 Assert.That(File.ReadAllBytes(slot.Store.SavePath), Is.EqualTo(bytes));
             }

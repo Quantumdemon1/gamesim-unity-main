@@ -515,6 +515,25 @@ namespace Gamesim.Simulation
                     deal.status = DealStatus.Expired;
         }
 
+        /// <summary>
+        /// The All-Star histories' opening final two (ALL-STAR-HISTORIES-PLAN §6 step 3): the pass's own
+        /// <see cref="Strike"/> for one pair of houseguests, with no offer, no ladder and no roll - an ordinary
+        /// <c>final_two</c> row, open-ended, with the ordinary <c>deal_accepted</c> record both ways, kept or broken
+        /// and settled like any other. It refuses, writing nothing, when either is not an active houseguest other
+        /// than the player, when the two already hold an active final two, or at the deal ceiling.
+        /// </summary>
+        internal static bool SeedOpeningPair(EpisodeState state, string firstId, string secondId)
+        {
+            var first = state?.Find(firstId);
+            var second = state?.Find(secondId);
+            if (first == null || second == null || firstId == secondId || first.isPlayer || second.isPlayer
+                || first.status != ContestantStatus.Active || second.status != ContestantStatus.Active
+                || Has(state, firstId, secondId, DealKind.FinalTwo) || UnifiedVoteStore.DealCount(state) >= DealCeiling)
+                return false;
+            Strike(state, firstId, secondId, DealKind.FinalTwo);
+            return true;
+        }
+
         /// <summary>Writes the bargain, both sides of the ledger, and no roll.</summary>
         private static void Strike(EpisodeState state, string from, string to, string kind)
         {

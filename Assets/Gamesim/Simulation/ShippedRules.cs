@@ -23,7 +23,15 @@ namespace Gamesim.Simulation
     public static class ShippedRules
     {
         /// <summary>Switches every shipped rule on for a fresh, unplayed season, from week one.</summary>
-        public static void ApplyFresh(EpisodeState fresh)
+        public static void ApplyFresh(EpisodeState fresh) => ApplyFresh(fresh, alumniHistories: true);
+
+        /// <summary>
+        /// The same, with the alumni histories' last step left out when <paramref name="alumniHistories"/> is false:
+        /// for the balance lab's paired control only (ALL-STAR-HISTORIES-PLAN §9: a harness may hold a fresh season at
+        /// an earlier alumni rules value for its control; shipping never does). Internal, so the director and every
+        /// other assembly reach only the shipped form.
+        /// </summary>
+        internal static void ApplyFresh(EpisodeState fresh, bool alumniHistories)
         {
             if (fresh == null) throw new ArgumentNullException(nameof(fresh));
             fresh.competitionRulesVersion = CompetitionRules.Current;
@@ -62,6 +70,11 @@ namespace Gamesim.Simulation
             // keeps its mode (the lead's decision D6). Dialogue remains off in the schema29 foundation.
             fresh.unifiedCommitmentRulesVersion = UnifiedVoteFamilyValidation.Version;
             fresh.unifiedHearingRulesVersion = UnifiedCommitmentHearings.ProspectiveVersion;
+            // The All-Star histories (ALL-STAR-HISTORIES-PLAN H1b), last: after the first impressions, so a pair's
+            // standing is its first impression plus its past game, and after the commitment rules and the unified
+            // mode, so the Hitmen's final two is written under the season's own deal rules. Alumni rules 1 only in a
+            // season that seats an identity-intact alumnus; every other season stays at 0, as it was.
+            if (alumniHistories) EpisodeEngine.EnableAlumniHistories(fresh);
         }
 
         /// <summary>

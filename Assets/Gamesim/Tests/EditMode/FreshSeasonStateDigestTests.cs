@@ -20,6 +20,13 @@ namespace Gamesim.Tests.EditMode
     /// (SCH30 step 1, the build before the bump), so the bump has a schema-29 build to answer to: from step 2 the same
     /// season, taken back to the retained 29 by the test inverse, must hash to the same digest. A digest that moves is a
     /// regression, never a re-record (OLD-SAVE-ACCEPTANCE §6 step 5). BalanceLabGoldens hash the lab's rows, not the state.
+    ///
+    /// <para><b>From H1b</b> a fresh season that seats an alumnus (All-Stars, and the stress house) starts on the alumni rules
+    /// with its seated pairs' histories. No digest is re-recorded for it: the season with exactly what the histories wrote
+    /// taken away (<see cref="AlumniHistoriesTests.WithoutHistories"/>: each pair's standing and interaction week, every
+    /// receipt, the Hitmen's final two and its handshake, the sequences they took, the alumni rules and edition) must still
+    /// hash to its schema-29 record. So the histories are the only change, byte for byte, and every other season is
+    /// untouched.</para>
     /// </summary>
     public sealed class FreshSeasonStateDigestTests
     {
@@ -76,6 +83,13 @@ namespace Gamesim.Tests.EditMode
         {
             var s = Build(builder, size, roster, seed);
             if (applyFresh) ShippedRules.ApplyFresh(s);
+            bool alumni = applyFresh && (roster == CastTemplates.Roster.AllStars || builder == "stress");
+            Assert.That(s.alumniRulesVersion, Is.EqualTo(alumni ? AlumniRules.Histories : AlumniRules.Off), "H1b: the cast decides.");
+            if (alumni)
+            {
+                Assert.That(s.relationships.SelectMany(r => r.events).Count(AlumniHistories.IsReceipt), Is.EqualTo(4), "Three seated pairs, four receipts.");
+                s = AlumniHistoriesTests.WithoutHistories(s);
+            }
             var payload = Payload(s);
             // SCH30 step 2: the live schema is 30; the test inverse takes the season back to the retained 29 (the pooled
             // fields at their off literals removed, the header 29) before it is hashed against the 29 build's record.

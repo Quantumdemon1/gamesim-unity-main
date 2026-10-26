@@ -17,6 +17,9 @@ All-Star (2026-10-25, against main `b208d46d`; "the master plan" below). What ch
 - Will and Janelle's row is held out, because its only source is not a game source (3.3);
 - a default if H1b's measurement moves the headline rates (section 9).
 
+**H1b built** (2026-10-26, section 13): the histories' opening state at alumni rules 1, with H1a's edition folded in,
+measured against section 9's gate (no headline rate moved), so fresh seasons that seat an alumnus enrol.
+
 **Evidence base**
 - Unity: `D:/GamesimAllStars` at `b208d46d`. Code paths are relative to `Assets/Gamesim/`. Documents at the repository
   root are named bare (`BALANCE_BASELINE.md`).
@@ -1193,3 +1196,147 @@ edition.
 | D-H9 | AS3's commitment association, if its derivation proof has not run when SCH30's list closes | **Run the proof first**: it needs no Unity. If it cannot run in time, the lead chooses between adding the null field to 30 as insurance and accepting a later schema 31 for it |
 | D-H10 | Reserve B9's `tuningRulesVersion` in 30 before B9 has a plan | **Yes**, at 0, with validation accepting only 0 until B9 defines a value. An unused int costs far less than a schema 31 (5.1). The joint note's §6 recommends the same |
 | D-H11 (owner, peer sessions) | Close schema 29 when SCH30's step 1 lands on main (8.2) | **Yes.** From that landing, story rules 10, R7, R8, competition rules 5 (PC5), PC6's 6 and later, Will's throw value and every other new closed value are defined only at `schemaVersion >= 30`, with D1's chip as the one named exception. It binds the story session, role moments and the competitions topic, so it is recorded as "delegated call, confirmed by the owner" |
+
+---
+
+## 13. H1b as built (2026-10-26, branch `claude/all-star-histories`)
+
+On top of `0656c58f` (SCH30's review fix). H1a was not built on its own: its edition is part of this slice. Proof without
+Unity: the offline compile (`-WithoutUma`), the dotnet subset and the Frozen29 project, and the EditMode fixtures named
+below under Unity's Mono. The full sets are the lead's.
+
+**What it adds**
+- `Simulation/AlumniHistories.cs`:
+  - `AlumniRules`: `Off` 0, `Histories` 1, `Latest` 1, `IsDefined`, and `On(s)` (alumni rules at least 1 with an
+    edition this build knows);
+  - edition 1, `AlumniEditions.Histories1` (`allstar-histories-1`): the frozen identity table (3.5), the five pairs
+    of 3.2 with their research rows and sources, the career record of 3.4 with its sources, and 3.6's constants. Every
+    list is read-only, nothing takes a state or a generator, and nothing outside the simulation can make an edition;
+  - the pure readers `AlumniHistories.Seated` (intact and unique, the player included) and `SeatedPairs`.
+- `EpisodeEngine.EnableAlumniHistories` (section 6), called last in `ShippedRules.ApplyFresh`. It runs only on an
+  unstarted season at alumni rules 0, and only when the cast seats an intact, unique alumnus (D-H2: the cast, not the
+  roster tab). It writes, in fact-id order: `RelationshipLedger.Move` for an NPC pair's shared standing,
+  `RecordOneWay(..., permanent: true)` for each directed part held by an NPC (7.1, 7.2), and then the Hitmen's
+  `final_two` through the new internal `NpcDeals.SeedOpeningPair`, under the commitment and deal rules. No `Change`, no
+  roll, no arc, no log line. The receipts and the deal take sequences from `nextSequence` in that fixed order.
+- An internal `ShippedRules.ApplyFresh(fresh, alumniHistories)`, so the lab can play the paired control at alumni rules
+  0. The director and every other assembly reach only `ApplyFresh(fresh)`.
+- Validation (5.3), in `EpisodeValidation.cs` and the new `EpisodeValidation.Alumni.cs`:
+  - the pooled check now accepts alumni rules 0 with no edition, or 1 with an edition this build knows. An undefined
+    value, a nonzero tuning value, or an edition at 0 keeps "Schema 30's pooled rules are not enabled in this
+    build."; rules 1 without a known edition reads "The alumni rules need the edition their season was built from.";
+  - at 1, every `alumni-history` entry must be alone on its edge, held by an NPC, on an edition pair the season seats
+    (3.5), in a direction the edition gives a part, at week 1, permanent, and with the part's exact impact and words
+    ("Invalid alumni history receipt."). At 0 the type is free text, as at 29.
+- The readers (7.3, 7.4), each asking `AlumniRules.On` first, so a season at 0 reads exactly as before:
+  - `RelationshipLedger.RecentImpact` leaves the receipt out: a past game is not recent;
+  - `WeeklyRecap.Movements` leaves it out, so week one never reports a past game as a move of the house's read of you;
+  - `RelationshipLedger.WeightedImpact` (trust) applies the breach rule (7.4): a positive receipt stops counting once
+    its edge holds a permanent negative entry of this season, and a negative receipt always counts;
+  - the 512-entry prune (`RelationshipLedger.Trim`, now shared by `Append` and the engine's own path) drops the oldest
+    entry that is not a receipt. This is cheaper than measuring whether an edge can reach 512, and no season off the
+    alumni rules holds a receipt.
+
+**The other readers, audited** (7.3's last row). Every reader of a relationship's entries in `Simulation/` and
+`Runtime/` was read:
+- reads only by type, never this one: `Allegiance` (betrayals), `EpisodeEngine.Introductions`, `EpisodeNpcSocial`
+  (conversation counts), `Negotiation` (calls and amends), `StoryCatalog.BondsAndSecrets` (talks),
+  `StoryOdds.PermanentBadBlood` (the `story:` prefix only), `StoryOdds` (broken deals) and `YourWeek` (deal outcomes);
+- reads trust, as intended: `ThreatAssessment.TrustScore` and its readers (alliance desire, information deals,
+  reputation bands, `PlayerDeals`' odds);
+- shows the player's own edge only, which never holds a receipt: `RelationshipWeb`'s history column;
+- no caller outside the tests: `MostSignificant` and `HoldsAGrudge`;
+- validation and the frozen readers bound entries by size only.
+
+**Breach writers, one way or both** (7.4):
+- both edges, so the goodwill ends both ways: the deal settlement's `deal_broken` (`EpisodeEngine.cs`, both sides
+  record a deal they walked away from);
+- one edge only, the wronged one's view: the commitment rules' `deal_broken` (`EpisodeEngine.Commitments.cs`; the
+  breaker's own entry is 0), `promise-broken`, the unified vote ledger's atoms, mending fences' rebuff, D4's
+  `story:double-dealt` and the story receipts.
+
+**What stays off until B9** (section 9, H1d). Career reputation and pair risk exist only as edition data
+(`AlumniEdition.CareerReputation`, `AlumniEditions.FinalTwoPairRisk` and `AlliancePairRisk`), and no decision reads
+them. The vote shield, Will's throw, the repertoires and the stat overrides are not built. Each waits for its own
+alumni rules value after B9, defined only at schema 30 or later; the throw also waits for a competition rules value
+claimed with the competitions topic. Alumni rules 1 never reads any of them.
+
+**The balance gate** (section 9). `BalanceLabAlumniReport.AlumniHistoriesGate` (dotnet only, Explicit): All-Stars 8
+and 12, alumni rules 1 against the same 100 seeds at 0, 1,600 seasons in 15.6 minutes. The gated rows were fixed
+before the run: Q3 season wins (passive, studier), Q4 nomination rate (passive) and the weekly competition win rate
+(passive, studier).
+
+| player | size | Q3 season wins | Q4 nomination rate | weekly competition wins |
+|---|---|---|---|---|
+| passive | 8 | -0.060 [-0.171, +0.051] | +0.015 [-0.035, +0.065] | +0.009 [-0.022, +0.039] |
+| studier | 8 | -0.080 [-0.162, +0.002] | (not gated) | 0.000 [0.000, 0.000] |
+| passive | 12 | +0.010 [-0.061, +0.081] | -0.003 [-0.050, +0.044] | +0.004 [-0.019, +0.027] |
+| studier | 12 | +0.030 [-0.060, +0.120] | (not gated) | -0.002 [-0.009, +0.005] |
+
+No gated rate moved beyond seed noise, so fresh seasons that seat an alumnus enrol, as section 6 says.
+- Closest to the line: the studier at 8, whose season wins fall from 0.80 to 0.72 with an interval ending at +0.002.
+- Reported, not gated: the social newcomer at 12 reaches the final two more often (0.39 against 0.25, +0.140
+  [+0.015, +0.265]), with season wins +0.070 [-0.049, +0.189].
+- The passive player on Cody's card moves on no metric at either size. The receipts about them reach the weekly offer
+  pass only through trust.
+- With ten gated comparisons at 95%, a chance crossing was about a 40% risk; none crossed.
+
+The opening state is measured here, not tuned. A retune is a new edition or a later alumni rules value, for fresh
+seasons only.
+
+**Pins and re-pins** (8.6 and 8.8, "From H1b"):
+- `ShippedRulesTests`:
+  - the shipped map splits by cast (`SeatsAlumni`, `AlumniShipped`), with edition 1 checked beside it;
+  - the director's inline copy gains `EnableAlumniHistories` last;
+  - the schema-30 pin becomes `TheLiveSchemaIs30AndOnlyASeasonThatSeatsAnAlumnusStartsOnTheAlumniRules`;
+  - `ApplyFreshDrawsNothingFromTheSeasonsStreamAndCommitsNothing` holds unchanged: it builds a Regular season.
+- `FreshSeasonStateDigestTests`: no digest is re-recorded. The six All-Stars 8 and stress 16 cases take exactly what
+  the histories wrote back out (`AlumniHistoriesTests.WithoutHistories`) and still hash to their schema-29 records, so
+  the histories are the only change, byte for byte.
+- `PooledSchema30ShapeTests.LiveValidationAcceptsOnlyTheValuesASliceHasDefined` (was `...TheOffValuesUntil...`).
+- `LegacyDigestSchema30ObserverTests`: the nonzero-pooled case per field and value, and two new cases. A season on the
+  alumni rules is never projected to 29, and is admitted natively at 30 (`LegacyDigestSchema30Observer.AdmitNative30`,
+  used by `CurrentOldSaveTrace` for such a season, at the live 30 only).
+- `PersistenceV30MigrationTests`: "alumni-rule" holds the undefined 2, and a new "alumni-unedited" holds 1 without an
+  edition.
+- Re-checked, and unmoved:
+  - `StressHouseTests`: the stress house enrols (Dan, Will, Derrick, Janelle, Cody, Danielle and Vanessa, and three
+    pairs) and plays to its finale;
+  - `CastTemplateTests` and `AlumniAuditSaveTests`: both arms enrol alike;
+  - `AllWeekSeasonDigests.Fresh` at 16 and `BalanceLabReports`' All-Stars grids: Explicit reports with no recorded
+    digest, so they now play enrolled seasons;
+  - `BalanceLabGoldens`: Regular cells only, so its `Rules` string is unchanged.
+
+**New tests**
+- `AlumniHistoriesTests`: 31 shared cases and 8 more in the subset only (the internal control). They cover:
+  - edition 1's pins;
+  - the opening state at 8 and 12 over five seeds;
+  - the Hitmen row;
+  - the same house on every run, and the same histories on every seed;
+  - nothing drawn, and only the histories' own sequences minted;
+  - every builder without an alumnus unchanged;
+  - nothing but `ApplyFresh` writing a history;
+  - the player on an alumni card;
+  - renamed and repeated cards;
+  - validation of every receipt, and of the rules with their edition;
+  - type-only meaning at 0;
+  - the readers and the breach rule;
+  - the prune;
+  - a JSON round trip that plays on the same;
+  - two seasons to a winner;
+  - in the subset only, field for field against the control for all seven builders.
+- `AlumniHistoriesSaveTests` (EditMode only, 4): through the real `EpisodeSaveStore`, a fresh alumni season saves at
+  30, loads unmigrated, plays on the same, saves and reloads in week three, and recovers its backup. The SCH30 build's
+  All-Stars fixture loads at alumni rules 0 and is never enrolled.
+- `AlumniHistoriesRecapTests` (EditMode only, 1): week one's recap never sums a past-game receipt into a move, and off
+  the rules the same entry is summed as before.
+
+**For the lead: PlayMode and visual checks.** No PlayMode file changed.
+- `EpisodePlayModeTests.CastSelect` starts All-Stars seasons through `StartSeason`, so they are now enrolled. Expected
+  green. `OpeningGrounds` builds without `ApplyFresh`, so it is unaffected.
+- The verifier's stress house enrols, so the standalone verify walk is worth one run.
+- Capture an All-Stars season at Standard and Largest text:
+  - week one's recap shows no past-game movement;
+  - on an alumni card, the relationship web's history column for Cody shows no receipt;
+  - the Hitmen's final two shows only where the player may see NPC deals.
+- Optional: a sweep of copies of the owner's saves. Every one is alumni rules 0 and should play exactly as before.

@@ -24,6 +24,46 @@ namespace Gamesim.Tests.EditMode
         internal static JObject ProjectTrace29(EpisodeState state, JObject trace) => Project(state, trace, true);
         internal static JObject ProjectFields29(EpisodeState state, JObject fields) => Project(state, fields, false);
 
+        /// <summary>
+        /// Whether a state is on the alumni rules (H1b, ALL-STAR-HISTORIES-PLAN 8.6): its histories exist only from schema 30,
+        /// so it has no schema-29 view, and its digests are taken at the live 30 through <see cref="AdmitNative30"/>.
+        /// </summary>
+        internal static bool OnTheAlumniRules(EpisodeState state) => state != null && state.alumniRulesVersion != 0;
+
+        /// <summary>
+        /// H1b's native-30 arm: a season on the alumni rules admitted at the live 30, unprojected. The same contract the
+        /// projection holds a source to before it removes anything - the complete current validator, literal schema 30,
+        /// the JSON the state's own view, the pooled fields after the dialogue store in their declared order - with the
+        /// alumni rules and edition the state's own (validation has bound the edition to the rules) and the tuning rules
+        /// still 0. Nothing is removed and nothing changes; the fields come back as they went in.
+        /// </summary>
+        internal static JObject AdmitNative30(EpisodeState state, JObject fields)
+        {
+            try
+            {
+                Require(state != null && fields != null, "A current source state and its own JSON are required.");
+                LegacyDigestSchema27Observer.RequireValidSource(state);
+                Require(Integer(fields["schemaVersion"], 30), "Only literal schema30 is a native input.");
+                string stateBefore = Json(JObject.FromObject(state)), sourceBefore = Json(fields);
+                Require(AlumniRules.On(state) && Integer(fields["alumniRulesVersion"], state.alumniRulesVersion),
+                    "Only a season on the alumni rules is admitted natively.");
+                Require(fields["alumniCatalogEdition"]?.Type == JTokenType.String && (string)fields["alumniCatalogEdition"] == state.alumniCatalogEdition,
+                    "The native edition must be the season's own.");
+                Require(Integer(fields["tuningRulesVersion"], 0), "Only present integer-zero tuning rules may be admitted.");
+                var names = fields.Properties().Select(p => p.Name).ToList();
+                int dialogue = names.IndexOf("dialogue");
+                Require(dialogue >= 0 && Pooled.Select((name, i) => names.IndexOf(name) == dialogue + 1 + i).All(at => at),
+                    "The pooled fields must follow the dialogue store, in their declared order.");
+                Require(Json(WithoutGetters(JObject.FromObject(state))) == sourceBefore, "The JSON is not this current state's exact own view.");
+                Require(Json(fields) == sourceBefore && Json(JObject.FromObject(state)) == stateBefore,
+                    "The current source, JSON, numeric tokens and property/list order must remain unchanged.");
+                return fields;
+            }
+            catch (Exception error) when (error is JsonException || error is OverflowException
+                || error is ArgumentException || error is InvalidOperationException || error is FormatException)
+            { throw new InvalidDataException("The schema30 digest observer exceeds its fixed contract.", error); }
+        }
+
         /// <summary>The source-bound current trace through the retained 29 observer to 28.</summary>
         internal static JObject ProjectTrace28(EpisodeState state, JObject trace) =>
             LegacyDigestSchema29Observer.ProjectRetained28(ProjectTrace29(state, trace), true);

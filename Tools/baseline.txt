@@ -37,7 +37,11 @@
 # inverse cases 8 -> 20 (+12) and PersistenceV29MigrationTests' direct-29 and direct-30 controls 3 -> 6 (+3).
 # 9193 = 9181 + SCH30's review fix: the three schema-30 old-save fixtures, four OldSaveAcceptanceTests cases each
 # (241 -> 253), run under Unity's Mono (2026-10-25).
-Gamesim.EditModeTests 9193
+# 9246 = 9193 + H1b's 53, run under Unity's Mono (2026-10-26): AlumniHistoriesTests' 31 shared cases,
+# AlumniHistoriesSaveTests 4, AlumniHistoriesRecapTests 1, PooledSchema30ShapeTests' validation pin 7 -> 12 (+5),
+# LegacyDigestSchema30ObserverTests +11 (the nonzero-pooled case per value 1 -> 3, never projected 1, admitted
+# natively 8) and PersistenceV30MigrationTests' store refusals 5 -> 6 (+1).
+Gamesim.EditModeTests 9246
 # The UMA-free build. 1215 = 1236, the count after the consolidation's lanes (S2a, S2b, S4a), less the 7
 # farewell probes moved to Gamesim.DiagnosticsPlayModeTests and the 14 farewell readiness tests that now
 # compile only under GAMESIM_UMA (judged on the UMA cast); 1230 = 1215 + S2d's 7, S4b's 2, S4c's 2 and
@@ -114,4 +118,7 @@ Gamesim.Uma.DiagnosticsPlayModeTests 10
 # carried to schema 29 (5423) and the same three cache cases: what dotnet test Tools/SimulationTests ran (2026-10-25).
 # 16248 = 16198 + SCH30 step 2's shared 50: LegacyDigestSchema30ObserverTests 28, PooledSchema30ShapeTests 16, the
 # live-schema pin per builder (ShippedRulesTests 1 -> 6) and the checkpoint at 30 (LegacyDigestSchema29ObserverTests 1).
-Gamesim.SimulationTests 16248
+# 16303 = 16248 + H1b's 55: AlumniHistoriesTests 39 (31 shared, 8 in the subset only, against the internal
+# control), PooledSchema30ShapeTests +5 and LegacyDigestSchema30ObserverTests +11: what dotnet test
+# Tools/SimulationTests ran (2026-10-26).
+Gamesim.SimulationTests 16303

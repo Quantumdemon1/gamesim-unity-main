@@ -87,6 +87,73 @@ namespace Gamesim.Tests.PlayMode
         /// <summary>How far the camera turned around the house between two yaws, signed: positive to the right.</summary>
         private static float Turned(float before, float after) => Mathf.DeltaAngle(before, after);
 
+        /// <summary>
+        /// The longest frame a key's turn is read over. The camera turns at most 240 degrees a second
+        /// (the stick's and Q/C's 120, at <see cref="Gamesim.House.HouseCameraRig.FastestOrbitSpeed"/>
+        /// times its own speed), and two yaws a frame apart say how far and which way only while the
+        /// frame turned less than half a turn: 0.75 s at that speed. Half a second keeps a third of a
+        /// turn to spare; a longer frame - a hitch on a busy machine - is held through, not read.
+        /// </summary>
+        private const float LongestReadFrame = .5f;
+
+        /// <summary>A key's turn of the camera, read frame by frame while it was down (<see cref="HoldKeyTurning"/>).</summary>
+        private sealed class KeyTurn
+        {
+            /// <summary>The frames' turns added up, signed: positive to the right.</summary>
+            public float Degrees;
+
+            /// <summary>Those frames' Time.unscaledDeltaTime added up: the clock the rig turns by.</summary>
+            public float Seconds;
+
+            public int Frames, LongFrames;
+
+            /// <summary>Degrees a second, signed; a hold with no frame read turns at nothing.</summary>
+            public float Rate => Seconds > 0f ? Degrees / Seconds : 0f;
+
+            public override string ToString() => Degrees.ToString("0.###") + " degrees in " + Frames + " frames, "
+                + Seconds.ToString("0.####") + " s" + (LongFrames > 0 ? ", " + LongFrames + " longer held through" : "");
+        }
+
+        /// <summary>
+        /// Holds a key down on the test keyboard until the camera has turned on it for a quarter second
+        /// of the rig's own clock, then lets it go, reading the turn into <paramref name="turn"/> a frame
+        /// at a time.
+        ///
+        /// <para>Read once across a quarter second of real time, a turn goes wrong on a loaded machine:
+        /// a hold stretched past 0.75 s turns twice the camera's speed past half a turn, which
+        /// Mathf.DeltaAngle reads as the short way back (14.9 degrees a second for 240, the props set,
+        /// 2026-10-25), and the wall clock counts frames the rig never turned on. So each frame's turn is
+        /// read on its own, beside that frame's Time.unscaledDeltaTime. The rig reads its input in
+        /// LateUpdate, after this coroutine's turn in the frame, so a frame's turn is there a frame on;
+        /// and a frame counts only if the key was down in the input the rig read.</para>
+        /// </summary>
+        private IEnumerator HoldKeyTurning(Key key, KeyTurn turn)
+        {
+            if (testKeyboard == null) testKeyboard = InputSystem.AddDevice<Keyboard>();
+            var control = testKeyboard[key];
+            InputSystem.QueueStateEvent(testKeyboard, new KeyboardState(key));
+            float giveUp = Time.realtimeSinceStartup + 10f;
+            // The press arrives with the next frame's input.
+            yield return null;
+            while (true)
+            {
+                float yaw = cameraRig.Yaw, dt = Time.unscaledDeltaTime;
+                bool down = control.isPressed, read = down && dt <= LongestReadFrame;
+                bool last = read && turn.Seconds + dt >= .25f || Time.realtimeSinceStartup >= giveUp;
+                // Let go with the next frame's input: this frame's LateUpdate still turns, and is read.
+                if (last) InputSystem.QueueStateEvent(testKeyboard, new KeyboardState());
+                yield return null;
+                if (read)
+                {
+                    turn.Degrees += Turned(yaw, cameraRig.Yaw);
+                    turn.Seconds += dt;
+                    turn.Frames++;
+                }
+                else if (down) turn.LongFrames++;
+                if (last) yield break;
+            }
+        }
+
         [UnityTest]
         public IEnumerator CameraInput_KeysOrbit()
         {
@@ -95,14 +162,11 @@ namespace Gamesim.Tests.PlayMode
             yield return SettleCamera();
             cameraRig.ControlsEnabled = true;
 
-            float before = cameraRig.Yaw;
-            yield return HoldKey(Key.Q);
-            float left = Turned(before, cameraRig.Yaw);
-            before = cameraRig.Yaw;
-            yield return HoldKey(Key.C);
-            float right = Turned(before, cameraRig.Yaw);
-            Assert.That(left, Is.LessThan(-1f), "Q turns the camera one way.");
-            Assert.That(right, Is.GreaterThan(1f), "C turns it the other.");
+            KeyTurn left = new KeyTurn(), right = new KeyTurn();
+            yield return HoldKeyTurning(Key.Q, left);
+            yield return HoldKeyTurning(Key.C, right);
+            Assert.That(left.Degrees, Is.LessThan(-1f), "Q turns the camera one way.");
+            Assert.That(right.Degrees, Is.GreaterThan(1f), "C turns it the other.");
             Assert.That(cameraRig.Actions.OrbitRate.bindings.Any(binding => binding.path == "<Keyboard>/q"), Is.True);
 
             // A panel holds the camera still: a field typed into under a panel - a name, a speech,
@@ -110,7 +174,7 @@ namespace Gamesim.Tests.PlayMode
             director.OpenSettings();
             yield return Frames(2);
             Assert.That(cameraRig.ControlsEnabled, Is.False, "The settings hold the camera.");
-            before = cameraRig.Yaw;
+            float before = cameraRig.Yaw;
             yield return HoldKey(Key.Q);
             Assert.That(Mathf.Abs(Turned(before, cameraRig.Yaw)), Is.LessThan(.01f), "Q under a panel turns nothing.");
             director.ClosePanels();
@@ -224,18 +288,20 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(Mathf.Abs(plainStick), Is.GreaterThan(.1f), "The stick tilts the camera.");
             Assert.That(Mathf.Sign(invertedStick), Is.EqualTo(-Mathf.Sign(plainStick)), "Inverted, the stick tilts the other way.");
 
-            // Q, per second of holding it, at the camera's own speed and at twice it.
-            float slow = 0f, fast = 0f;
+            // Q, per second of holding it, at the camera's own speed and at twice it: read frame by
+            // frame on the rig's own clock, so a loaded machine's long frames neither wrap the turn
+            // nor water it down. Q turns left, so the rates are leftward: a Q that turned the camera
+            // the other way reads below nothing.
+            KeyTurn slowTurn = new KeyTurn(), fastTurn = new KeyTurn();
             foreach (float speed in new[] { 1f, 2f })
             {
                 director.SetCameraSpeed(speed);
-                float before = cameraRig.Yaw, began = Time.realtimeSinceStartup;
-                yield return HoldKey(Key.Q);
-                float rate = Mathf.Abs(Turned(before, cameraRig.Yaw)) / (Time.realtimeSinceStartup - began);
-                if (speed == 1f) slow = rate; else fast = rate;
+                yield return HoldKeyTurning(Key.Q, speed == 1f ? slowTurn : fastTurn);
             }
+            float slow = -slowTurn.Rate, fast = -fastTurn.Rate;
             Assert.That(slow, Is.GreaterThan(1f), "Q turns the camera.");
-            Assert.That(fast / slow, Is.InRange(1.5f, 2.6f), "Q turns about twice as fast at twice the speed: " + slow + " then " + fast + " degrees a second.");
+            Assert.That(fast / slow, Is.InRange(1.5f, 2.6f), "Q turns about twice as fast at twice the speed: " + slow + " then " + fast + " degrees a second ("
+                + slowTurn + "; " + fastTurn + ").");
 
             // Kept as the preferences keep them, and back to the camera's own for the next test.
             director.SetCameraSpeed(1f);

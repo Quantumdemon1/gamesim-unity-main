@@ -91,6 +91,20 @@ namespace Gamesim.Presentation
         /// off a memory or letter cap (5 mm off a signal cap); the audience's copies stand 5.5 mm off theirs.
         /// </summary>
         private const float CapGlyphGap = .0055f;
+        /// <summary>
+        /// A console key's unlit cap, the navy every Signals target, memory tile and letter cap rests
+        /// on. Its paper glyph reads at 9.3:1.
+        /// </summary>
+        private static readonly Color UnlitCap = UiTheme.Hex("31425B");
+        /// <summary>
+        /// A lit Signals target's label, on both faces: the house <see cref="UiTheme.Ink"/>, opaque,
+        /// which reads at 11.5:1 on the lit mint cap (<see cref="UiTheme.Positive"/>). Paper on the
+        /// mint is 1.5:1, so the one key the contestant has to read was the faintest on the console.
+        /// Ink's own alpha (.98) is for panels; a label at full alpha takes none of its cap's colour.
+        /// </summary>
+        private static readonly Color LitLabel = new Color(UiTheme.Ink.r, UiTheme.Ink.g, UiTheme.Ink.b, 1f);
+        /// <summary>Whether this console shows <see cref="Rest"/>'s faces, so a field's repeated no-attempt reads set nothing.</summary>
+        private bool resting;
 
         public static Family For(CompetitionDefinition definition, string category = null)
         {
@@ -284,7 +298,8 @@ namespace Gamesim.Presentation
         public void Sync(MiniGameRun run, bool started, bool preview, bool paused, bool reducedMotion)
         {
             ShareLabelSize();
-            if (run == null) { SetWord(progress,"Ready"); return; }
+            if (run == null) { SetWord(progress,"Ready"); Rest(); return; }
+            resting = false;
             SetWord(progress,paused ? "Paused" : !started && !preview ? "Ready" : Readout(run));
             switch (Instrument)
             {
@@ -296,13 +311,13 @@ namespace Gamesim.Presentation
                         bool revealed = matched || preview && !paused || started && !paused && (i == run.FirstFlip || i == run.SecondFlip);
                         if (revealed) VisibleMemoryFaces++;
                         SetWord(glyphs[i],revealed ? CompetitionGameScreen.MemoryFaceName(run.Faces[i]) : "?");
-                        Colorize(indicators[i], matched ? UiTheme.Positive : revealed ? UiTheme.Accent : UiTheme.Hex("31425B"));
+                        Colorize(indicators[i], matched ? UiTheme.Positive : revealed ? UiTheme.Accent : UnlitCap);
                     }
                     break;
                 case Family.Signals:
                     LitSignal = started && run.TargetLive ? (int)run.TargetDirection : -1;
                     for (int i = 0; i < indicators.Count; i++)
-                        Colorize(indicators[i], i == LitSignal ? UiTheme.Positive : UiTheme.Hex("31425B"));
+                        LightSignal(i, i == LitSignal);
                     break;
                 case Family.GripRig:
                     GripFraction = Mathf.Clamp01((float)(run.Meter / CompetitionMiniGames.MeterFull));
@@ -328,10 +343,52 @@ namespace Gamesim.Presentation
                         bool present = i < run.Scrambled.Length;
                         bool hidden=!started || paused;
                         SetWord(glyphs[i],present ? hidden ? "?" : run.Scrambled[i].ToString() : "");
-                        Colorize(indicators[i], present && !hidden && run.TilePicked(i) ? UiTheme.Positive : UiTheme.Hex("31425B"));
+                        Colorize(indicators[i], present && !hidden && run.TilePicked(i) ? UiTheme.Positive : UnlitCap);
                     }
                     break;
             }
+        }
+
+        /// <summary>
+        /// Another entrant's station, which has no attempt to mirror. Its console shows the unlit faces
+        /// the player's console shows before its first input, on both sides: every key on its
+        /// <see cref="UnlitCap"/> under a paper glyph. A Signals console shows its four directions with
+        /// none lit, a memory console '?' on all sixteen face-down tiles, and a letter tray '?' on all
+        /// twelve caps, because a station with no attempt has no word length to show. Nothing is lit or
+        /// turned over. Before this, a console with no attempt kept its built paper caps under paper
+        /// glyphs, so 5 of 6 or 15 of 16 boards looked switched off while the competition ran. Grip
+        /// rigs and dice trays have no keys and keep their built faces.
+        /// </summary>
+        private void Rest()
+        {
+            if (resting) return;
+            resting = true;
+            switch (Instrument)
+            {
+                case Family.PairConsole:
+                case Family.WordConsole:
+                    VisibleMemoryFaces = 0;
+                    for (int i = 0; i < indicators.Count; i++) { SetWord(glyphs[i],"?"); Colorize(indicators[i], UnlitCap); }
+                    break;
+                case Family.Signals:
+                    LitSignal = -1;
+                    for (int i = 0; i < indicators.Count; i++) LightSignal(i, false);
+                    break;
+            }
+        }
+
+        /// <summary>
+        /// Signals target <paramref name="i"/>, lit or unlit, on both faces. A lit target is a mint cap
+        /// under an ink label (<see cref="LitLabel"/>); an unlit one is the navy <see cref="UnlitCap"/>
+        /// under a paper label. The label and its audience copy change with their cap, so neither is
+        /// left paper on mint.
+        /// </summary>
+        private void LightSignal(int i, bool lit)
+        {
+            Colorize(indicators[i], lit ? UiTheme.Positive : UnlitCap);
+            Color ink = lit ? LitLabel : UiTheme.Paper;
+            glyphs[i].color = ink;
+            if (repeatWords.TryGetValue(glyphs[i], out var copy)) copy.color = ink;
         }
 
         public static string Readout(MiniGameRun run)

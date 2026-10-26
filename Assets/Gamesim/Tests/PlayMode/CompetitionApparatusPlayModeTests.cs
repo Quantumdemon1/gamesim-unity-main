@@ -880,6 +880,160 @@ namespace Gamesim.Tests.PlayMode
             yield return null;
         }
 
+        /// <summary>
+        /// A lit Signals target's label and its audience copy are dark on the lit mint cap, on both
+        /// faces: at least 4.5:1, computed from the colours the cap renderers and labels actually carry.
+        /// An unlit target's label is paper, so a target that goes out takes its label back to paper.
+        /// The labels used to stay paper on the lit cap (1.5:1), so the one key the contestant had to
+        /// read was the faintest on the console.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator Apparatus_ALitSignalTargetsLabelIsDarkOnItsLitCapOnBothFaces()
+        {
+            var definition=CompetitionDefinitions.All.First(item=>item.Category=="Skill");
+            var instrument=Make(definition);
+            var keys=Keys(instrument);
+            Assert.That(keys.Select(key=>key.Name),Is.EquivalentTo(SignalNames),"Four targets, each with its audience face and copy.");
+            var run=new MiniGameRun(CompetitionMiniGames.Kind.Reaction,123,4,definition);
+            var lit=new HashSet<string>();int litReads=0,wentOut=0;string before=null;float lowest=float.PositiveInfinity;
+            for(int frame=0;frame<600 && !run.Finished;frame++)
+            {
+                run.Tick(.05);
+                instrument.Sync(run,true,false,false,false);
+                Assert.That(instrument.LitSignal,Is.EqualTo(run.TargetLive?(int)run.TargetDirection:-1));
+                string now=null;
+                foreach(var key in keys)
+                {
+                    bool on=Array.IndexOf(SignalNames,key.Name)==instrument.LitSignal;
+                    if(on)now=key.Name;
+                    foreach(var (cap,label) in new[]{(key.Cap,key.Label),(key.AudienceCap,key.AudienceLabel)})
+                    {
+                        Color face=CapColour(cap);
+                        string at=" (frame "+frame+", "+label.color+" on "+face+")";
+                        if(!on){Assert.That(label.color,Is.EqualTo(UiTheme.Paper),label.name+" is paper while its target is unlit"+at);continue;}
+                        Assert.That(Near(face,UiTheme.Positive),Is.True,"Precondition: "+cap.name+" is lit"+at);
+                        float contrast=Contrast(label.color,face);lowest=Mathf.Min(lowest,contrast);
+                        Assert.That(RelativeLuminance(label.color),Is.LessThan(RelativeLuminance(face)),label.name+" is dark on its lit cap"+at);
+                        Assert.That(contrast,Is.GreaterThanOrEqualTo(4.5f),label.name+" reads on its lit cap"+at);
+                    }
+                }
+                if(now!=null){lit.Add(now);litReads++;}
+                if(before!=null && before!=now)wentOut++;
+                before=now;
+            }
+            Assert.That(lit.Count,Is.GreaterThanOrEqualTo(2),"Precondition: more than one target is lit in the run: "+string.Join(", ",lit));
+            Assert.That(wentOut,Is.GreaterThanOrEqualTo(1),"Precondition: a lit target went out and its label was read after.");
+            Debug.Log("[Gamesim W3] Lit Signals labels: "+litReads+" lit reads over "+string.Join(", ",lit)+", "+wentOut
+                +" targets gone out; lowest lit contrast "+lowest.ToString("F2")+":1 on both faces.");
+            yield return null;
+        }
+
+        /// <summary>
+        /// Another entrant's console, synced with no attempt, shows the faces the player's console shows
+        /// before its first input, on both sides. Every key's glyph has a colour of its own and reads on
+        /// its cap at 3:1 or better, computed from the colours the renderers and labels actually carry.
+        /// Nothing is lit or turned over: Signals shows its four directions, memory tiles and letter caps
+        /// show '?', and the readout says 'Ready'. A console that showed an attempt in between (memory
+        /// faces, a lit target, letters) goes back to rest, and so does one reserved under an inactive
+        /// anchor. These keys used to be paper glyphs on paper caps (1:1), so the field's other boards
+        /// looked switched off.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator Apparatus_AConsoleWithNoAttemptShowsReadableUnlitKeysWithNothingLit()
+        {
+            int read=0;float lowest=float.PositiveInfinity;
+            foreach(string category in new[]{"Mental","Skill","Social"})
+            {
+                var definition=CompetitionDefinitions.All.First(item=>item.Category==category);
+                var kind=CompetitionMiniGames.For(category);
+                if(owner!=null){Object.Destroy(owner);owner=null;yield return null;}
+                // The player's console before its first input: the faces another entrant's console shows.
+                var player=Make(definition);
+                player.Sync(new MiniGameRun(kind,123,4,definition),false,false,false,false);
+                var resting=Keys(player).SelectMany(key=>new[]{(cap:CapColour(key.Cap),glyph:key.Label.color),
+                    (cap:CapColour(key.AudienceCap),glyph:key.AudienceLabel.color)}).Distinct().ToArray();
+                Assert.That(resting,Has.Length.EqualTo(1),"Precondition: the player's console rests on one cap and glyph colour ("+category+").");
+                foreach(bool reserved in new[]{false,true})
+                {
+                    Object.Destroy(owner);owner=null;yield return null;
+                    var instrument=Make(definition,inactive:reserved);
+                    // Rest, show an attempt (every memory face in the preview, a lit target, the letters), then
+                    // rest again: the second rest puts back every face the attempt changed.
+                    instrument.Sync(null,false,false,false,false);
+                    var run=new MiniGameRun(kind,123,4,definition);
+                    if(category=="Skill")while(!run.TargetLive && !run.Finished)run.Tick(.05);
+                    instrument.Sync(run,category!="Mental",category=="Mental",false,false);
+                    Assert.That(category=="Mental"?instrument.VisibleMemoryFaces==16:category=="Skill"?instrument.LitSignal>=0
+                        :Keys(instrument).Any(key=>key.Label.text!="?" && key.Label.text!=""),Is.True,
+                        "Precondition: the attempt shows on the console before it rests again ("+category+").");
+                    for(int pass=0;pass<2;pass++)instrument.Sync(null,false,false,false,false);
+                    if(reserved)owner.SetActive(true);
+                    string place=" ("+category+(reserved?", reserved":"")+")";
+                    Assert.That(instrument.ProgressText,Is.EqualTo("Ready"),"The readout stays 'Ready'"+place);
+                    Assert.That(instrument.LitSignal,Is.EqualTo(-1),"Nothing is lit"+place);
+                    Assert.That(instrument.VisibleMemoryFaces,Is.Zero,"and nothing is turned over"+place);
+                    var keys=Keys(instrument);
+                    Assert.That(keys,Has.Length.EqualTo(category=="Mental"?16:category=="Skill"?4:12),place);
+                    foreach(var key in keys)
+                    {
+                        string expected=category=="Skill"?key.Name:"?";
+                        foreach(var (cap,label) in new[]{(key.Cap,key.Label),(key.AudienceCap,key.AudienceLabel)})
+                        {
+                            Color face=CapColour(cap);
+                            string at=place+": "+label.color+" on "+face;
+                            Assert.That(label.text,Is.EqualTo(expected),label.name+place);
+                            Assert.That(Near(face,resting[0].cap),Is.True,cap.name+" shows the unlit cap the player's console rests on"+at);
+                            Assert.That(label.color,Is.EqualTo(resting[0].glyph),label.name+" has the resting glyph colour"+at);
+                            Assert.That(Near(label.color,face),Is.False,label.name+"'s colour differs from its face"+at);
+                            float contrast=Contrast(label.color,face);lowest=Mathf.Min(lowest,contrast);
+                            Assert.That(contrast,Is.GreaterThanOrEqualTo(3f),label.name+" reads on its cap"+at);
+                            read++;
+                        }
+                    }
+                }
+            }
+            Debug.Log("[Gamesim W3] Consoles with no attempt: "+read+" key faces read, lowest glyph contrast "+lowest.ToString("F2")+":1, none lit.");
+            yield return null;
+        }
+
+        private static readonly string[] SignalNames={"UP","RIGHT","DOWN","LEFT"};
+
+        private struct ConsoleKey { public string Name; public Renderer Cap,AudienceCap; public TMP_Text Label,AudienceLabel; }
+
+        /// <summary>A console's keys: each cap and glyph on the contestant's side, with its audience face and copy.</summary>
+        private static ConsoleKey[] Keys(CompetitionApparatus instrument)
+        {
+            string cap,glyph;
+            switch(instrument.Instrument)
+            {
+                case CompetitionApparatus.Family.PairConsole:cap="Memory tile ";glyph="Memory face ";break;
+                case CompetitionApparatus.Family.Signals:cap="Signal target ";glyph="Signal direction ";break;
+                case CompetitionApparatus.Family.WordConsole:cap="Letter tile ";glyph="Letter ";break;
+                default:throw new ArgumentException(instrument.Instrument+" has no console keys.");
+            }
+            var renderers=instrument.GetComponentsInChildren<Renderer>(true);
+            var labels=instrument.GetComponentsInChildren<TMP_Text>(true);
+            return renderers.Where(part=>part.name.StartsWith(cap,StringComparison.Ordinal) && !part.name.EndsWith(" audience face",StringComparison.Ordinal))
+                .Select(front=>
+                {
+                    string name=front.name.Substring(cap.Length);
+                    var label=labels.Single(text=>text.name==glyph+name);
+                    return new ConsoleKey{Name=name,Cap=front,AudienceCap=renderers.Single(part=>part.name==front.name+" audience face"),
+                        Label=label,AudienceLabel=labels.Single(text=>text.name==label.name+" audience readout")};
+                }).ToArray();
+        }
+
+        /// <summary>The colour a cap draws: its tint if it has one, its material's otherwise.</summary>
+        private static Color CapColour(Renderer cap)
+        {
+            var block=new MaterialPropertyBlock();cap.GetPropertyBlock(block);
+            if(!block.isEmpty)return block.GetColor("_BaseColor");
+            var material=cap.sharedMaterial;
+            return material.HasProperty("_BaseColor")?material.GetColor("_BaseColor"):material.color;
+        }
+
+        private static bool Near(Color a,Color b)=>Mathf.Abs(a.r-b.r)<.002f && Mathf.Abs(a.g-b.g)<.002f && Mathf.Abs(a.b-b.b)<.002f;
+
         private struct OrientedBox { public Vector3 Centre,X,Y,Z; }
 
         /// <summary>A part's oriented box: its mesh bounds in world space, as three half-axes.</summary>
@@ -952,10 +1106,15 @@ namespace Gamesim.Tests.PlayMode
         /// <summary>WCAG 2's contrast ratio between two sRGB colours.</summary>
         private static float Contrast(Color a,Color b)
         {
-            float Channel(float c)=>c<=.04045f?c/12.92f:Mathf.Pow((c+.055f)/1.055f,2.4f);
-            float Luminance(Color c)=>.2126f*Channel(c.r)+.7152f*Channel(c.g)+.0722f*Channel(c.b);
-            float x=Luminance(a),y=Luminance(b);
+            float x=RelativeLuminance(a),y=RelativeLuminance(b);
             return (Mathf.Max(x,y)+.05f)/(Mathf.Min(x,y)+.05f);
+        }
+
+        /// <summary>WCAG 2's relative luminance of an sRGB colour.</summary>
+        private static float RelativeLuminance(Color c)
+        {
+            float Channel(float v)=>v<=.04045f?v/12.92f:Mathf.Pow((v+.055f)/1.055f,2.4f);
+            return .2126f*Channel(c.r)+.7152f*Channel(c.g)+.0722f*Channel(c.b);
         }
 
         private static string Fingerprint(MiniGameRun run)

@@ -540,6 +540,97 @@ namespace Gamesim.Tests.PlayMode
             pose.Release();yield return null;
         }
 
+        /// <summary>
+        /// The dice read on both sides at every pedestal fit, the clamps included: each value is dark
+        /// ink on its paper die (contrast at least WCAG's 4.5:1 for text), the audience's copy on that
+        /// die's own rear face, turned to the audience, between the back rail's top and the die's top;
+        /// the roll readout and its plates stay under the tray bed rather than inside it; and the
+        /// press stops in front of a die's whole rolling sweep, at rest and mid-roll.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator Apparatus_DiceValuesReadOnTheirDiceAndTheReadoutAndPressClearTheTrayAtEveryFit()
+        {
+            var definition=CompetitionDefinitions.All.First(item=>item.Category=="Luck");
+            var instrument=Make(definition);
+            var parts=instrument.GetComponentsInChildren<MeshFilter>(true);
+            MeshFilter Part(string name)=>parts.Single(part=>part.name==name);
+            float Top(MeshFilter part)=>part.transform.localPosition.y+part.transform.localScale.y*part.sharedMesh.bounds.max.y;
+            float Bottom(MeshFilter part)=>part.transform.localPosition.y+part.transform.localScale.y*part.sharedMesh.bounds.min.y;
+            var labels=instrument.GetComponentsInChildren<TMP_Text>(true);
+            var readouts=labels.Where(label=>label.name.StartsWith("Instrument progress",StringComparison.Ordinal)).ToArray();
+            var plates=parts.Where(part=>part.name.StartsWith("Progress ",StringComparison.Ordinal)).ToArray();
+            Assert.That(readouts,Has.Length.EqualTo(2));Assert.That(plates,Has.Length.EqualTo(2));
+            var bed=Part("Dice tray bed");var rail=Part("Tray back rail");
+            var run=new MiniGameRun(CompetitionMiniGames.Kind.Dice,123,4,definition);
+            Assert.That(run.Roll(),Is.True);run.Tick(MiniGameRun.RollSeconds+.1);
+            Assert.That(run.HasRoll,Is.True,"Precondition: the dice landed.");
+            // Below the low clamp (shift -.40 at a .94 m shoulder), between, and above the high one.
+            foreach(float shoulder in new[]{.80f,.94f,1.05f,1.20f,1.34f,1.53f,1.74f,1.90f})
+            {
+                instrument.FitPress(new Vector3(.18f,shoulder,.08f),.62f);
+                instrument.Sync(run,true,false,false,false);
+                string at=" (shoulder "+shoulder+")";
+                for(int i=0;i<3;i++)
+                {
+                    var die=Part("Die "+i);
+                    var material=die.GetComponent<Renderer>().sharedMaterial;
+                    Color paper=material.HasProperty("_BaseColor")?material.GetColor("_BaseColor"):material.color;
+                    var front=labels.Single(label=>label.name=="Die face "+i);
+                    var back=labels.Single(label=>label.name=="Die face "+i+" audience readout");
+                    Assert.That(front.text,Is.EqualTo(run.Face(i).ToString()));Assert.That(back.text,Is.EqualTo(front.text));
+                    foreach(var face in new[]{front,back})
+                        Assert.That(Contrast(face.color,paper),Is.GreaterThanOrEqualTo(4.5f),face.name+" reads on its die"+at);
+                    Vector3 centre=die.transform.localPosition,copy=back.transform.localPosition;
+                    float rear=centre.z+die.transform.localScale.z*die.sharedMesh.bounds.max.z;
+                    Assert.That(copy.x,Is.EqualTo(centre.x).Within(.0001f),"Each value stays on its own die"+at);
+                    Assert.That(copy.z-rear,Is.InRange(.001f,.012f),"on the die's rear face"+at);
+                    Assert.That(Vector3.Dot(back.transform.forward,instrument.transform.forward),Is.LessThan(-.99f),"turned to the audience"+at);
+                    float half=back.rectTransform.sizeDelta.y*.5f;
+                    Assert.That(copy.y-half,Is.GreaterThanOrEqualTo(Top(rail)-.0005f),"above the back rail, which hides the face's lower half"+at);
+                    Assert.That(copy.y+half,Is.LessThanOrEqualTo(Top(die)+.0005f),"and on the die, not over it"+at);
+                }
+                float underside=Bottom(bed);
+                foreach(var plate in plates)
+                    Assert.That(Top(plate),Is.LessThan(underside),plate.name+" stays under the tray bed, not inside it"+at);
+                foreach(var readout in readouts)
+                {
+                    Assert.That(readout.transform.localPosition.y+readout.rectTransform.sizeDelta.y*.5f,Is.LessThan(underside),readout.name+at);
+                    Assert.That(readout.transform.localPosition.y,Is.EqualTo(plates[0].transform.localPosition.y).Within(.0001f),"The words stay on their plates"+at);
+                    Assert.That(readout.transform.localPosition.y-readout.rectTransform.sizeDelta.y*.5f,Is.GreaterThan(0f),"above the floor"+at);
+                }
+                AssertPressClearsTheDice(instrument,Part("Die 0"),Part("Die 2"),at);
+            }
+            // Mid-roll the dice turn; the press must still stop short of them.
+            Assert.That(run.Roll(),Is.True);run.Tick(MiniGameRun.RollSeconds*.4);
+            Assert.That(run.DieLanded(0),Is.False,"Precondition: the dice are rolling.");
+            instrument.Sync(run,true,false,false,false);
+            Assert.That(Quaternion.Angle(Quaternion.identity,Part("Die 0").transform.localRotation),Is.GreaterThan(1f),"Precondition: a die has turned.");
+            AssertPressClearsTheDice(instrument,Part("Die 0"),Part("Die 2")," (rolling)");
+            yield return null;
+        }
+
+        private static void AssertPressClearsTheDice(CompetitionApparatus instrument,MeshFilter left,MeshFilter right,string at)
+        {
+            foreach(var (die,isLeft) in new[]{(left,true),(right,false)})
+            {
+                Vector3 centre=die.transform.localPosition;
+                Vector3 contact=instrument.transform.InverseTransformPoint(instrument.HandContact(isLeft));
+                float sweep=new Vector2(die.transform.localScale.x*die.sharedMesh.bounds.extents.x,die.transform.localScale.z*die.sharedMesh.bounds.extents.z).magnitude;
+                Assert.That(centre.z-contact.z,Is.GreaterThan(sweep+.02f),
+                    "The press stops in front of "+die.name+"'s rolling sweep, the fingertip's two centimetres past its bone clear of it"+at);
+                Assert.That(contact.x,Is.EqualTo(centre.x).Within(.001f));Assert.That(contact.y,Is.EqualTo(centre.y).Within(.001f));
+            }
+        }
+
+        /// <summary>WCAG 2's contrast ratio between two sRGB colours.</summary>
+        private static float Contrast(Color a,Color b)
+        {
+            float Channel(float c)=>c<=.04045f?c/12.92f:Mathf.Pow((c+.055f)/1.055f,2.4f);
+            float Luminance(Color c)=>.2126f*Channel(c.r)+.7152f*Channel(c.g)+.0722f*Channel(c.b);
+            float x=Luminance(a),y=Luminance(b);
+            return (Mathf.Max(x,y)+.05f)/(Mathf.Min(x,y)+.05f);
+        }
+
         private static string Fingerprint(MiniGameRun run)
         {
             var rng=(SeededRandom)typeof(MiniGameRun).GetField("random",BindingFlags.Instance|BindingFlags.NonPublic).GetValue(run);

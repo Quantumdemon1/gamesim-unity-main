@@ -51,6 +51,19 @@ namespace Gamesim.Presentation
         private bool overlaysVisible = true;
         private float nearestRaisedZ;
         private const float Front = .56f;
+        /// <summary>
+        /// The audience's copy of a die's value stands on its die's rear face, this far above the
+        /// die's centre and this tall: the upper part of the face, from the back rail's top (5 mm
+        /// under the die's centre, so it hides the face's lower half from the audience) to the die's
+        /// top. It moves with the die at every pedestal fit.
+        /// </summary>
+        private const float DieRearRise = .04f, DieRearHeight = .09f;
+        /// <summary>
+        /// How far in front of a die's centre the press aims. A rolling die turns about its centre,
+        /// its corners sweeping .12 m round it (half a .17 m cube's diagonal); the pressing finger's
+        /// tip reaches ~.02 m past the distal bone the pose puts on the contact; and a centimetre more.
+        /// </summary>
+        private const float DiePress = .15f;
 
         public static Family For(CompetitionDefinition definition, string category = null)
         {
@@ -120,12 +133,18 @@ namespace Gamesim.Presentation
             progressAudienceBacking=Part(PartKind.ProgressBacking, "Progress audience backing", new Vector3(0, progressHeight, Front + .154f), new Vector3(.96f, .16f, .008f), dark).transform;
             // The show's wide camera sees the audience-facing readout on the back of a console.
             // Repeat only the same public information, rather than turning the actor away from it.
-            foreach (TMP_Text glyph in glyphs) RepeatWord(glyph);
+            // A die's value is repeated on the die itself, not on a shared plane behind the tray.
+            for (int i = 0; i < glyphs.Count; i++)
+            {
+                if (Instrument == Family.DiceTray) RepeatDieFace(i);
+                else RepeatWord(glyphs[i]);
+            }
             RepeatWord(progress);
             if(Instrument==Family.PairConsole || Instrument==Family.Signals || Instrument==Family.WordConsole)
                 foreach(Renderer indicator in indicators)
                 {
-                    Vector3 at=indicator.transform.localPosition;at.x=-at.x;at.z=Front+.13f;
+                    // Flush on the housing's rear face (Front+.04, .14 deep), as the front tiles sit on the display.
+                    Vector3 at=indicator.transform.localPosition;at.x=-at.x;at.z=Front+.11f+indicator.transform.localScale.z*.5f;
                     PartKind faceKind = Instrument == Family.PairConsole ? PartKind.MemoryTile
                         : Instrument == Family.Signals ? PartKind.SignalTarget : PartKind.LetterTile;
                     var repeater=Part(faceKind,indicator.name+" audience face",at,indicator.transform.localScale,paper);
@@ -193,11 +212,16 @@ namespace Gamesim.Presentation
             trayBack=Part(PartKind.TrayBackRail, "Tray back rail", new Vector3(0, 1.21f, Front + .20f), new Vector3(.96f, .13f, .05f), accent).transform;
             trayLeft=Part(PartKind.TraySideRail, "Tray left rail", new Vector3(-.455f, 1.21f, Front), new Vector3(.05f, .13f, .44f), accent).transform;
             trayRight=Part(PartKind.TraySideRail, "Tray right rail", new Vector3(.455f, 1.21f, Front), new Vector3(.05f, .13f, .44f), accent).transform;
+            // The dice are the paper's colour, so their values are in the instrument face's dark ink:
+            // paper text on a paper die read as a blank die.
+            Color ink = UiTheme.Hex("102138");
             for (int i = 0; i < 3; i++)
             {
                 Vector3 at = new Vector3((i - 1) * .25f, 1.28f, Front - .115f);
                 indicators.Add(Part(PartKind.Die, "Die " + i, at, Vector3.one * .17f, paper, sweepsYaw:true));
-                glyphs.Add(Words("Die face " + i, at + Vector3.back * .09f, .14f, .14f, "—"));
+                var face = Words("Die face " + i, at + Vector3.back * .09f, .14f, .14f, "—");
+                face.color = ink;
+                glyphs.Add(face);
             }
         }
 
@@ -351,7 +375,13 @@ namespace Gamesim.Presentation
         {
             if(handle!=null)return handle.TransformPoint(new Vector3(left?-.33f:.33f,0,-.5f));
             if(responsePad!=null)return responsePad.position+Vector3.up*.04f;
-            if(Instrument==Family.DiceTray)return indicators[left?0:2].transform.TransformPoint(Vector3.back*.5f);
+            if(Instrument==Family.DiceTray)
+            {
+                // In front of the die, in the tray's own space: a point on the die's face turned with a
+                // rolling die and carried the fingers into it. This one is clear of its whole sweep.
+                Vector3 die=indicators[left?0:2].transform.localPosition;
+                return transform.TransformPoint(new Vector3(die.x,die.y,die.z-DiePress));
+            }
             return transform.TransformPoint(new Vector3(left?-.22f:.22f,.99f,Front-.12f));
         }
 
@@ -373,8 +403,15 @@ namespace Gamesim.Presentation
             {
                 Vector3 at=indicators[i].transform.localPosition;at.y=1.28f+shift;indicators[i].transform.localPosition=at;
                 at=glyphs[i].transform.localPosition;at.y=1.28f+shift;glyphs[i].transform.localPosition=at;
-                if(repeatWords.TryGetValue(glyphs[i],out var copy)){at=copy.transform.localPosition;at.y=1.28f+shift;copy.transform.localPosition=at;}
+                if(repeatWords.TryGetValue(glyphs[i],out var copy)){at=copy.transform.localPosition;at.y=1.28f+shift+DieRearRise;copy.transform.localPosition=at;}
             }
+            // The roll readout stands under the tray. At the pedestal's lowest fits the tray comes
+            // down past it, so the readout, its copy and both plates come down with the tray's
+            // underside (1.10+shift), the plates' tops (.08 over the words' middle) a centimetre under it.
+            float readout=Mathf.Min(.74f,1.10f+shift-.09f);
+            FitPartHeight(progress.transform,readout);
+            if(repeatWords.TryGetValue(progress,out var audience))FitPartHeight(audience.transform,readout);
+            FitPartHeight(progressFrontBacking,readout);FitPartHeight(progressAudienceBacking,readout);
         }
 
         public void SetOverlaysVisible(bool visible)
@@ -477,6 +514,23 @@ namespace Gamesim.Presentation
         {
             Vector3 at=source.transform.localPosition;at.x=-at.x;at.z=Front+.16f;
             TMP_Text copy=Words(source.name+" audience readout",at,source.rectTransform.sizeDelta.x,source.rectTransform.sizeDelta.y,source.text);
+            copy.transform.localRotation=Quaternion.Euler(0,180,0);
+            repeatWords[source]=copy;
+        }
+
+        /// <summary>
+        /// The audience's copy of die <paramref name="i"/>'s value, in its ink, on that die's own rear
+        /// face and turned to the audience. It stays on its die - the audience sees the dice in the
+        /// other order, and each value on the die it belongs to - in the face's part above the back
+        /// rail (<see cref="DieRearRise"/>).
+        /// </summary>
+        private void RepeatDieFace(int i)
+        {
+            Vector3 die=indicators[i].transform.localPosition;
+            TMP_Text source=glyphs[i];
+            TMP_Text copy=Words(source.name+" audience readout",new Vector3(die.x,die.y+DieRearRise,die.z+.09f),
+                source.rectTransform.sizeDelta.x,DieRearHeight,source.text);
+            copy.color=source.color;
             copy.transform.localRotation=Quaternion.Euler(0,180,0);
             repeatWords[source]=copy;
         }

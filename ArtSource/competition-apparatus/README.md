@@ -120,6 +120,26 @@ replacement animator each frame and restores only unchanged bone rotations
 that remain its own. Cancellation, pause and release end that contact. The
 primitive fallback uses the same instrument/progress without a humanoid pose.
 
+The dice read on both sides. Each value is in the instrument face's dark ink
+(102138) on its paper die; the audience's copy stands on that die's own rear
+face, in the part above the back rail, and moves with the die at every pedestal
+fit. The roll readout under the tray comes down with the tray's underside at the
+pedestal's lowest fits instead of sinking into the bed. The roll's press aims
+0.15 m in front of a die's centre, clear of the 0.12 m its corners sweep while it
+turns, so the fingers stop short of a rolling die. The consoles' audience-side
+keycaps sit flush on the housing's rear face.
+
+**Follow-up: the counterweight bracket.** The endurance rig's counterweight
+guide (`CounterweightGuide`, with the `Counterweight` on it) stands about 8.5 cm
+behind the rig frame with nothing joining it to the brace or the uprights; in
+the fitted rig its top rises 2.5 cm above the top brace, and a side view shows
+it free in the air. The guide cannot simply move forward: the 0.17 m-deep
+counterweight would then cut into the frame. The fix is a new part kind, a
+bracket from the top brace's rear face to the guide's top (about
+`(0, top, Front + .10)` at `(.05, .03, .12)`), with the guide capped at the
+brace's top. A new kind is appended to `PartKind` and needs an authored part in
+the kit, so it waits for the next authoring batch (review of 2026-10-25).
+
 The assembly keeps its existing wide camera. Endurance's translucent play area
 gets a closer three-quarter camera in play so the held arms and pressure rig can
 be read. Reduced-motion behavior and the original camera release remain in

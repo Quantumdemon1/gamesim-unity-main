@@ -263,6 +263,17 @@ namespace Gamesim.Tests.PlayMode
             var clear=CompetitionStageFootprint.Station(CompetitionApparatus.Family.PairConsole,new Vector3(3,0,1.8f),37,.35f,1.9f);
             Assert.That(footprint.Overlaps(clear),Is.False);
             Assert.That(footprint.Overlaps(CompetitionStageFootprint.Actor(new Vector3(0,0,1.1f),.35f,1.9f)),Is.True,"An audience body reserves space too.");
+            // Meets, a world box against the reservation: how the arena clears the yard's drawn scenery
+            // (CompetitionStageScenery). This one spans x -.80..80, z -.64..1.34 and y 0..3.
+            Assert.That(footprint.Meets(new Bounds(new Vector3(.89f,1,.35f),new Vector3(.2f,1,.2f))),Is.True,"A box a centimetre into its side meets it.");
+            Assert.That(footprint.Meets(new Bounds(new Vector3(.91f,1,.35f),new Vector3(.2f,1,.2f))),Is.False,"A box a centimetre off its side does not.");
+            Assert.That(footprint.Meets(new Bounds(new Vector3(0,2.95f,.35f),new Vector3(.4f,.1f,.4f))),Is.True,"A box under its top meets it.");
+            Assert.That(footprint.Meets(new Bounds(new Vector3(0,3.1f,.35f),new Vector3(.4f,.1f,.4f))),Is.False,"A box over its top is a miss in height, wherever it stands in plan.");
+            Assert.That(footprint.Meets(new Bounds(new Vector3(0,-.1f,.35f),new Vector3(.4f,.1f,.4f))),Is.False,"A box under the deck is a miss in height.");
+            var turned=CompetitionStageFootprint.Station(CompetitionApparatus.Family.WordConsole,Vector3.zero,45,.35f,1.9f);
+            Assert.That(turned.Meets(new Bounds(new Vector3(.707f,1,.707f),new Vector3(.2f,1,.2f))),Is.True,"A box on a turned reservation's own axis meets it.");
+            Assert.That(turned.Meets(new Bounds(new Vector3(1.4f,1,1.4f),new Vector3(.2f,1,.2f))),Is.False,
+                "A box inside a turned reservation's world bounds but past its front is clear: the test turns with it.");
             AssertGroundedContainmentBoundary();
             yield return null;
         }

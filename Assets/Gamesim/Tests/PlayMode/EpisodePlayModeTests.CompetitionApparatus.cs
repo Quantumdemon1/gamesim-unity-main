@@ -27,7 +27,7 @@ namespace Gamesim.Tests.PlayMode
         private CompetitionApparatus PlayerInstrument()=>SceneComponents<CompetitionApparatus>()
             .Single(instrument=>instrument.ActorId==director.Snapshot.playerId);
 
-        private IEnumerator EnterInstrumentAttempt(string category,bool ranked=false,bool stopAtReady=false,int houseSize=0)
+        private IEnumerator EnterInstrumentAttempt(string category,bool ranked=false,bool stopAtReady=false,int houseSize=0,Action beforeEntry=null)
         {
             if(houseSize==0)yield return InstallRules4AtFirstHoH(SeedOpeningWith(category));
             else
@@ -59,7 +59,8 @@ namespace Gamesim.Tests.PlayMode
             typeof(Gamesim.Episode.EpisodeDirector).GetField("reducedMotion",BindingFlags.Instance|BindingFlags.NonPublic).SetValue(director,false);
             cameraRig.SetReducedMotion(false);
             var before=director.Snapshot;
-            if(houseSize>0)InstallRepresentativeYardSolids(houseSize);
+            if(houseSize>0)InstallRepresentativeYardSolids();
+            beforeEntry?.Invoke();
             Vector3 start=player.transform.position;float radius=player.Agent.radius,height=player.Agent.height;
             ButtonWithCaption(ranked?CompetitionMiniGames.EnterCaption(CompetitionMiniGames.For(category)):"Practice this competition").onClick.Invoke();
             Assert.That(player.transform.position,Is.EqualTo(start),"Opening the apparatus claims a route and does not warp the body.");
@@ -97,7 +98,7 @@ namespace Gamesim.Tests.PlayMode
                 Assert.That(other.ProgressText,Is.EqualTo("Ready"),"Another entrant's hidden performance is not invented or shown.");
         }
 
-        private GameObject InstallRepresentativeYardSolids(int houseSize)
+        private GameObject InstallRepresentativeYardSolids()
         {
             var floor=SceneComponents<BoxCollider>().Single(collider=>collider.name=="Competition yard floor");var bounds=floor.bounds;
             var owner=new GameObject("Representative yard solid fixtures");SceneManager.MoveGameObjectToScene(owner,director.gameObject.scene);
@@ -111,12 +112,7 @@ namespace Gamesim.Tests.PlayMode
             put("Studio camera volume",new Vector3(bounds.center.x-bounds.size.x*.43f,bounds.max.y+.85f,bounds.center.z-bounds.size.z*.25f),new Vector3(.95f,1.7f,.95f));
             // This front console-height prop clears an actor centred on a grid station while
             // obstructing the former .8m apparatus projection into its native forward route.
-            // Not in the stored sixteen-person field: once the arena clears the yard's drawn
-            // scenery as well (CompetitionStageScenery) the dressed yard has exactly sixteen
-            // clear stations, and this prop takes one of them - the fourth row's x .6. The
-            // twelve-person field and the six-entrant cases keep it, with places to spare.
-            if(houseSize<EpisodeValidation.MaximumCast)
-                put("Console-only clearance challenge",new Vector3(bounds.center.x,bounds.max.y+1,bounds.min.z+2.6f),new Vector3(.50f,2,.50f));
+            put("Console-only clearance challenge",new Vector3(bounds.center.x,bounds.max.y+1,bounds.min.z+2.6f),new Vector3(.50f,2,.50f));
             Physics.SyncTransforms();return owner;
         }
 

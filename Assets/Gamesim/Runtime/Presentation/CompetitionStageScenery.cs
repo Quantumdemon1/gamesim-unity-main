@@ -36,7 +36,11 @@ namespace Gamesim.Presentation
         private readonly List<Renderer> pieces=new List<Renderer>();
         private readonly List<Bounds> boxes=new List<Bounds>();
 
-        /// <summary>Everything drawn standing on <paramref name="deck"/> now, except what lies under <paramref name="own"/>.</summary>
+        /// <summary>
+        /// Everything drawn standing on <paramref name="deck"/> now, except what lies under <paramref name="own"/>
+        /// or under an earlier root of the same name: an arena restarted in one frame still has the last one's
+        /// root in the hierarchy, because Destroy waits for the frame's end, and its instruments are no scenery.
+        /// </summary>
         public static CompetitionStageScenery Collect(Collider deck,Transform own)
         {
             var scenery=new CompetitionStageScenery();
@@ -44,10 +48,16 @@ namespace Gamesim.Presentation
             var floor=deck.bounds;
             foreach(var renderer in deck.transform.root.GetComponentsInChildren<Renderer>())
             {
-                if(!Stands(renderer,floor) || own!=null && renderer.transform.IsChildOf(own))continue;
+                if(!Stands(renderer,floor) || own!=null && UnderArena(renderer.transform,own))continue;
                 scenery.pieces.Add(renderer);scenery.boxes.Add(renderer.bounds);
             }
             return scenery;
+        }
+
+        private static bool UnderArena(Transform at,Transform own)
+        {
+            for(;at!=null;at=at.parent)if(at==own || at.name==own.name)return true;
+            return false;
         }
 
         /// <summary>Whether a renderer is drawn standing on the deck whose collider bounds are <paramref name="deck"/>.</summary>

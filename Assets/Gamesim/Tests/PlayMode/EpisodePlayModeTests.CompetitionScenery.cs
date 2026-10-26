@@ -5,6 +5,7 @@ using Gamesim.Presentation;
 using NUnit.Framework;
 using Unity.Collections;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 using UnityEngine.TestTools;
 using Object=UnityEngine.Object;
 
@@ -23,7 +24,9 @@ namespace Gamesim.Tests.PlayMode
     {
         private static readonly string[] SceneryFamilies={"Skill","Mental","Endurance","Luck","Social"};
 
-        [UnityTest]
+        // Five whole fields in one case. A sixteen-person field takes about half a minute (the three-family
+        // stored-maximum case ran 80-102 s), so five would pass the test framework's 180 s default.
+        [UnityTest, Timeout(600000)]
         public IEnumerator Apparatus_InHouseEveryStationStandsClearOfTheYardsDrawnSetPieces([Values(6,16)] int houseSize)
         {
             foreach(string category in SceneryFamilies)
@@ -37,6 +40,83 @@ namespace Gamesim.Tests.PlayMode
                 yield return CancelInstrumentAttempt(before);
                 var props=SceneComponents<Transform>().Single(transform=>transform.name=="Representative yard solid fixtures");Object.Destroy(props.gameObject);yield return null;
             }
+        }
+
+        /// <summary>
+        /// Two houseguests standing at the south yard's chat places when a sixteen-person field begins
+        /// still leave every entrant a clear station. While the cast is placed no body is a route owner,
+        /// so each capsule refuses every place whose reservation it meets, and no station can be leased on
+        /// top of one (the route asks for room to stand there). Once the arena cleared the yard's drawn
+        /// scenery the 1.8 m grid had no place to spare, and one person chatting there cost an entrant
+        /// their station; the second pass finds the gaps the grid steps over. These two stand-ins never
+        /// move, so the field has to stand around them: the deepest family, with the suite's yard solids.
+        /// </summary>
+        [UnityTest, Timeout(300000)]
+        public IEnumerator Apparatus_InHouseStoredMaximumFieldStandsEveryEntrantAroundHouseguestsInTheSouthYard()
+        {
+            const string category="Endurance";int houseSize=Gamesim.Simulation.EpisodeValidation.MaximumCast;
+            GameObject standers=null;
+            yield return EnterInstrumentAttempt(category,houseSize:houseSize,beforeEntry:()=>standers=InstallSouthYardStandIns());
+            var before=director.Snapshot;
+            yield return HoldTheActualGrip();
+            yield return WaitForFittedCompetitionField(houseSize,category);
+            var floor=SceneComponents<BoxCollider>().Single(collider=>collider.name=="Competition yard floor");var deck=floor.bounds;
+            var bodies=standers.GetComponentsInChildren<CapsuleCollider>();
+            Assert.That(bodies,Has.Length.EqualTo(2));
+            var instruments=SceneComponents<CompetitionApparatus>().Where(instrument=>instrument.gameObject.activeInHierarchy).ToArray();
+            Assert.That(instruments,Has.Length.EqualTo(houseSize),"Every entrant has a fitted station beside the two houseguests. "+CompetitionFieldDiagnostic());
+            // The stand-ins stand where the grid has places: each meets the whole reservation of a grid
+            // place on a row the field uses, so the grid alone would have lost those places.
+            var rowsUsed=instruments.Select(instrument=>instrument.transform.parent.position.z).Distinct().ToArray();
+            var playerCapsule=player.GetComponent<CapsuleCollider>();
+            float radius=Mathf.Max(player.Agent.radius,playerCapsule!=null?playerCapsule.radius:0);
+            var family=PlayerInstrument().Instrument;
+            foreach(var body in bodies)
+            {
+                bool takesAGridPlace=false;
+                for(float x=deck.min.x+2f;x<deck.max.x-2f && !takesAGridPlace;x+=1.8f)
+                    foreach(float z in rowsUsed)
+                        if(CompetitionStageFootprint.Station(family,new Vector3(x,deck.max.y,z),0,radius,player.Agent.height).Meets(body.bounds))
+                        {takesAGridPlace=true;break;}
+                Assert.That(takesAGridPlace,Is.True,body.name+" stands in a grid place's reservation, or the case tests nothing.");
+            }
+            var scratch=new Collider[256];var owners=NpcRead<HashSet<Transform>>("competitionRouteOwners");
+            Physics.SyncTransforms();
+            foreach(var pair in director.CompetitionFootprints)
+            {
+                Assert.That(pair.Value.FitsOn(deck),Is.True,pair.Key+"'s reservation is on the deck.");
+                // The stand-ins are no route owners, so this whole-reservation query counts their capsules.
+                Assert.That(pair.Value.HasStaticClearance(director.gameObject.scene.GetPhysicsScene(),floor,scratch,owners),Is.True,
+                    pair.Key+"'s reservation clears every collider, the two houseguests' bodies among them.");
+                foreach(var body in bodies)Assert.That(pair.Value.Meets(body.bounds),Is.False,pair.Key+"'s reservation stays off "+body.name+".");
+                foreach(var other in director.CompetitionFootprints.Where(other=>other.Key!=pair.Key))
+                    Assert.That(pair.Value.Overlaps(other.Value),Is.False,pair.Key+" and "+other.Key+" keep their own reservations.");
+            }
+            foreach(var instrument in instruments)
+                Assert.That(instrument.Fits(director.CompetitionFootprints[instrument.ActorId]),Is.True,instrument.ActorId+"'s fitted meshes stay inside its reservation.");
+            AssertStationsClearOfDrawnSetPieces(category,houseSize);
+            yield return CancelInstrumentAttempt(before);
+            var props=SceneComponents<Transform>().Single(transform=>transform.name=="Representative yard solid fixtures");Object.Destroy(props.gameObject);
+            Object.Destroy(standers);yield return null;
+        }
+
+        /// <summary>Two still bodies, each a houseguest's capsule as the cast wears it, on the yard-south-chat venue's two standing places.</summary>
+        private GameObject InstallSouthYardStandIns()
+        {
+            var template=SceneComponents<Gamesim.House.HouseNpc>().Where(npc=>npc.gameObject.activeInHierarchy)
+                .Select(npc=>npc.GetComponent<CapsuleCollider>()).First(capsule=>capsule!=null && capsule.enabled);
+            var slots=SceneComponents<Gamesim.House.HouseInteractionAnchor>().Where(anchor=>anchor.VenueId=="yard-south-chat")
+                .OrderBy(anchor=>anchor.Slot).ToArray();
+            Assert.That(slots,Has.Length.EqualTo(2),"The south yard's chat venue keeps its two standing places.");
+            var owner=new GameObject("South yard stand-in houseguests");SceneManager.MoveGameObjectToScene(owner,director.gameObject.scene);
+            foreach(var slot in slots)
+            {
+                var body=new GameObject("Stand-in at "+slot.VenueId+" slot "+slot.Slot,typeof(CapsuleCollider));
+                body.transform.SetParent(owner.transform,false);body.transform.position=slot.Position;
+                var capsule=body.GetComponent<CapsuleCollider>();
+                capsule.center=template.center;capsule.radius=template.radius;capsule.height=template.height;capsule.direction=template.direction;
+            }
+            Physics.SyncTransforms();return owner;
         }
 
         private void AssertStationsClearOfDrawnSetPieces(string category,int houseSize)

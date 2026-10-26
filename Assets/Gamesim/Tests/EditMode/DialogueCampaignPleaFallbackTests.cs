@@ -13,7 +13,8 @@ namespace Gamesim.Tests.EditMode
     /// Owner, 2026-10-25: never lose the plea (DIALOGUE-PLAN §5.5). In a season on dialogue rules 1 the desperate plea for
     /// the player's own vote opens the campaign conversation when it can; while it cannot - a house moment waiting on an
     /// answer, another conversation open, the occasion used - the press is the one-shot plea a season without dialogue
-    /// makes, by the same Lobby command, and draws exactly what that season draws. Rules 1 used to lock the plea instead
+    /// makes, by the same Lobby command, and draws exactly what that season draws. The voter whose own conversation is
+    /// open is the exception: that plea is in the talk, for no further action (D1b's review). Rules 1 used to lock the plea instead
     /// (the panel's Emotional button, locked with CanStart's reason as its tag), in about one nominated Campaign week in
     /// two (P1(a)); these tests pin the fallback that replaced the lock.
     ///
@@ -274,6 +275,51 @@ namespace Gamesim.Tests.EditMode
             Assert.That(pleaded.dialogue.episodes, Has.Count.EqualTo(1), "and no second one began.");
         }
 
+        /// <summary>
+        /// The voter whose own conversation is open (D1b's review): their plea was not refused, it is in that talk, so there is no
+        /// fallback for them. A one-shot press would close the talk unmade and spend a second action on the one plea, where a
+        /// season without dialogue spends one. The talk's own plea costs nothing further, so the week spends on this voter's plea
+        /// exactly the chip-off season's one action. Owner, 2026-10-25: never lose the plea, and never make a week worse with
+        /// dialogue on. Every other voter's plea stays the one-shot plea.
+        /// </summary>
+        [Test]
+        public void TheOpenConversationsOwnVoterPleadsInItForNoFurtherAction()
+        {
+            var w = Find();
+            var on = new EpisodeEngine(w.On);
+            AnswerTheHouse(on, null);
+            int before = Remaining(on.Snapshot);
+            Assert.That(DialogueRules.PleaInOpenConversation(on.Snapshot, w.Voter), Is.False, "No talk is open yet.");
+            var talking = Talking(on, w);
+            Assert.That(DialogueRules.CanStart(talking, w.Voter, out string refusal), Is.False);
+            Assert.That(refusal, Is.EqualTo("Finish the active dialogue first."), "CanStart refuses the voter a second talk,");
+            Assert.That(DialogueRules.PleaInOpenConversation(talking, w.Voter), Is.True, "because their plea is in the open one,");
+            Assert.That(DialogueRules.PleaWithoutConversation(talking, w.Voter, out string why), Is.False,
+                "owner, 2026-10-25: never lose the plea; this one is not lost, so there is no paid duplicate of it.");
+            Assert.That(why, Is.Null);
+            Assert.That(Pleadable(talking), Does.Contain(w.Voter), "The voter still could hear a plea, as with the chip off.");
+            Assert.That(DialogueRules.PleaInOpenConversation(talking, w.Other), Is.False, "Every other voter's plea");
+            Assert.That(DialogueRules.PleaWithoutConversation(talking, w.Other, out why), Is.True, "is the one-shot plea,");
+            Assert.That(why, Is.EqualTo("Finish the active dialogue first."), "saying why.");
+
+            // The talk's plea: the appeal, then the plea itself, each for no further action.
+            var cycle = DialogueRules.Cycle(talking, DialogueRules.Active(talking));
+            Assert.That(DialogueRules.TryBuildChoiceCommand(talking, cycle.eventId, DialogueCampaignV1.Appeal, out var appeal), Is.True);
+            appeal.id = "plea-fallback-appeal";
+            var finish = Accepted(on, appeal);
+            Assert.That(DialogueRules.PleaInOpenConversation(finish, w.Voter), Is.True, "At the last node the plea is still the talk's.");
+            Assert.That(DialogueRules.PleaWithoutConversation(finish, w.Voter, out why), Is.False);
+            cycle = DialogueRules.Cycle(finish, DialogueRules.Active(finish));
+            Assert.That(DialogueRules.TryBuildChoiceCommand(finish, cycle.eventId, DialogueCampaignV1.Plea, out var plea), Is.True);
+            plea.id = "plea-fallback-talk-plea";
+            var pleaded = Accepted(on, plea);
+            Assert.That(pleaded.lobbies.Count(l => l.week == pleaded.week && l.deciderId == w.Voter), Is.EqualTo(1), "One plea, made in the talk,");
+            Assert.That(Remaining(pleaded), Is.EqualTo(Remaining(talking)), "for no further action:");
+            Assert.That(Remaining(pleaded), Is.EqualTo(before - 1), "one action on this voter's plea, as with the chip off.");
+            Assert.That(DialogueRules.Active(pleaded), Is.Null);
+            Assert.That(DialogueRules.PleaInOpenConversation(pleaded, w.Voter), Is.False, "The talk is over.");
+        }
+
         /// <summary>A conversation that ended without a plea used its occasion: the voter's desperate plea is then the plain plea.</summary>
         [Test]
         public void AUsedOccasionLeavesTheOneShotPlea()
@@ -308,6 +354,9 @@ namespace Gamesim.Tests.EditMode
             Assert.That(DialogueRules.PleaWithoutConversation(nomination, nomination.Active.First(c => !c.isPlayer).id, out why), Is.False,
                 "Before the Campaign there is no conversation to fall back from.");
             Assert.That(DialogueRules.PleaWithoutConversation(null, w.Voter, out why), Is.False);
+            Assert.That(DialogueRules.PleaInOpenConversation(w.Off, w.Voter), Is.False, "nor a talk to plead in,");
+            Assert.That(DialogueRules.PleaInOpenConversation(nomination, nomination.Active.First(c => !c.isPlayer).id), Is.False);
+            Assert.That(DialogueRules.PleaInOpenConversation(null, w.Voter), Is.False);
         }
     }
 }

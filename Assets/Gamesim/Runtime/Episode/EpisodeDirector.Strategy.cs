@@ -37,6 +37,27 @@ namespace Gamesim.Episode
         }
 
         /// <summary>
+        /// The desperate plea's words while its conversation cannot start (DIALOGUE-PLAN §5.5; owner, 2026-10-25: "Never
+        /// lose the plea"), shared by every dialogue version's panel. The tag is added to the odds word, after " · ", and
+        /// is short so that every odds word's tag sits on one line of its chip: the longest, "about even · no talk now",
+        /// measures 139 in Inter at twelve against the chip's 166 inside at text size 1.0, and it scales with the text
+        /// ("· no conversation now" ran to 192 against 184 and lost its last word).
+        /// </summary>
+        public const string NoConversationTag = "no talk now";
+
+        /// <summary>The locked desperate plea's tag when the voter's own conversation is open: its final plea is that plea.</summary>
+        public const string OpenConversationTag = "in your open talk";
+
+        /// <summary>The panel's paragraph in place of the conversation's, saying why there is none, in CanStart's words.</summary>
+        public static string NoConversationLine(string name, string why) =>
+            "No conversation with " + name + " now." + (string.IsNullOrEmpty(why) ? "" : " " + why)
+            + " A desperate plea is the ordinary one-shot plea, for one action.";
+
+        /// <summary>The panel's paragraph for the voter whose conversation is open: the plea is made there, not here.</summary>
+        public static string OpenConversationLine(string name) =>
+            "Your conversation with " + name + " is open: its final plea costs no further action.";
+
+        /// <summary>
         /// A plea, in the conversation with whoever is deciding: first what to ask, then how to put
         /// it, each approach with its chance beside it. Drawn above the dial, because in a window the
         /// plea is what the player came for. The chance is the player's read of the houseguest
@@ -67,12 +88,13 @@ namespace Gamesim.Episode
                 // A conversation that cannot start never takes the plea away (DIALOGUE-PLAN §5.5; owner, 2026-10-25: "Never
                 // lose the plea"), in rules 1 as in every later version: the Emotional button makes the ordinary one-shot
                 // plea, by the very command a season without dialogue commits, the panel says why there is no talk in
-                // CanStart's own words instead of promising one, and the tag stays short.
+                // CanStart's own words instead of promising one, and the tag stays short. The voter whose own conversation
+                // is open is the one exception: their plea is in that talk, for no further action, and the panel says so.
                 string why = null;
                 bool withoutTalk = paidCampaign && DialogueRules.PleaWithoutConversation(state, decider, out why);
-                if (withoutTalk)
-                    hud.Paragraph("No conversation with " + npc.name + " now." + (string.IsNullOrEmpty(why) ? "" : " " + why)
-                        + " A desperate plea is the ordinary one-shot plea, for one action.");
+                bool inTheTalk = paidCampaign && DialogueRules.PleaInOpenConversation(state, decider);
+                if (withoutTalk) hud.Paragraph(NoConversationLine(npc.name, why));
+                else if (inTheTalk) hud.Paragraph(OpenConversationLine(npc.name));
                 else if (paidCampaign)
                     hud.Paragraph("A desperate plea starts a conversation for one action. Its replies and final plea cost no further actions; you can walk away and return.");
                 foreach (string approach in LobbyApproach.All)
@@ -82,7 +104,7 @@ namespace Gamesim.Episode
                         + (how == LobbyApproach.Deal ? " · binds you next week" : how == LobbyApproach.Pressure ? " · can backfire" : "");
                     bool entry = paidCampaign && how == LobbyApproach.Emotional && !withoutTalk;
                     bool available = !entry || DialogueRules.TryBuildEntryCommand(state, decider, out _);
-                    if (withoutTalk && how == LobbyApproach.Emotional) tag += " · no conversation now";
+                    if (withoutTalk && how == LobbyApproach.Emotional) tag += " · " + NoConversationTag;
                     string caption = EpisodeHud.LobbyApproachCaption(how, forYourself);
                     var button = available ? hud.Action(caption, () =>
                     {
@@ -94,11 +116,9 @@ namespace Gamesim.Episode
                         }
                         else Commit(state, EpisodeCommandKind.Lobby, decider, subject, text: LobbyAsk.Encode(ask, how));
                     }) : hud.LockedAction(caption);
-                    // A locked entry says why, in CanStart's own words: an active dialogue, a used occasion, an
-                    // unanswered house moment or a full path each read differently. The caption stays as it is.
-                    string refusal = null;
-                    if (!available && DialogueRules.CanStart(state, decider, out refusal)) refusal = null;
-                    hud.Tag(button, available ? tag : string.IsNullOrEmpty(refusal) ? "This plea cannot start now" : refusal.TrimEnd('.'));
+                    // The one locked row is the desperate plea of the voter whose conversation is open (inTheTalk): every
+                    // other refusal makes it the one-shot plea above. Its tag points to the talk; the caption stays as it is.
+                    hud.Tag(button, available ? tag : OpenConversationTag);
                 }
                 hud.Action(EpisodeHud.LobbyBackCaption, () => { ClearLobbyDraft(); Render(); });
                 return;

@@ -37,7 +37,9 @@
 # (28, 29, 30, 31), run under the Mono harness (2026-10-25). Not yet counted by a full run.
 # 8976 = 8971 + dialogue D1b's 5 shared DialogueCampaignPleaFallbackTests cases (owner, 2026-10-25: never lose the plea),
 # run by dotnet test (2026-10-25). Not yet counted by a full run.
-Gamesim.EditModeTests 8976
+# 8977 = 8976 + D1b's review: DialogueCampaignPleaFallbackTests.TheOpenConversationsOwnVoterPleadsInItForNoFurtherAction,
+# shared, run by dotnet test (2026-10-25). Not yet counted by a full run.
+Gamesim.EditModeTests 8977
 # The UMA-free build. 1215 = 1236, the count after the consolidation's lanes (S2a, S2b, S4a), less the 7
 # farewell probes moved to Gamesim.DiagnosticsPlayModeTests and the 14 farewell readiness tests that now
 # compile only under GAMESIM_UMA (judged on the UMA cast); 1230 = 1215 + S2d's 7, S4b's 2, S4c's 2 and
@@ -119,4 +121,5 @@ Gamesim.Uma.DiagnosticsPlayModeTests 10
 # (CommitmentRulesSeasonDigestsNativeTests, compiled out of Unity). dotnet test ran 10801 of 10801 (2026-10-25).
 # 10805 = 10801 + the same 4 schema-bound cases of D1's review.
 # 10810 = 10805 + dialogue D1b's same 5 cases.
-Gamesim.SimulationTests 10810
+# 10811 = 10810 + the same case of D1b's review (the open conversation's own voter). dotnet test ran 10811 of 10811.
+Gamesim.SimulationTests 10811

@@ -94,13 +94,31 @@ namespace Gamesim.Simulation
         /// is then CanStart's refusal, in its own words, or null if CanStart accepts and whole-state validation still
         /// refuses the entry. Whether the plea itself is open is not this method's to say: that is StrategyRules.CanLobby
         /// and the week's actions, as in every season. It reads the state only, and draws and writes nothing.</para>
+        /// <para>The one refusal it does not fall back from is the voter's own open conversation
+        /// (<see cref="PleaInOpenConversation"/>): that plea was not refused, it is in the talk, for no further action.</para>
         /// </summary>
         public static bool PleaWithoutConversation(EpisodeState s, string npcId, out string reason)
         {
             reason = null;
-            if (!On(s) || s.phase != EpisodePhase.Campaign || TryBuildEntryCommand(s, npcId, out _)) return false;
+            if (!On(s) || s.phase != EpisodePhase.Campaign || PleaInOpenConversation(s, npcId)
+                || TryBuildEntryCommand(s, npcId, out _)) return false;
             if (CanStart(s, npcId, out reason)) reason = null;
             return true;
+        }
+
+        /// <summary>
+        /// Whether the voter's desperate plea is in the conversation already open with them: this week's campaign
+        /// conversation, its entry paid by an earlier press and walked away from. Its final plea is that plea, for no
+        /// further action (DIALOGUE-PLAN §5.5), so the panel points to the talk and offers no second, paid one-shot plea:
+        /// that press would close the talk unmade ("occasion-closed") and spend a second action on the one plea, where a
+        /// season without dialogue spends one. Owner, 2026-10-25: never lose the plea, and never make a week worse with
+        /// dialogue on. Reads the state only.
+        /// </summary>
+        public static bool PleaInOpenConversation(EpisodeState s, string npcId)
+        {
+            if (!On(s) || s.phase != EpisodePhase.Campaign || string.IsNullOrEmpty(npcId)) return false;
+            var open = Active(s);
+            return open != null && open.npcId == npcId && open.occasionId == Occasion(s.week, npcId);
         }
 
         public static bool TryBuildChoiceCommand(EpisodeState s, string eventId, string optionId, out EpisodeCommand command)

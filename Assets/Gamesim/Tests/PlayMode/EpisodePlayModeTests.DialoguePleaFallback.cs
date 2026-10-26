@@ -45,11 +45,14 @@ namespace Gamesim.Tests.PlayMode
             string caption = EpisodeHud.LobbyApproachCaption(LobbyApproach.Emotional, true);
             var plea = ButtonWithCaption(caption); // Visible, interactable and reachable: the plea is not locked.
             string word = KnownOdds.Plea(source, voter, LobbyAsk.Vote, source.playerId, LobbyApproach.Emotional).word;
-            Assert.That(TagWords(plea), Is.EqualTo(word + " · no conversation now"), "The tag adds only that there is no conversation now.");
+            // D1b's review: " · no conversation now" ran to 192 in its chip's 184 at text size 1.0 and lost "now"; the
+            // shorter words sit on one line for every odds word, and the tag must draw whole.
+            Assert.That(TagWords(plea), Is.EqualTo(word + " · no talk now"), "The tag adds only that there is no talk now.");
+            Assert.That(EpisodeDirector.NoConversationTag, Is.EqualTo("no talk now"));
             Assert.That(TagWords(FindButton(EpisodeHud.LobbyApproachCaption(LobbyApproach.Strategic, true))),
                 Is.EqualTo(KnownOdds.Plea(source, voter, LobbyAsk.Vote, source.playerId, LobbyApproach.Strategic).word), "The other approaches are as ever.");
             AssertEveryLabelDraws((RectTransform)plea.transform, "The desperate plea's row");
-            LogTagFit(plea);
+            AssertTagDrawsWhole(plea);
 
             var pre = director.Snapshot;
             plea.onClick.Invoke();
@@ -113,21 +116,27 @@ namespace Gamesim.Tests.PlayMode
         }
 
         /// <summary>
-        /// How the tag's words sit in its chip, for the lead's reading of the run: the chip is at most 196 wide at text size
-        /// 1.0, and the words are measured at about 190 against its 184 inside when the read is "about even" or "favourable".
+        /// That the tag's words sit whole in its chip, logged for the lead's reading too: the chip is at most 196 wide at text size
+        /// 1.0. D1b's first words, "about even · no conversation now", measured 192 in Inter at twelve, so "now" wrapped onto a
+        /// second line the 22-high chip cuts off while the label's text still read whole. The shorter words measure 139 at the
+        /// most against the chip's 166 inside, so the tag sits on one line and draws every glyph; this fails the run if not.
         /// </summary>
-        private static void LogTagFit(Button row)
+        private static void AssertTagDrawsWhole(Button row)
         {
             var tag = row.transform.Find("Tag");
             var label = tag != null ? tag.GetComponentInChildren<TMP_Text>(true) : null;
-            if (label == null) return;
+            Assert.That(label, Is.Not.Null, "The desperate plea's row carries its tag.");
             Canvas.ForceUpdateCanvases();
             label.ForceMeshUpdate(true);
             int glyphs = label.text.Count(c => !char.IsWhiteSpace(c));
             int drawn = Enumerable.Range(0, label.textInfo.characterCount).Count(i => label.textInfo.characterInfo[i].isVisible);
-            TestContext.Out.WriteLine("Fallback tag '" + label.text + "': box " + label.rectTransform.rect.size.ToString("0.0") + ", font "
+            string fit = "Fallback tag '" + label.text + "': box " + label.rectTransform.rect.size.ToString("0.0") + ", font "
                 + label.fontSize.ToString("0.#") + ", lines " + label.textInfo.lineCount + ", truncated " + label.isTextTruncated
-                + ", drawn " + drawn + " of " + glyphs + " glyphs.");
+                + ", drawn " + drawn + " of " + glyphs + " glyphs.";
+            TestContext.Out.WriteLine(fit);
+            Assert.That(label.isTextTruncated, Is.False, fit);
+            Assert.That(label.textInfo.lineCount, Is.EqualTo(1), fit);
+            Assert.That(drawn, Is.EqualTo(glyphs), fit);
         }
 
         /// <summary>

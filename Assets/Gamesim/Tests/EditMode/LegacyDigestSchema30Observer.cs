@@ -78,12 +78,15 @@ namespace Gamesim.Tests.EditMode
         /// <summary>
         /// The retained FindDecision answer view of the current state (the schema-29 observer's, which bound the state
         /// itself until SCH30): the whole source is admitted through this boundary first, then each answer's typed
-        /// Record loses its present-null conditional term, as before. Schema 30 adds nothing to a commitment row.
+        /// Record loses its present-null conditional term, as before. Schema 30 adds nothing to a commitment row. A season
+        /// on the alumni rules (H1b) has no 28 view of its whole source, so it is admitted natively at 30 instead
+        /// (<see cref="AdmitNative30"/>); its answers are read from the same canonical rows, which the alumni rules never touch.
         /// </summary>
         internal static JArray FindDecisionAnswers28(EpisodeState state)
         {
             string before = state == null ? null : Json(JObject.FromObject(state));
-            ProjectFields28(state, state == null ? null : OldSaveTrace.Fields(state));
+            if (OnTheAlumniRules(state)) AdmitNative30(state, OldSaveTrace.Fields(state));
+            else ProjectFields28(state, state == null ? null : OldSaveTrace.Fields(state));
             var answers = LegacyDigestSchema29Observer.FindDecisionAnswersOfAnAdmittedSource28(state);
             Require(Json(JObject.FromObject(state)) == before,
                 "The actual FindDecision source and all its fields/order/numbers must remain unchanged.");

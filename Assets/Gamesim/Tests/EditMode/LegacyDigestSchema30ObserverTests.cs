@@ -175,6 +175,9 @@ namespace Gamesim.Tests.EditMode
                 Assert.That(CurrentOldSaveTrace.Checkpoint(state, 30), Is.EqualTo(OldSaveTrace.Checkpoint(state, 30)),
                     "Checkpointed at the live 30 as the recorder checkpoints its own schema.");
                 Assert.Throws<InvalidDataException>(() => CurrentOldSaveTrace.Checkpoint(state, 29), "No reference schema below 30.");
+                Assert.That(Text(LegacyDigestSchema30Observer.FindDecisionAnswers28(state)),
+                    Is.EqualTo(Text(LegacyDigestSchema29Observer.FindDecisionAnswersOfAnAdmittedSource28(state))),
+                    "The historical FindDecision reader admits it at 30 and reads the same canonical rows.");
             }
             else
             {
@@ -190,6 +193,7 @@ namespace Gamesim.Tests.EditMode
                     _ => "The current source state is invalid:",
                 };
                 Assert.That(error.Message, Does.Contain(expected));
+                if (defect == "invalid-source") Assert.Throws<InvalidDataException>(() => LegacyDigestSchema30Observer.FindDecisionAnswers28(state));
             }
             Assert.That(Text(fields), Is.EqualTo(fieldsBefore));
             Assert.That(Text(state), Is.EqualTo(stateBefore));

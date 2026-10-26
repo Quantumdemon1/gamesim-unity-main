@@ -40,7 +40,8 @@ namespace Gamesim.Tests.EditMode
     /// mid-season, and a schema-28 mode-1 season carried on, each saved by that build's store and recorded by that build;
     /// since SCH30 they migrate to 30 in memory like every older one. Schema 30's are the SCH30 build's own (936b73a4),
     /// every pooled field off: the default scene's season and a fresh shipped season of each roster, Regular and
-    /// All-Stars, at alumni rules 0; they load as they are, with no migration.</para>
+    /// All-Stars, at alumni rules 0; they load as they are, with no migration. The H1b build (0fef7b59) wrote the
+    /// alumni-on cell: the same shipped All-Stars season at alumni rules 1, with its histories and the Hitmen's final two.</para>
     ///
     /// <para>Three digests (<see cref="OldSaveTrace"/>): the season's - the cross-build gate - must be the reference
     /// build's; the whole state's, blind to prose, and the verbatim text are this build's, pinned when the fixture was
@@ -91,6 +92,9 @@ namespace Gamesim.Tests.EditMode
             // Written by the SCH30 build (936b73a4), schema 30 at dialogue rules 0 and alumni rules 0, the pooled fields off:
             // the default scene's season (mode 0), a fresh shipped Regular season and a fresh shipped All-Stars season (mode 2).
             "s30-default-w2-social", "s30-mode2-allweek-w3-campaign", "s30-mode2-allstars-w3-campaign",
+            // Written by the H1b build (0fef7b59), schema 30 at alumni rules 1 and edition 1: the same shipped All-Stars
+            // season, now with its alumni's histories (ALL-STAR-HISTORIES-PLAN 8.7, the alumni-on cell).
+            "s30-mode2-allstars-alumni1-w3-campaign",
         };
 
         /// <summary>
@@ -151,7 +155,8 @@ namespace Gamesim.Tests.EditMode
             // director played the default scene's catalogue - with the unified commitment mode (uc), the all-week rules,
             // Wave D's leaks and war rooms where they branch, and schema 22's three shapes; from schema 29 the dialogue rules
             // too, each commitment mode at dialogue rules 0; from schema 30 the alumni rules and the cast too, the default
-            // scene's season and the shipped season of each roster at alumni rules 0. A cell counts only a fixture saved in a
+            // scene's season and the shipped season of each roster at alumni rules 0, and from H1b the shipped All-Stars
+            // season at alumni rules 1. A cell counts only a fixture saved in a
             // week, before the finale, with a script to play: one saved at the finale or after it is read, never a cell's replay.
             var replayed = Manifest["episodes"].Where(e => (int)e["commands"] > 0 && !FinalePhases.Contains((string)e["phase"])).ToList();
             Assert.That(Manifest["episodes"].Except(replayed).Select(e => (string)e["id"]), Is.EquivalentTo(ReadOnly),
@@ -178,6 +183,7 @@ namespace Gamesim.Tests.EditMode
                 "29/director/uc2/allweek1/leaks1/plans1/dialogue0",
                 "30/default/uc0/allweek0/dialogue0/alumni0/regular", "30/director/uc2/allweek1/leaks1/plans1/dialogue0/alumni0/regular",
                 "30/director/uc2/allweek1/leaks1/plans1/dialogue0/alumni0/allstars",
+                "30/director/uc2/allweek1/leaks1/plans1/dialogue0/alumni1/allstars",
             }));
         }
 

@@ -41,7 +41,9 @@
 # AlumniHistoriesSaveTests 4, AlumniHistoriesRecapTests 1, PooledSchema30ShapeTests' validation pin 7 -> 12 (+5),
 # LegacyDigestSchema30ObserverTests +11 (the nonzero-pooled case per value 1 -> 3, never projected 1, admitted
 # natively 8) and PersistenceV30MigrationTests' store refusals 5 -> 6 (+1).
-Gamesim.EditModeTests 9246
+# 9250 = 9246 + H1b's alumni-on old-save fixture, four OldSaveAcceptanceTests cases (253 -> 257), run under Unity's
+# Mono (2026-10-26).
+Gamesim.EditModeTests 9250
 # The UMA-free build. 1215 = 1236, the count after the consolidation's lanes (S2a, S2b, S4a), less the 7
 # farewell probes moved to Gamesim.DiagnosticsPlayModeTests and the 14 farewell readiness tests that now
 # compile only under GAMESIM_UMA (judged on the UMA cast); 1230 = 1215 + S2d's 7, S4b's 2, S4c's 2 and

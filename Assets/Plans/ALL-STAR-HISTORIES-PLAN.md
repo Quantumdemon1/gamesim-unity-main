@@ -1331,6 +1331,13 @@ seasons only.
 - `AlumniHistoriesRecapTests` (EditMode only, 1): week one's recap never sums a past-game receipt into a move, and off
   the rules the same entry is summed as before.
 
+**The alumni-on old-save cell** (8.7), recorded in the commit after `0fef7b59` by that build itself
+(OLD-SAVE-ACCEPTANCE 2.5): `s30-mode2-allstars-alumni1-w3-campaign`, a shipped All-Stars director season of eight at
+alumni rules 1 and edition 1, saved at the week-3 campaign with the Hitmen's final two live, four receipts, and 48
+commands to its end. Seed 3004, because the alumni-0 fixture's seed 3002 had evicted Derrick by then. It is the 55th
+cell. `CurrentOldSaveTrace` and the historical `FindDecision` reader admit a season on the alumni rules natively at
+30, since it has no 29 view.
+
 **For the lead: PlayMode and visual checks.** No PlayMode file changed.
 - `EpisodePlayModeTests.CastSelect` starts All-Stars seasons through `StartSeason`, so they are now enrolled. Expected
   green. `OpeningGrounds` builds without `ApplyFresh`, so it is unaffected.

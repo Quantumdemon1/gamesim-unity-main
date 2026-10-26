@@ -929,19 +929,134 @@ namespace Gamesim.Tests.PlayMode
         }
 
         /// <summary>
+        /// The memory console and the letter tray follow the lit target's rule on both faces. A turned-over
+        /// tile on the pale Accent cap, a matched tile on the mint and a picked letter on the mint each
+        /// carry a glyph and an audience copy that are darker than the cap and at least 4.5:1 on it,
+        /// computed from the colours the cap renderers and labels actually carry. A tile that turns back,
+        /// a letter taken back and a console that rests take their glyphs back to paper. These glyphs
+        /// used to stay paper on the light caps (1.4:1 on Accent, 1.5:1 on the mint), so the keys the
+        /// contestant had just turned or picked were the faintest on the console.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator Apparatus_ATurnedOverTileOrPickedLetterIsDarkOnItsLitCapOnBothFaces()
+        {
+            int litFaces=0;float lowest=float.PositiveInfinity;
+            // Every key on both faces: a key meant to be lit shows that cap under a darker glyph at 4.5:1 or better; any other key's glyph is paper.
+            void AssertKeys(CompetitionApparatus instrument,Func<int,Color?> litCap,string at)
+            {
+                foreach(var key in Keys(instrument))
+                {
+                    Color? want=litCap(int.Parse(key.Name,System.Globalization.CultureInfo.InvariantCulture));
+                    foreach(var (cap,label) in new[]{(key.Cap,key.Label),(key.AudienceCap,key.AudienceLabel)})
+                    {
+                        Color face=CapColour(cap);
+                        string where=" ("+at+": "+label.color+" on "+face+")";
+                        if(want==null){Assert.That(label.color,Is.EqualTo(UiTheme.Paper),label.name+" is paper while its key is unlit"+where);continue;}
+                        Assert.That(Near(face,want.Value),Is.True,"Precondition: "+cap.name+" is lit"+where);
+                        float contrast=Contrast(label.color,face);lowest=Mathf.Min(lowest,contrast);
+                        Assert.That(RelativeLuminance(label.color),Is.LessThan(RelativeLuminance(face)),label.name+" is dark on its lit cap"+where);
+                        Assert.That(contrast,Is.GreaterThanOrEqualTo(4.5f),label.name+" reads on its lit cap"+where);
+                        litFaces++;
+                    }
+                }
+            }
+
+            var mental=CompetitionDefinitions.All.First(item=>item.Category=="Mental");
+            var memory=Make(mental);
+            var run=new MiniGameRun(CompetitionMiniGames.Kind.Memory,123,4,mental);
+            int tiles=run.Faces.Count,first=0;
+            int partner=Enumerable.Range(1,tiles-1).First(i=>run.Faces[i]==run.Faces[first]);
+            int a=Enumerable.Range(1,tiles-1).First(i=>i!=partner);
+            int b=Enumerable.Range(1,tiles-1).First(i=>i!=partner && run.Faces[i]!=run.Faces[a]);
+            Color? Matched(int i)=>run.Matched[i]?UiTheme.Positive:(Color?)null;
+            memory.Sync(run,true,false,false,false);
+            AssertKeys(memory,i=>null,"Mental, every tile face down");
+            Assert.That(run.Flip(first),Is.True,"Precondition: tile "+first+" turns over.");
+            memory.Sync(run,true,false,false,false);
+            Assert.That(memory.VisibleMemoryFaces,Is.EqualTo(1),"Precondition: one face shows.");
+            AssertKeys(memory,i=>i==first?UiTheme.Accent:(Color?)null,"Mental, one tile turned over");
+            Assert.That(run.Flip(partner),Is.True);
+            Assert.That(run.MatchedPairs,Is.EqualTo(1),"Precondition: tiles "+first+" and "+partner+" match.");
+            memory.Sync(run,true,false,false,false);
+            AssertKeys(memory,Matched,"Mental, a pair matched");
+            Assert.That(run.Flip(a) && run.Flip(b),Is.True);
+            Assert.That(run.SecondFlip,Is.EqualTo(b),"Precondition: tiles "+a+" and "+b+" do not match and show while they are compared.");
+            memory.Sync(run,true,false,false,false);
+            Assert.That(memory.VisibleMemoryFaces,Is.EqualTo(4),"Precondition: the matched pair and the compared pair show.");
+            AssertKeys(memory,i=>i==a || i==b?UiTheme.Accent:Matched(i),"Mental, a pair matched and a mismatched pair turned over");
+            while(run.SecondFlip>=0 && !run.Finished)run.Tick(.05);
+            Assert.That(run.Finished,Is.False,"Precondition: the mismatched pair turns back before the whistle.");
+            memory.Sync(run,true,false,false,false);
+            AssertKeys(memory,Matched,"Mental, the mismatched pair turned back");
+            memory.Sync(null,false,false,false,false);
+            AssertKeys(memory,i=>null,"Mental, at rest");
+
+            Object.Destroy(owner);owner=null;yield return null;
+            var social=CompetitionDefinitions.All.First(item=>item.Category=="Social");
+            var tray=Make(social);
+            var words=new MiniGameRun(CompetitionMiniGames.For("Social"),123,4,social);
+            Assert.That(words.Kind,Is.EqualTo(CompetitionMiniGames.Kind.Words),"Precondition: the Social console is the letter tray.");
+            Assert.That(words.Scrambled.Length,Is.GreaterThanOrEqualTo(2),"Precondition: one picked letter leaves the word open, so it can be taken back.");
+            tray.Sync(words,true,false,false,false);
+            AssertKeys(tray,i=>null,"Social, no letter picked");
+            Assert.That(words.PickTile(0),Is.True,"Precondition: the first letter is picked.");
+            tray.Sync(words,true,false,false,false);
+            AssertKeys(tray,i=>i==0?UiTheme.Positive:(Color?)null,"Social, a letter picked");
+            Assert.That(words.Undo(),Is.True,"Precondition: the letter is taken back.");
+            tray.Sync(words,true,false,false,false);
+            AssertKeys(tray,i=>null,"Social, the letter taken back");
+            Assert.That(words.PickTile(1),Is.True,"Precondition: another letter is picked.");
+            tray.Sync(words,true,false,false,false);
+            AssertKeys(tray,i=>i==1?UiTheme.Positive:(Color?)null,"Social, another letter picked");
+            tray.Sync(null,false,false,false,false);
+            AssertKeys(tray,i=>null,"Social, at rest");
+            Debug.Log("[Gamesim W3] Lit memory tiles and letters: "+litFaces+" lit key faces read (tiles "+first+"/"+partner+" matched, "
+                +a+"/"+b+" compared), lowest lit contrast "+lowest.ToString("F2")+":1 on both faces.");
+            yield return null;
+        }
+
+        /// <summary>
         /// Another entrant's console, synced with no attempt, shows the faces the player's console shows
         /// before its first input, on both sides. Every key's glyph has a colour of its own and reads on
         /// its cap at 3:1 or better, computed from the colours the renderers and labels actually carry.
         /// Nothing is lit or turned over: Signals shows its four directions, memory tiles and letter caps
-        /// show '?', and the readout says 'Ready'. A console that showed an attempt in between (memory
-        /// faces, a lit target, letters) goes back to rest, and so does one reserved under an inactive
-        /// anchor. These keys used to be paper glyphs on paper caps (1:1), so the field's other boards
-        /// looked switched off.
+        /// show '?', and the readout says 'Ready'. Each console is read twice. The first read comes after
+        /// its first no-attempt sync, as another entrant's station is in the game, where no attempt ever
+        /// reaches it; a reserved console is read there while its anchor is still inactive. The second
+        /// read comes after an attempt (memory faces, a lit target, letters) and two more no-attempt
+        /// syncs, so the console has gone back to rest. These keys used to be paper glyphs on paper caps
+        /// (1:1), so the field's other boards looked switched off.
         /// </summary>
         [UnityTest]
         public IEnumerator Apparatus_AConsoleWithNoAttemptShowsReadableUnlitKeysWithNothingLit()
         {
             int read=0;float lowest=float.PositiveInfinity;
+            // A console with no attempt, on both faces: the cap and glyph colours the player's console rests on, a glyph
+            // colour unlike its face at 3:1 or better, the directions or '?', nothing lit or turned over, and 'Ready'.
+            void AssertResting(CompetitionApparatus instrument,string category,(Color cap,Color glyph) rest,string place)
+            {
+                Assert.That(instrument.ProgressText,Is.EqualTo("Ready"),"The readout stays 'Ready'"+place);
+                Assert.That(instrument.LitSignal,Is.EqualTo(-1),"Nothing is lit"+place);
+                Assert.That(instrument.VisibleMemoryFaces,Is.Zero,"and nothing is turned over"+place);
+                var keys=Keys(instrument);
+                Assert.That(keys,Has.Length.EqualTo(category=="Mental"?16:category=="Skill"?4:12),place);
+                foreach(var key in keys)
+                {
+                    string expected=category=="Skill"?key.Name:"?";
+                    foreach(var (cap,label) in new[]{(key.Cap,key.Label),(key.AudienceCap,key.AudienceLabel)})
+                    {
+                        Color face=CapColour(cap);
+                        string at=place+": "+label.color+" on "+face;
+                        Assert.That(label.text,Is.EqualTo(expected),label.name+place);
+                        Assert.That(Near(face,rest.cap),Is.True,cap.name+" shows the unlit cap the player's console rests on"+at);
+                        Assert.That(label.color,Is.EqualTo(rest.glyph),label.name+" has the resting glyph colour"+at);
+                        Assert.That(Near(label.color,face),Is.False,label.name+"'s colour differs from its face"+at);
+                        float contrast=Contrast(label.color,face);lowest=Mathf.Min(lowest,contrast);
+                        Assert.That(contrast,Is.GreaterThanOrEqualTo(3f),label.name+" reads on its cap"+at);
+                        read++;
+                    }
+                }
+            }
             foreach(string category in new[]{"Mental","Skill","Social"})
             {
                 var definition=CompetitionDefinitions.All.First(item=>item.Category==category);
@@ -957,9 +1072,12 @@ namespace Gamesim.Tests.PlayMode
                 {
                     Object.Destroy(owner);owner=null;yield return null;
                     var instrument=Make(definition,inactive:reserved);
-                    // Rest, show an attempt (every memory face in the preview, a lit target, the letters), then
-                    // rest again: the second rest puts back every face the attempt changed.
+                    string place=" ("+category+(reserved?", reserved":"")+")";
+                    // Another entrant's station: its first sync has no attempt, and in the game none ever comes.
                     instrument.Sync(null,false,false,false,false);
+                    AssertResting(instrument,category,resting[0],place+", never attempted");
+                    // Show an attempt (every memory face in the preview, a lit target, the letters), then rest
+                    // again: the second rest puts back every face the attempt changed.
                     var run=new MiniGameRun(kind,123,4,definition);
                     if(category=="Skill")while(!run.TargetLive && !run.Finished)run.Tick(.05);
                     instrument.Sync(run,category!="Mental",category=="Mental",false,false);
@@ -968,28 +1086,7 @@ namespace Gamesim.Tests.PlayMode
                         "Precondition: the attempt shows on the console before it rests again ("+category+").");
                     for(int pass=0;pass<2;pass++)instrument.Sync(null,false,false,false,false);
                     if(reserved)owner.SetActive(true);
-                    string place=" ("+category+(reserved?", reserved":"")+")";
-                    Assert.That(instrument.ProgressText,Is.EqualTo("Ready"),"The readout stays 'Ready'"+place);
-                    Assert.That(instrument.LitSignal,Is.EqualTo(-1),"Nothing is lit"+place);
-                    Assert.That(instrument.VisibleMemoryFaces,Is.Zero,"and nothing is turned over"+place);
-                    var keys=Keys(instrument);
-                    Assert.That(keys,Has.Length.EqualTo(category=="Mental"?16:category=="Skill"?4:12),place);
-                    foreach(var key in keys)
-                    {
-                        string expected=category=="Skill"?key.Name:"?";
-                        foreach(var (cap,label) in new[]{(key.Cap,key.Label),(key.AudienceCap,key.AudienceLabel)})
-                        {
-                            Color face=CapColour(cap);
-                            string at=place+": "+label.color+" on "+face;
-                            Assert.That(label.text,Is.EqualTo(expected),label.name+place);
-                            Assert.That(Near(face,resting[0].cap),Is.True,cap.name+" shows the unlit cap the player's console rests on"+at);
-                            Assert.That(label.color,Is.EqualTo(resting[0].glyph),label.name+" has the resting glyph colour"+at);
-                            Assert.That(Near(label.color,face),Is.False,label.name+"'s colour differs from its face"+at);
-                            float contrast=Contrast(label.color,face);lowest=Mathf.Min(lowest,contrast);
-                            Assert.That(contrast,Is.GreaterThanOrEqualTo(3f),label.name+" reads on its cap"+at);
-                            read++;
-                        }
-                    }
+                    AssertResting(instrument,category,resting[0],place+", after an attempt");
                 }
             }
             Debug.Log("[Gamesim W3] Consoles with no attempt: "+read+" key faces read, lowest glyph contrast "+lowest.ToString("F2")+":1, none lit.");

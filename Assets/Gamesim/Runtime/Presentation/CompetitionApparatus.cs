@@ -97,9 +97,11 @@ namespace Gamesim.Presentation
         /// </summary>
         private static readonly Color UnlitCap = UiTheme.Hex("31425B");
         /// <summary>
-        /// A lit Signals target's label, on both faces: the house <see cref="UiTheme.Ink"/>, opaque,
-        /// which reads at 11.5:1 on the lit mint cap (<see cref="UiTheme.Positive"/>). Paper on the
-        /// mint is 1.5:1, so the one key the contestant has to read was the faintest on the console.
+        /// A lit key's glyph, on both faces: the house <see cref="UiTheme.Ink"/>, opaque. A lit key is a
+        /// live Signals target or a matched memory tile on the mint <see cref="UiTheme.Positive"/>
+        /// (11.5:1), a turned-over memory tile on the pale <see cref="UiTheme.Accent"/> (12.1:1), or a
+        /// picked letter on the mint. Paper on those caps is 1.5:1 and 1.4:1, so the keys the
+        /// contestant has to read were the faintest on the console.
         /// Ink's own alpha (.98) is for panels; a label at full alpha takes none of its cap's colour.
         /// </summary>
         private static readonly Color LitLabel = new Color(UiTheme.Ink.r, UiTheme.Ink.g, UiTheme.Ink.b, 1f);
@@ -311,13 +313,13 @@ namespace Gamesim.Presentation
                         bool revealed = matched || preview && !paused || started && !paused && (i == run.FirstFlip || i == run.SecondFlip);
                         if (revealed) VisibleMemoryFaces++;
                         SetWord(glyphs[i],revealed ? CompetitionGameScreen.MemoryFaceName(run.Faces[i]) : "?");
-                        Colorize(indicators[i], matched ? UiTheme.Positive : revealed ? UiTheme.Accent : UnlitCap);
+                        LightKey(i, matched ? UiTheme.Positive : revealed ? UiTheme.Accent : (Color?)null);
                     }
                     break;
                 case Family.Signals:
                     LitSignal = started && run.TargetLive ? (int)run.TargetDirection : -1;
                     for (int i = 0; i < indicators.Count; i++)
-                        LightSignal(i, i == LitSignal);
+                        LightKey(i, i == LitSignal ? UiTheme.Positive : (Color?)null);
                     break;
                 case Family.GripRig:
                     GripFraction = Mathf.Clamp01((float)(run.Meter / CompetitionMiniGames.MeterFull));
@@ -343,7 +345,7 @@ namespace Gamesim.Presentation
                         bool present = i < run.Scrambled.Length;
                         bool hidden=!started || paused;
                         SetWord(glyphs[i],present ? hidden ? "?" : run.Scrambled[i].ToString() : "");
-                        Colorize(indicators[i], present && !hidden && run.TilePicked(i) ? UiTheme.Positive : UnlitCap);
+                        LightKey(i, present && !hidden && run.TilePicked(i) ? UiTheme.Positive : (Color?)null);
                     }
                     break;
             }
@@ -368,25 +370,27 @@ namespace Gamesim.Presentation
                 case Family.PairConsole:
                 case Family.WordConsole:
                     VisibleMemoryFaces = 0;
-                    for (int i = 0; i < indicators.Count; i++) { SetWord(glyphs[i],"?"); Colorize(indicators[i], UnlitCap); }
+                    for (int i = 0; i < indicators.Count; i++) { SetWord(glyphs[i],"?"); LightKey(i, null); }
                     break;
                 case Family.Signals:
                     LitSignal = -1;
-                    for (int i = 0; i < indicators.Count; i++) LightSignal(i, false);
+                    for (int i = 0; i < indicators.Count; i++) LightKey(i, null);
                     break;
             }
         }
 
         /// <summary>
-        /// Signals target <paramref name="i"/>, lit or unlit, on both faces. A lit target is a mint cap
-        /// under an ink label (<see cref="LitLabel"/>); an unlit one is the navy <see cref="UnlitCap"/>
-        /// under a paper label. The label and its audience copy change with their cap, so neither is
-        /// left paper on mint.
+        /// Console key <paramref name="i"/> (a Signals target, a memory tile or a letter cap), lit or
+        /// unlit, on both faces. A lit key shows its <paramref name="lit"/> cap (the mint
+        /// <see cref="UiTheme.Positive"/> or the pale <see cref="UiTheme.Accent"/>) under an ink glyph
+        /// (<see cref="LitLabel"/>). An unlit key (null) shows the navy <see cref="UnlitCap"/> under a
+        /// paper glyph. The glyph and its audience copy change with their cap, so neither is left paper
+        /// on a light cap. A key that goes out, turns back, is taken back or rests returns to paper.
         /// </summary>
-        private void LightSignal(int i, bool lit)
+        private void LightKey(int i, Color? lit)
         {
-            Colorize(indicators[i], lit ? UiTheme.Positive : UnlitCap);
-            Color ink = lit ? LitLabel : UiTheme.Paper;
+            Colorize(indicators[i], lit ?? UnlitCap);
+            Color ink = lit.HasValue ? LitLabel : UiTheme.Paper;
             glyphs[i].color = ink;
             if (repeatWords.TryGetValue(glyphs[i], out var copy)) copy.color = ink;
         }

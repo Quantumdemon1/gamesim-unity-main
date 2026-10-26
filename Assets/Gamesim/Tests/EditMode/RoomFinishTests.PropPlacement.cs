@@ -38,7 +38,9 @@ namespace Gamesim.Tests.EditMode
     /// by the west wall showing its seam (front), the game-room fridge's door 0.2 m from the bar
     /// (clear), the HoH gold bag behind the screen (clear, resting), both HoH bags sunk 2 cm into the
     /// screen's foot plate (clear, resting), the kitchen blue bag 2 cm inside the toaster (clear,
-    /// resting), and the HoH fridge standing over the floor neon (clear, resting).</para>
+    /// resting), and the HoH fridge standing over the floor neon (clear, resting). The gift box the
+    /// finish stands among them on the HoH console is held to the same clear and resting checks: it
+    /// went 6 cm up into the screen's frame (clear).</para>
     /// </summary>
     public sealed partial class RoomFinishTests
     {
@@ -124,28 +126,51 @@ namespace Gamesim.Tests.EditMode
                     }
 
                     // Resting.
-                    float baseY = bounds.min.y, into = Mathf.Min(0.03f, bounds.size.y * 0.5f);
-                    var body = own[0];
-                    var local = MeshOf(body).bounds;
-                    var corners = new[] { Vector2.zero, new Vector2(-.8f, -.8f), new Vector2(.8f, -.8f), new Vector2(.8f, .8f), new Vector2(-.8f, .8f) };
-                    for (int c = 0; c < corners.Length; c++)
-                    {
-                        var at = body.localToWorldMatrix.MultiplyPoint3x4(new Vector3(local.center.x + corners[c].x * local.extents.x, local.min.y,
-                            local.center.z + corners[c].y * local.extents.z));
-                        var (surface, under) = solids.Highest(at.x, at.z, baseY - 0.05f, baseY + into, others);
-                        if (c == 0 && (!surface.HasValue || surface.Value < baseY - Slack))
-                            failures.Add(name + ": nothing within " + (Slack * 1000f).ToString("F0") + " mm under the middle of its base at " + baseY.ToString("F3")
-                                + (surface.HasValue ? " (the highest surface, " + under + ", is at " + surface.Value.ToString("F3") + ")" : "") + ".");
-                        if (surface.HasValue && surface.Value > baseY + Slack)
-                        {
-                            failures.Add(name + ": " + under + " stands " + ((surface.Value - baseY) * 1000f).ToString("F0") + " mm up into its base.");
-                            break;
-                        }
-                    }
+                    AddRestingFailures(name, own[0], bounds, others, solids, failures);
                 }
             }
             Assert.That(props, Is.EqualTo(16), "The sixteen authored props, in the four rooms.");
+
+            // The gift box on the HoH console is the room finish's own label-wrapped carton, not an
+            // authored model, but it stands among the authored props there - under the screen's frame,
+            // beside the foot plate, the two HoH snack bags and the drink - and the pass at 2822c021 put
+            // it 6 cm up into the frame. Clear and resting, as a prop; gift wrap shows on every face, so
+            // it has no front to turn.
+            var gifts = root.Find("HoH suite").Cast<Transform>().Where(t => t.name == "Gift box").ToArray();
+            Assert.That(gifts, Has.Length.EqualTo(1), "The one gift box on the HoH console.");
+            var gift = gifts[0].GetComponent<MeshRenderer>();
+            Assert.That(gift != null && MeshOf(gift) != null && drawn.Contains(gift), Is.True, "The gift box is a drawn solid.");
+            var aroundTheGift = drawn.Where(renderer => renderer != gift).ToList();
+            foreach (var (what, hit) in solids.Meeting(Box(gift, Slack), aroundTheGift))
+                failures.Add("HoH suite / Gift box: its mesh's box meets " + what + " (" + hit + " triangles).");
+            AddRestingFailures("HoH suite / Gift box", gift, gift.bounds, aroundTheGift, solids, failures);
             Assert.That(failures, Is.Empty, string.Join("\n", failures));
+        }
+
+        /// <summary>
+        /// Resting: under the middle of the base the highest surface within 5 cm below it is no more
+        /// than <see cref="Slack"/> under the base, and under the middle and the four corners (80 % out)
+        /// no surface stands more than <see cref="Slack"/> up into it.
+        /// </summary>
+        private static void AddRestingFailures(string name, MeshRenderer body, Bounds bounds, List<MeshRenderer> others, Solids solids, List<string> failures)
+        {
+            float baseY = bounds.min.y, into = Mathf.Min(0.03f, bounds.size.y * 0.5f);
+            var local = MeshOf(body).bounds;
+            var corners = new[] { Vector2.zero, new Vector2(-.8f, -.8f), new Vector2(.8f, -.8f), new Vector2(.8f, .8f), new Vector2(-.8f, .8f) };
+            for (int c = 0; c < corners.Length; c++)
+            {
+                var at = body.localToWorldMatrix.MultiplyPoint3x4(new Vector3(local.center.x + corners[c].x * local.extents.x, local.min.y,
+                    local.center.z + corners[c].y * local.extents.z));
+                var (surface, under) = solids.Highest(at.x, at.z, baseY - 0.05f, baseY + into, others);
+                if (c == 0 && (!surface.HasValue || surface.Value < baseY - Slack))
+                    failures.Add(name + ": nothing within " + (Slack * 1000f).ToString("F0") + " mm under the middle of its base at " + baseY.ToString("F3")
+                        + (surface.HasValue ? " (the highest surface, " + under + ", is at " + surface.Value.ToString("F3") + ")" : "") + ".");
+                if (surface.HasValue && surface.Value > baseY + Slack)
+                {
+                    failures.Add(name + ": " + under + " stands " + ((surface.Value - baseY) * 1000f).ToString("F0") + " mm up into its base.");
+                    break;
+                }
+            }
         }
 
         private static Mesh MeshOf(Renderer renderer)

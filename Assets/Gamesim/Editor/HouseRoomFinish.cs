@@ -525,7 +525,12 @@ namespace Gamesim.Editor
                 if (envelope != null) { Quad(group, "HoH envelope", envelope, new Vector3(cb.min.x + 0.22f, top + 0.004f, cb.center.z - 0.05f), new Vector2(0.24f, 0.15f), Vector3.up, Quaternion.Euler(0f, 12f, 0f) * Vector3.forward); count++; }
                 var letter = Finish("bb_mat_p6_decal_hoh_letter_sheet", Pack6 + "HOHRewards/hoh_letter_sheet.png", Vector2.one, Color.white, 0.2f, 0f, true, DecalGlow);
                 if (letter != null) { Quad(group, "HoH letter", letter, new Vector3(cb.min.x + 0.40f, top + 0.006f, cb.center.z + 0.08f), new Vector2(0.21f, 0.16f), Vector3.up, Quaternion.Euler(0f, -6f, 0f) * Vector3.forward); count++; }
-                if (Carton(group, "Gift box", Pack6 + "HOHRewards/gift_wrap_gold.png", new Vector3(0.22f, 0.16f, 0.16f), new Vector3(cb.max.x - 0.22f, top, cb.center.z), 15f) != null) count++;
+                // The gift stands at the console's front-right corner, in front of the screen. Centred on the
+                // console's middle it went 6 cm up into the screen's frame (the box y .45-.61, the frame from
+                // y .55, both across z -19.44..-19.41). Now its turned corners stay 2.5 cm off the screen's
+                // face, 2 cm inside the console's front edge, 3.5 cm inside its right end and 6 cm right of
+                // the drink.
+                if (Carton(group, "Gift box", Pack6 + "HOHRewards/gift_wrap_gold.png", new Vector3(0.20f, 0.16f, 0.14f), new Vector3(cb.max.x - 0.15f, top, cb.center.z + 0.11f), 15f) != null) count++;
                 // The snacks stand in front of the screen with their labels to the room: a model's
                 // front is its -z, and this console stands against the south wall, so they turn about
                 // 180. They stand off the television's 2 cm foot plate, whose front edge is 6 cm in

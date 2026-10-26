@@ -64,6 +64,11 @@ namespace Gamesim.Presentation
         /// tip reaches ~.02 m past the distal bone the pose puts on the contact; and a centimetre more.
         /// </summary>
         private const float DiePress = .15f;
+        /// <summary>
+        /// How far a key's letter stands off its keycap's face. The contestant's letters stand 5.5 mm
+        /// off a memory or letter cap (5 mm off a signal cap); the audience's copies stand 5.5 mm off theirs.
+        /// </summary>
+        private const float CapGlyphGap = .0055f;
 
         public static Family For(CompetitionDefinition definition, string category = null)
         {
@@ -510,9 +515,19 @@ namespace Gamesim.Presentation
             if(repeaters.TryGetValue(renderer,out var repeater))repeater.SetPropertyBlock(tint);
         }
 
+        /// <summary>
+        /// The audience's copy of <paramref name="source"/>, mirrored in x and turned to the audience.
+        /// A console's key letter stands on its audience keycap's face as the contestant's stands on
+        /// theirs (<see cref="CapGlyphGap"/> off it): the cap sits flush on the housing's rear face
+        /// (Front+.11) and is as deep as its contestant twin. Anything else - the progress readout -
+        /// stays on the shared plane in front of its backing (Front+.154).
+        /// </summary>
         private void RepeatWord(TMP_Text source)
         {
             Vector3 at=source.transform.localPosition;at.x=-at.x;at.z=Front+.16f;
+            int key=glyphs.IndexOf(source);
+            if((Instrument==Family.PairConsole || Instrument==Family.Signals || Instrument==Family.WordConsole) && key>=0 && key<indicators.Count)
+                at.z=Front+.11f+indicators[key].transform.localScale.z+CapGlyphGap;
             TMP_Text copy=Words(source.name+" audience readout",at,source.rectTransform.sizeDelta.x,source.rectTransform.sizeDelta.y,source.text);
             copy.transform.localRotation=Quaternion.Euler(0,180,0);
             repeatWords[source]=copy;

@@ -1091,7 +1091,10 @@ namespace Gamesim.Editor
         /// nothing about it changes, not even for a moment - and the new one goes before the scene
         /// is ever saved. Otherwise the new one stays. Whatever <see cref="Piece"/> or
         /// <see cref="PieceAt"/> then strips (colliders) or sets (static flags, shadows, name) a
-        /// kept instance already has, so its overrides do not change.
+        /// kept instance already has, so its overrides do not change. A kept instance is also put
+        /// back active, on the new one's layer and tag (<see cref="AsMadeObject"/>): a hand edit of
+        /// those does not outlive a run, as it did not when every run rebuilt the root. Any other
+        /// hand-made override on a kept instance does.
         /// </summary>
         private static GameObject Placed(Transform group, string name, string model, float yaw, float height, Action<GameObject> place)
         {
@@ -1110,20 +1113,26 @@ namespace Gamesim.Editor
             found.localPosition = made.transform.localPosition;
             found.localRotation = made.transform.localRotation;
             found.localScale = made.transform.localScale;
+            AsMadeObject(found.gameObject, made.layer, made.tag);
             UnityEngine.Object.DestroyImmediate(made);
             return found.gameObject;
         }
 
         /// <summary>
         /// Unity's primitive named <paramref name="name"/> under <paramref name="parent"/>, its
-        /// collider gone: the one an earlier run made of the same shape, or a new one.
+        /// collider gone: the one an earlier run made of the same shape (put back active, on the
+        /// default layer, untagged, as a new one is), or a new one.
         /// </summary>
         private static GameObject Primitive(Transform parent, string name, PrimitiveType type)
         {
             // A primitive's mesh is named after its type: Quad, Cube, Cylinder.
             string mesh = type.ToString();
             var found = kept.Find(parent, name, node => IsPrimitive(node, mesh));
-            if (found != null) return found.gameObject;
+            if (found != null)
+            {
+                AsMadeObject(found.gameObject, 0, "Untagged");
+                return found.gameObject;
+            }
             var made = GameObject.CreatePrimitive(type);
             made.name = name;
             UnityEngine.Object.DestroyImmediate(made.GetComponent<Collider>());
@@ -1136,12 +1145,28 @@ namespace Gamesim.Editor
         private static bool IsPrimitive(Transform node, string mesh) =>
             IsShape(node, mesh) && !PrefabUtility.IsPartOfAnyPrefab(node.gameObject);
 
-        /// <summary>A mesh of that name and its renderer, with no collider and no children.</summary>
+        /// <summary>
+        /// A mesh of that name and its renderer and nothing else - no collider, no other component
+        /// (a missing script counts), no children. A node with more is not one the pass made, so a
+        /// run replaces it rather than keeping what was added.
+        /// </summary>
         private static bool IsShape(Transform node, string mesh)
         {
             var filter = node.GetComponent<MeshFilter>();
             return filter != null && filter.sharedMesh != null && filter.sharedMesh.name == mesh
-                && node.GetComponent<MeshRenderer>() != null && node.GetComponent<Collider>() == null && node.childCount == 0;
+                && node.GetComponent<MeshRenderer>() != null && node.GetComponents<Component>().Length == 3 && node.childCount == 0;
+        }
+
+        /// <summary>
+        /// A kept object set back to how a new one is made: active, on <paramref name="layer"/>,
+        /// tagged <paramref name="tag"/>. Each is written only when it differs, so on a scene the
+        /// pass saved nothing is touched (and a kept prefab instance gains no override).
+        /// </summary>
+        private static void AsMadeObject(GameObject node, int layer, string tag)
+        {
+            if (!node.activeSelf) node.SetActive(true);
+            if (node.layer != layer) node.layer = layer;
+            if (!node.CompareTag(tag)) node.tag = tag;
         }
 
         /// <summary>

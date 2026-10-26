@@ -546,6 +546,11 @@ namespace Gamesim.Tests.PlayMode
         /// die's own rear face, turned to the audience, between the back rail's top and the die's top;
         /// the roll readout and its plates stay under the tray bed rather than inside it; and the
         /// press stops in front of a die's whole rolling sweep, at rest and mid-roll.
+        /// "Above the back rail" is the copy's box bottom at or over the rail's top, which keeps the
+        /// whole digit in view for a viewer whose eye is at or above the rail's top. The rail follows
+        /// the contestant (its top 6.5 cm under the shoulder: 1.275 m at the default fit, 1.675 m at
+        /// the high clamp), so for the tallest contestants a lower eye - 1.2 m at 1.5-3 m, say - loses
+        /// part or all of the digit behind it. The case does not test a lower eye.
         /// </summary>
         [UnityTest]
         public IEnumerator Apparatus_DiceValuesReadOnTheirDiceAndTheReadoutAndPressClearTheTrayAtEveryFit()
@@ -606,6 +611,52 @@ namespace Gamesim.Tests.PlayMode
             instrument.Sync(run,true,false,false,false);
             Assert.That(Quaternion.Angle(Quaternion.identity,Part("Die 0").transform.localRotation),Is.GreaterThan(1f),"Precondition: a die has turned.");
             AssertPressClearsTheDice(instrument,Part("Die 0"),Part("Die 2")," (rolling)");
+            yield return null;
+        }
+
+        /// <summary>
+        /// A console's key letters stand on their caps from both sides: each audience copy is on the
+        /// face of its own audience keycap (mirrored in x, at the key's height), 5.5 mm off it, as the
+        /// contestant's letter stands 5-5.5 mm off the contestant's cap. They stood on a shared plane
+        /// 20-25 mm off the flush audience caps. The progress copy keeps its plane, in front of its backing.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator Apparatus_ConsoleKeyLettersStandOnTheirCapsOnBothSides()
+        {
+            foreach(string category in new[]{"Mental","Skill","Social"})
+            {
+                if(owner!=null){Object.Destroy(owner);owner=null;yield return null;}
+                var definition=CompetitionDefinitions.All.First(item=>item.Category==category);
+                var instrument=Make(definition);
+                var caps=instrument.GetComponentsInChildren<MeshFilter>(true);
+                var labels=instrument.GetComponentsInChildren<TMP_Text>(true);
+                string family=instrument.Instrument.ToString();
+                // The contestant's caps and their letters, in the order the console builds them.
+                string capPrefix=instrument.Instrument==CompetitionApparatus.Family.PairConsole?"Memory tile ":instrument.Instrument==CompetitionApparatus.Family.Signals?"Signal target ":"Letter tile ";
+                string letterPrefix=instrument.Instrument==CompetitionApparatus.Family.PairConsole?"Memory face ":instrument.Instrument==CompetitionApparatus.Family.Signals?"Signal direction ":"Letter ";
+                var fronts=caps.Where(part=>part.name.StartsWith(capPrefix,StringComparison.Ordinal) && !part.name.EndsWith(" audience face",StringComparison.Ordinal)).ToArray();
+                Assert.That(fronts,Is.Not.Empty,family+": its keycaps");
+                foreach(var front in fronts)
+                {
+                    string suffix=front.name.Substring(capPrefix.Length);
+                    var back=caps.Single(part=>part.name==front.name+" audience face");
+                    var letter=labels.Single(label=>label.name==letterPrefix+suffix);
+                    var copy=labels.Single(label=>label.name==letter.name+" audience readout");
+                    float depth=front.transform.localScale.z;
+                    float frontGap=(front.transform.localPosition.z-depth*.5f)-letter.transform.localPosition.z;
+                    float backGap=copy.transform.localPosition.z-(back.transform.localPosition.z+depth*.5f);
+                    string at=" ("+family+" "+front.name+")";
+                    Assert.That(frontGap,Is.InRange(.0045f,.006f),"Precondition: the contestant's letter stands 5-5.5 mm off its cap"+at);
+                    Assert.That(backGap,Is.EqualTo(.0055f).Within(.0005f),"The audience's letter stands 5.5 mm off its own cap's face"+at);
+                    Assert.That(copy.transform.localPosition.x,Is.EqualTo(back.transform.localPosition.x).Within(.0001f),"on its own cap"+at);
+                    Assert.That(copy.transform.localPosition.y,Is.EqualTo(back.transform.localPosition.y).Within(.0001f),"at its cap's height"+at);
+                    Assert.That(Vector3.Dot(copy.transform.forward,instrument.transform.forward),Is.LessThan(-.99f),"turned to the audience"+at);
+                }
+                var progress=labels.Single(label=>label.name=="Instrument progress audience readout");
+                var backing=caps.Single(part=>part.name=="Progress audience backing");
+                Assert.That(progress.transform.localPosition.z-(backing.transform.localPosition.z+backing.transform.localScale.z*.5f),Is.GreaterThan(.001f),
+                    family+": the progress copy stays in front of its own backing");
+            }
             yield return null;
         }
 

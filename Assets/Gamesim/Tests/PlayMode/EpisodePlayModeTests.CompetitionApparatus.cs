@@ -681,8 +681,14 @@ namespace Gamesim.Tests.PlayMode
                 var pose=player.GetComponent<CompetitionInstrumentPose>();
                 if(handContact && humanoid!=null)
                 {
+                    // The dice's press is a gesture, not a touch: the roll's press lasts while the dice
+                    // turn, so it aims 0.15 m in front of the die it rolls, clear of the die's whole
+                    // sweep (CompetitionApparatus.HandContact; a point on the die's face turned with it
+                    // and carried the fingers into it). Its case pins that the press reaches that point.
+                    bool dice=instrument.Instrument==CompetitionApparatus.Family.DiceTray;
                     Assert.That(pose,Is.Not.Null,"An arrived humanoid borrows the instrument's scoped hand pose.");
-                    Assert.That(pose.HasContact,Is.True,name+": hands must contact the actual apparatus; left error "+pose.LeftHandError+", right error "+pose.RightHandError
+                    Assert.That(pose.HasContact,Is.True,name+(dice?": the press must reach its point in front of the die it rolls":": hands must contact the actual apparatus")
+                        +"; left error "+pose.LeftHandError+", right error "+pose.RightHandError
                         +"; "+(pose.HasContact?string.Empty:InstrumentContactGeometry(humanoid,instrument)));
                     bool grip=instrument.Instrument==CompetitionApparatus.Family.GripRig;
                     foreach(bool left in grip?new[]{true,false}:new[]{false})
@@ -691,7 +697,9 @@ namespace Gamesim.Tests.PlayMode
                         var contact=humanoid.GetBoneTransform(bone);
                         Assert.That(contact,Is.Not.Null,"The native rig supplies its actual "+bone+" contact.");
                         Assert.That(Vector3.Distance(contact.position,instrument.HandContact(left)),Is.LessThan(.035f),
-                            name+": independently measured "+bone+" must reach the real prop, not just report HasContact.");
+                            dice?name+": independently measured "+bone+" must reach the press point in front of the die, not just report HasContact."
+                                :name+": independently measured "+bone+" must reach the real prop, not just report HasContact.");
+                        if(dice)Debug.Log("[Gamesim W3] "+name+" press: "+DicePressClearance(humanoid,instrument,contact));
                     }
                 }
                 // Both reads are in the same frame, after real input. A GPU read can make the
@@ -726,6 +734,36 @@ namespace Gamesim.Tests.PlayMode
                 lens.Dispose();if(frame!=null)Object.Destroy(frame);if(uiFrame!=null)Object.Destroy(uiFrame);
             }
             yield return null;
+        }
+
+        /// <summary>
+        /// The dice press as the rig makes it, read and logged, never asserted: how far the pressing
+        /// finger's tip is past its distal bone (the rig's own end bone when it has one, else an estimate
+        /// from the intermediate phalanx), and how clear the bone and the tip are of the rolled die's
+        /// sweep. CompetitionApparatus.DiePress allows the tip 2 cm; this measures it on the actual body.
+        /// </summary>
+        private static string DicePressClearance(Animator humanoid,CompetitionApparatus instrument,Transform distal)
+        {
+            var die=instrument.GetComponentsInChildren<MeshFilter>(true).Single(part=>part.name=="Die 2");
+            var frame=instrument.transform;
+            Vector3 centre=die.transform.localPosition;
+            float sweep=new Vector2(die.transform.localScale.x*die.sharedMesh.bounds.extents.x,die.transform.localScale.z*die.sharedMesh.bounds.extents.z).magnitude;
+            float top=centre.y+die.transform.localScale.y*die.sharedMesh.bounds.max.y;
+            var end=distal.GetComponentsInChildren<Transform>(true).Where(t=>t!=distal)
+                .OrderByDescending(t=>Vector3.Distance(t.position,distal.position)).FirstOrDefault();
+            var middle=humanoid.GetBoneTransform(HumanBodyBones.RightMiddleIntermediate);
+            Vector3 tip;string how;
+            if(end!=null && Vector3.Distance(end.position,distal.position)>.005f){tip=end.position;how="the rig's end bone '"+end.name+"'";}
+            else if(middle!=null){tip=distal.position+(distal.position-middle.position);how="estimated: the intermediate phalanx's length past the distal bone";}
+            else{tip=distal.position;how="no end bone and no intermediate phalanx: the distal bone itself";}
+            string Clear(Vector3 world)
+            {
+                Vector3 p=frame.InverseTransformPoint(world);
+                return (new Vector2(p.x-centre.x,p.z-centre.z).magnitude-sweep).ToString("F4")+" m outside the sweep, "
+                    +(p.y-top).ToString("F4")+" m over the die's top";
+            }
+            return "tip "+Vector3.Distance(tip,distal.position).ToString("F4")+" m past "+distal.name+" ("+how+"); sweep radius "+sweep.ToString("F4")
+                +" m; the bone "+Clear(distal.position)+"; the tip "+Clear(tip);
         }
 
         // Failure-only reads: record real segment lengths and target distances after the pose,

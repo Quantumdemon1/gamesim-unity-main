@@ -126,8 +126,10 @@ face, in the part above the back rail, and moves with the die at every pedestal
 fit. The roll readout under the tray comes down with the tray's underside at the
 pedestal's lowest fits instead of sinking into the bed. The roll's press aims
 0.15 m in front of a die's centre, clear of the 0.12 m its corners sweep while it
-turns, so the fingers stop short of a rolling die. The consoles' audience-side
-keycaps sit flush on the housing's rear face.
+turns, so the fingers stop short of a rolling die: the press is a gesture, not a
+touch. The consoles' audience-side keycaps sit flush on the housing's rear face,
+and each key's audience letter stands 5.5 mm off its own cap, as the contestant's
+does (it stood on a shared plane 20-25 mm off the caps).
 
 **Follow-up: the counterweight bracket.** The endurance rig's counterweight
 guide (`CounterweightGuide`, with the `Counterweight` on it) stands about 8.5 cm

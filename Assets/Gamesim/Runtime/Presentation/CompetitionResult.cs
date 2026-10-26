@@ -30,6 +30,16 @@ namespace Gamesim.Presentation
         private CanvasGroup group;
         private RectTransform column, scrim, standingsPanel, detailsPanel;
         private float elapsed;
+
+        /// <summary>
+        /// The frame the card was played in. Neither it nor the next is the card's own time, as on the
+        /// ceremony cards: the first update's delta can be the frame before the card was played, and
+        /// the next's is the frame it was played in - the commit, its save, the house's render and this
+        /// card's own build - before anybody had seen it. Counted, a long one spent the fade and the
+        /// press guard (<see cref="PressGuardSeconds"/>) before the card was drawn, so the press that
+        /// brought it up, or one in flight, dismissed the standings unseen.
+        /// </summary>
+        private int playedFrame;
         private bool playing, reduced;
         private int dismissedFrame = -10;
         private Button continueButton, detailsButton;
@@ -77,7 +87,7 @@ namespace Gamesim.Presentation
             playedAward=award;playedCategory=category;playedWeek=week;playedStandings=standings;playedExplanation=explanation;playedAttempt=attempt;
             playedMark=winnersMark;
             Build(award,category,week,standings,explanation,winnersMark);
-            reduced=reducedMotion;elapsed=0;playing=true;
+            reduced=reducedMotion;elapsed=0;playedFrame=Time.frameCount;playing=true;
             group.alpha=reduced?1:.01f;group.interactable=true;group.blocksRaycasts=true;
             column.gameObject.SetActive(true);scrim.gameObject.SetActive(true);
             if(EventSystem.current!=null)EventSystem.current.SetSelectedGameObject(continueButton.gameObject);
@@ -124,6 +134,8 @@ namespace Gamesim.Presentation
         private void Update()
         {
             if(!playing)return;
+            // Nothing from before its first frame on screen is the card's time (playedFrame).
+            if(Time.frameCount-playedFrame<=1)return;
             elapsed+=Time.unscaledDeltaTime;group.alpha=reduced?1:Mathf.Clamp01(elapsed/.3f);
             // The Competition map: Back is Escape or B, Confirm is Enter or A.
             var input=Gamesim.House.HouseInput.Actions;

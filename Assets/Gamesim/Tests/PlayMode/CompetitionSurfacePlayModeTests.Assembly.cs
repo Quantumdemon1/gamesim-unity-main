@@ -67,6 +67,9 @@ namespace Gamesim.Tests.PlayMode
                     +"Chance +0.27 (sampled multiplier 1.053); nominee +2.5; preparation +3; event +1; storyline -1; performance +1.24; rounding 0. "
                     +"Sum = 12.11. All displayed terms add to this committed score. Total player bonus +4.24. Zero performance can still win; full marks do not guarantee first place.";
                 result.Play("Head of Household","Mental",1,new[]{new CompetitionResult.Standing("You",12.11,true,true,null)},true,explanation);
+                // Past the press guard. The card's time starts on the frame after the one that played
+                // it, and so does this wait.
+                yield return null;
                 yield return new WaitForSecondsRealtime(.3f);
                 yield return KeyPress(Key.LeftArrow);AssertSelected("Review competition score details");
                 yield return KeyPress(Key.Enter);
@@ -82,6 +85,39 @@ namespace Gamesim.Tests.PlayMode
                 yield return PadPress(GamepadButton.South);Assert.That(result.IsPlaying,Is.False);
             }
             finally{Object.Destroy(result.gameObject);}
+        }
+
+        /// <summary>
+        /// The results' time starts when they are drawn. The commit plays the card, and its frame - the
+        /// commit, its save, the house's render and the card's own build - is not the card's however
+        /// long it runs: a frame of 1.6 seconds, far past the press guard, with an Enter landing in it,
+        /// leaves the standings up.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator Result_ItsTimeStartsWhenItIsDrawn()
+        {
+            CreateInput(); screen.Hide(); var result = CompetitionResult.Attach(owner);
+            try
+            {
+                Assert.That(result.Play("Head of Household", "Mental", 1,
+                    new[] { new CompetitionResult.Standing("You", 12.11, true, true, null) }, false), Is.True);
+                var selected = EventSystem.current != null ? EventSystem.current.currentSelectedGameObject : null;
+                Assert.That(selected != null ? selected.name : "nothing", Is.EqualTo("Continue from competition results"),
+                    "The Enter lands on Continue.");
+                InputSystem.QueueStateEvent(keyboard, new KeyboardState(Key.Enter));
+                System.Threading.Thread.Sleep(1600);
+                yield return null;
+                InputSystem.QueueStateEvent(keyboard, new KeyboardState());
+                // One frame of the card's own time, with the Enter let go: the first it counts.
+                yield return null;
+
+                Assert.That(result.IsPlaying, Is.True,
+                    "The standings are still up: the Enter that landed before they were drawn has not dismissed them,");
+                // The guard has counted only that frame, however long the ordinary frame was.
+                Assert.That(result.TakesAPress, Is.EqualTo(Time.unscaledDeltaTime >= CompetitionResult.PressGuardSeconds),
+                    "and their press guard has counted only the frame since they were drawn.");
+            }
+            finally { Object.Destroy(result.gameObject); }
         }
     }
 }

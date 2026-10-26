@@ -24,8 +24,18 @@ namespace Gamesim.Tests.PlayMode
     /// arrives and where the cards read it from; HeadlessInputSettings lets it through in
     /// batchmode.</para>
     ///
-    /// <para>Everything timed is timed on the wall clock. The cards run on unscaled real time and a
-    /// batchmode frame is under a millisecond, so a count of frames measures nothing.</para>
+    /// <para>Everything timed is timed on the clock the cards run on, Time.unscaledTimeAsDouble, from
+    /// the frame after the one that played them, where a card's time starts. A count of frames
+    /// measures nothing: a batchmode frame is under a millisecond. Nor can the clock be pinned:
+    /// Time.captureDeltaTime fixes only scaled time - a pinned frame's unscaledDeltaTime is still
+    /// the real one, measured - so a frame is as long as the machine makes it, and under load one
+    /// can outlast a whole hold. Each moment is therefore bounded by the frame it was first seen on
+    /// and the frame before (<see cref="Arrivals"/>), and each check asks whether a time the frames
+    /// allow is the one the pacing gives: on a quiet machine the frames allow one time to the
+    /// millisecond, and a slow frame widens what they allow instead of failing a card that kept its
+    /// time. What is counted - keys, votes, chimes - is checked on every frame instead of after a
+    /// wait, so a slow frame that brings two keys at once is held to two chimes, and to having been
+    /// long enough to carry the card past a hold.</para>
     /// </summary>
     public sealed class CeremonyRevealPlayModeTests
     {
@@ -103,20 +113,26 @@ namespace Gamesim.Tests.PlayMode
             }
             yield return null;
 
-            // Played through untouched, with the fades, they end when Duration says they will.
+            // Played through untouched, with the fades, they end when Duration says they will: on the
+            // cards' clock, which starts with the frame after the one that played them, each card
+            // ended between the last frame it was seen playing and the first it was not.
             var timedKeys = Keys(3, CeremonyPace.Quick, reducedMotion: false);
             var timedVotes = Reveal(new[] { Vote(Jordan), Vote(Jordan) }, Jordan, CeremonyPace.Quick, reducedMotion: false);
-            float started = Time.realtimeSinceStartup, keysRan = -1f, votesRan = -1f;
-            float limit = started + Mathf.Max(timedKeys.Duration, timedVotes.Duration) + 5f;
+            yield return null;
+            double started = Time.unscaledTimeAsDouble, before = started;
+            Span? keysRan = null, votesRan = null;
+            float limit = Time.realtimeSinceStartup + Mathf.Max(timedKeys.Duration, timedVotes.Duration) + 5f;
             while ((timedKeys.IsPlaying || timedVotes.IsPlaying) && Time.realtimeSinceStartup < limit)
             {
                 yield return null;
-                float ran = Time.realtimeSinceStartup - started;
-                if (keysRan < 0f && !timedKeys.IsPlaying) keysRan = ran;
-                if (votesRan < 0f && !timedVotes.IsPlaying) votesRan = ran;
+                double now = Time.unscaledTimeAsDouble;
+                if (keysRan == null && !timedKeys.IsPlaying) keysRan = new Span(before - started, now - started);
+                if (votesRan == null && !timedVotes.IsPlaying) votesRan = new Span(before - started, now - started);
+                before = now;
             }
-            Assert.That(keysRan, Is.EqualTo(timedKeys.Duration).Within(0.25f), "The key ceremony ran for its Duration.");
-            Assert.That(votesRan, Is.EqualTo(timedVotes.Duration).Within(0.25f), "The live eviction ran for its Duration.");
+            Assert.That(keysRan.HasValue && votesRan.HasValue, Is.True, "Both cards ended.");
+            AssertSpan(keysRan.Value, timedKeys.Duration, 0.25f, "The key ceremony ran for its Duration.");
+            AssertSpan(votesRan.Value, timedVotes.Duration, 0.25f, "The live eviction ran for its Duration.");
         }
 
         [UnityTest]
@@ -125,12 +141,11 @@ namespace Gamesim.Tests.PlayMode
             // Ten keys at the suspenseful pace: 1.4 s a key, so every step timed is over a second.
             var keys = Keys(10, CeremonyPace.Suspenseful);
             var rhythm = new Rhythm();
-            yield return TimeTheSpeedUp(() => keys.KeysShown, () => keys.SpeedMultiplier, keys, rhythm);
+            float hold = CeremonyPacing.PerKey(CeremonyPace.Suspenseful, 10);
+            yield return TimeTheSpeedUp(() => keys.KeysShown, () => keys.SpeedMultiplier, hold, keys, rhythm);
 
-            Assert.That(rhythm.Normal, Is.EqualTo(CeremonyPacing.PerKey(CeremonyPace.Suspenseful, 10)).Within(0.15f),
-                "At its own speed a key holds for PerKey.");
-            Assert.That(rhythm.Normal / rhythm.Fast, Is.EqualTo(CeremonyPacing.SpeedUp).Within(0.5f),
-                "Sped up, the keys came " + (rhythm.Normal / rhythm.Fast).ToString("F2") + " times as fast.");
+            AssertSpan(rhythm.Normal, hold, 0.15f, "At its own speed a key holds for PerKey.");
+            AssertSpan(Span.Ratio(rhythm.Normal, rhythm.Fast), CeremonyPacing.SpeedUp, 0.5f, "Sped up, the keys came three times as fast.");
         }
 
         [UnityTest]
@@ -140,12 +155,11 @@ namespace Gamesim.Tests.PlayMode
             var ballots = Enumerable.Range(0, 9).Select(i => Vote(i % 2 == 0 ? Jordan : Casey)).ToArray();
             var reveal = Reveal(ballots, Jordan, CeremonyPace.Suspenseful);
             var rhythm = new Rhythm();
-            yield return TimeTheSpeedUp(() => reveal.VotesShown, () => reveal.SpeedMultiplier, reveal, rhythm);
+            float hold = CeremonyPacing.PerVote(CeremonyPace.Suspenseful, 9);
+            yield return TimeTheSpeedUp(() => reveal.VotesShown, () => reveal.SpeedMultiplier, hold, reveal, rhythm);
 
-            Assert.That(rhythm.Normal, Is.EqualTo(CeremonyPacing.PerVote(CeremonyPace.Suspenseful, 9)).Within(0.15f),
-                "At its own speed a vote holds for PerVote.");
-            Assert.That(rhythm.Normal / rhythm.Fast, Is.EqualTo(CeremonyPacing.SpeedUp).Within(0.5f),
-                "Sped up, the votes came " + (rhythm.Normal / rhythm.Fast).ToString("F2") + " times as fast.");
+            AssertSpan(rhythm.Normal, hold, 0.15f, "At its own speed a vote holds for PerVote.");
+            AssertSpan(Span.Ratio(rhythm.Normal, rhythm.Fast), CeremonyPacing.SpeedUp, 0.5f, "Sped up, the votes came three times as fast.");
         }
 
         [UnityTest]
@@ -153,29 +167,54 @@ namespace Gamesim.Tests.PlayMode
         {
             const CeremonyPace pace = CeremonyPace.Suspenseful;
             var keys = Keys(3, pace);
-            yield return Until(() => keys.KeysShown >= 1, 10f);
-            float first = Time.realtimeSinceStartup;
-            yield return Until(() => keys.KeysShown >= 2, 10f);
-            float second = Time.realtimeSinceStartup;
+            var came = new Arrivals(() => keys.KeysShown, () => CeremonyPacing.PerKey(pace, 3));
+            yield return Until(() => came.Count >= 2, 10f, came.Look);
             Assert.That(keys.KeysShown, Is.EqualTo(2), "The second key never came.");
 
-            yield return Until(() => Text(keys, "Progress").text == "One key left", 10f);
-            float called = Time.realtimeSinceStartup;
+            yield return Until(() => Text(keys, "Progress").text == "One key left" || came.Count >= 3, 10f, came.Look);
+            var called = came.Latest;
             Assert.That(Text(keys, "Progress").text, Is.EqualTo("One key left"),
                 "While the last key waits the card says one is left,");
             Assert.That(keys.KeysShown, Is.EqualTo(2), "and nobody holds it yet.");
 
-            yield return Until(() => keys.KeysShown >= 3, 10f);
-            float third = Time.realtimeSinceStartup;
+            yield return Until(() => came.Count >= 3, 10f, came.Look);
             Assert.That(keys.KeysShown, Is.EqualTo(3), "The last key never came.");
             Assert.That(keys.ShowingBlock, Is.False, "The last key has its own hold before the block.");
 
-            float rhythm = second - first, last = third - second;
-            Assert.That(rhythm, Is.EqualTo(CeremonyPacing.PerKey(pace, 3)).Within(0.15f), "The keys before it keep PerKey's rhythm.");
-            Assert.That(last - rhythm, Is.EqualTo(CeremonyPacing.LastKeyBeat(pace)).Within(0.15f),
+            var rhythm = Span.Between(came[1], came[2]);
+            AssertSpan(rhythm, CeremonyPacing.PerKey(pace, 3), 0.15f, "The keys before it keep PerKey's rhythm.");
+            AssertSpan(Span.Between(came[2], came[3]) - rhythm, CeremonyPacing.LastKeyBeat(pace), 0.15f,
                 "The last key comes LastKeyBeat later than the rhythm would have brought it,");
-            Assert.That(third - called, Is.EqualTo(CeremonyPacing.LastKeyBeat(pace)).Within(0.15f),
+            AssertSpan(Span.Between(called, came[3]), CeremonyPacing.LastKeyBeat(pace), 0.15f,
                 "and that wait is spent under 'One key left'.");
+        }
+
+        /// <summary>
+        /// A card's time starts when it is drawn, as the takeover's and the strip's do: the frame that
+        /// played it - the commit, the house's render, the card's own build - is not the card's,
+        /// however long it runs. The long frame is made rather than waited for: one slept through as
+        /// the cards are played, longer than the quick pace's fade and line and a vote's hold, with an
+        /// Enter landing in it. Counted, it put a key and two votes up before either card had been
+        /// drawn, and the Enter skipped both as though they had been read.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator Cards_TheirTimeStartsWhenTheyAreDrawn()
+        {
+            var keys = Keys(3, CeremonyPace.Quick, reducedMotion: false);
+            var reveal = Reveal(new[] { Vote(Jordan), Vote(Jordan), Vote(Casey) }, Jordan, CeremonyPace.Quick, reducedMotion: false);
+            InputSystem.QueueStateEvent(keyboard, new KeyboardState(Key.Enter));
+            System.Threading.Thread.Sleep(1600);
+            yield return null;
+            InputSystem.QueueStateEvent(keyboard, new KeyboardState());
+            // One frame of the cards' own time, with the Enter let go: the first they count. Any more
+            // would only spend their quick pace, which a slow frame of its own can run past.
+            yield return null;
+
+            Assert.That(keys.IsPlaying && reveal.IsPlaying, Is.True, "Both cards are still up,");
+            Assert.That(keys.ShowingBlock || reveal.ShowingResult, Is.False,
+                "and the Enter that landed before either was drawn has not skipped them.");
+            Assert.That(keys.KeysShown, Is.Zero, "The key ceremony is still on the Head of Household's line,");
+            Assert.That(reveal.VotesShown, Is.Zero, "and the live eviction on its block.");
         }
 
         // ------------------------------------------------------------------ skipping
@@ -273,23 +312,36 @@ namespace Gamesim.Tests.PlayMode
         public IEnumerator VoteReveal_ATieIsCalledAtTwoAllAndTheHeadOfHouseholdsVoteIsItsOwnMark()
         {
             // Two all in the house; then Maya Hassan, Head of Household, evicts Jordan.
-            var reveal = Reveal(new[] { Vote(Jordan), Vote(Casey), Vote(Casey), Vote(Jordan), TieBreak(Jordan) },
-                Jordan, CeremonyPace.Quick);
+            var house = new[] { Jordan, Casey, Casey, Jordan };
+            var reveal = Reveal(house.Select(id => Vote(id)).Concat(new[] { TieBreak(Jordan) }).ToArray(), Jordan, CeremonyPace.Quick);
+            // The card as it calls the tie, read as it does so (AsTheTieIsCalled).
+            var called = AsTheTieIsCalled(reveal, () => new
+            {
+                Progress = Text(reveal, "Progress").text,
+                Host = Text(reveal, "Host").text,
+                Figures = Texts(reveal, "Votes"),
+                Shown = reveal.VotesShown,
+                Mark = IsUp(reveal, "Tie-break vote"),
+                Result = reveal.ShowingResult,
+            });
 
+            // The first frame with a vote on the board: one, or more after a frame longer than a vote's hold.
             yield return Until(() => reveal.VotesShown >= 1, 10f);
-            Assert.That(Texts(reveal, "Votes"), Is.EqualTo(new[] { "1", "0" }));
+            Assert.That(Texts(reveal, "Votes"), Is.EqualTo(Figures(house, reveal.VotesShown)),
+                "The figures count the house's votes on the board: " + reveal.VotesShown + " of them.");
             Assert.That(Rects(reveal, "Pip"), Has.Length.EqualTo(4), "One pip per vote the house cast.");
             Assert.That(IsUp(reveal, "Tie-break pip"), Is.False,
                 "While the house's votes are read nothing says a tie is coming: not a place waiting for the deciding vote,");
             Assert.That(IsUp(reveal, "Tie-break vote"), Is.False, "nor its mark.");
 
-            yield return Until(() => Text(reveal, "Progress").text.StartsWith("The vote is tied", System.StringComparison.Ordinal), 10f);
-            Assert.That(Text(reveal, "Progress").text, Is.EqualTo("The vote is tied, 2 to 2."));
-            Assert.That(Text(reveal, "Host").text, Is.EqualTo("As Head of Household, Maya Hassan must break the tie."));
-            Assert.That(Texts(reveal, "Votes"), Is.EqualTo(new[] { "2", "2" }));
-            Assert.That(reveal.VotesShown, Is.EqualTo(4));
-            Assert.That(IsUp(reveal, "Tie-break vote"), Is.False, "The deciding vote is not cast yet.");
-            Assert.That(reveal.ShowingResult, Is.False);
+            yield return Until(() => called.Taken, 10f);
+            Assert.That(called.Taken, Is.True, "The tie is called.");
+            Assert.That(called.Value.Progress, Is.EqualTo("The vote is tied, 2 to 2."));
+            Assert.That(called.Value.Host, Is.EqualTo("As Head of Household, Maya Hassan must break the tie."));
+            Assert.That(called.Value.Figures, Is.EqualTo(new[] { "2", "2" }));
+            Assert.That(called.Value.Shown, Is.EqualTo(4));
+            Assert.That(called.Value.Mark, Is.False, "The deciding vote is not cast yet.");
+            Assert.That(called.Value.Result, Is.False);
 
             yield return Until(() => reveal.VotesShown >= 5, 10f);
             Assert.That(reveal.VotesShown, Is.EqualTo(5), "The Head of Household's vote goes on the board after the tie is called,");
@@ -364,12 +416,20 @@ namespace Gamesim.Tests.PlayMode
         public IEnumerator VoteReveal_AsksAPlayerHeadOfHouseholdToBreakTheTie()
         {
             var reveal = Reveal(new[] { Vote(Jordan), Vote(Casey), TieBreak(Casey) }, Casey, CeremonyPace.Quick, hohIsPlayer: true);
-            yield return Until(() => Text(reveal, "Progress").text.StartsWith("The vote is tied", System.StringComparison.Ordinal), 10f);
-            Assert.That(Text(reveal, "Progress").text, Is.EqualTo("The vote is tied, 1 to 1."));
-            Assert.That(Text(reveal, "Host").text, Is.EqualTo("As Head of Household, you must break the tie."),
+            // The line the card puts up as the tie is broken, read as it goes up: at the quick pace the
+            // result replaces it a vote's hold later, which one slow frame can run past.
+            string cast = null;
+            reveal.BeatReached += beat => { if (beat.Kind == CeremonyBeatKind.TieBroken) cast = Text(reveal, "Progress").text; };
+            var called = AsTheTieIsCalled(reveal, () => new { Progress = Text(reveal, "Progress").text, Host = Text(reveal, "Host").text });
+            yield return Until(() => called.Taken, 10f);
+            Assert.That(called.Taken, Is.True, "The tie is called.");
+            Assert.That(called.Value.Progress, Is.EqualTo("The vote is tied, 1 to 1."));
+            Assert.That(called.Value.Host, Is.EqualTo("As Head of Household, you must break the tie."),
                 "The player holding the deciding vote is asked in the second person.");
             yield return Until(() => reveal.VotesShown >= 3, 10f);
-            Assert.That(Text(reveal, "Progress").text, Is.EqualTo("You have cast the deciding vote."));
+            Assert.That(cast, Is.EqualTo("You have cast the deciding vote."), "The player is told they cast it,");
+            if (!reveal.ShowingResult)
+                Assert.That(Text(reveal, "Progress").text, Is.EqualTo("You have cast the deciding vote."), "and the line stays up until the result.");
         }
 
         // ------------------------------------------------------------------ the house around it
@@ -402,10 +462,21 @@ namespace Gamesim.Tests.PlayMode
         {
             var cues = new List<HouseAudio.Cue>();
             var keys = Keys(3, CeremonyPace.Quick, cues: cues);
-            yield return Until(() => keys.KeysShown >= 1, 10f);
-            Assert.That(cues, Is.EqualTo(new[] { HouseAudio.Cue.Save }), "The safe chime comes with the first key, and nothing before it.");
-
-            yield return Until(() => keys.ShowingBlock, 10f);
+            // On every frame what has sounded is the keys out so far, a safe chime each, and the
+            // block's sound once the block is up: nothing before the first key and a chime with each,
+            // however many keys a slow frame brings at once.
+            HouseAudio.Cue[] Sounded() => Enumerable.Repeat(HouseAudio.Cue.Save, keys.KeysShown)
+                .Concat(keys.ShowingBlock ? new[] { HouseAudio.Cue.Nomination } : new HouseAudio.Cue[0]).ToArray();
+            int keyFrames = 0;
+            yield return Until(() => keys.ShowingBlock, 10f, () =>
+            {
+                if (keys.KeysShown > 0 && !keys.ShowingBlock) keyFrames++;
+                Assert.That(cues, Is.EqualTo(Sounded()), keys.KeysShown == 0
+                    ? "Nothing sounds before the first key."
+                    : "The safe chime comes with each key, and nothing else: " + keys.KeysShown + " out.");
+            });
+            Assert.That(keys.ShowingBlock, Is.True, "The block never came.");
+            Assert.That(keyFrames, Is.Positive, "Some frame showed the keys coming out before the block.");
             yield return null;
             Assert.That(cues, Is.EqualTo(new[] { HouseAudio.Cue.Save, HouseAudio.Cue.Save, HouseAudio.Cue.Save, HouseAudio.Cue.Nomination }),
                 "One safe chime per key, then the nomination's sound once, at the block.");
@@ -416,7 +487,13 @@ namespace Gamesim.Tests.PlayMode
         {
             var cues = new List<HouseAudio.Cue>();
             var reveal = Reveal(new[] { Vote(Jordan), Vote(Casey), TieBreak(Jordan) }, Jordan, CeremonyPace.Quick, cues: cues);
-            yield return Until(() => reveal.ShowingResult, 10f);
+            // On every frame, a vote's sound for each ballot on the board and the eviction's once the
+            // result is: a slow frame that puts two ballots up sounds two.
+            HouseAudio.Cue[] Sounded() => Enumerable.Repeat(HouseAudio.Cue.Vote, reveal.VotesShown)
+                .Concat(reveal.ShowingResult ? new[] { HouseAudio.Cue.Eviction } : new HouseAudio.Cue[0]).ToArray();
+            yield return Until(() => reveal.ShowingResult, 10f, () => Assert.That(cues, Is.EqualTo(Sounded()),
+                "The vote's sound comes with each ballot, and nothing else: " + reveal.VotesShown + " on the board."));
+            Assert.That(reveal.ShowingResult, Is.True, "The result never came.");
             yield return null;
             Assert.That(cues, Is.EqualTo(new[] { HouseAudio.Cue.Vote, HouseAudio.Cue.Vote, HouseAudio.Cue.Vote, HouseAudio.Cue.Eviction }),
                 "The vote's sound for every ballot on the board - the Head of Household's too - and the eviction's once, at the result.");
@@ -489,7 +566,10 @@ namespace Gamesim.Tests.PlayMode
         public IEnumerator VoteReveal_OnTheScreenTheSlotsFillInAVoteAtATimeAndNameNobody()
         {
             var screen = LivingScreen();
-            var reveal = Reveal(new[] { Vote(Jordan), Vote(Casey), Vote(Jordan) }, Jordan, CeremonyPace.Quick, screen: screen);
+            // At the suspenseful pace, so that the board two votes in stands for seconds before the
+            // result recolours its figures, not the quick pace's hold that one slow frame can pass.
+            var house = new[] { Jordan, Casey, Jordan };
+            var reveal = Reveal(house.Select(id => Vote(id)).ToArray(), Jordan, CeremonyPace.Suspenseful, screen: screen);
             Assert.That(reveal.Surface, Is.SameAs(screen), "The card plays on the screen.");
             Assert.That(Text(reveal, "Title").text, Is.EqualTo("LIVE EVICTION"), "The title stays,");
             Assert.That(Text(reveal, "Vote heading").text, Is.EqualTo("THE VOTE"), "with the vote under it.");
@@ -503,11 +583,12 @@ namespace Gamesim.Tests.PlayMode
             AssertNamesNobody(reveal);
 
             yield return Until(() => reveal.VotesShown >= 1, 10f);
-            Assert.That(RowsUp(reveal), Has.Length.EqualTo(1), "A slot a vote,");
+            Assert.That(RowsUp(reveal), Has.Length.EqualTo(reveal.VotesShown), "A slot a vote,");
             yield return Until(() => reveal.VotesShown >= 2, 10f);
             var slots = RowsUp(reveal);
+            Assert.That(reveal.VotesShown, Is.EqualTo(2), "The second vote never came, or the third came with it.");
             Assert.That(slots, Has.Length.EqualTo(2));
-            Assert.That(Texts(reveal, "Votes"), Is.EqualTo(new[] { "1", "1" }), "and the figures count as they did.");
+            Assert.That(Texts(reveal, "Votes"), Is.EqualTo(Figures(house, 2)), "and the figures count as they did.");
             Assert.That(Drawn(slots[0]), Is.EqualTo(Drawn(slots[1])), "Every slot is alike: a slot says a vote was read, never whose or against whom.");
             Assert.That(slots[0].GetComponentsInChildren<TMP_Text>(true), Is.Empty, "A slot carries no words.");
             AssertNamesNobody(reveal);
@@ -535,12 +616,17 @@ namespace Gamesim.Tests.PlayMode
             var caseyLeaves = Reveal(ballots, Casey, CeremonyPace.Quick, screen: screen);
 
             // Both run on the same clock from the same frame, so they are at the same step on every
-            // frame. Compared at each step of the count, not on every frame.
+            // frame. Compared at each step of the count, not on every frame. The steps are the votes
+            // and then the result, a vote's hold apart; a step that no frame showed was carried past
+            // in a slow frame - Arrivals checks that frame was long enough - and nobody saw it.
+            var steps = new Arrivals(() => jordanLeaves.ShowingResult ? ballots.Length + 1 : jordanLeaves.VotesShown,
+                () => CeremonyPacing.PerVote(CeremonyPace.Quick, ballots.Length));
             string step = null;
             int compared = 0;
             float until = Time.realtimeSinceStartup + 20f;
             while (jordanLeaves.IsPlaying && !jordanLeaves.ShowingResult && Time.realtimeSinceStartup < until)
             {
+                steps.Look();
                 string now = jordanLeaves.VotesShown + " " + Text(jordanLeaves, "Progress").text;
                 if (now != step)
                 {
@@ -550,8 +636,10 @@ namespace Gamesim.Tests.PlayMode
                 }
                 yield return null;
             }
+            steps.Look();
             Assert.That(jordanLeaves.ShowingResult, Is.True, "The count reached its result.");
-            Assert.That(compared, Is.GreaterThanOrEqualTo(ballots.Length), "Every vote's step was compared.");
+            Assert.That(compared, Is.GreaterThanOrEqualTo(ballots.Length - steps.Passed),
+                "Every vote's step a frame showed was compared (" + steps.Passed + " passed in a slow frame).");
             Assert.That(Text(caseyLeaves, "Result name").text, Is.Not.EqualTo(Text(jordanLeaves, "Result name").text),
                 "and only the result tells them apart.");
         }
@@ -609,9 +697,11 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(Rects(tied, "Ballot"), Has.Length.EqualTo(2), "Two slots for the house's two votes,");
             Assert.That(Rect(tied, "Deciding vote"), Is.Not.Null, "and the deciding row built,");
             Assert.That(IsUp(tied, "Deciding vote"), Is.False, "hidden.");
-            yield return Until(() => Text(tied, "Progress").text.StartsWith("The vote is tied", System.StringComparison.Ordinal), 10f);
-            Assert.That(RowsUp(tied), Has.Length.EqualTo(2));
-            Assert.That(IsUp(tied, "Deciding vote"), Is.False, "Not up when the tie is called.");
+            var called = AsTheTieIsCalled(tied, () => new { Rows = RowsUp(tied).Length, Deciding = IsUp(tied, "Deciding vote") });
+            yield return Until(() => called.Taken, 10f);
+            Assert.That(called.Taken, Is.True, "The tie is called.");
+            Assert.That(called.Value.Rows, Is.EqualTo(2));
+            Assert.That(called.Value.Deciding, Is.False, "Not up when the tie is called.");
             yield return Until(() => tied.VotesShown >= 3, 10f);
             var deciding = Rect(tied, "Deciding vote");
             Assert.That(deciding.gameObject.activeInHierarchy, Is.True, "The Head of Household's vote goes on the card,");
@@ -869,40 +959,173 @@ namespace Gamesim.Tests.PlayMode
 
         private sealed class Rhythm
         {
-            public float Normal, Fast;
+            public Span Normal, Fast;
         }
 
         /// <summary>
         /// Times one step at the card's own speed, presses Space, times the three steps after the first
         /// one wholly past the press, and presses Space again - checking the speed and its corner mark
-        /// on the way.
+        /// on the way. Every step is bounded by the frames around it (<see cref="Arrivals"/>), which
+        /// also hold the card to one reveal a <paramref name="hold"/> at whatever speed it runs.
         /// </summary>
-        private IEnumerator TimeTheSpeedUp(System.Func<int> revealed, System.Func<float> multiplier, Component card, Rhythm rhythm)
+        private IEnumerator TimeTheSpeedUp(System.Func<int> revealed, System.Func<float> multiplier, float hold, Component card, Rhythm rhythm)
         {
-            yield return Until(() => revealed() >= 1, 15f);
-            Assert.That(revealed(), Is.EqualTo(1), "The first reveal never came.");
-            float first = Time.realtimeSinceStartup;
-            yield return Until(() => revealed() >= 2, 15f);
-            Assert.That(revealed(), Is.EqualTo(2), "The second reveal never came.");
-            rhythm.Normal = Time.realtimeSinceStartup - first;
+            var came = new Arrivals(revealed, () => hold / multiplier());
+            yield return Until(() => came.Count >= 2, 20f, came.Look);
+            Assert.That(came.Count, Is.GreaterThanOrEqualTo(2), "The first two reveals never came.");
+            rhythm.Normal = Span.Between(came[1], came[2]);
             Assert.That(multiplier(), Is.EqualTo(1f), "A reveal starts at its own speed,");
             Assert.That(IsUp(card, "Speed"), Is.False, "and nothing says fast-forward while it is not.");
 
             yield return Press(Key.Space);
+            came.Look();
             Assert.That(multiplier(), Is.EqualTo(CeremonyPacing.SpeedUp), "Space speeds the reveal up,");
             Assert.That(IsUp(card, "Speed"), Is.True, "and the corner says so:");
             Assert.That(Text(card, "Speed").text, Is.EqualTo(CeremonyTakeover.SpeedCaption));
 
-            int from = revealed() + 1;
-            yield return Until(() => revealed() >= from, 15f);
-            float start = Time.realtimeSinceStartup;
-            yield return Until(() => revealed() >= from + 3, 15f);
-            Assert.That(revealed(), Is.EqualTo(from + 3), "The sped-up reveals never came.");
-            rhythm.Fast = (Time.realtimeSinceStartup - start) / 3f;
+            int from = came.Count + 1;
+            yield return Until(() => came.Count >= from + 3, 15f, came.Look);
+            Assert.That(came.Count, Is.GreaterThanOrEqualTo(from + 3), "The sped-up reveals never came.");
+            rhythm.Fast = Span.Between(came[from], came[from + 3]) / 3.0;
 
             yield return Press(Key.Space);
             Assert.That(multiplier(), Is.EqualTo(1f), "A second press puts it back at its own pace,");
             Assert.That(IsUp(card, "Speed"), Is.False, "and the corner goes quiet.");
+        }
+
+        /// <summary>The figures for the first <paramref name="shown"/> of <paramref name="house"/>'s votes: Jordan's, then Casey's.</summary>
+        private static string[] Figures(IList<string> house, int shown) => new[]
+        {
+            house.Take(shown).Count(id => id == Jordan).ToString(),
+            house.Take(shown).Count(id => id == Casey).ToString(),
+        };
+
+        /// <summary>
+        /// A moment on the cards' clock as the frames saw it: it came after <see cref="After"/>, the
+        /// frame looked at before it was seen, and by <see cref="By"/>, the frame it was first seen
+        /// on - both Time.unscaledTimeAsDouble, the clock the cards add up. On a quiet machine the two
+        /// are a fraction of a millisecond apart; under load a frame can outlast a hold, and they say so.
+        /// </summary>
+        private readonly struct Moment
+        {
+            public readonly double After, By;
+            public Moment(double after, double by) { After = after; By = by; }
+        }
+
+        /// <summary>A length of time as the frames bound it: no shorter than <see cref="Shortest"/>, no longer than <see cref="Longest"/>.</summary>
+        private readonly struct Span
+        {
+            public readonly double Shortest, Longest;
+            public Span(double shortest, double longest) { Shortest = shortest; Longest = longest; }
+
+            /// <summary>From one moment to a later one.</summary>
+            public static Span Between(Moment from, Moment to) => new Span(System.Math.Max(0.0, to.After - from.By), to.By - from.After);
+
+            public static Span operator /(Span span, double by) => new Span(span.Shortest / by, span.Longest / by);
+
+            public static Span operator -(Span a, Span b) => new Span(a.Shortest - b.Longest, a.Longest - b.Shortest);
+
+            /// <summary>How many times <paramref name="fast"/> goes into <paramref name="slow"/>.</summary>
+            public static Span Ratio(Span slow, Span fast) =>
+                new Span(slow.Shortest / fast.Longest, fast.Shortest > 0.0 ? slow.Longest / fast.Shortest : double.PositiveInfinity);
+
+            public override string ToString() => Shortest.ToString("0.###") + " to " + Longest.ToString("0.###");
+        }
+
+        /// <summary>
+        /// Asserts that <paramref name="span"/> is <paramref name="expected"/> within <paramref name="within"/>:
+        /// that some length the frames allow is. On a quiet machine they allow one length, to the
+        /// millisecond, and this is the plain check; a slow frame widens what they allow rather than
+        /// failing a card that kept its time.
+        /// </summary>
+        private static void AssertSpan(Span span, float expected, float within, string message)
+        {
+            Assert.That(span.Shortest <= expected + within && span.Longest >= expected - within, Is.True,
+                message + " Expected " + expected.ToString("0.###") + " within " + within.ToString("0.###")
+                + "; the frames around it allow " + span + ".");
+        }
+
+        /// <summary>
+        /// When each of a card's reveals - its keys, its votes, whatever <c>count</c> counts - came, on
+        /// the cards' clock: each is the <see cref="Moment"/> between the frame it was first seen on and
+        /// the frame looked at before. <see cref="Look"/> on every frame (Until does); a frame not looked
+        /// at only widens the moments.
+        ///
+        /// <para>A card catches up after a long frame, so two reveals can come on one. That is right
+        /// only when the frame carried the card's clock past a hold between them, and Look fails the
+        /// test when it did not: one reveal a hold, as the old checks of the count after each wait
+        /// had it, at any length of frame.</para>
+        /// </summary>
+        private sealed class Arrivals
+        {
+            private readonly System.Func<int> count;
+            private readonly System.Func<float> hold;
+            private readonly List<Moment> came = new List<Moment>();
+            private int frame = -1;
+            private double before, now;
+
+            /// <param name="hold">The shortest time between two reveals, in unscaled seconds at the card's speed as it is.</param>
+            public Arrivals(System.Func<int> count, System.Func<float> hold)
+            {
+                this.count = count;
+                this.hold = hold;
+                now = Time.unscaledTimeAsDouble - Time.unscaledDeltaTime;
+                Look();
+            }
+
+            /// <summary>How many reveals have come.</summary>
+            public int Count => came.Count;
+
+            /// <summary>Reveals a slow frame carried the card past: each came on a frame with the next.</summary>
+            public int Passed { get; private set; }
+
+            /// <summary>When reveal <paramref name="number"/> came, counting from one.</summary>
+            public Moment this[int number] => came[number - 1];
+
+            /// <summary>The frame looked at last, as a moment: after the frame looked at before it, and by this one.</summary>
+            public Moment Latest => new Moment(before, now);
+
+            public void Look()
+            {
+                if (Time.frameCount == frame) return;
+                frame = Time.frameCount;
+                before = now;
+                now = Time.unscaledTimeAsDouble;
+                int fresh = count() - came.Count;
+                if (fresh > 1)
+                {
+                    Assert.That((fresh - 1) * (double)hold(), Is.LessThanOrEqualTo(now - before + 0.005),
+                        fresh + " reveals came on one frame, " + (now - before).ToString("0.###") + " s after the frame before it; they come "
+                        + hold().ToString("0.###") + " s apart, and only a frame that long carries a card past more than one.");
+                    Passed += fresh - 1;
+                }
+                for (int i = 0; i < fresh; i++) came.Add(Latest);
+            }
+        }
+
+        /// <summary>What <see cref="AsTheTieIsCalled{T}"/> read, once it is taken.</summary>
+        private sealed class Reading<T>
+        {
+            public bool Taken;
+            public T Value;
+        }
+
+        /// <summary>
+        /// Reads <paramref name="read"/> off <paramref name="reveal"/> at its TieCalled beat, as the tie
+        /// is called. The stage it opens lasts TieBeat, 1.2 s at the quick pace, and one frame longer
+        /// than that runs past it: the card catches up, breaking the tie on the frame that called it,
+        /// and a wait for the stage on the frames sees the deciding vote instead.
+        /// </summary>
+        private static Reading<T> AsTheTieIsCalled<T>(VoteReveal reveal, System.Func<T> read)
+        {
+            var reading = new Reading<T>();
+            reveal.BeatReached += beat =>
+            {
+                if (beat.Kind != CeremonyBeatKind.TieCalled || reading.Taken) return;
+                reading.Value = read();
+                reading.Taken = true;
+            };
+            return reading;
         }
 
         private IEnumerator SkipToTheResult(VoteReveal reveal)
@@ -929,20 +1152,35 @@ namespace Gamesim.Tests.PlayMode
             yield return null;
         }
 
-        /// <summary>Waits on the wall clock until <paramref name="done"/>, or <paramref name="seconds"/> at most.</summary>
-        private static IEnumerator Until(System.Func<bool> done, float seconds)
+        /// <summary>
+        /// Waits on the wall clock until <paramref name="done"/>, or <paramref name="seconds"/> at most,
+        /// calling <paramref name="look"/> first on every frame, the last one too.
+        /// </summary>
+        private static IEnumerator Until(System.Func<bool> done, float seconds, System.Action look = null)
         {
             float until = Time.realtimeSinceStartup + seconds;
-            while (!done() && Time.realtimeSinceStartup < until) yield return null;
+            while (true)
+            {
+                look?.Invoke();
+                if (done() || Time.realtimeSinceStartup >= until) yield break;
+                yield return null;
+            }
         }
 
         private static IEnumerator Seconds(float seconds) => Until(() => false, seconds);
 
         /// <summary>
         /// Past the cards' read-first delay - the fade and 0.35 s after it - before which a press is
-        /// taken for one already in flight when the card appeared, and ignored.
+        /// taken for one already in flight when the card appeared, and ignored. Counted as the cards
+        /// count it: unscaled time from the frame after the one that played them, which is where their
+        /// time starts.
         /// </summary>
-        private static IEnumerator PastTheReadDelay() => Seconds(CeremonyPacing.FadeIn + 0.5f);
+        private static IEnumerator PastTheReadDelay()
+        {
+            yield return null;
+            double from = Time.unscaledTimeAsDouble;
+            while (Time.unscaledTimeAsDouble - from < CeremonyPacing.FadeIn + 0.5f) yield return null;
+        }
 
         private static TMP_Text Text(Component card, string name) =>
             card.GetComponentsInChildren<TMP_Text>(true).FirstOrDefault(label => label.name == name);

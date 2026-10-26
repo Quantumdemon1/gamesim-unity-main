@@ -39,7 +39,10 @@
 # run by dotnet test (2026-10-25). Not yet counted by a full run.
 # 8977 = 8976 + D1b's review: DialogueCampaignPleaFallbackTests.TheOpenConversationsOwnVoterPleadsInItForNoFurtherAction,
 # shared, run by dotnet test (2026-10-25). Not yet counted by a full run.
-Gamesim.EditModeTests 8977
+# 9015 = 8977 + R6's 38 RoleStoryMomentsTests cases, which this file had not yet counted (main's own full run at
+# 7f754510 counted 8970 = 8932 + 38): the full NoUMA run at the scratch test head 83c3273c (this branch's 15f0c07d +
+# the test-only claude/camera-speed-test-clock 5a61dde4, 2026-10-26), 9015 of 9015.
+Gamesim.EditModeTests 9015
 # The UMA-free build. 1215 = 1236, the count after the consolidation's lanes (S2a, S2b, S4a), less the 7
 # farewell probes moved to Gamesim.DiagnosticsPlayModeTests and the 14 farewell readiness tests that now
 # compile only under GAMESIM_UMA (judged on the UMA cast); 1230 = 1215 + S2d's 7, S4b's 2, S4c's 2 and
@@ -67,6 +70,7 @@ Gamesim.EditModeTests 8977
 # start, the creator, the keyboard and pad, and the footer at text sizes 1.0, 1.2 and 1.4). Compiled offline only.
 # 1334 = 1333 + dialogue D1b's shared DialogueCampaign_ARefusedConversationLeavesTheDesperatePleaAsTheOneShotPlea.
 # Compiled offline only (main 772828ba merged in).
+# 1334 counted: the full NoUMA run at 83c3273c (2026-10-26), 1334 of 1334, no re-runs.
 Gamesim.PlayModeTests 1334
 # The UMA build of the same assembly, read by a plan built without -WithoutUma. 1281 = the 1241 above + the
 # 40 tests that compile only under GAMESIM_UMA, as run at r1 (2026-10-16): in EpisodePlayModeTests,
@@ -83,6 +87,8 @@ Gamesim.PlayModeTests 1334
 # 1366, in one process with the MCP bridge off.
 # 1373 = 1366 + dialogue D1's same 7 shared tests.
 # 1374 = 1373 + dialogue D1b's same shared test.
+# 1374 counted: the full UMA-build run at 83c3273c (2026-10-26), 1374 of 1374, in one process with the MCP bridge
+# off, no re-runs; Gamesim.Uma.PlayModeTests 129 of 129 in the same set.
 Gamesim.PlayModeTests.UmaBuild 1374
 # The UMA bodies: runs only where the GAMESIM_UMA define is set (the working tree and the D: copy).
 # 82 = the 89 run on 2026-10-15, less the 7 farewell probes moved to Gamesim.Uma.DiagnosticsPlayModeTests;

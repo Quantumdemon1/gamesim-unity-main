@@ -48,8 +48,16 @@ namespace Gamesim.Presentation
         private Transform trayPedestal, trayBed, trayBack, trayLeft, trayRight;
         private Renderer gripRenderer;
         private float gripHeight = 1.16f;
+        private float padLowest, padHighest;
         private bool overlaysVisible = true;
         private float nearestRaisedZ;
+        /// <summary>
+        /// Labels that read as one set and so share one font size (a Signals console's UP, RIGHT,
+        /// DOWN and LEFT, both sides): the largest that fits every one of their boxes. TMP sizes each
+        /// label alone, which drew the four at four sizes; <see cref="ShareLabelSize"/> sets them once.
+        /// </summary>
+        private readonly List<TMP_Text> sharedSizeLabels = new List<TMP_Text>();
+        private bool labelSizeShared;
         private const float Front = .56f;
         /// <summary>
         /// The audience's copy of a die's value stands on its die's rear face, this far above the
@@ -58,6 +66,18 @@ namespace Gamesim.Presentation
         /// top. It moves with the die at every pedestal fit.
         /// </summary>
         private const float DieRearRise = .04f, DieRearHeight = .09f;
+        /// <summary>
+        /// How far a die's two values stand off its centre, 5 mm off the faces of the .17 m die. They
+        /// are placed in the die's own turn (<see cref="TurnLabelsWithDie"/>): a tumbling die's corners
+        /// sweep .12 m round its centre, so a value left square on this plane was inside its own die
+        /// for most of every tumble.
+        /// </summary>
+        private const float DieFaceOffset = .09f;
+        /// <summary>
+        /// The Signals response pad stands beside the direction cross, this far past RIGHT's keycap,
+        /// so from the contestant's eye it covers no target and no label at any fitted height.
+        /// </summary>
+        private const float PadGap = .01f;
         /// <summary>
         /// How far in front of a die's centre the press aims. A rolling die turns about its centre,
         /// its corners sweeping .12 m round it (half a .17 m cube's diagonal); the pressing finger's
@@ -158,6 +178,9 @@ namespace Gamesim.Presentation
                     repeater.transform.localRotation=Quaternion.Euler(0,180,0);
                     repeaters[indicator]=repeater;
                 }
+            if(Instrument==Family.Signals)
+                foreach(TMP_Text direction in glyphs){sharedSizeLabels.Add(direction);sharedSizeLabels.Add(repeatWords[direction]);}
+            ShareLabelSize();
             nearestRaisedZ=NearestRaisedSolid();
         }
 
@@ -183,16 +206,26 @@ namespace Gamesim.Presentation
 
         private void BuildSignals()
         {
-            Console(1.20f, .95f);
+            const float height = 1.20f, width = .95f;
+            Console(height, width);
             Vector2[] places = { new Vector2(0, .23f), new Vector2(.25f, 0), new Vector2(0, -.23f), new Vector2(-.25f, 0) };
             string[] labels = { "UP", "RIGHT", "DOWN", "LEFT" };
+            Vector3 target = new Vector3(.20f, .17f, .03f);
             for (int i = 0; i < places.Length; i++)
             {
                 Vector3 at = new Vector3(places[i].x, 1.22f + places[i].y, Front - .065f);
-                indicators.Add(Part(PartKind.SignalTarget, "Signal target " + labels[i], at, new Vector3(.20f, .17f, .03f), paper));
+                indicators.Add(Part(PartKind.SignalTarget, "Signal target " + labels[i], at, target, paper));
                 glyphs.Add(Words("Signal direction " + labels[i], at + Vector3.back * .02f, .18f, .12f, labels[i]));
             }
-            responsePad=Part(PartKind.ResponsePad, "Response pad", new Vector3(0, 1.16f, .39f), new Vector3(.14f, .065f, .15f), accent).transform;
+            // The pad stands out of the cross, beside RIGHT (PadGap past its keycap), with its back on
+            // the housing's front face, so it is fixed to the console rather than hanging in front of
+            // RIGHT. FitPress keeps it at the hand's height between DOWN's top and the award header.
+            Vector3 pad = new Vector3(.14f, .065f, .15f);
+            float right = places[1].x + target.x * .5f;
+            float housingFront = Front + .04f - .14f * .5f;
+            padLowest = 1.22f + places[2].y + target.y * .5f + pad.y * .5f;
+            padHighest = height + .38f - .045f * .5f - pad.y * .5f;
+            responsePad=Part(PartKind.ResponsePad, "Response pad", new Vector3(right + PadGap + pad.x * .5f, 1.22f, housingFront - pad.z * .5f), pad, accent).transform;
         }
 
         private void BuildGrip()
@@ -224,7 +257,7 @@ namespace Gamesim.Presentation
             {
                 Vector3 at = new Vector3((i - 1) * .25f, 1.28f, Front - .115f);
                 indicators.Add(Part(PartKind.Die, "Die " + i, at, Vector3.one * .17f, paper, sweepsYaw:true));
-                var face = Words("Die face " + i, at + Vector3.back * .09f, .14f, .14f, "—");
+                var face = Words("Die face " + i, at + Vector3.back * DieFaceOffset, .14f, .14f, "—");
                 face.color = ink;
                 glyphs.Add(face);
             }
@@ -245,6 +278,7 @@ namespace Gamesim.Presentation
         /// <summary>Pure presentation reads. An absent attempt means another entrant's ready station.</summary>
         public void Sync(MiniGameRun run, bool started, bool preview, bool paused, bool reducedMotion)
         {
+            ShareLabelSize();
             if (run == null) { SetWord(progress,"Ready"); return; }
             SetWord(progress,paused ? "Paused" : !started && !preview ? "Ready" : Readout(run));
             switch (Instrument)
@@ -280,6 +314,7 @@ namespace Gamesim.Presentation
                         SetWord(glyphs[i],face > 0 ? face.ToString(CultureInfo.InvariantCulture) : run.Rolling ? "…" : "—");
                         indicators[i].transform.localRotation = reducedMotion || paused || run.DieLanded(i)
                             ? Quaternion.identity : Quaternion.Euler(0, (float)run.Elapsed * 200, 0);
+                        TurnLabelsWithDie(i);
                     }
                     break;
                 case Family.WordConsole:
@@ -379,7 +414,9 @@ namespace Gamesim.Presentation
         public Vector3 HandContact(bool left)
         {
             if(handle!=null)return handle.TransformPoint(new Vector3(left?-.33f:.33f,0,-.5f));
-            if(responsePad!=null)return responsePad.position+Vector3.up*.04f;
+            // The press lands on the pad's top, on the quarter nearest the contestant and the cross: the
+            // pad stands beside RIGHT now, and this keeps the reach what it was when it stood in front.
+            if(responsePad!=null)return responsePad.TransformPoint(new Vector3(-.25f,0,-.25f))+Vector3.up*.04f;
             if(Instrument==Family.DiceTray)
             {
                 // In front of the die, in the tray's own space: a point on the die's face turned with a
@@ -390,12 +427,16 @@ namespace Gamesim.Presentation
             return transform.TransformPoint(new Vector3(left?-.22f:.22f,.99f,Front-.12f));
         }
 
-        /// <summary>Put the real pad/tray at the actor's hand height without moving their body.</summary>
+        /// <summary>
+        /// Put the real pad/tray at the actor's hand height without moving their body. The pad keeps
+        /// its place beside the cross and on the housing; only its height follows the hand, between
+        /// DOWN's top and the award header.
+        /// </summary>
         public void FitPress(Vector3 shoulder,float reach)
         {
             if(responsePad!=null)
             {
-                Vector3 at=responsePad.localPosition;at.x=shoulder.x;at.y=shoulder.y-.04f-reach*.10f;
+                Vector3 at=responsePad.localPosition;at.y=Mathf.Clamp(shoulder.y-.04f-reach*.10f,padLowest,padHighest);
                 responsePad.localPosition=at;
             }
             if(Instrument!=Family.DiceTray)return;
@@ -407,8 +448,7 @@ namespace Gamesim.Presentation
             for(int i=0;i<indicators.Count;i++)
             {
                 Vector3 at=indicators[i].transform.localPosition;at.y=1.28f+shift;indicators[i].transform.localPosition=at;
-                at=glyphs[i].transform.localPosition;at.y=1.28f+shift;glyphs[i].transform.localPosition=at;
-                if(repeatWords.TryGetValue(glyphs[i],out var copy)){at=copy.transform.localPosition;at.y=1.28f+shift+DieRearRise;copy.transform.localPosition=at;}
+                TurnLabelsWithDie(i);
             }
             // The roll readout stands under the tray. At the pedestal's lowest fits the tray comes
             // down past it, so the readout, its copy and both plates come down with the tray's
@@ -543,11 +583,47 @@ namespace Gamesim.Presentation
         {
             Vector3 die=indicators[i].transform.localPosition;
             TMP_Text source=glyphs[i];
-            TMP_Text copy=Words(source.name+" audience readout",new Vector3(die.x,die.y+DieRearRise,die.z+.09f),
+            TMP_Text copy=Words(source.name+" audience readout",new Vector3(die.x,die.y+DieRearRise,die.z+DieFaceOffset),
                 source.rectTransform.sizeDelta.x,DieRearHeight,source.text);
             copy.color=source.color;
             copy.transform.localRotation=Quaternion.Euler(0,180,0);
             repeatWords[source]=copy;
+        }
+
+        /// <summary>
+        /// Stands die <paramref name="i"/>'s two values on their faces as the die is turned now: the
+        /// contestant's <see cref="DieFaceOffset"/> in front of its centre, the audience's behind it and
+        /// <see cref="DieRearRise"/> up, each turned with the die. A tumbling die carries both round with
+        /// it rather than sweeping its corners through them; a square die puts them back on the planes
+        /// they always stood on. The labels stay children of the instrument, under their own names.
+        /// </summary>
+        private void TurnLabelsWithDie(int i)
+        {
+            Transform die=indicators[i].transform;
+            Quaternion turn=die.localRotation;Vector3 centre=die.localPosition;
+            glyphs[i].transform.SetLocalPositionAndRotation(centre+turn*(Vector3.back*DieFaceOffset),turn);
+            if(repeatWords.TryGetValue(glyphs[i],out var copy))
+                copy.transform.SetLocalPositionAndRotation(centre+turn*new Vector3(0,DieRearRise,DieFaceOffset),turn*Quaternion.Euler(0,180,0));
+        }
+
+        /// <summary>
+        /// Gives every label in <see cref="sharedSizeLabels"/> one font size, the smallest of the sizes
+        /// TMP's own auto-size gives each in its box - the largest size that fits them all - and turns
+        /// their auto-size off. It needs TMP to have woken the labels and built their text: a console
+        /// built under an inactive anchor shares on its first read once they have (Build, then Sync).
+        /// </summary>
+        private void ShareLabelSize()
+        {
+            if(labelSizeShared || sharedSizeLabels.Count==0)return;
+            float size=float.PositiveInfinity;
+            foreach(TMP_Text label in sharedSizeLabels)
+            {
+                label.ForceMeshUpdate(true);
+                if(label.textInfo==null || label.textInfo.characterCount==0)return;
+                size=Mathf.Min(size,label.fontSize);
+            }
+            foreach(TMP_Text label in sharedSizeLabels){label.enableAutoSizing=false;label.fontSize=size;}
+            labelSizeShared=true;
         }
 
         private void SetWord(TMP_Text label,string value)

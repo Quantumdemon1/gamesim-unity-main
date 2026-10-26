@@ -671,6 +671,253 @@ namespace Gamesim.Tests.PlayMode
             yield return null;
         }
 
+        /// <summary>
+        /// A tumbling die never swallows its own values. Through whole attempts - the wait before the
+        /// first roll (the dice already turn then), each roll's tumble, every landing and both re-rolls -
+        /// at every step of a 120 Hz clock, read in the native order (the director's read, then the pose's
+        /// press fit), each die's contestant value and its audience copy are either hidden or wholly
+        /// outside that die's oriented box, at the pedestal's low, default and high fits. A .17 m die's
+        /// corners sweep .12 m round its centre; values left square 9 cm from it were inside it for
+        /// most of every tumble. Landed values show, square on their faces.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator Apparatus_DiceValuesStayOutsideTheirTumblingDiceThroughWholeRolls()
+        {
+            var definition=CompetitionDefinitions.All.First(item=>item.Category=="Luck");
+            var instrument=Make(definition);
+            var parts=instrument.GetComponentsInChildren<MeshFilter>(true);
+            var labels=instrument.GetComponentsInChildren<TMP_Text>(true);
+            var dice=Enumerable.Range(0,MiniGameRun.DiceCount).Select(i=>(Die:parts.Single(part=>part.name=="Die "+i),
+                Front:labels.Single(label=>label.name=="Die face "+i),Back:labels.Single(label=>label.name=="Die face "+i+" audience readout"))).ToArray();
+            const double step=1/120.0;
+            int turnedSteps=0,judged=0;
+            foreach(float shoulder in new[]{.80f,1.34f,1.90f})
+            {
+                var run=new MiniGameRun(CompetitionMiniGames.Kind.Dice,123,4,definition);
+                double rollAt=.5;int steps=0;
+                while(!run.Finished && steps<2400)
+                {
+                    if(run.Elapsed>=rollAt && run.CanRoll){Assert.That(run.Roll(),Is.True);rollAt=run.Elapsed+MiniGameRun.RollSeconds+.25;}
+                    run.Tick(step);steps++;
+                    instrument.Sync(run,true,false,false,false);
+                    instrument.FitPress(new Vector3(.18f,shoulder,.08f),.62f);
+                    foreach(var (die,front,back) in dice)
+                    {
+                        float turn=Quaternion.Angle(Quaternion.identity,die.transform.localRotation);
+                        if(turn>1f)turnedSteps++;
+                        var solid=MeshBox(die);
+                        foreach(var label in new[]{front,back})
+                        {
+                            if(LabelHidden(label))continue;
+                            judged++;
+                            Assert.That(BoxesMeet(LabelBox(label),solid),Is.False,label.name+" ('"+label.text+"') stands inside "+die.name
+                                +", turned "+turn.ToString("F1")+" degrees, at "+run.Elapsed.ToString("F4")+" s of roll "+run.RollsUsed+" (shoulder "+shoulder+")");
+                        }
+                    }
+                }
+                Assert.That(run.Finished,Is.True,"Precondition: three rolls, the last one kept as it landed (shoulder "+shoulder+").");
+                Assert.That(run.RollsUsed,Is.EqualTo(MiniGameRun.MaxRolls));
+                for(int i=0;i<dice.Length;i++)
+                {
+                    Assert.That(dice[i].Die.transform.localRotation,Is.EqualTo(Quaternion.identity),"A landed die is square.");
+                    foreach(var label in new[]{dice[i].Front,dice[i].Back})
+                    {
+                        Assert.That(LabelHidden(label),Is.False,label.name+" shows the landed value");
+                        Assert.That(label.text,Is.EqualTo(run.Face(i).ToString()),label.name);
+                    }
+                }
+            }
+            Assert.That(turnedSteps,Is.GreaterThan(0),"Precondition: the dice tumbled.");
+            Debug.Log("[Gamesim W3] dice values judged against their own dice "+judged+" times over "+turnedSteps+" turned die-steps.");
+            yield return null;
+        }
+
+        /// <summary>
+        /// The Signals response pad stands beside the direction cross, on the console. At every fitted
+        /// hand height (shoulders .80-1.90 m, short to long arms, two body offsets and radii): its box
+        /// meets no keycap of either side, no direction label of either side and neither progress
+        /// readout; its back lies on the housing's front face, inside the housing's height, with at least
+        /// half its width on the housing; from the contestant's eye (head over the shoulders, swaying
+        /// 8 cm) no point of a contestant-side keycap face, a direction label or the progress glyphs is
+        /// behind it; and the press lands on its top. It had floated 1.5 cm in front of RIGHT, 6.5 cm off
+        /// the housing, hiding 'RIG' of RIGHT's label from the contestant.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator Apparatus_SignalsPadStandsBesideTheCrossOnTheHousingAtEveryFit()
+        {
+            var definition=CompetitionDefinitions.All.First(item=>item.Category=="Skill");
+            var instrument=Make(definition);
+            Assert.That(instrument.Instrument,Is.EqualTo(CompetitionApparatus.Family.Signals));
+            var parts=instrument.GetComponentsInChildren<MeshFilter>(true);
+            var labels=instrument.GetComponentsInChildren<TMP_Text>(true);
+            MeshFilter Part(string name)=>parts.Single(part=>part.name==name);
+            var pad=Part("Response pad");var housing=Part("Console housing");
+            var keycaps=parts.Where(part=>part.name.StartsWith("Signal target ",StringComparison.Ordinal)).ToArray();
+            var words=labels.Where(label=>label.name.StartsWith("Signal direction ",StringComparison.Ordinal)
+                || label.name.StartsWith("Instrument progress",StringComparison.Ordinal)).ToArray();
+            Assert.That(keycaps,Has.Length.EqualTo(8),"Four targets, each with its audience face.");
+            Assert.That(words,Has.Length.EqualTo(10),"Four directions and the progress readout, each with its audience copy.");
+            var frontCaps=keycaps.Where(part=>!part.name.EndsWith(" audience face",StringComparison.Ordinal)).ToArray();
+            var frontWords=words.Where(label=>!label.name.EndsWith(" audience readout",StringComparison.Ordinal)).ToArray();
+            var run=new MiniGameRun(CompetitionMiniGames.Kind.Reaction,123,4,definition);
+            run.Tick(3);
+            Vector3 Min(MeshFilter part)=>part.transform.localPosition+Vector3.Scale(part.transform.localScale,part.sharedMesh.bounds.min);
+            Vector3 Max(MeshFilter part)=>part.transform.localPosition+Vector3.Scale(part.transform.localScale,part.sharedMesh.bounds.max);
+            var anchor=owner.transform;int rays=0;
+            foreach(float radius in new[]{.32f,.40f})
+            foreach(var body in new[]{new Vector3(.13f,0,-.23f),new Vector3(-.16f,0,.19f)})
+            foreach(float shoulder in new[]{.80f,.95f,1.10f,1.25f,1.34f,1.53f,1.74f,1.90f})
+            foreach(float reach in new[]{.44f,.62f,.70f})
+            {
+                string at=" (radius "+radius+", body "+body+", shoulder "+shoulder+", reach "+reach+")";
+                instrument.FitActorClearance(radius,body);
+                instrument.Sync(run,true,false,false,false);
+                instrument.FitPress(instrument.transform.InverseTransformPoint(anchor.TransformPoint(body+new Vector3(.18f,shoulder,.04f))),reach);
+                var padBox=MeshBox(pad);
+                foreach(var keycap in keycaps)Assert.That(BoxesMeet(padBox,MeshBox(keycap)),Is.False,"The pad meets "+keycap.name+at);
+                foreach(var word in words)Assert.That(BoxesMeet(padBox,LabelBox(word)),Is.False,"The pad meets "+word.name+at);
+                Assert.That(pad.transform.localRotation,Is.EqualTo(Quaternion.identity));Assert.That(housing.transform.localRotation,Is.EqualTo(Quaternion.identity));
+                Assert.That(Mathf.Abs(Max(pad).z-Min(housing).z),Is.LessThanOrEqualTo(.001f),"The pad's back lies on the housing's front face"+at);
+                Assert.That(Min(pad).y,Is.GreaterThanOrEqualTo(Min(housing).y-.0005f),"within the housing's height"+at);
+                Assert.That(Max(pad).y,Is.LessThanOrEqualTo(Max(housing).y+.0005f),"within the housing's height"+at);
+                float onHousing=Mathf.Min(Max(pad).x,Max(housing).x)-Mathf.Max(Min(pad).x,Min(housing).x);
+                Assert.That(onHousing,Is.GreaterThanOrEqualTo((Max(pad).x-Min(pad).x)*.5f),"with at least half its width on the housing"+at);
+                var targets=new List<(string Name,Vector3 Point)>();
+                foreach(var keycap in frontCaps)
+                {
+                    var bounds=keycap.sharedMesh.bounds;
+                    for(int u=-2;u<=2;u++)for(int v=-2;v<=2;v++)
+                        targets.Add((keycap.name,keycap.transform.TransformPoint(bounds.center+Vector3.Scale(bounds.extents,new Vector3(u*.45f,v*.45f,-1)))));
+                }
+                foreach(var word in frontWords)
+                {
+                    word.ForceMeshUpdate();
+                    var box=word.name=="Instrument progress"?word.textBounds:new Bounds(word.rectTransform.rect.center,word.rectTransform.rect.size);
+                    Assert.That(box.size.x,Is.GreaterThan(.01f),"Precondition: "+word.name+" has glyphs ('"+word.text+"')");
+                    for(int u=-4;u<=4;u++)for(int v=-1;v<=1;v++)
+                        targets.Add((word.name,word.transform.TransformPoint(new Vector3(box.center.x+box.extents.x*u*.25f,box.center.y+box.extents.y*v,0))));
+                }
+                foreach(float sway in new[]{-.08f,0f,.08f})
+                {
+                    Vector3 eye=anchor.TransformPoint(body+new Vector3(sway,shoulder+.25f,.08f));
+                    foreach(var (name,point) in targets)
+                    {
+                        rays++;
+                        Assert.That(SegmentMeetsBox(eye,point,padBox),Is.False,"From the contestant's eye the pad hides "+name+at);
+                    }
+                }
+                var contact=pad.transform.InverseTransformPoint(instrument.HandContact(false));
+                Assert.That(Mathf.Abs(contact.x)<=.5f && Mathf.Abs(contact.z)<=.5f,Is.True,"The press lands over the pad's own top: "+contact+at);
+                Assert.That(contact.y*pad.transform.localScale.y,Is.InRange(pad.transform.localScale.y*.5f,pad.transform.localScale.y*.5f+.02f),
+                    "just above its top"+at);
+            }
+            Debug.Log("[Gamesim W3] Signals pad: "+rays+" contestant sight lines clear of it.");
+            yield return null;
+        }
+
+        /// <summary>
+        /// A Signals console's four direction labels, on both sides, share one font size: the largest
+        /// that fits all four boxes, which is the smallest of the sizes TMP's own auto-size gives each word
+        /// alone in its .18 x .12 box. Alone they come out at four sizes (UP the largest). A console
+        /// reserved under an inactive anchor shares the same size on its first read once it is woken.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator Apparatus_SignalsDirectionsShareTheLargestSizeThatFitsAllFour()
+        {
+            var definition=CompetitionDefinitions.All.First(item=>item.Category=="Skill");
+            float? first=null;
+            foreach(bool reserved in new[]{false,true})
+            {
+                if(owner!=null){Object.Destroy(owner);owner=null;yield return null;}
+                var instrument=Make(definition,inactive:reserved);
+                if(reserved){owner.SetActive(true);instrument.Sync(null,false,false,false,false);}
+                var labels=instrument.GetComponentsInChildren<TMP_Text>(true).Where(label=>label.name.StartsWith("Signal direction ",StringComparison.Ordinal)).ToArray();
+                Assert.That(labels,Has.Length.EqualTo(8),"Four directions, each with its audience copy.");
+                foreach(var label in labels)label.ForceMeshUpdate();
+                float shared=labels[0].fontSize;
+                foreach(var label in labels)
+                {
+                    Assert.That(label.enableAutoSizing,Is.False,label.name+" keeps the console's size rather than sizing itself");
+                    Assert.That(label.fontSize,Is.EqualTo(shared).Within(.0001f),label.name+" has the console's one size (reserved="+reserved+")");
+                }
+                var probeRoot=new GameObject("Signal label size probe");probeRoot.SetActive(false);probeRoot.transform.SetParent(owner.transform,false);
+                var probe=probeRoot.AddComponent<TextMeshPro>();
+                probe.font=labels[0].font;probe.fontSharedMaterial=labels[0].fontSharedMaterial;
+                probe.fontSize=1.2f;probe.enableAutoSizing=true;probe.fontSizeMin=.45f;probe.fontSizeMax=1.2f;
+                probe.textWrappingMode=TextWrappingModes.NoWrap;probe.alignment=TextAlignmentOptions.Center;
+                probeRoot.SetActive(true);
+                var alone=new Dictionary<string,float>();
+                foreach(var label in labels.Where(label=>!label.name.EndsWith(" audience readout",StringComparison.Ordinal)))
+                {
+                    probe.rectTransform.sizeDelta=label.rectTransform.sizeDelta;probe.text=label.text;
+                    probe.ForceMeshUpdate();alone[label.text]=probe.fontSize;
+                }
+                string sizes=string.Join(", ",alone.Select(pair=>pair.Key+" "+pair.Value.ToString("F2")));
+                Assert.That(alone.Values.Max(),Is.GreaterThan(alone.Values.Min()+.01f),"Precondition: alone, TMP sizes the four differently: "+sizes);
+                Assert.That(shared,Is.EqualTo(alone.Values.Min()).Within(.0001f),"The one size is the largest that fits every direction: "+sizes);
+                if(first==null)first=shared;
+                else Assert.That(shared,Is.EqualTo(first.Value).Within(.0001f),"A reserved console shares the same size once woken.");
+                Debug.Log("[Gamesim W3] Signals directions share "+shared.ToString("F2")+" (alone: "+sizes+"; reserved="+reserved+").");
+            }
+            yield return null;
+        }
+
+        private struct OrientedBox { public Vector3 Centre,X,Y,Z; }
+
+        /// <summary>A part's oriented box: its mesh bounds in world space, as three half-axes.</summary>
+        private static OrientedBox MeshBox(MeshFilter part)
+        {
+            var bounds=part.sharedMesh.bounds;var t=part.transform;
+            return new OrientedBox{Centre=t.TransformPoint(bounds.center),X=t.TransformVector(new Vector3(bounds.extents.x,0,0)),
+                Y=t.TransformVector(new Vector3(0,bounds.extents.y,0)),Z=t.TransformVector(new Vector3(0,0,bounds.extents.z))};
+        }
+
+        /// <summary>A label's own box: its rect in its plane, a tenth of a millimetre thick.</summary>
+        private static OrientedBox LabelBox(TMP_Text label)
+        {
+            var rect=label.rectTransform.rect;var t=label.transform;
+            Vector3 x=t.TransformVector(new Vector3(rect.width*.5f,0,0)),y=t.TransformVector(new Vector3(0,rect.height*.5f,0));
+            return new OrientedBox{Centre=t.TransformPoint(rect.center),X=x,Y=y,Z=Vector3.Cross(x,y).normalized*.0001f};
+        }
+
+        private static bool LabelHidden(TMP_Text label)=>!label.enabled || !label.gameObject.activeInHierarchy
+            || !label.GetComponent<Renderer>().enabled || string.IsNullOrWhiteSpace(label.text);
+
+        /// <summary>Whether two oriented boxes share volume: no separating axis among the fifteen. Touching is not meeting.</summary>
+        private static bool BoxesMeet(OrientedBox a,OrientedBox b)
+        {
+            var own=new[]{a.X,a.Y,a.Z};var other=new[]{b.X,b.Y,b.Z};
+            var axes=new List<Vector3>(own.Concat(other));
+            foreach(var u in own)foreach(var v in other)axes.Add(Vector3.Cross(u,v));
+            Vector3 offset=b.Centre-a.Centre;
+            foreach(var axis in axes)
+            {
+                if(axis.sqrMagnitude<1e-14f)continue;
+                var n=axis.normalized;
+                float reachA=Mathf.Abs(Vector3.Dot(a.X,n))+Mathf.Abs(Vector3.Dot(a.Y,n))+Mathf.Abs(Vector3.Dot(a.Z,n));
+                float reachB=Mathf.Abs(Vector3.Dot(b.X,n))+Mathf.Abs(Vector3.Dot(b.Y,n))+Mathf.Abs(Vector3.Dot(b.Z,n));
+                if(Mathf.Abs(Vector3.Dot(offset,n))>=reachA+reachB-.0001f)return false;
+            }
+            return true;
+        }
+
+        /// <summary>Whether the sight line from <paramref name="from"/> to just short of <paramref name="to"/> passes through the box.</summary>
+        private static bool SegmentMeetsBox(Vector3 from,Vector3 to,OrientedBox box)
+        {
+            float enter=0,exit=1-1e-4f;
+            foreach(var axis in new[]{box.X,box.Y,box.Z})
+            {
+                float scale=axis.sqrMagnitude;
+                float start=Vector3.Dot(from-box.Centre,axis)/scale,delta=Vector3.Dot(to-from,axis)/scale;
+                if(Mathf.Abs(delta)<1e-9f){if(Mathf.Abs(start)>1)return false;continue;}
+                float near=(-1-start)/delta,far=(1-start)/delta;
+                if(near>far){float swap=near;near=far;far=swap;}
+                enter=Mathf.Max(enter,near);exit=Mathf.Min(exit,far);
+                if(enter>exit)return false;
+            }
+            return true;
+        }
+
         private static void AssertPressClearsTheDice(CompetitionApparatus instrument,MeshFilter left,MeshFilter right,string at)
         {
             foreach(var (die,isLeft) in new[]{(left,true),(right,false)})

@@ -285,10 +285,18 @@ namespace Gamesim.Tests.EditMode
             word.dialogueRulesVersion = 1; word.schemaVersion = 29;
             Assert.That(DialogueRules.TryValidate(word, out string error), Is.False, "Rules 1 never holds rules 2's tree.");
             Assert.That(error, Is.EqualTo("Unknown dialogue content is not supported by this pilot."));
+            // Rules 0's inert check is the merged one (b208d46d), which the frozen schema-29 reader copies: it names rules 1's
+            // pairs. A rules-0 state that holds a rules-1 cycle is refused...
             var off = Witness(DialogueCampaignWord.Guarded);
             off.dialogueRulesVersion = 0; off.dialogue.episodes.Clear();
-            Assert.That(DialogueRules.TryValidate(off, out error), Is.False, "Rules 0 holds no conversation of any version.");
+            foreach (var cycle in off.storylines.Where(c => c.templateId == Template)) cycle.templateId = DialogueCampaignV1.TemplateId;
+            Assert.That(DialogueRules.TryValidate(off, out error), Is.False, "Rules 0 holds no rules-1 conversation.");
             Assert.That(error, Is.EqualTo("Disabled dialogue storage must remain complete and inert."));
+            // ...and the check is not widened to rules 2's tree: no engine path writes one into a rules-0 season, and a wider
+            // check would refuse at 29 what the frozen reader accepts, so the two would disagree after the bump (D2's review).
+            var inert = Witness(DialogueCampaignWord.Guarded);
+            inert.dialogueRulesVersion = 0; inert.dialogue.episodes.Clear();
+            Assert.That(DialogueRules.TryValidate(inert, out error), Is.True, "Rules 0's check is as merged: " + error);
             var future = Witness(DialogueCampaignWord.Guarded);
             future.dialogueRulesVersion = DialogueRules.Version + 1;
             Assert.That(DialogueRules.TryValidate(future, out error), Is.False);

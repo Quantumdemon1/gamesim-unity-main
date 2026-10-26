@@ -64,24 +64,27 @@ namespace Gamesim.Episode
                 bool forYourself = subject == state.playerId;
                 bool paidCampaign = DialogueRules.On(state) && state.phase == EpisodePhase.Campaign
                     && ask == LobbyAsk.Vote && forYourself;
-                if (paidCampaign)
+                // From dialogue rules 2 a conversation that cannot start never takes the plea away (DIALOGUE-PLAN §5.5): the
+                // Emotional button makes the ordinary one-shot plea at its ordinary cost, the panel says why there is no
+                // talk in CanStart's own words instead of promising one, and the tag stays short.
+                bool withoutTalk = paidCampaign && DialogueRules.KeepsThePleaWhenRefused(state)
+                    && !DialogueRules.TryBuildEntryCommand(state, decider, out _);
+                if (withoutTalk)
+                {
+                    if (DialogueRules.CanStart(state, decider, out string why)) why = null;
+                    hud.Paragraph("No conversation with " + npc.name + " now." + (string.IsNullOrEmpty(why) ? "" : " " + why)
+                        + " A desperate plea is the ordinary one-shot plea, for one action.");
+                }
+                else if (paidCampaign)
                     hud.Paragraph("A desperate plea starts a conversation for one action. Its replies and final plea cost no further actions; you can walk away and return.");
                 foreach (string approach in LobbyApproach.All)
                 {
                     string how = approach;
                     string tag = KnownOdds.Plea(state, decider, ask, subject, how).word
                         + (how == LobbyApproach.Deal ? " · binds you next week" : how == LobbyApproach.Pressure ? " · can backfire" : "");
-                    bool entry = paidCampaign && how == LobbyApproach.Emotional;
+                    bool entry = paidCampaign && how == LobbyApproach.Emotional && !withoutTalk;
                     bool available = !entry || DialogueRules.TryBuildEntryCommand(state, decider, out _);
-                    // From dialogue rules 2 a conversation that cannot start never takes the plea away (DIALOGUE-PLAN §5.5):
-                    // the button makes the ordinary one-shot plea at its ordinary cost, and its tag says why there is no talk.
-                    string withoutTalk = null;
-                    if (entry && !available && DialogueRules.KeepsThePleaWhenRefused(state))
-                    {
-                        if (DialogueRules.CanStart(state, decider, out withoutTalk)) withoutTalk = null;
-                        entry = false; available = true;
-                        tag += " · " + (string.IsNullOrEmpty(withoutTalk) ? "no conversation now" : withoutTalk.TrimEnd('.'));
-                    }
+                    if (withoutTalk && how == LobbyApproach.Emotional) tag += " · no conversation now";
                     string caption = EpisodeHud.LobbyApproachCaption(how, forYourself);
                     var button = available ? hud.Action(caption, () =>
                     {

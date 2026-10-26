@@ -65,7 +65,9 @@ namespace Gamesim.Tests.EditMode
         {
             var s = carried.Clone();
             s.dialogueRulesVersion = DialogueRules.Rules2;
-            s.schemaVersion = R2.Start(1).schemaVersion; // The live schema: what the bump's upgrade writes, with no dialogue field.
+            // The live schema: what the bump's upgrade writes, with no dialogue field. At the bump this carrier loads through
+            // the real migration instead of this assignment (DIALOGUE-PLAN §6 item 7), so it holds what a real load writes.
+            s.schemaVersion = R2.Start(1).schemaVersion;
             Assert.That(EpisodeValidation.TryValidate(s, out string error), Is.True, error);
             return s;
         }

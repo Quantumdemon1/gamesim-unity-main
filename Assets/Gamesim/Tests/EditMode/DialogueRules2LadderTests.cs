@@ -49,22 +49,27 @@ namespace Gamesim.Tests.EditMode
         }
 
         /// <summary>
-        /// At schema 29 a season on rules 2 or 3 is refused by validation in the words it always used, which are the frozen
-        /// schema-29 reader's; the rules' own validator says why. A schema-29 pin, which the pooled bump re-reads.
+        /// At schema 29 a season on rules 2 or 3 is refused. The rules' own validator says why, at any live schema: it reads
+        /// the season's schema, never the build's. Whole-state validation refuses it in the words it always used, which are
+        /// the frozen schema-29 reader's; that half reads the live schema, so it is asserted only while new seasons are
+        /// written at 29. From the pooled bump the live validator refuses schema 29 itself, and that wording pin moves to the
+        /// frozen reader's tests (DIALOGUE-PLAN §6 item 7), so this case stays green across the bump.
         /// </summary>
         [TestCase(2)] [TestCase(3)]
         public void AtSchema29ALaterVersionIsRefusedInTheFrozenReadersWords(int version)
         {
             var s = SeasonBuilder.Create(new SeasonBuilder.Choice { HouseSize = 8 }, 3);
             ShippedRules.ApplyFresh(s);
-            s.schemaVersion = 29;
+            bool writtenAt29 = s.schemaVersion == 29;
+            s.schemaVersion = DialogueRules.Rules2Schema - 1;
             s.dialogueRulesVersion = version;
             Assert.That(DialogueRules.On(s), Is.False);
-            Assert.That(EpisodeValidation.TryValidate(s, out string error), Is.False);
-            Assert.That(error, Is.EqualTo("Dialogue rules are not enabled in this build."));
-            Assert.That(DialogueRules.TryValidate(s, out error), Is.False);
+            Assert.That(DialogueRules.TryValidate(s, out string error), Is.False);
             Assert.That(error, Is.EqualTo(version == 2 ? "Dialogue rules version 2 needs schema 30 or later." : "Unsupported dialogue rules version."));
             Assert.That(DialogueRules.KeepsThePleaWhenRefused(s), Is.False);
+            if (!writtenAt29) return;
+            Assert.That(EpisodeValidation.TryValidate(s, out error), Is.False);
+            Assert.That(error, Is.EqualTo("Dialogue rules are not enabled in this build."));
         }
 
         [Test]
@@ -202,9 +207,39 @@ namespace Gamesim.Tests.EditMode
             Assert.That(DialogueCampaignWord.Reactions.Select(DialogueCampaignWord.Delta), Is.EqualTo(new[] { 3, 0, -3 }));
             foreach (string exit in new[] { DialogueCampaignWord.Leave, DialogueCampaignWord.Plea, DialogueCampaignWord.KeepOpen, DialogueCampaignWord.OpenCase })
                 Assert.That(DialogueCampaignWord.TryOdds(exit, out _, out _), Is.False, exit + " draws nothing.");
-            // Open, one reply, one finish: three nodes, at most three consequential choices (the reply, the finish and the
-            // open's own entry), within rules 2's five steps.
-            Assert.That(3, Is.LessThanOrEqualTo(DialogueRules.StepsFor(DialogueRules.Rules2)));
+            // Every path the tree can take, walked: the open's case leads to any reply its answer and the facts held can draw,
+            // a reply to any finish its reaction can draw, and an "end:" closes the path. A consequential choice is one that
+            // leads anywhere but a neutral ending: the paid entry, a reply that draws a reaction, the plea.
+            int steps = DialogueRules.StepsFor(DialogueRules.Rules2), longest = 0, mostChoices = 0, paths = 0;
+            var reached = new HashSet<string>(StringComparer.Ordinal);
+            IEnumerable<string> Targets(string next) =>
+                next == DialogueCampaignWord.ByAnswer ? DialogueCampaignWord.ReplyBeats()
+                : next == DialogueCampaignWord.ByReaction ? DialogueCampaignWord.Reactions.Select(DialogueCampaignWord.FinishBeat)
+                : new[] { next };
+            void Walk(string id, int depth, int choices)
+            {
+                var beat = tree.Beat(id);
+                Assert.That(beat, Is.Not.Null, "Every edge leads to a node of the tree: " + id + ".");
+                Assert.That(depth, Is.LessThanOrEqualTo(steps), "Every path within rules 2's five steps, so none loops: " + id + ".");
+                reached.Add(id);
+                foreach (var option in beat.options)
+                {
+                    int made = choices + (option.next == "end:neutral" ? 0 : 1);
+                    Assert.That(made, Is.LessThanOrEqualTo(3), "At most three consequential choices on a path: " + id + "/" + option.id + ".");
+                    if (option.next.StartsWith("end:", StringComparison.Ordinal))
+                    {
+                        paths++; longest = Math.Max(longest, depth); mostChoices = Math.Max(mostChoices, made);
+                        continue;
+                    }
+                    foreach (string target in Targets(option.next)) Walk(target, depth + 1, made);
+                }
+            }
+            Walk(DialogueCampaignWord.Open, 1, 0);
+            Assert.That(reached, Is.EquivalentTo(tree.beats.Select(b => b.id)), "Every node is on some path.");
+            TestContext.Out.WriteLine("Vote-word tree: " + paths + " paths, the longest " + longest + " nodes, at most "
+                + mostChoices + " consequential choices.");
+            Assert.That(longest, Is.EqualTo(3), "Content version 1: the open, a reply, a finish.");
+            Assert.That(mostChoices, Is.EqualTo(3), "The entry, the reply and the plea.");
         }
 
         /// <summary>

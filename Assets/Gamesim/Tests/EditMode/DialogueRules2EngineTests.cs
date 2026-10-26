@@ -126,8 +126,22 @@ namespace Gamesim.Tests.EditMode
                         string mine = entered.playerId + ">" + voter, theirs = voter + ">" + entered.playerId;
                         Assert.That(moved, Is.SubsetOf(new[] { mine, theirs }), "Only the player and this voter: never a pair of NPCs.");
                         if (reaction == DialogueCampaignWord.Unmoved) Assert.That(moved, Is.Empty, "An unmoved voter moves nothing.");
-                        else Assert.That(Math.Sign(scores[mine] - before[mine]), Is.EqualTo(Math.Sign(DialogueCampaignWord.Delta(reaction))),
-                            option.optionId + " " + reaction + ": the player's act moves their view of the voter by the reaction's sign.");
+                        else
+                        {
+                            // The ±3 is the player's act toward the voter, through the engine's reducer (§5.4): the player's
+                            // view of the voter moves by it, adjusted as any player act's is, and how the voter feels about
+                            // the player (§5.3's view) by its reciprocal, 0.8 to 1.2 times it, drawn on the conversation's key.
+                            int delta = DialogueCampaignWord.Delta(reaction);
+                            double was0 = before.TryGetValue(mine, out double m) ? m : 0, their0 = before.TryGetValue(theirs, out double t) ? t : 0;
+                            double roll = StoryRandom.Unit(entered, DialogueRules.Key(after.occasionId, 1) + ":change#0");
+                            Assert.That(scores[mine], Is.EqualTo(WebRules.ClampScore(was0
+                                + WebRules.RelationshipDelta(delta, entered.Find(entered.playerId).stats.social, true))),
+                                option.optionId + " " + reaction + ": the player's view of the voter.");
+                            Assert.That(scores[theirs], Is.EqualTo(WebRules.ClampScore(their0 + WebRules.ReciprocalDelta(delta, roll))),
+                                option.optionId + " " + reaction + ": the voter's view of the player, on the keyed reciprocal draw.");
+                            Assert.That(Math.Sign(scores[theirs] - their0), Is.EqualTo(Math.Sign(delta)), "The voter's view moves by the reaction's sign.");
+                            Assert.That(Math.Sign(scores[mine] - was0), Is.EqualTo(Math.Sign(delta)));
+                        }
                         string cited = DialogueCampaignWord.EvidenceOf(option.optionId);
                         Assert.That(after.evidence.Select(e => e.kind), Is.EqualTo(cited == null ? new string[0] : new[] { cited }));
                     }

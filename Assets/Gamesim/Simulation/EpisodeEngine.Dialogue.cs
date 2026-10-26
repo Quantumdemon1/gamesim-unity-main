@@ -246,7 +246,7 @@ namespace Gamesim.Simulation
                 string next = nextBeat ?? option.next;
                 if (!lapsed && !next.StartsWith("end:", StringComparison.Ordinal))
                 { AddEvent(state, cycle, next, episode.contentVersion); return; }
-                string ending = lapsed ? "lapsed" : option.next.Substring(4);
+                string ending = lapsed ? "lapsed" : next.Substring(4);
                 cycle.status = StorylineStatus.Completed; cycle.endedWeek = state.week; cycle.endingId = ending;
                 cycle.nextAnchor = null; cycle.nextWeek = 0;
                 var time = new DialogueTimeReceiptState { revision = revision, sequence = logSequence,

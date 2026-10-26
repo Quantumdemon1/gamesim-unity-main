@@ -120,8 +120,8 @@ namespace Gamesim.Simulation
             {
                 if (s.dialogue.episodes.Count != 0 || s.dialogue.grants.Count != 0 || s.dialogue.vetoOccasions.Count != 0
                     || s.unifiedCommitments?.Any(r => r?.conditionalVeto != null) == true
-                    || s.storylines?.Any(c => c != null && IsDialogueTemplate(c.templateId)) == true
-                    || s.houseEvents?.Any(e => IsCampaignContent(e?.contentId) || IsRules2Content(e?.contentId)) == true)
+                    || s.storylines?.Any(c => c != null && IsCampaignTemplate(c.templateId)) == true
+                    || s.houseEvents?.Any(e => IsCampaignContent(e?.contentId)) == true)
                     return Fail(out error, "Disabled dialogue storage must remain complete and inert.");
                 return true;
             }

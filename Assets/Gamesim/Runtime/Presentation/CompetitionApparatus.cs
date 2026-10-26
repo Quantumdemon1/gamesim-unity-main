@@ -75,7 +75,9 @@ namespace Gamesim.Presentation
         private const float DieFaceOffset = .09f;
         /// <summary>
         /// The Signals response pad stands beside the direction cross, this far past RIGHT's keycap,
-        /// so from the contestant's eye it covers no target and no label at any fitted height.
+        /// so from the contestant's eye it covers no target and no label at any fitted height. Its
+        /// inner part sinks into the recessed display's panel and its outer 2.5 cm overhang the
+        /// housing's edge (<see cref="BuildSignals"/>).
         /// </summary>
         private const float PadGap = .01f;
         /// <summary>
@@ -219,7 +221,10 @@ namespace Gamesim.Presentation
             }
             // The pad stands out of the cross, beside RIGHT (PadGap past its keycap), with its back on
             // the housing's front face, so it is fixed to the console rather than hanging in front of
-            // RIGHT. FitPress keeps it at the hand's height between DOWN's top and the award header.
+            // RIGHT. Across its 14 cm: the inner 7 cm sink 2.15 cm into the recessed display's 2.5 cm
+            // panel (which stands proud of the housing there, its back still on the housing's face), the
+            // next 4.5 cm lie on the housing's face, and the outer 2.5 cm overhang the housing's right
+            // edge. FitPress keeps it at the hand's height between DOWN's top and the award header.
             Vector3 pad = new Vector3(.14f, .065f, .15f);
             float right = places[1].x + target.x * .5f;
             float housingFront = Front + .04f - .14f * .5f;

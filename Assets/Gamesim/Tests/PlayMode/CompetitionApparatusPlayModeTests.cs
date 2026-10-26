@@ -737,7 +737,10 @@ namespace Gamesim.Tests.PlayMode
         /// hand height (shoulders .80-1.90 m, short to long arms, two body offsets and radii): its box
         /// meets no keycap of either side, no direction label of either side and neither progress
         /// readout; its back lies on the housing's front face, inside the housing's height, with at least
-        /// half its width on the housing; from the contestant's eye (head over the shoulders, swaying
+        /// half its width on the housing and no more than 2.5 cm past the housing's right edge; where it
+        /// meets the recessed display (which stands proud of the housing, so its inner 7 cm sink 2.15 cm
+        /// into the panel) it enters through the display's face, its front stands out of the panel and it
+        /// sinks no deeper than the panel's own depth; from the contestant's eye (head over the shoulders, swaying
         /// 8 cm) no point of a contestant-side keycap face, a direction label or the progress glyphs is
         /// behind it; and the press lands on its top. It had floated 1.5 cm in front of RIGHT, 6.5 cm off
         /// the housing, hiding 'RIG' of RIGHT's label from the contestant.
@@ -751,7 +754,7 @@ namespace Gamesim.Tests.PlayMode
             var parts=instrument.GetComponentsInChildren<MeshFilter>(true);
             var labels=instrument.GetComponentsInChildren<TMP_Text>(true);
             MeshFilter Part(string name)=>parts.Single(part=>part.name==name);
-            var pad=Part("Response pad");var housing=Part("Console housing");
+            var pad=Part("Response pad");var housing=Part("Console housing");var display=Part("Recessed display");
             var keycaps=parts.Where(part=>part.name.StartsWith("Signal target ",StringComparison.Ordinal)).ToArray();
             var words=labels.Where(label=>label.name.StartsWith("Signal direction ",StringComparison.Ordinal)
                 || label.name.StartsWith("Instrument progress",StringComparison.Ordinal)).ToArray();
@@ -763,7 +766,7 @@ namespace Gamesim.Tests.PlayMode
             run.Tick(3);
             Vector3 Min(MeshFilter part)=>part.transform.localPosition+Vector3.Scale(part.transform.localScale,part.sharedMesh.bounds.min);
             Vector3 Max(MeshFilter part)=>part.transform.localPosition+Vector3.Scale(part.transform.localScale,part.sharedMesh.bounds.max);
-            var anchor=owner.transform;int rays=0;
+            var anchor=owner.transform;int rays=0,fits=0,inDisplay=0;float deepest=0,overhang=float.MinValue;
             foreach(float radius in new[]{.32f,.40f})
             foreach(var body in new[]{new Vector3(.13f,0,-.23f),new Vector3(-.16f,0,.19f)})
             foreach(float shoulder in new[]{.80f,.95f,1.10f,1.25f,1.34f,1.53f,1.74f,1.90f})
@@ -782,6 +785,19 @@ namespace Gamesim.Tests.PlayMode
                 Assert.That(Max(pad).y,Is.LessThanOrEqualTo(Max(housing).y+.0005f),"within the housing's height"+at);
                 float onHousing=Mathf.Min(Max(pad).x,Max(housing).x)-Mathf.Max(Min(pad).x,Min(housing).x);
                 Assert.That(onHousing,Is.GreaterThanOrEqualTo((Max(pad).x-Min(pad).x)*.5f),"with at least half its width on the housing"+at);
+                overhang=Mathf.Max(overhang,Max(pad).x-Max(housing).x);
+                Assert.That(Max(pad).x-Max(housing).x,Is.LessThanOrEqualTo(.0255f),"and no more than 2.5 cm past the housing's right edge"+at);
+                // The recessed display stands proud of the housing's face (its back .35 cm into the housing),
+                // so the pad's inner part sinks into its panel: through the face, never behind the panel.
+                Assert.That(display.transform.localRotation,Is.EqualTo(Quaternion.identity));
+                fits++;
+                if(BoxesMeet(padBox,MeshBox(display)))
+                {
+                    float sunk=Max(pad).z-Min(display).z;
+                    Assert.That(Min(pad).z,Is.LessThan(Min(display).z),"The pad meets the recessed display through its face, its front out of the panel"+at);
+                    Assert.That(sunk,Is.LessThanOrEqualTo(Max(display).z-Min(display).z+.0005f),"The pad sinks into the recessed display no deeper than its panel"+at);
+                    deepest=Mathf.Max(deepest,sunk);inDisplay++;
+                }
                 var targets=new List<(string Name,Vector3 Point)>();
                 foreach(var keycap in frontCaps)
                 {
@@ -811,7 +827,9 @@ namespace Gamesim.Tests.PlayMode
                 Assert.That(contact.y*pad.transform.localScale.y,Is.InRange(pad.transform.localScale.y*.5f,pad.transform.localScale.y*.5f+.02f),
                     "just above its top"+at);
             }
-            Debug.Log("[Gamesim W3] Signals pad: "+rays+" contestant sight lines clear of it.");
+            Debug.Log("[Gamesim W3] Signals pad: "+rays+" contestant sight lines clear of it; it meets the recessed display at "+inDisplay+" of "+fits
+                +" fits, sunk at most "+deepest.ToString("F4")+" m into its "+(Max(display).z-Min(display).z).ToString("F4")+" m panel; it overhangs the housing's right edge by at most "
+                +overhang.ToString("F4")+" m.");
             yield return null;
         }
 

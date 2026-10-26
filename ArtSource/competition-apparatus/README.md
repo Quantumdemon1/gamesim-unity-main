@@ -61,6 +61,14 @@ FBX hashes. Blender writes the export time into each FBX, and it keys object ids
 on Python's per-process string hash. So two runs differ in bytes while matching
 node for node. Compare a rerun's geometry with the parts, not its hashes.
 
+**A stale assembly placement.** The generator's Signals assembly (`placements`,
+written to `Assemblies/bb_comp_Signals.glb` and its preview) still puts the
+response pad at (0, 1.16, .39), in front of RIGHT, where the runtime had it
+until the props batch's second review. The runtime now stands it beside the
+cross, at (.43, 1.22, .455), with `FitPress` moving only its height. Nothing in
+Unity reads the assemblies, and the receipt's `sourceSha256` pins the generator
+byte for byte, so the placement changes at the next rebuild, with a new receipt.
+
 `CompetitionApparatusMeshKitPlayModeTests` covers the borrowed geometry, and its
 installed-kit case fails every suite when the shipped kit is missing or any part
 of any family falls back to the box. The null-kit path is only for isolated

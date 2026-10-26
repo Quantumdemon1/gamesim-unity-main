@@ -252,12 +252,18 @@ namespace Gamesim.Tests.EditMode
         /// <summary>
         /// A season opted in reaches the conversation it was opted in for: the first nominated campaign a plain walk
         /// meets in the first week opens one through the public entry command the HUD builds, paid with one action.
-        /// No rule, nominee, counter or roll is assigned by hand: the season is the chip's own.
+        /// The witness enrols rules 1 by its literal (DIALOGUE-PLAN §2); the chip's season for the witness's seed is
+        /// that start, field for field, so the walk it takes is the chip season's own. No nominee, counter or roll is
+        /// assigned by hand.
         /// </summary>
         [Test]
         public void ASeasonStartedWithThePreviewOpensACampaignConversationThroughThePublicEntry()
         {
             var witness = DialoguePreviewWitness.Find();
+            var chip = SeasonBuilder.Create(new SeasonBuilder.Choice { HouseSize = 8 }, witness.Seed);
+            ShippedRules.ApplyFresh(chip, new SeasonBuilder.Choice { HouseSize = 8, CampaignConversations = true });
+            Assert.That(Json(chip), Is.EqualTo(Json(DialoguePreviewWitness.Start(witness.Seed))),
+                "seed " + witness.Seed + ": the chip's season is the witness's start.");
             var before = witness.Campaign;
             var opened = witness.Conversation;
             Assert.That(before.dialogueRulesVersion, Is.EqualTo(1), "The season is the chip's own, on dialogue rules 1.");

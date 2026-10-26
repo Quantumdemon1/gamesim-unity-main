@@ -1338,12 +1338,16 @@ namespace Gamesim.Presentation
         /// <summary>The line beside the chip, which says the state in words.</summary>
         public const string ConversationPreviewLineName = "Conversation preview line";
         /// <summary>
-        /// What the preview is, said plainly: the pilot adds no new consequence. It turns the nominee's
-        /// desperate plea into a short conversation that costs the same action and makes the same roll
-        /// (DIALOGUE-PLAN §0), and the season keeps it once started.
+        /// What the preview changes, and only what is true of it (DIALOGUE-PLAN D1 and §5.5). The nominee's
+        /// desperate plea becomes a short conversation, opened for the plea's one action. The line claims no
+        /// odds: citing the voter's public rescue makes the final plea the strategic plea's roll, not the
+        /// desperate one's. And the conversation waits: while any house moment asks for an answer it cannot
+        /// start (DialogueRules.CanStart), where a season without the preview pleads at once. The season keeps
+        /// the choice once started. In Inter at thirteen the On line sets in two lines of the wide line's 364
+        /// (still two at 340, so a word wrapped early costs no third), and in one line of the narrow footer.
         /// </summary>
         public const string ConversationPreviewOffLine = "Off. A desperate plea is one click, as in every season.";
-        public const string ConversationPreviewOnLine = "On for this season: a desperate plea becomes a short talk, same cost and odds.";
+        public const string ConversationPreviewOnLine = "On for this season: a desperate plea becomes a short talk, and waits while a house moment is open.";
         /// <summary>The wide footer's last row: the footnote, the chip and its line.</summary>
         private const float ConversationPreviewRowHeight = 40f;
 

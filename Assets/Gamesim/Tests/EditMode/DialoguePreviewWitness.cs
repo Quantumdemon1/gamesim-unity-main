@@ -5,11 +5,16 @@ using NUnit.Framework;
 namespace Gamesim.Tests.EditMode
 {
     /// <summary>
-    /// A genuine season on the cast screen's conversation preview (DIALOGUE-PLAN D1), for the tests of what reads
-    /// one: built as the director builds a season the chip opted in (<see cref="ShippedRules.ApplyFresh(EpisodeState,
-    /// SeasonBuilder.Choice)"/>), walked by the plain public walk to the first nominated first-week campaign, the
-    /// house's open asks answered with their own neutral exits, and the conversation opened through the public entry
-    /// command the HUD builds. Nothing is assigned by hand: no rule, nominee, counter, roll or store row.
+    /// A genuine season on dialogue rules 1 (DIALOGUE-PLAN D1), for the tests of what reads one: the shipped season
+    /// enrolled by the literal 1, as the pilot's own fixtures enrol it (<see cref="Start"/>), walked by the plain public
+    /// walk to the first nominated first-week campaign, the house's open asks answered with their own neutral exits,
+    /// and the conversation opened through the public entry command the HUD builds. Past the enrolment nothing is
+    /// assigned by hand: no nominee, counter, roll or store row.
+    ///
+    /// <para>Rules 1 by its literal, never by the chip: tests that mean rules 1 never read
+    /// <see cref="DialogueRules.Offered"/> (DIALOGUE-PLAN §2), which moves when a later stack brings the chip a new
+    /// version, and would then hand these schema-29, rules-1 tests a season on another version. That the chip's
+    /// season is this start, field for field, is the chip's own tests' to say (ShippedRulesTests).</para>
     /// </summary>
     internal static class DialoguePreviewWitness
     {
@@ -32,13 +37,20 @@ namespace Gamesim.Tests.EditMode
             return new Witness { Seed = found.Seed, Voter = found.Voter, Campaign = found.Campaign.Clone(), Conversation = found.Conversation.Clone() };
         }
 
+        /// <summary>The witness's house of eight for a seed, before its first command: the shipped season, then dialogue rules 1 by its literal.</summary>
+        internal static EpisodeState Start(uint seed)
+        {
+            var fresh = SeasonBuilder.Create(new SeasonBuilder.Choice { HouseSize = 8 }, seed);
+            ShippedRules.ApplyFresh(fresh);
+            fresh.dialogueRulesVersion = 1;
+            return fresh;
+        }
+
         private static Witness Search()
         {
             for (uint seed = 1; seed <= 24; seed++)
             {
-                var fresh = SeasonBuilder.Create(new SeasonBuilder.Choice { HouseSize = 8 }, seed);
-                ShippedRules.ApplyFresh(fresh, new SeasonBuilder.Choice { HouseSize = 8, CampaignConversations = true });
-                var engine = new EpisodeEngine(fresh);
+                var engine = new EpisodeEngine(Start(seed));
                 for (int step = 0; step < 96; step++)
                 {
                     var s = engine.Snapshot;
@@ -63,7 +75,7 @@ namespace Gamesim.Tests.EditMode
                     Assert.That(applied.accepted, Is.True, next.kind + ": " + applied.reason);
                 }
             }
-            Assert.Fail("No preview season of 24 met a nominated first-week campaign with a voter the conversation can start with.");
+            Assert.Fail("No rules-1 season of 24 met a nominated first-week campaign with a voter the conversation can start with.");
             return null;
         }
 

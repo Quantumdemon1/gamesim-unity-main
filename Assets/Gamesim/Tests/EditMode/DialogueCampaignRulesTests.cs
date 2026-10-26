@@ -158,6 +158,32 @@ namespace Gamesim.Tests.EditMode
         [TestCase(LobbyResponse.Skeptical)] [TestCase(LobbyResponse.Hostile)]
         public void HandbuiltAnsweredWitnessBindsTheRetainedActualResponseKey(string response) => Accept(Witness("answered", response));
 
+        /// <summary>
+        /// The store's schema is a lower bound, never the live schema (DIALOGUE-PLAN §6, item 1): schema 29 introduced
+        /// the store and a later schema carries it as it is, so the next bump can neither switch a rules-1 season off
+        /// nor refuse it as an unsupported schema. Below 29 there is no store: off, and refused as exactly that.
+        /// </summary>
+        [TestCase(28)] [TestCase(29)] [TestCase(30)] [TestCase(31)]
+        public void TheDialogueSchemaIsALowerBoundFromTwentyNine(int schema)
+        {
+            const string unsupported = "Unsupported dialogue schema.";
+            var s = Empty(); Accept(s);
+            s.schemaVersion = schema;
+            string before = Json(s);
+            bool valid = DialogueRules.TryValidate(s, out string error);
+            Assert.That(Json(s), Is.EqualTo(before));
+            if (schema < 29)
+            {
+                Assert.That(DialogueRules.On(s), Is.False, "No store below 29, so no pilot.");
+                Assert.That(valid, Is.False);
+                Assert.That(error, Is.EqualTo(unsupported));
+                return;
+            }
+            Assert.That(DialogueRules.On(s), Is.True, "schema " + schema + ": a rules-1 season stays on.");
+            Assert.That(error, Is.Not.EqualTo(unsupported), "schema " + schema + " carries the store.");
+            if (schema == 29) Assert.That(valid, Is.True, error);
+        }
+
         [Test]
         public void EmptyRuleShelfAndOffDefaultsAreDistinctFromFreshEnrollment()
         {

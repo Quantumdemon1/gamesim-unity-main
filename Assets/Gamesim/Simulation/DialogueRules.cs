@@ -80,6 +80,29 @@ namespace Gamesim.Simulation
             return true;
         }
 
+        /// <summary>
+        /// Whether the desperate plea for the player's own vote - the Emotional "Ask for their vote" in the Campaign,
+        /// which a dialogue season makes the campaign conversation's entry - is the ordinary one-shot plea this time,
+        /// because the conversation cannot start (DIALOGUE-PLAN §5.5: a refusal never takes a plea away). The owner's
+        /// decision of 2026-10-25, "Never lose the plea": in every dialogue season, rules 1 as every later version, the
+        /// press starts the conversation when <see cref="TryBuildEntryCommand"/> can build it, and otherwise - an
+        /// unanswered house moment, another conversation still open, this occasion used, a full path, whatever
+        /// <see cref="CanStart"/> refuses - it is the plea a season without dialogue makes: the same Lobby command, so
+        /// the same action, the same roll and everything after it. Dialogue switched on never makes a week worse than
+        /// switched off, and the conversation is not spent by that: it is offered again whenever CanStart accepts.
+        /// <para>True only in a dialogue season, in the Campaign, when the entry cannot be built; <paramref name="reason"/>
+        /// is then CanStart's refusal, in its own words, or null if CanStart accepts and whole-state validation still
+        /// refuses the entry. Whether the plea itself is open is not this method's to say: that is StrategyRules.CanLobby
+        /// and the week's actions, as in every season. It reads the state only, and draws and writes nothing.</para>
+        /// </summary>
+        public static bool PleaWithoutConversation(EpisodeState s, string npcId, out string reason)
+        {
+            reason = null;
+            if (!On(s) || s.phase != EpisodePhase.Campaign || TryBuildEntryCommand(s, npcId, out _)) return false;
+            if (CanStart(s, npcId, out reason)) reason = null;
+            return true;
+        }
+
         public static bool TryBuildChoiceCommand(EpisodeState s, string eventId, string optionId, out EpisodeCommand command)
         {
             command = null;

@@ -144,11 +144,17 @@ namespace Gamesim.Tests.PlayMode
         /// The chip and its line fit the footer at the three text sizes, on 16:9, 4:3 and 21:9, in both states: inside
         /// the footer's fixed height, clear of the house size, the start and cancel and the footnote; the chip tall
         /// enough to press; every label of the chip and the line set at thirteen or more, in a box 1.3 times its type,
-        /// drawing every glyph (a TMP box under Inter's 1.21 line draws nothing while its text reads right).
+        /// drawing every glyph (a TMP box under Inter's 1.21 line draws nothing while its text reads right); the line in
+        /// two lines at most in the wide footer's box of 40, and in one in the narrow footer's.
         /// </summary>
         [UnityTest]
         public IEnumerator CastSelect_TheConversationPreviewFitsTheFooterAtEveryTextSize([Values(1f, 1.2f, 1.4f)] float text)
         {
+            // The words this fit is measured for (owner, 2026-10-25: never lose the plea). The On line said the plea waits while
+            // a house moment is open; the desperate plea is now the one-click plea then, so the line says that instead.
+            Assert.That(CastSelect.ConversationPreviewOnLine,
+                Is.EqualTo("On for this season: a desperate plea becomes a short talk when the house is free, and one click when not."));
+            Assert.That(CastSelect.ConversationPreviewOffLine, Is.EqualTo("Off. A desperate plea is one click, as in every season."));
             yield return OpenCastScreen();
             var screen = CastScreen();
             var emma = CastTemplates.Find("emma-brown");
@@ -226,6 +232,10 @@ namespace Gamesim.Tests.PlayMode
                 Assert.That(drawn, Is.EqualTo(glyphs), said + " draws " + drawn + " of its " + glyphs + " glyphs.");
             }
             Assert.That(chip.GetComponentInChildren<TMP_Text>().textInfo.lineCount, Is.EqualTo(1), shape + ": the chip's caption stays on one line.");
+            // The wide footer gives the line a box of 40 beside the chip, two lines of thirteen; the narrow footer one line of 20.
+            bool wideLine = line.rectTransform.rect.height > 30f;
+            Assert.That(line.textInfo.lineCount, Is.LessThanOrEqualTo(wideLine ? 2 : 1),
+                shape + ": the line sets in " + line.textInfo.lineCount + " lines in its box " + line.rectTransform.rect.size.ToString("0") + ".");
         }
     }
 }

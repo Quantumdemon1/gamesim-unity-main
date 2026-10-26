@@ -1341,13 +1341,16 @@ namespace Gamesim.Presentation
         /// What the preview changes, and only what is true of it (DIALOGUE-PLAN D1 and §5.5). The nominee's
         /// desperate plea becomes a short conversation, opened for the plea's one action. The line claims no
         /// odds: citing the voter's public rescue makes the final plea the strategic plea's roll, not the
-        /// desperate one's. And the conversation waits: while any house moment asks for an answer it cannot
-        /// start (DialogueRules.CanStart), where a season without the preview pleads at once. The season keeps
-        /// the choice once started. In Inter at thirteen the On line sets in two lines of the wide line's 364
-        /// (still two at 340, so a word wrapped early costs no third), and in one line of the narrow footer.
+        /// desperate one's. And the plea is never lost (owner, 2026-10-25: "Never lose the plea"): while the
+        /// conversation cannot start - a house moment waiting on an answer, another talk still open
+        /// (DialogueRules.CanStart) - the desperate plea is the one-click plea a season without the preview
+        /// makes (DialogueRules.PleaWithoutConversation), and the talk is offered again once the house is free.
+        /// The season keeps the choice once started. In Inter at thirteen the On line sets in two lines of the
+        /// wide line's 364 (still two at 340, so a word wrapped early costs no third), and in one line of the
+        /// narrow footer: 651 wide.
         /// </summary>
         public const string ConversationPreviewOffLine = "Off. A desperate plea is one click, as in every season.";
-        public const string ConversationPreviewOnLine = "On for this season: a desperate plea becomes a short talk, and waits while a house moment is open.";
+        public const string ConversationPreviewOnLine = "On for this season: a desperate plea becomes a short talk when the house is free, and one click when not.";
         /// <summary>The wide footer's last row: the footnote, the chip and its line.</summary>
         private const float ConversationPreviewRowHeight = 40f;
 

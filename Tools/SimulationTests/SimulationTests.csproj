@@ -47,6 +47,7 @@
     <Compile Include="$(EditMode)DialogueCampaignFreeOfferTests.cs" />
     <Compile Include="$(EditMode)DialogueCampaignEmotionalResponseTests.cs" />
     <Compile Include="$(EditMode)DialogueCampaignCapacityTests.cs" />
+    <Compile Include="$(EditMode)DialogueCampaignPleaFallbackTests.cs" />
     <!-- NpcInvitation.cs is included by the whole Simulation glob above. -->
     <Compile Include="$(EditMode)NpcInvitationTests.cs" />
 

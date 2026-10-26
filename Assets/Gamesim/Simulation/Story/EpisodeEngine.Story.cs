@@ -546,7 +546,7 @@ namespace Gamesim.Simulation
         /// </summary>
         public static bool StartStory(EpisodeState s, string arcId, string anchor)
         {
-            if (DialogueRules.IsCampaignTemplate(arcId)) return false;
+            if (DialogueRules.IsDialogueTemplate(arcId)) return false;
             var template = StoryCatalog.Find(arcId);
             if (template == null || !StoryAt(s, template.rulesVersion)) return false;
             var binding = Castable(s, new StoryContext(s, anchor), template);
@@ -562,7 +562,7 @@ namespace Gamesim.Simulation
         internal static StorylineState StartCycle(EpisodeState s, ArcTemplate template, ArcBinding binding, string anchor,
             string openerId = null, PendingDialogueCommand pending = null)
         {
-            if (DialogueRules.IsCampaignTemplate(template.id)) return null;
+            if (DialogueRules.IsDialogueTemplate(template.id)) return null;
             if (DialogueRules.On(s) && s.storylines.Count >= DialogueRules.MaximumEpisodes) return null;
             // Under the role moments an arc the rules start - the backdoor, the pawn conversation, production's ladder - never
             // takes the season past the storylines validation holds it to (§4.1): it does not start.
@@ -796,7 +796,7 @@ namespace Gamesim.Simulation
                 "Evicted players can follow the season but cannot influence it.");
             var item = s.houseEvents.FirstOrDefault(e => e.id == c.targetId && e.IsStory && !e.resolved);
             Require(item != null, "That moment has already passed.");
-            Require(!DialogueRules.IsCampaignTemplate(s.storylines.FirstOrDefault(x => x.id == item.cycleId)?.templateId),
+            Require(!DialogueRules.IsDialogueTemplate(s.storylines.FirstOrDefault(x => x.id == item.cycleId)?.templateId),
                 "Use the paid dialogue command to answer this conversation.");
             int index = item.choices.FindIndex(x => x.optionId == c.secondTargetId);
             Require(index >= 0, "Choose one of this moment's options.");

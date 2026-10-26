@@ -5,15 +5,21 @@ using System.Linq;
 
 namespace Gamesim.Simulation
 {
-    internal enum DialogueRevisionField { Started, Entry, Response, Time, EvidenceCaptured }
+    internal enum DialogueRevisionField { Started, Entry, Response, Time, EvidenceCaptured, Statement }
 
     /// <summary>
     /// Closed dialogue semantics, not a substitute for complete EpisodeValidation.
     /// An engine-owned pending command can admit only its exact sealed future receipt rows.
     /// </summary>
-    public static class DialogueRules
+    public static partial class DialogueRules
     {
-        public const int Version = 1, MaximumEpisodes = 100, MaximumEvents = 400, MaximumSteps = 3;
+        /// <summary>
+        /// The upper bound of the dialogue rules this build defines (DIALOGUE-PLAN §2): never a gate and never what a
+        /// season is started on. Validation accepts the closed set <see cref="IsDefined"/> names, each at the schema
+        /// that introduced it (<see cref="Admits"/>); behaviour is keyed to the version that introduced it
+        /// (<see cref="Rules1"/>, <see cref="Rules2"/>). <see cref="MaximumSteps"/> keeps its meaning, rules 1's.
+        /// </summary>
+        public const int Version = 2, MaximumEpisodes = 100, MaximumEvents = 400, MaximumSteps = 3;
         private const int MaximumAction = EpisodeEngine.LegacySocialActionBudget + WebSocialVocabulary.PurchaseCeiling;
 
         /// <summary>
@@ -26,8 +32,9 @@ namespace Gamesim.Simulation
         public const int Offered = 1;
 
         // Schema 29 introduced the dialogue store, and a later schema carries it as it is (DIALOGUE-PLAN §6, item 1):
-        // a lower bound, so the next schema's bump cannot switch every rules-1 season off.
-        public static bool On(EpisodeState s) => s != null && s.schemaVersion >= 29 && s.dialogueRulesVersion == Version;
+        // a lower bound, so the next schema's bump cannot switch every rules-1 season off. A version is on at the
+        // schema that introduced it and later: rules 1 from 29, rules 2 from 30 (§2, decision 7).
+        public static bool On(EpisodeState s) => s != null && s.dialogueRulesVersion >= Rules1 && Admits(s.dialogueRulesVersion, s.schemaVersion);
 
         public static StorylineState Cycle(EpisodeState s, DialogueEpisodeState episode)
         {
@@ -41,16 +48,17 @@ namespace Gamesim.Simulation
             return matches != null && matches.Length == 1 ? matches[0] : null;
         }
 
-        /// <summary>Unallocated events reserved by the exact active three-step path.</summary>
+        /// <summary>Unallocated events reserved by the active conversation's whole path: its own version's bound (§2), three on rules 1.</summary>
         public static int ReservedEvents(EpisodeState s)
         {
             var active = Active(s);
             return active == null || s.houseEvents == null ? 0
-                : Math.Max(0, MaximumSteps - s.houseEvents.Count(e => e != null && e.cycleId == active.id));
+                : Math.Max(0, StepsFor(s.dialogueRulesVersion) - s.houseEvents.Count(e => e != null && e.cycleId == active.id));
         }
 
         public static bool CanStart(EpisodeState s, string npcId, out string error)
         {
+            if (s != null && s.dialogueRulesVersion >= Rules2) return CanStartRules2(s, npcId, out error);
             if (!TryValidate(s, out error)) return false;
             if (!On(s)) return Fail(out error, "Dialogue rules are not active.");
             if (!Eligible(s, npcId, out error)) return false;
@@ -112,12 +120,13 @@ namespace Gamesim.Simulation
             {
                 if (s.dialogue.episodes.Count != 0 || s.dialogue.grants.Count != 0 || s.dialogue.vetoOccasions.Count != 0
                     || s.unifiedCommitments?.Any(r => r?.conditionalVeto != null) == true
-                    || s.storylines?.Any(c => c != null && IsCampaignTemplate(c.templateId)) == true
-                    || s.houseEvents?.Any(e => IsCampaignContent(e?.contentId)) == true)
+                    || s.storylines?.Any(c => c != null && IsDialogueTemplate(c.templateId)) == true
+                    || s.houseEvents?.Any(e => IsCampaignContent(e?.contentId) || IsRules2Content(e?.contentId)) == true)
                     return Fail(out error, "Disabled dialogue storage must remain complete and inert.");
                 return true;
             }
-            if (s.dialogueRulesVersion != Version) return Fail(out error, "Unsupported dialogue rules version.");
+            if (s.dialogueRulesVersion >= Rules2 && IsDefined(s.dialogueRulesVersion)) return TryValidateRules2(s, pending, out error);
+            if (s.dialogueRulesVersion != Rules1) return Fail(out error, "Unsupported dialogue rules version.");
             if (!Prerequisites(s)) return Fail(out error, "Dialogue requires the complete active-from-week-one rules.");
             if (s.unifiedCommitments == null || s.unifiedCommitments.Any(r => r == null || r.conditionalVeto != null))
                 return Fail(out error, "Conditional dialogue obligations are not supported by this pilot.");
@@ -378,7 +387,8 @@ namespace Gamesim.Simulation
         }
 
         internal static string EntryTemplateId(EpisodeState admittedSource, string npcId) =>
-            PublicRescueSource(admittedSource, npcId, admittedSource.week) == null
+            admittedSource.dialogueRulesVersion >= Rules2 ? DialogueCampaignWord.TemplateId
+            : PublicRescueSource(admittedSource, npcId, admittedSource.week) == null
                 ? DialogueCampaignV1.TemplateId : DialogueCampaignV2.TemplateId;
 
         internal static PowerRow CapturePublicRescue(EpisodeState admittedSource, string npcId, int episodeWeek) =>
@@ -401,8 +411,10 @@ namespace Gamesim.Simulation
             if (!On(s) || !EpisodeValidation.TryValidate(s, out _)) return false;
             var episode = Active(s);
             var cycle = episode == null ? null : Cycle(s, episode);
-            if (episode == null || CampaignTemplate(cycle?.templateId, episode.contentVersion)?.id != DialogueCampaignV2.TemplateId
-                || cycle.eventId != eventId) return false;
+            // V2's citation in rules 1, and from rules 2 the reply node that offers the same public record (§5.1).
+            bool record = CampaignTemplate(cycle?.templateId, episode?.contentVersion ?? 0)?.id == DialogueCampaignV2.TemplateId
+                || Rules2Template(cycle?.templateId, episode?.contentVersion ?? 0) != null && DialogueCampaignWord.OffersRescue(cycle.beatId);
+            if (episode == null || !record || cycle.eventId != eventId) return false;
             var selected = PublicRescueSource(s, episode.npcId, episode.week);
             if (selected == null) return false;
             view = new PublicRescueView(selected);

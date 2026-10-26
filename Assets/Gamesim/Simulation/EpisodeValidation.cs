@@ -88,7 +88,9 @@ namespace Gamesim.Simulation
             if (s == null || s.schemaVersion != 29) return Fail(out error, "Unsupported episode schema.");
             // The unpublished pilot has a complete local semantic owner. Unknown versions still
             // refuse; default/legacy rules stay inert and keep their original storage diagnostics.
-            if (s.dialogueRulesVersion != 0 && s.dialogueRulesVersion != DialogueRules.Version)
+            // A defined version is admitted only at the schema that introduced it or later (DIALOGUE-PLAN §2): rules 2
+            // from 30, so at 29 it refuses here in the words it always has, and the frozen schema-29 reader agrees.
+            if (s.dialogueRulesVersion != 0 && !DialogueRules.Admits(s.dialogueRulesVersion, s.schemaVersion))
                 return Fail(out error, "Dialogue rules are not enabled in this build.");
             if (s.dialogueRulesVersion == 0 && (s.dialogue == null || s.dialogue.episodes == null || s.dialogue.grants == null
                 || s.dialogue.vetoOccasions == null || s.dialogue.episodes.Count != 0

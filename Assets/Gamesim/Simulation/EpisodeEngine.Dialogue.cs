@@ -30,7 +30,7 @@ namespace Gamesim.Simulation
 
         // Public readers never discover this field. Only the exact explicitly threaded handle can
         // admit its source-derived receipts before Apply advances the real root revision.
-        internal sealed class PendingDialogueCommand
+        internal sealed partial class PendingDialogueCommand
         {
             private readonly EpisodeEngine owner;
             private readonly EpisodeState source, original, candidate;
@@ -64,6 +64,8 @@ namespace Gamesim.Simulation
                     ClosedPayload();
                     Require(originalEpisode != null && request.targetId == originalEpisode.id, "That dialogue has already ended.");
                     var cycle = original.storylines.Single(x => x.id == originalEpisode.id);
+                    // Rules 2 and later have their own nodes and evidence (EpisodeEngine.Dialogue.Rules2.cs); rules 1 is as merged.
+                    if (original.dialogueRulesVersion >= DialogueRules.Rules2) { PrepareRules2Choice(cycle, out citationSource, out lieSource); return; }
                     var template = DialogueRules.CampaignTemplate(cycle.templateId, originalEpisode.contentVersion);
                     Require(template != null && request.text == cycle.beatId
                         && (cycle.beatId == "case" || cycle.beatId == "finish-personal" || cycle.beatId == "finish-record"),
@@ -119,7 +121,8 @@ namespace Gamesim.Simulation
                     || field == DialogueRevisionField.Entry && row is DialogueEntryReceiptState entry && entry.revision == revision
                     || field == DialogueRevisionField.Response && row is DialogueResponseState response && response.revision == revision
                     || field == DialogueRevisionField.Time && row is DialogueTimeReceiptState time && time.revision == revision
-                    || field == DialogueRevisionField.EvidenceCaptured && row is DialogueEvidenceState evidence && evidence.capturedRevision == revision;
+                    || field == DialogueRevisionField.EvidenceCaptured && row is DialogueEvidenceState evidence && evidence.capturedRevision == revision
+                    || field == DialogueRevisionField.Statement && row is DialogueStatementState statement && statement.revision == revision;
             }
 
             internal bool Authorizes(EpisodeState state, string origin)
@@ -149,6 +152,7 @@ namespace Gamesim.Simulation
                 Require(Bound(state) && !resolved && !sealedDelta && Same(source, original), "The paid choice is no longer owned.");
                 Require(request.kind == EpisodeCommandKind.StartDialogue || request.kind == EpisodeCommandKind.ChooseDialogue,
                     "This command does not own a paid choice.");
+                if (source.dialogueRulesVersion >= DialogueRules.Rules2) { ResolveRules2(state); resolved = true; Seal(state); return; }
                 DialogueEpisodeState episode;
                 StorylineState cycle;
                 if (request.kind == EpisodeCommandKind.StartDialogue)
@@ -205,7 +209,7 @@ namespace Gamesim.Simulation
             private static HouseEventState AddEvent(EpisodeState state, StorylineState cycle, string beatId, int contentVersion)
             {
                 Require(state.houseEvents.Count < 400, "The house's event history is full.");
-                var template = DialogueRules.CampaignTemplate(cycle.templateId, contentVersion);
+                var template = DialogueRules.AnyTemplate(cycle.templateId, contentVersion);
                 Require(template != null, "The campaign content pair is not supported.");
                 cycle.beatId = beatId;
                 var item = DrawBeat(state, new StoryCycle(cycle, template), template.Beat(beatId), StoryAnchors.BlockSet);
@@ -214,11 +218,12 @@ namespace Gamesim.Simulation
                 return item;
             }
 
+            // nextBeat: the node a rules-2 option leads to when it depends on what the voter said; rules 1 never passes one.
             private void Step(EpisodeState state, DialogueEpisodeState episode, StorylineState cycle,
-                string optionId, string responseKey, bool lapsed)
+                string optionId, string responseKey, bool lapsed, string nextBeat = null)
             {
                 var item = state.houseEvents.Single(x => x.id == cycle.eventId);
-                var template = DialogueRules.CampaignTemplate(cycle.templateId, episode.contentVersion);
+                var template = DialogueRules.AnyTemplate(cycle.templateId, episode.contentVersion);
                 Require(template != null, "The campaign content pair is not supported.");
                 var beat = template.Beat(cycle.beatId);
                 var option = beat.Option(optionId);
@@ -238,8 +243,9 @@ namespace Gamesim.Simulation
                     episode.responses.Add(response); expectedEpisode.responses.Add(response.Clone());
                     future.Add(response, DialogueRevisionField.Response);
                 }
-                if (!lapsed && !option.next.StartsWith("end:", StringComparison.Ordinal))
-                { AddEvent(state, cycle, option.next, episode.contentVersion); return; }
+                string next = nextBeat ?? option.next;
+                if (!lapsed && !next.StartsWith("end:", StringComparison.Ordinal))
+                { AddEvent(state, cycle, next, episode.contentVersion); return; }
                 string ending = lapsed ? "lapsed" : option.next.Substring(4);
                 cycle.status = StorylineStatus.Completed; cycle.endedWeek = state.week; cycle.endingId = ending;
                 cycle.nextAnchor = null; cycle.nextWeek = 0;

@@ -41,6 +41,7 @@ namespace Gamesim.Simulation
             // also prevents a caller's catalogue mutation from becoming saved-state authority.
             if (id == DialogueCampaignV1.TemplateId) return DialogueCampaignV1.CreateTemplate();
             if (id == DialogueCampaignV2.TemplateId) return DialogueCampaignV2.CreateTemplate();
+            if (id == DialogueCampaignWord.TemplateId) return DialogueCampaignWord.CreateTemplate();
             var list = All;
             for (int i = 0; i < list.Count; i++)
                 if (list[i].id == id) return list[i];

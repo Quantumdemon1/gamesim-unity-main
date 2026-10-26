@@ -73,6 +73,15 @@ namespace Gamesim.Episode
                         + (how == LobbyApproach.Deal ? " · binds you next week" : how == LobbyApproach.Pressure ? " · can backfire" : "");
                     bool entry = paidCampaign && how == LobbyApproach.Emotional;
                     bool available = !entry || DialogueRules.TryBuildEntryCommand(state, decider, out _);
+                    // From dialogue rules 2 a conversation that cannot start never takes the plea away (DIALOGUE-PLAN §5.5):
+                    // the button makes the ordinary one-shot plea at its ordinary cost, and its tag says why there is no talk.
+                    string withoutTalk = null;
+                    if (entry && !available && DialogueRules.KeepsThePleaWhenRefused(state))
+                    {
+                        if (DialogueRules.CanStart(state, decider, out withoutTalk)) withoutTalk = null;
+                        entry = false; available = true;
+                        tag += " · " + (string.IsNullOrEmpty(withoutTalk) ? "no conversation now" : withoutTalk.TrimEnd('.'));
+                    }
                     string caption = EpisodeHud.LobbyApproachCaption(how, forYourself);
                     var button = available ? hud.Action(caption, () =>
                     {

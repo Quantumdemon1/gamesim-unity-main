@@ -47,6 +47,12 @@
     <Compile Include="$(EditMode)DialogueCampaignFreeOfferTests.cs" />
     <Compile Include="$(EditMode)DialogueCampaignEmotionalResponseTests.cs" />
     <Compile Include="$(EditMode)DialogueCampaignCapacityTests.cs" />
+    <!-- Dialogue rules 2 (DIALOGUE-PLAN D2): the ladder, the validator on hand-built schema-30 states, and the engine,
+         whose conversation arm runs from the schema-30 bump and holds rules 2's refusal below it. -->
+    <Compile Include="$(EditMode)DialogueRules2Season.cs" />
+    <Compile Include="$(EditMode)DialogueRules2LadderTests.cs" />
+    <Compile Include="$(EditMode)DialogueRules2ValidatorTests.cs" />
+    <Compile Include="$(EditMode)DialogueRules2EngineTests.cs" />
     <!-- NpcInvitation.cs is included by the whole Simulation glob above. -->
     <Compile Include="$(EditMode)NpcInvitationTests.cs" />
 

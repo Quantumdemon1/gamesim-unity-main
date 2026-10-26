@@ -58,6 +58,16 @@ namespace Gamesim.Presentation
         /// </summary>
         private readonly List<TMP_Text> sharedSizeLabels = new List<TMP_Text>();
         private bool labelSizeShared;
+        /// <summary>
+        /// A memory face's box, .13 x .11 m: 7 mm a side inside its keycap's flat face (the authored
+        /// cap's top, .144 x .116 m on the .16 x .13 m tile). Its words may size down to
+        /// <see cref="MemoryFaceFloor"/> to fit it; stopped at the .45 every other label stops at, TROPHY
+        /// was .185 m wide and ran 2 cm past its cap's flat face.
+        /// </summary>
+        private const float MemoryFaceWidth = .13f, MemoryFaceHeight = .11f, MemoryFaceFloor = .25f;
+        /// <summary>A memory console's two face sizes, set once by <see cref="ShareFaceSizes"/>: every face word's and the face-down '?''s.</summary>
+        private float faceWordSize, faceMarkSize;
+        private bool faceSizesShared;
         private const float Front = .56f;
         /// <summary>
         /// The audience's copy of a die's value stands on its die's rear face, this far above the
@@ -198,7 +208,10 @@ namespace Gamesim.Presentation
                 }
             if(Instrument==Family.Signals)
                 foreach(TMP_Text direction in glyphs){sharedSizeLabels.Add(direction);sharedSizeLabels.Add(repeatWords[direction]);}
+            if(Instrument==Family.PairConsole)
+                foreach(TMP_Text face in glyphs){face.fontSizeMin=MemoryFaceFloor;repeatWords[face].fontSizeMin=MemoryFaceFloor;}
             ShareLabelSize();
+            ShareFaceSizes();
             nearestRaisedZ=NearestRaisedSolid();
         }
 
@@ -218,7 +231,7 @@ namespace Gamesim.Presentation
             {
                 Vector3 at = new Vector3((i % 4 - 1.5f) * .19f, 1.28f - (i / 4 - 1.5f) * .16f, Front - .064f);
                 indicators.Add(Part(PartKind.MemoryTile, "Memory tile " + i, at, new Vector3(.16f, .13f, .025f), paper));
-                glyphs.Add(Words("Memory face " + i, at + Vector3.back * .018f, .14f, .11f, "?"));
+                glyphs.Add(Words("Memory face " + i, at + Vector3.back * .018f, MemoryFaceWidth, MemoryFaceHeight, "?"));
             }
         }
 
@@ -300,6 +313,7 @@ namespace Gamesim.Presentation
         public void Sync(MiniGameRun run, bool started, bool preview, bool paused, bool reducedMotion)
         {
             ShareLabelSize();
+            ShareFaceSizes();
             if (run == null) { SetWord(progress,"Ready"); Rest(); return; }
             resting = false;
             SetWord(progress,paused ? "Paused" : !started && !preview ? "Ready" : Readout(run));
@@ -692,10 +706,46 @@ namespace Gamesim.Presentation
             labelSizeShared=true;
         }
 
+        /// <summary>
+        /// Sizes a memory console's sixteen faces and their audience copies once, in two sizes: every face
+        /// word a run can deal at one, the smallest TMP's own auto-size gives any of them alone in a face's
+        /// box (the largest at which the widest still fits it), and the face-down '?' at the size it gives the
+        /// mark. Auto-size then goes off and <see cref="SetWord"/> sizes a face with its text. Each face used
+        /// to size its word alone, stopping at the .45 floor, so the widest (TROPHY, TARGET, CROWN, SHIELD,
+        /// HOUSE) ran off the cap's flat face onto the housing, where a lit tile's ink vanished on the navy.
+        /// Like <see cref="ShareLabelSize"/> it needs TMP to have woken the faces: a console built under an
+        /// inactive anchor sizes them on its first read once it has.
+        /// </summary>
+        private void ShareFaceSizes()
+        {
+            if(faceSizesShared || Instrument!=Family.PairConsole)return;
+            TMP_Text probe=glyphs[0];
+            string shown=probe.text;
+            float word=float.PositiveInfinity,mark=0;
+            for(int face=0;face<=CompetitionMiniGames.MemoryPairs;face++)
+            {
+                bool faceDown=face==CompetitionMiniGames.MemoryPairs;
+                probe.text=faceDown?"?":CompetitionGameScreen.MemoryFaceName(face);
+                probe.ForceMeshUpdate(true);
+                if(probe.textInfo==null || probe.textInfo.characterCount==0){probe.text=shown;return;}
+                if(faceDown)mark=probe.fontSize;else word=Mathf.Min(word,probe.fontSize);
+            }
+            probe.text=shown;
+            faceWordSize=word;faceMarkSize=mark;faceSizesShared=true;
+            foreach(TMP_Text face in glyphs)
+                foreach(TMP_Text label in new[]{face,repeatWords[face]}){label.enableAutoSizing=false;SizeFace(label);}
+        }
+
+        private void SizeFace(TMP_Text face)=>face.fontSize=face.text=="?"?faceMarkSize:faceWordSize;
+
         private void SetWord(TMP_Text label,string value)
         {
             label.text=value;
-            if(repeatWords.TryGetValue(label,out var copy))copy.text=value;
+            bool repeated=repeatWords.TryGetValue(label,out var copy);
+            if(repeated)copy.text=value;
+            if(!faceSizesShared || label==progress)return;
+            SizeFace(label);
+            if(repeated)SizeFace(copy);
         }
 
         private static Mesh BoxMesh()

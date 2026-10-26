@@ -29,12 +29,12 @@ namespace Gamesim.Tests.PlayMode
             if(footprintScene.IsValid() && footprintScene.isLoaded)yield return SceneManager.UnloadSceneAsync(footprintScene);
         }
 
-        private CompetitionApparatus Make(CompetitionDefinition definition, bool inactive = false)
+        private CompetitionApparatus Make(CompetitionDefinition definition, bool inactive = false, CompetitionApparatusMeshKit kit = null)
         {
             owner=new GameObject("Apparatus clearance anchor");
             owner.transform.SetPositionAndRotation(new Vector3(4,2,6),Quaternion.Euler(0,37,0));
             owner.SetActive(!inactive);
-            return CompetitionApparatus.Create(owner.transform,definition,definition.Category,"entrant",UiTheme.Gold,null);
+            return CompetitionApparatus.Create(owner.transform,definition,definition.Category,"entrant",UiTheme.Gold,kit);
         }
 
         [UnityTest]
@@ -881,6 +881,150 @@ namespace Gamesim.Tests.PlayMode
         }
 
         /// <summary>
+        /// Every face a memory tile shows draws whole inside its own keycap's flat face, on both faces: each
+        /// of the eight face words a run deals (the preview turns all sixteen tiles over, each word on two)
+        /// and the face-down '?' (at rest, and beside the one tile a started run has turned over). Each label
+        /// and its audience copy draws one line, untruncated, every character, and every glyph's quad stands
+        /// at least 5 mm inside the top face of the shipped kit's keycap, read from the cap's own mesh. The
+        /// eight words share one size, the largest TMP fits the widest at alone in a face's box, and every '?'
+        /// shares the size it takes alone, on a console built active and on one woken from a reserved anchor.
+        /// Each face used to size its word alone down to a .45 floor, so TROPHY, TARGET, CROWN, SHIELD and
+        /// HOUSE ran off their caps (TROPHY by 2 cm), and a lit tile's ink lost the overhang on the navy housing.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator Apparatus_EveryMemoryFaceWordDrawsWholeInsideItsCapOnBothFaces()
+        {
+            const float margin=.005f;
+            var definition=CompetitionDefinitions.All.First(item=>item.Category=="Mental");
+            var kit=Resources.Load<CompetitionApparatusMeshKit>(CompetitionApparatusMeshKit.ResourceName);
+            Assert.That(kit,Is.Not.Null,"Precondition: the shipped kit, whose keycaps the words must fit.");
+            Assert.That(kit.TryGetMesh(CompetitionApparatus.Family.PairConsole,CompetitionApparatusMeshKit.PartKind.MemoryTile,
+                new Vector3(.16f,.13f,.025f),out Mesh keycap),Is.True,"Precondition: the kit's memory keycap.");
+            // The keycap's flat face: its vertices on the plane nearest the contestant (a keycap's cap faces its part's -z).
+            var points=MeshPoints(keycap);
+            float capPlane=points.Min(point=>point.z);
+            var flat=points.Where(point=>Mathf.Abs(point.z-capPlane)<1e-4f).ToArray();
+            Assert.That(flat,Has.Length.GreaterThanOrEqualTo(3),"Precondition: the keycap has a flat top face.");
+            Vector2 faceMin=new Vector2(flat.Min(point=>point.x),flat.Min(point=>point.y));
+            Vector2 faceMax=new Vector2(flat.Max(point=>point.x),flat.Max(point=>point.y));
+            Assert.That(faceMax.x-faceMin.x,Is.LessThan(keycap.bounds.size.x-.01f),"Precondition: that face is the cap's top, narrower than its base.");
+            var words=Enumerable.Range(0,CompetitionMiniGames.MemoryPairs).Select(CompetitionGameScreen.MemoryFaceName).ToArray();
+            Assert.That(words.Distinct().Count(),Is.EqualTo(8),"Precondition: a run deals eight face words: "+string.Join(", ",words));
+            var shown=new HashSet<string>();int read=0;float tightest=float.PositiveInfinity;string tightestAt=null;
+            float? firstWordSize=null;
+
+            // Every key's glyph and its audience copy on its own cap: the state's text, one line, nothing cut, every
+            // character drawn, and every glyph's quad at least the margin inside the cap's top face.
+            void AssertFacesWhole(CompetitionApparatus instrument,Func<int,string> expected,string at)
+            {
+                var spills=new List<string>();
+                foreach(var key in Keys(instrument))
+                {
+                    int tile=int.Parse(key.Name,System.Globalization.CultureInfo.InvariantCulture);
+                    foreach(var (cap,label,side) in new[]{(key.Cap,key.Label,"contestant"),(key.AudienceCap,key.AudienceLabel,"audience")})
+                    {
+                        string where=label.name+" '"+label.text+"' ("+side+", "+at+")";
+                        Assert.That(cap.GetComponent<MeshFilter>().sharedMesh,Is.SameAs(keycap),"Precondition: "+cap.name+" is the kit's keycap ("+at+")");
+                        Assert.That(label.text,Is.EqualTo(expected(tile)),where);
+                        label.ForceMeshUpdate(true);
+                        var info=label.textInfo;
+                        Assert.That(info.lineCount,Is.EqualTo(1),where+" draws one line");
+                        Assert.That(label.isTextTruncated,Is.False,where+" is not truncated");
+                        Assert.That(info.characterCount,Is.EqualTo(label.text.Length),where+" draws every character");
+                        Vector3 scale=cap.transform.lossyScale;
+                        float inset=float.PositiveInfinity;
+                        for(int i=0;i<info.characterCount;i++)
+                        {
+                            var glyph=info.characterInfo[i];
+                            Assert.That(glyph.isVisible,Is.True,where+": '"+glyph.character+"' is drawn");
+                            foreach(var corner in new[]{glyph.bottomLeft,glyph.topLeft,glyph.topRight,glyph.bottomRight})
+                            {
+                                Vector3 on=cap.transform.InverseTransformPoint(label.transform.TransformPoint(corner));
+                                inset=Mathf.Min(inset,Mathf.Min(Mathf.Min((on.x-faceMin.x)*scale.x,(faceMax.x-on.x)*scale.x),
+                                    Mathf.Min((on.y-faceMin.y)*scale.y,(faceMax.y-on.y)*scale.y)));
+                            }
+                        }
+                        if(inset<tightest){tightest=inset;tightestAt=where;}
+                        if(inset<margin)spills.Add(where+" at size "+label.fontSize.ToString("F2")+": "
+                            +(inset<0?(-inset*1000).ToString("F1")+" mm past":(inset*1000).ToString("F1")+" mm inside")+" the cap's flat face");
+                        if(label.text!="?")shown.Add(label.text);
+                        read++;
+                    }
+                }
+                Assert.That(spills,Is.Empty,at+": every glyph stands at least "+(margin*1000).ToString("F0")+" mm inside its cap's flat face: "+string.Join(" | ",spills));
+            }
+
+            // The console's own sizes: every face word on both faces at one size, every '?' at another, none sizing itself.
+            void AssertFaceSizes(CompetitionApparatus instrument,string at)
+            {
+                var labels=Keys(instrument).SelectMany(key=>new[]{key.Label,key.AudienceLabel}).ToArray();
+                foreach(var group in labels.GroupBy(label=>label.text=="?"))
+                {
+                    float size=group.First().fontSize;
+                    foreach(var label in group)
+                    {
+                        Assert.That(label.enableAutoSizing,Is.False,label.name+" keeps the console's size rather than sizing itself ("+at+")");
+                        Assert.That(label.fontSize,Is.EqualTo(size).Within(.0001f),label.name+" '"+label.text+"' has the console's one "
+                            +(group.Key?"face-down":"word")+" size ("+at+")");
+                    }
+                }
+            }
+
+            string sizes=null;Vector3 capScale=Vector3.zero;
+            foreach(bool reserved in new[]{false,true})
+            {
+                if(owner!=null){Object.Destroy(owner);owner=null;yield return null;}
+                string pass=reserved?"woken from a reserved anchor":"built active";
+                var instrument=Make(definition,inactive:reserved,kit:kit);
+                instrument.Sync(null,false,false,false,false);
+                if(reserved){owner.SetActive(true);instrument.Sync(null,false,false,false,false);}
+                // Each text alone in a face's own box, with its own floor and ceiling: the sizes TMP picks for it.
+                var face=Keys(instrument)[0].Label;capScale=Keys(instrument)[0].Cap.transform.lossyScale;
+                var probeRoot=new GameObject("Memory face size probe");probeRoot.SetActive(false);probeRoot.transform.SetParent(owner.transform,false);
+                var probe=probeRoot.AddComponent<TextMeshPro>();
+                probe.font=face.font;probe.fontSharedMaterial=face.fontSharedMaterial;
+                probe.fontSize=1.2f;probe.enableAutoSizing=true;probe.fontSizeMin=face.fontSizeMin;probe.fontSizeMax=face.fontSizeMax;
+                probe.textWrappingMode=TextWrappingModes.NoWrap;probe.alignment=TextAlignmentOptions.Center;
+                probe.rectTransform.sizeDelta=face.rectTransform.sizeDelta;
+                probeRoot.SetActive(true);
+                var alone=new Dictionary<string,float>();
+                foreach(string text in words.Concat(new[]{"?"})){probe.text=text;probe.ForceMeshUpdate();alone[text]=probe.fontSize;}
+                Object.Destroy(probeRoot);
+                sizes=string.Join(", ",alone.Select(pair=>pair.Key+" "+pair.Value.ToString("F2")));
+
+                AssertFacesWhole(instrument,tile=>"?",pass+", every tile face down");
+                var run=new MiniGameRun(CompetitionMiniGames.Kind.Memory,123,4,definition);
+                instrument.Sync(run,false,true,false,false);
+                Assert.That(instrument.VisibleMemoryFaces,Is.EqualTo(16),"Precondition: the preview turns every tile over ("+pass+").");
+                shown.Clear();
+                AssertFacesWhole(instrument,tile=>CompetitionGameScreen.MemoryFaceName(run.Faces[tile]),pass+", the preview");
+                Assert.That(shown,Is.EquivalentTo(words),"Precondition: the preview shows every face word ("+pass+").");
+                AssertFaceSizes(instrument,pass+", the preview");
+                float wordSize=Keys(instrument)[0].Label.fontSize;
+                Assert.That(wordSize,Is.EqualTo(words.Min(word=>alone[word])).Within(.0001f),
+                    "The words' one size is the largest at which the widest fits a face alone ("+pass+"): "+sizes);
+                if(firstWordSize==null)firstWordSize=wordSize;
+                else Assert.That(wordSize,Is.EqualTo(firstWordSize.Value).Within(.0001f),"A reserved console sizes its words the same once woken.");
+
+                var attempt=new MiniGameRun(CompetitionMiniGames.Kind.Memory,123,4,definition);
+                Assert.That(attempt.Flip(0),Is.True,"Precondition: tile 0 turns over.");
+                instrument.Sync(attempt,true,false,false,false);
+                Assert.That(instrument.VisibleMemoryFaces,Is.EqualTo(1),"Precondition: one face shows ("+pass+").");
+                AssertFacesWhole(instrument,tile=>tile==0?CompetitionGameScreen.MemoryFaceName(attempt.Faces[0]):"?",pass+", tile 0 turned over");
+                AssertFaceSizes(instrument,pass+", tile 0 turned over");
+                instrument.Sync(null,false,false,false,false);
+                AssertFacesWhole(instrument,tile=>"?",pass+", at rest after the attempt");
+                AssertFaceSizes(instrument,pass+", at rest after the attempt");
+                Assert.That(Keys(instrument)[0].Label.fontSize,Is.EqualTo(alone["?"]).Within(.0001f),
+                    "A face-down tile's '?' keeps the size it takes alone ("+pass+"): "+sizes);
+            }
+            Debug.Log("[Gamesim W3] Memory faces: "+read+" faces read on both sides, words at "+firstWordSize.Value.ToString("F2")+" (alone: "+sizes
+                +"); the cap's flat face "+((faceMax.x-faceMin.x)*capScale.x).ToString("F4")+" x "+((faceMax.y-faceMin.y)*capScale.y).ToString("F4")
+                +" m; tightest "+(tightest*1000).ToString("F1")+" mm inside it ("+tightestAt+").");
+            yield return null;
+        }
+
+        /// <summary>
         /// A lit Signals target's label and its audience copy are dark on the lit mint cap, on both
         /// faces: at least 4.5:1, computed from the colours the cap renderers and labels actually carry.
         /// An unlit target's label is paper, so a target that goes out takes its label back to paper.
@@ -1130,6 +1274,21 @@ namespace Gamesim.Tests.PlayMode
         }
 
         private static bool Near(Color a,Color b)=>Mathf.Abs(a.r-b.r)<.002f && Mathf.Abs(a.g-b.g)<.002f && Mathf.Abs(a.b-b.b)<.002f;
+
+        /// <summary>A mesh's vertices. The kit's imported parts are not CPU-readable; the editor reads them without a reimport.</summary>
+        private static Vector3[] MeshPoints(Mesh mesh)
+        {
+#if UNITY_EDITOR
+            using(var data=UnityEditor.MeshUtility.AcquireReadOnlyMeshData(mesh))
+            using(var points=new Unity.Collections.NativeArray<Vector3>(data[0].vertexCount,Unity.Collections.Allocator.Temp))
+            {
+                data[0].GetVertices(points);
+                return points.ToArray();
+            }
+#else
+            return mesh.vertices;
+#endif
+        }
 
         private struct OrientedBox { public Vector3 Centre,X,Y,Z; }
 

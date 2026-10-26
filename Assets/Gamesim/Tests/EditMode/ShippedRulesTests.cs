@@ -63,6 +63,9 @@ namespace Gamesim.Tests.EditMode
             { "pactPlanRulesStartWeek", 1 },
             { "allWeekRulesStartWeek", 1 },
             { "dialogueRulesVersion", 0 },
+            // Schema 30's pooled rule fields (SCH30): off in every fresh season until their own slices.
+            { "alumniRulesVersion", 0 },
+            { "tuningRulesVersion", 0 },
             { "npcSocial.rulesStartWeek", 1 },
             { "story.rulesStartWeek", 1 },
             { "story.rulesVersion", 9 },
@@ -142,21 +145,30 @@ namespace Gamesim.Tests.EditMode
         }
 
         /// <summary>
-        /// The live save schema is 29: every schema 1 to 28 save reaches it through
-        /// EpisodeSaveMigrations.UpgradeV28ToV29, which runs the frozen schema-28 reader
-        /// (FrozenEpisodeV28.Validate) first. A season the game starts today still plays on dialogue
-        /// rules 0, so the schema-29 dialogue store stays off. Vote family V6's review set this pin as
-        /// TheLiveSchemaStaysAt28UntilFrozenEpisodeV28FreezesTheModeTwoCore; it was renamed once the reader was wired.
+        /// The live save schema is 30 (SCH30, the pooled schema): every schema 1 to 29 save reaches it through
+        /// EpisodeSaveMigrations.UpgradeV29ToV30, which runs the frozen schema-29 reader (FrozenEpisodeV29.Validate)
+        /// first, as UpgradeV28ToV29 runs Frozen28's. A season the game starts today still plays on dialogue rules 0,
+        /// and every pooled field is off in every fresh season, Regular and All-Stars alike, until its own slice.
+        /// Earlier names: TheLiveSchemaStaysAt28UntilFrozenEpisodeV28FreezesTheModeTwoCore, then
+        /// TheLiveSchemaIs29AndAShippedSeasonStartsOnDialogueRules0.
         /// </summary>
-        [Test]
-        public void TheLiveSchemaIs29AndAShippedSeasonStartsOnDialogueRules0()
+        [TestCaseSource(nameof(Builders))]
+        public void TheLiveSchemaIs30AndAShippedSeasonStartsWithEveryPooledFieldOff(string builder, int size, CastTemplates.Roster roster)
         {
-            Assert.That(new EpisodeState().schemaVersion, Is.EqualTo(29),
-                "The live save schema is 29. Another persisted field needs the next schema, its migration and old-save fixtures.");
-            var s = SeasonBuilder.Create(new SeasonBuilder.Choice { HouseSize = 8 }, 2929u);
-            ShippedRules.ApplyFresh(s);
-            Assert.That(s.schemaVersion, Is.EqualTo(29), "A shipped season saves at the live schema.");
-            Assert.That(s.dialogueRulesVersion, Is.Zero, "A shipped season starts with the dialogue rules off.");
+            Assert.That(new EpisodeState().schemaVersion, Is.EqualTo(30),
+                "The live save schema is 30. Another persisted field needs the next schema, its migration and old-save fixtures.");
+            Assert.That(EpisodeState.LiveSchema, Is.EqualTo(30));
+            foreach (uint seed in new[] { 1u, 77u, 2929u })
+            {
+                var s = Build(builder, size, roster, seed);
+                ShippedRules.ApplyFresh(s);
+                Assert.That(s.schemaVersion, Is.EqualTo(30), "A shipped season saves at the live schema.");
+                Assert.That(s.dialogueRulesVersion, Is.Zero, "A shipped season starts with the dialogue rules off.");
+                Assert.That(s.alumniRulesVersion, Is.Zero, builder + " " + size + " " + roster + ": the alumni rules are off until H1b.");
+                Assert.That(s.alumniCatalogEdition, Is.Null, "No alumni edition until H1b.");
+                Assert.That(s.tuningRulesVersion, Is.Zero, "The tuning rules are off until B9.");
+                Assert.That(EpisodeValidation.TryValidate(s, out string error), Is.True, error);
+            }
         }
 
         /// <summary>Fresh seasons only: the economy refuses a season that has been played, so ApplyFresh does too.</summary>

@@ -26,7 +26,7 @@ namespace Gamesim.Tests.EditMode
         private static JObject Payload(EpisodeState s)
         {
             EpisodeSaveValidation.Validate(s);
-            Assert.That(s.schemaVersion, Is.EqualTo(29));
+            Assert.That(s.schemaVersion, Is.EqualTo(30));
             Assert.That(s.unifiedHearingRulesVersion, Is.Zero);
             Assert.That(s.unifiedHearingEvidence, Is.Empty);
             Assert.That(s.unifiedHearingReceipts, Is.Empty);

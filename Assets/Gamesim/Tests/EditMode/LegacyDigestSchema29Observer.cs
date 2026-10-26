@@ -9,31 +9,32 @@ using Newtonsoft.Json.Linq;
 namespace Gamesim.Tests.EditMode
 {
     /// <summary>
-    /// Test-only current29 to retained28 boundary. This is not a save migration or an
-    /// authority to discard dialogue. The real complete current validator, exact source
-    /// binding, and every off literal run before a detached copy loses any field.
+    /// Test-only retained29 to retained28 boundary. This is not a save migration or an authority to discard dialogue.
+    /// Since SCH30 (ALL-STAR-HISTORIES-PLAN 8.6) it takes a retained schema-29 JSON object and no live state, as
+    /// <see cref="LegacyDigestSchema28Observer.ProjectFields"/> takes a retained 28: a current state is bound to its own
+    /// JSON, validated and taken to 29 by <see cref="LegacyDigestSchema30Observer"/>, which hands its projection on
+    /// here. The literal-29 input check, every off literal and the exact inverse run before a detached copy loses a
+    /// field, and the projection faces the complete independent frozen28 contract.
     /// </summary>
     internal static class LegacyDigestSchema29Observer
     {
-        internal static JObject ProjectTrace28(EpisodeState state, JObject trace) => Project(state, trace, true);
-        internal static JObject ProjectFields28(EpisodeState state, JObject fields) => Project(state, fields, false);
+        /// <summary>A retained schema-29 trace (getters kept) or field view, taken to the retained 28.</summary>
+        internal static JObject ProjectRetained28(JObject source, bool getterTrace) => Project(source, getterTrace);
 
-        /// <summary>The source-bound current trace through the unchanged literal28/27 contracts to26.</summary>
-        internal static JObject ProjectTrace(EpisodeState state, JObject trace) =>
-            LegacyDigestSchema28Observer.ProjectFields(ProjectTrace28(state, trace));
-
+        /// <summary>A retained schema-29 trace through the unchanged literal28/27 contracts to 26.</summary>
+        internal static JObject ProjectRetained(JObject trace) =>
+            LegacyDigestSchema28Observer.ProjectFields(ProjectRetained28(trace, true));
 
         /// <summary>
-        /// The retained FindDecision answer view, owned by this exact reader and canonical
-        /// source. This cannot project caller-supplied decisions or arbitrary named JSON keys.
-        /// Actual reader exceptions still propagate unchanged to the historical Ask boundary.
+        /// The retained FindDecision answer view, owned by this exact reader and canonical source, for a state the
+        /// caller has already admitted whole (<see cref="LegacyDigestSchema30Observer.FindDecisionAnswers28"/>). This
+        /// cannot project caller-supplied decisions or arbitrary named JSON keys. Actual reader exceptions still
+        /// propagate unchanged to the historical Ask boundary.
         /// </summary>
-        internal static JArray FindDecisionAnswers28(EpisodeState state)
+        internal static JArray FindDecisionAnswersOfAnAdmittedSource28(EpisodeState state)
         {
-            string before = state == null ? null : Json(JObject.FromObject(state));
-            // Admit the complete current source, exact inert additions and fixed28 contract
-            // once for the batch, including modes with no decisions and their null slots.
-            ProjectFields28(state, state == null ? null : OldSaveTrace.Fields(state));
+            Require(state != null, "A current source state is required.");
+            string before = Json(JObject.FromObject(state));
             var answers = new JArray();
             foreach (var canonical in state.unifiedCommitments)
             {
@@ -69,14 +70,13 @@ namespace Gamesim.Tests.EditMode
             return answers;
         }
 
-        private static JObject Project(EpisodeState state, JObject source, bool getterTrace)
+        private static JObject Project(JObject source, bool getterTrace)
         {
             try
             {
-                Require(state != null && source != null, "A current source state and its own JSON are required.");
-                LegacyDigestSchema27Observer.RequireValidSource(state);
-                Require(Integer(source["schemaVersion"], 29), "Only literal schema29 is a current projection input.");
-                string stateBefore = Json(JObject.FromObject(state)), sourceBefore = Json(source);
+                Require(source != null, "A retained schema-29 JSON object is required.");
+                Require(Integer(source["schemaVersion"], 29), "Only literal schema29 is a retained projection input.");
+                string sourceBefore = Json(source);
                 Require(Integer(source["dialogueRulesVersion"], 0), "Only present integer-zero dialogue rules may be projected.");
                 Require(source["dialogue"] is JObject, "The complete inert dialogue object is required.");
                 var dialogue = (JObject)source["dialogue"];
@@ -87,11 +87,9 @@ namespace Gamesim.Tests.EditMode
                 foreach (var token in (JArray)source["unifiedCommitments"])
                     Require(token is JObject && token["conditionalVeto"]?.Type == JTokenType.Null,
                         "Every canonical row must retain a present-null conditionalVeto.");
-                // The private view selector is not a validation bypass: both entry points
-                // require the complete same current state and its exact corresponding JSON.
-                var own = JObject.FromObject(state);
-                if (!getterTrace) own = WithoutGetters(own);
-                Require(Json(own) == sourceBefore, "The JSON is not this current state's exact own view.");
+                // A field view never carries the getters; only a trace view may.
+                if (!getterTrace)
+                    Require(Json(WithoutGetters(source)) == sourceBefore, "A field view must carry no getter.");
 
                 var projected = (JObject)source.DeepClone();
                 projected.Remove("dialogueRulesVersion");
@@ -100,9 +98,9 @@ namespace Gamesim.Tests.EditMode
                 projected["schemaVersion"] = 28;
                 Fixed28(WithoutGetters(projected));
                 Require(Json(Restore(projected, source)) == sourceBefore,
-                    "The current projection must have the exact three-addition/header structural and order inverse.");
-                Require(Json(source) == sourceBefore && Json(JObject.FromObject(state)) == stateBefore,
-                    "The current source, JSON, numeric tokens and property/list order must remain unchanged.");
+                    "The retained projection must have the exact three-addition/header structural and order inverse.");
+                Require(Json(source) == sourceBefore,
+                    "The retained source, JSON, numeric tokens and property/list order must remain unchanged.");
                 return projected;
             }
             catch (Exception error) when (error is JsonException || error is OverflowException

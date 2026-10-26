@@ -97,6 +97,8 @@ namespace Gamesim.Simulation
                 Field("pactPlanRulesStartWeek", s.pactPlanRulesStartWeek),
                 Field("allWeekRulesStartWeek", s.allWeekRulesStartWeek),
                 Field("dialogueRulesVersion", s.dialogueRulesVersion),
+                Field("alumniRulesVersion", s.alumniRulesVersion),
+                Field("tuningRulesVersion", s.tuningRulesVersion),
                 Field("npcSocial.rulesStartWeek", s.npcSocial?.rulesStartWeek ?? 0),
                 Field("story.rulesStartWeek", s.story?.rulesStartWeek ?? 0),
                 Field("story.rulesVersion", s.story?.rulesVersion ?? 0),

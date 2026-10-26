@@ -1032,6 +1032,32 @@ This section recorded the integration increment and its gates before they ran. S
    The native EditMode run at 832b562e ran the new cases (8642 of 8642). Still owed, with the role/AP candidate: its
    B9 cohorts and the combined native gates.
 
+### 6.1 The Frozen29 reader and the pooled schema 30 (SCH30, ALL-STAR-HISTORIES-PLAN 8)
+
+The same pattern, one schema on (2026-10-25, `claude/all-star-histories`):
+
+1. **The reader at the live 29 (step 1).** `FrozenEpisodeV29` is a whole contract in Frozen28's form, cut from b208d46d:
+   a frozen schema-29 DTO and a frozen copy of the whole validator, the dialogue store at rules 0 and 1 included.
+   `PrepareCurrentPayload` ran it on every direct-29 save and on the end of every older chain. Proof: the subset's
+   `Tools/SimulationTests/Frozen29` (Frozen28's archived cases carried to 29, 5,423 in all, warnings as errors in its
+   own project) and `FrozenEpisodeV29IntegrationTests`, whose parity matrix holds the reader to the live validator over
+   every retained fixture, seasons played at dialogue rules 1 and under the role moments, and their mutations.
+   Copies of the owner's save folder (scratch only) all loaded through it; it adds 10.7 ms to a 166 KB schema-29
+   load and 70.8 ms to the largest owner copy (942 KB) under the editor's Mono. `FreshSeasonStateDigestTests`
+   recorded every fresh season's save-format digest at 29.
+2. **The bump (step 2).** The live schema is 30 (`EpisodeState.LiveSchema`). `UpgradeV29ToV30` runs `FrozenEpisodeV29`
+   first, then adds `alumniRulesVersion` 0, `alumniCatalogEdition` null and `tuningRulesVersion` 0 after `dialogue`;
+   `PrepareV29Payload` is the frozen dispatch to 29. Live validation accepts only those off values. `OldSaveTrace`
+   holds the three literals and `Newest` is 30; `CurrentOldSaveTrace` checkpoints through `LegacyDigestSchema30Observer`,
+   which hands the retained 29 to the schema-29 observer. No fixture, script or recorded digest changed: every
+   fixture replays to its recorded digests (241 of 241 `OldSaveAcceptanceTests` cases under the editor's Mono), the
+   retained V1 writer's rules-1 schema-29 saves load through the reader and replay their observations, and
+   `FreshSeasonStateDigestTests` holds every fresh season, taken back to 29 by `StripSchema30`, to its schema-29 digest.
+   The owner's save copies (120 files, schemas 12 to 29) all load, migrate to 30, save at 30 and reload.
+3. **Still owed:** the schema-30 cells' fixtures, written by the 30 build (ALL-STAR-HISTORIES-PLAN 8.7), and the owner's
+   copies through the full replay and recovery on the 30 build. Copy the owner's save folder in full before a play
+   copy updates: a schema-29 build refuses a schema-30 save.
+
 ## 7. Remaining
 
 - The schema 1 and 8 cells cannot have a build-written fixture: no build that wrote schema 1 survives, and no build

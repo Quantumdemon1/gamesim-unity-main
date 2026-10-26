@@ -16,7 +16,9 @@ namespace Gamesim.Simulation
         public const int Version = 1, MaximumEpisodes = 100, MaximumEvents = 400, MaximumSteps = 3;
         private const int MaximumAction = EpisodeEngine.LegacySocialActionBudget + WebSocialVocabulary.PurchaseCeiling;
 
-        public static bool On(EpisodeState s) => s != null && s.schemaVersion == 29 && s.dialogueRulesVersion == Version;
+        // Schema 29 introduced the dialogue store, and a later schema carries it as it is (DIALOGUE-PLAN §6, item 1):
+        // a lower bound, so the next schema's bump cannot switch every rules-1 season off.
+        public static bool On(EpisodeState s) => s != null && s.schemaVersion >= 29 && s.dialogueRulesVersion == Version;
 
         public static StorylineState Cycle(EpisodeState s, DialogueEpisodeState episode)
         {
@@ -94,7 +96,7 @@ namespace Gamesim.Simulation
         {
             error = null;
             if (pending != null && !pending.Verify(s, out error)) return false;
-            if (s == null || s.schemaVersion != 29) return Fail(out error, "Unsupported dialogue schema.");
+            if (s == null || s.schemaVersion < 29) return Fail(out error, "Unsupported dialogue schema.");
             if (s.dialogue == null || s.dialogue.episodes == null || s.dialogue.grants == null || s.dialogue.vetoOccasions == null)
                 return Fail(out error, "Dialogue storage must be complete.");
             if (s.dialogueRulesVersion == 0)

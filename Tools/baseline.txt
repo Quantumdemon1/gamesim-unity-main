@@ -33,7 +33,9 @@
 # 8937 = 8936 + AS1a's EditMode-only save-store case (AlumniAuditSaveTests 1).
 # 9088 = 8937 + SCH30 step 1's 151: FrozenEpisodeV29IntegrationTests 126, FreshSeasonStateDigestTests 22 and the
 # shared FrozenV29SerializerCacheTests 3, run under Unity's Mono (2026-10-25); the lead's full run counts them.
-Gamesim.EditModeTests 9088
+# 9181 = 9088 + SCH30 step 2's 93: the shared 50 below, PersistenceV30MigrationTests 28, PersistenceMigrationTests' native
+# inverse cases 8 -> 20 (+12) and PersistenceV29MigrationTests' direct-29 and direct-30 controls 3 -> 6 (+3).
+Gamesim.EditModeTests 9181
 # The UMA-free build. 1215 = 1236, the count after the consolidation's lanes (S2a, S2b, S4a), less the 7
 # farewell probes moved to Gamesim.DiagnosticsPlayModeTests and the 14 farewell readiness tests that now
 # compile only under GAMESIM_UMA (judged on the UMA cast); 1230 = 1215 + S2d's 7, S4b's 2, S4c's 2 and
@@ -108,4 +110,6 @@ Gamesim.Uma.DiagnosticsPlayModeTests 10
 # 10772 = 10768 + AS1a's same four shared cases (WebIntroductionsTests 2, CastTemplateTests 2).
 # 16198 = 10772 + SCH30 step 1's Frozen29 reader: Frozen28's archived internal cases and literal fixture controls
 # carried to schema 29 (5423) and the same three cache cases: what dotnet test Tools/SimulationTests ran (2026-10-25).
-Gamesim.SimulationTests 16198
+# 16248 = 16198 + SCH30 step 2's shared 50: LegacyDigestSchema30ObserverTests 28, PooledSchema30ShapeTests 16, the
+# live-schema pin per builder (ShippedRulesTests 1 -> 6) and the checkpoint at 30 (LegacyDigestSchema29ObserverTests 1).
+Gamesim.SimulationTests 16248

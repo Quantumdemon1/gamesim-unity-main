@@ -858,6 +858,39 @@ No draw, sequence, event or log line changes.
 must be of a season that seats an alumnus through `ApplyFresh`: the All-Stars 8 builder, the stress house at 16, and
 the tests 8.6 lists for H1b. It is re-pinned with that reason; any other move is a regression.
 
+### 8.9 SCH30 as built (2026-10-25, branch `claude/all-star-histories`)
+
+Two commits, so step 1 can land on main alone (8.2, closing rule 1): step 1 wires the frozen reader at the live 29;
+step 2 is the bump. Offline-compiled; the dotnet subset, the Frozen29 warnings-as-errors project and the EditMode
+fixtures named in each commit ran under Unity's Mono; the full sets are the lead's.
+
+- **How Frozen29 was cut.** Frozen28's 17 production files, carried by name, then by exactly the live validators'
+  changes since its image. The delta was found mechanically: every member Frozen28 copied (its `SOURCE` spans in
+  515246bf) was looked up in b208d46d. 472 of 485 were unchanged; the 13 that moved are carried and marked
+  `DELTA b208d46d` (the schema checks and the dialogue store in `TryValidateCore`, the keep-the-block deal outside the
+  role moments, the pitch board's three pitchers and recorded impacts, `StoryRules.IsDefined`, `DealKind`'s
+  `VetoHold`, `DealResolution`'s kept weight, `FinalistRead.DealBreaker`), with the members they newly read
+  (`RolesOn`, `RolesOnIn`, the tones' declines). The dialogue domain is a frozen copy of `DialogueRules.TryValidate`
+  with no pending command: rules 0 and 1 only.
+- **The file verdicts** (every non-frozen file `git diff 76371982..b208d46d` lists under `Simulation/` and
+  `Runtime/Persistence/`): a frozen copy for `EpisodeSaveValidation`, `EpisodeValidation`, `EpisodeLedgerValidation`,
+  `EpisodeStoryValidation`, `StoryState`, `DealState`, `DealResolution`, `FinalistRead`, `HoHPitches`, `NpcDeals`,
+  `EpisodeEngine.Story` (`RolesOn`, `RolesOnIn`), `RoleTone` (its declines), `StrategyRules` (the vote ask the
+  dialogue validator makes), `DialogueRules`, `DialogueCampaignV1` and `V2`; frozen data for `EpisodeState`,
+  `DialogueState` and `UnifiedCommitments` (and its clone); no validation effect for the other 34 (engine behaviour,
+  readers, content, the importer and the migration chain; `UnifiedVoteAdmission` and `UnifiedVoteStore` changed only
+  their pending-command writer paths).
+- **Two corrections to this plan.** No `deal-save-` id exists at b208d46d (8.1 named one): the role moments' only new
+  id is `deal-keep-`. And `LegacyDigestSchema29ObserverTests` reach the retained-29 entry through the schema-30
+  observer's state-bound entries, which compose it; `LegacyDigestSchema30ObserverTests` call the retained entry
+  directly on the schema-29 fixtures.
+- **What schema 30 carries:** exactly 5.1's three root fields, off. The joint note's §6 stayed final with no dialogue
+  field (re-read at `c003ded2`). AS3's association was not added: its derivation proof has not run (D-H9 is the
+  lead's).
+- **Not yet built:** 8.7's three new schema-30 fixtures (the default scene, a Regular and an All-Stars director
+  season, written by the 30 build through `Tools/OldSaves`), and closing rule 3's re-diff against main's tip before
+  step 2 lands.
+
 ---
 
 ## 9. Balance: what ships with the histories, and what waits for B9

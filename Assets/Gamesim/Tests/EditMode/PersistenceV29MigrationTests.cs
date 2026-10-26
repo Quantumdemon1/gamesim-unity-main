@@ -16,7 +16,9 @@ namespace Gamesim.Tests.EditMode
     /// <summary>
     /// Native actual migration/store boundary only. Historical input is retained writer JSON,
     /// never current DTOs relabelled as schema28. Inert29 controls are literal migration
-    /// expectations, not newly played/writer-authenticated dialogue histories.
+    /// expectations, not newly played/writer-authenticated dialogue histories. Since SCH30 the
+    /// 28-to-29 step is PrepareV29Payload's, and every load goes on to 30 through UpgradeV29ToV30,
+    /// gaining the pooled off literals (Current30) and nothing else.
     /// </summary>
     public sealed class PersistenceV29MigrationTests
     {
@@ -64,11 +66,14 @@ namespace Gamesim.Tests.EditMode
                 Assert.That((JArray)original["unifiedVoteReveals"], Is.Not.Empty);
             }
             var expected = Inert29(original);
-            var actual = EpisodeSaveMigrations.PrepareCurrentPayload(original, out bool migrated);
+            var actual = EpisodeSaveMigrations.PrepareV29Payload(original, out bool migrated);
             Assert.That(migrated, Is.True, "A real 28->29 migration, not detached current28 dispatch.");
             ExactInertStep(original, actual);
             Assert.That(Text(actual), Is.EqualTo(Text(expected)));
             AssertNoSharedTokens(original, actual);
+            var current = EpisodeSaveMigrations.PrepareCurrentPayload(original, out bool currentMigrated);
+            Assert.That(currentMigrated, Is.True);
+            Assert.That(Text(current), Is.EqualTo(Text(Current30(expected))), "The chain goes on to 30 with the pooled off literals only.");
             var beforeFutureReader = new TokenImage(actual);
             Assert.That(Assert.Throws<InvalidDataException>(() => Frozen(28, actual)).Message, Is.Not.Empty,
                 "A historical reader never accepts the new current wire contract.");
@@ -78,7 +83,7 @@ namespace Gamesim.Tests.EditMode
             slot.Write(source);
             Assert.That(slot.Store.TryLoad(out var loaded, out string message), Is.True, message);
             var loadedPayload = Payload(loaded);
-            Assert.That(JToken.DeepEquals(loadedPayload, expected), Is.True,
+            Assert.That(JToken.DeepEquals(loadedPayload, Current30(expected)), Is.True,
                 id + ": the actual serialized SaveJson wire payload must equal the complete retained migrated wire.");
             slot.Unchanged(source);
             ((JArray)actual["dialogue"]["episodes"]).Add(new JObject { ["caller-only"] = true });
@@ -96,9 +101,10 @@ namespace Gamesim.Tests.EditMode
             var fixed28 = EpisodeSaveMigrations.UpgradeV27ToV28(original);
             Frozen(28, fixed28);
             var intermediate = new TokenImage(fixed28);
-            var actual = EpisodeSaveMigrations.PrepareCurrentPayload(original, out bool migrated);
+            var actual = EpisodeSaveMigrations.PrepareV29Payload(original, out bool migrated);
             Assert.That(migrated, Is.True);
             ExactInertStep(fixed28, actual);
+            Assert.That(Text(EpisodeSaveMigrations.PrepareCurrentPayload(original, out _)), Is.EqualTo(Text(Current30(actual))));
             intermediate.AssertUnchanged(fixed28);
             before.AssertUnchanged(original);
         }
@@ -113,7 +119,7 @@ namespace Gamesim.Tests.EditMode
         {
             var valid = Fixture("s28-mode2-allweek-w3-campaign");
             Frozen(28, valid);
-            var control = EpisodeSaveMigrations.PrepareCurrentPayload(valid, out bool controlMigrated);
+            var control = EpisodeSaveMigrations.PrepareV29Payload(valid, out bool controlMigrated);
             Assert.That(controlMigrated, Is.True);
             ExactInertStep(valid, control);
             var bad = (JObject)valid.DeepClone();
@@ -154,14 +160,41 @@ namespace Gamesim.Tests.EditMode
             before.AssertUnchanged(original);
         }
 
+        /// <summary>Since SCH30 a direct-29 load migrates to 30, gaining the pooled off literals and nothing else.</summary>
         [TestCase("s28-default-w1-social")]
         [TestCase("s28-mode1-allweek-w2-campaign")]
         [TestCase("s28-mode2-allweek-w3-campaign")]
-        public void Direct29OffControlsLoadWithoutEnrollmentOrMigration(string id)
+        public void ADirect29LoadMigratesToThirtyGainingThePooledOffLiteralsAndNothingElse(string id)
         {
             var historical = Fixture(id);
             Frozen(28, historical);
             var current = Inert29(historical);
+            var before = new TokenImage(current);
+            var migratedPayload = EpisodeSaveMigrations.PrepareCurrentPayload(current, out bool migrated);
+            Assert.That(migrated, Is.True);
+            Assert.That(Text(migratedPayload), Is.EqualTo(Text(Current30(current))));
+            AssertNoSharedTokens(current, migratedPayload);
+            using var slot = new Slot();
+            byte[] bytes = Envelope(current);
+            slot.Write(bytes);
+            Assert.That(slot.Store.TryLoad(out var loaded, out string message), Is.True, message);
+            Assert.That(message, Does.Contain("Schema 29").And.Contain("schema 30 in memory"));
+            Assert.That(JToken.DeepEquals(Payload(loaded), Current30(current)), Is.True);
+            Assert.That((int)Payload(loaded)["dialogueRulesVersion"], Is.Zero);
+            Assert.That((int)Payload(loaded)["alumniRulesVersion"], Is.Zero);
+            slot.Unchanged(bytes);
+            before.AssertUnchanged(current);
+        }
+
+        /// <summary>A direct 30, the live schema, loads without migration (the former direct-29 control's assertion).</summary>
+        [TestCase("s28-default-w1-social")]
+        [TestCase("s28-mode1-allweek-w2-campaign")]
+        [TestCase("s28-mode2-allweek-w3-campaign")]
+        public void Direct30OffControlsLoadWithoutEnrollmentOrMigration(string id)
+        {
+            var historical = Fixture(id);
+            Frozen(28, historical);
+            var current = Current30(Inert29(historical));
             var before = new TokenImage(current);
             var detached = EpisodeSaveMigrations.PrepareCurrentPayload(current, out bool migrated);
             Assert.That(migrated, Is.False);
@@ -191,7 +224,7 @@ namespace Gamesim.Tests.EditMode
             using var slot = new Slot();
             byte[] good = Envelope(current); slot.Write(good);
             Assert.That(slot.Store.TryLoad(out var control, out string message), Is.True, message);
-            Assert.That(JToken.DeepEquals(Payload(control), current), Is.True);
+            Assert.That(JToken.DeepEquals(Payload(control), Current30(current)), Is.True);
             slot.Unchanged(good);
             var bad = (JObject)current.DeepClone();
             var dialogue = (JObject)bad["dialogue"];
@@ -235,7 +268,7 @@ namespace Gamesim.Tests.EditMode
         [TestCase("s28-mode2-finished")]
         public void ActualSaveJsonWireComparisonChecksEveryScalarAndNeverMasksAChangedValue(string id)
         {
-            var expected = Inert29(Fixture(id));
+            var expected = Current30(Inert29(Fixture(id)));
             using var slot = new Slot();
             byte[] source = corpus[id + ".save.json"]; slot.Write(source);
             Assert.That(slot.Store.TryLoad(out var loaded, out string message), Is.True, message);
@@ -293,6 +326,17 @@ namespace Gamesim.Tests.EditMode
             result.Add("dialogue", EmptyDialogue());
             foreach (JObject row in (JArray)result["unifiedCommitments"]) row.Add("conditionalVeto", JValue.CreateNull());
             result["schemaVersion"] = 29;
+            return result;
+        }
+        /// <summary>UpgradeV29ToV30's literals, by hand: the pooled three after the dialogue store, the header 30.</summary>
+        private static JObject Current30(JObject inert29)
+        {
+            Assert.That((int)inert29["schemaVersion"], Is.EqualTo(29));
+            var result = (JObject)inert29.DeepClone();
+            result.Add("alumniRulesVersion", 0);
+            result.Add("alumniCatalogEdition", JValue.CreateNull());
+            result.Add("tuningRulesVersion", 0);
+            result["schemaVersion"] = 30;
             return result;
         }
         private static void ExactInertStep(JObject original, JObject actual)

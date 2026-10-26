@@ -127,9 +127,10 @@ namespace Gamesim.Tests.EditMode
                     Assert.That((string)entry["writer"], Does.Match("^([0-9a-f]{8}|codex-port:unity-v[2-5]-source-202609(10|13))$"),
                         (string)entry["id"] + ": the build that wrote it, a commit or the Codex port's source snapshot.");
                 // A real save names no writer, so only a generated one is held to its writer here.
-                if ((string)entry["origin"] != "real" && (int)entry["schema"] == CurrentOldSaveTrace.Current)
+                // From schema 29 on, a generated fixture is written and recorded by the build that writes its schema.
+                if ((string)entry["origin"] != "real" && (int)entry["schema"] >= 29)
                     Assert.That((string)entry["referenceBuild"], Is.EqualTo((string)entry["writer"]),
-                        (string)entry["id"] + ": a generated schema-29 fixture is written and recorded by the build that writes schema 29.");
+                        (string)entry["id"] + ": a generated schema-29-or-later fixture is written and recorded by the build that writes its schema.");
             }
             // One replayed fixture per cell of the plan's matrix: every schema a build wrote (not 1 or 8, which no surviving
             // build did), in each profile it shipped - the director's fresh season and the default scene's; before 6 the
@@ -172,7 +173,7 @@ namespace Gamesim.Tests.EditMode
             return schema + "/" + profile + "/uc" + ((int?)e["rules"]["unifiedCommitmentRulesVersion"] ?? 0) + "/allweek" + On("allWeekRulesStartWeek")
                 + (On("allianceLeakRulesStartWeek") + On("pactPlanRulesStartWeek") > 0 ? "/leaks" + On("allianceLeakRulesStartWeek") + "/plans" + On("pactPlanRulesStartWeek") : "")
                 + (schema == 22 && profile == "director" ? (id.Contains("-early-") ? "/early" : id.Contains("-middle-") ? "/middle" : "/late") : "")
-                + (schema >= CurrentOldSaveTrace.Current ? "/dialogue" + (int)e["rules"]["dialogueRulesVersion"] : "");
+                + (schema >= 29 ? "/dialogue" + (int)e["rules"]["dialogueRulesVersion"] : "");
         }
 
         // ------------------------------------------------------------------ load, migrate, validate, replay
@@ -186,8 +187,9 @@ namespace Gamesim.Tests.EditMode
             var payload = (JObject)JObject.Parse(File.ReadAllText(slot.Store.SavePath))["state"];
             Assert.That((int)payload["schemaVersion"], Is.EqualTo(schema));
 
-            // The source-bound current adapter owns29 admission; a schema-29 fixture is this build's own file and loads
-            // without a migration. Historical fixtures and their reference-schema checkpoint algorithm are not rewritten.
+            // The source-bound current adapter owns the live schema's admission; since SCH30 a schema-29 fixture migrates
+            // to 30 in memory like every older one. Historical fixtures and their reference-schema checkpoint algorithm
+            // are not rewritten.
             const int current = CurrentOldSaveTrace.Current;
             Assert.That(slot.Store.TryLoad(out var loaded, out string message), Is.True, message);
             if (schema < current) Assert.That(message, Does.Contain("Schema " + schema + " history was migrated to schema " + current + " in memory."));
@@ -501,7 +503,7 @@ namespace Gamesim.Tests.EditMode
             Ask("UnifiedSafetySaveReferences.TryValidate", () => UnifiedSafetySaveReferences.TryValidate(s, out string error) + " " + error);
             Ask("UnifiedSafetySaveReferences.TryValidateProspectiveVote", () => Internal(typeof(UnifiedSafetySaveReferences), "TryValidateProspectiveVote", s));
             Ask("UnifiedVoteFamilyValidation.TryValidate", () => UnifiedVoteFamilyValidation.TryValidate(s, s.unifiedVoteReveals, out string error) + " " + error);
-            Ask("UnifiedVoteHistory.FindDecision", () => LegacyDigestSchema29Observer.FindDecisionAnswers28(s));
+            Ask("UnifiedVoteHistory.FindDecision", () => LegacyDigestSchema30Observer.FindDecisionAnswers28(s));
             Ask("UnifiedVoteHistory.Fulfillments", () => Each(UnifiedVoteHistory.Fulfillments(s)));
             Ask("UnifiedVoteHistory.Incidents", () => Each(UnifiedVoteHistory.Incidents(s)));
             return OldSaveTrace.Canonical(answers, false);
@@ -545,9 +547,10 @@ namespace Gamesim.Tests.EditMode
         /// Recovery on the old fixtures (OWNER-DECISIONS-2026-10-22 §4, item 2). Every old save, kept as the backup, is
         /// recovered through the real store twice: with no primary, and with the primary cut off halfway, as an
         /// interrupted write leaves it. Loading refuses the primary and offers the backup. Recovery reads the backup as
-        /// loading reads a primary - for an older save the frozen schema-28 gate and the step to 29, in memory; a schema-29
-        /// save as it is - and gives the season that loading the same file as the primary gives, valid at 29. It puts the
-        /// backup's own bytes back as the primary, not rewritten at 29, and leaves the backup as it was. A damaged primary
+        /// loading reads a primary - for an older save its frozen gates and the steps to 30, in memory (since SCH30 a
+        /// schema-29 save too, through the frozen schema-29 gate) - and gives the season that loading the same file as the
+        /// primary gives, valid at 30. It puts the backup's own bytes back as the primary, not rewritten at 30, and leaves
+        /// the backup as it was. A damaged primary
         /// is kept beside them as .before-recovery-*, byte for byte; a missing one leaves nothing to keep.
         /// </summary>
         [TestCaseSource(nameof(Episodes))]
@@ -585,15 +588,18 @@ namespace Gamesim.Tests.EditMode
                 Assert.That(recovered.schemaVersion, Is.EqualTo(current), primary);
                 Assert.That(EpisodeValidation.TryValidate(recovered, out var error), Is.True, primary + ": " + error);
                 Assert.That(JToken.DeepEquals(Payload(recovered), expected), Is.True,
-                    primary + ": the recovered season is the save's own, through the frozen schema-28 gate and the step to 29.");
+                    primary + ": the recovered season is the save's own, through the frozen gates and the steps to 30.");
                 Assert.That(CurrentOldSaveTrace.Checkpoint(recovered, current), Is.EqualTo(CurrentOldSaveTrace.Checkpoint(loaded, current)),
                     primary + ": the season loading the same file as the primary gives.");
                 if (schema == 28)
                     Assert.That(PersistenceMigrationTests.StripSchema29(Payload(recovered)).ToString(Formatting.None),
                         Is.EqualTo(payload.ToString(Formatting.None)), primary + ": without schema 29's literals, the schema-28 save token for token as its build wrote it.");
+                else if (schema == 29)
+                    Assert.That(PersistenceMigrationTests.StripSchema30(Payload(recovered)).ToString(Formatting.None),
+                        Is.EqualTo(payload.ToString(Formatting.None)), primary + ": without schema 30's literals, the schema-29 save token for token as its build wrote it.");
                 else if (schema == current)
                     Assert.That(Payload(recovered).ToString(Formatting.None), Is.EqualTo(payload.ToString(Formatting.None)),
-                        primary + ": a schema-29 save is this build's own, recovered token for token as it wrote it.");
+                        primary + ": a schema-30 save is this build's own, recovered token for token as it wrote it.");
 
                 Assert.That(File.ReadAllBytes(slot.Store.BackupPath), Is.EqualTo(slot.Original), primary + ": recovery never rewrites or rotates the backup.");
                 Assert.That(File.ReadAllBytes(slot.Store.SavePath), Is.EqualTo(slot.Original),

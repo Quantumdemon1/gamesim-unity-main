@@ -85,7 +85,7 @@ namespace Gamesim.Simulation
             bool prospectiveVote = canonicalMode == UnifiedVoteFamilyValidation.Version;
             bool prospectiveSafety = canonicalMode == UnifiedCommitments.ProspectiveVersion || prospectiveVote;
             error = null;
-            if (s == null || s.schemaVersion != 29) return Fail(out error, "Unsupported episode schema.");
+            if (s == null || s.schemaVersion != EpisodeState.LiveSchema) return Fail(out error, "Unsupported episode schema.");
             // The unpublished pilot has a complete local semantic owner. Unknown versions still
             // refuse; default/legacy rules stay inert and keep their original storage diagnostics.
             if (s.dialogueRulesVersion != 0 && s.dialogueRulesVersion != DialogueRules.Version)
@@ -98,6 +98,10 @@ namespace Gamesim.Simulation
             // Pending exceptions are exact registered receipt objects, never a raised effective
             // root revision. Every other invariant below sees the candidate's actual revision.
             if (!DialogueRules.TryValidate(s, pending, out error)) return false;
+            // Schema 30's pooled fields (SCH30, ALL-STAR-HISTORIES-PLAN 5.3): every season holds each at its off value
+            // until the slice that defines a value widens this in the same step. A season may not hold a value no code reads.
+            if (s.alumniRulesVersion != 0 || s.alumniCatalogEdition != null || s.tuningRulesVersion != 0)
+                return Fail(out error, "Schema 30's pooled rules are not enabled in this build.");
             if (prospectiveSafety)
             {
                 if (s.unifiedCommitmentRulesVersion != canonicalMode

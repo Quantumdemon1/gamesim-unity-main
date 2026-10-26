@@ -77,6 +77,10 @@ namespace Gamesim.Tests.EditMode
             var s = Build(builder, size, roster, seed);
             if (applyFresh) ShippedRules.ApplyFresh(s);
             var payload = Payload(s);
+            // SCH30 step 2: the live schema is 30; the test inverse takes the season back to the retained 29 (the pooled
+            // fields at their off literals removed, the header 29) before it is hashed against the 29 build's record.
+            Assert.That((int)payload["schemaVersion"], Is.EqualTo(30));
+            PersistenceMigrationTests.StripSchema30(payload);
             Assert.That((int)payload["schemaVersion"], Is.EqualTo(29), "Recorded at the live schema 29.");
             string key = Key(builder, size, roster, seed);
             string digest = Digest(payload);

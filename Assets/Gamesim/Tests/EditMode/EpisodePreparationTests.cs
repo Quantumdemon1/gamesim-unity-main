@@ -105,7 +105,7 @@ namespace Gamesim.Tests.EditMode
             Assert.That(files.Store.TryLoad(out loaded, out message), Is.True, message);
             Assert.That(loaded.playerStudyBonus, Is.EqualTo(1));
             Assert.That(loaded.randomState, Is.EqualTo(engine.Snapshot.randomState));
-            Assert.That(loaded.schemaVersion, Is.EqualTo(29));
+            Assert.That(loaded.schemaVersion, Is.EqualTo(30));
         }
 
         [TestCase(EpisodePhase.HoH)]

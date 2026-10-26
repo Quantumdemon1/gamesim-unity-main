@@ -13,13 +13,16 @@ using NUnit.Framework;
 namespace Gamesim.Tests.EditMode
 {
     /// <summary>
-    /// SCH30 step 1 (ALL-STAR-HISTORIES-PLAN 8.3), at the live schema 29: the frozen schema-29 whole reader on the real
-    /// save paths, and its parity with the live validator. Reflection reaches the internal reader; direct calls prove
-    /// the dispatch wiring (a malformed 29 is refused by PrepareCurrentPayload itself, so the case fails if the call is
-    /// removed); real temporary slots prove load, save, rotation and reload. The parity matrix holds the reader to the
-    /// live validator: every retained fixture as the chain hands it on at 29, seasons the engine plays at dialogue rules
-    /// 1 and under the role moments (story rules Roles), and mutations of each - both accept or both refuse, and a
-    /// semantic refusal says the same thing. Retained fixtures are read-only; every edit is a detached JSON control.
+    /// SCH30 (ALL-STAR-HISTORIES-PLAN 8.3, 8.4): the frozen schema-29 whole reader on the real save paths, and its
+    /// parity with the live validator. Written at the live 29 (step 1), where PrepareCurrentPayload ran the reader on
+    /// every direct 29; since the bump (step 2) it is UpgradeV29ToV30's first step and a direct 29 migrates. Reflection
+    /// reaches the internal reader; direct calls prove the dispatch wiring (a malformed 29 is refused by
+    /// PrepareCurrentPayload itself, so the case fails if the call is removed); real temporary slots prove load, save,
+    /// rotation and reload. The parity matrix holds the reader to the live validator: every retained fixture as the
+    /// chain hands it on at 29, seasons the engine plays at dialogue rules 1 and under the role moments (story rules
+    /// Roles), and mutations of each. The frozen 29 verdict on a payload and the live verdict on the same payload with
+    /// schema 30's pooled off literals agree - both accept or both refuse, and a semantic refusal says the same thing -
+    /// which is the upgrade's promise: the widest legal 29 is a legal 30. Every edit is a detached JSON control.
     /// </summary>
     public sealed class FrozenEpisodeV29IntegrationTests
     {
@@ -40,9 +43,10 @@ namespace Gamesim.Tests.EditMode
             var before = new TokenImage(payload);
             Frozen(29, payload);
             var result = EpisodeSaveMigrations.PrepareCurrentPayload(payload, out bool migrated);
-            Assert.That(migrated, Is.False, "A direct 29 is the live schema: it is held to its frozen reader, not migrated.");
+            Assert.That(migrated, Is.True, "A direct 29 is historical since SCH30: held to its frozen reader, then the pooled step.");
             Assert.That(result, Is.Not.SameAs(payload));
-            Assert.That(result.ToString(Formatting.None), Is.EqualTo(payload.ToString(Formatting.None)));
+            Assert.That(result.ToString(Formatting.None), Is.EqualTo(Pooled30(payload).ToString(Formatting.None)));
+            Assert.That(result.ToString(Formatting.None), Is.EqualTo(EpisodeSaveMigrations.UpgradeV29ToV30(payload).ToString(Formatting.None)));
             var originals = new HashSet<JToken>(payload.DescendantsAndSelf(), TokenIdentity.Instance);
             foreach (var copy in result.DescendantsAndSelf())
                 Assert.That(originals.Contains(copy), Is.False, "No returned token aliases any retained input token.");
@@ -98,8 +102,8 @@ namespace Gamesim.Tests.EditMode
             var current = EpisodeSaveMigrations.PrepareCurrentPayload(original, out bool migrated);
             Assert.That(migrated, Is.True);
             Assert.That(current, Is.Not.SameAs(original));
-            Assert.That(current.ToString(Formatting.None), Is.EqualTo(expected.ToString(Formatting.None)));
-            Assert.That((int)current["schemaVersion"], Is.EqualTo(29));
+            Assert.That(current.ToString(Formatting.None), Is.EqualTo(Pooled30(expected).ToString(Formatting.None)));
+            Assert.That((int)current["schemaVersion"], Is.EqualTo(30));
             Assert.That((int)current["dialogueRulesVersion"], Is.Zero);
             before.AssertUnchanged(original);
         }
@@ -127,7 +131,7 @@ namespace Gamesim.Tests.EditMode
             Assert.That(frozen.Message, Is.EqualTo("Disabled dialogue storage must remain complete and inert."));
             var error = Assert.Throws<InvalidDataException>(() => EpisodeSaveMigrations.PrepareCurrentPayload(bad, out _));
             Assert.That(error.Message, Is.EqualTo(frozen.Message), "Proves the final gate, not only the direct-29 dispatch.");
-            Assert.That(Live(stepped), Is.EqualTo(frozen.Message), "The live validator gives the chain's end the same verdict.");
+            Assert.That(Live(Pooled30(stepped)), Is.EqualTo(frozen.Message), "The live validator gives the chain's end the same verdict.");
             before.AssertUnchanged(bad);
         }
 
@@ -138,11 +142,12 @@ namespace Gamesim.Tests.EditMode
             using var slot = new Slot();
             slot.Write(slot.Store.SavePath, source);
             Assert.That(slot.Store.TryLoad(out var loaded, out string message), Is.True, message);
-            Assert.That(message, Does.Not.Contain("migrated"), "A direct 29 is not migrated.");
+            Assert.That(message, Does.Contain("Schema 29").And.Contain("schema 30 in memory"), "A direct 29 migrates in memory.");
             Assert.That(File.ReadAllBytes(slot.Store.SavePath), Is.EqualTo(source), "Loading is read-only.");
             var loadedImage = Payload(loaded);
-            Assert.That(JToken.DeepEquals(loadedImage, Fixture(id)), Is.True, "The store hands on the writer's state as it is.");
-            Frozen(29, loadedImage);
+            Assert.That(JToken.DeepEquals(loadedImage, Pooled30(Fixture(id))), Is.True, "The writer's state, with the pooled off literals.");
+            var retained29 = (JObject)loadedImage.DeepClone(); PersistenceMigrationTests.StripSchema30(retained29);
+            Frozen(29, retained29);
             slot.Store.Save(loaded);
             Assert.That(File.ReadAllBytes(slot.Store.BackupPath), Is.EqualTo(source), "Rotation retains the exact writer envelope.");
             Assert.That(slot.Store.TryLoad(out var again, out message), Is.True, message);
@@ -210,7 +215,7 @@ namespace Gamesim.Tests.EditMode
         [TestCaseSource(nameof(BuiltSeasons))]
         public void SeasonsTheEnginePlaysAtDialogueRulesOneAndUnderTheRoleMomentsAreAcceptedByBoth(string season)
         {
-            var payload = Payload(Built(season));
+            var payload = Retained29(Built(season));
             Assert.That((int)payload["schemaVersion"], Is.EqualTo(29));
             if (season.StartsWith("dialogue-", StringComparison.Ordinal))
             {
@@ -274,7 +279,7 @@ namespace Gamesim.Tests.EditMode
         public void MutationsOfSchemaTwentyNineSeasonsGetTheSameVerdictFromTheFrozenReaderAndTheLiveValidator(string season,
             string mutation, bool accepted)
         {
-            var payload = season.StartsWith("s29-", StringComparison.Ordinal) ? Fixture(season) : Payload(Built(season));
+            var payload = season.StartsWith("s29-", StringComparison.Ordinal) ? Fixture(season) : Retained29(Built(season));
             Assert.That(Agree(payload, season), Is.Null, "The control is lawful.");
             var mutated = (JObject)payload.DeepClone();
             Mutate(mutated, mutation);
@@ -290,11 +295,31 @@ namespace Gamesim.Tests.EditMode
         /// and a refusal from the validators themselves (not a shape check, whose wording each reader owns) says the
         /// same thing. The input is never changed.
         /// </summary>
+        /// <summary>UpgradeV29ToV30's literals by hand, on a detached copy, without the frozen gate: the live side's input.</summary>
+        private static JObject Pooled30(JObject payload29)
+        {
+            var result = (JObject)payload29.DeepClone();
+            if (result.Property("alumniRulesVersion") == null) result.Add("alumniRulesVersion", 0);
+            if (result.Property("alumniCatalogEdition") == null) result.Add("alumniCatalogEdition", JValue.CreateNull());
+            if (result.Property("tuningRulesVersion") == null) result.Add("tuningRulesVersion", 0);
+            if (result["schemaVersion"]?.Type == JTokenType.Integer && (int)result["schemaVersion"] == 29) result["schemaVersion"] = 30;
+            return result;
+        }
+
+        /// <summary>A current season's payload at the retained 29: the test inverse of the pooled step.</summary>
+        private static JObject Retained29(EpisodeState state)
+        {
+            var payload = Payload(state);
+            Assert.That((int)payload["schemaVersion"], Is.EqualTo(30));
+            PersistenceMigrationTests.StripSchema30(payload);
+            return payload;
+        }
+
         private static string Agree(JObject payload, string label)
         {
             var before = new TokenImage(payload);
             string frozen = FrozenVerdict((JObject)payload.DeepClone());
-            string live = Live((JObject)payload.DeepClone());
+            string live = Live(Pooled30(payload));
             before.AssertUnchanged(payload);
             Assert.That(frozen == null, Is.EqualTo(live == null), label + ": frozen '" + frozen + "', live '" + live + "'.");
             if (frozen != null && !live.StartsWith("shape: ", StringComparison.Ordinal) && !IsFrozenShape(frozen))

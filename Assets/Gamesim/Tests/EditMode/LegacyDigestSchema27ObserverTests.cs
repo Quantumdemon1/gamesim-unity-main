@@ -14,7 +14,7 @@ namespace Gamesim.Tests.EditMode
     /// only fresh supported flags and use public Apply afterward. A live state is schema29 now, so
     /// complete current admission precedes each retained literal28/27 field projection
     /// (<see cref="LegacyDigestSchema27TestStates.Trace27"/>), and every defect is also shown refused
-    /// through the whole live chain, where <see cref="LegacyDigestSchema29Observer"/> binds the trace
+    /// through the whole live chain, where <see cref="LegacyDigestSchema30Observer"/> binds the trace
     /// to its state. Altered JSON/state controls are detached diagnostics after a proved valid
     /// baseline, never installed saves. Real SaveJson, storage and migration have separate runtime
     /// companion cases.
@@ -235,7 +235,7 @@ namespace Gamesim.Tests.EditMode
             var inverse = LegacyDigestSchema27TestStates.Restore27(projected);
             Assert.That(Text(inverse), Is.EqualTo(before), "The neutral additions restore original compact property order too.");
             var live = LegacyDigestSchema27Observer.ProjectFields(trace);
-            Assert.That(Text(LegacyDigestSchema29Observer.ProjectTrace(state, LegacyDigestSchema27TestStates.Trace(state))), Is.EqualTo(Text(live)),
+            Assert.That(Text(LegacyDigestSchema30Observer.ProjectTrace(state, LegacyDigestSchema27TestStates.Trace(state))), Is.EqualTo(Text(live)),
                 "The live chain hands exactly this projection on.");
             projected["Active"][0]["name"] = "Detached getter trace";
             ((JArray)projected["unifiedCommitments"]).Clear();
@@ -294,7 +294,7 @@ namespace Gamesim.Tests.EditMode
         {
             LegacyDigestSchema27TestStates.Valid(state);
             string stateBefore = LegacyDigestSchema27TestStates.Text(state), traceBefore = Text(trace);
-            var trace28 = LegacyDigestSchema29Observer.ProjectTrace28(state, trace);
+            var trace28 = LegacyDigestSchema30Observer.ProjectTrace28(state, trace);
             var field = LegacyDigestSchema28Observer.CheckFields(trace28);
             Assert.That(Text(field), Is.EqualTo(Text(LegacyDigestSchema27TestStates.WithoutGetters(trace28))));
             Assert.That(Text(trace), Is.EqualTo(traceBefore));
@@ -323,8 +323,8 @@ namespace Gamesim.Tests.EditMode
         {
             string stateBefore = LegacyDigestSchema27TestStates.Text(state), traceBefore = Text(trace);
             Assert.Throws<InvalidDataException>(() =>
-                LegacyDigestSchema28Observer.CheckFields(LegacyDigestSchema29Observer.ProjectTrace28(state, trace)));
-            Assert.Throws<InvalidDataException>(() => LegacyDigestSchema29Observer.ProjectTrace(state, trace));
+                LegacyDigestSchema28Observer.CheckFields(LegacyDigestSchema30Observer.ProjectTrace28(state, trace)));
+            Assert.Throws<InvalidDataException>(() => LegacyDigestSchema30Observer.ProjectTrace(state, trace));
             Assert.That(Text(trace), Is.EqualTo(traceBefore));
             Assert.That(LegacyDigestSchema27TestStates.Text(state), Is.EqualTo(stateBefore));
         }
@@ -445,7 +445,7 @@ namespace Gamesim.Tests.EditMode
         {
             Assert.That(mode, Is.InRange(0, 2));
             var state = ContentCatalog.Create(seed);
-            Assert.That(state.schemaVersion, Is.EqualTo(29));
+            Assert.That(state.schemaVersion, Is.EqualTo(30));
             Assert.That(state.allianceLeakRulesStartWeek + state.pactPlanRulesStartWeek + state.allWeekRulesStartWeek, Is.Zero);
             Assert.That(state.unifiedCommitmentRulesVersion, Is.Zero);
             Assert.That(state.unifiedHearingRulesVersion, Is.Zero);
@@ -503,7 +503,7 @@ namespace Gamesim.Tests.EditMode
         internal static void Valid(EpisodeState state)
         {
             string before = Text(state);
-            Assert.That(state.schemaVersion, Is.EqualTo(29));
+            Assert.That(state.schemaVersion, Is.EqualTo(30));
             Assert.That(EpisodeValidation.TryValidate(state, out string reason), Is.True, reason);
             // Schema 28's Wave D storage stays inert in every witness: nothing in this build enables it.
             Assert.That(state.allianceLeakRulesStartWeek == 0 && state.pactPlanRulesStartWeek == 0 && state.allWeekRulesStartWeek == 0, Is.True);
@@ -518,7 +518,7 @@ namespace Gamesim.Tests.EditMode
         internal static JObject Trace(EpisodeState state) => JObject.FromObject(state);
 
         /// <summary>The current source's admitted literal28 trace; never a header-flipped live state.</summary>
-        internal static JObject Trace28(EpisodeState state) => LegacyDigestSchema29Observer.ProjectTrace28(state, Trace(state));
+        internal static JObject Trace28(EpisodeState state) => LegacyDigestSchema30Observer.ProjectTrace28(state, Trace(state));
 
         /// <summary>The admitted literal28 trace's test-owned literal27 projection.</summary>
         internal static JObject Trace27(EpisodeState state) => Neutral27(Trace28(state));

@@ -96,6 +96,9 @@
     <Compile Include="$(EditMode)LegacyDigestSchema28ObserverTests.cs" />
     <Compile Include="$(EditMode)LegacyDigestSchema29Observer.cs" />
     <Compile Include="$(EditMode)LegacyDigestSchema29ObserverTests.cs" />
+    <Compile Include="$(EditMode)LegacyDigestSchema30Observer.cs" />
+    <Compile Include="$(EditMode)LegacyDigestSchema30ObserverTests.cs" />
+    <Compile Include="$(EditMode)PooledSchema30ShapeTests.cs" />
     <Compile Include="$(EditMode)OldSaveTrace.cs" />
     <Compile Include="$(EditMode)CurrentOldSaveTrace.cs" />
     <Compile Include="$(EditMode)FrozenEpisodeV27ContractTests.cs" />

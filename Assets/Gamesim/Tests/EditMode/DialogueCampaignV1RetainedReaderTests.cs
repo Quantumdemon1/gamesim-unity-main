@@ -185,7 +185,7 @@ namespace Gamesim.Tests.EditMode
             Assert.That(File.Exists(reader.BackupPath), Is.False, "Each role is a strict primary read, never an automatic recovery.");
             Assert.That(reader.TryLoad(out var loaded, out string message), Is.True, message);
             Valid(loaded);
-            Assert.That(loaded.schemaVersion, Is.EqualTo(29));
+            Assert.That(loaded.schemaVersion, Is.EqualTo(30));
             Assert.That(loaded.dialogueRulesVersion, Is.EqualTo(1));
             if (id == "case" && role == "backup")
             {
@@ -297,6 +297,10 @@ namespace Gamesim.Tests.EditMode
             Assert.That((string)envelope["format"], Is.EqualTo("gamesim-unity-save"));
             Assert.That((int)envelope["version"], Is.EqualTo(1));
             var wire = (JObject)envelope["state"];
+            // SCH30: the current writer writes schema 30. The observation is taken at the schema the original writer
+            // wrote, 29, by the test inverse of the pooled step (every pooled field off, removed; the header 29), so the
+            // retained expected data is still never transformed.
+            PersistenceMigrationTests.StripSchema30(wire);
             var presentations = new JArray();
             foreach (var episode in state.dialogue.episodes)
             {

@@ -324,10 +324,23 @@ namespace Gamesim.Tests.PlayMode
                 foreach(var pair in canvases)if(pair.Canvas!=null)pair.Canvas.enabled=false;
                 foreach(var pair in overlays)if(pair.Renderer!=null)pair.Renderer.enabled=true;
                 var floor=SceneComponents<BoxCollider>().Single(collider=>collider.name=="Competition yard floor");
-                Vector3 focus=floor.bounds.center+Vector3.up*1.1f;
-                eye.transform.position=focus+Vector3.back*Mathf.Max(20f,floor.bounds.size.x*.8f)+Vector3.up*9f;
-                eye.transform.LookAt(focus);eye.fieldOfView=50;eye.orthographic=false;
-                foreach(var instrument in SceneComponents<CompetitionApparatus>())
+                var field=SceneComponents<CompetitionApparatus>().ToArray();
+                var subjects=field.Select(instrument=>FullFieldRenderedBounds(instrument.transform))
+                    .Concat(field.Select(instrument=>FullFieldBodyBounds(instrument.ActorId))).ToArray();
+                var framing=FullFieldView(subjects,floor.bounds,field[0].transform.parent.forward,50,1600f/900f);
+                eye.transform.SetPositionAndRotation(framing.Eye,framing.Rotation);eye.fieldOfView=50;eye.orthographic=false;
+                Debug.Log("[Gamesim W3] "+houseSize+"-entrant "+category+" full-field eye "+framing.Eye.ToString("F2")+", pitch "+framing.Pitch
+                    +" degrees, "+framing.Distance.ToString("F2")+" m back from the field's centre; its sight lines pass "
+                    +framing.WallClearance.ToString("F2")+" m or more over the house's yard-side wall");
+                Assert.That(framing.WallClearance,Is.GreaterThanOrEqualTo(FullFieldWallClearance),
+                    "The full-field eye sees the whole field over the house's yard-side wall, at pitch "+framing.Pitch);
+                foreach(var subject in subjects)foreach(var corner in BoundsCorners(subject))
+                {
+                    var view=eye.WorldToViewportPoint(corner);
+                    Assert.That(view.z>0 && view.x>=.02f && view.x<=.98f && view.y>=.02f && view.y<=.98f,Is.True,
+                        "Every station and body of the field is in the full-field frame: "+subject+" at "+view.ToString("F3"));
+                }
+                foreach(var instrument in field)
                 {
                     var view=eye.WorldToViewportPoint(instrument.transform.parent.position+Vector3.up);
                     Assert.That(view.z,Is.GreaterThan(0));Assert.That(view.x,Is.InRange(.03f,.97f));Assert.That(view.y,Is.InRange(.03f,.97f));
@@ -348,6 +361,93 @@ namespace Gamesim.Tests.PlayMode
                 lens.Dispose();if(frame!=null)Object.Destroy(frame);
             }
             yield return null;
+        }
+
+        /// <summary>
+        /// The house shell's yard-side wall, which stands behind the contestants on the deck's near edge:
+        /// 1.55 m over the deck, reaching .16 m into it (bb_shell_house; its doorway apart). The full-field
+        /// eye's sight lines to the field pass at least FullFieldWallClearance over it.
+        /// </summary>
+        private const float FullFieldWallTop=1.55f,FullFieldWallReach=.16f,FullFieldWallClearance=.05f;
+        /// <summary>The full-field frame keeps every station and body this far inside its edges (a fraction of the frame).</summary>
+        private const float FullFieldBorder=.04f;
+        /// <summary>
+        /// The full-field eye looks down at least this steeply. Contestants stand between the eye and their
+        /// boards: at 50 degrees about four fifths of the boards show over their heads, against two thirds at
+        /// 35, while the boards keep most of their height in the frame (for the 16-station field, 19 m wide:
+        /// 32 px at 50 against 44 at 35 and 22 at 60), and the black beyond the yard falls to about a tenth
+        /// of the frame.
+        /// </summary>
+        private const float FullFieldLowestPitch=50f;
+
+        private struct FullFieldFrame { public Vector3 Eye; public Quaternion Rotation; public float Pitch,Distance,WallClearance; }
+
+        /// <summary>
+        /// The full-field eye, framed to the field's own bounds (every station's rendered bounds and every
+        /// entrant's body) rather than to the whole yard. It looks along the stations' facing from the
+        /// contestants' side, as before, pitched down from FullFieldLowestPitch a degree at a time until
+        /// every sight line to the field passes FullFieldWallClearance over the house's yard-side wall, so
+        /// nothing of the house stands in front of the front row; at each pitch it stands as near as lets
+        /// every subject corner sit inside a FullFieldBorder border, centred on them. The old fixed eye, 22 m
+        /// back and 9 m up for the yard's far rows, drew the field as a band a fifth of the frame tall under
+        /// black sky, with the house's wall across the front row's waists.
+        /// </summary>
+        private static FullFieldFrame FullFieldView(IReadOnlyList<Bounds> subjects,Bounds deck,Vector3 facing,float fov,float aspect)
+        {
+            Vector3 forward=Vector3.ProjectOnPlane(facing,Vector3.up).normalized,side=Vector3.Cross(Vector3.up,forward);
+            var points=subjects.SelectMany(BoundsCorners).ToArray();
+            var all=subjects[0];foreach(var subject in subjects)all.Encapsulate(subject);
+            float wall=BoundsCorners(deck).Min(corner=>Vector3.Dot(corner,forward))+FullFieldWallReach,wallTop=deck.max.y+FullFieldWallTop;
+            float tanV=Mathf.Tan(fov*.5f*Mathf.Deg2Rad)*(1-2*FullFieldBorder),tanH=tanV*aspect;
+            var frame=default(FullFieldFrame);
+            for(float pitch=FullFieldLowestPitch;pitch<=80;pitch++)
+            {
+                var rotation=Quaternion.LookRotation(Quaternion.AngleAxis(pitch,side)*forward,Vector3.up);
+                Vector3 right=rotation*Vector3.right,up=rotation*Vector3.up,ahead=rotation*Vector3.forward,centre=all.center;
+                // A corner at (x,y,z) about the centre is inside the border from an eye at centre+a*right+b*up-d*ahead
+                // when |x-a| <= tanH*(z+d) and |y-b| <= tanV*(z+d): the nearest d, and the a and b it needs, follow exactly.
+                float leftNeed=float.NegativeInfinity,rightNeed=float.PositiveInfinity,lowNeed=float.NegativeInfinity,highNeed=float.PositiveInfinity;
+                foreach(var point in points)
+                {
+                    Vector3 at=point-centre;float x=Vector3.Dot(at,right),y=Vector3.Dot(at,up),z=Vector3.Dot(at,ahead);
+                    leftNeed=Mathf.Max(leftNeed,x-tanH*z);rightNeed=Mathf.Min(rightNeed,x+tanH*z);
+                    lowNeed=Mathf.Max(lowNeed,y-tanV*z);highNeed=Mathf.Min(highNeed,y+tanV*z);
+                }
+                float distance=Mathf.Max((leftNeed-rightNeed)/(2*tanH),(lowNeed-highNeed)/(2*tanV));
+                Vector3 eye=centre+right*((leftNeed+rightNeed)*.5f)+up*((lowNeed+highNeed)*.5f)-ahead*distance;
+                float clearance=float.PositiveInfinity,eyeAlong=Vector3.Dot(eye,forward);
+                if(eyeAlong<wall)foreach(var point in points)
+                {
+                    float along=Vector3.Dot(point,forward);
+                    float over=along<=wall?float.NegativeInfinity:point.y+(eye.y-point.y)*(along-wall)/(along-eyeAlong);
+                    clearance=Mathf.Min(clearance,over-wallTop);
+                }
+                frame=new FullFieldFrame{Eye=eye,Rotation=rotation,Pitch=pitch,Distance=distance,WallClearance=clearance};
+                if(clearance>=FullFieldWallClearance)break;
+            }
+            return frame;
+        }
+
+        private static IEnumerable<Vector3> BoundsCorners(Bounds bounds)
+        {
+            for(int corner=0;corner<8;corner++)
+                yield return new Vector3((corner&1)==0?bounds.min.x:bounds.max.x,(corner&2)==0?bounds.min.y:bounds.max.y,(corner&4)==0?bounds.min.z:bounds.max.z);
+        }
+
+        private static Bounds FullFieldRenderedBounds(Transform root)
+        {
+            var renderers=root.GetComponentsInChildren<Renderer>().Where(renderer=>renderer.enabled && renderer.gameObject.activeInHierarchy).ToArray();
+            Assert.That(renderers,Is.Not.Empty,"A station of the field draws something: "+root.name);
+            var bounds=renderers[0].bounds;foreach(var renderer in renderers)bounds.Encapsulate(renderer.bounds);
+            return bounds;
+        }
+
+        /// <summary>An entrant's body as the full field counts it: its capsule, the body's own extent whatever its pose's bounds say.</summary>
+        private Bounds FullFieldBodyBounds(string actorId)
+        {
+            var root=actorId==director.Snapshot.playerId?player.transform:SceneComponents<HouseNpc>().Single(npc=>npc.Id==actorId).transform;
+            var capsule=root.GetComponent<CapsuleCollider>();
+            return capsule!=null && capsule.enabled && capsule.gameObject.activeInHierarchy?capsule.bounds:FullFieldRenderedBounds(root);
         }
 
         private IEnumerator WaitForFittedCompetitionField(int houseSize,string category,bool requireFreshArrivals=false)

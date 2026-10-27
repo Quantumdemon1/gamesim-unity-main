@@ -571,6 +571,55 @@ Re-run RS0's measurement at the same views, the whole-house view through the set
 
 **What RS0 decides.** P2 or P4 failing moves classification into an editor pass that writes the layers into the scene (§6, R1). The light-layer pin decides between the light hook and light layers. The ablations decide D8 (i) or (ii) and whether RS3 and RS4 move ahead of RS2a (D16). The frame times tell the owner what the work buys on this machine.
 
+**As built (RS0).**
+- **Where it is.** `Runtime/Episode/VerificationViews.cs` is Unity-free: the views, the plan's house and its marks, the command line, the 5% rule, the report, and the shadow-map model, which follows URP 17.6's `AdditionalLightsShadowAtlasLayout` step for step (sorted by resolution, hard before soft, then distance; lights dropped under URP's minimum; packed in squares, the scale doubling until all fit). `Runtime/Episode/PortVerification.Views.cs` is the runner. `Runtime/Episode/EpisodeDirector.RoomScopeProbe.cs` holds the one probe-only switch: the NPC world stood down for the views runner alone, which proves it is that runner. `Editor/RoomScopeProbeBuild.cs` makes the development build. `PortVerification.cs` gains the refusal, the request and the dispatch after the house settles; nothing a player does reaches any of it.
+- **The views.** V1 and V3 to V7 are shots with today's numbers written down, from the scene's rig: house centre (0.075, 1.2, 0), yaw 45, 10 to 34 m, pitch 45 to 62 by distance, lens 55. RS7 therefore takes the same frames after RS5 has changed the free camera. Each shot names its room in `Shot.Rooms`.
+  - V2 is the director's own overview (`ShowOverview`).
+  - V8 opens the real diary: the player is warped to its approach and `TryOpenDiary` builds the studio. If it cannot, the pose is taken as a shot, without the studio, and the row says so.
+  - V5 frames the Living room's two marks from the north.
+  - V6g stands the cast at the nomination table's places (`CeremonySeating`: the two heads, then the chairs' approaches), standing, not seated.
+  - V9 is declared and skipped (the props branch's `FullFieldView`). Its eye on this branch, the W3 capture's (22.4 m back and 9 m up from the yard's centre, 50 degrees, 16:9), is the model's calibration: 7 lamps, 42 maps at 256 px.
+  - Every run dresses the ceremony sets once (`CeremonySeating.Ensure`) before its first view, so all views see one house.
+- **The marks.** Each room's marker ± 0.75 m along x, the pair facing each other, snapped to the NavMesh within 1.5 m. The rooms fill two at a time in the order Living, Kitchen, Bedroom, Private, Yard, Nomination, HoH, Games, so at 12 HoH and Games are empty. The report lists each body's mark, where it landed and its walker room. Before it measures, the probe checks that the saved floors are the plan's to 2 cm.
+- **Builds.**
+  - Release: `Tools/build-review-candidate.ps1`, which needs Set A's passed summary for the same inputs.
+  - Development, on the frozen probe copy: `Unity.exe -batchmode -quit -projectPath <probe copy> -executeMethod Gamesim.Editor.RoomScopeProbeBuild.BuildDevelopment -gamesimProbeOutput <folder> -logFile <log>`. Beside the player, `room-scope-probe-build.json` says whether URP's player compile defined `UNITY_ENABLE_CHECKS` (`urpEnableChecks`) and that ProjectSettings did not move (the build fails if any file under it changed).
+- **Runs.** Each into a fresh, empty, absolute save root, one at a time, nothing else on the GPU, the owner's editor closed for the graphical runs. The base is `Gamesim.exe --gamesim-verify --gamesim-save-root <root> --gamesim-verify-views`, with `--gamesim-house-size 16 --gamesim-stress-roster` for sixteen or `--gamesim-house-size 12` for twelve.
+  - Release, graphical, timing on the marks at 16 and at 12: the base. At 16 on the live world: add `--gamesim-views-live`.
+  - Release, graphical, the 300 s profile at 16 on today's default: the profile as it is, `Gamesim.exe --gamesim-verify --gamesim-save-root <root> --gamesim-house-size 16 --gamesim-stress-roster`, or `Tools/profile-candidate.ps1`.
+  - Development, `-batchmode` (never `-nographics`), the counters and P1 to P7 at 16 and 12: add `--gamesim-views-pass counters`.
+  - Development, graphical, at 16: the base for GPU time, then `--gamesim-views-pass ablations` (a subset with `--gamesim-views-ablations <names>`).
+  - Smoke runs: `--gamesim-views-quick` (2 s and 3 s, once; the report calls it no measurement) and `--gamesim-views-only V1,V4a`.
+  - Later probes: `--gamesim-views-scope` holds the scope on (`HoldRoomScope`); `--gamesim-whole-house` holds the whole house (§6.2).
+  - A command line the probe cannot run logs why and exits 2, before anything starts.
+- **What lands in the root.**
+  - The report, `views-<pass>-<size>[-live][-scope|-whole-house][-quick].json`; exit 0 Passed, 1 Failed.
+  - Beside it, `-frames.csv`: every measured frame.
+  - From graphical timing runs on the marks: `<report>-<view>.png`, and `<report>-<view>-yaw45.png` for V4a to V4h.
+- **What a view's row holds.**
+  - Each run's frame summary (median, p95, p99), and the medians' repeatability.
+  - CPU main-thread, render-thread and GPU medians where the build has them. They come from FrameTimingManager in a development build. A release build has none unless the probe copy's own ProjectSettings carries Frame Timing Stats, never committed.
+  - The engine's and the drawer's counters (counter pass).
+  - The shadow work: the lights the frustum keeps, the atlas's slices, scale and sizes, each lamp's classifier casters, and URP's atlas line.
+  - The rooms the director's scope reported, and where the bodies stood.
+- **The checks.**
+  - The main camera draws into a target of the screen's size, read a frame later. The markers carry no collider and sit on layer 0 or a room layer only.
+  - P1 reads the drawer's GRD Renderers, Excluded Renderers and Coverage % with the profiler and its category on.
+  - P2 runs at each room's V4 view, with a 1.2 m marker 2.6 m over the room's centre.
+  - P3 renders by hand from `LateUpdate`. P4 makes two markers in one frame. P5 forces one off.
+  - P6 toggles a 10 x 10 grid of cubes, 1,200 triangles a pass.
+  - P7 judges URP's last atlas line in each view's window.
+  - P1, P2, P4 and P7 fail the run. P3, P5 and P6 are recorded, and the notes say whether P6 lets Triangles and Draw Calls be compared.
+- **Run lengths.** Timing: 16 views, three times, 30 s each, about 25 min plus captures. Counters and checks: about 10 min. Ablations: 21 rows, three times, about 32 min.
+- **The lane's pins.**
+  - EditMode `VerificationViewsTests`, 41 cases. Two read the saved scene: the model gives 84 maps reduced by 8 at V1 and 42 reduced by 4 at V9's eye from the saved lamps, and the views stand in the saved house with today's camera.
+  - PlayMode, `EpisodePlayModeTests.RoomScopeProbe.cs`: `Culling_ARendererOnALayerOutsideTheMaskIsNotDrawn`, `Lights_ALampSwitchedOffForTheMainCameraStillLightsTheFeed` and `Lights_ALightOnALayerOutsideTheMask`. The last logs "[Gamesim RS0] URP 17.6 drops a light ..." or "... lights the frame ...".
+  - `Uma/Tests`: `UmaRoomScopeBodiesPlayModeTests.Bodies_EveryAnimatorAlwaysAnimates`. It is a pin, not RS4's change: AlwaysAnimate holds today. The provider adds the Animator with Unity's default; UMA sets its own culling mode only with `initializeAnimatorWhenAdded`, which is off, and recreates a default Animator on a race change; and nothing in Gamesim writes `cullingMode`.
+- **Where the build differs from the plan above.**
+  - The drawer reads its small-mesh threshold once, at initialization (core 17.6 `GPUResidentContext`). The probe sets it on the asset and reports, from the drawer's own Small Mesh Culled counter, whether it took; if not, that row repeats its baseline.
+  - The model counts a light by its range sphere whatever its layer. If `Lights_ALightOnALayerOutsideTheMask` shows URP drops masked lights, RS3 adds that to the model.
+  - V6g stages the nomination table only. The hot seats are eviction night's, in the Living room, and V6's framing is the nomination marker's.
+
 ### 5.4 Lane budget
 
 Inputs: a full set about 300 min; a player build about 31 min with its evidence wrapper (a 2026-10-18 build); a view 30 s, three times in timing passes; 3 min to start each player run.

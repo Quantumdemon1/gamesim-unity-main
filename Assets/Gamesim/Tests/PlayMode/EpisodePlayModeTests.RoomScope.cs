@@ -93,8 +93,10 @@ namespace Gamesim.Tests.PlayMode
             yield return null;
             var scope = ScopeOf(director);
             ScopeParkHouseguests(scope);
-            // The widest doorway, so the shuffle stands on the floor in its middle.
-            var door = ScopeDoorways(scope).OrderByDescending(c => c.Width).First();
+            // The Living-to-Bedroom doorway, named: six doorways are 2.8 m wide to float rounding, and the
+            // runner-up by width, Kitchen to Private, is the one the baked NavMesh closes.
+            int living = RoomLayers.IndexOf("Living"), bedroom = RoomLayers.IndexOf("Bedroom");
+            var door = ScopeDoorways(scope).First(c => c.From == living && c.To == bedroom);
             var across = (door.End - door.Start).normalized;
             var line = (door.Start + door.End) * .5f;
             // At the walkable surface's own height, so a ten-centimetre reach only ever slides along it.

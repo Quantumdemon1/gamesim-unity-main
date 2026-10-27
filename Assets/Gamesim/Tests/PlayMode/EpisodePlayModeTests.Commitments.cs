@@ -83,7 +83,7 @@ namespace Gamesim.Tests.PlayMode
             director.ClosePanels();
             yield return null;
             var npc = SceneComponents<Gamesim.House.HouseNpc>().First(actor => actor.gameObject.activeInHierarchy);
-            WarpPlayer(npc.transform.position
+            WarpToTalk(npc, npc.transform.position
                 + (player.transform.position - npc.transform.position).normalized * 1.4f);
             yield return null;
             Assert.That(director.TryOpenNpc(npc.Id), Is.True);

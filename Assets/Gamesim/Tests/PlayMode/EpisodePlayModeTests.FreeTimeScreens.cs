@@ -346,7 +346,7 @@ namespace Gamesim.Tests.PlayMode
             var who = state.Active.First(c => !c.isPlayer);
             var npc = SceneComponents<HouseNpc>().First(n => n.Id == who.id && n.gameObject.activeInHierarchy);
             // Beside them, so the walk is no walk and the conversation opens at once.
-            WarpPlayer(npc.transform.position + Vector3.right * 1.2f);
+            WarpToTalk(npc, npc.transform.position + Vector3.right * 1.2f);
             director.TalkWithIntent(who.id, EpisodeDirector.IntentAsk);
             yield return null; yield return null;
             Canvas.ForceUpdateCanvases();

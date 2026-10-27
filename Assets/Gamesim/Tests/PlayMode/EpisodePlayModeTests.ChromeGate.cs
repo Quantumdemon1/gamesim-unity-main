@@ -333,7 +333,7 @@ namespace Gamesim.Tests.PlayMode
                 yield return ApplyTextSize(textSize);
                 string where = " " + TextScales.At(textSize);
                 // Beside somebody, so the prompt has something to say.
-                WarpPlayer(maya.transform.position + Vector3.right * 1.2f);
+                WarpToTalk(maya, maya.transform.position + Vector3.right * 1.2f);
                 director.ClosePanels();
                 yield return Frames(3);
                 Assert.That(ActiveRect("Interaction prompt"), Is.Not.Null, "Beside a houseguest the prompt is up" + where + ".");

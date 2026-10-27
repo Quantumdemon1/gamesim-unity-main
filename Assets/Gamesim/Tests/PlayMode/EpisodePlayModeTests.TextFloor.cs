@@ -66,7 +66,7 @@ namespace Gamesim.Tests.PlayMode
                 {
                     var npc = SceneComponents<HouseNpc>().FirstOrDefault(actor => actor.gameObject.activeInHierarchy);
                     if (npc == null) return false;
-                    WarpPlayer(npc.transform.position + (player.transform.position - npc.transform.position).normalized * 1.4f);
+                    WarpToTalk(npc, npc.transform.position + (player.transform.position - npc.transform.position).normalized * 1.4f);
                     return director.TryOpenNpc(npc.Id);
                 }, null),
                 ("a ceremony's strip", () =>

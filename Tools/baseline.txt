@@ -29,7 +29,10 @@
 # 8642 of 8642.
 # 8932 = the full NoUMA run at 45d2f015 (role moments R4+R5, 2026-10-23), 8932 of 8932: R0 to R5's EditMode
 # cases on top of 8642. R6's 38 RoleStoryMomentsTests cases raise it once R6's own full run has counted them.
-Gamesim.EditModeTests 8932
+# 8982 = 8932 + R6's 38 RoleStoryMomentsTests cases (on main, first counted here) + BatchMcpBridgeIsolationTests' 12
+# (10 TestCase rows and 2 tests): the full NoUMA run at e2670955 (this branch with claude/uma-retention-tidy, both on
+# main 772828ba, 2026-10-27), 8982 of 8982.
+Gamesim.EditModeTests 8982
 # The UMA-free build. 1215 = 1236, the count after the consolidation's lanes (S2a, S2b, S4a), less the 7
 # farewell probes moved to Gamesim.DiagnosticsPlayModeTests and the 14 farewell readiness tests that now
 # compile only under GAMESIM_UMA (judged on the UMA cast); 1230 = 1215 + S2d's 7, S4b's 2, S4c's 2 and

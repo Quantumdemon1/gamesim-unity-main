@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Text;
 
 namespace Gamesim.House
@@ -8,10 +9,12 @@ namespace Gamesim.House
     /// 23 Private, 24 Yard, 25 HoH, 26 Nomination, 27 Games, named in ProjectSettings/TagManager.asset.
     ///
     /// <para>A room's furniture and dressing go on its layer so a camera can leave the room out of its
-    /// drawing with one bit of its culling mask. Only collider-free renderers ever move there: a layer
-    /// is physics as well as drawing, and every query in the house asks <see cref="HouseLayers"/>,
-    /// whose masks never name these bits. Layers 30 and 31 stay the tests' own (a capture guard and
-    /// the garment fit's isolation layer), so the scope writes bits 20 to 27 and nothing else.</para>
+    /// drawing with one bit of its culling mask. Only collider-free objects ever move there, so no
+    /// physics query can hit anything on a room layer: a layer is physics as well as drawing, and
+    /// <see cref="HouseLayers"/>' Pick and Sight masks do include bits 20 to 27. A body's renderer
+    /// objects (RS4) must stay collider-free for the same reason. Layers 30 and 31 stay the tests' own
+    /// (a capture guard and the garment fit's isolation layer), so the scope writes bits 20 to 27 and
+    /// nothing else.</para>
     ///
     /// <para>RS1 names the layers and puts nothing on them; RS2a applies the classification.</para>
     /// </summary>
@@ -24,21 +27,26 @@ namespace Gamesim.House
         /// <summary>Bits 20 to 27: the only bits of a camera's culling mask the scope writes.</summary>
         public const int Mask = ((1 << Count) - 1) << First;
 
-        /// <summary>The room ids by index (layer minus <see cref="First"/>): the room query's eight, in its order.</summary>
-        public static readonly string[] RoomIds = { "Living", "Kitchen", "Bedroom", "Private", "Yard", "HoH", "Nomination", "Games" };
-
-        /// <summary>Each room layer's name in ProjectSettings/TagManager.asset, by index.</summary>
-        public static readonly string[] LayerNames =
+        // Private, so no caller can rewrite an entry and leave IndexOf, LayerOf, RoomOf and the
+        // TagManager names disagreeing; the lists below read them.
+        private static readonly string[] roomIds = { "Living", "Kitchen", "Bedroom", "Private", "Yard", "HoH", "Nomination", "Games" };
+        private static readonly string[] layerNames =
         {
             "Room Living", "Room Kitchen", "Room Bedroom", "Room Private", "Room Yard", "Room HoH", "Room Nomination", "Room Games",
         };
+
+        /// <summary>The room ids by index (layer minus <see cref="First"/>): the room query's eight, in its order.</summary>
+        public static readonly IReadOnlyList<string> RoomIds = Array.AsReadOnly(roomIds);
+
+        /// <summary>Each room layer's name in ProjectSettings/TagManager.asset, by index.</summary>
+        public static readonly IReadOnlyList<string> LayerNames = Array.AsReadOnly(layerNames);
 
         /// <summary>The room's index, 0 to 7, or -1 for anything that is not one of the eight.</summary>
         public static int IndexOf(string roomId)
         {
             if (roomId == null) return -1;
             for (int i = 0; i < Count; i++)
-                if (string.Equals(RoomIds[i], roomId, StringComparison.Ordinal)) return i;
+                if (string.Equals(roomIds[i], roomId, StringComparison.Ordinal)) return i;
             return -1;
         }
 
@@ -50,7 +58,7 @@ namespace Gamesim.House
         }
 
         /// <summary>The room a layer stands for, or null for a layer that is not a room's.</summary>
-        public static string RoomOf(int layer) => IsRoomLayer(layer) ? RoomIds[layer - First] : null;
+        public static string RoomOf(int layer) => IsRoomLayer(layer) ? roomIds[layer - First] : null;
 
         public static bool IsRoomLayer(int layer) => layer >= First && layer < First + Count;
     }

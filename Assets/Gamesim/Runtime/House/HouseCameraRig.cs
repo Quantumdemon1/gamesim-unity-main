@@ -99,7 +99,10 @@ namespace Gamesim.House
             /// whole house, so a caller that forgets draws too much, never too little.
             /// </summary>
             public RoomSet Rooms;
-            /// <summary>The floor rooms under the shot's focus, and a conversation's pair, instead of named ones.</summary>
+            /// <summary>
+            /// The floor room under the shot's focus, and a conversation's pair, with any named in
+            /// <see cref="Rooms"/> as well: a caller names the rooms of the people it frames there.
+            /// </summary>
             public bool RoomsFromFocus;
         }
 
@@ -154,9 +157,9 @@ namespace Gamesim.House
         // which rooms it frames: a shot its own (named, from its focus, or the whole house when it
         // names none); a cut or a follow its subject's, tracked as they walk; a free move the floor
         // under its point; a timed move both ends until it lands. Free play, before any move and
-        // after F, is the player's room. Computed and reported only: nothing here writes the
-        // camera's culling mask, and with no room scope (a house with no director) every answer is
-        // the whole house.
+        // after F, is the player's room, tracked: a pan, a shot or a conversation that ends gives it
+        // back. Computed and reported only: nothing here writes the camera's culling mask, and with
+        // no room scope (a house with no director) every answer is the whole house.
         // ------------------------------------------------------------------------------------
 
         private enum RoomsBy : byte { WholeHouse, Named, Body, Point, ShotFocus }
@@ -166,6 +169,8 @@ namespace Gamesim.House
             public RoomsBy By;
             /// <summary>Named: the rooms. Body, Point and ShotFocus: the rooms they last resolved to.</summary>
             public int Bits;
+            /// <summary>ShotFocus: the rooms the shot named, drawn with its focus's.</summary>
+            public int Also;
             public Transform Body;
             public Vector3 Focus;
         }
@@ -336,7 +341,8 @@ namespace Gamesim.House
             {
                 previousFocus = desiredFocus;
                 previousDistance = desiredDistance;
-                // The two-shot lets a follow go, and the view comes back to where it was: that room, kept.
+                // The two-shot lets a follow go, and the view comes back to where it was: a houseguest's
+                // room, kept, or free play's, the player's, tracked.
                 conversationReturnRooms = Watching(CurrentRoomTarget());
             }
 
@@ -499,7 +505,8 @@ namespace Gamesim.House
             subject = null;
             desiredFocus = ClampFocus(transform.position);
             desiredDistance = distance;
-            // Watching: the room the follow last showed stays the view's until something moves it.
+            // Watching: the room a houseguest's follow last showed stays the view's until something
+            // moves it. Letting the player go is still free play: their room, tracked.
             if (roomTargetSet && roomTarget.By == RoomsBy.Body) SetRooms(Watching(roomTarget));
         }
 
@@ -546,7 +553,8 @@ namespace Gamesim.House
                 shotReturnFocus = desiredFocus;
                 shotReturnDistance = desiredDistance;
                 shotReturnYaw = yaw;
-                // The view goes back to where it was, not after whoever it followed: that room, kept.
+                // The view goes back to where it was, not after whoever it followed: a houseguest's room,
+                // kept, or free play's, the player's, tracked.
                 shotReturnRooms = Watching(CurrentRoomTarget());
             }
             ClearSubject();
@@ -556,7 +564,7 @@ namespace Gamesim.House
             desiredFocus = ClampFocus(shot.Focus);
             float farthest = ViewCamera != null ? viewCamera.farClipPlane - 5f : 100f;
             desiredDistance = Mathf.Clamp(shot.Distance, 0.5f, Mathf.Max(0.5f, farthest));
-            SetRooms(shot.RoomsFromFocus ? new RoomTarget { By = RoomsBy.ShotFocus, Focus = desiredFocus }
+            SetRooms(shot.RoomsFromFocus ? new RoomTarget { By = RoomsBy.ShotFocus, Focus = desiredFocus, Also = shot.Rooms.Bits }
                 : shot.Rooms.IsEmpty ? new RoomTarget { By = RoomsBy.WholeHouse }
                 : new RoomTarget { By = RoomsBy.Named, Bits = shot.Rooms.Bits });
             BeginTravel(shot.Seconds);
@@ -576,7 +584,9 @@ namespace Gamesim.House
             travelSeconds = 0f;
             desiredFocus = ClampFocus(shotReturnFocus);
             desiredDistance = Mathf.Clamp(shotReturnDistance, minimumDistance, maximumDistance);
-            SetRooms(shotReturnRooms);
+            // A subject followed through the shot (a follow that kept it) is who the camera goes on
+            // following, so theirs; otherwise the rooms the view was about before the shot.
+            SetRooms(subject != null ? BodyRooms(subject) : shotReturnRooms);
             BeginTravel(seconds);
             if (IsTravelling) roomsTravelFrom = before;
         }
@@ -1196,10 +1206,14 @@ namespace Gamesim.House
             return playerTarget != null ? BodyRooms(playerTarget) : new RoomTarget { By = RoomsBy.WholeHouse };
         }
 
-        /// <summary>A followed body's rooms as they are now, kept: the room a stopped follow leaves the view on.</summary>
+        /// <summary>
+        /// A followed houseguest's rooms as they are now, kept: the room a stopped follow leaves the
+        /// view on. The player is free play's room and stays tracked: a pan after a floor click, or a
+        /// shot or conversation begun in free play, comes back to wherever the player is then.
+        /// </summary>
         private RoomTarget Watching(RoomTarget target)
         {
-            if (target.By != RoomsBy.Body) return target;
+            if (target.By != RoomsBy.Body || (playerTarget != null && target.Body == playerTarget)) return target;
             int bits = ResolveTarget(ref target);
             return new RoomTarget { By = RoomsBy.Named, Bits = bits };
         }
@@ -1232,7 +1246,7 @@ namespace Gamesim.House
                 case RoomsBy.Point:
                     return target.Bits = RoomBit(roomScope.RoomUnder(target.Focus), 0);
                 case RoomsBy.ShotFocus:
-                    int bits = RoomBit(roomScope.RoomUnder(target.Focus), 0);
+                    int bits = RoomBit(roomScope.RoomUnder(target.Focus), 0) | target.Also;
                     if (IsConversationFocused)
                     {
                         if (conversationPlayer != null) bits |= RoomBit(roomScope.Track(conversationPlayer), 0);

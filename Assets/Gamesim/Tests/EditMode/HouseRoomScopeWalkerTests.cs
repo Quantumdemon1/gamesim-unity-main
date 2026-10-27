@@ -22,7 +22,8 @@ namespace Gamesim.Tests.EditMode
             Rect.MinMaxRect(-4.62f, -20f, 4.77f, -10f), Rect.MinMaxRect(4.77f, -20f, 14.15f, -10f),
         };
 
-        private static HouseRoomScope House() => HouseRoomScope.FromPlan(Rooms, Plans);
+        /// <summary>The shipped house's eight floors, as a scope with no scene (the plan rule's fixture reads it too).</summary>
+        internal static HouseRoomScope House() => HouseRoomScope.FromPlan(Rooms, Plans);
 
         private static int Index(string room) => RoomLayers.IndexOf(room);
 
@@ -83,10 +84,63 @@ namespace Gamesim.Tests.EditMode
                 Assert.That(shuffled, Is.EqualTo(bedroom), "And the shuffle back keeps the new room.");
             }
 
-            // Outside every floor - past an outer wall, in a gap - the last room is kept.
-            Assert.That(house.WalkerRoom(new Vector3(-14.6f, 0f, -5f), living), Is.EqualTo(living));
-            Assert.That(house.WalkerRoom(new Vector3(0f, 0f, 25f), bedroom), Is.EqualTo(bedroom),
-                "Far past the yard's fence, a walker last in the bedroom is still the bedroom's until it stands in another floor.");
+            // Outside every floor - past an outer wall, in a gap - the last room is kept while the feet
+            // are within three tenths of a metre of it; farther out, the floor nearest them.
+            Assert.That(house.WalkerRoom(new Vector3(-14.2f, 0f, -5f), living), Is.EqualTo(living));
+            Assert.That(house.WalkerRoom(new Vector3(-14.6f, 0f, -5f), living), Is.EqualTo(living), "the nearest floor is still the living room");
+            Assert.That(house.WalkerRoom(new Vector3(0f, 0f, 25f), bedroom), Is.EqualTo(Index("Yard")),
+                "Far past the yard's fence, a walker last in the bedroom is nearest the yard, not still the bedroom's.");
+            // A warp lands where it lands: a body put a fifth of a metre inside the games room, last
+            // seen in the bedroom, is in the games room, not the bedroom across the house.
+            Assert.That(house.WalkerRoom(new Vector3(9.5f, 0f, -19.8f), bedroom), Is.EqualTo(Index("Games")));
+        }
+
+        [Test]
+        public void TheWalkerRoomChangesThreeTenthsOfAMetrePastACornerDoorway()
+        {
+            var house = House();
+            // The yard's doorway and the nomination room's open onto x = 0, where two floors of the
+            // north block meet, and the north block's own walls are open there too. Through their
+            // middle a walker stands centimetres inside either floor, never 0.3 m inside one: the room
+            // still changes, once, three tenths of a metre past the wall line, to the floor underfoot.
+            AssertOneChange(house, "Nomination", new Vector2(.07f, -11f), new Vector2(.07f, -8.7f), "Kitchen", new Vector2(.07f, -10f));
+            AssertOneChange(house, "Kitchen", new Vector2(.07f, -8.7f), new Vector2(.07f, -11f), "Nomination", new Vector2(.07f, -10f));
+            AssertOneChange(house, "Nomination", new Vector2(-.05f, -11f), new Vector2(-.05f, -8.7f), "Living", new Vector2(-.05f, -10f));
+            AssertOneChange(house, "Yard", new Vector2(.005f, 11f), new Vector2(.005f, 8.7f), "Private", new Vector2(.005f, 10f));
+            AssertOneChange(house, "Private", new Vector2(.005f, 8.7f), new Vector2(.005f, 11f), "Yard", new Vector2(.005f, 10f));
+            AssertOneChange(house, "Yard", new Vector2(-.1f, 11f), new Vector2(-.1f, 8.7f), "Bedroom", new Vector2(-.1f, 10f));
+            // And across x = 0 within 0.3 m of the corner, through the gap in the wall beside the
+            // nomination room's doorway: never 0.3 m inside the kitchen's box, still a change at 0.3 m.
+            AssertOneChange(house, "Living", new Vector2(-1f, -9.8f), new Vector2(1f, -9.8f), "Kitchen", new Vector2(0f, -9.8f));
+            AssertOneChange(house, "Kitchen", new Vector2(1f, -9.8f), new Vector2(-1f, -9.8f), "Living", new Vector2(0f, -9.8f));
+            AssertOneChange(house, "Bedroom", new Vector2(-1f, 9.8f), new Vector2(1f, 9.8f), "Private", new Vector2(0f, 9.8f));
+        }
+
+        /// <summary>
+        /// Walks from <paramref name="start"/> to <paramref name="end"/> in centimetre steps and asserts
+        /// one change, from <paramref name="from"/> to <paramref name="to"/>, 30 or 31 cm past the wall
+        /// line through <paramref name="wall"/>.
+        /// </summary>
+        private static void AssertOneChange(HouseRoomScope house, string from, Vector2 start, Vector2 end, string to, Vector2 wall)
+        {
+            string walk = from + " to " + to + " at " + start;
+            int room = house.WalkerRoom(V(start), -1);
+            Assert.That(room, Is.EqualTo(Index(from)), walk + ": the walk starts in " + from + ".");
+            var across = (end - start).normalized;
+            int steps = Mathf.RoundToInt((end - start).magnitude * 100f), changes = 0;
+            float changedPast = float.NaN;
+            for (int step = 1; step <= steps; step++)
+            {
+                var at = start + (end - start) * (step / (float)steps);
+                int next = house.WalkerRoom(V(at), room);
+                if (next == room) continue;
+                changes++;
+                changedPast = Vector2.Dot(at - wall, across);
+                Assert.That(next, Is.EqualTo(Index(to)), walk + ": changed to " + HouseRoomScope.RoomId(next) + ".");
+                room = next;
+            }
+            Assert.That(changes, Is.EqualTo(1), walk + ": one change, not " + changes + ".");
+            Assert.That(changedPast, Is.InRange(.2999f, .3101f), walk + ": changed " + changedPast + " m past the wall line.");
         }
 
         [Test]

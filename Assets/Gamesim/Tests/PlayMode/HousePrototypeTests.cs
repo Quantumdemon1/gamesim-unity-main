@@ -19,7 +19,7 @@ using Object = UnityEngine.Object;
 
 namespace Gamesim.Tests.PlayMode
 {
-    public sealed class HousePrototypeTests
+    public sealed partial class HousePrototypeTests
     {
         private const string HouseScene = "HousePrototype";
         private readonly List<GameObject> temporaryObjects = new List<GameObject>();

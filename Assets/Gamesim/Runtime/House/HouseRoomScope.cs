@@ -42,7 +42,7 @@ namespace Gamesim.House
             Shell,
             /// <summary>Its bounds cross a wall line, or reach past the growth into a neighbour.</summary>
             Straddles,
-            /// <summary>Over no floor at all.</summary>
+            /// <summary>Over no floor at all, or over one floor and out past its growth (beyond an outer wall).</summary>
             Outside,
             /// <summary>Its GameObject carries a collider: its layer is physics, so it stays.</summary>
             Collider,
@@ -194,16 +194,20 @@ namespace Gamesim.House
 
         /// <summary>
         /// How far inside room <paramref name="index"/>'s box the point stands: positive inside, the
-        /// distance to the nearest edge; negative outside.
+        /// distance to the nearest edge; negative outside, by the farthest edge it is past.
         /// </summary>
         private float Depth(int index, float x, float z)
             => Mathf.Min(Mathf.Min(x - minX[index], maxX[index] - x), Mathf.Min(z - minZ[index], maxZ[index] - z));
 
         /// <summary>
         /// The room a walker is in: <paramref name="last"/> until the feet stand
-        /// <see cref="DoorwayDepth"/> inside another floor's box, then that one. A walker with no room
-        /// yet (-1) takes the floor it stands on, or the nearest - a load or the opening's hand-over in
-        /// a doorway. -1 only for a house with no floors.
+        /// <see cref="DoorwayDepth"/> inside another floor's box, then that one. The last room is kept
+        /// only while the feet are within <see cref="DoorwayDepth"/> of its own box: farther out, the
+        /// floor under them. That is the corner doorways' case - the yard's and the nomination room's
+        /// open onto the line where two floors meet, so a walker through their middle stands a few
+        /// centimetres inside either floor and never 0.3 m inside one - and a warp's. A walker with no
+        /// room yet (-1) takes the floor it stands on, or the nearest - a load or the opening's
+        /// hand-over in a doorway. -1 only for a house with no floors.
         /// </summary>
         public int WalkerRoom(Vector3 feet, int last)
         {
@@ -221,7 +225,7 @@ namespace Gamesim.House
                 entered = i;
             }
             if (entered >= 0) return entered;
-            return known ? last : RoomUnder(feet);
+            return known && Depth(last, x, z) > -DoorwayDepth ? last : RoomUnder(feet);
         }
 
         /// <summary>
@@ -285,7 +289,7 @@ namespace Gamesim.House
             return -1;
         }
 
-        /// <summary>Lets the rows of destroyed bodies go.</summary>
+        /// <summary>Lets the rows of destroyed bodies go: the director does, once a second.</summary>
         public void ForgetMissing()
         {
             for (int i = walkers.Count - 1; i >= 0; i--)

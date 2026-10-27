@@ -76,7 +76,7 @@ namespace Gamesim.Episode
         public const RoomScopeSources LiveRoomScopeSources = RoomScopeSources.None;
 
         private HouseRoomScope roomScope;
-        private float roomScopeRetry;
+        private float roomScopeRetry, roomScopeForgetAt;
         private readonly List<object> wholeHouseHolds = new List<object>(4);
         private readonly List<object> roomScopeHolds = new List<object>(4);
 
@@ -85,14 +85,17 @@ namespace Gamesim.Episode
 
         /// <summary>
         /// The rooms the main view draws: the camera rig's rooms when the view's source is live or a
-        /// test holds the scope on, otherwise - and always under a whole-house hold - the whole house.
+        /// test holds the scope on, otherwise - and always under a whole-house hold, the overview, the
+        /// opening and the walk-out - the whole house.
         /// </summary>
         public RoomSet ViewedRooms
         {
             get
             {
                 if (wholeHouseHolds.Count > 0 || cameraRig == null || !EnsureRoomScope()) return RoomSet.WholeHouse;
-                if (roomScopeHolds.Count == 0 && !IsRoomScopeSourceLive(CurrentRoomScopeSource)) return RoomSet.WholeHouse;
+                var source = CurrentRoomScopeSource;
+                if (IsWholeHouseSource(source)) return RoomSet.WholeHouse;
+                if (roomScopeHolds.Count == 0 && !IsRoomScopeSourceLive(source)) return RoomSet.WholeHouse;
                 return cameraRig.Rooms;
             }
         }
@@ -100,9 +103,18 @@ namespace Gamesim.Episode
         /// <summary>Whether a source's rooms are used: only those turned on in <see cref="LiveRoomScopeSources"/>.</summary>
         public static bool IsRoomScopeSourceLive(RoomScopeSource source)
         {
+            if (IsWholeHouseSource(source)) return false;
             int bit = 1 << (int)source;
             return ((int)LiveRoomScopeSources & bit) != 0;
         }
+
+        /// <summary>
+        /// The overview, the opening and the walk-out: the whole house by decision (D1, D6), with no
+        /// switch, so neither a slice nor <see cref="HoldRoomScope"/> makes them a room, whatever the
+        /// rig follows over them (the walk-out follows the one leaving).
+        /// </summary>
+        public static bool IsWholeHouseSource(RoomScopeSource source)
+            => source == RoomScopeSource.Overview || source == RoomScopeSource.Opening || source == RoomScopeSource.WalkOut;
 
         /// <summary>What the main view is doing now, for the scope's switches.</summary>
         public RoomScopeSource CurrentRoomScopeSource
@@ -133,7 +145,8 @@ namespace Gamesim.Episode
 
         /// <summary>
         /// Switches every source on for as long as <paramref name="owner"/> holds it, so a test or the
-        /// probe sees a source's rooms before its slice makes it live.
+        /// probe sees a source's rooms before its slice makes it live. The overview, the opening and
+        /// the walk-out have no switch and stay the whole house (<see cref="IsWholeHouseSource"/>).
         /// </summary>
         public void HoldRoomScope(object owner) => Hold(roomScopeHolds, owner);
 
@@ -167,12 +180,18 @@ namespace Gamesim.Episode
         /// <summary>
         /// Every frame, before anything reads a room: the scope built once the house is there, handed
         /// to the rig, and every body's walker room moved on. Sixteen points against eight boxes; no
-        /// allocation once each body has its row.
+        /// allocation once each body has its row. Once a second, the rows of bodies since destroyed
+        /// (a rebuilt cast, a subject the rig followed) go.
         /// </summary>
         private void TickRoomScope()
         {
             if (!EnsureRoomScope()) return;
             if (cameraRig != null && cameraRig.RoomScope != roomScope) cameraRig.UseRoomScope(roomScope);
+            if (Time.unscaledTime >= roomScopeForgetAt)
+            {
+                roomScopeForgetAt = Time.unscaledTime + 1f;
+                roomScope.ForgetMissing();
+            }
             if (player != null && player.isActiveAndEnabled) roomScope.Track(player.transform);
             if (housemates == null) return;
             foreach (var housemate in housemates)

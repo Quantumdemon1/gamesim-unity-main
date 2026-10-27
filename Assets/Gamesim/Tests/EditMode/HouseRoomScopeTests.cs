@@ -106,6 +106,44 @@ namespace Gamesim.Tests.EditMode
         }
 
         [Test]
+        public void TheClassifierSortsOnlyColliderFreeMeshesOnLayerZero()
+        {
+            // The saved house has no collider-free mesh on another layer and no renderer of another
+            // kind, so the rule's first two clauses are pinned here, on pieces made for it.
+            var scope = HouseRoomScope.FromPlan(new[] { "Living" }, new[] { Rect.MinMaxRect(-14f, -10f, 0f, 0f) });
+            int living = RoomLayers.IndexOf("Living");
+            var scene = EditorSceneManager.NewPreviewScene();
+            try
+            {
+                Renderer Piece(string name, int layer, bool keepCollider)
+                {
+                    var piece = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                    piece.name = name;
+                    SceneManager.MoveGameObjectToScene(piece, scene);
+                    piece.transform.position = new Vector3(-7f, .5f, -5f);
+                    piece.layer = layer;
+                    if (!keepCollider) Object.DestroyImmediate(piece.GetComponent<Collider>());
+                    return piece.GetComponent<Renderer>();
+                }
+
+                Assert.That(scope.Classify(Piece("dressing", 0, false), out int room), Is.EqualTo(HouseRoomScope.Placement.Room), "A collider-free mesh on layer 0 in the living room is its.");
+                Assert.That(room, Is.EqualTo(living));
+                Assert.That(scope.Classify(Piece("on a layer of its own", 5, false), out room), Is.EqualTo(HouseRoomScope.Placement.Layer), "Another layer stays where it is.");
+                Assert.That(room, Is.EqualTo(-1));
+                Assert.That(scope.Classify(Piece("with its collider", 0, true), out room), Is.EqualTo(HouseRoomScope.Placement.Collider), "A collider's layer is physics.");
+                Assert.That(room, Is.EqualTo(-1));
+                var line = new GameObject("a line");
+                SceneManager.MoveGameObjectToScene(line, scene);
+                line.transform.position = new Vector3(-7f, .5f, -5f);
+                var drawn = line.AddComponent<LineRenderer>();
+                drawn.SetPositions(new[] { new Vector3(-7.5f, .5f, -5f), new Vector3(-6.5f, .5f, -5f) });
+                Assert.That(scope.Classify(drawn, out room), Is.EqualTo(HouseRoomScope.Placement.Kind), "Not a mesh, skinned mesh or particle renderer.");
+                Assert.That(room, Is.EqualTo(-1));
+            }
+            finally { EditorSceneManager.ClosePreviewScene(scene); }
+        }
+
+        [Test]
         public void TheShellHoldsTheWallsFloorsFencesAndOutlines()
         {
             WithScope(EpisodeScene, (scene, scope) =>
@@ -229,11 +267,23 @@ namespace Gamesim.Tests.EditMode
             var scene = EditorSceneManager.OpenPreviewScene(path);
             try
             {
-                Assert.That(HouseRoomScope.TryCreate(scene, out var scope, out var why), Is.True, why);
+                Assert.That(HouseRoomScope.TryCreate(scene, out var scope, out var why), Is.True, why + OpenHouses(scene));
                 Assert.That(scope.Rooms.IsWholeHouse, Is.True, "The episode house has all eight rooms.");
                 body(scene, scope);
             }
             finally { EditorSceneManager.ClosePreviewScene(scene); }
+        }
+
+        /// <summary>
+        /// The loaded scenes with floors of their own, for the message: the room query refuses a house
+        /// that lies over a loaded one, so these tests fail in an editor with the house open.
+        /// </summary>
+        private static string OpenHouses(Scene preview)
+        {
+            var open = Enumerable.Range(0, SceneManager.sceneCount).Select(SceneManager.GetSceneAt)
+                .Where(other => other != preview && other.isLoaded && other.GetRootGameObjects().Any(root => root.GetComponentInChildren<HouseWalkable>(true) != null))
+                .Select(other => string.IsNullOrEmpty(other.path) ? other.name : other.path).ToArray();
+            return open.Length == 0 ? "" : " The editor has " + string.Join(", ", open) + " open, and the room query refuses a house over a loaded one: close it and run again.";
         }
 
         private static T[] All<T>(Scene scene) where T : Component

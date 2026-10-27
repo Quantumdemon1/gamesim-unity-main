@@ -23,13 +23,19 @@ namespace Gamesim.Tests.PlayMode
         {
             public int From, To;
             public Vector3 Start, End;
+            /// <summary>Where the walk crosses the wall line, and the way across it, from the first floor to the second.</summary>
+            public Vector3 Wall, Across;
             public float Width;
+            /// <summary>The open run along the wall line.</summary>
+            public float Low, High;
             public override string ToString() => RoomLayers.RoomIds[From] + " to " + RoomLayers.RoomIds[To] + " at " + Start.ToString("F2");
         }
 
         /// <summary>
         /// The player walks through every doorway of the house, and the viewed room changes once at
-        /// each: when the feet are three tenths of a metre inside the next floor, never before.
+        /// each: when the feet are three tenths of a metre past the wall line, never before. The two
+        /// corner doorways - the yard's and the nomination room's, which open onto the line where two
+        /// floors meet - are walked through their middle as well as through each floor's half.
         /// </summary>
         [UnityTest]
         public IEnumerator RoomScope_TheViewedRoomFollowsThePlayerThroughEachDoorwayOnce()
@@ -39,9 +45,20 @@ namespace Gamesim.Tests.PlayMode
             yield return null;
             var scope = ScopeOf(director);
             var crossings = ScopeDoorways(scope);
+            var corners = ScopeCornerDoorways(scope, crossings);
+            Assert.That(corners.Count, Is.EqualTo(4), "The yard's doorway and the nomination room's, each walked both ways through its middle.");
+            crossings.AddRange(corners);
             ScopeParkHouseguests(scope);
             var owner = new object();
             Assert.That(director.ViewedRooms.IsWholeHouse, Is.True, "Every source is off: the scope draws the whole house.");
+            // The walker rule reads only the feet, so the player is carried through each doorway by
+            // its transform rather than warped along the NavMesh: the bake closes the kitchen's door
+            // to the private room behind the kitchen run, and its half-metre erosion keeps the
+            // narrow doorways' middles off the mesh. The agent takes the player back at the end.
+            var agent = player.Agent;
+            bool agentPlaces = agent.updatePosition;
+            agent.ResetPath();
+            agent.updatePosition = false;
             director.HoldRoomScope(owner);
             var failures = new List<string>();
             try
@@ -52,10 +69,14 @@ namespace Gamesim.Tests.PlayMode
                     ScopePlace(player.transform, crossing.Start);
                     cameraRig.FocusSubject(player.transform, false);
                     yield return null;
-                    yield return ScopeWalk(player.transform, crossing, scope, failures);
+                    yield return ScopeWalk(player.transform, crossing, failures);
                 }
             }
-            finally { director.Release(owner); }
+            finally
+            {
+                director.Release(owner);
+                agent.updatePosition = agentPlaces;
+            }
             Assert.That(failures, Is.Empty, string.Join("; ", failures));
             Assert.That(director.ViewedRooms.IsWholeHouse, Is.True, "Released, the whole house again.");
         }
@@ -148,7 +169,7 @@ namespace Gamesim.Tests.PlayMode
                 Assert.That(cameraRig.FocusedSubject, Is.SameAs(guest.transform), "The camera follows " + guest.DisplayName + ".");
                 Assert.That(cameraRig.Rooms, Is.EqualTo(RoomSet.Of(door.From)), "Their room, not the player's.");
                 Assert.That(director.ViewedRooms, Is.EqualTo(RoomSet.Of(door.From)));
-                yield return ScopeWalk(guest.transform, door, scope, failures);
+                yield return ScopeWalk(guest.transform, door, failures);
                 Assert.That(failures, Is.Empty, string.Join("; ", failures));
 
                 // Let go: the room they were followed into stays the view's, wherever they go next.
@@ -208,6 +229,11 @@ namespace Gamesim.Tests.PlayMode
                 Assert.That(cameraRig.Rooms, Is.EqualTo(RoomSet.Of("Kitchen", "Yard")), "A shot that names its rooms is those rooms.");
                 cameraRig.MoveTo(new HouseCameraRig.Shot { Focus = ScopeCentre(scope, "Private"), Distance = 6f, Pitch = 30f, Yaw = 0f, RoomsFromFocus = true });
                 Assert.That(cameraRig.Rooms, Is.EqualTo(RoomSet.Of("Private")), "A shot from its focus is the floor under it.");
+                cameraRig.MoveTo(new HouseCameraRig.Shot
+                {
+                    Focus = ScopeCentre(scope, "Private"), Distance = 6f, Pitch = 30f, Yaw = 0f, RoomsFromFocus = true, Rooms = RoomSet.Of("Yard"),
+                });
+                Assert.That(cameraRig.Rooms, Is.EqualTo(RoomSet.Of("Private", "Yard")), "A shot from its focus that names a room as well is both.");
                 cameraRig.ReleaseShot(0f);
                 Assert.That(cameraRig.Rooms, Is.EqualTo(RoomSet.Of("Games")), "Let go, the view the first shot left.");
 
@@ -223,6 +249,35 @@ namespace Gamesim.Tests.PlayMode
                 Assert.That(cameraRig.Rooms, Is.EqualTo(RoomSet.Of(theirs)), guest.DisplayName + " is followed in the " + theirs + ".");
                 cameraRig.ClearSubject();
                 Assert.That(cameraRig.Rooms, Is.EqualTo(RoomSet.Of(theirs)), "Let go, the view keeps watching that room.");
+
+                // Free play is the player's room, tracked. A floor click follows the player and a pan
+                // lets them go: still free play, so the view goes where they walk next.
+                cameraRig.FocusSubject(player.transform, false);
+                Assert.That(cameraRig.Rooms, Is.EqualTo(RoomSet.Of("Bedroom")), "A floor click: the player's room.");
+                cameraRig.ClearSubject();
+                ScopePlace(player.transform, ScopeOpenFloor(scope, RoomLayers.IndexOf("Living")), 2f);
+                Assert.That(cameraRig.Rooms, Is.EqualTo(RoomSet.Of("Living")), "Let go by a pan, the view is still the player's room: the living room now.");
+                // A shot taken in free play, let go: the player's room as it is then, not as it was.
+                cameraRig.MoveTo(new HouseCameraRig.Shot { Focus = ScopeCentre(scope, "Yard"), Distance = 12f, Pitch = 45f, Yaw = 0f, Rooms = RoomSet.Of("Yard") });
+                Assert.That(cameraRig.Rooms, Is.EqualTo(RoomSet.Of("Yard")));
+                ScopePlace(player.transform, ScopeOpenFloor(scope, RoomLayers.IndexOf("Kitchen")), 2f);
+                cameraRig.ReleaseShot(0f);
+                Assert.That(cameraRig.Rooms, Is.EqualTo(RoomSet.Of("Kitchen")), "Let go, free play again: the kitchen the player has since moved to.");
+
+                // The overview is the whole house by decision (D1), held scope or not, even with the
+                // rig following one body over its shot. Let go with that body still followed, the
+                // camera goes on following them, and the rooms are theirs.
+                ScopePlace(guest.transform, ScopeOpenFloor(scope, RoomLayers.IndexOf("Games")), 2f);
+                Assert.That(director.WalkerRoomOf(guest.transform), Is.EqualTo("Games"), guest.DisplayName + " is in the games room.");
+                Assert.That(director.ShowOverview(), Is.True, "The overview opens.");
+                cameraRig.FocusSubject(guest.transform, false);
+                Assert.That(director.CurrentRoomScopeSource, Is.EqualTo(EpisodeDirector.RoomScopeSource.Overview));
+                Assert.That(cameraRig.Rooms, Is.EqualTo(RoomSet.Of("Games")), "The rig reports the one it follows,");
+                Assert.That(director.ViewedRooms.IsWholeHouse, Is.True, "but the overview draws the whole house, held scope or not.");
+                director.EndOverview();
+                Assert.That(cameraRig.FocusedSubject, Is.SameAs(guest.transform));
+                Assert.That(cameraRig.Rooms, Is.EqualTo(RoomSet.Of("Games")), "The overview let go with " + guest.DisplayName
+                    + " followed: their room, not the kitchen the view was on before it.");
 
                 // A timed move: both ends until it lands, then the end's.
                 cameraRig.MoveTo(ScopeCentre(scope, "Living"), 12f);
@@ -245,6 +300,11 @@ namespace Gamesim.Tests.PlayMode
             }
             finally { director.Release(owner); director.Release(capture); }
             Assert.That(director.ViewedRooms.IsWholeHouse, Is.True, "Released, every source is off again.");
+            // And nothing is drawn differently (RS1): the camera draws every room layer, and nothing in
+            // the house stands on one. RS2a turns this over.
+            Assert.That(cameraRig.ViewCamera.cullingMask & RoomLayers.Mask, Is.EqualTo(RoomLayers.Mask), "The camera draws every room layer.");
+            Assert.That(SceneComponents<Transform>().Where(t => RoomLayers.IsRoomLayer(t.gameObject.layer)).Select(t => t.name).ToArray(), Is.Empty,
+                "Nothing stands on a room layer.");
         }
 
         /// <summary>
@@ -327,8 +387,15 @@ namespace Gamesim.Tests.PlayMode
                             {
                                 float middle = (runStart + runEnd) * .5f;
                                 var at = alongZ ? new Vector3(line, 0f, middle) : new Vector3(middle, 0f, line);
-                                found.Add(new ScopeCrossing { From = a, To = b, Start = at - normal, End = at + normal, Width = width });
-                                found.Add(new ScopeCrossing { From = b, To = a, Start = at + normal, End = at - normal, Width = width });
+                                float runLow = runStart - .025f, runHigh = runEnd + .025f;
+                                found.Add(new ScopeCrossing
+                                {
+                                    From = a, To = b, Start = at - normal, End = at + normal, Wall = at, Across = normal, Width = width, Low = runLow, High = runHigh,
+                                });
+                                found.Add(new ScopeCrossing
+                                {
+                                    From = b, To = a, Start = at + normal, End = at - normal, Wall = at, Across = -normal, Width = width, Low = runLow, High = runHigh,
+                                });
                             }
                             runStart = runEnd = float.NaN;
                         }
@@ -349,6 +416,45 @@ namespace Gamesim.Tests.PlayMode
             return found;
         }
 
+        /// <summary>
+        /// The corner doorways whole: two halves <see cref="ScopeDoorways"/> found on one wall line,
+        /// open into the same room, that meet where the far side's two floors do (the nomination
+        /// room's doorway onto the living room and the kitchen, the yard's onto the bedroom and the
+        /// private room). Each is walked through its middle, from the shared room to the floor under
+        /// the far end and straight back, so the way back starts where the way there ended.
+        /// </summary>
+        private static List<ScopeCrossing> ScopeCornerDoorways(HouseRoomScope scope, List<ScopeCrossing> found)
+        {
+            var corners = new List<ScopeCrossing>();
+            var halves = found.Where(c => c.From < c.To).ToList();
+            for (int i = 0; i < halves.Count; i++)
+                for (int j = i + 1; j < halves.Count; j++)
+                {
+                    var one = halves[i];
+                    var two = halves[j];
+                    // The runs are measured along the wall line's own axis: z for a wall across x, x for one across z.
+                    var along = Mathf.Abs(one.Across.x) > .5f ? Vector3.forward : Vector3.right;
+                    // On one wall line, and the same line through it.
+                    if (Mathf.Abs(Mathf.Abs(Vector3.Dot(one.Across, two.Across)) - 1f) > .001f) continue;
+                    if (Mathf.Abs(Vector3.Dot(two.Wall - one.Wall, one.Across)) > .01f) continue;
+                    // One room in common, and the two runs meeting end to end.
+                    int shared = one.From == two.From || one.From == two.To ? one.From : one.To == two.From || one.To == two.To ? one.To : -1;
+                    if (shared < 0 || (one.From == two.From && one.To == two.To)) continue;
+                    if (Mathf.Min(Mathf.Abs(one.High - two.Low), Mathf.Abs(two.High - one.Low)) > .11f) continue;
+                    float low = Mathf.Min(one.Low, two.Low), high = Mathf.Max(one.High, two.High);
+                    // The wall point at the merged run's middle, and the way from the shared room across.
+                    var wall = one.Wall + along * ((low + high) * .5f - Vector3.Dot(one.Wall, along));
+                    wall.y = 0f;
+                    var across = shared == one.From ? one.Across : -one.Across;
+                    var start = wall - across;
+                    var end = wall + across;
+                    int far = scope.RoomUnder(end);
+                    corners.Add(new ScopeCrossing { From = shared, To = far, Start = start, End = end, Wall = wall, Across = across, Width = high - low, Low = low, High = high });
+                    corners.Add(new ScopeCrossing { From = far, To = shared, Start = end, End = start, Wall = wall, Across = -across, Width = high - low, Low = low, High = high });
+                }
+            return corners;
+        }
+
         /// <summary>Whether a wall stands across the segment: a solid the sight queries see, not a body.</summary>
         private static bool ScopeWallAcross(Vector3 from, Vector3 to)
         {
@@ -364,16 +470,16 @@ namespace Gamesim.Tests.PlayMode
 
         /// <summary>
         /// Walks a body through a doorway a few centimetres a frame and checks, every frame, the view's
-        /// room: the first floor until the feet are three tenths of a metre inside the second, then the
-        /// second, and only one change.
+        /// room: the first floor until the feet are three tenths of a metre past the wall line (in the
+        /// middle of a doorway, three tenths inside the second floor), then the second, and only one
+        /// change.
         /// </summary>
-        private IEnumerator ScopeWalk(Transform body, ScopeCrossing crossing, HouseRoomScope scope, List<string> failures)
+        private IEnumerator ScopeWalk(Transform body, ScopeCrossing crossing, List<string> failures)
         {
             var from = RoomSet.Of(crossing.From);
             var to = RoomSet.Of(crossing.To);
-            var into = scope.Box(crossing.To);
             int changes = 0;
-            float lastDepth = ScopeDepth(into, body.position);
+            float lastDepth = ScopePast(crossing, body.position);
             var seen = cameraRig.Rooms;
             if (seen != from) { failures.Add(crossing + ": started in " + seen + ", not " + from); yield break; }
             const int Steps = 50;
@@ -382,7 +488,7 @@ namespace Gamesim.Tests.PlayMode
                 ScopePlace(body, Vector3.Lerp(crossing.Start, crossing.End, step / (float)Steps), .3f);
                 yield return null;
                 var feet = body.position;
-                float depth = ScopeDepth(into, feet);
+                float depth = ScopePast(crossing, feet);
                 var now = cameraRig.Rooms;
                 if (director.ViewedRooms != now) failures.Add(crossing + ": the held scope reads " + director.ViewedRooms + " against the rig's " + now);
                 if (now != seen)
@@ -390,15 +496,22 @@ namespace Gamesim.Tests.PlayMode
                     changes++;
                     if (seen != from || now != to) failures.Add(crossing + ": went from " + seen + " to " + now);
                     if (depth < HouseRoomScope.DoorwayDepth - .001f)
-                        failures.Add(crossing + ": changed only " + depth.ToString("0.000") + " m inside the " + RoomLayers.RoomIds[crossing.To]);
+                        failures.Add(crossing + ": changed only " + depth.ToString("0.000") + " m past the wall line into the " + RoomLayers.RoomIds[crossing.To]);
                     if (lastDepth >= HouseRoomScope.DoorwayDepth + .001f)
-                        failures.Add(crossing + ": already " + lastDepth.ToString("0.000") + " m inside a step before it changed");
+                        failures.Add(crossing + ": already " + lastDepth.ToString("0.000") + " m past the wall line a step before it changed");
                     seen = now;
                 }
                 lastDepth = depth;
             }
             if (changes != 1) failures.Add(crossing + ": " + changes + " changes, ending in " + seen);
             if (cameraRig.Rooms != to) failures.Add(crossing + ": ended in " + cameraRig.Rooms);
+        }
+
+        /// <summary>How far past the crossing's wall line the feet stand, in plan: negative still on the first side.</summary>
+        private static float ScopePast(ScopeCrossing crossing, Vector3 feet)
+        {
+            var past = feet - crossing.Wall;
+            return past.x * crossing.Across.x + past.z * crossing.Across.z;
         }
 
         /// <summary>How far inside a floor box the feet stand: positive inside, to its nearest edge.</summary>
@@ -409,13 +522,14 @@ namespace Gamesim.Tests.PlayMode
             => ScopeDepth(scope.Box(door.To), feet).ToString("0.00") + " m into the " + RoomLayers.RoomIds[door.To];
 
         /// <summary>
-        /// Puts a body at a point: the player (or a body whose agent is live) by a warp onto the
-        /// nearest mesh within <paramref name="reach"/>, a houseguest let go by its motion straight there.
+        /// Puts a body at a point: the player (or a body whose agent places it) by a warp onto the
+        /// nearest mesh within <paramref name="reach"/>; a houseguest let go by its motion, or a body
+        /// whose agent no longer moves its transform, straight there.
         /// </summary>
         private static void ScopePlace(Transform body, Vector3 at, float reach = .5f)
         {
             var agent = body.GetComponent<NavMeshAgent>();
-            if (agent != null && agent.enabled)
+            if (agent != null && agent.enabled && agent.updatePosition)
             {
                 Assert.That(NavMesh.SamplePosition(at, out var hit, reach, agent.areaMask), Is.True, "No floor within " + reach + " m of " + at.ToString("F2") + ".");
                 Assert.That(agent.Warp(hit.position), Is.True);

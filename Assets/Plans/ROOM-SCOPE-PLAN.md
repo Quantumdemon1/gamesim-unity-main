@@ -365,6 +365,14 @@ The Moon's and lamps' shadow casters come from the same culling, so hidden rooms
 
 Each row has a default this plan builds on. The last column says what changing it costs.
 
+**The owner's answers, 2026-10-27** (asked as four questions; each answer was the default):
+- **D1 and D12:** "Overview + setting". The overview stays the whole-house map, and a "Show the whole house" display setting, off by default, brings back today's view.
+- **D2:** "Empty shell". Beyond the viewed room: bare floors, cut-away walls and neon outlines, lit, with no furniture or people.
+- **D5:** "Cut at the door". The view cuts once the feet are just inside the next room; long trips keep the travel blink.
+- **D14:** "Follow the floor", option (a). Who is where, walk-ins, the "HERE" cards and the room head counts follow the floor each person stands on, in RSW.
+
+The other rows stand at their defaults as the lead's calls, open to the owner. D8 and D16 are settled by RS0's measurement, at the owner's first stop.
+
 | # | Decision | Default | If the owner changes it |
 |---|---|---|---|
 | D1 | Does the overview survive as the whole-house map? | **Yes, unchanged**: every room, room chips, who is where, the live-feed card, today's lighting. | Lamp shadows off in the overview (cheaper; at 34 m the 128 px shadows are soft anyway) is a small RS3 option after captures; with D8 (ii) the lamps stay on, confined, so nothing leaks through the walls. Dropping the overview loses an approved V5 feature and its tests (Shots_TheOverviewFramesEveryRoomAndKeepsTheCastMoving, the Overview_* and Beacons_TheOverviewsRoomChipsAreAMap). |

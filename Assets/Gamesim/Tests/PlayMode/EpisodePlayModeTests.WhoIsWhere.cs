@@ -21,7 +21,8 @@ namespace Gamesim.Tests.PlayMode
     /// reads it follows - the walk-in watch, the free-time board's HERE, the room icons' counts - and
     /// Talk needs the two on one floor or both in one doorway's band. Bodies are stood where a test
     /// wants them, the houseguests let go by their motion and the player's agent no longer placing
-    /// it, so each case reads exactly the point it names.
+    /// it, so each case reads exactly the point it names - but for the walk over, which the agent
+    /// walks.
     /// </summary>
     public sealed partial class EpisodePlayModeTests
     {
@@ -89,6 +90,48 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(sampled, Is.GreaterThan(4000), "The whole house, every half metre.");
             Assert.That(livingMisnamed / (float)livingSampled, Is.GreaterThan(.35f), "The grid holds the part of the living room the nearest marker"
                 + " named another room: " + livingMisnamed + " of its " + livingSampled + " points.");
+        }
+
+        /// <summary>
+        /// Who is where keeps the room someone came from through a doorway, as the walker rule does. A
+        /// houseguest steps from the living room into the doorway it shares with the bedroom, 0.2 m
+        /// onto the bedroom's floor, where the floor under them and the nearest marker both say the
+        /// bedroom: still the living room. 0.4 m in, the bedroom; and back 0.2 m onto the living
+        /// room's floor, still the bedroom, until they are 0.4 m in there.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator WhoIsWhere_ADoorwayKeepsTheRoomYouCameFrom()
+        {
+            director.ClosePanels();
+            director.SuspendNpcAutonomyForDiagnostics();
+            yield return null;
+            var scope = ScopeOf(director);
+            ScopeParkHouseguests(scope);
+            var guest = SceneComponents<HouseNpc>().First(npc => npc.gameObject.activeInHierarchy);
+            var markers = RswMarkers();
+            string Room() => RswRoomsOf(director.WhoIsWhere()).TryGetValue(guest.Id, out var room) ? room : null;
+
+            var middle = scope.Box(RoomLayers.IndexOf("Living")).center;
+            RswStand(guest.transform, new Vector3(middle.x, 0f, middle.y));
+            Assert.That(Room(), Is.EqualTo("Living"), guest.DisplayName + " is in the middle of the living room.");
+
+            // Into the doorway, a step at a time: each is read before the next, as a walk is.
+            var step = new Vector3(-7f, 0f, .2f);
+            Assert.That(HouseRoomScope.RoomId(scope.RoomUnder(step)), Is.EqualTo("Bedroom"), "0.2 m onto the bedroom's floor");
+            Assert.That(RswNearestMarker(markers, step), Is.EqualTo("Bedroom"), "and nearest the bedroom's marker,");
+            RswStand(guest.transform, step);
+            Assert.That(Room(), Is.EqualTo("Living"), "they are still in the living room they came from.");
+
+            RswStand(guest.transform, new Vector3(-7f, 0f, .4f));
+            Assert.That(Room(), Is.EqualTo("Bedroom"), "0.4 m in, the bedroom.");
+
+            step = new Vector3(-7f, 0f, -.2f);
+            Assert.That(HouseRoomScope.RoomId(scope.RoomUnder(step)), Is.EqualTo("Living"), "Back 0.2 m onto the living room's floor,");
+            RswStand(guest.transform, step);
+            Assert.That(Room(), Is.EqualTo("Bedroom"), "they are still in the bedroom they came from,");
+
+            RswStand(guest.transform, new Vector3(-7f, 0f, -.4f));
+            Assert.That(Room(), Is.EqualTo("Living"), "and 0.4 m in, the living room again.");
         }
 
         /// <summary>
@@ -238,7 +281,7 @@ namespace Gamesim.Tests.PlayMode
                 Assert.That(director.WalkerRoomOf(player.transform), Is.EqualTo("HoH"));
                 Assert.That(RswCanTalk(guest), Is.False, "Three metres off, in the next room: too far to talk.");
                 Assert.That(RswApproach(guest, out var spot), Is.True, "There is somewhere to walk to.");
-                Assert.That(HouseWhoIsWhere.SurelyIn(scope, RoomLayers.IndexOf("Nomination"), spot), Is.True,
+                Assert.That(HouseWhoIsWhere.WalkEndsIn(scope, RoomLayers.IndexOf("Nomination"), spot, agent.stoppingDistance), Is.True,
                     "The walk ends on the nomination room's floor, not back through the doorway in the suite: " + spot.ToString("F2") + ".");
                 RswStand(player.transform, spot);
                 Assert.That(director.WalkerRoomOf(player.transform), Is.EqualTo("Nomination"));
@@ -247,6 +290,61 @@ namespace Gamesim.Tests.PlayMode
             finally
             {
                 agent.updatePosition = agentPlaces;
+                if (carved && carving != null) carving.enabled = true;
+            }
+        }
+
+        /// <summary>
+        /// The walk over itself, on the player's agent, through a doorway: a click on a houseguest 1.9 m
+        /// into the nomination room, from the HoH suite, opens the conversation within seconds. The
+        /// first spot towards the player is 0.32 m into the nomination room's floor, and the agent
+        /// stops up to its stopping distance short of a spot: a walk aimed there stopped with the
+        /// player still in the suite, where Talk does not open, and stood re-aiming at the same spot
+        /// until it gave up forty seconds later. The direct walk is the one taken here - reduced
+        /// motion, a batch run and the house's world let go all keep the talk spots out of it.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator Talk_AWalkOverThroughADoorwayOpensTheConversation()
+        {
+            director.ClosePanels();
+            director.SuspendNpcAutonomyForDiagnostics();
+            yield return null;
+            var scope = ScopeOf(director);
+            ScopeParkHouseguests(scope);
+            var guest = SceneComponents<HouseNpc>().First(npc => npc.gameObject.activeInHierarchy);
+            // Let go by its motion, a houseguest carves the floor it stands on; walking, it does not.
+            var carving = guest.GetComponent<NavMeshObstacle>();
+            bool carved = carving != null && carving.enabled;
+            if (carved) carving.enabled = false;
+            try
+            {
+                RswStand(guest.transform, new Vector3(-2.7f, 0f, -15f));
+                // The player in the middle of the suite, straight through the doorway from them.
+                WarpPlayer(ScopeOpenFloor(scope, RoomLayers.IndexOf("HoH")));
+                yield return null;
+                Assert.That(director.WalkerRoomOf(guest.transform), Is.EqualTo("Nomination"));
+                Assert.That(director.WalkerRoomOf(player.transform), Is.EqualTo("HoH"));
+                Assert.That(RswCanTalk(guest), Is.False, "Six metres off, in the next room: a walk first.");
+                // The spot a walk was aimed at before: surely the room to someone stood on it, but not where a walk to it stops.
+                var shallow = new Vector3(-4.3f, 0f, -15f);
+                int nomination = RoomLayers.IndexOf("Nomination");
+                Assert.That(HouseWhoIsWhere.SurelyIn(scope, nomination, shallow), Is.True);
+                Assert.That(HouseWhoIsWhere.WalkEndsIn(scope, nomination, shallow, player.Agent.stoppingDistance), Is.False);
+
+                Assert.That(player.InputEnabled, Is.True, "The player can be sent somewhere.");
+                RswSelect(guest);
+                Assert.That(director.WalkingToId, Is.EqualTo(guest.Id), "The click sets off towards " + guest.DisplayName + ": " + director.StatusMessage);
+                float deadline = Time.realtimeSinceStartup + 12f;
+                while (Time.realtimeSinceStartup < deadline && director.TalkingToId == null && director.WalkingToId != null) yield return null;
+                Assert.That(director.TalkingToId, Is.EqualTo(guest.Id), "The walk ends in a conversation with " + guest.DisplayName + ". Instead: "
+                    + (director.WalkingToId != null ? "still walking" : "the walk ended") + ", the player at " + player.transform.position.ToString("F2")
+                    + " in the " + director.WalkerRoomOf(player.transform) + ", aimed at " + player.Agent.destination.ToString("F2")
+                    + ", arrived " + player.HasArrived + ", status: " + director.StatusMessage);
+                Assert.That(director.WalkerRoomOf(player.transform), Is.EqualTo("Nomination"), "On their floor.");
+            }
+            finally
+            {
+                director.ClosePanels();
                 if (carved && carving != null) carving.enabled = true;
             }
         }
@@ -357,7 +455,9 @@ namespace Gamesim.Tests.PlayMode
         /// stand on, and a conversation's room the floor under its middle - not the room of the
         /// nearest marker. A metre and a half into the living room by its wall with the bedroom, the
         /// bedroom's marker is the nearer; by the kitchen's wall with the private room, the private
-        /// room's.
+        /// room's. The player's room is read through the feed itself: early in the first week no
+        /// story is staged and no ceremony has been, and with the house's world let go no
+        /// conversation has formed, so the feed looks into the player's room.
         /// </summary>
         [UnityTest]
         public IEnumerator LiveFeed_ItsRoomIsTheFloorItCounts()
@@ -367,6 +467,7 @@ namespace Gamesim.Tests.PlayMode
             yield return null;
             ScopeOf(director);
             var markers = RswMarkers();
+            var living = markers.Single(marker => marker.RoomName == "Living");
             var feedRoom = typeof(EpisodeDirector).GetMethod("FloorMarker", BindingFlags.NonPublic | BindingFlags.Instance);
             Assert.That(feedRoom, Is.Not.Null, "The feed finds its room in one place.");
             var agent = player.Agent;
@@ -377,8 +478,11 @@ namespace Gamesim.Tests.PlayMode
             {
                 RswStand(player.transform, new Vector3(-5f, 0f, -1.5f));
                 Assert.That(RswNearestMarker(markers, player.transform.position), Is.EqualTo("Bedroom"));
-                var mine = (HouseRoomMarker)feedRoom.Invoke(director, new object[] { markers, player.transform.position, player.transform });
-                Assert.That(mine.RoomName, Is.EqualTo("Living"), "The player's room is the living room they stand in.");
+                Assert.That(director.TryGetLiveFeedSubject(out var at, out var caption), Is.True, "The feed has something to look at.");
+                Assert.That(caption, Does.StartWith(RoomLabels.Title("Living") + " · "), "The player's room is the living room they stand in: " + caption);
+                Assert.That(at, Is.EqualTo(living.transform.position), "and the feed looks into it: " + at.ToString("F2") + ".");
+                // A conversation's room, from the point between the two: the feed takes it only from a
+                // pair that has arrived, so the rule is read where the feed reads it.
                 var middle = new Vector3(8f, 0f, -1.5f);
                 Assert.That(RswNearestMarker(markers, middle), Is.EqualTo("Private"));
                 var theirs = (HouseRoomMarker)feedRoom.Invoke(director, new object[] { markers, middle, null });
@@ -473,6 +577,14 @@ namespace Gamesim.Tests.PlayMode
             bool found = (bool)method.Invoke(director, arguments);
             spot = (Vector3)arguments[1];
             return found;
+        }
+
+        /// <summary>A click on a houseguest out in the house, as the player's controller hands it to the director.</summary>
+        private void RswSelect(HouseNpc npc)
+        {
+            var method = typeof(EpisodeDirector).GetMethod("SelectHouseguest", BindingFlags.NonPublic | BindingFlags.Instance);
+            Assert.That(method, Is.Not.Null, "A click on a houseguest is answered in one place.");
+            method.Invoke(director, new object[] { npc });
         }
 
         /// <summary>What the walk-in watch finds, before the engine is asked: the room and the pair.</summary>

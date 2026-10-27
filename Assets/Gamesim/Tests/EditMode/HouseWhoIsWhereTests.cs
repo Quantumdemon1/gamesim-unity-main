@@ -9,9 +9,10 @@ namespace Gamesim.Tests.EditMode
     /// Who is where by floor (ROOM-SCOPE-PLAN §3.2 k, RSW) on the house's eight floor boxes, with no
     /// scene: every point of every floor is its own room to a walker who walked there, where the
     /// nearest room marker named another room for 39.5% of the living room; Talk's doorway band
-    /// reaches 0.6 m past a floor and needs both people in it; and a spot three tenths of a metre
-    /// inside a floor is that room to a walker arriving from anywhere. Plain C#, so it runs under the
-    /// editor's Mono without Unity.
+    /// reaches 0.6 m past a floor and needs both people in it; a spot three tenths of a metre inside a
+    /// floor is that room to a walker arriving from anywhere; and a walk aimed to end in a room ends
+    /// there though the agent stops short of its spot. Plain C#, so it runs under the editor's Mono
+    /// without Unity.
     /// </summary>
     public sealed class HouseWhoIsWhereTests
     {
@@ -143,6 +144,60 @@ namespace Gamesim.Tests.EditMode
                     }
             }
             Assert.That(checkedSpots, Is.GreaterThan(95000), "The whole house was looked at: about 101,000 spots.");
+        }
+
+        [Test]
+        public void AWalkThatStopsShortOfItsSpotStillEndsInTheRoomItAimedFor()
+        {
+            var house = HouseRoomScopeWalkerTests.House();
+            int hoh = Index("HoH"), nomination = Index("Nomination");
+            // The player's agent stops 0.15 m short of where it is sent (EpisodeHouse.unity), and has
+            // arrived a tenth of a metre further out still.
+            const float stopping = .15f;
+            float reach = stopping + HouseWhoIsWhere.ArrivalSlack;
+            Assert.That(HouseWhoIsWhere.ArrivalSlack, Is.EqualTo(.1f), "HasArrived's slack past the stopping distance.");
+
+            // The reviewers' case: a houseguest 1.92 m into the nomination room, the player back in the
+            // HoH suite. The first spot towards the player is 0.32 m in - surely the room to a walker
+            // stood there - but the walk through the doorway stops 0.15 m short of it, in the suite.
+            var shallow = new Vector3(-4.3f, 0f, -15f);
+            Assert.That(HouseWhoIsWhere.SurelyIn(house, nomination, shallow), Is.True);
+            Assert.That(house.WalkerRoom(shallow - Vector3.right * stopping, hoh), Is.EqualTo(hoh), "Stopped short, the walker is still in the suite,");
+            Assert.That(HouseWhoIsWhere.WalkEndsIn(house, nomination, shallow, stopping), Is.False, "so the walk does not end in the nomination room.");
+            Assert.That(HouseWhoIsWhere.WalkEndsIn(house, nomination, new Vector3(-4.05f, 0f, -15f), stopping), Is.True, "0.57 m in, it does;");
+            Assert.That(HouseWhoIsWhere.WalkEndsIn(house, nomination, new Vector3(-4.1f, 0f, -15f), stopping), Is.False, "0.52 m in, not yet.");
+            Assert.That(HouseWhoIsWhere.WalkEndsIn(house, -1, Vector3.zero, stopping), Is.False);
+            Assert.That(HouseWhoIsWhere.WalkEndsIn(null, nomination, new Vector3(0f, 0f, -15f), stopping), Is.False);
+
+            // Over every floor, every 0.2 m: wherever a walk to a spot it says ends in a room stops -
+            // on the spot or short of it, from any side - the walker is in that room, whichever room
+            // the walk began in.
+            int checkedSpots = 0;
+            for (int room = 0; room < RoomLayers.Count; room++)
+            {
+                var box = house.Box(room);
+                for (float x = box.xMin + .1f; x < box.xMax; x += .2f)
+                    for (float z = box.yMin + .1f; z < box.yMax; z += .2f)
+                    {
+                        var spot = new Vector3(x, 0f, z);
+                        if (!HouseWhoIsWhere.WalkEndsIn(house, room, spot, stopping)) continue;
+                        checkedSpots++;
+                        for (int side = -1; side < 16; side++)
+                        {
+                            float angle = side * Mathf.PI / 8f;
+                            var stop = side < 0 ? spot : spot + new Vector3(Mathf.Cos(angle), 0f, Mathf.Sin(angle)) * reach;
+                            for (int from = -1; from < RoomLayers.Count; from++)
+                            {
+                                int walker = house.WalkerRoom(stop, from);
+                                if (walker != room)
+                                    Assert.Fail("A walk to " + spot.ToString("F2") + " ends in the " + RoomLayers.RoomIds[room] + ", but stopped at "
+                                        + stop.ToString("F2") + " a walker from " + (from < 0 ? "nowhere" : RoomLayers.RoomIds[from])
+                                        + " is in " + HouseRoomScope.RoomId(walker) + ".");
+                            }
+                        }
+                    }
+            }
+            Assert.That(checkedSpots, Is.GreaterThan(20000), "The whole house was looked at: about 22,600 spots.");
         }
 
         /// <summary>A floor's half-metre grid, a quarter-metre in from its edges, column by column and back, as a walker crosses it.</summary>

@@ -11,11 +11,10 @@ namespace Gamesim.Episode
     ///
     /// <para>Who is where read the nearest room marker, and the markers stand off-centre: the
     /// living room's marker is 2.4 m from its south wall and the bedroom's 2 m from the wall the two
-    /// share, so the living room north of z = -2.8 read "Bedroom"; with its corners by the kitchen and
-    /// the HoH suite, 39.5% of its floor named another room on a half-metre grid, and 37.3% of the
-    /// kitchen's. A room
-    /// view would show the disagreement: the walk-in watch offered "Step in" on a pair standing in a
-    /// room it would not draw. Now each body is in its walker room
+    /// share, so the living room north of z = -2.8 read "Bedroom"; with its corners by the kitchen
+    /// and the HoH suite, 39.5% of its floor named another room on a half-metre grid, and 37.3% of
+    /// the kitchen's. A room view would show the disagreement: the walk-in watch offered "Step in"
+    /// on a pair standing in a room it would not draw. Now each body is in its walker room
     /// (<see cref="WalkerRoomOf"/>, RS1's rule): the floor its feet are on, kept through a doorway
     /// until they are three tenths of a metre inside the next. Every reader of
     /// <see cref="HouseOccupancy(EpisodeState)"/> follows - the notebook's Who is where, the social
@@ -104,15 +103,18 @@ namespace Gamesim.Episode
 
         /// <summary>
         /// Whether a spot to walk to lands the player on someone's floor: far enough inside their walker
-        /// room that the player is in it on arrival. A spot across a doorway from them is in the next
-        /// room, where Talk would not open and the walk would go on until it gave up. Where the floors
-        /// cannot say, any spot will do.
+        /// room that the player is in it on arrival, wherever the agent stops short of the spot
+        /// (<see cref="HouseWhoIsWhere.WalkEndsIn"/>). A spot across a doorway from them is in the next
+        /// room, where Talk would not open; so was one three tenths of a metre past it, where the agent
+        /// stopped with the player still in the room they came from, and the walk stood re-aiming at the
+        /// same spot until it gave up. Where the floors cannot say, any spot will do.
         /// </summary>
         private bool ApproachOnTheirFloor(Vector3 spot, Transform other)
         {
             if (other == null || !EnsureRoomScope()) return true;
             int theirs = roomScope.Track(other);
-            return theirs < 0 || HouseWhoIsWhere.SurelyIn(roomScope, theirs, spot);
+            var agent = player != null ? player.Agent : null;
+            return theirs < 0 || HouseWhoIsWhere.WalkEndsIn(roomScope, theirs, spot, agent != null ? agent.stoppingDistance : 0f);
         }
 
         /// <summary>

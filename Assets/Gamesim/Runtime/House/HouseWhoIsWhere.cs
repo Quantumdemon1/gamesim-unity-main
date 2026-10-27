@@ -12,7 +12,8 @@ namespace Gamesim.House
     /// <see cref="DoorwayBand"/> of the other's floor (§3.2 e), so both within it of the line their
     /// floors share. The band alone is either side of a wall as much as of a doorway, so the director
     /// completes it with a look across the floor at <see cref="BelowEveryWall"/>, where only a doorway
-    /// is open.</para>
+    /// is open. A walk over to talk to someone aims where it is sure to end on their floor
+    /// (<see cref="WalkEndsIn"/>).</para>
     ///
     /// <para>Plain C# over plan rectangles, so a fixture runs it under the editor's Mono.</para>
     /// </summary>
@@ -56,11 +57,32 @@ namespace Gamesim.House
         }
 
         /// <summary>
+        /// How much further than its agent's stopping distance a walk may end from its spot and still
+        /// have arrived: <see cref="HousePlayerController.HasArrived"/>'s own slack.
+        /// </summary>
+        public const float ArrivalSlack = .1f;
+
+        /// <summary>
         /// Whether a spot is surely in room <paramref name="room"/> for a walker who arrives there: at
         /// least <see cref="HouseRoomScope.DoorwayDepth"/> inside its floor, where the walker rule names
         /// that room whatever room the walk began in.
         /// </summary>
         public static bool SurelyIn(HouseRoomScope scope, int room, Vector3 feet)
-            => scope != null && scope.Has(room) && InsideBy(scope.Box(room), feet) >= HouseRoomScope.DoorwayDepth;
+            => SurelyIn(scope, room, feet, HouseRoomScope.DoorwayDepth);
+
+        /// <summary>Whether the feet are at least <paramref name="depth"/> inside room <paramref name="room"/>'s floor.</summary>
+        public static bool SurelyIn(HouseRoomScope scope, int room, Vector3 feet, float depth)
+            => scope != null && scope.Has(room) && InsideBy(scope.Box(room), feet) >= depth;
+
+        /// <summary>
+        /// Whether a walk to a spot ends in room <paramref name="room"/>. An agent stops up to its
+        /// <paramref name="stoppingDistance"/> short of where it was sent, and has arrived
+        /// <see cref="ArrivalSlack"/> further out still, so a spot only <see cref="SurelyIn(HouseRoomScope, int, Vector3)"/>
+        /// can leave a walker who came through a doorway a step short of it, in the room they left. A
+        /// spot that much deeper is <see cref="HouseRoomScope.DoorwayDepth"/> inside wherever the walk
+        /// stops, from any side.
+        /// </summary>
+        public static bool WalkEndsIn(HouseRoomScope scope, int room, Vector3 spot, float stoppingDistance)
+            => SurelyIn(scope, room, spot, HouseRoomScope.DoorwayDepth + Mathf.Max(0f, stoppingDistance) + ArrivalSlack);
     }
 }

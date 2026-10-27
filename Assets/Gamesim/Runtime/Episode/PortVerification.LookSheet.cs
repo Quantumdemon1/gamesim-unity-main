@@ -467,6 +467,12 @@ namespace Gamesim.Episode
             yield return null; yield return null;
         }
 
+        /// <summary>
+        /// The room a houseguest is in, as who is where reads it: their walker room by the floors
+        /// (RSW), the nearest marker only where the floors cannot say.
+        /// </summary>
+        private string RoomOf(HouseNpc npc) => seasonDirector.WalkerRoomOf(npc.transform) ?? NearestRoom(npc.transform.position);
+
         private static string NearestRoom(Vector3 at)
         {
             HouseRoomMarker best = null; float bestDistance = float.MaxValue;
@@ -543,7 +549,7 @@ namespace Gamesim.Episode
 
         private IEnumerator LivingRoom(LookShot shot)
         {
-            var npc = ActiveNpcs().OrderBy(n => NearestRoom(n.transform.position) == "Living" ? 0 : 1)
+            var npc = ActiveNpcs().OrderBy(n => RoomOf(n) == "Living" ? 0 : 1)
                 .ThenBy(n => Vector3.Distance(n.transform.position, new Vector3(-5.5f, 0f, -4f))).FirstOrDefault();
             if (npc == null) throw new InvalidOperationException("No active houseguest to select.");
             seasonDirector.FollowHouseguest(npc.Id);
@@ -588,7 +594,7 @@ namespace Gamesim.Episode
             yield return WaitUntil(() =>
             {
                 npc = ActiveNpcs().OrderBy(n => Vector3.Distance(n.transform.position, kitchen)).FirstOrDefault();
-                return npc != null && NearestRoom(npc.transform.position) == "Kitchen";
+                return npc != null && RoomOf(npc) == "Kitchen";
             }, 60);
             if (npc == null) throw new InvalidOperationException("No houseguest in the kitchen.");
             yield return ApproachAndOpen(npc, shot);
@@ -600,7 +606,7 @@ namespace Gamesim.Episode
                 yield return DrainSeasonConversationExchange("look-kitchen", true, CaptureLookConversationFrame);
                 yield return EnterSeasonConversationCategory(EpisodeDirector.ConnectCategoryCaption);
             }
-            if (NearestRoom(npc.transform.position) != "Kitchen") shot.reason = "the pair was not in the kitchen";
+            if (RoomOf(npc) != "Kitchen") shot.reason = "the pair was not in the kitchen";
         }
 
         private IEnumerator NightConversation(LookShot shot)
@@ -623,7 +629,7 @@ namespace Gamesim.Episode
             if (HouseEvents.Pending(seasonDirector.Snapshot) == null)
             {
                 // Stand where two houseguests are, which is what offers a proximity event.
-                var pair = ActiveNpcs().GroupBy(n => NearestRoom(n.transform.position)).Where(g => g.Count() >= 2).FirstOrDefault();
+                var pair = ActiveNpcs().GroupBy(n => RoomOf(n)).Where(g => g.Count() >= 2).FirstOrDefault();
                 if (pair != null)
                 {
                     var target = pair.First();

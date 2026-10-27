@@ -35,6 +35,9 @@ namespace Gamesim.Episode
             var origin = player.transform.position + Vector3.up * 1.15f;
             var offset = npc.transform.position + Vector3.up * 1.15f - origin;
             if (offset.magnitude > 2.8f) return false;
+            // On one floor, or both in one doorway's band (RSW): the sight line below passes over the
+            // south wing's 1.1 m walls, so it cannot tell a wall from a doorway.
+            if (!FloorsLetTalk(npc.transform)) return false;
             int count = Physics.RaycastNonAlloc(origin, offset.normalized, sightHits, offset.magnitude, HouseLayers.Sight, QueryTriggerInteraction.Ignore);
             if (count == sightHits.Length) return false; // Fail closed if a crowded ray overflows the reusable buffer.
             for (int i = 0; i < count; i++)
@@ -97,7 +100,8 @@ namespace Gamesim.Episode
         /// is tested against the NavMesh rather than against geometry - <see cref="NavMesh.Raycast"/>
         /// from the candidate to the target fails exactly where a wall or a gap stands between them,
         /// because that is what a bake encodes. The first candidate that both samples onto the mesh
-        /// and has a clear line to the target wins.</para>
+        /// and has a clear line to the target wins - the first on the target's own floor, where there
+        /// is one (RSW).</para>
         /// </summary>
         private bool TryApproach(HouseNpc npc, out Vector3 approach)
         {
@@ -110,6 +114,7 @@ namespace Gamesim.Episode
             toPlayer.y = 0f;
             var facing = toPlayer.sqrMagnitude > 0.01f ? toPlayer.normalized : Vector3.forward;
 
+            bool found = false;
             for (int step = 0; step < 8; step++)
             {
                 // Out from the player's side first, then alternating around them, so the natural
@@ -119,10 +124,12 @@ namespace Gamesim.Episode
                     + Quaternion.Euler(0f, degrees, 0f) * facing * ApproachDistance;
                 if (!NavMesh.SamplePosition(candidate, out var hit, 0.6f, filter)) continue;
                 if (NavMesh.Raycast(hit.position, npc.transform.position, out _, filter)) continue;
-                approach = hit.position;
-                return true;
+                // On their floor first (RSW): a spot across a doorway from them is in the next room,
+                // where Talk would not open. The first clear spot only when no spot is on their floor.
+                if (ApproachOnTheirFloor(hit.position, npc.transform)) { approach = hit.position; return true; }
+                if (!found) { approach = hit.position; found = true; }
             }
-            return false;
+            return found;
         }
 
         /// <summary>
@@ -387,32 +394,24 @@ namespace Gamesim.Episode
             if (story) ClearWalkIn();
             if (!EpisodeEngine.ProximityOpen(state)) return;
 
-            var here = HouseOccupancy(state)
-                .FirstOrDefault(room => room.Occupants != null && room.Occupants.Any(person => person.IsPlayer));
-            if (string.IsNullOrEmpty(here.Name)) return;
-
-            var others = here.Occupants
-                .Where(person => !person.IsPlayer && !string.IsNullOrEmpty(person.Id))
-                .Select(person => person.Id)
-                .OrderBy(id => id, StringComparer.Ordinal)
-                .ToList();
-            if (!TryWalkInPair(others, out string first, out string second)) return;
+            // The player's room by the floors and the pair in it (RSW): a pair across a wall is not here.
+            if (!TryWalkInHere(state, out string room, out string first, out string second)) return;
 
             // Offered only when something would come of it: a pair no walk-in story will take this
             // week, in this room, is two people talking, not an event.
-            if (!EpisodeEngine.ProximityOpen(state, first, second, here.Name)) return;
+            if (!EpisodeEngine.ProximityOpen(state, first, second, room)) return;
             if (story)
             {
-                walkInFirst = first; walkInSecond = second; walkInRoom = here.Name; walkInWeek = state.week;
+                walkInFirst = first; walkInSecond = second; walkInRoom = room; walkInWeek = state.week;
                 return;
             }
-            if (HouseEventSources.Proximity(state, first, second, here.Name, state.nextSequence) == null) return;
+            if (HouseEventSources.Proximity(state, first, second, room, state.nextSequence) == null) return;
             Submit(new EpisodeCommand
             {
                 id = Guid.NewGuid().ToString("N"), actorId = state.playerId,
                 kind = EpisodeCommandKind.WitnessProximity, expectedPhase = state.phase,
                 expectedRevision = state.revision, targetId = first,
-                secondTargetId = second, text = here.Name,
+                secondTargetId = second, text = room,
             });
         }
 

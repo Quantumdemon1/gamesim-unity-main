@@ -18,8 +18,8 @@ namespace Gamesim.Episode
     /// <see cref="HoldWholeHouse"/>, which wins.</para>
     ///
     /// <para>The scope also keeps every body's walker room, every frame: the player's and each
-    /// houseguest's, by the floors (<see cref="HouseRoomScope.WalkerRoom"/>). Nothing reads them for
-    /// gameplay yet; who-is-where moves to them in RSW.</para>
+    /// houseguest's, by the floors (<see cref="HouseRoomScope.WalkerRoom"/>). Who-is-where reads them
+    /// (RSW, EpisodeDirector.WhoIsWhere).</para>
     ///
     /// <para>No statics: the holds and the scope belong to this director, so a new play session or a
     /// reloaded scene starts with none (statics outlive play sessions here).</para>

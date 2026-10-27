@@ -255,12 +255,12 @@ namespace Gamesim.Episode
                 foreach (var marker in RoomMarkers()) if (marker.isActiveAndEnabled) beaconRooms[marker.RoomName] = marker;
                 travelBeacons.Build(beaconRooms.Values, PressTravelBeacon);
             }
-            // Where the player stands changes at walking pace; four times a second is plenty.
+            // Where the player stands changes at walking pace; four times a second is plenty. The room
+            // scope's query, kept, rather than a new one each time (ROOM-SCOPE-PLAN RS1).
             if (Time.unscaledTime >= nextBeaconRoomCheck)
             {
                 nextBeaconRoomCheck = Time.unscaledTime + .25f;
-                beaconPlayerRoom = HouseRoomQuery.TryCreate(gameObject.scene, out var rooms, out _)
-                    && player.Agent != null && rooms.TryLocate(player.transform.position, player.Agent.radius, out var room) ? room : null;
+                beaconPlayerRoom = BeaconRoomOf(player);
             }
             if (Time.unscaledTime >= nextBeaconCount)
             {
@@ -282,6 +282,20 @@ namespace Gamesim.Episode
             travelBeacons.Request(true, cameraRig, TextScale, StationRoomId(),
                 EpisodeEngine.IsCompetition(projected?.phase ?? EpisodePhase.Social), playerIsActive ? beaconPlayerRoom : null,
                 BeaconAnchor, chromeCovers, chromeCoversBox);
+        }
+
+        /// <summary>
+        /// The room the player's feet are in, by the room query's safe interior (none in a doorway),
+        /// through the scope's kept query. A query that no longer holds its house - a floor gone -
+        /// is let go, so the next check builds the scope again, as a fresh query each time did.
+        /// </summary>
+        private string BeaconRoomOf(HousePlayerController walker)
+        {
+            if (walker == null || walker.Agent == null || !EnsureRoomScope()) return null;
+            var rooms = roomScope.Query;
+            if (rooms.TryLocate(walker.transform.position, walker.Agent.radius, out var room)) return room;
+            if (!rooms.TryValidateScene(out _)) DropRoomScope();
+            return null;
         }
 
         /// <summary>What the icons ask the HUD's chrome, made once.</summary>

@@ -52,6 +52,13 @@ namespace Gamesim.House
         public Scene Scene => scene;
         public string LastFailure { get; private set; }
 
+        /// <summary>How many floors this house has, in table order (the room scope reads its boxes here).</summary>
+        public int FloorCount => floors.Count;
+        /// <summary>The room id of floor <paramref name="index"/>, in table order.</summary>
+        public string FloorRoom(int index) => floors[index].roomId;
+        /// <summary>The bound collider of floor <paramref name="index"/>, in table order.</summary>
+        public BoxCollider FloorCollider(int index) => floors[index].collider;
+
         public static bool TryCreate(Scene ownedScene, out HouseRoomQuery query, out string reason)
         {
             query = null;

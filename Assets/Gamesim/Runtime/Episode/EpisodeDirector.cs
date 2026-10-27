@@ -376,6 +376,8 @@ namespace Gamesim.Episode
             // First, and whatever else returns early: the dip is only a clock, and a frame that
             // skipped it would hold the house black for as long as a card or a load owned the frame.
             TickTravelDip();
+            // Every body's room by the floors, before anything this frame reads one (RS1).
+            TickRoomScope();
             TickTravelBeacons();
             TickSleepLight();
             // The staged ceremony before the ceremonies' bookkeeping: its card starts here, and the

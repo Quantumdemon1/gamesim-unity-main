@@ -265,6 +265,11 @@ These constraints rule most techniques out:
 - **Runtime pieces** take their room layer in the frame they are created and never change it afterwards. A piece that moves after creation goes to the shell. This keeps every layer change ahead of the drawer's once-a-frame read and away from same-frame manual renders (§2.8).
 - **Room layers.** 20 Living, 21 Kitchen, 22 Bedroom, 23 Private, 24 Yard, 25 HoH, 26 Nomination, 27 Games, named in `ProjectSettings/TagManager.asset`. Layers 30 and 31 stay the tests'.
 - **Lamps get a home room** by position: Living 3, Bedroom 3, HoH 3, Nomination 2, Private 2, Games 1, Kitchen 0, Yard 0.
+- **As built (RS1).** `Runtime/House/HouseRoomScope.cs` keeps the rule with three precisions the saved scene asked for:
+  - bodies (anything under a `HouseNpc` or `HousePlayerController`) are never classified, because they move: RS4 draws them by their walker room;
+  - the shell list is the `Neon Room Outlines` root, the south wing's own outline (`HouseExpansion`'s `Trim` strips under `South Wing`) and the authored shell mesh (`bb_shell_house`);
+  - where two grown boxes both hold a piece (it stands within 0.25 m of a shared wall), the room whose own floor holds its centre takes it; a piece centred on a wall line stays in the shell.
+  - A lamp is a point light that casts shadows; its home is the floor box it stands in, else the nearest.
 
 **(c) Drawing.** Each camera's mask is set from the scope:
 - **The main camera:** `mask = (mask & ~RoomBits) | ScopeBits`. Only bits 20-27 are written, so the capture guard on bit 31 and every other bit are left alone.
@@ -339,21 +344,25 @@ The Moon's and lamps' shadow casters come from the same culling, so hidden rooms
 8. The two gameplay changes (D14, D18).
 9. One preference key.
 
-### 3.5 Predicted savings (modelled; RS0 and RS7 measure them)
+### 3.5 Predicted savings (house drawing recomputed in RS1; lamps modelled; RS0 and RS7 measure them)
 
-| Room view | House renderers drawn (with the shell) | Triangles | Shadow maps (lamps + follow spot), D8 i | Per-map size in the 2048 atlas |
+**RS2a's expectation.** RS1 recomputed the drawing columns with the classifier's own rule (§3.2 b) on main's saved scene (`772828ba`), by its own reader of the scene and its FBX models; the reader's mesh bounds agree with all 131 fitted furniture proxies, which Unity measured from the same meshes. The props branch (§7) rewrites the scene and moves these numbers, so the table is re-taken when props lands. RS1's tests compute membership by the rule and pin none of them.
+
+| Room view | House renderers drawn (own + shell) | Triangles | Shadow maps (lamps + follow spot), D8 i | Per-map size in the 2048 atlas |
 |---|---|---|---|---|
-| Today, whole house | 449 | about 246k | 84 + 1 | 128 px |
-| Living | 120 | 32.6k | 18 + 1 | 256 px |
-| Kitchen | 137 | 44.8k | 0 + 1 | the spot's own 256 |
-| Bedroom | 98 | 18.7k | 18 + 1 | 256 px |
-| Private | 72 | 14.0k | 12 + 1 | 512 px |
-| Yard | 124 | 80.7k (53.3k at LOD1) | 0 + 1 | the spot's own 256 |
-| HoH | 101 | 22.0k | 18 + 1 | 256 px |
-| Nomination | 76 | 19.1k | 12 + 1 | 512 px |
-| Games | 92 | 25.8k | 6 + 1 | 512 px |
+| Today, whole house | 441 | 245.8k (218.4k at LOD1) | 84 + 1 | 128 px |
+| Living | 117 (72 + 45) | 32.5k | 18 + 1 | 256 px |
+| Kitchen | 128 (83 + 45) | 44.7k | 0 + 1 | the spot's own 256 |
+| Bedroom | 96 (51 + 45) | 18.5k | 18 + 1 | 256 px |
+| Private | 68 (23 + 45) | 13.8k | 12 + 1 | 512 px |
+| Yard | 107 (62 + 45) | 80.5k (53.0k at LOD1) | 0 + 1 | the spot's own 256 |
+| HoH | 92 (47 + 45) | 22.2k | 18 + 1 | 256 px |
+| Nomination | 65 (20 + 45) | 18.9k | 12 + 1 | 512 px |
+| Games | 83 (38 + 45) | 25.6k | 6 + 1 | 512 px |
 
-- **These are bounds.** The table places renderers by pivot. The classifier keeps anything with a collider, and anything whose bounds leave its floor box plus 0.25 m, in the always-drawn shell, so the "drawn" counts are lower bounds and the savings upper bounds. RS1 recomputes the table with the classifier's own rule; that table is the expectation RS2a is measured against.
+- **How it was counted.** Drawing renderers (enabled and active), one level of a LOD group (the Yard's three flight cases have two), mesh triangles once each, before depth, shadow and SSAO passes. The saved scene's 450 drawing renderers are these 441, the flight cases' 3 LOD1 renderers, and 6 pieces of the prototype cast standing in the saved scene, which are bodies: RS4 draws bodies, so they are left out. Of all 694 renderers, drawing or not, the rule puts 583 in rooms by their meshes' bounds; 37 share their object with a collider, 22 are on layer 2, 33 are on the shell list, 18 belong to bodies and 1 straddles two floors. (Unity may report empty bounds for a renderer on an inactive object, so RS2a should classify a piece when it is first drawn, not only at load.)
+- **The shell: 45 renderers, 1,562 triangles,** drawn in every view: the 8 floors and 3 prototype planters (they carry colliders), the 20 neon outline strips of the north block and the Yard, the south wing's 12 neon trim strips, the authored shell mesh (every wall's caps, skirting and jambs, and the fences), and the kitchen's dining rug, which reaches 0.5 m through the south wall under the Games room. v2's pivot table counted 53 shared renderers; the difference is mostly the wall bands, which the rule gives to the room on whose side of the wall they hang.
+- **Lamps** by position, as modelled: Living 3, Bedroom 3, HoH 3, Nomination 2, Private 2, Games 1, Kitchen 0, Yard 0.
 - **Bodies.** Drawn and shadow-cast only in the room: about 106k triangles for two people instead of about 850k for sixteen. At a ceremony everyone is in the room, so the body saving is nil at the busiest moments; only D8 (ii)'s shadow layers could take bodies out of the lamps' cube faces there. The furniture and shadow savings remain.
 - **The overview** keeps today's cost unless D1's option is taken.
 - **The live feed** adds one room at 320 x 180 every third frame, as today.
@@ -434,6 +443,12 @@ The other rows stand at their defaults as the lead's calls, open to the owner. D
   - Add, EditMode (on the saved scene): `HouseRoomScopeTests`: `EveryDressingRendererIsInOneRoomOrTheShell`, `NoRendererThatSharesItsObjectWithAColliderIsClassified`, `TheShellHoldsTheWallsFloorsFencesAndOutlines`, `TheLampsLiveInTheirRooms` (3/3/3/2/2/1/0/0), `TheRoomLayersAreNamedAndUnused` (30 and 31 left alone), `HousePrototypeHasNoRoomScope`. Plain fixtures (Mono harness): `TheWalkerRoomChangesThreeTenthsOfAMetreInsideTheNewFloor`, `AnUnlocatedWalkerTakesTheNearestFloor`.
   - Add, PlayMode: `RoomScope_TheViewedRoomFollowsThePlayerThroughEachDoorwayOnce`, `RoomScope_ADoorwayShuffleKeepsTheRoom`, `RoomScope_TheViewedRoomFollowsTheFollowedHouseguest`, `RoomScope_EveryRigMoveReportsItsRooms` (a shot with and without rooms, `CutTo`, `FocusSubject`, a free `MoveTo`, a timed move's union), `RoomScope_AnActivityWarpReportsItsRoomOnTheBlinksFrame`.
   - Change: none.
+- **As built.** The seams the later slices use:
+  - `RoomSet` (`Runtime/House/RoomLayers.cs`): a set of rooms, one bit each in the layers' order, so `CullingBits` is the mask RS2a writes.
+  - `HouseCameraRig`: `Shot.Rooms` and `Shot.RoomsFromFocus` (a shot naming neither is the whole house), `Rooms` (resolved on read, and every frame), `UseRoomScope`. Free play, before any move and after F, is the player's room; a stopped follow keeps the room it showed; a released shot returns to the rooms it left.
+  - `EpisodeDirector`: `RoomScope`, `ViewedRooms`, `HoldWholeHouse(owner)`, `HoldRoomScope(owner)`, `Release(owner)` (one hold per owner and kind; any owner's whole-house hold wins), `CurrentRoomScopeSource`, and `LiveRoomScopeSources`, a constant that is `None` in RS1: a slice turns its own source on there, beside the camera calls that name its rooms. The overview, the opening and the walk-out have no switch (D1, D6).
+  - Every body's walker room is tracked every frame (`WalkerRoomOf(body)`), for RSW and RS4. The holds and the scope belong to the director, so there are no statics to reset.
+  - Not in RS1: the 0.6 s limit on how often the view changes rooms (§3.2 a) belongs to the cut that shows it (RS5).
 
 #### RSW Who is where by floor (Set A; waits on D14)
 - **What.** `EpisodeDirector.Journal.cs` `HouseOccupancy` by the walker room, not the nearest marker. Its 11 readers follow: the walk-in watch (`Conversation.cs`), the free-time board and screen, the journal, the room acts and the travel icons' counts. `CanTalk` also needs the target on the player's floor or in a shared doorway band. Gameplay: it changes which walk-ins, "HERE" tags, room acts and talks are offered in live play; no save, simulation, golden or digest moves.

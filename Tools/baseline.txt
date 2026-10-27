@@ -48,7 +48,12 @@ Gamesim.EditModeTests 8932
 # 45d2f015 (2026-10-23), 1319 passed and one red, an invitation-press timing flake that passed 3 of 3 alone.
 # 1322 = 1320 + R5b's 2 shared pitch-board fit tests (FitsTheStageWithItsAnswersTwoByTwo and
 # AFullPromiseRecordStillFitsTheStage): the full NoUMA run at 0c12976a (2026-10-25), 1322 of 1322.
-Gamesim.PlayModeTests 1322
+# 1323 = 1322 + CeremonyRevealPlayModeTests.Cards_TheirTimeStartsWhenTheyAreDrawn (e99df811, whose own full
+# NoUMA run on the earlier main ran 1303 of 1303 on 2026-10-24).
+# 1326 = 1323 + 3840c58d's 3 shared play-frame tests (JuryReveal_ItsTimeStartsWhenItIsDrawn,
+# VetoDraw_TheRevealsTimeStartsWhenItIsDrawn, Result_ItsTimeStartsWhenItIsDrawn): the full NoUMA run at 7f754510
+# (main b208d46d merged in, 2026-10-25), 1326 of 1326.
+Gamesim.PlayModeTests 1326
 # The UMA build of the same assembly, read by a plan built without -WithoutUma. 1281 = the 1241 above + the
 # 40 tests that compile only under GAMESIM_UMA, as run at r1 (2026-10-16): in EpisodePlayModeTests,
 # GroundedFarewell 11, Creator 9, HouseLife 8, Emotes 3, OpeningCaptures 2, and one each in CreatorEntry,
@@ -58,7 +63,11 @@ Gamesim.PlayModeTests 1322
 # 1360 = 1342 + the same 18 shared role-moments tests: the full UMA-build run at 45d2f015 (2026-10-23), 1360 of 1360.
 # 1362 = 1360 + R5b's same 2 shared tests: the full UMA-build run at 0c12976a (2026-10-25), 1362 of 1362, in one
 # process with the AI Assistant MCP bridge off (UNITY_MCP_DISABLE_BATCH=1), peak private commit 8.4 GiB.
-Gamesim.PlayModeTests.UmaBuild 1362
+# 1363 = 1362 + the same shared ceremony test (e99df811, whose own full UMA-build run on the earlier main ran
+# 1343 of 1343 on 2026-10-25, as six process groups whose union was checked case by case).
+# 1366 = 1363 + the same 3 shared play-frame tests: the full UMA-build run at 7f754510 (2026-10-25), 1366 of
+# 1366, in one process with the MCP bridge off.
+Gamesim.PlayModeTests.UmaBuild 1366
 # The UMA bodies: runs only where the GAMESIM_UMA define is set (the working tree and the D: copy).
 # 82 = the 89 run on 2026-10-15, less the 7 farewell probes moved to Gamesim.Uma.DiagnosticsPlayModeTests;
 # 85 = 82 + the 3 farewell readiness decision tests (UmaFarewellReadinessDecisionPlayModeTests, 2026-10-16);

@@ -108,7 +108,7 @@ namespace Gamesim.Episode
             if (latest != null)
             {
                 at = (latest.FirstSlot + latest.SecondSlot) * 0.5f;
-                room = NearestMarker(markers, at);
+                room = FloorMarker(markers, at, null);
                 bool witnessed = ReferenceEquals(npcShownLease, latest) && !string.IsNullOrEmpty(ObservedNpcConversation);
                 caption = witnessed ? ObservedNpcConversation : RoomCaption(room);
                 return true;
@@ -116,7 +116,7 @@ namespace Gamesim.Episode
 
             var ceremonyRoom = lastCeremonyKind != null ? CeremonyRoom(lastCeremonyKind) : null;
             room = ceremonyRoom != null ? markers.FirstOrDefault(m => m.RoomName == ceremonyRoom) : null;
-            if (room == null && player != null) room = NearestMarker(markers, player.transform.position);
+            if (room == null && player != null) room = FloorMarker(markers, player.transform.position, player.transform);
             if (room == null) return false;
             at = room.transform.position;
             caption = RoomCaption(room);

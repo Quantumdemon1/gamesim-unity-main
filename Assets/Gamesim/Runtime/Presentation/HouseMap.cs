@@ -22,10 +22,11 @@ namespace Gamesim.Presentation
     /// glow, the empty ones too - and an empty room is a short card that says so.</para>
     ///
     /// <para>It reports the live scene rather than the simulation: the rooms are the markers the
-    /// player walks to, and occupancy is nearest-marker. The house shows everyone - the overview,
-    /// the follow camera and the live feed all do - so "Empty" is true of an empty room here, and
-    /// nothing is "unknown". The one exception is a houseguest the house has no body for, which is
-    /// said as it is: their location is unavailable, with no guess and no "last seen".</para>
+    /// player walks to, and occupancy is by the floor each stands on (RSW; the nearest marker only
+    /// where the floors cannot say). The house shows everyone - the overview, the follow camera and
+    /// the live feed all do - so "Empty" is true of an empty room here, and nothing is "unknown".
+    /// The one exception is a houseguest the house has no body for, which is said as it is: their
+    /// location is unavailable, with no guess and no "last seen".</para>
     /// </summary>
     public static class HouseMap
     {

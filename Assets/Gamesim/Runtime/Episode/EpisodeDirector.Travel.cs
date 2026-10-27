@@ -166,8 +166,8 @@ namespace Gamesim.Episode
 
         /// <summary>
         /// The houseguests other than the player in each room, read the way the notebook's Who Is
-        /// Where reads them - the roster, by nearest room marker - so the icons and the notebook
-        /// never disagree.
+        /// Where reads them - the roster, by the floor each stands on (RSW) - so the icons and the
+        /// notebook never disagree.
         /// </summary>
         private void CountHouseguestsByRoom()
         {

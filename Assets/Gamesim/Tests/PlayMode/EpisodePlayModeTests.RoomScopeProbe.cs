@@ -21,7 +21,7 @@ namespace Gamesim.Tests.PlayMode
     public sealed partial class EpisodePlayModeTests
     {
         private const int ScopeProbeSide = 96;
-        /// <summary>Where the pins draw: six metres over the yard's middle, clear of the light towers and everything else.</summary>
+        /// <summary>Where the pins draw: 5.5 m over the yard's middle, the eye 3.5 m above that, clear of the light towers and everything else.</summary>
         private static readonly Vector3 ScopeProbeSpot = new Vector3(0f, 5.5f, 15f);
         private const float ScopeProbeDrawn = .1f, ScopeProbeSame = .02f;
 

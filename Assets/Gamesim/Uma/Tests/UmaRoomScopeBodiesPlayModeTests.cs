@@ -37,7 +37,8 @@ namespace Gamesim.Uma.Tests
             Assert.That(CharacterBodySource.Provider, Is.Null, "The cast component must unregister itself.");
         }
 
-        [UnityTest]
+        // Past the build's own bound, so a slow cold build fails on "Every body finished building", not the framework's 180 s default.
+        [UnityTest, Timeout(240000)]
         public IEnumerator Bodies_EveryAnimatorAlwaysAnimates()
         {
             cast = new GameObject("Gamesim UMA cast", typeof(GamesimUmaCast));

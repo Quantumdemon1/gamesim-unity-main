@@ -63,13 +63,28 @@ namespace Gamesim.Episode
             "--gamesim-verify-creator", "--gamesim-look-sheet",
         };
 
+        /// <summary>The views' own flags: a verify run given one without <see cref="Argument"/> would run the profile and ignore it.</summary>
+        private static readonly string[] ViewsFlags = { PassArgument, LiveArgument, OnlyArgument, AblationsArgument, QuickArgument, ScopeArgument };
+
         /// <summary>
         /// Why a views request cannot run, or null when it can (or none was made). Judged as written,
-        /// before anything starts, so a typo never measures the wrong thing for twenty minutes.
+        /// before anything starts, so a typo never measures the wrong thing for twenty minutes - and a
+        /// verify run given a views flag without the mode is refused rather than run as the 300 s
+        /// profile with the flag ignored. A launch without <c>--gamesim-verify</c> is never judged.
         /// </summary>
         public static string Refusal(IList<string> args)
         {
-            if (args == null || !args.Contains(Argument)) return null;
+            if (args == null) return null;
+            if (!args.Contains(Argument))
+            {
+                if (!args.Contains("--gamesim-verify")) return null;
+                foreach (string flag in ViewsFlags)
+                    if (args.Contains(flag)) return flag + " belongs to " + Argument + ": without it the verify runs the 300 s profile and ignores it.";
+                // §6.2's rollback switch: the profile does not hold the whole house yet, so it would measure the house as shipped.
+                if (args.Contains(WholeHouseArgument))
+                    return WholeHouseArgument + " belongs to " + Argument + " until the 300 s profile honours it (ROOM-SCOPE-PLAN §6.2); the profile would measure the house as shipped.";
+                return null;
+            }
             if (!args.Contains("--gamesim-verify"))
                 return Argument + " requires --gamesim-verify and an isolated absolute --gamesim-save-root.";
             foreach (string mode in ExclusiveModes)
@@ -232,10 +247,15 @@ namespace Gamesim.Episode
         /// <summary>The W3 full-field capture's lens (EpisodePlayModeTests.CompetitionApparatus: 1600 x 900, 50 degrees).</summary>
         public const double FullFieldFieldOfView = 50;
 
-        /// <summary>Why V9 is declared and never measured on this branch.</summary>
+        /// <summary>
+        /// Why V9 is declared and never measured on this branch. Merging the props branch un-skips
+        /// nothing: its FullFieldView is a private helper of a PlayMode test, framed from a live
+        /// apparatus's subjects and deck.
+        /// </summary>
         public const string FullFieldSkipped =
-            "V9 is the W3 full-field capture's eye re-derived from the props branch's FullFieldView (claude/props-competitions), "
-            + "which is not on this branch; until it lands V9 is the model's calibration eye only (42 maps), not a measured view.";
+            "V9 waits for FullFieldView's framing to be ported from the props branch's PlayMode helper (claude/props-competitions, "
+            + "EpisodePlayModeTests.CompetitionApparatus) into VerificationViews, with a staged competition for its subjects' bounds; "
+            + "until then V9's eye is the model's calibration only (42 maps), not a measured view.";
 
         private static readonly VerificationView[] views = BuildViews();
 
@@ -347,7 +367,9 @@ namespace Gamesim.Episode
         /// Rendering-layer confinement (D8 ii) in the eight rendering layers the project names (bits 0
         /// to 7, TagManager's "Default" and "Light Layer 1" to 7): room i's renderers and lamps share
         /// bit i; the shell and every light that is not a lamp take all eight, so the fills, the screens
-        /// and the Moon light everything they lit before.
+        /// and the Moon light everything they lit before. The Living's bit is "Default", every new
+        /// renderer's: the probe gives any renderer the classifier's table does not hold all eight while
+        /// it confines, so nothing outside the table is lit by the Living's lamps alone.
         /// </summary>
         public static uint ConfinementBit(int room) => room >= 0 && room < RoomLayers.Count ? 1u << room : AllConfinementBits;
         public const uint AllConfinementBits = (1u << RoomLayers.Count) - 1;
@@ -435,6 +457,47 @@ namespace Gamesim.Episode
                 || !int.TryParse(words[3], NumberStyles.Integer, CultureInfo.InvariantCulture, out slices)) return false;
             var size = words[9].Split('x');
             return size.Length == 2 && int.TryParse(size[0], NumberStyles.Integer, CultureInfo.InvariantCulture, out atlas);
+        }
+
+        // ------------------------------------------------------------------------------------
+        // The drawer-path checks' verdicts (§5.3 P2, P5, P6): arithmetic on what the runner read.
+        // ------------------------------------------------------------------------------------
+
+        /// <summary>How far a marker's patch must differ from what lies behind it to be drawn, and how little to be absent (0..1, per channel).</summary>
+        public const float PresentDifference = .08f, AbsentDifference = .03f;
+
+        public const string OnTheFirstRender = "on the first render", ARenderLate = "a render late", NotAtAll = "not at all";
+
+        /// <summary>
+        /// When a drawn marker left the main camera's frames after a change that should take it out:
+        /// <paramref name="first"/> and <paramref name="second"/> are how far its patch stood from what
+        /// lies behind it on the first and the second render after the change. Only the first counts: a
+        /// drawer a render late would flash the old room at every room change.
+        /// </summary>
+        public static string WhenItLeft(double first, double second)
+            => first < AbsentDifference ? OnTheFirstRender : second < AbsentDifference ? ARenderLate : NotAtAll;
+
+        /// <summary>When a marker came back after the change was undone: the same reads, which must show it drawn again.</summary>
+        public static string WhenItCameBack(double first, double second)
+            => first > PresentDifference ? OnTheFirstRender : second > PresentDifference ? ARenderLate : NotAtAll;
+
+        /// <summary>P6's verdict: whether the engine's render counters include the drawer's draws, and so whether the rows may carry them.</summary>
+        public const string CountersInclude = "include", CountersExclude = "do not include", CountersInconclusive = "inconclusive", CountersNotRun = "not run";
+
+        /// <summary>
+        /// P6 from a grid of <paramref name="cubes"/> cubes of <paramref name="trianglesPerCube"/>
+        /// triangles, off and then on (each a median; negative when it did not read). The engine's
+        /// counters include the drawer's draws when its Triangles Count rose by at least nine tenths of
+        /// the grid; that says something only when the drawer drew the grid - its own Visible Instances
+        /// rose by the grid's cubes, within a tenth - so otherwise the verdict is inconclusive.
+        /// </summary>
+        public static string CountersVerdict(long trianglesWithout, long trianglesWith, long visibleWithout, long visibleWith, int cubes, int trianglesPerCube)
+        {
+            if (trianglesWithout < 0 || trianglesWith < 0) return CountersNotRun;
+            if (visibleWithout < 0 || visibleWith < 0) return CountersInconclusive;
+            long visible = visibleWith - visibleWithout;
+            if (visible * 10 < cubes * 9L || visible * 10 > cubes * 11L) return CountersInconclusive;
+            return (trianglesWith - trianglesWithout) * 10 >= cubes * (long)trianglesPerCube * 9 ? CountersInclude : CountersExclude;
         }
 
         // ------------------------------------------------------------------------------------
@@ -819,6 +882,16 @@ namespace Gamesim.Episode
         /// <summary>The pipeline asset's GPU Resident Drawer mode as the player runs it, and its small-mesh threshold.</summary>
         public string drawerMode;
         public float drawerSmallMeshPercent;
+        /// <summary>Whether the drawer started in this player (core's GPUResidentDrawer.IsInitialized): "yes", "no" or "unknown". A release build's only word on it.</summary>
+        public string drawerInitialized = "unknown";
+        /// <summary>
+        /// P6's verdict (<see cref="VerificationViews.CountersVerdict"/>), taken before any view is
+        /// measured: the rows carry the engine's render counters only when it is "include".
+        /// </summary>
+        public string renderCountersIncludeDrawer = VerificationViews.CountersNotRun;
+        /// <summary>The body provider the cast was built by, and how many bodies stood on the primitive rig (-1: not counted). Every probe needs the UMA cast (§5.1).</summary>
+        public string bodyProvider;
+        public int primitiveBodies = -1;
         /// <summary>Where the CPU and GPU times came from: FrameTimingManager, the profiler's counters, or none.</summary>
         public string frameTimingSource;
         public string seasonSource, sessionId;
@@ -872,9 +945,9 @@ namespace Gamesim.Episode
 
     /// <summary>
     /// A view's counters, each the median over its measured frames; -1 when the build does not
-    /// report it. The engine's render counters are only comparable once P6 shows they include the
-    /// drawer's draws; the drawer's count camera views only, never shadow views, summed over every
-    /// camera in the frame (the live feed is paused for them).
+    /// report it. The engine's seven render counters read -1 too unless P6 found they include the
+    /// drawer's draws (the report's renderCountersIncludeDrawer); the drawer's count camera views
+    /// only, never shadow views, summed over every camera in the frame (the live feed is paused for them).
     /// </summary>
     [Serializable]
     public sealed class VerificationViewCounters

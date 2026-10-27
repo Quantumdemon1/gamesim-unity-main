@@ -189,8 +189,14 @@ namespace Gamesim.Tests.EditMode
         [TestCase("empty-only", "needs view ids")]
         [TestCase("ablations-timing", "belongs to the ablations pass")]
         [TestCase("unknown-ablation", "fog-off is not an ablation")]
+        [TestCase("empty-ablations", "needs ablation names")]
+        [TestCase("pass-without-mode", "--gamesim-views-pass belongs to --gamesim-verify-views")]
+        [TestCase("whole-house-without-mode", "--gamesim-whole-house belongs to --gamesim-verify-views")]
         public void TheCommandLineIsRefusedAsWritten(string wrong, string because)
         {
+            // A verify run without the views mode: the profile's command line.
+            string[] Profile(params string[] more)
+                => new[] { "Gamesim.exe", "--gamesim-verify", "--gamesim-save-root", "C:/probe", "--gamesim-house-size", "16", "--gamesim-stress-roster" }.Concat(more).ToArray();
             string[] args;
             switch (wrong)
             {
@@ -205,6 +211,9 @@ namespace Gamesim.Tests.EditMode
                 case "unknown-view": args = Args(VerificationViews.OnlyArgument, "V1,V10"); break;
                 case "empty-only": args = Args(VerificationViews.OnlyArgument, ","); break;
                 case "ablations-timing": args = Args(VerificationViews.AblationsArgument, "ssao-off"); break;
+                case "empty-ablations": args = Args(VerificationViews.PassArgument, "ablations", VerificationViews.AblationsArgument, ","); break;
+                case "pass-without-mode": args = Profile(VerificationViews.PassArgument, "counters"); break;
+                case "whole-house-without-mode": args = Profile(VerificationViews.WholeHouseArgument); break;
                 default: args = Args(VerificationViews.PassArgument, "ablations", VerificationViews.AblationsArgument, "ssao-off,fog-off"); break;
             }
             string refusal = VerificationViews.Refusal(args);
@@ -216,6 +225,11 @@ namespace Gamesim.Tests.EditMode
         public void ARequestThatCanRunIsNotRefused()
         {
             Assert.That(VerificationViews.Refusal(new[] { "Gamesim.exe", "--gamesim-verify" }), Is.Null, "No views asked for, nothing to refuse.");
+            Assert.That(VerificationViews.Refusal(new[] { "Gamesim.exe", VerificationViews.PassArgument, "counters", VerificationViews.WholeHouseArgument }), Is.Null,
+                "A launch that is not a verify run is never judged.");
+            foreach (string flag in new[] { VerificationViews.LiveArgument, VerificationViews.QuickArgument, VerificationViews.ScopeArgument })
+                Assert.That(VerificationViews.Refusal(new[] { "Gamesim.exe", "--gamesim-verify", "--gamesim-save-root", "C:/probe", flag }),
+                    Does.StartWith(flag + " belongs to " + VerificationViews.Argument), "A verify run without the views mode refuses " + flag + ".");
             Assert.That(VerificationViews.Refusal(Args()), Is.Null);
             Assert.That(VerificationViews.Refusal(Args(VerificationViews.LiveArgument, "--gamesim-house-size", "16", "--gamesim-stress-roster")), Is.Null);
             Assert.That(VerificationViews.Refusal(Args(VerificationViews.PassArgument, "counters", VerificationViews.OnlyArgument, "V1,V4a,V6g")), Is.Null);
@@ -280,9 +294,13 @@ namespace Gamesim.Tests.EditMode
         [Test]
         public void TheReportCarriesWhatThePlanAsksFor()
         {
-            AssertFields(typeof(VerificationViewsReport), "status", "pass", "scope", "buildKind", "drawerMode", "frameTimingSource", "graphical", "batchMode",
+            AssertFields(typeof(VerificationViewsReport), "status", "pass", "scope", "buildKind", "drawerMode", "drawerInitialized", "frameTimingSource", "graphical", "batchMode",
                 "developmentBuild", "liveWorld", "houseSize", "houseSizeRequested", "repeats", "settleSeconds", "measureSeconds", "drawerCoveragePercent",
-                "drawerRenderers", "drawerExcludedRenderers", "skippedViews", "marks", "views", "ablations", "checks", "rawFramesFile", "errors", "notes");
+                "drawerRenderers", "drawerExcludedRenderers", "renderCountersIncludeDrawer", "bodyProvider", "primitiveBodies",
+                "skippedViews", "marks", "views", "ablations", "checks", "rawFramesFile", "errors", "notes");
+            var fresh = new VerificationViewsReport();
+            Assert.That(fresh.renderCountersIncludeDrawer, Is.EqualTo(VerificationViews.CountersNotRun), "Until P6 says so, no row carries the engine's counters.");
+            Assert.That(fresh.primitiveBodies, Is.EqualTo(-1), "Not counted until the cast is gathered.");
             AssertFields(typeof(VerificationViewRow), "id", "room", "route", "ablation", "viewedRooms", "runs", "medians", "medianOfMediansMs", "spread",
                 "repeatability", "rerun", "flagged", "cpuMainMedianMs", "cpuRenderMedianMs", "gpuMedianMs", "counters", "shadows", "bodiesByRoom", "captures");
             AssertFields(typeof(VerificationViewRun), "repeat", "rerun", "frames", "cpuMainMedianMs", "cpuRenderMedianMs", "gpuMedianMs");
@@ -335,6 +353,38 @@ namespace Gamesim.Tests.EditMode
             Assert.That(new[] { scale, slices, atlas }, Is.EqualTo(new[] { 8, 84, 2048 }));
             Assert.That(VerificationViews.TryParseAtlasMessage("Too many additional punctual lights shadows.", out _, out _, out _), Is.False);
             Assert.That(VerificationViews.TryParseAtlasMessage(null, out _, out _, out _), Is.False);
+        }
+
+        // ------------------------------------------------------------------ the drawer-path checks
+
+        [Test]
+        public void AChangeCountsOnlyWhenTheFirstRenderAfterItShowsIt()
+        {
+            // How far a marker's patch stood from what lies behind it, on the first render after a change and the next.
+            Assert.That(VerificationViews.WhenItLeft(.01, .01), Is.EqualTo(VerificationViews.OnTheFirstRender));
+            Assert.That(VerificationViews.WhenItLeft(.5, .01), Is.EqualTo(VerificationViews.ARenderLate),
+                "A drawer that takes the marker out one render late is told apart: it would flash the old room at every change.");
+            Assert.That(VerificationViews.WhenItLeft(.5, .5), Is.EqualTo(VerificationViews.NotAtAll));
+            Assert.That(VerificationViews.WhenItLeft(.05, .01), Is.EqualTo(VerificationViews.ARenderLate), "Half gone is not gone.");
+            Assert.That(VerificationViews.WhenItCameBack(.5, .5), Is.EqualTo(VerificationViews.OnTheFirstRender));
+            Assert.That(VerificationViews.WhenItCameBack(.01, .5), Is.EqualTo(VerificationViews.ARenderLate));
+            Assert.That(VerificationViews.WhenItCameBack(.01, .01), Is.EqualTo(VerificationViews.NotAtAll));
+        }
+
+        [Test]
+        public void TheEnginesCountersAreJudgedOnlyWhenTheDrawerDrewTheGrid()
+        {
+            // P6's grid: 100 cubes of 12 triangles, off then on.
+            Assert.That(VerificationViews.CountersVerdict(5000, 6200, 400, 500, 100, 12), Is.EqualTo(VerificationViews.CountersInclude));
+            Assert.That(VerificationViews.CountersVerdict(5000, 6080, 400, 500, 100, 12), Is.EqualTo(VerificationViews.CountersInclude), "Nine tenths of the grid is enough.");
+            Assert.That(VerificationViews.CountersVerdict(5000, 5000, 400, 500, 100, 12), Is.EqualTo(VerificationViews.CountersExclude));
+            Assert.That(VerificationViews.CountersVerdict(5000, 6200, 400, 400, 100, 12), Is.EqualTo(VerificationViews.CountersInconclusive),
+                "Triangles that rose while the drawer drew nothing say nothing about the drawer: the grid took the plain path.");
+            Assert.That(VerificationViews.CountersVerdict(5000, 5000, 400, 400, 100, 12), Is.EqualTo(VerificationViews.CountersInconclusive),
+                "A grid that never drew says nothing either.");
+            Assert.That(VerificationViews.CountersVerdict(5000, 6200, 400, 600, 100, 12), Is.EqualTo(VerificationViews.CountersInconclusive), "Twice the grid is not the grid.");
+            Assert.That(VerificationViews.CountersVerdict(5000, 6200, -1, 500, 100, 12), Is.EqualTo(VerificationViews.CountersInconclusive), "The drawer's counter did not read.");
+            Assert.That(VerificationViews.CountersVerdict(-1, 6200, 400, 500, 100, 12), Is.EqualTo(VerificationViews.CountersNotRun), "The engine's counter did not read.");
         }
 
         // ------------------------------------------------------------------ the ablations
@@ -392,6 +442,39 @@ namespace Gamesim.Tests.EditMode
         }
 
         [Test]
+        public void TheAtlasDropsALightWhoseMapWouldFallUnderTheMinimumSoftLast()
+        {
+            // URP's drop loop and its sort, which today's house never reaches: 14 soft 1024 px lamps and
+            // two 64 px spots, one hard and one soft. Hard sorts before soft at a resolution, so the soft
+            // spot is last; at the estimated scale of 8 it would get 8 px, under the soft minimum of 16,
+            // so it goes; the hard one keeps 8 px, the hard minimum.
+            var lights = Enumerable.Range(0, 14).Select(i => new VerificationShadowLight("lamp " + i, i, 1, 0, 6, false, true, 1024)).ToList();
+            lights.Add(new VerificationShadowLight("hard spot", 0, 4, 0, 8, true, false, 64));
+            lights.Add(new VerificationShadowLight("soft spot", 1, 4, 0, 8, true, true, 64));
+            var atlas = VerificationViews.LayoutShadowAtlas(lights, 0, 20, -10, 2048);
+            Assert.That(atlas.slicesRequested, Is.EqualTo(86));
+            Assert.That(atlas.slicesKept, Is.EqualTo(85), "The soft spot's one map is dropped.");
+            Assert.That(atlas.scale, Is.EqualTo(8));
+            Assert.That(atlas.largestSlice, Is.EqualTo(128));
+            Assert.That(atlas.smallestSlice, Is.EqualTo(8), "The hard spot keeps the hard minimum.");
+            Assert.That(atlas.tooMany, Is.False, "Dropping it is what lets the rest fit.");
+        }
+
+        [Test]
+        public void TheAtlasKeepsNoMoreMapsThanItsSliceCap()
+        {
+            // 43 soft lamps ask for 258 maps; without structured buffers URP keeps 256, which fill the
+            // 2048 atlas exactly at 128 px. All 258 would need a scale of 16.
+            var lights = Enumerable.Range(0, 43).Select(i => new VerificationShadowLight("lamp " + i, i, 1, 0, 6, false, true, 1024)).ToList();
+            var atlas = VerificationViews.LayoutShadowAtlas(lights, 0, 20, -10, 2048);
+            Assert.That(atlas.slicesRequested, Is.EqualTo(258));
+            Assert.That(atlas.slicesKept, Is.EqualTo(VerificationViews.DesktopMaxSlices));
+            Assert.That(atlas.scale, Is.EqualTo(8));
+            Assert.That(atlas.largestSlice, Is.EqualTo(128));
+            Assert.That(atlas.tooMany, Is.False);
+        }
+
+        [Test]
         public void ASphereIsKeptUnlessItLiesWhollyBeyondOnePlane()
         {
             var frustum = VerificationViews.Find("V1").Frustum(Wide);
@@ -403,8 +486,12 @@ namespace Gamesim.Tests.EditMode
             {
                 new VerificationShadowLight("in", .075, 1, 0, 6, false, true, 1024),
                 new VerificationShadowLight("out", 300, 1, 300, 6, false, true, 1024),
+                // Outside the frustum, behind and above the eye: kept by its range alone, or not.
+                new VerificationShadowLight("reaching in", frustum.EyeX, frustum.EyeY + 5, frustum.EyeZ, 10, false, true, 1024),
+                new VerificationShadowLight("falling short", frustum.EyeX, frustum.EyeY + 5, frustum.EyeZ, 1, false, true, 1024),
             };
-            Assert.That(VerificationViews.InFrustum(frustum, lights).Select(light => light.Name), Is.EqualTo(new[] { "in" }));
+            Assert.That(VerificationViews.InFrustum(frustum, lights).Select(light => light.Name), Is.EqualTo(new[] { "in", "reaching in" }),
+                "A light is kept by its range sphere, not its position.");
             var overview = VerificationViews.Find("V2").Frustum(Wide);
             Assert.That(overview.SphereVisible(-13, 0, -19, 0) && overview.SphereVisible(12, 0, 18, 0), Is.True, "The overview holds the house from the south wing to the yard.");
             // A frustum from six planes, as the probe reads a live camera's: here a box two metres across.

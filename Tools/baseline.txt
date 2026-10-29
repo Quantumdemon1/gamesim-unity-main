@@ -29,6 +29,15 @@
 # 8642 of 8642.
 # 8932 = the full NoUMA run at 45d2f015 (role moments R4+R5, 2026-10-23), 8932 of 8932: R0 to R5's EditMode
 # cases on top of 8642. R6's 38 RoleStoryMomentsTests cases raise it once R6's own full run has counted them.
+# 8982 = 8932 + R6's 38 RoleStoryMomentsTests cases (on main, first counted here) + BatchMcpBridgeIsolationTests' 12
+# (10 TestCase rows and 2 tests): the full NoUMA run at e2670955 (this branch with claude/uma-retention-tidy, both on
+# main 772828ba, 2026-10-27), 8982 of 8982.
+# 9016 = 8982 + the props batch's 34: HouseSmallPropAssetTests' 29 (14 x 2 TestCaseSource plus
+# SavedEpisodeUsesExactlyTheSixteenSelectedAuthoredProps) and RoomFinishTests' 5, which pass only with the 14 imported
+# props, their 30 materials and the re-saved EpisodeHouse.unity. The props batch's own full NoUMA run at 423b82ca
+# (aafb7399 with PR #33's test-only 5a61dde4, 2026-10-26) ran 9004 of 9004 = 8970 + 34; the two sets' cases are
+# disjoint, so the floor is their sum.
+# Dialogue D1's own history, on 8932:
 # 8963 = 8932 + dialogue D1's 31 shared cases, first run under the Mono harness (2026-10-25): ShippedRulesTests 14 (the
 # cast screen's options), StressHouseTests 1 (the chip writes the pinned version) and LegacyDigestSchema29ObserverTests
 # 16 (the native-29 arm; the old enabled-dialogue refusal case became an admission test). Not yet counted by a full run.
@@ -41,8 +50,9 @@
 # shared, run by dotnet test (2026-10-25). Not yet counted by a full run.
 # 9015 = 8977 + R6's 38 RoleStoryMomentsTests cases, which this file had not yet counted (main's own full run at
 # 7f754510 counted 8970 = 8932 + 38): the full NoUMA run at the scratch test head 83c3273c (this branch's 15f0c07d +
-# the test-only claude/camera-speed-test-clock 5a61dde4, 2026-10-26), 9015 of 9015.
-Gamesim.EditModeTests 9015
+# the test-only claude/camera-speed-test-clock 5a61dde4, 2026-10-26), 9015 of 9015 = 8970 + D1's 45.
+# 9061 = main's 9016 + D1's 45: the two branches' cases are disjoint, so the floor is their sum.
+Gamesim.EditModeTests 9061
 # The UMA-free build. 1215 = 1236, the count after the consolidation's lanes (S2a, S2b, S4a), less the 7
 # farewell probes moved to Gamesim.DiagnosticsPlayModeTests and the 14 farewell readiness tests that now
 # compile only under GAMESIM_UMA (judged on the UMA cast); 1230 = 1215 + S2d's 7, S4b's 2, S4c's 2 and
@@ -66,12 +76,18 @@ Gamesim.EditModeTests 9015
 # 1326 = 1323 + 3840c58d's 3 shared play-frame tests (JuryReveal_ItsTimeStartsWhenItIsDrawn,
 # VetoDraw_TheRevealsTimeStartsWhenItIsDrawn, Result_ItsTimeStartsWhenItIsDrawn): the full NoUMA run at 7f754510
 # (main b208d46d merged in, 2026-10-25), 1326 of 1326.
+# 1345 = 1326 + the props batch's 19 shared cases: CompetitionApparatusMeshKitPlayModeTests' 7 (its six fixtures
+# and the installed-kit case; they pass only with the 39 imported parts and ApparatusMeshKit.asset), the apparatus
+# class's 9 and the 3 scenery cases (the drawn-set-piece case at 6 and 16 entrants, and the south-yard case): the
+# full NoUMA run at 423b82ca (2026-10-26), 1345 of 1345.
+# Dialogue D1's own history, on 1326:
 # 1333 = 1326 + dialogue D1's 7 shared tests: the V2 Cite route, and the cast screen's conversation preview (its
 # start, the creator, the keyboard and pad, and the footer at text sizes 1.0, 1.2 and 1.4). Compiled offline only.
 # 1334 = 1333 + dialogue D1b's shared DialogueCampaign_ARefusedConversationLeavesTheDesperatePleaAsTheOneShotPlea.
 # Compiled offline only (main 772828ba merged in).
 # 1334 counted: the full NoUMA run at 83c3273c (2026-10-26), 1334 of 1334, no re-runs.
-Gamesim.PlayModeTests 1334
+# 1353 = main's 1345 + D1's 8: disjoint cases, so the floor is their sum.
+Gamesim.PlayModeTests 1353
 # The UMA build of the same assembly, read by a plan built without -WithoutUma. 1281 = the 1241 above + the
 # 40 tests that compile only under GAMESIM_UMA, as run at r1 (2026-10-16): in EpisodePlayModeTests,
 # GroundedFarewell 11, Creator 9, HouseLife 8, Emotes 3, OpeningCaptures 2, and one each in CreatorEntry,
@@ -85,11 +101,15 @@ Gamesim.PlayModeTests 1334
 # 1343 of 1343 on 2026-10-25, as six process groups whose union was checked case by case).
 # 1366 = 1363 + the same 3 shared play-frame tests: the full UMA-build run at 7f754510 (2026-10-25), 1366 of
 # 1366, in one process with the MCP bridge off.
+# 1385 = 1366 + the same 19 shared props cases: the full UMA-build run at 423b82ca (2026-10-27), 1385 of 1385, in
+# one process with the MCP bridge off.
+# Dialogue D1's own history, on 1366:
 # 1373 = 1366 + dialogue D1's same 7 shared tests.
 # 1374 = 1373 + dialogue D1b's same shared test.
 # 1374 counted: the full UMA-build run at 83c3273c (2026-10-26), 1374 of 1374, in one process with the MCP bridge
 # off, no re-runs; Gamesim.Uma.PlayModeTests 129 of 129 in the same set.
-Gamesim.PlayModeTests.UmaBuild 1374
+# 1393 = main's 1385 + D1's same 8: disjoint cases, so the floor is their sum.
+Gamesim.PlayModeTests.UmaBuild 1393
 # The UMA bodies: runs only where the GAMESIM_UMA define is set (the working tree and the D: copy).
 # 82 = the 89 run on 2026-10-15, less the 7 farewell probes moved to Gamesim.Uma.DiagnosticsPlayModeTests;
 # 85 = 82 + the 3 farewell readiness decision tests (UmaFarewellReadinessDecisionPlayModeTests, 2026-10-16);
@@ -97,7 +117,9 @@ Gamesim.PlayModeTests.UmaBuild 1374
 # 129 = 90 + the dialogue V2 source's 39 (UmaTriangleReaderFencePlayModeTests 38, UmaAnimatorGraphLifetimePlayModeTests 1):
 # the full run at b26b28cc (2026-10-22), 129 of 129, on a vendor with Tools/UmaPatches/triangle-reader-fence01
 # applied. The 38 fail on an unpatched vendor by design; every UMA copy needs the patch applied by hand.
-Gamesim.Uma.PlayModeTests 129
+# 132 = 129 + UmaBodyRetentionPlayModeTests' 3: the full run at e2670955 (this branch with
+# claude/batch-mcp-bridge-off, both on main 772828ba, 2026-10-27), 132 of 132, in one process with the MCP bridge off.
+Gamesim.Uma.PlayModeTests 132
 # Diagnostics: feasibility and diagnostic probes, never shipping acceptance. They compile only under
 # GAMESIM_DIAGNOSTICS, which only a diagnostic run adds to the test copy (GAMESIM_DIAGNOSTICS=1 with
 # sync-and-run.sh or the locked runner); the UMA one needs GAMESIM_UMA too. The floor counts that they

@@ -8,6 +8,8 @@ namespace Gamesim.Tests.EditMode
     /// <summary>The first-night introductions' content and scoring, as the reference build has them.</summary>
     public sealed class WebIntroductionsTests
     {
+        private static CastTemplates.Template Rachel => CastTemplates.Find("rachel-reilly");
+
         [Test]
         public void ThereAreThreeWaysToIntroduceYourselfInTheReferenceOrder()
         {
@@ -55,7 +57,7 @@ namespace Gamesim.Tests.EditMode
         [Test]
         public void AnAllStarSaysTheirOwnLineAndAnyoneElseSpeaksToTheirFirstTrait()
         {
-            string dan = WebIntroductions.IntroLine(7, "dan-gheesling", "Dan Gheesling", new[] { "Strategic" });
+            string dan = WebIntroductions.IntroLine(7, "dan-gheesling", CastTemplates.Find("dan-gheesling"), new[] { "Strategic" });
             Assert.That(new[]
             {
                 "Welcome to the mist. By the time you figure out my game, it'll be too late.",
@@ -63,23 +65,125 @@ namespace Gamesim.Tests.EditMode
                 "Dan's Funeral was just the beginning. I've got a whole new playbook.",
             }, Does.Contain(dan));
 
-            string strategist = WebIntroductions.IntroLine(7, "alex-chen", "Alex Chen", new[] { "Strategic", "Social" });
+            string strategist = WebIntroductions.IntroLine(7, "alex-chen", null, new[] { "Strategic", "Social" });
             Assert.That(new[] { "I'm not here to make friends… well, maybe a few.", "Every conversation is a chess move. Let's play." }, Does.Contain(strategist));
 
-            string nobody = WebIntroductions.IntroLine(7, "you", "You", new string[0]);
+            string nobody = WebIntroductions.IntroLine(7, "you", null, new string[0]);
             Assert.That(new[] { "Hey everyone, excited to be here! Let's have a great time.", "Ready to make some moves and meet some amazing people!" }, Does.Contain(nobody));
+        }
+
+        /// <summary>
+        /// An All-Star's own lines follow the card, by template id, not the name on it (story plan 20
+        /// decision 10). The card speaks them wherever it is cast: as a houseguest, as one from an older
+        /// save that has no source template and is known by its id, and as a custom houseguest who kept
+        /// the card's name. The same card renamed, and a houseguest who only shares the name, are
+        /// somebody else and speak from their traits. Every card has lines of its own.
+        /// </summary>
+        [Test]
+        public void AnAllStarsOwnLinesFollowTheirCardNotTheName()
+        {
+            var warm = WebIntroductions.Find(WebIntroductions.Warm);
+            var outcomes = new[] { WebIntroductions.Outcome.Match, WebIntroductions.Outcome.Neutral, WebIntroductions.Outcome.Clash };
+            var defaultIntro = new[] { "Hey everyone, excited to be here! Let's have a great time.", "Ready to make some moves and meet some amazing people!" };
+            var sociable = new[]
+            {
+                new[] { "Oh my gosh, I love you already!", "This is going to be SO fun!" },
+                new[] { "Cool cool! Welcome to the house!", "Hey, nice!" },
+                new[] { "Oh... okay. A bit intense.", "Hmm, you're hard to read." },
+            };
+            var cards = CastTemplates.In(CastTemplates.Roster.AllStars).ToList();
+            Assert.That(cards, Has.Count.EqualTo(12));
+            foreach (var card in cards)
+            {
+                var cast = CastTemplates.ToContestant(card, false);
+                var older = CastTemplates.ToContestant(card, false);
+                older.sourceTemplateId = null;
+                var custom = CastTemplates.ToContestant(card, false);
+                custom.id = "custom-1";
+                var renamed = CastTemplates.ToContestant(card, false);
+                renamed.id = "custom-2";
+                renamed.name = "Somebody Else";
+                var namesake = new ContestantState { id = "custom-3", name = card.Name, traits = new List<string>(card.Traits) };
+
+                Assert.That(WebIntroductions.AlumnusOf(cast), Is.SameAs(card), card.Id);
+                Assert.That(WebIntroductions.AlumnusOf(older), Is.SameAs(card), card.Id + " from an older save, known by its id");
+                Assert.That(WebIntroductions.AlumnusOf(custom), Is.SameAs(card), card.Id + " as a custom houseguest who kept the name");
+                Assert.That(WebIntroductions.AlumnusOf(renamed), Is.Null, card.Id + " renamed is somebody else");
+                Assert.That(WebIntroductions.AlumnusOf(namesake), Is.Null, card.Id + "'s namesake is not the card");
+
+                for (int seed = 0; seed < 6; seed++)
+                {
+                    foreach (var who in new[] { cast, older, custom })
+                    {
+                        Assert.That(WebIntroductions.IntroLine(seed, who), Is.EqualTo(WebIntroductions.IntroLine(seed, who.id, card, who.traits)), who.id);
+                        Assert.That(WebIntroductions.Reaction(seed, who, warm), Is.EqualTo(WebIntroductions.Reaction(seed, who.id, card, who.traits, warm)), who.id);
+                    }
+                    foreach (var who in new[] { renamed, namesake })
+                    {
+                        Assert.That(WebIntroductions.IntroLine(seed, who), Is.EqualTo(WebIntroductions.IntroLine(seed, who.id, null, who.traits)), who.id);
+                        Assert.That(WebIntroductions.Reaction(seed, who, warm), Is.EqualTo(WebIntroductions.Reaction(seed, who.id, null, who.traits, warm)), who.id);
+                    }
+
+                    // With no traits to speak from, a card still says its own words, never the fallbacks.
+                    Assert.That(defaultIntro, Does.Not.Contain(WebIntroductions.IntroLine(seed, card.Id, card, new string[0])), card.Id);
+                    foreach (var outcome in outcomes)
+                        Assert.That(sociable[(int)outcome], Does.Not.Contain(WebIntroductions.Reaction(seed, card.Id, card, new string[0], outcome)), card.Id + " " + outcome);
+                }
+            }
+        }
+
+        /// <summary>
+        /// The alumni audit's lines (story plan 20 §3.10, decision 10). Rachel's third introduction
+        /// quoted her showmance catchphrase and now speaks to her record, her first no longer plays on
+        /// it, and Janelle's "three" seasons are the four the project's record holds. Each rewrite
+        /// keeps its slot, so the rest of each pool is the reference build's and every pick lands
+        /// where it did.
+        /// </summary>
+        [Test]
+        public void TheAuditedAlumniLinesSayOnlyWhatTheRecordHolds()
+        {
+            var janelle = CastTemplates.Find("janelle-pierzina");
+            List<string> Said(System.Func<int, string> line) => Enumerable.Range(0, 64).Select(line).Distinct().OrderBy(text => text, System.StringComparer.Ordinal).ToList();
+
+            Assert.That(Said(seed => WebIntroductions.IntroLine(seed, "rachel-reilly", Rachel, null)), Is.EqualTo(new[]
+            {
+                "I came back once and WON. Don't think I can't do it again!",
+                "I'm not here to make friends — actually, I might cry about that later.",
+                "Nobody takes this game from me! NOBODY!",
+            }.OrderBy(text => text, System.StringComparer.Ordinal)));
+            Assert.That(Said(seed => WebIntroductions.IntroLine(seed, "janelle-pierzina", janelle, null)), Is.EqualTo(new[]
+            {
+                "Comp wins speak louder than words. Remember that.",
+                "Floaters, grab a life vest! ...Just kidding. For now.",
+                "I've been here before. Four times. And I'm still standing.",
+            }.OrderBy(text => text, System.StringComparer.Ordinal)));
+            Assert.That(Said(seed => WebIntroductions.Reaction(seed, "janelle-pierzina", janelle, null, WebIntroductions.Outcome.Clash)), Is.EqualTo(new[]
+            {
+                "I've eaten people like you for breakfast. Four seasons' worth.",
+                "Ugh. Floater energy. Next!",
+            }.OrderBy(text => text, System.StringComparer.Ordinal)));
+
+            var outcomes = new[] { WebIntroductions.Outcome.Match, WebIntroductions.Outcome.Neutral, WebIntroductions.Outcome.Clash };
+            foreach (var card in CastTemplates.In(CastTemplates.Roster.AllStars))
+            {
+                var spoken = Said(seed => WebIntroductions.IntroLine(seed, card.Id, card, null))
+                    .Concat(outcomes.SelectMany(outcome => Said(seed => WebIntroductions.Reaction(seed, card.Id, card, null, outcome))));
+                foreach (var line in spoken)
+                    foreach (var claim in new[] { "my man", "between me and", "Three times", "Three seasons" })
+                        Assert.That(line, Does.Not.Contain(claim).IgnoreCase, card.Name);
+            }
         }
 
         [Test]
         public void AnAnswerComesFromTheirFirstTraitAndOutcomeOrFromTheSociablePoolsWhenTheTraitHasNone()
         {
-            string clash = WebIntroductions.Reaction(3, "taylor-kim", "Taylor Kim", new[] { "Competitive", "Confrontational" }, WebIntroductions.Outcome.Clash);
+            string clash = WebIntroductions.Reaction(3, "taylor-kim", null, new[] { "Competitive", "Confrontational" }, WebIntroductions.Outcome.Clash);
             Assert.That(new[] { "You don't seem like much competition.", "Hmm. Alright." }, Does.Contain(clash));
 
-            string unknown = WebIntroductions.Reaction(3, "x", "Somebody", new[] { "Mysterious" }, WebIntroductions.Outcome.Match);
+            string unknown = WebIntroductions.Reaction(3, "x", null, new[] { "Mysterious" }, WebIntroductions.Outcome.Match);
             Assert.That(new[] { "Oh my gosh, I love you already!", "This is going to be SO fun!" }, Does.Contain(unknown));
 
-            string rachel = WebIntroductions.Reaction(3, "rachel-reilly", "Rachel Reilly", new[] { "Emotional" }, WebIntroductions.Outcome.Clash);
+            string rachel = WebIntroductions.Reaction(3, "rachel-reilly", Rachel, new[] { "Emotional" }, WebIntroductions.Outcome.Clash);
             Assert.That(new[] { "*dramatic gasp* HOW DARE YOU!", "You do NOT want me as your enemy. Trust. Me." }, Does.Contain(rachel));
         }
 
@@ -91,11 +195,11 @@ namespace Gamesim.Tests.EditMode
         public void TheLinePickedIsFixedBySeasonAndPersonAndVariesAcrossAHouse()
         {
             var traits = new[] { "Social" };
-            Assert.That(WebIntroductions.IntroLine(11, "casey-wilson", "Casey Wilson", traits),
-                Is.EqualTo(WebIntroductions.IntroLine(11, "casey-wilson", "Casey Wilson", traits)));
-            var lines = new HashSet<string>(Enumerable.Range(0, 12).Select(i => WebIntroductions.IntroLine(11, "guest-" + i, "Guest " + i, traits)));
+            Assert.That(WebIntroductions.IntroLine(11, "casey-wilson", null, traits),
+                Is.EqualTo(WebIntroductions.IntroLine(11, "casey-wilson", null, traits)));
+            var lines = new HashSet<string>(Enumerable.Range(0, 12).Select(i => WebIntroductions.IntroLine(11, "guest-" + i, null, traits)));
             Assert.That(lines, Has.Count.EqualTo(2), "Both of the pool's lines turn up across a house of twelve.");
-            var seasons = new HashSet<string>(Enumerable.Range(0, 12).Select(seed => WebIntroductions.IntroLine(seed, "casey-wilson", "Casey Wilson", traits)));
+            var seasons = new HashSet<string>(Enumerable.Range(0, 12).Select(seed => WebIntroductions.IntroLine(seed, "casey-wilson", null, traits)));
             Assert.That(seasons, Has.Count.EqualTo(2), "The same person does not say the same thing in every season.");
         }
 
@@ -141,31 +245,31 @@ namespace Gamesim.Tests.EditMode
             // Jordan is Social first, but it is being Sneaky that a calculated hello lands with.
             Assert.That(WebIntroductions.DecidingTrait(calculated, jordan), Is.EqualTo("Sneaky"));
             Assert.That(new[] { "Smart. You know when to be subtle.", "I like how you operate." },
-                Does.Contain(WebIntroductions.Reaction(5, "jordan-taylor", "Jordan Taylor", jordan, calculated)));
+                Does.Contain(WebIntroductions.Reaction(5, "jordan-taylor", null, jordan, calculated)));
 
             Assert.That(WebIntroductions.DecidingTrait(warm, quinn), Is.EqualTo("Social"));
             Assert.That(new[] { "Oh my gosh, I love you already!", "This is going to be SO fun!" },
-                Does.Contain(WebIntroductions.Reaction(5, "quinn-martinez", "Quinn Martinez", quinn, warm)));
+                Does.Contain(WebIntroductions.Reaction(5, "quinn-martinez", null, quinn, warm)));
 
             Assert.That(WebIntroductions.DecidingTrait(calculated, quinn), Is.EqualTo("Confrontational"));
             Assert.That(new[] { "Ugh, spare me the niceties.", "Be real with me." },
-                Does.Contain(WebIntroductions.Reaction(5, "quinn-martinez", "Quinn Martinez", quinn, calculated)));
+                Does.Contain(WebIntroductions.Reaction(5, "quinn-martinez", null, quinn, calculated)));
 
             // Nothing in particular decides a neutral answer, so it comes from the first trait.
             Assert.That(WebIntroductions.DecidingTrait(bold, jamie), Is.EqualTo("Emotional"));
             Assert.That(new[] { "That's cool. I vibe with that.", "Nice energy." },
-                Does.Contain(WebIntroductions.Reaction(5, "jamie-roberts", "Jamie Roberts", jamie, bold)));
+                Does.Contain(WebIntroductions.Reaction(5, "jamie-roberts", null, jamie, bold)));
 
             // Somebody with no traits, or none with lines of their own, answers in the sociable voice.
             Assert.That(WebIntroductions.DecidingTrait(warm, new string[0]), Is.Null);
             Assert.That(new[] { "Cool cool! Welcome to the house!", "Hey, nice!" },
-                Does.Contain(WebIntroductions.Reaction(5, "x", "Somebody", new string[0], warm)));
+                Does.Contain(WebIntroductions.Reaction(5, "x", null, new string[0], warm)));
             Assert.That(new[] { "Cool cool! Welcome to the house!", "Hey, nice!" },
-                Does.Contain(WebIntroductions.Reaction(5, "x", "Somebody", new[] { "Mysterious" }, warm)));
+                Does.Contain(WebIntroductions.Reaction(5, "x", null, new[] { "Mysterious" }, warm)));
 
             // An All-Star still answers in their own words, as they did before.
-            string rachel = WebIntroductions.Reaction(3, "rachel-reilly", "Rachel Reilly", new[] { "Emotional" }, warm);
-            Assert.That(rachel, Is.EqualTo(WebIntroductions.Reaction(3, "rachel-reilly", "Rachel Reilly", new[] { "Emotional" }, WebIntroductions.Outcome.Match)));
+            string rachel = WebIntroductions.Reaction(3, "rachel-reilly", Rachel, new[] { "Emotional" }, warm);
+            Assert.That(rachel, Is.EqualTo(WebIntroductions.Reaction(3, "rachel-reilly", Rachel, new[] { "Emotional" }, WebIntroductions.Outcome.Match)));
             Assert.That(new[] { "OH MY GOD, I love you already! *squeals*", "We're going to be BEST friends! No one can stop us!" }, Does.Contain(rachel));
         }
 
@@ -178,14 +282,15 @@ namespace Gamesim.Tests.EditMode
             var outcomes = new[] { WebIntroductions.Outcome.Match, WebIntroductions.Outcome.Neutral, WebIntroductions.Outcome.Clash };
             var traits = new[] { "Strategic", "Competitive", "Loyal", "Social", "Charming", "Manipulative", "Analytical", "Emotional",
                 "Funny", "Deceptive", "Introverted", "Stubborn", "Flexible", "Intuitive", "Sneaky", "Confrontational", "Impulsive", "None" };
-            var names = new[] { "Dan Gheesling", "Dr. Will Kirby", "Janelle Pierzina", "Rachel Reilly", "Derrick Levasseur", "Tyler Crispen",
-                "Vanessa Rousso", "Cody Calafiore", "Danielle Reyes", "Xavier Prather", "Jun Song", "Chelsie Baham", "Nobody" };
+            // Every All-Star's own lines, and nobody's: an alumnus speaks by template id.
+            var speakers = CastTemplates.In(CastTemplates.Roster.AllStars).Concat(new CastTemplates.Template[] { null }).ToList();
             for (int seed = 0; seed < 8; seed++)
                 foreach (var trait in traits)
-                    foreach (var name in names)
+                    foreach (var alumnus in speakers)
                     {
-                        every.Add(WebIntroductions.IntroLine(seed, name, name, new[] { trait }));
-                        foreach (var outcome in outcomes) every.Add(WebIntroductions.Reaction(seed, name, name, new[] { trait }, outcome));
+                        string id = alumnus?.Id ?? "nobody";
+                        every.Add(WebIntroductions.IntroLine(seed, id, alumnus, new[] { trait }));
+                        foreach (var outcome in outcomes) every.Add(WebIntroductions.Reaction(seed, id, alumnus, new[] { trait }, outcome));
                     }
             Assert.That(every.Where(string.IsNullOrWhiteSpace), Is.Empty);
             var undrawable = every.Where(line => line.Any(c => c > 0x2100 || char.IsSurrogate(c))).Distinct().ToList();

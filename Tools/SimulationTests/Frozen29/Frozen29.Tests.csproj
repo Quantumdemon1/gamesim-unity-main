@@ -1,0 +1,57 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Independent fixed29 reader compile gate (SCH30), as Frozen28.Tests is Frozen28's: warnings as errors. Not a
+       replacement for the native SaveStore tests. -->
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <LangVersion>9.0</LangVersion>
+    <Nullable>disable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <IsTestProject>true</IsTestProject>
+    <IsPackable>false</IsPackable>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <RootDir>$(MSBuildThisFileDirectory)../../../</RootDir>
+    <Persistence>$(RootDir)Assets/Gamesim/Runtime/Persistence/</Persistence>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="$(Persistence)FrozenEpisodeV29.cs" />
+    <Compile Include="$(Persistence)FrozenV29CommitmentReferences.cs" />
+    <Compile Include="$(Persistence)FrozenV29Data.cs" />
+    <Compile Include="$(Persistence)FrozenV29Input.cs" />
+    <Compile Include="$(Persistence)FrozenV29ReadOnly.Core.cs" />
+    <Compile Include="$(Persistence)FrozenV29ReadOnly.Dialogue.cs" />
+    <Compile Include="$(Persistence)FrozenV29ReadOnly.Leaves.cs" />
+    <Compile Include="$(Persistence)FrozenV29ReadOnly.LiteralRows.cs" />
+    <Compile Include="$(Persistence)FrozenV29ReadOnly.Privacy.cs" />
+    <Compile Include="$(Persistence)FrozenV29ReadOnly.Safety.cs" />
+    <Compile Include="$(Persistence)FrozenV29ReferenceRows.cs" />
+    <Compile Include="$(Persistence)FrozenV29SafetyStorage.cs" />
+    <Compile Include="$(Persistence)FrozenV29Shape.cs" />
+    <Compile Include="$(Persistence)FrozenV29SocialHistory.cs" />
+    <Compile Include="$(Persistence)FrozenV29VoteStorage.cs" />
+    <Compile Include="$(Persistence)FrozenV29ReadOnly.VoteHistory.cs" />
+    <Compile Include="$(Persistence)FrozenV29UnifiedVoteCompletedReveal.cs" />
+    <Compile Include="$(Persistence)FrozenV29UnifiedVoteFamilyValidation.cs" />
+    <Compile Include="$(Persistence)FrozenV29UnifiedVoteRevealArchive.cs" />
+    <Compile Include="FrozenV29DataShapeTests.cs" />
+    <Compile Include="FrozenV29InputTests.cs" />
+    <Compile Include="FrozenV29ReadOnly.SemanticTests.cs" />
+    <Compile Include="FrozenV29ReferenceTests.cs" />
+    <Compile Include="FrozenV29SafetyStorageTests.cs" />
+    <Compile Include="FrozenV29SocialHistoryTests.cs" />
+    <Compile Include="FrozenV29VoteStorageTests.cs" />
+    <Compile Include="FrozenV29WholeBoundaryTests.cs" />
+    <Compile Include="FrozenV29VoteAggregateTests.cs" />
+    <Compile Include="FrozenV29VoteHistoryTests.cs" />
+    <Compile Include="Frozen29LiteralFixtureTests.cs" />
+    <Compile Include="$(RootDir)Assets/Gamesim/Tests/EditMode/FrozenV29SerializerCacheTests.cs" />
+    <None Include="$(RootDir)Assets/Gamesim/Tests/EditMode/Fixtures/OldSaves/*.json"
+          Link="OldSaves/%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+    <PackageReference Include="NUnit" Version="3.14.0" />
+    <PackageReference Include="NUnit3TestAdapter" Version="4.6.0" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.12.0" />
+  </ItemGroup>
+</Project>

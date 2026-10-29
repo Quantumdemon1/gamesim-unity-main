@@ -411,7 +411,7 @@ namespace Gamesim.Presentation
 
             // Straight quotes, as the reference build prints the line.
             var quote = HudPrimitives.Label("Quote", card, 16f, UiTheme.Muted, TextAlignmentOptions.TopLeft);
-            quote.text = "\"" + WebIntroductions.IntroLine(settings.Seed, person.id, person.name, person.traits) + "\"";
+            quote.text = "\"" + WebIntroductions.IntroLine(settings.Seed, person) + "\"";
             quote.fontStyle = FontStyles.Italic;
             Place(quote.rectTransform, new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(CardPad, -134f), new Vector2(InnerWidth, 60f));
 
@@ -515,7 +515,7 @@ namespace Gamesim.Presentation
             answer.SetParent(card, false);
             // Straight quotes, as the reference build prints the reply.
             string line = Localisation.Format("{0}: \"{1}\"", person.name,
-                WebIntroductions.Reaction(settings.Seed, person.id, person.name, person.traits, approach));
+                WebIntroductions.Reaction(settings.Seed, person, approach));
             var reply = HudPrimitives.Label("Reaction", answer, 15f, UiTheme.Paper, TextAlignmentOptions.TopLeft);
             reply.fontStyle = FontStyles.Italic;
             reply.text = line;

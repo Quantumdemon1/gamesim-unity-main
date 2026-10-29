@@ -52,7 +52,14 @@
 # 7f754510 counted 8970 = 8932 + 38): the full NoUMA run at the scratch test head 83c3273c (this branch's 15f0c07d +
 # the test-only claude/camera-speed-test-clock 5a61dde4, 2026-10-26), 9015 of 9015 = 8970 + D1's 45.
 # 9061 = main's 9016 + D1's 45: the two branches' cases are disjoint, so the floor is their sum.
-Gamesim.EditModeTests 9061
+# All-Star step 1's own history, on 8932:
+# 8936 = 8932 + AS1a's four shared cases, the alumni audit (WebIntroductionsTests 2, CastTemplateTests 2).
+# 8937 = 8936 + AS1a's EditMode-only save-store case (AlumniAuditSaveTests 1).
+# 9088 = 8937 + SCH30 step 1's 151: FrozenEpisodeV29IntegrationTests 126, FreshSeasonStateDigestTests 22 and the
+# shared FrozenV29SerializerCacheTests 3, run under Unity's Mono (2026-10-25). The full NoUMA run at a4d7b177
+# (2026-10-26) ran 9126 of 9126 = 8970 + step 1's 156.
+# 9217 = main's 9061 + step 1's 156: disjoint cases, so the floor is their sum.
+Gamesim.EditModeTests 9217
 # The UMA-free build. 1215 = 1236, the count after the consolidation's lanes (S2a, S2b, S4a), less the 7
 # farewell probes moved to Gamesim.DiagnosticsPlayModeTests and the 14 farewell readiness tests that now
 # compile only under GAMESIM_UMA (judged on the UMA cast); 1230 = 1215 + S2d's 7, S4b's 2, S4c's 2 and
@@ -159,4 +166,9 @@ Gamesim.Uma.DiagnosticsPlayModeTests 10
 # 10805 = 10801 + the same 4 schema-bound cases of D1's review.
 # 10810 = 10805 + dialogue D1b's same 5 cases.
 # 10811 = 10810 + the same case of D1b's review (the open conversation's own voter). dotnet test ran 10811 of 10811.
-Gamesim.SimulationTests 10811
+# All-Star step 1's own history, on 10768:
+# 10772 = 10768 + AS1a's same four shared cases (WebIntroductionsTests 2, CastTemplateTests 2).
+# 16198 = 10772 + SCH30 step 1's Frozen29 reader: Frozen28's archived internal cases and literal fixture controls
+# carried to schema 29 (5423) and the same three cache cases: what dotnet test Tools/SimulationTests ran (2026-10-25).
+# 16241 = main's 10811 + step 1's 5430: disjoint cases, so the floor is their sum.
+Gamesim.SimulationTests 16241

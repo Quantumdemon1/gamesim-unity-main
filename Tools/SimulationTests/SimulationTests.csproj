@@ -47,6 +47,7 @@
     <Compile Include="$(EditMode)DialogueCampaignFreeOfferTests.cs" />
     <Compile Include="$(EditMode)DialogueCampaignEmotionalResponseTests.cs" />
     <Compile Include="$(EditMode)DialogueCampaignCapacityTests.cs" />
+    <Compile Include="$(EditMode)DialogueCampaignPleaFallbackTests.cs" />
     <!-- NpcInvitation.cs is included by the whole Simulation glob above. -->
     <Compile Include="$(EditMode)NpcInvitationTests.cs" />
 
@@ -98,6 +99,7 @@
     <Compile Include="$(EditMode)LegacyDigestSchema29ObserverTests.cs" />
     <Compile Include="$(EditMode)OldSaveTrace.cs" />
     <Compile Include="$(EditMode)CurrentOldSaveTrace.cs" />
+    <Compile Include="$(EditMode)DialoguePreviewWitness.cs" />
     <Compile Include="$(EditMode)FrozenEpisodeV27ContractTests.cs" />
     <Compile Include="$(EditMode)UnifiedVoteTogetherTests.cs" />
     <Compile Include="$(EditMode)UnifiedVoteCompletedRevealTests.cs" />
@@ -160,6 +162,8 @@
     <Compile Include="$(EditMode)EndgameCommitmentsTests.cs" />
     <!-- Explicit, and compiled out of Unity: the commitment rules' recorded-season evidence, run on demand. -->
     <Compile Include="$(EditMode)CommitmentRulesSeasonDigests.cs" />
+    <!-- Compiled out of Unity with the digests it reaches: their checkpoint's native-29 arm (dialogue D1). -->
+    <Compile Include="$(EditMode)CommitmentRulesSeasonDigestsNativeTests.cs" />
     <!-- Explicit, and compiled out of Unity: mode 1's recorded-season evidence over 36 seasons (vote family V5a, D6), run on demand. -->
     <Compile Include="$(EditMode)ModeOneSeasonDigests.cs" />
     <!--

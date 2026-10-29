@@ -292,24 +292,40 @@ function Get-ReviewSuiteDeadline([string]$Assembly,[string]$Platform) {
     if ($Platform -ceq 'PlayMode') { return 14400 }
     throw "No suite deadline for $Assembly on $Platform."
 }
+# Every batch Unity an owned run starts gets UNITY_MCP_DISABLE_BATCH=1, the AI Assistant package's own
+# switch for its MCP bridge in batch mode. Left on, the bridge checks each MCP client that connects, and
+# under Unity's Mono each check leaves ~5x the client's executable in heap (1.4-1.6 GiB for claude.exe or
+# codex.exe) that Boehm never returns: batch runs sat at 15-26 GiB (2026-10-25). Never change the MCP
+# settings instead; they are machine-wide EditorPrefs the owner's editor shares.
+$script:ReviewUnityEnvironment = @{UNITY_MCP_DISABLE_BATCH='1'}
 # Never kills what it started. Past its deadline a process is recorded late (timedOut) and failed,
 # then left to exit on its own: a Unity run past its deadline is usually still writing its results or
 # shutting down, and killing an exiting run leaves children holding the copy. If it has still not
 # exited after a further grace period (the deadline again, by default) it is abandoned while running,
 # and the failure names its pid for an operator; the sync and the suites refuse to start while any
-# Unity process holds the copy.
-function Invoke-ReviewOwnedProcess([string]$Executable,[string[]]$Arguments,[int]$Seconds,[string]$ReceiptPath,[int]$LateGraceSeconds=-1) {
+# Unity process holds the copy. -Environment names variables set for the child only; the receipt records them.
+function Invoke-ReviewOwnedProcess([string]$Executable,[string[]]$Arguments,[int]$Seconds,[string]$ReceiptPath,[int]$LateGraceSeconds=-1,[hashtable]$Environment=@{}) {
     if ($Seconds -lt 1 -or $Seconds -gt $script:ReviewDeadlineCapSeconds) { throw "Owned process deadline must be between 1 and $($script:ReviewDeadlineCapSeconds) seconds." }
     if ($LateGraceSeconds -lt 0) { $LateGraceSeconds = $Seconds }
     if ($LateGraceSeconds -gt $script:ReviewDeadlineCapSeconds) { throw "Late grace must be at most $($script:ReviewDeadlineCapSeconds) seconds." }
     [void](Assert-ReviewPlainPath $Executable)
     $executableHash=Get-ReviewHash $Executable
-    $receipt = [ordered]@{executable=$Executable;executableSha256=$executableHash;arguments=$Arguments;deadlineSeconds=$Seconds;lateGraceSeconds=$LateGraceSeconds;pid=$null;
+    $receipt = [ordered]@{executable=$Executable;executableSha256=$executableHash;arguments=$Arguments;environment=$Environment;deadlineSeconds=$Seconds;lateGraceSeconds=$LateGraceSeconds;pid=$null;
         startedUtc=$null;exitedUtc=$null;exit=$null;kernelSignaled=$false;timedOut=$false;late=$false;abandoned=$false;stopped=$false;closed=$false;
         executableChanged=$false;failure=$null}
     $process = $null
     try {
-        $process = Start-Process -FilePath $Executable -ArgumentList $Arguments -WindowStyle Hidden -PassThru -ErrorAction Stop
+        # The child copies this process's environment as it starts, so the caller's is put back at once.
+        $savedEnvironment=@{}
+        try {
+            foreach ($name in $Environment.Keys) {
+                $savedEnvironment[$name]=[Environment]::GetEnvironmentVariable($name,'Process')
+                [Environment]::SetEnvironmentVariable($name,[string]$Environment[$name],'Process')
+            }
+            $process = Start-Process -FilePath $Executable -ArgumentList $Arguments -WindowStyle Hidden -PassThru -ErrorAction Stop
+        } finally {
+            foreach ($name in $savedEnvironment.Keys) { [Environment]::SetEnvironmentVariable($name,$savedEnvironment[$name],'Process') }
+        }
         [void]$process.Handle
         $receipt.pid = $process.Id; $receipt.startedUtc = $process.StartTime.ToUniversalTime().ToString('o')
         $clock = [Diagnostics.Stopwatch]::StartNew()

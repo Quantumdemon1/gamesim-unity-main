@@ -1,0 +1,171 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 85dbf861ced348efa2958dcdfd28072c, type: 3}
+  m_Name: ApparatusMeshKit
+  m_EditorClassIdentifier: Gamesim.Runtime::Gamesim.Presentation.CompetitionApparatusMeshKit
+  entries:
+  - family: 0
+    partKind: 0
+    referenceDimensions: {x: 0.035, y: 0.025, z: 0.55}
+    mesh: {fileID: -901226861089537606, guid: 535ad8e2390f3174998273879cdf9f21, type: 3}
+  - family: 0
+    partKind: 22
+    referenceDimensions: {x: 0.96, y: 0.16, z: 0.008}
+    mesh: {fileID: 6914935596482809258, guid: 993123b1d1378b14a89c31d9dbe50de6, type: 3}
+  - family: 1
+    partKind: 0
+    referenceDimensions: {x: 0.035, y: 0.025, z: 0.55}
+    mesh: {fileID: -7734012397542205493, guid: 57d55d57b1324f34d8299bde079b45e2, type: 3}
+  - family: 1
+    partKind: 22
+    referenceDimensions: {x: 0.96, y: 0.16, z: 0.008}
+    mesh: {fileID: 3761064932064824456, guid: 1095d8a77eccdf14394b7b667eb34d03, type: 3}
+  - family: 2
+    partKind: 0
+    referenceDimensions: {x: 0.035, y: 0.025, z: 0.55}
+    mesh: {fileID: -2985697362182811947, guid: 59dd07bff6f688c458a8fdb700c0edcf, type: 3}
+  - family: 2
+    partKind: 22
+    referenceDimensions: {x: 0.96, y: 0.16, z: 0.008}
+    mesh: {fileID: 5487735223374987768, guid: 5f0cba47748537d4aa4a2b54c99ac6c4, type: 3}
+  - family: 3
+    partKind: 0
+    referenceDimensions: {x: 0.035, y: 0.025, z: 0.55}
+    mesh: {fileID: -8230860739792113287, guid: 6c420e7bc9686a24f94af4f1e398d880, type: 3}
+  - family: 3
+    partKind: 22
+    referenceDimensions: {x: 0.96, y: 0.16, z: 0.008}
+    mesh: {fileID: 77178226558120383, guid: fed7c2944897fa84b877251cf1f537fa, type: 3}
+  - family: 4
+    partKind: 0
+    referenceDimensions: {x: 0.035, y: 0.025, z: 0.55}
+    mesh: {fileID: 432876006842160974, guid: fba732b3647d52e45a57d8479ce86120, type: 3}
+  - family: 4
+    partKind: 22
+    referenceDimensions: {x: 0.96, y: 0.16, z: 0.008}
+    mesh: {fileID: -7246051752907580048, guid: 41274c87723386843bfa958e79b87954, type: 3}
+  - family: 0
+    partKind: 1
+    referenceDimensions: {x: 0.07, y: 0.84, z: 0.14}
+    mesh: {fileID: 8897744283566308554, guid: fa62f4b0bf169b34eb4cad6c31382cde, type: 3}
+  - family: 0
+    partKind: 2
+    referenceDimensions: {x: 0.95, y: 0.8, z: 0.14}
+    mesh: {fileID: 3332443266793601861, guid: ae3422274cc8a1046be71038343bf3cc, type: 3}
+  - family: 0
+    partKind: 3
+    referenceDimensions: {x: 0.86, y: 0.69, z: 0.025}
+    mesh: {fileID: -1557183205679123890, guid: d59a54350f7fa964a9b18c343cf09a03, type: 3}
+  - family: 0
+    partKind: 4
+    referenceDimensions: {x: 0.95, y: 0.045, z: 0.03}
+    mesh: {fileID: -6506518569597095820, guid: 1d6ecf3448d84fa44a80cb97cd143ca2, type: 3}
+  - family: 1
+    partKind: 1
+    referenceDimensions: {x: 0.07, y: 0.84, z: 0.14}
+    mesh: {fileID: -3078521014799014936, guid: 68a7baaf3c58d98459990946f42ee53c, type: 3}
+  - family: 1
+    partKind: 2
+    referenceDimensions: {x: 0.92, y: 0.8, z: 0.14}
+    mesh: {fileID: 7879599164851571724, guid: 528d05462719be0458ea25a4a27b7ce3, type: 3}
+  - family: 1
+    partKind: 3
+    referenceDimensions: {x: 0.83, y: 0.69, z: 0.025}
+    mesh: {fileID: 5106621601501900467, guid: 07168e578a91bad4583097f0ec6e4d0e, type: 3}
+  - family: 1
+    partKind: 4
+    referenceDimensions: {x: 0.92, y: 0.045, z: 0.03}
+    mesh: {fileID: 5704236832742035285, guid: ca381772808de474abea27fa6e22852d, type: 3}
+  - family: 4
+    partKind: 1
+    referenceDimensions: {x: 0.07, y: 0.84, z: 0.14}
+    mesh: {fileID: 8724458764168902573, guid: e55f608740bf5164393fde9c625f127b, type: 3}
+  - family: 4
+    partKind: 2
+    referenceDimensions: {x: 1.02, y: 0.8, z: 0.14}
+    mesh: {fileID: 7460600985838529410, guid: abd2aee9fb74eb240b22a341b98a133e, type: 3}
+  - family: 4
+    partKind: 3
+    referenceDimensions: {x: 0.93, y: 0.69, z: 0.025}
+    mesh: {fileID: -7856799572786384671, guid: a783ac22bfc9c5941bde1f9790e4572d, type: 3}
+  - family: 4
+    partKind: 4
+    referenceDimensions: {x: 1.02, y: 0.045, z: 0.03}
+    mesh: {fileID: 5538684191993097687, guid: 0f02d2946ee2caf4ba899ab1e94d5d95, type: 3}
+  - family: 0
+    partKind: 6
+    referenceDimensions: {x: 0.2, y: 0.17, z: 0.03}
+    mesh: {fileID: 2408027556783434469, guid: a30bb832f0113ce409e10332415b37be, type: 3}
+  - family: 0
+    partKind: 7
+    referenceDimensions: {x: 0.14, y: 0.065, z: 0.15}
+    mesh: {fileID: 7791105413819978903, guid: bfd85d90450a66c4a9bb4543fe80b955, type: 3}
+  - family: 1
+    partKind: 5
+    referenceDimensions: {x: 0.16, y: 0.13, z: 0.025}
+    mesh: {fileID: 677066469727063271, guid: 22d8fb59cb84b0848ab1f0a7344cfe62, type: 3}
+  - family: 4
+    partKind: 21
+    referenceDimensions: {x: 0.125, y: 0.16, z: 0.025}
+    mesh: {fileID: -1818567012788089684, guid: 2062ac0ddc4ed864cb9324a90f26f486, type: 3}
+  - family: 2
+    partKind: 8
+    referenceDimensions: {x: 0.065, y: 1.56, z: 0.09}
+    mesh: {fileID: -6807346521415880813, guid: fa1838133db82d54283e0991a51ca40d, type: 3}
+  - family: 2
+    partKind: 9
+    referenceDimensions: {x: 0.91, y: 0.07, z: 0.1}
+    mesh: {fileID: -4960740985661036861, guid: 033ad6467a9f04048891b8ab145583e0, type: 3}
+  - family: 2
+    partKind: 10
+    referenceDimensions: {x: 0.78, y: 0.045, z: 0.055}
+    mesh: {fileID: -2516187811355137646, guid: ff2381f619f378445bd0ad68653e180d, type: 3}
+  - family: 2
+    partKind: 11
+    referenceDimensions: {x: 0.055, y: 0.69, z: 0.04}
+    mesh: {fileID: -7142162815748648489, guid: 3f13eb122cc930e4a8e27da8dae43617, type: 3}
+  - family: 2
+    partKind: 12
+    referenceDimensions: {x: 0.035, y: 0.69, z: 0.025}
+    mesh: {fileID: 948314629334191117, guid: 5e73012cf0f202e4d9f7afc53035ee57, type: 3}
+  - family: 2
+    partKind: 13
+    referenceDimensions: {x: 0.03, y: 0.76, z: 0.03}
+    mesh: {fileID: -2675081115830289925, guid: e25248f0926978b4cb7fadcc6c342780, type: 3}
+  - family: 2
+    partKind: 14
+    referenceDimensions: {x: 0.25, y: 0.16, z: 0.17}
+    mesh: {fileID: 5824834776178636752, guid: dd488255eb8a4ce4693f34f38f85c883, type: 3}
+  - family: 2
+    partKind: 15
+    referenceDimensions: {x: 0.06, y: 0.012, z: 0.03}
+    mesh: {fileID: -1890152530896148816, guid: d2667865f63e0194da4f2856a2acd992, type: 3}
+  - family: 3
+    partKind: 16
+    referenceDimensions: {x: 0.2, y: 1.1, z: 0.25}
+    mesh: {fileID: -1030175949792132988, guid: e87306e45ca0643488295d6e891d6549, type: 3}
+  - family: 3
+    partKind: 17
+    referenceDimensions: {x: 0.91, y: 0.08, z: 0.42}
+    mesh: {fileID: 3107347774615377074, guid: 12d53e8856360354783171fabff6e5ec, type: 3}
+  - family: 3
+    partKind: 18
+    referenceDimensions: {x: 0.96, y: 0.13, z: 0.05}
+    mesh: {fileID: 806128197447338764, guid: 158b9720cb774d342aa132e6543b5d72, type: 3}
+  - family: 3
+    partKind: 19
+    referenceDimensions: {x: 0.05, y: 0.13, z: 0.44}
+    mesh: {fileID: 9168814186112388884, guid: 248f884982b6ae54eaa31208b1a1c51c, type: 3}
+  - family: 3
+    partKind: 20
+    referenceDimensions: {x: 0.17, y: 0.17, z: 0.17}
+    mesh: {fileID: 3471281809344108486, guid: a13ad161922c3b042a6aa07922b0fa14, type: 3}

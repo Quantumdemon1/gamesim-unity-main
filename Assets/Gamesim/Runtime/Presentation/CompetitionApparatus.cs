@@ -5,6 +5,7 @@ using Gamesim.Simulation;
 using TMPro;
 using UnityEngine;
 using UnityEngine.Rendering;
+using PartKind = Gamesim.Presentation.CompetitionApparatusMeshKit.PartKind;
 
 namespace Gamesim.Presentation
 {
@@ -38,6 +39,7 @@ namespace Gamesim.Presentation
         private MaterialPropertyBlock tint;
         private Material frame, accent, dark, paper, readoutFontMaterial;
         private Mesh box;
+        private CompetitionApparatusMeshKit meshKit;
         private TMP_Text progress;
         private Transform progressFrontBacking,progressAudienceBacking;
         private Transform weight, gripBar, gripTrack, weightGuide;
@@ -46,9 +48,75 @@ namespace Gamesim.Presentation
         private Transform trayPedestal, trayBed, trayBack, trayLeft, trayRight;
         private Renderer gripRenderer;
         private float gripHeight = 1.16f;
+        private float padLowest, padHighest;
         private bool overlaysVisible = true;
         private float nearestRaisedZ;
+        /// <summary>
+        /// Labels that read as one set and so share one font size (a Signals console's UP, RIGHT,
+        /// DOWN and LEFT, both sides): the largest that fits every one of their boxes. TMP sizes each
+        /// label alone, which drew the four at four sizes; <see cref="ShareLabelSize"/> sets them once.
+        /// </summary>
+        private readonly List<TMP_Text> sharedSizeLabels = new List<TMP_Text>();
+        private bool labelSizeShared;
+        /// <summary>
+        /// A memory face's box, .13 x .11 m: 7 mm a side inside its keycap's flat face (the authored
+        /// cap's top, .144 x .116 m on the .16 x .13 m tile). Its words may size down to
+        /// <see cref="MemoryFaceFloor"/> to fit it; stopped at the .45 every other label stops at, TROPHY
+        /// was .185 m wide and ran 2 cm past its cap's flat face.
+        /// </summary>
+        private const float MemoryFaceWidth = .13f, MemoryFaceHeight = .11f, MemoryFaceFloor = .25f;
+        /// <summary>A memory console's two face sizes, set once by <see cref="ShareFaceSizes"/>: every face word's and the face-down '?''s.</summary>
+        private float faceWordSize, faceMarkSize;
+        private bool faceSizesShared;
         private const float Front = .56f;
+        /// <summary>
+        /// The audience's copy of a die's value stands on its die's rear face, this far above the
+        /// die's centre and this tall: the upper part of the face, from the back rail's top (5 mm
+        /// under the die's centre, so it hides the face's lower half from the audience) to the die's
+        /// top. It moves with the die at every pedestal fit.
+        /// </summary>
+        private const float DieRearRise = .04f, DieRearHeight = .09f;
+        /// <summary>
+        /// How far a die's two values stand off its centre, 5 mm off the faces of the .17 m die. They
+        /// are placed in the die's own turn (<see cref="TurnLabelsWithDie"/>): a tumbling die's corners
+        /// sweep .12 m round its centre, so a value left square on this plane was inside its own die
+        /// for most of every tumble.
+        /// </summary>
+        private const float DieFaceOffset = .09f;
+        /// <summary>
+        /// The Signals response pad stands beside the direction cross, this far past RIGHT's keycap,
+        /// so from the contestant's eye it covers no target and no label at any fitted height. Its
+        /// inner part sinks into the recessed display's panel and its outer 2.5 cm overhang the
+        /// housing's edge (<see cref="BuildSignals"/>).
+        /// </summary>
+        private const float PadGap = .01f;
+        /// <summary>
+        /// How far in front of a die's centre the press aims. A rolling die turns about its centre,
+        /// its corners sweeping .12 m round it (half a .17 m cube's diagonal); the pressing finger's
+        /// tip reaches ~.02 m past the distal bone the pose puts on the contact; and a centimetre more.
+        /// </summary>
+        private const float DiePress = .15f;
+        /// <summary>
+        /// How far a key's letter stands off its keycap's face. The contestant's letters stand 5.5 mm
+        /// off a memory or letter cap (5 mm off a signal cap); the audience's copies stand 5.5 mm off theirs.
+        /// </summary>
+        private const float CapGlyphGap = .0055f;
+        /// <summary>
+        /// A console key's unlit cap, the navy every Signals target, memory tile and letter cap rests
+        /// on. Its paper glyph reads at 9.3:1.
+        /// </summary>
+        private static readonly Color UnlitCap = UiTheme.Hex("31425B");
+        /// <summary>
+        /// A lit key's glyph, on both faces: the house <see cref="UiTheme.Ink"/>, opaque. A lit key is a
+        /// live Signals target or a matched memory tile on the mint <see cref="UiTheme.Positive"/>
+        /// (11.5:1), a turned-over memory tile on the pale <see cref="UiTheme.Accent"/> (12.1:1), or a
+        /// picked letter on the mint. Paper on those caps is 1.5:1 and 1.4:1, so the keys the
+        /// contestant has to read were the faintest on the console.
+        /// Ink's own alpha (.98) is for panels; a label at full alpha takes none of its cap's colour.
+        /// </summary>
+        private static readonly Color LitLabel = new Color(UiTheme.Ink.r, UiTheme.Ink.g, UiTheme.Ink.b, 1f);
+        /// <summary>Whether this console shows <see cref="Rest"/>'s faces, so a field's repeated no-attempt reads set nothing.</summary>
+        private bool resting;
 
         public static Family For(CompetitionDefinition definition, string category = null)
         {
@@ -64,6 +132,12 @@ namespace Gamesim.Presentation
 
         public static CompetitionApparatus Create(Transform anchor, CompetitionDefinition definition,
             string category, string actorId, Color award)
+            => Create(anchor, definition, category, actorId, award,
+                Resources.Load<CompetitionApparatusMeshKit>(CompetitionApparatusMeshKit.ResourceName));
+
+        /// <summary>An explicit kit, including null for primitive-only previews and isolated tests.</summary>
+        public static CompetitionApparatus Create(Transform anchor, CompetitionDefinition definition,
+            string category, string actorId, Color award, CompetitionApparatusMeshKit kit)
         {
             var root = new GameObject("Competition apparatus · " + For(definition, category));
             root.transform.SetParent(anchor, false);
@@ -71,6 +145,7 @@ namespace Gamesim.Presentation
             apparatus.Instrument = For(definition, category);
             apparatus.DefinitionId = definition?.Id;
             apparatus.ActorId = actorId;
+            apparatus.meshKit = kit;
             apparatus.Build(award);
             return apparatus;
         }
@@ -87,8 +162,8 @@ namespace Gamesim.Presentation
             box = BoxMesh();
             meshes.Add(box);
             // An open-footed stance mark belongs to the instrument, rather than a generic disc.
-            Part("Left stance rail", new Vector3(-.30f, .016f, .02f), new Vector3(.035f, .025f, .55f), accent, clearsActor:false);
-            Part("Right stance rail", new Vector3(.30f, .016f, .02f), new Vector3(.035f, .025f, .55f), accent, clearsActor:false);
+            Part(PartKind.StanceRail, "Left stance rail", new Vector3(-.30f, .016f, .02f), new Vector3(.035f, .025f, .55f), accent, clearsActor:false);
+            Part(PartKind.StanceRail, "Right stance rail", new Vector3(.30f, .016f, .02f), new Vector3(.035f, .025f, .55f), accent, clearsActor:false);
             switch (Instrument)
             {
                 case Family.PairConsole: BuildPairs(); break;
@@ -107,28 +182,46 @@ namespace Gamesim.Presentation
             progress = Words("Instrument progress", new Vector3(0, progressHeight, progressFront), .90f, .13f, "Ready");
             // Each opposing plane has its own dark face. Saved yard lights and pillars
             // can remain behind the words without washing out their public progress.
-            progressFrontBacking=Part("Progress front backing", new Vector3(0, progressHeight, progressFront + .006f), new Vector3(.96f, .16f, .008f), dark).transform;
-            progressAudienceBacking=Part("Progress audience backing", new Vector3(0, progressHeight, Front + .154f), new Vector3(.96f, .16f, .008f), dark).transform;
+            progressFrontBacking=Part(PartKind.ProgressBacking, "Progress front backing", new Vector3(0, progressHeight, progressFront + .006f), new Vector3(.96f, .16f, .008f), dark).transform;
+            progressAudienceBacking=Part(PartKind.ProgressBacking, "Progress audience backing", new Vector3(0, progressHeight, Front + .154f), new Vector3(.96f, .16f, .008f), dark).transform;
             // The show's wide camera sees the audience-facing readout on the back of a console.
             // Repeat only the same public information, rather than turning the actor away from it.
-            foreach (TMP_Text glyph in glyphs) RepeatWord(glyph);
+            // A die's value is repeated on the die itself, not on a shared plane behind the tray.
+            for (int i = 0; i < glyphs.Count; i++)
+            {
+                if (Instrument == Family.DiceTray) RepeatDieFace(i);
+                else RepeatWord(glyphs[i]);
+            }
             RepeatWord(progress);
             if(Instrument==Family.PairConsole || Instrument==Family.Signals || Instrument==Family.WordConsole)
                 foreach(Renderer indicator in indicators)
                 {
-                    Vector3 at=indicator.transform.localPosition;at.x=-at.x;at.z=Front+.13f;
-                    repeaters[indicator]=Part(indicator.name+" audience face",at,indicator.transform.localScale,paper);
+                    // Flush on the housing's rear face (Front+.04, .14 deep), as the front tiles sit on the display.
+                    Vector3 at=indicator.transform.localPosition;at.x=-at.x;at.z=Front+.11f+indicator.transform.localScale.z*.5f;
+                    PartKind faceKind = Instrument == Family.PairConsole ? PartKind.MemoryTile
+                        : Instrument == Family.Signals ? PartKind.SignalTarget : PartKind.LetterTile;
+                    var repeater=Part(faceKind,indicator.name+" audience face",at,indicator.transform.localScale,paper);
+                    // An authored keycap's cap faces its part's -z, the contestant. The audience face turns
+                    // like the repeated words, so its cap faces the audience; the centred box is unchanged.
+                    repeater.transform.localRotation=Quaternion.Euler(0,180,0);
+                    repeaters[indicator]=repeater;
                 }
+            if(Instrument==Family.Signals)
+                foreach(TMP_Text direction in glyphs){sharedSizeLabels.Add(direction);sharedSizeLabels.Add(repeatWords[direction]);}
+            if(Instrument==Family.PairConsole)
+                foreach(TMP_Text face in glyphs){face.fontSizeMin=MemoryFaceFloor;repeatWords[face].fontSizeMin=MemoryFaceFloor;}
+            ShareLabelSize();
+            ShareFaceSizes();
             nearestRaisedZ=NearestRaisedSolid();
         }
 
         private void Console(float height, float width)
         {
-            Part("Console left leg", new Vector3(-width * .37f, .42f, Front + .08f), new Vector3(.07f, .84f, .14f), frame);
-            Part("Console right leg", new Vector3(width * .37f, .42f, Front + .08f), new Vector3(.07f, .84f, .14f), frame);
-            Part("Console housing", new Vector3(0, height, Front + .04f), new Vector3(width, .80f, .14f), frame);
-            Part("Recessed display", new Vector3(0, height, Front - .039f), new Vector3(width - .09f, .69f, .025f), dark);
-            Part("Award header", new Vector3(0, height + .38f, Front - .04f), new Vector3(width, .045f, .03f), accent);
+            Part(PartKind.ConsoleLeg, "Console left leg", new Vector3(-width * .37f, .42f, Front + .08f), new Vector3(.07f, .84f, .14f), frame);
+            Part(PartKind.ConsoleLeg, "Console right leg", new Vector3(width * .37f, .42f, Front + .08f), new Vector3(.07f, .84f, .14f), frame);
+            Part(PartKind.ConsoleHousing, "Console housing", new Vector3(0, height, Front + .04f), new Vector3(width, .80f, .14f), frame);
+            Part(PartKind.RecessedDisplay, "Recessed display", new Vector3(0, height, Front - .039f), new Vector3(width - .09f, .69f, .025f), dark);
+            Part(PartKind.AwardHeader, "Award header", new Vector3(0, height + .38f, Front - .04f), new Vector3(width, .045f, .03f), accent);
         }
 
         private void BuildPairs()
@@ -137,52 +230,70 @@ namespace Gamesim.Presentation
             for (int i = 0; i < 16; i++)
             {
                 Vector3 at = new Vector3((i % 4 - 1.5f) * .19f, 1.28f - (i / 4 - 1.5f) * .16f, Front - .064f);
-                indicators.Add(Part("Memory tile " + i, at, new Vector3(.16f, .13f, .025f), paper));
-                glyphs.Add(Words("Memory face " + i, at + Vector3.back * .018f, .14f, .11f, "?"));
+                indicators.Add(Part(PartKind.MemoryTile, "Memory tile " + i, at, new Vector3(.16f, .13f, .025f), paper));
+                glyphs.Add(Words("Memory face " + i, at + Vector3.back * .018f, MemoryFaceWidth, MemoryFaceHeight, "?"));
             }
         }
 
         private void BuildSignals()
         {
-            Console(1.20f, .95f);
+            const float height = 1.20f, width = .95f;
+            Console(height, width);
             Vector2[] places = { new Vector2(0, .23f), new Vector2(.25f, 0), new Vector2(0, -.23f), new Vector2(-.25f, 0) };
             string[] labels = { "UP", "RIGHT", "DOWN", "LEFT" };
+            Vector3 target = new Vector3(.20f, .17f, .03f);
             for (int i = 0; i < places.Length; i++)
             {
                 Vector3 at = new Vector3(places[i].x, 1.22f + places[i].y, Front - .065f);
-                indicators.Add(Part("Signal target " + labels[i], at, new Vector3(.20f, .17f, .03f), paper));
+                indicators.Add(Part(PartKind.SignalTarget, "Signal target " + labels[i], at, target, paper));
                 glyphs.Add(Words("Signal direction " + labels[i], at + Vector3.back * .02f, .18f, .12f, labels[i]));
             }
-            responsePad=Part("Response pad", new Vector3(0, 1.16f, .39f), new Vector3(.14f, .065f, .15f), accent).transform;
+            // The pad stands out of the cross, beside RIGHT (PadGap past its keycap), with its back on
+            // the housing's front face, so it is fixed to the console rather than hanging in front of
+            // RIGHT. Across its 14 cm: the inner 7 cm sink 2.15 cm into the recessed display's 2.5 cm
+            // panel (which stands proud of the housing there, its back still on the housing's face), the
+            // next 4.5 cm lie on the housing's face, and the outer 2.5 cm overhang the housing's right
+            // edge. FitPress keeps it at the hand's height between DOWN's top and the award header.
+            Vector3 pad = new Vector3(.14f, .065f, .15f);
+            float right = places[1].x + target.x * .5f;
+            float housingFront = Front + .04f - .14f * .5f;
+            padLowest = 1.22f + places[2].y + target.y * .5f + pad.y * .5f;
+            padHighest = height + .38f - .045f * .5f - pad.y * .5f;
+            responsePad=Part(PartKind.ResponsePad, "Response pad", new Vector3(right + PadGap + pad.x * .5f, 1.22f, housingFront - pad.z * .5f), pad, accent).transform;
         }
 
         private void BuildGrip()
         {
-            leftUpright=Part("Rig left upright", new Vector3(-.42f, .78f, Front), new Vector3(.065f, 1.56f, .09f), frame).transform;
-            rightUpright=Part("Rig right upright", new Vector3(.42f, .78f, Front), new Vector3(.065f, 1.56f, .09f), frame).transform;
-            topBrace=Part("Rig top brace", new Vector3(0, 1.56f, Front), new Vector3(.91f, .07f, .10f), accent).transform;
-            handle=Part("Grip handle", new Vector3(0, 1.16f, Front - .055f), new Vector3(.78f, .045f, .055f), accent).transform;
-            gripTrack=Part("Grip scale track", new Vector3(.30f, 1.09f, Front - .075f), new Vector3(.055f, .69f, .04f), dark).transform;
-            gripBar = Part("Grip remaining", new Vector3(.30f, 1.09f, Front - .085f), new Vector3(.035f, .69f, .025f), paper).transform;
+            leftUpright=Part(PartKind.RigUpright, "Rig left upright", new Vector3(-.42f, .78f, Front), new Vector3(.065f, 1.56f, .09f), frame).transform;
+            rightUpright=Part(PartKind.RigUpright, "Rig right upright", new Vector3(.42f, .78f, Front), new Vector3(.065f, 1.56f, .09f), frame).transform;
+            topBrace=Part(PartKind.RigBrace, "Rig top brace", new Vector3(0, 1.56f, Front), new Vector3(.91f, .07f, .10f), accent).transform;
+            handle=Part(PartKind.GripHandle, "Grip handle", new Vector3(0, 1.16f, Front - .055f), new Vector3(.78f, .045f, .055f), accent).transform;
+            gripTrack=Part(PartKind.GripTrack, "Grip scale track", new Vector3(.30f, 1.09f, Front - .075f), new Vector3(.055f, .69f, .04f), dark).transform;
+            gripBar = Part(PartKind.GripRemaining, "Grip remaining", new Vector3(.30f, 1.09f, Front - .085f), new Vector3(.035f, .69f, .025f), paper).transform;
             gripRenderer=gripBar.GetComponent<Renderer>();
-            weightGuide=Part("Counterweight guide", new Vector3(0, 1.10f, Front + .15f), new Vector3(.03f, .76f, .03f), frame).transform;
-            weight = Part("Pressure counterweight", new Vector3(0, .85f, Front + .15f), new Vector3(.25f, .16f, .17f), frame).transform;
+            weightGuide=Part(PartKind.CounterweightGuide, "Counterweight guide", new Vector3(0, 1.10f, Front + .15f), new Vector3(.03f, .76f, .03f), frame).transform;
+            weight = Part(PartKind.Counterweight, "Pressure counterweight", new Vector3(0, .85f, Front + .15f), new Vector3(.25f, .16f, .17f), frame).transform;
             for (int i = 0; i < 5; i++)
-                gripTicks.Add(Part("Grip scale tick " + i, new Vector3(.35f, .77f + i * .16f, Front - .085f), new Vector3(.06f, .012f, .03f), accent).transform);
+                gripTicks.Add(Part(PartKind.GripTick, "Grip scale tick " + i, new Vector3(.35f, .77f + i * .16f, Front - .085f), new Vector3(.06f, .012f, .03f), accent).transform);
         }
 
         private void BuildDice()
         {
-            trayPedestal=Part("Tray pedestal", new Vector3(0, .55f, Front), new Vector3(.20f, 1.10f, .25f), frame).transform;
-            trayBed=Part("Dice tray bed", new Vector3(0, 1.14f, Front), new Vector3(.91f, .08f, .42f), dark).transform;
-            trayBack=Part("Tray back rail", new Vector3(0, 1.21f, Front + .20f), new Vector3(.96f, .13f, .05f), accent).transform;
-            trayLeft=Part("Tray left rail", new Vector3(-.455f, 1.21f, Front), new Vector3(.05f, .13f, .44f), accent).transform;
-            trayRight=Part("Tray right rail", new Vector3(.455f, 1.21f, Front), new Vector3(.05f, .13f, .44f), accent).transform;
+            trayPedestal=Part(PartKind.TrayPedestal, "Tray pedestal", new Vector3(0, .55f, Front), new Vector3(.20f, 1.10f, .25f), frame).transform;
+            trayBed=Part(PartKind.TrayBed, "Dice tray bed", new Vector3(0, 1.14f, Front), new Vector3(.91f, .08f, .42f), dark).transform;
+            trayBack=Part(PartKind.TrayBackRail, "Tray back rail", new Vector3(0, 1.21f, Front + .20f), new Vector3(.96f, .13f, .05f), accent).transform;
+            trayLeft=Part(PartKind.TraySideRail, "Tray left rail", new Vector3(-.455f, 1.21f, Front), new Vector3(.05f, .13f, .44f), accent).transform;
+            trayRight=Part(PartKind.TraySideRail, "Tray right rail", new Vector3(.455f, 1.21f, Front), new Vector3(.05f, .13f, .44f), accent).transform;
+            // The dice are the paper's colour, so their values are in the instrument face's dark ink:
+            // paper text on a paper die read as a blank die.
+            Color ink = UiTheme.Hex("102138");
             for (int i = 0; i < 3; i++)
             {
                 Vector3 at = new Vector3((i - 1) * .25f, 1.28f, Front - .115f);
-                indicators.Add(Part("Die " + i, at, Vector3.one * .17f, paper, sweepsYaw:true));
-                glyphs.Add(Words("Die face " + i, at + Vector3.back * .09f, .14f, .14f, "—"));
+                indicators.Add(Part(PartKind.Die, "Die " + i, at, Vector3.one * .17f, paper, sweepsYaw:true));
+                var face = Words("Die face " + i, at + Vector3.back * DieFaceOffset, .14f, .14f, "—");
+                face.color = ink;
+                glyphs.Add(face);
             }
         }
 
@@ -192,7 +303,7 @@ namespace Gamesim.Presentation
             for (int i = 0; i < 12; i++)
             {
                 Vector3 at = new Vector3((i % 6 - 2.5f) * .145f, i < 6 ? 1.30f : 1.08f, Front - .064f);
-                indicators.Add(Part("Letter tile " + i, at, new Vector3(.125f, .16f, .025f), paper));
+                indicators.Add(Part(PartKind.LetterTile, "Letter tile " + i, at, new Vector3(.125f, .16f, .025f), paper));
                 glyphs.Add(Words("Letter " + i, at + Vector3.back * .018f, .11f, .14f, ""));
             }
             Words("Word tray label", new Vector3(0, 1.51f, Front - .07f), .85f, .12f, "LETTER TRAY");
@@ -201,7 +312,10 @@ namespace Gamesim.Presentation
         /// <summary>Pure presentation reads. An absent attempt means another entrant's ready station.</summary>
         public void Sync(MiniGameRun run, bool started, bool preview, bool paused, bool reducedMotion)
         {
-            if (run == null) { SetWord(progress,"Ready"); return; }
+            ShareLabelSize();
+            ShareFaceSizes();
+            if (run == null) { SetWord(progress,"Ready"); Rest(); return; }
+            resting = false;
             SetWord(progress,paused ? "Paused" : !started && !preview ? "Ready" : Readout(run));
             switch (Instrument)
             {
@@ -213,13 +327,13 @@ namespace Gamesim.Presentation
                         bool revealed = matched || preview && !paused || started && !paused && (i == run.FirstFlip || i == run.SecondFlip);
                         if (revealed) VisibleMemoryFaces++;
                         SetWord(glyphs[i],revealed ? CompetitionGameScreen.MemoryFaceName(run.Faces[i]) : "?");
-                        Colorize(indicators[i], matched ? UiTheme.Positive : revealed ? UiTheme.Accent : UiTheme.Hex("31425B"));
+                        LightKey(i, matched ? UiTheme.Positive : revealed ? UiTheme.Accent : (Color?)null);
                     }
                     break;
                 case Family.Signals:
                     LitSignal = started && run.TargetLive ? (int)run.TargetDirection : -1;
                     for (int i = 0; i < indicators.Count; i++)
-                        Colorize(indicators[i], i == LitSignal ? UiTheme.Positive : UiTheme.Hex("31425B"));
+                        LightKey(i, i == LitSignal ? UiTheme.Positive : (Color?)null);
                     break;
                 case Family.GripRig:
                     GripFraction = Mathf.Clamp01((float)(run.Meter / CompetitionMiniGames.MeterFull));
@@ -236,6 +350,7 @@ namespace Gamesim.Presentation
                         SetWord(glyphs[i],face > 0 ? face.ToString(CultureInfo.InvariantCulture) : run.Rolling ? "…" : "—");
                         indicators[i].transform.localRotation = reducedMotion || paused || run.DieLanded(i)
                             ? Quaternion.identity : Quaternion.Euler(0, (float)run.Elapsed * 200, 0);
+                        TurnLabelsWithDie(i);
                     }
                     break;
                 case Family.WordConsole:
@@ -244,10 +359,54 @@ namespace Gamesim.Presentation
                         bool present = i < run.Scrambled.Length;
                         bool hidden=!started || paused;
                         SetWord(glyphs[i],present ? hidden ? "?" : run.Scrambled[i].ToString() : "");
-                        Colorize(indicators[i], present && !hidden && run.TilePicked(i) ? UiTheme.Positive : UiTheme.Hex("31425B"));
+                        LightKey(i, present && !hidden && run.TilePicked(i) ? UiTheme.Positive : (Color?)null);
                     }
                     break;
             }
+        }
+
+        /// <summary>
+        /// Another entrant's station, which has no attempt to mirror. Its console shows the unlit faces
+        /// the player's console shows before its first input, on both sides: every key on its
+        /// <see cref="UnlitCap"/> under a paper glyph. A Signals console shows its four directions with
+        /// none lit, a memory console '?' on all sixteen face-down tiles, and a letter tray '?' on all
+        /// twelve caps, because a station with no attempt has no word length to show. Nothing is lit or
+        /// turned over. Before this, a console with no attempt kept its built paper caps under paper
+        /// glyphs, so 5 of 6 or 15 of 16 boards looked switched off while the competition ran. Grip
+        /// rigs and dice trays have no keys and keep their built faces.
+        /// </summary>
+        private void Rest()
+        {
+            if (resting) return;
+            resting = true;
+            switch (Instrument)
+            {
+                case Family.PairConsole:
+                case Family.WordConsole:
+                    VisibleMemoryFaces = 0;
+                    for (int i = 0; i < indicators.Count; i++) { SetWord(glyphs[i],"?"); LightKey(i, null); }
+                    break;
+                case Family.Signals:
+                    LitSignal = -1;
+                    for (int i = 0; i < indicators.Count; i++) LightKey(i, null);
+                    break;
+            }
+        }
+
+        /// <summary>
+        /// Console key <paramref name="i"/> (a Signals target, a memory tile or a letter cap), lit or
+        /// unlit, on both faces. A lit key shows its <paramref name="lit"/> cap (the mint
+        /// <see cref="UiTheme.Positive"/> or the pale <see cref="UiTheme.Accent"/>) under an ink glyph
+        /// (<see cref="LitLabel"/>). An unlit key (null) shows the navy <see cref="UnlitCap"/> under a
+        /// paper glyph. The glyph and its audience copy change with their cap, so neither is left paper
+        /// on a light cap. A key that goes out, turns back, is taken back or rests returns to paper.
+        /// </summary>
+        private void LightKey(int i, Color? lit)
+        {
+            Colorize(indicators[i], lit ?? UnlitCap);
+            Color ink = lit.HasValue ? LitLabel : UiTheme.Paper;
+            glyphs[i].color = ink;
+            if (repeatWords.TryGetValue(glyphs[i], out var copy)) copy.color = ink;
         }
 
         public static string Readout(MiniGameRun run)
@@ -335,17 +494,29 @@ namespace Gamesim.Presentation
         public Vector3 HandContact(bool left)
         {
             if(handle!=null)return handle.TransformPoint(new Vector3(left?-.33f:.33f,0,-.5f));
-            if(responsePad!=null)return responsePad.position+Vector3.up*.04f;
-            if(Instrument==Family.DiceTray)return indicators[left?0:2].transform.TransformPoint(Vector3.back*.5f);
+            // The press lands on the pad's top, on the quarter nearest the contestant and the cross: the
+            // pad stands beside RIGHT now, and this keeps the reach what it was when it stood in front.
+            if(responsePad!=null)return responsePad.TransformPoint(new Vector3(-.25f,0,-.25f))+Vector3.up*.04f;
+            if(Instrument==Family.DiceTray)
+            {
+                // In front of the die, in the tray's own space: a point on the die's face turned with a
+                // rolling die and carried the fingers into it. This one is clear of its whole sweep.
+                Vector3 die=indicators[left?0:2].transform.localPosition;
+                return transform.TransformPoint(new Vector3(die.x,die.y,die.z-DiePress));
+            }
             return transform.TransformPoint(new Vector3(left?-.22f:.22f,.99f,Front-.12f));
         }
 
-        /// <summary>Put the real pad/tray at the actor's hand height without moving their body.</summary>
+        /// <summary>
+        /// Put the real pad/tray at the actor's hand height without moving their body. The pad keeps
+        /// its place beside the cross and on the housing; only its height follows the hand, between
+        /// DOWN's top and the award header.
+        /// </summary>
         public void FitPress(Vector3 shoulder,float reach)
         {
             if(responsePad!=null)
             {
-                Vector3 at=responsePad.localPosition;at.x=shoulder.x;at.y=shoulder.y-.04f-reach*.10f;
+                Vector3 at=responsePad.localPosition;at.y=Mathf.Clamp(shoulder.y-.04f-reach*.10f,padLowest,padHighest);
                 responsePad.localPosition=at;
             }
             if(Instrument!=Family.DiceTray)return;
@@ -357,9 +528,15 @@ namespace Gamesim.Presentation
             for(int i=0;i<indicators.Count;i++)
             {
                 Vector3 at=indicators[i].transform.localPosition;at.y=1.28f+shift;indicators[i].transform.localPosition=at;
-                at=glyphs[i].transform.localPosition;at.y=1.28f+shift;glyphs[i].transform.localPosition=at;
-                if(repeatWords.TryGetValue(glyphs[i],out var copy)){at=copy.transform.localPosition;at.y=1.28f+shift;copy.transform.localPosition=at;}
+                TurnLabelsWithDie(i);
             }
+            // The roll readout stands under the tray. At the pedestal's lowest fits the tray comes
+            // down past it, so the readout, its copy and both plates come down with the tray's
+            // underside (1.10+shift), the plates' tops (.08 over the words' middle) a centimetre under it.
+            float readout=Mathf.Min(.74f,1.10f+shift-.09f);
+            FitPartHeight(progress.transform,readout);
+            if(repeatWords.TryGetValue(progress,out var audience))FitPartHeight(audience.transform,readout);
+            FitPartHeight(progressFrontBacking,readout);FitPartHeight(progressAudienceBacking,readout);
         }
 
         public void SetOverlaysVisible(bool visible)
@@ -380,13 +557,17 @@ namespace Gamesim.Presentation
             return true;
         }
 
-        private Renderer Part(string name, Vector3 position, Vector3 scale, Material material,bool clearsActor=true,bool sweepsYaw=false)
+        private Renderer Part(PartKind kind, string name, Vector3 position, Vector3 scale, Material material,bool clearsActor=true,bool sweepsYaw=false)
         {
             var part = new GameObject(name, typeof(MeshFilter), typeof(MeshRenderer));
             part.transform.SetParent(transform, false);
             part.transform.localPosition = position;
             part.transform.localScale = scale;
-            var mesh=part.GetComponent<MeshFilter>();mesh.sharedMesh = box;solidMeshes.Add(mesh);
+            var mesh=part.GetComponent<MeshFilter>();
+            // Only geometry is borrowed. The original named transform, live material and all
+            // clearance registries remain the same; shared assets never enter owned disposal.
+            mesh.sharedMesh = meshKit != null && meshKit.TryGetMesh(Instrument, kind, scale, out var authored) ? authored : box;
+            solidMeshes.Add(mesh);
             if(clearsActor)raisedMeshes.Add(mesh);
             if(sweepsYaw)yawingMeshes.Add(mesh);
             var renderer = part.GetComponent<MeshRenderer>();
@@ -454,18 +635,117 @@ namespace Gamesim.Presentation
             if(repeaters.TryGetValue(renderer,out var repeater))repeater.SetPropertyBlock(tint);
         }
 
+        /// <summary>
+        /// The audience's copy of <paramref name="source"/>, mirrored in x and turned to the audience.
+        /// A console's key letter stands on its audience keycap's face as the contestant's stands on
+        /// theirs (<see cref="CapGlyphGap"/> off it): the cap sits flush on the housing's rear face
+        /// (Front+.11) and is as deep as its contestant twin. Anything else - the progress readout -
+        /// stays on the shared plane in front of its backing (Front+.154).
+        /// </summary>
         private void RepeatWord(TMP_Text source)
         {
             Vector3 at=source.transform.localPosition;at.x=-at.x;at.z=Front+.16f;
+            int key=glyphs.IndexOf(source);
+            if((Instrument==Family.PairConsole || Instrument==Family.Signals || Instrument==Family.WordConsole) && key>=0 && key<indicators.Count)
+                at.z=Front+.11f+indicators[key].transform.localScale.z+CapGlyphGap;
             TMP_Text copy=Words(source.name+" audience readout",at,source.rectTransform.sizeDelta.x,source.rectTransform.sizeDelta.y,source.text);
             copy.transform.localRotation=Quaternion.Euler(0,180,0);
             repeatWords[source]=copy;
         }
 
+        /// <summary>
+        /// The audience's copy of die <paramref name="i"/>'s value, in its ink, on that die's own rear
+        /// face and turned to the audience. It stays on its die - the audience sees the dice in the
+        /// other order, and each value on the die it belongs to - in the face's part above the back
+        /// rail (<see cref="DieRearRise"/>).
+        /// </summary>
+        private void RepeatDieFace(int i)
+        {
+            Vector3 die=indicators[i].transform.localPosition;
+            TMP_Text source=glyphs[i];
+            TMP_Text copy=Words(source.name+" audience readout",new Vector3(die.x,die.y+DieRearRise,die.z+DieFaceOffset),
+                source.rectTransform.sizeDelta.x,DieRearHeight,source.text);
+            copy.color=source.color;
+            copy.transform.localRotation=Quaternion.Euler(0,180,0);
+            repeatWords[source]=copy;
+        }
+
+        /// <summary>
+        /// Stands die <paramref name="i"/>'s two values on their faces as the die is turned now: the
+        /// contestant's <see cref="DieFaceOffset"/> in front of its centre, the audience's behind it and
+        /// <see cref="DieRearRise"/> up, each turned with the die. A tumbling die carries both round with
+        /// it rather than sweeping its corners through them; a square die puts them back on the planes
+        /// they always stood on. The labels stay children of the instrument, under their own names.
+        /// </summary>
+        private void TurnLabelsWithDie(int i)
+        {
+            Transform die=indicators[i].transform;
+            Quaternion turn=die.localRotation;Vector3 centre=die.localPosition;
+            glyphs[i].transform.SetLocalPositionAndRotation(centre+turn*(Vector3.back*DieFaceOffset),turn);
+            if(repeatWords.TryGetValue(glyphs[i],out var copy))
+                copy.transform.SetLocalPositionAndRotation(centre+turn*new Vector3(0,DieRearRise,DieFaceOffset),turn*Quaternion.Euler(0,180,0));
+        }
+
+        /// <summary>
+        /// Gives every label in <see cref="sharedSizeLabels"/> one font size, the smallest of the sizes
+        /// TMP's own auto-size gives each in its box - the largest size that fits them all - and turns
+        /// their auto-size off. It needs TMP to have woken the labels and built their text: a console
+        /// built under an inactive anchor shares on its first read once they have (Build, then Sync).
+        /// </summary>
+        private void ShareLabelSize()
+        {
+            if(labelSizeShared || sharedSizeLabels.Count==0)return;
+            float size=float.PositiveInfinity;
+            foreach(TMP_Text label in sharedSizeLabels)
+            {
+                label.ForceMeshUpdate(true);
+                if(label.textInfo==null || label.textInfo.characterCount==0)return;
+                size=Mathf.Min(size,label.fontSize);
+            }
+            foreach(TMP_Text label in sharedSizeLabels){label.enableAutoSizing=false;label.fontSize=size;}
+            labelSizeShared=true;
+        }
+
+        /// <summary>
+        /// Sizes a memory console's sixteen faces and their audience copies once, in two sizes: every face
+        /// word a run can deal at one, the smallest TMP's own auto-size gives any of them alone in a face's
+        /// box (the largest at which the widest still fits it), and the face-down '?' at the size it gives the
+        /// mark. Auto-size then goes off and <see cref="SetWord"/> sizes a face with its text. Each face used
+        /// to size its word alone, stopping at the .45 floor, so the widest (TROPHY, TARGET, CROWN, SHIELD,
+        /// HOUSE) ran off the cap's flat face onto the housing, where a lit tile's ink vanished on the navy.
+        /// Like <see cref="ShareLabelSize"/> it needs TMP to have woken the faces: a console built under an
+        /// inactive anchor sizes them on its first read once it has.
+        /// </summary>
+        private void ShareFaceSizes()
+        {
+            if(faceSizesShared || Instrument!=Family.PairConsole)return;
+            TMP_Text probe=glyphs[0];
+            string shown=probe.text;
+            float word=float.PositiveInfinity,mark=0;
+            for(int face=0;face<=CompetitionMiniGames.MemoryPairs;face++)
+            {
+                bool faceDown=face==CompetitionMiniGames.MemoryPairs;
+                probe.text=faceDown?"?":CompetitionGameScreen.MemoryFaceName(face);
+                probe.ForceMeshUpdate(true);
+                if(probe.textInfo==null || probe.textInfo.characterCount==0){probe.text=shown;return;}
+                if(faceDown)mark=probe.fontSize;else word=Mathf.Min(word,probe.fontSize);
+            }
+            probe.text=shown;
+            faceWordSize=word;faceMarkSize=mark;faceSizesShared=true;
+            foreach(TMP_Text face in glyphs)
+                foreach(TMP_Text label in new[]{face,repeatWords[face]}){label.enableAutoSizing=false;SizeFace(label);}
+        }
+
+        private void SizeFace(TMP_Text face)=>face.fontSize=face.text=="?"?faceMarkSize:faceWordSize;
+
         private void SetWord(TMP_Text label,string value)
         {
             label.text=value;
-            if(repeatWords.TryGetValue(label,out var copy))copy.text=value;
+            bool repeated=repeatWords.TryGetValue(label,out var copy);
+            if(repeated)copy.text=value;
+            if(!faceSizesShared || label==progress)return;
+            SizeFace(label);
+            if(repeated)SizeFace(copy);
         }
 
         private static Mesh BoxMesh()

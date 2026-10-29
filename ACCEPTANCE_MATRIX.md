@@ -77,6 +77,8 @@ online accounts are connected.
 A1 and A2 can be run without the interactive editor, against a copy of the project:
 
 ```bash
+# Keeps the AI Assistant package's MCP bridge off in batch mode (see the first trap in README.md).
+export UNITY_MCP_DISABLE_BATCH=1
 "C:\Program Files\Unity\Hub\Editor\6000.6.0f1\Editor\Unity.exe" -batchmode -accept-apiupdate -projectPath D:\GamesimAcceptance -runTests -testPlatform PlayMode -assemblyNames Gamesim.PlayModeTests -testResults D:\GamesimAcceptance\playmode-results.xml -logFile D:\GamesimAcceptance\playmode.log
 ```
 

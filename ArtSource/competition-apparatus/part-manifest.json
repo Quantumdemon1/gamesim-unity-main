@@ -1,0 +1,595 @@
+{
+  "contractVersion": 1,
+  "resourceName": "Gamesim/Competition/ApparatusMeshKit",
+  "sourceProject": "D:/GamesimConsolidation",
+  "sourcePath": "Assets/Gamesim/Runtime/Presentation/CompetitionApparatus.cs",
+  "normalizedBounds": {
+    "center": [
+      0,
+      0,
+      0
+    ],
+    "size": [
+      1,
+      1,
+      1
+    ]
+  },
+  "oneSubmesh": true,
+  "notes": [
+    "Generate each part in real meter dimensions, then divide vertices by its own referenceDimensions offline. Do not normalize one mesh into several mismatched aspect ratios.",
+    "Unity local X/Y/Z are width/height/depth; front is negativeZ. Export axis conversion must yield this coordinate system.",
+    "Shared meshes are immutable; no materials, colliders, text, animation, bones or scripts in kit meshes. Runtime already owns those.",
+    "Bevels/contour cuts must stay inside existing unit envelope. Keep named hand contact planes solid.",
+    "Missing entries fall back per part. Stable family/PartKind enum numeric values provided for generated editor builder."
+  ],
+  "partKinds": [
+    "StanceRail",
+    "ConsoleLeg",
+    "ConsoleHousing",
+    "RecessedDisplay",
+    "AwardHeader",
+    "MemoryTile",
+    "SignalTarget",
+    "ResponsePad",
+    "RigUpright",
+    "RigBrace",
+    "GripHandle",
+    "GripTrack",
+    "GripRemaining",
+    "CounterweightGuide",
+    "Counterweight",
+    "GripTick",
+    "TrayPedestal",
+    "TrayBed",
+    "TrayBackRail",
+    "TraySideRail",
+    "Die",
+    "LetterTile",
+    "ProgressBacking"
+  ],
+  "entries": [
+    {
+      "family": "Signals",
+      "familyValue": 0,
+      "partKind": "StanceRail",
+      "partKindValue": 0,
+      "meshName": "Signals_StanceRail",
+      "referenceDimensions": [
+        0.035,
+        0.025,
+        0.55
+      ],
+      "material": "Award trim"
+    },
+    {
+      "family": "Signals",
+      "familyValue": 0,
+      "partKind": "ProgressBacking",
+      "partKindValue": 22,
+      "meshName": "Signals_ProgressBacking",
+      "referenceDimensions": [
+        0.96,
+        0.16,
+        0.008
+      ],
+      "material": "Instrument face",
+      "notes": "Front and audience text backings; retain opaque central face. No raised decoration."
+    },
+    {
+      "family": "PairConsole",
+      "familyValue": 1,
+      "partKind": "StanceRail",
+      "partKindValue": 0,
+      "meshName": "PairConsole_StanceRail",
+      "referenceDimensions": [
+        0.035,
+        0.025,
+        0.55
+      ],
+      "material": "Award trim"
+    },
+    {
+      "family": "PairConsole",
+      "familyValue": 1,
+      "partKind": "ProgressBacking",
+      "partKindValue": 22,
+      "meshName": "PairConsole_ProgressBacking",
+      "referenceDimensions": [
+        0.96,
+        0.16,
+        0.008
+      ],
+      "material": "Instrument face",
+      "notes": "Front and audience text backings; retain opaque central face. No raised decoration."
+    },
+    {
+      "family": "GripRig",
+      "familyValue": 2,
+      "partKind": "StanceRail",
+      "partKindValue": 0,
+      "meshName": "GripRig_StanceRail",
+      "referenceDimensions": [
+        0.035,
+        0.025,
+        0.55
+      ],
+      "material": "Award trim"
+    },
+    {
+      "family": "GripRig",
+      "familyValue": 2,
+      "partKind": "ProgressBacking",
+      "partKindValue": 22,
+      "meshName": "GripRig_ProgressBacking",
+      "referenceDimensions": [
+        0.96,
+        0.16,
+        0.008
+      ],
+      "material": "Instrument face",
+      "notes": "Front and audience text backings; retain opaque central face. No raised decoration."
+    },
+    {
+      "family": "DiceTray",
+      "familyValue": 3,
+      "partKind": "StanceRail",
+      "partKindValue": 0,
+      "meshName": "DiceTray_StanceRail",
+      "referenceDimensions": [
+        0.035,
+        0.025,
+        0.55
+      ],
+      "material": "Award trim"
+    },
+    {
+      "family": "DiceTray",
+      "familyValue": 3,
+      "partKind": "ProgressBacking",
+      "partKindValue": 22,
+      "meshName": "DiceTray_ProgressBacking",
+      "referenceDimensions": [
+        0.96,
+        0.16,
+        0.008
+      ],
+      "material": "Instrument face",
+      "notes": "Front and audience text backings; retain opaque central face. No raised decoration."
+    },
+    {
+      "family": "WordConsole",
+      "familyValue": 4,
+      "partKind": "StanceRail",
+      "partKindValue": 0,
+      "meshName": "WordConsole_StanceRail",
+      "referenceDimensions": [
+        0.035,
+        0.025,
+        0.55
+      ],
+      "material": "Award trim"
+    },
+    {
+      "family": "WordConsole",
+      "familyValue": 4,
+      "partKind": "ProgressBacking",
+      "partKindValue": 22,
+      "meshName": "WordConsole_ProgressBacking",
+      "referenceDimensions": [
+        0.96,
+        0.16,
+        0.008
+      ],
+      "material": "Instrument face",
+      "notes": "Front and audience text backings; retain opaque central face. No raised decoration."
+    },
+    {
+      "family": "Signals",
+      "familyValue": 0,
+      "partKind": "ConsoleLeg",
+      "partKindValue": 1,
+      "meshName": "Signals_ConsoleLeg",
+      "referenceDimensions": [
+        0.07,
+        0.84,
+        0.14
+      ],
+      "material": "Arena graphite"
+    },
+    {
+      "family": "Signals",
+      "familyValue": 0,
+      "partKind": "ConsoleHousing",
+      "partKindValue": 2,
+      "meshName": "Signals_ConsoleHousing",
+      "referenceDimensions": [
+        0.95,
+        0.8,
+        0.14
+      ],
+      "material": "Arena graphite"
+    },
+    {
+      "family": "Signals",
+      "familyValue": 0,
+      "partKind": "RecessedDisplay",
+      "partKindValue": 3,
+      "meshName": "Signals_RecessedDisplay",
+      "referenceDimensions": [
+        0.86,
+        0.69,
+        0.025
+      ],
+      "material": "Instrument face"
+    },
+    {
+      "family": "Signals",
+      "familyValue": 0,
+      "partKind": "AwardHeader",
+      "partKindValue": 4,
+      "meshName": "Signals_AwardHeader",
+      "referenceDimensions": [
+        0.95,
+        0.045,
+        0.03
+      ],
+      "material": "Award trim"
+    },
+    {
+      "family": "PairConsole",
+      "familyValue": 1,
+      "partKind": "ConsoleLeg",
+      "partKindValue": 1,
+      "meshName": "PairConsole_ConsoleLeg",
+      "referenceDimensions": [
+        0.07,
+        0.84,
+        0.14
+      ],
+      "material": "Arena graphite"
+    },
+    {
+      "family": "PairConsole",
+      "familyValue": 1,
+      "partKind": "ConsoleHousing",
+      "partKindValue": 2,
+      "meshName": "PairConsole_ConsoleHousing",
+      "referenceDimensions": [
+        0.92,
+        0.8,
+        0.14
+      ],
+      "material": "Arena graphite"
+    },
+    {
+      "family": "PairConsole",
+      "familyValue": 1,
+      "partKind": "RecessedDisplay",
+      "partKindValue": 3,
+      "meshName": "PairConsole_RecessedDisplay",
+      "referenceDimensions": [
+        0.8300000000000001,
+        0.69,
+        0.025
+      ],
+      "material": "Instrument face"
+    },
+    {
+      "family": "PairConsole",
+      "familyValue": 1,
+      "partKind": "AwardHeader",
+      "partKindValue": 4,
+      "meshName": "PairConsole_AwardHeader",
+      "referenceDimensions": [
+        0.92,
+        0.045,
+        0.03
+      ],
+      "material": "Award trim"
+    },
+    {
+      "family": "WordConsole",
+      "familyValue": 4,
+      "partKind": "ConsoleLeg",
+      "partKindValue": 1,
+      "meshName": "WordConsole_ConsoleLeg",
+      "referenceDimensions": [
+        0.07,
+        0.84,
+        0.14
+      ],
+      "material": "Arena graphite"
+    },
+    {
+      "family": "WordConsole",
+      "familyValue": 4,
+      "partKind": "ConsoleHousing",
+      "partKindValue": 2,
+      "meshName": "WordConsole_ConsoleHousing",
+      "referenceDimensions": [
+        1.02,
+        0.8,
+        0.14
+      ],
+      "material": "Arena graphite"
+    },
+    {
+      "family": "WordConsole",
+      "familyValue": 4,
+      "partKind": "RecessedDisplay",
+      "partKindValue": 3,
+      "meshName": "WordConsole_RecessedDisplay",
+      "referenceDimensions": [
+        0.93,
+        0.69,
+        0.025
+      ],
+      "material": "Instrument face"
+    },
+    {
+      "family": "WordConsole",
+      "familyValue": 4,
+      "partKind": "AwardHeader",
+      "partKindValue": 4,
+      "meshName": "WordConsole_AwardHeader",
+      "referenceDimensions": [
+        1.02,
+        0.045,
+        0.03
+      ],
+      "material": "Award trim"
+    },
+    {
+      "family": "Signals",
+      "familyValue": 0,
+      "partKind": "SignalTarget",
+      "partKindValue": 6,
+      "meshName": "Signals_SignalTarget",
+      "referenceDimensions": [
+        0.2,
+        0.17,
+        0.03
+      ],
+      "material": "Indicator face",
+      "notes": "No directional/score glyphs in mesh; runtime renders real labels."
+    },
+    {
+      "family": "Signals",
+      "familyValue": 0,
+      "partKind": "ResponsePad",
+      "partKindValue": 7,
+      "meshName": "Signals_ResponsePad",
+      "referenceDimensions": [
+        0.14,
+        0.065,
+        0.15
+      ],
+      "material": "Award trim",
+      "notes": "Retain broad flat central top face at normalized y=.5. Height is fitted, scale unchanged."
+    },
+    {
+      "family": "PairConsole",
+      "familyValue": 1,
+      "partKind": "MemoryTile",
+      "partKindValue": 5,
+      "meshName": "PairConsole_MemoryTile",
+      "referenceDimensions": [
+        0.16,
+        0.13,
+        0.025
+      ],
+      "material": "Indicator face",
+      "notes": "Front/audience repeaters same mesh. No baked face/symbol/history; runtime owns disclosure."
+    },
+    {
+      "family": "WordConsole",
+      "familyValue": 4,
+      "partKind": "LetterTile",
+      "partKindValue": 21,
+      "meshName": "WordConsole_LetterTile",
+      "referenceDimensions": [
+        0.125,
+        0.16,
+        0.025
+      ],
+      "material": "Indicator face",
+      "notes": "Front/audience repeaters same mesh. No baked letter; runtime owns disclosure."
+    },
+    {
+      "family": "GripRig",
+      "familyValue": 2,
+      "partKind": "RigUpright",
+      "partKindValue": 8,
+      "meshName": "GripRig_RigUpright",
+      "referenceDimensions": [
+        0.065,
+        1.56,
+        0.09
+      ],
+      "material": "Arena graphite",
+      "intentionalDynamicYScale": true,
+      "notes": "Prismatic along Y; retain readable cross section across existing FitGrip/Sync scale range."
+    },
+    {
+      "family": "GripRig",
+      "familyValue": 2,
+      "partKind": "RigBrace",
+      "partKindValue": 9,
+      "meshName": "GripRig_RigBrace",
+      "referenceDimensions": [
+        0.91,
+        0.07,
+        0.1
+      ],
+      "material": "Award trim",
+      "intentionalDynamicYScale": false,
+      "notes": ""
+    },
+    {
+      "family": "GripRig",
+      "familyValue": 2,
+      "partKind": "GripHandle",
+      "partKindValue": 10,
+      "meshName": "GripRig_GripHandle",
+      "referenceDimensions": [
+        0.78,
+        0.045,
+        0.055
+      ],
+      "material": "Award trim",
+      "intentionalDynamicYScale": false,
+      "notes": "GripHandle front contact plane z=-.5 at x=-.33 and +.33 must remain solid."
+    },
+    {
+      "family": "GripRig",
+      "familyValue": 2,
+      "partKind": "GripTrack",
+      "partKindValue": 11,
+      "meshName": "GripRig_GripTrack",
+      "referenceDimensions": [
+        0.055,
+        0.69,
+        0.04
+      ],
+      "material": "Instrument face",
+      "intentionalDynamicYScale": false,
+      "notes": ""
+    },
+    {
+      "family": "GripRig",
+      "familyValue": 2,
+      "partKind": "GripRemaining",
+      "partKindValue": 12,
+      "meshName": "GripRig_GripRemaining",
+      "referenceDimensions": [
+        0.035,
+        0.69,
+        0.025
+      ],
+      "material": "Indicator face",
+      "intentionalDynamicYScale": true,
+      "notes": "Prismatic along Y; retain readable cross section across existing FitGrip/Sync scale range."
+    },
+    {
+      "family": "GripRig",
+      "familyValue": 2,
+      "partKind": "CounterweightGuide",
+      "partKindValue": 13,
+      "meshName": "GripRig_CounterweightGuide",
+      "referenceDimensions": [
+        0.03,
+        0.76,
+        0.03
+      ],
+      "material": "Arena graphite",
+      "intentionalDynamicYScale": false,
+      "notes": ""
+    },
+    {
+      "family": "GripRig",
+      "familyValue": 2,
+      "partKind": "Counterweight",
+      "partKindValue": 14,
+      "meshName": "GripRig_Counterweight",
+      "referenceDimensions": [
+        0.25,
+        0.16,
+        0.17
+      ],
+      "material": "Arena graphite",
+      "intentionalDynamicYScale": false,
+      "notes": ""
+    },
+    {
+      "family": "GripRig",
+      "familyValue": 2,
+      "partKind": "GripTick",
+      "partKindValue": 15,
+      "meshName": "GripRig_GripTick",
+      "referenceDimensions": [
+        0.06,
+        0.012,
+        0.03
+      ],
+      "material": "Award trim",
+      "intentionalDynamicYScale": false,
+      "notes": ""
+    },
+    {
+      "family": "DiceTray",
+      "familyValue": 3,
+      "partKind": "TrayPedestal",
+      "partKindValue": 16,
+      "meshName": "DiceTray_TrayPedestal",
+      "referenceDimensions": [
+        0.2,
+        1.1,
+        0.25
+      ],
+      "material": "Arena graphite",
+      "intentionalDynamicYScale": true,
+      "notes": "Prismatic support along Y; FitPress intentionally scales height."
+    },
+    {
+      "family": "DiceTray",
+      "familyValue": 3,
+      "partKind": "TrayBed",
+      "partKindValue": 17,
+      "meshName": "DiceTray_TrayBed",
+      "referenceDimensions": [
+        0.91,
+        0.08,
+        0.42
+      ],
+      "material": "Instrument face",
+      "intentionalDynamicYScale": false,
+      "notes": ""
+    },
+    {
+      "family": "DiceTray",
+      "familyValue": 3,
+      "partKind": "TrayBackRail",
+      "partKindValue": 18,
+      "meshName": "DiceTray_TrayBackRail",
+      "referenceDimensions": [
+        0.96,
+        0.13,
+        0.05
+      ],
+      "material": "Award trim",
+      "intentionalDynamicYScale": false,
+      "notes": ""
+    },
+    {
+      "family": "DiceTray",
+      "familyValue": 3,
+      "partKind": "TraySideRail",
+      "partKindValue": 19,
+      "meshName": "DiceTray_TraySideRail",
+      "referenceDimensions": [
+        0.05,
+        0.13,
+        0.44
+      ],
+      "material": "Award trim",
+      "intentionalDynamicYScale": false,
+      "notes": ""
+    },
+    {
+      "family": "DiceTray",
+      "familyValue": 3,
+      "partKind": "Die",
+      "partKindValue": 20,
+      "meshName": "DiceTray_Die",
+      "referenceDimensions": [
+        0.17,
+        0.17,
+        0.17
+      ],
+      "material": "Indicator face",
+      "intentionalDynamicYScale": false,
+      "notes": "Centered pivot, flat front central face z=-.5, no pips/numbers. Sync owns yaw; glyphs own actual results."
+    }
+  ]
+}

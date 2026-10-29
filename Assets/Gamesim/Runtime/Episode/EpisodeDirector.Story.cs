@@ -60,6 +60,21 @@ namespace Gamesim.Episode
             return true;
         }
 
+        /// <summary>
+        /// The public record a "Cite their public rescue" conversation stands on, in words: who used the veto, on
+        /// whom, and who went up in their place. Each of the three is a houseguest of this season by construction -
+        /// TryReadPublicRescue admits the whole state and the week's completed reveal, which holds the holder known
+        /// and the saved and the replacement present that week - so the names always resolve. Null rather than a
+        /// throw mid-render if that ever stops holding: the conversation still draws, without the line.
+        /// </summary>
+        private static string PublicRescueLine(EpisodeState state, DialogueRules.PublicRescueView record)
+        {
+            string holder = state.Find(record.HolderId)?.name, saved = state.Find(record.SavedId)?.name,
+                replacement = state.Find(record.ReplacementId)?.name;
+            if (holder == null || saved == null || replacement == null) return null;
+            return "Week " + record.Week + ": " + holder + " used the veto to save " + saved + "; " + replacement + " went on the block.";
+        }
+
         private void RenderStoryBeat(EpisodeState state, HouseEventState item)
         {
             hud.StoryBeatHeader(StoryText.Eyebrow(item), StoryText.Title(item), StoryText.Narrative(state, item));
@@ -67,9 +82,8 @@ namespace Gamesim.Episode
                 && DialogueRules.TryReadPublicRescue(state, item.id, out var record))
             {
                 // Only this detached public projection reaches the HUD; never the cloned private proof.
-                hud.Paragraph("Week " + record.Week + ": " + state.Find(record.HolderId).name
-                    + " used the veto to save " + state.Find(record.SavedId).name + "; "
-                    + state.Find(record.ReplacementId).name + " went on the block.");
+                string line = PublicRescueLine(state, record);
+                if (line != null) hud.Paragraph(line);
             }
             if (storyStepEvent == item.id)
             {

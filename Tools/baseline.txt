@@ -32,7 +32,12 @@
 # 8982 = 8932 + R6's 38 RoleStoryMomentsTests cases (on main, first counted here) + BatchMcpBridgeIsolationTests' 12
 # (10 TestCase rows and 2 tests): the full NoUMA run at e2670955 (this branch with claude/uma-retention-tidy, both on
 # main 772828ba, 2026-10-27), 8982 of 8982.
-Gamesim.EditModeTests 8982
+# 9016 = 8982 + the props batch's 34: HouseSmallPropAssetTests' 29 (14 x 2 TestCaseSource plus
+# SavedEpisodeUsesExactlyTheSixteenSelectedAuthoredProps) and RoomFinishTests' 5, which pass only with the 14 imported
+# props, their 30 materials and the re-saved EpisodeHouse.unity. The props batch's own full NoUMA run at 423b82ca
+# (aafb7399 with PR #33's test-only 5a61dde4, 2026-10-26) ran 9004 of 9004 = 8970 + 34; the two sets' cases are
+# disjoint, so the floor is their sum.
+Gamesim.EditModeTests 9016
 # The UMA-free build. 1215 = 1236, the count after the consolidation's lanes (S2a, S2b, S4a), less the 7
 # farewell probes moved to Gamesim.DiagnosticsPlayModeTests and the 14 farewell readiness tests that now
 # compile only under GAMESIM_UMA (judged on the UMA cast); 1230 = 1215 + S2d's 7, S4b's 2, S4c's 2 and
@@ -56,7 +61,11 @@ Gamesim.EditModeTests 8982
 # 1326 = 1323 + 3840c58d's 3 shared play-frame tests (JuryReveal_ItsTimeStartsWhenItIsDrawn,
 # VetoDraw_TheRevealsTimeStartsWhenItIsDrawn, Result_ItsTimeStartsWhenItIsDrawn): the full NoUMA run at 7f754510
 # (main b208d46d merged in, 2026-10-25), 1326 of 1326.
-Gamesim.PlayModeTests 1326
+# 1345 = 1326 + the props batch's 19 shared cases: CompetitionApparatusMeshKitPlayModeTests' 7 (its six fixtures
+# and the installed-kit case; they pass only with the 39 imported parts and ApparatusMeshKit.asset), the apparatus
+# class's 9 and the 3 scenery cases (the drawn-set-piece case at 6 and 16 entrants, and the south-yard case): the
+# full NoUMA run at 423b82ca (2026-10-26), 1345 of 1345.
+Gamesim.PlayModeTests 1345
 # The UMA build of the same assembly, read by a plan built without -WithoutUma. 1281 = the 1241 above + the
 # 40 tests that compile only under GAMESIM_UMA, as run at r1 (2026-10-16): in EpisodePlayModeTests,
 # GroundedFarewell 11, Creator 9, HouseLife 8, Emotes 3, OpeningCaptures 2, and one each in CreatorEntry,
@@ -70,7 +79,9 @@ Gamesim.PlayModeTests 1326
 # 1343 of 1343 on 2026-10-25, as six process groups whose union was checked case by case).
 # 1366 = 1363 + the same 3 shared play-frame tests: the full UMA-build run at 7f754510 (2026-10-25), 1366 of
 # 1366, in one process with the MCP bridge off.
-Gamesim.PlayModeTests.UmaBuild 1366
+# 1385 = 1366 + the same 19 shared props cases: the full UMA-build run at 423b82ca (2026-10-27), 1385 of 1385, in
+# one process with the MCP bridge off.
+Gamesim.PlayModeTests.UmaBuild 1385
 # The UMA bodies: runs only where the GAMESIM_UMA define is set (the working tree and the D: copy).
 # 82 = the 89 run on 2026-10-15, less the 7 farewell probes moved to Gamesim.Uma.DiagnosticsPlayModeTests;
 # 85 = 82 + the 3 farewell readiness decision tests (UmaFarewellReadinessDecisionPlayModeTests, 2026-10-16);

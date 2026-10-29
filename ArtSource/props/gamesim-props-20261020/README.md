@@ -10,6 +10,20 @@ session could read its recorded chat but had no tool for sending to it; ownershi
 of this batch has not been acknowledged by that chat. No shared project, scene,
 save, Unity process or validation runner was changed by this work.
 
+## Superseded: the competition generator and parts (25 October 2026)
+
+Both candidates' competition authoring is superseded by
+`ArtSource/competition-apparatus/`. That covers `Authoring/tools/build_competition_art.py`,
+`Authoring/competition/competition_parts.blend`, the 39
+`ProjectOverlay/Assets/Gamesim/Art/Authored/Competition/bb_comp_*.fbx` and
+`Previews/competition`. The generator maps a design point to Blender as
+`(x, -z, y)` (line 14), so its parts import into Unity mirrored front to back.
+The housings' and the counterweight's rear lids, the leg channels and the keycaps'
+bases all end up facing the contestant. The game uses the parts regenerated
+there with the axis fixed (commit eb0e27f0), in `Assets/Gamesim/Art/CompetitionKit`.
+Do not regenerate from this copy or import its competition FBXs. The candidate
+folders stay as delivered because `verify_bundle.py` hashes every file in them.
+
 ## Delivered scope
 
 | Batch | Assets | Existing placements or use |

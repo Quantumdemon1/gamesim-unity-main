@@ -520,6 +520,10 @@ namespace Gamesim.Tests.PlayMode
 
             yield return Until(() => keys.ShowingBlock, 15f);
             Assert.That(keys.ShowingBlock, Is.True, "The block never came.");
+            // The block's frame clears the beat's SAFE frame - also named "Nominee slot" (KeyCeremony.Slot) - with a
+            // Destroy that runs at that frame's end, and this resume can come first: read the board a frame later.
+            yield return null;
+            Assert.That(keys.ShowingBlock, Is.True, "The block is still up a frame later.");
             var slots = Rects(keys, "Nominee slot").Where(slot => slot.gameObject.activeInHierarchy).Select(slot => OnTheCard(keys, slot)).OrderBy(slot => slot.xMin).ToArray();
             Assert.That(slots, Has.Length.EqualTo(2), "The block's two frames are up.");
             var gap = UnityEngine.Rect.MinMaxRect(slots[0].xMax, Mathf.Min(slots[0].yMin, slots[1].yMin), slots[1].xMin, Mathf.Max(slots[0].yMax, slots[1].yMax));

@@ -65,6 +65,24 @@ namespace Gamesim.Presentation
             return Mathf.Abs(Vector3.Dot(other.Center-Center,axis))>=a+b;
         }
 
+        /// <summary>
+        /// Whether this reservation meets a world-axis box - a drawn piece's renderer bounds
+        /// (<see cref="CompetitionStageScenery"/>). Touching is not meeting. The reservation turns
+        /// only about y, so its height and the box's must overlap, and in plan the two rectangles
+        /// must overlap on all four of their axes.
+        /// </summary>
+        public bool Meets(Bounds box)
+        {
+            if(Mathf.Abs(box.center.y-Center.y)>=HalfSize.y+box.extents.y)return false;
+            Vector3 right=Rotation*Vector3.right,forward=Rotation*Vector3.forward,offset=box.center-Center;
+            Vector3 extents=box.extents;
+            if(Mathf.Abs(Vector3.Dot(offset,right))>=HalfSize.x+Mathf.Abs(right.x)*extents.x+Mathf.Abs(right.z)*extents.z)return false;
+            if(Mathf.Abs(Vector3.Dot(offset,forward))>=HalfSize.z+Mathf.Abs(forward.x)*extents.x+Mathf.Abs(forward.z)*extents.z)return false;
+            if(Mathf.Abs(offset.x)>=extents.x+Mathf.Abs(right.x)*HalfSize.x+Mathf.Abs(forward.x)*HalfSize.z)return false;
+            if(Mathf.Abs(offset.z)>=extents.z+Mathf.Abs(right.z)*HalfSize.x+Mathf.Abs(forward.z)*HalfSize.z)return false;
+            return true;
+        }
+
         public bool HasStaticClearance(PhysicsScene physics,Collider floor,Collider[] scratch,
             ISet<Transform> routeOwners=null,Transform prospectiveSelf=null)
         {

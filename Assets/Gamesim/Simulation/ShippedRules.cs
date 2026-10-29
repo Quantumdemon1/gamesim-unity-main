@@ -23,7 +23,17 @@ namespace Gamesim.Simulation
     public static class ShippedRules
     {
         /// <summary>Switches every shipped rule on for a fresh, unplayed season, from week one.</summary>
-        public static void ApplyFresh(EpisodeState fresh)
+        public static void ApplyFresh(EpisodeState fresh) => ApplyFresh(fresh, null);
+
+        /// <summary>
+        /// The same, with what the player chose on the cast screen (DIALOGUE-PLAN D1). Null, or a choice with
+        /// nothing opted in, gives exactly <see cref="ApplyFresh(EpisodeState)"/>. The one option today is the
+        /// preview chip, <see cref="SeasonBuilder.Choice.CampaignConversations"/>: it starts the season on the
+        /// pinned <see cref="DialogueRules.Offered"/>, never the bound <see cref="DialogueRules.Version"/>, and is
+        /// written last, after every rule the pilot's prerequisites read (DialogueRules.Prerequisites). It draws
+        /// nothing, logs nothing and mints no id, as the rest of this method does not.
+        /// </summary>
+        public static void ApplyFresh(EpisodeState fresh, SeasonBuilder.Choice options)
         {
             if (fresh == null) throw new ArgumentNullException(nameof(fresh));
             fresh.competitionRulesVersion = CompetitionRules.Current;
@@ -59,9 +69,13 @@ namespace Gamesim.Simulation
             // already active - every vote promise and deal one canonical row, settled at the reveal
             // under Rule2 and archived with its frame. Do not infer this opt-in while loading,
             // recovering, migrating or importing an existing season: a season recorded in mode 0 or 1
-            // keeps its mode (the lead's decision D6). Dialogue remains off in the schema29 foundation.
+            // keeps its mode (the lead's decision D6).
             fresh.unifiedCommitmentRulesVersion = UnifiedVoteFamilyValidation.Version;
             fresh.unifiedHearingRulesVersion = UnifiedCommitmentHearings.ProspectiveVersion;
+            // Dialogue stays off in a shipped season (OWNER-DECISIONS-2026-10-22 §5) unless the player opts this one
+            // in on the cast screen. Like every rule here it is never inferred while loading, recovering,
+            // migrating or importing: a season keeps the dialogue rules it began on.
+            if (options != null && options.CampaignConversations) fresh.dialogueRulesVersion = DialogueRules.Offered;
         }
 
         /// <summary>

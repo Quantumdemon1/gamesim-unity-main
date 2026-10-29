@@ -12,6 +12,9 @@ Where it stands (lane W2-saves, 2026-10-15; review fixes 2026-10-16):
   - **Schema 29 included** (2026-10-22, section 6 step 5): three saves written and recorded by the schema-29 build
     itself (60d8f629), one for each commitment mode at dialogue rules 0. `OldSaveTrace` knows schema 29's literals and
     `Newest` is 29 (2.3).
+  - **And dialogue rules 1** (2026-10-25, dialogue D1): one save written and recorded by the build whose cast screen
+    starts such a season (36882bb8), saved mid-conversation. Its checkpoints are taken at 29 itself, through the
+    schema-29 observer's native arm, because a store holding a conversation has no schema-28 form (2.4).
   - A cell counts only a fixture saved in a week, before the finale, whose recorded script plays the season on from
     there. The eight real saves made at the final speeches or after the finale are read, never counted as their
     cell's replay (1.3).
@@ -146,15 +149,17 @@ de88a8bb. So schema 28 carries five director combinations, each replayed from mi
 | mode 2, all-week on (de88a8bb on: the shipped rules today, lead6) | s28-mode2-allweek-w3-campaign (de88a8bb), saved with vote commitments pending the week-3 reveal | the real lead6 season, finished |
 
 Schema 29 adds the dialogue rules, at 0 on every season a shipped build starts or migrates. The 29 build writes three
-commitment modes, each replayed from mid-season by a save it wrote itself (2.3):
+commitment modes, each replayed from mid-season by a save it wrote itself (2.3). From dialogue D1 a season the cast
+screen's conversation preview starts plays dialogue rules 1, the fourth cell (2.4):
 
 | Cell (dialogue rules 0) | How the 29 build writes it | Replayed by |
 | --- | --- | --- |
 | mode 0, every optional rule off | the default scene's season (`ContentCatalog.Create(20260910)`) | s29-default-w2-social |
 | mode 1, all-week on, leaks and war rooms | an older mode-1 season, migrated on load and saved again: the 29 build starts no mode-1 season | s29-mode1-allweek-w3-veto-meeting, s28-mode1-allweek-w2-campaign carried on |
 | mode 2, all-week on, leaks and war rooms | a fresh director season, `ShippedRules.ApplyFresh` | s29-mode2-allweek-w3-campaign, saved with vote commitments pending the week-3 reveal |
+| mode 2 as above, **dialogue rules 1** | a fresh director season with the preview chip, `ShippedRules.ApplyFresh(fresh, options)` (D1) | s29-mode2-dialogue1-w2-campaign, saved with the campaign conversation open at its case node |
 
-**The cells** are checked by `TheManifestListsEveryFixtureAndEveryFileIsTheSourceByteForByte`: 51 cells of schema,
+**The cells** are checked by `TheManifestListsEveryFixtureAndEveryFileIsTheSourceByteForByte`: 52 cells of schema,
 profile, commitment mode, all-week rules, Wave D's leaks and war rooms and, from schema 29, the dialogue rules, with
 the schema-22 director cell in each of its three shapes. Plus the careers, and the refused story-arcs 14. Before
 schema 6 the director played the default scene's catalogue season (`ContentCatalog.Create`, seed 20260910 or a fresh
@@ -263,7 +268,9 @@ itself (2.3).
 | Schema 28, mode 2 (lead6) | de88a8bb |
 
 **Size.** The fixture folder is 7,463,080 bytes (7.5 MB), plus the reused 28 KB V21 save. Schemas 2 to 5 added
-175,024 bytes; the seven review fixtures (2026-10-16) 898,867; schema 29's three (2026-10-22) 414,839.
+175,024 bytes; the seven review fixtures (2026-10-16) 898,867; schema 29's three (2026-10-22) 414,839. The dialogue-1
+fixture (2026-10-25) adds a 134,958-byte save, a 25,866-byte script and checkpoint list, two metas and its manifest row:
+the manifest is 102,740 bytes now. The table is as it stood before it.
 
 | Part | Size |
 | --- | --- |
@@ -478,6 +485,44 @@ recorder of the 29 build replay an older reference's script.
 - `CurrentOldSaveTrace` also requires `OldSaveTrace`'s projection of every live checkpoint to equal the observer's
   schema 28, so the tests and the recorder cannot part.
 
+### 2.4 Schema 29 on dialogue rules 1: written by the build that starts it (2026-10-25)
+
+**Why this one.** From dialogue D1 a season can play dialogue rules 1: the cast screen's conversation preview chip
+starts it (`ShippedRules.ApplyFresh(fresh, options)` writes `DialogueRules.Offered`, 1). Nothing else writes it, and
+no migration infers it, so the only file of the cell is one such a season saves. It is saved mid-conversation, at the
+case node, so that the store holds an episode, a storyline and its house events, and the script resumes it after the
+load.
+
+**How it was made.**
+
+- The recorder was built from a `git archive` extract of 36882bb8's `Simulation` and `Runtime/Persistence`
+  (`OLDSAVE_SOURCE_TREE=1`), with that tree's `OldSaveTrace.cs` and `Recorder.cs`, and `Rules.Preview.cs`: the
+  director's rules with the chip on.
+- `converse 2901 8 3` wrote s29-mode2-dialogue1-w2-campaign (134,958 bytes). The mode is new: the walker plays the
+  fresh season to its first campaign with the player nominated (week 2), answers the house's open asks with their own
+  neutral exits as the pilot's fixtures do, opens the campaign conversation with the first voter in the engine's order
+  that it can start with (Alex), through the public entry command the HUD builds, and saves there: revision 28, one
+  action spent, the conversation at its case node.
+- **The walker answers an open conversation first**, with its node's first option that is not the exit, before
+  anything else; only a season on dialogue rules has one, so no older fixture's walk changes. The recorded script so
+  begins with "Appeal personally" and "Make the plea" (the ordinary emotional plea's roll), then plays the season on.
+  Both the mode and the walker reach the dialogue rules by reflection, so the recorder still compiles at every older
+  build.
+- **The reference is the writer.** `record` on the same build: 64 commands, season digest f8d91ff14341fbc4, state
+  4926a1bc6b9206aa, text 3b5b5391cf79f8f5, won by Alex. Generated twice (the same state; only `savedAt` differs)
+  and recorded twice (the same script and digests); `replay` on the same build matches all three digests.
+- The manifest row is appended after the 59. Its `holdsDigest`, 77e6abcdb77d9b4d, is `HoldAnswers` under the
+  editor's Mono, by the same probe that gives the committed value for s29-mode2-allweek-w3-campaign; none of the
+  seventeen readers refuses the season, loaded or ended.
+- Checked for anything typed: the player is "You", the cast is the shipped roster, the only text is the walker's
+  fixed lines, and no path appears.
+
+**Checkpoints at 29, natively.** `OldSaveTrace` removes nothing at the same schema, so the recorder hashes the state as
+it is. `CurrentOldSaveTrace` admits it through `LegacyDigestSchema29Observer.NativeFields29` - the complete validator,
+the pilot's own, the closed store, the JSON bound to the state's own view - and requires the recorder's hash of the
+same state to agree. It refuses a checkpoint of such a state at an older schema. A rules-0 state goes through the
+projection to 28 exactly as before, and that projection still refuses rules 1.
+
 ## 3. Findings
 
 **F1. Schema 22 has three shapes, and the first two were refused. Repaired.**
@@ -677,12 +722,12 @@ All tests run in EditMode. None are in the dotnet subset, which excludes the sav
 
 | Test | Cases | What it holds |
 | --- | --- | --- |
-| `TheManifestListsEveryFixtureAndEveryFileIsTheSourceByteForByte` | 1 | Every file's SHA-256 and size. Real files name only their GamesimVerify source; generated ones name their writer, a commit or a Codex port snapshot, and a generated schema-29 one is recorded by its own writer. The 51 cells, each with exactly one fixture saved before the finale whose script plays the season on; the eight saved at the finale or after it are listed as read only and count for no cell. |
-| `AnOldSaveLoadsMigratesValidatesAndReplaysToItsRecordedDigest` | 59 | See below. |
-| `EveryReaderRendersAnOldSaveWithoutAHiddenBallotOrOdds` | 59 | See below. |
-| `TheSeventeenHistoricalReadersGiveTheirPinnedAnswersOnEveryOldSave` | 59 | Section 5. |
+| `TheManifestListsEveryFixtureAndEveryFileIsTheSourceByteForByte` | 1 | Every file's SHA-256 and size. Real files name only their GamesimVerify source; generated ones name their writer, a commit or a Codex port snapshot, and a generated schema-29 one is recorded by its own writer. The 52 cells, each with exactly one fixture saved before the finale whose script plays the season on; the eight saved at the finale or after it are listed as read only and count for no cell. |
+| `AnOldSaveLoadsMigratesValidatesAndReplaysToItsRecordedDigest` | 60 | See below. |
+| `EveryReaderRendersAnOldSaveWithoutAHiddenBallotOrOdds` | 60 | See below. |
+| `TheSeventeenHistoricalReadersGiveTheirPinnedAnswersOnEveryOldSave` | 60 | Section 5. |
 | `AnOldSaveFromABranchsOwnSchemaNumberIsRefusedAndLeftAsItWas` | 1 | F4. |
-| `AnOldSaveKeptAsTheBackupIsRecoveredWhetherThePrimaryIsMissingOrDamaged` | 59 | Recovery from the backup (2026-10-22). See below. |
+| `AnOldSaveKeptAsTheBackupIsRecoveredWhetherThePrimaryIsMissingOrDamaged` | 60 | Recovery from the backup (2026-10-22). See below. |
 | `AnOldSaveFromABranchsOwnSchemaNumberIsNeverRecoveredFromTheBackup` | 1 | F4 as the backup (2026-10-22). See below. |
 | `AnOldCareerFileLoadsAndAddsUp` | 2 | Read, not set aside. The summary lines. A finished old season recorded once. |
 | `PersistenceV23MigrationTests.ASchema22SaveFromTheVersionsFirstBuildsGainsTheTwoLaterFieldsAsLiterals` | 1 | F1, the first shape. |
@@ -702,9 +747,10 @@ All tests run in EditMode. None are in the dotnet subset, which excludes the sav
 9. The winner is the recorded one.
 10. An explicit save keeps the old bytes as the backup, and the reload is unchanged.
 
-Of its 59 cases, the eight read-only saves (1.3) replay three commands or none: for them the case is a load, a
-validation and a check of the end state, not replay coverage. The replay coverage is the 51 cells' mid-season
-fixtures. A schema-29 fixture's checkpoints are taken at 29 (2.3).
+Of its 60 cases, the eight read-only saves (1.3) replay three commands or none: for them the case is a load, a
+validation and a check of the end state, not replay coverage. The replay coverage is the 52 cells' mid-season
+fixtures. A schema-29 fixture's checkpoints are taken at 29 (2.3), and the dialogue-1 fixture's through the native
+arm (2.4).
 
 `AnOldSaveKeptAsTheBackupIsRecoveredWhetherThePrimaryIsMissingOrDamaged` (added 2026-10-22, the owner's gate before
 schema 29, OWNER-DECISIONS-2026-10-22 §4 item 2) calls `TryRecoverBackup` on every old fixture. One case per fixture
@@ -1065,10 +1111,11 @@ This section recorded the integration increment and its gates before they ran. S
   acceptance extended as in section 6, step 5. Both hold now: schema 29 is claimed (OWNER-DECISIONS-2026-10-22 §5),
   and the acceptance was extended to it on 2026-10-22 (2.3). A retune that moves a shipped mode-2 season without a
   version turns s29-mode2-allweek-w3-campaign red, as it does s28-mode2-allweek-w3-campaign (section 4's evidence).
-- **Schema 29's dialogue-on cells have no fixture, and cannot yet.** No shipped season plays dialogue rules above 0,
-  and `CurrentOldSaveTrace` refuses such a state: the schema-29 observer admits only dialogue rules 0 with an empty
-  store. When a shipped season switches the dialogue rules on, that boundary and the manifest test's cells need
-  extending first, then a fixture its own build writes.
+- **Schema 29's dialogue-on cell has its fixture** (2026-10-25, dialogue D1, 2.4). The boundary was extended first, as
+  this section asked: the schema-29 observer's native arm admits a valid rules-1 state at 29 and `CurrentOldSaveTrace`
+  checkpoints it there, while rules 0 keeps the projection to 28, unchanged. Then the fixture its own build wrote.
+  Dialogue rules 2 and later exist only from schema 30 (DIALOGUE-PLAN §6), so schema 29 has no further dialogue cell;
+  each later version gets its fixture at 30 when the chip first writes it.
 - **70 of the branch's new EditMode cases were first proven under the Mono harness** (2026-10-22): 57 recovery cases
   and 12 schema-29 cases in `OldSaveAcceptanceTests` (172 to 241), and the AP-0 pin. The full Unity EditMode run at
   6909f2bc then ran all of them (8642 of 8642). The floor moved to 8642 with 3ecb5382.

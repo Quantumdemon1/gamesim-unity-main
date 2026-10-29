@@ -1,0 +1,15 @@
+LicenseRef-GameSim-Original
+
+The meshes, texture artwork and authoring scripts in this batch were created for
+the user's GameSim project in response to the 20 October 2026 implementation
+request. No downloaded model, third-party texture, paid generation service or
+third-party brand artwork was used. This identifier records original project
+authorship; it does not declare CC0, MIT or another public redistribution license.
+It does not change the terms of any pre-existing GameSim code or purchased asset.
+
+Blender and the package tool are referenced as tools, not redistributed here.
+Preview-sheet captions use an installed system font; its font file is not included.
+
+Canonical GLB packages and native FBX companions are separate outputs. Native
+companions are bound by native-bridge.json and bundle-manifest.json. Their
+inclusion is not a claim that a Unity import or shipping acceptance has occurred.

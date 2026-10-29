@@ -175,6 +175,13 @@ namespace Gamesim.Simulation
                 "Sophisticated strategist with impeccable social skills. Every word is carefully chosen.",
                 "Strategic", "Social"),
             // ---------------------------------------------------------------- all-stars
+            // Real people under their real names. Three bios were rewritten in the alumni audit
+            // (story plan 20 §3.10, decision 10) to say only what the project's record holds
+            // (ALL-STAR-HISTORIES-PLAN 3.4): Janelle has played four seasons (BB6, BB7, BB14, BB22),
+            // not three; Danielle was runner-up in BB3 and played BB7, and the claim about her jury
+            // and footage is gone; and Rachel's no longer quotes her showmance catchphrase but gives
+            // her record (BB12, then the BB13 win). A season keeps the bio it was cast with
+            // (ToContestant copies it into the save), so these reach new seasons only.
             Make(Roster.AllStars, "dan-gheesling", "Dan Gheesling", "The Funeral Director", "Strategist",
                 35, "Football Coach", "he/him", "Private",
                 "Get people to carry his game for him, and make each of them believe it was their idea.",
@@ -197,7 +204,7 @@ namespace Gamesim.Simulation
                 43, "Real Estate Agent", "she/her", "Yard",
                 "Take safety off the board by winning it, every week, until nobody can afford her.",
                 "Minneapolis, MN",
-                "Three-time player and undisputed competition queen. Her fierce loyalty and athletic dominance make her the ultimate competitor.",
+                "Four-time player and undisputed competition queen. Her fierce loyalty and athletic dominance make her the ultimate competitor.",
                 "Competitive", "Social"),
             Make(Roster.AllStars, "cody-calafiore", "Cody Calafiore", "The Hitman's Partner", "Competitor",
                 33, "Sales Executive", "he/him", "Yard",
@@ -209,7 +216,7 @@ namespace Gamesim.Simulation
                 52, "Nonprofit Director", "she/her", "Bedroom",
                 "Read the room better than anyone in it, and keep every reading to herself.",
                 "Edmonds, WA",
-                "Pioneer strategist who played before the jury could watch footage. Her intuitive reads on people are legendary.",
+                "Pioneer strategist who reached the final two in her first season and came back for All-Stars. Her intuitive reads on people are legendary.",
                 "Strategic", "Intuitive"),
             Make(Roster.AllStars, "vanessa-rousso", "Vanessa Rousso", "The Poker Player", "Wildcard",
                 41, "Professional Poker Player", "she/her", "Private",
@@ -233,7 +240,7 @@ namespace Gamesim.Simulation
                 39, "Entertainment Host", "she/her", "Living",
                 "Take every shot in front of her, loudly, and make the house deal with the noise.",
                 "Las Vegas, NV",
-                "Brash, confrontational, and fiercely competitive. Her catchphrase \"No one gets between me and my man!\" echoes through BB history.",
+                "Brash, confrontational, and fiercely competitive. Came back for a second season and won it.",
                 "Confrontational", "Competitive"),
             Make(Roster.AllStars, "xavier-prather", "Xavier Prather", "The Cookout Captain", "Competitor",
                 29, "Attorney", "he/him", "Kitchen",

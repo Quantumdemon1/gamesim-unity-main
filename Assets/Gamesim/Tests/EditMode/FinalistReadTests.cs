@@ -68,7 +68,7 @@ namespace Gamesim.Tests.EditMode
                 Assert.That(read.alliances.certainty, Is.EqualTo(FinalistRead.Unknown));
                 Assert.That(read.agreement.value, Is.EqualTo("None with you"));
                 Assert.That(read.agreement.certainty, Is.EqualTo(FinalistRead.Unknown), "No agreement: nothing to go on.");
-                Assert.That(read.line, Is.EqualTo(WebIntroductions.IntroLine(unchecked((int)s.seed), finalist.id, finalist.name, finalist.traits)),
+                Assert.That(read.line, Is.EqualTo(WebIntroductions.IntroLine(unchecked((int)s.seed), finalist)),
                     "Their own line: the one they introduced themselves with.");
             }
         }

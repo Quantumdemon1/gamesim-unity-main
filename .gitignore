@@ -88,3 +88,6 @@ Tools/SimulationTests/bin/
 !Tools/SimulationTests/Frozen28/Frozen28.Tests.csproj
 Tools/SimulationTests/Frozen28/bin/
 Tools/SimulationTests/Frozen28/obj/
+!Tools/SimulationTests/Frozen29/Frozen29.Tests.csproj
+Tools/SimulationTests/Frozen29/bin/
+Tools/SimulationTests/Frozen29/obj/

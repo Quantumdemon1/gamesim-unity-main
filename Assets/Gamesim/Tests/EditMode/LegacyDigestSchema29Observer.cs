@@ -22,18 +22,36 @@ namespace Gamesim.Tests.EditMode
         internal static JObject ProjectTrace(EpisodeState state, JObject trace) =>
             LegacyDigestSchema28Observer.ProjectFields(ProjectTrace28(state, trace));
 
+        /// <summary>
+        /// The native-29 arm (DIALOGUE-PLAN D1): a current state on dialogue rules 1, the pilot the cast screen's
+        /// preview chip starts, admitted at schema 29 itself and handed back unchanged, as a detached copy. Never
+        /// projected: a store holding conversations has no schema-28 form, and dropping it would digest another
+        /// season. The projections above still take only rules 0 with the empty store, exactly as before.
+        /// Admission is the real complete current validator and the pilot's own (DialogueRules.TryValidate, On),
+        /// the literal header, the closed pilot's storage - the three ordered lists with no role grant and no veto
+        /// occasion, and a present-null conditional term on every canonical row - and the binding of this JSON to
+        /// this state's own view, getters kept for a trace and dropped for a field view.
+        /// </summary>
+        internal static JObject NativeTrace29(EpisodeState state, JObject trace) => Native(state, trace, true);
+        internal static JObject NativeFields29(EpisodeState state, JObject fields) => Native(state, fields, false);
+
+        /// <summary>Whether a state is the native arm's: any dialogue rules but 0. The native admission then holds them to exactly 1.</summary>
+        internal static bool IsNative29(EpisodeState state) => state != null && state.dialogueRulesVersion != 0;
 
         /// <summary>
         /// The retained FindDecision answer view, owned by this exact reader and canonical
         /// source. This cannot project caller-supplied decisions or arbitrary named JSON keys.
         /// Actual reader exceptions still propagate unchanged to the historical Ask boundary.
+        /// A rules-1 source is admitted by the native arm instead (the answers are its canonical
+        /// rows', which the pilot holds to a null conditional term), and every other check is the same.
         /// </summary>
         internal static JArray FindDecisionAnswers28(EpisodeState state)
         {
             string before = state == null ? null : Json(JObject.FromObject(state));
             // Admit the complete current source, exact inert additions and fixed28 contract
             // once for the batch, including modes with no decisions and their null slots.
-            ProjectFields28(state, state == null ? null : OldSaveTrace.Fields(state));
+            if (IsNative29(state)) NativeFields29(state, OldSaveTrace.Fields(state));
+            else ProjectFields28(state, state == null ? null : OldSaveTrace.Fields(state));
             var answers = new JArray();
             foreach (var canonical in state.unifiedCommitments)
             {
@@ -108,6 +126,40 @@ namespace Gamesim.Tests.EditMode
             catch (Exception error) when (error is JsonException || error is OverflowException
                 || error is ArgumentException || error is InvalidOperationException || error is FormatException)
             { throw new InvalidDataException("The schema29 digest observer exceeds its fixed contract.", error); }
+        }
+
+        private static JObject Native(EpisodeState state, JObject source, bool getterTrace)
+        {
+            try
+            {
+                Require(state != null && source != null, "A current source state and its own JSON are required.");
+                LegacyDigestSchema27Observer.RequireValidSource(state);
+                Require(Integer(source["schemaVersion"], 29) && state.schemaVersion == 29, "Only literal schema29 is a native input.");
+                string stateBefore = Json(JObject.FromObject(state)), sourceBefore = Json(source);
+                Require(Integer(source["dialogueRulesVersion"], 1) && state.dialogueRulesVersion == 1,
+                    "Only present integer-one dialogue rules are admitted natively.");
+                Require(DialogueRules.TryValidate(state, out string pilot) && DialogueRules.On(state),
+                    "The pilot's own validator refuses the source: " + pilot);
+                Require(source["dialogue"] is JObject, "The complete dialogue object is required.");
+                var dialogue = (JObject)source["dialogue"];
+                Require(dialogue.Properties().Select(p => p.Name).SequenceEqual(new[] { "episodes", "grants", "vetoOccasions" })
+                    && dialogue["episodes"] is JArray && Empty(dialogue["grants"]) && Empty(dialogue["vetoOccasions"]),
+                    "Only the pilot's ordered dialogue lists, with no grant and no veto occasion, are admitted natively.");
+                Require(source["unifiedCommitments"] is JArray, "The complete canonical commitment array is required.");
+                foreach (var token in (JArray)source["unifiedCommitments"])
+                    Require(token is JObject && token["conditionalVeto"]?.Type == JTokenType.Null,
+                        "Every canonical row must retain a present-null conditionalVeto.");
+                var own = JObject.FromObject(state);
+                if (!getterTrace) own = WithoutGetters(own);
+                Require(Json(own) == sourceBefore, "The JSON is not this current state's exact own view.");
+                var native = (JObject)source.DeepClone();
+                Require(Json(native) == sourceBefore && Json(source) == sourceBefore && Json(JObject.FromObject(state)) == stateBefore,
+                    "The native source, JSON, numeric tokens and property/list order must remain unchanged.");
+                return native;
+            }
+            catch (Exception error) when (error is JsonException || error is OverflowException
+                || error is ArgumentException || error is InvalidOperationException || error is FormatException)
+            { throw new InvalidDataException("The schema29 digest observer exceeds its native contract.", error); }
         }
 
         private static JObject Restore(JObject projected, JObject original)

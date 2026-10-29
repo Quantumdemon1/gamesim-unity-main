@@ -38,7 +38,9 @@ namespace Gamesim.Tests.EditMode
     /// build's own sources, under the editor's Mono. Schema 29's fixtures are this build's own files, one for each
     /// commitment mode at dialogue rules 0: the default scene's season and a fresh shipped season played to mid-season,
     /// and a schema-28 mode-1 season carried on, each saved by this build's store and recorded by this build; they load
-    /// as they are, with no migration.</para>
+    /// as they are, with no migration. Since dialogue D1 a fourth: a season the cast screen's conversation preview
+    /// started on dialogue rules 1, saved mid-conversation by the build that starts it, checkpointed at 29 itself by the
+    /// observer's native arm (CurrentOldSaveTrace), since it has no schema-28 form.</para>
     ///
     /// <para>Three digests (<see cref="OldSaveTrace"/>): the season's - the cross-build gate - must be the reference
     /// build's; the whole state's, blind to prose, and the verbatim text are this build's, pinned when the fixture was
@@ -86,6 +88,9 @@ namespace Gamesim.Tests.EditMode
             // Written by this build, schema 29 at dialogue rules 0: the default scene's season (mode 0), a schema-28 mode-1
             // season carried on and saved again, and a fresh shipped season (mode 2).
             "s29-default-w2-social", "s29-mode1-allweek-w3-veto-meeting", "s29-mode2-allweek-w3-campaign",
+            // Written by the build whose cast screen starts it (dialogue D1, 36882bb8): a fresh shipped season with the
+            // conversation preview on, dialogue rules 1, saved mid-conversation.
+            "s29-mode2-dialogue1-w2-campaign",
         };
 
         /// <summary>
@@ -135,8 +140,9 @@ namespace Gamesim.Tests.EditMode
             // build did), in each profile it shipped - the director's fresh season and the default scene's; before 6 the
             // director played the default scene's catalogue - with the unified commitment mode (uc), the all-week rules,
             // Wave D's leaks and war rooms where they branch, and schema 22's three shapes; from schema 29 the dialogue rules
-            // too, each commitment mode at dialogue rules 0. A cell counts only a fixture saved in a week, before the finale,
-            // with a script to play: one saved at the finale or after it is read, never a cell's replay.
+            // too, each commitment mode at dialogue rules 0, and the shipped mode at dialogue rules 1, the conversation
+            // preview's (D1). A cell counts only a fixture saved in a week, before the finale, with a script to play: one
+            // saved at the finale or after it is read, never a cell's replay.
             var replayed = Manifest["episodes"].Where(e => (int)e["commands"] > 0 && !FinalePhases.Contains((string)e["phase"])).ToList();
             Assert.That(Manifest["episodes"].Except(replayed).Select(e => (string)e["id"]), Is.EquivalentTo(ReadOnly),
                 "A fixture saved at the finale or after it reads an end state; it is never a cell's replay.");
@@ -159,7 +165,7 @@ namespace Gamesim.Tests.EditMode
                 "28/director/uc1/allweek0", "28/director/uc1/allweek0/leaks1/plans0", "28/director/uc1/allweek0/leaks1/plans1",
                 "28/director/uc1/allweek1/leaks1/plans1", "28/director/uc2/allweek1/leaks1/plans1", "28/default/uc0/allweek0",
                 "29/default/uc0/allweek0/dialogue0", "29/director/uc1/allweek1/leaks1/plans1/dialogue0",
-                "29/director/uc2/allweek1/leaks1/plans1/dialogue0",
+                "29/director/uc2/allweek1/leaks1/plans1/dialogue0", "29/director/uc2/allweek1/leaks1/plans1/dialogue1",
             }));
         }
 

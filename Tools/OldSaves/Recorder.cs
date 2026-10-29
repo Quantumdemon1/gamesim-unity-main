@@ -8,7 +8,11 @@
 //   generate <out> <seed> <size> <rules> <week> <phase>   play a fresh seeded season to a point and save it with that build's store
 //   continue <save> <out> <week> <phase>     load an older save with that build's store, play it on to a point and save it
 //                                            with that store: the file a player who carried the season on has, at that build's schema
-//   shape                                    every saved field path of that build (OLDSAVE_DEFINES=OLDSAVE_SHAPE_ONLY compiles only this)
+//   converse <out> <seed> <size> <last week> a fresh seeded season (director, that build's Rules.Fresh, which must switch the
+//                                            dialogue rules on: Rules.Preview.cs) played to its first campaign with the player
+//                                            nominated and a voter to talk to, the house's open asks answered, the campaign
+//                                            conversation opened, and saved there, at its first node (dialogue D1)
+//   shape                                   every saved field path of that build (OLDSAVE_DEFINES=OLDSAVE_SHAPE_ONLY compiles only this)
 //   migrate <save> <out>                     the schema-28 payload this build's chain hands on (what a schema-29 step would validate)
 //   resave  <save> <out>                     load with that build's store and save again, as the next autosave would
 //   recover <save> <out>                     the save as that build's store's backup, with no primary and with the primary torn
@@ -75,8 +79,10 @@ namespace Gamesim.OldSaves
                     return Generate(args[1], uint.Parse(args[2]), int.Parse(args[3]), args[4], int.Parse(args[5]), (EpisodePhase)Enum.Parse(typeof(EpisodePhase), args[6]));
                 if (args.Length >= 5 && args[0] == "continue")
                     return Continue(args[1], args[2], int.Parse(args[3]), (EpisodePhase)Enum.Parse(typeof(EpisodePhase), args[4]));
+                if (args.Length >= 5 && args[0] == "converse")
+                    return Converse(args[1], uint.Parse(args[2]), int.Parse(args[3]), int.Parse(args[4]));
 #endif
-                Console.Error.WriteLine("usage: record <save> <out> | recover <save> <out> | generate <out> <seed> <size> <rules> <week> <phase> | continue <save> <out> <week> <phase>");
+                Console.Error.WriteLine("usage: record <save> <out> | recover <save> <out> | generate <out> <seed> <size> <rules> <week> <phase> | continue <save> <out> <week> <phase> | converse <out> <seed> <size> <last week>");
                 return 2;
             }
             catch (Exception error)
@@ -447,6 +453,64 @@ namespace Gamesim.OldSaves
             finally { Directory.Delete(slot, true); }
         }
 
+        /// <summary>
+        /// A season opted into the campaign conversations as that build's director starts one (the season builder's
+        /// house of <paramref name="size"/>, then Rules.Fresh, which for this mode is Rules.Preview.cs: the cast screen's
+        /// preview chip), played by the walker to the first campaign, by <paramref name="lastWeek"/>, in which the player is
+        /// nominated and the conversation can start with a voter. There the house's open asks are answered with their own
+        /// neutral exits, as the pilot's fixtures answer them (the conversation waits for them), the conversation is opened
+        /// with the first voter in the engine's order that it can start with, through the public entry command the HUD
+        /// builds, and the season is saved by that build's store at that first node. The session id is fixed, so a
+        /// regeneration writes the same state. Exit 4 when the season meets no such campaign, or the build has no dialogue.
+        /// </summary>
+        private static int Converse(string outFile, uint seed, int size, int lastWeek)
+        {
+#if OLDSAVE_BEFORE_SEASON_BUILDER
+            throw new ArgumentException("Schema 6's build has no season builder, and no dialogue rules.");
+#else
+            var fresh = SeasonBuilder.Create(new SeasonBuilder.Choice { HouseSize = size }, seed);
+            Rules.Fresh(fresh);
+            fresh.sessionId = "oldsave-converse-" + seed + "-" + size;
+            if (!Dialogue.On(fresh)) { Console.Error.WriteLine("NO DIALOGUE: that build's Rules.Fresh leaves the dialogue rules off."); return 4; }
+            var engine = new EpisodeEngine(fresh);
+            var walker = new Walker("generate-");
+            for (int step = 0; step < 4000; step++)
+            {
+                var s = engine.Snapshot;
+                if (s.phase == EpisodePhase.Finished || s.week > lastWeek) break;
+                if (s.phase == EpisodePhase.Campaign && s.nominees.Contains(s.playerId))
+                {
+                    foreach (var answer in Dialogue.AnswerOpenAsks(engine, walker)) { }
+                    s = engine.Snapshot;
+                    var entry = Dialogue.Entry(s, walker);
+                    if (entry != null)
+                    {
+                        var opened = engine.Apply(entry);
+                        if (!opened.accepted) throw new InvalidOperationException("The conversation's public entry was refused: " + opened.reason);
+                        var at = engine.Snapshot;
+                        Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(outFile)));
+                        if (File.Exists(outFile)) File.Delete(outFile);
+                        new EpisodeSaveStore(outFile).Save(at);
+                        Console.WriteLine("saved schema " + at.schemaVersion + " week " + at.week + " " + at.phase + " revision " + at.revision
+                            + ", the campaign conversation open with " + entry.targetId + ", to " + outFile);
+                        return 0;
+                    }
+                }
+                CommandResult applied = null;
+                foreach (var command in walker.Candidates(s, step))
+                {
+                    var tried = engine.Apply(command);
+                    if (tried.accepted) { applied = tried; break; }
+                    if (!walker.MayRefuse(command))
+                        throw new InvalidOperationException("Week " + s.week + " " + s.phase + " " + command.kind + " refused: " + tried.reason);
+                }
+                if (applied == null) throw new InvalidOperationException("Week " + s.week + " " + s.phase + ": no command was accepted.");
+            }
+            Console.Error.WriteLine("NO CONVERSATION: seed " + seed + " size " + size + " met no campaign by week " + lastWeek + " with the player nominated and a voter to talk to.");
+            return 4;
+#endif
+        }
+
         /// <summary>Plays a season by the walker to the first state at <paramref name="week"/> and <paramref name="phase"/> and saves it with that build's store.</summary>
         private static int PlayOnAndSave(EpisodeState start, Walker walker, string outFile, int week, EpisodePhase phase)
         {
@@ -498,6 +562,11 @@ namespace Gamesim.OldSaves
 
         public IEnumerable<EpisodeCommand> Candidates(EpisodeState s, int step)
         {
+            // An open campaign conversation (dialogue rules 1, D1) is answered before anything else, with its node's
+            // first option that is not the exit: the case, then the plea. Only a season on dialogue rules has one, so
+            // every older fixture's walk is unchanged.
+            var conversation = Dialogue.Choice(s, this);
+            if (conversation != null) { yield return conversation; yield break; }
 #if OLDSAVE_BEFORE_SCHEMA3
             // Schema 2: no diary room, so nothing can be pending.
             if (s.phase == EpisodePhase.Social)
@@ -539,6 +608,13 @@ namespace Gamesim.OldSaves
             string category = typeof(JuryExchangeState).GetField("category")?.GetValue(exchange) as string;
             string receipt = typeof(JuryExchangeState).GetField("receiptKind")?.GetValue(exchange) as string;
             return (string[])offered.Invoke(null, new object[] { category, receipt }) ?? new string[0];
+        }
+
+        /// <summary>A command the engine's own builder planned (a conversation's), given this walker's next id.</summary>
+        internal EpisodeCommand Named(EpisodeCommand planned)
+        {
+            planned.id = prefix + (++sequence).ToString("D4");
+            return planned;
         }
 
         private EpisodeCommand Command(EpisodeState s, EpisodeCommandKind kind) => new EpisodeCommand
@@ -604,6 +680,95 @@ namespace Gamesim.OldSaves
             else if (s.phase == EpisodePhase.Jury && !s.Active.Any(p => p.isPlayer) && !s.votes.Any(v => v.voterId == s.playerId))
             { c.kind = EpisodeCommandKind.CastVote; c.targetId = s.Active.First().id; }
             return c;
+        }
+    }
+
+    /// <summary>
+    /// The campaign conversation's public commands (dialogue rules 1, D1), planned by the engine's own builders - the ones
+    /// the HUD calls - and reached by reflection, so the recorder still compiles at every build before dialogue rules.
+    /// There each answer is that no conversation is on, and nothing is planned.
+    /// </summary>
+    internal static class Dialogue
+    {
+        private const System.Reflection.BindingFlags Public = System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static;
+        private static readonly Type Rules = typeof(EpisodeState).Assembly.GetType("Gamesim.Simulation.DialogueRules");
+
+        private static object Call(Type owner, string name, Type[] types, object[] arguments)
+        {
+            var method = owner.GetMethod(name, Public, null, types, null);
+            if (method == null) throw new MissingMethodException(owner.FullName, name);
+            try { return method.Invoke(null, arguments); }
+            catch (System.Reflection.TargetInvocationException error) when (error.InnerException != null) { throw error.InnerException; }
+        }
+
+        private static object Field(object owner, string name) => owner.GetType().GetField(name).GetValue(owner);
+        private static IEnumerable<object> Rows(object owner, string name) => ((System.Collections.IEnumerable)Field(owner, name)).Cast<object>();
+
+        internal static bool On(EpisodeState s) => Rules != null && (bool)Call(Rules, "On", new[] { typeof(EpisodeState) }, new object[] { s });
+
+        /// <summary>The house's open asks answered, each with its own neutral exit, as the pilot's fixtures do: one command each, yielded as applied.</summary>
+        internal static IEnumerable<EpisodeCommand> AnswerOpenAsks(EpisodeEngine engine, Walker walker)
+        {
+            var kinds = typeof(EpisodeState).Assembly.GetType("Gamesim.Simulation.HouseEventKind");
+            for (int answer = 0; answer < 24; answer++)
+            {
+                var s = engine.Snapshot;
+                var item = Rows(s, "houseEvents").FirstOrDefault(e => !(bool)Field(e, "resolved")
+                    && (bool)Call(kinds, "Asks", new[] { typeof(string) }, new[] { Field(e, "kind") }));
+                if (item == null) yield break;
+                bool story = (bool)item.GetType().GetProperty("IsStory").GetValue(item);
+                var command = walker.Named(new EpisodeCommand
+                {
+                    actorId = s.playerId, expectedRevision = s.revision, expectedPhase = s.phase,
+                    kind = (EpisodeCommandKind)Enum.Parse(typeof(EpisodeCommandKind), story ? "ProgressStoryline" : "ResolveHouseEvent"),
+                    targetId = (string)Field(item, "id"),
+                });
+                if (story) command.secondTargetId = (string)Field(item, "lapseOptionId");
+                else command.text = (string)Field(Rows(item, "choices").First(), "label");
+                var result = engine.Apply(command);
+                if (!result.accepted) throw new InvalidOperationException("An open ask's neutral exit was refused: " + result.reason);
+                yield return command;
+            }
+            throw new InvalidOperationException("The house's open asks did not close within 24 neutral answers.");
+        }
+
+        /// <summary>The conversation's entry with the first voter, in the engine's order, that it can start with; null if none can.</summary>
+        internal static EpisodeCommand Entry(EpisodeState s, Walker walker)
+        {
+            if (!On(s)) return null;
+            var voters = (System.Collections.IEnumerable)Call(typeof(EpisodeEngine), "Voters", new[] { typeof(EpisodeState) }, new object[] { s });
+            foreach (ContestantState voter in voters)
+            {
+                if (voter.isPlayer) continue;
+                var start = new object[] { s, voter.id, null };
+                if (!(bool)Call(Rules, "CanStart", new[] { typeof(EpisodeState), typeof(string), typeof(string).MakeByRefType() }, start)) continue;
+                var built = new object[] { s, voter.id, null };
+                if ((bool)Call(Rules, "TryBuildEntryCommand", new[] { typeof(EpisodeState), typeof(string), typeof(EpisodeCommand).MakeByRefType() }, built))
+                    return walker.Named((EpisodeCommand)built[2]);
+            }
+            return null;
+        }
+
+        /// <summary>The open conversation's next choice: its node's first option that is not the exit; null when none is open.</summary>
+        internal static EpisodeCommand Choice(EpisodeState s, Walker walker)
+        {
+            if (!On(s)) return null;
+            var episode = Call(Rules, "Active", new[] { typeof(EpisodeState) }, new object[] { s });
+            if (episode == null) return null;
+            var cycle = Call(Rules, "Cycle", new[] { typeof(EpisodeState), episode.GetType() }, new[] { s, episode });
+            string eventId = (string)Field(cycle, "eventId");
+            var item = Rows(s, "houseEvents").FirstOrDefault(e => (string)Field(e, "id") == eventId);
+            if (item == null) return null;
+            string exit = (string)Field(item, "lapseOptionId");
+            foreach (var choice in Rows(item, "choices"))
+            {
+                string option = (string)Field(choice, "optionId");
+                if (option == exit) continue;
+                var built = new object[] { s, eventId, option, null };
+                if ((bool)Call(Rules, "TryBuildChoiceCommand", new[] { typeof(EpisodeState), typeof(string), typeof(string), typeof(EpisodeCommand).MakeByRefType() }, built))
+                    return walker.Named((EpisodeCommand)built[3]);
+            }
+            return null;
         }
     }
 #endif

@@ -16,7 +16,18 @@ namespace Gamesim.Simulation
         public const int Version = 1, MaximumEpisodes = 100, MaximumEvents = 400, MaximumSteps = 3;
         private const int MaximumAction = EpisodeEngine.LegacySocialActionBudget + WebSocialVocabulary.PurchaseCeiling;
 
-        public static bool On(EpisodeState s) => s != null && s.schemaVersion == 29 && s.dialogueRulesVersion == Version;
+        /// <summary>
+        /// The dialogue rules the cast screen's preview chip starts a season on (DIALOGUE-PLAN §2, D1): a pinned
+        /// literal, frozen the day a shipped path could first write it, and moved by hand only when a later stack
+        /// brings the chip a new version. Never <see cref="Version"/>, the bound: a season keeps the rules it began
+        /// on, so a chip that wrote the bound would change the rules of every opted-in season the day it moved.
+        /// Tests that mean rules 1 write the literal 1; only the chip's own tests read this, and pin its value.
+        /// </summary>
+        public const int Offered = 1;
+
+        // Schema 29 introduced the dialogue store, and a later schema carries it as it is (DIALOGUE-PLAN §6, item 1):
+        // a lower bound, so the next schema's bump cannot switch every rules-1 season off.
+        public static bool On(EpisodeState s) => s != null && s.schemaVersion >= 29 && s.dialogueRulesVersion == Version;
 
         public static StorylineState Cycle(EpisodeState s, DialogueEpisodeState episode)
         {
@@ -69,6 +80,47 @@ namespace Gamesim.Simulation
             return true;
         }
 
+        /// <summary>
+        /// Whether the desperate plea for the player's own vote - the Emotional "Ask for their vote" in the Campaign,
+        /// which a dialogue season makes the campaign conversation's entry - is the ordinary one-shot plea this time,
+        /// because the conversation cannot start (DIALOGUE-PLAN §5.5: a refusal never takes a plea away). The owner's
+        /// decision of 2026-10-25, "Never lose the plea": in every dialogue season, rules 1 as every later version, the
+        /// press starts the conversation when <see cref="TryBuildEntryCommand"/> can build it, and otherwise - an
+        /// unanswered house moment, another conversation still open, this occasion used, a full path, whatever
+        /// <see cref="CanStart"/> refuses - it is the plea a season without dialogue makes: the same Lobby command, so
+        /// the same action, the same roll and everything after it. Dialogue switched on never makes a week worse than
+        /// switched off, and the conversation is not spent by that: it is offered again whenever CanStart accepts.
+        /// <para>True only in a dialogue season, in the Campaign, when the entry cannot be built; <paramref name="reason"/>
+        /// is then CanStart's refusal, in its own words, or null if CanStart accepts and whole-state validation still
+        /// refuses the entry. Whether the plea itself is open is not this method's to say: that is StrategyRules.CanLobby
+        /// and the week's actions, as in every season. It reads the state only, and draws and writes nothing.</para>
+        /// <para>The one refusal it does not fall back from is the voter's own open conversation
+        /// (<see cref="PleaInOpenConversation"/>): that plea was not refused, it is in the talk, for no further action.</para>
+        /// </summary>
+        public static bool PleaWithoutConversation(EpisodeState s, string npcId, out string reason)
+        {
+            reason = null;
+            if (!On(s) || s.phase != EpisodePhase.Campaign || PleaInOpenConversation(s, npcId)
+                || TryBuildEntryCommand(s, npcId, out _)) return false;
+            if (CanStart(s, npcId, out reason)) reason = null;
+            return true;
+        }
+
+        /// <summary>
+        /// Whether the voter's desperate plea is in the conversation already open with them: this week's campaign
+        /// conversation, its entry paid by an earlier press and walked away from. Its final plea is that plea, for no
+        /// further action (DIALOGUE-PLAN §5.5), so the panel points to the talk and offers no second, paid one-shot plea:
+        /// that press would close the talk unmade ("occasion-closed") and spend a second action on the one plea, where a
+        /// season without dialogue spends one. Owner, 2026-10-25: never lose the plea, and never make a week worse with
+        /// dialogue on. Reads the state only.
+        /// </summary>
+        public static bool PleaInOpenConversation(EpisodeState s, string npcId)
+        {
+            if (!On(s) || s.phase != EpisodePhase.Campaign || string.IsNullOrEmpty(npcId)) return false;
+            var open = Active(s);
+            return open != null && open.npcId == npcId && open.occasionId == Occasion(s.week, npcId);
+        }
+
         public static bool TryBuildChoiceCommand(EpisodeState s, string eventId, string optionId, out EpisodeCommand command)
         {
             command = null;
@@ -94,7 +146,7 @@ namespace Gamesim.Simulation
         {
             error = null;
             if (pending != null && !pending.Verify(s, out error)) return false;
-            if (s == null || s.schemaVersion != 29) return Fail(out error, "Unsupported dialogue schema.");
+            if (s == null || s.schemaVersion < 29) return Fail(out error, "Unsupported dialogue schema.");
             if (s.dialogue == null || s.dialogue.episodes == null || s.dialogue.grants == null || s.dialogue.vetoOccasions == null)
                 return Fail(out error, "Dialogue storage must be complete.");
             if (s.dialogueRulesVersion == 0)

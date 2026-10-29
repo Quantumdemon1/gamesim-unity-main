@@ -1,6 +1,7 @@
 # Isolated fixtures for how the review controller runs its suites: per-suite deadlines, a late run
 # recorded and never killed, every suite run before the gate fails, the diagnostics define, a source
-# status probe that never rewrites .git/index, and the UMA build's own floor (a SHORTFALL naming it). A
+# status probe that never rewrites .git/index, the UMA build's own floor (a SHORTFALL naming it), and
+# the child-only environment that turns the MCP bridge off in every batch Unity (UNITY_MCP_DISABLE_BATCH). A
 # fake Unity (a .cmd that writes NUnit XML, two cases or GAMESIM_FAKE_COUNT's number) stands
 # in for the editor; nothing here starts Unity or touches a real acceptance copy.
 $ErrorActionPreference='Stop'
@@ -9,7 +10,8 @@ $ErrorActionPreference='Stop'
 $fixtureBase=Assert-ReviewPlainPath (Join-Path ([IO.Path]::GetTempPath()) 'GamesimWorkflowFixtures')
 $fixture=Join-Path $fixtureBase ([Guid]::NewGuid().ToString('N'))
 $checks=[Collections.Generic.List[string]]::new(); $fixtureSucceeded=$false
-$saved=@{}; foreach ($name in @('GAMESIM_ACCEPTANCE','GAMESIM_UNITY','GAMESIM_DIAGNOSTICS','GAMESIM_FAKE_FAIL','GAMESIM_FAKE_SLEEP','GAMESIM_FAKE_COUNT','GIT_OPTIONAL_LOCKS','PATH')) { $saved[$name]=[Environment]::GetEnvironmentVariable($name) }
+$saved=@{}; foreach ($name in @('GAMESIM_ACCEPTANCE','GAMESIM_UNITY','GAMESIM_DIAGNOSTICS','GAMESIM_FAKE_FAIL','GAMESIM_FAKE_SLEEP','GAMESIM_FAKE_COUNT','GIT_OPTIONAL_LOCKS','PATH',
+    'UNITY_MCP_DISABLE_BATCH','GAMESIM_FIXTURE_CHILD')) { $saved[$name]=[Environment]::GetEnvironmentVariable($name) }
 function Put([string]$Root,[string]$Relative,[string]$Text) {
     $path=Join-Path $Root $Relative; [void][IO.Directory]::CreateDirectory((Split-Path -Parent $path))
     [IO.File]::WriteAllText($path,$Text,[Text.UTF8Encoding]::new($false))
@@ -64,6 +66,36 @@ try {
     # 4. An on-time process is neither late nor failed.
     $quick=Invoke-ReviewOwnedProcess $powershell @('-NoProfile','-Command','exit 3') 60 (Join-Path $fixture 'quick.json')
     Check 'An on-time process is not late and keeps its exit code' (-not $quick.late -and -not $quick.timedOut -and $quick.closed -and $quick.exit -eq 3 -and -not $quick.failure)
+
+    # 4b. -Environment reaches the child only: the caller's value, or its absence, is back as soon as the child starts.
+    $seen=Join-Path $fixture 'child-environment.txt'
+    $childCommand="[IO.File]::WriteAllText('$seen',[string]`$env:GAMESIM_FIXTURE_CHILD)"
+    $env:GAMESIM_FIXTURE_CHILD=$null
+    $child=Invoke-ReviewOwnedProcess $powershell @('-NoProfile','-Command',$childCommand) 60 (Join-Path $fixture 'child.json') -Environment @{GAMESIM_FIXTURE_CHILD='child'}
+    Check 'A child sees the variable it was given' ($child.closed -and $child.exit -eq 0 -and [IO.File]::ReadAllText($seen) -ceq 'child')
+    Check 'An unset caller variable stays unset' ($null -eq [Environment]::GetEnvironmentVariable('GAMESIM_FIXTURE_CHILD','Process'))
+    Check 'The receipt records the child environment' ((Get-Content -LiteralPath (Join-Path $fixture 'child.json') -Raw | ConvertFrom-Json).environment.GAMESIM_FIXTURE_CHILD -ceq 'child')
+    $env:GAMESIM_FIXTURE_CHILD='caller'
+    $child=Invoke-ReviewOwnedProcess $powershell @('-NoProfile','-Command',$childCommand) 60 (Join-Path $fixture 'child-over.json') -Environment @{GAMESIM_FIXTURE_CHILD='child'}
+    Check 'A caller value is overridden for the child and restored for the caller' ($child.exit -eq 0 -and [IO.File]::ReadAllText($seen) -ceq 'child' -and $env:GAMESIM_FIXTURE_CHILD -ceq 'caller')
+    $child=Invoke-ReviewOwnedProcess $powershell @('-NoProfile','-Command',$childCommand) 60 (Join-Path $fixture 'child-plain.json')
+    Check 'Without -Environment a child inherits the caller as before' ($child.exit -eq 0 -and [IO.File]::ReadAllText($seen) -ceq 'caller')
+    $env:GAMESIM_FIXTURE_CHILD=$null
+
+    # 4c. Every batch Unity the controllers start gets UNITY_MCP_DISABLE_BATCH=1 (the MCP bridge's client checks
+    #     held batch runs at 15-26 GiB). The suites are proven end to end in 7c; the build's call is read here.
+    Check 'The Unity environment is the MCP bridge switch alone' ($script:ReviewUnityEnvironment.Count -eq 1 -and $script:ReviewUnityEnvironment['UNITY_MCP_DISABLE_BATCH'] -ceq '1')
+    foreach ($launcher in @('run-review-suites.ps1','build-review-candidate.ps1')) {
+        $tokens=$null; $parseErrors=$null
+        $ast=[Management.Automation.Language.Parser]::ParseFile((Join-Path $PSScriptRoot $launcher),[ref]$tokens,[ref]$parseErrors)
+        $calls=@($ast.FindAll({param($node) $node -is [Management.Automation.Language.CommandAst] -and $node.GetCommandName() -ceq 'Invoke-ReviewOwnedProcess'},$true))
+        $given=@($calls | Where-Object {
+            $elements=@($_.CommandElements); $at=-1
+            for ($i=0; $i -lt $elements.Count; $i++) { if ($elements[$i] -is [Management.Automation.Language.CommandParameterAst] -and $elements[$i].ParameterName -ceq 'Environment') { $at=$i } }
+            $at -ge 0 -and $at+1 -lt $elements.Count -and $elements[$at+1].Extent.Text -ceq '$script:ReviewUnityEnvironment'
+        })
+        Check "$launcher starts its one Unity with the Unity environment" ($parseErrors.Count -eq 0 -and $calls.Count -eq 1 -and $given.Count -eq 1)
+    }
 
     # 5. The source status probe never rewrites .git/index (GIT_OPTIONAL_LOCKS / --no-optional-locks).
     if (-not (Get-Command git -ErrorAction SilentlyContinue)) {
@@ -126,11 +158,13 @@ for ($i=1; $i -le $count; $i++) {
 $xml='<test-run result="'+$status+'" total="'+$count+'" passed="'+$(if ($failed) {$count-1} else {$count})+'" failed="'+$(if ($failed) {1} else {0})+'" skipped="0" inconclusive="0">'+
     '<test-suite type="Assembly" name="'+$assembly+'.dll" result="'+$status+'">'+$cases.ToString()+'</test-suite></test-run>'
 [IO.File]::WriteAllText($named['-testResults'],$xml)
-[IO.File]::WriteAllText($named['-logFile'],"fake Unity ran $assembly")
+[IO.File]::WriteAllText($named['-logFile'],"fake Unity ran $assembly; UNITY_MCP_DISABLE_BATCH=[$env:UNITY_MCP_DISABLE_BATCH]")
 exit $(if ($failed) {2} else {0})
 '@
     Put $fakeRoot 'fake-unity.cmd' ("@echo off`r`n`"$powershell`" -NoProfile -ExecutionPolicy Bypass -File `"%~dp0fake-unity.ps1`" %*`r`nexit /b %ERRORLEVEL%`r`n")
     $env:GAMESIM_ACCEPTANCE=$destination; $env:GAMESIM_UNITY=Join-Path $fakeRoot 'fake-unity.cmd'; $env:GAMESIM_DIAGNOSTICS=$null
+    # A caller that exported the switch itself would hide a controller that forgets it.
+    $env:UNITY_MCP_DISABLE_BATCH=$null
     function Summary([string]$Name) { Get-Content -LiteralPath (Join-Path $destination "Logs/$Name-summary.json") -Raw | ConvertFrom-Json }
     function Refused([scriptblock]$Action) { try { & $Action | Out-Null; return $false } catch { return $_.Exception.Message -like '*gate failed*' } }
 
@@ -159,6 +193,11 @@ exit $(if ($failed) {2} else {0})
     & (Join-Path $source 'Tools/verify-review-candidate.ps1') -Name 'all-green' -WithoutUma | Out-Null
     $green=Summary 'all-green'
     Check 'All suites green is full acceptance' ($green.status -ceq 'Passed' -and $green.fullSuiteAcceptance -and @($green.suites).Count -eq 2)
+    Check 'Every suite Unity ran with UNITY_MCP_DISABLE_BATCH=1' (@($green.suites | Where-Object {
+        [IO.File]::ReadAllText($_.log) -clike '*; UNITY_MCP_DISABLE_BATCH=`[1`]'}).Count -eq 2)
+    Check 'Each suite receipt records the switch' (@(@('edit','play') | Where-Object {
+        (Get-Content -LiteralPath (Join-Path $green.runRoot ($_+'-process.json')) -Raw | ConvertFrom-Json).environment.UNITY_MCP_DISABLE_BATCH -ceq '1'}).Count -eq 2)
+    Check 'The controller leaves the caller without the switch' ($null -eq [Environment]::GetEnvironmentVariable('UNITY_MCP_DISABLE_BATCH','Process'))
 
     # 7d. The diagnostics define is refused for full acceptance and reaches only the copy for a plan.
     $env:GAMESIM_DIAGNOSTICS='1'

@@ -59,6 +59,8 @@ integrated verification.
 
 ```bash
 UNITY="C:/Program Files/Unity/Hub/Editor/6000.6.0f1/Editor/Unity.exe"
+# Keeps the AI Assistant package's MCP bridge off in batch mode; see the first trap below.
+export UNITY_MCP_DISABLE_BATCH=1
 
 "$UNITY" -batchmode -accept-apiupdate -projectPath . -runTests \
   -testPlatform EditMode -assemblyNames Gamesim.EditModeTests \
@@ -73,8 +75,16 @@ UNITY="C:/Program Files/Unity/Hub/Editor/6000.6.0f1/Editor/Unity.exe"
   -testResults uma.xml -logFile uma.log
 ```
 
-Two traps that cost real time if you meet them cold:
+Three traps that cost real time if you meet them cold:
 
+- **Set `UNITY_MCP_DISABLE_BATCH=1` for every batch Unity.** The AI Assistant package starts its MCP
+  bridge in batch mode too, and each MCP client that connects (the relay of every open Claude Code or
+  Codex session) gets an identity check that, under Unity's Mono, leaves about 1.5 GiB of heap the
+  process never gives back: batch runs sat at 15-26 GiB. The variable is the package's own switch.
+  The `Tools` runners set it for the Unity they start, and `Gamesim.Editor` sets it at load in a batch
+  editor whose launcher did not. Never turn the MCP settings off instead: they are machine-wide and the
+  interactive editor shares them. A run that had the bridge on logs `Failed to collect Windows signature`
+  for each Claude Code or Codex client it checked.
 - **`-assemblyNames` honours only its first argument.** Passing two silently runs the first and
   reports the second as zero tests, which reads as "those tests do not exist" rather than "you
   asked wrongly". Run the UMA suite as its own invocation, as above.

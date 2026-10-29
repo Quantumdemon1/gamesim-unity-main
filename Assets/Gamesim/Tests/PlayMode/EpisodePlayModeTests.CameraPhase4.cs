@@ -14,6 +14,19 @@ namespace Gamesim.Tests.PlayMode
     /// </summary>
     public sealed partial class EpisodePlayModeTests
     {
+        /// <summary>
+        /// A timed move is where its clock says, eased, and over when its second is up.
+        ///
+        /// <para>The clock is the rig's: each LateUpdate from the one in the frame the move is sent
+        /// in adds that frame's Time.unscaledDeltaTime, the sending frame's whole interval included.
+        /// Read on Time.unscaledTime from the sending frame, a long frame before the move - a busy
+        /// machine - put the move that far ahead of the test's half second: a 0.15 s frame there read
+        /// 0.713 of the way, past the 0.7 allowed, and so did steady frames of 0.32 s (0.705); a long
+        /// frame across the half second read the move a frame behind the wall clock (1.0 s there,
+        /// none of the way). So the test keeps the rig's clock beside it, a frame behind as the
+        /// position is (the coroutine resumes before LateUpdate), and asks for the eased position at
+        /// that clock.</para>
+        /// </summary>
         [UnityTest]
         public IEnumerator Camera_ATimedMoveLandsOnItsClock()
         {
@@ -26,12 +39,14 @@ namespace Gamesim.Tests.PlayMode
             var to = start + new Vector3(8f, 0f, 6f);
             cameraRig.MoveTo(to, 12f, 1.0f);
             Assert.That(cameraRig.IsTravelling, Is.True);
-            float began = Time.unscaledTime;
-            while (Time.unscaledTime - began < 0.5f) yield return null;
+            float clock = 0f;
+            do { clock += Time.unscaledDeltaTime; yield return null; } while (clock < 0.5f);
             float along = Vector3.Distance(from, cameraRig.transform.position) / Vector3.Distance(from, to);
-            Assert.That(along, Is.InRange(0.3f, 0.7f), "Halfway through its second the move is about halfway there.");
-            Assert.That(cameraRig.IsTravelling, Is.True);
-            while (Time.unscaledTime - began < 1.15f) yield return null;
+            Assert.That(along, Is.EqualTo(Mathf.SmoothStep(0f, 1f, Mathf.Clamp01(clock))).Within(0.05f),
+                "Halfway through its second the move is about halfway there (" + along.ToString("0.###") + " of the way at "
+                + clock.ToString("0.###") + " s of its clock).");
+            Assert.That(cameraRig.IsTravelling, Is.EqualTo(clock < 1f), "It travels until its second is up (" + clock.ToString("0.###") + " s).");
+            while (clock < 1f) { clock += Time.unscaledDeltaTime; yield return null; }
             Assert.That(cameraRig.IsTravelling, Is.False, "and it is over on the clock");
             Assert.That(Vector3.Distance(cameraRig.transform.position, to), Is.LessThan(0.05f), "exactly where it was sent.");
             cameraRig.ControlsEnabled = true;

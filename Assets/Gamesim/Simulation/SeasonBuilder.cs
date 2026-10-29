@@ -53,6 +53,15 @@ namespace Gamesim.Simulation
             /// <summary>Explicit NPC slots. Repeated profiles are allowed and receive separate season identities.</summary>
             public List<CharacterProfile> CustomHouseguests = new List<CharacterProfile>();
 
+            /// <summary>
+            /// The cast screen's preview chip (DIALOGUE-PLAN D1): start this season on the campaign conversations,
+            /// <see cref="DialogueRules.Offered"/>. Off unless the player turns it on, and held in memory only: no
+            /// screen, setting or preference stores it. <see cref="ShippedRules.ApplyFresh(EpisodeState, Choice)"/>
+            /// reads it once, and from then on the season carries the choice as its own
+            /// <see cref="EpisodeState.dialogueRulesVersion"/>, which loading never infers.
+            /// </summary>
+            public bool CampaignConversations;
+
             public Choice Copy()
             {
                 var copy = (Choice)MemberwiseClone();

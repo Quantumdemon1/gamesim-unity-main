@@ -78,7 +78,11 @@
 # direct-29 cases, 2, and two malformed rows), PersistenceV30MigrationTests 3 and PooledSchema30ShapeTests 1.
 # OldSaveAcceptanceTests holds 64 fixtures, 261 cases (main's 60 and the branch's 63 share 59), each side's already
 # counted. Run class by class under Unity's Mono; not yet counted by a full run.
-Gamesim.EditModeTests 9388
+# 9390 = 9388 + the merge review's 2 shared LegacyDigestSchema30ObserverTests cases (39 -> 41): an All-Stars season
+# started with the preview chip takes the alumni arm at 30 and never the native 29, and the retained native-29 entry
+# takes D1's writer fixture as it is. Listed and run class by class under Unity's Mono (2026-10-29); not yet counted by
+# a full run.
+Gamesim.EditModeTests 9390
 # The UMA-free build. 1215 = 1236, the count after the consolidation's lanes (S2a, S2b, S4a), less the 7
 # farewell probes moved to Gamesim.DiagnosticsPlayModeTests and the 14 farewell readiness tests that now
 # compile only under GAMESIM_UMA (judged on the UMA cast); 1230 = 1215 + S2d's 7, S4b's 2, S4c's 2 and
@@ -199,4 +203,7 @@ Gamesim.Uma.DiagnosticsPlayModeTests 10
 # 16346 = main's 16241 + SCH30 step 2 and H1b's 105 (16303 - 16198): disjoint cases, so the floor is their sum.
 # 16348 = 16346 + the merge's own 2, both shared (ShippedRulesTests 1, PooledSchema30ShapeTests 1): what dotnet test
 # Tools/SimulationTests ran on the merge (2026-10-29), 16348 of 16348.
-Gamesim.SimulationTests 16348
+# 16351 = 16348 + the merge review's 3: the same 2 LegacyDigestSchema30ObserverTests cases and Frozen29's literal
+# control of D1's schema-29 writer (Frozen29LiteralFixtureTests 37 -> 38): what dotnet test Tools/SimulationTests ran
+# (2026-10-29), 16351 of 16351.
+Gamesim.SimulationTests 16351

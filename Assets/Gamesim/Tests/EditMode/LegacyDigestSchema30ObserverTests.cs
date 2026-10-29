@@ -221,6 +221,90 @@ namespace Gamesim.Tests.EditMode
             }
         }
 
+        /// <summary>
+        /// The retained native-29 entry takes D1's schema-29 writer as the build wrote it - dialogue rules 1, its store
+        /// holding the conversation it opened - and no live state: admitted as it is and handed back detached. The
+        /// projection to 28 refuses it, and so does the native entry for its header, its rules and a getter.
+        /// </summary>
+        [Test]
+        public void TheNativeTwentyNineEntryTakesTheDialogueWritersSchemaTwentyNineFieldsAndNoState()
+        {
+            var fields = Fixture("s29-mode2-dialogue1-w2-campaign");
+            Assert.That((int)fields["schemaVersion"], Is.EqualTo(29));
+            Assert.That((int)fields["dialogueRulesVersion"], Is.EqualTo(1));
+            Assert.That(((JArray)fields["dialogue"]["episodes"]).Count, Is.GreaterThan(0), "The writer's store holds its conversation.");
+            string before = Text(fields);
+            var native = LegacyDigestSchema29Observer.NativeRetained29(fields, false);
+            Assert.That(native, Is.Not.SameAs(fields), "A detached copy.");
+            Assert.That(Text(native), Is.EqualTo(before), "Admitted as it is: every field, number and order.");
+            native["contestants"][0]["name"] = "Detached fields";
+            Assert.That(Text(fields), Is.EqualTo(before));
+            var projected = Assert.Throws<InvalidDataException>(() => LegacyDigestSchema29Observer.ProjectRetained28(fields, false));
+            Assert.That(projected.Message, Is.EqualTo("Only present integer-zero dialogue rules may be projected."));
+            Assert.That(Text(fields), Is.EqualTo(before));
+            foreach (var (defect, reason) in new[]
+            {
+                ("header-30", "Only literal schema29 is a native input."),
+                ("rule-0", "Only present integer-one dialogue rules are admitted natively."),
+                ("getter", "A field view must carry no getter."),
+            })
+            {
+                var bad = (JObject)fields.DeepClone();
+                if (defect == "header-30") bad["schemaVersion"] = 30;
+                else if (defect == "rule-0") bad["dialogueRulesVersion"] = 0;
+                else bad["Active"] = new JArray();
+                string badBefore = Text(bad);
+                var error = Assert.Throws<InvalidDataException>(() => LegacyDigestSchema29Observer.NativeRetained29(bad, false), defect);
+                Assert.That(error.Message, Is.EqualTo(reason), defect);
+                Assert.That(Text(bad), Is.EqualTo(badBefore));
+            }
+        }
+
+        /// <summary>
+        /// The merge of the histories with dialogue D1 (ALL-STAR-HISTORIES-PLAN 8.5): an All-Stars season started with the
+        /// cast screen's preview chip is on the alumni rules and on dialogue rules 1 at once, so both arms' tests hold for
+        /// it and their order decides. The alumni arm comes first at both digest boundaries: the season is admitted natively
+        /// at 30 and checkpointed there only, its FindDecision answers are read from its canonical rows, and the native-29
+        /// arm, which projects to 29, refuses it by the alumni check. Were the arms reordered, every checkpoint and every
+        /// answer of such a season would throw.
+        /// </summary>
+        [Test]
+        public void AnAllStarsSeasonStartedWithThePreviewTakesTheAlumniArmAtThirtyAndNeverTheNativeTwentyNine()
+        {
+            var chip = SeasonBuilder.Create(new SeasonBuilder.Choice { HouseSize = 8, Roster = CastTemplates.Roster.AllStars }, 3007u);
+            ShippedRules.ApplyFresh(chip, new SeasonBuilder.Choice
+                { HouseSize = 8, Roster = CastTemplates.Roster.AllStars, CampaignConversations = true });
+            Assert.That(chip.alumniRulesVersion, Is.EqualTo(AlumniRules.Histories), "The chip season seats its alumni's histories.");
+            Assert.That(chip.dialogueRulesVersion, Is.EqualTo(1), "The chip season plays the preview.");
+            Assert.That(chip.schemaVersion, Is.EqualTo(30));
+            Assert.That(EpisodeValidation.TryValidate(chip, out string reason), Is.True, reason);
+            Assert.That(LegacyDigestSchema30Observer.OnTheAlumniRules(chip), Is.True);
+            Assert.That(LegacyDigestSchema30Observer.IsNative29(chip), Is.True, "Both arms' tests hold; the order decides.");
+            var fields = OldSaveTrace.Fields(chip);
+            var trace = JObject.FromObject(chip);
+            string stateBefore = Text(chip), fieldsBefore = Text(fields), traceBefore = Text(trace);
+
+            Assert.That(Text(LegacyDigestSchema30Observer.AdmitNative30(chip, fields)), Is.EqualTo(fieldsBefore), "Admitted as it is.");
+            Assert.That(CurrentOldSaveTrace.Checkpoint(chip, 30), Is.EqualTo(OldSaveTrace.Checkpoint(chip, 30)),
+                "Checkpointed at the live 30 as the recorder checkpoints its own schema: the hash of its own fields.");
+            foreach (int schema in new[] { 29, 28 })
+            {
+                var below = Assert.Throws<InvalidDataException>(() => CurrentOldSaveTrace.Checkpoint(chip, schema), "schema " + schema);
+                Assert.That(below.Message, Is.EqualTo("A season on the alumni rules has no reference schema below 30."), "schema " + schema);
+            }
+            Assert.That(Text(LegacyDigestSchema30Observer.FindDecisionAnswers28(chip)),
+                Is.EqualTo(Text(LegacyDigestSchema29Observer.FindDecisionAnswersOfAnAdmittedSource28(chip))),
+                "The historical FindDecision reader admits it at 30 and reads the same canonical rows.");
+            var nativeFields = Assert.Throws<InvalidDataException>(() => LegacyDigestSchema30Observer.NativeFields29(chip, fields));
+            Assert.That(nativeFields.Message, Is.EqualTo("Only present integer-zero alumni rules may be projected."),
+                "The native-29 arm refuses it by the alumni projection's own check.");
+            var nativeTrace = Assert.Throws<InvalidDataException>(() => LegacyDigestSchema30Observer.NativeTrace29(chip, trace));
+            Assert.That(nativeTrace.Message, Is.EqualTo("Only present integer-zero alumni rules may be projected."));
+            Assert.That(Text(chip), Is.EqualTo(stateBefore));
+            Assert.That(Text(fields), Is.EqualTo(fieldsBefore));
+            Assert.That(Text(trace), Is.EqualTo(traceBefore));
+        }
+
         private static JObject Expected29(JObject source)
         {
             var result = (JObject)source.DeepClone();

@@ -97,6 +97,11 @@ Recorded as given to this work's brief:
 5. **Use only on-show, public game facts already present in the project's research** (`Research/AllStars`, the cast
    templates and the Codex candidate branch). **Never add off-show personal-life details about the real people.**
 
+**Added 2026-10-29, D-H11 (section 12): "Close it (Recommended)".** Schema 29 is closed from step 1's landing on
+main (PR #36). Every new value in a closed vocabulary is defined only at `schemaVersion >= 30`, with D1's chip as the
+one named exception (8.2). It binds the story session, role moments and the competitions topic: delegated call,
+confirmed by the owner.
+
 What these settle, and what they leave:
 - The real-person questions the master plan put to the owner (its decision 5: photos, likeness, real histories in
   play) are closed: the names, photos and likeness stay, and on-show game history may drive play. The master plan's
@@ -1112,7 +1117,8 @@ histories-first order, and it carries every field in 5.1.
   vocabulary only at `schemaVersion >= 30`. That covers story rules 10, R7's and R8's values, deal kinds and id
   prefixes, storyline ceilings, dialogue validator changes, and competition rules above 4 (PC5's 5, PC6's 6 and
   later, and Will's throw value). D1's chip is the one named exception. This binds the story session, role moments
-  and the competitions topic, so it is a peer-session decision for the owner (D-H11).
+  and the competitions topic, so it is a peer-session decision for the owner (D-H11). The owner closed it on
+  2026-10-29 (section 1).
 - **Not claimed:** no command kind (the next free stays 66), no story milestone (10 stays the story session's, 11 is
   Roles), no dialogue rules version (the joint note claims 2 to 5 in dialogue's own field), and no competition rules
   version (5 is PC5's; the throw's is claimed with the competitions topic at H1d).
@@ -1242,7 +1248,7 @@ edition.
 | D-H8 | Where the line falls for "the parts that move balance wait for B9" | **New terms in a decision rule wait** (career reputation, pair risk, the vote shield, Will's throw, the repertoires, the stats). **The opening state is built in H1b**, measured and not tuned. It enrols fresh seasons only if no headline rate in the alumni cells moves beyond seed noise. Otherwise H1b lands with `ApplyFresh` not enrolling until B9, unless the owner decides otherwise (section 9). A stricter reading would hold enrolment back in every case; the gate keeps that protection wherever it matters |
 | D-H9 | AS3's commitment association, if its derivation proof has not run when SCH30's list closes | **Run the proof first**: it needs no Unity. If it cannot run in time, the lead chooses between adding the null field to 30 as insurance and accepting a later schema 31 for it |
 | D-H10 | Reserve B9's `tuningRulesVersion` in 30 before B9 has a plan | **Yes**, at 0, with validation accepting only 0 until B9 defines a value. An unused int costs far less than a schema 31 (5.1). The joint note's §6 recommends the same |
-| D-H11 (owner, peer sessions) | Close schema 29 when SCH30's step 1 lands on main (8.2) | **Yes.** From that landing, story rules 10, R7, R8, competition rules 5 (PC5), PC6's 6 and later, Will's throw value and every other new closed value are defined only at `schemaVersion >= 30`, with D1's chip as the one named exception. It binds the story session, role moments and the competitions topic, so it is recorded as "delegated call, confirmed by the owner" |
+| D-H11 (owner, peer sessions) | Close schema 29 when SCH30's step 1 lands on main (8.2) | **Yes.** From that landing, story rules 10, R7, R8, competition rules 5 (PC5), PC6's 6 and later, Will's throw value and every other new closed value are defined only at `schemaVersion >= 30`, with D1's chip as the one named exception. It binds the story session, role moments and the competitions topic, so it is recorded as "delegated call, confirmed by the owner". **Decided by the owner, 2026-10-29: "Close it" (section 1).** |
 
 ---
 

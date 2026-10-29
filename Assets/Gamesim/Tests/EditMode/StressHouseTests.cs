@@ -280,19 +280,31 @@ namespace Gamesim.Tests.EditMode
         /// So a rule a later wave adds to the shipped game can only go into ApplyFresh, where the stress
         /// house, the balance harness and every season the director starts all get it. An enable line or a
         /// rule field written beside the call fails here.
+        ///
+        /// <para>Since dialogue D1 the call hands ApplyFresh the season's own choice, StartSeason's parameter, as
+        /// it came from the cast screen or the creator: the conversation preview is read there, never set here.
+        /// So StartSeason neither builds a choice nor writes to the one it was given.</para>
         /// </summary>
         [Test]
         public void TheDirectorTakesEveryRuleFromShippedRulesAndSetsNoneItself()
         {
             string root = SourceRoot();
             string director = File.ReadAllText(Path.Combine(root, "Runtime", "Episode", "EpisodeDirector.Season.cs"));
+            const string signature = "private void StartSeason(SeasonBuilder.Choice choice, Action<string> failed, Func<uint, EpisodeState> build)";
+            Assert.That(System.Text.RegularExpressions.Regex.Matches(director, System.Text.RegularExpressions.Regex.Escape(signature)).Count, Is.EqualTo(1),
+                "The director's StartSeason takes the season's choice as its parameter.");
             int start = director.IndexOf("Func<uint, EpisodeState> build)", StringComparison.Ordinal);
             int end = start < 0 ? -1 : director.IndexOf("nextStore.Save(fresh)", start, StringComparison.Ordinal);
             Assert.That(start, Is.GreaterThanOrEqualTo(0), "The director's StartSeason body was found.");
             Assert.That(end, Is.GreaterThan(start), "...up to where it stages the season.");
             string body = director.Substring(start, end - start);
-            var apply = System.Text.RegularExpressions.Regex.Matches(body, @"ShippedRules\.ApplyFresh\(\s*fresh\s*\)\s*;");
-            Assert.That(apply.Count, Is.EqualTo(1), "StartSeason calls ShippedRules.ApplyFresh(fresh) once.");
+            var apply = System.Text.RegularExpressions.Regex.Matches(body, @"ShippedRules\.ApplyFresh\(\s*fresh\s*,\s*choice\s*\)\s*;");
+            Assert.That(apply.Count, Is.EqualTo(1), "StartSeason calls ShippedRules.ApplyFresh(fresh, choice) once.");
+            Assert.That(System.Text.RegularExpressions.Regex.Matches(body, @"ShippedRules\.ApplyFresh\(").Count, Is.EqualTo(1),
+                "...and no other form of it.");
+            Assert.That(System.Text.RegularExpressions.Regex.IsMatch(body, @"\bchoice\s*(\.\s*\w+\s*)*(=(?![=>])|\+=|-=)"), Is.False,
+                "StartSeason writes nothing to the choice it hands on: an opt-in is the player's, read in ApplyFresh.");
+            Assert.That(body, Does.Not.Contain("new SeasonBuilder.Choice"), "...and builds none of its own.");
             Assert.That(body.IndexOf("var fresh = build(seed);", StringComparison.Ordinal), Is.LessThan(apply[0].Index), "...on the season it built...");
             Assert.That(body.IndexOf("CharacterAppearanceSnapshots.Materialize(fresh)", StringComparison.Ordinal), Is.GreaterThan(apply[0].Index),
                 "...before anything else is done to it.");
@@ -303,6 +315,25 @@ namespace Gamesim.Tests.EditMode
                 .Cast<System.Text.RegularExpressions.Match>().Select(match => Normalise(match.Value)).Where(field => field != "fresh.sessionId=").ToList();
             Assert.That(fields, Is.Empty, "StartSeason sets no field of the season but its session id; a rule goes into ShippedRules.ApplyFresh.");
             Assert.That(System.Text.RegularExpressions.Regex.IsMatch(body, @"\bfresh\s*\.\s*sessionId\s*="), Is.True, "The session id was read where it is set.");
+        }
+
+        /// <summary>
+        /// The one dialogue rules a fresh season can be given is the chip's pinned <see cref="DialogueRules.Offered"/>
+        /// (DIALOGUE-PLAN D1, risk 3): ShippedRules writes the field in exactly one place, from that constant, and never
+        /// from the bound <see cref="DialogueRules.Version"/>, which moves whenever a later build defines a version. A
+        /// season keeps the rules it began on, so a chip that wrote the bound would move every opted-in season's rules.
+        /// Read from the source because, while both are 1, no season can tell them apart.
+        /// </summary>
+        [Test]
+        public void TheChipWritesThePinnedDialogueRulesNeverTheBound()
+        {
+            string shipped = File.ReadAllText(Path.Combine(SourceRoot(), "Simulation", "ShippedRules.cs"));
+            var writes = System.Text.RegularExpressions.Regex.Matches(shipped, @"\bdialogueRulesVersion\s*=(?![=>])\s*([^;]*);")
+                .Cast<System.Text.RegularExpressions.Match>().Select(match => Normalise(match.Groups[1].Value)).ToList();
+            Assert.That(writes, Is.EqualTo(new[] { "DialogueRules.Offered" }), "ShippedRules writes the dialogue rules once, from the chip's pinned version.");
+            string code = System.Text.RegularExpressions.Regex.Replace(shipped, @"^\s*//.*$", "", System.Text.RegularExpressions.RegexOptions.Multiline);
+            Assert.That(code, Does.Contain("DialogueRules.Offered"), "The code, comments aside, was read.");
+            Assert.That(code, Does.Not.Contain("DialogueRules.Version"), "ShippedRules reads the bound nowhere but in its comments.");
         }
 
         private static string Normalise(string code) => System.Text.RegularExpressions.Regex.Replace(code, @"\s+", "");

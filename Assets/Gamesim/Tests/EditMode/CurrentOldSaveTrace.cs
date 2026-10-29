@@ -13,6 +13,14 @@ namespace Gamesim.Tests.EditMode
     {
         internal const int Current = 30;
 
+        /// <summary>
+        /// The schema the native-29 arm is keyed to: 29, the one that introduced the dialogue store and that the observer's
+        /// native contract admits. A literal, never <see cref="Current"/>, the live bound: the schema bump moved Current to
+        /// 30, and a rules-1 fixture saved at 29 still names 29 here. It reaches 29 through the schema-30 observer's
+        /// projection, which keeps the store (DIALOGUE-PLAN §6, item 6; ALL-STAR-HISTORIES-PLAN 8.5).
+        /// </summary>
+        private const int NativeSchema = 29;
+
         internal static (string season, string blind, string text) Checkpoint(EpisodeState state, int schema)
         {
             var own = OldSaveTrace.Fields(state);
@@ -23,6 +31,23 @@ namespace Gamesim.Tests.EditMode
             {
                 if (schema != Current) throw new InvalidDataException("A season on the alumni rules has no reference schema below " + Current + ".");
                 return Hash(LegacyDigestSchema30Observer.AdmitNative30(state, own));
+            }
+            // The native-29 arm (DIALOGUE-PLAN D1): a season on dialogue rules 1 is written at 29 by the build that
+            // started it, so it has no older reference and no schema-28 form. Since SCH30 it loads at 30: the schema-30
+            // observer binds the state, admits it whole and by the pilot's own validator, and takes it to its 29 with the
+            // store kept, where the native contract admits it as it is. It is checkpointed at 29, its own build's schema
+            // and its fixture's reference, or at the live 30, and never projected below 29.
+            if (LegacyDigestSchema30Observer.IsNative29(state))
+            {
+                if (schema != NativeSchema && schema != Current)
+                    throw new InvalidDataException("A season on dialogue rules 1 has no schema-" + schema + " form; it is checkpointed at "
+                        + NativeSchema + " or " + Current + ".");
+                var native29 = LegacyDigestSchema30Observer.NativeFields29(state, own);
+                // The recorder hashes the same state with OldSaveTrace alone, which removes only schema 30's literals at
+                // 29: the tests and the recorder cannot part here either.
+                if (!JToken.DeepEquals(OldSaveTrace.Project(own, NativeSchema), native29))
+                    throw new InvalidDataException("OldSaveTrace's schema-30 additions do not take this rules-1 state to the native arm's schema 29.");
+                return Hash(schema == Current ? own : native29);
             }
             // Always check complete current validity and inert additions, even for a
             // same-schema checkpoint. Never use Project's same-header early return as admission.

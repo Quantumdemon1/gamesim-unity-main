@@ -27,7 +27,7 @@ namespace Gamesim.Tests.PlayMode
         private CompetitionApparatus PlayerInstrument()=>SceneComponents<CompetitionApparatus>()
             .Single(instrument=>instrument.ActorId==director.Snapshot.playerId);
 
-        private IEnumerator EnterInstrumentAttempt(string category,bool ranked=false,bool stopAtReady=false,int houseSize=0)
+        private IEnumerator EnterInstrumentAttempt(string category,bool ranked=false,bool stopAtReady=false,int houseSize=0,Action beforeEntry=null)
         {
             if(houseSize==0)yield return InstallRules4AtFirstHoH(SeedOpeningWith(category));
             else
@@ -60,6 +60,7 @@ namespace Gamesim.Tests.PlayMode
             cameraRig.SetReducedMotion(false);
             var before=director.Snapshot;
             if(houseSize>0)InstallRepresentativeYardSolids();
+            beforeEntry?.Invoke();
             Vector3 start=player.transform.position;float radius=player.Agent.radius,height=player.Agent.height;
             ButtonWithCaption(ranked?CompetitionMiniGames.EnterCaption(CompetitionMiniGames.For(category)):"Practice this competition").onClick.Invoke();
             Assert.That(player.transform.position,Is.EqualTo(start),"Opening the apparatus claims a route and does not warp the body.");
@@ -323,10 +324,23 @@ namespace Gamesim.Tests.PlayMode
                 foreach(var pair in canvases)if(pair.Canvas!=null)pair.Canvas.enabled=false;
                 foreach(var pair in overlays)if(pair.Renderer!=null)pair.Renderer.enabled=true;
                 var floor=SceneComponents<BoxCollider>().Single(collider=>collider.name=="Competition yard floor");
-                Vector3 focus=floor.bounds.center+Vector3.up*1.1f;
-                eye.transform.position=focus+Vector3.back*Mathf.Max(20f,floor.bounds.size.x*.8f)+Vector3.up*9f;
-                eye.transform.LookAt(focus);eye.fieldOfView=50;eye.orthographic=false;
-                foreach(var instrument in SceneComponents<CompetitionApparatus>())
+                var field=SceneComponents<CompetitionApparatus>().ToArray();
+                var subjects=field.Select(instrument=>FullFieldRenderedBounds(instrument.transform))
+                    .Concat(field.Select(instrument=>FullFieldBodyBounds(instrument.ActorId))).ToArray();
+                var framing=FullFieldView(subjects,floor.bounds,field[0].transform.parent.forward,50,1600f/900f);
+                eye.transform.SetPositionAndRotation(framing.Eye,framing.Rotation);eye.fieldOfView=50;eye.orthographic=false;
+                Debug.Log("[Gamesim W3] "+houseSize+"-entrant "+category+" full-field eye "+framing.Eye.ToString("F2")+", pitch "+framing.Pitch
+                    +" degrees, "+framing.Distance.ToString("F2")+" m back from the field's centre; its sight lines pass "
+                    +framing.WallClearance.ToString("F2")+" m or more over the house's yard-side wall");
+                Assert.That(framing.WallClearance,Is.GreaterThanOrEqualTo(FullFieldWallClearance),
+                    "The full-field eye sees the whole field over the house's yard-side wall, at pitch "+framing.Pitch);
+                foreach(var subject in subjects)foreach(var corner in BoundsCorners(subject))
+                {
+                    var view=eye.WorldToViewportPoint(corner);
+                    Assert.That(view.z>0 && view.x>=.02f && view.x<=.98f && view.y>=.02f && view.y<=.98f,Is.True,
+                        "Every station and body of the field is in the full-field frame: "+subject+" at "+view.ToString("F3"));
+                }
+                foreach(var instrument in field)
                 {
                     var view=eye.WorldToViewportPoint(instrument.transform.parent.position+Vector3.up);
                     Assert.That(view.z,Is.GreaterThan(0));Assert.That(view.x,Is.InRange(.03f,.97f));Assert.That(view.y,Is.InRange(.03f,.97f));
@@ -347,6 +361,93 @@ namespace Gamesim.Tests.PlayMode
                 lens.Dispose();if(frame!=null)Object.Destroy(frame);
             }
             yield return null;
+        }
+
+        /// <summary>
+        /// The house shell's yard-side wall, which stands behind the contestants on the deck's near edge:
+        /// 1.55 m over the deck, reaching .16 m into it (bb_shell_house; its doorway apart). The full-field
+        /// eye's sight lines to the field pass at least FullFieldWallClearance over it.
+        /// </summary>
+        private const float FullFieldWallTop=1.55f,FullFieldWallReach=.16f,FullFieldWallClearance=.05f;
+        /// <summary>The full-field frame keeps every station and body this far inside its edges (a fraction of the frame).</summary>
+        private const float FullFieldBorder=.04f;
+        /// <summary>
+        /// The full-field eye looks down at least this steeply. Contestants stand between the eye and their
+        /// boards: at 50 degrees about four fifths of the boards show over their heads, against two thirds at
+        /// 35, while the boards keep most of their height in the frame (for the 16-station field, 19 m wide:
+        /// 32 px at 50 against 44 at 35 and 22 at 60), and the black beyond the yard falls to about a tenth
+        /// of the frame.
+        /// </summary>
+        private const float FullFieldLowestPitch=50f;
+
+        private struct FullFieldFrame { public Vector3 Eye; public Quaternion Rotation; public float Pitch,Distance,WallClearance; }
+
+        /// <summary>
+        /// The full-field eye, framed to the field's own bounds (every station's rendered bounds and every
+        /// entrant's body) rather than to the whole yard. It looks along the stations' facing from the
+        /// contestants' side, as before, pitched down from FullFieldLowestPitch a degree at a time until
+        /// every sight line to the field passes FullFieldWallClearance over the house's yard-side wall, so
+        /// nothing of the house stands in front of the front row; at each pitch it stands as near as lets
+        /// every subject corner sit inside a FullFieldBorder border, centred on them. The old fixed eye, 22 m
+        /// back and 9 m up for the yard's far rows, drew the field as a band a fifth of the frame tall under
+        /// black sky, with the house's wall across the front row's waists.
+        /// </summary>
+        private static FullFieldFrame FullFieldView(IReadOnlyList<Bounds> subjects,Bounds deck,Vector3 facing,float fov,float aspect)
+        {
+            Vector3 forward=Vector3.ProjectOnPlane(facing,Vector3.up).normalized,side=Vector3.Cross(Vector3.up,forward);
+            var points=subjects.SelectMany(BoundsCorners).ToArray();
+            var all=subjects[0];foreach(var subject in subjects)all.Encapsulate(subject);
+            float wall=BoundsCorners(deck).Min(corner=>Vector3.Dot(corner,forward))+FullFieldWallReach,wallTop=deck.max.y+FullFieldWallTop;
+            float tanV=Mathf.Tan(fov*.5f*Mathf.Deg2Rad)*(1-2*FullFieldBorder),tanH=tanV*aspect;
+            var frame=default(FullFieldFrame);
+            for(float pitch=FullFieldLowestPitch;pitch<=80;pitch++)
+            {
+                var rotation=Quaternion.LookRotation(Quaternion.AngleAxis(pitch,side)*forward,Vector3.up);
+                Vector3 right=rotation*Vector3.right,up=rotation*Vector3.up,ahead=rotation*Vector3.forward,centre=all.center;
+                // A corner at (x,y,z) about the centre is inside the border from an eye at centre+a*right+b*up-d*ahead
+                // when |x-a| <= tanH*(z+d) and |y-b| <= tanV*(z+d): the nearest d, and the a and b it needs, follow exactly.
+                float leftNeed=float.NegativeInfinity,rightNeed=float.PositiveInfinity,lowNeed=float.NegativeInfinity,highNeed=float.PositiveInfinity;
+                foreach(var point in points)
+                {
+                    Vector3 at=point-centre;float x=Vector3.Dot(at,right),y=Vector3.Dot(at,up),z=Vector3.Dot(at,ahead);
+                    leftNeed=Mathf.Max(leftNeed,x-tanH*z);rightNeed=Mathf.Min(rightNeed,x+tanH*z);
+                    lowNeed=Mathf.Max(lowNeed,y-tanV*z);highNeed=Mathf.Min(highNeed,y+tanV*z);
+                }
+                float distance=Mathf.Max((leftNeed-rightNeed)/(2*tanH),(lowNeed-highNeed)/(2*tanV));
+                Vector3 eye=centre+right*((leftNeed+rightNeed)*.5f)+up*((lowNeed+highNeed)*.5f)-ahead*distance;
+                float clearance=float.PositiveInfinity,eyeAlong=Vector3.Dot(eye,forward);
+                if(eyeAlong<wall)foreach(var point in points)
+                {
+                    float along=Vector3.Dot(point,forward);
+                    float over=along<=wall?float.NegativeInfinity:point.y+(eye.y-point.y)*(along-wall)/(along-eyeAlong);
+                    clearance=Mathf.Min(clearance,over-wallTop);
+                }
+                frame=new FullFieldFrame{Eye=eye,Rotation=rotation,Pitch=pitch,Distance=distance,WallClearance=clearance};
+                if(clearance>=FullFieldWallClearance)break;
+            }
+            return frame;
+        }
+
+        private static IEnumerable<Vector3> BoundsCorners(Bounds bounds)
+        {
+            for(int corner=0;corner<8;corner++)
+                yield return new Vector3((corner&1)==0?bounds.min.x:bounds.max.x,(corner&2)==0?bounds.min.y:bounds.max.y,(corner&4)==0?bounds.min.z:bounds.max.z);
+        }
+
+        private static Bounds FullFieldRenderedBounds(Transform root)
+        {
+            var renderers=root.GetComponentsInChildren<Renderer>().Where(renderer=>renderer.enabled && renderer.gameObject.activeInHierarchy).ToArray();
+            Assert.That(renderers,Is.Not.Empty,"A station of the field draws something: "+root.name);
+            var bounds=renderers[0].bounds;foreach(var renderer in renderers)bounds.Encapsulate(renderer.bounds);
+            return bounds;
+        }
+
+        /// <summary>An entrant's body as the full field counts it: its capsule, the body's own extent whatever its pose's bounds say.</summary>
+        private Bounds FullFieldBodyBounds(string actorId)
+        {
+            var root=actorId==director.Snapshot.playerId?player.transform:SceneComponents<HouseNpc>().Single(npc=>npc.Id==actorId).transform;
+            var capsule=root.GetComponent<CapsuleCollider>();
+            return capsule!=null && capsule.enabled && capsule.gameObject.activeInHierarchy?capsule.bounds:FullFieldRenderedBounds(root);
         }
 
         private IEnumerator WaitForFittedCompetitionField(int houseSize,string category,bool requireFreshArrivals=false)
@@ -681,8 +782,14 @@ namespace Gamesim.Tests.PlayMode
                 var pose=player.GetComponent<CompetitionInstrumentPose>();
                 if(handContact && humanoid!=null)
                 {
+                    // The dice's press is a gesture, not a touch: the roll's press lasts while the dice
+                    // turn, so it aims 0.15 m in front of the die it rolls, clear of the die's whole
+                    // sweep (CompetitionApparatus.HandContact; a point on the die's face turned with it
+                    // and carried the fingers into it). Its case pins that the press reaches that point.
+                    bool dice=instrument.Instrument==CompetitionApparatus.Family.DiceTray;
                     Assert.That(pose,Is.Not.Null,"An arrived humanoid borrows the instrument's scoped hand pose.");
-                    Assert.That(pose.HasContact,Is.True,name+": hands must contact the actual apparatus; left error "+pose.LeftHandError+", right error "+pose.RightHandError
+                    Assert.That(pose.HasContact,Is.True,name+(dice?": the press must reach its point in front of the die it rolls":": hands must contact the actual apparatus")
+                        +"; left error "+pose.LeftHandError+", right error "+pose.RightHandError
                         +"; "+(pose.HasContact?string.Empty:InstrumentContactGeometry(humanoid,instrument)));
                     bool grip=instrument.Instrument==CompetitionApparatus.Family.GripRig;
                     foreach(bool left in grip?new[]{true,false}:new[]{false})
@@ -691,7 +798,9 @@ namespace Gamesim.Tests.PlayMode
                         var contact=humanoid.GetBoneTransform(bone);
                         Assert.That(contact,Is.Not.Null,"The native rig supplies its actual "+bone+" contact.");
                         Assert.That(Vector3.Distance(contact.position,instrument.HandContact(left)),Is.LessThan(.035f),
-                            name+": independently measured "+bone+" must reach the real prop, not just report HasContact.");
+                            dice?name+": independently measured "+bone+" must reach the press point in front of the die, not just report HasContact."
+                                :name+": independently measured "+bone+" must reach the real prop, not just report HasContact.");
+                        if(dice)Debug.Log("[Gamesim W3] "+name+" press: "+DicePressClearance(humanoid,instrument,contact));
                     }
                 }
                 // Both reads are in the same frame, after real input. A GPU read can make the
@@ -726,6 +835,36 @@ namespace Gamesim.Tests.PlayMode
                 lens.Dispose();if(frame!=null)Object.Destroy(frame);if(uiFrame!=null)Object.Destroy(uiFrame);
             }
             yield return null;
+        }
+
+        /// <summary>
+        /// The dice press as the rig makes it, read and logged, never asserted: how far the pressing
+        /// finger's tip is past its distal bone (the rig's own end bone when it has one, else an estimate
+        /// from the intermediate phalanx), and how clear the bone and the tip are of the rolled die's
+        /// sweep. CompetitionApparatus.DiePress allows the tip 2 cm; this measures it on the actual body.
+        /// </summary>
+        private static string DicePressClearance(Animator humanoid,CompetitionApparatus instrument,Transform distal)
+        {
+            var die=instrument.GetComponentsInChildren<MeshFilter>(true).Single(part=>part.name=="Die 2");
+            var frame=instrument.transform;
+            Vector3 centre=die.transform.localPosition;
+            float sweep=new Vector2(die.transform.localScale.x*die.sharedMesh.bounds.extents.x,die.transform.localScale.z*die.sharedMesh.bounds.extents.z).magnitude;
+            float top=centre.y+die.transform.localScale.y*die.sharedMesh.bounds.max.y;
+            var end=distal.GetComponentsInChildren<Transform>(true).Where(t=>t!=distal)
+                .OrderByDescending(t=>Vector3.Distance(t.position,distal.position)).FirstOrDefault();
+            var middle=humanoid.GetBoneTransform(HumanBodyBones.RightMiddleIntermediate);
+            Vector3 tip;string how;
+            if(end!=null && Vector3.Distance(end.position,distal.position)>.005f){tip=end.position;how="the rig's end bone '"+end.name+"'";}
+            else if(middle!=null){tip=distal.position+(distal.position-middle.position);how="estimated: the intermediate phalanx's length past the distal bone";}
+            else{tip=distal.position;how="no end bone and no intermediate phalanx: the distal bone itself";}
+            string Clear(Vector3 world)
+            {
+                Vector3 p=frame.InverseTransformPoint(world);
+                return (new Vector2(p.x-centre.x,p.z-centre.z).magnitude-sweep).ToString("F4")+" m outside the sweep, "
+                    +(p.y-top).ToString("F4")+" m over the die's top";
+            }
+            return "tip "+Vector3.Distance(tip,distal.position).ToString("F4")+" m past "+distal.name+" ("+how+"); sweep radius "+sweep.ToString("F4")
+                +" m; the bone "+Clear(distal.position)+"; the tip "+Clear(tip);
         }
 
         // Failure-only reads: record real segment lengths and target distances after the pose,

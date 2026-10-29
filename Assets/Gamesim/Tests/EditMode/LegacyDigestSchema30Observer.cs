@@ -15,6 +15,8 @@ namespace Gamesim.Tests.EditMode
     /// is checked as the exact inverse of the migration's literals and against the frozen schema-29 whole reader, then
     /// handed to the retained-29 observer, which takes it on to 28 as it always did. Every digest of a current state
     /// passes here, so a recorded digest never moves for the bump: one that moves is a regression, never a re-record.
+    /// A season on dialogue rules 1 (DIALOGUE-PLAN D1) is taken to the same 29, its store kept, and admitted there by the
+    /// retained-29 observer's native contract, never projected to 28 (<see cref="NativeFields29"/>).
     /// </summary>
     internal static class LegacyDigestSchema30Observer
     {
@@ -29,6 +31,27 @@ namespace Gamesim.Tests.EditMode
         /// so it has no schema-29 view, and its digests are taken at the live 30 through <see cref="AdmitNative30"/>.
         /// </summary>
         internal static bool OnTheAlumniRules(EpisodeState state) => state != null && state.alumniRulesVersion != 0;
+
+        /// <summary>
+        /// Whether a state is the native-29 arm's (DIALOGUE-PLAN D1): any dialogue rules but 0. The native admission then
+        /// holds them to exactly 1. A season on the alumni rules is the native-30 arm's first, whatever its dialogue rules.
+        /// </summary>
+        internal static bool IsNative29(EpisodeState state) => state != null && state.dialogueRulesVersion != 0;
+
+        /// <summary>
+        /// The native-29 arm's state-bound entries (DIALOGUE-PLAN D1, carried to schema 30 at the merge with SCH30,
+        /// ALL-STAR-HISTORIES-PLAN 8.5): a current state on dialogue rules 1, the pilot the cast screen's preview chip
+        /// starts, taken to its schema-29 view with its store kept - never to 28, where a store holding conversations has
+        /// no form - and admitted there by the retained-29 observer's native contract
+        /// (<see cref="LegacyDigestSchema29Observer.NativeRetained29"/>), which hands it back as a detached copy.
+        /// Admission is D1's, at the live header: the complete current validator, literal schema 30, literal dialogue
+        /// rules 1 on the state and its JSON, the pilot's own validator (DialogueRules.TryValidate, On), the closed
+        /// pilot's storage, and the binding of this JSON to this state's own view, getters kept for a trace and dropped
+        /// for a field view; then this boundary's projection to 29 (the pooled fields off and in order, the frozen
+        /// schema-29 reader and the migration's exact inverse), which removes nothing of the store.
+        /// </summary>
+        internal static JObject NativeTrace29(EpisodeState state, JObject trace) => Native29(state, trace, true);
+        internal static JObject NativeFields29(EpisodeState state, JObject fields) => Native29(state, fields, false);
 
         /// <summary>
         /// H1b's native-30 arm: a season on the alumni rules admitted at the live 30, unprojected. The same contract the
@@ -81,11 +104,14 @@ namespace Gamesim.Tests.EditMode
         /// Record loses its present-null conditional term, as before. Schema 30 adds nothing to a commitment row. A season
         /// on the alumni rules (H1b) has no 28 view of its whole source, so it is admitted natively at 30 instead
         /// (<see cref="AdmitNative30"/>); its answers are read from the same canonical rows, which the alumni rules never touch.
+        /// A season on dialogue rules 1 (D1) has no 28 view either: it is admitted by the native-29 arm
+        /// (<see cref="NativeFields29"/>), and its answers are its canonical rows', which the pilot holds to a null conditional term.
         /// </summary>
         internal static JArray FindDecisionAnswers28(EpisodeState state)
         {
             string before = state == null ? null : Json(JObject.FromObject(state));
             if (OnTheAlumniRules(state)) AdmitNative30(state, OldSaveTrace.Fields(state));
+            else if (IsNative29(state)) NativeFields29(state, OldSaveTrace.Fields(state));
             else ProjectFields28(state, state == null ? null : OldSaveTrace.Fields(state));
             var answers = LegacyDigestSchema29Observer.FindDecisionAnswersOfAnAdmittedSource28(state);
             Require(Json(JObject.FromObject(state)) == before,
@@ -135,6 +161,35 @@ namespace Gamesim.Tests.EditMode
             catch (Exception error) when (error is JsonException || error is OverflowException
                 || error is ArgumentException || error is InvalidOperationException || error is FormatException)
             { throw new InvalidDataException("The schema30 digest observer exceeds its fixed contract.", error); }
+        }
+
+        private static JObject Native29(EpisodeState state, JObject source, bool getterTrace)
+        {
+            try
+            {
+                // D1's admission, in D1's order, at the live header: each refusal comes from the check that owns it.
+                Require(state != null && source != null, "A current source state and its own JSON are required.");
+                LegacyDigestSchema27Observer.RequireValidSource(state);
+                Require(Integer(source["schemaVersion"], 30) && state.schemaVersion == 30, "Only literal schema30 is a native input.");
+                string stateBefore = Json(JObject.FromObject(state)), sourceBefore = Json(source);
+                Require(Integer(source["dialogueRulesVersion"], 1) && state.dialogueRulesVersion == 1,
+                    "Only present integer-one dialogue rules are admitted natively.");
+                Require(DialogueRules.TryValidate(state, out string pilot) && DialogueRules.On(state),
+                    "The pilot's own validator refuses the source: " + pilot);
+                LegacyDigestSchema29Observer.RequireNativeStore(source);
+                var own = JObject.FromObject(state);
+                if (!getterTrace) own = WithoutGetters(own);
+                Require(Json(own) == sourceBefore, "The JSON is not this current state's exact own view.");
+                // The 30-to-29 layer: this boundary's own projection (the pooled fields off and in order, the frozen
+                // schema-29 reader, the migration's exact inverse), which keeps the store; then the native contract at 29.
+                var native = LegacyDigestSchema29Observer.NativeRetained29(Project(state, source, getterTrace), getterTrace);
+                Require(Json(source) == sourceBefore && Json(JObject.FromObject(state)) == stateBefore,
+                    "The native source, JSON, numeric tokens and property/list order must remain unchanged.");
+                return native;
+            }
+            catch (Exception error) when (error is JsonException || error is OverflowException
+                || error is ArgumentException || error is InvalidOperationException || error is FormatException)
+            { throw new InvalidDataException("The schema30 digest observer exceeds its native contract.", error); }
         }
 
         /// <summary>The literals UpgradeV29ToV30 writes, by hand, each before the property that follows it in the source.</summary>

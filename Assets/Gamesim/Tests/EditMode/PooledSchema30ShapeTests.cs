@@ -20,6 +20,7 @@ namespace Gamesim.Tests.EditMode
         private static readonly string[] Pooled = { "alumniRulesVersion", "alumniCatalogEdition", "tuningRulesVersion" };
 
         [TestCase("s29-default-w2-social")] [TestCase("s29-mode1-allweek-w3-veto-meeting")] [TestCase("s29-mode2-allweek-w3-campaign")]
+        [TestCase("s29-mode2-dialogue1-w2-campaign")]
         public void TheLiveRootIsASchemaTwentyNineWritersRootPlusExactlyThePooledThreeInOrder(string id)
         {
             var former = Fixture(id);

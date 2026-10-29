@@ -269,8 +269,15 @@ namespace Gamesim.Tests.EditMode
                 Is.EqualTo(Text(ExpectedFindDecisionAnswers(state))));
         }
 
-        [TestCase("schema")] [TestCase("duplicate-cast")] [TestCase("enabled-dialogue")]
+        /// <summary>
+        /// Every invalid source is refused, whole and unchanged, before any answer is projected. Since dialogue D1 a
+        /// valid source on dialogue rules 1 is no longer among the refusals: the native arm admits it (the test below).
+        /// What stays refused on rules 1 is what the pilot never holds - an unknown rules version, a role grant, a veto
+        /// occasion, a conditional term - and each of those is an invalid save, as on rules 0.
+        /// </summary>
+        [TestCase("schema")] [TestCase("duplicate-cast")] [TestCase("enabled-dialogue-unknown-version")]
         [TestCase("episodes")] [TestCase("grants")] [TestCase("vetoOccasions")]
+        [TestCase("enabled-dialogue-grants")] [TestCase("enabled-dialogue-vetoOccasions")] [TestCase("enabled-dialogue-conditional-term")]
         [TestCase("conditional-term")] [TestCase("archive")]
         public void CurrentFindDecisionAnswersRefuseUnsupportedInvalidOrNonInertActualSourcesWithoutMutation(string defect)
         {
@@ -279,26 +286,28 @@ namespace Gamesim.Tests.EditMode
             var state = control.Clone();
             Assert.That(LegacyDigestSchema30Observer.FindDecisionAnswers28(state)
                 .OfType<JObject>().Count(), Is.GreaterThan(0), "The control really exercises completed decision projection.");
-            switch (defect)
+            string owner = defect;
+            if (defect.StartsWith("enabled-dialogue-", StringComparison.Ordinal))
+            {
+                state.dialogueRulesVersion = 1;
+                owner = defect.Substring("enabled-dialogue-".Length);
+            }
+            switch (owner)
             {
                 case "schema": state.schemaVersion = 28; break;
                 case "duplicate-cast": state.contestants[1].id = state.contestants[0].id; break;
-                case "enabled-dialogue": state.dialogueRulesVersion = 1; break;
+                case "unknown-version": state.dialogueRulesVersion = 2; break;
                 case "conditional-term": state.unifiedCommitments.Last().conditionalVeto = new ConditionalVetoTermsState(); break;
                 case "archive": state.unifiedVoteReveals[0].ballots[0].targetId = "not-a-cast-id"; break;
                 default:
-                    var field = typeof(DialogueState).GetField(defect);
+                    var field = typeof(DialogueState).GetField(owner);
                     var list = (IList)field.GetValue(state.dialogue);
                     list.Add(Activator.CreateInstance(field.FieldType.GetGenericArguments()[0]));
                     break;
             }
             string before = Text(state);
-            bool enabledDialogue = defect == "enabled-dialogue";
-            Assert.That(EpisodeValidation.TryValidate(state, out _), Is.EqualTo(enabledDialogue),
-                "Only the literal enabled-dialogue case is a valid but non-inert R2 source; every other original defect remains invalid.");
-            var error = Assert.Throws<InvalidDataException>(() => LegacyDigestSchema30Observer.FindDecisionAnswers28(state));
-            if (enabledDialogue)
-                Assert.That(error.Message, Is.EqualTo("Only present integer-zero dialogue rules may be projected."));
+            Assert.That(EpisodeValidation.TryValidate(state, out _), Is.False, "Every original defect, on either rules, remains invalid.");
+            Assert.Throws<InvalidDataException>(() => LegacyDigestSchema30Observer.FindDecisionAnswers28(state));
             Assert.That(Text(state), Is.EqualTo(before));
             Assert.That(Text(control), Is.EqualTo(controlBefore));
             Valid(control);
@@ -306,6 +315,224 @@ namespace Gamesim.Tests.EditMode
                 Is.EqualTo(Text(ExpectedFindDecisionAnswers(control))), "The unchanged valid inert control still projects its actual answers.");
             Assert.That(Text(control), Is.EqualTo(controlBefore));
             Valid(control);
+        }
+
+        /// <summary>
+        /// The pin that replaced the old refusal (DIALOGUE-PLAN D1): the same played season with its dialogue rules
+        /// set to 1 is a valid source - the pilot holds every conditional term null - and the native arm admits it,
+        /// so the reader answers it, with exactly the decisions it answers on rules 0, nothing mutated. The rules-0
+        /// projections themselves still refuse it, word for word as before. Since SCH30 the state-bound entries are the
+        /// schema-30 observer's, whose projection to 28 hands the rules-1 29 to the retained projection, which refuses it.
+        /// </summary>
+        [Test]
+        public void CurrentFindDecisionAnswersAdmitAValidRules1SourceNativelyWithItsActualAnswers()
+        {
+            var control = PlayedDecisionWitness();
+            var state = control.Clone();
+            state.dialogueRulesVersion = 1;
+            Valid(state);
+            string before = Text(state);
+            var answers = LegacyDigestSchema30Observer.FindDecisionAnswers28(state);
+            Assert.That(answers.OfType<JObject>().Count(), Is.GreaterThan(0), "Real completed decisions are answered.");
+            Assert.That(Text(answers), Is.EqualTo(Text(ExpectedFindDecisionAnswers(state))));
+            Assert.That(Text(answers), Is.EqualTo(Text(LegacyDigestSchema30Observer.FindDecisionAnswers28(control))),
+                "The dialogue rules move no decision.");
+            Assert.That(Text(state), Is.EqualTo(before));
+            var error = Assert.Throws<InvalidDataException>(() => LegacyDigestSchema30Observer.ProjectFields28(state, OldSaveTrace.Fields(state)));
+            Assert.That(error.Message, Is.EqualTo("Only present integer-zero dialogue rules may be projected."));
+            Assert.That(Text(state), Is.EqualTo(before));
+        }
+
+        // ------------------------------------------------------------------ the native-29 arm (dialogue D1)
+
+        /// <summary>
+        /// A season on the preview, before its conversation (rules 1, the empty store) and with it open (one
+        /// campaign episode, its storyline and its house events): each is admitted at 29 as it is - the trace with
+        /// its getters, the fields without - returned detached, never projected, and checkpointed at 29 with the
+        /// retained hash algorithm. It has no schema-28 form, so a checkpoint below 29 and both rules-0
+        /// projections refuse it. Since SCH30 (ALL-STAR-HISTORIES-PLAN 8.5) the live state is at 30: the schema-30
+        /// observer's native entries take it to its 29 - schema 30's pooled three removed at their off literals, the
+        /// store kept - which is what the build that started it wrote, and the retained native contract admits that 29
+        /// alone, without a state. At the live 30 it is checkpointed as it is.
+        /// </summary>
+        [TestCase("campaign")] [TestCase("conversation")]
+        public void ARules1SourceIsAdmittedNativelyAtItsOwnSchemaAndNeverProjected(string which)
+        {
+            var witness = DialoguePreviewWitness.Find();
+            var state = which == "campaign" ? witness.Campaign : witness.Conversation;
+            Valid(state);
+            Assert.That(state.schemaVersion, Is.EqualTo(30), "The live schema.");
+            Assert.That(state.dialogueRulesVersion, Is.EqualTo(1));
+            Assert.That(state.dialogue.episodes.Count, Is.EqualTo(which == "campaign" ? 0 : 1));
+            string stateBefore = Text(state);
+            var trace = JObject.FromObject(state);
+            var fields = OldSaveTrace.Fields(state);
+            string traceBefore = Text(trace), fieldsBefore = Text(fields);
+            var trace29 = Expected29(trace);
+            var fields29 = Expected29(fields);
+            var nativeTrace = LegacyDigestSchema30Observer.NativeTrace29(state, trace);
+            var nativeFields = LegacyDigestSchema30Observer.NativeFields29(state, fields);
+            Assert.That(Text(nativeTrace), Is.EqualTo(Text(trace29)), "The trace at 29, getters and all, as it is.");
+            Assert.That(Text(nativeFields), Is.EqualTo(Text(fields29)), "The field view at 29 as it is.");
+            Assert.That(Text(nativeFields["dialogue"]), Is.EqualTo(Text(fields["dialogue"])), "Never projected: the store is kept.");
+            Assert.That(nativeTrace, Is.Not.SameAs(trace));
+            Assert.That(nativeFields, Is.Not.SameAs(fields));
+            nativeTrace["contestants"][0]["name"] = "Detached trace";
+            nativeFields["contestants"][0]["name"] = "Detached fields";
+            Assert.That(Text(trace), Is.EqualTo(traceBefore));
+            Assert.That(Text(fields), Is.EqualTo(fieldsBefore));
+            Assert.That(Text(state), Is.EqualTo(stateBefore));
+
+            var season = (JObject)fields29.DeepClone();
+            season.Remove("events");
+            var actual = CurrentOldSaveTrace.Checkpoint(state, 29);
+            Assert.That(actual.season, Is.EqualTo(OldSaveTrace.Sha256(OldSaveTrace.Canonical(season, true))));
+            Assert.That(actual.blind, Is.EqualTo(OldSaveTrace.Sha256(OldSaveTrace.Canonical(fields29, true))));
+            Assert.That(actual.text, Is.EqualTo(OldSaveTrace.Sha256(OldSaveTrace.Canonical(fields29, false))));
+            Assert.That(actual, Is.EqualTo(OldSaveTrace.Checkpoint(state, 29)), "The recorder hashes the same state the same way.");
+            var live = CurrentOldSaveTrace.Checkpoint(state, 30);
+            var liveSeason = (JObject)fields.DeepClone();
+            liveSeason.Remove("events");
+            Assert.That(live.season, Is.EqualTo(OldSaveTrace.Sha256(OldSaveTrace.Canonical(liveSeason, true))));
+            Assert.That(live.blind, Is.EqualTo(OldSaveTrace.Sha256(OldSaveTrace.Canonical(fields, true))));
+            Assert.That(live.text, Is.EqualTo(OldSaveTrace.Sha256(OldSaveTrace.Canonical(fields, false))));
+            Assert.That(live, Is.EqualTo(OldSaveTrace.Checkpoint(state, 30)), "At the live schema, as it is.");
+            foreach (int older in new[] { 28, 26 })
+                Assert.Throws<InvalidDataException>(() => CurrentOldSaveTrace.Checkpoint(state, older), "No schema-" + older + " form.");
+            var traceError = Assert.Throws<InvalidDataException>(() => LegacyDigestSchema30Observer.ProjectTrace28(state, JObject.FromObject(state)));
+            var fieldsError = Assert.Throws<InvalidDataException>(() => LegacyDigestSchema30Observer.ProjectFields28(state, OldSaveTrace.Fields(state)));
+            Assert.That(traceError.Message, Is.EqualTo("Only present integer-zero dialogue rules may be projected."));
+            Assert.That(fieldsError.Message, Is.EqualTo(traceError.Message));
+            Assert.That(Text(state), Is.EqualTo(stateBefore));
+
+            // The retained native contract takes that 29 and no state, and only a 29: the live 30 is no retained input.
+            var retained = LegacyDigestSchema29Observer.NativeRetained29(fields29, false);
+            Assert.That(Text(retained), Is.EqualTo(Text(fields29)));
+            Assert.That(retained, Is.Not.SameAs(fields29));
+            var header = Assert.Throws<InvalidDataException>(() => LegacyDigestSchema29Observer.NativeRetained29(fields, false));
+            Assert.That(header.Message, Is.EqualTo("Only literal schema29 is a native input."));
+            Assert.That(Text(fields), Is.EqualTo(fieldsBefore));
+        }
+
+        /// <summary>
+        /// The native arm takes nothing but a valid rules-1 source and its own JSON: not a rules-0 state (the
+        /// projection is its arm), not an invalid one - an unknown version, a grant, a veto occasion, a conditional
+        /// term - and not a JSON that is another state's, carries a foreign or a reordered key, a future header, or
+        /// the other view's getters. Each refusal leaves the state and the JSON as they were. Since SCH30 the entries are
+        /// the schema-30 observer's, in D1's order at the live header: a future header is 31, refused by the literal 30.
+        /// The retained native contract they hand the 29 to (no state since SCH30) holds its own checks too - the literal
+        /// 29, integer-one rules, the pilot's closed store and its rows, no getter in a field view - each in its own words
+        /// on the 29 the schema-30 observer would hand it.
+        /// </summary>
+        [TestCase("rules-0")] [TestCase("unknown-version")] [TestCase("grants")] [TestCase("vetoOccasions")]
+        [TestCase("conditional-term")] [TestCase("foreign")] [TestCase("unknown-dialogue")] [TestCase("order")]
+        [TestCase("future")] [TestCase("getters")]
+        public void TheNativeArmAdmitsNothingButAValidRules1SourceAndItsOwnJson(string defect)
+        {
+            var source = DialoguePreviewWitness.Find().Conversation;
+            switch (defect)
+            {
+                case "rules-0": source = Fresh(2); break;
+                case "unknown-version": source.dialogueRulesVersion = 2; break;
+                case "conditional-term":
+                    // A conditional term needs a canonical row to sit on: the played season's, on rules 1.
+                    source = PlayedDecisionWitness();
+                    source.dialogueRulesVersion = 1;
+                    Valid(source);
+                    source.unifiedCommitments.Last().conditionalVeto = new ConditionalVetoTermsState();
+                    break;
+                case "grants":
+                case "vetoOccasions":
+                    var field = typeof(DialogueState).GetField(defect);
+                    var list = (IList)field.GetValue(source.dialogue);
+                    list.Add(Activator.CreateInstance(field.FieldType.GetGenericArguments()[0]));
+                    break;
+            }
+            bool invalid = defect == "unknown-version" || defect == "grants" || defect == "vetoOccasions" || defect == "conditional-term";
+            Assert.That(EpisodeValidation.TryValidate(source, out _), Is.EqualTo(!invalid), "Only the four store defects are invalid saves.");
+            var view = defect == "foreign" ? Foreign(source) : source;
+            var trace = JObject.FromObject(view);
+            var fields = OldSaveTrace.Fields(view);
+            // The retained 29 of the same views, as the schema-30 observer hands it on: what the native contract reads.
+            var retainedTrace = Expected29(trace);
+            var retainedFields = Expected29(fields);
+            switch (defect)
+            {
+                case "unknown-dialogue":
+                    foreach (var json in new[] { trace, fields, retainedTrace, retainedFields })
+                        json["dialogue"]["unknown29"] = new JArray();
+                    break;
+                case "order":
+                    foreach (var json in new[] { trace, fields })
+                    {
+                        var moved = json.Property("dialogue");
+                        moved.Remove();
+                        json.AddFirst(moved);
+                    }
+                    break;
+                case "future":
+                    trace["schemaVersion"] = 31;
+                    fields["schemaVersion"] = 31;
+                    retainedTrace["schemaVersion"] = 30;
+                    retainedFields["schemaVersion"] = 30;
+                    break;
+                case "getters":
+                    var swap = trace;
+                    trace = fields;
+                    fields = swap;
+                    var retainedSwap = retainedTrace;
+                    retainedTrace = retainedFields;
+                    retainedFields = retainedSwap;
+                    break;
+            }
+            string stateBefore = Text(source), traceBefore = Text(trace), fieldsBefore = Text(fields);
+            // Each refused for its own reason, by the check that owns it, not by a later one that happens to hold too.
+            string reason = invalid ? "The current source state is invalid:"
+                : defect == "rules-0" ? "Only present integer-one dialogue rules are admitted natively."
+                : defect == "future" ? "Only literal schema30 is a native input."
+                : defect == "unknown-dialogue" ? "Only the pilot's ordered dialogue lists, with no grant and no veto occasion, are admitted natively."
+                : "The JSON is not this current state's exact own view.";
+            foreach (var native in new System.Func<JObject>[] {
+                () => LegacyDigestSchema30Observer.NativeTrace29(source, trace),
+                () => LegacyDigestSchema30Observer.NativeFields29(source, fields) })
+                Assert.That(Assert.Throws<InvalidDataException>(() => native()).Message, Does.StartWith(reason), defect);
+            Assert.That(Text(source), Is.EqualTo(stateBefore));
+            Assert.That(Text(trace), Is.EqualTo(traceBefore));
+            Assert.That(Text(fields), Is.EqualTo(fieldsBefore));
+            // The retained native contract owns the store's own refusals, in its own words.
+            string retained = defect == "rules-0" || defect == "unknown-version" ? "Only present integer-one dialogue rules are admitted natively."
+                : defect == "grants" || defect == "vetoOccasions" || defect == "unknown-dialogue"
+                    ? "Only the pilot's ordered dialogue lists, with no grant and no veto occasion, are admitted natively."
+                : defect == "conditional-term" ? "Every canonical row must retain a present-null conditionalVeto."
+                : defect == "future" ? "Only literal schema29 is a native input."
+                : defect == "getters" ? "A field view must carry no getter."
+                : null;
+            string retainedTraceBefore = Text(retainedTrace), retainedFieldsBefore = Text(retainedFields);
+            if (retained == null)
+                Assert.DoesNotThrow(() => LegacyDigestSchema29Observer.NativeRetained29(retainedFields, false),
+                    defect + ": the binding to a state is the schema-30 observer's, never the retained contract's.");
+            else
+            {
+                Assert.That(Assert.Throws<InvalidDataException>(() => LegacyDigestSchema29Observer.NativeRetained29(retainedFields, false)).Message,
+                    Is.EqualTo(retained), defect + ": the retained native contract's own words.");
+                if (defect != "getters")
+                    Assert.That(Assert.Throws<InvalidDataException>(() => LegacyDigestSchema29Observer.NativeRetained29(retainedTrace, true)).Message,
+                        Is.EqualTo(retained), defect + ": the same for a trace.");
+            }
+            Assert.That(Text(retainedTrace), Is.EqualTo(retainedTraceBefore));
+            Assert.That(Text(retainedFields), Is.EqualTo(retainedFieldsBefore));
+            if (defect == "rules-0") Assert.DoesNotThrow(() => CurrentOldSaveTrace.Checkpoint(source, 29), "Rules 0 keeps its own arm.");
+            if (invalid) Assert.Throws<InvalidDataException>(() => CurrentOldSaveTrace.Checkpoint(source, 29));
+            Assert.That(Text(source), Is.EqualTo(stateBefore));
+        }
+
+        /// <summary>A valid twin of a state that is not it: the same season in another session.</summary>
+        private static EpisodeState Foreign(EpisodeState state)
+        {
+            var other = state.Clone();
+            other.sessionId += "-another";
+            Valid(other);
+            return other;
         }
 
         [Test]

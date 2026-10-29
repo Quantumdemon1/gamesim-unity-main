@@ -246,6 +246,10 @@ namespace Gamesim.Tests.PlayMode
             yield return null;
             Assert.That(CastScreen().IsShowing, Is.True);
             Assert.That(Creator().IsShowing, Is.False);
+            // The conversation preview (DIALOGUE-PLAN D1), chosen before the start that fails: its return keeps it.
+            PreviewChip(false)[0].onClick.Invoke();
+            yield return null;
+            AssertPreviewReads(true, "Chosen before the failing start");
 
             director.SaveNow();
             var before = director.Snapshot;
@@ -275,6 +279,7 @@ namespace Gamesim.Tests.PlayMode
                 Assert.That(CastButtons("Edit slot 2"), Has.Length.EqualTo(1));
                 Assert.That(CastScreen().GetComponentsInChildren<TMPro.TMP_Text>()
                     .Any(label => label.text == "Slot 1: Retry guest"), Is.True);
+                AssertPreviewReads(true, "Back from the failed start");
                 Assert.That(director.SavePath, Is.EqualTo(previousPath));
                 AssertEquivalent(before, director.Snapshot);
                 Assert.That(File.ReadAllBytes(previousPath), Is.EqualTo(previousBytes));
@@ -293,6 +298,7 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(fresh.Find(fresh.playerId).name, Is.EqualTo("You"));
             Assert.That(fresh.Find("custom-1").name, Is.EqualTo("Retry guest"));
             Assert.That(fresh.Find("custom-2").name, Is.EqualTo("Library guest"));
+            Assert.That(fresh.dialogueRulesVersion, Is.EqualTo(1), "The retry keeps the preview chosen before the failure.");
             var allStars = CastTemplates.In(CastTemplates.Roster.AllStars).Select(template => template.Id).ToArray();
             Assert.That(fresh.contestants.Where(person => !person.isPlayer && !person.id.StartsWith("custom-"))
                 .All(person => allStars.Contains(person.id)), Is.True, "Retry must retain the selected roster.");

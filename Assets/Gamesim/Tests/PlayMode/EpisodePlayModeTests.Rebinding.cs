@@ -489,10 +489,10 @@ namespace Gamesim.Tests.PlayMode
             SetCameraDistance(20f);
             yield return SettleCamera();
             cameraRig.ControlsEnabled = true;
+            var byZ = new KeyTurn();
+            yield return HoldKeyTurning(Key.Z, byZ);
+            Assert.That(byZ.Degrees, Is.LessThan(-1f), "Z turns the camera as Q did (" + byZ + ").");
             float before = cameraRig.Yaw;
-            yield return HoldKey(Key.Z);
-            Assert.That(Turned(before, cameraRig.Yaw), Is.LessThan(-1f), "Z turns the camera as Q did.");
-            before = cameraRig.Yaw;
             yield return HoldKey(Key.Q);
             Assert.That(Mathf.Abs(Turned(before, cameraRig.Yaw)), Is.LessThan(.01f), "Q no longer turns it.");
 

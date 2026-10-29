@@ -29,7 +29,10 @@ namespace Gamesim.Tests.EditMode
         private const string EdgeReason = "The all-week rules' records are only ever between two houseguests.";
         private static readonly string[] Current29 =
         {
-            "s29-default-w2-social", "s29-mode1-allweek-w3-veto-meeting", "s29-mode2-allweek-w3-campaign"
+            "s29-default-w2-social", "s29-mode1-allweek-w3-veto-meeting", "s29-mode2-allweek-w3-campaign",
+            // Dialogue D1's writer file (36882bb8): a shipped season on dialogue rules 1, saved with its conversation
+            // open, joins the direct-29 cases at the merge of the histories with D1 (ALL-STAR-HISTORIES-PLAN 8.5).
+            "s29-mode2-dialogue1-w2-campaign"
         };
         private static string FixtureRoot => Path.Combine(UnityEngine.Application.dataPath,
             "Gamesim", "Tests", "EditMode", "Fixtures", "OldSaves");
@@ -67,6 +70,8 @@ namespace Gamesim.Tests.EditMode
         [TestCase("s29-mode2-allweek-w3-campaign", "player-edge")]
         [TestCase("s29-mode2-allweek-w3-campaign", "dialogue-rules-2")]
         [TestCase("s29-mode2-allweek-w3-campaign", "story-rules-10")]
+        [TestCase("s29-mode2-dialogue1-w2-campaign", "dialogue-rules-2")]
+        [TestCase("s29-mode2-dialogue1-w2-campaign", "story-rules-10")]
         public void MalformedCurrent29IsRefusedByDispatchItselfBeforeAnyLiveDtoHydration(string id, string defect)
         {
             var control = Fixture(id);

@@ -23,7 +23,9 @@ namespace Gamesim.Tests.EditMode
         private static readonly string[] Pooled = { "alumniRulesVersion", "alumniCatalogEdition", "tuningRulesVersion" };
         private static readonly string[] Writers29 =
         {
-            "s29-default-w2-social", "s29-mode1-allweek-w3-veto-meeting", "s29-mode2-allweek-w3-campaign"
+            "s29-default-w2-social", "s29-mode1-allweek-w3-veto-meeting", "s29-mode2-allweek-w3-campaign",
+            // Dialogue D1's writer (36882bb8), on dialogue rules 1 with a conversation open: it steps to 30 as the others do.
+            "s29-mode2-dialogue1-w2-campaign",
         };
         private static string FixtureRoot => Path.Combine(UnityEngine.Application.dataPath,
             "Gamesim", "Tests", "EditMode", "Fixtures", "OldSaves");

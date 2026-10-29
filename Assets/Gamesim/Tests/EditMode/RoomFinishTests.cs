@@ -17,7 +17,7 @@ namespace Gamesim.Tests.EditMode
     /// the NavMesh or the anchors - no collider, no shadow, no static flag - and every surface
     /// inside its room, under its wall's height, wearing a material the pass made.
     /// </summary>
-    public sealed class RoomFinishTests
+    public sealed partial class RoomFinishTests
     {
         private const string EpisodeScene = HouseRoomFinish.EpisodeScene;
         /// <summary>Where the diary chair stands and has stood: the pass dresses around it and never moves it.</summary>
@@ -346,7 +346,7 @@ namespace Gamesim.Tests.EditMode
                     AssertWithinXZ(bounds, cb, 0.02f, thing.name + " stays inside the console footprint.");
                 }
                 AssertAuthored(onTheConsole.Single(t => t.name == "HoH drink"), "bb_set_bottle");
-                Assert.That(renderers.Count(r => r.name == "Mini fridge"), Is.EqualTo(1));
+                Assert.That(NamedChildren(suite, "Mini fridge"), Has.Length.EqualTo(1));
                 var neon = renderers.Single(r => r.name == "HoH neon");
                 Assert.That(neon.sharedMaterial.renderQueue, Is.GreaterThanOrEqualTo((int)RenderQueue.Transparent), "The HoH neon is lit.");
                 Assert.That(neon.bounds.center.x, Is.GreaterThan(floor.max.x - 0.3f), "by the door on the east divider.");
@@ -407,13 +407,13 @@ namespace Gamesim.Tests.EditMode
                 var renderers = games.GetComponentsInChildren<Renderer>(true);
                 Assert.That(renderers.Count(r => r.name == "Arcade marquee"), Is.EqualTo(1), "One neon focal piece, not six.");
                 Assert.That(renderers.Count(r => r.sharedMaterial != null && r.sharedMaterial.renderQueue >= (int)RenderQueue.Transparent), Is.EqualTo(1), "and nothing else in the room glows.");
-                Assert.That(renderers.Count(r => r.name == "Game box"), Is.EqualTo(3), "Three game boxes on the coffee table,");
-                var boxes = renderers.Where(r => r.name == "Game box").OrderBy(r => r.bounds.min.y).ToList();
-                Assert.That(boxes[1].bounds.min.y, Is.EqualTo(boxes[0].bounds.max.y).Within(0.01f), "stacked.");
+                Assert.That(NamedChildren(games, "Game box"), Has.Length.EqualTo(3), "Three game boxes on the coffee table,");
+                var boxes = NamedChildren(games, "Game box").Select(BoundsOf).OrderBy(b => b.min.y).ToList();
+                Assert.That(boxes[1].min.y, Is.EqualTo(boxes[0].max.y).Within(0.01f), "stacked.");
                 Assert.That(renderers.Count(r => r.name == "Game poster"), Is.EqualTo(2), "Two posters,");
                 Assert.That(renderers.Count(r => r.name == "Game poster frame"), Is.EqualTo(2), "framed.");
                 Assert.That(renderers.Count(r => r.name == "Trophy plaque"), Is.EqualTo(1));
-                Assert.That(renderers.Count(r => r.name == "Mini fridge"), Is.EqualTo(1));
+                Assert.That(NamedChildren(games, "Mini fridge"), Has.Length.EqualTo(1));
                 Assert.That(renderers.Count(r => r.name == "Game room pattern"), Is.EqualTo(1));
                 var rug = renderers.Single(r => r.name == "Game rug");
                 Assert.That(floor.Contains(new Vector3(rug.bounds.center.x, floor.center.y, rug.bounds.center.z)), Is.True);
@@ -469,7 +469,7 @@ namespace Gamesim.Tests.EditMode
                 var waterTable = AssertSupportedByNearest(water, sideTables, 0.02f);
                 var waterBook = books.Single(book => NearestSupport(book, sideTables) == waterTable);
                 AssertSeparatedXZ(water, waterBook, "The water bottle does not intersect its book stack.");
-                Assert.That(renderers.Count(r => r.name == "Toiletry"), Is.EqualTo(3), "toiletries on the three drawers");
+                Assert.That(NamedChildren(bedroom, "Toiletry"), Has.Length.EqualTo(3), "toiletries on the three drawers");
                 Assert.That(renderers.Count(r => r.name == "Corkboard"), Is.EqualTo(1));
                 Assert.That(renderers.Count(r => r.name == "Polaroid"), Is.EqualTo(3));
                 Assert.That(renderers.Count(r => r.name == "Framed print"), Is.EqualTo(2));
@@ -555,7 +555,10 @@ namespace Gamesim.Tests.EditMode
             finally { EditorSceneManager.ClosePreviewScene(scene); }
         }
 
-        /// <summary>The pass is idempotent: run on the saved scene it rebuilds the same root.</summary>
+        /// <summary>
+        /// The pass is idempotent: run on the saved scene it makes the same root - the same renderers,
+        /// places and materials. It keeps the very objects too (ARunOnTheSavedSceneKeepsEveryObjectInPlaceAndTheIdleBoardsWithTheirFlags).
+        /// </summary>
         [Test]
         public void RunningThePassAgainRebuildsTheSameRoot()
         {

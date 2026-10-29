@@ -978,7 +978,7 @@ a main-based cherry-pick would work, but it records digests of cards the branch 
   derivation proof has not run (D-H9 is the lead's).
 - **The review's fixes** (the fix commit after `936b73a4`):
   - 8.7's three schema-30 fixtures, written and recorded by `936b73a4` through `Tools/OldSaves`
-    (OLD-SAVE-ACCEPTANCE 2.4): `s30-default-w2-social`, `s30-mode2-allweek-w3-campaign` (Regular) and
+    (OLD-SAVE-ACCEPTANCE 2.5): `s30-default-w2-social`, `s30-mode2-allweek-w3-campaign` (Regular) and
     `s30-mode2-allstars-w3-campaign`, all at alumni rules 0. From schema 30 a cell names the alumni rules and the
     cast, both read back from the save, so H1b's alumni-1 All-Stars cell is distinct. The recorder gained the
     `director-allstars` rules value for it.
@@ -1426,7 +1426,7 @@ seasons only.
   the rules the same entry is summed as before.
 
 **The alumni-on old-save cell** (8.7), recorded in the commit after `0fef7b59` by that build itself
-(OLD-SAVE-ACCEPTANCE 2.5): `s30-mode2-allstars-alumni1-w3-campaign`, a shipped All-Stars director season of eight at
+(OLD-SAVE-ACCEPTANCE 2.6): `s30-mode2-allstars-alumni1-w3-campaign`, a shipped All-Stars director season of eight at
 alumni rules 1 and edition 1, saved at the week-3 campaign with the Hitmen's final two live, four receipts, and 48
 commands to its end. Seed 3004, because the alumni-0 fixture's seed 3002 had evicted Derrick by then. It is the 55th
 cell. `CurrentOldSaveTrace` and the historical `FindDecision` reader admit a season on the alumni rules natively at

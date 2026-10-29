@@ -23,7 +23,18 @@ namespace Gamesim.Simulation
     public static class ShippedRules
     {
         /// <summary>Switches every shipped rule on for a fresh, unplayed season, from week one.</summary>
-        public static void ApplyFresh(EpisodeState fresh) => ApplyFresh(fresh, alumniHistories: true);
+        public static void ApplyFresh(EpisodeState fresh) => ApplyFresh(fresh, null, alumniHistories: true);
+
+        /// <summary>
+        /// The same, with what the player chose on the cast screen (DIALOGUE-PLAN D1). Null, or a choice with
+        /// nothing opted in, gives exactly <see cref="ApplyFresh(EpisodeState)"/>. The one option today is the
+        /// preview chip, <see cref="SeasonBuilder.Choice.CampaignConversations"/>: it starts the season on the
+        /// pinned <see cref="DialogueRules.Offered"/>, never the bound <see cref="DialogueRules.Version"/>, and is
+        /// written after every rule the pilot's prerequisites read (DialogueRules.Prerequisites); only the alumni
+        /// histories follow it. The chip draws nothing, logs nothing and mints no id; in a season that seats an
+        /// alumnus the histories after it mint their ids, as they do through <see cref="ApplyFresh(EpisodeState)"/>.
+        /// </summary>
+        public static void ApplyFresh(EpisodeState fresh, SeasonBuilder.Choice options) => ApplyFresh(fresh, options, alumniHistories: true);
 
         /// <summary>
         /// The same, with the alumni histories' last step left out when <paramref name="alumniHistories"/> is false:
@@ -31,7 +42,15 @@ namespace Gamesim.Simulation
         /// an earlier alumni rules value for its control; shipping never does). Internal, so the director and every
         /// other assembly reach only the shipped form.
         /// </summary>
-        internal static void ApplyFresh(EpisodeState fresh, bool alumniHistories)
+        internal static void ApplyFresh(EpisodeState fresh, bool alumniHistories) => ApplyFresh(fresh, null, alumniHistories);
+
+        /// <summary>
+        /// The one body every form above runs (ALL-STAR-HISTORIES-PLAN 8.5, the merge of the histories with dialogue D1):
+        /// the shipped rules, then the cast screen's preview chip, then the alumni histories as the very last step. Two
+        /// bodies would let the options form, which the director's StartSeason calls, start a season without its histories
+        /// while every test of the one-argument form stayed green. Only the balance lab's control passes false.
+        /// </summary>
+        internal static void ApplyFresh(EpisodeState fresh, SeasonBuilder.Choice options, bool alumniHistories)
         {
             if (fresh == null) throw new ArgumentNullException(nameof(fresh));
             fresh.competitionRulesVersion = CompetitionRules.Current;
@@ -67,13 +86,18 @@ namespace Gamesim.Simulation
             // already active - every vote promise and deal one canonical row, settled at the reveal
             // under Rule2 and archived with its frame. Do not infer this opt-in while loading,
             // recovering, migrating or importing an existing season: a season recorded in mode 0 or 1
-            // keeps its mode (the lead's decision D6). Dialogue remains off in the schema29 foundation.
+            // keeps its mode (the lead's decision D6).
             fresh.unifiedCommitmentRulesVersion = UnifiedVoteFamilyValidation.Version;
             fresh.unifiedHearingRulesVersion = UnifiedCommitmentHearings.ProspectiveVersion;
+            // Dialogue stays off in a shipped season (OWNER-DECISIONS-2026-10-22 §5) unless the player opts this one
+            // in on the cast screen. Like every rule here it is never inferred while loading, recovering,
+            // migrating or importing: a season keeps the dialogue rules it began on.
+            if (options != null && options.CampaignConversations) fresh.dialogueRulesVersion = DialogueRules.Offered;
             // The All-Star histories (ALL-STAR-HISTORIES-PLAN H1b), last: after the first impressions, so a pair's
             // standing is its first impression plus its past game, and after the commitment rules and the unified
-            // mode, so the Hitmen's final two is written under the season's own deal rules. Alumni rules 1 only in a
-            // season that seats an identity-intact alumnus; every other season stays at 0, as it was.
+            // mode, so the Hitmen's final two is written under the season's own deal rules. After the preview chip
+            // too, so the cast screen's every choice starts the same histories (ALL-STAR-HISTORIES-PLAN 8.5). Alumni
+            // rules 1 only in a season that seats an identity-intact alumnus; every other season stays at 0, as it was.
             if (alumniHistories) EpisodeEngine.EnableAlumniHistories(fresh);
         }
 

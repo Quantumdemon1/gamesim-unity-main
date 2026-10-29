@@ -29,6 +29,8 @@ namespace Gamesim.Episode
         private readonly Collider[] competitionPlacementHits=new Collider[256];
         private readonly HashSet<Transform> competitionRouteOwners=new HashSet<Transform>();
         private Collider competitionStageFloor;
+        /// <summary>What is drawn standing on the deck, which a reservation clears as it clears colliders (read once per arena).</summary>
+        private CompetitionStageScenery competitionScenery;
         private System.Func<CompetitionApparatus,bool> competitionFitGate;
         /// <summary>The complete reserved station envelopes, for world-fit diagnostics.</summary>
         public IReadOnlyDictionary<string,CompetitionStageFootprint> CompetitionFootprints=>competitionFootprints;
@@ -49,6 +51,10 @@ namespace Gamesim.Episode
         // directions remain the agent's concern, rather than rotating each whole
         // reservation into an irregular packing problem.
         private const float CompetitionContestantFacing=0f;
+        // The contestants' second pass: every row again at this step, without the grid's own
+        // places (each 1.8 m grid place is this many steps from the last).
+        private const float CompetitionGapStep=.15f;
+        private const int CompetitionGapStepsPerPlace=12;
 
         private bool BeginCompetitionArena(EpisodeState state)
         {
@@ -71,6 +77,10 @@ namespace Gamesim.Episode
             competitionArenaRoot.transform.SetParent(floor.transform,false);
             var scale=floor.transform.lossyScale;
             competitionArenaRoot.transform.localScale=new Vector3(1/scale.x,1/scale.y,1/scale.z);
+            // The yard's collider-free set dressing - the entrance arch, the course's gates, signs and
+            // backdrop, the display - is invisible to the physics below. Every station and audience
+            // place clears it as well, with the same whole reservation (CompetitionStageScenery).
+            competitionScenery=CompetitionStageScenery.Collect(floor,competitionArenaRoot.transform);
             var filter=new NavMeshQueryFilter{agentTypeID=player.Agent.agentTypeID,areaMask=player.Agent.areaMask};
             var playerCapsule=player.GetComponent<CapsuleCollider>();
             float layoutRadius=Mathf.Max(player.Agent.radius,playerCapsule!=null?playerCapsule.radius:0);
@@ -98,14 +108,26 @@ namespace Gamesim.Episode
             // while retaining capacity for the validated16-person stored field.
             float frontLimit=Mathf.Max(bounds.min.z+1.5f,bounds.min.z+layoutRadius+layoutArrival+.14f);
             var candidates=new List<Vector3>();
+            var gaps=new List<Vector3>();
             for(float z=backRow;z>frontLimit;z-=rowStride)
+            {
                 for(float x=bounds.min.x+2f;x<bounds.max.x-2f;x+=1.8f)
                     candidates.Add(new Vector3(x,bounds.max.y,z));
+                for(int step=1;bounds.min.x+2f+step*CompetitionGapStep<bounds.max.x-2f;step++)
+                    if(step%CompetitionGapStepsPerPlace!=0)gaps.Add(new Vector3(bounds.min.x+2f+step*CompetitionGapStep,bounds.max.y,z));
+            }
             // Fill the far rows first so stopped arrivals do not occupy the entrance
             // while the rest of the field is still walking through it. Every candidate
             // retains its real floor/path and complete apparatus-clearance checks.
+            // A contestant takes a grid place while one is clear. Only then does it look
+            // in the gaps the 1.8 m grid steps over, every row again at a fine step in
+            // the same order: the room left beside a set piece, or beside a houseguest
+            // standing where a grid place would be (a body is no route owner while the
+            // cast is placed, and a station cannot be leased on top of it). An entrant
+            // with no clear place in either pass logs an error rather than overlapping.
             var contestantCandidates=candidates.OrderByDescending(p=>p.z)
-                .ThenBy(p=>Mathf.Abs(p.x-bounds.center.x)).ThenBy(p=>p.x).ToArray();
+                .ThenBy(p=>Mathf.Abs(p.x-bounds.center.x)).ThenBy(p=>p.x)
+                .Concat(gaps.OrderByDescending(p=>p.z).ThenBy(p=>Mathf.Abs(p.x-bounds.center.x)).ThenBy(p=>p.x)).ToArray();
             // The player uses a real complete path under an owner token. Ordinary input remains
             // locked; neither the navigation root nor its collider is teleported or reconfigured.
             foreach(var wanted in contestantCandidates)
@@ -197,14 +219,19 @@ namespace Gamesim.Episode
                         }
                     if(anchor==null)
                     {
-                        Debug.Log("[Gamesim competition stage] no station for "+actor.id+" family="+instrumentFamily
-                            +" from="+npc.transform.position.ToString("F3")+" candidates="+candidates.Count
+                        string refusal="[Gamesim competition stage] no station for "+actor.id+" family="+instrumentFamily
+                            +" from="+npc.transform.position.ToString("F3")+" candidates="+(contestants.Contains(actor.id)?contestantCandidates.Length:candidates.Count)
                             +" rowStride="+rowStride.ToString("F3")+" layoutRadius="+layoutRadius.ToString("F3")
                             +" floor="+floorMisses+" occupied="+occupiedMisses+" envelope="+envelopeMisses
                             +" last="+lastCandidate.ToString("F3")+" deck="+lastEnvelope.FitsOn(floor.bounds)
                             +" neighbour="+ClearsCompetitionNeighbours(lastEnvelope)
                             +" blockers="+CompetitionStaticBlockers(lastEnvelope,npc.transform)
-                            +" rejected="+CompetitionRejectedCandidates(candidates,used,npc,capsule,floor,rooms,filter,instrumentFamily,contestants.Contains(actor.id)),this);
+                            +" scenery="+(competitionScenery!=null?competitionScenery.Blockers(lastEnvelope):"none")
+                            +" rejected="+CompetitionRejectedCandidates(contestants.Contains(actor.id)?contestantCandidates:(IReadOnlyList<Vector3>)candidates,used,npc,capsule,floor,rooms,filter,instrumentFamily,contestants.Contains(actor.id));
+                        // An entrant the yard cannot seat is an error, not a quiet gap: every clear place is
+                        // taken, and the alternative - a station through a set piece or a neighbour - is
+                        // exactly what the reservation exists to refuse. The audience may stand down quietly.
+                        if(contestants.Contains(actor.id))Debug.LogError(refusal,this);else Debug.Log(refusal,this);
                         continue;
                     }
                     ids.Add(actor.id); anchors.Add(anchor); used.Add(anchor.Approach); competitionArenaActors[actor.id]=anchor;
@@ -360,6 +387,7 @@ namespace Gamesim.Episode
 
         private bool FitsCompetitionFootprint(CompetitionStageFootprint footprint,Collider floor,Transform prospectiveSelf=null)
             =>footprint.FitsOn(floor.bounds) && ClearsCompetitionNeighbours(footprint)
+                && (competitionScenery==null || competitionScenery.Clears(footprint))
                 && footprint.HasStaticClearance(gameObject.scene.GetPhysicsScene(),floor,competitionPlacementHits,competitionRouteOwners,prospectiveSelf);
 
         private string CompetitionRejectedCandidates(IReadOnlyList<Vector3> candidates,IReadOnlyList<Vector3> used,HouseNpc npc,
@@ -378,7 +406,8 @@ namespace Gamesim.Episode
                 bool staticClear=footprint.HasStaticClearance(gameObject.scene.GetPhysicsScene(),floor,competitionPlacementHits,competitionRouteOwners,npc.transform);
                 refused.Add(wanted.ToString("F3")+"->"+position.ToString("F3")+":spacing="+spacing+",body="+bodyReason
                     +",deck="+footprint.FitsOn(floor.bounds)+",neighbours="+ClearsCompetitionNeighbours(footprint)
-                    +",static="+staticClear+",blockers="+(staticClear?"none":CompetitionStaticBlockers(footprint,npc.transform)));
+                    +",static="+staticClear+",blockers="+(staticClear?"none":CompetitionStaticBlockers(footprint,npc.transform))
+                    +",scenery="+(competitionScenery!=null?competitionScenery.Blockers(footprint):"none"));
             }
             return (candidates.Count>128?"first128 only; ":"")+string.Join("; ",refused);
         }
@@ -708,7 +737,7 @@ namespace Gamesim.Episode
             competitionInstruments.Clear();
             competitionBodies.Clear();
             competitionFootprints.Clear();
-            competitionRouteOwners.Clear();competitionStageFloor=null;competitionFitGate=null;
+            competitionRouteOwners.Clear();competitionStageFloor=null;competitionScenery=null;competitionFitGate=null;
             if(competitionArenaRoot!=null){Destroy(competitionArenaRoot);competitionArenaRoot=null;}
         }
     }

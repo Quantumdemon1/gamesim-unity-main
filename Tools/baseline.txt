@@ -29,7 +29,10 @@
 # 8642 of 8642.
 # 8932 = the full NoUMA run at 45d2f015 (role moments R4+R5, 2026-10-23), 8932 of 8932: R0 to R5's EditMode
 # cases on top of 8642. R6's 38 RoleStoryMomentsTests cases raise it once R6's own full run has counted them.
-Gamesim.EditModeTests 8932
+# 9034 = 8932 + R6's 38 RoleStoryMomentsTests cases (on main, first counted here) + the room scope's 64: RS1's 11
+# (HouseRoomScopeTests 7, HouseRoomScopeWalkerTests 3, HouseRoomScopePlanTests 1), RSW's 5 (HouseWhoIsWhereTests)
+# and RS0's 48 (VerificationViewsTests): the full NoUMA run at 2a81aef3 (room scope Set A, 2026-10-27), 9034 of 9034.
+Gamesim.EditModeTests 9034
 # The UMA-free build. 1215 = 1236, the count after the consolidation's lanes (S2a, S2b, S4a), less the 7
 # farewell probes moved to Gamesim.DiagnosticsPlayModeTests and the 14 farewell readiness tests that now
 # compile only under GAMESIM_UMA (judged on the UMA cast); 1230 = 1215 + S2d's 7, S4b's 2, S4c's 2 and
@@ -53,7 +56,10 @@ Gamesim.EditModeTests 8932
 # 1326 = 1323 + 3840c58d's 3 shared play-frame tests (JuryReveal_ItsTimeStartsWhenItIsDrawn,
 # VetoDraw_TheRevealsTimeStartsWhenItIsDrawn, Result_ItsTimeStartsWhenItIsDrawn): the full NoUMA run at 7f754510
 # (main b208d46d merged in, 2026-10-25), 1326 of 1326.
-Gamesim.PlayModeTests 1326
+# 1344 = 1326 + the room scope's 18 shared tests: RS1's 6 (5 RoomScope_ cases and the prototype's), RSW's 9
+# (WhoIsWhere_, WalkIn_, Talk_, FreeTime_, Beacons_ and LiveFeed_ cases) and RS0's 3 (the culling and light pins):
+# the full NoUMA run at 2a81aef3 (room scope Set A, 2026-10-27), 1344 of 1344.
+Gamesim.PlayModeTests 1344
 # The UMA build of the same assembly, read by a plan built without -WithoutUma. 1281 = the 1241 above + the
 # 40 tests that compile only under GAMESIM_UMA, as run at r1 (2026-10-16): in EpisodePlayModeTests,
 # GroundedFarewell 11, Creator 9, HouseLife 8, Emotes 3, OpeningCaptures 2, and one each in CreatorEntry,
@@ -67,7 +73,9 @@ Gamesim.PlayModeTests 1326
 # 1343 of 1343 on 2026-10-25, as six process groups whose union was checked case by case).
 # 1366 = 1363 + the same 3 shared play-frame tests: the full UMA-build run at 7f754510 (2026-10-25), 1366 of
 # 1366, in one process with the MCP bridge off.
-Gamesim.PlayModeTests.UmaBuild 1366
+# 1384 = 1366 + the same 18 shared room-scope tests: the full UMA-build run at 2a81aef3 (2026-10-27), 1384 of 1384,
+# in one process with the MCP bridge off.
+Gamesim.PlayModeTests.UmaBuild 1384
 # The UMA bodies: runs only where the GAMESIM_UMA define is set (the working tree and the D: copy).
 # 82 = the 89 run on 2026-10-15, less the 7 farewell probes moved to Gamesim.Uma.DiagnosticsPlayModeTests;
 # 85 = 82 + the 3 farewell readiness decision tests (UmaFarewellReadinessDecisionPlayModeTests, 2026-10-16);
@@ -75,7 +83,9 @@ Gamesim.PlayModeTests.UmaBuild 1366
 # 129 = 90 + the dialogue V2 source's 39 (UmaTriangleReaderFencePlayModeTests 38, UmaAnimatorGraphLifetimePlayModeTests 1):
 # the full run at b26b28cc (2026-10-22), 129 of 129, on a vendor with Tools/UmaPatches/triangle-reader-fence01
 # applied. The 38 fail on an unpatched vendor by design; every UMA copy needs the patch applied by hand.
-Gamesim.Uma.PlayModeTests 129
+# 130 = 129 + RS0's UmaRoomScopeBodiesPlayModeTests.Bodies_EveryAnimatorAlwaysAnimates: the full run at 2a81aef3
+# (room scope Set A, 2026-10-27), 130 of 130, in one process with the MCP bridge off.
+Gamesim.Uma.PlayModeTests 130
 # Diagnostics: feasibility and diagnostic probes, never shipping acceptance. They compile only under
 # GAMESIM_DIAGNOSTICS, which only a diagnostic run adds to the test copy (GAMESIM_DIAGNOSTICS=1 with
 # sync-and-run.sh or the locked runner); the UMA one needs GAMESIM_UMA too. The floor counts that they

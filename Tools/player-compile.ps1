@@ -7,6 +7,7 @@
 # Reads current working-tree sources, using the acceptance copy's cached player references because
 # only a player build generates the P.dag; build one there first with
 #   Unity.exe -batchmode -projectPath <copy> -executeMethod Gamesim.Editor.U01ProjectSetup.BuildPortDesktop
+# with UNITY_MCP_DISABLE_BATCH=1 in its environment (the MCP bridge's client checks hold a batch editor at 15-26 GiB).
 # Output goes to %LOCALAPPDATA%\Gamesim\player-compile. GAMESIM_UNITY_EDITOR overrides the editor
 # folder, otherwise it is derived from ProjectSettings/ProjectVersion.txt.
 param([switch]$WithoutUma)

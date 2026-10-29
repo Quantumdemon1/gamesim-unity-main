@@ -29,12 +29,15 @@
 # 8642 of 8642.
 # 8932 = the full NoUMA run at 45d2f015 (role moments R4+R5, 2026-10-23), 8932 of 8932: R0 to R5's EditMode
 # cases on top of 8642. R6's 38 RoleStoryMomentsTests cases raise it once R6's own full run has counted them.
-# 9004 = 8932 + R6's 38 RoleStoryMomentsTests cases (on main, first counted here) + the props batch's 34:
-# HouseSmallPropAssetTests' 29 (14 x 2 TestCaseSource plus SavedEpisodeUsesExactlyTheSixteenSelectedAuthoredProps)
-# and RoomFinishTests' 5. The props cases pass only with the 14 imported props, their 30 materials and the re-saved
-# EpisodeHouse.unity. The full NoUMA run at 423b82ca (aafb7399 with PR #33's test-only 5a61dde4, 2026-10-26),
-# 9004 of 9004.
-Gamesim.EditModeTests 9004
+# 8982 = 8932 + R6's 38 RoleStoryMomentsTests cases (on main, first counted here) + BatchMcpBridgeIsolationTests' 12
+# (10 TestCase rows and 2 tests): the full NoUMA run at e2670955 (this branch with claude/uma-retention-tidy, both on
+# main 772828ba, 2026-10-27), 8982 of 8982.
+# 9016 = 8982 + the props batch's 34: HouseSmallPropAssetTests' 29 (14 x 2 TestCaseSource plus
+# SavedEpisodeUsesExactlyTheSixteenSelectedAuthoredProps) and RoomFinishTests' 5, which pass only with the 14 imported
+# props, their 30 materials and the re-saved EpisodeHouse.unity. The props batch's own full NoUMA run at 423b82ca
+# (aafb7399 with PR #33's test-only 5a61dde4, 2026-10-26) ran 9004 of 9004 = 8970 + 34; the two sets' cases are
+# disjoint, so the floor is their sum.
+Gamesim.EditModeTests 9016
 # The UMA-free build. 1215 = 1236, the count after the consolidation's lanes (S2a, S2b, S4a), less the 7
 # farewell probes moved to Gamesim.DiagnosticsPlayModeTests and the 14 farewell readiness tests that now
 # compile only under GAMESIM_UMA (judged on the UMA cast); 1230 = 1215 + S2d's 7, S4b's 2, S4c's 2 and
@@ -86,7 +89,9 @@ Gamesim.PlayModeTests.UmaBuild 1385
 # 129 = 90 + the dialogue V2 source's 39 (UmaTriangleReaderFencePlayModeTests 38, UmaAnimatorGraphLifetimePlayModeTests 1):
 # the full run at b26b28cc (2026-10-22), 129 of 129, on a vendor with Tools/UmaPatches/triangle-reader-fence01
 # applied. The 38 fail on an unpatched vendor by design; every UMA copy needs the patch applied by hand.
-Gamesim.Uma.PlayModeTests 129
+# 132 = 129 + UmaBodyRetentionPlayModeTests' 3: the full run at e2670955 (this branch with
+# claude/batch-mcp-bridge-off, both on main 772828ba, 2026-10-27), 132 of 132, in one process with the MCP bridge off.
+Gamesim.Uma.PlayModeTests 132
 # Diagnostics: feasibility and diagnostic probes, never shipping acceptance. They compile only under
 # GAMESIM_DIAGNOSTICS, which only a diagnostic run adds to the test copy (GAMESIM_DIAGNOSTICS=1 with
 # sync-and-run.sh or the locked runner); the UMA one needs GAMESIM_UMA too. The floor counts that they

@@ -51,7 +51,8 @@ try {
         if ($suite.filter) { $arguments+=@('-testFilter',$suite.filter) }
         $deadline=if ($SuiteTimeoutSeconds -gt 0) {$SuiteTimeoutSeconds} else {Get-ReviewSuiteDeadline $suite.assembly $suite.platform}
         Write-Output "Running $($suite.assembly) (deadline $deadline s); retained evidence: $runRoot"
-        $process=Invoke-ReviewOwnedProcess $unity $arguments $deadline (Join-Path $runRoot ($suite.id+'-process.json'))
+        # UNITY_MCP_DISABLE_BATCH=1 keeps the MCP bridge, whose client checks held batch runs at 15-26 GiB, off (review-workflow.ps1).
+        $process=Invoke-ReviewOwnedProcess $unity $arguments $deadline (Join-Path $runRoot ($suite.id+'-process.json')) -Environment $script:ReviewUnityEnvironment
         # A Unity that never exited, never started, or whose executable changed ends the plan: there is
         # no report to read, and nothing may use the copy while Unity holds it. A late run that exited
         # on its own is read and recorded like any other, then counted as failed.

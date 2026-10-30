@@ -30,7 +30,12 @@ namespace Gamesim.Tests.EditMode
         private const int One = AlumniRules.Histories, Two = AlumniRules.Loyalty;
         private const double Exact = 1e-9, Shown = 0.005;
 
-        private static EpisodeState AllStars(int size, uint seed, string player = null, int value = AlumniRules.Latest) =>
+        /// <summary>
+        /// The shipped All-Stars season held at <paramref name="value"/>: by default this slice's own value,
+        /// <see cref="AlumniRules.Loyalty"/>, so a later value's terms never reach these fixtures (§14.I: every behaviour
+        /// test names its value).
+        /// </summary>
+        private static EpisodeState AllStars(int size, uint seed, string player = null, int value = AlumniRules.Loyalty) =>
             AlumniHistoriesTests.AllStars(size, seed, player, value);
 
         private static string On(EpisodeState s, string templateId) => AlumniHistoriesTests.On(s, templateId);
@@ -195,6 +200,8 @@ namespace Gamesim.Tests.EditMode
             saved.ledger.power.Last().tally.Clear();
             saved.ledger.power.Last().evicteeId = null;
             Assert.That(AlumniLoyalty.PutUpWeeks(saved, cody, tyler, includeThisWeek: true), Is.EqualTo(new[] { 3 }), "Saved by the veto, put up all the same.");
+            Assert.That(AlumniLoyalty.PutUpWeeks(saved, cody, tyler, includeThisWeek: false), Is.Empty, "This week's row is this week's: earlier weeks only.");
+            Assert.That(AlumniLoyalty.PublicSplitWeek(saved, cody, tyler, includeThisWeek: false), Is.Zero);
             Assert.That(Goodwill(saved, tyler, cody), Is.Zero);
             var replaced = s.Clone();
             Block(replaced, cody, rachel, tyler);
@@ -545,6 +552,7 @@ namespace Gamesim.Tests.EditMode
             {
                 // Cody as Head of Household (the fixture), Tyler the one he is least reluctant to name.
                 var at = Walk(AllStars(12, 1113u, value: value), AtTheNominations).Snapshot;
+                var rivals = at.Clone();
                 string cody = On(at, Cody), tyler = On(at, Tyler);
                 Crown(at, cody);
                 Edge(at, cody, tyler).score = -80;
@@ -571,10 +579,24 @@ namespace Gamesim.Tests.EditMode
                 Assert.That(AlumniLoyalty.PutUpWeeks(vetoed, cody, tyler, includeThisWeek: true), Is.EqualTo(new[] { 1 }), "Saved by the veto, put up all the same.");
                 var reverse = Walk(vetoed, s => s.week == 2 && AtTheNominations(s)).Snapshot;
                 Assert.That(reverse.Find(tyler).status == ContestantStatus.Active && reverse.Find(cody).status == ContestantStatus.Active, Is.True);
+
+                // Cody, crowned again in week two, puts Tyler up a second time: the pair split in week one, so nothing
+                // more is written, whichever of them names the other.
+                var twice = reverse.Clone();
+                Crown(twice, cody);
+                Edge(twice, cody, tyler).score = -80;
+                BeatsFirst(twice);
+                var (again, once) = BesideAlumniRulesOne(twice);
+                Assert.That(again.nominees, Does.Contain(tyler), "Cody nominates Tyler again.");
+                Assert.That(AlumniLoyalty.PutUpWeeks(again, cody, tyler, includeThisWeek: true), Is.EqualTo(new[] { 1, 2 }));
+                Assert.That(Edge(again, cody, tyler).score, Is.EqualTo(Edge(once, cody, tyler).score).Within(Exact), "Once a season: no second write, Cody's way.");
+                Assert.That(Edge(again, tyler, cody).score, Is.EqualTo(Edge(once, tyler, cody).score).Within(Exact), "Nor Tyler's.");
+
                 Crown(reverse, tyler);
                 Edge(reverse, tyler, cody).score = -70;
                 Edge(reverse, cody, tyler).score = 0;
                 Assert.That(AlumniLoyalty.PublicSplitWeek(reverse, tyler, cody, includeThisWeek: false), Is.EqualTo(1));
+                Assert.That(AlumniLoyalty.PublicSplitWeek(reverse, cody, tyler, includeThisWeek: false), Is.EqualTo(1), "Either way round.");
                 BeatsFirst(reverse);
                 there = Edge(reverse, cody, tyler).score; back = Edge(reverse, tyler, cody).score;
                 var plotted = Ceremony(reverse);
@@ -591,6 +613,24 @@ namespace Gamesim.Tests.EditMode
                 Assert.That(Edge(renamed, cody, tyler).score, Is.EqualTo(Edge(unsplit, cody, tyler).score).Within(Exact), "Once a season: no second write.");
                 Assert.That(Edge(renamed, tyler, cody).score, Is.EqualTo(Edge(unsplit, tyler, cody).score).Within(Exact));
                 Assert.That(Goodwill(renamed, cody, tyler), Is.LessThan(1), "Cody's view of Tyler erodes in turn.");
+
+                // A seated pair whose past game was a nomination, not an alliance (a standing of 0), has nothing to write
+                // off: Janelle, as Head of Household, puts Tyler up in week one, and no Move touches either edge between
+                // them. Both edges are marked untouched before the ceremony, so a write would show as this week's mark.
+                string janelle = On(rivals, Janelle);
+                Crown(rivals, janelle);
+                Edge(rivals, janelle, tyler).score = -80;
+                BeatsFirst(rivals);
+                Edge(rivals, janelle, tyler).lastInteractionWeek = 0;
+                Edge(rivals, tyler, janelle).lastInteractionWeek = 0;
+                var (rivalry, rivalryControl) = BesideAlumniRulesOne(rivals);
+                Assert.That(rivalry.nominees, Does.Contain(tyler), "Janelle nominates Tyler.");
+                foreach (var (holder, about) in new[] { (janelle, tyler), (tyler, janelle) })
+                {
+                    Assert.That(Edge(rivalry, holder, about).score, Is.EqualTo(Edge(rivalryControl, holder, about).score).Within(Exact), holder + "->" + about + ": no standing to write off.");
+                    Assert.That(Edge(rivalry, holder, about).lastInteractionWeek, Is.EqualTo(Edge(rivalryControl, holder, about).lastInteractionWeek),
+                        holder + "->" + about + ": and no Move marks it in touch.");
+                }
             }
 
             // The replacement is a nomination too: Cody names Tyler in a saved nominee's place.
@@ -617,6 +657,7 @@ namespace Gamesim.Tests.EditMode
 
             // The player on Tyler's card: Cody puts the player up, and nothing is written on the player's edge, either way.
             var card = Walk(AllStars(12, 1115u, Tyler), AtTheNominations).Snapshot;
+            var crowned = card.Clone();
             string player = card.playerId, codyNpc = On(card, Cody);
             Crown(card, codyNpc);
             Edge(card, codyNpc, player).score = -80;
@@ -630,6 +671,32 @@ namespace Gamesim.Tests.EditMode
             Assert.That(Edge(put, player, codyNpc).score, Is.EqualTo(playerEdges[player + ">" + codyNpc].score).Within(Exact), "The player's own view is theirs.");
             Assert.That(Edge(put, player, codyNpc).lastInteractionWeek, Is.EqualTo(playerEdges[player + ">" + codyNpc].lastInteractionWeek), "And no Move marks it in touch.");
             Assert.That(Goodwill(put, codyNpc, player), Is.EqualTo(1), "Cody's nomination of the player is no act of the player's: his receipt about them stands.");
+
+            // And the other way: the player on Tyler's card, as Head of Household, puts Cody up. Nothing is written off on
+            // the player's edges either (D-H3); both read as the same nominations do with the season held at alumni rules 1.
+            Crown(crowned, player);
+            BeatsFirst(crowned);
+            string pawn = EpisodeEngine.NominationCandidates(crowned).First(c => c.id != codyNpc).id;
+            var mine = PlayerNominates(crowned.Clone(), codyNpc, pawn);
+            var mineAtOne = PlayerNominates(Held(crowned, One), codyNpc, pawn);
+            Assert.That(mine.nominees, Does.Contain(codyNpc), "The player nominates Cody.");
+            foreach (var (holder, about) in new[] { (player, codyNpc), (codyNpc, player) })
+            {
+                Assert.That(Edge(mine, holder, about).score, Is.EqualTo(Edge(mineAtOne, holder, about).score).Within(Exact),
+                    holder + "->" + about + ": no standing is written off when the player splits the pair (D-H3).");
+                Assert.That(Edge(mine, holder, about).lastInteractionWeek, Is.EqualTo(Edge(mineAtOne, holder, about).lastInteractionWeek), holder + "->" + about);
+            }
+        }
+
+        /// <summary>The player's own nominations, as Head of Household, through <see cref="EpisodeEngine.Apply"/>. Returns the state after them.</summary>
+        private static EpisodeState PlayerNominates(EpisodeState at, string first, string second)
+        {
+            var command = EpisodeEngineTests.Command(at, EpisodeCommandKind.Nominate);
+            command.targetId = first;
+            command.secondTargetId = second;
+            var result = new EpisodeEngine(at).Apply(command);
+            Assert.That(result.accepted, Is.True, result.reason);
+            return result.state;
         }
 
         // ------------------------------------------------------------------ the opening and the off values
@@ -643,7 +710,7 @@ namespace Gamesim.Tests.EditMode
                     var shipped = SeasonBuilder.Create(new SeasonBuilder.Choice { HouseSize = size, Roster = CastTemplates.Roster.AllStars, PlayerTemplateId = player }, seed);
                     ShippedRules.ApplyFresh(shipped);
                     Assert.That(shipped.alumniRulesVersion, Is.EqualTo(AlumniRules.Latest), "The writer writes the latest value.");
-                    Assert.That(AlumniRules.Latest, Is.EqualTo(Two));
+                    Assert.That(AlumniRules.Latest, Is.GreaterThanOrEqualTo(Two), "Values above 2 move no pin here (§14.G).");
                     for (int value = One; value <= AlumniRules.Latest; value++)
                     {
                         var held = AllStars(size, seed, player, value);

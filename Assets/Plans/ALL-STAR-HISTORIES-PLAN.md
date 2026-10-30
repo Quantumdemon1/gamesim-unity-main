@@ -20,8 +20,8 @@ All-Star (2026-10-25, against main `b208d46d`; "the master plan" below). What ch
 **H1b built** (2026-10-26, section 13): the histories' opening state at alumni rules 1, with H1a's edition folded in,
 measured against section 9's gate (no headline rate moved), so fresh seasons that seat an alumnus enrol.
 Its review fix pins edition 1's words, the week-one rule and the breach rule's types. It adds the "both together" and
-pacing rows to the gate, and the `ApplyFresh` merge rule with D1 (8.5). Two calls are left open: the breach rule's
-width (7.4) and D-H2 (section 12).
+pacing rows to the gate, and the `ApplyFresh` merge rule with D1 (8.5). The two calls it left open are settled: the
+breach rule's width (7.4) by section 14, and D-H2 (section 12) by the lead on 2026-10-29.
 
 **Evidence base**
 - Unity: `D:/GamesimAllStars` at `b208d46d`. Code paths are relative to `Assets/Gamesim/`. Documents at the repository
@@ -1260,7 +1260,7 @@ edition.
 | # | Question | Recommendation |
 |---|---|---|
 | D-H1 (owner) | Edition 1's scope: shared Big Brother seasons only, or also Reindeer Games, Snake in the Grass and The Traitors? | **Big Brother seasons only** (3.3). Other shows are allowed by the owner's rule and can come as a later edition; owner's call if wanted |
-| D-H2 | What enrols a season: the cast (at least one intact, unique alumnus) or the All-Stars tab? | **The cast** (section 6): the state stores no roster, and `ApplyFresh` takes only the state. H1b built this. **Open: the lead confirms it.** H1b's brief said "fresh All-Stars seasons only"; by the cast, the verification stress house and a Regular season with an alumni custom slot enrol too, and the gate measured All-Stars rosters only (section 13). The alternative is to narrow enrolment to the All-Stars tab once D1's options form lets `ApplyFresh` see the roster. Enrolment happens only when a season is created, so narrowing changes fresh seasons only, and saved seasons keep their value |
+| D-H2 | What enrols a season: the cast (at least one intact, unique alumnus) or the All-Stars tab? | **The cast** (section 6): the state stores no roster, and `ApplyFresh` takes only the state. H1b built this. **Confirmed by the lead, 2026-10-29:** enrolment stays by the cast. H1b's brief said "fresh All-Stars seasons only"; by the cast, the verification stress house and a Regular season with an alumni custom slot enrol too, and the gate measured All-Stars rosters only (section 13). The alternative is to narrow enrolment to the All-Stars tab once D1's options form lets `ApplyFresh` see the roster. Enrolment happens only when a season is created, so narrowing changes fresh seasons only, and saved seasons keep their value |
 | D-H3 | Pairs with the player on an alumni card | **The NPC's view only**, through one receipt; no `Move`, no `Change`, no arc, no seeded row (7.2) |
 | D-H4 | Will and Janelle's row | **Held out whole** (3.3): the eviction's only project source is not a game source (rule 4), and the reading fails rule 3 as well. It comes back only with a game-register source already in the project, or by the owner's explicit call, recorded in section 1 |
 | D-H5 (owner) | An in-game on/off switch for histories (Codex's `playerHistoriesEnabled`) | **None for now**. If the owner wants one, it is alumni rules 0 on a fresh season and needs no field |
@@ -1270,7 +1270,7 @@ edition.
 | D-H9 | AS3's commitment association, if its derivation proof has not run when SCH30's list closes | **Run the proof first**: it needs no Unity. If it cannot run in time, the lead chooses between adding the null field to 30 as insurance and accepting a later schema 31 for it |
 | D-H10 | Reserve B9's `tuningRulesVersion` in 30 before B9 has a plan | **Yes**, at 0, with validation accepting only 0 until B9 defines a value. An unused int costs far less than a schema 31 (5.1). The joint note's §6 recommends the same |
 | D-H11 (owner, peer sessions) | Close schema 29 when SCH30's step 1 lands on main (8.2) | **Yes.** From that landing, story rules 10, R7, R8, competition rules 5 (PC5), PC6's 6 and later, Will's throw value and every other new closed value are defined only at `schemaVersion >= 30`, with D1's chip as the one named exception. It binds the story session, role moments and the competitions topic, so it is recorded as "delegated call, confirmed by the owner". **Decided by the owner, 2026-10-29: "Close it" (section 1).** |
-| D-H12 (owner) | The owner's direction for All-Star seasons: default loyalty that changes and decays, reputations, known connections (section 1) | **The direction's three values, decided by the owner** (2026-10-29): alumni rules 2 (loyalty), 3 (reputation and known pairs) and 4 (counter-blocs), section 14. Fresh seasons start at the latest; NPC pacts stay pairs until the owner answers 14.K |
+| D-H12 (owner) | The owner's direction for All-Star seasons: default loyalty that changes and decays, reputations, known connections (section 1) | **The direction's three values, decided by the owner** (2026-10-29): alumni rules 2 (loyalty), 3 (reputation and known pairs) and 4 (counter-blocs), section 14. Fresh seasons start at the latest; outsider pacts grow past two from alumni rules 5 (14.L, D-H13) |
 
 ---
 
@@ -1395,7 +1395,7 @@ no entry. Reported, not gated:
 - Pacing: commands a season rise slightly in three cells (the social newcomer at 8, +5.8 [+0.1, +11.5]; the player on
   Cody's card, +2.3 at 8 and +3.2 at 12). The weeks are unchanged.
 
-**What enrols, and what the gate measured** (D-H2, open in section 12). By the cast, three kinds of fresh season
+**What enrols, and what the gate measured** (D-H2, open in section 12 then; confirmed by the lead, 2026-10-29). By the cast, three kinds of fresh season
 enrol:
 - All-Stars seasons, the only ones the gate measured;
 - the verification stress house: enrolled, played to its finale by `StressHouseTests`, not measured;
@@ -1481,7 +1481,7 @@ runtime source changed, and no test case was added, so the floors stand.
   width is the lead's or the owner's to settle before the branch ships.
 - **The gate report** adds the "both together" arm, the pacing rows and the all-player-types line (above).
 - **The merge with D1** gets its `ApplyFresh` rule and its trap in 8.5.
-- **D-H2** is marked open for the lead in section 12. The kinds of season that enrol without being measured are listed
+- **D-H2** was marked open for the lead in section 12 (confirmed by the lead, 2026-10-29). The kinds of season that enrol without being measured are listed
   above.
 - **Not done: a twelve-house alumni-1 save fixture**, which the review marked optional. The verbatim pin catches the
   wording edit it guards against, in the subset and in seconds. A fixture needs the recorder run from an archive of
@@ -2091,5 +2091,3 @@ Every new test uses only public members, so the new files compile in Unity's Edi
 - **The report** is not a gate. It has two stop conditions.
 
 **Question for the owner.** Bigger counter-alliances. The owner's example has the house allying "for numbers" against a known three. NPC pacts here are pairs, with one NPC-only pact per three NPCs and each NPC in one at most. These are the story session's limits (`Assets/Plans/NPC-AGENCY-PLAN.md:27-28`; `Simulation/NpcAlliances.cs:88-99,258-272`). So the house answers with several outsider pairs, their hunts, and the player's own pacts, which can grow, but never with one NPC alliance of three or more. Should outsider pacts be allowed to grow past two while a known bloc stands? That changes a story-session limit, so it needs the owner's call. Default: no, pairs only.
-
-**Until the owner answers, the default is taken: pairs only** (no NPC pact above two; the lead, 2026-10-29). Section 14 builds nothing that needs the other answer.

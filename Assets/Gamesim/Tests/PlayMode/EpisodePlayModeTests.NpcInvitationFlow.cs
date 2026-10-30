@@ -15,6 +15,23 @@ namespace Gamesim.Tests.PlayMode
     {
         private IEnumerator InstallNpcInvitationFlowHouse()
         {
+            SaveNpcInvitationFlowState();
+            yield return ReloadEpisode();
+            Assert.That(NpcRead<bool>("npcDiagnosticsSuspended"), Is.False);
+            Assert.That(NpcRead<bool>("npcApproachDiagnosticsSuppressed"), Is.False,
+                "This flow keeps ordinary NPC approach planning enabled.");
+            Assert.That(director.ShowOverview(), Is.True);
+            yield return WaitForVisibleNpcInvitation();
+        }
+
+        /// <summary>
+        /// Saves the invitation flow's house: a lawful season where the real generator has put offers to the player -
+        /// Maya's partnership and Jamie's information sharing - and every action of the week is spent. With
+        /// <paramref name="threeAsks"/>, Taylor also asks, about Casey, whom both of them hold a grudge against
+        /// (OFFERS-COME-TO-YOU-PLAN test 15): a third distinct kind the generator's variety rule keeps.
+        /// </summary>
+        private void SaveNpcInvitationFlowState(bool threeAsks = false)
+        {
             var state = ContentCatalog.Create(6123);
             state.dealRulesStartWeek = 1;
             // A saved, lawful house where the real generator has reasons to ask the player.
@@ -29,19 +46,28 @@ namespace Gamesim.Tests.PlayMode
             // Jamie's authored Strategic trait qualifies the information-sharing rung below
             // partnership warmth; Taylor's Competitive/Confrontational traits do not.
             state.relationships.Single(edge => edge.fromId == "jamie-roberts" && edge.toId == state.playerId).score = 35;
+            if (threeAsks)
+            {
+                // Casey becomes a common threat to Taylor and the player, so Taylor's ladder files a target agreement
+                // about Casey. Maya's and Jamie's scores toward Casey stay 0, so their offers are unchanged.
+                state.relationships.Single(edge => edge.fromId == "taylor-kim" && edge.toId == state.playerId).score = 30;
+                state.relationships.Single(edge => edge.fromId == "taylor-kim" && edge.toId == "casey-wilson").score = -20;
+                state.relationships.Single(edge => edge.fromId == state.playerId && edge.toId == "casey-wilson").score = -10;
+            }
             NpcDeals.Propose(state);
             Assert.That(NpcDeals.Pending(state).Count, Is.GreaterThanOrEqualTo(2), "The actual generator produces distinct offers.");
             Assert.That(NpcDeals.Pending(state).Any(row => row.proposerId == ContentCatalog.MayaId && row.type == DealKind.Partnership), Is.True);
             Assert.That(NpcDeals.Pending(state).Any(row => row.proposerId == "jamie-roberts" && row.type == DealKind.InformationSharing), Is.True);
+            if (threeAsks)
+            {
+                Assert.That(NpcDeals.Pending(state).Count, Is.EqualTo(3), "Three houseguests ask: " + string.Join(", ",
+                    NpcDeals.Pending(state).Select(row => row.proposerId + "/" + row.type)));
+                Assert.That(NpcDeals.Pending(state).Any(row => row.proposerId == "taylor-kim" && row.type == DealKind.TargetAgreement
+                    && row.targetId == "casey-wilson"), Is.True, "Taylor asks to work together against Casey.");
+            }
             state.socialActions = EpisodeEngine.SocialActionBudget(state);
             Assert.That(EpisodeValidation.TryValidate(state, out string reason), Is.True, reason);
             new EpisodeSaveStore(director.SavePath).Save(state);
-            yield return ReloadEpisode();
-            Assert.That(NpcRead<bool>("npcDiagnosticsSuspended"), Is.False);
-            Assert.That(NpcRead<bool>("npcApproachDiagnosticsSuppressed"), Is.False,
-                "This flow keeps ordinary NPC approach planning enabled.");
-            Assert.That(director.ShowOverview(), Is.True);
-            yield return WaitForVisibleNpcInvitation();
         }
 
         private IEnumerator WaitForVisibleNpcInvitation()

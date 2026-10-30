@@ -101,6 +101,15 @@ namespace Gamesim.Episode
         /// <summary>Who the player clicked and is walking towards, or null. A read, as above.</summary>
         public string WalkingToId => headingToNpcId;
 
+        /// <summary>
+        /// Whether houseguests bring their asks to the player (OFFERS-COME-TO-YOU-PLAN, EpisodeDirector.ComesToYou.cs):
+        /// walk over, say their line and open it as a dialogue, or open on it when the player talks to them. Null is the
+        /// default: on in the editor and the standalone player, off under -batchmode. Every PlayMode fixture that binds
+        /// a director and every PortVerification route set it false, so the audited behaviour holds - the invitation
+        /// and its invited view as they always ran. A change mid-session lets any visit go and starts both afresh.
+        /// </summary>
+        public bool? AsksEnabled { get; set; }
+
         // The opening counts too: it owns the house while it plays, so the player cannot walk, the
         // houseguests do not tick and nothing underneath answers a key.
         public bool IsPanelOpen => blockedRecovery || focusedNpc != null || phaseOpen || settingsOpen || sceneCardOpen
@@ -451,7 +460,9 @@ namespace Gamesim.Episode
             // A dismissing key is consumed for the whole frame, even if the result updated first.
             if (competitionCard != null && competitionCard.OwnsInput) return;
             if (competitionInputSuspended) SyncCompetitionResultInput();
-            TickNpcInvitations();
+            // Houseguests bringing their asks to the player (EpisodeDirector.ComesToYou.cs); with AsksEnabled off,
+            // the invitation as it always ran.
+            TickAsks();
             TickNpcSocialRuntime(Time.unscaledDeltaTime);
             TickConversationPresentation();
             TickHouseActivities();

@@ -409,6 +409,9 @@ namespace Gamesim.Tests.PlayMode
                 "^Gamesim episode ready: [0-9]+ contestants, validated simulation, local recovery and accessible HUD connected\\.$"));
             yield return SceneManager.LoadSceneAsync(EpisodeScene, LoadSceneMode.Single);
             director = SceneComponents<EpisodeDirector>().Single();
+            // The suites test the audited behaviour, the same in the editor as in a batch run: houseguests do not bring
+            // their asks over unless a test opts in after this (OFFERS-COME-TO-YOU-PLAN).
+            director.AsksEnabled = false;
             var deadline = Time.realtimeSinceStartup + 10f;
             while (!director.IsReady && Time.realtimeSinceStartup < deadline) yield return null;
             Assert.That(director.IsReady, Is.True, "Episode startup did not finish.");

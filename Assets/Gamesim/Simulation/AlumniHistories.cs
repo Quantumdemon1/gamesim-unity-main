@@ -12,10 +12,12 @@ namespace Gamesim.Simulation
     /// <para>Each behaviour names the version that introduced it, and asks <see cref="At"/> with it. <see cref="Histories"/>
     /// is H1b's: the alumni's past games, written once into a fresh season's opening relationships
     /// (<see cref="EpisodeEngine.EnableAlumniHistories"/>). <see cref="Loyalty"/> is the owner's direction of 2026-10-29
-    /// (§14.B): the inherited loyalty changes and decays with this season's acts (<see cref="AlumniLoyalty"/>). Values 3
-    /// and 4 are claimed by §14 for career reputation and known pairs, and for counter-blocs; they are not defined yet.
-    /// The campaigns (AS7) take the next free value after §14, and H1d's other parts (after B9) later ones, in landing
-    /// order. Only range checks and "new seasons start here" may read <see cref="Latest"/>.
+    /// (§14.B): the inherited loyalty changes and decays with this season's acts (<see cref="AlumniLoyalty"/>).
+    /// <see cref="Reputation"/> is the same direction's reputations and known connections (§14.C, §14.D): an alumnus's
+    /// career and the known pairs of past games count in the nomination threat and the vote (<see cref="KnownBlocs"/>).
+    /// Value 4 is claimed by §14 for counter-blocs, and 5 by its 14.L for outsider pacts that grow; they are not defined
+    /// yet. The campaigns (AS7) take the next free value after §14, and H1d's other parts (after B9) later ones, in
+    /// landing order. Only range checks and "new seasons start here" may read <see cref="Latest"/>.
     /// </para>
     ///
     /// <para>A season is never moved onto these rules after it starts: load, migration, recovery and the importer
@@ -37,11 +39,20 @@ namespace Gamesim.Simulation
         public const int Loyalty = 2;
 
         /// <summary>
+        /// §14.C-D: everything of <see cref="Loyalty"/>, and the public record read as reputation. An alumnus's career
+        /// (winner, finalist, played) and the risk of the known pairs of past games (a seated shared alliance whose two
+        /// houseguests are both in and have not put each other up) count in the threat a Head of Household and their
+        /// pact-mates read at the nominations, and in the vote's threat (<see cref="KnownBlocs"/>). The house's talk - the
+        /// rumour subject, the pitch target, a broken word's grudge - reads the threat without them.
+        /// </summary>
+        public const int Reputation = 3;
+
+        /// <summary>
         /// The highest value this build defines: for range checks and for new seasons only. Fresh seasons that seat an
         /// alumnus start here (§14.A); a value a test or the lab holds is a field write after that, valid while every value
         /// up to this one writes the same opening.
         /// </summary>
-        public const int Latest = Loyalty;
+        public const int Latest = Reputation;
 
         /// <summary>Whether a saved value is one this build defines (validation's range).</summary>
         public static bool IsDefined(int version) => version >= Off && version <= Latest;
@@ -141,7 +152,7 @@ namespace Gamesim.Simulation
         public bool Involves(string templateId) => templateId == FirstId || templateId == SecondId;
     }
 
-    /// <summary>One alumnus's career record (§3.4): the record's words and how it reads. Read by no decision before H1d.</summary>
+    /// <summary>One alumnus's career record (§3.4): the record's words and how it reads. Read as career reputation from alumni rules 3 (§14.C).</summary>
     public sealed class AlumniCareerRecord
     {
         internal AlumniCareerRecord(string templateId, string record, AlumniCareer career, string[] sources)
@@ -190,9 +201,10 @@ namespace Gamesim.Simulation
             PairOf(holderId, aboutId)?.Parts.FirstOrDefault(part => part.HolderId == holderId && part.AboutId == aboutId);
 
         /// <summary>
-        /// What the record is worth to H1d's career reputation (§3.6, §7.5): winner, finalist, otherwise played; 0 for
-        /// nobody the edition knows. <b>No decision reads it</b>: it is a new term in the threat rule, so it waits for
-        /// B9 and an alumni rules value of its own (§9).
+        /// What the record is worth to career reputation (§3.6, §7.5): winner, finalist, otherwise played; 0 for nobody
+        /// the edition knows. Read from alumni rules 3 (<see cref="AlumniRules.Reputation"/>, §14.C) through
+        /// <see cref="KnownBlocs.CareerFor"/>, by the nomination threat and the vote only: the owner's direction of
+        /// 2026-10-29 decided it ahead of B9 (§14.A).
         /// </summary>
         public int CareerReputation(string templateId)
         {
@@ -233,10 +245,10 @@ namespace Gamesim.Simulation
         /// <summary>Shared standing for an on-show alliance that reached a final two, and for another (§3.6).</summary>
         public const double FinalTwoAllianceStanding = 20, AllianceStanding = 10;
 
-        /// <summary>H1d's career reputation (§3.6): winner, finalist, otherwise played. Read by nothing before B9.</summary>
+        /// <summary>Career reputation (§3.6): winner, finalist, otherwise played. Read from alumni rules 3 by the nomination threat and the vote (<see cref="KnownBlocs.CareerFor"/>, §14.C).</summary>
         public const int WinnerReputation = 4, FinalistReputation = 3, PlayedReputation = 2;
 
-        /// <summary>H1d's pair risk (§3.6, §7.5): a final-two partnership's bloc and another shared alliance's. Read by nothing before B9.</summary>
+        /// <summary>Pair risk (§3.6, §7.5): a final-two partnership's bloc and another shared alliance's. Read from alumni rules 3 by the nomination threat and the vote (<see cref="KnownBlocs.Risk"/>, §14.D).</summary>
         public const int FinalTwoPairRisk = 8, AlliancePairRisk = 4;
 
         private const string Dan = "dan-gheesling", Will = "dr-will-kirby", Derrick = "derrick-levasseur", Janelle = "janelle-pierzina",

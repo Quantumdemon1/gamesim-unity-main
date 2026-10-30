@@ -293,6 +293,8 @@
     <Compile Include="$(EditMode)AlumniHistoriesTests.cs" />
     <!-- ALL-STAR-HISTORIES-PLAN §14 S1: alumni rules 2, the loyalty that moves. -->
     <Compile Include="$(EditMode)AlumniLoyaltyTests.cs" />
+    <!-- ALL-STAR-HISTORIES-PLAN §14 S2: alumni rules 3, reputations and known pairs. -->
+    <Compile Include="$(EditMode)KnownBlocsTests.cs" />
     <Compile Include="$(EditMode)CharacterDraftTests.cs" />
     <Compile Include="$(EditMode)CharacterNamesTests.cs" />
     <Compile Include="$(EditMode)DealResolutionTests.cs" />

@@ -146,7 +146,7 @@ namespace Gamesim.Tests.EditMode
         }
 
         [Test]
-        public void EveryAlumnusHasACareerRecordThatNoDecisionReadsYet()
+        public void EveryAlumnusHasACareerRecordAndTheNominationThreatReadsIt()
         {
             Assert.That(One.Careers.Select(c => c.TemplateId), Is.EqualTo(One.Identities.Select(i => i.TemplateId)));
             var reputation = new Dictionary<string, int>
@@ -163,10 +163,15 @@ namespace Gamesim.Tests.EditMode
             Assert.That(One.Career(Janelle).Record, Is.EqualTo("Played Big Brother 6, 7, 14 and 22."));
             Assert.That(One.Career(Janelle).Sources, Is.EqualTo(new[] { "janelle-bb22-2020" }), "Janelle's record rests on her BB22 exit interview alone (§3.4).");
             Assert.That(One.CareerReputation("player"), Is.Zero, "A newcomer has no record.");
-            // H1d's terms (career reputation, pair risk) wait for B9: no reader in the simulation names them.
+            // Career reputation and pair risk are read from alumni rules 3, by the nomination threat and the vote only
+            // (§14.C, §14.D; KnownBlocsTests): the owner's direction of 2026-10-29 took them ahead of B9.
             Assert.That(AlumniEditions.WinnerReputation + AlumniEditions.FinalistReputation + AlumniEditions.PlayedReputation, Is.EqualTo(9));
             Assert.That(AlumniEditions.FinalTwoPairRisk, Is.EqualTo(8));
             Assert.That(AlumniEditions.AlliancePairRisk, Is.EqualTo(4));
+            var s = AllStars(12, 53u, value: AlumniRules.Reputation);
+            foreach (var templateId in new[] { Dan, Janelle, Danielle, Tyler })
+                Assert.That(KnownBlocs.CareerFor(s, On(s, templateId)), Is.EqualTo(One.CareerReputation(templateId)), templateId + ": the edition's own value.");
+            Assert.That(KnownBlocs.CareerFor(s, s.playerId), Is.Zero, "The newcomer has none.");
         }
 
         /// <summary>§3.3: every row the plan holds out is absent, with every source the game-register rule refuses.</summary>
@@ -538,6 +543,16 @@ namespace Gamesim.Tests.EditMode
             Assert.That(AlumniLoyalty.PutUpWeeks(s, npcs[1], npcs[0], includeThisWeek: true), Is.Empty);
             Assert.That(AlumniLoyalty.PublicSplitWeek(s, npcs[0], npcs[1], includeThisWeek: true), Is.Zero);
             Assert.That(RelationshipLedger.WeightedImpact(s, npcs[0], npcs[1]), Is.EqualTo(40));
+            // Nor the reputations and known pairs of alumni rules 3 (§14.C, §14.D): no career, no pair, and every threat as it was.
+            Assert.That(KnownBlocs.LivePairs(s), Is.Empty);
+            Assert.That(KnownBlocs.VoteTerms(s, npcs[3]), Is.Empty);
+            Assert.That(WebEvictionVoting.FromNative(s, npcs[3]).alumniTerms, Is.Empty);
+            foreach (string id in npcs)
+            {
+                Assert.That(KnownBlocs.CareerFor(s, id), Is.Zero);
+                Assert.That(KnownBlocs.RiskFor(s, npcs[3], id), Is.Zero);
+                Assert.That(ThreatAssessment.TotalWithPastGames(s, npcs[3], id), Is.EqualTo(ThreatAssessment.Total(s, npcs[3], id)));
+            }
         }
 
         // ------------------------------------------------------------------ the readers (§7.3, §7.4)

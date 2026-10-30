@@ -126,8 +126,9 @@ namespace Gamesim.Tests.EditMode
             Assert.That(Text(Payload(recovered)), Is.EqualTo(Text(Payload(loaded))), "The 29 backup recovers to the same 30 season.");
         }
 
-        // From H1b the alumni rules define 1, with its edition: "alumni-rule" holds the undefined 2 (it held 1 at SCH30),
-        // and "alumni-unedited" holds 1 without the edition its season was built from.
+        // From H1b the alumni rules define 1, with its edition, and from section 14 every value to AlumniRules.Latest:
+        // "alumni-rule" holds the first undefined value, Latest + 1 (it held 1 at SCH30 and 2 at H1b), and "alumni-unedited"
+        // holds 1 without the edition its season was built from.
         [TestCase("alumni-rule")] [TestCase("alumni-unedited")] [TestCase("alumni-edition")] [TestCase("tuning-rule")] [TestCase("future-header")]
         [TestCase("missing-pooled")]
         public void TheStoreRefusesAThirtyHoldingAPooledValueOrAFutureSchemaWithoutChangingAFile(string defect)
@@ -135,7 +136,7 @@ namespace Gamesim.Tests.EditMode
             var current = EpisodeSaveMigrations.UpgradeV29ToV30(Fixture("s29-mode2-allweek-w3-campaign"));
             switch (defect)
             {
-                case "alumni-rule": current["alumniRulesVersion"] = 2; break;
+                case "alumni-rule": current["alumniRulesVersion"] = AlumniRules.Latest + 1; break;
                 case "alumni-unedited": current["alumniRulesVersion"] = 1; break;
                 case "alumni-edition": current["alumniCatalogEdition"] = "allstar-histories-1"; break;
                 case "tuning-rule": current["tuningRulesVersion"] = 1; break;

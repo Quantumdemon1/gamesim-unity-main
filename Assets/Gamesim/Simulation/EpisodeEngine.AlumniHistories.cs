@@ -12,9 +12,11 @@ namespace Gamesim.Simulation
     public sealed partial class EpisodeEngine
     {
         /// <summary>
-        /// Writes a fresh season's alumni histories once, at alumni rules <see cref="AlumniRules.Histories"/>, from the
-        /// edition new seasons start from (§6). <see cref="ShippedRules.ApplyFresh"/> calls it last, after agency's
-        /// first impressions and the commitment rules, so a pair's standing is its first impression plus its history.
+        /// Writes a fresh season's alumni histories once, at the alumni rules new seasons start from,
+        /// <see cref="AlumniRules.Latest"/> (§14.A: <see cref="AlumniRules.Loyalty"/>, whose opening is H1b's
+        /// <see cref="AlumniRules.Histories"/> with a different integer), from the edition new seasons start from (§6).
+        /// <see cref="ShippedRules.ApplyFresh"/> calls it last, after agency's first impressions and the commitment rules,
+        /// so a pair's standing is its first impression plus its history.
         ///
         /// <para><b>Only an unstarted season</b> (week one, revision 0, no command, alumni rules 0, no edition), and only
         /// one that seats at least one identity-intact, unique alumnus (<see cref="AlumniHistories.Seated"/>): any
@@ -46,7 +48,7 @@ namespace Gamesim.Simulation
             var edition = AlumniEditions.Latest;
             if (AlumniHistories.Seated(s, edition).Count == 0) return;
 
-            s.alumniRulesVersion = AlumniRules.Histories;
+            s.alumniRulesVersion = AlumniRules.Latest;
             s.alumniCatalogEdition = edition.Id;
             var pairs = AlumniHistories.SeatedPairs(s, edition);
             foreach (var pair in pairs)

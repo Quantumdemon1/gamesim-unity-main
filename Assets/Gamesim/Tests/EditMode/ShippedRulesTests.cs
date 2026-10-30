@@ -81,7 +81,7 @@ namespace Gamesim.Tests.EditMode
         /// <summary>What a season that seats an alumnus plays under beside <see cref="Shipped"/>: the histories' rules value.</summary>
         private static readonly Dictionary<string, int> AlumniShipped = new Dictionary<string, int>(StringComparer.Ordinal)
         {
-            { "alumniRulesVersion", AlumniRules.Histories },
+            { "alumniRulesVersion", AlumniRules.Latest },
         };
 
         private static int ShippedValue(string builder, CastTemplates.Roster roster, string field) =>
@@ -186,7 +186,7 @@ namespace Gamesim.Tests.EditMode
                 Assert.That(s.schemaVersion, Is.EqualTo(30), "A shipped season saves at the live schema.");
                 Assert.That(s.dialogueRulesVersion, Is.Zero, "A shipped season starts with the dialogue rules off.");
                 bool alumni = SeatsAlumni(builder, roster);
-                Assert.That(s.alumniRulesVersion, Is.EqualTo(alumni ? AlumniRules.Histories : AlumniRules.Off), builder + " " + size + " " + roster + ": the cast's alumni rules.");
+                Assert.That(s.alumniRulesVersion, Is.EqualTo(alumni ? AlumniRules.Latest : AlumniRules.Off), builder + " " + size + " " + roster + ": the cast's alumni rules.");
                 Assert.That(s.alumniCatalogEdition, Is.EqualTo(alumni ? AlumniEditions.Histories1Id : null), "Edition 1 with the alumni rules, none without.");
                 Assert.That(s.tuningRulesVersion, Is.Zero, "The tuning rules are off until B9.");
                 Assert.That(EpisodeValidation.TryValidate(s, out string error), Is.True, error);
@@ -318,7 +318,7 @@ namespace Gamesim.Tests.EditMode
         /// options form, which the director's StartSeason calls, runs the one body, so a season that seats an alumnus
         /// starts its histories whatever the player chose. The All-Stars roster of eight and the stress house, through
         /// <see cref="ShippedRules.ApplyFresh(EpisodeState, SeasonBuilder.Choice)"/>, build exactly the season
-        /// <see cref="ShippedRules.ApplyFresh(EpisodeState)"/> builds, alumni rules 1 and edition 1 included; with the
+        /// <see cref="ShippedRules.ApplyFresh(EpisodeState)"/> builds, the latest alumni rules and edition 1 included; with the
         /// preview chip on as well, the same season on dialogue rules 1, its histories still written last.
         /// </summary>
         [Test]
@@ -329,7 +329,7 @@ namespace Gamesim.Tests.EditMode
                 {
                     var shipped = Build(builder, size, roster, seed);
                     ShippedRules.ApplyFresh(shipped);
-                    Assert.That(shipped.alumniRulesVersion, Is.EqualTo(AlumniRules.Histories), builder + " seed " + seed + ": the shipped form enrols the season.");
+                    Assert.That(shipped.alumniRulesVersion, Is.EqualTo(AlumniRules.Latest), builder + " seed " + seed + ": the shipped form enrols the season.");
                     Assert.That(shipped.alumniCatalogEdition, Is.EqualTo(AlumniEditions.Histories1Id));
                     var given = Build(builder, size, roster, seed);
                     ShippedRules.ApplyFresh(given, new SeasonBuilder.Choice { Roster = roster, HouseSize = size });
@@ -338,7 +338,7 @@ namespace Gamesim.Tests.EditMode
                     ShippedRules.ApplyFresh(chip, new SeasonBuilder.Choice { Roster = roster, HouseSize = size, CampaignConversations = true });
                     shipped.dialogueRulesVersion = 1;
                     Assert.That(Json(chip), Is.EqualTo(Json(shipped)), builder + " seed " + seed + ": the chip adds dialogue rules 1 and nothing else.");
-                    Assert.That(chip.alumniRulesVersion, Is.EqualTo(AlumniRules.Histories));
+                    Assert.That(chip.alumniRulesVersion, Is.EqualTo(AlumniRules.Latest));
                     Assert.That(EpisodeValidation.TryValidate(chip, out string error), Is.True, error);
                 }
         }

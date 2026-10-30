@@ -947,6 +947,9 @@ namespace Gamesim.Simulation
             foreach (var promise in s.promises.Where(p => p.status == PromiseStatus.Active && p.fromId == s.hohId &&
                 ((p.kind == PromiseKind.Safety && p.toId == id) || (p.kind == PromiseKind.AllianceLoyalty && s.Allied(p.fromId, id)))).ToArray())
                 SettlePromise(s, promise, PromiseStatus.Broken);
+            // From alumni rules 2 (ALL-STAR-HISTORIES-PLAN §14.B.4) a shared alliance of the past split in public: the
+            // standing it added is written off, once, between the two houseguests. Nothing below 2.
+            AlumniLoyalty.SplitInPublic(s, s.hohId, id);
         }
 
         /// <summary>The mood ladder, worst to best: what a houseguest's face and chip say.</summary>

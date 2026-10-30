@@ -291,6 +291,8 @@
     <Compile Include="$(EditMode)CastTemplateTests.cs" />
     <!-- The All-Star player histories (ALL-STAR-HISTORIES-PLAN H1a and H1b): edition 1 and the opening state. -->
     <Compile Include="$(EditMode)AlumniHistoriesTests.cs" />
+    <!-- ALL-STAR-HISTORIES-PLAN §14 S1: alumni rules 2, the loyalty that moves. -->
+    <Compile Include="$(EditMode)AlumniLoyaltyTests.cs" />
     <Compile Include="$(EditMode)CharacterDraftTests.cs" />
     <Compile Include="$(EditMode)CharacterNamesTests.cs" />
     <Compile Include="$(EditMode)DealResolutionTests.cs" />

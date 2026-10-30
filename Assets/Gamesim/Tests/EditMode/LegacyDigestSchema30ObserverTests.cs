@@ -114,12 +114,13 @@ namespace Gamesim.Tests.EditMode
 
         /// <summary>
         /// A pooled value no slice defines, or the alumni rules without their edition, is an invalid current source, and the
-        /// observer refuses it before it projects anything. From H1b the alumni rules define 1 with an edition, so 1 alone
-        /// is refused for its missing edition and the undefined 2 for the pooled rules (the SCH30 form set 1 and read the
-        /// pooled message for both fields).
+        /// observer refuses it before it projects anything. From H1b the alumni rules define 1 with an edition, and from
+        /// section 14 every value to AlumniRules.Latest, so 1 alone is refused for its missing edition and the first
+        /// undefined value, Latest + 1, for the pooled rules (the SCH30 form set 1 and read the pooled message for both
+        /// fields; H1b's held the literal 2).
         /// </summary>
         [TestCase("alumniRulesVersion", 1, "The alumni rules need the edition their season was built from.")]
-        [TestCase("alumniRulesVersion", 2, "Schema 30's pooled rules are not enabled in this build.")]
+        [TestCase("alumniRulesVersion", AlumniRules.Latest + 1, "Schema 30's pooled rules are not enabled in this build.")]
         [TestCase("tuningRulesVersion", 1, "Schema 30's pooled rules are not enabled in this build.")]
         public void ANonzeroPooledValueIsAnInvalidCurrentSourceAndIsNeverErased(string field, int value, string expected)
         {
@@ -141,7 +142,7 @@ namespace Gamesim.Tests.EditMode
         {
             var state = SeasonBuilder.Create(new SeasonBuilder.Choice { HouseSize = 8, Roster = CastTemplates.Roster.AllStars }, 3005u);
             ShippedRules.ApplyFresh(state);
-            Assert.That(state.alumniRulesVersion, Is.EqualTo(AlumniRules.Histories));
+            Assert.That(state.alumniRulesVersion, Is.EqualTo(AlumniRules.Latest));
             Assert.That(EpisodeValidation.TryValidate(state, out string reason), Is.True, reason);
             Refused(state, JObject.FromObject(state), "Only present integer-zero alumni rules may be projected.");
         }
@@ -274,7 +275,7 @@ namespace Gamesim.Tests.EditMode
             var chip = SeasonBuilder.Create(new SeasonBuilder.Choice { HouseSize = 8, Roster = CastTemplates.Roster.AllStars }, 3007u);
             ShippedRules.ApplyFresh(chip, new SeasonBuilder.Choice
                 { HouseSize = 8, Roster = CastTemplates.Roster.AllStars, CampaignConversations = true });
-            Assert.That(chip.alumniRulesVersion, Is.EqualTo(AlumniRules.Histories), "The chip season seats its alumni's histories.");
+            Assert.That(chip.alumniRulesVersion, Is.EqualTo(AlumniRules.Latest), "The chip season seats its alumni's histories.");
             Assert.That(chip.dialogueRulesVersion, Is.EqualTo(1), "The chip season plays the preview.");
             Assert.That(chip.schemaVersion, Is.EqualTo(30));
             Assert.That(EpisodeValidation.TryValidate(chip, out string reason), Is.True, reason);

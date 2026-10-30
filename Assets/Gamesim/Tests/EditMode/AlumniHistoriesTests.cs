@@ -211,10 +211,17 @@ namespace Gamesim.Tests.EditMode
         /// <summary>The houseguest on a card.</summary>
         internal static string On(EpisodeState s, string templateId) => s.contestants.Single(c => (c.sourceTemplateId ?? c.id) == templateId).id;
 
-        internal static EpisodeState AllStars(int size, uint seed, string player = null)
+        /// <summary>
+        /// The shipped All-Stars season, enrolled at the alumni rules new seasons start from, then held at
+        /// <paramref name="value"/> (ALL-STAR-HISTORIES-PLAN 14.G): a hold is the field alone, valid while every value
+        /// from it to <see cref="AlumniRules.Latest"/> writes the same opening (AlumniLoyaltyTests pins that).
+        /// </summary>
+        internal static EpisodeState AllStars(int size, uint seed, string player = null, int value = AlumniRules.Latest)
         {
             var s = SeasonBuilder.Create(new SeasonBuilder.Choice { HouseSize = size, Roster = CastTemplates.Roster.AllStars, PlayerTemplateId = player }, seed);
             ShippedRules.ApplyFresh(s);
+            Assert.That(AlumniRules.On(s) && s.alumniRulesVersion == AlumniRules.Latest, Is.True, "The shipped All-Stars season enrols at the latest alumni rules.");
+            s.alumniRulesVersion = value;
             return s;
         }
 
@@ -232,7 +239,7 @@ namespace Gamesim.Tests.EditMode
         public void AFreshAllStarsSeasonStartsWithItsSeatedPairsHistories(int size, uint seed)
         {
             var s = AllStars(size, seed);
-            Assert.That(s.alumniRulesVersion, Is.EqualTo(AlumniRules.Histories));
+            Assert.That(s.alumniRulesVersion, Is.EqualTo(AlumniRules.Latest));
             Assert.That(s.alumniCatalogEdition, Is.EqualTo("allstar-histories-1"));
             Assert.That(AlumniRules.On(s), Is.True);
             var expected = new List<string>
@@ -381,7 +388,7 @@ namespace Gamesim.Tests.EditMode
         public void ThePlayerOnAnAlumniCardMeetsTheHousesViewOfThemAndKeepsTheirOwn()
         {
             var s = AllStars(8, 31u, Derrick);
-            Assert.That(s.alumniRulesVersion, Is.EqualTo(AlumniRules.Histories));
+            Assert.That(s.alumniRulesVersion, Is.EqualTo(AlumniRules.Latest));
             // With Derrick's card taken by the player, Tyler is the eighth seat (table order), so the BB22 rows are seated too.
             Assert.That(Receipts(s), Is.EqualTo(new[]
             {
@@ -523,6 +530,14 @@ namespace Gamesim.Tests.EditMode
             Assert.That(RelationshipLedger.RecentImpact(s, npcs[0], npcs[1]), Is.EqualTo(60), "An ordinary entry: it counts as recent.");
             RelationshipLedger.RecordOneWay(s, npcs[0], npcs[1], "deal_broken", -20, "Broke it.", permanent: true);
             Assert.That(RelationshipLedger.WeightedImpact(s, npcs[0], npcs[1]), Is.EqualTo(40), "And no breach rule reads it.");
+            // Nor the graded share of alumni rules 2 (§14.B): with npcs[1] putting npcs[0] up this week, every new reader is silent.
+            s.hohId = npcs[1];
+            s.nominees = new List<string> { npcs[0], npcs[2] };
+            Assert.That(AlumniLoyalty.GoodwillShare(s, npcs[0], npcs[1]), Is.EqualTo(1));
+            Assert.That(AlumniLoyalty.GrievanceShare(s, npcs[0], npcs[1]), Is.EqualTo(1));
+            Assert.That(AlumniLoyalty.PutUpWeeks(s, npcs[1], npcs[0], includeThisWeek: true), Is.Empty);
+            Assert.That(AlumniLoyalty.PublicSplitWeek(s, npcs[0], npcs[1], includeThisWeek: true), Is.Zero);
+            Assert.That(RelationshipLedger.WeightedImpact(s, npcs[0], npcs[1]), Is.EqualTo(40));
         }
 
         // ------------------------------------------------------------------ the readers (§7.3, §7.4)
@@ -540,10 +555,15 @@ namespace Gamesim.Tests.EditMode
             Assert.That(RelationshipLedger.RecentImpact(off, cody, derrick), Is.EqualTo(33), "Off the rules, the same entry is an ordinary one.");
         }
 
+        /// <summary>
+        /// Alumni rules 1's breach rule (§7.4), held at 1 (a season saved there replays by it for ever); from alumni rules
+        /// 2 the graded share replaces it (§14.B, AlumniLoyaltyTests). Earlier name, before §14:
+        /// ABreachThisSeasonEndsInheritedGoodwillButNeverHealsAnOldGrievance.
+        /// </summary>
         [Test]
-        public void ABreachThisSeasonEndsInheritedGoodwillButNeverHealsAnOldGrievance()
+        public void AtAlumniRulesOneABreachThisSeasonEndsInheritedGoodwillButNeverHealsAnOldGrievance()
         {
-            var s = AllStars(8, 82u);
+            var s = AllStars(8, 82u, value: AlumniRules.Histories);
             string derrick = On(s, Derrick), cody = On(s, Cody), janelle = On(s, Janelle), danielle = On(s, Danielle);
             Assert.That(ThreatAssessment.TrustScore(s, derrick, cody), Is.EqualTo(50 + 33 / 3.0).Within(1e-9));
             var broken = s.Clone();
@@ -630,7 +650,7 @@ namespace Gamesim.Tests.EditMode
             var start = AllStars(8, 91u);
             var loaded = Load(Saved(start));
             Assert.That(Json(loaded), Is.EqualTo(Json(start)), "The round trip keeps every field.");
-            Assert.That(loaded.alumniRulesVersion, Is.EqualTo(AlumniRules.Histories));
+            Assert.That(loaded.alumniRulesVersion, Is.EqualTo(AlumniRules.Latest));
             Assert.That(loaded.alumniCatalogEdition, Is.EqualTo("allstar-histories-1"));
             Assert.That(Receipts(loaded), Is.EqualTo(Receipts(start)));
             Assert.That(EpisodeValidation.TryValidate(loaded, out string error), Is.True, error);
@@ -738,7 +758,7 @@ namespace Gamesim.Tests.EditMode
                 ShippedRules.ApplyFresh(control, alumniHistories: false);
                 Assert.That(control.alumniRulesVersion, Is.Zero);
                 bool alumni = roster == CastTemplates.Roster.AllStars || builder == "stress";
-                Assert.That(shipped.alumniRulesVersion, Is.EqualTo(alumni ? AlumniRules.Histories : AlumniRules.Off), builder + " " + size + " " + roster);
+                Assert.That(shipped.alumniRulesVersion, Is.EqualTo(alumni ? AlumniRules.Latest : AlumniRules.Off), builder + " " + size + " " + roster);
                 if (!alumni) Assert.That(Json(shipped), Is.EqualTo(Json(control)), "A season that seats no alumnus is exactly the control.");
                 Assert.That(shipped.randomState, Is.EqualTo(control.randomState), "Nothing drawn.");
                 Assert.That(Json(WithoutHistories(shipped)), Is.EqualTo(Json(control)), builder + " " + size + " " + roster + " seed " + seed);

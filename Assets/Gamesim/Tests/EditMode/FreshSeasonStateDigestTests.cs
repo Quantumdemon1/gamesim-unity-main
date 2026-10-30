@@ -84,7 +84,7 @@ namespace Gamesim.Tests.EditMode
             var s = Build(builder, size, roster, seed);
             if (applyFresh) ShippedRules.ApplyFresh(s);
             bool alumni = applyFresh && (roster == CastTemplates.Roster.AllStars || builder == "stress");
-            Assert.That(s.alumniRulesVersion, Is.EqualTo(alumni ? AlumniRules.Histories : AlumniRules.Off), "H1b: the cast decides.");
+            Assert.That(s.alumniRulesVersion, Is.EqualTo(alumni ? AlumniRules.Latest : AlumniRules.Off), "H1b: the cast decides.");
             if (alumni)
             {
                 Assert.That(s.relationships.SelectMany(r => r.events).Count(AlumniHistories.IsReceipt), Is.EqualTo(4), "Three seated pairs, four receipts.");

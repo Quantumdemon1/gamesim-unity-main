@@ -100,8 +100,9 @@ namespace Gamesim.Simulation
             if (!DialogueRules.TryValidate(s, pending, out error)) return false;
             // Schema 30's pooled fields (SCH30, ALL-STAR-HISTORIES-PLAN 5.3): each holds a value this build defines, and
             // the slice that defines a value widens this in the same step. The tuning rules: 0 only, until B9. The alumni
-            // rules: 0 with no edition, or from H1b 1 with an edition this build knows; the histories' receipts are
-            // checked with the ledger (TryValidateAlumni). A season may not hold a value no code reads.
+            // rules: 0 with no edition, or 1 (H1b) to AlumniRules.Latest (2 from §14, the loyalty that moves) with an
+            // edition this build knows. Every value from 1 writes the same opening, so the histories' receipts are checked
+            // with the ledger the same way at each (TryValidateAlumni). A season may not hold a value no code reads.
             if (!AlumniRules.IsDefined(s.alumniRulesVersion) || s.tuningRulesVersion != 0
                 || s.alumniRulesVersion == AlumniRules.Off && s.alumniCatalogEdition != null)
                 return Fail(out error, "Schema 30's pooled rules are not enabled in this build.");

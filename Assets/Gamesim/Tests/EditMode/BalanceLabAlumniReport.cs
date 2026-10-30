@@ -14,8 +14,10 @@ namespace Gamesim.Tests.EditMode
 {
     /// <summary>
     /// The histories' opening state against the same seasons without it (ALL-STAR-HISTORIES-PLAN §9, slice H1b): All-Stars
-    /// houses of 8 and 12, alumni rules 1 (the shipped <see cref="ShippedRules.ApplyFresh"/>) against the paired control
-    /// held at 0 (the lab's <c>alumniOff</c>, the same seed), BALANCE_ALUMNI_SEEDS seasons a cell (100).
+    /// houses of 8 and 12, alumni rules 1 (the shipped <see cref="ShippedRules.ApplyFresh"/>, held at 1 since fresh seasons
+    /// start at <see cref="AlumniRules.Latest"/>, §14.H: the lab's <c>alumniHeld</c>, so the gate goes on reproducing H1b's
+    /// evidence, its house names ending "/alumni1") against the paired control held at 0 (the lab's <c>alumniOff</c>, the
+    /// same seed), BALANCE_ALUMNI_SEEDS seasons a cell (100).
     ///
     /// <para><b>The gate</b>, fixed before the run: the headline rates in the alumni cells - Q3, the player's season wins
     /// (the passive and the studier newcomer); Q4, the passive newcomer's nomination rate (the share of an NPC Head of
@@ -39,8 +41,8 @@ namespace Gamesim.Tests.EditMode
         internal static readonly string[] ReportPolicies = { BalancePolicies.Social };
         internal const string Card = "cody-calafiore";
 
-        /// <summary>The three arms of a cell: shipped, the histories alone left out, and both opening states left out.</summary>
-        private static readonly (bool alumniOff, bool impressionsOff)[] Arms = { (false, false), (true, false), (true, true) };
+        /// <summary>The three arms of a cell: the histories held at alumni rules 1, the histories alone left out, and both opening states left out.</summary>
+        private static readonly (bool alumniOff, bool impressionsOff, int held)[] Arms = { (false, false, AlumniRules.Histories), (true, false, 0), (true, true, 0) };
 
         /// <summary>Every cell, each with its two controls: the newcomer at each policy and size, and the passive player on Cody's card.</summary>
         internal static List<BalanceLab.Cell> Cells()
@@ -50,9 +52,9 @@ namespace Gamesim.Tests.EditMode
             {
                 foreach (string policy in GatePolicies.Concat(ReportPolicies))
                     foreach (var arm in Arms)
-                        cells.Add(new BalanceLab.Cell { policy = policy, size = size, roster = CastTemplates.Roster.AllStars, alumniOff = arm.alumniOff, impressionsOff = arm.impressionsOff });
+                        cells.Add(new BalanceLab.Cell { policy = policy, size = size, roster = CastTemplates.Roster.AllStars, alumniOff = arm.alumniOff, impressionsOff = arm.impressionsOff, alumniHeld = arm.held });
                 foreach (var arm in Arms)
-                    cells.Add(new BalanceLab.Cell { policy = BalancePolicies.Passive, size = size, roster = CastTemplates.Roster.AllStars, playerTemplate = Card, alumniOff = arm.alumniOff, impressionsOff = arm.impressionsOff });
+                    cells.Add(new BalanceLab.Cell { policy = BalancePolicies.Passive, size = size, roster = CastTemplates.Roster.AllStars, playerTemplate = Card, alumniOff = arm.alumniOff, impressionsOff = arm.impressionsOff, alumniHeld = arm.held });
             }
             return cells;
         }
@@ -75,8 +77,8 @@ namespace Gamesim.Tests.EditMode
             md.AppendLine("All-Star histories gate: " + runs.Length + " seasons (" + seeds + " a cell, paired by seed) in "
                 + BalanceLab.Num(clock.Elapsed.TotalMinutes, "0.0") + " min on " + Environment.ProcessorCount + " threads.");
             md.AppendLine();
-            md.AppendLine("Against: \"histories alone\" is the shipped season against the same season without the histories (first impressions in both arms; the gate). "
-                + "\"both together\" is the shipped season against the same season with neither the histories nor agency's first impressions (reported, not gated).");
+            md.AppendLine("Against: \"histories alone\" is the shipped season, held at alumni rules 1, against the same season without the histories (first impressions in both arms; the gate). "
+                + "\"both together\" is the same against the same season with neither the histories nor agency's first impressions (reported, not gated).");
             md.AppendLine();
             md.AppendLine("| player | size | against | metric | gate | on | control | paired difference [95%] | n pairs | beyond noise |");
             md.AppendLine("|---|---|---|---|---|---|---|---|---|---|");

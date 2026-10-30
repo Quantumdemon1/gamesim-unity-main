@@ -53,14 +53,14 @@ namespace Gamesim.Tests.EditMode
         public void AFreshSeasonOnTheAlumniRulesSavesLoadsAndPlaysOnTheSame(int size, string player)
         {
             var start = AlumniHistoriesTests.AllStars(size, 3101u, player);
-            Assert.That(start.alumniRulesVersion, Is.EqualTo(AlumniRules.Histories));
+            Assert.That(start.alumniRulesVersion, Is.EqualTo(AlumniRules.Latest));
             int receipts = Receipts(start);
             Assert.That(receipts, Is.GreaterThan(0));
             var store = new EpisodeSaveStore(Path.Combine(directory, "season.json"));
             store.Save(start);
             var written = JObject.Parse(File.ReadAllText(store.SavePath));
             Assert.That((int)written["state"]["schemaVersion"], Is.EqualTo(30));
-            Assert.That((int)written["state"]["alumniRulesVersion"], Is.EqualTo(1));
+            Assert.That((int)written["state"]["alumniRulesVersion"], Is.EqualTo(AlumniRules.Latest));
             Assert.That((string)written["state"]["alumniCatalogEdition"], Is.EqualTo("allstar-histories-1"));
             Assert.That(store.TryLoad(out var loaded, out string message), Is.True, message);
             Assert.That(message ?? "", Does.Not.Contain("migrated"));

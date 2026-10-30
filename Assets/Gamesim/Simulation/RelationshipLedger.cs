@@ -89,12 +89,19 @@ namespace Gamesim.Simulation
         /// rules only: a positive past-game receipt (<see cref="AlumniHistories.ReceiptType"/>) stops counting once the
         /// same edge holds a permanent negative entry of this season - a broken word, a broken deal, a betrayal, a story
         /// receipt against them - so an old partner's betrayal never hurts less than a stranger's. A pure reading of the
-        /// saved edge: nothing is written. A negative receipt always counts; an old grievance does not heal.</para>
+        /// saved edge: nothing is written. A negative receipt always counts; an old grievance does not heal. That is
+        /// alumni rules 1 (<see cref="AlumniRules.Histories"/>), and a season there keeps it.</para>
+        ///
+        /// <para><b>From alumni rules 2</b> (<see cref="AlumniRules.Loyalty"/>, §14.B) a receipt counts for a graded share
+        /// instead (<see cref="AlumniLoyalty"/>): this season's wrongs and public nominations erode it, pacts and kept words
+        /// repair it up to a cap, a betrayal ends it, and an old grievance heals through play. Every edge without a
+        /// receipt reads the plain sum below at every value.</para>
         /// </summary>
         public static double WeightedImpact(EpisodeState state, string from, string to)
         {
             var edge = Edge(state, from, to);
             if (edge == null) return 0;
+            if (AlumniRules.At(state, AlumniRules.Loyalty)) return AlumniLoyalty.WeightedImpact(state, edge);
             if (!AlumniRules.On(state) || !BreachesInheritedGoodwill(edge))
                 return edge.events.Sum(entry => entry.impactScore * Weight(entry, state.week));
             return edge.events.Where(entry => !(AlumniHistories.IsReceipt(entry) && entry.impactScore > 0))

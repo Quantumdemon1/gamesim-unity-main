@@ -67,10 +67,18 @@ namespace Gamesim.Tests.EditMode
             /// A harness's control only: shipping never does.
             /// </summary>
             public bool impressionsOff;
+            /// <summary>
+            /// The alumni rules value an enrolled season is held at (ALL-STAR-HISTORIES-PLAN 14.G, 14.H), or 0 for the shipped
+            /// value: written after ApplyFresh, as a harness may hold one, valid while every value from it to
+            /// <see cref="AlumniRules.Latest"/> writes the same opening. The seed is the shipped cell's, so arms pair.
+            /// Shipping never does.
+            /// </summary>
+            public int alumniHeld;
 
-            /// <summary>The house; a player card and the histories' controls are named only when set, so every earlier cell keeps its name.</summary>
+            /// <summary>The house; a player card, the histories' controls and a held alumni value are named only when set, so every earlier cell keeps its name.</summary>
             public string House => roster + "/" + size.ToString(CultureInfo.InvariantCulture) + "/npc" + npcTicks.ToString(CultureInfo.InvariantCulture)
-                + (playerTemplate == null ? "" : "/as-" + playerTemplate) + (alumniOff ? "/alumni0" : "") + (impressionsOff ? "/impressions0" : "");
+                + (playerTemplate == null ? "" : "/as-" + playerTemplate) + (alumniOff ? "/alumni0" : "") + (impressionsOff ? "/impressions0" : "")
+                + (alumniHeld == 0 ? "" : "/alumni" + alumniHeld.ToString(CultureInfo.InvariantCulture));
             /// <summary>The house the season's seed is drawn for: the roster and size at budget nought, whatever the cell's budget, so budgets pair.</summary>
             public string SeedHouse => roster + "/" + size.ToString(CultureInfo.InvariantCulture) + "/npc0";
             public string Key => policy + "/" + House + "/" + performance;
@@ -213,12 +221,15 @@ namespace Gamesim.Tests.EditMode
         /// <summary>
         /// A cell's fresh season under the shipped rules. The histories' controls leave only their own parts out: the
         /// histories' step (ShippedRules.ApplyFresh's internal form) and, for "both together", agency's first impressions.
+        /// A held alumni value is written over the shipped one when the season enrolled (14.H); a season that did not is left
+        /// at 0.
         /// </summary>
         internal static EpisodeState Fresh(Cell cell, uint seed)
         {
             var fresh = SeasonBuilder.Create(new SeasonBuilder.Choice { HouseSize = cell.size, Roster = cell.roster, PlayerTemplateId = cell.playerTemplate }, seed);
             if (cell.impressionsOff) fresh.agencyRulesStartWeek = 1;
             ShippedRules.ApplyFresh(fresh, alumniHistories: !cell.alumniOff);
+            if (cell.alumniHeld != 0 && AlumniRules.On(fresh)) fresh.alumniRulesVersion = cell.alumniHeld;
             return fresh;
         }
 

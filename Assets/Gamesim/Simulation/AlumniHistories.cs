@@ -9,10 +9,13 @@ namespace Gamesim.Simulation
     /// The alumni rules (ALL-STAR-HISTORIES-PLAN §5.4): schema 30's <see cref="EpisodeState.alumniRulesVersion"/>, the
     /// fresh-season gate for every alumni behaviour, read as a bound, never as a gate on one number.
     ///
-    /// <para>Each behaviour names the version that introduced it. <see cref="Histories"/> is H1b's: the alumni's past
-    /// games, written once into a fresh season's opening relationships (<see cref="EpisodeEngine.EnableAlumniHistories"/>).
-    /// The campaigns (AS7) and the parts of the histories that move balance (H1d, after B9) take later values, in
-    /// landing order; none is defined here. Only range checks and "new seasons start here" may read <see cref="Latest"/>.
+    /// <para>Each behaviour names the version that introduced it, and asks <see cref="At"/> with it. <see cref="Histories"/>
+    /// is H1b's: the alumni's past games, written once into a fresh season's opening relationships
+    /// (<see cref="EpisodeEngine.EnableAlumniHistories"/>). <see cref="Loyalty"/> is the owner's direction of 2026-10-29
+    /// (§14.B): the inherited loyalty changes and decays with this season's acts (<see cref="AlumniLoyalty"/>). Values 3
+    /// and 4 are claimed by §14 for career reputation and known pairs, and for counter-blocs; they are not defined yet.
+    /// The campaigns (AS7) take the next free value after §14, and H1d's other parts (after B9) later ones, in landing
+    /// order. Only range checks and "new seasons start here" may read <see cref="Latest"/>.
     /// </para>
     ///
     /// <para>A season is never moved onto these rules after it starts: load, migration, recovery and the importer
@@ -26,8 +29,19 @@ namespace Gamesim.Simulation
         /// <summary>H1b: the histories' opening state, from the edition the season names.</summary>
         public const int Histories = 1;
 
-        /// <summary>The highest value this build defines: for range checks and for new seasons only.</summary>
-        public const int Latest = Histories;
+        /// <summary>
+        /// §14.B: the opening state of <see cref="Histories"/>, and the graded receipt share - this season's wrongs and
+        /// public nominations erode inherited goodwill, pacts and kept words repair it up to a cap, a betrayal ends it, an
+        /// old grievance heals through play - with the shared standing written off once at a public split.
+        /// </summary>
+        public const int Loyalty = 2;
+
+        /// <summary>
+        /// The highest value this build defines: for range checks and for new seasons only. Fresh seasons that seat an
+        /// alumnus start here (§14.A); a value a test or the lab holds is a field write after that, valid while every value
+        /// up to this one writes the same opening.
+        /// </summary>
+        public const int Latest = Loyalty;
 
         /// <summary>Whether a saved value is one this build defines (validation's range).</summary>
         public static bool IsDefined(int version) => version >= Off && version <= Latest;
@@ -39,6 +53,13 @@ namespace Gamesim.Simulation
         /// </summary>
         public static bool On(EpisodeState s) =>
             s != null && s.alumniRulesVersion >= Histories && AlumniEditions.Find(s.alumniCatalogEdition) != null;
+
+        /// <summary>
+        /// Whether a season plays a behaviour introduced at <paramref name="version"/>: on the alumni rules (<see cref="On"/>)
+        /// at that value or later. A bound, never a gate on one number, so a later value carries every earlier one's
+        /// behaviour; every term §14 adds asks this with its own value.
+        /// </summary>
+        public static bool At(EpisodeState s, int version) => On(s) && s.alumniRulesVersion >= version;
     }
 
     /// <summary>How an alumnus's record reads in the edition's career table (§3.4).</summary>

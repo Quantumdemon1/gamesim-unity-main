@@ -560,6 +560,13 @@ namespace Gamesim.Tests.EditMode
                 Assert.That(KnownBlocs.RiskFor(s, npcs[3], id), Is.Zero);
                 Assert.That(ThreatAssessment.TotalWithPastGames(s, npcs[3], id), Is.EqualTo(ThreatAssessment.Total(s, npcs[3], id)));
             }
+            // Nor the counter-blocs of alumni rules 4 (§14.E): no desire for numbers, and no bloc to hunt.
+            foreach (string a in npcs)
+                foreach (string b in npcs.Where(other => other != a))
+                {
+                    Assert.That(KnownBlocs.CounterDesire(s, a, b), Is.Zero);
+                    Assert.That(KnownBlocs.CounterTarget(s, a, b), Is.Null);
+                }
         }
 
         // ------------------------------------------------------------------ the readers (§7.3, §7.4)

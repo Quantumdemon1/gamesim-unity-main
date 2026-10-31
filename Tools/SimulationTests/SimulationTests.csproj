@@ -295,6 +295,8 @@
     <Compile Include="$(EditMode)AlumniLoyaltyTests.cs" />
     <!-- ALL-STAR-HISTORIES-PLAN §14 S2: alumni rules 3, reputations and known pairs. -->
     <Compile Include="$(EditMode)KnownBlocsTests.cs" />
+    <!-- ALL-STAR-HISTORIES-PLAN §14 S3: alumni rules 4, the counter-blocs. -->
+    <Compile Include="$(EditMode)CounterBlocTests.cs" />
     <Compile Include="$(EditMode)CharacterDraftTests.cs" />
     <Compile Include="$(EditMode)CharacterNamesTests.cs" />
     <Compile Include="$(EditMode)DealResolutionTests.cs" />

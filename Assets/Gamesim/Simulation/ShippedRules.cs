@@ -97,7 +97,7 @@ namespace Gamesim.Simulation
             // standing is its first impression plus its past game, and after the commitment rules and the unified
             // mode, so the Hitmen's final two is written under the season's own deal rules. After the preview chip
             // too, so the cast screen's every choice starts the same histories (ALL-STAR-HISTORIES-PLAN 8.5). The alumni
-            // rules new seasons start from (AlumniRules.Latest: 3, reputations and known pairs, §14.A) only in a season
+            // rules new seasons start from (AlumniRules.Latest: 4, the counter-blocs, §14.A) only in a season
             // that seats an identity-intact alumnus; every other season stays at 0, as it was.
             if (alumniHistories) EpisodeEngine.EnableAlumniHistories(fresh);
         }

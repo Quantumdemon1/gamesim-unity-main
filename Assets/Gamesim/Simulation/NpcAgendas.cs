@@ -21,9 +21,11 @@ namespace Gamesim.Simulation
     /// What each houseguest is trying to do this week, read from the state and never stored: on the
     /// block they fight to stay; the Head of Household listens to their closest ally; somebody with
     /// no claim on the Head of Household courts them while the power is live; a pact with a common
-    /// threat hunts it; a houseguest with no pact looks for the partner they most want; a pact-mate
-    /// holds tight; and everybody else drifts, which is the weighted draw the house always made.
-    /// Null without agency, so every consumer reduces to what it was.
+    /// threat hunts it; in an All-Star season from alumni rules 4, a pact with none hunts a known pair
+    /// of past games it stands outside, while the pact-mate it tells is still warm to them
+    /// (<see cref="KnownBlocs.CounterTarget"/>); a houseguest with no pact looks for the partner they
+    /// most want; a pact-mate holds tight; and everybody else drifts, which is the weighted draw the
+    /// house always made. Null without agency, so every consumer reduces to what it was.
     /// </summary>
     public static class NpcAgendas
     {
@@ -51,10 +53,20 @@ namespace Gamesim.Simulation
             var mates = PactMates(s, npcId).ToList();
             if (mates.Count > 0)
             {
-                foreach (var mate in mates.OrderByDescending(m => s.Score(npcId, m)).ThenBy(m => m, StringComparer.Ordinal))
+                var closestFirst = mates.OrderByDescending(m => s.Score(npcId, m)).ThenBy(m => m, StringComparer.Ordinal).ToList();
+                foreach (var mate in closestFirst)
                 {
                     string threat = NpcDeals.CommonThreat(s, npcId, mate);
                     if (threat != null) return new NpcAgenda { kind = Agendas.Hunt, partnerId = mate, targetId = threat };
+                }
+                // The bloc hunt (ALL-STAR-HISTORIES-PLAN §14.E.2), from alumni rules 4 and only after every common threat:
+                // a known pair of past games neither of them stands near, through a pact-mate still warm to its member, so
+                // it stops above nought. Never with the player as the listener. Null below 4, so the house holds as it did.
+                foreach (var mate in closestFirst)
+                {
+                    if (mate == s.playerId) continue;
+                    string bloc = KnownBlocs.CounterTarget(s, npcId, mate);
+                    if (bloc != null) return new NpcAgenda { kind = Agendas.Hunt, partnerId = mate, targetId = bloc };
                 }
                 return new NpcAgenda { kind = Agendas.Hold, partnerId = Closest(s, npcId, mates) };
             }

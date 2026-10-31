@@ -13,7 +13,7 @@ namespace Gamesim.Simulation
     {
         /// <summary>
         /// Writes a fresh season's alumni histories once, at the alumni rules new seasons start from,
-        /// <see cref="AlumniRules.Latest"/> (§14.A: <see cref="AlumniRules.Reputation"/>, whose opening is H1b's
+        /// <see cref="AlumniRules.Latest"/> (§14.A: <see cref="AlumniRules.CounterBlocs"/>, whose opening is H1b's
         /// <see cref="AlumniRules.Histories"/> with a different integer), from the edition new seasons start from (§6).
         /// <see cref="ShippedRules.ApplyFresh"/> calls it last, after agency's first impressions and the commitment rules,
         /// so a pair's standing is its first impression plus its history.

@@ -60,6 +60,12 @@ namespace Gamesim.Simulation
         /// <para>The source's formula exactly: relationship at 0.4, shared threats at 15 apiece,
         /// strategic value at 0.15, trust either side of neutral at 0.3, less ten for every alliance
         /// already carried — diminishing returns on over-allying.</para>
+        ///
+        /// <para>In an All-Star season from alumni rules 4 (ALL-STAR-HISTORIES-PLAN §14.E.1) two houseguests outside a
+        /// known pair of past games want each other more, for each pair they face
+        /// (<see cref="KnownBlocs.CounterDesire"/>): the enemy-of-my-enemy rule again, for a bloc the house knows of from
+        /// the record rather than from a quarrel. Added only where it is not nought, so every other season reads the
+        /// source's formula bit for bit. The floor, the threshold and the pact cap below are untouched.</para>
         /// </summary>
         public static double Desire(EpisodeState state, string npcId, string targetId)
         {
@@ -75,13 +81,16 @@ namespace Gamesim.Simulation
             double trust = ThreatAssessment.TrustScore(state, targetId, npcId);
             int carried = ActiveAlliancesFor(state, npcId).Count;
 
-            return relationship * 0.4
+            double desire = relationship * 0.4
                    + sharedThreats * 15
                    + strategicValue * 0.15
                    + (trust - ThreatAssessment.NeutralTrust) * 0.3
                    - carried * 10
                    // Under agency, who they take to (NPC-AGENCY-PLAN.md §3.3): temperament, on top of the web's terms.
                    + (EpisodeEngine.AgencyOn(state) ? EpisodeEngine.DesirePerPoint * TraitAffinity.Compatibility(state.Find(npcId), target) : 0);
+            // The known pairs, from alumni rules 4 (§14.E.1): nought below it, and for a pair's members and their partners.
+            double counterBloc = KnownBlocs.CounterDesire(state, npcId, targetId);
+            return counterBloc != 0 ? desire + counterBloc : desire;
         }
 
         /// <summary>The pact cap under agency (NPC-AGENCY-PLAN.md §3.4): one pact among houseguests per three houseguests in the house.</summary>

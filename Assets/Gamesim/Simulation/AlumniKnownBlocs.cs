@@ -18,11 +18,20 @@ namespace Gamesim.Simulation
     /// nothing here says the three were one.</item>
     /// </list>
     ///
-    /// <para>They reach two decisions and no others: the threat a Head of Household and their pact-mates read at the
+    /// <para>From alumni rules 3 they reach two decisions: the threat a Head of Household and their pact-mates read at the
     /// nominations (<see cref="ThreatAssessment.TotalWithPastGames"/>, through <see cref="EpisodeEngine.ThreatTerm"/>),
     /// and the vote's threat (<see cref="VoteTerms"/>, carried as <see cref="WebVoteOptions.alumniTerms"/>). Never
     /// <see cref="ThreatAssessment.Total"/>, so the house's talk - the rumour subject, the pitch target, a broken word's
     /// grudge - is the same at every value.</para>
+    ///
+    /// <para>From alumni rules 4, <see cref="AlumniRules.CounterBlocs"/> (§14.E), the houseguests outside a known pair
+    /// answer it "for numbers", and two more readings follow: how much two of them want each other as partners
+    /// (<see cref="CounterDesire"/>, inside <see cref="NpcAlliances.Desire"/>), and whom an outside pact hunts
+    /// (<see cref="CounterTarget"/>, in <see cref="NpcAgendas.Of"/>). Both count the live pairs neither houseguest
+    /// stands near - not in, and not beside a partner who is - so a pair's members and their partners never read
+    /// them. The hunt stops while the listener still rates its target at <see cref="HuntStopLine"/>, one hunt's cost,
+    /// so on its own it never takes a score below nought. Neither is a turn, a draw or a write: what the house does
+    /// with them is the agendas' and the pact pass's own, under their own caps.</para>
     ///
     /// <para>Private things never end a known pair in the house's eyes: scores, receipts, deals (the final two included),
     /// ballots, a pact's end. A departure does, and so does one of the two putting the other up
@@ -34,6 +43,23 @@ namespace Gamesim.Simulation
     /// </summary>
     public static class KnownBlocs
     {
+        /// <summary>
+        /// What one counted known pair adds to two outsiders' desire for each other (§14.E.1): half the source's price of
+        /// a shared threat (fifteen, <see cref="NpcAlliances.Desire"/>), because a known pair is a bloc nobody has
+        /// quarrelled with yet.
+        /// </summary>
+        public const double CounterBlocDesire = 7.5;
+
+        /// <summary>The most known pairs that count toward <see cref="CounterDesire"/> (§14.E.1).</summary>
+        public const int CounterBlocPairsCap = 2;
+
+        /// <summary>
+        /// The bloc hunt's stop (§14.E.2): the listener's view of a pair's member must be at least one hunt's cost
+        /// (<see cref="EpisodeEngine.HuntImpact"/>), so the route alone never takes it below nought, far above
+        /// <see cref="NpcDeals.CommonThreat"/>'s dislike, <see cref="NpcAlliances.DislikeLine"/> and the confrontation line.
+        /// </summary>
+        public const double HuntStopLine = -EpisodeEngine.HuntImpact;
+
         /// <summary>
         /// A houseguest's career reputation (§14.C): the edition's <see cref="AlumniEdition.CareerReputation"/> for the
         /// alumnus they are, the player on an intact card included. 0 below <see cref="AlumniRules.Reputation"/>, for a
@@ -118,6 +144,78 @@ namespace Gamesim.Simulation
                 if (pairRisk != 0 || career != 0) terms.Add(new WebVoteAlumniTerm { nomineeId = nomineeId, pairRisk = pairRisk, career = career });
             }
             return terms;
+        }
+
+        /// <summary>
+        /// What the known pairs add to one houseguest's desire to work with another (§14.E.1):
+        /// <see cref="CounterBlocDesire"/> for each live pair neither of them stands near (<see cref="Counted"/>), at most
+        /// <see cref="CounterBlocPairsCap"/> of them. Two outsiders facing the Hitmen read 7.5; facing the Hitmen and the
+        /// Committee, 15, the owner's three "for numbers" counted as two pairs. A pair's members, and anyone beside one of
+        /// their partners, read nought toward anybody, and anybody toward them. Nought below
+        /// <see cref="AlumniRules.CounterBlocs"/>, and <see cref="NpcAlliances.Desire"/> adds it only where it is not.
+        /// </summary>
+        public static double CounterDesire(EpisodeState s, string npcId, string targetId)
+        {
+            if (!AlumniRules.At(s, AlumniRules.CounterBlocs)) return 0;
+            int counted = Counted(LivePairs(s), npcId, targetId).Count;
+            return counted == 0 ? 0 : CounterBlocDesire * Math.Min(CounterBlocPairsCap, counted);
+        }
+
+        /// <summary>
+        /// Whom a pact's member hunts with one pact-mate as the listener (§14.E.2), or null: a member of a live pair neither
+        /// of them stands near (<see cref="Counted"/>), still in the house, whom the listener still rates at
+        /// <see cref="HuntStopLine"/> or more; of those, the one the hunter reads as the pair risk highest
+        /// (<see cref="RiskFor"/>), so the hub of two pairs comes first, then by id. A hunt costs the listener
+        /// <see cref="HuntStopLine"/> with its target, so the route ends while the listener is still warm to them and the
+        /// agenda goes back to holding. Null below <see cref="AlumniRules.CounterBlocs"/>. The agenda never asks it with the
+        /// player as the listener; a player on a pair's card can be its target.
+        /// </summary>
+        public static string CounterTarget(EpisodeState s, string hunterId, string mateId)
+        {
+            if (!AlumniRules.At(s, AlumniRules.CounterBlocs)) return null;
+            string best = null;
+            int bestRisk = 0;
+            foreach (var pair in Counted(LivePairs(s), hunterId, mateId))
+                foreach (string memberId in new[] { pair.FirstId, pair.SecondId })
+                {
+                    if (s.Find(memberId)?.status != ContestantStatus.Active || s.Score(mateId, memberId) < HuntStopLine) continue;
+                    int risk = RiskFor(s, hunterId, memberId);
+                    if (best == null || risk > bestRisk || (risk == bestRisk && string.CompareOrdinal(memberId, best) < 0))
+                    {
+                        best = memberId;
+                        bestRisk = risk;
+                    }
+                }
+            return best;
+        }
+
+        /// <summary>
+        /// §14.E.1's <c>counted(a, b)</c>: the live pairs that hold nobody in <c>Near(a) ∪ Near(b)</c> (<see cref="Near"/>:
+        /// a houseguest and their partners in the live pairs), in fact-id order.
+        /// </summary>
+        private static List<AlumniHistories.SeatedPair> Counted(List<AlumniHistories.SeatedPair> live, string a, string b)
+        {
+            var counted = new List<AlumniHistories.SeatedPair>();
+            if (live.Count == 0) return counted;
+            var near = Near(live, a);
+            near.UnionWith(Near(live, b));
+            foreach (var pair in live)
+                if (!near.Contains(pair.FirstId) && !near.Contains(pair.SecondId)) counted.Add(pair);
+            return counted;
+        }
+
+        /// <summary>§14.E.1's <c>Near(x)</c>: the houseguest and their partners in the live pairs.</summary>
+        private static HashSet<string> Near(List<AlumniHistories.SeatedPair> live, string id)
+        {
+            var near = new HashSet<string>(StringComparer.Ordinal);
+            if (id == null) return near;
+            near.Add(id);
+            foreach (var pair in live)
+            {
+                if (pair.FirstId == id) near.Add(pair.SecondId);
+                else if (pair.SecondId == id) near.Add(pair.FirstId);
+            }
+            return near;
         }
 
         /// <summary>The template id a houseguest's card gives them in the edition (<see cref="AlumniHistories.Seated"/>'s rule: the template, and the table's name); null for a newcomer or a renamed card.</summary>

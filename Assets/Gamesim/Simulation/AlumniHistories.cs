@@ -15,9 +15,12 @@ namespace Gamesim.Simulation
     /// (§14.B): the inherited loyalty changes and decays with this season's acts (<see cref="AlumniLoyalty"/>).
     /// <see cref="Reputation"/> is the same direction's reputations and known connections (§14.C, §14.D): an alumnus's
     /// career and the known pairs of past games count in the nomination threat and the vote (<see cref="KnownBlocs"/>).
-    /// Value 4 is claimed by §14 for counter-blocs, and 5 by its 14.L for outsider pacts that grow; they are not defined
-    /// yet. The campaigns (AS7) take the next free value after §14, and H1d's other parts (after B9) later ones, in
-    /// landing order. Only range checks and "new seasons start here" may read <see cref="Latest"/>.
+    /// <see cref="CounterBlocs"/> is the same direction's answer "for numbers" (§14.E): while a known pair stands, the
+    /// houseguests outside it want each other more, and an outside pact hunts the pair, stopping above nought
+    /// (<see cref="KnownBlocs.CounterDesire"/>, <see cref="KnownBlocs.CounterTarget"/>). Value 5 is claimed by §14's 14.L
+    /// for outsider pacts that grow; it is not defined yet. The campaigns (AS7) take the next free value after §14, and
+    /// H1d's other parts (after B9) later ones, in landing order. Only range checks and "new seasons start here" may read
+    /// <see cref="Latest"/>.
     /// </para>
     ///
     /// <para>A season is never moved onto these rules after it starts: load, migration, recovery and the importer
@@ -48,11 +51,21 @@ namespace Gamesim.Simulation
         public const int Reputation = 3;
 
         /// <summary>
+        /// §14.E: everything of <see cref="Reputation"/>, and the house answering a known bloc "for numbers". While a known
+        /// pair of past games stands, two houseguests outside it want each other more as partners, for each pair they face
+        /// (<see cref="KnownBlocs.CounterDesire"/>, inside <see cref="NpcAlliances.Desire"/>); and a pact of houseguests with
+        /// no common threat hunts a pair's members, the hub first, through a pact-mate who still rates them warmly, so it
+        /// stops above nought (<see cref="KnownBlocs.CounterTarget"/>, in <see cref="NpcAgendas.Of"/>). Never with the
+        /// player as the listener; the ordinary common threat comes first; and every term ends with the pair.
+        /// </summary>
+        public const int CounterBlocs = 4;
+
+        /// <summary>
         /// The highest value this build defines: for range checks and for new seasons only. Fresh seasons that seat an
         /// alumnus start here (§14.A); a value a test or the lab holds is a field write after that, valid while every value
         /// up to this one writes the same opening.
         /// </summary>
-        public const int Latest = Reputation;
+        public const int Latest = CounterBlocs;
 
         /// <summary>Whether a saved value is one this build defines (validation's range).</summary>
         public static bool IsDefined(int version) => version >= Off && version <= Latest;
@@ -248,7 +261,7 @@ namespace Gamesim.Simulation
         /// <summary>Career reputation (§3.6): winner, finalist, otherwise played. Read from alumni rules 3 by the nomination threat and the vote (<see cref="KnownBlocs.CareerFor"/>, §14.C).</summary>
         public const int WinnerReputation = 4, FinalistReputation = 3, PlayedReputation = 2;
 
-        /// <summary>Pair risk (§3.6, §7.5): a final-two partnership's bloc and another shared alliance's. Read from alumni rules 3 by the nomination threat and the vote (<see cref="KnownBlocs.Risk"/>, §14.D).</summary>
+        /// <summary>Pair risk (§3.6, §7.5): a final-two partnership's bloc and another shared alliance's. Read from alumni rules 3 by the nomination threat and the vote (<see cref="KnownBlocs.Risk"/>, §14.D), and from 4 for the order a bloc hunt takes a pair's members in (<see cref="KnownBlocs.CounterTarget"/>, §14.E.2).</summary>
         public const int FinalTwoPairRisk = 8, AlliancePairRisk = 4;
 
         private const string Dan = "dan-gheesling", Will = "dr-will-kirby", Derrick = "derrick-levasseur", Janelle = "janelle-pierzina",

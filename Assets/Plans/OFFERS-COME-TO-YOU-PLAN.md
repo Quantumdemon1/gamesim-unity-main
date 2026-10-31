@@ -1,6 +1,6 @@
 # Offers come to you: houseguests bring their asks as a dialogue
 
-Plan, 2026-10-30, revised after review, then checked claim by claim against origin/main 37416049 (49 corrections upheld after an adversarial pass, 8 refuted). Nothing here is implemented yet.
+Plan, 2026-10-30, revised after review, then checked claim by claim against origin/main 37416049 (49 corrections upheld after an adversarial pass, 8 refuted). The owner answered its five questions the same day (their defaults). Slices 1 to 3 are built on claude/offers-come-to-you (5adef5bf and 1aa78549, 0fd5e837 and a26186ae, 8a6bd311), each adversarially reviewed and fixed; their EditMode and dotnet proofs pass, and their PlayMode tests are compiled but not yet run in Unity. Slices 4 and 5 are not built.
 
 **The owner, 2026-10-30:** "Something else that needs to be fixed, when someone comes to you with a deal, you have to look through the menu to find it, but it should just pop up as dialogue like an RPG as an offer or have them approach you"
 
@@ -89,7 +89,7 @@ Plan, 2026-10-30, revised after review, then checked claim by claim against orig
 | Emote menu or cast card open; a storm-off or an embrace under way | New visits wait, and so do auto-open and the card. |
 | Watching two houseguests talk, with "Listen in" on offer | New visits, auto-open and the card wait while the Nearby card's own condition holds (R/EpisodeDirector.NpcSocial.cs:85-90). If the lease runs out while auto-open is held this way, the visit is cancelled, not missed (§C.2 step 8). |
 | A story scene ready to stage | The scan, and so new visits and the card, yields until it is staged (R/EpisodeDirector.Story.cs:576-616). A visit in flight still keeps the floor, as today (:608): it auto-opens even while the scene waits, and the scene stages once the conversation closes (`TickSceneStage` waits on `IsPanelOpen`, Story.cs:600). |
-| Story Pull on screen | The Pull and the bubble never share the screen (D18): `TickStoryPull` hides the Pull while a bubble is visible (R/EpisodeDirector.Story.cs:507-509), and the conversation panel hides it too; either way it comes back undeclined. The Pull has no timeout: it stays up until it is answered or its beat lapses at an Advance (Story.cs:389-414; S/Story/EpisodeEngine.Story.cs:256-268). Beats are filed at the same Advances as offers (S/EpisodeEngine.cs:423-425, 477-483), so under D18's "whichever is up keeps the floor" an ignored Pull keeps every ask in the menu for the whole phase. **Proposed, pending the owner (question 5):** while `AsksOn`, a Pull holds new asks back only until it has shown for `AskPullYieldSeconds` (20 s) of free, still time; the clock restarts when the Pull's key changes. After that the scan may start a visit beside it, and the Pull hides once the bubble shows. With `AsksOn` false, `NpcInvitationHouseAvailable` is unchanged, so the legacy invitation and `HudStatus_TheInvitationBubbleAndTheStoryPullNeverShareTheScreen` run as at origin/main. If the owner keeps D18 as it is, an unanswered Pull suspends walk-overs and the card until it is answered or its beat closes, and §C.2's `AskHouseAvailable` is `NpcInvitationHouseAvailable` itself. |
+| Story Pull on screen | The Pull and the bubble never share the screen (D18): `TickStoryPull` hides the Pull while a bubble is visible (R/EpisodeDirector.Story.cs:507-509), and the conversation panel hides it too; either way it comes back undeclined. The Pull has no timeout: it stays up until it is answered or its beat lapses at an Advance (Story.cs:389-414; S/Story/EpisodeEngine.Story.cs:256-268). Beats are filed at the same Advances as offers (S/EpisodeEngine.cs:423-425, 477-483), so under D18's "whichever is up keeps the floor" an ignored Pull keeps every ask in the menu for the whole phase. **The owner's answer to question 5 (2026-10-30, the default; a delegated call on D18, confirmed by the owner):** while `AsksOn`, a Pull holds new asks back only until it has shown for `AskPullYieldSeconds` (20 s) of free, still time; the clock restarts when the Pull's key changes. After that the scan may start a visit beside it, and the Pull hides once the bubble shows. With `AsksOn` false, `NpcInvitationHouseAvailable` is unchanged, so the legacy invitation and `HudStatus_TheInvitationBubbleAndTheStoryPullNeverShareTheScreen` run as at origin/main. |
 | Several asks at once | One at a time, in public order, with 20 s of free-house time between them. |
 
 ---
@@ -200,7 +200,7 @@ The AsksOn path lives here in full. It has its own visit fields and its own tick
 | `AskPresentationsPerPhase` | 3 | |
 | `AskPresentationsPerWeek` | 6 | |
 | `AskFrameAllowanceSeconds` | 0.25 (unscaled) | The most one frame adds to any ask clock, the cap `CharacterPresentation.AssemblyFrameTime` uses (Assets/Gamesim/Runtime/Presentation/CharacterPresentation.cs:241-245) |
-| `AskPullYieldSeconds` | 20 | A showing Story Pull holds new asks back this long, then yields (pending the owner, question 5) |
+| `AskPullYieldSeconds` | 20 | A showing Story Pull holds new asks back this long, then yields (owner question 5: the default) |
 
 The three caps are copied into instance fields (`askRecordCap`, `askPhaseCap`, `askWeekCap`) so a test can lower them with the private-write helper.
 
@@ -235,7 +235,7 @@ The three caps are copied into instance fields (`askRecordCap`, `askPhaseCap`, `
 | `askCardOpen`, `askCard`, `askCardReply`, `askCardFirstRender` | The card on screen (slice 2) | `EndAskCard` |
 | `askSpotBlockedFor` | Slice 2: free, still seconds the player's own spot has refused every visitor (`PlayerSpot`), one counter, not per record | With the stillness anchor; on load |
 | `askCardSettle` | Slice 2: free-house seconds with no closable chrome up. It is the card's settle (`AskCardMayOpen`, §C.2 step 9) | Whenever `!AskMayStart` or `ClosableChromeUp`; on load |
-| `askPullHeld`, `askPullKey` | Free, still seconds the current Story Pull (`pullNow?.Key`) has shown (pending the owner, question 5) | On load; when the Pull's key changes |
+| `askPullHeld`, `askPullKey` | Free, still seconds the current Story Pull (`pullNow?.Key`) has shown (owner question 5: the default) | On load; when the Pull's key changes |
 | `askPlayerYaw`, `askAskerYaw`, `askPlayerFacing`, `askAskerFacing` | Slice 3: the facings an ask set (NaN when none), and the two bodies it set them on, so `ClearAskFacing` touches only those | `ClearAskFacing`; `ResetAsksForLoad` |
 
 `CurrentAsks()` is the only reader of `asksCache`. The scan (step 9), `OpenOnAsk`'s Raised pick, and the `OtherAskers` input in `RenderAskDialogue` step 5 and in `AskCard` all call it at the moment of use. Never refresh it in the scan only, as `TickNpcInvitations` does (R/EpisodeDirector.NpcInvitations.cs:93-96). `TryOpenNpc`'s `PauseNpcSocialForPanel` flush commits NPC ticks and calls `Project()` just before `OpenOnAsk` (R/EpisodeDirector.NpcSocial.cs:392-396, 375). A walk keeps the gated scan from running (`headingToNpcId` clears `NpcInvitationHouseAvailable`), and the scan stops once a cap is reached, while raises are not capped.
@@ -244,7 +244,7 @@ The three caps are copied into instance fields (`askRecordCap`, `askPhaseCap`, `
 
 ```
 AskHouseAvailable = NpcInvitationHouseAvailable without its hud.PullShowing term    // R/EpisodeDirector.NpcInvitations.cs:37-44
-                    && !(hud != null && hud.PullShowing && askPullHeld < AskPullYieldSeconds)   // pending the owner (question 5); if D18 stands, NpcInvitationHouseAvailable itself
+                    && !(hud != null && hud.PullShowing && askPullHeld < AskPullYieldSeconds)   // owner question 5, answered 2026-10-30
 AskMayHold  = AskHouseAvailable
               && !emoteMenuOpen && castMenuFor == null           // R/EpisodeDirector.Controls.cs:186
               && StormingId == null && CurrentEmbrace == null    // StormOff.cs:60, Embrace.cs:34
@@ -265,7 +265,7 @@ A waiting scene holds new visits and the card, never a visit in flight: Story.cs
 2. If `!AsksOn`: `TickNpcInvitations(); return;`
 3. On a session, week or phase change: `CancelAskVisit()` and clear the per-phase sets.
 4. Update stillness. Reset the anchor and `askStillFor` when the player is more than `AskStillRadiusMetres` from the anchor or `!player.HasArrived` (H/HousePlayerController.cs:100-111). Otherwise add `AskFrameTime`, which is `Mathf.Clamp(Time.unscaledDeltaTime, 0f, AskFrameAllowanceSeconds)`, the cap `CharacterPresentation.AssemblyFrameTime` uses (Assets/Gamesim/Runtime/Presentation/CharacterPresentation.cs:241-245). With Run In Background off, a window out of focus stalls the player loop, and unscaled time is not capped by `maximumDeltaTime` (Assets/Gamesim/Runtime/Presentation/MusicFade.cs:50), so an uncapped stall would be credited in one frame. The update is a pure static helper (position, `HasArrived`, dt), so EditMode test 12 can drive it. A walker leaves 0.1 m within 0.05 s at 2.2 m/s (H/HousePlayerController.cs:44) at any frame rate.
-5. Advance `askClock` and `askFreeRun` by `AskFrameTime` while `AskMayStart`; reset `askFreeRun` when it does not hold. Every Ask* time, the stillness timer, the bubble beat and the lease (H/HouseMeetingCoordinator.NpcInvitation.cs:94, 103) run on unscaled time, as the legacy scan does (R/EpisodeDirector.NpcInvitations.cs:71-72, 92-93). While `hud.PullShowing`, add `AskFrameTime` to `askPullHeld` when `askStillFor >= AskStillSeconds` and `NpcInvitationHouseAvailable` holds apart from its Pull term; reset it when `pullNow?.Key` changes (pending the owner, question 5).
+5. Advance `askClock` and `askFreeRun` by `AskFrameTime` while `AskMayStart`; reset `askFreeRun` when it does not hold. Every Ask* time, the stillness timer, the bubble beat and the lease (H/HouseMeetingCoordinator.NpcInvitation.cs:94, 103) run on unscaled time, as the legacy scan does (R/EpisodeDirector.NpcInvitations.cs:71-72, 92-93). While `hud.PullShowing`, add `AskFrameTime` to `askPullHeld` when `askStillFor >= AskStillSeconds` and `NpcInvitationHouseAvailable` holds apart from its Pull term; reset it when `pullNow?.Key` changes (owner question 5: the default).
 6. If `askDialogueWith != null` and the conversation has closed or is with someone else: set `askNextAt = askClock + AskGapSeconds`, then clear the dialogue fields, `askDialogueWay` among them.
 7. If `!AskHouseAvailable`, or a visit is in flight and `!PlayerInFrame`: `CancelAskVisit()` and return. This is a cancellation, not a miss. The scan's own `PlayerInFrame` gate (through `AskMayStart`, which resets `askFreeRun`) stops a re-dispatch until the player has been back in frame for `AskSettleSeconds`. Never move the camera for an ask: a follow is a shot the viewer asked for (H/HouseCameraRig.cs:374-376), and `ClearSubject` does not spring back (:439).
 8. **Visit in flight** (at 10 Hz, as :67-69):
@@ -396,11 +396,11 @@ A new source adds:
 |---|---|---|
 | 1. Weekly offer `deal-ask-` | Yes: walk-over, raised or card | 1 (walk-over, raised), 2 (card) |
 | 2. Nominee's veto ask `deal-veto-`, outside the role moments | Yes, where the conversation gate allows it: the week's windows, or a decider (R/EpisodeDirector.NpcInvitations.cs:121-124). Otherwise it stays on the meeting rows (R/EpisodeDirector.Strategy.cs:159-176, `VetoOffers`, which R/EpisodeDirector.VetoMeeting.cs:221 draws when the role moments are off). | 1-2 |
-| 2b. Nominee's veto ask under the role moments | No. It stays on the veto board, which shows its tone, its stakes and that silence costs more than a no. Option for slice 4: a card drawn from `RoleOffers.CardOf` (S/Story/RoleOffers.cs:189), with `SilenceLine` as its lapse line, no Think it over focus, and the board's order. | — (4 at the owner's call) |
+| 2b. Nominee's veto ask under the role moments | No. It stays on the veto board, which shows its tone, its stakes and that silence costs more than a no. Option for slice 4: a card drawn from `RoleOffers.CardOf` (S/Story/RoleOffers.cs:189), with `SilenceLine` as its lapse line, no Think it over focus, and the board's order. | — (they stay on the board: owner question 3, answered 2026-10-30) |
 | 3. Keep-the-block `deal-keep-` (role moments only) | As 2b. Under role moments the Head of Household is a decider at the meeting (S/StrategyRules.cs:105-108); without this exclusion they would walk over ahead of the nominees. | — (4) |
 | 4. Reply cards (confrontation, gossip, plea) | Yes. The "SOMEBODY CAME TO YOU" hero (R/EpisodeHud.cs:272) becomes the visit. Answers go through `ReplyToHouseguest` (S/EpisodeEngine.Strategy.cs:181-233). | 4 |
 | 5. HoH pitch `reply-pitch-` | Yes, in Nomination. Without the role moments (off the board) only the card waiting first, `ReplyCards.Pending` (S/ReplyCards.cs:102), can be answered (S/EpisodeEngine.HoHPitches.cs:13; `HoHPitches.Answerable`, S/HoHPitches.cs:117-122). So a pitch is offered only while it is that card (`ReplyCards.Pending(s)?.kind == ReplyCards.Pitch`, as R/EpisodeDirector.NominationScreen.cs:78 checks), and `BoardPicks` plays no part there. Under the role moments (on the board) any waiting pitch can be answered, and `HoldTheBoard` (S/HoHPitches.cs:145-154) has already stored them in `BoardPicks` order, so the first pitch waiting in `s.replyCards` is offered, never a fresh `BoardPicks` call. The pitch board stays. | 4 |
-| 6. Story "approach" beat | Yes. The walk-over plus `OpenSceneCard` replaces the Pull's Approach surface (R/EpisodeDirector.Story.cs:424-432). | 5 (storyline plan) |
+| 6. Story "approach" beat | Yes. The walk-over replaces the Pull's Approach surface (R/EpisodeDirector.Story.cs:424-432). In person the beat opens in the conversation's Story branch, the frame's in-person host; `OpenSceneCard` is the card fallback when the speaker cannot come (StoryArcs/32 §D0). | 5 (storyline plan) |
 | 7. Counter (C7) | Never; it lives inside the player's own refused proposal | — |
 | 8. War-room plan | Never; the player called the meeting | — |
 | 9. Loyalty declaration | Never; it is the player's own word | — |
@@ -737,9 +737,9 @@ Each slice is built, qualified and landed before the next.
 3. **The walk-over holds.** The travel budget and answer window, facing and the bubble fixes. Slice 3 tests.
 4. **Everyone who comes to you.**
    - The reply-card and pitch sources, the bubble's caption overload, and same-asker chaining: the footer offers "There's something else" only when that asker has a second listed ask.
-   - At the owner's call: veto-board cards from `RoleOffers.CardOf` in board order.
+   - Not built (owner question 3, answered 2026-10-30: they stay on the board): veto-board cards from `RoleOffers.CardOf` in board order.
    - Optional: a PortVerification `PendingOfferDialogue` route behind a verification option. It answers the **same offer with the same `RespondToDeal` at the same point**, so the audited command list does not change (memory: removing a step re-rolls the season).
-5. **Storyline plan.** Story approach beats and covert asks become sources. The Pull's Approach hands over to the walk-over and the scene card. `declinedPulls` joins the set-aside model. Per-character line banks use the FNV pick. This slice is owned by the storyline design.
+5. **Storyline plan.** Story approach beats and covert asks become sources. The Pull's Approach hands over to the walk-over, which opens the beat in the conversation's Story branch, with the scene card as the card fallback. `declinedPulls` joins the set-aside model. Per-character line banks use the FNV pick. This slice is owned by the storyline design.
 
 ---
 
@@ -760,6 +760,9 @@ Each slice is built, qualified and landed before the next.
 - A reload presents waiting asks again; nothing is saved.
 
 **Questions for the owner:**
+
+**Answered, 2026-10-30.** The owner: "Use the defaults for all five offer questions". Every default above stands. Question 5 changes the story session's D18 (lane S2a) behind `AsksOn` only, recorded as a delegated call, confirmed by the owner.
+
 1. When a houseguest reaches you, should the dialogue open by itself (the default), or wait for Hear, E or a click?
 2. When the houseguest is busy (seated, in bed or chatting), should they get up and come over, or should the offer pop up after about 10 s (the default)?
 3. Should the veto board's asks under the role moments also come to you, as a card showing their tone, stakes and that silence costs more than a no (slice 4)? Or should they stay on the board only (the default)?
@@ -821,6 +824,9 @@ Every finding was checked against origin/main 37416049, read-only.
 - No setting, no counter-offer, nothing saved.
 
 ## Questions for the owner
+
+**Answered, 2026-10-30.** The owner: "Use the defaults for all five offer questions". Every default above stands. Question 5 changes the story session's D18 (lane S2a) behind `AsksOn` only, recorded as a delegated call, confirmed by the owner.
+
 1. When a houseguest reaches you, should the dialogue open by itself (the default), or wait for Hear, E or a click?
 2. When the houseguest is busy (seated, in bed or chatting), should they get up and come over, or should the offer pop up after about 10 s (the default)?
 3. Should the veto board's asks under the role moments also come to you, as a card showing their tone, stakes and the cost of silence? Or should they stay on the board only (the default)?

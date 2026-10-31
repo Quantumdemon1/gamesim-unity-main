@@ -159,6 +159,9 @@ namespace Gamesim.Episode
         private bool askCardFirstRender;
         // Free, still seconds the player's own spot has fitted no visitor: one count for the spot, never per ask.
         private float askSpotBlockedFor;
+        // The card's own settle: free-house seconds with no closable chrome up. The overview lets the free-house clock
+        // run beneath it, so new visits may start there, but the card waits the settle time once it has closed.
+        private float askCardSettle;
 
         // ---------------------------------------------------------------- public reads, for tests
 
@@ -196,6 +199,12 @@ namespace Gamesim.Episode
 
         /// <summary>The visit in flight may open its dialogue: no closable chrome up, the player still. A waiting scene does not hold it.</summary>
         private bool AskMayOpen => AskMayHold && !ClosableChromeUp && askStillFor >= AskStillSeconds;
+
+        /// <summary>
+        /// The card may open: a new visit could start and an in-person dialogue could open, and no closable chrome has
+        /// been up for the settle time, so the card never pops up the moment the overview closes.
+        /// </summary>
+        private bool AskCardMayOpen => AskMayStart && AskMayOpen && askCardSettle >= AskSettleSeconds;
 
         /// <summary>A story scene that could stage now: the beat TickSceneStage wants, not yet tried, and a house that could take it.</summary>
         private bool SceneStageWaiting
@@ -271,8 +280,11 @@ namespace Gamesim.Episode
             if (pullKey != null && pullKey != askPullKey) { askPullKey = pullKey; askPullHeld = 0f; }
             if (hud != null && hud.PullShowing && askStillFor >= AskStillSeconds && VisitHouseFree(false, AsksWaitWhileSeated))
                 askPullHeld += frame;
-            if (AskMayStart) { askClock += frame; askFreeRun += frame; }
+            bool mayStart = AskMayStart;
+            if (mayStart) { askClock += frame; askFreeRun += frame; }
             else askFreeRun = 0f;
+            if (mayStart && !ClosableChromeUp) askCardSettle += frame;
+            else askCardSettle = 0f;
 
             // The dialogue closed, or the conversation is with somebody else: the next ask waits its gap.
             if (askDialogueWith != null && (focusedNpc == null || focusedNpc.Id != askDialogueWith))
@@ -345,17 +357,20 @@ namespace Gamesim.Episode
             if (!AskMayStart || askFreeRun < AskSettleSeconds || askStillFor < AskStillSeconds
                 || askClock < askNextAt || askClock < askScanAt || AskCapReached || player == null) return;
             askScanAt = askClock + AskScanSeconds;
+            // The first ask this scan tried to bring: the one listed first that can still come, for the spot's card.
+            ComesToYou.Ask firstTried = null;
             foreach (var ask in CurrentAsks())
             {
                 if (!AskMayCome(ask)) continue;
                 // Missed twice, out of its asker's own reach for long enough, or walk-overs off: it comes as a card, at
-                // the first free, still moment with no closable chrome up. It keeps its place in the order meanwhile:
-                // nothing after it is walked over first.
+                // the first free, still moment with no closable chrome up for the settle time. It keeps its place in the
+                // order meanwhile: nothing after it is walked over first.
                 if (AskCardDue(ask.recordId))
                 {
-                    if (AskMayStart && AskMayOpen) OpenAskCard(ask);
+                    if (AskCardMayOpen) OpenAskCard(ask);
                     return;
                 }
+                if (firstTried == null) firstTried = ask;
                 if (npcMeetings.TryReserveNpcInvitation(ask.askerId, player, out var visit, out _, out var refusal))
                 {
                     askNow = ask; askVisit = visit; askCoordinator = npcMeetings;
@@ -367,14 +382,21 @@ namespace Gamesim.Episode
                     || refusal == HouseNpcInvitationRefusal.Asker)
                 {
                     askUnreachable[ask.recordId] = AskUnreachableFor(ask.recordId) + AskScanSeconds;
+                    // Due on this very scan: it comes as a card now, in its place, before anything listed after it.
+                    if (AskCardDue(ask.recordId))
+                    {
+                        if (AskCardMayOpen) OpenAskCard(ask);
+                        return;
+                    }
                     continue;
                 }
                 // The player's own spot fits no visitor: one count for the spot, charged to no ask. Once it has held for
-                // the card's time, the ask listed first comes as a card; no other ask is made due by it.
+                // the card's time, the ask listed first that can still come - the first this scan tried, even one whose
+                // own asker is busy - comes as a card; no ask is made due by it.
                 if (refusal == HouseNpcInvitationRefusal.PlayerSpot)
                 {
                     askSpotBlockedFor += AskScanSeconds;
-                    if (askSpotBlockedFor >= AskUnreachableSecondsBeforeCard && AskMayStart && AskMayOpen) OpenAskCard(ask);
+                    if (askSpotBlockedFor >= AskUnreachableSecondsBeforeCard && AskCardMayOpen) OpenAskCard(firstTried ?? ask);
                 }
                 return;
             }
@@ -798,7 +820,7 @@ namespace Gamesim.Episode
             ClearAskDialogue();
             asksCache = Array.Empty<ComesToYou.Ask>(); asksCacheSource = null;
             askPullHeld = 0f; askPullKey = null;
-            askSpotBlockedFor = 0f;
+            askSpotBlockedFor = 0f; askCardSettle = 0f;
             // A card up is the old season's: what it asked goes now, so closing it sets nothing aside and starts no gap.
             // The panel itself closes with the panels (the load's, or the switch's).
             askCard = null; askCardReply = null;

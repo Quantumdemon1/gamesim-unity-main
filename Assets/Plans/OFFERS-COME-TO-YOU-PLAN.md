@@ -234,6 +234,7 @@ The three caps are copied into instance fields (`askRecordCap`, `askPhaseCap`, `
 | `asksCache`, `asksCacheSource` | `ComesToYou.Read(projected)`, read only through `CurrentAsks()`, which re-reads whenever `!ReferenceEquals(asksCacheSource, projected)` | On load (`ResetAsksForLoad` sets `asksCacheSource = null`) |
 | `askCardOpen`, `askCard`, `askCardReply`, `askCardFirstRender` | The card on screen (slice 2) | `EndAskCard` |
 | `askSpotBlockedFor` | Slice 2: free, still seconds the player's own spot has refused every visitor (`PlayerSpot`), one counter, not per record | With the stillness anchor; on load |
+| `askCardSettle` | Slice 2: free-house seconds with no closable chrome up. It is the card's settle (`AskCardMayOpen`, §C.2 step 9) | Whenever `!AskMayStart` or `ClosableChromeUp`; on load |
 | `askPullHeld`, `askPullKey` | Free, still seconds the current Story Pull (`pullNow?.Key`) has shown (pending the owner, question 5) | On load; when the Pull's key changes |
 | `askPlayerYaw`, `askAskerYaw` | Slice 3: the facings an ask set (NaN when none) | `ClearAskFacing`; `ResetAsksForLoad` |
 
@@ -278,7 +279,7 @@ A waiting scene holds new visits and the card, never a visit in flight: Story.cs
    - Walk `CurrentAsks()` in order. Skip any ask that fails one of these: `IsCurrent`; not in `askSetAside`; under `askRecordCap`; `askRetryAt` passed; `askerNextAt` passed; `NpcInvitationConversationAvailable(projected, askerId)`.
    - **Card due** (misses ≥ 2, or `askUnreachable[id]` ≥ 10, or slice 2's `!AskWalkOvers`):
      - slice 1: skip the ask and continue. It gets no further walk-over this phase, but it is not added to `askSetAside`, so talking to the asker still raises it (Raised). The card-due test itself keeps it out of later scans, because `askMisses` and `askUnreachable` are cleared only on a phase change. `askSetAside` holds only asks the player has seen or put off: `DeferAsk`, `OpenOnAsk` (WalkOver and Raised) and, in slice 2, `OpenAskCard` and `EndAskCard`;
-     - slice 2: if `AskMayStart && AskMayOpen`, `OpenAskCard(ask)`; return either way, so a due card keeps its place in the order.
+     - slice 2: if `AskCardMayOpen`, `OpenAskCard(ask)`; return either way, so a due card keeps its place in the order. `AskCardMayOpen = AskMayStart && AskMayOpen && askCardSettle >= AskSettleSeconds`: the map-only overview lets the free-house clock and the scan run beneath it (new visits may start there), so the card keeps its own settle, `askCardSettle`, which runs while `AskMayStart && !ClosableChromeUp` and resets otherwise. The card then never opens the moment the overview closes (test 14). Elsewhere it equals `askFreeRun`.
    - Otherwise try `npcMeetings.TryReserveNpcInvitation(ask.askerId, player, …)`.
      - On success: start the visit and return.
      - On failure, charge only failures that are about the asker. Slice 1 adds an overload `TryReserveNpcInvitation(npcId, player, out lease, out reason, out HouseNpcInvitationRefusal refusal)` to H/HouseMeetingCoordinator.NpcInvitation.cs; the old signature forwards to it, so the legacy path is unchanged. The refusal kinds:
@@ -288,9 +289,9 @@ A waiting scene holds new visits and the card, never a visit in flight: Story.cs
        - `Busy`: :58-59, and :84.
        - `PlayerSpot`: `TryLocate` at :61 fails, or no ring point clears the floor, room, keep-clear, spacing and clearance tests at :72-75.
        - `NoRoute`: at least one point cleared those tests but `MeasurePath` at :76 failed for each, or :87-90.
-     - On `Busy`, `NoRoute` or `Asker`: `askUnreachable[id] += AskScanSeconds`, then continue with the next ask. A seated asker therefore never blocks the queue (:58-59), and an ask's unreachable time counts only its own asker's failures.
+     - On `Busy`, `NoRoute` or `Asker`: `askUnreachable[id] += AskScanSeconds`, then continue with the next ask. A seated asker therefore never blocks the queue (:58-59), and an ask's unreachable time counts only its own asker's failures. Slice 2: if that charge makes the ask card-due, the card branch runs for it on this scan (open it if `AskCardMayOpen`, and return either way), so it keeps its place ahead of every ask listed after it.
      - On `PlayerSpot`, `House` or `Player`: charge no record and end this scan, because every asker would fail the same way: a doorway, the 0.1 m + radius inset at a floor's edge (H/HouseRoomQuery.cs:238-258), or a spot where no 1.8 m point fits.
-     - Slice 2 adds `askSpotBlockedFor`, one counter for the player's spot, not per record, that resets with the stillness anchor. At `AskUnreachableSecondsBeforeCard` it opens only the first listed ask as a card, and it marks no other record card-due.
+     - Slice 2 adds `askSpotBlockedFor`, one counter for the player's spot, not per record, that resets with the stillness anchor. At `AskUnreachableSecondsBeforeCard` it opens only the first listed ask as a card, and it marks no other record card-due. "First listed" is the first ask this scan tried to reserve, which is the first one that can still come, even if its own asker refused as `Busy`, `NoRoute` or `Asker` earlier in the same scan. The counter does not reset when a card opens, so while the player stays on the spot each later ask, after its gap, also comes as a card.
 
 **`RecordAskMiss(id)`.** Adds 1 to `askMisses[id]`, sets `askRetryAt[id] = askNextAt = askClock + AskRetrySeconds`, then `CancelAskVisit()`. The record is not set aside. Setting `askNextAt` here also gives a waiting scene its gap.
 
@@ -476,7 +477,7 @@ During the walk-over the player keeps full control.
 - `IsPanelOpen` adds `|| askCardOpen` (R/EpisodeDirector.cs:106).
 - `hud.Begin`'s open argument adds `|| askCardOpen` (:1383).
 - Dispatch `if (askCardOpen) { AskCard(state); return; }` goes before :1533.
-- `ClosePanelsInternal` calls `EndAskCard()` beside :735. That sets the ask aside and starts the gap if it is still pending and unanswered, then clears the card fields.
+- `ClosePanelsInternal` calls `EndAskCard()` beside :735. That sets the ask aside if it is still pending and unanswered, starts the gap (`AskGapSeconds`) after every card, answered or not, and then clears the card fields.
 - `OpenAskCard(ask)`:
   1. `PauseNpcSocialForPanel()`; return false if `blockedRecovery`.
   2. Re-check `ask.IsCurrent(projected)` after the flush.
@@ -673,7 +674,7 @@ That house has offers from Maya and Jamie, and "jamie-roberts" sorts before "may
 
 **Also in slice 1** (asks on, from `InstallComesToYouHouse`):
 - **`ComesToYou_SceneWaitingDoesNotStallAVisitInFlight`.** Start a visit while a pair meeting holds `leases` and a beat is wanted. End the meeting. Auto-open fires within `AskSpeakBeatSeconds` plus a margin, `AskMissCount == 0`, and the scene stages after `ClosePanels`.
-- **`ComesToYou_PlayerSpotChargesNoAsker`.** Two free askers. The player stands still for 15 real seconds in a doorway or within 0.3 m of a floor edge. No record is set aside and `askUnreachable` stays at 0. After the player moves to open floor, the first ask leases within 3 real seconds of arriving there.
+- **`ComesToYou_PlayerSpotChargesNoAsker`.** Two free askers. The player stands still for 15 real seconds in a doorway or within 0.3 m of a floor edge. No record is set aside and `askUnreachable` stays at 0. After the player moves to open floor, the first ask leases within 3 real seconds of arriving there. *From slice 2 the spot's own counter opens the first listed ask as a card at 10 s, which sets that ask aside, so this case as written cannot hold. Slice 2 replaces it with test 17.*
 - **`ComesToYou_FollowingSomeoneElseCancelsWithoutAMiss`.** `FollowHouseguest` with another id mid-visit cancels the visit with `AskMissCount` unchanged and `IsAskSetAside` false, and no new visit starts until the follow is released.
 - **`ComesToYou_AStalledFrameDoesNotOpenTheDialogue`**, modelled on `AStalledFrame_DoesNotSpendABodysAssemblyBound`. With the bubble up, one `Thread.Sleep(1500)` frame does not call `HearAsk`.
 - **`ComesToYou_APullYieldsAfterItsTime`**, only if the owner agrees (question 5). While a Pull is up, no visit starts for `AskPullYieldSeconds`. Then the visit starts, the Pull hides once the bubble shows, and it returns undeclined after the conversation closes.
@@ -692,6 +693,11 @@ That house has offers from Maya and Jamie, and "jamie-roberts" sorts before "may
     - With `askPhaseCap` lowered to 2 through the private-write helper, the third asker's card does not open in this phase, and it opens after the phase advances.
     - The "N more" line counts distinct askers.
 16. **Captures** `"comes-to-you-card" + TextScales.Suffix(textSize)` at Standard and Largest, in the same loop form as test 10.
+17. **`ComesToYou_ASpotThatFitsNoVisitorBringsTheFirstAskAsACard`** (added at slice 2's review).
+    - Two free askers; pairing and ambient seats are held. The player stands still on a floor point in frame that is in no room's safe interior, and both askers' reservations are refused as `PlayerSpot`.
+    - Until the card opens: nobody sets out, `askUnreachable` has no entry above 0, nobody has a miss and nothing is set aside.
+    - On the open frame, `askSpotBlockedFor >= AskUnreachableSecondsBeforeCard`, and the card is the first listed ask, with way Card.
+    - Close it and move the player back to open floor. Then `askSpotBlockedFor` is 0, and once the gap is released the second ask leases as a walk-over, not a card.
 
 **Slice 3:**
 - **Coordinator level**, in `HouseNpcInvitationPlayModeTests` without the director: the travel budget follows the route; expiry restarts at arrival; drift still releases (H/HouseMeetingCoordinator.NpcInvitation.cs:99-112).
@@ -725,7 +731,7 @@ Each slice is built, qualified and landed before the next.
 
 **The slices:**
 1. **It comes to you and opens as a dialogue.** The reader, the generic visit and switch, the frame, the walk-over with auto-open, raising, the queue with public order, gaps, caps, per-record retry and set-aside, the gates, the pointer hold, focus and readings, the busy set and walk-in exclusion, the scene yield, the coordinator's refusal kinds, the in-frame and stalled-frame guards, and the fixture and PortVerification switches. Tests EditMode 1-12, PlayMode 1-10 and the "also in slice 1" cases.
-2. **It pops up when they cannot come.** The card host, `SpeakerRow`, the reply page, the card triggers (with the player's-spot counter) and the fixture's three-ask variant. Tests 11-16.
+2. **It pops up when they cannot come.** The card host, `SpeakerRow`, the reply page, the card triggers (with the player's-spot counter) and the fixture's three-ask variant. Tests 11-17.
 3. **The walk-over holds.** The travel budget and answer window, facing and the bubble fixes. Slice 3 tests.
 4. **Everyone who comes to you.**
    - The reply-card and pitch sources, the bubble's caption overload, and same-asker chaining: the footer offers "There's something else" only when that asker has a second listed ask.

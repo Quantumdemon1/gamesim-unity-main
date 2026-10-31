@@ -562,28 +562,22 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(director.CurrentAskerId, Is.EqualTo(ComesMaya), "The next asker comes while Jamie sits.");
             director.ClosePanels();
 
-            // Jamie's own refusals add up to the card's time: no further walk-over, and from slice 2 the ask comes as a card
-            // where the player stands, Jamie staying in their seat.
+            // Jamie's own refusals add up to the card's time, setting nothing aside, and from slice 2 the ask comes as a card
+            // where the player stands - on the very scan that makes it due - Jamie staying in their seat.
             var unreachable = NpcRead<Dictionary<string, float>>("askUnreachable");
             NpcRead<HashSet<string>>("askSetAside").UnionWith(HeldAside(new[] { ComesMaya }));
             deadline = Time.realtimeSinceStartup + 40f;
             while ((!unreachable.TryGetValue(first.recordId, out float seconds) || seconds < EpisodeDirector.AskUnreachableSecondsBeforeCard)
-                   && Time.realtimeSinceStartup < deadline)
+                   && !director.IsAskCardOpen && Time.realtimeSinceStartup < deadline)
             {
+                Assert.That(director.IsAskSetAside(first.recordId), Is.False, "A busy asker's refusals set nothing aside.");
                 if (activity.Released) Assert.That(coordinator.TryReserveActivity(ComesJamie, seat, out activity, out reason), Is.True, reason);
                 yield return null;
             }
             Assert.That(unreachable.TryGetValue(first.recordId, out float charged) ? charged : 0f,
-                Is.GreaterThanOrEqualTo(EpisodeDirector.AskUnreachableSecondsBeforeCard));
-            Assert.That(director.IsAskSetAside(first.recordId), Is.False);
-            deadline = Time.realtimeSinceStartup + 15f;
-            while (!director.IsAskCardOpen && Time.realtimeSinceStartup < deadline)
-            {
-                Assert.That(director.CurrentNpcInvitationRecordId, Is.Not.EqualTo(first.recordId), "No further walk-over this phase.");
-                if (activity.Released) Assert.That(coordinator.TryReserveActivity(ComesJamie, seat, out activity, out reason), Is.True, reason);
-                yield return null;
-            }
-            Assert.That(director.IsAskCardOpen, Is.True, "A busy asker's ask comes as a card.");
+                Is.GreaterThanOrEqualTo(EpisodeDirector.AskUnreachableSecondsBeforeCard), "No card before Jamie's own refusals add up to the card's time.");
+            // The scan that makes it due opens it, in its place in the order: no scan later, after something listed behind it.
+            Assert.That(director.IsAskCardOpen, Is.True, "A busy asker's ask comes as a card on the scan that makes it due.");
             Assert.That(director.CurrentAskWay, Is.EqualTo(EpisodeDirector.AskWay.Card));
             Assert.That(director.CurrentAskRecordId, Is.EqualTo(first.recordId));
             Assert.That(director.CurrentAskerId, Is.EqualTo(ComesJamie));
@@ -910,8 +904,9 @@ namespace Gamesim.Tests.PlayMode
             }
             comesCardSeenAt = Time.realtimeSinceStartup;
             if (!director.IsAskCardOpen)
-                Assert.Fail(at + ": no card opened. Free " + NpcRead<float>("askFreeRun") + " s, still " + NpcRead<float>("askStillFor")
-                    + " s, clock " + NpcRead<float>("askClock") + ", next " + NpcRead<float>("askNextAt") + ", in frame "
+                Assert.Fail(at + ": no card opened. Free " + NpcRead<float>("askFreeRun") + " s, chrome-free " + NpcRead<float>("askCardSettle")
+                    + " s, still " + NpcRead<float>("askStillFor") + " s, spot " + NpcRead<float>("askSpotBlockedFor") + " s, clock "
+                    + NpcRead<float>("askClock") + ", next " + NpcRead<float>("askNextAt") + ", in frame "
                     + NpcRead<bool>("askPlayerInFrame") + ", panel " + director.IsPanelOpen + ". " + director.NpcAutonomyDiagnostic);
             // The open frame.
             Assert.That(ComesHud.PointerHeld, Is.True, at + ": pointer presses are held off the card as it opens.");
@@ -1000,9 +995,13 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(LastLabel(EpisodeHud.AskYourWordsName)?.text, Is.EqualTo("\"" + said.PlayerLine + "\""));
             Assert.That(LastLabel(EpisodeHud.AskReplyName)?.text, Is.EqualTo("\"" + said.NpcLine + "\""));
             Assert.That(ButtonWithCaptionOrNull(EpisodeHud.ThinkItOverCaption), Is.Null, "Nothing is left to think over.");
+            // The ask clock stands still under the card: an answered card is a presentation too, so the gap counts from here.
+            float clock = NpcRead<float>("askClock");
             ButtonWithCaption(EpisodeDirector.SceneCardDoneCaption).onClick.Invoke();
             Assert.That(director.IsAskCardOpen, Is.False);
             Assert.That(director.IsPanelOpen, Is.False, "Back to the house closes the card.");
+            Assert.That(NpcRead<float>("askNextAt"), Is.GreaterThanOrEqualTo(clock + EpisodeDirector.AskGapSeconds - .01f),
+                "After an answered card the next ask waits its gap.");
         }
 
         // ------------------------------------------------------------------ 12. closing the card is Think it over
@@ -1092,10 +1091,10 @@ namespace Gamesim.Tests.PlayMode
                 () => director.IsPhasePanelOpen, () => { director.ClosePanels(); WarpPlayer(home); }, true);
             yield return CardHeldUnder("the emote menu", recordId, () => director.ToggleEmoteMenu(), () => director.EmoteMenuOpen,
                 () => director.ToggleEmoteMenu(), true);
-            // The overview holds the card but not the house's settle time, which runs under it: the card may open as soon
-            // as it closes.
+            // The map-only overview holds no new visit: the free-house clock and the scan run beneath it, so only the card's
+            // own gate holds the card there, and the card waits its settle time once the overview has closed.
             yield return CardHeldUnder("the overview", recordId, () => Assert.That(director.ShowOverview(), Is.True), () => director.IsOverview,
-                () => director.EndOverview(), false);
+                () => director.EndOverview(), true, scanMustRun: true);
 
             // A staged Pull, on the same house with the story on (InvitationAndPull's staging): a walk-in found as the
             // proximity watch finds one, which writes nothing.
@@ -1134,9 +1133,12 @@ namespace Gamesim.Tests.PlayMode
         /// <summary>
         /// The card due but for its gap, then the chrome up and the gap let go: for 30 frames, and at least the settle,
         /// still and two scans' time in real seconds, no card. Once the chrome closes the card opens - after a panel, or
-        /// anything else that holds the house, only once the settle time has run again.
+        /// anything else that holds the house, only once the settle time has run again. With
+        /// <paramref name="scanMustRun"/>, the house stays free under the chrome - the player in frame, the free-house
+        /// clock settled, the scan running and reaching the card - so only the card's own gate holds it.
         /// </summary>
-        private IEnumerator CardHeldUnder(string what, string recordId, Action open, Func<bool> up, Action close, bool settlesAgain)
+        private IEnumerator CardHeldUnder(string what, string recordId, Action open, Func<bool> up, Action close, bool settlesAgain,
+            bool scanMustRun = false)
         {
             yield return HoldTheCardAtItsGap(what, recordId);
             open();
@@ -1145,6 +1147,7 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(up(), Is.True, what + " is up.");
             // Only the chrome holds the card now.
             NpcWrite("askNextAt", NpcRead<float>("askClock"));
+            float scanWas = NpcRead<float>("askScanAt");
             int frames = 0;
             float until = Time.realtimeSinceStartup + EpisodeDirector.AskSettleSeconds + EpisodeDirector.AskStillSeconds
                 + 2f * EpisodeDirector.AskScanSeconds;
@@ -1154,6 +1157,13 @@ namespace Gamesim.Tests.PlayMode
                 frames++;
                 Assert.That(director.IsAskCardOpen, Is.False, "No card over " + what + " (frame " + frames + ").");
                 Assert.That(up(), Is.True, what + " stays up while it is watched (frame " + frames + ").");
+                if (scanMustRun)
+                    Assert.That(NpcRead<bool>("askPlayerInFrame"), Is.True, "Under " + what + " the player stays in frame (frame " + frames + ").");
+            }
+            if (scanMustRun)
+            {
+                Assert.That(NpcRead<float>("askFreeRun"), Is.GreaterThanOrEqualTo(EpisodeDirector.AskSettleSeconds), "Under " + what + " the house stays free.");
+                Assert.That(NpcRead<float>("askScanAt"), Is.GreaterThan(scanWas), "Under " + what + " the scan runs and reaches the card.");
             }
             close();
             float closed = Time.realtimeSinceStartup;
@@ -1273,6 +1283,135 @@ namespace Gamesim.Tests.PlayMode
                 director.ClosePanels();
                 yield return null;
             }
+        }
+
+        // ------------------------------------------------------------------ 17. a spot that fits no visitor
+
+        [UnityTest, Timeout(300000)]
+        public IEnumerator ComesToYou_ASpotThatFitsNoVisitorBringsTheFirstAskAsACard() => PinnedClock(ASpotThatFitsNoVisitor);
+
+        /// <summary>
+        /// The player stands still where no visitor can stand beside them: the spot is charged to no ask - nothing missed,
+        /// out of reach or set aside, nobody setting out - until it has refused visitors for the card's time, when the
+        /// first listed ask comes as a card. Back on open floor the spot's count starts again and the next ask is walked
+        /// over: the spot made no other ask card-due. Nobody pairs off or takes a seat meanwhile, so every refusal is the
+        /// spot's and never an asker's own.
+        /// </summary>
+        private IEnumerator ASpotThatFitsNoVisitor()
+        {
+            yield return OptIntoComesToYou();
+            NpcWrite("npcApproachDiagnosticsSuppressed", true);
+            float ambient = NpcRead<float>("nextAmbientActivity");
+            NpcWrite("nextAmbientActivity", float.PositiveInfinity);
+            try { yield return SpotThatFitsNoVisitor(); }
+            finally
+            {
+                NpcWrite("npcApproachDiagnosticsSuppressed", false);
+                NpcWrite("nextAmbientActivity", ambient);
+            }
+        }
+
+        private IEnumerator SpotThatFitsNoVisitor()
+        {
+            var queue = ComesToYou.Read(director.Snapshot);
+            var first = queue.First();
+            Assert.That(first.askerId, Is.EqualTo(ComesJamie), "Jamie's ask is listed first.");
+            var second = queue.First(ask => ask.askerId == ComesMaya);
+            string[] askers = { ComesJamie, ComesMaya };
+            var coordinator = NpcRead<HouseMeetingCoordinator>("npcMeetings");
+            var home = player.transform.position;
+
+            // The scan held while the player moves there and both askers are seen free, so no wait of the test's is charged.
+            NpcWrite("askNextAt", float.MaxValue);
+            WarpPlayer(SpotNoVisitorFits(coordinator));
+            var refusals = new Dictionary<string, HouseNpcInvitationRefusal>();
+            float deadline = Time.realtimeSinceStartup + 10f;
+            while (true)
+            {
+                foreach (var asker in askers)
+                {
+                    Assert.That(coordinator.TryReserveNpcInvitation(asker, player, out _, out _, out var refusal), Is.False,
+                        asker + ": no visitor fits the spot.");
+                    refusals[asker] = refusal;
+                }
+                if (refusals.Values.All(kind => kind == HouseNpcInvitationRefusal.PlayerSpot) || Time.realtimeSinceStartup >= deadline) break;
+                yield return null;
+            }
+            foreach (var asker in askers)
+                Assert.That(refusals[asker], Is.EqualTo(HouseNpcInvitationRefusal.PlayerSpot), asker + " is refused for the player's spot, not for their own reasons.");
+            var unreachable = NpcRead<Dictionary<string, float>>("askUnreachable");
+            Assert.That(unreachable.Values.Where(seconds => seconds > 0f), Is.Empty, "Nothing charged before the scan runs.");
+            NpcWrite("askNextAt", NpcRead<float>("askClock"));
+
+            // Charged to nobody until the spot has refused visitors for the card's time.
+            deadline = Time.realtimeSinceStartup + EpisodeDirector.AskSettleSeconds + EpisodeDirector.AskStillSeconds
+                + EpisodeDirector.AskUnreachableSecondsBeforeCard + 10f;
+            while (!director.IsAskCardOpen && Time.realtimeSinceStartup < deadline)
+            {
+                Assert.That(director.CurrentNpcInvitationRecordId, Is.Null, "Nobody sets out to a spot no visitor fits.");
+                Assert.That(unreachable.Values.Where(seconds => seconds > 0f), Is.Empty, "The spot is charged to no asker.");
+                foreach (var ask in new[] { first, second })
+                {
+                    Assert.That(director.AskMissCount(ask.recordId), Is.Zero, ask.askerId + ": no miss.");
+                    Assert.That(director.IsAskSetAside(ask.recordId), Is.False, ask.askerId + ": nothing set aside.");
+                }
+                yield return null;
+            }
+            float spot = NpcRead<float>("askSpotBlockedFor");
+            if (!director.IsAskCardOpen)
+                Assert.Fail("The spot's card never opened: spot " + spot + " s, free " + NpcRead<float>("askFreeRun") + " s, still "
+                    + NpcRead<float>("askStillFor") + " s, in frame " + NpcRead<bool>("askPlayerInFrame") + ". " + director.NpcAutonomyDiagnostic);
+            Assert.That(spot, Is.GreaterThanOrEqualTo(EpisodeDirector.AskUnreachableSecondsBeforeCard), "No card before the spot has held for the card's time.");
+            Assert.That(director.CurrentAskRecordId, Is.EqualTo(first.recordId), "The first listed ask comes as the card.");
+            Assert.That(director.CurrentAskerId, Is.EqualTo(ComesJamie));
+            Assert.That(unreachable.Values.Where(seconds => seconds > 0f), Is.Empty, "Still charged to nobody.");
+            Assert.That(director.IsAskSetAside(second.recordId), Is.False, "Only the card's ask is set aside.");
+            yield return WaitForAskCardUp("the spot's card", 1f);
+
+            // Back on open floor: the spot's count starts again with the stillness, and the next ask is walked over.
+            director.ClosePanels();
+            WarpPlayer(home);
+            yield return null;
+            Assert.That(NpcRead<float>("askSpotBlockedFor"), Is.Zero, "The spot's count starts again where the player stands now.");
+            NpcWrite("askNextAt", NpcRead<float>("askClock"));
+            deadline = Time.realtimeSinceStartup + EpisodeDirector.AskSettleSeconds + EpisodeDirector.AskStillSeconds
+                + 2f * EpisodeDirector.AskScanSeconds + 3f;
+            while (director.CurrentNpcInvitationRecordId == null && !director.IsAskCardOpen && Time.realtimeSinceStartup < deadline) yield return null;
+            Assert.That(director.IsAskCardOpen, Is.False, "The spot made no other ask card-due.");
+            Assert.That(director.CurrentNpcInvitationRecordId, Is.EqualTo(second.recordId), "Maya sets out to the player's open floor. " + director.NpcAutonomyDiagnostic);
+            Assert.That(director.CurrentAskerId, Is.EqualTo(ComesMaya));
+            Assert.That(director.CurrentAskWay, Is.EqualTo(EpisodeDirector.AskWay.None), "A walk-over on its way.");
+            Assert.That(NpcRead<float>("askSpotBlockedFor"), Is.Zero);
+        }
+
+        /// <summary>
+        /// The floor point nearest the player, their head well inside the frame, that lies in no room's safe interior - a
+        /// doorway, a floor's edge - so the coordinator refuses every visitor for the player's spot before it looks for a
+        /// point beside them (HouseMeetingCoordinator.TryReserveNpcInvitation's PlayerSpot).
+        /// </summary>
+        private Vector3 SpotNoVisitorFits(HouseMeetingCoordinator coordinator)
+        {
+            var field = typeof(HouseMeetingCoordinator).GetField("rooms", BindingFlags.Instance | BindingFlags.NonPublic);
+            Assert.That(field, Is.Not.Null, "The coordinator's room query.");
+            var rooms = (HouseRoomQuery)field.GetValue(coordinator);
+            var view = cameraRig.ViewCamera;
+            var from = player.transform.position;
+            float radius = player.Agent.radius, best = float.PositiveInfinity;
+            Vector3 found = from;
+            for (float x = -14f; x <= 14f; x += .2f)
+                for (float z = -14f; z <= 14f; z += .2f)
+                {
+                    var candidate = from + new Vector3(x, 0f, z);
+                    float distance = new Vector2(x, z).sqrMagnitude;
+                    if (distance >= best || !NavMesh.SamplePosition(candidate, out var hit, .1f, player.Agent.areaMask)
+                        || Mathf.Abs(hit.position.y - from.y) > .2f || rooms.TryLocate(hit.position, radius, out _)) continue;
+                    var seen = view.WorldToViewportPoint(hit.position + Vector3.up * 1.7f);
+                    if (seen.z <= 0f || seen.x <= .15f || seen.x >= .85f || seen.y <= .15f || seen.y >= .85f) continue;
+                    best = distance;
+                    found = hit.position;
+                }
+            Assert.That(best, Is.LessThan(float.PositiveInfinity), "A floor point in frame that fits no visitor: a doorway or a floor's edge.");
+            return found;
         }
     }
 }

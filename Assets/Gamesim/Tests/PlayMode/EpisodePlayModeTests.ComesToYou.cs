@@ -36,7 +36,8 @@ namespace Gamesim.Tests.PlayMode
         /// The invitation flow's saved house - offers from Maya and Jamie, every action spent - with asks on. The switch
         /// takes effect first (its reset and the first session key both clear the set-aside), then the named askers'
         /// records are held aside, and the walk-in watch is held. Returns once a visit has been reserved, from somebody
-        /// not held aside, with the house's pairing live again from there. No overview.
+        /// not held aside, with the house's pairing live again from there - for test 9, whose subject is that pairing, and
+        /// for tests whose asker is in the busy set from the reservation until their dialogue opens. No overview.
         /// </summary>
         private IEnumerator InstallComesToYouHouse(params string[] holdAsideAskers) => InstallComesToYouHouse(false, holdAsideAskers);
 
@@ -52,10 +53,13 @@ namespace Gamesim.Tests.PlayMode
         /// clock runs from the bodies' binding through their assembly, and a scan that comes due while pairing is held is
         /// spent; the ask's first scan comes only after AskSettleSeconds of free time from the switch, which is thrown once
         /// the bodies have assembled. With t seconds of NPC time at the switch, the house's next scan comes at 3 * ceil(t / 3)
-        /// and the ask's at about t + 2. On the primitive rig t is a frame and the ask always won; on a UMA build, for t in
-        /// [1, 3) or [4, 6), the house scanned first, took the one free asker, and her ask came as the plan's card after 10 s
-        /// of Busy refusals (plan A) - a card sets no visit, so the install timed out. Once the visit is reserved its asker
-        /// is in the busy set, so from there the house pairs everybody else as it always does.
+        /// and the ask's at about t + 2. On the primitive rig t is a frame and the ask won. The UMA build's three reds at
+        /// this wait (2026-10-30) fit the house scanning first, for t in [1, 3) or [4, 6): it took the one free asker,
+        /// whose ask came as the plan's card after 10 s of Busy refusals (plan A), and a card sets no visit. That cause is
+        /// inferred from the code and the timings - no log line showed the pair, the refusals or the card - so every install
+        /// writes the switch's report, t and the next scan among it, to the test's output for a green run to confirm it.
+        /// Once the visit is reserved its asker is in the busy set, so from there the house pairs everybody else as it
+        /// always does.
         /// </remarks>
         private IEnumerator InstallComesToYouHouse(bool holdPairing, params string[] holdAsideAskers)
         {
@@ -76,55 +80,89 @@ namespace Gamesim.Tests.PlayMode
         /// <summary>
         /// Waits up to 35 real seconds (plan G's fixture, step 5) for a visit to be reserved from an asker not held aside, and stops
         /// at once on a card: a card sets no visit, and it is the plan's way for a busy asker's ask (A), so the wait cannot
-        /// end well after it. A miss says which way it went: the switch's report (the bodies' assembly, the NPC clock and
-        /// its next pairing scan), the first frame the house paired a free asker, every ask scan by whom it charged - the
-        /// asker (busy, no route, not bound), the player's spot, or nobody (the house or the player) - with the first such
-        /// refusal's report, and each free asker's report now.
+        /// end well after it. The house's pairing is held throughout (<see cref="InstallComesToYouHouse(bool, string[])"/>), so
+        /// nothing but the ask's own scan clock is read each frame. A reservation writes the switch's report and when the
+        /// visit came to the test's output (not the log), so a green run shows the NPC clock it met. A miss says which way it
+        /// went: the switch's report (the bodies' assembly, the NPC clock and its next pairing scan), every ask scan by whom
+        /// it charged - the asker (busy, no route, not bound), the player's spot, or nobody (the house, the player, or no
+        /// ask could come) - with the first such refusal's report and whether each free ask could come then, and the house's
+        /// pairs and each free asker's report now.
         /// </summary>
         private IEnumerator WaitForTheFirstVisit(string[] holdAsideAskers)
         {
             var free = ComesToYou.Read(director.Snapshot).Select(ask => ask.askerId).Where(id => !holdAsideAskers.Contains(id))
                 .Distinct().ToArray();
-            string paired = null, refusal = null;
+            string refusal = null;
             int scans = 0, onAsker = 0, onSpot = 0, onNobody = 0;
             object scanAt = ReportRead("askScanAt");
-            float charged = ChargedTo(free), spot = ReportRead("askSpotBlockedFor") is float blocked ? blocked : 0f;
+            var charged = ChargesOf(free);
+            float spot = ReportRead("askSpotBlockedFor") is float blocked ? blocked : 0f;
             float deadline = Time.realtimeSinceStartup + 35f;
             while (director.CurrentNpcInvitationRecordId == null && !director.IsAskCardOpen && Time.realtimeSinceStartup < deadline)
             {
                 yield return null;
-                if (paired == null)
-                    foreach (var id in free)
-                    {
-                        string partner = HousePartnerOf(id);
-                        if (partner != null) { paired = "the house paired " + id + " with " + partner + " " + SinceTheSwitch(); break; }
-                    }
                 object scanNow = ReportRead("askScanAt");
                 if (Equals(scanNow, scanAt) || director.CurrentNpcInvitationRecordId != null) { scanAt = scanNow; continue; }
                 scanAt = scanNow;
                 scans++;
-                float chargedNow = ChargedTo(free), spotNow = ReportRead("askSpotBlockedFor") is float blockedNow ? blockedNow : 0f;
-                string kind = chargedNow > charged ? "charged to the asker (busy, no route or not bound)"
-                    : spotNow > spot ? "charged to the player's spot" : "charged to nobody (the house or the player)";
-                if (chargedNow > charged) onAsker++; else if (spotNow > spot) onSpot++; else onNobody++;
+                var chargedNow = ChargesOf(free);
+                float spotNow = ReportRead("askSpotBlockedFor") is float blockedNow ? blockedNow : 0f;
+                // A count started again on this scan's frame - the spot's with the stillness anchor, a record's with a new
+                // phase - and charged on the scan reads lower than before, not higher: any change to a count above nothing
+                // is this scan's charge.
+                bool onTheAsker = chargedNow.Any(record => record.Value > 0f
+                    && (!charged.TryGetValue(record.Key, out float was) || was != record.Value));
+                bool onTheSpot = !onTheAsker && spotNow != spot && spotNow > 0f;
+                string kind = onTheAsker ? "charged to the asker (busy, no route or not bound)" : onTheSpot ? "charged to the player's spot"
+                    : "charged to nobody (the house, the player, or no ask could come)";
+                if (onTheAsker) onAsker++; else if (onTheSpot) onSpot++; else onNobody++;
                 charged = chargedNow; spot = spotNow;
                 if (refusal == null && !director.IsAskCardOpen)
-                    refusal = "the first scan refused " + SinceTheSwitch() + ", " + kind + ": " + string.Join(" | ", free.Select(AskerReport));
+                    refusal = "the first scan refused " + SinceTheSwitch() + ", " + kind + " (" + AskMayComeNow(free) + "): "
+                        + string.Join(" | ", free.Select(AskerReport));
             }
-            if (director.CurrentNpcInvitationRecordId != null) yield break;
+            if (director.CurrentNpcInvitationRecordId != null)
+            {
+                TestContext.WriteLine("Comes-to-you install: " + director.CurrentAskerId + "'s visit reserved " + SinceTheSwitch()
+                    + ", after " + scans + " ask scans. " + comesSwitchReport);
+                yield break;
+            }
             Assert.Fail("An asker sets out for the player" + (director.IsAskCardOpen ? " (a card opened instead, " + SinceTheSwitch() + ")" : "")
-                + ". " + comesSwitchReport + " Since: " + (paired ?? "the house paired no free asker") + "; " + scans + " ask scans ("
-                + onAsker + " charged to the asker, " + onSpot + " to the player's spot, " + onNobody + " to nobody); "
-                + (refusal ?? "no scan refused") + ". Now " + SinceTheSwitch() + ": " + string.Join(" | ", free.Select(AskerReport)));
+                + ". " + comesSwitchReport + " Since: " + scans + " ask scans (" + onAsker + " charged to the asker, " + onSpot
+                + " to the player's spot, " + onNobody + " to nobody); " + (refusal ?? "no scan refused") + ". Now " + SinceTheSwitch()
+                + ", the house's pairs (pairing held through the wait): " + string.Join(", ", free.Select(id => id + " with " + (HousePartnerOf(id) ?? "nobody")))
+                + "; " + string.Join(" | ", free.Select(AskerReport)));
         }
 
-        /// <summary>The seconds of refusals charged to these askers' records so far (askUnreachable), for a report.</summary>
-        private float ChargedTo(IEnumerable<string> askerIds)
+        /// <summary>The seconds of refusals charged to each of these askers' records so far (askUnreachable), copied, for a report.</summary>
+        private Dictionary<string, float> ChargesOf(IEnumerable<string> askerIds)
         {
+            var charges = new Dictionary<string, float>();
             var unreachable = ReportRead("askUnreachable") as Dictionary<string, float>;
-            if (unreachable == null || director.Snapshot == null) return 0f;
-            return ComesToYou.Read(director.Snapshot).Where(ask => askerIds.Contains(ask.askerId))
-                .Sum(ask => unreachable.TryGetValue(ask.recordId, out float seconds) ? seconds : 0f);
+            var state = director.Snapshot;
+            if (unreachable == null || state == null) return charges;
+            foreach (var ask in ComesToYou.Read(state).Where(ask => askerIds.Contains(ask.askerId)))
+                charges[ask.recordId] = unreachable.TryGetValue(ask.recordId, out float seconds) ? seconds : 0f;
+            return charges;
+        }
+
+        /// <summary>
+        /// Whether each of these askers' asks could be walked over now - the director's own AskMayCome: current, not set
+        /// aside, under its cap, past its retry and its asker's gap, the conversation able to show it - or "?"; never an
+        /// assertion, so a scan that tried nobody reads apart from one the house refused.
+        /// </summary>
+        private string AskMayComeNow(IEnumerable<string> askerIds)
+        {
+            var state = director == null ? null : director.Snapshot;
+            if (state == null) return "may come ?";
+            var mayCome = typeof(EpisodeDirector).GetMethod("AskMayCome", BindingFlags.Instance | BindingFlags.NonPublic);
+            return string.Join(", ", ComesToYou.Read(state).Where(ask => askerIds.Contains(ask.askerId)).Select(ask =>
+            {
+                string verdict;
+                try { verdict = mayCome == null ? "?" : mayCome.Invoke(director, new object[] { ask }).ToString(); }
+                catch (Exception) { verdict = "?"; }
+                return ask.recordId + " may come " + verdict;
+            }));
         }
 
         /// <summary>Whom the house has paired a houseguest with - an approach under way, a meeting or a saved pending pair - or null; never an assertion.</summary>
@@ -603,11 +641,17 @@ namespace Gamesim.Tests.PlayMode
 
         /// <summary>4c: from a houseguest's free-time screen, asking or pitching opens on that category; the ask is not raised or set aside.</summary>
         [UnityTest]
-        public IEnumerator ComesToYou_ComingToAskOrPitchOpensOnThatCategory() => PinnedClock(ComingToAskOrPitch);
+        public IEnumerator ComesToYou_ComingToAskOrPitchOpensOnThatCategory() => PinnedClock(ComingToAskOrPitchHeld);
+
+        /// <summary>
+        /// On a house whose pairing and ambient seats are held: the subject is the category each conversation opens on, and
+        /// once the first conversation has taken her visit Maya has none in flight, so a house free to pair could take her
+        /// (plan C.2's busy set) - a panel's open and close commit the house's whole seconds - before the second.
+        /// </summary>
+        private IEnumerator ComingToAskOrPitchHeld() => WithTheHouseHeld(() => InstallComesToYouHouse(true, ComesJamie), ComingToAskOrPitch);
 
         private IEnumerator ComingToAskOrPitch()
         {
-            yield return InstallComesToYouHouse(ComesJamie);
             string recordId = director.CurrentNpcInvitationRecordId, askerId = director.CurrentAskerId;
             foreach (var (intent, category) in new[] { (EpisodeDirector.IntentDeal, EpisodeDirector.DealsCategoryCaption),
                          (EpisodeDirector.IntentAsk, EpisodeDirector.LearnCategoryCaption) })
@@ -956,6 +1000,10 @@ namespace Gamesim.Tests.PlayMode
         private IEnumerator AskerNeverPaired()
         {
             yield return InstallComesToYouHouse(ComesJamie);
+            // The house's pairing is this test's subject: with it held, every check below that the asker is unpaired would
+            // pass whether or not the busy set holds her back.
+            Assert.That(NpcRead<bool>("npcApproachDiagnosticsSuppressed"), Is.False, "The house's pairing is live from the reservation on: "
+                + comesSwitchReport);
             // This test runs the walk-in watch.
             NpcWrite("proximityWatch", 0f);
             string askerId = director.CurrentAskerId;
@@ -1016,6 +1064,8 @@ namespace Gamesim.Tests.PlayMode
             long clock = state.npcSocial.clockTick, scanAt = state.npcSocial.nextScanTick;
             NpcWrite("npcFrameFraction", (double)Math.Max(1L, scanAt - clock));
             NpcWrite("npcWorldFraction", 0d);
+            Assert.That(NpcRead<bool>("npcApproachDiagnosticsSuppressed"), Is.False, "The house's pairing is live for the open's scan: "
+                + AskerReport(askerId));
             director.Interact();
             Assert.That(director.TalkingToId, Is.EqualTo(askerId), "E hears the ask.");
             Assert.That(director.CurrentAskWay, Is.EqualTo(EpisodeDirector.AskWay.WalkOver));
@@ -1290,7 +1340,7 @@ namespace Gamesim.Tests.PlayMode
                 }
                 if (director.CurrentNpcInvitationRecordId == null)
                     Assert.Fail("No visit set out while the meeting held the house: " + AskClocksNow() + ", scene waiting "
-                        + SceneStageWaitingNow() + ". " + director.NpcAutonomyDiagnostic);
+                        + SceneStageWaitingNow() + ". " + AskerReport(askerId) + " " + comesSwitchReport);
                 string recordId = director.CurrentNpcInvitationRecordId;
                 Assert.That(director.CurrentAskerId, Is.EqualTo(askerId));
                 // As it sets out the moment is wanted and its try unspent, but the house cannot take it: no scene waits yet.
@@ -1501,7 +1551,7 @@ namespace Gamesim.Tests.PlayMode
             deadline = back + EpisodeDirector.AskSettleSeconds + EpisodeDirector.AskStillSeconds + 2f * EpisodeDirector.AskScanSeconds + 5f;
             while (director.CurrentNpcInvitationRecordId == null && Time.realtimeSinceStartup < deadline) yield return null;
             Assert.That(director.CurrentNpcInvitationRecordId, Is.EqualTo(recordId),
-                "The same ask sets out again once the player is back in frame: " + AskClocksNow() + ". " + director.NpcAutonomyDiagnostic);
+                "The same ask sets out again once the player is back in frame: " + AskerReport(askerId) + " " + comesSwitchReport);
             Assert.That(NpcRead<float>("askClock") - clockBack, Is.GreaterThanOrEqualTo(EpisodeDirector.AskSettleSeconds - EpisodeDirector.AskFrameAllowanceSeconds),
                 "No sooner than the settle time after the player is back in frame: " + AskClocksNow() + ".");
             Assert.That(director.AskMissCount(recordId), Is.EqualTo(misses));
@@ -1631,7 +1681,7 @@ namespace Gamesim.Tests.PlayMode
                 + 2f * EpisodeDirector.AskScanSeconds + 20f;
             while (director.CurrentNpcInvitationRecordId == null && Time.realtimeSinceStartup < deadline) yield return null;
             if (director.CurrentNpcInvitationRecordId == null)
-                Assert.Fail("No visit set out once the Pull had been up its time: " + AskClocksNow() + ". " + director.NpcAutonomyDiagnostic);
+                Assert.Fail("No visit set out once the Pull had been up its time: " + AskerReport(ComesMaya) + " " + comesSwitchReport);
             Assert.That(director.CurrentNpcInvitationRecordId, Is.EqualTo(recordId), "Maya sets out.");
             // The yield's clock goes on counting under the settle that follows it - the Pull up, the player still, the house
             // free: the same frames the free-house clock counts, which ran from nothing at most one allowance before the
@@ -2323,7 +2373,8 @@ namespace Gamesim.Tests.PlayMode
             float spot = NpcRead<float>("askSpotBlockedFor");
             if (!director.IsAskCardOpen)
                 Assert.Fail("The spot's card never opened: spot " + spot + " s, free " + NpcRead<float>("askFreeRun") + " s, still "
-                    + NpcRead<float>("askStillFor") + " s, in frame " + NpcRead<bool>("askPlayerInFrame") + ". " + director.NpcAutonomyDiagnostic);
+                    + NpcRead<float>("askStillFor") + " s, in frame " + NpcRead<bool>("askPlayerInFrame") + ". " + AskerReport(first.askerId)
+                    + " " + comesSwitchReport);
             Assert.That(spot, Is.GreaterThanOrEqualTo(EpisodeDirector.AskUnreachableSecondsBeforeCard), "No card before the spot has held for the card's time.");
             Assert.That(director.CurrentAskRecordId, Is.EqualTo(first.recordId), "The first listed ask comes as the card.");
             Assert.That(director.CurrentAskerId, Is.EqualTo(ComesJamie));
@@ -2341,7 +2392,8 @@ namespace Gamesim.Tests.PlayMode
                 + 2f * EpisodeDirector.AskScanSeconds + 3f;
             while (director.CurrentNpcInvitationRecordId == null && !director.IsAskCardOpen && Time.realtimeSinceStartup < deadline) yield return null;
             Assert.That(director.IsAskCardOpen, Is.False, "The spot made no other ask card-due.");
-            Assert.That(director.CurrentNpcInvitationRecordId, Is.EqualTo(second.recordId), "Maya sets out to the player's open floor. " + director.NpcAutonomyDiagnostic);
+            Assert.That(director.CurrentNpcInvitationRecordId, Is.EqualTo(second.recordId), "Maya sets out to the player's open floor: "
+                + AskerReport(second.askerId) + " " + comesSwitchReport);
             Assert.That(director.CurrentAskerId, Is.EqualTo(ComesMaya));
             Assert.That(director.CurrentAskWay, Is.EqualTo(EpisodeDirector.AskWay.None), "A walk-over on its way.");
             Assert.That(NpcRead<float>("askSpotBlockedFor"), Is.Zero);
@@ -2409,7 +2461,14 @@ namespace Gamesim.Tests.PlayMode
             bubble.HearControl.transform.parent.GetComponentsInChildren<TMP_Text>(true);
 
         [UnityTest]
-        public IEnumerator ComesToYou_TheAskerAndThePlayerTurnToEachOther() => PinnedClock(TheyTurnToEachOther);
+        public IEnumerator ComesToYou_TheAskerAndThePlayerTurnToEachOther() => PinnedClock(TheyTurnToEachOtherHeld);
+
+        /// <summary>
+        /// On a house whose pairing and ambient seats are held: the subject is the two headings, and a missed walk followed
+        /// to its retry leaves Maya with no visit in flight meanwhile, so a house free to pair could take her (plan C.2's
+        /// busy set) and her ask would come as a card. The house's own presentation, which the test watches, runs on.
+        /// </summary>
+        private IEnumerator TheyTurnToEachOtherHeld() => WithTheHouseHeld(() => InstallComesToYouHouse(true, ComesJamie), TheyTurnToEachOther);
 
         /// <summary>
         /// The director's visit answers from arrival: it sets out on its route's budget, and its answer window starts
@@ -2419,7 +2478,6 @@ namespace Gamesim.Tests.PlayMode
         /// </summary>
         private IEnumerator TheyTurnToEachOther()
         {
-            yield return InstallComesToYouHouse(ComesJamie);
             string askerId = director.CurrentAskerId;
             var asker = SceneComponents<HouseNpc>().Single(npc => npc.Id == askerId);
             var theirs = asker.GetComponent<CharacterPresentation>();

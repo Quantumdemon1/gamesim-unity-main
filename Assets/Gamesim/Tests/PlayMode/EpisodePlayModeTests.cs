@@ -54,6 +54,10 @@ namespace Gamesim.Tests.PlayMode
         [UnityTearDown]
         public IEnumerator CleanUpIsolatedEpisode()
         {
+            // A test that pinned the frame time and went red, or timed out, never ran its own finally: the runner stops
+            // the test's enumerator without disposing of it. The pin goes here as well, so one red cannot run every later
+            // test at the pinned frame time.
+            Time.captureDeltaTime = 0f;
             if (testKeyboard != null && testKeyboard.added) InputSystem.RemoveDevice(testKeyboard);
             testKeyboard = null;
             if (testMouse != null && testMouse.added) InputSystem.RemoveDevice(testMouse);

@@ -109,9 +109,9 @@ namespace Gamesim.Episode
         /// <summary>A frame longer than this, in unscaled seconds, is a stalled player loop: a lease it outlived is no miss.</summary>
         public const float AskStalledFrameSeconds = 1f;
         /// <summary>
-        /// Owner question 5 (pending; D18 is the story session's): a Story Pull on screen holds new asks back for this many
-        /// free, still seconds, then yields; the clock restarts when the Pull changes. If D18 stands as it is, make this
-        /// <c>float.PositiveInfinity</c>: an ask's house gate is then the invitation's own, the Pull keeping the floor.
+        /// Owner question 5, answered 2026-10-30 with the default: a Story Pull on screen holds new asks back for this many
+        /// free, still seconds, then yields; the clock restarts only when the Pull changes. ComesToYou_APullYieldsAfterItsTime
+        /// pins the value.
         /// </summary>
         public const float AskPullYieldSeconds = 20f;
 

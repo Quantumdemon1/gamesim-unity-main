@@ -842,10 +842,10 @@ namespace Gamesim.Tests.PlayMode
         /// (OFFERS-COME-TO-YOU-PLAN, C.2's gates): nothing stages over the visit, its dialogue still opens by itself on the
         /// line's beat, and the scene stages once the conversation has closed. The scene is the peace fixture's moment, open
         /// as the season loads, with a houseguest outside its cast bringing an offer (the house of
-        /// SceneStage_AnInvitationUpKeepsTheFloorUntilItIsAnswered). A meeting between two others holds the house's pair
-        /// slots as the visit sets out, so the house cannot take the scene then; it ends with the visit in flight, and from
-        /// there the scene waits. Nobody else pairs off or takes a seat meanwhile, so that meeting is the only thing between
-        /// the scene and its stage.
+        /// SceneStage_AnInvitationUpKeepsTheFloorUntilItIsAnswered). A meeting between two others, standing at its venue,
+        /// holds the house's pair slots as the visit sets out, so the house cannot take the scene then; it ends with the
+        /// visit in flight, and from there the scene waits. Nobody else pairs off or takes a seat meanwhile, so that meeting
+        /// is the only thing between the scene and its stage. The open is bounded on the line's own beat clock.
         /// </summary>
         [UnityTest, Timeout(300000)]
         public IEnumerator ComesToYou_SceneWaitingDoesNotStallAVisitInFlight() => PinnedClock(SceneWaitingDoesNotStallAVisit);
@@ -889,12 +889,14 @@ namespace Gamesim.Tests.PlayMode
         {
             var coordinator = NpcRead<HouseMeetingCoordinator>("npcMeetings");
             Assert.That(coordinator, Is.Not.Null, "The house's world.");
-            // The house's own meetings over first, so the one below is the only thing keeping the scene from its stage; the
-            // scan is held meanwhile, so no visit sets out before that meeting does.
+            // The house's world bound and running, and its own meetings over first, so the one below is the only thing
+            // keeping the scene from its stage; the scan is held meanwhile, so no visit sets out before that meeting does.
             NpcWrite("askNextAt", float.MaxValue);
             float deadline = Time.realtimeSinceStartup + 40f;
-            while ((coordinator.LeaseCount > 0 || NpcRead<IList>("npcApproaches").Count > 0) && Time.realtimeSinceStartup < deadline)
+            while ((!coordinator.IsReady || coordinator.IsPaused || coordinator.LeaseCount > 0 || NpcRead<IList>("npcApproaches").Count > 0)
+                && Time.realtimeSinceStartup < deadline)
                 yield return null;
+            Assert.That(coordinator.IsReady && !coordinator.IsPaused, Is.True, "The house's world is bound and running: " + SceneStageDiagnostic());
             Assert.That(coordinator.LeaseCount, Is.Zero, "The house's own meetings are over: " + SceneStageDiagnostic());
 
             HouseMeetingLease meeting = null;
@@ -913,6 +915,25 @@ namespace Gamesim.Tests.PlayMode
                 Assert.That(meeting, Is.Not.Null, "Two others meet: " + reason);
                 NpcWrite("sceneStagedBeat", null);
                 Assert.That(director.CurrentNpcInvitationRecordId, Is.Null, "No visit set out before the meeting.");
+
+                // The two stand at their venue before the visit sets out, so the meeting's end leaves nobody stopped
+                // mid-route on the asker's way, and the visit's own route and place are found with them where they stay.
+                // The scan is still held.
+                var meetingFirst = SceneComponents<HouseNpc>().Single(npc => npc.Id == meeting.FirstId).GetComponent<HouseNpcMotion>();
+                var meetingSecond = SceneComponents<HouseNpc>().Single(npc => npc.Id == meeting.SecondId).GetComponent<HouseNpcMotion>();
+                Assert.That(meetingFirst != null && meetingSecond != null, Is.True, "Both of the meeting's bodies move.");
+                bool MeetingOnMark() => meetingFirst.IsOnMark(meeting.Token) && meetingSecond.IsOnMark(meeting.Token);
+                deadline = Time.realtimeSinceStartup + 30f;
+                while (!MeetingOnMark() && Time.realtimeSinceStartup < deadline)
+                {
+                    yield return null;
+                    Assert.That(coordinator.HasSceneStage, Is.False, "Nothing stages while the meeting holds the house: " + SceneStageDiagnostic());
+                    Assert.That(director.CurrentNpcInvitationRecordId, Is.Null, "No visit sets out while the scan is held.");
+                }
+                Assert.That(MeetingOnMark(), Is.True, "The two meeting stand at their venue: " + meeting.FirstId + " arrival "
+                    + meetingFirst.ArrivalFailure + ", route " + meetingFirst.LastRouteFailure + "; " + meeting.SecondId + " arrival "
+                    + meetingSecond.ArrivalFailure + ", route " + meetingSecond.LastRouteFailure + ". " + SceneStageDiagnostic());
+                Assert.That(coordinator.TryGetLease(meeting.Token, out _), Is.True, "The meeting holds the house.");
                 NpcWrite("askNextAt", NpcRead<float>("askClock"));
 
                 deadline = Time.realtimeSinceStartup + 35f;
@@ -955,19 +976,26 @@ namespace Gamesim.Tests.PlayMode
                 }
                 if (!director.NpcInvitationIsVisible) Assert.Fail("The asker's line never came up: " + AskerWalkNow(askerId));
 
-                // The line up: the dialogue opens by itself on its beat, the scene waiting or not. The beat is checked at
-                // ten steps a second, so the open comes at most a tenth of a second after it; the rest is the margin.
+                // The line up: the dialogue opens by itself on its beat while the scene waits. The beat runs on the
+                // director's own clock - each frame's time, capped, and from nothing again whenever the line cannot be
+                // said - so the wait is bounded there: a second past the beat, against the 10 Hz step that opens it. A
+                // stretched frame or a flicker of the line moves the clock as it moves the open; the real-time guard
+                // only stops a hang. The scene is read before each frame, as the open frame pauses the house.
                 float spoke = Time.realtimeSinceStartup;
-                float bound = EpisodeDirector.AskSpeakBeatSeconds + .1f + 2f;
-                while (director.TalkingToId == null && Time.realtimeSinceStartup < spoke + bound)
+                while (director.TalkingToId == null && NpcRead<float>("askSpokeFor") < EpisodeDirector.AskSpeakBeatSeconds + 1f
+                    && Time.realtimeSinceStartup < spoke + 35f)
                 {
+                    Assert.That(SceneStageWaitingNow(), Is.True, "The scene waits while the line is up: " + SceneStageDiagnostic());
+                    Assert.That(director.CurrentNpcInvitationRecordId, Is.EqualTo(recordId),
+                        "The visit keeps the floor while its line is up: misses " + director.AskMissCount(recordId) + ".");
+                    SpendThePullsYield();
                     yield return null;
                     Assert.That(coordinator.HasSceneStage, Is.False, "Nothing stages over the line: " + SceneStageDiagnostic());
                 }
                 Assert.That(director.TalkingToId, Is.EqualTo(askerId), "The dialogue opens by itself on the line's beat, the scene waiting: "
                     + (Time.realtimeSinceStartup - spoke).ToString("0.00") + " s after the line came up, line on screen "
-                    + NpcRead<float>("askSpokeFor") + " s, " + AskClocksNow() + ", scene waiting " + SceneStageWaitingNow()
-                    + ", misses " + director.AskMissCount(recordId) + ".");
+                    + NpcRead<float>("askSpokeFor") + " s against a beat of " + EpisodeDirector.AskSpeakBeatSeconds + " s, "
+                    + AskClocksNow() + ", scene waiting " + SceneStageWaitingNow() + ", misses " + director.AskMissCount(recordId) + ".");
                 // The open frame.
                 Assert.That(ComesHud.PointerHeld, Is.True, "Pointer presses are held off the panel as it opens.");
                 Assert.That(director.CurrentAskWay, Is.EqualTo(EpisodeDirector.AskWay.WalkOver));
@@ -1029,9 +1057,13 @@ namespace Gamesim.Tests.PlayMode
             int misses = director.AskMissCount(recordId);
             Assert.That(NpcRead<bool>("askPlayerInFrame"), Is.True, "The player is in frame as the visit sets out.");
 
-            // Somebody else standing still - in no meeting under way - the farthest from the player first, whose follow takes
-            // the player out of the frame. The camera rides over to each in turn; the dialogue's own opening is held
-            // meanwhile, so a line that comes up stays a line, and the visit stays in flight while the player is in frame.
+            // Somebody else standing still - in no meeting under way, and holding no reservation of the house's (an
+            // activity, an act, a wander, a meeting or a scene), so nothing walks or stands them up while followed - the
+            // farthest from the player first, whose follow takes the player out of the frame. The camera rides over to
+            // each in turn; the dialogue's own opening is held meanwhile, so a line that comes up stays a line, and the
+            // visit stays in flight while the player is in frame.
+            var coordinator = NpcRead<HouseMeetingCoordinator>("npcMeetings");
+            Assert.That(coordinator, Is.Not.Null, "The house's world.");
             var walking = new HashSet<string>(StringComparer.Ordinal);
             foreach (var approach in NpcRead<IList>("npcApproaches"))
             {
@@ -1042,15 +1074,26 @@ namespace Gamesim.Tests.PlayMode
             {
                 walking.Add(lease.FirstId); walking.Add(lease.SecondId);
             }
+            bool Unreserved(HouseNpc npc)
+            {
+                var motion = npc.GetComponent<HouseNpcMotion>();
+                return motion != null && motion.LeaseId == null && !coordinator.TryGetActivity(npc.Id, out _);
+            }
             var candidates = SceneComponents<HouseNpc>()
                 .Where(npc => npc.Id != askerId && !walking.Contains(npc.Id) && npc.gameObject.activeInHierarchy
-                    && director.Snapshot.Find(npc.Id)?.status == ContestantStatus.Active)
+                    && director.Snapshot.Find(npc.Id)?.status == ContestantStatus.Active && Unreserved(npc))
                 .OrderByDescending(npc => Vector3.Distance(npc.transform.position, player.transform.position))
                 .ToList();
             Assert.That(candidates, Is.Not.Empty, "Somebody else to follow.");
             HouseNpc other = null;
             var tried = new List<string>();
             float deadline;
+            // The ask's retry wait and the next scan as they stood the frame before, so the frame the player leaves it can
+            // show the cancel put no wait on the ask: only the settle time holds it once the player is back (plan C.2).
+            var retryAt = NpcRead<Dictionary<string, float>>("askRetryAt");
+            string RetryNow() => retryAt.TryGetValue(recordId, out float at) ? at.ToString("R") : "none";
+            string retryBefore = RetryNow();
+            float nextAtBefore = NpcRead<float>("askNextAt");
             foreach (var candidate in candidates)
             {
                 director.FollowHouseguest(candidate.Id);
@@ -1059,6 +1102,8 @@ namespace Gamesim.Tests.PlayMode
                 while (NpcRead<bool>("askPlayerInFrame") && Time.realtimeSinceStartup < deadline)
                 {
                     NpcWrite("askSpokeFor", 0f);
+                    retryBefore = RetryNow();
+                    nextAtBefore = NpcRead<float>("askNextAt");
                     yield return null;
                     Assert.That(director.TalkingToId, Is.Null, "Nothing opens while the camera rides over.");
                     if (NpcRead<bool>("askPlayerInFrame"))
@@ -1075,6 +1120,8 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(director.NpcInvitationIsVisible, Is.False, "and its line with it.");
             Assert.That(director.AskMissCount(recordId), Is.EqualTo(misses), "Following somebody else is no miss,");
             Assert.That(director.IsAskSetAside(recordId), Is.False, "and no deferral.");
+            Assert.That(RetryNow(), Is.EqualTo(retryBefore), "The cancel puts no retry wait on the ask,");
+            Assert.That(NpcRead<float>("askNextAt"), Is.EqualTo(nextAtBefore), "nor puts off the next scan.");
 
             // While the player is out of frame no visit starts: the free-house clock waits for them. Long enough for the
             // settle, the still time and three scans.
@@ -1100,6 +1147,7 @@ namespace Gamesim.Tests.PlayMode
                 yield return null;
                 Assert.That(NpcRead<bool>("askPlayerInFrame"), Is.False, "Letting go leaves the camera where it is.");
                 Assert.That(director.CurrentNpcInvitationRecordId, Is.Null, "No visit starts while the player is still out of frame.");
+                Assert.That(NpcRead<float>("askFreeRun"), Is.Zero, "The free-house clock waits for the frame, not for the follow.");
             }
 
             // The camera back on the player: the same ask sets out again once the house has settled.
@@ -1108,12 +1156,15 @@ namespace Gamesim.Tests.PlayMode
             while (!NpcRead<bool>("askPlayerInFrame") && Time.realtimeSinceStartup < deadline) yield return null;
             Assert.That(NpcRead<bool>("askPlayerInFrame"), Is.True, "Following the player brings them back into frame.");
             float back = Time.realtimeSinceStartup;
+            // The settle is measured on the director's free-house clock, which moves only while a visit may start: the
+            // frame the player came back has credited at most one frame's allowance of it already.
+            float clockBack = NpcRead<float>("askClock");
             deadline = back + EpisodeDirector.AskSettleSeconds + EpisodeDirector.AskStillSeconds + 2f * EpisodeDirector.AskScanSeconds + 5f;
             while (director.CurrentNpcInvitationRecordId == null && Time.realtimeSinceStartup < deadline) yield return null;
             Assert.That(director.CurrentNpcInvitationRecordId, Is.EqualTo(recordId),
                 "The same ask sets out again once the player is back in frame: " + AskClocksNow() + ". " + director.NpcAutonomyDiagnostic);
-            Assert.That(Time.realtimeSinceStartup - back, Is.GreaterThanOrEqualTo(EpisodeDirector.AskSettleSeconds - EpisodeDirector.AskFrameAllowanceSeconds),
-                "No sooner than the settle time after the player is back in frame.");
+            Assert.That(NpcRead<float>("askClock") - clockBack, Is.GreaterThanOrEqualTo(EpisodeDirector.AskSettleSeconds - EpisodeDirector.AskFrameAllowanceSeconds),
+                "No sooner than the settle time after the player is back in frame: " + AskClocksNow() + ".");
             Assert.That(director.AskMissCount(recordId), Is.EqualTo(misses));
             Assert.That(director.IsAskSetAside(recordId), Is.False);
         }
@@ -1121,18 +1172,33 @@ namespace Gamesim.Tests.PlayMode
         // ------------------------------------------------------------------ also in slice 1: a Pull yields after its time
 
         /// <summary>
-        /// Owner question 5, the default: a Story Pull on screen holds new asks back for
-        /// <see cref="EpisodeDirector.AskPullYieldSeconds"/> of free, still time, then yields. The visit then sets out beside
-        /// the Pull; the Pull gives way once the asker's line is up - the two never share the screen - and comes back
+        /// Owner question 5, answered 2026-10-30 with the default: a Story Pull on screen holds new asks back for 20 s
+        /// (<see cref="EpisodeDirector.AskPullYieldSeconds"/>, pinned here) of free, still time, then yields; a stretch in
+        /// the middle with the player kept from counting as still adds nothing to it. The visit then sets out beside the
+        /// Pull; the Pull gives way once the asker's line is up - the two never share the screen - and comes back
         /// undeclined once the conversation has closed, its yield still spent. The Pull is a walk-in found as the proximity
         /// watch finds one, which writes nothing (InvitationAndPull's staging), on the invitation flow's house with the
-        /// story on. Nobody pairs off or takes a seat meanwhile, so the Pull is all that holds the house.
+        /// story on. Nobody pairs off or takes a seat meanwhile, so the Pull is all that holds the house, which the watch
+        /// checks gate by gate.
         /// </summary>
         [UnityTest, Timeout(300000)]
         public IEnumerator ComesToYou_APullYieldsAfterItsTime() => PinnedClock(APullYields);
 
+        /// <summary>Owner question 5, answered 2026-10-30: the default, a Pull holds new asks back 20 s.</summary>
+        private const float OwnersPullYieldSeconds = 20f;
+
+        /// <summary>
+        /// How long, in the middle of the Pull's yield, the player is kept from counting as still, so the test shows the
+        /// yield's clock counts only free, still time.
+        /// </summary>
+        private const float PullStretchSeconds = 3f;
+
         private IEnumerator APullYields()
         {
+            // The runtime's constant is compiled into this assembly, so every bound below would move with it: it is
+            // pinned to the owner's answer first.
+            Assert.That(EpisodeDirector.AskPullYieldSeconds, Is.EqualTo(OwnersPullYieldSeconds),
+                "Owner question 5, answered 2026-10-30: the default, a Pull holds new asks back 20 s.");
             yield return OptIntoComesToYouHouse(false, true, new[] { ComesJamie });
             NpcWrite("npcApproachDiagnosticsSuppressed", true);
             float ambient = NpcRead<float>("nextAmbientActivity");
@@ -1168,18 +1234,57 @@ namespace Gamesim.Tests.PlayMode
             string pullKey = NpcRead<string>("askPullKey");
             Assert.That(pullKey, Is.Not.Null, "The asks' yield clock is on this Pull.");
 
-            // Held back for its time: no visit sets out while the Pull has been up less than its yield.
-            while (Time.realtimeSinceStartup < shown + EpisodeDirector.AskPullYieldSeconds)
+            // Held back for its time: no visit sets out while the Pull has been up less than its yield. The watch runs to
+            // the earliest a visit can set out: the yield, the stretch below (which credits the yield nothing) and the
+            // settle after them, less what four frames can each credit ahead of the real time they cover - the two around
+            // `shown`, the one the stretch starts on and the first free one - at most one allowance each.
+            float gatesFrom = shown + EpisodeDirector.AskStillSeconds + .5f, stretchFrom = shown + 5f, stretchTo = stretchFrom + PullStretchSeconds;
+            float watchTo = shown + OwnersPullYieldSeconds + PullStretchSeconds + EpisodeDirector.AskSettleSeconds
+                - 4f * EpisodeDirector.AskFrameAllowanceSeconds;
+            var visitHouseFree = typeof(EpisodeDirector).GetMethod("VisitHouseFree", BindingFlags.Instance | BindingFlags.NonPublic);
+            var askHouseAvailable = typeof(EpisodeDirector).GetProperty("AskHouseAvailable", BindingFlags.Instance | BindingFlags.NonPublic);
+            var waitWhileSeated = typeof(EpisodeDirector).GetField("AsksWaitWhileSeated", BindingFlags.Static | BindingFlags.NonPublic);
+            Assert.That(visitHouseFree != null && askHouseAvailable != null && waitWhileSeated != null, Is.True, "The director's house gates.");
+            object[] houseTerms = { false, waitWhileSeated.GetRawConstantValue() };
+            float heldAtStretch = float.NaN;
+            bool stretchChecked = false;
+            while (Time.realtimeSinceStartup < watchTo)
             {
+                float real = Time.realtimeSinceStartup;
                 if (director.CurrentNpcInvitationRecordId != null)
                     Assert.Fail("No visit sets out while the Pull has been up less than its yield: one did "
-                        + (Time.realtimeSinceStartup - shown).ToString("0.0") + " s into the Pull's " + EpisodeDirector.AskPullYieldSeconds
-                        + " s (" + AskClocksNow() + ").");
+                        + (real - shown).ToString("0.0") + " s into the Pull's " + OwnersPullYieldSeconds + " s (" + AskClocksNow() + ").");
                 Assert.That(ComesHud.PullShowing, Is.True, "The Pull stays up meanwhile.");
                 Assert.That(NpcRead<string>("askPullKey"), Is.EqualTo(pullKey), "It is the same Pull.");
                 Assert.That(director.TalkingToId, Is.Null);
+                if (real >= gatesFrom && real < stretchFrom)
+                {
+                    // Only the Pull holds the house: the player in frame and still, the house free but for the Pull - the
+                    // gate the asks share with the invitation - and so the free-house clock stopped.
+                    Assert.That(NpcRead<bool>("askPlayerInFrame"), Is.True, "The player is in frame while the Pull holds the house,");
+                    Assert.That(NpcRead<float>("askStillFor"), Is.GreaterThanOrEqualTo(EpisodeDirector.AskStillSeconds), "and still,");
+                    Assert.That((bool)visitHouseFree.Invoke(director, houseTerms), Is.True, "and the house is free but for the Pull,");
+                    Assert.That((bool)askHouseAvailable.GetValue(director), Is.False, "which holds it: " + AskClocksNow() + ".");
+                    Assert.That(NpcRead<float>("askFreeRun"), Is.Zero, "The free-house clock waits on the Pull alone.");
+                }
+                if (real >= stretchFrom && real < stretchTo)
+                {
+                    // The player kept from counting as still: each frame credits stillness at most one frame's allowance,
+                    // under the still time, so the yield's clock should not move.
+                    if (float.IsNaN(heldAtStretch)) heldAtStretch = NpcRead<float>("askPullHeld");
+                    NpcWrite("askStillFor", 0f);
+                }
+                else if (real >= stretchTo && !stretchChecked)
+                {
+                    stretchChecked = true;
+                    Assert.That(float.IsNaN(heldAtStretch), Is.False, "The stretch ran.");
+                    Assert.That(NpcRead<float>("askPullHeld") - heldAtStretch, Is.LessThanOrEqualTo(EpisodeDirector.AskFrameAllowanceSeconds),
+                        "The Pull's yield counts only still time: " + PullStretchSeconds + " s un-still from " + heldAtStretch + " s held; "
+                        + AskClocksNow() + ".");
+                }
                 yield return null;
             }
+            Assert.That(stretchChecked, Is.True, "The stretch was checked.");
 
             // Then it yields: the visit sets out beside it.
             deadline = Time.realtimeSinceStartup + EpisodeDirector.AskSettleSeconds + EpisodeDirector.AskStillSeconds
@@ -1188,7 +1293,12 @@ namespace Gamesim.Tests.PlayMode
             if (director.CurrentNpcInvitationRecordId == null)
                 Assert.Fail("No visit set out once the Pull had been up its time: " + AskClocksNow() + ". " + director.NpcAutonomyDiagnostic);
             Assert.That(director.CurrentNpcInvitationRecordId, Is.EqualTo(recordId), "Maya sets out.");
-            Assert.That(NpcRead<float>("askPullHeld"), Is.GreaterThanOrEqualTo(EpisodeDirector.AskPullYieldSeconds), "Only once the Pull's yield is spent.");
+            // The yield's clock goes on counting under the settle that follows it - the Pull up, the player still, the house
+            // free: the same frames the free-house clock counts, which ran from nothing at most one allowance before the
+            // yield was spent - so it reads the yield and the settle, less that allowance, once the visit sets out.
+            Assert.That(NpcRead<float>("askPullHeld"),
+                Is.GreaterThanOrEqualTo(OwnersPullYieldSeconds + EpisodeDirector.AskSettleSeconds - EpisodeDirector.AskFrameAllowanceSeconds),
+                "Only once the Pull's yield is spent, and the settle after it: " + AskClocksNow() + ".");
             Assert.That(ComesHud.PullShowing, Is.True, "The visit sets out beside the Pull.");
             Assert.That(NpcRead<string>("askPullKey"), Is.EqualTo(pullKey));
 
@@ -1245,7 +1355,7 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(NpcRead<HashSet<string>>("declinedPulls"), Is.Empty, "Nothing was turned down: the Pull only gave way.");
             Assert.That(NpcRead<string>("walkInFirst"), Is.EqualTo(pair[0]), "The walk-in is still the player's to step into.");
             Assert.That(NpcRead<string>("askPullKey"), Is.EqualTo(pullKey), "The same Pull,");
-            Assert.That(NpcRead<float>("askPullHeld"), Is.GreaterThanOrEqualTo(EpisodeDirector.AskPullYieldSeconds), "its yield still spent.");
+            Assert.That(NpcRead<float>("askPullHeld"), Is.GreaterThanOrEqualTo(OwnersPullYieldSeconds), "its yield still spent.");
             Assert.That(director.AskMissCount(recordId), Is.Zero);
         }
 

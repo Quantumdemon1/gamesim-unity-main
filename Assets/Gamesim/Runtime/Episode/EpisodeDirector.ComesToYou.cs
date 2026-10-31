@@ -14,8 +14,10 @@ namespace Gamesim.Episode
     ///
     /// <para><b>Three ways in, one frame.</b> A houseguest with an ask for the player walks over, says their line over
     /// their head and the dialogue opens by itself (the walk-over); a conversation the player opens with somebody who
-    /// has an ask they have not seen this phase opens on it (raised); and, from slice 2, a card where the player stands
-    /// when the houseguest cannot come. The queue is <see cref="ComesToYou"/>, in its public order, one at a time.</para>
+    /// has an ask they have not seen this phase opens on it (raised); and a card where the player stands when the
+    /// houseguest cannot come - busy or out of reach for a while, missed twice, the player's own spot fitting no
+    /// visitor, or <see cref="AskWalkOvers"/> off (the card). The queue is <see cref="ComesToYou"/>, in its public
+    /// order, one at a time.</para>
     ///
     /// <para><b>Presentation only.</b> Visits, hearing, the dialogue's opening, Think it over, Not right now, misses,
     /// retries, gaps and caps commit nothing, roll nothing and save nothing; the answers are the deal table's own
@@ -40,6 +42,12 @@ namespace Gamesim.Episode
 
         /// <summary>Whether houseguests bring their asks to the player now: <see cref="AsksEnabled"/>, or its default. A read for tests.</summary>
         public bool AsksAreOn => AsksOn;
+
+        /// <summary>
+        /// Whether a houseguest with an ask walks over to the player (the default). False: every ask comes as a card where
+        /// the player stands, as one does whose asker cannot come (OFFERS-COME-TO-YOU-PLAN §B). Nothing saves it.
+        /// </summary>
+        public bool AskWalkOvers { get; set; } = true;
 
         // ---------------------------------------------------------------- the owner's choices
 
@@ -81,9 +89,12 @@ namespace Gamesim.Episode
         public const float AskerGapSeconds = 120f;
         /// <summary>How often the queue is scanned for a visit to start.</summary>
         public const float AskScanSeconds = 1f;
-        /// <summary>Misses before an ask stops being walked over this phase (slice 2: before it comes as a card).</summary>
+        /// <summary>Misses before an ask stops being walked over this phase and comes as a card instead.</summary>
         public const int AskMissesBeforeCard = 2;
-        /// <summary>Seconds of its asker's own refusals (busy, no route, not bound) before the same.</summary>
+        /// <summary>
+        /// Seconds of its asker's own refusals (busy, no route, not bound) before the same; and seconds the player's own
+        /// spot has fitted no visitor before the first ask listed comes as a card.
+        /// </summary>
         public const float AskUnreachableSecondsBeforeCard = 10f;
         /// <summary>Unasked presentations of one record in a session, of all records in a phase, and in a week.</summary>
         public const int AskPresentationsPerRecord = 2, AskPresentationsPerPhase = 3, AskPresentationsPerWeek = 6;
@@ -141,21 +152,31 @@ namespace Gamesim.Episode
         // How long the Story Pull now up has held asks back (owner question 5).
         private float askPullHeld;
         private string askPullKey;
+        // The card on screen: its ask, the reply once answered, and whether it has drawn yet. A panel of its own.
+        private bool askCardOpen;
+        private ComesToYou.Ask askCard;
+        private ConversationExchange askCardReply;
+        private bool askCardFirstRender;
+        // Free, still seconds the player's own spot has fitted no visitor: one count for the spot, never per ask.
+        private float askSpotBlockedFor;
 
         // ---------------------------------------------------------------- public reads, for tests
 
-        /// <summary>Whether the ask card is up. The card is slice 2's; never in slice 1.</summary>
-        public bool IsAskCardOpen => false;
+        /// <summary>Whether an ask's card is up where the player stands.</summary>
+        public bool IsAskCardOpen => askCardOpen;
         /// <summary>How many times this ask's walk-over has missed this phase.</summary>
         public int AskMissCount(string recordId) => recordId != null && askMisses.TryGetValue(recordId, out int count) ? count : 0;
         /// <summary>Whether the player has seen or put off this ask this phase.</summary>
         public bool IsAskSetAside(string recordId) => recordId != null && askSetAside.Contains(recordId);
-        /// <summary>The ask the player is facing: the dialogue's, else the visit's in flight.</summary>
-        public string CurrentAskRecordId => askDialogueWith != null ? askDialogueRecordId : askNow?.recordId;
-        /// <summary>Who is asking: the dialogue's houseguest, else the visitor's.</summary>
-        public string CurrentAskerId => askDialogueWith ?? askNow?.askerId;
-        /// <summary>How the dialogue on screen opened; None for a visit still on its way, or nothing.</summary>
-        public AskWay CurrentAskWay => askDialogueWith != null ? askDialogueWay : AskWay.None;
+        /// <summary>
+        /// The ask the player is facing: the card's, else the dialogue's, else the visit's in flight. Hearing the ask lets
+        /// the visit go before the conversation opens on it, so the dialogue's is read before the visit's.
+        /// </summary>
+        public string CurrentAskRecordId => askCardOpen ? askCard?.recordId : askDialogueWith != null ? askDialogueRecordId : askNow?.recordId;
+        /// <summary>Who is asking: the card's houseguest, else the dialogue's, else the visitor's.</summary>
+        public string CurrentAskerId => askCardOpen ? askCard?.askerId : askDialogueWith ?? askNow?.askerId;
+        /// <summary>How the ask on screen came: the card, else how the dialogue opened; None for a visit still on its way, or nothing.</summary>
+        public AskWay CurrentAskWay => askCardOpen ? AskWay.Card : askDialogueWith != null ? askDialogueWay : AskWay.None;
 
         // ---------------------------------------------------------------- gates
 
@@ -215,6 +236,8 @@ namespace Gamesim.Episode
             bool on = AsksOn;
             if (on != asksWereOn)
             {
+                // A card up goes the way every panel goes, so the player's input and the camera come back with it.
+                if (askCardOpen) ClosePanels();
                 CancelNpcInvitation();
                 ResetNpcInvitationsForLoad();
                 ResetAsksForLoad();
@@ -235,6 +258,9 @@ namespace Gamesim.Episode
             }
 
             float frame = AskFrameTime;
+            // The player's spot is counted from where they stand still: it starts again with the stillness anchor.
+            if (player == null || !ComesToYouStillness.Holds(askStillAnchor, player.transform.position, player.HasArrived))
+                askSpotBlockedFor = 0f;
             askStillFor = player == null ? 0f
                 : ComesToYouStillness.Step(ref askStillAnchor, askStillFor, player.transform.position, player.HasArrived, Time.unscaledDeltaTime);
             askPlayerInFrame = AskPlayerInFrameNow();
@@ -292,7 +318,7 @@ namespace Gamesim.Episode
         /// opened by itself, the player still and no closable chrome of theirs up - a gate the player did not raise
         /// (Nearby, a storm-off, an embrace) held it until the lease ran out - or when the frame was a stalled player
         /// loop. A line left unanswered under the overview, or with <see cref="AskOpensByItself"/> false, is a miss, so
-        /// the asker stops walking over after <see cref="AskMissesBeforeCard"/> of them.
+        /// after <see cref="AskMissesBeforeCard"/> of them the ask comes as a card instead.
         /// </summary>
         private void AskVisitLost()
         {
@@ -312,7 +338,7 @@ namespace Gamesim.Episode
         /// <summary>
         /// Starts the first ask in public order that can come now: one visit at a time, each asker charged only for
         /// refusals of their own. A refusal every asker would meet - the house, the player, the player's spot - ends
-        /// the scan and charges nobody.
+        /// the scan and charges nobody. An ask whose asker cannot come opens as a card where the player stands.
         /// </summary>
         private void ScanAsks()
         {
@@ -322,9 +348,14 @@ namespace Gamesim.Episode
             foreach (var ask in CurrentAsks())
             {
                 if (!AskMayCome(ask)) continue;
-                // Missed twice or out of its asker's reach for long enough: no further walk-over this phase. It is not
-                // set aside, so talking to them still raises it (slice 2 opens it as a card instead).
-                if (AskCardDue(ask.recordId)) continue;
+                // Missed twice, out of its asker's own reach for long enough, or walk-overs off: it comes as a card, at
+                // the first free, still moment with no closable chrome up. It keeps its place in the order meanwhile:
+                // nothing after it is walked over first.
+                if (AskCardDue(ask.recordId))
+                {
+                    if (AskMayStart && AskMayOpen) OpenAskCard(ask);
+                    return;
+                }
                 if (npcMeetings.TryReserveNpcInvitation(ask.askerId, player, out var visit, out _, out var refusal))
                 {
                     askNow = ask; askVisit = visit; askCoordinator = npcMeetings;
@@ -337,6 +368,13 @@ namespace Gamesim.Episode
                 {
                     askUnreachable[ask.recordId] = AskUnreachableFor(ask.recordId) + AskScanSeconds;
                     continue;
+                }
+                // The player's own spot fits no visitor: one count for the spot, charged to no ask. Once it has held for
+                // the card's time, the ask listed first comes as a card; no other ask is made due by it.
+                if (refusal == HouseNpcInvitationRefusal.PlayerSpot)
+                {
+                    askSpotBlockedFor += AskScanSeconds;
+                    if (askSpotBlockedFor >= AskUnreachableSecondsBeforeCard && AskMayStart && AskMayOpen) OpenAskCard(ask);
                 }
                 return;
             }
@@ -371,13 +409,16 @@ namespace Gamesim.Episode
             && askClock >= (askerNextAt.TryGetValue(ask.askerId, out float asker) ? asker : 0f)
             && NpcInvitationConversationAvailable(projected, ask.askerId) && AskOpensInPerson(ask);
 
-        /// <summary>Whether an ask could still come to the player this phase, for the dialogue's "N more" line: slice 1 leaves out one that will not be walked over again.</summary>
+        /// <summary>
+        /// Whether an ask could still come to the player this phase, for the "N more" line: walked over, or as a card
+        /// when its asker cannot come.
+        /// </summary>
         private bool AskCanStillCome(ComesToYou.Ask ask) => ask != null && ask.IsCurrent(projected)
             && !askSetAside.Contains(ask.recordId) && AskPresentationsOf(ask.recordId) < askRecordCap
-            && NpcInvitationConversationAvailable(projected, ask.askerId) && AskOpensInPerson(ask)
-            && !AskCardDue(ask.recordId);
+            && NpcInvitationConversationAvailable(projected, ask.askerId) && AskOpensInPerson(ask);
 
-        private bool AskCardDue(string recordId) => AskMissCount(recordId) >= AskMissesBeforeCard
+        /// <summary>Whether an ask comes as a card rather than walked over: missed twice, its asker out of reach long enough, or walk-overs off.</summary>
+        private bool AskCardDue(string recordId) => !AskWalkOvers || AskMissCount(recordId) >= AskMissesBeforeCard
             || AskUnreachableFor(recordId) >= AskUnreachableSecondsBeforeCard;
 
         private float AskUnreachableFor(string recordId) => askUnreachable.TryGetValue(recordId, out float seconds) ? seconds : 0f;
@@ -536,15 +577,8 @@ namespace Gamesim.Episode
                 return false;
             }
             bool walkOver = askDialogueWay == AskWay.WalkOver;
-            var ask = ComesToYou.Find(state, offer.id);
-            string line = ask != null ? ask.line
-                : NpcInvitation.Available(state).FirstOrDefault(row => row.RecordId == offer.id && row.NpcId == npc.id)?.OpeningLine;
             string first = FinalistRead.FirstName(npc.name);
-            string mood = npc.mood != "Neutral" ? MoodLine(state, npc) : null;
-            string standing = Standing(state, npc.id) + (mood != null ? " · " + mood.Substring("Mood: ".Length) : "");
-            hud.AskDialogue(npc.id, walkOver ? EpisodeHud.AskWalkOverEyebrow(first) : EpisodeHud.AskRaisedEyebrow(first),
-                npc.pronouns, standing, line, ask != null ? ask.whisper : ComesToYou.Whispered(offer.type),
-                DealSentence(state, offer), ask?.lapseLine, true);
+            var ask = AskFrame(state, npc, offer, walkOver ? EpisodeHud.AskWalkOverEyebrow(first) : EpisodeHud.AskRaisedEyebrow(first), true);
             AskBody(state, ask, offer);
             string id = offer.id;
             if (walkOver)
@@ -570,6 +604,122 @@ namespace Gamesim.Episode
             }
             if (cameraRig != null) cameraRig.ConversationWindowOffset = hud.ConversationWindowOffset;
             return true;
+        }
+
+        /// <summary>
+        /// An ask's frame, in the conversation or on the card: the eyebrow, the asker, their standing and mood, their
+        /// line, the terms and how long the offer stands. The line and the lapse line are the queue's; an offer the
+        /// queue no longer lists keeps the invitation's line and says nothing of its lapse. The queue's row, or null.
+        /// </summary>
+        private ComesToYou.Ask AskFrame(EpisodeState state, ContestantState npc, DealState offer, string eyebrow, bool inConversation)
+        {
+            var ask = ComesToYou.Find(state, offer.id);
+            string line = ask != null ? ask.line
+                : NpcInvitation.Available(state).FirstOrDefault(row => row.RecordId == offer.id && row.NpcId == npc.id)?.OpeningLine;
+            string mood = npc.mood != "Neutral" ? MoodLine(state, npc) : null;
+            string standing = Standing(state, npc.id) + (mood != null ? " · " + mood.Substring("Mood: ".Length) : "");
+            hud.AskDialogue(npc.id, eyebrow, npc.pronouns, standing, line, ask != null ? ask.whisper : ComesToYou.Whispered(offer.type),
+                DealSentence(state, offer), ask?.lapseLine, inConversation);
+            return ask;
+        }
+
+        // ---------------------------------------------------------------- the card (when they cannot come)
+
+        /// <summary>
+        /// The ask as a card where the player stands, when its asker cannot come over. Like the scene card, the house's
+        /// due time is flushed and the world paused under it, and the player's input and the camera's controls are off.
+        /// It is a presentation, and the ask is set aside for the phase as it opens. False when the ask has gone by the
+        /// time the house's time is flushed.
+        /// </summary>
+        private bool OpenAskCard(ComesToYou.Ask ask)
+        {
+            if (ask == null) return false;
+            PauseNpcSocialForPanel();
+            if (blockedRecovery) return false;
+            // The flush may have committed the house's time: the ask must still be the one waiting.
+            if (projected == null || !ask.IsCurrent(projected)) return false;
+            ClosePanels();
+            askCardOpen = true; askCard = ask; askCardReply = null; askCardFirstRender = true;
+            askSetAside.Add(ask.recordId);
+            CountAskPresentation(ask);
+            if (player != null) player.SetInputEnabled(false);
+            if (cameraRig != null) cameraRig.ControlsEnabled = false;
+            Render();
+            return true;
+        }
+
+        /// <summary>
+        /// The card's page, on the Stage layout, which frames no two-shot. Under "A WORD IN PRIVATE": the dialogue, the
+        /// deal table's own answers with their readings, Think it over and who else wants a word. Once answered, the
+        /// player's words and the reply; once the offer has gone, a line saying so; either way, Back to the house.
+        /// The keyboard opens on Think it over and pointer presses are held off a moment, so a press already on its way
+        /// answers nothing.
+        /// </summary>
+        private void AskCard(EpisodeState state)
+        {
+            hud.SetActivityLayout(EpisodeHud.ActivityLayout.Stage);
+            var ask = askCard;
+            var offer = ask == null ? null
+                : NpcDeals.Pending(state).FirstOrDefault(d => d.id == ask.recordId && d.proposerId == ask.askerId);
+            var npc = ask != null ? state.Find(ask.askerId) : null;
+            if (askCardReply != null || offer == null || npc == null)
+            {
+                // Nothing left to answer, so nothing to hold the keyboard or the pointer off: the way back is the page's control.
+                hud.DropFocusAsked(); hud.EndPointerHold();
+                if (askCardReply != null) hud.AskReply(askCardReply.NpcId, askCardReply.PlayerLine, askCardReply.NpcLine);
+                else hud.Paragraph(EpisodeHud.AskGoneLine);
+                hud.Action(SceneCardDoneCaption, ClosePanels);
+                return;
+            }
+            var shown = AskFrame(state, npc, offer, EpisodeHud.AskDirectEyebrow, false);
+            AskBody(state, shown ?? ask, offer);
+            hud.Action(EpisodeHud.ThinkItOverCaption, ClosePanels);
+            hud.AskMoreWaiting(AskCapReached ? 0 : ComesToYou.OtherAskers(CurrentAsks(), npc.id, AskCanStillCome));
+            if (askCardFirstRender)
+            {
+                askCardFirstRender = false;
+                hud.HoldPointerOffPanel(EpisodeHud.PointerHoldSeconds);
+                hud.FocusWhenWired(EpisodeHud.ThinkItOverCaption);
+            }
+            else
+            {
+                hud.KeepPointerHold();
+                hud.KeepFocusAsked();
+            }
+        }
+
+        /// <summary>
+        /// The card goes, as every panel does (ClosePanelsInternal): Think it over, Escape, Back to the house. An ask still
+        /// waiting unanswered is set aside for the phase, and after any card the next ask waits its gap.
+        /// </summary>
+        private void EndAskCard()
+        {
+            if (!askCardOpen) return;
+            var ask = askCard;
+            if (ask != null)
+            {
+                if (askCardReply == null && projected != null && ask.IsCurrent(projected)) askSetAside.Add(ask.recordId);
+                askNextAt = askClock + AskGapSeconds;
+            }
+            askCardOpen = false; askCard = null; askCardReply = null; askCardFirstRender = false;
+        }
+
+        /// <summary>
+        /// An answer on the card, once it is saved: what the conversation would have played - the player's words and the
+        /// asker's reply - kept for the card's reply page when the asker is the one answered. Nothing is narrated, so
+        /// nothing reaches the next conversation.
+        /// </summary>
+        private void CaptureAskCardReply(EpisodeState before, CommandResult result, EpisodeCommand command)
+        {
+            var ask = askCard;
+            if (ask == null || before == null || result?.state == null) return;
+            var state = result.state;
+            var visible = state.events.Where(e => e.sequence >= before.nextSequence
+                && (result.beatsFromSequence <= 0 || e.sequence < result.beatsFromSequence)
+                && (e.audienceIds.Count == 0 || e.audienceIds.Contains(state.playerId))
+                && !KnownBallots.TellsAnUnknownBallot(state, e)).ToList();
+            var exchange = ConversationExchange.Create(before, state, command, visible);
+            if (exchange != null && exchange.NpcId == ask.askerId) askCardReply = exchange;
         }
 
         // ---------------------------------------------------------------- the sources (plan §C.4)
@@ -648,6 +798,10 @@ namespace Gamesim.Episode
             ClearAskDialogue();
             asksCache = Array.Empty<ComesToYou.Ask>(); asksCacheSource = null;
             askPullHeld = 0f; askPullKey = null;
+            askSpotBlockedFor = 0f;
+            // A card up is the old season's: what it asked goes now, so closing it sets nothing aside and starts no gap.
+            // The panel itself closes with the panels (the load's, or the switch's).
+            askCard = null; askCardReply = null;
         }
     }
 
@@ -670,13 +824,23 @@ namespace Gamesim.Episode
         /// </summary>
         public static float Step(ref Vector3 anchor, float stillFor, Vector3 position, bool arrived, float unscaledDeltaTime)
         {
-            const float radius = EpisodeDirector.AskStillRadiusMetres;
-            if (!arrived || !((position - anchor).sqrMagnitude <= radius * radius))
+            if (!Holds(anchor, position, arrived))
             {
                 anchor = position;
                 return 0f;
             }
             return stillFor + FrameTime(unscaledDeltaTime);
+        }
+
+        /// <summary>
+        /// Whether the player is still where they stood: their walk arrived and within
+        /// <see cref="EpisodeDirector.AskStillRadiusMetres"/> of <paramref name="anchor"/>. False starts the stillness
+        /// again, and with it the count of the player's spot (EpisodeDirector.ComesToYou.cs).
+        /// </summary>
+        public static bool Holds(Vector3 anchor, Vector3 position, bool arrived)
+        {
+            const float radius = EpisodeDirector.AskStillRadiusMetres;
+            return arrived && (position - anchor).sqrMagnitude <= radius * radius;
         }
     }
 }

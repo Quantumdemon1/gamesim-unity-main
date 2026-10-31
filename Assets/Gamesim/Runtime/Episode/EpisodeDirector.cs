@@ -112,7 +112,7 @@ namespace Gamesim.Episode
 
         // The opening counts too: it owns the house while it plays, so the player cannot walk, the
         // houseguests do not tick and nothing underneath answers a key.
-        public bool IsPanelOpen => blockedRecovery || focusedNpc != null || phaseOpen || settingsOpen || sceneCardOpen
+        public bool IsPanelOpen => blockedRecovery || focusedNpc != null || phaseOpen || settingsOpen || sceneCardOpen || askCardOpen
                                    || journalOpen || diaryOpen || houseActivitiesOpen || juryHouseOverHouse || IsWeeklyRecapOpen || IsSeasonReportOpen
                                    || (competitionCard != null && competitionCard.IsPlaying) || OpeningOwnsHouse;
         /// <summary>Whether the season report is up: a full-screen card over the house, a panel by any reckoning.</summary>
@@ -744,6 +744,9 @@ namespace Gamesim.Episode
             castMenuFor = null; emoteMenuOpen = false; campaignMore = false;
             ClearLobbyDraft();
             if (sceneCardOpen) { sceneCardOpen = false; sceneCardCycle = null; ClearStoryStep(); }
+            // An ask's card goes as Think it over does: set aside for the phase if still unanswered, and the next ask
+            // waits its gap (EpisodeDirector.ComesToYou.cs).
+            EndAskCard();
             // Escape cancels without committing, so the run goes with the panel. Leaving it would
             // let a competition keep ticking behind a closed screen and commit itself later.
             challengeRun = null;
@@ -1391,7 +1394,7 @@ namespace Gamesim.Episode
             // warning - amber, and kept on the status line below - with nothing to draw a panel
             // for: passed as a recovery it built the episode panel empty over the house, Close
             // built it again, and the diary's way there went grey (D9).
-            hud.Begin(state, statusCopy, blockedRecovery, phaseOpen || focusedNpc != null || settingsOpen || journalOpen || diaryOpen || houseActivitiesOpen || sceneCardOpen || juryHouseOverHouse,
+            hud.Begin(state, statusCopy, blockedRecovery, phaseOpen || focusedNpc != null || settingsOpen || journalOpen || diaryOpen || houseActivitiesOpen || sceneCardOpen || askCardOpen || juryHouseOverHouse,
                 warning: npcSaveSuspended || npcWorldFailed);
             hud.SetStatusGuidanceVisible(!string.IsNullOrEmpty(statusCopy), blockedRecovery || npcSaveSuspended || npcWorldFailed || commandNotice);
             hud.ShowSaveFeedback(!blockedRecovery && !npcSaveSuspended && !npcWorldFailed && !commandNotice && saveFeedbackUntil > Time.unscaledTime);
@@ -1541,6 +1544,8 @@ namespace Gamesim.Episode
                 RenderConversationNavigation(state, npc, window);
                 return;
             }
+            // An ask that came to the player as a card where they stand (EpisodeDirector.ComesToYou.cs).
+            if (askCardOpen) { AskCard(state); return; }
             if (sceneCardOpen) { SceneCard(state); return; }
             if (!phaseOpen) return;
             if (RenderActionPurchase(state)) return;

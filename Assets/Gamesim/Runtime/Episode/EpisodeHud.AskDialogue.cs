@@ -12,7 +12,7 @@ namespace Gamesim.Episode
     /// </summary>
     public sealed partial class EpisodeHud
     {
-        /// <summary>The walk-over dialogue's way out that answers nothing. No other control says it.</summary>
+        /// <summary>The way out of a walk-over's dialogue, or of an ask's card, that answers nothing. No other control says it.</summary>
         public const string ThinkItOverCaption = "Think it over";
         /// <summary>The heading over the terms, the words the invited view has always used.</summary>
         public const string AskOfferHeading = "THEIR OFFER";
@@ -50,10 +50,10 @@ namespace Gamesim.Episode
 
         /// <summary>
         /// Draws an ask's dialogue, top to bottom: the eyebrow; the speaker's face and name with their pronouns under
-        /// them (in a conversation, its title, which sets the Conversation layout); their standing and mood as a line
-        /// of body text; their line in a speech card - the whisper bubble for a private kind - when there is one; the
-        /// heading "THEIR OFFER"; the terms; and how long the offer stands, when something takes it away. The answers
-        /// are the owner's to draw after it.
+        /// them (in a conversation, its title, which sets the Conversation layout; on the card, the same row in the
+        /// card's own layout); their standing and mood as a line of body text; their line in a speech card - the
+        /// whisper bubble for a private kind - when there is one; the heading "THEIR OFFER"; the terms; and how long
+        /// the offer stands, when something takes it away. The answers are the owner's to draw after it.
         /// </summary>
         public void AskDialogue(string askerId, string eyebrow, string pronouns, string standing, string line,
                                 bool whisper, string terms, string lapseLine, bool inConversation)
@@ -63,18 +63,43 @@ namespace Gamesim.Episode
             Eyebrow(eyebrow, Accent);
             // The subtitle is the pronouns only: its box is fixed, and longer copy would truncate there.
             if (inConversation) SpeakerTitle(askerId, name ?? askerId, pronouns ?? "");
-            else PanelTitle(name ?? askerId, pronouns ?? "");
+            else SpeakerRow(askerId, name ?? askerId, pronouns ?? "");
             if (!string.IsNullOrEmpty(standing)) NamedParagraph(AskStandingName, standing);
-            if (!string.IsNullOrEmpty(line))
-            {
-                // One line of Inter lays out at about 1.21x its size, which draws nothing in a box under that; the
-                // ask's line gets a floor of its own, so every other conversation's spoken line stays as it was.
-                var spoken = Speech("\"" + line + "\"", AskLineName, whisper);
-                spoken.gameObject.AddComponent<LayoutElement>().minHeight = Mathf.Ceil(spoken.fontSize * 1.32f) + 1f;
-            }
+            if (!string.IsNullOrEmpty(line)) AskSpeech(line, AskLineName, whisper);
             Heading(AskOfferHeading);
             NamedParagraph(AskTermsName, terms ?? "");
             if (!string.IsNullOrEmpty(lapseLine)) NamedParagraph(AskLapseName, lapseLine, UiTheme.Muted);
+        }
+
+        /// <summary>
+        /// The card's page once the player has answered (slice 2): what the player said, then what the houseguest said
+        /// back, each under its speaker's face as a conversation's exchange says them. The owner draws the way back to
+        /// the house under it.
+        /// </summary>
+        public void AskReply(string askerId, string playerLine, string npcLine)
+        {
+            var state = director != null ? director.Snapshot : null;
+            var asker = state != null ? state.Find(askerId) : null;
+            var self = state != null ? state.Find(state.playerId) : null;
+            Eyebrow(AskDirectEyebrow, Accent);
+            // The exchange's own words for the two halves (EpisodeHud.ConversationExchange.cs).
+            string you = self?.name ?? "You";
+            if (self != null && !string.Equals(you, "You", System.StringComparison.OrdinalIgnoreCase)) you += " (You)";
+            SpeakerRow(state != null ? state.playerId : null, you, "Your words");
+            AskSpeech(playerLine ?? "", AskYourWordsName, false);
+            SpeakerRow(askerId, asker?.name ?? askerId, "Their reply");
+            AskSpeech(npcLine ?? "", AskReplyName, false);
+        }
+
+        /// <summary>
+        /// A line said in an ask, in a speech card. One line of Inter lays out at about 1.21x its size, which draws
+        /// nothing in a box under that; an ask's lines get a floor of their own, so every other conversation's spoken
+        /// line stays as it was.
+        /// </summary>
+        private void AskSpeech(string line, string name, bool whisper)
+        {
+            var spoken = Speech("\"" + line + "\"", name, whisper);
+            spoken.gameObject.AddComponent<LayoutElement>().minHeight = Mathf.Ceil(spoken.fontSize * 1.32f) + 1f;
         }
 
         /// <summary>The line under the answers saying how many other houseguests want a word; nothing for none.</summary>

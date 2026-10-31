@@ -14,15 +14,17 @@ using TMPro;
 using UnityEngine;
 using UnityEngine.AI;
 using UnityEngine.EventSystems;
+using UnityEngine.InputSystem;
 using UnityEngine.TestTools;
 using UnityEngine.UI;
 
 namespace Gamesim.Tests.PlayMode
 {
     /// <summary>
-    /// Houseguests bring their asks to the player (OFFERS-COME-TO-YOU-PLAN, slice 1): the asker walks over, says their
-    /// line and the dialogue opens by itself on the exact offer; talking to somebody with an ask opens on it; nothing a
-    /// visit, a hearing, Think it over or a miss does commits anything. Every test opts in after the fixture's reload
+    /// Houseguests bring their asks to the player (OFFERS-COME-TO-YOU-PLAN, slices 1 and 2): the asker walks over, says
+    /// their line and the dialogue opens by itself on the exact offer; talking to somebody with an ask opens on it; one
+    /// who cannot come puts it to the player as a card where they stand; nothing a visit, a hearing, a card, Think it
+    /// over or a miss does commits anything. Every test opts in after the fixture's reload
     /// turns asks off, pins scaled time at 30 fps (unscaled time, which the asks run on, is not pinned) and bounds its
     /// waits in real seconds or on the ask clock, never in frames.
     /// </summary>
@@ -50,9 +52,17 @@ namespace Gamesim.Tests.PlayMode
         /// The house saved and reloaded, every body assembled, asks on and taken effect, the named askers held aside; no
         /// visit waited for.
         /// </summary>
-        private IEnumerator OptIntoComesToYou(params string[] holdAsideAskers)
+        private IEnumerator OptIntoComesToYou(params string[] holdAsideAskers) => OptIntoComesToYouHouse(false, false, holdAsideAskers);
+
+        /// <summary>
+        /// <see cref="OptIntoComesToYou"/> on the house of its choice: with <paramref name="threeAsks"/>, Taylor asks too
+        /// (OFFERS-COME-TO-YOU-PLAN test 15); with <paramref name="story"/>, the story system is on, so a walk-in can be
+        /// offered as a Pull.
+        /// </summary>
+        private IEnumerator OptIntoComesToYouHouse(bool threeAsks, bool story, string[] holdAsideAskers)
         {
-            SaveNpcInvitationFlowState();
+            SaveNpcInvitationFlowState(threeAsks);
+            if (story) SaveWithTheStoryOn();
             yield return ReloadEpisode();
             NpcWrite("proximityWatch", -1e6f);
             // Asks are still off meanwhile, so at most the invitation sets out, and the switch below lets it go.
@@ -294,17 +304,18 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(director.AskMissCount(recordId), Is.EqualTo(2));
             Assert.That(director.IsAskSetAside(recordId), Is.False);
 
-            deadline = Time.realtimeSinceStartup + 30f;
-            while (Time.realtimeSinceStartup < deadline)
+            // Two misses: no further walk-over this phase. From slice 2 the ask comes as a card where the player stands,
+            // once its retry has passed.
+            deadline = Time.realtimeSinceStartup + EpisodeDirector.AskRetrySeconds + 20f;
+            while (!director.IsAskCardOpen && Time.realtimeSinceStartup < deadline)
             {
                 Assert.That(director.CurrentNpcInvitationRecordId, Is.Not.EqualTo(recordId), "Two misses: no further walk-over this phase.");
                 yield return null;
             }
-            deadline = Time.realtimeSinceStartup + 5f;
-            while (NpcWholeSecondDue() && Time.realtimeSinceStartup < deadline) yield return null;
-            yield return OpenNearbyNpc(SceneComponents<HouseNpc>().Single(npc => npc.Id == askerId));
-            Assert.That(director.CurrentAskWay, Is.EqualTo(EpisodeDirector.AskWay.Raised), "Talking to her still raises it.");
-            Assert.That(director.InvitedDealRecordId, Is.EqualTo(recordId));
+            Assert.That(director.IsAskCardOpen, Is.True, "After two misses the ask comes as a card.");
+            Assert.That(director.CurrentAskWay, Is.EqualTo(EpisodeDirector.AskWay.Card));
+            Assert.That(director.CurrentAskRecordId, Is.EqualTo(recordId));
+            Assert.That(director.CurrentAskerId, Is.EqualTo(askerId));
         }
 
         // ------------------------------------------------------------------ 4. talking to the asker
@@ -551,7 +562,8 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(director.CurrentAskerId, Is.EqualTo(ComesMaya), "The next asker comes while Jamie sits.");
             director.ClosePanels();
 
-            // Jamie's own refusals add up to the card's time: no further walk-over, still raised.
+            // Jamie's own refusals add up to the card's time: no further walk-over, and from slice 2 the ask comes as a card
+            // where the player stands, Jamie staying in their seat.
             var unreachable = NpcRead<Dictionary<string, float>>("askUnreachable");
             NpcRead<HashSet<string>>("askSetAside").UnionWith(HeldAside(new[] { ComesMaya }));
             deadline = Time.realtimeSinceStartup + 40f;
@@ -564,19 +576,18 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(unreachable.TryGetValue(first.recordId, out float charged) ? charged : 0f,
                 Is.GreaterThanOrEqualTo(EpisodeDirector.AskUnreachableSecondsBeforeCard));
             Assert.That(director.IsAskSetAside(first.recordId), Is.False);
-            coordinator.ReleaseActivity(activity);
-            NpcWrite("askNextAt", NpcRead<float>("askClock"));
-            deadline = Time.realtimeSinceStartup + 10f;
-            while (Time.realtimeSinceStartup < deadline)
+            deadline = Time.realtimeSinceStartup + 15f;
+            while (!director.IsAskCardOpen && Time.realtimeSinceStartup < deadline)
             {
                 Assert.That(director.CurrentNpcInvitationRecordId, Is.Not.EqualTo(first.recordId), "No further walk-over this phase.");
+                if (activity.Released) Assert.That(coordinator.TryReserveActivity(ComesJamie, seat, out activity, out reason), Is.True, reason);
                 yield return null;
             }
-            deadline = Time.realtimeSinceStartup + 5f;
-            while (NpcWholeSecondDue() && Time.realtimeSinceStartup < deadline) yield return null;
-            yield return OpenNearbyNpc(SceneComponents<HouseNpc>().Single(npc => npc.Id == ComesJamie));
-            Assert.That(director.CurrentAskWay, Is.EqualTo(EpisodeDirector.AskWay.Raised));
-            Assert.That(director.InvitedDealRecordId, Is.EqualTo(first.recordId));
+            Assert.That(director.IsAskCardOpen, Is.True, "A busy asker's ask comes as a card.");
+            Assert.That(director.CurrentAskWay, Is.EqualTo(EpisodeDirector.AskWay.Card));
+            Assert.That(director.CurrentAskRecordId, Is.EqualTo(first.recordId));
+            Assert.That(director.CurrentAskerId, Is.EqualTo(ComesJamie));
+            coordinator.ReleaseActivity(activity);
         }
 
         // ------------------------------------------------------------------ 8. no ask while walking, at any frame rate
@@ -854,6 +865,414 @@ namespace Gamesim.Tests.PlayMode
             ((RectTransform)button.transform).GetWorldCorners(inner);
             Assert.That(inner[0].y >= outer[0].y - .5f && inner[1].y <= outer[1].y + .5f, Is.True,
                 what + " sits inside the viewport (" + inner[0].y + ".." + inner[1].y + " in " + outer[0].y + ".." + outer[1].y + ").");
+        }
+
+        // ================================================================== slice 2: it pops up when they cannot come
+
+        /// <summary>
+        /// The invitation flow's house with asks on and walk-overs off, so every ask comes as a card where the player
+        /// stands; <paramref name="threeAsks"/> adds Taylor's ask (test 15) and <paramref name="story"/> the story system,
+        /// for a staged Pull. Returns as the switch takes effect, before the settle and still times could open a card.
+        /// </summary>
+        private IEnumerator InstallComesToYouCardHouse(bool threeAsks = false, bool story = false, params string[] holdAsideAskers)
+        {
+            yield return OptIntoComesToYouHouse(threeAsks, story, holdAsideAskers);
+            director.AskWalkOvers = false;
+            Assert.That(director.IsAskCardOpen, Is.False, "No card before the settle and still times have run.");
+        }
+
+        /// <summary>The saved house again with the story system on and nothing open, so a walk-in can be offered as a Pull (InvitationAndPull's staging).</summary>
+        private void SaveWithTheStoryOn()
+        {
+            var store = new EpisodeSaveStore(director.SavePath);
+            Assert.That(store.TryLoad(out var state, out string message), Is.True, message);
+            EpisodeEngine.EnableStory(state, state.week);
+            Assert.That(EpisodeEngine.OpenStoryBeats(state), Is.Empty, "Nothing open: the only Pull is the walk-in a test stages.");
+            Assert.That(EpisodeValidation.TryValidate(state, out string reason), Is.True, reason);
+            store.Save(state);
+        }
+
+        /// <summary>When <see cref="WaitForAskCardUp"/> first saw the card, in real seconds.</summary>
+        private float comesCardSeenAt;
+
+        /// <summary>
+        /// Waits for an ask's card, bounded in real seconds, with nobody setting out meanwhile; says why on a miss. On the
+        /// open frame: the card's way, no conversation, a panel, the ask set aside and pointer presses held off it. After
+        /// 2 frames the keyboard is on Think it over.
+        /// </summary>
+        private IEnumerator WaitForAskCardUp(string at, float seconds = 45f)
+        {
+            float deadline = Time.realtimeSinceStartup + seconds;
+            while (!director.IsAskCardOpen && Time.realtimeSinceStartup < deadline)
+            {
+                Assert.That(director.CurrentNpcInvitationRecordId, Is.Null, at + ": with walk-overs off nobody sets out.");
+                yield return null;
+            }
+            comesCardSeenAt = Time.realtimeSinceStartup;
+            if (!director.IsAskCardOpen)
+                Assert.Fail(at + ": no card opened. Free " + NpcRead<float>("askFreeRun") + " s, still " + NpcRead<float>("askStillFor")
+                    + " s, clock " + NpcRead<float>("askClock") + ", next " + NpcRead<float>("askNextAt") + ", in frame "
+                    + NpcRead<bool>("askPlayerInFrame") + ", panel " + director.IsPanelOpen + ". " + director.NpcAutonomyDiagnostic);
+            // The open frame.
+            Assert.That(ComesHud.PointerHeld, Is.True, at + ": pointer presses are held off the card as it opens.");
+            Assert.That(director.CurrentAskWay, Is.EqualTo(EpisodeDirector.AskWay.Card), at);
+            Assert.That(director.IsPanelOpen, Is.True, at + ": the card is a panel.");
+            Assert.That(director.TalkingToId, Is.Null, at + ": no conversation.");
+            Assert.That(director.IsAskSetAside(director.CurrentAskRecordId), Is.True, at + ": set aside for the phase as it opens.");
+            yield return null; yield return null;
+            Assert.That(SelectedName(), Is.EqualTo(EpisodeHud.ThinkItOverCaption), at + ": the keyboard opens on the way out that answers nothing.");
+        }
+
+        /// <summary>Every named label of an ask's page: a box at least 1.3x its font, the font at least 12, the copy inside the box.</summary>
+        private void AssertAskLabelsFit(string at, params string[] names)
+        {
+            Canvas.ForceUpdateCanvases();
+            foreach (var name in names)
+            {
+                var label = LastLabel(name);
+                Assert.That(label, Is.Not.Null, at + ": " + name + " is drawn.");
+                Assert.That(label.rectTransform.rect.height, Is.GreaterThanOrEqualTo(label.fontSize * 1.3f - .5f), at + ": " + name + "'s box.");
+                Assert.That(label.fontSize, Is.GreaterThanOrEqualTo(12f), at + ": " + name + " at 1080p.");
+                Assert.That(label.preferredHeight, Is.LessThanOrEqualTo(label.rectTransform.rect.height + .5f), at + ": " + name + " fits.");
+            }
+        }
+
+        // ------------------------------------------------------------------ 11. the card opens without a walk
+
+        [UnityTest]
+        public IEnumerator ComesToYou_CardOpensWithoutAWalkAndAnswersFree() => PinnedClock(CardOpensWithoutAWalk);
+
+        private IEnumerator CardOpensWithoutAWalk()
+        {
+            yield return InstallComesToYouCardHouse(false, false, ComesJamie);
+            string recordId = ComesToYou.Read(director.Snapshot).Single(ask => ask.askerId == ComesMaya).recordId;
+            int spent = EpisodeEngine.SocialActionsSpent(director.Snapshot);
+            yield return WaitForAskCardUp("the card");
+            Assert.That(director.CurrentAskRecordId, Is.EqualTo(recordId), "The card is Maya's exact offer.");
+            Assert.That(director.CurrentAskerId, Is.EqualTo(ComesMaya));
+            Assert.That(ComesHud.CurrentActivityLayout, Is.EqualTo(EpisodeHud.ActivityLayout.Stage), "The card stands on the Stage layout,");
+            Assert.That(cameraRig.IsConversationFocused, Is.False, "and the camera frames no two-shot.");
+            yield return WaitForBodies();
+
+            var line = NpcInvitation.Available(director.Snapshot).Single(row => row.RecordId == recordId).OpeningLine;
+            Assert.That(LastLabel(EpisodeHud.AskLineName)?.text, Is.EqualTo("\"" + line + "\""));
+            Assert.That(ShownText(), Does.Contain(EpisodeHud.AskDirectEyebrow));
+            Assert.That(ShownText(), Does.Contain(EpisodeHud.AskOfferHeading));
+            Assert.That(LastLabel(EpisodeHud.AskTermsName)?.text, Is.Not.Null.And.Not.Empty);
+            Assert.That(LastLabel(EpisodeHud.AskLapseName)?.text, Is.EqualTo(ComesToYou.LapseNextCampaign));
+            foreach (var caption in new[] { EpisodeHud.DealAcceptCaption, EpisodeHud.DealDeclineCaption, EpisodeHud.ThinkItOverCaption })
+                Assert.That(FindButton(caption), Is.Not.Null, caption); // Single: exactly one of each.
+            Assert.That(ButtonWithCaptionOrNull(EpisodeDirector.ConversationTopicsBackCaption), Is.Null, "A card is no conversation: no topics to go back to.");
+
+            yield return WaitOutThePointerHold();
+            Assert.That(ComesHud.PointerHeld, Is.False);
+            var accept = ButtonWithCaption(EpisodeHud.DealAcceptCaption);
+            Assert.That(ComesHud.TryDescribeOfferControl(accept, out var described), Is.True);
+            Assert.That(described.OfferId, Is.EqualTo(recordId));
+            Assert.That(ComesHud.TryReadOfferControl(accept, out var reading), Is.True);
+            Assert.That(reading, Does.Contain(director.Snapshot.Find(ComesMaya).name).And.Contain(LastLabel(EpisodeHud.AskTermsName).text));
+            Assert.That(NpcDeals.Pending(director.Snapshot).Any(row => row.id == recordId), Is.True, "Seeing the card does not answer it.");
+            Assert.That(EpisodeEngine.SocialActionsSpent(director.Snapshot), Is.EqualTo(spent));
+
+            var justBefore = director.Snapshot;
+            accept.onClick.Invoke();
+            var answered = director.Snapshot;
+            Assert.That(answered.revision, Is.EqualTo(justBefore.revision + 1));
+            Assert.That(answered.acceptedCommandIds.Count, Is.EqualTo(justBefore.acceptedCommandIds.Count + 1));
+            Assert.That(EpisodeEngine.SocialActionsSpent(answered), Is.EqualTo(spent), "Answering is free.");
+            var command = new EpisodeCommand
+            {
+                id = answered.acceptedCommandIds.Last(), actorId = justBefore.playerId,
+                expectedPhase = justBefore.phase, expectedRevision = justBefore.revision,
+                kind = EpisodeCommandKind.RespondToDeal, targetId = recordId, text = EpisodeEngine.AcceptDeal,
+            };
+            // What the conversation would have said for it, from the committed log: the card's reply page says it.
+            var said = ConversationExchange.Create(justBefore, answered, command,
+                answered.events.Where(entry => entry.sequence >= justBefore.nextSequence).ToList());
+            Assert.That(said, Is.Not.Null, "The answer has words of its own.");
+            var expected = new EpisodeEngine(justBefore).Apply(command);
+            Assert.That(expected.accepted, Is.True, expected.reason);
+            AssertEquivalent(expected.state, answered);
+
+            // The reply page: the player's words, hers, and the way back to the house.
+            Assert.That(director.IsAskCardOpen, Is.True, "The card stays up for the reply.");
+            Assert.That(director.IsConversationExchangePlaying, Is.False, "No conversation plays it.");
+            Assert.That(LastLabel(EpisodeHud.AskYourWordsName)?.text, Is.EqualTo("\"" + said.PlayerLine + "\""));
+            Assert.That(LastLabel(EpisodeHud.AskReplyName)?.text, Is.EqualTo("\"" + said.NpcLine + "\""));
+            Assert.That(ButtonWithCaptionOrNull(EpisodeHud.ThinkItOverCaption), Is.Null, "Nothing is left to think over.");
+            ButtonWithCaption(EpisodeDirector.SceneCardDoneCaption).onClick.Invoke();
+            Assert.That(director.IsAskCardOpen, Is.False);
+            Assert.That(director.IsPanelOpen, Is.False, "Back to the house closes the card.");
+        }
+
+        // ------------------------------------------------------------------ 12. closing the card is Think it over
+
+        [UnityTest]
+        public IEnumerator ComesToYou_ClosingTheCardIsThinkItOver() => PinnedClock(ClosingTheCard);
+
+        private IEnumerator ClosingTheCard()
+        {
+            yield return InstallComesToYouCardHouse(false, false, ComesJamie);
+            foreach (bool escape in new[] { true, false })
+            {
+                string how = escape ? "Escape" : "ClosePanels";
+                yield return WaitForAskCardUp(how);
+                string recordId = director.CurrentAskRecordId;
+                // No whole second of the house's time comes due across the press, so a commit seen would be the card's.
+                NpcWrite("npcFrameFraction", 0d);
+                NpcWrite("npcWorldFraction", 0d);
+                // The ask clock stands still under the card: the gap counts from here.
+                float clock = NpcRead<float>("askClock");
+                var before = director.Snapshot;
+                byte[] bytes = File.ReadAllBytes(director.SavePath);
+                if (escape) yield return PressKey(Key.Escape);
+                else director.ClosePanels();
+                Assert.That(director.IsAskCardOpen, Is.False, how + " closes the card.");
+                Assert.That(director.IsPanelOpen, Is.False, how);
+                AssertEquivalent(before, director.Snapshot);
+                CollectionAssert.AreEqual(bytes, File.ReadAllBytes(director.SavePath), how + " commits nothing.");
+                Assert.That(director.IsAskSetAside(recordId), Is.True, how + ": the ask is set aside for the phase, as Think it over sets it.");
+                Assert.That(WaitingOnYou.Read(director.Snapshot).items.Any(item => item.id == recordId), Is.True, how + ": the offer still waits.");
+                Assert.That(NpcRead<float>("askNextAt"), Is.GreaterThanOrEqualTo(clock + EpisodeDirector.AskGapSeconds - .01f), how + ": the next ask waits its gap.");
+                // The same ask brought again, for the other way out.
+                NpcRead<HashSet<string>>("askSetAside").Remove(recordId);
+                NpcWrite("askNextAt", NpcRead<float>("askClock"));
+            }
+        }
+
+        // ------------------------------------------------------------------ 13. the card's reply narrates nothing
+
+        [UnityTest]
+        public IEnumerator ComesToYou_CardReplyLeaksNoNarration() => PinnedClock(CardReplyLeaksNothing);
+
+        private IEnumerator CardReplyLeaksNothing()
+        {
+            yield return InstallComesToYouCardHouse(false, false, ComesJamie);
+            yield return WaitForAskCardUp("the card");
+            yield return WaitOutThePointerHold();
+            ButtonWithCaption(EpisodeHud.DealAcceptCaption).onClick.Invoke();
+            Assert.That(LastLabel(EpisodeHud.AskReplyName), Is.Not.Null, "The card shows the reply,");
+            Assert.That(NpcRead<string>("conversationNarration"), Is.Null, "and narrates nothing a conversation would show next.");
+            ButtonWithCaption(EpisodeDirector.SceneCardDoneCaption).onClick.Invoke();
+            Assert.That(director.IsPanelOpen, Is.False);
+            yield return null;
+            float deadline = Time.realtimeSinceStartup + 5f;
+            while (NpcWholeSecondDue() && Time.realtimeSinceStartup < deadline) yield return null;
+            yield return OpenNearbyNpc(SceneComponents<HouseNpc>().Single(npc => npc.Id == ComesMaya));
+            Assert.That(director.TalkingToId, Is.EqualTo(ComesMaya));
+            yield return null;
+            Assert.That(ShownText(), Does.Not.Contain("WHAT HAPPENED"), "The next conversation opens with nothing of the card's answer.");
+        }
+
+        // ------------------------------------------------------------------ 14. never over chrome
+
+        [UnityTest, Timeout(300000)]
+        public IEnumerator ComesToYou_NeverOverChrome() => PinnedClock(NeverOverChrome);
+
+        private IEnumerator NeverOverChrome()
+        {
+            yield return InstallComesToYouCardHouse(false, false, ComesJamie);
+            string recordId = ComesToYou.Read(director.Snapshot).Single(ask => ask.askerId == ComesMaya).recordId;
+            // Every pass brings Maya's ask again: the caps would stop the fourth.
+            NpcWrite("askRecordCap", 100); NpcWrite("askPhaseCap", 100); NpcWrite("askWeekCap", 100);
+            // The control: due, with nothing up, the card opens at the next scan.
+            yield return HoldTheCardAtItsGap("nothing up", recordId);
+            NpcWrite("askNextAt", NpcRead<float>("askClock"));
+            yield return WaitForAskCardUp("nothing up", EpisodeDirector.AskScanSeconds + 2f);
+            director.ClosePanels();
+            yield return null;
+
+            var home = player.transform.position;
+            yield return CardHeldUnder("the settings", recordId, () => director.OpenSettings(), () => director.IsPanelOpen,
+                () => director.ClosePanels(), true);
+            yield return CardHeldUnder("the notebook", recordId, () => director.OpenJournal(), () => director.IsPanelOpen,
+                () => director.ClosePanels(), true);
+            yield return CardHeldUnder("the episode screen", recordId,
+                () => { WarpPlayer(director.StationPosition); Assert.That(director.TryOpenPhasePanel(), Is.True); },
+                () => director.IsPhasePanelOpen, () => { director.ClosePanels(); WarpPlayer(home); }, true);
+            yield return CardHeldUnder("the emote menu", recordId, () => director.ToggleEmoteMenu(), () => director.EmoteMenuOpen,
+                () => director.ToggleEmoteMenu(), true);
+            // The overview holds the card but not the house's settle time, which runs under it: the card may open as soon
+            // as it closes.
+            yield return CardHeldUnder("the overview", recordId, () => Assert.That(director.ShowOverview(), Is.True), () => director.IsOverview,
+                () => director.EndOverview(), false);
+
+            // A staged Pull, on the same house with the story on (InvitationAndPull's staging): a walk-in found as the
+            // proximity watch finds one, which writes nothing.
+            yield return InstallComesToYouCardHouse(false, true, ComesJamie);
+            recordId = ComesToYou.Read(director.Snapshot).Single(ask => ask.askerId == ComesMaya).recordId;
+            Assert.That(director.IsOverview || director.IsBriefing, Is.False, "The house's own view, where the Pull's card is built.");
+            var now = director.Snapshot;
+            Assert.That(EpisodeEngine.StoryOn(now), Is.True, "A walk-in is offered as a Pull only under the story system.");
+            var pair = now.Active.Where(actor => !actor.isPlayer && actor.id != ComesMaya).Select(actor => actor.id)
+                .OrderBy(id => id, StringComparer.Ordinal).Take(2).ToList();
+            Assert.That(pair, Has.Count.EqualTo(2), "Two others to walk in on.");
+            yield return CardHeldUnder("a staged Pull", recordId, () =>
+                {
+                    NpcWrite("walkInFirst", pair[0]);
+                    NpcWrite("walkInSecond", pair[1]);
+                    NpcWrite("walkInRoom", "Living");
+                    NpcWrite("walkInWeek", now.week);
+                    NpcWrite("proximityWatch", -1e6f);
+                }, () => ActiveRect(EpisodeHud.PullCardName) != null,
+                () => FindButton(EpisodeHud.StayOutCaption).onClick.Invoke(), true);
+        }
+
+        /// <summary>The house brought to the moment the card would open: the ask free to come again and the settle and still times run, only its gap holding it.</summary>
+        private IEnumerator HoldTheCardAtItsGap(string what, string recordId)
+        {
+            NpcRead<HashSet<string>>("askSetAside").Remove(recordId);
+            NpcWrite("askNextAt", float.MaxValue);
+            float deadline = Time.realtimeSinceStartup + 15f;
+            while ((NpcRead<float>("askFreeRun") < EpisodeDirector.AskSettleSeconds || NpcRead<float>("askStillFor") < EpisodeDirector.AskStillSeconds)
+                   && Time.realtimeSinceStartup < deadline) yield return null;
+            Assert.That(NpcRead<float>("askFreeRun"), Is.GreaterThanOrEqualTo(EpisodeDirector.AskSettleSeconds), what + ": the house has settled.");
+            Assert.That(NpcRead<float>("askStillFor"), Is.GreaterThanOrEqualTo(EpisodeDirector.AskStillSeconds), what + ": the player stands still.");
+            Assert.That(director.IsAskCardOpen, Is.False, what);
+        }
+
+        /// <summary>
+        /// The card due but for its gap, then the chrome up and the gap let go: for 30 frames, and at least the settle,
+        /// still and two scans' time in real seconds, no card. Once the chrome closes the card opens - after a panel, or
+        /// anything else that holds the house, only once the settle time has run again.
+        /// </summary>
+        private IEnumerator CardHeldUnder(string what, string recordId, Action open, Func<bool> up, Action close, bool settlesAgain)
+        {
+            yield return HoldTheCardAtItsGap(what, recordId);
+            open();
+            float deadline = Time.realtimeSinceStartup + 5f;
+            while (!up() && Time.realtimeSinceStartup < deadline) yield return null;
+            Assert.That(up(), Is.True, what + " is up.");
+            // Only the chrome holds the card now.
+            NpcWrite("askNextAt", NpcRead<float>("askClock"));
+            int frames = 0;
+            float until = Time.realtimeSinceStartup + EpisodeDirector.AskSettleSeconds + EpisodeDirector.AskStillSeconds
+                + 2f * EpisodeDirector.AskScanSeconds;
+            while (frames < 30 || Time.realtimeSinceStartup < until)
+            {
+                yield return null;
+                frames++;
+                Assert.That(director.IsAskCardOpen, Is.False, "No card over " + what + " (frame " + frames + ").");
+                Assert.That(up(), Is.True, what + " stays up while it is watched (frame " + frames + ").");
+            }
+            close();
+            float closed = Time.realtimeSinceStartup;
+            yield return WaitForAskCardUp("once " + what + " has closed", 20f);
+            Assert.That(director.CurrentAskRecordId, Is.EqualTo(recordId), what);
+            if (settlesAgain)
+                Assert.That(comesCardSeenAt - closed, Is.GreaterThanOrEqualTo(EpisodeDirector.AskSettleSeconds - EpisodeDirector.AskFrameAllowanceSeconds),
+                    "After " + what + " the card waits the settle time again.");
+            director.ClosePanels();
+            yield return null;
+        }
+
+        // ------------------------------------------------------------------ 15. several asks, one at a time, in public order
+
+        [UnityTest, Timeout(300000)]
+        public IEnumerator ComesToYou_SeveralAsksOneAtATimeInPublicOrder() => PinnedClock(SeveralAsksInOrder);
+
+        private IEnumerator SeveralAsksInOrder()
+        {
+            // Three houseguests ask, so three cards: one at a time, in the queue's public order, a gap apart on the free
+            // house's clock, each saying how many others still want a word.
+            yield return InstallComesToYouCardHouse(threeAsks: true);
+            var queue = ComesToYou.Read(director.Snapshot);
+            Assert.That(queue.Select(ask => ask.askerId).Distinct().Count(), Is.EqualTo(3),
+                "Three houseguests ask: " + string.Join(", ", queue.Select(ask => ask.askerId + "/" + ask.type)));
+            var order = queue.Select(ask => ask.recordId).ToList();
+            float openedAt = float.NaN;
+            for (int i = 0; i < 3; i++)
+            {
+                string at = "card " + (i + 1);
+                yield return WaitForAskCardUp(at, 60f);
+                Assert.That(director.CurrentAskRecordId, Is.EqualTo(order[i]), at + " is the " + (i + 1) + ". in public order.");
+                // The clock stands still under the card: this is when it opened.
+                float clock = NpcRead<float>("askClock");
+                if (i > 0) Assert.That(clock - openedAt, Is.GreaterThanOrEqualTo(EpisodeDirector.AskGapSeconds - .01f), at + " came a gap after the last.");
+                openedAt = clock;
+                if (i < 2) Assert.That(LastLabel(EpisodeHud.AskMoreName)?.text, Is.EqualTo(EpisodeHud.AskMoreWaitingLine(2 - i)), at + ": who else wants a word.");
+                else Assert.That(LastLabel(EpisodeHud.AskMoreName), Is.Null, at + ": nobody else waits.");
+                yield return WaitOutThePointerHold();
+                ButtonWithCaption(EpisodeHud.ThinkItOverCaption).onClick.Invoke();
+                Assert.That(director.IsAskCardOpen, Is.False, at + ": Think it over closes the card.");
+                Assert.That(director.IsAskSetAside(order[i]), Is.True, at);
+            }
+
+            // With the phase's cap at 2, the third asker's card does not open this phase.
+            yield return InstallComesToYouCardHouse(threeAsks: true);
+            NpcWrite("askPhaseCap", 2);
+            order = ComesToYou.Read(director.Snapshot).Select(ask => ask.recordId).ToList();
+            for (int i = 0; i < 2; i++)
+            {
+                string at = "capped card " + (i + 1);
+                yield return WaitForAskCardUp(at, 45f);
+                Assert.That(director.CurrentAskRecordId, Is.EqualTo(order[i]), at);
+                if (i == 1) Assert.That(LastLabel(EpisodeHud.AskMoreName), Is.Null, at + ": the phase's cap is reached, so nobody else comes this phase.");
+                yield return WaitOutThePointerHold();
+                ButtonWithCaption(EpisodeHud.ThinkItOverCaption).onClick.Invoke();
+                // The gap is the first half's subject: the next scan may run at once.
+                NpcWrite("askNextAt", NpcRead<float>("askClock"));
+            }
+            float start = NpcRead<float>("askClock");
+            float need = EpisodeDirector.AskSettleSeconds + EpisodeDirector.AskStillSeconds + 3 * EpisodeDirector.AskScanSeconds;
+            float until = Time.realtimeSinceStartup + 20f;
+            while (NpcRead<float>("askClock") < start + need && Time.realtimeSinceStartup < until)
+            {
+                Assert.That(director.IsAskCardOpen, Is.False, "The third asker's card does not open in this phase.");
+                yield return null;
+            }
+            Assert.That(NpcRead<float>("askClock"), Is.GreaterThanOrEqualTo(start + need), "The ask clock ran: the wait was not vacuous.");
+            Assert.That(director.IsAskCardOpen, Is.False);
+            // The phase moves on. A real Advance from this house's free time reaches the Head of Household competition,
+            // where no ask comes (NpcInvitation.PhaseAllows), and then the nominations, where without the week's windows
+            // only those deciding can talk; so the ask model's own phase key is moved on, which is what its caps count
+            // against. The two asks already put once stay out under a cap of one each, so only the third can come.
+            NpcWrite("askRecordCap", 1);
+            NpcWrite("askPhase", EpisodePhase.HoH);
+            yield return WaitForAskCardUp("after the phase moves on", 20f);
+            Assert.That(director.CurrentAskRecordId, Is.EqualTo(order[2]), "The third asker's card opens in the next phase.");
+            Assert.That(NpcRead<int>("askPhaseShown"), Is.EqualTo(1), "The phase's count started again.");
+        }
+
+        // ------------------------------------------------------------------ 16. captures of the card
+
+        [UnityTest, Timeout(300000)]
+        public IEnumerator ComesToYou_CapturesTheCardAtEachSize() => PinnedClock(CapturesTheCard);
+
+        private IEnumerator CapturesTheCard()
+        {
+            foreach (var textSize in new[] { TextSize.Standard, TextSize.Largest })
+            {
+                string at = textSize.ToString();
+                // Nobody held aside: one card at a time, so the second asker is the one more who wants a word.
+                yield return InstallComesToYouCardHouse();
+                string first = ComesToYou.Read(director.Snapshot).First().askerId;
+                yield return ApplyTextSize(textSize);
+                yield return WaitForAskCardUp(at);
+                Assert.That(director.CurrentAskerId, Is.EqualTo(first), at + ": the first in public order.");
+                Assert.That(ComesHud.CurrentActivityLayout, Is.EqualTo(EpisodeHud.ActivityLayout.Stage), at);
+                yield return WaitForBodies();
+                yield return WaitOutThePointerHold();
+                Assert.That(LastLabel(EpisodeHud.AskMoreName)?.text, Is.EqualTo(EpisodeHud.AskMoreWaitingLine(1)),
+                    at + ": the other asker is the one more who wants a word.");
+                AssertEveryLabelDraws(at + ": the ask card");
+                AssertAskLabelsFit(at + ": the ask card", EpisodeHud.AskLineName, EpisodeHud.AskStandingName, EpisodeHud.AskTermsName,
+                    EpisodeHud.AskLapseName, EpisodeHud.AskMoreName);
+                if (textSize == TextSize.Largest)
+                    foreach (var caption in new[] { EpisodeHud.DealAcceptCaption, EpisodeHud.DealDeclineCaption, EpisodeHud.ThinkItOverCaption })
+                        AssertInsideItsViewport(FindButton(caption), at + ": " + caption);
+                if (Application.isBatchMode) yield return CaptureFraming("comes-to-you-card" + TextScales.Suffix(textSize));
+
+                // The reply page's two lines, at the same size. Test 11 presses as a player does; here only the page matters.
+                Assert.That(director.IsAskCardOpen, Is.True, at + ": the card is still up for its answer.");
+                FindButton(EpisodeHud.DealAcceptCaption).onClick.Invoke();
+                yield return null;
+                Assert.That(FindButton(EpisodeDirector.SceneCardDoneCaption), Is.Not.Null, at + ": the reply page's way back.");
+                AssertEveryLabelDraws(at + ": the card's reply");
+                AssertAskLabelsFit(at + ": the card's reply", EpisodeHud.AskYourWordsName, EpisodeHud.AskReplyName);
+                director.ClosePanels();
+                yield return null;
+            }
         }
     }
 }

@@ -96,6 +96,8 @@
 # 9453 = 9451 + the S3b review's 2 shared CounterPactGrowthTests cases (a pact that has lost a member never grows
 # again; no join while a target agreement stands inside the pact-to-be): listed by the Lister under Unity's Mono
 # (2026-10-31), 9453, and the affected classes run there; not yet measured in Unity.
+# S4 (the 14.H report and the pact watch, section 14) adds no EditMode case: BalanceLabAlumniReportTests is compiled
+# out of Unity, as the balance lab is. The Lister under Unity's Mono listed 9453 (2026-10-31); not yet measured in Unity.
 Gamesim.EditModeTests 9453
 # The UMA-free build. 1215 = 1236, the count after the consolidation's lanes (S2a, S2b, S4a), less the 7
 # farewell probes moved to Gamesim.DiagnosticsPlayModeTests and the 14 farewell readiness tests that now
@@ -131,6 +133,7 @@ Gamesim.EditModeTests 9453
 # Compiled offline only (main 772828ba merged in).
 # 1334 counted: the full NoUMA run at 83c3273c (2026-10-26), 1334 of 1334, no re-runs.
 # 1353 = main's 1345 + D1's 8: disjoint cases, so the floor is their sum.
+# The All-Star histories' S4 (2026-10-31) adds no PlayMode case: 1353 stands, not yet measured in Unity.
 Gamesim.PlayModeTests 1353
 # The UMA build of the same assembly, read by a plan built without -WithoutUma. 1281 = the 1241 above + the
 # 40 tests that compile only under GAMESIM_UMA, as run at r1 (2026-10-16): in EpisodePlayModeTests,
@@ -232,4 +235,6 @@ Gamesim.Uma.DiagnosticsPlayModeTests 10
 # ran (2026-10-31), 16412 of 16412.
 # 16414 = 16412 + the S3b review's 2 CounterPactGrowthTests cases: what dotnet test Tools/SimulationTests ran
 # (2026-10-31), 16414 of 16414.
-Gamesim.SimulationTests 16414
+# 16420 = 16414 + S4's 6 BalanceLabAlumniReportTests cases (the 14.H report's arms and 14.L.H's pact watch, by
+# fixtures; dotnet only, as the lab is): what dotnet test Tools/SimulationTests ran (2026-10-31), 16420 of 16420.
+Gamesim.SimulationTests 16420

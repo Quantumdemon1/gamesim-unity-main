@@ -82,7 +82,9 @@ breach rule's width (7.4) by section 14, and D-H2 (section 12) by the lead on 20
   H1b (the histories' opening state, at alumni rules 1), the optional H1c (shown), then after B9 H1d (the parts that
   move balance). The campaigns AS2, AS3 and on follow H1b (section 11).
 - **The owner's direction of 2026-10-29** (section 14): All-Star seasons default to pre-existing loyalty that changes
-  with the house's acts, and to reputations and known connections the house reads: alumni rules 2 to 4.
+  with the house's acts, and to reputations and known connections the house reads: alumni rules 2 to 4. From 5, by the
+  owner's answer of the same day, outsider pacts grow past two while a known pair stands (14.L). S4's report (14.H)
+  measures all five values for the owner.
 
 ---
 
@@ -1113,10 +1115,11 @@ section 6 says. Either way nothing is tuned in place.
 
 A retune is a new edition or a later alumni rules value, for fresh seasons only. A saved season keeps its numbers.
 
-**Superseded for alumni rules 2 to 4** by the owner's direction of 2026-10-29 (14.A). All-Star seasons default to
-them, and reputations and known connections are read now, not after B9. Section 14.H's measurement goes to the owner
-and is not a gate; it has two stop conditions. The other H1d terms (the vote shield, Will's throw, the repertoires and
-the stat overrides) still wait for B9, each on a later value.
+**Superseded for alumni rules 2 to 5** by the owner's direction of 2026-10-29 and the owner's answer of the same day
+on outsider pacts (14.A, 14.L). All-Star seasons default to them, and reputations and known connections are read now,
+not after B9. Section 14.H's measurement goes to the owner and is not a gate; it has two stop conditions. The other
+H1d terms (the vote shield, Will's throw, the repertoires and the stat overrides) still wait for B9, each on a later
+value.
 
 ---
 
@@ -1144,9 +1147,9 @@ histories-first order, and it carries every field in 5.1.
 - **Not claimed:** no command kind (the next free stays 66), no story milestone (10 stays the story session's, 11 is
   Roles), no dialogue rules version (the joint note claims 2 to 5 in dialogue's own field), and no competition rules
   version (5 is PC5's; the throw's is claimed with the competitions topic at H1d).
-- **Alumni rules 2, 3 and 4 are taken by section 14** (the owner's direction, 2026-10-29). The campaigns (AS7) take the
-  next free value after S6. Because the value is a bound, AS7's value carries the behaviour of 2 to 4. Tell AS7's
-  track when it next runs.
+- **Alumni rules 2, 3 and 4 are taken by section 14** (the owner's direction, 2026-10-29), and 5 by its 14.L (next
+  claim). The campaigns (AS7) take the next free value after S6. Because the value is a bound, AS7's value carries the
+  behaviour of 2 to 5 (2 to 4 if growth is withdrawn). Tell AS7's track when it next runs.
 - **Alumni rules 2 to 5 are section 14's** (2026-10-29). 5 is S3b's (14.L) and is released if growth is withdrawn
   before S6. It is the alumni rules field, not competition rules 5 (PC5's). AS7 takes the next free value after S6.
 
@@ -1272,7 +1275,7 @@ edition.
 | D-H5 (owner) | An in-game on/off switch for histories (Codex's `playerHistoriesEnabled`) | **None for now**. If the owner wants one, it is alumni rules 0 on a fresh season and needs no field |
 | D-H6 | Order against dialogue's D2 for the frozen reader | **The joint note's decision 7, as reviewed at `eb820bc8`: SCH30 first.** The reader is cut from main as it stands, with dialogue rules 0 and 1. D2 starts from SCH30's step-2 commit merged into its branch, and its proofs run at 30, so D2 waits for step 2 (8.2, section 10). This replaces H0's first answer ("D2 on main first"), which the histories-first order overtakes. The joint note leaves the order to the lead, so the lead confirms it |
 | D-H7 | Confirm the pooled schema-30 claim with the story session, dialogue and B9 | Dialogue has accepted it (the joint note's §6 and §10). Confirm with the story session and B9 before SCH30's step 2, and record it in section 10 (the master plan's decision 6) |
-| D-H8 | Where the line falls for "the parts that move balance wait for B9" | **New terms in a decision rule wait** (career reputation, pair risk, the vote shield, Will's throw, the repertoires, the stats). **The opening state is built in H1b**, measured and not tuned. It enrols fresh seasons only if no headline rate in the alumni cells moves beyond seed noise. Otherwise H1b lands with `ApplyFresh` not enrolling until B9, unless the owner decides otherwise (section 9). A stricter reading would hold enrolment back in every case; the gate keeps that protection wherever it matters. **The exception, decided by the owner on 2026-10-29 (section 14):** alumni rules 2 to 4 read their new terms now, and All-Star seasons default to them |
+| D-H8 | Where the line falls for "the parts that move balance wait for B9" | **New terms in a decision rule wait** (career reputation, pair risk, the vote shield, Will's throw, the repertoires, the stats). **The opening state is built in H1b**, measured and not tuned. It enrols fresh seasons only if no headline rate in the alumni cells moves beyond seed noise. Otherwise H1b lands with `ApplyFresh` not enrolling until B9, unless the owner decides otherwise (section 9). A stricter reading would hold enrolment back in every case; the gate keeps that protection wherever it matters. **The exception, decided by the owner on 2026-10-29 (section 14):** alumni rules 2 to 4 read their new terms now, and All-Star seasons default to them; so does 5, outsider pacts that grow (14.L, D-H13) |
 | D-H9 | AS3's commitment association, if its derivation proof has not run when SCH30's list closes | **Run the proof first**: it needs no Unity. If it cannot run in time, the lead chooses between adding the null field to 30 as insurance and accepting a later schema 31 for it |
 | D-H10 | Reserve B9's `tuningRulesVersion` in 30 before B9 has a plan | **Yes**, at 0, with validation accepting only 0 until B9 defines a value. An unused int costs far less than a schema 31 (5.1). The joint note's §6 recommends the same |
 | D-H11 (owner, peer sessions) | Close schema 29 when SCH30's step 1 lands on main (8.2) | **Yes.** From that landing, story rules 10, R7, R8, competition rules 5 (PC5), PC6's 6 and later, Will's throw value and every other new closed value are defined only at `schemaVersion >= 30`, with D1's chip as the one named exception. It binds the story session, role moments and the competitions topic, so it is recorded as "delegated call, confirmed by the owner". **Decided by the owner, 2026-10-29: "Close it" (section 1).** |
@@ -1980,6 +1983,25 @@ It shows every seated fact. That includes the three nomination facts, which shap
 - **When it runs:** alone, as a background job, never beside a Unity run.
 - NPC-to-NPC behaviour is proved by fixtures (14.I), never by walks.
 
+**As built in S4** (2026-10-31, on `6a86a040`). The report and its watch are built; the full run is the lead's, alone, and its results go to the owner, not into this plan. Where the code asked for it, the build keeps the intent and differs in the letter:
+- **The cell and the gate were S1's.** `BalanceLab.Cell.alumniHeld`, its "/alumni" house name and `Fresh`'s hold were built in S1, and `AlumniHistoriesGate` already holds its arm at 1 with house names ending "/alumni1". S4 changes neither. `BalanceLabAlumniReportTests` pins both, and a scratch run of the gate at two seeds a cell (48 seasons) wrote the same report at `2fdcf299` (the last commit before S1) and with S4, every one of its 162 table rows alike; only the timing line and the sentence S1 reworded differ.
+- **Arm 0 is the season without the histories** (the lab's `alumniOff`, H1b's control). `alumniHeld` 0 means shipped, and a hold of 0 after enrolment would keep the opening's receipts and final two.
+- **The shipped arm is the unheld cell** while `Latest` is 5. A test pins `ReportArms[0] == Latest`, so a later value moves the report knowingly.
+- **Settable without code:** `BALANCE_ALUMNI_SEEDS` (100, shared with the gate), `BALANCE_ALUMNI_THREADS` (every processor), `BALANCE_ALUMNI_OUT` (the test's `balance/` folder) and `BALANCE_COMMIT` (else read from `.git`). The report writes `alumni-14h-report.md` for the owner, `alumni-14h-report.json`, and `alumni-14h-seasons.csv` (one line a season). It prints the command, the commit and the elapsed time.
+- **The known pairs** are read from edition 1 by the cast at every arm, 0 included, and are live as `KnownBlocs.LivePairs` reads them. Wherever the rules read them (the live pairs from 3, the bound at 5) the watch checks that it agrees, as two more must-be-zero rows.
+- **`PactWatch`** (`BalanceLab.PactWatch`; its `PactRecord` is `SeasonRun.pactWatch`) reads each accepted command's state before and after. A command can carry a whole stretch of the week, so each check counts only what must have held at the moment: a bound read before a join, and a pact or an agreement standing on both sides of the command. A violation that begins and ends inside one command is missed, never invented. The record is out of the hashed rows and carried by a part (`BalanceLabParts.Stamp` v6). A test plays one season with the watch and without it, to the same row.
+- **Hunts and rumours are read from the ledger entries they write** ("What {listener} heard from {hunter} about {target}", "Something {listener} heard about {subject}"), not from the week's acts. The eviction window's last beats fire in the command that turns the week, which clears its acts. A hunt with the player as listener writes no entry and is not counted.
+- **Rows the plan left open, as built:**
+  - a known-pair member put up "per member-week": at each NPC Head of Household's nominations, the live-pair members in the house other than the Head of Household, and the weeks they were nominated, saved or named the replacement;
+  - "carried" by an outsider bloc: three or more of one outsider pact voted, all for the evictee, and without their votes the evictee would not have led. An outsider pact is a houseguests' own with no player and nobody in a live pair;
+  - goodwill at 1 is the breach rule's all or nothing; at 0 there is no receipt;
+  - the pact-weeks held back are read at every arm, against the bound the pact would have had; below 5 nothing grows anyway. The causes are whisper, listen-in, story (Power Shift named, other arcs apart), a member left (a shed or a story's leave), and other;
+  - Power Shift cast on a grown pact is counted, as L.F asks.
+- **Must-be-zero rows beyond L.H's list:** a join below 5, more than one join a pact a week, the two consistency checks, a season whose alumni rules value moved, and a season the lab could not play. Every nonzero row is a bug line at the top of the report, with its arm.
+- **Stop condition 1, read as built:** a budget is crossed "beyond noise" when the shipped arm's 95% Wilson interval lies wholly past the line. Arm 1, or arm 4, "meets" it when its rate is on the budget's side. The paired 5 - 1 difference is printed beside it. The twelve-house's pariah-free budget is its 45%.
+- **The comparisons** run on every row but the timed one. The report counts how many crossed, against the one in twenty expected by chance.
+- **Proof:** the subset, with `BalanceLabAlumniReportTests` (dotnet only, as the lab is), and 20 mutations of the cell, the watch and the report, each caught; a smoke run of the report at two seeds a cell on one core (96 seasons, 1.46 s a season on its thread), every row computed, every arm paired and every must-be-zero row at nought. The fixtures prove the watch counts a join, a shed and every must-be-zero row. Not run: the full report.
+
 ### 14.I Tests
 
 Every new test uses only public members, so the new files compile in Unity's EditMode assembly and in the dotnet subset. Each file is added to `Tools/SimulationTests/SimulationTests.csproj` near `:293`, with a hand-written meta.
@@ -2026,6 +2048,13 @@ Every new test uses only public members, so the new files compile in Unity's Edi
   - `TheCounterBlocEndsWithTheBloc`;
   - `AnOutsideHeadOfHouseholdPutsABlocMemberUpOverAnEqualOutsider`.
 - **`CounterPactGrowthTests` (S3b):** 14.L.I's twenty fixtures; `TheOrdinaryCommonThreatStillComesFirst` and the pair-shape cases held at `CounterBlocs`, and `CounterBlocTests.TheScoreFloorAndThePactCapStillHoldWhilePactsGrow`, their sibling at 5 with the size clause.
+- **`BalanceLabAlumniReportTests` (S4, dotnet only, as the lab is):**
+  - `AHeldArmPlaysItsWholeSeasonAtItsValueAndOnlyAnEnrolledSeasonIsHeld`: a season held at 4 is at 4 from its first command to its finale; a Regular house is never held;
+  - `AnUnheldCellKeepsItsNameAndSeedsAndTheWatchNeverChangesItsSeason`: the name and seeds it always had, every arm on them, and the same row with the watch as without it;
+  - `TheReportsArmsPairBySeedAndEachEnrolsAtItsOwnValue`: 48 cells, each at its arm, the known pairs the same at every arm, and the gate's arm at 1;
+  - `TheStopConditionsAndTheNearZeroRuleReadAsThePlanWritesThem`;
+  - `ThePactWatchCountsABirthAJoinAndAShed`: by the rules themselves, and a part carries the record;
+  - `ThePactWatchCountsEveryMustBeZeroRowItIsShown`: each row from a scripted state, and the hunts read from their ledger entries.
 - **`PastGamesReadTests` (S5):**
   - the lines verbatim;
   - the statuses;
@@ -2069,7 +2098,7 @@ Every new test uses only public members, so the new files compile in Unity's Edi
 | S2 | Reputation and known pairs, value 3 | `Simulation/AlumniHistories.cs`; new `Simulation/AlumniKnownBlocs.cs` + meta; `Simulation/ThreatAssessment.cs:51-62,125-128,149-177`; `Simulation/EpisodeEngine.Agency.cs:95-101`; `Simulation/WebEvictionVoting.cs:128-131,277,404-421,606` | Subset |
 | S3 | Counter-blocs, value 4 | `Simulation/AlumniHistories.cs`; `Simulation/AlumniKnownBlocs.cs`; `Simulation/NpcAlliances.cs:78-85`; `Simulation/NpcAgendas.cs:54-59` | Subset (fixtures) |
 | S3b | Growing pacts, value 5 (14.L.J) | `Simulation/AlumniHistories.cs`; `Simulation/AlumniKnownBlocs.cs`; `Simulation/NpcAlliances.cs`; `Simulation/NpcDeals.cs:143-150`; `Simulation/NpcSocialActions.cs:155,206-210`; `Simulation/EpisodeEngine.Strategy.cs:249`; `Tests/EditMode/CounterPactGrowthTests.cs` + meta; four test helpers made internal | Subset (fixtures); the EditMode-only pins through the Mono harness |
-| S4 | Measurement and the record | `Tests/EditMode/BalanceLabAlumniReport.cs`; `Tests/EditMode/BalanceLab.cs`; this plan's edits (14.A) | The lab, alone; the report goes to the owner |
+| S4 | Measurement and the record | `Tests/EditMode/BalanceLabAlumniReport.cs`; `Tests/EditMode/BalanceLab.cs` (the pact watch); `Tests/EditMode/BalanceLabParts.cs`; new `Tests/EditMode/BalanceLabAlumniReportTests.cs` + meta (dotnet only); this plan's edits (14.A) | Subset (fixtures); a smoke run; the lab, alone; the report goes to the owner. Built 2026-10-31 (14.H's as-built note) |
 | S5 | Player-facing (after S2) | `Simulation/AlumniKnownBlocs.cs` (readers); `Runtime/Episode/EpisodeDirector.Journal.cs:455-490`; `Runtime/Episode/EpisodeDirector.Alliances.cs:9-53`; `Runtime/Episode/EpisodeHud.Alliances.cs`; `Runtime/Episode/EpisodeDirector.DiaryRoom.cs:475-487` | Readers in the subset; PlayMode captures; caption audit |
 | S6 | Freeze the latest value kept: 5, or 4 if growth is withdrawn | The alumni-5 fixture (alumni-4 if growth is withdrawn), its manifest row, the floors | `OldSaveAcceptanceTests` |
 
@@ -2497,7 +2526,7 @@ Scope:
 - **Size and time:** 6 × 8 cells × 100 seeds = 4,800 seasons, about 36 minutes, run alone.
 - **Comparisons:** 5−4 and 5−0 are added.
 
-**A per-command `PactWatch`** sits beside `PariahWatch` (`Tests/EditMode/BalanceLab.cs:259`). It is kept out of the hashed rows (`:119`) and added to `BalanceLabParts.RoundTrip` (`Tests/EditMode/BalanceLabParts.cs:103`). It reports, per cell:
+**A per-command `PactWatch`** (built in S4: 14.H's as-built note) sits beside `PariahWatch` (`Tests/EditMode/BalanceLab.cs:259`). It is kept out of the hashed rows (`:119`) and added to `BalanceLabParts.RoundTrip` (`Tests/EditMode/BalanceLabParts.cs:103`). It reports, per cell:
 - births (from `alliance-npc-` ids) and joins (from `members.Count` rises, player-free);
 - seasons with at least one join, and the week of the first join;
 - bloc-live weeks (bound above 2), and joins per bloc-live week;

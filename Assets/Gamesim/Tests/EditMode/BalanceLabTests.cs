@@ -626,10 +626,12 @@ namespace Gamesim.Tests.EditMode
                 .OrderBy(r => cells.FindIndex(c => c.Key == r.cell.Key)).ThenBy(r => r.index).ToList();
             Assert.That(BalanceLab.Jsonl(parts), Is.EqualTo(whole));
             Assert.That(parts.Select(r => r.index), Is.EqualTo(new[] { 0, 1, 2, 0, 1, 2 }));
-            // What the rows leave out survives too: the autopsy whole, and the diagnostics' own records.
-            string Rest(BalanceLab.SeasonRun r) => Newtonsoft.Json.JsonConvert.SerializeObject(new { r.autopsy, r.gameSenseRows, r.nominations, r.pariah, r.preparation, r.counterMembers });
+            // What the rows leave out survives too: the autopsy whole, and the diagnostics' own records, the pact watch's
+            // (ALL-STAR-HISTORIES-PLAN 14.L.H) among them.
+            string Rest(BalanceLab.SeasonRun r) => Newtonsoft.Json.JsonConvert.SerializeObject(new { r.autopsy, r.gameSenseRows, r.nominations, r.pariah, r.preparation, r.counterMembers, r.pactWatch });
             Assert.That(parts.Select(Rest), Is.EqualTo(one.Select(Rest)));
             Assert.That(one.Sum(r => r.gameSenseRows.Count), Is.GreaterThan(0), "Game Sense's rows were kept.");
+            Assert.That(parts.All(r => r.pactWatch != null), Is.True, "The pact watch was kept.");
         }
 
         [Test]

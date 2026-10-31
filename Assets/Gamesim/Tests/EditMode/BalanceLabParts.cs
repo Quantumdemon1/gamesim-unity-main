@@ -28,8 +28,9 @@ namespace Gamesim.Tests.EditMode
         /// Changed whenever what a season records changes, so parts of two builds never merge. v4: a completed NPC
         /// conversation moves its pair through the ledger under D2's rules (the arcs fix), which the rules' tuple does not show.
         /// v5: so do a veto's, a lie's and a scheme's moves between two houseguests (EpisodeEngine.ChangeBetween), at every budget.
+        /// v6: a season carries its pact watch and its own time (ALL-STAR-HISTORIES-PLAN 14.L.H, <see cref="BalanceLab.PactWatch"/>).
         /// </summary>
-        internal const string Stamp = "balance-lab-parts/v5";
+        internal const string Stamp = "balance-lab-parts/v6";
 
         private static BalanceLabReports.TierSpec TierFromEnvironment()
         {
@@ -132,6 +133,8 @@ namespace Gamesim.Tests.EditMode
             public List<BalanceLab.NominationRecord> nominations = new List<BalanceLab.NominationRecord>();
             public BalanceLab.PariahRecord pariah;
             public int preparation;
+            public BalanceLab.PactRecord pactWatch;
+            public double seasonMilliseconds;
 
             internal static Record Of(BalanceLab.SeasonRun r) => new Record
             {
@@ -143,7 +146,7 @@ namespace Gamesim.Tests.EditMode
                 npcOps = r.npcOps, npcTicks = r.npcTicks, npcStarts = r.npcStarts, npcScans = r.npcScans, npcTries = r.npcTries, npcHeld = r.npcHeld,
                 npcRejected = r.npcRejected, npcMilliseconds = r.npcMilliseconds, pairs = r.pairs, pairsNearBound = r.pairsNearBound, pairsAtBound = r.pairsAtBound,
                 gameSenseRows = new SortedDictionary<string, double>(r.gameSenseRows, StringComparer.Ordinal), nominations = r.nominations.ToList(), pariah = r.pariah,
-                preparation = r.preparation,
+                preparation = r.preparation, pactWatch = r.pactWatch, seasonMilliseconds = r.seasonMilliseconds,
             };
 
             internal BalanceLab.SeasonRun ToRun()
@@ -154,7 +157,7 @@ namespace Gamesim.Tests.EditMode
                     commands = commands, own = own, fallbacks = fallbacks, refusals = refusals, freeActions = freeActions, finaleSeconds = finaleSeconds,
                     npcOps = npcOps, npcTicks = npcTicks, npcStarts = npcStarts, npcScans = npcScans, npcTries = npcTries, npcHeld = npcHeld,
                     npcRejected = npcRejected, npcMilliseconds = npcMilliseconds, pairs = pairs, pairsNearBound = pairsNearBound, pairsAtBound = pairsAtBound,
-                    pariah = pariah, preparation = preparation,
+                    pariah = pariah, preparation = preparation, pactWatch = pactWatch, seasonMilliseconds = seasonMilliseconds,
                 };
                 foreach (var p in gameSenseRows ?? new SortedDictionary<string, double>()) r.gameSenseRows[p.Key] = p.Value;
                 r.nominations.AddRange(nominations ?? new List<BalanceLab.NominationRecord>());

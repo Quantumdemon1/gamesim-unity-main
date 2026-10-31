@@ -133,6 +133,13 @@ namespace Gamesim.Tests.EditMode
             public PariahRecord pariah;
             /// <summary>Q3: the player's competition preparation at the season's end (out of five).</summary>
             public int preparation;
+            /// <summary>
+            /// ALL-STAR-HISTORIES-PLAN 14.H and 14.L.H: the season's pacts and the cast's known pairs, as the pact watch saw
+            /// them command by command (<see cref="PactWatch"/>). An analyst's record, like the diagnostics': never in the rows.
+            /// </summary>
+            public PactRecord pactWatch;
+            /// <summary>The season's wall-clock milliseconds on its thread, for the report's pacing (timed: never in the rows).</summary>
+            public double seasonMilliseconds;
             public bool Won => autopsy != null && autopsy.outcome == SeasonAutopsy.Outcomes.Winner;
             public bool FinalTwo => autopsy != null && (autopsy.outcome == SeasonAutopsy.Outcomes.Winner || autopsy.outcome == SeasonAutopsy.Outcomes.RunnerUp);
         }
@@ -210,11 +217,17 @@ namespace Gamesim.Tests.EditMode
             EpisodeCommandKind.Introduce, EpisodeCommandKind.BuyActionPoint, EpisodeCommandKind.ResolveHouseEvent, EpisodeCommandKind.AnswerPactPlan,
         };
 
-        internal static SeasonRun Play(Cell cell, int index)
+        /// <summary>
+        /// One season of a cell. <paramref name="watch"/> false leaves the pact watch (<see cref="PactWatch"/>) off: it only
+        /// reads, so a season plays the same with it and without it, which a test plays both ways to show.
+        /// </summary>
+        internal static SeasonRun Play(Cell cell, int index, bool watch = true)
         {
             var run = new SeasonRun { cell = cell, index = index, seed = Seed(cell, index) };
-            try { PlayInto(run); }
+            var clock = Stopwatch.StartNew();
+            try { PlayInto(run, watch); }
             catch (Exception error) { run.error = "exception: " + error.GetType().Name + ": " + error.Message; }
+            run.seasonMilliseconds = clock.Elapsed.TotalMilliseconds;
             return run;
         }
 
@@ -233,10 +246,11 @@ namespace Gamesim.Tests.EditMode
             return fresh;
         }
 
-        private static void PlayInto(SeasonRun run)
+        private static void PlayInto(SeasonRun run, bool watch)
         {
             var cell = run.cell;
             var fresh = Fresh(cell, run.seed);
+            var pacts = watch ? new PactWatch(fresh) : null;
             var engine = new EpisodeEngine(fresh);
             // The NPC world (B5b): every operation installs a new engine, and every command goes to the world's.
             var world = cell.npcTicks > 0 ? new BalanceLabNpcWorld(engine, cell.npcTicks, run) : null;
@@ -247,6 +261,7 @@ namespace Gamesim.Tests.EditMode
             string pariahTarget = null;
             int pariahRun = 0;
             var s = engine.Snapshot;
+            var watched = s;
             while (s.phase != EpisodePhase.Finished && run.commands < CommandCap)
             {
                 // A slice of the phase's NPC time before the decision (decision 3).
@@ -268,6 +283,13 @@ namespace Gamesim.Tests.EditMode
                     && s.hohId != s.playerId && s.Find(s.playerId).status == ContestantStatus.Active)
                     run.nominations.Add(Nominations(s, after));
                 if (used.kind == EpisodeCommandKind.Advance) PariahWatch(after, run, ref pariahTarget, ref pariahRun);
+                if (pacts != null)
+                {
+                    // The NPC world's operations since the last command (B5b) are watched as a step of their own.
+                    if (s.revision != watched.revision) pacts.Watch(null, watched, s);
+                    pacts.Watch(used, s, after);
+                    watched = after;
+                }
                 run.pace.Watch(used, after);
                 bool phaseChange = SeasonAutopsy.IsPhaseChange(s, after);
                 if (phaseChange) changes.Add(new SeasonAutopsy.PhaseChange(s, after));
@@ -288,6 +310,7 @@ namespace Gamesim.Tests.EditMode
             foreach (var g in GameSense.Evaluate(s).notes.GroupBy(n => n.face + "/" + n.rowKind))
                 run.gameSenseRows[g.Key] = Math.Round(g.Sum(n => n.points), 4);
             run.preparation = s.playerStudyBonus;
+            run.pactWatch = pacts?.Close(s);
         }
 
         /// <summary>T0 Q4: the NPC Head of Household's ranking at the nominations, the player's terms against the other candidates' mean.</summary>
@@ -322,6 +345,581 @@ namespace Gamesim.Tests.EditMode
                 npcHohWinsMax = after.contestants.Where(c => !c.isPlayer).Max(c => c.hohWins),
                 causes = grudges.Select(g => g.cause ?? "").ToList(), meanSeverity = grudges.Count == 0 ? 0 : grudges.Average(g => g.severity), stacks = grudges.Sum(g => g.count),
             };
+        }
+
+        // ---------------------------------------------------------------- the pact watch (ALL-STAR-HISTORIES-PLAN 14.H, 14.L.H)
+
+        /// <summary>
+        /// What 14.H's report reads of one season (ALL-STAR-HISTORIES-PLAN 14.H, 14.L.H), kept beside the pariah record and,
+        /// like it, out of the rows the goldens hash; a part carries it (<see cref="BalanceLabParts.RoundTrip"/>). Counts,
+        /// weeks and lists in a fixed order, so two runs write the same record.
+        /// </summary>
+        internal sealed class PactRecord
+        {
+            /// <summary>The lowest and the highest alumni rules value any state the watch saw held: a held arm plays at its value throughout.</summary>
+            public int rulesLow = -1, rulesHigh = -1;
+            /// <summary>The cast's known pairs: edition 1's seated shared alliances, "fact:first|second", read at every rules value (arm 0 included) so arms compare.</summary>
+            public List<string> pairs = new List<string>();
+            /// <summary>Their houseguests, by id, in order.</summary>
+            public List<string> members = new List<string>();
+            /// <summary>The Hitmen's two (<see cref="PactWatch.HitmenFact"/>), or null when the cast does not seat them.</summary>
+            public string hitmenFirst, hitmenSecond;
+
+            // 14.L.H's pact watch
+            /// <summary>Houseguests' pacts born (an <c>alliance-npc-</c> id with no player), and members joined into one (a rise in its members, the player aside).</summary>
+            public int births, joins;
+            /// <summary>The week of the season's first join, or 0 for none.</summary>
+            public int firstJoinWeek;
+            /// <summary>A pact of houseguests born by week 3 with no player and no live-pair member in it.</summary>
+            public bool outsiderPactByWeek3;
+            /// <summary>The weeks with a known pair live (the bound above two), in order.</summary>
+            public List<int> blocLiveWeeks = new List<int>();
+            /// <summary>The most of one outsider pact (houseguests' own, no player, no live-pair member) in the house at once; 0 for none.</summary>
+            public int largestOutsiderPact;
+            /// <summary>Pact-weeks a houseguests' pact sat below the bound only because somebody outside it knew of it, by how it first came out.</summary>
+            public SortedDictionary<string, int> heldBack = new SortedDictionary<string, int>(StringComparer.Ordinal);
+            /// <summary>Joiners shed from a grown pact while it was private to its members, and joiners out of one otherwise (a story's leave).</summary>
+            public int shed, joinersOut;
+            /// <summary>How every grown pact ended, or that it stood at the finale.</summary>
+            public List<GrownEnd> grownEnds = new List<GrownEnd>();
+            /// <summary>Each week, as the nominations are made, the share of the NPCs in the house who are in an NPC-only pact.</summary>
+            public List<double> npcPactShares = new List<double>();
+            /// <summary>Two grown pacts with three or more in the house at once; the player taken into a grown pact by an invitation.</summary>
+            public bool twoGrownAtOnce, playerInvitedIntoGrown;
+            /// <summary>The week the player first knew of a grown pact, or 0.</summary>
+            public int playerLearnedGrownWeek;
+            /// <summary>Evictions an outsider bloc of three or more carried: every one of them voted the evictee out, and without their votes the evictee would not have led.</summary>
+            public int blocCarried;
+            /// <summary>Every pile-on (the story's the-house-turns) and its target, as the pariah decomposition reads a pariah run.</summary>
+            public List<PileOn> pileOns = new List<PileOn>();
+            /// <summary>Pairs of NPCs who both rate each other at −10 or less at week 3 (NpcAgencyHarnessTests' cold pairs), or −1 unseen.</summary>
+            public int coldPairsWeek3 = -1;
+            /// <summary>Hunts with an NPC listener; bloc hunts (aimed at a live-pair member); the most hunts on one target in one week.</summary>
+            public int hunts, blocHunts, mostHuntsOnOneTarget;
+            /// <summary>The longest run of weeks one listener heard a bloc hunt.</summary>
+            public int longestListenerRun;
+            /// <summary>Hunts and target agreements aimed at a pact-mate of both, in any pact (at 4 the story trios' old flaw).</summary>
+            public int huntsAtPactMate, agreementsAtPactMate;
+            /// <summary>Power Shift stories cast on a grown pact.</summary>
+            public int powerShiftOnGrown;
+
+            // 14.H's rows about the known pairs
+            /// <summary>Member-weeks: a live-pair member in the house, not the Head of Household, as an NPC Head of Household nominates; and those weeks they were put up.</summary>
+            public int memberWeeks, memberPutUps;
+            /// <summary>An active pact held both Hitmen; one of a known pair put the other up; one houseguest was put up three or more weeks running.</summary>
+            public bool hitmenReformed, publicSplit, putUpThreeRunning;
+            /// <summary>The Hitmen's opening final two at the season's end: its status, or "none" without one.</summary>
+            public string hitmenFinalTwo;
+            /// <summary>Rumours with a subject, and the longest run of weeks the house talked about the same subject.</summary>
+            public int rumours, longestRumourRun;
+            /// <summary>The mean share of a positive past-game receipt the holder still counts at the season's end; null without one.</summary>
+            public double? goodwill;
+
+            /// <summary>14.L.H's must-be-zero rows, and the watch's own consistency checks (<see cref="PactWatch.MustBeZero"/>), every one present.</summary>
+            public SortedDictionary<string, int> mustBeZero = new SortedDictionary<string, int>(StringComparer.Ordinal);
+        }
+
+        /// <summary>How a grown pact ended (the alliance row's why, "standing" at the finale), the weeks it lasted, its most in the house, and whether anyone outside it knew of it then.</summary>
+        internal sealed class GrownEnd
+        {
+            public string why;
+            public int weeks, largest;
+            public bool known;
+        }
+
+        /// <summary>One pile-on: its week and target, how the target is classed (<see cref="PactWatch.PileOnKinds"/>), and the pariah decomposition's columns.</summary>
+        internal sealed class PileOn
+        {
+            public int week, houseCount, holders, targetHohWins, npcHohWinsMax;
+            public string target, kind;
+            public List<string> causes = new List<string>();
+        }
+
+        /// <summary>
+        /// 14.L.H's per-command pact watch, beside <see cref="PariahWatch"/>: it reads each accepted command's state before and
+        /// after (and the NPC world's operations between two commands as a step of their own) and writes only its
+        /// <see cref="PactRecord"/>. The cast's known pairs are read from edition 1 whatever the season's rules (the arm without
+        /// the histories included), and are live while both are in the house and neither has put the other up, as
+        /// <see cref="KnownBlocs.LivePairs"/> reads them: the watch checks that it agrees wherever the rules read them.
+        ///
+        /// <para><b>Between commands.</b> A command can carry a whole stretch of the week (a window's beats, the week's turn),
+        /// so the watch's checks are made where they are sound from the states either side: a must-be-zero row counts only
+        /// what must have held at the moment it happened (a bound read before a join can only have fallen since; a pact and an
+        /// agreement holding in both states held in between). A violation that begins and ends inside one command is missed,
+        /// never invented.</para>
+        /// </summary>
+        internal sealed class PactWatch
+        {
+            internal const string HitmenFact = "bb16-hitmen";
+
+            /// <summary>How a pile-on's target is classed (14.L.H), in this order: a known-pair member, a member of a grown pact, a joiner a grown pact shed, anyone else.</summary>
+            internal static readonly string[] PileOnKinds = { "known-pair member", "grown-pact member", "shed joiner", "other" };
+
+            /// <summary>How a pact first came out, for the pact-weeks it was held back by being known (14.L.H).</summary>
+            internal static readonly string[] Causes = { "whisper", "listen-in", "story: power-shift", "story: other", "a member left", "other" };
+
+            /// <summary>14.L.H's must-be-zero rows, then the watch's own: every one is a bug when it is not zero.</summary>
+            internal static readonly string[] MustBeZero =
+            {
+                "a join with no live pair", "a join above its bound", "more than 4 of a pact in the house", "a live-pair member in a grown pact",
+                "a join into a pact not the houseguests' own", "a join into a pact known outside it", "a join in its fact's week",
+                "a join into a pact with a member out of the house", "a join while a target agreement stands among the pact-to-be",
+                "a hunt at a non-player pact-mate of both in a houseguests' pact", "a target agreement at a non-player pact-mate of both in a houseguests' pact",
+                "a cap breach", "a houseguest in two pacts of their own",
+                "a join below alumni rules 5", "more than one join a pact a week",
+                "the watch's live pairs differ from the rules'", "the watch's bound differs from the rules'",
+            };
+
+            internal readonly PactRecord record = new PactRecord();
+            private readonly List<(string fact, string a, string b)> pairs = new List<(string, string, string)>();
+            private readonly Dictionary<string, string> idsByName = new Dictionary<string, string>(StringComparer.Ordinal);
+            private readonly HashSet<string> grown = new HashSet<string>(StringComparer.Ordinal);
+            private readonly HashSet<string> shedJoiners = new HashSet<string>(StringComparer.Ordinal);
+            private readonly Dictionary<string, string> exposure = new Dictionary<string, string>(StringComparer.Ordinal);
+            private readonly Dictionary<string, int> joinWeek = new Dictionary<string, int>(StringComparer.Ordinal);
+            private readonly Dictionary<string, int> largest = new Dictionary<string, int>(StringComparer.Ordinal);
+            private readonly HashSet<string> heldWeeks = new HashSet<string>(StringComparer.Ordinal);
+            private readonly HashSet<string> countedDeals = new HashSet<string>(StringComparer.Ordinal);
+            private readonly List<(int week, List<string> candidates)> nominations = new List<(int, List<string>)>();
+            private readonly SortedDictionary<string, SortedSet<int>> listenerWeeks = new SortedDictionary<string, SortedSet<int>>(StringComparer.Ordinal);
+            private readonly Dictionary<string, int> huntsByTargetWeek = new Dictionary<string, int>(StringComparer.Ordinal);
+            private int lastPacts;
+            private bool week3Taken;
+
+            internal PactWatch(EpisodeState fresh)
+            {
+                foreach (var pair in AlumniHistories.SeatedPairs(fresh, AlumniEditions.Histories1))
+                    if (pair.Fact.Standing > 0) pairs.Add((pair.Fact.Id, pair.FirstId, pair.SecondId));
+                record.pairs = pairs.Select(Key).ToList();
+                record.members = pairs.SelectMany(p => new[] { p.a, p.b }).Distinct().OrderBy(id => id, StringComparer.Ordinal).ToList();
+                var hitmen = pairs.FirstOrDefault(p => p.fact == HitmenFact);
+                record.hitmenFirst = hitmen.a;
+                record.hitmenSecond = hitmen.b;
+                foreach (string row in MustBeZero) record.mustBeZero[row] = 0;
+                foreach (var c in fresh.contestants.Where(c => c != null && !c.isPlayer && c.name != null))
+                    idsByName[c.name] = idsByName.ContainsKey(c.name) ? null : c.id;
+                Rules(fresh);
+            }
+
+            private static string Key((string fact, string a, string b) p) => p.fact + ":" + p.a + "|" + p.b;
+
+            /// <summary>The houseguests' bound as the rules read it from these live pairs (<see cref="KnownBlocs.CounterPactBound"/> at 5): 0 with none.</summary>
+            internal static int Bound(int live) => live == 0 ? 0 : Math.Min(EpisodeEngine.LargestPact, live + 1 + KnownBlocs.CounterPactMargin);
+
+            /// <summary>The cast's known pairs still live: both in the house, and neither has put the other up (this week's block included).</summary>
+            internal List<(string fact, string a, string b)> Live(EpisodeState s) =>
+                pairs.Where(p => s.Find(p.a)?.status == ContestantStatus.Active && s.Find(p.b)?.status == ContestantStatus.Active && !Split(s, p.a, p.b)).ToList();
+
+            private static bool Split(EpisodeState s, string a, string b)
+            {
+                if (s.ledger?.power != null)
+                    foreach (var row in s.ledger.power)
+                        if (row?.nominees != null && !FinalEviction(row) && row.week <= s.week
+                            && ((row.hohId == a && FinalistRead.PutUp(row, b)) || (row.hohId == b && FinalistRead.PutUp(row, a))))
+                            return true;
+                return s.nominees != null && ((s.hohId == a && s.nominees.Contains(b)) || (s.hohId == b && s.nominees.Contains(a)));
+            }
+
+            /// <summary>The last Head of Household's choice, a power row of its own: it nominates nobody (AlumniLoyalty's rule).</summary>
+            private static bool FinalEviction(PowerRow row) => (row.tally == null || row.tally.Count == 0) && row.evicteeId != null && row.vetoHolderId == null;
+
+            private void Bug(string row) => record.mustBeZero[row] = record.mustBeZero[row] + 1;
+
+            private void Rules(EpisodeState s)
+            {
+                int v = s.alumniRulesVersion;
+                record.rulesLow = record.rulesLow < 0 ? v : Math.Min(record.rulesLow, v);
+                record.rulesHigh = Math.Max(record.rulesHigh, v);
+            }
+
+            private static int Here(EpisodeState s, AllianceState pact) => EpisodeEngine.InTheHouse(s, pact);
+
+            /// <summary>NpcAlliances' own reading: the pact's fact is private and known only to its members (14.L.B rule 7).</summary>
+            private static bool PrivateToMembers(EpisodeState s, AllianceState pact)
+            {
+                if (pact == null || !EpisodeEngine.StoryAt(s, StoryRules.Bonds)) return false;
+                var fact = Knowledge.Of(s, FactKinds.Alliance, pact.id);
+                return fact != null && fact.visibility == FactVisibility.Private && fact.knowers.All(pact.members.Contains);
+            }
+
+            /// <summary>A houseguests' own pact with no player and nobody in a live pair: the outsiders'.</summary>
+            private static bool Outsider(EpisodeState s, AllianceState pact, HashSet<string> inLive) =>
+                NpcAlliances.HouseguestsOwn(pact) && !pact.members.Contains(s.playerId) && !pact.members.Any(id => inLive.Contains(id) && s.Find(id)?.status == ContestantStatus.Active);
+
+            /// <summary>One accepted command (or, with no command, the NPC world's operations): the states either side of it.</summary>
+            internal void Watch(EpisodeCommand command, EpisodeState before, EpisodeState after)
+            {
+                Rules(before);
+                Rules(after);
+                var liveBefore = Live(before);
+                var liveAfter = Live(after);
+                if (AlumniRules.At(after, AlumniRules.Reputation)
+                    && !KnownBlocs.LivePairs(after).Select(p => p.Fact.Id + ":" + p.FirstId + "|" + p.SecondId).SequenceEqual(liveAfter.Select(Key)))
+                    Bug("the watch's live pairs differ from the rules'");
+                if (AlumniRules.At(after, AlumniRules.GrowingPacts) && KnownBlocs.CounterPactBound(after) != Bound(liveAfter.Count))
+                    Bug("the watch's bound differs from the rules'");
+                var inLive = new HashSet<string>(liveAfter.SelectMany(p => new[] { p.a, p.b }), StringComparer.Ordinal);
+                var wasLive = new HashSet<string>(liveBefore.SelectMany(p => new[] { p.a, p.b }), StringComparer.Ordinal);
+                var (storyMoved, powerShiftMoved) = Stories(before, after);
+                Pacts(command, before, after, Bound(liveBefore.Count), wasLive, inLive, storyMoved, powerShiftMoved);
+                Hunts(before, after, wasLive, inLive);
+                Agreements(after);
+                Eviction(before, after, inLive);
+                if (before.phase == EpisodePhase.Nomination && before.nominees.Count == 0 && after.nominees.Count == 2 && after.week == before.week)
+                    Nominations(before, wasLive);
+                if (command == null || command.kind == EpisodeCommandKind.Advance) Sample(after, liveAfter.Count, inLive);
+            }
+
+            private void Pacts(EpisodeCommand command, EpisodeState before, EpisodeState after, int boundBefore, HashSet<string> wasLive, HashSet<string> inLive,
+                bool storyMoved, bool powerShiftMoved)
+            {
+                foreach (var pact in after.alliances)
+                {
+                    if (pact?.members == null) continue;
+                    var was = before.alliances.FirstOrDefault(a => a?.id == pact.id);
+                    bool own = NpcAlliances.HouseguestsOwn(pact), npcOnly = !pact.members.Contains(after.playerId);
+                    if (was == null)
+                    {
+                        if (!own || !npcOnly) continue;
+                        record.births++;
+                        if (after.week <= 3 && Outsider(after, pact, inLive)) record.outsiderPactByWeek3 = true;
+                        if (pact.members.Count > 2) { Bug("a join in its fact's week"); grown.Add(pact.id); }
+                        continue;
+                    }
+                    var added = pact.members.Where(id => !was.members.Contains(id)).ToList();
+                    var removed = was.members.Where(id => !pact.members.Contains(id)).ToList();
+                    if (added.Contains(after.playerId) && grown.Contains(pact.id)) record.playerInvitedIntoGrown = true;
+                    else if (added.Count > 0 && npcOnly) Joined(before, after, was, pact, added, boundBefore);
+                    if (removed.Count > 0 && was.active && pact.active && grown.Contains(pact.id))
+                        foreach (string id in removed)
+                        {
+                            if (was.members.IndexOf(id) >= 2 && PrivateToMembers(before, was) && Sour(before, after, was, id)) { record.shed++; shedJoiners.Add(id); }
+                            else record.joinersOut++;
+                        }
+                    if (own && !exposure.ContainsKey(pact.id) && PrivateToMembers(before, was) && !PrivateToMembers(after, pact))
+                        exposure[pact.id] = Cause(command, before, after, was, pact, storyMoved, powerShiftMoved);
+                    if (was.active && !pact.active && grown.Contains(pact.id))
+                    {
+                        var row = after.ledger?.alliances?.FirstOrDefault(r => r.id == pact.id);
+                        record.grownEnds.Add(new GrownEnd
+                        {
+                            why = row?.why ?? "?", weeks = row == null ? 0 : row.endedWeek - row.startedWeek, known = !PrivateToMembers(before, was),
+                            largest = largest.TryGetValue(pact.id, out int most) ? most : 0,
+                        });
+                    }
+                }
+                int grownHere = 0;
+                foreach (var pact in after.alliances.Where(a => a?.members != null && a.active && NpcAlliances.HouseguestsOwn(a) && !a.members.Contains(after.playerId)))
+                {
+                    int here = Here(after, pact);
+                    if (here > EpisodeEngine.LargestPact) Bug("more than 4 of a pact in the house");
+                    if (Outsider(after, pact, inLive)) record.largestOutsiderPact = Math.Max(record.largestOutsiderPact, here);
+                    if (!grown.Contains(pact.id)) continue;
+                    largest[pact.id] = Math.Max(largest.TryGetValue(pact.id, out int most) ? most : 0, here);
+                    if (here >= 3) grownHere++;
+                    if (pact.members.Any(id => inLive.Contains(id) && after.Find(id)?.status == ContestantStatus.Active)) Bug("a live-pair member in a grown pact");
+                }
+                if (grownHere >= 2) record.twoGrownAtOnce = true;
+                if (record.playerLearnedGrownWeek == 0
+                    && after.alliances.Any(a => a?.members != null && grown.Contains(a.id) && !a.members.Contains(after.playerId) && Knowledge.AllianceVisibleTo(after, a, after.playerId)))
+                    record.playerLearnedGrownWeek = after.week;
+                if (record.hitmenFirst != null && after.alliances.Any(a => a?.members != null && a.active && a.members.Contains(record.hitmenFirst) && a.members.Contains(record.hitmenSecond)))
+                    record.hitmenReformed = true;
+            }
+
+            /// <summary>
+            /// A rise in an NPC-only pact's members: a join (14.L.D), checked against every rule a join keeps, each read where it
+            /// is sound from the states either side of the command.
+            /// </summary>
+            private void Joined(EpisodeState before, EpisodeState after, AllianceState was, AllianceState pact, List<string> added, int boundBefore)
+            {
+                record.joins += added.Count;
+                if (record.firstJoinWeek == 0) record.firstJoinWeek = after.week;
+                grown.Add(pact.id);
+                if (!AlumniRules.At(before, AlumniRules.GrowingPacts) || !AlumniRules.At(after, AlumniRules.GrowingPacts)) Bug("a join below alumni rules 5");
+                // Live pairs only end, so the bound read before the command is the most it can have been at the join.
+                if (boundBefore <= 2) Bug("a join with no live pair");
+                if (Here(after, pact) > boundBefore) Bug("a join above its bound");
+                if (added.Count > 1 || (joinWeek.TryGetValue(pact.id, out int week) && week == after.week)) Bug("more than one join a pact a week");
+                joinWeek[pact.id] = after.week;
+                if (!NpcAlliances.HouseguestsOwn(pact)) Bug("a join into a pact not the houseguests' own");
+                // Knowers never shrink: known outside before, known outside at the join.
+                if (!PrivateToMembers(before, was)) Bug("a join into a pact known outside it");
+                var fact = Knowledge.Of(before, FactKinds.Alliance, pact.id);
+                if (fact != null && fact.week >= after.week) Bug("a join in its fact's week");
+                if (was.members.Any(id => before.Find(id)?.status != ContestantStatus.Active)) Bug("a join into a pact with a member out of the house");
+                var group = new HashSet<string>(was.members.Where(id => before.Find(id)?.status == ContestantStatus.Active).Concat(added), StringComparer.Ordinal);
+                if (before.deals.Any(d => TargetAmong(d, group) && after.deals.Any(e => e.id == d.id && TargetAmong(e, group))))
+                    Bug("a join while a target agreement stands among the pact-to-be");
+                // A live-pair member in it is counted with every grown pact's, below (live pairs only end, so after is sound).
+            }
+
+            private static bool TargetAmong(DealState d, HashSet<string> group) =>
+                d != null && d.status == DealStatus.Active && d.type == DealKind.TargetAgreement && d.proposerId != null && d.recipientId != null && d.targetId != null
+                && group.Contains(d.proposerId) && group.Contains(d.recipientId) && group.Contains(d.targetId);
+
+            /// <summary>Whether a member taken out of a pact had soured with anybody left in it (ShedSourJoiners' reading), either side of the command.</summary>
+            private static bool Sour(EpisodeState before, EpisodeState after, AllianceState was, string id)
+            {
+                foreach (var s in new[] { before, after })
+                    foreach (string other in was.members.Where(o => o != id && s.Find(o)?.status == ContestantStatus.Active))
+                        if (s.Score(id, other) < NpcAlliances.SourLine || s.Score(other, id) < NpcAlliances.SourLine) return true;
+                return false;
+            }
+
+            /// <summary>How a pact first came out to somebody outside it (14.L.H's causes, <see cref="Causes"/>).</summary>
+            private static string Cause(EpisodeCommand command, EpisodeState before, EpisodeState after, AllianceState was, AllianceState pact, bool storyMoved, bool powerShiftMoved)
+            {
+                var then = Knowledge.Of(before, FactKinds.Alliance, pact.id);
+                var now = Knowledge.Of(after, FactKinds.Alliance, pact.id);
+                if (now == null) return "other";
+                var outside = now.knowers.Where(k => !pact.members.Contains(k)).ToList();
+                if (outside.Any(was.members.Contains)) return "a member left";
+                if (outside.Contains(after.playerId) && now.visibility == FactVisibility.Private && command != null
+                    && (command.kind == EpisodeCommandKind.Eavesdrop || command.kind == EpisodeCommandKind.WitnessNpcAct || command.kind == EpisodeCommandKind.WitnessProximity))
+                    return "listen-in";
+                // The weekly leak widens the fact to a whisper and adds no knower.
+                bool widenedAlone = then != null && now.visibility != FactVisibility.Private && now.knowers.Count == then.knowers.Count;
+                if (widenedAlone && !storyMoved) return "whisper";
+                if (powerShiftMoved) return "story: power-shift";
+                if (storyMoved) return "story: other";
+                return now.visibility != FactVisibility.Private ? "whisper" : "other";
+            }
+
+            /// <summary>The stories that started this command: a pile-on's target classed, a Power Shift cast on a grown pact. Returns whether any story began or took a step, and whether a Power Shift did.</summary>
+            private (bool moved, bool powerShift) Stories(EpisodeState before, EpisodeState after)
+            {
+                bool moved = false, powerShift = false;
+                foreach (var story in after.storylines)
+                {
+                    var was = before.storylines.FirstOrDefault(x => x.id == story.id);
+                    if (was != null && was.path.Count == story.path.Count) continue;
+                    moved = true;
+                    if (story.templateId == "power-shift") powerShift = true;
+                    if (was != null) continue;
+                    string Role(string role) => story.cast.FirstOrDefault(c => c.role == role)?.contestantId;
+                    if (story.templateId == "the-house-turns" && Role("TARGET") != null)
+                    {
+                        string target = Role("TARGET");
+                        var holders = Grudges.HoldersAgainst(after, target, 40).Where(h => after.Find(h)?.status == ContestantStatus.Active).ToList();
+                        var victim = after.Find(target);
+                        record.pileOns.Add(new PileOn
+                        {
+                            week = after.week, target = target, kind = PileOnKind(after, target), houseCount = after.Active.Count(), holders = holders.Count,
+                            targetHohWins = victim?.hohWins ?? 0, npcHohWinsMax = after.contestants.Where(c => !c.isPlayer).Select(c => c.hohWins).DefaultIfEmpty(0).Max(),
+                            causes = after.story.grudges.Where(g => g.targetId == target && holders.Contains(g.holderId)).Select(g => g.cause ?? "").ToList(),
+                        });
+                    }
+                    if (story.templateId == "power-shift" && Role("LEADER") != null && Role("MEMBER") != null
+                        && after.alliances.Any(a => a?.members != null && a.active && grown.Contains(a.id) && a.members.Contains(Role("LEADER")) && a.members.Contains(Role("MEMBER"))))
+                        record.powerShiftOnGrown++;
+                }
+                return (moved, powerShift);
+            }
+
+            private string PileOnKind(EpisodeState s, string target) =>
+                record.members.Contains(target) ? PileOnKinds[0]
+                : s.alliances.Any(a => a?.members != null && a.active && grown.Contains(a.id) && a.members.Contains(target)) ? PileOnKinds[1]
+                : shedJoiners.Contains(target) ? PileOnKinds[2] : PileOnKinds[3];
+
+            /// <summary>
+            /// The command's hunts, from the ledger entries it wrote: a hunt with an NPC listener writes "What {listener} heard
+            /// from {hunter} about {target}" on the listener's edge to the target (NpcSocialActions' pursuit), so the hunts the
+            /// week's last window fires just before the week turns, and its acts are cleared, are counted too.
+            /// </summary>
+            private void Hunts(EpisodeState before, EpisodeState after, HashSet<string> wasLive, HashSet<string> inLive)
+            {
+                long from = before.nextSequence;
+                foreach (var edge in after.relationships)
+                {
+                    if (edge?.events == null || edge.events.Count == 0) continue;
+                    string listener = edge.fromId, listenerName = after.Find(listener)?.name;
+                    if (listenerName == null) continue;
+                    string prefix = "What " + listenerName + " heard from ";
+                    for (int i = edge.events.Count - 1; i >= 0 && edge.events[i].sequence >= from; i--)
+                    {
+                        var e = edge.events[i];
+                        if (e.type != "rumor" || e.description == null || !e.description.StartsWith(prefix, StringComparison.Ordinal)) continue;
+                        int about = e.description.LastIndexOf(" about ", StringComparison.Ordinal);
+                        if (about < prefix.Length) continue;
+                        string hunterName = e.description.Substring(prefix.Length, about - prefix.Length);
+                        string hunter = idsByName.TryGetValue(hunterName, out string id) ? id : null;
+                        string target = edge.toId;
+                        if (after.Find(listener)?.isPlayer == true) continue;
+                        record.hunts++;
+                        string week = e.week.ToString(CultureInfo.InvariantCulture) + "|" + target;
+                        huntsByTargetWeek[week] = (huntsByTargetWeek.TryGetValue(week, out int n) ? n : 0) + 1;
+                        record.mostHuntsOnOneTarget = Math.Max(record.mostHuntsOnOneTarget, huntsByTargetWeek[week]);
+                        if (wasLive.Contains(target) && inLive.Contains(target))
+                        {
+                            record.blocHunts++;
+                            if (!listenerWeeks.TryGetValue(listener, out var weeks)) listenerWeeks[listener] = weeks = new SortedSet<int>();
+                            weeks.Add(e.week);
+                        }
+                        if (hunter == null) continue;
+                        // A pact holding all three on both sides of the command held them at the hunt.
+                        var mates = before.alliances.Where(a => PactOfAll(a, hunter, listener, target)
+                            && after.alliances.Any(b => b.id == a.id && PactOfAll(b, hunter, listener, target))).ToList();
+                        if (mates.Count == 0) continue;
+                        record.huntsAtPactMate++;
+                        if (AlumniRules.At(after, AlumniRules.GrowingPacts) && after.Find(target)?.isPlayer == false && mates.Any(NpcAlliances.HouseguestsOwn))
+                            Bug("a hunt at a non-player pact-mate of both in a houseguests' pact");
+                    }
+                }
+            }
+
+            private static bool PactOfAll(AllianceState a, string x, string y, string z) =>
+                a?.members != null && a.active && a.members.Contains(x) && a.members.Contains(y) && a.members.Contains(z);
+
+            /// <summary>Every active target agreement once, as it stands: aimed at a pact-mate of both its parties.</summary>
+            private void Agreements(EpisodeState after)
+            {
+                foreach (var d in after.deals)
+                {
+                    if (d == null || d.type != DealKind.TargetAgreement || d.status != DealStatus.Active || d.proposerId == null || d.recipientId == null || d.targetId == null) continue;
+                    var mates = after.alliances.Where(a => PactOfAll(a, d.proposerId, d.recipientId, d.targetId)).ToList();
+                    if (mates.Count == 0 || !countedDeals.Add(d.id ?? "")) continue;
+                    record.agreementsAtPactMate++;
+                    if (AlumniRules.At(after, AlumniRules.GrowingPacts) && mates.Any(NpcAlliances.HouseguestsOwn)
+                        && new[] { d.proposerId, d.recipientId, d.targetId }.All(id => after.Find(id)?.isPlayer == false))
+                        Bug("a target agreement at a non-player pact-mate of both in a houseguests' pact");
+                }
+            }
+
+            /// <summary>An eviction the command revealed: carried by an outsider bloc of three or more, all voting the evictee out and decisive.</summary>
+            private void Eviction(EpisodeState before, EpisodeState after, HashSet<string> inLive)
+            {
+                var row = after.ledger?.power?.LastOrDefault();
+                if (row?.evicteeId == null || row.tally == null || row.tally.Count == 0) return;
+                if (before.ledger?.power?.Any(r => r.week == row.week && r.evicteeId != null) == true) return;
+                var votes = after.votes.Where(v => v?.voterId != null && v.targetId != null).ToList();
+                if (votes.Count == 0) return;
+                int forEvictee = votes.Count(v => v.targetId == row.evicteeId);
+                int other = votes.Where(v => v.targetId != row.evicteeId).GroupBy(v => v.targetId).Select(g => g.Count()).DefaultIfEmpty(0).Max();
+                foreach (var pact in before.alliances.Where(a => a?.members != null && a.active && Outsider(before, a, inLive)))
+                {
+                    var bloc = votes.Where(v => pact.members.Contains(v.voterId)).ToList();
+                    if (bloc.Count < 3 || bloc.Any(v => v.targetId != row.evicteeId)) continue;
+                    if (forEvictee - bloc.Count <= other) { record.blocCarried++; break; }
+                }
+            }
+
+            /// <summary>As an NPC Head of Household's block is set: the live-pair members who could go up, and the house's share in NPC-only pacts.</summary>
+            private void Nominations(EpisodeState before, HashSet<string> wasLive)
+            {
+                var npcs = before.Active.Where(c => !c.isPlayer).ToList();
+                var pacts = NpcAlliances.NpcOnlyPacts(before);
+                if (npcs.Count > 0) record.npcPactShares.Add(Math.Round(npcs.Count(c => pacts.Any(p => p.members.Contains(c.id))) / (double)npcs.Count, 6));
+                if (before.hohId == null || before.hohId == before.playerId) return;
+                nominations.Add((before.week, wasLive.Where(id => id != before.hohId && before.Find(id)?.status == ContestantStatus.Active)
+                    .OrderBy(id => id, StringComparer.Ordinal).ToList()));
+            }
+
+            /// <summary>After an Advance, as NpcAgencyHarnessTests samples: the cap and one each, the bloc's weeks, the pacts the house's knowledge held back, week 3's cold pairs.</summary>
+            private void Sample(EpisodeState after, int live, HashSet<string> inLive)
+            {
+                var pacts = after.alliances.Where(a => a?.members != null && a.active && NpcAlliances.HouseguestsOwn(a) && !a.members.Contains(after.playerId) && Here(after, a) >= 2).ToList();
+                if (EpisodeEngine.AgencyOn(after) && pacts.Count > NpcAlliances.PactCap(after) && pacts.Count > lastPacts) Bug("a cap breach");
+                lastPacts = pacts.Count;
+                if (after.Active.Any(c => !c.isPlayer && pacts.Count(p => p.members.Contains(c.id)) > 1)) Bug("a houseguest in two pacts of their own");
+                int bound = Bound(live);
+                if (bound > 2 && !record.blocLiveWeeks.Contains(after.week)) record.blocLiveWeeks.Add(after.week);
+                // Below the bound only because someone outside knows of it: every other pact-side rule of 14.L.B holds.
+                foreach (var pact in pacts)
+                {
+                    if (Here(after, pact) >= bound || pact.members.Any(id => after.Find(id)?.status != ContestantStatus.Active) || pact.members.Any(inLive.Contains)) continue;
+                    var fact = Knowledge.Of(after, FactKinds.Alliance, pact.id);
+                    if (fact == null || fact.week >= after.week || !EpisodeEngine.StoryAt(after, StoryRules.Bonds) || PrivateToMembers(after, pact)) continue;
+                    if (!heldWeeks.Add(pact.id + "|" + after.week.ToString(CultureInfo.InvariantCulture))) continue;
+                    string cause = exposure.TryGetValue(pact.id, out string why) ? why : "other";
+                    record.heldBack[cause] = (record.heldBack.TryGetValue(cause, out int n) ? n : 0) + 1;
+                }
+                if (!week3Taken && after.week == 3)
+                {
+                    week3Taken = true;
+                    var npcs = after.Active.Where(c => !c.isPlayer).ToList();
+                    record.coldPairsWeek3 = 0;
+                    foreach (var a in npcs)
+                        foreach (var b in npcs.Where(x => string.CompareOrdinal(a.id, x.id) < 0))
+                            if (Math.Max(after.Score(a.id, b.id), after.Score(b.id, a.id)) <= -10) record.coldPairsWeek3++;
+                }
+            }
+
+            /// <summary>The season's end: the rows read from the whole record of it.</summary>
+            internal PactRecord Close(EpisodeState final)
+            {
+                Rules(final);
+                var rows = (final.ledger?.power ?? new List<PowerRow>()).Where(r => r?.nominees != null && !FinalEviction(r)).ToList();
+                foreach (var (week, candidates) in nominations)
+                {
+                    var row = rows.FirstOrDefault(r => r.week == week);
+                    record.memberWeeks += candidates.Count;
+                    if (row != null) record.memberPutUps += candidates.Count(id => FinalistRead.PutUp(row, id));
+                }
+                record.publicSplit = pairs.Any(p => rows.Any(r => (r.hohId == p.a && FinalistRead.PutUp(r, p.b)) || (r.hohId == p.b && FinalistRead.PutUp(r, p.a))));
+                foreach (var who in final.contestants)
+                {
+                    int run = 0, best = 0, last = -1;
+                    foreach (int week in rows.Where(r => FinalistRead.PutUp(r, who.id)).Select(r => r.week).Distinct().OrderBy(w => w))
+                    {
+                        run = week == last + 1 ? run + 1 : 1;
+                        last = week;
+                        best = Math.Max(best, run);
+                    }
+                    if (best >= 3) record.putUpThreeRunning = true;
+                }
+                var finalTwo = record.hitmenFirst == null ? null : final.deals.FirstOrDefault(d => d != null && d.type == DealKind.FinalTwo && d.week == 1
+                    && ((d.proposerId == record.hitmenFirst && d.recipientId == record.hitmenSecond) || (d.proposerId == record.hitmenSecond && d.recipientId == record.hitmenFirst)));
+                record.hitmenFinalTwo = finalTwo?.status ?? "none";
+                record.goodwill = Goodwill(final);
+                record.longestListenerRun = listenerWeeks.Values.Select(Longest).DefaultIfEmpty(0).Max();
+                var subjects = new SortedDictionary<string, SortedSet<int>>(StringComparer.Ordinal);
+                foreach (var edge in final.relationships)
+                {
+                    string name = final.Find(edge?.fromId)?.name;
+                    if (name == null || edge.events == null) continue;
+                    foreach (var e in edge.events)
+                    {
+                        if (e.type != "rumor" || e.description == null || !e.description.StartsWith("Something " + name + " heard about ", StringComparison.Ordinal)) continue;
+                        record.rumours++;
+                        if (!subjects.TryGetValue(edge.toId, out var weeks)) subjects[edge.toId] = weeks = new SortedSet<int>();
+                        weeks.Add(e.week);
+                    }
+                }
+                record.longestRumourRun = subjects.Values.Select(Longest).DefaultIfEmpty(0).Max();
+                foreach (var pact in final.alliances.Where(a => a?.members != null && a.active && grown.Contains(a.id)))
+                    record.grownEnds.Add(new GrownEnd { why = "standing", weeks = final.week - (final.ledger?.alliances?.FirstOrDefault(r => r.id == pact.id)?.startedWeek ?? final.week),
+                        known = !PrivateToMembers(final, pact), largest = largest.TryGetValue(pact.id, out int most) ? most : 0 });
+                return record;
+            }
+
+            private static int Longest(SortedSet<int> weeks)
+            {
+                int run = 0, best = 0, last = int.MinValue;
+                foreach (int week in weeks)
+                {
+                    run = week == last + 1 ? run + 1 : 1;
+                    last = week;
+                    best = Math.Max(best, run);
+                }
+                return best;
+            }
+
+            /// <summary>
+            /// The share of each positive past-game receipt its holder still counts at the end, averaged: from alumni rules 2
+            /// <see cref="AlumniLoyalty.GoodwillShare"/>; at 1 the breach rule's all or nothing (§7.4); null with no receipt.
+            /// </summary>
+            private static double? Goodwill(EpisodeState final)
+            {
+                var shares = new List<double>();
+                foreach (var edge in final.relationships)
+                {
+                    if (edge?.events == null || !edge.events.Any(e => AlumniHistories.IsReceipt(e) && e.impactScore > 0)) continue;
+                    if (AlumniRules.At(final, AlumniRules.Loyalty)) shares.Add(AlumniLoyalty.GoodwillShare(final, edge.fromId, edge.toId));
+                    else if (AlumniRules.On(final)) shares.Add(edge.events.Any(e => !e.decayable && e.impactScore < 0 && !AlumniHistories.IsReceipt(e)) ? 0 : 1);
+                }
+                return shares.Count == 0 ? (double?)null : Math.Round(shares.Average(), 6);
+            }
         }
 
         /// <summary>The final house's pairs of houseguests, the player aside, and those at or near the bound of a mutual view (±200): whether a budget saturates the house (B5b, risk 8).</summary>

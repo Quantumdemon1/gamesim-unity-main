@@ -251,6 +251,7 @@ namespace Gamesim.Tests.EditMode
             var cell = run.cell;
             var fresh = Fresh(cell, run.seed);
             var pacts = watch ? new PactWatch(fresh) : null;
+            PactRecord watchFailed = null;
             var engine = new EpisodeEngine(fresh);
             // The NPC world (B5b): every operation installs a new engine, and every command goes to the world's.
             var world = cell.npcTicks > 0 ? new BalanceLabNpcWorld(engine, cell.npcTicks, run) : null;
@@ -285,9 +286,12 @@ namespace Gamesim.Tests.EditMode
                 if (used.kind == EpisodeCommandKind.Advance) PariahWatch(after, run, ref pariahTarget, ref pariahRun);
                 if (pacts != null)
                 {
-                    // The NPC world's operations since the last command (B5b) are watched as a step of their own.
-                    if (s.revision != watched.revision) pacts.Watch(null, watched, s);
-                    pacts.Watch(used, s, after);
+                    // The NPC world's operations since the last command (B5b) are watched as a step of their own. A watch that
+                    // throws ends for the season, its record kept with the error; the season plays on (PactWatch.Guard).
+                    EpisodeState seen = watched, to = s, next = after;
+                    var command = used;
+                    if (to.revision != seen.revision) PactWatch.Guard(ref pacts, ref watchFailed, w => w.Watch(null, seen, to));
+                    PactWatch.Guard(ref pacts, ref watchFailed, w => w.Watch(command, to, next));
                     watched = after;
                 }
                 run.pace.Watch(used, after);
@@ -310,7 +314,10 @@ namespace Gamesim.Tests.EditMode
             foreach (var g in GameSense.Evaluate(s).notes.GroupBy(n => n.face + "/" + n.rowKind))
                 run.gameSenseRows[g.Key] = Math.Round(g.Sum(n => n.points), 4);
             run.preparation = s.playerStudyBonus;
-            run.pactWatch = pacts?.Close(s);
+            PactRecord closed = null;
+            var final = s;
+            PactWatch.Guard(ref pacts, ref watchFailed, w => closed = w.Close(final));
+            run.pactWatch = closed ?? watchFailed;
         }
 
         /// <summary>T0 Q4: the NPC Head of Household's ranking at the nominations, the player's terms against the other candidates' mean.</summary>
@@ -378,8 +385,11 @@ namespace Gamesim.Tests.EditMode
             public int largestOutsiderPact;
             /// <summary>Pact-weeks a houseguests' pact sat below the bound only because somebody outside it knew of it, by how it first came out.</summary>
             public SortedDictionary<string, int> heldBack = new SortedDictionary<string, int>(StringComparer.Ordinal);
-            /// <summary>Joiners shed from a grown pact while it was private to its members, and joiners out of one otherwise (a story's leave).</summary>
-            public int shed, joinersOut;
+            /// <summary>
+            /// Joiners shed from a grown pact while it was private to its members, joiners out of one otherwise (a story's leave),
+            /// and founders out of a grown pact that stood on: a member counts as a joiner only when the watch saw them join.
+            /// </summary>
+            public int shed, joinersOut, foundersOut;
             /// <summary>How every grown pact ended, or that it stood at the finale.</summary>
             public List<GrownEnd> grownEnds = new List<GrownEnd>();
             /// <summary>Each week, as the nominations are made, the share of the NPCs in the house who are in an NPC-only pact.</summary>
@@ -417,6 +427,14 @@ namespace Gamesim.Tests.EditMode
 
             /// <summary>14.L.H's must-be-zero rows, and the watch's own consistency checks (<see cref="PactWatch.MustBeZero"/>), every one present.</summary>
             public SortedDictionary<string, int> mustBeZero = new SortedDictionary<string, int>(StringComparer.Ordinal);
+
+            /// <summary>
+            /// The final house's relationship scores, every edge in order, as a 16-hex SHA-256 (<see cref="PactWatch.ScoresHash"/>): two
+            /// seasons whose rows are alike can still end with different scores, which the report counts beside its zeros.
+            /// </summary>
+            public string scoresHash;
+            /// <summary>The watch's own failure when it threw (<see cref="PactWatch.Guard"/>): the season played on without it, and this record stops where it threw.</summary>
+            public string watchError;
         }
 
         /// <summary>How a grown pact ended (the alliance row's why, "standing" at the finale), the weeks it lasted, its most in the house, and whether anyone outside it knew of it then.</summary>
@@ -475,6 +493,8 @@ namespace Gamesim.Tests.EditMode
             private readonly Dictionary<string, string> idsByName = new Dictionary<string, string>(StringComparer.Ordinal);
             private readonly HashSet<string> grown = new HashSet<string>(StringComparer.Ordinal);
             private readonly HashSet<string> shedJoiners = new HashSet<string>(StringComparer.Ordinal);
+            /// <summary>Every member the watch saw join a pact, as "pact|member": a joiner, whatever place in the roster a founder's leaving has moved them to.</summary>
+            private readonly HashSet<string> joiners = new HashSet<string>(StringComparer.Ordinal);
             private readonly Dictionary<string, string> exposure = new Dictionary<string, string>(StringComparer.Ordinal);
             private readonly Dictionary<string, int> joinWeek = new Dictionary<string, int>(StringComparer.Ordinal);
             private readonly Dictionary<string, int> largest = new Dictionary<string, int>(StringComparer.Ordinal);
@@ -593,7 +613,8 @@ namespace Gamesim.Tests.EditMode
                     if (removed.Count > 0 && was.active && pact.active && grown.Contains(pact.id))
                         foreach (string id in removed)
                         {
-                            if (was.members.IndexOf(id) >= 2 && PrivateToMembers(before, was) && Sour(before, after, was, id)) { record.shed++; shedJoiners.Add(id); }
+                            if (!joiners.Contains(pact.id + "|" + id)) record.foundersOut++;
+                            else if (was.members.IndexOf(id) >= 2 && PrivateToMembers(before, was) && Sour(before, after, was, id)) { record.shed++; shedJoiners.Add(id); }
                             else record.joinersOut++;
                         }
                     if (own && !exposure.ContainsKey(pact.id) && PrivateToMembers(before, was) && !PrivateToMembers(after, pact))
@@ -636,6 +657,7 @@ namespace Gamesim.Tests.EditMode
                 record.joins += added.Count;
                 if (record.firstJoinWeek == 0) record.firstJoinWeek = after.week;
                 grown.Add(pact.id);
+                foreach (string id in added) joiners.Add(pact.id + "|" + id);
                 if (!AlumniRules.At(before, AlumniRules.GrowingPacts) || !AlumniRules.At(after, AlumniRules.GrowingPacts)) Bug("a join below alumni rules 5");
                 // Live pairs only end, so the bound read before the command is the most it can have been at the join.
                 if (boundBefore <= 2) Bug("a join with no live pair");
@@ -890,7 +912,36 @@ namespace Gamesim.Tests.EditMode
                 foreach (var pact in final.alliances.Where(a => a?.members != null && a.active && grown.Contains(a.id)))
                     record.grownEnds.Add(new GrownEnd { why = "standing", weeks = final.week - (final.ledger?.alliances?.FirstOrDefault(r => r.id == pact.id)?.startedWeek ?? final.week),
                         known = !PrivateToMembers(final, pact), largest = largest.TryGetValue(pact.id, out int most) ? most : 0 });
+                record.scoresHash = ScoresHash(final);
                 return record;
+            }
+
+            /// <summary>
+            /// One of the watch's reads, guarded (14.L.H; S4's review): a throw ends the watch for the rest of the season
+            /// (<paramref name="watch"/> set to null) and keeps its record, the error written on it, in <paramref name="failed"/>,
+            /// so the season plays on and keeps its other rows, and the report counts "the watch threw" as a must-be-zero row.
+            /// </summary>
+            internal static void Guard(ref PactWatch watch, ref PactRecord failed, Action<PactWatch> read)
+            {
+                if (watch == null) return;
+                try { read(watch); }
+                catch (Exception error)
+                {
+                    watch.record.watchError = error.GetType().Name + ": " + error.Message;
+                    failed = watch.record;
+                    watch = null;
+                }
+            }
+
+            /// <summary>The final house's relationship scores, every edge by its two ids in ordinal order, as a 16-hex SHA-256.</summary>
+            internal static string ScoresHash(EpisodeState final)
+            {
+                var text = new StringBuilder();
+                foreach (var edge in (final.relationships ?? new List<RelationshipState>()).Where(e => e != null)
+                    .OrderBy(e => e.fromId, StringComparer.Ordinal).ThenBy(e => e.toId, StringComparer.Ordinal))
+                    text.Append(edge.fromId).Append('>').Append(edge.toId).Append('=').Append(edge.score.ToString("R", CultureInfo.InvariantCulture)).Append(';');
+                using (var sha = System.Security.Cryptography.SHA256.Create())
+                    return BitConverter.ToString(sha.ComputeHash(Encoding.UTF8.GetBytes(text.ToString()))).Replace("-", "").Substring(0, 16).ToLowerInvariant();
             }
 
             private static int Longest(SortedSet<int> weeks)

@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.Linq;
 using Gamesim.Simulation;
 using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using NUnit.Framework;
 
 namespace Gamesim.Tests.EditMode
@@ -46,6 +47,10 @@ namespace Gamesim.Tests.EditMode
             Assert.That((run.pactWatch.rulesLow, run.pactWatch.rulesHigh), Is.EqualTo((AlumniRules.CounterBlocs, AlumniRules.CounterBlocs)),
                 "Every state from the first command to the finale at 4.");
             Assert.That(run.pactWatch.joins, Is.Zero, "Nothing grows at 4.");
+            // The watch's consistency rows read the live pairs from 3: at 4 they agree with the rules all season, as does every other row.
+            Assert.That(run.pactWatch.mustBeZero.Where(p => p.Value != 0).Select(p => p.Key + " " + p.Value), Is.Empty);
+            Assert.That(run.pactWatch.watchError, Is.Null, "The watch saw the season whole.");
+            Assert.That(run.pactWatch.scoresHash, Does.Match("^[0-9a-f]{16}$"), "It hashed the final scores.");
         }
 
         [Test]
@@ -339,6 +344,349 @@ namespace Gamesim.Tests.EditMode
             r = WatchOne(grown, hunted);
             Only(r, "hunts", ("a hunt at a non-player pact-mate of both in a houseguests' pact", 1));
             Assert.That((r.hunts, r.blocHunts, r.huntsAtPactMate, r.mostHuntsOnOneTarget), Is.EqualTo((2, 1, 1, 1)));
+
+            // The cap (NpcAgencyHarnessTests' rule): seven NPCs hold at most two pacts of their own at once, so a third is a breach.
+            Assert.That(NpcAlliances.PactCap(s), Is.EqualTo(2), "Precondition: seven NPCs, a cap of two.");
+            var capped = s.Clone();
+            capped.alliances.Add(new AllianceState { id = NpcAlliances.HouseguestPactPrefix + "watch-2", name = "Second", members = { vanessa, danielle } });
+            var overCap = capped.Clone();
+            overCap.alliances.Add(new AllianceState { id = NpcAlliances.HouseguestPactPrefix + "watch-3", name = "Third", members = { will, derrick } });
+            Only(WatchOne(capped, overCap), "past the cap", ("a cap breach", 1));
+            Only(WatchOne(s, capped), "at the cap");
+
+            // One each: Janelle in a second pact of the houseguests' own.
+            var doubled = s.Clone();
+            doubled.alliances.Add(new AllianceState { id = NpcAlliances.HouseguestPactPrefix + "watch-2", name = "Second", members = { janelle, vanessa } });
+            Only(WatchOne(s, doubled), "two pacts at once", ("a houseguest in two pacts of their own", 1));
+
+            // A story's pact of two NPCs, private and a week old, that rises: a join into a pact not the houseguests' own.
+            var story = s.Clone();
+            var storyPact = new AllianceState { id = "alliance-story-watch", name = "Story", members = { vanessa, danielle } };
+            story.alliances.Add(storyPact);
+            story.week--;
+            Knowledge.AllianceFormed(story, storyPact);
+            story.week++;
+            var storyJoined = story.Clone();
+            HandAdd(storyJoined, storyPact.id, will);
+            Only(WatchOne(story, storyJoined), "a story's pact", ("a join into a pact not the houseguests' own", 1));
+
+            // The cards move under the watch: Cody renamed, the rules seat no Hitmen while the watch still reads them live - at 5
+            // the live pairs and the bound both differ, at 3 (no bound yet) only the live pairs.
+            var renamed = s.Clone();
+            renamed.Find(cody).name += " (renamed)";
+            Only(WatchOne(s, renamed), "renamed at 5", ("the watch's live pairs differ from the rules'", 1), ("the watch's bound differs from the rules'", 1));
+            var atThree = s.Clone();
+            atThree.alumniRulesVersion = AlumniRules.Reputation;
+            var renamedAtThree = atThree.Clone();
+            renamedAtThree.Find(cody).name += " (renamed)";
+            Only(WatchOne(atThree, renamedAtThree), "renamed at 3", ("the watch's live pairs differ from the rules'", 1));
+
+            // A read that throws ends the watch for the season and keeps its record with the error; nothing is read after it.
+            var guarded = new BalanceLab.PactWatch(s);
+            var kept = guarded.record;
+            BalanceLab.PactRecord failed = null;
+            var broken = s.Clone();
+            broken.deals = null;
+            BalanceLab.PactWatch.Guard(ref guarded, ref failed, w => w.Watch(Advance, s, broken));
+            Assert.That(guarded, Is.Null, "The watch ends.");
+            Assert.That(failed, Is.SameAs(kept), "Its record is kept.");
+            Assert.That(failed.watchError, Does.StartWith(nameof(NullReferenceException) + ": "), "With the error on it.");
+            int reads = 0;
+            BalanceLab.PactWatch.Guard(ref guarded, ref failed, w => reads++);
+            Assert.That(reads, Is.Zero, "Nothing is read once it has thrown.");
+            var healthy = new BalanceLab.PactWatch(s);
+            BalanceLab.PactRecord none = null;
+            BalanceLab.PactWatch.Guard(ref healthy, ref none, w => w.Watch(Advance, s, s.Clone()));
+            Assert.That((healthy != null, none), Is.EqualTo((true, (BalanceLab.PactRecord)null)), "A read that does not throw leaves the watch on.");
+        }
+
+        [Test]
+        public void ThePactWatchReadsTheKnownPairRowsAndWhoLeftAGrownPactFromTheRecord()
+        {
+            Fixture(5402u, AlumniRules.GrowingPacts, out _, out _, out var s, out string pactId);
+            string dan = On(s, Dan), janelle = On(s, Janelle), will = On(s, Will), vanessa = On(s, Vanessa), danielle = On(s, Danielle);
+            string derrick = On(s, Derrick), cody = On(s, Cody);
+            Assert.That(s.ledger.power, Is.Empty, "Precondition: no power row yet.");
+
+            // Dan, an NPC Head of Household, puts both Hitmen up one week and Derrick and Will the next: of the live pair, Derrick
+            // and Cody could go up each week (four member-weeks), and three went up. Nobody of a pair put the other up: no public split.
+            var block = s.Clone();
+            block.phase = EpisodePhase.Nomination;
+            block.hohId = dan;
+            block.nominees.Clear();
+            var named = block.Clone();
+            named.nominees.AddRange(new[] { derrick, cody });
+            var watch = new BalanceLab.PactWatch(block);
+            watch.Watch(Advance, block, named);
+            var nextBlock = named.Clone();
+            nextBlock.week++;
+            nextBlock.nominees.Clear();
+            nextBlock.ledger.power.Add(new PowerRow { week = named.week, hohId = dan, nominees = { derrick, cody } });
+            var nextNamed = nextBlock.Clone();
+            nextNamed.nominees.AddRange(new[] { derrick, will });
+            watch.Watch(Advance, nextBlock, nextNamed);
+            var final = nextNamed.Clone();
+            final.ledger.power.Add(new PowerRow { week = nextNamed.week, hohId = dan, nominees = { derrick, will } });
+            var closed = watch.Close(final);
+            Assert.That((closed.memberWeeks, closed.memberPutUps, closed.publicSplit), Is.EqualTo((4, 3, false)));
+            Assert.That(closed.scoresHash, Is.EqualTo(BalanceLab.PactWatch.ScoresHash(final)));
+
+            // Cody's own block holds Derrick: the Hitmen split in public.
+            var split = s.Clone();
+            split.ledger.power.Add(new PowerRow { week = split.week, hohId = cody, nominees = { derrick, vanessa } });
+            Assert.That(new BalanceLab.PactWatch(s).Close(split).publicSplit, Is.True);
+
+            // The scores' hash reads every edge's score, whatever order the edges are kept in.
+            var reordered = final.Clone();
+            reordered.relationships.Reverse();
+            Assert.That(BalanceLab.PactWatch.ScoresHash(reordered), Is.EqualTo(closed.scoresHash));
+            AllWeekCadenceTests.Score(reordered, vanessa, danielle, 1);
+            Assert.That(BalanceLab.PactWatch.ScoresHash(reordered), Is.Not.EqualTo(closed.scoresHash));
+
+            // The Hitmen in a pact of their own again.
+            var reformed = s.Clone();
+            reformed.alliances.Add(new AllianceState { id = NpcAlliances.HouseguestPactPrefix + "watch-hitmen", name = "Hitmen", members = { derrick, cody } });
+            Assert.That((WatchOne(s, s.Clone()).hitmenReformed, WatchOne(s, reformed).hitmenReformed), Is.EqualTo((false, true)));
+
+            // Dan, Janelle and Will, grown by the rule, vote Vanessa out whole: three of four votes, and without them Danielle's
+            // one would have led - an eviction an outsider bloc carried. Five of five is no bloc's doing.
+            var grown = s.Clone();
+            Assert.That(NpcAlliances.TryJoin(grown, will, new HashSet<string>(StringComparer.Ordinal), out _), Is.True);
+            grown.week++;
+            grown.votes.Clear();
+            VoteState Vote(string voter, string target) => new VoteState { voterId = voter, targetId = target };
+            var carried = grown.Clone();
+            carried.votes.AddRange(new[] { Vote(dan, vanessa), Vote(janelle, vanessa), Vote(will, vanessa), Vote(derrick, danielle) });
+            carried.ledger.power.Add(new PowerRow { week = carried.week, hohId = cody, nominees = { vanessa, danielle }, tally = { 3, 1 }, evicteeId = vanessa });
+            Assert.That(WatchOne(grown, carried).blocCarried, Is.EqualTo(1));
+            var landslide = grown.Clone();
+            landslide.votes.AddRange(new[] { Vote(dan, vanessa), Vote(janelle, vanessa), Vote(will, vanessa), Vote(derrick, vanessa), Vote(cody, vanessa) });
+            landslide.ledger.power.Add(new PowerRow { week = landslide.week, hohId = s.playerId, nominees = { vanessa, danielle }, tally = { 5, 0 }, evicteeId = vanessa });
+            Assert.That(WatchOne(grown, landslide).blocCarried, Is.Zero);
+
+            // Out of a grown pact that stands on: a founder is a founder and a joiner a joiner, whatever place in the roster a
+            // founder's leaving has moved the joiner to.
+            var leaves = new BalanceLab.PactWatch(s);
+            var joined = s.Clone();
+            Assert.That(NpcAlliances.TryJoin(joined, will, new HashSet<string>(StringComparer.Ordinal), out _), Is.True);
+            leaves.Watch(Advance, s, joined);
+            var next = joined.Clone();
+            next.week++;
+            var founderOut = next.Clone();
+            Pact(founderOut, pactId).members.Remove(dan);
+            leaves.Watch(Advance, next, founderOut);
+            Assert.That((leaves.record.foundersOut, leaves.record.joinersOut, leaves.record.shed), Is.EqualTo((1, 0, 0)), "Dan, a founder, leaves.");
+            var joinerOut = founderOut.Clone();
+            Assert.That(Pact(joinerOut, pactId).members.IndexOf(will), Is.EqualTo(1), "Precondition: Will now stands second.");
+            Pact(joinerOut, pactId).members.Remove(will);
+            leaves.Watch(Advance, founderOut, joinerOut);
+            Assert.That((leaves.record.foundersOut, leaves.record.joinersOut, leaves.record.shed), Is.EqualTo((1, 1, 0)), "Will, a joiner, leaves.");
+
+            // The report's known-pair rows read the autopsy: out by week 2, and the week the first leaves.
+            var metrics = AlumniReport.Metrics();
+            BalanceLab.SeasonRun Season(params (string id, int outWeek)[] guests) => new BalanceLab.SeasonRun
+            {
+                cell = AllStars8(),
+                autopsy = new SeasonAutopsy.Report { houseguests = guests.Select(g => new SeasonAutopsy.Houseguest { id = g.id, outWeek = g.outWeek }).ToList() },
+                pactWatch = new BalanceLab.PactRecord { members = { "m1", "m2" } },
+            };
+            double? Read(string name, BalanceLab.SeasonRun run) => metrics.Single(x => x.name == name).of(run);
+            Assert.That(Read("a known-pair member out by week 2", Season(("m1", 2), ("m2", 3), ("o1", 1))), Is.EqualTo(1));
+            Assert.That(Read("a known-pair member out by week 2", Season(("m1", 3), ("m2", 0), ("o1", 1))), Is.EqualTo(0), "Week 3 is past it; an outsider's week 1 is not a member's.");
+            Assert.That(Read("week the first known-pair member leaves", Season(("m1", 0), ("m2", 4), ("o1", 1))), Is.EqualTo(4), "A finalist never left.");
+            var failedWatch = Season(("m1", 2), ("m2", 3));
+            failedWatch.pactWatch.watchError = "NullReferenceException: test";
+            Assert.That((Read("a known-pair member out by week 2", failedWatch), Read("weeks a season", failedWatch)), Is.EqualTo(((double?)null, (double?)0)),
+                "A watch that threw loses its own rows, never the season's others.");
+        }
+
+        // ------------------------------------------------------------------ the statistics (S4's review)
+
+        [Test]
+        public void TheRatioAndRateRowsAndStopOnesPairedReadingReadAsTheirLabelsSay()
+        {
+            const double Z = 1.959963984540054;
+            // A pooled ratio: the cell's put-ups over its member-weeks, each season one cluster - never the mean of the seasons' ratios (0.381 here).
+            var pooled = AlumniReport.RatioSummary(new[] { (2.0, 2.0), (2.0, 14.0), (0.0, 4.0) });
+            Assert.That((pooled.n, pooled.num, pooled.den), Is.EqualTo((3, 4.0, 20.0)));
+            Assert.That(pooled.mean, Is.EqualTo(0.2).Within(1e-12));
+            Assert.That(pooled.low, Is.EqualTo(0.2 - Z * 0.12).Within(1e-12), "Residuals 1.6, -0.8, -0.8: se 0.8 / (20/3).");
+            Assert.That(pooled.high, Is.EqualTo(0.2 + Z * 0.12).Within(1e-12));
+            Assert.That(AlumniReport.RatioSummary(new[] { (0.0, 0.0), (0.0, 0.0) }).mean, Is.NaN, "No exposure, no ratio.");
+
+            // Two pooled ratios paired by seed: R(later) - R(earlier), each pair's linearised terms 0.12, -0.06 and -0.06.
+            BalanceLab.SeasonRun Run(int index, int num, int den) => new BalanceLab.SeasonRun { index = index, seed = (uint)(900 + index), commands = num, own = den };
+            var later = new[] { Run(0, 2, 2), Run(1, 2, 14), Run(2, 0, 4) };
+            var earlier = new[] { Run(0, 1, 2), Run(1, 1, 14), Run(2, 0, 4) };
+            var ratio = AlumniReport.PairedRatio(later, earlier, x => (x.commands, x.own));
+            Assert.That((ratio.n, ratio.tested, ratio.beyond), Is.EqualTo((3, true, false)), "0.1 within 0.118 of nought.");
+            Assert.That(ratio.mean, Is.EqualTo(0.1).Within(1e-12));
+            Assert.That(ratio.low, Is.EqualTo(0.1 - Z * 0.06).Within(1e-12));
+            Assert.That(ratio.high, Is.EqualTo(0.1 + Z * 0.06).Within(1e-12));
+            Assert.Throws<ArgumentException>(() => AlumniReport.PairedRatio(later, new[] { Run(0, 1, 2), Run(1, 1, 14), Run(5, 0, 4) }, x => (x.commands, x.own)));
+
+            // A rare rate: four seasons in a hundred move one way. The normal interval of the 0/1 differences calls it beyond
+            // noise; McNemar (4:0, p 0.125) does not, and Newcombe's interval holds nought.
+            BalanceLab.SeasonRun Flagged(int index, bool flag) => new BalanceLab.SeasonRun { index = index, seed = (uint)(100 + index), commands = flag ? 1 : 0 };
+            var none = Enumerable.Range(0, 100).Select(i => Flagged(i, false)).ToList();
+            var four = Enumerable.Range(0, 100).Select(i => Flagged(i, i < 4)).ToList();
+            Func<BalanceLab.SeasonRun, double?> flagOf = x => x.commands;
+            Assert.That(AlumniReport.Beyond(AlumniReport.Paired(four, none, flagOf)), Is.True, "Precondition: the normal interval excludes nought.");
+            var rate = AlumniReport.PairedRate(four, none, flagOf);
+            Assert.That((rate.n, rate.b, rate.c, rate.tested, rate.beyond), Is.EqualTo((100, 4, 0, true, false)));
+            Assert.That(rate.p, Is.EqualTo(0.125).Within(1e-12));
+            Assert.That(rate.mean, Is.EqualTo(0.04).Within(1e-12));
+            Assert.That(rate.low < 0 && rate.high > 0.04, Is.True, "Newcombe's interval: " + rate.low + " to " + rate.high);
+            // Six in twenty all one way: p = 2/64, beyond noise, and Newcombe's interval agrees.
+            var six = Enumerable.Range(0, 20).Select(i => Flagged(i, i < 6)).ToList();
+            var twentyNone = Enumerable.Range(0, 20).Select(i => Flagged(i, false)).ToList();
+            var r6 = AlumniReport.PairedRate(six, twentyNone, flagOf);
+            Assert.That((r6.b, r6.c, r6.beyond), Is.EqualTo((6, 0, true)));
+            Assert.That(r6.p, Is.EqualTo(2.0 / 64).Within(1e-12));
+            Assert.That(r6.low, Is.GreaterThan(0));
+            var back = AlumniReport.PairedRate(twentyNone, six, flagOf);
+            Assert.That((back.b, back.c, back.beyond, back.mean), Is.EqualTo((0, 6, true, -0.3)));
+            // Newcombe's interval: arms that always agree have none; φ joins the margins (the same arms, uncorrelated, would spread).
+            var agree = AlumniReport.Newcombe(10, 0, 0, 10);
+            Assert.That(agree.low, Is.EqualTo(0).Within(1e-9), "Arms that always agree.");
+            Assert.That(agree.high, Is.EqualTo(0).Within(1e-9));
+            var spread = AlumniReport.Newcombe(10, 6, 0, 4);
+            Assert.That(spread.low < 0.3 && spread.high > 0.3 && spread.low > 0, Is.True, "A difference of 0.3, ten pairs agreeing: " + spread.low + " to " + spread.high);
+            Assert.That(AlumniReport.Newcombe(0, 0, 0, 0).low, Is.NaN);
+
+            // Stop condition 1's two readings. Seventy per cent of twenty is within noise of 80% by arm 5's own interval, but six
+            // seasons in twenty went the wrong way against arm 1: the paired reading fires, growth the cause where arm 4 meets it.
+            Assert.That(AlumniReport.StopOne(0.80, false, (20, 20), (20, 20), (14, 20)), Is.EqualTo((false, false)));
+            Assert.That(AlumniReport.StopOnePaired(0.80, false, (20, 20), (20, 20), (14, 20), (0, 6, 2.0 / 64)), Is.EqualTo((true, true)));
+            Assert.That(AlumniReport.StopOnePaired(0.80, false, (20, 20), (12, 20), (14, 20), (0, 6, 2.0 / 64)), Is.EqualTo((true, false)), "Arm 4 crosses too.");
+            Assert.That(AlumniReport.StopOnePaired(0.80, false, (20, 20), (20, 20), (14, 20), (6, 0, 2.0 / 64)), Is.EqualTo((false, false)), "The right way is no crossing.");
+            Assert.That(AlumniReport.StopOnePaired(0.80, false, (20, 20), (20, 20), (14, 20), (0, 4, 0.125)), Is.EqualTo((false, false)), "Within noise.");
+            Assert.That(AlumniReport.StopOnePaired(0.80, false, (15, 20), (20, 20), (14, 20), (0, 6, 2.0 / 64)), Is.EqualTo((false, false)), "Arm 1 does not meet it.");
+            Assert.That(AlumniReport.StopOnePaired(0.80, false, (20, 20), (20, 20), (16, 20), (0, 4, 0.02)), Is.EqualTo((false, false)), "Arm 5 at the line is not past it.");
+            Assert.That(AlumniReport.StopOnePaired(0.25, true, (0, 20), (0, 20), (6, 20), (6, 0, 2.0 / 64)), Is.EqualTo((true, true)), "Pile-ons: more is the wrong way.");
+        }
+
+        // ------------------------------------------------------------------ the report whole (S4's review)
+
+        private const int Seeds = 20;
+
+        /// <summary>A season the report reads, made by hand: a known pair (m1, m2) who reach the end, an outsider out first, four member-weeks and one put-up.</summary>
+        private static BalanceLab.SeasonRun Synthetic(BalanceLab.Cell cell, int index)
+        {
+            int arm = BalanceLabAlumniReport.ArmOf(cell);
+            var record = new BalanceLab.PactRecord { rulesLow = arm, rulesHigh = arm, members = { "m1", "m2" }, pairs = { "fact:m1|m2" }, memberWeeks = 4, memberPutUps = 1, scoresHash = "s" };
+            foreach (string row in BalanceLab.PactWatch.MustBeZero) record.mustBeZero[row] = 0;
+            return new BalanceLab.SeasonRun
+            {
+                cell = cell, index = index, seed = BalanceLab.Seed(cell, index), commands = 100,
+                autopsy = new SeasonAutopsy.Report
+                {
+                    weeks = 7,
+                    houseguests = { new SeasonAutopsy.Houseguest { id = "m1" }, new SeasonAutopsy.Houseguest { id = "m2" }, new SeasonAutopsy.Houseguest { id = "o1", outWeek = 1 } },
+                    weeksPlayed = { new SeasonAutopsy.WeekRow { week = 1, evicteeId = "o1" } },
+                },
+                pace = new StoryPacingTests.Pace(),
+                pactWatch = record,
+            };
+        }
+
+        [Test]
+        public void TheReportPutsItsBugLinesTheNearZeroRuleAndBothStopConditionsWhereThePlanSays()
+        {
+            var cells = BalanceLabAlumniReport.ReportCells();
+            var runs = cells.SelectMany(c => Enumerable.Range(0, Seeds).Select(i => Synthetic(c, i))).ToList();
+            List<BalanceLab.SeasonRun> At(string policy, string card, int size, int arm) =>
+                runs.Where(r => r.cell.policy == policy && r.cell.playerTemplate == card && r.cell.size == size && BalanceLabAlumniReport.ArmOf(r.cell) == arm).OrderBy(r => r.index).ToList();
+            const string Passive = BalancePolicies.Passive, Studier = BalancePolicies.Studier, Social = BalancePolicies.Social, Card = BalanceLabAlumniReport.Card;
+            // The twelve-house grows at 5; the eight-house never does: the near-zero rule fires for each eight-house player.
+            foreach (var r in runs.Where(r => r.cell.size == 12 && BalanceLabAlumniReport.ArmOf(r.cell) == 5)) r.pactWatch.joins = 1;
+            // One cap breach at 5, one season not at its arm's value at 3, one watch that threw at 2.
+            At(Passive, null, 12, 5)[0].pactWatch.mustBeZero["a cap breach"] = 1;
+            var wrongArm = At(Studier, null, 12, 3)[5];
+            wrongArm.pactWatch.rulesLow = wrongArm.pactWatch.rulesHigh = 4;
+            At(Social, null, 12, 2)[3].pactWatch.watchError = "NullReferenceException: test";
+            // Stop 1 as built and paired, growth the cause: the social newcomer's 8-house piles on at 5 and at 2, never at 1 or 4.
+            foreach (var r in At(Social, null, 8, 5).Concat(At(Social, null, 8, 2))) r.pace.pileOns = 1;
+            // Paired only: the studier's 8-house loses six pariah-free seasons in twenty at 5 (70%, within noise of 80% by its own interval).
+            foreach (var r in At(Studier, null, 8, 5).Take(6)) r.pace.pariah = true;
+            // Stop 1 with arm 4 crossing too: Cody's card in the twelve-house piles on at 4 and 5.
+            foreach (var r in At(Passive, Card, 12, 4).Concat(At(Passive, Card, 12, 5))) r.pace.pileOns = 1;
+            // Stop 2 at 4 only: a known-pair member the first evictee in every passive 8-house season at 4.
+            foreach (var r in At(Passive, null, 8, 4)) r.autopsy.weeksPlayed[0].evicteeId = "m1";
+            // A pooled ratio unlike the seasons' mean: the studier's twelve-house at 5, ten seasons of 1 in 2 and ten of 1 in 14.
+            var studier12 = At(Studier, null, 12, 5);
+            for (int i = 0; i < Seeds; i++) studier12[i].pactWatch.memberWeeks = i < 10 ? 2 : 14;
+            // A rare rate: four public splits in twenty at 2 against none at 1 (McNemar 4:0, p 0.125).
+            foreach (var r in At(Passive, null, 12, 2).Take(4)) r.pactWatch.publicSplit = true;
+            // Play that differs: one pair's row, and two pairs' final scores, at 2 against 1.
+            var passive8 = At(Passive, null, 8, 2);
+            passive8[0].commands = 101;
+            passive8[1].pactWatch.scoresHash = passive8[2].pactWatch.scoresHash = "t";
+
+            var built = AlumniReport.Build(cells, runs, new AlumniReport.Meta { seeds = Seeds, threads = 1, minutes = 1, commit = "test", command = "test", host = "test", started = "test" });
+            var lines = built.text.Split(new[] { "\r\n", "\n" }, StringSplitOptions.RemoveEmptyEntries);
+            string Who(string policy, string card) => card == null ? policy + " newcomer" : policy + " on " + card;
+            Assert.That(lines[0], Does.StartWith("Near-zero rule (14.L.H): fewer than one season in ten of an 8-house cell at alumni rules 5 holds a join - " + Who(Passive, null) + " 0.0%"));
+            Assert.That(lines[0], Does.Contain("In the twelve-house: " + Who(Passive, null) + " at 12 100.0%"));
+            Assert.That(lines[1], Does.StartWith("BUG: must be zero, is 1 at arm 5 (shipped): a cap breach (first: " + At(Passive, null, 12, 5)[0].cell.Key + " #0)."));
+            Assert.That(lines[2], Does.StartWith("BUG: must be zero, is 1 at arm 3 (held): a season not at its arm's value (first: " + wrongArm.cell.Key + " #5)."));
+            Assert.That(lines[3], Does.StartWith("BUG: must be zero, is 1 at arm 2 (held): the watch threw").And.Contain("The watch's error: NullReferenceException: test."));
+            Assert.That(lines[4], Does.StartWith("# All-Star loyalty, reputation and known blocs"));
+            Assert.That(built.text, Does.Contain("| 2 - 1 | 3 - 2 | 4 - 3 | 5 - 4 | 4 - 0 | 5 - 0 |"), "Every comparison 14.H names, in its order.");
+            Assert.That(built.text, Does.Contain("- Stop condition 1, as built (arm 5's own interval past the line), **FIRES** in 2: " + Who(Social, null) + " 8 (pile-on"));
+            Assert.That(built.text, Does.Contain("- Stop condition 1, paired reading (the 5 - 1 difference beyond noise the wrong way), **FIRES** in 3: "));
+            Assert.That(built.text, Does.Contain("- Stop condition 2 **FIRES** in 1: " + Who(Passive, null) + " 8 at 4 (100.0%"));
+
+            var json = JObject.Parse(built.json);
+            string Key(JToken x) => (string)x["player"] + "/" + (int)x["size"] + "/" + (string)x["budget"];
+            var one = json["stopConditions"].Where(x => (int)x["condition"] == 1).ToList();
+            Assert.That(one, Has.Count.EqualTo(16), "Two budgets in each of eight cells.");
+            string pile = "pile-on <= 25%", pariah = "pariah-free >= 80%";
+            Assert.That(one.Where(x => (bool)x["fires"]).Select(x => Key(x) + ":" + (bool)x["growthTheCause"]),
+                Is.EquivalentTo(new[] { Who(Social, null) + "/8/" + pile + ":True", Who(Passive, Card) + "/12/" + pile + ":False" }));
+            Assert.That(one.Where(x => (bool)x["firesPaired"]).Select(x => Key(x) + ":" + (bool)x["growthTheCausePaired"]),
+                Is.EquivalentTo(new[] { Who(Social, null) + "/8/" + pile + ":True", Who(Studier, null) + "/8/" + pariah + ":True", Who(Passive, Card) + "/12/" + pile + ":False" }));
+            var two = json["stopConditions"].Where(x => (int)x["condition"] == 2).ToList();
+            Assert.That(two.Where(x => (bool)x["firesAt4"]).Select(x => (string)x["player"] + "/" + (int)x["size"]), Is.EqualTo(new[] { Who(Passive, null) + "/8" }));
+            Assert.That(two.Where(x => (bool)x["firesAt5"]), Is.Empty);
+            Assert.That(json["mustBeZero"].Where(x => (int)x["count"] != 0).Select(x => (string)x["row"] + "@" + (int)x["arm"] + "=" + (int)x["count"]),
+                Is.EquivalentTo(new[] { "a cap breach@5=1", "a season not at its arm's value@3=1", "the watch threw@2=1" }));
+            Assert.That(json["mustBeZero"].Select(x => (string)x["row"]).Distinct(),
+                Is.EqualTo(BalanceLab.PactWatch.MustBeZero.Concat(AlumniReport.SeasonBugs.Select(b => b.row))), "Every row, the watch's first.");
+            Assert.That(json["nearZero"].Where(x => (bool)x["fires"]).Select(x => (int)x["size"]), Is.EqualTo(new[] { 8, 8, 8, 8 }));
+
+            // The pooled ratio, the rare rate, and the play that differs.
+            var put = json["cells"].Single(x => (string)x["metric"] == "known-pair member put up by an NPC HoH, per member-week (pooled)" && (string)x["player"] == Who(Studier, null)
+                && (int)x["size"] == 12 && (int)x["arm"] == 5);
+            Assert.That(((double)put["mean"], (double)put["sums"]["num"], (double)put["sums"]["den"]), Is.EqualTo((0.125, 20.0, 160.0)), "20 put-ups over 160 member-weeks, not 0.286.");
+            var splitRow = json["comparisons"].Single(x => (string)x["metric"] == "a known pair split in public" && (string)x["player"] == Who(Passive, null)
+                && (int)x["size"] == 12 && (int)x["later"] == 2 && (int)x["earlier"] == 1);
+            Assert.That(((bool)splitRow["beyond"], (int)splitRow["mcNemar"]["b"], (int)splitRow["mcNemar"]["c"], (double)splitRow["mean"]), Is.EqualTo((false, 4, 0, 0.2)));
+            var differ = json["playsDifferently"].Single(x => (string)x["player"] == Who(Passive, null) && (int)x["size"] == 8 && (int)x["later"] == 2 && (int)x["earlier"] == 1);
+            Assert.That(((int)differ["pairs"], (int)differ["rowsDiffer"], (int)differ["scoresDiffer"]), Is.EqualTo((Seeds, 1, 2)));
+            Assert.That(json["playsDifferently"].Where(x => (int)x["later"] == 2 && (int)x["earlier"] == 1 && (string)x["player"] != Who(Passive, null)).Sum(x => (int)x["rowsDiffer"]),
+                Is.Zero, "Arms 1 and 2 play alike in every other cell (the watch that threw changes no row).");
+
+            // The primary family, 14.H's headline and known-pair rows, is listed first and counted apart, and only a comparison with a
+            // test counts: Q4, the weekly wins and the week a member leaves read no season here, so seven primary rows in eight cells at six comparisons.
+            Assert.That(json["meta"]["primaryRows"].Select(x => (string)x), Is.EqualTo(new[]
+            {
+                "Q3 season wins", "Q4 nomination rate (NPC HoH)", "weekly competition win rate", "known-pair member put up by an NPC HoH, per member-week (pooled)",
+                "first evictee a known-pair member", "a known-pair member out by week 2", "week the first known-pair member leaves", "a known pair split in public",
+                "pile-on seasons", "pariah-free seasons",
+            }));
+            Assert.That((int)json["crossed"]["primaryTested"], Is.EqualTo(7 * 8 * 6));
+            Assert.That(json["crossed"]["primary"].Select(x => (string)x), Has.Some.StartsWith("pile-on seasons, " + Who(Social, null) + " 8, 5 - 4: "), "Piling on at 5 and never at 4.");
+            Assert.That(json["crossed"]["other"].Select(x => (string)x), Has.None.StartsWith("pile-on seasons"));
+
+            // The watch's tables reach the JSON cell by cell and pooled, and the CSV carries the ratio rows' parts and the hashes.
+            var tables = (JObject)json["pactTables"];
+            Assert.That(tables.Properties().Select(p => p.Name), Is.EquivalentTo(new[] { "largestOutsiderPact", "heldBack", "grownEnds", "hitmenFinalTwo", "pileOns" }));
+            Assert.That(tables["heldBack"].Select(x => (string)x["player"]).Distinct(), Is.EquivalentTo(BalanceLabAlumniReport.ReportPlayers.Select(p => Who(p.policy, p.card)).Concat(new[] { "every player" })));
+            Assert.That(tables["heldBack"], Has.Count.EqualTo(2 * 5 * 6), "Eight cells and two pooled lines, at six arms.");
+            var csv = built.csv.Split(new[] { "\r\n", "\n" }, StringSplitOptions.RemoveEmptyEntries);
+            Assert.That(csv[0], Does.EndWith(",memberWeeks,memberPutUps,joins,blocLiveWeeks,foundersOut,scoresHash,rowHash,watchError"));
+            Assert.That(csv, Has.Length.EqualTo(1 + runs.Count));
         }
     }
 }

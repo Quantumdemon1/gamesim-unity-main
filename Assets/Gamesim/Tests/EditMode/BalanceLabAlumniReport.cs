@@ -219,7 +219,8 @@ namespace Gamesim.Tests.EditMode
 
         /// <summary>
         /// The commit the report ran from: BALANCE_COMMIT when set, else the source tree's HEAD, read from its .git (a worktree's
-        /// pointer and the common directory followed, loose refs then packed-refs). Changes not yet committed are not shown.
+        /// pointer and the common directory followed, loose refs then packed-refs). Changes not yet committed are not shown, so
+        /// the full run is made from a clean tree or an archive of the commit (14.H's as-built note).
         /// </summary>
         internal static string SourceCommit()
         {
@@ -252,7 +253,7 @@ namespace Gamesim.Tests.EditMode
             }
             catch (IOException) { }
             catch (UnauthorizedAccessException) { }
-            return "unknown";
+            return "unknown (no .git found: the tree's state is unknown)";
         }
 
         private static string GitDirOf(string root, string text)
@@ -279,19 +280,32 @@ namespace Gamesim.Tests.EditMode
             public string commit, command, host, started;
         }
 
-        /// <summary>One row of the report: a per-season value (null where the season has none), a rate or a mean.</summary>
+        /// <summary>
+        /// One row of the report: a per-season value (null where the season has none), a rate or a mean - or a ratio, pooled
+        /// over the cell's seasons (<see cref="ratio"/>). <see cref="primary"/> marks 14.H's own headline and known-pair rows,
+        /// whose crossings are listed first.
+        /// </summary>
         internal sealed class Metric
         {
             public string name, section, format = "0.000";
-            public bool rate, compared = true;
+            public bool rate, compared = true, primary;
             public Func<BalanceLab.SeasonRun, double?> of;
+            /// <summary>
+            /// A ratio row's numerator and denominator a season ("put up" over "member-weeks"), null where the season is not
+            /// read: the cell's value is the sum over the sum, never the mean of the seasons' ratios, and its intervals are the
+            /// season-clustered ones (<see cref="RatioSummary"/>, <see cref="PairedRatio"/>). <see cref="of"/> is the season's own ratio, for the CSV.
+            /// </summary>
+            public Func<BalanceLab.SeasonRun, (double num, double den)?> ratio;
         }
 
         private const double Z = 1.959963984540054;
 
         private static double? Flag(bool value) => value ? 1 : 0;
         private static BalanceLab.PactRecord W(BalanceLab.SeasonRun r) => r.pactWatch;
-        private static bool Ok(BalanceLab.SeasonRun r) => r.error == null && r.autopsy != null && r.pactWatch != null;
+        /// <summary>A season the lab played to its end.</summary>
+        private static bool Ok(BalanceLab.SeasonRun r) => r.error == null && r.autopsy != null;
+        /// <summary>A played season whose pact watch saw it whole: the watch's rows read only these, so a watch that threw loses its own rows and no other.</summary>
+        internal static bool Watched(BalanceLab.SeasonRun r) => Ok(r) && r.pactWatch != null && r.pactWatch.watchError == null;
 
         /// <summary>When each known-pair member left the house (0 a finalist), from the autopsy.</summary>
         private static List<int> MemberOutWeeks(BalanceLab.SeasonRun r) =>
@@ -313,18 +327,34 @@ namespace Gamesim.Tests.EditMode
         internal static List<Metric> Metrics()
         {
             var m = new List<Metric>();
-            void AddRate(string section, string name, Func<BalanceLab.SeasonRun, double?> of) => m.Add(new Metric { section = section, name = name, rate = true, of = r => Ok(r) ? of(r) : null });
-            void AddMean(string section, string name, string format, Func<BalanceLab.SeasonRun, double?> of, bool compared = true) =>
-                m.Add(new Metric { section = section, name = name, format = format, compared = compared, of = r => Ok(r) ? of(r) : null });
+            // A row the watch writes reads only a season the watch saw whole; a headline, pacing or story row reads every played season.
+            Func<BalanceLab.SeasonRun, double?> Guarded(bool watch, Func<BalanceLab.SeasonRun, double?> of) => r => (watch ? Watched(r) : Ok(r)) ? of(r) : null;
+            void AddRate(string section, string name, Func<BalanceLab.SeasonRun, double?> of, bool watch = true, bool primary = false) =>
+                m.Add(new Metric { section = section, name = name, rate = true, primary = primary, of = Guarded(watch, of) });
+            void AddMean(string section, string name, string format, Func<BalanceLab.SeasonRun, double?> of, bool compared = true, bool watch = true, bool primary = false) =>
+                m.Add(new Metric { section = section, name = name, format = format, compared = compared, primary = primary, of = Guarded(watch, of) });
+            void AddRatio(string section, string name, Func<BalanceLab.SeasonRun, (double num, double den)> of, bool primary = false)
+            {
+                Func<BalanceLab.SeasonRun, (double num, double den)?> ratio = r => Watched(r) ? of(r) : ((double num, double den)?)null;
+                m.Add(new Metric
+                {
+                    section = section, name = name, primary = primary, ratio = ratio,
+                    of = r =>
+                    {
+                        var v = ratio(r);
+                        return v.HasValue && v.Value.den > 0 ? v.Value.num / v.Value.den : (double?)null;
+                    },
+                });
+            }
             const string Head = "Headline rates (section 9)", Pairs = "The known pairs (14.H)", Pace = "Pacing (14.H)", Watch = "The pact watch (14.L.H)";
-            AddRate(Head, "Q3 season wins", r => Flag(r.Won));
-            AddMean(Head, "Q4 nomination rate (NPC HoH)", "0.000", Q4);
-            AddMean(Head, "weekly competition win rate", "0.000", WeeklyWins);
-            AddMean(Pairs, "known-pair member put up by an NPC HoH, per member-week", "0.000", r => W(r).memberWeeks == 0 ? (double?)null : W(r).memberPutUps / (double)W(r).memberWeeks);
-            AddRate(Pairs, "first evictee a known-pair member", r => W(r).members.Count == 0 || FirstEvictee(r) == null ? (double?)null : Flag(W(r).members.Contains(FirstEvictee(r))));
-            AddRate(Pairs, "a known-pair member out by week 2", r => W(r).members.Count == 0 ? (double?)null : Flag(MemberOutWeeks(r).Any(w => w >= 1 && w <= 2)));
-            AddMean(Pairs, "week the first known-pair member leaves", "0.00", r => MemberOutWeeks(r).Where(w => w > 0).Select(w => (double?)w).DefaultIfEmpty(null).Min());
-            AddRate(Pairs, "a known pair split in public", r => W(r).members.Count == 0 ? (double?)null : Flag(W(r).publicSplit));
+            AddRate(Head, "Q3 season wins", r => Flag(r.Won), watch: false, primary: true);
+            AddMean(Head, "Q4 nomination rate (NPC HoH)", "0.000", Q4, watch: false, primary: true);
+            AddMean(Head, "weekly competition win rate", "0.000", WeeklyWins, watch: false, primary: true);
+            AddRatio(Pairs, "known-pair member put up by an NPC HoH, per member-week (pooled)", r => (W(r).memberPutUps, W(r).memberWeeks), primary: true);
+            AddRate(Pairs, "first evictee a known-pair member", r => W(r).members.Count == 0 || FirstEvictee(r) == null ? (double?)null : Flag(W(r).members.Contains(FirstEvictee(r))), primary: true);
+            AddRate(Pairs, "a known-pair member out by week 2", r => W(r).members.Count == 0 ? (double?)null : Flag(MemberOutWeeks(r).Any(w => w >= 1 && w <= 2)), primary: true);
+            AddMean(Pairs, "week the first known-pair member leaves", "0.00", r => MemberOutWeeks(r).Where(w => w > 0).Select(w => (double?)w).DefaultIfEmpty(null).Min(), primary: true);
+            AddRate(Pairs, "a known pair split in public", r => W(r).members.Count == 0 ? (double?)null : Flag(W(r).publicSplit), primary: true);
             AddRate(Pairs, "the Hitmen's final two broken", r => W(r).hitmenFinalTwo == null || W(r).hitmenFinalTwo == "none" ? (double?)null : Flag(W(r).hitmenFinalTwo == DealStatus.Broken));
             AddRate(Pairs, "the Hitmen re-form a pact", r => W(r).hitmenFirst == null ? (double?)null : Flag(W(r).hitmenReformed));
             AddRate(Pairs, "an outsider-only pact by week 3", r => W(r).members.Count == 0 ? (double?)null : Flag(W(r).outsiderPactByWeek3));
@@ -332,30 +362,31 @@ namespace Gamesim.Tests.EditMode
             AddMean(Pairs, "longest run of weeks one listener hears a bloc hunt", "0.00", r => W(r).longestListenerRun);
             AddMean(Pairs, "longest same-subject rumour run, weeks", "0.00", r => W(r).longestRumourRun);
             AddMean(Pairs, "goodwill share of past-game receipts at the end", "0.000", r => W(r).goodwill);
-            AddRate(Pairs, "pile-on seasons", r => r.pace == null ? (double?)null : Flag(r.pace.pileOns > 0));
-            AddRate(Pairs, "pariah-free seasons", r => r.pace == null ? (double?)null : Flag(!r.pace.pariah));
+            AddRate(Pairs, "pile-on seasons", r => r.pace == null ? (double?)null : Flag(r.pace.pileOns > 0), watch: false, primary: true);
+            AddRate(Pairs, "pariah-free seasons", r => r.pace == null ? (double?)null : Flag(!r.pace.pariah), watch: false, primary: true);
             AddRate(Pairs, "one houseguest put up three or more weeks running", r => Flag(W(r).putUpThreeRunning));
-            AddMean(Pace, "commands a season", "0.0", r => r.commands);
-            AddMean(Pace, "weeks a season", "0.0", r => r.autopsy.weeks);
+            AddMean(Pace, "commands a season", "0.0", r => r.commands, watch: false);
+            AddMean(Pace, "weeks a season", "0.0", r => r.autopsy.weeks, watch: false);
             AddMean(Pace, "decisions a week in the house", "0.00", r =>
             {
                 int weeks = r.autopsy.playerOutWeek > 0 ? r.autopsy.playerOutWeek : r.autopsy.weeks;
                 return (double)r.decisionsByWeek.Where(p => p.Key <= weeks).Sum(p => p.Value) / Math.Max(1, weeks);
-            });
-            AddMean(Pace, "ceremony s a regular week", "0.0", r => r.ceremonyByWeek.Count == 0 ? (double?)null : r.ceremonyByWeek.Values.Average());
-            AddMean(Pace, "seconds a season on its thread (timed)", "0.00", r => r.seasonMilliseconds / 1000.0, compared: false);
+            }, watch: false);
+            AddMean(Pace, "ceremony s a regular week", "0.0", r => r.ceremonyByWeek.Count == 0 ? (double?)null : r.ceremonyByWeek.Values.Average(), watch: false);
+            AddMean(Pace, "seconds a season on its thread (timed)", "0.00", r => r.seasonMilliseconds / 1000.0, compared: false, watch: false);
             AddMean(Watch, "births a season", "0.00", r => W(r).births);
             AddMean(Watch, "joins a season", "0.00", r => W(r).joins);
             AddRate(Watch, "seasons with a join", r => Flag(W(r).joins > 0));
             AddMean(Watch, "week of the first join", "0.00", r => W(r).firstJoinWeek == 0 ? (double?)null : W(r).firstJoinWeek);
             AddMean(Watch, "bloc-live weeks (bound above two)", "0.00", r => W(r).blocLiveWeeks.Count);
-            AddMean(Watch, "joins per bloc-live week", "0.000", r => W(r).blocLiveWeeks.Count == 0 ? (double?)null : W(r).joins / (double)W(r).blocLiveWeeks.Count);
+            AddRatio(Watch, "joins per bloc-live week (pooled)", r => (W(r).joins, W(r).blocLiveWeeks.Count));
             AddRate(Watch, "largest outsider pact reaches 3", r => Flag(W(r).largestOutsiderPact >= 3));
             AddRate(Watch, "largest outsider pact reaches 4", r => Flag(W(r).largestOutsiderPact >= 4));
             AddMean(Watch, "pact-weeks held below the bound by being known", "0.00", r => W(r).heldBack.Values.Sum());
             AddMean(Watch, "grown pacts", "0.00", r => W(r).grownEnds.Count);
             AddMean(Watch, "joiners shed", "0.00", r => W(r).shed);
             AddMean(Watch, "joiners out otherwise (a story's leave)", "0.00", r => W(r).joinersOut);
+            AddMean(Watch, "founders out of a grown pact", "0.00", r => W(r).foundersOut);
             AddMean(Watch, "NPCs in NPC-only pacts, weekly mean share", "0.000", r => W(r).npcPactShares.Count == 0 ? (double?)null : W(r).npcPactShares.Average());
             AddMean(Watch, "NPCs in NPC-only pacts, weekly most", "0.000", r => W(r).npcPactShares.Count == 0 ? (double?)null : W(r).npcPactShares.Max());
             AddRate(Watch, "two grown pacts at once", r => Flag(W(r).twoGrownAtOnce));
@@ -389,12 +420,11 @@ namespace Gamesim.Tests.EditMode
 
         /// <summary>
         /// A paired difference, later arm less earlier, over the seasons both hold a value for, paired by index (the runs come
-        /// ordered, and their seeds are checked equal): its mean and 95% interval, as the H1b gate computes them.
+        /// ordered, and their seeds are checked equal): its mean and 95% interval, as the H1b gate computes them. A mean row's.
         /// </summary>
         internal static (int n, double mean, double low, double high) Paired(IReadOnlyList<BalanceLab.SeasonRun> later, IReadOnlyList<BalanceLab.SeasonRun> earlier, Func<BalanceLab.SeasonRun, double?> of)
         {
-            if (later.Count != earlier.Count || later.Zip(earlier, (x, y) => x.seed != y.seed || x.index != y.index).Any(differ => differ))
-                throw new ArgumentException("The arms pair by seed.");
+            CheckPaired(later, earlier);
             var d = later.Zip(earlier, (x, y) => (x: of(x), y: of(y))).Where(p => p.x.HasValue && p.y.HasValue).Select(p => p.x.Value - p.y.Value).ToList();
             if (d.Count == 0) return (0, double.NaN, double.NaN, double.NaN);
             double mean = d.Average();
@@ -405,22 +435,169 @@ namespace Gamesim.Tests.EditMode
 
         internal static bool Beyond((int n, double mean, double low, double high) d) => !double.IsNaN(d.low) && (d.low > 0 || d.high < 0);
 
+        private static void CheckPaired(IReadOnlyList<BalanceLab.SeasonRun> later, IReadOnlyList<BalanceLab.SeasonRun> earlier)
+        {
+            if (later.Count != earlier.Count || later.Zip(earlier, (x, y) => x.seed != y.seed || x.index != y.index).Any(differ => differ))
+                throw new ArgumentException("The arms pair by seed.");
+        }
+
         /// <summary>
-        /// Stop condition 1 for one budget in one cell (14.H): it fires when the shipped arm crosses the budget beyond noise - its
-        /// 95% interval wholly on the wrong side of the line - where arm 1 meets it (its rate on the right side). Growth is
-        /// the cause when arm 4 meets it there.
+        /// A cell's value of a row, or a paired difference (later arm less earlier): the seasons or pairs read, the value and its
+        /// 95% interval; a ratio cell's sums; a rate difference's McNemar; whether a test was made, and whether it lies beyond noise.
+        /// </summary>
+        internal sealed class Stat
+        {
+            public int n;
+            public double mean = double.NaN, low = double.NaN, high = double.NaN;
+            /// <summary>A ratio cell's numerator and denominator, summed over its seasons.</summary>
+            public double num, den;
+            /// <summary>A rate's paired difference: the pairs where only the later arm holds the row (b), where only the earlier does (c), and McNemar's two-sided p.</summary>
+            public int b, c;
+            public double p = double.NaN;
+            /// <summary>Whether a test was made: two pairs or more (the comparisons the report counts).</summary>
+            public bool tested;
+            /// <summary>Beyond noise: a mean's or a ratio's interval excludes nought; a rate's McNemar p is under 0.05.</summary>
+            public bool beyond;
+        }
+
+        /// <summary>A cell's value of a row (14.H): a rate's share with its Wilson interval, a mean with the normal one, a ratio pooled with the season-clustered one.</summary>
+        internal static Stat CellValue(IEnumerable<BalanceLab.SeasonRun> runs, Metric metric)
+        {
+            if (metric.ratio != null) return RatioSummary(runs.Select(metric.ratio).Where(v => v.HasValue).Select(v => v.Value).ToList());
+            var s = Summary(runs, metric);
+            return new Stat { n = s.n, mean = s.mean, low = s.low, high = s.high };
+        }
+
+        /// <summary>
+        /// A ratio over a cell's seasons (14.H's "per member-week"; S4's review): R = Σnum / Σden, each season one cluster, with
+        /// the linearised standard error √(Σ(numᵢ − R·denᵢ)² / (n(n − 1))) / mean(den). A season with two member-weeks weighs a
+        /// seventh of one with fourteen, as the label promises; the mean of the seasons' own ratios would weigh them alike.
+        /// </summary>
+        internal static Stat RatioSummary(IReadOnlyList<(double num, double den)> seasons)
+        {
+            var stat = new Stat { n = seasons.Count, num = seasons.Sum(x => x.num), den = seasons.Sum(x => x.den) };
+            if (stat.n == 0 || stat.den <= 0) return stat;
+            double r = stat.num / stat.den, meanDen = stat.den / stat.n;
+            stat.mean = r;
+            if (stat.n < 2) return stat;
+            double se = Math.Sqrt(seasons.Sum(x => (x.num - r * x.den) * (x.num - r * x.den)) / (stat.n * (stat.n - 1.0))) / meanDen;
+            stat.low = r - Z * se;
+            stat.high = r + Z * se;
+            return stat;
+        }
+
+        /// <summary>
+        /// A paired difference of two pooled ratios (S4's review): R(later) − R(earlier) over the seeds both arms read, with
+        /// each pair's linearised term zᵢ = (numᵢ − R·denᵢ) / mean(den) of the later arm less the same of the earlier, and the
+        /// interval ± 1.96 · sd(z) / √n.
+        /// </summary>
+        internal static Stat PairedRatio(IReadOnlyList<BalanceLab.SeasonRun> later, IReadOnlyList<BalanceLab.SeasonRun> earlier, Func<BalanceLab.SeasonRun, (double num, double den)?> ratio)
+        {
+            CheckPaired(later, earlier);
+            var pairs = later.Zip(earlier, (x, y) => (x: ratio(x), y: ratio(y))).Where(p => p.x.HasValue && p.y.HasValue).Select(p => (x: p.x.Value, y: p.y.Value)).ToList();
+            var stat = new Stat { n = pairs.Count };
+            double denLater = pairs.Sum(p => p.x.den), denEarlier = pairs.Sum(p => p.y.den);
+            if (stat.n == 0 || denLater <= 0 || denEarlier <= 0) return stat;
+            double rLater = pairs.Sum(p => p.x.num) / denLater, rEarlier = pairs.Sum(p => p.y.num) / denEarlier;
+            double mLater = denLater / stat.n, mEarlier = denEarlier / stat.n;
+            stat.mean = rLater - rEarlier;
+            if (stat.n < 2) return stat;
+            var z = pairs.Select(p => (p.x.num - rLater * p.x.den) / mLater - (p.y.num - rEarlier * p.y.den) / mEarlier).ToList();
+            double zMean = z.Average(), half = Z * Math.Sqrt(z.Sum(v => (v - zMean) * (v - zMean)) / (stat.n - 1)) / Math.Sqrt(stat.n);
+            stat.low = stat.mean - half;
+            stat.high = stat.mean + half;
+            stat.tested = true;
+            stat.beyond = stat.low > 0 || stat.high < 0;
+            return stat;
+        }
+
+        /// <summary>
+        /// A paired difference of two rates (S4's review): the later arm's share less the earlier's over the seeds both read,
+        /// with Newcombe's hybrid score interval for paired proportions, and beyond noise by the lab's McNemar test
+        /// (<see cref="BalanceLab.McNemar"/>, exact under 25 discordant pairs) at p under 0.05 - never the normal interval of the
+        /// 0/±1 differences, which overstates a row that few seasons hold.
+        /// </summary>
+        internal static Stat PairedRate(IReadOnlyList<BalanceLab.SeasonRun> later, IReadOnlyList<BalanceLab.SeasonRun> earlier, Func<BalanceLab.SeasonRun, double?> of)
+        {
+            CheckPaired(later, earlier);
+            var pairs = later.Zip(earlier, (x, y) => (x: of(x), y: of(y))).Where(p => p.x.HasValue && p.y.HasValue).Select(p => (x: p.x.Value >= 0.5, y: p.y.Value >= 0.5)).ToList();
+            var stat = new Stat { n = pairs.Count };
+            if (stat.n == 0) return stat;
+            var mc = BalanceLab.McNemar(pairs.Select(p => p.x).ToList(), pairs.Select(p => p.y).ToList());
+            int both = pairs.Count(p => p.x && p.y);
+            stat.b = mc.b;
+            stat.c = mc.c;
+            stat.p = mc.p;
+            stat.mean = (mc.b - mc.c) / (double)stat.n;
+            (stat.low, stat.high) = Newcombe(both, mc.b, mc.c, stat.n - both - mc.b - mc.c);
+            if (stat.n < 2) return stat;
+            stat.tested = true;
+            stat.beyond = mc.p < 0.05;
+            return stat;
+        }
+
+        /// <summary>
+        /// Newcombe's hybrid score interval (1998, method 10) at 95% for the difference of two paired proportions, the first
+        /// less the second: <paramref name="a"/> pairs where both hold, <paramref name="b"/> only the first, <paramref name="c"/>
+        /// only the second, <paramref name="d"/> neither. Each margin's Wilson interval, joined through the pairs' correlation φ
+        /// (nought where a margin is empty).
+        /// </summary>
+        internal static (double low, double high) Newcombe(int a, int b, int c, int d)
+        {
+            int n = a + b + c + d;
+            if (n == 0) return (double.NaN, double.NaN);
+            double p1 = (double)(a + b) / n, p2 = (double)(a + c) / n, diff = p1 - p2;
+            var (l1, u1) = BalanceLab.Wilson(a + b, n);
+            var (l2, u2) = BalanceLab.Wilson(a + c, n);
+            double margins = (double)(a + b) * (c + d) * (a + c) * (b + d);
+            double phi = margins == 0 ? 0 : ((double)a * d - (double)b * c) / Math.Sqrt(margins);
+            double down = Math.Sqrt(Math.Max(0, Sq(p1 - l1) - 2 * phi * (p1 - l1) * (u2 - p2) + Sq(u2 - p2)));
+            double up = Math.Sqrt(Math.Max(0, Sq(u1 - p1) - 2 * phi * (u1 - p1) * (p2 - l2) + Sq(p2 - l2)));
+            return (Math.Max(-1, diff - down), Math.Min(1, diff + up));
+        }
+
+        private static double Sq(double x) => x * x;
+
+        /// <summary>A row's paired comparison, by its kind: a rate by McNemar with Newcombe's interval, a ratio pooled, a mean as the H1b gate computes it.</summary>
+        internal static Stat Compare(Metric metric, IReadOnlyList<BalanceLab.SeasonRun> later, IReadOnlyList<BalanceLab.SeasonRun> earlier)
+        {
+            if (metric.ratio != null) return PairedRatio(later, earlier, metric.ratio);
+            if (metric.rate) return PairedRate(later, earlier, metric.of);
+            var d = Paired(later, earlier, metric.of);
+            return new Stat { n = d.n, mean = d.mean, low = d.low, high = d.high, tested = d.n >= 2, beyond = Beyond(d) };
+        }
+
+        private static bool Meets(double line, bool atMost, (int k, int n) a) => a.n > 0 && (atMost ? (double)a.k / a.n <= line : (double)a.k / a.n >= line);
+
+        /// <summary>
+        /// Stop condition 1 for one budget in one cell (14.H), as built: it fires when the shipped arm crosses the budget beyond
+        /// noise - its own 95% interval wholly on the wrong side of the line - where arm 1 meets it (its rate on the right side).
+        /// Growth is the cause when arm 4 meets it there.
         /// </summary>
         internal static (bool fires, bool growthTheCause) StopOne(double line, bool atMost, (int k, int n) arm1, (int k, int n) arm4, (int k, int n) arm5)
         {
-            bool Meets((int k, int n) a) => a.n > 0 && (atMost ? (double)a.k / a.n <= line : (double)a.k / a.n >= line);
             bool Crosses((int k, int n) a)
             {
                 if (a.n == 0) return false;
                 var ci = BalanceLab.Wilson(a.k, a.n);
                 return atMost ? ci.low > line : ci.high < line;
             }
-            bool fires = Meets(arm1) && Crosses(arm5);
-            return (fires, fires && Meets(arm4));
+            bool fires = Meets(line, atMost, arm1) && Crosses(arm5);
+            return (fires, fires && Meets(line, atMost, arm4));
+        }
+
+        /// <summary>
+        /// Stop condition 1's paired reading (S4's review), printed beside the built one so the lead can choose: it fires where
+        /// arm 1 meets the budget, the shipped arm's own rate is past the line, and the paired 5 − 1 difference is beyond noise
+        /// in the bad direction (<paramref name="fiveLessOne"/>: McNemar's b where only arm 5 holds the row, c where only arm 1
+        /// does, p under 0.05). Growth is the cause when arm 4 meets it there.
+        /// </summary>
+        internal static (bool fires, bool growthTheCause) StopOnePaired(double line, bool atMost, (int k, int n) arm1, (int k, int n) arm4, (int k, int n) arm5, (int b, int c, double p) fiveLessOne)
+        {
+            bool past = arm5.n > 0 && (atMost ? (double)arm5.k / arm5.n > line : (double)arm5.k / arm5.n < line);
+            bool worse = fiveLessOne.p < 0.05 && (atMost ? fiveLessOne.b > fiveLessOne.c : fiveLessOne.b < fiveLessOne.c);
+            bool fires = Meets(line, atMost, arm1) && past && worse;
+            return (fires, fires && Meets(line, atMost, arm4));
         }
 
         /// <summary>Stop condition 2 (14.H): a known-pair member is the first evictee in more than half a cell's seasons.</summary>
@@ -434,22 +611,38 @@ namespace Gamesim.Tests.EditMode
             public string text, json, csv, summary;
         }
 
+        /// <summary>The report's own must-be-zero rows, after the watch's (<see cref="BalanceLab.PactWatch.MustBeZero"/>): each counts the seasons it holds.</summary>
+        internal static readonly (string row, Func<BalanceLab.SeasonRun, bool> holds)[] SeasonBugs =
+        {
+            ("a season whose alumni rules value moved", r => r.pactWatch != null && r.pactWatch.rulesLow != r.pactWatch.rulesHigh),
+            ("a season not at its arm's value", r => r.pactWatch != null
+                && (r.pactWatch.rulesLow != BalanceLabAlumniReport.ArmOf(r.cell) || r.pactWatch.rulesHigh != BalanceLabAlumniReport.ArmOf(r.cell))),
+            ("the watch threw", r => r.pactWatch?.watchError != null),
+            ("a season the lab could not play", r => r.error != null),
+        };
+
         private static string Who((string policy, string card) p) => p.card == null ? p.policy + " newcomer" : p.policy + " on " + p.card;
         private static string Arm(int arm) => arm == AlumniRules.Latest ? arm + " (shipped)" : arm == AlumniRules.Off ? "0 (no histories)" : arm + " (held)";
         private static string N(double v, string format) => BalanceLab.Num(v, format);
         private static string Signed(double v, string format) => BalanceLab.Num(v, "+" + format + ";-" + format + ";" + format);
         private static string Rate(int k, int n) => n == 0 ? "n/a" : BalanceLab.Pct((double)k / n) + " " + BalanceLab.Interval(BalanceLab.Wilson(k, n)) + " (" + k + "/" + n + ")";
 
-        private static string Value(Metric metric, (int n, double mean, double low, double high) s) =>
-            s.n == 0 ? "n/a" : metric.rate ? BalanceLab.Pct(s.mean) : N(s.mean, metric.format);
+        private static string Value(Metric metric, Stat s) =>
+            s.n == 0 || double.IsNaN(s.mean) ? "n/a"
+            : metric.rate ? BalanceLab.Pct(s.mean)
+            : metric.ratio != null ? N(s.mean, metric.format) + " (" + N(s.num, "0") + "/" + N(s.den, "0") + ")"
+            : N(s.mean, metric.format);
 
-        private static string Difference(Metric metric, (int n, double mean, double low, double high) d)
+        private static string Difference(Metric metric, Stat d)
         {
-            if (d.n == 0) return "n/a";
+            if (d.n == 0 || double.IsNaN(d.mean)) return "n/a";
             string f = metric.rate ? "0.000" : metric.format;
-            string text = Signed(d.mean, f) + (double.IsNaN(d.low) ? "" : " [" + Signed(d.low, f) + ", " + Signed(d.high, f) + "]");
-            return Beyond(d) ? "**" + text + "**" : text;
+            string text = Signed(d.mean, f) + (double.IsNaN(d.low) ? "" : " [" + Signed(d.low, f) + ", " + Signed(d.high, f) + "]")
+                + (metric.rate ? " " + d.b + ":" + d.c + " p " + N(d.p, "0.000") : "");
+            return d.beyond ? "**" + text + "**" : text;
         }
+
+        private static object Sums(Metric metric, Stat s) => metric.ratio == null ? null : new { s.num, s.den };
 
         /// <summary>The report, whole: the text for the owner, the JSON and the seasons' CSV.</summary>
         internal static Built Build(IReadOnlyList<BalanceLab.Cell> cells, IReadOnlyList<BalanceLab.SeasonRun> runs, Meta meta)
@@ -479,23 +672,24 @@ namespace Gamesim.Tests.EditMode
             var zeroTable = new StringBuilder();
             zeroTable.AppendLine("| row | " + string.Join(" | ", arms.Select(Arm)) + " |");
             zeroTable.AppendLine("|---|" + string.Concat(arms.Select(_ => "---|")));
-            var rulesMoved = runs.Where(r => r.pactWatch != null && r.pactWatch.rulesLow != r.pactWatch.rulesHigh).ToList();
-            foreach (string row in BalanceLab.PactWatch.MustBeZero.Concat(new[] { "a season whose alumni rules value moved", "a season the lab could not play" }))
+            var rowsToCheck = BalanceLab.PactWatch.MustBeZero
+                .Select(row => (row, count: (Func<BalanceLab.SeasonRun, int>)(r => r.pactWatch != null && r.pactWatch.mustBeZero.TryGetValue(row, out int n) ? n : 0)))
+                .Concat(SeasonBugs.Select(x => (x.row, count: (Func<BalanceLab.SeasonRun, int>)(r => x.holds(r) ? 1 : 0))));
+            foreach (var (row, count) in rowsToCheck)
             {
                 var counts = new List<string>();
                 foreach (int arm in arms)
                 {
                     var armRuns = runs.Where(r => BalanceLabAlumniReport.ArmOf(r.cell) == arm).ToList();
-                    int total = row == "a season whose alumni rules value moved" ? armRuns.Count(r => rulesMoved.Contains(r))
-                        : row == "a season the lab could not play" ? armRuns.Count(r => r.error != null)
-                        : armRuns.Where(r => r.pactWatch != null).Sum(r => r.pactWatch.mustBeZero.TryGetValue(row, out int n) ? n : 0);
+                    int total = armRuns.Sum(count);
                     counts.Add(total == 0 ? "0" : "**" + total + "**");
                     zeroRows.Add(new { row, arm, count = total });
                     if (total == 0) continue;
-                    var where = armRuns.Where(r => (row == "a season whose alumni rules value moved" && rulesMoved.Contains(r)) || (row == "a season the lab could not play" && r.error != null)
-                        || (r.pactWatch != null && r.pactWatch.mustBeZero.TryGetValue(row, out int k) && k > 0)).Take(3).Select(r => r.cell.Key + " #" + r.index);
-                    bugs.Add("BUG: must be zero, is " + total + " at arm " + Arm(arm) + ": " + row + " (first: " + string.Join("; ", where) + ")."
-                        + (arm == AlumniRules.GrowingPacts ? " Fixed before S6 (14.L.H); never an owner question." : " A value below 5: not growth's, still a bug."));
+                    var first = armRuns.Where(r => count(r) > 0).ToList();
+                    string error = row == "the watch threw" ? " The watch's error: " + first[0].pactWatch.watchError + "."
+                        : row == "a season the lab could not play" ? " The lab's error: " + first[0].error + "." : "";
+                    bugs.Add("BUG: must be zero, is " + total + " at arm " + Arm(arm) + ": " + row + " (first: " + string.Join("; ", first.Take(3).Select(r => r.cell.Key + " #" + r.index)) + ")."
+                        + error + (arm == AlumniRules.GrowingPacts ? " Fixed before S6 (14.L.H); never an owner question." : " A value below 5: not growth's, still a bug."));
                 }
                 zeroTable.AppendLine("| " + row + " | " + string.Join(" | ", counts) + " |");
             }
@@ -508,7 +702,7 @@ namespace Gamesim.Tests.EditMode
             var twelve = new List<string>();
             foreach (var (size, p) in bases)
             {
-                var list = Of(size, p, latest).Where(Ok).ToList();
+                var list = Of(size, p, latest).Where(Watched).ToList();
                 int k = list.Count(r => r.pactWatch.joins > 0), n = list.Count;
                 bool fires = size == 8 && NearZero(k, n);
                 nearRows.Add(new { size, player = Who(p), seasonsWithAJoin = k, seasons = n, fires });
@@ -524,7 +718,9 @@ namespace Gamesim.Tests.EditMode
             // ------------------------------------------------ the stop conditions
             var stop = new StringBuilder();
             var stopJson = new List<object>();
-            bool anyOne = false, anyTwo = false;
+            var oneFires = new List<string>();
+            var onePairedFires = new List<string>();
+            var twoFires = new List<string>();
             Metric pileOn = metrics.Single(x => x.name == "pile-on seasons"), pariahFree = metrics.Single(x => x.name == "pariah-free seasons");
             Metric firstOut = metrics.Single(x => x.name == "first evictee a known-pair member");
             (int k, int n) Count(Metric metric, List<BalanceLab.SeasonRun> list)
@@ -532,13 +728,15 @@ namespace Gamesim.Tests.EditMode
                 var values = list.Select(metric.of).Where(v => v.HasValue).ToList();
                 return ((int)Math.Round(values.Sum(v => v.Value)), values.Count);
             }
-            stop.AppendLine("**Stop condition 1** (14.H): the shipped arm (5) crosses a story-session budget beyond noise - its 95% interval wholly past the line - in a cell where arm 1 meets it. "
+            stop.AppendLine("**Stop condition 1** (14.H): the shipped arm (5) crosses a story-session budget beyond noise in a cell where arm 1 meets it. "
                 + "If arm 4 meets it there, growth is the cause and the owner is offered value 4 (S3b out before S6). Budgets: pile-on seasons at most 25%; pariah-free seasons at least 80% "
-                + "(the twelve-house: not below its 45%; NPC-AGENCY-PLAN constraint 1).");
+                + "(the twelve-house: not below its 45%; NPC-AGENCY-PLAN constraint 1). Two readings of \"beyond noise\", for the lead to choose between: as built, arm 5's own 95% "
+                + "interval lies wholly past the line; paired, arm 5's rate is past the line and the paired 5 - 1 difference is beyond noise the wrong way (McNemar p under 0.05).");
             stop.AppendLine();
-            stop.AppendLine("| player | size | budget | arm 1 | arm 4 | arm 5 | 5 - 1 paired | fires | growth the cause |");
-            stop.AppendLine("|---|---|---|---|---|---|---|---|---|");
+            stop.AppendLine("| player | size | budget | arm 1 | arm 4 | arm 5 | 5 - 1 paired | fires (as built) | growth the cause (as built) | fires (paired reading) | growth the cause (paired) |");
+            stop.AppendLine("|---|---|---|---|---|---|---|---|---|---|---|");
             bool canOne = arms.Contains(AlumniRules.Histories) && arms.Contains(AlumniRules.CounterBlocs) && arms.Contains(AlumniRules.GrowingPacts);
+            string Growth(bool fires, bool growth) => fires ? (growth ? "**yes: offer value 4**" : "no: arm 4 crosses too") : "-";
             foreach (var (size, p) in bases)
             {
                 if (!canOne) break;
@@ -546,11 +744,18 @@ namespace Gamesim.Tests.EditMode
                 {
                     var a1 = Count(metric, Of(size, p, AlumniRules.Histories)); var a4 = Count(metric, Of(size, p, AlumniRules.CounterBlocs)); var a5 = Count(metric, Of(size, p, AlumniRules.GrowingPacts));
                     var (fires, growth) = StopOne(line, atMost, a1, a4, a5);
-                    var d = Paired(Of(size, p, AlumniRules.GrowingPacts), Of(size, p, AlumniRules.Histories), metric.of);
-                    anyOne |= fires;
+                    var d = Compare(metric, Of(size, p, AlumniRules.GrowingPacts), Of(size, p, AlumniRules.Histories));
+                    var (firesPaired, growthPaired) = StopOnePaired(line, atMost, a1, a4, a5, (d.b, d.c, d.p));
+                    string where = Who(p) + " " + size + " (" + label + ": arm 1 " + Rate(a1.k, a1.n) + ", arm 4 " + Rate(a4.k, a4.n) + ", arm 5 " + Rate(a5.k, a5.n) + ")";
+                    if (fires) oneFires.Add(where + (growth ? ", growth the cause: offer value 4" : ", arm 4 crosses too"));
+                    if (firesPaired) onePairedFires.Add(where + ", 5 - 1 " + d.b + ":" + d.c + " p " + N(d.p, "0.000") + (growthPaired ? ", growth the cause: offer value 4" : ", arm 4 crosses too"));
                     stop.AppendLine("| " + Who(p) + " | " + size + " | " + label + " | " + Rate(a1.k, a1.n) + " | " + Rate(a4.k, a4.n) + " | " + Rate(a5.k, a5.n) + " | " + Difference(metric, d)
-                        + " | " + (fires ? "**FIRES**" : "no") + " | " + (fires ? (growth ? "**yes: offer value 4**" : "no: arm 4 crosses too") : "-") + " |");
-                    stopJson.Add(new { condition = 1, player = Who(p), size, budget = label, arm1 = new { a1.k, a1.n }, arm4 = new { a4.k, a4.n }, arm5 = new { a5.k, a5.n }, fires, growthTheCause = growth });
+                        + " | " + (fires ? "**FIRES**" : "no") + " | " + Growth(fires, growth) + " | " + (firesPaired ? "**FIRES**" : "no") + " | " + Growth(firesPaired, growthPaired) + " |");
+                    stopJson.Add(new
+                    {
+                        condition = 1, player = Who(p), size, budget = label, arm1 = new { a1.k, a1.n }, arm4 = new { a4.k, a4.n }, arm5 = new { a5.k, a5.n },
+                        fiveLessOne = new { d.b, d.c, p = Json(d.p), mean = Json(d.mean) }, fires, growthTheCause = growth, firesPaired, growthTheCausePaired = growthPaired,
+                    });
                 }
             }
             stop.AppendLine();
@@ -562,18 +767,24 @@ namespace Gamesim.Tests.EditMode
             {
                 var a4 = Count(firstOut, Of(size, p, AlumniRules.CounterBlocs)); var a5 = Count(firstOut, Of(size, p, AlumniRules.GrowingPacts));
                 bool f4 = StopTwo(a4.k, a4.n), f5 = StopTwo(a5.k, a5.n);
-                anyTwo |= f4 || f5;
+                if (f4) twoFires.Add(Who(p) + " " + size + " at 4 (" + Rate(a4.k, a4.n) + ")");
+                if (f5) twoFires.Add(Who(p) + " " + size + " at 5 (" + Rate(a5.k, a5.n) + ")");
                 stop.AppendLine("| " + Who(p) + " | " + size + " | " + Rate(a4.k, a4.n) + " | " + (f4 ? "**FIRES**" : "no") + " | " + Rate(a5.k, a5.n) + " | " + (f5 ? "**FIRES**" : "no") + " |");
                 stopJson.Add(new { condition = 2, player = Who(p), size, arm4 = new { a4.k, a4.n }, firesAt4 = f4, arm5 = new { a5.k, a5.n }, firesAt5 = f5 });
             }
             json["stopConditions"] = stopJson;
+            string StopLine(string name, List<string> where) => name + (where.Count == 0 ? " does not fire in any cell." : " **FIRES** in " + where.Count + ": " + string.Join("; ", where) + ".");
+            string oneBuilt = canOne ? StopLine("Stop condition 1, as built (arm 5's own interval past the line),", oneFires) : "Stop condition 1 was not computed: arms 1, 4 and 5 were not all run.";
+            string onePaired = canOne ? StopLine("Stop condition 1, paired reading (the 5 - 1 difference beyond noise the wrong way),", onePairedFires) : "";
+            string twoLine = StopLine("Stop condition 2", twoFires);
 
             // ------------------------------------------------ the rows and their comparisons
             var rows = new StringBuilder();
             var cellJson = new List<object>();
             var comparisonJson = new List<object>();
-            var crossed = new List<string>();
-            int compared = 0;
+            var crossedPrimary = new List<string>();
+            var crossedOther = new List<string>();
+            int comparedPrimary = 0, comparedOther = 0;
             var comparisons = BalanceLabAlumniReport.Comparisons.Where(c => arms.Contains(c.later) && arms.Contains(c.earlier)).ToList();
             foreach (var section in metrics.Select(x => x.section).Distinct())
             {
@@ -581,24 +792,29 @@ namespace Gamesim.Tests.EditMode
                 rows.AppendLine();
                 foreach (var metric in metrics.Where(x => x.section == section))
                 {
-                    rows.AppendLine("**" + metric.name + "**" + (metric.rate ? " (share of seasons)" : "") + ": by arm, then the paired differences (later arm less earlier, 95% interval; bold is beyond noise).");
+                    rows.AppendLine("**" + metric.name + "**" + (metric.rate ? " (share of seasons)" : metric.ratio != null ? " (sum over sum: the cell's put-ups or joins over its weeks, each season one cluster)" : "")
+                        + (metric.primary ? " - a primary row" : "") + ": by arm, then the paired differences (later arm less earlier, 95% interval; bold is beyond noise).");
                     rows.AppendLine();
                     rows.AppendLine("| player | size | " + string.Join(" | ", arms.Select(Arm)) + " | n | " + string.Join(" | ", comparisons.Select(c => c.later + " - " + c.earlier)) + " |");
                     rows.AppendLine("|---|---|" + string.Concat(arms.Select(_ => "---|")) + "---|" + string.Concat(comparisons.Select(_ => "---|")));
                     foreach (var (size, p) in bases)
                     {
-                        var values = arms.Select(arm => (arm, s: Summary(Of(size, p, arm), metric))).ToList();
+                        var values = arms.Select(arm => (arm, s: CellValue(Of(size, p, arm), metric))).ToList();
                         foreach (var v in values)
-                            cellJson.Add(new { metric = metric.name, section, player = Who(p), size, arm = v.arm, v.s.n, mean = Json(v.s.mean), low = Json(v.s.low), high = Json(v.s.high) });
+                            cellJson.Add(new { metric = metric.name, section, metric.primary, player = Who(p), size, arm = v.arm, v.s.n, mean = Json(v.s.mean), low = Json(v.s.low), high = Json(v.s.high), sums = Sums(metric, v.s) });
                         var diffs = new List<string>();
                         foreach (var c in comparisons)
                         {
                             if (!metric.compared) { diffs.Add("-"); continue; }
-                            var d = Paired(Of(size, p, c.later), Of(size, p, c.earlier), metric.of);
-                            if (d.n > 0) compared++;
-                            if (Beyond(d)) crossed.Add(metric.name + ", " + Who(p) + " " + size + ", " + c.later + " - " + c.earlier + ": " + Difference(metric, d).Replace("**", ""));
+                            var d = Compare(metric, Of(size, p, c.later), Of(size, p, c.earlier));
+                            if (d.tested) { if (metric.primary) comparedPrimary++; else comparedOther++; }
+                            if (d.beyond) (metric.primary ? crossedPrimary : crossedOther).Add(metric.name + ", " + Who(p) + " " + size + ", " + c.later + " - " + c.earlier + ": " + Difference(metric, d).Replace("**", ""));
                             diffs.Add(Difference(metric, d));
-                            comparisonJson.Add(new { metric = metric.name, player = Who(p), size, later = c.later, earlier = c.earlier, d.n, mean = Json(d.mean), low = Json(d.low), high = Json(d.high), beyond = Beyond(d) });
+                            comparisonJson.Add(new
+                            {
+                                metric = metric.name, metric.primary, player = Who(p), size, later = c.later, earlier = c.earlier, d.n, mean = Json(d.mean), low = Json(d.low), high = Json(d.high),
+                                d.tested, beyond = d.beyond, mcNemar = metric.rate ? new { d.b, d.c, p = Json(d.p) } : null,
+                            });
                         }
                         rows.AppendLine("| " + Who(p) + " | " + size + " | " + string.Join(" | ", values.Select(v => Value(metric, v.s))) + " | "
                             + values.Select(v => v.s.n).DefaultIfEmpty(0).Min() + " | " + string.Join(" | ", diffs) + " |");
@@ -609,78 +825,147 @@ namespace Gamesim.Tests.EditMode
             json["cells"] = cellJson;
             json["comparisons"] = comparisonJson;
 
-            // ------------------------------------------------ the pact watch's tables
+            // ------------------------------------------------ how many seed pairs play differently
+            var rowOf = new Dictionary<BalanceLab.SeasonRun, string>();
+            string RowOf(BalanceLab.SeasonRun r) => rowOf.TryGetValue(r, out string row) ? row : (rowOf[r] = BalanceLab.Row(r));
+            var differ = new StringBuilder();
+            var differJson = new List<object>();
+            differ.AppendLine("| player | size | " + string.Join(" | ", comparisons.Select(c => c.later + " - " + c.earlier)) + " |");
+            differ.AppendLine("|---|---|" + string.Concat(comparisons.Select(_ => "---|")));
+            foreach (var (size, p) in bases)
+            {
+                var texts = new List<string>();
+                foreach (var c in comparisons)
+                {
+                    var pairs = Of(size, p, c.later).Zip(Of(size, p, c.earlier), (x, y) => (x, y)).ToList();
+                    int rowsDiffer = pairs.Count(q => RowOf(q.x) != RowOf(q.y));
+                    var scored = pairs.Where(q => q.x.pactWatch?.scoresHash != null && q.y.pactWatch?.scoresHash != null).ToList();
+                    int scoresDiffer = scored.Count(q => q.x.pactWatch.scoresHash != q.y.pactWatch.scoresHash);
+                    texts.Add(rowsDiffer + " / " + scoresDiffer + " of " + pairs.Count);
+                    differJson.Add(new { player = Who(p), size, later = c.later, earlier = c.earlier, pairs = pairs.Count, rowsDiffer, scoredPairs = scored.Count, scoresDiffer });
+                }
+                differ.AppendLine("| " + Who(p) + " | " + size + " | " + string.Join(" | ", texts) + " |");
+            }
+            json["playsDifferently"] = differJson;
+
+            // ------------------------------------------------ the pact watch's tables, cell by cell and every player pooled
+            var tableJson = new Dictionary<string, object>(StringComparer.Ordinal);
+            var groups = new List<(string who, int size, Func<int, List<BalanceLab.SeasonRun>> at)>();
+            foreach (int size in sizes)
+            {
+                foreach (var p in players) groups.Add((Who(p), size, arm => Of(size, p, arm).Where(Watched).ToList()));
+                groups.Add(("every player", size, arm => players.SelectMany(p => Of(size, p, arm)).Where(Watched).ToList()));
+            }
             var tables = new StringBuilder();
+            tables.AppendLine("Each table is cell by cell (14.L.H), then every player of a size pooled (\"every player\").");
+            tables.AppendLine();
             tables.AppendLine("**The largest outsider pact a season** (14.L.H): the share of seasons whose largest outsider pact held none, 2, 3 or 4 in the house at once.");
             tables.AppendLine();
-            tables.AppendLine("| player | size | arm | none | 2 | 3 | 4 |");
-            tables.AppendLine("|---|---|---|---|---|---|---|");
-            foreach (var (size, p) in bases)
+            tables.AppendLine("| player | size | arm | seasons | none | 2 | 3 | 4 |");
+            tables.AppendLine("|---|---|---|---|---|---|---|---|");
+            var largestJson = new List<object>();
+            foreach (var g in groups)
                 foreach (int arm in arms)
                 {
-                    var list = Of(size, p, arm).Where(Ok).ToList();
+                    var list = g.at(arm);
                     if (list.Count == 0) continue;
-                    string Share(Func<int, bool> at) => BalanceLab.Pct((double)list.Count(r => at(r.pactWatch.largestOutsiderPact)) / list.Count);
-                    tables.AppendLine("| " + Who(p) + " | " + size + " | " + Arm(arm) + " | " + Share(x => x < 2) + " | " + Share(x => x == 2) + " | " + Share(x => x == 3) + " | " + Share(x => x >= 4) + " |");
+                    double Share(Func<int, bool> at) => (double)list.Count(r => at(r.pactWatch.largestOutsiderPact)) / list.Count;
+                    tables.AppendLine("| " + g.who + " | " + g.size + " | " + Arm(arm) + " | " + list.Count + " | " + BalanceLab.Pct(Share(x => x < 2)) + " | " + BalanceLab.Pct(Share(x => x == 2)) + " | "
+                        + BalanceLab.Pct(Share(x => x == 3)) + " | " + BalanceLab.Pct(Share(x => x >= 4)) + " |");
+                    largestJson.Add(new { player = g.who, g.size, arm, seasons = list.Count, none = Json(Share(x => x < 2)), two = Json(Share(x => x == 2)), three = Json(Share(x => x == 3)), four = Json(Share(x => x >= 4)) });
                 }
+            tableJson["largestOutsiderPact"] = largestJson;
             tables.AppendLine();
-            tables.AppendLine("**Pact-weeks held below the bound only because somebody outside knew of the pact**, by how it first came out (14.L.H; below 5 the bound is the one the pact would have had), every player pooled.");
+            tables.AppendLine("**Pact-weeks held below the bound only because somebody outside knew of the pact**, by how it first came out (14.L.H; below 5 the bound is the one the pact would have had).");
             tables.AppendLine();
-            tables.AppendLine("| size | arm | seasons | " + string.Join(" | ", BalanceLab.PactWatch.Causes) + " |");
-            tables.AppendLine("|---|---|---|" + string.Concat(BalanceLab.PactWatch.Causes.Select(_ => "---|")));
-            foreach (int size in sizes)
+            tables.AppendLine("| player | size | arm | seasons | " + string.Join(" | ", BalanceLab.PactWatch.Causes) + " |");
+            tables.AppendLine("|---|---|---|---|" + string.Concat(BalanceLab.PactWatch.Causes.Select(_ => "---|")));
+            var heldJson = new List<object>();
+            foreach (var g in groups)
                 foreach (int arm in arms)
                 {
-                    var list = players.SelectMany(p => Of(size, p, arm)).Where(Ok).ToList();
-                    tables.AppendLine("| " + size + " | " + Arm(arm) + " | " + list.Count + " | "
-                        + string.Join(" | ", BalanceLab.PactWatch.Causes.Select(cause => list.Sum(r => r.pactWatch.heldBack.TryGetValue(cause, out int n) ? n : 0).ToString(CultureInfo.InvariantCulture))) + " |");
+                    var list = g.at(arm);
+                    var byCause = BalanceLab.PactWatch.Causes.ToDictionary(cause => cause, cause => list.Sum(r => r.pactWatch.heldBack.TryGetValue(cause, out int n) ? n : 0), StringComparer.Ordinal);
+                    tables.AppendLine("| " + g.who + " | " + g.size + " | " + Arm(arm) + " | " + list.Count + " | "
+                        + string.Join(" | ", BalanceLab.PactWatch.Causes.Select(cause => byCause[cause].ToString(CultureInfo.InvariantCulture))) + " |");
+                    heldJson.Add(new { player = g.who, g.size, arm, seasons = list.Count, byCause });
                 }
+            tableJson["heldBack"] = heldJson;
             tables.AppendLine();
-            tables.AppendLine("**How grown pacts ended** (the alliance row's why; \"standing\" at the finale), the weeks they lasted, their most in the house, and whether anyone outside knew of them then; every player pooled.");
+            tables.AppendLine("**How grown pacts ended** (the alliance row's why; \"standing\" at the finale), the weeks they lasted, their most in the house, and whether anyone outside knew of them then.");
             tables.AppendLine();
-            tables.AppendLine("| size | arm | ending | pacts | mean weeks | known at the end | reached 4 |");
-            tables.AppendLine("|---|---|---|---|---|---|---|");
-            foreach (int size in sizes)
+            tables.AppendLine("| player | size | arm | ending | pacts | mean weeks | known at the end | reached 4 |");
+            tables.AppendLine("|---|---|---|---|---|---|---|---|");
+            var endsJson = new List<object>();
+            foreach (var g in groups)
                 foreach (int arm in arms)
-                    foreach (var g in players.SelectMany(p => Of(size, p, arm)).Where(Ok).SelectMany(r => r.pactWatch.grownEnds).GroupBy(e => e.why).OrderBy(x => x.Key, StringComparer.Ordinal))
-                        tables.AppendLine("| " + size + " | " + Arm(arm) + " | " + g.Key + " | " + g.Count() + " | " + N(g.Average(e => e.weeks), "0.0") + " | "
-                            + BalanceLab.Pct((double)g.Count(e => e.known) / g.Count()) + " | " + BalanceLab.Pct((double)g.Count(e => e.largest >= 4) / g.Count()) + " |");
+                    foreach (var e in g.at(arm).SelectMany(r => r.pactWatch.grownEnds).GroupBy(x => x.why).OrderBy(x => x.Key, StringComparer.Ordinal))
+                    {
+                        double known = (double)e.Count(x => x.known) / e.Count(), four = (double)e.Count(x => x.largest >= 4) / e.Count(), weeks = e.Average(x => x.weeks);
+                        tables.AppendLine("| " + g.who + " | " + g.size + " | " + Arm(arm) + " | " + e.Key + " | " + e.Count() + " | " + N(weeks, "0.0") + " | " + BalanceLab.Pct(known) + " | " + BalanceLab.Pct(four) + " |");
+                        endsJson.Add(new { player = g.who, g.size, arm, ending = e.Key, pacts = e.Count(), meanWeeks = Json(weeks), knownAtTheEnd = Json(known), reached4 = Json(four) });
+                    }
+            tableJson["grownEnds"] = endsJson;
             tables.AppendLine();
             tables.AppendLine("**The Hitmen's opening final two at the season's end** (its status; \"none\" without one, as at 0).");
             tables.AppendLine();
-            var statuses = runs.Where(Ok).Select(r => r.pactWatch.hitmenFinalTwo ?? "none").Distinct().OrderBy(x => x, StringComparer.Ordinal).ToList();
+            var statuses = runs.Where(Watched).Select(r => r.pactWatch.hitmenFinalTwo ?? "none").Distinct().OrderBy(x => x, StringComparer.Ordinal).ToList();
             tables.AppendLine("| player | size | arm | " + string.Join(" | ", statuses) + " |");
             tables.AppendLine("|---|---|---|" + string.Concat(statuses.Select(_ => "---|")));
-            foreach (var (size, p) in bases)
+            var hitmenJson = new List<object>();
+            foreach (var g in groups)
                 foreach (int arm in arms)
                 {
-                    var list = Of(size, p, arm).Where(Ok).ToList();
+                    var list = g.at(arm);
                     if (list.Count == 0) continue;
-                    tables.AppendLine("| " + Who(p) + " | " + size + " | " + Arm(arm) + " | " + string.Join(" | ", statuses.Select(st => BalanceLab.Pct((double)list.Count(r => (r.pactWatch.hitmenFinalTwo ?? "none") == st) / list.Count))) + " |");
+                    var shares = statuses.ToDictionary(st => st, st => Json((double)list.Count(r => (r.pactWatch.hitmenFinalTwo ?? "none") == st) / list.Count), StringComparer.Ordinal);
+                    tables.AppendLine("| " + g.who + " | " + g.size + " | " + Arm(arm) + " | " + string.Join(" | ", statuses.Select(st => BalanceLab.Pct(shares[st] ?? 0))) + " |");
+                    hitmenJson.Add(new { player = g.who, g.size, arm, seasons = list.Count, shares });
                 }
+            tableJson["hitmenFinalTwo"] = hitmenJson;
             tables.AppendLine();
-            tables.AppendLine("**Pile-on targets** (the story's the-house-turns), classed as 14.L.H classes them, with the pariah decomposition's columns (BalanceLabDiagnostics.PariahDecomposition); every player pooled.");
+            tables.AppendLine("**Pile-on targets** (the story's the-house-turns), classed as 14.L.H classes them, with the pariah decomposition's columns (BalanceLabDiagnostics.PariahDecomposition); "
+                + "a cell's classes with no pile-on are left out, the pooled lines show every class.");
             tables.AppendLine();
-            tables.AppendLine("| size | arm | target | pile-ons | mean week | in the house then | holders | target's HoH wins (house's most) | target won a HoH | target won two | causes of the holders' grudges |");
-            tables.AppendLine("|---|---|---|---|---|---|---|---|---|---|---|");
-            foreach (int size in sizes)
+            tables.AppendLine("| player | size | arm | target | pile-ons | mean week | in the house then | holders | target's HoH wins (house's most) | target won a HoH | target won two | causes of the holders' grudges |");
+            tables.AppendLine("|---|---|---|---|---|---|---|---|---|---|---|---|");
+            var pileJson = new List<object>();
+            foreach (var g in groups)
                 foreach (int arm in arms)
                     foreach (string kind in BalanceLab.PactWatch.PileOnKinds)
                     {
-                        var piles = players.SelectMany(p => Of(size, p, arm)).Where(Ok).SelectMany(r => r.pactWatch.pileOns).Where(x => x.kind == kind).ToList();
-                        if (piles.Count == 0) { tables.AppendLine("| " + size + " | " + Arm(arm) + " | " + kind + " | 0 | - | - | - | - | - | - | - |"); continue; }
-                        var causes = piles.SelectMany(x => x.causes).GroupBy(c => c).Select(g => (cause: g.Key, n: g.Count())).OrderByDescending(x => x.n).ThenBy(x => x.cause, StringComparer.Ordinal).ToList();
+                        var piles = g.at(arm).SelectMany(r => r.pactWatch.pileOns).Where(x => x.kind == kind).ToList();
+                        bool pooled = g.who == "every player";
+                        if (piles.Count == 0)
+                        {
+                            if (pooled) tables.AppendLine("| " + g.who + " | " + g.size + " | " + Arm(arm) + " | " + kind + " | 0 | - | - | - | - | - | - | - |");
+                            pileJson.Add(new { player = g.who, g.size, arm, kind, pileOns = 0 });
+                            continue;
+                        }
+                        var causes = piles.SelectMany(x => x.causes).GroupBy(c => c).Select(x => (cause: x.Key, n: x.Count())).OrderByDescending(x => x.n).ThenBy(x => x.cause, StringComparer.Ordinal).ToList();
                         double all = Math.Max(1, causes.Sum(x => x.n));
-                        tables.AppendLine("| " + size + " | " + Arm(arm) + " | " + kind + " | " + piles.Count + " | " + N(piles.Average(x => x.week), "0.0") + " | " + N(piles.Average(x => x.houseCount), "0.0")
+                        tables.AppendLine("| " + g.who + " | " + g.size + " | " + Arm(arm) + " | " + kind + " | " + piles.Count + " | " + N(piles.Average(x => x.week), "0.0") + " | " + N(piles.Average(x => x.houseCount), "0.0")
                             + " | " + N(piles.Average(x => x.holders), "0.0") + " | " + N(piles.Average(x => x.targetHohWins), "0.00") + " (" + N(piles.Average(x => x.npcHohWinsMax), "0.00") + ") | "
                             + BalanceLab.Pct((double)piles.Count(x => x.targetHohWins >= 1) / piles.Count) + " | " + BalanceLab.Pct((double)piles.Count(x => x.targetHohWins >= 2) / piles.Count) + " | "
                             + string.Join(", ", causes.Select(x => (x.cause.Length == 0 ? "?" : x.cause) + " " + BalanceLab.Pct(x.n / all))) + " |");
+                        pileJson.Add(new
+                        {
+                            player = g.who, g.size, arm, kind, pileOns = piles.Count, meanWeek = Json(piles.Average(x => x.week)), houseCount = Json(piles.Average(x => x.houseCount)),
+                            holders = Json(piles.Average(x => x.holders)), targetHohWins = Json(piles.Average(x => x.targetHohWins)), npcHohWinsMax = Json(piles.Average(x => x.npcHohWinsMax)),
+                            targetWonAHoh = Json((double)piles.Count(x => x.targetHohWins >= 1) / piles.Count), targetWonTwo = Json((double)piles.Count(x => x.targetHohWins >= 2) / piles.Count),
+                            causes = causes.ToDictionary(x => x.cause.Length == 0 ? "?" : x.cause, x => Json(x.n / all), StringComparer.Ordinal),
+                        });
                     }
+            tableJson["pileOns"] = pileJson;
             tables.AppendLine();
+            json["pactTables"] = tableJson;
 
             // ------------------------------------------------ the text, top first
             int seasons = runs.Count, errors = runs.Count(r => r.error != null);
             double threadSeconds = runs.Sum(r => r.seasonMilliseconds) / 1000.0;
+            string Crossings(int crossed, int tested) => crossed + " of " + tested + " tested (about " + N(tested * 0.05, "0") + " expected by chance)";
+            string crossings = "Comparisons beyond noise: the primary rows (14.H's headline and known-pair rows) " + Crossings(crossedPrimary.Count, comparedPrimary)
+                + "; every other row " + Crossings(crossedOther.Count, comparedOther) + ".";
             foreach (string line in top) md.AppendLine(line).AppendLine();
             foreach (string line in bugs) md.AppendLine(line).AppendLine();
             md.AppendLine("# All-Star loyalty, reputation and known blocs: the 14.H report");
@@ -688,26 +973,36 @@ namespace Gamesim.Tests.EditMode
             md.AppendLine("ALL-STAR-HISTORIES-PLAN 14.H and 14.L.H. Not a gate: about one comparison in twenty crosses at 95% by chance, nothing is retuned in place, and a retune is a later value.");
             md.AppendLine();
             md.AppendLine("- Run as: `" + meta.command + "`");
-            md.AppendLine("- Commit: " + meta.commit + " (the source tree's HEAD; changes not yet committed are not shown). Started " + meta.started + ".");
+            md.AppendLine("- Commit: " + meta.commit + " (the source tree's HEAD; changes not yet committed are not shown, so the run is made from a clean tree or an archive of the commit). Started " + meta.started + ".");
             md.AppendLine("- Seasons: " + seasons + " (" + cells.Count + " cells, " + meta.seeds + " seeds each, paired by seed across the arms), " + errors + " the lab could not play.");
             md.AppendLine("- Elapsed: " + N(meta.minutes, "0.0") + " min on " + meta.threads + " threads (" + Environment.ProcessorCount + " processors seen): "
                 + N(seasons / Math.Max(1e-9, meta.minutes), "0.0") + " seasons a minute; " + N(threadSeconds / Math.Max(1, seasons), "0.00") + " s a season on its thread.");
             md.AppendLine("- Arms: " + string.Join(", ", arms.Select(Arm)) + ". 0 is the season without the histories (H1b's control); 1 to 4 are the shipped season held at the value after it enrolled (14.G).");
             md.AppendLine("- Cells: All-Stars " + string.Join(" and ", sizes) + " x " + string.Join(", ", players.Select(Who)) + ". The NPC world is not driven (B5): NPC-to-NPC behaviour is proved by fixtures, never by these walks.");
             md.AppendLine("- Known pairs are edition 1's seated shared alliances, read the same way at every arm (0 included), live while both are in the house and neither has put the other up.");
+            md.AppendLine("- Intervals: a rate's cell value is Wilson's; its paired difference is Newcombe's hybrid score interval, with McNemar's b:c (only the later arm, only the earlier) and p, beyond noise at p under 0.05. "
+                + "A mean's is the normal interval of the paired differences. A pooled ratio's is the season-clustered one. A comparison is counted only where two pairs or more were read.");
             md.AppendLine();
             md.AppendLine("## For the owner: the stop conditions");
             md.AppendLine();
-            md.AppendLine("- Stop condition 1 " + (canOne ? anyOne ? "**FIRES** in the cells marked below." : "does not fire in any cell." : "was not computed: arms 1, 4 and 5 were not all run."));
-            md.AppendLine("- Stop condition 2 " + (anyTwo ? "**FIRES** in the cells marked below." : "does not fire in any cell."));
+            md.AppendLine("- " + oneBuilt);
+            if (canOne) md.AppendLine("- " + onePaired);
+            md.AppendLine("- " + twoLine);
             md.AppendLine("- Must-be-zero rows: " + (bugs.Count == 0 ? "all zero." : bugs.Count + " bug line(s) at the top."));
-            md.AppendLine("- Comparisons beyond noise: " + crossed.Count + " of " + compared + " (about " + N(compared * 0.05, "0") + " expected by chance); listed at the end.");
+            md.AppendLine("- " + crossings + " Listed at the end, the primary rows first.");
             md.AppendLine();
             md.Append(stop);
             md.AppendLine();
             md.AppendLine("## Must be zero (14.L.H, and the watch's own checks)");
             md.AppendLine();
             md.Append(zeroTable);
+            md.AppendLine();
+            md.AppendLine("## How many seed pairs play differently");
+            md.AppendLine();
+            md.AppendLine("Per comparison: the pairs whose season rows differ (BalanceLab.Row) / the pairs whose final relationship scores differ, of the pairs. "
+                + "A zero difference in the rows below means no change in play where no pair differs, and a change these rows do not show where some do.");
+            md.AppendLine();
+            md.Append(differ);
             md.AppendLine();
             md.AppendLine("## The rows");
             md.AppendLine();
@@ -717,34 +1012,51 @@ namespace Gamesim.Tests.EditMode
             md.Append(tables);
             md.AppendLine("## Comparisons beyond noise");
             md.AppendLine();
-            if (crossed.Count == 0) md.AppendLine("None.");
-            foreach (string line in crossed) md.AppendLine("- " + line);
+            md.AppendLine("### The primary rows (" + Crossings(crossedPrimary.Count, comparedPrimary) + ")");
+            md.AppendLine();
+            if (crossedPrimary.Count == 0) md.AppendLine("None.");
+            foreach (string line in crossedPrimary) md.AppendLine("- " + line);
+            md.AppendLine();
+            md.AppendLine("### Every other row (" + Crossings(crossedOther.Count, comparedOther) + ")");
+            md.AppendLine();
+            if (crossedOther.Count == 0) md.AppendLine("None.");
+            foreach (string line in crossedOther) md.AppendLine("- " + line);
 
             json["meta"] = new
             {
                 meta.commit, meta.command, meta.started, meta.seeds, meta.threads, minutes = Math.Round(meta.minutes, 3), seasons, errors, host = meta.host,
                 seasonsPerMinute = Math.Round(seasons / Math.Max(1e-9, meta.minutes), 3), secondsASeasonOnItsThread = Math.Round(threadSeconds / Math.Max(1, seasons), 4),
                 arms, sizes, players = players.Select(Who).ToList(), comparisons = comparisons.Select(c => c.later + "-" + c.earlier).ToList(),
+                primaryRows = metrics.Where(x => x.primary).Select(x => x.name).ToList(),
             };
             json["bugLines"] = bugs;
             json["topLines"] = top;
-            json["crossed"] = crossed;
+            json["crossed"] = new { primary = crossedPrimary, primaryTested = comparedPrimary, other = crossedOther, otherTested = comparedOther };
+            json["stopSummary"] = new { asBuilt = canOne ? oneFires : null, paired = canOne ? onePairedFires : null, two = twoFires, computedOne = canOne };
 
-            // ------------------------------------------------ one line a season
+            // ------------------------------------------------ one line a season, the ratio rows' parts and the hashes after the rows
             var csv = new StringBuilder();
-            csv.AppendLine("cell,player,size,arm,index,seed,error," + string.Join(",", metrics.Select(x => Csv(x.name))));
+            csv.AppendLine("cell,player,size,arm,index,seed,error," + string.Join(",", metrics.Select(x => Csv(x.name)))
+                + ",memberWeeks,memberPutUps,joins,blocLiveWeeks,foundersOut,scoresHash,rowHash,watchError");
             foreach (var r in runs)
+            {
+                var w = r.pactWatch;
                 csv.AppendLine(Csv(r.cell.Key) + "," + Csv(Who((r.cell.policy, r.cell.playerTemplate))) + "," + r.cell.size + "," + BalanceLabAlumniReport.ArmOf(r.cell) + "," + r.index + "," + r.seed
-                    + "," + Csv(r.error ?? "") + "," + string.Join(",", metrics.Select(x => x.of(r) is double v ? v.ToString("R", CultureInfo.InvariantCulture) : "")));
+                    + "," + Csv(r.error ?? "") + "," + string.Join(",", metrics.Select(x => x.of(r) is double v ? v.ToString("R", CultureInfo.InvariantCulture) : ""))
+                    + "," + (w == null ? ",,,,," : w.memberWeeks + "," + w.memberPutUps + "," + w.joins + "," + w.blocLiveWeeks.Count + "," + w.foundersOut + "," + (w.scoresHash ?? ""))
+                    + "," + BalanceLabTests.Hash(RowOf(r)) + "," + Csv(w?.watchError ?? ""));
+            }
 
             string summary = string.Join("\n", top.Concat(bugs).Concat(new[]
             {
                 "Run as: " + meta.command,
                 "Commit: " + meta.commit + "; started " + meta.started + ".",
                 seasons + " seasons in " + N(meta.minutes, "0.0") + " min on " + meta.threads + " threads; " + N(threadSeconds / Math.Max(1, seasons), "0.00") + " s a season on its thread; " + errors + " errors.",
-                "Stop condition 1: " + (canOne ? anyOne ? "FIRES" : "does not fire" : "not computed") + ". Stop condition 2: " + (anyTwo ? "FIRES" : "does not fire") + ".",
-                "Comparisons beyond noise: " + crossed.Count + " of " + compared + ".",
-            }));
+                oneBuilt.Replace("**", ""),
+                onePaired.Replace("**", ""),
+                twoLine.Replace("**", ""),
+                crossings,
+            }.Where(line => line.Length > 0)));
             return new Built
             {
                 text = md.ToString(), csv = csv.ToString(), summary = summary,

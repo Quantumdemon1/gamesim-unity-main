@@ -29,8 +29,9 @@ namespace Gamesim.Tests.EditMode
         /// conversation moves its pair through the ledger under D2's rules (the arcs fix), which the rules' tuple does not show.
         /// v5: so do a veto's, a lie's and a scheme's moves between two houseguests (EpisodeEngine.ChangeBetween), at every budget.
         /// v6: a season carries its pact watch and its own time (ALL-STAR-HISTORIES-PLAN 14.L.H, <see cref="BalanceLab.PactWatch"/>).
+        /// v7: the watch's record gains its founders out, its final scores' hash and its own error (S4's review).
         /// </summary>
-        internal const string Stamp = "balance-lab-parts/v6";
+        internal const string Stamp = "balance-lab-parts/v7";
 
         private static BalanceLabReports.TierSpec TierFromEnvironment()
         {

@@ -1797,7 +1797,8 @@ CounterDesire  = CounterBlocDesire x min(CounterBlocPairsCap, |counted(a, b)|)  
 `CounterTarget(s, hunterId, mateId)`:
 - null below 4;
 - the candidates are the members of `counted(hunter, mate)` who are `Active`, with `s.Score(mateId, m) >= HuntStopLine`;
-- they are ordered by `RiskFor(s, hunterId, m)`, highest first, then id ordinal, so the hub comes first.
+- **and who are no pact-mate** (`APactMate`): no active pact holds the candidate and the hunter, nor the candidate and the listener where the hunter can see it (`Knowledge.AllianceVisibleTo`). This is an addition the text above did not state, made at the S3 review (2026-10-31): `counted` reads only live pairs, never pacts, so as first built a pact could hunt its own member - the player on Cody's card taken into two outsiders' pact (`AllyThroughInvitation`), a story trio holding Cody, a hunter's other pact with Cody, or the listener's. The visibility check keeps a pact of the listener's the hunter has not heard of out of the hunter's reading. Outsider pacts still hunt the bloc;
+- they are ordered by `RiskFor(s, hunterId, m)`, highest first, then id ordinal, so the hub comes first. The order is the hunter's reading, not the listener's.
 
 How it behaves:
 - **The stop.** `HuntStopLine` = 6 = −`HuntImpact` (`Simulation/EpisodeEngine.Agency.cs:39`). A hunt costs the listener 6 with the target (`Simulation/NpcSocialActions.cs:427-436`).
@@ -1997,7 +1998,8 @@ Every new test uses only public members, so the new files compile in Unity's Edi
   - `ACounterPactFormsAtFourWhereNoneFormedAtThree`;
   - `TheScoreFloorAndThePactCapStillHold`;
   - `AtTheFloorAnEightHouseCounterPactStillNeedsTemperament`;
-  - `AnOutsidePactHuntsTheHubFirst`;
+  - `AnOutsidePactHuntsTheHubFirst`: in the hunter's reading, not the listener's;
+  - `AnOutsidePactNeverHuntsAPactMate` (added at the S3 review): the player in the pact on Cody's card, a trio holding Cody, the hunter's other pact and the listener's visible one; a private pact of the listener's and an ended one do not count;
   - `TheBlocHuntNeverTakesAListenerBelowZero`: repeated pursuits; the target's fall is bounded by the listener's starting warmth; `Hold` resumes;
   - `TheBlocRouteNeverHuntsWithThePlayerAsListener`;
   - `TheOrdinaryCommonThreatStillComesFirst`;

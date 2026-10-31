@@ -61,7 +61,8 @@ namespace Gamesim.Simulation
                 }
                 // The bloc hunt (ALL-STAR-HISTORIES-PLAN §14.E.2), from alumni rules 4 and only after every common threat:
                 // a known pair of past games neither of them stands near, through a pact-mate still warm to its member, so
-                // it stops above nought. Never with the player as the listener. Null below 4, so the house holds as it did.
+                // it stops above nought, and never a pact-mate of either. Never with the player as the listener. Null below
+                // 4, so the house holds as it did.
                 foreach (var mate in closestFirst)
                 {
                     if (mate == s.playerId) continue;

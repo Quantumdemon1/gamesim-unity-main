@@ -316,6 +316,19 @@ namespace Gamesim.Tests.EditMode
             Set(listener, chelsie, cody, 0);
             Assert.That(Agenda(listener, dan).targetId, Is.EqualTo(derrick), "Dan warm on Cody and Chelsie cold: not Cody.");
 
+            // The order is the hunter's reading, not the listener's: the Hitmen re-form privately and only Chelsie hears of
+            // it, so in her reading their pact is the bloc and the pair steps aside, while in Dan's it still counts.
+            var reading = s.Clone();
+            Views(reading, chelsie, 10);
+            Set(reading, chelsie, cody, 0);
+            var hitmen = Pact(reading, "hitmen", derrick, cody);
+            Knowledge.AllianceFormed(reading, hitmen);
+            Knowledge.Of(reading, FactKinds.Alliance, hitmen.id).knowers.Add(chelsie);
+            Assert.That((KnownBlocs.RiskFor(reading, dan, derrick), KnownBlocs.RiskFor(reading, dan, tyler)), Is.EqualTo((8, 4)));
+            Assert.That((KnownBlocs.RiskFor(reading, chelsie, derrick), KnownBlocs.RiskFor(reading, chelsie, tyler)), Is.EqualTo((0, 4)));
+            Assert.That(Agenda(reading, dan), Is.EqualTo((Agendas.Hunt, chelsie, derrick)),
+                "Chelsie cold on Cody: Dan's reading puts Derrick (8) before Tyler (4), though hers would not.");
+
             // The eight-house's Hitmen read 8 each, and the tie goes by id: Cody first.
             var eight = AllStars(8, 4502u);
             string eDan = On(eight, Dan), eVanessa = On(eight, Vanessa);
@@ -336,6 +349,66 @@ namespace Gamesim.Tests.EditMode
             Assert.That(Agenda(inside, iDan), Is.EqualTo((Agendas.Hold, iDerrick, (string)null)),
                 "Derrick is in the Hitmen and beside Cody, who is in the Committee: no pair counts for a pact he is in.");
             Assert.That(Agenda(inside, iDerrick), Is.EqualTo((Agendas.Hold, iDan, (string)null)));
+        }
+
+        [Test]
+        public void AnOutsidePactNeverHuntsAPactMate()
+        {
+            // The player on Cody's card, taken into two outsiders' pact as an accepted invitation takes them: the hub is
+            // their own pact-mate, so each hunts Derrick through the other.
+            var card = AllStars(8, 4511u, Cody);
+            string cDan = On(card, Dan), cVanessa = On(card, Vanessa), cDerrick = On(card, Derrick), player = card.playerId;
+            Pact(card, "invited", cDan, cVanessa, player);
+            Views(card, cDan, 10);
+            Views(card, cVanessa, 10);
+            Assert.That(KnownBlocs.RiskFor(card, cDan, player), Is.EqualTo(12), "The player is still the hub in Dan's reading,");
+            Assert.That(Agenda(card, cDan), Is.EqualTo((Agendas.Hunt, cVanessa, cDerrick)), "but a pact-mate: Derrick (8) is next.");
+            Assert.That(Agenda(card, cVanessa), Is.EqualTo((Agendas.Hunt, cDan, cDerrick)));
+
+            // A story's trio that holds Cody passes him over and hunts on past him.
+            var twelve = AllStars(12, 4512u);
+            string dan = On(twelve, Dan), chelsie = On(twelve, Chelsie), cody = On(twelve, Cody), derrick = On(twelve, Derrick), tyler = On(twelve, Tyler);
+            Views(twelve, dan, 10);
+            Views(twelve, chelsie, 10);
+            var trio = twelve.Clone();
+            Pact(trio, "story three", dan, chelsie, cody);
+            Assert.That(NpcDeals.CommonThreat(trio, dan, chelsie), Is.Null);
+            Assert.That(Agenda(trio, dan), Is.EqualTo((Agendas.Hunt, chelsie, derrick)), "Cody is in the pact: Derrick (8) is next.");
+
+            // The player's pact with Dan and Chelsie, and no other: the hub.
+            var house = twelve.Clone();
+            Pact(house, "with you", house.playerId, dan, chelsie);
+            Assert.That(Agenda(house, dan), Is.EqualTo((Agendas.Hunt, chelsie, cody)));
+
+            // The hunter's own pact with Cody beside it: he never hunts his partner, until that pact has ended.
+            var his = house.Clone();
+            var npcOnly = Pact(his, "dan and cody", dan, cody);
+            Assert.That(Agenda(his, dan), Is.EqualTo((Agendas.Hunt, chelsie, derrick)), "Dan's own partner: Derrick is next.");
+            npcOnly.active = false;
+            Assert.That(Agenda(his, dan), Is.EqualTo((Agendas.Hunt, chelsie, cody)), "An ended pact is no bar: the hub again.");
+
+            // The listener's pact with Cody, which Dan can see: he never asks her to turn on her own partner. A pact of hers he
+            // has not heard of stays out of his reading, until he hears of it.
+            var hers = house.Clone();
+            var theirs = Pact(hers, "chelsie and cody", chelsie, cody);
+            Assert.That(Agenda(hers, dan), Is.EqualTo((Agendas.Hunt, chelsie, derrick)), "Her partner, in the open: Derrick is next.");
+            Knowledge.AllianceFormed(hers, theirs);
+            Assert.That(Agenda(hers, dan), Is.EqualTo((Agendas.Hunt, chelsie, cody)), "Her partner, privately: Dan cannot know.");
+            Knowledge.Of(hers, FactKinds.Alliance, theirs.id).knowers.Add(dan);
+            Assert.That(Agenda(hers, dan), Is.EqualTo((Agendas.Hunt, chelsie, derrick)), "Once he knows: Derrick.");
+
+            // A pact of others' that Dan can see is no bar: the Hitmen re-formed in the open are a bloc of their own, so their
+            // pair steps aside in his reading, and Cody, still in the Committee, ties Tyler at 4 and comes first by id.
+            var others = house.Clone();
+            Pact(others, "hitmen", derrick, cody);
+            Assert.That((KnownBlocs.RiskFor(others, dan, derrick), KnownBlocs.RiskFor(others, dan, cody), KnownBlocs.RiskFor(others, dan, tyler)),
+                Is.EqualTo((0, 4, 4)));
+            Assert.That(string.CompareOrdinal(cody, tyler), Is.Negative);
+            Assert.That(Agenda(others, dan), Is.EqualTo((Agendas.Hunt, chelsie, cody)));
+
+            // Below 4 every one of them holds tight.
+            foreach (var (name, s, npcId) in new[] { ("card", card, cDan), ("trio", trio, dan), ("his", his, dan), ("hers", hers, dan) })
+                Assert.That(Agenda(Held(s, AlumniRules.Reputation), npcId).kind, Is.EqualTo(Agendas.Hold), name);
         }
 
         [Test]

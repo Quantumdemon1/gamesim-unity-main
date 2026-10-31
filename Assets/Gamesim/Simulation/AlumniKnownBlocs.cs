@@ -29,8 +29,9 @@ namespace Gamesim.Simulation
     /// (<see cref="CounterDesire"/>, inside <see cref="NpcAlliances.Desire"/>), and whom an outside pact hunts
     /// (<see cref="CounterTarget"/>, in <see cref="NpcAgendas.Of"/>). Both count the live pairs neither houseguest
     /// stands near - not in, and not beside a partner who is - so a pair's members and their partners never read
-    /// them. The hunt stops while the listener still rates its target at <see cref="HuntStopLine"/>, one hunt's cost,
-    /// so on its own it never takes a score below nought. Neither is a turn, a draw or a write: what the house does
+    /// them. The hunt never names a pact-mate of the hunter's, nor one of the listener's the hunter can see, and it stops
+    /// while the listener still rates its target at <see cref="HuntStopLine"/>, one hunt's cost, so on its own it never
+    /// takes a score below nought. Neither is a turn, a draw or a write: what the house does
     /// with them is the agendas' and the pact pass's own, under their own caps.</para>
     ///
     /// <para>Private things never end a known pair in the house's eyes: scores, receipts, deals (the final two included),
@@ -164,11 +165,12 @@ namespace Gamesim.Simulation
         /// <summary>
         /// Whom a pact's member hunts with one pact-mate as the listener (§14.E.2), or null: a member of a live pair neither
         /// of them stands near (<see cref="Counted"/>), still in the house, whom the listener still rates at
-        /// <see cref="HuntStopLine"/> or more; of those, the one the hunter reads as the pair risk highest
-        /// (<see cref="RiskFor"/>), so the hub of two pairs comes first, then by id. A hunt costs the listener
+        /// <see cref="HuntStopLine"/> or more, and who is no pact-mate (<see cref="APactMate"/>: in no active pact with the
+        /// hunter, nor in one with the listener that the hunter can see); of those, the one the hunter reads as the pair
+        /// risk highest (<see cref="RiskFor"/>), so the hub of two pairs comes first, then by id. A hunt costs the listener
         /// <see cref="HuntStopLine"/> with its target, so the route ends while the listener is still warm to them and the
         /// agenda goes back to holding. Null below <see cref="AlumniRules.CounterBlocs"/>. The agenda never asks it with the
-        /// player as the listener; a player on a pair's card can be its target.
+        /// player as the listener; a player on a pair's card can be its target, unless the player is in the pact.
         /// </summary>
         public static string CounterTarget(EpisodeState s, string hunterId, string mateId)
         {
@@ -178,7 +180,8 @@ namespace Gamesim.Simulation
             foreach (var pair in Counted(LivePairs(s), hunterId, mateId))
                 foreach (string memberId in new[] { pair.FirstId, pair.SecondId })
                 {
-                    if (s.Find(memberId)?.status != ContestantStatus.Active || s.Score(mateId, memberId) < HuntStopLine) continue;
+                    if (s.Find(memberId)?.status != ContestantStatus.Active || s.Score(mateId, memberId) < HuntStopLine
+                        || APactMate(s, memberId, hunterId, mateId)) continue;
                     int risk = RiskFor(s, hunterId, memberId);
                     if (best == null || risk > bestRisk || (risk == bestRisk && string.CompareOrdinal(memberId, best) < 0))
                     {
@@ -250,6 +253,23 @@ namespace Gamesim.Simulation
                 foreach (var fact in edition.Pairs)
                     if (fact.Standing > 0 && fact.Involves(templateId)) return true;
             }
+            return false;
+        }
+
+        /// <summary>
+        /// Whether a bloc hunt's candidate is a pact-mate (§14.E.2: pact-mates never hunt each other): an active pact holds
+        /// the candidate and the hunter, or the candidate and the listener and the hunter can see it
+        /// (<see cref="Knowledge.AllianceVisibleTo"/>), so a pact of the listener's the hunter has not heard of stays out of
+        /// the hunter's reading.
+        /// </summary>
+        private static bool APactMate(EpisodeState s, string memberId, string hunterId, string mateId)
+        {
+            if (s.alliances == null) return false;
+            foreach (var alliance in s.alliances)
+                if (alliance != null && alliance.active && alliance.members != null && alliance.members.Contains(memberId)
+                    && (alliance.members.Contains(hunterId)
+                        || (alliance.members.Contains(mateId) && Knowledge.AllianceVisibleTo(s, alliance, hunterId))))
+                    return true;
             return false;
         }
 

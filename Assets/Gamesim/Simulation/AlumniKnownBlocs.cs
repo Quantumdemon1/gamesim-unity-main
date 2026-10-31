@@ -28,7 +28,9 @@ namespace Gamesim.Simulation
     /// ballots, a pact's end. A departure does, and so does one of the two putting the other up
     /// (<see cref="AlumniLoyalty.PublicSplitWeek"/>, this week's block included). Pure readers of the season and the
     /// edition it names (<see cref="AlumniHistories.EditionOf"/>, never <see cref="AlumniEditions.Latest"/>): nothing is
-    /// stored, cached, drawn or written, and every member is silent below <see cref="AlumniRules.Reputation"/>.</para>
+    /// stored, cached, drawn or written, and every member that reads a season is silent below
+    /// <see cref="AlumniRules.Reputation"/>. <see cref="Risk"/> reads no season: it is a fact's own value at every rules
+    /// value, and the game passes it only the facts <see cref="LivePairs"/> returns.</para>
     /// </summary>
     public static class KnownBlocs
     {

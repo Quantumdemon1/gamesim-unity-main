@@ -310,6 +310,7 @@ namespace Gamesim.Tests.EditMode
             // and a pact of five (20) for none. The career is in reputation, outside this cap.
             var four = s.Clone();
             Pact(four, "four", cody, On(four, Will), On(four, Janelle), On(four, Vanessa));
+            Assert.That(KnownBlocs.RiskFor(four, chelsie, cody), Is.EqualTo(12), "A pact that holds one of a pair is not that pair's bloc.");
             Assert.That(PastGames(four, chelsie, cody), Is.EqualTo(4 + 4).Within(Exact));
             var five = s.Clone();
             Pact(five, "five", cody, On(five, Will), On(five, Janelle), On(five, Vanessa), On(five, Rachel));
@@ -474,6 +475,13 @@ namespace Gamesim.Tests.EditMode
             Assert.That(Terms(KnownBlocs.VoteTerms(s, dan)), Is.EqualTo(Terms(options.alumniTerms)));
             Assert.That(Terms(KnownBlocs.VoteTerms(s, derrick)), Is.EqualTo(new[] { (cody, 4.0, 4.0) }), "Derrick reads the Committee, not his own pair.");
             Assert.That(Terms(KnownBlocs.VoteTerms(s, tyler)), Is.EqualTo(new[] { (cody, 8.0, 4.0) }));
+            // Through FromNative itself, voter by voter: the ballot reads the pairs as this voter does.
+            Assert.That(Terms(WebEvictionVoting.FromNative(s, derrick).alumniTerms), Is.EqualTo(new[] { (cody, 4.0, 4.0) }));
+            Assert.That(Terms(WebEvictionVoting.FromNative(s, tyler).alumniTerms), Is.EqualTo(new[] { (cody, 8.0, 4.0) }));
+            // A career with no known pair is a term of its own.
+            var careerOnly = s.Clone();
+            careerOnly.nominees = new List<string> { dan, player };
+            Assert.That(Terms(WebEvictionVoting.FromNative(careerOnly, On(careerOnly, Chelsie)).alumniTerms), Is.EqualTo(new[] { (dan, 0.0, 4.0) }));
             Assert.That(VoteThreatPoints(s, dan, cody), Is.EqualTo(16).Within(1e-6));
             Assert.That(PastGames(s, dan, cody), Is.EqualTo(16).Within(Exact), "The same 16 in the nominations.");
             var two = Held(s, AlumniRules.Loyalty);

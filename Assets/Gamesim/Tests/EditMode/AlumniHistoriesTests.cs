@@ -170,7 +170,14 @@ namespace Gamesim.Tests.EditMode
             Assert.That(AlumniEditions.AlliancePairRisk, Is.EqualTo(4));
             var s = AllStars(12, 53u, value: AlumniRules.Reputation);
             foreach (var templateId in new[] { Dan, Janelle, Danielle, Tyler })
-                Assert.That(KnownBlocs.CareerFor(s, On(s, templateId)), Is.EqualTo(One.CareerReputation(templateId)), templateId + ": the edition's own value.");
+            {
+                string id = On(s, templateId);
+                Assert.That(KnownBlocs.CareerFor(s, id), Is.EqualTo(One.CareerReputation(templateId)), templateId + ": the edition's own value.");
+                // The nomination threat reads it, as the newcomer player sees them: outside every pair, and with neither
+                // the alliance cap nor reputation's clamp binding, the past games add the pair risk and the career exactly.
+                Assert.That(ThreatAssessment.TotalWithPastGames(s, s.playerId, id) - ThreatAssessment.Total(s, s.playerId, id) - KnownBlocs.RiskFor(s, s.playerId, id),
+                    Is.EqualTo(One.CareerReputation(templateId)).Within(1e-9), templateId + ": the career is in the nomination threat.");
+            }
             Assert.That(KnownBlocs.CareerFor(s, s.playerId), Is.Zero, "The newcomer has none.");
         }
 

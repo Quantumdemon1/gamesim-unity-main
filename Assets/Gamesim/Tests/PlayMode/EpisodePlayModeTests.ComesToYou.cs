@@ -57,26 +57,28 @@ namespace Gamesim.Tests.PlayMode
         /// <summary>
         /// <see cref="OptIntoComesToYou"/> on the house of its choice: with <paramref name="threeAsks"/>, Taylor asks too
         /// (OFFERS-COME-TO-YOU-PLAN test 15); with <paramref name="story"/>, the story system is on, so a walk-in can be
-        /// offered as a Pull.
+        /// offered as a Pull. With <paramref name="holdPairing"/>, the house's pairing stays held from the bodies' assembly
+        /// on, for <see cref="WithTheHouseHeld"/>.
         /// </summary>
-        private IEnumerator OptIntoComesToYouHouse(bool threeAsks, bool story, string[] holdAsideAskers)
+        private IEnumerator OptIntoComesToYouHouse(bool threeAsks, bool story, string[] holdAsideAskers, bool holdPairing = false)
         {
             SaveNpcInvitationFlowState(threeAsks);
             if (story) SaveWithTheStoryOn();
             yield return ReloadEpisode();
-            yield return TurnAsksOnInTheLoadedHouse(holdAsideAskers);
+            yield return TurnAsksOnInTheLoadedHouse(holdAsideAskers, holdPairing);
         }
 
         /// <summary>
         /// Asks on in the house just loaded, its walk-in watch held: every body assembled with nobody paired meanwhile, the
         /// switch taken effect - its reset and the first session key both clear the set-aside - and only then the named
-        /// askers' records held aside. No visit waited for.
+        /// askers' records held aside. No visit waited for. With <paramref name="holdPairing"/>, the house's pairing is not
+        /// let go after the assembly, so no director Update runs with it live before <see cref="WithTheHouseHeld"/>'s body.
         /// </summary>
-        private IEnumerator TurnAsksOnInTheLoadedHouse(string[] holdAsideAskers)
+        private IEnumerator TurnAsksOnInTheLoadedHouse(string[] holdAsideAskers, bool holdPairing = false)
         {
             NpcWrite("proximityWatch", -1e6f);
             // Asks are still off meanwhile, so at most the invitation sets out, and the switch below lets it go.
-            yield return WaitForBodiesPairingNobody();
+            yield return WaitForBodiesPairingNobody(holdPairing);
             director.AsksEnabled = true;
             float deadline = Time.realtimeSinceStartup + 2f;
             while (!NpcRead<bool>("asksWereOn") && Time.realtimeSinceStartup < deadline) yield return null;
@@ -112,14 +114,47 @@ namespace Gamesim.Tests.PlayMode
         /// <summary>
         /// Waits until every body has assembled - one finishing later re-renders the HUD and re-selects a control - with
         /// the house's route planning held meanwhile, so the wait pairs nobody: the askers are as free when it ends as just
-        /// after the reload, and planning runs as it always does from there.
+        /// after the reload, and planning runs as it always does from there - unless <paramref name="keepHeld"/>, when the
+        /// caller lets it go (<see cref="WithTheHouseHeld"/>).
         /// </summary>
-        private IEnumerator WaitForBodiesPairingNobody()
+        private IEnumerator WaitForBodiesPairingNobody(bool keepHeld = false)
         {
             NpcWrite("npcApproachDiagnosticsSuppressed", true);
             try { yield return WaitForBodies(); }
-            finally { NpcWrite("npcApproachDiagnosticsSuppressed", false); }
+            finally { if (!keepHeld) NpcWrite("npcApproachDiagnosticsSuppressed", false); }
             Assert.That(NpcRead<IList>("npcApproaches"), Is.Empty, "Nobody set out to pair while the bodies assembled.");
+        }
+
+        /// <summary>
+        /// <paramref name="body"/> with the house's own pairing and ambient seats held, for a test whose subject is the ask
+        /// queue rather than the house's autonomy (OFFERS-COME-TO-YOU-PLAN test 17 holds them the same way). The house pairs
+        /// any asker with no visit in flight - the busy set holds back only the visit's asker and the one opening (plan C.2)
+        /// - in cast order, Maya first, every third second of NPC time from a fresh house; a paired asker is refused as busy
+        /// and her ask comes as a card, and a seated one is taken off the furniture (a conversation preempts a disposable
+        /// routine). <paramref name="optIn"/> keeps pairing held from the bodies' assembly on (holdPairing), so no director
+        /// Update runs with it live; both holds are let go afterwards.
+        /// </summary>
+        private IEnumerator WithTheHouseHeld(Func<IEnumerator> optIn, Func<IEnumerator> body)
+        {
+            float ambient = float.NaN;
+            try
+            {
+                yield return optIn();
+                Assert.That(NpcRead<bool>("npcApproachDiagnosticsSuppressed"), Is.True, "Pairing is held from the bodies' assembly on.");
+                ambient = NpcRead<float>("nextAmbientActivity");
+                NpcWrite("nextAmbientActivity", float.PositiveInfinity);
+                Assert.That(NpcRead<IList>("npcApproaches"), Is.Empty, "Nobody set out to pair before the hold.");
+                Assert.That(director.IsAskCardOpen, Is.False, "No card before the hold.");
+                yield return body();
+            }
+            finally
+            {
+                if (director != null)
+                {
+                    NpcWrite("npcApproachDiagnosticsSuppressed", false);
+                    if (!float.IsNaN(ambient)) NpcWrite("nextAmbientActivity", ambient);
+                }
+            }
         }
 
         private IEnumerable<string> HeldAside(string[] askers) =>
@@ -134,7 +169,7 @@ namespace Gamesim.Tests.PlayMode
             {
                 var motion = SceneComponents<HouseNpc>().FirstOrDefault(npc => npc.Id == askerId)?.GetComponent<HouseNpcMotion>();
                 Assert.Fail("The dialogue never opened on " + askerId + ": misses " + director.AskMissCount(director.CurrentNpcInvitationRecordId)
-                    + ", arrival " + motion?.ArrivalFailure + ", route " + motion?.LastRouteFailure);
+                    + ", arrival " + motion?.ArrivalFailure + ", route " + motion?.LastRouteFailure + ". " + AskerReport(askerId));
             }
             Assert.That(director.TalkingToId, Is.EqualTo(askerId));
         }
@@ -539,16 +574,16 @@ namespace Gamesim.Tests.PlayMode
             director.ClosePanels();
             yield return null;
 
-            // Jamie's turn, under the emote menu.
-            var aside = NpcRead<HashSet<string>>("askSetAside");
-            foreach (var id in HeldAside(new[] { ComesJamie })) aside.Remove(id);
-            NpcWrite("askNextAt", NpcRead<float>("askClock"));
-            float deadline = Time.realtimeSinceStartup + 35f;
-            while (director.CurrentAskerId != ComesJamie && Time.realtimeSinceStartup < deadline) yield return null;
-            Assert.That(director.CurrentAskerId, Is.EqualTo(ComesJamie));
+            // The emote menu on a house of its own, as the overview had: a walk-over just reserved, which a card never is (a
+            // card sets no CurrentNpcInvitationRecordId). An asker held aside while the house ran on, beside the last asker,
+            // may by then come as a card (OFFERS-COME-TO-YOU-PLAN A, slice 2: busy, or a spot that fits no visitor), and a
+            // card is a panel the emote menu never opens over.
+            yield return InstallComesToYouHouse(ComesJamie);
+            askerId = director.CurrentAskerId;
+            Assert.That(director.IsAskCardOpen, Is.False, "A walk-over, not a card: " + AskerReport(askerId));
             director.ToggleEmoteMenu();
-            Assert.That(director.EmoteMenuOpen, Is.True);
-            yield return HeldThenOpens(ComesJamie, "the emote menu", () => director.ToggleEmoteMenu());
+            Assert.That(director.EmoteMenuOpen, Is.True, "The emote menu opens over the visit: " + AskerReport(askerId));
+            yield return HeldThenOpens(askerId, "the emote menu", () => director.ToggleEmoteMenu());
         }
 
         /// <summary>The asker's line shows and nothing opens for 5 real seconds from the frame it is first up; once the chrome goes, the dialogue opens.</summary>
@@ -556,15 +591,16 @@ namespace Gamesim.Tests.PlayMode
         {
             float deadline = Time.realtimeSinceStartup + 35f;
             while (!director.NpcInvitationIsVisible && Time.realtimeSinceStartup < deadline) yield return null;
-            Assert.That(director.NpcInvitationIsVisible, Is.True, "The line shows under " + chrome + ".");
+            if (!director.NpcInvitationIsVisible) Assert.Fail("The line shows under " + chrome + ": " + AskerReport(askerId));
             float until = Time.realtimeSinceStartup + 5f;
             while (Time.realtimeSinceStartup < until)
             {
-                Assert.That(director.TalkingToId, Is.Null, "Nothing opens under " + chrome + ".");
+                if (director.TalkingToId != null) Assert.Fail("Nothing opens under " + chrome + ": " + AskerReport(askerId));
                 yield return null;
             }
             close();
-            // The lease may run out while held; that is no miss, and the ask comes again after its retry.
+            // The lease may run out while held: under the overview or the emote menu (closable chrome) that is a miss, and
+            // the ask comes again after its retry, inside the wait.
             yield return WaitForAskDialogue(askerId, 40f);
             Assert.That(director.CurrentAskWay, Is.EqualTo(EpisodeDirector.AskWay.WalkOver));
         }
@@ -574,84 +610,144 @@ namespace Gamesim.Tests.PlayMode
         [UnityTest]
         public IEnumerator ComesToYou_SeatedAskerDoesNotBlockTheNext() => PinnedClock(SeatedAsker);
 
-        private IEnumerator SeatedAsker()
+        /// <summary>
+        /// The first-listed asker seated through the coordinator's furniture activity, as the house-activity tests seat
+        /// one - on a coordinator with no planner of its own - so the house's pairing and ambient seats are held: a
+        /// conversation the house starts takes a seated houseguest off the furniture, as it should, and Jamie, seated by the
+        /// test and not cooling down, is one the house's first pairing scan would try. The subject is the ask queue, and
+        /// the seat has to hold for the card's 10 s: every second charged is a seated, busy Jamie's.
+        /// </summary>
+        private IEnumerator SeatedAsker() =>
+            WithTheHouseHeld(() => OptIntoComesToYouHouse(false, false, Array.Empty<string>(), holdPairing: true), SeatedAskerKeepsTheSeat);
+
+        private IEnumerator SeatedAskerKeepsTheSeat()
         {
-            yield return OptIntoComesToYou();
             // Jamie's ask is first in public order ("jamie-roberts" before "maya-hassan"): seat Jamie.
             var first = ComesToYou.Read(director.Snapshot).First();
             Assert.That(first.askerId, Is.EqualTo(ComesJamie));
             var coordinator = NpcRead<HouseMeetingCoordinator>("npcMeetings");
+            float seated = Time.realtimeSinceStartup;
+            Assert.That(coordinator.LeaseCount, Is.Zero, "Nobody paired before the seat. " + SeatReport(coordinator, null, null, seated));
             var seat = HouseFurniture.InScene(player.gameObject.scene).FirstOrDefault(anchor => coordinator.ActivityAnchorAvailable(anchor));
             Assert.That(seat, Is.Not.Null, "A free piece of furniture.");
-            Assert.That(coordinator.TryReserveActivity(ComesJamie, seat, out var activity, out var reason), Is.True, reason);
+            Assert.That(coordinator.TryReserveActivity(ComesJamie, seat, out var activity, out var reason), Is.True,
+                reason + " " + SeatReport(coordinator, seat, null, seated));
+            seated = Time.realtimeSinceStartup;
 
             float deadline = Time.realtimeSinceStartup + 35f;
             while (director.CurrentNpcInvitationRecordId == null && Time.realtimeSinceStartup < deadline) yield return null;
-            Assert.That(director.CurrentAskerId, Is.EqualTo(ComesMaya), "The next asker comes while Jamie sits.");
+            Assert.That(director.CurrentAskerId, Is.EqualTo(ComesMaya), "The next asker comes while Jamie sits. " + SeatReport(coordinator, seat, activity, seated));
             director.ClosePanels();
 
             // Jamie's own refusals add up to the card's time, setting nothing aside, and from slice 2 the ask comes as a card
-            // where the player stands - on the very scan that makes it due - Jamie staying in their seat.
+            // where the player stands - on the very scan that makes it due - Jamie staying in their seat throughout: a
+            // paired Jamie would be refused as busy too, so a seat lost on the way would let the test pass without a seated
+            // asker.
             var unreachable = NpcRead<Dictionary<string, float>>("askUnreachable");
             NpcRead<HashSet<string>>("askSetAside").UnionWith(HeldAside(new[] { ComesMaya }));
             deadline = Time.realtimeSinceStartup + 40f;
             while ((!unreachable.TryGetValue(first.recordId, out float seconds) || seconds < EpisodeDirector.AskUnreachableSecondsBeforeCard)
                    && !director.IsAskCardOpen && Time.realtimeSinceStartup < deadline)
             {
-                Assert.That(director.IsAskSetAside(first.recordId), Is.False, "A busy asker's refusals set nothing aside.");
-                if (activity.Released) Assert.That(coordinator.TryReserveActivity(ComesJamie, seat, out activity, out reason), Is.True, reason);
+                if (director.IsAskSetAside(first.recordId))
+                    Assert.Fail("A busy asker's refusals set nothing aside. " + SeatReport(coordinator, seat, activity, seated));
+                if (activity.Released)
+                    Assert.Fail("Jamie keeps the seat while their own refusals add up. " + SeatReport(coordinator, seat, activity, seated));
                 yield return null;
             }
             Assert.That(unreachable.TryGetValue(first.recordId, out float charged) ? charged : 0f,
-                Is.GreaterThanOrEqualTo(EpisodeDirector.AskUnreachableSecondsBeforeCard), "No card before Jamie's own refusals add up to the card's time.");
+                Is.GreaterThanOrEqualTo(EpisodeDirector.AskUnreachableSecondsBeforeCard),
+                "No card before Jamie's own refusals add up to the card's time. " + SeatReport(coordinator, seat, activity, seated));
             // The scan that makes it due opens it, in its place in the order: no scan later, after something listed behind it.
-            Assert.That(director.IsAskCardOpen, Is.True, "A busy asker's ask comes as a card on the scan that makes it due.");
+            Assert.That(director.IsAskCardOpen, Is.True, "A busy asker's ask comes as a card on the scan that makes it due. "
+                + SeatReport(coordinator, seat, activity, seated));
             Assert.That(director.CurrentAskWay, Is.EqualTo(EpisodeDirector.AskWay.Card));
             Assert.That(director.CurrentAskRecordId, Is.EqualTo(first.recordId));
             Assert.That(director.CurrentAskerId, Is.EqualTo(ComesJamie));
+            Assert.That(activity.Released, Is.False, "Jamie stays in the seat as the card opens. " + SeatReport(coordinator, seat, activity, seated));
             coordinator.ReleaseActivity(activity);
+        }
+
+        /// <summary>Jamie's seat as it stands this frame - whose it is, and what took it if it went - beside the asks' report on Jamie.</summary>
+        private string SeatReport(HouseMeetingCoordinator coordinator, HouseInteractionAnchor seat, HouseActivityLease activity, float seatedAt)
+        {
+            bool held = coordinator != null && activity != null && coordinator.TryGetActivity(ComesJamie, out var now) && ReferenceEquals(now, activity);
+            return "Seat " + (seat != null ? seat.VenueId + " #" + seat.Slot + " (free " + coordinator?.ActivityAnchorAvailable(seat) + ")" : "none")
+                + ", released " + (activity != null ? activity.Released.ToString() : "-") + ", still Jamie's " + held + ", "
+                + (Time.realtimeSinceStartup - seatedAt).ToString("0.0") + " s since the seat. " + AskerReport(ComesJamie);
         }
 
         // ------------------------------------------------------------------ 8. no ask while walking, at any frame rate
 
         [UnityTest]
-        public IEnumerator ComesToYou_NoAskWhileWalkingAtHighFrameRate() => PinnedClock(NoAskWhileWalking, 1f / 240f);
+        public IEnumerator ComesToYou_NoAskWhileWalkingAtHighFrameRate() => PinnedClock(NoAskWhileWalkingHeld, 1f / 240f);
+
+        /// <summary>
+        /// Jamie held aside, Maya the one asker who can come. The walk outlasts the house's first pairing scan (every third
+        /// second of NPC time from a fresh house), which pairs idle houseguests in cast order, Maya first; a paired asker is
+        /// refused as busy and her ask becomes a card, so no visit would come once the player stands. Nobody pairs off or
+        /// takes a seat meanwhile, so the walk and then the still time are all that stand between the player and the visit.
+        /// </summary>
+        private IEnumerator NoAskWhileWalkingHeld() =>
+            WithTheHouseHeld(() => OptIntoComesToYouHouse(false, false, new[] { ComesJamie }, holdPairing: true), NoAskWhileWalking);
 
         private IEnumerator NoAskWhileWalking()
         {
-            yield return OptIntoComesToYou(ComesJamie);
+            AssertAskerUnpaired(ComesMaya, "as the walk starts");
+            var view = cameraRig.ViewCamera;
             var from = player.transform.position;
             Vector3 to = from;
             for (int direction = 0; direction < 16 && to == from; direction++)
             {
                 float angle = direction * Mathf.PI / 8f;
                 var candidate = from + new Vector3(Mathf.Cos(angle), 0f, Mathf.Sin(angle)) * 2f;
-                if (NavMesh.SamplePosition(candidate, out var hit, .4f, player.Agent.areaMask)
-                    && !NavMesh.Raycast(from, hit.position, out _, player.Agent.areaMask)) to = hit.position;
+                if (!NavMesh.SamplePosition(candidate, out var hit, .4f, player.Agent.areaMask)
+                    || NavMesh.Raycast(from, hit.position, out _, player.Agent.areaMask)) continue;
+                // The player's head well inside the frame there too: out of frame, no visit starts and the settle restarts.
+                var seen = view.WorldToViewportPoint(hit.position + Vector3.up * 1.7f);
+                if (seen.z > 0f && seen.x > .15f && seen.x < .85f && seen.y > .15f && seen.y < .85f) to = hit.position;
             }
-            Assert.That(to, Is.Not.EqualTo(from), "Two floor points in one room.");
-            float until = Time.realtimeSinceStartup + 4f;
+            Assert.That(to, Is.Not.EqualTo(from), "Two floor points in one room, both in frame.");
+            float until = Time.realtimeSinceStartup + 4f, arrived = float.NaN;
             bool outbound = true;
             Assert.That(player.TryMoveTo(to), Is.True);
             while (Time.realtimeSinceStartup < until)
             {
-                Assert.That(director.CurrentNpcInvitationRecordId, Is.Null, "No visit is reserved while the player walks.");
+                if (director.CurrentNpcInvitationRecordId != null)
+                    Assert.Fail("No visit is reserved while the player walks: " + AskerReport(ComesMaya));
                 if (player.HasArrived)
                 {
                     outbound = !outbound;
                     if (Time.realtimeSinceStartup < until) Assert.That(player.TryMoveTo(outbound ? to : from), Is.True);
+                    else arrived = StandingSince();
                 }
                 yield return null;
             }
+            // The walk alone held the visit back: Maya was free throughout, and the settle has run.
+            AssertAskerUnpaired(ComesMaya, "after the walk");
+            Assert.That(NpcRead<float>("askFreeRun"), Is.GreaterThanOrEqualTo(EpisodeDirector.AskSettleSeconds),
+                "Only the walk held the visit back: the settle has run. " + AskerReport(ComesMaya));
             float deadline = Time.realtimeSinceStartup + 10f;
             while (!player.HasArrived && Time.realtimeSinceStartup < deadline) yield return null;
-            float arrived = Time.realtimeSinceStartup;
-            deadline = arrived + 10f;
+            Assert.That(player.HasArrived, Is.True, "The last leg arrives. " + AskerReport(ComesMaya));
+            if (float.IsNaN(arrived)) arrived = StandingSince();
+            deadline = Time.realtimeSinceStartup + 10f;
             while (director.CurrentNpcInvitationRecordId == null && Time.realtimeSinceStartup < deadline) yield return null;
-            Assert.That(director.CurrentNpcInvitationRecordId, Is.Not.Null, "Once the player stands, a visit is reserved.");
+            if (director.CurrentNpcInvitationRecordId == null)
+                Assert.Fail("Once the player stands, a visit is reserved within 10 s: player at " + player.transform.position + " (from " + from
+                    + ", to " + to + "), " + (Time.realtimeSinceStartup - arrived).ToString("0.00") + " s standing. " + AskerReport(ComesMaya));
+            Assert.That(director.CurrentAskerId, Is.EqualTo(ComesMaya), "The one asker not held aside comes.");
             Assert.That(Time.realtimeSinceStartup - arrived, Is.GreaterThanOrEqualTo(EpisodeDirector.AskStillSeconds - .02f),
-                "No sooner than the still time after the arrival.");
+                "No sooner than the still time after the arrival: " + AskClocksNow() + ".");
         }
+
+        /// <summary>
+        /// When the player, first seen standing on this frame, began to stand on the stillness clock's own terms: the clock
+        /// credits the first still frame's own unscaled time, at most the frame allowance (ComesToYouStillness.Step), so the
+        /// arrival is read from the start of that frame, never after it.
+        /// </summary>
+        private static float StandingSince() =>
+            Time.realtimeSinceStartup - Mathf.Min(Time.unscaledDeltaTime, EpisodeDirector.AskFrameAllowanceSeconds);
 
         // ------------------------------------------------------------------ 9. the asker is never paired or walked in on
 
@@ -826,6 +922,42 @@ namespace Gamesim.Tests.PlayMode
             + " s, clock " + NpcRead<float>("askClock") + ", next " + NpcRead<float>("askNextAt") + ", Pull held "
             + NpcRead<float>("askPullHeld") + " s (up " + ComesHud.PullShowing + "), in frame " + NpcRead<bool>("askPlayerInFrame")
             + ", panel " + director.IsPanelOpen + ", card " + director.IsAskCardOpen;
+
+        /// <summary>
+        /// Everything the asks hold about one asker this frame, for a failure's message, so a red says which gate, card or
+        /// refusal it met: the asker's records (seconds of their own refusals - busy, no route, not bound - misses, set
+        /// aside), what holds their body (the lease token names its owner: "approach" a house pairing, "invitation" a
+        /// visit, "activity" a seat), whether the house has paired them; the card or visit up, the panel and chrome, the
+        /// player's spot's count and the ask clocks; and the house's pairs, clock tick and next pairing scan.
+        /// </summary>
+        private string AskerReport(string askerId)
+        {
+            var motion = SceneComponents<HouseNpc>().FirstOrDefault(npc => npc.Id == askerId)?.GetComponent<HouseNpcMotion>();
+            var unreachable = NpcRead<Dictionary<string, float>>("askUnreachable");
+            var coordinator = NpcRead<HouseMeetingCoordinator>("npcMeetings");
+            var social = director.Snapshot?.npcSocial;
+            var records = director.Snapshot == null ? new List<string>()
+                : ComesToYou.Read(director.Snapshot).Where(ask => ask.askerId == askerId).Select(ask => ask.recordId).ToList();
+            string Record(string id) => id + " (unreachable " + (unreachable != null && unreachable.TryGetValue(id, out float seconds) ? seconds : 0f)
+                + " s, misses " + director.AskMissCount(id) + ", set aside " + director.IsAskSetAside(id) + ")";
+            var leases = (NpcRead<Dictionary<long, HouseMeetingLease>>("npcPendingWorld")?.Values ?? Enumerable.Empty<HouseMeetingLease>())
+                .Concat((NpcRead<IList>("npcApproaches")?.Cast<object>() ?? Enumerable.Empty<object>()).Select(approach => (HouseMeetingLease)NpcObjectField(approach, "lease")));
+            bool paired = leases.Any(lease => lease != null && (lease.FirstId == askerId || lease.SecondId == askerId))
+                || (social != null && social.pending.Any(row => row.firstId == askerId || row.secondId == askerId));
+            string seat = coordinator != null && coordinator.TryGetActivity(askerId, out var activity) ? ", seated at " + activity.Anchor?.VenueId : "";
+            var nearby = typeof(EpisodeDirector).GetProperty("NearbyOfferUp", BindingFlags.Instance | BindingFlags.NonPublic);
+            return askerId + ": " + (records.Count == 0 ? "no ask" : string.Join(", ", records.Select(Record))) + "; lease "
+                + (motion?.LeaseId ?? "none") + ", state " + motion?.State + ", arrival " + motion?.ArrivalFailure + ", route "
+                + motion?.LastRouteFailure + ", paired " + paired + seat + ". Asks: card " + director.IsAskCardOpen + ", way "
+                + director.CurrentAskWay + ", ask " + (director.CurrentAskRecordId ?? "none") + " (" + (director.CurrentAskerId ?? "nobody")
+                + "), visit " + (director.CurrentNpcInvitationRecordId ?? "none") + ", line up " + director.NpcInvitationIsVisible
+                + ", talking to " + (director.TalkingToId ?? "nobody") + ", emote menu " + director.EmoteMenuOpen + ", spot blocked "
+                + NpcRead<float>("askSpotBlockedFor") + " s, card settle " + NpcRead<float>("askCardSettle") + " s, nearby "
+                + (nearby != null ? nearby.GetValue(director) : "?") + ", " + AskClocksNow() + ". House: pairs " + coordinator?.LeaseCount
+                + ", paused " + coordinator?.IsPaused + ", ready " + coordinator?.IsReady + ", last failure " + coordinator?.LastFailure
+                + ", tick " + social?.clockTick + " (next scan " + social?.nextScanTick + "), pairing held "
+                + NpcRead<bool>("npcApproachDiagnosticsSuppressed") + ". " + director.NpcAutonomyDiagnostic;
+        }
 
         /// <summary>Why the asker's line never came up, for a failure's message.</summary>
         private string AskerWalkNow(string askerId)
@@ -1422,27 +1554,54 @@ namespace Gamesim.Tests.PlayMode
                         Assert.That(label.fontSize, Is.GreaterThanOrEqualTo(12f), at + ": " + name + " at 1080p.");
                         Assert.That(label.preferredHeight, Is.LessThanOrEqualTo(label.rectTransform.rect.height + .5f), at + ": " + name + " fits.");
                     }
-                    if (textSize == TextSize.Largest)
-                        foreach (var caption in new[] { EpisodeHud.DealAcceptCaption, EpisodeHud.DealDeclineCaption,
-                                     EpisodeHud.ThinkItOverCaption, EpisodeDirector.ConversationTopicsBackCaption })
-                            AssertInsideItsViewport(FindButton(caption), at + ": " + caption);
+                    // The frame first, so a red below still leaves it to look at.
                     if (Application.isBatchMode)
                         yield return CaptureFraming("comes-to-you-in-person" + (reduced ? "-reduced-motion" : "") + TextScales.Suffix(textSize));
+                    // OFFERS-COME-TO-YOU-PLAN C.3 and test 10: at Largest, 1920x1080 - the HUD's 1600x900 canvas, where the batch
+                    // screen's 4:3 one is 139 units taller - the answer controls, AskBody's Accept and Turn down, sit inside the
+                    // viewport as the dialogue opens, and the dialogue is not paged. The keyboard opens on Think it over (A.5), so
+                    // the HUD reveals it, its bottom on the viewport's; Back to topics is the row under it, in the same scroll.
+                    if (textSize == TextSize.Largest)
+                    {
+                        Assert.That(ButtonWithCaptionOrNull(EpisodeHud.NextPageCaption), Is.Null, at + ": the dialogue is not paged.");
+                        var answers = FindButton(EpisodeHud.DealAcceptCaption).GetComponentInParent<ScrollRect>();
+                        Assert.That(answers, Is.Not.Null, at + ": the answers are in a scroll view.");
+                        Assert.That(FindButton(EpisodeDirector.ConversationTopicsBackCaption).transform.IsChildOf(answers.content), Is.True,
+                            at + ": Back to topics is in the same scroll as the answers, reached by scrolling, not on a page of its own.");
+                        yield return AtFrame(1600, 900, () =>
+                        {
+                            foreach (var caption in new[] { EpisodeHud.DealAcceptCaption, EpisodeHud.DealDeclineCaption, EpisodeHud.ThinkItOverCaption })
+                                AssertInsideItsViewport(FindButton(caption), at + " at 1920x1080: " + caption);
+                        });
+                    }
                 }
         }
 
-        /// <summary>A control wholly inside its scroll view's viewport, as the dialogue opens - no scrolling.</summary>
+        /// <summary>
+        /// A control wholly inside its scroll view's viewport, as the dialogue opens - no scrolling. Measured in the
+        /// viewport's own units, as the HUD's reveal measures it, so it holds through a capture's lens too. A miss says on
+        /// what screen and canvas, how far the content is scrolled, where the keyboard is and every row's height.
+        /// </summary>
         private static void AssertInsideItsViewport(Button button, string what)
         {
             Canvas.ForceUpdateCanvases();
             var scroll = button.GetComponentInParent<ScrollRect>();
-            if (scroll == null) return;
+            Assert.That(scroll, Is.Not.Null, what + ": the control is in a scroll view, so the check is not vacuous.");
             var viewport = scroll.viewport != null ? scroll.viewport : (RectTransform)scroll.transform;
-            var outer = new Vector3[4]; var inner = new Vector3[4];
-            viewport.GetWorldCorners(outer);
-            ((RectTransform)button.transform).GetWorldCorners(inner);
-            Assert.That(inner[0].y >= outer[0].y - .5f && inner[1].y <= outer[1].y + .5f, Is.True,
-                what + " sits inside the viewport (" + inner[0].y + ".." + inner[1].y + " in " + outer[0].y + ".." + outer[1].y + ").");
+            var box = RectTransformUtility.CalculateRelativeRectTransformBounds(viewport, button.transform);
+            var view = viewport.rect;
+            if (box.min.y >= view.yMin - .5f && box.max.y <= view.yMax + .5f) return;
+            var root = scroll.GetComponentInParent<Canvas>()?.rootCanvas;
+            var content = scroll.content;
+            var selected = EventSystem.current != null ? EventSystem.current.currentSelectedGameObject : null;
+            string rows = content == null ? "none" : string.Join(", ", content.Cast<Transform>().Where(row => row.gameObject.activeSelf)
+                .Select(row => row.name + " " + ((row as RectTransform)?.rect.height ?? 0f).ToString("0")));
+            Assert.Fail(what + " sits inside the viewport: " + box.min.y.ToString("0.0") + ".." + box.max.y.ToString("0.0") + " in "
+                + view.yMin.ToString("0.0") + ".." + view.yMax.ToString("0.0") + " (viewport units). Screen " + Screen.width + "x" + Screen.height
+                + ", canvas " + (root != null ? ((RectTransform)root.transform).rect.size + " at x" + root.scaleFactor.ToString("0.#####") : "none")
+                + "; content " + (content != null ? content.rect.height.ToString("0") + " tall, scrolled " + content.anchoredPosition.y.ToString("0") : "missing")
+                + " (" + scroll.verticalNormalizedPosition.ToString("0.###") + "); keyboard on " + (selected != null ? selected.name : "nothing")
+                + "; rows top to bottom: " + rows + ".");
         }
 
         // ================================================================== slice 2: it pops up when they cannot come
@@ -2008,8 +2167,11 @@ namespace Gamesim.Tests.PlayMode
             return Mathf.Abs(Mathf.DeltaAngle(facing, Mathf.Atan2(toward.x, toward.z) * Mathf.Rad2Deg));
         }
 
-        /// <summary>Waits for the asker's line to be up, bounded in real seconds, holding the dialogue's own opening back; says why on a miss.</summary>
-        private IEnumerator WaitForTheLineHeldBack(string at, float seconds = 35f)
+        /// <summary>
+        /// Waits for the asker's line to be up, bounded in real seconds, holding the dialogue's own opening back; says why on
+        /// a miss, about the asker expected - the visit's own may be none by then.
+        /// </summary>
+        private IEnumerator WaitForTheLineHeldBack(string at, string askerId, float seconds = 35f)
         {
             float deadline = Time.realtimeSinceStartup + seconds;
             while (!director.NpcInvitationIsVisible && Time.realtimeSinceStartup < deadline)
@@ -2018,12 +2180,7 @@ namespace Gamesim.Tests.PlayMode
                 yield return null;
             }
             NpcWrite("askSpokeFor", 0f);
-            if (!director.NpcInvitationIsVisible)
-            {
-                var motion = SceneComponents<HouseNpc>().FirstOrDefault(npc => npc.Id == director.CurrentAskerId)?.GetComponent<HouseNpcMotion>();
-                Assert.Fail(at + ": the asker's line never came up. Visit " + (director.CurrentNpcInvitationRecordId ?? "none") + ", arrival "
-                    + motion?.ArrivalFailure + ", route " + motion?.LastRouteFailure + ". " + director.NpcAutonomyDiagnostic);
-            }
+            if (!director.NpcInvitationIsVisible) Assert.Fail(at + ": the asker's line never came up. " + AskerReport(askerId));
             Assert.That(director.TalkingToId, Is.Null, at + ": the dialogue is held back.");
         }
 
@@ -2066,7 +2223,7 @@ namespace Gamesim.Tests.PlayMode
                 yield return null;
             }
             // Waited above: this only holds the open back and says why on a miss.
-            yield return WaitForTheLineHeldBack("the asker's arrival", 0f);
+            yield return WaitForTheLineHeldBack("the asker's arrival", askerId, 0f);
             Assert.That(NpcRead<HouseNpcInvitationLease>("askVisit"), Is.SameAs(visit), "The line is the visit followed.");
             float window = meetings.NpcInvitationExpiresAt(visit);
             Assert.That(window, Is.Not.NaN, "The visit is still the one in flight.");
@@ -2249,10 +2406,25 @@ namespace Gamesim.Tests.PlayMode
         /// </summary>
         private IEnumerator TheLinesBoxesFit()
         {
-            yield return InstallComesToYouHouse(ComesJamie);
-            // The settings are a panel: the visit goes, and the next sets out once the house is free again.
+            SaveNpcInvitationFlowState();
+            yield return ReloadEpisode();
+            // Largest first, chosen as a player chooses it, before asks are on (the reload restores the default size): the
+            // settings panel then cancels no visit, and the line is the house's own first walk-over. Its flush plans no
+            // pairing. A visit the settings cancel hands its asker back to a house free to pair her before she can be
+            // asked again - Maya, the one asker not held aside - and a busy asker's ask comes as a card, not a line.
+            NpcWrite("proximityWatch", -1e6f);
+            NpcWrite("npcApproachDiagnosticsSuppressed", true);
             yield return ApplyTextSize(TextSize.Largest);
-            yield return WaitForTheLineHeldBack("at Largest", 45f);
+            Assert.That(director.TextSize, Is.EqualTo(TextSize.Largest), "The size took, so this pass is not vacuous.");
+            yield return WithTheHouseHeld(() => TurnAsksOnInTheLoadedHouse(new[] { ComesJamie }, holdPairing: true), TheLinesBoxesFitHeld);
+        }
+
+        private IEnumerator TheLinesBoxesFitHeld()
+        {
+            yield return WaitForTheLineHeldBack("at Largest", ComesMaya, 35f);
+            Assert.That(director.CurrentAskerId, Is.EqualTo(ComesMaya), "The line is Maya's, the one asker not held aside.");
+            foreach (var id in HeldAside(new[] { ComesJamie })) Assert.That(director.IsAskSetAside(id), Is.True, id + " is still held aside.");
+            Assert.That(director.TextSize, Is.EqualTo(TextSize.Largest), "and still at Largest.");
             var bubble = NpcRead<HouseNpcInvitationBubble>("npcInvitationBubble");
             Assert.That(bubble.ViewCamera, Is.SameAs(cameraRig.ViewCamera), "The line is placed on the view the player sees.");
             yield return null;

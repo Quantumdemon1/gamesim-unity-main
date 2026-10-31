@@ -62,7 +62,10 @@
 # Offers slice 1 (OFFERS-COME-TO-YOU-PLAN), on 9217:
 # 9242 = 9217 + the slice's 25 EditMode cases: ComesToYouTests' 22 (shared with the subset) and
 # ComesToYouStillnessTests' 3, as the Lister counts them and Unity's Mono runs them (2026-10-30). Not yet measured in Unity.
-Gamesim.EditModeTests 9242
+# Offers slice 3 (the walk-over holds), on 9242:
+# 9245 = 9242 + ComesToYouWalkOverTests' 3 EditMode-only cases (the travel budget, the heading hand-back, the box
+# floor), as the Lister counts them and Unity's Mono runs them (2026-10-30). Not yet measured in Unity.
+Gamesim.EditModeTests 9245
 # The UMA-free build. 1215 = 1236, the count after the consolidation's lanes (S2a, S2b, S4a), less the 7
 # farewell probes moved to Gamesim.DiagnosticsPlayModeTests and the 14 farewell readiness tests that now
 # compile only under GAMESIM_UMA (judged on the UMA cast); 1230 = 1215 + S2d's 7, S4b's 2, S4c's 2 and
@@ -106,7 +109,11 @@ Gamesim.EditModeTests 9242
 # Not yet counted by a full run.
 # 1374 = 1373 + the review's ComesToYou_ASpotThatFitsNoVisitorBringsTheFirstAskAsACard (plan test 17): compiled
 # offline, not yet run.
-Gamesim.PlayModeTests 1374
+# Offers slice 3, on 1374:
+# 1382 = 1374 + the slice's 8 shared tests: HouseNpcInvitationPlayModeTests' 3 coordinator cases (NpcInvitation_),
+# 4 director-level ComesToYou_ tests and NpcInvitationBubble_PlacesTheLineOnItsViewAndElseOnTheMainCamera:
+# compiled offline, not yet run. Not yet counted by a full run.
+Gamesim.PlayModeTests 1382
 # The UMA build of the same assembly, read by a plan built without -WithoutUma. 1281 = the 1241 above + the
 # 40 tests that compile only under GAMESIM_UMA, as run at r1 (2026-10-16): in EpisodePlayModeTests,
 # GroundedFarewell 11, Creator 9, HouseLife 8, Emotes 3, OpeningCaptures 2, and one each in CreatorEntry,
@@ -135,7 +142,9 @@ Gamesim.PlayModeTests 1374
 # 1413 = 1407 + the same 6 shared ComesToYou_ tests: compiled offline, not yet run. Not yet counted by a full run.
 # 1414 = 1413 + the same review test, ComesToYou_ASpotThatFitsNoVisitorBringsTheFirstAskAsACard: compiled offline,
 # not yet run.
-Gamesim.PlayModeTests.UmaBuild 1414
+# Offers slice 3, on 1414:
+# 1422 = 1414 + the same 8 shared tests: compiled offline, not yet run. Not yet counted by a full run.
+Gamesim.PlayModeTests.UmaBuild 1422
 # The UMA bodies: runs only where the GAMESIM_UMA define is set (the working tree and the D: copy).
 # 82 = the 89 run on 2026-10-15, less the 7 farewell probes moved to Gamesim.Uma.DiagnosticsPlayModeTests;
 # 85 = 82 + the 3 farewell readiness decision tests (UmaFarewellReadinessDecisionPlayModeTests, 2026-10-16);

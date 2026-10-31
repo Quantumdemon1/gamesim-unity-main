@@ -343,12 +343,26 @@ namespace Gamesim.Tests.PlayMode
             string recordId = director.CurrentNpcInvitationRecordId, askerId = director.CurrentAskerId;
             yield return WaitForTheLineWithNoSecondDue();
             byte[] bytes = File.ReadAllBytes(director.SavePath);
+            var asker = SceneComponents<HouseNpc>().Single(npc => npc.Id == askerId);
+            var mine = player.GetComponent<CharacterPresentation>();
+            Assert.That(mine.FacingYaw, Is.NaN, "The player is not turned before the conversation opens.");
             Assert.That(director.TryOpenNpc(askerId), Is.True);
             Assert.That(director.CurrentAskWay, Is.EqualTo(EpisodeDirector.AskWay.Raised));
             Assert.That(director.InvitedDealRecordId, Is.EqualTo(recordId));
             Assert.That(ComesHud.PointerHeld, Is.True);
             CollectionAssert.AreEqual(bytes, File.ReadAllBytes(director.SavePath), "Opening on the offer commits nothing.");
+            // Raised: the player turns to the asker, who is not turned - the heading they arrived with went with the
+            // open's ClosePanels.
+            float playerYaw = NpcRead<float>("askPlayerYaw");
+            Assert.That(OffBearing(mine.FacingYaw, player.transform.position, asker.transform.position), Is.LessThan(20f),
+                "A raised open turns the player to the asker: heading " + mine.FacingYaw + ".");
+            Assert.That(playerYaw, Is.EqualTo(mine.FacingYaw), "The heading is the ask's.");
+            Assert.That(NpcRead<float>("askAskerYaw"), Is.NaN, "A raised open does not turn the asker.");
             yield return null; yield return null;
+            // The visit still in flight went on the next frame's cancel under the panel; the open's heading stays.
+            Assert.That(NpcRead<HouseNpcInvitationLease>("askVisit"), Is.Null, "The visit went under the panel.");
+            Assert.That(NpcRead<float>("askPlayerYaw"), Is.EqualTo(playerYaw), "The visit's going leaves the dialogue's heading the ask's,");
+            Assert.That(mine.FacingYaw, Is.EqualTo(playerYaw), "and the player still faces the asker.");
             Assert.That(SelectedName(), Is.EqualTo(EpisodeDirector.ConversationTopicsBackCaption));
             Assert.That(ShownText(), Does.Contain(EpisodeHud.AskRaisedEyebrow("Maya")));
             Assert.That(ButtonWithCaptionOrNull(EpisodeHud.ThinkItOverCaption), Is.Null, "A raised dialogue has no Think it over.");
@@ -358,10 +372,12 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(director.CurrentConversationCategory, Is.Null, "Back to topics: the wheel.");
             Assert.That(director.CurrentAskWay, Is.EqualTo(EpisodeDirector.AskWay.None));
             director.ClosePanels();
+            Assert.That(mine.FacingYaw, Is.NaN, "Closing lets go of the heading the raised open gave the player.");
+            Assert.That(NpcRead<float>("askPlayerYaw"), Is.NaN);
             yield return null;
             float deadline = Time.realtimeSinceStartup + 5f;
             while (NpcWholeSecondDue() && Time.realtimeSinceStartup < deadline) yield return null;
-            yield return OpenNearbyNpc(SceneComponents<HouseNpc>().Single(npc => npc.Id == askerId));
+            yield return OpenNearbyNpc(asker);
             Assert.That(director.CurrentConversationCategory, Is.Null, "Raised once a phase: the wheel the second time.");
             Assert.That(director.CurrentAskWay, Is.EqualTo(EpisodeDirector.AskWay.None));
         }
@@ -478,6 +494,8 @@ namespace Gamesim.Tests.PlayMode
             yield return InstallLegacyInvitationHouse();
             Assert.That(director.AsksEnabled, Is.False, "and again as it binds the reloaded one.");
             Assert.That(director.AsksAreOn, Is.False);
+            Assert.That(NpcRead<HouseNpcInvitationBubble>("npcInvitationBubble").ViewCamera, Is.SameAs(cameraRig.ViewCamera),
+                "The invitation's line is placed on the view the player sees, with asks off too.");
             float until = Time.realtimeSinceStartup + 5f;
             while (Time.realtimeSinceStartup < until)
             {
@@ -1412,6 +1430,281 @@ namespace Gamesim.Tests.PlayMode
                 }
             Assert.That(best, Is.LessThan(float.PositiveInfinity), "A floor point in frame that fits no visitor: a doorway or a floor's edge.");
             return found;
+        }
+
+        // ================================================================== slice 3: the walk-over holds
+
+        /// <summary>How far a heading is from the bearing between two points, in degrees; infinite for no heading at all.</summary>
+        private static float OffBearing(float facing, Vector3 from, Vector3 to)
+        {
+            if (float.IsNaN(facing)) return float.PositiveInfinity;
+            var toward = to - from;
+            return Mathf.Abs(Mathf.DeltaAngle(facing, Mathf.Atan2(toward.x, toward.z) * Mathf.Rad2Deg));
+        }
+
+        /// <summary>Waits for the asker's line to be up, bounded in real seconds, holding the dialogue's own opening back; says why on a miss.</summary>
+        private IEnumerator WaitForTheLineHeldBack(string at, float seconds = 35f)
+        {
+            float deadline = Time.realtimeSinceStartup + seconds;
+            while (!director.NpcInvitationIsVisible && Time.realtimeSinceStartup < deadline)
+            {
+                NpcWrite("askSpokeFor", 0f);
+                yield return null;
+            }
+            NpcWrite("askSpokeFor", 0f);
+            if (!director.NpcInvitationIsVisible)
+            {
+                var motion = SceneComponents<HouseNpc>().FirstOrDefault(npc => npc.Id == director.CurrentAskerId)?.GetComponent<HouseNpcMotion>();
+                Assert.Fail(at + ": the asker's line never came up. Visit " + (director.CurrentNpcInvitationRecordId ?? "none") + ", arrival "
+                    + motion?.ArrivalFailure + ", route " + motion?.LastRouteFailure + ". " + director.NpcAutonomyDiagnostic);
+            }
+            Assert.That(director.TalkingToId, Is.Null, at + ": the dialogue is held back.");
+        }
+
+        /// <summary>The bubble's four labels - the name, the line and the two captions - read off its panel.</summary>
+        private static TMP_Text[] BubbleLabels(HouseNpcInvitationBubble bubble) =>
+            bubble.HearControl.transform.parent.GetComponentsInChildren<TMP_Text>(true);
+
+        [UnityTest]
+        public IEnumerator ComesToYou_TheAskerAndThePlayerTurnToEachOther() => PinnedClock(TheyTurnToEachOther);
+
+        /// <summary>
+        /// The director's visit answers from arrival: it sets out on its route's budget, and its answer window starts
+        /// again as the asker gets there. The asker turns to the player as they arrive, and the house's own presentation
+        /// leaves that heading be while their line is up; as the dialogue opens the player turns to them and they stay
+        /// turned to the player while it is up; closing lets go of both headings, which were the ask's.
+        /// </summary>
+        private IEnumerator TheyTurnToEachOther()
+        {
+            yield return InstallComesToYouHouse(ComesJamie);
+            string askerId = director.CurrentAskerId;
+            var asker = SceneComponents<HouseNpc>().Single(npc => npc.Id == askerId);
+            var theirs = asker.GetComponent<CharacterPresentation>();
+            var mine = player.GetComponent<CharacterPresentation>();
+            Assert.That(theirs != null && mine != null, Is.True, "Both have a body to turn.");
+
+            // Reserved this frame, so its expiry is still the walk's budget: never more than the most a walk gets. A
+            // missed walk retried is followed to its own visit and budget.
+            var meetings = NpcRead<HouseMeetingCoordinator>("npcMeetings");
+            var visit = NpcRead<HouseNpcInvitationLease>("askVisit");
+            Assert.That(visit, Is.Not.Null, "The visit is the director's.");
+            float sent = meetings.NpcInvitationExpiresAt(visit);
+            Assert.That(sent - Time.unscaledTime, Is.GreaterThan(0f).And.LessThanOrEqualTo(HouseMeetingCoordinator.NpcInvitationTravelMax + .01f),
+                "The walk sets out on its route's budget.");
+            float lineDeadline = Time.realtimeSinceStartup + 35f;
+            while (!director.NpcInvitationIsVisible && Time.realtimeSinceStartup < lineDeadline)
+            {
+                NpcWrite("askSpokeFor", 0f);
+                var now = NpcRead<HouseNpcInvitationLease>("askVisit");
+                if (now != null && !ReferenceEquals(now, visit)) { visit = now; sent = meetings.NpcInvitationExpiresAt(now); }
+                yield return null;
+            }
+            // Waited above: this only holds the open back and says why on a miss.
+            yield return WaitForTheLineHeldBack("the asker's arrival", 0f);
+            Assert.That(NpcRead<HouseNpcInvitationLease>("askVisit"), Is.SameAs(visit), "The line is the visit followed.");
+            float window = meetings.NpcInvitationExpiresAt(visit);
+            Assert.That(window, Is.Not.NaN, "The visit is still the one in flight.");
+            Assert.That(window, Is.Not.EqualTo(sent), "The answer window starts again as the asker arrives; the walk's budget ran to " + sent + ".");
+            Assert.That(window - Time.unscaledTime, Is.LessThanOrEqualTo(HouseMeetingCoordinator.NpcInvitationLifetime + .01f),
+                "It runs its lifetime from the arrival.");
+
+            Assert.That(OffBearing(theirs.FacingYaw, asker.transform.position, player.transform.position), Is.LessThan(20f),
+                "On arrival the asker turns to the player: heading " + theirs.FacingYaw + ".");
+
+            // The house's own presentation runs at 10 Hz meanwhile, and leaves the asker's heading be.
+            double freeBefore = NpcRead<double>("npcFreeSeconds");
+            float until = Time.realtimeSinceStartup + .6f;
+            while (Time.realtimeSinceStartup < until) { NpcWrite("askSpokeFor", 0f); yield return null; }
+            Assert.That(NpcRead<double>("npcFreeSeconds") - freeBefore, Is.GreaterThan(.2d), "The house's own presentation ran meanwhile.");
+            Assert.That(director.NpcInvitationIsVisible, Is.True, "The line is still up.");
+            Assert.That(OffBearing(theirs.FacingYaw, asker.transform.position, player.transform.position), Is.LessThan(20f),
+                "The house leaves the asker's heading be while their line is up: heading " + theirs.FacingYaw + ".");
+            Assert.That(mine.FacingYaw, Is.NaN, "The player is not turned before the dialogue opens.");
+
+            yield return WaitForAskDialogue(askerId);
+            Assert.That(director.CurrentAskWay, Is.EqualTo(EpisodeDirector.AskWay.WalkOver));
+            Assert.That(OffBearing(mine.FacingYaw, player.transform.position, asker.transform.position), Is.LessThan(20f),
+                "As the dialogue opens the player turns to the asker: heading " + mine.FacingYaw + ".");
+            Assert.That(OffBearing(theirs.FacingYaw, asker.transform.position, player.transform.position), Is.LessThan(20f),
+                "and the asker stays turned to the player.");
+
+            // The house goes on under the dialogue - its per-frame cancel of a visit already gone among it - and the
+            // headings stay the ones the open gave until the panel closes.
+            yield return null; yield return null;
+            Assert.That(director.TalkingToId, Is.EqualTo(askerId), "The dialogue is still up.");
+            float playerYaw = NpcRead<float>("askPlayerYaw"), askerYaw = NpcRead<float>("askAskerYaw");
+            Assert.That(playerYaw, Is.Not.NaN, "The heading the open gave the player is still the ask's.");
+            Assert.That(askerYaw, Is.Not.NaN, "and so is the asker's.");
+            Assert.That(mine.FacingYaw, Is.EqualTo(playerYaw), "The player still faces the asker.");
+            Assert.That(theirs.FacingYaw, Is.EqualTo(askerYaw), "The asker still faces the player.");
+
+            director.ClosePanels();
+            Assert.That(mine.FacingYaw, Is.NaN, "Closing lets go of the heading the ask gave the player,");
+            Assert.That(theirs.FacingYaw, Is.NaN, "and of the asker's.");
+        }
+
+        [UnityTest, Timeout(300000)]
+        public IEnumerator ComesToYou_AStandingTalkSpotKeepsThePlayersFacing() => PinnedClock(AStandingTalkSpotKeepsFacing);
+
+        /// <summary>
+        /// With asks on, Talk takes the player and an asker to a standing place, where each turns to the other before the
+        /// conversation opens on her ask: the open's ClosePanels lets go only of a heading an ask gave, and the ask gives
+        /// none over the talk spot's, so the player still faces her. Every seat is set aside for the test, so the place is
+        /// a standing one; no visit sets out, and nobody pairs off onto the standing marks meanwhile.
+        /// </summary>
+        private IEnumerator AStandingTalkSpotKeepsFacing()
+        {
+            yield return OptIntoComesToYou();
+            NpcWrite("askNextAt", float.MaxValue);
+            NpcWrite("npcApproachDiagnosticsSuppressed", true);
+            var seats = SceneComponents<HouseInteractionAnchor>().Where(anchor => anchor.enabled && anchor.Seated).ToList();
+            try
+            {
+                foreach (var seat in seats) seat.enabled = false;
+                StandInARoomWithAStandingPlace();
+                AskForTheTalkSpots();
+                var asker = SceneComponents<HouseNpc>().Single(npc => npc.Id == ComesMaya);
+                director.TalkFromCastMenu(ComesMaya);
+                yield return null;
+                var spot = director.CurrentTalkSpot;
+                Assert.That(spot, Is.Not.Null, "Talk sends the two to a place: " + NpcRead<HouseMeetingCoordinator>("npcMeetings").LastFailure);
+                Assert.That(spot.Seated, Is.False, "A standing place: every seat is set aside.");
+                float deadline = Time.realtimeSinceStartup + 45f;
+                while (director.TalkingToId == null && director.CurrentTalkSpot == spot && Time.realtimeSinceStartup < deadline) yield return null;
+                Assert.That(director.TalkingToId, Is.EqualTo(ComesMaya), "The conversation opens once both are there. The place is "
+                    + (director.CurrentTalkSpot == spot ? "still held" : "let go") + ", the walk is to " + (director.WalkingToId ?? "nobody") + ".");
+                Assert.That(director.CurrentTalkSpot, Is.SameAs(spot), "It opened at the place.");
+                Assert.That(director.CurrentAskWay, Is.EqualTo(EpisodeDirector.AskWay.Raised),
+                    "It opens on her ask, so the ask's own turning ran with asks on.");
+                var mine = player.GetComponent<CharacterPresentation>();
+                Assert.That(OffBearing(mine.FacingYaw, player.transform.position, asker.transform.position), Is.LessThan(20f),
+                    "The talk spot's heading survives the open: heading " + mine.FacingYaw + ".");
+                Assert.That(NpcRead<float>("askPlayerYaw"), Is.NaN, "The ask gave the player no heading over the talk spot's.");
+                director.ClosePanels();
+                yield return null;
+            }
+            finally
+            {
+                foreach (var seat in seats) if (seat != null) seat.enabled = true;
+                NpcWrite("npcApproachDiagnosticsSuppressed", false);
+            }
+        }
+
+        /// <summary>
+        /// The player moved, where needed, to stand beside a standing place to talk - a standing meeting venue's mark or a
+        /// standing talk spot's - in its room, so Talk has a standing place in the player's room as well as wherever the
+        /// houseguest is.
+        /// </summary>
+        private void StandInARoomWithAStandingPlace()
+        {
+            var standingVenues = new HashSet<string>(HouseInteractionAnchors.Meetings.Where(venue => !venue.Seated).Select(venue => venue.Id));
+            var marks = SceneComponents<HouseInteractionAnchor>().Where(anchor => anchor.isActiveAndEnabled && !anchor.Posed && anchor.VenueId != null
+                && (standingVenues.Contains(anchor.VenueId) || anchor.VenueId.StartsWith(HouseConversationSpots.Prefix))).ToList();
+            Assert.That(marks, Is.Not.Empty, "The house has standing places to talk.");
+            Assert.That(HouseRoomQuery.TryCreate(player.gameObject.scene, out var rooms, out var why), Is.True, why);
+            rooms.TryLocate(player.transform.position, player.Agent.radius, out var yourRoom);
+            if (marks.Any(mark => mark.RoomId == yourRoom)) return;
+            foreach (var mark in marks.OrderBy(mark => (mark.Approach - player.transform.position).sqrMagnitude))
+                for (int direction = 0; direction < 8; direction++)
+                {
+                    float angle = direction * Mathf.PI / 4f;
+                    var candidate = mark.Approach + new Vector3(Mathf.Cos(angle), 0f, Mathf.Sin(angle)) * 1.6f;
+                    if (!NavMesh.SamplePosition(candidate, out var hit, .4f, player.Agent.areaMask)) continue;
+                    if (!rooms.TryLocate(hit.position, player.Agent.radius, out var room) || room != mark.RoomId) continue;
+                    WarpPlayer(hit.position);
+                    return;
+                }
+            Assert.Fail("No floor beside a standing place to talk.");
+        }
+
+        [UnityTest]
+        public IEnumerator ComesToYou_TheLineIsLocalisedAndCurrentTextKeepsItsRawWords() => PinnedClock(TheLineIsLocalised);
+
+        /// <summary>
+        /// The asker's bubble goes through the localisation layer - their name, their line and the two captions - while
+        /// CurrentText stays the raw line and each control keeps its English caption as its name, so the same two
+        /// controls hear and put off the ask.
+        /// </summary>
+        private IEnumerator TheLineIsLocalised()
+        {
+            yield return InstallComesToYouHouse(ComesJamie);
+            string recordId = director.CurrentNpcInvitationRecordId, askerId = director.CurrentAskerId;
+            string line = ComesToYou.Read(director.Snapshot).Single(ask => ask.recordId == recordId).line;
+            string name = director.Snapshot.Find(askerId).name;
+            string language = Localisation.Language;
+            const string Mark = "[translated] ";
+            try
+            {
+                Localisation.Use("test", new Dictionary<string, string>
+                {
+                    { line, Mark + line }, { name, Mark + name },
+                    { HouseNpcInvitationBubble.HearCaption, Mark + "hear" }, { HouseNpcInvitationBubble.NotNowCaption, Mark + "not now" },
+                });
+                // A line already up before the table is read again at the bubble's next 10 Hz show.
+                TMP_Text Shown(HouseNpcInvitationBubble on) => BubbleLabels(on).Single(label => label.name == HouseNpcInvitationBubble.LineName);
+                float deadline = Time.realtimeSinceStartup + 35f;
+                HouseNpcInvitationBubble bubble = null;
+                while (Time.realtimeSinceStartup < deadline)
+                {
+                    NpcWrite("askSpokeFor", 0f);
+                    bubble = NpcRead<HouseNpcInvitationBubble>("npcInvitationBubble");
+                    if (director.NpcInvitationIsVisible && bubble != null && Shown(bubble).text == Mark + line) break;
+                    yield return null;
+                }
+                NpcWrite("askSpokeFor", 0f);
+                Assert.That(director.NpcInvitationIsVisible, Is.True, "The asker's line is up.");
+                Assert.That(bubble, Is.Not.Null);
+                Assert.That(Shown(bubble).text, Is.EqualTo(Mark + line), "The player reads the localised line.");
+                Assert.That(bubble.CurrentText, Is.EqualTo(line), "CurrentText is the raw line, never its translation.");
+                Assert.That(BubbleLabels(bubble).Single(label => label.name == "Invitation speaker").text, Is.EqualTo(Mark + name),
+                    "and the localised name.");
+                var hear = bubble.HearControl;
+                Assert.That(hear.name, Is.EqualTo(HouseNpcInvitationBubble.HearCaption), "The control keeps its English caption as its name,");
+                Assert.That(bubble.NotNowControl.name, Is.EqualTo(HouseNpcInvitationBubble.NotNowCaption));
+                Assert.That(hear.GetComponentInChildren<TMP_Text>().text, Is.EqualTo(Mark + "hear"), "and shows the localised one.");
+                Assert.That(bubble.NotNowControl.GetComponentInChildren<TMP_Text>().text, Is.EqualTo(Mark + "not now"));
+                Canvas.ForceUpdateCanvases();
+                foreach (var label in BubbleLabels(bubble)) Assert.That(label.isTextOverflowing, Is.False, label.name + " fits its localised words.");
+
+                hear.onClick.Invoke();
+                Assert.That(director.TalkingToId, Is.EqualTo(askerId), "The same control hears the ask.");
+                Assert.That(director.CurrentAskWay, Is.EqualTo(EpisodeDirector.AskWay.WalkOver));
+                Assert.That(director.InvitedDealRecordId, Is.EqualTo(recordId));
+            }
+            finally { Localisation.Load(language); }
+        }
+
+        [UnityTest]
+        public IEnumerator ComesToYou_TheLinesBoxesFitAtLargest() => PinnedClock(TheLinesBoxesFit);
+
+        /// <summary>
+        /// At Largest the asker's bubble draws every label - the name, the line and both captions - in a box at least 1.3x
+        /// its font, the copy inside it, and places it on the view the player sees.
+        /// </summary>
+        private IEnumerator TheLinesBoxesFit()
+        {
+            yield return InstallComesToYouHouse(ComesJamie);
+            // The settings are a panel: the visit goes, and the next sets out once the house is free again.
+            yield return ApplyTextSize(TextSize.Largest);
+            yield return WaitForTheLineHeldBack("at Largest", 45f);
+            var bubble = NpcRead<HouseNpcInvitationBubble>("npcInvitationBubble");
+            Assert.That(bubble.ViewCamera, Is.SameAs(cameraRig.ViewCamera), "The line is placed on the view the player sees.");
+            yield return null;
+            NpcWrite("askSpokeFor", 0f);
+            Assert.That(director.NpcInvitationIsVisible, Is.True, "The line is still up.");
+            Canvas.ForceUpdateCanvases();
+            var labels = BubbleLabels(bubble);
+            Assert.That(labels.Select(label => label.name), Is.EquivalentTo(new[] { "Invitation speaker", HouseNpcInvitationBubble.LineName, "Caption", "Caption" }));
+            float largest = TextSizes.Scale(TextSize.Largest);
+            foreach (var label in labels)
+            {
+                string what = label.name + " (" + label.text + ")";
+                Assert.That(label.fontSize, Is.GreaterThanOrEqualTo(16f * largest - .01f), what + " is drawn at Largest.");
+                Assert.That(label.rectTransform.rect.height, Is.GreaterThanOrEqualTo(label.fontSize * 1.3f),
+                    what + "'s box: " + label.rectTransform.rect.height + " for a font of " + label.fontSize + ".");
+                Assert.That(label.preferredHeight, Is.LessThanOrEqualTo(label.rectTransform.rect.height + .5f), what + " fits its box.");
+                Assert.That(label.isTextOverflowing, Is.False, what);
+            }
         }
     }
 }

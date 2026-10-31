@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Gamesim.House;
+using Gamesim.Presentation;
 using Gamesim.Simulation;
 using UnityEngine;
 
@@ -18,6 +19,11 @@ namespace Gamesim.Episode
     /// houseguest cannot come - busy or out of reach for a while, missed twice, the player's own spot fitting no
     /// visitor, or <see cref="AskWalkOvers"/> off (the card). The queue is <see cref="ComesToYou"/>, in its public
     /// order, one at a time.</para>
+    ///
+    /// <para><b>The walk-over holds.</b> The asker walks on a budget of their own route, and the player's time to answer
+    /// starts once they are there (HouseMeetingCoordinator.TryReserveNpcInvitation's answerFromArrival). They turn to the
+    /// player as they arrive and the player turns to them as the dialogue opens; letting go - the visit's end, a panel's
+    /// close - lets go only of a heading an ask gave, so a talk spot's or a ceremony's stays.</para>
     ///
     /// <para><b>Presentation only.</b> Visits, hearing, the dialogue's opening, Think it over, Not right now, misses,
     /// retries, gaps and caps commit nothing, roll nothing and save nothing; the answers are the deal table's own
@@ -162,6 +168,10 @@ namespace Gamesim.Episode
         // The card's own settle: free-house seconds with no closable chrome up. The overview lets the free-house clock
         // run beneath it, so new visits may start there, but the card waits the settle time once it has closed.
         private float askCardSettle;
+        // The headings an ask gave (NaN when none) and the bodies it gave them to: the asker turned to the player as they
+        // arrive, and the player turned to the asker as the dialogue opens. ClearAskFacing lets go only of these.
+        private float askPlayerYaw = float.NaN, askAskerYaw = float.NaN;
+        private CharacterPresentation askPlayerFacing, askAskerFacing;
 
         // ---------------------------------------------------------------- public reads, for tests
 
@@ -252,7 +262,10 @@ namespace Gamesim.Episode
                 ResetAsksForLoad();
                 asksWereOn = on;
             }
-            if (!on) { TickNpcInvitations(); return; }
+            // The line goes where the player looks, the invitation's as an ask's: on the view camera, aimed after the
+            // invitation's own tick, which may have made the bubble this frame.
+            if (!on) { TickNpcInvitations(); AimNpcInvitationBubble(); return; }
+            AimNpcInvitationBubble();
 
             // A new session, week or phase: nothing is set aside, missed or held off any more.
             if (projected != null && (askSession != projected.sessionId || askWeek != projected.week || askPhase != projected.phase))
@@ -311,9 +324,11 @@ namespace Gamesim.Episode
             if (!npcMeetings.NpcInvitationValid(askVisit)) { AskVisitLost(); return; }
             if (npcMeetings.NpcInvitationCanSpeak(askVisit, out var anchor))
             {
-                if (npcInvitationBubble == null) npcInvitationBubble = gameObject.AddComponent<HouseNpcInvitationBubble>();
+                if (npcInvitationBubble == null) { npcInvitationBubble = gameObject.AddComponent<HouseNpcInvitationBubble>(); AimNpcInvitationBubble(); }
                 object view = askView; long generation = askLoad;
                 var ask = askNow;
+                // There, close and in sight: they turn to the player, the house's own presentation leaving them be.
+                if (float.IsNaN(askAskerYaw)) TurnAskerToPlayer(ask.askerId, true);
                 npcInvitationBubble.Show(projected.Find(ask.askerId).name, ask.line, TextScale, anchor,
                     () => HearAsk(view, generation, ask), () => DeferAsk(view, generation, ask), view);
             }
@@ -371,7 +386,8 @@ namespace Gamesim.Episode
                     return;
                 }
                 if (firstTried == null) firstTried = ask;
-                if (npcMeetings.TryReserveNpcInvitation(ask.askerId, player, out var visit, out _, out var refusal))
+                // Answered from arrival: the walk has a budget of its own route, and the time to answer starts there.
+                if (npcMeetings.TryReserveNpcInvitation(ask.askerId, player, true, out var visit, out _, out var refusal))
                 {
                     askNow = ask; askVisit = visit; askCoordinator = npcMeetings;
                     askLoad = loadGeneration; askView = new object();
@@ -553,8 +569,12 @@ namespace Gamesim.Episode
             askDialogueWay = walkOver ? AskWay.WalkOver : AskWay.Raised;
             askDialogueFirstRender = true;
             askSetAside.Add(ask.recordId);
+            // Face to face: the player turns to the asker, and an asker who walked over stays turned to the player - the
+            // heading they arrived with went with the visit. A heading somebody else set (a talk spot's) stays.
+            TurnPlayerToAsker(npcId);
             if (walkOver)
             {
+                TurnAskerToPlayer(npcId, false);
                 CountAskPresentation(ask);
                 askerNextAt[npcId] = askClock + AskerGapSeconds;
             }
@@ -794,9 +814,67 @@ namespace Gamesim.Episode
             }
         }
 
+        // ---------------------------------------------------------------- facing, and the line's view
+
+        /// <summary>
+        /// The asker turns to the player - their head with them a moment, when <paramref name="look"/>, as they arrive -
+        /// and the heading is the ask's to let go (<see cref="ClearAskFacing"/>). Nothing while a heading somebody else
+        /// set holds them, or with no body to turn.
+        /// </summary>
+        private void TurnAskerToPlayer(string askerId, bool look)
+        {
+            var body = BodyFor(askerId);
+            var visual = body != null ? body.GetComponent<CharacterPresentation>() : null;
+            if (visual == null || player == null || !float.IsNaN(visual.FacingYaw)) return;
+            float yaw = FacingToward(body.position, player.transform.position);
+            visual.SetFacing(yaw);
+            if (look) visual.LookAt(player.transform, 2f);
+            askAskerFacing = visual; askAskerYaw = yaw;
+        }
+
+        /// <summary>
+        /// The player turns to the asker as the dialogue opens, the heading the ask's to let go. Nothing while the player
+        /// is at furniture or holds a heading somebody else set - a talk spot's, a seat's, a ceremony's.
+        /// </summary>
+        private void TurnPlayerToAsker(string askerId)
+        {
+            if (player == null || player.HasActivityOwner) return;
+            var mine = player.GetComponent<CharacterPresentation>();
+            var body = BodyFor(askerId);
+            if (mine == null || body == null || !float.IsNaN(mine.FacingYaw)) return;
+            float yaw = FacingToward(player.transform.position, body.position);
+            mine.SetFacing(yaw);
+            askPlayerFacing = mine; askPlayerYaw = yaw;
+        }
+
+        /// <summary>
+        /// Lets go of the headings an ask gave - the visit's end, a panel's close, a load: each body still on the heading
+        /// the ask gave it has its own again; one somebody has turned since keeps theirs. Never a heading it did not give.
+        /// </summary>
+        private void ClearAskFacing()
+        {
+            if (askPlayerFacing != null && ComesToYouFacing.StillGiven(askPlayerFacing.FacingYaw, askPlayerYaw)) askPlayerFacing.SetFacing(float.NaN);
+            if (askAskerFacing != null && ComesToYouFacing.StillGiven(askAskerFacing.FacingYaw, askAskerYaw)) askAskerFacing.SetFacing(float.NaN);
+            askPlayerFacing = null; askAskerFacing = null;
+            askPlayerYaw = float.NaN; askAskerYaw = float.NaN;
+        }
+
+        /// <summary>
+        /// Whether this body is the asker an ask has turned to the player: the house's own presentation leaves their
+        /// heading be meanwhile (EpisodeDirector.NpcSocial.cs).
+        /// </summary>
+        private bool AskHoldsFacing(CharacterPresentation visual) =>
+            AsksOn && visual != null && ReferenceEquals(visual, askAskerFacing) && !float.IsNaN(askAskerYaw);
+
+        /// <summary>The line is placed on the view the player sees, the camera rig's; the bubble falls back to the main camera only while it has none.</summary>
+        private void AimNpcInvitationBubble()
+        {
+            if (npcInvitationBubble != null && cameraRig != null) npcInvitationBubble.ViewCamera = cameraRig.ViewCamera;
+        }
+
         // ---------------------------------------------------------------- letting go
 
-        /// <summary>Lets the visit in flight go: its line hidden, its lease released. Never a miss on its own.</summary>
+        /// <summary>Lets the visit in flight go: its line hidden, its lease released, the asker's heading theirs again (not a dialogue's). Never a miss on its own.</summary>
         private void CancelAskVisit()
         {
             askSpokeFor = 0f;
@@ -806,12 +884,17 @@ namespace Gamesim.Episode
             npcInvitationBubble?.Hide();
             askCoordinator?.ReleaseNpcInvitation(askVisit);
             askNow = null; askVisit = null; askCoordinator = null;
+            // A dialogue open on an ask keeps the headings its open gave until its panel closes: a raised open beside a
+            // visit still in flight lets that visit go on the next frame's cancel, and the player stays turned to whom
+            // they talk to. The open's own ClosePanels has already let the visit's arrival heading go.
+            if (askDialogueWith == null) ClearAskFacing();
         }
 
         /// <summary>A load, or the switch turned: every ask clock, count and set starts again. Nothing is saved, so a reload presents waiting asks again.</summary>
         private void ResetAsksForLoad()
         {
             CancelAskVisit();
+            ClearAskFacing();
             askSetAside.Clear(); askMisses.Clear(); askRetryAt.Clear(); askUnreachable.Clear();
             askPresentations.Clear(); askerNextAt.Clear();
             askClock = 0f; askFreeRun = 0f; askStillFor = 0f; askNextAt = 0f; askScanAt = 0f;
@@ -864,5 +947,17 @@ namespace Gamesim.Episode
             const float radius = EpisodeDirector.AskStillRadiusMetres;
             return arrived && (position - anchor).sqrMagnitude <= radius * radius;
         }
+    }
+
+    /// <summary>
+    /// Whether letting go of an ask hands a body its heading back (EpisodeDirector.ComesToYou.cs, ClearAskFacing): the
+    /// ask gave it one and nobody has turned it since - a talk spot, a ceremony, a seat. The test the furious turn uses
+    /// before it hands a heading back (EpisodeDirector.Fallout.cs). Pure, so EditMode can drive it.
+    /// </summary>
+    public static class ComesToYouFacing
+    {
+        /// <summary>True when the ask gave <paramref name="given"/> (not NaN) and the body is still on it (<paramref name="current"/>).</summary>
+        public static bool StillGiven(float current, float given) =>
+            !float.IsNaN(given) && !float.IsNaN(current) && Mathf.Approximately(current, given);
     }
 }

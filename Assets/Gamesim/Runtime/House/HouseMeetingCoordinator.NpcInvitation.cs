@@ -54,12 +54,39 @@ namespace Gamesim.House
             public HousePlayerController player;
             public CapsuleCollider body;
             public float expiresAt;
+            // A visit that answers from arrival: its window starts again, once, when the houseguest gets there.
+            public bool answerFromArrival, arrived;
         }
 
         private const float NpcInvitationDistance = 1.8f;
         private const float NpcInvitationPlayerDrift = .75f;
-        private const float NpcInvitationLifetime = 25f;
+        /// <summary>
+        /// How long a visit lasts, in unscaled seconds: from its dispatch, or - for one that answers from arrival - from
+        /// the moment the houseguest gets there.
+        /// </summary>
+        public const float NpcInvitationLifetime = 25f;
+        /// <summary>
+        /// A visit that answers from arrival walks on a budget of its own route, in unscaled seconds: the route at
+        /// <see cref="HouseNpcMotion.DefaultSpeed"/> times <see cref="NpcInvitationTravelFactor"/>, plus
+        /// <see cref="NpcInvitationTravelSlack"/>, kept between <see cref="NpcInvitationTravelMin"/> and
+        /// <see cref="NpcInvitationTravelMax"/>. A walk across the house no longer spends the time the player has to answer.
+        /// </summary>
+        public const float NpcInvitationTravelFactor = 1.5f, NpcInvitationTravelSlack = 3f,
+            NpcInvitationTravelMin = 6f, NpcInvitationTravelMax = 30f;
         private NpcInvitationEntry npcInvitation;
+
+        /// <summary>
+        /// The travel budget of a visit that answers from arrival, for a route of <paramref name="routeMetres"/>:
+        /// clamp(route / <see cref="HouseNpcMotion.DefaultSpeed"/> x <see cref="NpcInvitationTravelFactor"/> +
+        /// <see cref="NpcInvitationTravelSlack"/>, <see cref="NpcInvitationTravelMin"/>, <see cref="NpcInvitationTravelMax"/>).
+        /// A route that is not a finite length gets the most. Pure, so EditMode can drive it.
+        /// </summary>
+        public static float NpcInvitationTravelBudget(float routeMetres)
+        {
+            if (float.IsNaN(routeMetres) || float.IsInfinity(routeMetres)) return NpcInvitationTravelMax;
+            return Mathf.Clamp(routeMetres / HouseNpcMotion.DefaultSpeed * NpcInvitationTravelFactor + NpcInvitationTravelSlack,
+                NpcInvitationTravelMin, NpcInvitationTravelMax);
+        }
 
         /// <summary>
         /// Reserve a complete, clear route beside the player. Existing conversations, activities and
@@ -69,7 +96,7 @@ namespace Gamesim.House
         /// </summary>
         public bool TryReserveNpcInvitation(string npcId, HousePlayerController player,
             out HouseNpcInvitationLease lease, out string reason) =>
-            TryReserveNpcInvitation(npcId, player, out lease, out reason, out _);
+            TryReserveNpcInvitation(npcId, player, false, out lease, out reason, out _);
 
         /// <summary>
         /// The same visit, saying why a refusal was made (<paramref name="refusal"/>): the asker's own reasons (busy,
@@ -77,6 +104,17 @@ namespace Gamesim.House
         /// every asker's. The same tests in the same order, the same reasons and the same lease.
         /// </summary>
         public bool TryReserveNpcInvitation(string npcId, HousePlayerController player,
+            out HouseNpcInvitationLease lease, out string reason, out HouseNpcInvitationRefusal refusal) =>
+            TryReserveNpcInvitation(npcId, player, false, out lease, out reason, out refusal);
+
+        /// <summary>
+        /// The same visit; with <paramref name="answerFromArrival"/>, it walks on a budget of its own route
+        /// (<see cref="NpcInvitationTravelBudget"/>) and its <see cref="NpcInvitationLifetime"/> starts again from the
+        /// moment the houseguest has arrived, so the player has the whole window to answer however far they came. False is
+        /// the visit as it always was: <see cref="NpcInvitationLifetime"/> from dispatch. Either way the lease never
+        /// follows the player: walking away still ends it.
+        /// </summary>
+        public bool TryReserveNpcInvitation(string npcId, HousePlayerController player, bool answerFromArrival,
             out HouseNpcInvitationLease lease, out string reason, out HouseNpcInvitationRefusal refusal)
         {
             lease = null;
@@ -136,7 +174,8 @@ namespace Gamesim.House
             }
             lease = new HouseNpcInvitationLease(npcId, Generation, token, best, playerRoom, player.transform.position);
             npcInvitation = new NpcInvitationEntry { lease = lease, actor = actor, player = player,
-                body = body, expiresAt = Time.unscaledTime + NpcInvitationLifetime };
+                body = body, answerFromArrival = answerFromArrival,
+                expiresAt = Time.unscaledTime + (answerFromArrival ? NpcInvitationTravelBudget(shortest) : NpcInvitationLifetime) };
             LastFailure = null; reason = null;
             refusal = HouseNpcInvitationRefusal.None;
             return true;
@@ -146,7 +185,9 @@ namespace Gamesim.House
         {
             if (disposed || lease == null || lease.Released || npcInvitation == null
                 || !ReferenceEquals(npcInvitation.lease, lease) || lease.Generation != Generation
-                || NpcInvitationStageOwnsHouse || Time.unscaledTime >= npcInvitation.expiresAt
+                || NpcInvitationStageOwnsHouse) return false;
+            NoteNpcInvitationArrival(npcInvitation);
+            if (Time.unscaledTime >= npcInvitation.expiresAt
                 || !eligible.Contains(lease.NpcId) || !ValidActor(npcInvitation.actor, lease.Token)) return false;
             var visitor = npcInvitation.actor.npc;
             var player = npcInvitation.player;
@@ -178,6 +219,27 @@ namespace Gamesim.House
         public void ReleaseNpcInvitation(HouseNpcInvitationLease lease)
         {
             if (lease != null && npcInvitation != null && ReferenceEquals(npcInvitation.lease, lease)) EndNpcInvitation();
+        }
+
+        /// <summary>
+        /// When this visit lapses on the unscaled clock, unless the player walks away or the house takes it first: its
+        /// travel budget until the houseguest arrives, for a visit that answers from arrival, and its lifetime from then.
+        /// NaN for a lease that is not the visit in flight. A read for tests.
+        /// </summary>
+        public float NpcInvitationExpiresAt(HouseNpcInvitationLease lease) =>
+            lease != null && npcInvitation != null && ReferenceEquals(npcInvitation.lease, lease) ? npcInvitation.expiresAt : float.NaN;
+
+        /// <summary>
+        /// A visit that answers from arrival, its houseguest there for the first time: its lifetime starts now. Once a
+        /// visit; a visit that does not answer from arrival keeps the lifetime it was dispatched with.
+        /// </summary>
+        private static void NoteNpcInvitationArrival(NpcInvitationEntry entry)
+        {
+            if (entry == null || !entry.answerFromArrival || entry.arrived) return;
+            var motion = entry.actor != null ? entry.actor.motion : null;
+            if (motion == null || !motion.HasArrivedAt(entry.lease.Token)) return;
+            entry.arrived = true;
+            entry.expiresAt = Time.unscaledTime + NpcInvitationLifetime;
         }
 
         private bool NpcInvitationStageOwnsHouse => HasCompetitionStage || HasOpeningStage

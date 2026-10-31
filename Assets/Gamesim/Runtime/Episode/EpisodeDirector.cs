@@ -720,6 +720,9 @@ namespace Gamesim.Episode
             if (HouseBindings.Listening) { HouseBindings.Cancel(); rebindMessage = null; }
             CloseHouseActivities(!render);
             if (focusedNpc != null) focusedNpc.GetComponent<CharacterPresentation>()?.SetTalking(false);
+            // The headings an ask gave go with the panel, and only those: a talk spot's or a ceremony's, set before
+            // this close, stays (EpisodeDirector.ComesToYou.cs).
+            ClearAskFacing();
             // What the player came into a conversation for goes with the conversation; a houseguest's
             // screen over free time goes with the panel.
             if (focusedNpc != null) conversationIntent = null;

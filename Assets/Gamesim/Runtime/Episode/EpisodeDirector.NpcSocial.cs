@@ -486,6 +486,8 @@ namespace Gamesim.Episode
                 if(npcMeetings.TryGetActivity(npc.Id,out var activity) && npcMeetings.ActivityValid(activity))continue;
                 // The houseguest walking to a talk spot with the player is the talk's to seat and turn.
                 if(talkSpot!=null && talkSpot.NpcId==npc.Id)continue;
+                // The asker who has arrived with an ask is turned to the player: the ask's heading until it lets go.
+                if(AskHoldsFacing(visual))continue;
                 visual.SetTalking(talking.Contains(npc.Id));
                 visual.SetSpeaking(speaking.Contains(npc.Id));
                 var seatPose=npc.GetComponent<HouseSeatPresentation>();

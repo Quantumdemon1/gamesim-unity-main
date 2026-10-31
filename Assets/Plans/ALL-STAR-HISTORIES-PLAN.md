@@ -2110,7 +2110,7 @@ Every new test uses only public members, so the new files compile in Unity's Edi
   - target agreements held back.
 - **Growing pacts (value 5, 14.L.K):**
   - value 5, removable before S6;
-  - pacts grow in place, only while private to their members and from an earlier week;
+  - pacts grow in place, only while private to their members, from an earlier week, with every member in the house and no target agreement among them (the last two added in S3b's review), and a pact that has lost a member never grows again;
   - only houseguests' own outsider pacts grow;
   - the bound is min(4, live pairs + 2);
   - one change a pact a week;
@@ -2146,6 +2146,13 @@ Every line number below was checked read-only against the committed tree at `4ab
 - `TheScoreFloorAndThePactCapStillHold`'s sibling at 5 is `CounterBlocTests.TheScoreFloorAndThePactCapStillHoldWhilePactsGrow`: the floor, then a house that loves everybody, four weeks of the rule's pass, every pact within its bound, a pact with a pair's member still a pair, and at least one outsider pact grown.
 - S1 to S3's behaviour tests already named their values through their files' own `AllStars` helpers (`Loyalty`, `Reputation`, `CounterBlocs`). The one call of `AlumniHistoriesTests.AllStars` among them without a value is `CounterBlocTests`' "fresh All-Star seasons start at 4 or later", which holds at 5. Every `AlumniRules.Latest` pin in `Tests/EditMode` follows `Latest` (the writer, the fresh-season pins and the `Latest + 1` refusals), and no pin names 4: the literal values tests write are 0 and 1, for seasons with no edition.
 - The report's arms and `PactWatch` (L.H) are S4's: at `eb68acd1` `BalanceLabAlumniReport` holds only H1b's `AlumniHistoriesGate`, whose histories arm is held at 1, so `Latest` moving to 5 does not reach it, and it is compiled out of the editor's assemblies.
+
+**Found in S3b's review** (2026-10-31, on `879350d1`), and fixed in its fix commit:
+- **A pact regrew after a member left the house.** The departed member stays on the roster and a knower, so rule 7 still held, and every jury reader matched them with the later recruit (25 loyalty, "We were in this together", "shared an alliance" on the finalists' read). Rule 7 now asks that every member be in the house, and L.C's bullet says a pact that has lost a member never grows again. The design's "may recruit again, up to the bound" is withdrawn; with it, the bound's and the receipts' "in the house" readings cannot differ from the roster's for a pact that grows.
+- **A target agreement struck before a join outlived it.** Rule 8 is new: no join while an active target agreement has its proposer, recipient and target all among the pact-to-be.
+- **A shed joiner at the jury** reads 0 toward the founders, C5's reading of a member taken out; recorded in L.F and pinned.
+- **`CommitmentReaderScanTests`** names the new raw read (`TargetsWithin`) as a raw kind, target.
+- **Tests added:** fixture 15 takes the player into a four with one member gone (three in the house); fixture 16 pins the shed joiner's jury reading; fixture 18 shows a birth comes first on the beat, the weekly pass and the rule alone; fixture 20 shows a threat from outside the pact is still hunted, an ended pact shields nobody, and a pact-mate of one is still a threat to that one and an outsider; fixture 21, `APactThatHasLostAMemberNeverGrowsAgain`, covers a founder at the jury and a four's member evicted, and the shed reading only the joiners in the house; fixture 22, `NoJoinWhileTwoOfThePactToBeHaveAgreedToTargetTheThird`, covers the founders' agreement against the recruit (the join waits, and goes ahead once it has run out) and the recruit's agreement with a member against another member.
 
 **The question 14.K put to the owner:** "Should outsider pacts be allowed to grow past two while a known bloc stands? Default: no, pairs only."
 
@@ -2190,9 +2197,11 @@ A pact P takes a recruit only when all of these hold.
    - the story's bonds run;
    - P's alliance fact exists and is `FactVisibility.Private`;
    - every knower of the fact is a member;
-   - `fact.week < s.week`. The fact's week is set at birth (`Simulation/Story/StorySystems.cs:141`), the same wait leaks use (`Simulation/AllianceLeaks.cs:86`).
+   - `fact.week < s.week`. The fact's week is set at birth (`Simulation/Story/StorySystems.cs:141`), the same wait leaks use (`Simulation/AllianceLeaks.cs:86`);
+   - every member is still in the house (added in S3b's review). Somebody who has left the house has left the pact (X5), but stays on its roster and a knower of its fact, and the jury's readers match juror and finalist by the roster (L.F): a recruit taken in after they left would read as their ally at the finale.
 
-   That last clause makes "none in its founding week" a matter of saved state, whatever path formed the pair.
+   The week clause makes "none in its founding week" a matter of saved state, whatever path formed the pair.
+8. **No target agreement inside it** (added in S3b's review). No active `TargetAgreement` has its proposer, recipient and target all among P's members in the house and the recruit (`NpcAlliances.TargetsWithin`, reading `CommitmentReferences.RawDeals` as `StrategyRules.NominationReluctance` does). The deals are struck as the week turns (`Simulation/EpisodeEngine.cs:482`), before the pact window, and an agreement runs to the end of its week, so one struck against the recruit before the join would outlive it and pull a founder's nomination toward a pact-mate (`TargetPull` 40 against the ally shield's 30). It draws and writes nothing.
 
    **Why rule 7 is needed.** Every reader joins P's current roster to its one fact:
    - the suspected card (`Simulation/AllianceRead.cs:607-614`);
@@ -2203,7 +2212,7 @@ A pact P takes a recruit only when all of these hold.
 
    Knowers never shrink (`Simulation/AllianceLeaks.cs:105`). Growing a pact someone outside knows of would show them a member they never learned of.
 
-**Rules 3 to 7 are engine checks**, like `PactRoom`'s reading of every private pact (`:95-99`). They feed no score, trust or reader.
+**Rules 3 to 8 are engine checks**, like `PactRoom`'s reading of every private pact (`:95-99`). They feed no score, trust or reader.
 - The recruit's side reads only the recruit's own pacts, scores and desire.
 - In the fiction, a member brings the recruit in. That is why the sponsor is the act's partner and why the sponsor's bar is the sponsor's own score.
 
@@ -2233,7 +2242,7 @@ CounterPactBound(s) = 0 below GrowingPacts, or when LivePairs(s) is empty;
 | Cody gone; or an 8-house with Derrick gone or the Hitmen split | none | no growth |
 
 - **When the bound falls,** a pact already above it stays as it is and takes nobody else.
-- **A pact that loses a member** to eviction or to shedding may recruit again, up to the bound, but only while rule 7 still holds. A shed member stays a knower, so a pact that has shed someone never grows again.
+- **A pact that has lost a member, to eviction or to shedding, never grows again** (amended in S3b's review; the design let it recruit again up to the bound while rule 7 held). A shed member stays a knower, and a departed one stays on the roster, so rule 7 never holds again.
 
 #### L.D Who joins, and how
 
@@ -2277,6 +2286,7 @@ public static bool TryJoin(EpisodeState state, string npcId, ISet<string> joined
         .Select(p => (pact: p, here: p.members.Where(id => state.Find(id)?.status == ContestantStatus.Active).ToList()))
         .Where(x => x.here.All(m => !KnownBlocs.InLivePair(state, m) && (joined == null || !joined.Contains(m))
                                     && !state.Allied(npcId, m) && Welcomes(state, m, npcId) && Welcomes(state, npcId, m)))
+        .Where(x => !TargetsWithin(state, x.here, npcId))                 // rule 8, added in S3b's review
         .SelectMany(x => x.here.Where(m => Warm(state, npcId, m) && state.Score(m, npcId) >= MinimumRelationship)
                                 .Select(m => (pact: x.pact, sponsor: m, desire: Desire(state, npcId, m))))
         .OrderByDescending(c => c.desire).ThenBy(c => c.sponsor, StringComparer.Ordinal).ThenBy(c => c.pact.id, StringComparer.Ordinal)
@@ -2296,9 +2306,20 @@ private static bool PrivateToMembers(EpisodeState state, AllianceState pact)
     return fact != null && fact.visibility == FactVisibility.Private && fact.knowers.All(pact.members.Contains);
 }
 
-/// <summary>14.L.B 7: private to its members, and from an earlier week than this one.</summary>
+/// <summary>14.L.B 7: private to its members, from an earlier week than this one, and every member still in the house
+/// (the last clause added in S3b's review).</summary>
 private static bool KeptToItself(EpisodeState state, AllianceState pact) =>
-    PrivateToMembers(state, pact) && Knowledge.Of(state, FactKinds.Alliance, pact.id).week < state.week;
+    PrivateToMembers(state, pact) && Knowledge.Of(state, FactKinds.Alliance, pact.id).week < state.week
+    && pact.members.All(id => state.Find(id)?.status == ContestantStatus.Active);
+
+/// <summary>14.L.B 8 (added in S3b's review): an active target agreement among the pact-to-be. Pure.</summary>
+private static bool TargetsWithin(EpisodeState state, List<string> here, string recruitId)
+{
+    var group = new HashSet<string>(here, StringComparer.Ordinal) { recruitId };
+    return CommitmentReferences.RawDeals(state).Any(d => d != null && d.status == DealStatus.Active && d.type == DealKind.TargetAgreement
+        && d.proposerId != null && d.recipientId != null && d.targetId != null
+        && group.Contains(d.proposerId) && group.Contains(d.recipientId) && group.Contains(d.targetId));
+}
 
 private static bool Welcomes(EpisodeState state, string fromId, string toId) =>
     !GrudgeBetween(state, fromId, toId) && state.Score(fromId, toId) >= JoinWelcomeLine;
@@ -2385,7 +2406,10 @@ private static void Join(EpisodeState state, AllianceState pact, string recruitI
 | Consumer | With 3 or 4 houseguests | Change at 5 |
 |---|---|---|
 | Pact act (`Simulation/NpcSocialActions.cs:206-210`) | It assumed the newest pact | The join builds its own act |
-| **`CommonThreat`** (`Simulation/NpcDeals.cs:143-150`), read by the hunt (`Simulation/NpcAgendas.cs:54-58`), `Offer`'s target agreement (`Simulation/NpcDeals.cs:200-201`) and `TargetFor` (`:588`) | It excludes only a and b. In a trio, the third member qualifies as soon as they hold two wins and one of the pair reads them below 20. The hunt then costs that listener 6 a week with no stop (`Simulation/NpcSocialActions.cs:419-436`), and a target agreement pulls a nomination by 40 against the ally shield's 30 (`Simulation/StrategyRules.cs:46,52`) | **At 5, a non-player candidate is passed over** when an active houseguests' pact holds a, b and that candidate. See the code below the table. The player in a pact with both is read as at 4 |
+| **`CommonThreat`** (`Simulation/NpcDeals.cs:143-150`), read by the hunt (`Simulation/NpcAgendas.cs:54-58`), `Offer`'s target agreement (`Simulation/NpcDeals.cs:200-201`) and `TargetFor` (`:588`) | It excludes only a and b. In a trio, the third member qualifies as soon as they hold two wins and one of the pair reads them below 20. The hunt then costs that listener 6 a week with no stop (`Simulation/NpcSocialActions.cs:419-436`), and a target agreement pulls a nomination by 40 against the ally shield's 30 (`Simulation/StrategyRules.cs:46,52`) | **At 5, a non-player candidate is passed over** when an active houseguests' pact holds a, b and that candidate. See the code below the table. The player in a pact with both is read as at 4. It stops new agreements only; one struck before a join is the next row's |
+| A target agreement struck before a join (`NpcDeals.Settle` as the week turns, `Simulation/EpisodeEngine.cs:482`; `StrategyRules.NominationReluctance`, `Simulation/StrategyRules.cs:446-447`) | An agreement runs to the end of its week, so two founders could agree on W at the week's open and W join through one of them before the nominations: the founder as Head of Household is pulled 40 toward his new pact-mate (found in S3b's review) | **The join waits** (L.B rule 8): no pact takes a recruit while an active target agreement has its proposer, recipient and target all among the pact-to-be. Once it has run out, the join may go ahead |
+| The jury and finalist readers: `Allegiance.JuryLoyalty` and `SharedToTheEnd` (`Simulation/Allegiance.cs:243-266`), `WebJuryVoting.AllianceLoyalty` and `Reason` (`Simulation/WebJuryVoting.cs:84-93,246-248`), `FinalistRead.Lean` (`Simulation/FinalistRead.cs:285-289`) | Every one matches juror and finalist by `members.Contains`, and somebody who left the house stays on the roster. A recruit taken in after a member left would read as that juror's ally: 25 loyalty, "We were in this together", "shared an alliance" (found in S3b's review) | **None in the readers.** A pact that has lost a member never grows again (L.B rule 7, L.C), so every member a juror shares a roster with was in the house with them |
+| A shed joiner at the jury (the same readers) | `TakeOutOfPact` takes the joiner off the roster with no trace, so at the finale they share nothing with the founders: 0, not the 25 of a pact that existed and ended | **None: C5's reading of a member taken out** (C2's cut, C5's leave), now reaching houseguests' pacts at 5. Decided in S3b's review; pinned in fixture 16. S4's shed rows read it so |
 | **`Dissolve`** (`Simulation/NpcAlliances.cs:304-329`) | One edge below −20 ends the whole pact (`:325-327`) | **At 5,** before `var members` (`:309`): `if (AlumniRules.At(state, AlumniRules.GrowingPacts)) ShedSourJoiners(state, alliance);`. Code below. Otherwise whole, as now |
 | `Intact`, `EndBroken` (`:345-354`) | At least two in the house | None |
 | Meeting (`Simulation/NpcSocialActions.cs:488-495`) | +3 for every pair in the house | None |
@@ -2493,6 +2517,7 @@ Scope:
 - more than 4 of a pact in the house;
 - a live-pair member in a grown pact;
 - a join into a pact that was not `alliance-npc-`, not private to its members, or in its fact's week;
+- a join into a pact with a member out of the house, or while a target agreement stands among the pact-to-be (rules 7 and 8, added in S3b's review);
 - a hunt or target agreement aimed at a non-player pact-mate of both in a houseguests' pact;
 - cap breaches and double-booking (`Tests/EditMode/NpcAgencyHarnessTests.cs:50-56`).
 
@@ -2552,6 +2577,8 @@ The fixtures:
     - At 5: `CommonThreat(F1, F2)` passes the recruit over, no `Hunt` targets them, and `Offer` gives no target agreement against them.
     - The player in the pact is read as at 4.
     - At 4, a hand-built trio still names its member, pinning the old behaviour.
+21. `APactThatHasLostAMemberNeverGrowsAgain` (added in S3b's review): a founder at the jury, and a four's member evicted; the juror reads the would-be recruit as a stranger; the shed reads only the joiners in the house.
+22. `NoJoinWhileTwoOfThePactToBeHaveAgreedToTargetTheThird` (added in S3b's review): `NpcDeals.Settle` strikes the founders' agreement against the recruit, the join waits that week, and goes ahead once it has run out; an agreement of the recruit and a member against another member bars it too.
 
 **Existing tests:**
 - **Every S1 to S3 behaviour test names its own value** (`Loyalty`, `Reputation`, `CounterBlocs`). Only the writer, replay and validation cases use the `AllStars` default of `Latest`.
@@ -2583,7 +2610,7 @@ The fixtures:
 
 **Defaults:**
 - value 5, removable before S6;
-- pacts grow in place, only while private to their members and from an earlier week;
+- pacts grow in place, only while private to their members, from an earlier week, with every member in the house and no target agreement among them (the last two added in S3b's review), and a pact that has lost a member never grows again;
 - only houseguests' own outsider pacts grow;
 - the bound is min(4, live pairs + 2);
 - one change a pact a week;

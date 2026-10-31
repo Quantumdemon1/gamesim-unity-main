@@ -290,11 +290,13 @@ namespace Gamesim.Simulation
         /// houseguests formed themselves (<see cref="HouseguestsOwn"/>) and nobody in the house holds with the player:
         /// <list type="bullet">
         /// <item>the pact is below the bound in the house, and kept to itself - its fact private, known to its members only,
-        /// and from an earlier week (so no pact grows in its founding week, nor once anybody outside it has learned of
-        /// it: every reader joins the roster as it stands to its one fact);</item>
-        /// <item>nobody in it in the house stands in a live pair (<see cref="KnownBlocs.InLivePair"/>), is in
+        /// from an earlier week, and every member still in the house (so no pact grows in its founding week, nor once
+        /// anybody outside it has learned of it: every reader joins the roster as it stands to its one fact; nor once it has
+        /// lost a member, whom the jury's readers would still match with a later recruit);</item>
+        /// <item>nobody in it stands in a live pair (<see cref="KnownBlocs.InLivePair"/>), is in
         /// <paramref name="joined"/> (one change a pact a week), or already shares a pact with the recruit; every one of
-        /// them and the recruit rate each other at <see cref="JoinWelcomeLine"/> or more with no grudge either way;</item>
+        /// them and the recruit rate each other at <see cref="JoinWelcomeLine"/> or more with no grudge either way; and no
+        /// two of them and the recruit hold an active target agreement against a third of them;</item>
         /// <item>the recruit is an active houseguest, not the player, not in <paramref name="joined"/> or a live pair, in no
         /// pact of houseguests already (one each) and under <see cref="MaximumEach"/>; and they want in with one member, the
         /// sponsor - <see cref="Warm"/> toward them, a proposer's own bar - who rates them at
@@ -325,6 +327,7 @@ namespace Gamesim.Simulation
                 .Select(p => (pact: p, here: p.members.Where(id => state.Find(id)?.status == ContestantStatus.Active).ToList()))
                 .Where(x => x.here.All(m => !KnownBlocs.InLivePair(state, m) && (joined == null || !joined.Contains(m))
                                             && !state.Allied(npcId, m) && Welcomes(state, m, npcId) && Welcomes(state, npcId, m)))
+                .Where(x => !TargetsWithin(state, x.here, npcId))
                 .SelectMany(x => x.here.Where(m => Warm(state, npcId, m) && state.Score(m, npcId) >= MinimumRelationship)
                                         .Select(m => (pact: x.pact, sponsor: m, desire: Desire(state, npcId, m))))
                 .OrderByDescending(c => c.desire)
@@ -459,9 +462,30 @@ namespace Gamesim.Simulation
             return fact != null && fact.visibility == FactVisibility.Private && fact.knowers.All(pact.members.Contains);
         }
 
-        /// <summary>§14.L.B rule 7: private to its members, and from an earlier week than this one, so never in its founding week.</summary>
+        /// <summary>
+        /// §14.L.B rule 7: private to its members, from an earlier week than this one (so never in its founding week), and with
+        /// every member still in the house. Somebody who has left the house has left the pact (X5) but stays on its roster and
+        /// a knower of its fact, and every jury reader matches juror and finalist by that roster: a recruit taken in after they
+        /// left would read as their ally at the finale. So a pact that has lost a member, to eviction or to shedding, never
+        /// grows again.
+        /// </summary>
         private static bool KeptToItself(EpisodeState state, AllianceState pact) =>
-            PrivateToMembers(state, pact) && Knowledge.Of(state, FactKinds.Alliance, pact.id).week < state.week;
+            PrivateToMembers(state, pact) && Knowledge.Of(state, FactKinds.Alliance, pact.id).week < state.week
+            && pact.members.All(id => state.Find(id)?.status == ContestantStatus.Active);
+
+        /// <summary>
+        /// §14.L.B rule 8: an active target agreement between two of the pact-to-be - its members in the house and the
+        /// recruit - against a third of it. One struck before the join would outlive it (an agreement runs to the end of its
+        /// week, and the deals are struck as the week turns, before the pact window), and pull a member's nomination toward a
+        /// pact-mate (<see cref="StrategyRules.NominationReluctance"/> reads the same raw list). Pure: no draw, no write.
+        /// </summary>
+        private static bool TargetsWithin(EpisodeState state, List<string> here, string recruitId)
+        {
+            var group = new HashSet<string>(here, StringComparer.Ordinal) { recruitId };
+            return CommitmentReferences.RawDeals(state).Any(d => d != null && d.status == DealStatus.Active && d.type == DealKind.TargetAgreement
+                && d.proposerId != null && d.recipientId != null && d.targetId != null
+                && group.Contains(d.proposerId) && group.Contains(d.recipientId) && group.Contains(d.targetId));
+        }
 
         /// <summary>§14.L.D.1: one side's welcome for a join - no grudge either way, and a view at <see cref="JoinWelcomeLine"/> or more.</summary>
         private static bool Welcomes(EpisodeState state, string fromId, string toId) =>

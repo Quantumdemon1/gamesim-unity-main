@@ -829,6 +829,19 @@ namespace Gamesim.Tests.EditMode
             var own = s.alliances[s.alliances.Count - 1];
             Assert.That(own.members, Is.EqualTo(new[] { s.playerId, dan }), "A pact of their own.");
 
+            // The skip counts those in the house (§14.L.E): the same four with Vanessa gone holds three, and takes the player in.
+            var (g, gPact, gDan, gJanelle, gWill) = Twelve(5133u, Five);
+            string gVanessa = On(g, Vanessa);
+            Assert.That(Joins(g, gWill), Is.True);
+            g.week++;
+            WantsIn(g, gVanessa, gDan);
+            Assert.That(Joins(g, gVanessa), Is.True);
+            g.Find(gVanessa).status = ContestantStatus.Evicted;
+            g.week++;
+            Assert.That((Find(g, gPact).members.Count, EpisodeEngine.InTheHouse(g, Find(g, gPact))), Is.EqualTo((4, 3)));
+            Invite(g, gDan);
+            Assert.That(Find(g, gPact).members, Is.EqualTo(new[] { gDan, gJanelle, gWill, gVanessa, g.playerId }), "Three in the house: the player is taken in.");
+
             // At 4 the same four, written by hand, takes the player in: the pass-over is growth's alone.
             var (f, fPact, fDan, fJanelle, fWill) = Twelve(5119u, Four);
             string fVanessa = On(f, Vanessa);
@@ -881,6 +894,14 @@ namespace Gamesim.Tests.EditMode
             shed.week++;
             WantsIn(shed, On(shed, Vanessa), dan);
             Assert.That(JoinsACopy(shed, On(shed, Vanessa)), Is.False, "And it never grows again.");
+            // At the jury a shed joiner shares nothing with the founders: C5's reading of a member taken out (§14.L.F).
+            var juror = shed.Clone();
+            juror.Find(will).status = ContestantStatus.Jury;
+            foreach (var founder in new[] { dan, janelle })
+            {
+                Assert.That(Allegiance.JuryLoyalty(juror, will, founder), Is.Zero, founder + ": a member taken out shares no pact.");
+                Assert.That(Allegiance.SharedToTheEnd(juror, will, founder), Is.False, founder);
+            }
 
             // The founders' own souring ends it whole.
             var founders = s.Clone();
@@ -1000,6 +1021,36 @@ namespace Gamesim.Tests.EditMode
             Assert.That(Find(rule, pact).members, Is.EqualTo(expected), "The rule alone.");
             foreach (var path in new[] { beat, pass, rule })
                 Assert.That(NpcAlliances.NpcOnlyPacts(path).Select(p => p.id), Is.EqualTo(new[] { pact.id }));
+
+            // A birth comes first (§14.L.D.3): Will could join Dan and Janelle's or pair with a free outsider who wants him
+            // as much as he wants her, and on all three paths he pairs. The outsider comes after him in the cast, so the
+            // passes reach him first; the house holds one pact and has room for one more.
+            var (b, bPact, bDan, bJanelle, bWill) = Hitmen(5134u, Five);
+            string free = b.contestants.SkipWhile(c => c.id != bWill).Skip(1).Select(c => c.id)
+                .FirstOrDefault(id => id != bDan && id != bJanelle && id != b.playerId && !KnownBlocs.InLivePair(b, id));
+            Assert.That(free, Is.Not.Null, "A free outsider after Will in the cast.");
+            Both(b, bDan, bWill, 30);
+            Set(b, bWill, bJanelle, 90);
+            Set(b, bJanelle, bWill, 60);
+            Both(b, bWill, free, 90);
+            Assert.That((NpcAlliances.PactCap(b), NpcAlliances.NpcOnlyPacts(b).Count), Is.EqualTo((2, 1)), "Room for one more pact.");
+            var bAt = NextWeek(b, bWill);
+            Assert.That(JoinsACopy(bAt, bWill), Is.True, "He could join.");
+
+            var birthBeat = bAt.Clone();
+            var birth = Beat(birthBeat, bWill, "birth");
+            Assert.That((birth?.kind, birth?.actorId, birth?.partnerId), Is.EqualTo((NpcActKinds.Pact, bWill, free)), "His act names the outsider, not Janelle.");
+            var birthPass = bAt.Clone();
+            NpcSocialActions.Settle(birthPass);
+            var birthRule = bAt.Clone();
+            NpcAlliances.Settle(birthRule);
+            foreach (var (path, name) in new[] { (birthBeat, "the beat"), (birthPass, "the weekly pass"), (birthRule, "the rule alone") })
+            {
+                Assert.That(Find(path, bPact).members, Is.EqualTo(new[] { bDan, bJanelle }), name + ": the pair stays a pair.");
+                var pacts = NpcAlliances.NpcOnlyPacts(path);
+                Assert.That(pacts, Has.Count.EqualTo(2), name + ": one pact more.");
+                Assert.That(pacts.Single(p => p.id != bPact.id).members, Is.EquivalentTo(new[] { bWill, free }), name + ": Will and the outsider pair.");
+            }
         }
 
         [Test]
@@ -1046,6 +1097,26 @@ namespace Gamesim.Tests.EditMode
             Assert.That(NpcDeals.Offer(s, dan, janelle), Is.Not.EqualTo(DealKind.TargetAgreement), "No target agreement against him.");
             Assert.That(NpcDeals.Offer(s, janelle, dan), Is.Not.EqualTo(DealKind.TargetAgreement));
 
+            // Only a pact-mate of both is passed over (§14.L.F). A threat from outside the pact is still theirs to hunt.
+            var outside = s.Clone();
+            string vanessa = On(outside, Vanessa);
+            outside.Find(vanessa).hohWins = 2;
+            Set(outside, dan, vanessa, 10);
+            Assert.That(NpcDeals.CommonThreat(outside, dan, janelle), Is.EqualTo(vanessa), "Vanessa, outside the pact, is still their threat.");
+            Assert.That(Agenda(outside, dan), Is.EqualTo((Agendas.Hunt, janelle, vanessa)));
+            // A pact that has ended shields nobody: the founders fall out, it ends whole, and Will is their threat again.
+            var ended = s.Clone();
+            Set(ended, dan, janelle, NpcAlliances.SourLine - 1);
+            NpcAlliances.Dissolve(ended);
+            Assert.That(Find(ended, pact).active, Is.False);
+            Assert.That(NpcDeals.CommonThreat(ended, dan, janelle), Is.EqualTo(will), "No longer pact-mates.");
+            // A pact-mate of one is still a threat to that one and an outsider: Janelle, with two wins, to Dan and Vanessa.
+            var one = s.Clone();
+            one.Find(will).hohWins = 0;
+            one.Find(janelle).hohWins = 2;
+            Set(one, dan, janelle, 10);
+            Assert.That(NpcDeals.CommonThreat(one, dan, On(one, Vanessa)), Is.EqualTo(janelle), "A pact-mate of Dan's alone.");
+
             // The player in the pact with both is read as at 4: still their common threat.
             var player = s.Clone();
             player.Find(will).hohWins = 0;
@@ -1088,6 +1159,93 @@ namespace Gamesim.Tests.EditMode
             Assert.That(KnownBlocs.CounterTarget(t, tDan, tJanelle), Is.EqualTo(tDerrick), "Never its own member.");
             Assert.That(Agenda(t, tDan), Is.EqualTo((Agendas.Hunt, tJanelle, tDerrick)));
             Assert.That(Agenda(t, tJanelle).targetId, Is.Not.EqualTo(tCody));
+        }
+
+        // ------------------------------------------------------------------ found in S3b's review
+
+        [Test]
+        public void APactThatHasLostAMemberNeverGrowsAgain()
+        {
+            // The eight-house: Will joins, then Dan goes to the jury. Two are in the house, below the bound, and the fact is still
+            // known only to the roster - but Dan is on that roster, and every jury reader matches juror and finalist by it.
+            var (s, pact, dan, janelle, will) = Hitmen(5135u, Five);
+            string vanessa = On(s, Vanessa);
+            Assert.That(Joins(s, will), Is.True);
+            s.week++;
+            s.Find(dan).status = ContestantStatus.Jury;
+            WantsIn(s, vanessa, janelle);
+            Assert.That((EpisodeEngine.InTheHouse(s, Find(s, pact)), KnownBlocs.CounterPactBound(s)), Is.EqualTo((2, 3)), "Below the bound.");
+            Assert.That(Fact(s, pact).knowers, Is.EquivalentTo(Find(s, pact).members), "Still known to its roster alone.");
+            Assert.That(JoinsACopy(s, vanessa), Is.False, "A pact that has lost a member never grows again.");
+            Assert.That(Joins(s, vanessa), Is.False);
+            Assert.That(Find(s, pact).members, Is.EqualTo(new[] { dan, janelle, will }));
+            // So the juror who left reads Vanessa as a stranger, as anybody they never shared a pact with.
+            Assert.That(Allegiance.JuryLoyalty(s, dan, vanessa), Is.Zero);
+            Assert.That(Allegiance.SharedToTheEnd(s, dan, vanessa), Is.False);
+            Assert.That(WebJuryVoting.AllianceLoyalty(s, dan, vanessa), Is.Zero);
+            Knowledge.AddKnower(s, Fact(s, pact), s.playerId);
+            Assert.That(FinalistRead.Lean(s, dan, vanessa)?.reason, Is.Not.EqualTo("shared an alliance"));
+
+            // The twelve-house, bound four: a four loses Vanessa to an eviction, and the three in the house take nobody.
+            var (t, tPact, tDan, tJanelle, tWill) = Twelve(5136u, Five);
+            string tVanessa = On(t, Vanessa), tChelsie = On(t, Chelsie);
+            Assert.That(Joins(t, tWill), Is.True);
+            t.week++;
+            WantsIn(t, tVanessa, tDan);
+            Assert.That(Joins(t, tVanessa), Is.True);
+            t.week++;
+            t.Find(tVanessa).status = ContestantStatus.Evicted;
+            WantsIn(t, tChelsie, tJanelle);
+            Assert.That((EpisodeEngine.InTheHouse(t, Find(t, tPact)), KnownBlocs.CounterPactBound(t)), Is.EqualTo((3, 4)));
+            Assert.That(JoinsACopy(t, tChelsie), Is.False, "Three in the house, below the bound: still nobody.");
+            // The shed reads the joiners in the house only: Vanessa, gone and soured with Dan, stays on the roster, and it stands.
+            var sour = t.Clone();
+            Both(sour, tVanessa, tDan, NpcAlliances.SourLine - 1);
+            NpcAlliances.Dissolve(sour);
+            Assert.That(Find(sour, tPact).members, Is.EqualTo(new[] { tDan, tJanelle, tWill, tVanessa }), "Nobody is shed.");
+            Assert.That(Find(sour, tPact).active, Is.True);
+        }
+
+        [Test]
+        public void NoJoinWhileTwoOfThePactToBeHaveAgreedToTargetTheThird()
+        {
+            // Will has two wins and Dan reads him at 10. As the week turns, before the pact window, the founders agree to target
+            // him (NpcDeals.Settle), and the agreement runs to the end of the week: a join would leave it standing against a
+            // pact-mate of both, pulling a founder's nomination toward him.
+            var (s, pact, dan, janelle, will) = Hitmen(5137u, Five);
+            s.Find(will).hohWins = 2;
+            Set(s, dan, will, 10);
+            Assert.That(NpcDeals.CommonThreat(s, dan, janelle), Is.EqualTo(will), "Not yet a pact-mate: their threat.");
+            Assert.That(JoinsACopy(s, will), Is.True, "Without the agreement he would join.");
+            NpcDeals.Settle(s);
+            var agreements = CommitmentReferences.RawDeals(s).Where(d => d.status == DealStatus.Active && d.type == DealKind.TargetAgreement
+                && d.targetId == will && new[] { dan, janelle }.Contains(d.proposerId) && new[] { dan, janelle }.Contains(d.recipientId)).ToList();
+            Assert.That(agreements, Is.Not.Empty, "The founders agree to target Will.");
+            var ids = agreements.Select(d => d.id).ToList();
+            Assert.That(agreements.Select(d => d.expiresWeek), Is.All.EqualTo(s.week), "For this week.");
+            Assert.That(JoinsACopy(s, will), Is.False, "No join while two of the pact-to-be have agreed to target the third.");
+
+            // The next week it has run out, and with Dan warmer nobody strikes it again: Will joins.
+            s.week++;
+            Set(s, dan, will, 20);
+            NpcDeals.Settle(s);
+            Assert.That(CommitmentReferences.RawDeals(s).Where(d => ids.Contains(d.id)).Select(d => d.status), Is.All.EqualTo(DealStatus.Expired));
+            Assert.That(CommitmentReferences.RawDeals(s).Any(d => d.status == DealStatus.Active && d.type == DealKind.TargetAgreement && d.targetId == will), Is.False);
+            Assert.That(Joins(s, will), Is.True, "Once it has run out, Will joins.");
+            Assert.That(Find(s, pact).members, Is.EqualTo(new[] { dan, janelle, will }));
+
+            // Nor while the recruit and a member have agreed to target another member: Janelle has two wins and Dan reads her
+            // at 10, and Dan and Will, at 30 to each other, agree to target her before Will would join through her.
+            var (o, oPact, oDan, oJanelle, oWill) = Hitmen(5138u, Five);
+            o.Find(oJanelle).hohWins = 2;
+            Set(o, oDan, oJanelle, 10);
+            Both(o, oDan, oWill, 30);
+            Assert.That(JoinsACopy(o, oWill), Is.True, "Without the agreement he would join.");
+            NpcDeals.Settle(o);
+            Assert.That(CommitmentReferences.RawDeals(o).Count(d => d.status == DealStatus.Active && d.type == DealKind.TargetAgreement && d.targetId == oJanelle
+                && new[] { oDan, oWill }.Contains(d.proposerId) && new[] { oDan, oWill }.Contains(d.recipientId)), Is.Positive, "Dan and Will agree to target Janelle.");
+            Assert.That(JoinsACopy(o, oWill), Is.False, "He would be in a pact with the member he has agreed to target.");
+            Assert.That(Find(o, oPact).members, Is.EqualTo(new[] { oDan, oJanelle }));
         }
     }
 }

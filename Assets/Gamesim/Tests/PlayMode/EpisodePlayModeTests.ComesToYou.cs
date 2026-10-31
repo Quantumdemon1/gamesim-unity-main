@@ -46,18 +46,23 @@ namespace Gamesim.Tests.PlayMode
             foreach (var id in HeldAside(holdAsideAskers)) Assert.That(director.IsAskSetAside(id), Is.True, id + " is still held aside.");
         }
 
-        /// <summary>The house saved and reloaded, asks on and taken effect, the named askers held aside; no visit waited for.</summary>
+        /// <summary>
+        /// The house saved and reloaded, every body assembled, asks on and taken effect, the named askers held aside; no
+        /// visit waited for.
+        /// </summary>
         private IEnumerator OptIntoComesToYou(params string[] holdAsideAskers)
         {
             SaveNpcInvitationFlowState();
             yield return ReloadEpisode();
+            NpcWrite("proximityWatch", -1e6f);
+            // Asks are still off meanwhile, so at most the invitation sets out, and the switch below lets it go.
+            yield return WaitForBodiesPairingNobody();
             director.AsksEnabled = true;
             float deadline = Time.realtimeSinceStartup + 2f;
             while (!NpcRead<bool>("asksWereOn") && Time.realtimeSinceStartup < deadline) yield return null;
             Assert.That(NpcRead<bool>("asksWereOn"), Is.True, "The switch takes effect.");
             Assert.That(director.AsksAreOn, Is.True);
             Assert.That(director.CurrentNpcInvitationRecordId, Is.Null, "No visit before the settle and still clocks have run.");
-            NpcWrite("proximityWatch", -1e6f);
             var aside = NpcRead<HashSet<string>>("askSetAside");
             foreach (var asker in holdAsideAskers)
             {
@@ -65,6 +70,36 @@ namespace Gamesim.Tests.PlayMode
                 Assert.That(ids, Is.Not.Empty, asker + " has an ask to hold aside.");
                 foreach (var id in ids) aside.Add(id);
             }
+        }
+
+        /// <summary>
+        /// The invitation flow's house with asks off, as InstallNpcInvitationFlowHouse leaves it, the walk-in watch held
+        /// and every body assembled before the invitation waited for sets out: whatever set out while they assembled
+        /// starts afresh, as on a load.
+        /// </summary>
+        private IEnumerator InstallLegacyInvitationHouse()
+        {
+            SaveNpcInvitationFlowState();
+            yield return ReloadEpisode();
+            NpcWrite("proximityWatch", -1e6f);
+            yield return WaitForBodiesPairingNobody();
+            Assert.That(director.AsksAreOn, Is.False);
+            NpcInvoke("ResetNpcInvitationsForLoad");
+            Assert.That(director.ShowOverview(), Is.True);
+            yield return WaitForVisibleNpcInvitation();
+        }
+
+        /// <summary>
+        /// Waits until every body has assembled - one finishing later re-renders the HUD and re-selects a control - with
+        /// the house's route planning held meanwhile, so the wait pairs nobody: the askers are as free when it ends as just
+        /// after the reload, and planning runs as it always does from there.
+        /// </summary>
+        private IEnumerator WaitForBodiesPairingNobody()
+        {
+            NpcWrite("npcApproachDiagnosticsSuppressed", true);
+            try { yield return WaitForBodies(); }
+            finally { NpcWrite("npcApproachDiagnosticsSuppressed", false); }
+            Assert.That(NpcRead<IList>("npcApproaches"), Is.Empty, "Nobody set out to pair while the bodies assembled.");
         }
 
         private IEnumerable<string> HeldAside(string[] askers) =>
@@ -169,6 +204,7 @@ namespace Gamesim.Tests.PlayMode
             yield return InstallComesToYouHouse(ComesJamie);
             string recordId = director.CurrentNpcInvitationRecordId, askerId = director.CurrentAskerId;
             yield return WaitForAskDialogue(askerId);
+            Assert.That(ComesHud.PointerHeld, Is.True, "The open frame: pointer presses are held off the panel.");
             yield return WaitOutThePointerHold();
             var think = ButtonWithCaption(EpisodeHud.ThinkItOverCaption);
             var before = director.Snapshot;
@@ -334,6 +370,7 @@ namespace Gamesim.Tests.PlayMode
             byte[] bytes = File.ReadAllBytes(director.SavePath);
             select.Invoke(director, new object[] { asker });
             Assert.That(director.TalkingToId, Is.EqualTo(askerId));
+            Assert.That(ComesHud.PointerHeld, Is.True, "The open frame: the click that opened it presses nothing on the panel.");
             Assert.That(director.CurrentAskWay, Is.EqualTo(EpisodeDirector.AskWay.WalkOver), "The click hears the ask it walked over with.");
             Assert.That(NpcRead<Dictionary<string, int>>("askPresentations")[recordId], Is.EqualTo(1), "One presentation counted.");
             CollectionAssert.AreEqual(bytes, File.ReadAllBytes(director.SavePath));
@@ -343,7 +380,7 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(FindButton(EpisodeHud.ThinkItOverCaption), Is.Not.Null);
 
             // With asks off the same click takes its usual route: never the ask's dialogue.
-            yield return InstallNpcInvitationFlowHouse();
+            yield return InstallLegacyInvitationHouse();
             Assert.That(director.AsksAreOn, Is.False);
             var visitor = SceneComponents<HouseNpc>().Single(npc => npc.Id == director.CurrentNpcInvitationNpcId);
             select.Invoke(director, new object[] { visitor });
@@ -398,17 +435,25 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(EpisodeValidation.TryValidate(state, out var reason), Is.True, reason);
             new EpisodeSaveStore(director.SavePath).Save(state);
             yield return ReloadEpisode();
+            NpcWrite("proximityWatch", -1e6f);
+            yield return WaitForBodiesPairingNobody();
             director.AsksEnabled = true;
             float deadline = Time.realtimeSinceStartup + 2f;
             while (!NpcRead<bool>("asksWereOn") && Time.realtimeSinceStartup < deadline) yield return null;
-            NpcWrite("proximityWatch", -1e6f);
+            Assert.That(NpcRead<bool>("asksWereOn"), Is.True, "The switch takes effect.");
             var ask = ComesToYou.Read(director.Snapshot).Single(row => row.askerId == npcs[1]);
             deadline = Time.realtimeSinceStartup + 5f;
             while (NpcWholeSecondDue() && Time.realtimeSinceStartup < deadline) yield return null;
+            var before = director.Snapshot;
             yield return OpenNearbyNpc(SceneComponents<HouseNpc>().Single(npc => npc.Id == npcs[1]));
             Assert.That(director.TalkingToId, Is.EqualTo(npcs[1]));
             Assert.That(director.CurrentAskWay, Is.EqualTo(EpisodeDirector.AskWay.None), "The notice, not the ask.");
             Assert.That(director.IsAskSetAside(ask.recordId), Is.False);
+            Canvas.ForceUpdateCanvases();
+            Assert.That(ActiveRect(EpisodeHud.ConversationNoticeName), Is.Not.Null, "The conversation draws the notice card.");
+            Assert.That(LastLabel("NPC spoken dialogue")?.text, Does.Contain(HouseDialogue.Greeting(before, npcs[1])),
+                "and its line is the greeting.");
+            Assert.That(LastLabel(EpisodeHud.AskLineName), Is.Null, "No ask's line on it.");
         }
 
         // ------------------------------------------------------------------ 5. off in tests and verification
@@ -419,7 +464,8 @@ namespace Gamesim.Tests.PlayMode
         private IEnumerator OffByDefault()
         {
             Assert.That(director.AsksEnabled, Is.False, "The fixture turns asks off as it binds the director.");
-            yield return InstallNpcInvitationFlowHouse();
+            yield return InstallLegacyInvitationHouse();
+            Assert.That(director.AsksEnabled, Is.False, "and again as it binds the reloaded one.");
             Assert.That(director.AsksAreOn, Is.False);
             float until = Time.realtimeSinceStartup + 5f;
             while (Time.realtimeSinceStartup < until)
@@ -579,27 +625,149 @@ namespace Gamesim.Tests.PlayMode
         [UnityTest]
         public IEnumerator ComesToYou_AskerIsNeverPairedOrWalkedInOn() => PinnedClock(AskerNeverPaired);
 
+        /// <summary>
+        /// While the asker comes over, while their line is up and across the open, they are in no pending pair and no
+        /// approach, and nobody walks in on them. The open is made to carry the house's time up to a pairing scan - the
+        /// flush inside TryOpenNpc, after the visit itself has been let go, is where the busy set matters - and the walk-in
+        /// is tried on the asker with somebody put beside them, against the same try with asks off.
+        /// </summary>
         private IEnumerator AskerNeverPaired()
         {
             yield return InstallComesToYouHouse(ComesJamie);
             // This test runs the walk-in watch.
             NpcWrite("proximityWatch", 0f);
             string askerId = director.CurrentAskerId;
-            var pairs = NpcRead<Dictionary<long, HouseMeetingLease>>("npcPendingWorld");
-            float deadline = Time.realtimeSinceStartup + 35f;
-            while (director.TalkingToId == null && Time.realtimeSinceStartup < deadline)
+            int walkInsBefore = WalkInsOn(askerId);
+
+            // The line up, no pending pair the open's flush would wait on, and the asker free in the saved world - no
+            // pending pair, no cooldown - so only the ask keeps them out of the scan. The auto-open is held meanwhile.
+            bool Ready() => director.CurrentAskerId == askerId && director.NpcInvitationIsVisible && director.TalkingToId == null
+                && (bool)NpcInvoke("AllPendingNpcLeasesReady") && !NpcPairing.Busy(director.Snapshot).Contains(askerId);
+            float deadline = Time.realtimeSinceStartup + 60f;
+            while (!Ready() && Time.realtimeSinceStartup < deadline)
             {
-                if (director.CurrentNpcInvitationRecordId != null || director.TalkingToId == askerId)
+                if (director.CurrentNpcInvitationRecordId != null)
                 {
-                    Assert.That(pairs.Values.Any(lease => lease.FirstId == askerId || lease.SecondId == askerId), Is.False,
-                        "The asker is in no pair while they bring an ask.");
+                    AssertAskerUnpaired(askerId, "while they bring an ask");
                     Assert.That(new[] { NpcRead<string>("walkInFirst"), NpcRead<string>("walkInSecond") }, Has.No.Member(askerId),
                         "nor walked in on.");
                 }
+                NpcWrite("askSpokeFor", 0f);
+                // The wait may outlast a lease; a miss here is the test's holding the line back, so the asker keeps coming.
+                NpcRead<Dictionary<string, int>>("askMisses").Clear();
                 yield return null;
             }
-            Assert.That(director.TalkingToId, Is.EqualTo(askerId));
-            Assert.That(pairs.Values.Any(lease => lease.FirstId == askerId || lease.SecondId == askerId), Is.False, "Across the open too.");
+            Assert.That(Ready(), Is.True, "The line is up and the house could pair the asker: " + director.NpcAutonomyDiagnostic);
+            AssertAskerUnpaired(askerId, "with their line up");
+
+            // Somebody beside the asker is no walk-in while the asker is with the player; with asks off, the same two are.
+            var tryWalkIn = typeof(EpisodeDirector).GetMethod("TryWalkInPair", BindingFlags.Instance | BindingFlags.NonPublic);
+            Assert.That(tryWalkIn, Is.Not.Null);
+            bool WalkIn()
+            {
+                var arguments = new object[] { new List<string> { askerId, ComesJamie }, null, null };
+                return (bool)tryWalkIn.Invoke(director, arguments);
+            }
+            var asker = SceneComponents<HouseNpc>().Single(npc => npc.Id == askerId);
+            var other = SceneComponents<HouseNpc>().Single(npc => npc.Id == ComesJamie);
+            Vector3 home = other.transform.position;
+            Assert.That(PutBodyAt(other, BesideAsker(asker)), Is.True);
+            Physics.SyncTransforms();
+            bool withAsks = WalkIn();
+            // Read at once, so no frame sees the switch turn: TickAsks never lets the visit go for it.
+            director.AsksEnabled = false;
+            bool withoutAsks = WalkIn();
+            director.AsksEnabled = true;
+            PutBodyAt(other, home);
+            Physics.SyncTransforms();
+            Assert.That(withoutAsks, Is.True, "The control: with asks off, the two of them are walked in on.");
+            Assert.That(withAsks, Is.False, "With the asker bringing an ask, nobody walks in on them.");
+
+            // E hears the ask; its open carries the house's time up to the next pairing scan.
+            var state = director.Snapshot;
+            long clock = state.npcSocial.clockTick, scanAt = state.npcSocial.nextScanTick;
+            NpcWrite("npcFrameFraction", (double)Math.Max(1L, scanAt - clock));
+            NpcWrite("npcWorldFraction", 0d);
+            director.Interact();
+            Assert.That(director.TalkingToId, Is.EqualTo(askerId), "E hears the ask.");
+            Assert.That(director.CurrentAskWay, Is.EqualTo(EpisodeDirector.AskWay.WalkOver));
+            Assert.That(director.Snapshot.npcSocial.clockTick, Is.EqualTo(Math.Max(clock + 1, scanAt)),
+                "The open's flush committed the house's time up to the scan.");
+            Assert.That(director.Snapshot.npcSocial.nextScanTick, Is.GreaterThan(scanAt), "and the scan came due, so the house planned its pairs.");
+            AssertAskerUnpaired(askerId, "across the open");
+            yield return null;
+            AssertAskerUnpaired(askerId, "once the dialogue is up");
+            Assert.That(WalkInsOn(askerId), Is.EqualTo(walkInsBefore), "No walk-in on the asker was committed.");
+        }
+
+        /// <summary>The asker is in no pending pair, saved or held, and in no approach under way.</summary>
+        private void AssertAskerUnpaired(string askerId, string when)
+        {
+            var pairs = NpcRead<Dictionary<long, HouseMeetingLease>>("npcPendingWorld");
+            Assert.That(pairs.Values.Any(lease => lease.FirstId == askerId || lease.SecondId == askerId), Is.False,
+                "The asker is in no pending pair " + when + ".");
+            Assert.That(director.Snapshot.npcSocial.pending.Any(row => row.firstId == askerId || row.secondId == askerId), Is.False,
+                "nor a saved one " + when + ".");
+            foreach (var approach in NpcRead<IList>("npcApproaches"))
+            {
+                var lease = (HouseMeetingLease)NpcObjectField(approach, "lease");
+                Assert.That(lease.FirstId != askerId && lease.SecondId != askerId, Is.True,
+                    "nor an approach " + when + ": " + lease.FirstId + " and " + lease.SecondId + ".");
+            }
+        }
+
+        /// <summary>Walk-ins committed on a houseguest: the situations the walk-in watch has drawn about them.</summary>
+        private int WalkInsOn(string id) => director.Snapshot.houseEvents.Count(row => row != null
+            && row.kind == HouseEventKind.Proximity && row.involvedIds != null && row.involvedIds.Contains(id));
+
+        /// <summary>A floor point beside the asker, well within a walk-in pair's reach of them and clear of the player.</summary>
+        private Vector3 BesideAsker(HouseNpc asker)
+        {
+            for (int direction = 0; direction < 8; direction++)
+            {
+                float angle = direction * Mathf.PI / 4f;
+                var candidate = asker.transform.position + new Vector3(Mathf.Cos(angle), 0f, Mathf.Sin(angle)) * 1.2f;
+                if (!NavMesh.SamplePosition(candidate, out var hit, .5f, player.Agent.areaMask)) continue;
+                var across = hit.position - asker.transform.position; across.y = 0f;
+                var fromPlayer = hit.position - player.transform.position; fromPlayer.y = 0f;
+                if (across.magnitude <= EpisodeDirector.WalkInPairMetres - .5f && fromPlayer.magnitude >= .8f) return hit.position;
+            }
+            Assert.Fail("No floor beside " + asker.DisplayName + ".");
+            return asker.transform.position;
+        }
+
+        // ------------------------------------------------------------------ also in slice 1: a stalled frame
+
+        /// <summary>
+        /// A stall is not time the line was on screen. With Run In Background off, a window out of focus stops the player
+        /// loop while the clock runs on; counted whole, coming back would open the dialogue at once. One frame held for
+        /// 1.5 s, against the 1.2 s beat, adds at most <see cref="EpisodeDirector.AskFrameAllowanceSeconds"/>; the beat
+        /// still runs out once the game's own frames add up.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator ComesToYou_AStalledFrameDoesNotOpenTheDialogue() => PinnedClock(AStalledFrameDoesNotOpen);
+
+        private IEnumerator AStalledFrameDoesNotOpen()
+        {
+            yield return InstallComesToYouHouse(ComesJamie);
+            string recordId = director.CurrentNpcInvitationRecordId, askerId = director.CurrentAskerId;
+            float deadline = Time.realtimeSinceStartup + 35f;
+            while (!director.NpcInvitationIsVisible && Time.realtimeSinceStartup < deadline)
+            {
+                NpcWrite("askSpokeFor", 0f);
+                yield return null;
+            }
+            Assert.That(director.NpcInvitationIsVisible, Is.True, "The asker's line is up.");
+            NpcWrite("askSpokeFor", 0f);
+            System.Threading.Thread.Sleep(1500);
+            yield return null;
+            yield return null;
+            Assert.That(director.TalkingToId, Is.Null,
+                "A 1.5 s stall spends at most " + EpisodeDirector.AskFrameAllowanceSeconds + " s of the line's beat.");
+            Assert.That(NpcRead<float>("askSpokeFor"), Is.LessThan(EpisodeDirector.AskSpeakBeatSeconds));
+            Assert.That(director.AskMissCount(recordId), Is.Zero, "and a stall is no miss.");
+            yield return WaitForAskDialogue(askerId);
+            Assert.That(director.CurrentAskWay, Is.EqualTo(EpisodeDirector.AskWay.WalkOver), "The beat still runs out on the game's frames.");
         }
 
         // ------------------------------------------------------------------ 10. captures and the frame's fit
@@ -614,7 +782,10 @@ namespace Gamesim.Tests.PlayMode
                 {
                     string at = textSize + (reduced ? ", reduced motion" : "");
                     yield return InstallComesToYouHouse(ComesJamie);
-                    string askerId = director.CurrentAskerId;
+                    // Jamie waits too, so the dialogue draws its "1 more" line: one visit at a time, so Jamie's ask waits
+                    // on Maya's, and whichever of them comes first, the other is the one more who wants a word.
+                    var aside = NpcRead<HashSet<string>>("askSetAside");
+                    foreach (var id in HeldAside(new[] { ComesJamie })) aside.Remove(id);
                     yield return ApplyTextSize(textSize);
                     if (reduced)
                     {
@@ -634,7 +805,10 @@ namespace Gamesim.Tests.PlayMode
                         focusBefore = cameraRig.DesiredFocus;
                         yield return null;
                     }
-                    Assert.That(director.TalkingToId, Is.EqualTo(askerId), at);
+                    Assert.That(director.TalkingToId, Is.Not.Null, at + ": the dialogue opens.");
+                    string askerId = director.TalkingToId;
+                    Assert.That(director.CurrentAskWay, Is.EqualTo(EpisodeDirector.AskWay.WalkOver), at);
+                    Assert.That(director.CurrentAskerId, Is.EqualTo(askerId), at);
                     Assert.That(cameraRig.IsConversationFocused, Is.True, at);
                     var asker = SceneComponents<HouseNpc>().Single(npc => npc.Id == askerId);
                     if (reduced)
@@ -646,12 +820,14 @@ namespace Gamesim.Tests.PlayMode
                     else Assert.That(Vector3.Distance(cameraRig.DesiredFocus, focusBefore), Is.GreaterThan(.01f), at + ": the rig takes the two-shot.");
                     yield return WaitForBodies();
                     yield return WaitOutThePointerHold();
+                    Assert.That(LastLabel(EpisodeHud.AskMoreName)?.text, Is.EqualTo(EpisodeHud.AskMoreWaitingLine(1)),
+                        at + ": the other asker is the one more who wants a word.");
                     AssertEveryLabelDraws(at + ": the ask dialogue");
                     foreach (var name in new[] { EpisodeHud.AskLineName, EpisodeHud.AskStandingName, EpisodeHud.AskTermsName,
                                  EpisodeHud.AskLapseName, EpisodeHud.AskMoreName })
                     {
                         var label = LastLabel(name);
-                        if (label == null) continue;
+                        Assert.That(label, Is.Not.Null, at + ": " + name + " is drawn.");
                         Canvas.ForceUpdateCanvases();
                         Assert.That(label.rectTransform.rect.height, Is.GreaterThanOrEqualTo(label.fontSize * 1.3f - .5f), at + ": " + name + "'s box.");
                         Assert.That(label.fontSize, Is.GreaterThanOrEqualTo(12f), at + ": " + name + " at 1080p.");

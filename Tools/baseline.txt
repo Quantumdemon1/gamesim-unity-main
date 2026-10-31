@@ -100,7 +100,8 @@ Gamesim.EditModeTests 9242
 # Offers slice 1 (OFFERS-COME-TO-YOU-PLAN), on 1353:
 # 1366 = 1353 + the slice's 13 shared ComesToYou_ tests (EpisodePlayModeTests.ComesToYou): compiled offline, not
 # yet run. Not yet counted by a full run.
-Gamesim.PlayModeTests 1366
+# 1367 = 1366 + the review's ComesToYou_AStalledFrameDoesNotOpenTheDialogue: compiled offline, not yet run.
+Gamesim.PlayModeTests 1367
 # The UMA build of the same assembly, read by a plan built without -WithoutUma. 1281 = the 1241 above + the
 # 40 tests that compile only under GAMESIM_UMA, as run at r1 (2026-10-16): in EpisodePlayModeTests,
 # GroundedFarewell 11, Creator 9, HouseLife 8, Emotes 3, OpeningCaptures 2, and one each in CreatorEntry,
@@ -124,7 +125,8 @@ Gamesim.PlayModeTests 1366
 # 1393 = main's 1385 + D1's same 8: disjoint cases, so the floor is their sum.
 # Offers slice 1, on 1393:
 # 1406 = 1393 + the same 13 shared ComesToYou_ tests: compiled offline, not yet run. Not yet counted by a full run.
-Gamesim.PlayModeTests.UmaBuild 1406
+# 1407 = 1406 + the same review test, ComesToYou_AStalledFrameDoesNotOpenTheDialogue: compiled offline, not yet run.
+Gamesim.PlayModeTests.UmaBuild 1407
 # The UMA bodies: runs only where the GAMESIM_UMA define is set (the working tree and the D: copy).
 # 82 = the 89 run on 2026-10-15, less the 7 farewell probes moved to Gamesim.Uma.DiagnosticsPlayModeTests;
 # 85 = 82 + the 3 farewell readiness decision tests (UmaFarewellReadinessDecisionPlayModeTests, 2026-10-16);

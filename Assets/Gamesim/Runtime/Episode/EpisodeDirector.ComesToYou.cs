@@ -128,7 +128,7 @@ namespace Gamesim.Episode
         private readonly Dictionary<string, float> askUnreachable = new Dictionary<string, float>(StringComparer.Ordinal);
         private readonly Dictionary<string, int> askPresentations = new Dictionary<string, int>(StringComparer.Ordinal);
         private readonly Dictionary<string, float> askerNextAt = new Dictionary<string, float>(StringComparer.Ordinal);
-        private string askSession, askPhaseKey, askWeekKey;
+        private string askSession;
         private int askWeek, askPhaseShown, askWeekShown;
         private EpisodePhase askPhase;
         // The in-person dialogue on screen, and how it opened.
@@ -230,8 +230,8 @@ namespace Gamesim.Episode
                 askSetAside.Clear(); askMisses.Clear(); askRetryAt.Clear(); askUnreachable.Clear();
                 if (newSession) { askPresentations.Clear(); askerNextAt.Clear(); }
                 askSession = projected.sessionId; askWeek = projected.week; askPhase = projected.phase;
-                askPhaseKey = askSession + ":" + askWeek + ":" + askPhase; askPhaseShown = 0;
-                if (newWeek) { askWeekKey = askSession + ":" + askWeek; askWeekShown = 0; }
+                askPhaseShown = 0;
+                if (newWeek) askWeekShown = 0;
             }
 
             float frame = AskFrameTime;
@@ -239,9 +239,10 @@ namespace Gamesim.Episode
                 : ComesToYouStillness.Step(ref askStillAnchor, askStillFor, player.transform.position, player.HasArrived, Time.unscaledDeltaTime);
             askPlayerInFrame = AskPlayerInFrameNow();
 
-            // The Pull's yield clock (owner question 5), then the free-house clock.
+            // The Pull's yield clock (owner question 5), then the free-house clock. Only another Pull starts it again:
+            // the same Pull hides under every panel and behind the ask's own line, and comes back as it was.
             string pullKey = pullNow?.Key;
-            if (pullKey != askPullKey) { askPullKey = pullKey; askPullHeld = 0f; }
+            if (pullKey != null && pullKey != askPullKey) { askPullKey = pullKey; askPullHeld = 0f; }
             if (hud != null && hud.PullShowing && askStillFor >= AskStillSeconds && VisitHouseFree(false, AsksWaitWhileSeated))
                 askPullHeld += frame;
             if (AskMayStart) { askClock += frame; askFreeRun += frame; }
@@ -287,15 +288,18 @@ namespace Gamesim.Episode
         }
 
         /// <summary>
-        /// The lease went: a miss, retried after <see cref="AskRetrySeconds"/>. Not a miss when the dialogue was already
-        /// due and the player still - a gate the player did not raise held it until the lease ran out - or when the
-        /// frame was a stalled player loop.
+        /// The lease went: a miss, retried after <see cref="AskRetrySeconds"/>. Not a miss when the dialogue would have
+        /// opened by itself, the player still and no closable chrome of theirs up - a gate the player did not raise
+        /// (Nearby, a storm-off, an embrace) held it until the lease ran out - or when the frame was a stalled player
+        /// loop. A line left unanswered under the overview, or with <see cref="AskOpensByItself"/> false, is a miss, so
+        /// the asker stops walking over after <see cref="AskMissesBeforeCard"/> of them.
         /// </summary>
         private void AskVisitLost()
         {
             var ask = askNow;
             if (ask == null) { CancelAskVisit(); return; }
-            bool openWasDue = askSpokeFor >= AskSpeakBeatSeconds && askStillFor >= AskStillSeconds;
+            bool openWasDue = AskOpensByItself && !ClosableChromeUp
+                && askSpokeFor >= AskSpeakBeatSeconds && askStillFor >= AskStillSeconds;
             if (openWasDue || Time.unscaledDeltaTime > AskStalledFrameSeconds)
             {
                 askRetryAt[ask.recordId] = askNextAt = askClock + AskRetrySeconds;
@@ -640,7 +644,7 @@ namespace Gamesim.Episode
             askPresentations.Clear(); askerNextAt.Clear();
             askClock = 0f; askFreeRun = 0f; askStillFor = 0f; askNextAt = 0f; askScanAt = 0f;
             askStillAnchor = new Vector3(float.NaN, float.NaN, float.NaN);
-            askSession = null; askPhaseKey = null; askWeekKey = null; askPhaseShown = 0; askWeekShown = 0;
+            askSession = null; askPhaseShown = 0; askWeekShown = 0;
             ClearAskDialogue();
             asksCache = Array.Empty<ComesToYou.Ask>(); asksCacheSource = null;
             askPullHeld = 0f; askPullKey = null;

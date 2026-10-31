@@ -1,4 +1,5 @@
 using Gamesim.Presentation;
+using UnityEngine;
 using UnityEngine.UI;
 
 namespace Gamesim.Episode
@@ -64,7 +65,13 @@ namespace Gamesim.Episode
             if (inConversation) SpeakerTitle(askerId, name ?? askerId, pronouns ?? "");
             else PanelTitle(name ?? askerId, pronouns ?? "");
             if (!string.IsNullOrEmpty(standing)) NamedParagraph(AskStandingName, standing);
-            if (!string.IsNullOrEmpty(line)) Speech("\"" + line + "\"", AskLineName, whisper);
+            if (!string.IsNullOrEmpty(line))
+            {
+                // One line of Inter lays out at about 1.21x its size, which draws nothing in a box under that; the
+                // ask's line gets a floor of its own, so every other conversation's spoken line stays as it was.
+                var spoken = Speech("\"" + line + "\"", AskLineName, whisper);
+                spoken.gameObject.AddComponent<LayoutElement>().minHeight = Mathf.Ceil(spoken.fontSize * 1.32f) + 1f;
+            }
             Heading(AskOfferHeading);
             NamedParagraph(AskTermsName, terms ?? "");
             if (!string.IsNullOrEmpty(lapseLine)) NamedParagraph(AskLapseName, lapseLine, UiTheme.Muted);

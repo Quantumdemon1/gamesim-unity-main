@@ -54,7 +54,7 @@ namespace Gamesim.Episode
 
         private static HouseEventState ConversationBeatWith(EpisodeState state, string npcId)
         {
-            if (state == null || state.Find(state.playerId)?.status != ContestantStatus.Active) return null;
+            if (state.Find(state.playerId)?.status != ContestantStatus.Active) return null;
             return EpisodeEngine.OpenStoryBeats(state).FirstOrDefault(e => e.surface == StorySurfaces.Conversation
                 && (e.involvedIds.Contains(npcId) || e.cast.Any(role => role.contestantId == npcId)));
         }

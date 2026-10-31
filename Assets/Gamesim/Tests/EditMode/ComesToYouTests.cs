@@ -153,7 +153,8 @@ namespace Gamesim.Tests.EditMode
 
         /// <summary>
         /// Outside the role moments the nominees' veto asks come in the order the block was named, then anybody else's;
-        /// never by asker or record id. Named the other way round, the order turns with the block.
+        /// never by asker or record id. Named the other way round, the order turns with the block. A nominee's ordinary
+        /// offer takes no place from the block.
         /// </summary>
         [Test]
         public void VetoAsksFollowTheBlockOrder()
@@ -168,6 +169,15 @@ namespace Gamesim.Tests.EditMode
             Assert.That(ComesToYou.Read(s).Select(ask => ask.source), Has.All.EqualTo(ComesToYou.Source.VetoAsk));
             s.nominees = new List<string> { Jamie, Taylor };
             Assert.That(ComesToYou.Read(s).Select(ask => ask.askerId), Is.EqualTo(new[] { Jamie, Taylor, Casey }));
+
+            // The block's order is a veto ask's alone: a nominee's ordinary offer waits its turn by asker like anybody's.
+            var offers = State(EpisodePhase.VetoMeeting);
+            offers.nominees = new List<string> { Taylor, Jamie };
+            Offer(offers, Taylor, DealKind.Partnership, "deal-ask-1");
+            Offer(offers, Casey, DealKind.Partnership, "deal-ask-2");
+            Assert.That(ComesToYou.Read(offers).Select(ask => (ask.source, ask.askerId)),
+                Is.EqualTo(new[] { (ComesToYou.Source.Offer, Casey), (ComesToYou.Source.Offer, Taylor) }),
+                "Casey's offer before the nominee's: the askers' order, not the block's.");
         }
 
         // ------------------------------------------------------------------ pure, and current
@@ -216,8 +226,8 @@ namespace Gamesim.Tests.EditMode
 
         /// <summary>
         /// How long an offer stands, in the dialogue's words: until the veto is decided, for a question about the veto
-        /// under the strategy windows; until this week's campaign opens for last week's offer; until next week's for this
-        /// week's; and nothing said when nothing takes it away.
+        /// under the strategy windows; until this week's campaign opens for an offer that expired last week; until next
+        /// week's for one that expires this week, whenever it was filed; and nothing said when nothing takes it away.
         /// </summary>
         [Test]
         public void LapseLineSaysWhen()
@@ -238,6 +248,12 @@ namespace Gamesim.Tests.EditMode
             Offer(lastWeek, Maya, DealKind.Partnership, "deal-ask-1", 2);
             ask = ComesToYou.Read(lastWeek).Single();
             Assert.That((ask.lapses, ask.lapseLine), Is.EqualTo((WaitingOnYou.Lapse.CampaignOpens, "It stands until this week's campaign opens.")));
+
+            // Filed last week and standing through this one: its expiry says when it goes, not the week it was filed.
+            var carried = State();
+            Offer(carried, Maya, DealKind.Partnership, "deal-ask-1", 2).expiresWeek = carried.week;
+            ask = ComesToYou.Read(carried).Single();
+            Assert.That((ask.week, ask.lapses, ask.lapseLine), Is.EqualTo((2, WaitingOnYou.Lapse.CampaignOpens, ComesToYou.LapseNextCampaign)));
 
             var open = State();
             Offer(open, Maya, DealKind.Partnership, "deal-ask-1").expiresWeek = 0;

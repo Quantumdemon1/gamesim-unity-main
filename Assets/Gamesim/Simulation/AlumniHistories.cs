@@ -17,9 +17,12 @@ namespace Gamesim.Simulation
     /// career and the known pairs of past games count in the nomination threat and the vote (<see cref="KnownBlocs"/>).
     /// <see cref="CounterBlocs"/> is the same direction's answer "for numbers" (§14.E): while a known pair stands, the
     /// houseguests outside it want each other more, and an outside pact hunts the pair, stopping above nought
-    /// (<see cref="KnownBlocs.CounterDesire"/>, <see cref="KnownBlocs.CounterTarget"/>). Value 5 is claimed by §14's 14.L
-    /// for outsider pacts that grow; it is not defined yet. The campaigns (AS7) take the next free value after §14, and
-    /// H1d's other parts (after B9) later ones, in landing order. Only range checks and "new seasons start here" may read
+    /// (<see cref="KnownBlocs.CounterDesire"/>, <see cref="KnownBlocs.CounterTarget"/>). <see cref="GrowingPacts"/> is the
+    /// owner's answer of the same day (§14.L), "Yes, let outsider pacts grow past two": while a known pair stands, a pact the
+    /// houseguests formed themselves outside it takes members past two, while nobody outside it knows of it
+    /// (<see cref="NpcAlliances.TryJoin"/>, <see cref="KnownBlocs.CounterPactBound"/>). Value 5 is released if the owner
+    /// withdraws growth before §14's freeze (S6). The campaigns (AS7) take the next free value after S6, and H1d's other
+    /// parts (after B9) later ones, in landing order. Only range checks and "new seasons start here" may read
     /// <see cref="Latest"/>.
     /// </para>
     ///
@@ -61,11 +64,22 @@ namespace Gamesim.Simulation
         public const int CounterBlocs = 4;
 
         /// <summary>
+        /// §14.L, the owner's answer of 2026-10-29, "Yes, let outsider pacts grow past two": everything of
+        /// <see cref="CounterBlocs"/>, and while a known pair of past games stands, an outsider pact the houseguests formed
+        /// themselves takes members past two (<see cref="NpcAlliances.TryJoin"/>) - one a week, from the week after its
+        /// founding, while nobody outside it knows of it and nobody in it stands in a live pair, up to two plus the live
+        /// pairs and never past four in the house (<see cref="KnownBlocs.CounterPactBound"/>). While it is kept to its
+        /// members it goes on without a joiner who sours; once known it ends whole. A pact-mate of both is never their common
+        /// threat. Pacts are still born as pairs, the cap still counts pacts, and each houseguest is still in one at most.
+        /// </summary>
+        public const int GrowingPacts = 5;
+
+        /// <summary>
         /// The highest value this build defines: for range checks and for new seasons only. Fresh seasons that seat an
         /// alumnus start here (§14.A); a value a test or the lab holds is a field write after that, valid while every value
         /// up to this one writes the same opening.
         /// </summary>
-        public const int Latest = CounterBlocs;
+        public const int Latest = GrowingPacts;
 
         /// <summary>Whether a saved value is one this build defines (validation's range).</summary>
         public static bool IsDefined(int version) => version >= Off && version <= Latest;

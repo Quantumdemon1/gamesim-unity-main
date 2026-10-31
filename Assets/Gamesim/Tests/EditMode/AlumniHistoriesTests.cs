@@ -812,9 +812,9 @@ namespace Gamesim.Tests.EditMode
             => JsonConvert.SerializeObject(state, new JsonSerializerSettings { ContractResolver = new PublicFields() });
 
         /// <summary>A plain serializer round trip, as AllWeekCadenceTests saves and loads; the store's own is AlumniHistoriesSaveTests'.</summary>
-        private static string Saved(EpisodeState state) => JsonConvert.SerializeObject(state);
+        internal static string Saved(EpisodeState state) => JsonConvert.SerializeObject(state);
 
-        private static EpisodeState Load(string json) => JsonConvert.DeserializeObject<EpisodeState>(json,
+        internal static EpisodeState Load(string json) => JsonConvert.DeserializeObject<EpisodeState>(json,
             new JsonSerializerSettings { ObjectCreationHandling = ObjectCreationHandling.Replace });
 
         private sealed class PublicFields : DefaultContractResolver

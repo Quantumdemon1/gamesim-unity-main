@@ -112,6 +112,10 @@ confirmed by the owner.
 > players. For instance, if there are 3 players in an All star season known to be a preexisting alliance then the
 > other players in the house might ally against them for numbers"
 
+**Added 2026-10-29, D-H13 (section 12): "Yes, let outsider pacts grow past two".** The question was "Should outsider
+pacts be allowed to grow past two while a known bloc stands? Default: no, pairs only." Built at alumni rules 5 (14.L).
+The story session's cap and its one-each rule stand. Decided by the owner, 2026-10-29.
+
 What these settle, and what they leave:
 - The real-person questions the master plan put to the owner (its decision 5: photos, likeness, real histories in
   play) are closed: the names, photos and likeness stay, and on-show game history may drive play. The master plan's
@@ -1143,6 +1147,8 @@ histories-first order, and it carries every field in 5.1.
 - **Alumni rules 2, 3 and 4 are taken by section 14** (the owner's direction, 2026-10-29). The campaigns (AS7) take the
   next free value after S6. Because the value is a bound, AS7's value carries the behaviour of 2 to 4. Tell AS7's
   track when it next runs.
+- **Alumni rules 2 to 5 are section 14's** (2026-10-29). 5 is S3b's (14.L) and is released if growth is withdrawn
+  before S6. It is the alumni rules field, not competition rules 5 (PC5's). AS7 takes the next free value after S6.
 
 **With dialogue:**
 - **The joint note's final §6 is SCH30's input.** It adds no dialogue field to 5.1, and it fixes 8.2's dialogue scope
@@ -1271,6 +1277,7 @@ edition.
 | D-H10 | Reserve B9's `tuningRulesVersion` in 30 before B9 has a plan | **Yes**, at 0, with validation accepting only 0 until B9 defines a value. An unused int costs far less than a schema 31 (5.1). The joint note's §6 recommends the same |
 | D-H11 (owner, peer sessions) | Close schema 29 when SCH30's step 1 lands on main (8.2) | **Yes.** From that landing, story rules 10, R7, R8, competition rules 5 (PC5), PC6's 6 and later, Will's throw value and every other new closed value are defined only at `schemaVersion >= 30`, with D1's chip as the one named exception. It binds the story session, role moments and the competitions topic, so it is recorded as "delegated call, confirmed by the owner". **Decided by the owner, 2026-10-29: "Close it" (section 1).** |
 | D-H12 (owner) | The owner's direction for All-Star seasons: default loyalty that changes and decays, reputations, known connections (section 1) | **The direction's three values, decided by the owner** (2026-10-29): alumni rules 2 (loyalty), 3 (reputation and known pairs) and 4 (counter-blocs), section 14. Fresh seasons start at the latest; outsider pacts grow past two from alumni rules 5 (14.L, D-H13) |
+| D-H13 (owner) | Should outsider pacts be allowed to grow past two while a known bloc stands? | **Yes.** "Yes, let outsider pacts grow past two." Alumni rules 5 (14.L): up to two plus the live known pairs, never past four; the cap still counts pacts, one each. Decided by the owner, 2026-10-29 |
 
 ---
 
@@ -1516,7 +1523,7 @@ Section 13 is H1b as built, so this is section 14. The owner's direction, verbat
 > players. For instance, if there are 3 players in an All star season known to be a preexisting alliance then the
 > other players in the house might ally against them for numbers"
 
-This section builds the direction as three alumni rules values. It also answers 7.4's open question (call 2), and it records the owner's decision on section 9's gate and D-H8 for these values.
+This section builds the direction as three alumni rules values. It also answers 7.4's open question (call 2), and it records the owner's decision on section 9's gate and D-H8 for these values. A fourth value, 5, builds the owner's answer of the same day on outsider pacts (14.L).
 
 Paths: `Simulation/`, `Runtime/` and `Tests/EditMode/` are under `Assets/Gamesim/`. `Tools/` is at the repository root. Line numbers are at `4ab8c054`.
 
@@ -1525,12 +1532,13 @@ Paths: `Simulation/`, `Runtime/` and `Tests/EditMode/` are under `Assets/Gamesim
 | 2 | `AlumniRules.Loyalty` | The graded receipt share. Inherited trust is eroded by this season's wrongs and public nominations. Pacts and kept words repair it, up to a cap. A betrayal ends it. Old grievances heal through play. The shared standing is written off once, at a public split | S1 |
 | 3 | `AlumniRules.Reputation` | Career reputation and the risk of known past pairs, in the nomination threat and in the vote. What the player is shown | S2, S5 |
 | 4 | `AlumniRules.CounterBlocs` | Outsiders want each other more while a known pair stands. Outsider pacts hunt the bloc, with a stop above zero | S3 |
+| 5 | `AlumniRules.GrowingPacts` | While a known pair stands, an outsider pact of houseguests may take members past two: one a week, while nobody outside it knows of it, up to two plus the live pairs and never past four. Decided by the owner, 2026-10-29 | S3b |
 
 **Rules for every part:**
 - no saved field and no schema change;
 - no new closed-vocabulary value (no ledger type, fact kind, act kind, grudge cause or vote factor code);
-- no new draw site and no new sequence-id site;
-- no `EpisodeEngine.Change`. The one write between NPCs is `RelationshipLedger.Move`;
+- no new draw site and no new sequence-id site, with one exception at value 5: a join's `alliance-formed` receipts, two per member in the house, through the existing writer (14.L.D.5);
+- no `EpisodeEngine.Change`. The one write between NPCs is `RelationshipLedger.Move`, and at value 5 a join's `RelationshipLedger.Record` of `alliance-formed`, the record `Form` writes (`Simulation/NpcAlliances.cs:271`);
 - no opening write. A fresh season at 2, 3 or 4 is the H1b opening with a different integer;
 - every new term asks `AlumniRules.At(s, v)` with v of 2 or more, and is added only when it is nonzero. Seasons at 0 and 1 therefore play byte for byte as before, and the `s30-mode2-allstars-alumni1-w3-campaign` fixture replays unchanged;
 - every word shown comes from edition 1 or from this season's public events. No new fact about a real person;
@@ -1560,7 +1568,7 @@ Loyalty is carried by the standing, the graded receipt (14.B) and the final two.
 **Section 9's gate and D-H8, decided by the owner.**
 - Section 9 holds a value back when a gated rate moves "unless the owner decides otherwise".
 - D-H8 makes new decision terms wait for B9.
-- The direction decides otherwise for values 2, 3 and 4:
+- The direction decides otherwise for values 2 to 4, and the owner's answer for value 5 (14.L):
   - All-Star seasons default to them;
   - reputations and known connections are read now, not after B9.
 - The measurement in 14.H is reported to the owner and is not a gate. It has two stop conditions.
@@ -1569,18 +1577,20 @@ Loyalty is carried by the standing, the graded receipt (14.B) and the final two.
 **The record, on insertion of this section:**
 - **§0:** one line pointing here.
 - **§1:** the direction verbatim, as "Decided by the owner, 2026-10-29".
+- **§1:** the question and the answer verbatim (D-H13).
 - **§2's table, row 2, and §3.4's last paragraph:** "built at alumni rules 3 (section 14)".
 - **§3.6's last paragraph:** career reputation and pair risk are read from alumni rules 3, in the nomination threat and the vote only (14.C, 14.D).
 - **§7.4's last paragraph:** "Settled by the owner's direction (section 14). Alumni rules 1 keeps the list as built; 2 and later read 14.B."
 - **§7.5's heading:** "(built at alumni rules 3 by the owner's direction, 14.C, 14.D)".
-- **§9:** the gate is superseded for values 2 to 4.
+- **§9:** the gate is superseded for values 2 to 5.
 - **§10, new claim:**
-  - alumni rules 2, 3 and 4 are taken by section 14 (2026-10-29);
-  - the campaigns (AS7) take the next free value after S6. Because the value is a bound, AS7's value carries the behaviour of 2 to 4;
+  - alumni rules 2 to 4 are taken by section 14, and 5 by its 14.L, released if growth is withdrawn before S6; alumni rules 5 is not competition rules 5 (PC5's) (2026-10-29);
+  - the campaigns (AS7) take the next free value after S6. Because the value is a bound, AS7's value carries the behaviour of 2 to 5 (2 to 4 if growth is withdrawn);
   - tell AS7's track when it next runs.
 - **§12:**
   - D-H8: the exception;
-  - D-H12, new: "the direction's three values, decided by the owner".
+  - D-H12, new: "the direction's three values, decided by the owner";
+  - D-H13, new.
 - **§13's "What stays off until B9":** points here.
 
 ### 14.B Change and decay: the graded receipt share (value 2)
@@ -1735,7 +1745,7 @@ The design:
   - Private things never end a pair in the house's eyes: scores, receipts, deals (the final two included), ballots, a pact's end.
 - **`Risk(fact)`:** 8 (`FinalTwoPairRisk`) when `Standing >= FinalTwoAllianceStanding`, otherwise 4 (`AlliancePairRisk`) (`Simulation/AlumniHistories.cs:213,219`).
 - **`RiskFor(s, evaluatorId, targetId)`:** the sum of `Risk` over live pairs that hold the target and not the evaluator. It skips a pair when an active alliance the evaluator can see (`Knowledge.AllianceVisibleTo`, `Simulation/Story/StorySystems.cs:235-242`) holds both members, so a re-formed pact is never counted twice.
-- **No groups.** Pairs are counted as pairs. The chain through Cody is two facts, never a trio. `PairOf(Derrick, Tyler)` is null, and rule 3.1 forbids saying the three were one.
+- **No groups.** Pairs are counted as pairs. The chain through Cody is two facts, never a trio. `PairOf(Derrick, Tyler)` is null, and rule 3.1 forbids saying the three were one. A counter-pact's bound (14.L.C) counts live pairs: two, plus one for each live pair, capped at four. It is arithmetic, never shown, and never names a group.
 
 **D.3 In the nomination threat.** New `public static double ThreatAssessment.TotalWithPastGames(state, evaluatorId, targetId)`.
 - It equals `Total` below 3.
@@ -1785,7 +1795,7 @@ CounterDesire  = CounterBlocDesire x min(CounterBlocPairsCap, |counted(a, b)|)  
   - Today, at the floor, a pair needs compatibility 7, so most pairs need a higher score.
   - With one known pair, compatibility 3.
   - With two, −1.
-  - The score floor of 25 (`:149-151`), the cap of one NPC-only pact per three NPCs, one each (`:88-99`), and pacts of two (`:258-272`) are the story session's limits, untouched.
+  - The score floor of 25 (`:149-151`), the cap of one NPC-only pact per three NPCs and one each (`:88-99`), and pacts born as pairs (`:258-272`) are the story session's limits, untouched. Outsider pacts grow past two from value 5 only, by the owner's answer (14.L).
 - **Side effects:**
   - Build agendas and the NPC world's pairing lean toward fellow outsiders (`Simulation/NpcAgendas.cs:62-68`);
   - an outsider player is wanted more, so more invitations reach them (`Simulation/NpcDeals.cs:186-189`).
@@ -1806,7 +1816,7 @@ How it behaves:
   - So it cannot reach `CommonThreat`'s −10/−5 (`Simulation/NpcDeals.cs:143-150`), Desire's −20 or the confrontation line.
   - It ends when the listener is no longer warm to the target, and the agenda falls back to `Hold`.
 - **The target's side.** `Move` is symmetric (`Simulation/NpcSocialActions.cs:682`). The target's view of the listener falls by the same amount, at most by the listener's starting warmth.
-- The ordinary `CommonThreat` route still comes first, unchanged.
+- The ordinary `CommonThreat` route still comes first: unchanged below 5; from 5 it passes over a non-player who shares a houseguests' pact with both (14.L.F).
 - **The player is never the listener.** A player on a bloc card can be the target. The existing gossip roll is then drawn on the beat's keyed stream (`:440`). That is an existing draw site.
 - **The house's targeting follows with no further term.** Outsider Heads of Household and their pact-mates read pair risk and career through `ThreatTerm`. The vote reads the same through D.4. The hunt has lowered the listener's score, which `NominationWeight` reads.
 
@@ -1815,6 +1825,7 @@ How it behaves:
 - The pursuit runs once a week (`Simulation/NpcSocialActions.cs:214-219`).
 - The hunt stops above zero.
 - Every term ends the week the pair stops being live: one departure or one public split.
+- From 5, a grown pact sends at most one hunt a member a week, each listener's stop holds on its own, and nobody hunts a pact-mate of both (14.L.D.6, 14.L.F).
 
 **E.4 Held back: target agreements against the bloc.** Not built. Built only on the owner's word after the 14.H report, as the next free alumni value, and only if the report shows outsider pacts forming without known-pair members being put up more often. The specification:
 - in `NpcDeals.Offer`, between the final-three rung (`Simulation/NpcDeals.cs:221`) and the information rung (`:223`), add `if (allied && warmth > CommonThreatWarmth && KnownBlocs.CounterTarget(state, npcId, targetId, forDeal: true) != null) return DealKind.TargetAgreement;`. Here `forDeal` drops the listener stop and the player exclusion;
@@ -1868,7 +1879,7 @@ It shows every seated fact. That includes the three nomination facts, which shap
 ### 14.G Versioning
 
 **Constants** in `Simulation/AlumniHistories.cs`:
-- after `:27`: `Loyalty = 2`, `Reputation = 3`, `CounterBlocs = 4`;
+- after `:27`: `Loyalty = 2`, `Reputation = 3`, `CounterBlocs = 4`, `GrowingPacts = 5`;
 - `Latest` (`:30`) moves with each slice;
 - after `:41`: `public static bool At(EpisodeState s, int version) => On(s) && s.alumniRulesVersion >= version;`;
 - `IsDefined` (`:33`) widens on its own;
@@ -1882,7 +1893,7 @@ It shows every seated fact. That includes the three nomination facts, which shap
 - This is valid only while the opening is the same at every value from v to `Latest`, which `TheOpeningIsTheSameAtEveryAlumniValue` pins. A later value that adds an opening write must bring back a value-taking writer.
 
 **Validation:** no code change.
-- `Simulation/EpisodeValidation.cs:105-109` and `TryValidateAlumni` (`Simulation/EpisodeValidation.Alumni.cs:15-41`) accept 2, 3 and 4 with the same receipts.
+- `Simulation/EpisodeValidation.cs:105-109` and `TryValidateAlumni` (`Simulation/EpisodeValidation.Alumni.cs:15-41`) accept 2 to 5 with the same receipts.
 - Only the comment at `:101-104` changes.
 
 **Schema:**
@@ -1902,7 +1913,7 @@ It shows every seated fact. That includes the three nomination facts, which shap
 **The one-time re-pin (S1).**
 - Fresh-season assertions change from `Histories` to `Latest`.
 - "Undefined value" cases change from the literal 2 to `AlumniRules.Latest + 1`, which is valid in attributes.
-- Values 3 and 4 then move no existing pin.
+- Values 3 to 5 then move no existing pin; the `Latest + 1` pins reach 6 on their own.
 
 **Determinism.**
 - Seasons at 0 and 1 are byte-identical.
@@ -1925,6 +1936,14 @@ It shows every seated fact. That includes the three nomination facts, which shap
   - earlier exits for known-pair members;
   - outsider pacts may fill the cap;
   - a player on Cody's card is nominated more.
+- **At 5** (14.L.H):
+  - joins may be rare in the 8-house: a join needs a pact from an earlier week, a free outsider at 25 or more both ways with desire above 25, and both Hitmen in the house and unsplit;
+  - a complying trio can carry the vote: an 8-house has four voters from week 2 and three from week 3;
+  - births can fall, because a join takes an outsider someone else would have asked later;
+  - known-pair members leave earlier; stop condition 2 is the one most likely to fire;
+  - grown pacts are brittle once known (they end on any of their 3 or 6 edges); while private they shed instead;
+  - the 12-house has a pile-on risk: a story's `AllianceLeave` from a four gives three grudges of 80 at once;
+  - Power Shift draws grown pacts first and leaks them.
 
 **The report.** `BalanceLabAlumniReport.LoyaltyReputationBlocsReport`, Explicit and dotnet only, in `Tests/EditMode/BalanceLabAlumniReport.cs`.
 - `BalanceLab.Cell` (`Tests/EditMode/BalanceLab.cs:62-75`) gains `int alumniHeld`:
@@ -1933,9 +1952,9 @@ It shows every seated fact. That includes the three nomination facts, which shap
   - `SeedHouse` is unchanged, so seeds stay paired.
 - `Fresh` (`:217-223`) writes the held value after `ApplyFresh` when the season enrolled.
 - `AlumniHistoriesGate` (`Tests/EditMode/BalanceLabAlumniReport.cs:61`) holds its histories arm at 1, so it keeps reproducing H1b's evidence. Its house names gain `/alumni1`.
-- **Arms:** 4 (shipped), held 3, held 2, held 1, and 0.
-- **Cells:** sizes 8 and 12 × passive, studier, social newcomer, and passive on Cody's card. 100 seeds each, 4,000 seasons, about 30 minutes on every core.
-- **Comparisons:** 2−1, 3−2, 4−3 and 4−0, as paired differences with 95% intervals.
+- **Arms:** 5 (shipped), held 4, 3, 2, 1, and 0.
+- **Cells:** sizes 8 and 12 × passive, studier, social newcomer, and passive on Cody's card. 100 seeds each, 4,800 seasons, about 36 minutes on every core.
+- **Comparisons:** 2−1, 3−2, 4−3, 5−4, 4−0 and 5−0, as paired differences with 95% intervals.
 - **Rows:**
   - Q3, Q4 and weekly competition wins;
   - a known-pair member put up by an NPC Head of Household, per member-week;
@@ -1952,11 +1971,12 @@ It shows every seated fact. That includes the three nomination facts, which shap
   - pile-on seasons, as `story.pileOns > 0` (the-house-turns, `Tests/EditMode/StoryPacingTests.cs:101`);
   - pariah-free seasons (Q5, `Tests/EditMode/BalanceLab.cs:125`);
   - one houseguest put up three or more weeks running, as an extra row;
-  - pacing and seasons per minute.
+  - pacing and seasons per minute;
+  - the pact-watch rows, the must-be-zero rows and the near-zero rule of 14.L.H.
 - **Not a gate.** About 30 comparisons at 95% will cross by chance once or twice. Nothing is retuned in place; a retune is a later value.
 - **Two stop conditions.** The lead asks the owner once before S6 and records the answer as "delegated call, confirmed by the owner" in either case:
-  1. Arm 4 crosses a story-session budget beyond noise where arm 1 meets it. The budgets are: pile-on seasons at 25% or fewer; pariah-free seasons at 80% or more, and the twelve-house's not lower (`Assets/Plans/NPC-AGENCY-PLAN.md:23-26`).
-  2. A known-pair member is the first evictee in more than half the seasons of any cell at 4.
+  1. The shipped arm crosses a story-session budget beyond noise where arm 1 meets it. If arm 4 meets it there, growth is the cause, and the owner is offered value 4 (S3b out before S6, `Latest` stays 4). The budgets are: pile-on seasons at 25% or fewer; pariah-free seasons at 80% or more, and the twelve-house's not lower (`Assets/Plans/NPC-AGENCY-PLAN.md:23-26`).
+  2. A known-pair member is the first evictee in more than half the seasons of any cell at 4, read at 4 and at 5 separately.
 - **When it runs:** alone, as a background job, never beside a Unity run.
 - NPC-to-NPC behaviour is proved by fixtures (14.I), never by walks.
 
@@ -1964,7 +1984,7 @@ It shows every seated fact. That includes the three nomination facts, which shap
 
 Every new test uses only public members, so the new files compile in Unity's EditMode assembly and in the dotnet subset. Each file is added to `Tools/SimulationTests/SimulationTests.csproj` near `:293`, with a hand-written meta.
 
-`AlumniHistoriesTests.AllStars` (`:214`) gains a value: `AllStars(size, seed, player = null, value = AlumniRules.Latest)`. It builds the shipped season, asserts it enrolled, and writes the value.
+`AlumniHistoriesTests.AllStars` (`:214`) gains a value: `AllStars(size, seed, player = null, value = AlumniRules.Latest)`. It builds the shipped season, asserts it enrolled, and writes the value. Every behaviour test names its value (S1 `Loyalty`, S2 `Reputation`, S3 `CounterBlocs`); the default is for the writer, replay and validation cases only.
 
 - **`AlumniLoyaltyTests` (S1):**
   - `AWeekOnePastGameCountsInFull`: 33 at 1 and at 2;
@@ -2005,6 +2025,7 @@ Every new test uses only public members, so the new files compile in Unity's Edi
   - `TheOrdinaryCommonThreatStillComesFirst`;
   - `TheCounterBlocEndsWithTheBloc`;
   - `AnOutsideHeadOfHouseholdPutsABlocMemberUpOverAnEqualOutsider`.
+- **`CounterPactGrowthTests` (S3b):** 14.L.I's twenty fixtures; `TheOrdinaryCommonThreatStillComesFirst` and the pair-shape cases held at `CounterBlocs`, and `CounterBlocTests.TheScoreFloorAndThePactCapStillHoldWhilePactsGrow`, their sibling at 5 with the size clause.
 - **`PastGamesReadTests` (S5):**
   - the lines verbatim;
   - the statuses;
@@ -2034,9 +2055,10 @@ Every new test uses only public members, so the new files compile in Unity's Edi
 - **PlayMode (S5):**
   - captions;
   - captures at Standard and Largest text;
+  - captures of three-face and four-face suspected cards (14.L.J);
   - an audit of `EpisodePlayModeTests.CastSelect`;
   - the standalone verify walk, because the stress house enrols.
-- **New in S6:** the fixture `s30-mode2-allstars-alumni4-w3-campaign`, with its four cases.
+- **New in S6:** the fixture `s30-mode2-allstars-alumni5-w3-campaign`, recorded from a seed whose week-3 state holds a grown houseguests' pact, with a fifth case asserting it; a 12-house if no 8-house seed in the first 200 has one (`…alumni4…` with four cases if growth is withdrawn).
 - **Floors:** `Tools/baseline.txt` rises in each slice's commit.
 
 ### 14.J Slices and landing
@@ -2046,25 +2068,26 @@ Every new test uses only public members, so the new files compile in Unity's Edi
 | S1 | Loyalty, value 2, and the re-pin | `Simulation/AlumniHistories.cs:12-41`; new `Simulation/AlumniLoyalty.cs` + meta; `Simulation/RelationshipLedger.cs:85-101`; `Simulation/EpisodeEngine.cs:949`; `Simulation/EpisodeEngine.AlumniHistories.cs:14-16,49`; comments at `Simulation/ShippedRules.cs:96-100` and `Simulation/EpisodeValidation.cs:101-104`; `Tests/EditMode/BalanceLab.cs:62-75,217-223`; the tests above | Subset; the EditMode-only pins through the Mono harness |
 | S2 | Reputation and known pairs, value 3 | `Simulation/AlumniHistories.cs`; new `Simulation/AlumniKnownBlocs.cs` + meta; `Simulation/ThreatAssessment.cs:51-62,125-128,149-177`; `Simulation/EpisodeEngine.Agency.cs:95-101`; `Simulation/WebEvictionVoting.cs:128-131,277,404-421,606` | Subset |
 | S3 | Counter-blocs, value 4 | `Simulation/AlumniHistories.cs`; `Simulation/AlumniKnownBlocs.cs`; `Simulation/NpcAlliances.cs:78-85`; `Simulation/NpcAgendas.cs:54-59` | Subset (fixtures) |
+| S3b | Growing pacts, value 5 (14.L.J) | `Simulation/AlumniHistories.cs`; `Simulation/AlumniKnownBlocs.cs`; `Simulation/NpcAlliances.cs`; `Simulation/NpcDeals.cs:143-150`; `Simulation/NpcSocialActions.cs:155,206-210`; `Simulation/EpisodeEngine.Strategy.cs:249`; `Tests/EditMode/CounterPactGrowthTests.cs` + meta; four test helpers made internal | Subset (fixtures); the EditMode-only pins through the Mono harness |
 | S4 | Measurement and the record | `Tests/EditMode/BalanceLabAlumniReport.cs`; `Tests/EditMode/BalanceLab.cs`; this plan's edits (14.A) | The lab, alone; the report goes to the owner |
 | S5 | Player-facing (after S2) | `Simulation/AlumniKnownBlocs.cs` (readers); `Runtime/Episode/EpisodeDirector.Journal.cs:455-490`; `Runtime/Episode/EpisodeDirector.Alliances.cs:9-53`; `Runtime/Episode/EpisodeHud.Alliances.cs`; `Runtime/Episode/EpisodeDirector.DiaryRoom.cs:475-487` | Readers in the subset; PlayMode captures; caption audit |
-| S6 | Freeze value 4 | The alumni-4 fixture, its manifest row, the floors | `OldSaveAcceptanceTests` |
+| S6 | Freeze the latest value kept: 5, or 4 if growth is withdrawn | The alumni-5 fixture (alumni-4 if growth is withdrawn), its manifest row, the floors | `OldSaveAcceptanceTests` |
 
-- **Order:** S1, S2, S3, S4. S5 needs S2. S4's all-core lab run and S5's Unity runs never overlap; each waits for the other to exit. S6 comes last, after the owner has read S4's report.
+- **Order:** S1, S2, S3, S3b, S4. S5 needs S2. S4's all-core lab run and S5's Unity runs never overlap; each waits for the other to exit. S6 comes last, after the owner has read S4's report.
 - **Landing:**
   - S1 to S5 land on `claude/all-star-histories` only. They are not merged to the consolidation line or main, or synced to the play copy, until S6.
-  - So no season is ever saved at 2 or 3 outside tests, which pin both values through `AllStars(…, value)`.
-  - Until S6, a change to 2, 3 or 4 is an edit recorded here.
+  - So no season is ever saved at 2 to 5 outside tests, which pin each value through `AllStars(…, value)`.
+  - Until S6, a change to 2 to 5 is an edit recorded here.
 
-### 14.K Defaults taken, and the question for the owner
+### 14.K Defaults taken, and the owner's answer
 
 **Defaults:**
 - **Values and enrolment:**
-  - three values;
+  - three values for the direction, and a fourth, 5, for the owner's answer on outsider pacts (14.L);
   - fresh seasons at `Latest`;
   - a hold is a field write after enrolment;
   - enrolment by the cast (D-H2, confirmed by the lead);
-  - section 9's gate and D-H8 superseded for 2 to 4;
+  - section 9's gate and D-H8 superseded for 2 to 5;
   - no opening pact.
 - **Loyalty:**
   - `LoyaltySpan` 30, `BetrayalLine` 30, `RepairWeight` 0.5, `NominationErosion` 35, aging 1 a week;
@@ -2085,11 +2108,500 @@ Every new test uses only public members, so the new files compile in Unity's Edi
   - never with the player as listener;
   - `CommonThreat` first;
   - target agreements held back.
+- **Growing pacts (value 5, 14.L.K):**
+  - value 5, removable before S6;
+  - pacts grow in place, only while private to their members and from an earlier week;
+  - only houseguests' own outsider pacts grow;
+  - the bound is min(4, live pairs + 2);
+  - one change a pact a week;
+  - the three-tier bar, with the members' line at −5;
+  - shed while private, whole once known;
+  - pact-mates never a common threat;
+  - no log line;
+  - the invitation skip for houseguests' fours;
+  - no one-at-a-time limit (it is measured);
+  - the near-zero rule in 14.L.H.
 - **Presentation:**
   - from value 3;
   - "PAST GAMES", "Before this season", "Past game · ";
   - `AllianceRead.Page` unchanged.
-- **Edition 1 holds no alliance of three.** The Derrick–Cody–Tyler chain counts as two pairs. A sourced trio needs new research under 3.1.
+- **Edition 1 holds no alliance of three.** The Derrick–Cody–Tyler chain counts as two pairs. A sourced trio needs new research under 3.1. From 5, an outsider pact may hold three or four; it is never called a trio of the edition.
 - **The report** is not a gate. It has two stop conditions.
 
-**Question for the owner.** Bigger counter-alliances. The owner's example has the house allying "for numbers" against a known three. NPC pacts here are pairs, with one NPC-only pact per three NPCs and each NPC in one at most. These are the story session's limits (`Assets/Plans/NPC-AGENCY-PLAN.md:27-28`; `Simulation/NpcAlliances.cs:88-99,258-272`). So the house answers with several outsider pairs, their hunts, and the player's own pacts, which can grow, but never with one NPC alliance of three or more. Should outsider pacts be allowed to grow past two while a known bloc stands? That changes a story-session limit, so it needs the owner's call. Default: no, pairs only.
+**The question put to the owner.** Bigger counter-alliances. The owner's example has the house allying "for numbers" against a known three. NPC pacts here are pairs, with one NPC-only pact per three NPCs and each NPC in one at most. These are the story session's limits (`Assets/Plans/NPC-AGENCY-PLAN.md:27-28`; `Simulation/NpcAlliances.cs:88-99,258-272`). So the house answers with several outsider pairs, their hunts, and the player's own pacts, which can grow, but never with one NPC alliance of three or more. Should outsider pacts be allowed to grow past two while a known bloc stands? That changes a story-session limit, so it needs the owner's call. Default: no, pairs only.
+
+**The owner's answer (2026-10-29):** "Yes, let outsider pacts grow past two" (14.L). It is the owner's decision, not a delegated one, and it overrides the story limit "NPC-only pacts are pairs" for that case only. No question is open.
+
+### 14.L Counter-pacts grow past two (the owner's call, 2026-10-29)
+
+Every line number below was checked read-only against the committed tree at `4ab8c054`. Paths follow §14's convention: `Simulation/`, `Runtime/` and `Tests/EditMode/` sit under `Assets/Gamesim/`. Nothing was compiled or run.
+
+**As built in S3b** (2026-10-31, on `eb68acd1`). Where the code had moved, the build keeps the intent and differs in the letter:
+- `Dissolve` starts at `Simulation/NpcAlliances.cs:313` and its `var members` is at `:318` (L.F says `:304` and `:309`); the shed call sits before `var members`, as specified. `TakeOutOfPact` is `internal static` at `Simulation/EpisodeEngine.GrowPacts.cs:270`. In `Simulation/AlumniHistories.cs`, `CounterBlocs` was at `:61` and `Latest` at `:68`.
+- `ShedSourJoiners` returns at once for a pact of two members or fewer: an early-out with the same behaviour, so a pair reads nothing more at 5.
+- `CommonThreat` is a block body, so `grown` is read once, first.
+- The weekly pass's `Settle` and the beat call `TryJoin` only after `TryPropose` has failed, as D.3 sets out; the beat's own doc names the join.
+- The comments that named 4 as `Latest` (`Simulation/EpisodeEngine.AlumniHistories.cs:16`, `Simulation/EpisodeValidation.cs:103`, `Simulation/ShippedRules.cs:100`) now name 5.
+- Fixture 15 reaches the engine's private `AllyThroughInvitation` by reflection, as `GrowAndManageAlliancesTests` does; every other member the fixtures use is public, or one of the four test helpers made `internal`. Fixture 12's listen-in is the knower a listen-in writes, and its whispered and public facts are written as a leak writes them, without `Knowledge.MakeKnown`'s hearing checks.
+- `TheScoreFloorAndThePactCapStillHold`'s sibling at 5 is `CounterBlocTests.TheScoreFloorAndThePactCapStillHoldWhilePactsGrow`: the floor, then a house that loves everybody, four weeks of the rule's pass, every pact within its bound, a pact with a pair's member still a pair, and at least one outsider pact grown.
+- S1 to S3's behaviour tests already named their values through their files' own `AllStars` helpers (`Loyalty`, `Reputation`, `CounterBlocs`). The one call of `AlumniHistoriesTests.AllStars` among them without a value is `CounterBlocTests`' "fresh All-Star seasons start at 4 or later", which holds at 5. Every `AlumniRules.Latest` pin in `Tests/EditMode` follows `Latest` (the writer, the fresh-season pins and the `Latest + 1` refusals), and no pin names 4: the literal values tests write are 0 and 1, for seasons with no edition.
+- The report's arms and `PactWatch` (L.H) are S4's: at `eb68acd1` `BalanceLabAlumniReport` holds only H1b's `AlumniHistoriesGate`, whose histories arm is held at 1, so `Latest` moving to 5 does not reach it, and it is compiled out of the editor's assemblies.
+
+**The question 14.K put to the owner:** "Should outsider pacts be allowed to grow past two while a known bloc stands? Default: no, pairs only."
+
+**The owner's answer, verbatim:** "Yes, let outsider pacts grow past two". **Decided by the owner, 2026-10-29.**
+
+**What it changes:**
+- The houseguests' own pacts are born as pairs (`Simulation/NpcAlliances.cs:258-272`). That shape is the story session's limit (`Assets/Plans/NPC-AGENCY-PLAN.md:27-28`).
+- The answer lifts it for outsider pacts, in alumni seasons only.
+- Two limits stand: the cap of one NPC-only pact per three NPCs, and one such pact each (`Simulation/NpcAlliances.cs:88-99`).
+
+**One principle runs through the whole subsection.** A houseguests' pact changes its roster only while nobody outside it knows of it. Once anyone outside knows, it lives and ends whole, as every pact of houseguests does today.
+
+#### L.A Value 5, `AlumniRules.GrowingPacts` (slice S3b)
+
+**The constant.**
+- In `Simulation/AlumniHistories.cs`, after S3's `CounterBlocs = 4`, add `public const int GrowingPacts = 5;`.
+- `Latest` (`:30`) becomes `GrowingPacts`, and `IsDefined` (`:33`) widens on its own.
+- Every term below asks `AlumniRules.At(s, AlumniRules.GrowingPacts)`, never `Latest`.
+
+**Why a value of its own, and not an edit inside the unfrozen value 4:**
+1. **The lab can only hold a whole value** (14.G). Inside value 4, the 4−3 row would mix the 7.5 desire, the hunt and growth. A paired 5−4 row isolates growth. Every value-5 term is scoped so that, with no join in a season, it changes nothing (L.F's corner cases are noted).
+2. **Withdrawing it is easy.** If the owner turns growth down after S4, S3b's code comes out before S6 and `Latest` stays 4. Nothing from S1 to S5 is merged or synced before S6 (14.J), so no season is saved at 5 outside tests.
+3. **The cost is small:** one constant, one lab arm, and the EditMode-only `Latest + 1` pins move to 6 on their own (14.G).
+
+**At S6.** S6 freezes the latest value the owner keeps (14.I gives the fixtures). AS7 takes the next free value after S6. Because a value is a bound, AS7's value carries growth.
+
+**The claim.** Alumni rules 5 is claimed by S3b and released if growth is withdrawn before S6. It is the alumni rules field, not competition rules 5, which is PC5's (§9, `:1045`).
+
+#### L.B Which pacts may grow
+
+A pact P takes a recruit only when all of these hold.
+
+1. **The rules are on.** `At(s, GrowingPacts)` and `EpisodeEngine.AgencyOn(s)` both hold (`Simulation/EpisodeEngine.Agency.cs:55`). The cap exists only under agency (`Simulation/NpcAlliances.cs:113`).
+2. **A known pair is live.** `KnownBlocs.CounterPactBound(s) > 2` (L.C).
+3. **It is the houseguests' own pact.** P is in `NpcOnlyPacts(s)` (`Simulation/NpcAlliances.cs:91-92`), and `NpcAlliances.HouseguestsOwn(P)` holds, meaning its id starts `alliance-npc-` (`:264`).
+   - A story's pact (`alliance-story-`, `:172`) belongs to its arc.
+   - A houseguests' pact the player joined and later left is held by rule 7, because the player stays a knower of its fact.
+4. **Nobody in it is in a live pair.** No member in the house passes `KnownBlocs.InLivePair`. The bloc's own pacts stay pairs: the Hitmen re-forming, or Tyler with an outsider while the Committee is live.
+5. **It is below the bound.** `EpisodeEngine.InTheHouse(s, P) < CounterPactBound(s)` (`Simulation/EpisodeEngine.GrowPacts.cs:96-97`).
+6. **One change a pact a week.** No member in the house is in this week's `joined` set (`Simulation/NpcSocialActions.cs:204-205`, read from saved acts). The weekly pass's local set does the same within the pass.
+7. **It is kept to itself, from an earlier week.** All of these hold:
+   - the story's bonds run;
+   - P's alliance fact exists and is `FactVisibility.Private`;
+   - every knower of the fact is a member;
+   - `fact.week < s.week`. The fact's week is set at birth (`Simulation/Story/StorySystems.cs:141`), the same wait leaks use (`Simulation/AllianceLeaks.cs:86`).
+
+   That last clause makes "none in its founding week" a matter of saved state, whatever path formed the pair.
+
+   **Why rule 7 is needed.** Every reader joins P's current roster to its one fact:
+   - the suspected card (`Simulation/AllianceRead.cs:607-614`);
+   - `FinalistRead.AllianceCertainty` (`Simulation/FinalistRead.cs:231-239`);
+   - `KnownOdds.KnownPact` (`Simulation/KnownOdds.cs:378-381`);
+   - `AllianceThreat` (`Simulation/ThreatAssessment.cs:125-128`);
+   - the voter's pact list (`Simulation/WebEvictionVoting.cs:241`).
+
+   Knowers never shrink (`Simulation/AllianceLeaks.cs:105`). Growing a pact someone outside knows of would show them a member they never learned of.
+
+**Rules 3 to 7 are engine checks**, like `PactRoom`'s reading of every private pact (`:95-99`). They feed no score, trust or reader.
+- The recruit's side reads only the recruit's own pacts, scores and desire.
+- In the fiction, a member brings the recruit in. That is why the sponsor is the act's partner and why the sponsor's bar is the sponsor's own score.
+
+**When the last known pair stops being live** (a departure or a public split), the bound is 0 and nothing grows. A grown pact is never trimmed back to the bound. It sheds members, sours or ends by L.F's rules.
+
+#### L.C The bound: one more than the known pairs, counted pair by pair
+
+New members in `Simulation/AlumniKnownBlocs.cs` (S2's file):
+
+```
+public const int CounterPactMargin = 1;
+InLivePair(s, id)   = a pair in LivePairs(s) holds id (the player too, seated on a live card)
+CounterPactBound(s) = 0 below GrowingPacts, or when LivePairs(s) is empty;
+                      otherwise Math.Min(EpisodeEngine.LargestPact, LivePairs(s).Count + 1 + CounterPactMargin)
+```
+
+- **How the count works.** One pair counts two people; each further live pair, chained or apart, counts one more; the margin outnumbers that by one.
+- **Pairs, never people.** It counts pairs (14.D.2, "No groups"; rule 3.1). Under the cap of 4 it equals "distinct members of live pairs, plus one" in every case.
+- **Size.** `LargestPact` is 4 (`Simulation/EpisodeEngine.GrowPacts.cs:60`). It is compared with the number in the house, as the player's bring-in compares it (`:116`).
+
+| House (edition 1) | Live pairs | Bound |
+|---|---|---|
+| 8 (Tyler not seated) | Hitmen | 3 |
+| 9 to 12 (Tyler seated) | Hitmen, Committee | 4 |
+| 9 to 12, after the Committee's public split or with Tyler gone | Hitmen | 3 |
+| 9 to 12, with Derrick gone | Committee | 3 |
+| Cody gone; or an 8-house with Derrick gone or the Hitmen split | none | no growth |
+
+- **When the bound falls,** a pact already above it stays as it is and takes nobody else.
+- **A pact that loses a member** to eviction or to shedding may recruit again, up to the bound, but only while rule 7 still holds. A shed member stays a knower, so a pact that has shed someone never grows again.
+
+#### L.D Who joins, and how
+
+**D.1 The bar**
+
+| Who | Bar | Source |
+|---|---|---|
+| The recruit | An active non-player NPC. Not in `joined`, not in a live pair, and in no NPC-only pact (one each, `:98`). Fewer than `MaximumEach` = 3 pacts (`:33`). Not `Allied` with any member in the house (no stacking, as `Simulation/EpisodeEngine.GrowPacts.cs:113` refuses) | |
+| The recruit toward the **sponsor** | `Warm`: a score of at least `MinimumRelationship` = 25, and `Desire` above `ProposeThreshold` = 25 | `:30,36,149-151`. A proposer's own bar. `Desire` carries temperament (`:84`) and S3's `CounterDesire` |
+| The sponsor toward the recruit | A score of at least 25 | Not the sponsor's `Desire`: its −10 a pact carried (`:82`) prices a new pact, and a join adds none to the sponsor |
+| Every member in the house and the recruit, both ways | **`JoinWelcomeLine` = `SourLine − NpcSocialActions.RumorImpact` = −5**, and no grudge of `AllianceGrudgeLine` = 40 either way | A new named constant, not C5's −10 (`:129-136`). One rumour (−15 both ways, `Simulation/NpcSocialActions.cs:62,535,682-683`) can never take a fresh edge below `SourLine` (−20, `:55`). A cold pair (−10 or below, NPC-AGENCY-PLAN constraint 3; `Tests/EditMode/NpcAgencyHarnessTests.cs:78`) is never joined |
+
+**D.2 The rule.** In `Simulation/NpcAlliances.cs`, after `TryPropose` (`:230-250`). It is pure, like the rest of the class (`:21-25`). `Form`'s literal at `:264` may use the prefix constant; the string does not change.
+
+```csharp
+/// <summary>The houseguests' own pacts are the weekly pass's (Form), never a story's.</summary>
+public const string HouseguestPactPrefix = "alliance-npc-";
+public static bool HouseguestsOwn(AllianceState pact) =>
+    pact?.id != null && pact.id.StartsWith(HouseguestPactPrefix, StringComparison.Ordinal);
+
+/// <summary>14.L: a joiner and every member, both ways, one rumour above SourLine; never a cold pair.</summary>
+public const double JoinWelcomeLine = SourLine - NpcSocialActions.RumorImpact;   // -5
+
+/// <summary>14.L: an outsider joins an outsider pact of houseguests while a known pair stands. No roll.</summary>
+public static bool TryJoin(EpisodeState state, string npcId, ISet<string> joined, out string sponsorId)
+{
+    sponsorId = null;
+    // First, so a season below 5 reads nothing and plays byte for byte as before.
+    if (!AlumniRules.At(state, AlumniRules.GrowingPacts) || !EpisodeEngine.AgencyOn(state)) return false;
+    int bound = KnownBlocs.CounterPactBound(state);
+    if (bound <= 2) return false;
+    var recruit = state.Find(npcId);
+    if (recruit == null || recruit.isPlayer || recruit.status != ContestantStatus.Active) return false;
+    if ((joined != null && joined.Contains(npcId)) || KnownBlocs.InLivePair(state, npcId)) return false;
+    var pacts = NpcOnlyPacts(state);
+    if (pacts.Any(a => a.members.Contains(npcId))) return false;
+    if (ActiveAlliancesFor(state, npcId).Count >= MaximumEach) return false;
+
+    var pick = pacts
+        .Where(p => HouseguestsOwn(p) && EpisodeEngine.InTheHouse(state, p) < bound && KeptToItself(state, p))
+        .Select(p => (pact: p, here: p.members.Where(id => state.Find(id)?.status == ContestantStatus.Active).ToList()))
+        .Where(x => x.here.All(m => !KnownBlocs.InLivePair(state, m) && (joined == null || !joined.Contains(m))
+                                    && !state.Allied(npcId, m) && Welcomes(state, m, npcId) && Welcomes(state, npcId, m)))
+        .SelectMany(x => x.here.Where(m => Warm(state, npcId, m) && state.Score(m, npcId) >= MinimumRelationship)
+                                .Select(m => (pact: x.pact, sponsor: m, desire: Desire(state, npcId, m))))
+        .OrderByDescending(c => c.desire).ThenBy(c => c.sponsor, StringComparer.Ordinal).ThenBy(c => c.pact.id, StringComparer.Ordinal)
+        .FirstOrDefault();
+    if (pick.pact == null) return false;
+    Join(state, pick.pact, npcId);
+    sponsorId = pick.sponsor;
+    if (joined != null) { joined.Add(npcId); joined.Add(sponsorId); }
+    return true;
+}
+
+/// <summary>14.L: the pact's fact is private and known only to its members - nobody outside sees its roster.</summary>
+private static bool PrivateToMembers(EpisodeState state, AllianceState pact)
+{
+    if (!EpisodeEngine.StoryAt(state, StoryRules.Bonds)) return false;
+    var fact = Knowledge.Of(state, FactKinds.Alliance, pact.id);
+    return fact != null && fact.visibility == FactVisibility.Private && fact.knowers.All(pact.members.Contains);
+}
+
+/// <summary>14.L.B 7: private to its members, and from an earlier week than this one.</summary>
+private static bool KeptToItself(EpisodeState state, AllianceState pact) =>
+    PrivateToMembers(state, pact) && Knowledge.Of(state, FactKinds.Alliance, pact.id).week < state.week;
+
+private static bool Welcomes(EpisodeState state, string fromId, string toId) =>
+    !GrudgeBetween(state, fromId, toId) && state.Score(fromId, toId) >= JoinWelcomeLine;
+
+private static void Join(EpisodeState state, AllianceState pact, string recruitId)
+{
+    var here = pact.members.Where(id => state.Find(id)?.status == ContestantStatus.Active).ToList();
+    pact.members.Add(recruitId);                                   // at the end: the founder stays members[0]
+    Knowledge.AddKnower(state, Knowledge.Of(state, FactKinds.Alliance, pact.id), recruitId);  // KeptToItself found it
+    foreach (var member in here)
+        RelationshipLedger.Record(state, member, recruitId, "alliance-formed", EpisodeEngine.AllianceFormedImpact, pact.name + " was joined");
+}
+```
+
+**D.3 Where it is called.** The recruit acts on its own pact rung, only after `TryPropose` has failed, so its own birth always comes first. A join can still take an outsider whom someone else would have asked later that week, so births at 5 can fall. S4 counts them.
+
+- **The all-week beat,** `Simulation/NpcSocialActions.cs:206-210`, becomes:
+
+  ```csharp
+  if (EpisodeEngine.Window(state) == EpisodeEngine.PactWindow(state, npcId))
+  {
+      if (NpcAlliances.TryPropose(state, npcId, joined)) { /* :208-209 unchanged */ }
+      if (NpcAlliances.TryJoin(state, npcId, joined, out string sponsorId))
+          return new NpcActState { kind = NpcActKinds.Pact, actorId = npcId, partnerId = sponsorId };
+  }
+  ```
+
+- **The weekly pass,** `:155`, becomes `if (NpcAlliances.TryPropose(state, npc.id, joined) || NpcAlliances.TryJoin(state, npc.id, joined, out _)) taken++;`.
+- **The rule-statement loop,** `Simulation/NpcAlliances.cs:213`, becomes `if (!TryPropose(state, npc.id, joined)) TryJoin(state, npc.id, joined, out _);`.
+- **`Perform(AllianceProposal)`** (`Simulation/NpcSocialActions.cs:361-362`) is unchanged. `Settle` and `Beat` skip that kind (`:164,224`).
+- **Below 5,** `TryJoin` returns false before reading anything.
+- **Runtime gains nothing.**
+
+**D.4 What a join writes**
+
+**Written:**
+- **The members list.** The recruit is appended at the end. The founder stays first (`Simulation/EpisodeEngine.GrowPacts.cs:75`) and still calls the bloc (`Simulation/WebVotingBlocs.cs:94-95`).
+- **The fact.** The recruit becomes a knower. The fact stays private, and its actor and subject stay the founders (`Simulation/Story/StorySystems.cs:139-140`).
+- **The ledger.** `alliance-formed` at 30, both ways, between the recruit and each member in the house. That is the record `Form` writes (`Simulation/NpcAlliances.cs:271`) and C5's bring-in writes (`Simulation/EpisodeEngine.GrowPacts.cs:196-197`).
+
+**Not written:**
+- no `Change`, `Log` or `Remember`;
+- no new pact id, name or `AllianceRow` (`Simulation/EpisodeEngine.Ledger.cs:117-120`);
+- no new ledger type, fact kind or act kind.
+
+**The act** is `NpcActKinds.Pact`, with the recruit as actor and the sponsor as partner.
+- Validation accepts any party as partner (`Simulation/EpisodeNpcSocialValidation.cs:114-116`).
+- The engine gives the act its id and its room on the existing keyed coin (`Simulation/EpisodeEngine.AllWeek.cs:216-224,253-258`).
+- **From 5, a `Pact` act no longer means a birth.** It cannot carry the pact's id: only `Meet` names a pact (`:116`). Every counter reads births from `alliance-npc-` ids and joins from a rise in `members.Count`.
+
+**D.5 Draws and sequence ids**
+- **The join draws nothing.** Everything it reads is saved state.
+- **Shedding and the hunt fix draw and mint nothing** (L.F).
+- **Downstream draws.** Existing sites may draw more often: the bloc round's compliance roll per member, and a hunt's gossip roll. No draw site is new.
+- **Sequence ids:** two per member in the house before the join, so 4 for a third member and 6 for a fourth. They go through the existing writer, at 5 only. This is the recorded exception to §14's rules (edits 3 and 4).
+
+**D.6 Why it does not ratchet**
+- A join is aimed at nobody and moves no score.
+- Each recruit leaves the pool (one NPC-only pact each).
+- The bound caps every pact.
+- A pact changes once a week at most, and never in its founding week.
+- Joining stops when no pair is live.
+- Pact-mates never hunt each other (L.F).
+- **What membership repeats is already bounded:**
+  - the weekly meeting: +3 per pair, once a pact a week (`Simulation/NpcSocialActions.cs:477-498`);
+  - S3's hunt: once a member a week, each listener stopping at 6.
+
+#### L.E The cap, one each, and the player
+
+- **The cap counts pacts** (`Simulation/NpcAlliances.cs:88`). A join adds none.
+- **Pairs are still born as pairs.** `PactRoom`, `WouldPropose` and `Form` are untouched (`Tests/EditMode/GrowAndManageAlliancesTests.cs:273-278` holds).
+- **One each.** The recruit is in no NPC-only pact before the join and in exactly one after it.
+- **The player is never recruited.** A pact with the player in it is never NPC-only (`:92`). C5's bring-in is unchanged.
+- **The invitation skip, at 5, for houseguests' pacts only.** `AllyThroughInvitation` adds the player to the inviter's pact with no size check (`Simulation/EpisodeEngine.Strategy.cs:248-257`). The `Where` at `:249` gains:
+
+  `&& !(AlumniRules.At(s, AlumniRules.GrowingPacts) && NpcAlliances.HouseguestsOwn(a) && InTheHouse(s, a) >= LargestPact)`
+
+  - A grown four is passed over, and the player and the inviter start a pact of their own (`:265-279`).
+  - Below 4 in the house nothing changes, and a story's four still takes the player in at every value.
+  - Without growth, no houseguests' pact without the player ever holds four in the house: the only paths that add a member are the invitation (the player) and C5's bring-in (cap 4, counting the player) (`Simulation/EpisodeEngine.GrowPacts.cs:116,187`; `Simulation/EpisodeEngine.Strategy.cs:257`). So the skip is growth-only.
+
+#### L.F Consumers
+
+| Consumer | With 3 or 4 houseguests | Change at 5 |
+|---|---|---|
+| Pact act (`Simulation/NpcSocialActions.cs:206-210`) | It assumed the newest pact | The join builds its own act |
+| **`CommonThreat`** (`Simulation/NpcDeals.cs:143-150`), read by the hunt (`Simulation/NpcAgendas.cs:54-58`), `Offer`'s target agreement (`Simulation/NpcDeals.cs:200-201`) and `TargetFor` (`:588`) | It excludes only a and b. In a trio, the third member qualifies as soon as they hold two wins and one of the pair reads them below 20. The hunt then costs that listener 6 a week with no stop (`Simulation/NpcSocialActions.cs:419-436`), and a target agreement pulls a nomination by 40 against the ally shield's 30 (`Simulation/StrategyRules.cs:46,52`) | **At 5, a non-player candidate is passed over** when an active houseguests' pact holds a, b and that candidate. See the code below the table. The player in a pact with both is read as at 4 |
+| **`Dissolve`** (`Simulation/NpcAlliances.cs:304-329`) | One edge below −20 ends the whole pact (`:325-327`) | **At 5,** before `var members` (`:309`): `if (AlumniRules.At(state, AlumniRules.GrowingPacts)) ShedSourJoiners(state, alliance);`. Code below. Otherwise whole, as now |
+| `Intact`, `EndBroken` (`:345-354`) | At least two in the house | None |
+| Meeting (`Simulation/NpcSocialActions.cs:488-495`) | +3 for every pair in the house | None |
+| Agendas and S3's hunt (`Simulation/NpcAgendas.cs:51-59`) | One pursuit per member a week | None beyond the `CommonThreat` row |
+| `Allied`, `Holds`, `Counted`, the +30 shield, the +20 veto pull, the jury's 100 for a standing pact (`Simulation/WebJuryVoting.cs:78-87`) | Any size | None |
+| `AllianceThreat` and the vote's threat (`Simulation/WebEvictionVoting.cs:413`) | 4 a head, capped at 20: 12 for a trio, 16 for a four, for knowers only | None |
+| `AllianceLoyalty` (`:447`) | 40, 50, 40 for 2, 3, 4 members | None |
+| Bloc round (`Simulation/WebVotingBlocs.cs:84-131`) | The founder calls | None |
+| Leak odds (`Simulation/AllianceLeaks.cs:61-63`) | 8% for a trio, 11% for a four | None |
+| `ListenIn` (`Simulation/EpisodeEngine.AllianceLeaks.cs:146-155`) | Never reveals a pact with 3 or more in the house | None |
+| Fact actor and subject, gossip odds (`Simulation/Story/StorySystems.cs:139-140,345-347`) | Keyed on the founders | None |
+| Roster-against-fact readers (L.B 7) | Would leak a member | Safe: a pact grows and sheds only while private to its members |
+| Story `AllianceLeave` (`Simulation/Story/EpisodeEngine.StoryEffects.cs:202-213`) | Removes the leaver, and grudges of 80 follow | None. The story session is told (L.K) |
+| Power Shift casting (`Simulation/Story/StoryCatalog.HouseRemembers.cs:583-587`) | Casts the largest pact first, and every option leaks it to the player (`:600-627`) | None. The story session is told. S4 counts it |
+| Validation (`Simulation/EpisodeValidation.cs:216-218`), ledger origin (`Simulation/EpisodeEngine.Ledger.cs:130-132`) | Distinct members; origin read from the id | None |
+
+The `CommonThreat` change:
+
+```csharp
+bool grown = AlumniRules.At(state, AlumniRules.GrowingPacts);   // read first: below 5 the predicate below is never evaluated
+... .Where(other => other.id != a && other.id != b
+                    && !(grown && !other.isPlayer && state.alliances.Any(p => p.active && NpcAlliances.HouseguestsOwn(p)
+                         && p.members.Contains(a) && p.members.Contains(b) && p.members.Contains(other.id))))
+```
+
+The `ShedSourJoiners` rule, in `Simulation/NpcAlliances.cs`:
+
+```csharp
+/// <summary>14.L: a houseguests' pact past two, still private to its members, goes on without a joiner who has
+/// soured with anybody in it - the latest such joiner first, as C5's defector rule takes out the one who turned.
+/// The first two in its order are its founders; their souring still ends it whole. No ledger entry, no line. Pure.</summary>
+private static void ShedSourJoiners(EpisodeState state, AllianceState pact)
+{
+    if (!HouseguestsOwn(pact) || pact.members.Contains(state.playerId) || !PrivateToMembers(state, pact)) return;
+    while (true)
+    {
+        var here = pact.members.Where(id => state.Find(id)?.status == ContestantStatus.Active).ToList();
+        if (here.Count <= 2) return;
+        string sour = pact.members.Skip(2).Where(here.Contains)
+            .LastOrDefault(j => here.Any(o => o != j && (state.Score(j, o) < SourLine || state.Score(o, j) < SourLine)));
+        if (sour == null) return;
+        EpisodeEngine.TakeOutOfPact(state, pact, sour);   // more than two in the house: it goes on (GrowPacts.cs:270-276)
+    }
+}
+```
+
+What shedding means:
+- **The shed member stays a knower**, so the pact never grows or sheds again. From then on it ends whole.
+- **A pact known outside it ends whole.** A known card keeps every face and its dated lines: those lines match by roster names (`Simulation/AllianceRead.cs:580-600`), and inactive pacts still draw cards (`:575`).
+
+Scope:
+- **Corner cases.** The `CommonThreat` and `Dissolve` changes touch a houseguests' pact that holds three NPCs only through growth. The one other way is the player's C5 bring-in into an invited pair, and the lab's scripted players never use it.
+- **Story trios** keep the `CommonThreat` flaw at every value. That is reported to the story session, not fixed under a growth value.
+
+#### L.G What the player sees (illustrative; S4 measures whether it happens)
+
+- **No new caption, and nothing appended to one.** `SuspectedCardPrefix` and §14.F's "PAST GAMES" are unchanged.
+- **One possible 8-house week with the Hitmen live** (Dan–Janelle formed in an earlier week, Will a free outsider):
+  1. Will's read says "Will is looking for a partner, and it's Janelle" (`Simulation/NpcAgendas.cs:104`).
+  2. At his pact window, Will joins.
+     - A sighting reads "You saw Will and Janelle with their heads together in the {room}." (`Simulation/EpisodeEngine.AllWeek.cs:328-333`).
+     - A paid listen-in hears "Will and Janelle agreed to work together." (`Simulation/NpcActKinds.cs:73`). It teaches no more, because three are in the house.
+  3. A hunt line may follow (`Simulation/NpcAgendas.cs:103`).
+  4. A leak names all three (`Simulation/AllianceLeaks.cs:160-161`).
+  5. Once the player knows, the suspected card shows three faces under "A, B and C" (`Runtime/Episode/EpisodeHud.Alliances.cs:92-130`; `Runtime/Episode/EpisodeDirector.Alliances.cs:126`).
+- **This depends on the cap.** If the Hitmen re-form, the cap of 2 leaves room for one outsider pair. Whether any join fires in the 8-house is unmeasured.
+- **Learning a pact means learning its roster as it stands then.** A pact anyone outside has learned of never grows. S4 counts how often that holds a pact back, and why.
+
+#### L.H Balance
+
+**Expected at 5, not measured:**
+- **Joins may be rare in the 8-house.** Births run 1.0 to 1.5 a season (`Tests/EditMode/NpcAgencyHarnessTests.cs:129-131`). A join needs all of these:
+  - a pact from an earlier week;
+  - a free outsider at 25 or more both ways, with desire above 25. Build stops at 25 (`Simulation/NpcAgendas.cs:77-83`);
+  - both Hitmen in the house and unsplit.
+- **A complying trio can carry the vote.** From week 2 an 8-house has four voters, and three from week 3 (`Simulation/EpisodeEngine.cs:836`). A trio voting whole is three of four, then all of them.
+- **Births at 5 can fall,** because a join takes an outsider someone else would have asked later.
+- **Known-pair members leave earlier.** Stop condition 2 is the one most likely to fire.
+- **Grown pacts are brittle once known.** They end on any of their 3 or 6 edges. While private, they shed instead.
+- **The 12-house has a pile-on risk.** A story's `AllianceLeave` from a four gives three grudges of 80 at once.
+- **Power Shift draws grown pacts first** and leaks them.
+
+**The report** (`Tests/EditMode/BalanceLabAlumniReport.cs`):
+- **Arms:** 5 (shipped), held 4, 3, 2, 1, and 0.
+- **Size and time:** 6 × 8 cells × 100 seeds = 4,800 seasons, about 36 minutes, run alone.
+- **Comparisons:** 5−4 and 5−0 are added.
+
+**A per-command `PactWatch`** sits beside `PariahWatch` (`Tests/EditMode/BalanceLab.cs:259`). It is kept out of the hashed rows (`:119`) and added to `BalanceLabParts.RoundTrip` (`Tests/EditMode/BalanceLabParts.cs:103`). It reports, per cell:
+- births (from `alliance-npc-` ids) and joins (from `members.Count` rises, player-free);
+- seasons with at least one join, and the week of the first join;
+- bloc-live weeks (bound above 2), and joins per bloc-live week;
+- the largest outsider pact (a distribution over 2, 3 and 4), and the shares reaching 3 and reaching 4;
+- pact-weeks held below the bound only because the pact was known outside it, split by cause: whisper, listen-in, story (Power Shift named), other;
+- joiners shed per season; how grown pacts end (the ledger's `why`), the weeks they lasted, and whether they were known at the end;
+- NPCs in NPC-only pacts as a share of the house (weekly mean and maximum); seasons with two grown pacts at once;
+- whether the player was invited into a grown pact, and the week the player first learned of one;
+- evictions carried by a complying outsider bloc of three or more;
+- pile-on targets, classed as known-pair member, grown-pact member, shed joiner or other, with `PariahDecomposition`'s columns (`Tests/EditMode/BalanceLabDiagnostics.cs:282`);
+- cold pairs at week 3; hunts per week on one target;
+- hunts and target agreements aimed at a pact-mate of both. At 4 this sizes the pre-existing story-trio flaw.
+
+**Must be zero at 5:**
+- a join with no live pair;
+- a join above its bound;
+- more than 4 of a pact in the house;
+- a live-pair member in a grown pact;
+- a join into a pact that was not `alliance-npc-`, not private to its members, or in its fact's week;
+- a hunt or target agreement aimed at a non-player pact-mate of both in a houseguests' pact;
+- cap breaches and double-booking (`Tests/EditMode/NpcAgencyHarnessTests.cs:50-56`).
+
+A nonzero must-be-zero row is a bug, fixed before S6. It is never an owner question.
+
+**If the 8-house rate is near zero (decided now).** If fewer than one season in ten of any 8-house cell at 5 holds a join:
+- the report's first line says so, gives the 9-to-12 rates, and states that the call shows mostly in houses of 9 or more;
+- nothing is retuned before S6;
+- the lever named for a later value, built only on the owner's word, is the recruit's bar toward its sponsor (score 25, desire above 25).
+
+#### L.I Tests
+
+New file `Tests/EditMode/CounterPactGrowthTests.cs`:
+- with a hand-written meta, added to `Tools/SimulationTests/SimulationTests.csproj` near `:293`;
+- public members only;
+- seasons from `AlumniHistoriesTests.AllStars(size, seed, player, value)`, always naming `value`;
+- real pairs from `NpcAlliances.TryPropose` in an earlier week, never the `alliance-test-` helper;
+- beats as in `Tests/EditMode/AllWeekCadenceTests.cs:622-647`, **without** its `agencyRulesStartWeek = 0` (`:634`), which turns agency off and fails `TryJoin`'s first check.
+
+Four test helpers become `internal`:
+- `AllWeekCadenceTests`: `InWindow` (`:1039`) and `Score` (`:1098`);
+- `AlumniHistoriesTests`: `Saved` and `Load` (`:766-768`).
+
+The fixtures:
+1. `AnOutsiderJoinsACounterPactAtFiveWhileAKnownPairIsLive`: the default cast, `AllStars(8, seed, value: 5)`, through `Beat` at the recruit's `PactWindow`.
+   - Members are [founder, mate, recruit], with the same id, name and row.
+   - The recruit is a knower; `NpcOnlyPacts.Count` is unchanged; the act names the sponsor.
+2. `BelowFiveNothingGrowsAndTheStateIsByteIdentical` (TestCase 4, 3, 2, 1, 0): `TryJoin` is false, `Dissolve` and `CommonThreat` read as before, and the Json is unchanged.
+3. `ARegularSeasonNeverGrowsAPact`.
+4. `NoPactGrowsOnceNoKnownPairIsLiveAndAGrownPactStands`: Derrick evicted; a public split.
+5. `NoLivePairMemberJoinsSponsorsOrIsGrown`: in a 9-to-12 house; Tyler may join once the Committee has split in public.
+6. `APactGrowsToTheBoundAndNeverPastFour`: 3 in the 8-house; 4 in a 9-to-12 house; after the Committee splits, a four stays a four.
+7. `OneChangeAPactAWeekAndNoneInItsFoundingWeek`: through `Beat`, and also for a pair formed by a direct `TryPropose` that leaves no act. Pact acts: at most one per NPC on either side.
+8. `TheRecruitMustWantInAndEveryMemberMustWelcome`. Each of these is refused:
+   - desire at exactly 25; the recruit's score at 24; the sponsor's at 24;
+   - a member at −6 (−5 is accepted);
+   - a grudge of 40 either way;
+   - a −10/−10 pair;
+   - a recruit already `Allied` with a member, at `MaximumEach`, or in an NPC-only pact.
+9. `TheRecruitsEdgesMatchABirths`: two `alliance-formed`/30 entries per new edge; none on the founders' edge; trust matches a birth's; no score moves.
+10. `AJoinDrawsNothingAndMintsTwoSequencesAMember`: `randomState` unchanged; +4 for a trio, +6 for a four.
+11. `TheCapAndOneEachStillHold`.
+12. `APactAnyoneOutsideKnowsOfNeverGrows`: the player listened in; a whispered fact; a public fact; a story leaver who knows; a shed member. After a join, the knowers are exactly the members.
+13. `OnlyTheHouseguestsOwnPactsGrow`: a `FormFromStory` pact; a pact the player left.
+14. `ThePlayerIsNeverRecruited`.
+15. `AnInvitationNeverTakesAHouseguestsFourPastFour`: at 5, a grown four is passed over and a new pact forms; at 5 and at 4, a story's four still takes the player in.
+16. `AGrownPactShedsASourJoinerWhileKeptToItselfAndOtherwiseEndsWhole`:
+    - one rumour on a −5 edge ends nothing;
+    - at −21 the joiner is out, the founders stand, the row stays open, and the pact never grows again;
+    - a founders' edge below −20 ends it as `npc/soured`;
+    - once whispered, a joiner's sour edge ends it whole, and a knower's card keeps three faces and its dated lines;
+    - at 4, a hand-built trio ends whole.
+17. `AGrownPactVotesAsOneBlocWithItsFounderCalling`: leak odds 0.08; threat 12 for a knower and 0 for anyone else.
+18. `TheWeeklyPassAndTheRuleAloneJoinAsTheBeatDoes`.
+19. `JoinsAreDeterministicAndReplayAcrossASave`.
+20. `AGrownPactNeverHuntsOrTargetsItsOwnMember`: a recruit with 2 wins and a non-sponsor founder at 10 toward them.
+    - At 5: `CommonThreat(F1, F2)` passes the recruit over, no `Hunt` targets them, and `Offer` gives no target agreement against them.
+    - The player in the pact is read as at 4.
+    - At 4, a hand-built trio still names its member, pinning the old behaviour.
+
+**Existing tests:**
+- **Every S1 to S3 behaviour test names its own value** (`Loyalty`, `Reputation`, `CounterBlocs`). Only the writer, replay and validation cases use the `AllStars` default of `Latest`.
+  - S3b's builder greps `AllStars(` without `value:` in `AlumniLoyaltyTests`, `KnownBlocsTests` and `CounterBlocTests`, and pins what it finds.
+  - `TheOrdinaryCommonThreatStillComesFirst` is held at 4. `TheScoreFloorAndThePactCapStillHold` gains a sibling at 5 with a size clause.
+- **`AlumniHistoriesTests`.** The replay and validation cases at `Latest` (`:627-670`) pass unedited.
+- **EditMode-only `Latest + 1` pins** move on their own. Re-read them through the Mono harness.
+- **Unchanged:** every Regular pin, including `Tests/EditMode/NpcAllianceTests.cs:142` and `Tests/EditMode/AllWeekCadenceTests.cs:457-501,714-715`, plus `StoryPacingTests`, `BalanceLabGoldens` and `OldSaveAcceptanceTests`.
+- **The floors** in `Tools/baseline.txt` rise in S3b's commit.
+
+#### L.J Slice S3b (after S3, before S4)
+
+**Files:**
+- `Simulation/AlumniHistories.cs`: the constant, `Latest`, and the doc at `:12-16`;
+- `Simulation/AlumniKnownBlocs.cs`: `CounterPactMargin`, `InLivePair`, `CounterPactBound`;
+- `Simulation/NpcAlliances.cs`: the new members (`HouseguestPactPrefix`, `HouseguestsOwn`, `JoinWelcomeLine`, `TryJoin`, `PrivateToMembers`, `KeptToItself`, `Welcomes`, `Join`, `ShedSourJoiners`); the `Dissolve` call at `:309`; `:213`; the docs at `:87`, `:94`, `:153-157`, `:276-302`;
+- `Simulation/NpcDeals.cs:143-150`;
+- `Simulation/NpcSocialActions.cs:155,206-210`;
+- `Simulation/EpisodeEngine.Strategy.cs:249`;
+- the tests above and the visibility edits to the four test helpers.
+
+**Proof:** the dotnet subset, plus the Mono harness for the EditMode-only pins. No Unity run.
+
+**Later slices:**
+- S5 adds captures of three-face and four-face suspected cards at Standard and Largest text.
+- S6 freezes 5, or 4 if the owner withdraws growth.
+
+#### L.K Defaults, and notes for the lead
+
+**Defaults:**
+- value 5, removable before S6;
+- pacts grow in place, only while private to their members and from an earlier week;
+- only houseguests' own outsider pacts grow;
+- the bound is min(4, live pairs + 2);
+- one change a pact a week;
+- the three-tier bar, with the members' line at −5;
+- shed while private, whole once known;
+- pact-mates never a common threat;
+- no log line;
+- the invitation skip for houseguests' fours;
+- no one-at-a-time limit (it is measured);
+- the near-zero rule in L.H.
+
+**Questions for the owner:** none.
+
+**For the lead:**
+- **Tell the story session:**
+  - their constraint 2 is amended;
+  - the Power Shift comment (`Simulation/Story/StoryCatalog.HouseRemembers.cs:583-584`) goes stale, and the story now casts grown pacts first and leaks them (`:586-627`);
+  - their `AllianceLeave` edits a grown pact's members (`Simulation/Story/EpisodeEngine.StoryEffects.cs:209-210`): their call;
+  - story trios can hunt and target their own member through `CommonThreat` at every value: their call, under their own gate.
+- **Tell AS7** to take the next free value after S6.
+- **Tell S1 to S3's builders now** to name `value:` in their behaviour tests.

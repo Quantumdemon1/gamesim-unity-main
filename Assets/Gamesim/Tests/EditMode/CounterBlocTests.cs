@@ -238,6 +238,65 @@ namespace Gamesim.Tests.EditMode
             }
         }
 
+        /// <summary>
+        /// <see cref="TheScoreFloorAndThePactCapStillHold"/>'s sibling at alumni rules 5, where outsider pacts grow (§14.L.E,
+        /// §14.L.I): the floor is the same, and a house that loves everybody pairs off to its share as before; from the week
+        /// after, its outsiders join the pacts free of the known pairs, one change a pact a week, each within the bound - three
+        /// for one live pair, four for two - and a pact holding a pair's member stays a pair. The cap still counts pacts, no
+        /// pact is new, and nobody is in two.
+        /// </summary>
+        [Test]
+        public void TheScoreFloorAndThePactCapStillHoldWhilePactsGrow()
+        {
+            var floor = AllStars(8, 4301u, value: AlumniRules.GrowingPacts);
+            string dan = On(floor, Dan), vanessa = On(floor, Vanessa);
+            foreach (var who in floor.contestants) Views(floor, who.id, 0);
+            Temperament(floor, dan, "Loyal", "Funny");
+            Temperament(floor, vanessa, "Loyal", "Funny");
+            Set(floor, dan, vanessa, NpcAlliances.MinimumRelationship - 0.01);
+            Set(floor, vanessa, dan, NpcAlliances.MinimumRelationship - 0.01);
+            Assert.That(NpcAlliances.Desire(floor, dan, vanessa), Is.GreaterThan(NpcAlliances.ProposeThreshold + KnownBlocs.CounterBlocDesire));
+            Assert.That(NpcAlliances.WouldPropose(floor, dan, vanessa) || NpcAlliances.WouldPropose(floor, vanessa, dan), Is.False,
+                "Under the floor no desire makes a pact.");
+
+            foreach (int size in new[] { 8, 12 })
+            {
+                var s = AllStars(size, 4320u + (uint)size, value: AlumniRules.GrowingPacts);
+                var npcs = s.contestants.Where(c => !c.isPlayer).Select(c => c.id).ToList();
+                var paired = npcs.Where(id => KnownBlocs.InLivePair(s, id)).ToList();
+                string derrick = On(s, Derrick), cody = On(s, Cody);
+                // The outsiders love each other, traits aside; of a pair's members, only the Hitmen love anybody, each other.
+                foreach (var who in s.contestants) who.traits = new List<string>();
+                foreach (var a in npcs)
+                    foreach (var b in npcs.Where(x => x != a))
+                        Set(s, a, b, (!paired.Contains(a) && !paired.Contains(b)) || (a == derrick && b == cody) || (a == cody && b == derrick) ? 80 : 0);
+                string at = "the " + size + "-house";
+                int bound = KnownBlocs.CounterPactBound(s);
+                Assert.That(bound, Is.EqualTo(size == 8 ? 3 : 4), at);
+                NpcAlliances.Settle(s);
+                Assert.That(NpcAlliances.NpcOnlyPacts(s), Has.Count.EqualTo(npcs.Count / 3), at + ": the share, in the first week.");
+                Assert.That(NpcAlliances.NpcOnlyPacts(s).All(p => p.members.Count == 2), Is.True, at + ": born as pairs.");
+                for (int week = 0; week < 3; week++)
+                {
+                    s.week++;
+                    var before = NpcAlliances.NpcOnlyPacts(s).ToDictionary(p => p.id, p => p.members.Count);
+                    NpcAlliances.Settle(s);
+                    var pacts = NpcAlliances.NpcOnlyPacts(s);
+                    string when = at + " in week " + s.week;
+                    Assert.That(pacts, Has.Count.EqualTo(npcs.Count / 3), when + ": the cap counts pacts.");
+                    Assert.That(pacts.All(p => before.ContainsKey(p.id)), Is.True, when + ": no pact is new.");
+                    Assert.That(pacts.All(p => p.members.Count - before[p.id] <= 1), Is.True, when + ": one change a pact a week.");
+                    Assert.That(pacts.All(p => EpisodeEngine.InTheHouse(s, p) <= bound), Is.True, when + ": within the bound.");
+                    Assert.That(pacts.Where(p => p.members.Any(paired.Contains)).All(p => p.members.Count == 2), Is.True,
+                        when + ": a pact holding a pair's member stays a pair.");
+                    Assert.That(npcs.All(id => pacts.Count(p => p.members.Contains(id)) <= 1), Is.True, when + ": nobody in two.");
+                }
+                Assert.That(NpcAlliances.NpcOnlyPacts(s).Any(p => p.members.Count > 2), Is.True, at + ": outsider pacts grew.");
+                var unpaired = npcs.Where(id => !NpcAlliances.NpcOnlyPacts(s).Any(p => p.members.Contains(id))).ToList();
+                Assert.That(unpaired.Any(a => unpaired.Any(b => b != a && NpcAlliances.WouldPropose(s, a, b))), Is.False, at + ": the house is at its share.");
+            }
+        }
+
         [Test]
         public void AtTheFloorAnEightHouseCounterPactStillNeedsTemperament()
         {

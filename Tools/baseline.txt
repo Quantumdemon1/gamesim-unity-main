@@ -90,7 +90,10 @@
 # Unity's Mono (2026-10-30), 9425, and the affected classes run there; not yet measured in Unity.
 # 9426 = 9425 + the S3 review's shared CounterBlocTests case (a bloc hunt never names a pact-mate): listed by the
 # Lister under Unity's Mono (2026-10-31), 9426, and the affected classes run there; not yet measured in Unity.
-Gamesim.EditModeTests 9426
+# 9451 = 9426 + S3b's 25 shared cases (alumni rules 5, section 14.L, outsider pacts that grow): CounterPactGrowthTests
+# 24 and CounterBlocTests' sibling at 5, listed by the Lister under Unity's Mono (2026-10-31), 9451, and the affected
+# classes run there; not yet measured in Unity.
+Gamesim.EditModeTests 9451
 # The UMA-free build. 1215 = 1236, the count after the consolidation's lanes (S2a, S2b, S4a), less the 7
 # farewell probes moved to Gamesim.DiagnosticsPlayModeTests and the 14 farewell readiness tests that now
 # compile only under GAMESIM_UMA (judged on the UMA cast); 1230 = 1215 + S2d's 7, S4b's 2, S4c's 2 and
@@ -222,4 +225,6 @@ Gamesim.Uma.DiagnosticsPlayModeTests 10
 # 16386 of 16386.
 # 16387 = 16386 + the S3 review's CounterBlocTests case: what dotnet test Tools/SimulationTests ran (2026-10-31),
 # 16387 of 16387.
-Gamesim.SimulationTests 16387
+# 16412 = 16387 + S3b's 25 (CounterPactGrowthTests 24, CounterBlocTests 1): what dotnet test Tools/SimulationTests
+# ran (2026-10-31), 16412 of 16412.
+Gamesim.SimulationTests 16412

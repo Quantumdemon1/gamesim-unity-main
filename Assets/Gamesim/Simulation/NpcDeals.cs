@@ -139,15 +139,26 @@ namespace Gamesim.Simulation
         /// for one and −5 for the other — or a houseguest who has won two competitions and is not
         /// warm with at least one of them. The second is why a comp beast draws a coalition even
         /// when nobody has fallen out with them.</para>
+        ///
+        /// <para>From alumni rules 5 (ALL-STAR-HISTORIES-PLAN §14.L.F), where the houseguests' own
+        /// pacts grow past two, a houseguest who shares one of those pacts with both of them is never
+        /// their common threat: a grown pact never hunts or targets its own member. The player in a
+        /// pact with both is read as before, and so is every story's pact.</para>
         /// </summary>
-        public static string CommonThreat(EpisodeState state, string a, string b) =>
-            state.Active
-                .Where(other => other.id != a && other.id != b)
+        public static string CommonThreat(EpisodeState state, string a, string b)
+        {
+            // Read first: below 5 the pact-mate test below is never evaluated.
+            bool grown = AlumniRules.At(state, AlumniRules.GrowingPacts);
+            return state.Active
+                .Where(other => other.id != a && other.id != b
+                                && !(grown && !other.isPlayer && state.alliances.Any(p => p.active && NpcAlliances.HouseguestsOwn(p)
+                                     && p.members.Contains(a) && p.members.Contains(b) && p.members.Contains(other.id))))
                 .FirstOrDefault(other =>
                     (state.Score(a, other.id) < -10 && state.Score(b, other.id) < -5)
                     || (other.hohWins + other.vetoWins >= 2
                         && (state.Score(a, other.id) < 20 || state.Score(b, other.id) < 20)))
                 ?.id;
+        }
 
         // ---------------------------------------------------------------- the ladder
 

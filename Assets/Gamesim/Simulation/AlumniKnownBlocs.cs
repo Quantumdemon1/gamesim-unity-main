@@ -34,6 +34,10 @@ namespace Gamesim.Simulation
     /// takes a score below nought. Neither is a turn, a draw or a write: what the house does
     /// with them is the agendas' and the pact pass's own, under their own caps.</para>
     ///
+    /// <para>From alumni rules 5, <see cref="AlumniRules.GrowingPacts"/> (§14.L, the owner's answer "Yes, let outsider
+    /// pacts grow past two"), the live pairs also bound how far an outsider pact of houseguests may grow
+    /// (<see cref="CounterPactBound"/>), and nobody in a live pair (<see cref="InLivePair"/>) joins or sponsors one.</para>
+    ///
     /// <para>Private things never end a known pair in the house's eyes: scores, receipts, deals (the final two included),
     /// ballots, a pact's end. A departure does, and so does one of the two putting the other up
     /// (<see cref="AlumniLoyalty.PublicSplitWeek"/>, this week's block included). Pure readers of the season and the
@@ -60,6 +64,38 @@ namespace Gamesim.Simulation
         /// <see cref="NpcDeals.CommonThreat"/>'s dislike, <see cref="NpcAlliances.DislikeLine"/> and the confrontation line.
         /// </summary>
         public const double HuntStopLine = -EpisodeEngine.HuntImpact;
+
+        /// <summary>
+        /// How many a counter-pact outnumbers the live pairs by (§14.L.C): one pair counts two people, each further live pair
+        /// one more, and a growing outsider pact may hold one more than that (<see cref="CounterPactBound"/>).
+        /// </summary>
+        public const int CounterPactMargin = 1;
+
+        /// <summary>
+        /// Whether a houseguest stands in a live known pair (<see cref="LivePairs"/>), the player seated on a live card
+        /// included (§14.L.B rule 4). False below <see cref="AlumniRules.Reputation"/>.
+        /// </summary>
+        public static bool InLivePair(EpisodeState s, string id)
+        {
+            if (id == null) return false;
+            foreach (var pair in LivePairs(s))
+                if (pair.FirstId == id || pair.SecondId == id) return true;
+            return false;
+        }
+
+        /// <summary>
+        /// The most an outsider pact of houseguests may grow to in the house (§14.L.C): one more than the live pairs count
+        /// (<see cref="CounterPactMargin"/>), pair by pair, never past <see cref="EpisodeEngine.LargestPact"/> - 3 while one
+        /// pair is live, 4 while two are. Pairs, never people, and never a group: arithmetic, never shown. 0 below
+        /// <see cref="AlumniRules.GrowingPacts"/> and while no pair is live, so nothing grows
+        /// (<see cref="NpcAlliances.TryJoin"/> asks for more than two).
+        /// </summary>
+        public static int CounterPactBound(EpisodeState s)
+        {
+            if (!AlumniRules.At(s, AlumniRules.GrowingPacts)) return 0;
+            int live = LivePairs(s).Count;
+            return live == 0 ? 0 : Math.Min(EpisodeEngine.LargestPact, live + 1 + CounterPactMargin);
+        }
 
         /// <summary>
         /// A houseguest's career reputation (§14.C): the edition's <see cref="AlumniEdition.CareerReputation"/> for the

@@ -470,8 +470,9 @@ r-profile16 once on it if the lane allows.
   loop records `Time.unscaledDeltaTime` in a coroutine after Update, `PortVerification.cs:214`). Add
   `steadySampleFirstFrame = Time.frameCount` in `BeginSteadySample` (`PortVerification.Performance.cs:86-89`) and a
   `steadySampleFirstFrame` field on the report (`PortVerification.cs` VerificationReport, near :376): the matching
-  line of the frames CSV is `frame + 1 - steadySampleFirstFrame`. Readers can also use the report's existing
-  `startupSampleBeganSeconds` with `seconds`.
+  frame time is the frames CSV's data row `frame + 1 - steadySampleFirstFrame`, counted from 0 under its `ms`
+  header, which is its line `frame + 3 - steadySampleFirstFrame` counted from 1 (review LSB-2). Readers can also use
+  the report's existing `startupSampleBeganSeconds` with `seconds`.
 - **Class.** `public sealed class NpcCommitTimings` in `Runtime/Episode` (public so the EditMode test can build one:
   the tests' assembly has no InternalsVisibleTo, `ProspectiveVoteFacade.cs:12`), not `[Serializable]`, pure C#,
   with `ToCsv()` testable under the Mono harness. Only the director's field is internal.

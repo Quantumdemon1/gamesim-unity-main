@@ -381,8 +381,9 @@ namespace Gamesim.Episode
             public List<VerificationFrameSummary> startupStages;
             // bodyAssemblySeconds: from the measured season's start (seasonStartedSeconds) until every body was built.
             public double startupReadySeconds, startupSampleBeganSeconds, bodyAssemblySeconds;
-            // Time.frameCount as the steady sample began: a commit timed in frame F (npc-commit-timing-ms.csv) is
-            // the frames file's line F + 1 - steadySampleFirstFrame, since a frame's time is recorded after its Update.
+            // Time.frameCount as the steady sample began: a commit timed in frame F (npc-commit-timing-ms.csv) stretches
+            // the time recorded in frame F + 1, which is the frames file's data row F + 1 - steadySampleFirstFrame
+            // counted from 0 under its "ms" header: its line F + 3 - steadySampleFirstFrame, counted from 1.
             public int steadySampleFirstFrame;
             public bool bodiesAssembled, openingSkipped;
             public int bodiesAssemblingAtSampleStart;

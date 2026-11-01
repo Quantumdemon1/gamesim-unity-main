@@ -716,6 +716,11 @@ That house has offers from Maya and Jamie, and "jamie-roberts" sorts before "may
 - the standalone walk's PendingOffer counts equal the last baseline;
 - the windowed look sheet completes with no ask dialogue or card on any shot.
 
+**As qualified (2026-11-01), slices 1-3 at c5cdb972.** Unity: full EditMode 9245 and no-UMA PlayMode 1385 at e9f7ed2d (offers2), and at c5cdb972 (offers3, which changed only the offers tests) the 28-case EditMode and 136-case PlayMode gate, Gamesim.Uma.PlayModeTests 132 and the UMA-build PlayMode 1425, all passed with no re-runs; the three known flakes passed three times each; captures at Standard and Largest viewed. The subset (16263) and the seven digest tiers passed exact at e9f7ed2d. By hand, on release players of 37416049 and c5cdb972:
+- **The standalone walks:** two a side, every walk Passed with one PendingOffer row, Ineligible, in week 1, on both sides. The verifier answers at most one offer a season and this machine has never seen it reach Committed, so the counts are unchanged but the answer path is proved by the PlayMode tests, not by the walk.
+- **The windowed look sheet:** not passed. Three attempts on the head reached 8, 10 and 9 of 12 shots, with no error. Shots 9 and 10 (nominations) were blocked once by the houseguest nomination pitch card, which is main's (625d191a), not this branch's; the other misses were refused walks and a houseguest who did not open, not traced. The base player was not run through it. The owner's direction of 2026-11-01, verbatim: "Try to do less testing where you try to navigate the game and take screenshots, rather just implement and let me check and give you feedback." So the look sheet is left to the owner's own play, and its failures to a follow-up on main's look sheet.
+- **Known, cosmetic:** in the in-person capture a bystander stands in front of the asker.
+
 ---
 
 ## H. Slices

@@ -385,6 +385,12 @@ Each row has a default this plan builds on. The last column says what changing i
 
 The other rows stand at their defaults as the lead's calls, open to the owner. D8 and D16 are settled by RS0's measurement, at the owner's first stop.
 
+**The owner's first stop, 2026-11-01: delegated calls, confirmed by the owner.** The owner, verbatim: "Yes your judgment on questions and proceed. Try to do less testing where you try to navigate the game and take screenshots, rather just implement and let me check and give you feedback." From RS0 session 20261031-152636 (development, graphical, at 16):
+- **D8: (i).** Rendering-layer confinement costs +21.3% GPU against lamp shadows off at V1, +8.5% at V4a and +12.7% at V6g, and was not proven at V6g; (ii)'s bar is at most 10%. Lamps homed outside the scope are off for the main camera; the atlas stays 2048 (no D8 iii).
+- **D16: RS3 and RS4 move ahead of RS2a.** Against each view's baseline, bodies off saves 25.9-37.0% GPU and lamp shadows off 23.0-25.3% GPU and 24.2-27.3% CPU main; SSAO 14.9-16.7% and Moon shadows 10.0-12.7% GPU. RS4 takes the camera-mask write; RS5 lands last.
+- **Row 16, the drawer's small-mesh culling: stays off** (`m_SmallMeshScreenPercentage: 0`). At 2% it saved 0.6% GPU at V1 and 1.4% at V2, against small props vanishing at distance.
+- **D4: the default framing, without its captures.** The yaw 0, 45 and 90 room captures (and probe D's capture set) are not taken by the lead; the owner judges the framing in play and gives feedback.
+
 | # | Decision | Default | If the owner changes it |
 |---|---|---|---|
 | D1 | Does the overview survive as the whole-house map? | **Yes, unchanged**: every room, room chips, who is where, the live-feed card, today's lighting. | Lamp shadows off in the overview (cheaper; at 34 m the 128 px shadows are soft anyway) is a small RS3 option after captures; with D8 (ii) the lamps stay on, confined, so nothing leaks through the walls. Dropping the overview loses an approved V5 feature and its tests (Shots_TheOverviewFramesEveryRoomAndKeepsTheCastMoving, the Overview_* and Beacons_TheOverviewsRoomChipsAreAMap). |

@@ -708,7 +708,11 @@ PlayMode only.
    touched fixtures (`EpisodeNpcScanCadenceTests`, `EpisodeNpcCompletionTransactionTests`,
    `EpisodeNpcRuntimeRegressionTests`, `EpisodeDurableTransactionTests`, `UnifiedSafetyDurability`,
    `DialogueIncomingOffer`, `NpcInvitationFlow`, `CastSelect`, `TalkSpots`, `LiveSave`), then the full no-UMA set
-   against its floor; any non-Passed case listed by name (memory assume-hides-regressions-as-inconclusive).
+   against its floor; any non-Passed case listed by name (memory assume-hides-regressions-as-inconclusive). The
+   review fixes (14.12) change the line a save leaves after a failed one, so the filtered pass also takes the
+   cases that read the status line or `StatusMessage` after a save: `SystemNotices`, `HudStatus`,
+   `DiaryNomination`, `ConversationExchange`, `Career` and
+   `NpcRuntime_ASeasonSeatedBeyondTheSixthSlotBindsAndSurvivesAReload`.
 3. **RS0 on a release player built by the lead from this branch.** r-live16 runs room scope's views/live mode
    (`PortVerification.Views.cs`, `--gamesim-views-live`), which exists only on `claude/room-scope`, so that player
    must be built from this branch merged with room scope (or from the line that carries both). Run r-profile16

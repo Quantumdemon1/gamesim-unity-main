@@ -103,7 +103,11 @@
 # listed by the Lister under Unity's Mono (2026-10-31), 9463, and the affected classes run there; not yet measured in
 # Unity.
 # The S5 review's fixes add checks to those cases, not cases: the Lister listed 9463 again (2026-11-01).
-Gamesim.EditModeTests 9463
+# 9469 = 9463 + S6's old-save fixture, s30-mode2-allstars-alumni5-w3-campaign (alumni rules 5 frozen, section 14.I):
+# its four OldSaveAcceptanceTests cases and the fifth that holds its grown pact (261 -> 266), and the shared
+# BallotPrivacyTests case that pins the sentinel's whole-word nominee (OLD-SAVE-ACCEPTANCE F8). Listed by the Lister
+# under Unity's Mono (2026-11-01), 9469, and the classes run there; not yet measured in Unity.
+Gamesim.EditModeTests 9469
 # The UMA-free build. 1215 = 1236, the count after the consolidation's lanes (S2a, S2b, S4a), less the 7
 # farewell probes moved to Gamesim.DiagnosticsPlayModeTests and the 14 farewell readiness tests that now
 # compile only under GAMESIM_UMA (judged on the UMA cast); 1230 = 1215 + S2d's 7, S4b's 2, S4c's 2 and
@@ -257,4 +261,7 @@ Gamesim.Uma.DiagnosticsPlayModeTests 10
 # The S5 review's fixes add checks to those cases, not cases: what dotnet test Tools/SimulationTests ran (2026-11-01),
 # 16433 of 16433 again. The count leaves out the [Explicit] cases, ModeOneSeasonDigests among them: it ran with a
 # filter of its own, 2 of 2.
-Gamesim.SimulationTests 16433
+# 16434 = 16433 + S6's BallotPrivacyTests case (the sentinel reads the nominee as a word of its own, section 14.J's S6):
+# what dotnet test Tools/SimulationTests ran (2026-11-01), 16434 of 16434. S6's old-save fixture adds none here:
+# OldSaveAcceptanceTests is EditMode only.
+Gamesim.SimulationTests 16434

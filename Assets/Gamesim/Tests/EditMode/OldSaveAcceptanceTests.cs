@@ -44,7 +44,8 @@ namespace Gamesim.Tests.EditMode
     /// older one. Schema 30's are the SCH30 build's own (936b73a4), every pooled field off: the default scene's season
     /// and a fresh shipped season of each roster, Regular and All-Stars, at alumni rules 0; they load as they are, with
     /// no migration. The H1b build (0fef7b59) wrote the alumni-on cell: the same shipped All-Stars season at alumni
-    /// rules 1, with its histories and the Hitmen's final two.</para>
+    /// rules 1, with its histories and the Hitmen's final two. The build S6 froze alumni rules 5 at (51dd14a5) wrote the
+    /// alumni-5 cell: the same season at alumni rules 5, saved with a houseguests' pact grown past two and kept to itself.</para>
     ///
     /// <para>Three digests (<see cref="OldSaveTrace"/>): the season's - the cross-build gate - must be the reference
     /// build's; the whole state's, blind to prose, and the verbatim text are this build's, pinned when the fixture was
@@ -101,6 +102,9 @@ namespace Gamesim.Tests.EditMode
             // Written by the H1b build (0fef7b59), schema 30 at alumni rules 1 and edition 1: the same shipped All-Stars
             // season, now with its alumni's histories (ALL-STAR-HISTORIES-PLAN 8.7, the alumni-on cell).
             "s30-mode2-allstars-alumni1-w3-campaign",
+            // Written by the build S6 froze alumni rules 5 at (51dd14a5), schema 30 at alumni rules 5: the shipped All-Stars
+            // season saved with a houseguests' pact grown past two (ALL-STAR-HISTORIES-PLAN 14.I, 14.L).
+            "s30-mode2-allstars-alumni5-w3-campaign",
         };
 
         /// <summary>
@@ -162,9 +166,9 @@ namespace Gamesim.Tests.EditMode
             // Wave D's leaks and war rooms where they branch, and schema 22's three shapes; from schema 29 the dialogue rules
             // too, each commitment mode at dialogue rules 0, and the shipped mode at dialogue rules 1, the conversation
             // preview's (D1); from schema 30 the alumni rules and the cast too, the default scene's season and the shipped
-            // season of each roster at alumni rules 0, and from H1b the shipped All-Stars season at alumni rules 1. A cell
-            // counts only a fixture saved in a week, before the finale, with a script to play: one saved at the finale or
-            // after it is read, never a cell's replay.
+            // season of each roster at alumni rules 0, from H1b the shipped All-Stars season at alumni rules 1, and from S6
+            // the same season at alumni rules 5, the value S6 froze. A cell counts only a fixture saved in a week, before the
+            // finale, with a script to play: one saved at the finale or after it is read, never a cell's replay.
             var replayed = Manifest["episodes"].Where(e => (int)e["commands"] > 0 && !FinalePhases.Contains((string)e["phase"])).ToList();
             Assert.That(Manifest["episodes"].Except(replayed).Select(e => (string)e["id"]), Is.EquivalentTo(ReadOnly),
                 "A fixture saved at the finale or after it reads an end state; it is never a cell's replay.");
@@ -191,6 +195,7 @@ namespace Gamesim.Tests.EditMode
                 "30/default/uc0/allweek0/dialogue0/alumni0/regular", "30/director/uc2/allweek1/leaks1/plans1/dialogue0/alumni0/regular",
                 "30/director/uc2/allweek1/leaks1/plans1/dialogue0/alumni0/allstars",
                 "30/director/uc2/allweek1/leaks1/plans1/dialogue0/alumni1/allstars",
+                "30/director/uc2/allweek1/leaks1/plans1/dialogue0/alumni5/allstars",
             }));
         }
 
@@ -548,6 +553,52 @@ namespace Gamesim.Tests.EditMode
             var arguments = new object[] { s, null };
             bool ok = (bool)method.Invoke(null, arguments);
             return ok + " " + arguments[1];
+        }
+
+        // ------------------------------------------------------------------ the alumni-5 cell
+
+        /// <summary>
+        /// The cell S6 froze (ALL-STAR-HISTORIES-PLAN 14.I, 14.J): the shipped All-Stars season at alumni rules 5, saved
+        /// at its week-3 campaign with what only 5 writes standing in it - a houseguests' own pact grown past two while a
+        /// known pair is live (14.L), private to its members and from an earlier week, so it is a join and not a birth.
+        /// The four cases every fixture has replay and read the season on from there; this one holds the file to the state
+        /// it was chosen for.
+        /// A 12-house (seed 3387): no 8-house seed of 3002 to 3201 holds a grown pact at its week-3 campaign.
+        /// </summary>
+        [Test]
+        public void TheAlumniFiveCellIsSavedWithAHouseguestsPactGrownPastTwoAndKeptToItself()
+        {
+            const string id = "s30-mode2-allstars-alumni5-w3-campaign";
+            var entry = Entry(id);
+            using var slot = new Slot((string)entry["save"]);
+            Assert.That(slot.Store.TryLoad(out var s, out string message), Is.True, message);
+            Assert.That(s.alumniRulesVersion, Is.EqualTo(AlumniRules.GrowingPacts), "Saved at alumni rules 5, the value S6 froze.");
+            Assert.That((int)entry["rules"]["alumniRulesVersion"], Is.EqualTo(AlumniRules.GrowingPacts));
+            Assert.That(s.week, Is.EqualTo(3));
+            Assert.That(s.phase, Is.EqualTo(EpisodePhase.Campaign));
+            Assert.That(s.contestants.Count, Is.EqualTo(12), "The twelve-house the plan names when no eight-house seed has a grown pact.");
+
+            int bound = KnownBlocs.CounterPactBound(s);
+            Assert.That(bound, Is.GreaterThan(2), "A known pair is live, so a houseguests' pact may hold more than two.");
+            var grown = NpcAlliances.NpcOnlyPacts(s).Where(p => NpcAlliances.HouseguestsOwn(p) && p.members.Count > 2).ToList();
+            Assert.That(grown.Select(p => p.id), Is.EqualTo(new[] { "alliance-npc-203" }), "One houseguests' pact grown past two.");
+            var pact = grown[0];
+            Assert.That(pact.members, Is.EqualTo(new[] { "chelsie-baham", "xavier-prather", "vanessa-rousso" }),
+                "Its founders first, as born, and the recruit on the end.");
+            Assert.That(pact.members.Count, Is.LessThanOrEqualTo(bound), "Within the bound, the live pairs plus two and never past four.");
+            foreach (string member in pact.members)
+            {
+                var who = s.Find(member);
+                Assert.That(who.isPlayer, Is.False, member);
+                Assert.That(who.status, Is.EqualTo(ContestantStatus.Active), member + " is still in the house.");
+                Assert.That(KnownBlocs.InLivePair(s, member), Is.False, member + " is in no live known pair.");
+            }
+
+            var fact = Knowledge.Of(s, FactKinds.Alliance, pact.id);
+            Assert.That(fact, Is.Not.Null, "The pact's fact.");
+            Assert.That(fact.visibility, Is.EqualTo(FactVisibility.Private), "Nobody outside the pact has heard of it.");
+            Assert.That(fact.knowers, Is.EquivalentTo(pact.members), "Known to its members, the recruit among them, and to nobody else.");
+            Assert.That(fact.week, Is.LessThan(s.week), "Founded in an earlier week than the save's.");
         }
 
         // ------------------------------------------------------------------ refused on purpose

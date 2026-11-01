@@ -95,9 +95,10 @@ namespace Gamesim.Tests.EditMode
         /// Whether a line says the voter's ballot: in any sentence of it, the voter's name as the
         /// sentence's subject - the first houseguest it names - followed by a ballot verb ("Casey
         /// Wilson voted", "Casey Wilson broke", "Casey Wilson was with you at the call, then voted"),
-        /// with the nominee it went against named anywhere in the line. A name in object position
-        /// ("Jamie told you Casey and voted Riley") is not the subject. The words that say a ballot is
-        /// not known (KnownBallots.Unresolved) are not a ballot said.
+        /// with the nominee it went against named anywhere in the line, as a word of its own: a first
+        /// name inside another word is not the nominee ("Dan" in "Danielle Reyes", ALL-STAR-HISTORIES-PLAN
+        /// 14.J's S6). A name in object position ("Jamie told you Casey and voted Riley") is not the
+        /// subject. The words that say a ballot is not known (KnownBallots.Unresolved) are not a ballot said.
         /// </summary>
         internal static bool NamesTheBallot(EpisodeState s, string line, string voterId, string targetId)
         {
@@ -107,13 +108,25 @@ namespace Gamesim.Tests.EditMode
             if (AccountPrefixes.Any(prefix => line.StartsWith(prefix, StringComparison.Ordinal))) return false;
             string said = line.Replace(KnownBallots.Unresolved, string.Empty);
             string targetWord = targetId == s.playerId ? "you" : FinalistRead.FirstName(target);
-            if (said.IndexOf(targetWord, StringComparison.Ordinal) < 0) return false;
+            if (!NamesAsAWord(said, targetWord)) return false;
             foreach (var sentence in Sentences(said))
             {
                 int at = sentence.IndexOf(voter, StringComparison.Ordinal);
                 if (at < 0 || !LeadsTheSentence(s, sentence, at)) continue;
                 string after = sentence.Substring(at + voter.Length);
                 if (BallotVerbs.Any(verb => after.IndexOf(" " + verb, StringComparison.Ordinal) >= 0)) return true;
+            }
+            return false;
+        }
+
+        /// <summary>Whether <paramref name="word"/> stands in <paramref name="text"/> as a word of its own: no letter right before it or right after it.</summary>
+        private static bool NamesAsAWord(string text, string word)
+        {
+            if (string.IsNullOrEmpty(word)) return false;
+            for (int at = text.IndexOf(word, StringComparison.Ordinal); at >= 0; at = text.IndexOf(word, at + 1, StringComparison.Ordinal))
+            {
+                int end = at + word.Length;
+                if ((at == 0 || !char.IsLetter(text[at - 1])) && (end == text.Length || !char.IsLetter(text[end]))) return true;
             }
             return false;
         }
@@ -223,6 +236,29 @@ namespace Gamesim.Tests.EditMode
             Assert.That(unknown, Is.GreaterThan(0), "At least one ballot the player could not place, or the sentinel guards nothing.");
             Assert.That(lies, Is.GreaterThan(0), "At least one lie caught at a reveal, or the sentinel never sees a judged claim.");
             Assert.That(withheld, Is.GreaterThan(0), "At least one verdict the player cannot place, or the memory readers guard nothing.");
+        }
+
+        /// <summary>
+        /// The sentinel reads the nominee as a word of its own. The All-Stars house seats Dan Gheesling beside Danielle
+        /// Reyes, and the finalist read's lean "Danielle Reyes · Vanessa · voted to evict them" - a ballot the player knows
+        /// - was taken for Danielle's hidden ballot against Dan, by the "Dan" in her own name (the alumni-5 old-save
+        /// fixture, ALL-STAR-HISTORIES-PLAN 14.J's S6). The ballot it does name, and a line naming Dan, are still seen.
+        /// </summary>
+        [Test]
+        public void TheSentinelNamesTheNomineeOnlyAsAWordOfItsOwn()
+        {
+            var s = new EpisodeState { playerId = "player" };
+            s.contestants.Add(new ContestantState { id = "player", name = "You", isPlayer = true });
+            s.contestants.Add(new ContestantState { id = "dan", name = "Dan Gheesling" });
+            s.contestants.Add(new ContestantState { id = "danielle", name = "Danielle Reyes" });
+            s.contestants.Add(new ContestantState { id = "vanessa", name = "Vanessa Rousso" });
+            const string lean = "Danielle Reyes · Vanessa · voted to evict them";
+            Assert.That(NamesTheBallot(s, lean, "danielle", "dan"), Is.False, "The \"Dan\" in Danielle's name is not her nominee.");
+            Assert.That(NamesTheBallot(s, lean, "danielle", "vanessa"), Is.True, "The ballot the line does name.");
+            Assert.That(NamesTheBallot(s, "Danielle Reyes voted to evict Dan Gheesling.", "danielle", "dan"), Is.True);
+            Assert.That(NamesTheBallot(s, "Danielle Reyes voted against Dan's deal.", "danielle", "dan"), Is.True, "A possessive is still the name.");
+            Assert.That(NamesTheBallot(s, "Danielle Reyes voted to evict you.", "danielle", "player"), Is.True);
+            Assert.That(NamesTheBallot(s, "Danielle Reyes voted with your ally.", "danielle", "player"), Is.False, "\"your\" is not \"you\".");
         }
 
         /// <summary>

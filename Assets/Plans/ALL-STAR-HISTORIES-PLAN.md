@@ -1152,6 +1152,9 @@ histories-first order, and it carries every field in 5.1.
   behaviour of 2 to 5 (2 to 4 if growth is withdrawn). Tell AS7's track when it next runs.
 - **Alumni rules 2 to 5 are section 14's** (2026-10-29). 5 is S3b's (14.L) and is released if growth is withdrawn
   before S6. It is the alumni rules field, not competition rules 5 (PC5's). AS7 takes the next free value after S6.
+- **Settled at S6** (2026-11-01). Growth is kept (the owner's call on the stop conditions, 14.H), so 5 is not
+  released, and S6 freezes it with its old-save fixture (14.J's as-built note). The next free alumni rules value is 6:
+  AS7's, and it carries the behaviour of 2 to 5. Telling AS7's track is the lead's.
 
 **With dialogue:**
 - **The joint note's final §6 is SCH30's input.** It adds no dialogue field to 5.1, and it fixes 8.2's dialogue scope
@@ -2015,6 +2018,14 @@ It shows every seated fact. That includes the three nomination facts, which shap
 - **Two stop conditions.** The lead asks the owner once before S6 and records the answer as "delegated call, confirmed by the owner" in either case:
   1. The shipped arm crosses a story-session budget beyond noise where arm 1 meets it. If arm 4 meets it there, growth is the cause, and the owner is offered value 4 (S3b out before S6, `Latest` stays 4). The budgets are: pile-on seasons at 25% or fewer; pariah-free seasons at 80% or more, and the twelve-house's not lower (`Assets/Plans/NPC-AGENCY-PLAN.md:23-26`).
   2. A known-pair member is the first evictee in more than half the seasons of any cell at 4, read at 4 and at 5 separately.
+- **The owner's call on the stop conditions** (2026-11-01, asked once, on S4's full run at `20f665b7`):
+  - stop condition 1 does not fire, in either reading;
+  - stop condition 2 fires in one cell of the eight: the social newcomer at 12, where a known-pair member is the first evictee in 57% [47.2%, 66.3%] (57/100) at 4 and at 5 alike (55% at 3, 41% at 0 to 2). Reputation (value 3) drives it, not growth;
+  - the lead's recommendation, taken: keep value 5 as built, and retune nothing before S6. The effect is the owner's own design ("the other players in the house might ally against them for numbers"), and it fires in one cell of eight, by a margin inside its interval;
+  - the lever for a later value, built only on the owner's word after play, is the known-pair weight in the nomination threat and the vote: value 3's career 4/3/2 and pair risk 8/4;
+  - growth is kept, so S6 freezes 5 and `Latest` stays 5.
+
+  Delegated call, confirmed by the owner: "Yes your judgment on questions and proceed." (2026-11-01).
 - **When it runs:** alone, as a background job, never beside a Unity run.
 - NPC-to-NPC behaviour is proved by fixtures (14.I), never by walks.
 
@@ -2145,7 +2156,7 @@ Every new test uses only public members, so the new files compile in Unity's Edi
   - captures of three-face and four-face suspected cards (14.L.J);
   - an audit of `EpisodePlayModeTests.CastSelect`;
   - the standalone verify walk, because the stress house enrols.
-- **New in S6:** the fixture `s30-mode2-allstars-alumni5-w3-campaign`, recorded from a seed whose week-3 state holds a grown houseguests' pact, with a fifth case asserting it; a 12-house if no 8-house seed in the first 200 has one (`…alumni4…` with four cases if growth is withdrawn).
+- **New in S6:** the fixture `s30-mode2-allstars-alumni5-w3-campaign`, recorded from a seed whose week-3 state holds a grown houseguests' pact, with a fifth case asserting it; a 12-house if no 8-house seed in the first 200 has one (`…alumni4…` with four cases if growth is withdrawn). Built 2026-11-01 at 5, growth being kept (14.J's as-built note for S6).
 - **Floors:** `Tools/baseline.txt` rises in each slice's commit.
 
 ### 14.J Slices and landing
@@ -2158,13 +2169,39 @@ Every new test uses only public members, so the new files compile in Unity's Edi
 | S3b | Growing pacts, value 5 (14.L.J) | `Simulation/AlumniHistories.cs`; `Simulation/AlumniKnownBlocs.cs`; `Simulation/NpcAlliances.cs`; `Simulation/NpcDeals.cs:143-150`; `Simulation/NpcSocialActions.cs:155,206-210`; `Simulation/EpisodeEngine.Strategy.cs:249`; `Tests/EditMode/CounterPactGrowthTests.cs` + meta; four test helpers made internal | Subset (fixtures); the EditMode-only pins through the Mono harness |
 | S4 | Measurement and the record | `Tests/EditMode/BalanceLabAlumniReport.cs`; `Tests/EditMode/BalanceLab.cs` (the pact watch); `Tests/EditMode/BalanceLabParts.cs`; new `Tests/EditMode/BalanceLabAlumniReportTests.cs` + meta (dotnet only); this plan's edits (14.A) | Subset (fixtures); a smoke run; the lab, alone; the report goes to the owner. Built 2026-10-31, with its review's fixes (14.H's as-built note) |
 | S5 | Player-facing (after S2) | `Simulation/AlumniKnownBlocs.cs` (readers); `Runtime/Episode/EpisodeDirector.Journal.cs:455-490`; `Runtime/Episode/EpisodeDirector.Alliances.cs:9-53`; `Runtime/Episode/EpisodeHud.Alliances.cs`; `Runtime/Episode/EpisodeDirector.DiaryRoom.cs:475-487` | Readers in the subset; PlayMode captures; caption audit. Built 2026-10-31 (14.F's as-built note); the PlayMode tests are compiled offline, and their Unity run is the lead's |
-| S6 | Freeze the latest value kept: 5, or 4 if growth is withdrawn | The alumni-5 fixture (alumni-4 if growth is withdrawn), its manifest row, the floors | `OldSaveAcceptanceTests` |
+| S6 | Freeze the latest value kept: 5, or 4 if growth is withdrawn | The alumni-5 fixture (alumni-4 if growth is withdrawn), its manifest row, the floors | `OldSaveAcceptanceTests`. Built 2026-11-01 at 5 (the as-built note below), proved under Unity's Mono offline; its Unity run is the lead's |
 
 - **Order:** S1, S2, S3, S3b, S4. S5 needs S2. S4's all-core lab run and S5's Unity runs never overlap; each waits for the other to exit. S6 comes last, after the owner has read S4's report.
 - **Landing:**
   - S1 to S5 land on `claude/all-star-histories` only. They are not merged to the consolidation line or main, or synced to the play copy, until S6.
   - So no season is ever saved at 2 to 5 outside tests, which pin each value through `AllStars(…, value)`.
   - Until S6, a change to 2 to 5 is an edit recorded here.
+
+**As built in S6** (2026-11-01, on `51dd14a5`). S6 changes no Simulation, Runtime or Persistence file: value 5 is frozen as S3b built it and S4's and S5's reviews left it.
+- **The owner's call** (14.H): growth is kept, so S6 freezes 5 and `Latest` stays 5. Nothing is retuned before S6. That covers 14.L.H's near-zero rule too, which S4's report printed for the 8-house cells: its lever (the recruit's bar toward its sponsor) waits for the owner's word, like 14.H's. S4's full run had every must-be-zero row at zero, so there was no bug to fix before S6.
+- **The fixture**, `s30-mode2-allstars-alumni5-w3-campaign`, was written and recorded by `51dd14a5` itself, by OLD-SAVE-ACCEPTANCE 2.6's route (its new 2.7):
+  - `Tools/OldSaves` was built from a `git archive` extract of that commit's Simulation and Runtime/Persistence;
+  - `generate 3387 12 director-allstars 3 Campaign` ran twice, to the same state (only `savedAt` differs), and `record` ran twice, to the same script and digests;
+  - the season has 112 commands to its end, season digest `2321f173f76d7c97`, and Tyler wins.
+- **The seed.** A scratch scan ran the recorder's own `generate` from 3002, the All-Stars fixtures' series (the alumni-1 cell's 3004 was found the same way):
+  - no 8-house seed from 3002 to 3201 holds a houseguests' pact past two at its week-3 campaign, so the cell is a 12-house;
+  - no 12-house seed from 3002 to 3201 holds one either, and 3387 is the first after them;
+  - its pact `alliance-npc-203` was founded in week 2 and took its third member in week 3. Every member is in the house and in no live pair, and its fact is private and known to exactly the three. Two known pairs are live, so the bound is 4.
+- **The fifth case**, `OldSaveAcceptanceTests.TheAlumniFiveCellIsSavedWithAHouseguestsPactGrownPastTwoAndKeptToItself`, holds the file to that state through the store. The four cases every fixture has replay it. The manifest test counts it as the 57th cell, `…/dialogue0/alumni5/allstars`. Its `holdsDigest` is `37f1e67f5dea9dfe`.
+- **The ballot sentinel, fixed in the test.** The fixture's reader case failed in 18 of its states. In the finalist read's lean "Danielle Reyes · Vanessa · voted to evict them" (a ballot the player knows, from week 7's unanimous count), `BallotPrivacyTests.NamesTheBallot` found the "Dan" in Danielle's name and took the line for her hidden week-3 ballot against Dan Gheesling. The nominee now has to stand as a word of its own. The check is only narrower, and `BallotPrivacyTests.TheSentinelNamesTheNomineeOnlyAsAWordOfItsOwn` pins it (OLD-SAVE-ACCEPTANCE F8). No reader changed. The PlayMode sentinel's copy is unchanged.
+- **Floors:** EditMode 9463 to 9469: `OldSaveAcceptanceTests` 261 to 266, and the sentinel's pin. The subset 16433 to 16434: the pin. `OldSaveAcceptanceTests` is EditMode only.
+- **From S6, values 2 to 5 are frozen.** A change to any of them is a later value, and the next free value is 6, AS7's (§10). S6 merges and syncs nothing. Landing on the consolidation line and main, and syncing the play copy, are the lead's.
+- **Found while searching:** the 12-house at 3146 cannot be saved. Under Mono the store refuses its own write (OLD-SAVE-ACCEPTANCE F9), because a double does not round-trip. This is for the lead, not S6.
+- **Proof, offline only:**
+  - the offline compile without UMA: every assembly, no error, and no warning in S6's two test files;
+  - the Lister under Unity's Mono counted 9469 EditMode cases;
+  - the Mono harness ran `OldSaveAcceptanceTests` 266 of 266. Before the sentinel's fix it was 265, the alumni-5 reader case failing;
+  - `BallotPrivacyTests` ran 8 of 8. The classes that read the whole fixture folder all passed: `FrozenEpisodeV29IntegrationTests` 130, `PersistenceV29MigrationTests` 40, `PersistenceV30MigrationTests` 32, `FrozenEpisodeV28IntegrationTests` 23 and `AlumniHistoriesSaveTests` 4;
+  - one mutation, the sentinel's old substring check, made the pin fail on its own assertion;
+  - the Frozen29 compile gate passed;
+  - the dotnet subset ran 16434 of 16434.
+
+  Not run: the Unity EditMode run (the lead's) and the UMA compile (no PlayMode or UMA file changed).
 
 ### 14.K Defaults taken, and the owner's answer
 
@@ -2196,7 +2233,7 @@ Every new test uses only public members, so the new files compile in Unity's Edi
   - `CommonThreat` first;
   - target agreements held back.
 - **Growing pacts (value 5, 14.L.K):**
-  - value 5, removable before S6;
+  - value 5, removable before S6; kept by the owner's call and frozen at S6 (14.H, 14.J);
   - pacts grow in place, only while private to their members, from an earlier week, with every member in the house and no target agreement among them (the last two added in S3b's review), and a pact that has lost a member never grows again;
   - only houseguests' own outsider pacts grow;
   - the bound is min(4, live pairs + 2);
@@ -2213,7 +2250,7 @@ Every new test uses only public members, so the new files compile in Unity's Edi
   - "PAST GAMES", "Before this season", "Past game · ";
   - `AllianceRead.Page` unchanged.
 - **Edition 1 holds no alliance of three.** The Derrick–Cody–Tyler chain counts as two pairs. A sourced trio needs new research under 3.1. From 5, an outsider pact may hold three or four; it is never called a trio of the edition.
-- **The report** is not a gate. It has two stop conditions.
+- **The report** is not a gate. It has two stop conditions. The owner's call on them (2026-11-01, 14.H): keep 5 as built and retune nothing; delegated call, confirmed by the owner.
 
 **The question put to the owner.** Bigger counter-alliances. The owner's example has the house allying "for numbers" against a known three. NPC pacts here are pairs, with one NPC-only pact per three NPCs and each NPC in one at most. These are the story session's limits (`Assets/Plans/NPC-AGENCY-PLAN.md:27-28`; `Simulation/NpcAlliances.cs:88-99,258-272`). So the house answers with several outsider pairs, their hunts, and the player's own pacts, which can grow, but never with one NPC alliance of three or more. Should outsider pacts be allowed to grow past two while a known bloc stands? That changes a story-session limit, so it needs the owner's call. Default: no, pairs only.
 
@@ -2264,9 +2301,9 @@ Every line number below was checked read-only against the committed tree at `4ab
 2. **Withdrawing it is easy.** If the owner turns growth down after S4, S3b's code comes out before S6 and `Latest` stays 4. Nothing from S1 to S5 is merged or synced before S6 (14.J), so no season is saved at 5 outside tests.
 3. **The cost is small:** one constant, one lab arm, and the EditMode-only `Latest + 1` pins move to 6 on their own (14.G).
 
-**At S6.** S6 freezes the latest value the owner keeps (14.I gives the fixtures). AS7 takes the next free value after S6. Because a value is a bound, AS7's value carries growth.
+**At S6.** S6 freezes the latest value the owner keeps (14.I gives the fixtures). AS7 takes the next free value after S6. Because a value is a bound, AS7's value carries growth. As built (2026-11-01): the owner kept growth (14.H), so S6 froze 5, and AS7's value is 6.
 
-**The claim.** Alumni rules 5 is claimed by S3b and released if growth is withdrawn before S6. It is the alumni rules field, not competition rules 5, which is PC5's (§9, `:1045`).
+**The claim.** Alumni rules 5 is claimed by S3b and released if growth is withdrawn before S6. It is the alumni rules field, not competition rules 5, which is PC5's (§9, `:1045`). Growth was kept (14.H), so the claim stands and S6 froze 5.
 
 #### L.B Which pacts may grow
 
@@ -2608,7 +2645,7 @@ Scope:
 - a hunt or target agreement aimed at a non-player pact-mate of both in a houseguests' pact;
 - cap breaches and double-booking (`Tests/EditMode/NpcAgencyHarnessTests.cs:50-56`).
 
-A nonzero must-be-zero row is a bug, fixed before S6. It is never an owner question.
+A nonzero must-be-zero row is a bug, fixed before S6. It is never an owner question. (S4's full run at `20f665b7`: every must-be-zero row zero, so S6 had none to fix.)
 
 **If the 8-house rate is near zero (decided now).** If fewer than one season in ten of any 8-house cell at 5 holds a join:
 - the report's first line says so, gives the 9-to-12 rates, and states that the call shows mostly in houses of 9 or more;
@@ -2691,12 +2728,12 @@ The fixtures:
 
 **Later slices:**
 - S5 adds captures of three-face and four-face suspected cards at Standard and Largest text.
-- S6 freezes 5, or 4 if the owner withdraws growth.
+- S6 freezes 5, or 4 if the owner withdraws growth. Built 2026-11-01: 5, growth being kept (14.J's as-built note for S6).
 
 #### L.K Defaults, and notes for the lead
 
 **Defaults:**
-- value 5, removable before S6;
+- value 5, removable before S6; kept by the owner's call and frozen at S6 (14.H, 14.J);
 - pacts grow in place, only while private to their members, from an earlier week, with every member in the house and no target agreement among them (the last two added in S3b's review), and a pact that has lost a member never grows again;
 - only houseguests' own outsider pacts grow;
 - the bound is min(4, live pairs + 2);
@@ -2717,5 +2754,5 @@ The fixtures:
   - the Power Shift comment (`Simulation/Story/StoryCatalog.HouseRemembers.cs:583-584`) goes stale, and the story now casts grown pacts first and leaks them (`:586-627`);
   - their `AllianceLeave` edits a grown pact's members (`Simulation/Story/EpisodeEngine.StoryEffects.cs:209-210`): their call;
   - story trios can hunt and target their own member through `CommonThreat` at every value: their call, under their own gate.
-- **Tell AS7** to take the next free value after S6.
+- **Tell AS7** to take the next free value after S6: 6, since S6 froze 5 (2026-11-01).
 - **Tell S1 to S3's builders now** to name `value:` in their behaviour tests.

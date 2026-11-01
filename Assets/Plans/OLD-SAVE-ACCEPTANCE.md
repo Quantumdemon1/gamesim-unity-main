@@ -715,6 +715,46 @@ projection to 28 exactly as before, and that projection still refuses rules 1.
     needed by any fixture (all 172 cases green without it), so it was removed.
 - `BallotPrivacyTests` itself is unchanged and could meet the same case.
 
+**F9. Under Mono, the store refused a save, and a load, when a double's text read back one bit off. Repaired
+(2026-11-01, claude/save-double-read).**
+
+- The cause (found by All-Star S6's seed search: a 12-house All-Stars season at seed 3146 could not be saved). The
+  double 0x400bc16beeb33334 is written `3.4694441460073`, its shortest text. Json.NET's `JsonTextReader` reads it with
+  the runtime's `double.TryParse`, and Unity's Mono, which parses as the old .NET Framework did, gives
+  0x400bc16beeb33335. `TryRead` hashes the canonical form of what it read (`3.4694441460073002`) against the checksum
+  of what was written, so Save's own read-back, a load and a backup recovery all refused the file, and every later
+  save of that season.
+- Mono's writer is not always right either. Measured under the editor's Mono (a scratch probe, 800,000 seeded doubles
+  in four kinds and 200,000 floats): it gives about one double in 2,000 a text whose nearest double is another. It
+  writes 0x4019a6e82949a566 as `6.412995`, whose nearest double is ...565, and writes ...565 as `6.4129949999999996`.
+  Today's read changed the canonical text of 0 to 46 values in 200,000 by kind, and of 56 floats (the appearance
+  values are floats). Reading every literal as its nearest double would have changed 1 to 113 by kind and 181 floats:
+  more refusals, not fewer.
+- The fix: `ExactDoubles.Correct`, called by `SaveJson.ParseObject` in one line, so the episode store, the career
+  ledger, the houseguest profiles and the web import all read through it. After Json.NET has read the text, a scan
+  pairs every number value with its literal in document order. The scan follows what Json.NET reads beyond JSON:
+  comments, single quotes, unquoted names, NaN and the infinities, constructors. Each float then keeps the value read
+  if the writer writes it as its literal, so every file that loads today loads exactly as before. Otherwise it takes
+  the nearest double (exact, by BigInteger: ties to even, subnormals, the sign of zero) if the writer writes that as
+  the literal; else the double within 16 of it that the writer does; else the nearest. When the text and the values
+  do not pair, a literal is not a decimal number, or one lies more than 64 doubles from its value, nothing changes.
+  NaN and the infinities are never touched. On .NET every float keeps the value read.
+- Nothing else reads differently. The frozen readers' own byte parsers (`FrozenV28Input`, `FrozenV29Input`) have no
+  runtime caller: the migrations hand them the tree the store parsed. The preference file and the key bindings refuse
+  any number. The editor's `JsonUtility` reads are tooling.
+- The proof, all offline under the Mono harness. `ExactDoublesTests` (50 cases, 47 shared with the subset): without
+  the one line 13 fail, F9's text, five edge texts, two long literals, two of the four 50,000-double sweeps (16 and 10
+  of 100,000 reads missed, each a checksum refusal) and both save-store cases; with it, 50 of 50. Two scratch mutants
+  show the settle step is needed: with the writer check and then the nearest double, the products sweep still misses
+  10 reads (Mono's writer, not its parse); with the nearest double alone, three sweeps miss 40, 2 and 30. The probe's
+  exact conversions all agree with Python's `float()` (12,227 checked). The 69 fixtures that touch the stores, the
+  frozen readers or the migrations ran 2,441 of 2,445: the other four need Unity's engine types and fail the same way
+  without the fix. `OldSaveAcceptanceTests` ran 245 of 245, and the dotnet subset 16,288 of 16,288.
+- The dotnet subset cannot see F9: .NET reads and writes doubles correctly, so there the pass never changes a value.
+  It holds the exact conversion against .NET's own parse; only the editor's Mono shows the pass repairing a read.
+- The cost: `SaveJson.ParseObject` on the largest fixture (s28-mode1-finished, 371 KB, 1,274 floats) went from a
+  median of 13 ms to 18 ms under Mono; the pass alone takes about 4.3 ms.
+
 ## 4. The tests (`Assets/Gamesim/Tests/EditMode/OldSaveAcceptanceTests.cs`)
 
 All tests run in EditMode. None are in the dotnet subset, which excludes the save store and migrations by policy

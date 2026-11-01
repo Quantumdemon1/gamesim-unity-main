@@ -394,6 +394,13 @@
     <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Persistence/PreferenceFile.cs" />
     <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Episode/SettingsEvidence.cs" />
     <Compile Include="$(EditMode)PreferenceFileTests.cs" />
+    <!--
+      Exact doubles (OLD-SAVE-ACCEPTANCE F9): the stores' read of a float literal as the double the writer wrote
+      (BCL, System.Numerics and Newtonsoft only). .NET parses correctly, so here it holds the conversion against
+      .NET's own parse; the save-store cases are EditMode's, where Unity's Mono misreads.
+    -->
+    <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Persistence/ExactDoubles.cs" />
+    <Compile Include="$(EditMode)ExactDoublesTests.cs" />
     <!-- Colour-blind safety (A9): the colour-vision arithmetic the HUD's tints are held to in the editor. -->
     <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/ColourVision.cs" />
     <Compile Include="$(EditMode)ColourVisionMathTests.cs" />

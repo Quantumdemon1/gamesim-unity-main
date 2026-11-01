@@ -216,6 +216,7 @@ namespace Gamesim.Persistence
             using var reader = new JsonTextReader(text) { DateParseHandling = DateParseHandling.None, MaxDepth = 64 };
             var token = JToken.ReadFrom(reader, new JsonLoadSettings { DuplicatePropertyNameHandling = DuplicatePropertyNameHandling.Error });
             if (token is not JObject result || reader.Read()) throw new InvalidDataException("Expected one JSON object.");
+            ExactDoubles.Correct(result, json); // Mono's double parse is not correctly rounded (F9)
             return result;
         }
 

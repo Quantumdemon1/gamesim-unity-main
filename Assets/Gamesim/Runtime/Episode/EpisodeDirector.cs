@@ -839,7 +839,12 @@ namespace Gamesim.Episode
             if (result.accepted)
             {
                 CancelNpcInvitation();
-                if (TryPersistCandidate(result.state, out var installed, out var failure))
+                var timing = commitTimingForVerification;
+                long lap = timing != null ? NpcCommitTimings.Now() : 0;
+                bool persisted = TryPersistCandidate(result.state, out var installed, out var failure);
+                timing?.Write(Time.frameCount, Time.realtimeSinceStartupAsDouble, "command", result.state.revision,
+                    NpcCommitTimings.Lap(ref lap), persisted);
+                if (persisted)
                 { engine = new EpisodeEngine(installed); result.state = engine.Snapshot; }
                 else
                 {

@@ -373,19 +373,36 @@ namespace Gamesim.Episode
                     || startLease.VenueId != request.rendezvousId || !npcMeetings.ValidateArrivedPair(startLease, out _)) return false;
             }
             else if (startLease != null || (request.kind == NpcOperationKind.Tick && !AllPendingNpcLeasesReady())) return false;
+            // The verification's timing log when it is on; otherwise one null check (EpisodeDirector.Durable.cs).
+            var timing = commitTimingForVerification;
+            long lap = timing != null ? NpcCommitTimings.Now() : 0;
             var result = engine.PrepareNpcOperation(request);
             if (!result.accepted) return false;
-            if (!TryPersistCandidate(result.candidate, out var installed, out var failure))
-            { message = failure; BeginPersistenceNotice(failure); SetNpcWorldPaused(true); npcCaption?.Hide(); Render(); return false; }
+            double prepareMs = timing != null ? NpcCommitTimings.Lap(ref lap) : 0;
+            bool persisted = TryPersistCandidate(result.candidate, out var installed, out var failure);
+            double persistMs = timing != null ? NpcCommitTimings.Lap(ref lap) : 0;
+            if (!persisted)
+            {
+                timing?.Operation(Time.frameCount, Time.realtimeSinceStartupAsDouble, request.kind, result.candidate.revision, prepareMs,
+                    double.NaN, double.NaN, double.NaN, double.NaN, NpcCommitTimings.KindName(request.kind), persistMs, false);
+                message = failure; BeginPersistenceNotice(failure); SetNpcWorldPaused(true); npcCaption?.Hide(); Render(); return false;
+            }
             if (queued.Generation != loadGeneration) { StopNpcWorld("A stale world operation cannot publish into a loaded session."); return false; }
             if (startLease != null) npcPendingWorld[request.sequence] = startLease;
             engine = new EpisodeEngine(installed);
+            double engineMs = timing != null ? NpcCommitTimings.Lap(ref lap) : 0;
             Project(); // Reconciles removed pending leases only after successful persistence.
+            double projectMs = timing != null ? NpcCommitTimings.Lap(ref lap) : 0, planMs = double.NaN;
             // Only a durably committed scan deadline can schedule NEW routes.
             // Arrival-triggered starts and transient obstruction timers are separate.
             if (request.kind == NpcOperationKind.Tick && result.scanDue && NpcCanAdvance
                 && AllPendingNpcLeasesReady() && !(Application.isEditor && npcApproachDiagnosticsSuppressed))
+            {
                 PlanNpcApproaches();
+                if (timing != null) planMs = NpcCommitTimings.Lap(ref lap);
+            }
+            timing?.Operation(Time.frameCount, Time.realtimeSinceStartupAsDouble, request.kind, installed.revision, prepareMs,
+                double.NaN, engineMs, projectMs, planMs, NpcCommitTimings.KindName(request.kind), persistMs, true);
             return true;
         }
 

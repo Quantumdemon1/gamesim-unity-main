@@ -16,6 +16,10 @@ namespace Gamesim.Episode
         private long loadGeneration;
         // Explicit Editor diagnostics only; ordinary players always use the validated durable store.
         internal Action<EpisodeState> saveCandidateForDiagnostics = null;
+        // Verification only (PortVerification sets it in a verifying player): how long each part of a house commit
+        // takes, written beside the profile's frames at quit. Null in ordinary play and every Editor session, and
+        // never serialized: a serialized instance would record in every scene that holds a director.
+        [NonSerialized] internal NpcCommitTimings commitTimingForVerification;
 
         /// <summary>
         /// Explicit Editor diagnostics for a test that has just written a fixture to <see cref="SavePath"/>
@@ -98,6 +102,18 @@ namespace Gamesim.Episode
                 return false;
             }
             finally { durableCommitInProgress = false; }
+        }
+
+        private void OnApplicationQuit() => WriteCommitTimings();
+
+        /// <summary>The verification's commit timings, beside its report in the save root; one warning if that fails.</summary>
+        private void WriteCommitTimings()
+        {
+            var timing = commitTimingForVerification;
+            if (timing == null || string.IsNullOrEmpty(saveRoot)) return;
+            try { File.WriteAllText(Path.Combine(saveRoot, NpcCommitTimings.FileName), timing.ToCsv()); }
+            catch (Exception error) when (error is IOException || error is UnauthorizedAccessException)
+            { Debug.LogWarning("The house's commit timings could not be written: " + error.Message); }
         }
 
         private void EnterRecoveryLock()

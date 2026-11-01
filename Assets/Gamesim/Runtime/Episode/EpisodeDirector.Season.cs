@@ -159,7 +159,12 @@ namespace Gamesim.Episode
 
         private void TryAutosave()
         {
-            if (TryPersistCandidate(engine.Snapshot, out _, out var failure))
+            var timing = commitTimingForVerification;
+            long lap = timing != null ? NpcCommitTimings.Now() : 0;
+            bool saved = TryPersistCandidate(engine.Snapshot, out _, out var failure);
+            timing?.Write(Time.frameCount, Time.realtimeSinceStartupAsDouble, "save", projected != null ? projected.revision : -1,
+                NpcCommitTimings.Lap(ref lap), saved);
+            if (saved)
             { message += "  ·  Saved locally."; MarkSaveFeedback(); }
             else { message = failure; BeginPersistenceNotice(failure); PauseNpcSocialForPanel(); }
         }

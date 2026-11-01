@@ -36,7 +36,7 @@ not remove: the redraw after each houseguest second, if the timing log shows it 
 "If the game crashes, is killed, or the PC loses power, may it lose up to the last 30 seconds of the houseguests'
 own background activity (their conversations with each other and the clock), which would then replay a little
 differently? Nothing you chose and nothing you read in a menu would be lost." The 30 s constant carries this
-attribution in code (`NpcSaveCadence.Seconds`). Not covered by that answer, and to be put to the owner with this plan
+attribution in code (`NpcSaveCadence.Seconds`). Answered as a delegated call, confirmed by the owner, on 2026-11-01 (section 14). Not covered by that answer, and put to the owner with this plan
 before commit 2 lands (section 12): the held-save and refused-save paths of section 4, and what a menu shows while
 saving fails.
 
@@ -842,5 +842,14 @@ Unity lane. Where the code differed from the plan, the code won, as follows.
     the replaced line. Section 6 and `PortVerification.cs` now give the frames file's row unambiguously (LSB-2): data
     row `F + 1 - steadySampleFirstFrame` counted from 0, or file line `F + 3 - steadySampleFirstFrame` counted from 1.
 
-Still open: the owner's answer to section 12's three cases (the lead asks before this lands); the Unity set and the
-RS0 runs of 10.2 and 10.3.
+**Section 12's three cases: delegated call, confirmed by the owner (2026-11-01).** The lead recommended yes to all
+three, as built: (1) a save held past the store's wait goes to the recovery screen, and its reload drops the owed
+seconds; (2) a save refused on what the house holds blocks decisions until a reload; (3) while saving fails, a menu
+can show house activity not yet on disk, under the failure notice. The owner, verbatim: "Yes your judgment on
+questions and proceed."
+
+**The RS0 runs of 10.3 are not run before landing.** The owner's direction of 2026-11-01, verbatim: "Try to do less
+testing where you try to navigate the game and take screenshots, rather just implement and let me check and give you
+feedback." The freeze is judged by the owner's own play; the verify-only timing log stays for a later measurement.
+
+Still open: the Unity set of 10.2 (its automated suites).

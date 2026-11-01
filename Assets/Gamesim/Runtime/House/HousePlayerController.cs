@@ -318,12 +318,14 @@ namespace Gamesim.House
         /// <summary>
         /// The piece of furniture under the pointer, or null, and where the pointer is. Raised as
         /// the pointer moves, so whoever listens can say what a click there would do before it is
-        /// made. The same pick the click makes, so the words and the click cannot disagree.
+        /// made, and as what the camera draws under a still pointer changes (RS2b). The same pick the
+        /// click makes, so the words and the click cannot disagree.
         /// </summary>
         public event System.Action<HouseInteractionAnchor, Vector2> FurnitureHovered;
         private Vector2 lastHover = new Vector2(float.NaN, float.NaN);
         private Matrix4x4 lastHoverView;
         private int lastHoverMask;
+        private Collider lastHoverCollider;
 
         private void TickHover(Mouse mouse)
         {
@@ -334,16 +336,24 @@ namespace Gamesim.House
             // mask takes its furniture out from under the pointer, and one put back brings it back.
             var view = viewCamera.worldToCameraMatrix;
             int mask = viewCamera.cullingMask;
-            if (screen == lastHover && view == lastHoverView && RoomLayers.SameRooms(mask, lastHoverMask)) return;
-            lastHover = screen; lastHoverView = view; lastHoverMask = mask;
-            HouseInteractionAnchor under = null;
+            bool still = screen == lastHover && view == lastHoverView && RoomLayers.SameRooms(mask, lastHoverMask);
+            // Every room drawn, the scope hides nothing: a still pointer is over what it was.
+            if (still && RoomLayers.DrawsEveryRoom(mask)) return;
             // Past anything the room scope does not draw (RS4, RS2b, §3.2 f): a hidden body is not under
             // the pointer, nor is hidden furniture, whose collision proxy is passed over for what stands
             // behind it - the floor, which says nothing.
-            if (!Gamesim.Presentation.CeremonyOverlays.OnScreen
+            RaycastHit hit = default;
+            bool pointing = !Gamesim.Presentation.CeremonyOverlays.OnScreen
                 && !(EventSystem.current != null && EventSystem.current.IsPointerOverGameObject())
-                && TryPointAt(ScreenRay(viewCamera, screen), out var hit))
-                under = HouseFurniture.AtProp(gameObject.scene, hit.transform, hit.point);
+                && TryPointAt(ScreenRay(viewCamera, screen), out hit);
+            var pointed = pointing ? hit.collider : null;
+            // A room left out, what the camera draws can change under a still pointer with no change of
+            // mask - a piece of dressing gone to the shell or placed the frame it is first drawn (RS2a), a
+            // body hidden or shown in a doorway (RS4) - so the pick is made again every frame, and the hover
+            // speaks only when it lands on another collider: one filtered ray a frame, only under a room view.
+            if (still && ReferenceEquals(pointed, lastHoverCollider)) return;
+            lastHover = screen; lastHoverView = view; lastHoverMask = mask; lastHoverCollider = pointed;
+            var under = pointing ? HouseFurniture.AtProp(gameObject.scene, hit.transform, hit.point) : null;
             FurnitureHovered(under, screen);
         }
 

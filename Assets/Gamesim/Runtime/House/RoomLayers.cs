@@ -79,6 +79,15 @@ namespace Gamesim.House
         /// </summary>
         public static bool SameRooms(int mask, int other) => ((mask ^ other) & Mask) == 0;
 
+        /// <summary>
+        /// Whether a culling mask draws every room: all of bits 20 to 27, whatever the rest. The room scope
+        /// hides nothing then - a renderer on any room layer is drawn (<see cref="Draws"/>) - so a still
+        /// pointer over a still camera is over what it was, and the hover need not look again (RS2b). With
+        /// a room left out, what the camera draws can change with no change of mask (a piece of dressing
+        /// gone to the shell, a body hidden in a doorway), so the hover looks again every frame.
+        /// </summary>
+        public static bool DrawsEveryRoom(int mask) => (mask & Mask) == Mask;
+
         /// <summary>What <see cref="ScopeMask"/> keeps while no scope has a camera's room bits: nothing to write back.</summary>
         public const int NothingKept = -1;
 

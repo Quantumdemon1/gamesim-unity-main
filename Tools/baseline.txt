@@ -74,7 +74,10 @@
 # proxy's layer 1), counted offline under the Mono harness (2026-11-01), 3 of 3, and 3 HouseScopePickTests cases on
 # colliders they build (a proxy drawn as its prop, a click over a hidden prop to the floor, floors and walls their own),
 # counted offline from the source and the compiled assembly (2026-11-01); not yet run in Unity.
-Gamesim.EditModeTests 9308
+# 9309 = 9308 + the RS2b review's 1 plain HouseRoomScopePickTests case (the hover's room-view rule,
+# UnderARoomViewTheHoverLooksAgainUnderAStillPointer), counted offline under the Mono harness (2026-11-01), 4 of 4;
+# not yet run in Unity.
+Gamesim.EditModeTests 9309
 # The UMA-free build. 1215 = 1236, the count after the consolidation's lanes (S2a, S2b, S4a), less the 7
 # farewell probes moved to Gamesim.DiagnosticsPlayModeTests and the 14 farewell readiness tests that now
 # compile only under GAMESIM_UMA (judged on the UMA cast); 1230 = 1215 + S2d's 7, S4b's 2, S4c's 2 and

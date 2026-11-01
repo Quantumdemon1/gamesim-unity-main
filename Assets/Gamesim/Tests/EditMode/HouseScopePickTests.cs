@@ -32,15 +32,28 @@ namespace Gamesim.Tests.EditMode
         }
 
         /// <summary>
-        /// A prop as the set builds one: its art collider-free on <paramref name="artLayer"/> (a room's, where
-        /// RS2a places it), its collision on a child called Collision on the furniture layer
-        /// (HouseFurnitureCollision). Two metres by one, 0.8 m high, standing on the floor at <see cref="Away"/>.
+        /// A prop as the set builds one, under a group as the house keeps its rooms' props: its art
+        /// collider-free on <paramref name="artLayer"/> (a room's, where RS2a places it), its collision on a
+        /// child called Collision on the furniture layer (HouseFurnitureCollision), and beside it in the group
+        /// a collider-free piece of the group's own on layer 0, the shell's, drawn in every view - so an owner
+        /// that climbed past the prop would count as drawn in every view. Two metres by one, 0.8 m high,
+        /// standing on the floor at <see cref="Away"/>.
         /// </summary>
-        private GameObject Prop(int artLayer, out BoxCollider proxy)
+        private GameObject Prop(int artLayer, out BoxCollider proxy) => Prop(artLayer, out proxy, out _);
+
+        private GameObject Prop(int artLayer, out BoxCollider proxy, out GameObject group)
         {
+            group = new GameObject("Room - Kitchen");
+            made.Add(group);
+            group.transform.position = Away;
+            var trim = GameObject.CreatePrimitive(PrimitiveType.Quad);
+            Object.DestroyImmediate(trim.GetComponent<Collider>());
+            trim.name = "a skirting board";
+            trim.transform.SetParent(group.transform, false);
+            trim.transform.localPosition = new Vector3(0f, .1f, 2.5f);
             var prop = new GameObject("a sofa");
             made.Add(prop);
-            prop.transform.position = Away;
+            prop.transform.SetParent(group.transform, false);
             var art = GameObject.CreatePrimitive(PrimitiveType.Cube);
             Object.DestroyImmediate(art.GetComponent<Collider>());
             art.name = "sofa art";
@@ -80,13 +93,32 @@ namespace Gamesim.Tests.EditMode
         [Test]
         public void AFurnitureProxyIsDrawnAsItsPropIs()
         {
-            var prop = Prop(RoomLayers.Kitchen, out var proxy);
-            Assert.That(HouseScopePick.OwnerOf(proxy), Is.SameAs(prop.transform), "A proxy's owner is the prop it hangs under.");
+            var prop = Prop(RoomLayers.Kitchen, out var proxy, out var group);
+            Assert.That(HouseScopePick.OwnerOf(proxy), Is.SameAs(prop.transform), "A proxy's owner is the prop it hangs under, not the group the prop stands in.");
             Assert.That(HouseScopePick.Draws(ViewOf("Living"), prop.transform), Is.False, "Viewing the living room, the kitchen's sofa is not drawn.");
             Assert.That(HouseScopePick.Draws(ViewOf("Kitchen"), prop.transform), Is.True, "Viewing the kitchen, it is.");
             Assert.That(HouseScopePick.Draws(-1, prop.transform), Is.True, "The whole house draws it.");
             Assert.That(HouseScopePick.Draws(ViewOf("Living"), proxy.transform), Is.True,
                 "Read as its own owner the proxy draws nothing, so it would count as drawn in every view: why its owner is its prop.");
+            Assert.That(HouseScopePick.Draws(ViewOf("Living"), group.transform), Is.True,
+                "The group draws its shell piece in every view, so an owner past the prop would count as drawn too: the owner stops at the prop.");
+
+            // A piece not drawn yet, on an inactive object (RS2a leaves it waiting on layer 0 until it can be
+            // read), is not drawn: the sofa is still the kitchen's art.
+            var notYet = GameObject.CreatePrimitive(PrimitiveType.Quad);
+            Object.DestroyImmediate(notYet.GetComponent<Collider>());
+            notYet.name = "a piece not drawn yet";
+            notYet.transform.SetParent(prop.transform, false);
+            notYet.SetActive(false);
+            Assert.That(HouseScopePick.Draws(ViewOf("Living"), prop.transform), Is.False, "A piece on an inactive object, on the shell's layer, is not drawn: still the kitchen's.");
+
+            // A parked body's root stands on the furniture layer too, and may stand under a group: it is the
+            // body's, read first, never a proxy of the group's.
+            var body = new GameObject("a parked houseguest") { layer = HouseLayers.Furniture };
+            body.transform.SetParent(group.transform, false);
+            body.AddComponent<HouseNpc>();
+            var capsule = body.AddComponent<CapsuleCollider>();
+            Assert.That(HouseScopePick.OwnerOf(capsule), Is.SameAs(body.transform), "A body's root on the furniture layer is the body, not the group it stands in.");
 
             // A prop with one piece in the shell (layer 0) is drawn in every view; that piece switched off,
             // it is its kitchen art again.

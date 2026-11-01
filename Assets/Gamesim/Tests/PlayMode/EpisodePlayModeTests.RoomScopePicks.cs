@@ -125,7 +125,9 @@ namespace Gamesim.Tests.PlayMode
         /// <summary>
         /// The hover says nothing over a piece of furniture whose room the view leaves out, and says what a
         /// click does again once it is drawn - with neither the pointer nor the camera moving, since the
-        /// room scope changing what the camera draws changes what the pointer is over.
+        /// room scope changing what the camera draws changes what the pointer is over: once for each change,
+        /// whether the mask changes or, under a room view, a piece of the prop goes to the shell with the
+        /// mask as it was, and never while nothing changes.
         /// </summary>
         [UnityTest]
         public IEnumerator RoomScope_HoverSkipsHiddenFurniture()
@@ -148,6 +150,8 @@ namespace Gamesim.Tests.PlayMode
             Action<HouseInteractionAnchor, Vector2> listen = (hovered, at) => { heard = hovered; hovers++; };
             player.FurnitureHovered += listen;
             cameraRig.SetReducedMotion(true);
+            Renderer shellPiece = null;
+            int shellPieceLayer = 0;
             try
             {
                 // A free move onto a room beside a piece of clickable furniture, the piece still in frame,
@@ -190,10 +194,15 @@ namespace Gamesim.Tests.PlayMode
                 Assert.That(heard, Is.SameAs(named), "Over " + prop + ", the hover names it.");
                 Assert.That(tip != null && tip.gameObject.activeInHierarchy, Is.True, "and says what a click does.");
                 Assert.That(tip.GetComponentInChildren<TMPro.TMP_Text>().text, Is.EqualTo(caption), "In the click's own words.");
-
-                // Held: the view is the room beside it, which leaves its room out. Nothing moves.
+                // Nothing moving and every room drawn: the hover does not pick again.
                 var view = camera.worldToCameraMatrix;
                 int before = hovers;
+                yield return null; yield return null;
+                Assert.That(camera.worldToCameraMatrix == view, Is.True, "The camera is still.");
+                Assert.That(hovers, Is.EqualTo(before), "Nothing changed under a still pointer over the whole house: no new pick.");
+
+                // Held: the view is the room beside it, which leaves its room out. Nothing moves.
+                before = hovers;
                 director.HoldRoomScope(owner);
                 yield return null; yield return null;
                 Physics.SyncTransforms();
@@ -201,24 +210,56 @@ namespace Gamesim.Tests.PlayMode
                 Assert.That(camera.cullingMask & propBit, Is.Zero, "The main camera leaves the " + RoomLayers.RoomIds[prop.Room] + " out.");
                 Assert.That(camera.worldToCameraMatrix == view, Is.True, "The camera has not moved.");
                 Assert.That(Vector2.Distance(mouse.position.ReadValue(), screen), Is.LessThan(.01f), "Nor has the pointer.");
-                Assert.That(hovers, Is.GreaterThan(before), "The hover picked again all the same: what the camera draws changed.");
+                Assert.That(hovers - before, Is.EqualTo(1), "The hover picked again all the same, once: what the camera draws changed.");
                 Assert.That(heard, Is.Null, "It passes over " + prop + ": no furniture under the pointer (D13).");
                 Assert.That(tip.gameObject.activeInHierarchy, Is.False, "and the words are gone.");
                 Assert.That(player.TryPointAt(HousePlayerController.ScreenRay(camera, screen), out var under), Is.True);
                 Assert.That(under.collider, Is.SameAs(floor.collider), "The hover's pick is the floor behind it, where a click there walks: " + under.collider.name + ".");
+                // Under a room view the hover looks again every frame, and says nothing new while nothing changes.
+                before = hovers;
+                yield return null; yield return null;
+                Assert.That(hovers, Is.EqualTo(before), "Held, with nothing changing under the pointer: no new word.");
+
+                // A piece of the prop gone to the shell (layer 0, where RS2a sends a placed piece that moves),
+                // the mask as it was: drawn in every view, so the prop is under the pointer again.
+                int heldMask = camera.cullingMask;
+                shellPiece = prop.Root.GetComponentsInChildren<Renderer>().First(renderer => renderer.enabled);
+                shellPieceLayer = shellPiece.gameObject.layer;
+                before = hovers;
+                shellPiece.gameObject.layer = 0;
+                yield return null; yield return null;
+                Assert.That(camera.cullingMask, Is.EqualTo(heldMask), "The mask has not changed.");
+                Assert.That(camera.worldToCameraMatrix == view, Is.True, "Nor has the camera.");
+                Assert.That(hovers - before, Is.EqualTo(1), "With a still pointer, a still camera and the same mask, the hover picked again once: "
+                    + shellPiece.name + " is drawn in every view now.");
+                Assert.That(heard, Is.SameAs(named), "and names " + prop + " again.");
+                Assert.That(tip.gameObject.activeInHierarchy, Is.True, "The words are back.");
+                // Back on its room's layer, the prop is hidden again.
+                before = hovers;
+                shellPiece.gameObject.layer = shellPieceLayer;
+                shellPiece = null;
+                yield return null; yield return null;
+                Assert.That(hovers - before, Is.EqualTo(1), "Hidden again, the hover picked again once.");
+                Assert.That(heard, Is.Null, "and names nothing.");
+                Assert.That(tip.gameObject.activeInHierarchy, Is.False, "The words are gone.");
 
                 // Released: the whole house, and the words come back where the pointer still is.
                 before = hovers;
                 director.Release(owner);
                 yield return null; yield return null;
                 Assert.That(director.ViewedRooms.IsWholeHouse, Is.True);
-                Assert.That(hovers, Is.GreaterThan(before), "Drawn again, the hover picks again.");
+                Assert.That(camera.worldToCameraMatrix == view, Is.True, "The camera has not moved.");
+                Assert.That(hovers - before, Is.EqualTo(1), "Drawn again, the hover picks again, once.");
                 Assert.That(heard, Is.SameAs(named), "and names it.");
                 Assert.That(tip.gameObject.activeInHierarchy, Is.True, "The words are back.");
                 Assert.That(tip.GetComponentInChildren<TMPro.TMP_Text>().text, Is.EqualTo(caption));
+                before = hovers;
+                yield return null; yield return null;
+                Assert.That(hovers, Is.EqualTo(before), "The whole house again and nothing moving: no new pick.");
             }
             finally
             {
+                if (shellPiece != null) shellPiece.gameObject.layer = shellPieceLayer;
                 player.FurnitureHovered -= listen;
                 director.Release(owner);
                 cameraRig.SetReducedMotion(false);

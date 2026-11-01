@@ -6,8 +6,9 @@ namespace Gamesim.Tests.EditMode
     /// <summary>
     /// The pick filter's rules (ROOM-SCOPE-PLAN §3.2 f, D13, RS2b) with no scene: a renderer is left out
     /// of what a camera draws only on a room layer its mask leaves out, whatever else the mask leaves
-    /// out; the hover picks again when, and only when, the rooms the camera draws change; and only a
-    /// collider on the furniture layer is drawn as the prop it hangs under. Plain C#, so it runs under the
+    /// out; under a still pointer the hover picks again when the rooms the camera draws change, and looks
+    /// again every frame while a room is left out; and only a collider on the furniture layer is drawn as
+    /// the prop it hangs under. Plain C#, so it runs under the
     /// editor's Mono without Unity. HouseScopePickTests reads the same off real colliders, and the
     /// PlayMode tests (EpisodePlayModeTests.RoomScopePicks) off the house's own furniture.
     /// </summary>
@@ -54,6 +55,20 @@ namespace Gamesim.Tests.EditMode
                 Assert.That(RoomLayers.SameRooms(kitchen, kitchen ^ (1 << bit)), Is.True, "Bit " + bit + " is no room's: the same rooms, no new pick.");
             for (int layer = RoomLayers.First; layer < RoomLayers.First + RoomLayers.Count; layer++)
                 Assert.That(RoomLayers.SameRooms(kitchen, kitchen ^ (1 << layer)), Is.False, "The " + RoomLayers.RoomOf(layer) + "'s bit alone changed: a new pick.");
+        }
+
+        [Test]
+        public void UnderARoomViewTheHoverLooksAgainUnderAStillPointer()
+        {
+            Assert.That(RoomLayers.DrawsEveryRoom(Everything), Is.True, "The whole house: the scope hides nothing, and a still pointer is over what it was.");
+            Assert.That(RoomLayers.DrawsEveryRoom(RoomLayers.Mask), Is.True, "Bits 20 to 27 alone are every room.");
+            foreach (int bit in new[] { 0, HouseLayers.Furniture, 19, 28, 30, 31 })
+                Assert.That(RoomLayers.DrawsEveryRoom(Everything & ~(1 << bit)), Is.True, "Bit " + bit + " out is no room's: every room is still drawn (a capture's guard bit, the tests' 30).");
+            for (int room = 0; room < RoomLayers.Count; room++)
+                Assert.That(RoomLayers.DrawsEveryRoom(ViewOf(room)), Is.False,
+                    "Viewing the " + RoomLayers.RoomIds[room] + ", seven rooms are out: what the camera draws can change under a still pointer, so the hover looks again.");
+            for (int layer = RoomLayers.First; layer < RoomLayers.First + RoomLayers.Count; layer++)
+                Assert.That(RoomLayers.DrawsEveryRoom(Everything & ~(1 << layer)), Is.False, "The " + RoomLayers.RoomOf(layer) + " alone left out is a room view.");
         }
 
         [Test]

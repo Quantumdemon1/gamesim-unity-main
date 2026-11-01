@@ -1879,6 +1879,37 @@ It shows every seated fact. That includes the three nomination facts, which shap
 
 **Layout:** label boxes at 1.3× their font, captures at Standard and Largest text, and nothing appended to an existing caption.
 
+**As built in S5** (2026-10-31, on `20f665b7`). Where the code asked for it, the build keeps the intent and differs in the letter:
+- **Two more readers in `KnownBlocs`,** so the subset pins every word the player sees: `ProfileEmptyLine(s, id)` gives the profile's empty line, "this season" when a seated fact is between the houseguest and the player and the old words otherwise, and `PlayerRecord(s)` gives the diary row's value and note. The old empty line's words move into `KnownBlocs.NothingBetweenYouCopy` unchanged.
+- **The status,** as `PastGame.Status`, shared by the profile and the card:
+  - a public split comes first, because it can only happen while both are in the house;
+  - then a departure: evicted, on the jury or removed. When both have left, the one the record shows leaving first (`JuryHouseRead.LeftWeek`) is named;
+  - the winner and the runner-up are in the house to the end;
+  - a status the player made names the player by the card's first name, as the act does ("Week 1: Cody nominated Tyler").
+- **The card** (`EpisodeDirector.PastGameCard`):
+  - its headline is the two names, as a suspected card's is;
+  - its lines are the act, then the status with its first letter capitalised;
+  - under each face is the houseguest's status word, or "You" for the player, never a reading;
+  - its eyebrow is drawn in brass;
+  - `EpisodeHud.PactCard` takes the face prefix as an optional last parameter;
+  - `PastGameCardPrefix` and `PastGameFacePrefix` sit beside `SuspectedCardPrefix` in `EpisodeHud`, and `PastGamesHeading` with its name, note and note copy beside the page's other headings in `EpisodeDirector`.
+- **Item 4** adds no code. The house's reactions are the existing lines, read with no new term, and their pins stand where they are:
+  - the agenda read "X wants Cody out, with Y", in its own words at value 4 in `CounterBlocTests.AnOutsidePactHuntsTheHubFirst`;
+  - the hunt a listen-in can hear, as an act in `CounterBlocTests.AnOutsideHeadOfHouseholdPutsABlocMemberUpOverAnEqualOutsider`. Its clause is `NpcActKinds.Clause`'s, pinned where it always was;
+  - a grown pact's whisper, in `CounterPactGrowthTests.AGrownPactShedsASourJoinerWhileKeptToItselfAndOtherwiseEndsWhole` and `AllianceLeakTests`;
+  - invitations, through the existing offer pass: `CounterPactGrowthTests.AnInvitationNeverTakesAHouseguestsFourPastFour`, and the player taken into an outsiders' pact in `CounterBlocTests.AnOutsidePactNeverHuntsAPactMate`.
+- **The diary** in week one's free time opens on its pending tab, because the free time's actions are the player's to decide. The fourth row is on the record tab, "Your record", after the room's three.
+- **Tests:**
+  - `PastGamesReadTests`, 10 cases, in the subset and in Unity's EditMode assembly;
+  - `EpisodePlayModeTests.PastGames`, 4 PlayMode tests in both PlayMode builds:
+    - the page, with a suspected card of three faces and one of four, at every text size;
+    - the profile at every text size, and the diary's record tab at Standard and Largest text;
+    - the caption audit: a Regular season and a season held at 2 show nothing new, and the same season at `Latest` has the same controls by caption;
+    - the cast screen's All-Stars season, as Will.
+  - Captures, in a batch run: `past-games-suspected-three`, `past-games-suspected-four`, `past-games-record`, `past-games-profile` and `past-games-diary`, each at Standard and with `-largest`.
+  - **The CastSelect audit:** no `EpisodePlayModeTests.CastSelect` test reads the profile, the alliances page or the diary, so none changes. Nor does any other PlayMode test that builds an All-Stars season: `OpeningGrounds` reads the arrival line only. The cast-screen test above is the audit's new case.
+  - The PlayMode tests are compiled offline, with and without UMA. Their Unity run is the lead's, never beside S4's lab run, and so is the standalone verify walk §14.I asks for: the stress house enrols.
+
 ### 14.G Versioning
 
 **Constants** in `Simulation/AlumniHistories.cs`:
@@ -2122,7 +2153,7 @@ Every new test uses only public members, so the new files compile in Unity's Edi
 | S3 | Counter-blocs, value 4 | `Simulation/AlumniHistories.cs`; `Simulation/AlumniKnownBlocs.cs`; `Simulation/NpcAlliances.cs:78-85`; `Simulation/NpcAgendas.cs:54-59` | Subset (fixtures) |
 | S3b | Growing pacts, value 5 (14.L.J) | `Simulation/AlumniHistories.cs`; `Simulation/AlumniKnownBlocs.cs`; `Simulation/NpcAlliances.cs`; `Simulation/NpcDeals.cs:143-150`; `Simulation/NpcSocialActions.cs:155,206-210`; `Simulation/EpisodeEngine.Strategy.cs:249`; `Tests/EditMode/CounterPactGrowthTests.cs` + meta; four test helpers made internal | Subset (fixtures); the EditMode-only pins through the Mono harness |
 | S4 | Measurement and the record | `Tests/EditMode/BalanceLabAlumniReport.cs`; `Tests/EditMode/BalanceLab.cs` (the pact watch); `Tests/EditMode/BalanceLabParts.cs`; new `Tests/EditMode/BalanceLabAlumniReportTests.cs` + meta (dotnet only); this plan's edits (14.A) | Subset (fixtures); a smoke run; the lab, alone; the report goes to the owner. Built 2026-10-31, with its review's fixes (14.H's as-built note) |
-| S5 | Player-facing (after S2) | `Simulation/AlumniKnownBlocs.cs` (readers); `Runtime/Episode/EpisodeDirector.Journal.cs:455-490`; `Runtime/Episode/EpisodeDirector.Alliances.cs:9-53`; `Runtime/Episode/EpisodeHud.Alliances.cs`; `Runtime/Episode/EpisodeDirector.DiaryRoom.cs:475-487` | Readers in the subset; PlayMode captures; caption audit |
+| S5 | Player-facing (after S2) | `Simulation/AlumniKnownBlocs.cs` (readers); `Runtime/Episode/EpisodeDirector.Journal.cs:455-490`; `Runtime/Episode/EpisodeDirector.Alliances.cs:9-53`; `Runtime/Episode/EpisodeHud.Alliances.cs`; `Runtime/Episode/EpisodeDirector.DiaryRoom.cs:475-487` | Readers in the subset; PlayMode captures; caption audit. Built 2026-10-31 (14.F's as-built note); the PlayMode tests are compiled offline, and their Unity run is the lead's |
 | S6 | Freeze the latest value kept: 5, or 4 if growth is withdrawn | The alumni-5 fixture (alumni-4 if growth is withdrawn), its manifest row, the floors | `OldSaveAcceptanceTests` |
 
 - **Order:** S1, S2, S3, S3b, S4. S5 needs S2. S4's all-core lab run and S5's Unity runs never overlap; each waits for the other to exit. S6 comes last, after the owner has read S4's report.

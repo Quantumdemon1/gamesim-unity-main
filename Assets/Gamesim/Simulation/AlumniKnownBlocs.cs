@@ -38,6 +38,12 @@ namespace Gamesim.Simulation
     /// pacts grow past two"), the live pairs also bound how far an outsider pact of houseguests may grow
     /// (<see cref="CounterPactBound"/>), and nobody in a live pair (<see cref="InLivePair"/>) joins or sponsors one.</para>
     ///
+    /// <para>From alumni rules 3 the player is shown the same public record (§14.F): a houseguest's career and their seated
+    /// past games on their profile (<see cref="ProfileLines"/>, <see cref="ProfileEmptyLine"/>), the seated shared
+    /// alliances on the alliances page (<see cref="PastGames"/>), and the player's own record in the diary
+    /// (<see cref="PlayerRecord"/>). The edition's words verbatim and this season's public ceremonies only: never a
+    /// number, a feeling or a present-tense pact, and nothing below <see cref="AlumniRules.Reputation"/>.</para>
+    ///
     /// <para>Private things never end a known pair in the house's eyes: scores, receipts, deals (the final two included),
     /// ballots, a pact's end. A departure does, and so does one of the two putting the other up
     /// (<see cref="AlumniLoyalty.PublicSplitWeek"/>, this week's block included). Pure readers of the season and the
@@ -227,6 +233,196 @@ namespace Gamesim.Simulation
                 }
             return best;
         }
+
+        // ------------------------------------------------------------------ what the player is shown (§14.F)
+
+        /// <summary>The profile line that carries a houseguest's career record (§14.F.1): this, then the edition's <see cref="AlumniCareerRecord.Record"/>.</summary>
+        public const string BeforeThisSeasonPrefix = "Before this season: ";
+
+        /// <summary>The lead-in of a past game between the houseguest and the player, on the player's card (§14.F.1); the fact's <see cref="AlumniPairFact.Act"/> follows.</summary>
+        public const string BetweenYouPrefix = "Between you, before this season: ";
+
+        /// <summary>A shared alliance's status while both its houseguests are in the house and neither has put the other up (§14.F.1).</summary>
+        public const string BothInTheHouse = "both in the house";
+
+        /// <summary>What sits between a shared alliance's act and its status on a profile line.</summary>
+        public const string StatusSeparator = " · ";
+
+        /// <summary>The profile's line when the player and a houseguest have nothing between them this season, as it always read.</summary>
+        public const string NothingBetweenYouCopy = "No promises, alliances or declarations between you.";
+
+        /// <summary>The same line for a houseguest who played a past game with the player (§14.F.1): the past is on the record, this season holds nothing yet.</summary>
+        public const string NothingBetweenYouThisSeasonCopy = "No promises, alliances or declarations between you this season.";
+
+        /// <summary>
+        /// One seated shared alliance of past games, as the alliances page shows it (§14.F.2): the fact's id, the season it
+        /// was played in, its act verbatim, the two houseguests on its cards, and its status this season - live or not.
+        /// </summary>
+        public sealed class PastGame
+        {
+            internal PastGame(string factId, int season, string act, string firstId, string secondId, string status)
+            {
+                FactId = factId; Season = season; Act = act; FirstId = firstId; SecondId = secondId; Status = status;
+            }
+
+            public string FactId { get; }
+            /// <summary>The Big Brother season the act happened in.</summary>
+            public int Season { get; }
+            /// <summary>The edition's words for the act, verbatim.</summary>
+            public string Act { get; }
+            /// <summary>The houseguest on the fact's first card.</summary>
+            public string FirstId { get; }
+            /// <summary>The houseguest on the fact's second card.</summary>
+            public string SecondId { get; }
+            /// <summary>
+            /// The pair this season, from the public record: <see cref="BothInTheHouse"/>, "Week N: {first} nominated
+            /// {first}" for the first week one put the other up, or "{first} has left the house".
+            /// </summary>
+            public string Status { get; }
+        }
+
+        /// <summary>The player's own record in the diary (§14.F.3): how the career reads, and the record and the player's past games in the edition's words.</summary>
+        public sealed class PastRecord
+        {
+            internal PastRecord(string value, string note) { Value = value; Note = note; }
+
+            /// <summary>"Winner", "Finalist" or "Played".</summary>
+            public string Value { get; }
+            /// <summary>The career record, then the act of every seated past game the player's card was part of.</summary>
+            public string Note { get; }
+        }
+
+        /// <summary>
+        /// What a houseguest's profile adds after its ceremony line (§14.F.1), from alumni rules 3: their career record after
+        /// <see cref="BeforeThisSeasonPrefix"/>, when they are an identity-intact, unique alumnus; then every seated past game
+        /// that involves them, in fact-id order, as the edition's act - after <see cref="BetweenYouPrefix"/> when the other
+        /// card is the player's - and for a shared alliance its status (<see cref="PastGame.Status"/>) after
+        /// <see cref="StatusSeparator"/>. The nomination facts show too, with no status: they shape their holders' trust,
+        /// and they are on the record. Empty below <see cref="AlumniRules.Reputation"/>, without the season's edition, and
+        /// for a newcomer with no past game.
+        /// </summary>
+        public static List<string> ProfileLines(EpisodeState s, string id)
+        {
+            var lines = new List<string>();
+            var edition = Shown(s);
+            if (edition == null || id == null) return lines;
+            var record = RecordOf(s, edition, id);
+            if (record != null) lines.Add(BeforeThisSeasonPrefix + record.Record);
+            foreach (var pair in AlumniHistories.SeatedPairs(s, edition))
+            {
+                if (pair.FirstId != id && pair.SecondId != id) continue;
+                string other = pair.FirstId == id ? pair.SecondId : pair.FirstId;
+                string line = (other == s.playerId ? BetweenYouPrefix : "") + pair.Fact.Act;
+                lines.Add(pair.Fact.Standing > 0 ? line + StatusSeparator + Status(s, pair) : line);
+            }
+            return lines;
+        }
+
+        /// <summary>
+        /// The profile's line when the player holds no promise, alliance or declaration with the houseguest (§14.F.1):
+        /// <see cref="NothingBetweenYouThisSeasonCopy"/> when a seated past game is between them, from alumni rules 3;
+        /// otherwise, and at every value below, <see cref="NothingBetweenYouCopy"/>, as it always read.
+        /// </summary>
+        public static string ProfileEmptyLine(EpisodeState s, string id)
+        {
+            var edition = Shown(s);
+            if (edition == null || id == null || id == s.playerId) return NothingBetweenYouCopy;
+            foreach (var pair in AlumniHistories.SeatedPairs(s, edition))
+                if ((pair.FirstId == id && pair.SecondId == s.playerId) || (pair.FirstId == s.playerId && pair.SecondId == id))
+                    return NothingBetweenYouThisSeasonCopy;
+            return NothingBetweenYouCopy;
+        }
+
+        /// <summary>
+        /// The public record of past games the alliances page shows (§14.F.2), from alumni rules 3: one entry for every
+        /// seated shared alliance (<see cref="AlumniPairFact.Standing"/> above 0), whether or not it is still a known pair,
+        /// in fact-id order. Empty below <see cref="AlumniRules.Reputation"/>, without the season's edition, and when no
+        /// shared alliance has both its cards seated - the page then has no such section. A separate reader of the page's
+        /// own (<see cref="AllianceRead.Read"/>), which it leaves as it is.
+        /// </summary>
+        public static List<PastGame> PastGames(EpisodeState s)
+        {
+            var games = new List<PastGame>();
+            var edition = Shown(s);
+            if (edition == null) return games;
+            foreach (var pair in AlumniHistories.SeatedPairs(s, edition))
+                if (pair.Fact.Standing > 0)
+                    games.Add(new PastGame(pair.Fact.Id, pair.Fact.Season, pair.Fact.Act, pair.FirstId, pair.SecondId, Status(s, pair)));
+            return games;
+        }
+
+        /// <summary>
+        /// The diary's "Before this season" row for a player on an identity-intact, unique alumni card (§14.F.3), from
+        /// alumni rules 3: the career as "Winner", "Finalist" or "Played", and as its note the record and the act of every
+        /// seated past game the player's card was part of, in fact-id order. Null below
+        /// <see cref="AlumniRules.Reputation"/>, without the season's edition, for a newcomer and for a renamed or shared card.
+        /// </summary>
+        public static PastRecord PlayerRecord(EpisodeState s)
+        {
+            var edition = Shown(s);
+            if (edition == null || s.playerId == null) return null;
+            var record = RecordOf(s, edition, s.playerId);
+            if (record == null) return null;
+            var note = new List<string> { record.Record };
+            foreach (var pair in AlumniHistories.SeatedPairs(s, edition))
+                if (pair.FirstId == s.playerId || pair.SecondId == s.playerId) note.Add(pair.Fact.Act);
+            return new PastRecord(CareerWord(record.Career), string.Join(" ", note));
+        }
+
+        /// <summary>The season's edition when the player is shown the past games, from alumni rules 3; null otherwise.</summary>
+        private static AlumniEdition Shown(EpisodeState s) =>
+            s?.contestants != null && AlumniRules.At(s, AlumniRules.Reputation) ? AlumniHistories.EditionOf(s) : null;
+
+        /// <summary>The career record of the alumnus a houseguest is (<see cref="AlumniHistories.Seated"/>'s rule); null for a newcomer, a renamed card and two on one card.</summary>
+        private static AlumniCareerRecord RecordOf(EpisodeState s, AlumniEdition edition, string id)
+        {
+            foreach (var seat in AlumniHistories.Seated(s, edition))
+                if (seat.Value == id) return edition.Career(seat.Key);
+            return null;
+        }
+
+        private static string CareerWord(AlumniCareer career)
+        {
+            switch (career)
+            {
+                case AlumniCareer.Winner: return "Winner";
+                case AlumniCareer.Finalist: return "Finalist";
+                default: return "Played";
+            }
+        }
+
+        /// <summary>
+        /// A seated shared alliance this season, from the public record (§14.F.1): the first week one of its two put the
+        /// other up (<see cref="AlumniLoyalty.PublicSplitWeek"/>, this week's block included) as "Week N: {first} nominated
+        /// {first}"; otherwise, when one has left the house, "{first} has left the house" - the one who left first, by the
+        /// week the record gives, when both have; otherwise <see cref="BothInTheHouse"/>. A split comes first: it can only
+        /// happen while both are in. The final two are in the house to the end. Nothing private reads here.
+        /// </summary>
+        private static string Status(EpisodeState s, AlumniHistories.SeatedPair pair)
+        {
+            int split = AlumniLoyalty.PublicSplitWeek(s, pair.FirstId, pair.SecondId, includeThisWeek: true);
+            if (split != 0)
+            {
+                bool firstPutUp = AlumniLoyalty.PutUpWeeks(s, pair.FirstId, pair.SecondId, includeThisWeek: true).Contains(split);
+                string by = firstPutUp ? pair.FirstId : pair.SecondId, of = firstPutUp ? pair.SecondId : pair.FirstId;
+                return "Week " + split + ": " + FirstName(s, by) + " nominated " + FirstName(s, of);
+            }
+            bool firstLeft = HasLeft(s, pair.FirstId), secondLeft = HasLeft(s, pair.SecondId);
+            if (!firstLeft && !secondLeft) return BothInTheHouse;
+            string leaver = !secondLeft ? pair.FirstId : !firstLeft ? pair.SecondId
+                : (JuryHouseRead.LeftWeek(s, pair.SecondId) ?? int.MaxValue) < (JuryHouseRead.LeftWeek(s, pair.FirstId) ?? int.MaxValue) ? pair.SecondId
+                : pair.FirstId;
+            return FirstName(s, leaver) + " has left the house";
+        }
+
+        /// <summary>Out of the house: evicted, on the jury or removed. The winner and the runner-up stayed to the end.</summary>
+        private static bool HasLeft(EpisodeState s, string id)
+        {
+            var status = s.Find(id)?.status;
+            return status == ContestantStatus.Evicted || status == ContestantStatus.Jury || status == ContestantStatus.Expelled;
+        }
+
+        private static string FirstName(EpisodeState s, string id) => CharacterNames.FirstName(s.Find(id)?.name ?? id);
 
         /// <summary>
         /// §14.E.1's <c>counted(a, b)</c>: the live pairs that hold nobody in <c>Near(a) ∪ Near(b)</c> (<see cref="Near"/>:

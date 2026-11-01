@@ -99,7 +99,10 @@
 # S4 (the 14.H report and the pact watch, section 14) adds no EditMode case: BalanceLabAlumniReportTests is compiled
 # out of Unity, as the balance lab is. The Lister under Unity's Mono listed 9453 (2026-10-31); not yet measured in Unity.
 # The S4 review's 3 cases are in the same file, so they add none either: the Lister listed 9453 again (2026-10-31).
-Gamesim.EditModeTests 9453
+# 9463 = 9453 + S5's 10 shared PastGamesReadTests cases (what the player is shown of the past games, section 14.F):
+# listed by the Lister under Unity's Mono (2026-10-31), 9463, and the affected classes run there; not yet measured in
+# Unity.
+Gamesim.EditModeTests 9463
 # The UMA-free build. 1215 = 1236, the count after the consolidation's lanes (S2a, S2b, S4a), less the 7
 # farewell probes moved to Gamesim.DiagnosticsPlayModeTests and the 14 farewell readiness tests that now
 # compile only under GAMESIM_UMA (judged on the UMA cast); 1230 = 1215 + S2d's 7, S4b's 2, S4c's 2 and
@@ -135,7 +138,10 @@ Gamesim.EditModeTests 9453
 # 1334 counted: the full NoUMA run at 83c3273c (2026-10-26), 1334 of 1334, no re-runs.
 # 1353 = main's 1345 + D1's 8: disjoint cases, so the floor is their sum.
 # The All-Star histories' S4 (2026-10-31) adds no PlayMode case: 1353 stands, not yet measured in Unity.
-Gamesim.PlayModeTests 1353
+# 1357 = 1353 + the All-Star histories' S5's 4 shared EpisodePlayModeTests.PastGames tests (section 14.F's page,
+# profile and diary, 14.L.J's three-face and four-face cards, the caption audit and the cast screen's season): compiled
+# offline with and without UMA (2026-10-31); not yet measured in Unity.
+Gamesim.PlayModeTests 1357
 # The UMA build of the same assembly, read by a plan built without -WithoutUma. 1281 = the 1241 above + the
 # 40 tests that compile only under GAMESIM_UMA, as run at r1 (2026-10-16): in EpisodePlayModeTests,
 # GroundedFarewell 11, Creator 9, HouseLife 8, Emotes 3, OpeningCaptures 2, and one each in CreatorEntry,
@@ -157,7 +163,9 @@ Gamesim.PlayModeTests 1353
 # 1374 counted: the full UMA-build run at 83c3273c (2026-10-26), 1374 of 1374, in one process with the MCP bridge
 # off, no re-runs; Gamesim.Uma.PlayModeTests 129 of 129 in the same set.
 # 1393 = main's 1385 + D1's same 8: disjoint cases, so the floor is their sum.
-Gamesim.PlayModeTests.UmaBuild 1393
+# 1397 = 1393 + the All-Star histories' S5's same 4 shared tests: compiled offline with UMA (2026-10-31); not yet
+# measured in Unity.
+Gamesim.PlayModeTests.UmaBuild 1397
 # The UMA bodies: runs only where the GAMESIM_UMA define is set (the working tree and the D: copy).
 # 82 = the 89 run on 2026-10-15, less the 7 farewell probes moved to Gamesim.Uma.DiagnosticsPlayModeTests;
 # 85 = 82 + the 3 farewell readiness decision tests (UmaFarewellReadinessDecisionPlayModeTests, 2026-10-16);
@@ -241,4 +249,6 @@ Gamesim.Uma.DiagnosticsPlayModeTests 10
 # 16423 = 16420 + the S4 review's 3 BalanceLabAlumniReportTests cases (the known-pair rows and who left a grown pact,
 # the pooled ratios and McNemar's call, the report built from synthetic seasons): what dotnet test
 # Tools/SimulationTests ran (2026-10-31), 16423 of 16423.
-Gamesim.SimulationTests 16423
+# 16433 = 16423 + S5's 10 PastGamesReadTests cases (what the player is shown of the past games, section 14.F): what
+# dotnet test Tools/SimulationTests ran (2026-10-31), 16433 of 16433.
+Gamesim.SimulationTests 16433

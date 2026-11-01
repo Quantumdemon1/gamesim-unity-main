@@ -28,6 +28,13 @@ namespace Gamesim.Episode
 
         /// <summary>One face on a pact's card, named for the houseguest.</summary>
         public const string PactFacePrefix = "Pact face · ";
+
+        /// <summary>
+        /// A card of the public record of past games (ALL-STAR-HISTORIES-PLAN §14.F.2), named for its
+        /// fact's id ("Past game · bb16-hitmen"), and one of its faces, named for the houseguest: names
+        /// of their own, so no count of the pacts' cards or faces ever takes one in.
+        /// </summary>
+        public const string PastGameCardPrefix = "Past game · ", PastGameFacePrefix = "Past game face · ";
         /// <summary>The page's two empty states, by name.</summary>
         public const string NoAlliancesName = "No alliances", NoSuspectedName = "No known alliances";
 
@@ -70,9 +77,11 @@ namespace Gamesim.Episode
         /// <summary>
         /// One pact: the eyebrow in the card's tint, the headline, the members as faces in rows that
         /// wrap to the page's width - each with the word under the name and the line under that -
-        /// and then the card's lines of record, each wrapped to as many lines as it needs.
+        /// and then the card's lines of record, each wrapped to as many lines as it needs. Each face is
+        /// named <paramref name="facePrefix"/> and the houseguest's name.
         /// </summary>
-        public RectTransform PactCard(string name, string eyebrow, Color eyebrowTint, string headline, IList<PactFace> faces, IList<string> lines)
+        public RectTransform PactCard(string name, string eyebrow, Color eyebrowTint, string headline, IList<PactFace> faces, IList<string> lines,
+            string facePrefix = PactFacePrefix)
         {
             if (content == null) return null;
             float s = FontScale, width = ContentWidth(), pad = 20f * s, inner = width - 2f * pad;
@@ -100,7 +109,7 @@ namespace Gamesim.Episode
                 {
                     var face = faces[i];
                     float x = pad + (i % columns) * (cell + gap), top = y + (i / columns) * (height + gap);
-                    var holder = new GameObject(PactFacePrefix + (face.Actor != null ? face.Actor.name : ""), typeof(RectTransform)).GetComponent<RectTransform>();
+                    var holder = new GameObject(facePrefix + (face.Actor != null ? face.Actor.name : ""), typeof(RectTransform)).GetComponent<RectTransform>();
                     holder.SetParent(card, false);
                     Anchor(holder, new Vector2(0, 1), new Vector2(0, 1), new Vector2(x, -top), new Vector2(cell, height));
                     var rim = HudPrimitives.Portrait(holder, face.Actor != null ? CharacterPortraits.Get(face.Actor) : null,

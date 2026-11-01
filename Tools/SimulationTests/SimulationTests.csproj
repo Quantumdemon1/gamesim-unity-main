@@ -299,6 +299,8 @@
     <Compile Include="$(EditMode)CounterBlocTests.cs" />
     <!-- ALL-STAR-HISTORIES-PLAN §14.L S3b: alumni rules 5, outsider pacts that grow past two. -->
     <Compile Include="$(EditMode)CounterPactGrowthTests.cs" />
+    <!-- ALL-STAR-HISTORIES-PLAN §14.F S5: what the player is shown of the past games, from alumni rules 3. -->
+    <Compile Include="$(EditMode)PastGamesReadTests.cs" />
     <Compile Include="$(EditMode)CharacterDraftTests.cs" />
     <Compile Include="$(EditMode)CharacterNamesTests.cs" />
     <Compile Include="$(EditMode)DealResolutionTests.cs" />

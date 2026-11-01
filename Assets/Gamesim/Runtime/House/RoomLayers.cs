@@ -64,6 +64,21 @@ namespace Gamesim.House
 
         public static bool IsRoomLayer(int layer) => layer >= First && layer < First + Count;
 
+        /// <summary>
+        /// Whether a camera with this culling mask draws a renderer on this layer, as the room scope reads
+        /// it (§3.2 f, D13): not on a room layer the mask leaves out; on every other layer yes, whatever the
+        /// mask says, because the scope hides things only by moving them to a room layer. The pick filter
+        /// (<see cref="HouseScopePick"/>) asks it of every renderer a hit's owner has drawing.
+        /// </summary>
+        public static bool Draws(int mask, int layer) => !IsRoomLayer(layer) || (mask & (1 << layer)) != 0;
+
+        /// <summary>
+        /// Whether two culling masks draw the same rooms: bits 20 to 27 alike, whatever the rest (a
+        /// capture's guard bit, the tests' layer 30). The hover picks again when they differ (RS2b), since
+        /// what the camera draws is what the pointer can point at.
+        /// </summary>
+        public static bool SameRooms(int mask, int other) => ((mask ^ other) & Mask) == 0;
+
         /// <summary>What <see cref="ScopeMask"/> keeps while no scope has a camera's room bits: nothing to write back.</summary>
         public const int NothingKept = -1;
 

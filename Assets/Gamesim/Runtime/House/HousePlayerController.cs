@@ -323,17 +323,23 @@ namespace Gamesim.House
         public event System.Action<HouseInteractionAnchor, Vector2> FurnitureHovered;
         private Vector2 lastHover = new Vector2(float.NaN, float.NaN);
         private Matrix4x4 lastHoverView;
+        private int lastHoverMask;
 
         private void TickHover(Mouse mouse)
         {
             if (FurnitureHovered == null || viewCamera == null || mouse == null) return;
             var screen = mouse.position.ReadValue();
-            // A still pointer over a moving camera is pointing at something new.
+            // A still pointer over a moving camera is pointing at something new, and so is one over a
+            // still camera whose rooms the room scope changes (RS2b, §3.2 f): a room taken out of the
+            // mask takes its furniture out from under the pointer, and one put back brings it back.
             var view = viewCamera.worldToCameraMatrix;
-            if (screen == lastHover && view == lastHoverView) return;
-            lastHover = screen; lastHoverView = view;
+            int mask = viewCamera.cullingMask;
+            if (screen == lastHover && view == lastHoverView && RoomLayers.SameRooms(mask, lastHoverMask)) return;
+            lastHover = screen; lastHoverView = view; lastHoverMask = mask;
             HouseInteractionAnchor under = null;
-            // Past anything the room scope does not draw (RS4, §3.2 f): a hidden body is not under the pointer.
+            // Past anything the room scope does not draw (RS4, RS2b, §3.2 f): a hidden body is not under
+            // the pointer, nor is hidden furniture, whose collision proxy is passed over for what stands
+            // behind it - the floor, which says nothing.
             if (!Gamesim.Presentation.CeremonyOverlays.OnScreen
                 && !(EventSystem.current != null && EventSystem.current.IsPointerOverGameObject())
                 && TryPointAt(ScreenRay(viewCamera, screen), out var hit))
@@ -344,9 +350,10 @@ namespace Gamesim.House
         /// <summary>
         /// What the pointer or a click on a ray lands on: the one pick the hover and the click both
         /// make, so what the hover says a click does is what it does. Pick, not Sight: furniture
-        /// included. Past anything the room scope does not draw (RS4, §3.2 f, D13): a hidden houseguest
-        /// is passed over for whatever stands behind them, the floor included; with the whole house
-        /// drawn, <c>Physics.Raycast</c>'s hit.
+        /// included. Past anything the room scope does not draw (RS4, RS2b, §3.2 f, D13): a hidden
+        /// houseguest, or a piece of furniture whose room the main camera leaves out (its collision proxy
+        /// is its prop's, <see cref="HouseScopePick.OwnerOf"/>), is passed over for whatever stands behind
+        /// it, the floor included; with the whole house drawn, <c>Physics.Raycast</c>'s hit.
         /// </summary>
         public bool TryPointAt(Ray ray, out RaycastHit hit)
             => HouseScopePick.Raycast(viewCamera, ray, 500f, HouseLayers.Pick, out hit);
@@ -408,9 +415,10 @@ namespace Gamesim.House
         public void DispatchClick(Ray ray, Vector2 screen)
         {
             if (!InputEnabled) return;
-            // What the room scope does not draw cannot be clicked (RS4, §3.2 f, D13): a hidden houseguest,
-            // seated or standing, is passed over, and the click goes on to whatever is behind them - the
-            // floor, which walks the player there. With the whole house drawn, the click as it always was.
+            // What the room scope does not draw cannot be clicked (RS4, RS2b, §3.2 f, D13): a hidden
+            // houseguest, seated or standing, and hidden furniture are passed over, and the click goes on to
+            // whatever is behind them - the floor, which walks the player there; the furniture pick below
+            // reads only what the camera draws. With the whole house drawn, the click as it always was.
             if(HouseSeatPresentation.TryPickNpc(gameObject.scene,ray,viewCamera,out var seatedGuest))
             {
                 if (!Select(seatedGuest)) CameraRig?.FocusSubject(seatedGuest.transform);

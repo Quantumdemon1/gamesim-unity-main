@@ -10,7 +10,11 @@ using UnityEngine.UI;
 
 namespace Gamesim.House
 {
-    /// <summary>Public house information, projected once per committed state, on the actual authored display faces.</summary>
+    /// <summary>
+    /// Public house information, projected once per committed state, on the actual authored display faces.
+    /// The display pieces it moves are placed on their room's layer in the same call, and every label it
+    /// mounts carries its face's layer, so a face and its words are drawn together (ROOM-SCOPE-PLAN RS2a).
+    /// </summary>
     public sealed class HousePublicDisplays : MonoBehaviour
     {
         public const string PhotoName="HoH photo", PlaqueName="Reward plaque", YardName="Yard display";
@@ -162,6 +166,9 @@ namespace Gamesim.House
                     labels[renderer]=label;
                 }
                 label.text=renderer.name==YardName?YardText:"HEAD OF HOUSEHOLD\n"+(hoh?.name??"Not yet decided");
+                // The words on the face's layer: drawn exactly where the face is (RS2a).
+                var mounted=label.canvas!=null?label.canvas.rootCanvas.transform:label.transform;
+                HouseRoomScope.CarryLayer(renderer.gameObject,mounted);
                 // Projection continues while the canvas is hidden; returning to the yard reads
                 // the latest committed public state rather than the state before the board.
                 if(competitionBoardDrawn && renderer.name==YardName)HideYardCanvas(label);
@@ -227,7 +234,8 @@ namespace Gamesim.House
             float inward=roomSide*wallPlane+capProud+finishLift-nearDepth;
             if(inward>.0001f)offset.z=roomSide*inward;
             if(offset==Vector3.zero)return;
-            foreach(var member in members)member.transform.position+=offset;
+            // Each moved piece on the layer of the room it now hangs in, in the move's own call (RS2a).
+            foreach(var member in members){member.transform.position+=offset;HouseRoomScope.PlaceDressing(member.transform);}
         }
 
         private static bool PhysicalBounds(Transform target,out Bounds bounds)

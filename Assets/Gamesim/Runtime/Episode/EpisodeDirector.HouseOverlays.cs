@@ -77,8 +77,11 @@ namespace Gamesim.Episode
         /// </summary>
         private void PlaceHouseOverlaysLate()
         {
-            // First, what the room scope draws (RS4): the bodies and the main camera's mask for this
-            // frame's render, after the camera has moved; a plate it hides is down before it is measured.
+            // First, what the room scope draws: the house's dressing kept on its rooms' layers (RS2a: a
+            // piece that moved to the shell, a piece first drawn to its room), then the bodies and the
+            // main camera's mask for this frame's render (RS4), after the camera has moved; a plate it
+            // hides is down before it is measured.
+            KeepRoomDressing();
             ApplyRoomScopeDrawing();
             if (housemates == null) return;
             var eye = cameraRig != null ? cameraRig.ViewCamera : null;

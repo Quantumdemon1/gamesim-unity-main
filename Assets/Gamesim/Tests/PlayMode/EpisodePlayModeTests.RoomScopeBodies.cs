@@ -270,8 +270,9 @@ namespace Gamesim.Tests.PlayMode
                 Assert.That(Rs4DrawnNow(npc.transform, out string why), Is.True, npc.Id + ", released: " + why);
                 Assert.That(npc.BodyHidden, Is.False);
             }
-            Assert.That(SceneComponents<Renderer>().Where(r => RoomLayers.IsRoomLayer(r.gameObject.layer)).Select(r => r.name).ToArray(), Is.Empty,
-                "Released, no renderer stands on a room layer.");
+            // The house's own dressing stands on its rooms' layers from load (RS2a); a body's never does once drawn.
+            Assert.That(SceneComponents<Renderer>().Where(r => RoomLayers.IsRoomLayer(r.gameObject.layer) && HouseRoomScope.IsBody(r.transform))
+                .Select(r => r.name).ToArray(), Is.Empty, "Released, no body's renderer stands on a room layer.");
             Assert.That(director.MainCameraRoomBitsTaken, Is.Zero);
             Assert.That(cameraRig.ViewCamera.cullingMask & RoomLayers.Mask, Is.EqualTo(RoomLayers.Mask), "The main camera draws every room layer again.");
             Rs4NoColliderOnARoomLayer(guests, roots, "released");
@@ -764,7 +765,10 @@ namespace Gamesim.Tests.PlayMode
         /// <summary>
         /// The live feed draws the shell and its own room (§3.2 c, D10): its camera's mask holds the
         /// room it looks into and no other room layer, and a houseguest the main view hides in that
-        /// room - on that room's layer - is in the feed's drawing and out of the main camera's.
+        /// room - on that room's layer - is in the feed's drawing and out of the main camera's. With the
+        /// house's dressing on its rooms' layers (RS2a), the feed's pixels: a piece of dressing in its
+        /// room is drawn and one in the room next door, in its frame, is not, until the feed is aimed
+        /// with both rooms.
         /// </summary>
         [UnityTest]
         public IEnumerator RoomScope_TheLiveFeedDrawsItsOwnRoom()
@@ -803,6 +807,7 @@ namespace Gamesim.Tests.PlayMode
                 Assert.That(director.IsBodyDrawn(player.transform), Is.True);
                 Assert.That(mask & (1 << RoomLayers.Bedroom), Is.Not.Zero, "which the feed draws.");
                 Assert.That(feed.Camera.cullingMask, Is.Not.EqualTo(cameraRig.ViewCamera.cullingMask), "The feed's mask is its own.");
+                yield return Rs2aFeedDrawsItsOwnRoomsDressing(feed, scope);
             }
             finally
             {
@@ -965,6 +970,86 @@ namespace Gamesim.Tests.PlayMode
         // ------------------------------------------------------------------------------------
         // Helpers.
         // ------------------------------------------------------------------------------------
+
+        /// <summary>
+        /// The feed's first pixel test (RS2a): aimed into the bedroom from over the living room, its eye
+        /// a few metres south of the bedroom's wall, two unlit markers placed as dressing by where they
+        /// stand - one in the bedroom on the feed's line of sight, over the furniture and past the wall's
+        /// top, one in the living room just in front of the eye and to its side. Aimed with the bedroom
+        /// alone, the feed draws the bedroom's marker and not the living room's; aimed with both, both.
+        /// </summary>
+        private IEnumerator Rs2aFeedDrawsItsOwnRoomsDressing(LiveFeed feed, HouseRoomScope scope)
+        {
+            int bedroom = RoomLayers.IndexOf("Bedroom"), living = RoomLayers.IndexOf("Living");
+            var box = scope.Box(bedroom);
+            var aim = new Vector3(box.center.x, 0f, box.yMin + 1.5f);
+            var frame = new Texture2D(LiveFeed.Width, LiveFeed.Height, TextureFormat.RGBA32, false);
+            var made = new List<Object> { frame };
+            try
+            {
+                // Where the feed's eye stands for that aim, from a render of it.
+                yield return Rs2aRenderFeed(feed, aim, RoomSet.Of(bedroom), frame);
+                var eye = feed.Camera.transform;
+                var own = ScopeProbeCube(made, "Room scope RS2a feed's own", eye.position + eye.forward * 3f, .3f, Color.magenta);
+                var next = ScopeProbeCube(made, "Room scope RS2a feed's neighbour", eye.position + eye.forward * 1.2f + eye.right * .6f, .2f, Color.cyan);
+                Assert.That(scope.RoomUnder(own.transform.position), Is.EqualTo(bedroom), "The first marker stands in the bedroom.");
+                Assert.That(scope.RoomUnder(next.transform.position), Is.EqualTo(living), "The second stands in the living room, the eye's side of the wall.");
+                HouseRoomScope.PlaceDressing(own.transform);
+                HouseRoomScope.PlaceDressing(next.transform);
+                Assert.That(own.layer, Is.EqualTo(RoomLayers.Bedroom), "Placed as dressing: the bedroom's layer.");
+                Assert.That(next.layer, Is.EqualTo(RoomLayers.Living), "and the living room's.");
+
+                yield return Rs2aRenderFeed(feed, aim, RoomSet.Of(bedroom), frame);
+                var ownAt = Rs2aFeedPixel(feed, frame, own.transform.position, "the bedroom's marker");
+                var nextAt = Rs2aFeedPixel(feed, frame, next.transform.position, "the living room's marker");
+                Assert.That(ScopeProbeDifference(ownAt, Color.magenta), Is.LessThan(.35f), "The feed draws its own room's dressing: " + ownAt + ".");
+                Assert.That(ScopeProbeDifference(nextAt, Color.cyan), Is.GreaterThan(.5f), "and not the room next door's: " + nextAt + ".");
+
+                yield return Rs2aRenderFeed(feed, aim, RoomSet.Of(bedroom).With(RoomSet.Of(living)), frame);
+                var bothAt = Rs2aFeedPixel(feed, frame, next.transform.position, "the living room's marker, both rooms named");
+                Assert.That(ScopeProbeDifference(bothAt, Color.cyan), Is.LessThan(.35f), "Aimed with both rooms, it draws the living room's marker too: " + bothAt + ".");
+            }
+            finally
+            {
+                foreach (var item in made) if (item != null) Object.Destroy(item);
+            }
+        }
+
+        /// <summary>
+        /// Aims the feed, with its rooms, on a frame it renders - after the director's own aim in Update,
+        /// before the feed's LateUpdate - and reads the picture it rendered for that aim into <paramref name="into"/>.
+        /// </summary>
+        private static IEnumerator Rs2aRenderFeed(LiveFeed feed, Vector3 aim, RoomSet rooms, Texture2D into)
+        {
+            float deadline = Time.realtimeSinceStartup + 5f;
+            while (true)
+            {
+                yield return null;
+                Assert.That(Time.realtimeSinceStartup, Is.LessThan(deadline), "The feed renders the aim it is given.");
+                if (feed.Paused || Time.frameCount % LiveFeed.EveryNthFrame != 0) continue;
+                int revision = feed.CaptureRevision;
+                feed.Aim(aim, 0f, "", rooms);
+                yield return null;
+                if (feed.CaptureRevision == revision || feed.CapturedSubject != aim) continue;
+                var active = RenderTexture.active;
+                try
+                {
+                    RenderTexture.active = (RenderTexture)feed.Texture;
+                    into.ReadPixels(new Rect(0, 0, LiveFeed.Width, LiveFeed.Height), 0, 0, false);
+                    into.Apply(false);
+                }
+                finally { RenderTexture.active = active; }
+                yield break;
+            }
+        }
+
+        /// <summary>The feed's pixel where a point stands in its picture, the point asserted inside the frame.</summary>
+        private static Color Rs2aFeedPixel(LiveFeed feed, Texture2D frame, Vector3 at, string what)
+        {
+            var seen = feed.Camera.WorldToViewportPoint(at);
+            Assert.That(seen.z > 0f && seen.x > .05f && seen.x < .95f && seen.y > .05f && seen.y < .95f, Is.True, what + " is in the feed's frame: " + seen + ".");
+            return frame.GetPixel(Mathf.RoundToInt(seen.x * (LiveFeed.Width - 1)), Mathf.RoundToInt(seen.y * (LiveFeed.Height - 1)));
+        }
 
         /// <summary>Waits, on the real clock, for every active body to finish assembling: a body being built draws nothing to test.</summary>
         private IEnumerator Rs4BodiesBuilt()

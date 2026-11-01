@@ -30,13 +30,21 @@ namespace Gamesim.Episode
     /// camera draws the shell and its own room. With the whole house drawn nothing is hidden and no
     /// mask bit moves, so, again, players see today's house.</para>
     ///
+    /// <para>The third is the house itself (RS2a, §3.2 b): built, the scope puts every collider-free
+    /// piece of furniture and dressing on its room's layer (HouseRoomScope.Dressing), and from then on
+    /// every staging point places what it builds or moves in the same call, a piece not drawn yet is
+    /// placed the frame it first is, and a piece that moves goes to the shell, all in this director's
+    /// late pass. With nothing held the main camera draws every room layer, so players see today's
+    /// house; the live feed, whose mask RS4 already writes, draws its own room's furniture and the shell.</para>
+    ///
     /// <para>The scope also keeps every body's walker room, every frame: the player's and each
     /// houseguest's, by the floors (<see cref="HouseRoomScope.WalkerRoom"/>). Who-is-where reads them
     /// (RSW, EpisodeDirector.WhoIsWhere).</para>
     ///
     /// <para>The holds and the scope belong to this director, so a new play session or a reloaded scene
-    /// starts with none. The one static is the lamps' subscription to the render pipeline's camera
-    /// events, which is reset at SubsystemRegistration (statics outlive play sessions here).</para>
+    /// starts with none. The statics are the lamps' subscription to the render pipeline's camera events
+    /// and the list of scopes placing their houses' dressing (HouseRoomScope.PlacingFor), each reset at
+    /// SubsystemRegistration (statics outlive play sessions here).</para>
     /// </summary>
     public sealed partial class EpisodeDirector
     {
@@ -241,6 +249,11 @@ namespace Gamesim.Episode
             // rebuilt. The house makes no shadowed point light at play, so they are the scene's
             // fourteen (RS1 pins them).
             roomScope.LampHomes(scopeLamps);
+            // The house's dressing on its rooms' layers, at load (RS2a): the director's first Update,
+            // before its Start goes on to build anything. From here its house's staging points place
+            // what they build or move, through the scene (HouseRoomScope.PlaceDressing).
+            roomScope.PlaceHouse();
+            if (isActiveAndEnabled) HouseRoomScope.BeginPlacing(roomScope);
             if (cameraRig != null) cameraRig.UseRoomScope(roomScope);
             return true;
         }
@@ -251,9 +264,25 @@ namespace Gamesim.Episode
             UndoRoomScopeDrawing();
             RestoreScopedLamps();
             scopeLamps.Clear();
+            if (roomScope != null)
+            {
+                HouseRoomScope.EndPlacing(roomScope);
+                // Nothing left on a room layer that no scope watches; the next scope places the house again.
+                roomScope.UndoDressing();
+            }
             roomScope = null;
             roomScopeRetry = 0f;
             if (cameraRig != null) cameraRig.UseRoomScope(null);
+        }
+
+        /// <summary>
+        /// Late every frame, in the house's overlay pass, before the bodies and the mask (RS2a): a placed
+        /// piece that has moved goes to the shell, and a piece first drawn this frame takes its room's
+        /// layer, both ahead of the main camera's render. Nothing before the scope is built.
+        /// </summary>
+        private void KeepRoomDressing()
+        {
+            if (roomScope != null && isActiveAndEnabled) roomScope.KeepDressingPlaced();
         }
 
         // ------------------------------------------------------------------------------------
@@ -284,9 +313,10 @@ namespace Gamesim.Episode
         /// </summary>
         public int LampsOffForTheMainCamera => lampsOffForView.Count;
 
-        /// <summary>On enable (EpisodeDirector.OnEnable): this director's main camera joins the hook.</summary>
+        /// <summary>On enable (EpisodeDirector.OnEnable): this director's main camera joins the hook, and its scope, if built, places its house's dressing again.</summary>
         private void HookLampScope()
         {
+            if (roomScope != null) HouseRoomScope.BeginPlacing(roomScope);
             if (!lampScopeDirectors.Contains(this)) lampScopeDirectors.Add(this);
             if (lampScopeHooked) return;
             RenderPipelineManager.beginCameraRendering += BeginLampScope;
@@ -296,10 +326,14 @@ namespace Gamesim.Episode
 
         /// <summary>
         /// On disable: every lamp it has off goes back, so does every body it has hidden and every bit it
-        /// has out of the main camera's mask, and the last director out takes the hook with it.
+        /// has out of the main camera's mask, and the last director out takes the hook with it. The
+        /// dressing stays on its rooms' layers, which the restored mask draws, and its house's staging
+        /// points place nothing until it is enabled again; a piece moved meanwhile goes to the shell then,
+        /// since the flag that says so waits.
         /// </summary>
         private void UnhookLampScope()
         {
+            if (roomScope != null) HouseRoomScope.EndPlacing(roomScope);
             UndoRoomScopeDrawing();
             RestoreScopedLamps();
             lampScopeDirectors.Remove(this);

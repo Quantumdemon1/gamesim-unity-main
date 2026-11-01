@@ -15,6 +15,10 @@ namespace Gamesim.House
     ///
     /// <para>Motion is the decoration: under reduced motion none of it plays. Presentation only - the
     /// particles draw their own randomness, never the season's.</para>
+    ///
+    /// <para>The bubbles and the steam rise where they were made, so each is placed on its room's layer
+    /// as it is built (ROOM-SCOPE-PLAN RS2a); the splashes follow the swimmer, and a piece that moves is
+    /// the shell's, so they stay on layer 0 and are drawn whatever room the view shows.</para>
     /// </summary>
     [DisallowMultipleComponent]
     public sealed class HouseActivityEffects : MonoBehaviour
@@ -91,6 +95,8 @@ namespace Gamesim.House
                 Upward(splash, .25f, 20f);
                 effects.Splash = splash;
             }
+            if (effects.Bubbles != null) HouseRoomScope.PlaceDressing(effects.Bubbles.transform);
+            if (effects.Steam != null) HouseRoomScope.PlaceDressing(effects.Steam.transform);
             return effects;
         }
 

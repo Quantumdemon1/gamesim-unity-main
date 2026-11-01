@@ -284,6 +284,9 @@ namespace Gamesim.Episode
                 bounds.max.y+CompetitionBackdropHeight+CompetitionSignOverWall);
             sign.transform.position=new Vector3(bounds.center.x,lowest+foot,signZ);
             competitionSign=label; competitionOverlaysShown=true;
+            // The stage on the yard's layer as it is built (ROOM-SCOPE-PLAN RS2a): the sign now, each
+            // instrument the frame it is first drawn - they wait inactive until their station is taken.
+            HouseRoomScope.PlaceDressing(competitionArenaRoot.transform);
             TickCompetitionArena(); return competitionArenaStaging;
         }
 

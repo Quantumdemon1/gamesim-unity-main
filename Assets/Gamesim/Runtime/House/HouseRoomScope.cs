@@ -9,19 +9,20 @@ namespace Gamesim.House
     /// boxes in plan, the walker rule that says which room a body is in, the classifier that says which
     /// room a piece of the house belongs to, and the lamps' home rooms.
     ///
-    /// <para>It computes and reports only. Nothing here writes a layer, a culling mask or a light:
-    /// the classification is a table for RS2a to apply, the walker rooms are what the camera rig
-    /// reports and, from RSW, what who-is-where reads, the lamps' homes are what the director's
-    /// lamp hook switches by (RS3, <see cref="LampOutsideScope"/>), and which bodies are drawn and on
-    /// what layer is the rule the director's body pass applies (RS4, <see cref="DrawsWalker"/>,
-    /// <see cref="BodyLayer"/>).</para>
+    /// <para>This file computes and reports only: the walker rooms are what the camera rig reports and,
+    /// from RSW, what who-is-where reads, the lamps' homes are what the director's lamp hook switches
+    /// by (RS3, <see cref="LampOutsideScope"/>), and which bodies are drawn and on what layer is the
+    /// rule the director's body pass applies (RS4, <see cref="DrawsWalker"/>, <see cref="BodyLayer"/>).
+    /// The one writer is the dressing (RS2a, HouseRoomScope.Dressing.cs): the classification applied,
+    /// each piece of the house on its room's layer, at load and at every point that builds or moves
+    /// dressing.</para>
     ///
     /// <para>The boxes come from the floors through one <see cref="HouseRoomQuery"/>, which the scope
     /// keeps (<see cref="Query"/>): a reader that wants the query's own questions - the safe interior,
     /// the floor sample - asks this one instead of building another. The pure parts (the boxes, the
     /// walker rule, the plan rule) need no scene, so a fixture can build a scope from rectangles.</para>
     /// </summary>
-    public sealed class HouseRoomScope
+    public sealed partial class HouseRoomScope
     {
         /// <summary>
         /// How far inside a new floor's box the feet must be before a walker is in that room. Until
@@ -35,7 +36,7 @@ namespace Gamesim.House
 
         /// <summary>
         /// Where a renderer stands for the scope: in a room, or drawn always and why. Only
-        /// <see cref="Room"/> ever moves to a room layer (RS2a).
+        /// <see cref="Room"/> ever moves to a room layer (RS2a, <see cref="DressingLayer"/>).
         /// </summary>
         public enum Placement : byte
         {
@@ -49,7 +50,7 @@ namespace Gamesim.House
             Outside,
             /// <summary>Its GameObject carries a collider: its layer is physics, so it stays.</summary>
             Collider,
-            /// <summary>Already on a layer of its own (not layer 0).</summary>
+            /// <summary>Already on a layer of its own: neither layer 0 nor a room layer, which are the scope's own.</summary>
             Layer,
             /// <summary>Not a mesh, skinned mesh or particle renderer.</summary>
             Kind,
@@ -303,7 +304,7 @@ namespace Gamesim.House
         public int TrackedCount => walkers.Count;
 
         // ------------------------------------------------------------------------------------
-        // The classifier (§3.2 b): a table, applied by nothing in RS1.
+        // The classifier (§3.2 b): a table here, applied by the dressing (RS2a).
         // ------------------------------------------------------------------------------------
 
         /// <summary>
@@ -346,6 +347,11 @@ namespace Gamesim.House
         /// renderer, on layer 0 with no collider on its GameObject, not part of a body, not on the
         /// shell list, and its world bounds lie in plan inside one floor box grown by
         /// <see cref="BoxGrowth"/>. Anything else is drawn always. Reads only; writes nothing.
+        ///
+        /// <para>Two precisions from RS2a, which applies it. A room layer counts as layer 0: it is the
+        /// scope's own, so a piece the dressing has put in a room is read again by where it stands now
+        /// (a staging point that moves it, a copy of another room's prop). And a particle renderer is
+        /// read by its emitter's point: its bounds are its live particles, which start empty and drift.</para>
         /// </summary>
         public Placement Classify(Renderer renderer, out int room)
         {
@@ -353,18 +359,25 @@ namespace Gamesim.House
             if (renderer == null || !(renderer is MeshRenderer || renderer is SkinnedMeshRenderer || renderer is ParticleSystemRenderer))
                 return Placement.Kind;
             var piece = renderer.gameObject;
-            if (piece.layer != 0) return Placement.Layer;
+            if (piece.layer != 0 && !RoomLayers.IsRoomLayer(piece.layer)) return Placement.Layer;
             if (piece.GetComponent<Collider>() != null) return Placement.Collider;
             if (IsBody(renderer.transform)) return Placement.Body;
             if (InShellList(renderer.transform)) return Placement.Shell;
+            Placement placement;
+            if (renderer is ParticleSystemRenderer)
+            {
+                var at = renderer.transform.position;
+                room = RoomForPlan(at.x, at.x, at.z, at.z, out placement);
+                return placement;
+            }
             var bounds = renderer.bounds;
-            room = RoomForPlan(bounds.min.x, bounds.max.x, bounds.min.z, bounds.max.z, out var placement);
+            room = RoomForPlan(bounds.min.x, bounds.max.x, bounds.min.z, bounds.max.z, out placement);
             return placement;
         }
 
         /// <summary>
         /// The classification of every renderer in the scope's house, active or not, in hierarchy
-        /// order: the table RS2a applies. Reads only.
+        /// order: the table RS2a applies (<see cref="PlaceHouse"/>). Reads only.
         /// </summary>
         public void Classify(List<Classified> into)
         {

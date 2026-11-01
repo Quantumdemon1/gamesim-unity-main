@@ -302,11 +302,17 @@ namespace Gamesim.Tests.PlayMode
             }
             finally { director.Release(owner); director.Release(capture); }
             Assert.That(director.ViewedRooms.IsWholeHouse, Is.True, "Released, every source is off again.");
-            // And nothing is drawn differently (RS1): the camera draws every room layer, and nothing in
-            // the house stands on one. RS2a turns this over.
+            // And nothing is drawn differently with every source off: the camera draws every room layer,
+            // and what stands on one is the house's dressing, each piece in its room by the rule (RS2a,
+            // which turned RS1's "nothing stands on one" over), with no body and no collider among it.
             Assert.That(cameraRig.ViewCamera.cullingMask & RoomLayers.Mask, Is.EqualTo(RoomLayers.Mask), "The camera draws every room layer.");
-            Assert.That(SceneComponents<Transform>().Where(t => RoomLayers.IsRoomLayer(t.gameObject.layer)).Select(t => t.name).ToArray(), Is.Empty,
-                "Nothing stands on a room layer.");
+            var dressing = new List<string>();
+            Assert.That(Rs2aCheckTheHouse(scope, dressing).Sum(), Is.GreaterThan(0), "The house's dressing stands on its rooms' layers.");
+            Assert.That(dressing, Is.Empty, string.Join("; ", dressing.Take(20)));
+            Assert.That(SceneComponents<Transform>().Where(t => RoomLayers.IsRoomLayer(t.gameObject.layer) && HouseRoomScope.IsBody(t)).Select(t => t.name).ToArray(),
+                Is.Empty, "No body stands on a room layer.");
+            Assert.That(SceneComponents<Collider>().Where(c => RoomLayers.IsRoomLayer(c.gameObject.layer)).Select(c => c.name).ToArray(), Is.Empty,
+                "and no collider.");
         }
 
         /// <summary>

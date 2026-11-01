@@ -844,7 +844,9 @@ namespace Gamesim.Episode
                 else
                 {
                     BeginPersistenceNotice(failure);
-                    message = failure;
+                    // The decision's own line, even where it reads as the house's failure did: a retry that lands
+                    // later keeps it (EndSessionSaveFailure).
+                    message = failure; sessionSaveFailure = null;
                     // Stopped without the panel's write: its retry could clear this notice of a decision that
                     // was not committed, inside the action that just failed.
                     SuspendNpcWorldWithoutSaving();

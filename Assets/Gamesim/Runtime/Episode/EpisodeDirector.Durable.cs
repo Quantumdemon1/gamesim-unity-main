@@ -29,6 +29,9 @@ namespace Gamesim.Episode
         // A new season or import refused once because the slot being left could not be written. Any successful
         // write and every install clear it, so a failure that persists refuses once and never traps the player.
         private bool npcSlotRefused;
+        // The line a failed write of the unchanged session - the house's own, or Save's - left in the message. A retry
+        // that lands at a way out replaces it (EndSessionSaveFailure); a decision's failure is never this line.
+        private string sessionSaveFailure;
 
         /// <summary>
         /// Explicit Editor diagnostics for a test that has just written a fixture to <see cref="SavePath"/>
@@ -146,7 +149,9 @@ namespace Gamesim.Episode
         /// failed save stopped: nothing on the house's own clock retries in a loop. A way out the player takes
         /// (<paramref name="leaving"/>: a panel, focus, pause, quit, a slot change) retries it once, as Save does,
         /// so what the menus show and what an orderly quit leaves reach disk whenever a write can; a retry that
-        /// lands clears the failure's notice.</para>
+        /// lands clears the failure's notice and its line (<see cref="EndSessionSaveFailure"/>). It draws nothing:
+        /// a panel or a slot change draws after it, and switching away draws for itself
+        /// (<see cref="FlushForSwitchingAway"/>).</para>
         /// </summary>
         private bool FlushUnsavedNpcTime(string cause, bool leaving = false, bool quiet = false)
         {
@@ -157,15 +162,29 @@ namespace Gamesim.Episode
             bool retry = npcSaveSuspended;
             if (TryPersistTimed(engine.Snapshot, cause, out _, out var failure))
             {
-                if (retry) MarkSaveFeedback();
+                if (retry) EndSessionSaveFailure();
                 return true;
             }
             if (quiet) { Debug.LogWarning("The house's last seconds could not be saved: " + failure); return false; }
-            message = failure; BeginPersistenceNotice(failure); SuspendNpcWorldWithoutSaving(); Render();
+            message = sessionSaveFailure = failure; BeginPersistenceNotice(failure); SuspendNpcWorldWithoutSaving(); Render();
             return false;
         }
 
         private bool FlushForLeaving(string cause, bool quiet = false) => FlushUnsavedNpcTime(cause, true, quiet);
+
+        /// <summary>
+        /// A write of the unchanged session landed - Save, or a retry at a way out. Any notice goes, and so does the
+        /// line a failed write of it left in the message, which Settings shows under YOUR SAVE: "Saved locally."
+        /// replaces it. Any other line stays with "Saved locally." after it: a decision's failure above all, since
+        /// that decision is still not committed, though it can read word for word as the house's.
+        /// </summary>
+        private void EndSessionSaveFailure()
+        {
+            bool failuresLine = sessionSaveFailure != null && message == sessionSaveFailure;
+            message = failuresLine ? "Saved locally." : message + "  ·  Saved locally.";
+            sessionSaveFailure = null;
+            MarkSaveFeedback();
+        }
 
         /// <summary>
         /// The check a house operation passes before it is installed: the store's own bounds, which every house
@@ -195,7 +214,7 @@ namespace Gamesim.Episode
             string failure = "SAVE NEEDS ATTENTION: " + SaveJson.Explain(error) + " The decision was not committed."
                 + " Your current session is unchanged; retry Save or reload.";
             if (!npcSaveCadence.Clean && !blockedRecovery && !persistenceFrozenForDiagnostics
-                && !TryPersistTimed(engine.Snapshot, "refuse", out _, out var unsaved)) failure = unsaved;
+                && !TryPersistTimed(engine.Snapshot, "refuse", out _, out var unsaved)) failure = sessionSaveFailure = unsaved;
             npcSaveSuspended = true;
             message = failure; BeginPersistenceNotice(failure); SuspendNpcWorldWithoutSaving(); Render();
         }
@@ -207,13 +226,24 @@ namespace Gamesim.Episode
         private void OnApplicationFocus(bool focused)
         {
             if (Application.isEditor && SaveRootOverride != null) return;
-            if (!focused && IsReady) FlushForLeaving("focus");
+            if (!focused && IsReady) FlushForSwitchingAway("focus");
         }
 
         private void OnApplicationPause(bool paused)
         {
             if (Application.isEditor && SaveRootOverride != null) return;
-            if (paused && IsReady) FlushForLeaving("pause");
+            if (paused && IsReady) FlushForSwitchingAway("pause");
+        }
+
+        /// <summary>
+        /// The write as the player switches away. Nothing draws after it, as a panel or a slot change does, and the
+        /// house moves again under whatever the HUD last said, so a retry that lands draws here: otherwise the
+        /// failure's line stands over a house that has saved. A failed write has drawn its own notice.
+        /// </summary>
+        private void FlushForSwitchingAway(string cause)
+        {
+            bool stopped = npcSaveSuspended;
+            if (FlushForLeaving(cause) && stopped && !npcSaveSuspended) Render();
         }
 
         /// <summary>

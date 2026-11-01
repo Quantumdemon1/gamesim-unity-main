@@ -229,9 +229,9 @@ private bool FlushUnsavedNpcTime(string cause, bool leaving = false, bool quiet 
     if (npcSaveSuspended && !leaving) return true;
     bool retry = npcSaveSuspended;
     if (TryPersistCandidate(engine.Snapshot, out _, out var failure))  // Saved() is inside
-    { if (retry) MarkSaveFeedback(); return true; }
+    { if (retry) EndSessionSaveFailure(); return true; }  // MarkSaveFeedback, and the failure's line (below)
     if (quiet) { Debug.LogWarning("The house's last seconds could not be saved: " + failure); return false; }
-    message = failure; BeginPersistenceNotice(failure); SuspendNpcWorldWithoutSaving(); Render();
+    message = sessionSaveFailure = failure; BeginPersistenceNotice(failure); SuspendNpcWorldWithoutSaving(); Render();
     return false;
 }
 private bool FlushForLeaving(string cause, bool quiet = false) => FlushUnsavedNpcTime(cause, leaving: true, quiet: quiet);
@@ -251,6 +251,22 @@ It returns false only when it tried now and failed. There are two kinds of calle
   successful retry clears the stale notice with `MarkSaveFeedback`, as `TryAutosave` does (`Season.cs:163`;
   `BeginPersistenceNotice` set `systemNotice`, which only `MarkSaveFeedback` clears,
   `ConversationExchange.cs:140-153`), and, like any successful write (`Durable.cs:75`), lifts the suspension.
+
+  **The failure's line, and the redraw** (review LS-REV-1, LS-LIFE-1, LSB-1). Clearing the notice's fields is not
+  all of it. The director's `message` keeps the failure's text, and Settings shows it under YOUR SAVE
+  (`Season.cs:89`, `hud.Aside(message)`), as does `StatusMessage`. The status line is worked out only inside
+  `Render` (`HudStatusMessage`, `EpisodeDirector.cs:1379`). So the landed retry goes through
+  `EndSessionSaveFailure()`, and so does `TryAutosave`'s success. That clears the notice (`MarkSaveFeedback`) and
+  sets `message` to "Saved locally." when it still holds the line a failed write of the unchanged session left.
+  The field `sessionSaveFailure` records that line. It is set by the flush's failure, by `TryAutosave`'s and by
+  the refusal's own write, and is cleared by `Submit`'s failure. Any other line keeps "  ·  Saved locally." after
+  it, as `TryAutosave` always did. That includes a decision's failure, which stays true because the decision is
+  still not committed. A filesystem failure reads word for word the same for both (`SaveJson.Explain` gives only
+  the exception's type), so the field, not the text, tells them apart. The flush draws only a failure. After a
+  write that lands, a panel or a slot change draws, and quit needs nothing. Focus and pause have no opener, and
+  the house moves again under whatever the HUD last said. So their hooks call `FlushForSwitchingAway(cause)`,
+  which calls `Render()` only when its retry lifted the suspension. A failed write has drawn its own notice.
+  Keeping the extra `Render` out of the flush keeps a second draw out of every panel opening.
 
 The two failure callers, `TryAutosave`'s failure (`Season.cs:164`) and `Submit`'s (`EpisodeDirector.cs:848`), call
 `SuspendNpcWorldWithoutSaving()` instead of `PauseNpcSocialForPanel()`. Otherwise the panel path would retry straight
@@ -284,8 +300,8 @@ primary").
 | The house stops for any other reason | `TickNpcSocialRuntime`'s paused branch, `NpcSocial.cs:210-214` | `if (!eligible) { if (!npcSaveCadence.Clean) FlushUnsavedNpcTime("stop"); ... }` | Automatic. The backstop: while saves succeed, the house never stands still on seconds only memory holds. Catches what no opener calls: `ShowSeasonReport` (`Journal.cs:860-875`), a failed world (`StopNpcWorld`, :507-517), a lost binding, eligibility lost, and any future panel. At most one frame late; a clean or suspended session costs one bool. After a failed write the owed seconds wait for the next leave point or Save. No more house activity accrues meanwhile, because the house is stopped. |
 | Leaving a slot: new season, import | `StartSeason` (`Season.cs:305-308`, after the `durableCommitInProgress` check), `ImportFile` inside its success branch before `importedSlot.Save` (`:398-400`) | `if (!FlushForLeaving("slot") && !npcSlotRefused) { npcSlotRefused = true; failed?.Invoke(message); Render(); return; }` (ImportFile: the same without `failed`, before its `message = result`) | The old slot keeps every second the house lived in it whenever a write can reach the slot, because a session suspended by an earlier periodic, focus or panel failure is retried here too (LS-DUR-1). The house keeps living behind the front door (main menu, cast screen, creator are not panels: `Controls.cs:194-196`, `AllWeek.cs:65-67`), so this can owe up to 30 s. A failed write refuses the start **once per failure**, through the screen's own failure path with the notice. `npcSlotRefused` is cleared by any successful write and by `Install`. The next start tries once more and, if that write fails too, goes ahead with the old slot at its last save, so a persistent failure never traps the player. Under recovery (`blockedRecovery`) nothing is written and the start goes ahead, as today: a new slot is one way out of the lock (section 4). A malformed or missing import writes nothing. The pending fraction is never committed (`NpcRuntime_NewSeasonRetainsOldSlotWithoutFlushingItsPendingTime`'s rule). `StressHouseTests.cs:288-315` reads `StartSeason` from its signature to `nextStore.Save(fresh)`: the new line names no `choice`, `fresh.` or `.Enable`, so it passes. |
 | Reload or recover the same slot | `LoadNow`, `RecoverBackup` (`Season.cs:167-183`) | **No write** | Both mean "take what is on disk". A write before `RecoverBackup` would rotate the very backup being recovered (`File.Replace` moves the primary over `.backup`, `EpisodeSaveStore.cs:126`). Both are reachable only from Settings (`Season.cs:91-92`), which saved on opening and holds the clock, so in play they lose nothing; tests that write a fixture and call `LoadNow` stay safe (e.g. `EpisodeNpcScanCadenceTests.cs:109-110`). Pinned by `NpcRuntime_LoadIsNonwritingEvenWithAWholeUncommittedSecond` and `NpcRuntime_RecoveryReadsOriginalBackupBeforeAnyTimingWrite`. |
-| Switching away | new `OnApplicationFocus(bool focused)` in `Durable.cs` | `if (Application.isEditor && SaveRootOverride != null) return; if (!focused && IsReady) FlushForLeaving("focus");` | The player ships with `runInBackground: 0`, so nothing advances while unfocused; this is the last moment before a Task Manager kill or sleep. **Not in Editor test runs.** In the Editor, focus moves with the Game view, the Inspector and other apps. In the owner's editor over the MCP, with `runInBackground` on, this would add writes at moments nobody controls, inside tests that count writes or compare bytes on an unheld house (7.1's `writes == 1` rows, the Hear-press bytes check, tests 4, 8 and 10), through the test's own diagnostic writer (`Durable.cs:62-66`) (LS-DUR-4). Every test and every Editor verification sets `SaveRootOverride` (`EpisodePlayModeTests.cs:41`, `EpisodeDurableTransactionTests.cs:43`); the verification player sets it too but is not the Editor; the owner's own Editor play has none, so it keeps the hook. The Editor gains little from it anyway: an Editor crash loses the window either way, and play-mode exit is `OnApplicationQuit`. Test 6 calls `FlushForLeaving("focus")` directly; test 17 pins the gate. |
-| Minimise / OS pause | new `OnApplicationPause(bool paused)` | The same gate, then `if (paused && IsReady) FlushForLeaving("pause");` | Usually follows the focus call and finds nothing owed. |
+| Switching away | new `OnApplicationFocus(bool focused)` in `Durable.cs` | `if (Application.isEditor && SaveRootOverride != null) return; if (!focused && IsReady) FlushForSwitchingAway("focus");` (2.3: the write, and a redraw when its retry lands) | The player ships with `runInBackground: 0`, so nothing advances while unfocused; this is the last moment before a Task Manager kill or sleep. **Not in Editor test runs.** In the Editor, focus moves with the Game view, the Inspector and other apps. In the owner's editor over the MCP, with `runInBackground` on, this would add writes at moments nobody controls, inside tests that count writes or compare bytes on an unheld house (7.1's `writes == 1` rows, the Hear-press bytes check, tests 4, 8 and 10), through the test's own diagnostic writer (`Durable.cs:62-66`) (LS-DUR-4). Every test and every Editor verification sets `SaveRootOverride` (`EpisodePlayModeTests.cs:41`, `EpisodeDurableTransactionTests.cs:43`); the verification player sets it too but is not the Editor; the owner's own Editor play has none, so it keeps the hook. The Editor gains little from it anyway: an Editor crash loses the window either way, and play-mode exit is `OnApplicationQuit`. Test 6 calls `FlushForLeaving("focus")` directly; test 17 pins the gate, and tests 18 and 19 run the player's side with the save root cleared between reflected calls. |
+| Minimise / OS pause | new `OnApplicationPause(bool paused)` | The same gate, then `if (paused && IsReady) FlushForSwitchingAway("pause");` | Usually follows the focus call and finds nothing owed. |
 | Quit | new `OnApplicationQuit()` | `if (IsReady) FlushForLeaving("quit", quiet: true)` | Player and Editor alike. It retries a suspended session too, so an orderly quit after an earlier failed write still writes what the menus showed (LS-DUR-1). See below. |
 | Editor play-mode exit | `OnApplicationQuit` | Same | Unity sends `OnApplicationQuit` when play stops in the Editor, before `OnDisable`, whatever the domain-reload setting. |
 | Diagnostics | `SuspendNpcAutonomyForDiagnostics` (`NpcSocial.cs:103-107`), `FreezeForReloadForDiagnostics` (`Durable.cs:28-33`) | Suspend: `FlushUnsavedNpcTime("hold")` (automatic: it skips a suspended session, so a failure test's hook is not called again by its own hold) before disposing. Freeze: set `persistenceFrozenForDiagnostics = true` **before** calling Suspend. | Suspend stops the house, so it writes what is owed, which keeps the 180 `HoldTheHouseForTheFixture` sites (all `SuspendNpcAutonomyForDiagnostics`, `FinaleReveal.cs:26`) seeing disk equal to memory as today. Freeze must write nothing: tests write a fixture to the save path, then freeze (`EpisodePlayModeTests.cs:382-392`, `UnifiedSafetyDurability.cs:471-473`). |
@@ -570,7 +586,7 @@ PlayMode (new partial `EpisodePlayModeTests.LiveSave.cs`; unscaled time is not p
 8. `LiveSave_AFailedPeriodicWriteStopsTheHouseAsAPlainFailureAndTheRetryWritesTheSameState` - with seconds owed and a
    throwing writer: suspended, notice shown, **not** recovery-locked (pins 3.1), files unchanged, the clock frozen
    over later frames, and no further write from the periodic flush or the backstop; the retry `SaveNow` writes the
-   exact state memory held at the failure, revision unchanged.
+   exact state memory held at the failure, revision unchanged, and "Saved locally." replaces the failure's line.
 9. `LiveSave_SaveNowWritesWhileAPairIsStillWalking` - on the unarrived-pair fixture of `NpcRuntime_MaximumSessionId...`
    (`:63-100`), with `npcFrameFraction` .95 and `npcWorldFraction` .06 as at :90-91, and no seconds owed (nothing can
    be installed there: a tick is refused while a lease is unarrived, `NpcSocial.cs:375`; a start needs an arrival; a
@@ -586,10 +602,11 @@ PlayMode (new partial `EpisodePlayModeTests.LiveSave.cs`; unscaled time is not p
     director with seconds owed writes nothing at `SuspendNpcAutonomyForDiagnostics` or `OnApplicationQuit` either.
 13. `LiveSave_AfterAFailedWriteTheNextWayOutWritesWhatTheMenusShow` (LS-DUR-1) - owed seconds, a periodic flush whose
     writer throws `IOException` (a plain failure, suspended), then the writer replaced by a working pass-through.
-    Three cases: (a) `OpenJournal`: one write, disk equals memory, the notice cleared (`StatusMessage` no longer
-    says "SAVE NEEDS ATTENTION"), the house resumes when the panel closes; (b) `OnApplicationQuit`: one write, disk
-    equals memory; (c) `StartSeason`: the old slot (its path read before the start) equals the memory captured before it. A fourth case with the
-    writer still throwing: `OpenJournal` makes one attempt, opens, and the notice stands.
+    Three cases: (a) `OpenJournal`: one write, disk equals memory, the notice cleared and `StatusMessage` "Saved
+    locally." (2.3, the failure's line), the house resumes when the panel closes; (b) `OnApplicationQuit`: one
+    write, disk equals memory; (c) `StartSeason`: the old slot (its path read before the start) equals the memory
+    captured before it. A fourth case with the writer still throwing: `OpenJournal` makes one attempt, opens, and
+    the notice stands.
 14. `LiveSave_AHeldSaveWithSecondsOwedLocksAndTheReloadReturnsToTheLastSave` (LS-DUR-2) - owed seconds; capture
     `known` (the disk's state); inside `using (new FileStream(SavePath, FileMode.Open, FileAccess.Read,
     FileShare.None))`, invoke `FlushUnsavedNpcTime("periodic")` by reflection: recovery-locked, `SeasonInProgress`
@@ -608,6 +625,19 @@ PlayMode (new partial `EpisodePlayModeTests.LiveSave.cs`; unscaled time is not p
     (explicit retry) writes through the suspended branch, as today.
 17. `LiveSave_FocusAndPauseDoNothingInEditorTestRuns` (LS-DUR-4) - owed seconds and a counting writer;
     `OnApplicationFocus(false)` and `OnApplicationPause(true)` invoked by reflection: no write, cadence still owed.
+18. `LiveSave_SwitchingAwayAndPausingThePlayerWriteTheHousesSeconds` (review LS-LIFE-2) - the player's side of the
+    two hooks, with `SaveRootOverride` cleared only between reflected calls with no yield (it is read only at start
+    and in the hooks, and Unity delivers focus between frames): `OnApplicationFocus(true)` and
+    `OnApplicationPause(false)` write nothing; `OnApplicationFocus(false)` writes the owed seconds; owed again,
+    `OnApplicationPause(true)` writes them. An inverted condition or a deleted hook fails it.
+19. `LiveSave_ARetryThatLandsAsThePlayerSwitchesAwayRedrawsTheStatusLine` (LS-LIFE-1, LSB-1) - for each hook, a
+    failed periodic write (its line drawn), then a working writer and the hook on the player's side: one write, the
+    suspension lifted, `StatusMessage` "Saved locally.", and the drawn status line (`ExchangeFlowStatusText`) the
+    phase's guidance, read in the same frame (Begin deactivates the old chrome before it destroys it).
+20. `LiveSave_ARetryThatLandsKeepsAFailedDecisionsLine` (LS-REV-1's caution) - a failed periodic write, then a
+    `Submit` that fails on the same writer: its line reads word for word as the house's. A working writer and
+    `OpenJournal`: one write of the owed seconds, the notice cleared, and `StatusMessage` the decision's line with
+    "  ·  Saved locally." after it.
 
 Must still pass unchanged: `DifferentValidatedPrimary_EntersRecoveryAndCannotOverwriteUntilExplicitLoad`,
 `UnreadablePrimary_EntersRecoveryAndPreservesDamagedBytesUntilExplicitBackupRecovery`,
@@ -778,11 +808,10 @@ Unity lane. Where the code differed from the plan, the code won, as follows.
 5. **`NpcSaveCadence.Begin` replaces while clean.** Two calls before the first `Installed` keep the second; after it
    they are ignored (test 1 pins both). `Saved(state)` records what the store holds, which `KnownOnDisk` returns only
    if a window opened without a `Begin` (the director always calls one).
-6. **Test 13 checks the notice, not `StatusMessage`.** `StatusMessage` is the director's `message`, which keeps a
-   failure's text after a retry that lands, as `SaveNow`'s retry does today (it appends "Saved locally."). What the HUD
-   shows is `persistenceNotice` while suspended and the phase's guidance once not (`HudStatusMessage`,
-   `EpisodeDirector.ConversationExchange.cs:181-199`), so the case asserts that `persistenceNotice` is null and the
-   suspension lifted.
+6. **Test 13 first checked the notice, not `StatusMessage`.** The build left the director's `message` with the
+   failure's text after a retry that landed, as `SaveNow`'s retry did (it appended "Saved locally."). The review
+   (item 12) found that Settings shows that text under YOUR SAVE, so the landed retry now replaces it, and test 13
+   checks both.
 7. **Test 4 reads the `projected` field each frame**, not `director.Snapshot`, which clones the whole season every
    call. Its clock-stopped variant is its own case, `LiveSave_TheThirtySecondsAreFreeTimeWhileTheHousesClockIsStopped`.
 8. **Test 6's backstop case** sets `npcWorldFailed` by reflection for one `TickNpcSocialRuntime(0f)` and clears it:
@@ -799,6 +828,15 @@ Unity lane. Where the code differed from the plan, the code won, as follows.
     nothing and every phase change is a written decision; a house held, or paused under a conversation or a panel;
     or a profile store, not the episode's.
 11. **Test 12 also calls `FlushForLeaving("focus")`** on the frozen director and checks the seconds stay owed.
+12. **Review fixes (2026-11-01).** A retry that lands at a way out left two stale things behind. The first was the
+    failure's text in `message`, which Settings and `StatusMessage` show (LS-REV-1). The second was, for focus and
+    pause, the drawn status line, because nothing renders after those two (LS-LIFE-1, LSB-1). 2.3 now describes
+    `EndSessionSaveFailure`, the `sessionSaveFailure` field and `FlushForSwitchingAway`. `TryAutosave`'s success
+    takes the same rule, so Save and a way out leave the same line after a failure. A decision's failure keeps its
+    line because the decision is still not committed. That needs the field, since a filesystem failure reads word
+    for word the same for both. Tests 18 to 20 are new, for LS-LIFE-2 and these fixes, and tests 8 and 13 assert
+    the replaced line. Section 6 and `PortVerification.cs` now give the frames file's row unambiguously (LSB-2): data
+    row `F + 1 - steadySampleFirstFrame` counted from 0, or file line `F + 3 - steadySampleFirstFrame` counted from 1.
 
 Still open: the owner's answer to section 12's three cases (the lead asks before this lands); the Unity set and the
 RS0 runs of 10.2 and 10.3.

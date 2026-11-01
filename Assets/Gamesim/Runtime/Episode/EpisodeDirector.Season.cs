@@ -162,10 +162,10 @@ namespace Gamesim.Episode
 
         private void TryAutosave()
         {
-            if (TryPersistTimed(engine.Snapshot, "save", out _, out var failure))
-            { message += "  ·  Saved locally."; MarkSaveFeedback(); }
+            // "Saved locally." after the status line, or in place of the line a failed save left: the way-out retry's rule.
+            if (TryPersistTimed(engine.Snapshot, "save", out _, out var failure)) EndSessionSaveFailure();
             // Stopped without the panel's write: its retry would run inside the save that just failed.
-            else { message = failure; BeginPersistenceNotice(failure); SuspendNpcWorldWithoutSaving(); }
+            else { message = sessionSaveFailure = failure; BeginPersistenceNotice(failure); SuspendNpcWorldWithoutSaving(); }
         }
 
         public void LoadNow()

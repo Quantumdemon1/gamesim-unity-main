@@ -223,6 +223,7 @@ namespace Gamesim.Tests.PlayMode
                 AssertEquivalent(held, director.Snapshot);
                 AssertEquivalent(held, LiveSaveDisk());
                 Assert.That(NpcRead<bool>("npcSaveSuspended"), Is.False);
+                Assert.That(director.StatusMessage, Is.EqualTo("Saved locally."), "The save replaces the failure's line.");
             }
             finally { NpcWrite("saveCandidateForDiagnostics", null); }
         }
@@ -377,7 +378,8 @@ namespace Gamesim.Tests.PlayMode
                 Assert.That(written.Count, Is.EqualTo(1));
                 AssertEquivalent(owed, written[0]);
                 AssertEquivalent(owed, LiveSaveDisk());
-                Assert.That(NpcRead<string>("persistenceNotice"), Is.Null, "The retry that landed clears the failure's notice.");
+                Assert.That(NpcRead<string>("persistenceNotice"), Is.Null, "The retry that landed clears the failure's notice,");
+                Assert.That(director.StatusMessage, Is.EqualTo("Saved locally."), "...and its line, which Settings shows under YOUR SAVE.");
                 Assert.That(NpcRead<bool>("npcSaveSuspended"), Is.False);
                 director.ClosePanels();
                 Assert.That(LiveSaveHouseCanAdvance, Is.True, "The house resumes once the notebook closes.");
@@ -535,6 +537,111 @@ namespace Gamesim.Tests.PlayMode
             finally { NpcWrite("saveCandidateForDiagnostics", null); }
             Assert.That(written, Is.Empty, "Focus moves with the Game view and other programs in the Editor, at moments no test controls.");
             Assert.That(LiveSaveCadence.Clean, Is.False);
+        }
+
+        /// <summary>
+        /// The player's side of the two hooks, which the Editor's gate keeps from every other test: switching away
+        /// and pausing write the house's seconds, and coming back or resuming writes nothing. The save root is
+        /// cleared only between reflected calls with no yield, so no real focus message reaches the director meanwhile.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator LiveSave_SwitchingAwayAndPausingThePlayerWriteTheHousesSeconds()
+        {
+            yield return LiveSaveStart();
+            var root = EpisodeDirector.SaveRootOverride;
+            var written = LiveSavePassThrough();
+            try
+            {
+                LiveSaveOwe(2); var owed = director.Snapshot;
+                EpisodeDirector.SaveRootOverride = null;
+                NpcInvoke("OnApplicationFocus", true);
+                NpcInvoke("OnApplicationPause", false);
+                EpisodeDirector.SaveRootOverride = root;
+                Assert.That(written, Is.Empty, "Coming back and resuming write nothing.");
+                Assert.That(LiveSaveCadence.Clean, Is.False);
+
+                EpisodeDirector.SaveRootOverride = null;
+                NpcInvoke("OnApplicationFocus", false);
+                EpisodeDirector.SaveRootOverride = root;
+                Assert.That(written.Count, Is.EqualTo(1));
+                LiveSaveAssertWritten("switching away", owed);
+
+                LiveSaveOwe(2); owed = director.Snapshot;
+                EpisodeDirector.SaveRootOverride = null;
+                NpcInvoke("OnApplicationPause", true);
+                EpisodeDirector.SaveRootOverride = root;
+                Assert.That(written.Count, Is.EqualTo(2));
+                LiveSaveAssertWritten("a pause", owed);
+            }
+            finally { EpisodeDirector.SaveRootOverride = root; NpcWrite("saveCandidateForDiagnostics", null); }
+        }
+
+        /// <summary>
+        /// Nothing draws after switching away, as a panel does after its write, and the house moves again under
+        /// whatever the HUD last said: a retry that lands there draws the status line itself.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator LiveSave_ARetryThatLandsAsThePlayerSwitchesAwayRedrawsTheStatusLine()
+        {
+            yield return LiveSaveStart();
+            var root = EpisodeDirector.SaveRootOverride;
+            var attempts = new List<EpisodeState>();
+            try
+            {
+                foreach (var way in new[] { "OnApplicationFocus", "OnApplicationPause" })
+                {
+                    LiveSaveOwe(2);
+                    LiveSaveFailAPeriodicWrite(attempts);
+                    Assert.That(ExchangeFlowStatusText(), Does.Contain("SAVE NEEDS ATTENTION"), way + ": the failure is drawn.");
+                    var owed = director.Snapshot;
+                    var written = LiveSavePassThrough();
+                    EpisodeDirector.SaveRootOverride = null;
+                    NpcInvoke(way, way == "OnApplicationPause");
+                    EpisodeDirector.SaveRootOverride = root;
+                    Assert.That(written.Count, Is.EqualTo(1), way);
+                    AssertEquivalent(owed, LiveSaveDisk());
+                    Assert.That(NpcRead<bool>("npcSaveSuspended"), Is.False, way);
+                    Assert.That(director.StatusMessage, Is.EqualTo("Saved locally."), way + ": the failure's line is replaced.");
+                    var state = director.Snapshot;
+                    Assert.That(ExchangeFlowStatusText(), Does.StartWith(EpisodeDirector.PhaseLine(state.phase, state.week)),
+                        way + ": the phase's guidance is drawn in place of the failure. It showed: " + ExchangeFlowStatusText());
+                    LiveSaveResume();
+                }
+            }
+            finally { EpisodeDirector.SaveRootOverride = root; NpcWrite("saveCandidateForDiagnostics", null); }
+        }
+
+        /// <summary>
+        /// A save that lands replaces only the line a failed write of the session left. A decision that failed is
+        /// still not committed, so its line stays, with the save after it, though a filesystem failure reads word for
+        /// word the same for both: only who wrote the line tells them apart.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator LiveSave_ARetryThatLandsKeepsAFailedDecisionsLine()
+        {
+            yield return LiveSaveStart();
+            var attempts = new List<EpisodeState>();
+            try
+            {
+                LiveSaveOwe(2);
+                LiveSaveFailAPeriodicWrite(attempts);
+                string housesLine = director.StatusMessage;
+                var owed = director.Snapshot;
+                var talk = director.Submit(LiveSaveTalk(owed, "live-save-failed-talk"));
+                Assert.That(talk.accepted, Is.False, "The writer still fails.");
+                Assert.That(director.StatusMessage, Is.EqualTo(housesLine), "The same words as the house's failure.");
+
+                var written = LiveSavePassThrough();
+                director.OpenJournal();
+                Assert.That(written.Count, Is.EqualTo(1));
+                AssertEquivalent(owed, LiveSaveDisk());
+                Assert.That(NpcRead<bool>("npcSaveSuspended"), Is.False);
+                Assert.That(NpcRead<string>("persistenceNotice"), Is.Null);
+                Assert.That(director.StatusMessage, Is.EqualTo(housesLine + "  ·  Saved locally."),
+                    "The decision is still not committed: its line stays, with the save after it.");
+                director.ClosePanels();
+            }
+            finally { NpcWrite("saveCandidateForDiagnostics", null); }
         }
 
         // The default house, bound, its routes held back so no pair walks, with a primary and a backup on disk and

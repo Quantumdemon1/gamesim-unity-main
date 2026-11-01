@@ -561,8 +561,9 @@ namespace Gamesim.Tests.EditMode
         /// The cell S6 froze (ALL-STAR-HISTORIES-PLAN 14.I, 14.J): the shipped All-Stars season at alumni rules 5, saved
         /// at its week-3 campaign with what only 5 writes standing in it - a houseguests' own pact grown past two while a
         /// known pair is live (14.L), private to its members and from an earlier week, so it is a join and not a birth.
-        /// The four cases every fixture has replay and read the season on from there; this one holds the file to the state
-        /// it was chosen for.
+        /// The four cases every fixture has load and replay it, read it with every reader, pin its seventeen holds and
+        /// recover it from the backup; this one holds the file to the state it was chosen for: two known pairs live, so a
+        /// bound of four, and the recruit's week-3 join rows beside both founders, both ways.
         /// A 12-house (seed 3387): no 8-house seed of 3002 to 3201 holds a grown pact at its week-3 campaign.
         /// </summary>
         [Test]
@@ -578,8 +579,9 @@ namespace Gamesim.Tests.EditMode
             Assert.That(s.phase, Is.EqualTo(EpisodePhase.Campaign));
             Assert.That(s.contestants.Count, Is.EqualTo(12), "The twelve-house the plan names when no eight-house seed has a grown pact.");
 
+            Assert.That(KnownBlocs.LivePairs(s).Count, Is.EqualTo(2), "Two known pairs are live in the saved week.");
             int bound = KnownBlocs.CounterPactBound(s);
-            Assert.That(bound, Is.GreaterThan(2), "A known pair is live, so a houseguests' pact may hold more than two.");
+            Assert.That(bound, Is.EqualTo(4), "Two live pairs, so a houseguests' pact may hold four.");
             var grown = NpcAlliances.NpcOnlyPacts(s).Where(p => NpcAlliances.HouseguestsOwn(p) && p.members.Count > 2).ToList();
             Assert.That(grown.Select(p => p.id), Is.EqualTo(new[] { "alliance-npc-203" }), "One houseguests' pact grown past two.");
             var pact = grown[0];
@@ -599,6 +601,19 @@ namespace Gamesim.Tests.EditMode
             Assert.That(fact.visibility, Is.EqualTo(FactVisibility.Private), "Nobody outside the pact has heard of it.");
             Assert.That(fact.knowers, Is.EquivalentTo(pact.members), "Known to its members, the recruit among them, and to nobody else.");
             Assert.That(fact.week, Is.LessThan(s.week), "Founded in an earlier week than the save's.");
+
+            // The third seat is a join: the recruit's "was joined" rows beside each founder, both ways, in the save's week,
+            // and none between the founders, whose row is the birth.
+            string joined = pact.name + " was joined", recruit = pact.members[2];
+            List<int> JoinWeeks(string from, string to) => s.relationships.Where(r => r.fromId == from && r.toId == to)
+                .SelectMany(r => r.events).Where(e => e.type == "alliance-formed" && e.description == joined).Select(e => e.week).ToList();
+            foreach (string founder in pact.members.Take(2))
+            {
+                Assert.That(JoinWeeks(founder, recruit), Is.EqualTo(new[] { s.week }), founder + " to " + recruit + ": joined in the save's week.");
+                Assert.That(JoinWeeks(recruit, founder), Is.EqualTo(new[] { s.week }), recruit + " to " + founder + ": joined in the save's week.");
+            }
+            Assert.That(JoinWeeks(pact.members[0], pact.members[1]).Concat(JoinWeeks(pact.members[1], pact.members[0])), Is.Empty,
+                "The founders' own row is the birth, not a join.");
         }
 
         // ------------------------------------------------------------------ refused on purpose

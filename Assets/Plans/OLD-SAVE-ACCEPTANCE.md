@@ -303,6 +303,8 @@ itself (2.3).
 fixture (2026-10-25) adds a 134,958-byte save, a 25,866-byte script and checkpoint list, two metas and its manifest row:
 the manifest is 102,740 bytes now. The table is as it stood before it. The four schema-30 saves (2.5, 2.6) add
 602,881 bytes, with their scripts, metas and rows; with both sets merged (2026-10-29) the manifest is 112,606 bytes.
+The alumni-5 cell (2.7, 2026-11-01) adds a 275,495-byte save, a 45,061-byte script and checkpoint list, two 158-byte
+metas and its row: the manifest is 115,468 bytes, and the folder 8,643,508 bytes.
 
 | Part | Size |
 | --- | --- |
@@ -666,8 +668,9 @@ two.
   its members and from an earlier week.
   - No 8-house seed from 3002 to 3201 (the All-Stars fixtures' series) holds one, so the cell is a 12-house, as that
     plan's 14.I says.
-  - No 12-house seed from 3002 to 3201 holds one either, and 3387 is the first after them.
-  - The 12-house at 3146 could not be saved at all (F9).
+  - None of the 199 12-house seeds from 3002 to 3201 that could be saved holds one, and 3387 is the first after them.
+    The 12-house at 3146 could not be saved at all (F9), so whether it holds one, and whether it would have come first,
+    is not known.
 - `generate 3387 12 director-allstars 3 Campaign` wrote s30-mode2-allstars-alumni5-w3-campaign (275,495 bytes): eleven
   alumni and the player. Its grown pact, `alliance-npc-203`, was founded in week 2 and took its third member in week 3.
   Two known pairs are live, so its bound is 4.
@@ -686,11 +689,12 @@ two.
 **Checkpoints** are taken as in 2.6: admitted natively at 30, and checkpointed at 30 only.
 
 **Its own case.** `TheAlumniFiveCellIsSavedWithAHouseguestsPactGrownPastTwoAndKeptToItself` holds the file to the state
-it was chosen for, through the store (section 4).
+it was chosen for, through the store (section 4). Since S6's review (2026-11-01) it also asserts the two live pairs and
+the bound of 4 exactly, and the recruit's week-3 "was joined" rows beside both founders, both ways.
 
 **The ballot sentinel.** The reader case first failed on this season. A known ballot's lean was read as a hidden one,
-by the "Dan" in Danielle's name. The sentinel now reads the nominee as a word of its own (F8's last point), and the
-case passes.
+by the "Dan" in Danielle's name. The sentinel now reads a houseguest nominee's name as a word of its own (F8's last
+point), and the case passes.
 
 ## 3. Findings
 
@@ -882,28 +886,42 @@ case passes.
     ballot the player knows from another week (s19 and s21 "Quinn Martinez · Emma · voted to evict them", s22 early
     "Riley Johnson · Jordan …", s25 "Jamie Roberts · Jordan …"). The old public-reveal excuse is no longer
     needed by any fixture (all 172 cases green without it), so it was removed.
-- `BallotPrivacyTests` itself is unchanged and could meet the same case.
-- **The nominee is a word of its own** (S6, 2026-11-01). `BallotPrivacyTests.NamesTheBallot` found the nominee's first
-  name anywhere in a line, inside another word too. The alumni-5 fixture's twelve-house (2.7) seats Dan Gheesling
-  beside Danielle Reyes. From week 7 the finalist read's lean "Danielle Reyes · Vanessa · voted to evict them" tells a
-  ballot the player knows, since week 7's count was unanimous. The sentinel took that lean for Danielle's hidden week-3
-  ballot against Dan, by the "Dan" in her name, in 18 of the season's states, and the reader case failed. The nominee
-  now has to stand as a word of its own, with no letter on either side, so a possessive ("Dan's") still counts and
-  "your" is not "you". `TheSentinelNamesTheNomineeOnlyAsAWordOfItsOwn` pins this. The check is only narrower, so no
-  fixture that passed before can fail. The PlayMode sentinel's copy (`EpisodePlayModeTests.BallotPrivacy`) is
-  unchanged.
+- `BallotPrivacyTests`' own season walk holds every line without the lean excuse and could meet the same case. Only its
+  name match changed, in S6 (the next point).
+- **A houseguest nominee is a word of its own** (S6, 2026-11-01). `BallotPrivacyTests.NamesTheBallot` found the
+  nominee's first name anywhere in a line, inside another word too. The alumni-5 fixture's twelve-house (2.7) seats Dan
+  Gheesling beside Danielle Reyes. From week 7 the finalist read's lean "Danielle Reyes · Vanessa · voted to evict them"
+  tells a ballot the player knows, since week 7's count was unanimous. The sentinel took that lean for Danielle's hidden
+  week-3 ballot against Dan, by the "Dan" in her name, in 18 of the season's states, and the reader case failed. A
+  houseguest nominee's first name now has to stand as a word of its own, with no letter on either side, so a possessive
+  ("Dan's") still counts. The player is still found as "you" anywhere, inside "your" too (S6's review: a ballot against
+  the player may say "your", and the false match was only ever a name inside a name). `TheSentinelNamesTheNomineeOnlyAsAWordOfItsOwn`
+  pins both. The check is only narrower, so no fixture that passed before can fail. The PlayMode sentinel's copy
+  (`EpisodePlayModeTests.BallotPrivacy`) is unchanged.
 
-**F9. Under Mono, the store can refuse a save by its own check of what it wrote. Open (found by S6's seed search,
-2026-11-01).**
+**F9. Under Mono, the store refuses a save, and a load, when a double's text parses one bit off. Open (found by S6's
+seed search, 2026-11-01).**
 
 - `generate 3146 12 director-allstars 3 Campaign` (2.7) fails in `EpisodeSaveStore.Save` three times out of three, in
-  `Install`'s read-back of the bytes it wrote: "Save checksum does not match; the file may be damaged."
-- The checksum is taken over the canonical form of `JObject.FromObject(state)`. The written text, parsed back, differs
-  there in one value. `relationships[9].events[1].impactScore` is the double 0x400bc16beeb33334: Mono's round-trip
-  format writes it as `3.4694441460073`, which reads back as 0x400bc16beeb33335, `3.4694441460073002`.
-- A scratch diagnostic took `Save`'s steps by hand under the editor's Mono. The dotnet subset's .NET formats the double
-  so that it round-trips, so the subset cannot see this.
-- Every save of a state that holds such a value is refused. Not S6's to fix; it is for the lead.
+  `Install`'s read-back of the bytes it wrote: "Save checksum does not match; the file may be damaged." The slot keeps
+  the file it had.
+- The checksum is taken over the canonical form of `JObject.FromObject(state)`, the doubles as they are in memory.
+  `relationships[9].events[1].impactScore` is the double 0x400bc16beeb33334. Mono writes it as `3.4694441460073`, and
+  that is right: it is the shortest text whose nearest double is 0x400bc16beeb33334 (checked with correctly rounded
+  arithmetic in Python, S6's review). The read is wrong. Mono's parse of that text, in `SaveJson.ParseObject` (Json.NET's
+  `JsonTextReader` on the Mono runtime), gives 0x400bc16beeb33335, one unit in the last place over
+  (`3.4694441460073002`). So the canonical form of what was read differs from the one hashed, in that one value.
+- A scratch diagnostic took `Save`'s steps by hand under the editor's Mono. .NET writes the same text and parses it to
+  the right double, so the dotnet subset cannot see this.
+- The scope is every read, not only a save's. Under Mono, `TryRead` refuses any file that holds such a text: a load, a
+  recovery from the backup, and `Install`'s read-back of a save alike. Once such a value stands in a season's state (a
+  relationship event's score here), every save of that season is refused for as long as it stands. A file .NET wrote
+  with such a text loads under .NET and is refused under Mono.
+- The fix belongs on the read and checksum path, not the writer. For example, the checksum could be checked against a
+  correctly rounded parse of the doubles, or `Install` could compare the doubles it reads back with the bits in memory
+  rather than re-hash Mono's parse. Its pin is the state `generate 3146 12 director-allstars 3 Campaign` builds and
+  fails to save, saved and loaded under the Mono harness: the dotnet subset cannot reproduce it. Not S6's to fix; it is the lead's
+  (section 7).
 
 ## 4. The tests (`Assets/Gamesim/Tests/EditMode/OldSaveAcceptanceTests.cs`)
 
@@ -919,7 +937,7 @@ All tests run in EditMode. None are in the dotnet subset, which excludes the sav
 | `AnOldSaveFromABranchsOwnSchemaNumberIsRefusedAndLeftAsItWas` | 1 | F4. |
 | `AnOldSaveKeptAsTheBackupIsRecoveredWhetherThePrimaryIsMissingOrDamaged` | 65 | Recovery from the backup (2026-10-22). See below. |
 | `AnOldSaveFromABranchsOwnSchemaNumberIsNeverRecoveredFromTheBackup` | 1 | F4 as the backup (2026-10-22). See below. |
-| `TheAlumniFiveCellIsSavedWithAHouseguestsPactGrownPastTwoAndKeptToItself` | 1 | The alumni-5 cell holds what it was chosen for (2.7): at alumni rules 5, the week-3 campaign of a twelve-house, one houseguests' pact grown past two (its founders first and the recruit last), every member in the house and in no live known pair, within the bound, its fact private and known to exactly its members, from an earlier week. |
+| `TheAlumniFiveCellIsSavedWithAHouseguestsPactGrownPastTwoAndKeptToItself` | 1 | The alumni-5 cell holds what it was chosen for (2.7): at alumni rules 5, the week-3 campaign of a twelve-house, one houseguests' pact grown past two (its founders first and the recruit last), every member in the house and in no live known pair, two known pairs live and so a bound of 4, its fact private and known to exactly its members, from an earlier week, and the recruit's "was joined" rows in the save's week beside both founders, both ways, with none between the founders. |
 | `AnOldCareerFileLoadsAndAddsUp` | 2 | Read, not set aside. The summary lines. A finished old season recorded once. |
 | `PersistenceV23MigrationTests.ASchema22SaveFromTheVersionsFirstBuildsGainsTheTwoLaterFieldsAsLiterals` | 1 | F1, the first shape. |
 | `PersistenceV23MigrationTests.ASchema22SaveFromTheVersionsMiddleBuildsGainsOnlyTheJoinedLiteral` | 1 | F1, the middle shape (review m1). |
@@ -1326,6 +1344,11 @@ The same pattern, one schema on (2026-10-25, `claude/all-star-histories`):
   - Before, the next story milestone would have had every schema 2 to 15 save refused.
   - Reverting it is one commit. The old step is not a real alternative, though: it would break those saves at the
     next milestone.
+- **F9 is open** (2026-11-01, found by S6's seed search). Under Mono the store refuses a save, and any load or recovery,
+  of a state holding a double whose shortest text Mono parses one bit off: the 12-house at 3146 (section 3). The writer
+  is right; the fix is on the read and checksum path, pinned under the Mono harness by that state, since the dotnet
+  subset cannot reproduce it. It is the lead's. No fixture here is affected: under the Mono harness every committed save loads, F4's
+  refused one aside, and is recovered from the backup.
 - The B9 tuning and the All-Star rebuild may proceed past this gate only with schema 29 claimed, and with this
   acceptance extended as in section 6, step 5. Both hold now: schema 29 is claimed (OWNER-DECISIONS-2026-10-22 §5),
   and the acceptance was extended to it on 2026-10-22 (2.3). A retune that moves a shipped mode-2 season without a

@@ -95,8 +95,9 @@ namespace Gamesim.Tests.EditMode
         /// Whether a line says the voter's ballot: in any sentence of it, the voter's name as the
         /// sentence's subject - the first houseguest it names - followed by a ballot verb ("Casey
         /// Wilson voted", "Casey Wilson broke", "Casey Wilson was with you at the call, then voted"),
-        /// with the nominee it went against named anywhere in the line, as a word of its own: a first
-        /// name inside another word is not the nominee ("Dan" in "Danielle Reyes", ALL-STAR-HISTORIES-PLAN
+        /// with the nominee it went against named anywhere in the line. The player is "you" anywhere,
+        /// inside "your" too. A houseguest's first name counts only as a word of its own: a first name
+        /// inside another name is not the nominee ("Dan" in "Danielle Reyes", ALL-STAR-HISTORIES-PLAN
         /// 14.J's S6). A name in object position ("Jamie told you Casey and voted Riley") is not the
         /// subject. The words that say a ballot is not known (KnownBallots.Unresolved) are not a ballot said.
         /// </summary>
@@ -107,8 +108,10 @@ namespace Gamesim.Tests.EditMode
             if (voter == null || target == null) return false;
             if (AccountPrefixes.Any(prefix => line.StartsWith(prefix, StringComparison.Ordinal))) return false;
             string said = line.Replace(KnownBallots.Unresolved, string.Empty);
-            string targetWord = targetId == s.playerId ? "you" : FinalistRead.FirstName(target);
-            if (!NamesAsAWord(said, targetWord)) return false;
+            bool named = targetId == s.playerId
+                ? said.IndexOf("you", StringComparison.Ordinal) >= 0
+                : NamesAsAWord(said, FinalistRead.FirstName(target));
+            if (!named) return false;
             foreach (var sentence in Sentences(said))
             {
                 int at = sentence.IndexOf(voter, StringComparison.Ordinal);
@@ -239,10 +242,12 @@ namespace Gamesim.Tests.EditMode
         }
 
         /// <summary>
-        /// The sentinel reads the nominee as a word of its own. The All-Stars house seats Dan Gheesling beside Danielle
-        /// Reyes, and the finalist read's lean "Danielle Reyes · Vanessa · voted to evict them" - a ballot the player knows
-        /// - was taken for Danielle's hidden ballot against Dan, by the "Dan" in her own name (the alumni-5 old-save
-        /// fixture, ALL-STAR-HISTORIES-PLAN 14.J's S6). The ballot it does name, and a line naming Dan, are still seen.
+        /// The sentinel reads a houseguest nominee's name as a word of its own. The All-Stars house seats Dan Gheesling
+        /// beside Danielle Reyes, and the finalist read's lean "Danielle Reyes · Vanessa · voted to evict them" - a ballot
+        /// the player knows - was taken for Danielle's hidden ballot against Dan, by the "Dan" in her own name (the
+        /// alumni-5 old-save fixture, ALL-STAR-HISTORIES-PLAN 14.J's S6). The ballot it does name, and a line naming Dan,
+        /// are still seen. The player is still found as before, anywhere in the line: a ballot against the player may say
+        /// "your".
         /// </summary>
         [Test]
         public void TheSentinelNamesTheNomineeOnlyAsAWordOfItsOwn()
@@ -258,7 +263,8 @@ namespace Gamesim.Tests.EditMode
             Assert.That(NamesTheBallot(s, "Danielle Reyes voted to evict Dan Gheesling.", "danielle", "dan"), Is.True);
             Assert.That(NamesTheBallot(s, "Danielle Reyes voted against Dan's deal.", "danielle", "dan"), Is.True, "A possessive is still the name.");
             Assert.That(NamesTheBallot(s, "Danielle Reyes voted to evict you.", "danielle", "player"), Is.True);
-            Assert.That(NamesTheBallot(s, "Danielle Reyes voted with your ally.", "danielle", "player"), Is.False, "\"your\" is not \"you\".");
+            Assert.That(NamesTheBallot(s, "Danielle Reyes voted for your eviction.", "danielle", "player"), Is.True,
+                "The player is found anywhere, inside \"your\" too: only a houseguest's name has to stand alone.");
         }
 
         /// <summary>

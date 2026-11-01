@@ -379,7 +379,8 @@ namespace Gamesim.Tests.PlayMode
                 director.ShowNotebookSection(EpisodeDirector.NotebookSection.Alliances);
                 yield return null; yield return null;
                 Canvas.ForceUpdateCanvases();
-                Assert.That(CopyUnder(LastActive("Your alliances heading")).Split('\n'), Is.EqualTo(new[] { EpisodeDirector.YourAlliancesHeading, "0" }), where);
+                // The "YOUR ALLIANCES" heading row carries the page's mark: EpisodeHud.Mark renames the last thing added.
+                Assert.That(CopyUnder(LastActive(EpisodeDirector.NotebookSection.Alliances)).Split('\n'), Is.EqualTo(new[] { EpisodeDirector.YourAlliancesHeading, "0" }), where);
                 Assert.That(CopyUnder(LastActive("Other alliances heading")).Split('\n'), Is.EqualTo(new[] { EpisodeDirector.OtherAlliancesHeading, "0" }), where);
                 Assert.That(CopyUnder(LastActive(EpisodeHud.NoSuspectedName)), Does.Contain(EpisodeDirector.NoSuspectedCopy), "The empty state says what it always said: " + where);
                 Assert.That(CopyUnder(LastActive(EpisodeHud.NoAlliancesName)), Does.Contain(EpisodeDirector.NoAlliancesCopy), where);

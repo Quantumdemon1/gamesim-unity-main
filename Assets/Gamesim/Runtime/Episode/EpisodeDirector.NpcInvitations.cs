@@ -81,6 +81,8 @@ namespace Gamesim.Episode
                         if (npcInvitationBubble == null) npcInvitationBubble = gameObject.AddComponent<HouseNpcInvitationBubble>();
                         object view = npcInvitationView; long generation = npcInvitationLoad;
                         var invitation = npcInvitationNow;
+                        // Only over a speaker the room scope draws (RS4): withheld, the offer waits for them.
+                        npcInvitationBubble.SpeakerDrawn = IsBodyDrawn(HousemateBody(invitation.NpcId));
                         npcInvitationBubble.Show(projected.Find(invitation.NpcId).name, invitation.OpeningLine, TextScale, anchor,
                             () => HearNpcInvitation(view, generation, invitation),
                             () => DeferNpcInvitation(view, generation, invitation), view);

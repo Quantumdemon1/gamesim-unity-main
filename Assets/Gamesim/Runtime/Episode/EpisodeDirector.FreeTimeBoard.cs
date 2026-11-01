@@ -380,7 +380,7 @@ namespace Gamesim.Episode
             spec.Cards = OthersHereFirst(state).Select(c =>
             {
                 string role = EpisodeHud.RoleFor(state, c.id, out var colour);
-                if (role == null && hereIds.Contains(c.id)) { role = "HERE"; colour = UiTheme.Allied; }
+                if (role == null && hereIds.Contains(c.id)) { role = "HERE"; colour = UiTheme.Allied; TagHere(c.id); }
                 return new EpisodeHud.HouseCard(c.id, role, colour, null);
             }).ToList();
             spec.Page = freeTimePage;

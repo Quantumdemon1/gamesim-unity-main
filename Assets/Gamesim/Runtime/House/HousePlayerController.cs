@@ -333,9 +333,10 @@ namespace Gamesim.House
             if (screen == lastHover && view == lastHoverView) return;
             lastHover = screen; lastHoverView = view;
             HouseInteractionAnchor under = null;
+            // Past anything the room scope does not draw (RS4, §3.2 f): a hidden body is not under the pointer.
             if (!Gamesim.Presentation.CeremonyOverlays.OnScreen
                 && !(EventSystem.current != null && EventSystem.current.IsPointerOverGameObject())
-                && Physics.Raycast(ScreenRay(viewCamera, screen), out var hit, 500f, HouseLayers.Pick, QueryTriggerInteraction.Ignore))
+                && HouseScopePick.Raycast(viewCamera, ScreenRay(viewCamera, screen), 500f, HouseLayers.Pick, out var hit))
                 under = HouseFurniture.AtProp(gameObject.scene, hit.transform, hit.point);
             FurnitureHovered(under, screen);
         }
@@ -397,13 +398,16 @@ namespace Gamesim.House
         public void DispatchClick(Ray ray, Vector2 screen)
         {
             if (!InputEnabled) return;
-            if(HouseSeatPresentation.TryPickNpc(gameObject.scene,ray,out var seatedGuest))
+            // What the room scope does not draw cannot be clicked (RS4, §3.2 f, D13): a hidden houseguest,
+            // seated or standing, is passed over, and the click goes on to whatever is behind them - the
+            // floor, which walks the player there. With the whole house drawn, the click as it always was.
+            if(HouseSeatPresentation.TryPickNpc(gameObject.scene,ray,viewCamera,out var seatedGuest))
             {
                 if (!Select(seatedGuest)) CameraRig?.FocusSubject(seatedGuest.transform);
                 return;
             }
             // Pick, not Sight: a click is meant to hit the thing under the cursor, furniture included.
-            if (!Physics.Raycast(ray, out var hit, 500f, HouseLayers.Pick, QueryTriggerInteraction.Ignore))
+            if (!HouseScopePick.Raycast(viewCamera, ray, 500f, HouseLayers.Pick, out var hit))
             {
                 return;
             }

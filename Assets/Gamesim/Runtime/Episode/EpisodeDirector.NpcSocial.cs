@@ -455,6 +455,9 @@ namespace Gamesim.Episode
                     // approaches stay reserved; they are not where seated faces are rendered.
                     var between = visibleMidpoint+Vector3.up*(lease.Seated ? .35f : CaptionHeadHeight-1.15f);
                     npcCaption.CaptionTime = captionTime;
+                    // Drawn only over a pair the room scope draws (RS4); the witness itself is unchanged.
+                    captionFirstId = pending.firstId; captionSecondId = pending.secondId;
+                    npcCaption.PairDrawn = IsBodyDrawn(HousemateBody(pending.firstId)) && IsBodyDrawn(HousemateBody(pending.secondId));
                     npcCaption.Show(projected.Find(pending.firstId).name, projected.Find(pending.secondId).name,
                         pending.topic, TextScale, between);
                     npcShownLease = lease;

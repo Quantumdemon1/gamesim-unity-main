@@ -261,7 +261,7 @@ namespace Gamesim.Episode
             var cards = others.Select(c =>
             {
                 string role = EpisodeHud.RoleFor(state, c.id, out var colour);
-                if (role == null && hereIds.Contains(c.id)) { role = "HERE"; colour = UiTheme.Allied; }
+                if (role == null && hereIds.Contains(c.id)) { role = "HERE"; colour = UiTheme.Allied; TagHere(c.id); }
                 return new EpisodeHud.HouseCard(c.id, role, colour, CardLine(state, c.id));
             }).ToList();
             hud.HouseCards(cards, TalkFromCampaign, OpenHouseguestScreen);

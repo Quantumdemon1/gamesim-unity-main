@@ -35,6 +35,28 @@ namespace Gamesim.Episode
         public UnityEngine.UI.Button HearControl => hearButton;
         public UnityEngine.UI.Button NotNowControl => deferButton;
 
+        /// <summary>
+        /// Whether the speaker's body is drawn (ROOM-SCOPE-PLAN §3.2 e, RS4): the bubble is over a body
+        /// the main view draws, or not up at all. Withheld, its panel is down - so it is not visible and
+        /// not a prompt - and the offer it carries stands, to show the moment the speaker is drawn. The
+        /// director sets it from the room scope, late in the frame, and it is taken at once.
+        /// </summary>
+        public bool SpeakerDrawn
+        {
+            get => speakerDrawn;
+            set
+            {
+                if (speakerDrawn == value) return;
+                speakerDrawn = value;
+                if (root == null || !root.activeSelf || panel == null) return;
+                if (value) { Place(false); return; }
+                LetGoOfFocus();
+                panel.gameObject.SetActive(false);
+            }
+        }
+
+        private bool speakerDrawn = true;
+
         public void Show(string npcName, string line, float fontScale, Vector3 worldAnchor,
             Action hearThemOut, Action defer, object view = null)
         {
@@ -57,10 +79,16 @@ namespace Gamesim.Episode
         {
             boundView = null;
             if (root == null) return;
+            LetGoOfFocus();
+            root.SetActive(false);
+        }
+
+        /// <summary>A selected control of the bubble's lets go: the keyboard never stays on a control that is not drawn.</summary>
+        private void LetGoOfFocus()
+        {
             var events = EventSystem.current;
             if (events != null && events.currentSelectedGameObject != null
                 && events.currentSelectedGameObject.transform.IsChildOf(root.transform)) events.SetSelectedGameObject(null);
-            root.SetActive(false);
         }
 
         /// <summary>Optional owner entry point for keyboard/pad focus; showing an invitation never steals it.</summary>
@@ -87,7 +115,8 @@ namespace Gamesim.Episode
         private void Place(bool textChanged)
         {
             var camera = Camera.main;
-            if (camera == null || canvasRect == null) { panel.gameObject.SetActive(false); return; }
+            // A speaker the room scope does not draw has no bubble over them (RS4).
+            if (camera == null || canvasRect == null || !speakerDrawn) { panel.gameObject.SetActive(false); return; }
             var viewport = camera.WorldToViewportPoint(anchor);
             if (viewport.z <= 0f || viewport.x < 0f || viewport.x > 1f || viewport.y < 0f || viewport.y > 1f)
             { panel.gameObject.SetActive(false); return; }

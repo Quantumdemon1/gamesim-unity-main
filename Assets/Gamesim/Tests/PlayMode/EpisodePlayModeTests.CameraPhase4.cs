@@ -99,6 +99,32 @@ namespace Gamesim.Tests.PlayMode
             yield return null; yield return null;
             Assert.That(npc.NameTagAlpha, Is.LessThan(0.05f), "From the far end of the zoom it is gone.");
             Assert.That(label.color.a, Is.EqualTo(npc.NameTagAlpha).Within(0.01f), "and the label's colour carries it.");
+
+            // No plate for a hidden room, however close the camera (RS4): held on a room away from them,
+            // a shot at the nearest zoom shows none; let go, they are drawn again. The player stands in
+            // that far room, so no prompt of theirs names the houseguest.
+            var scope = ScopeOf(director);
+            int away = Rs4FarRoom(scope, npc.transform.position);
+            WarpPlayer(ScopeOpenFloor(scope, away));
+            var owner = new object();
+            try
+            {
+                cameraRig.MoveTo(new HouseCameraRig.Shot
+                {
+                    Focus = npc.transform.position + Vector3.up, Distance = cameraRig.NearestDistance, Pitch = 45f, Yaw = 0f, Rooms = RoomSet.Of(away),
+                });
+                director.HoldRoomScope(owner);
+                yield return null; yield return null;
+                Assert.That(npc.BodyHidden, Is.True, "Held on the " + RoomLayers.RoomIds[away] + ", " + npc.Id + " is hidden.");
+                Assert.That(npc.PlateAlpha, Is.Zero, "Close up, a hidden room's houseguest has no plate.");
+            }
+            finally
+            {
+                director.Release(owner);
+                cameraRig.ReleaseShot(0f);
+            }
+            yield return null;
+            Assert.That(npc.BodyHidden, Is.False, "Let go, drawn again.");
             cameraRig.SetReducedMotion(false);
             cameraRig.ControlsEnabled = true;
         }

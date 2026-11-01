@@ -117,11 +117,21 @@ namespace Gamesim.Uma
             // return valid from this frame rather than from whenever UMA gets to the build.
             var animator = root.AddComponent<Animator>();
             animator.applyRootMotion = false;
+            // A hidden body keeps animating (ROOM-SCOPE-PLAN §3.2 e, D9; RS4): the room scope stops
+            // drawing a body in a room the view leaves out, never its bones, which witness sightlines,
+            // seat fitting and framing read live. Pinned here and again at the end of every build
+            // (KeepAnimating), because UMA recreates the Animator on a race change.
+            animator.cullingMode = AnimatorCullingMode.AlwaysAnimate;
             var controller = ResolveController(indexer);
             if (controller != null) animator.runtimeAnimatorController = controller;
 
             var avatar = root.AddComponent<DynamicCharacterAvatar>();
             avatar.activeRace.name = look.Race;
+            // What UMA gives an Animator it adds itself, should it ever initialise one (its own default
+            // is CullCompletely), and the pin again once each build is done, on whatever Animator UMA
+            // left the body with. A static handler holds nothing, so nothing has to let go of it.
+            avatar.animatorCullingMode = AnimatorCullingMode.AlwaysAnimate;
+            avatar.OnCharacterUpdated += KeepAnimating;
             // UMA declares this inside #if UNITY_EDITOR, so referencing it unguarded compiles in the
             // editor and then fails the player build. Bodies are generated at runtime either way;
             // this only stops UMA also building one into an edit-mode scene.
@@ -365,6 +375,18 @@ namespace Gamesim.Uma
         }
 
         /// <summary>A clip off another controller, by name: exactly first, then by prefix.</summary>
+        /// <summary>
+        /// The end of every build of a body (UMA's CharacterUpdated): each Animator on it always
+        /// animates, the one UMA recreates on a race change included, so a body the room scope hides
+        /// keeps its pose live (§3.2 e, R15).
+        /// </summary>
+        private static void KeepAnimating(UMAData data)
+        {
+            if (data == null) return;
+            foreach (var animator in data.GetComponentsInChildren<Animator>(true))
+                if (animator.cullingMode != AnimatorCullingMode.AlwaysAnimate) animator.cullingMode = AnimatorCullingMode.AlwaysAnimate;
+        }
+
         private static AnimationClip Borrow(RuntimeAnimatorController from, params string[] names)
         {
             if (from == null) return null;

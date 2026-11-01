@@ -73,6 +73,12 @@ namespace Gamesim.Episode
         private RenderTexture keptTarget;
         private int keptCullingMask;
         private bool checkFramesOn;
+        /// <summary>
+        /// The whole house, held for the check frames: the checks write the main camera's mask
+        /// themselves, and the room scope's own mask write (RS4) stands aside meanwhile, so neither
+        /// puts back a bit the other took out.
+        /// </summary>
+        private readonly object checkFramesHold = new object();
         private readonly List<GameObject> probeMarkers = new List<GameObject>();
         private readonly List<Material> probeMaterials = new List<Material>();
 
@@ -1251,6 +1257,8 @@ namespace Gamesim.Episode
             checkTarget = new RenderTexture(width, height, 24, RenderTextureFormat.ARGB32) { name = "Room scope probe frame" };
             manualTarget = new RenderTexture(width, height, 24, RenderTextureFormat.ARGB32) { name = "Room scope probe manual frame" };
             keptTarget = viewsCamera.targetTexture;
+            // Before the mask is kept: the hold gives back every room bit the scope had out, at once.
+            if (viewsDirector != null) viewsDirector.HoldWholeHouse(checkFramesHold);
             keptCullingMask = viewsCamera.cullingMask;
             viewsCamera.targetTexture = checkTarget;
             checkFramesOn = true;
@@ -1263,6 +1271,7 @@ namespace Gamesim.Episode
                 viewsCamera.targetTexture = keptTarget;
                 viewsCamera.cullingMask = keptCullingMask;
             }
+            if (viewsDirector != null) viewsDirector.Release(checkFramesHold);
             checkFramesOn = false;
             viewsLateUpdate = null;
             foreach (var marker in probeMarkers) if (marker != null) Destroy(marker);

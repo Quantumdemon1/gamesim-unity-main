@@ -11,8 +11,10 @@ namespace Gamesim.House
     ///
     /// <para>It computes and reports only. Nothing here writes a layer, a culling mask or a light:
     /// the classification is a table for RS2a to apply, the walker rooms are what the camera rig
-    /// reports and, from RSW, what who-is-where reads, and the lamps' homes are what the director's
-    /// lamp hook switches by (RS3, <see cref="LampOutsideScope"/>).</para>
+    /// reports and, from RSW, what who-is-where reads, the lamps' homes are what the director's
+    /// lamp hook switches by (RS3, <see cref="LampOutsideScope"/>), and which bodies are drawn and on
+    /// what layer is the rule the director's body pass applies (RS4, <see cref="DrawsWalker"/>,
+    /// <see cref="BodyLayer"/>).</para>
     ///
     /// <para>The boxes come from the floors through one <see cref="HouseRoomQuery"/>, which the scope
     /// keeps (<see cref="Query"/>): a reader that wants the query's own questions - the safe interior,
@@ -396,6 +398,40 @@ namespace Gamesim.House
         /// <summary>Whether a piece belongs to a body: a houseguest's or the player's.</summary>
         public static bool IsBody(Transform piece)
             => piece != null && (piece.GetComponentInParent<HouseNpc>(true) != null || piece.GetComponentInParent<HousePlayerController>(true) != null);
+
+        // ------------------------------------------------------------------------------------
+        // Bodies (§3.2 e, RS4): drawn by where they walk.
+        // ------------------------------------------------------------------------------------
+
+        /// <summary>
+        /// Whether a body is drawn by where it stands, under a view (§3.2 e): its walker room is viewed,
+        /// or its feet are within <see cref="HouseWhoIsWhere.DoorwayBand"/> of a viewed room's floor box
+        /// (by the true distance off a corner) - the doorway band, so someone walking in is drawn from
+        /// 0.6 m before the doorway. The whole house and no room draw everyone, and so does a body the
+        /// floors cannot place (<paramref name="walkerRoom"/> -1): a missed case draws too much, never
+        /// too little. The camera's subjects and the people a prompt names are the director's to add.
+        /// </summary>
+        public bool DrawsWalker(RoomSet viewed, int walkerRoom, Vector3 feet)
+        {
+            if (viewed.IsWholeHouse || viewed.IsEmpty || walkerRoom < 0 || viewed.Contains(walkerRoom)) return true;
+            for (int i = 0; i < RoomLayers.Count; i++)
+                if (viewed.Contains(i) && HouseWhoIsWhere.InDoorwayBand(this, i, feet)) return true;
+            return false;
+        }
+
+        /// <summary>
+        /// The layer one of a body's renderer objects goes to (§3.2 e): a drawn body's, layer 0; a
+        /// hidden body's, its walker room's layer, which the main camera's mask then leaves out. Only
+        /// layer 0 and the room layers are the scope's to write: a piece on any other layer stays where
+        /// it is (and so is drawn always). The root is never a renderer object, so parking's layer 8
+        /// on it is untouched.
+        /// </summary>
+        public static int BodyLayer(int current, bool drawn, int walkerRoom)
+        {
+            if (current != 0 && !RoomLayers.IsRoomLayer(current)) return current;
+            if (drawn || walkerRoom < 0 || walkerRoom >= RoomLayers.Count) return 0;
+            return RoomLayers.First + walkerRoom;
+        }
 
         // ------------------------------------------------------------------------------------
         // Lamps (§3.2 b, d).

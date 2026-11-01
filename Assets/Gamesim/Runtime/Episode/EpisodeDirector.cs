@@ -507,6 +507,8 @@ namespace Gamesim.Episode
                 // chain in two places, which is two chances to disagree about what E does.
                 var choice = ChooseInteraction(out var npc);
                 if (npc != promptNpc) { promptNpc = npc; npcPrompt = npc != null ? "E  ·  Talk to " + npc.DisplayName : null; }
+                // Who the prompt names, for the room scope's prompt rule (RS4): drawn wherever the view is.
+                promptNamed = choice == InteractTarget.Talk || choice == InteractTarget.Invitation ? npc : null;
                 string prompt = "", hint = null;
                 if (IsPlayerHouseActivityActive && playerActivityInHouse) prompt = HouseFurniture.StopPrompt(playerActivityKind);
                 else if (choice == InteractTarget.Invitation) prompt = "E  ·  Hear " + npc.DisplayName + " out";
@@ -523,7 +525,7 @@ namespace Gamesim.Episode
                 else if (choice == InteractTarget.StepIn) prompt = "E  \u00b7  " + EpisodeHud.StepInCaption;
                 hud.SetPrompt(InputGlossary.PromptFor(prompt, padHints), hint);
             }
-            else hud.SetPrompt("");
+            else { hud.SetPrompt(""); promptNamed = null; }
         }
 
         /// <summary>
@@ -701,6 +703,7 @@ namespace Gamesim.Episode
         private void ClosePanelsInternal(bool render)
         {
             paidStoryViewToken = null;
+            hereTagged.Clear();
             CancelNpcInvitation();
             ResetConversationNavigation();
             CancelConversationExchange(false);
@@ -1341,6 +1344,8 @@ namespace Gamesim.Episode
         private void Render()
         {
             paidStoryViewToken = null;
+            // The free-time cards tag HERE again as they are drawn (the room scope's prompt rule, RS4).
+            hereTagged.Clear();
             conversationNavigationShowing = false;
             conversationMenuToken = null;
             pitchNavigationView = null;

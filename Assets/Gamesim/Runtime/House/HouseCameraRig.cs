@@ -196,6 +196,14 @@ namespace Gamesim.House
         }
 
         public bool IsConversationFocused { get; private set; }
+
+        /// <summary>
+        /// Whether a body is one of the two the conversation's two-shot holds: the room scope draws
+        /// them whatever room they stand in (ROOM-SCOPE-PLAN §3.2 e, RS4).
+        /// </summary>
+        public bool IsConversationSubject(Transform body)
+            => IsConversationFocused && body != null && (body == conversationPlayer || body == conversationNpc);
+
         public bool IsSubjectFocused => subject != null;
         public Transform FocusedSubject => subject;
         public bool ControlsEnabled { get; set; } = true;

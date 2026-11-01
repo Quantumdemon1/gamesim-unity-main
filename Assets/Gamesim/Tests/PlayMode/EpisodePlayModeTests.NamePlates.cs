@@ -51,6 +51,25 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(spot.transform.position.y, Is.GreaterThan(plateTop + .5f),
                 "The light hangs well over the plate, never in front of the name: " + spot.transform.position.y + " against " + plateTop + ".");
 
+            // Plates are for drawn houseguests only (RS4): held on the followed one's room, they keep
+            // theirs whatever the view, and anyone the view hides has theirs down.
+            var owner = new object();
+            director.HoldRoomScope(owner);
+            try
+            {
+                yield return null;
+                Assert.That(director.IsBodyDrawn(chosen.transform), Is.True, "The followed houseguest is drawn.");
+                Assert.That(chosen.BodyHidden, Is.False, "and keeps their plate under the spotlight.");
+                foreach (var npc in npcs)
+                {
+                    bool hidden = !director.IsBodyDrawn(npc.transform);
+                    Assert.That(npc.BodyHidden, Is.EqualTo(hidden), npc.Id + "'s plate goes with their body.");
+                    if (hidden) Assert.That(npc.PlateAlpha, Is.Zero, npc.Id + " is hidden: no plate.");
+                }
+            }
+            finally { director.Release(owner); }
+            Assert.That(npcs.Any(npc => npc.BodyHidden), Is.False, "Let go, no plate is held down by the scope.");
+
             if (Application.isBatchMode) yield return CaptureFraming("followed");
             director.FollowHouseguest(chosen.Id);
             yield return null;

@@ -77,6 +77,9 @@ namespace Gamesim.Episode
         /// </summary>
         private void PlaceHouseOverlaysLate()
         {
+            // First, what the room scope draws (RS4): the bodies and the main camera's mask for this
+            // frame's render, after the camera has moved; a plate it hides is down before it is measured.
+            ApplyRoomScopeDrawing();
             if (housemates == null) return;
             var eye = cameraRig != null ? cameraRig.ViewCamera : null;
             bool chrome = hud != null && hud.IsVisible && eye != null;
@@ -84,7 +87,8 @@ namespace Gamesim.Episode
             foreach (var npc in housemates)
             {
                 if (npc == null) continue;
-                npc.PlateCovered = chrome && npc.Id != talking && npc.TryPlateScreenRect(eye, out var plate) && hud.CoversPlate(plate);
+                // A hidden body's plate is down already, and not measured (RS4).
+                npc.PlateCovered = !npc.BodyHidden && chrome && npc.Id != talking && npc.TryPlateScreenRect(eye, out var plate) && hud.CoversPlate(plate);
             }
         }
     }

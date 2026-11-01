@@ -16,7 +16,9 @@ namespace Gamesim.House
     /// (a capture guard and the garment fit's isolation layer), so the scope writes bits 20 to 27 and
     /// nothing else.</para>
     ///
-    /// <para>RS1 names the layers and puts nothing on them; RS2a applies the classification.</para>
+    /// <para>RS1 names the layers and puts nothing on them; RS2a applies the classification. RS4 puts a
+    /// hidden body's renderer objects on its walker room's layer and writes the main camera's and the
+    /// live feed's masks (<see cref="ScopeMask"/>, <see cref="OwnRoomMask"/>).</para>
     /// </summary>
     public static class RoomLayers
     {
@@ -61,6 +63,31 @@ namespace Gamesim.House
         public static string RoomOf(int layer) => IsRoomLayer(layer) ? roomIds[layer - First] : null;
 
         public static bool IsRoomLayer(int layer) => layer >= First && layer < First + Count;
+
+        /// <summary>
+        /// The main camera's culling mask under a view (§3.2 c; RS4, which takes the mask write by D16):
+        /// the room bits outside the view taken out, and any this took out before that the view now
+        /// holds put back. <paramref name="taken"/> carries what it has out between calls. It only ever
+        /// puts back a bit it took out, so a room bit something else cleared - a test's, the probe's -
+        /// stays clear, and it never touches a bit outside 20 to 27 (the capture guard on 31, the tests'
+        /// 30). For a camera whose mask has every room bit, as the scene's does, that is the plan's
+        /// <c>(mask &amp; ~RoomBits) | ScopeBits</c>. The whole house, or no room, takes nothing out.
+        /// </summary>
+        public static int ScopeMask(int mask, RoomSet viewed, ref int taken)
+        {
+            int outside = viewed.IsWholeHouse || viewed.IsEmpty ? 0 : Mask & ~viewed.CullingBits;
+            mask |= taken & ~outside;
+            int take = outside & mask;
+            mask &= ~take;
+            taken = (taken & outside) | take;
+            return mask;
+        }
+
+        /// <summary>
+        /// The live feed camera's mask (§3.2 c, D10): the shell and its own room's layer, every other
+        /// room's left out; every room for a feed that names none. Only bits 20 to 27 change.
+        /// </summary>
+        public static int OwnRoomMask(int mask, RoomSet own) => own.IsEmpty ? mask | Mask : (mask & ~Mask) | own.CullingBits;
     }
 
     /// <summary>

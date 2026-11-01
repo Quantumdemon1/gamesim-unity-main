@@ -71,6 +71,21 @@ namespace Gamesim.Tests.EditMode
             Assert.That(house.RoomForPlan(-14.2f, -14.2f, -5f, -5f, out placement), Is.EqualTo(Index("Living")), "Within the growth past an outer wall: still the room's.");
             Assert.That(house.RoomForPlan(-14.5f, -14.5f, -5f, -5f, out placement), Is.EqualTo(-1), "Past the growth: over no floor.");
             Assert.That(placement, Is.EqualTo(Placement.Outside));
+
+            // What the classifier reads of a renderer (HouseRoomScope.PlanExtent, which Classify calls):
+            // an emitter's point, whatever its live particles' bounds; any other renderer's bounds,
+            // wherever its pivot.
+            var acrossTheWall = new Bounds(new Vector3(0f, 1f, -5f), new Vector3(4f, 1f, 1f));
+            var inTheLivingRoom = new Vector3(-7f, .3f, -5f);
+            HouseRoomScope.PlanExtent(true, inTheLivingRoom, acrossTheWall, out float x0, out float x1, out float z0, out float z1);
+            Assert.That(new[] { x0, x1, z0, z1 }, Is.EqualTo(new[] { -7f, -7f, -5f, -5f }), "An emitter is read by its point in plan.");
+            Assert.That(house.RoomForPlan(x0, x1, z0, z1, out placement), Is.EqualTo(Index("Living")),
+                "An emitter in the living room whose particles drift across the kitchen's wall is the living room's.");
+            Assert.That(placement, Is.EqualTo(Placement.Room));
+            HouseRoomScope.PlanExtent(false, inTheLivingRoom, acrossTheWall, out x0, out x1, out z0, out z1);
+            Assert.That(new[] { x0, x1, z0, z1 }, Is.EqualTo(new[] { -2f, 2f, -5.5f, -4.5f }), "A mesh is read by its bounds.");
+            Assert.That(house.RoomForPlan(x0, x1, z0, z1, out placement), Is.EqualTo(-1), "A mesh with those bounds crosses the wall, wherever its pivot,");
+            Assert.That(placement, Is.EqualTo(Placement.Straddles), "and is drawn always.");
         }
     }
 }

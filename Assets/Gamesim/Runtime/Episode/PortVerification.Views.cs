@@ -1297,7 +1297,10 @@ namespace Gamesim.Episode
         /// FinishFrameRendering), so it is read one frame on; a second read a frame later tells a drawer
         /// a render late - which would flash the old room at every room change - from one that never
         /// follows. A marker the drawer's GRD Renderers did not count says nothing the lane's plain-path
-        /// pin does not, so the check is then not run.
+        /// pin does not, so the check is then not run. The room's bit is out of the mask before anything
+        /// is read, and back after the last read: from RS2a that room's furniture stands on its layer,
+        /// and leaving it out between the reads would read as the marker's own change. Only the marker's
+        /// layer moves between them.
         /// </summary>
         private IEnumerator CheckRoomMarkers()
         {
@@ -1316,19 +1319,26 @@ namespace Gamesim.Episode
                 var plan = VerificationViews.Room(room);
                 var at = new Vector3((float)plan.CentreX, 2.6f, (float)plan.CentreZ);
                 long registered = DrawerCount(drawerRenderers);
+                int layer = RoomLayers.LayerOf(room);
+                // The room's dressing out from the first read to the last, so only the marker changes.
+                viewsCamera.cullingMask = keptCullingMask & ~(1 << layer);
                 var marker = MakeMarker("P2 " + room, Color.HSVToRGB(i / (float)RoomLayers.Count, 1f, 1f), at, 1.2f, 0);
                 marker.SetActive(false);
                 for (int f = 0; f < 3; f++) yield return null;
                 // From the marker's own box: an inactive renderer reports empty bounds.
-                if (!PatchOf(new Bounds(at, Vector3.one * 1.2f), out var patch, true)) { failures.Add(room + ": its marker is not in the frame"); DropMarker(marker); continue; }
+                if (!PatchOf(new Bounds(at, Vector3.one * 1.2f), out var patch, true))
+                {
+                    failures.Add(room + ": its marker is not in the frame");
+                    viewsCamera.cullingMask = keptCullingMask;
+                    DropMarker(marker);
+                    continue;
+                }
                 var behind = ReadPatch(checkTarget, patch);
                 marker.SetActive(true);
                 for (int f = 0; f < 3; f++) yield return null;
                 var drawn = ReadPatch(checkTarget, patch);
                 bool onPath = OnDrawerPath(registered, 1);
                 if (!onPath) offPath.Add(room);
-                int layer = RoomLayers.LayerOf(room);
-                viewsCamera.cullingMask = keptCullingMask & ~(1 << layer);
                 marker.layer = layer;
                 yield return null;
                 var gone = ReadPatch(checkTarget, patch);
@@ -1362,22 +1372,34 @@ namespace Gamesim.Episode
             // A failure on the drawer's path fails the run; markers off it leave the question open.
             string outcome = failures.Count > 0 ? VerificationProbeCheck.Failed : offPath.Count > 0 ? VerificationProbeCheck.NotRun : VerificationProbeCheck.Passed;
             AddCheck("P2", outcome, (failures.Count > 0 ? "Failed for " + string.Join("; ", failures) + ". "
-                    : offPath.Count > 0 ? "" : "Every room's marker left the frame on the first render after its layer's bit went, and came back on the first after it was restored. ")
+                    : offPath.Count > 0 ? "" : "Every room's marker left the frame on the first render after it was put on its room's layer, out of the mask, and came back on the first after it was put back on layer 0. ")
                 + offPathNote + reads);
         }
 
-        /// <summary>P3, recorded: does a manual render later in the frame of a layer change see the new layer?</summary>
+        /// <summary>
+        /// P3, recorded: does a manual render later in the frame of a layer change see the new layer? The
+        /// living room's bit is out of the mask before the first read (its furniture stands on its layer
+        /// from RS2a), so the layer write is the only change in the frame it is made.
+        /// </summary>
         private IEnumerator CheckSameFrameManualRender()
         {
             var view = VerificationViews.All[0];
             yield return ApplyView(view, RowFor(view, null));
             yield return Settle(Math.Min(viewsRequest.Settle, 3));
             var at = new Vector3((float)view.FocusX, 2.7f, (float)view.FocusZ);
+            int layer = RoomLayers.Living;
+            viewsCamera.cullingMask = keptCullingMask & ~(1 << layer);
             long registered = DrawerCount(drawerRenderers);
             var marker = MakeMarker("P3", Color.magenta, at, 1.2f, 0);
             marker.SetActive(false);
             yield return null;
-            if (!PatchOf(new Bounds(at, Vector3.one * 1.2f), out var patch, true)) { AddCheck("P3", VerificationProbeCheck.NotRun, "The marker was not in V1's frame."); DropMarker(marker); yield break; }
+            if (!PatchOf(new Bounds(at, Vector3.one * 1.2f), out var patch, true))
+            {
+                AddCheck("P3", VerificationProbeCheck.NotRun, "The marker was not in V1's frame.");
+                viewsCamera.cullingMask = keptCullingMask;
+                DropMarker(marker);
+                yield break;
+            }
             Color behind = default, drawn = default, sameFrame = default;
             viewsLateUpdate = () => behind = ManualRenderPatch(patch);
             yield return null;
@@ -1389,8 +1411,6 @@ namespace Gamesim.Episode
             viewsLateUpdate = () => drawn = ManualRenderPatch(patch);
             yield return null;
             yield return null;
-            int layer = RoomLayers.Living;
-            viewsCamera.cullingMask = keptCullingMask & ~(1 << layer);
             marker.layer = layer;
             viewsLateUpdate = () => sameFrame = ManualRenderPatch(patch);
             yield return null;
@@ -1407,7 +1427,11 @@ namespace Gamesim.Episode
                 + seen.ToString("0.000", CultureInfo.InvariantCulture) + "). The design never relies on it.");
         }
 
-        /// <summary>P4: a renderer made and given its layer in one frame is drawn (or left out) right from its first render.</summary>
+        /// <summary>
+        /// P4: a renderer made and given its layer in one frame is drawn (or left out) right from its
+        /// first render. The kitchen's bit is out of the mask before what lies behind is read (its
+        /// furniture stands on its layer from RS2a), so the markers are the only change.
+        /// </summary>
         private IEnumerator CheckFirstFrameLayer()
         {
             var view = VerificationViews.All[0];
@@ -1418,11 +1442,11 @@ namespace Gamesim.Episode
             var size = Vector3.one * 1.1f;
             if (!PatchOf(new Bounds(left, size), out var leftPatch, true) || !PatchOf(new Bounds(right, size), out var rightPatch, true))
             { AddCheck("P4", VerificationProbeCheck.Failed, "The markers' places were not in V1's frame."); yield break; }
+            int layer = RoomLayers.Kitchen;
+            viewsCamera.cullingMask = keptCullingMask & ~(1 << layer);
             yield return null;
             var leftBehind = ReadPatch(checkTarget, leftPatch);
             var rightBehind = ReadPatch(checkTarget, rightPatch);
-            int layer = RoomLayers.Kitchen;
-            viewsCamera.cullingMask = keptCullingMask & ~(1 << layer);
             long registered = DrawerCount(drawerRenderers);
             var outside = MakeMarker("P4 left out", Color.cyan, left, 1.1f, layer);
             var inside = MakeMarker("P4 drawn", Color.yellow, right, 1.1f, 0);

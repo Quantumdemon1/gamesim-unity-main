@@ -363,16 +363,23 @@ namespace Gamesim.House
             if (piece.GetComponent<Collider>() != null) return Placement.Collider;
             if (IsBody(renderer.transform)) return Placement.Body;
             if (InShellList(renderer.transform)) return Placement.Shell;
-            Placement placement;
-            if (renderer is ParticleSystemRenderer)
-            {
-                var at = renderer.transform.position;
-                room = RoomForPlan(at.x, at.x, at.z, at.z, out placement);
-                return placement;
-            }
-            var bounds = renderer.bounds;
-            room = RoomForPlan(bounds.min.x, bounds.max.x, bounds.min.z, bounds.max.z, out placement);
+            bool particles = renderer is ParticleSystemRenderer;
+            PlanExtent(particles, renderer.transform.position, particles ? default : renderer.bounds, out float x0, out float x1, out float z0, out float z1);
+            room = RoomForPlan(x0, x1, z0, z1, out var placement);
             return placement;
+        }
+
+        /// <summary>
+        /// What of a renderer the plan rule reads (§3.2 b, RS2a): a particle renderer's emitter's point,
+        /// <paramref name="emitter"/>, since its bounds are its live particles, which start empty and
+        /// drift; any other renderer's world <paramref name="bounds"/>, wherever its pivot. Pure.
+        /// </summary>
+        public static void PlanExtent(bool particles, Vector3 emitter, Bounds bounds, out float x0, out float x1, out float z0, out float z1)
+        {
+            if (particles) { x0 = x1 = emitter.x; z0 = z1 = emitter.z; return; }
+            var min = bounds.min;
+            var max = bounds.max;
+            x0 = min.x; x1 = max.x; z0 = min.z; z1 = max.z;
         }
 
         /// <summary>

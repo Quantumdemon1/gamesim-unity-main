@@ -21,14 +21,28 @@ namespace Gamesim.House
     /// <para><b>Not drawn yet.</b> A piece on an inactive object, or with no bounds yet (Unity may give a
     /// renderer on an inactive object empty bounds), waits, on the shell's layer, and is placed the first
     /// time it can be read: the director's late pass looks every frame (<see cref="KeepDressingPlaced"/>),
-    /// after Update and before the main camera renders, so it is placed in the frame it is first drawn.</para>
+    /// after Update and before the main camera renders, so it is placed in the frame it is first drawn.
+    /// A waiting piece costs an activity read a frame, and one that is active with empty bounds (an empty
+    /// text, a mesh not mounted yet) a bounds read too, until it has some.</para>
     ///
     /// <para><b>A piece that moves goes to the shell</b>, and stays there: a placed piece whose transform
     /// changes after it took its room - an animated part, anything moved by code that did not place it
-    /// again - is back on layer 0 in that frame's late pass, so nothing is ever hidden in a room it has
-    /// moved into. A staging point that moves a piece places it again itself, in the same call. Read
-    /// through <see cref="Transform.hasChanged"/>, which nothing else in the game uses: the dressing
-    /// clears it as it places a piece.</para>
+    /// again - is back on layer 0 in that frame's late pass, so the main camera never hides a piece in a
+    /// room it has moved into. The live feed renders by hand in its own LateUpdate, and a manual render
+    /// does not see a layer written in its frame (the probe's P3, 20261031-200803), so the feed sees the
+    /// change a frame late, as RS4 records for bodies. A staging point that moves a piece places it again
+    /// itself, in the same call. Read through <see cref="Transform.hasChanged"/>, which no game code
+    /// uses (UMA's effectors read and clear their own, a body's, which the dressing never places): the
+    /// dressing clears it as it places a piece. Carried onto a body, a piece is put on the shell's
+    /// layer, drawn, and left to RS4, which hides it with the body if the body is hidden.</para>
+    ///
+    /// <para><b>What hangs on a piece goes with it.</b> Every write of a piece's layer here gives the
+    /// world-space canvases mounted on it - a display's words - the same layer (<see cref="CarryLayer"/>),
+    /// so a face and its words are drawn together whichever write moved them.</para>
+    ///
+    /// <para><b>No scope, no room layer.</b> Where no enabled director places a scene's dressing (one
+    /// disabled, a preview scene), a staging call leaves nothing under its piece on a room layer: it is
+    /// the shell's, drawn always, and an enabled director places its whole house again.</para>
     ///
     /// <para>Every layer write comes in Update or LateUpdate, ahead of the frame's main-camera render and
     /// the Resident Drawer's once-a-frame read (§2.8). No collider's object is ever put on a room layer:
@@ -48,6 +62,16 @@ namespace Gamesim.House
         private readonly HashSet<Renderer> movedOut = new HashSet<Renderer>();
         private readonly List<Renderer> placeBuffer = new List<Renderer>(64);
         private static readonly List<Transform> carryBuffer = new List<Transform>(16);
+        private static readonly List<Renderer> unwatchedBuffer = new List<Renderer>(32);
+
+        /// <summary>
+        /// The canvases' buffer, in a class of its own: a field of a UI type on the scope itself would make
+        /// loading the scope load the UI module, which the plain fixtures run under Mono without.
+        /// </summary>
+        private static class Hung
+        {
+            internal static readonly List<Canvas> Canvases = new List<Canvas>(4);
+        }
 
         /// <summary>How many pieces of the house the dressing has on a room layer.</summary>
         public int PlacedCount => placed.Count;
@@ -108,8 +132,10 @@ namespace Gamesim.House
         public int PlaceHouse()
         {
             if (query == null) return 0;
+            var scene = query.Scene;
+            if (!scene.IsValid() || !scene.isLoaded) return placed.Count;
             rootBuffer.Clear();
-            query.Scene.GetRootGameObjects(rootBuffer);
+            scene.GetRootGameObjects(rootBuffer);
             foreach (var root in rootBuffer)
             {
                 rendererBuffer.Clear();
@@ -145,7 +171,7 @@ namespace Gamesim.House
         private void PlaceOne(Renderer renderer)
         {
             if (renderer == null) return;
-            if (!(renderer is MeshRenderer || renderer is SkinnedMeshRenderer || renderer is ParticleSystemRenderer)) return;
+            if (!IsDressingKind(renderer)) return;
             var piece = renderer.gameObject;
             int layer = piece.layer;
             // A piece on a layer of its own, or a body's (RS4 draws bodies by where they walk): never the dressing's.
@@ -154,14 +180,14 @@ namespace Gamesim.House
             {
                 // Not drawn yet: the shell's until it can be read.
                 ForgetPlaced(renderer);
-                if (RoomLayers.IsRoomLayer(layer)) piece.layer = 0;
+                if (RoomLayers.IsRoomLayer(layer)) SetPieceLayer(renderer, 0);
                 if (waitingSet.Add(renderer)) waiting.Add(renderer);
                 return;
             }
             if (waitingSet.Remove(renderer)) waiting.Remove(renderer);
             var placement = Classify(renderer, out int room);
             int next = DressingLayer(layer, placement, room);
-            if (next != layer) piece.layer = next;
+            if (next != layer) SetPieceLayer(renderer, next);
             if (!RoomLayers.IsRoomLayer(next)) { ForgetPlaced(renderer); return; }
             var t = renderer.transform;
             if (placedSet.Add(renderer)) { placed.Add(renderer); placedTransforms.Add(t); }
@@ -173,7 +199,7 @@ namespace Gamesim.House
         /// Every frame, in the director's late pass, after Update and before the main camera renders: a
         /// placed piece that has moved goes to the shell, and a waiting piece that can be read now is
         /// placed. One flag read a placed piece, its transform kept beside it; one activity read a
-        /// waiting one; no allocation.
+        /// waiting one, and a bounds read for one that is active with no bounds yet; no allocation.
         /// </summary>
         public void KeepDressingPlaced()
         {
@@ -186,10 +212,12 @@ namespace Gamesim.House
                 var renderer = placed[i];
                 RemovePlacedAt(i);
                 if (renderer == null) continue;
-                // Carried onto a body: the body's layers are RS4's from now on.
-                if (IsBody(t)) continue;
-                var piece = renderer.gameObject;
-                if (RoomLayers.IsRoomLayer(piece.layer)) piece.layer = 0;
+                bool onARoomLayer = RoomLayers.IsRoomLayer(renderer.gameObject.layer);
+                // Carried onto a body: drawn, on the shell's layer, and RS4's from now on. RS4's body pass
+                // returns early while nobody is hidden; when the body is, its pass, later in this same late
+                // pass, sees the body's new child and hides the piece with it.
+                if (IsBody(t)) { if (onARoomLayer) SetPieceLayer(renderer, 0); continue; }
+                if (onARoomLayer) SetPieceLayer(renderer, 0);
                 if (movedOut.Count >= 256) movedOut.RemoveWhere(gone => gone == null);
                 movedOut.Add(renderer);
             }
@@ -203,15 +231,14 @@ namespace Gamesim.House
             }
         }
 
-        /// <summary>Every piece the dressing placed back on layer 0, and nothing waiting: when the director lets its scope go.</summary>
+        /// <summary>Every piece the dressing placed back on layer 0, what hangs on it with it, and nothing waiting: when the director lets its scope go.</summary>
         public void UndoDressing()
         {
             for (int i = 0; i < placed.Count; i++)
             {
                 var renderer = placed[i];
                 if (renderer == null) continue;
-                var piece = renderer.gameObject;
-                if (RoomLayers.IsRoomLayer(piece.layer) && !IsBody(renderer.transform)) piece.layer = 0;
+                if (RoomLayers.IsRoomLayer(renderer.gameObject.layer) && !IsBody(renderer.transform)) SetPieceLayer(renderer, 0);
             }
             placed.Clear();
             placedTransforms.Clear();
@@ -276,6 +303,60 @@ namespace Gamesim.House
             carryBuffer.Clear();
         }
 
+        /// <summary>The renderers the dressing places: meshes, skinned meshes and particles.</summary>
+        private static bool IsDressingKind(Renderer renderer)
+            => renderer is MeshRenderer || renderer is SkinnedMeshRenderer || renderer is ParticleSystemRenderer;
+
+        /// <summary>
+        /// A piece's layer written, and every world-space canvas hung on it given the same
+        /// (<see cref="CarryLayer"/>): a canvas under the piece with no other piece between them, so a
+        /// display's words go wherever its face goes, whichever write moved it.
+        /// </summary>
+        private static void SetPieceLayer(Renderer renderer, int layer)
+        {
+            var piece = renderer.gameObject;
+            piece.layer = layer;
+            var host = renderer.transform;
+            var canvases = Hung.Canvases;
+            canvases.Clear();
+            host.GetComponentsInChildren(true, canvases);
+            for (int i = 0; i < canvases.Count; i++)
+            {
+                var canvas = canvases[i];
+                if (canvas != null && HangsOn(canvas.transform, host)) CarryLayer(piece, canvas.transform);
+            }
+            canvases.Clear();
+        }
+
+        /// <summary>Whether a canvas under <paramref name="host"/> hangs on it, not on a piece of its own nearer it.</summary>
+        private static bool HangsOn(Transform canvas, Transform host)
+        {
+            if (canvas == host) return false;
+            for (var above = canvas.parent; above != null && above != host; above = above.parent)
+                if (above.TryGetComponent(out Renderer between) && IsDressingKind(between)) return false;
+            return true;
+        }
+
+        /// <summary>
+        /// A staging call where no scope places the scene's dressing: nothing under <paramref name="piece"/>
+        /// is left on a room layer that nothing watches (a copy made with its source's layer, a piece
+        /// placed before its director was disabled). On the shell's layer, it is drawn always; an enabled
+        /// director places its whole house again. No-op where nothing stands on a room layer.
+        /// </summary>
+        private static void LeaveUnwatched(Transform piece)
+        {
+            unwatchedBuffer.Clear();
+            piece.GetComponentsInChildren(true, unwatchedBuffer);
+            for (int i = 0; i < unwatchedBuffer.Count; i++)
+            {
+                var renderer = unwatchedBuffer[i];
+                if (renderer == null || !IsDressingKind(renderer) || !RoomLayers.IsRoomLayer(renderer.gameObject.layer)) continue;
+                if (IsBody(renderer.transform)) continue;
+                SetPieceLayer(renderer, 0);
+            }
+            unwatchedBuffer.Clear();
+        }
+
         // ------------------------------------------------------------------------------------
         // Which scope places a scene's dressing.
         // ------------------------------------------------------------------------------------
@@ -316,14 +397,17 @@ namespace Gamesim.House
 
         /// <summary>
         /// A staging point's one call, made in the frame it builds or moves dressing: every renderer under
-        /// <paramref name="piece"/> placed by where it stands, by the scope of the piece's scene. Nothing
-        /// where no director places the scene's dressing. Returns how many stand on a room layer after it.
+        /// <paramref name="piece"/> placed by where it stands, by the scope of the piece's scene. Where no
+        /// director places the scene's dressing, everything under it on a room layer goes to the shell's
+        /// layer 0 (<see cref="LeaveUnwatched"/>). Returns how many stand on a room layer after it.
         /// </summary>
         public static int PlaceDressing(Transform piece)
         {
             if (piece == null) return 0;
             var scope = PlacingFor(piece.gameObject.scene);
-            return scope != null ? scope.Place(piece) : 0;
+            if (scope != null) return scope.Place(piece);
+            LeaveUnwatched(piece);
+            return 0;
         }
     }
 }

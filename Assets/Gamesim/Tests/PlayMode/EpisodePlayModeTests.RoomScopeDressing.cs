@@ -35,8 +35,10 @@ namespace Gamesim.Tests.PlayMode
         /// room's view, every piece of the shell - the floors among them - in all of them, and every bit of
         /// the mask outside 20 to 27 stays as it was. A piece made in a room and not drawn yet waits on the
         /// shell's layer and takes its room the frame it is first drawn; moved, it is the shell's from the
-        /// next pass on, drawn in every view, until a staging call places it again. Released, everything is
-        /// drawn and the dressing keeps its rooms. The plain SRP path; the shipping drawer's is the probe's P2.
+        /// next pass on, drawn in every view, until a staging call places it again. At load no more than
+        /// one in twenty of the authored house's pieces in rooms has moved and gone to the shell. Released,
+        /// everything is drawn and every piece placed before the holds is on the layer it had, or moved
+        /// and gone to the shell. The plain SRP path; the shipping drawer's is the probe's P2.
         /// </summary>
         [UnityTest]
         public IEnumerator RoomScope_OnlyTheViewedRoomAndTheShellAreDrawn()
@@ -50,6 +52,17 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(failures, Is.Empty, "Placed at load: " + string.Join("; ", failures.Take(20)));
             for (int room = 0; room < RoomLayers.Count; room++)
                 Assert.That(furnished[room], Is.GreaterThan(0), "The " + RoomLayers.RoomIds[room] + "'s dressing stands on its layer.");
+            // Few of the authored house's pieces have moved since the load and gone to the shell: a pass
+            // that moved most of them (an animator, a settle pass, a write of an unchanged value) would
+            // leave the room view hiding almost nothing while every check above passed.
+            var inRooms = Rs2aAuthoredInRooms(scope);
+            var gone = inRooms.Where(scope.WentToTheShell).Select(Rs2aName).ToArray();
+            Assert.That(gone.Length * 20, Is.LessThanOrEqualTo(inRooms.Count),
+                gone.Length + " of the authored house's " + inRooms.Count + " pieces in rooms went to the shell by the first frame: " + string.Join(", ", gone.Take(30)));
+            Assert.That(scope.PlacedCount, Is.GreaterThanOrEqualTo(inRooms.Count - gone.Length),
+                "Every authored piece the rule puts in a room and that has not moved is placed.");
+            // The pieces placed now, and their layers: released, each is where it was, or moved and gone to the shell.
+            var startLayers = Rs2aHouseRenderers().Where(scope.IsPlaced).ToDictionary(r => r, r => r.gameObject.layer);
             var view = cameraRig.ViewCamera;
             int authored = view.cullingMask;
             Assert.That(authored & RoomLayers.Mask, Is.EqualTo(RoomLayers.Mask), "With nothing held the main camera draws every room layer.");
@@ -133,16 +146,29 @@ namespace Gamesim.Tests.PlayMode
             }
             Assert.That(view.cullingMask & RoomLayers.Mask, Is.EqualTo(RoomLayers.Mask), "Released, the main camera draws every room layer again.");
             yield return null;
-            var after = Rs2aCheckTheHouse(scope, failures);
+            Rs2aCheckTheHouse(scope, failures);
             Assert.That(failures, Is.Empty, "Released: " + string.Join("; ", failures.Take(20)));
-            Assert.That(after, Is.EqualTo(furnished), "and the house's dressing keeps its rooms' layers, room by room: " + string.Join(", ", after));
+            // Released, the dressing keeps its rooms: every piece placed before the holds is on the layer
+            // it had, or moved since and gone to the shell, which is the rule, not a loss.
+            foreach (var pair in startLayers)
+            {
+                var renderer = pair.Key;
+                if (renderer == null) continue;
+                int layer = renderer.gameObject.layer;
+                bool kept = scope.IsPlaced(renderer) && layer == pair.Value;
+                bool moved = scope.WentToTheShell(renderer) && layer == 0;
+                if (!kept && !moved)
+                    failures.Add(Rs2aName(renderer) + " was placed on layer " + pair.Value + " and is on " + layer + (scope.IsPlaced(renderer) ? ", placed" : ", not placed"));
+            }
+            Assert.That(failures, Is.Empty, "and the house's dressing keeps its rooms' layers: " + string.Join("; ", failures.Take(20)));
         }
 
         /// <summary>
         /// A ceremony set's copies are drawn in the room they stand in (§3.2 b): dressed for a full
         /// house, the living room's screen - a copy of the nomination room's - stands on the living room's
         /// layer and no piece of it on the nomination room's, and the ring's chairs, cloned and moved,
-        /// stand on the nomination room's, all in the dressing's own call. The living room's view draws
+        /// stand on the nomination room's, all in the dressing's own call, and are still placed there a
+        /// frame on, not sent to the shell for having moved. The living room's view draws
         /// the screen and leaves the ring out; the nomination room's draws the ring and leaves the screen out.
         /// </summary>
         [UnityTest]
@@ -188,16 +214,23 @@ namespace Gamesim.Tests.PlayMode
                 cameraRig.MoveTo(Rs4Shot(scope, CeremonySets.LivingRoom));
                 director.HoldRoomScope(owner);
                 yield return null;
+                // A frame on, the ring's chairs - the scene's own, moved, and the clones - are still
+                // placed on the nomination room's layer: the dressing's own call placed them again, so
+                // the late pass did not send them to the shell for moving.
+                Rs2aExpectPlacedAgain(scope, ring, RoomLayers.Nomination, "the nomination ring, a frame on", failures);
+                Assert.That(failures, Is.Empty, string.Join("; ", failures.Take(20)));
+                var ringInItsRoom = ringPieces.Where(r => r != null && r.gameObject.layer == RoomLayers.Nomination).ToArray();
+                Assert.That(ringInItsRoom, Is.Not.Empty, "The ring stands on the nomination room's layer.");
                 int mask = cameraRig.ViewCamera.cullingMask;
                 Assert.That(screenPieces.Where(r => r.gameObject.layer == RoomLayers.Living).All(r => (mask & (1 << r.gameObject.layer)) != 0), Is.True,
                     "The living room's view draws its copied screen.");
-                Assert.That(ringPieces.Where(r => r.gameObject.layer == RoomLayers.Nomination).Any(r => (mask & (1 << r.gameObject.layer)) != 0), Is.False,
+                Assert.That(ringInItsRoom.Any(r => (mask & (1 << r.gameObject.layer)) != 0), Is.False,
                     "and leaves the nomination room's ring out.");
 
                 cameraRig.MoveTo(Rs4Shot(scope, CeremonySets.NominationRoom));
                 yield return null;
                 mask = cameraRig.ViewCamera.cullingMask;
-                Assert.That(ringPieces.Where(r => r.gameObject.layer == RoomLayers.Nomination).All(r => (mask & (1 << r.gameObject.layer)) != 0), Is.True,
+                Assert.That(ringInItsRoom.All(r => (mask & (1 << r.gameObject.layer)) != 0), Is.True,
                     "The nomination room's view draws its ring.");
                 Assert.That(screenPieces.Where(r => r.gameObject.layer == RoomLayers.Living).Any(r => (mask & (1 << r.gameObject.layer)) != 0), Is.False,
                     "and leaves the living room's copied screen out.");
@@ -333,10 +366,12 @@ namespace Gamesim.Tests.PlayMode
         /// on the layer of the room the classifier puts it in, or on the shell's layer for a piece in no
         /// room, waiting to be drawn or moved since; at least one piece of each is in a room; and none
         /// carries a collider. The ceremony sets, the public displays and the memory wall are read in their
-        /// own calls, before any frame; the competition's stage in the press that builds it and again when
-        /// the player's instrument is first drawn; the diary's backdrop once the player is seated; the
-        /// activity effects' bubbles and steam where they rise, and the swimmer's splash, which moves, on
-        /// the shell's layer wherever it goes.
+        /// own calls, before any frame, and the scene pieces the first two move - the ring's own chairs,
+        /// the Head of Household's display pushed into its wall - a frame on, still placed, since the call
+        /// placed them again; the competition's stage in the press that builds it and again when the
+        /// player's instrument is first drawn; the diary's backdrop once the player is seated; the activity
+        /// effects' bubbles and steam where they rise, and the swimmer's splash on the yard's layer before
+        /// and a frame after a Tick moves it.
         /// </summary>
         [UnityTest]
         public IEnumerator RoomScope_EveryStagingPointLeavesItsPiecesInTheirRoom(
@@ -351,7 +386,7 @@ namespace Gamesim.Tests.PlayMode
                 case "CeremonySets": yield return Rs2aStageCeremonySets(scope, failures); break;
                 case "CompetitionArena": yield return Rs2aStageCompetitionArena(scope, failures); break;
                 case "DiarySeatPose": yield return Rs2aStageDiarySeatPose(scope, failures); break;
-                case "HousePublicDisplays": Rs2aStagePublicDisplays(scope, failures); break;
+                case "HousePublicDisplays": yield return Rs2aStagePublicDisplays(scope, failures); break;
                 case "MemoryWall": yield return Rs2aStageMemoryWall(scope, failures); break;
                 case "HouseActivityEffects": yield return Rs2aStageActivityEffects(scope, failures); break;
                 default: Assert.Fail("No staging point " + point + "."); break;
@@ -411,17 +446,25 @@ namespace Gamesim.Tests.PlayMode
         // The staging points.
         // ------------------------------------------------------------------------------------
 
-        /// <summary>The ceremony sets dressed for a full house, the first time: the copies and every chair the ring moved, read in the dressing's own call.</summary>
+        /// <summary>
+        /// The ceremony sets dressed for a full house, the first time: the copies and every chair the ring
+        /// moved, read in the dressing's own call; and a frame on, the scene's own chairs the ring moved
+        /// still placed on the nomination room's layer - the call placed them again - where a chair
+        /// moved and not placed again would be on the shell's by then.
+        /// </summary>
         private IEnumerator Rs2aStageCeremonySets(HouseRoomScope scope, List<string> failures)
         {
             var scene = director.gameObject.scene;
             CeremonySeating.Ensure(scene, 16);
             var root = SceneComponents<Transform>().First(t => t.name == CeremonySets.RootName && t.parent == null);
-            var pieces = root.GetComponentsInChildren<Renderer>(true).Concat(Rs2aRingChairs().Where(t => !t.IsChildOf(root))
-                .SelectMany(t => t.GetComponentsInChildren<Renderer>(true))).ToArray();
+            var ownChairs = Rs2aRingChairs().Where(t => !t.IsChildOf(root)).ToList();
+            var pieces = root.GetComponentsInChildren<Renderer>(true).Concat(ownChairs.SelectMany(t => t.GetComponentsInChildren<Renderer>(true))).ToArray();
             Rs2aExpectInRooms(Rs2aCheckPieces(scope, pieces, "the ceremony sets", failures), "the ceremony sets", failures);
+            var moved = ownChairs.Where(t => t.gameObject.activeInHierarchy).ToList();
+            if (moved.Count == 0) failures.Add("the ring moved none of the scene's own chairs");
             yield return null;
             Rs2aCheckPieces(scope, pieces, "the ceremony sets, a frame on", failures);
+            Rs2aExpectPlacedAgain(scope, moved, RoomLayers.Nomination, "the ring's own chairs, a frame on", failures);
         }
 
         /// <summary>A practice attempt stages the arena: its sign in the press that builds it, the player's instrument the frame it is first drawn.</summary>
@@ -474,11 +517,27 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(pieces.Select(r => r != null ? r.gameObject.layer : -1).ToArray(), Is.EqualTo(layers), "Put away, the backdrop keeps its layers.");
         }
 
-        /// <summary>The public displays projected again: every face on its room's layer, and every label on its face's, one put on the wrong one by hand included.</summary>
-        private void Rs2aStagePublicDisplays(HouseRoomScope scope, List<string> failures)
+        /// <summary>
+        /// The public displays projected again: the Head of Household's nine pieces, pushed into their wall
+        /// by hand in the same frame, moved back out by the projection's mount and placed by it, so a frame
+        /// on each is still placed on the HoH room's layer where one moved and not placed again would be on
+        /// the shell's; every face on its room's layer; and every label on its face's, one put on the wrong
+        /// one by hand included.
+        /// </summary>
+        private IEnumerator Rs2aStagePublicDisplays(HouseRoomScope scope, List<string> failures)
         {
             var scene = director.gameObject.scene;
+            var members = Rs2aHoHAssembly();
+            Assert.That(members.Length, Is.EqualTo(9), "The Head of Household's display: four photos, four frames and the plaque, under one parent.");
+            Assert.That(Rs2aIntoTheWall(members, out var intoTheWall), Is.True, "The south wing's south wall and the HoH floor, which the mount reads.");
+            foreach (var member in members) member.transform.position += intoTheWall;
+            var pushed = members.Select(member => member.transform.position).ToArray();
             HousePublicDisplays.Project(scene, director.Snapshot);
+            for (int i = 0; i < members.Length; i++)
+                if (Vector3.Distance(members[i].transform.position, pushed[i]) < .001f)
+                    failures.Add("the mount left " + Rs2aName(members[i]) + " in the wall");
+            yield return null;
+            Rs2aExpectPlacedAgain(scope, members.Select(member => member.transform), RoomLayers.HoH, "the HoH display the mount moved, a frame on", failures);
             var faces = SceneComponents<Renderer>().Where(r => r.name == HousePublicDisplays.PhotoName || r.name == HousePublicDisplays.PlaqueName
                 || r.name == HousePublicDisplays.YardName || r.name == "HoH photo frame").ToArray();
             Assert.That(faces, Is.Not.Empty, "The house has public display faces.");
@@ -503,9 +562,11 @@ namespace Gamesim.Tests.PlayMode
             var wall = SceneComponents<MemoryWall>().FirstOrDefault();
             Assert.That(wall, Is.Not.Null, "The episode scene carries a memory wall.");
             Rs2aExpectInRooms(Rs2aCheckPieces(scope, wall.GetComponentsInChildren<Renderer>(true), "the memory wall", failures), "the memory wall", failures);
+            // The third frame on show: the layout reads its pitch from the first two frames and its rows'
+            // heights from the first and the ninth, so moving any of those would move the whole grid.
             var frame = wall.transform.Cast<Transform>().Where(t => t.name.StartsWith(MemoryWall.FramePrefix, StringComparison.Ordinal) && t.gameObject.activeInHierarchy)
-                .OrderBy(t => t.name, StringComparer.Ordinal).FirstOrDefault();
-            Assert.That(frame, Is.Not.Null, "A frame on show.");
+                .OrderBy(t => t.name, StringComparer.Ordinal).Skip(2).FirstOrDefault();
+            Assert.That(frame, Is.Not.Null, "A third frame on show.");
             var pieces = frame.GetComponentsInChildren<Renderer>().Where(r => scope.IsPlaced(r)).ToArray();
             Assert.That(pieces, Is.Not.Empty, "The frame's pieces stand on its room's layer.");
             var layers = pieces.Select(r => r.gameObject.layer).ToArray();
@@ -526,7 +587,11 @@ namespace Gamesim.Tests.PlayMode
             Rs2aCheckPieces(scope, wall.GetComponentsInChildren<Renderer>(true), "the memory wall laid out again", failures);
         }
 
-        /// <summary>The bubbles and the steam where they rise; the splash, which follows the swimmer, on the shell's layer before and after it moves.</summary>
+        /// <summary>
+        /// The bubbles and the steam where they rise; the splash, which follows the swimmer, placed on the
+        /// yard's layer before and a frame after a Tick moves it: the Tick placed it again, where a splash
+        /// moved and not placed again would be on the shell's by then.
+        /// </summary>
         private IEnumerator Rs2aStageActivityEffects(HouseRoomScope scope, List<string> failures)
         {
             var effects = director.ActivityEffects;
@@ -544,11 +609,13 @@ namespace Gamesim.Tests.PlayMode
             }
             if (effects.Splash == null) yield break;
             var splash = effects.Splash.GetComponent<Renderer>();
-            if (splash.gameObject.layer != 0 || scope.IsPlaced(splash)) failures.Add("the splash, which moves, is not the shell's");
+            Rs2aExpectPlacedAgain(scope, new[] { splash.transform }, RoomLayers.Yard, "the splash, still", failures);
             var pool = effects.Splash.transform.position;
-            effects.Tick(false, false, pool + new Vector3(.6f, 0f, .3f));
+            var swimmer = pool + new Vector3(.6f, 0f, .3f);
+            effects.Tick(false, false, swimmer);
+            if (Flat(effects.Splash.transform.position, swimmer) > .001f) failures.Add("the Tick did not move the splash to the swimmer");
             yield return null;
-            if (splash.gameObject.layer != 0 || scope.IsPlaced(splash)) failures.Add("the splash, moved with a swimmer, is not the shell's");
+            Rs2aExpectPlacedAgain(scope, new[] { splash.transform }, RoomLayers.Yard, "the splash, moved with a swimmer, a frame on", failures);
         }
 
         // ------------------------------------------------------------------------------------
@@ -571,7 +638,7 @@ namespace Gamesim.Tests.PlayMode
         /// The dressing over the whole house: every piece on a room layer is the dressing's, collider-free,
         /// and where the rule puts it; every piece of the authored house the rule puts in a room is on its
         /// room's layer, or moved since and gone to the shell. Runtime pieces outside the staging points
-        /// (the follow ring, the splash) are drawn always and not counted. The pieces on each room's layer.
+        /// (the follow ring) are drawn always and not counted. The pieces on each room's layer.
         /// </summary>
         private static int[] Rs2aCheckTheHouse(HouseRoomScope scope, List<string> failures)
         {
@@ -640,6 +707,95 @@ namespace Gamesim.Tests.PlayMode
             if (perRoom.Sum() == 0) failures.Add(what + ": no piece stands on a room layer");
         }
 
+        /// <summary>
+        /// The pieces a staging point moved, read a frame after its call: every renderer of each that can
+        /// be read is placed, on <paramref name="roomLayer"/>, and not gone to the shell. The call placed
+        /// it again; a piece moved and not placed again is on the shell's layer by now, which
+        /// <see cref="Rs2aCheckPieces"/> accepts. Each piece has one renderer to read at least.
+        /// </summary>
+        private static void Rs2aExpectPlacedAgain(HouseRoomScope scope, IEnumerable<Transform> moved, int roomLayer, string what, List<string> failures)
+        {
+            int read = 0;
+            foreach (var piece in moved)
+            {
+                if (piece == null) { failures.Add(what + ": a piece was destroyed"); continue; }
+                int own = 0;
+                foreach (var renderer in piece.GetComponentsInChildren<Renderer>(true))
+                {
+                    if (!(renderer is MeshRenderer || renderer is SkinnedMeshRenderer || renderer is ParticleSystemRenderer) || HouseRoomScope.IsBody(renderer.transform)) continue;
+                    int layer = renderer.gameObject.layer;
+                    if ((layer != 0 && !RoomLayers.IsRoomLayer(layer)) || !HouseRoomScope.CanPlace(renderer)) continue;
+                    own++;
+                    if (layer == roomLayer && scope.IsPlaced(renderer) && !scope.WentToTheShell(renderer)) continue;
+                    string state = scope.WentToTheShell(renderer) ? "gone to the shell for moving" : scope.IsPlaced(renderer) ? "placed" : "not placed";
+                    failures.Add(what + ": " + Rs2aName(renderer) + " is on layer " + layer + ", " + state + ", where the " + RoomLayers.RoomOf(roomLayer)
+                        + "'s layer, placed, was expected" + Rs2aWhere(renderer));
+                }
+                if (own == 0) failures.Add(what + ": " + Rs2aName(piece) + " has no renderer to read");
+                read += own;
+            }
+            if (read == 0) failures.Add(what + ": nothing to read");
+        }
+
+        /// <summary>The authored house's readable pieces the rule puts in a room, on layer 0 or a room layer: what the load's pass places.</summary>
+        private static List<Renderer> Rs2aAuthoredInRooms(HouseRoomScope scope)
+        {
+            var inRooms = new List<Renderer>();
+            foreach (var root in SceneComponents<Transform>().Where(t => t.parent == null && Rs2aAuthoredRoot(t.name)))
+                foreach (var renderer in root.GetComponentsInChildren<Renderer>(true))
+                {
+                    int layer = renderer.gameObject.layer;
+                    if ((layer != 0 && !RoomLayers.IsRoomLayer(layer)) || HouseRoomScope.IsBody(renderer.transform) || !HouseRoomScope.CanPlace(renderer)) continue;
+                    if (scope.Classify(renderer, out _) == HouseRoomScope.Placement.Room) inRooms.Add(renderer);
+                }
+            return inRooms;
+        }
+
+        /// <summary>The Head of Household's display as its mount finds it: the photos, their frames and the plaque under the four photos' parent.</summary>
+        private static Renderer[] Rs2aHoHAssembly()
+        {
+            var photo = SceneComponents<Renderer>().FirstOrDefault(r => r.name == HousePublicDisplays.PhotoName && r.enabled && r.gameObject.activeInHierarchy);
+            if (photo == null || photo.transform.parent == null) return new Renderer[0];
+            var parent = photo.transform.parent;
+            return parent.GetComponentsInChildren<Renderer>(true).Where(r => r.transform.parent == parent
+                && (r.name == HousePublicDisplays.PhotoName || r.name == "HoH photo frame" || r.name == HousePublicDisplays.PlaqueName)).ToArray();
+        }
+
+        /// <summary>
+        /// The push that puts the display's near face a tenth of a metre behind its wall's room face, read
+        /// as the mount reads them (the south wing's south wall's and the HoH floor's meshes), so the
+        /// mount's next projection moves the nine pieces back out.
+        /// </summary>
+        private static bool Rs2aIntoTheWall(Renderer[] members, out Vector3 push)
+        {
+            push = Vector3.zero;
+            if (members.Length == 0 || !Rs2aMeshBounds("South wing south wall", out var wall) || !Rs2aMeshBounds("HoH floor", out var floor)) return false;
+            var assembly = members[0].bounds;
+            foreach (var member in members.Skip(1)) assembly.Encapsulate(member.bounds);
+            float roomSide = floor.center.z >= wall.center.z ? 1f : -1f;
+            float wallFace = roomSide > 0f ? wall.max.z : wall.min.z;
+            float nearFace = roomSide > 0f ? assembly.min.z : assembly.max.z;
+            // How far the near face stands proud of the wall's room face, and a tenth of a metre more.
+            float depth = roomSide * (nearFace - wallFace) + .1f;
+            push = new Vector3(0f, 0f, -roomSide * Mathf.Max(.1f, depth));
+            return true;
+        }
+
+        /// <summary>A piece's mesh bounds in the world, from its mesh's own box, as the display's mount reads a wall.</summary>
+        private static bool Rs2aMeshBounds(string name, out Bounds bounds)
+        {
+            bounds = default;
+            var target = SceneComponents<Transform>().FirstOrDefault(t => t.name == name);
+            var filter = target != null ? target.GetComponent<MeshFilter>() : null;
+            if (filter == null || filter.sharedMesh == null) return false;
+            var local = filter.sharedMesh.bounds;
+            bounds = new Bounds(target.TransformPoint(local.center), Vector3.zero);
+            for (int i = 0; i < 8; i++)
+                bounds.Encapsulate(target.TransformPoint(new Vector3((i & 1) == 0 ? local.min.x : local.max.x,
+                    (i & 2) == 0 ? local.min.y : local.max.y, (i & 4) == 0 ? local.min.z : local.max.z)));
+            return true;
+        }
+
         /// <summary>A mounted label carries its face's layer, every object of it.</summary>
         private static void Rs2aLabelFollows(Renderer face, List<string> failures)
         {
@@ -652,8 +808,9 @@ namespace Gamesim.Tests.PlayMode
 
         private static string Rs2aWhere(Renderer renderer)
         {
-            var bounds = renderer is ParticleSystemRenderer ? new Bounds(renderer.transform.position, Vector3.zero) : renderer.bounds;
-            return " (x " + bounds.min.x.ToString("0.00") + ".." + bounds.max.x.ToString("0.00") + ", z " + bounds.min.z.ToString("0.00") + ".." + bounds.max.z.ToString("0.00") + ")";
+            bool particles = renderer is ParticleSystemRenderer;
+            HouseRoomScope.PlanExtent(particles, renderer.transform.position, particles ? default : renderer.bounds, out float x0, out float x1, out float z0, out float z1);
+            return " (x " + x0.ToString("0.00") + ".." + x1.ToString("0.00") + ", z " + z0.ToString("0.00") + ".." + z1.ToString("0.00") + ")";
         }
 
         private static string Rs2aName(Component piece)

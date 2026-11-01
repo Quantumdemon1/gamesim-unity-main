@@ -313,10 +313,19 @@ namespace Gamesim.Episode
         /// </summary>
         public int LampsOffForTheMainCamera => lampsOffForView.Count;
 
-        /// <summary>On enable (EpisodeDirector.OnEnable): this director's main camera joins the hook, and its scope, if built, places its house's dressing again.</summary>
+        /// <summary>
+        /// On enable (EpisodeDirector.OnEnable): this director's main camera joins the hook, and its
+        /// scope, if built, places its whole house again - what moved or was built while it was disabled,
+        /// whose staging calls left it on the shell, by where it stands now - and then what its house's
+        /// staging points build or move.
+        /// </summary>
         private void HookLampScope()
         {
-            if (roomScope != null) HouseRoomScope.BeginPlacing(roomScope);
+            if (roomScope != null)
+            {
+                roomScope.PlaceHouse();
+                HouseRoomScope.BeginPlacing(roomScope);
+            }
             if (!lampScopeDirectors.Contains(this)) lampScopeDirectors.Add(this);
             if (lampScopeHooked) return;
             RenderPipelineManager.beginCameraRendering += BeginLampScope;
@@ -327,9 +336,9 @@ namespace Gamesim.Episode
         /// <summary>
         /// On disable: every lamp it has off goes back, so does every body it has hidden and every bit it
         /// has out of the main camera's mask, and the last director out takes the hook with it. The
-        /// dressing stays on its rooms' layers, which the restored mask draws, and its house's staging
-        /// points place nothing until it is enabled again; a piece moved meanwhile goes to the shell then,
-        /// since the flag that says so waits.
+        /// dressing stays on its rooms' layers, which the restored mask draws; meanwhile its house's
+        /// staging calls put what they build or move on the shell's layer, and enabled again, it places
+        /// its whole house by where everything stands then.
         /// </summary>
         private void UnhookLampScope()
         {

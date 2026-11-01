@@ -52,7 +52,13 @@ namespace Gamesim.Tests.PlayMode
                 "The light hangs well over the plate, never in front of the name: " + spot.transform.position.y + " against " + plateTop + ".");
 
             // Plates are for drawn houseguests only (RS4): held on the followed one's room, they keep
-            // theirs whatever the view, and anyone the view hides has theirs down.
+            // theirs whatever the view, and anyone the view hides has theirs down. One of the others
+            // stands in a room well away from them and from the player, so somebody is hidden.
+            var other = npcs.FirstOrDefault(npc => npc != chosen);
+            Assert.That(other, Is.Not.Null, "A second houseguest to stand away.");
+            var scope = ScopeOf(director);
+            int away = Rs4FarRoom(scope, chosen.transform.position, player.transform.position);
+            ScopePlace(other.transform, ScopeOpenFloor(scope, away), 2f);
             var owner = new object();
             director.HoldRoomScope(owner);
             try
@@ -60,6 +66,8 @@ namespace Gamesim.Tests.PlayMode
                 yield return null;
                 Assert.That(director.IsBodyDrawn(chosen.transform), Is.True, "The followed houseguest is drawn.");
                 Assert.That(chosen.BodyHidden, Is.False, "and keeps their plate under the spotlight.");
+                Assert.That(npcs.Any(npc => npc.BodyHidden), Is.True,
+                    other.Id + ", in the " + RoomLayers.RoomIds[away] + ", away from the followed one's room: somebody's plate is held down.");
                 foreach (var npc in npcs)
                 {
                     bool hidden = !director.IsBodyDrawn(npc.transform);

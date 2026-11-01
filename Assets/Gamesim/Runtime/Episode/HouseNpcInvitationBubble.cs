@@ -56,6 +56,12 @@ namespace Gamesim.Episode
         }
 
         private bool speakerDrawn = true;
+        /// <summary>
+        /// New words or a new size the panel has not been fitted to yet: a placement that returned
+        /// before fitting - the speaker withheld (RS4), the anchor off the screen - leaves it owed to
+        /// the next one that draws, so the panel never comes up at the last invitation's size.
+        /// </summary>
+        private bool sizeOwed;
 
         public void Show(string npcName, string line, float fontScale, Vector3 worldAnchor,
             Action hearThemOut, Action defer, object view = null)
@@ -114,6 +120,7 @@ namespace Gamesim.Episode
 
         private void Place(bool textChanged)
         {
+            if (textChanged) sizeOwed = true;
             var camera = Camera.main;
             // A speaker the room scope does not draw has no bubble over them (RS4).
             if (camera == null || canvasRect == null || !speakerDrawn) { panel.gameObject.SetActive(false); return; }
@@ -130,7 +137,7 @@ namespace Gamesim.Episode
                 safe = hud != null ? hud.WorldCaptionSafeBounds : Rect.MinMaxRect(24, 100, frame.x - 24, frame.y - 80);
                 lastFrame = frame; nextBoundsAt = Time.unscaledTime + .5f;
             }
-            if (textChanged || frameChanged || panel.sizeDelta.x > safe.width) SizeForText();
+            if (sizeOwed || frameChanged || panel.sizeDelta.x > safe.width) { SizeForText(); sizeOwed = false; }
             if (!RectTransformUtility.ScreenPointToLocalPointInRectangle(canvasRect, projected, null, out var local)) return;
             float half = panel.sizeDelta.x * .5f;
             float x = Mathf.Clamp(local.x + frame.x * .5f, safe.xMin + half, Mathf.Max(safe.xMin + half, safe.xMax - half));

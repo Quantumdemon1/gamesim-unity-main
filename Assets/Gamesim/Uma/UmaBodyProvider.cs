@@ -374,7 +374,6 @@ namespace Gamesim.Uma
             return cast = overrides;
         }
 
-        /// <summary>A clip off another controller, by name: exactly first, then by prefix.</summary>
         /// <summary>
         /// The end of every build of a body (UMA's CharacterUpdated): each Animator on it always
         /// animates, the one UMA recreates on a race change included, so a body the room scope hides
@@ -387,6 +386,7 @@ namespace Gamesim.Uma
                 if (animator.cullingMode != AnimatorCullingMode.AlwaysAnimate) animator.cullingMode = AnimatorCullingMode.AlwaysAnimate;
         }
 
+        /// <summary>A clip off another controller, by name: exactly first, then by prefix.</summary>
         private static AnimationClip Borrow(RuntimeAnimatorController from, params string[] names)
         {
             if (from == null) return null;

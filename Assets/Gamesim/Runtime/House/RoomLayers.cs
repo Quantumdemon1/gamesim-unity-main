@@ -64,24 +64,36 @@ namespace Gamesim.House
 
         public static bool IsRoomLayer(int layer) => layer >= First && layer < First + Count;
 
+        /// <summary>What <see cref="ScopeMask"/> keeps while no scope has a camera's room bits: nothing to write back.</summary>
+        public const int NothingKept = -1;
+
         /// <summary>
         /// The main camera's culling mask under a view (§3.2 c; RS4, which takes the mask write by D16):
-        /// the room bits outside the view taken out, and any this took out before that the view now
-        /// holds put back. <paramref name="taken"/> carries what it has out between calls. It only ever
-        /// puts back a bit it took out, so a room bit something else cleared - a test's, the probe's -
-        /// stays clear, and it never touches a bit outside 20 to 27 (the capture guard on 31, the tests'
-        /// 30). For a camera whose mask has every room bit, as the scene's does, that is the plan's
-        /// <c>(mask &amp; ~RoomBits) | ScopeBits</c>. The whole house, or no room, takes nothing out.
+        /// the plan's <c>(mask &amp; ~RoomBits) | ScopeBits</c>, with the scope's bits only among the room
+        /// bits the camera had when the scope began. <paramref name="kept"/> records those on the first
+        /// call that scopes and carries them between calls; the whole house, or no room, writes them
+        /// back once and lets them go (<see cref="NothingKept"/>). Bits 20 to 27 are written whole from
+        /// the view on every call, so a stale mask put back over the scope's - a capture's save and
+        /// restore across a move - is the view's again at the next call; a room bit something else
+        /// cleared before the scope began stays clear throughout and after. Nothing outside 20 to 27 is
+        /// ever touched (the capture guard on 31, the tests' 30).
         /// </summary>
-        public static int ScopeMask(int mask, RoomSet viewed, ref int taken)
+        public static int ScopeMask(int mask, RoomSet viewed, ref int kept)
         {
-            int outside = viewed.IsWholeHouse || viewed.IsEmpty ? 0 : Mask & ~viewed.CullingBits;
-            mask |= taken & ~outside;
-            int take = outside & mask;
-            mask &= ~take;
-            taken = (taken & outside) | take;
-            return mask;
+            if (viewed.IsWholeHouse || viewed.IsEmpty)
+            {
+                if (kept == NothingKept) return mask;
+                mask = (mask & ~Mask) | (kept & Mask);
+                kept = NothingKept;
+                return mask;
+            }
+            if (kept == NothingKept) kept = mask & Mask;
+            return (mask & ~Mask) | (viewed.CullingBits & kept);
         }
+
+        /// <summary>The room bits a scope that keeps <paramref name="kept"/> has out of the mask under a view: none for the whole house or nothing kept.</summary>
+        public static int TakenOut(int kept, RoomSet viewed)
+            => kept == NothingKept || viewed.IsWholeHouse || viewed.IsEmpty ? 0 : kept & Mask & ~viewed.CullingBits;
 
         /// <summary>
         /// The live feed camera's mask (§3.2 c, D10): the shell and its own room's layer, every other

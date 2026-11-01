@@ -92,24 +92,34 @@ namespace Gamesim.Tests.EditMode
         public void TheMainCameraLosesOnlyTheRoomsOutsideTheView()
         {
             const int Everything = -1;
-            int taken = 0;
-            int mask = RoomLayers.ScopeMask(Everything, RoomSet.Of("Kitchen"), ref taken);
+            int kept = RoomLayers.NothingKept;
+            int mask = RoomLayers.ScopeMask(Everything, RoomSet.Of("Kitchen"), ref kept);
             Assert.That(mask & RoomLayers.Mask, Is.EqualTo(1 << RoomLayers.Kitchen), "Viewing the kitchen: its room bit alone of the eight.");
             Assert.That(mask & ~RoomLayers.Mask, Is.EqualTo(Everything & ~RoomLayers.Mask), "Every bit outside 20 to 27 as it was: 0 to 19, 28 to 31.");
-            Assert.That(taken, Is.EqualTo(RoomLayers.Mask & ~(1 << RoomLayers.Kitchen)), "What it took out is the other seven.");
+            Assert.That(kept, Is.EqualTo(RoomLayers.Mask), "It keeps the room bits the camera had when it began: all eight.");
+            Assert.That(RoomLayers.TakenOut(kept, RoomSet.Of("Kitchen")), Is.EqualTo(RoomLayers.Mask & ~(1 << RoomLayers.Kitchen)), "What it has out is the other seven.");
             Assert.That(mask, Is.EqualTo((Everything & ~RoomLayers.Mask) | RoomSet.Of("Kitchen").CullingBits),
                 "On a camera that draws every layer, the plan's (mask & ~RoomBits) | ScopeBits.");
 
             // A capture's guard bit, set and cleared by its owner, is never the scope's.
-            int guarded = RoomLayers.ScopeMask(mask & ~(1 << 31), RoomSet.Of("Kitchen", "Yard"), ref taken);
+            int guarded = RoomLayers.ScopeMask(mask & ~(1 << 31), RoomSet.Of("Kitchen", "Yard"), ref kept);
             Assert.That(guarded & (1 << 31), Is.Zero, "The guard bit stays as its owner left it.");
-            Assert.That(guarded & RoomLayers.Mask, Is.EqualTo(RoomSet.Of("Kitchen", "Yard").CullingBits), "The yard's bit is put back: it took it out.");
+            Assert.That(guarded & RoomLayers.Mask, Is.EqualTo(RoomSet.Of("Kitchen", "Yard").CullingBits), "The yard's bit is the view's too.");
+            Assert.That(kept, Is.EqualTo(RoomLayers.Mask), "What it keeps is what the camera had when it began.");
 
-            // Back to the whole house: exactly what it took goes back, nothing else.
-            int whole = RoomLayers.ScopeMask(guarded, RoomSet.WholeHouse, ref taken);
-            Assert.That(taken, Is.Zero, "Nothing out for the whole house.");
+            // A stale mask put back over the scope's - a capture's save and restore across a move - is the view's again at the next call.
+            int stale = RoomLayers.ScopeMask((guarded & ~RoomLayers.Mask) | (1 << RoomLayers.Living), RoomSet.Of("Kitchen", "Yard"), ref kept);
+            Assert.That(stale & RoomLayers.Mask, Is.EqualTo(RoomSet.Of("Kitchen", "Yard").CullingBits), "The living room's stale bit goes, the kitchen's and the yard's come back.");
+            Assert.That(stale & ~RoomLayers.Mask, Is.EqualTo(guarded & ~RoomLayers.Mask), "and nothing outside 20 to 27 moves.");
+
+            // Back to the whole house: what it kept goes back, nothing else moves, and it keeps nothing.
+            int whole = RoomLayers.ScopeMask(stale, RoomSet.WholeHouse, ref kept);
+            Assert.That(kept, Is.EqualTo(RoomLayers.NothingKept), "Nothing kept for the whole house.");
+            Assert.That(RoomLayers.TakenOut(kept, RoomSet.Of("Kitchen")), Is.Zero, "and nothing out.");
             Assert.That(whole & RoomLayers.Mask, Is.EqualTo(RoomLayers.Mask), "Every room bit back on.");
             Assert.That(whole & ~RoomLayers.Mask, Is.EqualTo(guarded & ~RoomLayers.Mask), "and nothing else moved, the guard bit included.");
+            Assert.That(RoomLayers.ScopeMask(whole & ~(1 << 30), RoomSet.WholeHouse, ref kept), Is.EqualTo(whole & ~(1 << 30)),
+                "The whole house again, with nothing kept: the mask as it is.");
         }
 
         [Test]
@@ -117,18 +127,25 @@ namespace Gamesim.Tests.EditMode
         {
             const int Everything = -1;
             int probe = 1 << RoomLayers.Living;
-            int taken = 0;
-            // Something else - a test, the probe's P2 - left the living room's bit out by hand.
-            int mask = RoomLayers.ScopeMask(Everything & ~probe, RoomSet.WholeHouse, ref taken);
-            Assert.That(mask & probe, Is.Zero, "The whole house takes nothing out and puts back nothing it did not take.");
-            Assert.That(taken, Is.Zero);
-            mask = RoomLayers.ScopeMask(mask, RoomSet.Of("Living"), ref taken);
-            Assert.That(mask & probe, Is.Zero, "Viewing the living room does not put its bit back either: the scope never took it.");
-            Assert.That(taken & probe, Is.Zero);
-            mask = RoomLayers.ScopeMask(mask, RoomSet.WholeHouse, ref taken);
-            Assert.That(mask & probe, Is.Zero, "Nor does the whole house after it.");
+            int kept = RoomLayers.NothingKept;
+            // Something else - a test, the probe's P2 - left the living room's bit out by hand before the scope began.
+            int mask = RoomLayers.ScopeMask(Everything & ~probe, RoomSet.WholeHouse, ref kept);
+            Assert.That(mask, Is.EqualTo(Everything & ~probe), "The whole house with nothing kept writes nothing.");
+            Assert.That(kept, Is.EqualTo(RoomLayers.NothingKept));
+            mask = RoomLayers.ScopeMask(mask, RoomSet.Of("Kitchen"), ref kept);
+            Assert.That(kept, Is.EqualTo(RoomLayers.Mask & ~probe), "The scope keeps the room bits the camera had: not the living room's.");
+            mask = RoomLayers.ScopeMask(mask, RoomSet.Of("Living"), ref kept);
+            Assert.That(mask & probe, Is.Zero, "Viewing the living room does not put its bit back: the camera did not have it.");
+            Assert.That(mask & RoomLayers.Mask, Is.Zero, "and every other room is out for the living room's view.");
+            Assert.That(RoomLayers.TakenOut(kept, RoomSet.Of("Living")), Is.EqualTo(RoomLayers.Mask & ~probe), "Out: the seven it kept.");
+            // A viewed room's bit cleared under the scope is the view's again at the next call.
+            mask = RoomLayers.ScopeMask(mask, RoomSet.Of("Kitchen"), ref kept);
+            mask = RoomLayers.ScopeMask(mask & ~(1 << RoomLayers.Kitchen), RoomSet.Of("Kitchen"), ref kept);
+            Assert.That(mask & RoomLayers.Mask, Is.EqualTo(1 << RoomLayers.Kitchen), "The kitchen's bit, cleared under the scope, is the view's again.");
+            mask = RoomLayers.ScopeMask(mask, RoomSet.WholeHouse, ref kept);
+            Assert.That(mask & probe, Is.Zero, "Nor does the whole house after it put the living room's bit back.");
             Assert.That(mask & RoomLayers.Mask, Is.EqualTo(RoomLayers.Mask & ~probe), "Everything else is back.");
-            Assert.That(RoomLayers.ScopeMask(mask, RoomSet.None, ref taken), Is.EqualTo(mask), "No room at all is no scope: nothing moves.");
+            Assert.That(RoomLayers.ScopeMask(mask, RoomSet.None, ref kept), Is.EqualTo(mask), "No room at all is no scope: nothing moves.");
         }
 
         [Test]

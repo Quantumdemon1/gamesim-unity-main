@@ -112,7 +112,9 @@ Gamesim.EditModeTests 9298
 # compiled assembly (2026-11-01); not yet run in Unity.
 # 1383 = 1376 + RS4's 7 shared RoomScope_ body and mask tests (EpisodePlayModeTests.RoomScopeBodies; the changed
 # NameTags_ and NamePlates_ cases add none), counted offline from the source (2026-11-01); not yet run in Unity.
-Gamesim.PlayModeTests 1383
+# 1384 = 1383 + the RS4 review's 1 shared RoomScope_TheTwoShotsTwoAndTheFollowedAreDrawnWhereverTheyStand, counted
+# offline from the source and the compiled assembly (2026-11-01); not yet run in Unity.
+Gamesim.PlayModeTests 1384
 # The UMA build of the same assembly, read by a plan built without -WithoutUma. 1281 = the 1241 above + the
 # 40 tests that compile only under GAMESIM_UMA, as run at r1 (2026-10-16): in EpisodePlayModeTests,
 # GroundedFarewell 11, Creator 9, HouseLife 8, Emotes 3, OpeningCaptures 2, and one each in CreatorEntry,
@@ -143,7 +145,9 @@ Gamesim.PlayModeTests 1383
 # 1425 = 1416 + RS4's same 7 shared tests and its 2 under GAMESIM_UMA (RoomScope_AHiddenBodyKeepsItsPoseLive,
 # RoomScope_AnOutfitChangeKeepsTheBodyInItsRoom), counted offline (2026-11-01) and compiled in the UMA offline build
 # (D:\GamesimPlay's dag, 8 of 8 assemblies); not yet run in Unity.
-Gamesim.PlayModeTests.UmaBuild 1425
+# 1426 = 1425 + the RS4 review's same 1 shared test, counted offline (2026-11-01) and compiled in the UMA offline
+# build (D:\GamesimPlay's dag); not yet run in Unity.
+Gamesim.PlayModeTests.UmaBuild 1426
 # The UMA bodies: runs only where the GAMESIM_UMA define is set (the working tree and the D: copy).
 # 82 = the 89 run on 2026-10-15, less the 7 farewell probes moved to Gamesim.Uma.DiagnosticsPlayModeTests;
 # 85 = 82 + the 3 farewell readiness decision tests (UmaFarewellReadinessDecisionPlayModeTests, 2026-10-16);

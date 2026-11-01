@@ -336,10 +336,20 @@ namespace Gamesim.House
             // Past anything the room scope does not draw (RS4, §3.2 f): a hidden body is not under the pointer.
             if (!Gamesim.Presentation.CeremonyOverlays.OnScreen
                 && !(EventSystem.current != null && EventSystem.current.IsPointerOverGameObject())
-                && HouseScopePick.Raycast(viewCamera, ScreenRay(viewCamera, screen), 500f, HouseLayers.Pick, out var hit))
+                && TryPointAt(ScreenRay(viewCamera, screen), out var hit))
                 under = HouseFurniture.AtProp(gameObject.scene, hit.transform, hit.point);
             FurnitureHovered(under, screen);
         }
+
+        /// <summary>
+        /// What the pointer or a click on a ray lands on: the one pick the hover and the click both
+        /// make, so what the hover says a click does is what it does. Pick, not Sight: furniture
+        /// included. Past anything the room scope does not draw (RS4, §3.2 f, D13): a hidden houseguest
+        /// is passed over for whatever stands behind them, the floor included; with the whole house
+        /// drawn, <c>Physics.Raycast</c>'s hit.
+        /// </summary>
+        public bool TryPointAt(Ray ray, out RaycastHit hit)
+            => HouseScopePick.Raycast(viewCamera, ray, 500f, HouseLayers.Pick, out hit);
 
         private void Update()
         {
@@ -407,7 +417,7 @@ namespace Gamesim.House
                 return;
             }
             // Pick, not Sight: a click is meant to hit the thing under the cursor, furniture included.
-            if (!HouseScopePick.Raycast(viewCamera, ray, 500f, HouseLayers.Pick, out var hit))
+            if (!TryPointAt(ray, out var hit))
             {
                 return;
             }

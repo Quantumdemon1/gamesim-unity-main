@@ -10,8 +10,9 @@ namespace Gamesim.House
     /// room a piece of the house belongs to, and the lamps' home rooms.
     ///
     /// <para>It computes and reports only. Nothing here writes a layer, a culling mask or a light:
-    /// the classification is a table for RS2a to apply, and the walker rooms are what the camera rig
-    /// reports and, from RSW, what who-is-where reads.</para>
+    /// the classification is a table for RS2a to apply, the walker rooms are what the camera rig
+    /// reports and, from RSW, what who-is-where reads, and the lamps' homes are what the director's
+    /// lamp hook switches by (RS3, <see cref="LampOutsideScope"/>).</para>
     ///
     /// <para>The boxes come from the floors through one <see cref="HouseRoomQuery"/>, which the scope
     /// keeps (<see cref="Query"/>): a reader that wants the query's own questions - the safe interior,
@@ -402,6 +403,15 @@ namespace Gamesim.House
 
         /// <summary>A lamp: a point light that casts shadows. The fills, the screens' lights and the Moon are not.</summary>
         public static bool IsLamp(Light light) => light != null && light.type == LightType.Point && light.shadows != LightShadows.None;
+
+        /// <summary>
+        /// Whether a lamp homed in room <paramref name="home"/> is off for the main camera while it
+        /// draws <paramref name="viewed"/> (§3.2 d, D8 i; the director's hook, RS3): only when the view
+        /// is a scope - neither the whole house nor no room at all - that leaves the lamp's room out.
+        /// A lamp with no home room stays on, so a missed case lights too much, never too little.
+        /// </summary>
+        public static bool LampOutsideScope(int home, RoomSet viewed)
+            => home >= 0 && home < RoomLayers.Count && !viewed.IsWholeHouse && !viewed.IsEmpty && !viewed.Contains(home);
 
         /// <summary>Every lamp in the scope's house, active or not, with the room it stands in.</summary>
         public void LampHomes(List<LampHome> into)

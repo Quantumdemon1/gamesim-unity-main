@@ -130,10 +130,11 @@ namespace Gamesim.Tests.PlayMode
         }
 
         /// <summary>
-        /// Whether URP 17.6 drops a light whose layer the main camera's mask leaves out (§3.2 d: if it
-        /// does, lamps go to their room's layer and the hook goes). Recorded, either way: the frame is
-        /// either the lamp's lit one or its dark one, never between, and the log says which. RS3 turns
-        /// this into an assertion of the branch it takes.
+        /// URP 17.6 does not drop a light whose layer the main camera's mask leaves out: the lamp on the
+        /// Yard's layer, with the Yard's bit out of the mask, still lights the frame. So a lamp cannot
+        /// be scoped by its layer, and RS3 keeps the begin and end hook (§3.2 d, D8 i). RS0 recorded the
+        /// branch (Set A's three PlayMode runs logged "lights the frame", from the lit frame 0.000);
+        /// RS3 asserts it, and the log line stays for the record.
         /// </summary>
         [UnityTest]
         public IEnumerator Lights_ALightOnALayerOutsideTheMask()
@@ -165,6 +166,9 @@ namespace Gamesim.Tests.PlayMode
                     ? "drops a light on a layer the main camera's culling mask leaves out: it does not light the frame"
                     : "lights the frame with a light on a layer the main camera's culling mask leaves out")
                     + " (from the lit frame " + toLit.ToString("0.000") + ", from the dark " + toDark.ToString("0.000") + ").");
+                Assert.That(culled, Is.False, "The camera's mask does not cull lights: the lamp on a masked-out layer lights the frame "
+                    + "(lit " + toLit.ToString("0.000") + ", dark " + toDark.ToString("0.000") + "), so lamps are scoped by the hook, not by their layer.");
+                Assert.That(toLit, Is.LessThan(ScopeProbeSame), "The frame is the lamp's lit one.");
             }
             finally
             {

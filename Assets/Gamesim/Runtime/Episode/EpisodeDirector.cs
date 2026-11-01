@@ -1701,6 +1701,8 @@ namespace Gamesim.Episode
 
         private void OnDisable()
         {
+            // Before anything can return early: the lamps' hook goes, with every lamp it has off (RS3).
+            UnhookLampScope();
             if (!IsReady) return;
             // Sibling scene roots may already be destroyed during unloading. Never rebuild UI here.
             ClosePanelsInternal(false); if (hud != null) hud.SetVisible(false);
@@ -1716,6 +1718,8 @@ namespace Gamesim.Episode
         }
         private void OnEnable()
         {
+            // Ready or not: the lamps' hook reads the scope as each render begins (RS3).
+            HookLampScope();
             if (!IsReady) return;
             hud?.SetVisible(true); ClosePanels();
         }

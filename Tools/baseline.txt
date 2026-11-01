@@ -64,7 +64,9 @@
 # (HouseRoomScopeTests 7, HouseRoomScopeWalkerTests 3, HouseRoomScopePlanTests 1), RSW's 5 (HouseWhoIsWhereTests)
 # and RS0's 48 (VerificationViewsTests): the full NoUMA run at 2a81aef3 (room scope Set A, 2026-10-27), 9034 of 9034.
 # 9281 = main's 9217 + the room scope's 64 (RS1's 11, RSW's 5 and RS0's 48): disjoint cases, so the floor is their sum.
-Gamesim.EditModeTests 9281
+# 9291 = 9281 + RS3's 10 plain HouseRoomScopeLampTests cases (the lamps' rule 1, the room views 8, the whole house 1),
+# counted offline under the Mono harness (2026-11-01), 10 of 10; not yet run in Unity.
+Gamesim.EditModeTests 9291
 # The UMA-free build. 1215 = 1236, the count after the consolidation's lanes (S2a, S2b, S4a), less the 7
 # farewell probes moved to Gamesim.DiagnosticsPlayModeTests and the 14 farewell readiness tests that now
 # compile only under GAMESIM_UMA (judged on the UMA cast); 1230 = 1215 + S2d's 7, S4b's 2, S4c's 2 and
@@ -104,7 +106,9 @@ Gamesim.EditModeTests 9281
 # (WhoIsWhere_, WalkIn_, Talk_, FreeTime_, Beacons_ and LiveFeed_ cases) and RS0's 3 (the culling and light pins):
 # the full NoUMA run at 2a81aef3 (room scope Set A, 2026-10-27), 1344 of 1344.
 # 1371 = main's 1353 + the room scope's 18 (RS1's 6, RSW's 9 and RS0's 3, all shared): disjoint cases, so the floor is their sum.
-Gamesim.PlayModeTests 1371
+# 1376 = 1371 + RS3's 5 shared RoomScope_ lamp tests (EpisodePlayModeTests.RoomScopeLamps), counted offline from the
+# compiled assembly (2026-11-01); not yet run in Unity.
+Gamesim.PlayModeTests 1376
 # The UMA build of the same assembly, read by a plan built without -WithoutUma. 1281 = the 1241 above + the
 # 40 tests that compile only under GAMESIM_UMA, as run at r1 (2026-10-16): in EpisodePlayModeTests,
 # GroundedFarewell 11, Creator 9, HouseLife 8, Emotes 3, OpeningCaptures 2, and one each in CreatorEntry,
@@ -130,7 +134,8 @@ Gamesim.PlayModeTests 1371
 # 1384 = 1366 + the same 18 shared room-scope tests: the full UMA-build run at 2a81aef3 (2026-10-27), 1384 of 1384,
 # in one process with the MCP bridge off.
 # 1411 = main's 1393 + the room scope's 18 (the same 18 shared tests): disjoint cases, so the floor is their sum.
-Gamesim.PlayModeTests.UmaBuild 1411
+# 1416 = 1411 + RS3's same 5 shared RoomScope_ lamp tests, counted offline (2026-11-01); not yet run in Unity.
+Gamesim.PlayModeTests.UmaBuild 1416
 # The UMA bodies: runs only where the GAMESIM_UMA define is set (the working tree and the D: copy).
 # 82 = the 89 run on 2026-10-15, less the 7 farewell probes moved to Gamesim.Uma.DiagnosticsPlayModeTests;
 # 85 = 82 + the 3 farewell readiness decision tests (UmaFarewellReadinessDecisionPlayModeTests, 2026-10-16);

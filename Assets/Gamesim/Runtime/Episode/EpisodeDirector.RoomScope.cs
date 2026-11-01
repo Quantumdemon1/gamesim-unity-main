@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using Gamesim.House;
 using UnityEngine;
+using UnityEngine.Rendering;
 
 namespace Gamesim.Episode
 {
@@ -10,19 +11,24 @@ namespace Gamesim.Episode
     /// about, read from the camera rig's rooms, with the holds on top.
     ///
     /// <para>RS1 computes and reports. Every source is off (<see cref="LiveRoomScopeSources"/>), so the
-    /// scope says the whole house whatever the camera does, and nothing reads it to draw: no layer,
-    /// mask or light changes. Each later slice turns its own source on in the slice that frames it
-    /// (RS6a ceremonies and competitions, RS6b the other shots, RS5 free play and following), so no
-    /// slice ships an interim rule. Tests and the probe switch every source on with
-    /// <see cref="HoldRoomScope"/>; captures that must see everything take
+    /// scope says the whole house whatever the camera does. Each later slice turns its own source on in
+    /// the slice that frames it (RS6a ceremonies and competitions, RS6b the other shots, RS5 free play
+    /// and following), so no slice ships an interim rule. Tests and the probe switch every source on
+    /// with <see cref="HoldRoomScope"/>; captures that must see everything take
     /// <see cref="HoldWholeHouse"/>, which wins.</para>
+    ///
+    /// <para>The first reader that draws is the lamps' hook (RS3, §3.2 d, D8 i): while the scope is a
+    /// room, the main camera renders with the lamps homed outside it off, and puts them back when it
+    /// is done. Until a source goes live, only a hold makes the scope a room, so players see today's
+    /// lamps.</para>
     ///
     /// <para>The scope also keeps every body's walker room, every frame: the player's and each
     /// houseguest's, by the floors (<see cref="HouseRoomScope.WalkerRoom"/>). Who-is-where reads them
     /// (RSW, EpisodeDirector.WhoIsWhere).</para>
     ///
-    /// <para>No statics: the holds and the scope belong to this director, so a new play session or a
-    /// reloaded scene starts with none (statics outlive play sessions here).</para>
+    /// <para>The holds and the scope belong to this director, so a new play session or a reloaded scene
+    /// starts with none. The one static is the lamps' subscription to the render pipeline's camera
+    /// events, which is reset at SubsystemRegistration (statics outlive play sessions here).</para>
     /// </summary>
     public sealed partial class EpisodeDirector
     {
@@ -185,6 +191,9 @@ namespace Gamesim.Episode
         /// </summary>
         private void TickRoomScope()
         {
+            // Between frames every lamp reads as authored, even after a main-camera render that never
+            // reached its end (another begin handler threw): what it left off goes back here.
+            RestoreScopedLamps();
             if (!EnsureRoomScope()) return;
             if (cameraRig != null && cameraRig.RoomScope != roomScope) cameraRig.UseRoomScope(roomScope);
             if (Time.unscaledTime >= roomScopeForgetAt)
@@ -206,6 +215,9 @@ namespace Gamesim.Episode
             roomScopeRetry = Time.unscaledTime + 1f;
             if (!HouseRoomScope.TryCreate(gameObject.scene, out var built, out _)) return false;
             roomScope = built;
+            // The lamps and their homes once, with the house: the scene's fourteen (RS1 pins them).
+            // A light made later is never a lamp the hook switches, so it is drawn as it is.
+            roomScope.LampHomes(scopeLamps);
             if (cameraRig != null) cameraRig.UseRoomScope(roomScope);
             return true;
         }
@@ -213,9 +225,132 @@ namespace Gamesim.Episode
         /// <summary>Lets a scope whose house no longer validates go; the next reader builds a new one.</summary>
         private void DropRoomScope()
         {
+            RestoreScopedLamps();
+            scopeLamps.Clear();
             roomScope = null;
             roomScopeRetry = 0f;
             if (cameraRig != null) cameraRig.UseRoomScope(null);
+        }
+
+        // ------------------------------------------------------------------------------------
+        // The lamps (RS3, §3.2 d, D8 i): for the main camera only, every lamp homed outside the
+        // scope is off from the camera's begin of rendering to its end, and put back after.
+        // ------------------------------------------------------------------------------------
+
+        /// <summary>
+        /// The directors the lamps' hook serves, and whether the hook is on the pipeline's camera
+        /// events. One static pair of handlers, on while any director is enabled: the editor starts
+        /// play without a domain reload, so a handler subscribed in one session would otherwise
+        /// still be there in the next. <see cref="ForgetLampScope"/> lets both go before a session
+        /// begins, so a session that never let go leaves neither a second subscription nor its
+        /// destroyed director behind.
+        /// </summary>
+        private static readonly List<EpisodeDirector> lampScopeDirectors = new List<EpisodeDirector>(2);
+        private static bool lampScopeHooked;
+
+        /// <summary>Every lamp of the house and the room it stands in, read with the scope.</summary>
+        private readonly List<HouseRoomScope.LampHome> scopeLamps = new List<HouseRoomScope.LampHome>(16);
+        /// <summary>The lamps this render of the main camera switched off, and the camera: put back at its end.</summary>
+        private readonly List<Light> lampsOffForView = new List<Light>(16);
+        private Camera lampsOffFor;
+
+        /// <summary>
+        /// How many lamps the main camera has off: inside its render, after the hook, the lamps homed
+        /// outside the scope that were on; between frames, always none.
+        /// </summary>
+        public int LampsOffForTheMainCamera => lampsOffForView.Count;
+
+        /// <summary>On enable (EpisodeDirector.OnEnable): this director's main camera joins the hook.</summary>
+        private void HookLampScope()
+        {
+            if (!lampScopeDirectors.Contains(this)) lampScopeDirectors.Add(this);
+            if (lampScopeHooked) return;
+            RenderPipelineManager.beginCameraRendering += BeginLampScope;
+            RenderPipelineManager.endCameraRendering += EndLampScope;
+            lampScopeHooked = true;
+        }
+
+        /// <summary>On disable: every lamp it has off goes back, and the last director out takes the hook with it.</summary>
+        private void UnhookLampScope()
+        {
+            RestoreScopedLamps();
+            lampScopeDirectors.Remove(this);
+            for (int i = lampScopeDirectors.Count - 1; i >= 0; i--)
+                if (lampScopeDirectors[i] == null) lampScopeDirectors.RemoveAt(i);
+            if (lampScopeDirectors.Count > 0 || !lampScopeHooked) return;
+            RenderPipelineManager.beginCameraRendering -= BeginLampScope;
+            RenderPipelineManager.endCameraRendering -= EndLampScope;
+            lampScopeHooked = false;
+        }
+
+        /// <summary>A play session starts with no hook and no director in it; the first director to enable subscribes.</summary>
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        private static void ForgetLampScope()
+        {
+            RenderPipelineManager.beginCameraRendering -= BeginLampScope;
+            RenderPipelineManager.endCameraRendering -= EndLampScope;
+            lampScopeHooked = false;
+            lampScopeDirectors.Clear();
+        }
+
+        private static void BeginLampScope(ScriptableRenderContext context, Camera camera)
+        {
+            for (int i = lampScopeDirectors.Count - 1; i >= 0; i--)
+            {
+                var director = lampScopeDirectors[i];
+                if (director == null) { lampScopeDirectors.RemoveAt(i); continue; }
+                director.DarkenLampsOutsideScope(camera);
+            }
+        }
+
+        private static void EndLampScope(ScriptableRenderContext context, Camera camera)
+        {
+            for (int i = lampScopeDirectors.Count - 1; i >= 0; i--)
+            {
+                var director = lampScopeDirectors[i];
+                if (director != null) director.RestoreLampsAfter(camera);
+            }
+        }
+
+        /// <summary>
+        /// The main camera's begin of rendering: URP culls after this callback, so a lamp switched off
+        /// here is not among the camera's visible lights, casts no shadow maps and lights nothing in
+        /// its frame. Only lamps that are on are switched, and each is recorded, so the end puts back
+        /// exactly what was changed. The fills, the screens' lights, the Moon and any light made at
+        /// play (the follow spotlight) are never lamps here. Every other camera - the live feed, the
+        /// portraits, the HUD's overlay, the editor's - renders with the lamps as they are.
+        /// </summary>
+        private void DarkenLampsOutsideScope(Camera camera)
+        {
+            if (camera == null || cameraRig == null || camera != cameraRig.ViewCamera) return;
+            // A render of the main camera that never reached its end: put back what it left off first.
+            RestoreScopedLamps();
+            var viewed = ViewedRooms;
+            if (viewed.IsWholeHouse || viewed.IsEmpty) return;
+            for (int i = 0; i < scopeLamps.Count; i++)
+            {
+                var light = scopeLamps[i].Light;
+                if (light == null || !light.enabled || !HouseRoomScope.LampOutsideScope(scopeLamps[i].Room, viewed)) continue;
+                light.enabled = false;
+                lampsOffForView.Add(light);
+            }
+            if (lampsOffForView.Count > 0) lampsOffFor = camera;
+        }
+
+        /// <summary>The end of a camera's rendering: the main camera's puts its lamps back.</summary>
+        private void RestoreLampsAfter(Camera camera)
+        {
+            if (lampsOffForView.Count == 0 || camera != lampsOffFor) return;
+            RestoreScopedLamps();
+        }
+
+        private void RestoreScopedLamps()
+        {
+            if (lampsOffForView.Count == 0) return;
+            for (int i = 0; i < lampsOffForView.Count; i++)
+                if (lampsOffForView[i] != null) lampsOffForView[i].enabled = true;
+            lampsOffForView.Clear();
+            lampsOffFor = null;
         }
     }
 }

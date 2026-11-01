@@ -134,7 +134,8 @@ Gamesim.PlayModeTests 1376
 # 1384 = 1366 + the same 18 shared room-scope tests: the full UMA-build run at 2a81aef3 (2026-10-27), 1384 of 1384,
 # in one process with the MCP bridge off.
 # 1411 = main's 1393 + the room scope's 18 (the same 18 shared tests): disjoint cases, so the floor is their sum.
-# 1416 = 1411 + RS3's same 5 shared RoomScope_ lamp tests, counted offline (2026-11-01); not yet run in Unity.
+# 1416 = 1411 + RS3's same 5 shared RoomScope_ lamp tests, counted offline (2026-11-01) and compiled in the
+# UMA offline build (D:\GamesimPlay's dag, 8 of 8 assemblies, 2026-11-01); not yet run in Unity.
 Gamesim.PlayModeTests.UmaBuild 1416
 # The UMA bodies: runs only where the GAMESIM_UMA define is set (the working tree and the D: copy).
 # 82 = the 89 run on 2026-10-15, less the 7 farewell probes moved to Gamesim.Uma.DiagnosticsPlayModeTests;

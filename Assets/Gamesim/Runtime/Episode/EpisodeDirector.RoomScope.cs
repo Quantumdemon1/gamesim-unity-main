@@ -215,8 +215,9 @@ namespace Gamesim.Episode
             roomScopeRetry = Time.unscaledTime + 1f;
             if (!HouseRoomScope.TryCreate(gameObject.scene, out var built, out _)) return false;
             roomScope = built;
-            // The lamps and their homes once, with the house: the scene's fourteen (RS1 pins them).
-            // A light made later is never a lamp the hook switches, so it is drawn as it is.
+            // The lamps and their homes when the scope is built, and again if a dropped scope is
+            // rebuilt. The house makes no shadowed point light at play, so they are the scene's
+            // fourteen (RS1 pins them).
             roomScope.LampHomes(scopeLamps);
             if (cameraRig != null) cameraRig.UseRoomScope(roomScope);
             return true;
@@ -293,13 +294,24 @@ namespace Gamesim.Episode
             lampScopeDirectors.Clear();
         }
 
+        /// <summary>
+        /// Every camera's begin of rendering, in every build. A director that throws is logged and its
+        /// lamps put back, and the throw goes no further: past this handler it would skip the event's
+        /// later subscribers and the other directors, and URP would draw no frame for the camera and
+        /// never reach its end.
+        /// </summary>
         private static void BeginLampScope(ScriptableRenderContext context, Camera camera)
         {
             for (int i = lampScopeDirectors.Count - 1; i >= 0; i--)
             {
                 var director = lampScopeDirectors[i];
                 if (director == null) { lampScopeDirectors.RemoveAt(i); continue; }
-                director.DarkenLampsOutsideScope(camera);
+                try { director.DarkenLampsOutsideScope(camera); }
+                catch (Exception e)
+                {
+                    Debug.LogException(e, director);
+                    director.RestoreScopedLamps();
+                }
             }
         }
 
@@ -308,7 +320,13 @@ namespace Gamesim.Episode
             for (int i = lampScopeDirectors.Count - 1; i >= 0; i--)
             {
                 var director = lampScopeDirectors[i];
-                if (director != null) director.RestoreLampsAfter(camera);
+                if (director == null) continue;
+                try { director.RestoreLampsAfter(camera); }
+                catch (Exception e)
+                {
+                    Debug.LogException(e, director);
+                    director.RestoreScopedLamps();
+                }
             }
         }
 
@@ -316,15 +334,20 @@ namespace Gamesim.Episode
         /// The main camera's begin of rendering: URP culls after this callback, so a lamp switched off
         /// here is not among the camera's visible lights, casts no shadow maps and lights nothing in
         /// its frame. Only lamps that are on are switched, and each is recorded, so the end puts back
-        /// exactly what was changed. The fills, the screens' lights, the Moon and any light made at
-        /// play (the follow spotlight) are never lamps here. Every other camera - the live feed, the
-        /// portraits, the HUD's overlay, the editor's - renders with the lamps as they are.
+        /// exactly what was changed. A lamp is a shadowed point light, so the fills, the screens'
+        /// lights, the Moon and the follow spotlight are never lamps here. Every other camera - the
+        /// live feed, the portraits, the HUD's overlay, the editor's - renders with the lamps as they are.
         /// </summary>
         private void DarkenLampsOutsideScope(Camera camera)
         {
             if (camera == null || cameraRig == null || camera != cameraRig.ViewCamera) return;
             // A render of the main camera that never reached its end: put back what it left off first.
             RestoreScopedLamps();
+            // A render reads only a scope Update has built, and never builds one. With nothing held
+            // and no source live the view is the whole house (ViewedRooms), so a player's render
+            // stops at a field check.
+            if (roomScope == null) return;
+            if (roomScopeHolds.Count == 0 && LiveRoomScopeSources == RoomScopeSources.None) return;
             var viewed = ViewedRooms;
             if (viewed.IsWholeHouse || viewed.IsEmpty) return;
             for (int i = 0; i < scopeLamps.Count; i++)

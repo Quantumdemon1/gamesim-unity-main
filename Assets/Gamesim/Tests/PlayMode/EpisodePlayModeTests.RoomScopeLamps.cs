@@ -214,7 +214,12 @@ namespace Gamesim.Tests.PlayMode
         /// room for a run of real frames, every lamp but its one is off inside each main-camera render
         /// and back by the end callback; the frame's code, before and after rendering, reads every
         /// light as authored; and nothing else the house lights by - fills, screens, the Moon - ever
-        /// changes, inside a render or out.
+        /// changes, inside a render or out. A living-room lamp and the games room's own are off before
+        /// the hold, so the authored state has a lamp off on each side of the scope: the hook leaves a
+        /// lamp that is already off alone, records only what it switched, and puts back only that.
+        /// A main-camera render that never reaches its end (URP skips the end when a begin handler
+        /// throws) is made good twice: the next frame's Update puts its lamps back, and so does the next
+        /// render's begin, before it reads a view that has moved.
         /// </summary>
         [UnityTest]
         public IEnumerator RoomScope_LightsReadAsAuthoredBetweenFrames()
@@ -224,76 +229,163 @@ namespace Gamesim.Tests.PlayMode
             yield return null;
             var scope = ScopeOf(director);
             var homes = LampScopeHomes(scope);
-            var everyLight = SceneComponents<Light>();
-            var authored = everyLight.Select(light => light.enabled).ToArray();
-            var others = LampScopeOtherLights(homes);
-            var view = cameraRig.ViewCamera;
             int games = RoomLayers.IndexOf("Games");
-            int outside = homes.Count(home => home.Light.enabled && home.Room != games);
-            Assert.That(outside, Is.GreaterThan(0), "There are lamps outside the games room to switch.");
-            int renders = 0, scopedRenders = 0;
-            var failures = new List<string>();
-            void OnBegin(ScriptableRenderContext context, Camera camera)
-            {
-                if (camera != view) return;
-                renders++;
-                var sight = new LampScopeSight();
-                LampScopeRead(sight, camera, homes, others);
-                if (sight.Viewed != RoomSet.Of("Games")) return;
-                scopedRenders++;
-                if (sight.LampsOff != outside) failures.Add("a render with " + sight.LampsOff + " lamps off, not " + outside);
-                for (int i = 0; i < homes.Count; i++)
-                    if (homes[i].Room != games && sight.Lamps[i]) failures.Add(homes[i].Light.name + " on inside a games-room render");
-                if (sight.OthersChanged.Count > 0) failures.Add("changed inside a render: " + string.Join(", ", sight.OthersChanged));
-            }
-            void OnEnd(ScriptableRenderContext context, Camera camera)
-            {
-                if (camera != view) return;
-                // The director's end handler subscribed first, so it has put them back by now.
-                LampScopeAsAuthored(everyLight, authored, "at the main camera's end of rendering", failures);
-            }
-            var owner = new object();
-            RenderPipelineManager.beginCameraRendering += OnBegin;
-            RenderPipelineManager.endCameraRendering += OnEnd;
+            int living = RoomLayers.IndexOf("Living");
+            var offOutside = homes.First(home => home.Room == living).Light;
+            var offInside = homes.First(home => home.Room == games).Light;
+            Assert.That(offOutside.enabled && offInside.enabled, Is.True, "Both lamps are on as the scene authors them.");
+            int outsideAsAuthored = homes.Count(home => home.Light.enabled && home.Room != games);
+            offOutside.enabled = false;
+            offInside.enabled = false;
             try
             {
-                cameraRig.MoveTo(new HouseCameraRig.Shot
+                var everyLight = SceneComponents<Light>();
+                var authored = everyLight.Select(light => light.enabled).ToArray();
+                var lampsAuthored = homes.Select(home => home.Light.enabled).ToArray();
+                var others = LampScopeOtherLights(homes);
+                var view = cameraRig.ViewCamera;
+                int outside = homes.Count(home => home.Light.enabled && home.Room != games);
+                Assert.That(outside, Is.EqualTo(outsideAsAuthored - 1), "The living-room lamp off by hand is not among the lamps to switch.");
+                Assert.That(outside, Is.GreaterThan(0), "There are lamps outside the games room to switch.");
+                int renders = 0, scopedRenders = 0;
+                var failures = new List<string>();
+                void OnBegin(ScriptableRenderContext context, Camera camera)
                 {
-                    Focus = ScopeCentre(scope, "Games"), Distance = 10.5f, Pitch = 45f, Yaw = 90f, Rooms = RoomSet.Of("Games"),
-                });
-                director.HoldRoomScope(owner);
-                // Real frames, at least thirty and half a second of them (a batchmode frame is far
-                // under a millisecond), but no more than six hundred.
-                float until = Time.realtimeSinceStartup + .5f;
-                int frames = 0;
-                while (frames < 30 || (Time.realtimeSinceStartup < until && frames < 600))
-                {
-                    yield return null;
-                    frames++;
-                    // The frame's code: the director's Update has run, the frame is not yet drawn.
-                    LampScopeAsAuthored(everyLight, authored, "in frame " + frames + "'s code", failures);
-                    if (director.LampsOffForTheMainCamera != 0) failures.Add("frame " + frames + ": the hook holds lamps off between renders");
-                    if (failures.Count > 8) break;
+                    if (camera != view) return;
+                    renders++;
+                    var sight = new LampScopeSight();
+                    LampScopeRead(sight, camera, homes, others);
+                    if (sight.Viewed != RoomSet.Of("Games")) return;
+                    scopedRenders++;
+                    if (sight.LampsOff != outside) failures.Add("a render with " + sight.LampsOff + " lamps off, not " + outside);
+                    for (int i = 0; i < homes.Count; i++)
+                        if (homes[i].Room != games && sight.Lamps[i]) failures.Add(homes[i].Light.name + " on inside a games-room render");
+                    if (offInside.enabled) failures.Add(offInside.name + ", off before the hold, on inside a games-room render");
+                    if (sight.OthersChanged.Count > 0) failures.Add("changed inside a render: " + string.Join(", ", sight.OthersChanged));
                 }
-                if (scopedRenders == 0)
+                void OnEnd(ScriptableRenderContext context, Camera camera)
                 {
-                    // A run that draws no frames to a screen: one render by hand, through the same hook.
-                    LampScopeRenderByHand(view);
+                    if (camera != view) return;
+                    // The director's end handler subscribed first, so it has put them back by now.
+                    LampScopeAsAuthored(everyLight, authored, "at the main camera's end of rendering", failures);
                 }
-                Assert.That(scopedRenders, Is.GreaterThan(0), "The main camera rendered the games room's scope (" + renders + " renders).");
-                Assert.That(failures, Is.Empty, string.Join("; ", failures.Take(10)));
+                var owner = new object();
+                RenderPipelineManager.beginCameraRendering += OnBegin;
+                RenderPipelineManager.endCameraRendering += OnEnd;
+                try
+                {
+                    cameraRig.MoveTo(new HouseCameraRig.Shot
+                    {
+                        Focus = ScopeCentre(scope, "Games"), Distance = 10.5f, Pitch = 45f, Yaw = 90f, Rooms = RoomSet.Of("Games"),
+                    });
+                    director.HoldRoomScope(owner);
+                    // Real frames, at least thirty and half a second of them (a batchmode frame is far
+                    // under a millisecond), but no more than six hundred.
+                    float until = Time.realtimeSinceStartup + .5f;
+                    int frames = 0;
+                    while (frames < 30 || (Time.realtimeSinceStartup < until && frames < 600))
+                    {
+                        yield return null;
+                        frames++;
+                        // The frame's code: the director's Update has run, the frame is not yet drawn.
+                        LampScopeAsAuthored(everyLight, authored, "in frame " + frames + "'s code", failures);
+                        if (director.LampsOffForTheMainCamera != 0) failures.Add("frame " + frames + ": the hook holds lamps off between renders");
+                        if (failures.Count > 8) break;
+                    }
+                    if (scopedRenders == 0)
+                    {
+                        // A run that draws no frames to a screen: one render by hand, through the same hook.
+                        LampScopeRenderByHand(view);
+                    }
+                    Assert.That(scopedRenders, Is.GreaterThan(0), "The main camera rendered the games room's scope (" + renders + " renders).");
+                    Assert.That(failures, Is.Empty, string.Join("; ", failures.Take(10)));
+
+                    // A render that never reached its end: the hook's begin handler, run by hand just
+                    // after the main camera's end, leaves the lamps as such a render does, with no main
+                    // render before the next Update. That Update puts them back.
+                    var begin = typeof(EpisodeDirector).GetMethod("BeginLampScope", BindingFlags.NonPublic | BindingFlags.Static);
+                    Assert.That(begin, Is.Not.Null, "The lamps' begin handler.");
+                    int leftOff = -1, leftAt = -1;
+                    void LeaveOff(ScriptableRenderContext context, Camera camera)
+                    {
+                        if (camera != view || leftAt >= 0) return;
+                        begin.Invoke(null, new object[] { context, camera });
+                        leftOff = director.LampsOffForTheMainCamera;
+                        leftAt = Time.frameCount;
+                    }
+                    RenderPipelineManager.endCameraRendering += LeaveOff;
+                    try
+                    {
+                        float deadline = Time.realtimeSinceStartup + 2f;
+                        int waited = 0;
+                        while (leftAt < 0 && (waited < 3 || Time.realtimeSinceStartup < deadline))
+                        {
+                            yield return null;
+                            waited++;
+                        }
+                        if (leftAt < 0) LampScopeRenderByHand(view);
+                    }
+                    finally { RenderPipelineManager.endCameraRendering -= LeaveOff; }
+                    Assert.That(leftAt, Is.GreaterThanOrEqualTo(0), "The main camera's render reached the end callback.");
+                    Assert.That(leftOff, Is.EqualTo(outside), "Run by hand after the main camera's end, the hook has the lamps outside the games room off.");
+                    // Drawn by hand, the render came in this frame's code: the next Update is a frame away.
+                    if (Time.frameCount == leftAt) yield return null;
+                    var unended = new List<string>();
+                    LampScopeAsAuthored(everyLight, authored, "in the frame's code after a render that never ended", unended);
+                    Assert.That(unended, Is.Empty, "The next Update put the lamps back: " + string.Join("; ", unended));
+                    Assert.That(director.LampsOffForTheMainCamera, Is.Zero, "and the hook holds none.");
+
+                    // Left unfinished again, and the view moved to the living room before the next render:
+                    // that render's begin puts back what the last one left off before it reads the new
+                    // scope, so the room it now views has its lamps. All in this frame's code, so no
+                    // Update comes between the two.
+                    begin.Invoke(null, new object[] { default(ScriptableRenderContext), view });
+                    Assert.That(director.LampsOffForTheMainCamera, Is.EqualTo(outside), "By hand, the hook has the lamps outside the games room off.");
+                    cameraRig.MoveTo(new HouseCameraRig.Shot
+                    {
+                        Focus = ScopeCentre(scope, "Living"), Distance = 11.25f, Pitch = 45f, Yaw = 0f, Rooms = RoomSet.Of("Living"),
+                    });
+                    Assert.That(director.ViewedRooms, Is.EqualTo(RoomSet.Of("Living")), "The held scope is the living room's.");
+                    LampScopeSight moved = null;
+                    void Moved(ScriptableRenderContext context, Camera camera)
+                    {
+                        if (camera != view || moved != null) return;
+                        moved = new LampScopeSight();
+                        LampScopeRead(moved, camera, homes, others);
+                    }
+                    RenderPipelineManager.beginCameraRendering += Moved;
+                    try { LampScopeRenderByHand(view); }
+                    finally { RenderPipelineManager.beginCameraRendering -= Moved; }
+                    Assert.That(moved, Is.Not.Null, "The render by hand reached the begin callback.");
+                    Assert.That(moved.Viewed, Is.EqualTo(RoomSet.Of("Living")), "The next render reads the living room's scope.");
+                    Assert.That(moved.Lamps, Is.EqualTo(homes.Select((home, i) => lampsAuthored[i] && home.Room == living).ToArray()),
+                        "Inside the next render, the living room's lamps as authored and every other lamp off.");
+                    Assert.That(moved.LampsOff, Is.EqualTo(homes.Where((home, i) => lampsAuthored[i] && home.Room != living).Count()),
+                        "The hook holds off exactly the lamps outside the living room that were on.");
+                    Assert.That(moved.OthersChanged, Is.Empty, "No fill, screen light or the Moon changes inside the render.");
+                    var ended = new List<string>();
+                    LampScopeAsAuthored(everyLight, authored, "after the next render's end", ended);
+                    Assert.That(ended, Is.Empty, string.Join("; ", ended));
+                    Assert.That(director.LampsOffForTheMainCamera, Is.Zero, "The hook holds none after the next render's end.");
+                    Assert.That(failures, Is.Empty, "At the main camera's ends: " + string.Join("; ", failures.Take(10)));
+                }
+                finally
+                {
+                    RenderPipelineManager.beginCameraRendering -= OnBegin;
+                    RenderPipelineManager.endCameraRendering -= OnEnd;
+                    director.Release(owner);
+                    cameraRig.ReleaseShot(0f);
+                }
+                yield return null;
+                var after = new List<string>();
+                LampScopeAsAuthored(everyLight, authored, "after the hold", after);
+                Assert.That(after, Is.Empty, string.Join("; ", after));
             }
             finally
             {
-                RenderPipelineManager.beginCameraRendering -= OnBegin;
-                RenderPipelineManager.endCameraRendering -= OnEnd;
-                director.Release(owner);
-                cameraRig.ReleaseShot(0f);
+                offOutside.enabled = true;
+                offInside.enabled = true;
             }
-            yield return null;
-            var after = new List<string>();
-            LampScopeAsAuthored(everyLight, authored, "after the hold", after);
-            Assert.That(after, Is.Empty, string.Join("; ", after));
         }
 
         /// <summary>

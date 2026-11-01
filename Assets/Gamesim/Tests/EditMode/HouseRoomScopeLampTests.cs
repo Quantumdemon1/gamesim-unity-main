@@ -15,7 +15,11 @@ namespace Gamesim.Tests.EditMode
     /// </summary>
     public sealed class HouseRoomScopeLampTests
     {
-        /// <summary>The lamps per home room in <see cref="RoomLayers"/> order (Living, Kitchen, Bedroom, Private, Yard, HoH, Nomination, Games): RS1's 3/3/3/2/2/1/0/0.</summary>
+        /// <summary>
+        /// The lamps per home room: RS1's homes (Living 3, Bedroom 3, HoH 3, Nomination 2, Private 2,
+        /// Games 1, Kitchen 0, Yard 0), here in <see cref="RoomLayers"/> order (Living, Kitchen, Bedroom,
+        /// Private, Yard, HoH, Nomination, Games): 3, 0, 3, 2, 0, 3, 2, 1.
+        /// </summary>
         private static readonly int[] LampsAtHome = { 3, 0, 3, 2, 0, 3, 2, 1 };
 
         [Test]

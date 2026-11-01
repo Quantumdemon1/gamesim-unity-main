@@ -1883,7 +1883,7 @@ It shows every seated fact. That includes the three nomination facts, which shap
 - **Two more readers in `KnownBlocs`,** so the subset pins every word the player sees: `ProfileEmptyLine(s, id)` gives the profile's empty line, "this season" when a seated fact is between the houseguest and the player and the old words otherwise, and `PlayerRecord(s)` gives the diary row's value and note. The old empty line's words move into `KnownBlocs.NothingBetweenYouCopy` unchanged.
 - **The status,** as `PastGame.Status`, shared by the profile and the card:
   - a public split comes first, because it can only happen while both are in the house;
-  - then a departure: evicted, on the jury or removed. When both have left, the one the record shows leaving first (`JuryHouseRead.LeftWeek`) is named;
+  - then a departure: evicted, on the jury or removed. When both have left, the one the record shows leaving first is named: a removal by its own week in `story.removals`, as `SeasonAutopsy` dates one, and an eviction by its power row (`JuryHouseRead.LeftWeek`);
   - the winner and the runner-up are in the house to the end;
   - a status the player made names the player by the card's first name, as the act does ("Week 1: Cody nominated Tyler").
 - **The card** (`EpisodeDirector.PastGameCard`):
@@ -1909,6 +1909,10 @@ It shows every seated fact. That includes the three nomination facts, which shap
   - Captures, in a batch run: `past-games-suspected-three`, `past-games-suspected-four`, `past-games-record`, `past-games-profile` and `past-games-diary`, each at Standard and with `-largest`.
   - **The CastSelect audit:** no `EpisodePlayModeTests.CastSelect` test reads the profile, the alliances page or the diary, so none changes. Nor does any other PlayMode test that builds an All-Stars season: `OpeningGrounds` reads the arrival line only. The cast-screen test above is the audit's new case.
   - The PlayMode tests are compiled offline, with and without UMA. Their Unity run is the lead's, never beside S4's lab run, and so is the standalone verify walk §14.I asks for: the stress house enrols.
+  - `ModeOneSeasonDigests` is `[Explicit]`, so the full subset does not run it, and its 16433 does not count it. It serializes `AllianceRead.Read`, so it is proven by a filtered run of its own: 2 of 2 at the build's commit (its review's run), and again after the review's fixes.
+- **The review's fixes** (2026-11-01) add checks, not cases:
+  - `PastGamesReadTests`: the private half now holds this season's pacts between the two, one private and one the player was told of, and a past ballot between them, and the status and the profile lines stay the public ones; the page's reader is checked with the Hitmen live again; every reader is checked to write nothing, one call at a time, over a fourth week with a save, a replacement, an eviction and a live block; a removal is dated by its own week, either way round.
+  - `EpisodePlayModeTests.PastGames`: the page's foot comes after the last past game; the page draws its empty illustration only at 2, with no past games either; under each face are the name and the status word, or "You" for the player; the Regular season's page is shown to be drawn before its absences are read. Each is to be mutation-checked once in the lead's Unity run: the section moved below the footer, `empty` without its past-games term, and a face note that reads the player's reading.
 
 ### 14.G Versioning
 

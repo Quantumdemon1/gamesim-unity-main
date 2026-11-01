@@ -395,8 +395,9 @@ namespace Gamesim.Simulation
         /// A seated shared alliance this season, from the public record (§14.F.1): the first week one of its two put the
         /// other up (<see cref="AlumniLoyalty.PublicSplitWeek"/>, this week's block included) as "Week N: {first} nominated
         /// {first}"; otherwise, when one has left the house, "{first} has left the house" - the one who left first, by the
-        /// week the record gives, when both have; otherwise <see cref="BothInTheHouse"/>. A split comes first: it can only
-        /// happen while both are in. The final two are in the house to the end. Nothing private reads here.
+        /// week the record gives (<see cref="LeftWeek"/>, a removal's included), when both have; otherwise
+        /// <see cref="BothInTheHouse"/>. A split comes first: it can only happen while both are in. The final two are in
+        /// the house to the end. Nothing private reads here.
         /// </summary>
         private static string Status(EpisodeState s, AlumniHistories.SeatedPair pair)
         {
@@ -410,9 +411,22 @@ namespace Gamesim.Simulation
             bool firstLeft = HasLeft(s, pair.FirstId), secondLeft = HasLeft(s, pair.SecondId);
             if (!firstLeft && !secondLeft) return BothInTheHouse;
             string leaver = !secondLeft ? pair.FirstId : !firstLeft ? pair.SecondId
-                : (JuryHouseRead.LeftWeek(s, pair.SecondId) ?? int.MaxValue) < (JuryHouseRead.LeftWeek(s, pair.FirstId) ?? int.MaxValue) ? pair.SecondId
+                : (LeftWeek(s, pair.SecondId) ?? int.MaxValue) < (LeftWeek(s, pair.FirstId) ?? int.MaxValue) ? pair.SecondId
                 : pair.FirstId;
             return FirstName(s, leaver) + " has left the house";
+        }
+
+        /// <summary>
+        /// The week a houseguest left, by the public record: a production removal's week (<c>story.removals</c>, as
+        /// <see cref="SeasonAutopsy"/> dates one), else the week of the power row that names them the evictee
+        /// (<see cref="JuryHouseRead.LeftWeek"/>); null when neither is on the record.
+        /// </summary>
+        private static int? LeftWeek(EpisodeState s, string id)
+        {
+            if (s.Find(id)?.status == ContestantStatus.Expelled && s.story?.removals != null)
+                foreach (var removal in s.story.removals)
+                    if (removal != null && removal.contestantId == id) return removal.week;
+            return JuryHouseRead.LeftWeek(s, id);
         }
 
         /// <summary>Out of the house: evicted, on the jury or removed. The winner and the runner-up stayed to the end.</summary>

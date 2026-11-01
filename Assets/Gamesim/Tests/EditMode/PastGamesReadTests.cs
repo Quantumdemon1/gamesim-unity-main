@@ -90,6 +90,45 @@ namespace Gamesim.Tests.EditMode
 
         private static string Status(EpisodeState s, string factId) => KnownBlocs.PastGames(s).Single(g => g.FactId == factId).Status;
 
+        /// <summary>
+        /// Every reader, each call on its own, leaves the season as it found it: every houseguest's profile lines and
+        /// empty line, the page's past games and the diary's record write nothing and draw nothing. Checked call by call,
+        /// so two calls that undo each other cannot hide a write.
+        /// </summary>
+        private static void AssertEveryReaderWritesNothing(EpisodeState s, string where)
+        {
+            string before = JsonConvert.SerializeObject(s);
+            void Unchanged(string reader) =>
+                Assert.That(JsonConvert.SerializeObject(s), Is.EqualTo(before), where + ": " + reader + " writes nothing and draws nothing.");
+            foreach (var who in s.contestants)
+            {
+                KnownBlocs.ProfileLines(s, who.id);
+                Unchanged("ProfileLines(" + who.id + ")");
+                KnownBlocs.ProfileEmptyLine(s, who.id);
+                Unchanged("ProfileEmptyLine(" + who.id + ")");
+            }
+            KnownBlocs.PastGames(s);
+            Unchanged("PastGames");
+            KnownBlocs.PlayerRecord(s);
+            Unchanged("PlayerRecord");
+        }
+
+        /// <summary>
+        /// A season in its fourth week with a record behind it and a block in front of it: week 2's ceremony on the record,
+        /// with a veto save, a replacement nominee and an eviction, and this week's Head of Household and nominees - the
+        /// parts of the state the simulation reads next.
+        /// </summary>
+        private static EpisodeState MidSeason(EpisodeState s)
+        {
+            var mid = s.Clone();
+            string tyler = On(mid, Tyler), dan = On(mid, Dan), chelsie = On(mid, Chelsie), derrick = On(mid, Derrick), cody = On(mid, Cody);
+            mid.week = 4;
+            Row(mid, 2, tyler, new[] { dan, chelsie }, dan, savedId: cody, replacementId: chelsie);
+            mid.Find(dan).status = ContestantStatus.Evicted;
+            Block(mid, derrick, chelsie, tyler);
+            return mid;
+        }
+
         // ------------------------------------------------------------------ the profile's lines (§14.F.1)
 
         [Test]
@@ -185,6 +224,28 @@ namespace Gamesim.Tests.EditMode
             reverse.Find(derrick).status = ContestantStatus.Jury;
             reverse.Find(cody).status = ContestantStatus.Jury;
             Assert.That(Status(reverse, Hitmen), Is.EqualTo("Cody has left the house"));
+            // A production removal has no power row: its week is the removal's own, on the record as a removal.
+            var removedFirst = s.Clone();
+            removedFirst.week = 5;
+            removedFirst.story.removals.Add(new RemovalState { contestantId = cody, reasonId = "conduct", week = 2 });
+            removedFirst.Find(cody).status = ContestantStatus.Expelled;
+            Row(removedFirst, 4, dan, new[] { derrick, chelsie }, derrick);
+            removedFirst.Find(derrick).status = ContestantStatus.Jury;
+            Assert.That(Status(removedFirst, Hitmen), Is.EqualTo("Cody has left the house"), "Removed in week 2, before week 4's eviction.");
+            var removedLater = s.Clone();
+            removedLater.week = 5;
+            Row(removedLater, 2, dan, new[] { cody, chelsie }, cody);
+            removedLater.Find(cody).status = ContestantStatus.Jury;
+            removedLater.story.removals.Add(new RemovalState { contestantId = derrick, reasonId = "conduct", week = 4 });
+            removedLater.Find(derrick).status = ContestantStatus.Expelled;
+            Assert.That(Status(removedLater, Hitmen), Is.EqualTo("Cody has left the house"), "Evicted in week 2, before week 4's removal.");
+            var removedSecond = s.Clone();
+            removedSecond.week = 5;
+            removedSecond.story.removals.Add(new RemovalState { contestantId = derrick, reasonId = "conduct", week = 2 });
+            removedSecond.Find(derrick).status = ContestantStatus.Expelled;
+            Row(removedSecond, 4, dan, new[] { cody, chelsie }, cody);
+            removedSecond.Find(cody).status = ContestantStatus.Jury;
+            Assert.That(Status(removedSecond, Hitmen), Is.EqualTo("Derrick has left the house"), "Either way round.");
 
             // The final two stayed in the house to the end.
             var finale = s.Clone();
@@ -229,15 +290,39 @@ namespace Gamesim.Tests.EditMode
             final.ledger.power.Add(new PowerRow { week = 3, hohId = derrick, nominees = new List<string> { cody, dan }, tally = new List<int>(), evicteeId = dan });
             Assert.That(Status(final, Hitmen), Is.EqualTo("both in the house"));
 
-            // Nothing private reads here: a broken final two, a betrayal, both scores at the floor, ballots, a pact's end.
+            // Nothing private reads here: a broken final two, a betrayal, both scores at the floor, ballots, a pact's end,
+            // and this season's pacts between the two - one private, one the player was told of. A past game is not a
+            // pact of this season's, and a ballot is secret.
             var secret = s.Clone();
             secret.deals.Single(d => d.type == DealKind.FinalTwo).status = DealStatus.Broken;
             RelationshipLedger.RecordOneWay(secret, cody, derrick, "deal_broken", -45, "Broke the final two.", permanent: true);
             secret.relationships.Single(r => r.fromId == cody && r.toId == derrick).score = -100;
             secret.relationships.Single(r => r.fromId == derrick && r.toId == cody).score = -100;
             secret.votes.Add(new VoteState { voterId = derrick, targetId = cody });
+            secret.ledger.ballots.Add(new BallotRow { week = 1, voterId = derrick, targetId = cody });
             secret.alliances.Add(new AllianceState { id = "alliance-test-ended", name = "ended", members = new List<string> { derrick, cody }, active = false });
+            var again = new AllianceState { id = "alliance-npc-" + secret.nextSequence++, name = "Hitmen again", members = new List<string> { derrick, cody }, active = true };
+            secret.alliances.Add(again);
+            Knowledge.AllianceFormed(secret, again);
+            var told = new AllianceState { id = "alliance-npc-" + secret.nextSequence++, name = "Told", members = new List<string> { cody, derrick, chelsie }, active = true };
+            secret.alliances.Add(told);
+            Knowledge.AllianceFormed(secret, told);
+            var heard = Knowledge.Of(secret, FactKinds.Alliance, told.id);
+            Knowledge.AddKnower(secret, heard, secret.playerId);
+            Knowledge.MakeKnown(secret, heard, FactVisibility.Whispered);
+            secret.ledger.alliances.Add(new AllianceRow { id = told.id, why = "npc", startedWeek = 1 });
+            Assert.That(AllianceRead.Read(secret).suspected, Has.Count.EqualTo(1), "The player knows of one of their pacts this season.");
             Assert.That(Status(secret, Hitmen), Is.EqualTo("both in the house"));
+            Assert.That(KnownBlocs.ProfileLines(secret, cody)[1], Is.EqualTo(HitmenAct + Both), "The profile line carries the public status alone.");
+            Assert.That(KnownBlocs.ProfileLines(secret, derrick)[1], Is.EqualTo(HitmenAct + Both));
+            Assert.That(KnownBlocs.ProfileEmptyLine(secret, cody), Is.EqualTo(KnownBlocs.ProfileEmptyLine(s, cody)));
+
+            // Reading, with a record behind the season and a block in front of it, writes nothing.
+            var mid = MidSeason(s);
+            Assert.That((Status(mid, Hitmen), Status(mid, Committee)), Is.EqualTo(("both in the house", "Week 2: Tyler nominated Cody")),
+                "The fixture has a past ceremony's save and this week's block, and the readers reach both.");
+            AssertEveryReaderWritesNothing(mid, "a newcomer's fourth week");
+            AssertEveryReaderWritesNothing(secret, "this season's pacts between the two");
         }
 
         // ------------------------------------------------------------------ the player's own past games (§14.F.1, §14.F.3)
@@ -290,6 +375,11 @@ namespace Gamesim.Tests.EditMode
             Assert.That(KnownBlocs.ProfileEmptyLine(onDanielle, will), Is.EqualTo(KnownBlocs.NothingBetweenYouThisSeasonCopy));
             var finalist = KnownBlocs.PlayerRecord(onDanielle);
             Assert.That((finalist.Value, finalist.Note), Is.EqualTo(("Finalist", Record(Danielle) + " " + Chilltown + " " + DanielleNominatedJanelle)));
+            // Reading the player's own past games, with a record behind the season and a block in front of it, writes nothing.
+            var mid = MidSeason(s);
+            Assert.That(KnownBlocs.ProfileLines(mid, tyler)[1], Is.EqualTo("Between you, before this season: " + CommitteeAct + " · Week 2: Tyler nominated Cody"),
+                "The fixture's save is the player's, and the readers reach it.");
+            AssertEveryReaderWritesNothing(mid, "the player on Cody's card in the fourth week");
             var played = KnownBlocs.PlayerRecord(AllStars(12, 5303u, Janelle));
             Assert.That((played.Value, played.Note), Is.EqualTo(("Played", Record(Janelle) + " " + TylerNominatedJanelle + " " + DanielleNominatedJanelle)));
             var alone = KnownBlocs.PlayerRecord(AllStars(8, 5304u, Vanessa));
@@ -381,7 +471,11 @@ namespace Gamesim.Tests.EditMode
 
             var page = AllianceRead.Read(s);
             Assert.That((page.yours.Count, page.suspected.Count), Is.EqualTo((1, 1)), "The page holds what the player was part of or told.");
-            Assert.That(KnownBlocs.PastGames(s), Has.Count.EqualTo(2), "The past games are a reader of their own.");
+            Assert.That(Games(s), Is.EqualTo(new[]
+            {
+                (Hitmen, 16, HitmenAct, derrick, cody, "both in the house"),
+                (Committee, 22, CommitteeAct, cody, On(s, Tyler), "both in the house"),
+            }), "The past games are a reader of their own, and the Hitmen live again this season is no status of theirs.");
             string three = JsonConvert.SerializeObject(page);
             Assert.That(three, Does.Not.Contain(Hitmen).And.Not.Contain("Big Brother 16"), "No past game is on the page's own record.");
             foreach (int value in new[] { AlumniRules.Off, AlumniRules.Histories, AlumniRules.Loyalty, AlumniRules.CounterBlocs, AlumniRules.GrowingPacts })

@@ -83,6 +83,22 @@ namespace Gamesim.Tests.PlayMode
             card == null ? new string[0] : card.GetComponentsInChildren<RectTransform>()
                 .Where(rect => rect.name.StartsWith(prefix, System.StringComparison.Ordinal)).Select(rect => rect.name).ToArray();
 
+        /// <summary>
+        /// Under each face of a past game's card: the houseguest's first name and where they are now - "You" for the
+        /// player - and nothing else. Never a reading of them: no number and no feeling (§14.F).
+        /// </summary>
+        private static void AssertPastGameFaceNotes(RectTransform card, EpisodeState state, KnownBlocs.PastGame game, string where)
+        {
+            Assert.That(card, Is.Not.Null, game.FactId + ": " + where);
+            foreach (var member in new[] { state.Find(game.FirstId), state.Find(game.SecondId) })
+            {
+                var holder = card.GetComponentsInChildren<RectTransform>().Single(rect => rect.name == EpisodeHud.PastGameFacePrefix + member.name);
+                Assert.That(holder.GetComponentsInChildren<TMP_Text>().Select(text => text.text).ToArray(),
+                    Is.EqualTo(new[] { FinalistRead.FirstName(member.name), member.id == state.playerId ? "You" : EpisodeDirector.StatusWord(member.status) }),
+                    member.name + "'s face on " + game.FactId + ": the name and where they are, never a reading: " + where);
+            }
+        }
+
         /// <summary>The captions of every live control on the open panel, in order.</summary>
         private string[] PanelControlCaptions()
         {
@@ -117,9 +133,10 @@ namespace Gamesim.Tests.PlayMode
         /// <summary>
         /// The alliances page of a twelve-house with both shared alliances seated, and two outsider pacts the player was
         /// told of - three faces and four (§14.L.J): the suspected cards as they always were, and after them PAST GAMES, its
-        /// heading's caption and count apart, its note, and a card a seated shared alliance with a face for each of the two,
-        /// the season and the public record on its eyebrow, the act verbatim and the pair's status. At every text size;
-        /// photographed at the standard and the largest.
+        /// heading's caption and count apart, its note, and a card a seated shared alliance with a face for each of the two
+        /// (under it the name and where they are, never a reading), the season and the public record on its eyebrow, the
+        /// act verbatim and the pair's status; then the page's foot. At every text size; photographed at the standard and
+        /// the largest.
         /// </summary>
         [UnityTest, Timeout(900000)]
         public IEnumerator PastGames_TheAlliancesPageShowsThePublicRecordAfterThreeAndFourFaceSuspectedCards()
@@ -192,8 +209,12 @@ namespace Gamesim.Tests.PlayMode
                     Assert.That(words, Does.Contain("BIG BROTHER " + game.Season + " · PUBLIC RECORD"), where);
                     Assert.That(words, Does.Contain(game.Act), "The act verbatim: " + where);
                     Assert.That(words, Does.Contain("Both in the house"), "The pair's status this season: " + where);
+                    AssertPastGameFaceNotes(card, state, game, where);
                     AssertEveryLineHasRoom(card, game.FactId + "'s card " + where);
                 }
+                var footer = LastActive("Notebook footer");
+                Assert.That(footer, Is.Not.Null, "The page's foot: " + where);
+                Assert.That(footer.GetSiblingIndex(), Is.EqualTo(headingAt + 2 + games.Count), "PAST GAMES ends before the page's foot: " + where);
                 AssertEveryLineHasRoom(heading, "The past games' heading " + where);
                 AssertEveryLineHasRoom(note, "The past games' note " + where);
 
@@ -313,7 +334,8 @@ namespace Gamesim.Tests.PlayMode
         /// alumni rules 2, the page and the profile show nothing new and the empty line reads as it always did. The same
         /// season at the latest value carries the very same controls, by caption, on the page and on the profile, its
         /// headings' words are exactly their captions, and the empty state of the pacts the player knows of says what it
-        /// always said.
+        /// always said. The page is empty, with the kit's illustration, only at 2; at the latest the player's face on each
+        /// past game says "You".
         /// </summary>
         [UnityTest, Timeout(900000)]
         public IEnumerator PastGames_TheCaptionsAreTheirOwnAndNothingNewShowsBelowThreeOrInARegularSeason()
@@ -326,6 +348,8 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(AlumniRules.At(regular, AlumniRules.Reputation), Is.False, "The fixture's season is not on the alumni rules.");
             director.ShowNotebookSection(EpisodeDirector.NotebookSection.Alliances);
             yield return null; yield return null;
+            Assert.That(CopyUnder(LastActive("Other alliances heading")).Split('\n')[0], Is.EqualTo(EpisodeDirector.OtherAlliancesHeading),
+                "The Regular season's alliances page is drawn.");
             Assert.That(LastActive(EpisodeDirector.PastGamesHeadingName), Is.Null, "A Regular season has no past games.");
             Assert.That(LastActive(EpisodeDirector.PastGamesNoteName), Is.Null);
             Assert.That(CardsNamed(EpisodeHud.PastGameCardPrefix), Is.Zero);
@@ -359,6 +383,10 @@ namespace Gamesim.Tests.PlayMode
                 Assert.That(CopyUnder(LastActive("Other alliances heading")).Split('\n'), Is.EqualTo(new[] { EpisodeDirector.OtherAlliancesHeading, "0" }), where);
                 Assert.That(CopyUnder(LastActive(EpisodeHud.NoSuspectedName)), Does.Contain(EpisodeDirector.NoSuspectedCopy), "The empty state says what it always said: " + where);
                 Assert.That(CopyUnder(LastActive(EpisodeHud.NoAlliancesName)), Does.Contain(EpisodeDirector.NoAlliancesCopy), where);
+                // The page is empty, and draws the kit's empty illustration, only with no past games either.
+                Assert.That(UiTheme.Pack(PackArt.KitEmptyPrivate), Is.Not.Null, "The kit's empty illustration is in the build.");
+                bool art = LastActive(EpisodeHud.NoAlliancesName).GetComponentsInChildren<Image>().Any(image => image.name == "Empty illustration");
+                Assert.That(art, Is.EqualTo(!shown), "The page is empty only with no past games either: " + where);
                 var pageCaptions = PanelControlCaptions();
                 if (!shown)
                 {
@@ -375,6 +403,9 @@ namespace Gamesim.Tests.PlayMode
                             .Select(rect => rect.name).Distinct(),
                         Is.EquivalentTo(new[] { EpisodeHud.PastGameCardPrefix + PastGamesHitmen, EpisodeHud.PastGameCardPrefix + PastGamesCommittee,
                             EpisodeDirector.PastGamesHeadingName, EpisodeDirector.PastGamesNoteName }), "Every new part by its own name: " + where);
+                    // The player on Cody's card is on both entries: their face says "You".
+                    foreach (var game in KnownBlocs.PastGames(state))
+                        AssertPastGameFaceNotes(LastActive(EpisodeHud.PastGameCardPrefix + game.FactId), state, game, where);
                     Assert.That(pageCaptions, Is.EqualTo(heldPage), "The same controls by the same captions, none added and none changed: " + where);
                 }
 

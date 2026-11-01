@@ -149,24 +149,23 @@ namespace Gamesim.Episode
         {
             if (!blockedRecovery && !durableCommitInProgress)
             {
-                // An explicit retry can save an unchanged session after an I/O failure.
-                // A NEW failed tick must never fall through to a second, older write.
+                // After a failure this is the retry, and it writes exactly the session memory holds. Otherwise
+                // the house's due seconds are installed first and everything is written once, whether or not a
+                // pair is still walking. A refusal inside that flush has already written what was installed and
+                // left its notice: it never falls through to a second write that would clear the notice and
+                // resume a house that refuses again.
                 if (npcSaveSuspended) TryAutosave();
-                else if (FlushNpcWholeTicks() && !blockedRecovery && !npcSaveSuspended) TryAutosave();
+                else { FlushNpcWholeTicks(); if (!blockedRecovery && !npcSaveSuspended) TryAutosave(); }
             }
             Render();
         }
 
         private void TryAutosave()
         {
-            var timing = commitTimingForVerification;
-            long lap = timing != null ? NpcCommitTimings.Now() : 0;
-            bool saved = TryPersistCandidate(engine.Snapshot, out _, out var failure);
-            timing?.Write(Time.frameCount, Time.realtimeSinceStartupAsDouble, "save", projected != null ? projected.revision : -1,
-                NpcCommitTimings.Lap(ref lap), saved);
-            if (saved)
+            if (TryPersistTimed(engine.Snapshot, "save", out _, out var failure))
             { message += "  ·  Saved locally."; MarkSaveFeedback(); }
-            else { message = failure; BeginPersistenceNotice(failure); PauseNpcSocialForPanel(); }
+            // Stopped without the panel's write: its retry would run inside the save that just failed.
+            else { message = failure; BeginPersistenceNotice(failure); SuspendNpcWorldWithoutSaving(); }
         }
 
         public void LoadNow()
@@ -310,6 +309,9 @@ namespace Gamesim.Episode
         private void StartSeason(SeasonBuilder.Choice choice, Action<string> failed, Func<uint, EpisodeState> build)
         {
             if (durableCommitInProgress) return;
+            // The slot being left keeps every second the house lived in it. A failed write refuses the start
+            // once, with its notice; the next start goes ahead with the old slot at its last save.
+            if (!FlushForLeaving("slot") && !npcSlotRefused) { npcSlotRefused = true; failed?.Invoke(message); Render(); return; }
             SuspendNpcWorldWithoutSaving();
             bool installed = false;
             try
@@ -401,6 +403,8 @@ namespace Gamesim.Episode
                 if (!File.Exists(path) || new FileInfo(path).Length > 8 * 1024 * 1024) { message = "Choose an existing JSON file smaller than eight MiB."; Render(); return; }
                 if (WebSaveImporter.TryImport(File.ReadAllText(path), Path.Combine(saveRoot,"Imports"), out var state, out var result))
                 {
+                    // As a new season does: the slot being left gets the house's seconds, or refuses once.
+                    if (!FlushForLeaving("slot") && !npcSlotRefused) { npcSlotRefused = true; Render(); return; }
                     var importedSlot = new EpisodeSaveStore(Path.Combine(saveRoot,"import-" + Guid.NewGuid().ToString("N") + ".json"));
                     importedSlot.Save(state); saves = importedSlot; Install(state);
                     if (SaveRootOverride == null) { PlayerPrefs.SetString("Gamesim.ActiveSave", Path.GetFileName(saves.SavePath)); PlayerPrefs.Save(); }
@@ -421,6 +425,9 @@ namespace Gamesim.Episode
             ResetCeremonyTruth();
             ResetNpcSocialForLoad();
             ClosePanels(); engine = new EpisodeEngine(state); blockedRecovery = false;
+            // A load, a recovery or a new slot: the state installed is the disk's, and nothing of the house is
+            // owed. Here and not in ResetNpcSocialForLoad, which the opening's stage also runs without a load.
+            npcSaveCadence.Reset(); npcSlotRefused = false;
             // A finished season arriving by load, recovery or import is still a finished season.
             RecordCareer(state);
             // Before the placement loop below, which indexes the anchor arrays by body: the season

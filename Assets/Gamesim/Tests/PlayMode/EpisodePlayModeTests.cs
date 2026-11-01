@@ -373,10 +373,17 @@ namespace Gamesim.Tests.PlayMode
             // ...and once a test has frozen the director for a reload, nothing does: what the test
             // wrote there is the season the reload is for.
             File.Delete(path);
+            // Seconds owed as well: the house's own writes - where it stops, and at quit - are writes too.
+            var cadence = NpcRead<NpcSaveCadence>("npcSaveCadence");
+            cadence.Begin(director.Snapshot); cadence.Installed();
             director.FreezeForReloadForDiagnostics();
             director.SaveNow();
+            director.SuspendNpcAutonomyForDiagnostics();
+            NpcInvoke("OnApplicationQuit");
+            NpcInvoke("FlushForLeaving", "focus", false);
             yield return null;
             Assert.That(File.Exists(path), Is.False, "A director frozen for a reload writes nothing.");
+            Assert.That(cadence.Clean, Is.False, "Nothing was written, so the seconds are still owed.");
         }
 
         private IEnumerator ReloadEpisode()

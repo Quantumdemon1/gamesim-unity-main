@@ -103,6 +103,9 @@ namespace Gamesim.Episode
         public void SuspendNpcAutonomyForDiagnostics()
         {
             if (!Application.isEditor) throw new InvalidOperationException("Autonomy suspension diagnostics are Editor-only.");
+            // The house stops here, so what it has installed reaches disk first, as wherever it stops: a held
+            // house's disk is its memory. A write, not a retry: a house a failed save stopped stays as it is.
+            FlushUnsavedNpcTime("hold");
             npcDiagnosticsSuspended = true; DisposeNpcSocialWorld();
         }
 
@@ -210,15 +213,24 @@ namespace Gamesim.Episode
             bool eligible = NpcCanAdvance && npcMeetings != null;
             SetNpcWorldPaused(!eligible);
             // Paused for the week's business, the house mills about (EpisodeDirector.Wander); free
-            // time hands everybody back to its own conversations.
-            if (!eligible) { npcCaption?.Hide(); TickWandering(); return; }
+            // time hands everybody back to its own conversations. Whatever stopped it, the house writes
+            // what it installed first: it never stands still on seconds only memory holds (the backstop
+            // for a stop no opener saved, such as the season report or a failed world).
+            if (!eligible)
+            {
+                if (!npcSaveCadence.Clean) FlushUnsavedNpcTime("stop");
+                npcCaption?.Hide(); TickWandering(); return;
+            }
             StopWandering();
-            // A suspension/debugger/long blocked frame is not elapsed social play.
-            // Whole committed seconds persist; the remaining fraction is transient.
+            // A suspension/debugger/long blocked frame is not elapsed social play. Whole seconds are
+            // installed as they come and saved with the house's next write, at most NpcSaveCadence.Seconds
+            // of free time later and before any decision, panel, pause, slot change or quit; the
+            // remaining fraction is transient.
             if (float.IsNaN(delta) || float.IsInfinity(delta) || delta < 0 || delta > 1) return;
             npcWorldFraction += delta;
             if (npcWorldFraction < .1) return;
             double elapsed = npcWorldFraction; npcWorldFraction = 0; npcFreeSeconds += elapsed;
+            npcSaveCadence.Elapsed(elapsed);
             npcMeetings.Tick();
             ReconcileNpcSocialWorld();
             if (!NpcCanAdvance) return;
@@ -231,6 +243,9 @@ namespace Gamesim.Episode
                 FlushNpcWholeTicks();
                 if (NpcCanAdvance) StartArrivedNpcApproaches();
             }
+            // One write for everything installed since the last, once the oldest of it is due: a tick and a
+            // start in one sample make one write, and a walking pair does not hold it back.
+            if (npcSaveCadence.Due && NpcCanAdvance) FlushUnsavedNpcTime("periodic");
             UpdateNpcConversationPresentation();
         }
 
@@ -334,11 +349,12 @@ namespace Gamesim.Episode
         {
             if (!NpcCanAdvance) return !blockedRecovery;
             // Explicit save/panel calls can occur between the 100 ms world samples.
-            // Count that remainder only with fresh proof for every durable pending pair.
+            // Count that remainder only with fresh proof for every saved or installed pending pair.
             if (npcWorldFraction > 0)
             {
                 if (!AllPendingNpcLeasesReady()) return false;
-                npcFrameFraction += npcWorldFraction; npcFreeSeconds += npcWorldFraction; npcWorldFraction = 0;
+                npcFrameFraction += npcWorldFraction; npcFreeSeconds += npcWorldFraction;
+                npcSaveCadence.Elapsed(npcWorldFraction); npcWorldFraction = 0;
             }
             while (npcFrameFraction >= 1 && NpcCanAdvance && npcMeetings != null)
             {
@@ -379,21 +395,27 @@ namespace Gamesim.Episode
             var result = engine.PrepareNpcOperation(request);
             if (!result.accepted) return false;
             double prepareMs = timing != null ? NpcCommitTimings.Lap(ref lap) : 0;
-            bool persisted = TryPersistCandidate(result.candidate, out var installed, out var failure);
-            double persistMs = timing != null ? NpcCommitTimings.Lap(ref lap) : 0;
-            if (!persisted)
+            var refused = RefusalOfNpcOperation(result.candidate);
+            double validateMs = timing != null ? NpcCommitTimings.Lap(ref lap) : 0;
+            if (refused != null)
             {
                 timing?.Operation(Time.frameCount, Time.realtimeSinceStartupAsDouble, request.kind, result.candidate.revision, prepareMs,
-                    double.NaN, double.NaN, double.NaN, double.NaN, NpcCommitTimings.KindName(request.kind), persistMs, false);
-                message = failure; BeginPersistenceNotice(failure); SetNpcWorldPaused(true); npcCaption?.Hide(); Render(); return false;
+                    validateMs, double.NaN, double.NaN, double.NaN);
+                RefuseUnsaveableNpcOperation(refused); // Writes what is installed, then stops the house on this one.
+                return false;
             }
             if (queued.Generation != loadGeneration) { StopNpcWorld("A stale world operation cannot publish into a loaded session."); return false; }
             if (startLease != null) npcPendingWorld[request.sequence] = startLease;
-            engine = new EpisodeEngine(installed);
+            // Installed now, and saved with the house's next write (FlushUnsavedNpcTime): within
+            // NpcSaveCadence.Seconds of free time, and before any decision, panel, pause, slot change or quit.
+            var installed = new EpisodeEngine(result.candidate);
+            if (npcSaveCadence.Clean) npcSaveCadence.Begin(engine.Snapshot);
+            npcSaveCadence.Installed();
+            engine = installed;
             double engineMs = timing != null ? NpcCommitTimings.Lap(ref lap) : 0;
-            Project(); // Reconciles removed pending leases only after successful persistence.
+            Project(); // Reconciles removed pending leases only after installation.
             double projectMs = timing != null ? NpcCommitTimings.Lap(ref lap) : 0, planMs = double.NaN;
-            // Only a durably committed scan deadline can schedule NEW routes.
+            // Only an installed scan deadline can schedule NEW routes.
             // Arrival-triggered starts and transient obstruction timers are separate.
             if (request.kind == NpcOperationKind.Tick && result.scanDue && NpcCanAdvance
                 && AllPendingNpcLeasesReady() && !(Application.isEditor && npcApproachDiagnosticsSuppressed))
@@ -401,14 +423,17 @@ namespace Gamesim.Episode
                 PlanNpcApproaches();
                 if (timing != null) planMs = NpcCommitTimings.Lap(ref lap);
             }
-            timing?.Operation(Time.frameCount, Time.realtimeSinceStartupAsDouble, request.kind, installed.revision, prepareMs,
-                double.NaN, engineMs, projectMs, planMs, NpcCommitTimings.KindName(request.kind), persistMs, true);
+            timing?.Operation(Time.frameCount, Time.realtimeSinceStartupAsDouble, request.kind, result.candidate.revision, prepareMs,
+                validateMs, engineMs, projectMs, planMs);
             return true;
         }
 
         private void PauseNpcSocialForPanel()
         {
             if (NpcCanAdvance) FlushNpcWholeTicks();
+            // What a panel shows is on disk: the house's installed operations are written as it opens, and a
+            // house a failed save stopped is retried here, once each time a panel opens.
+            FlushForLeaving("panel");
             SuspendNpcWorldWithoutSaving();
         }
         private void SuspendNpcWorldWithoutSaving()

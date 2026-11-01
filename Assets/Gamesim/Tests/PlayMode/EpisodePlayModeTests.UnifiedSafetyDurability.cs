@@ -275,7 +275,7 @@ namespace Gamesim.Tests.PlayMode
         }
 
         [UnityTest]
-        public IEnumerator UnifiedSafety_RealArrivedNpcCompletionSavesBeforeInstallationAndRetryDoesNotRepeatEffects()
+        public IEnumerator UnifiedSafety_RealArrivedNpcCompletionInstallsOnceAndAFailedWriteRetriesTheSameState()
         {
             yield return UsStartFresh(null);
             director.OpenSettings(); // Bind the real world while the visible modal prevents scheduling.
@@ -294,7 +294,6 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(started.npcSocial.pending.Count, Is.GreaterThan(0), director.NpcAutonomyDiagnostic);
             Assert.That(started.npcSocial.pending.All(p => director.IsNpcConversationPhysicallyReady(p.sequence)), Is.True);
             UsAssertMode(started);
-            UsAssertDisk(started); // The physical start, not merely its approach, is already durable.
             NpcWrite("npcApproachDiagnosticsSuppressed", true);
             NpcWrite("npcWorldFraction", 0d);
             long untilCompletion = started.npcSocial.pending.Min(p =>
@@ -302,7 +301,10 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(untilCompletion, Is.GreaterThanOrEqualTo(1));
             NpcWrite("npcFrameFraction", (double)(untilCompletion - 1));
             Assert.That((bool)NpcInvoke("FlushNpcWholeTicks"), Is.True);
+            // The physical start and the seconds since reach disk with the house's next write: write them now.
+            director.SaveNow();
             var before = director.Snapshot;
+            UsAssertDisk(before);
             var retained = UsImage();
             EpisodeState attempted = null;
             int writes = 0;
@@ -314,14 +316,19 @@ namespace Gamesim.Tests.PlayMode
             try
             {
                 NpcWrite("npcFrameFraction", 1.2d);
-                Assert.That((bool)NpcInvoke("FlushNpcWholeTicks"), Is.False);
+                Assert.That((bool)NpcInvoke("FlushNpcWholeTicks"), Is.True, director.StatusMessage);
+                Assert.That(writes, Is.Zero, "The completion is installed and written with the house's next write.");
+                var completed = director.Snapshot;
+                UsAssertMode(completed);
+                Assert.That(completed.npcSocial.pending.Count, Is.LessThan(before.npcSocial.pending.Count));
+                Assert.That(completed.npcSocial.randomState, Is.Not.EqualTo(before.npcSocial.randomState));
+                Assert.That(completed.randomState, Is.EqualTo(before.randomState));
+                UsAssertImage(retained);
+                director.SaveNow();
                 Assert.That(writes, Is.EqualTo(1));
                 Assert.That(attempted, Is.Not.Null);
-                UsAssertMode(attempted);
-                Assert.That(attempted.npcSocial.pending.Count, Is.LessThan(before.npcSocial.pending.Count));
-                Assert.That(attempted.npcSocial.randomState, Is.Not.EqualTo(before.npcSocial.randomState));
-                Assert.That(attempted.randomState, Is.EqualTo(before.randomState));
-                UsEquivalent(before, director.Snapshot);
+                UsEquivalent(completed, attempted);
+                UsEquivalent(completed, director.Snapshot);
                 UsAssertImage(retained);
                 UsAssertDisk(before);
                 Assert.That(NpcRead<bool>("npcSaveSuspended"), Is.True);
@@ -329,19 +336,11 @@ namespace Gamesim.Tests.PlayMode
             }
             finally { NpcWrite("saveCandidateForDiagnostics", null); }
 
-            director.SaveNow();
+            director.SaveNow(); // The explicit retry writes exactly the session memory holds.
             Assert.That(NpcRead<bool>("npcSaveSuspended"), Is.False);
-            NpcInvoke("SetNpcWorldPaused", false);
-            NpcWrite("npcFrameFraction", 0d);
-            deadline = Time.realtimeSinceStartup + 5f;
-            while (!director.Snapshot.npcSocial.pending.All(p => director.IsNpcConversationPhysicallyReady(p.sequence))
-                && Time.realtimeSinceStartup < deadline) yield return null;
-            Assert.That(director.Snapshot.npcSocial.pending.All(p => director.IsNpcConversationPhysicallyReady(p.sequence)), Is.True);
-            UsEquivalent(before, director.Snapshot);
-            NpcWrite("npcFrameFraction", 1.2d); NpcWrite("npcWorldFraction", 0d);
-            Assert.That((bool)NpcInvoke("FlushNpcWholeTicks"), Is.True);
             UsEquivalent(attempted, director.Snapshot);
             UsAssertDisk(attempted);
+            NpcWrite("npcFrameFraction", .2d); NpcWrite("npcWorldFraction", 0d);
             Assert.That((bool)NpcInvoke("FlushNpcWholeTicks"), Is.True);
             UsEquivalent(attempted, director.Snapshot);
             director.SuspendNpcAutonomyForDiagnostics();

@@ -755,3 +755,49 @@ adopted, none rejected. Three are adopted with a qualification, stated in their 
 | F5 (minor) | **Adopted in its minimum form**; its preferred rollback is **rejected** | The facts are the same as LS-DUR-3's, and the claim is corrected. The failure says "reload", and test 15 covers a decision after it. The automatic rollback to the last save is rejected for four reasons. It is an automatic reload: `Install` (`Season.cs:410-432`) disposes the world, bumps `loadGeneration`, closes panels and puts every housemate back at the season's initial positions. It would run inside a panel opening and close the panel being opened. If the bug is deterministic, the house can live its way back to the refused state and roll back every window. And it discards house activity the player has seen without asking, which the owner was never asked about. The explicit reload costs the same seconds, by the player's own action. |
 | F6 (major) | **Adopted**, with one factual correction | Real for tests 4, 7, 9 and 2. The clock stops while a pair walks (`NpcSocial.cs:227-233`), so the clock's lead did not measure age. Test 7 killed short of 30 s. Test 2's engine is unchanged. Test 9's fixture can install nothing (`NpcSocial.cs:375`; start needs arrival; cancel needs 20 s, :264). Tests 4, 7 and 9 are rewritten, and test 2 is replaced by `--gamesim-verify-autonomy` (`PortVerification.Autonomy.cs:146-183`) in 10.3. Correction: 300 IEEE-double additions of 0.1 give 30.000000000000156, not 29.99999999999984, and 299 give 29.900000000000155, so that construction would have passed. Test 1 uses exact binary values anyway, because rounding, not the rule, would decide the boundary. |
 | F7 (minor) | **Adopted** | Real. The file's report idiom is `[Serializable]` (`PortVerification.cs:362`), and a serializable class in a MonoBehaviour field is deserialized non-null by Unity. `Time.*` cannot run under the Mono harness, and commit 1's rows were undefined. The field is `[NonSerialized] internal`, the class is not `[Serializable]` and is pure (frame, seconds and revision passed in), the off path is guarded, and commit 1's rows and its CSV-only `OnApplicationQuit` are defined (6, 11). |
+
+## 14. As built (2026-11-01)
+
+Built on `claude/live-save-batching` after the 4(a) commit, in three commits: this plan; the timing log alone
+(section 6 with commit 1's rows); option 1 with its tests. Proved offline only (7.3); the PlayMode cases wait for the
+Unity lane. Where the code differed from the plan, the code won, as follows.
+
+1. **The check before installing is a helper.** `RefusalOfNpcOperation(candidate)` in `EpisodeDirector.Durable.cs`
+   runs `EpisodeSaveValidation.Validate` and then the Editor-only `npcOperationCheckForDiagnostics`, and returns the
+   refusal or null; `CommitNpcOperation` calls it and hands a refusal to `RefuseUnsaveableNpcOperation`. Same
+   behaviour as 2.1's sketch, and it keeps `Gamesim.Persistence` out of `EpisodeDirector.NpcSocial.cs`.
+2. **The engine is built before the operation is counted.** `CommitNpcOperation` constructs
+   `new EpisodeEngine(result.candidate)` first, then `Begin`/`Installed`, then installs it, so the cadence can never
+   count an operation that was not installed.
+3. **One timed write.** `TryPersistTimed(prepared, cause, ...)` wraps `TryPersistCandidate` with the timing log's row;
+   the flush, the refusal's write, `TryAutosave` (cause `save`) and `Submit` (cause `command`) all use it. Commit 1
+   had the same timing inline in `TryAutosave` and `Submit`.
+4. **`Elapsed` is fed wherever `npcFreeSeconds` is.** Besides the 100 ms sample (2.2), the explicit remainder
+   `FlushNpcWholeTicks` counts at a Save or a panel (under 0.1 s) feeds `npcSaveCadence.Elapsed` too.
+5. **`NpcSaveCadence.Begin` replaces while clean.** Two calls before the first `Installed` keep the second; after it
+   they are ignored (test 1 pins both). `Saved(state)` records what the store holds, which `KnownOnDisk` returns only
+   if a window opened without a `Begin` (the director always calls one).
+6. **Test 13 checks the notice, not `StatusMessage`.** `StatusMessage` is the director's `message`, which keeps a
+   failure's text after a retry that lands, as `SaveNow`'s retry does today (it appends "Saved locally."). What the HUD
+   shows is `persistenceNotice` while suspended and the phase's guidance once not (`HudStatusMessage`,
+   `EpisodeDirector.ConversationExchange.cs:181-199`), so the case asserts that `persistenceNotice` is null and the
+   suspension lifted.
+7. **Test 4 reads the `projected` field each frame**, not `director.Snapshot`, which clones the whole season every
+   call. Its clock-stopped variant is its own case, `LiveSave_TheThirtySecondsAreFreeTimeWhileTheHousesClockIsStopped`.
+8. **Test 6's backstop case** sets `npcWorldFailed` by reflection for one `TickNpcSocialRuntime(0f)` and clears it:
+   `StopNpcWorld` would log a warning and leave the world failed for the cases after it.
+9. **"Later ticks never repeat the completion"** stays as the old tests had it: after the retry, a flush with no
+   whole second due leaves memory equal to the written state. A later real tick would need every remaining pair to
+   arrive again first.
+10. **The audit found two more checks in `DialogueIncomingOfferRoute`.** The stale paid choice after leaving the
+    conversation (`justLeft`) and in the offer view (`offerView`) used `AssertDialogueUiUnchanged`, whose
+    `AssertDialogueUiDisk` needs the disk to equal memory after frames in which the house runs. They now check memory
+    and the file's bytes only (`AssertDialogueIncomingUntouched`), which is what "a stale click commits nothing"
+    means. The other hits of a sequential audit (each test's body with its helpers inlined, flagging a disk read after
+    an unheld yield with no write point between) were read one by one: non-free-time phases, where the house installs
+    nothing and every phase change is a written decision; a house held, or paused under a conversation or a panel;
+    or a profile store, not the episode's.
+11. **Test 12 also calls `FlushForLeaving("focus")`** on the frozen director and checks the seconds stay owed.
+
+Still open: the owner's answer to section 12's three cases (the lead asks before this lands); the Unity set and the
+RS0 runs of 10.2 and 10.3.

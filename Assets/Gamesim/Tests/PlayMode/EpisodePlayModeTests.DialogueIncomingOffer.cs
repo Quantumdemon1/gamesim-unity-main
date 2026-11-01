@@ -54,19 +54,20 @@ namespace Gamesim.Tests.PlayMode
             var justLeft = director.Snapshot;
             byte[] justLeftBytes = File.ReadAllBytes(director.SavePath);
             stalePaidChoice.Invoke();
-            AssertDialogueUiUnchanged(justLeft, justLeftBytes);
+            AssertDialogueIncomingUntouched(justLeft, justLeftBytes);
             AssertDialogueIncomingPause(paused, director.Snapshot, episodeId, node, steps);
 
             // Do NOT HoldTheHouseForTheFixture: that disposes the invitation coordinator.
             // Ordinary world movement/clock revisions are allowed during this physical approach.
             // The existing helper has a 35-real-second deadline and checks arrival/proximity.
             yield return WaitForVisibleNpcInvitation();
-            // Hearing opens the conversation, and opening it first flushes the house's free time not
-            // yet sampled: with a whole second due, that commits one NPC clock tick inside the press -
+            // Hearing opens the conversation, and opening it first installs the house's free time not
+            // yet sampled: with a whole second due, that installs one NPC clock tick inside the press -
             // the house's revision, not the press's. The bubble's 10 Hz check and the world's 100 ms
             // sampler keep separate clocks, so the first visible frame can fall in that tail (late in
-            // a long run about one press in twenty did). Press on a frame with no second due, read and
-            // never written, so the strict check below holds the press alone to "commits nothing".
+            // a long run about one press in twenty did). Press on a frame with no second due, so the
+            // strict check below holds the press alone to "commits nothing of its own": opening the
+            // conversation writes only what the house had already installed.
             // The world samples within 0.1 s; nothing from here to the press yields.
             float settle = Time.realtimeSinceStartup + 5f;
             while ((!director.NpcInvitationIsVisible || NpcWholeSecondDue()) && Time.realtimeSinceStartup < settle)
@@ -83,11 +84,13 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(bubble.CurrentText, Is.EqualTo(invitation.OpeningLine));
             var hear = ButtonWithCaption(HouseNpcInvitationBubble.HearCaption);
             Assert.That(hear, Is.SameAs(bubble.HearControl), "Use the visible, raycast-reachable invitation control.");
-            byte[] waitingBytes = File.ReadAllBytes(director.SavePath);
             Assert.That(NpcWholeSecondDue(), Is.False,
-                "The house still owes a whole second of free time, so opening the conversation would commit its clock tick.");
+                "The house still owes a whole second of free time, so opening the conversation would install its clock tick.");
             hear.onClick.Invoke();
-            AssertDialogueUiUnchanged(waiting, waitingBytes);
+            // The press writes the house's installed seconds and nothing of its own: memory is as it was,
+            // and the disk now holds exactly that state.
+            AssertEquivalent(waiting, director.Snapshot);
+            AssertDialogueUiDisk(waiting);
             Assert.That(director.NpcInvitationIsVisible, Is.False);
             Assert.That(director.TalkingToId, Is.EqualTo(dialogueIncomingProposer));
             Assert.That(director.InvitedDealRecordId, Is.EqualTo(dialogueIncomingOfferId));
@@ -99,7 +102,7 @@ namespace Gamesim.Tests.PlayMode
             var offerView = director.Snapshot;
             byte[] offerViewBytes = File.ReadAllBytes(director.SavePath);
             stalePaidChoice.Invoke();
-            AssertDialogueUiUnchanged(offerView, offerViewBytes);
+            AssertDialogueIncomingUntouched(offerView, offerViewBytes);
             AssertDialogueIncomingPause(paused, offerView, episodeId, node, steps);
 
             var answer = ButtonWithCaption(accept ? EpisodeHud.DealAcceptCaption : EpisodeHud.DealDeclineCaption);
@@ -244,11 +247,20 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(NpcRead<bool>("npcApproachDiagnosticsSuppressed"), Is.False);
         }
 
-        // Opening any panel flushes the house's unsampled free time (PauseNpcSocialForPanel ->
-        // FlushNpcWholeTicks), and that commits an NPC clock tick only when the carried fraction plus
-        // the unsampled remainder reaches a whole second. False means a panel opened now commits nothing.
+        // Opening any panel installs the house's unsampled free time (PauseNpcSocialForPanel ->
+        // FlushNpcWholeTicks), and that installs an NPC clock tick only when the carried fraction plus
+        // the unsampled remainder reaches a whole second. False means a panel opened now installs
+        // nothing; it still writes what the house installed before it.
         private bool NpcWholeSecondDue() =>
             NpcRead<double>("npcFrameFraction") + NpcRead<double>("npcWorldFraction") >= 1d;
+
+        // A stale click commits nothing: memory and the save's bytes are as they were. Not that the disk
+        // equals memory: the house runs between these frames, and its seconds reach disk with its next write.
+        private void AssertDialogueIncomingUntouched(EpisodeState expected, byte[] bytes)
+        {
+            AssertEquivalent(expected, director.Snapshot);
+            CollectionAssert.AreEqual(bytes, File.ReadAllBytes(director.SavePath));
+        }
 
         private static void AssertDialogueIncomingPause(EpisodeState before, EpisodeState after,
             string episodeId, string node, int steps)

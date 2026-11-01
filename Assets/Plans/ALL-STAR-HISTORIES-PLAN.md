@@ -1441,6 +1441,9 @@ seasons only.
   - `CastTemplateTests` and `AlumniAuditSaveTests`: both arms enrol alike;
   - `AllWeekSeasonDigests.Fresh` at 16 and `BalanceLabReports`' All-Stars grids: Explicit reports with no recorded
     digest, so they now play enrolled seasons;
+  - missed here, and re-pinned on 2026-11-01: `BalanceLabTests.BudgetNoughtRows` hashes the smoke grid, whose 24
+    All-Stars seasons seat alumni. It is `5481eec784acd1ed`, was `3878f7a1d2ea39a8` (main at `37416049`). The 540
+    Regular rows are main's byte for byte, so only seasons that seat an alumnus moved (8.8, "From H1b");
   - `BalanceLabGoldens`: Regular cells only, so its `Rules` string is unchanged.
 
 **New tests**

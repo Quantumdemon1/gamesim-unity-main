@@ -595,7 +595,10 @@ namespace Gamesim.Tests.EditMode
         // unified vote rules, and the lab's player view and skilled oracle read mode 2's offers. Re-recorded for the change
         // paths (c7d250380346ae38 at de88a8bb): under D2's rules a veto's, a lie's and a scheme's moves between two
         // houseguests go through the ledger and write no arc (EpisodeEngine.ChangeBetween), which budget nought plays too.
-        internal const string BudgetNoughtRows = "3878f7a1d2ea39a8";
+        // Re-pinned for the alumni histories (3878f7a1d2ea39a8 at main's 37416049; ALL-STAR-HISTORIES-PLAN 8.8, "From
+        // H1b"): the smoke grid's 24 All-Stars seasons seat alumni and play their histories, and its 540 Regular rows are
+        // main's byte for byte.
+        internal const string BudgetNoughtRows = "5481eec784acd1ed";
 
         [Test, Explicit("B5b: budget nought plays, byte for byte, the seasons it played before the NPC world's driver (about 5 min). Run by name.")]
         public void BudgetNoughtPlaysTheSeasonsItPlayedBeforeTheDriver()

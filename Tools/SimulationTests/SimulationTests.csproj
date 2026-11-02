@@ -50,6 +50,8 @@
     <Compile Include="$(EditMode)DialogueCampaignPleaFallbackTests.cs" />
     <!-- NpcInvitation.cs is included by the whole Simulation glob above. -->
     <Compile Include="$(EditMode)NpcInvitationTests.cs" />
+    <!-- ComesToYou.cs (the asks that come to the player) is included by the Simulation glob too. -->
+    <Compile Include="$(EditMode)ComesToYouTests.cs" />
 
     <!--
       Tests that touch nothing but System, NUnit, Newtonsoft and Gamesim.Simulation. Nothing of

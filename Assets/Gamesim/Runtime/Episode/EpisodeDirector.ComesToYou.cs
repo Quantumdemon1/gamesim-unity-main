@@ -233,11 +233,16 @@ namespace Gamesim.Episode
         /// <summary>A houseguest on their way to the player or up in front of them: the invitation's or an ask's.</summary>
         private bool NpcVisitInFlight => npcInvitationNow != null || askNow != null;
 
-        /// <summary>The player's head on the view camera's screen. Worked out once a frame.</summary>
+        /// <summary>
+        /// The player's head on the view camera's screen, in a view that has not looked away from them. Worked out once a
+        /// frame. A view of another room that leaves the player out (a follow elsewhere, a watch: RS5's
+        /// <see cref="LookingAwayFromThePlayer"/>) is out of frame however the room's framing happens to take in the head,
+        /// so this read and the house's gate, which waits on the same view, never disagree.
+        /// </summary>
         private bool AskPlayerInFrameNow()
         {
             var view = cameraRig != null ? cameraRig.ViewCamera : null;
-            if (view == null || player == null) return false;
+            if (view == null || player == null || LookingAwayFromThePlayer) return false;
             var point = view.WorldToViewportPoint(player.transform.position + Vector3.up * 1.7f);
             return point.z > 0f && point.x >= 0f && point.x <= 1f && point.y >= 0f && point.y <= 1f;
         }
@@ -329,6 +334,9 @@ namespace Gamesim.Episode
                 var ask = askNow;
                 // There, close and in sight: they turn to the player, the house's own presentation leaving them be.
                 if (float.IsNaN(askAskerYaw)) TurnAskerToPlayer(ask.askerId, true);
+                // Only over an asker the room scope draws (RS4), as the invitation's line: withheld, the line's clock
+                // waits with it, so nothing opens on a line the player was never shown.
+                npcInvitationBubble.SpeakerDrawn = IsBodyDrawn(HousemateBody(ask.askerId));
                 npcInvitationBubble.Show(projected.Find(ask.askerId).name, ask.line, TextScale, anchor,
                     () => HearAsk(view, generation, ask), () => DeferAsk(view, generation, ask), view);
             }

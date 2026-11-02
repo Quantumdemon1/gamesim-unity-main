@@ -388,7 +388,7 @@ namespace Gamesim.Sample
         }
 
         /// <summary>The index of the bracket that closes the one at <paramref name="open"/>, or -1.</summary>
-        private static int Matching(string code, int open)
+        internal static int Matching(string code, int open)
         {
             int depth = 0;
             for (int i = open; i < code.Length; i++)
@@ -415,7 +415,7 @@ namespace Gamesim.Sample
         }
 
         /// <summary>The arguments, split at their own commas.</summary>
-        private static List<string> SplitTop(string arguments)
+        internal static List<string> SplitTop(string arguments)
         {
             var parts = new List<string>();
             if (arguments.Trim().Length == 0) return parts;
@@ -432,7 +432,7 @@ namespace Gamesim.Sample
         }
 
         /// <summary>The source with comments and the insides of string and character literals blanked: same length, same lines.</summary>
-        private static string Strip(string source)
+        internal static string Strip(string source)
         {
             var code = new StringBuilder(source.Length);
             for (int i = 0; i < source.Length; i++)
@@ -483,7 +483,7 @@ namespace Gamesim.Sample
             return code.ToString();
         }
 
-        private static string GamesimRoot()
+        internal static string GamesimRoot()
         {
             var starts = new[] { Environment.GetEnvironmentVariable("GAMESIM_SOURCE_ROOT"), Environment.CurrentDirectory, AppContext.BaseDirectory };
             foreach (var start in starts.Where(start => !string.IsNullOrEmpty(start)))

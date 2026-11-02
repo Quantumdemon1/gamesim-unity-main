@@ -827,7 +827,9 @@ namespace Gamesim.Episode
         /// invitation's speaker, the walk-in pair while its Pull is on screen, the invitation bubble's
         /// speaker while it is up, or a free-time card's HERE. With who-is-where by floor (RSW) they
         /// stand on the player's floor anyway; this is the guard that keeps a prompt from naming
-        /// someone the view hides.
+        /// someone the view hides. The bubble's speaker is the visit's in flight, whichever way it
+        /// came (<see cref="CurrentNpcInvitationNpcId"/>): the invitation's with the asks off, the
+        /// asker's with them on.
         /// </summary>
         private bool NamedByPrompt(HouseNpc npc)
         {
@@ -836,8 +838,9 @@ namespace Gamesim.Episode
             if (WalkInPullShown
                 && (string.Equals(id, walkInFirst, StringComparison.Ordinal) || string.Equals(id, walkInSecond, StringComparison.Ordinal)))
                 return true;
-            if (npcInvitationNow != null && npcInvitationBubble != null && npcInvitationBubble.IsVisible
-                && string.Equals(id, npcInvitationNow.NpcId, StringComparison.Ordinal))
+            string speaker = CurrentNpcInvitationNpcId;
+            if (speaker != null && npcInvitationBubble != null && npcInvitationBubble.IsVisible
+                && string.Equals(id, speaker, StringComparison.Ordinal))
                 return true;
             return hereTagged.Count > 0 && hereTagged.Contains(id);
         }
@@ -851,7 +854,10 @@ namespace Gamesim.Episode
         private bool WalkInPullShown => walkInFirst != null && projected != null && walkInWeek == projected.week
             && pullNow.HasValue && pullWalkIn != null && string.Equals(pullNow.Value.Key, pullWalkIn, StringComparison.Ordinal);
 
-        /// <summary>The invitation bubble over a drawn speaker only, and the conversation line over a drawn pair only.</summary>
+        /// <summary>
+        /// The invitation bubble over a drawn speaker only - the visit's in flight, an invitation's or an ask's
+        /// (<see cref="CurrentNpcInvitationNpcId"/>) - and the conversation line over a drawn pair only.
+        /// </summary>
         private void GatePromptsOnDrawnBodies()
         {
             if (hiddenBodyCount == 0)
@@ -861,7 +867,10 @@ namespace Gamesim.Episode
                 return;
             }
             if (npcInvitationBubble != null)
-                npcInvitationBubble.SpeakerDrawn = npcInvitationNow == null || IsBodyDrawn(HousemateBody(npcInvitationNow.NpcId));
+            {
+                string speaker = CurrentNpcInvitationNpcId;
+                npcInvitationBubble.SpeakerDrawn = speaker == null || IsBodyDrawn(HousemateBody(speaker));
+            }
             if (npcCaption != null)
                 npcCaption.PairDrawn = IsBodyDrawn(HousemateBody(captionFirstId)) && IsBodyDrawn(HousemateBody(captionSecondId));
         }

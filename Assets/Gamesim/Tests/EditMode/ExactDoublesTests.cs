@@ -21,8 +21,8 @@ namespace Gamesim.Tests.EditMode
     /// F9 (OLD-SAVE-ACCEPTANCE): under Unity's Mono, Json.NET's read of a float literal could give a
     /// double one unit off ("3.4694441460073", written for 0x400bc16beeb33334, read as ...35), and the
     /// stores, which re-hash the canonical form of what they read, refused the save, the load and the
-    /// backup. <see cref="ExactDoubles"/> settles every float the stores read on a double the writer
-    /// writes as the file's text, nearest first.
+    /// backup. <see cref="ExactDoubles"/> settles every float the checksummed stores read on a double the
+    /// writer writes as the file's text, nearest first; the web import keeps Json.NET's read.
     ///
     /// <para>Shared with the dotnet subset, where the save store cases (UNITY_EDITOR) are left out and
     /// <see cref="Parse"/> stands in for SaveJson.ParseObject with the same reader and the same pass.
@@ -178,6 +178,56 @@ namespace Gamesim.Tests.EditMode
             }
             Assert.That(misses, Is.Zero, misses + " of " + 2 * values.Count + " reads missed, " + canonicalChanges
                 + " with another canonical text (a checksum refusal): " + string.Join("; ", examples));
+        }
+
+        /// <summary>
+        /// The float fields the stores checksum (the appearance values, in a save and in a houseguest
+        /// profile) are written with the float's own text and read back as doubles. Each of 50,000 seeded
+        /// floats comes back with the text it was written with and as the same float. Under Mono today's
+        /// read changes the canonical text of a few in 50,000, each a checksum refusal. Floats of 1e7 and
+        /// over are left out: the float writer writes them in E notation ("-2.770227E+10") and the double
+        /// writer does not, which no reader can mend, and the game clamps appearance values to [0, 1].
+        /// </summary>
+        [TestCase("magnitudes 1e-3 to 1e3")]
+        [TestCase("unit rounded 1-6 places")]
+        [TestCase("products of short decimals")]
+        public void EveryWrittenFloatReadsBackAsItself(string sweep)
+        {
+            var random = new SplitMix(0xF10A7000UL + (ulong)sweep.Length);
+            var floats = new List<float>();
+            while (floats.Count < 50000)
+            {
+                float value;
+                switch (sweep)
+                {
+                    case "magnitudes 1e-3 to 1e3": value = (float)(Math.Pow(10, -3 + 6 * random.Unit()) * (random.Next() % 2 == 0 ? 1 : -1)); break;
+                    case "unit rounded 1-6 places": value = (float)Math.Round(random.Unit(), 1 + (int)(random.Next() % 6)); break;
+                    default: value = (float)(Math.Round(10 * random.Unit(), 2) * Math.Round(random.Unit(), 3)); break;
+                }
+                if (float.IsNaN(value) || float.IsInfinity(value) || value == 0 || Math.Abs(value) >= 1e7f) continue;
+                floats.Add(value);
+            }
+
+            // As the stores write a float field: JObject.FromObject keeps the float, and its text is the float's.
+            var written = JObject.FromObject(new FloatRow { v = floats.ToArray() });
+            var read = Parse(written.ToString(Formatting.None));
+            var writtenValues = (JArray)written["v"];
+            var readValues = (JArray)read["v"];
+            var examples = new List<string>();
+            int misses = 0;
+            for (int i = 0; i < floats.Count; i++)
+            {
+                string text = writtenValues[i].ToString(Formatting.None), back = readValues[i].ToString(Formatting.None);
+                if (back == text && (float)(double)readValues[i] == floats[i]) continue;
+                if (++misses <= 5) examples.Add(text + " read back as " + back);
+            }
+            Assert.That(misses, Is.Zero, misses + " of " + floats.Count + " floats came back with another canonical text"
+                + " or another float (a checksum refusal): " + string.Join("; ", examples));
+        }
+
+        private sealed class FloatRow
+        {
+            public float[] v;
         }
 
         [Test]
@@ -359,6 +409,55 @@ namespace Gamesim.Tests.EditMode
             Assert.That(ExactDoubles.Correct(ReadOnly(edited), edited), Is.EqualTo(-1));
             Assert.That(store.TryLoad(out var loaded, out var message), Is.True, message);
             Assert.That(loaded.relationships.Select(r => Bits(r.score)), Is.EqualTo(state.relationships.Select(r => Bits(r.score))));
+        }
+
+        /// <summary>
+        /// The web import reads a file as Json.NET reads it (SaveJson.ParseObjectAsRead). A web file has no
+        /// checksum for the settle step to serve, and under Mono that step would move "80.95655" and
+        /// "46.5564", which Mono reads as their nearest doubles, to the neighbours Mono's writer gives those
+        /// texts. The store then saves and loads the imported scores with their bits.
+        /// </summary>
+        [Test]
+        public void AWebImportKeepsTheDoublesJsonNetReads()
+        {
+            var ids = new[] { "external-player", "external-maya", "external-taylor", "external-jamie", "external-casey", "external-riley" };
+            var cast = ContentCatalog.Create(13).contestants;
+            var guests = new JArray(cast.Select((actor, index) => new JObject
+            {
+                ["id"] = ids[index], ["name"] = actor.name, ["isPlayer"] = index == 0, ["status"] = "Active",
+                ["stats"] = JObject.FromObject(actor.stats), ["traits"] = new JArray(actor.traits),
+                ["competitionsWon"] = new JObject { ["hoh"] = 0, ["pov"] = 0, ["other"] = 0 },
+                ["nominations"] = new JObject { ["times"] = 0, ["receivedOn"] = new JArray() }
+            }));
+            // The literals as the web writes them, the shortest texts of their doubles (checked with Python's float()).
+            var document = new JObject
+            {
+                ["format"] = "gamesim-save", ["version"] = 1, ["savedAt"] = "2026-09-10T00:00:00.000Z",
+                ["state"] = new JObject
+                {
+                    ["phase"] = "SocialInteraction", ["week"] = 1, ["houseguests"] = guests,
+                    ["relationships"] = new JObject
+                    {
+                        [ids[0]] = new JObject { [ids[1]] = new JObject { ["score"] = new JRaw("80.95655") } },
+                        [ids[1]] = new JObject { [ids[0]] = new JObject { ["score"] = new JRaw("46.5564") } }
+                    }
+                }
+            };
+            string json = document.ToString(Formatting.Indented);
+            Assert.That(json, Does.Contain("\"score\": 80.95655").And.Contain("\"score\": 46.5564"));
+            var asRead = ReadOnly(json)["state"]["relationships"];
+            ulong first = Bits((double)asRead[ids[0]][ids[1]]["score"]), second = Bits((double)asRead[ids[1]][ids[0]]["score"]);
+
+            Assert.That(WebSaveImporter.TryImport(json, Path.Combine(directory, "imports"), out var imported, out var message), Is.True, message);
+            Assert.That(Bits(imported.Score(ids[0], ids[1])), Is.EqualTo(first), "the import keeps Json.NET's read of 80.95655");
+            Assert.That(Bits(imported.Score(ids[1], ids[0])), Is.EqualTo(second), "the import keeps Json.NET's read of 46.5564");
+            Assert.That((first, second), Is.EqualTo((0x40543d381d7dbf48UL, 0x404747381d7dbf48UL)), "the nearest doubles, the web's values");
+
+            var store = new EpisodeSaveStore(Path.Combine(directory, "episode.json"));
+            store.Save(imported);
+            Assert.That(store.TryLoad(out var loaded, out message), Is.True, message);
+            Assert.That((Bits(loaded.Score(ids[0], ids[1])), Bits(loaded.Score(ids[1], ids[0]))), Is.EqualTo((first, second)),
+                "saved and loaded with their bits");
         }
 
         private static EpisodeState StateWithF9(uint seed)

@@ -730,30 +730,55 @@ projection to 28 exactly as before, and that projection still refuses rules 1.
   Today's read changed the canonical text of 0 to 46 values in 200,000 by kind, and of 56 floats (the appearance
   values are floats). Reading every literal as its nearest double would have changed 1 to 113 by kind and 181 floats:
   more refusals, not fewer.
-- The fix: `ExactDoubles.Correct`, called by `SaveJson.ParseObject` in one line, so the episode store, the career
-  ledger, the houseguest profiles and the web import all read through it. After Json.NET has read the text, a scan
-  pairs every number value with its literal in document order. The scan follows what Json.NET reads beyond JSON:
+- The fix: `ExactDoubles.Correct`, called by `SaveJson.ParseObject` in one line, so the three checksummed stores (the
+  episode store, the career ledger and the houseguest profiles) read through it. After Json.NET has read the text, a
+  scan pairs every number value with its literal in document order. The scan follows what Json.NET reads beyond JSON:
   comments, single quotes, unquoted names, NaN and the infinities, constructors. Each float then keeps the value read
-  if the writer writes it as its literal, so every file that loads today loads exactly as before. Otherwise it takes
-  the nearest double (exact, by BigInteger: ties to even, subnormals, the sign of zero) if the writer writes that as
-  the literal; else the double within 16 of it that the writer does; else the nearest. When the text and the values
-  do not pair, a literal is not a decimal number, or one lies more than 64 doubles from its value, nothing changes.
-  NaN and the infinities are never touched. On .NET every float keeps the value read.
+  if the writer writes it as its literal, so every checksummed file (episode save, career ledger, houseguest profile)
+  that loads today loads exactly as before. Otherwise it takes the nearest double (exact, by BigInteger: ties to even,
+  subnormals, the sign of zero) if the writer writes that as the literal; else the double within 16 of it that the
+  writer does; else the nearest. When the text and the values do not pair, a literal is not a decimal number, or one
+  lies more than 64 doubles from its value, nothing changes. NaN and the infinities are never touched. On .NET every
+  float keeps the value read. A literal of more than 32 characters is never formatted for the writer check: no
+  double's text is longer than 24 (`-2.2250738585072014E-308`).
+- The web import reads as Json.NET reads it (`SaveJson.ParseObjectAsRead`, its own name because tests and
+  `Tools/OldSaves` find `ParseObject` by name). A web file has no checksum for the settle step to serve, and under Mono
+  that step moves a value Mono reads right today to the neighbour Mono's writer gives its text: `111.08155` is read as
+  its nearest double, 0x405bc5381d7dbf48, and settled on ...49 (a review measured 14 of 40,000 rounded decimals in the
+  web's shortest form). Re-importing the same web file would then have given a state one double off, neither the
+  web's value nor today's.
 - Nothing else reads differently. The frozen readers' own byte parsers (`FrozenV28Input`, `FrozenV29Input`) have no
   runtime caller: the migrations hand them the tree the store parsed. The preference file and the key bindings refuse
   any number. The editor's `JsonUtility` reads are tooling.
-- The proof, all offline under the Mono harness. `ExactDoublesTests` (50 cases, 47 shared with the subset): without
-  the one line 13 fail, F9's text, five edge texts, two long literals, two of the four 50,000-double sweeps (16 and 10
-  of 100,000 reads missed, each a checksum refusal) and both save-store cases; with it, 50 of 50. Two scratch mutants
-  show the settle step is needed: with the writer check and then the nearest double, the products sweep still misses
-  10 reads (Mono's writer, not its parse); with the nearest double alone, three sweeps miss 40, 2 and 30. The probe's
-  exact conversions all agree with Python's `float()` (12,227 checked). The 69 fixtures that touch the stores, the
-  frozen readers or the migrations ran 2,441 of 2,445: the other four need Unity's engine types and fail the same way
-  without the fix. `OldSaveAcceptanceTests` ran 245 of 245, and the dotnet subset 16,288 of 16,288.
+- Two limits, neither reachable from the game. `ExactDoubles.TryParse` returns false for some exact texts of 700 or
+  more digits with exponents below -1000: Mono reads them as zero, more than 64 doubles from the nearest double, and
+  the walk starts from Mono's read. The writer never writes such a text, and `Correct` then leaves every value as read.
+  And a float of 1e7 or more changes its canonical text on any read, with or without the fix: the float writer writes
+  it in E notation (`-2.770227E+10`), the double writer plainly (`-27702270000.0`). The game clamps appearance values,
+  the floats the stores checksum, to [0, 1].
+- The proof, all offline under the Mono harness. `ExactDoublesTests` (54 cases, 50 shared with the subset): without
+  the one line 16 fail: F9's text, six edge texts, two long literals, two of the four 50,000-double sweeps (16 and 10
+  of 100,000 reads missed, each a checksum refusal), the three 50,000-float sweeps (32, 3 and 19 floats came back with
+  another canonical text, each a checksum refusal) and two of the three save-store cases (the third, a text the scan
+  cannot follow, passes either way, as does the web import case); with it, 54 of 54. With the web import put back on
+  `SaveJson.ParseObject`, the import case fails: `80.95655` comes back as 0x40543d381d7dbf49, not ...48. Two scratch
+  mutants (before the review) show the settle step is needed: with the writer check and then the nearest double, the
+  products sweep still misses 10 reads (Mono's writer, not its parse); with the nearest double alone, three sweeps miss
+  40, 2 and 30. The exact conversion agrees with Python's `float()` on the builder's 12,227 texts and a review's
+  149,985, and 2,244,592 walks from neighbours up to 64 doubles away all end on the nearest double. The 69 fixtures
+  that touch the stores, the frozen readers or the migrations ran 2,441 of 2,445, before the review and after it: the
+  other four need Unity's engine types and fail the same way without the fix. `OldSaveAcceptanceTests` ran 245 of 245,
+  and the dotnet subset 16,291 of 16,291.
 - The dotnet subset cannot see F9: .NET reads and writes doubles correctly, so there the pass never changes a value.
   It holds the exact conversion against .NET's own parse; only the editor's Mono shows the pass repairing a read.
+- Still to run: S6's end-to-end check, the state `generate 3146 12 director-allstars 3 Campaign` builds, saved and
+  loaded under the Mono harness. The generator is on claude/all-star-histories, so the check waits for that merge;
+  here the save-store cases use a synthetic state holding 0x400bc16beeb33334.
 - The cost: `SaveJson.ParseObject` on the largest fixture (s28-mode1-finished, 371 KB, 1,274 floats) went from a
-  median of 13 ms to 18 ms under Mono; the pass alone takes about 4.3 ms.
+  median of 13 ms to 18 ms under Mono; the pass alone takes about 4.3 ms. Hand-made files near the 8 MiB limit cost
+  more: 475,000 copies of F9's text take a median 3.4 s, the design's own cost (0.7 s without the pass), and 135,715
+  copies of a 55-character literal 3.6 s (0.2 s without the pass; 15.4 s before the writer check skipped literals
+  over 32 characters).
 
 ## 4. The tests (`Assets/Gamesim/Tests/EditMode/OldSaveAcceptanceTests.cs`)
 

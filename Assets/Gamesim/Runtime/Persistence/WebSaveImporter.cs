@@ -51,7 +51,8 @@ namespace Gamesim.Persistence
                 else if (!File.ReadAllBytes(archived).SequenceEqual(rawBytes))
                     throw new InvalidDataException("The source archive could not be verified.");
 
-                var root = SaveJson.ParseObject(json);
+                // As Json.NET reads it: no checksum here for ExactDoubles to serve (F9).
+                var root = SaveJson.ParseObjectAsRead(json);
                 var source = Unwrap(root);
                 var report = new HashSet<string>(StringComparer.Ordinal);
                 var candidate = Convert(source, digest, report);

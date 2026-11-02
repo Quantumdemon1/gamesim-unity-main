@@ -23,9 +23,12 @@ namespace Gamesim.Persistence
     /// 2000 of some kinds). The nearest double alone would then write "6.4129949999999996" and refuse the
     /// file as surely. What a checksum needs is a value the writer writes as the file's text, so
     /// <see cref="Correct"/> keeps the value Json.NET read when the writer writes it as its literal
-    /// (every file that loads today loads exactly as before); otherwise it takes the nearest double if the
-    /// writer writes that as the literal, or the double closest to it that the writer does (within 16),
-    /// or else the nearest double. On .NET that is always the value read.</para>
+    /// (every checksummed file that loads today, an episode save, a career ledger or a houseguest
+    /// profile, loads exactly as before); otherwise it takes the nearest double if the writer writes that
+    /// as the literal, or the double closest to it that the writer does (within 16), or else the nearest
+    /// double. On .NET that is always the value read. The web import, which has no checksum, reads
+    /// without it (SaveJson.ParseObjectAsRead): there the settle step would move a value Mono reads
+    /// right today, "111.08155", to the neighbour Mono's writer gives that text.</para>
     ///
     /// <para><see cref="Correct"/> pairs every number value of the token tree, in document order, with
     /// the number literals of the text. Its scan follows what Json.NET reads here beyond plain JSON:
@@ -121,13 +124,17 @@ namespace Gamesim.Persistence
         /// <summary>
         /// The double nearest to a decimal literal (an optional '-', digits with an optional point,
         /// an optional exponent), ties to even, the sign of zero kept; infinite past the largest
-        /// double. False for any other text.
+        /// double. False for any other text. False also when the runtime's own parse, the walk's start,
+        /// lies more than 64 doubles from the nearest double: Unity's Mono reads some exact texts of 700
+        /// or more digits with exponents below -1000 as zero. The writer never writes such a text, and
+        /// <see cref="Correct"/> then leaves every value as read.
         /// </summary>
         public static bool TryParse(string literal, out double value)
         {
             value = 0;
             if (literal == null) return false;
-            // The runtime's own parse is the walk's start; it fails only past the largest double.
+            // The runtime's own parse is the walk's start; it fails only past the largest double, and lies
+            // far off only for the long exact texts the summary names.
             double start = double.TryParse(literal, NumberStyles.Float, CultureInfo.InvariantCulture, out double parsed)
                 ? parsed : double.MaxValue;
             return TryParse(literal, 0, literal.Length, start, false, out value);
@@ -158,8 +165,10 @@ namespace Gamesim.Persistence
             return nearest;
         }
 
+        // No double's text is longer than 24 characters ("-2.2250738585072014E-308"), so a longer literal
+        // is the writer's text for no double: it is not formatted, up to 34 times a float.
         private static bool Written(double value, string text, Literal literal) =>
-            SameText(JsonConvert.ToString(value), text, literal.Start, literal.Length);
+            literal.Length <= 32 && SameText(JsonConvert.ToString(value), text, literal.Start, literal.Length);
 
         private static bool TryParse(string s, int offset, int length, double start, bool walk, out double value)
         {

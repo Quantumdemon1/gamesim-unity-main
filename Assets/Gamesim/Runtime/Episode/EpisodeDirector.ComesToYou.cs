@@ -26,8 +26,9 @@ namespace Gamesim.Episode
     /// close - lets go only of a heading an ask gave, so a talk spot's or a ceremony's stays.</para>
     ///
     /// <para><b>Presentation only.</b> Visits, hearing, the dialogue's opening, Think it over, Not right now, misses,
-    /// retries, gaps and caps commit nothing, roll nothing and save nothing; the answers are the deal table's own
-    /// controls. Like every panel the player opens, an opening flushes the NPC ticks that are due.</para>
+    /// retries, gaps and caps commit nothing and roll nothing of their own; the answers are the deal table's own
+    /// controls. Like every panel the player opens, an opening flushes the NPC ticks that are due and writes the house's
+    /// owed seconds (LIVE-SAVE-PLAN), so the save on disk is the season in memory.</para>
     ///
     /// <para><b>Off where the audited behaviour must hold.</b> <see cref="AsksEnabled"/> false - every PlayMode fixture
     /// that binds a director, every PortVerification route, and by default every batch run - and the director runs
@@ -686,7 +687,7 @@ namespace Gamesim.Episode
             if (ask == null) return false;
             PauseNpcSocialForPanel();
             if (blockedRecovery) return false;
-            // The flush may have committed the house's time: the ask must still be the one waiting.
+            // The flush may have installed the house's time: the ask must still be the one waiting.
             if (projected == null || !ask.IsCurrent(projected)) return false;
             ClosePanels();
             askCardOpen = true; askCard = ask; askCardReply = null; askCardFirstRender = true;

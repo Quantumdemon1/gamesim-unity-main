@@ -103,6 +103,8 @@ namespace Gamesim.Episode
             if (lookSheet) { yield return RunLookSheet(); FinishLookSheet(); yield break; }
             // Uncapped from here, so the startup's frames are its cost and not the display's interval.
             director.SetFrameCap(ProfileFrameCap);
+            // Each house commit's parts, written beside the frames when the player quits (NpcCommitTimings).
+            director.commitTimingForVerification = new NpcCommitTimings();
             BeginStartupStage("season");
             var player = FindAnyObjectByType<HousePlayerController>();
             var rooms = FindObjectsByType<HouseRoomMarker>().OrderBy(room => room.RoomName, StringComparer.Ordinal).ToArray();
@@ -386,6 +388,10 @@ namespace Gamesim.Episode
             public List<VerificationFrameSummary> startupStages;
             // bodyAssemblySeconds: from the measured season's start (seasonStartedSeconds) until every body was built.
             public double startupReadySeconds, startupSampleBeganSeconds, bodyAssemblySeconds;
+            // Time.frameCount as the steady sample began: a commit timed in frame F (npc-commit-timing-ms.csv) stretches
+            // the time recorded in frame F + 1, which is the frames file's data row F + 1 - steadySampleFirstFrame
+            // counted from 0 under its "ms" header: its line F + 3 - steadySampleFirstFrame, counted from 1.
+            public int steadySampleFirstFrame;
             public bool bodiesAssembled, openingSkipped;
             public int bodiesAssemblingAtSampleStart;
             // Memory through the steady sample, in bytes (-1 unavailable; the driver estimate is 0 in release players).

@@ -117,6 +117,15 @@
 # under Unity's Mono (2026-11-01), 9469, and the classes run there; not yet measured in Unity.
 # The S6 review's fixes add checks to those cases, not cases: the Lister listed 9469 again (2026-11-01).
 # 9497 = main's 9217 + the offers' 28 (9245 - 9217, PR #39) + the All-Star histories' 252 (9469 - 9217): disjoint cases, so the floor is their sum (2026-11-01).
+# 9271 = 9217 + F9's 54 ExactDoublesTests cases (OLD-SAVE-ACCEPTANCE F9): 50 shared with the subset, and 3 save-store
+# cases and the web import's, EditMode only. The Lister counted 9271 in the NoUMA offline build and the Mono harness
+# ran the 54, 54 of 54 (2026-11-01, after the review). Not yet counted by a full run.
+# 9551 = 9217 + main's 280 (9497 - 9217) + the save-read fix (F9)'s 54 (9271 - 9217): disjoint cases, so the floor is their sum (2026-11-01).
+# The live-save batching (LIVE-SAVE-PLAN), on 9217:
+# 9236 = 9217 + its 19 EditMode cases: PersistenceTests 6, NpcSaveCadenceTests 8 (shared with the subset) and
+# NpcCommitTimingsTests 5. Counted: the full NoUMA run at 35ab8574 (ls1, 2026-11-01), 9236 of 9236, no re-runs.
+# 9516 = 9217 + main's 280 (9497 - 9217) + the live-save batching's 19 (9236 - 9217): disjoint cases, so the floor is their sum (2026-11-01).
+# 9570 = 9497 + main's 54 (9551 - 9497) + the live-save batching's 19 (9516 - 9497): disjoint cases, so the floor is their sum (2026-11-02).
 # The room scope's own history (claude/room-scope, Set A at 2a81aef3):
 # 9034 = 8932 + R6's 38 RoleStoryMomentsTests cases (on main, first counted here) + the room scope's 64: RS1's 11
 # (HouseRoomScopeTests 7, HouseRoomScopeWalkerTests 3, HouseRoomScopePlanTests 1), RSW's 5 (HouseWhoIsWhereTests)
@@ -152,7 +161,8 @@
 # SpeakerDrawn for its speaker just before, and that the room scope reads the visit's speaker on both paths; and
 # RoomScope_TheBubbleScanReadsTheGateAndItsSpeaker, the scan's own rules), counted offline under the Mono harness
 # (2026-11-02); not yet run in Unity.
-Gamesim.EditModeTests 9602
+# 9675 = 9497 + main's 73 (9570 - 9497) + the room scope's 105 (9602 - 9497): disjoint cases, so the floor is their sum (2026-11-02).
+Gamesim.EditModeTests 9675
 # The UMA-free build. 1215 = 1236, the count after the consolidation's lanes (S2a, S2b, S4a), less the 7
 # farewell probes moved to Gamesim.DiagnosticsPlayModeTests and the 14 farewell readiness tests that now
 # compile only under GAMESIM_UMA (judged on the UMA cast); 1230 = 1215 + S2d's 7, S4b's 2, S4c's 2 and
@@ -211,6 +221,10 @@ Gamesim.EditModeTests 9602
 # offline with and without UMA (2026-10-31); not yet measured in Unity.
 # The S5 review's fixes add checks to those 4 tests, not tests: 1357 stands (2026-11-01).
 # 1389 = main's 1353 + the offers' 32 (1385 - 1353, PR #39) + the All-Star histories' 4 (1357 - 1353): disjoint cases, so the floor is their sum (2026-11-01).
+# The live-save batching, on 1353:
+# 1370 = 1353 + EpisodePlayModeTests.LiveSave's 17 shared tests. Counted: the full NoUMA run at 35ab8574 (ls1,
+# 2026-11-01), 1370 of 1370, no re-runs.
+# 1406 = 1353 + main's 36 (1389 - 1353) + the live-save batching's 17 (1370 - 1353): disjoint cases, so the floor is their sum (2026-11-01).
 # The room scope's own history (claude/room-scope, Set A at 2a81aef3):
 # 1344 = 1326 + the room scope's 18 shared tests: RS1's 6 (5 RoomScope_ cases and the prototype's), RSW's 9
 # (WhoIsWhere_, WalkIn_, Talk_, FreeTime_, Beacons_ and LiveFeed_ cases) and RS0's 3 (the culling and light pins):
@@ -261,7 +275,8 @@ Gamesim.EditModeTests 9602
 # The lane's run rs4 at 08489ad1 (no UMA, 2026-11-02) ran 1462: 1453 passed and 9 failed, all nine the tests'.
 # 1463 = 1462 + the rs4 fixes' review's 1 shared test (EpisodePlayModeTests.RoomView: WayFinding_NoIconStandsOnAnother),
 # counted offline from the source and the compiled assembly (2026-11-02); not yet run in Unity.
-Gamesim.PlayModeTests 1463
+# 1480 = 1389 + main's 17 (1406 - 1389) + the room scope's 74 (1463 - 1389): disjoint cases, so the floor is their sum (2026-11-02).
+Gamesim.PlayModeTests 1480
 # The UMA build of the same assembly, read by a plan built without -WithoutUma. 1281 = the 1241 above + the
 # 40 tests that compile only under GAMESIM_UMA, as run at r1 (2026-10-16): in EpisodePlayModeTests,
 # GroundedFarewell 11, Creator 9, HouseLife 8, Emotes 3, OpeningCaptures 2, and one each in CreatorEntry,
@@ -300,6 +315,9 @@ Gamesim.PlayModeTests 1463
 # measured in Unity.
 # The S5 review's fixes add checks to those 4 tests, not tests: 1397 stands (2026-11-01).
 # 1429 = main's 1393 + the offers' 32 (1425 - 1393, PR #39) + the All-Star histories' 4 (1397 - 1393): disjoint cases, so the floor is their sum (2026-11-01).
+# 1410 = 1393 + the live-save batching's same 17 shared tests (LiveSave.cs has no GAMESIM_UMA branch): not run in
+# the UMA build, which the branch does not touch (no UMA, body or garment file).
+# 1446 = 1393 + main's 36 (1429 - 1393) + the live-save batching's 17 (1410 - 1393): disjoint cases, so the floor is their sum (2026-11-01).
 # The room scope's own history (claude/room-scope, Set A at 2a81aef3):
 # 1384 = 1366 + the same 18 shared room-scope tests: the full UMA-build run at 2a81aef3 (2026-10-27), 1384 of 1384,
 # in one process with the MCP bridge off.
@@ -328,7 +346,8 @@ Gamesim.PlayModeTests 1463
 # 1504 = 1393 + main's 36 (1429 - 1393) + the room scope's 75 (1468 - 1393): disjoint cases, so the floor is their sum (2026-11-01).
 # 1505 = 1504 + the rs4 fixes' review's same shared test, counted offline (2026-11-02) and compiled in the UMA offline
 # build (D:\GamesimPlay's dag, 8 of 8 assemblies); not yet run in Unity.
-Gamesim.PlayModeTests.UmaBuild 1505
+# 1522 = 1429 + main's 17 (1446 - 1429) + the room scope's 76 (1505 - 1429): disjoint cases, so the floor is their sum (2026-11-02).
+Gamesim.PlayModeTests.UmaBuild 1522
 # The UMA bodies: runs only where the GAMESIM_UMA define is set (the working tree and the D: copy).
 # 82 = the 89 run on 2026-10-15, less the 7 farewell probes moved to Gamesim.Uma.DiagnosticsPlayModeTests;
 # 85 = 82 + the 3 farewell readiness decision tests (UmaFarewellReadinessDecisionPlayModeTests, 2026-10-16);
@@ -431,4 +450,11 @@ Gamesim.Uma.DiagnosticsPlayModeTests 10
 # The S6 review's fixes add checks to that case, not cases (the sentinel finds the player in "your" again): what dotnet
 # test Tools/SimulationTests ran (2026-11-01), 16434 of 16434 again.
 # 16456 = main's 16241 + the offers' 22 (16263 - 16241, PR #39) + the All-Star histories' 193 (16434 - 16241): disjoint cases, so the floor is their sum (2026-11-01).
-Gamesim.SimulationTests 16456
+# 16291 = 16241 + F9's same 50 shared ExactDoublesTests cases (the 3 save-store cases and the web import's are
+# EditMode's): dotnet test ran 16291 of 16291 (2026-11-01, after the review).
+# 16506 = 16241 + main's 215 (16456 - 16241) + the save-read fix (F9)'s 50 (16291 - 16241): disjoint cases, so the floor is their sum (2026-11-01).
+# 16249 = 16241 + the live-save batching's 8 NpcSaveCadenceTests: what dotnet test Tools/SimulationTests ran at
+# 35ab8574 (ls1, 2026-11-01), 16249 of 16249.
+# 16464 = 16241 + main's 215 (16456 - 16241) + the live-save batching's 8 (16249 - 16241): disjoint cases, so the floor is their sum (2026-11-01).
+# 16514 = 16456 + main's 50 (16506 - 16456) + the live-save batching's 8 (16464 - 16456): disjoint cases, so the floor is their sum (2026-11-02).
+Gamesim.SimulationTests 16514

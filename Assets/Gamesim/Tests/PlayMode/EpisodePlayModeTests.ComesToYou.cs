@@ -566,7 +566,7 @@ namespace Gamesim.Tests.PlayMode
         {
             string recordId = director.CurrentNpcInvitationRecordId, askerId = director.CurrentAskerId;
             yield return WaitForTheLineWithNoSecondDue();
-            byte[] bytes = File.ReadAllBytes(director.SavePath);
+            var waiting = director.Snapshot;
             var asker = SceneComponents<HouseNpc>().Single(npc => npc.Id == askerId);
             var mine = player.GetComponent<CharacterPresentation>();
             Assert.That(mine.FacingYaw, Is.NaN, "The player is not turned before the conversation opens.");
@@ -574,7 +574,10 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(director.CurrentAskWay, Is.EqualTo(EpisodeDirector.AskWay.Raised));
             Assert.That(director.InvitedDealRecordId, Is.EqualTo(recordId));
             Assert.That(ComesHud.PointerHeld, Is.True);
-            CollectionAssert.AreEqual(bytes, File.ReadAllBytes(director.SavePath), "Opening on the offer commits nothing.");
+            // Opening on the offer writes the house's installed seconds and nothing of its own (LIVE-SAVE-PLAN): memory
+            // is as it was, and the disk now holds exactly that state.
+            AssertEquivalent(waiting, director.Snapshot);
+            AssertDialogueUiDisk(waiting);
             // Raised: the player turns to the asker, who is not turned - the heading they arrived with went with the
             // open's ClosePanels.
             float playerYaw = NpcRead<float>("askPlayerYaw");
@@ -618,13 +621,15 @@ namespace Gamesim.Tests.PlayMode
             string recordId = director.CurrentNpcInvitationRecordId, askerId = director.CurrentAskerId;
             yield return WaitForTheLineWithNoSecondDue();
             var asker = SceneComponents<HouseNpc>().Single(npc => npc.Id == askerId);
-            byte[] bytes = File.ReadAllBytes(director.SavePath);
+            var waiting = director.Snapshot;
             select.Invoke(director, new object[] { asker });
             Assert.That(director.TalkingToId, Is.EqualTo(askerId));
             Assert.That(ComesHud.PointerHeld, Is.True, "The open frame: the click that opened it presses nothing on the panel.");
             Assert.That(director.CurrentAskWay, Is.EqualTo(EpisodeDirector.AskWay.WalkOver), "The click hears the ask it walked over with.");
             Assert.That(NpcRead<Dictionary<string, int>>("askPresentations")[recordId], Is.EqualTo(1), "One presentation counted.");
-            CollectionAssert.AreEqual(bytes, File.ReadAllBytes(director.SavePath));
+            // The click writes the house's installed seconds and nothing of its own: memory as it was, and that on disk.
+            AssertEquivalent(waiting, director.Snapshot);
+            AssertDialogueUiDisk(waiting);
             yield return null; yield return null;
             Assert.That(SelectedName(), Is.EqualTo(EpisodeHud.ThinkItOverCaption));
             Assert.That(ShownText(), Does.Contain(EpisodeHud.AskWalkOverEyebrow("Maya")));
@@ -1070,7 +1075,7 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(director.TalkingToId, Is.EqualTo(askerId), "E hears the ask.");
             Assert.That(director.CurrentAskWay, Is.EqualTo(EpisodeDirector.AskWay.WalkOver));
             Assert.That(director.Snapshot.npcSocial.clockTick, Is.EqualTo(Math.Max(clock + 1, scanAt)),
-                "The open's flush committed the house's time up to the scan.");
+                "The open's flush installed the house's time up to the scan.");
             Assert.That(director.Snapshot.npcSocial.nextScanTick, Is.GreaterThan(scanAt), "and the scan came due, so the house planned its pairs.");
             AssertAskerUnpaired(askerId, "across the open");
             yield return null;

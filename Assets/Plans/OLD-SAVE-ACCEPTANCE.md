@@ -669,8 +669,8 @@ two.
   - No 8-house seed from 3002 to 3201 (the All-Stars fixtures' series) holds one, so the cell is a 12-house, as that
     plan's 14.I says.
   - None of the 199 12-house seeds from 3002 to 3201 that could be saved holds one, and 3387 is the first after them.
-    The 12-house at 3146 could not be saved at all (F9), so whether it holds one, and whether it would have come first,
-    is not known.
+    The 12-house at 3146 could not be saved at all (F9, since repaired: section 3), so whether it holds one, and
+    whether it would have come first, is not known.
 - `generate 3387 12 director-allstars 3 Campaign` wrote s30-mode2-allstars-alumni5-w3-campaign (275,495 bytes): eleven
   alumni and the player. Its grown pact, `alliance-npc-203`, was founded in week 2 and took its third member in week 3.
   Two known pairs are live, so its bound is 4.
@@ -899,29 +899,74 @@ point), and the case passes.
   pins both. The check is only narrower, so no fixture that passed before can fail. The PlayMode sentinel's copy
   (`EpisodePlayModeTests.BallotPrivacy`) is unchanged.
 
-**F9. Under Mono, the store refuses a save, and a load, when a double's text parses one bit off. Open (found by S6's
-seed search, 2026-11-01).**
+**F9. Under Mono, the store refused a save, and a load, when a double's text read back one bit off. Repaired
+(2026-11-01, claude/save-double-read).**
 
-- `generate 3146 12 director-allstars 3 Campaign` (2.7) fails in `EpisodeSaveStore.Save` three times out of three, in
-  `Install`'s read-back of the bytes it wrote: "Save checksum does not match; the file may be damaged." The slot keeps
-  the file it had.
-- The checksum is taken over the canonical form of `JObject.FromObject(state)`, the doubles as they are in memory.
-  `relationships[9].events[1].impactScore` is the double 0x400bc16beeb33334. Mono writes it as `3.4694441460073`, and
-  that is right: it is the shortest text whose nearest double is 0x400bc16beeb33334 (checked with correctly rounded
-  arithmetic in Python, S6's review). The read is wrong. Mono's parse of that text, in `SaveJson.ParseObject` (Json.NET's
-  `JsonTextReader` on the Mono runtime), gives 0x400bc16beeb33335, one unit in the last place over
-  (`3.4694441460073002`). So the canonical form of what was read differs from the one hashed, in that one value.
-- A scratch diagnostic took `Save`'s steps by hand under the editor's Mono. .NET writes the same text and parses it to
-  the right double, so the dotnet subset cannot see this.
-- The scope is every read, not only a save's. Under Mono, `TryRead` refuses any file that holds such a text: a load, a
-  recovery from the backup, and `Install`'s read-back of a save alike. Once such a value stands in a season's state (a
-  relationship event's score here), every save of that season is refused for as long as it stands. A file .NET wrote
-  with such a text loads under .NET and is refused under Mono.
-- The fix belongs on the read and checksum path, not the writer. For example, the checksum could be checked against a
-  correctly rounded parse of the doubles, or `Install` could compare the doubles it reads back with the bits in memory
-  rather than re-hash Mono's parse. Its pin is the state `generate 3146 12 director-allstars 3 Campaign` builds and
-  fails to save, saved and loaded under the Mono harness: the dotnet subset cannot reproduce it. Not S6's to fix; it is the lead's
-  (section 7).
+- The cause (found by All-Star S6's seed search: a 12-house All-Stars season at seed 3146 could not be saved). The
+  double 0x400bc16beeb33334 is written `3.4694441460073`, its shortest text. Json.NET's `JsonTextReader` reads it with
+  the runtime's `double.TryParse`, and Unity's Mono, which parses as the old .NET Framework did, gives
+  0x400bc16beeb33335. `TryRead` hashes the canonical form of what it read (`3.4694441460073002`) against the checksum
+  of what was written, so Save's own read-back, a load and a backup recovery all refused the file, and every later
+  save of that season; the slot kept the file it had. A file .NET wrote with such a text loaded under .NET and was
+  refused under Mono. (S6's entry for the finding, "Open", is folded into this one.)
+- Mono's writer is not always right either. Measured under the editor's Mono (a scratch probe, 800,000 seeded doubles
+  in four kinds and 200,000 floats): it gives about one double in 2,000 a text whose nearest double is another. It
+  writes 0x4019a6e82949a566 as `6.412995`, whose nearest double is ...565, and writes ...565 as `6.4129949999999996`.
+  Today's read changed the canonical text of 0 to 46 values in 200,000 by kind, and of 56 floats (the appearance
+  values are floats). Reading every literal as its nearest double would have changed 1 to 113 by kind and 181 floats:
+  more refusals, not fewer.
+- The fix: `ExactDoubles.Correct`, called by `SaveJson.ParseObject` in one line, so the three checksummed stores (the
+  episode store, the career ledger and the houseguest profiles) read through it. After Json.NET has read the text, a
+  scan pairs every number value with its literal in document order. The scan follows what Json.NET reads beyond JSON:
+  comments, single quotes, unquoted names, NaN and the infinities, constructors. Each float then keeps the value read
+  if the writer writes it as its literal, so every checksummed file (episode save, career ledger, houseguest profile)
+  that loads today loads exactly as before. Otherwise it takes the nearest double (exact, by BigInteger: ties to even,
+  subnormals, the sign of zero) if the writer writes that as the literal; else the double within 16 of it that the
+  writer does; else the nearest. When the text and the values do not pair, a literal is not a decimal number, or one
+  lies more than 64 doubles from its value, nothing changes. NaN and the infinities are never touched. On .NET every
+  float keeps the value read. A literal of more than 32 characters is never formatted for the writer check: no
+  double's text is longer than 24 (`-2.2250738585072014E-308`).
+- The web import reads as Json.NET reads it (`SaveJson.ParseObjectAsRead`, its own name because tests and
+  `Tools/OldSaves` find `ParseObject` by name). A web file has no checksum for the settle step to serve, and under Mono
+  that step moves a value Mono reads right today to the neighbour Mono's writer gives its text: `111.08155` is read as
+  its nearest double, 0x405bc5381d7dbf48, and settled on ...49 (a review measured 14 of 40,000 rounded decimals in the
+  web's shortest form). Re-importing the same web file would then have given a state one double off, neither the
+  web's value nor today's.
+- Nothing else reads differently. The frozen readers' own byte parsers (`FrozenV28Input`, `FrozenV29Input`) have no
+  runtime caller: the migrations hand them the tree the store parsed. The preference file and the key bindings refuse
+  any number. The editor's `JsonUtility` reads are tooling.
+- Two limits, neither reachable from the game. `ExactDoubles.TryParse` returns false for some exact texts of 700 or
+  more digits with exponents below -1000: Mono reads them as zero, more than 64 doubles from the nearest double, and
+  the walk starts from Mono's read. The writer never writes such a text, and `Correct` then leaves every value as read.
+  And a float of 1e7 or more changes its canonical text on any read, with or without the fix: the float writer writes
+  it in E notation (`-2.770227E+10`), the double writer plainly (`-27702270000.0`). The game clamps appearance values,
+  the floats the stores checksum, to [0, 1].
+- The proof, all offline under the Mono harness. `ExactDoublesTests` (54 cases, 50 shared with the subset): without
+  the one line 16 fail: F9's text, six edge texts, two long literals, two of the four 50,000-double sweeps (16 and 10
+  of 100,000 reads missed, each a checksum refusal), the three 50,000-float sweeps (32, 3 and 19 floats came back with
+  another canonical text, each a checksum refusal) and two of the three save-store cases (the third, a text the scan
+  cannot follow, passes either way, as does the web import case); with it, 54 of 54. With the web import put back on
+  `SaveJson.ParseObject`, the import case fails: `80.95655` comes back as 0x40543d381d7dbf49, not ...48. Two scratch
+  mutants (before the review) show the settle step is needed: with the writer check and then the nearest double, the
+  products sweep still misses 10 reads (Mono's writer, not its parse); with the nearest double alone, three sweeps miss
+  40, 2 and 30. The exact conversion agrees with Python's `float()` on the builder's 12,227 texts and a review's
+  149,985, and 2,244,592 walks from neighbours up to 64 doubles away all end on the nearest double. The 69 fixtures
+  that touch the stores, the frozen readers or the migrations ran 2,441 of 2,445, before the review and after it: the
+  other four need Unity's engine types and fail the same way without the fix. `OldSaveAcceptanceTests` ran 245 of 245,
+  and the dotnet subset 16,291 of 16,291.
+- The dotnet subset cannot see F9: .NET reads and writes doubles correctly, so there the pass never changes a value.
+  It holds the exact conversion against .NET's own parse; only the editor's Mono shows the pass repairing a read.
+- S6's end-to-end check passed (2026-11-01), on a scratch merge of this branch with claude/all-star-histories
+  (50821cfd), under the editor's Mono. The state `generate 3146 12 director-allstars 3 Campaign` builds saved (the
+  pass changed one value, F9's), loaded with every float's bits as they were in memory, saved again, recovered from
+  its backup with no primary and with a torn one, and replayed 108 of 108 commands to the same digests. Without the
+  fix the save was refused, and so were a load and a recovery of the file the fixed build wrote. On that merge
+  `ExactDoublesTests` ran 54 of 54 and `OldSaveAcceptanceTests` 266 of 266.
+- The cost: `SaveJson.ParseObject` on the largest fixture (s28-mode1-finished, 371 KB, 1,274 floats) went from a
+  median of 13 ms to 18 ms under Mono; the pass alone takes about 4.3 ms. Hand-made files near the 8 MiB limit cost
+  more: 475,000 copies of F9's text take a median 3.4 s, the design's own cost (0.7 s without the pass), and 135,715
+  copies of a 55-character literal 3.6 s (0.2 s without the pass; 15.4 s before the writer check skipped literals
+  over 32 characters).
 
 ## 4. The tests (`Assets/Gamesim/Tests/EditMode/OldSaveAcceptanceTests.cs`)
 
@@ -1344,11 +1389,9 @@ The same pattern, one schema on (2026-10-25, `claude/all-star-histories`):
   - Before, the next story milestone would have had every schema 2 to 15 save refused.
   - Reverting it is one commit. The old step is not a real alternative, though: it would break those saves at the
     next milestone.
-- **F9 is open** (2026-11-01, found by S6's seed search). Under Mono the store refuses a save, and any load or recovery,
-  of a state holding a double whose shortest text Mono parses one bit off: the 12-house at 3146 (section 3). The writer
-  is right; the fix is on the read and checksum path, pinned under the Mono harness by that state, since the dotnet
-  subset cannot reproduce it. It is the lead's. No fixture here is affected: under the Mono harness every committed save loads, F4's
-  refused one aside, and is recovered from the backup.
+- **F9 is closed** (2026-11-01, claude/save-double-read). `ExactDoubles.Correct` reads each saved decimal back as it
+  was written under Mono (section 3): the 12-house at 3146 saves, loads and recovers under the Mono harness, and every
+  committed fixture reads as before (F4's refused one stays refused).
 - The B9 tuning and the All-Star rebuild may proceed past this gate only with schema 29 claimed, and with this
   acceptance extended as in section 6, step 5. Both hold now: schema 29 is claimed (OWNER-DECISIONS-2026-10-22 §5),
   and the acceptance was extended to it on 2026-10-22 (2.3). A retune that moves a shipped mode-2 season without a

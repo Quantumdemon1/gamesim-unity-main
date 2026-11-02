@@ -20,7 +20,7 @@ namespace Gamesim.Tests.PlayMode
     public sealed partial class EpisodePlayModeTests
     {
         [UnityTest]
-        public IEnumerator NpcScan_FreshClockDoesNotPlanBeforeThirdDurableSecond()
+        public IEnumerator NpcScan_FreshClockDoesNotPlanBeforeThirdInstalledSecond()
         {
             yield return BindNpcScanWorld();
             Assert.That(director.Snapshot.npcSocial.clockTick, Is.Zero);
@@ -52,20 +52,21 @@ namespace Gamesim.Tests.PlayMode
         }
 
         [UnityTest]
-        public IEnumerator NpcScan_FailedThirdSecondDoesNotReserveRoutesBeforeExplicitRetry()
+        public IEnumerator NpcScan_AFailedWriteAtTheThirdSecondKeepsItsRoutesPausedUntilTheRetryWritesIt()
         {
             yield return BindNpcScanWorld();
             CommitNpcScanSecond(); CommitNpcScanSecond();
             var before = director.Snapshot;
-            string beforeJson = JsonUtility.ToJson(before);
             byte[] primary = File.ReadAllBytes(director.SavePath);
             byte[] backup = File.ReadAllBytes(director.SavePath + ".backup");
             int writes = 0;
+            long counter = 0;
             NpcWrite("saveCandidateForDiagnostics", new Action<EpisodeState>(candidate =>
             {
                 writes++;
                 Assert.That(candidate.npcSocial.clockTick, Is.EqualTo(3));
-                AssertNoNpcScanApproaches();
+                // Save installs the due third second, and its scan plans its routes, before the one write.
+                AssertNpcScanCreatedRealApproaches();
                 throw new IOException("Injected cadence-boundary save failure.");
             }));
             try
@@ -73,23 +74,30 @@ namespace Gamesim.Tests.PlayMode
                 NpcWrite("npcFrameFraction", 1d); NpcWrite("npcWorldFraction", 0d);
                 director.SaveNow();
                 Assert.That(writes, Is.EqualTo(1));
-                Assert.That(JsonUtility.ToJson(director.Snapshot), Is.EqualTo(beforeJson));
+                Assert.That(director.Snapshot.npcSocial.clockTick, Is.EqualTo(3));
+                Assert.That(director.Snapshot.revision, Is.EqualTo(before.revision + 1));
                 Assert.That(File.ReadAllBytes(director.SavePath), Is.EqualTo(primary));
                 Assert.That(File.ReadAllBytes(director.SavePath + ".backup"), Is.EqualTo(backup));
                 Assert.That(NpcRead<bool>("npcSaveSuspended"), Is.True);
-                AssertNoNpcScanApproaches();
+                AssertNpcScanCreatedRealApproaches();
+                counter = NpcRead<long>("npcLeaseCounter");
                 NpcInvoke("TickNpcSocialRuntime", .5f);
-                Assert.That(writes, Is.EqualTo(1), "Failure must suspend automatic retries and their routes.");
-                AssertNoNpcScanApproaches();
+                Assert.That(writes, Is.EqualTo(1), "Failure suspends the house's automatic writes: neither its period nor its stop retries.");
+                AssertNpcScanCreatedRealApproaches();
+                Assert.That(NpcRead<long>("npcLeaseCounter"), Is.EqualTo(counter), "A stopped frame is not a second scan at the same saved deadline.");
             }
             finally { NpcWrite("saveCandidateForDiagnostics", null); }
 
-            director.SaveNow(); // Explicitly validate/save the unchanged session and permit runtime resumption.
+            var installed = director.Snapshot;
+            director.SaveNow(); // The explicit retry writes the session memory holds and permits runtime resumption.
             Assert.That(NpcRead<bool>("npcSaveSuspended"), Is.False);
-            NpcInvoke("TickNpcSocialRuntime", .1f); // Resumes real world ownership before retrying the retained whole second.
+            Assert.That(new EpisodeSaveStore(director.SavePath).TryLoad(out var disk, out var reason), Is.True, reason);
+            Assert.That(JsonUtility.ToJson(disk), Is.EqualTo(JsonUtility.ToJson(installed)));
+            NpcInvoke("TickNpcSocialRuntime", .1f); // Resumes real world ownership; the installed third second is not repeated.
             Assert.That(director.Snapshot.npcSocial.clockTick, Is.EqualTo(3));
             Assert.That(director.Snapshot.npcSocial.nextScanTick, Is.EqualTo(6));
             AssertNpcScanCreatedRealApproaches();
+            Assert.That(NpcRead<long>("npcLeaseCounter"), Is.EqualTo(counter));
             Assert.That(director.Snapshot.npcSocial.randomState, Is.EqualTo(before.npcSocial.randomState));
         }
 
@@ -191,6 +199,9 @@ namespace Gamesim.Tests.PlayMode
             NpcWrite("npcApproachDiagnosticsSuppressed", true);
             NpcResetTransientFractions();
             director.OpenSettings(); // Bind actors without allowing either elapsed social time or a route scan.
+            // A fresh root has no save until the house's first write, and the house writes its seconds in batches:
+            // two explicit saves give the primary and its backup that the cases read, and leave nothing owed.
+            director.SaveNow(); director.SaveNow();
             string before = JsonUtility.ToJson(director.Snapshot);
             NpcInvoke("EnsureNpcSocialWorld");
             float deadline = Time.realtimeSinceStartup + 5f;
@@ -206,12 +217,14 @@ namespace Gamesim.Tests.PlayMode
         private void CommitNpcScanSecond()
         {
             var before = director.Snapshot;
+            Assert.That(new EpisodeSaveStore(director.SavePath).TryLoad(out var saved, out var reason), Is.True, reason);
             NpcWrite("npcFrameFraction", 1d); NpcWrite("npcWorldFraction", 0d);
             Assert.That((bool)NpcInvoke("FlushNpcWholeTicks"), Is.True, director.StatusMessage);
             Assert.That(director.Snapshot.npcSocial.clockTick, Is.EqualTo(before.npcSocial.clockTick + 1));
             Assert.That(director.Snapshot.revision, Is.EqualTo(before.revision + 1));
-            Assert.That(new EpisodeSaveStore(director.SavePath).TryLoad(out var disk, out var reason), Is.True, reason);
-            Assert.That(JsonUtility.ToJson(disk), Is.EqualTo(JsonUtility.ToJson(director.Snapshot)));
+            // Installed, not written: the second reaches disk with the house's next write.
+            Assert.That(new EpisodeSaveStore(director.SavePath).TryLoad(out var disk, out reason), Is.True, reason);
+            Assert.That(disk.revision, Is.EqualTo(saved.revision));
         }
 
         private void AssertNoNpcScanApproaches()

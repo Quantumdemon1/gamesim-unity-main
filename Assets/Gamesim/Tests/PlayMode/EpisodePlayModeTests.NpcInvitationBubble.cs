@@ -89,5 +89,59 @@ namespace Gamesim.Tests.PlayMode
             }
             finally { Object.Destroy(bubble); }
         }
+
+        /// <summary>
+        /// The line is placed on the view its owner names (OFFERS-COME-TO-YOU-PLAN slice 3: the director names its camera
+        /// rig's): a speaker behind that view shows nothing though the main camera sees them, and one the view sees shows
+        /// though the main camera cannot. With no view named, or the view gone, the main camera places it, as it always did.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator NpcInvitationBubble_PlacesTheLineOnItsViewAndElseOnTheMainCamera()
+        {
+            director.SuspendNpcAutonomyForDiagnostics();
+            director.ClosePanels(); yield return null;
+            var bubble = director.gameObject.AddComponent<HouseNpcInvitationBubble>();
+            GameObject view = null;
+            try
+            {
+                var main = Camera.main;
+                Assert.That(main, Is.Not.Null);
+                Assert.That(bubble.ViewCamera, Is.Null, "No view named yet.");
+                Vector3 seen = SceneComponents<Gamesim.House.HousePlayerController>()[0].transform.position + Vector3.up * 1.95f;
+                bubble.Show("Morgan", "Can we talk?", 1f, seen, () => { }, () => { });
+                yield return null;
+                Assert.That(bubble.IsVisible, Is.True, "With no view named the main camera places the line.");
+
+                // A view behind the speaker, looking away: placed for it, the line does not show.
+                view = new GameObject("Invitation test view", typeof(Camera));
+                var camera = view.GetComponent<Camera>();
+                camera.enabled = false;
+                view.transform.SetPositionAndRotation(seen + main.transform.forward * 4f, Quaternion.LookRotation(main.transform.forward));
+                bubble.ViewCamera = camera;
+                yield return null;
+                Assert.That(bubble.IsVisible, Is.False, "Placed on its view: a speaker behind that view shows no line, though the main camera sees them.");
+
+                // A speaker the main camera cannot see, in front of the view: the line shows.
+                Vector3 hidden = main.transform.position - main.transform.forward * 3f;
+                view.transform.SetPositionAndRotation(hidden - main.transform.forward * 4f, Quaternion.LookRotation(main.transform.forward));
+                bubble.Show("Morgan", "Can we talk?", 1f, hidden, () => { }, () => { });
+                yield return null;
+                Assert.That(bubble.IsVisible, Is.True, "A speaker in front of its view shows, though the main camera cannot see them.");
+
+                // The view gone: the main camera again, which cannot see this speaker. Destroy would wait for the end of
+                // the frame, after this frame's LateUpdate had placed the line on the view once more; DestroyImmediate
+                // leaves the bubble holding Unity's fake null for that LateUpdate, which is what Place must see through.
+                Object.DestroyImmediate(view); view = null;
+                Assert.That(bubble.ViewCamera == null, Is.True, "A destroyed view reads as Unity's null.");
+                Assert.That(ReferenceEquals(bubble.ViewCamera, null), Is.False, "The bubble still holds the destroyed view, not an unset one.");
+                yield return null;
+                Assert.That(bubble.IsVisible, Is.False, "With its view gone the main camera places the line again.");
+            }
+            finally
+            {
+                if (view != null) Object.Destroy(view);
+                Object.Destroy(bubble);
+            }
+        }
     }
 }

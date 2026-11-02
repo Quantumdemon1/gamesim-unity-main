@@ -91,6 +91,8 @@ namespace Gamesim.Episode
             { director = FindAnyObjectByType<EpisodeDirector>(); yield return null; }
             if (director == null || !director.IsReady)
             { errors.Add("The bootstrap did not reach a ready episode."); Finish(0, false); yield break; }
+            // Every route verifies the audited behaviour: houseguests do not bring their asks over (OFFERS-COME-TO-YOU-PLAN).
+            director.AsksEnabled = false;
             readySeconds = Time.realtimeSinceStartupAsDouble;
             if (verifyCreator || lookSheet) startupStage = -1;
             if (verifyCreator) { yield return RunCreatorVerification(director); yield break; }

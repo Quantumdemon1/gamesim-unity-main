@@ -99,6 +99,9 @@ namespace Gamesim.Episode
                 // Returning from a category has already shown its narrated result. The
                 // root topics must not reopen that result as another intermediate view.
                 conversationNarration = null; lastSocialAction = null;
+                // Out of an ask's dialogue (EpisodeDirector.ComesToYou.cs), by its control or by Escape, Start or B:
+                // the next ask waits its gap, and the dialogue's asked focus and pointer hold go with it.
+                if (askDialogueRecordId != null) LeaveAskDialogue();
             }
             if (toTopics) { conversationPick = null; ClearLobbyDraft(); }
             conversationMenuToken = new object();
@@ -147,6 +150,12 @@ namespace Gamesim.Episode
                 hud.GuardConversationChoices(() => ConversationNavigationCurrent(token, state, npc.id));
                 return;
             }
+
+            // An ask the houseguest brought over, or raised as the conversation opened, is a dialogue of its own
+            // (EpisodeDirector.ComesToYou.cs) rather than the category's page. With asks off, never.
+            if (AsksOn && conversationCategory == DealsCategoryCaption && invitedDealId != null
+                && invitedDealId == askDialogueRecordId && RenderAskDialogue(state, npc, token))
+            { hud.GuardConversationChoices(() => ConversationNavigationCurrent(token, state, npc.id)); return; }
 
             hud.SpeakerTitle(npc.id, npc.name, npc.pronouns + " · " + string.Join(" / ", npc.traits));
             hud.Heading(conversationCategory.ToUpperInvariant());

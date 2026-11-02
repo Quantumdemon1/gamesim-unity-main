@@ -59,7 +59,15 @@
 # shared FrozenV29SerializerCacheTests 3, run under Unity's Mono (2026-10-25). The full NoUMA run at a4d7b177
 # (2026-10-26) ran 9126 of 9126 = 8970 + step 1's 156.
 # 9217 = main's 9061 + step 1's 156: disjoint cases, so the floor is their sum.
-Gamesim.EditModeTests 9217
+# Offers slice 1 (OFFERS-COME-TO-YOU-PLAN), on 9217:
+# 9242 = 9217 + the slice's 25 EditMode cases: ComesToYouTests' 22 (shared with the subset) and
+# ComesToYouStillnessTests' 3, as the Lister counts them and Unity's Mono runs them (2026-10-30). Not yet measured in Unity.
+# Offers slice 3 (the walk-over holds), on 9242:
+# 9245 = 9242 + ComesToYouWalkOverTests' 3 EditMode-only cases (the travel budget, the heading hand-back, the box
+# floor), as the Lister counts them and Unity's Mono runs them (2026-10-30). Not yet measured in Unity.
+# 9245 counted: the full NoUMA run at e9f7ed2d (offers2, 2026-10-31), 9245 of 9245, no re-runs. c5cdb972 changed
+# PlayMode tests only, and its own set (offers3) re-ran the 28-case EditMode gate green.
+Gamesim.EditModeTests 9245
 # The UMA-free build. 1215 = 1236, the count after the consolidation's lanes (S2a, S2b, S4a), less the 7
 # farewell probes moved to Gamesim.DiagnosticsPlayModeTests and the 14 farewell readiness tests that now
 # compile only under GAMESIM_UMA (judged on the UMA cast); 1230 = 1215 + S2d's 7, S4b's 2, S4c's 2 and
@@ -94,7 +102,25 @@ Gamesim.EditModeTests 9217
 # Compiled offline only (main 772828ba merged in).
 # 1334 counted: the full NoUMA run at 83c3273c (2026-10-26), 1334 of 1334, no re-runs.
 # 1353 = main's 1345 + D1's 8: disjoint cases, so the floor is their sum.
-Gamesim.PlayModeTests 1353
+# Offers slice 1 (OFFERS-COME-TO-YOU-PLAN), on 1353:
+# 1366 = 1353 + the slice's 13 shared ComesToYou_ tests (EpisodePlayModeTests.ComesToYou): compiled offline, not
+# yet run. Not yet counted by a full run.
+# 1367 = 1366 + the review's ComesToYou_AStalledFrameDoesNotOpenTheDialogue: compiled offline, not yet run.
+# Offers slice 2, on 1367:
+# 1373 = 1367 + the slice's 6 shared ComesToYou_ tests (the card, plan tests 11-16): compiled offline, not yet run.
+# Not yet counted by a full run.
+# 1374 = 1373 + the review's ComesToYou_ASpotThatFitsNoVisitorBringsTheFirstAskAsACard (plan test 17): compiled
+# offline, not yet run.
+# Offers slice 3, on 1374:
+# 1382 = 1374 + the slice's 8 shared tests: HouseNpcInvitationPlayModeTests' 3 coordinator cases (NpcInvitation_),
+# 4 director-level ComesToYou_ tests and NpcInvitationBubble_PlacesTheLineOnItsViewAndElseOnTheMainCamera:
+# compiled offline, not yet run. Not yet counted by a full run.
+# Offers slice 1's three missing tests (plan G, "Also in slice 1"), on 1382:
+# 1385 = 1382 + 3 shared ComesToYou_ tests (SceneWaitingDoesNotStallAVisitInFlight,
+# FollowingSomeoneElseCancelsWithoutAMiss, APullYieldsAfterItsTime): compiled offline, not yet run.
+# 1385 counted: the full NoUMA run at e9f7ed2d (offers2, 2026-10-31), 1385 of 1385, no re-runs; c5cdb972 changed
+# only the offers tests, which offers3's 136-case gate re-ran green.
+Gamesim.PlayModeTests 1385
 # The UMA build of the same assembly, read by a plan built without -WithoutUma. 1281 = the 1241 above + the
 # 40 tests that compile only under GAMESIM_UMA, as run at r1 (2026-10-16): in EpisodePlayModeTests,
 # GroundedFarewell 11, Creator 9, HouseLife 8, Emotes 3, OpeningCaptures 2, and one each in CreatorEntry,
@@ -116,7 +142,20 @@ Gamesim.PlayModeTests 1353
 # 1374 counted: the full UMA-build run at 83c3273c (2026-10-26), 1374 of 1374, in one process with the MCP bridge
 # off, no re-runs; Gamesim.Uma.PlayModeTests 129 of 129 in the same set.
 # 1393 = main's 1385 + D1's same 8: disjoint cases, so the floor is their sum.
-Gamesim.PlayModeTests.UmaBuild 1393
+# Offers slice 1, on 1393:
+# 1406 = 1393 + the same 13 shared ComesToYou_ tests: compiled offline, not yet run. Not yet counted by a full run.
+# 1407 = 1406 + the same review test, ComesToYou_AStalledFrameDoesNotOpenTheDialogue: compiled offline, not yet run.
+# Offers slice 2, on 1407:
+# 1413 = 1407 + the same 6 shared ComesToYou_ tests: compiled offline, not yet run. Not yet counted by a full run.
+# 1414 = 1413 + the same review test, ComesToYou_ASpotThatFitsNoVisitorBringsTheFirstAskAsACard: compiled offline,
+# not yet run.
+# Offers slice 3, on 1414:
+# 1422 = 1414 + the same 8 shared tests: compiled offline, not yet run. Not yet counted by a full run.
+# Offers slice 1's three missing tests, on 1422:
+# 1425 = 1422 + the same 3 shared ComesToYou_ tests: compiled offline, not yet run.
+# 1425 counted: the full UMA-build run at c5cdb972 (offers3, 2026-11-01), 1425 of 1425, in one process with the MCP
+# bridge off, no re-runs; Gamesim.Uma.PlayModeTests 132 of 132 in the same set.
+Gamesim.PlayModeTests.UmaBuild 1425
 # The UMA bodies: runs only where the GAMESIM_UMA define is set (the working tree and the D: copy).
 # 82 = the 89 run on 2026-10-15, less the 7 farewell probes moved to Gamesim.Uma.DiagnosticsPlayModeTests;
 # 85 = 82 + the 3 farewell readiness decision tests (UmaFarewellReadinessDecisionPlayModeTests, 2026-10-16);
@@ -171,4 +210,6 @@ Gamesim.Uma.DiagnosticsPlayModeTests 10
 # 16198 = 10772 + SCH30 step 1's Frozen29 reader: Frozen28's archived internal cases and literal fixture controls
 # carried to schema 29 (5423) and the same three cache cases: what dotnet test Tools/SimulationTests ran (2026-10-25).
 # 16241 = main's 10811 + step 1's 5430: disjoint cases, so the floor is their sum.
-Gamesim.SimulationTests 16241
+# Offers slice 1 (OFFERS-COME-TO-YOU-PLAN), on 16241:
+# 16263 = 16241 + the same 22 ComesToYouTests cases: what dotnet test Tools/SimulationTests ran (2026-10-30).
+Gamesim.SimulationTests 16263

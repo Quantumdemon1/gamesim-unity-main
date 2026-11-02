@@ -152,6 +152,10 @@ namespace Gamesim.Episode
         {
             if (npc == null || !IsReady || blockedRecovery || challengeActive || IsPanelOpen
                 || !playerIsActive) return;
+            // A click on the houseguest who has just walked up with an ask, their line still over their head, hears it
+            // as E does (EpisodeDirector.ComesToYou.cs): the visit's lease would otherwise read them as busy to a talk
+            // spot, and the open would let the visit go before it could open on the ask.
+            if (AsksOn && AskClickHears && VisibleNpcInvitationSpeaker() == npc && TryHearVisibleNpcInvitation()) return;
             if (talkSpot != null && !talkSpotOpen && talkSpot.NpcId == npc.Id) EndTalkSpot();
             else if (TryWalkToTalkSpot(npc)) return;
             if (CanTalk(npc) && TryOpenNpc(npc.Id)) { CancelTravel(); player.StopHere(); return; }
@@ -254,6 +258,9 @@ namespace Gamesim.Episode
             // anybody not in a chat, nobody - so the player talked to somebody listening.
             var talker = npc.GetComponent<CharacterPresentation>();
             if (talker != null) { talker.SetSpeaking(true); talker.SetTalking(true); }
+            // An ask they brought over, or one they have not raised with the player this phase, is what the
+            // conversation opens on (EpisodeDirector.ComesToYou.cs). Nothing with asks off.
+            OpenOnAsk(npc.Id);
             Render(); return true;
         }
 
@@ -433,6 +440,13 @@ namespace Gamesim.Episode
         private bool TryWalkInPair(List<string> ids, out string first, out string second)
         {
             first = second = null;
+            // A houseguest bringing the player an ask, or whose ask is opening, is with the player, not walked in on
+            // with somebody else (EpisodeDirector.ComesToYou.cs).
+            if (AsksOn && ids != null)
+            {
+                string asker = askNow?.askerId, opening = askOpeningFor;
+                if (asker != null || opening != null) ids = ids.Where(id => id != asker && id != opening).ToList();
+            }
             if (ids == null || ids.Count < 2 || player == null) return false;
             if (projected != null && projected.npcSocial != null && npcMeetings != null)
                 foreach (var pending in projected.npcSocial.pending)

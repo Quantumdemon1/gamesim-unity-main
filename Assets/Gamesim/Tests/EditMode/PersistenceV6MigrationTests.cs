@@ -18,7 +18,7 @@ namespace Gamesim.Tests.EditMode
         {
             var state = ContentCatalog.Create(seed);
             // A fresh season is written at whatever the current schema is, not at this file's step.
-            Assert.That(state.schemaVersion, Is.EqualTo(29));
+            Assert.That(state.schemaVersion, Is.EqualTo(30));
             Assert.That(state.dialogueRulesVersion, Is.Zero);
             Assert.That(state.dialogue, Is.Not.Null);
             Assert.That(state.dialogue.episodes, Is.Not.Null.And.Empty);

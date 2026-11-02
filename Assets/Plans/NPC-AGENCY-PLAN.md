@@ -26,6 +26,13 @@ The story session's constraints (their message of 2026-09-28, accepted as design
    10%.
 2. **Blocs stay legible.** At most one NPC-only pact per three NPCs in the house at a time, and
    each NPC in one such pact at most. Enforced in the pass, not left to the numbers (§3.4).
+   **Exception, decided by the owner, 2026-10-29:** "Yes, let outsider pacts grow past two". In an
+   All-Star season at alumni rules 5 or later, while a known pair from the alumni histories stands, a
+   pact the houseguests formed themselves may take members past two. Nobody in a live known pair may
+   be in it, and nobody outside it may know of it. It takes one member a week, from the week after
+   its founding, up to two plus the live known pairs and never more than four in the house
+   (ALL-STAR-HISTORIES-PLAN §14.L). Pacts are still born as pairs. The cap still counts pacts, and
+   each NPC is still in one at most.
 3. **Cold pairs stay.** Clashes are as valuable as affinities: kitchen-blowup and cold-shoulder
    want NPC grudges of 40 or more, or mutual warmth of −10 or below.
 4. **Warmth toward the player is this plan's to model.** The Bond, Their Word (10), Build the
@@ -104,7 +111,8 @@ All under `AgencyOn`.
 4. **The pact cap** (story constraint 2). The weekly pass proposes no pact when the proposer or the
    partner is already in an active NPC-only pact, or when the house already holds
    ⌊active NPCs / 3⌋ of them. A story's own pact (`FormFromStory`) and the player's are outside
-   the cap. `MaximumEach` stays for them.
+   the cap. `MaximumEach` stays for them. The cap counts pacts, not members: a join under
+   ALL-STAR-HISTORIES-PLAN §14.L adds no pact and takes no place under it.
 
 Everything the story session builds on cold pairs is left standing: the seeded clashes sit at
 mutual −10 or below from week one for the coldest pairs, and the conversation bias keeps them there.
@@ -183,3 +191,7 @@ Consumers:
 - `StoryPacingTests.PacingReport` and `GameSenseHarnessTests.GameSenseReport` before and after,
   with `StorySeasonTests.StorySeason` enabling agency as the director does (one line, the story
   session's file, told to them).
+- Alumni seasons are measured by the balance lab, not `PacingReport`, which plays at alumni rules 0.
+  `BalanceLabAlumniReport` reports pact sizes, joins, sheds and the story budgets at alumni rules 5
+  against 4 (ALL-STAR-HISTORIES-PLAN §14.H, §14.L.H). Constraint 3 holds by construction: a pair at
+  −10 or below is never joined.

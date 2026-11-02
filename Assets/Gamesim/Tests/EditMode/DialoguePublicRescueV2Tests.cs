@@ -56,7 +56,7 @@ namespace Gamesim.Tests.EditMode
             Assert.That(Sha(bytes), Is.EqualTo(OriginalSha));
             Assert.That((string)carrier["sha256"], Is.EqualTo(OriginalSha));
             Assert.That(Convert.ToBase64String(bytes), Is.EqualTo((string)carrier["base64"]));
-            string original = new UTF8Encoding(false, true).GetString(bytes);
+            string original = AtTheLiveSchema(new UTF8Encoding(false, true).GetString(bytes));
             var actual = JsonConvert.DeserializeObject<EpisodeState>(original, Fields);
             Assert.That(Image(actual), Is.EqualTo(original), "Exact typed original round trip BEFORE any declared rule change.");
             Assert.That(actual.week, Is.EqualTo(5)); Assert.That(actual.revision, Is.EqualTo(79));
@@ -100,7 +100,7 @@ namespace Gamesim.Tests.EditMode
             Assert.That(entered.windowActions[Windows.AfterVeto], Is.EqualTo(source.windowActions[Windows.AfterVeto] + 1));
             Assert.That(episode.evidence, Is.Empty); Assert.That(cycle.path.Count, Is.EqualTo(1));
             Assert.That(entered.houseEvents.Count(e => e.cycleId == episode.id), Is.EqualTo(2));
-            Assert.That(entered.schemaVersion, Is.EqualTo(29));
+            Assert.That(entered.schemaVersion, Is.EqualTo(30));
         }
 
         [TestCase("crossed-v1")]
@@ -671,7 +671,7 @@ namespace Gamesim.Tests.EditMode
             Assert.That(bytes.Length, Is.EqualTo((int)carrier["bytes"]));
             Assert.That(Sha(bytes), Is.EqualTo((string)carrier["sha256"]));
             Assert.That(Convert.ToBase64String(bytes), Is.EqualTo((string)carrier["base64"]));
-            string original = new UTF8Encoding(false, true).GetString(bytes);
+            string original = AtTheLiveSchema(new UTF8Encoding(false, true).GetString(bytes));
             var actual = JsonConvert.DeserializeObject<EpisodeState>(original, Fields);
             Assert.That(Image(actual), Is.EqualTo(original), "Exact typed original round trip BEFORE any declared rule change.");
             Assert.That(actual.week, Is.EqualTo(4)); Assert.That(actual.revision, Is.EqualTo(62));
@@ -813,6 +813,19 @@ namespace Gamesim.Tests.EditMode
             Assert.That(reader.Read(), Is.False, "Exactly one captured JSON object."); return result;
         }
         private static string Image(object value) => JsonConvert.SerializeObject(value, Formatting.None, Fields);
+        /// <summary>
+        /// SCH30: a retained carrier holds the schema-29 public fields it was captured with, and the live schema is 30. It is
+        /// read through schema 30's own literals (UpgradeV29ToV30's: the pooled fields off, after the dialogue store, the
+        /// header 30); the retained bytes are never edited.
+        /// </summary>
+        private static string AtTheLiveSchema(string captured)
+        {
+            var lifted = Parse(captured);
+            Assert.That((int)lifted["schemaVersion"], Is.EqualTo(29), "The carrier is a schema-29 capture.");
+            lifted.Add("alumniRulesVersion", 0); lifted.Add("alumniCatalogEdition", JValue.CreateNull()); lifted.Add("tuningRulesVersion", 0);
+            lifted["schemaVersion"] = 30;
+            return lifted.ToString(Formatting.None);
+        }
         private static string Sha(byte[] bytes) { using var hash = SHA256.Create(); return BitConverter.ToString(hash.ComputeHash(bytes)).Replace("-", ""); }
         // Exact comparison of captured JSON values, never a new gameplay oracle.
         // Read DTOs have captured-value provenance, NOT separately retained original fragment bytes.

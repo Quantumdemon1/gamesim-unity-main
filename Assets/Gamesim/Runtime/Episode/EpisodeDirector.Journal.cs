@@ -451,7 +451,7 @@ namespace Gamesim.Episode
         /// <summary>
         /// The records the player holds that involve someone: the season's ceremony counts, which
         /// the whole house watched, and the promises, alliances and declarations the player was a
-        /// party to. Nothing between two other people.
+        /// party to. Nothing between two other people, except the public record of past games.
         /// </summary>
         private List<string> ProfileRecords(EpisodeState state, ContestantState actor, string first)
         {
@@ -460,6 +460,9 @@ namespace Gamesim.Episode
                 "Head of Household " + Times(actor.hohWins) + " \u00b7 Veto " + Times(actor.vetoWins)
                     + " \u00b7 Nominated " + Times(actor.timesNominated),
             };
+            // An All-Star's career and past games, which the whole house knows (ALL-STAR-HISTORIES-PLAN
+            // \u00a714.F.1): from alumni rules 3, and none of them a record of the player's this season.
+            lines.AddRange(KnownBlocs.ProfileLines(state, actor.id));
             int personal = 0;
             foreach (var promise in CommitmentReferences.Promises(state).Where(p => (p.fromId == state.playerId && p.toId == actor.id)
                          || (p.fromId == actor.id && p.toId == state.playerId)))
@@ -481,7 +484,8 @@ namespace Gamesim.Episode
                     ? "You declared loyalty to " + first : first + " declared loyalty to you"));
                 personal++;
             }
-            if (personal == 0) lines.Add("No promises, alliances or declarations between you.");
+            // "...between you this season." when a past game of theirs is on the record, from alumni rules 3.
+            if (personal == 0) lines.Add(KnownBlocs.ProfileEmptyLine(state, actor.id));
             return lines;
         }
 

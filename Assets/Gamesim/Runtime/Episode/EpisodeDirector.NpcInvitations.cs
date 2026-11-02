@@ -26,20 +26,28 @@ namespace Gamesim.Episode
         private int npcInvitationWeek;
         private EpisodePhase npcInvitationPhase;
 
-        public string CurrentNpcInvitationRecordId => npcInvitationNow?.RecordId;
-        public string CurrentNpcInvitationNpcId => npcInvitationNow?.NpcId;
+        // With asks on (EpisodeDirector.ComesToYou.cs) these report the houseguest bringing an ask.
+        public string CurrentNpcInvitationRecordId => AsksOn ? askNow?.recordId : npcInvitationNow?.RecordId;
+        public string CurrentNpcInvitationNpcId => AsksOn ? askNow?.askerId : npcInvitationNow?.NpcId;
         public bool NpcInvitationIsVisible => npcInvitationBubble != null && npcInvitationBubble.IsVisible;
         public string InvitedDealRecordId => focusedNpc != null ? invitedDealId : null;
 
         // Never beside the Story Pull (D18): whichever of the two is up keeps the floor until it is
         // answered. A Pull on screen holds an invitation back here; a visible invitation holds the
         // Pull back in TickStoryPull.
-        private bool NpcInvitationHouseAvailable => IsReady && isActiveAndEnabled && projected != null
-            && playerIsActive && !IsHouseUnderChrome && !FrontDoorUp && !TourIsUp && !(hud != null && hud.PullShowing)
+        private bool NpcInvitationHouseAvailable => VisitHouseFree(true, true);
+
+        /// <summary>
+        /// The house free for a houseguest's visit: <see cref="NpcInvitationHouseAvailable"/> with both terms, and an
+        /// ask's gate (EpisodeDirector.ComesToYou.cs) with the Story Pull's term left to its own bounded yield and the
+        /// player's furniture to its own named choice. The same tests in the same order either way.
+        /// </summary>
+        private bool VisitHouseFree(bool pullHolds, bool activityHolds) => IsReady && isActiveAndEnabled && projected != null
+            && playerIsActive && !IsHouseUnderChrome && !FrontDoorUp && !TourIsUp && !(pullHolds && hud != null && hud.PullShowing)
             && !durableCommitInProgress && !npcDiagnosticsSuspended && !npcSaveSuspended && !npcWorldFailed
             && !OpeningOwnsHouse && !IsCeremonyStaged && walkingOutId == null && !competitionArenaStaging
             && !challengeActive && headingToNpcId == null && !headingToStation && arrivingIn == null
-            && talkSpot == null && !IsPlayerHouseActivityActive && NpcInvitation.PhaseAllows(projected.phase)
+            && talkSpot == null && !(activityHolds && IsPlayerHouseActivityActive) && NpcInvitation.PhaseAllows(projected.phase)
             && npcMeetings != null && npcMeetings.IsReady && !npcMeetings.HasSceneStage
             && !npcMeetings.HasOpeningStage && !npcMeetings.HasCeremonyStage && !npcMeetings.HasCompetitionStage
             // The player looking away from their own room (D18, RS5): the invitation waits for the view to come back.
@@ -157,6 +165,7 @@ namespace Gamesim.Episode
 
         private bool TryHearVisibleNpcInvitation()
         {
+            if (AsksOn) return TryHearVisibleAsk();
             if (!NpcInvitationIsVisible || !NpcInvitationCallbackCurrent(npcInvitationView, npcInvitationLoad, npcInvitationNow)) return false;
             HearNpcInvitation(npcInvitationView, npcInvitationLoad, npcInvitationNow);
             return true;
@@ -164,6 +173,7 @@ namespace Gamesim.Episode
 
         private bool TryDeferVisibleNpcInvitation()
         {
+            if (AsksOn) return TryDeferVisibleAsk();
             if (!NpcInvitationIsVisible || !NpcInvitationCallbackCurrent(npcInvitationView, npcInvitationLoad, npcInvitationNow)) return false;
             DeferNpcInvitation(npcInvitationView, npcInvitationLoad, npcInvitationNow);
             return true;
@@ -171,6 +181,7 @@ namespace Gamesim.Episode
 
         private HouseNpc VisibleNpcInvitationSpeaker()
         {
+            if (AsksOn) return VisibleAskSpeaker();
             if (!NpcInvitationIsVisible || npcInvitationNow == null || npcInvitationLoad != loadGeneration
                 || !NpcInvitationHouseAvailable || !NpcInvitationCurrentInInstalledState()) return null;
             return housemates.FirstOrDefault(npc => npc != null && npc.Id == npcInvitationNow.NpcId && npc.gameObject.activeInHierarchy);
@@ -183,6 +194,8 @@ namespace Gamesim.Episode
             npcInvitationBubble?.Hide();
             npcInvitationCoordinator?.ReleaseNpcInvitation(npcInvitationVisit);
             npcInvitationNow = null; npcInvitationVisit = null; npcInvitationCoordinator = null;
+            // Whatever lets the invitation go lets an ask's visit go too: the panels, a commit, a stage.
+            CancelAskVisit();
         }
 
         private void ResetNpcInvitationsForLoad()
@@ -190,6 +203,7 @@ namespace Gamesim.Episode
             CancelNpcInvitation(); npcInvitationDeferred.Clear(); npcInvitationSource = null;
             npcInvitationCandidates = Array.Empty<NpcInvitation>(); npcInvitationSession = null;
             npcInvitationNextScan = 0f;
+            ResetAsksForLoad();
         }
     }
 }

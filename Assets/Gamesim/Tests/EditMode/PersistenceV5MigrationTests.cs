@@ -18,7 +18,7 @@ namespace Gamesim.Tests.EditMode
         public void FreshGamesStartInWeekOneAndThePrimitiveIsDetachedInEverySnapshot()
         {
             var input = ContentCatalog.Create(501);
-            Assert.That(input.schemaVersion, Is.EqualTo(29));
+            Assert.That(input.schemaVersion, Is.EqualTo(30));
             Assert.That(input.dialogueRulesVersion, Is.Zero);
             Assert.That(input.dialogue, Is.Not.Null);
             Assert.That(input.dialogue.episodes, Is.Not.Null.And.Empty);
@@ -42,7 +42,7 @@ namespace Gamesim.Tests.EditMode
             var v4 = version < 4 ? EpisodeSaveMigrations.PrepareV4Payload(original, out _) : original;
             var migrated = EpisodeSaveMigrations.PrepareCurrentPayload(original, out bool changed);
             Assert.That(changed, Is.True);
-            Assert.That((int)migrated["schemaVersion"], Is.EqualTo(29));
+            Assert.That((int)migrated["schemaVersion"], Is.EqualTo(30));
             Assert.That((int)migrated["blocRulesStartWeek"], Is.EqualTo(8));
             Assert.That((int)migrated["economyRulesVersion"], Is.Zero);
             Assert.That((int)migrated["moveInExtrasSpent"], Is.Zero);
@@ -309,7 +309,8 @@ namespace Gamesim.Tests.EditMode
                     "unifiedCommitmentRulesVersion", "unifiedCommitments",
                     "unifiedHearingRulesVersion", "unifiedHearingEvidence", "unifiedHearingReceipts", "unifiedVoteReveals",
                     "allianceLeakRulesStartWeek", "pactPlanRulesStartWeek", "allWeekRulesStartWeek",
-                    "dialogueRulesVersion", "dialogue" }.Contains(field);
+                    "dialogueRulesVersion", "dialogue",
+                    "alumniRulesVersion", "alumniCatalogEdition", "tuningRulesVersion" }.Contains(field);
                 case "state.contestants[]": return new[] { "occupation", "archetype", "age", "hometown", "bio", "sourceTemplateId", "appearance" }.Contains(field);
                 case "state.juryExchanges[]": return new[] { "category", "receiptKind", "receiptId" }.Contains(field);
                 case "state.promises[]": return new[] { "brokenById", "settledWeek" }.Contains(field);

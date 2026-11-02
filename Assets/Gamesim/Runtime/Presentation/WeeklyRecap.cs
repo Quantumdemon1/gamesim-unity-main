@@ -252,16 +252,21 @@ namespace Gamesim.Presentation
         /// (<see cref="Allegiance.BetrayedType"/>, ACTIONS-DEALS-ALLIANCES-PLAN C2): it moves no view -
         /// the player's own is theirs to change - so summing its −50 would say a feeling had moved
         /// that never did. The betrayal is told by its own line.</para>
+        ///
+        /// <para>Nor is a past game (ALL-STAR-HISTORIES-PLAN §7.3): under the alumni rules a houseguest's receipt of
+        /// their past game with the player is written in week one, but nothing moved that week.</para>
         /// </summary>
         private static List<Movement> Movements(EpisodeState state, int week)
         {
             var moves = new List<Movement>();
+            bool histories = AlumniRules.On(state);
             foreach (var edge in state.relationships)
             {
                 if (edge.fromId != state.playerId && edge.toId != state.playerId) continue;
                 if (edge.fromId == state.playerId && edge.toId == state.playerId) continue;
                 string other = edge.fromId == state.playerId ? edge.toId : edge.fromId;
                 double total = edge.events.Where(e => e.week == week && e.type != Allegiance.BetrayedType
+                                                      && !(histories && AlumniHistories.IsReceipt(e))
                                                       && !KnownBallots.TellsAnUnknownBallot(state, other, e.description, e.week))
                     .Sum(e => e.impactScore);
                 if (Math.Abs(total) < NotableMove) continue;

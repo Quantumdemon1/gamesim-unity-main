@@ -60,6 +60,12 @@ namespace Gamesim.Simulation
         /// <para>The source's formula exactly: relationship at 0.4, shared threats at 15 apiece,
         /// strategic value at 0.15, trust either side of neutral at 0.3, less ten for every alliance
         /// already carried — diminishing returns on over-allying.</para>
+        ///
+        /// <para>In an All-Star season from alumni rules 4 (ALL-STAR-HISTORIES-PLAN §14.E.1) two houseguests outside a
+        /// known pair of past games want each other more, for each pair they face
+        /// (<see cref="KnownBlocs.CounterDesire"/>): the enemy-of-my-enemy rule again, for a bloc the house knows of from
+        /// the record rather than from a quarrel. Added only where it is not nought, so every other season reads the
+        /// source's formula bit for bit. The floor, the threshold and the pact cap below are untouched.</para>
         /// </summary>
         public static double Desire(EpisodeState state, string npcId, string targetId)
         {
@@ -75,23 +81,33 @@ namespace Gamesim.Simulation
             double trust = ThreatAssessment.TrustScore(state, targetId, npcId);
             int carried = ActiveAlliancesFor(state, npcId).Count;
 
-            return relationship * 0.4
+            double desire = relationship * 0.4
                    + sharedThreats * 15
                    + strategicValue * 0.15
                    + (trust - ThreatAssessment.NeutralTrust) * 0.3
                    - carried * 10
                    // Under agency, who they take to (NPC-AGENCY-PLAN.md §3.3): temperament, on top of the web's terms.
                    + (EpisodeEngine.AgencyOn(state) ? EpisodeEngine.DesirePerPoint * TraitAffinity.Compatibility(state.Find(npcId), target) : 0);
+            // The known pairs, from alumni rules 4 (§14.E.1): nought below it, and for a pair's members and their partners.
+            double counterBloc = KnownBlocs.CounterDesire(state, npcId, targetId);
+            return counterBloc != 0 ? desire + counterBloc : desire;
         }
 
-        /// <summary>The pact cap under agency (NPC-AGENCY-PLAN.md §3.4): one pact among houseguests per three houseguests in the house.</summary>
+        /// <summary>
+        /// The pact cap under agency (NPC-AGENCY-PLAN.md §3.4): one pact among houseguests per three houseguests in the house.
+        /// It counts pacts, not members: a join from alumni rules 5 (<see cref="TryJoin"/>, ALL-STAR-HISTORIES-PLAN §14.L)
+        /// adds no pact and takes no place under it.
+        /// </summary>
         public static int PactCap(EpisodeState state) => state.Active.Count(c => !c.isPlayer) / 3;
 
         /// <summary>The active pacts with no player in them and two members still in the house.</summary>
         public static List<AllianceState> NpcOnlyPacts(EpisodeState state) =>
             state.alliances.Where(a => a.active && !a.members.Contains(state.playerId) && Intact(state, a)).ToList();
 
-        /// <summary>Whether two houseguests may start a pact under the cap: neither already in one of their own, and the house below its share.</summary>
+        /// <summary>
+        /// Whether two houseguests may start a pact under the cap: neither already in one of their own, and the house below its
+        /// share. A new pact only: joining one that stands is the separate <see cref="TryJoin"/> (from alumni rules 5).
+        /// </summary>
         public static bool PactRoom(EpisodeState state, string npcId, string targetId)
         {
             var pacts = NpcOnlyPacts(state);
@@ -154,7 +170,8 @@ namespace Gamesim.Simulation
         /// A pact a story made: two to four houseguests, no roll, the same record the weekly pass
         /// writes for every pair in it. Public because the private pair-only <see cref="Form"/>
         /// cannot make a three-person pact, and a story's "let's make it official" sometimes needs
-        /// one. Returns null when it cannot be formed.
+        /// one. Returns null when it cannot be formed. A story's pact never grows by <see cref="TryJoin"/>:
+        /// only the houseguests' own (<see cref="HouseguestsOwn"/>) do, born as pairs, from alumni rules 5.
         /// </summary>
         public static AllianceState FormFromStory(EpisodeState state, List<string> members)
         {
@@ -201,6 +218,9 @@ namespace Gamesim.Simulation
         /// of the repertoire interleaved behind it. This stays because it is the alliance rule on its
         /// own, which is the only way to state what that rule is without the rest of the week in the
         /// way.</para>
+        ///
+        /// <para>From alumni rules 5 (ALL-STAR-HISTORIES-PLAN §14.L) a houseguest with no pact to start may
+        /// join one that stands (<see cref="TryJoin"/>), as the beat and the social pass let them.</para>
         /// </summary>
         public static void Settle(EpisodeState state)
         {
@@ -210,7 +230,7 @@ namespace Gamesim.Simulation
             // Cast order throughout, so the same house always pairs up the same way.
             var joined = new HashSet<string>(StringComparer.Ordinal);
             foreach (var npc in state.contestants.Where(c => c.status == ContestantStatus.Active && !c.isPlayer))
-                TryPropose(state, npc.id, joined);
+                if (!TryPropose(state, npc.id, joined)) TryJoin(state, npc.id, joined, out _);
         }
 
         /// <summary>
@@ -249,6 +269,78 @@ namespace Gamesim.Simulation
             return true;
         }
 
+        /// <summary>The prefix of the houseguests' own pacts' ids: the weekly pass's (<see cref="Form"/>), never a story's.</summary>
+        public const string HouseguestPactPrefix = "alliance-npc-";
+
+        /// <summary>Whether a pact is one the houseguests formed themselves (<see cref="Form"/>): its id has <see cref="HouseguestPactPrefix"/>.</summary>
+        public static bool HouseguestsOwn(AllianceState pact) =>
+            pact?.id != null && pact.id.StartsWith(HouseguestPactPrefix, StringComparison.Ordinal);
+
+        /// <summary>
+        /// The least a joiner and every member in the house must think of each other, both ways, for a join (§14.L.D.1):
+        /// one rumour (<see cref="NpcSocialActions.RumorImpact"/>) above <see cref="SourLine"/>, so a single rumour never
+        /// takes a fresh edge of the pact past souring, and a cold pair is never joined. −5.
+        /// </summary>
+        public const double JoinWelcomeLine = SourLine - NpcSocialActions.RumorImpact;
+
+        /// <summary>
+        /// An outsider joins an outsider pact of houseguests while a known pair of past games stands (ALL-STAR-HISTORIES-PLAN
+        /// §14.L, the owner's answer of 2026-10-29: "Yes, let outsider pacts grow past two"). From alumni rules 5 under
+        /// agency only, with a live pair (<see cref="KnownBlocs.CounterPactBound"/> above two), and only into a pact the
+        /// houseguests formed themselves (<see cref="HouseguestsOwn"/>) and nobody in the house holds with the player:
+        /// <list type="bullet">
+        /// <item>the pact is below the bound in the house, and kept to itself - its fact private, known to its members only,
+        /// from an earlier week, and every member still in the house (so no pact grows in its founding week, nor once
+        /// anybody outside it has learned of it: every reader joins the roster as it stands to its one fact; nor once it has
+        /// lost a member, whom the jury's readers would still match with a later recruit);</item>
+        /// <item>nobody in it stands in a live pair (<see cref="KnownBlocs.InLivePair"/>), is in
+        /// <paramref name="joined"/> (one change a pact a week), or already shares a pact with the recruit; every one of
+        /// them and the recruit rate each other at <see cref="JoinWelcomeLine"/> or more with no grudge either way; and no
+        /// two of them and the recruit hold an active target agreement against a third of them;</item>
+        /// <item>the recruit is an active houseguest, not the player, not in <paramref name="joined"/> or a live pair, in no
+        /// pact of houseguests already (one each) and under <see cref="MaximumEach"/>; and they want in with one member, the
+        /// sponsor - <see cref="Warm"/> toward them, a proposer's own bar - who rates them at
+        /// <see cref="MinimumRelationship"/> or more.</item>
+        /// </list>
+        /// Of the sponsors, the recruit's highest desire, then sponsor and pact by id. The recruit goes on the end of the pact
+        /// (its founder stays first and calls its bloc), learns its fact, and is on the ledger with every member in the house
+        /// as a birth is ("alliance-formed", <see cref="EpisodeEngine.AllianceFormedImpact"/>, both ways); no score moves, no
+        /// pact, line or name is new, and the cap, which counts pacts, takes no place. No roll: pure, like the rest of this
+        /// class, and false before it reads anything below alumni rules 5.
+        /// </summary>
+        public static bool TryJoin(EpisodeState state, string npcId, ISet<string> joined, out string sponsorId)
+        {
+            sponsorId = null;
+            // First, so a season below 5 reads nothing and plays byte for byte as before.
+            if (!AlumniRules.At(state, AlumniRules.GrowingPacts) || !EpisodeEngine.AgencyOn(state)) return false;
+            int bound = KnownBlocs.CounterPactBound(state);
+            if (bound <= 2) return false;
+            var recruit = state.Find(npcId);
+            if (recruit == null || recruit.isPlayer || recruit.status != ContestantStatus.Active) return false;
+            if ((joined != null && joined.Contains(npcId)) || KnownBlocs.InLivePair(state, npcId)) return false;
+            var pacts = NpcOnlyPacts(state);
+            if (pacts.Any(a => a.members.Contains(npcId))) return false;
+            if (ActiveAlliancesFor(state, npcId).Count >= MaximumEach) return false;
+
+            var pick = pacts
+                .Where(p => HouseguestsOwn(p) && EpisodeEngine.InTheHouse(state, p) < bound && KeptToItself(state, p))
+                .Select(p => (pact: p, here: p.members.Where(id => state.Find(id)?.status == ContestantStatus.Active).ToList()))
+                .Where(x => x.here.All(m => !KnownBlocs.InLivePair(state, m) && (joined == null || !joined.Contains(m))
+                                            && !state.Allied(npcId, m) && Welcomes(state, m, npcId) && Welcomes(state, npcId, m)))
+                .Where(x => !TargetsWithin(state, x.here, npcId))
+                .SelectMany(x => x.here.Where(m => Warm(state, npcId, m) && state.Score(m, npcId) >= MinimumRelationship)
+                                        .Select(m => (pact: x.pact, sponsor: m, desire: Desire(state, npcId, m))))
+                .OrderByDescending(c => c.desire)
+                .ThenBy(c => c.sponsor, StringComparer.Ordinal)
+                .ThenBy(c => c.pact.id, StringComparer.Ordinal)
+                .FirstOrDefault();
+            if (pick.pact == null) return false;
+            Join(state, pick.pact, npcId);
+            sponsorId = pick.sponsor;
+            if (joined != null) { joined.Add(npcId); joined.Add(sponsorId); }
+            return true;
+        }
+
         /// <summary>Every active alliance this houseguest belongs to.</summary>
         public static List<AllianceState> ActiveAlliancesFor(EpisodeState state, string id) =>
             state.alliances.Where(a => a.active && a.members.Contains(id)).ToList();
@@ -261,7 +353,7 @@ namespace Gamesim.Simulation
                           + " and " + state.Find(second).name.Split(' ')[0] + " Pact";
             var alliance = new AllianceState
             {
-                id = "alliance-npc-" + state.nextSequence,
+                id = HouseguestPactPrefix + state.nextSequence,
                 name = name,
                 members = new List<string> { first, second },
                 active = true,
@@ -300,12 +392,18 @@ namespace Gamesim.Simulation
         /// out, and the rest of it hear "Riley Chen is out of The Trio.", the story's own words for a
         /// defector - an act of theirs, never a number. A pact of two ends, as C3 made it; and the player's
         /// own souring on anybody in it still ends the whole pact, as it always did.</para>
+        ///
+        /// <para>From alumni rules 5 (ALL-STAR-HISTORIES-PLAN §14.L) a houseguests' pact grown past two
+        /// and still kept to its members goes on without a joiner who has soured with anybody in it
+        /// (<see cref="ShedSourJoiners"/>), with no line and no ledger entry; its founders' souring, and
+        /// any souring once somebody outside it knows of it, still ends it whole.</para>
         /// </summary>
         public static void Dissolve(EpisodeState state)
         {
             bool rules = EpisodeEngine.CommitmentRulesOn(state);
             foreach (var alliance in state.alliances.Where(a => a.active).ToList())
             {
+                if (AlumniRules.At(state, AlumniRules.GrowingPacts)) ShedSourJoiners(state, alliance);
                 var members = rules ? alliance.members.Where(id => state.Find(id)?.status == ContestantStatus.Active).ToList() : alliance.members;
                 if (rules && members.Contains(state.playerId) && Intact(state, alliance)
                     && !members.Any(other => other != state.playerId && state.Score(state.playerId, other) < SourLine))
@@ -352,6 +450,82 @@ namespace Gamesim.Simulation
         /// <summary>Whether at least two of an alliance's members are still in the house.</summary>
         private static bool Intact(EpisodeState state, AllianceState alliance) =>
             alliance.members.Count(id => state.Find(id)?.status == ContestantStatus.Active) >= 2;
+
+        /// <summary>
+        /// §14.L: the pact's fact is private and known only to its members, so nobody outside it has seen its roster. False
+        /// where the story's bonds do not run, and for a pact with no fact.
+        /// </summary>
+        private static bool PrivateToMembers(EpisodeState state, AllianceState pact)
+        {
+            if (!EpisodeEngine.StoryAt(state, StoryRules.Bonds)) return false;
+            var fact = Knowledge.Of(state, FactKinds.Alliance, pact.id);
+            return fact != null && fact.visibility == FactVisibility.Private && fact.knowers.All(pact.members.Contains);
+        }
+
+        /// <summary>
+        /// §14.L.B rule 7: private to its members, from an earlier week than this one (so never in its founding week), and with
+        /// every member still in the house. Somebody who has left the house has left the pact (X5) but stays on its roster and
+        /// a knower of its fact, and every jury reader matches juror and finalist by that roster: a recruit taken in after they
+        /// left would read as their ally at the finale. So a pact that has lost a member, to eviction or to shedding, never
+        /// grows again.
+        /// </summary>
+        private static bool KeptToItself(EpisodeState state, AllianceState pact) =>
+            PrivateToMembers(state, pact) && Knowledge.Of(state, FactKinds.Alliance, pact.id).week < state.week
+            && pact.members.All(id => state.Find(id)?.status == ContestantStatus.Active);
+
+        /// <summary>
+        /// §14.L.B rule 8: an active target agreement between two of the pact-to-be - its members in the house and the
+        /// recruit - against a third of it. One struck before the join would outlive it (an agreement runs to the end of its
+        /// week, and the deals are struck as the week turns, before the pact window), and pull a member's nomination toward a
+        /// pact-mate (<see cref="StrategyRules.NominationReluctance"/> reads the same raw list). Pure: no draw, no write.
+        /// </summary>
+        private static bool TargetsWithin(EpisodeState state, List<string> here, string recruitId)
+        {
+            var group = new HashSet<string>(here, StringComparer.Ordinal) { recruitId };
+            return CommitmentReferences.RawDeals(state).Any(d => d != null && d.status == DealStatus.Active && d.type == DealKind.TargetAgreement
+                && d.proposerId != null && d.recipientId != null && d.targetId != null
+                && group.Contains(d.proposerId) && group.Contains(d.recipientId) && group.Contains(d.targetId));
+        }
+
+        /// <summary>§14.L.D.1: one side's welcome for a join - no grudge either way, and a view at <see cref="JoinWelcomeLine"/> or more.</summary>
+        private static bool Welcomes(EpisodeState state, string fromId, string toId) =>
+            !GrudgeBetween(state, fromId, toId) && state.Score(fromId, toId) >= JoinWelcomeLine;
+
+        /// <summary>
+        /// §14.L.D.4: the recruit on the end of the pact, so its founder stays first; the recruit a knower of its fact, which
+        /// stays private with its founders as actor and subject; and "alliance-formed" with every member in the house, both
+        /// ways, the record a birth writes. No score, line, memory, name or row.
+        /// </summary>
+        private static void Join(EpisodeState state, AllianceState pact, string recruitId)
+        {
+            var here = pact.members.Where(id => state.Find(id)?.status == ContestantStatus.Active).ToList();
+            pact.members.Add(recruitId);
+            // KeptToItself found the fact.
+            Knowledge.AddKnower(state, Knowledge.Of(state, FactKinds.Alliance, pact.id), recruitId);
+            foreach (var member in here)
+                RelationshipLedger.Record(state, member, recruitId, "alliance-formed", EpisodeEngine.AllianceFormedImpact, pact.name + " was joined");
+        }
+
+        /// <summary>
+        /// §14.L.F: a houseguests' pact past two, still private to its members, goes on without a joiner who has soured with
+        /// anybody in it - the latest such joiner first, as C5's defector rule takes out the one who turned. The first two in
+        /// its order are its founders; their souring still ends it whole. A shed member stays a knower, so the pact never
+        /// grows or sheds again. No ledger entry, no line. Pure.
+        /// </summary>
+        private static void ShedSourJoiners(EpisodeState state, AllianceState pact)
+        {
+            if (pact.members.Count <= 2 || !HouseguestsOwn(pact) || pact.members.Contains(state.playerId) || !PrivateToMembers(state, pact)) return;
+            while (true)
+            {
+                var here = pact.members.Where(id => state.Find(id)?.status == ContestantStatus.Active).ToList();
+                if (here.Count <= 2) return;
+                string sour = pact.members.Skip(2).Where(here.Contains)
+                    .LastOrDefault(j => here.Any(o => o != j && (state.Score(j, o) < SourLine || state.Score(o, j) < SourLine)));
+                if (sour == null) return;
+                // More than two in the house: it goes on without them (EpisodeEngine.TakeOutOfPact).
+                EpisodeEngine.TakeOutOfPact(state, pact, sour);
+            }
+        }
 
     }
 }

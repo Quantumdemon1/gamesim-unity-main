@@ -483,6 +483,13 @@ namespace Gamesim.Episode
                 ? "Used in every competition you enter."
                 : "Used only when you simulate a weekly competition.";
 
+        /// <summary>
+        /// The record's row for a player on an All-Star's own card (ALL-STAR-HISTORIES-PLAN §14.F.3),
+        /// and the row's name after <see cref="EpisodeHud.DiaryRecordRowPrefix"/>. Not "Career record",
+        /// which begins a status message of the career page's.
+        /// </summary>
+        public const string BeforeThisSeasonCaption = "Before this season";
+
         private void RenderDiaryRecordTab(EpisodeState state, bool choice)
         {
             bool ballotCast = state.phase == EpisodePhase.Eviction && state.votes.Any(vote => vote.voterId == state.playerId);
@@ -499,7 +506,7 @@ namespace Gamesim.Episode
             RenderBlockSpeechReadback(state);
             int reflections = state.playerPersona.history.Count;
             int jurors = state.jurySentiment.jurors.Count;
-            hud.RecordSummary(new List<(string, string, string, string)>
+            var rows = new List<(string, string, string, string)>
             {
                 ("Study preparation", PackArt.KitIconBook, state.playerStudyBonus + " / 5",
                     StudyUseShort(state)),
@@ -511,7 +518,13 @@ namespace Gamesim.Episode
                     jurors == 0 ? "None yet" : state.jurySentiment.overallSentiment.ToString("+0;-0;0"),
                     jurors == 0 ? "No one is on the jury yet, so nothing is recorded."
                         : "Across " + jurors + (jurors == 1 ? " juror" : " jurors") + ". Not a vote prediction."),
-            });
+            };
+            // A player on an All-Star's own card walked in with that alumnus's public record, from alumni
+            // rules 3 (ALL-STAR-HISTORIES-PLAN §14.F.3): a row of its own, after the room's three. A
+            // newcomer has none.
+            var before = KnownBlocs.PlayerRecord(state);
+            if (before != null) rows.Add((BeforeThisSeasonCaption, PackArt.KitIconPerson, before.Value, before.Note));
+            hud.RecordSummary(rows);
             hud.Disclosure(EpisodeHud.DiaryRulesCaption, diaryRulesOpen, () => { diaryRulesOpen = !diaryRulesOpen; Render(); });
             if (!diaryRulesOpen) return;
             hud.Aside("Study preparation: saved between weeks; " + StudyUse(state) + ". It stays between 0 and 5 and changes only when you confirm a study approach.");

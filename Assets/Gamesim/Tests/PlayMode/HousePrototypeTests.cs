@@ -134,6 +134,8 @@ namespace Gamesim.Tests.PlayMode
             player = roots.SelectMany(root => root.GetComponentsInChildren<HousePlayerController>(true)).Single();
             rig = roots.SelectMany(root => root.GetComponentsInChildren<HouseCameraRig>(true)).Single();
             var episode = roots.SelectMany(root => root.GetComponentsInChildren<EpisodeDirector>(true)).Single();
+            // The audited behaviour, in the editor as in a batch run: no houseguest brings an ask over.
+            episode.AsksEnabled = false;
             deadline = Time.realtimeSinceStartup + 10f;
             while (!episode.IsReady && Time.realtimeSinceStartup < deadline) yield return null;
             yield return null;

@@ -13,9 +13,10 @@ namespace Gamesim.Episode
     /// between other houseguests the player has evidence of, with that evidence and how sure it is.
     ///
     /// <para>Everything on it is <see cref="AllianceRead"/>'s, which reads only what the player was
-    /// part of, saw or was told. A pact the player has no evidence of is not on the page in any form,
-    /// and how strong a pact is shows only through the player's own reading and the calls on the
-    /// record. Reading the page commits nothing.</para>
+    /// part of, saw or was told, and the public record of past games, which the whole house knows
+    /// (<see cref="KnownBlocs.PastGames"/>, ALL-STAR-HISTORIES-PLAN §14.F.2). A pact the player has no
+    /// evidence of is not on the page in any form, and how strong a pact is shows only through the
+    /// player's own reading and the calls on the record. Reading the page commits nothing.</para>
     /// </summary>
     public sealed partial class EpisodeDirector
     {
@@ -27,10 +28,20 @@ namespace Gamesim.Episode
         /// <summary>The line over the pacts the player knows of: what they are, and the web's mark for them.</summary>
         public const string SuspectedNoteName = "Suspected alliances note";
 
+        /// <summary>
+        /// The heading over the public record of past games (§14.F.2), after the pacts the player knows
+        /// of, its name, and the note under it and its name. The section is there only when a seated
+        /// shared alliance is, from alumni rules 3.
+        /// </summary>
+        public const string PastGamesHeading = "PAST GAMES", PastGamesHeadingName = "Past games heading";
+        public const string PastGamesNoteName = "Past games note";
+        public const string PastGamesNoteCopy = "The public record from earlier seasons: who played together before this one. It does not say who is working together now.";
+
         private void RenderNotebookAlliances(EpisodeState state)
         {
             var page = AllianceRead.Read(state);
-            bool empty = page.yours.Count == 0 && page.suspected.Count == 0;
+            var pastGames = KnownBlocs.PastGames(state);
+            bool empty = page.yours.Count == 0 && page.suspected.Count == 0 && pastGames.Count == 0;
 
             hud.PageSectionHeading("Your alliances heading", YourAlliancesHeading, page.yours.Count);
             // The mark exists in every state: it is what the door and the rail scroll to.
@@ -47,6 +58,14 @@ namespace Gamesim.Episode
             else
                 hud.LockNote(SuspectedNoteName, "Only the pacts word has reached you about, and how you heard. On the relationship web a dashed purple line joins those of their members still in the house.");
             foreach (var card in page.suspected) SuspectedPactCard(state, card);
+
+            // The public record of past games, which the whole house knows: omitted when it holds nothing.
+            if (pastGames.Count > 0)
+            {
+                hud.PageSectionHeading(PastGamesHeadingName, PastGamesHeading, pastGames.Count);
+                hud.LockNote(PastGamesNoteName, PastGamesNoteCopy);
+                foreach (var game in pastGames) PastGameCard(state, game);
+            }
 
             hud.NotebookFooter("How strong a pact is shows only in your own reading of each member and in who followed your calls. What anyone in it feels is theirs.",
                 "House activities", OpenHouseActivities);
@@ -124,6 +143,28 @@ namespace Gamesim.Episode
                 open ? "KNOWN ALLIANCE · OUT IN THE OPEN" : "SUSPECTED ALLIANCE · WORD REACHED YOU",
                 open ? UiTheme.Accent : UiTheme.Strategic,
                 AllianceRead.Join(members.Select(actor => actor.name).ToList()), faces, lines);
+        }
+
+        /// <summary>
+        /// One shared alliance of past games (§14.F.2): the season it was played in and that it is the
+        /// public record, the two houseguests, their faces with where each is now, the edition's act
+        /// verbatim and the pair's status this season. No reading of anybody, no number and no pact of
+        /// this season's: what the house knows of an earlier one.
+        /// </summary>
+        private void PastGameCard(EpisodeState state, KnownBlocs.PastGame game)
+        {
+            var members = new[] { game.FirstId, game.SecondId }.Select(id => state.Find(id)).Where(actor => actor != null).ToList();
+            var faces = members.Select(actor => new EpisodeHud.PactFace
+            {
+                Actor = actor,
+                Away = actor.status != ContestantStatus.Active && actor.status != ContestantStatus.Winner && actor.status != ContestantStatus.RunnerUp,
+                Note = actor.id == state.playerId ? "You" : StatusWord(actor.status),
+                NoteTint = UiTheme.Muted,
+            }).ToList();
+            string status = string.IsNullOrEmpty(game.Status) ? null : char.ToUpperInvariant(game.Status[0]) + game.Status.Substring(1);
+            hud.PactCard(EpisodeHud.PastGameCardPrefix + game.FactId, "BIG BROTHER " + game.Season + " · PUBLIC RECORD", UiTheme.Brass,
+                AllianceRead.Join(members.Select(actor => actor.name).ToList()), faces, new List<string> { game.Act, status },
+                EpisodeHud.PastGameFacePrefix);
         }
 
         /// <summary>"Week 3: You called it: evict Casey Wilson. Riley followed; Jo didn't."</summary>

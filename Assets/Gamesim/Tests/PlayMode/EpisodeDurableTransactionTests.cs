@@ -49,6 +49,8 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(Application.CanStreamedLevelBeLoaded(EpisodeScene), Is.True);
             yield return SceneManager.LoadSceneAsync(EpisodeScene, LoadSceneMode.Single);
             director = SceneObjects<EpisodeDirector>().Single();
+            // The audited behaviour, in the editor as in a batch run: no houseguest brings an ask over.
+            director.AsksEnabled = false;
             float deadline = Time.realtimeSinceStartup + 10f;
             while (!director.IsReady && Time.realtimeSinceStartup < deadline) yield return null;
             Assert.That(director.IsReady, Is.True, "The real episode scene did not initialize.");

@@ -88,7 +88,7 @@ namespace Gamesim.Tests.EditMode
             var oldV3 = version < 3 ? EpisodeSaveMigrations.PrepareV3Payload(source, out _) : source;
             var migrated = EpisodeSaveMigrations.PrepareCurrentPayload(source, out bool changed);
             Assert.That(changed, Is.True);
-            Assert.That((int)migrated["schemaVersion"], Is.EqualTo(29));
+            Assert.That((int)migrated["schemaVersion"], Is.EqualTo(30));
             Assert.That((int)migrated["playerStudyBonus"], Is.Zero);
             Assert.That((int)migrated["economyRulesVersion"], Is.Zero);
             Assert.That((int)migrated["moveInExtrasSpent"], Is.Zero);
@@ -117,8 +117,8 @@ namespace Gamesim.Tests.EditMode
             File.WriteAllText(files.Store.SavePath, source);
             byte[] before = File.ReadAllBytes(files.Store.SavePath);
             Assert.That(files.Store.TryLoad(out var loaded, out string message), Is.True, message);
-            Assert.That(message, Does.Contain("Schema 3").And.Contain("schema 29 in memory"));
-            Assert.That(loaded.schemaVersion, Is.EqualTo(29));
+            Assert.That(message, Does.Contain("Schema 3").And.Contain("schema 30 in memory"));
+            Assert.That(loaded.schemaVersion, Is.EqualTo(30));
             Assert.That(loaded.dialogueRulesVersion, Is.Zero);
             Assert.That(loaded.dialogue, Is.Not.Null);
             Assert.That(loaded.dialogue.episodes, Is.Not.Null.And.Empty);
@@ -130,7 +130,7 @@ namespace Gamesim.Tests.EditMode
             Assert.That(Directory.GetFiles(files.DirectoryPath).Length, Is.EqualTo(1));
             files.Store.Save(loaded);
             Assert.That(File.ReadAllBytes(files.Store.BackupPath), Is.EqualTo(before));
-            Assert.That((int)JObject.Parse(File.ReadAllText(files.Store.SavePath))["state"]["schemaVersion"], Is.EqualTo(29));
+            Assert.That((int)JObject.Parse(File.ReadAllText(files.Store.SavePath))["state"]["schemaVersion"], Is.EqualTo(30));
             Assert.That(files.Store.TryRecoverBackup(out loaded, out message), Is.True, message);
             Assert.That(loaded.playerStudyBonus, Is.Zero);
             Assert.That(File.ReadAllBytes(files.Store.SavePath), Is.EqualTo(before));
@@ -220,7 +220,8 @@ namespace Gamesim.Tests.EditMode
                     "unifiedCommitmentRulesVersion", "unifiedCommitments",
                     "unifiedHearingRulesVersion", "unifiedHearingEvidence", "unifiedHearingReceipts", "unifiedVoteReveals",
                     "allianceLeakRulesStartWeek", "pactPlanRulesStartWeek", "allWeekRulesStartWeek",
-                    "dialogueRulesVersion", "dialogue" }.Contains(field);
+                    "dialogueRulesVersion", "dialogue",
+                    "alumniRulesVersion", "alumniCatalogEdition", "tuningRulesVersion" }.Contains(field);
                 case "state.contestants[]": return new[] { "occupation", "archetype", "age", "hometown", "bio", "sourceTemplateId", "appearance" }.Contains(field);
                 case "state.juryExchanges[]": return new[] { "category", "receiptKind", "receiptId" }.Contains(field);
                 case "state.promises[]": return new[] { "brokenById", "settledWeek" }.Contains(field);

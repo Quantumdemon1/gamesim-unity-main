@@ -99,6 +99,8 @@ namespace Gamesim.Episode
             lookReport.resolution = Screen.width + "x" + Screen.height;
 
             seasonDirector = FindAnyObjectByType<EpisodeDirector>();
+            // The look sheet photographs the audited house: no ask dialogue or card on any shot (OFFERS-COME-TO-YOU-PLAN).
+            if (seasonDirector != null) seasonDirector.AsksEnabled = false;
             seasonPlayer = seasonDirector.gameObject.scene.GetRootGameObjects()
                 .SelectMany(root => root.GetComponentsInChildren<HousePlayerController>(true)).First();
             seasonReport = seasonReport ?? new SeasonReport { artifactId = Guid.NewGuid().ToString("N") };

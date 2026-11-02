@@ -129,7 +129,7 @@ How deals pull on decisions:
   - Blocs vote together (WebVotingBlocs.cs:67-158).
   - 'Call the vote' (EpisodeEngine.Levers.cs:107-136).
   - The jury reads a standing alliance as 100 and an ended one as 25 (WebJuryVoting.cs:78-87).
-- **NPC-only pacts.** Since agency (R6) they form about 1.2 times a season in the eight-house, as pairs only (IMPLEMENTATION-LOG.md:345).
+- **NPC-only pacts.** Since agency (R6) they form about 1.2 times a season in the eight-house, as pairs only (IMPLEMENTATION-LOG.md:345). In All-Star seasons at alumni rules 5 an outsider pact may grow past two (ALL-STAR-HISTORIES-PLAN §14.L; decided by the owner, 2026-10-29).
 
 **What is weak.**
 - **Betrayal never ends or flags an alliance.**

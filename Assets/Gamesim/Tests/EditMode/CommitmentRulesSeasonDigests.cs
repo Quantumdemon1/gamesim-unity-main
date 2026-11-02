@@ -370,12 +370,46 @@ namespace Gamesim.Tests.EditMode
 
         /// <summary>Schema 28's root and NPC-world field names (WAVE-D-NPC-PACTS-PLAN §0.3), as JSON names.</summary>
         private static readonly string[] LegacyWaveDFields = { "allianceLeakRulesStartWeek", "pactPlanRulesStartWeek", "allWeekRulesStartWeek" };
+        /// <summary>Schema 30's pooled root field names (SCH30), as JSON names.</summary>
+        private static readonly string[] LegacyPooledFields = { "alumniRulesVersion", "alumniCatalogEdition", "tuningRulesVersion" };
         private static readonly string[] LegacyWaveDNpcFields = { "beatWeek", "beatWindow", "beatsFired", "beatSeats", "beatPlan", "acts" };
 
         /// <summary>The state without schema 22's additions, and every reader the commitment rules touch.</summary>
         private static void Checkpoint(EpisodeState s, StringBuilder trace)
         {
             var o = JObject.FromObject(s);
+            // Current30 admission (SCH30) binds the state and takes its trace through the retained 29 observer to 26,
+            // above the current29 arm older recorded assemblies use. JSON/reflection keeps this source compilable there.
+            bool pooled = LegacyPooledFields.Any(name => o.Property(name) != null);
+            Assert.That(o["schemaVersion"]?.Type, Is.EqualTo(JTokenType.Integer));
+            if ((long)o["schemaVersion"] >= 30 || pooled)
+            {
+                Assert.That((long)o["schemaVersion"], Is.EqualTo(30), "Do not project future or wrongly grouped pooled storage.");
+                var observer30 = typeof(CommitmentRulesSeasonDigests).Assembly
+                    .GetType("Gamesim.Tests.EditMode.LegacyDigestSchema30Observer", true);
+                // The native-29 arm (DIALOGUE-PLAN D1) at the live 30 (ALL-STAR-HISTORIES-PLAN 8.5): a season on dialogue
+                // rules 1 has no schema-28 form and no recorded digest. The schema-30 observer's native entry admits it and
+                // takes it to its 29 - only the pooled three, off, removed; the store kept - and that 29 is digested as it
+                // is, then every reader, as D1 digested it at 29. None of the legacy removals below applies to it.
+                if (o["dialogueRulesVersion"]?.Type == JTokenType.Integer && (long)o["dialogueRulesVersion"] != 0)
+                {
+                    var native30 = observer30.GetMethod("NativeTrace29", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static,
+                        null, new[] { typeof(EpisodeState), typeof(JObject) }, null);
+                    Assert.That(native30, Is.Not.Null, "A rules-1 season needs the observer's native admission; it never skips coverage.");
+                    Assert.That(native30.ReturnType, Is.EqualTo(typeof(JObject)));
+                    var native = (JObject)native30.Invoke(null, new object[] { s, o });
+                    Assert.That((long)native["schemaVersion"], Is.EqualTo(29), "The native arm takes the season to the schema its build wrote, store and all.");
+                    trace.Append(native.ToString(Formatting.None)).Append('\n');
+                    Readers(s, trace);
+                    return;
+                }
+                var project30 = observer30.GetMethod("ProjectTrace", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static,
+                    null, new[] { typeof(EpisodeState), typeof(JObject) }, null);
+                Assert.That(project30, Is.Not.Null, "Exact30 requires complete current admission; an absent dependency never skips coverage.");
+                Assert.That(project30.ReturnType, Is.EqualTo(typeof(JObject)));
+                o = (JObject)project30.Invoke(null, new object[] { s, o });
+                Assert.That((long)o["schemaVersion"], Is.EqualTo(26), "The source-bound30 adapter preserves the literal29/28/27 chain.");
+            }
             // Current29 admission is separate from every retained literal28/27 observer.
             // JSON/reflection keeps this recorder source compilable against recorded older assemblies.
             bool dialogue = o.Property("dialogueRulesVersion") != null || o.Property("dialogue") != null

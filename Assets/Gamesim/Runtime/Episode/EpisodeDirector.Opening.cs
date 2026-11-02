@@ -333,6 +333,9 @@ namespace Gamesim.Episode
                 Focus = head + turn * Vector3.right * -0.6f,
                 Distance = 3.4f, Pitch = 12f, Yaw = yaw, FieldOfView = 40f,
                 Seconds = openingFramedGuest ? 0.6f : 0.8f, DepthOfFieldWeight = 1f,
+                // The opening draws the whole house until it hands over (ROOM-SCOPE-PLAN D6, RS6b), named
+                // here; the hold below takes this shot again with it.
+                Rooms = RoomSet.WholeHouse,
             };
             cameraRig.MoveTo(shot);
             openingFramedGuest = true;

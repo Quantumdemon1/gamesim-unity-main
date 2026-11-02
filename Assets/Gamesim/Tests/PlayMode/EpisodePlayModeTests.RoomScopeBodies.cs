@@ -130,8 +130,10 @@ namespace Gamesim.Tests.PlayMode
                 director.HoldRoomScope(owner);
                 cameraRig.SetConversationFocus(player.transform, partner.transform);
                 yield return null;
-                Assert.That(director.CurrentRoomScopeSource, Is.EqualTo(EpisodeDirector.RoomScopeSource.Conversation), "The two-shot is the view.");
-                Assert.That(director.ViewedRooms, Is.EqualTo(RoomSet.Of("Yard")), "and it names the yard, where neither of the two stands.");
+                // With no two-shot the conversation is not the view (RS6b): the view is the viewer's own, free play's.
+                Assert.That(cameraRig.HoldsTheTwoShot, Is.False, "Under reduced motion the conversation takes no two-shot,");
+                Assert.That(director.CurrentRoomScopeSource, Is.EqualTo(EpisodeDirector.RoomScopeSource.FreePlay), "so the view is free play's,");
+                Assert.That(director.ViewedRooms, Is.EqualTo(RoomSet.Of("Yard")), "held on, the yard the view names, where neither of the two stands.");
                 Assert.That(Rs4DrawnNow(player.transform, out string why), Is.True, "The player, one of the two, is drawn in the kitchen: " + why);
                 Assert.That(director.IsBodyDrawn(player.transform), Is.True);
                 Assert.That(Rs4DrawnNow(partner.transform, out why), Is.True, partner.DisplayName + ", the other, is drawn in the games room: " + why);

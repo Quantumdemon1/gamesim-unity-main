@@ -499,6 +499,18 @@ namespace Gamesim.Presentation
         }
 
         /// <summary>
+        /// Every move the opening's cards make (ROOM-SCOPE-PLAN D6, RS6b): its shot, naming the whole house in
+        /// the call that moves the camera - the walk-in's keys, the door reveals and their push-ins draw every
+        /// room until the opening hands the house over. With no rig nothing moves.
+        /// </summary>
+        private static void TakeShot(HouseCameraRig rig, HouseCameraRig.Shot shot)
+        {
+            if (rig == null) return;
+            shot.Rooms = RoomSet.WholeHouse;
+            rig.MoveTo(shot);
+        }
+
+        /// <summary>
         /// Every houseguest through the front door, one at a time: the door holds shut while they
         /// walk up behind it, shudders and swings open in a white flash and a burst of light as the
         /// camera pushes in, and they walk through to a mark in front of the lens and greet it with
@@ -513,7 +525,7 @@ namespace Gamesim.Presentation
             var rig = settings.Rig;
             var door = world.DoorShot;
             door.Seconds = 0.01f;
-            rig?.MoveTo(door);
+            TakeShot(rig, door);
             RevealTiming(order.Count, out float doorAt, out float markHold);
             Coroutine deckRetry = null;
 
@@ -523,7 +535,7 @@ namespace Gamesim.Presentation
                 CurrentGuestId = person.id;
                 advancePending = false;
                 world.CloseDoor();
-                if (i > 0 && rig != null) { var back = world.DoorShot; back.Seconds = 0.6f; rig.MoveTo(back); }
+                if (i > 0 && rig != null) { var back = world.DoorShot; back.Seconds = 0.6f; TakeShot(rig, back); }
 
                 float clock = 0f;
                 bool advanced = false;
@@ -549,7 +561,7 @@ namespace Gamesim.Presentation
                 {
                     world.OpenDoor();
                     DoorFlash();
-                    if (rig != null) rig.MoveTo(world.PushInShot);
+                    TakeShot(rig, world.PushInShot);
                     yield return Pause(0.2f);
                     walking = world.ThroughDoor(person.id);
                     float waited = 0f;
@@ -832,7 +844,7 @@ namespace Gamesim.Presentation
             {
                 var first = keys[WalkInPushFrom];
                 first.Seconds = 0.01f;
-                settings.Rig.MoveTo(Motionless ? keys[WalkInOver] : first);
+                TakeShot(settings.Rig, Motionless ? keys[WalkInOver] : first);
             }
             yield return Pause(0.1f);
         }
@@ -874,7 +886,7 @@ namespace Gamesim.Presentation
 
             if (rig == null || keys == null || keys.Count <= WalkInOver || Motionless)
             {
-                if (rig != null && keys != null && keys.Count > WalkInOver) rig.MoveTo(keys[WalkInOver]);
+                if (rig != null && keys != null && keys.Count > WalkInOver) TakeShot(rig, keys[WalkInOver]);
                 if (world != null) foreach (var person in order) world.SendHome(person.id);
                 yield return Hold(3f);
                 yield break;
@@ -882,7 +894,7 @@ namespace Gamesim.Presentation
 
             var first = keys[WalkInPushFrom];
             first.Seconds = 0.01f;
-            rig.MoveTo(first);
+            TakeShot(rig, first);
             WalkInSchedule(keys, out float riseAt, out float craneAt, out float settledAt);
             int sent = 0;
             float clock = 0f, allHomeAt = -1f;
@@ -893,16 +905,16 @@ namespace Gamesim.Presentation
                 {
                     var last = keys[WalkInOver];
                     last.Seconds = 0.01f;
-                    rig.MoveTo(last);
+                    TakeShot(rig, last);
                     break;
                 }
                 // A timed move starts from wherever the camera is, so the push-in waits for the cut
                 // to its first key to land - a frame at most, bounded in case it never reports.
-                if (!pushing && clock > 0f && (!rig.IsTravelling || clock >= 0.05f)) { rig.MoveTo(keys[WalkInDoorway]); pushing = true; }
+                if (!pushing && clock > 0f && (!rig.IsTravelling || clock >= 0.05f)) { TakeShot(rig, keys[WalkInDoorway]); pushing = true; }
                 if (world != null)
                     while (sent < order.Count && clock >= 0.3f + 0.35f * sent) world.SendHome(order[sent++].id);
-                if (!rising && clock >= riseAt) { rig.MoveTo(keys[WalkInRise]); rising = true; }
-                if (!over && clock >= craneAt) { rig.MoveTo(keys[WalkInOver]); over = true; }
+                if (!rising && clock >= riseAt) { TakeShot(rig, keys[WalkInRise]); rising = true; }
+                if (!over && clock >= craneAt) { TakeShot(rig, keys[WalkInOver]); over = true; }
                 if (world != null && allHomeAt < 0f && sent == order.Count && world.AllHome) allHomeAt = clock;
                 // Done once the crane has landed and everybody has been home a second, and never
                 // later than 18 s; with nobody to walk, at 10 s.

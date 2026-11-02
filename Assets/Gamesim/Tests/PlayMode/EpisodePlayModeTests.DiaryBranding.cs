@@ -35,6 +35,9 @@ namespace Gamesim.Tests.PlayMode
                 yield return null;
             Assert.That(cameraRig.HasShot, Is.True, "The diary is open and the camera never took its shot.");
             yield return null;
+            // In the shot the player sees (ROOM-SCOPE-PLAN D6, RS6b): with nothing held the chair shot draws the
+            // private room, and every piece of the studio's identity is drawn by the main camera.
+            Rs6bAssertTheDiaryDrawsThePrivateRoom("The confessional's shot");
 
             var studio = SceneComponents<Transform>().Single(t => t.name == "Diary interview backdrop" && t.gameObject.activeInHierarchy);
             Renderer Piece(string name) => studio.GetComponentsInChildren<Renderer>(true).Single(r => r.name == name);

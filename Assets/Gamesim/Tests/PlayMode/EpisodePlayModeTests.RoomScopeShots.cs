@@ -795,7 +795,10 @@ namespace Gamesim.Tests.PlayMode
             Debug.Log("[Gamesim] RS6a: the " + kind + " card's frame draws " + viewed + " (" + source + ").");
             if (source != EpisodeDirector.RoomScopeSource.Ceremony)
             {
-                Assert.That(viewed.IsWholeHouse, Is.True, kind + ": the " + source + " view is the whole house.");
+                // Another live shot holding the view over the card (RS6b: a house event's, a two-shot) draws its own
+                // rooms; any other view is the whole house.
+                if (!EpisodeDirector.IsRoomScopeSourceLive(source))
+                    Assert.That(viewed.IsWholeHouse, Is.True, kind + ": the " + source + " view is the whole house.");
                 return false;
             }
             Assert.That(viewed.With(room), Is.EqualTo(viewed), kind + ": the ceremony's view draws the " + room + " (" + viewed + ").");

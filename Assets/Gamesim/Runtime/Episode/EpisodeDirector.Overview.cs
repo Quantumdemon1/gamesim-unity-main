@@ -80,11 +80,13 @@ namespace Gamesim.Episode
             if (IsPanelOpen) ClosePanels();
             overviewOpen = true;
             briefingOpen = false;
+            // The house's map is the whole house, named in the call (ROOM-SCOPE-PLAN D1, D6, RS6b).
             cameraRig.MoveTo(new HouseCameraRig.Shot
             {
                 Focus = cameraRig.HouseCenter - Quaternion.Euler(0f, cameraRig.Yaw, 0f) * Vector3.forward * OverviewLift,
                 Distance = cameraRig.FarthestDistance, Pitch = OverviewPitch, KeepYaw = true,
                 Orthographic = true, OrthographicSize = OverviewOrthographicSize, Seconds = OverviewSeconds,
+                Rooms = RoomSet.WholeHouse,
             });
             if (roomLabels == null) roomLabels = RoomLabels.Attach(gameObject);
             // Each chip is a way there: the overview is the house's map.

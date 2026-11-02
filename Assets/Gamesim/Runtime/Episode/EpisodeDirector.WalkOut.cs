@@ -108,18 +108,21 @@ namespace Gamesim.Episode
         /// <summary>Where a staged walk out is.</summary>
         private enum StagedLeg { Binding, Walking, LastLook, Opening, Through, Closing, Holding }
 
+        // The walk-out's shots, and the opening's door shots it shares, name the whole house (ROOM-SCOPE-PLAN
+        // D6, RS6b): the staged walk-out draws every room, whatever the rig follows over it.
+
         /// <summary>The opening's door shot, which the staged walk out cuts to as well: the doorway from the yard, square on.</summary>
         private static HouseCameraRig.Shot YardDoorShot => new HouseCameraRig.Shot
         {
             Focus = new Vector3(-2.0f, 1.85f, 13.8f), Distance = 4.1f, Pitch = 0f, Yaw = 270f,
-            FieldOfView = 40f, Seconds = 0.6f, DepthOfFieldWeight = 0.3f,
+            FieldOfView = 40f, Seconds = 0.6f, DepthOfFieldWeight = 0.3f, Rooms = RoomSet.WholeHouse,
         };
 
         /// <summary>The reference build's push-in as the door opens: a metre closer in half a second.</summary>
         private static HouseCameraRig.Shot YardPushInShot => new HouseCameraRig.Shot
         {
             Focus = new Vector3(-2.0f, 1.85f, 13.8f), Distance = 3.1f, Pitch = 0f, Yaw = 270f,
-            FieldOfView = 40f, Seconds = 0.5f, DepthOfFieldWeight = 0.3f,
+            FieldOfView = 40f, Seconds = 0.5f, DepthOfFieldWeight = 0.3f, Rooms = RoomSet.WholeHouse,
         };
 
         // ---------------------------------------------------------------- the living room's door (M23)
@@ -173,21 +176,21 @@ namespace Gamesim.Episode
         private static HouseCameraRig.Shot LivingExitWide => new HouseCameraRig.Shot
         {
             Focus = new Vector3(-11.8f, 1.2f, -8.3f), Distance = 6.5f, Pitch = 12f, Yaw = 250f,
-            FieldOfView = 40f, Seconds = ExitCutSeconds, DepthOfFieldWeight = 0.3f,
+            FieldOfView = 40f, Seconds = ExitCutSeconds, DepthOfFieldWeight = 0.3f, Rooms = RoomSet.WholeHouse,
         };
 
         /// <summary>The living room's door shot, as the yard's is: the doorway square on. To be set by capture.</summary>
         private static HouseCameraRig.Shot LivingDoorShot => new HouseCameraRig.Shot
         {
             Focus = new Vector3(-12.2f, 1.5f, -8.5f), Distance = 3.6f, Pitch = 4f, Yaw = 262f,
-            FieldOfView = 40f, Seconds = ExitCutSeconds, DepthOfFieldWeight = 0.3f,
+            FieldOfView = 40f, Seconds = ExitCutSeconds, DepthOfFieldWeight = 0.3f, Rooms = RoomSet.WholeHouse,
         };
 
         /// <summary>Its push-in as the door opens: a metre closer over a second.</summary>
         private static HouseCameraRig.Shot LivingPushInShot => new HouseCameraRig.Shot
         {
             Focus = new Vector3(-12.2f, 1.5f, -8.5f), Distance = 2.6f, Pitch = 4f, Yaw = 262f,
-            FieldOfView = 40f, Seconds = 1f, DepthOfFieldWeight = 0.3f,
+            FieldOfView = 40f, Seconds = 1f, DepthOfFieldWeight = 0.3f, Rooms = RoomSet.WholeHouse,
         };
 
         /// <summary>The scene's set dressing, under which a prop standing in the living room's doorway is hidden while its door stands (HouseSetPieces' root).</summary>

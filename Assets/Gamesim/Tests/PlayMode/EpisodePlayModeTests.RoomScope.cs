@@ -13,10 +13,10 @@ namespace Gamesim.Tests.PlayMode
     /// <summary>
     /// The room scope's first slice (ROOM-SCOPE-PLAN RS1): the camera rig reports the rooms every move
     /// is about, and the director's scope reads them. Nothing these tests move is drawn differently - the
-    /// sources of their views (free play, following, a test's own shots, the activity warp) are not live
-    /// before RS6b and RS5, RS6a having turned on only the ceremonies' and the competitions', so the scope
-    /// says the whole house unless a test holds it on - so they read what is reported, frame by frame, as
-    /// the bodies cross the house's doorways.
+    /// sources of their views (free play, following, a test's own shots) are not live before RS5, RS6a and
+    /// RS6b having turned on the other shots' (the activity warp's among them, whose view this file's last
+    /// test reads after its hold), so the scope says the whole house unless a test holds it on - so they
+    /// read what is reported, frame by frame, as the bodies cross the house's doorways.
     /// </summary>
     public sealed partial class EpisodePlayModeTests
     {
@@ -320,7 +320,8 @@ namespace Gamesim.Tests.PlayMode
 
         /// <summary>
         /// An activity across the house warps the player behind the blink, and the view reports the
-        /// activity's room on the blink's own frame, not a frame later.
+        /// activity's room on the blink's own frame, not a frame later. Released, the warp's view holds:
+        /// the activity warp is live from RS6b (RoomScope_AnActivityWarpLandsScoped pins it with nothing held).
         /// </summary>
         [UnityTest]
         public IEnumerator RoomScope_AnActivityWarpReportsItsRoomOnTheBlinksFrame()
@@ -349,7 +350,8 @@ namespace Gamesim.Tests.PlayMode
                 Assert.That(cameraRig.Rooms, Is.EqualTo(RoomSet.Of(poolRoom)), "The next frame, the pool's room still.");
             }
             finally { director.Release(owner); }
-            Assert.That(director.ViewedRooms.IsWholeHouse, Is.True, "Released, the whole house: the activity warp's source is not live before RS6b.");
+            Assert.That(director.CurrentRoomScopeSource, Is.EqualTo(EpisodeDirector.RoomScopeSource.Activity), "Released, the warp still holds the camera,");
+            Assert.That(director.ViewedRooms, Is.EqualTo(RoomSet.Of(poolRoom)), "and its source is live from RS6b: the pool's room with nothing held.");
         }
 
         private static HouseRoomScope ScopeOf(EpisodeDirector episode)

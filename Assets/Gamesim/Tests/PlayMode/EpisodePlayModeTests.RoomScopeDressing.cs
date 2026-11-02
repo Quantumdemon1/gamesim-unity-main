@@ -395,25 +395,30 @@ namespace Gamesim.Tests.PlayMode
         }
 
         /// <summary>
-        /// Only the ceremonies and the competitions are live (RS6a; RS2a made none live, and RS6b and RS5
-        /// turn the others on): with nothing held, whatever else the camera does - a shot naming a room, a
-        /// free move into one, a follow - the view is the whole house, the main camera's mask holds every
-        /// room bit, nobody is hidden and nothing is out, so every piece of the house is drawn although the
-        /// dressing stands on its rooms' layers: outside a ceremony's and a competition's shots players see
-        /// today's house. Those two are pinned by RoomScope_ACeremonyMoveDrawsBothRoomsUntilItLands,
-        /// RoomScope_TheVetoMeetingDrawsItsRoom and RoomScope_TheCompetitionDrawsTheYard (RoomScopeShots).
+        /// Every shot's source is live but free play's and following's, which RS5 turns on (RS2a made none
+        /// live, RS6a the ceremonies and the competitions, RS6b the conversation's two-shot, the diary, house
+        /// events, the activity warp and jury watching), and the overview, the opening and the walk-out are the
+        /// whole house by decision, with no switch: with nothing held, whatever free play and following do -
+        /// a test's own shot naming a room, a free move into one, a follow - the view is the whole house, the
+        /// main camera's mask holds every room bit, nobody is hidden and nothing is out, so every piece of the
+        /// house is drawn although the dressing stands on its rooms' layers: in free play and following players
+        /// see today's house. The live ones are pinned by RoomScopeShots (RS6a) and RoomScopeOtherShots (RS6b).
         /// </summary>
         [UnityTest]
-        public IEnumerator RoomScope_OnlyTheCeremoniesAndCompetitionsAreLive()
+        public IEnumerator RoomScope_OnlyFreePlayAndFollowingAreNotLive()
         {
             Assert.That(EpisodeDirector.LiveRoomScopeSources,
-                Is.EqualTo(EpisodeDirector.RoomScopeSources.Ceremony | EpisodeDirector.RoomScopeSources.Competition),
-                "The ceremonies and the competitions are live, and nothing else.");
+                Is.EqualTo(EpisodeDirector.RoomScopeSources.Ceremony | EpisodeDirector.RoomScopeSources.Competition
+                    | EpisodeDirector.RoomScopeSources.Conversation | EpisodeDirector.RoomScopeSources.Diary
+                    | EpisodeDirector.RoomScopeSources.HouseEvent | EpisodeDirector.RoomScopeSources.Activity
+                    | EpisodeDirector.RoomScopeSources.Watching),
+                "Every shot's source is live but free play's and following's.");
             foreach (EpisodeDirector.RoomScopeSource source in Enum.GetValues(typeof(EpisodeDirector.RoomScopeSource)))
-                Assert.That(EpisodeDirector.IsRoomScopeSourceLive(source),
-                    Is.EqualTo(source == EpisodeDirector.RoomScopeSource.Ceremony || source == EpisodeDirector.RoomScopeSource.Competition),
-                    source + (source == EpisodeDirector.RoomScopeSource.Ceremony || source == EpisodeDirector.RoomScopeSource.Competition
-                        ? " is live." : " is not live."));
+            {
+                bool notLive = source == EpisodeDirector.RoomScopeSource.FreePlay || source == EpisodeDirector.RoomScopeSource.Following
+                    || EpisodeDirector.IsWholeHouseSource(source);
+                Assert.That(EpisodeDirector.IsRoomScopeSourceLive(source), Is.EqualTo(!notLive), source + (notLive ? " is not live." : " is live."));
+            }
             director.ClosePanels();
             director.SuspendNpcAutonomyForDiagnostics();
             yield return null;

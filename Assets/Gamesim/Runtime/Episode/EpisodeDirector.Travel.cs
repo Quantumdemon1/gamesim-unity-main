@@ -99,6 +99,19 @@ namespace Gamesim.Episode
             if (clear >= 1f) travelDip.enabled = false;
         }
 
+        /// <summary>The rig's <see cref="HouseCameraRig.ViewTakeovers"/> just after a jury or evicted player's watch; -1 before any.</summary>
+        private int watchTakeovers = -1;
+
+        /// <summary>
+        /// Whether a jury or evicted player's watch holds the camera (ROOM-SCOPE-PLAN RS6b, D6): the player
+        /// cannot move, and nothing has taken the view since the watch's move - a pan, a zoom, a follow, the
+        /// overview. The room scope's watching source is the watch's only while this holds; before any watch,
+        /// and after one is taken back, the view is the view's own (RS5 decides it: the room nearest the
+        /// camera's focus).
+        /// </summary>
+        public bool WatchHoldsTheCamera
+            => !playerIsActive && watchTakeovers >= 0 && cameraRig != null && cameraRig.ViewTakeovers == watchTakeovers;
+
         /// <summary>
         /// Takes the player to a room: the diary room's chair for the private room, the episode
         /// screen for the room it stands in, and a clear spot on the floor for the rest. For a
@@ -112,7 +125,13 @@ namespace Gamesim.Episode
             if (!playerIsActive)
             {
                 ClosePanels();
-                cameraRig?.MoveTo(marker.transform.position, cameraRig.DesiredDistance);
+                // The watch names the watched room in the call (ROOM-SCOPE-PLAN D6, RS6b): the room itself,
+                // not the floor under its marker, drawn from the call for as long as the watch holds the camera.
+                if (cameraRig != null)
+                {
+                    cameraRig.MoveTo(marker.transform.position, cameraRig.DesiredDistance, 0f, RoomSet.Of(room));
+                    watchTakeovers = cameraRig.ViewTakeovers;
+                }
                 message = "Watching the " + RoomLabels.InSentence(room) + ".";
                 Render();
                 return;

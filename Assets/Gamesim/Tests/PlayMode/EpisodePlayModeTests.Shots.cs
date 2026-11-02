@@ -181,11 +181,19 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(ScreenRect(ActiveRect("Episode panel")).Contains(new Vector2(screenFace.x,screenFace.y)),Is.False,
                 "The diary choices leave the speaker's face visible.");
             Assert.That(SceneComponents<Transform>().Any(t=>t.name=="Diary interview backdrop" && t.gameObject.activeInHierarchy),Is.True);
+            // The chair shot is the diary's view (ROOM-SCOPE-PLAN D6, RS6b): with nothing held, the private room
+            // alone - the yard behind the backdrop is not drawn - every piece of the studio drawn, and inside the
+            // main camera's render the private room's lamps alone.
+            Rs6bAssertTheDiaryDrawsThePrivateRoom("The diary's chair shot");
 
             director.ClosePanels();
             Assert.That(director.IsDiaryOpen, Is.False);
             Assert.That(cameraRig.HasShot, Is.False, "Leaving the room releases the chair.");
+            Assert.That(director.DiaryShotHoldsTheCamera, Is.False, "and the diary is no longer the view:");
+            Assert.That(director.ViewedRooms.IsWholeHouse, Is.True, "free play's whole house, in the same frame.");
             yield return WaitForDiaryExit();
+            yield return null;
+            Rs6bAssertTheWholeHouse("Out of the diary");
             Assert.That(seating.Active,Is.False);
             Assert.That(player.GetComponent<CharacterPresentation>().IsSeated,Is.False);
             Assert.That(player.Agent.updatePosition,Is.EqualTo(updatePosition));

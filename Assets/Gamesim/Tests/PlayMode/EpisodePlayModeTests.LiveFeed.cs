@@ -80,6 +80,10 @@ namespace Gamesim.Tests.PlayMode
             if (string.IsNullOrEmpty(director.ObservedNpcConversation))
                 Assert.That(director.LiveFeedCaption, Does.Match(@"^[A-Z ]+ · \d+ HOUSEGUESTS?$"),
                     "Unwitnessed, the caption names the room and the count, never the talk: " + director.LiveFeedCaption);
+            // The feed draws its own room whatever the main view draws (ROOM-SCOPE-PLAN D10; RS6b makes the other
+            // shots' views rooms): its camera's mask is the shell and the rooms it was aimed with, and the picture
+            // it rendered is one, not a blank.
+            yield return LiveFeedAssertItsOwnPicture(feed, "Watching the house");
 
             director.ClosePanels();
             yield return null;
@@ -101,9 +105,60 @@ namespace Gamesim.Tests.PlayMode
             Canvas.ForceUpdateCanvases();
             Assert.That(ScreenRect(rooms).yMax, Is.LessThanOrEqualTo(ScreenRect(overviewCard).yMin + 0.5f),
                 "The room list starts below the feed: " + ScreenRect(rooms) + " against " + ScreenRect(overviewCard) + ".");
+            // Over the overview's whole house the feed still draws its own room alone.
+            yield return LiveFeedAssertItsOwnPicture(feed, "Over the overview");
             director.EndOverview();
             yield return null;
             Assert.That(director.GetComponentsInChildren<RectTransform>(true).Any(r => r.name == EpisodeDirector.LiveFeedCardName), Is.True);
+        }
+
+        /// <summary>
+        /// The feed's next render, read: its camera's room bits are the rooms it was aimed with (the shell and
+        /// every other layer always), and its picture has content - many colours and a spread of brightness,
+        /// not a flat clear colour - so the room it names is the room it shows, drawn (D10).
+        /// </summary>
+        private static IEnumerator LiveFeedAssertItsOwnPicture(LiveFeed feed, string what)
+        {
+            int revision = feed.CaptureRevision;
+            var aimed = feed.Rooms;
+            float deadline = Time.realtimeSinceStartup + 3f;
+            while (feed.CaptureRevision == revision && Time.realtimeSinceStartup < deadline) yield return null;
+            Assert.That(feed.CaptureRevision, Is.Not.EqualTo(revision), what + ": the feed renders.");
+            var rooms = feed.Rooms;
+            int mask = feed.Camera.cullingMask;
+            Assert.That(mask & RoomLayers.Mask, Is.Not.Zero, what + ": the feed's camera draws a room.");
+            // Aimed with the same rooms either side of the render, its room bits are those rooms' (a re-aim since
+            // the render, the director's in Update, is read at the next one).
+            if (rooms == aimed)
+                Assert.That(mask & RoomLayers.Mask, Is.EqualTo(rooms.IsEmpty ? RoomLayers.Mask : rooms.CullingBits),
+                    what + ": the feed's camera draws the room bits of the rooms it was aimed with (" + rooms + ").");
+            Assert.That(mask | RoomLayers.Mask, Is.EqualTo(-1), what + ": and every layer that is not a room's: the shell.");
+            var frame = new Texture2D(LiveFeed.Width, LiveFeed.Height, TextureFormat.RGBA32, false);
+            var active = RenderTexture.active;
+            try
+            {
+                RenderTexture.active = (RenderTexture)feed.Texture;
+                frame.ReadPixels(new Rect(0, 0, LiveFeed.Width, LiveFeed.Height), 0, 0, false);
+                frame.Apply(false);
+                var pixels = frame.GetPixels32();
+                var colours = new System.Collections.Generic.HashSet<int>();
+                float darkest = 1f, brightest = 0f;
+                for (int i = 0; i < pixels.Length; i += 7)
+                {
+                    var p = pixels[i];
+                    colours.Add((p.r >> 3) << 10 | (p.g >> 3) << 5 | (p.b >> 3));
+                    float light = (0.2126f * p.r + 0.7152f * p.g + 0.0722f * p.b) / 255f;
+                    darkest = Mathf.Min(darkest, light);
+                    brightest = Mathf.Max(brightest, light);
+                }
+                Assert.That(colours.Count, Is.GreaterThanOrEqualTo(24), what + ": the feed's picture has many colours, not a blank (" + colours.Count + ").");
+                Assert.That(brightest - darkest, Is.GreaterThan(0.08f), what + ": and a spread of light (" + darkest.ToString("0.00") + " to " + brightest.ToString("0.00") + ").");
+            }
+            finally
+            {
+                RenderTexture.active = active;
+                Object.Destroy(frame);
+            }
         }
     }
 }

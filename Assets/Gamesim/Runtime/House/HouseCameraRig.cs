@@ -350,7 +350,7 @@ namespace Gamesim.House
             {
                 desiredFocus = ConversationFocus();
                 desiredDistance = Mathf.Clamp(12f, minimumDistance, maximumDistance);
-                MoveTo(TwoShot(conversationPlayer, conversationNpc));
+                TakeTwoShot(conversationPlayer, conversationNpc);
             }
         }
 
@@ -380,7 +380,23 @@ namespace Gamesim.House
             desiredDistance = Mathf.Clamp(12f, minimumDistance, maximumDistance);
             // The two-shot (V5) rides on top of the dollhouse framing above, which is what the
             // camera falls back to if anything but the conversation's own end drops the shot.
+            TakeTwoShot(player, npc);
+        }
+
+        /// <summary>
+        /// Whether the conversation's own two-shot holds the camera (ROOM-SCOPE-PLAN RS6b): a conversation
+        /// is focused and the shot is the two-shot it took - under reduced motion it takes none and keeps
+        /// the viewer's, and any other shot, a release or a drop lets it go. The room scope's conversation
+        /// source is the two-shot's only while this holds, as a ceremony's is its own shots' (RS6a).
+        /// </summary>
+        public bool HoldsTheTwoShot => IsConversationFocused && activeShot.HasValue && twoShotHeld;
+        private bool twoShotHeld;
+
+        /// <summary>Takes the two-shot on the pair: the shot that names the pair's rooms, and the one <see cref="HoldsTheTwoShot"/> reads.</summary>
+        private void TakeTwoShot(Transform player, Transform npc)
+        {
             MoveTo(TwoShot(player, npc));
+            twoShotHeld = true;
         }
 
         /// <summary>A bystander nearer the two-shot's eye than this would fill the frame with their back.</summary>
@@ -412,10 +428,13 @@ namespace Gamesim.House
             float side = preferredClear || !alternativeClear ? nearer : farther;
             var pivot = TwoShotPivot(side);
             conversationRequestedFieldOfView = ConversationLensFieldOfView;
+            // The pair's rooms (ROOM-SCOPE-PLAN D6, RS6b): the floor under the pivot and each of the two's
+            // walker room, tracked as they stand, so a conversation draws where its pair is.
             return new Shot
             {
                 Focus = pivot, Distance = TwoShotDistance, Pitch = TwoShotPitch, Yaw = side,
                 FieldOfView = conversationRequestedFieldOfView, Seconds = TwoShotSeconds, DepthOfFieldWeight = 1f,
+                RoomsFromFocus = true,
             };
         }
 
@@ -572,6 +591,8 @@ namespace Gamesim.House
         public void MoveTo(in Shot shot)
         {
             Initialize();
+            // A two-shot taken again is held again by its taker (TakeTwoShot); any other shot is not one.
+            twoShotHeld = false;
             int before = ResolveRooms();
             if (!shot.TravelFromRooms.IsEmpty) before = shot.TravelFromRooms.Bits;
             if (!activeShot.HasValue)
@@ -606,6 +627,7 @@ namespace Gamesim.House
             if (!activeShot.HasValue) return;
             int before = ResolveRooms();
             activeShot = null;
+            twoShotHeld = false;
             yaw = shotReturnYaw;
             travelSeconds = 0f;
             desiredFocus = ClampFocus(shotReturnFocus);
@@ -638,6 +660,7 @@ namespace Gamesim.House
             if (!activeShot.HasValue) return;
             var shot = activeShot.Value;
             activeShot = null;
+            twoShotHeld = false;
             // A timed move still in flight would otherwise carry its clock onto whatever focus the
             // caller sets next and land there in a frame, which reads as a cut.
             travelSeconds = 0f;
@@ -803,7 +826,7 @@ namespace Gamesim.House
                         {
                             // The effective lens also moves the pivot. Recheck both candidate eyes
                             // before an aspect change adopts that new framing at the same HUD offset.
-                            MoveTo(TwoShot(conversationPlayer, conversationNpc));
+                            TakeTwoShot(conversationPlayer, conversationNpc);
                         }
                         else
                         {
@@ -1212,7 +1235,7 @@ namespace Gamesim.House
                 // that actual shifted eye as well, without reopening or moving either actor.
                 if (IsConversationFocused && !reducedMotion && activeShot.HasValue
                     && conversationPlayer != null && conversationNpc != null)
-                    MoveTo(TwoShot(conversationPlayer, conversationNpc));
+                    TakeTwoShot(conversationPlayer, conversationNpc);
             }
         }
 

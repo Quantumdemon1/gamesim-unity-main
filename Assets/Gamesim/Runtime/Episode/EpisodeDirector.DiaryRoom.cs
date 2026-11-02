@@ -97,6 +97,8 @@ namespace Gamesim.Episode
             PauseNpcSocialForPanel();
             if (blockedRecovery) return false;
             ClosePanels();EndDiaryVisit(true);CloseHouseActivities(true);diaryOpen = true;
+            // The chair shot is taken once the player sits (StartDiaryShot): until then the view is the view's own.
+            diaryShotTakeovers = -1;
             diaryTab = DiaryTab.Record; diaryTabChosen = false; diaryRulesOpen = false;
             // The line under the frame said how to get in here - "walk to the private room, then
             // press E" - for the whole visit. It says where the player is now.
@@ -153,6 +155,27 @@ namespace Gamesim.Episode
             return true;
         }
 
+        /// <summary>The rig's <see cref="HouseCameraRig.ViewTakeovers"/> just after the chair shot; -1 until it is taken in this visit.</summary>
+        private int diaryShotTakeovers = -1;
+
+        /// <summary>
+        /// Whether the diary's chair shot holds the camera (ROOM-SCOPE-PLAN RS6b): the diary is open and
+        /// nothing has taken the view since its shot - the visit's end lets the shot go. The room scope's
+        /// diary source is the chair shot's only while this holds; the walk to the chair and the sitting
+        /// down before it are the view's own (free play's, the whole house until RS5).
+        /// </summary>
+        public bool DiaryShotHoldsTheCamera
+            => diaryOpen && cameraRig != null && diaryShotTakeovers >= 0 && cameraRig.ViewTakeovers == diaryShotTakeovers;
+
+        /// <summary>The rooms the diary's shot draws (D6): the private room, which holds the diary set.</summary>
+        public static RoomSet DiaryShotRooms => RoomSet.Of("Private");
+
+        /// <summary>
+        /// The chair shot names the private room (ROOM-SCOPE-PLAN D6, RS6b): its 0.8 s move draws what the
+        /// view drew as it left - free play's whole house until RS5 - with the private room until it lands,
+        /// and from its landing the private room alone, so the yard behind the studio backdrop is not
+        /// drawn. Under reduced motion it is a cut, the private room from the call.
+        /// </summary>
         private void StartDiaryShot()
         {
             if(!diaryOpen || diarySeat==null || !diarySeat.IsSettled || cameraRig==null)return;
@@ -160,13 +183,17 @@ namespace Gamesim.Episode
             var look=diarySeat.FacePosition-Vector3.up*.1f;
             var line = look - eye;
             float distance = line.magnitude;
+            // What the view drew as the shot takes it, read before the shot is the view's source.
+            var left = ViewedRooms;
             cameraRig.MoveTo(new HouseCameraRig.Shot
             {
                 Focus = look, Distance = distance,
                 Pitch = Mathf.Asin(Mathf.Clamp(-line.y / distance, -1f, 1f)) * Mathf.Rad2Deg,
                 Yaw = Mathf.Atan2(line.x, line.z) * Mathf.Rad2Deg,
                 FieldOfView = DiaryShotFieldOfView, Seconds = DiaryShotSeconds, DepthOfFieldWeight = DiaryShotDepthOfField,
+                Rooms = DiaryShotRooms, TravelFromRooms = left,
             });
+            diaryShotTakeovers = cameraRig.ViewTakeovers;
         }
 
         private void EndDiaryVisit(bool immediately=false)

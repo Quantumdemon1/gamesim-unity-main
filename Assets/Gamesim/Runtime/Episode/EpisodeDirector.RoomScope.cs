@@ -26,10 +26,17 @@ namespace Gamesim.Episode
     /// competition, which takes no shot, and a stage that has handed the camera back or lost its shot
     /// are the view's own again: free play's, the whole house until RS5.</para>
     ///
+    /// <para>From RS6b the other shots are live the same way (D6): the conversation's two-shot (the
+    /// pair's rooms), the diary's chair shot (the private room), a house event's shot (the rooms of the
+    /// people it frames), the activity warp (its room, from the cut and the blink's first frame) and a
+    /// jury or evicted player's watch (the watched room), each while its own move holds the camera. The
+    /// overview, the opening and the walk-out name the whole house in their calls. Only free play and
+    /// following wait for RS5: their view is the whole house until then.</para>
+    ///
     /// <para>The first reader that draws is the lamps' hook (RS3, §3.2 d, D8 i): while the scope is a
     /// room, the main camera renders with the lamps homed outside it off, and puts them back when it
-    /// is done. Outside a ceremony's and a competition's shots only a hold makes the scope a room, so
-    /// players see today's lamps there.</para>
+    /// is done. Outside the live shots only a hold makes the scope a room, so players see today's lamps
+    /// in free play and following.</para>
     ///
     /// <para>The second is the bodies (RS4, §3.2 c and e): a body is drawn while it is in a viewed room
     /// or its doorway band, is a camera subject or is named by a live prompt; a hidden body's renderer
@@ -63,18 +70,23 @@ namespace Gamesim.Episode
             FreePlay,
             /// <summary>Following a houseguest: theirs (RS5).</summary>
             Following,
-            /// <summary>Jury or evicted, watching a room (RS6b).</summary>
+            /// <summary>Jury or evicted, while a watch's move holds the camera: the watched room (RS6b, live).</summary>
             Watching,
-            /// <summary>The conversation two-shot: the pair's rooms (RS6b).</summary>
+            /// <summary>The conversation two-shot, while it holds the camera: the pair's rooms (RS6b, live).</summary>
             Conversation,
             /// <summary>A ceremony's framing or its stage, while their own moves hold the camera (RS6a, live).</summary>
             Ceremony,
             /// <summary>A competition while its own shot holds the camera: the Yard (RS6a, live).</summary>
             Competition,
-            /// <summary>The diary room: Private (RS6b).</summary>
+            /// <summary>The diary room's chair shot, while it holds the camera: Private (RS6b, live).</summary>
             Diary,
-            /// <summary>A house event's shot: its people's rooms (RS6b).</summary>
+            /// <summary>A house event's shot, while it holds the camera: its people's rooms (RS6b, live).</summary>
             HouseEvent,
+            /// <summary>
+            /// The activity warp, while the activity the warp took the player to goes on and nothing else
+            /// has taken the camera: the activity's room, from the cut and the blink's first frame (RS6b, live).
+            /// </summary>
+            Activity,
             /// <summary>The overview: the whole house, always (D1).</summary>
             Overview,
             /// <summary>The opening walk-in: the whole house until it hands over (D6).</summary>
@@ -96,15 +108,19 @@ namespace Gamesim.Episode
             Competition = 1 << (int)RoomScopeSource.Competition,
             Diary = 1 << (int)RoomScopeSource.Diary,
             HouseEvent = 1 << (int)RoomScopeSource.HouseEvent,
+            Activity = 1 << (int)RoomScopeSource.Activity,
         }
 
         /// <summary>
         /// The sources whose rooms the scope uses; every other source reports the whole house. A slice
         /// turns its own on here, with the camera calls that name its rooms: RS6a the ceremonies and the
-        /// competitions (D6, D7). The overview, the opening and the walk-out have no switch: they are the
-        /// whole house by decision (D1, D6).
+        /// competitions (D6, D7); RS6b the conversation's two-shot, the diary, house events, the activity
+        /// warp and jury and evicted watching (D6). Free play and following wait for RS5. The overview,
+        /// the opening and the walk-out have no switch: they are the whole house by decision (D1, D6).
         /// </summary>
-        public const RoomScopeSources LiveRoomScopeSources = RoomScopeSources.Ceremony | RoomScopeSources.Competition;
+        public const RoomScopeSources LiveRoomScopeSources = RoomScopeSources.Ceremony | RoomScopeSources.Competition
+            | RoomScopeSources.Conversation | RoomScopeSources.Diary | RoomScopeSources.HouseEvent
+            | RoomScopeSources.Activity | RoomScopeSources.Watching;
 
         private HouseRoomScope roomScope;
         private float roomScopeRetry, roomScopeForgetAt;
@@ -171,10 +187,17 @@ namespace Gamesim.Episode
                 // shot, are whatever the camera is doing.
                 if (CeremonyFramingHoldsTheCamera || CeremonyStageHoldsTheCamera) return RoomScopeSource.Ceremony;
                 if (IsFramingCompetition) return RoomScopeSource.Competition;
-                if (diaryOpen) return RoomScopeSource.Diary;
-                if (cameraRig != null && cameraRig.IsConversationFocused) return RoomScopeSource.Conversation;
-                if (IsFramingHouseEvent) return RoomScopeSource.HouseEvent;
-                if (!playerIsActive) return RoomScopeSource.Watching;
+                // The other shots the same way (RS6b): the diary's chair shot, the two-shot, a house event's
+                // shot, the activity warp's cut and a watch, each while its own move holds the camera. A
+                // diary still being walked to or sat in, a conversation under reduced motion (no two-shot), a
+                // shot the viewer or a panel let go, an activity reached on foot, and a jury or evicted
+                // player's view before any watch or after a pan are the view's own: free play's or
+                // following's, the whole house until RS5.
+                if (DiaryShotHoldsTheCamera) return RoomScopeSource.Diary;
+                if (cameraRig != null && cameraRig.HoldsTheTwoShot) return RoomScopeSource.Conversation;
+                if (HouseEventShotHoldsTheCamera) return RoomScopeSource.HouseEvent;
+                if (ActivityWarpHoldsTheCamera) return RoomScopeSource.Activity;
+                if (WatchHoldsTheCamera) return RoomScopeSource.Watching;
                 var subject = cameraRig != null ? cameraRig.FocusedSubject : null;
                 if (subject != null && (player == null || subject != player.transform)) return RoomScopeSource.Following;
                 return RoomScopeSource.FreePlay;
@@ -441,7 +464,7 @@ namespace Gamesim.Episode
             RestoreScopedLamps();
             // A render reads only a scope Update has built, and never builds one. With nothing held
             // and the view's source not live the view is the whole house (ViewedRooms), so a player's
-            // render outside a ceremony or a competition stops at a few field checks.
+            // render outside the live shots (free play and following, until RS5) stops at a few field checks.
             if (roomScope == null) return;
             if (!ScopeMayBeARoom) return;
             var viewed = ViewedRooms;
@@ -569,8 +592,8 @@ namespace Gamesim.Episode
         /// and the invitation bubble and the conversation line wait for a drawn speaker and pair. It
         /// keeps its Animator, its agent, its seat fit and every parameter: only the drawing stops.</para>
         ///
-        /// <para>With the whole house drawn and nothing hidden - every player's frame outside a ceremony's
-        /// and a competition's shots until RS5 - it stops at a few comparisons and writes nothing.</para>
+        /// <para>With the whole house drawn and nothing hidden - every player's frame outside the live shots
+        /// (free play and following, until RS5) - it stops at a few comparisons and writes nothing.</para>
         /// </summary>
         private void ApplyRoomScopeDrawing()
         {

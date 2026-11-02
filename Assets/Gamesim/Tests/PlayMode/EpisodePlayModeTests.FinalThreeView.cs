@@ -306,7 +306,14 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(director.TravelBeacons.TryPlacedAt(theirs, out var iconAt), Is.True);
             var hung = ScreenRect(NameChips().Last(rect => rect.name == EpisodeTravelBeacons.NameChipPrefix + partner.Id));
             Assert.That(Mathf.Abs(hung.center.x - iconAt.x), Is.LessThan(hung.width * .5f + 4f), "The name hangs over the " + theirs + "'s icon (" + hung + " against " + iconAt + "),");
-            Assert.That(hung.yMin, Is.GreaterThan(iconAt.y), "above it.");
+            // Hung as every name chip is (EpisodeTravelBeacons.PlaceNames, since the T0 review): over the icon, clear of
+            // it, or - where the space over it is the frame's edge, the chrome or another name - on its other side,
+            // under the room's name and clear of it. Either way in the icon's column (above), never on the icon or its words.
+            var theirIcon = ScreenRect(BeaconFor(theirs));
+            var theirTag = ScreenRect((RectTransform)BeaconFor(theirs).Find(EpisodeTravelBeacons.RoomNameName));
+            Assert.That(hung.yMin >= theirIcon.yMax || hung.yMax <= theirTag.yMin, Is.True,
+                "over it, or under its room's name where the space over it is taken, clear of both (the name " + hung + ", the icon "
+                + theirIcon + ", the room's name " + theirTag + ").");
         }
 
         /// <summary>

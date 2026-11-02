@@ -31,14 +31,27 @@ namespace Gamesim.Tests.PlayMode
         /// the whole house ("Show the whole house", D12's view), so the tests of the dollhouse's icons, the
         /// chrome over them and the map-distance names read today's free camera. The room view's own way-finding
         /// (D17) is pinned by the WayFinding_ tests.
+        ///
+        /// <para>The fixture's camera no longer starts there: the room view's first late pass cut it onto the
+        /// player's room (its centre, its farthest zoom, the room's best heading). So the hold takes today's view
+        /// back as the setting does switched on from the room view (D12, <see cref="HouseCameraRig.EaseToItsOwnFraming"/>:
+        /// the scene's 24 m and heading 45 over the house's middle), and the camera is waited out to rest on the
+        /// real clock it eases on: an icon measured mid-ease has slid from under a still pointer by the press, frames
+        /// later.</para>
         /// </summary>
         private IEnumerator PullBackOverTheHouse()
         {
             RoomViewHoldTheDollhouse();
             cameraRig.ClearSubject();
-            cameraRig.MoveTo(cameraRig.HouseCenter, 24f);
+            cameraRig.MoveTo(cameraRig.HouseCenter, cameraRig.OwnDistance);
+            cameraRig.EaseToItsOwnFraming();
+            bool AtRest() => cameraRig.HasArrived(.05f) && Mathf.Abs(Mathf.DeltaAngle(cameraRig.transform.eulerAngles.y, cameraRig.Yaw)) < .1f;
             float deadline = Time.realtimeSinceStartup + 6f;
-            while (Time.realtimeSinceStartup < deadline && cameraRig.Distance < EpisodeTravelBeacons.ShownFrom + 1f) yield return null;
+            while (Time.realtimeSinceStartup < deadline && !AtRest()) yield return null;
+            yield return SettleCamera();
+            Assert.That(AtRest() && cameraRig.Distance >= EpisodeTravelBeacons.ShownFrom + 1f, Is.True,
+                "The camera came to rest over the house: " + cameraRig.Distance.ToString("0.00") + " m, heading "
+                + cameraRig.transform.eulerAngles.y.ToString("0.0") + " for " + cameraRig.Yaw.ToString("0.0") + ".");
             yield return null;
             yield return null;
         }

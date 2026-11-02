@@ -200,7 +200,8 @@ namespace Gamesim.Tests.PlayMode
         /// people's, not the floor under its point. Opened from free play its 0.8 s move draws free play's
         /// room on its way with theirs; landed, the two rooms alone - their bits, their lamps inside the render,
         /// both people drawn and a houseguest in a room far from them hidden - for as long as the shot holds;
-        /// the panel closed, free play's view in the same frame.
+        /// the panel closed, free play's view in the same frame, drawing the pair's rooms with the player's until
+        /// its 0.8 s move back lands, then the player's room alone.
         /// </summary>
         [UnityTest]
         public IEnumerator RoomScope_AHouseEventShotDrawsItsPeoplesRooms()
@@ -277,8 +278,14 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(director.HouseEventShotHoldsTheCamera, Is.False, "The panel closed lets the shot go,");
             Assert.That(director.CurrentRoomScopeSource, Is.EqualTo(EpisodeDirector.RoomScopeSource.FreePlay), "and the view is free play's in the same frame,");
             Assert.That(director.ViewedRooms, Is.EqualTo(cameraRig.Rooms), "the rooms the rig went back to.");
+            // The release is the shot's 0.8 s move back (DiaryShotSeconds): a timed move draws the rooms it leaves with
+            // the player's until it lands (section 3.2 a; RS5: a view coming back over a shot's release eases).
+            Assert.That(cameraRig.IsTravelling, Is.True, "The shot let go eases back over its 0.8 seconds,");
+            Assert.That(director.ViewedRooms, Is.EqualTo(freeView.With(pair)),
+                "drawing the pair's rooms with the player's on its way back: nothing the viewer saw goes before the camera has moved.");
+            yield return ScopeWaitUntilLanded();
             yield return null;
-            Rs5AssertFreePlaysView("The house event closed", Rs5PlayersRoom());
+            Rs5AssertFreePlaysView("The house event closed, the move back landed", Rs5PlayersRoom());
         }
 
         /// <summary>
@@ -287,7 +294,8 @@ namespace Gamesim.Tests.PlayMode
         /// the blink's own frame draws its room bit and its lamps alone - and on the blink's first drawn frame
         /// the player is drawn at the pool and nobody outside it is. A follow of someone else takes the camera
         /// from the warp: following's view, their room (RS5). The activity over, free play's view. Under reduced
-        /// motion the warp is a cut with no blink, and its room is the view from the call. An activity reached
+        /// motion the warp is a cut with no blink (the blink pass's dip waited out first, on the real clock it
+        /// clears on), and its room is the view from the call. An activity reached
         /// on foot - a walk of 20 m or less, no warp - is free play's view, the player's room (RS5). The NPC world stays live (the activity needs its meetings), so before each leg the
         /// houseguests who are free to walk are put in a room away from the pool and the player, and the
         /// messages say when the NPC world, not the room scope, took the camera.
@@ -343,6 +351,10 @@ namespace Gamesim.Tests.PlayMode
                 string how = reduced ? "Under reduced motion" : "With the blink";
                 Rs6bMotion(reduced);
                 Assert.That(cameraRig.ReducedMotion, Is.EqualTo(reduced), how + ": the rig's reduced motion is as asked.");
+                // The last pass's blink clears on 0.3 s of real time (Time.unscaledTime; section 5.1, "Clocks"): waited
+                // out, so the pass under reduced motion does not read the blink pass's dip as its own.
+                yield return WaitFor(() => !director.IsTravelDipShowing, EpisodeDirector.TravelDipSeconds + 1f,
+                    how + ": the last pass's blink has cleared before this warp.");
                 Rs6bParkHouseguestsIn(scope, parking);
                 WarpPlayer(far);
                 cameraRig.FocusSubject(player.transform, false);

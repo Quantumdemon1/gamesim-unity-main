@@ -82,9 +82,15 @@ namespace Gamesim.Tests.PlayMode
             var pool = HouseFurniture.InScene(player.gameObject.scene)
                 .Single(anchor => anchor.VenueId == HouseFurniture.PoolAnchor);
             cameraRig.ClearSubject();
-            cameraRig.MoveTo(pool.Position, 12f);
+            // The free move to the pool is the room view of the yard (RS5), whose clamp narrows with the zoom
+            // (HouseRoomView.Clamp): at 12 m it holds the focus within 6.1 m of the yard's middle and leaves the pool,
+            // 11.2 m out, at the frame's side - under the HUD's right column on the batch's 640 x 480 frame, where a
+            // pointer is over the card, not the pool. From 6.85 m in the clamp reaches it, so at 6 m the pool stands
+            // mid-frame, as the free move framed it before the room view.
+            const float poolView = 6f;
+            cameraRig.MoveTo(pool.Position, poolView);
             float deadline = Time.realtimeSinceStartup + 6f;
-            while (Time.realtimeSinceStartup < deadline && (cameraRig.Distance > 12.5f || cameraRig.IsTravelling)) yield return null;
+            while (Time.realtimeSinceStartup < deadline && (cameraRig.Distance > poolView + .5f || cameraRig.IsTravelling)) yield return null;
             for (int i = 0; i < 5; i++) yield return null;
 
             var camera = cameraRig.ViewCamera;
@@ -92,6 +98,10 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(Physics.Raycast(HousePlayerController.ScreenRay(camera, screen), out var hit, 500f, HouseLayers.Pick,
                 QueryTriggerInteraction.Ignore) && hit.transform.IsChildOf(pool.transform.parent), Is.True,
                 "The pointer is over the pool.");
+            // And over nothing of the HUD's or the icons': a pointer over a card is over the card, and the hover rightly names nothing.
+            var chrome = new System.Collections.Generic.List<RaycastResult>();
+            EventSystem.current.RaycastAll(new PointerEventData(EventSystem.current) { position = screen }, chrome);
+            Assert.That(chrome.Select(result => result.gameObject.name), Is.Empty, "The pointer over the pool is clear of the HUD and the icons.");
 
             var mouse = InputSystem.AddDevice<Mouse>();
             try
@@ -114,7 +124,8 @@ namespace Gamesim.Tests.PlayMode
                 float moving = Time.realtimeSinceStartup + 4f;
                 while (Time.realtimeSinceStartup < moving && tip.gameObject.activeInHierarchy) yield return null;
                 Assert.That(tip.gameObject.activeInHierarchy, Is.False, "The camera moved the pool away from a still pointer.");
-                cameraRig.MoveTo(pool.Position, 12f);
+                // Back to the same framing (the yard's heading, the pool its focus), under the still pointer.
+                cameraRig.MoveTo(pool.Position, poolView);
                 moving = Time.realtimeSinceStartup + 4f;
                 while (Time.realtimeSinceStartup < moving && !tip.gameObject.activeInHierarchy) yield return null;
                 Assert.That(tip.gameObject.activeInHierarchy, Is.True, "And brought it back.");

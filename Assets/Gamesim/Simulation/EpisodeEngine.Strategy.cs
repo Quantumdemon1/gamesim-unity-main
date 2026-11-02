@@ -239,6 +239,10 @@ namespace Gamesim.Simulation
         /// <para>The houseguest brings the player into an alliance of their own if it would have them -
         /// nobody in it below the reference's hostility line with the player, and nobody the player
         /// already reads as sour enough to end it - and otherwise the two of them start one.</para>
+        ///
+        /// <para>From alumni rules 5 (ALL-STAR-HISTORIES-PLAN §14.L.E) a pact of the houseguests' own that
+        /// has grown to <see cref="LargestPact"/> in the house is passed over, so the player and the inviter
+        /// start a pact of their own; a story's pact of four still takes the player in at every value.</para>
         /// </summary>
         private static void AllyThroughInvitation(EpisodeState s, string npcId)
         {
@@ -249,7 +253,8 @@ namespace Gamesim.Simulation
                 .Where(a => a.active && a.members.Contains(npcId) && !a.members.Contains(s.playerId)
                             && a.members.All(member => member == npcId
                                 || (s.Score(member, s.playerId) >= StrategyRules.HostilityLine
-                                    && s.Score(s.playerId, member) >= NpcAlliances.SourLine)))
+                                    && s.Score(s.playerId, member) >= NpcAlliances.SourLine))
+                            && !(AlumniRules.At(s, AlumniRules.GrowingPacts) && NpcAlliances.HouseguestsOwn(a) && InTheHouse(s, a) >= LargestPact))
                 .OrderBy(a => a.id, StringComparer.Ordinal)
                 .FirstOrDefault();
             if (theirs != null)

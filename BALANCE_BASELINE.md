@@ -687,6 +687,11 @@ player read - but it was not traced season by season. The 480-seed tables below 
 (`3878f7a1d2ea39a8`, was `c7d250380346ae38`) are re-recorded on this lane; the parts' stamp is v5, so no part played
 before the change merges with one played after.
 
+**The alumni histories** (`claude/all-star-histories`, 2026-11-01). `BudgetNoughtRows` is `5481eec784acd1ed` (was
+`3878f7a1d2ea39a8`, which main still plays at `37416049`). The smoke grid's 24 All-Stars seasons seat alumni and play
+their histories; the other 540 rows, every Regular season, are main's byte for byte. `BalanceLabGoldens` holds Regular
+cells only and does not move.
+
 ## The headline tables (budget 0, 480 seasons a cell)
 
 All 11,520 seasons: the same 480 seasons for every policy at each size.

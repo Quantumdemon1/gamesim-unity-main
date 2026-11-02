@@ -90,14 +90,19 @@ namespace Gamesim.Simulation
         /// <summary>
         /// How much a houseguest's threat counts against them when this Head of Household ranks the
         /// house (§5.1): their own reading, and a fifth of what their pact-mates read. Nought without
-        /// agency, so the ranking is exactly what it was.
+        /// agency, so the ranking is exactly what it was. Both readings are
+        /// <see cref="ThreatAssessment.TotalWithPastGames"/>: in an All-Star season from alumni rules 3 the
+        /// alumni's public record - their careers and the known pairs of past games - counts in the
+        /// nominations, the replacement included (ALL-STAR-HISTORIES-PLAN §14.D.3), at most 9.6 points
+        /// (0.4 and 0.2 of the 12 pair risk and 4 career edition 1's Cody carries). Below 3 it is
+        /// <see cref="ThreatAssessment.Total"/> exactly.
         /// </summary>
         public static double ThreatTerm(EpisodeState s, string hohId, string id)
         {
             if (!AgencyOn(s) || hohId == null || id == null || hohId == id) return 0;
-            double term = ThreatWeight * ThreatAssessment.Total(s, hohId, id);
+            double term = ThreatWeight * ThreatAssessment.TotalWithPastGames(s, hohId, id);
             var allies = NpcAgendas.PactMates(s, hohId).Where(m => m != id).ToList();
-            if (allies.Count > 0) term += AlliesThreatWeight * allies.Average(m => ThreatAssessment.Total(s, m, id));
+            if (allies.Count > 0) term += AlliesThreatWeight * allies.Average(m => ThreatAssessment.TotalWithPastGames(s, m, id));
             return term;
         }
 

@@ -118,7 +118,7 @@ namespace Gamesim.Tests.EditMode
             var field26 = Neutral26AfterActualFixedValidation(field27);
             Assert.That(Text(EpisodeSaveMigrations.UpgradeV26ToV27(field26)), Is.EqualTo(Text(field27)));
             Assert.That(Text(EpisodeSaveMigrations.UpgradeV27ToV28(field27)), Is.EqualTo(Text(field28)));
-            Assert.That(Text(LegacyDigestSchema29Observer.ProjectTrace(state, LegacyDigestSchema27TestStates.Trace(state))),
+            Assert.That(Text(LegacyDigestSchema30Observer.ProjectTrace(state, LegacyDigestSchema27TestStates.Trace(state))),
                 Is.EqualTo(Text(LegacyDigestSchema27TestStates.Neutral26(LegacyDigestSchema27TestStates.Trace27(state)))));
         }
 
@@ -235,9 +235,9 @@ namespace Gamesim.Tests.EditMode
             Shape(field); EpisodeSaveValidation.Validate(state); ValidateHydrated(field);
             Assert.That(Text(field), Is.EqualTo(Text(LegacyDigestSchema27TestStates.WithoutGetters(trace))),
                 "Actual current SaveJson field order must be proved, never assumed or normalized.");
-            var projectedTrace = LegacyDigestSchema29Observer.ProjectTrace28(state, trace);
+            var projectedTrace = LegacyDigestSchema30Observer.ProjectTrace28(state, trace);
             var observed = LegacyDigestSchema28Observer.CheckFields(projectedTrace);
-            var projectedField = LegacyDigestSchema29Observer.ProjectFields28(state, field);
+            var projectedField = LegacyDigestSchema30Observer.ProjectFields28(state, field);
             Assert.That(Text(projectedField), Is.EqualTo(Text(observed)), "Both actual source-bound views reach the identical literal28 fields.");
             Assert.That(LegacyDigestSchema27TestStates.Text(state), Is.EqualTo(before));
             return field;
@@ -247,7 +247,7 @@ namespace Gamesim.Tests.EditMode
         {
             string before = Text(current), stateBefore = LegacyDigestSchema27TestStates.Text(state);
             Shape(current); EpisodeSaveValidation.Validate(state);
-            var historical = LegacyDigestSchema29Observer.ProjectFields28(state, current);
+            var historical = LegacyDigestSchema30Observer.ProjectFields28(state, current);
             Fixed28(historical);
             var restored = EpisodeSaveMigrations.PrepareCurrentPayload(historical, out bool migrated);
             Assert.That(migrated, Is.True);

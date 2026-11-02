@@ -27,7 +27,7 @@ namespace Gamesim.Tests.EditMode
         {
             var s = builder ? SeasonBuilder.Create(new SeasonBuilder.Choice(), 2805) : ContentCatalog.Create(2805);
             Accepted(s);
-            Assert.That(s.schemaVersion, Is.EqualTo(29));
+            Assert.That(s.schemaVersion, Is.EqualTo(30));
             Inert(s);
         }
 
@@ -56,9 +56,14 @@ namespace Gamesim.Tests.EditMode
             Assert.That(Fields(typeof(NpcActState)), Is.EqualTo(new[]
                 { "id", "kind", "actorId", "partnerId", "subjectId", "room", "week", "window", "firedTick", "sighted", "overheard" }));
             var root = Fields(typeof(EpisodeState));
-            Assert.That(root.Skip(root.Length - 5).Take(3), Is.EqualTo(StartWeeks),
+            // Re-anchored by name (SCH30): Wave D's segment sits immediately before schema 29's dialogue fields, and
+            // schema 30's pooled three follow them, last.
+            int dialogue = Array.IndexOf(root, "dialogueRulesVersion");
+            Assert.That(dialogue, Is.GreaterThanOrEqualTo(3));
+            Assert.That(root.Skip(dialogue - 3).Take(3), Is.EqualTo(StartWeeks),
                 "The original Wave D segment stays in order immediately before schema29's two appended fields.");
-            Assert.That(root.Skip(root.Length - 2), Is.EqualTo(new[] { "dialogueRulesVersion", "dialogue" }));
+            Assert.That(root.Skip(dialogue).Take(2), Is.EqualTo(new[] { "dialogueRulesVersion", "dialogue" }));
+            Assert.That(root.Skip(dialogue + 2), Is.EqualTo(new[] { "alumniRulesVersion", "alumniCatalogEdition", "tuningRulesVersion" }));
             Assert.That(Fields(typeof(NpcSocialState)).Skip(Fields(typeof(NpcSocialState)).Length - 6),
                 Is.EqualTo(new[] { "beatWeek", "beatWindow", "beatsFired", "beatSeats", "beatPlan", "acts" }));
             Assert.That(Fields(typeof(SeasonLedger)).Last(), Is.EqualTo("plans"));

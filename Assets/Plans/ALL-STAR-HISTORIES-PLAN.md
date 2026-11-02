@@ -17,6 +17,12 @@ All-Star (2026-10-25, against main `b208d46d`; "the master plan" below). What ch
 - Will and Janelle's row is held out, because its only source is not a game source (3.3);
 - a default if H1b's measurement moves the headline rates (section 9).
 
+**H1b built** (2026-10-26, section 13): the histories' opening state at alumni rules 1, with H1a's edition folded in,
+measured against section 9's gate (no headline rate moved), so fresh seasons that seat an alumnus enrol.
+Its review fix pins edition 1's words, the week-one rule and the breach rule's types. It adds the "both together" and
+pacing rows to the gate, and the `ApplyFresh` merge rule with D1 (8.5). The two calls it left open are settled: the
+breach rule's width (7.4) by section 14, and D-H2 (section 12) by the lead on 2026-10-29.
+
 **Evidence base**
 - Unity: `D:/GamesimAllStars` at `b208d46d`. Code paths are relative to `Assets/Gamesim/`. Documents at the repository
   root are named bare (`BALANCE_BASELINE.md`).
@@ -75,6 +81,10 @@ All-Star (2026-10-25, against main `b208d46d`; "the master plan" below). What ch
 - **Slices, histories first:** H1a (the edition, inert), SCH30 (the pooled schema, every writer inert, qualified alone),
   H1b (the histories' opening state, at alumni rules 1), the optional H1c (shown), then after B9 H1d (the parts that
   move balance). The campaigns AS2, AS3 and on follow H1b (section 11).
+- **The owner's direction of 2026-10-29** (section 14): All-Star seasons default to pre-existing loyalty that changes
+  with the house's acts, and to reputations and known connections the house reads: alumni rules 2 to 4. From 5, by the
+  owner's answer of the same day, outsider pacts grow past two while a known pair stands (14.L). S4's report (14.H)
+  measures all five values for the owner.
 
 ---
 
@@ -90,6 +100,23 @@ Recorded as given to this work's brief:
    own schema, NPC-to-NPC changes only through RelationshipLedger; `Research/AllStars/README.md`).
 5. **Use only on-show, public game facts already present in the project's research** (`Research/AllStars`, the cast
    templates and the Codex candidate branch). **Never add off-show personal-life details about the real people.**
+
+**Added 2026-10-29, D-H11 (section 12): "Close it (Recommended)".** Schema 29 is closed from step 1's landing on
+main (PR #36). Every new value in a closed vocabulary is defined only at `schemaVersion >= 30`, with D1's chip as the
+one named exception (8.2). It binds the story session, role moments and the competitions topic: delegated call,
+confirmed by the owner.
+
+**Decided by the owner, 2026-10-29: the direction for All-Star seasons** (built in section 14 as alumni rules 2, 3 and
+4). Verbatim:
+
+> "All star seasons should default to having pre-existing relationships and loyalty, with the ability for it to change
+> or decay due to actions in the house. Players also have reputations and their connections are known to other
+> players. For instance, if there are 3 players in an All star season known to be a preexisting alliance then the
+> other players in the house might ally against them for numbers"
+
+**Added 2026-10-29, D-H13 (section 12): "Yes, let outsider pacts grow past two".** The question was "Should outsider
+pacts be allowed to grow past two while a known bloc stands? Default: no, pairs only." Built at alumni rules 5 (14.L).
+The story session's cap and its one-each rule stand. Decided by the owner, 2026-10-29.
 
 What these settle, and what they leave:
 - The real-person questions the master plan put to the owner (its decision 5: photos, likeness, real histories in
@@ -134,7 +161,7 @@ Three things, all read from one immutable catalogue edition (section 3):
 | # | Part | What changes in a fresh season with alumni | Status today | Slice |
 |---|---|---|---|---|
 | 1 | **Prior relationships** between two seated alumni | the pair's opening standing (both ways, shared alliances only) and each side's trust in the other | missing on main; Codex: candidate only | H1b |
-| 2 | **Career reputation** | how big a threat each alumnus's record makes them look to the house | missing; Codex: candidate only | H1d, after B9 (section 9) |
+| 2 | **Career reputation** | how big a threat each alumnus's record makes them look to the house | missing; Codex: candidate only | built at alumni rules 3 (section 14) |
 | 3 | **One opening commitment**: Derrick and Cody's final two | one ordinary `final_two` deal between them when both are NPCs | missing; Codex: candidate only | H1b |
 
 What the player meets: the opening relationships and the NPCs' behaviour (who allies, deals and targets whom). A
@@ -222,8 +249,9 @@ Each record uses the research's words or the seasons alone, and the sources rule
 `janelle-bb22-2020`, and the second source Codex's catalogue gives it is not used.
 
 The record is the edition's own table, never `LoreLegacy`'s live `wonSeason`. Lore sheets are read live by key from
-schema 16, so a later lore edit must not move a saved season's history. The reputation values are read only by H1d's
-career reputation (7.5), after B9. H1a only pins the table, and H1c may show the record's words.
+schema 16, so a later lore edit must not move a saved season's history. The reputation values are read only by
+career reputation (7.5), built at alumni rules 3 (section 14). H1a only pins the table, and H1c may show the record's
+words.
 
 ### 3.5 Identity
 
@@ -253,9 +281,9 @@ card is that alumnus (section 7.2).
   not in it, 8 for a final-two partnership and 4 for another, inside the alliance component's cap of 20
   (`Simulation/ThreatAssessment.cs:125-128`).
 
-These are named constants in the edition. H1b reads the first two only. Career reputation and pair risk are H1d's,
-after B9 (section 9). They are never retuned in place: a retune is a new edition or a later alumni rules value, for
-fresh seasons only.
+These are named constants in the edition. H1b reads the first two only. Career reputation and pair risk are read
+from alumni rules 3, in the nomination threat and the vote only (14.C, 14.D). They are never retuned in place: a retune
+is a new edition or a later alumni rules value, for fresh seasons only.
 
 ---
 
@@ -514,7 +542,33 @@ at about 38, outside the "dangerous" band below 35; without it, 33.
 - It inherits the engine's knowledge rules. A hidden ballot writes no entry on the holder's edge until it is known.
 - Negative receipts are never cancelled: an old grievance does not heal by being betrayed again.
 
-### 7.5 Career reputation and pair risk (H1d, after B9)
+**As built in H1b, and still to be settled.** H1b reads "a breach" as any permanent negative entry on the same edge
+that is not a receipt, whatever its type. `AlumniHistoriesTests.ABreachThisSeasonEndsInheritedGoodwillButNeverHealsAnOldGrievance`
+pins that reading type by type:
+- **ends the goodwill:**
+  - `deal_broken`: the deal settlement's two-way record, `RecordBreach`'s one-way record and the unified vote's atoms
+    all write this type;
+  - `promise-broken`: the legacy and the unified writer;
+  - `alliance-betrayed`. Its only writer today is the player's own record, which never holds a receipt;
+  - mending fences' rebuff, `amends-refused`;
+  - D4's `story:double-dealt`;
+  - the negative permanent story receipts: `story:sold-out`, `story:secret-exposed`, `story:showmance-betrayed` and
+    `story:public-blowup`;
+  - the ledger's other permanent negatives, `nominated` and `voted-against`. Nothing writes them as ledger types
+    today; the grudges keep their own store;
+- **keeps it:**
+  - anything that fades: a `deal_broken` written off the commitment rules, `story:snubbed`, `story:argued`, hearsay;
+  - the breaker's own zero-weight `deal_broken`;
+  - anything positive.
+
+This is wider than the examples above. It also counts the story receipts, the rebuff and the two reference-table
+types. **The lead or the owner settles the list before the branch ships.** Once an alumni-1 season is saved, it
+replays by this rule. After that, narrowing or widening it is a new alumni rules value for fresh seasons, never an
+edit: as a type list in plan and code, pinned type by type the same way.
+
+Settled by the owner's direction (section 14). Alumni rules 1 keeps the list as built; 2 and later read 14.B.
+
+### 7.5 Career reputation and pair risk (built at alumni rules 3 by the owner's direction, 14.C, 14.D)
 
 Both are new terms in the threat rule, so both wait for B9 (section 9). They are designed here so that H1a's edition
 carries what they read.
@@ -593,8 +647,11 @@ the frozen reader refuses. Three rules keep the reader whole:
    only the live validator accepts fails to load, so any save-and-reload test of that value catches it.
 2. **From that landing, schema 29 is closed.** A new value in any closed vocabulary is defined only at
    `schemaVersion >= 30`. That covers story rules 10, R7's values, R8's origin value, a new deal kind or deal-id
-   prefix, a new storyline ceiling, and any change to the dialogue validator. The story session and role moments are
-   told (section 10).
+   prefix, a new storyline ceiling, any change to the dialogue validator, and the competition rules above 4: PC5's
+   competition rules 5, PC6's 6 and later, and Will's throw value. Frozen29 freezes `CompetitionRules.Current` at 4
+   (`FrozenV29ReadOnly.Leaves.cs:1527-1533`) and refuses a save above it (`FrozenV29ReadOnly.Core.cs:190`), so a
+   schema-29 save at competition rules 5 would be refused by its next load (rule 1), and for good once step 2 lands.
+   The story session, role moments and the competitions topic are told (section 10).
    - One named exception: D1 may still land at 29, because its chip writes dialogue rules 1, which the reader already
      accepts. Its `>= 29` literals change nothing at 29.
    - If D1 also changes what a rules-1 store may hold (for example the rules-2 fallback the joint note's P1(a) may
@@ -676,6 +733,55 @@ The master plan's list of live literals that must become bounds: `DialogueRules.
 | `Runtime/Persistence/EpisodeSaveValidation.cs:13` | `== 29` | the same constant |
 | `Simulation/DialogueRules.cs:19` (`On`) and `:97` (`TryValidate`) | `== 29` and `!= 29` | `>= 29`: the schema that introduced the store. Pinned to 29, the bump would switch dialogue off for good, and `TryValidate` would refuse every season. D1 makes this change itself (the joint note's §6 item 1); if D1 has not landed when SCH30 does, SCH30 makes it |
 | `Simulation/ShippedRules.cs:74-104` (`Fields`) | — | lists `alumniRulesVersion` and `tuningRulesVersion`, in that order, after `dialogueRulesVersion`. Its completeness test requires both, because it marks every int named `*RulesVersion`; 8.6 lists what moves with them. The edition is content, not a rule field |
+
+**At the merge with `claude/dialogue-v2`** (the joint note's §6 items 6 and 7, read at `9f8305fe`). These pins are
+on that branch only (D1 and D2), so SCH30 cannot move them on this one; the merge that brings the two together moves
+them, in the same commit:
+- **`DialogueRules.cs`** conflicts on the `On` line. Take D2's `On`, `Admits` and `IsDefined`: its `On` reads
+  `dialogueRulesVersion >= Rules1 && Admits(version, schemaVersion)`, which holds SCH30's `>= 29` for rules 1. The
+  `TryValidate` line (`< 29`) is the same on both sides.
+- **D1's native-29 arm** (`CurrentOldSaveTrace`'s `NativeSchema` = 29, `LegacyDigestSchema29Observer.IsNative29`,
+  `NativeFields29` and `NativeTrace29`) binds a live state at 29. At 30 the committed
+  `s29-mode2-dialogue1-w2-campaign` fixture loads to a schema-30 state, so the arm gets a 30-to-29 layer:
+  `LegacyDigestSchema30Observer.ProjectFields29` already passes a rules-1 store through (it runs Frozen29, which
+  accepts rules 1), and the native contract takes that projection as a plain schema-29 object, the way the retained
+  entry does. `ProjectRetained28` refuses rules 1 (its 'rule-1' case), so a rules-1 projection goes to the native arm,
+  never to 28.
+- **`s29-mode2-dialogue1-w2-campaign`** joins `FrozenEpisodeV29IntegrationTests`' direct-29 cases. The SCH30 review
+  ran `FrozenEpisodeV29.Validate` on it: accepted unchanged (schema 29, rules 1, one conversation); with rules 2 it is
+  refused with "Dialogue rules are not enabled in this build.", and with story rules 10 with "Unsupported story rules
+  version.".
+- **`DialogueRules2LadderTests.AtSchema29ALaterVersionIsRefusedInTheFrozenReadersWords`**: its whole-state wording pin
+  moves to `FrozenEpisodeV29.Validate`, whose words it already uses; at 30 the live validator refuses any schema-29
+  state with "Unsupported episode schema.".
+- **`DialogueRules2Season.HeldBelowItsSchema`** switches D2's engine and rescue cases to their conversation arm by
+  itself once a new season is written at 30. **`DialogueRules2PublicRescueTests.Enrolled`** loads its schema-29
+  carrier through the real migration to 30 instead of assigning the live schema.
+- **Then D2's own set runs at 30 on the merge**: `DialogueRules2LadderTests`, `DialogueRules2ValidatorTests` and
+  `DialogueRules2EngineTests` in the dotnet subset, and `DialogueRules2PublicRescueTests` under Unity's Mono first.
+  The merge also conflicts in `CurrentOldSaveTrace.cs`, `LegacyDigestSchema29Observer.cs`, its tests and
+  `Tools/baseline.txt` (a `git merge-tree` preview at `9f8305fe`), and adds D1's rows beside SCH30's in
+  `OldSaveAcceptanceTests`' fixture and cell lists.
+- **`ShippedRules.ApplyFresh`, the director, and the files around them (from H1b).** H1b and D1 both change these.
+  - D1 (at `9f8305fe`):
+    - turns `ApplyFresh(fresh)` into `ApplyFresh(fresh, null)` and adds a public
+      `ApplyFresh(EpisodeState, SeasonBuilder.Choice options)`, which writes the preview chip last;
+    - has the director's `StartSeason` call `ShippedRules.ApplyFresh(fresh, choice)`
+      (`Runtime/Episode/EpisodeDirector.Season.cs:319` on that branch);
+    - changes `ShippedRulesTests.cs`, `StressHouseTests.cs` and `EpisodeValidation.cs`.
+  - H1b turns `ApplyFresh(fresh)` into `ApplyFresh(fresh, alumniHistories: true)`, over an internal
+    `ApplyFresh(fresh, bool alumniHistories)`. It changes the same two test files and `EpisodeValidation.cs`, adds
+    `EnableAlumniHistories` to the director-setup copy in `ShippedRulesTests`, and the lab's `BalanceLab.Fresh` calls
+    the internal form.
+  - **The trap.** Suppose the merge keeps H1b's one-argument form beside D1's options overload. That overload has no
+    histories step. Every test that calls `ApplyFresh(fresh)` stays green, and the director's real path never enrols
+    a season.
+  - **The rule.** Keep one internal body, `ApplyFresh(fresh, options, alumniHistories)`. Its steps are D1's, then
+    the histories as the very last step (section 6). `ApplyFresh(fresh)` and `ApplyFresh(fresh, options)` both
+    delegate to it with `alumniHistories: true`. Only the lab's control passes false.
+  - **The merge commit adds a test:** `ApplyFresh(fresh, new SeasonBuilder.Choice { Roster = AllStars, HouseSize = 8 })`
+    builds the same state as `ApplyFresh(fresh)`, histories included. The director-setup copy keeps
+    `EnableAlumniHistories` last, after D1's chip.
 
 ### 8.6 The EditMode pin list (the Unity-free subset runs none of it)
 
@@ -858,6 +964,59 @@ No draw, sequence, event or log line changes.
 must be of a season that seats an alumnus through `ApplyFresh`: the All-Stars 8 builder, the stress house at 16, and
 the tests 8.6 lists for H1b. It is re-pinned with that reason; any other move is a regression.
 
+### 8.9 SCH30 as built (2026-10-25, branch `claude/all-star-histories`)
+
+Two commits, so step 1 can land on main before the bump (8.2, closing rule 1): step 1 wires the frozen reader at the
+live 29; step 2 is the bump. Offline-compiled; the dotnet subset, the Frozen29 warnings-as-errors project and the
+EditMode fixtures named in each commit ran under Unity's Mono; the full sets are the lead's.
+
+**Step 1's PR carries the branch up to `f600afae`, not `f600afae` alone:** H0's plan commits (`cacc59e0`, `6d179b01`,
+`74fa06b6`), AS1a (`b127cc05`, `751d6bca`) and step 1. Step 1's fresh-season digests for `regular/8/AllStars` and
+`stress/16/Regular` (seeds 1, 77 and 4242) were recorded on top of AS1a, so they hash AS1a's audited bios:
+`CastTemplates.ToContestant` copies a card's bio into the save, and the stress house seats alumni
+(`SeasonBuilder.cs:113-119`). A cherry-pick of `f600afae` alone onto main fails those six cases. Re-recording them on
+a main-based cherry-pick would work, but it records digests of cards the branch has already corrected.
+
+- **How Frozen29 was cut.** Frozen28's 17 production files, carried by name, then by exactly the live validators'
+  changes since its image. The delta was found mechanically: every member Frozen28 copied (its `SOURCE` spans in
+  515246bf) was looked up in b208d46d. 472 of 485 were unchanged; the 13 that moved are carried and marked
+  `DELTA b208d46d` (the schema checks and the dialogue store in `TryValidateCore`, the keep-the-block deal outside the
+  role moments, the pitch board's three pitchers and recorded impacts, `StoryRules.IsDefined`, `DealKind`'s
+  `VetoHold`, `DealResolution`'s kept weight, `FinalistRead.DealBreaker`), with the members they newly read
+  (`RolesOn`, `RolesOnIn`, the tones' declines). The dialogue domain is a frozen copy of `DialogueRules.TryValidate`
+  with no pending command: rules 0 and 1 only.
+- **The file verdicts** (every non-frozen file `git diff 76371982..b208d46d` lists under `Simulation/` and
+  `Runtime/Persistence/`): a frozen copy for `EpisodeSaveValidation`, `EpisodeValidation`, `EpisodeLedgerValidation`,
+  `EpisodeStoryValidation`, `StoryState`, `DealState`, `DealResolution`, `FinalistRead`, `HoHPitches`, `NpcDeals`,
+  `EpisodeEngine.Story` (`RolesOn`, `RolesOnIn`), `RoleTone` (its declines), `StrategyRules` (the vote ask the
+  dialogue validator makes), `DialogueRules`, `DialogueCampaignV1` and `V2`; frozen data for `EpisodeState`,
+  `DialogueState` and `UnifiedCommitments` (and its clone); no validation effect for the other 34 (engine behaviour,
+  readers, content, the importer and the migration chain; `UnifiedVoteAdmission` and `UnifiedVoteStore` changed only
+  their pending-command writer paths).
+- **Two corrections to this plan.** No `deal-save-` id exists at b208d46d (8.1 named one): the role moments' only new
+  id is `deal-keep-`. And `LegacyDigestSchema29ObserverTests` reach the retained-29 entry through the schema-30
+  observer's state-bound entries, which compose it; `LegacyDigestSchema30ObserverTests` call the retained entry
+  directly on the schema-29 fixtures.
+- **What schema 30 carries:** exactly 5.1's three root fields, off. The joint note's §6 stayed final with no dialogue
+  field (re-read at `c003ded2`, and again at `9f8305fe`, D2 and its review). AS3's association was not added: its
+  derivation proof has not run (D-H9 is the lead's).
+- **The review's fixes** (the fix commit after `936b73a4`):
+  - 8.7's three schema-30 fixtures, written and recorded by `936b73a4` through `Tools/OldSaves`
+    (OLD-SAVE-ACCEPTANCE 2.5): `s30-default-w2-social`, `s30-mode2-allweek-w3-campaign` (Regular) and
+    `s30-mode2-allstars-w3-campaign`, all at alumni rules 0. From schema 30 a cell names the alumni rules and the
+    cast, both read back from the save, so H1b's alumni-1 All-Stars cell is distinct. The recorder gained the
+    `director-allstars` rules value for it.
+  - `LegacyDigestSchema30ObserverTests.EveryPooledFieldRefusesMissingNullOrNonInertJson` asserts each field's own
+    refusal, so a deleted value check fails it; the own-view binding alone would refuse every edited trace too.
+  - The editor's v5 QA save (`LegacySaveFixtures`) is a byte copy of the `s05-default-w3-hoh` fixture, a file the
+    schema-5 build wrote, in place of a live capture stripped by hand: that capture had not stripped the fields added
+    since schema 14, so `FrozenEpisodeV5` refused it, and it needed an edit on every bump.
+  - The closing list (8.2 rule 2, section 10, D-H11) names the competition rules above 4, and section 10 tells the
+    competitions topic; 8.5 lists what the merge with `claude/dialogue-v2` moves.
+- **Closing rule 3, re-checked:** `origin/main` is `772828ba`. It changes no file under `Simulation/` or
+  `Runtime/Persistence/` since `b208d46d`, and `git merge-tree` of it into this branch is clean. Fetch and run both
+  again before step 2 lands.
+
 ---
 
 ## 9. Balance: what ships with the histories, and what waits for B9
@@ -956,6 +1115,12 @@ section 6 says. Either way nothing is tuned in place.
 
 A retune is a new edition or a later alumni rules value, for fresh seasons only. A saved season keeps its numbers.
 
+**Superseded for alumni rules 2 to 5** by the owner's direction of 2026-10-29 and the owner's answer of the same day
+on outsider pacts (14.A, 14.L). All-Star seasons default to them, and reputations and known connections are read now,
+not after B9. Section 14.H's measurement goes to the owner and is not a gate; it has two stop conditions. The other
+H1d terms (the vote shield, Will's throw, the repertoires and the stat overrides) still wait for B9, each on a later
+value.
+
 ---
 
 ## 10. Claims and coordination
@@ -975,11 +1140,21 @@ histories-first order, and it carries every field in 5.1.
   (OWNER-DECISIONS §3's amendment), and SCH30 is that step.
 - **Schema 29 closes when step 1 lands on main** (8.2). From then on, every track defines a new value in a closed
   vocabulary only at `schemaVersion >= 30`. That covers story rules 10, R7's and R8's values, deal kinds and id
-  prefixes, storyline ceilings and dialogue validator changes. D1's chip is the one named exception. This binds the
-  story session and role moments, so it is a peer-session decision for the owner (D-H11).
+  prefixes, storyline ceilings, dialogue validator changes, and competition rules above 4 (PC5's 5, PC6's 6 and
+  later, and Will's throw value). D1's chip is the one named exception. This binds the story session, role moments
+  and the competitions topic, so it is a peer-session decision for the owner (D-H11). The owner closed it on
+  2026-10-29 (section 1).
 - **Not claimed:** no command kind (the next free stays 66), no story milestone (10 stays the story session's, 11 is
   Roles), no dialogue rules version (the joint note claims 2 to 5 in dialogue's own field), and no competition rules
   version (5 is PC5's; the throw's is claimed with the competitions topic at H1d).
+- **Alumni rules 2, 3 and 4 are taken by section 14** (the owner's direction, 2026-10-29), and 5 by its 14.L (next
+  claim). The campaigns (AS7) take the next free value after S6. Because the value is a bound, AS7's value carries the
+  behaviour of 2 to 5 (2 to 4 if growth is withdrawn). Tell AS7's track when it next runs.
+- **Alumni rules 2 to 5 are section 14's** (2026-10-29). 5 is S3b's (14.L) and is released if growth is withdrawn
+  before S6. It is the alumni rules field, not competition rules 5 (PC5's). AS7 takes the next free value after S6.
+- **Settled at S6** (2026-11-01). Growth is kept (the owner's call on the stop conditions, 14.H), so 5 is not
+  released, and S6 freezes it with its old-save fixture (14.J's as-built note). The next free alumni rules value is 6:
+  AS7's, and it carries the behaviour of 2 to 5. Telling AS7's track is the lead's.
 
 **With dialogue:**
 - **The joint note's final §6 is SCH30's input.** It adds no dialogue field to 5.1, and it fixes 8.2's dialogue scope
@@ -1011,8 +1186,14 @@ If B9's plan needs another field, it joins the pool before the list closes.
 either lands at 29 before step 1 lands on main, its values join the frozen reader in the same step. After that, they
 are defined only at `schemaVersion >= 30` (8.2).
 
-**With the competitions topic:** PC5 is competition rules 5, and PC6's minigames take 6 or later. Will's throw takes
-the next free value when H1d lands, and is measured with PC5's lab runs.
+**With the competitions topic** (tell it when it next runs): PC5 is competition rules 5, and PC6's minigames take 6 or
+later. Will's throw takes the next free value when H1d lands, and is measured with PC5's lab runs.
+- **PC5 defines competition rules 5 only at `schemaVersion >= 30`**, and so do PC6's 6 and later and the throw's value.
+  Frozen29 freezes the competition rules at 4 (`CompetitionRules.Current = Widened = 4`) and refuses a schema-29 save
+  above it, so a season at 29 must keep being refused 5 or later by the live validator too, with the bound keyed to
+  the schema (`a-current-version-constant-is-a-bound-not-a-gate`).
+- If PC5 reaches main at 29 before SCH30's step 1 lands, its value joins the frozen reader in that step, as role
+  moments' R7 and R8 would (above). After that, never.
 
 **With the story session** (tell it when it next runs):
 - schema 30 is pooled and built here;
@@ -1091,13 +1272,1496 @@ edition.
 | # | Question | Recommendation |
 |---|---|---|
 | D-H1 (owner) | Edition 1's scope: shared Big Brother seasons only, or also Reindeer Games, Snake in the Grass and The Traitors? | **Big Brother seasons only** (3.3). Other shows are allowed by the owner's rule and can come as a later edition; owner's call if wanted |
-| D-H2 | What enrols a season: the cast (at least one intact, unique alumnus) or the All-Stars tab? | **The cast** (section 6): the state stores no roster, and `ApplyFresh` takes only the state |
+| D-H2 | What enrols a season: the cast (at least one intact, unique alumnus) or the All-Stars tab? | **The cast** (section 6): the state stores no roster, and `ApplyFresh` takes only the state. H1b built this. **Confirmed by the lead, 2026-10-29:** enrolment stays by the cast. H1b's brief said "fresh All-Stars seasons only"; by the cast, the verification stress house and a Regular season with an alumni custom slot enrol too, and the gate measured All-Stars rosters only (section 13). The alternative is to narrow enrolment to the All-Stars tab once D1's options form lets `ApplyFresh` see the roster. Enrolment happens only when a season is created, so narrowing changes fresh seasons only, and saved seasons keep their value |
 | D-H3 | Pairs with the player on an alumni card | **The NPC's view only**, through one receipt; no `Move`, no `Change`, no arc, no seeded row (7.2) |
 | D-H4 | Will and Janelle's row | **Held out whole** (3.3): the eviction's only project source is not a game source (rule 4), and the reading fails rule 3 as well. It comes back only with a game-register source already in the project, or by the owner's explicit call, recorded in section 1 |
 | D-H5 (owner) | An in-game on/off switch for histories (Codex's `playerHistoriesEnabled`) | **None for now**. If the owner wants one, it is alumni rules 0 on a fresh season and needs no field |
 | D-H6 | Order against dialogue's D2 for the frozen reader | **The joint note's decision 7, as reviewed at `eb820bc8`: SCH30 first.** The reader is cut from main as it stands, with dialogue rules 0 and 1. D2 starts from SCH30's step-2 commit merged into its branch, and its proofs run at 30, so D2 waits for step 2 (8.2, section 10). This replaces H0's first answer ("D2 on main first"), which the histories-first order overtakes. The joint note leaves the order to the lead, so the lead confirms it |
 | D-H7 | Confirm the pooled schema-30 claim with the story session, dialogue and B9 | Dialogue has accepted it (the joint note's §6 and §10). Confirm with the story session and B9 before SCH30's step 2, and record it in section 10 (the master plan's decision 6) |
-| D-H8 | Where the line falls for "the parts that move balance wait for B9" | **New terms in a decision rule wait** (career reputation, pair risk, the vote shield, Will's throw, the repertoires, the stats). **The opening state is built in H1b**, measured and not tuned. It enrols fresh seasons only if no headline rate in the alumni cells moves beyond seed noise. Otherwise H1b lands with `ApplyFresh` not enrolling until B9, unless the owner decides otherwise (section 9). A stricter reading would hold enrolment back in every case; the gate keeps that protection wherever it matters |
+| D-H8 | Where the line falls for "the parts that move balance wait for B9" | **New terms in a decision rule wait** (career reputation, pair risk, the vote shield, Will's throw, the repertoires, the stats). **The opening state is built in H1b**, measured and not tuned. It enrols fresh seasons only if no headline rate in the alumni cells moves beyond seed noise. Otherwise H1b lands with `ApplyFresh` not enrolling until B9, unless the owner decides otherwise (section 9). A stricter reading would hold enrolment back in every case; the gate keeps that protection wherever it matters. **The exception, decided by the owner on 2026-10-29 (section 14):** alumni rules 2 to 4 read their new terms now, and All-Star seasons default to them; so does 5, outsider pacts that grow (14.L, D-H13) |
 | D-H9 | AS3's commitment association, if its derivation proof has not run when SCH30's list closes | **Run the proof first**: it needs no Unity. If it cannot run in time, the lead chooses between adding the null field to 30 as insurance and accepting a later schema 31 for it |
 | D-H10 | Reserve B9's `tuningRulesVersion` in 30 before B9 has a plan | **Yes**, at 0, with validation accepting only 0 until B9 defines a value. An unused int costs far less than a schema 31 (5.1). The joint note's §6 recommends the same |
-| D-H11 (owner, peer sessions) | Close schema 29 when SCH30's step 1 lands on main (8.2) | **Yes.** From that landing, story rules 10, R7, R8 and every other new closed value are defined only at `schemaVersion >= 30`, with D1's chip as the one named exception. It binds the story session and role moments, so it is recorded as "delegated call, confirmed by the owner" |
+| D-H11 (owner, peer sessions) | Close schema 29 when SCH30's step 1 lands on main (8.2) | **Yes.** From that landing, story rules 10, R7, R8, competition rules 5 (PC5), PC6's 6 and later, Will's throw value and every other new closed value are defined only at `schemaVersion >= 30`, with D1's chip as the one named exception. It binds the story session, role moments and the competitions topic, so it is recorded as "delegated call, confirmed by the owner". **Decided by the owner, 2026-10-29: "Close it" (section 1).** |
+| D-H12 (owner) | The owner's direction for All-Star seasons: default loyalty that changes and decays, reputations, known connections (section 1) | **The direction's three values, decided by the owner** (2026-10-29): alumni rules 2 (loyalty), 3 (reputation and known pairs) and 4 (counter-blocs), section 14. Fresh seasons start at the latest; outsider pacts grow past two from alumni rules 5 (14.L, D-H13) |
+| D-H13 (owner) | Should outsider pacts be allowed to grow past two while a known bloc stands? | **Yes.** "Yes, let outsider pacts grow past two." Alumni rules 5 (14.L): up to two plus the live known pairs, never past four; the cap still counts pacts, one each. Decided by the owner, 2026-10-29 |
+
+---
+
+## 13. H1b as built (2026-10-26, branch `claude/all-star-histories`)
+
+On top of `0656c58f` (SCH30's review fix). H1a was not built on its own: its edition is part of this slice. Proof without
+Unity: the offline compile (`-WithoutUma`), the dotnet subset and the Frozen29 project, and the EditMode fixtures named
+below under Unity's Mono. The full sets are the lead's.
+
+**What it adds**
+- `Simulation/AlumniHistories.cs`:
+  - `AlumniRules`: `Off` 0, `Histories` 1, `Latest` 1, `IsDefined`, and `On(s)` (alumni rules at least 1 with an
+    edition this build knows);
+  - edition 1, `AlumniEditions.Histories1` (`allstar-histories-1`): the frozen identity table (3.5), the five pairs
+    of 3.2 with their research rows and sources, the career record of 3.4 with its sources, and 3.6's constants. Every
+    list is read-only, nothing takes a state or a generator, and nothing outside the simulation can make an edition;
+  - the pure readers `AlumniHistories.Seated` (intact and unique, the player included) and `SeatedPairs`.
+- `EpisodeEngine.EnableAlumniHistories` (section 6), called last in `ShippedRules.ApplyFresh`. It runs only on an
+  unstarted season at alumni rules 0, and only when the cast seats an intact, unique alumnus (D-H2: the cast, not the
+  roster tab). It writes, in fact-id order: `RelationshipLedger.Move` for an NPC pair's shared standing,
+  `RecordOneWay(..., permanent: true)` for each directed part held by an NPC (7.1, 7.2), and then the Hitmen's
+  `final_two` through the new internal `NpcDeals.SeedOpeningPair`, under the commitment and deal rules. No `Change`, no
+  roll, no arc, no log line. The receipts and the deal take sequences from `nextSequence` in that fixed order.
+- An internal `ShippedRules.ApplyFresh(fresh, alumniHistories)`, so the lab can play the paired control at alumni rules
+  0. The director and every other assembly reach only `ApplyFresh(fresh)`.
+- Validation (5.3), in `EpisodeValidation.cs` and the new `EpisodeValidation.Alumni.cs`:
+  - the pooled check now accepts alumni rules 0 with no edition, or 1 with an edition this build knows. An undefined
+    value, a nonzero tuning value, or an edition at 0 keeps "Schema 30's pooled rules are not enabled in this
+    build."; rules 1 without a known edition reads "The alumni rules need the edition their season was built from.";
+  - at 1, every `alumni-history` entry must be alone on its edge, held by an NPC, on an edition pair the season seats
+    (3.5), in a direction the edition gives a part, at week 1, permanent, and with the part's exact impact and words
+    ("Invalid alumni history receipt."). At 0 the type is free text, as at 29.
+- The readers (7.3, 7.4), each asking `AlumniRules.On` first, so a season at 0 reads exactly as before:
+  - `RelationshipLedger.RecentImpact` leaves the receipt out: a past game is not recent;
+  - `WeeklyRecap.Movements` leaves it out, so week one never reports a past game as a move of the house's read of you;
+  - `RelationshipLedger.WeightedImpact` (trust) applies the breach rule (7.4): a positive receipt stops counting once
+    its edge holds a permanent negative entry of this season, and a negative receipt always counts;
+  - the 512-entry prune (`RelationshipLedger.Trim`, now shared by `Append` and the engine's own path) drops the oldest
+    entry that is not a receipt. This is cheaper than measuring whether an edge can reach 512, and no season off the
+    alumni rules holds a receipt.
+
+**The other readers, audited** (7.3's last row). Every reader of a relationship's entries in `Simulation/` and
+`Runtime/` was read:
+- reads only by type, never this one: `Allegiance` (betrayals), `EpisodeEngine.Introductions`, `EpisodeNpcSocial`
+  (conversation counts), `Negotiation` (calls and amends), `StoryCatalog.BondsAndSecrets` (talks),
+  `StoryOdds.PermanentBadBlood` (the `story:` prefix only), `StoryOdds` (broken deals) and `YourWeek` (deal outcomes);
+- reads trust, as intended: `ThreatAssessment.TrustScore` and its readers (alliance desire, information deals,
+  reputation bands, `PlayerDeals`' odds);
+- shows the player's own edge only, which never holds a receipt: `RelationshipWeb`'s history column;
+- no caller outside the tests: `MostSignificant` and `HoldsAGrudge`;
+- validation and the frozen readers bound entries by size only.
+
+**Breach writers, one way or both** (7.4):
+- both edges, so the goodwill ends both ways: the deal settlement's `deal_broken` (`EpisodeEngine.cs`, both sides
+  record a deal they walked away from);
+- one edge only, the wronged one's view: the commitment rules' `deal_broken` (`EpisodeEngine.Commitments.cs`; the
+  breaker's own entry is 0), `promise-broken`, the unified vote ledger's atoms, mending fences' rebuff, D4's
+  `story:double-dealt` and the story receipts.
+
+Which types count is listed in 7.4 ("As built in H1b, and still to be settled"), pinned type by type. The rule is
+wider than 7.4's examples, and the lead or the owner settles it before the branch ships.
+
+**What stays off until B9** (section 9, H1d). Career reputation and pair risk exist only as edition data
+(`AlumniEdition.CareerReputation`, `AlumniEditions.FinalTwoPairRisk` and `AlliancePairRisk`), and no decision reads
+them. The vote shield, Will's throw, the repertoires and the stat overrides are not built. Each waits for its own
+alumni rules value after B9, defined only at schema 30 or later; the throw also waits for a competition rules value
+claimed with the competitions topic. Alumni rules 1 never reads any of them. Since the owner's direction of
+2026-10-29, career reputation and pair risk are section 14's, at alumni rules 3 (14.C, 14.D); the rest still wait.
+
+**The balance gate** (section 9). `BalanceLabAlumniReport.AlumniHistoriesGate` (dotnet only, Explicit): All-Stars 8
+and 12, alumni rules 1 against the same 100 seeds at 0. The first run played 1,600 seasons in 15.6 minutes. The
+review fix's run adds a third arm and the pacing rows (below): 2,400 seasons in 17.3 minutes, with every
+histories-alone row unchanged to the last digit. The gated rows were fixed before the run: Q3 season wins (passive,
+studier), Q4 nomination rate (passive) and the weekly competition win rate (passive, studier).
+
+| player | size | Q3 season wins | Q4 nomination rate | weekly competition wins |
+|---|---|---|---|---|
+| passive | 8 | -0.060 [-0.171, +0.051] | +0.015 [-0.035, +0.065] | +0.009 [-0.022, +0.039] |
+| studier | 8 | -0.080 [-0.162, +0.002] | (not gated) | 0.000 [0.000, 0.000] |
+| passive | 12 | +0.010 [-0.061, +0.081] | -0.003 [-0.050, +0.044] | +0.004 [-0.019, +0.027] |
+| studier | 12 | +0.030 [-0.060, +0.120] | (not gated) | -0.002 [-0.009, +0.005] |
+
+No gated rate moved beyond seed noise, so fresh seasons that seat an alumnus enrol, as section 6 says.
+- Closest to the line: the studier at 8, whose season wins fall from 0.80 to 0.72 with an interval ending at +0.002.
+- Reported, not gated: the social newcomer at 12 reaches the final two more often (0.39 against 0.25, +0.140
+  [+0.015, +0.265]), with season wins +0.070 [-0.049, +0.189].
+- The passive player on Cody's card moves on no metric at either size. The receipts about them reach the weekly offer
+  pass only through trust.
+- With ten gated comparisons at 95%, a chance crossing was about a 40% risk; none crossed.
+- **The gate holds for every reported player type, not only the gated ones.** No social or on-card row's Q3, Q4 or
+  weekly competition interval excludes zero. The nearest is the social newcomer's Q4 at 12, +0.051 [-0.008, +0.111].
+  The widest reading of section 9's headline rates passes too.
+
+**Pacing** (section 9: "report it anyway"; histories alone, every player type). Nothing moves that a session would
+notice:
+- weeks a season: 6 at 8 and 10 at 12 in both arms, a difference of exactly 0;
+- the player's decisions a week in the house: 0.0 in every cell;
+- commands a season: within noise everywhere. The largest are the social newcomer's, +3.4 [-0.7, +7.4] at 8 and
+  +9.6 [-0.2, +19.5] at 12 on about 250 commands;
+- ceremony seconds a regular week: within ±0.1 s of about 45 s (8) and 50 s (12). Two rows cross zero by less than
+  a tenth of a second: the studier at 8, +0.1 [0.0, +0.2], and the player on Cody's card at 12.
+
+The 45-minute target for 8 players is unaffected, as section 9 expected.
+
+**Both together** (section 9: "not stacked unmeasured with agency's first impressions"). This compares the shipped
+season with a second control that starts with neither the histories nor the first impressions. The lab's
+`impressionsOff` sets the agency boundary to week one before `ApplyFresh`, so agency is on from week one but seeds no
+first impression. Every other rule is as shipped, and a probe checks that such a season starts with no standing and
+no entry. Reported, not gated:
+- Q3 and the weekly competition win rate stay inside noise for every player type. The largest is the social newcomer
+  at 8, whose season wins are -0.120 [-0.251, +0.011].
+- **Q4 falls beyond noise in five cells**, the newcomer being nominated less often by an NPC Head of Household:
+  - the passive newcomer: -0.110 [-0.202, -0.018] at 8 and -0.079 [-0.152, -0.006] at 12;
+  - the studier: -0.069 [-0.136, -0.003] at 12;
+  - the passive player on Cody's card: -0.168 [-0.260, -0.075] at 8 and -0.191 [-0.264, -0.118] at 12.
+  - "times nominated" falls with it in the same cells, and the player on Cody's card stays longer in the house
+    (+0.93 weeks at 8, +1.54 at 12).
+- The histories alone move none of these, so the fall is the first impressions' doing. They have shipped in every
+  season since agency (schema 20), and H1b does not change them. It is still news for the owner's report: in an
+  All-Stars house the two opening states together make the newcomer a less likely nominee, and the histories add
+  nothing measurable to that.
+- Pacing: commands a season rise slightly in three cells (the social newcomer at 8, +5.8 [+0.1, +11.5]; the player on
+  Cody's card, +2.3 at 8 and +3.2 at 12). The weeks are unchanged.
+
+**What enrols, and what the gate measured** (D-H2, open in section 12 then; confirmed by the lead, 2026-10-29). By the cast, three kinds of fresh season
+enrol:
+- All-Stars seasons, the only ones the gate measured;
+- the verification stress house: enrolled, played to its finale by `StressHouseTests`, not measured;
+- a Regular season with an alumni custom slot: enrolled, not measured. When it seats no edition pair, it is at alumni
+  rules 1 with no receipt and no deal. By reading, it then plays exactly as at 0: every reader keyed to the rules
+  (`RecentImpact`, `WeightedImpact`'s breach rule, `Trim`, the recap's `Movements` and validation) acts only on
+  receipts.
+
+The opening state is measured here, not tuned. A retune is a new edition or a later alumni rules value, for fresh
+seasons only.
+
+**Pins and re-pins** (8.6 and 8.8, "From H1b"):
+- `ShippedRulesTests`:
+  - the shipped map splits by cast (`SeatsAlumni`, `AlumniShipped`), with edition 1 checked beside it;
+  - the director's inline copy gains `EnableAlumniHistories` last;
+  - the schema-30 pin becomes `TheLiveSchemaIs30AndOnlyASeasonThatSeatsAnAlumnusStartsOnTheAlumniRules`;
+  - `ApplyFreshDrawsNothingFromTheSeasonsStreamAndCommitsNothing` holds unchanged: it builds a Regular season.
+- `FreshSeasonStateDigestTests`: no digest is re-recorded. The six All-Stars 8 and stress 16 cases take exactly what
+  the histories wrote back out (`AlumniHistoriesTests.WithoutHistories`) and still hash to their schema-29 records, so
+  the histories are the only change, byte for byte.
+- `PooledSchema30ShapeTests.LiveValidationAcceptsOnlyTheValuesASliceHasDefined` (was `...TheOffValuesUntil...`).
+- `LegacyDigestSchema30ObserverTests`: the nonzero-pooled case per field and value, and two new cases. A season on the
+  alumni rules is never projected to 29, and is admitted natively at 30 (`LegacyDigestSchema30Observer.AdmitNative30`,
+  used by `CurrentOldSaveTrace` for such a season, at the live 30 only).
+- `PersistenceV30MigrationTests`: "alumni-rule" holds the undefined 2, and a new "alumni-unedited" holds 1 without an
+  edition.
+- Re-checked, and unmoved:
+  - `StressHouseTests`: the stress house enrols (Dan, Will, Derrick, Janelle, Cody, Danielle and Vanessa, and three
+    pairs) and plays to its finale;
+  - `CastTemplateTests` and `AlumniAuditSaveTests`: both arms enrol alike;
+  - `AllWeekSeasonDigests.Fresh` at 16 and `BalanceLabReports`' All-Stars grids: Explicit reports with no recorded
+    digest, so they now play enrolled seasons;
+  - missed here, and re-pinned on 2026-11-01: `BalanceLabTests.BudgetNoughtRows` hashes the smoke grid, whose 24
+    All-Stars seasons seat alumni. It is `5481eec784acd1ed`, was `3878f7a1d2ea39a8` (main at `37416049`). The 540
+    Regular rows are main's byte for byte, so only seasons that seat an alumnus moved (8.8, "From H1b");
+  - `BalanceLabGoldens`: Regular cells only, so its `Rules` string is unchanged.
+
+**New tests**
+- `AlumniHistoriesTests`: 31 shared cases and 8 more in the subset only (the internal control). They cover:
+  - edition 1's pins;
+  - the opening state at 8 and 12 over five seeds;
+  - the Hitmen row;
+  - the same house on every run, and the same histories on every seed;
+  - nothing drawn, and only the histories' own sequences minted;
+  - every builder without an alumnus unchanged;
+  - nothing but `ApplyFresh` writing a history;
+  - the player on an alumni card;
+  - renamed and repeated cards;
+  - validation of every receipt, and of the rules with their edition;
+  - type-only meaning at 0;
+  - the readers and the breach rule;
+  - the prune;
+  - a JSON round trip that plays on the same;
+  - two seasons to a winner;
+  - in the subset only, field for field against the control for all seven builders.
+- `AlumniHistoriesSaveTests` (EditMode only, 4): through the real `EpisodeSaveStore`, a fresh alumni season saves at
+  30, loads unmigrated, plays on the same, saves and reloads in week three, and recovers its backup. The SCH30 build's
+  All-Stars fixture loads at alumni rules 0 and is never enrolled.
+- `AlumniHistoriesRecapTests` (EditMode only, 1): week one's recap never sums a past-game receipt into a move, and off
+  the rules the same entry is summed as before.
+
+**The alumni-on old-save cell** (8.7), recorded in the commit after `0fef7b59` by that build itself
+(OLD-SAVE-ACCEPTANCE 2.6): `s30-mode2-allstars-alumni1-w3-campaign`, a shipped All-Stars director season of eight at
+alumni rules 1 and edition 1, saved at the week-3 campaign with the Hitmen's final two live, four receipts, and 48
+commands to its end. Seed 3004, because the alumni-0 fixture's seed 3002 had evicted Derrick by then. It is the 55th
+cell. `CurrentOldSaveTrace` and the historical `FindDecision` reader admit a season on the alumni rules natively at
+30, since it has no 29 view.
+
+**The review fix** (2026-10-26, the commit after `274fefa5`). Tests, the lab and this plan only. No simulation or
+runtime source changed, and no test case was added, so the floors stand.
+- **Edition 1's words are part of the save format.** Validation compares each receipt's description with its part's,
+  character for character (5.3). `EditionOneHoldsFivePairs` (in the subset) now pins verbatim:
+  - all seven parts' `Description`s;
+  - the five pairs' `Act`s;
+  - the twelve career `Record`s.
+
+  Its message says the edition is immutable, and that a wording change needs a new edition id, selected for fresh
+  seasons only. The pin matters most for the BB22 receipts (the Committee both ways, Tyler's nomination of Janelle).
+  The alumni-1 fixture is an eight-house season and holds none of them, so before this pin an edit in place to their
+  words passed every test. After such an edit, no saved 9-to-12-house alumni season, or its backup, would load. This
+  applies to any later wording audit of the edition in the style of AS1a: it is a new edition, never an edit.
+- **Week one** (5.3) is pinned. A receipt redated to week two, in a season in week two where the ledger allows that
+  week, is refused with "Invalid alumni history receipt.". The review's one-line form could not work: in week one the
+  general ledger check refuses a week-two entry first, with "Invalid relationship history.".
+- **The breach rule** is pinned type by type (7.4's "As built" list), with what keeps the goodwill beside it. Its
+  width is the lead's or the owner's to settle before the branch ships.
+- **The gate report** adds the "both together" arm, the pacing rows and the all-player-types line (above).
+- **The merge with D1** gets its `ApplyFresh` rule and its trap in 8.5.
+- **D-H2** was marked open for the lead in section 12 (confirmed by the lead, 2026-10-29). The kinds of season that enrol without being measured are listed
+  above.
+- **Not done: a twelve-house alumni-1 save fixture**, which the review marked optional. The verbatim pin catches the
+  wording edit it guards against, in the subset and in seconds. A fixture needs the recorder run from an archive of
+  the build that writes it, and four more EditMode cases. Record it if the lead wants the BB22 receipts in a saved
+  file: a `director-allstars` season of 12 at the next seed that keeps Cody, Tyler and Janelle in the house to its save
+  point.
+
+Evidence for the review fix (C: scratch, not committed):
+- three mutations, each caught by its named test and restored by SHA-256: the Committee part's words, `receipt.week`'s
+  check, and the breach rule narrowed to `deal_broken`;
+- a fourth mutation, the breach rule counting zero-weight entries, also caught;
+- the 2,400-season gate report.
+
+**For the lead: PlayMode and visual checks.** No PlayMode file changed.
+- `EpisodePlayModeTests.CastSelect` starts All-Stars seasons through `StartSeason`, so they are now enrolled. Expected
+  green. `OpeningGrounds` builds without `ApplyFresh`, so it is unaffected.
+- The verifier's stress house enrols, so the standalone verify walk is worth one run.
+- Capture an All-Stars season at Standard and Largest text:
+  - week one's recap shows no past-game movement;
+  - on an alumni card, the relationship web's history column for Cody shows no receipt;
+  - the Hitmen's final two shows only where the player may see NPC deals.
+- Optional: a sweep of copies of the owner's saves. Every one is alumni rules 0 and should play exactly as before.
+
+---
+
+## 14. The owner's direction of 2026-10-29: loyalty that moves, reputations, known blocs
+
+Section 13 is H1b as built, so this is section 14. The owner's direction, verbatim:
+
+> "All star seasons should default to having pre-existing relationships and loyalty, with the ability for it to change
+> or decay due to actions in the house. Players also have reputations and their connections are known to other
+> players. For instance, if there are 3 players in an All star season known to be a preexisting alliance then the
+> other players in the house might ally against them for numbers"
+
+This section builds the direction as three alumni rules values. It also answers 7.4's open question (call 2), and it records the owner's decision on section 9's gate and D-H8 for these values. A fourth value, 5, builds the owner's answer of the same day on outsider pacts (14.L).
+
+Paths: `Simulation/`, `Runtime/` and `Tests/EditMode/` are under `Assets/Gamesim/`. `Tools/` is at the repository root. Line numbers are at `4ab8c054`.
+
+| Value | Constant | What it adds | Slice |
+|---|---|---|---|
+| 2 | `AlumniRules.Loyalty` | The graded receipt share. Inherited trust is eroded by this season's wrongs and public nominations. Pacts and kept words repair it, up to a cap. A betrayal ends it. Old grievances heal through play. The shared standing is written off once, at a public split | S1 |
+| 3 | `AlumniRules.Reputation` | Career reputation and the risk of known past pairs, in the nomination threat and in the vote. What the player is shown | S2, S5 |
+| 4 | `AlumniRules.CounterBlocs` | Outsiders want each other more while a known pair stands. Outsider pacts hunt the bloc, with a stop above zero | S3 |
+| 5 | `AlumniRules.GrowingPacts` | While a known pair stands, an outsider pact of houseguests may take members past two: one a week, while nobody outside it knows of it, up to two plus the live pairs and never past four. Decided by the owner, 2026-10-29 | S3b |
+
+**Rules for every part:**
+- no saved field and no schema change;
+- no new closed-vocabulary value (no ledger type, fact kind, act kind, grudge cause or vote factor code);
+- no new draw site and no new sequence-id site, with one exception at value 5: a join's `alliance-formed` receipts, two per member in the house, through the existing writer (14.L.D.5);
+- no `EpisodeEngine.Change`. The one write between NPCs is `RelationshipLedger.Move`, and at value 5 a join's `RelationshipLedger.Record` of `alliance-formed`, the record `Form` writes (`Simulation/NpcAlliances.cs:271`);
+- no opening write. A fresh season at 2, 3 or 4 is the H1b opening with a different integer;
+- every new term asks `AlumniRules.At(s, v)` with v of 2 or more, and is added only when it is nonzero. Seasons at 0 and 1 therefore play byte for byte as before, and the `s30-mode2-allstars-alumni1-w3-campaign` fixture replays unchanged;
+- every word shown comes from edition 1 or from this season's public events. No new fact about a real person;
+- nothing reads a private ballot, a private deal or another houseguest's score into anyone's trust (section 2's rule).
+
+### 14.A Default loyalty
+
+**Enrolment is already the default.**
+- Both public `ApplyFresh` forms pass `alumniHistories: true` (`Simulation/ShippedRules.cs:26,37`), and the histories run last (`:101`).
+- H1b's gate passed (section 13).
+- A fresh season that seats an identity-intact alumnus therefore starts with:
+  - the Hitmen's +20 and the Committee's +10 standing (`Simulation/EpisodeEngine.AlumniHistories.cs:55`);
+  - the directed receipts (`:56-61`);
+  - the Hitmen's final two (`:63-65`).
+- **The one change:** fresh seasons now start at `AlumniRules.Latest` instead of the literal `Histories` (`:49`). "New seasons start here" is the one use `Latest` is allowed (`Simulation/AlumniHistories.cs:15`).
+
+**No opening pact.** An `AllianceState` for the Hitmen or the Committee would cause four problems:
+- it would be private at birth (`Simulation/Story/StorySystems.cs:131-145`), the opposite of "known";
+- it would take half of an 8-house's pact cap of 2 (`Simulation/NpcAlliances.cs:88`);
+- it would shift sequence ids;
+- it would decide in advance what play should decide.
+
+Loyalty is carried by the standing, the graded receipt (14.B) and the final two. Being known is carried by 14.D.
+
+**Enrolment scope stays "by the cast" (D-H2).** The stress house and a Regular season with an alumni custom slot enrol too. The lead confirmed D-H2 on 2026-10-29: enrolment stays by the cast.
+
+**Section 9's gate and D-H8, decided by the owner.**
+- Section 9 holds a value back when a gated rate moves "unless the owner decides otherwise".
+- D-H8 makes new decision terms wait for B9.
+- The direction decides otherwise for values 2 to 4, and the owner's answer for value 5 (14.L):
+  - All-Star seasons default to them;
+  - reputations and known connections are read now, not after B9.
+- The measurement in 14.H is reported to the owner and is not a gate. It has two stop conditions.
+- The other H1d terms still wait for B9, each on a later value: the vote shield, Will's throw, the repertoires and the stat overrides.
+
+**The record, on insertion of this section:**
+- **§0:** one line pointing here.
+- **§1:** the direction verbatim, as "Decided by the owner, 2026-10-29".
+- **§1:** the question and the answer verbatim (D-H13).
+- **§2's table, row 2, and §3.4's last paragraph:** "built at alumni rules 3 (section 14)".
+- **§3.6's last paragraph:** career reputation and pair risk are read from alumni rules 3, in the nomination threat and the vote only (14.C, 14.D).
+- **§7.4's last paragraph:** "Settled by the owner's direction (section 14). Alumni rules 1 keeps the list as built; 2 and later read 14.B."
+- **§7.5's heading:** "(built at alumni rules 3 by the owner's direction, 14.C, 14.D)".
+- **§9:** the gate is superseded for values 2 to 5.
+- **§10, new claim:**
+  - alumni rules 2 to 4 are taken by section 14, and 5 by its 14.L, released if growth is withdrawn before S6; alumni rules 5 is not competition rules 5 (PC5's) (2026-10-29);
+  - the campaigns (AS7) take the next free value after S6. Because the value is a bound, AS7's value carries the behaviour of 2 to 5 (2 to 4 if growth is withdrawn);
+  - tell AS7's track when it next runs.
+- **§12:**
+  - D-H8: the exception;
+  - D-H12, new: "the direction's three values, decided by the owner";
+  - D-H13, new.
+- **§13's "What stays off until B9":** points here.
+
+### 14.B Change and decay: the graded receipt share (value 2)
+
+**B.1 The rule.** It runs only at alumni rules 2 or later, and only on an edge that holds an `alumni-history` receipt. Every other edge returns the existing sum, `edge.events.Sum(e => e.impactScore * Weight(e, week))` (`Simulation/RelationshipLedger.cs:97-98`), bit for bit as before.
+
+For holder H's edge about A, in week w:
+
+```
+L  = sum of |impact| over H->A's permanent (decayable == false) non-receipt entries with impact < 0
+N  = sum over u in AlumniLoyalty.PutUpWeeks(s, A, H, includeThisWeek: true)
+         of max(0, NominationErosion - NominationFadePerWeek x (w - u))
+E  = L + N                           erosion: what A did to H this season, on the ledger and at the public ceremonies
+P  = min(LoyaltySpan, sum of impact over H->A's permanent non-receipt entries with impact > 0
+                      + sum of impact x Weight(e, w) over H->A's "deal_fulfilled" entries)
+betrayed  = H->A holds a permanent non-receipt entry with impact <= -BetrayalLine
+goodwill  = betrayed ? 0 : clamp01(1 - max(0, E - RepairWeight x P) / LoyaltySpan)
+grievance = clamp01(1 - max(0, P - E) / LoyaltySpan)
+WeightedImpact = sum over the edge's entries, in stored order, of
+    receipt:  impact x (impact > 0 ? goodwill : grievance)
+    other:    impact x Weight(e, w)
+```
+
+| Constant (`AlumniLoyalty.`) | Value | Why |
+|---|---|---|
+| `LoyaltySpan` | 30 | Twice a receipt's +15. One `alliance-formed` (+30) fully heals an old grievance. It is also the most repair can bank |
+| `BetrayalLine` | 30 | Catches a High deal broken (−30), a final two broken (−45), and a broken vote promise (−31) or heavier. It leaves out an information promise (−22) and Low or Medium deals (−15, −22.5) (`Simulation/WebRules.cs:77-93`, loyalty 5) |
+| `RepairWeight` | 0.5 | Play together banks half its value against erosion. With P capped at 30, at most 15 points of wrongs are absorbed |
+| `NominationErosion` | 35 | Half of a nomination's grudge of 70 (`Simulation/Story/EpisodeEngine.StoryHooks.cs:25-31`), read from the public record instead of the grudge store |
+| `NominationFadePerWeek` | 1 | Half the grudge store's 2 a week (`Simulation/Story/Grudges.cs:28`), so "you put me up" stays a season-long memory, as the store intends (`:97-101`) |
+
+**B.2 What counts.**
+
+- **Erodes:**
+  - every permanent negative non-receipt entry on H's own edge. These are the ledger's breach writers (`deal_broken`, `promise-broken`, `amends-refused`, `story:double-dealt`, the negative permanent story receipts), the list 7.4 pins for rule 1. L inherits the ledger's own knowledge rules, as rule 1 does;
+  - A putting H up at a public ceremony (N):
+    - a nomination (a veto save included) or the replacement, as A's Head of Household week;
+    - read through `FinalistRead.PutUp` (`Simulation/FinalistRead.cs:621`) over `s.ledger.power`. Rows of earlier weeks are filtered by `row.week < s.week`. The final eviction's row is skipped by the predicate at `:461`;
+    - with `includeThisWeek`, it also reads this week's row and, while `!s.evictionResolved`, the live block (`s.hohId`, `s.nominees`). A week counts once;
+    - a nomination writes nothing between NPCs on the ledger (`Simulation/EpisodeEngine.cs:927-950` writes a memory and a grudge). The replacement's `veto-replacement` entry fades (`Simulation/EpisodeEngine.BetweenHouseguests.cs:56-68`). So N never double-counts L.
+- **Never read:**
+  - ballots. An ally's vote against and a Head of Household's flip are written to grudges from `s.votes` at the reveal (`Simulation/Story/EpisodeEngine.StoryHooks.cs:93-116`);
+  - grudge severity. The store stacks causes and keeps only the last one (`Simulation/Story/Grudges.cs:67-73`), so it cannot be filtered;
+  - leaving a pact. It is a grudge, not a ledger entry (`:51-55`).
+- **Repairs (P, capped at `LoyaltySpan`):**
+  - `alliance-formed` +30;
+  - `promise-made` +15, written both ways (`Simulation/NpcPromises.cs:182-183`);
+  - `promise-kept`;
+  - the positive permanent story receipts;
+  - `deal_fulfilled` at its fading weight (`Simulation/EpisodeEngine.cs:2323-2324`).
+  - The cap stops a weekly word to the closest houseguest (`Simulation/NpcPromises.cs:131-141`) from banking an unbounded shield.
+- **Neither:** talk, conversations, rumours, hunts, confrontations, hearsay, `deal_accepted`, and other fading traffic. They still count for themselves in the sum.
+- **Ends for good:** a single permanent wrong of −30 or worse. No repair undoes it. An old partner's betrayal never hurts less than a stranger's (7.4).
+- **Decay with time:** only N ages, by 1 a week. Nothing fades for neglect: the direction says "due to actions in the house".
+
+**B.3 Worked values.** Trust = 50 + impact/3.
+- For the Hitmen rows (Cody about Derrick), the edge holds the receipt +15 and the +18 handshake. The handshake is full through week 3, fades from week 4 and is gone by week 7 (`Simulation/RelationshipLedger.cs:75-82`).
+- For the Committee rows (Tyler about Cody), the edge holds the receipt +15 and no handshake.
+
+| Situation | Rule 1 (as built) | Rule 2 |
+|---|---|---|
+| Hitmen, week 1 | 33, trust 61.00 | 33, trust 61.00 |
+| Hitmen, a bare permanent `deal_broken` −20 (H1b's test entry) | −2, 49.33 | share 1/3: 3, 51.00 |
+| Hitmen, a Medium deal broken (−22.5) | −4.5, 48.50 | share 0.25: −0.75, 49.75 |
+| The same, with an in-house pact (+30) | 25.5, 58.50 | E − 15 = 7.5, share 0.75: 36.75, 62.25 |
+| Hitmen, a broken vote promise (−31) | −13, 45.67 | betrayed: −13, 45.67 |
+| Hitmen, final two broken at the final choice (−45, handshake gone) | −45, 35.00 | betrayed: −45, 35.00 |
+| Committee, Cody as Head of Household nominates Tyler in week 3 | 15, 55.00 | N = 35, share 0: 0, 50.00. The standing −10 is also written off (B.4) |
+| The same, allied in-house (+30) | 45, 65.00 | E − 15 = 20, share 1/3: 35, 61.67 |
+| Week 9 after that nomination, no pact | 15, 55.00 | N = 29, share 1/30: 0.5, 50.17. Then 1/30 more a week |
+| Four words (+60) banked before the nomination | 75, 75.00 | P capped at 30, share 1/3: 65, 71.67 |
+| Janelle about Tyler (−12.5), then they ally (+30) | 17.5, 55.83 | grievance 0: 30, 60.00 |
+| Janelle about Tyler, one `promise-made` +15 | 2.5, 50.83 | grievance 0.5: 8.75, 52.92 |
+
+**B.4 The standing at a public split (the one write).** The loyalty that decisions read is the shared standing in the score. The score is read by:
+- `Desire` (`Simulation/NpcAlliances.cs:69`);
+- `NominationWeight` (`Simulation/EpisodeEngine.cs:865-872`);
+- the vote's relationship factor (`Simulation/WebEvictionVoting.cs:605`).
+
+The design:
+- **Where:** at the end of `NominationEffects`, after the promise loop (`Simulation/EpisodeEngine.cs:947-949`). That covers the first nominations (`:912`) and the replacement (`:1036`).
+- **When:** all of these must hold:
+  - alumni rules 2 or later;
+  - the Head of Household and the nominee are the two non-player houseguests of a seated pair with `Standing > 0`, resolved by `Seated`'s identity rule;
+  - neither put the other up in an earlier week (`AlumniLoyalty.PublicSplitWeek(s, a, b, includeThisWeek: false) == 0`).
+- **What:** `RelationshipLedger.Move(s, hohId, nomineeId, -fact.Standing)`, which is −20 or −10. It is symmetric, writes no entry, draws nothing and mints nothing (`Simulation/RelationshipLedger.cs:244-252`).
+- It happens at most once per pair per season, and it removes exactly what the history added. It is driven by an event, not a weekly ratchet.
+- **Pairs with the player are skipped** (D-H3). The final two survives a nomination, as today.
+- **In practice this is the Committee's (12-house), not the Hitmen's.**
+  - The Hitmen's opening final two adds 50 to each one's reluctance to nominate the other (`Simulation/StrategyRules.cs:80,431-438`).
+  - A final two settles only at the final Head of Household's choice (`Simulation/DealResolution.cs:305-311`), so the 50 holds while both are in.
+  - So the Hitmen do not split in public. Their known pair ends when one of them leaves, which is the bloc the direction asks the house to answer.
+  - In the default 8-house, the Hitmen are the only seated shared alliance (§3.2).
+
+`PublicSplitWeek(s, a, b, includeThisWeek)` returns the first week in `PutUpWeeks(s, a, b, …) ∪ PutUpWeeks(s, b, a, …)`, or 0.
+
+**B.5 Both directions, and the player.**
+- The share reads only H's own edge and the public put-ups of H by A. It is H's private trust (7.4), and the other edge does not move.
+- An NPC who holds a receipt about a player on a card (`Simulation/EpisodeEngine.AlumniHistories.cs:58-60`) reads:
+  - the player's breaches on that edge;
+  - the player's nominations of them, from the power rows;
+  - the player's pacts, which write `alliance-formed` (`Simulation/EpisodeEngine.Pacts.cs:146-148`).
+- The player's own view holds no receipt and is untouched.
+
+**B.6 Code (S1).**
+- **New file `Simulation/AlumniLoyalty.cs`**, with a hand-written two-line `.meta`. It holds `public static class AlumniLoyalty` with:
+  - the five constants;
+  - `internal static double WeightedImpact(EpisodeState s, RelationshipState edge)`;
+  - `public static double GoodwillShare(s, holderId, aboutId)` and `GrievanceShare(...)`;
+  - `public static List<int> PutUpWeeks(s, byId, ofId, bool includeThisWeek)`;
+  - `public static int PublicSplitWeek(s, a, b, bool includeThisWeek)`;
+  - `internal static void SplitInPublic(s, hohId, nomineeId)`.
+  - Everything a test needs is public. The two internal members are reached through `RelationshipLedger.WeightedImpact` and the engine's nomination path.
+  - It is not on `AlumniEdition`/`AlumniEditions`, whose public methods may not take a state (`Tests/EditMode/AlumniHistoriesTests.cs:191-207`).
+- **`Simulation/RelationshipLedger.cs`:**
+  - after the null check at `:96`, insert `if (AlumniRules.At(state, AlumniRules.Loyalty)) return AlumniLoyalty.WeightedImpact(state, edge);`;
+  - `:97-101` and `BreachesInheritedGoodwill` (`:105-106`) stay word for word as rule 1;
+  - the doc at `:85-93` names both rules.
+- **`Simulation/EpisodeEngine.cs`,** after `:949`: `AlumniLoyalty.SplitInPublic(s, s.hohId, id);`. It does nothing below 2.
+- `RecentImpact` and the recap's `Movements` already ask `On`, so they carry into 2 unchanged.
+- **As built in S1** (2026-10-29, on `4ab8c054`). Where the code asked for it, the build keeps the intent and differs in the letter:
+  - `PutUpWeeks` reads the live block whenever this week's Head of Household and nominees hold it, not only while `!s.evictionResolved`. The reveal sets `evictionResolved` (`Simulation/EpisodeEngine.cs:559`) before it writes this week's row (`:579`), so a read between the two would have lost the week. After the reveal the live block and the row are the same week, and a week counts once.
+  - Repair takes a `deal_fulfilled` entry once, at its weight, and every other permanent positive entry in full. B.1's two sums would count a permanent `deal_fulfilled` twice. No writer makes one (`Simulation/EpisodeEngine.cs:2324,2336`, `Simulation/EpisodeEngine.Commitments.cs:127` and `Simulation/EpisodeEngine.UnifiedVote.cs:156,181` write it fading), so every season reads the same either way.
+  - Below 2, `GoodwillShare` and `GrievanceShare` read 1, `PutUpWeeks` is empty and `PublicSplitWeek` is 0.
+  - The career and pair-risk docs at `Simulation/AlumniHistories.cs:171-175,215,218` are S2's, with the reader.
+
+### 14.C Reputations (value 3)
+
+**The term.** `KnownBlocs.CareerFor(s, id)` is the edition's `CareerReputation`: winner 4, finalist 3, played 2 (`Simulation/AlumniHistories.cs:176-186,216`).
+- Winners: Dan, Will, Derrick, Cody, Chelsie, Rachel, Xavier, Jun.
+- Finalists: Danielle, Tyler.
+- Played: Janelle, Vanessa (`:287-299`).
+- It returns 0 below 3, for a newcomer, and for a card that is not intact and unique. It resolves with `Seated`'s rule (`:341-357`: template, name, uniqueness) as a loop over the contestants, with no dictionary.
+
+**Where it reaches, and where it does not.**
+- It reaches the nominations, including the replacement, through `ThreatTerm` (14.D.3), and the vote (14.D.4). Every evaluator sees it, because the record is public (3.1).
+- It does not reach `Total`, `Assess` or `RankedTargets` (`Simulation/ThreatAssessment.cs:48-95`). So the rumour subject (`Simulation/NpcSocialActions.cs:517`), the Head of Household's pitch target (`Simulation/HoHPitches.cs:35`) and broken-word grudge scaling (`Simulation/Story/Grudges.cs:138-152`) are the same at every value.
+- That keeps the alumni term out of the weekly rumour pass (six lead traits spread information each week, `Simulation/NpcSocialActions.cs:93-116`; each rumour costs a symmetric −15, `:62`). Feeding it would compound on the hub.
+- A newcomer's reputation stays what they do in the house.
+
+### 14.D Known connections (value 3)
+
+**D.1 What is known.**
+- The edition's acts and careers are public, on-show acts (3.1).
+- Only shared alliances (`Standing > 0`) form known pairs: `bb16-hitmen` (Derrick, Cody) and `bb22-committee` (Cody, Tyler) (`Simulation/AlumniHistories.cs:246-261`).
+- The three nomination facts shape only their holders' receipts.
+
+**D.2 `KnownBlocs`.** New file `Simulation/AlumniKnownBlocs.cs`, with a hand-written `.meta`, `public static class KnownBlocs`. It reads `AlumniHistories.EditionOf(s)`, never `AlumniEditions.Latest`.
+- **`LivePairs(s)`:** the seated pairs with `Standing > 0` where both houseguests are `Active` and `PublicSplitWeek(s, a, b, includeThisWeek: true) == 0`.
+  - Early-outs, in this order: `!AlumniRules.At(s, Reputation)`, the edition is null, no shared-alliance card is seated.
+  - Loops over the edition's two shared facts and the contestants. Pinned equal to `SeatedPairs` filtered. There is no cache by revision.
+  - Private things never end a pair in the house's eyes: scores, receipts, deals (the final two included), ballots, a pact's end.
+- **`Risk(fact)`:** 8 (`FinalTwoPairRisk`) when `Standing >= FinalTwoAllianceStanding`, otherwise 4 (`AlliancePairRisk`) (`Simulation/AlumniHistories.cs:213,219`).
+- **`RiskFor(s, evaluatorId, targetId)`:** the sum of `Risk` over live pairs that hold the target and not the evaluator. It skips a pair when an active alliance the evaluator can see (`Knowledge.AllianceVisibleTo`, `Simulation/Story/StorySystems.cs:235-242`) holds both members, so a re-formed pact is never counted twice.
+- **No groups.** Pairs are counted as pairs. The chain through Cody is two facts, never a trio. `PairOf(Derrick, Tyler)` is null, and rule 3.1 forbids saying the three were one. A counter-pact's bound (14.L.C) counts live pairs: two, plus one for each live pair, capped at four. It is arithmetic, never shown, and never names a group.
+
+**D.3 In the nomination threat.** New `public static double ThreatAssessment.TotalWithPastGames(state, evaluatorId, targetId)`.
+- It equals `Total` below 3.
+- Otherwise it is the same five components, with:
+  - `KnownBlocs.RiskFor` inside `AllianceThreat`'s `Math.Min(20, …)` (`Simulation/ThreatAssessment.cs:125-128`);
+  - `CareerFor` before `ReputationThreat`'s clamp (`:177`);
+  - each added only when nonzero.
+- It is built by a private `bool pastGames` through `AssessBeforeCommitmentEffects` (`:51-62`), which every existing caller passes as false.
+- `ThreatTerm` (`Simulation/EpisodeEngine.Agency.cs:95-101`) reads it in place of `Total`, for both the Head of Household's reading and the pact-mates'. Nothing else reads it.
+- The uplift is at most 0.4 × 16 + 0.2 × 16 = 9.6 nomination points for Cody (pair risk 12 + career 4). It is less where the caps bind.
+
+| Reading, 12-house, all live | Derrick | Cody | Tyler |
+|---|---|---|---|
+| An outsider | 8 | 12 | 4 |
+| Derrick | — | 4 | 4 |
+| Cody | 0 | — | 0 |
+| Tyler | 8 | 8 | — |
+
+**D.4 The vote mirror.**
+- New ephemeral class `WebVoteAlumniTerm { string nomineeId; double pairRisk, career; }`, placed beside `WebVoteSafetyTerm` (`Simulation/WebEvictionVoting.cs:131`).
+- `WebVoteOptions` gains `public List<WebVoteAlumniTerm> alumniTerms = new List<WebVoteAlumniTerm>();` after `:128`, commented "derived, never saved". It starts empty, as `Tests/EditMode/ModeTwoHouseReaderTests.cs:130-135` requires.
+- `FromNative`, after `:277`: `if (AlumniRules.At(state, AlumniRules.Reputation)) options.alumniTerms = KnownBlocs.VoteTerms(state, voterId);`. It holds nonzero entries only.
+- `ThreatWithSafety` (`:407`) takes a `WebVoteAlumniTerm alumni`:
+  - `pairRisk` goes inside `Math.Min(20, …)` at `:413`;
+  - `career` goes into the sum at `:421`.
+- The leaf at `:404-405` passes null. `:606` passes the nominee's entry.
+- No factor code is added. "Threat" stays hidden in the read (`Simulation/VoteRead.cs:39`). Imported web rounds carry an empty list.
+- About 3.6 ballot points at the default weights (0.25 of 1.1, `Simulation/WebEvictionVoting.cs:197-198`).
+- The vote's term is not cut by the 15 clamp that can cut the nomination's term. A test pins that difference.
+
+### 14.E Counter-blocs "for numbers" (value 4)
+
+**E.1 Desire.** `NpcAlliances.Desire`'s return (`Simulation/NpcAlliances.cs:78-85`) gains `+ KnownBlocs.CounterDesire(state, npcId, targetId)`, added only when nonzero:
+
+```
+Near(x)        = {x} + x's partners in live pairs
+counted(a, b)  = live pairs p with p ∩ (Near(a) ∪ Near(b)) empty
+CounterDesire  = CounterBlocDesire x min(CounterBlocPairsCap, |counted(a, b)|)        0 below CounterBlocs
+```
+
+- **Constants:** `CounterBlocDesire` = 7.5, half the source's shared-threat price of 15 (`:79`): a known pair is a bloc nobody has quarrelled with yet. `CounterBlocPairsCap` = 2.
+- **Effect:**
+  - 8-house, the Hitmen live: +7.5 between any two outsiders;
+  - 12-house, both pairs live: +15. That is the owner's three "for numbers", counted as two pairs;
+  - members, and the partners of members, get 0 toward anyone.
+- **The gate stays.** At a score of 25, neutral trust, social 6 and no pact carried, Desire is about 12.7 + 2 × compatibility.
+  - Today, at the floor, a pair needs compatibility 7, so most pairs need a higher score.
+  - With one known pair, compatibility 3.
+  - With two, −1.
+  - The score floor of 25 (`:149-151`), the cap of one NPC-only pact per three NPCs and one each (`:88-99`), and pacts born as pairs (`:258-272`) are the story session's limits, untouched. Outsider pacts grow past two from value 5 only, by the owner's answer (14.L).
+- **Side effects:**
+  - Build agendas and the NPC world's pairing lean toward fellow outsiders (`Simulation/NpcAgendas.cs:62-68`);
+  - an outsider player is wanted more, so more invitations reach them (`Simulation/NpcDeals.cs:186-189`).
+
+**E.2 The bloc hunt, with a stop.** In `NpcAgendas.Of`, after the `CommonThreat` loop (`Simulation/NpcAgendas.cs:54-58`) and before `Hold` (`:59`), a second loop runs over the same mates in the same order:
+- it skips the player;
+- it returns a `Hunt` with `targetId = KnownBlocs.CounterTarget(s, npcId, mate)` when that is not null.
+
+`CounterTarget(s, hunterId, mateId)`:
+- null below 4;
+- the candidates are the members of `counted(hunter, mate)` who are `Active`, with `s.Score(mateId, m) >= HuntStopLine`;
+- **and who are no pact-mate** (`APactMate`): no active pact holds the candidate and the hunter, nor the candidate and the listener where the hunter can see it (`Knowledge.AllianceVisibleTo`). This is an addition the text above did not state, made at the S3 review (2026-10-31): `counted` reads only live pairs, never pacts, so as first built a pact could hunt its own member - the player on Cody's card taken into two outsiders' pact (`AllyThroughInvitation`), a story trio holding Cody, a hunter's other pact with Cody, or the listener's. The visibility check keeps a pact of the listener's the hunter has not heard of out of the hunter's reading. Outsider pacts still hunt the bloc;
+- they are ordered by `RiskFor(s, hunterId, m)`, highest first, then id ordinal, so the hub comes first. The order is the hunter's reading, not the listener's.
+
+How it behaves:
+- **The stop.** `HuntStopLine` = 6 = −`HuntImpact` (`Simulation/EpisodeEngine.Agency.cs:39`). A hunt costs the listener 6 with the target (`Simulation/NpcSocialActions.cs:427-436`).
+  - The route fires only while the listener rates the target at 6 or more, so on its own it never takes a score below 0.
+  - So it cannot reach `CommonThreat`'s −10/−5 (`Simulation/NpcDeals.cs:143-150`), Desire's −20 or the confrontation line.
+  - It ends when the listener is no longer warm to the target, and the agenda falls back to `Hold`.
+- **The target's side.** `Move` is symmetric (`Simulation/NpcSocialActions.cs:682`). The target's view of the listener falls by the same amount, at most by the listener's starting warmth.
+- The ordinary `CommonThreat` route still comes first: unchanged below 5; from 5 it passes over a non-player who shares a houseguests' pact with both (14.L.F).
+- **The player is never the listener.** A player on a bloc card can be the target. The existing gossip roll is then drawn on the beat's keyed stream (`:440`). That is an existing draw site.
+- **The house's targeting follows with no further term.** Outsider Heads of Household and their pact-mates read pair risk and career through `ThreatTerm`. The vote reads the same through D.4. The hunt has lowered the listener's score, which `NominationWeight` reads.
+
+**E.3 Bounds.**
+- Desire is a reading, not a turn. Build stops at 25 (`Simulation/NpcAgendas.cs:77-83`).
+- The pursuit runs once a week (`Simulation/NpcSocialActions.cs:214-219`).
+- The hunt stops above zero.
+- Every term ends the week the pair stops being live: one departure or one public split.
+- From 5, a grown pact sends at most one hunt a member a week, each listener's stop holds on its own, and nobody hunts a pact-mate of both (14.L.D.6, 14.L.F).
+
+**E.4 Held back: target agreements against the bloc.** Not built. Built only on the owner's word after the 14.H report, as the next free alumni value, and only if the report shows outsider pacts forming without known-pair members being put up more often. The specification:
+- in `NpcDeals.Offer`, between the final-three rung (`Simulation/NpcDeals.cs:221`) and the information rung (`:223`), add `if (allied && warmth > CommonThreatWarmth && KnownBlocs.CounterTarget(state, npcId, targetId, forDeal: true) != null) return DealKind.TargetAgreement;`. Here `forDeal` drops the listener stop and the player exclusion;
+- `TargetFor` (`:586-591`) becomes `CommonThreat(...) ?? <the same>`.
+
+It is held back because a target agreement pulls a nomination by 40 (`Simulation/StrategyRules.cs:52`), against at most 9.6 from threat, and weekly agreements against one hub are the pile-on the story session budgets.
+
+### 14.F What the player sees (value 3)
+
+Every surface asks `AlumniRules.At(s, AlumniRules.Reputation)` and shows only the public record:
+- the edition's `Record` and `Act`, verbatim (`Simulation/AlumniHistories.cs:246-299`);
+- this season's public ceremonies.
+
+It shows every seated fact. That includes the three nomination facts, which shape their holders' trust but no threat term. It never shows a number, a feeling or a present-tense pact.
+
+1. **Houseguest profile.**
+   - `ProfileRecords` (`Runtime/Episode/EpisodeDirector.Journal.cs:460-490`) adds `KnownBlocs.ProfileLines(s, actor.id)` after the ceremony line:
+     - `"Before this season: " + Record`;
+     - each seated fact involving the actor, as its `Act`. A fact that involves the player starts `"Between you, before this season: "`;
+     - for a shared alliance, plus one of: `" · both in the house"`, `" · Week N: {first} nominated {first}"`, or `" · {first} has left the house"`.
+   - These lines do not count toward `personal`.
+   - When the actor shares a seated fact with the player, the empty line at `:488` reads `"No promises, alliances or declarations between you this season."`. Otherwise it is unchanged.
+   - The doc at `:455-459` becomes: "Nothing between two other people, except the public record of past games."
+2. **The alliances page.**
+   - `AllianceRead.Page` is unchanged (`Simulation/AllianceRead.cs:70-73,185`), because `Tests/EditMode/ModeOneSeasonDigests.cs:213` and `Tests/EditMode/OldSaveAcceptanceTests.cs:369` serialize it.
+   - A separate public reader, `KnownBlocs.PastGames(s)`, returns one entry per seated shared-alliance fact, live or not: fact id, season, `Act`, both houseguests, and status as above.
+   - `RenderNotebookAlliances` (`Runtime/Episode/EpisodeDirector.Alliances.cs:30-53`) calls it and draws a third section after the suspected cards (`:49`) and before the footer (`:51`):
+     - the heading `PastGamesHeading = "PAST GAMES"`, named "Past games heading", with the count;
+     - a lock note named "Past games note": "The public record from earlier seasons: who played together before this one. It does not say who is working together now.";
+     - one card per fact, named `PastGameCardPrefix = "Past game · "` + fact id, with eyebrow `"BIG BROTHER " + season + " · PUBLIC RECORD"`, the `Act` as body, the status line, and faces named `"Past game face · " + name`.
+   - The section is omitted when there are no facts.
+   - `empty` (`:33`) also requires no past games.
+   - The page's contract comment (`:9-18`) adds "and the public record of past games, which the whole house knows".
+   - `SuspectedCardPrefix`, the suspected count and `NoSuspectedCopy` are unchanged (`Runtime/Episode/EpisodeHud.Alliances.cs:20`).
+3. **Diary "Your record".** For a player on an intact card only, `RecordSummary` (`Runtime/Episode/EpisodeDirector.DiaryRoom.cs:475-487`) gains a fourth row:
+   - caption `"Before this season"`;
+   - icon `PackArt.KitIconPerson`;
+   - value: `Winner`, `Finalist` or `Played`;
+   - note: the `Record` and the player's seated facts' `Act`s.
+   - The caption is not "Career record", which is a status-message prefix (`Runtime/Episode/EpisodeDirector.Career.cs:109`). A newcomer gets no row.
+4. **The house reacting, through existing lines only:**
+   - the agenda read "X wants Cody out, with Y" (`Simulation/NpcAgendas.cs:103`);
+   - the hunt clause on a listen-in (`Simulation/NpcActKinds.cs:71`);
+   - counter-pact whispers (`Simulation/AllianceLeaks.cs:160-161`);
+   - invitations.
+
+   No new act kind or recap line.
+
+**Layout:** label boxes at 1.3× their font, captures at Standard and Largest text, and nothing appended to an existing caption.
+
+**As built in S5** (2026-10-31, on `20f665b7`). Where the code asked for it, the build keeps the intent and differs in the letter:
+- **Two more readers in `KnownBlocs`,** so the subset pins every word the player sees: `ProfileEmptyLine(s, id)` gives the profile's empty line, "this season" when a seated fact is between the houseguest and the player and the old words otherwise, and `PlayerRecord(s)` gives the diary row's value and note. The old empty line's words move into `KnownBlocs.NothingBetweenYouCopy` unchanged.
+- **The status,** as `PastGame.Status`, shared by the profile and the card:
+  - a public split comes first, because it can only happen while both are in the house;
+  - then a departure: evicted, on the jury or removed. When both have left, the one the record shows leaving first is named: a removal by its own week in `story.removals`, as `SeasonAutopsy` dates one, and an eviction by its power row (`JuryHouseRead.LeftWeek`);
+  - the winner and the runner-up are in the house to the end;
+  - a status the player made names the player by the card's first name, as the act does ("Week 1: Cody nominated Tyler").
+- **The card** (`EpisodeDirector.PastGameCard`):
+  - its headline is the two names, as a suspected card's is;
+  - its lines are the act, then the status with its first letter capitalised;
+  - under each face is the houseguest's status word, or "You" for the player, never a reading;
+  - its eyebrow is drawn in brass;
+  - `EpisodeHud.PactCard` takes the face prefix as an optional last parameter;
+  - `PastGameCardPrefix` and `PastGameFacePrefix` sit beside `SuspectedCardPrefix` in `EpisodeHud`, and `PastGamesHeading` with its name, note and note copy beside the page's other headings in `EpisodeDirector`.
+- **Item 4** adds no code. The house's reactions are the existing lines, read with no new term, and their pins stand where they are:
+  - the agenda read "X wants Cody out, with Y", in its own words at value 4 in `CounterBlocTests.AnOutsidePactHuntsTheHubFirst`;
+  - the hunt a listen-in can hear, as an act in `CounterBlocTests.AnOutsideHeadOfHouseholdPutsABlocMemberUpOverAnEqualOutsider`. Its clause is `NpcActKinds.Clause`'s, pinned where it always was;
+  - a grown pact's whisper, in `CounterPactGrowthTests.AGrownPactShedsASourJoinerWhileKeptToItselfAndOtherwiseEndsWhole` and `AllianceLeakTests`;
+  - invitations, through the existing offer pass: `CounterPactGrowthTests.AnInvitationNeverTakesAHouseguestsFourPastFour`, and the player taken into an outsiders' pact in `CounterBlocTests.AnOutsidePactNeverHuntsAPactMate`.
+- **The diary** in week one's free time opens on its pending tab, because the free time's actions are the player's to decide. The fourth row is on the record tab, "Your record", after the room's three.
+- **Tests:**
+  - `PastGamesReadTests`, 10 cases, in the subset and in Unity's EditMode assembly;
+  - `EpisodePlayModeTests.PastGames`, 4 PlayMode tests in both PlayMode builds:
+    - the page, with a suspected card of three faces and one of four, at every text size;
+    - the profile at every text size, and the diary's record tab at Standard and Largest text;
+    - the caption audit: a Regular season and a season held at 2 show nothing new, and the same season at `Latest` has the same controls by caption;
+    - the cast screen's All-Stars season, as Will.
+  - Captures, in a batch run: `past-games-suspected-three`, `past-games-suspected-four`, `past-games-record`, `past-games-profile` and `past-games-diary`, each at Standard and with `-largest`.
+  - **The CastSelect audit:** no `EpisodePlayModeTests.CastSelect` test reads the profile, the alliances page or the diary, so none changes. Nor does any other PlayMode test that builds an All-Stars season: `OpeningGrounds` reads the arrival line only. The cast-screen test above is the audit's new case.
+  - The PlayMode tests are compiled offline, with and without UMA. Their Unity run is the lead's, never beside S4's lab run, and so is the standalone verify walk §14.I asks for: the stress house enrols.
+  - `ModeOneSeasonDigests` is `[Explicit]`, so the full subset does not run it, and its 16433 does not count it. It serializes `AllianceRead.Read`, so it is proven by a filtered run of its own: 2 of 2 at the build's commit (its review's run), and again after the review's fixes.
+- **The review's fixes** (2026-11-01) add checks, not cases:
+  - `PastGamesReadTests`: the private half now holds this season's pacts between the two, one private and one the player was told of, and a past ballot between them, and the status and the profile lines stay the public ones; the page's reader is checked with the Hitmen live again; every reader is checked to write nothing, one call at a time, over a fourth week with a save, a replacement, an eviction and a live block; a removal is dated by its own week, either way round.
+  - `EpisodePlayModeTests.PastGames`: the page's foot comes after the last past game; the page draws its empty illustration only at 2, with no past games either; under each face are the name and the status word, or "You" for the player; the Regular season's page is shown to be drawn before its absences are read. Each is to be mutation-checked once in the lead's Unity run: the section moved below the footer, `empty` without its past-games term, and a face note that reads the player's reading.
+
+### 14.G Versioning
+
+**Constants** in `Simulation/AlumniHistories.cs`:
+- after `:27`: `Loyalty = 2`, `Reputation = 3`, `CounterBlocs = 4`, `GrowingPacts = 5`;
+- `Latest` (`:30`) moves with each slice;
+- after `:41`: `public static bool At(EpisodeState s, int version) => On(s) && s.alumniRulesVersion >= version;`;
+- `IsDefined` (`:33`) widens on its own;
+- the docs at `:12-16`, `:171-175`, `:215` and `:218` now say who reads career reputation and pair risk.
+
+**The writer.** `Simulation/EpisodeEngine.AlumniHistories.cs:49` writes `AlumniRules.Latest`, with its doc at `:14-16` updated. `ShippedRules` changes only in its comment at `:96-100`.
+
+**Holding a value, for tests and the lab.**
+- There is no value-taking writer and no internal harness, so nothing needs InternalsVisibleTo (`Tests/EditMode/AlumniHistoriesTests.cs:706-707`).
+- A test or the lab builds the shipped season with the public `ApplyFresh`, asserts that it enrolled, and writes `s.alumniRulesVersion = v`.
+- This is valid only while the opening is the same at every value from v to `Latest`, which `TheOpeningIsTheSameAtEveryAlumniValue` pins. A later value that adds an opening write must bring back a value-taking writer.
+
+**Validation:** no code change.
+- `Simulation/EpisodeValidation.cs:105-109` and `TryValidateAlumni` (`Simulation/EpisodeValidation.Alumni.cs:15-41`) accept 2 to 5 with the same receipts.
+- Only the comment at `:101-104` changes.
+
+**Schema:**
+- stays 30; there is no field;
+- the values are defined at schema 30 by construction, so schema 29's closure is untouched;
+- `WebVoteAlumniTerm` is never saved.
+
+**Old saves:**
+- every owner save is at 0;
+- the alumni-1 fixture replays by rule 1;
+- the observers admit any value where `On` holds.
+- No recorded digest plays an enrolled season:
+  - `FreshSeasonStateDigestTests` strips the histories (`:84-91`);
+  - `AllWeekSeasonDigests` uses Regular houses of 6 to 12 (`:221-229`);
+  - `BalanceLabGoldens` holds no All-Stars cell.
+
+**The one-time re-pin (S1).**
+- Fresh-season assertions change from `Histories` to `Latest`.
+- "Undefined value" cases change from the literal 2 to `AlumniRules.Latest + 1`, which is valid in attributes.
+- Values 3 to 5 then move no existing pin; the `Latest + 1` pins reach 6 on their own.
+
+**Determinism.**
+- Seasons at 0 and 1 are byte-identical.
+- A season at k diverges from the same seed at k−1 only through decisions.
+
+### 14.H Balance
+
+**What moves, as expected and not measured.**
+- **At 2:**
+  - trust between old partners after wrongs, nominations and pacts;
+  - the Committee's standing after a split, from +10 to 0;
+  - grievances heal through pacts.
+- **At 3:**
+  - alumni winners and known-pair members read as bigger nomination threats, by up to 9.6 points, and about 3.6 ballot points at default weights;
+  - the newcomer is the smallest career threat, so Q4 (the newcomer's nomination rate) is likely to fall and Q3 (season wins) to rise;
+  - rumours and pitches are unchanged.
+- **At 4:**
+  - more and earlier outsider pacts;
+  - hunts that stop above zero;
+  - earlier exits for known-pair members;
+  - outsider pacts may fill the cap;
+  - a player on Cody's card is nominated more.
+- **At 5** (14.L.H):
+  - joins may be rare in the 8-house: a join needs a pact from an earlier week, a free outsider at 25 or more both ways with desire above 25, and both Hitmen in the house and unsplit;
+  - a complying trio can carry the vote: an 8-house has four voters from week 2 and three from week 3;
+  - births can fall, because a join takes an outsider someone else would have asked later;
+  - known-pair members leave earlier; stop condition 2 is the one most likely to fire;
+  - grown pacts are brittle once known (they end on any of their 3 or 6 edges); while private they shed instead;
+  - the 12-house has a pile-on risk: a story's `AllianceLeave` from a four gives three grudges of 80 at once;
+  - Power Shift draws grown pacts first and leaks them.
+
+**The report.** `BalanceLabAlumniReport.LoyaltyReputationBlocsReport`, Explicit and dotnet only, in `Tests/EditMode/BalanceLabAlumniReport.cs`.
+- `BalanceLab.Cell` (`Tests/EditMode/BalanceLab.cs:62-75`) gains `int alumniHeld`:
+  - 0 means shipped;
+  - the house name gains `"/alumni" + alumniHeld` only when held;
+  - `SeedHouse` is unchanged, so seeds stay paired.
+- `Fresh` (`:217-223`) writes the held value after `ApplyFresh` when the season enrolled.
+- `AlumniHistoriesGate` (`Tests/EditMode/BalanceLabAlumniReport.cs:61`) holds its histories arm at 1, so it keeps reproducing H1b's evidence. Its house names gain `/alumni1`.
+- **Arms:** 5 (shipped), held 4, 3, 2, 1, and 0.
+- **Cells:** sizes 8 and 12 × passive, studier, social newcomer, and passive on Cody's card. 100 seeds each, 4,800 seasons, about 36 minutes on every core.
+- **Comparisons:** 2−1, 3−2, 4−3, 5−4, 4−0 and 5−0, as paired differences with 95% intervals.
+- **Rows:**
+  - Q3, Q4 and weekly competition wins;
+  - a known-pair member put up by an NPC Head of Household, per member-week;
+  - the first evictee is a known-pair member;
+  - a known-pair member is out by week 2;
+  - the week the first known-pair member leaves;
+  - the public-split rate;
+  - the Hitmen final two's end;
+  - the Hitmen re-forming a pact;
+  - an outsider-only pact formed by week 3;
+  - bloc hunts per season, and the longest run against one listener;
+  - the longest same-subject rumour run (shows the house's talk is unchanged);
+  - goodwill shares at the end;
+  - pile-on seasons, as `story.pileOns > 0` (the-house-turns, `Tests/EditMode/StoryPacingTests.cs:101`);
+  - pariah-free seasons (Q5, `Tests/EditMode/BalanceLab.cs:125`);
+  - one houseguest put up three or more weeks running, as an extra row;
+  - pacing and seasons per minute;
+  - the pact-watch rows, the must-be-zero rows and the near-zero rule of 14.L.H.
+- **Not a gate.** About 30 comparisons at 95% will cross by chance once or twice. Nothing is retuned in place; a retune is a later value.
+- **Two stop conditions.** The lead asks the owner once before S6 and records the answer as "delegated call, confirmed by the owner" in either case:
+  1. The shipped arm crosses a story-session budget beyond noise where arm 1 meets it. If arm 4 meets it there, growth is the cause, and the owner is offered value 4 (S3b out before S6, `Latest` stays 4). The budgets are: pile-on seasons at 25% or fewer; pariah-free seasons at 80% or more, and the twelve-house's not lower (`Assets/Plans/NPC-AGENCY-PLAN.md:23-26`).
+  2. A known-pair member is the first evictee in more than half the seasons of any cell at 4, read at 4 and at 5 separately.
+- **The owner's call on the stop conditions** (2026-11-01, asked once, on S4's full run at `20f665b7`):
+  - stop condition 1 does not fire, in either reading;
+  - stop condition 2 fires in one cell of the eight: the social newcomer at 12, where a known-pair member is the first evictee in 57% [47.2%, 66.3%] (57/100) at 4 and at 5 alike (55% at 3, 41% at 0 to 2). Reputation (value 3) drives it, not growth;
+  - the lead's recommendation, taken: keep value 5 as built, and retune nothing before S6. The effect is the owner's own design ("the other players in the house might ally against them for numbers"), and it fires in one cell of eight, by a margin inside its interval;
+  - the lever for a later value, built only on the owner's word after play, is the known-pair weight in the nomination threat and the vote: value 3's career 4/3/2 and pair risk 8/4;
+  - growth is kept, so S6 freezes 5 and `Latest` stays 5.
+
+  Delegated call, confirmed by the owner: "Yes your judgment on questions and proceed." (2026-11-01).
+- **When it runs:** alone, as a background job, never beside a Unity run.
+- NPC-to-NPC behaviour is proved by fixtures (14.I), never by walks.
+
+**As built in S4** (2026-10-31, on `6a86a040`). The report and its watch are built; the full run is the lead's, alone, and its results go to the owner, not into this plan (S6 records the stop-condition reading that the owner's call rests on, above). Where the code asked for it, the build keeps the intent and differs in the letter:
+- **The cell and the gate were S1's.** `BalanceLab.Cell.alumniHeld`, its "/alumni" house name and `Fresh`'s hold were built in S1, and `AlumniHistoriesGate` already holds its arm at 1 with house names ending "/alumni1". S4 changes neither. `BalanceLabAlumniReportTests` pins both, and a scratch run of the gate at two seeds a cell (48 seasons) wrote the same report at `2fdcf299` (the last commit before S1) and with S4, every one of its 162 table rows alike; only the timing line and the sentence S1 reworded differ.
+- **Arm 0 is the season without the histories** (the lab's `alumniOff`, H1b's control). `alumniHeld` 0 means shipped, and a hold of 0 after enrolment would keep the opening's receipts and final two.
+- **The shipped arm is the unheld cell** while `Latest` is 5. A test pins `ReportArms[0] == Latest`, so a later value moves the report knowingly.
+- **Settable without code:** `BALANCE_ALUMNI_SEEDS` (100, shared with the gate), `BALANCE_ALUMNI_THREADS` (every processor), `BALANCE_ALUMNI_OUT` (the test's `balance/` folder) and `BALANCE_COMMIT` (else read from `.git`). The report writes `alumni-14h-report.md` for the owner, `alumni-14h-report.json`, and `alumni-14h-seasons.csv` (one line a season). It prints the command, the commit and the elapsed time.
+- **The known pairs** are read from edition 1 by the cast at every arm, 0 included, and are live as `KnownBlocs.LivePairs` reads them. Wherever the rules read them (the live pairs from 3, the bound at 5) the watch checks that it agrees, as two more must-be-zero rows.
+- **`PactWatch`** (`BalanceLab.PactWatch`; its `PactRecord` is `SeasonRun.pactWatch`) reads each accepted command's state before and after. A command can carry a whole stretch of the week, so each check counts only what must have held at the moment: a bound read before a join, and a pact or an agreement standing on both sides of the command. A violation that begins and ends inside one command is missed, never invented. The record is out of the hashed rows and carried by a part (`BalanceLabParts.Stamp` v7). A test plays one season with the watch and without it, to the same row.
+- **The watch is guarded** (`PactWatch.Guard`, S4's review). A read that throws ends the watch for that season and keeps its record with the error. The season plays on and keeps every row that is not the watch's, and the report counts it as the must-be-zero row "the watch threw". The watch runs in every lab season, as built; the guard means it can never turn a good season into an error.
+- **Hunts and rumours are read from the ledger entries they write** ("What {listener} heard from {hunter} about {target}", "Something {listener} heard about {subject}"), not from the week's acts. The eviction window's last beats fire in the command that turns the week, which clears its acts. A hunt with the player as listener writes no entry and is not counted.
+- **Rows the plan left open, as built:**
+  - a known-pair member put up "per member-week": at each NPC Head of Household's nominations, the live-pair members in the house other than the Head of Household, and the weeks they were nominated, saved or named the replacement. It is a pooled ratio (S4's review): the cell's put-ups over its member-weeks, each season one cluster, with the season-clustered interval, and its paired difference from each pair's linearised terms. A mean of the seasons' own ratios would weigh a season of two member-weeks like one of sixteen, and early exits differ by arm. "Joins per bloc-live week" is pooled the same way, and the CSV keeps both rows' parts;
+  - a joiner is a member the watch saw join. A founder taken out of a grown pact that stands on is counted apart, as "founders out of a grown pact", never as a joiner;
+  - "carried" by an outsider bloc: three or more of one outsider pact voted, all for the evictee, and without their votes the evictee would not have led. An outsider pact is a houseguests' own with no player and nobody in a live pair;
+  - goodwill at 1 is the breach rule's all or nothing; at 0 there is no receipt;
+  - the pact-weeks held back are read at every arm, against the bound the pact would have had; below 5 nothing grows anyway. The causes are whisper, listen-in, story (Power Shift named, other arcs apart), a member left (a shed or a story's leave), and other;
+  - Power Shift cast on a grown pact is counted, as L.F asks.
+- **Must-be-zero rows beyond L.H's list:** a join below 5, more than one join a pact a week, the two consistency checks, a season whose alumni rules value moved, a season not at its arm's value (so a hold that stopped reaching the season is a bug, not two identical arms), the watch threw, and a season the lab could not play. Every nonzero row is a bug line at the top of the report, with its arm.
+- **Stop condition 1 has two readings, both printed** (S4's review), with the cells, arms and numbers, in the table, the owner's summary lines and the JSON, so the lead can choose when asking the owner:
+  - **as built:** a budget is crossed "beyond noise" when the shipped arm's 95% Wilson interval lies wholly past the line;
+  - **paired:** the shipped arm's rate is past the line and the paired 5 - 1 difference is beyond noise the wrong way (McNemar p under 0.05), the reading 14.H and H1b's gate use for every other row.
+
+  In both, arm 1, or arm 4, "meets" the budget when its rate is on the budget's side. The twelve-house's pariah-free budget is its 45%.
+- **The comparisons** run on every row but the timed one, each by its kind (S4's review):
+  - a rate's paired difference is decided by the lab's McNemar test (exact under 25 discordant pairs), beyond noise at p under 0.05, and shown with Newcombe's hybrid score interval and its b:c and p. The normal interval of 0 and ±1 differences overstates a row few seasons hold;
+  - a mean's uses the normal interval of the paired differences, as H1b's gate does;
+  - a pooled ratio's uses the season-clustered interval.
+
+  A comparison counts only where two pairs or more were read.
+- **A primary family, reported first.** 14.H's headline and known-pair rows are the primary family: Q3, Q4 and weekly wins, the four known-pair member rows, the public split, pile-on seasons and pariah-free seasons. The report lists their crossings first, with their own expected-by-chance count, and every other row after. This departs from 14.H's "about 30 comparisons": six comparisons in eight cells over ten primary rows make 480 (about 24 by chance), and every row together makes about 2,000 (about 100).
+- **How many seed pairs play differently.** For each cell and comparison, the report counts the pairs whose season rows differ (`BalanceLab.Row`) and the pairs whose final relationship scores differ (`PactRecord.scoresHash`). A zero difference then reads either as no change in play or as a change these rows do not show. Arms 1 and 2 play alike in most seasons yet `SplitInPublic` moves final scores, and arms 4 and 5 are alike in every season without a join.
+- **The watch's tables are cell by cell** (14.L.H: "per cell"), then every player of a size pooled: the largest outsider pact, the pact-weeks held back by cause, how grown pacts end, the Hitmen's final two and the pile-on targets. All five reach the JSON (`pactTables`).
+- **The full run is made from a clean tree,** or from a git archive of the commit with `BALANCE_COMMIT` set. The report labels itself with HEAD and cannot see changes not yet committed. Without a `.git` it says the tree's state is unknown.
+- **Proof:**
+  - the subset, with `BalanceLabAlumniReportTests` (dotnet only, as the lab is). Its fixtures prove the watch counts a birth, a join, a shed, founders and joiners out, the known-pair rows (member-weeks and put-ups, the public split, an eviction an outsider bloc carried, the Hitmen re-forming), the guard, and every one of its must-be-zero rows. A report built from synthetic seasons proves the bug lines, the near-zero rule, both stop conditions in both readings, the pooled ratios, McNemar's call and the play-differs counts;
+  - the mutations of the cell, the watch and the report: S4's 20 and the review's, each caught;
+  - a smoke run of the report at two seeds a cell on one core: every row computed and every arm paired by seed. The smoke's values (two seeds a cell, no join in any season) are not results.
+
+  Not run: the full report.
+
+### 14.I Tests
+
+Every new test uses only public members, so the new files compile in Unity's EditMode assembly and in the dotnet subset. Each file is added to `Tools/SimulationTests/SimulationTests.csproj` near `:293`, with a hand-written meta.
+
+`AlumniHistoriesTests.AllStars` (`:214`) gains a value: `AllStars(size, seed, player = null, value = AlumniRules.Latest)`. It builds the shipped season, asserts it enrolled, and writes the value. Every behaviour test names its value (S1 `Loyalty`, S2 `Reputation`, S3 `CounterBlocs`); the default is for the writer, replay and validation cases only.
+
+- **`AlumniLoyaltyTests` (S1):**
+  - `AWeekOnePastGameCountsInFull`: 33 at 1 and at 2;
+  - `ABetrayalEndsInheritedGoodwillAndNoRepairUndoesIt`: −45, −31, −30, then +30;
+  - `ALesserWrongErodesGoodwillInProportion`: −15, −20, −22, −22.5; B.3's values;
+  - `ANominationErodesGoodwillFromThePublicRecordAndReturnsAsItAges`: the first nomination, a nominee then saved, the replacement, and week-by-week aging. The final eviction's row never counts;
+  - `ABallotNeverErodesGoodwill`: an ally's vote against and a flip (grudges of 40 and 48) leave the share unchanged;
+  - `AnInHousePactShieldsInheritedGoodwill`: a nomination plus a pact gives 1/3;
+  - `RepairIsCappedAtOneSpan`: four words, then a nomination, gives 1/3;
+  - `AnOldGrievanceHealsByPlayAndNotByTime`;
+  - `SocialTrafficNeitherErodesNorRepairsAPastGame`;
+  - `OnlyTheHoldersEdgeCounts`;
+  - `AnEdgeWithNoReceiptReadsExactlyAsBefore`: bitwise, at 1 and 2;
+  - `TheShareDrawsNothingAndWritesNothing`: `randomState`, `nextSequence` and the state digest unchanged;
+  - `APublicSplitWritesTheStandingOffOnceAndNeverOnThePlayersEdge`: Cody as Head of Household through `EpisodeEngine.Apply`; first nomination, replacement, the reverse nomination later (no second write), the player on Tyler's card, nothing at 1;
+  - `TheOpeningIsTheSameAtEveryAlumniValue`: the writer writes `Latest`, and a hold is the field alone;
+  - `AtZeroAndOneEveryNewReaderIsSilent`.
+- **`KnownBlocsTests` (S2):**
+  - `OnlySeatedSharedAlliancesAreKnownPairs`;
+  - `LivePairsAgreeWithSeatedPairs`: renamed and ambiguous cards;
+  - `AKnownPairEndsWhenAMemberLeavesOrOneNominatesTheOther`: this week's block included; the final eviction's row is not a nomination;
+  - `APrivateSplitIsNotPublic`: a broken final two, scores, ballots, a pact's end;
+  - `PairRiskCountsToOutsidersInsideTheCapAndStepsAsideForAVisiblePact`: D.3's table, as `TotalWithPastGames − Total`;
+  - `CareerReputationIsPublicAndANewcomerHasNone`: 4/3/2 and the clamp at 15;
+  - `TheHouseTalkReadsNoPastGame`: `Total`, `RankedTargets`, the pitch target, the rumour subject and `Grudges.ThreatScaled` are equal at 1 and at 3;
+  - `TheNominationThreatTermCarriesThePastGames`: the 9.6 bound;
+  - `TheVoteWeighsTheSameAlumniThreatAsTheNominations`: the clamp difference included;
+  - `BelowReputationNoThreatReadsTheEdition`.
+- **`CounterBlocTests` (S3).** Fixtures in the style of `Tests/EditMode/NpcAgencyTests.cs:17-41`:
+  - `OutsidersWantEachOtherMoreForEveryKnownPairTheyFace`: +7.5, +15; 0 for members and their partners;
+  - `ACounterPactFormsAtFourWhereNoneFormedAtThree`;
+  - `TheScoreFloorAndThePactCapStillHold`;
+  - `AtTheFloorAnEightHouseCounterPactStillNeedsTemperament`;
+  - `AnOutsidePactHuntsTheHubFirst`: in the hunter's reading, not the listener's;
+  - `AnOutsidePactNeverHuntsAPactMate` (added at the S3 review): the player in the pact on Cody's card, a trio holding Cody, the hunter's other pact and the listener's visible one; a private pact of the listener's and an ended one do not count;
+  - `TheBlocHuntNeverTakesAListenerBelowZero`: repeated pursuits; the target's fall is bounded by the listener's starting warmth; `Hold` resumes;
+  - `TheBlocRouteNeverHuntsWithThePlayerAsListener`;
+  - `TheOrdinaryCommonThreatStillComesFirst`;
+  - `TheCounterBlocEndsWithTheBloc`;
+  - `AnOutsideHeadOfHouseholdPutsABlocMemberUpOverAnEqualOutsider`.
+- **`CounterPactGrowthTests` (S3b):** 14.L.I's twenty fixtures; `TheOrdinaryCommonThreatStillComesFirst` and the pair-shape cases held at `CounterBlocs`, and `CounterBlocTests.TheScoreFloorAndThePactCapStillHoldWhilePactsGrow`, their sibling at 5 with the size clause.
+- **`BalanceLabAlumniReportTests` (S4, dotnet only, as the lab is):**
+  - `AHeldArmPlaysItsWholeSeasonAtItsValueAndOnlyAnEnrolledSeasonIsHeld`: a season held at 4 is at 4 from its first command to its finale; a Regular house is never held;
+  - `AnUnheldCellKeepsItsNameAndSeedsAndTheWatchNeverChangesItsSeason`: the name and seeds it always had, every arm on them, and the same row with the watch as without it;
+  - `TheReportsArmsPairBySeedAndEachEnrolsAtItsOwnValue`: 48 cells, each at its arm, the known pairs the same at every arm, and the gate's arm at 1;
+  - `TheStopConditionsAndTheNearZeroRuleReadAsThePlanWritesThem`;
+  - `ThePactWatchCountsABirthAJoinAndAShed`: by the rules themselves, and a part carries the record;
+  - `ThePactWatchCountsEveryMustBeZeroRowItIsShown`: each row from a scripted state (the cap, one each, a story's pact and the two consistency checks among them), the hunts read from their ledger entries, and the guard;
+  - `ThePactWatchReadsTheKnownPairRowsAndWhoLeftAGrownPactFromTheRecord` (S4's review): member-weeks and put-ups, the public split, the scores' hash, the Hitmen re-forming, a carried eviction and a landslide, founders and joiners out, and the autopsy's week rows;
+  - `TheRatioAndRateRowsAndStopOnesPairedReadingReadAsTheirLabelsSay` (S4's review): the pooled ratio and its paired difference, McNemar's call on a rare rate, Newcombe's interval, and stop condition 1's paired reading;
+  - `TheReportPutsItsBugLinesTheNearZeroRuleAndBothStopConditionsWhereThePlanSays` (S4's review): `AlumniReport.Build` on synthetic seasons, so the text's first lines, both stop conditions in both readings, every comparison, the must-be-zero rows, the pooled ratio, the rare rate, the play-differs counts, the tables and the CSV are pinned.
+- **`PastGamesReadTests` (S5):**
+  - the lines verbatim;
+  - the statuses;
+  - the player's own wording and the "this season" empty line;
+  - nothing below 3;
+  - `JsonConvert.SerializeObject(AllianceRead.Read(s))` byte-identical at 3.
+
+**Existing tests that change.**
+- **`AlumniHistoriesTests`:**
+  - `ABreachThisSeasonEnds…` (`:544-599`) is held at 1 through `AllStars(…, value: 1)` and renamed `AtAlumniRulesOneABreach…`. Its values are unchanged;
+  - `:235`, `:384`, `:633` and `:741` assert `Latest`;
+  - `EveryAlumnusHasACareerRecordThatNoDecisionReadsYet` (`:149-170`) is renamed `…AndTheNominationThreatReadsIt`, with `:166` fixed;
+  - `:514` is extended to the new readers.
+- **`ShippedRulesTests`:** `:84`, `:189`, `:332`, `:341` assert `Latest`.
+- **`PooledSchema30ShapeTests`:** `:73` uses `Latest + 1`; `:84` asserts `Latest`.
+- **`LegacyDigestSchema30ObserverTests`:** `:122` uses `Latest + 1`; `:144` and `:277` assert `Latest`.
+- **EditMode only:**
+  - `FreshSeasonStateDigestTests:87` asserts `Latest`;
+  - `AlumniHistoriesSaveTests:56,63` assert `Latest`;
+  - `PersistenceV30MigrationTests:138` uses `Latest + 1`, with its comment at `:129-130`.
+- **Unchanged:**
+  - `OldSaveAcceptanceTests` (the alumni-1 fixture);
+  - `ModeOneSeasonDigests`;
+  - `TheHistoriesDrawNothingAndMintOnlyTheirOwnSequences`;
+  - the Regular `ThreatAssessmentTests`, `NpcAllianceTests` and `RelationshipLedgerTests`;
+  - `BalanceLabGoldens`.
+- **PlayMode (S5):**
+  - captions;
+  - captures at Standard and Largest text;
+  - captures of three-face and four-face suspected cards (14.L.J);
+  - an audit of `EpisodePlayModeTests.CastSelect`;
+  - the standalone verify walk, because the stress house enrols.
+- **New in S6:** the fixture `s30-mode2-allstars-alumni5-w3-campaign`, recorded from a seed whose week-3 state holds a grown houseguests' pact, with a fifth case asserting it; a 12-house if no 8-house seed in the first 200 has one (`…alumni4…` with four cases if growth is withdrawn). Built 2026-11-01 at 5, growth being kept (14.J's as-built note for S6).
+- **Floors:** `Tools/baseline.txt` rises in each slice's commit.
+
+### 14.J Slices and landing
+
+| # | Slice | Files | Proof |
+|---|---|---|---|
+| S1 | Loyalty, value 2, and the re-pin | `Simulation/AlumniHistories.cs:12-41`; new `Simulation/AlumniLoyalty.cs` + meta; `Simulation/RelationshipLedger.cs:85-101`; `Simulation/EpisodeEngine.cs:949`; `Simulation/EpisodeEngine.AlumniHistories.cs:14-16,49`; comments at `Simulation/ShippedRules.cs:96-100` and `Simulation/EpisodeValidation.cs:101-104`; `Tests/EditMode/BalanceLab.cs:62-75,217-223`; the tests above | Subset; the EditMode-only pins through the Mono harness |
+| S2 | Reputation and known pairs, value 3 | `Simulation/AlumniHistories.cs`; new `Simulation/AlumniKnownBlocs.cs` + meta; `Simulation/ThreatAssessment.cs:51-62,125-128,149-177`; `Simulation/EpisodeEngine.Agency.cs:95-101`; `Simulation/WebEvictionVoting.cs:128-131,277,404-421,606` | Subset |
+| S3 | Counter-blocs, value 4 | `Simulation/AlumniHistories.cs`; `Simulation/AlumniKnownBlocs.cs`; `Simulation/NpcAlliances.cs:78-85`; `Simulation/NpcAgendas.cs:54-59` | Subset (fixtures) |
+| S3b | Growing pacts, value 5 (14.L.J) | `Simulation/AlumniHistories.cs`; `Simulation/AlumniKnownBlocs.cs`; `Simulation/NpcAlliances.cs`; `Simulation/NpcDeals.cs:143-150`; `Simulation/NpcSocialActions.cs:155,206-210`; `Simulation/EpisodeEngine.Strategy.cs:249`; `Tests/EditMode/CounterPactGrowthTests.cs` + meta; four test helpers made internal | Subset (fixtures); the EditMode-only pins through the Mono harness |
+| S4 | Measurement and the record | `Tests/EditMode/BalanceLabAlumniReport.cs`; `Tests/EditMode/BalanceLab.cs` (the pact watch); `Tests/EditMode/BalanceLabParts.cs`; new `Tests/EditMode/BalanceLabAlumniReportTests.cs` + meta (dotnet only); this plan's edits (14.A) | Subset (fixtures); a smoke run; the lab, alone; the report goes to the owner. Built 2026-10-31, with its review's fixes (14.H's as-built note) |
+| S5 | Player-facing (after S2) | `Simulation/AlumniKnownBlocs.cs` (readers); `Runtime/Episode/EpisodeDirector.Journal.cs:455-490`; `Runtime/Episode/EpisodeDirector.Alliances.cs:9-53`; `Runtime/Episode/EpisodeHud.Alliances.cs`; `Runtime/Episode/EpisodeDirector.DiaryRoom.cs:475-487` | Readers in the subset; PlayMode captures; caption audit. Built 2026-10-31 (14.F's as-built note); the PlayMode tests are compiled offline, and their Unity run is the lead's |
+| S6 | Freeze the latest value kept: 5, or 4 if growth is withdrawn | The alumni-5 fixture (alumni-4 if growth is withdrawn), its manifest row, the floors | `OldSaveAcceptanceTests`. Built 2026-11-01 at 5 (the as-built note below), proved under Unity's Mono offline; its Unity run is the lead's |
+
+- **Order:** S1, S2, S3, S3b, S4. S5 needs S2. S4's all-core lab run and S5's Unity runs never overlap; each waits for the other to exit. S6 comes last, after the owner has read S4's report.
+- **Landing:**
+  - S1 to S5 land on `claude/all-star-histories` only. They are not merged to the consolidation line or main, or synced to the play copy, until S6.
+  - So no season is ever saved at 2 to 5 outside tests, which pin each value through `AllStars(…, value)`.
+  - Until S6, a change to 2 to 5 is an edit recorded here.
+
+**As built in S6** (2026-11-01, on `51dd14a5`). S6 changes no Simulation, Runtime or Persistence file: value 5 is frozen as S3b built it and S4's and S5's reviews left it.
+- **The owner's call** (14.H): growth is kept, so S6 freezes 5 and `Latest` stays 5. Nothing is retuned before S6. That covers 14.L.H's near-zero rule too, which S4's report printed for the 8-house cells: its lever (the recruit's bar toward its sponsor) waits for the owner's word, like 14.H's. S4's full run had every must-be-zero row at zero, so there was no bug to fix before S6.
+- **The fixture**, `s30-mode2-allstars-alumni5-w3-campaign`, was written and recorded by `51dd14a5` itself, by OLD-SAVE-ACCEPTANCE 2.6's route (its new 2.7):
+  - `Tools/OldSaves` was built from a `git archive` extract of that commit's Simulation and Runtime/Persistence;
+  - `generate 3387 12 director-allstars 3 Campaign` ran twice, to the same state (only `savedAt` differs), and `record` ran twice, to the same script and digests;
+  - the season has 112 commands to its end, season digest `2321f173f76d7c97`, and Tyler wins.
+- **The seed.** A scratch scan ran the recorder's own `generate` from 3002, the All-Stars fixtures' series (the alumni-1 cell's 3004 was found the same way):
+  - no 8-house seed from 3002 to 3201 holds a houseguests' pact past two at its week-3 campaign, so the cell is a 12-house;
+  - no 12-house seed from 3002 to 3201 that could be saved holds one (3146 could not, OLD-SAVE-ACCEPTANCE F9, so 199 of the 200 were read), and 3387 is the first after them;
+  - its pact `alliance-npc-203` was founded in week 2 and took its third member in week 3. Every member is in the house and in no live pair, and its fact is private and known to exactly the three. Two known pairs are live, so the bound is 4.
+- **The fifth case**, `OldSaveAcceptanceTests.TheAlumniFiveCellIsSavedWithAHouseguestsPactGrownPastTwoAndKeptToItself`, holds the file to that state through the store: the two live pairs and the bound of 4, the pact and its private fact, and the recruit's week-3 "was joined" rows beside both founders, both ways (the pairs, the bound and the rows asserted exactly since S6's review). The four per-fixture cases load and replay it, read it with every reader, pin its seventeen holds and recover it from the backup. The manifest test counts it as the 57th cell, `…/dialogue0/alumni5/allstars`. Its `holdsDigest` is `37f1e67f5dea9dfe`.
+- **The ballot sentinel, fixed in the test.** The fixture's reader case failed in 18 of its states. In the finalist read's lean "Danielle Reyes · Vanessa · voted to evict them" (a ballot the player knows, from week 7's unanimous count), `BallotPrivacyTests.NamesTheBallot` found the "Dan" in Danielle's name and took the line for her hidden week-3 ballot against Dan Gheesling. A houseguest nominee's first name now has to stand as a word of its own; the player is still found as "you" anywhere, "your" included (S6's review kept that, since a ballot against the player may say "your"). The check is only narrower, and `BallotPrivacyTests.TheSentinelNamesTheNomineeOnlyAsAWordOfItsOwn` pins it (OLD-SAVE-ACCEPTANCE F8). No reader changed. The PlayMode sentinel's copy is unchanged.
+- **Floors:** EditMode 9463 to 9469: `OldSaveAcceptanceTests` 261 to 266, and the sentinel's pin. The subset 16433 to 16434: the pin. `OldSaveAcceptanceTests` is EditMode only.
+- **From S6, values 2 to 5 are frozen.** A change to any of them is a later value, and the next free value is 6, AS7's (§10). S6 merges and syncs nothing. Landing on the consolidation line and main, and syncing the play copy, are the lead's.
+- **One code comment goes stale at S6.** The `AlumniRules` summary (`Simulation/AlumniHistories.cs:23-25`) still says value 5 "is released if the owner withdraws growth before §14's freeze (S6)" and that AS7 takes "the next free value after S6". S6 leaves it, because it changes no Simulation file and `51dd14a5` stays the build that wrote and froze the fixture. AS7's value-6 commit, which adds 6 in that block, rewords it to say that 5 was kept and frozen at S6 (2026-11-01) and that AS7 is 6 (14.L.K's "Tell AS7").
+- **Found while searching:** the 12-house at 3146 cannot be saved. Under Mono the store refuses its own save on the read-back (OLD-SAVE-ACCEPTANCE F9). The writer is right: Mono writes the double's shortest text, and its parse of that text comes back one bit off, so any load of such a text is refused under Mono too. This is for the lead, not S6.
+- **Proof, offline only:**
+  - the offline compile without UMA: every assembly, no error, and no warning in S6's two test files;
+  - the Lister under Unity's Mono counted 9469 EditMode cases;
+  - the Mono harness ran `OldSaveAcceptanceTests` 266 of 266. Before the sentinel's fix it was 265, the alumni-5 reader case failing;
+  - `BallotPrivacyTests` ran 8 of 8. The classes that read the whole fixture folder all passed: `FrozenEpisodeV29IntegrationTests` 130, `PersistenceV29MigrationTests` 40, `PersistenceV30MigrationTests` 32, `FrozenEpisodeV28IntegrationTests` 23 and `AlumniHistoriesSaveTests` 4;
+  - one mutation, the sentinel's old substring check, made the pin fail on its own assertion;
+  - the Frozen29 compile gate passed;
+  - the dotnet subset ran 16434 of 16434.
+
+  Not run: the Unity EditMode run (the lead's) and the UMA compile (no PlayMode or UMA file changed).
+- **S6's review** (2026-11-01: two reviews, every finding minor, all taken; still no Simulation, Runtime or Persistence file, and the committed fixture and manifest untouched):
+  - the fifth case asserts the two live pairs and the bound of 4 exactly, and the recruit's week-3 "was joined" rows beside both founders, both ways, with none between the founders. These are checks, not cases, so the floors do not move;
+  - the sentinel's whole-word match is a houseguest nominee's only. The player is "you" anywhere again, as before S6, and the pin's last check says so;
+  - OLD-SAVE-ACCEPTANCE F9 now puts the fault on Mono's read, not its writer, so loads are refused too, and lists it in its section 7. The seed claim counts the 199 seeds that could be saved. 2.7's size line and F8's point on `BallotPrivacyTests`' own walk are brought up to date, and so are the notes on the four per-fixture cases and the stale `AlumniRules` comment;
+  - proof, offline only: the no-UMA compile (no error, no warning in the two test files); the Lister, 9469 again; the ballot probe on the alumni-5 fixture, 0 of 73 states failing; the Mono harness, `BallotPrivacyTests` 8 of 8 and `OldSaveAcceptanceTests` 266 of 266; two mutations, each caught by the pin on its own assertion (a houseguest nominee back to a substring; the player as a whole word); the Frozen29 gate; the dotnet subset, 16434 of 16434.
+
+### 14.K Defaults taken, and the owner's answer
+
+**Defaults:**
+- **Values and enrolment:**
+  - three values for the direction, and a fourth, 5, for the owner's answer on outsider pacts (14.L);
+  - fresh seasons at `Latest`;
+  - a hold is a field write after enrolment;
+  - enrolment by the cast (D-H2, confirmed by the lead);
+  - section 9's gate and D-H8 superseded for 2 to 5;
+  - no opening pact.
+- **Loyalty:**
+  - `LoyaltySpan` 30, `BetrayalLine` 30, `RepairWeight` 0.5, `NominationErosion` 35, aging 1 a week;
+  - erosion is the ledger's permanent wrongs plus public put-ups. It never reads ballots or grudges;
+  - repair is capped at one span;
+  - a betrayal is not repaired; a grievance heals through play; no neglect fade;
+  - the standing is written off once at a public split, never on the player's edge.
+- **Known pairs:**
+  - a public split means one put the other up. While both are in, the Hitmen do not split in public, because of their final two;
+  - only shared alliances count;
+  - pairs are counted as pairs.
+- **Threat:**
+  - career 4/3/2 and pair risk 8/4;
+  - in the nomination threat and the vote only, never in `Total`.
+- **Counter-blocs:**
+  - 7.5 per counted pair, capped at 2;
+  - the hunt stops above zero;
+  - never with the player as listener;
+  - `CommonThreat` first;
+  - target agreements held back.
+- **Growing pacts (value 5, 14.L.K):**
+  - value 5, removable before S6; kept by the owner's call and frozen at S6 (14.H, 14.J);
+  - pacts grow in place, only while private to their members, from an earlier week, with every member in the house and no target agreement among them (the last two added in S3b's review), and a pact that has lost a member never grows again;
+  - only houseguests' own outsider pacts grow;
+  - the bound is min(4, live pairs + 2);
+  - one change a pact a week;
+  - the three-tier bar, with the members' line at −5;
+  - shed while private, whole once known;
+  - pact-mates never a common threat;
+  - no log line;
+  - the invitation skip for houseguests' fours;
+  - no one-at-a-time limit (it is measured);
+  - the near-zero rule in 14.L.H.
+- **Presentation:**
+  - from value 3;
+  - "PAST GAMES", "Before this season", "Past game · ";
+  - `AllianceRead.Page` unchanged.
+- **Edition 1 holds no alliance of three.** The Derrick–Cody–Tyler chain counts as two pairs. A sourced trio needs new research under 3.1. From 5, an outsider pact may hold three or four; it is never called a trio of the edition.
+- **The report** is not a gate. It has two stop conditions. The owner's call on them (2026-11-01, 14.H): keep 5 as built and retune nothing; delegated call, confirmed by the owner.
+
+**The question put to the owner.** Bigger counter-alliances. The owner's example has the house allying "for numbers" against a known three. NPC pacts here are pairs, with one NPC-only pact per three NPCs and each NPC in one at most. These are the story session's limits (`Assets/Plans/NPC-AGENCY-PLAN.md:27-28`; `Simulation/NpcAlliances.cs:88-99,258-272`). So the house answers with several outsider pairs, their hunts, and the player's own pacts, which can grow, but never with one NPC alliance of three or more. Should outsider pacts be allowed to grow past two while a known bloc stands? That changes a story-session limit, so it needs the owner's call. Default: no, pairs only.
+
+**The owner's answer (2026-10-29):** "Yes, let outsider pacts grow past two" (14.L). It is the owner's decision, not a delegated one, and it overrides the story limit "NPC-only pacts are pairs" for that case only. No question is open.
+
+### 14.L Counter-pacts grow past two (the owner's call, 2026-10-29)
+
+Every line number below was checked read-only against the committed tree at `4ab8c054`. Paths follow §14's convention: `Simulation/`, `Runtime/` and `Tests/EditMode/` sit under `Assets/Gamesim/`. Nothing was compiled or run.
+
+**As built in S3b** (2026-10-31, on `eb68acd1`). Where the code had moved, the build keeps the intent and differs in the letter:
+- `Dissolve` starts at `Simulation/NpcAlliances.cs:313` and its `var members` is at `:318` (L.F says `:304` and `:309`); the shed call sits before `var members`, as specified. `TakeOutOfPact` is `internal static` at `Simulation/EpisodeEngine.GrowPacts.cs:270`. In `Simulation/AlumniHistories.cs`, `CounterBlocs` was at `:61` and `Latest` at `:68`.
+- `ShedSourJoiners` returns at once for a pact of two members or fewer: an early-out with the same behaviour, so a pair reads nothing more at 5.
+- `CommonThreat` is a block body, so `grown` is read once, first.
+- The weekly pass's `Settle` and the beat call `TryJoin` only after `TryPropose` has failed, as D.3 sets out; the beat's own doc names the join.
+- The comments that named 4 as `Latest` (`Simulation/EpisodeEngine.AlumniHistories.cs:16`, `Simulation/EpisodeValidation.cs:103`, `Simulation/ShippedRules.cs:100`) now name 5.
+- Fixture 15 reaches the engine's private `AllyThroughInvitation` by reflection, as `GrowAndManageAlliancesTests` does; every other member the fixtures use is public, or one of the four test helpers made `internal`. Fixture 12's listen-in is the knower a listen-in writes, and its whispered and public facts are written as a leak writes them, without `Knowledge.MakeKnown`'s hearing checks.
+- `TheScoreFloorAndThePactCapStillHold`'s sibling at 5 is `CounterBlocTests.TheScoreFloorAndThePactCapStillHoldWhilePactsGrow`: the floor, then a house that loves everybody, four weeks of the rule's pass, every pact within its bound, a pact with a pair's member still a pair, and at least one outsider pact grown.
+- S1 to S3's behaviour tests already named their values through their files' own `AllStars` helpers (`Loyalty`, `Reputation`, `CounterBlocs`). The one call of `AlumniHistoriesTests.AllStars` among them without a value is `CounterBlocTests`' "fresh All-Star seasons start at 4 or later", which holds at 5. Every `AlumniRules.Latest` pin in `Tests/EditMode` follows `Latest` (the writer, the fresh-season pins and the `Latest + 1` refusals), and no pin names 4: the literal values tests write are 0 and 1, for seasons with no edition.
+- The report's arms and `PactWatch` (L.H) are S4's: at `eb68acd1` `BalanceLabAlumniReport` holds only H1b's `AlumniHistoriesGate`, whose histories arm is held at 1, so `Latest` moving to 5 does not reach it, and it is compiled out of the editor's assemblies.
+
+**Found in S3b's review** (2026-10-31, on `879350d1`), and fixed in its fix commit:
+- **A pact regrew after a member left the house.** The departed member stays on the roster and a knower, so rule 7 still held, and every jury reader matched them with the later recruit (25 loyalty, "We were in this together", "shared an alliance" on the finalists' read). Rule 7 now asks that every member be in the house, and L.C's bullet says a pact that has lost a member never grows again. The design's "may recruit again, up to the bound" is withdrawn; with it, the bound's and the receipts' "in the house" readings cannot differ from the roster's for a pact that grows.
+- **A target agreement struck before a join outlived it.** Rule 8 is new: no join while an active target agreement has its proposer, recipient and target all among the pact-to-be.
+- **A shed joiner at the jury** reads 0 toward the founders, C5's reading of a member taken out; recorded in L.F and pinned.
+- **`CommitmentReaderScanTests`** names the new raw read (`TargetsWithin`) as a raw kind, target.
+- **Tests added:** fixture 15 takes the player into a four with one member gone (three in the house); fixture 16 pins the shed joiner's jury reading; fixture 18 shows a birth comes first on the beat, the weekly pass and the rule alone; fixture 20 shows a threat from outside the pact is still hunted, an ended pact shields nobody, and a pact-mate of one is still a threat to that one and an outsider; fixture 21, `APactThatHasLostAMemberNeverGrowsAgain`, covers a founder at the jury and a four's member evicted, and the shed reading only the joiners in the house; fixture 22, `NoJoinWhileTwoOfThePactToBeHaveAgreedToTargetTheThird`, covers the founders' agreement against the recruit (the join waits, and goes ahead once it has run out) and the recruit's agreement with a member against another member.
+
+**The question 14.K put to the owner:** "Should outsider pacts be allowed to grow past two while a known bloc stands? Default: no, pairs only."
+
+**The owner's answer, verbatim:** "Yes, let outsider pacts grow past two". **Decided by the owner, 2026-10-29.**
+
+**What it changes:**
+- The houseguests' own pacts are born as pairs (`Simulation/NpcAlliances.cs:258-272`). That shape is the story session's limit (`Assets/Plans/NPC-AGENCY-PLAN.md:27-28`).
+- The answer lifts it for outsider pacts, in alumni seasons only.
+- Two limits stand: the cap of one NPC-only pact per three NPCs, and one such pact each (`Simulation/NpcAlliances.cs:88-99`).
+
+**One principle runs through the whole subsection.** A houseguests' pact changes its roster only while nobody outside it knows of it. Once anyone outside knows, it lives and ends whole, as every pact of houseguests does today.
+
+#### L.A Value 5, `AlumniRules.GrowingPacts` (slice S3b)
+
+**The constant.**
+- In `Simulation/AlumniHistories.cs`, after S3's `CounterBlocs = 4`, add `public const int GrowingPacts = 5;`.
+- `Latest` (`:30`) becomes `GrowingPacts`, and `IsDefined` (`:33`) widens on its own.
+- Every term below asks `AlumniRules.At(s, AlumniRules.GrowingPacts)`, never `Latest`.
+
+**Why a value of its own, and not an edit inside the unfrozen value 4:**
+1. **The lab can only hold a whole value** (14.G). Inside value 4, the 4−3 row would mix the 7.5 desire, the hunt and growth. A paired 5−4 row isolates growth. Every value-5 term is scoped so that, with no join in a season, it changes nothing (L.F's corner cases are noted).
+2. **Withdrawing it is easy.** If the owner turns growth down after S4, S3b's code comes out before S6 and `Latest` stays 4. Nothing from S1 to S5 is merged or synced before S6 (14.J), so no season is saved at 5 outside tests.
+3. **The cost is small:** one constant, one lab arm, and the EditMode-only `Latest + 1` pins move to 6 on their own (14.G).
+
+**At S6.** S6 freezes the latest value the owner keeps (14.I gives the fixtures). AS7 takes the next free value after S6. Because a value is a bound, AS7's value carries growth. As built (2026-11-01): the owner kept growth (14.H), so S6 froze 5, and AS7's value is 6.
+
+**The claim.** Alumni rules 5 is claimed by S3b and released if growth is withdrawn before S6. It is the alumni rules field, not competition rules 5, which is PC5's (§9, `:1045`). Growth was kept (14.H), so the claim stands and S6 froze 5.
+
+#### L.B Which pacts may grow
+
+A pact P takes a recruit only when all of these hold.
+
+1. **The rules are on.** `At(s, GrowingPacts)` and `EpisodeEngine.AgencyOn(s)` both hold (`Simulation/EpisodeEngine.Agency.cs:55`). The cap exists only under agency (`Simulation/NpcAlliances.cs:113`).
+2. **A known pair is live.** `KnownBlocs.CounterPactBound(s) > 2` (L.C).
+3. **It is the houseguests' own pact.** P is in `NpcOnlyPacts(s)` (`Simulation/NpcAlliances.cs:91-92`), and `NpcAlliances.HouseguestsOwn(P)` holds, meaning its id starts `alliance-npc-` (`:264`).
+   - A story's pact (`alliance-story-`, `:172`) belongs to its arc.
+   - A houseguests' pact the player joined and later left is held by rule 7, because the player stays a knower of its fact.
+4. **Nobody in it is in a live pair.** No member in the house passes `KnownBlocs.InLivePair`. The bloc's own pacts stay pairs: the Hitmen re-forming, or Tyler with an outsider while the Committee is live.
+5. **It is below the bound.** `EpisodeEngine.InTheHouse(s, P) < CounterPactBound(s)` (`Simulation/EpisodeEngine.GrowPacts.cs:96-97`).
+6. **One change a pact a week.** No member in the house is in this week's `joined` set (`Simulation/NpcSocialActions.cs:204-205`, read from saved acts). The weekly pass's local set does the same within the pass.
+7. **It is kept to itself, from an earlier week.** All of these hold:
+   - the story's bonds run;
+   - P's alliance fact exists and is `FactVisibility.Private`;
+   - every knower of the fact is a member;
+   - `fact.week < s.week`. The fact's week is set at birth (`Simulation/Story/StorySystems.cs:141`), the same wait leaks use (`Simulation/AllianceLeaks.cs:86`);
+   - every member is still in the house (added in S3b's review). Somebody who has left the house has left the pact (X5), but stays on its roster and a knower of its fact, and the jury's readers match juror and finalist by the roster (L.F): a recruit taken in after they left would read as their ally at the finale.
+
+   The week clause makes "none in its founding week" a matter of saved state, whatever path formed the pair.
+8. **No target agreement inside it** (added in S3b's review). No active `TargetAgreement` has its proposer, recipient and target all among P's members in the house and the recruit (`NpcAlliances.TargetsWithin`, reading `CommitmentReferences.RawDeals` as `StrategyRules.NominationReluctance` does). The deals are struck as the week turns (`Simulation/EpisodeEngine.cs:482`), before the pact window, and an agreement runs to the end of its week, so one struck against the recruit before the join would outlive it and pull a founder's nomination toward a pact-mate (`TargetPull` 40 against the ally shield's 30). It draws and writes nothing.
+
+   **Why rule 7 is needed.** Every reader joins P's current roster to its one fact:
+   - the suspected card (`Simulation/AllianceRead.cs:607-614`);
+   - `FinalistRead.AllianceCertainty` (`Simulation/FinalistRead.cs:231-239`);
+   - `KnownOdds.KnownPact` (`Simulation/KnownOdds.cs:378-381`);
+   - `AllianceThreat` (`Simulation/ThreatAssessment.cs:125-128`);
+   - the voter's pact list (`Simulation/WebEvictionVoting.cs:241`).
+
+   Knowers never shrink (`Simulation/AllianceLeaks.cs:105`). Growing a pact someone outside knows of would show them a member they never learned of.
+
+**Rules 3 to 8 are engine checks**, like `PactRoom`'s reading of every private pact (`:95-99`). They feed no score, trust or reader.
+- The recruit's side reads only the recruit's own pacts, scores and desire.
+- In the fiction, a member brings the recruit in. That is why the sponsor is the act's partner and why the sponsor's bar is the sponsor's own score.
+
+**When the last known pair stops being live** (a departure or a public split), the bound is 0 and nothing grows. A grown pact is never trimmed back to the bound. It sheds members, sours or ends by L.F's rules.
+
+#### L.C The bound: one more than the known pairs, counted pair by pair
+
+New members in `Simulation/AlumniKnownBlocs.cs` (S2's file):
+
+```
+public const int CounterPactMargin = 1;
+InLivePair(s, id)   = a pair in LivePairs(s) holds id (the player too, seated on a live card)
+CounterPactBound(s) = 0 below GrowingPacts, or when LivePairs(s) is empty;
+                      otherwise Math.Min(EpisodeEngine.LargestPact, LivePairs(s).Count + 1 + CounterPactMargin)
+```
+
+- **How the count works.** One pair counts two people; each further live pair, chained or apart, counts one more; the margin outnumbers that by one.
+- **Pairs, never people.** It counts pairs (14.D.2, "No groups"; rule 3.1). Under the cap of 4 it equals "distinct members of live pairs, plus one" in every case.
+- **Size.** `LargestPact` is 4 (`Simulation/EpisodeEngine.GrowPacts.cs:60`). It is compared with the number in the house, as the player's bring-in compares it (`:116`).
+
+| House (edition 1) | Live pairs | Bound |
+|---|---|---|
+| 8 (Tyler not seated) | Hitmen | 3 |
+| 9 to 12 (Tyler seated) | Hitmen, Committee | 4 |
+| 9 to 12, after the Committee's public split or with Tyler gone | Hitmen | 3 |
+| 9 to 12, with Derrick gone | Committee | 3 |
+| Cody gone; or an 8-house with Derrick gone or the Hitmen split | none | no growth |
+
+- **When the bound falls,** a pact already above it stays as it is and takes nobody else.
+- **A pact that has lost a member, to eviction or to shedding, never grows again** (amended in S3b's review; the design let it recruit again up to the bound while rule 7 held). A shed member stays a knower, and a departed one stays on the roster, so rule 7 never holds again.
+
+#### L.D Who joins, and how
+
+**D.1 The bar**
+
+| Who | Bar | Source |
+|---|---|---|
+| The recruit | An active non-player NPC. Not in `joined`, not in a live pair, and in no NPC-only pact (one each, `:98`). Fewer than `MaximumEach` = 3 pacts (`:33`). Not `Allied` with any member in the house (no stacking, as `Simulation/EpisodeEngine.GrowPacts.cs:113` refuses) | |
+| The recruit toward the **sponsor** | `Warm`: a score of at least `MinimumRelationship` = 25, and `Desire` above `ProposeThreshold` = 25 | `:30,36,149-151`. A proposer's own bar. `Desire` carries temperament (`:84`) and S3's `CounterDesire` |
+| The sponsor toward the recruit | A score of at least 25 | Not the sponsor's `Desire`: its −10 a pact carried (`:82`) prices a new pact, and a join adds none to the sponsor |
+| Every member in the house and the recruit, both ways | **`JoinWelcomeLine` = `SourLine − NpcSocialActions.RumorImpact` = −5**, and no grudge of `AllianceGrudgeLine` = 40 either way | A new named constant, not C5's −10 (`:129-136`). One rumour (−15 both ways, `Simulation/NpcSocialActions.cs:62,535,682-683`) can never take a fresh edge below `SourLine` (−20, `:55`). A cold pair (−10 or below, NPC-AGENCY-PLAN constraint 3; `Tests/EditMode/NpcAgencyHarnessTests.cs:78`) is never joined |
+
+**D.2 The rule.** In `Simulation/NpcAlliances.cs`, after `TryPropose` (`:230-250`). It is pure, like the rest of the class (`:21-25`). `Form`'s literal at `:264` may use the prefix constant; the string does not change.
+
+```csharp
+/// <summary>The houseguests' own pacts are the weekly pass's (Form), never a story's.</summary>
+public const string HouseguestPactPrefix = "alliance-npc-";
+public static bool HouseguestsOwn(AllianceState pact) =>
+    pact?.id != null && pact.id.StartsWith(HouseguestPactPrefix, StringComparison.Ordinal);
+
+/// <summary>14.L: a joiner and every member, both ways, one rumour above SourLine; never a cold pair.</summary>
+public const double JoinWelcomeLine = SourLine - NpcSocialActions.RumorImpact;   // -5
+
+/// <summary>14.L: an outsider joins an outsider pact of houseguests while a known pair stands. No roll.</summary>
+public static bool TryJoin(EpisodeState state, string npcId, ISet<string> joined, out string sponsorId)
+{
+    sponsorId = null;
+    // First, so a season below 5 reads nothing and plays byte for byte as before.
+    if (!AlumniRules.At(state, AlumniRules.GrowingPacts) || !EpisodeEngine.AgencyOn(state)) return false;
+    int bound = KnownBlocs.CounterPactBound(state);
+    if (bound <= 2) return false;
+    var recruit = state.Find(npcId);
+    if (recruit == null || recruit.isPlayer || recruit.status != ContestantStatus.Active) return false;
+    if ((joined != null && joined.Contains(npcId)) || KnownBlocs.InLivePair(state, npcId)) return false;
+    var pacts = NpcOnlyPacts(state);
+    if (pacts.Any(a => a.members.Contains(npcId))) return false;
+    if (ActiveAlliancesFor(state, npcId).Count >= MaximumEach) return false;
+
+    var pick = pacts
+        .Where(p => HouseguestsOwn(p) && EpisodeEngine.InTheHouse(state, p) < bound && KeptToItself(state, p))
+        .Select(p => (pact: p, here: p.members.Where(id => state.Find(id)?.status == ContestantStatus.Active).ToList()))
+        .Where(x => x.here.All(m => !KnownBlocs.InLivePair(state, m) && (joined == null || !joined.Contains(m))
+                                    && !state.Allied(npcId, m) && Welcomes(state, m, npcId) && Welcomes(state, npcId, m)))
+        .Where(x => !TargetsWithin(state, x.here, npcId))                 // rule 8, added in S3b's review
+        .SelectMany(x => x.here.Where(m => Warm(state, npcId, m) && state.Score(m, npcId) >= MinimumRelationship)
+                                .Select(m => (pact: x.pact, sponsor: m, desire: Desire(state, npcId, m))))
+        .OrderByDescending(c => c.desire).ThenBy(c => c.sponsor, StringComparer.Ordinal).ThenBy(c => c.pact.id, StringComparer.Ordinal)
+        .FirstOrDefault();
+    if (pick.pact == null) return false;
+    Join(state, pick.pact, npcId);
+    sponsorId = pick.sponsor;
+    if (joined != null) { joined.Add(npcId); joined.Add(sponsorId); }
+    return true;
+}
+
+/// <summary>14.L: the pact's fact is private and known only to its members - nobody outside sees its roster.</summary>
+private static bool PrivateToMembers(EpisodeState state, AllianceState pact)
+{
+    if (!EpisodeEngine.StoryAt(state, StoryRules.Bonds)) return false;
+    var fact = Knowledge.Of(state, FactKinds.Alliance, pact.id);
+    return fact != null && fact.visibility == FactVisibility.Private && fact.knowers.All(pact.members.Contains);
+}
+
+/// <summary>14.L.B 7: private to its members, from an earlier week than this one, and every member still in the house
+/// (the last clause added in S3b's review).</summary>
+private static bool KeptToItself(EpisodeState state, AllianceState pact) =>
+    PrivateToMembers(state, pact) && Knowledge.Of(state, FactKinds.Alliance, pact.id).week < state.week
+    && pact.members.All(id => state.Find(id)?.status == ContestantStatus.Active);
+
+/// <summary>14.L.B 8 (added in S3b's review): an active target agreement among the pact-to-be. Pure.</summary>
+private static bool TargetsWithin(EpisodeState state, List<string> here, string recruitId)
+{
+    var group = new HashSet<string>(here, StringComparer.Ordinal) { recruitId };
+    return CommitmentReferences.RawDeals(state).Any(d => d != null && d.status == DealStatus.Active && d.type == DealKind.TargetAgreement
+        && d.proposerId != null && d.recipientId != null && d.targetId != null
+        && group.Contains(d.proposerId) && group.Contains(d.recipientId) && group.Contains(d.targetId));
+}
+
+private static bool Welcomes(EpisodeState state, string fromId, string toId) =>
+    !GrudgeBetween(state, fromId, toId) && state.Score(fromId, toId) >= JoinWelcomeLine;
+
+private static void Join(EpisodeState state, AllianceState pact, string recruitId)
+{
+    var here = pact.members.Where(id => state.Find(id)?.status == ContestantStatus.Active).ToList();
+    pact.members.Add(recruitId);                                   // at the end: the founder stays members[0]
+    Knowledge.AddKnower(state, Knowledge.Of(state, FactKinds.Alliance, pact.id), recruitId);  // KeptToItself found it
+    foreach (var member in here)
+        RelationshipLedger.Record(state, member, recruitId, "alliance-formed", EpisodeEngine.AllianceFormedImpact, pact.name + " was joined");
+}
+```
+
+**D.3 Where it is called.** The recruit acts on its own pact rung, only after `TryPropose` has failed, so its own birth always comes first. A join can still take an outsider whom someone else would have asked later that week, so births at 5 can fall. S4 counts them.
+
+- **The all-week beat,** `Simulation/NpcSocialActions.cs:206-210`, becomes:
+
+  ```csharp
+  if (EpisodeEngine.Window(state) == EpisodeEngine.PactWindow(state, npcId))
+  {
+      if (NpcAlliances.TryPropose(state, npcId, joined)) { /* :208-209 unchanged */ }
+      if (NpcAlliances.TryJoin(state, npcId, joined, out string sponsorId))
+          return new NpcActState { kind = NpcActKinds.Pact, actorId = npcId, partnerId = sponsorId };
+  }
+  ```
+
+- **The weekly pass,** `:155`, becomes `if (NpcAlliances.TryPropose(state, npc.id, joined) || NpcAlliances.TryJoin(state, npc.id, joined, out _)) taken++;`.
+- **The rule-statement loop,** `Simulation/NpcAlliances.cs:213`, becomes `if (!TryPropose(state, npc.id, joined)) TryJoin(state, npc.id, joined, out _);`.
+- **`Perform(AllianceProposal)`** (`Simulation/NpcSocialActions.cs:361-362`) is unchanged. `Settle` and `Beat` skip that kind (`:164,224`).
+- **Below 5,** `TryJoin` returns false before reading anything.
+- **Runtime gains nothing.**
+
+**D.4 What a join writes**
+
+**Written:**
+- **The members list.** The recruit is appended at the end. The founder stays first (`Simulation/EpisodeEngine.GrowPacts.cs:75`) and still calls the bloc (`Simulation/WebVotingBlocs.cs:94-95`).
+- **The fact.** The recruit becomes a knower. The fact stays private, and its actor and subject stay the founders (`Simulation/Story/StorySystems.cs:139-140`).
+- **The ledger.** `alliance-formed` at 30, both ways, between the recruit and each member in the house. That is the record `Form` writes (`Simulation/NpcAlliances.cs:271`) and C5's bring-in writes (`Simulation/EpisodeEngine.GrowPacts.cs:196-197`).
+
+**Not written:**
+- no `Change`, `Log` or `Remember`;
+- no new pact id, name or `AllianceRow` (`Simulation/EpisodeEngine.Ledger.cs:117-120`);
+- no new ledger type, fact kind or act kind.
+
+**The act** is `NpcActKinds.Pact`, with the recruit as actor and the sponsor as partner.
+- Validation accepts any party as partner (`Simulation/EpisodeNpcSocialValidation.cs:114-116`).
+- The engine gives the act its id and its room on the existing keyed coin (`Simulation/EpisodeEngine.AllWeek.cs:216-224,253-258`).
+- **From 5, a `Pact` act no longer means a birth.** It cannot carry the pact's id: only `Meet` names a pact (`:116`). Every counter reads births from `alliance-npc-` ids and joins from a rise in `members.Count`.
+
+**D.5 Draws and sequence ids**
+- **The join draws nothing.** Everything it reads is saved state.
+- **Shedding and the hunt fix draw and mint nothing** (L.F).
+- **Downstream draws.** Existing sites may draw more often: the bloc round's compliance roll per member, and a hunt's gossip roll. No draw site is new.
+- **Sequence ids:** two per member in the house before the join, so 4 for a third member and 6 for a fourth. They go through the existing writer, at 5 only. This is the recorded exception to §14's rules (edits 3 and 4).
+
+**D.6 Why it does not ratchet**
+- A join is aimed at nobody and moves no score.
+- Each recruit leaves the pool (one NPC-only pact each).
+- The bound caps every pact.
+- A pact changes once a week at most, and never in its founding week.
+- Joining stops when no pair is live.
+- Pact-mates never hunt each other (L.F).
+- **What membership repeats is already bounded:**
+  - the weekly meeting: +3 per pair, once a pact a week (`Simulation/NpcSocialActions.cs:477-498`);
+  - S3's hunt: once a member a week, each listener stopping at 6.
+
+#### L.E The cap, one each, and the player
+
+- **The cap counts pacts** (`Simulation/NpcAlliances.cs:88`). A join adds none.
+- **Pairs are still born as pairs.** `PactRoom`, `WouldPropose` and `Form` are untouched (`Tests/EditMode/GrowAndManageAlliancesTests.cs:273-278` holds).
+- **One each.** The recruit is in no NPC-only pact before the join and in exactly one after it.
+- **The player is never recruited.** A pact with the player in it is never NPC-only (`:92`). C5's bring-in is unchanged.
+- **The invitation skip, at 5, for houseguests' pacts only.** `AllyThroughInvitation` adds the player to the inviter's pact with no size check (`Simulation/EpisodeEngine.Strategy.cs:248-257`). The `Where` at `:249` gains:
+
+  `&& !(AlumniRules.At(s, AlumniRules.GrowingPacts) && NpcAlliances.HouseguestsOwn(a) && InTheHouse(s, a) >= LargestPact)`
+
+  - A grown four is passed over, and the player and the inviter start a pact of their own (`:265-279`).
+  - Below 4 in the house nothing changes, and a story's four still takes the player in at every value.
+  - Without growth, no houseguests' pact without the player ever holds four in the house: the only paths that add a member are the invitation (the player) and C5's bring-in (cap 4, counting the player) (`Simulation/EpisodeEngine.GrowPacts.cs:116,187`; `Simulation/EpisodeEngine.Strategy.cs:257`). So the skip is growth-only.
+
+#### L.F Consumers
+
+| Consumer | With 3 or 4 houseguests | Change at 5 |
+|---|---|---|
+| Pact act (`Simulation/NpcSocialActions.cs:206-210`) | It assumed the newest pact | The join builds its own act |
+| **`CommonThreat`** (`Simulation/NpcDeals.cs:143-150`), read by the hunt (`Simulation/NpcAgendas.cs:54-58`), `Offer`'s target agreement (`Simulation/NpcDeals.cs:200-201`) and `TargetFor` (`:588`) | It excludes only a and b. In a trio, the third member qualifies as soon as they hold two wins and one of the pair reads them below 20. The hunt then costs that listener 6 a week with no stop (`Simulation/NpcSocialActions.cs:419-436`), and a target agreement pulls a nomination by 40 against the ally shield's 30 (`Simulation/StrategyRules.cs:46,52`) | **At 5, a non-player candidate is passed over** when an active houseguests' pact holds a, b and that candidate. See the code below the table. The player in a pact with both is read as at 4. It stops new agreements only; one struck before a join is the next row's |
+| A target agreement struck before a join (`NpcDeals.Settle` as the week turns, `Simulation/EpisodeEngine.cs:482`; `StrategyRules.NominationReluctance`, `Simulation/StrategyRules.cs:446-447`) | An agreement runs to the end of its week, so two founders could agree on W at the week's open and W join through one of them before the nominations: the founder as Head of Household is pulled 40 toward his new pact-mate (found in S3b's review) | **The join waits** (L.B rule 8): no pact takes a recruit while an active target agreement has its proposer, recipient and target all among the pact-to-be. Once it has run out, the join may go ahead |
+| The jury and finalist readers: `Allegiance.JuryLoyalty` and `SharedToTheEnd` (`Simulation/Allegiance.cs:243-266`), `WebJuryVoting.AllianceLoyalty` and `Reason` (`Simulation/WebJuryVoting.cs:84-93,246-248`), `FinalistRead.Lean` (`Simulation/FinalistRead.cs:285-289`) | Every one matches juror and finalist by `members.Contains`, and somebody who left the house stays on the roster. A recruit taken in after a member left would read as that juror's ally: 25 loyalty, "We were in this together", "shared an alliance" (found in S3b's review) | **None in the readers.** A pact that has lost a member never grows again (L.B rule 7, L.C), so every member a juror shares a roster with was in the house with them |
+| A shed joiner at the jury (the same readers) | `TakeOutOfPact` takes the joiner off the roster with no trace, so at the finale they share nothing with the founders: 0, not the 25 of a pact that existed and ended | **None: C5's reading of a member taken out** (C2's cut, C5's leave), now reaching houseguests' pacts at 5. Decided in S3b's review; pinned in fixture 16. S4's shed rows read it so |
+| **`Dissolve`** (`Simulation/NpcAlliances.cs:304-329`) | One edge below −20 ends the whole pact (`:325-327`) | **At 5,** before `var members` (`:309`): `if (AlumniRules.At(state, AlumniRules.GrowingPacts)) ShedSourJoiners(state, alliance);`. Code below. Otherwise whole, as now |
+| `Intact`, `EndBroken` (`:345-354`) | At least two in the house | None |
+| Meeting (`Simulation/NpcSocialActions.cs:488-495`) | +3 for every pair in the house | None |
+| Agendas and S3's hunt (`Simulation/NpcAgendas.cs:51-59`) | One pursuit per member a week | None beyond the `CommonThreat` row |
+| `Allied`, `Holds`, `Counted`, the +30 shield, the +20 veto pull, the jury's 100 for a standing pact (`Simulation/WebJuryVoting.cs:78-87`) | Any size | None |
+| `AllianceThreat` and the vote's threat (`Simulation/WebEvictionVoting.cs:413`) | 4 a head, capped at 20: 12 for a trio, 16 for a four, for knowers only | None |
+| `AllianceLoyalty` (`:447`) | 40, 50, 40 for 2, 3, 4 members | None |
+| Bloc round (`Simulation/WebVotingBlocs.cs:84-131`) | The founder calls | None |
+| Leak odds (`Simulation/AllianceLeaks.cs:61-63`) | 8% for a trio, 11% for a four | None |
+| `ListenIn` (`Simulation/EpisodeEngine.AllianceLeaks.cs:146-155`) | Never reveals a pact with 3 or more in the house | None |
+| Fact actor and subject, gossip odds (`Simulation/Story/StorySystems.cs:139-140,345-347`) | Keyed on the founders | None |
+| Roster-against-fact readers (L.B 7) | Would leak a member | Safe: a pact grows and sheds only while private to its members |
+| Story `AllianceLeave` (`Simulation/Story/EpisodeEngine.StoryEffects.cs:202-213`) | Removes the leaver, and grudges of 80 follow | None. The story session is told (L.K) |
+| Power Shift casting (`Simulation/Story/StoryCatalog.HouseRemembers.cs:583-587`) | Casts the largest pact first, and every option leaks it to the player (`:600-627`) | None. The story session is told. S4 counts it |
+| Validation (`Simulation/EpisodeValidation.cs:216-218`), ledger origin (`Simulation/EpisodeEngine.Ledger.cs:130-132`) | Distinct members; origin read from the id | None |
+
+The `CommonThreat` change:
+
+```csharp
+bool grown = AlumniRules.At(state, AlumniRules.GrowingPacts);   // read first: below 5 the predicate below is never evaluated
+... .Where(other => other.id != a && other.id != b
+                    && !(grown && !other.isPlayer && state.alliances.Any(p => p.active && NpcAlliances.HouseguestsOwn(p)
+                         && p.members.Contains(a) && p.members.Contains(b) && p.members.Contains(other.id))))
+```
+
+The `ShedSourJoiners` rule, in `Simulation/NpcAlliances.cs`:
+
+```csharp
+/// <summary>14.L: a houseguests' pact past two, still private to its members, goes on without a joiner who has
+/// soured with anybody in it - the latest such joiner first, as C5's defector rule takes out the one who turned.
+/// The first two in its order are its founders; their souring still ends it whole. No ledger entry, no line. Pure.</summary>
+private static void ShedSourJoiners(EpisodeState state, AllianceState pact)
+{
+    if (!HouseguestsOwn(pact) || pact.members.Contains(state.playerId) || !PrivateToMembers(state, pact)) return;
+    while (true)
+    {
+        var here = pact.members.Where(id => state.Find(id)?.status == ContestantStatus.Active).ToList();
+        if (here.Count <= 2) return;
+        string sour = pact.members.Skip(2).Where(here.Contains)
+            .LastOrDefault(j => here.Any(o => o != j && (state.Score(j, o) < SourLine || state.Score(o, j) < SourLine)));
+        if (sour == null) return;
+        EpisodeEngine.TakeOutOfPact(state, pact, sour);   // more than two in the house: it goes on (GrowPacts.cs:270-276)
+    }
+}
+```
+
+What shedding means:
+- **The shed member stays a knower**, so the pact never grows or sheds again. From then on it ends whole.
+- **A pact known outside it ends whole.** A known card keeps every face and its dated lines: those lines match by roster names (`Simulation/AllianceRead.cs:580-600`), and inactive pacts still draw cards (`:575`).
+
+Scope:
+- **Corner cases.** The `CommonThreat` and `Dissolve` changes touch a houseguests' pact that holds three NPCs only through growth. The one other way is the player's C5 bring-in into an invited pair, and the lab's scripted players never use it.
+- **Story trios** keep the `CommonThreat` flaw at every value. That is reported to the story session, not fixed under a growth value.
+
+#### L.G What the player sees (illustrative; S4 measures whether it happens)
+
+- **No new caption, and nothing appended to one.** `SuspectedCardPrefix` and §14.F's "PAST GAMES" are unchanged.
+- **One possible 8-house week with the Hitmen live** (Dan–Janelle formed in an earlier week, Will a free outsider):
+  1. Will's read says "Will is looking for a partner, and it's Janelle" (`Simulation/NpcAgendas.cs:104`).
+  2. At his pact window, Will joins.
+     - A sighting reads "You saw Will and Janelle with their heads together in the {room}." (`Simulation/EpisodeEngine.AllWeek.cs:328-333`).
+     - A paid listen-in hears "Will and Janelle agreed to work together." (`Simulation/NpcActKinds.cs:73`). It teaches no more, because three are in the house.
+  3. A hunt line may follow (`Simulation/NpcAgendas.cs:103`).
+  4. A leak names all three (`Simulation/AllianceLeaks.cs:160-161`).
+  5. Once the player knows, the suspected card shows three faces under "A, B and C" (`Runtime/Episode/EpisodeHud.Alliances.cs:92-130`; `Runtime/Episode/EpisodeDirector.Alliances.cs:126`).
+- **This depends on the cap.** If the Hitmen re-form, the cap of 2 leaves room for one outsider pair. Whether any join fires in the 8-house is unmeasured.
+- **Learning a pact means learning its roster as it stands then.** A pact anyone outside has learned of never grows. S4 counts how often that holds a pact back, and why.
+
+#### L.H Balance
+
+**Expected at 5, not measured:**
+- **Joins may be rare in the 8-house.** Births run 1.0 to 1.5 a season (`Tests/EditMode/NpcAgencyHarnessTests.cs:129-131`). A join needs all of these:
+  - a pact from an earlier week;
+  - a free outsider at 25 or more both ways, with desire above 25. Build stops at 25 (`Simulation/NpcAgendas.cs:77-83`);
+  - both Hitmen in the house and unsplit.
+- **A complying trio can carry the vote.** From week 2 an 8-house has four voters, and three from week 3 (`Simulation/EpisodeEngine.cs:836`). A trio voting whole is three of four, then all of them.
+- **Births at 5 can fall,** because a join takes an outsider someone else would have asked later.
+- **Known-pair members leave earlier.** Stop condition 2 is the one most likely to fire.
+- **Grown pacts are brittle once known.** They end on any of their 3 or 6 edges. While private, they shed instead.
+- **The 12-house has a pile-on risk.** A story's `AllianceLeave` from a four gives three grudges of 80 at once.
+- **Power Shift draws grown pacts first** and leaks them.
+
+**The report** (`Tests/EditMode/BalanceLabAlumniReport.cs`):
+- **Arms:** 5 (shipped), held 4, 3, 2, 1, and 0.
+- **Size and time:** 6 × 8 cells × 100 seeds = 4,800 seasons, about 36 minutes, run alone.
+- **Comparisons:** 5−4 and 5−0 are added.
+
+**A per-command `PactWatch`** (built in S4: 14.H's as-built note) sits beside `PariahWatch` (`Tests/EditMode/BalanceLab.cs:259`). It is kept out of the hashed rows (`:119`) and added to `BalanceLabParts.RoundTrip` (`Tests/EditMode/BalanceLabParts.cs:103`). It reports, per cell:
+- births (from `alliance-npc-` ids) and joins (from `members.Count` rises, player-free);
+- seasons with at least one join, and the week of the first join;
+- bloc-live weeks (bound above 2), and joins per bloc-live week;
+- the largest outsider pact (a distribution over 2, 3 and 4), and the shares reaching 3 and reaching 4;
+- pact-weeks held below the bound only because the pact was known outside it, split by cause: whisper, listen-in, story (Power Shift named), other;
+- joiners shed per season; how grown pacts end (the ledger's `why`), the weeks they lasted, and whether they were known at the end;
+- NPCs in NPC-only pacts as a share of the house (weekly mean and maximum); seasons with two grown pacts at once;
+- whether the player was invited into a grown pact, and the week the player first learned of one;
+- evictions carried by a complying outsider bloc of three or more;
+- pile-on targets, classed as known-pair member, grown-pact member, shed joiner or other, with `PariahDecomposition`'s columns (`Tests/EditMode/BalanceLabDiagnostics.cs:282`);
+- cold pairs at week 3; hunts per week on one target;
+- hunts and target agreements aimed at a pact-mate of both. At 4 this sizes the pre-existing story-trio flaw.
+
+**Must be zero at 5:**
+- a join with no live pair;
+- a join above its bound;
+- more than 4 of a pact in the house;
+- a live-pair member in a grown pact;
+- a join into a pact that was not `alliance-npc-`, not private to its members, or in its fact's week;
+- a join into a pact with a member out of the house, or while a target agreement stands among the pact-to-be (rules 7 and 8, added in S3b's review);
+- a hunt or target agreement aimed at a non-player pact-mate of both in a houseguests' pact;
+- cap breaches and double-booking (`Tests/EditMode/NpcAgencyHarnessTests.cs:50-56`).
+
+A nonzero must-be-zero row is a bug, fixed before S6. It is never an owner question. (S4's full run at `20f665b7`: every must-be-zero row zero, so S6 had none to fix.)
+
+**If the 8-house rate is near zero (decided now).** If fewer than one season in ten of any 8-house cell at 5 holds a join:
+- the report's first line says so, gives the 9-to-12 rates, and states that the call shows mostly in houses of 9 or more;
+- nothing is retuned before S6;
+- the lever named for a later value, built only on the owner's word, is the recruit's bar toward its sponsor (score 25, desire above 25).
+
+#### L.I Tests
+
+New file `Tests/EditMode/CounterPactGrowthTests.cs`:
+- with a hand-written meta, added to `Tools/SimulationTests/SimulationTests.csproj` near `:293`;
+- public members only;
+- seasons from `AlumniHistoriesTests.AllStars(size, seed, player, value)`, always naming `value`;
+- real pairs from `NpcAlliances.TryPropose` in an earlier week, never the `alliance-test-` helper;
+- beats as in `Tests/EditMode/AllWeekCadenceTests.cs:622-647`, **without** its `agencyRulesStartWeek = 0` (`:634`), which turns agency off and fails `TryJoin`'s first check.
+
+Four test helpers become `internal`:
+- `AllWeekCadenceTests`: `InWindow` (`:1039`) and `Score` (`:1098`);
+- `AlumniHistoriesTests`: `Saved` and `Load` (`:766-768`).
+
+The fixtures:
+1. `AnOutsiderJoinsACounterPactAtFiveWhileAKnownPairIsLive`: the default cast, `AllStars(8, seed, value: 5)`, through `Beat` at the recruit's `PactWindow`.
+   - Members are [founder, mate, recruit], with the same id, name and row.
+   - The recruit is a knower; `NpcOnlyPacts.Count` is unchanged; the act names the sponsor.
+2. `BelowFiveNothingGrowsAndTheStateIsByteIdentical` (TestCase 4, 3, 2, 1, 0): `TryJoin` is false, `Dissolve` and `CommonThreat` read as before, and the Json is unchanged.
+3. `ARegularSeasonNeverGrowsAPact`.
+4. `NoPactGrowsOnceNoKnownPairIsLiveAndAGrownPactStands`: Derrick evicted; a public split.
+5. `NoLivePairMemberJoinsSponsorsOrIsGrown`: in a 9-to-12 house; Tyler may join once the Committee has split in public.
+6. `APactGrowsToTheBoundAndNeverPastFour`: 3 in the 8-house; 4 in a 9-to-12 house; after the Committee splits, a four stays a four.
+7. `OneChangeAPactAWeekAndNoneInItsFoundingWeek`: through `Beat`, and also for a pair formed by a direct `TryPropose` that leaves no act. Pact acts: at most one per NPC on either side.
+8. `TheRecruitMustWantInAndEveryMemberMustWelcome`. Each of these is refused:
+   - desire at exactly 25; the recruit's score at 24; the sponsor's at 24;
+   - a member at −6 (−5 is accepted);
+   - a grudge of 40 either way;
+   - a −10/−10 pair;
+   - a recruit already `Allied` with a member, at `MaximumEach`, or in an NPC-only pact.
+9. `TheRecruitsEdgesMatchABirths`: two `alliance-formed`/30 entries per new edge; none on the founders' edge; trust matches a birth's; no score moves.
+10. `AJoinDrawsNothingAndMintsTwoSequencesAMember`: `randomState` unchanged; +4 for a trio, +6 for a four.
+11. `TheCapAndOneEachStillHold`.
+12. `APactAnyoneOutsideKnowsOfNeverGrows`: the player listened in; a whispered fact; a public fact; a story leaver who knows; a shed member. After a join, the knowers are exactly the members.
+13. `OnlyTheHouseguestsOwnPactsGrow`: a `FormFromStory` pact; a pact the player left.
+14. `ThePlayerIsNeverRecruited`.
+15. `AnInvitationNeverTakesAHouseguestsFourPastFour`: at 5, a grown four is passed over and a new pact forms; at 5 and at 4, a story's four still takes the player in.
+16. `AGrownPactShedsASourJoinerWhileKeptToItselfAndOtherwiseEndsWhole`:
+    - one rumour on a −5 edge ends nothing;
+    - at −21 the joiner is out, the founders stand, the row stays open, and the pact never grows again;
+    - a founders' edge below −20 ends it as `npc/soured`;
+    - once whispered, a joiner's sour edge ends it whole, and a knower's card keeps three faces and its dated lines;
+    - at 4, a hand-built trio ends whole.
+17. `AGrownPactVotesAsOneBlocWithItsFounderCalling`: leak odds 0.08; threat 12 for a knower and 0 for anyone else.
+18. `TheWeeklyPassAndTheRuleAloneJoinAsTheBeatDoes`.
+19. `JoinsAreDeterministicAndReplayAcrossASave`.
+20. `AGrownPactNeverHuntsOrTargetsItsOwnMember`: a recruit with 2 wins and a non-sponsor founder at 10 toward them.
+    - At 5: `CommonThreat(F1, F2)` passes the recruit over, no `Hunt` targets them, and `Offer` gives no target agreement against them.
+    - The player in the pact is read as at 4.
+    - At 4, a hand-built trio still names its member, pinning the old behaviour.
+21. `APactThatHasLostAMemberNeverGrowsAgain` (added in S3b's review): a founder at the jury, and a four's member evicted; the juror reads the would-be recruit as a stranger; the shed reads only the joiners in the house.
+22. `NoJoinWhileTwoOfThePactToBeHaveAgreedToTargetTheThird` (added in S3b's review): `NpcDeals.Settle` strikes the founders' agreement against the recruit, the join waits that week, and goes ahead once it has run out; an agreement of the recruit and a member against another member bars it too.
+
+**Existing tests:**
+- **Every S1 to S3 behaviour test names its own value** (`Loyalty`, `Reputation`, `CounterBlocs`). Only the writer, replay and validation cases use the `AllStars` default of `Latest`.
+  - S3b's builder greps `AllStars(` without `value:` in `AlumniLoyaltyTests`, `KnownBlocsTests` and `CounterBlocTests`, and pins what it finds.
+  - `TheOrdinaryCommonThreatStillComesFirst` is held at 4. `TheScoreFloorAndThePactCapStillHold` gains a sibling at 5 with a size clause.
+- **`AlumniHistoriesTests`.** The replay and validation cases at `Latest` (`:627-670`) pass unedited.
+- **EditMode-only `Latest + 1` pins** move on their own. Re-read them through the Mono harness.
+- **Unchanged:** every Regular pin, including `Tests/EditMode/NpcAllianceTests.cs:142` and `Tests/EditMode/AllWeekCadenceTests.cs:457-501,714-715`, plus `StoryPacingTests`, `BalanceLabGoldens` and `OldSaveAcceptanceTests`.
+- **The floors** in `Tools/baseline.txt` rise in S3b's commit.
+
+#### L.J Slice S3b (after S3, before S4)
+
+**Files:**
+- `Simulation/AlumniHistories.cs`: the constant, `Latest`, and the doc at `:12-16`;
+- `Simulation/AlumniKnownBlocs.cs`: `CounterPactMargin`, `InLivePair`, `CounterPactBound`;
+- `Simulation/NpcAlliances.cs`: the new members (`HouseguestPactPrefix`, `HouseguestsOwn`, `JoinWelcomeLine`, `TryJoin`, `PrivateToMembers`, `KeptToItself`, `Welcomes`, `Join`, `ShedSourJoiners`); the `Dissolve` call at `:309`; `:213`; the docs at `:87`, `:94`, `:153-157`, `:276-302`;
+- `Simulation/NpcDeals.cs:143-150`;
+- `Simulation/NpcSocialActions.cs:155,206-210`;
+- `Simulation/EpisodeEngine.Strategy.cs:249`;
+- the tests above and the visibility edits to the four test helpers.
+
+**Proof:** the dotnet subset, plus the Mono harness for the EditMode-only pins. No Unity run.
+
+**Later slices:**
+- S5 adds captures of three-face and four-face suspected cards at Standard and Largest text.
+- S6 freezes 5, or 4 if the owner withdraws growth. Built 2026-11-01: 5, growth being kept (14.J's as-built note for S6).
+
+#### L.K Defaults, and notes for the lead
+
+**Defaults:**
+- value 5, removable before S6; kept by the owner's call and frozen at S6 (14.H, 14.J);
+- pacts grow in place, only while private to their members, from an earlier week, with every member in the house and no target agreement among them (the last two added in S3b's review), and a pact that has lost a member never grows again;
+- only houseguests' own outsider pacts grow;
+- the bound is min(4, live pairs + 2);
+- one change a pact a week;
+- the three-tier bar, with the members' line at −5;
+- shed while private, whole once known;
+- pact-mates never a common threat;
+- no log line;
+- the invitation skip for houseguests' fours;
+- no one-at-a-time limit (it is measured);
+- the near-zero rule in L.H.
+
+**Questions for the owner:** none.
+
+**For the lead:**
+- **Tell the story session:**
+  - their constraint 2 is amended;
+  - the Power Shift comment (`Simulation/Story/StoryCatalog.HouseRemembers.cs:583-584`) goes stale, and the story now casts grown pacts first and leaks them (`:586-627`);
+  - their `AllianceLeave` edits a grown pact's members (`Simulation/Story/EpisodeEngine.StoryEffects.cs:209-210`): their call;
+  - story trios can hunt and target their own member through `CommonThreat` at every value: their call, under their own gate.
+- **Tell AS7** to take the next free value after S6: 6, since S6 froze 5 (2026-11-01). Its value-6 commit also rewords the `AlumniRules` summary (`Simulation/AlumniHistories.cs:23-25`), which went stale at S6, to say that 5 was kept and frozen at S6 (2026-11-01) and that AS7 is 6 (14.J's as-built note for S6).
+- **Tell S1 to S3's builders now** to name `value:` in their behaviour tests.

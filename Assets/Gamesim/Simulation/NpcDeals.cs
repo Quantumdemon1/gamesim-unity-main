@@ -139,15 +139,26 @@ namespace Gamesim.Simulation
         /// for one and −5 for the other — or a houseguest who has won two competitions and is not
         /// warm with at least one of them. The second is why a comp beast draws a coalition even
         /// when nobody has fallen out with them.</para>
+        ///
+        /// <para>From alumni rules 5 (ALL-STAR-HISTORIES-PLAN §14.L.F), where the houseguests' own
+        /// pacts grow past two, a houseguest who shares one of those pacts with both of them is never
+        /// their common threat: a grown pact never hunts or targets its own member. The player in a
+        /// pact with both is read as before, and so is every story's pact.</para>
         /// </summary>
-        public static string CommonThreat(EpisodeState state, string a, string b) =>
-            state.Active
-                .Where(other => other.id != a && other.id != b)
+        public static string CommonThreat(EpisodeState state, string a, string b)
+        {
+            // Read first: below 5 the pact-mate test below is never evaluated.
+            bool grown = AlumniRules.At(state, AlumniRules.GrowingPacts);
+            return state.Active
+                .Where(other => other.id != a && other.id != b
+                                && !(grown && !other.isPlayer && state.alliances.Any(p => p.active && NpcAlliances.HouseguestsOwn(p)
+                                     && p.members.Contains(a) && p.members.Contains(b) && p.members.Contains(other.id))))
                 .FirstOrDefault(other =>
                     (state.Score(a, other.id) < -10 && state.Score(b, other.id) < -5)
                     || (other.hohWins + other.vetoWins >= 2
                         && (state.Score(a, other.id) < 20 || state.Score(b, other.id) < 20)))
                 ?.id;
+        }
 
         // ---------------------------------------------------------------- the ladder
 
@@ -513,6 +524,25 @@ namespace Gamesim.Simulation
             foreach (var deal in state.deals)
                 if (DealStatus.Binds(deal.status) && deal.expiresWeek > 0 && deal.expiresWeek < state.week)
                     deal.status = DealStatus.Expired;
+        }
+
+        /// <summary>
+        /// The All-Star histories' opening final two (ALL-STAR-HISTORIES-PLAN §6 step 3): the pass's own
+        /// <see cref="Strike"/> for one pair of houseguests, with no offer, no ladder and no roll - an ordinary
+        /// <c>final_two</c> row, open-ended, with the ordinary <c>deal_accepted</c> record both ways, kept or broken
+        /// and settled like any other. It refuses, writing nothing, when either is not an active houseguest other
+        /// than the player, when the two already hold an active final two, or at the deal ceiling.
+        /// </summary>
+        internal static bool SeedOpeningPair(EpisodeState state, string firstId, string secondId)
+        {
+            var first = state?.Find(firstId);
+            var second = state?.Find(secondId);
+            if (first == null || second == null || firstId == secondId || first.isPlayer || second.isPlayer
+                || first.status != ContestantStatus.Active || second.status != ContestantStatus.Active
+                || Has(state, firstId, secondId, DealKind.FinalTwo) || UnifiedVoteStore.DealCount(state) >= DealCeiling)
+                return false;
+            Strike(state, firstId, secondId, DealKind.FinalTwo);
+            return true;
         }
 
         /// <summary>Writes the bargain, both sides of the ledger, and no roll.</summary>

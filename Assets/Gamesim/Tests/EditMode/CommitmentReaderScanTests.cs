@@ -109,6 +109,8 @@ namespace Gamesim.Tests.EditMode
                 "the veto: the keep-the-block word (R4)"),
             new Site(Sim + "NpcDeals.cs", "d.type == DealKind.VetoUse", 1, Why.RawKind, "the veto"),
             new Site(Sim + "NpcDeals.cs", "IsKeepTheBlockId(d.id) && d.week == state.week", 1, Why.RawKind, "R4: the keep-the-block ask, one a week"),
+            new Site(Sim + "NpcAlliances.cs", "CommitmentReferences.RawDeals(state).Any(d => d != null && d.status == DealStatus.Active && d.type == DealKind.TargetAgreement",
+                1, Why.RawKind, "target: alumni rules 5's join waits on a target agreement inside the pact-to-be (section 14.L.B rule 8), the raw list NominationReluctance reads"),
             new Site(Sim + "NpcPromises.cs", "p.kind == PromiseKind.FinalTwo", 1, Why.RawKind, "final two"),
             new Site(Sim + "Story/StoryCatalog.BondsAndSecrets.cs", null, 2, Why.RawKind, "final two"),
             new Site(Sim + "Story/StoryConsumers.cs", "d.type == DealKind.VetoUse", 1, Why.RawKind, "the veto"),

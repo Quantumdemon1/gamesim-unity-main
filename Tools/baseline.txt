@@ -67,7 +67,57 @@
 # floor), as the Lister counts them and Unity's Mono runs them (2026-10-30). Not yet measured in Unity.
 # 9245 counted: the full NoUMA run at e9f7ed2d (offers2, 2026-10-31), 9245 of 9245, no re-runs. c5cdb972 changed
 # PlayMode tests only, and its own set (offers3) re-ran the 28-case EditMode gate green.
-Gamesim.EditModeTests 9245
+# All-Star SCH30 step 2 and H1b's own history, on step 1's 9088:
+# 9181 = 9088 + SCH30 step 2's 93: the shared 50 below, PersistenceV30MigrationTests 28, PersistenceMigrationTests' native
+# inverse cases 8 -> 20 (+12) and PersistenceV29MigrationTests' direct-29 and direct-30 controls 3 -> 6 (+3).
+# 9193 = 9181 + SCH30's review fix: the three schema-30 old-save fixtures, four OldSaveAcceptanceTests cases each
+# (241 -> 253), run under Unity's Mono (2026-10-25).
+# 9246 = 9193 + H1b's 53, run under Unity's Mono (2026-10-26): AlumniHistoriesTests' 31 shared cases,
+# AlumniHistoriesSaveTests 4, AlumniHistoriesRecapTests 1, PooledSchema30ShapeTests' validation pin 7 -> 12 (+5),
+# LegacyDigestSchema30ObserverTests +11 (the nonzero-pooled case per value 1 -> 3, never projected 1, admitted
+# natively 8) and PersistenceV30MigrationTests' store refusals 5 -> 6 (+1).
+# 9250 = 9246 + H1b's alumni-on old-save fixture, four OldSaveAcceptanceTests cases (253 -> 257), run under Unity's
+# Mono (2026-10-26).
+# 9379 = main's 9217 + SCH30 step 2 and H1b's 162 (9250 - 9088; the branch at b99f700b, main 772828ba merged in,
+# counts 9288 = 8970 + step 1's 156 + 162): disjoint cases, so the floor is their sum.
+# 9388 = 9379 + the merge's own 9 (the histories with dialogue D1, ALL-STAR-HISTORIES-PLAN 8.5, 2026-10-29):
+# ShippedRulesTests 1 (the cast screen's options start the shipped form's histories, the chip on and off), and D1's
+# s29-mode2-dialogue1-w2-campaign in SCH30's lists of schema-29 writers: FrozenEpisodeV29IntegrationTests 4 (the
+# direct-29 cases, 2, and two malformed rows), PersistenceV30MigrationTests 3 and PooledSchema30ShapeTests 1.
+# OldSaveAcceptanceTests holds 64 fixtures, 261 cases (main's 60 and the branch's 63 share 59), each side's already
+# counted. Run class by class under Unity's Mono; not yet counted by a full run.
+# 9390 = 9388 + the merge review's 2 shared LegacyDigestSchema30ObserverTests cases (39 -> 41): an All-Stars season
+# started with the preview chip takes the alumni arm at 30 and never the native 29, and the retained native-29 entry
+# takes D1's writer fixture as it is. Listed and run class by class under Unity's Mono (2026-10-29); not yet counted by
+# a full run.
+# 9405 = 9390 + S1's 15 shared AlumniLoyaltyTests cases (alumni rules 2, section 14): listed by the Lister under
+# Unity's Mono (2026-10-30), and the affected classes run there; not yet counted by a full Unity run.
+# 9415 = 9405 + S2's 10 shared KnownBlocsTests cases (alumni rules 3, section 14): listed by the Lister under
+# Unity's Mono (2026-10-30), 9415, and the affected classes run there; not yet measured in Unity.
+# 9425 = 9415 + S3's 10 shared CounterBlocTests cases (alumni rules 4, section 14): listed by the Lister under
+# Unity's Mono (2026-10-30), 9425, and the affected classes run there; not yet measured in Unity.
+# 9426 = 9425 + the S3 review's shared CounterBlocTests case (a bloc hunt never names a pact-mate): listed by the
+# Lister under Unity's Mono (2026-10-31), 9426, and the affected classes run there; not yet measured in Unity.
+# 9451 = 9426 + S3b's 25 shared cases (alumni rules 5, section 14.L, outsider pacts that grow): CounterPactGrowthTests
+# 24 and CounterBlocTests' sibling at 5, listed by the Lister under Unity's Mono (2026-10-31), 9451, and the affected
+# classes run there; not yet measured in Unity.
+# 9453 = 9451 + the S3b review's 2 shared CounterPactGrowthTests cases (a pact that has lost a member never grows
+# again; no join while a target agreement stands inside the pact-to-be): listed by the Lister under Unity's Mono
+# (2026-10-31), 9453, and the affected classes run there; not yet measured in Unity.
+# S4 (the 14.H report and the pact watch, section 14) adds no EditMode case: BalanceLabAlumniReportTests is compiled
+# out of Unity, as the balance lab is. The Lister under Unity's Mono listed 9453 (2026-10-31); not yet measured in Unity.
+# The S4 review's 3 cases are in the same file, so they add none either: the Lister listed 9453 again (2026-10-31).
+# 9463 = 9453 + S5's 10 shared PastGamesReadTests cases (what the player is shown of the past games, section 14.F):
+# listed by the Lister under Unity's Mono (2026-10-31), 9463, and the affected classes run there; not yet measured in
+# Unity.
+# The S5 review's fixes add checks to those cases, not cases: the Lister listed 9463 again (2026-11-01).
+# 9469 = 9463 + S6's old-save fixture, s30-mode2-allstars-alumni5-w3-campaign (alumni rules 5 frozen, section 14.I):
+# its four OldSaveAcceptanceTests cases and the fifth that holds its grown pact (261 -> 266), and the shared
+# BallotPrivacyTests case that pins the sentinel's whole-word nominee (OLD-SAVE-ACCEPTANCE F8). Listed by the Lister
+# under Unity's Mono (2026-11-01), 9469, and the classes run there; not yet measured in Unity.
+# The S6 review's fixes add checks to those cases, not cases: the Lister listed 9469 again (2026-11-01).
+# 9497 = main's 9217 + the offers' 28 (9245 - 9217, PR #39) + the All-Star histories' 252 (9469 - 9217): disjoint cases, so the floor is their sum (2026-11-01).
+Gamesim.EditModeTests 9497
 # The UMA-free build. 1215 = 1236, the count after the consolidation's lanes (S2a, S2b, S4a), less the 7
 # farewell probes moved to Gamesim.DiagnosticsPlayModeTests and the 14 farewell readiness tests that now
 # compile only under GAMESIM_UMA (judged on the UMA cast); 1230 = 1215 + S2d's 7, S4b's 2, S4c's 2 and
@@ -120,7 +170,13 @@ Gamesim.EditModeTests 9245
 # FollowingSomeoneElseCancelsWithoutAMiss, APullYieldsAfterItsTime): compiled offline, not yet run.
 # 1385 counted: the full NoUMA run at e9f7ed2d (offers2, 2026-10-31), 1385 of 1385, no re-runs; c5cdb972 changed
 # only the offers tests, which offers3's 136-case gate re-ran green.
-Gamesim.PlayModeTests 1385
+# The All-Star histories' S4 (2026-10-31) adds no PlayMode case: 1353 stands, not yet measured in Unity.
+# 1357 = 1353 + the All-Star histories' S5's 4 shared EpisodePlayModeTests.PastGames tests (section 14.F's page,
+# profile and diary, 14.L.J's three-face and four-face cards, the caption audit and the cast screen's season): compiled
+# offline with and without UMA (2026-10-31); not yet measured in Unity.
+# The S5 review's fixes add checks to those 4 tests, not tests: 1357 stands (2026-11-01).
+# 1389 = main's 1353 + the offers' 32 (1385 - 1353, PR #39) + the All-Star histories' 4 (1357 - 1353): disjoint cases, so the floor is their sum (2026-11-01).
+Gamesim.PlayModeTests 1389
 # The UMA build of the same assembly, read by a plan built without -WithoutUma. 1281 = the 1241 above + the
 # 40 tests that compile only under GAMESIM_UMA, as run at r1 (2026-10-16): in EpisodePlayModeTests,
 # GroundedFarewell 11, Creator 9, HouseLife 8, Emotes 3, OpeningCaptures 2, and one each in CreatorEntry,
@@ -155,7 +211,11 @@ Gamesim.PlayModeTests 1385
 # 1425 = 1422 + the same 3 shared ComesToYou_ tests: compiled offline, not yet run.
 # 1425 counted: the full UMA-build run at c5cdb972 (offers3, 2026-11-01), 1425 of 1425, in one process with the MCP
 # bridge off, no re-runs; Gamesim.Uma.PlayModeTests 132 of 132 in the same set.
-Gamesim.PlayModeTests.UmaBuild 1425
+# 1397 = 1393 + the All-Star histories' S5's same 4 shared tests: compiled offline with UMA (2026-10-31); not yet
+# measured in Unity.
+# The S5 review's fixes add checks to those 4 tests, not tests: 1397 stands (2026-11-01).
+# 1429 = main's 1393 + the offers' 32 (1425 - 1393, PR #39) + the All-Star histories' 4 (1397 - 1393): disjoint cases, so the floor is their sum (2026-11-01).
+Gamesim.PlayModeTests.UmaBuild 1429
 # The UMA bodies: runs only where the GAMESIM_UMA define is set (the working tree and the D: copy).
 # 82 = the 89 run on 2026-10-15, less the 7 farewell probes moved to Gamesim.Uma.DiagnosticsPlayModeTests;
 # 85 = 82 + the 3 farewell readiness decision tests (UmaFarewellReadinessDecisionPlayModeTests, 2026-10-16);
@@ -212,4 +272,44 @@ Gamesim.Uma.DiagnosticsPlayModeTests 10
 # 16241 = main's 10811 + step 1's 5430: disjoint cases, so the floor is their sum.
 # Offers slice 1 (OFFERS-COME-TO-YOU-PLAN), on 16241:
 # 16263 = 16241 + the same 22 ComesToYouTests cases: what dotnet test Tools/SimulationTests ran (2026-10-30).
-Gamesim.SimulationTests 16263
+# All-Star SCH30 step 2 and H1b's own history, on step 1's 16198:
+# 16248 = 16198 + SCH30 step 2's shared 50: LegacyDigestSchema30ObserverTests 28, PooledSchema30ShapeTests 16, the
+# live-schema pin per builder (ShippedRulesTests 1 -> 6) and the checkpoint at 30 (LegacyDigestSchema29ObserverTests 1).
+# 16303 = 16248 + H1b's 55: AlumniHistoriesTests 39 (31 shared, 8 in the subset only, against the internal
+# control), PooledSchema30ShapeTests +5 and LegacyDigestSchema30ObserverTests +11: what dotnet test
+# Tools/SimulationTests ran (2026-10-26).
+# 16346 = main's 16241 + SCH30 step 2 and H1b's 105 (16303 - 16198): disjoint cases, so the floor is their sum.
+# 16348 = 16346 + the merge's own 2, both shared (ShippedRulesTests 1, PooledSchema30ShapeTests 1): what dotnet test
+# Tools/SimulationTests ran on the merge (2026-10-29), 16348 of 16348.
+# 16351 = 16348 + the merge review's 3: the same 2 LegacyDigestSchema30ObserverTests cases and Frozen29's literal
+# control of D1's schema-29 writer (Frozen29LiteralFixtureTests 37 -> 38): what dotnet test Tools/SimulationTests ran
+# (2026-10-29), 16351 of 16351.
+# 16366 = 16351 + S1's 15 AlumniLoyaltyTests cases: what dotnet test Tools/SimulationTests ran (2026-10-30),
+# 16366 of 16366.
+# 16376 = 16366 + S2's 10 KnownBlocsTests cases: what dotnet test Tools/SimulationTests ran (2026-10-30),
+# 16376 of 16376.
+# 16386 = 16376 + S3's 10 CounterBlocTests cases: what dotnet test Tools/SimulationTests ran (2026-10-30),
+# 16386 of 16386.
+# 16387 = 16386 + the S3 review's CounterBlocTests case: what dotnet test Tools/SimulationTests ran (2026-10-31),
+# 16387 of 16387.
+# 16412 = 16387 + S3b's 25 (CounterPactGrowthTests 24, CounterBlocTests 1): what dotnet test Tools/SimulationTests
+# ran (2026-10-31), 16412 of 16412.
+# 16414 = 16412 + the S3b review's 2 CounterPactGrowthTests cases: what dotnet test Tools/SimulationTests ran
+# (2026-10-31), 16414 of 16414.
+# 16420 = 16414 + S4's 6 BalanceLabAlumniReportTests cases (the 14.H report's arms and 14.L.H's pact watch, by
+# fixtures; dotnet only, as the lab is): what dotnet test Tools/SimulationTests ran (2026-10-31), 16420 of 16420.
+# 16423 = 16420 + the S4 review's 3 BalanceLabAlumniReportTests cases (the known-pair rows and who left a grown pact,
+# the pooled ratios and McNemar's call, the report built from synthetic seasons): what dotnet test
+# Tools/SimulationTests ran (2026-10-31), 16423 of 16423.
+# 16433 = 16423 + S5's 10 PastGamesReadTests cases (what the player is shown of the past games, section 14.F): what
+# dotnet test Tools/SimulationTests ran (2026-10-31), 16433 of 16433.
+# The S5 review's fixes add checks to those cases, not cases: what dotnet test Tools/SimulationTests ran (2026-11-01),
+# 16433 of 16433 again. The count leaves out the [Explicit] cases, ModeOneSeasonDigests among them: it ran with a
+# filter of its own, 2 of 2.
+# 16434 = 16433 + S6's BallotPrivacyTests case (the sentinel reads the nominee as a word of its own, section 14.J's S6):
+# what dotnet test Tools/SimulationTests ran (2026-11-01), 16434 of 16434. S6's old-save fixture adds none here:
+# OldSaveAcceptanceTests is EditMode only.
+# The S6 review's fixes add checks to that case, not cases (the sentinel finds the player in "your" again): what dotnet
+# test Tools/SimulationTests ran (2026-11-01), 16434 of 16434 again.
+# 16456 = main's 16241 + the offers' 22 (16263 - 16241, PR #39) + the All-Star histories' 193 (16434 - 16241): disjoint cases, so the floor is their sum (2026-11-01).
+Gamesim.SimulationTests 16456

@@ -480,7 +480,7 @@ namespace Gamesim.Tests.EditMode
         {
             string original = Text(payload);
             Assert.That(payload["schemaVersion"]?.Type, Is.EqualTo(JTokenType.Integer));
-            Assert.That((int)payload["schemaVersion"], Is.EqualTo(29));
+            Assert.That((int)payload["schemaVersion"], Is.EqualTo(30));
             Assert.DoesNotThrow(() => ValidateCurrentShape(payload));
             var state = payload.ToObject<EpisodeState>(Serializer()); string beforeState = Text(Payload(state));
             Assert.That(EpisodeValidation.TryValidate(state, out string reason), Is.True, reason);
@@ -514,7 +514,9 @@ namespace Gamesim.Tests.EditMode
             current.Add("dialogueRulesVersion", 0);
             current.Add("dialogue", new JObject {
                 ["episodes"] = new JArray(), ["grants"] = new JArray(), ["vetoOccasions"] = new JArray() });
-            current["schemaVersion"] = 29;
+            // Schema 30's pooled off literals (SCH30), after the dialogue store.
+            current.Add("alumniRulesVersion", 0); current.Add("alumniCatalogEdition", JValue.CreateNull()); current.Add("tuningRulesVersion", 0);
+            current["schemaVersion"] = 30;
             Assert.That(Text(former), Is.EqualTo(original)); return current;
         }
         private static JObject NeutralFormer25(JObject current)
@@ -577,7 +579,7 @@ namespace Gamesim.Tests.EditMode
         {
             string original = Text(payload);
             JObject former;
-            if (payload["schemaVersion"]?.Type == JTokenType.Integer && (int)payload["schemaVersion"] == 29)
+            if (payload["schemaVersion"]?.Type == JTokenType.Integer && (int)payload["schemaVersion"] == 30)
                 former = NeutralFormer25(payload);
             else
             {
@@ -603,7 +605,7 @@ namespace Gamesim.Tests.EditMode
             var current = LiftFormer25(payload); string currentOriginal = Text(current);
             Assert.DoesNotThrow(() => ValidateCurrentShape(current));
             var state = current.ToObject<EpisodeState>(Serializer());
-            Assert.That(state.schemaVersion, Is.EqualTo(29), "The semantic companion must reach the supported current owner.");
+            Assert.That(state.schemaVersion, Is.EqualTo(30), "The semantic companion must reach the supported current owner.");
             string beforeState = Text(Payload(state));
             Assert.That(EpisodeValidation.TryValidate(state, out string reason), Is.False, "The source-valid baseline has a real former25 invariant defect.");
             Assert.That(reason, Is.Not.Empty);
@@ -849,7 +851,7 @@ namespace Gamesim.Tests.EditMode
 
         private static void AssertMode(EpisodeState state, int mode)
         {
-            Assert.That(state.schemaVersion, Is.EqualTo(29));
+            Assert.That(state.schemaVersion, Is.EqualTo(30));
             Assert.That((int)NeutralFormer25(Payload(state))["schemaVersion"], Is.EqualTo(25));
             Assert.That(state.unifiedCommitmentRulesVersion, Is.EqualTo(mode == 0 ? 0 : 1));
             Assert.That(state.unifiedHearingRulesVersion, Is.EqualTo(mode == 2 ? 1 : 0));

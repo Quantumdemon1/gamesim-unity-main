@@ -94,12 +94,33 @@ namespace Gamesim.Tests.PlayMode
             for (int i = 0; i < 5; i++) yield return null;
 
             var camera = cameraRig.ViewCamera;
-            var screen = (Vector2)camera.WorldToScreenPoint(pool.Position + Vector3.up * .3f);
-            Assert.That(Physics.Raycast(HousePlayerController.ScreenRay(camera, screen), out var hit, 500f, HouseLayers.Pick,
-                QueryTriggerInteraction.Ignore) && hit.transform.IsChildOf(pool.transform.parent), Is.True,
-                "The pointer is over the pool.");
-            // And over nothing of the HUD's or the icons': a pointer over a card is over the card, and the hover rightly names nothing.
+            // A pointer over the pool and over nothing of the HUD's or the icons': a pointer over a card is over the card, and
+            // the hover rightly names nothing. The pool's middle or - where an icon waits on it: the room view keeps every other
+            // room's icon on screen (D17), and with the fixture's talk prompt up at the bottom they stand higher - a point along
+            // the pool or across it, the first the interface's raycast finds clear and whose ray meets the pool, as Rs2bPointAt
+            // picks a prop's point (the fixes' review).
+            var screen = default(Vector2);
+            bool overThePool = false;
             var chrome = new System.Collections.Generic.List<RaycastResult>();
+            var along = pool.transform.forward;
+            var across = pool.transform.right;
+            foreach (var offset in new[] { Vector2.zero, new Vector2(1f, 0f), new Vector2(-1f, 0f), new Vector2(0f, .8f), new Vector2(0f, -.8f),
+                new Vector2(2f, 0f), new Vector2(-2f, 0f), new Vector2(1f, .8f), new Vector2(-1f, .8f), new Vector2(1f, -.8f), new Vector2(-1f, -.8f) })
+            {
+                var seen = camera.WorldToScreenPoint(pool.Position + along * offset.x + across * offset.y + Vector3.up * .3f);
+                if (seen.z <= 0f || !camera.pixelRect.Contains(seen)) continue;
+                var point = (Vector2)seen;
+                chrome.Clear();
+                EventSystem.current.RaycastAll(new PointerEventData(EventSystem.current) { position = point }, chrome);
+                if (chrome.Count > 0) continue;
+                if (!Physics.Raycast(HousePlayerController.ScreenRay(camera, point), out var hit, 500f, HouseLayers.Pick, QueryTriggerInteraction.Ignore)
+                    || !hit.transform.IsChildOf(pool.transform.parent)) continue;
+                screen = point;
+                overThePool = true;
+                break;
+            }
+            Assert.That(overThePool, Is.True, "A pointer over the pool, clear of the HUD and the icons.");
+            chrome.Clear();
             EventSystem.current.RaycastAll(new PointerEventData(EventSystem.current) { position = screen }, chrome);
             Assert.That(chrome.Select(result => result.gameObject.name), Is.Empty, "The pointer over the pool is clear of the HUD and the icons.");
 

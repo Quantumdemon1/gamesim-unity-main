@@ -880,7 +880,9 @@ namespace Gamesim.Tests.PlayMode
         /// room, at its nearest, middle and farthest zoom and at yaws 0, 45 and 90, every other room's icon is shown,
         /// and no icon's disc or the room's name under it touches another icon's disc or name. The lane's rs4 captures
         /// had the nomination room's icon over the games room's in the living room's view, both waiting at the
-        /// frame's edge the same way, the one's name hiding the other's.
+        /// frame's edge the same way, the one's name hiding the other's. And the viewed room's own icon - shown for
+        /// the screen or the diary, which a click on it opens - is shown wherever its place is on screen and clear of
+        /// the HUD: beside its place where the next stop's holds it (the fixes' review).
         /// </summary>
         [UnityTest]
         public IEnumerator WayFinding_NoIconStandsOnAnother()
@@ -890,6 +892,7 @@ namespace Gamesim.Tests.PlayMode
             yield return null;
             var scope = ScopeOf(director);
             ScopeParkHouseguests(scope);
+            var hud = director.GetComponentInChildren<EpisodeHud>(true);
             var failures = new List<string>();
             int frames = 0, pairs = 0, mostIcons = 0;
             // A drawn rect half a pixel in on every side: two icons that only meet at an edge do not stand on each other.
@@ -922,6 +925,8 @@ namespace Gamesim.Tests.PlayMode
                             if (!icon.gameObject.activeInHierarchy)
                             {
                                 if (id != viewed) failures.Add(where + ": the " + id + "'s icon is not shown");
+                                else if (WayFindingOwnPlaceIsClear(viewed, icon, hud, out var place))
+                                    failures.Add(where + ": the viewed room's own icon is not shown, though its place (" + place.ToString("0") + ") is on screen and clear of the HUD");
                                 continue;
                             }
                             var tag = icon.Find(EpisodeTravelBeacons.RoomNameName) as RectTransform;
@@ -948,6 +953,43 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(failures, Is.Empty, failures.Count + " found: " + string.Join("; ", failures.Take(20)));
             Assert.That(frames, Is.EqualTo(RoomLayers.Count * 9), "Every room's nine framings were read.");
             Assert.That(mostIcons, Is.GreaterThanOrEqualTo(RoomLayers.Count - 1), "Every other room's icon was on screen together (" + pairs + " pairs compared).");
+        }
+
+        /// <summary>
+        /// Whether the viewed room's own icon has its place on screen and clear of the HUD: shown only for the screen's room
+        /// and the diary's, it floats over the screen, the diary chair or the room's marker, and its square - taken a quarter
+        /// wider every way than the icons test it - and the room's name under it, with two pixels' air, are all on the frame
+        /// and under none of the chrome. There the icon is always shown (D17), at its place or beside it.
+        /// </summary>
+        private bool WayFindingOwnPlaceIsClear(string room, RectTransform icon, EpisodeHud hud, out Vector2 place)
+        {
+            place = default;
+            Vector3 anchor;
+            if (room == director.ScreenRoom && !float.IsInfinity(director.StationPosition.x)) anchor = director.StationPosition;
+            else if (room == "Private" && director.HasDiaryRoom) anchor = director.DiaryPosition;
+            else if (room == director.ScreenRoom || room == "Private")
+            {
+                var marker = SceneComponents<HouseRoomMarker>().FirstOrDefault(candidate => candidate.isActiveAndEnabled && candidate.RoomName == room);
+                if (marker == null) return false;
+                anchor = marker.transform.position;
+            }
+            else return false;
+            var camera = cameraRig.ViewCamera;
+            var seen = camera.WorldToScreenPoint(anchor + Vector3.up * EpisodeTravelBeacons.Height);
+            if (seen.z <= .5f) return false;
+            place = seen;
+            // The icon as drawn (its scale is the text size's, kept while it is hidden), moved to its place.
+            var drawn = ScreenRect(icon);
+            float half = drawn.width * .75f;
+            var square = new Rect(place.x - half, place.y - half, 2f * half, 2f * half);
+            var frame = camera.pixelRect;
+            if (!frame.Contains(square.min) || !frame.Contains(square.max) || hud.CoversAny(square)) return false;
+            var tag = icon.Find(EpisodeTravelBeacons.RoomNameName) as RectTransform;
+            if (tag == null) return true;
+            var name = ScreenRect(tag);
+            name.position += place - drawn.center;
+            name = new Rect(name.xMin - 2f, name.yMin - 2f, name.width + 4f, name.height + 4f);
+            return frame.Contains(name.min) && frame.Contains(name.max) && !hud.CoversAny(name);
         }
 
         // ------------------------------------------------------------------------------------

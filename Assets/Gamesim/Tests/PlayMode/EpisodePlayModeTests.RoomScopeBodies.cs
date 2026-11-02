@@ -917,15 +917,27 @@ namespace Gamesim.Tests.PlayMode
             // millisecond, which reads as standing still.
             var walkerAgent = walker.GetComponent<UnityEngine.AI.NavMeshAgent>();
             bool walkerPlaces = walkerAgent != null && walkerAgent.updatePosition;
-            if (walkerAgent != null) { walkerAgent.ResetPath(); walkerAgent.updatePosition = false; }
+            if (walkerAgent != null)
+            {
+                // Suspended autonomy disposes the house's world, whose unbinding turns each motion's agent off
+                // (HouseNpcMotion.RestoreStaticOwner): only a live agent on the mesh has a path to clear, and
+                // ResetPath on any other logs an error (the lane's UMA run rs4v2).
+                if (walkerAgent.isActiveAndEnabled && walkerAgent.isOnNavMesh) walkerAgent.ResetPath();
+                walkerAgent.updatePosition = false;
+            }
             ScopePlace(walker.transform, from, 2f);
             var owner = new object();
             try
             {
                 cameraRig.MoveTo(Rs4Shot(scope, "Living"));
                 director.HoldRoomScope(owner);
+                // The scope draws whoever a prompt names (section 3.2 e), and the E prompt's Talk target is chosen in the
+                // director's Update, before the walker was moved: the frame after it lets them go is the first
+                // drawn without them (the lane's UMA run rs4v2).
+                yield return WaitFor(() => NpcRead<HouseNpc>("promptNamed") != walker, 3f, "The E prompt lets " + walker.DisplayName + " go.");
                 yield return null;
-                Assert.That(Rs4HiddenNow(walker.transform, out string why), Is.True, walker.DisplayName + " in the games room is hidden: " + why);
+                Assert.That(Rs4HiddenNow(walker.transform, out string why), Is.True, walker.DisplayName + " in the games room is hidden: " + why
+                    + " (the E prompt names " + Rs4PromptNamed() + ")");
                 var rest = thigh.localRotation;
                 float swing = 0f;
                 int hiddenFrames = 0, frames = 0;
@@ -991,8 +1003,13 @@ namespace Gamesim.Tests.PlayMode
             {
                 cameraRig.MoveTo(Rs4Shot(scope, "Living"));
                 director.HoldRoomScope(owner);
+                // The scope draws whoever a prompt names (section 3.2 e), and the E prompt's Talk target is chosen in the
+                // director's Update, before the guest was moved: the frame after it lets them go is the first drawn
+                // without them (the lane's UMA run rs4v2).
+                yield return WaitFor(() => NpcRead<HouseNpc>("promptNamed") != guest, 3f, "The E prompt lets " + guest.DisplayName + " go.");
                 yield return null;
-                Assert.That(Rs4HiddenNow(guest.transform, out string why), Is.True, guest.DisplayName + " in the games room is hidden: " + why);
+                Assert.That(Rs4HiddenNow(guest.transform, out string why), Is.True, guest.DisplayName + " in the games room is hidden: " + why
+                    + " (the E prompt names " + Rs4PromptNamed() + ")");
                 var before = presentation.VisualRoot;
                 CharacterPresentation.Dress(guest.gameObject, draft, Color.white); // a copied recipe, never the saved contestant
                 Assert.That(presentation.IsChangingOutfit, Is.True, "A new look is being built.");
@@ -1032,6 +1049,13 @@ namespace Gamesim.Tests.PlayMode
             var drawn = shown.Where(r => (mask & (1 << r.gameObject.layer)) != 0).Select(r => r.name + " on " + r.gameObject.layer).ToArray();
             why = drawn.Length == 0 ? "" : string.Join(", ", drawn) + " drawn";
             return shown.Length > 0 && drawn.Length == 0;
+        }
+
+        /// <summary>Whom the E prompt names now (its Talk target or the invitation's speaker), for a message: the scope draws them.</summary>
+        private string Rs4PromptNamed()
+        {
+            var named = NpcRead<HouseNpc>("promptNamed");
+            return named != null ? named.DisplayName : "nobody";
         }
 #endif
 

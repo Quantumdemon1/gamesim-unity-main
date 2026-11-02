@@ -924,15 +924,25 @@ namespace Gamesim.Tests.PlayMode
             // framings never reach: from the private room at yaws 0, 45 and 90 the next stop's icon, claiming its spot
             // first, never stands on the diary's place, so they passed at 304c872b, which hid the diary's icon there (the
             // claims' second review). So the private room is read on, every framing as above, until one where it does:
-            // the player at the room's open floor and at four spots 1.5 m off it, each zoom, every 15 degrees round. There
-            // the diary's icon waits beside its place, pinned; where its place is clear and it is not shown, it fails.
+            // the player at the room's open floor, at four spots 1.5 m off it along the room's axes and four on its
+            // diagonals, then at spots 2.5 m and 3 m off along the axes, each zoom, every 15 degrees round - the open
+            // floor and the four axis spots alone missed it in 3 of 144 of the review's varied houses (the claims' third
+            // review) - a spot read only where the floor under it is the private room's. There the diary's icon waits
+            // beside its place, pinned; where its place is clear and it is not shown, it fails.
             int privateRoom = RoomLayers.IndexOf("Private");
             string besideItsPlace = null;
             int searched = 0;
             cameraRig.SetReducedMotion(false);
             yield return RoomViewPlayerIn(scope, privateRoom);
             var open = player.transform.position;
-            foreach (var offset in new[] { Vector3.zero, Vector3.right * 1.5f, Vector3.left * 1.5f, Vector3.forward * 1.5f, Vector3.back * 1.5f })
+            var spots = new[]
+            {
+                Vector3.zero, Vector3.right * 1.5f, Vector3.left * 1.5f, Vector3.forward * 1.5f, Vector3.back * 1.5f,
+                new Vector3(1.5f, 0f, 1.5f), new Vector3(-1.5f, 0f, 1.5f), new Vector3(1.5f, 0f, -1.5f), new Vector3(-1.5f, 0f, -1.5f),
+                Vector3.right * 2.5f, Vector3.left * 2.5f, Vector3.forward * 2.5f, Vector3.back * 2.5f,
+                Vector3.right * 3f, Vector3.left * 3f, Vector3.forward * 3f, Vector3.back * 3f,
+            };
+            foreach (var offset in spots)
             {
                 if (besideItsPlace != null) break;
                 if (!NavMesh.SamplePosition(open + offset, out var floor, 1f, player.Agent.areaMask) || scope.RoomUnder(floor.position) != privateRoom) continue;

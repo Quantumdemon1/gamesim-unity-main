@@ -927,8 +927,9 @@ namespace Gamesim.Tests.PlayMode
             // the player at the room's open floor, at four spots 1.5 m off it along the room's axes and four on its
             // diagonals, then at spots 2.5 m and 3 m off along the axes, each zoom, every 15 degrees round - the open
             // floor and the four axis spots alone missed it in 3 of 144 of the review's varied houses (the claims' third
-            // review) - a spot read only where the floor under it is the private room's. There the diary's icon waits
-            // beside its place, pinned; where its place is clear and it is not shown, it fails.
+            // review) - a spot read only where the floor under it is the private room's, the camera's focus put over the
+            // spot at every framing as far as the zoom's clamp lets it. There the diary's icon waits beside its place,
+            // pinned; where its place is clear and it is not shown, it fails.
             int privateRoom = RoomLayers.IndexOf("Private");
             string besideItsPlace = null;
             int searched = 0;
@@ -958,6 +959,10 @@ namespace Gamesim.Tests.PlayMode
                     {
                         RoomViewSetYaw(yaw);
                         SetCameraDistance(distance);
+                        // Reduced motion freezes the focus where the camera stands, and the room's clamp holds it at the
+                        // room's centre at the farthest zoom, which every spot's framings end on: without this every spot
+                        // after the first was read from the centre, the player alone moved (the claims' fourth review).
+                        RoomViewSetDesired(new Vector3(floor.position.x, cameraRig.transform.position.y, floor.position.z), distance);
                         yield return null;
                         yield return null;
                         yield return null;

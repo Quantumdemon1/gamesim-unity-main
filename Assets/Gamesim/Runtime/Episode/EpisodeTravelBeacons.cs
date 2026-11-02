@@ -84,6 +84,8 @@ namespace Gamesim.Episode
             /// screen pixels: the widest chip, and the chips' height with the air between them; 0 where nobody hidden is named.
             /// </summary>
             public float airWidth, airReach;
+            /// <summary>How many name chips hang in that air this frame.</summary>
+            public int airNames;
         }
 
         /// <summary>Tells its beacon the pointer is over it, for the tip that names what a click does.</summary>
@@ -828,8 +830,8 @@ namespace Gamesim.Episode
             // The room view's icons never stand on one another (D17: every room keeps an icon, and one drawn
             // over another is lost - the lane's rs4 captures had the nomination room's over the games room's,
             // both waiting at the frame's edge the same way). They claim their spots in turn: the next stop
-            // first, where it always stood or, for its hidden finalists' names, within half a footprint of it
-            // (below); then the viewed room's own, the screen or the diary it opens; then
+            // first, where it always stood or, for its hidden finalists' names, within half a footprint of it per
+            // name (below); then the viewed room's own, the screen or the diary it opens; then
             // the rooms a doorway leads to; then the rooms with none, at the frame's edge. An icon whose spot one
             // before it holds takes the next clear one as an icon under the chrome does (TrySpot) - and an icon at
             // a doorway on screen the first clear spot from the doorway towards the middle, beside it - and none
@@ -842,6 +844,7 @@ namespace Gamesim.Episode
             {
                 beacon.door = roomView && beacon.room != viewing && doorway != null ? doorway(beacon.room) : new Vector3(float.NaN, 0f, 0f);
                 beacon.airWidth = beacon.airReach = 0f;
+                beacon.airNames = 0;
             }
             // The few named at the endgame whom the room view hides wear their names over their rooms' icons (D17(3)), so
             // such an icon keeps the air over it for their chips, and the icons after it keep out of that air - a chip
@@ -859,6 +862,7 @@ namespace Gamesim.Episode
                     var size = chip.rect.sizeDelta * pixels;
                     beacon.airWidth = Mathf.Max(beacon.airWidth, size.x);
                     beacon.airReach += size.y + gap;
+                    beacon.airNames++;
                     break;
                 }
             }
@@ -950,18 +954,19 @@ namespace Gamesim.Episode
                 // own air is not clear there, or which stands in the air an icon before it keeps, moves to the nearest
                 // spot within its footprint's width where neither is so - beside its doorway or its place, the pip that
                 // way - or else stays, and keeps no air; the names then take their fallback (PlaceNames). The next stop
-                // moves no further than half its footprint's width: the air walked it halfway to the middle of the
-                // frame, and a finalist's room's icon from the frame's edge to its middle (the claims' second review),
-                // but kept where it stood, pinned at the frame's top under the shade with its air in the shade and the
-                // icon pinned under it on the spot under it, it left a finalist in its room unnamed in about a fifth
-                // of the modelled names (the claims' third review). It claims its spot first, so only the chrome or
-                // the frame's edge covers its air.
+                // moves no further than half its footprint's width for each name, two at most: the air walked it halfway
+                // to the middle of the frame, and a finalist's room's icon from the frame's edge to its middle (the
+                // claims' second review), but kept where it stood, pinned at the frame's top under the shade with its air
+                // in the shade and the icon pinned under it on the spot under it, it left a finalist in its room unnamed
+                // in about a fifth of the modelled names (the claims' third review), and moved half a footprint for both
+                // finalists' names, whose air is a name taller, it left them unnamed in about a fifth too (the claims'
+                // fourth review). It claims its spot first, so only the chrome or the frame's edge covers its air.
                 bool aired = false;
                 if (show && keepApart)
                 {
                     if (IconCovered(beacon, screen, margin, pixels, Clear.WithAir)
                         && TryAround(eye.pixelRect, screen, margin, beacon, pixels, Clear.WithAir, footprint * .5f,
-                            beacon.room == nextStop ? footprint : 2f * footprint, out var aside))
+                            beacon.room == nextStop ? footprint * Mathf.Clamp(beacon.airNames, 1, 2) : 2f * footprint, out var aside))
                     {
                         if (!float.IsNaN(aim.x)) toward = (aim - aside).normalized;
                         screen = new Vector3(aside.x, aside.y, screen.z);

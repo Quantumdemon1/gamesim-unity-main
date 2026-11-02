@@ -882,7 +882,8 @@ namespace Gamesim.Tests.PlayMode
         /// had the nomination room's icon over the games room's in the living room's view, both waiting at the
         /// frame's edge the same way, the one's name hiding the other's. And the viewed room's own icon - shown for
         /// the screen or the diary, which a click on it opens - is shown wherever its place is on screen and clear of
-        /// the HUD: beside its place where the next stop's holds it (the fixes' review).
+        /// the HUD: beside its place where the next stop's holds it (the fixes' review), which the private room is read
+        /// on until a framing shows (the claims' second review).
         /// </summary>
         [UnityTest]
         public IEnumerator WayFinding_NoIconStandsOnAnother()
@@ -895,8 +896,6 @@ namespace Gamesim.Tests.PlayMode
             var hud = director.GetComponentInChildren<EpisodeHud>(true);
             var failures = new List<string>();
             int frames = 0, pairs = 0, mostIcons = 0;
-            // A drawn rect half a pixel in on every side: two icons that only meet at an edge do not stand on each other.
-            Rect Inside(RectTransform rect) { var at = ScreenRect(rect); return new Rect(at.xMin + .5f, at.yMin + .5f, at.width - 1f, at.height - 1f); }
             for (int room = 0; room < RoomLayers.Count; room++)
             {
                 cameraRig.SetReducedMotion(false);
@@ -914,45 +913,98 @@ namespace Gamesim.Tests.PlayMode
                         yield return null;
                         string viewed = RoomLayers.RoomIds[room];
                         string where = viewed + " at " + distance.ToString("0.##") + " m, yaw " + yaw;
-                        var beacons = director.TravelBeacons;
-                        if (beacons == null || beacons.RoomViewRoom != viewed) { failures.Add(where + ": the icons are not placed for its room view (" + beacons?.RoomViewRoom + ")"); continue; }
+                        int shown = WayFindingReadFraming(viewed, where, hud, failures, ref pairs);
+                        if (shown < 0) continue;
                         frames++;
-                        var shown = new List<(string room, Rect disc, Rect? name)>();
-                        foreach (var id in RoomLayers.RoomIds)
-                        {
-                            var icon = BeaconFor(id);
-                            if (icon == null) continue;
-                            if (!icon.gameObject.activeInHierarchy)
-                            {
-                                if (id != viewed) failures.Add(where + ": the " + id + "'s icon is not shown");
-                                else if (WayFindingOwnPlaceIsClear(viewed, icon, hud, out var place))
-                                    failures.Add(where + ": the viewed room's own icon is not shown, though its place (" + place.ToString("0") + ") is on screen and clear of the HUD");
-                                continue;
-                            }
-                            var tag = icon.Find(EpisodeTravelBeacons.RoomNameName) as RectTransform;
-                            shown.Add((id, Inside(icon), tag != null && tag.gameObject.activeSelf ? Inside(tag) : (Rect?)null));
-                        }
-                        mostIcons = Mathf.Max(mostIcons, shown.Count);
-                        for (int a = 0; a < shown.Count; a++)
-                            for (int b = a + 1; b < shown.Count; b++)
-                            {
-                                pairs++;
-                                var one = shown[a];
-                                var other = shown[b];
-                                bool touch = one.disc.Overlaps(other.disc)
-                                    || (other.name.HasValue && one.disc.Overlaps(other.name.Value))
-                                    || (one.name.HasValue && one.name.Value.Overlaps(other.disc))
-                                    || (one.name.HasValue && other.name.HasValue && one.name.Value.Overlaps(other.name.Value));
-                                if (touch)
-                                    failures.Add(where + ": the " + one.room + "'s icon (" + one.disc + ", its name " + one.name + ") stands on the "
-                                        + other.room + "'s (" + other.disc + ", its name " + other.name + ")");
-                            }
+                        mostIcons = Mathf.Max(mostIcons, shown);
+                    }
+            }
+
+            // The diary's icon waiting beside its place where the next stop's holds it (the fixes' review), which the nine
+            // framings never reach: from the private room at yaws 0, 45 and 90 the next stop's icon, claiming its spot
+            // first, never stands on the diary's place, so they passed at 304c872b, which hid the diary's icon there (the
+            // claims' second review). So the private room is read on, every framing as above, until one where it does:
+            // the player at the room's open floor and at four spots 1.5 m off it, each zoom, every 15 degrees round. There
+            // the diary's icon waits beside its place, pinned; where its place is clear and it is not shown, it fails.
+            int privateRoom = RoomLayers.IndexOf("Private");
+            string besideItsPlace = null;
+            int searched = 0;
+            cameraRig.SetReducedMotion(false);
+            yield return RoomViewPlayerIn(scope, privateRoom);
+            var open = player.transform.position;
+            foreach (var offset in new[] { Vector3.zero, Vector3.right * 1.5f, Vector3.left * 1.5f, Vector3.forward * 1.5f, Vector3.back * 1.5f })
+            {
+                if (besideItsPlace != null) break;
+                if (!NavMesh.SamplePosition(open + offset, out var floor, 1f, player.Agent.areaMask) || scope.RoomUnder(floor.position) != privateRoom) continue;
+                cameraRig.SetReducedMotion(false);
+                ScopePlace(player.transform, floor.position, 1f);
+                cameraRig.RecenterOnPlayer();
+                yield return null;
+                yield return SettleCamera();
+                cameraRig.SetReducedMotion(true);
+                float nearest = HouseRoomView.NearestDistance, farthest = HouseRoomView.FarthestDistance(privateRoom);
+                foreach (float distance in new[] { nearest, (nearest + farthest) * .5f, farthest })
+                    for (float yaw = 0f; yaw < 360f && besideItsPlace == null; yaw += 15f)
+                    {
+                        RoomViewSetYaw(yaw);
+                        SetCameraDistance(distance);
+                        yield return null;
+                        yield return null;
+                        yield return null;
+                        string where = "Private, the player " + offset.ToString("0.#") + " off its open floor, at " + distance.ToString("0.##") + " m, yaw " + yaw;
+                        if (WayFindingReadFraming("Private", where, hud, failures, ref pairs) < 0) continue;
+                        searched++;
+                        if (director.TravelBeacons.IsPinned("Private")) besideItsPlace = where;
                     }
             }
             cameraRig.SetReducedMotion(false);
             Assert.That(failures, Is.Empty, failures.Count + " found: " + string.Join("; ", failures.Take(20)));
             Assert.That(frames, Is.EqualTo(RoomLayers.Count * 9), "Every room's nine framings were read.");
             Assert.That(mostIcons, Is.GreaterThanOrEqualTo(RoomLayers.Count - 1), "Every other room's icon was on screen together (" + pairs + " pairs compared).");
+            Assert.That(besideItsPlace, Is.Not.Null, "In one of the private room's " + searched + " framings read the diary's icon waited beside its place, the next stop's icon on it.");
+        }
+
+        /// <summary>
+        /// Reads one framing of <see cref="WayFinding_NoIconStandsOnAnother"/>: every other room's icon shown, the viewed
+        /// room's own shown wherever its place is on screen and clear of the HUD, and no icon's disc or room's name on
+        /// another's. Returns how many icons are shown, or -1 when the icons are not placed for the viewed room's room view.
+        /// </summary>
+        private int WayFindingReadFraming(string viewed, string where, EpisodeHud hud, List<string> failures, ref int pairs)
+        {
+            // A drawn rect half a pixel in on every side: two icons that only meet at an edge do not stand on each other.
+            Rect Inside(RectTransform rect) { var at = ScreenRect(rect); return new Rect(at.xMin + .5f, at.yMin + .5f, at.width - 1f, at.height - 1f); }
+            var beacons = director.TravelBeacons;
+            if (beacons == null || beacons.RoomViewRoom != viewed) { failures.Add(where + ": the icons are not placed for its room view (" + beacons?.RoomViewRoom + ")"); return -1; }
+            var shown = new List<(string room, Rect disc, Rect? name)>();
+            foreach (var id in RoomLayers.RoomIds)
+            {
+                var icon = BeaconFor(id);
+                if (icon == null) continue;
+                if (!icon.gameObject.activeInHierarchy)
+                {
+                    if (id != viewed) failures.Add(where + ": the " + id + "'s icon is not shown");
+                    else if (WayFindingOwnPlaceIsClear(viewed, icon, hud, out var place))
+                        failures.Add(where + ": the viewed room's own icon is not shown, though its place (" + place.ToString("0") + ") is on screen and clear of the HUD");
+                    continue;
+                }
+                var tag = icon.Find(EpisodeTravelBeacons.RoomNameName) as RectTransform;
+                shown.Add((id, Inside(icon), tag != null && tag.gameObject.activeSelf ? Inside(tag) : (Rect?)null));
+            }
+            for (int a = 0; a < shown.Count; a++)
+                for (int b = a + 1; b < shown.Count; b++)
+                {
+                    pairs++;
+                    var one = shown[a];
+                    var other = shown[b];
+                    bool touch = one.disc.Overlaps(other.disc)
+                        || (other.name.HasValue && one.disc.Overlaps(other.name.Value))
+                        || (one.name.HasValue && one.name.Value.Overlaps(other.disc))
+                        || (one.name.HasValue && other.name.HasValue && one.name.Value.Overlaps(other.name.Value));
+                    if (touch)
+                        failures.Add(where + ": the " + one.room + "'s icon (" + one.disc + ", its name " + one.name + ") stands on the "
+                            + other.room + "'s (" + other.disc + ", its name " + other.name + ")");
+                }
+            return shown.Count;
         }
 
         /// <summary>

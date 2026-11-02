@@ -483,6 +483,9 @@ namespace Gamesim.Episode
                         var size = chip.rect.sizeDelta * pixels;
                         // The chip hangs from the middle of its bottom edge.
                         var over = new Rect(screen.x - size.x * .5f, screen.y, size.x, size.y);
+                        // A hidden finalist's name slides along its row into the frame, still over the icon, as the air kept
+                        // for it does (AirRect): over an icon at the frame's side it hung half off it (the claims' second review).
+                        if (own != null) over.x = Slide(over.x, over.width, bounds);
                         box = over;
                         if (own != null)
                         {
@@ -595,6 +598,12 @@ namespace Gamesim.Episode
         /// <see cref="keepApart"/>; outside the room view the icons stand over their rooms, apart as the rooms are.
         /// </summary>
         private readonly List<Rect> claimedSpots = new List<Rect>();
+        /// <summary>
+        /// The air the room view's icons placed so far this frame keep over them for their hidden finalists' names (D17(3)),
+        /// apart from <see cref="claimedSpots"/>: an icon placed later keeps out of it as far as its footprint takes it, and
+        /// otherwise stands in it, where an icon never stands on another.
+        /// </summary>
+        private readonly List<Rect> claimedAir = new List<Rect>();
         private bool keepApart;
 
         /// <summary>
@@ -826,6 +835,7 @@ namespace Gamesim.Episode
             // is lost for want of one. Outside the room view the order is the icons' own and nothing is claimed:
             // they stand over their rooms, apart as the rooms are.
             claimedSpots.Clear();
+            claimedAir.Clear();
             keepApart = roomView;
             foreach (var beacon in beacons)
             {
@@ -833,8 +843,9 @@ namespace Gamesim.Episode
                 beacon.airWidth = beacon.airReach = 0f;
             }
             // The few named at the endgame whom the room view hides wear their names over their rooms' icons (D17(3)), so
-            // such an icon takes a spot with the air over it for their chips, and the icons after it stand clear of that
-            // air: a chip lifted past a neighbour's icon hung over the neighbour's (the fixes' review).
+            // such an icon keeps the air over it for their chips, and the icons after it keep out of that air - a chip
+            // lifted past a neighbour's icon hung over the neighbour's (the fixes' review) - where that moves no icon
+            // further than a footprint (below).
             float gap = 2f * pixels;
             foreach (var chip in names)
             {
@@ -860,6 +871,9 @@ namespace Gamesim.Episode
                 Vector3 screen = default;
                 bool pinned = false, atDoorway = false;
                 Vector2 toward = default;
+                // The doorway or the place on screen that an icon waiting beside it points its pip at; NaN for one
+                // pinned at the frame's edge, whose pip points the room's way from the middle.
+                var aim = new Vector2(float.NaN, 0f);
                 if (show && roomView && beacon.room != viewing)
                 {
                     // D17: at the viewed room's doorway that leads there, on screen or pinned towards it, or,
@@ -869,6 +883,7 @@ namespace Gamesim.Episode
                     screen = eye.WorldToScreenPoint((atDoorway ? door : where(beacon.room)) + Vector3.up * Height);
                     bool doorOnScreen = atDoorway && screen.z > .5f && eye.pixelRect.Contains(screen);
                     show = doorOnScreen && !IconCovered(beacon, screen, margin, pixels);
+                    if (doorOnScreen) aim = screen;
                     // A doorway clear of the chrome whose spot an icon before it holds: beside it, the pip its way.
                     if (!show && doorOnScreen && !UnderChrome(beacon, screen, margin, pixels)
                         && TryPin(eye.pixelRect, screen, margin, beacon, pixels, out var beside))
@@ -880,6 +895,7 @@ namespace Gamesim.Episode
                     if (!show && TryEdge(eye.pixelRect, screen, margin, beacon, pixels, out var edge, out var away))
                     {
                         toward = away;
+                        aim.x = float.NaN;
                         screen = new Vector3(edge.x, edge.y, Mathf.Max(1f, Mathf.Abs(screen.z)));
                         show = pinned = true;
                     }
@@ -887,6 +903,7 @@ namespace Gamesim.Episode
                 else if (show)
                 {
                     screen = eye.WorldToScreenPoint(where(beacon.room) + Vector3.up * Height);
+                    aim = screen;
                     // An icon under the HUD's chrome is not shown: it would be half hidden, and
                     // where the chrome takes no click, clickable without being seen. Any of it, not
                     // just its middle: an icon half under the status line was still being shown,
@@ -908,6 +925,7 @@ namespace Gamesim.Episode
                         && TryEdge(eye.pixelRect, screen, margin, beacon, pixels, out var behind, out var away))
                     {
                         toward = away;
+                        aim.x = float.NaN;
                         screen = new Vector3(behind.x, behind.y, 1f);
                         show = pinned = true;
                     }
@@ -926,6 +944,24 @@ namespace Gamesim.Episode
                             screen = new Vector3(beside.x, beside.y, screen.z);
                         }
                     }
+                }
+                // Every icon took its spot above without the air the hidden finalists' names hang in (D17(3)). One whose
+                // own air is not clear there, or which stands in the air an icon before it keeps, moves to the nearest
+                // spot within its footprint's width where neither is so - beside its doorway or its place, the pip that
+                // way - or else stays, and keeps no air; the names then take their fallback (PlaceNames). Never the next
+                // stop, which stands where it always stood: the air walked it halfway to the middle of the frame, and a
+                // finalist's room's icon from the frame's edge to its middle (the claims' second review).
+                bool aired = false;
+                if (show && keepApart)
+                {
+                    if (beacon.room != nextStop && IconCovered(beacon, screen, margin, pixels, Clear.WithAir)
+                        && TryAround(eye.pixelRect, screen, margin, beacon, pixels, Clear.WithAir, footprint * .5f, 2f * footprint, out var aside))
+                    {
+                        if (!float.IsNaN(aim.x)) toward = (aim - aside).normalized;
+                        screen = new Vector3(aside.x, aside.y, screen.z);
+                        pinned = true;
+                    }
+                    aired = AirFree(beacon, screen, pixels);
                 }
                 beacon.atDoorway = show && atDoorway;
                 if (!show)
@@ -948,13 +984,13 @@ namespace Gamesim.Episode
                     placedOwners.Add(beacon);
                 }
                 // And in the room view what the icons after it stand clear of: the name too while the hover's
-                // tip is up, so that a hover never moves another room's icon, and the air its hidden finalists'
-                // names hang in.
+                // tip is up, so that a hover never moves another room's icon, and, where it keeps it, the air its
+                // hidden finalists' names hang in, which they keep out of as far as a footprint takes them (above).
                 if (keepApart)
                 {
                     claimedSpots.Add(new Rect(screen.x - footprint, screen.y - footprint, 2f * footprint, 2f * footprint));
                     if (beacon.roomName != null) claimedSpots.Add(TagRect(beacon, screen, pixels));
-                    if (beacon.airReach > 0f) claimedSpots.Add(AirRect(beacon, screen, pixels));
+                    if (aired) claimedAir.Add(AirRect(beacon, screen, pixels));
                 }
                 RectTransformUtility.ScreenPointToLocalPointInRectangle(root, screen, UiCamera, out var local);
                 beacon.rect.anchoredPosition = local - frame.min;
@@ -1012,7 +1048,7 @@ namespace Gamesim.Episode
         /// room's name under it - is on the screen and clear of the HUD's chrome (and in the room
         /// view as <paramref name="clear"/> says, <see cref="IconCovered"/>).
         /// </summary>
-        private bool TryPin(Rect pixels, Vector2 target, float margin, Beacon beacon, float scalePixels, out Vector2 at, Clear clear = Clear.WithAir)
+        private bool TryPin(Rect pixels, Vector2 target, float margin, Beacon beacon, float scalePixels, out Vector2 at, Clear clear = Clear.Icon)
         {
             at = default;
             var inner = InnerRect(pixels, margin, beacon, scalePixels);
@@ -1032,35 +1068,34 @@ namespace Gamesim.Episode
         /// Where an icon waits whose own spot is not clear: the first clear spot on the way from <paramref name="target"/>
         /// to the middle of the screen (<see cref="TryPin"/>). In the room view no icon is lost for want of one there (D17:
         /// in the yard's crowded views the icons before it held every spot on the way, and the fixes' review found rooms
-        /// with no icon at all): then the nearest clear spot round the target (<see cref="TryAround"/>), with the air for a
-        /// hidden finalist's name and, where there is none, without it; and at the last the first spot on the way clear of
-        /// the chrome alone, standing on an icon before it, as they all stood before they claimed their spots.
+        /// with no icon at all): then the nearest clear spot round the target (<see cref="TryAround"/>), rings a footprint
+        /// apart out to the frame's far corner; and at the last the first spot on the way clear of the chrome alone,
+        /// standing on an icon before it, as they all stood before they claimed their spots.
         /// </summary>
         private bool TrySpot(Rect pixels, Vector2 target, float margin, Beacon beacon, float scalePixels, out Vector2 at)
         {
             if (TryPin(pixels, target, margin, beacon, scalePixels, out at)) return true;
             if (!keepApart) return false;
-            return TryAround(pixels, target, margin, beacon, scalePixels, Clear.WithAir, out at)
-                || (beacon.airReach > 0f && TryAround(pixels, target, margin, beacon, scalePixels, Clear.Icon, out at))
+            return TryAround(pixels, target, margin, beacon, scalePixels, Clear.Icon, (Side * .5f + 8f) * scalePixels, float.PositiveInfinity, out at)
                 || TryPin(pixels, target, margin, beacon, scalePixels, out at, Clear.ChromeOnly);
         }
 
         /// <summary>
-        /// The room view's wider search (D17): rings round <paramref name="target"/> an icon's footprint apart, each walked
-        /// both ways in turn from its side away from the middle of the frame, so that a spot along the frame's edge comes
-        /// before one further in, and the first spot where the whole icon is on the screen and clear as
-        /// <paramref name="clear"/> says. Points about a footprint apart round each ring, out to the far corner of the frame.
+        /// The room view's wider search (D17): rings round <paramref name="target"/> <paramref name="step"/> apart, each
+        /// walked both ways in turn from its side away from the middle of the frame, so that a spot along the frame's edge
+        /// comes before one further in, and the first spot where the whole icon is on the screen and clear as
+        /// <paramref name="clear"/> says. Points about a step apart round each ring, out to <paramref name="reach"/> or the
+        /// frame's far corner, whichever is nearer.
         /// </summary>
-        private bool TryAround(Rect pixels, Vector2 target, float margin, Beacon beacon, float scalePixels, Clear clear, out Vector2 at)
+        private bool TryAround(Rect pixels, Vector2 target, float margin, Beacon beacon, float scalePixels, Clear clear, float step, float reach, out Vector2 at)
         {
             at = default;
             var inner = InnerRect(pixels, margin, beacon, scalePixels);
-            float step = (Side * .5f + 8f) * scalePixels;
             if (inner.width <= 0f || inner.height <= 0f || step < 1f) return false;
             var outward = target - pixels.center;
             float start = outward.sqrMagnitude < 1f ? -.5f * Mathf.PI : Mathf.Atan2(outward.y, outward.x);
-            float reach = Mathf.Max(Mathf.Max((target - pixels.min).magnitude, (target - pixels.max).magnitude),
-                Mathf.Max((target - new Vector2(pixels.xMin, pixels.yMax)).magnitude, (target - new Vector2(pixels.xMax, pixels.yMin)).magnitude));
+            reach = Mathf.Min(reach, Mathf.Max(Mathf.Max((target - pixels.min).magnitude, (target - pixels.max).magnitude),
+                Mathf.Max((target - new Vector2(pixels.xMin, pixels.yMax)).magnitude, (target - new Vector2(pixels.xMax, pixels.yMin)).magnitude)));
             for (int ring = 1; ring * step <= reach; ring++)
             {
                 float radius = ring * step;
@@ -1133,37 +1168,47 @@ namespace Gamesim.Episode
         /// another room's (the play sweep's row 10). Asked as two rects when the chrome can be;
         /// otherwise as points along the name's top and bottom edges no further apart than it is
         /// tall, so a narrow piece of chrome cannot slip between them. In the room view an icon placed
-        /// before it this frame covers it as well (<see cref="Claimed"/>, D17), and so do the chrome and
-        /// the frame's edge over it where a hidden finalist's name hangs there (<see cref="AirCovered"/>),
-        /// as <paramref name="clear"/> says.
+        /// before it this frame covers it as well (<see cref="Claimed"/>, D17), and, asked with the air,
+        /// so do the air the icons before it keep for their hidden finalists' names and the chrome and the
+        /// frame's edge over it where its own hidden finalists' names hang (<see cref="AirCovered"/>), as
+        /// <paramref name="clear"/> says.
         /// </summary>
-        private bool IconCovered(Beacon beacon, Vector2 point, float margin, float scalePixels, Clear clear = Clear.WithAir)
+        private bool IconCovered(Beacon beacon, Vector2 point, float margin, float scalePixels, Clear clear = Clear.Icon)
             => (keepApart && clear != Clear.ChromeOnly && Claimed(beacon, point, margin, scalePixels, clear == Clear.WithAir))
                 || UnderChrome(beacon, point, margin, scalePixels)
                 || (keepApart && clear == Clear.WithAir && AirCovered(beacon, point, scalePixels));
 
         /// <summary>
-        /// How much of a spot the room view asks to be clear (D17): the icon, the room's name under it and, for a room a
-        /// hidden finalist is named over, the air over it for the names, clear of the icons placed before it, the chrome and
-        /// the frame's edge; the same without that air; or the icon clear of the chrome alone, the last resort.
+        /// How much of a spot the room view asks to be clear (D17): the icon and the room's name under it clear of the icons
+        /// placed before it and the chrome, where every icon takes its spot; the same clear of the air the icons before it
+        /// keep too, with, for a room a hidden finalist is named over, the air over it for the names clear of all of that and
+        /// of the frame's edge, where an icon moves within its footprint for the names (D17(3)); or the icon clear of the
+        /// chrome alone, the last resort.
         /// </summary>
         private enum Clear { WithAir, Icon, ChromeOnly }
 
         /// <summary>
         /// Whether an icon drawn with its middle at <paramref name="point"/> - its square, and the room's name
-        /// under it, and with <paramref name="withAir"/> the air over it its hidden finalists' names hang in -
-        /// would stand on an icon the room view placed before it this frame (D17).
+        /// under it - would stand on an icon the room view placed before it this frame (D17), and, with
+        /// <paramref name="withAir"/>, on the air an icon before it keeps for its hidden finalists' names, or
+        /// whether the air over it that its own hidden finalists' names hang in would stand on either.
         /// </summary>
-        private bool Claimed(Beacon beacon, Vector2 point, float margin, float scalePixels, bool withAir = true)
+        private bool Claimed(Beacon beacon, Vector2 point, float margin, float scalePixels, bool withAir = false)
         {
-            if (claimedSpots.Count == 0) return false;
+            if (claimedSpots.Count == 0 && (!withAir || claimedAir.Count == 0)) return false;
             var square = new Rect(point.x - margin, point.y - margin, 2f * margin, 2f * margin);
             bool named = beacon.roomName != null;
             var tag = named ? TagRect(beacon, point, scalePixels) : default;
             bool aired = withAir && beacon.airReach > 0f;
             var air = aired ? AirRect(beacon, point, scalePixels) : default;
-            for (int i = 0; i < claimedSpots.Count; i++)
-                if (claimedSpots[i].Overlaps(square) || (named && claimedSpots[i].Overlaps(tag)) || (aired && claimedSpots[i].Overlaps(air))) return true;
+            return Holds(claimedSpots, square, named, tag, aired, air) || (withAir && Holds(claimedAir, square, named, tag, aired, air));
+        }
+
+        /// <summary>Whether any of <paramref name="spots"/> overlaps the square, the name where there is one or the air where it is asked about.</summary>
+        private static bool Holds(List<Rect> spots, Rect square, bool named, Rect tag, bool aired, Rect air)
+        {
+            for (int i = 0; i < spots.Count; i++)
+                if (spots[i].Overlaps(square) || (named && spots[i].Overlaps(tag)) || (aired && spots[i].Overlaps(air))) return true;
             return false;
         }
 
@@ -1180,15 +1225,37 @@ namespace Gamesim.Episode
         }
 
         /// <summary>
+        /// Whether an icon drawn at <paramref name="point"/> keeps the air over it for its hidden finalists' names (D17(3)):
+        /// it has some, and the air is on the frame, clear of the chrome and of every icon and air placed before it.
+        /// </summary>
+        private bool AirFree(Beacon beacon, Vector2 point, float scalePixels)
+        {
+            if (beacon.airReach <= 0f || AirCovered(beacon, point, scalePixels)) return false;
+            var air = AirRect(beacon, point, scalePixels);
+            return !Holds(claimedSpots, air, false, default, false, default) && !Holds(claimedAir, air, false, default, false, default);
+        }
+
+        /// <summary>
         /// The air over an icon drawn with its middle at <paramref name="point"/> that its hidden finalists' names hang in
         /// (D17(3)), in screen pixels: from the top of its footprint up past the last name, padded round by a name's gap and
-        /// the badges' reach past an icon's tested square, so that an icon clear of it is clear of the names by their gap.
+        /// the badges' reach past an icon's tested square, so that an icon clear of it is clear of the names by their gap;
+        /// slid along its row into this frame's screen as the names are (<see cref="Slide"/>), so that it holds them there.
         /// </summary>
-        private static Rect AirRect(Beacon beacon, Vector2 point, float scalePixels)
+        private Rect AirRect(Beacon beacon, Vector2 point, float scalePixels)
         {
             float pad = 4f * scalePixels;
-            return new Rect(point.x - beacon.airWidth * .5f - pad, point.y + (Side * .5f + 8f) * scalePixels, beacon.airWidth + 2f * pad, beacon.airReach + pad);
+            float width = beacon.airWidth + 2f * pad;
+            return new Rect(Slide(point.x - width * .5f, width, screenFrame), point.y + (Side * .5f + 8f) * scalePixels, width, beacon.airReach + pad);
         }
+
+        /// <summary>
+        /// The left edge <paramref name="x"/> of a row <paramref name="width"/> wide slid along the row into
+        /// <paramref name="frame"/>, a pixel short of its right edge, where the row fits: a hidden finalist's name and the air
+        /// kept for it (D17(3)). Slid, it still spans its icon's middle, which is on the frame: it moves only as far as
+        /// brings its near end to the frame's side.
+        /// </summary>
+        private static float Slide(float x, float width, Rect frame)
+            => width < frame.width - 1f ? Mathf.Clamp(x, frame.xMin, frame.xMax - 1f - width) : x;
 
         /// <summary>
         /// The turn a room's icon claims its spot in (D17): in the room view the next stop first, then the viewed room's own

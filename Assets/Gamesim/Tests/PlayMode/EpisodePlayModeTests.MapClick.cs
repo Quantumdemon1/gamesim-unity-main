@@ -78,6 +78,10 @@ namespace Gamesim.Tests.PlayMode
         public IEnumerator HouseLife_HoveringFurnitureSaysWhatAClickDoes()
         {
             director.ClosePanels();
+            // Nobody walks into or out of the player's talk range, so the talk prompt, and with it where the room view's icons
+            // wait, is the same when the pointer is picked and when the camera brings the pool back under it (the claims'
+            // second review: a prompt that came up on the way back could stand an icon under the still pointer).
+            director.SuspendNpcAutonomyForDiagnostics();
             yield return null;
             var pool = HouseFurniture.InScene(player.gameObject.scene)
                 .Single(anchor => anchor.VenueId == HouseFurniture.PoolAnchor);

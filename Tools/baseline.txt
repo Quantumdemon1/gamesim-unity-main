@@ -59,7 +59,10 @@
 # shared FrozenV29SerializerCacheTests 3, run under Unity's Mono (2026-10-25). The full NoUMA run at a4d7b177
 # (2026-10-26) ran 9126 of 9126 = 8970 + step 1's 156.
 # 9217 = main's 9061 + step 1's 156: disjoint cases, so the floor is their sum.
-Gamesim.EditModeTests 9217
+# The live-save batching (LIVE-SAVE-PLAN), on 9217:
+# 9236 = 9217 + its 19 EditMode cases: PersistenceTests 6, NpcSaveCadenceTests 8 (shared with the subset) and
+# NpcCommitTimingsTests 5. Counted: the full NoUMA run at 35ab8574 (ls1, 2026-11-01), 9236 of 9236, no re-runs.
+Gamesim.EditModeTests 9236
 # The UMA-free build. 1215 = 1236, the count after the consolidation's lanes (S2a, S2b, S4a), less the 7
 # farewell probes moved to Gamesim.DiagnosticsPlayModeTests and the 14 farewell readiness tests that now
 # compile only under GAMESIM_UMA (judged on the UMA cast); 1230 = 1215 + S2d's 7, S4b's 2, S4c's 2 and
@@ -94,7 +97,10 @@ Gamesim.EditModeTests 9217
 # Compiled offline only (main 772828ba merged in).
 # 1334 counted: the full NoUMA run at 83c3273c (2026-10-26), 1334 of 1334, no re-runs.
 # 1353 = main's 1345 + D1's 8: disjoint cases, so the floor is their sum.
-Gamesim.PlayModeTests 1353
+# The live-save batching, on 1353:
+# 1370 = 1353 + EpisodePlayModeTests.LiveSave's 17 shared tests. Counted: the full NoUMA run at 35ab8574 (ls1,
+# 2026-11-01), 1370 of 1370, no re-runs.
+Gamesim.PlayModeTests 1370
 # The UMA build of the same assembly, read by a plan built without -WithoutUma. 1281 = the 1241 above + the
 # 40 tests that compile only under GAMESIM_UMA, as run at r1 (2026-10-16): in EpisodePlayModeTests,
 # GroundedFarewell 11, Creator 9, HouseLife 8, Emotes 3, OpeningCaptures 2, and one each in CreatorEntry,
@@ -116,7 +122,9 @@ Gamesim.PlayModeTests 1353
 # 1374 counted: the full UMA-build run at 83c3273c (2026-10-26), 1374 of 1374, in one process with the MCP bridge
 # off, no re-runs; Gamesim.Uma.PlayModeTests 129 of 129 in the same set.
 # 1393 = main's 1385 + D1's same 8: disjoint cases, so the floor is their sum.
-Gamesim.PlayModeTests.UmaBuild 1393
+# 1410 = 1393 + the live-save batching's same 17 shared tests (LiveSave.cs has no GAMESIM_UMA branch): not run in
+# the UMA build, which the branch does not touch (no UMA, body or garment file).
+Gamesim.PlayModeTests.UmaBuild 1410
 # The UMA bodies: runs only where the GAMESIM_UMA define is set (the working tree and the D: copy).
 # 82 = the 89 run on 2026-10-15, less the 7 farewell probes moved to Gamesim.Uma.DiagnosticsPlayModeTests;
 # 85 = 82 + the 3 farewell readiness decision tests (UmaFarewellReadinessDecisionPlayModeTests, 2026-10-16);
@@ -171,4 +179,6 @@ Gamesim.Uma.DiagnosticsPlayModeTests 10
 # 16198 = 10772 + SCH30 step 1's Frozen29 reader: Frozen28's archived internal cases and literal fixture controls
 # carried to schema 29 (5423) and the same three cache cases: what dotnet test Tools/SimulationTests ran (2026-10-25).
 # 16241 = main's 10811 + step 1's 5430: disjoint cases, so the floor is their sum.
-Gamesim.SimulationTests 16241
+# 16249 = 16241 + the live-save batching's 8 NpcSaveCadenceTests: what dotnet test Tools/SimulationTests ran at
+# 35ab8574 (ls1, 2026-11-01), 16249 of 16249.
+Gamesim.SimulationTests 16249

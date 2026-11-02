@@ -104,6 +104,13 @@ namespace Gamesim.House
             /// <see cref="Rooms"/> as well: a caller names the rooms of the people it frames there.
             /// </summary>
             public bool RoomsFromFocus;
+            /// <summary>
+            /// The rooms the view drew as the shot is taken, drawn with its own until a timed shot lands
+            /// (ROOM-SCOPE-PLAN §3.2 a, RS6a): a caller whose view was a whole house names it here, so
+            /// the move draws what was on screen rather than the rooms the rig was keeping. None: the
+            /// rig's own rooms, as every shot that names none.
+            /// </summary>
+            public RoomSet TravelFromRooms;
         }
 
         /// <summary>The scene volume a shot weights in: depth of field for the close shots.</summary>
@@ -156,7 +163,8 @@ namespace Gamesim.House
         // The rooms a view is about (ROOM-SCOPE-PLAN §3.2 a, RS1). Every move says, in the same call,
         // which rooms it frames: a shot its own (named, from its focus, or the whole house when it
         // names none); a cut or a follow its subject's, tracked as they walk; a free move the floor
-        // under its point; a timed move both ends until it lands. Free play, before any move and
+        // under its point; a timed move both ends until it lands (its start the rooms the caller
+        // says the view drew, a whole house among them, or else the rig's own). Free play, before any move and
         // after F, is the player's room, tracked: a pan, a shot or a conversation that ends gives it
         // back. Computed and reported only: nothing here writes the camera's culling mask, and with
         // no room scope (a house with no director) every answer is the whole house.
@@ -235,6 +243,15 @@ namespace Gamesim.House
         /// stands, and a timed move in flight reports both ends. The whole house with no room scope.
         /// </summary>
         public RoomSet Rooms => RoomSet.FromBits(ResolveRooms());
+
+        /// <summary>
+        /// Counts what takes the view (ROOM-SCOPE-PLAN RS6a): every change of the rooms it is about - each
+        /// move, shot, cut, follow, release and F - and every frame of input that moves the camera (a pan,
+        /// a drag, an orbit, a zoom, the screen's edge). A caller whose free move claims the view reads it
+        /// just after its call: while it is unchanged, the camera is still on that move.
+        /// </summary>
+        public int ViewTakeovers => viewTakeovers;
+        private int viewTakeovers;
 
         /// <summary>The house's rooms, as the director built them; null in a house with no director.</summary>
         public HouseRoomScope RoomScope => roomScope;
@@ -556,6 +573,7 @@ namespace Gamesim.House
         {
             Initialize();
             int before = ResolveRooms();
+            if (!shot.TravelFromRooms.IsEmpty) before = shot.TravelFromRooms.Bits;
             if (!activeShot.HasValue)
             {
                 shotReturnFocus = desiredFocus;
@@ -709,15 +727,18 @@ namespace Gamesim.House
         /// The same timed move, naming the rooms it frames (ROOM-SCOPE-PLAN §3.2 a, RS6a): those rooms
         /// rather than the floor under its point, and the rooms it leaves with them until it lands. A
         /// move that names none watches the floor under its point, as every free move does.
+        /// <paramref name="from"/> is what the view drew as the move starts, when the caller knows it
+        /// (a whole house the rig's own rooms do not say); none: the rig's own rooms.
         /// </summary>
-        public void MoveTo(Vector3 focus, float wantedDistance, float seconds, RoomSet rooms)
+        public void MoveTo(Vector3 focus, float wantedDistance, float seconds, RoomSet rooms, RoomSet from = default)
         {
             Initialize();
             int before = ResolveRooms();
+            if (!from.IsEmpty) before = from.Bits;
             MoveTo(focus, wantedDistance);
             if (!rooms.IsEmpty) SetRooms(new RoomTarget { By = RoomsBy.Named, Bits = rooms.Bits });
             BeginTravel(seconds);
-            // Both ends drawn until it lands: the room it leaves and the one it goes to.
+            // Both ends drawn until it lands: the rooms it leaves and the one it goes to.
             if (IsTravelling) roomsTravelFrom = before;
         }
 
@@ -970,6 +991,8 @@ namespace Gamesim.House
             if (moving && IsTravelling) travelSeconds = 0f;
             // Input takes the camera back from a shot where it is: the player took the wheel.
             if (moving) DropShot(false);
+            // And from a free move that claimed the view: a framing whose camera the player moved is not its view (RS6a).
+            if (moving) viewTakeovers++;
             float dt = Time.unscaledDeltaTime;
             bool pointerOverUi = EventSystem.current != null && EventSystem.current.IsPointerOverGameObject();
             var pointer = actions.Point.ReadValue<Vector2>();
@@ -1004,7 +1027,7 @@ namespace Gamesim.House
                 if (EdgePanActive && Pointer.current != null)
                 {
                     var edge = EdgeDirection(pointer);
-                    if (edge.sqrMagnitude > 0f) { DropShot(false); PanBy(edge, dt); }
+                    if (edge.sqrMagnitude > 0f) { DropShot(false); PanBy(edge, dt); viewTakeovers++; }
                 }
             }
 
@@ -1211,6 +1234,7 @@ namespace Gamesim.House
             roomTarget = target;
             roomTargetSet = true;
             roomsTravelFrom = 0;
+            viewTakeovers++;
         }
 
         private static RoomTarget BodyRooms(Transform body) => new RoomTarget { By = RoomsBy.Body, Body = body };

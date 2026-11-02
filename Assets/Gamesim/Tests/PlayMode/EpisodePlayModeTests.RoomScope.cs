@@ -12,9 +12,11 @@ namespace Gamesim.Tests.PlayMode
 {
     /// <summary>
     /// The room scope's first slice (ROOM-SCOPE-PLAN RS1): the camera rig reports the rooms every move
-    /// is about, and the director's scope reads them. Nothing is drawn differently yet - every source
-    /// is off, so the scope says the whole house unless a test holds it on - so these tests read what
-    /// is reported, frame by frame, as the bodies cross the house's doorways.
+    /// is about, and the director's scope reads them. Nothing these tests move is drawn differently - the
+    /// sources of their views (free play, following, a test's own shots, the activity warp) are not live
+    /// before RS6b and RS5, RS6a having turned on only the ceremonies' and the competitions', so the scope
+    /// says the whole house unless a test holds it on - so they read what is reported, frame by frame, as
+    /// the bodies cross the house's doorways.
     /// </summary>
     public sealed partial class EpisodePlayModeTests
     {
@@ -50,7 +52,7 @@ namespace Gamesim.Tests.PlayMode
             crossings.AddRange(corners);
             ScopeParkHouseguests(scope);
             var owner = new object();
-            Assert.That(director.ViewedRooms.IsWholeHouse, Is.True, "Every source is off: the scope draws the whole house.");
+            Assert.That(director.ViewedRooms.IsWholeHouse, Is.True, "Free play is not live before RS5: the scope draws the whole house.");
             // The walker rule reads only the feet, so the player is carried through each doorway by
             // its transform rather than warped along the NavMesh: the bake closes the kitchen's door
             // to the private room behind the kitchen run, and its half-metre erosion keeps the
@@ -189,7 +191,8 @@ namespace Gamesim.Tests.PlayMode
         /// Every kind of camera move reports, in the same call, the rooms it is about: a shot naming
         /// none is the whole house, a shot names its own or takes its focus's, a cut and a follow take
         /// their subject's, a free move the floor under its point or the nearest, and a timed move
-        /// both ends until it lands. With every source off the scope still draws the whole house; a
+        /// both ends until it lands. With none of their sources live (free play's and following's wait for
+    /// RS5) the scope still draws the whole house; a
         /// hold switches it on, and a whole-house hold wins.
         /// </summary>
         [UnityTest]
@@ -206,7 +209,7 @@ namespace Gamesim.Tests.PlayMode
             // A free move: the floor under its point.
             cameraRig.MoveTo(ScopeCentre(scope, "Kitchen"), 12f);
             Assert.That(cameraRig.Rooms, Is.EqualTo(RoomSet.Of("Kitchen")), "A free move to the kitchen watches the kitchen.");
-            Assert.That(director.ViewedRooms.IsWholeHouse, Is.True, "Every source is off: the scope still draws the whole house.");
+            Assert.That(director.ViewedRooms.IsWholeHouse, Is.True, "Free play is not live before RS5: the scope still draws the whole house.");
             director.HoldRoomScope(owner);
             try
             {
@@ -301,8 +304,8 @@ namespace Gamesim.Tests.PlayMode
                 Assert.That(director.ViewedRooms, Is.EqualTo(RoomSet.Of("Nomination")), "and the held scope with it");
             }
             finally { director.Release(owner); director.Release(capture); }
-            Assert.That(director.ViewedRooms.IsWholeHouse, Is.True, "Released, every source is off again.");
-            // And nothing is drawn differently with every source off: the camera draws every room layer,
+            Assert.That(director.ViewedRooms.IsWholeHouse, Is.True, "Released, free play's view is the whole house again.");
+            // And nothing is drawn differently with no live source the view's: the camera draws every room layer,
             // and what stands on one is the house's dressing, each piece in its room by the rule (RS2a,
             // which turned RS1's "nothing stands on one" over), with no body and no collider among it.
             Assert.That(cameraRig.ViewCamera.cullingMask & RoomLayers.Mask, Is.EqualTo(RoomLayers.Mask), "The camera draws every room layer.");
@@ -346,7 +349,7 @@ namespace Gamesim.Tests.PlayMode
                 Assert.That(cameraRig.Rooms, Is.EqualTo(RoomSet.Of(poolRoom)), "The next frame, the pool's room still.");
             }
             finally { director.Release(owner); }
-            Assert.That(director.ViewedRooms.IsWholeHouse, Is.True, "Released, the whole house: the warp's source is not live yet.");
+            Assert.That(director.ViewedRooms.IsWholeHouse, Is.True, "Released, the whole house: the activity warp's source is not live before RS6b.");
         }
 
         private static HouseRoomScope ScopeOf(EpisodeDirector episode)

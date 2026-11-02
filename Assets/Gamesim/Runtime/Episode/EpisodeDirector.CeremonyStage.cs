@@ -1415,19 +1415,27 @@ namespace Gamesim.Episode
             /// </summary>
             private RoomSet ShotRooms => RoomSet.Of(Room);
 
-            /// <summary>Every move the stage makes: its shot, naming the stage's room, in the call that moves the camera.</summary>
+            /// <summary>
+            /// Every move the stage makes: its shot, naming the stage's room, in the call that moves the
+            /// camera, drawn on its way with what the view drew as it left - read before the summons
+            /// makes the stage the view's source, so the summons' wide leaves free play's whole house
+            /// whole until it lands (RS6a).
+            /// </summary>
             private void Move(HouseCameraRig.Shot shot)
             {
                 shot.Rooms = ShotRooms;
+                shot.TravelFromRooms = director.ViewedRooms;
                 director.cameraRig.MoveTo(shot);
             }
 
             /// <summary>
             /// Whether the stage's shots hold the camera: from the summons until it hands the camera back
-            /// (its release, or the walk out's hand-back behind the dip). The room scope's ceremony
-            /// source is the stage's only while they do (RS6a).
+            /// (its release, or the walk out's hand-back behind the dip), and only while a shot holds the
+            /// rig - every move the stage makes is one, so a shot let go under it (a panel closed over
+            /// the stage releases any shot) is not the stage's view until its next. The room scope's
+            /// ceremony source is the stage's only while they do (RS6a).
             /// </summary>
-            public bool HoldsTheCamera => Active && holdsCamera;
+            public bool HoldsTheCamera => Active && holdsCamera && director.cameraRig != null && director.cameraRig.HasShot;
 
             /// <summary>The bodies a cut to the screen keeps its lens clear of, gathered afresh at each cut. Reused, never shared.</summary>
             private readonly List<ScreenSurface.Body> bodiesInTheShot = new List<ScreenSurface.Body>();

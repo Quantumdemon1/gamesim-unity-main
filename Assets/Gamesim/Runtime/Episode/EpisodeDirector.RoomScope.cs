@@ -19,11 +19,12 @@ namespace Gamesim.Episode
     /// must see everything take <see cref="HoldWholeHouse"/>, which wins.</para>
     ///
     /// <para>From RS6a a ceremony's and a competition's shots are live (D6, D7): each names its rooms in
-    /// the call that moves the camera - the ceremony's room (both rooms during the framing's move), the
-    /// stage's room for every staged shot, the Yard for the competition's - and the source is the view's
-    /// only while those shots hold the camera, so a reduced-motion competition, which takes no shot, and a
-    /// stage that has handed the camera back are the view's own again: free play's, the whole house
-    /// until RS5.</para>
+    /// the call that moves the camera - the ceremony's room, the stage's room for every staged shot, the
+    /// Yard for the competition's - and a timed move draws, until it lands, what the view drew as it
+    /// left (the whole house, from free play, until RS5). The source is the view's only while those
+    /// shots hold the camera, so a framing whose camera the viewer took back, a reduced-motion
+    /// competition, which takes no shot, and a stage that has handed the camera back or lost its shot
+    /// are the view's own again: free play's, the whole house until RS5.</para>
     ///
     /// <para>The first reader that draws is the lamps' hook (RS3, §3.2 d, D8 i): while the scope is a
     /// room, the main camera renders with the lamps homed outside it off, and puts them back when it
@@ -66,7 +67,7 @@ namespace Gamesim.Episode
             Watching,
             /// <summary>The conversation two-shot: the pair's rooms (RS6b).</summary>
             Conversation,
-            /// <summary>A ceremony's framing, or its stage while the stage's shots hold the camera (RS6a, live).</summary>
+            /// <summary>A ceremony's framing or its stage, while their own moves hold the camera (RS6a, live).</summary>
             Ceremony,
             /// <summary>A competition while its own shot holds the camera: the Yard (RS6a, live).</summary>
             Competition,
@@ -164,10 +165,11 @@ namespace Gamesim.Episode
                 if (overviewOpen) return RoomScopeSource.Overview;
                 if (OpeningOwnsHouse) return RoomScopeSource.Opening;
                 if (walkingOutId != null) return RoomScopeSource.WalkOut;
-                // A ceremony's or a competition's while their own shots hold the camera (RS6a): a stage that
-                // has handed the camera back, and a competition under reduced motion, which takes no shot,
-                // are whatever the camera is doing.
-                if (IsFramingCeremony || CeremonyStageHoldsTheCamera) return RoomScopeSource.Ceremony;
+                // A ceremony's or a competition's while their own shots hold the camera (RS6a): a framing
+                // whose camera something else took (F, a pan, a follow), a stage that has handed the camera
+                // back or whose shot was let go, and a competition under reduced motion, which takes no
+                // shot, are whatever the camera is doing.
+                if (CeremonyFramingHoldsTheCamera || CeremonyStageHoldsTheCamera) return RoomScopeSource.Ceremony;
                 if (IsFramingCompetition) return RoomScopeSource.Competition;
                 if (diaryOpen) return RoomScopeSource.Diary;
                 if (cameraRig != null && cameraRig.IsConversationFocused) return RoomScopeSource.Conversation;

@@ -47,6 +47,19 @@ namespace Gamesim.Episode
         private Coroutine ceremonyFrame;
         public bool IsFramingCeremony { get; private set; }
 
+        /// <summary>The rig's <see cref="HouseCameraRig.ViewTakeovers"/> just after the framing's move: what nothing has changed while the framing holds the camera.</summary>
+        private int ceremonyFrameTakeovers;
+
+        /// <summary>
+        /// Whether the ceremony's framing holds the camera (ROOM-SCOPE-PLAN RS6a): it is framing, and
+        /// nothing has taken the view since its move - no input moved the camera, nothing followed,
+        /// cut, moved or took a shot. The framing is a free move, with the controls left on, so F, a
+        /// pan or a follow during its hold makes the view theirs; the room scope's ceremony source is
+        /// the framing's only while this holds.
+        /// </summary>
+        public bool CeremonyFramingHoldsTheCamera
+            => IsFramingCeremony && cameraRig != null && cameraRig.ViewTakeovers == ceremonyFrameTakeovers;
+
         /// <summary>Frames the ceremony's room and returns when its card is done. Public for the tests.</summary>
         public void FrameCeremony(string kind)
         {
@@ -63,9 +76,10 @@ namespace Gamesim.Episode
 
         /// <summary>
         /// The move to the ceremony's room names that room (ROOM-SCOPE-PLAN D6, RS6a): while it travels
-        /// the room it leaves is drawn with it, and from its landing the ceremony's room alone, until
-        /// the framing lets go. The move back is the view's own again - free play's, whole house until
-        /// RS5 - since the framing is over as it starts.
+        /// the rooms the view drew as it left are drawn with it - free play's whole house until RS5 -
+        /// and from its landing the ceremony's room alone, until the framing lets go or something else
+        /// takes the view (<see cref="CeremonyFramingHoldsTheCamera"/>). The move back is the view's
+        /// own again - free play's, whole house until RS5 - since the framing is over as it starts.
         /// </summary>
         private IEnumerator FrameCeremonyRoutine(Vector3 at, RoomSet rooms)
         {
@@ -74,11 +88,16 @@ namespace Gamesim.Episode
             var focus = IsFramingCeremony ? ceremonyReturnFocus : cameraRig.DesiredFocus;
             var distance = IsFramingCeremony ? ceremonyReturnDistance : cameraRig.DesiredDistance;
             ceremonyReturnFocus = focus; ceremonyReturnDistance = distance;
+            // What the view drew as the framing takes it, read before the framing is the view's source:
+            // the move draws it with the ceremony's room until it lands, so nothing the viewer saw goes
+            // before the camera has moved.
+            var left = ViewedRooms;
             IsFramingCeremony = true;
             // Reduced motion cuts to the room rather than keeping the shot the viewer had: less
             // motion, not less of the episode. The ceremony card's own rule, applied to the camera.
             float move = reducedMotion ? CeremonyCutSeconds : CeremonyMoveSeconds;
-            cameraRig.MoveTo(new Vector3(at.x, focus.y, at.z), CeremonyDistance, move, rooms);
+            cameraRig.MoveTo(new Vector3(at.x, focus.y, at.z), CeremonyDistance, move, rooms, left);
+            ceremonyFrameTakeovers = cameraRig.ViewTakeovers;
             float until = Time.unscaledTime + CeremonyHoldSeconds;
             yield return null;
             // Held for as long as any card narrating the ceremony is up; the key reveal was left out

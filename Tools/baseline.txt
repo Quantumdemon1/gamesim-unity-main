@@ -135,7 +135,9 @@ Gamesim.EditModeTests 9309
 # AHiddenBodyNeverPullsTheBoomIn; RS2a's NoSourceIsLiveYet renamed OnlyTheCeremoniesAndCompetitionsAreLive and the nine
 # changed ceremony and competition tests add none), counted offline from the source and the compiled assembly
 # (2026-11-01); not yet run in Unity.
-Gamesim.PlayModeTests 1401
+# 1402 = 1401 + RS6a's review test (EpisodePlayModeTests.RoomScopeShots: AFramingTheViewerTakesOverIsTheWholeHouse),
+# counted offline from the source and the compiled assembly (2026-11-01); not yet run in Unity.
+Gamesim.PlayModeTests 1402
 # The UMA build of the same assembly, read by a plan built without -WithoutUma. 1281 = the 1241 above + the
 # 40 tests that compile only under GAMESIM_UMA, as run at r1 (2026-10-16): in EpisodePlayModeTests,
 # GroundedFarewell 11, Creator 9, HouseLife 8, Emotes 3, OpeningCaptures 2, and one each in CreatorEntry,
@@ -174,7 +176,9 @@ Gamesim.PlayModeTests 1401
 # (D:\GamesimPlay's dag, 8 of 8 assemblies); not yet run in Unity.
 # 1443 = 1439 + RS6a's same 4 shared shot tests, counted offline (2026-11-01) and compiled in the UMA offline build
 # (D:\GamesimPlay's dag, 8 of 8 assemblies); not yet run in Unity.
-Gamesim.PlayModeTests.UmaBuild 1443
+# 1444 = 1443 + RS6a's same review test, counted offline (2026-11-01) and compiled in the UMA offline build
+# (D:\GamesimPlay's dag, 8 of 8 assemblies); not yet run in Unity.
+Gamesim.PlayModeTests.UmaBuild 1444
 # The UMA bodies: runs only where the GAMESIM_UMA define is set (the working tree and the D: copy).
 # 82 = the 89 run on 2026-10-15, less the 7 farewell probes moved to Gamesim.Uma.DiagnosticsPlayModeTests;
 # 85 = 82 + the 3 farewell readiness decision tests (UmaFarewellReadinessDecisionPlayModeTests, 2026-10-16);

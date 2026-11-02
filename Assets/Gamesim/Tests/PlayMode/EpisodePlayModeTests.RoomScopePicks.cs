@@ -20,7 +20,7 @@ namespace Gamesim.Tests.PlayMode
     /// is drawn as its prop is (<see cref="HouseScopePick.OwnerOf"/>), so the click and the hover's one
     /// pick pass over it to whatever stands behind - the floor, which walks the player there and says
     /// nothing - and drawn again it takes them as it always has. The colliders never move: only what the
-    /// camera draws decides. Every source is still off, so each test holds the scope on.
+    /// camera draws decides. The sources of their views are not live, so each test holds the scope on.
     /// </summary>
     public sealed partial class EpisodePlayModeTests
     {

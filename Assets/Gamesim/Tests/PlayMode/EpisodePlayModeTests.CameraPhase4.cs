@@ -63,8 +63,9 @@ namespace Gamesim.Tests.PlayMode
             var focusBefore = cameraRig.DesiredFocus;
             float distanceBefore = cameraRig.DesiredDistance;
             var room = SceneComponents<HouseRoomMarker>().First(m => m.RoomName == EpisodeDirector.CeremonyRoom("nomination"));
-            // The ceremony's framing is live (RS6a): the view it leaves is a free move's, the floor under it.
-            var left = cameraRig.Rooms;
+            // The ceremony's framing is live (RS6a): the view it leaves is free play's, the whole house until RS5,
+            // whatever floor the free move watches.
+            var watched = cameraRig.Rooms;
             var ceremonyRoom = RoomSet.Of(room.RoomName);
             Assert.That(director.ViewedRooms.IsWholeHouse, Is.True, "Before the ceremony, free play: the whole house.");
 
@@ -75,8 +76,8 @@ namespace Gamesim.Tests.PlayMode
                 Is.LessThan(0.1f), "A nomination is framed in the nomination room.");
             Assert.That(cameraRig.DesiredDistance, Is.EqualTo(EpisodeDirector.CeremonyDistance).Within(0.01f), "at the room-wide distance");
             Assert.That(cameraRig.IsTravelling, Is.True, "on the clock");
-            Assert.That(director.ViewedRooms, Is.EqualTo(left.With(ceremonyRoom)),
-                "On its way the room it left (" + left + ") and the nomination room are drawn,");
+            Assert.That(director.ViewedRooms.IsWholeHouse, Is.True,
+                "On its way it draws what the view drew as it left, free play's whole house - not the " + watched + " the free move watched -");
             yield return ScopeWaitUntilLanded();
             Assert.That(director.ViewedRooms, Is.EqualTo(ceremonyRoom), "and from its landing the nomination room alone.");
 

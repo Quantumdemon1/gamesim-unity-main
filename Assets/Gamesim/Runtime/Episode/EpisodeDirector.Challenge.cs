@@ -633,10 +633,13 @@ namespace Gamesim.Episode
         private void FrameCompetition()
         {
             if (cameraRig == null || cameraRig.ReducedMotion) return;
+            // On its way it draws what the view drew as it left - the briefing's whole house, read before
+            // the shot makes the competition the view's source - with the yard, and the yard alone landed (RS6a).
             cameraRig.MoveTo(new HouseCameraRig.Shot
             {
                 Focus = StationPosition + Vector3.up, Distance = CompetitionShotDistance, Pitch = CompetitionShotPitch, Yaw = 0f,
                 FieldOfView = CompetitionShotFieldOfView, Seconds = CompetitionShotSeconds, Rooms = CompetitionRooms,
+                TravelFromRooms = ViewedRooms,
             });
             competitionFramed = true;
         }

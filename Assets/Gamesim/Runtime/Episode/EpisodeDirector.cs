@@ -1708,6 +1708,10 @@ namespace Gamesim.Episode
         {
             // Before anything can return early: the lamps' hook goes, with every lamp it has off (RS3).
             UnhookLampScope();
+            // A framing goes with its cards: its coroutine dies with the object, and a flag it never cleared
+            // would keep the room scope's ceremony source on after re-activation (RS6a).
+            if (ceremonyFrame != null) { StopCoroutine(ceremonyFrame); ceremonyFrame = null; }
+            IsFramingCeremony = false;
             if (!IsReady) return;
             // Sibling scene roots may already be destroyed during unloading. Never rebuild UI here.
             ClosePanelsInternal(false); if (hud != null) hud.SetVisible(false);

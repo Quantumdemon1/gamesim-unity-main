@@ -18,8 +18,8 @@ namespace Gamesim.Tests.PlayMode
     /// scope is a room, a body is drawn in a viewed room, within 0.6 m of one, as a camera subject or
     /// named by a live prompt; a hidden body's renderer objects stand on its walker room's layer, which
     /// the main camera's mask leaves out, its plate is down and it cannot be picked, and it goes on
-    /// animating, walking and sitting. The live feed draws the shell and its own room. Every source is
-    /// still off (RS4 makes none live), so each test holds the scope on, and reads the drawing a frame
+    /// animating, walking and sitting. The live feed draws the shell and its own room. RS4 makes no
+    /// source live (RS6a turns on only the ceremonies' and competitions'), so each test holds the scope on, and reads the drawing a frame
     /// after it changes: the director applies it late in the frame, before the render.
     /// </summary>
     public sealed partial class EpisodePlayModeTests

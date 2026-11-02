@@ -21,7 +21,7 @@ namespace Gamesim.Tests.PlayMode
     /// every light reads as authored between frames. Each test reads the lights inside the main
     /// camera's own begin callback, after the director's hook: handlers run in the order they were
     /// subscribed, and the director subscribes when it is enabled, at load, before any test does.
-    /// Every source is still off (RS3 makes none live), so each test holds the scope on.
+    /// RS3 makes no source live (RS6a turns on only the ceremonies' and competitions'), so each test holds the scope on.
     /// </summary>
     public sealed partial class EpisodePlayModeTests
     {
@@ -83,7 +83,7 @@ namespace Gamesim.Tests.PlayMode
             RenderPipelineManager.beginCameraRendering += Look;
             try
             {
-                // Nothing held: every source is off, so the main camera renders with every lamp.
+                // Nothing held and the view's source not live, so the main camera renders with every lamp.
                 sight = new LampScopeSight();
                 yield return LampScopeNextRender(() => sight.Renders > 0);
                 Assert.That(sight.Viewed.IsWholeHouse, Is.True, "Nothing holds the scope: the whole house.");

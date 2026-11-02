@@ -67,6 +67,9 @@ namespace Gamesim.Episode
                 Say(SoundPictures.LogKey(SoundChannel.Music), musicVolumePercent.ToString(System.Globalization.CultureInfo.InvariantCulture)),
                 Say(SoundPictures.LogKey(SoundChannel.Effects), effectsVolumePercent.ToString(System.Globalization.CultureInfo.InvariantCulture)),
                 Say(SoundPictures.LogKey(SoundChannel.Interface), interfaceVolumePercent.ToString(System.Globalization.CultureInfo.InvariantCulture)),
+                // "Show the whole house" (ROOM-SCOPE-PLAN D12, RS5): the before-and-after's switch, last so the
+                // session line's positional device word keeps its place.
+                Say("house", showWholeHouse ? "whole" : "room"),
             };
         }
 

@@ -688,6 +688,9 @@ namespace Gamesim.Episode
         private void Place(Camera eye, float cameraDistance)
         {
             if (eye == null || beacons.Count == 0) { Hide(); return; }
+            // The viewed room as the rig framed it this frame - its late pass runs before this one - rather than
+            // as the director read it in its Update: on a cut's own frame the icons stand at the new room's doorways.
+            if (doorway != null && rig != null) roomViewRoom = rig.ViewRoom >= 0 ? RoomLayers.RoomIds[rig.ViewRoom] : null;
             // The room view's icons are not gated on the distance (D17): every room-view distance is 4 to 18.25 m.
             bool roomView = roomViewRoom != null;
             float fade = roomView ? 1f : Mathf.InverseLerp(HiddenBelow, ShownFrom, cameraDistance);

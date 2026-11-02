@@ -85,7 +85,10 @@
 # HouseRoomScopeDoorwayTests 3 (the doorways from the walls, a corner doorway's halves, the icon's doorway), counted
 # offline under the Mono harness (2026-11-01), 8 of 8 (44 of 44 with the room scope's other plain fixtures and the
 # shot scan, whose default list RS5 emptied); not yet run in Unity.
-Gamesim.EditModeTests 9319
+# 9320 = 9319 + RS5's review fix's 1 plain case: HouseRoomScopeDoorwayTests.AnOpeningNobodyCanWalkThroughIsNoDoorway (an
+# opening the walk on the NavMesh refuses, the kitchen run's gap into the private room, is no doorway), counted offline
+# under the Mono harness (2026-11-01); not yet run in Unity.
+Gamesim.EditModeTests 9320
 # The UMA-free build. 1215 = 1236, the count after the consolidation's lanes (S2a, S2b, S4a), less the 7
 # farewell probes moved to Gamesim.DiagnosticsPlayModeTests and the 14 farewell readiness tests that now
 # compile only under GAMESIM_UMA (judged on the UMA cast); 1230 = 1215 + S2d's 7, S4b's 2, S4c's 2 and
@@ -162,7 +165,11 @@ Gamesim.EditModeTests 9319
 # AFramingTheViewerTakesOverIsTheWholeHouse renamed AFramingTheViewerTakesOverIsTheirView, and the plan's 30 listed
 # tests and the room-scope tests changed add none), counted offline from the source and the compiled assembly
 # (2026-11-01); not yet run in Unity.
-Gamesim.PlayModeTests 1423
+# 1426 = 1423 + RS5's review fixes' 3 shared tests (EpisodePlayModeTests.RoomView:
+# RoomView_LeavingTheOverviewByADragCutsTheLensWithTheCamera, LookingAway_TheWalkInWatchWaitsWhileAFollowIsElsewhere and
+# LookingAway_TheNearbyCardWaitsOnAPairTheViewHides; the changed tests add none), counted offline from the source and
+# the compiled assembly (2026-11-01); not yet run in Unity.
+Gamesim.PlayModeTests 1426
 # The UMA build of the same assembly, read by a plan built without -WithoutUma. 1281 = the 1241 above + the
 # 40 tests that compile only under GAMESIM_UMA, as run at r1 (2026-10-16): in EpisodePlayModeTests,
 # GroundedFarewell 11, Creator 9, HouseLife 8, Emotes 3, OpeningCaptures 2, and one each in CreatorEntry,
@@ -207,7 +214,9 @@ Gamesim.PlayModeTests 1423
 # (D:\GamesimPlay's dag, 8 of 8 assemblies); not yet run in Unity.
 # 1465 = 1450 + RS5's same 15 shared tests, counted offline (2026-11-01) and compiled in the UMA offline build
 # (D:\GamesimPlay's dag, 8 of 8 assemblies); not yet run in Unity.
-Gamesim.PlayModeTests.UmaBuild 1465
+# 1468 = 1465 + RS5's review fixes' same 3 shared tests, counted offline (2026-11-01) and compiled in the UMA offline
+# build (D:\GamesimPlay's dag, 8 of 8 assemblies); not yet run in Unity.
+Gamesim.PlayModeTests.UmaBuild 1468
 # The UMA bodies: runs only where the GAMESIM_UMA define is set (the working tree and the D: copy).
 # 82 = the 89 run on 2026-10-15, less the 7 farewell probes moved to Gamesim.Uma.DiagnosticsPlayModeTests;
 # 85 = 82 + the 3 farewell readiness decision tests (UmaFarewellReadinessDecisionPlayModeTests, 2026-10-16);

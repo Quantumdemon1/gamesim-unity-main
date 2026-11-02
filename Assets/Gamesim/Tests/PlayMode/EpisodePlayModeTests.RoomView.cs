@@ -282,8 +282,8 @@ namespace Gamesim.Tests.PlayMode
                     ScopePlace(player.transform, Vector3.Lerp(door.Start, door.End, done / length), .3f);
                     yield return null;
                     Assert.That(Rs4DrawnNow(player.transform, out string why), Is.True, "The player is drawn through the doorway: " + why);
+                    Assert.That(director.LookingAwayFromThePlayer, Is.False, "Free play on the player is looking at them through the doorway (D18).");
                     if (cameraRig.ViewRoom == living) { Assert.That(cameraRig.RoomViewCuts, Is.EqualTo(cuts), "No cut before the door."); continue; }
-                    if (cutSeen) continue;
                     cutSeen = true;
                     cutAt = Time.realtimeSinceStartup;
                     float past = ScopePast(door, player.transform.position);
@@ -294,21 +294,35 @@ namespace Gamesim.Tests.PlayMode
                     Assert.That(Vector3.Distance(cameraRig.transform.position, cameraRig.DesiredFocus), Is.LessThan(.01f), "There at once: a cut, not a glide.");
                     Assert.That(Mathf.Abs(cameraRig.Distance - cameraRig.DesiredDistance), Is.LessThan(.01f), "the boom too.");
                     RoomViewAssertTheView(bedroom, "The cut's own frame");
+                    // Straight back from the cut's own frame, so the wait below is never skipped.
+                    break;
                 }
                 Assert.That(cutSeen, Is.True, "The walk into the bedroom cut to it.");
                 Assert.That(cameraRig.RoomViewCuts, Is.EqualTo(cuts + 1), "and only once.");
 
-                // Straight back inside 0.6 s: the view waits on the bedroom, the player drawn, then cuts back.
+                // Straight back inside 0.6 s: the view waits on the bedroom, the player drawn - and the view, which is
+                // about the player, never counts as looking away from them (D18), though by the floors alone they
+                // stand outside the bedroom's doorway band - then cuts back.
                 ScopePlace(player.transform, door.Start, .3f);
                 yield return null;
-                if (Time.realtimeSinceStartup - cutAt < HouseRoomView.RoomChangeSeconds - .1f)
-                {
-                    Assert.That(cameraRig.ViewRoom, Is.EqualTo(bedroom), "Back inside 0.6 s, the view waits on the room it changed to.");
-                    Assert.That(Rs4DrawnNow(player.transform, out string waiting), Is.True, "with the player drawn in the doorway's other room: " + waiting);
-                }
+                Assert.That(Time.realtimeSinceStartup - cutAt, Is.LessThan(HouseRoomView.RoomChangeSeconds - .1f),
+                    "Precondition: back in the living room well inside 0.6 s of the cut.");
+                Assert.That(cameraRig.ViewRoom, Is.EqualTo(bedroom), "Back inside 0.6 s, the view waits on the room it changed to.");
+                Assert.That(Rs4DrawnNow(player.transform, out string waiting), Is.True, "with the player drawn in the doorway's other room: " + waiting);
+                Assert.That(scope.DrawsWalker(RoomSet.Of(bedroom), RoomLayers.IndexOf(director.WalkerRoomOf(player.transform)), player.transform.position), Is.False,
+                    "Precondition: by the floors alone the bedroom's view leaves out the player a metre inside the living room.");
                 float deadline = Time.realtimeSinceStartup + 2f;
-                while (cameraRig.ViewRoom != living && Time.realtimeSinceStartup < deadline) yield return null;
+                int waited = 0;
+                while (cameraRig.ViewRoom != living && Time.realtimeSinceStartup < deadline)
+                {
+                    Assert.That(director.LookingAwayFromThePlayer, Is.False, "While the view waits on the bedroom it is still about the player: looking (frame " + waited + ").");
+                    Assert.That(Rs4DrawnNow(player.transform, out string still), Is.True, "and the player is drawn: " + still);
+                    waited++;
+                    yield return null;
+                }
+                Assert.That(waited, Is.GreaterThan(0), "The view waited on the bedroom for some frames.");
                 Assert.That(cameraRig.ViewRoom, Is.EqualTo(living), "and then it cuts back.");
+                Assert.That(director.LookingAwayFromThePlayer, Is.False, "Back over the living room, looking.");
                 Assert.That(Time.realtimeSinceStartup - cutAt, Is.GreaterThanOrEqualTo(HouseRoomView.RoomChangeSeconds - .05f), "no sooner than 0.6 s after the last cut.");
                 Assert.That(cameraRig.RoomViewCuts, Is.EqualTo(cuts + 2), "A second cut.");
             }
@@ -350,22 +364,23 @@ namespace Gamesim.Tests.PlayMode
                 Assert.That(cameraRig.RoomViewCuts, Is.EqualTo(cuts + 1), "a cut");
                 Assert.That(Vector3.Distance(cameraRig.transform.position, cameraRig.DesiredFocus), Is.LessThan(.01f), "with no glide.");
 
-                // Across the house: under reduced motion travel cuts with no blink.
+                // Across the house: under reduced motion travel cuts with no blink. The room farthest from the kitchen
+                // by its route (over 20 m, so a warp), not the private room (the diary's chair) or the episode screen's.
                 yield return RoomViewWaitOutTheLastChange();
                 cuts = cameraRig.RoomViewCuts;
-                director.GoToRoom("Yard");
+                var far = SceneComponents<HouseRoomMarker>().Where(marker => marker.RoomName != "Private" && marker.RoomName != director.ScreenRoom)
+                    .OrderByDescending(marker => RouteMetres(player.transform.position, marker.transform.position)).First();
+                Assert.That(RouteMetres(player.transform.position, far.transform.position), Is.GreaterThan(HousePlayerController.WarpRouteMetres),
+                    "Precondition: the " + far.RoomName + " is more than a warp's route away.");
+                director.GoToRoom(far.RoomName);
+                Assert.That(director.LastTravel, Is.EqualTo(EpisodeDirector.TravelKind.Warp), "The trip to the " + far.RoomName + " is a warp. Status: " + director.StatusMessage);
                 Assert.That(director.IsTravelDipShowing, Is.False, "No blink under reduced motion.");
                 yield return null;
-                if (director.LastTravel == EpisodeDirector.TravelKind.Warp)
-                {
-                    RoomViewAssertTheView(RoomLayers.IndexOf("Yard"), "The warp to the yard");
-                    Assert.That(cameraRig.RoomViewCuts, Is.EqualTo(cuts + 1), "landing on the yard's framing by a cut.");
-                }
-                else
-                {
-                    // On foot: the view stays with the player, and cuts at each door they pass.
-                    Assert.That(cameraRig.ViewRoom, Is.EqualTo(RoomLayers.IndexOf(director.WalkerRoomOf(player.transform))), "On foot, the player's room.");
-                }
+                int farIndex = RoomLayers.IndexOf(director.WalkerRoomOf(player.transform));
+                Assert.That(farIndex, Is.EqualTo(RoomLayers.IndexOf(far.RoomName)), "The warp puts the player in the " + far.RoomName + ".");
+                RoomViewAssertTheView(farIndex, "The warp to the " + far.RoomName);
+                Assert.That(cameraRig.RoomViewCuts, Is.EqualTo(cuts + 1), "landing on its framing by a cut.");
+                Assert.That(Vector3.Distance(cameraRig.transform.position, cameraRig.DesiredFocus), Is.LessThan(.01f), "with no glide.");
                 Assert.That(director.IsTravelDipShowing, Is.False, "and still no blink.");
             }
             finally
@@ -513,10 +528,14 @@ namespace Gamesim.Tests.PlayMode
             }
             Assert.That(seen, Is.GreaterThan(0), "Some press crossed rooms.");
             cameraRig.ClearSubject();
+            // Tab cycles only with nothing focused, and a render when a body finishes assembling hands the focus
+            // back to the HUD: every body built first, then the selection cleared and asserted, never skipped.
+            yield return Rs4BodiesBuilt();
             yield return null;
-            if (EventSystem.current != null) EventSystem.current.SetSelectedGameObject(null);
+            Assert.That(EventSystem.current, Is.Not.Null, "The house has an event system.");
+            EventSystem.current.SetSelectedGameObject(null);
             yield return null;
-            if (EventSystem.current != null && EventSystem.current.currentSelectedGameObject == null)
+            Assert.That(EventSystem.current.currentSelectedGameObject, Is.Null, "Precondition: nothing is focused, so Tab follows rather than moves the focus.");
             {
                 int before = cameraRig.ViewRoom, cuts = cameraRig.RoomViewCuts;
                 yield return PressKey(Key.Tab);
@@ -623,13 +642,17 @@ namespace Gamesim.Tests.PlayMode
         /// <summary>
         /// The opening hands over with a cut onto the player's room's framing (D6): the crane over the whole
         /// house ends, and on the frame free play takes the camera it stands over the player's room at no more
-        /// than its farthest zoom, the room drawn alone.
+        /// than its farthest zoom, the room drawn alone. With motion on - the fixture's rig runs full motion -
+        /// the opening lets its introduction close-up go with a 1.2 s timed move in the call that hands over:
+        /// the cut ends that move on the first late pass, turned to the room's best heading, with the camera's
+        /// own lens back at once (no field of view, depth of field or orthographic morph easing out).
         /// </summary>
         [UnityTest]
         public IEnumerator RoomView_TheOpeningHandsOverWithACutToThePlayersRoom()
         {
             var opening = director.Opening;
             string firstGuest = director.Snapshot.Active.First(person => !person.isPlayer).id;
+            Assert.That(cameraRig.ReducedMotion, Is.False, "The rig runs full motion: the release of the close-up is a timed move.");
             director.PlayOpeningForVerification(stage: true, holdHeadless: true, armSeconds: 0f);
             yield return WaitFor(() => director.IsOpeningStaged, 40f, "The house is placed behind the front door.");
             yield return WaitFor(() => opening.CurrentGuestId != null, 40f, "The reveals begin.");
@@ -641,7 +664,21 @@ namespace Gamesim.Tests.PlayMode
             int cuts = cameraRig.RoomViewCuts;
             opening.SkipIntroductions();
             yield return WaitFor(() => !opening.IsPlaying, 5f, "Skipping the introductions ends the opening.");
+            // The heading the hand-over left the rig at, before its first late pass cuts (or after it, if the opening
+            // ended late in a frame: the room's best heading is its own nearest).
+            float yawBefore = cameraRig.Yaw;
             yield return null;
+            int handedTo = RoomLayers.IndexOf(director.WalkerRoomOf(player.transform));
+            Assert.That(handedTo, Is.GreaterThanOrEqualTo(0), "The player stands on a floor.");
+            Assert.That(cameraRig.RoomViewCuts, Is.GreaterThan(cuts), "The first late pass after the hand-over cuts onto the player's room,");
+            Assert.That(cameraRig.IsTravelling, Is.False, "ending the close-up's release: a cut, not a 1.2 s glide out of the introduction,");
+            Assert.That(cameraRig.Yaw, Is.EqualTo(HouseRoomView.NearestBestHeading(handedTo, yawBefore)).Within(.01f), "turned to the room's best heading at once,");
+            Assert.That(Mathf.Abs(cameraRig.Distance - cameraRig.DesiredDistance), Is.LessThan(.01f), "the boom there at once,");
+            Assert.That(cameraRig.HasShot, Is.False, "no shot left holding,");
+            Assert.That(cameraRig.ViewCamera.fieldOfView, Is.EqualTo(cameraRig.DesiredFieldOfView).Within(.01f), "the camera's own field of view at once,");
+            Assert.That(cameraRig.DepthOfFieldWeight, Is.Zero, "no depth of field easing out,");
+            Assert.That(cameraRig.LensOrthographic, Is.Zero, "and no orthographic morph.");
+            RoomViewAssertTheView(handedTo, "The hand-over's cut");
             yield return null;
             Assert.That(director.CurrentRoomScopeSource, Is.EqualTo(EpisodeDirector.RoomScopeSource.FreePlay), "Handed over, free play's.");
             int room = RoomLayers.IndexOf(director.WalkerRoomOf(player.transform));
@@ -651,6 +688,63 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(cameraRig.Distance, Is.LessThanOrEqualTo(HouseRoomView.FarthestDistance(room) + .01f), "at no more than the room's farthest zoom.");
             Assert.That(HouseRoomView.Over(ScopeOf(director).Box(room), cameraRig.transform.position, cameraRig.Distance, HouseRoomView.FarthestDistance(room)), Is.True,
                 "standing over the room.");
+        }
+
+        /// <summary>
+        /// Leaving the overview by a drag (section 1.2): camera input takes the camera from the map's shot and
+        /// gives the view back to free play, whose room view cuts from the map's height onto the player's room -
+        /// and cuts the lens with it, so the frame the room comes back on is the camera's own perspective, not
+        /// the map's orthographic morph easing back over the room (where screen rays would miss, too).
+        /// </summary>
+        [UnityTest]
+        public IEnumerator RoomView_LeavingTheOverviewByADragCutsTheLensWithTheCamera()
+        {
+            director.ClosePanels();
+            director.SuspendNpcAutonomyForDiagnostics();
+            yield return null;
+            var scope = ScopeOf(director);
+            ScopeParkHouseguests(scope);
+            int living = RoomLayers.IndexOf("Living");
+            yield return RoomViewPlayerIn(scope, living);
+            Assert.That(cameraRig.ReducedMotion, Is.False, "The rig runs full motion: the map's lens eases.");
+            var mouse = TestMouse();
+            Assert.That(director.ShowOverview(), Is.True, "The overview opens.");
+            float deadline = Time.realtimeSinceStartup + 6f;
+            while (Time.realtimeSinceStartup < deadline && cameraRig.LensOrthographic < .995f) yield return null;
+            Assert.That(cameraRig.LensOrthographic, Is.GreaterThan(.99f), "The map's lens is orthographic,");
+            Assert.That(cameraRig.IsRoomView, Is.False, "and the camera is the map's, not the room view.");
+            int cuts = cameraRig.RoomViewCuts;
+
+            // A right-drag at the screen's middle: the player takes the camera.
+            var at = new Vector2(Screen.width * .5f, Screen.height * .5f);
+            InputSystem.QueueStateEvent(mouse, new MouseState { position = at }.WithButton(MouseButton.Right));
+            yield return null;
+            InputSystem.QueueStateEvent(mouse, new MouseState { position = at, delta = new Vector2(30f, 0f) }.WithButton(MouseButton.Right));
+            bool back = false;
+            deadline = Time.realtimeSinceStartup + 3f;
+            try
+            {
+                while (!back && Time.realtimeSinceStartup < deadline)
+                {
+                    yield return null;
+                    if (cameraRig.ViewRoom != living) continue;
+                    back = true;
+                    // The frame the room view comes back on.
+                    Assert.That(director.IsOverview, Is.False, "The drag ended the overview,");
+                    Assert.That(cameraRig.RoomViewCuts, Is.GreaterThan(cuts), "and the room view cut onto the player's living room,");
+                    Assert.That(cameraRig.IsTravelling, Is.False, "no timed move left in flight,");
+                    Assert.That(cameraRig.Distance, Is.LessThanOrEqualTo(HouseRoomView.FarthestDistance(living) + .01f), "at no more than the room's farthest zoom,");
+                    Assert.That(cameraRig.LensOrthographic, Is.Zero, "with the camera's own perspective at once, no orthographic morph easing out,");
+                    Assert.That(cameraRig.ViewCamera.fieldOfView, Is.EqualTo(cameraRig.DesiredFieldOfView).Within(.01f), "and its own field of view.");
+                    RoomViewAssertTheView(living, "Back from the map by a drag");
+                }
+            }
+            finally
+            {
+                InputSystem.QueueStateEvent(mouse, new MouseState { position = at });
+            }
+            yield return null;
+            Assert.That(back, Is.True, "Left by a drag, the view comes back to the player's living room.");
         }
 
         // ------------------------------------------------------------------------------------
@@ -720,7 +814,8 @@ namespace Gamesim.Tests.PlayMode
         /// <summary>
         /// Every other room keeps an icon with its count (D17): from the living room each room a doorway leads
         /// to has its icon at that doorway, every other room's is on screen at the frame's edge, and a press on
-        /// a neighbour's icon takes the player into that room.
+        /// a neighbour's icon takes the player into that room. From the kitchen, the gap into the private room
+        /// that nobody can walk through is no doorway: the private room's icon waits at the frame's edge.
         /// </summary>
         [UnityTest]
         public IEnumerator WayFinding_EachAdjacentRoomsIconReachesItsRoom()
@@ -756,6 +851,23 @@ namespace Gamesim.Tests.PlayMode
             }
             Assert.That(failures, Is.Empty, string.Join("; ", failures));
 
+            // From the kitchen: the gap into the private room is no doorway anybody walks through - the kitchen run
+            // and the agents' erosion close it on the baked NavMesh (section 2.1) - so the private room's icon waits
+            // at the frame's edge, while the living room's stands at a doorway that leads there.
+            int kitchen = RoomLayers.IndexOf("Kitchen"), privateRoom = RoomLayers.IndexOf("Private");
+            yield return RoomViewPlayerIn(scope, kitchen);
+            yield return null;
+            yield return null;
+            Assert.That(beacons.RoomViewRoom, Is.EqualTo("Kitchen"), "The icons are placed for the room view of the kitchen.");
+            Assert.That(scope.TryDoorway(kitchen, privateRoom, cameraRig.transform.position, out var gap), Is.False,
+                "No walkable doorway joins the kitchen to the private room" + (gap.Width > 0f ? ": " + gap : "") + ".");
+            Assert.That(scope.TryDoorway(kitchen, living, cameraRig.transform.position, out _), Is.True, "A doorway joins the kitchen to the living room.");
+            Assert.That(BeaconFor("Private") != null && BeaconFor("Private").gameObject.activeInHierarchy, Is.True, "The private room keeps its icon,");
+            Assert.That(beacons.IsAtDoorway("Private"), Is.False, "not over the gap nobody walks through,");
+            Assert.That(beacons.IsPinned("Private"), Is.True, "but at the frame's edge.");
+            Assert.That(beacons.IsAtDoorway("Living"), Is.True, "The living room's icon stands at the kitchen's doorway that leads there.");
+            yield return RoomViewPlayerIn(scope, living);
+
             // A press on the kitchen's icon takes the player into the kitchen.
             director.PressTravelBeacon("Kitchen");
             Assert.That(director.LastTravel, Is.Not.EqualTo(EpisodeDirector.TravelKind.None), "The kitchen's icon sends the player there. Status: " + director.StatusMessage);
@@ -769,8 +881,11 @@ namespace Gamesim.Tests.PlayMode
 
         /// <summary>
         /// A follow elsewhere is not looking at the player's room (D18): an act staged beside the player is
-        /// not sighted, the walk-in watch does not run, and invitations and the Nearby card wait, as under the
-        /// overview; F gives the view back and the same act is seen.
+        /// not sighted, as under the overview; F gives the view back and the same act is seen. The act's
+        /// window is the nominations', where the walk-in watch and the invitations do not run at all, so the
+        /// walk-in half of this test's name is pinned in free time by
+        /// <see cref="LookingAway_TheWalkInWatchWaitsWhileAFollowIsElsewhere"/>, the invitations by the RS4
+        /// prompt test's invitation leg and the Nearby card by <see cref="LookingAway_TheNearbyCardWaitsOnAPairTheViewHides"/>.
         /// </summary>
         [UnityTest, Timeout(300000)]
         public IEnumerator LookingAway_AFollowElsewhereGivesNoSightingOrWalkInFromThePlayersRoom()
@@ -790,17 +905,12 @@ namespace Gamesim.Tests.PlayMode
                 yield return null;
                 Assert.That(cameraRig.FocusedSubject, Is.SameAs(someoneElse.transform), "The camera follows " + someoneElse.DisplayName + " to the games room.");
                 Assert.That(director.LookingAwayFromThePlayer, Is.True, "The view leaves out the player's kitchen: not looking.");
-                var watch = typeof(EpisodeDirector).GetField("proximityWatch", BindingFlags.Instance | BindingFlags.NonPublic);
-                Assert.That(watch, Is.Not.Null, "The walk-in watch keeps its clock in one place.");
-                watch.SetValue(director, 0f);
                 yield return Linger(4f, () =>
                 {
                     if (cameraRig.FocusedSubject != someoneElse.transform) director.FollowHouseguest(someoneElse.Id);
                 });
                 Assert.That(ActNow(act.id).sighted, Is.False, "Not sighted while the view is elsewhere.");
                 Assert.That(Sightings(director.Snapshot), Is.EqualTo(lines), "No line.");
-                Assert.That((float)watch.GetValue(director), Is.EqualTo(0f), "The walk-in watch does not run while the player is looking away.");
-                Assert.That(director.NpcInvitationIsVisible, Is.False, "No invitation comes up while the player is looking away.");
 
                 // F: the player's room again, and the act is seen.
                 director.FollowHouseguest(someoneElse.Id);
@@ -813,6 +923,119 @@ namespace Gamesim.Tests.PlayMode
                 Assert.That(Sightings(director.Snapshot), Is.EqualTo(lines + 1));
             }
             finally { StopPlayingTheActs(); }
+        }
+
+        /// <summary>
+        /// The walk-in watch waits while a follow is elsewhere (D18): in free time, its clock a tenth of a second
+        /// short of its four, a follow of a houseguest in another room leaves the clock where it is for a second
+        /// of free time, and F, which gives the view back to the player's room, sets it running again - the guard
+        /// holds it, not the phase, a panel or the clock.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator LookingAway_TheWalkInWatchWaitsWhileAFollowIsElsewhere()
+        {
+            director.ClosePanels();
+            director.SuspendNpcAutonomyForDiagnostics();
+            yield return null;
+            yield return Rs4BodiesBuilt();
+            var phase = director.Snapshot.phase;
+            Assert.That(phase == EpisodePhase.Social || phase == EpisodePhase.Campaign, Is.True, "Free time, when the walk-in watch runs (" + phase + ").");
+            Assert.That(director.IsPanelOpen, Is.False, "No panel is open.");
+            var scope = ScopeOf(director);
+            ScopeParkHouseguests(scope);
+            yield return RoomViewPlayerIn(scope, RoomLayers.IndexOf("Living"));
+            var away = SceneComponents<HouseNpc>().First(npc => npc.isActiveAndEnabled);
+            ScopePlace(away.transform, ScopeOpenFloor(scope, RoomLayers.IndexOf("Games")), 2f);
+            yield return null;
+            Assert.That(director.WalkerRoomOf(away.transform), Is.EqualTo("Games"), away.DisplayName + " stands in the games room.");
+            var constant = typeof(EpisodeDirector).GetField("ProximityWatchSeconds", BindingFlags.Static | BindingFlags.NonPublic);
+            Assert.That(constant, Is.Not.Null, "The walk-in watch's cadence is one constant.");
+            float seeded = (float)constant.GetRawConstantValue() - .1f;
+
+            cameraRig.FocusSubject(away.transform);
+            yield return null;
+            Assert.That(director.LookingAwayFromThePlayer, Is.True, "Following " + away.DisplayName + " in the games room leaves out the player's living room: not looking.");
+            NpcWrite("proximityWatch", seeded);
+            float until = Time.realtimeSinceStartup + 1f;
+            int frames = 0;
+            while (Time.realtimeSinceStartup < until)
+            {
+                yield return null;
+                frames++;
+                Assert.That(cameraRig.FocusedSubject, Is.SameAs(away.transform), "The follow holds (frame " + frames + ").");
+                Assert.That(director.LookingAwayFromThePlayer, Is.True, "still looking away (frame " + frames + "),");
+                Assert.That(NpcRead<float>("proximityWatch"), Is.EqualTo(seeded),
+                    "and the walk-in watch's clock stands still while the player is looking away (frame " + frames + ").");
+            }
+
+            // F: the view back on the player's room, and the clock runs again.
+            cameraRig.RecenterOnPlayer();
+            yield return null;
+            yield return null;
+            Assert.That(director.LookingAwayFromThePlayer, Is.False, "Back on the player's room, looking.");
+            float now = NpcRead<float>("proximityWatch");
+            Assert.That(now, Is.Not.EqualTo(seeded), "Looking again, the walk-in watch's clock runs (" + seeded + " to " + now + ").");
+        }
+
+        /// <summary>
+        /// The Nearby card waits on a pair the view hides (D18, RS4's open question): a conversation witnessed in
+        /// the games room while the view is the player's living room is not offered to listen in on - its line
+        /// carries on, withheld over the hidden pair - and with the whole house held, the pair drawn, the card is
+        /// up; let go, the room view hides them and the card waits again.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator LookingAway_TheNearbyCardWaitsOnAPairTheViewHides()
+        {
+            director.ClosePanels();
+            director.SuspendNpcAutonomyForDiagnostics();
+            yield return null;
+            yield return Rs4BodiesBuilt();
+            Assert.That(director.CanListenIn, Is.True, "Free time with actions left: listening in is on offer.");
+            var scope = ScopeOf(director);
+            ScopeParkHouseguests(scope);
+            yield return RoomViewPlayerIn(scope, RoomLayers.IndexOf("Living"));
+            var pair = SceneComponents<HouseNpc>().Where(npc => npc.isActiveAndEnabled).Take(2).ToArray();
+            Assert.That(pair.Length, Is.EqualTo(2), "Two houseguests to talk.");
+            var games = ScopeOpenFloor(scope, RoomLayers.IndexOf("Games"));
+            ScopePlace(pair[0].transform, games, 2f);
+            ScopePlace(pair[1].transform, games + Vector3.right * .9f, 2f);
+            yield return null;
+            foreach (var talker in pair)
+                Assert.That(Rs4HiddenNow(talker.transform, out string why), Is.True, talker.DisplayName + ", in the games room, is hidden: " + why);
+            var caption = NpcRead<HouseConversationCaption>("npcCaption");
+            Assert.That(caption, Is.Not.Null, "The house's conversation line, built with its world at load.");
+            Assert.That(ActiveRect(EpisodeHud.NearbyCardName), Is.Null, "Nothing is witnessed yet.");
+            var owner = new object();
+            try
+            {
+                NpcWrite("captionFirstId", pair[0].Id);
+                NpcWrite("captionSecondId", pair[1].Id);
+                caption.Show(pair[0].DisplayName, pair[1].DisplayName, "strategy", 1f);
+                yield return null;
+                yield return null;
+                Assert.That(director.ObservedNpcConversation, Is.Not.Empty, "The line is witnessed: its words carry on,");
+                Assert.That(caption.PairDrawn, Is.False, "withheld over the pair the view hides,");
+                Assert.That(ActiveRect(EpisodeHud.NearbyCardName), Is.Null, "and the Nearby card does not offer to listen in on people the view does not show.");
+
+                director.HoldWholeHouse(owner);
+                yield return null;
+                yield return null;
+                Assert.That(caption.PairDrawn, Is.True, "With the whole house held the pair is drawn,");
+                Assert.That(ActiveRect(EpisodeHud.NearbyCardName), Is.Not.Null, "and the Nearby card offers to listen in.");
+
+                director.Release(owner);
+                yield return null;
+                yield return null;
+                Assert.That(caption.PairDrawn, Is.False, "Let go, the room view hides the pair again,");
+                Assert.That(ActiveRect(EpisodeHud.NearbyCardName), Is.Null, "and the card waits.");
+            }
+            finally
+            {
+                director.Release(owner);
+                NpcWrite("captionFirstId", null);
+                NpcWrite("captionSecondId", null);
+                caption.Hide();
+            }
         }
 
         // ------------------------------------------------------------------------------------
@@ -843,17 +1066,32 @@ namespace Gamesim.Tests.PlayMode
             ScopeParkHouseguests(scope);
             yield return RoomViewPlayerIn(scope, RoomLayers.IndexOf("Living"));
             Assert.That(director.HiddenBodyCount, Is.GreaterThan(0), "One room: the houseguests in the yard are hidden.");
+            Assert.That(cameraRig.DesiredDistance, Is.LessThanOrEqualTo(cameraRig.FreeFarthestDistance + .001f), "The room view's framing, at no more than the room's farthest zoom.");
 
-            director.OpenSettings();
-            ButtonWithCaption(EpisodeDirector.HouseViewCaption(false)).onClick.Invoke();
-            yield return null;
+            // Switched on from the room view: today's drawing and today's view - the free camera eased out to the
+            // scene's own distance and heading - and the session's evidence says so as it changes.
+            var log = new List<string>();
+            Application.LogCallback listen = (text, trace, type) => { if (type == LogType.Log) log.Add(text); };
+            Application.logMessageReceived += listen;
+            try
+            {
+                director.OpenSettings();
+                ButtonWithCaption(EpisodeDirector.HouseViewCaption(false)).onClick.Invoke();
+                yield return null;
+            }
+            finally { Application.logMessageReceived -= listen; }
             Assert.That(director.ShowsWholeHouse, Is.True, "Pressed, the whole house.");
+            Assert.That(log.Where(line => line.StartsWith(SettingsEvidence.ChangePrefix)).ToArray(), Does.Contain(SettingsEvidence.ChangePrefix + "house=whole"),
+                "A line for the change: " + string.Join(" | ", log));
             Assert.That(ButtonWithCaption(EpisodeDirector.HouseViewCaption(true)), Is.Not.Null, "The control says what it shows now.");
+            Assert.That(cameraRig.DesiredDistance, Is.EqualTo(cameraRig.OwnDistance).Within(.001f), "The free camera goes out to the scene's own distance,");
+            Assert.That(cameraRig.Yaw, Is.EqualTo(cameraRig.OwnYaw).Within(.01f), "at its own heading.");
             director.ClosePanels();
             yield return null;
             yield return null;
             Rs6bAssertTheWholeHouse("The whole house setting");
             Assert.That(cameraRig.IsRoomView, Is.False, "The free camera is today's.");
+            Assert.That(cameraRig.DesiredDistance, Is.EqualTo(cameraRig.OwnDistance).Within(.001f), "and stays at today's distance, the room's farthest zoom no longer its bound.");
             Rs6aAssertLamps(Rs6aRenderNow(homes), homes, authored, RoomSet.WholeHouse, "The whole house setting");
             SetCameraDistance(cameraRig.FarthestDistance);
             yield return null;
@@ -893,7 +1131,11 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(EpisodeDirector.HouseViewCaption(false), Is.EqualTo("House view: One room  (change)"), "The settings' pattern (D12).");
             Assert.That(EpisodeDirector.HouseViewCaption(true), Is.EqualTo("House view: Whole house  (change)"));
             director.ClosePanels();
+            // A full HUD render between finding the control and reading it destroys the control: no NPC tick to
+            // commit, and every body built, so nothing renders the HUD under the measurement.
+            director.SuspendNpcAutonomyForDiagnostics();
             yield return null;
+            yield return Rs4BodiesBuilt();
             var houseCaptions = director.GetComponentsInChildren<Button>(true).SelectMany(b => b.GetComponentsInChildren<TMP_Text>(true)).Select(t => t.text).ToList();
             Assert.That(houseCaptions.Any(text => text != null && text.StartsWith(EpisodeDirector.HouseViewCaptionPrefix, System.StringComparison.Ordinal)), Is.False,
                 "No control over the house says \"House view\".");
@@ -909,8 +1151,10 @@ namespace Gamesim.Tests.PlayMode
                 Assert.That(captions.Count(text => text == mine), Is.EqualTo(1), size + ": one control with the house view's caption.");
                 Assert.That(captions.Count(text => text.StartsWith(EpisodeDirector.HouseViewCaptionPrefix, System.StringComparison.Ordinal)), Is.EqualTo(1),
                     size + ": and no other control says \"House view\".");
-                var button = ButtonWithCaption(mine);
+                Assert.That(ButtonWithCaption(mine), Is.Not.Null, size + ": the control is there.");
                 yield return null;
+                // Found again after the frame: a render in it would have left the first one on its way out.
+                var button = ButtonWithCaption(mine);
                 Canvas.ForceUpdateCanvases();
                 var label = button.GetComponentsInChildren<TMP_Text>(true).First(t => t.text == mine);
                 label.ForceMeshUpdate();

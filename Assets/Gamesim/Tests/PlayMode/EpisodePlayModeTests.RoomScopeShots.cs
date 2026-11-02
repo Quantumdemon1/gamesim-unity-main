@@ -47,10 +47,11 @@ namespace Gamesim.Tests.PlayMode
         /// camera's render and the bodies in both: nothing the viewer saw goes before the camera has moved.
         /// With the nomination's marker stood a metre north of its room, over the north block's floor, the
         /// landed view is still the nomination room: the rooms named in the call, not the floor under the
-        /// camera's point. Let go, the move back names the room the view drew as the framing took it, so once
-        /// it lands free play watches the bedroom again: its bit, its lamps, its bodies. The same with the
-        /// scope held on. Under reduced motion the framing is a cut, its room alone from the call, and its
-        /// let-go a cut back to the bedroom.
+        /// camera's point. Let go, the move back - the framing taken from free play on the player - ends on the
+        /// player's room, tracked (RS5), so once it lands free play shows the bedroom again, its bit, its lamps,
+        /// its bodies, and when the player goes into the living room next door the view cuts with them, as it
+        /// did before the ceremony. The same with the scope held on. Under reduced motion the framing is a cut,
+        /// its room alone from the call, and its let-go a cut back to the bedroom.
         /// </summary>
         [UnityTest]
         public IEnumerator RoomScope_ACeremonyMoveDrawsBothRoomsUntilItLands()
@@ -91,11 +92,12 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(nomination, Is.EqualTo(RoomSet.Of("Nomination")), "The nomination is framed in the nomination room.");
             var both = bedroom.With(nomination);
 
-            // Free play over the bedroom: live from RS5, the room view of the bedroom.
-            cameraRig.MoveTo(ScopeCentre(scope, "Bedroom"), 12f);
+            // Free play on the player in the bedroom (F): live from RS5, the room view of the bedroom.
+            cameraRig.RecenterOnPlayer();
             yield return null;
             yield return null;
-            Assert.That(cameraRig.Rooms, Is.EqualTo(bedroom), "The view watches the bedroom.");
+            Assert.That(cameraRig.ViewsThePlayer, Is.True, "The view is free play's on the player,");
+            Assert.That(cameraRig.Rooms, Is.EqualTo(bedroom), "the player's bedroom.");
             Assert.That(director.CurrentRoomScopeSource, Is.EqualTo(EpisodeDirector.RoomScopeSource.FreePlay));
             Assert.That(director.ViewedRooms, Is.EqualTo(bedroom), "Free play draws the bedroom (RS5).");
             Rs6aAssertDrawn(inBedroom.transform, inBedroom.DisplayName + ", in the bedroom, in free play,");
@@ -158,11 +160,11 @@ namespace Gamesim.Tests.PlayMode
 
             yield return Rs6aFramingLetGo();
             Assert.That(director.CurrentRoomScopeSource, Is.EqualTo(EpisodeDirector.RoomScopeSource.FreePlay), "Let go, free play again,");
-            // The move back names the bedroom the view drew as the framing took it (RS5), drawn with the nomination
-            // room until it lands.
+            // The move back ends on the player's room, tracked (RS5): drawn with the nomination room until it lands.
+            Assert.That(cameraRig.ViewsThePlayer, Is.True, "the move back's view the player's own, not a watch of the room they stood in,");
             yield return ScopeWaitUntilLanded();
             yield return null;
-            Assert.That(director.ViewedRooms, Is.EqualTo(bedroom), "landed back, the bedroom the view drew as the framing took it,");
+            Assert.That(director.ViewedRooms, Is.EqualTo(bedroom), "landed back, the player's bedroom,");
             Assert.That(view.cullingMask & RoomLayers.Mask, Is.EqualTo(bedroom.CullingBits), "its bit alone of the eight,");
             foreach (var body in new[] { player.transform, inBedroom.transform })
                 Rs6aAssertDrawn(body, body.name + ", let go, in the bedroom,");
@@ -172,14 +174,33 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(sight.Viewed, Is.EqualTo(bedroom));
             Rs6aAssertLamps(sight, homes, authored, bedroom, "let go");
 
-            // The same with the scope held on over free play, which watches the floor the framing's move back
-            // went to, the bedroom. The way there draws both rooms, and the landing the nomination room alone.
+            // The player goes into the living room next door: the view cuts with them, as before the ceremony; and back.
+            int livingIndex = RoomLayers.IndexOf("Living");
+            var inTheBedroom = player.transform.position;
+            yield return RoomViewWaitOutTheLastChange();
+            int cutsBefore = cameraRig.RoomViewCuts;
+            ScopePlace(player.transform, ScopeOpenFloor(scope, livingIndex), 2f);
+            yield return null;
+            yield return null;
+            Assert.That(director.WalkerRoomOf(player.transform), Is.EqualTo("Living"), "The player stands in the living room.");
+            Assert.That(cameraRig.ViewRoom, Is.EqualTo(livingIndex), "The view cut to the living room with the player,");
+            Assert.That(cameraRig.RoomViewCuts, Is.GreaterThan(cutsBefore), "by a cut,");
+            Assert.That(director.ViewedRooms, Is.EqualTo(RoomSet.Of("Living")), "drawing the living room,");
+            Assert.That(director.LookingAwayFromThePlayer, Is.False, "and the view is on the player: looking.");
+            yield return RoomViewWaitOutTheLastChange();
+            ScopePlace(player.transform, inTheBedroom, .5f);
+            yield return null;
+            yield return null;
+            Assert.That(director.ViewedRooms, Is.EqualTo(bedroom), "Back in the bedroom, the view is the bedroom again.");
+
+            // The same with the scope held on over free play on the player, in the bedroom. The way there draws both
+            // rooms, and the landing the nomination room alone.
             var owner = new object();
             director.HoldRoomScope(owner);
             try
             {
                 yield return null;
-                Assert.That(director.ViewedRooms, Is.EqualTo(bedroom), "Held on, free play's view watches the bedroom the move back went to.");
+                Assert.That(director.ViewedRooms, Is.EqualTo(bedroom), "Held on, free play's view is the player's bedroom.");
                 director.FrameCeremony(CeremonySting.NominationKind);
                 Assert.That(director.CurrentRoomScopeSource, Is.EqualTo(EpisodeDirector.RoomScopeSource.Ceremony), "The ceremony's framing is the view.");
                 Assert.That(cameraRig.IsTravelling, Is.True, "on its clock");
@@ -237,7 +258,11 @@ namespace Gamesim.Tests.PlayMode
         /// long as its cards play. A camera the viewer takes back during the hold - F, free play's own
         /// recentre on the player - and a follow begun under it are not the framing's view: with nothing
         /// held the view is theirs (live from RS5), the player's room after F and the followed houseguest's
-        /// room under the follow, each room's bit alone drawn and the bodies outside it hidden.
+        /// room under the follow, each room's bit alone drawn and the bodies outside it hidden. A framing the
+        /// viewer took has no move back (RS5): the camera stays theirs - the stopped follow's room watched, or
+        /// after a floor click and a walk into the next room, that room with the player still followed. A shot
+        /// that took the camera straight from the framing keeps it as the framing lets go, and its release goes
+        /// back where the framing would have: free play on the player, their room.
         /// </summary>
         [UnityTest]
         public IEnumerator RoomScope_AFramingTheViewerTakesOverIsTheirView()
@@ -293,8 +318,52 @@ namespace Gamesim.Tests.PlayMode
             yield return Rs6aFramingLetGo();
             yield return ScopeWaitUntilLanded();
             yield return null;
-            Assert.That(director.ViewedRooms, Is.EqualTo(RoomSet.Of("Bedroom")),
-                "Let go, the framing's move back names the room the view drew as it took it: free play's bedroom.");
+            // The viewer took the camera: the framing has no move back (RS5), and the stopped follow's kitchen stays watched.
+            Assert.That(director.ViewedRooms, Is.EqualTo(RoomSet.Of("Kitchen")),
+                "Let go after the viewer took the camera, nothing moves it back: the view is the kitchen the stopped follow showed (" + cameraRig.Rooms + ").");
+
+            // A floor click under the framing - free play following the player - and a walk into the living room
+            // during the hold: let go, the view is the living room the player walked into, the player still followed
+            // and looked at, not the framing's move back to the room they stood in.
+            yield return Rs6aFramedAndLanded(nomination, "Before the floor click");
+            cameraRig.FocusSubject(player.transform, false);
+            Assert.That(director.CeremonyFramingHoldsTheCamera, Is.False, "A floor click's follow takes the camera from the framing,");
+            Assert.That(director.IsFramingCeremony, Is.True, "while the framing still holds its minimum.");
+            int livingIndex = RoomLayers.IndexOf("Living");
+            ScopePlace(player.transform, ScopeOpenFloor(scope, livingIndex), 2f);
+            yield return Rs6aFramingLetGo();
+            yield return ScopeWaitUntilLanded();
+            yield return RoomViewWaitOutTheLastChange();
+            yield return null;
+            Assert.That(director.WalkerRoomOf(player.transform), Is.EqualTo("Living"), "The player stands in the living room.");
+            Assert.That(cameraRig.FocusedSubject, Is.SameAs(player.transform), "The player is still followed: nothing moved the camera back,");
+            Assert.That(cameraRig.ViewRoom, Is.EqualTo(livingIndex), "and the view is the living room they walked into,");
+            Assert.That(director.ViewedRooms, Is.EqualTo(RoomSet.Of("Living")), "drawn alone,");
+            Assert.That(director.LookingAwayFromThePlayer, Is.False, "and looking at the player.");
+            cameraRig.ClearSubject();
+
+            // A shot that takes the camera straight from the framing - a panel's, the overview's - keeps it when the
+            // framing lets go, and let go itself, goes back where the framing would have: free play on the player.
+            cameraRig.RecenterOnPlayer();
+            yield return null;
+            yield return RoomViewWaitOutTheLastChange();
+            yield return Rs6aFramedAndLanded(nomination, "Before a shot over the framing");
+            cameraRig.MoveTo(new HouseCameraRig.Shot
+            {
+                Focus = ScopeCentre(scope, "Kitchen") + Vector3.up, Distance = 9f, Pitch = 35f, Yaw = 180f, Seconds = .01f, Rooms = RoomSet.Of("Kitchen"),
+            });
+            try
+            {
+                Assert.That(director.CeremonyFramingHoldsTheCamera, Is.False, "A shot takes the camera from the framing,");
+                yield return Rs6aFramingLetGo();
+                Assert.That(cameraRig.HasShot, Is.True, "and keeps it when the framing lets go: nothing drops it,");
+                Assert.That(director.ViewedRooms, Is.EqualTo(RoomSet.Of("Kitchen")), "its kitchen drawn.");
+            }
+            finally { cameraRig.ReleaseShot(0f); }
+            yield return null;
+            yield return null;
+            Assert.That(cameraRig.ViewsThePlayer, Is.True, "Let go, the shot goes back where the framing would have: free play on the player,");
+            Assert.That(director.ViewedRooms, Is.EqualTo(RoomSet.Of("Living")), "their living room, not the nomination room it took the camera in.");
         }
 
         /// <summary>

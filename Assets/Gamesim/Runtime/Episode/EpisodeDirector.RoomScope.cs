@@ -141,7 +141,10 @@ namespace Gamesim.Episode
         /// <summary>
         /// The rooms the main view draws: the camera rig's rooms when the view's source is live or a
         /// test holds the scope on, otherwise - and always under a whole-house hold, the overview, the
-        /// opening and the walk-out - the whole house.
+        /// opening and the walk-out - the whole house. Before the episode is ready the free camera is not
+        /// yet the room view (<see cref="RoomViewWanted"/>) but the scene's dollhouse framing, so free play,
+        /// following and watching draw the whole house until then: a room is drawn alone only where the
+        /// room view frames it (RS5).
         /// </summary>
         public RoomSet ViewedRooms
         {
@@ -151,9 +154,14 @@ namespace Gamesim.Episode
                 var source = CurrentRoomScopeSource;
                 if (IsWholeHouseSource(source)) return RoomSet.WholeHouse;
                 if (roomScopeHolds.Count == 0 && !IsRoomScopeSourceLive(source)) return RoomSet.WholeHouse;
+                if (!IsReady && IsTheRoomViewsSource(source) && !cameraRig.HasShot && !cameraRig.IsConversationFocused) return RoomSet.WholeHouse;
                 return cameraRig.Rooms;
             }
         }
+
+        /// <summary>Free play, following and watching: the sources whose free camera is the room view (RS5).</summary>
+        private static bool IsTheRoomViewsSource(RoomScopeSource source)
+            => source == RoomScopeSource.FreePlay || source == RoomScopeSource.Following || source == RoomScopeSource.Watching;
 
         /// <summary>Whether a source's rooms are used: only those turned on in <see cref="LiveRoomScopeSources"/>.</summary>
         public static bool IsRoomScopeSourceLive(RoomScopeSource source)
@@ -311,10 +319,10 @@ namespace Gamesim.Episode
         /// </summary>
         private bool RoomViewWanted()
         {
-            if (!IsReady || wholeHouseHolds.Count > 0 || roomScope == null || cameraRig == null) return false;
+            // A disabled director draws nothing (its drawing is undone in UnhookLampScope): nor does it frame.
+            if (!isActiveAndEnabled || !IsReady || wholeHouseHolds.Count > 0 || roomScope == null || cameraRig == null) return false;
             var source = CurrentRoomScopeSource;
-            return (source == RoomScopeSource.FreePlay || source == RoomScopeSource.Following || source == RoomScopeSource.Watching)
-                && IsRoomScopeSourceLive(source);
+            return IsTheRoomViewsSource(source) && IsRoomScopeSourceLive(source);
         }
 
         /// <summary>
@@ -332,14 +340,17 @@ namespace Gamesim.Episode
         /// Whether the player is looking away from their own room (ROOM-SCOPE-PLAN D18, RS5): the view draws
         /// a room and leaves out the player's - a follow elsewhere, a watched room, another room's shot.
         /// The act watch, the walk-in watch, the invitations and the Nearby card treat it as they treat
-        /// the overview: the player is not looking. The whole house, or a player the view draws by the
-        /// floors (their room or its doorway band), is looking.
+        /// the overview: the player is not looking. The whole house, a view about the player - free play on
+        /// them, followed or tracked, whatever room it shows while a walk's change of room waits out its
+        /// 0.6 s - or a player the view draws by the floors (their room or its doorway band), is looking.
         /// </summary>
         public bool LookingAwayFromThePlayer
         {
             get
             {
                 if (player == null || !playerIsActive || roomScope == null) return false;
+                // Only a follow, a watch or another room's shot looks away: never the view of the player themselves.
+                if (cameraRig != null && (cameraRig.FocusedSubject == player.transform || cameraRig.ViewsThePlayer)) return false;
                 var viewed = ViewedRooms;
                 if (viewed.IsWholeHouse || viewed.IsEmpty) return false;
                 int room = roomScope.LastRoom(player.transform);
@@ -395,6 +406,16 @@ namespace Gamesim.Episode
             roomScope = null;
             roomScopeRetry = 0f;
             if (cameraRig != null) cameraRig.UseRoomScope(null);
+            // No scope, no room view: the plates fade by distance again until one is built.
+            LetThePlatesGo();
+        }
+
+        /// <summary>Every houseguest's plate back on the whole house's fade by distance: the room view is not on (RS5).</summary>
+        private void LetThePlatesGo()
+        {
+            if (housemates == null) return;
+            foreach (var housemate in housemates)
+                if (housemate != null) housemate.RoomViewPlates = false;
         }
 
         /// <summary>
@@ -447,6 +468,8 @@ namespace Gamesim.Episode
             {
                 roomScope.PlaceHouse();
                 HouseRoomScope.BeginPlacing(roomScope);
+                // And the rig asks this director about its room view again (RS5), which its disabling took back.
+                UseRoomView();
             }
             if (!lampScopeDirectors.Contains(this)) lampScopeDirectors.Add(this);
             if (lampScopeHooked) return;
@@ -467,6 +490,10 @@ namespace Gamesim.Episode
             if (roomScope != null) HouseRoomScope.EndPlacing(roomScope);
             UndoRoomScopeDrawing();
             RestoreScopedLamps();
+            // The room view goes with the drawing (RS5): the rig no longer asks this director, so its free camera
+            // is today's, and the plates fade by distance over the whole house it draws again.
+            if (cameraRig != null && roomViewWanted != null && cameraRig.RoomViewWanted == roomViewWanted) cameraRig.RoomViewWanted = null;
+            LetThePlatesGo();
             lampScopeDirectors.Remove(this);
             for (int i = lampScopeDirectors.Count - 1; i >= 0; i--)
                 if (lampScopeDirectors[i] == null) lampScopeDirectors.RemoveAt(i);

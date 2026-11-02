@@ -14,6 +14,14 @@ namespace Gamesim.House
     /// meet, so it is found as two halves, one onto each floor: from the far side's room, each is a
     /// doorway to one of the two. The walls are read once, by whoever first asks; the plain rule takes
     /// its look across as a function, so a fixture gives it walls of its own.</para>
+    ///
+    /// <para>An opening is a doorway only if somebody can walk through it (D17: "the doorway that leads
+    /// there"): on the baked NavMesh, a walk from <see cref="DoorwayWalkReach"/> inside one floor to as far
+    /// inside the other, through its middle, of no more than <see cref="DoorwayWalkMetres"/>. The gap
+    /// between the kitchen and the private room, which the kitchen run and the agents' erosion close
+    /// (section 2.1), is not one: from the kitchen the private room's icon waits at the frame's edge rather
+    /// than over a gap a press would walk round through two rooms. The plain rule takes that walk as a
+    /// second function too; a house with no NavMesh baked keeps every opening its walls show.</para>
     /// </summary>
     public sealed partial class HouseRoomScope
     {
@@ -22,6 +30,9 @@ namespace Gamesim.House
 
         /// <summary>How far apart the looks across a shared edge are, and how high they cross it.</summary>
         public const float DoorwayStep = .1f, DoorwayLookHeight = .5f;
+
+        /// <summary>How far inside either floor the walk through a doorway starts and ends, and the longest that walk may be: a walk round through other rooms is many times longer.</summary>
+        public const float DoorwayWalkReach = .6f, DoorwayWalkMetres = 3f;
 
         /// <summary>One doorway: the two rooms it joins (in the layers' order, <see cref="First"/> before <see cref="Second"/>), its middle on the wall line, and its width.</summary>
         public readonly struct Doorway
@@ -39,8 +50,9 @@ namespace Gamesim.House
 
         /// <summary>
         /// The house's doorways, read from its walls the first time they are asked for and kept: a solid
-        /// the sight queries see across a shared edge, other than a body or a floor, is a wall. None for a
-        /// scope built from rectangles, which has no walls to read.
+        /// the sight queries see across a shared edge, other than a body or a floor, is a wall, and an
+        /// opening nobody can walk through on the NavMesh is not a doorway. None for a scope built from
+        /// rectangles, which has no walls to read.
         /// </summary>
         public IReadOnlyList<Doorway> Doorways
         {
@@ -48,9 +60,20 @@ namespace Gamesim.House
             {
                 if (doorways != null) return doorways;
                 doorways = new List<Doorway>(12);
-                if (query != null) FindDoorways(WallAcross, doorways);
+                if (query != null) ReadDoorwaysFromTheHouse(doorways);
                 return doorways;
             }
+        }
+
+        /// <summary>
+        /// The one read of the house's own walls and NavMesh: the physics scene synced with every transform
+        /// first (the project syncs no transform by itself between fixed steps, and what is read is kept for
+        /// the scope's life), then the walls looked across and each opening walked through.
+        /// </summary>
+        private void ReadDoorwaysFromTheHouse(List<Doorway> into)
+        {
+            Physics.SyncTransforms();
+            FindDoorways(WallAcross, into, DoorwayWalk.Baked() ? DoorwayWalk.Through : (Func<Vector3, Vector3, bool>)null);
         }
 
         /// <summary>
@@ -78,9 +101,12 @@ namespace Gamesim.House
 
         /// <summary>
         /// The doorways along every edge two floors share: <paramref name="wallAcross"/> says whether a wall
-        /// stands across a segment, from one side of the line to the other, at <see cref="DoorwayLookHeight"/>.
+        /// stands across a segment, from one side of the line to the other, at <see cref="DoorwayLookHeight"/>;
+        /// <paramref name="walkable"/>, when given, whether somebody can walk from one point on the floor to
+        /// another - from <see cref="DoorwayWalkReach"/> inside one floor to as far inside the other, through
+        /// an opening's middle - and an opening it refuses is not a doorway.
         /// </summary>
-        public void FindDoorways(Func<Vector3, Vector3, bool> wallAcross, List<Doorway> into)
+        public void FindDoorways(Func<Vector3, Vector3, bool> wallAcross, List<Doorway> into, Func<Vector3, Vector3, bool> walkable = null)
         {
             into.Clear();
             if (wallAcross == null) return;
@@ -111,7 +137,9 @@ namespace Gamesim.House
                         if (width >= DoorwayWidth)
                         {
                             float middle = (runStart + runEnd) * .5f;
-                            into.Add(new Doorway(a, b, alongZ ? new Vector3(line, 0f, middle) : new Vector3(middle, 0f, line), width));
+                            var at = alongZ ? new Vector3(line, 0f, middle) : new Vector3(middle, 0f, line);
+                            if (walkable == null || walkable(at - normal * DoorwayWalkReach, at + normal * DoorwayWalkReach))
+                                into.Add(new Doorway(a, b, at, width));
                         }
                         runStart = runEnd = float.NaN;
                     }
@@ -134,6 +162,37 @@ namespace Gamesim.House
                 return true;
             }
             return false;
+        }
+
+        /// <summary>
+        /// The walk through an opening, on the baked NavMesh. Its own class, so the plain fixtures, which run
+        /// under the editor's Mono without the engine's navigation module, never load it.
+        /// </summary>
+        private static class DoorwayWalk
+        {
+            /// <summary>How far from a point the NavMesh may lie and that point still be on it: past the agents' erosion at a doorway's mouth.</summary>
+            private const float OnTheNavMesh = .75f;
+
+            /// <summary>Whether the house has a NavMesh to walk on at all.</summary>
+            public static bool Baked()
+            {
+                var mesh = UnityEngine.AI.NavMesh.CalculateTriangulation();
+                return mesh.vertices != null && mesh.vertices.Length > 0;
+            }
+
+            /// <summary>Whether a walk from <paramref name="from"/> to <paramref name="to"/> on the NavMesh is no longer than a doorway's.</summary>
+            public static bool Through(Vector3 from, Vector3 to)
+            {
+                if (!UnityEngine.AI.NavMesh.SamplePosition(from, out var start, OnTheNavMesh, UnityEngine.AI.NavMesh.AllAreas)) return false;
+                if (!UnityEngine.AI.NavMesh.SamplePosition(to, out var end, OnTheNavMesh, UnityEngine.AI.NavMesh.AllAreas)) return false;
+                var path = new UnityEngine.AI.NavMeshPath();
+                if (!UnityEngine.AI.NavMesh.CalculatePath(start.position, end.position, UnityEngine.AI.NavMesh.AllAreas, path)
+                    || path.status != UnityEngine.AI.NavMeshPathStatus.PathComplete) return false;
+                var corners = path.corners;
+                float length = 0f;
+                for (int i = 1; i < corners.Length; i++) length += Vector3.Distance(corners[i - 1], corners[i]);
+                return length <= DoorwayWalkMetres;
+            }
         }
     }
 }

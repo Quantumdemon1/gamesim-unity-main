@@ -79,10 +79,14 @@ namespace Gamesim.Episode
         /// the rooms the view drew as it left are drawn with it - free play's whole house until RS5 -
         /// and from its landing the ceremony's room alone, until the framing lets go or something else
         /// takes the view (<see cref="CeremonyFramingHoldsTheCamera"/>). The move back is the view's
-        /// own again, since the framing is over as it starts: it names the rooms the view drew as the
-        /// framing took it (RS5) - free play's room, a follow's or a watch's, the room view's - drawn with
-        /// the ceremony's until it lands and watched after, until F, a walk or travel; a framing taken
-        /// from a whole-house view goes back to the floor under its point, as every free move does.
+        /// own again, since the framing is over as it starts (RS5): taken from free play on the player,
+        /// it ends on the player's room, tracked, so the view cuts with them at the next door as it did
+        /// before; taken from a follow or a watch, it names the one room the view drew as the framing took
+        /// it, watched after, until F, a walk or travel; taken from a whole-house view or one of two rooms
+        /// (a move or a two-shot on its way), it goes back to the floor under its point, as every free move
+        /// does. Either way the ceremony's room is drawn with it until it lands. A framing whose camera the
+        /// viewer took during its hold (F, a pan, a floor click, a follow) has no move back: the camera is
+        /// theirs, and it stays where they put it.
         /// </summary>
         private IEnumerator FrameCeremonyRoutine(Vector3 at, RoomSet rooms)
         {
@@ -95,9 +99,13 @@ namespace Gamesim.Episode
             // the move draws it with the ceremony's room until it lands, so nothing the viewer saw goes
             // before the camera has moved.
             var left = ViewedRooms;
-            // The rooms the move back names: the view's as the first framing in flight took it.
-            var back = IsFramingCeremony ? ceremonyReturnRooms : left.IsWholeHouse ? RoomSet.None : left;
+            // The rooms the move back names: the view's as the first framing in flight took it - the player's,
+            // tracked, for free play on the player; one room, watched, for a follow's or a watch's; else none.
+            bool backToThePlayer = IsFramingCeremony ? ceremonyReturnToPlayer
+                : player != null && cameraRig.ViewsThePlayer && CurrentRoomScopeSource == RoomScopeSource.FreePlay;
+            var back = IsFramingCeremony ? ceremonyReturnRooms : left.IsWholeHouse || left.Count != 1 ? RoomSet.None : left;
             ceremonyReturnRooms = back;
+            ceremonyReturnToPlayer = backToThePlayer;
             IsFramingCeremony = true;
             // Reduced motion cuts to the room rather than keeping the shot the viewer had: less
             // motion, not less of the episode. The ceremony card's own rule, applied to the camera.
@@ -111,7 +119,17 @@ namespace Gamesim.Episode
             while (Time.unscaledTime < until || (takeover != null && takeover.IsPlaying)
                 || (voteReveal != null && voteReveal.IsPlaying) || (keyCeremony != null && keyCeremony.IsPlaying) || JuryRevealPlaying)
                 yield return null;
-            if (cameraRig != null) cameraRig.MoveTo(focus, distance, reducedMotion ? CeremonyCutSeconds : CeremonyMoveSeconds, back);
+            // Back only from a framing that still holds the camera: one the viewer took is theirs. A shot that
+            // took it straight from the framing (a panel's, the overview's, a competition's) keeps the camera, and
+            // goes back, when let go, where this move would have gone - not to the ceremony's room it took it in.
+            if (cameraRig != null && CeremonyFramingHoldsTheCamera)
+            {
+                float seconds = reducedMotion ? CeremonyCutSeconds : CeremonyMoveSeconds;
+                if (backToThePlayer && player != null) cameraRig.MoveTo(focus, distance, seconds, player.transform);
+                else cameraRig.MoveTo(focus, distance, seconds, back);
+            }
+            else if (cameraRig != null && cameraRig.ShotTookTheViewOn(ceremonyFrameTakeovers))
+                cameraRig.ReturnTheShotTo(focus, distance, backToThePlayer && player != null ? player.transform : null, back);
             IsFramingCeremony = false;
             ceremonyFrame = null;
         }
@@ -119,5 +137,6 @@ namespace Gamesim.Episode
         private Vector3 ceremonyReturnFocus;
         private float ceremonyReturnDistance;
         private RoomSet ceremonyReturnRooms;
+        private bool ceremonyReturnToPlayer;
     }
 }

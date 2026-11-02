@@ -66,8 +66,13 @@ namespace Gamesim.Episode
         private void ApplyWholeHouseSetting()
         {
             if (showWholeHouse == wholeHouseHolds.Contains(wholeHouseSetting)) return;
+            // Switched on from the room view: today's view as well as today's drawing (D12), the free camera eased
+            // out to the scene's own distance and heading, so the travel icons and the plates are today's at once.
+            // At load the camera is the scene's already; over a shot, a framing or a conversation it is theirs.
+            bool fromTheRoomView = cameraRig != null && cameraRig.IsRoomView;
             if (showWholeHouse) HoldWholeHouse(wholeHouseSetting);
             else Release(wholeHouseSetting);
+            if (showWholeHouse && fromTheRoomView) cameraRig.EaseToItsOwnFraming();
             // Back to one room: the room view comes on with a cut onto the room, wherever the camera stood.
             if (!showWholeHouse && cameraRig != null) cameraRig.CutToRoomView();
         }

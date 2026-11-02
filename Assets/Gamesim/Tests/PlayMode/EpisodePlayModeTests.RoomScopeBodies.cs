@@ -288,10 +288,12 @@ namespace Gamesim.Tests.PlayMode
 
         /// <summary>
         /// A live prompt names only people the view draws: the Talk target beside the player, anyone a
-        /// free-time card tags HERE, the walk-in pair while its Pull is on screen and the invitation's
-        /// speaker are drawn while the prompt names them, with the view held on another room, and hidden
-        /// again once it no longer does; a walk-in the player turned down names nobody, though the
-        /// watch offers it again. The player, in free play, is drawn wherever the view is.
+        /// free-time card tags HERE and the walk-in pair while its Pull is on screen are drawn while the
+        /// prompt names them, with the view held on another room, and hidden again once it no longer does;
+        /// a walk-in the player turned down names nobody, though the watch offers it again. The player, in
+        /// free play, is drawn wherever the view is. An invitation is let go while the view is on another
+        /// room - the player is looking away (D18, RS5) - and back on the player's room it comes up again,
+        /// its speaker drawn while it is up.
         /// </summary>
         [UnityTest]
         public IEnumerator RoomScope_APromptNamesOnlyDrawnPeople()
@@ -387,14 +389,21 @@ namespace Gamesim.Tests.PlayMode
                 cameraRig.ReleaseShot(0f);
             }
 
-            // The invitation's speaker: a motivated houseguest comes to the player with an offer, the
-            // bubble goes up, and the view, still framing them, names a room away from them both.
+            // The invitation's speaker: a motivated houseguest comes to the player with an offer and the bubble
+            // goes up. A view naming a room away from them both is the player looking away (D18, RS5): the
+            // invitation is let go at once - not put off, so it comes back - and with the view back on the player's
+            // room it is reserved again and comes up, its speaker drawn while it is up (RS4).
             yield return InstallNpcInvitationFlowHouse();
             director.EndOverview();
             yield return null;
             var speaker = SceneComponents<HouseNpc>().Single(person => person.Id == director.CurrentNpcInvitationNpcId);
+            string offer = director.CurrentNpcInvitationRecordId;
             var scoped = ScopeOf(director);
             int away = Rs4FarRoom(scoped, speaker.transform.position, player.transform.position);
+            var houseAvailable = typeof(EpisodeDirector).GetProperty("NpcInvitationHouseAvailable",
+                System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+            Assert.That(houseAvailable, Is.Not.Null, "The invitations' house check is one property.");
+            bool HouseAvailable() => (bool)houseAvailable.GetValue(director);
             var invitationOwner = new object();
             cameraRig.SetReducedMotion(true);
             try
@@ -406,17 +415,17 @@ namespace Gamesim.Tests.PlayMode
                 });
                 director.HoldRoomScope(invitationOwner);
                 Assert.That(director.ViewedRooms, Is.EqualTo(RoomSet.Of(away)), "The view names the " + RoomLayers.RoomIds[away] + ", away from both.");
-                int up = 0;
+                Assert.That(director.LookingAwayFromThePlayer, Is.True, "A view of another room is the player looking away (D18),");
+                Assert.That(HouseAvailable(), Is.False, "so the house offers no invitation,");
+                yield return null;
+                Assert.That(director.CurrentNpcInvitationRecordId, Is.Null, "and the one reserved is let go,");
+                Assert.That(director.NpcInvitationIsVisible, Is.False, "its bubble down,");
+                Assert.That(NpcRead<HashSet<string>>("npcInvitationDeferred").Contains(offer), Is.False, "not put off: it comes back when the view does.");
                 for (int frame = 0; frame < 6; frame++)
                 {
                     yield return null;
-                    if (!director.NpcInvitationIsVisible) continue;
-                    up++;
-                    Assert.That(Rs4DrawnNow(speaker.transform, out string why), Is.True,
-                        "While the invitation is up, its speaker " + speaker.DisplayName + " is drawn: " + why);
-                    Assert.That(speaker.BodyHidden, Is.False);
+                    Assert.That(director.NpcInvitationIsVisible, Is.False, "No invitation comes up while the view is elsewhere (frame " + frame + ").");
                 }
-                Assert.That(up, Is.GreaterThan(0), "The invitation stayed up with the view naming another room.");
             }
             finally
             {
@@ -424,6 +433,26 @@ namespace Gamesim.Tests.PlayMode
                 cameraRig.ReleaseShot(0f);
                 cameraRig.SetReducedMotion(false);
             }
+            // F: the view back on the player's room. Looking, the house offers invitations again: one is reserved
+            // within the scan's second and comes up, its speaker drawn on every frame it is up.
+            cameraRig.RecenterOnPlayer();
+            yield return null;
+            Assert.That(director.LookingAwayFromThePlayer, Is.False, "Back on the player's room, looking,");
+            Assert.That(HouseAvailable(), Is.True, "and the house offers invitations again.");
+            yield return WaitFor(() => director.NpcInvitationIsVisible, 20f, "The invitation comes back up once the view is back.");
+            Assert.That(director.CurrentNpcInvitationRecordId, Is.Not.Null, "An offer is reserved again.");
+            int up = 0;
+            for (int frame = 0; frame < 6; frame++)
+            {
+                yield return null;
+                if (!director.NpcInvitationIsVisible) continue;
+                up++;
+                var speaking = SceneComponents<HouseNpc>().Single(person => person.Id == director.CurrentNpcInvitationNpcId);
+                Assert.That(Rs4DrawnNow(speaking.transform, out string why), Is.True,
+                    "While the invitation is up, its speaker " + speaking.DisplayName + " is drawn: " + why);
+                Assert.That(speaking.BodyHidden, Is.False);
+            }
+            Assert.That(up, Is.GreaterThan(0), "The invitation stayed up with the view on the player's room.");
         }
 
         /// <summary>

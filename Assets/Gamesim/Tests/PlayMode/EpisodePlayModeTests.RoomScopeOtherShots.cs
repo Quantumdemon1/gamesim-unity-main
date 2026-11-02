@@ -69,7 +69,7 @@ namespace Gamesim.Tests.PlayMode
                 Assert.That(director.ViewedRooms, Is.EqualTo(RoomSet.Of(room)), "Held on, the view is the player's room.");
             }
             finally { director.Release(owner); }
-            Rs5AssertFreePlaysView("Let go, the opening handed over");
+            Rs5AssertFreePlaysView("Let go, the opening handed over", Rs5PlayersRoom());
             yield return WaitFor(() => director.NpcAutonomyReady, 5f, "The house binds its people again and carries on.");
 
             // The overview: the map, held or not.
@@ -110,7 +110,7 @@ namespace Gamesim.Tests.PlayMode
             }
             finally { director.Release(owner); }
             yield return null;
-            Rs5AssertFreePlaysView("Free play after the walk-out, nothing held");
+            Rs5AssertFreePlaysView("Free play after the walk-out, nothing held", Rs5PlayersRoom());
         }
 
         /// <summary>
@@ -189,7 +189,7 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(director.CurrentRoomScopeSource, Is.EqualTo(EpisodeDirector.RoomScopeSource.FreePlay), "A test's own shot is free play's view,");
             yield return ScopeWaitUntilLanded();
             yield return null;
-            Rs5AssertFreePlaysView("A capture's shot with nothing held");
+            Rs5AssertFreePlaysView("A capture's shot with nothing held", kitchen);
             Assert.That(director.ViewedRooms, Is.EqualTo(RoomSet.Of("Kitchen")), "which draws the kitchen it names.");
             cameraRig.ReleaseShot(0f);
         }
@@ -278,7 +278,7 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(director.CurrentRoomScopeSource, Is.EqualTo(EpisodeDirector.RoomScopeSource.FreePlay), "and the view is free play's in the same frame,");
             Assert.That(director.ViewedRooms, Is.EqualTo(cameraRig.Rooms), "the rooms the rig went back to.");
             yield return null;
-            Rs5AssertFreePlaysView("The house event closed");
+            Rs5AssertFreePlaysView("The house event closed", Rs5PlayersRoom());
         }
 
         /// <summary>
@@ -334,7 +334,7 @@ namespace Gamesim.Tests.PlayMode
             yield return null;
             NotTheNpcWorld("On foot, a frame on");
             Assert.That(director.ActivityWarpHoldsTheCamera, Is.False, "On foot, a frame on: no warp holds the camera," + Why());
-            Rs5AssertFreePlaysView("On foot, a frame on");
+            Rs5AssertFreePlaysView("On foot, a frame on", Rs5PlayersRoom());
             director.FinishPlayerHouseActivity();
             yield return WaitFor(() => director.PlayerActivity == null, 20f, "On foot: the swim ends.");
 
@@ -370,6 +370,9 @@ namespace Gamesim.Tests.PlayMode
                 Rs6aBodiesFollowTheView(scope, room, how + ", the warp's first drawn frame", failures);
                 Assert.That(failures, Is.Empty, string.Join("; ", failures) + Why());
 
+                // What the view shows once the activity is over: free play on the player, or after a follow the room
+                // it showed, watched (a stopped follow keeps its room, RS5).
+                var afterTheActivity = Rs5PlayersRoom();
                 if (!reduced)
                 {
                     // A follow takes the camera from the warp: following's view, their room (RS5).
@@ -382,7 +385,8 @@ namespace Gamesim.Tests.PlayMode
                         Assert.That(director.ViewedRooms, Is.EqualTo(cameraRig.Rooms), "their room (RS5).");
                         yield return null;
                         NotTheNpcWorld("A follow over the activity");
-                        Rs5AssertFreePlaysView("A follow over the activity");
+                        Rs5AssertFreePlaysView("A follow over the activity", RoomSet.Of(director.WalkerRoomOf(guest.transform)));
+                        afterTheActivity = director.ViewedRooms;
                     }
                     finally { cameraRig.ClearSubject(); }
                 }
@@ -392,7 +396,7 @@ namespace Gamesim.Tests.PlayMode
                 Assert.That(director.ActivityWarpHoldsTheCamera, Is.False, how + ": the activity over, the warp's view is over," + Why());
                 Assert.That(director.ViewedRooms, Is.EqualTo(cameraRig.Rooms), how + ": free play's view (RS5)." + Why());
                 yield return null;
-                Rs5AssertFreePlaysView(how + ", the activity over");
+                Rs5AssertFreePlaysView(how + ", the activity over", reduced ? Rs5PlayersRoom() : afterTheActivity);
             }
             Rs6bMotion(false);
         }
@@ -462,7 +466,7 @@ namespace Gamesim.Tests.PlayMode
                     yield return null;
                     if (cameraRig.HoldsTheTwoShot) break;
                     coming++;
-                    Rs5AssertFreePlaysView("The camera coming in on the pair, frame " + coming);
+                    Rs5AssertFreePlaysView("The camera coming in on the pair, frame " + coming, pair);
                 }
                 Assert.That(cameraRig.HoldsTheTwoShot, Is.True, "The camera came in on the pair and the two-shot holds the camera,");
                 Assert.That(director.CurrentRoomScopeSource, Is.EqualTo(EpisodeDirector.RoomScopeSource.Conversation), "and is the view.");
@@ -492,7 +496,7 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(cameraRig.HoldsTheTwoShot, Is.False, "Ended, the two-shot lets go,");
             Assert.That(director.ViewedRooms, Is.EqualTo(RoomSet.Of("Living")), "and the view is free play's, the player's living room (RS5).");
             yield return null;
-            Rs5AssertFreePlaysView("The two-shot ended");
+            Rs5AssertFreePlaysView("The two-shot ended", RoomSet.Of("Living"));
 
             // A conversation the director opens: its two-shot names the kitchen, where the two stand.
             yield return OpenNearbyNpc(third);
@@ -509,7 +513,7 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(cameraRig.IsConversationFocused, Is.False, "The panel closed ends the conversation,");
             Assert.That(director.ViewedRooms, Is.EqualTo(cameraRig.Rooms), "and the view is free play's in the same frame (RS5).");
             yield return null;
-            Rs5AssertFreePlaysView("The conversation closed");
+            Rs5AssertFreePlaysView("The conversation closed", Rs5PlayersRoom());
 
             // Under reduced motion the two-shot takes no shot: the view is the view's own.
             Rs6bMotion(true);
@@ -524,7 +528,7 @@ namespace Gamesim.Tests.PlayMode
                 Assert.That(director.ViewedRooms, Is.EqualTo(cameraRig.Rooms), "the rig's rooms.");
                 yield return null;
                 Assert.That(cameraRig.HoldsTheTwoShot, Is.False, "A frame on, still no two-shot of its own,");
-                Rs5AssertFreePlaysView("A conversation under reduced motion");
+                Rs5AssertFreePlaysView("A conversation under reduced motion", Rs5PlayersRoom());
             }
             finally
             {
@@ -570,7 +574,7 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(director.CurrentRoomScopeSource, Is.EqualTo(EpisodeDirector.RoomScopeSource.FreePlay), "the view is free play's (live from RS5),");
             Assert.That(cameraRig.ViewsThePlayer, Is.False, "which for a player out of the house watches a room, not the player's body:");
             Assert.That(director.ViewedRooms.Count, Is.EqualTo(1), "the room nearest the camera's focus (" + director.ViewedRooms + ").");
-            Rs5AssertFreePlaysView("Before any watch");
+            Rs5AssertFreePlaysView("Before any watch", RoomSet.Of(scope.RoomUnder(cameraRig.DesiredFocus)));
 
             // The kitchen's marker a metre over a neighbouring floor: a watch that took the floor under its point
             // would draw that room, so only the room the call names keeps the kitchen the view.
@@ -597,7 +601,7 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(cameraRig.HasArrived(HouseCameraRig.ArrivalTolerance), Is.False, "the camera not yet over it,");
             Assert.That(director.WatchHoldsTheCamera, Is.False, "so the watch does not hold the view yet:");
             Assert.That(director.ViewedRooms, Is.EqualTo(kitchen), "free play (RS5) draws the room the call names; the room view cuts the camera there this frame.");
-            yield return Rs6bWaitForTheWatch("The kitchen's watch");
+            yield return Rs6bWaitForTheWatch("The kitchen's watch", kitchen);
             Assert.That(director.CurrentRoomScopeSource, Is.EqualTo(EpisodeDirector.RoomScopeSource.Watching), "The watch is the view,");
             Assert.That(director.ViewedRooms, Is.EqualTo(kitchen), "the kitchen alone, not the " + HouseRoomScope.RoomId(underMoved) + " under its marker.");
             Assert.That(view.cullingMask & RoomLayers.Mask, Is.EqualTo(kitchen.CullingBits), "The main camera's room bit is the kitchen's.");
@@ -612,7 +616,7 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(cameraRig.Rooms, Is.EqualTo(bedroom), "The bedroom's watch names the bedroom,");
             Assert.That(director.WatchHoldsTheCamera, Is.False, "and holds the view once the camera is over it:");
             Assert.That(director.ViewedRooms, Is.EqualTo(bedroom), "until then free play's, the rooms the call names (RS5).");
-            yield return Rs6bWaitForTheWatch("The bedroom's watch");
+            yield return Rs6bWaitForTheWatch("The bedroom's watch", bedroom);
             Assert.That(director.ViewedRooms, Is.EqualTo(bedroom), "The bedroom's watch draws the bedroom.");
             Assert.That(view.cullingMask & RoomLayers.Mask, Is.EqualTo(bedroom.CullingBits));
             Rs6aAssertHidden(inKitchen.transform, inKitchen.DisplayName + ", in the kitchen the watch left,");
@@ -628,7 +632,7 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(director.WatchHoldsTheCamera, Is.False, "and the watch holds once the camera is back:");
             Assert.That(director.ViewedRooms, Is.EqualTo(cameraRig.Rooms), "until then free play's, the rig's rooms on the way back (RS5),");
             Assert.That(director.ViewedRooms.Contains("Bedroom"), Is.True, "the bedroom among them.");
-            yield return Rs6bWaitForTheWatch("The bedroom's watch after the overview");
+            yield return Rs6bWaitForTheWatch("The bedroom's watch after the overview", bedroom);
             Assert.That(director.ViewedRooms, Is.EqualTo(bedroom), "Back from the map, the bedroom's watch draws the bedroom again.");
             Assert.That(view.cullingMask & RoomLayers.Mask, Is.EqualTo(bedroom.CullingBits));
 
@@ -639,7 +643,7 @@ namespace Gamesim.Tests.PlayMode
                 Assert.That(director.CurrentRoomScopeSource, Is.EqualTo(EpisodeDirector.RoomScopeSource.Following), "the view is following's,");
                 Assert.That(director.ViewedRooms, Is.EqualTo(kitchen), "the followed houseguest's kitchen (RS5).");
                 yield return null;
-                Rs5AssertFreePlaysView("A follow over the watch");
+                Rs5AssertFreePlaysView("A follow over the watch", kitchen);
             }
             finally { cameraRig.ClearSubject(); }
         }
@@ -744,18 +748,24 @@ namespace Gamesim.Tests.PlayMode
         }
 
         /// <summary>
-        /// Free play's or following's view (live from RS5), a frame after the change: the rig's rooms, not the
-        /// whole house, and the main camera's room bits theirs.
+        /// Free play's or following's view (live from RS5), a frame after the change: the rooms the test expects -
+        /// the player's own for free play on them, the followed houseguest's for a follow, the room a watch, a
+        /// stopped follow or a shot names - which are the rig's, not the whole house, and the main camera's room
+        /// bits theirs.
         /// </summary>
-        private void Rs5AssertFreePlaysView(string what)
+        private void Rs5AssertFreePlaysView(string what, RoomSet expected)
         {
             var source = director.CurrentRoomScopeSource;
             Assert.That(source == EpisodeDirector.RoomScopeSource.FreePlay || source == EpisodeDirector.RoomScopeSource.Following, Is.True,
                 what + ": the view is free play's or following's (" + source + ").");
             Assert.That(director.ViewedRooms, Is.EqualTo(cameraRig.Rooms), what + ": the rig's rooms (" + cameraRig.Rooms + ").");
             Assert.That(director.ViewedRooms.IsWholeHouse, Is.False, what + ": not the whole house: free play and following are live from RS5.");
+            Assert.That(director.ViewedRooms, Is.EqualTo(expected), what + ": the view is " + expected + " (" + director.ViewedRooms + ").");
             Assert.That(cameraRig.ViewCamera.cullingMask & RoomLayers.Mask, Is.EqualTo(director.ViewedRooms.CullingBits), what + ": the main camera's room bits are the view's.");
         }
+
+        /// <summary>The player's own room by the floors: what free play on the player shows.</summary>
+        private RoomSet Rs5PlayersRoom() => RoomSet.Of(director.WalkerRoomOf(player.transform));
 
         /// <summary>Waits on the real clock (the rig eases on unscaled time, which no frame count pins) for a condition, then asserts it.</summary>
         private IEnumerator Rs6bWaitUntilArrived(System.Func<bool> arrived, string what)
@@ -768,9 +778,11 @@ namespace Gamesim.Tests.PlayMode
         /// <summary>
         /// A watch made, the camera on its way (D6): every frame until the camera has come in over the watched
         /// room the view is free play's (RS5: the rooms the call names, the room view cutting the camera over
-        /// them) and then the watch holds the camera. On the real clock.
+        /// them) and then the watch holds the camera. On the real clock. A timed move back to the watch (the
+        /// overview's release) draws what it leaves with the watched room until it lands, the whole house among
+        /// it; otherwise the view is the watched room alone.
         /// </summary>
-        private IEnumerator Rs6bWaitForTheWatch(string what)
+        private IEnumerator Rs6bWaitForTheWatch(string what, RoomSet watched)
         {
             float deadline = Time.realtimeSinceStartup + 6f;
             int frame = 0;
@@ -778,7 +790,13 @@ namespace Gamesim.Tests.PlayMode
             {
                 yield return null;
                 if (director.WatchHoldsTheCamera) break;
-                Rs5AssertFreePlaysView(what + ", the camera on its way, frame " + ++frame);
+                string at = what + ", the camera on its way, frame " + ++frame;
+                Assert.That(director.CurrentRoomScopeSource, Is.EqualTo(EpisodeDirector.RoomScopeSource.FreePlay), at + ": the view is free play's,");
+                Assert.That(director.ViewedRooms, Is.EqualTo(cameraRig.Rooms), at + ": the rig's rooms (" + cameraRig.Rooms + "),");
+                Assert.That(director.ViewedRooms.Bits & watched.Bits, Is.EqualTo(watched.Bits), at + ": the watched " + watched + " among them,");
+                if (!cameraRig.IsTravelling)
+                    Assert.That(director.ViewedRooms, Is.EqualTo(watched), at + ": with no timed move in flight, the watched room alone,");
+                Assert.That(cameraRig.ViewCamera.cullingMask & RoomLayers.Mask, Is.EqualTo(director.ViewedRooms.CullingBits), at + ": the main camera's room bits the view's.");
             }
             Assert.That(director.WatchHoldsTheCamera, Is.True, what + ": the camera came in over the watched room and the watch holds the camera.");
         }

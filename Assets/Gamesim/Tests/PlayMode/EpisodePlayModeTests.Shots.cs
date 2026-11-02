@@ -217,7 +217,7 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(director.ViewedRooms, Is.EqualTo(cameraRig.Rooms), "the rig's rooms.");
             yield return WaitForDiaryExit();
             yield return null;
-            Rs5AssertFreePlaysView("Out of the diary");
+            Rs5AssertFreePlaysView("Out of the diary", Rs5PlayersRoom());
             Assert.That(seating.Active,Is.False);
             Assert.That(player.GetComponent<CharacterPresentation>().IsSeated,Is.False);
             Assert.That(player.Agent.updatePosition,Is.EqualTo(updatePosition));

@@ -117,11 +117,16 @@
 # under Unity's Mono (2026-11-01), 9469, and the classes run there; not yet measured in Unity.
 # The S6 review's fixes add checks to those cases, not cases: the Lister listed 9469 again (2026-11-01).
 # 9497 = main's 9217 + the offers' 28 (9245 - 9217, PR #39) + the All-Star histories' 252 (9469 - 9217): disjoint cases, so the floor is their sum (2026-11-01).
+# 9271 = 9217 + F9's 54 ExactDoublesTests cases (OLD-SAVE-ACCEPTANCE F9): 50 shared with the subset, and 3 save-store
+# cases and the web import's, EditMode only. The Lister counted 9271 in the NoUMA offline build and the Mono harness
+# ran the 54, 54 of 54 (2026-11-01, after the review). Not yet counted by a full run.
+# 9551 = 9217 + main's 280 (9497 - 9217) + the save-read fix (F9)'s 54 (9271 - 9217): disjoint cases, so the floor is their sum (2026-11-01).
 # The live-save batching (LIVE-SAVE-PLAN), on 9217:
 # 9236 = 9217 + its 19 EditMode cases: PersistenceTests 6, NpcSaveCadenceTests 8 (shared with the subset) and
 # NpcCommitTimingsTests 5. Counted: the full NoUMA run at 35ab8574 (ls1, 2026-11-01), 9236 of 9236, no re-runs.
 # 9516 = 9217 + main's 280 (9497 - 9217) + the live-save batching's 19 (9236 - 9217): disjoint cases, so the floor is their sum (2026-11-01).
-Gamesim.EditModeTests 9516
+# 9570 = 9497 + main's 54 (9551 - 9497) + the live-save batching's 19 (9516 - 9497): disjoint cases, so the floor is their sum (2026-11-02).
+Gamesim.EditModeTests 9570
 # The UMA-free build. 1215 = 1236, the count after the consolidation's lanes (S2a, S2b, S4a), less the 7
 # farewell probes moved to Gamesim.DiagnosticsPlayModeTests and the 14 farewell readiness tests that now
 # compile only under GAMESIM_UMA (judged on the UMA cast); 1230 = 1215 + S2d's 7, S4b's 2, S4c's 2 and
@@ -323,7 +328,11 @@ Gamesim.Uma.DiagnosticsPlayModeTests 10
 # The S6 review's fixes add checks to that case, not cases (the sentinel finds the player in "your" again): what dotnet
 # test Tools/SimulationTests ran (2026-11-01), 16434 of 16434 again.
 # 16456 = main's 16241 + the offers' 22 (16263 - 16241, PR #39) + the All-Star histories' 193 (16434 - 16241): disjoint cases, so the floor is their sum (2026-11-01).
+# 16291 = 16241 + F9's same 50 shared ExactDoublesTests cases (the 3 save-store cases and the web import's are
+# EditMode's): dotnet test ran 16291 of 16291 (2026-11-01, after the review).
+# 16506 = 16241 + main's 215 (16456 - 16241) + the save-read fix (F9)'s 50 (16291 - 16241): disjoint cases, so the floor is their sum (2026-11-01).
 # 16249 = 16241 + the live-save batching's 8 NpcSaveCadenceTests: what dotnet test Tools/SimulationTests ran at
 # 35ab8574 (ls1, 2026-11-01), 16249 of 16249.
 # 16464 = 16241 + main's 215 (16456 - 16241) + the live-save batching's 8 (16249 - 16241): disjoint cases, so the floor is their sum (2026-11-01).
-Gamesim.SimulationTests 16464
+# 16514 = 16456 + main's 50 (16506 - 16456) + the live-save batching's 8 (16464 - 16456): disjoint cases, so the floor is their sum (2026-11-02).
+Gamesim.SimulationTests 16514

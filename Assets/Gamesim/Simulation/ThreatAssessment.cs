@@ -46,30 +46,47 @@ namespace Gamesim.Simulation
         }
 
         public static Breakdown Assess(EpisodeState state, string evaluatorId, string targetId)
-            => AssessBeforeCommitmentEffects(state, evaluatorId, targetId, null, null);
+            => AssessBeforeCommitmentEffects(state, evaluatorId, targetId, null, null, pastGames: false);
 
+        /// <summary>
+        /// The five components. With <paramref name="pastGames"/> (<see cref="TotalWithPastGames"/>'s reading alone; every
+        /// other caller passes false) the alumni's public record joins two of them from alumni rules 3: the known pairs'
+        /// risk inside the alliance component's cap, and the career inside reputation's clamp (§14.D.3).
+        /// </summary>
         private static Breakdown AssessBeforeCommitmentEffects(EpisodeState state, string evaluatorId, string targetId,
-            IReadOnlyList<string> excludedSafetyEffects, IReadOnlyCollection<string> excludedVoteEffects)
+            IReadOnlyList<string> excludedSafetyEffects, IReadOnlyCollection<string> excludedVoteEffects, bool pastGames)
         {
             var target = state?.Find(targetId);
             if (target == null) return new Breakdown(0, 0, 0, 0, 0);
             return new Breakdown(
                 CompetitionThreat(target),
                 SocialThreat(state, target),
-                AllianceThreat(state, evaluatorId, targetId),
+                AllianceThreat(state, evaluatorId, targetId, pastGames),
                 PotentialThreat(target),
-                ReputationThreat(state, evaluatorId, targetId, excludedSafetyEffects, excludedVoteEffects));
+                ReputationThreat(state, evaluatorId, targetId, excludedSafetyEffects, excludedVoteEffects, pastGames));
         }
 
         public static double Total(EpisodeState state, string evaluatorId, string targetId) =>
             Assess(state, evaluatorId, targetId).Total;
+
+        /// <summary>
+        /// The threat a Head of Household and their pact-mates weigh at the nominations (<see cref="EpisodeEngine.ThreatTerm"/>,
+        /// ALL-STAR-HISTORIES-PLAN §14.D.3): <see cref="Total"/>, and from alumni rules 3 (<see cref="AlumniRules.Reputation"/>)
+        /// the alumni's public record on top - the risk of the known pairs the target sits in
+        /// (<see cref="KnownBlocs.RiskFor"/>) inside the alliance component's cap of twenty, and their career
+        /// (<see cref="KnownBlocs.CareerFor"/>) inside reputation's clamp of fifteen - each only where it is not nought.
+        /// Exactly <see cref="Total"/> below 3. Nothing else reads it: the house's talk (the rumour subject, the pitch
+        /// target, a broken word's grudge, <see cref="RankedTargets"/>) reads <see cref="Total"/>, the same at every value.
+        /// </summary>
+        public static double TotalWithPastGames(EpisodeState state, string evaluatorId, string targetId) =>
+            AssessBeforeCommitmentEffects(state, evaluatorId, targetId, null, null, pastGames: true).Total;
 
         // Settlement-only snapshot semantics: the command has installed canonical verdicts before
         // running effects, but the current decision must not amplify its own grudge via reputation.
         // Prior incidents still count. This is not a public player-facing reputation override.
         internal static double TotalBeforeSafetyEffects(EpisodeState state, string evaluatorId, string targetId,
             IReadOnlyList<string> excludedSafetyEffects) =>
-            AssessBeforeCommitmentEffects(state, evaluatorId, targetId, excludedSafetyEffects, null).Total;
+            AssessBeforeCommitmentEffects(state, evaluatorId, targetId, excludedSafetyEffects, null, pastGames: false).Total;
 
         /// <summary>
         /// The same, a reveal's own Vote effects excluded too (vote family V5c, the approved Rule2 policy's current-reveal
@@ -79,7 +96,7 @@ namespace Gamesim.Simulation
         /// </summary>
         internal static double TotalBeforeCommitmentEffects(EpisodeState state, string evaluatorId, string targetId,
             IReadOnlyList<string> excludedSafetyEffects, IReadOnlyCollection<string> excludedVoteEffects) =>
-            AssessBeforeCommitmentEffects(state, evaluatorId, targetId, excludedSafetyEffects, excludedVoteEffects).Total;
+            AssessBeforeCommitmentEffects(state, evaluatorId, targetId, excludedSafetyEffects, excludedVoteEffects, pastGames: false).Total;
 
         /// <summary>
         /// The house ranked by how dangerous the evaluator finds them, most first.
@@ -121,11 +138,24 @@ namespace Gamesim.Simulation
         /// being scripted. Every alliance without a story fact is known to all, as it always was. Under
         /// the commitment rules a member who has left the house has left the bloc (ACTIONS-DEALS-ALLIANCES-PLAN
         /// X5): only the heads still in it count (<see cref="Allegiance.Counted"/>).
+        ///
+        /// <para>With <paramref name="pastGames"/>, from alumni rules 3, the known pairs of past games the target sits in
+        /// join the blocs inside the same cap (<see cref="KnownBlocs.RiskFor"/>, ALL-STAR-HISTORIES-PLAN §14.D.3): the
+        /// house knows the record, so every evaluator outside a pair reads it, and a pact that holds both of a pair and
+        /// that the evaluator can see is counted once, as the pact.</para>
         /// </summary>
-        private static double AllianceThreat(EpisodeState state, string evaluatorId, string targetId) =>
-            Math.Min(20, state.alliances
+        private static double AllianceThreat(EpisodeState state, string evaluatorId, string targetId, bool pastGames)
+        {
+            double blocs = state.alliances
                 .Where(a => a.active && a.members.Contains(targetId) && Knowledge.AllianceVisibleTo(state, a, evaluatorId))
-                .Sum(a => Allegiance.Counted(state, a).Count * 4));
+                .Sum(a => Allegiance.Counted(state, a).Count * 4);
+            if (pastGames)
+            {
+                int pairRisk = KnownBlocs.RiskFor(state, evaluatorId, targetId);
+                if (pairRisk != 0) blocs += pairRisk;
+            }
+            return Math.Min(20, blocs);
+        }
 
         /// <summary>
         /// What they might still do. Capped at ten by the source, though its terms reach only seven:
@@ -145,9 +175,13 @@ namespace Gamesim.Simulation
         /// <para>Serial promise-breakers read as dangerous however much anybody likes them, and a
         /// hot rivalry makes a rival feel more threatening than their record alone suggests. This is
         /// the one component that differs by who is asking.</para>
+        ///
+        /// <para>With <paramref name="pastGames"/>, from alumni rules 3, an alumnus's career joins it before the clamp
+        /// (<see cref="KnownBlocs.CareerFor"/>, ALL-STAR-HISTORIES-PLAN §14.C): winner 4, finalist 3, played 2, the same to
+        /// every evaluator because the record is public. A newcomer's reputation stays what they do in the house.</para>
         /// </summary>
         private static double ReputationThreat(EpisodeState state, string evaluatorId, string targetId,
-            IReadOnlyList<string> excludedSafetyEffects, IReadOnlyCollection<string> excludedVoteEffects)
+            IReadOnlyList<string> excludedSafetyEffects, IReadOnlyCollection<string> excludedVoteEffects, bool pastGames)
         {
             // The promises held against them: under the commitment rules the ones they broke (C0, X3);
             // before them every broken promise they were either side of.
@@ -173,6 +207,11 @@ namespace Gamesim.Simulation
             {
                 if (arc.arcType == "rivalry") threat += Math.Min(7, Math.Floor(arc.intensity / 15));
                 else if (arc.arcType == "friendship") threat -= Math.Min(5, Math.Floor(arc.intensity / 20));
+            }
+            if (pastGames)
+            {
+                int career = KnownBlocs.CareerFor(state, targetId);
+                if (career != 0) threat += career;
             }
             return Math.Max(0, Math.Min(15, threat));
         }

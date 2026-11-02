@@ -84,10 +84,16 @@ namespace Gamesim.Episode
         /// </summary>
         private void TickNearby()
         {
-            // While the pair is being witnessed: a line left up only to be read (A10) offers nothing.
-            if (hud != null) hud.SetNearby(!IsPanelOpen && !string.IsNullOrEmpty(ObservedNpcConversation)
-                && !(npcCaption != null && npcCaption.IsReleasing) && CanListenIn);
+            if (hud != null) hud.SetNearby(!IsPanelOpen && NearbyOfferUp);
         }
+
+        /// <summary>
+        /// Whether listening in is on offer: a conversation being witnessed, its line not one left up only to be read
+        /// (A10), and listening in allowed. The Nearby card shows it whenever no panel is open, and a houseguest's ask
+        /// waits on it (EpisodeDirector.ComesToYou.cs): one expression for both.
+        /// </summary>
+        private bool NearbyOfferUp => !string.IsNullOrEmpty(ObservedNpcConversation)
+            && !(npcCaption != null && npcCaption.IsReleasing) && CanListenIn;
         public string NpcAutonomyDiagnostic => npcWorldFailure;
         /// <summary>Read-only proof for explicit QA; never a command or UI knowledge source.</summary>
         public bool IsNpcConversationPhysicallyReady(long sequence) => npcMeetings != null
@@ -296,6 +302,13 @@ namespace Gamesim.Episode
             // Whoever the player has asked over to talk is on their way to the player, not free to
             // be paired: a pairing tried on them would only take their partner off their furniture.
             if (talkSpot != null) busy.Add(talkSpot.NpcId);
+            // So is a houseguest bringing the player an ask, and the one whose ask is opening: this plan runs from
+            // the flush inside the very TryOpenNpc that opens it, after the visit itself has been let go.
+            if (AsksOn)
+            {
+                if (askNow?.askerId != null) busy.Add(askNow.askerId);
+                if (askOpeningFor != null) busy.Add(askOpeningFor);
+            }
             // The two of a staged act stand where it happens (EpisodeDirector.AllWeek): not free to be paired.
             foreach (var actor in state.Active) if (npcMeetings.ActHoldsActor(actor.id)) busy.Add(actor.id);
             // Who tries whom, and in what order, is NpcPairing's (the balance lab pairs its house the same way);
@@ -515,6 +528,8 @@ namespace Gamesim.Episode
                 if(npcMeetings.TryGetActivity(npc.Id,out var activity) && npcMeetings.ActivityValid(activity))continue;
                 // The houseguest walking to a talk spot with the player is the talk's to seat and turn.
                 if(talkSpot!=null && talkSpot.NpcId==npc.Id)continue;
+                // The asker who has arrived with an ask is turned to the player: the ask's heading until it lets go.
+                if(AskHoldsFacing(visual))continue;
                 visual.SetTalking(talking.Contains(npc.Id));
                 visual.SetSpeaking(speaking.Contains(npc.Id));
                 var seatPose=npc.GetComponent<HouseSeatPresentation>();

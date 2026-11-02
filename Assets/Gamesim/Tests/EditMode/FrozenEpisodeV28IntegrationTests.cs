@@ -36,11 +36,11 @@ namespace Gamesim.Tests.EditMode
             var before = new TokenImage(payload);
             Frozen(28, payload);
             var result = EpisodeSaveMigrations.PrepareCurrentPayload(payload, out bool migrated);
-            Assert.That(migrated, Is.True, "Literal28 is historical and must pass its original frozen gate before inert29 defaults.");
+            Assert.That(migrated, Is.True, "Literal28 is historical and must pass its original frozen gate before inert29 defaults and the pooled 30.");
             Assert.That(result, Is.Not.SameAs(payload));
             Assert.That(result.ToString(Formatting.None),
-                Is.EqualTo(EpisodeSaveMigrations.UpgradeV28ToV29(payload).ToString(Formatting.None)));
-            Assert.That((int)result["schemaVersion"], Is.EqualTo(29));
+                Is.EqualTo(EpisodeSaveMigrations.UpgradeV29ToV30(EpisodeSaveMigrations.UpgradeV28ToV29(payload)).ToString(Formatting.None)));
+            Assert.That((int)result["schemaVersion"], Is.EqualTo(30));
             var inverse28 = (JObject)result.DeepClone(); PersistenceMigrationTests.StripSchema29(inverse28);
             Assert.That(inverse28.ToString(Formatting.None), Is.EqualTo(payload.ToString(Formatting.None)));
             Assert.That((int)result["unifiedCommitmentRulesVersion"], Is.EqualTo(id.Contains("mode2") ? 2 : 1));
@@ -101,8 +101,8 @@ namespace Gamesim.Tests.EditMode
             Assert.That(migrated, Is.True);
             Assert.That(current, Is.Not.SameAs(original));
             Assert.That(current.ToString(Formatting.None),
-                Is.EqualTo(EpisodeSaveMigrations.UpgradeV28ToV29(expected).ToString(Formatting.None)));
-            Assert.That((int)current["schemaVersion"], Is.EqualTo(29));
+                Is.EqualTo(EpisodeSaveMigrations.UpgradeV29ToV30(EpisodeSaveMigrations.UpgradeV28ToV29(expected)).ToString(Formatting.None)));
+            Assert.That((int)current["schemaVersion"], Is.EqualTo(30));
             Assert.That((int)current["allWeekRulesStartWeek"], Is.Zero);
             Assert.That((int)current["allianceLeakRulesStartWeek"], Is.Zero);
             Assert.That((int)current["pactPlanRulesStartWeek"], Is.Zero);
@@ -141,7 +141,7 @@ namespace Gamesim.Tests.EditMode
             Assert.That(slot.Store.TryLoad(out var loaded, out string message), Is.True, message);
             Assert.That(File.ReadAllBytes(slot.Store.SavePath), Is.EqualTo(source), "Loading is read-only.");
             var loadedImage = Payload(loaded);
-            Assert.That((int)loadedImage["schemaVersion"], Is.EqualTo(29));
+            Assert.That((int)loadedImage["schemaVersion"], Is.EqualTo(30));
             var historical28 = (JObject)loadedImage.DeepClone(); PersistenceMigrationTests.StripSchema29(historical28);
             Frozen(28, historical28);
             slot.Store.Save(loaded);

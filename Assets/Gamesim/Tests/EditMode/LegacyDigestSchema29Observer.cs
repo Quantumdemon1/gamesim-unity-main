@@ -9,49 +9,70 @@ using Newtonsoft.Json.Linq;
 namespace Gamesim.Tests.EditMode
 {
     /// <summary>
-    /// Test-only current29 to retained28 boundary. This is not a save migration or an
-    /// authority to discard dialogue. The real complete current validator, exact source
-    /// binding, and every off literal run before a detached copy loses any field.
+    /// Test-only retained29 to retained28 boundary. This is not a save migration or an authority to discard dialogue.
+    /// Since SCH30 (ALL-STAR-HISTORIES-PLAN 8.6) it takes a retained schema-29 JSON object and no live state, as
+    /// <see cref="LegacyDigestSchema28Observer.ProjectFields"/> takes a retained 28: a current state is bound to its own
+    /// JSON, validated and taken to 29 by <see cref="LegacyDigestSchema30Observer"/>, which hands its projection on
+    /// here. The literal-29 input check, every off literal and the exact inverse run before a detached copy loses a
+    /// field, and the projection faces the complete independent frozen28 contract. A retained 29 on dialogue rules 1
+    /// has no 28: it is admitted at 29 as it is by the native contract (<see cref="NativeRetained29"/>), never projected.
     /// </summary>
     internal static class LegacyDigestSchema29Observer
     {
-        internal static JObject ProjectTrace28(EpisodeState state, JObject trace) => Project(state, trace, true);
-        internal static JObject ProjectFields28(EpisodeState state, JObject fields) => Project(state, fields, false);
+        /// <summary>A retained schema-29 trace (getters kept) or field view, taken to the retained 28.</summary>
+        internal static JObject ProjectRetained28(JObject source, bool getterTrace) => Project(source, getterTrace);
 
-        /// <summary>The source-bound current trace through the unchanged literal28/27 contracts to26.</summary>
-        internal static JObject ProjectTrace(EpisodeState state, JObject trace) =>
-            LegacyDigestSchema28Observer.ProjectFields(ProjectTrace28(state, trace));
+        /// <summary>A retained schema-29 trace through the unchanged literal28/27 contracts to 26.</summary>
+        internal static JObject ProjectRetained(JObject trace) =>
+            LegacyDigestSchema28Observer.ProjectFields(ProjectRetained28(trace, true));
 
         /// <summary>
-        /// The native-29 arm (DIALOGUE-PLAN D1): a current state on dialogue rules 1, the pilot the cast screen's
-        /// preview chip starts, admitted at schema 29 itself and handed back unchanged, as a detached copy. Never
-        /// projected: a store holding conversations has no schema-28 form, and dropping it would digest another
+        /// The native-29 arm's contract (DIALOGUE-PLAN D1): a retained schema-29 object on dialogue rules 1, the pilot the
+        /// cast screen's preview chip starts, admitted at schema 29 itself and handed back unchanged, as a detached copy.
+        /// Never projected: a store holding conversations has no schema-28 form, and dropping it would digest another
         /// season. The projections above still take only rules 0 with the empty store, exactly as before.
-        /// Admission is the real complete current validator and the pilot's own (DialogueRules.TryValidate, On),
-        /// the literal header, the closed pilot's storage - the three ordered lists with no role grant and no veto
-        /// occasion, and a present-null conditional term on every canonical row - and the binding of this JSON to
-        /// this state's own view, getters kept for a trace and dropped for a field view.
+        /// <para>Since the merge with SCH30 (ALL-STAR-HISTORIES-PLAN 8.5) it takes a retained schema-29 JSON object and no
+        /// live state, as <see cref="ProjectRetained28"/> does: a current state is bound to its own JSON, validated whole
+        /// and by the pilot's own validator, and taken to 29 with its store kept by
+        /// <see cref="LegacyDigestSchema30Observer.NativeTrace29"/> and <see cref="LegacyDigestSchema30Observer.NativeFields29"/>,
+        /// which hand that 29 on here. Admission here is the literal header, literal dialogue rules 1, the closed pilot's
+        /// storage - the three ordered lists with no role grant and no veto occasion, and a present-null conditional term
+        /// on every canonical row - no getter in a field view, and the complete independent frozen29 contract, which
+        /// accepts the pilot's rules 1 and nothing later.</para>
         /// </summary>
-        internal static JObject NativeTrace29(EpisodeState state, JObject trace) => Native(state, trace, true);
-        internal static JObject NativeFields29(EpisodeState state, JObject fields) => Native(state, fields, false);
-
-        /// <summary>Whether a state is the native arm's: any dialogue rules but 0. The native admission then holds them to exactly 1.</summary>
-        internal static bool IsNative29(EpisodeState state) => state != null && state.dialogueRulesVersion != 0;
+        internal static JObject NativeRetained29(JObject source, bool getterTrace) => Native(source, getterTrace);
 
         /// <summary>
-        /// The retained FindDecision answer view, owned by this exact reader and canonical
-        /// source. This cannot project caller-supplied decisions or arbitrary named JSON keys.
-        /// Actual reader exceptions still propagate unchanged to the historical Ask boundary.
-        /// A rules-1 source is admitted by the native arm instead (the answers are its canonical
-        /// rows', which the pilot holds to a null conditional term), and every other check is the same.
+        /// The closed pilot's storage on a JSON object of any schema that carries the store: the dialogue object with its
+        /// three ordered lists, no role grant and no veto occasion, and a present-null conditional term on every canonical
+        /// row. The native contract's own storage check, which the schema-30 observer's native entry also runs on the
+        /// current JSON before it projects, so each refusal comes from the check that owns it.
         /// </summary>
-        internal static JArray FindDecisionAnswers28(EpisodeState state)
+        internal static void RequireNativeStore(JObject source)
         {
-            string before = state == null ? null : Json(JObject.FromObject(state));
-            // Admit the complete current source, exact inert additions and fixed28 contract
-            // once for the batch, including modes with no decisions and their null slots.
-            if (IsNative29(state)) NativeFields29(state, OldSaveTrace.Fields(state));
-            else ProjectFields28(state, state == null ? null : OldSaveTrace.Fields(state));
+            Require(source != null && source["dialogue"] is JObject, "The complete dialogue object is required.");
+            var dialogue = (JObject)source["dialogue"];
+            Require(dialogue.Properties().Select(p => p.Name).SequenceEqual(new[] { "episodes", "grants", "vetoOccasions" })
+                && dialogue["episodes"] is JArray && Empty(dialogue["grants"]) && Empty(dialogue["vetoOccasions"]),
+                "Only the pilot's ordered dialogue lists, with no grant and no veto occasion, are admitted natively.");
+            Require(source["unifiedCommitments"] is JArray, "The complete canonical commitment array is required.");
+            foreach (var token in (JArray)source["unifiedCommitments"])
+                Require(token is JObject && token["conditionalVeto"]?.Type == JTokenType.Null,
+                    "Every canonical row must retain a present-null conditionalVeto.");
+        }
+
+        /// <summary>
+        /// The retained FindDecision answer view, owned by this exact reader and canonical source, for a state the
+        /// caller has already admitted whole (<see cref="LegacyDigestSchema30Observer.FindDecisionAnswers28"/>). This
+        /// cannot project caller-supplied decisions or arbitrary named JSON keys. Actual reader exceptions still
+        /// propagate unchanged to the historical Ask boundary. A rules-1 source is admitted there by the native arm
+        /// instead (the answers are its canonical rows', which the pilot holds to a null conditional term), and every
+        /// other check is the same.
+        /// </summary>
+        internal static JArray FindDecisionAnswersOfAnAdmittedSource28(EpisodeState state)
+        {
+            Require(state != null, "A current source state is required.");
+            string before = Json(JObject.FromObject(state));
             var answers = new JArray();
             foreach (var canonical in state.unifiedCommitments)
             {
@@ -87,14 +108,13 @@ namespace Gamesim.Tests.EditMode
             return answers;
         }
 
-        private static JObject Project(EpisodeState state, JObject source, bool getterTrace)
+        private static JObject Project(JObject source, bool getterTrace)
         {
             try
             {
-                Require(state != null && source != null, "A current source state and its own JSON are required.");
-                LegacyDigestSchema27Observer.RequireValidSource(state);
-                Require(Integer(source["schemaVersion"], 29), "Only literal schema29 is a current projection input.");
-                string stateBefore = Json(JObject.FromObject(state)), sourceBefore = Json(source);
+                Require(source != null, "A retained schema-29 JSON object is required.");
+                Require(Integer(source["schemaVersion"], 29), "Only literal schema29 is a retained projection input.");
+                string sourceBefore = Json(source);
                 Require(Integer(source["dialogueRulesVersion"], 0), "Only present integer-zero dialogue rules may be projected.");
                 Require(source["dialogue"] is JObject, "The complete inert dialogue object is required.");
                 var dialogue = (JObject)source["dialogue"];
@@ -105,11 +125,9 @@ namespace Gamesim.Tests.EditMode
                 foreach (var token in (JArray)source["unifiedCommitments"])
                     Require(token is JObject && token["conditionalVeto"]?.Type == JTokenType.Null,
                         "Every canonical row must retain a present-null conditionalVeto.");
-                // The private view selector is not a validation bypass: both entry points
-                // require the complete same current state and its exact corresponding JSON.
-                var own = JObject.FromObject(state);
-                if (!getterTrace) own = WithoutGetters(own);
-                Require(Json(own) == sourceBefore, "The JSON is not this current state's exact own view.");
+                // A field view never carries the getters; only a trace view may.
+                if (!getterTrace)
+                    Require(Json(WithoutGetters(source)) == sourceBefore, "A field view must carry no getter.");
 
                 var projected = (JObject)source.DeepClone();
                 projected.Remove("dialogueRulesVersion");
@@ -118,9 +136,9 @@ namespace Gamesim.Tests.EditMode
                 projected["schemaVersion"] = 28;
                 Fixed28(WithoutGetters(projected));
                 Require(Json(Restore(projected, source)) == sourceBefore,
-                    "The current projection must have the exact three-addition/header structural and order inverse.");
-                Require(Json(source) == sourceBefore && Json(JObject.FromObject(state)) == stateBefore,
-                    "The current source, JSON, numeric tokens and property/list order must remain unchanged.");
+                    "The retained projection must have the exact three-addition/header structural and order inverse.");
+                Require(Json(source) == sourceBefore,
+                    "The retained source, JSON, numeric tokens and property/list order must remain unchanged.");
                 return projected;
             }
             catch (Exception error) when (error is JsonException || error is OverflowException
@@ -128,32 +146,22 @@ namespace Gamesim.Tests.EditMode
             { throw new InvalidDataException("The schema29 digest observer exceeds its fixed contract.", error); }
         }
 
-        private static JObject Native(EpisodeState state, JObject source, bool getterTrace)
+        private static JObject Native(JObject source, bool getterTrace)
         {
             try
             {
-                Require(state != null && source != null, "A current source state and its own JSON are required.");
-                LegacyDigestSchema27Observer.RequireValidSource(state);
-                Require(Integer(source["schemaVersion"], 29) && state.schemaVersion == 29, "Only literal schema29 is a native input.");
-                string stateBefore = Json(JObject.FromObject(state)), sourceBefore = Json(source);
-                Require(Integer(source["dialogueRulesVersion"], 1) && state.dialogueRulesVersion == 1,
-                    "Only present integer-one dialogue rules are admitted natively.");
-                Require(DialogueRules.TryValidate(state, out string pilot) && DialogueRules.On(state),
-                    "The pilot's own validator refuses the source: " + pilot);
-                Require(source["dialogue"] is JObject, "The complete dialogue object is required.");
-                var dialogue = (JObject)source["dialogue"];
-                Require(dialogue.Properties().Select(p => p.Name).SequenceEqual(new[] { "episodes", "grants", "vetoOccasions" })
-                    && dialogue["episodes"] is JArray && Empty(dialogue["grants"]) && Empty(dialogue["vetoOccasions"]),
-                    "Only the pilot's ordered dialogue lists, with no grant and no veto occasion, are admitted natively.");
-                Require(source["unifiedCommitments"] is JArray, "The complete canonical commitment array is required.");
-                foreach (var token in (JArray)source["unifiedCommitments"])
-                    Require(token is JObject && token["conditionalVeto"]?.Type == JTokenType.Null,
-                        "Every canonical row must retain a present-null conditionalVeto.");
-                var own = JObject.FromObject(state);
-                if (!getterTrace) own = WithoutGetters(own);
-                Require(Json(own) == sourceBefore, "The JSON is not this current state's exact own view.");
+                Require(source != null, "A retained schema-29 JSON object is required.");
+                Require(Integer(source["schemaVersion"], 29), "Only literal schema29 is a native input.");
+                string sourceBefore = Json(source);
+                Require(Integer(source["dialogueRulesVersion"], 1), "Only present integer-one dialogue rules are admitted natively.");
+                RequireNativeStore(source);
+                // A field view never carries the getters; only a trace view may.
+                if (!getterTrace)
+                    Require(Json(WithoutGetters(source)) == sourceBefore, "A field view must carry no getter.");
                 var native = (JObject)source.DeepClone();
-                Require(Json(native) == sourceBefore && Json(source) == sourceBefore && Json(JObject.FromObject(state)) == stateBefore,
+                // The object itself faces the complete independent frozen29 contract, as a projection faces frozen28's.
+                Fixed29(WithoutGetters(native));
+                Require(Json(native) == sourceBefore && Json(source) == sourceBefore,
                     "The native source, JSON, numeric tokens and property/list order must remain unchanged.");
                 return native;
             }
@@ -206,6 +214,24 @@ namespace Gamesim.Tests.EditMode
             Require(owner.Assembly == assembly && method != null && method.DeclaringType == owner
                 && method.IsAssembly && method.ReturnType == typeof(void),
                 "The exact independent fixed28 historical contract is required; no fallback is allowed.");
+            try { method.Invoke(null, new object[] { fields }); }
+            catch (TargetInvocationException error) { throw error.InnerException ?? error; }
+        }
+
+        /// <summary>The frozen schema-29 whole reader, reached as <see cref="LegacyDigestSchema30Observer"/> reaches it in the subset.</summary>
+        private static void Fixed29(JObject fields)
+        {
+#if UNITY_5_3_OR_NEWER
+            var assembly = typeof(Gamesim.Persistence.EpisodeSaveStore).Assembly;
+#else
+            var assembly = typeof(EpisodeState).Assembly;
+#endif
+            var owner = assembly.GetType("Gamesim.Persistence.FrozenEpisodeV29", true);
+            var method = owner.GetMethod("Validate", BindingFlags.Static | BindingFlags.NonPublic,
+                null, new[] { typeof(JObject) }, null);
+            Require(owner.Assembly == assembly && method != null && method.DeclaringType == owner
+                && method.IsAssembly && method.ReturnType == typeof(void),
+                "The exact independent fixed29 historical contract is required; no fallback is allowed.");
             try { method.Invoke(null, new object[] { fields }); }
             catch (TargetInvocationException error) { throw error.InnerException ?? error; }
         }

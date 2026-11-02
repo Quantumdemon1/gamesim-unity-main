@@ -141,8 +141,8 @@ namespace Gamesim.Tests.EditMode
             var originalBytes = File.ReadAllBytes(files.Store.SavePath);
 
             Assert.That(files.Store.TryLoad(out var loaded, out string message), Is.True, message);
-            Assert.That(message, Does.Contain("Schema 6").And.Contain("schema 29 in memory"));
-            Assert.That(loaded.schemaVersion, Is.EqualTo(29), "A load runs the whole chain, not one step.");
+            Assert.That(message, Does.Contain("Schema 6").And.Contain("schema 30 in memory"));
+            Assert.That(loaded.schemaVersion, Is.EqualTo(30), "A load runs the whole chain, not one step.");
             Assert.That(loaded.dialogueRulesVersion, Is.Zero);
             Assert.That(loaded.dialogue, Is.Not.Null);
             Assert.That(loaded.dialogue.episodes, Is.Not.Null.And.Empty);
@@ -156,7 +156,7 @@ namespace Gamesim.Tests.EditMode
             Assert.That(File.ReadAllBytes(files.Store.BackupPath), Is.EqualTo(originalBytes),
                 "The pre-migration bytes are kept as the backup.");
             Assert.That(files.Store.TryLoad(out var again, out message), Is.True, message);
-            Assert.That(again.schemaVersion, Is.EqualTo(29));
+            Assert.That(again.schemaVersion, Is.EqualTo(30));
             Assert.That(again.dialogueRulesVersion, Is.Zero);
             Assert.That(again.dialogue, Is.Not.Null);
             Assert.That(again.dialogue.episodes, Is.Not.Null.And.Empty);

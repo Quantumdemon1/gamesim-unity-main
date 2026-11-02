@@ -121,6 +121,8 @@ namespace Gamesim.Episode
         private IEnumerator SeasonChecks(bool graphical)
         {
             seasonDirector = FindAnyObjectByType<EpisodeDirector>();
+            // The functional season walks the audited behaviour: houseguests do not bring their asks over.
+            if (seasonDirector != null) seasonDirector.AsksEnabled = false;
             RequireSeason(seasonDirector != null && seasonDirector.IsReady,"A ready episode is required for the functional season.");
             seasonPlayer = seasonDirector.gameObject.scene.GetRootGameObjects()
                 .SelectMany(root => root.GetComponentsInChildren<HousePlayerController>(true)).Single();

@@ -411,22 +411,26 @@ namespace Gamesim.OldSaves
         /// scene engine did ("default": the authored catalogue season, nothing switched on; the director's default
         /// engine uses seed 20260910), played by the walker to the first state at <paramref name="week"/> and
         /// <paramref name="phase"/>, then saved by that build's store. The session id is fixed, so a regeneration
-        /// writes the same state; only the envelope's savedAt differs.
+        /// writes the same state; only the envelope's savedAt differs. "director-allstars" is "director" with the cast
+        /// screen's All-Stars roster picked (SCH30, ALL-STAR-HISTORIES-PLAN 8.7): every season-builder build has the
+        /// roster choice (44fa4580), and "director" stays exactly what it always wrote.
         /// </summary>
         private static int Generate(string outFile, uint seed, int size, string rules, int week, EpisodePhase phase)
         {
             EpisodeState fresh;
-            if (rules == "director")
+            if (rules == "director" || rules == "director-allstars")
             {
 #if OLDSAVE_BEFORE_SEASON_BUILDER
                 throw new ArgumentException("Schema 6's build has no season builder: its director played the catalogue season (default).");
 #else
-                fresh = SeasonBuilder.Create(new SeasonBuilder.Choice { HouseSize = size }, seed);
+                var choice = new SeasonBuilder.Choice { HouseSize = size };
+                if (rules == "director-allstars") choice.Roster = CastTemplates.Roster.AllStars;
+                fresh = SeasonBuilder.Create(choice, seed);
                 Rules.Fresh(fresh);
 #endif
             }
             else if (rules == "default") fresh = ContentCatalog.Create(seed);
-            else throw new ArgumentException("rules is director or default");
+            else throw new ArgumentException("rules is director, director-allstars or default");
             fresh.sessionId = "oldsave-" + rules + "-" + seed + "-" + size;
             return PlayOnAndSave(fresh, new Walker("generate-"), outFile, week, phase);
         }

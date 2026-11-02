@@ -45,6 +45,14 @@ namespace Gamesim.Episode
                 lastSocialDelta = 0d;
                 return;
             }
+            // An answer given on an ask's card (EpisodeDirector.ComesToYou.cs): the card keeps the two lines for its
+            // reply page, and nothing is narrated into the next conversation. Never a refusal, which returned above,
+            // nor a save that failed.
+            if (askCardOpen && focusedNpc == null)
+            {
+                if (!blockedRecovery && !npcSaveSuspended) CaptureAskCardReply(before, result, command);
+                return;
+            }
             if (focusedNpc == null || blockedRecovery || npcSaveSuspended) return;
             var state = result.state;
             var visible = state.events.Where(e => e.sequence >= before.nextSequence

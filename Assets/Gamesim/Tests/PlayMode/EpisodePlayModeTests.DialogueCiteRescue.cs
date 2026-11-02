@@ -125,7 +125,7 @@ namespace Gamesim.Tests.PlayMode
             byte[] bytes = Convert.FromBase64String((string)carrier["base64"]);
             using (var sha = SHA256.Create())
                 Assert.That(BitConverter.ToString(sha.ComputeHash(bytes)).Replace("-", ""), Is.EqualTo(CiteCarrierSha));
-            var fixture = JsonConvert.DeserializeObject<EpisodeState>(new UTF8Encoding(false, true).GetString(bytes), new JsonSerializerSettings
+            var fixture = JsonConvert.DeserializeObject<EpisodeState>(CiteCarrierAtTheLiveSchema(new UTF8Encoding(false, true).GetString(bytes)), new JsonSerializerSettings
             {
                 TypeNameHandling = TypeNameHandling.None, DateParseHandling = DateParseHandling.None,
                 ObjectCreationHandling = ObjectCreationHandling.Replace, FloatParseHandling = FloatParseHandling.Double,
@@ -146,6 +146,26 @@ namespace Gamesim.Tests.PlayMode
             yield return SkipReveals();
             AssertEquivalent(fixture, director.Snapshot);
             AssertDialogueUiDisk(director.Snapshot);
+        }
+
+        /// <summary>
+        /// SCH30, as the EditMode suite reads the same carrier (DialoguePublicRescueV2Tests.AtTheLiveSchema): the carrier holds
+        /// the schema-29 public fields it was captured with, and the live schema is 30. It is read through schema 30's own
+        /// literals (UpgradeV29ToV30's: the pooled fields off, after the dialogue store, the header 30); the retained bytes
+        /// are never edited.
+        /// </summary>
+        private static string CiteCarrierAtTheLiveSchema(string captured)
+        {
+            JObject lifted;
+            using (var reader = new JsonTextReader(new StringReader(captured)) { DateParseHandling = DateParseHandling.None, FloatParseHandling = FloatParseHandling.Double, MaxDepth = 64 })
+            {
+                lifted = JObject.Load(reader, new JsonLoadSettings { DuplicatePropertyNameHandling = DuplicatePropertyNameHandling.Error });
+                Assert.That(reader.Read(), Is.False, "Exactly one captured JSON object.");
+            }
+            Assert.That((int)lifted["schemaVersion"], Is.EqualTo(29), "The carrier is a schema-29 capture.");
+            lifted.Add("alumniRulesVersion", 0); lifted.Add("alumniCatalogEdition", JValue.CreateNull()); lifted.Add("tuningRulesVersion", 0);
+            lifted["schemaVersion"] = 30;
+            return lifted.ToString(Formatting.None);
         }
 
         private sealed class CitePublicFieldsOnly : DefaultContractResolver

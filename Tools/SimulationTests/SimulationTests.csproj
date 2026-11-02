@@ -50,6 +50,8 @@
     <Compile Include="$(EditMode)DialogueCampaignPleaFallbackTests.cs" />
     <!-- NpcInvitation.cs is included by the whole Simulation glob above. -->
     <Compile Include="$(EditMode)NpcInvitationTests.cs" />
+    <!-- ComesToYou.cs (the asks that come to the player) is included by the Simulation glob too. -->
+    <Compile Include="$(EditMode)ComesToYouTests.cs" />
 
     <!--
       Tests that touch nothing but System, NUnit, Newtonsoft and Gamesim.Simulation. Nothing of
@@ -97,6 +99,9 @@
     <Compile Include="$(EditMode)LegacyDigestSchema28ObserverTests.cs" />
     <Compile Include="$(EditMode)LegacyDigestSchema29Observer.cs" />
     <Compile Include="$(EditMode)LegacyDigestSchema29ObserverTests.cs" />
+    <Compile Include="$(EditMode)LegacyDigestSchema30Observer.cs" />
+    <Compile Include="$(EditMode)LegacyDigestSchema30ObserverTests.cs" />
+    <Compile Include="$(EditMode)PooledSchema30ShapeTests.cs" />
     <Compile Include="$(EditMode)OldSaveTrace.cs" />
     <Compile Include="$(EditMode)CurrentOldSaveTrace.cs" />
     <Compile Include="$(EditMode)DialoguePreviewWitness.cs" />
@@ -286,6 +291,18 @@
     <Compile Include="$(EditMode)FinaleRulesTests.cs" />
     <Compile Include="$(EditMode)NpcAgencyTests.cs" />
     <Compile Include="$(EditMode)CastTemplateTests.cs" />
+    <!-- The All-Star player histories (ALL-STAR-HISTORIES-PLAN H1a and H1b): edition 1 and the opening state. -->
+    <Compile Include="$(EditMode)AlumniHistoriesTests.cs" />
+    <!-- ALL-STAR-HISTORIES-PLAN §14 S1: alumni rules 2, the loyalty that moves. -->
+    <Compile Include="$(EditMode)AlumniLoyaltyTests.cs" />
+    <!-- ALL-STAR-HISTORIES-PLAN §14 S2: alumni rules 3, reputations and known pairs. -->
+    <Compile Include="$(EditMode)KnownBlocsTests.cs" />
+    <!-- ALL-STAR-HISTORIES-PLAN §14 S3: alumni rules 4, the counter-blocs. -->
+    <Compile Include="$(EditMode)CounterBlocTests.cs" />
+    <!-- ALL-STAR-HISTORIES-PLAN §14.L S3b: alumni rules 5, outsider pacts that grow past two. -->
+    <Compile Include="$(EditMode)CounterPactGrowthTests.cs" />
+    <!-- ALL-STAR-HISTORIES-PLAN §14.F S5: what the player is shown of the past games, from alumni rules 3. -->
+    <Compile Include="$(EditMode)PastGamesReadTests.cs" />
     <Compile Include="$(EditMode)CharacterDraftTests.cs" />
     <Compile Include="$(EditMode)CharacterNamesTests.cs" />
     <Compile Include="$(EditMode)DealResolutionTests.cs" />
@@ -439,6 +456,9 @@
     <Compile Include="$(EditMode)BalanceLabPerformance.cs" />
     <Compile Include="$(EditMode)BalanceLabTests.cs" />
     <Compile Include="$(EditMode)BalanceLabReports.cs" />
+    <Compile Include="$(EditMode)BalanceLabAlumniReport.cs" />
+    <!-- ALL-STAR-HISTORIES-PLAN 14.H and 14.L.H (S4): the report's arms and the pact watch, by fixtures. -->
+    <Compile Include="$(EditMode)BalanceLabAlumniReportTests.cs" />
     <!-- B6b and T0: a long tier played in parts and merged; the diagnostics that decide each tuning question. -->
     <Compile Include="$(EditMode)BalanceLabParts.cs" />
     <!-- B5b: the synthetic NPC world the lab drives at a budget of ticks a week. -->

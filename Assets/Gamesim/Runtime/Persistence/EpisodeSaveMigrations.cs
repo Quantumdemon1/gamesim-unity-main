@@ -21,18 +21,47 @@ namespace Gamesim.Persistence
             if (original == null || original["schemaVersion"]?.Type != JTokenType.Integer)
                 throw new InvalidDataException("Simulation schema version must be an integer.");
             long version = (long)original["schemaVersion"];
-            // SCH30 step 1 (ALL-STAR-HISTORIES-PLAN 8.3): the frozen schema-29 whole reader holds every direct-29
-            // save, and the end of every older chain, before the live schema moves on. Schema 29 is closed from here.
-            if (version == 29)
-            {
-                FrozenEpisodeV29.Validate(original);
-                return (JObject)original.DeepClone();
-            }
+            if (version == 30) return (JObject)original.DeepClone();
+            if (version < 1 || version > 29) throw new InvalidDataException("Unsupported simulation schema version.");
+            var result = UpgradeV29ToV30(version == 29 ? original : PrepareV29Payload(original, out _));
+            migrated = true;
+            return result;
+        }
+
+        /// <summary>
+        /// Adds only schema 30's pooled off literals (SCH30, ALL-STAR-HISTORIES-PLAN 5.1 and 8.4), in their declared
+        /// order after the dialogue store: the alumni rules 0, no alumni edition, the tuning rules 0. The complete frozen
+        /// schema-29 whole reader must accept the untouched original before any clone or literal, so this also holds the
+        /// end of every older chain to it. Nothing is inferred: the dialogue rules and store, the story rules, the
+        /// commitment mode and every role-moments value carry over as they are, and an All-Stars season stays at alumni
+        /// rules 0 and plays as it did. Literals written by hand, never from a live DTO.
+        /// </summary>
+        public static JObject UpgradeV29ToV30(JObject original)
+        {
+            FrozenEpisodeV29.Validate(original);
+            var result = (JObject)original.DeepClone();
+            result.Add("alumniRulesVersion", 0);
+            result.Add("alumniCatalogEdition", JValue.CreateNull());
+            result.Add("tuningRulesVersion", 0);
+            result["schemaVersion"] = 30;
+            return result;
+        }
+
+        /// <summary>
+        /// Frozen v1-v28-to-v29 dispatch; every historical step retains its original output. A direct 29 is returned
+        /// as a detached copy: <see cref="UpgradeV29ToV30"/> runs the frozen schema-29 reader on whatever this hands on.
+        /// </summary>
+        public static JObject PrepareV29Payload(JObject original, out bool migrated)
+        {
+            migrated = false;
+            if (original == null || original["schemaVersion"]?.Type != JTokenType.Integer)
+                throw new InvalidDataException("Simulation schema version must be an integer.");
+            long version = (long)original["schemaVersion"];
+            if (version == 29) return (JObject)original.DeepClone();
             if (version < 1 || version > 28) throw new InvalidDataException("Unsupported simulation schema version.");
             var historical = version == 28 ? original
                 : UpgradeV27ToV28(version == 27 ? original : PrepareV27Payload(original, out _));
             var result = UpgradeV28ToV29(historical);
-            FrozenEpisodeV29.Validate(result);
             migrated = true;
             return result;
         }

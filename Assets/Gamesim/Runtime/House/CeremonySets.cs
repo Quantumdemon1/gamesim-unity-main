@@ -25,16 +25,18 @@ namespace Gamesim.House
     /// the room, and the television goes. Two chairs cloned from the table's face it side by side
     /// - the hot seats - the sofa is turned to face it with its cushions, and gets three seats, and
     /// standing marks are laid behind the hot seats for the rest of the house, with one beside the
-    /// screen for the Head of Household.</para>
+    /// screen for the Head of Household. The shipped house authors its own screen and gallery
+    /// (MOCKUP-PASS-PLAN M21): the screen is found by <see cref="LivingScreenName"/> and kept, and the
+    /// gallery's seats are anchored as they stand, so there nothing is cloned.</para>
     ///
     /// <para>Nothing here is saved: the scene is never re-saved for it, a reload dresses it again,
     /// and a house dressed differently - no table, no sofa - simply gets fewer seats, never
     /// phantom ones. Presentation only.</para>
     ///
     /// <para>What it builds or moves is placed on the layer of the room it stands in, in the same call
-    /// (ROOM-SCOPE-PLAN RS2a, <see cref="HouseRoomScope.PlaceDressing"/>): the living room's screen
-    /// and hot seats are copies of the nomination room's props, so a copy goes by where it stands,
-    /// never by the layer it was copied with.</para>
+    /// (ROOM-SCOPE-PLAN RS2a, <see cref="HouseRoomScope.PlaceDressing"/>): in a house without a screen
+    /// or gallery of its own, the living room's screen and hot seats are copies of the nomination
+    /// room's props, so a copy goes by where it stands, never by the layer it was copied with.</para>
     /// </summary>
     public static class CeremonySets
     {
@@ -51,7 +53,7 @@ namespace Gamesim.House
         /// <summary>The prototype's television, which the living room's screen replaces.</summary>
         public const string TelevisionName = "Television";
         public const string TelevisionConsoleName = "Television console";
-        /// <summary>The living room's screen: the set's screen prop, cloned, named so the episode station never mistakes it for its own.</summary>
+        /// <summary>The living room's screen: the house's own, authored under this name (HouseLivingGallery), or the set's screen prop cloned where it has none; named so the episode station never mistakes it for its own.</summary>
         public const string LivingScreenName = ScreenSurface.PropName + " (Living)";
 
         /// <summary>The least room between chairs along the ring: a chair is about 0.57 wide.</summary>

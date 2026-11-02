@@ -15,13 +15,16 @@ namespace Gamesim.House
     /// it builds its scope), and again at every point that builds or moves dressing, on what it built or
     /// moved, in the same call (<see cref="PlaceDressing"/>): the ceremony sets, the competition's stage,
     /// the diary's backdrop, the public displays, the memory wall's layout and the house's activity
-    /// effects. A copy of another room's prop - the living room's screen and hot seats are copies of the
-    /// nomination room's - is placed by where it stands, never by the layer it was copied with.</para>
+    /// effects. A copy of another room's prop - the living room's screen and hot seats, in a house without
+    /// its own, are copies of the nomination room's - is placed by where it stands, never by the layer it
+    /// was copied with.</para>
     ///
     /// <para><b>Not drawn yet.</b> A piece on an inactive object, or with no bounds yet (Unity may give a
     /// renderer on an inactive object empty bounds), waits, on the shell's layer, and is placed the first
     /// time it can be read: the director's late pass looks every frame (<see cref="KeepDressingPlaced"/>),
-    /// after Update and before the main camera renders, so it is placed in the frame it is first drawn.
+    /// after Update and before the main camera renders, so it is placed in the frame it is first drawn -
+    /// but for a text TextMeshPro first lays out after that pass (in Canvas.willRenderCanvases), which is
+    /// drawn one frame on the shell's layer, the safe side (R6), and placed by the next pass.
     /// A waiting piece costs an activity read a frame, and one that is active with empty bounds (an empty
     /// text, a mesh not mounted yet) a bounds read too, until it has some.</para>
     ///

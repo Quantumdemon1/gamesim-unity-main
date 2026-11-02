@@ -176,6 +176,9 @@ namespace Gamesim.Tests.PlayMode
         /// stand on the nomination room's, all in the dressing's own call, and are still placed there a
         /// frame on, not sent to the shell for having moved. The living room's view draws
         /// the screen and leaves the ring out; the nomination room's draws the ring and leaves the screen out.
+        /// The shipped house authors the living room's own screen (MOCKUP-PASS-PLAN M21's gallery), which
+        /// the dressing finds and keeps, copying nothing; it is set aside here so the dressing makes the
+        /// cross-room copy this test is about.
         /// </summary>
         [UnityTest]
         public IEnumerator RoomScope_ACeremonyCopyIsDrawnInTheRoomItStandsIn()
@@ -189,13 +192,27 @@ namespace Gamesim.Tests.PlayMode
             var source = SceneComponents<Transform>().FirstOrDefault(t => t.name == ScreenSurface.PropName && t.gameObject.activeInHierarchy);
             Assert.That(source, Is.Not.Null, "The set's screen, which the living room's is copied from.");
             string sourceLayers = string.Join("/", source.GetComponentsInChildren<Renderer>(true).Select(r => r.gameObject.layer).Distinct());
-            // A fresh house has no sets dressed until a ceremony stages one: dressed now for a full house,
-            // the living room's screen is copied and the ring re-laid with clones, in this call.
-            Assert.That(SceneComponents<Transform>().Any(t => t.name == CeremonySets.LivingScreenName), Is.False, "No set is dressed before the first ceremony.");
+            // The shipped house authors the living room's own screen (M21's gallery: named by HouseLivingGallery,
+            // pinned by RoomFinishTests), so the dressing finds it and copies nothing. It is set aside - switched
+            // off, and renamed, since the dressing's search reads switched-off pieces too - so the dressing makes
+            // the copy this test is about: the nomination room's screen cloned into the living room, which goes
+            // by where it stands, never by the nomination room's layer it is copied with (RS2a).
+            var authored = SceneComponents<Transform>().Where(t => t.name == CeremonySets.LivingScreenName).ToList();
+            Assert.That(authored.Count, Is.EqualTo(1), "The living room's own screen, authored in the scene: found "
+                + string.Join(", ", authored.Select(t => t.name + (t.gameObject.activeInHierarchy ? " (on)" : " (off)") + " at " + t.position)) + ".");
+            authored[0].gameObject.SetActive(false);
+            authored[0].name = CeremonySets.LivingScreenName + " (authored, set aside)";
+            // A fresh house has no sets dressed until a ceremony stages one (a batch run and reduced motion stage
+            // none): dressed now for a full house, the living room's screen is copied and the ring re-laid with
+            // clones, in this call.
+            Assert.That(SceneComponents<Transform>().Any(t => t.name == CeremonySets.RootName && t.parent == null), Is.False,
+                "No set is dressed before the first ceremony.");
             CeremonySeating.Ensure(scene, 16);
             var screen = SceneComponents<Transform>().FirstOrDefault(t => t.name == CeremonySets.LivingScreenName);
             Assert.That(screen, Is.Not.Null, "The living room's screen, copied from the nomination room's.");
             var root = SceneComponents<Transform>().First(t => t.name == CeremonySets.RootName && t.parent == null);
+            Assert.That(screen.IsChildOf(root), Is.True, "Copied under the set's root, not the scene's own screen: " + screen.name + " under "
+                + (screen.parent != null ? screen.parent.name : "the scene") + ".");
             var ring = Rs2aRingChairs().Where(t => t.gameObject.activeInHierarchy).ToList();
             Assert.That(ring.Count, Is.EqualTo(15), "Fifteen chairs round the table for sixteen.");
             Assert.That(ring.Count(chair => chair.IsChildOf(root)), Is.GreaterThan(0), "Some of them cloned for the full house.");
@@ -207,7 +224,8 @@ namespace Gamesim.Tests.PlayMode
             var onScreen = Rs2aCheckPieces(scope, screenPieces, "the living room's screen", failures);
             var onRing = Rs2aCheckPieces(scope, ringPieces, "the nomination ring", failures);
             Assert.That(failures, Is.Empty, string.Join("; ", failures.Take(20)));
-            Assert.That(onScreen[living], Is.GreaterThan(0), "The copied screen stands on the living room's layer (its source's pieces are on " + sourceLayers + ").");
+            Assert.That(onScreen[living], Is.GreaterThan(0), "The copied screen stands on the living room's layer (its source's pieces are on " + sourceLayers + "; the copy's: "
+                + string.Join(", ", screenPieces.Select(r => Rs2aName(r) + " on " + r.gameObject.layer + (HouseRoomScope.CanPlace(r) ? Rs2aWhere(r) : ", not drawn yet"))) + ").");
             Assert.That(screenPieces.Where(r => r.gameObject.layer == RoomLayers.Nomination).Select(Rs2aName).ToArray(), Is.Empty,
                 "No piece of the copy keeps the nomination room's layer it could have been copied with.");
             Assert.That(onRing[nomination], Is.GreaterThan(0), "The ring's chairs stand on the nomination room's layer.");
@@ -380,7 +398,9 @@ namespace Gamesim.Tests.PlayMode
         /// own calls, before any frame, and the scene pieces the first two move - the ring's own chairs,
         /// the Head of Household's display pushed into its wall - a frame on, still placed, since the call
         /// placed them again; the competition's stage in the press that builds it and again when the
-        /// player's instrument is first drawn; the diary's backdrop once the player is seated; the activity
+        /// player's instrument is first drawn, and a piece readable then but still waiting - another
+        /// entrant's readout, its text first laid out after the last late pass - a late pass on, placed;
+        /// the diary's backdrop once the player is seated; the activity
         /// effects' bubbles and steam where they rise, and the swimmer's splash on the yard's layer before
         /// and a frame after a Tick moves it.
         /// </summary>
@@ -539,7 +559,17 @@ namespace Gamesim.Tests.PlayMode
             yield return null;
             Rs2aExpectInRooms(Rs2aCheckPieces(scope, instrument.GetComponentsInChildren<Renderer>(true), "the player's instrument", failures),
                 "the player's instrument", failures);
-            Rs2aCheckPieces(scope, stage.GetComponentsInChildren<Renderer>(true), "the arena's stage", failures);
+            // Another entrant's station can be taken a frame after the player's (its walker arrived late): its
+            // readouts, whose text TMP first lays out after that frame's late pass (Canvas.willRenderCanvases),
+            // are readable now and still waiting, and RS2a places them the first frame they can be read - the
+            // next late pass - so they are read again a frame on, where anything still waiting fails.
+            var firstRead = new List<Renderer>();
+            Rs2aCheckPieces(scope, stage.GetComponentsInChildren<Renderer>(true), "the arena's stage", failures, waitingReadable: firstRead);
+            if (firstRead.Count > 0)
+            {
+                yield return null;
+                Rs2aCheckPieces(scope, firstRead.Distinct(), "the arena's stage, a late pass on", failures);
+            }
         }
 
         /// <summary>The diary's backdrop, built as the player sits, read once seated; and kept where it was when the visit ends.</summary>
@@ -704,9 +734,12 @@ namespace Gamesim.Tests.PlayMode
         /// dressing's, collider-free and in that room by the classifier; on the shell's layer if the rule
         /// puts it in no room, it is not drawn yet and waits, or it moved and went to the shell (with
         /// <paramref name="everyPiece"/>; otherwise only the room layers are read). Bodies and pieces on
-        /// layers of their own are not the dressing's. The pieces on each room's layer.
+        /// layers of their own are not the dressing's. The pieces on each room's layer. A piece the rule puts
+        /// in a room that is readable and still waiting on the shell's layer fails, unless
+        /// <paramref name="waitingReadable"/> is given: then it goes there, for the caller to read a frame on.
         /// </summary>
-        private static int[] Rs2aCheckPieces(HouseRoomScope scope, IEnumerable<Renderer> pieces, string what, List<string> failures, bool everyPiece = true)
+        private static int[] Rs2aCheckPieces(HouseRoomScope scope, IEnumerable<Renderer> pieces, string what, List<string> failures, bool everyPiece = true,
+            List<Renderer> waitingReadable = null)
         {
             var perRoom = new int[RoomLayers.Count];
             foreach (var renderer in pieces)
@@ -739,7 +772,14 @@ namespace Gamesim.Tests.PlayMode
                     continue;
                 }
                 if (placement == HouseRoomScope.Placement.Room && !scope.WentToTheShell(renderer))
-                    failures.Add(what + ": " + Rs2aName(renderer) + " is the " + HouseRoomScope.RoomId(room) + "'s by the rule but stands on the shell's layer" + Rs2aWhere(renderer));
+                {
+                    // Readable since the last late pass and still waiting: placed the first frame it can be read
+                    // (RS2a), the next late pass, so a caller that passes the list reads it again a frame on.
+                    bool waiting = scope.IsWaiting(renderer);
+                    if (waiting && waitingReadable != null) { waitingReadable.Add(renderer); continue; }
+                    failures.Add(what + ": " + Rs2aName(renderer) + " is the " + HouseRoomScope.RoomId(room) + "'s by the rule but stands on the shell's layer"
+                        + (waiting ? ", still waiting to be placed" : scope.IsPlaced(renderer) ? ", placed" : ", neither waiting nor placed") + Rs2aWhere(renderer));
+                }
             }
             return perRoom;
         }

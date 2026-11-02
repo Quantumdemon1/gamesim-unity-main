@@ -293,11 +293,28 @@ namespace Gamesim.Tests.PlayMode
         /// a walk-in the player turned down names nobody, though the watch offers it again. The player, in
         /// free play, is drawn wherever the view is. An invitation is let go while the view is on another
         /// room - the player is looking away (D18, RS5) - and back on the player's room it comes up again,
-        /// its speaker drawn while it is up.
+        /// its speaker drawn while it is up. The scene's season plays with the story system off, so the test
+        /// plays it with the story on from this week: a walk-in is the story system's.
         /// </summary>
         [UnityTest]
         public IEnumerator RoomScope_APromptNamesOnlyDrawnPeople()
         {
+            // A walk-in is the story system's: only past its boundary does the watch hold an offer
+            // (OfferProximityEvent) and only under it is there a Pull (CurrentPull), the one thing that names
+            // the pair (WalkInPullShown: the walk-in clause keyed to its Pull on screen, RS4's review). The
+            // scene's own season plays with the story off (ShippedRules: the default scene engine stays off
+            // unless switched on), so the house is reloaded on that season with the story on from this week and
+            // no beat open: the walk-in staged below is the only Pull.
+            HoldTheHouseForTheFixture();
+            var season = director.Snapshot;
+            Gamesim.Simulation.EpisodeEngine.EnableStory(season, season.week);
+            Assert.That(Gamesim.Simulation.EpisodeEngine.OpenStoryBeats(season), Is.Empty, "No beat open: the only Pull is the walk-in this test stages.");
+            Assert.That(Gamesim.Simulation.EpisodeValidation.TryValidate(season, out string invalid), Is.True, invalid);
+            new Gamesim.Persistence.EpisodeSaveStore(director.SavePath).Save(season);
+            yield return ReloadEpisode();
+            Assert.That(Gamesim.Simulation.EpisodeEngine.StoryOn(director.Snapshot), Is.True, "The reloaded season plays under the story system.");
+            // The walk-in watch's clock held off, so the staged walk-in is the only one offered.
+            NpcWrite("proximityWatch", -1e6f);
             director.ClosePanels();
             director.SuspendNpcAutonomyForDiagnostics();
             yield return null;

@@ -40,8 +40,9 @@ namespace Gamesim.Simulation
     {
         /// <summary>
         /// Prepare a detached trusted candidate. This NEVER installs current. The root
-        /// coordinator must save successfully, then construct/install a new engine; a
-        /// failed save or abandoned candidate consumes no authority or random draws.
+        /// coordinator installs a new engine from the candidate and saves the house's installed
+        /// operations together (EpisodeDirector.Durable.cs); an abandoned candidate consumes no
+        /// authority or random draws.
         /// </summary>
         public NpcOperationResult PrepareNpcOperation(NpcOperationRequest request)
         {
@@ -94,7 +95,7 @@ namespace Gamesim.Simulation
                 }
                 next.revision = checked(current.revision + 1);
                 if (!Valid(next, out var error)) throw new RuleException("NPC candidate rejected: " + error);
-                result.accepted = true; result.reason = "Prepared; save before install."; result.candidate = next;
+                result.accepted = true; result.reason = "Prepared; install, then save with the house's next write."; result.candidate = next;
                 return result;
             }
             catch (RuleException error) { return Reject(error.Message); }

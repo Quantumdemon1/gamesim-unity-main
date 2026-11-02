@@ -1,6 +1,8 @@
 using System;
 using System.IO;
 using System.Linq;
+using System.Reflection;
+using System.Text;
 using System.Threading;
 using Gamesim.Persistence;
 using Gamesim.Simulation;
@@ -265,6 +267,194 @@ namespace Gamesim.Tests.EditMode
             store.Save(second);
             Assert.That(store.TryLoad(out loaded, out message), Is.True, message);
             Assert.That(loaded.revision, Is.EqualTo(1));
+        }
+
+        /// <summary>
+        /// The check of the primary before it is overwritten was a whole load of it, a third of every
+        /// save. A store that proved the primary's bytes itself - installed them, or loaded them -
+        /// now compares the file with those instead, and anything that is not exactly them gets the
+        /// whole check and today's outcome. These pin which saves compare, and that every other primary
+        /// is still read in full: one byte changed, an older save put back, a hold, a failed swap.
+        /// </summary>
+        [Test]
+        public void Save_AfterALoadComparesTheLoadedBytesInsteadOfParsingThem()
+        {
+            var first = ContentCatalog.Create(17);
+            new EpisodeSaveStore(store.SavePath).Save(first);
+            Assert.That(store.TryLoad(out var loaded, out var message), Is.True, message);
+            var second = loaded.Clone();
+            second.revision = 1;
+            store.Save(second);
+            Assert.That(PrimaryParsesSkipped(store), Is.EqualTo(1), "The first save after the load compared the bytes it loaded.");
+            var third = second.Clone();
+            third.revision = 2;
+            store.Save(third);
+            Assert.That(PrimaryParsesSkipped(store), Is.EqualTo(2), "The next compared the bytes the first installed.");
+
+            var stranger = new EpisodeSaveStore(store.SavePath);
+            var fourth = third.Clone();
+            fourth.revision = 3;
+            stranger.Save(fourth);
+            Assert.That(PrimaryParsesSkipped(stranger), Is.EqualTo(0), "A store that has proved nothing reads the primary in full.");
+            Assert.That(store.TryLoad(out loaded, out message), Is.True, message);
+            Assert.That(loaded.revision, Is.EqualTo(3));
+        }
+
+        [Test]
+        public void Save_APrimaryChangedByOneByteGetsTheWholeCheckAndIsRefused()
+        {
+            var first = ContentCatalog.Create(17);
+            store.Save(first);
+            var second = first.Clone();
+            second.revision = 1;
+            store.Save(second);
+            Assert.That(PrimaryParsesSkipped(store), Is.EqualTo(1));
+            var proved = File.ReadAllBytes(store.SavePath);
+            var backup = File.ReadAllBytes(store.BackupPath);
+
+            // Another writer changes one digit of the checksum: the file still parses, and only the
+            // whole check tells it from the save this store wrote. The envelope ahead of the state is
+            // ASCII, so a character's index is its byte's.
+            const string field = "\"checksum\": \"";
+            int digit = Encoding.UTF8.GetString(proved).IndexOf(field, StringComparison.Ordinal);
+            Assert.That(digit, Is.GreaterThan(0));
+            digit += field.Length;
+            var changed = (byte[])proved.Clone();
+            changed[digit] = changed[digit] == (byte)'0' ? (byte)'1' : (byte)'0';
+            File.WriteAllBytes(store.SavePath, changed);
+            var third = second.Clone();
+            third.revision = 2;
+            var error = Assert.Throws<InvalidDataException>(() => store.Save(third));
+            Assert.That(error.Message, Is.EqualTo("The current save is unreadable. Choose backup recovery or another slot before saving; existing copies were preserved."));
+            Assert.That(PrimaryParsesSkipped(store), Is.EqualTo(1), "The changed primary was read in full.");
+            Assert.That(File.ReadAllBytes(store.SavePath), Is.EqualTo(changed));
+            Assert.That(File.ReadAllBytes(store.BackupPath), Is.EqualTo(backup));
+            Assert.That(Directory.GetFiles(directory, "*.pending-*"), Is.Empty);
+
+            // A refused primary leaves nothing proven: even the bytes this store wrote are read in
+            // full when they come back.
+            File.WriteAllBytes(store.SavePath, proved);
+            store.Save(third);
+            Assert.That(PrimaryParsesSkipped(store), Is.EqualTo(1));
+            Assert.That(File.ReadAllBytes(store.BackupPath), Is.EqualTo(proved));
+            Assert.That(store.TryLoad(out var loaded, out var message), Is.True, message);
+            Assert.That(loaded.revision, Is.EqualTo(2));
+        }
+
+        [Test]
+        public void Save_APrimaryReplacedByAnOlderValidSaveGetsTheWholeCheckAndProceeds()
+        {
+            var first = ContentCatalog.Create(17);
+            store.Save(first);
+            var older = File.ReadAllBytes(store.SavePath);
+            var second = first.Clone();
+            second.revision = 1;
+            store.Save(second);
+
+            // A sync client or a second copy of the game puts the earlier save back. This store wrote
+            // those bytes once, but it remembers only the last it proved.
+            File.WriteAllBytes(store.SavePath, older);
+            var third = second.Clone();
+            third.revision = 2;
+            store.Save(third);
+            Assert.That(PrimaryParsesSkipped(store), Is.EqualTo(1), "Only the second save compared; the older primary was read in full.");
+            Assert.That(File.ReadAllBytes(store.BackupPath), Is.EqualTo(older), "It rotated into the backup, as a good primary does.");
+            Assert.That(store.TryLoad(out var loaded, out var message), Is.True, message);
+            Assert.That(loaded.revision, Is.EqualTo(2));
+        }
+
+        /// <summary>
+        /// The comparison reads the primary through the same waits as the whole check, so an
+        /// exclusive hold that outlasts them is still the IOException of a failed save
+        /// (<see cref="Save_AnExclusiveHoldThatDoesNotLiftIsAFailedSaveNotADamagedOne"/>), here on a
+        /// primary the store had proved.
+        /// </summary>
+        [Test]
+        public void Save_AnExclusiveHoldOnAProvenPrimaryIsStillAFailedSave()
+        {
+            var first = ContentCatalog.Create(17);
+            store.Save(first);
+            var second = first.Clone();
+            second.revision = 1;
+            store.Save(second);
+            Assert.That(PrimaryParsesSkipped(store), Is.EqualTo(1), "The primary is one this store proved.");
+            var before = File.ReadAllBytes(store.SavePath);
+            var backup = File.ReadAllBytes(store.BackupPath);
+            var third = second.Clone();
+            third.revision = 2;
+            using (new HeldFile(store.SavePath, FileShare.None))
+            {
+                var error = Assert.Throws<IOException>(() => store.Save(third));
+                Assert.That(error.Message, Is.EqualTo("The current save could not be opened to check it before saving; it was left as it is."));
+                Assert.That(error.InnerException, Is.TypeOf<IOException>(), "The read's own failure is kept.");
+            }
+            Assert.That(PrimaryParsesSkipped(store), Is.EqualTo(1));
+            Assert.That(File.ReadAllBytes(store.SavePath), Is.EqualTo(before));
+            Assert.That(File.ReadAllBytes(store.BackupPath), Is.EqualTo(backup));
+            Assert.That(Directory.GetFiles(directory, "*.pending-*"), Is.Empty);
+
+            store.Save(third);
+            Assert.That(PrimaryParsesSkipped(store), Is.EqualTo(1), "A read that failed leaves nothing proven, so the next save reads the primary in full.");
+            Assert.That(store.TryLoad(out var loaded, out var message), Is.True, message);
+            Assert.That(loaded.revision, Is.EqualTo(2));
+        }
+
+        /// <summary>
+        /// A hold that lets reads through refuses only the swap (<see cref="HeldFile"/>), after the
+        /// comparison passed. A swap that fails can have moved the primary aside, so it leaves nothing
+        /// proven, and the next save reads the same bytes in full.
+        /// </summary>
+        [Test]
+        [UnityPlatform(RuntimePlatform.WindowsEditor)]
+        public void Save_AFailedSwapLeavesNothingProven()
+        {
+            var first = ContentCatalog.Create(17);
+            store.Save(first);
+            var before = File.ReadAllBytes(store.SavePath);
+            var second = first.Clone();
+            second.revision = 1;
+            using (new HeldFile(store.SavePath))
+            {
+                Assert.Throws<IOException>(() => store.Save(second));
+            }
+            Assert.That(PrimaryParsesSkipped(store), Is.EqualTo(1), "The comparison passed before the swap failed.");
+            Assert.That(File.ReadAllBytes(store.SavePath), Is.EqualTo(before));
+            Assert.That(File.Exists(store.BackupPath), Is.False);
+
+            store.Save(second);
+            Assert.That(PrimaryParsesSkipped(store), Is.EqualTo(1), "The unchanged primary was read in full after the failed swap.");
+            Assert.That(File.ReadAllBytes(store.BackupPath), Is.EqualTo(before));
+            Assert.That(store.TryLoad(out var loaded, out var message), Is.True, message);
+            Assert.That(loaded.revision, Is.EqualTo(1));
+        }
+
+        [Test]
+        public void Save_AfterABackupRecoveryComparesTheRestoredBytes()
+        {
+            var first = ContentCatalog.Create(17);
+            store.Save(first);
+            var second = first.Clone();
+            second.revision = 1;
+            store.Save(second);
+            File.WriteAllText(store.SavePath, "interrupted external write");
+            Assert.That(store.TryLoad(out _, out _), Is.False);
+            Assert.That(store.TryRecoverBackup(out var restored, out var message), Is.True, message);
+            int compared = PrimaryParsesSkipped(store);
+            var next = restored.Clone();
+            next.revision = 1;
+            store.Save(next);
+            Assert.That(PrimaryParsesSkipped(store), Is.EqualTo(compared + 1), "The restored bytes were proved as they were read back.");
+            Assert.That(store.TryLoad(out var loaded, out message), Is.True, message);
+            Assert.That(loaded.revision, Is.EqualTo(1));
+        }
+
+        /// <summary>The store's own count of saves that compared the primary with bytes it had proved
+        /// instead of parsing it. It is private: read it the way the director's fields are read.</summary>
+        private static int PrimaryParsesSkipped(EpisodeSaveStore of)
+        {
+            var field = typeof(EpisodeSaveStore).GetField("primaryParsesSkipped", BindingFlags.NonPublic | BindingFlags.Instance);
+            Assert.That(field, Is.Not.Null, "The production store's own count.");
+            return (int)field.GetValue(of);
         }
 
         [TestCase(0)]

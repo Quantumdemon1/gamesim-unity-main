@@ -849,20 +849,24 @@ namespace Gamesim.Episode
             // snapshot is the engine's copy already, so it is read once.
             var blockBefore = engine.Snapshot.nominees ?? new List<string>();
             var wasNominated = new HashSet<string>(blockBefore);
-            // Player and NPC candidates share durable publication ordering. A phase
-            // transition cancels invalid NPC activity inside this same saved candidate.
+            // A decision's candidate carries every operation the house has installed: its write is also the
+            // house's. A phase transition cancels invalid NPC activity inside this same saved candidate.
             var candidate = new EpisodeEngine(engine.Snapshot);
             var result = candidate.Apply(command);
             if (result.accepted)
             {
                 CancelNpcInvitation();
-                if (TryPersistCandidate(result.state, out var installed, out var failure))
+                if (TryPersistTimed(result.state, "command", out var installed, out var failure))
                 { engine = new EpisodeEngine(installed); result.state = engine.Snapshot; }
                 else
                 {
                     BeginPersistenceNotice(failure);
-                    message = failure;
-                    PauseNpcSocialForPanel();
+                    // The decision's own line, even where it reads as the house's failure did: a retry that lands
+                    // later keeps it (EndSessionSaveFailure).
+                    message = failure; sessionSaveFailure = null;
+                    // Stopped without the panel's write: its retry could clear this notice of a decision that
+                    // was not committed, inside the action that just failed.
+                    SuspendNpcWorldWithoutSaving();
                     Render();
                     return new CommandResult { reason = failure, state = Snapshot };
                 }

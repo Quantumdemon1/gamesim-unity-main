@@ -133,7 +133,11 @@ namespace Gamesim.Tests.PlayMode
             Assert.That((bool)NpcInvoke("CommitNpcOperation", current, null), Is.True);
             Assert.That(director.Snapshot.npcSocial.clockTick, Is.EqualTo(before.npcSocial.clockTick + 1));
             Assert.That(director.Snapshot.revision, Is.EqualTo(before.revision + 1));
+            // Installed, not written: the disk keeps the reloaded state until the house's next write.
             Assert.That(store.TryLoad(out var disk, out var reason), Is.True, reason);
+            AssertEquivalent(before, disk);
+            director.SaveNow();
+            Assert.That(store.TryLoad(out disk, out reason), Is.True, reason);
             AssertEquivalent(director.Snapshot, disk);
         }
 
@@ -159,23 +163,32 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(NpcRead<double>("npcFrameFraction"), Is.EqualTo(.01d).Within(1e-12));
             Assert.That(NpcRead<double>("npcWorldFraction"), Is.Zero);
             Assert.That(NpcRead<double>("npcFreeSeconds"), Is.EqualTo(freeBefore + .06d).Within(1e-12));
+            // Installed, not written: the second reaches disk with the house's next write.
             Assert.That(new EpisodeSaveStore(director.SavePath).TryLoad(out var disk, out var reason), Is.True, reason);
-            AssertEquivalent(after, disk);
+            AssertEquivalent(before, disk);
             var bytes = File.ReadAllBytes(director.SavePath);
             Assert.That((bool)NpcInvoke("FlushNpcWholeTicks"), Is.True);
             AssertEquivalent(after, director.Snapshot);
             Assert.That(File.ReadAllBytes(director.SavePath), Is.EqualTo(bytes));
+            director.SaveNow();
+            Assert.That(new EpisodeSaveStore(director.SavePath).TryLoad(out disk, out reason), Is.True, reason);
+            AssertEquivalent(after, disk);
         }
 
         [UnityTest]
         public IEnumerator NpcRuntime_LoadIsNonwritingEvenWithAWholeUncommittedSecond()
         {
             yield return WaitForNpcRuntimeBinding();
+            NpcResetTransientFractions();
             var before = director.Snapshot;
             var store = new EpisodeSaveStore(director.SavePath);
             store.Save(before); store.Save(before);
             var primary = File.ReadAllBytes(store.SavePath);
             var backup = File.ReadAllBytes(store.BackupPath);
+            // A second installed and owed as well: a reload takes what is on disk and writes nothing first.
+            NpcWrite("npcFrameFraction", 1d);
+            Assert.That((bool)NpcInvoke("FlushNpcWholeTicks"), Is.True, director.StatusMessage);
+            Assert.That(director.Snapshot.revision, Is.EqualTo(before.revision + 1));
             NpcWrite("npcFrameFraction", 1.01d);
             NpcWrite("npcWorldFraction", .04d);
 
@@ -209,6 +222,11 @@ namespace Gamesim.Tests.PlayMode
             AssertEquivalent(changed.state, director.Snapshot);
             var originalBackup = File.ReadAllBytes(store.BackupPath);
             var priorPrimary = File.ReadAllBytes(store.SavePath);
+            // A second installed and owed as well: recovery reads the backup and writes nothing first.
+            NpcResetTransientFractions();
+            NpcWrite("npcFrameFraction", 1d);
+            Assert.That((bool)NpcInvoke("FlushNpcWholeTicks"), Is.True, director.StatusMessage);
+            Assert.That(director.Snapshot.revision, Is.EqualTo(changed.state.revision + 1));
             NpcWrite("npcFrameFraction", 1.01d);
             NpcWrite("npcWorldFraction", .04d);
 
@@ -226,14 +244,17 @@ namespace Gamesim.Tests.PlayMode
         }
 
         [UnityTest]
-        public IEnumerator NpcRuntime_NewSeasonRetainsOldSlotWithoutFlushingItsPendingTime()
+        public IEnumerator NpcRuntime_NewSeasonWritesTheOldSlotsInstalledSecondsButNotItsPendingTime()
         {
             yield return WaitForNpcRuntimeBinding();
-            var before = director.Snapshot;
+            NpcResetTransientFractions();
             var store = new EpisodeSaveStore(director.SavePath);
-            store.Save(before); store.Save(before);
-            var primary = File.ReadAllBytes(store.SavePath);
-            var backup = File.ReadAllBytes(store.BackupPath);
+            store.Save(director.Snapshot); store.Save(director.Snapshot);
+            var previous = File.ReadAllBytes(store.SavePath);
+            // One whole second installed and owed, then a pending fraction that would make another.
+            NpcWrite("npcFrameFraction", 1d);
+            Assert.That((bool)NpcInvoke("FlushNpcWholeTicks"), Is.True, director.StatusMessage);
+            var before = director.Snapshot;
             NpcWrite("npcFrameFraction", 1.01d);
             NpcWrite("npcWorldFraction", .04d);
 
@@ -246,10 +267,11 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(director.Snapshot.sessionId, Is.Not.EqualTo(before.sessionId));
             Assert.That(director.Snapshot.revision, Is.Zero);
             Assert.That(director.Snapshot.npcSocial.clockTick, Is.Zero);
-            Assert.That(File.ReadAllBytes(store.SavePath), Is.EqualTo(primary));
-            Assert.That(File.ReadAllBytes(store.BackupPath), Is.EqualTo(backup));
+            // The old slot holds the second the house installed in it, and not the pending fraction's.
+            Assert.That(File.ReadAllBytes(store.BackupPath), Is.EqualTo(previous), "The old slot's backup is its previous primary.");
             Assert.That(store.TryLoad(out var oldDisk, out var oldReason), Is.True, oldReason);
             AssertEquivalent(before, oldDisk);
+            Assert.That(oldDisk.npcSocial.clockTick, Is.EqualTo(before.npcSocial.clockTick));
             Assert.That(new EpisodeSaveStore(director.SavePath).TryLoad(out var fresh, out var reason), Is.True, reason);
             AssertEquivalent(director.Snapshot, fresh);
         }

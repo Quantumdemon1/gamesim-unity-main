@@ -34,7 +34,7 @@ namespace Gamesim.Episode
                     "The real house coordinator failed: " + seasonDirector.NpcAutonomyDiagnostic);
             }
             RequireSeason(seasonDirector.Snapshot.npcSocial.pending.Count > 0,
-                "Real NPC routes must reach a venue and durably start a conversation within 65 seconds.");
+                "Real NPC routes must reach a venue and start a conversation within 65 seconds.");
             var first = seasonDirector.Snapshot.npcSocial.pending.First();
             RequireSeason(seasonDirector.IsNpcConversationPhysicallyReady(first.sequence),
                 "A newly committed conversation must have fresh physical arrival evidence.");

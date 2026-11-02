@@ -352,7 +352,7 @@ namespace Gamesim.Episode
             // The competition takes the yard they would cross: anybody still walking out goes now,
             // at once - a staged exit's hold on the shut door and its dip are not for this.
             FinishWalkOut(immediate: true);
-            challengeOrigin = state; challengeActive = true; challengeHits = 0; challengeTotal = 0; challengeHitFrame = -1;
+            challengeOrigin = state; challengeActive = true; challengeHits = 0; challengeTotal = 0; challengeHitFrame = -1; competitionFramed = false;
             challengeStarted = Time.unscaledTime; challengePractice = practice; challengeResultShown = false; challengeFinishHold = 0f;
             challengeCommandId = Guid.NewGuid().ToString("N");
             if (!BeginCompetitionArena(state))
@@ -585,6 +585,23 @@ namespace Gamesim.Episode
         public bool IsFramingBriefing => briefingFramed && phaseOpen && !challengeActive && cameraRig != null && cameraRig.HasShot;
 
         /// <summary>
+        /// The rooms the competition's shots name (ROOM-SCOPE-PLAN D7, RS6a): the Yard alone, where the
+        /// arena stands. The empty floors of the bedroom and the private room under the eye show in the
+        /// frame's near edge as the shell.
+        /// </summary>
+        public static RoomSet CompetitionRooms => RoomSet.Of(CeremonyRoom("competition"));
+
+        /// <summary>Whether an attempt's own shot - the wide, or the effort's - has taken the camera since it started.</summary>
+        private bool competitionFramed;
+
+        /// <summary>
+        /// Whether the camera is on the competition's own shot: an attempt is on, its shot taken and still
+        /// held. Reduced motion keeps the viewer's shot, and input lets a shot go, so neither is the
+        /// competition's: the room scope's competition source is the view's only while this holds (RS6a).
+        /// </summary>
+        public bool IsFramingCompetition => competitionFramed && challengeActive && cameraRig != null && cameraRig.HasShot;
+
+        /// <summary>
         /// The briefing looks at the competition's set, as the mockup's frames the arena beside its
         /// card: the competition's own shot, moved over. Taken once a briefing, let go with the panel
         /// as every panel's shot is, and replaced by the competition's own when an attempt starts.
@@ -603,10 +620,13 @@ namespace Gamesim.Episode
             float shift = offset > 0f
                 ? offset * CompetitionShotDistance * Mathf.Tan(CompetitionShotFieldOfView * .5f * Mathf.Deg2Rad)
                 : BriefingShotShift;
+            // The briefing's shot names the yard it frames; the briefing itself is a panel over free play,
+            // so the view stays the whole house until free play's source goes live (RS5).
             cameraRig.MoveTo(new HouseCameraRig.Shot
             {
                 Focus = station + Vector3.up - Vector3.right * shift, Distance = CompetitionShotDistance,
                 Pitch = CompetitionShotPitch, Yaw = 0f, FieldOfView = CompetitionShotFieldOfView, Seconds = CompetitionShotSeconds,
+                Rooms = CompetitionRooms,
             });
         }
 
@@ -616,8 +636,9 @@ namespace Gamesim.Episode
             cameraRig.MoveTo(new HouseCameraRig.Shot
             {
                 Focus = StationPosition + Vector3.up, Distance = CompetitionShotDistance, Pitch = CompetitionShotPitch, Yaw = 0f,
-                FieldOfView = CompetitionShotFieldOfView, Seconds = CompetitionShotSeconds,
+                FieldOfView = CompetitionShotFieldOfView, Seconds = CompetitionShotSeconds, Rooms = CompetitionRooms,
             });
+            competitionFramed = true;
         }
 
         private void ChallengePanel()

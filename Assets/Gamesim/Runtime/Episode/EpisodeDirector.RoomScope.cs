@@ -11,17 +11,24 @@ namespace Gamesim.Episode
     /// The room scope (ROOM-SCOPE-PLAN §3.2 a and h, RS1): which of the house's rooms the main view is
     /// about, read from the camera rig's rooms, with the holds on top.
     ///
-    /// <para>RS1 computes and reports. Every source is off (<see cref="LiveRoomScopeSources"/>), so the
-    /// scope says the whole house whatever the camera does. Each later slice turns its own source on in
-    /// the slice that frames it (RS6a ceremonies and competitions, RS6b the other shots, RS5 free play
-    /// and following), so no slice ships an interim rule. Tests and the probe switch every source on
-    /// with <see cref="HoldRoomScope"/>; captures that must see everything take
-    /// <see cref="HoldWholeHouse"/>, which wins.</para>
+    /// <para>RS1 computes and reports. A source is used only once its slice turns it on
+    /// (<see cref="LiveRoomScopeSources"/>); until then the scope says the whole house whatever the camera
+    /// does. Each slice turns its own source on in the slice that frames it (RS6a ceremonies and
+    /// competitions, RS6b the other shots, RS5 free play and following), so no slice ships an interim
+    /// rule. Tests and the probe switch every source on with <see cref="HoldRoomScope"/>; captures that
+    /// must see everything take <see cref="HoldWholeHouse"/>, which wins.</para>
+    ///
+    /// <para>From RS6a a ceremony's and a competition's shots are live (D6, D7): each names its rooms in
+    /// the call that moves the camera - the ceremony's room (both rooms during the framing's move), the
+    /// stage's room for every staged shot, the Yard for the competition's - and the source is the view's
+    /// only while those shots hold the camera, so a reduced-motion competition, which takes no shot, and a
+    /// stage that has handed the camera back are the view's own again: free play's, the whole house
+    /// until RS5.</para>
     ///
     /// <para>The first reader that draws is the lamps' hook (RS3, §3.2 d, D8 i): while the scope is a
     /// room, the main camera renders with the lamps homed outside it off, and puts them back when it
-    /// is done. Until a source goes live, only a hold makes the scope a room, so players see today's
-    /// lamps.</para>
+    /// is done. Outside a ceremony's and a competition's shots only a hold makes the scope a room, so
+    /// players see today's lamps there.</para>
     ///
     /// <para>The second is the bodies (RS4, §3.2 c and e): a body is drawn while it is in a viewed room
     /// or its doorway band, is a camera subject or is named by a live prompt; a hidden body's renderer
@@ -59,9 +66,9 @@ namespace Gamesim.Episode
             Watching,
             /// <summary>The conversation two-shot: the pair's rooms (RS6b).</summary>
             Conversation,
-            /// <summary>A ceremony's framing and staging (RS6a).</summary>
+            /// <summary>A ceremony's framing, or its stage while the stage's shots hold the camera (RS6a, live).</summary>
             Ceremony,
-            /// <summary>A competition: the Yard (RS6a).</summary>
+            /// <summary>A competition while its own shot holds the camera: the Yard (RS6a, live).</summary>
             Competition,
             /// <summary>The diary room: Private (RS6b).</summary>
             Diary,
@@ -91,11 +98,12 @@ namespace Gamesim.Episode
         }
 
         /// <summary>
-        /// The sources whose rooms the scope uses. None in RS1: every source reports the whole house.
-        /// A slice turns its own on here, with the camera calls that name its rooms. The overview,
-        /// the opening and the walk-out have no switch: they are the whole house by decision (D1, D6).
+        /// The sources whose rooms the scope uses; every other source reports the whole house. A slice
+        /// turns its own on here, with the camera calls that name its rooms: RS6a the ceremonies and the
+        /// competitions (D6, D7). The overview, the opening and the walk-out have no switch: they are the
+        /// whole house by decision (D1, D6).
         /// </summary>
-        public const RoomScopeSources LiveRoomScopeSources = RoomScopeSources.None;
+        public const RoomScopeSources LiveRoomScopeSources = RoomScopeSources.Ceremony | RoomScopeSources.Competition;
 
         private HouseRoomScope roomScope;
         private float roomScopeRetry, roomScopeForgetAt;
@@ -131,6 +139,16 @@ namespace Gamesim.Episode
         }
 
         /// <summary>
+        /// Whether the view can be anything but the whole house now: a hold switches every source on, or
+        /// the view's own source is live. Otherwise <see cref="ViewedRooms"/> is the whole house, and the
+        /// drawing, the mask and the lamps stop at this check.
+        /// </summary>
+        private bool ScopeMayBeARoom => roomScopeHolds.Count > 0 || IsRoomScopeSourceLive(CurrentRoomScopeSource);
+
+        /// <summary>Whether a staged ceremony's shots hold the camera (EpisodeDirector.CeremonyStage).</summary>
+        private bool CeremonyStageHoldsTheCamera => ceremonyStage != null && ceremonyStage.HoldsTheCamera;
+
+        /// <summary>
         /// The overview, the opening and the walk-out: the whole house by decision (D1, D6), with no
         /// switch, so neither a slice nor <see cref="HoldRoomScope"/> makes them a room, whatever the
         /// rig follows over them (the walk-out follows the one leaving).
@@ -146,8 +164,11 @@ namespace Gamesim.Episode
                 if (overviewOpen) return RoomScopeSource.Overview;
                 if (OpeningOwnsHouse) return RoomScopeSource.Opening;
                 if (walkingOutId != null) return RoomScopeSource.WalkOut;
-                if (IsFramingCeremony || IsCeremonyStaged) return RoomScopeSource.Ceremony;
-                if (challengeActive) return RoomScopeSource.Competition;
+                // A ceremony's or a competition's while their own shots hold the camera (RS6a): a stage that
+                // has handed the camera back, and a competition under reduced motion, which takes no shot,
+                // are whatever the camera is doing.
+                if (IsFramingCeremony || CeremonyStageHoldsTheCamera) return RoomScopeSource.Ceremony;
+                if (IsFramingCompetition) return RoomScopeSource.Competition;
                 if (diaryOpen) return RoomScopeSource.Diary;
                 if (cameraRig != null && cameraRig.IsConversationFocused) return RoomScopeSource.Conversation;
                 if (IsFramingHouseEvent) return RoomScopeSource.HouseEvent;
@@ -417,10 +438,10 @@ namespace Gamesim.Episode
             // A render of the main camera that never reached its end: put back what it left off first.
             RestoreScopedLamps();
             // A render reads only a scope Update has built, and never builds one. With nothing held
-            // and no source live the view is the whole house (ViewedRooms), so a player's render
-            // stops at a field check.
+            // and the view's source not live the view is the whole house (ViewedRooms), so a player's
+            // render outside a ceremony or a competition stops at a few field checks.
             if (roomScope == null) return;
-            if (roomScopeHolds.Count == 0 && LiveRoomScopeSources == RoomScopeSources.None) return;
+            if (!ScopeMayBeARoom) return;
             var viewed = ViewedRooms;
             if (viewed.IsWholeHouse || viewed.IsEmpty) return;
             for (int i = 0; i < scopeLamps.Count; i++)
@@ -546,16 +567,15 @@ namespace Gamesim.Episode
         /// and the invitation bubble and the conversation line wait for a drawn speaker and pair. It
         /// keeps its Animator, its agent, its seat fit and every parameter: only the drawing stops.</para>
         ///
-        /// <para>With the whole house drawn and nothing hidden - every player's frame until a source goes
-        /// live - it stops at a few comparisons and writes nothing.</para>
+        /// <para>With the whole house drawn and nothing hidden - every player's frame outside a ceremony's
+        /// and a competition's shots until RS5 - it stops at a few comparisons and writes nothing.</para>
         /// </summary>
         private void ApplyRoomScopeDrawing()
         {
             if (!isActiveAndEnabled) return;
-            // Nothing held and no source live: the view is the whole house (ViewedRooms), so with
-            // nothing hidden and nothing out of the mask there is nothing to draw differently.
-            if (roomScopeHolds.Count == 0 && LiveRoomScopeSources == RoomScopeSources.None && hiddenBodyCount == 0
-                && mainMaskKept == RoomLayers.NothingKept)
+            // Nothing held and the view's source not live: the view is the whole house (ViewedRooms), so
+            // with nothing hidden and nothing out of the mask there is nothing to draw differently.
+            if (!ScopeMayBeARoom && hiddenBodyCount == 0 && mainMaskKept == RoomLayers.NothingKept)
             {
                 drawnViewBits = RoomSet.WholeHouse.Bits;
                 GatePromptsOnDrawnBodies();
@@ -760,15 +780,14 @@ namespace Gamesim.Episode
         /// A main camera's render that finds the view moved since the drawing was applied - a capture's
         /// render by hand straight after a move, before the frame's late pass - draws it first; one that
         /// finds the view the same but the mask's room bits not the scope's - put back by a capture
-        /// around an earlier render - writes the mask again. Every other render costs a field check:
-        /// with nothing held, no source live, nothing hidden and no mask kept, none. A render never
-        /// builds the scope.
+        /// around an earlier render - writes the mask again. Every other render costs a few field checks:
+        /// with nothing held, the view's source not live, nothing hidden and no mask kept, none. A render
+        /// never builds the scope.
         /// </summary>
         private void RedrawScopeForRender(Camera camera)
         {
             if (camera == null || cameraRig == null || roomScope == null || camera != cameraRig.ViewCamera) return;
-            if (roomScopeHolds.Count == 0 && LiveRoomScopeSources == RoomScopeSources.None && hiddenBodyCount == 0
-                && mainMaskKept == RoomLayers.NothingKept) return;
+            if (!ScopeMayBeARoom && hiddenBodyCount == 0 && mainMaskKept == RoomLayers.NothingKept) return;
             var viewed = ViewedRooms;
             if (viewed.IsWholeHouse || viewed.IsEmpty) viewed = RoomSet.WholeHouse;
             if (viewed.Bits != drawnViewBits) ApplyRoomScopeDrawing();

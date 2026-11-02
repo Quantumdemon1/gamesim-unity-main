@@ -527,9 +527,17 @@ namespace Gamesim.Tests.PlayMode
                 Assert.That(BodiesInTheHeadOnShot(screen), Is.Empty, "With the house in its places, the marks keep the head-on shot clear (N1):\n"
                     + StageReport("the head-on shot"));
             else Debug.Log("[Gamesim] The house was not in its places by the key's frame; the head-on shot is not judged:\n" + StageReport("the head-on shot"));
-            yield return CaptureTheScreen(screen, "ceremony-stage-key-screen", frame => AssertNoBodyStandsInTheCard(keys, screen, "ceremony-stage-key-screen"));
+            yield return CaptureTheScreen(screen, "ceremony-stage-key-screen", frame =>
+            {
+                AssertNoBodyStandsInTheCard(keys, screen, "ceremony-stage-key-screen");
+                Rs6aAssertTheStageDrawsItsRoom("ceremony-stage-key-screen");
+            });
             yield return WaitFor(() => keys.ShowingBlock, 40f, "the block is up");
-            yield return CaptureTheScreen(screen, "ceremony-stage-block", frame => AssertNoBodyStandsInTheCard(keys, screen, "ceremony-stage-block"));
+            yield return CaptureTheScreen(screen, "ceremony-stage-block", frame =>
+            {
+                AssertNoBodyStandsInTheCard(keys, screen, "ceremony-stage-block");
+                Rs6aAssertTheStageDrawsItsRoom("ceremony-stage-block");
+            });
             yield return SkipReveals();
         }
 
@@ -677,13 +685,20 @@ namespace Gamesim.Tests.PlayMode
             // the hot seats face the screen two metres off, and the shot stands past them.
             var staged = director.Snapshot;
             AssertBoardNamesNobody(vote, staged.hohId != null && staged.hohId != staged.playerId ? staged.Find(staged.hohId)?.name : null);
-            yield return CaptureTheScreen(screen, "ceremony-stage-vote-screen", frame => AssertNoBodyStandsInTheCard(vote, screen, "ceremony-stage-vote-screen"), waitForFaces: false);
+            yield return CaptureTheScreen(screen, "ceremony-stage-vote-screen", frame =>
+            {
+                AssertNoBodyStandsInTheCard(vote, screen, "ceremony-stage-vote-screen");
+                Rs6aAssertTheStageDrawsItsRoom("ceremony-stage-vote-screen");
+            }, waitForFaces: false);
             yield return WaitFor(() => vote.ShowingResult, 60f, "the result is read");
             // The board hands over to the result block over the result's first moment.
             yield return new WaitForSecondsRealtime(0.6f);
             Assert.That(vote.IsPlaying, Is.True, "The result is still up to be photographed.");
-            yield return CaptureTheScreen(screen, "ceremony-stage-vote-result",
-                frame => Assert.That(vote.IsPlaying && vote.ShowingResult, Is.True, "The result is up as its frame is taken."), waitForFaces: false);
+            yield return CaptureTheScreen(screen, "ceremony-stage-vote-result", frame =>
+            {
+                Assert.That(vote.IsPlaying && vote.ShowingResult, Is.True, "The result is up as its frame is taken.");
+                Rs6aAssertTheStageDrawsItsRoom("ceremony-stage-vote-result");
+            }, waitForFaces: false);
             yield return SkipReveals();
             yield return WaitFor(() => !director.StagedExitRunning, EpisodeDirector.GoodbyeSeconds + EpisodeDirector.WalkOutSeconds + 2f,
                 "the goodbye and the walk-out end");
@@ -725,20 +740,28 @@ namespace Gamesim.Tests.PlayMode
 
         // ---------------------------------------------------------------- the full house (CEREMONY-CUTSCENES-PLAN §7.1)
 
-        /// <summary>A frame of a set from above, for the look sheet: the rig put on the shot for two frames, then the capture. Batch runs only.</summary>
-        private IEnumerator CaptureSet(string name, Vector3 focus, float distance, float pitch, float yaw)
+        /// <summary>
+        /// A frame of a set from above, for the look sheet: the rig put on the shot for two frames, then the
+        /// capture. Batch runs only. A shot naming <paramref name="rooms"/> is framed as the ceremony's or
+        /// the competition's own shots are (RS6a): with nothing held the main camera draws those rooms
+        /// alone, asserted before the frame, so the frame is what the player sees.
+        /// </summary>
+        private IEnumerator CaptureSet(string name, Vector3 focus, float distance, float pitch, float yaw, RoomSet rooms = default)
         {
             if (!Application.isBatchMode) yield break;
-            cameraRig.MoveTo(new HouseCameraRig.Shot { Focus = focus, Distance = distance, Pitch = pitch, Yaw = yaw, FieldOfView = 45f, Seconds = 0.01f });
+            cameraRig.MoveTo(new HouseCameraRig.Shot { Focus = focus, Distance = distance, Pitch = pitch, Yaw = yaw, FieldOfView = 45f, Seconds = 0.01f, Rooms = rooms });
             yield return Frames(2);
+            if (!rooms.IsEmpty) Rs6aAssertTheViewIs(rooms, name);
             yield return CaptureFraming(name, settle: false);
         }
 
-        /// <summary>The nomination table from over its head, the whole ring in frame.</summary>
-        private IEnumerator CaptureTable(string name) => CaptureSet(name, new Vector3(0.075f, 0.9f, -14.6f), 8.5f, 40f, 180f);
+        /// <summary>The nomination table from over its head, the whole ring in frame, its room alone drawn as the stage draws it.</summary>
+        private IEnumerator CaptureTable(string name) => CaptureSet(name, new Vector3(0.075f, 0.9f, -14.6f), 8.5f, 40f, 180f,
+            RoomSet.Of(EpisodeDirector.CeremonyStageRoom(CeremonySting.NominationKind)));
 
-        /// <summary>The living room from over its north wall, looking at the faces the screen looks at.</summary>
-        private IEnumerator CaptureLivingRoom(string name) => CaptureSet(name, new Vector3(-5f, 1.0f, -4.5f), 9f, 35f, 180f);
+        /// <summary>The living room from over its north wall, looking at the faces the screen looks at, its room alone drawn as the stage draws it.</summary>
+        private IEnumerator CaptureLivingRoom(string name) => CaptureSet(name, new Vector3(-5f, 1.0f, -4.5f), 9f, 35f, 180f,
+            RoomSet.Of(EpisodeDirector.CeremonyStageRoom(CeremonySting.EvictionKind)));
 
         /// <summary>The house given its time past the card's start: eight seconds, in which everyone who will sit has.</summary>
         private IEnumerator LetTheHouseSettle()
@@ -778,6 +801,8 @@ namespace Gamesim.Tests.PlayMode
                 "Everyone has reached their place eight seconds into the card:\n" + StageReport("the places"));
             Assert.That(director.CeremonyStageSeated, Is.EqualTo(state.Active.Count() - 1),
                 "Everyone but the Head of Household is in a chair eight seconds into the card:\n" + StageReport("the seats"));
+            // The house gathered at the table (RS6a, R10): the nomination room is the view and everybody is drawn in it.
+            Rs6aAssertTheGatheredHouseIsDrawn("the full house at the table");
             yield return CaptureTable("ceremony-stage-full-house-table-later");
             // The screen's cut at a full house (UI-UX-PASS-PLAN K0), where the Head of Household's mark
             // once stood them before the screen and the ring's nearest chairs crowd the lens: no
@@ -793,6 +818,7 @@ namespace Gamesim.Tests.PlayMode
                 {
                     Assert.That(keys.IsPlaying, Is.True, "The keys are up as the full house's frame is taken.");
                     AssertNoBodyStandsInTheCard(keys, screen, "ceremony-stage-full-house-key-screen");
+                    Rs6aAssertTheStageDrawsItsRoom("ceremony-stage-full-house-key-screen");
                 });
             }
             yield return SkipReveals();
@@ -835,6 +861,8 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(director.CeremonyStageInPlace, Is.EqualTo(director.CeremonyStagePlaces), "Everyone has reached their place eight seconds into the card:\n" + later);
             foreach (var line in later.Split('\n').Where(each => each.Contains(" -> ")))
                 Assert.That(line.Trim(), Does.EndWith(":: seated"), "Every place is sat in: " + line.Trim());
+            // The house gathered on the U and in the red chairs (RS6a, R10): the living room is the view and everybody is drawn in it.
+            Rs6aAssertTheGatheredHouseIsDrawn("the full house in the living room");
             yield return CaptureLivingRoom("ceremony-stage-full-house-living-later");
             yield return SkipReveals();
             yield return WaitFor(() => !director.StagedExitRunning, EpisodeDirector.GoodbyeSeconds + EpisodeDirector.WalkOutSeconds + 2f,

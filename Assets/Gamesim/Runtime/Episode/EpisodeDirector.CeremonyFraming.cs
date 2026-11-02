@@ -58,10 +58,16 @@ namespace Gamesim.Episode
                 .FirstOrDefault(m => m.RoomName == room);
             if (marker == null) return;
             if (ceremonyFrame != null) StopCoroutine(ceremonyFrame);
-            ceremonyFrame = StartCoroutine(FrameCeremonyRoutine(marker.transform.position));
+            ceremonyFrame = StartCoroutine(FrameCeremonyRoutine(marker.transform.position, RoomSet.Of(room)));
         }
 
-        private IEnumerator FrameCeremonyRoutine(Vector3 at)
+        /// <summary>
+        /// The move to the ceremony's room names that room (ROOM-SCOPE-PLAN D6, RS6a): while it travels
+        /// the room it leaves is drawn with it, and from its landing the ceremony's room alone, until
+        /// the framing lets go. The move back is the view's own again - free play's, whole house until
+        /// RS5 - since the framing is over as it starts.
+        /// </summary>
+        private IEnumerator FrameCeremonyRoutine(Vector3 at, RoomSet rooms)
         {
             // Where the viewer was, to come back to - unless a framing was already in flight, in
             // which case that framing's origin is the one to keep.
@@ -72,7 +78,7 @@ namespace Gamesim.Episode
             // Reduced motion cuts to the room rather than keeping the shot the viewer had: less
             // motion, not less of the episode. The ceremony card's own rule, applied to the camera.
             float move = reducedMotion ? CeremonyCutSeconds : CeremonyMoveSeconds;
-            cameraRig.MoveTo(new Vector3(at.x, focus.y, at.z), CeremonyDistance, move);
+            cameraRig.MoveTo(new Vector3(at.x, focus.y, at.z), CeremonyDistance, move, rooms);
             float until = Time.unscaledTime + CeremonyHoldSeconds;
             yield return null;
             // Held for as long as any card narrating the ceremony is up; the key reveal was left out

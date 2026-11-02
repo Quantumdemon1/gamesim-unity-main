@@ -655,11 +655,14 @@ namespace Gamesim.Episode
                     && playerInstrument.Instrument==CompetitionApparatus.Family.GripRig && cameraRig!=null && !cameraRig.ReducedMotion)
                 {
                     competitionEffortFramed=true;
+                    // The yard, as every competition shot names it (D7).
                     cameraRig.MoveTo(new HouseCameraRig.Shot
                     {
                         Focus=competitionPlayerStationPosition+Vector3.up*1.05f+competitionPlayerStation.transform.forward*.20f,
                         Distance=6.6f,Pitch=19f,Yaw=competitionPlayerStationFacing+35f,FieldOfView=40f,Seconds=CompetitionShotSeconds,
+                        Rooms=CompetitionRooms,
                     });
+                    competitionFramed=true;
                 }
             }
             foreach(var pair in competitionArenaActors)

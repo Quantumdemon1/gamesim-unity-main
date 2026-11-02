@@ -63,6 +63,10 @@ namespace Gamesim.Tests.PlayMode
             var focusBefore = cameraRig.DesiredFocus;
             float distanceBefore = cameraRig.DesiredDistance;
             var room = SceneComponents<HouseRoomMarker>().First(m => m.RoomName == EpisodeDirector.CeremonyRoom("nomination"));
+            // The ceremony's framing is live (RS6a): the view it leaves is a free move's, the floor under it.
+            var left = cameraRig.Rooms;
+            var ceremonyRoom = RoomSet.Of(room.RoomName);
+            Assert.That(director.ViewedRooms.IsWholeHouse, Is.True, "Before the ceremony, free play: the whole house.");
 
             director.FrameCeremony("nomination");
             Assert.That(director.IsFramingCeremony, Is.True);
@@ -71,12 +75,17 @@ namespace Gamesim.Tests.PlayMode
                 Is.LessThan(0.1f), "A nomination is framed in the nomination room.");
             Assert.That(cameraRig.DesiredDistance, Is.EqualTo(EpisodeDirector.CeremonyDistance).Within(0.01f), "at the room-wide distance");
             Assert.That(cameraRig.IsTravelling, Is.True, "on the clock");
+            Assert.That(director.ViewedRooms, Is.EqualTo(left.With(ceremonyRoom)),
+                "On its way the room it left (" + left + ") and the nomination room are drawn,");
+            yield return ScopeWaitUntilLanded();
+            Assert.That(director.ViewedRooms, Is.EqualTo(ceremonyRoom), "and from its landing the nomination room alone.");
 
             float deadline = Time.realtimeSinceStartup + EpisodeDirector.CeremonyHoldSeconds + 3f;
             while (director.IsFramingCeremony && Time.realtimeSinceStartup < deadline) yield return null;
             Assert.That(director.IsFramingCeremony, Is.False, "With no card playing the framing holds its minimum and lets go,");
             Assert.That(Vector3.Distance(cameraRig.DesiredFocus, focusBefore), Is.LessThan(0.05f), "back to where the viewer was");
             Assert.That(cameraRig.DesiredDistance, Is.EqualTo(distanceBefore).Within(0.05f));
+            Assert.That(director.ViewedRooms.IsWholeHouse, Is.True, "Let go, the view is free play's again: the whole house.");
             Assert.That(EpisodeDirector.CeremonyRoom("eviction"), Is.EqualTo("Living"));
             // The veto meeting is held in the living room (PACK8-PASS-PLAN decision 5), staged or on the HUD frame.
             Assert.That(EpisodeDirector.CeremonyRoom("veto"), Is.EqualTo("Living"));

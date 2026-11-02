@@ -135,6 +135,9 @@ namespace Gamesim.Tests.PlayMode
             var before = director.Snapshot;
             ButtonWithCaption("Practice this competition").onClick.Invoke();
             yield return null; yield return null;
+            // The attempt's shot names the yard (RS6a, D7): with nothing held it is the view.
+            Assert.That(cameraRig.ReducedMotion, Is.False, "The fixture's rig is not under reduced motion, so the attempt takes its shot.");
+            Rs6aAssertTheCompetitionDrawsTheYard("the practice", everyone: false);
 
             var sign = SceneComponents<TextMeshPro>()
                 .SingleOrDefault(text => text.name == EpisodeDirector.CompetitionSignName && text.gameObject.activeInHierarchy);
@@ -206,7 +209,7 @@ namespace Gamesim.Tests.PlayMode
                 var game = SceneComponents<CompetitionGameScreen>().SingleOrDefault();
                 var surface = game != null ? game.GetComponent<Canvas>() : null;
                 if (surface != null) surface.enabled = false;
-                yield return CaptureSet("competition-yard-sign", sign.transform.position + Vector3.down * 1.4f, 10f, 6f, 0f);
+                yield return CaptureSet("competition-yard-sign", sign.transform.position + Vector3.down * 1.4f, 10f, 6f, 0f, EpisodeDirector.CompetitionRooms);
                 if (surface != null) surface.enabled = true;
             }
             Assert.That(director.Snapshot.revision, Is.EqualTo(before.revision), "A practice commits nothing.");

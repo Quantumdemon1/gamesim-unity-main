@@ -703,11 +703,19 @@ namespace Gamesim.House
         /// so a scripted beat lands when the script says. Under reduced motion it lands at once.
         /// Any other move, or input, ends the travel where it is.
         /// </summary>
-        public void MoveTo(Vector3 focus, float wantedDistance, float seconds)
+        public void MoveTo(Vector3 focus, float wantedDistance, float seconds) => MoveTo(focus, wantedDistance, seconds, RoomSet.None);
+
+        /// <summary>
+        /// The same timed move, naming the rooms it frames (ROOM-SCOPE-PLAN §3.2 a, RS6a): those rooms
+        /// rather than the floor under its point, and the rooms it leaves with them until it lands. A
+        /// move that names none watches the floor under its point, as every free move does.
+        /// </summary>
+        public void MoveTo(Vector3 focus, float wantedDistance, float seconds, RoomSet rooms)
         {
             Initialize();
             int before = ResolveRooms();
             MoveTo(focus, wantedDistance);
+            if (!rooms.IsEmpty) SetRooms(new RoomTarget { By = RoomsBy.Named, Bits = rooms.Bits });
             BeginTravel(seconds);
             // Both ends drawn until it lands: the room it leaves and the one it goes to.
             if (IsTravelling) roomsTravelFrom = before;

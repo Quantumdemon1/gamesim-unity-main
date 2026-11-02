@@ -531,7 +531,7 @@ namespace Gamesim.Episode
                 endBy = now + CeremonyStageSeconds;
                 pressGuardUntil = now + PressGuard;
                 director.cameraRig.ControlsEnabled = false;
-                director.cameraRig.MoveTo(Wide(1.2f));
+                Move(Wide(1.2f));
                 holdsCamera = true;
                 if (director.sting != null) director.sting.Play(Kind, SummonsLine(Kind), director.reducedMotion);
 
@@ -953,7 +953,7 @@ namespace Gamesim.Episode
                             Cut(wide);
                             var near = GroupShot(waiting, 3.1f);
                             near.Seconds = Mathf.Max(0.4f, beatSeconds / speed - 0.6f);
-                            Schedule(0.05f, () => director.cameraRig.MoveTo(near));
+                            Schedule(0.05f, () => Move(near));
                         });
                         break;
                     case CeremonyBeatKind.BlockShown:
@@ -1030,7 +1030,7 @@ namespace Gamesim.Episode
                             Cut(wide);
                             var near = PairShot(nominees[0], nominees[1]);
                             near.Distance = Mathf.Max(0.9f, wide.Distance - 0.7f); near.Seconds = Mathf.Max(0.4f, beatSeconds / speed - 0.1f);
-                            Schedule(0.05f, () => director.cameraRig.MoveTo(near));
+                            Schedule(0.05f, () => Move(near));
                         }
                         break;
                     case CeremonyBeatKind.TieCalled:
@@ -1348,7 +1348,7 @@ namespace Gamesim.Episode
                     var closer = close;
                     closer.Distance = 2.4f;
                     closer.Seconds = 2f;
-                    if (!farewellAtGoodbye || farewellPrimitive) Schedule(0.05f, () => director.cameraRig.MoveTo(closer));
+                    if (!farewellAtGoodbye || farewellPrimitive) Schedule(0.05f, () => Move(closer));
                 }
                 // Their line, worded for where they are: standing before the house, not at the door
                 // (UI-UX-PASS-PLAN W0). The walk out does not say it again.
@@ -1405,8 +1405,29 @@ namespace Gamesim.Episode
             private void Cut(HouseCameraRig.Shot shot)
             {
                 shot.Seconds = CutSeconds;
+                Move(shot);
+            }
+
+            /// <summary>
+            /// The rooms every shot of the stage names (ROOM-SCOPE-PLAN D6, RS6a): its own room's, where
+            /// the set stands and the house gathers, so the close shots draw that room and the shell
+            /// beyond its walls. The house's way in and out is drawn from its doorway band.
+            /// </summary>
+            private RoomSet ShotRooms => RoomSet.Of(Room);
+
+            /// <summary>Every move the stage makes: its shot, naming the stage's room, in the call that moves the camera.</summary>
+            private void Move(HouseCameraRig.Shot shot)
+            {
+                shot.Rooms = ShotRooms;
                 director.cameraRig.MoveTo(shot);
             }
+
+            /// <summary>
+            /// Whether the stage's shots hold the camera: from the summons until it hands the camera back
+            /// (its release, or the walk out's hand-back behind the dip). The room scope's ceremony
+            /// source is the stage's only while they do (RS6a).
+            /// </summary>
+            public bool HoldsTheCamera => Active && holdsCamera;
 
             /// <summary>The bodies a cut to the screen keeps its lens clear of, gathered afresh at each cut. Reused, never shared.</summary>
             private readonly List<ScreenSurface.Body> bodiesInTheShot = new List<ScreenSurface.Body>();
@@ -1428,7 +1449,10 @@ namespace Gamesim.Episode
                     foreach (var npc in director.housemates)
                         if (npc != null && npc.gameObject.activeInHierarchy) bodiesInTheShot.Add(ScreenSurface.BodyOf(npc));
                 if (director.player != null && director.player.gameObject.activeInHierarchy) bodiesInTheShot.Add(ScreenSurface.BodyOf(director.player));
-                return Screen.ShotClearOf(bodiesInTheShot, CutSeconds, boomIsOpen);
+                // Naming the stage's room, as every move of the stage does: the cut a test takes is the stage's own.
+                var shot = Screen.ShotClearOf(bodiesInTheShot, CutSeconds, boomIsOpen);
+                shot.Rooms = ShotRooms;
+                return shot;
             }
 
             private static readonly Func<HouseCameraRig.Shot, bool> boomIsOpen = BoomIsOpen;

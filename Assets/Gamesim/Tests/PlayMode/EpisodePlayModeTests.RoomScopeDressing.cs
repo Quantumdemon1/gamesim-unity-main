@@ -20,8 +20,8 @@ namespace Gamesim.Tests.PlayMode
     /// places what it builds or moves in the same call, a copy by where it stands; a piece not drawn yet
     /// takes its room the frame it first is; a piece that moves goes to the shell; and no collider ever
     /// stands on a room layer. While the scope is held on a room, the main camera draws that room's
-    /// dressing and the shell; with nothing held it draws everything, and no source is live yet, so
-    /// players see today's house. Each test reads layers and masks, a frame after the drawing changes
+    /// dressing and the shell; with nothing held it draws everything outside a ceremony's and a
+    /// competition's shots (RS6a's live sources), so players see today's house there. Each test reads layers and masks, a frame after the drawing changes
     /// where it waits on the director's late pass; the live feed's test (RoomScopeBodies) reads pixels.
     /// </summary>
     public sealed partial class EpisodePlayModeTests
@@ -395,17 +395,25 @@ namespace Gamesim.Tests.PlayMode
         }
 
         /// <summary>
-        /// No source is live yet (RS2a makes none live): with nothing held, whatever the camera does - a
-        /// shot naming a room, a free move into one, a follow - the view is the whole house, the main
-        /// camera's mask holds every room bit, nobody is hidden and nothing is out, so every piece of the
-        /// house is drawn although the dressing stands on its rooms' layers: players see today's house.
+        /// Only the ceremonies and the competitions are live (RS6a; RS2a made none live, and RS6b and RS5
+        /// turn the others on): with nothing held, whatever else the camera does - a shot naming a room, a
+        /// free move into one, a follow - the view is the whole house, the main camera's mask holds every
+        /// room bit, nobody is hidden and nothing is out, so every piece of the house is drawn although the
+        /// dressing stands on its rooms' layers: outside a ceremony's and a competition's shots players see
+        /// today's house. Those two are pinned by RoomScope_ACeremonyMoveDrawsBothRoomsUntilItLands,
+        /// RoomScope_TheVetoMeetingDrawsItsRoom and RoomScope_TheCompetitionDrawsTheYard (RoomScopeShots).
         /// </summary>
         [UnityTest]
-        public IEnumerator RoomScope_NoSourceIsLiveYet()
+        public IEnumerator RoomScope_OnlyTheCeremoniesAndCompetitionsAreLive()
         {
-            Assert.That(EpisodeDirector.LiveRoomScopeSources, Is.EqualTo(EpisodeDirector.RoomScopeSources.None), "No source is live.");
+            Assert.That(EpisodeDirector.LiveRoomScopeSources,
+                Is.EqualTo(EpisodeDirector.RoomScopeSources.Ceremony | EpisodeDirector.RoomScopeSources.Competition),
+                "The ceremonies and the competitions are live, and nothing else.");
             foreach (EpisodeDirector.RoomScopeSource source in Enum.GetValues(typeof(EpisodeDirector.RoomScopeSource)))
-                Assert.That(EpisodeDirector.IsRoomScopeSourceLive(source), Is.False, source + " is not live.");
+                Assert.That(EpisodeDirector.IsRoomScopeSourceLive(source),
+                    Is.EqualTo(source == EpisodeDirector.RoomScopeSource.Ceremony || source == EpisodeDirector.RoomScopeSource.Competition),
+                    source + (source == EpisodeDirector.RoomScopeSource.Ceremony || source == EpisodeDirector.RoomScopeSource.Competition
+                        ? " is live." : " is not live."));
             director.ClosePanels();
             director.SuspendNpcAutonomyForDiagnostics();
             yield return null;
@@ -426,6 +434,8 @@ namespace Gamesim.Tests.PlayMode
                 {
                     move.Move();
                     yield return null;
+                    Assert.That(EpisodeDirector.IsRoomScopeSourceLive(director.CurrentRoomScopeSource), Is.False,
+                        move.What + ": the view's source (" + director.CurrentRoomScopeSource + ") is not live.");
                     Assert.That(director.ViewedRooms.IsWholeHouse, Is.True, move.What + ": the whole house.");
                     Assert.That(view.cullingMask & RoomLayers.Mask, Is.EqualTo(RoomLayers.Mask), move.What + ": every room bit in the main camera's mask.");
                     Assert.That(director.HiddenBodyCount, Is.Zero, move.What + ": nobody hidden.");

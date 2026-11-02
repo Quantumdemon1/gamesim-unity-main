@@ -1,9 +1,9 @@
 // The fixed29 whole reader (SCH30, ALL-STAR-HISTORIES-PLAN 8.1-8.3): a frozen 29 DTO hydrated from the JSON and a
 // frozen copy of the whole schema-29 validator as b208d46d has it, carried from Frozen28 by exactly the live
 // validators' changes since its image (the dialogue store at rules 0 and 1, story rules to Roles, the role moments'
-// keep-the-block deal, pitch board and recorded impacts). BCL and Newtonsoft only, never a live DTO. At the live
-// schema 29, EpisodeSaveMigrations.PrepareCurrentPayload calls Validate on every direct-29 save and on the end of
-// every older chain before it returns.
+// keep-the-block deal, pitch board and recorded impacts). BCL and Newtonsoft only, never a live DTO. Wired:
+// EpisodeSaveMigrations.UpgradeV29ToV30 calls Validate on every schema 1 to 29 save before it adds schema 30's
+// literals (at the live 29, SCH30 step 1, PrepareCurrentPayload called it on every direct-29 save and chain end).
 using System;
 using System.IO;
 using Newtonsoft.Json.Linq;

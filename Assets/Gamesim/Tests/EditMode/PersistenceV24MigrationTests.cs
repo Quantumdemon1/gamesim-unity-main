@@ -23,7 +23,7 @@ namespace Gamesim.Tests.EditMode
         private static JObject Payload(EpisodeState s) => JObject.FromObject(s, Serializer());
         private static void Off(EpisodeState s)
         {
-            Assert.That(s.schemaVersion, Is.EqualTo(29));
+            Assert.That(s.schemaVersion, Is.EqualTo(30));
             Assert.That(s.unifiedCommitmentRulesVersion, Is.Zero);
             Assert.That(s.unifiedCommitments, Is.Not.Null.And.Empty);
             Assert.That(s.unifiedHearingRulesVersion, Is.Zero);
@@ -162,7 +162,7 @@ namespace Gamesim.Tests.EditMode
             File.WriteAllText(files.Store.SavePath, PersistenceMigrationTests.Envelope(old));
             byte[] bytes = File.ReadAllBytes(files.Store.SavePath);
             Assert.That(files.Store.TryLoad(out var loaded, out string message), Is.True, message);
-            Assert.That(message, Does.Contain("Schema 23").And.Contain("schema 29 in memory"));
+            Assert.That(message, Does.Contain("Schema 23").And.Contain("schema 30 in memory"));
             Off(loaded); Equivalent(s, loaded);
             Assert.That(File.ReadAllBytes(files.Store.SavePath), Is.EqualTo(bytes));
             Assert.That(File.Exists(files.Store.BackupPath), Is.False);
@@ -228,7 +228,7 @@ namespace Gamesim.Tests.EditMode
                 var former27Future = (JObject)o.DeepClone(); former27Future["schemaVersion"] = 28;
                 Assert.Throws<InvalidDataException>(() => EpisodeSaveMigrations.PrepareV27Payload(former27Future, out _));
             }
-            var currentFuture = (JObject)o.DeepClone(); if (version == 27) currentFuture["schemaVersion"] = 30;
+            var currentFuture = (JObject)o.DeepClone(); if (version == 27) currentFuture["schemaVersion"] = 31;
             Assert.Throws<InvalidDataException>(() => EpisodeSaveMigrations.PrepareCurrentPayload(currentFuture, out _));
             Assert.That(o.ToString(Formatting.None), Is.EqualTo(original));
         }

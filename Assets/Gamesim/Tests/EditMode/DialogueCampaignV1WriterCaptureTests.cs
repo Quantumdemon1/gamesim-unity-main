@@ -466,7 +466,7 @@ namespace Gamesim.Tests.EditMode
             Assert.That((string)parsed["format"], Is.EqualTo("gamesim-unity-save"));
             Assert.That((int)parsed["version"], Is.EqualTo(1));
             Assert.That(parsed["state"], Is.TypeOf<JObject>());
-            Assert.That((int)parsed["state"]["schemaVersion"], Is.EqualTo(29));
+            Assert.That((int)parsed["state"]["schemaVersion"], Is.EqualTo(30));
             return (JObject)parsed["state"].DeepClone();
         }
 

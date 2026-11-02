@@ -1036,7 +1036,7 @@ namespace Gamesim.Tests.EditMode
         }
 
         /// <summary>A copy of a season in a window's phase - a plan to be made - for a direct call; no command, no validation.</summary>
-        private static EpisodeState InWindow(EpisodeState basis, int window)
+        internal static EpisodeState InWindow(EpisodeState basis, int window)
         {
             var s = basis.Clone();
             var npcs = s.Active.Where(c => !c.isPlayer).ToList();
@@ -1095,7 +1095,7 @@ namespace Gamesim.Tests.EditMode
             });
         }
 
-        private static void Score(EpisodeState s, string from, string to, double score)
+        internal static void Score(EpisodeState s, string from, string to, double score)
         {
             var edge = s.relationships.FirstOrDefault(r => r.fromId == from && r.toId == to);
             if (edge == null) s.relationships.Add(edge = new RelationshipState { fromId = from, toId = to });

@@ -741,6 +741,16 @@ namespace Gamesim.Episode
         public void SpeakerTitle(string contestantId, string title, string subtitle)
         {
             SetActivityLayout(ActivityLayout.Conversation);
+            SpeakerRow(contestantId, title, subtitle);
+        }
+
+        /// <summary>
+        /// The speaker's face, name and subtitle, in whatever layout the panel already has: <see cref="SpeakerTitle"/>
+        /// without the Conversation layout it sets, for a card that frames no two-shot (an ask's card,
+        /// EpisodeHud.AskDialogue.cs). A speaker the state does not know gets the plain title.
+        /// </summary>
+        public void SpeakerRow(string contestantId, string title, string subtitle)
+        {
             var state = director != null ? director.Snapshot : null;
             var speaker = state != null ? state.Find(contestantId) : null;
             if (speaker == null) { PanelTitle(title, subtitle); return; }

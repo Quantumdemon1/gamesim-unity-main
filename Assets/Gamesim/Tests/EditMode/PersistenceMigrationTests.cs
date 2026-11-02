@@ -275,18 +275,22 @@ namespace Gamesim.Tests.EditMode
             return payload;
         }
 
+        /// <summary>Schema 30's pooled root fields (SCH30, ALL-STAR-HISTORIES-PLAN 5.1), in their declared order, and their off literals.</summary>
+        public static readonly string[] Schema30Root = { "alumniRulesVersion", "alumniCatalogEdition", "tuningRulesVersion" };
+
         /// <summary>
-        /// Native test-only inverse of schema29's inert additions. The real current JSON shape and
-        /// saved semantics, every off literal and the exact frozen28 migration inverse precede any
-        /// caller mutation. This is not a save migration and never erases enabled dialogue history.
+        /// Native test-only inverse of schema 30's pooled off literals, the current schema's (SCH30). The real current
+        /// JSON shape and saved semantics, every pooled field at its off literal in its declared order, and the exact
+        /// UpgradeV29ToV30 inverse precede any caller mutation. Not a save migration: a pooled value that left its off
+        /// literal is never erased.
         /// </summary>
-        public static JObject StripSchema29(JObject payload)
+        public static JObject StripSchema30(JObject payload)
         {
             if (payload == null) return null;
-            if (!HasSchema29Data(payload)) return payload;
+            if (!HasSchema30Data(payload)) return payload;
             string before = payload.ToString(Formatting.None);
             Assert.That(payload["schemaVersion"]?.Type, Is.EqualTo(JTokenType.Integer));
-            Assert.That((long)payload["schemaVersion"], Is.EqualTo(29), "Only exact current29 may cross this native test boundary.");
+            Assert.That((long)payload["schemaVersion"], Is.EqualTo(30), "Only exact current30 may cross this native test boundary.");
             var saveJson = typeof(EpisodeSaveStore).Assembly.GetType("Gamesim.Persistence.SaveJson", true);
             var serializer = (JsonSerializer)saveJson.GetMethod("Serializer").Invoke(null, null);
             Assert.DoesNotThrow(() =>
@@ -294,6 +298,61 @@ namespace Gamesim.Tests.EditMode
                 saveJson.GetMethod("CheckDtoShape").Invoke(null, new object[] { payload, typeof(Gamesim.Simulation.EpisodeState), "state" });
                 EpisodeSaveValidation.Validate(payload.ToObject<Gamesim.Simulation.EpisodeState>(serializer));
             }, "The complete current shape and saved semantics run before any new field is removed.");
+            Assert.That(payload["alumniRulesVersion"]?.Type, Is.EqualTo(JTokenType.Integer));
+            Assert.That((long)payload["alumniRulesVersion"], Is.Zero, "Never erase enabled alumni rules.");
+            Assert.That(payload["alumniCatalogEdition"]?.Type, Is.EqualTo(JTokenType.Null), "Never erase an alumni edition.");
+            Assert.That(payload["tuningRulesVersion"]?.Type, Is.EqualTo(JTokenType.Integer));
+            Assert.That((long)payload["tuningRulesVersion"], Is.Zero, "Never erase enabled tuning rules.");
+            var names = payload.Properties().Select(p => p.Name).ToList();
+            Assert.That(names.Skip(names.Count - Schema30Root.Length), Is.EqualTo(Schema30Root),
+                "The pooled fields stand last, in their declared order, after the dialogue store.");
+            var projected = (JObject)payload.DeepClone();
+            foreach (string name in Schema30Root) projected.Remove(name);
+            projected["schemaVersion"] = 29;
+            JObject restored = null;
+            Assert.DoesNotThrow(() => restored = EpisodeSaveMigrations.UpgradeV29ToV30(projected),
+                "The untouched projected29 must pass its complete independent frozen contract.");
+            Assert.That(restored.ToString(Formatting.None), Is.EqualTo(before),
+                "The actual migration must restore every numeric token and property position, not just equivalent values.");
+            foreach (string name in Schema30Root) payload.Remove(name);
+            payload["schemaVersion"] = 29;
+            return payload;
+        }
+
+        private static bool HasSchema30Data(JObject payload) =>
+            Schema30Root.Any(name => payload.Property(name) != null)
+            || (payload["schemaVersion"]?.Type == JTokenType.Integer && (long)payload["schemaVersion"] >= 30);
+
+        /// <summary>
+        /// Test-only inverse of schema29's inert additions, the retained 29 since SCH30. A payload holding schema-30 data
+        /// is first taken to 29 by <see cref="StripSchema30"/> on a detached candidate, so a later refusal leaves the
+        /// caller unchanged. The exact 29 then faces the complete independent frozen29 contract's shape and validation
+        /// (as <see cref="StripSchema28"/> faces Frozen28), every off literal, and the exact frozen28 migration inverse,
+        /// before any caller mutation. Not a save migration; it never erases enabled dialogue history.
+        /// </summary>
+        public static JObject StripSchema29(JObject payload)
+        {
+            if (payload == null) return null;
+            if (HasSchema30Data(payload))
+            {
+                var historical = (JObject)payload.DeepClone();
+                StripSchema30(historical);
+                StripSchema29(historical);
+                payload.RemoveAll();
+                foreach (var property in historical.Properties())
+                    payload.Add(property.Name, property.Value.DeepClone());
+                return payload;
+            }
+            if (!HasSchema29Data(payload)) return payload;
+            string before = payload.ToString(Formatting.None);
+            Assert.That(payload["schemaVersion"]?.Type, Is.EqualTo(JTokenType.Integer));
+            Assert.That((long)payload["schemaVersion"], Is.EqualTo(29), "Only the exact retained29 may cross this test boundary.");
+            Assert.DoesNotThrow(() =>
+            {
+                var fixed29 = typeof(EpisodeSaveStore).Assembly.GetType("Gamesim.Persistence.FrozenEpisodeV29", true);
+                fixed29.GetMethod("Validate", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static)
+                    .Invoke(null, new object[] { payload });
+            }, "Literal29 projection requires the complete independent frozen29 contract, never a growing current DTO.");
             Assert.That(payload["dialogueRulesVersion"]?.Type, Is.EqualTo(JTokenType.Integer));
             Assert.That((long)payload["dialogueRulesVersion"], Is.Zero, "Never erase enabled dialogue rules.");
             Assert.That(payload["dialogue"], Is.TypeOf<JObject>());
@@ -335,9 +394,59 @@ namespace Gamesim.Tests.EditMode
             foreach (JObject row in (JArray)payload["unifiedCommitments"]) row.Remove("conditionalVeto");
         }
 
+        /// <summary>
+        /// The native current inverse (SCH30): StripSchema30 requires the complete current source, every pooled field at
+        /// its off literal and in its place, and the exact UpgradeV29ToV30 inverse before it changes the caller's tree.
+        /// </summary>
+        [TestCase("alumni-rule")] [TestCase("alumni-edition")] [TestCase("tuning-rule")]
+        [TestCase("alumni-rule-missing")] [TestCase("alumni-edition-missing")] [TestCase("tuning-rule-missing")]
+        [TestCase("alumni-rule-null")] [TestCase("tuning-rule-null")] [TestCase("order")]
+        [TestCase("unknown")] [TestCase("header")]
+        public void Current30NativeInverseRequiresCompleteInertSourceBeforeCallerMutation(string defect)
+        {
+            var state = LegacyDigestSchema27TestStates.Witness(1, "promise");
+            var saveJson = typeof(EpisodeSaveStore).Assembly.GetType("Gamesim.Persistence.SaveJson", true);
+            var serializer = (JsonSerializer)saveJson.GetMethod("Serializer").Invoke(null, null);
+            var payload = JObject.FromObject(state, serializer);
+            string original = payload.ToString(Formatting.None);
+            var retained = (JObject)payload.DeepClone();
+            Assert.That(StripSchema30(retained), Is.SameAs(retained));
+            Assert.That((int)retained["schemaVersion"], Is.EqualTo(29));
+            Assert.That(retained.Properties().Select(p => p.Name).Intersect(Schema30Root), Is.Empty);
+            Assert.That(EpisodeSaveMigrations.UpgradeV29ToV30(retained).ToString(Formatting.None), Is.EqualTo(original));
+            Assert.That(payload.ToString(Formatting.None), Is.EqualTo(original));
+            var bad = (JObject)payload.DeepClone();
+            switch (defect)
+            {
+                case "alumni-rule": bad["alumniRulesVersion"] = 1; break;
+                case "alumni-edition": bad["alumniCatalogEdition"] = "allstar-histories-1"; break;
+                case "tuning-rule": bad["tuningRulesVersion"] = 1; break;
+                case "alumni-rule-missing": bad.Remove("alumniRulesVersion"); break;
+                case "alumni-edition-missing": bad.Remove("alumniCatalogEdition"); break;
+                case "tuning-rule-missing": bad.Remove("tuningRulesVersion"); break;
+                case "alumni-rule-null": bad["alumniRulesVersion"] = JValue.CreateNull(); break;
+                case "tuning-rule-null": bad["tuningRulesVersion"] = JValue.CreateNull(); break;
+                case "order":
+                    var moved = bad.Property("tuningRulesVersion"); moved.Remove(); bad.Property("alumniRulesVersion").AddBeforeSelf(moved); break;
+                case "unknown": bad["unknown30"] = 0; break;
+                default: bad["schemaVersion"] = 31; break;
+            }
+            string before = bad.ToString(Formatting.None);
+            var refusal = Assert.Catch(() => StripSchema30(bad));
+            Assert.That(refusal is AssertionException || refusal is InvalidDataException, Is.True,
+                "A contract refusal, never an unrelated null/index/reflection crash, is required.");
+            Assert.That(bad.ToString(Formatting.None), Is.EqualTo(before), "No partial downgrade or normalization on refusal.");
+            Assert.That(payload.ToString(Formatting.None), Is.EqualTo(original));
+        }
+
+        /// <summary>
+        /// The retained inverse: StripSchema29 composes StripSchema30 on a detached candidate, then holds the retained 29
+        /// to the frozen29 contract, every inert dialogue literal and the exact frozen28 inverse before any caller mutation.
+        /// </summary>
         [TestCase("rule")] [TestCase("episodes")] [TestCase("grants")] [TestCase("vetoOccasions")]
         [TestCase("conditional")] [TestCase("unknown")] [TestCase("header")] [TestCase("wave-d-active")]
-        public void Current29NativeInverseRequiresCompleteInertSourceBeforeCallerMutation(string defect)
+        [TestCase("pooled-active")]
+        public void Retained29InverseRequiresCompleteInertSourceBeforeCallerMutation(string defect)
         {
             var state = LegacyDigestSchema27TestStates.Witness(1, "promise");
             var saveJson = typeof(EpisodeSaveStore).Assembly.GetType("Gamesim.Persistence.SaveJson", true);
@@ -347,24 +456,22 @@ namespace Gamesim.Tests.EditMode
             var historical = (JObject)payload.DeepClone();
             Assert.That(StripSchema29(historical), Is.SameAs(historical));
             Assert.That((int)historical["schemaVersion"], Is.EqualTo(28));
-            Assert.That(EpisodeSaveMigrations.UpgradeV28ToV29(historical).ToString(Formatting.None), Is.EqualTo(original));
+            Assert.That(EpisodeSaveMigrations.UpgradeV29ToV30(EpisodeSaveMigrations.UpgradeV28ToV29(historical)).ToString(Formatting.None),
+                Is.EqualTo(original));
             Assert.That(payload.ToString(Formatting.None), Is.EqualTo(original));
+            // The retained 29 itself, as a schema-29 build wrote it.
+            var retained29 = (JObject)payload.DeepClone(); StripSchema30(retained29);
+            string retainedBefore = retained29.ToString(Formatting.None);
+            var retainedHistorical = (JObject)retained29.DeepClone();
+            Assert.That(StripSchema29(retainedHistorical), Is.SameAs(retainedHistorical));
+            Assert.That(EpisodeSaveMigrations.UpgradeV28ToV29(retainedHistorical).ToString(Formatting.None), Is.EqualTo(retainedBefore));
             var bad = (JObject)payload.DeepClone();
-            if (defect == "rule") bad["dialogueRulesVersion"] = 1;
-            else if (defect == "conditional")
+            if (defect == "pooled-active") bad["tuningRulesVersion"] = 1;
+            else
             {
-                Assert.That((JArray)bad["unifiedCommitments"], Is.Not.Empty);
-                bad["unifiedCommitments"].Last["conditionalVeto"] = new JObject();
+                bad = retained29;
+                ApplyRetained29Defect(bad, defect);
             }
-            else if (defect == "unknown") bad["unknown29"] = 0;
-            else if (defect == "header") bad["schemaVersion"] = 30;
-            else if (defect == "wave-d-active")
-            {
-                bad["allianceLeakRulesStartWeek"] = 1;
-                Assert.DoesNotThrow(() => EpisodeSaveValidation.Validate(bad.ToObject<Gamesim.Simulation.EpisodeState>(serializer)),
-                    "A lawful enabled Wave D rule must refuse erasure, not pass as malformed-current coverage.");
-            }
-            else ((JArray)bad["dialogue"][defect]).Add(new JObject());
             string before = bad.ToString(Formatting.None);
             var refusal = defect == "wave-d-active" ? Assert.Catch(() => StripSchema28(bad))
                 : Assert.Catch(() => StripSchema29(bad));
@@ -372,6 +479,29 @@ namespace Gamesim.Tests.EditMode
                 "A contract refusal, never an unrelated null/index/reflection crash, is required.");
             Assert.That(bad.ToString(Formatting.None), Is.EqualTo(before), "No partial downgrade or normalization on refusal.");
             Assert.That(payload.ToString(Formatting.None), Is.EqualTo(original));
+        }
+
+        private static void ApplyRetained29Defect(JObject bad, string defect)
+        {
+            if (defect == "rule") bad["dialogueRulesVersion"] = 1;
+            else if (defect == "conditional")
+            {
+                Assert.That((JArray)bad["unifiedCommitments"], Is.Not.Empty);
+                bad["unifiedCommitments"].Last["conditionalVeto"] = new JObject();
+            }
+            else if (defect == "unknown") bad["unknown29"] = 0;
+            else if (defect == "header") bad["schemaVersion"] = 31;
+            else if (defect == "wave-d-active")
+            {
+                bad["allianceLeakRulesStartWeek"] = 1;
+                Assert.DoesNotThrow(() =>
+                {
+                    var fixed29 = typeof(EpisodeSaveStore).Assembly.GetType("Gamesim.Persistence.FrozenEpisodeV29", true);
+                    fixed29.GetMethod("Validate", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static)
+                        .Invoke(null, new object[] { bad });
+                }, "A lawful enabled Wave D rule must refuse erasure, not pass as malformed-current coverage.");
+            }
+            else ((JArray)bad["dialogue"][defect]).Add(new JObject());
         }
 
         private static void RemoveSchema28(JObject payload)
@@ -674,13 +804,13 @@ namespace Gamesim.Tests.EditMode
             File.WriteAllText(fixture.Store.SavePath, original, new UTF8Encoding(false));
             var before = File.ReadAllBytes(fixture.Store.SavePath);
             Assert.That(fixture.Store.TryLoad(out var loaded, out var message), Is.True, message);
-            Assert.That(loaded.schemaVersion, Is.EqualTo(29));
+            Assert.That(loaded.schemaVersion, Is.EqualTo(30));
             Assert.That(loaded.randomState, Is.Zero);
             Assert.That(File.ReadAllBytes(fixture.Store.SavePath), Is.EqualTo(before));
             Assert.That(File.Exists(fixture.Store.BackupPath), Is.False);
             fixture.Store.Save(loaded);
             Assert.That(File.ReadAllBytes(fixture.Store.BackupPath), Is.EqualTo(before));
-            Assert.That((int)JObject.Parse(File.ReadAllText(fixture.Store.SavePath))["state"]["schemaVersion"], Is.EqualTo(29));
+            Assert.That((int)JObject.Parse(File.ReadAllText(fixture.Store.SavePath))["state"]["schemaVersion"], Is.EqualTo(30));
         }
 
         [Test]
@@ -706,7 +836,7 @@ namespace Gamesim.Tests.EditMode
             File.WriteAllText(fixture.Store.SavePath, "damaged primary");
             var before = File.ReadAllBytes(fixture.Store.BackupPath);
             Assert.That(fixture.Store.TryRecoverBackup(out var recovered, out var message), Is.True, message);
-            Assert.That(recovered.schemaVersion, Is.EqualTo(29));
+            Assert.That(recovered.schemaVersion, Is.EqualTo(30));
             Assert.That(File.ReadAllBytes(fixture.Store.SavePath), Is.EqualTo(before));
             Assert.That(File.ReadAllBytes(fixture.Store.BackupPath), Is.EqualTo(before));
             Assert.That(File.ReadAllText(Directory.GetFiles(fixture.DirectoryPath, "*.before-recovery-*.json").Single()),
@@ -769,7 +899,7 @@ namespace Gamesim.Tests.EditMode
             var original = Envelope(payload);
             File.WriteAllText(fixture.Store.SavePath, original);
             Assert.That(fixture.Store.TryLoad(out var loaded, out var message), Is.True, message);
-            Assert.That(loaded.schemaVersion, Is.EqualTo(29));
+            Assert.That(loaded.schemaVersion, Is.EqualTo(30));
             Assert.That(loaded.finaleRulesStartWeek, Is.Zero, "A legacy finale plays the catalogue's rules.");
             Assert.That(loaded.finalArgument, Is.Null, "and has no final argument.");
             Assert.That(loaded.commitmentRulesStartWeek, Is.Zero, "A legacy season plays without the commitment rules.");

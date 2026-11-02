@@ -30,6 +30,20 @@ namespace Gamesim.Tests.Frozen29Integration
             Accept(payload);
         }
 
+        // Dialogue D1's writer: the build that started a season with the cast screen's preview chip wrote it at 29 on
+        // dialogue rules 1, its store holding the conversation it opened. Schema 29 is closed (owner, 2026-10-29), and the
+        // pilot's rules 1 is the one value it accepts beyond 0.
+        [TestCase("s29-mode2-dialogue1-w2-campaign", 2, 1)]
+        public void TheDialogueWritersSchemaTwentyNinePayloadIsAcceptedWithoutChangingAnyToken(string id, int mode, int dialogue)
+        {
+            var payload = Fixture(id);
+            Assert.That((int)payload["schemaVersion"], Is.EqualTo(29));
+            Assert.That((int)payload["unifiedCommitmentRulesVersion"], Is.EqualTo(mode));
+            Assert.That((int)payload["dialogueRulesVersion"], Is.EqualTo(dialogue));
+            Assert.That(((JArray)payload["dialogue"]["episodes"]).Count, Is.GreaterThan(0), "The writer's store holds its conversation.");
+            Accept(payload);
+        }
+
         [TestCase("s28-mode1-allweek-w2-campaign", 1)]
         [TestCase("s28-mode1-finished", 1)]
         [TestCase("s28-mode2-allweek-w3-campaign", 2)]

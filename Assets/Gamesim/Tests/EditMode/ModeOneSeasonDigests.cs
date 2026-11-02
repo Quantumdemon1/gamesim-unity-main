@@ -229,7 +229,9 @@ namespace Gamesim.Tests.EditMode
         /// (LegacyDigestSchema29Observer.ProjectTrace28): it refuses unless that storage is present and inert, removes
         /// exactly those three additions and writes schemaVersion 28. Any older state serializes as it always did.
         /// Reached by reflection, as the commitment digests reach it, so this file still compiles against the older
-        /// builds that recorded the digests.
+        /// builds that recorded the digests. Since SCH30 the live schema is 30: a schema-30 state goes through the
+        /// schema-30 observer's step to 28 (LegacyDigestSchema30Observer.ProjectTrace28), which requires the pooled
+        /// fields off, removes them and hands the retained 29 to the same schema-29 step.
         /// </summary>
         private static string WholeState(EpisodeState s)
         {
@@ -237,13 +239,15 @@ namespace Gamesim.Tests.EditMode
             var o = JObject.FromObject(s);
             Assert.That(o["schemaVersion"]?.Type, Is.EqualTo(JTokenType.Integer));
             if ((long)o["schemaVersion"] < 29) return direct;
-            Assert.That((long)o["schemaVersion"], Is.EqualTo(29), "Only schema 29's dialogue storage has a projection to the recorded schema 28.");
+            Assert.That((long)o["schemaVersion"], Is.EqualTo(30).Or.EqualTo(29),
+                "Only schema 30's pooled storage and schema 29's dialogue storage have a projection to the recorded schema 28.");
             Assert.That(o.ToString(Formatting.None), Is.EqualTo(direct),
                 "The JSON tree must write the state exactly as SerializeObject does, or the projection would hash other bytes.");
-            var observer29 = typeof(ModeOneSeasonDigests).Assembly.GetType("Gamesim.Tests.EditMode.LegacyDigestSchema29Observer", true);
-            var project28 = observer29.GetMethod("ProjectTrace28", BindingFlags.NonPublic | BindingFlags.Static,
+            string observer = (long)o["schemaVersion"] == 30 ? "LegacyDigestSchema30Observer" : "LegacyDigestSchema29Observer";
+            var observerType = typeof(ModeOneSeasonDigests).Assembly.GetType("Gamesim.Tests.EditMode." + observer, true);
+            var project28 = observerType.GetMethod("ProjectTrace28", BindingFlags.NonPublic | BindingFlags.Static,
                 null, new[] { typeof(EpisodeState), typeof(JObject) }, null);
-            Assert.That(project28, Is.Not.Null, "Schema 29 requires its observer; an absent one never skips the digest.");
+            Assert.That(project28, Is.Not.Null, "The live schema requires its observer; an absent one never skips the digest.");
             Assert.That(project28.ReturnType, Is.EqualTo(typeof(JObject)));
             var projected = (JObject)project28.Invoke(null, new object[] { s, o });
             Assert.That((long)projected["schemaVersion"], Is.EqualTo(28), "The schema-28 step writes the recorded schema.");

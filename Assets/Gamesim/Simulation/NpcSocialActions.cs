@@ -152,7 +152,8 @@ namespace Gamesim.Simulation
                 int turns = EpisodeEngine.StoryAt(state, StoryRules.Production) && Production.IsHaveNot(state, npc.id)
                     ? ActionsPerSocialPhase - 1 : ActionsPerSocialPhase;
                 int taken = 0;
-                if (NpcAlliances.TryPropose(state, npc.id, joined)) taken++;
+                // From alumni rules 5 (ALL-STAR-HISTORIES-PLAN §14.L) a houseguest with no pact to start may join one.
+                if (NpcAlliances.TryPropose(state, npc.id, joined) || NpcAlliances.TryJoin(state, npc.id, joined, out _)) taken++;
                 if (taken < turns && NpcPromises.TryGive(state, npc.id)) taken++;
                 // Under agency the first free turn goes to the agenda (NPC-AGENCY-PLAN.md §4).
                 if (taken < turns && PursueOn(state, npc, turn) != null) taken++;
@@ -170,7 +171,8 @@ namespace Gamesim.Simulation
         /// <summary>
         /// One beat of the all-week cadence (WAVE-D-NPC-PACTS-PLAN §4.3, D2): one houseguest's next
         /// success on <see cref="Settle"/>'s ladder, spread over the week, or null when nothing on it is left
-        /// for them to do. The ladder is Settle's order - a pact (one new pact a houseguest a week), a word
+        /// for them to do. The ladder is Settle's order - a pact (one new pact a houseguest a week, or from
+        /// alumni rules 5 a join, <see cref="NpcAlliances.TryJoin"/>), a word
         /// (once a week), the agenda's pursuit (once a week; courting the Head of Household is a pursuit of its
         /// own, see <see cref="PursuitSpent"/>), then the repertoire, each kind once a week and a pact's meeting
         /// once - and this week's acts are its memory
@@ -203,10 +205,17 @@ namespace Gamesim.Simulation
             // week (EpisodeEngine.PactWindow) as the weekly pass tried it once.
             var joined = new HashSet<string>(week.Where(a => a.kind == NpcActKinds.Pact)
                 .SelectMany(a => new[] { a.actorId, a.partnerId }).Where(id => id != null), StringComparer.Ordinal);
-            if (EpisodeEngine.Window(state) == EpisodeEngine.PactWindow(state, npcId) && NpcAlliances.TryPropose(state, npcId, joined))
+            if (EpisodeEngine.Window(state) == EpisodeEngine.PactWindow(state, npcId))
             {
-                var formed = state.alliances[state.alliances.Count - 1];
-                return new NpcActState { kind = NpcActKinds.Pact, actorId = npcId, partnerId = formed.members.FirstOrDefault(id => id != npcId) };
+                if (NpcAlliances.TryPropose(state, npcId, joined))
+                {
+                    var formed = state.alliances[state.alliances.Count - 1];
+                    return new NpcActState { kind = NpcActKinds.Pact, actorId = npcId, partnerId = formed.members.FirstOrDefault(id => id != npcId) };
+                }
+                // From alumni rules 5 (ALL-STAR-HISTORIES-PLAN §14.L) a join, after their own pact could not be had: the
+                // recruit the actor, the member who brought them in the partner. From 5 a pact act is a birth or a join.
+                if (NpcAlliances.TryJoin(state, npcId, joined, out string sponsorId))
+                    return new NpcActState { kind = NpcActKinds.Pact, actorId = npcId, partnerId = sponsorId };
             }
             // A word, once a week.
             if (!mine.Any(a => a.kind == NpcActKinds.Promise) && NpcPromises.TryGive(state, npcId, positional, pending, out string toId))

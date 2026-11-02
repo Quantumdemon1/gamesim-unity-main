@@ -26,7 +26,7 @@ namespace Gamesim.Tests.EditMode
             Assert.That(Text(field), Is.EqualTo(Text(LegacyDigestSchema27TestStates.WithoutGetters(trace))));
             Assert.That(field["schemaVersion"].Value<int>(), Is.EqualTo(28));
             var projected = LegacyDigestSchema28Observer.ProjectFields(trace);
-            Assert.That(Text(projected), Is.EqualTo(Text(LegacyDigestSchema29Observer.ProjectTrace(
+            Assert.That(Text(projected), Is.EqualTo(Text(LegacyDigestSchema30Observer.ProjectTrace(
                 state, LegacyDigestSchema27TestStates.Trace(state)))), "Current admission reaches the identical retained field chain.");
             var expected = LegacyDigestSchema27TestStates.Neutral26(LegacyDigestSchema27TestStates.Neutral27(trace));
             Assert.That(Text(projected), Is.EqualTo(Text(expected)), "Compact JSON pins every retained property and list position.");
@@ -114,7 +114,7 @@ namespace Gamesim.Tests.EditMode
             }, defect.StartsWith("header-", StringComparison.Ordinal) ? "Only literal schema28 is an observer input."
                 // The fixed27 chain's frozen shape refuses the unknown member, before the trace binding.
                 : "contains missing or unknown schema25 fields.",
-                defect == "header-29" ? (Action<JObject>)(live => live["schemaVersion"] = 30) : null);
+                defect == "header-29" ? (Action<JObject>)(live => live["schemaVersion"] = 31) : null);  // A future header on the live (30) view.
         }
 
         /// <summary>
@@ -147,7 +147,7 @@ namespace Gamesim.Tests.EditMode
             }
             LegacyDigestSchema27TestStates.Valid(other);
             var otherTrace = LegacyDigestSchema27TestStates.Trace(other);
-            Assert.DoesNotThrow(() => LegacyDigestSchema29Observer.ProjectTrace(other, otherTrace));
+            Assert.DoesNotThrow(() => LegacyDigestSchema30Observer.ProjectTrace(other, otherTrace));
             RefusedLiveUnchanged(state, otherTrace, "The JSON is not this current state's exact own view.");
         }
 
@@ -188,7 +188,7 @@ namespace Gamesim.Tests.EditMode
             Assert.That(Text(state), Is.EqualTo(stateBefore));
 
             var live = LegacyDigestSchema27TestStates.Trace(state);
-            Assert.DoesNotThrow(() => LegacyDigestSchema29Observer.ProjectTrace(state, live));
+            Assert.DoesNotThrow(() => LegacyDigestSchema30Observer.ProjectTrace(state, live));
             (liveDefect ?? defect)(live);
             Assert.That(Text(live), Is.Not.EqualTo(Text(state)), "The current-view refusal control must actually change its input.");
             RefusedLiveUnchanged(state, live);
@@ -199,8 +199,8 @@ namespace Gamesim.Tests.EditMode
         {
             string stateBefore = Text(state), traceBefore = Text(trace);
             var checkedError = Assert.Throws<InvalidDataException>(() =>
-                LegacyDigestSchema28Observer.CheckFields(LegacyDigestSchema29Observer.ProjectTrace28(state, trace)));
-            var projectedError = Assert.Throws<InvalidDataException>(() => LegacyDigestSchema29Observer.ProjectTrace(state, trace));
+                LegacyDigestSchema28Observer.CheckFields(LegacyDigestSchema30Observer.ProjectTrace28(state, trace)));
+            var projectedError = Assert.Throws<InvalidDataException>(() => LegacyDigestSchema30Observer.ProjectTrace(state, trace));
             if (reason != null)
             {
                 Assert.That(checkedError.Message, Does.Contain(reason));

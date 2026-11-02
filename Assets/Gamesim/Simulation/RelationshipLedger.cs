@@ -82,12 +82,35 @@ namespace Gamesim.Simulation
             return Math.Max(0, faded);
         }
 
-        /// <summary>Everything one houseguest still holds against — or in favour of — another.</summary>
+        /// <summary>
+        /// Everything one houseguest still holds against — or in favour of — another.
+        ///
+        /// <para><b>A breach ends inherited goodwill</b> (ALL-STAR-HISTORIES-PLAN §7.4), in a season under the alumni
+        /// rules only: a positive past-game receipt (<see cref="AlumniHistories.ReceiptType"/>) stops counting once the
+        /// same edge holds a permanent negative entry of this season - a broken word, a broken deal, a betrayal, a story
+        /// receipt against them - so an old partner's betrayal never hurts less than a stranger's. A pure reading of the
+        /// saved edge: nothing is written. A negative receipt always counts; an old grievance does not heal. That is
+        /// alumni rules 1 (<see cref="AlumniRules.Histories"/>), and a season there keeps it.</para>
+        ///
+        /// <para><b>From alumni rules 2</b> (<see cref="AlumniRules.Loyalty"/>, §14.B) a receipt counts for a graded share
+        /// instead (<see cref="AlumniLoyalty"/>): this season's wrongs and public nominations erode it, pacts and kept words
+        /// repair it up to a cap, a betrayal ends it, and an old grievance heals through play. Every edge without a
+        /// receipt reads the plain sum below at every value.</para>
+        /// </summary>
         public static double WeightedImpact(EpisodeState state, string from, string to)
         {
             var edge = Edge(state, from, to);
-            return edge == null ? 0 : edge.events.Sum(entry => entry.impactScore * Weight(entry, state.week));
+            if (edge == null) return 0;
+            if (AlumniRules.At(state, AlumniRules.Loyalty)) return AlumniLoyalty.WeightedImpact(state, edge);
+            if (!AlumniRules.On(state) || !BreachesInheritedGoodwill(edge))
+                return edge.events.Sum(entry => entry.impactScore * Weight(entry, state.week));
+            return edge.events.Where(entry => !(AlumniHistories.IsReceipt(entry) && entry.impactScore > 0))
+                .Sum(entry => entry.impactScore * Weight(entry, state.week));
         }
+
+        /// <summary>Whether an edge holds a permanent negative entry other than a past-game receipt (§7.4).</summary>
+        private static bool BreachesInheritedGoodwill(RelationshipState edge) =>
+            edge.events.Any(entry => !entry.decayable && entry.impactScore < 0 && !AlumniHistories.IsReceipt(entry));
 
         /// <summary>
         /// The last two weeks only.
@@ -95,12 +118,16 @@ namespace Gamesim.Simulation
         /// <para>The source feeds this into its decision factors at the highest raw multiplier it
         /// uses, which is what lets a fresh betrayal reorder somebody's targets immediately while
         /// the permanent ledger governs long-term trust.</para>
+        ///
+        /// <para>A past game is not recent: under the alumni rules a past-game receipt, written in week one, is left
+        /// out (ALL-STAR-HISTORIES-PLAN §7.3).</para>
         /// </summary>
         public static double RecentImpact(EpisodeState state, string from, string to)
         {
             var edge = Edge(state, from, to);
+            bool histories = AlumniRules.On(state);
             return edge == null ? 0
-                : edge.events.Where(entry => state.week - entry.week <= RecentWeeks)
+                : edge.events.Where(entry => state.week - entry.week <= RecentWeeks && !(histories && AlumniHistories.IsReceipt(entry)))
                     .Sum(entry => entry.impactScore);
         }
 
@@ -183,7 +210,27 @@ namespace Gamesim.Simulation
                 sequence = state.nextSequence++, week = state.week, type = type,
                 description = description, impactScore = impact, decayable = !permanent && Decays(type),
             });
-            if (edge.events.Count > 512) edge.events.RemoveAt(0);
+            Trim(state, edge);
+        }
+
+        /// <summary>How many entries an edge keeps (validation's bound); past it the oldest goes.</summary>
+        internal const int EdgeCapacity = 512;
+
+        /// <summary>
+        /// Drops an edge's oldest entry once it holds more than <see cref="EdgeCapacity"/>, as every writer always has.
+        /// Under the alumni rules the oldest entry that is not a past-game receipt goes instead, so a busy edge never
+        /// loses the season's history (ALL-STAR-HISTORIES-PLAN §7.3); no season before them holds a receipt.
+        /// </summary>
+        internal static void Trim(EpisodeState state, RelationshipState edge)
+        {
+            if (edge.events.Count <= EdgeCapacity) return;
+            int oldest = 0;
+            if (AlumniRules.On(state))
+            {
+                int ordinary = edge.events.FindIndex(entry => !AlumniHistories.IsReceipt(entry));
+                if (ordinary >= 0) oldest = ordinary;
+            }
+            edge.events.RemoveAt(oldest);
         }
 
         /// <summary>

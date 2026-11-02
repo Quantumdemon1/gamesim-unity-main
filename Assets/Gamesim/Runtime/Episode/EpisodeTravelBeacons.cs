@@ -77,6 +77,8 @@ namespace Gamesim.Episode
             /// <summary>Where the icon was placed this frame, in screen pixels, and whether it was: a name chip of someone the view hides hangs over it (D17).</summary>
             public Vector2 placedAt;
             public bool placed, atDoorway;
+            /// <summary>This frame's doorway from the viewed room that leads to the room (D17), its x NaN where none does or outside the room view.</summary>
+            public Vector3 door;
         }
 
         /// <summary>Tells its beacon the pointer is over it, for the tip that names what a click does.</summary>
@@ -500,6 +502,14 @@ namespace Gamesim.Episode
         private readonly List<Rect> placedIcons = new List<Rect>();
 
         /// <summary>
+        /// The room view's icons placed so far this frame (D17), each icon's square with its badges' reach and
+        /// the room's name under it, hovered or not: an icon placed later stands clear of them. Read only while
+        /// <see cref="keepApart"/>; outside the room view the icons stand over their rooms, apart as the rooms are.
+        /// </summary>
+        private readonly List<Rect> claimedSpots = new List<Rect>();
+        private bool keepApart;
+
+        /// <summary>
         /// Moves a chip's screen rect up until it is at least <paramref name="gap"/> clear of every
         /// chip placed before it this frame and of every icon on screen. Each move takes it above
         /// one placed rect's top, and it only ever goes up, so it passes each at most once and the
@@ -709,12 +719,26 @@ namespace Gamesim.Episode
             // The icons' footprints this frame, with their badges' reach, for the name chips to clear.
             float footprint = (Side * .5f + 8f) * pixels;
             placedIcons.Clear();
+            // In the room view the icons are about the rooms beyond the one on screen.
+            string viewing = roomView ? roomViewRoom : playerRoom;
+            // The room view's icons never stand on one another (D17: every room keeps an icon, and one drawn
+            // over another is lost - the lane's rs4 captures had the nomination room's over the games room's,
+            // both waiting at the frame's edge the same way). They claim their spots in turn: the next stop
+            // first, where it always stood; then the rooms a doorway leads to, and the viewed room's own; then
+            // the rooms with none, at the frame's edge. An icon whose spot one before it holds takes the next
+            // clear one as an icon under the chrome does, and an icon at a doorway on screen the first clear
+            // spot from the doorway towards the middle, beside it. Outside the room view the order is the
+            // icons' own and nothing is claimed: they stand over their rooms, apart as the rooms are.
+            claimedSpots.Clear();
+            keepApart = roomView;
+            foreach (var beacon in beacons)
+                beacon.door = roomView && beacon.room != viewing && doorway != null ? doorway(beacon.room) : new Vector3(float.NaN, 0f, 0f);
+            for (int turn = 0; turn < 3; turn++)
             foreach (var beacon in beacons)
             {
+                if (ClaimTurn(beacon, roomView, viewing) != turn) continue;
                 beacon.placed = false;
                 bool special = beacon.room == stationRoom || beacon.room == "Private";
-                // In the room view the icons are about the rooms beyond the one on screen.
-                string viewing = roomView ? roomViewRoom : playerRoom;
                 bool show = beacon.room != viewing || special;
                 Vector3 screen = default;
                 bool pinned = false, atDoorway = false;
@@ -723,10 +747,19 @@ namespace Gamesim.Episode
                 {
                     // D17: at the viewed room's doorway that leads there, on screen or pinned towards it, or,
                     // with no doorway from here, at the frame's edge in its direction.
-                    var door = doorway != null ? doorway(beacon.room) : new Vector3(float.NaN, 0f, 0f);
+                    var door = beacon.door;
                     atDoorway = !float.IsNaN(door.x);
                     screen = eye.WorldToScreenPoint((atDoorway ? door : where(beacon.room)) + Vector3.up * Height);
-                    show = atDoorway && screen.z > .5f && eye.pixelRect.Contains(screen) && !IconCovered(beacon, screen, margin, pixels);
+                    bool doorOnScreen = atDoorway && screen.z > .5f && eye.pixelRect.Contains(screen);
+                    show = doorOnScreen && !IconCovered(beacon, screen, margin, pixels);
+                    // A doorway clear of the chrome whose spot an icon before it holds: beside it, the pip its way.
+                    if (!show && doorOnScreen && !UnderChrome(beacon, screen, margin, pixels)
+                        && TryPin(eye.pixelRect, screen, margin, beacon, pixels, out var beside))
+                    {
+                        toward = ((Vector2)screen - beside).normalized;
+                        screen = new Vector3(beside.x, beside.y, screen.z);
+                        show = pinned = true;
+                    }
                     if (!show && TryEdge(eye.pixelRect, screen, margin, beacon, pixels, out var edge, out var away))
                     {
                         toward = away;
@@ -777,6 +810,13 @@ namespace Gamesim.Episode
                 // The room's name hung under the icon is part of what a name chip must clear, as the
                 // chrome treats it (IconCovered): a chip over "KITCHEN" read as the room's own words.
                 if (beacon.roomName != null && !beacon.hovered) placedIcons.Add(TagRect(beacon, screen, pixels));
+                // And in the room view what the icons after it stand clear of: the name too while the hover's
+                // tip is up, so that a hover never moves another room's icon.
+                if (keepApart)
+                {
+                    claimedSpots.Add(new Rect(screen.x - footprint, screen.y - footprint, 2f * footprint, 2f * footprint));
+                    if (beacon.roomName != null) claimedSpots.Add(TagRect(beacon, screen, pixels));
+                }
                 RectTransformUtility.ScreenPointToLocalPointInRectangle(root, screen, UiCamera, out var local);
                 beacon.rect.anchoredPosition = local - frame.min;
                 beacon.group.alpha = fade;
@@ -896,9 +936,37 @@ namespace Gamesim.Episode
         /// the square round it, and the room's name under it. A name half under a card read as
         /// another room's (the play sweep's row 10). Asked as two rects when the chrome can be;
         /// otherwise as points along the name's top and bottom edges no further apart than it is
-        /// tall, so a narrow piece of chrome cannot slip between them.
+        /// tall, so a narrow piece of chrome cannot slip between them. In the room view an icon placed
+        /// before it this frame covers it as well (<see cref="Claimed"/>, D17).
         /// </summary>
         private bool IconCovered(Beacon beacon, Vector2 point, float margin, float scalePixels)
+            => (keepApart && Claimed(beacon, point, margin, scalePixels)) || UnderChrome(beacon, point, margin, scalePixels);
+
+        /// <summary>
+        /// Whether an icon drawn with its middle at <paramref name="point"/> - its square, and the room's name
+        /// under it - would stand on an icon the room view placed before it this frame (D17).
+        /// </summary>
+        private bool Claimed(Beacon beacon, Vector2 point, float margin, float scalePixels)
+        {
+            if (claimedSpots.Count == 0) return false;
+            var square = new Rect(point.x - margin, point.y - margin, 2f * margin, 2f * margin);
+            bool named = beacon.roomName != null;
+            var tag = named ? TagRect(beacon, point, scalePixels) : default;
+            for (int i = 0; i < claimedSpots.Count; i++)
+                if (claimedSpots[i].Overlaps(square) || (named && claimedSpots[i].Overlaps(tag))) return true;
+            return false;
+        }
+
+        /// <summary>
+        /// The turn a room's icon claims its spot in (D17): in the room view the next stop first, then the
+        /// rooms a doorway from the viewed room leads to and the viewed room's own, then the rooms with no
+        /// doorway from here; outside the room view one turn, in the icons' own order.
+        /// </summary>
+        private int ClaimTurn(Beacon beacon, bool roomView, string viewing)
+            => !roomView || beacon.room == nextStop ? 0 : beacon.room == viewing || !float.IsNaN(beacon.door.x) ? 1 : 2;
+
+        /// <summary>The chrome's half of <see cref="IconCovered"/>: whether the HUD covers the icon's square or the room's name.</summary>
+        private bool UnderChrome(Beacon beacon, Vector2 point, float margin, float scalePixels)
         {
             if (coveredBox != null)
                 return coveredBox(new Rect(point.x - margin, point.y - margin, 2f * margin, 2f * margin))

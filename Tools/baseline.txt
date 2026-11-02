@@ -258,7 +258,10 @@ Gamesim.EditModeTests 9602
 # LookingAway_TheNearbyCardWaitsOnAPairTheViewHides; the changed tests add none), counted offline from the source and
 # the compiled assembly (2026-11-01); not yet run in Unity.
 # 1462 = 1353 + main's 36 (1389 - 1353) + the room scope's 73 (1426 - 1353): disjoint cases, so the floor is their sum (2026-11-01).
-Gamesim.PlayModeTests 1462
+# The lane's run rs4 at 08489ad1 (no UMA, 2026-11-02) ran 1462: 1453 passed and 9 failed, all nine the tests'.
+# 1463 = 1462 + the rs4 fixes' review's 1 shared test (EpisodePlayModeTests.RoomView: WayFinding_NoIconStandsOnAnother),
+# counted offline from the source and the compiled assembly (2026-11-02); not yet run in Unity.
+Gamesim.PlayModeTests 1463
 # The UMA build of the same assembly, read by a plan built without -WithoutUma. 1281 = the 1241 above + the
 # 40 tests that compile only under GAMESIM_UMA, as run at r1 (2026-10-16): in EpisodePlayModeTests,
 # GroundedFarewell 11, Creator 9, HouseLife 8, Emotes 3, OpeningCaptures 2, and one each in CreatorEntry,
@@ -323,7 +326,9 @@ Gamesim.PlayModeTests 1462
 # 1468 = 1465 + RS5's review fixes' same 3 shared tests, counted offline (2026-11-01) and compiled in the UMA offline
 # build (D:\GamesimPlay's dag, 8 of 8 assemblies); not yet run in Unity.
 # 1504 = 1393 + main's 36 (1429 - 1393) + the room scope's 75 (1468 - 1393): disjoint cases, so the floor is their sum (2026-11-01).
-Gamesim.PlayModeTests.UmaBuild 1504
+# 1505 = 1504 + the rs4 fixes' review's same shared test, counted offline (2026-11-02) and compiled in the UMA offline
+# build (D:\GamesimPlay's dag, 8 of 8 assemblies); not yet run in Unity.
+Gamesim.PlayModeTests.UmaBuild 1505
 # The UMA bodies: runs only where the GAMESIM_UMA define is set (the working tree and the D: copy).
 # 82 = the 89 run on 2026-10-15, less the 7 farewell probes moved to Gamesim.Uma.DiagnosticsPlayModeTests;
 # 85 = 82 + the 3 farewell readiness decision tests (UmaFarewellReadinessDecisionPlayModeTests, 2026-10-16);

@@ -875,6 +875,81 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(scope.RoomUnder(goal), Is.EqualTo(RoomLayers.IndexOf("Kitchen")), "The trip ends in the kitchen.");
         }
 
+        /// <summary>
+        /// No icon stands on another (D17: every room keeps an icon, and one drawn over another is lost): from every
+        /// room, at its nearest, middle and farthest zoom and at yaws 0, 45 and 90, every other room's icon is shown,
+        /// and no icon's disc or the room's name under it touches another icon's disc or name. The lane's rs4 captures
+        /// had the nomination room's icon over the games room's in the living room's view, both waiting at the
+        /// frame's edge the same way, the one's name hiding the other's.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator WayFinding_NoIconStandsOnAnother()
+        {
+            director.ClosePanels();
+            director.SuspendNpcAutonomyForDiagnostics();
+            yield return null;
+            var scope = ScopeOf(director);
+            ScopeParkHouseguests(scope);
+            var failures = new List<string>();
+            int frames = 0, pairs = 0, mostIcons = 0;
+            // A drawn rect half a pixel in on every side: two icons that only meet at an edge do not stand on each other.
+            Rect Inside(RectTransform rect) { var at = ScreenRect(rect); return new Rect(at.xMin + .5f, at.yMin + .5f, at.width - 1f, at.height - 1f); }
+            for (int room = 0; room < RoomLayers.Count; room++)
+            {
+                cameraRig.SetReducedMotion(false);
+                yield return RoomViewPlayerIn(scope, room);
+                // The rig's own reduced motion for the sweep: a yaw and a distance set are the ones drawn on the next frame.
+                cameraRig.SetReducedMotion(true);
+                float nearest = HouseRoomView.NearestDistance, farthest = HouseRoomView.FarthestDistance(room);
+                foreach (float distance in new[] { nearest, (nearest + farthest) * .5f, farthest })
+                    foreach (float yaw in new[] { 0f, 45f, 90f })
+                    {
+                        RoomViewSetYaw(yaw);
+                        SetCameraDistance(distance);
+                        yield return null;
+                        yield return null;
+                        yield return null;
+                        string viewed = RoomLayers.RoomIds[room];
+                        string where = viewed + " at " + distance.ToString("0.##") + " m, yaw " + yaw;
+                        var beacons = director.TravelBeacons;
+                        if (beacons == null || beacons.RoomViewRoom != viewed) { failures.Add(where + ": the icons are not placed for its room view (" + beacons?.RoomViewRoom + ")"); continue; }
+                        frames++;
+                        var shown = new List<(string room, Rect disc, Rect? name)>();
+                        foreach (var id in RoomLayers.RoomIds)
+                        {
+                            var icon = BeaconFor(id);
+                            if (icon == null) continue;
+                            if (!icon.gameObject.activeInHierarchy)
+                            {
+                                if (id != viewed) failures.Add(where + ": the " + id + "'s icon is not shown");
+                                continue;
+                            }
+                            var tag = icon.Find(EpisodeTravelBeacons.RoomNameName) as RectTransform;
+                            shown.Add((id, Inside(icon), tag != null && tag.gameObject.activeSelf ? Inside(tag) : (Rect?)null));
+                        }
+                        mostIcons = Mathf.Max(mostIcons, shown.Count);
+                        for (int a = 0; a < shown.Count; a++)
+                            for (int b = a + 1; b < shown.Count; b++)
+                            {
+                                pairs++;
+                                var one = shown[a];
+                                var other = shown[b];
+                                bool touch = one.disc.Overlaps(other.disc)
+                                    || (other.name.HasValue && one.disc.Overlaps(other.name.Value))
+                                    || (one.name.HasValue && one.name.Value.Overlaps(other.disc))
+                                    || (one.name.HasValue && other.name.HasValue && one.name.Value.Overlaps(other.name.Value));
+                                if (touch)
+                                    failures.Add(where + ": the " + one.room + "'s icon (" + one.disc + ", its name " + one.name + ") stands on the "
+                                        + other.room + "'s (" + other.disc + ", its name " + other.name + ")");
+                            }
+                    }
+            }
+            cameraRig.SetReducedMotion(false);
+            Assert.That(failures, Is.Empty, failures.Count + " found: " + string.Join("; ", failures.Take(20)));
+            Assert.That(frames, Is.EqualTo(RoomLayers.Count * 9), "Every room's nine framings were read.");
+            Assert.That(mostIcons, Is.GreaterThanOrEqualTo(RoomLayers.Count - 1), "Every other room's icon was on screen together (" + pairs + " pairs compared).");
+        }
+
         // ------------------------------------------------------------------------------------
         // Looking away (D18).
         // ------------------------------------------------------------------------------------

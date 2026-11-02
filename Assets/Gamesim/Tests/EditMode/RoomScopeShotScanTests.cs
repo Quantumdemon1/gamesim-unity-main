@@ -14,8 +14,9 @@ namespace Gamesim.Tests.EditMode
     /// the main camera - <c>MoveTo</c>, <c>CutTo</c>, <c>FocusSubject</c> - is found by a scan of the scripts,
     /// not a hand-written table, and each one names its rooms in the call or is declared below: on the
     /// whole-house list (the overview, the opening and the walk-out, D1 and D6, where the shot it takes is
-    /// one the scan cannot read in the call) or on the list of callers still on the default, whose view is
-    /// free play's or following's and so the whole house until RS5 makes those two live and empties it.
+    /// one the scan cannot read in the call) or on the hand-back list (a whole-house source giving the camera
+    /// back to free play, on the player). The list of callers still on the default - free play's and
+    /// following's, the whole house until RS5 made those two live - is empty from RS5, and stays so.
     ///
     /// <para>What names its rooms: a timed move given its rooms (the fourth argument); a shot whose
     /// initializer sets <c>Rooms</c> or <c>RoomsFromFocus</c>, in the call, where the method builds or sets
@@ -27,9 +28,9 @@ namespace Gamesim.Tests.EditMode
     ///
     /// <para>Every declared entry claims its exact count of calls, so a call that goes or comes back
     /// changes the list; each whole-house entry's source has no switch (it is the whole house by decision),
-    /// and each default entry's source is not live, so the list fails the slice that turns free play or
-    /// following on until it is emptied. In the whole-house files every other move names
-    /// <c>RoomSet.WholeHouse</c> itself.</para>
+    /// each hand-back entry's is free play's and live, and no source with a switch is off, so a call on the
+    /// default cannot come back. In the whole-house files every other move names <c>RoomSet.WholeHouse</c>
+    /// itself.</para>
     ///
     /// <para>Unity-free and type-initializer-free (only the scope's constants and enums are read), so it runs
     /// under Unity's Mono harness as well as in the editor. The scripts are found under the folder
@@ -38,7 +39,12 @@ namespace Gamesim.Tests.EditMode
     /// </summary>
     public sealed class RoomScopeShotScanTests
     {
-        public enum Why { WholeHouse, OnTheDefault }
+        /// <summary>
+        /// Why a call that names no rooms the scan can read is declared: the whole house by decision; a
+        /// whole-house source's hand-back to free play (RS5: a follow of the player, the player's room by the
+        /// rig's rule, in a whole-house file); or still on the default, which no entry may be from RS5.
+        /// </summary>
+        public enum Why { WholeHouse, HandsBack, OnTheDefault }
 
         private sealed class Declared
         {
@@ -86,33 +92,15 @@ namespace Gamesim.Tests.EditMode
             new Declared(Ep + "EpisodeDirector.WalkOut.cs", "SkipWalkOut", "MoveTo(ExitDoorShot)", 1, Why.WholeHouse, EpisodeDirector.RoomScopeSource.WalkOut,
                 "the exit's door shot on a press: the living room's or the yard's door shot, each naming the whole house"),
 
-            // ---- still on the default: free play's and following's views, the whole house until RS5
-            new Declared(Ep + "EpisodeDirector.Camera.cs", "FollowHouseguest", "FocusSubject(body)", 1, Why.OnTheDefault, Following,
-                "a follow from the cast rail: their room, tracked, once following is live (RS5)"),
-            new Declared(Ep + "EpisodeDirector.Camera.cs", "FollowNext", "FocusSubject(ring[next])", 1, Why.OnTheDefault, Following,
-                "Tab and the brackets: the next houseguest's room (RS5)"),
-            new Declared(Ep + "EpisodeDirector.CeremonyFraming.cs", "FrameCeremonyRoutine", "MoveTo(focus, distance,", 1, Why.OnTheDefault, FreePlay,
-                "a framing's move back: the framing is over as it starts, so free play's view; it names no rooms (the floor under its point) for RS5 to decide"),
-            new Declared(Ep + "EpisodeDirector.Conversation.cs", "SelectHouseguest", "FocusSubject(player.transform, false)", 1, Why.OnTheDefault, FreePlay,
-                "the walk over to talk to someone: the player's room (RS5)"),
-            new Declared(Ep + "EpisodeDirector.Opening.cs", "OpeningFinished", "FocusSubject(player.transform, reframe: false)", 1, Why.OnTheDefault, FreePlay,
-                "the opening's hand-over (D6): the player's room from the call, free play's view; RS5 makes it the cut onto the player's room's framing"),
-            new Declared(Ep + "EpisodeDirector.TalkSpots.cs", "TryWalkToTalkSpot", "FocusSubject(player.transform, false)", 1, Why.OnTheDefault, FreePlay,
-                "the walk to a talk spot: the player's room (RS5)"),
-            new Declared(Ep + "EpisodeDirector.Travel.cs", "TryTravel", "CutTo(player.transform)", 1, Why.OnTheDefault, FreePlay,
-                "travel's warp behind the blink: the player's room at once (RS5)"),
-            new Declared(Ep + "EpisodeDirector.Travel.cs", "TryTravel", "FocusSubject(player.transform, false)", 1, Why.OnTheDefault, FreePlay,
-                "travel on foot: the player's room (RS5)"),
-            new Declared(Ep + "EpisodeDirector.WalkOut.cs", "FinishWalkOut", "FocusSubject(player.transform, false)", 1, Why.OnTheDefault, FreePlay,
-                "an unstaged walk-out hands the camera back to the player (RS5)"),
-            new Declared(Rig + "HousePlayerController.cs", "DispatchClick", "FocusSubject(seatedGuest.transform)", 1, Why.OnTheDefault, Following,
-                "a click on a seated houseguest follows them (RS5)"),
-            new Declared(Rig + "HousePlayerController.cs", "DispatchClick", "FocusSubject(houseguest.transform)", 1, Why.OnTheDefault, Following,
-                "a click on a houseguest follows them (RS5)"),
-            new Declared(Rig + "HousePlayerController.cs", "DispatchClick", "FocusSubject(transform)", 1, Why.OnTheDefault, FreePlay,
-                "a click on the player: free play (RS5)"),
-            new Declared(Rig + "HousePlayerController.cs", "DispatchClick", "FocusSubject(transform, false)", 1, Why.OnTheDefault, FreePlay,
-                "a floor click: free play, the player's room (RS5)"),
+            // ---- a whole-house source's hand-back to free play (RS5): a follow of the player, the player's room
+            new Declared(Ep + "EpisodeDirector.Opening.cs", "OpeningFinished", "FocusSubject(player.transform, reframe: false)", 1, Why.HandsBack, FreePlay,
+                "the opening's hand-over (D6): the player's room from the call, with the room view's cut onto its framing"),
+            new Declared(Ep + "EpisodeDirector.WalkOut.cs", "FinishWalkOut", "FocusSubject(player.transform, false)", 1, Why.HandsBack, FreePlay,
+                "an unstaged walk-out hands the camera back to the player: the player's room, the room view's"),
+
+            // ---- still on the default: none from RS5, which made free play and following live (their follows,
+            // Tab, the clicks, travel, the talk walks name their subjects' rooms by the rig's rule, and the
+            // framing's move back names the rooms the view drew as the framing took it)
         };
 
         [Test]
@@ -140,7 +128,20 @@ namespace Gamesim.Tests.EditMode
                     if (Live(entry.Source))
                         failures.Add(entry + ": " + entry.Source + " is live, so this caller is no longer on the default: name its rooms and take it off the list");
                 }
+                if (entry.Why == Why.HandsBack)
+                {
+                    if (entry.Source != FreePlay || !Live(FreePlay))
+                        failures.Add(entry + ": a hand-back gives the camera to free play, which is live from RS5, not " + entry.Source);
+                    if (!WholeHouseFiles.Any(whole => whole.File == entry.File))
+                        failures.Add(entry + ": a hand-back is a whole-house source's, in one of their files");
+                }
             }
+            // From RS5 every source with a switch is live, so nothing waits on the default: the list is empty and stays so.
+            foreach (EpisodeDirector.RoomScopeSource source in Enum.GetValues(typeof(EpisodeDirector.RoomScopeSource)))
+                if (switches.Contains(source.ToString()) && !Live(source))
+                    failures.Add(source + " has a switch and is not live: from RS5 every source with one is (free play and following last)");
+            if (Lists.Any(entry => entry.Why == Why.OnTheDefault))
+                failures.Add("Callers on the default: " + string.Join(", ", Lists.Where(entry => entry.Why == Why.OnTheDefault)) + " - from RS5 there are none");
 
             // Every call names its rooms or is declared.
             foreach (var site in sites)
@@ -162,9 +163,9 @@ namespace Gamesim.Tests.EditMode
             }
 
             Assert.That(failures, Is.Empty, string.Join("\n", failures));
-            int onTheDefault = Lists.Where(entry => entry.Why == Why.OnTheDefault).Sum(entry => entry.Count);
-            Console.WriteLine("[Gamesim] RS6b: " + sites.Count + " camera moves under Runtime/, " + sites.Count(site => site.Names) + " naming their rooms, "
-                + onTheDefault + " still on the default until RS5.");
+            int handsBack = Lists.Where(entry => entry.Why == Why.HandsBack).Sum(entry => entry.Count);
+            Console.WriteLine("[Gamesim] RS5: " + sites.Count + " camera moves under Runtime/, " + sites.Count(site => site.Names) + " naming their rooms, "
+                + handsBack + " hand-backs to free play, none on the default.");
         }
 
         [Test]

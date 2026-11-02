@@ -12,11 +12,10 @@ namespace Gamesim.Tests.PlayMode
 {
     /// <summary>
     /// The room scope's first slice (ROOM-SCOPE-PLAN RS1): the camera rig reports the rooms every move
-    /// is about, and the director's scope reads them. Nothing these tests move is drawn differently - the
-    /// sources of their views (free play, following, a test's own shots) are not live before RS5, RS6a and
-    /// RS6b having turned on the other shots' (the activity warp's among them, whose view this file's last
-    /// test reads after its hold), so the scope says the whole house unless a test holds it on - so they
-    /// read what is reported, frame by frame, as the bodies cross the house's doorways.
+    /// is about, and the director's scope reads them, frame by frame, as the bodies cross the house's
+    /// doorways. From RS5 every source is live - free play and following too - so the scope is the rig's
+    /// rooms with nothing held, and the room view changes rooms at most once per 0.6 s: a walk placed at a
+    /// doorway's start waits that out before it crosses, so its one change comes three tenths of a metre in.
     /// </summary>
     public sealed partial class EpisodePlayModeTests
     {
@@ -52,7 +51,8 @@ namespace Gamesim.Tests.PlayMode
             crossings.AddRange(corners);
             ScopeParkHouseguests(scope);
             var owner = new object();
-            Assert.That(director.ViewedRooms.IsWholeHouse, Is.True, "Free play is not live before RS5: the scope draws the whole house.");
+            Assert.That(director.ViewedRooms.IsWholeHouse, Is.False, "Free play is live from RS5: the scope draws the player's room, not the whole house.");
+            Assert.That(director.ViewedRooms, Is.EqualTo(cameraRig.Rooms), "the rig's.");
             // The walker rule reads only the feet, so the player is carried through each doorway by
             // its transform rather than warped along the NavMesh: the bake closes the kitchen's door
             // to the private room behind the kitchen run, and its half-metre erosion keeps the
@@ -67,10 +67,12 @@ namespace Gamesim.Tests.PlayMode
             {
                 foreach (var crossing in crossings)
                 {
-                    // Watched the way a floor click watches: the player is the camera's subject.
+                    // Watched the way a floor click watches: the player is the camera's subject. The room
+                    // view's last change (the placing) waited out, so the walk's own comes where it should.
                     ScopePlace(player.transform, crossing.Start);
                     cameraRig.FocusSubject(player.transform, false);
                     yield return null;
+                    yield return RoomViewWaitOutTheLastChange();
                     yield return ScopeWalk(player.transform, crossing, failures);
                 }
             }
@@ -80,7 +82,8 @@ namespace Gamesim.Tests.PlayMode
                 agent.updatePosition = agentPlaces;
             }
             Assert.That(failures, Is.Empty, string.Join("; ", failures));
-            Assert.That(director.ViewedRooms.IsWholeHouse, Is.True, "Released, the whole house again.");
+            Assert.That(director.ViewedRooms, Is.EqualTo(RoomSet.Of(director.WalkerRoomOf(player.transform))),
+                "Released, free play's view (live from RS5): the room the player walked into last.");
         }
 
         /// <summary>
@@ -111,6 +114,7 @@ namespace Gamesim.Tests.PlayMode
                 ScopePlace(player.transform, door.Start);
                 cameraRig.FocusSubject(player.transform, false);
                 yield return null;
+                yield return RoomViewWaitOutTheLastChange();
                 var from = RoomSet.Of(door.From);
                 var to = RoomSet.Of(door.To);
                 Assert.That(cameraRig.Rooms, Is.EqualTo(from), "A metre inside, the " + RoomLayers.RoomIds[door.From] + ".");
@@ -134,6 +138,9 @@ namespace Gamesim.Tests.PlayMode
                     Assert.That(cameraRig.Rooms, Is.EqualTo(to), "and the shuffle back keeps the new room ("
                         + ScopeDepthText(scope, door, player.transform.position) + ").");
                 }
+                // The room view changes rooms at most once per 0.6 s (RS5): the shuffle back waited out first.
+                yield return RoomViewWaitOutTheLastChange();
+                Assert.That(cameraRig.Rooms, Is.EqualTo(to), "Waiting out the last change in the doorway keeps the new room.");
                 ScopePlace(player.transform, line - across * .5f, .1f);
                 yield return null;
                 Assert.That(cameraRig.Rooms, Is.EqualTo(from), "Half a metre back, the first room again.");
@@ -173,6 +180,9 @@ namespace Gamesim.Tests.PlayMode
                 Assert.That(cameraRig.FocusedSubject, Is.SameAs(guest.transform), "The camera follows " + guest.DisplayName + ".");
                 Assert.That(cameraRig.Rooms, Is.EqualTo(RoomSet.Of(door.From)), "Their room, not the player's.");
                 Assert.That(director.ViewedRooms, Is.EqualTo(RoomSet.Of(door.From)));
+                // The follow's cut waited out (RS5's 0.6 s), so the walk's own change comes where it should.
+                yield return null;
+                yield return RoomViewWaitOutTheLastChange();
                 yield return ScopeWalk(guest.transform, door, failures);
                 Assert.That(failures, Is.Empty, string.Join("; ", failures));
 
@@ -191,9 +201,8 @@ namespace Gamesim.Tests.PlayMode
         /// Every kind of camera move reports, in the same call, the rooms it is about: a shot naming
         /// none is the whole house, a shot names its own or takes its focus's, a cut and a follow take
         /// their subject's, a free move the floor under its point or the nearest, and a timed move
-        /// both ends until it lands. With none of their sources live (free play's and following's wait for
-    /// RS5) the scope still draws the whole house; a
-        /// hold switches it on, and a whole-house hold wins.
+        /// both ends until it lands. Free play and following are live from RS5, so the scope draws the rig's
+        /// rooms with nothing held; a whole-house hold wins.
         /// </summary>
         [UnityTest]
         public IEnumerator RoomScope_EveryRigMoveReportsItsRooms()
@@ -209,7 +218,7 @@ namespace Gamesim.Tests.PlayMode
             // A free move: the floor under its point.
             cameraRig.MoveTo(ScopeCentre(scope, "Kitchen"), 12f);
             Assert.That(cameraRig.Rooms, Is.EqualTo(RoomSet.Of("Kitchen")), "A free move to the kitchen watches the kitchen.");
-            Assert.That(director.ViewedRooms.IsWholeHouse, Is.True, "Free play is not live before RS5: the scope still draws the whole house.");
+            Assert.That(director.ViewedRooms, Is.EqualTo(RoomSet.Of("Kitchen")), "Free play is live from RS5: the scope draws the watched kitchen with nothing held.");
             director.HoldRoomScope(owner);
             try
             {
@@ -304,10 +313,14 @@ namespace Gamesim.Tests.PlayMode
                 Assert.That(director.ViewedRooms, Is.EqualTo(RoomSet.Of("Nomination")), "and the held scope with it");
             }
             finally { director.Release(owner); director.Release(capture); }
-            Assert.That(director.ViewedRooms.IsWholeHouse, Is.True, "Released, free play's view is the whole house again.");
-            // And nothing is drawn differently with no live source the view's: the camera draws every room layer,
+            Assert.That(director.ViewedRooms, Is.EqualTo(RoomSet.Of("Nomination")),
+                "Released, the test's own shot still holds the camera, and free play (live from RS5) draws the rooms it names.");
+            cameraRig.ReleaseShot(0f);
+            // And with the whole house held nothing is drawn differently: the camera draws every room layer,
             // and what stands on one is the house's dressing, each piece in its room by the rule (RS2a,
             // which turned RS1's "nothing stands on one" over), with no body and no collider among it.
+            director.HoldWholeHouse(capture);
+            Assert.That(director.ViewedRooms.IsWholeHouse, Is.True, "A whole-house hold draws the whole house.");
             Assert.That(cameraRig.ViewCamera.cullingMask & RoomLayers.Mask, Is.EqualTo(RoomLayers.Mask), "The camera draws every room layer.");
             var dressing = new List<string>();
             Assert.That(Rs2aCheckTheHouse(scope, dressing).Sum(), Is.GreaterThan(0), "The house's dressing stands on its rooms' layers.");

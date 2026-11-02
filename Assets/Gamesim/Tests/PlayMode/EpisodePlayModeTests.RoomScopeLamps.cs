@@ -78,17 +78,21 @@ namespace Gamesim.Tests.PlayMode
                 LampScopeRead(sight, camera, homes, others);
             }
             var owner = new object();
+            var whole = new object();
             var agent = player.Agent;
             bool agentPlaces = agent.updatePosition;
             RenderPipelineManager.beginCameraRendering += Look;
             try
             {
-                // Nothing held and the view's source not live, so the main camera renders with every lamp.
+                // The whole house held (free play is live from RS5, so nothing held is the room view): the main
+                // camera renders with every lamp.
+                director.HoldWholeHouse(whole);
                 sight = new LampScopeSight();
                 yield return LampScopeNextRender(() => sight.Renders > 0);
-                Assert.That(sight.Viewed.IsWholeHouse, Is.True, "Nothing holds the scope: the whole house.");
+                Assert.That(sight.Viewed.IsWholeHouse, Is.True, "The whole house held: the whole house.");
                 Assert.That(sight.LampsOff, Is.Zero, "The hook leaves every lamp on for the whole house.");
                 Assert.That(sight.Lamps, Is.EqualTo(authored), "Every lamp as authored inside the main camera's render.");
+                director.Release(whole);
 
                 // The player is carried by its transform to each room's middle (the walker rule reads
                 // only the feet) and followed there, under the room's view at D4's farthest zoom.
@@ -141,12 +145,13 @@ namespace Gamesim.Tests.PlayMode
                 agent.updatePosition = agentPlaces;
             }
 
-            // Let go, the main camera renders with every lamp again.
+            // Let go into the whole house, the main camera renders with every lamp again.
+            director.HoldWholeHouse(whole);
             sight = new LampScopeSight();
             RenderPipelineManager.beginCameraRendering += Look;
             try { yield return LampScopeNextRender(() => sight.Renders > 0); }
             finally { RenderPipelineManager.beginCameraRendering -= Look; }
-            Assert.That(sight.Viewed.IsWholeHouse, Is.True, "Released, the whole house.");
+            Assert.That(sight.Viewed.IsWholeHouse, Is.True, "Released into the whole house.");
             Assert.That(sight.Lamps, Is.EqualTo(authored), "Released, every lamp as authored inside the main camera's render.");
         }
 

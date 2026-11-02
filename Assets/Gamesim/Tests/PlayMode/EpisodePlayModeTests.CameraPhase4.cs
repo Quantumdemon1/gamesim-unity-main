@@ -32,12 +32,18 @@ namespace Gamesim.Tests.PlayMode
         {
             cameraRig.SetReducedMotion(false);
             cameraRig.ControlsEnabled = false;
-            var start = cameraRig.HouseCenter;
-            cameraRig.MoveTo(start, 20f);
+            // A free timed move from the kitchen's middle into the private room's (RS5): free moves are watching
+            // views, so each end is over its room, inside its farthest zoom, where the room view's clamp keeps it.
+            var scope = ScopeOf(director);
+            var kitchenBox = scope.Box(RoomLayers.IndexOf("Kitchen"));
+            var privateBox = scope.Box(RoomLayers.IndexOf("Private"));
+            var start = new Vector3(kitchenBox.center.x, cameraRig.HouseCenter.y, kitchenBox.center.y);
+            cameraRig.MoveTo(start, 10f);
             yield return SettleCamera();
+            Assert.That(cameraRig.ViewRoom, Is.EqualTo(RoomLayers.IndexOf("Kitchen")), "The move starts over the kitchen.");
             var from = cameraRig.transform.position;
-            var to = start + new Vector3(8f, 0f, 6f);
-            cameraRig.MoveTo(to, 12f, 1.0f);
+            var to = new Vector3(privateBox.center.x, cameraRig.HouseCenter.y, privateBox.center.y);
+            cameraRig.MoveTo(to, 10f, 1.0f);
             Assert.That(cameraRig.IsTravelling, Is.True);
             float clock = 0f;
             do { clock += Time.unscaledDeltaTime; yield return null; } while (clock < 0.5f);
@@ -49,6 +55,9 @@ namespace Gamesim.Tests.PlayMode
             while (clock < 1f) { clock += Time.unscaledDeltaTime; yield return null; }
             Assert.That(cameraRig.IsTravelling, Is.False, "and it is over on the clock");
             Assert.That(Vector3.Distance(cameraRig.transform.position, to), Is.LessThan(0.05f), "exactly where it was sent.");
+            yield return null;
+            Assert.That(cameraRig.ViewRoom, Is.EqualTo(RoomLayers.IndexOf("Private")), "Landed, the room view watches the private room it went to.");
+            Assert.That(Vector3.Distance(cameraRig.transform.position, to), Is.LessThan(0.05f), "and keeps the camera there: no cut, no clamp moved it.");
             cameraRig.ControlsEnabled = true;
         }
 
@@ -63,11 +72,11 @@ namespace Gamesim.Tests.PlayMode
             var focusBefore = cameraRig.DesiredFocus;
             float distanceBefore = cameraRig.DesiredDistance;
             var room = SceneComponents<HouseRoomMarker>().First(m => m.RoomName == EpisodeDirector.CeremonyRoom("nomination"));
-            // The ceremony's framing is live (RS6a): the view it leaves is free play's, the whole house until RS5,
-            // whatever floor the free move watches.
+            // The ceremony's framing is live (RS6a): the view it leaves is free play's, from RS5 the floor the
+            // free move watches.
             var watched = cameraRig.Rooms;
             var ceremonyRoom = RoomSet.Of(room.RoomName);
-            Assert.That(director.ViewedRooms.IsWholeHouse, Is.True, "Before the ceremony, free play: the whole house.");
+            Assert.That(director.ViewedRooms, Is.EqualTo(watched), "Before the ceremony, free play: the room the free move watches.");
 
             director.FrameCeremony("nomination");
             Assert.That(director.IsFramingCeremony, Is.True);
@@ -76,8 +85,8 @@ namespace Gamesim.Tests.PlayMode
                 Is.LessThan(0.1f), "A nomination is framed in the nomination room.");
             Assert.That(cameraRig.DesiredDistance, Is.EqualTo(EpisodeDirector.CeremonyDistance).Within(0.01f), "at the room-wide distance");
             Assert.That(cameraRig.IsTravelling, Is.True, "on the clock");
-            Assert.That(director.ViewedRooms.IsWholeHouse, Is.True,
-                "On its way it draws what the view drew as it left, free play's whole house - not the " + watched + " the free move watched -");
+            Assert.That(director.ViewedRooms, Is.EqualTo(watched.With(ceremonyRoom)),
+                "On its way it draws what the view drew as it left, the " + watched + " the free move watched, with the ceremony's room");
             yield return ScopeWaitUntilLanded();
             Assert.That(director.ViewedRooms, Is.EqualTo(ceremonyRoom), "and from its landing the nomination room alone.");
 
@@ -86,7 +95,8 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(director.IsFramingCeremony, Is.False, "With no card playing the framing holds its minimum and lets go,");
             Assert.That(Vector3.Distance(cameraRig.DesiredFocus, focusBefore), Is.LessThan(0.05f), "back to where the viewer was");
             Assert.That(cameraRig.DesiredDistance, Is.EqualTo(distanceBefore).Within(0.05f));
-            Assert.That(director.ViewedRooms.IsWholeHouse, Is.True, "Let go, the view is free play's again: the whole house.");
+            yield return ScopeWaitUntilLanded();
+            Assert.That(director.ViewedRooms, Is.EqualTo(watched), "Let go and landed, the view is free play's again: the room the move back names, the one it left.");
             Assert.That(EpisodeDirector.CeremonyRoom("eviction"), Is.EqualTo("Living"));
             // The veto meeting is held in the living room (PACK8-PASS-PLAN decision 5), staged or on the HUD frame.
             Assert.That(EpisodeDirector.CeremonyRoom("veto"), Is.EqualTo("Living"));
@@ -105,10 +115,20 @@ namespace Gamesim.Tests.PlayMode
             cameraRig.MoveTo(npc.transform.position, cameraRig.NearestDistance);
             yield return null; yield return null;
             Assert.That(npc.NameTagAlpha, Is.EqualTo(1f).Within(0.01f), "Close up, the name is fully shown.");
+            // The room view (RS5): every drawn body's plate fully shown out to the room's farthest zoom.
             cameraRig.MoveTo(npc.transform.position, cameraRig.FarthestDistance);
-            yield return null; yield return null;
-            Assert.That(npc.NameTagAlpha, Is.LessThan(0.05f), "From the far end of the zoom it is gone.");
+            yield return null; yield return null; yield return null;
+            Assert.That(cameraRig.IsRoomView, Is.True, "The free move is the room view's,");
+            Assert.That(cameraRig.DesiredDistance, Is.EqualTo(cameraRig.FreeFarthestDistance).Within(.01f), "at its room's farthest zoom,");
+            Assert.That(npc.NameTagAlpha, Is.EqualTo(1f).Within(0.01f), "where the plate is fully shown: inside the room view's distances.");
+            // The whole house (the setting's view): the fade across the house, gone from the far end of the zoom.
+            RoomViewHoldTheDollhouse();
+            yield return null;
+            cameraRig.MoveTo(npc.transform.position, cameraRig.FarthestDistance);
+            yield return null; yield return null; yield return null;
+            Assert.That(npc.NameTagAlpha, Is.LessThan(0.05f), "From the far end of the whole house's zoom it is gone.");
             Assert.That(label.color.a, Is.EqualTo(npc.NameTagAlpha).Within(0.01f), "and the label's colour carries it.");
+            yield return RoomViewLetGoOfTheDollhouse();
 
             // No plate for a hidden room, however close the camera (RS4): held on a room away from them,
             // a shot at the nearest zoom shows none; let go, they are drawn again. The player stands in

@@ -256,7 +256,10 @@ namespace Gamesim.Episode
                                 || own.Activity == CharacterPresentation.BodyActivity.Posing))
                 own.SetActivity(CharacterPresentation.BodyActivity.None);
             lastIntroduced = null;
-            if (cameraRig != null && player != null) cameraRig.FocusSubject(player.transform, reframe: false);
+            // The hand-over (D6, RS5): a cut onto the player's room's framing, the room view's, rather than
+            // the crane's ease down onto the player - free play is the room view, and the crane stands 32 m
+            // over the whole house. The follow names the player's room in the call.
+            if (cameraRig != null && player != null) { cameraRig.CutToRoomView(); cameraRig.FocusSubject(player.transform, reframe: false); }
             Project();
             Render();
         }

@@ -64,8 +64,12 @@ namespace Gamesim.Tests.PlayMode
             // The pieces placed now, and their layers: released, each is where it was, or moved and gone to the shell.
             var startLayers = Rs2aHouseRenderers().Where(scope.IsPlaced).ToDictionary(r => r, r => r.gameObject.layer);
             var view = cameraRig.ViewCamera;
+            // Free play is live from RS5, so nothing held is the room view: the whole house is a hold now.
+            var whole = new object();
+            director.HoldWholeHouse(whole);
             int authored = view.cullingMask;
-            Assert.That(authored & RoomLayers.Mask, Is.EqualTo(RoomLayers.Mask), "With nothing held the main camera draws every room layer.");
+            Assert.That(authored & RoomLayers.Mask, Is.EqualTo(RoomLayers.Mask), "With the whole house held the main camera draws every room layer.");
+            director.Release(whole);
             var house = Rs2aHouseRenderers();
             var floors = SceneComponents<HouseWalkable>().Select(floor => floor.GetComponent<Renderer>()).Where(r => r != null).ToArray();
             Assert.That(floors, Is.Not.Empty, "The floors draw.");
@@ -144,7 +148,9 @@ namespace Gamesim.Tests.PlayMode
                 cameraRig.ReleaseShot(0f);
                 foreach (var item in made) if (item != null) Object.Destroy(item);
             }
-            Assert.That(view.cullingMask & RoomLayers.Mask, Is.EqualTo(RoomLayers.Mask), "Released, the main camera draws every room layer again.");
+            // Released into the whole house (free play, live from RS5, would draw the player's room).
+            director.HoldWholeHouse(whole);
+            Assert.That(view.cullingMask & RoomLayers.Mask, Is.EqualTo(RoomLayers.Mask), "Released into the whole house, the main camera draws every room layer again.");
             yield return null;
             Rs2aCheckTheHouse(scope, failures);
             Assert.That(failures, Is.Empty, "Released: " + string.Join("; ", failures.Take(20)));
@@ -259,7 +265,11 @@ namespace Gamesim.Tests.PlayMode
             yield return null;
             var scope = ScopeOf(director);
             var view = cameraRig.ViewCamera;
+            // The mask as the whole house has it (free play is live from RS5, so nothing held is the room view).
+            var whole = new object();
+            director.HoldWholeHouse(whole);
             int authored = view.cullingMask;
+            director.Release(whole);
             const int Guard = 1 << 31;
             var seen = new List<(Camera Camera, int Mask)>();
             void Look(ScriptableRenderContext context, Camera camera) => seen.Add((camera, camera.cullingMask));
@@ -295,8 +305,9 @@ namespace Gamesim.Tests.PlayMode
                 director.Release(owner);
                 cameraRig.ReleaseShot(0f);
             }
+            director.HoldWholeHouse(whole);
             Assert.That(view.cullingMask & ~RoomLayers.Mask, Is.EqualTo(authored & ~RoomLayers.Mask), "Every bit outside 20 to 27 as authored, the guard's included.");
-            Assert.That(view.cullingMask & RoomLayers.Mask, Is.EqualTo(authored & RoomLayers.Mask), "Released, every room bit back.");
+            Assert.That(view.cullingMask & RoomLayers.Mask, Is.EqualTo(authored & RoomLayers.Mask), "Released into the whole house, every room bit back.");
         }
 
         /// <summary>
@@ -395,29 +406,29 @@ namespace Gamesim.Tests.PlayMode
         }
 
         /// <summary>
-        /// Every shot's source is live but free play's and following's, which RS5 turns on (RS2a made none
-        /// live, RS6a the ceremonies and the competitions, RS6b the conversation's two-shot, the diary, house
-        /// events, the activity warp and jury watching), and the overview, the opening and the walk-out are the
-        /// whole house by decision, with no switch: with nothing held, whatever free play and following do -
-        /// a test's own shot naming a room, a free move into one, a follow - the view is the whole house, the
-        /// main camera's mask holds every room bit, nobody is hidden and nothing is out, so every piece of the
-        /// house is drawn although the dressing stands on its rooms' layers: in free play and following players
-        /// see today's house. The live ones are pinned by RoomScopeShots (RS6a) and RoomScopeOtherShots (RS6b).
+        /// Every source with a switch is live from RS5 (RS2a made none live, RS6a the ceremonies and the
+        /// competitions, RS6b the conversation's two-shot, the diary, house events, the activity warp and jury
+        /// watching, RS5 free play and following), and the overview, the opening and the walk-out are the whole
+        /// house by decision, with no switch. So with nothing held whatever free play and following do - a test's
+        /// own shot naming a room, a free move into one, a follow - the view is that room, the main camera's
+        /// mask holds its bit alone of the eight and the dressing outside it is not drawn; with the whole house
+        /// held ("Show the whole house", D12, or a capture's), every room bit is back, nobody is hidden, nothing
+        /// is out, and every piece of the house is drawn although the dressing stands on its rooms' layers.
         /// </summary>
         [UnityTest]
-        public IEnumerator RoomScope_OnlyFreePlayAndFollowingAreNotLive()
+        public IEnumerator RoomScope_EverySourceIsLiveAndTheWholeHouseIsAHold()
         {
             Assert.That(EpisodeDirector.LiveRoomScopeSources,
-                Is.EqualTo(EpisodeDirector.RoomScopeSources.Ceremony | EpisodeDirector.RoomScopeSources.Competition
+                Is.EqualTo(EpisodeDirector.RoomScopeSources.FreePlay | EpisodeDirector.RoomScopeSources.Following
+                    | EpisodeDirector.RoomScopeSources.Ceremony | EpisodeDirector.RoomScopeSources.Competition
                     | EpisodeDirector.RoomScopeSources.Conversation | EpisodeDirector.RoomScopeSources.Diary
                     | EpisodeDirector.RoomScopeSources.HouseEvent | EpisodeDirector.RoomScopeSources.Activity
                     | EpisodeDirector.RoomScopeSources.Watching),
-                "Every shot's source is live but free play's and following's.");
+                "Every source with a switch is live.");
             foreach (EpisodeDirector.RoomScopeSource source in Enum.GetValues(typeof(EpisodeDirector.RoomScopeSource)))
             {
-                bool notLive = source == EpisodeDirector.RoomScopeSource.FreePlay || source == EpisodeDirector.RoomScopeSource.Following
-                    || EpisodeDirector.IsWholeHouseSource(source);
-                Assert.That(EpisodeDirector.IsRoomScopeSourceLive(source), Is.EqualTo(!notLive), source + (notLive ? " is not live." : " is live."));
+                bool notLive = EpisodeDirector.IsWholeHouseSource(source);
+                Assert.That(EpisodeDirector.IsRoomScopeSourceLive(source), Is.EqualTo(!notLive), source + (notLive ? " is the whole house by decision." : " is live."));
             }
             director.ClosePanels();
             director.SuspendNpcAutonomyForDiagnostics();
@@ -427,31 +438,48 @@ namespace Gamesim.Tests.PlayMode
             var house = Rs2aHouseRenderers();
             Assert.That(house.Count(r => RoomLayers.IsRoomLayer(r.gameObject.layer)), Is.GreaterThan(0), "The dressing stands on its rooms' layers.");
             var guest = SceneComponents<HouseNpc>().First(npc => npc.isActiveAndEnabled);
-            var moves = new (string What, Action Move)[]
+            ScopePlace(guest.transform, ScopeOpenFloor(scope, RoomLayers.IndexOf("Bedroom")), 2f);
+            yield return null;
+            var moves = new (string What, Action Move, string Room, EpisodeDirector.RoomScopeSource Source)[]
             {
-                ("a shot that names the games room", () => cameraRig.MoveTo(Rs4Shot(scope, "Games"))),
-                ("a free move to the yard", () => { cameraRig.ReleaseShot(0f); cameraRig.MoveTo(ScopeCentre(scope, "Yard"), 12f); }),
-                ("following a houseguest", () => cameraRig.FocusSubject(guest.transform)),
+                ("a shot that names the games room", () => cameraRig.MoveTo(Rs4Shot(scope, "Games")), "Games", EpisodeDirector.RoomScopeSource.FreePlay),
+                ("a free move to the yard", () => { cameraRig.ReleaseShot(0f); cameraRig.MoveTo(ScopeCentre(scope, "Yard"), 12f); }, "Yard", EpisodeDirector.RoomScopeSource.FreePlay),
+                ("following a houseguest", () => cameraRig.FocusSubject(guest.transform), "Bedroom", EpisodeDirector.RoomScopeSource.Following),
             };
+            var whole = new object();
             try
             {
                 foreach (var move in moves)
                 {
                     move.Move();
                     yield return null;
-                    Assert.That(EpisodeDirector.IsRoomScopeSourceLive(director.CurrentRoomScopeSource), Is.False,
-                        move.What + ": the view's source (" + director.CurrentRoomScopeSource + ") is not live.");
-                    Assert.That(director.ViewedRooms.IsWholeHouse, Is.True, move.What + ": the whole house.");
+                    Assert.That(director.CurrentRoomScopeSource, Is.EqualTo(move.Source), move.What + ": the view's source.");
+                    Assert.That(EpisodeDirector.IsRoomScopeSourceLive(director.CurrentRoomScopeSource), Is.True, move.What + ": live.");
+                    var room = RoomSet.Of(move.Room);
+                    Assert.That(director.ViewedRooms, Is.EqualTo(room), move.What + ": the " + move.Room + ", with nothing held.");
+                    Assert.That(view.cullingMask & RoomLayers.Mask, Is.EqualTo(room.CullingBits), move.What + ": its bit alone of the eight in the main camera's mask.");
+                    var outside = house.Where(r => r != null && r.enabled && r.gameObject.activeInHierarchy && RoomLayers.IsRoomLayer(r.gameObject.layer)
+                        && r.gameObject.layer != RoomLayers.LayerOf(move.Room)).ToArray();
+                    Assert.That(outside.Length, Is.GreaterThan(0), move.What + ": dressing stands in other rooms.");
+                    Assert.That(outside.Where(r => (view.cullingMask & (1 << r.gameObject.layer)) != 0).Select(Rs2aName).ToArray(), Is.Empty,
+                        move.What + ": no other room's dressing is drawn.");
+
+                    // The whole house held: everything back.
+                    director.HoldWholeHouse(whole);
+                    Assert.That(director.ViewedRooms.IsWholeHouse, Is.True, move.What + ", the whole house held: the whole house.");
                     Assert.That(view.cullingMask & RoomLayers.Mask, Is.EqualTo(RoomLayers.Mask), move.What + ": every room bit in the main camera's mask.");
                     Assert.That(director.HiddenBodyCount, Is.Zero, move.What + ": nobody hidden.");
                     Assert.That(director.MainCameraRoomBitsTaken, Is.Zero, move.What + ": nothing out.");
                     var notDrawn = house.Where(r => r != null && r.enabled && r.gameObject.activeInHierarchy && (view.cullingMask & (1 << r.gameObject.layer)) == 0)
                         .Select(Rs2aName).ToArray();
                     Assert.That(notDrawn, Is.Empty, move.What + ": every piece of the house drawn.");
+                    director.Release(whole);
+                    yield return null;
                 }
             }
             finally
             {
+                director.Release(whole);
                 cameraRig.ClearSubject();
                 cameraRig.ReleaseShot(0f);
             }

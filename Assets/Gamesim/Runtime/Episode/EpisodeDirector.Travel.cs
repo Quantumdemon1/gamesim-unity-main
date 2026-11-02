@@ -322,6 +322,12 @@ namespace Gamesim.Episode
             // One reader, kept: a method group passed every frame is a new delegate every frame.
             if (houseguestsIn == null) houseguestsIn = HouseguestsIn;
             travelBeacons.Annotate(houseguestsIn, playerIsActive ? next : null, StagedRoom(projected, out _));
+            // The room view's way-finding (D17, RS5): the icons at the viewed room's doorways, the few the view
+            // hides named over their rooms' icons. Readers kept, as above.
+            if (beaconDoorway == null) beaconDoorway = BeaconDoorway;
+            if (beaconHiddenIn == null) beaconHiddenIn = BeaconHiddenIn;
+            int viewing = cameraRig != null ? cameraRig.ViewRoom : -1;
+            travelBeacons.RoomView(viewing >= 0 ? RoomLayers.RoomIds[viewing] : null, beaconDoorway, beaconHiddenIn);
             // The chrome as points and as rects, kept as the reader is: the icons ask about an
             // icon's square and the room's name under it as one rect each.
             if (chromeCovers == null) chromeCovers = hud.Covers;
@@ -350,6 +356,21 @@ namespace Gamesim.Episode
         private System.Func<Rect, bool> chromeCoversBox;
 
         /// <summary>Where a room's icon floats: over the screen, over the diary chair, over the middle of the rest.</summary>
+        private System.Func<string, Vector3> beaconDoorway;
+        private System.Func<Transform, string> beaconHiddenIn;
+
+        /// <summary>The middle of the viewed room's doorway to <paramref name="room"/> nearest the camera's focus, or a point whose x is NaN where none leads there (D17).</summary>
+        private Vector3 BeaconDoorway(string room)
+        {
+            int viewing = cameraRig != null ? cameraRig.ViewRoom : -1;
+            if (roomScope != null && viewing >= 0 && roomScope.TryDoorway(viewing, RoomLayers.IndexOf(room), cameraRig.transform.position, out var door))
+                return door.Middle;
+            return new Vector3(float.NaN, 0f, 0f);
+        }
+
+        /// <summary>The room a body the room scope hides stands in; null for a body it draws (D17).</summary>
+        private string BeaconHiddenIn(Transform body) => body != null && !IsBodyDrawn(body) ? WalkerRoomOf(body) : null;
+
         private Vector3 BeaconAnchor(string room)
         {
             if (room == StationRoomId() && HouseRoomQuery.Finite(StationPosition)) return StationPosition;

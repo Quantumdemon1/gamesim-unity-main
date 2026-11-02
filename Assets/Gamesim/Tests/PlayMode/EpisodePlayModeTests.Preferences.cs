@@ -29,6 +29,8 @@ namespace Gamesim.Tests.PlayMode
             "Gamesim.Muted", "Gamesim.ReducedMotion", "Gamesim.ReducedAudio", "Gamesim.LargeText", "Gamesim.Volume", "Gamesim.Music",
             "Gamesim.CeremonyPace", "Gamesim.Language", "Gamesim.Quality", "Gamesim.FrameCap", "Gamesim.Fullscreen", "Gamesim.EdgePan",
             "Gamesim.CompactHud", "Gamesim.CameraSpeed", "Gamesim.InvertY", "Gamesim.VSync", "Gamesim.DisplayMode", "Gamesim.Resolution",
+            // "Show the whole house" (ROOM-SCOPE-PLAN D12, RS5).
+            EpisodeDirector.WholeHouseKey,
             // The text size as 0 to 2 (A8) and the caption reading time (A10).
             TextSizes.SizeKey, CaptionTiming.Key,
             // The three volumes beside the master (A11) and the player's own keys (A5).

@@ -26,10 +26,14 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(director.RoomUnderCamera, Is.EqualTo("Kitchen"), "The camera looks into the kitchen.");
             Assert.That(audio.CurrentRoom, Is.EqualTo("Kitchen"), "and the audio hears it");
             Assert.That(audio.RoomTonePlaying, Is.True, "with the kitchen's bed playing");
+            // A free move is a watching view from RS5: the room view watches the kitchen and draws it alone.
+            Assert.That(cameraRig.ViewRoom, Is.EqualTo(RoomLayers.IndexOf("Kitchen")), "The free move to the kitchen's marker watches the kitchen,");
+            Assert.That(director.ViewedRooms, Is.EqualTo(RoomSet.Of("Kitchen")), "and the view draws it.");
             cameraRig.MoveTo(yard.transform.position, 12f);
             deadline = Time.realtimeSinceStartup + 3f;
             while (director.RoomUnderCamera != "Yard" && Time.realtimeSinceStartup < deadline) yield return null;
             Assert.That(audio.CurrentRoom, Is.EqualTo("Yard"), "and the yard's when it moves on.");
+            Assert.That(director.ViewedRooms, Is.EqualTo(RoomSet.Of("Yard")), "The free move to the yard's marker watches the yard.");
         }
 
         [UnityTest]

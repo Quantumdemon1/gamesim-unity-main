@@ -41,7 +41,9 @@ namespace Gamesim.Episode
             && !challengeActive && headingToNpcId == null && !headingToStation && arrivingIn == null
             && talkSpot == null && !IsPlayerHouseActivityActive && NpcInvitation.PhaseAllows(projected.phase)
             && npcMeetings != null && npcMeetings.IsReady && !npcMeetings.HasSceneStage
-            && !npcMeetings.HasOpeningStage && !npcMeetings.HasCeremonyStage && !npcMeetings.HasCompetitionStage;
+            && !npcMeetings.HasOpeningStage && !npcMeetings.HasCeremonyStage && !npcMeetings.HasCompetitionStage
+            // The player looking away from their own room (D18, RS5): the invitation waits for the view to come back.
+            && !LookingAwayFromThePlayer;
 
         private void TickNpcInvitations()
         {

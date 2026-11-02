@@ -366,6 +366,8 @@ namespace Gamesim.Episode
         {
             if (IsPanelOpen || challengeActive || projected == null) return;
             if (projected.phase != EpisodePhase.Social && projected.phase != EpisodePhase.Campaign) return;
+            // A view away from the player's room is not the player walking in on anyone (D18, RS5).
+            if (LookingAwayFromThePlayer) return;
 
             proximityWatch += delta;
             if (proximityWatch < ProximityWatchSeconds) return;

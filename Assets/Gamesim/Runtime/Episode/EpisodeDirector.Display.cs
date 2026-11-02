@@ -10,7 +10,8 @@ namespace Gamesim.Episode
     /// <summary>
     /// Display preferences (MASTER-PLAN §3.H; PLAN A, A12): a quality tier, how the window stands
     /// (windowed, borderless or exclusive full screen), its resolution and monitor, VSync and a
-    /// frame-rate limit beside it, and whether the screen's edges pan the camera. Kept in the
+    /// frame-rate limit beside it, whether the screen's edges pan the camera, and whether the house is
+    /// drawn one room at a time or whole ("Show the whole house", ROOM-SCOPE-PLAN D12, RS5). Kept in the
     /// session's preferences store (A13) beside the sound and accessibility preferences.
     ///
     /// <para>The window is applied only by the controls that name it - the display mode, the
@@ -32,6 +33,44 @@ namespace Gamesim.Episode
         public const string VSyncOnCaption = "Turn VSync on";
         /// <summary>What the profile's report says set its window: the same director call the settings make.</summary>
         public const string DisplayRoute = "EpisodeDirector.SetDisplay";
+
+        /// <summary>
+        /// The house view control's words before its choice (ROOM-SCOPE-PLAN D12): "House view: One room  (change)"
+        /// or "House view: Whole house  (change)", the settings' pattern for a control that cycles.
+        /// </summary>
+        public const string HouseViewCaptionPrefix = "House view: ";
+        public const string OneRoomViewName = "One room", WholeHouseViewName = "Whole house";
+        /// <summary>Where "Show the whole house" is kept, in the session's preferences store, never the save (D12).</summary>
+        public const string WholeHouseKey = "Gamesim.WholeHouse";
+
+        /// <summary>The house view control's caption for a choice.</summary>
+        public static string HouseViewCaption(bool wholeHouse) => HouseViewCaptionPrefix + (wholeHouse ? WholeHouseViewName : OneRoomViewName) + "  (change)";
+
+        /// <summary>
+        /// "Show the whole house" (D12, RS5): off by default. On, it holds the whole house drawn for as long
+        /// as it is on - today's drawing, lights and free camera - as a capture's hold does; off, the house
+        /// is the room view. The owner of its hold is the setting itself.
+        /// </summary>
+        public bool ShowsWholeHouse => showWholeHouse;
+        private bool showWholeHouse;
+        private readonly object wholeHouseSetting = new object();
+
+        /// <summary>Shows the whole house, or one room at a time, and keeps the choice.</summary>
+        public void SetWholeHouse(bool wholeHouse)
+        {
+            showWholeHouse = wholeHouse;
+            ApplyPreferences();
+        }
+
+        /// <summary>The setting's hold, as the preference says: taken while it is on, let go while it is off.</summary>
+        private void ApplyWholeHouseSetting()
+        {
+            if (showWholeHouse == wholeHouseHolds.Contains(wholeHouseSetting)) return;
+            if (showWholeHouse) HoldWholeHouse(wholeHouseSetting);
+            else Release(wholeHouseSetting);
+            // Back to one room: the room view comes on with a cut onto the room, wherever the camera stood.
+            if (!showWholeHouse && cameraRig != null) cameraRig.CutToRoomView();
+        }
 
         private int qualityTier = 1;
         private DisplayMode displayMode;
@@ -238,6 +277,7 @@ namespace Gamesim.Episode
             string recorded = store.GetString(DisplayChoices.ResolutionKey, "");
             resolution = recorded == DisplayChoices.Desktop || DisplayChoices.TryParseSize(recorded, out _, out _) ? recorded : ResolutionNow();
             edgePan = store.GetInt("Gamesim.EdgePan", 1) == 1;
+            showWholeHouse = store.GetInt(WholeHouseKey, 0) == 1;
             compactHud = store.GetInt("Gamesim.CompactHud", 0) == 1;
             language = store.GetString("Gamesim.Language", Localisation.DefaultLanguage);
             Localisation.Load(language);
@@ -255,6 +295,7 @@ namespace Gamesim.Episode
             Application.targetFrameRate = vSync ? -1 : frameLimit;
             // Not the window: only the display controls apply it (ApplyWindow).
             if (cameraRig != null) cameraRig.EdgePan = edgePan;
+            ApplyWholeHouseSetting();
             if (hud != null) hud.Compact = compactHud;
             if (Localisation.Language != language) { Localisation.Load(language); language = Localisation.Language; }
             // Kept in the session's store; ApplyPreferences saves it.
@@ -266,6 +307,7 @@ namespace Gamesim.Episode
             store.SetString(DisplayChoices.DisplayModeKey, DisplayChoices.ModeName(displayMode));
             store.SetString(DisplayChoices.ResolutionKey, resolution);
             store.SetInt("Gamesim.EdgePan", edgePan ? 1 : 0);
+            store.SetInt(WholeHouseKey, showWholeHouse ? 1 : 0);
             store.SetInt("Gamesim.CompactHud", compactHud ? 1 : 0);
             ApplyCameraPreferences();
         }
@@ -393,6 +435,13 @@ namespace Gamesim.Episode
             }
             hud.Action(edgePan ? "Stop the screen edges panning" : "Let the screen edges pan", () => { edgePan = !edgePan; ApplyPreferences(); Render(); });
             hud.Paragraph("The edges pan the camera only in full screen, where the cursor cannot leave the game.");
+            // One room at a time, or the whole house as the overview draws it (D12): a control that cycles.
+            hud.Action(HouseViewCaption(showWholeHouse), () =>
+            {
+                SetWholeHouse(!showWholeHouse); Render();
+                hud.FocusWhenWired(HouseViewCaption(showWholeHouse));
+            });
+            hud.Paragraph("One room draws the room you are in and frames it; the whole house draws every room, as the overview does.");
             // Only when a table ships: a control that cycles one language is a dead control.
             var languages = Localisation.Available();
             if (languages.Count > 1)

@@ -105,8 +105,12 @@ namespace Gamesim.Tests.PlayMode
                 Assert.That(tip.GetComponentInChildren<TMPro.TMP_Text>().text, Is.EqualTo(HouseFurniture.SwimCaption), "In the click's own words.");
 
                 // A still pointer over a moving camera: the pool slides out from under it, and the
-                // words go with it.
-                cameraRig.MoveTo(pool.Position + new Vector3(12f, 0f, 12f), 12f);
+                // words go with it. The free move to the pool is a watching view of the yard (RS5), so the
+                // camera goes to another room's: the private room's, a cut away from the pool.
+                Assert.That(cameraRig.ViewRoom, Is.EqualTo(RoomLayers.IndexOf("Yard")), "The free move to the pool watches the yard.");
+                var scope = ScopeOf(director);
+                var privateBox = scope.Box(RoomLayers.IndexOf("Private"));
+                cameraRig.MoveTo(new Vector3(privateBox.center.x, pool.Position.y, privateBox.center.y), 10f);
                 float moving = Time.realtimeSinceStartup + 4f;
                 while (Time.realtimeSinceStartup < moving && tip.gameObject.activeInHierarchy) yield return null;
                 Assert.That(tip.gameObject.activeInHierarchy, Is.False, "The camera moved the pool away from a still pointer.");

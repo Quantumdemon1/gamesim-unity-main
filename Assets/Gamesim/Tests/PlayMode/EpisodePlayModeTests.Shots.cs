@@ -144,7 +144,7 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(director.HasDiaryDecisionDraft,Is.False,"Direct callbacks must not bypass physical seating.");
             AssertEquivalent(beforeSeating,director.Snapshot);
             // Before the chair shot (ROOM-SCOPE-PLAN RS6b): the walk to the chair and the sitting down are the
-            // view's own - free play's, the whole house until RS5 - not the diary's, which is its shot's alone.
+            // view's own - free play's, the rig's rooms from RS5 - not the diary's, which is its shot's alone.
             Rs6bAssertTheDiaryIsNotYetTheView("The diary opened, the player still on the way to the chair");
             float chairBy = Time.realtimeSinceStartup + 20f;
             int beforeTheShot = 0;
@@ -158,15 +158,14 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(cameraRig.HasShot, Is.True, "Seated, the diary takes its chair shot.");
             Assert.That(beforeTheShot, Is.GreaterThan(0), "The walk to the chair and the sitting down took frames.");
             // The chair shot's first frame: its move on its way draws what the view drew as it left - free play's
-            // whole house - so no room goes, and nobody hides, before the camera has moved (RS6a's rule).
+            // room view from RS5 - with the private room, so no room goes before the camera has moved (RS6a's rule).
             Assert.That(cameraRig.IsTravelling, Is.True, "A frame into its " + EpisodeDirector.DiaryShotSeconds
                 + " s the chair shot is on its way (this frame took " + Time.unscaledDeltaTime + " s).");
             Assert.That(director.DiaryShotHoldsTheCamera, Is.True, "The chair shot holds the camera from its call,");
             Assert.That(director.CurrentRoomScopeSource, Is.EqualTo(EpisodeDirector.RoomScopeSource.Diary), "and is the view,");
             Assert.That(cameraRig.Rooms.Contains("Private"), Is.True, "naming the private room (" + cameraRig.Rooms + "),");
-            Assert.That(director.ViewedRooms.IsWholeHouse, Is.True, "with free play's whole house on its way (" + director.ViewedRooms + "):");
-            Assert.That(cameraRig.ViewCamera.cullingMask & RoomLayers.Mask, Is.EqualTo(RoomLayers.Mask), "every room bit in the main camera's mask,");
-            Assert.That(director.HiddenBodyCount, Is.Zero, "nobody hidden.");
+            Assert.That(director.ViewedRooms, Is.EqualTo(cameraRig.Rooms), "with free play's room on its way (" + director.ViewedRooms + "),");
+            Assert.That(director.ViewedRooms.Contains("Private"), Is.True, "the private room among them.");
             yield return WaitForDiarySeating();
             var reachedApproach=player.transform.position;
             Assert.That(Vector3.Distance(reachedApproach,director.DiaryPosition),Is.LessThan(.55f));
@@ -214,10 +213,11 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(director.IsDiaryOpen, Is.False);
             Assert.That(cameraRig.HasShot, Is.False, "Leaving the room releases the chair.");
             Assert.That(director.DiaryShotHoldsTheCamera, Is.False, "and the diary is no longer the view:");
-            Assert.That(director.ViewedRooms.IsWholeHouse, Is.True, "free play's whole house, in the same frame.");
+            Assert.That(director.CurrentRoomScopeSource, Is.EqualTo(EpisodeDirector.RoomScopeSource.FreePlay), "free play's, in the same frame (RS5),");
+            Assert.That(director.ViewedRooms, Is.EqualTo(cameraRig.Rooms), "the rig's rooms.");
             yield return WaitForDiaryExit();
             yield return null;
-            Rs6bAssertTheWholeHouse("Out of the diary");
+            Rs5AssertFreePlaysView("Out of the diary");
             Assert.That(seating.Active,Is.False);
             Assert.That(player.GetComponent<CharacterPresentation>().IsSeated,Is.False);
             Assert.That(player.Agent.updatePosition,Is.EqualTo(updatePosition));

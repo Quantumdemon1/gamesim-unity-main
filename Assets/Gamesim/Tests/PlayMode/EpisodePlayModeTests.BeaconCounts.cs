@@ -130,6 +130,9 @@ namespace Gamesim.Tests.PlayMode
             string next = director.ScreenRoom;
             var place = director.StationPosition + Vector3.up * EpisodeTravelBeacons.Height;
             var hud = director.GetComponentInChildren<EpisodeHud>(true);
+            // The dollhouse's pin from 19 m out: the whole house held (RS5's room view never goes that far; its
+            // own next stop is pinned by WayFinding_TheNextStopIsPinnedAndClickableAtEveryRoomViewDistance).
+            RoomViewHoldTheDollhouse();
             var far = SceneComponents<HouseRoomMarker>().Where(marker => marker.isActiveAndEnabled)
                 .OrderByDescending(marker => (marker.transform.position - director.StationPosition).sqrMagnitude).First().transform.position;
             cameraRig.SetReducedMotion(true);

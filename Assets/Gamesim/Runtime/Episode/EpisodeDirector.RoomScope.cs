@@ -30,8 +30,14 @@ namespace Gamesim.Episode
     /// pair's rooms), the diary's chair shot (the private room), a house event's shot (the rooms of the
     /// people it frames), the activity warp (its room, from the cut and the blink's first frame) and a
     /// jury or evicted player's watch (the watched room), each while its own move holds the camera. The
-    /// overview, the opening and the walk-out name the whole house in their calls. Only free play and
-    /// following wait for RS5: their view is the whole house until then.</para>
+    /// overview, the opening and the walk-out name the whole house in their calls.</para>
+    ///
+    /// <para>From RS5 free play and following are live too (D3, D4, D5): the room view. Free play is the
+    /// player's room, following the followed houseguest's, a stopped follow or a free move a watched room
+    /// until F, a walk or travel, and a jury or evicted player's view before any watch the room nearest
+    /// the camera's focus; the rig keeps the free camera over that room and cuts between rooms. So with
+    /// nothing held every view draws its own rooms, and only the overview, the opening, the walk-out and
+    /// the "Show the whole house" setting (D12, a whole-house hold) draw everything.</para>
     ///
     /// <para>The first reader that draws is the lamps' hook (RS3, §3.2 d, D8 i): while the scope is a
     /// room, the main camera renders with the lamps homed outside it off, and puts them back when it
@@ -66,9 +72,9 @@ namespace Gamesim.Episode
         /// <summary>What the main view is doing, as far as the room scope is concerned.</summary>
         public enum RoomScopeSource
         {
-            /// <summary>Free roam: the player's room (RS5).</summary>
+            /// <summary>Free roam: the player's room, or a watched room (RS5, live).</summary>
             FreePlay,
-            /// <summary>Following a houseguest: theirs (RS5).</summary>
+            /// <summary>Following a houseguest: theirs (RS5, live).</summary>
             Following,
             /// <summary>Jury or evicted, while a watch's move holds the camera, from the camera's arrival: the watched room (RS6b, live).</summary>
             Watching,
@@ -115,10 +121,12 @@ namespace Gamesim.Episode
         /// The sources whose rooms the scope uses; every other source reports the whole house. A slice
         /// turns its own on here, with the camera calls that name its rooms: RS6a the ceremonies and the
         /// competitions (D6, D7); RS6b the conversation's two-shot, the diary, house events, the activity
-        /// warp and jury and evicted watching (D6). Free play and following wait for RS5. The overview,
-        /// the opening and the walk-out have no switch: they are the whole house by decision (D1, D6).
+        /// warp and jury and evicted watching (D6); RS5 free play and following, the room view (D3, D4).
+        /// Every source with a switch is live. The overview, the opening and the walk-out have no switch:
+        /// they are the whole house by decision (D1, D6).
         /// </summary>
-        public const RoomScopeSources LiveRoomScopeSources = RoomScopeSources.Ceremony | RoomScopeSources.Competition
+        public const RoomScopeSources LiveRoomScopeSources = RoomScopeSources.FreePlay | RoomScopeSources.Following
+            | RoomScopeSources.Ceremony | RoomScopeSources.Competition
             | RoomScopeSources.Conversation | RoomScopeSources.Diary | RoomScopeSources.HouseEvent
             | RoomScopeSources.Activity | RoomScopeSources.Watching;
 
@@ -271,7 +279,7 @@ namespace Gamesim.Episode
             // reached its end (another begin handler threw): what it left off goes back here.
             RestoreScopedLamps();
             if (!EnsureRoomScope()) return;
-            if (cameraRig != null && cameraRig.RoomScope != roomScope) cameraRig.UseRoomScope(roomScope);
+            if (cameraRig != null && cameraRig.RoomScope != roomScope) { cameraRig.UseRoomScope(roomScope); UseRoomView(); }
             if (Time.unscaledTime >= roomScopeForgetAt)
             {
                 roomScopeForgetAt = Time.unscaledTime + 1f;
@@ -279,9 +287,65 @@ namespace Gamesim.Episode
                 ForgetMissingScopedBodies();
             }
             if (player != null && player.isActiveAndEnabled) roomScope.Track(player.transform);
+            // A player out of the house (jury or evicted) has no room of their own to play in: before any
+            // watch, the view watches the room nearest the camera's focus (section 1.2, RS5).
+            if (cameraRig != null && IsReady && !playerIsActive && cameraRig.ViewsThePlayer) cameraRig.WatchTheRoomUnderTheFocus();
+            // Name plates in the room view: fully shown for every drawn body (section 3.2 g, RS5); the fade by
+            // distance is the whole house's and the shots' only.
+            bool roomPlates = cameraRig != null && cameraRig.IsRoomView;
             if (housemates == null) return;
             foreach (var housemate in housemates)
-                if (housemate != null && housemate.isActiveAndEnabled) roomScope.Track(housemate.transform);
+            {
+                if (housemate == null) continue;
+                housemate.RoomViewPlates = roomPlates;
+                if (housemate.isActiveAndEnabled) roomScope.Track(housemate.transform);
+            }
+        }
+
+        /// <summary>
+        /// Whether the free camera is the room view (ROOM-SCOPE-PLAN section 3.2 g, RS5), the rig asks each
+        /// late pass: the episode is ready, nothing holds the whole house (the "Show the whole house"
+        /// setting, D12, is such a hold, and so is a capture's), and the view is free play's, following's or
+        /// a watch's - the sources whose camera is the player's own. Shots, the overview, the opening and the
+        /// walk-out frame themselves; the rig leaves any shot or conversation alone too.
+        /// </summary>
+        private bool RoomViewWanted()
+        {
+            if (!IsReady || wholeHouseHolds.Count > 0 || roomScope == null || cameraRig == null) return false;
+            var source = CurrentRoomScopeSource;
+            return (source == RoomScopeSource.FreePlay || source == RoomScopeSource.Following || source == RoomScopeSource.Watching)
+                && IsRoomScopeSourceLive(source);
+        }
+
+        /// <summary>
+        /// The view back on the player's room (F, RS5): free play, the room view's framing of the room the
+        /// player stands in, by a cut. The look sheet's exploration shot is taken from here (D15).
+        /// </summary>
+        public void ViewThePlayersRoom()
+        {
+            if (cameraRig == null) return;
+            cameraRig.CutToRoomView();
+            cameraRig.RecenterOnPlayer();
+        }
+
+        /// <summary>
+        /// Whether the player is looking away from their own room (ROOM-SCOPE-PLAN D18, RS5): the view draws
+        /// a room and leaves out the player's - a follow elsewhere, a watched room, another room's shot.
+        /// The act watch, the walk-in watch, the invitations and the Nearby card treat it as they treat
+        /// the overview: the player is not looking. The whole house, or a player the view draws by the
+        /// floors (their room or its doorway band), is looking.
+        /// </summary>
+        public bool LookingAwayFromThePlayer
+        {
+            get
+            {
+                if (player == null || !playerIsActive || roomScope == null) return false;
+                var viewed = ViewedRooms;
+                if (viewed.IsWholeHouse || viewed.IsEmpty) return false;
+                int room = roomScope.LastRoom(player.transform);
+                if (room < 0) room = roomScope.Track(player.transform);
+                return !roomScope.DrawsWalker(viewed, room, player.transform.position);
+            }
         }
 
         private bool EnsureRoomScope()
@@ -301,8 +365,19 @@ namespace Gamesim.Episode
             // what they build or move, through the scene (HouseRoomScope.PlaceDressing).
             roomScope.PlaceHouse();
             if (isActiveAndEnabled) HouseRoomScope.BeginPlacing(roomScope);
-            if (cameraRig != null) cameraRig.UseRoomScope(roomScope);
+            if (cameraRig != null) { cameraRig.UseRoomScope(roomScope); UseRoomView(); }
             return true;
+        }
+
+        private Func<bool> roomViewWanted;
+
+        /// <summary>The rig asks this director whether its free camera is the room view (RS5), and keeps the nearest zoom at four metres (D11).</summary>
+        private void UseRoomView()
+        {
+            if (cameraRig == null) return;
+            if (roomViewWanted == null) roomViewWanted = RoomViewWanted;
+            cameraRig.RoomViewWanted = roomViewWanted;
+            if (!Mathf.Approximately(cameraRig.NearestDistance, HouseRoomView.NearestDistance)) cameraRig.UseNearestDistance(HouseRoomView.NearestDistance);
         }
 
         /// <summary>Lets a scope whose house no longer validates go; the next reader builds a new one.</summary>

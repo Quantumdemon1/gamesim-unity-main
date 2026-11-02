@@ -148,6 +148,17 @@ namespace Gamesim.Tests.PlayMode
                         failures.Add(marker.RoomName + ": arrived off every floor");
                     else if (landed != marker.RoomName)
                         failures.Add(marker.RoomName + ": arrived in " + landed);
+                    else
+                    {
+                        // The room view lands on the room the player arrived in (RS5), the last door's change
+                        // waited out on the real clock.
+                        float viewBy = Time.realtimeSinceStartup + 2f;
+                        while (cameraRig.ViewRoom != RoomLayers.IndexOf(landed) && Time.realtimeSinceStartup < viewBy) yield return null;
+                        if (cameraRig.ViewRoom != RoomLayers.IndexOf(landed))
+                            failures.Add(marker.RoomName + ": the view framed " + HouseRoomScope.RoomId(cameraRig.ViewRoom) + ", not the room the player arrived in");
+                        else if (director.ViewedRooms != RoomSet.Of(landed))
+                            failures.Add(marker.RoomName + ": the scope drew " + director.ViewedRooms);
+                    }
                     if (marker.RoomName == "Private" && !director.CanUseDiary)
                         failures.Add("Private: arrived where the diary cannot be opened");
                 }

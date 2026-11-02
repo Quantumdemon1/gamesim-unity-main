@@ -63,6 +63,8 @@ namespace Gamesim.Tests.PlayMode
             int propBit = 1 << (RoomLayers.First + prop.Room);
             var screen = (Vector2)eye.WorldToScreenPoint(floor.point);
             var owner = new object();
+            // Free play is live from RS5, so "nothing held" is the room view: the whole house is a hold now.
+            var whole = new object();
             int opened = 0;
             HouseInteractionAnchor openedAnchor = null;
             Action<HouseInteractionAnchor> count = selected => { opened++; openedAnchor = selected; };
@@ -70,13 +72,15 @@ namespace Gamesim.Tests.PlayMode
             cameraRig.SetReducedMotion(true);
             try
             {
-                // The whole house, nothing held: the click's pick is Physics.Raycast's own hit.
-                Assert.That(director.ViewedRooms.IsWholeHouse, Is.True, "Nothing held: the whole house.");
-                Assert.That(player.TryPointAt(ray, out var whole) && whole.collider == prop.Proxy, Is.True,
+                // The whole house held: the click's pick is Physics.Raycast's own hit.
+                director.HoldWholeHouse(whole);
+                Assert.That(director.ViewedRooms.IsWholeHouse, Is.True, "The whole house held: the whole house.");
+                Assert.That(player.TryPointAt(ray, out var wholeHit) && wholeHit.collider == prop.Proxy, Is.True,
                     "With the whole house drawn, the click lands on " + prop + " as it always has.");
 
                 // Hidden: the view on a room well away from it.
                 cameraRig.MoveTo(Rs4Shot(scope, RoomLayers.RoomIds[far]));
+                director.Release(whole);
                 director.HoldRoomScope(owner);
                 yield return null; yield return null;
                 Physics.SyncTransforms();
@@ -144,6 +148,11 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(props, Is.Not.Empty, "The house has clickable furniture with a collision proxy, its renderers on its room's layer from load.");
             var camera = cameraRig.ViewCamera;
             var owner = new object();
+            // Free play is live from RS5, so "nothing held" is the room view: the whole house is a hold now, and
+            // the camera beside the prop is a shot from its focus (the floor under it), which the room view's
+            // clamp leaves alone, so neither the pointer nor the camera moves when the view changes.
+            var whole = new object();
+            director.HoldWholeHouse(whole);
             var mouse = InputSystem.AddDevice<Mouse>();
             HouseInteractionAnchor heard = null;
             int hovers = 0;
@@ -154,7 +163,7 @@ namespace Gamesim.Tests.PlayMode
             int shellPieceLayer = 0;
             try
             {
-                // A free move onto a room beside a piece of clickable furniture, the piece still in frame,
+                // A shot onto a room beside a piece of clickable furniture, the piece still in frame,
                 // under a point the HUD leaves alone, its proxy the first thing the pointer's ray meets and the
                 // bare floor the next.
                 Rs2bProp prop = null;
@@ -169,7 +178,10 @@ namespace Gamesim.Tests.PlayMode
                     {
                         foreach (float distance in new[] { 12f, 16f })
                         {
-                            cameraRig.MoveTo(focus.Point, distance);
+                            cameraRig.MoveTo(new HouseCameraRig.Shot
+                            {
+                                Focus = focus.Point, Distance = distance, Pitch = cameraRig.PitchFor(distance), KeepYaw = true, RoomsFromFocus = true,
+                            });
                             yield return null; yield return null;
                             Physics.SyncTransforms();
                             if (cameraRig.Rooms != RoomSet.Of(focus.Room)) continue;
@@ -182,15 +194,15 @@ namespace Gamesim.Tests.PlayMode
                     if (prop != null) break;
                     tried.Add(candidate.ToString());
                 }
-                Assert.That(prop, Is.Not.Null, "A free move beside a clickable prop with the prop under a clear pointer, among " + string.Join(", ", tried));
+                Assert.That(prop, Is.Not.Null, "A shot beside a clickable prop with the prop under a clear pointer, among " + string.Join(", ", tried));
                 Assert.That(HouseFurniture.TryClick(named, out _, out var caption), Is.True);
                 int propBit = 1 << (RoomLayers.First + prop.Room);
 
-                // The whole house, nothing held: the hover says what a click does.
+                // The whole house held: the hover says what a click does.
                 InputSystem.QueueStateEvent(mouse, new MouseState { position = screen });
                 yield return null; yield return null;
                 var tip = director.GetComponentsInChildren<RectTransform>(true).LastOrDefault(rect => rect.name == EpisodeTravelBeacons.FurnitureTipName);
-                Assert.That(director.ViewedRooms.IsWholeHouse, Is.True, "Nothing held: the whole house.");
+                Assert.That(director.ViewedRooms.IsWholeHouse, Is.True, "The whole house held: the whole house.");
                 Assert.That(heard, Is.SameAs(named), "Over " + prop + ", the hover names it.");
                 Assert.That(tip != null && tip.gameObject.activeInHierarchy, Is.True, "and says what a click does.");
                 Assert.That(tip.GetComponentInChildren<TMPro.TMP_Text>().text, Is.EqualTo(caption), "In the click's own words.");
@@ -243,9 +255,10 @@ namespace Gamesim.Tests.PlayMode
                 Assert.That(heard, Is.Null, "and names nothing.");
                 Assert.That(tip.gameObject.activeInHierarchy, Is.False, "The words are gone.");
 
-                // Released: the whole house, and the words come back where the pointer still is.
+                // Released into the whole house, and the words come back where the pointer still is.
                 before = hovers;
                 director.Release(owner);
+                director.HoldWholeHouse(whole);
                 yield return null; yield return null;
                 Assert.That(director.ViewedRooms.IsWholeHouse, Is.True);
                 Assert.That(camera.worldToCameraMatrix == view, Is.True, "The camera has not moved.");
@@ -262,6 +275,8 @@ namespace Gamesim.Tests.PlayMode
                 if (shellPiece != null) shellPiece.gameObject.layer = shellPieceLayer;
                 player.FurnitureHovered -= listen;
                 director.Release(owner);
+                director.Release(whole);
+                cameraRig.ReleaseShot(0f);
                 cameraRig.SetReducedMotion(false);
                 InputSystem.RemoveDevice(mouse);
             }

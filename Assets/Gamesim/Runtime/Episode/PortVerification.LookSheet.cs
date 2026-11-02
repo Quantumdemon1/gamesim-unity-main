@@ -115,6 +115,10 @@ namespace Gamesim.Episode
             lookReport.seed = seasonDirector.Snapshot.seed;
 
             yield return CloseEverything();
+            // The exploration HUD over the room view (ROOM-SCOPE-PLAN D15, RS5): free play's framing of the
+            // player's room, the view a player sees by default, not the dollhouse it used to be.
+            seasonDirector.ViewThePlayersRoom();
+            for (int i = 0; i < 15; i++) yield return null;
             var exploration = new LookShot { index = 0, label = "exploration HUD", reached = true };
             yield return Guard(CaptureLayoutMatrix(exploration), exploration);
             if (!exploration.reached) lookReport.errors.Add("Exploration layout capture failed: " + exploration.reason);

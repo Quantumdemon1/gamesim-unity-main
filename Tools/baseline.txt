@@ -80,7 +80,12 @@
 # 9311 = 9309 + RS6b's 2 plain RoomScopeShotScanTests cases (RoomScope_EveryShotNamesItsRooms, the source scan of the
 # camera's callers under Runtime/, and RoomScope_TheShotScanReadsCodeAndTheRoomsItNames, the scan's own rules),
 # counted offline under the Mono harness (2026-11-01), 2 of 2; not yet run in Unity.
-Gamesim.EditModeTests 9311
+# 9319 = 9311 + RS5's 8 plain cases: HouseRoomViewTests 5 (the farthest zoom per room and the four-metre nearest, the
+# best headings, the room clamp narrowing with the zoom, the camera over its room, the 0.6 s a walk's change waits) and
+# HouseRoomScopeDoorwayTests 3 (the doorways from the walls, a corner doorway's halves, the icon's doorway), counted
+# offline under the Mono harness (2026-11-01), 8 of 8 (44 of 44 with the room scope's other plain fixtures and the
+# shot scan, whose default list RS5 emptied); not yet run in Unity.
+Gamesim.EditModeTests 9319
 # The UMA-free build. 1215 = 1236, the count after the consolidation's lanes (S2a, S2b, S4a), less the 7
 # farewell probes moved to Gamesim.DiagnosticsPlayModeTests and the 14 farewell readiness tests that now
 # compile only under GAMESIM_UMA (judged on the UMA cast); 1230 = 1215 + S2d's 7, S4b's 2, S4c's 2 and
@@ -146,7 +151,18 @@ Gamesim.EditModeTests 9311
 # AJuryWatchDrawsTheWatchedRoom; RS6a's OnlyTheCeremoniesAndCompetitionsAreLive renamed OnlyFreePlayAndFollowingAreNotLive,
 # and the changed diary, opening, walk-out, live-feed and room-scope tests add none), counted offline from the source
 # and the compiled assembly (2026-11-01); not yet run in Unity.
-Gamesim.PlayModeTests 1408
+# 1423 = 1408 + RS5's 15 shared tests (EpisodePlayModeTests.RoomView: RoomView_TheFreeCameraStaysOverItsRoom,
+# TheFarthestZoomIsFixedPerRoomAndOrbitNeverPullsIn, EnteringARoomCutsToItsFraming, ReducedMotionCutsBetweenRooms,
+# FollowingAHouseguestFollowsTheirRoom, StoppingAFollowKeepsTheWatchedRoomUntilThePlayerActs, TabAcrossRoomsCuts,
+# ALoadInADoorwayTakesTheNearestFloor, TheNearestZoomIsFourMetres and TheOpeningHandsOverWithACutToThePlayersRoom;
+# WayFinding_TheNextStopIsPinnedAndClickableAtEveryRoomViewDistance and EachAdjacentRoomsIconReachesItsRoom;
+# LookingAway_AFollowElsewhereGivesNoSightingOrWalkInFromThePlayersRoom;
+# RoomScope_TheWholeHouseSettingDrawsEverythingAndSurvivesARestart; Settings_TheHouseViewCaptionIsUnusedAndFitsAtEveryTextSize;
+# RS2a's OnlyFreePlayAndFollowingAreNotLive renamed EverySourceIsLiveAndTheWholeHouseIsAHold, RS6a's
+# AFramingTheViewerTakesOverIsTheWholeHouse renamed AFramingTheViewerTakesOverIsTheirView, and the plan's 30 listed
+# tests and the room-scope tests changed add none), counted offline from the source and the compiled assembly
+# (2026-11-01); not yet run in Unity.
+Gamesim.PlayModeTests 1423
 # The UMA build of the same assembly, read by a plan built without -WithoutUma. 1281 = the 1241 above + the
 # 40 tests that compile only under GAMESIM_UMA, as run at r1 (2026-10-16): in EpisodePlayModeTests,
 # GroundedFarewell 11, Creator 9, HouseLife 8, Emotes 3, OpeningCaptures 2, and one each in CreatorEntry,
@@ -189,7 +205,9 @@ Gamesim.PlayModeTests 1408
 # (D:\GamesimPlay's dag, 8 of 8 assemblies); not yet run in Unity.
 # 1450 = 1444 + RS6b's same 6 shared tests, counted offline (2026-11-01) and compiled in the UMA offline build
 # (D:\GamesimPlay's dag, 8 of 8 assemblies); not yet run in Unity.
-Gamesim.PlayModeTests.UmaBuild 1450
+# 1465 = 1450 + RS5's same 15 shared tests, counted offline (2026-11-01) and compiled in the UMA offline build
+# (D:\GamesimPlay's dag, 8 of 8 assemblies); not yet run in Unity.
+Gamesim.PlayModeTests.UmaBuild 1465
 # The UMA bodies: runs only where the GAMESIM_UMA define is set (the working tree and the D: copy).
 # 82 = the 89 run on 2026-10-15, less the 7 farewell probes moved to Gamesim.Uma.DiagnosticsPlayModeTests;
 # 85 = 82 + the 3 farewell readiness decision tests (UmaFarewellReadinessDecisionPlayModeTests, 2026-10-16);

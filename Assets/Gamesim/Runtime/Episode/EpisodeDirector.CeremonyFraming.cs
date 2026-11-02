@@ -79,7 +79,10 @@ namespace Gamesim.Episode
         /// the rooms the view drew as it left are drawn with it - free play's whole house until RS5 -
         /// and from its landing the ceremony's room alone, until the framing lets go or something else
         /// takes the view (<see cref="CeremonyFramingHoldsTheCamera"/>). The move back is the view's
-        /// own again - free play's, whole house until RS5 - since the framing is over as it starts.
+        /// own again, since the framing is over as it starts: it names the rooms the view drew as the
+        /// framing took it (RS5) - free play's room, a follow's or a watch's, the room view's - drawn with
+        /// the ceremony's until it lands and watched after, until F, a walk or travel; a framing taken
+        /// from a whole-house view goes back to the floor under its point, as every free move does.
         /// </summary>
         private IEnumerator FrameCeremonyRoutine(Vector3 at, RoomSet rooms)
         {
@@ -92,6 +95,9 @@ namespace Gamesim.Episode
             // the move draws it with the ceremony's room until it lands, so nothing the viewer saw goes
             // before the camera has moved.
             var left = ViewedRooms;
+            // The rooms the move back names: the view's as the first framing in flight took it.
+            var back = IsFramingCeremony ? ceremonyReturnRooms : left.IsWholeHouse ? RoomSet.None : left;
+            ceremonyReturnRooms = back;
             IsFramingCeremony = true;
             // Reduced motion cuts to the room rather than keeping the shot the viewer had: less
             // motion, not less of the episode. The ceremony card's own rule, applied to the camera.
@@ -105,12 +111,13 @@ namespace Gamesim.Episode
             while (Time.unscaledTime < until || (takeover != null && takeover.IsPlaying)
                 || (voteReveal != null && voteReveal.IsPlaying) || (keyCeremony != null && keyCeremony.IsPlaying) || JuryRevealPlaying)
                 yield return null;
-            if (cameraRig != null) cameraRig.MoveTo(focus, distance, reducedMotion ? CeremonyCutSeconds : CeremonyMoveSeconds);
+            if (cameraRig != null) cameraRig.MoveTo(focus, distance, reducedMotion ? CeremonyCutSeconds : CeremonyMoveSeconds, back);
             IsFramingCeremony = false;
             ceremonyFrame = null;
         }
 
         private Vector3 ceremonyReturnFocus;
         private float ceremonyReturnDistance;
+        private RoomSet ceremonyReturnRooms;
     }
 }

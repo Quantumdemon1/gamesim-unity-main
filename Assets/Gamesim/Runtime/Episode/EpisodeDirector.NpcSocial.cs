@@ -85,8 +85,10 @@ namespace Gamesim.Episode
         private void TickNearby()
         {
             // While the pair is being witnessed: a line left up only to be read (A10) offers nothing.
+            // And not on a pair the room scope hides (D18, RS5): witnessed through a doorway, they are out of the
+            // view, and the line over them waits for them as well (RS4's PairDrawn).
             if (hud != null) hud.SetNearby(!IsPanelOpen && !string.IsNullOrEmpty(ObservedNpcConversation)
-                && !(npcCaption != null && npcCaption.IsReleasing) && CanListenIn);
+                && !(npcCaption != null && npcCaption.IsReleasing) && !(npcCaption != null && !npcCaption.PairDrawn) && CanListenIn);
         }
         public string NpcAutonomyDiagnostic => npcWorldFailure;
         /// <summary>Read-only proof for explicit QA; never a command or UI knowledge source.</summary>

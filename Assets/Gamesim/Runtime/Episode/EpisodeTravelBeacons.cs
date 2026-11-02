@@ -74,6 +74,9 @@ namespace Gamesim.Episode
             public CanvasGroup group;
             public bool hovered;
             public string glyph, said;
+            /// <summary>Where the icon was placed this frame, in screen pixels, and whether it was: a name chip of someone the view hides hangs over it (D17).</summary>
+            public Vector2 placedAt;
+            public bool placed, atDoorway;
         }
 
         /// <summary>Tells its beacon the pointer is over it, for the tip that names what a click does.</summary>
@@ -442,10 +445,16 @@ namespace Gamesim.Episode
                 bool show = false;
                 Rect box = default;
                 bool headed = chip.head != null;
-                if (headed || chip.body != null)
+                // Someone the room view hides wears the name over their room's icon (D17), not over a body
+                // that is not drawn; with that icon not shown, no name.
+                string hiddenIn = roomViewRoom != null && hiddenRoom != null && chip.body != null ? hiddenRoom(chip.body) : null;
+                if (hiddenIn != null || headed || chip.body != null)
                 {
-                    var at = headed ? chip.head.position + Vector3.up * OverHead : chip.body.position + Vector3.up * OverRoot;
-                    var screen = eye.WorldToScreenPoint(at);
+                    Vector3 screen;
+                    if (hiddenIn != null)
+                        screen = TryPlacedAt(hiddenIn, out var icon) ? new Vector3(icon.x, icon.y + (Side * .5f + 8f) * pixels, 1f) : new Vector3(0f, 0f, -1f);
+                    else
+                        screen = eye.WorldToScreenPoint(headed ? chip.head.position + Vector3.up * OverHead : chip.body.position + Vector3.up * OverRoot);
                     if (screen.z > .5f)
                     {
                         // Fitted before it is tested, so the test is of the whole chip as it will be drawn.
@@ -572,6 +581,10 @@ namespace Gamesim.Episode
         private System.Func<Rect, bool> coveredBox;
         private System.Func<string, int> occupants;
         private string nextStop;
+        /// <summary>The room view's room, its doorways and who it hides (D17): null outside the room view.</summary>
+        private string roomViewRoom;
+        private System.Func<string, Vector3> doorway;
+        private System.Func<Transform, string> hiddenRoom;
 
         /// <summary>How many houseguests the icon over a room says are in it, as last shown; -1 while it is hidden.</summary>
         public int ShownCount(string room)
@@ -613,6 +626,42 @@ namespace Gamesim.Episode
         private const string DramaGlyph = "drama";
 
         /// <summary>
+        /// The room view's way-finding (ROOM-SCOPE-PLAN §3.2 i, D17, RS5), from the director's Update with
+        /// <see cref="Request"/>: <paramref name="viewedRoom"/> is the room the view frames, or null outside
+        /// the room view. In the room view the icons are not gated on the camera's distance: the next stop
+        /// stays pinned and clickable at every distance, and every other room has its icon with its count,
+        /// at the viewed room's doorway that leads there (<paramref name="doorwayTo"/>: the doorway's middle,
+        /// or a point whose x is NaN for a room with no doorway from here), or at the frame's edge in its
+        /// direction. The few named at the endgame (MOCKUP-PASS M14) whom the view hides
+        /// (<paramref name="hiddenIn"/>: the room a hidden body stands in, null for one drawn) wear their
+        /// names over their room's icon instead of over their heads.
+        /// </summary>
+        public void RoomView(string viewedRoom, System.Func<string, Vector3> doorwayTo, System.Func<Transform, string> hiddenIn)
+        {
+            roomViewRoom = viewedRoom; doorway = doorwayTo; hiddenRoom = hiddenIn;
+        }
+
+        /// <summary>The room the icons were last placed for in the room view, or null outside it.</summary>
+        public string RoomViewRoom => roomViewRoom;
+
+        /// <summary>Whether a room's icon stands at the viewed room's doorway that leads there this frame (D17); false outside the room view.</summary>
+        public bool IsAtDoorway(string room)
+        {
+            foreach (var beacon in beacons)
+                if (beacon.room == room) return beacon.atDoorway && beacon.rect != null && beacon.rect.gameObject.activeInHierarchy;
+            return false;
+        }
+
+        /// <summary>Where a room's icon was placed this frame, in screen pixels; false while it is not shown.</summary>
+        public bool TryPlacedAt(string room, out Vector2 screen)
+        {
+            screen = default;
+            foreach (var beacon in beacons)
+                if (beacon.room == room && beacon.placed && beacon.rect != null && beacon.rect.gameObject.activeInHierarchy) { screen = beacon.placedAt; return true; }
+            return false;
+        }
+
+        /// <summary>
         /// What this frame's icons should show, from the director's Update. They are placed in
         /// LateUpdate, after the camera has moved: placed any earlier, every icon trails the view
         /// by a frame and swims whenever it pans. <paramref name="where"/> says where a room's icon
@@ -639,7 +688,9 @@ namespace Gamesim.Episode
         private void Place(Camera eye, float cameraDistance)
         {
             if (eye == null || beacons.Count == 0) { Hide(); return; }
-            float fade = Mathf.InverseLerp(HiddenBelow, ShownFrom, cameraDistance);
+            // The room view's icons are not gated on the distance (D17): every room-view distance is 4 to 18.25 m.
+            bool roomView = roomViewRoom != null;
+            float fade = roomView ? 1f : Mathf.InverseLerp(HiddenBelow, ShownFrom, cameraDistance);
             if (fade <= 0f) { Hide(); return; }
             if (!Mathf.Approximately(shownScale, scale))
             {
@@ -657,12 +708,30 @@ namespace Gamesim.Episode
             placedIcons.Clear();
             foreach (var beacon in beacons)
             {
+                beacon.placed = false;
                 bool special = beacon.room == stationRoom || beacon.room == "Private";
-                bool show = beacon.room != playerRoom || special;
+                // In the room view the icons are about the rooms beyond the one on screen.
+                string viewing = roomView ? roomViewRoom : playerRoom;
+                bool show = beacon.room != viewing || special;
                 Vector3 screen = default;
-                bool pinned = false;
+                bool pinned = false, atDoorway = false;
                 Vector2 toward = default;
-                if (show)
+                if (show && roomView && beacon.room != viewing)
+                {
+                    // D17: at the viewed room's doorway that leads there, on screen or pinned towards it, or,
+                    // with no doorway from here, at the frame's edge in its direction.
+                    var door = doorway != null ? doorway(beacon.room) : new Vector3(float.NaN, 0f, 0f);
+                    atDoorway = !float.IsNaN(door.x);
+                    screen = eye.WorldToScreenPoint((atDoorway ? door : where(beacon.room)) + Vector3.up * Height);
+                    show = atDoorway && screen.z > .5f && eye.pixelRect.Contains(screen) && !IconCovered(beacon, screen, margin, pixels);
+                    if (!show && TryEdge(eye.pixelRect, screen, margin, beacon, pixels, out var edge, out var away))
+                    {
+                        toward = away;
+                        screen = new Vector3(edge.x, edge.y, Mathf.Max(1f, Mathf.Abs(screen.z)));
+                        show = pinned = true;
+                    }
+                }
+                else if (show)
                 {
                     screen = eye.WorldToScreenPoint(where(beacon.room) + Vector3.up * Height);
                     // An icon under the HUD's chrome is not shown: it would be half hidden, and
@@ -673,7 +742,8 @@ namespace Gamesim.Episode
                     show = screen.z > .5f && eye.pixelRect.Contains(screen) && !IconCovered(beacon, screen, margin, pixels);
                     // Except the next stop, which is never lost that way: its icon waits at the
                     // first clear spot on the way from its place to the middle of the screen,
-                    // whole and clickable, with a pip on the side its place is on.
+                    // whole and clickable, with a pip on the side its place is on. In the room view
+                    // (D17) a place behind the camera is pinned too, at the frame's edge its way.
                     if (!show && beacon.room == nextStop && screen.z > .5f
                         && TryPin(eye.pixelRect, screen, margin, beacon, pixels, out var clear))
                     {
@@ -681,7 +751,15 @@ namespace Gamesim.Episode
                         screen = new Vector3(clear.x, clear.y, screen.z);
                         show = pinned = true;
                     }
+                    else if (!show && roomView && beacon.room == nextStop && screen.z <= .5f
+                        && TryEdge(eye.pixelRect, screen, margin, beacon, pixels, out var behind, out var away))
+                    {
+                        toward = away;
+                        screen = new Vector3(behind.x, behind.y, 1f);
+                        show = pinned = true;
+                    }
                 }
+                beacon.atDoorway = show && atDoorway;
                 if (!show)
                 {
                     if (beacon.rect.gameObject.activeSelf) beacon.rect.gameObject.SetActive(false);
@@ -690,6 +768,8 @@ namespace Gamesim.Episode
                 }
                 if (!beacon.rect.gameObject.activeSelf) beacon.rect.gameObject.SetActive(true);
                 any = true;
+                beacon.placed = true;
+                beacon.placedAt = screen;
                 placedIcons.Add(new Rect(screen.x - footprint, screen.y - footprint, 2f * footprint, 2f * footprint));
                 // The room's name hung under the icon is part of what a name chip must clear, as the
                 // chrome treats it (IconCovered): a chip over "KITCHEN" read as the room's own words.
@@ -764,6 +844,29 @@ namespace Gamesim.Episode
                 return true;
             }
             return false;
+        }
+
+        /// <summary>
+        /// The room view's pin for a room with no doorway on screen (D17): the point on the frame's inner
+        /// edge in the direction of <paramref name="screen"/> from the middle of the frame (a point behind
+        /// the camera mirrored, as its projection is), then the first clear spot from there towards the
+        /// middle. <paramref name="away"/> is the direction the pip points.
+        /// </summary>
+        private bool TryEdge(Rect pixels, Vector3 screen, float margin, Beacon beacon, float scalePixels, out Vector2 at, out Vector2 away)
+        {
+            at = default; away = default;
+            var centre = pixels.center;
+            var toward = (Vector2)screen - centre;
+            if (screen.z < 0f) toward = -toward;
+            if (toward.sqrMagnitude < 1f) toward = Vector2.down;
+            float tag = TagDepth(beacon, scalePixels);
+            var inner = new Rect(pixels.xMin + margin, pixels.yMin + tag, pixels.width - 2f * margin, pixels.height - margin - tag);
+            if (inner.width <= 0f || inner.height <= 0f) return false;
+            float kx = toward.x > 0f ? (inner.xMax - .5f - centre.x) / toward.x : toward.x < 0f ? (inner.xMin - centre.x) / toward.x : float.PositiveInfinity;
+            float ky = toward.y > 0f ? (inner.yMax - .5f - centre.y) / toward.y : toward.y < 0f ? (inner.yMin - centre.y) / toward.y : float.PositiveInfinity;
+            float k = Mathf.Max(0f, Mathf.Min(kx, ky));
+            away = toward.normalized;
+            return TryPin(pixels, centre + toward * k, margin, beacon, scalePixels, out at);
         }
 
         /// <summary>Whether the chrome covers an icon here: its middle, or anywhere on the square round it.</summary>

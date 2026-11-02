@@ -79,6 +79,8 @@ namespace Gamesim.Tests.PlayMode
                             ScopePlace(subject, crossing.Start);
                             if (!following) cameraRig.FocusSubject(player.transform, false);
                             yield return null;
+                            // The room view changes rooms at most once per 0.6 s (RS5): the placing's change waited out.
+                            yield return RoomViewWaitOutTheLastChange();
                             string who = (following ? guest.DisplayName : "the player") + " through " + crossing + " at " + speed + " m/s";
                             if (director.ViewedRooms != RoomSet.Of(crossing.From)) { failures.Add(who + ": the view starts on " + director.ViewedRooms); continue; }
                             yield return Rs4Carry(subject, crossing, speed, who, failures, () => frames++);
@@ -95,7 +97,9 @@ namespace Gamesim.Tests.PlayMode
             }
             Assert.That(frames, Is.GreaterThan(crossings.Count * 4), "Every crossing took frames to walk.");
             Assert.That(failures, Is.Empty, string.Join("; ", failures.Take(20)));
-            Assert.That(director.HiddenBodyCount, Is.Zero, "Released: nobody is hidden.");
+            // Released, the view is free play's (live from RS5); with the whole house held, nobody is hidden.
+            director.HoldWholeHouse(owner);
+            Assert.That(director.HiddenBodyCount, Is.Zero, "With the whole house held: nobody is hidden.");
         }
 
         /// <summary>
@@ -266,7 +270,9 @@ namespace Gamesim.Tests.PlayMode
                 cameraRig.ReleaseShot(0f);
                 if (walkerAgent != null) walkerAgent.updatePosition = walkerPlaces;
             }
-            // Released at once: everybody drawn, every piece on its own layer, the mask whole.
+            // Released, the view is free play's (live from RS5); with the whole house held, at once: everybody
+            // drawn, every piece on its own layer, the mask whole.
+            director.HoldWholeHouse(owner);
             foreach (var npc in guests)
             {
                 Assert.That(Rs4DrawnNow(npc.transform, out string why), Is.True, npc.Id + ", released: " + why);
@@ -674,8 +680,13 @@ namespace Gamesim.Tests.PlayMode
             yield return null;
             var scope = ScopeOf(director);
             var view = cameraRig.ViewCamera;
+            // Free play is live from RS5, so the scope writes the mask from the house's first frame: with the
+            // whole house held it writes back every room bit it took and keeps nothing, so a bit cleared now is
+            // cleared before the scope begins again.
+            var start = new object();
+            director.HoldWholeHouse(start);
             int authored = view.cullingMask;
-            Assert.That(authored & RoomLayers.Mask, Is.EqualTo(RoomLayers.Mask), "With nothing held the main camera draws every room layer.");
+            Assert.That(authored & RoomLayers.Mask, Is.EqualTo(RoomLayers.Mask), "With the whole house held the main camera draws every room layer.");
             Assert.That(director.MainCameraRoomBitsTaken, Is.Zero);
             const int Guard = 1 << 31;
             const int Bedroom = 1 << RoomLayers.Bedroom;
@@ -695,6 +706,7 @@ namespace Gamesim.Tests.PlayMode
             try
             {
                 cameraRig.MoveTo(Rs4Shot(scope, "Kitchen"));
+                director.Release(start);
                 director.HoldRoomScope(owner);
                 Assert.That(Rooms(), Is.EqualTo(1 << RoomLayers.Kitchen), "Held on the kitchen, at once: its room bit alone of the eight.");
                 Assert.That(view.cullingMask & ~RoomLayers.Mask, Is.EqualTo(authored & ~Guard & ~RoomLayers.Mask), "Every other bit as it was, the guard bit's clear included.");
@@ -758,7 +770,9 @@ namespace Gamesim.Tests.PlayMode
                 director.Release(capture);
                 cameraRig.ReleaseShot(0f);
             }
-            Assert.That(Rooms(), Is.EqualTo(Kept), "Released: every room bit the camera had back, the bedroom's still clear.");
+            // Released, free play's view (live from RS5); with the whole house held, every room bit the camera had is back.
+            director.HoldWholeHouse(start);
+            Assert.That(Rooms(), Is.EqualTo(Kept), "Released into the whole house: every room bit the camera had back, the bedroom's still clear.");
             Assert.That(director.MainCameraRoomBitsTaken, Is.Zero);
             Assert.That(view.cullingMask & Guard, Is.Zero, "The guard bit is still its owner's.");
             view.cullingMask = authored;
@@ -816,6 +830,10 @@ namespace Gamesim.Tests.PlayMode
                 director.Release(owner);
                 cameraRig.ReleaseShot(0f);
             }
+            // Released, the view is free play's (RS5): the player's room, the bedroom, where the houseguest stands too.
+            yield return null;
+            yield return null;
+            Assert.That(director.ViewedRooms, Is.EqualTo(RoomSet.Of(bedroom)), "Released, free play's view: the player's bedroom.");
             Assert.That(Rs4DrawnNow(guest.transform, out string drawnWhy), Is.True, "Released, drawn by the main camera again: " + drawnWhy);
         }
 
@@ -955,7 +973,9 @@ namespace Gamesim.Tests.PlayMode
                 director.Release(owner);
                 cameraRig.ReleaseShot(0f);
             }
-            Assert.That(Rs4DrawnNow(guest.transform, out string drawn), Is.True, "Released, the new look is drawn: " + drawn);
+            // Released, the view is free play's (RS5), which may leave the games room out: with the whole house held, the new look is drawn.
+            director.HoldWholeHouse(owner);
+            Assert.That(Rs4DrawnNow(guest.transform, out string drawn), Is.True, "With the whole house held, the new look is drawn: " + drawn);
         }
 
         /// <summary>Hidden, counting only what is drawn at a size: a look being built stands at no size behind the body on show.</summary>

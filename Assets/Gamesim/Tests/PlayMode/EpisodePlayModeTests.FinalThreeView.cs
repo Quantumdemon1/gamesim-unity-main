@@ -286,6 +286,27 @@ namespace Gamesim.Tests.PlayMode
             while (Time.realtimeSinceStartup < deadline && cameraRig.Distance > EpisodeTravelBeacons.HiddenBelow - .5f) yield return null;
             yield return null;
             Assert.That(Naming(), Is.False, "Close up, the name plates name them.");
+
+            // The room view (D17, RS5): a finalist the view hides wears their name over their room's icon, not
+            // over a body that is not drawn.
+            cameraRig.ClearSubject();
+            yield return RoomViewLetGoOfTheDollhouse();
+            var scope = ScopeOf(director);
+            int playerRoom = RoomLayers.IndexOf(director.WalkerRoomOf(player.transform));
+            int elsewhere = Rs4FarRoom(scope, player.transform.position);
+            ScopePlace(partner.transform, ScopeOpenFloor(scope, elsewhere), 2f);
+            cameraRig.RecenterOnPlayer();
+            yield return null;
+            yield return RoomViewWaitOutTheLastChange();
+            Assert.That(cameraRig.ViewRoom, Is.EqualTo(playerRoom), "The room view frames the player's room,");
+            Assert.That(director.IsBodyDrawn(partner.transform), Is.False, partner.DisplayName + ", in the " + RoomLayers.RoomIds[elsewhere] + ", is hidden.");
+            string theirs = RoomLayers.RoomIds[elsewhere];
+            yield return WaitFor(() => director.TravelBeacons.IsNaming(partner.Id) && director.TravelBeacons.TryPlacedAt(theirs, out _), 3f,
+                partner.DisplayName + " is named, and the " + theirs + "'s icon is up.");
+            Assert.That(director.TravelBeacons.TryPlacedAt(theirs, out var iconAt), Is.True);
+            var hung = ScreenRect(NameChips().Last(rect => rect.name == EpisodeTravelBeacons.NameChipPrefix + partner.Id));
+            Assert.That(Mathf.Abs(hung.center.x - iconAt.x), Is.LessThan(hung.width * .5f + 4f), "The name hangs over the " + theirs + "'s icon (" + hung + " against " + iconAt + "),");
+            Assert.That(hung.yMin, Is.GreaterThan(iconAt.y), "above it.");
         }
 
         /// <summary>

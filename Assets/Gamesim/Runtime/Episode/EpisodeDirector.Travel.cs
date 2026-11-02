@@ -104,13 +104,40 @@ namespace Gamesim.Episode
 
         /// <summary>
         /// Whether a jury or evicted player's watch holds the camera (ROOM-SCOPE-PLAN RS6b, D6): the player
-        /// cannot move, and nothing has taken the view since the watch's move - a pan, a zoom, a follow, the
-        /// overview. The room scope's watching source is the watch's only while this holds; before any watch,
-        /// and after one is taken back, the view is the view's own (RS5 decides it: the room nearest the
-        /// camera's focus).
+        /// cannot move, nothing has taken the view since the watch's move - a pan, a zoom, a follow, the
+        /// overview - and the camera has come in on it (<see cref="HouseCameraRig.HasArrivedOn"/>): the watch
+        /// is a free move with no clock, so until the camera arrives over the watched room the view keeps
+        /// what it drew, and no room goes before the camera has moved (RS6a's rule for a timed move). The
+        /// room scope's watching source is the watch's only while this holds; before any watch, and after
+        /// one is taken back, the view is the view's own (RS5 decides it: the room nearest the camera's
+        /// focus). The overview opened over a watch and left by its own way out gives it back
+        /// (<see cref="ResumeTheWatchAfterTheOverview"/>).
         /// </summary>
         public bool WatchHoldsTheCamera
+            => !playerIsActive && cameraRig != null && cameraRig.HasArrivedOn(watchTakeovers);
+
+        /// <summary>Whether a watch claims the view: made, the player out of the house, and nothing has taken the view since, arrived or not.</summary>
+        private bool WatchClaimsTheCamera
             => !playerIsActive && watchTakeovers >= 0 && cameraRig != null && cameraRig.ViewTakeovers == watchTakeovers;
+
+        /// <summary>Whether a watch claimed the view as the overview opened over it.</summary>
+        private bool watchUnderOverview;
+
+        /// <summary>The overview opening: whether it opens over a watch, read before its shot takes the view.</summary>
+        private void RememberTheWatchUnderTheOverview() => watchUnderOverview = WatchClaimsTheCamera;
+
+        /// <summary>
+        /// The overview left by its own way out - its button, Escape, a panel (ROOM-SCOPE-PLAN RS6b, §1.2):
+        /// its shot's release takes the camera back to the watch's point and the rig's rooms back to the
+        /// watched room, so a watch it opened over holds again from the release, drawn once the camera has
+        /// come back in on it. A follow taken over the map, or camera input that ended it, is the viewer's.
+        /// </summary>
+        private void ResumeTheWatchAfterTheOverview()
+        {
+            if (watchUnderOverview && !playerIsActive && cameraRig != null && cameraRig.FocusedSubject == null)
+                watchTakeovers = cameraRig.ViewTakeovers;
+            watchUnderOverview = false;
+        }
 
         /// <summary>
         /// Takes the player to a room: the diary room's chair for the private room, the episode
@@ -126,7 +153,8 @@ namespace Gamesim.Episode
             {
                 ClosePanels();
                 // The watch names the watched room in the call (ROOM-SCOPE-PLAN D6, RS6b): the room itself,
-                // not the floor under its marker, drawn from the call for as long as the watch holds the camera.
+                // not the floor under its marker, drawn once the camera has come in on it and for as long as
+                // the watch holds the camera.
                 if (cameraRig != null)
                 {
                     cameraRig.MoveTo(marker.transform.position, cameraRig.DesiredDistance, 0f, RoomSet.Of(room));

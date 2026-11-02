@@ -796,9 +796,21 @@ namespace Gamesim.Tests.PlayMode
             if (source != EpisodeDirector.RoomScopeSource.Ceremony)
             {
                 // Another live shot holding the view over the card (RS6b: a house event's, a two-shot) draws its own
-                // rooms; any other view is the whole house.
-                if (!EpisodeDirector.IsRoomScopeSourceLive(source))
-                    Assert.That(viewed.IsWholeHouse, Is.True, kind + ": the " + source + " view is the whole house.");
+                // rooms: that source's own hold is what makes it the view, and the frame draws the rooms its shot
+                // names, never none. Any other view is the whole house.
+                if (EpisodeDirector.IsRoomScopeSourceLive(source))
+                {
+                    bool holds = source == EpisodeDirector.RoomScopeSource.HouseEvent ? director.HouseEventShotHoldsTheCamera
+                        : source == EpisodeDirector.RoomScopeSource.Conversation ? cameraRig.HoldsTheTwoShot
+                        : source == EpisodeDirector.RoomScopeSource.Diary ? director.DiaryShotHoldsTheCamera
+                        : source == EpisodeDirector.RoomScopeSource.Activity ? director.ActivityWarpHoldsTheCamera
+                        : source == EpisodeDirector.RoomScopeSource.Watching ? director.WatchHoldsTheCamera
+                        : source == EpisodeDirector.RoomScopeSource.Competition && director.IsFramingCompetition;
+                    Assert.That(holds, Is.True, kind + ": the " + source + " view over the card is its own shot's, held.");
+                    Assert.That(viewed.IsEmpty, Is.False, kind + ": the " + source + "'s shot over the card draws rooms.");
+                    Assert.That(viewed, Is.EqualTo(cameraRig.Rooms), kind + ": the " + source + "'s shot over the card draws the rooms it names (" + cameraRig.Rooms + ").");
+                }
+                else Assert.That(viewed.IsWholeHouse, Is.True, kind + ": the " + source + " view is the whole house.");
                 return false;
             }
             Assert.That(viewed.With(room), Is.EqualTo(viewed), kind + ": the ceremony's view draws the " + room + " (" + viewed + ").");

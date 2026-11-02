@@ -70,9 +70,9 @@ namespace Gamesim.Episode
             FreePlay,
             /// <summary>Following a houseguest: theirs (RS5).</summary>
             Following,
-            /// <summary>Jury or evicted, while a watch's move holds the camera: the watched room (RS6b, live).</summary>
+            /// <summary>Jury or evicted, while a watch's move holds the camera, from the camera's arrival: the watched room (RS6b, live).</summary>
             Watching,
-            /// <summary>The conversation two-shot, while it holds the camera: the pair's rooms (RS6b, live).</summary>
+            /// <summary>The conversation two-shot, while it holds the camera, from the camera's arrival: the pair's rooms (RS6b, live).</summary>
             Conversation,
             /// <summary>A ceremony's framing or its stage, while their own moves hold the camera (RS6a, live).</summary>
             Ceremony,
@@ -188,11 +188,12 @@ namespace Gamesim.Episode
                 if (CeremonyFramingHoldsTheCamera || CeremonyStageHoldsTheCamera) return RoomScopeSource.Ceremony;
                 if (IsFramingCompetition) return RoomScopeSource.Competition;
                 // The other shots the same way (RS6b): the diary's chair shot, the two-shot, a house event's
-                // shot, the activity warp's cut and a watch, each while its own move holds the camera. A
-                // diary still being walked to or sat in, a conversation under reduced motion (no two-shot), a
-                // shot the viewer or a panel let go, an activity reached on foot, and a jury or evicted
-                // player's view before any watch or after a pan are the view's own: free play's or
-                // following's, the whole house until RS5.
+                // shot, the activity warp's cut and a watch, each while its own move holds the camera - the
+                // two-shot and the watch, which have no clock, from the late pass the camera comes in on them.
+                // A diary still being walked to or sat in, a conversation under reduced motion (no two-shot), a
+                // two-shot or a watch the camera is still coming in on, a shot the viewer or a panel let go, an
+                // activity reached on foot, and a jury or evicted player's view before any watch or after a
+                // pan are the view's own: free play's or following's, the whole house until RS5.
                 if (DiaryShotHoldsTheCamera) return RoomScopeSource.Diary;
                 if (cameraRig != null && cameraRig.HoldsTheTwoShot) return RoomScopeSource.Conversation;
                 if (HouseEventShotHoldsTheCamera) return RoomScopeSource.HouseEvent;

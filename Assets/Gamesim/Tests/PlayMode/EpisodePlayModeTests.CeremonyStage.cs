@@ -741,7 +741,7 @@ namespace Gamesim.Tests.PlayMode
         // ---------------------------------------------------------------- the full house (CEREMONY-CUTSCENES-PLAN §7.1)
 
         /// <summary>
-        /// A frame of a set from above, for the look sheet: the rig put on the shot for two frames, then the
+        /// A frame of a set from above, for the look sheet: the rig put on the shot until it lands and two frames more, then the
         /// capture. Batch runs only. A shot naming <paramref name="rooms"/> is framed as the ceremony's or
         /// the competition's own shots are (RS6a): with nothing held the main camera draws those rooms
         /// alone, asserted before the frame, so the frame is what the player sees.
@@ -750,6 +750,9 @@ namespace Gamesim.Tests.PlayMode
         {
             if (!Application.isBatchMode) yield break;
             cameraRig.MoveTo(new HouseCameraRig.Shot { Focus = focus, Distance = distance, Pitch = pitch, Yaw = yaw, FieldOfView = 45f, Seconds = 0.01f, Rooms = rooms });
+            // Landed on the clock, then two frames for the late pass: the rig eases on unscaled time, and two batch
+            // frames are under a millisecond of it, so a frame count alone could catch the move in flight (RS6b review).
+            yield return ScopeWaitUntilLanded();
             yield return Frames(2);
             if (!rooms.IsEmpty) Rs6aAssertTheViewIs(rooms, name);
             yield return CaptureFraming(name, settle: false);

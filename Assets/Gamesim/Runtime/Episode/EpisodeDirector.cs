@@ -760,7 +760,7 @@ namespace Gamesim.Episode
             // Any panel opening ends the overview: the shot it took goes with it. A conversation's
             // two-shot ends with the conversation; the diary's chair shot is released here, which
             // covers Escape and the walk-away close alike.
-            if (overviewOpen) { LeaveOverview(); if (cameraRig != null) cameraRig.ReleaseShot(OverviewSeconds); }
+            if (overviewOpen) { LeaveOverview(); if (cameraRig != null) cameraRig.ReleaseShot(OverviewSeconds); ResumeTheWatchAfterTheOverview(); }
             // Not while the opening plays: it is holding the camera and the player, and gives both
             // back when it ends.
             if (cameraRig != null && !OpeningOwnsHouse) { cameraRig.EndConversation(); cameraRig.ReleaseShot(DiaryShotSeconds); cameraRig.ControlsEnabled = !blockedRecovery; }

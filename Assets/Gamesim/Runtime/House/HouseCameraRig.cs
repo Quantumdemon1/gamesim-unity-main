@@ -385,19 +385,47 @@ namespace Gamesim.House
 
         /// <summary>
         /// Whether the conversation's own two-shot holds the camera (ROOM-SCOPE-PLAN RS6b): a conversation
-        /// is focused and the shot is the two-shot it took - under reduced motion it takes none and keeps
-        /// the viewer's, and any other shot, a release or a drop lets it go. The room scope's conversation
-        /// source is the two-shot's only while this holds, as a ceremony's is its own shots' (RS6a).
+        /// is focused, the shot is the two-shot it took - under reduced motion it takes none and keeps the
+        /// viewer's, and any other shot, a release or a drop lets it go - and the camera has come in on it:
+        /// from the first late pass at which it stands within <see cref="ArrivalTolerance"/> of the shot. The
+        /// two-shot has no clock (the ordinary smoothing brings the camera in from the dollhouse's distance
+        /// in about a third of a second), so until it arrives the view keeps what it drew, as a timed move
+        /// draws what it left until it lands (RS6a): no room goes before the camera has moved. The room
+        /// scope's conversation source is the two-shot's only while this holds.
         /// </summary>
-        public bool HoldsTheTwoShot => IsConversationFocused && activeShot.HasValue && twoShotHeld;
-        private bool twoShotHeld;
+        public bool HoldsTheTwoShot => IsConversationFocused && activeShot.HasValue && twoShotHeld && twoShotArrived;
+        private bool twoShotHeld, twoShotArrived;
 
-        /// <summary>Takes the two-shot on the pair: the shot that names the pair's rooms, and the one <see cref="HoldsTheTwoShot"/> reads.</summary>
+        /// <summary>
+        /// How near the camera stands to where an untimed move is going for it to have come in on it
+        /// (ROOM-SCOPE-PLAN RS6b): the two-shot's arrival (<see cref="HoldsTheTwoShot"/>) and a free move's
+        /// (<see cref="HasArrivedOn"/>).
+        /// </summary>
+        public const float ArrivalTolerance = 0.5f;
+
+        /// <summary>
+        /// Takes the two-shot on the pair: the shot that names the pair's rooms, and the one <see cref="HoldsTheTwoShot"/>
+        /// reads. Taken again over its own held and arrived shot - a lens change, the HUD's published width -
+        /// it stays arrived: the camera is already on the pair, and the view does not drop their rooms.
+        /// </summary>
         private void TakeTwoShot(Transform player, Transform npc)
         {
+            bool arrived = HoldsTheTwoShot;
             MoveTo(TwoShot(player, npc));
             twoShotHeld = true;
+            twoShotArrived = arrived;
         }
+
+        /// <summary>
+        /// Whether the camera has come in on the view a caller took (ROOM-SCOPE-PLAN RS6b):
+        /// <paramref name="takeovers"/> is the caller's read of <see cref="ViewTakeovers"/> just after its
+        /// move; nothing has taken the view since, and at a late pass since the move no timed move was in
+        /// flight and the camera stood within <see cref="ArrivalTolerance"/> of where it is going. A free
+        /// move has no clock, so a caller whose view should not drop rooms before the camera has moved
+        /// (a jury or evicted player's watch) reads this rather than its call.
+        /// </summary>
+        public bool HasArrivedOn(int takeovers) => takeovers >= 0 && takeovers == viewTakeovers && arrivedOnTakeovers == takeovers;
+        private int arrivedOnTakeovers = -1;
 
         /// <summary>A bystander nearer the two-shot's eye than this would fill the frame with their back.</summary>
         public const float TwoShotClearance = 2.2f;
@@ -593,6 +621,7 @@ namespace Gamesim.House
             Initialize();
             // A two-shot taken again is held again by its taker (TakeTwoShot); any other shot is not one.
             twoShotHeld = false;
+            twoShotArrived = false;
             int before = ResolveRooms();
             if (!shot.TravelFromRooms.IsEmpty) before = shot.TravelFromRooms.Bits;
             if (!activeShot.HasValue)
@@ -628,6 +657,7 @@ namespace Gamesim.House
             int before = ResolveRooms();
             activeShot = null;
             twoShotHeld = false;
+            twoShotArrived = false;
             yaw = shotReturnYaw;
             travelSeconds = 0f;
             desiredFocus = ClampFocus(shotReturnFocus);
@@ -661,6 +691,7 @@ namespace Gamesim.House
             var shot = activeShot.Value;
             activeShot = null;
             twoShotHeld = false;
+            twoShotArrived = false;
             // A timed move still in flight would otherwise carry its clock onto whatever focus the
             // caller sets next and land there in a frame, which reads as a cut.
             travelSeconds = 0f;
@@ -883,6 +914,14 @@ namespace Gamesim.House
             // Every frame, so a followed body's room changes on the frame its feet cross the line
             // whether or not anything reads it then.
             if (roomScope != null) ResolveRooms();
+            // The camera come in on an untimed move, read after it has moved for the frame and before the
+            // director's late pass draws it (ROOM-SCOPE-PLAN RS6b): the two-shot's, kept until the shot goes,
+            // and a free move's, kept until anything else takes the view.
+            if (!IsTravelling && HasArrived(ArrivalTolerance))
+            {
+                if (twoShotHeld && IsConversationFocused && activeShot.HasValue) twoShotArrived = true;
+                arrivedOnTakeovers = viewTakeovers;
+            }
         }
 
         /// <summary>

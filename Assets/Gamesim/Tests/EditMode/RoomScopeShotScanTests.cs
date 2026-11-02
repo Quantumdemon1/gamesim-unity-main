@@ -96,7 +96,7 @@ namespace Gamesim.Tests.EditMode
             new Declared(Ep + "EpisodeDirector.Conversation.cs", "SelectHouseguest", "FocusSubject(player.transform, false)", 1, Why.OnTheDefault, FreePlay,
                 "the walk over to talk to someone: the player's room (RS5)"),
             new Declared(Ep + "EpisodeDirector.Opening.cs", "OpeningFinished", "FocusSubject(player.transform, reframe: false)", 1, Why.OnTheDefault, FreePlay,
-                "the opening's hand-over (D6): the player's room from the call, free play's view (RS5)"),
+                "the opening's hand-over (D6): the player's room from the call, free play's view; RS5 makes it the cut onto the player's room's framing"),
             new Declared(Ep + "EpisodeDirector.TalkSpots.cs", "TryWalkToTalkSpot", "FocusSubject(player.transform, false)", 1, Why.OnTheDefault, FreePlay,
                 "the walk to a talk spot: the player's room (RS5)"),
             new Declared(Ep + "EpisodeDirector.Travel.cs", "TryTravel", "CutTo(player.transform)", 1, Why.OnTheDefault, FreePlay,

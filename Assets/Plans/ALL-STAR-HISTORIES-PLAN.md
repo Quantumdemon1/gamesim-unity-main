@@ -1158,7 +1158,9 @@ histories-first order, and it carries every field in 5.1.
 - **The titled names took 6** (the quick fixes, 2026-11-03, the owner's "the 'Dr.' names"; a delegated call, confirmed by
   "Yes your judgment on questions and proceed"): from alumni rules 6 the pact names and the betrayal's lines the engine
   writes call Dr. Will Kirby Will (`CharacterNames.SeasonFirstName`), words only, so every season below 6 replays the
-  words it wrote; AS7 takes the next free value, 7, and carries 6.
+  words it wrote; AS7 takes the next free value, 7, and carries 6. A season already under way below 6 (an All-Stars save
+  started before this build) keeps writing "Dr." for the rest of it, by design; CharacterNamesTests holds every place the
+  engine names a pact or a betrayal to the rule at 6, 5 and 1.
 
 **With dialogue:**
 - **The joint note's final §6 is SCH30's input.** It adds no dialogue field to 5.1, and it fixes 8.2's dialogue scope

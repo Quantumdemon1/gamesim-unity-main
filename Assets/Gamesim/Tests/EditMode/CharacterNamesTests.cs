@@ -1,5 +1,7 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
 using Gamesim.Simulation;
 using NUnit.Framework;
 
@@ -63,7 +65,12 @@ namespace Gamesim.Tests.EditMode
         /// The names the engine writes are the season's (alumni rules 6, <see cref="AlumniRules.TitledNames"/>; the owner's
         /// "the 'Dr.' names", 2026-11-03). From 6 the betrayal's offer, its cut-ties line, the house's name for a pact and a
         /// story's pact call Dr. Will Kirby Will. Below 6 - every season saved before it, all of them below it for ever -
-        /// they say "Dr.", as those seasons were played, so their replays write the words they wrote.
+        /// they say "Dr.", as those seasons were played, so their replays write the words they wrote. Every place the engine
+        /// names a pact is held to it (the quick fixes' review): the player's pact from an invitation agreed
+        /// (EpisodeEngine.AllyThroughInvitation, EpisodeEngine.Strategy.cs), the player's pact a proposal or a story forms
+        /// (EpisodeEngine.FormPact, EpisodeEngine.StoryEffects.cs), the weekly pass's pact of two houseguests
+        /// (NpcAlliances.Form, through <see cref="NpcAlliances.TryPropose"/>), a story's pact of the houseguests'
+        /// (<see cref="NpcAlliances.FormFromStory"/>) and the house's name for a pact (<see cref="PactNames.HouseName"/>).
         /// </summary>
         [TestCase(AlumniRules.TitledNames, "Will")]
         [TestCase(AlumniRules.GrowingPacts, "Dr.")]
@@ -78,6 +85,7 @@ namespace Gamesim.Tests.EditMode
             Assert.That(will.isPlayer, Is.False);
             var other = s.contestants.First(c => !c.isPlayer && c.id != will.id && c.status == ContestantStatus.Active);
             string theirs = FinalistRead.FirstName(other.name);
+            var start = s.Clone();
 
             Assert.That(CharacterNames.SeasonFirstName(s, will.name), Is.EqualTo(first));
             Assert.That(CharacterNames.SeasonFirstName(s, other.name), Is.EqualTo(theirs), "An untitled name reads the same at every value.");
@@ -89,7 +97,43 @@ namespace Gamesim.Tests.EditMode
             var pact = NpcAlliances.FormFromStory(s, new List<string> { will.id, other.id });
             Assert.That(pact, Is.Not.Null);
             Assert.That(pact.name, Is.EqualTo("The " + first + " and " + theirs + " Pact"), "A story's pact is named by the same rule.");
+
+            var invited = Unallied(start, will.id);
+            Assert.That(StrategyRules.Apply(invited), Is.True, "The strategy rules play from week one.");
+            Engine("AllyThroughInvitation", invited, will.id);
+            Assert.That(PactOf(invited, invited.playerId, will.id).name, Is.EqualTo("The " + first + " Pact"), "An invitation agreed names the player's pact by it,");
+
+            var proposed = Unallied(start, will.id);
+            Engine("FormPact", proposed, proposed.Find(will.id), (Func<double>)(() => 0.5));
+            Assert.That(PactOf(proposed, proposed.playerId, will.id).name, Is.EqualTo("The " + first + " Pact"), "a proposal's or a story's pact of the player's,");
+
+            var paired = Unallied(start, will.id);
+            foreach (var a in paired.contestants)
+            {
+                a.traits = new List<string>();
+                foreach (var b in paired.contestants.Where(c => c.id != a.id)) AllWeekCadenceTests.Score(paired, a.id, b.id, 0);
+            }
+            AllWeekCadenceTests.Score(paired, will.id, other.id, 90);
+            AllWeekCadenceTests.Score(paired, other.id, will.id, 90);
+            Assert.That(NpcAlliances.TryPropose(paired, will.id, new HashSet<string>(StringComparer.Ordinal)), Is.True, "The two warm to each other pair off.");
+            Assert.That(PactOf(paired, will.id, other.id).name, Is.EqualTo("The " + first + " and " + theirs + " Pact"), "and the weekly pass's pact of two.");
         }
+
+        /// <summary>A copy of the season with no pact of <paramref name="id"/>'s, so a new one is theirs to form.</summary>
+        private static EpisodeState Unallied(EpisodeState s, string id)
+        {
+            var copy = s.Clone();
+            copy.alliances.RemoveAll(a => a.members.Contains(id));
+            return copy;
+        }
+
+        /// <summary>The one active pact of exactly these two.</summary>
+        private static AllianceState PactOf(EpisodeState s, string a, string b) =>
+            s.alliances.Single(x => x.active && x.members.Count == 2 && x.members.Contains(a) && x.members.Contains(b));
+
+        /// <summary>One of the engine's private steps that names a pact, as a command reaches it.</summary>
+        private static void Engine(string step, params object[] args) =>
+            typeof(EpisodeEngine).GetMethod(step, BindingFlags.NonPublic | BindingFlags.Static).Invoke(null, args);
 
         /// <summary>A season off the alumni rules - a Regular house, or any season saved before schema 30 - writes the name cut at its first space, as it always did.</summary>
         [Test]

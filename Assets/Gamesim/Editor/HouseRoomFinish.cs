@@ -301,27 +301,30 @@ namespace Gamesim.Editor
             if (run != null)
             {
                 // The run's sections, left to right as its script lays them (bb_set_kitchenrun.py):
-                // fridge 0.8, doors 1.2, sink 0.9, drawers 0.9, stove 0.9, doors 1.2, end 0.5.
+                // fridge 0.8, doors 1.2, sink 0.9, drawers 0.9, stove 0.9, doors 1.2, end 0.5. Each
+                // place below is along the run as authored, times the run's stretch along its length
+                // (0.921875 since the doorway beside it opened, HouseKitchenDoorway; 1 before).
                 var rb = Measure(run.gameObject);
+                float along = run.lossyScale.x;
                 float left = rb.min.x, front = rb.min.z, counter = room.FloorTop + 0.92f, mid = rb.center.z;
                 var into = Vector3.back;   // the run faces -z, into the room
                 const string panels = Pack6 + "Kitchen/";
                 // Rhythm: fridge / dishwasher / sink / drawers / cooktop and oven / doors.
-                if (Decal(group, "Fridge panel", panels + "appliance_panel_fridge.png", new Vector3(left + 0.40f, room.FloorTop + 0.30f, front - 0.012f), 0.60f, into) != null) count++;
-                if (Decal(group, "Dishwasher panel", panels + "appliance_panel_coffee.png", new Vector3(left + 1.40f, room.FloorTop + 0.78f, front - 0.012f), 0.60f, into) != null) count++;
-                if (Decal(group, "Oven panel", panels + "appliance_panel_oven.png", new Vector3(left + 4.25f, room.FloorTop + 0.72f, front - 0.012f), 0.60f, into) != null) count++;
+                if (Decal(group, "Fridge panel", panels + "appliance_panel_fridge.png", new Vector3(left + 0.40f * along, room.FloorTop + 0.30f, front - 0.012f), 0.60f, into) != null) count++;
+                if (Decal(group, "Dishwasher panel", panels + "appliance_panel_coffee.png", new Vector3(left + 1.40f * along, room.FloorTop + 0.78f, front - 0.012f), 0.60f, into) != null) count++;
+                if (Decal(group, "Oven panel", panels + "appliance_panel_oven.png", new Vector3(left + 4.25f * along, room.FloorTop + 0.72f, front - 0.012f), 0.60f, into) != null) count++;
                 // Coffee, beside the machine over the drawers.
-                if (PieceAt(group, "Coffee tin", "bb_set_coffee_tin", new Vector3(left + 3.00f, counter, mid + 0.05f), 0f) != null) count++;
-                if (PieceAt(group, "Jar", "bb_set_food_jar", new Vector3(left + 3.70f, counter, mid + 0.08f), 0f) != null) count++;
+                if (PieceAt(group, "Coffee tin", "bb_set_coffee_tin", new Vector3(left + 3.00f * along, counter, mid + 0.05f), 0f) != null) count++;
+                if (PieceAt(group, "Jar", "bb_set_food_jar", new Vector3(left + 3.70f * along, counter, mid + 0.08f), 0f) != null) count++;
                 // The pantry, beside the toaster, every label to the room (a model's front is its -z,
                 // and the run faces -z). The blue bag stands past the toaster's end: at 5.50 its corner
                 // was 2 cm inside the toaster and its label half behind it; the bottle is beyond it.
-                if (PieceAt(group, "Cereal", "bb_set_cereal_carton", new Vector3(left + 4.85f, counter, mid + 0.10f), 12f) != null) count++;
-                if (PieceAt(group, "Snack bag", "bb_set_snack_gold", new Vector3(left + 5.08f, counter, mid + 0.06f), -8f) != null) count++;
-                if (PieceAt(group, "Snack bag", "bb_set_snack_blue", new Vector3(left + 5.55f, counter, mid + 0.02f), 20f) != null) count++;
+                if (PieceAt(group, "Cereal", "bb_set_cereal_carton", new Vector3(left + 4.85f * along, counter, mid + 0.10f), 12f) != null) count++;
+                if (PieceAt(group, "Snack bag", "bb_set_snack_gold", new Vector3(left + 5.08f * along, counter, mid + 0.06f), -8f) != null) count++;
+                if (PieceAt(group, "Snack bag", "bb_set_snack_blue", new Vector3(left + 5.55f * along, counter, mid + 0.02f), 20f) != null) count++;
                 // A folded authored towel on the end panel. The room-finish layer keeps the same
                 // support point, but the prop now has the thickness and folds of the set's model.
-                if (PieceAt(group, "Dish towel", "bb_set_towel", new Vector3(left + 6.15f, counter, mid), 0f) != null) count++;
+                if (PieceAt(group, "Dish towel", "bb_set_towel", new Vector3(left + 6.15f * along, counter, mid), 0f) != null) count++;
             }
 
             // The long table's rug, centred under it.

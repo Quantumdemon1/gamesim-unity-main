@@ -290,7 +290,11 @@ Gamesim.EditModeTests 9747
 # 1484 = 1481 + the quick fixes' footer, 3 shared cases (EpisodePlayModeTests.CastConversationPreview:
 # CastSelect_TheFootersPartsKeepApartAtEveryTextSize at 1.0, 1.2 and 1.4), counted offline from the source and the
 # compiled assembly (2026-11-03); not yet run in Unity.
-Gamesim.PlayModeTests 1484
+# 1485 = 1484 + the quick fixes' kitchen doorway, 1 shared test (EpisodePlayModeTests.RoomScope:
+# RoomScope_TheKitchenDoorwayIsWalkedThroughOnTheBakedNavMesh; WayFinding_EachAdjacentRoomsIconReachesItsRoom changed,
+# adding none), counted offline from the source and the compiled assembly (2026-11-03); not yet run in Unity. Both
+# pass only on the scene and NavMesh HouseKitchenDoorway.AuthorAcceptance writes.
+Gamesim.PlayModeTests 1485
 # The UMA build of the same assembly, read by a plan built without -WithoutUma. 1281 = the 1241 above + the
 # 40 tests that compile only under GAMESIM_UMA, as run at r1 (2026-10-16): in EpisodePlayModeTests,
 # GroundedFarewell 11, Creator 9, HouseLife 8, Emotes 3, OpeningCaptures 2, and one each in CreatorEntry,
@@ -365,7 +369,9 @@ Gamesim.PlayModeTests 1484
 # build; not yet run in Unity.
 # 1526 = 1523 + the quick fixes' same 3 footer cases, counted offline (2026-11-03) and compiled in the UMA offline
 # build; not yet run in Unity.
-Gamesim.PlayModeTests.UmaBuild 1526
+# 1527 = 1526 + the quick fixes' same kitchen doorway test, counted offline (2026-11-03) and compiled in the UMA
+# offline build; not yet run in Unity.
+Gamesim.PlayModeTests.UmaBuild 1527
 # The UMA bodies: runs only where the GAMESIM_UMA define is set (the working tree and the D: copy).
 # 82 = the 89 run on 2026-10-15, less the 7 farewell probes moved to Gamesim.Uma.DiagnosticsPlayModeTests;
 # 85 = 82 + the 3 farewell readiness decision tests (UmaFarewellReadinessDecisionPlayModeTests, 2026-10-16);

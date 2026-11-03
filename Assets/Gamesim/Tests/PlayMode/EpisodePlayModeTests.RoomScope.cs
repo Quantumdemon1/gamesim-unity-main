@@ -33,6 +33,71 @@ namespace Gamesim.Tests.PlayMode
         }
 
         /// <summary>
+        /// The doorway between the kitchen and the private room is walked through on the baked NavMesh (ROOM-SCOPE-PLAN §2.1; the
+        /// owner's quick fixes, 2026-11-03, "the doorway"). The kitchen run stood from x 1.0 to 7.4 in front of the west 1.8 m of
+        /// the 2.8 m gap (x 5.6 to 8.4 on z = 0) and the agents' half-metre erosion closed the rest, so houseguests went round
+        /// through the living room and the bedroom. It stands in the corner now, drawn 5.9 of its 6.4 long, and ends at 6.07
+        /// (HouseKitchenDoorway, applied and baked by its batch method): the mesh crosses z = 0 in the gap for a metre or more,
+        /// and the walk from 1.6 m inside the kitchen to 1.6 m inside the private room goes through it, never into the living
+        /// room or the bedroom, and is shorter than any walk round through them, which crosses x = 0 twice (at least 14.5 m).
+        /// The room scope reads the gap as a doorway.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator RoomScope_TheKitchenDoorwayIsWalkedThroughOnTheBakedNavMesh()
+        {
+            director.ClosePanels();
+            director.SuspendNpcAutonomyForDiagnostics();
+            yield return null;
+            const float doorLow = 5.6f, doorHigh = 8.4f, middle = 7.25f, inside = 1.6f;
+            var run = SceneComponents<MeshRenderer>().Where(renderer => renderer.name == "bb_set_kitchenrun" && renderer.gameObject.activeInHierarchy).ToList();
+            Assert.That(run, Has.Count.EqualTo(1), "One kitchen run.");
+            var runBounds = run[0].bounds;
+            Assert.That(runBounds.size.x, Is.EqualTo(5.9f).Within(.05f), "The run is drawn 5.9 long,");
+            Assert.That(runBounds.min.x, Is.EqualTo(.17f).Within(.02f), "its fridge end in the corner, clear of the west wall,");
+            Assert.That(runBounds.max.x, Is.LessThan(6.1f), "and its end 2.3 m short of the doorway's far side.");
+
+            // The doorway's line, in 2.5 cm steps: walkable where the mesh is within 5 cm.
+            float y = runBounds.min.y, width = 0f, best = 0f, bestFrom = 0f, from = 0f;
+            for (float x = doorLow + .0125f; x < doorHigh; x += .025f)
+            {
+                bool on = NavMesh.SamplePosition(new Vector3(x, y, 0f), out var hit, .3f, NavMesh.AllAreas)
+                          && Mathf.Abs(hit.position.x - x) < .05f && Mathf.Abs(hit.position.z) < .05f;
+                if (on && width == 0f) from = x;
+                width = on ? width + .025f : 0f;
+                if (width > best) { best = width; bestFrom = from; }
+            }
+            TestContext.Out.WriteLine("The kitchen doorway is walkable for " + best.ToString("0.00") + " m from x " + bestFrom.ToString("0.00") + ".");
+            Assert.That(best, Is.GreaterThanOrEqualTo(1f), "The baked mesh crosses the doorway for a metre or more.");
+
+            Assert.That(NavMesh.SamplePosition(new Vector3(middle, y, -inside), out var kitchenSide, .5f, NavMesh.AllAreas), Is.True, "On the mesh in the kitchen,");
+            Assert.That(NavMesh.SamplePosition(new Vector3(middle, y, inside), out var privateSide, .5f, NavMesh.AllAreas), Is.True, "and in the private room.");
+            var path = new NavMeshPath();
+            Assert.That(NavMesh.CalculatePath(kitchenSide.position, privateSide.position, NavMesh.AllAreas, path) && path.status == NavMeshPathStatus.PathComplete,
+                Is.True, "A walk joins them.");
+            float length = 0f;
+            for (int i = 1; i < path.corners.Length; i++) length += Vector3.Distance(path.corners[i - 1], path.corners[i]);
+            float detour = 2f * middle;
+            string walk = string.Join(" ", path.corners.Select(corner => "(" + corner.x.ToString("0.00") + ", " + corner.z.ToString("0.00") + ")"));
+            TestContext.Out.WriteLine("Kitchen to private room: " + length.ToString("0.00") + " m against a detour of at least " + detour.ToString("0.0") + ": " + walk + ".");
+            Assert.That(length, Is.LessThan(detour), "The walk is shorter than any round through the living room and the bedroom: " + walk);
+            Assert.That(path.corners.All(corner => corner.x > 1f), Is.True, "It never goes into the living room or the bedroom: " + walk);
+            bool throughTheDoor = false;
+            for (int i = 1; i < path.corners.Length; i++)
+            {
+                Vector3 a = path.corners[i - 1], b = path.corners[i];
+                if ((a.z < 0f) == (b.z < 0f)) continue;
+                float at = a.x + (b.x - a.x) * (0f - a.z) / (b.z - a.z);
+                throughTheDoor |= at >= doorLow && at <= doorHigh;
+            }
+            Assert.That(throughTheDoor, Is.True, "It crosses z = 0 in the doorway: " + walk);
+
+            var scope = ScopeOf(director);
+            int kitchen = RoomLayers.IndexOf("Kitchen"), privateRoom = RoomLayers.IndexOf("Private");
+            Assert.That(scope.TryDoorway(kitchen, privateRoom, cameraRig.transform.position, out var doorway), Is.True, "The room scope reads it as a doorway,");
+            Assert.That(doorway.Middle.x, Is.InRange(doorLow, doorHigh), "the one between the two rooms: " + doorway + ".");
+        }
+
+        /// <summary>
         /// The player walks through every doorway of the house, and the viewed room changes once at
         /// each: when the feet are three tenths of a metre past the wall line, never before. The two
         /// corner doorways - the yard's and the nomination room's, which open onto the line where two

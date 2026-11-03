@@ -41,9 +41,13 @@ namespace Gamesim.House
         /// <summary>The set pieces the newer verbs are built on, by the names their scripts give them.</summary>
         public const string PoolPiece = "bb_set_pool", TubPiece = "bb_set_hottub", KitchenRunPiece = "bb_set_kitchenrun";
 
-        /// <summary>The middle of the hob, on the counter top of the kitchen run.</summary>
+        /// <summary>
+        /// The middle of the hob, on the counter top of the kitchen run: in the run's own frame, so a run drawn shorter
+        /// along its length (HouseKitchenDoorway, 0.921875) has its hob where its mesh puts it. Unscaled, as every run
+        /// was before, this is the position plus the turned offset, as it always was.
+        /// </summary>
         public static Vector3 Hob(Transform run)
-            => run.position + run.rotation * new Vector3(StoveSide(run) * StoveAlongRun, CounterTop, 0f);
+            => run.TransformPoint(new Vector3(StoveSide(run) * StoveAlongRun, CounterTop, 0f));
 
         public static void EnsureDefaults(Scene scene, HouseInteractionAnchor[] existing, Transform[] all, HouseRoomMarker[] markers)
         {
@@ -110,7 +114,7 @@ namespace Gamesim.House
             {
                 // The counter's own anchor stands 1.175 m out from the run's middle, facing it; the
                 // stove's stands as far out, in front of the hob.
-                var at = run.position + run.rotation * new Vector3(StoveSide(run) * StoveAlongRun, 0f, -CounterFront);
+                var at = run.TransformPoint(new Vector3(StoveSide(run) * StoveAlongRun, 0f, -CounterFront));
                 var standing = OnFloor(at, rooms);
                 if (standing.HasValue)
                     HouseInteractionAnchor.Create(run, HouseFurniture.StoveAnchor, RoomOf(standing.Value, rooms, markers), 0,

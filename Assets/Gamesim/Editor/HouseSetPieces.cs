@@ -65,11 +65,13 @@ namespace Gamesim.Editor
         private readonly struct Prop
         {
             public readonly string Room, Model;
-            public readonly float X, Z, Yaw, Height, Lift;
+            public readonly float X, Z, Yaw, Height, Lift, Stretch;
 
-            public Prop(string room, string model, float x, float z, float yaw, float height, float lift = 0f)
+            /// <param name="stretch">A scale along the model's own length (its x) on top of its height's: the kitchen run's,
+            /// drawn shorter to open the doorway beside it (<see cref="HouseKitchenDoorway"/>). 1 for every other row.</param>
+            public Prop(string room, string model, float x, float z, float yaw, float height, float lift = 0f, float stretch = 1f)
             {
-                Room = room; Model = model; X = x; Z = z; Yaw = yaw; Height = height; Lift = lift;
+                Room = room; Model = model; X = x; Z = z; Yaw = yaw; Height = height; Lift = lift; Stretch = stretch;
             }
         }
 
@@ -94,15 +96,21 @@ namespace Gamesim.Editor
             // see the note on Lift for why there are no wall units.
             // Tier 3 begins here: the kitchen run replaces the kit's stove, sink, cabinet and bar
             // end with one authored counter from the fridge to the end panel along the north wall
-            // (x 1.0 to 7.4, its back a couple of centimetres off the wall's face). The kit's small
-            // appliances stay, lifted onto its counter over the doors, the drawers and the doors.
-            new Prop("Kitchen floor", "bb_set_kitchenrun",     -0.20f,  0.455f,  0f, 0f),
-            new Prop("Kitchen floor", "kitchenMicrowave",      -0.329f, 0.455f, 180f, 0.32f, 0.92f),
-            new Prop("Kitchen floor", "kitchenCoffeeMachine",  -0.189f, 0.455f, 180f, 0.34f, 0.92f),
-            new Prop("Kitchen floor", "toaster",               -0.05f,  0.455f, 180f, 0.22f, 0.92f),
+            // (its back a couple of centimetres off the wall's face). The kit's small appliances
+            // stay, lifted onto its counter over the doors, the drawers and the doors.
+            // It stood from x 1.0 to 7.4, in front of the west 1.8 m of the 2.8 m doorway into the
+            // private room, and the agents' erosion closed the rest. It stands in the corner now, its
+            // fridge 0.17 from the west wall line, drawn 5.9 of its authored 6.4 long, and ends at
+            // 6.07, so the doorway is walkable for 1.33 m (the quick fixes, 2026-11-03,
+            // HouseKitchenDoorway). The five things on it keep their places along it: each row's x is
+            // 0.17 + (its old x - 1.0) x 0.921875, its own size unchanged.
+            new Prop("Kitchen floor", "bb_set_kitchenrun",     -0.27714f, 0.455f,  0f, 0f, 0f, HouseKitchenDoorway.Stretch),
+            new Prop("Kitchen floor", "kitchenMicrowave",      -0.39606f, 0.455f, 180f, 0.32f, 0.92f),
+            new Prop("Kitchen floor", "kitchenCoffeeMachine",  -0.26700f, 0.455f, 180f, 0.34f, 0.92f),
+            new Prop("Kitchen floor", "toaster",               -0.13886f, 0.455f, 180f, 0.22f, 0.92f),
             // Tier 4 clutter: on the counter, and on the long table (its top is 0.76 m).
-            new Prop("Kitchen floor", "bb_set_mug",            -0.29f,  0.455f,  30f, 0f, 0.92f),
-            new Prop("Kitchen floor", "bb_set_bottle",         -0.02f,  0.455f,   0f, 0f, 0.92f),
+            new Prop("Kitchen floor", "bb_set_mug",            -0.36011f, 0.455f,  30f, 0f, 0.92f),
+            new Prop("Kitchen floor", "bb_set_bottle",         -0.11121f, 0.455f,   0f, 0f, 0.92f),
             new Prop("Kitchen floor", "bb_set_mug",            -0.04f, -0.285f, 200f, 0f, 0.76f),
             new Prop("Kitchen floor", "bb_set_mug",             0.11f, -0.315f, 340f, 0f, 0.76f),
             new Prop("Kitchen floor", "bb_set_bottle",          0.03f, -0.300f,   0f, 0f, 0.76f),
@@ -389,6 +397,7 @@ namespace Gamesim.Editor
 
                 var instance = Model(prop.Model, root, prop.Yaw, prop.Height);
                 if (instance == null) { missing++; continue; }
+                if (prop.Stretch != 1f) instance.transform.localScale = Vector3.Scale(instance.transform.localScale, new Vector3(prop.Stretch, 1f, 1f));
 
                 var bounds = floor.bounds;
                 var scaled = Measure(instance);

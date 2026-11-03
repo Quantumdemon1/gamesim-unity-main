@@ -274,6 +274,50 @@ namespace Gamesim.Tests.EditMode
         }
 
         /// <summary>
+        /// The free-time board's THREADS strip and the THREADS &amp; STORYLINES card are no tell either (the quick fixes' review,
+        /// 2026-11-03): the strip counted the quiet backdoor as "1 storyline playing out", and the card, counting it too, dropped its
+        /// "nothing in play" line over a heading with nothing under it. Both read <see cref="StorylinesShown"/> now, as the two lists
+        /// do (<see cref="StorylinesShown.Rows"/>). In a backdoor week where the coin says no the strip, the card and the rows read
+        /// exactly as they do with the plan taken out, and with nothing else in play they say nothing is. On a yes the rows name it
+        /// waiting on the player, and once its card is answered the strip counts it.
+        /// </summary>
+        [Test]
+        public void TheBoardsStripAndTheStoryCardDoNotCountABackdoorThatHasNotReachedThePlayer()
+        {
+            string Row((string Title, string Line) row) => row.Title + " - " + row.Line;
+            string title = StoryCatalog.Find(Backdoor).title;
+
+            var no = PawnWeek(backdoor: true, coin: false, drawn: false);
+            var quiet = no.after.storylines.Single(x => x.templateId == Backdoor && x.week == no.after.week);
+            Assert.That(StorylinesShown.Shown(no.after, quiet), Is.False, "The plan runs unseen.");
+            var without = no.after.Clone();
+            without.storylines.RemoveAll(x => x.id == quiet.id);
+            Assert.That(StorylinesShown.StripLine(no.after), Is.EqualTo(StorylinesShown.StripLine(without)), "The strip reads as if no plan ran,");
+            Assert.That(StorylinesShown.InPlay(no.after), Is.EqualTo(StorylinesShown.InPlay(without)), "the card alike,");
+            Assert.That(StorylinesShown.Rows(no.after).Select(Row), Is.EqualTo(StorylinesShown.Rows(without).Select(Row)), "and the rows.");
+
+            var bare = no.after.Clone();
+            bare.storylines.RemoveAll(x => x.id != quiet.id);
+            bare.activeModifiers.Clear();
+            Assert.That(StorylinesShown.StripLine(bare), Is.EqualTo(StorylinesShown.NothingInPlay), "With nothing else in play the strip says so,");
+            Assert.That(StorylinesShown.InPlay(bare), Is.False, "the card draws its empty line,");
+            Assert.That(StorylinesShown.Rows(bare), Is.Empty, "and lists nothing.");
+
+            var yes = PawnWeek(backdoor: true, coin: true);
+            var plan = yes.after.storylines.Single(x => x.templateId == Backdoor && x.week == yes.after.week);
+            var lone = yes.after.Clone();
+            lone.storylines.RemoveAll(x => x.id != plan.id);
+            lone.activeModifiers.Clear();
+            Assert.That(StorylinesShown.Waiting(lone, plan), Is.True, "On a yes its card waits on the player,");
+            Assert.That(StorylinesShown.InPlay(lone), Is.True, "the card has it to say,");
+            Assert.That(StorylinesShown.Rows(lone).Select(Row), Is.EqualTo(new[] { title + " - waiting on you" }), "and the rows name it;");
+            Assert.That(StorylinesShown.StripLine(lone), Is.EqualTo(StorylinesShown.NothingInPlay), "the strip leaves a card still waiting out of its count, as it always has,");
+            foreach (var card in lone.houseEvents.Where(e => e.cycleId == plan.id)) card.resolved = true;
+            Assert.That(StorylinesShown.StripLine(lone), Is.EqualTo("1 storyline playing out"), "and counts it once the card is answered,");
+            Assert.That(StorylinesShown.Rows(lone).Select(Row), Is.EqualTo(new[] { title + " - still playing out" }), "when the rows say it plays out.");
+        }
+
+        /// <summary>
         /// What reaches the player (<see cref="StorylinesShown.Shown"/>): a card or a scene of the storyline's own, or a step's line
         /// whose audience is everybody or names them. An NPC's line, said to the houseguests in it, reaches nobody else.
         /// </summary>

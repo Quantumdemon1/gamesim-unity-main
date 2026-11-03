@@ -394,19 +394,11 @@ namespace Gamesim.Episode
 
         /// <summary>
         /// The threads, the storylines playing out and what the stories left the player, in the
-        /// strip's few words; the old card's line when nothing is in play.
+        /// strip's few words; the old card's line when nothing is in play. Only the storylines that
+        /// have reached the player are counted (<see cref="StorylinesShown.StripLine"/>), so a quiet
+        /// backdoor's week reads as any other.
         /// </summary>
-        private static string StoryStripLine(EpisodeState state)
-        {
-            var parts = EpisodeEngine.Threads(state).Where(thread => thread.ending == null).Select(thread => thread.label).ToList();
-            int playing = state.storylines.Count(x => x.beatId != null && StorylineStatus.Running(x.status)
-                && StoryCatalog.Find(x.templateId)?.play == null && x.lane != StoryLanes.Thread
-                && !state.houseEvents.Any(e => !e.resolved && e.cycleId == x.id));
-            if (playing > 0) parts.Add(playing + (playing == 1 ? " storyline playing out" : " storylines playing out"));
-            foreach (var modifier in state.activeModifiers.Where(m => m.weeksLeft > 0 && string.IsNullOrEmpty(m.ownerId)))
-                parts.Add(modifier.name + " (" + modifier.weeksLeft + (modifier.weeksLeft == 1 ? " week left)" : " weeks left)"));
-            return parts.Count > 0 ? string.Join("  ·  ", parts) : "Nothing in play yet. Threads start from what you do.";
-        }
+        private static string StoryStripLine(EpisodeState state) => StorylinesShown.StripLine(state);
 
         /// <summary>
         /// The other ways to spend the time (mockup 87): walking the house and the house activities,

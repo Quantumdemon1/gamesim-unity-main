@@ -250,16 +250,11 @@ namespace Gamesim.Episode
         {
             PlaysBlock(state, finished: false);
             ThreadsBlock(state, finished: false);
-            var running = StorylinesShown.Running(state);
+            var running = StorylinesShown.Rows(state);
             var mine = state.activeModifiers.Where(m => m.weeksLeft > 0 && string.IsNullOrEmpty(m.ownerId)).ToList();
             if (running.Count == 0 && mine.Count == 0) return;
             hud.Heading("STORYLINES");
-            foreach (var cycle in running)
-            {
-                var arc = StoryCatalog.Find(cycle.templateId);
-                bool waiting = state.houseEvents.Any(e => !e.resolved && e.cycleId == cycle.id);
-                hud.StoryLine(arc?.title ?? cycle.title, waiting ? "waiting on you" : "still playing out");
-            }
+            foreach (var row in running) hud.StoryLine(row.Title, row.Line);
             foreach (var modifier in mine)
             {
                 string effect = string.Join(", ", new[]

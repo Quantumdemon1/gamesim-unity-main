@@ -163,12 +163,7 @@ namespace Gamesim.Episode
             foreach (var thread in EpisodeEngine.Threads(state).Where(t => t.ending == null)) rows.Add((thread.label, ThreadLine(thread)));
             // The same storylines and modifiers StorylinesBlock lists, in its order and its words: only
             // the storylines that have reached the player (StorylinesShown).
-            foreach (var cycle in StorylinesShown.Running(state))
-            {
-                var arc = StoryCatalog.Find(cycle.templateId);
-                bool waiting = state.houseEvents.Any(e => !e.resolved && e.cycleId == cycle.id);
-                rows.Add((arc?.title ?? cycle.title, waiting ? "waiting on you" : "still playing out"));
-            }
+            rows.AddRange(StorylinesShown.Rows(state));
             foreach (var modifier in state.activeModifiers.Where(m => m.weeksLeft > 0 && string.IsNullOrEmpty(m.ownerId)))
             {
                 string effect = string.Join(", ", new[]

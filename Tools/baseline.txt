@@ -170,7 +170,9 @@
 # off the alumni rules), counted offline (2026-11-03); not yet run in Unity.
 # 9747 = 9745 + the quick fixes' storyline list, 2 shared RoleStoryMomentsTests cases (StorylinesShown), counted
 # offline (2026-11-03); not yet run in Unity.
-Gamesim.EditModeTests 9747
+# 9748 = 9747 + the quick fixes' review, 1 shared RoleStoryMomentsTests test (the board's THREADS strip and the story
+# card read StorylinesShown), counted offline (2026-11-03); not yet run in Unity.
+Gamesim.EditModeTests 9748
 # The UMA-free build. 1215 = 1236, the count after the consolidation's lanes (S2a, S2b, S4a), less the 7
 # farewell probes moved to Gamesim.DiagnosticsPlayModeTests and the 14 farewell readiness tests that now
 # compile only under GAMESIM_UMA (judged on the UMA cast); 1230 = 1215 + S2d's 7, S4b's 2, S4c's 2 and
@@ -485,4 +487,5 @@ Gamesim.Uma.DiagnosticsPlayModeTests 10
 # 16578 = 10805 + main's 5709 (16514 - 10805) + dialogue D2's 64 (10869 - 10805): disjoint cases, so the floor is their sum (2026-11-02).
 # 16582 = 16578 + the quick fixes' titled names, 4 CharacterNamesTests cases (2026-11-03).
 # 16584 = 16582 + the quick fixes' storyline list, 2 RoleStoryMomentsTests cases (2026-11-03).
-Gamesim.SimulationTests 16584
+# 16585 = 16584 + the quick fixes' review, 1 RoleStoryMomentsTests case (the strip and the story card) (2026-11-03).
+Gamesim.SimulationTests 16585

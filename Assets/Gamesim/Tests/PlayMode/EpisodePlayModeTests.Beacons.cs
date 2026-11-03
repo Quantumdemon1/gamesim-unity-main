@@ -25,13 +25,33 @@ namespace Gamesim.Tests.PlayMode
     {
         private static readonly string[] OrdinaryRooms = { "Kitchen", "Living", "Bedroom", "Games", "HoH" };
 
-        /// <summary>Pulls the camera back over the house, where the icons live, and waits for it to get there.</summary>
+        /// <summary>
+        /// Pulls the camera back over the house, where the dollhouse's icons live, and waits for it to get there.
+        /// From RS5 the free camera is the room view, which never goes past a room's farthest zoom: this holds
+        /// the whole house ("Show the whole house", D12's view), so the tests of the dollhouse's icons, the
+        /// chrome over them and the map-distance names read today's free camera. The room view's own way-finding
+        /// (D17) is pinned by the WayFinding_ tests.
+        ///
+        /// <para>The fixture's camera no longer starts there: the room view's first late pass cut it onto the
+        /// player's room (its centre, its farthest zoom, the room's best heading). So the hold takes today's view
+        /// back as the setting does switched on from the room view (D12, <see cref="HouseCameraRig.EaseToItsOwnFraming"/>:
+        /// the scene's 24 m and heading 45 over the house's middle), and the camera is waited out to rest on the
+        /// real clock it eases on: an icon measured mid-ease has slid from under a still pointer by the press, frames
+        /// later.</para>
+        /// </summary>
         private IEnumerator PullBackOverTheHouse()
         {
+            RoomViewHoldTheDollhouse();
             cameraRig.ClearSubject();
-            cameraRig.MoveTo(cameraRig.HouseCenter, 24f);
+            cameraRig.MoveTo(cameraRig.HouseCenter, cameraRig.OwnDistance);
+            cameraRig.EaseToItsOwnFraming();
+            bool AtRest() => cameraRig.HasArrived(.05f) && Mathf.Abs(Mathf.DeltaAngle(cameraRig.transform.eulerAngles.y, cameraRig.Yaw)) < .1f;
             float deadline = Time.realtimeSinceStartup + 6f;
-            while (Time.realtimeSinceStartup < deadline && cameraRig.Distance < EpisodeTravelBeacons.ShownFrom + 1f) yield return null;
+            while (Time.realtimeSinceStartup < deadline && !AtRest()) yield return null;
+            yield return SettleCamera();
+            Assert.That(AtRest() && cameraRig.Distance >= EpisodeTravelBeacons.ShownFrom + 1f, Is.True,
+                "The camera came to rest over the house: " + cameraRig.Distance.ToString("0.00") + " m, heading "
+                + cameraRig.transform.eulerAngles.y.ToString("0.0") + " for " + cameraRig.Yaw.ToString("0.0") + ".");
             yield return null;
             yield return null;
         }
@@ -174,6 +194,24 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(director.TravelBeacons.IsShowing, Is.False, "A panel over the house hides what is on it.");
             director.ClosePanels();
             yield return null;
+
+            // The room view (D17, RS5): close up as well, the icons stay - a room view of 4 to 18 m is never
+            // "the house close up" - and a panel still hides them.
+            yield return RoomViewLetGoOfTheDollhouse();
+            cameraRig.FocusSubject(SceneComponents<HouseNpc>().First(actor => actor.gameObject.activeInHierarchy).transform);
+            deadline = Time.realtimeSinceStartup + 6f;
+            while (Time.realtimeSinceStartup < deadline && cameraRig.Distance > EpisodeTravelBeacons.HiddenBelow - .5f) yield return null;
+            yield return null;
+            yield return null;
+            Assert.That(cameraRig.IsRoomView, Is.True, "Following close up is the room view,");
+            Assert.That(director.TravelBeacons.IsShowing, Is.True, "where the icons find the way at every distance.");
+            director.OpenJournal();
+            yield return null;
+            yield return null;
+            Assert.That(director.TravelBeacons.IsShowing, Is.False, "A panel over the room view hides them too.");
+            director.ClosePanels();
+            cameraRig.ClearSubject();
+            yield return null;
         }
 
         /// <summary>
@@ -223,6 +261,10 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(director.IsDiaryOpen, Is.True, "Standing at the diary room, its icon opens the diary.");
             director.ClosePanels();
             yield return null;
+            // In the room view (RS5) the icons stand for the rooms beyond the one on screen: placed for the
+            // private room the player stands in, the diary's own icon among them because it opens something.
+            yield return WaitFor(() => director.TravelBeacons != null && director.TravelBeacons.RoomViewRoom == "Private", 3f,
+                "The icons are placed for the room view of the private room the player stands in.");
         }
 
         /// <summary>The overview is a map: a click on a room's name takes the player there.</summary>

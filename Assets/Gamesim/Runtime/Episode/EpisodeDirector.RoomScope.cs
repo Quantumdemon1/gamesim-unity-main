@@ -1,0 +1,974 @@
+using System;
+using System.Collections.Generic;
+using Gamesim.House;
+using Gamesim.Presentation;
+using UnityEngine;
+using UnityEngine.Rendering;
+
+namespace Gamesim.Episode
+{
+    /// <summary>
+    /// The room scope (ROOM-SCOPE-PLAN §3.2 a and h, RS1): which of the house's rooms the main view is
+    /// about, read from the camera rig's rooms, with the holds on top.
+    ///
+    /// <para>RS1 computes and reports. A source is used only once its slice turns it on
+    /// (<see cref="LiveRoomScopeSources"/>); until then the scope says the whole house whatever the camera
+    /// does. Each slice turns its own source on in the slice that frames it (RS6a ceremonies and
+    /// competitions, RS6b the other shots, RS5 free play and following), so no slice ships an interim
+    /// rule. Tests and the probe switch every source on with <see cref="HoldRoomScope"/>; captures that
+    /// must see everything take <see cref="HoldWholeHouse"/>, which wins.</para>
+    ///
+    /// <para>From RS6a a ceremony's and a competition's shots are live (D6, D7): each names its rooms in
+    /// the call that moves the camera - the ceremony's room, the stage's room for every staged shot, the
+    /// Yard for the competition's - and a timed move draws, until it lands, what the view drew as it
+    /// left (the whole house, from free play, until RS5). The source is the view's only while those
+    /// shots hold the camera, so a framing whose camera the viewer took back, a reduced-motion
+    /// competition, which takes no shot, and a stage that has handed the camera back or lost its shot
+    /// are the view's own again: free play's, the whole house until RS5.</para>
+    ///
+    /// <para>From RS6b the other shots are live the same way (D6): the conversation's two-shot (the
+    /// pair's rooms), the diary's chair shot (the private room), a house event's shot (the rooms of the
+    /// people it frames), the activity warp (its room, from the cut and the blink's first frame) and a
+    /// jury or evicted player's watch (the watched room), each while its own move holds the camera. The
+    /// overview, the opening and the walk-out name the whole house in their calls.</para>
+    ///
+    /// <para>From RS5 free play and following are live too (D3, D4, D5): the room view. Free play is the
+    /// player's room, following the followed houseguest's, a stopped follow or a free move a watched room
+    /// until F, a walk or travel, and a jury or evicted player's view before any watch the room nearest
+    /// the camera's focus; the rig keeps the free camera over that room and cuts between rooms. So with
+    /// nothing held every view draws its own rooms, and only the overview, the opening, the walk-out and
+    /// the "Show the whole house" setting (D12, a whole-house hold) draw everything.</para>
+    ///
+    /// <para>The first reader that draws is the lamps' hook (RS3, §3.2 d, D8 i): while the scope is a
+    /// room, the main camera renders with the lamps homed outside it off, and puts them back when it
+    /// is done. Outside the live shots only a hold makes the scope a room, so players see today's lamps
+    /// in free play and following.</para>
+    ///
+    /// <para>The second is the bodies (RS4, §3.2 c and e): a body is drawn while it is in a viewed room
+    /// or its doorway band, is a camera subject or is named by a live prompt; a hidden body's renderer
+    /// objects stand on its walker room's layer, which the main camera's mask leaves out, its plate is
+    /// down and it cannot be picked, and it keeps animating, walking and sitting. The live feed's
+    /// camera draws the shell and its own room. With the whole house drawn nothing is hidden and no
+    /// mask bit moves, so, again, players see today's house.</para>
+    ///
+    /// <para>The third is the house itself (RS2a, §3.2 b): built, the scope puts every collider-free
+    /// piece of furniture and dressing on its room's layer (HouseRoomScope.Dressing), and from then on
+    /// every staging point places what it builds or moves in the same call, a piece not drawn yet is
+    /// placed the frame it first is, and a piece that moves goes to the shell, all in this director's
+    /// late pass. With nothing held the main camera draws every room layer, so players see today's
+    /// house; the live feed, whose mask RS4 already writes, draws its own room's furniture and the shell.</para>
+    ///
+    /// <para>The scope also keeps every body's walker room, every frame: the player's and each
+    /// houseguest's, by the floors (<see cref="HouseRoomScope.WalkerRoom"/>). Who-is-where reads them
+    /// (RSW, EpisodeDirector.WhoIsWhere).</para>
+    ///
+    /// <para>The holds and the scope belong to this director, so a new play session or a reloaded scene
+    /// starts with none. The statics are the lamps' subscription to the render pipeline's camera events
+    /// and the list of scopes placing their houses' dressing (HouseRoomScope.PlacingFor), each reset at
+    /// SubsystemRegistration (statics outlive play sessions here).</para>
+    /// </summary>
+    public sealed partial class EpisodeDirector
+    {
+        /// <summary>What the main view is doing, as far as the room scope is concerned.</summary>
+        public enum RoomScopeSource
+        {
+            /// <summary>Free roam: the player's room, or a watched room (RS5, live).</summary>
+            FreePlay,
+            /// <summary>Following a houseguest: theirs (RS5, live).</summary>
+            Following,
+            /// <summary>Jury or evicted, while a watch's move holds the camera, from the camera's arrival: the watched room (RS6b, live).</summary>
+            Watching,
+            /// <summary>The conversation two-shot, while it holds the camera, from the camera's arrival: the pair's rooms (RS6b, live).</summary>
+            Conversation,
+            /// <summary>A ceremony's framing or its stage, while their own moves hold the camera (RS6a, live).</summary>
+            Ceremony,
+            /// <summary>A competition while its own shot holds the camera: the Yard (RS6a, live).</summary>
+            Competition,
+            /// <summary>The diary room's chair shot, while it holds the camera: Private (RS6b, live).</summary>
+            Diary,
+            /// <summary>A house event's shot, while it holds the camera: its people's rooms (RS6b, live).</summary>
+            HouseEvent,
+            /// <summary>
+            /// The activity warp, while the activity the warp took the player to goes on and nothing else
+            /// has taken the camera: the activity's room, from the cut and the blink's first frame (RS6b, live).
+            /// </summary>
+            Activity,
+            /// <summary>The overview: the whole house, always (D1).</summary>
+            Overview,
+            /// <summary>The opening walk-in: the whole house until it hands over (D6).</summary>
+            Opening,
+            /// <summary>The staged walk-out: the whole house (D6).</summary>
+            WalkOut,
+        }
+
+        /// <summary>The sources, as switches.</summary>
+        [Flags]
+        public enum RoomScopeSources
+        {
+            None = 0,
+            FreePlay = 1 << (int)RoomScopeSource.FreePlay,
+            Following = 1 << (int)RoomScopeSource.Following,
+            Watching = 1 << (int)RoomScopeSource.Watching,
+            Conversation = 1 << (int)RoomScopeSource.Conversation,
+            Ceremony = 1 << (int)RoomScopeSource.Ceremony,
+            Competition = 1 << (int)RoomScopeSource.Competition,
+            Diary = 1 << (int)RoomScopeSource.Diary,
+            HouseEvent = 1 << (int)RoomScopeSource.HouseEvent,
+            Activity = 1 << (int)RoomScopeSource.Activity,
+        }
+
+        /// <summary>
+        /// The sources whose rooms the scope uses; every other source reports the whole house. A slice
+        /// turns its own on here, with the camera calls that name its rooms: RS6a the ceremonies and the
+        /// competitions (D6, D7); RS6b the conversation's two-shot, the diary, house events, the activity
+        /// warp and jury and evicted watching (D6); RS5 free play and following, the room view (D3, D4).
+        /// Every source with a switch is live. The overview, the opening and the walk-out have no switch:
+        /// they are the whole house by decision (D1, D6).
+        /// </summary>
+        public const RoomScopeSources LiveRoomScopeSources = RoomScopeSources.FreePlay | RoomScopeSources.Following
+            | RoomScopeSources.Ceremony | RoomScopeSources.Competition
+            | RoomScopeSources.Conversation | RoomScopeSources.Diary | RoomScopeSources.HouseEvent
+            | RoomScopeSources.Activity | RoomScopeSources.Watching;
+
+        private HouseRoomScope roomScope;
+        private float roomScopeRetry, roomScopeForgetAt;
+        private readonly List<object> wholeHouseHolds = new List<object>(4);
+        private readonly List<object> roomScopeHolds = new List<object>(4);
+
+        /// <summary>The house's rooms: its floor boxes, the walker rule, the classifier. Null until the house is loaded.</summary>
+        public HouseRoomScope RoomScope => EnsureRoomScope() ? roomScope : null;
+
+        /// <summary>
+        /// The rooms the main view draws: the camera rig's rooms when the view's source is live or a
+        /// test holds the scope on, otherwise - and always under a whole-house hold, the overview, the
+        /// opening and the walk-out - the whole house. Before the episode is ready the free camera is not
+        /// yet the room view (<see cref="RoomViewWanted"/>) but the scene's dollhouse framing, so free play,
+        /// following and watching draw the whole house until then: a room is drawn alone only where the
+        /// room view frames it (RS5).
+        /// </summary>
+        public RoomSet ViewedRooms
+        {
+            get
+            {
+                if (wholeHouseHolds.Count > 0 || cameraRig == null || !EnsureRoomScope()) return RoomSet.WholeHouse;
+                var source = CurrentRoomScopeSource;
+                if (IsWholeHouseSource(source)) return RoomSet.WholeHouse;
+                if (roomScopeHolds.Count == 0 && !IsRoomScopeSourceLive(source)) return RoomSet.WholeHouse;
+                if (!IsReady && IsTheRoomViewsSource(source) && !cameraRig.HasShot && !cameraRig.IsConversationFocused) return RoomSet.WholeHouse;
+                return cameraRig.Rooms;
+            }
+        }
+
+        /// <summary>Free play, following and watching: the sources whose free camera is the room view (RS5).</summary>
+        private static bool IsTheRoomViewsSource(RoomScopeSource source)
+            => source == RoomScopeSource.FreePlay || source == RoomScopeSource.Following || source == RoomScopeSource.Watching;
+
+        /// <summary>Whether a source's rooms are used: only those turned on in <see cref="LiveRoomScopeSources"/>.</summary>
+        public static bool IsRoomScopeSourceLive(RoomScopeSource source)
+        {
+            if (IsWholeHouseSource(source)) return false;
+            int bit = 1 << (int)source;
+            return ((int)LiveRoomScopeSources & bit) != 0;
+        }
+
+        /// <summary>
+        /// Whether the view can be anything but the whole house now: a hold switches every source on, or
+        /// the view's own source is live. Otherwise <see cref="ViewedRooms"/> is the whole house, and the
+        /// drawing, the mask and the lamps stop at this check.
+        /// </summary>
+        private bool ScopeMayBeARoom => roomScopeHolds.Count > 0 || IsRoomScopeSourceLive(CurrentRoomScopeSource);
+
+        /// <summary>Whether a staged ceremony's shots hold the camera (EpisodeDirector.CeremonyStage).</summary>
+        private bool CeremonyStageHoldsTheCamera => ceremonyStage != null && ceremonyStage.HoldsTheCamera;
+
+        /// <summary>
+        /// The overview, the opening and the walk-out: the whole house by decision (D1, D6), with no
+        /// switch, so neither a slice nor <see cref="HoldRoomScope"/> makes them a room, whatever the
+        /// rig follows over them (the walk-out follows the one leaving).
+        /// </summary>
+        public static bool IsWholeHouseSource(RoomScopeSource source)
+            => source == RoomScopeSource.Overview || source == RoomScopeSource.Opening || source == RoomScopeSource.WalkOut;
+
+        /// <summary>What the main view is doing now, for the scope's switches.</summary>
+        public RoomScopeSource CurrentRoomScopeSource
+        {
+            get
+            {
+                if (overviewOpen) return RoomScopeSource.Overview;
+                if (OpeningOwnsHouse) return RoomScopeSource.Opening;
+                if (walkingOutId != null) return RoomScopeSource.WalkOut;
+                // A ceremony's or a competition's while their own shots hold the camera (RS6a): a framing
+                // whose camera something else took (F, a pan, a follow), a stage that has handed the camera
+                // back or whose shot was let go, and a competition under reduced motion, which takes no
+                // shot, are whatever the camera is doing.
+                if (CeremonyFramingHoldsTheCamera || CeremonyStageHoldsTheCamera) return RoomScopeSource.Ceremony;
+                if (IsFramingCompetition) return RoomScopeSource.Competition;
+                // The other shots the same way (RS6b): the diary's chair shot, the two-shot, a house event's
+                // shot, the activity warp's cut and a watch, each while its own move holds the camera - the
+                // two-shot and the watch, which have no clock, from the late pass the camera comes in on them.
+                // A diary still being walked to or sat in, a conversation under reduced motion (no two-shot), a
+                // two-shot or a watch the camera is still coming in on, a shot the viewer or a panel let go, an
+                // activity reached on foot, and a jury or evicted player's view before any watch or after a
+                // pan are the view's own: free play's or following's, the whole house until RS5.
+                if (DiaryShotHoldsTheCamera) return RoomScopeSource.Diary;
+                if (cameraRig != null && cameraRig.HoldsTheTwoShot) return RoomScopeSource.Conversation;
+                if (HouseEventShotHoldsTheCamera) return RoomScopeSource.HouseEvent;
+                if (ActivityWarpHoldsTheCamera) return RoomScopeSource.Activity;
+                if (WatchHoldsTheCamera) return RoomScopeSource.Watching;
+                var subject = cameraRig != null ? cameraRig.FocusedSubject : null;
+                if (subject != null && (player == null || subject != player.transform)) return RoomScopeSource.Following;
+                return RoomScopeSource.FreePlay;
+            }
+        }
+
+        /// <summary>
+        /// Holds the whole house drawn for as long as <paramref name="owner"/> wants it: a capture or a
+        /// test that must see everything. Counted by owner, so two owners hold it until both let go;
+        /// the same owner twice is one hold. It wins over <see cref="HoldRoomScope"/>.
+        /// </summary>
+        public void HoldWholeHouse(object owner)
+        {
+            Hold(wholeHouseHolds, owner);
+            ApplyRoomScopeDrawing();
+        }
+
+        /// <summary>
+        /// Switches every source on for as long as <paramref name="owner"/> holds it, so a test or the
+        /// probe sees a source's rooms before its slice makes it live. The overview, the opening and
+        /// the walk-out have no switch and stay the whole house (<see cref="IsWholeHouseSource"/>).
+        /// </summary>
+        public void HoldRoomScope(object owner)
+        {
+            Hold(roomScopeHolds, owner);
+            ApplyRoomScopeDrawing();
+        }
+
+        /// <summary>
+        /// Lets go of whatever <paramref name="owner"/> holds: the whole house, the scope, or both. Every
+        /// hold and release draws what it changes at once (the bodies, the main camera's mask), so the
+        /// code that follows it in the same frame reads the house as drawn.
+        /// </summary>
+        public void Release(object owner)
+        {
+            if (owner == null) return;
+            wholeHouseHolds.Remove(owner);
+            roomScopeHolds.Remove(owner);
+            ApplyRoomScopeDrawing();
+        }
+
+        /// <summary>Whether anything holds the whole house drawn.</summary>
+        public bool IsWholeHouseHeld => wholeHouseHolds.Count > 0;
+
+        private static void Hold(List<object> holds, object owner)
+        {
+            if (owner == null) throw new ArgumentNullException(nameof(owner));
+            if (!holds.Contains(owner)) holds.Add(owner);
+        }
+
+        /// <summary>
+        /// The walker room of a body - the player or a houseguest - as the scope last tracked it, by
+        /// the floors: kept through a doorway until the feet are inside the next room. Null for no body.
+        /// </summary>
+        public string WalkerRoomOf(Transform body)
+        {
+            if (body == null || !EnsureRoomScope()) return null;
+            return HouseRoomScope.RoomId(roomScope.Track(body));
+        }
+
+        /// <summary>
+        /// Every frame, before anything reads a room: the scope built once the house is there, handed
+        /// to the rig, and every body's walker room moved on. Sixteen points against eight boxes; no
+        /// allocation once each body has its row. Once a second, the rows of bodies since destroyed
+        /// (a rebuilt cast, a subject the rig followed) go.
+        /// </summary>
+        private void TickRoomScope()
+        {
+            // Between frames every lamp reads as authored, even after a main-camera render that never
+            // reached its end (another begin handler threw): what it left off goes back here.
+            RestoreScopedLamps();
+            if (!EnsureRoomScope()) return;
+            if (cameraRig != null && cameraRig.RoomScope != roomScope) { cameraRig.UseRoomScope(roomScope); UseRoomView(); }
+            if (Time.unscaledTime >= roomScopeForgetAt)
+            {
+                roomScopeForgetAt = Time.unscaledTime + 1f;
+                roomScope.ForgetMissing();
+                ForgetMissingScopedBodies();
+            }
+            if (player != null && player.isActiveAndEnabled) roomScope.Track(player.transform);
+            // A player out of the house (jury or evicted) has no room of their own to play in: before any
+            // watch, the view watches the room nearest the camera's focus (section 1.2, RS5).
+            if (cameraRig != null && IsReady && !playerIsActive && cameraRig.ViewsThePlayer) cameraRig.WatchTheRoomUnderTheFocus();
+            // Name plates in the room view: fully shown for every drawn body (section 3.2 g, RS5); the fade by
+            // distance is the whole house's and the shots' only.
+            bool roomPlates = cameraRig != null && cameraRig.IsRoomView;
+            if (housemates == null) return;
+            foreach (var housemate in housemates)
+            {
+                if (housemate == null) continue;
+                housemate.RoomViewPlates = roomPlates;
+                if (housemate.isActiveAndEnabled) roomScope.Track(housemate.transform);
+            }
+        }
+
+        /// <summary>
+        /// Whether the free camera is the room view (ROOM-SCOPE-PLAN section 3.2 g, RS5), the rig asks each
+        /// late pass: the episode is ready, nothing holds the whole house (the "Show the whole house"
+        /// setting, D12, is such a hold, and so is a capture's), and the view is free play's, following's or
+        /// a watch's - the sources whose camera is the player's own. Shots, the overview, the opening and the
+        /// walk-out frame themselves; the rig leaves any shot or conversation alone too.
+        /// </summary>
+        private bool RoomViewWanted()
+        {
+            // A disabled director draws nothing (its drawing is undone in UnhookLampScope): nor does it frame.
+            if (!isActiveAndEnabled || !IsReady || wholeHouseHolds.Count > 0 || roomScope == null || cameraRig == null) return false;
+            var source = CurrentRoomScopeSource;
+            return IsTheRoomViewsSource(source) && IsRoomScopeSourceLive(source);
+        }
+
+        /// <summary>
+        /// The view back on the player's room (F, RS5): free play, the room view's framing of the room the
+        /// player stands in, by a cut. The look sheet's exploration shot is taken from here (D15).
+        /// </summary>
+        public void ViewThePlayersRoom()
+        {
+            if (cameraRig == null) return;
+            cameraRig.CutToRoomView();
+            cameraRig.RecenterOnPlayer();
+        }
+
+        /// <summary>
+        /// Whether the player is looking away from their own room (ROOM-SCOPE-PLAN D18, RS5): the view draws
+        /// a room and leaves out the player's - a follow elsewhere, a watched room, another room's shot.
+        /// The act watch, the walk-in watch, the invitations and the Nearby card treat it as they treat
+        /// the overview: the player is not looking. The whole house, a view about the player - free play on
+        /// them, followed or tracked, whatever room it shows while a walk's change of room waits out its
+        /// 0.6 s - or a player the view draws by the floors (their room or its doorway band), is looking.
+        /// </summary>
+        public bool LookingAwayFromThePlayer
+        {
+            get
+            {
+                if (player == null || !playerIsActive || roomScope == null) return false;
+                // Only a follow, a watch or another room's shot looks away: never the view of the player themselves.
+                if (cameraRig != null && (cameraRig.FocusedSubject == player.transform || cameraRig.ViewsThePlayer)) return false;
+                var viewed = ViewedRooms;
+                if (viewed.IsWholeHouse || viewed.IsEmpty) return false;
+                int room = roomScope.LastRoom(player.transform);
+                if (room < 0) room = roomScope.Track(player.transform);
+                return !roomScope.DrawsWalker(viewed, room, player.transform.position);
+            }
+        }
+
+        private bool EnsureRoomScope()
+        {
+            if (roomScope != null) return true;
+            // A house the room query refuses is asked again once a second, not every frame.
+            if (Time.unscaledTime < roomScopeRetry) return false;
+            roomScopeRetry = Time.unscaledTime + 1f;
+            if (!HouseRoomScope.TryCreate(gameObject.scene, out var built, out _)) return false;
+            roomScope = built;
+            // The lamps and their homes when the scope is built, and again if a dropped scope is
+            // rebuilt. The house makes no shadowed point light at play, so they are the scene's
+            // fourteen (RS1 pins them).
+            roomScope.LampHomes(scopeLamps);
+            // The house's dressing on its rooms' layers, at load (RS2a): the director's first Update,
+            // before its Start goes on to build anything. From here its house's staging points place
+            // what they build or move, through the scene (HouseRoomScope.PlaceDressing).
+            roomScope.PlaceHouse();
+            if (isActiveAndEnabled) HouseRoomScope.BeginPlacing(roomScope);
+            if (cameraRig != null) { cameraRig.UseRoomScope(roomScope); UseRoomView(); }
+            return true;
+        }
+
+        private Func<bool> roomViewWanted;
+
+        /// <summary>The rig asks this director whether its free camera is the room view (RS5), and keeps the nearest zoom at four metres (D11).</summary>
+        private void UseRoomView()
+        {
+            if (cameraRig == null) return;
+            if (roomViewWanted == null) roomViewWanted = RoomViewWanted;
+            cameraRig.RoomViewWanted = roomViewWanted;
+            if (!Mathf.Approximately(cameraRig.NearestDistance, HouseRoomView.NearestDistance)) cameraRig.UseNearestDistance(HouseRoomView.NearestDistance);
+        }
+
+        /// <summary>Lets a scope whose house no longer validates go; the next reader builds a new one.</summary>
+        private void DropRoomScope()
+        {
+            UndoRoomScopeDrawing();
+            RestoreScopedLamps();
+            scopeLamps.Clear();
+            if (roomScope != null)
+            {
+                HouseRoomScope.EndPlacing(roomScope);
+                // Nothing left on a room layer that no scope watches; the next scope places the house again.
+                roomScope.UndoDressing();
+            }
+            roomScope = null;
+            roomScopeRetry = 0f;
+            if (cameraRig != null) cameraRig.UseRoomScope(null);
+            // No scope, no room view: the plates fade by distance again until one is built.
+            LetThePlatesGo();
+        }
+
+        /// <summary>Every houseguest's plate back on the whole house's fade by distance: the room view is not on (RS5).</summary>
+        private void LetThePlatesGo()
+        {
+            if (housemates == null) return;
+            foreach (var housemate in housemates)
+                if (housemate != null) housemate.RoomViewPlates = false;
+        }
+
+        /// <summary>
+        /// Late every frame, in the house's overlay pass, before the bodies and the mask (RS2a): a placed
+        /// piece that has moved goes to the shell, and a piece first drawn this frame takes its room's
+        /// layer, both ahead of the main camera's render. Nothing before the scope is built.
+        /// </summary>
+        private void KeepRoomDressing()
+        {
+            if (roomScope != null && isActiveAndEnabled) roomScope.KeepDressingPlaced();
+        }
+
+        // ------------------------------------------------------------------------------------
+        // The lamps (RS3, §3.2 d, D8 i): for the main camera only, every lamp homed outside the
+        // scope is off from the camera's begin of rendering to its end, and put back after.
+        // ------------------------------------------------------------------------------------
+
+        /// <summary>
+        /// The directors the lamps' hook serves, and whether the hook is on the pipeline's camera
+        /// events. One static pair of handlers, on while any director is enabled: the editor starts
+        /// play without a domain reload, so a handler subscribed in one session would otherwise
+        /// still be there in the next. <see cref="ForgetLampScope"/> lets both go before a session
+        /// begins, so a session that never let go leaves neither a second subscription nor its
+        /// destroyed director behind.
+        /// </summary>
+        private static readonly List<EpisodeDirector> lampScopeDirectors = new List<EpisodeDirector>(2);
+        private static bool lampScopeHooked;
+
+        /// <summary>Every lamp of the house and the room it stands in, read with the scope.</summary>
+        private readonly List<HouseRoomScope.LampHome> scopeLamps = new List<HouseRoomScope.LampHome>(16);
+        /// <summary>The lamps this render of the main camera switched off, and the camera: put back at its end.</summary>
+        private readonly List<Light> lampsOffForView = new List<Light>(16);
+        private Camera lampsOffFor;
+
+        /// <summary>
+        /// How many lamps the main camera has off: inside its render, after the hook, the lamps homed
+        /// outside the scope that were on; between frames, always none.
+        /// </summary>
+        public int LampsOffForTheMainCamera => lampsOffForView.Count;
+
+        /// <summary>
+        /// On enable (EpisodeDirector.OnEnable): this director's main camera joins the hook, and its
+        /// scope, if built, places its whole house again - what moved or was built while it was disabled,
+        /// whose staging calls left it on the shell, by where it stands now - and then what its house's
+        /// staging points build or move.
+        /// </summary>
+        private void HookLampScope()
+        {
+            if (roomScope != null)
+            {
+                roomScope.PlaceHouse();
+                HouseRoomScope.BeginPlacing(roomScope);
+                // And the rig asks this director about its room view again (RS5), which its disabling took back.
+                UseRoomView();
+            }
+            if (!lampScopeDirectors.Contains(this)) lampScopeDirectors.Add(this);
+            if (lampScopeHooked) return;
+            RenderPipelineManager.beginCameraRendering += BeginLampScope;
+            RenderPipelineManager.endCameraRendering += EndLampScope;
+            lampScopeHooked = true;
+        }
+
+        /// <summary>
+        /// On disable: every lamp it has off goes back, so does every body it has hidden and every bit it
+        /// has out of the main camera's mask, and the last director out takes the hook with it. The
+        /// dressing stays on its rooms' layers, which the restored mask draws; meanwhile its house's
+        /// staging calls put what they build or move on the shell's layer, and enabled again, it places
+        /// its whole house by where everything stands then.
+        /// </summary>
+        private void UnhookLampScope()
+        {
+            if (roomScope != null) HouseRoomScope.EndPlacing(roomScope);
+            UndoRoomScopeDrawing();
+            RestoreScopedLamps();
+            // The room view goes with the drawing (RS5): the rig no longer asks this director, so its free camera
+            // is today's, and the plates fade by distance over the whole house it draws again.
+            if (cameraRig != null && roomViewWanted != null && cameraRig.RoomViewWanted == roomViewWanted) cameraRig.RoomViewWanted = null;
+            LetThePlatesGo();
+            lampScopeDirectors.Remove(this);
+            for (int i = lampScopeDirectors.Count - 1; i >= 0; i--)
+                if (lampScopeDirectors[i] == null) lampScopeDirectors.RemoveAt(i);
+            if (lampScopeDirectors.Count > 0 || !lampScopeHooked) return;
+            RenderPipelineManager.beginCameraRendering -= BeginLampScope;
+            RenderPipelineManager.endCameraRendering -= EndLampScope;
+            lampScopeHooked = false;
+        }
+
+        /// <summary>A play session starts with no hook and no director in it; the first director to enable subscribes.</summary>
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        private static void ForgetLampScope()
+        {
+            RenderPipelineManager.beginCameraRendering -= BeginLampScope;
+            RenderPipelineManager.endCameraRendering -= EndLampScope;
+            lampScopeHooked = false;
+            lampScopeDirectors.Clear();
+        }
+
+        /// <summary>
+        /// Every camera's begin of rendering, in every build. A director that throws is logged and its
+        /// lamps put back, and the throw goes no further: past this handler it would skip the event's
+        /// later subscribers and the other directors, and URP would draw no frame for the camera and
+        /// never reach its end.
+        /// </summary>
+        private static void BeginLampScope(ScriptableRenderContext context, Camera camera)
+        {
+            for (int i = lampScopeDirectors.Count - 1; i >= 0; i--)
+            {
+                var director = lampScopeDirectors[i];
+                if (director == null) { lampScopeDirectors.RemoveAt(i); continue; }
+                // The bodies and the mask first (RS4), for a render that finds the view moved since.
+                try { director.RedrawScopeForRender(camera); }
+                catch (Exception e) { Debug.LogException(e, director); }
+                try { director.DarkenLampsOutsideScope(camera); }
+                catch (Exception e)
+                {
+                    Debug.LogException(e, director);
+                    director.RestoreScopedLamps();
+                }
+            }
+        }
+
+        private static void EndLampScope(ScriptableRenderContext context, Camera camera)
+        {
+            for (int i = lampScopeDirectors.Count - 1; i >= 0; i--)
+            {
+                var director = lampScopeDirectors[i];
+                if (director == null) continue;
+                try { director.RestoreLampsAfter(camera); }
+                catch (Exception e)
+                {
+                    Debug.LogException(e, director);
+                    director.RestoreScopedLamps();
+                }
+            }
+        }
+
+        /// <summary>
+        /// The main camera's begin of rendering: URP culls after this callback, so a lamp switched off
+        /// here is not among the camera's visible lights, casts no shadow maps and lights nothing in
+        /// its frame. Only lamps that are on are switched, and each is recorded, so the end puts back
+        /// exactly what was changed. A lamp is a shadowed point light, so the fills, the screens'
+        /// lights, the Moon and the follow spotlight are never lamps here. Every other camera - the
+        /// live feed, the portraits, the HUD's overlay, the editor's - renders with the lamps as they are.
+        /// </summary>
+        private void DarkenLampsOutsideScope(Camera camera)
+        {
+            if (camera == null || cameraRig == null || camera != cameraRig.ViewCamera) return;
+            // A render of the main camera that never reached its end: put back what it left off first.
+            RestoreScopedLamps();
+            // A render reads only a scope Update has built, and never builds one. With nothing held
+            // and the view's source not live the view is the whole house (ViewedRooms), so a player's
+            // render outside the live shots (free play and following, until RS5) stops at a few field checks.
+            if (roomScope == null) return;
+            if (!ScopeMayBeARoom) return;
+            var viewed = ViewedRooms;
+            if (viewed.IsWholeHouse || viewed.IsEmpty) return;
+            for (int i = 0; i < scopeLamps.Count; i++)
+            {
+                var light = scopeLamps[i].Light;
+                if (light == null || !light.enabled || !HouseRoomScope.LampOutsideScope(scopeLamps[i].Room, viewed)) continue;
+                light.enabled = false;
+                lampsOffForView.Add(light);
+            }
+            if (lampsOffForView.Count > 0) lampsOffFor = camera;
+        }
+
+        /// <summary>The end of a camera's rendering: the main camera's puts its lamps back.</summary>
+        private void RestoreLampsAfter(Camera camera)
+        {
+            if (lampsOffForView.Count == 0 || camera != lampsOffFor) return;
+            RestoreScopedLamps();
+        }
+
+        private void RestoreScopedLamps()
+        {
+            if (lampsOffForView.Count == 0) return;
+            for (int i = 0; i < lampsOffForView.Count; i++)
+                if (lampsOffForView[i] != null) lampsOffForView[i].enabled = true;
+            lampsOffForView.Clear();
+            lampsOffFor = null;
+        }
+
+        // ------------------------------------------------------------------------------------
+        // The bodies (RS4, §3.2 e) and the main camera's mask (§3.2 c; RS4 takes the mask write, D16).
+        // ------------------------------------------------------------------------------------
+
+        /// <summary>One body the scope draws or hides: its renderer objects, and what it last did with them.</summary>
+        private sealed class ScopedBody
+        {
+            public Transform Body;
+            public HouseNpc Npc;
+            public CharacterPresentation Presentation;
+            /// <summary>The visual root and the finished-body count at the last look over its renderers: a change of either is a visual swap.</summary>
+            public Transform Visual;
+            public int Completed = -1;
+            /// <summary>The body's hierarchy's transform count at the last look: a piece grown on it, or a renderer object made anew, changes it.</summary>
+            public int Hierarchy = -1;
+            public float LookAgainAt;
+            /// <summary>
+            /// The frame a look passed over a renderer object for its collider, or -1. Unity removes a
+            /// Destroy()ed component only at the frame's end - the primitive rig's parts lose theirs that
+            /// way - so such a body is looked over once more on a later frame, when the collider has gone.
+            /// </summary>
+            public int SkippedAt = -1;
+            /// <summary>Every renderer's object under the body but the root's own, with no collider: what the scope layers.</summary>
+            public readonly List<GameObject> Pieces = new List<GameObject>(8);
+            public bool Hidden;
+            /// <summary>The walker room it is hidden in, whose layer its pieces stand on; -1 while drawn.</summary>
+            public int Room = -1;
+        }
+
+        /// <summary>
+        /// How often a body's renderer objects are looked over again with no change seen: a renderer
+        /// UMA keeps but reuses in a rebuild, or anything else the signs below miss. A swap itself - a
+        /// change of clothes, a body finishing assembly, the primitive rig standing in - and a piece or
+        /// renderer object made on the body (its hierarchy's count moves) are seen the frame they land.
+        /// </summary>
+        private const float BodyLookSeconds = .5f;
+
+        private readonly List<ScopedBody> scopedBodies = new List<ScopedBody>(17);
+        private readonly List<Renderer> scopeRendererBuffer = new List<Renderer>(64);
+        private int hiddenBodyCount;
+        /// <summary>
+        /// The room bits the main camera had when the scope began writing its mask (<see cref="RoomLayers.ScopeMask"/>),
+        /// or <see cref="RoomLayers.NothingKept"/> while it writes none; the bits it has out under the
+        /// view; and the camera.
+        /// </summary>
+        private int mainMaskKept = RoomLayers.NothingKept;
+        private int mainMaskTaken;
+        private Camera mainMaskCamera;
+        /// <summary>The view the drawing was last applied for, by its bits: a main-camera render that finds the view moved since draws it again first.</summary>
+        private int drawnViewBits = -1;
+        /// <summary>The houseguest the E prompt names (the Talk target or the invitation's speaker), set as the prompt is chosen.</summary>
+        private HouseNpc promptNamed;
+        /// <summary>The houseguests the free-time cards tag HERE, as the HUD last drew them (EpisodeDirector.FreeTimeBoard and FreeTimeScreen).</summary>
+        private readonly HashSet<string> hereTagged = new HashSet<string>(StringComparer.Ordinal);
+        /// <summary>The pair the conversation line was last shown about: it stays up to be read after the witness is over.</summary>
+        private string captionFirstId, captionSecondId;
+
+        /// <summary>Whether the room scope draws a body - the player or a houseguest - as of its last pass; yes for one it has never hidden.</summary>
+        public bool IsBodyDrawn(Transform body)
+        {
+            if (body == null) return true;
+            for (int i = 0; i < scopedBodies.Count; i++)
+                if (ReferenceEquals(scopedBodies[i].Body, body)) return !scopedBodies[i].Hidden;
+            return true;
+        }
+
+        /// <summary>The room layer a hidden body's renderer objects stand on (its walker room's), or -1 for a body drawn.</summary>
+        public int HiddenBodyLayer(Transform body)
+        {
+            if (body == null) return -1;
+            for (int i = 0; i < scopedBodies.Count; i++)
+                if (ReferenceEquals(scopedBodies[i].Body, body))
+                    return scopedBodies[i].Hidden && scopedBodies[i].Room >= 0 ? RoomLayers.First + scopedBodies[i].Room : -1;
+            return -1;
+        }
+
+        /// <summary>How many bodies the room scope has hidden: none while the whole house is drawn.</summary>
+        public int HiddenBodyCount => hiddenBodyCount;
+
+        /// <summary>The room bits the scope has taken out of the main camera's culling mask: none while the whole house is drawn.</summary>
+        public int MainCameraRoomBitsTaken => mainMaskTaken;
+
+        /// <summary>
+        /// What the view draws of the bodies, and the main camera's mask (§3.2 c and e). Run late every
+        /// frame, in the house's overlay pass, after the camera has moved and before the main camera
+        /// renders; at once when a hold changes; and at a main-camera render that finds the view moved
+        /// since, or its mask put back over the scope's. The live feed renders by hand in its own
+        /// LateUpdate, before this pass, so a body that changes state reaches the feed at its next render.
+        ///
+        /// <para>A body is drawn while its walker room is viewed, its feet are in a viewed room's doorway
+        /// band, it is a camera subject - the player in free play, the followed houseguest, either of a
+        /// conversation's two - or a live prompt names it: the walk-in pair, the Talk target, the
+        /// invitation's speaker, anyone tagged HERE. A hidden body's renderer objects, never its root,
+        /// stand on its walker room's layer, which the main camera's mask leaves out; its plate is down,
+        /// and the invitation bubble and the conversation line wait for a drawn speaker and pair. It
+        /// keeps its Animator, its agent, its seat fit and every parameter: only the drawing stops.</para>
+        ///
+        /// <para>With the whole house drawn and nothing hidden - every player's frame outside the live shots
+        /// (free play and following, until RS5) - it stops at a few comparisons and writes nothing.</para>
+        /// </summary>
+        private void ApplyRoomScopeDrawing()
+        {
+            if (!isActiveAndEnabled) return;
+            // Nothing held and the view's source not live: the view is the whole house (ViewedRooms), so
+            // with nothing hidden and nothing out of the mask there is nothing to draw differently.
+            if (!ScopeMayBeARoom && hiddenBodyCount == 0 && mainMaskKept == RoomLayers.NothingKept)
+            {
+                drawnViewBits = RoomSet.WholeHouse.Bits;
+                GatePromptsOnDrawnBodies();
+                return;
+            }
+            var viewed = ViewedRooms;
+            bool whole = roomScope == null || viewed.IsWholeHouse || viewed.IsEmpty;
+            if (whole) viewed = RoomSet.WholeHouse;
+            drawnViewBits = viewed.Bits;
+            SyncMainCameraMask(viewed);
+            if (whole && hiddenBodyCount == 0) { GatePromptsOnDrawnBodies(); return; }
+            if (player != null) RowOf(player.transform, null);
+            if (housemates != null)
+                foreach (var npc in housemates)
+                    if (npc != null) RowOf(npc.transform, npc);
+            var source = CurrentRoomScopeSource;
+            int hidden = 0;
+            for (int i = scopedBodies.Count - 1; i >= 0; i--)
+            {
+                var row = scopedBodies[i];
+                if (row.Body == null) { scopedBodies.RemoveAt(i); continue; }
+                ScopeBody(row, whole, viewed, source);
+                if (row.Hidden) hidden++;
+            }
+            hiddenBodyCount = hidden;
+            GatePromptsOnDrawnBodies();
+        }
+
+        private ScopedBody RowOf(Transform body, HouseNpc npc)
+        {
+            for (int i = 0; i < scopedBodies.Count; i++)
+                if (ReferenceEquals(scopedBodies[i].Body, body)) return scopedBodies[i];
+            var row = new ScopedBody { Body = body, Npc = npc };
+            scopedBodies.Add(row);
+            return row;
+        }
+
+        /// <summary>
+        /// One body's drawn state, applied: its pieces on its own layer or its walker room's, and its
+        /// plate. A body that is not active keeps what it had until it is, or until the whole house is
+        /// drawn again; then everything it had hidden comes back.
+        /// </summary>
+        private void ScopeBody(ScopedBody row, bool whole, RoomSet viewed, RoomScopeSource source)
+        {
+            var body = row.Body;
+            bool hidden = row.Hidden;
+            int room = row.Room;
+            if (whole) { hidden = false; room = -1; }
+            else if (body.gameObject.activeInHierarchy)
+            {
+                int walker = roomScope.Track(body);
+                hidden = !roomScope.DrawsWalker(viewed, walker, body.position)
+                    && !IsCameraSubject(body, source) && !(row.Npc != null && NamedByPrompt(row.Npc));
+                room = hidden ? walker : -1;
+            }
+            // A visual swap is looked over the frame it lands, and every body now and then; a body
+            // drawn again is looked over first, so nothing it had hidden is left behind. A look that
+            // passed over a piece for its collider is made once more on a later frame: a collider
+            // Destroy()ed in the frame of the look is gone by then, and its piece is the scope's.
+            bool swapped = row.Body.hierarchyCount != row.Hierarchy || (row.Presentation != null
+                && (row.Presentation.VisualRoot != row.Visual || row.Completed != CharacterPresentation.BodiesCompleted));
+            bool recheck = row.SkippedAt >= 0 && Time.frameCount > row.SkippedAt;
+            // A swap this frame may bring colliders of its own on their way out, so its look is never the second.
+            if (swapped || recheck || Time.unscaledTime >= row.LookAgainAt || (row.Hidden && !hidden)) LookOver(row, recheck && !swapped);
+            row.Hidden = hidden;
+            row.Room = room;
+            for (int i = row.Pieces.Count - 1; i >= 0; i--)
+            {
+                var piece = row.Pieces[i];
+                if (piece == null) { row.Pieces.RemoveAt(i); row.LookAgainAt = 0f; continue; }
+                int layer = HouseRoomScope.BodyLayer(piece.layer, !hidden, room);
+                if (layer != piece.layer) piece.layer = layer;
+            }
+            if (row.Npc != null) row.Npc.BodyHidden = hidden;
+        }
+
+        /// <summary>
+        /// A body's renderer objects, read again: every renderer's object under it, active or not, but
+        /// the root's own (parking moves the root to layer 8) and any with a collider (a layer is physics
+        /// there, and no collider may stand on a room layer). A collider counts even disabled and on its
+        /// way out, so a piece passed over for one is read again on a later frame - once, unless that
+        /// look was itself the second.
+        /// </summary>
+        private void LookOver(ScopedBody row, bool recheck)
+        {
+            if (row.Presentation == null) row.Presentation = row.Body.GetComponent<CharacterPresentation>();
+            row.Visual = row.Presentation != null ? row.Presentation.VisualRoot : null;
+            row.Completed = CharacterPresentation.BodiesCompleted;
+            row.Hierarchy = row.Body.hierarchyCount;
+            row.LookAgainAt = Time.unscaledTime + BodyLookSeconds;
+            row.Pieces.Clear();
+            scopeRendererBuffer.Clear();
+            row.Body.GetComponentsInChildren(true, scopeRendererBuffer);
+            var root = row.Body.gameObject;
+            bool skipped = false;
+            for (int i = 0; i < scopeRendererBuffer.Count; i++)
+            {
+                var renderer = scopeRendererBuffer[i];
+                if (renderer == null) continue;
+                var piece = renderer.gameObject;
+                if (piece == root || row.Pieces.Contains(piece)) continue;
+                if (piece.GetComponent<Collider>() != null) { skipped = true; continue; }
+                row.Pieces.Add(piece);
+            }
+            scopeRendererBuffer.Clear();
+            row.SkippedAt = skipped && !recheck ? Time.frameCount : -1;
+        }
+
+        /// <summary>The camera's subjects (§3.2 e): the one it follows, either of a conversation's two, and the player in free play.</summary>
+        private bool IsCameraSubject(Transform body, RoomScopeSource source)
+        {
+            if (cameraRig == null || body == null) return false;
+            var subject = cameraRig.FocusedSubject;
+            if (subject != null && (subject == body || subject.IsChildOf(body))) return true;
+            if (cameraRig.IsConversationSubject(body)) return true;
+            return player != null && body == player.transform && source == RoomScopeSource.FreePlay;
+        }
+
+        /// <summary>
+        /// Whether a live prompt names a houseguest (§3.2 e): the E prompt's Talk target or the
+        /// invitation's speaker, the walk-in pair while its Pull is on screen, the invitation bubble's
+        /// speaker while it is up, or a free-time card's HERE. With who-is-where by floor (RSW) they
+        /// stand on the player's floor anyway; this is the guard that keeps a prompt from naming
+        /// someone the view hides. The bubble's speaker is the visit's in flight, whichever way it
+        /// came (<see cref="CurrentNpcInvitationNpcId"/>): the invitation's with the asks off, the
+        /// asker's with them on.
+        /// </summary>
+        private bool NamedByPrompt(HouseNpc npc)
+        {
+            if (ReferenceEquals(npc, promptNamed)) return true;
+            string id = npc.Id;
+            if (WalkInPullShown
+                && (string.Equals(id, walkInFirst, StringComparison.Ordinal) || string.Equals(id, walkInSecond, StringComparison.Ordinal)))
+                return true;
+            string speaker = CurrentNpcInvitationNpcId;
+            if (speaker != null && npcInvitationBubble != null && npcInvitationBubble.IsVisible
+                && string.Equals(id, speaker, StringComparison.Ordinal))
+                return true;
+            return hereTagged.Count > 0 && hereTagged.Contains(id);
+        }
+
+        /// <summary>
+        /// Whether the Pull on screen is the walk-in's (EpisodeDirector.Story, TickStoryPull): the
+        /// proximity watch's offer is not a prompt by itself, since the Pull waits under a panel, a
+        /// challenge, a ceremony card, an invitation that is up, or the player not in play, and never
+        /// comes back for a pair the player turned down, while the watch offers that pair again.
+        /// </summary>
+        private bool WalkInPullShown => walkInFirst != null && projected != null && walkInWeek == projected.week
+            && pullNow.HasValue && pullWalkIn != null && string.Equals(pullNow.Value.Key, pullWalkIn, StringComparison.Ordinal);
+
+        /// <summary>
+        /// The invitation bubble over a drawn speaker only - the visit's in flight, an invitation's or an ask's
+        /// (<see cref="CurrentNpcInvitationNpcId"/>) - and the conversation line over a drawn pair only.
+        /// </summary>
+        private void GatePromptsOnDrawnBodies()
+        {
+            if (hiddenBodyCount == 0)
+            {
+                if (npcInvitationBubble != null) npcInvitationBubble.SpeakerDrawn = true;
+                if (npcCaption != null) npcCaption.PairDrawn = true;
+                return;
+            }
+            if (npcInvitationBubble != null)
+            {
+                string speaker = CurrentNpcInvitationNpcId;
+                npcInvitationBubble.SpeakerDrawn = speaker == null || IsBodyDrawn(HousemateBody(speaker));
+            }
+            if (npcCaption != null)
+                npcCaption.PairDrawn = IsBodyDrawn(HousemateBody(captionFirstId)) && IsBodyDrawn(HousemateBody(captionSecondId));
+        }
+
+        /// <summary>A houseguest's body by id, or null.</summary>
+        private Transform HousemateBody(string id)
+        {
+            if (string.IsNullOrEmpty(id) || housemates == null) return null;
+            foreach (var npc in housemates)
+                if (npc != null && string.Equals(npc.Id, id, StringComparison.Ordinal)) return npc.transform;
+            return null;
+        }
+
+        /// <summary>
+        /// The main camera's culling mask from the view (§3.2 c, <see cref="RoomLayers.ScopeMask"/>): the
+        /// plan's <c>(mask &amp; ~RoomBits) | ScopeBits</c>, among the room bits the camera had when the
+        /// scope began, which the whole house writes back. Bits 20 to 27 are the view's at every pass,
+        /// so a stale mask put back over the scope's - a capture's save and restore around a render
+        /// after a move - lasts until the next pass or main-camera render at most; nothing outside them
+        /// is touched, so the capture guard on bit 31 keeps its owner's value, and a room bit cleared
+        /// before the scope began stays clear. Nothing is written while the whole house is drawn and
+        /// nothing is kept.
+        /// </summary>
+        private void SyncMainCameraMask(RoomSet viewed)
+        {
+            var camera = cameraRig != null ? cameraRig.ViewCamera : null;
+            if (!ReferenceEquals(camera, mainMaskCamera)) { PutBackMainCameraMask(); mainMaskCamera = camera; }
+            if (camera == null || (mainMaskKept == RoomLayers.NothingKept && viewed.IsWholeHouse)) return;
+            int before = camera.cullingMask;
+            int after = RoomLayers.ScopeMask(before, viewed, ref mainMaskKept);
+            mainMaskTaken = RoomLayers.TakenOut(mainMaskKept, viewed);
+            if (after != before) camera.cullingMask = after;
+        }
+
+        private void PutBackMainCameraMask()
+        {
+            if (mainMaskKept != RoomLayers.NothingKept && mainMaskCamera != null)
+                mainMaskCamera.cullingMask = RoomLayers.ScopeMask(mainMaskCamera.cullingMask, RoomSet.WholeHouse, ref mainMaskKept);
+            mainMaskKept = RoomLayers.NothingKept;
+            mainMaskTaken = 0;
+        }
+
+        /// <summary>
+        /// A main camera's render that finds the view moved since the drawing was applied - a capture's
+        /// render by hand straight after a move, before the frame's late pass - draws it first; one that
+        /// finds the view the same but the mask's room bits not the scope's - put back by a capture
+        /// around an earlier render - writes the mask again. Every other render costs a few field checks:
+        /// with nothing held, the view's source not live, nothing hidden and no mask kept, none. A render
+        /// never builds the scope.
+        /// </summary>
+        private void RedrawScopeForRender(Camera camera)
+        {
+            if (camera == null || cameraRig == null || roomScope == null || camera != cameraRig.ViewCamera) return;
+            if (!ScopeMayBeARoom && hiddenBodyCount == 0 && mainMaskKept == RoomLayers.NothingKept) return;
+            var viewed = ViewedRooms;
+            if (viewed.IsWholeHouse || viewed.IsEmpty) viewed = RoomSet.WholeHouse;
+            if (viewed.Bits != drawnViewBits) ApplyRoomScopeDrawing();
+            else SyncMainCameraMask(viewed);
+        }
+
+        /// <summary>Everything the scope hid comes back and every bit it took out goes back: on disable, and when the scope is dropped.</summary>
+        private void UndoRoomScopeDrawing()
+        {
+            PutBackMainCameraMask();
+            mainMaskCamera = null;
+            foreach (var row in scopedBodies)
+            {
+                if (row.Body == null) continue;
+                foreach (var piece in row.Pieces)
+                {
+                    if (piece == null) continue;
+                    int layer = HouseRoomScope.BodyLayer(piece.layer, true, -1);
+                    if (layer != piece.layer) piece.layer = layer;
+                }
+                if (row.Npc != null) row.Npc.BodyHidden = false;
+            }
+            scopedBodies.Clear();
+            hiddenBodyCount = 0;
+            drawnViewBits = -1;
+            if (npcInvitationBubble != null) npcInvitationBubble.SpeakerDrawn = true;
+            if (npcCaption != null) npcCaption.PairDrawn = true;
+        }
+
+        /// <summary>Once a second, with the walker rows: the rows of bodies since destroyed go.</summary>
+        private void ForgetMissingScopedBodies()
+        {
+            for (int i = scopedBodies.Count - 1; i >= 0; i--)
+            {
+                if (scopedBodies[i].Body != null) continue;
+                if (scopedBodies[i].Hidden) hiddenBodyCount = Math.Max(0, hiddenBodyCount - 1);
+                scopedBodies.RemoveAt(i);
+            }
+        }
+
+        /// <summary>Who the HUD's free-time cards tag HERE: kept for the prompt rule, and let go at every render and panel close.</summary>
+        private void TagHere(string id)
+        {
+            if (!string.IsNullOrEmpty(id)) hereTagged.Add(id);
+        }
+    }
+}

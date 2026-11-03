@@ -58,9 +58,10 @@ namespace Gamesim.Episode
             if (liveFeed.Paused) return;
             if (Time.unscaledTime < liveFeedNextAim) return;
             liveFeedNextAim = Time.unscaledTime + LiveFeedAimSeconds;
-            if (!TryGetLiveFeedSubject(out var at, out var caption)) { liveFeed.Clear(); return; }
+            if (!TryGetLiveFeedSubject(out var at, out var caption, out var rooms)) { liveFeed.Clear(); return; }
             // The reverse angle of the viewer's own camera: a second camera, not the same one smaller.
-            liveFeed.Aim(at, (cameraRig != null ? cameraRig.Yaw : 0f) + 180f, caption);
+            // It draws the shell and the room it looks into (RS4, D10).
+            liveFeed.Aim(at, (cameraRig != null ? cameraRig.Yaw : 0f) + 180f, caption, rooms);
         }
 
         private void PublishLiveFeed(string caption)
@@ -76,10 +77,18 @@ namespace Gamesim.Episode
         /// NPC conversation that has physically formed; failing that the room of the last ceremony;
         /// failing that the player's room. False only when the house has no rooms to speak of.
         /// </summary>
-        public bool TryGetLiveFeedSubject(out Vector3 at, out string caption)
+        public bool TryGetLiveFeedSubject(out Vector3 at, out string caption) => TryGetLiveFeedSubject(out at, out caption, out _);
+
+        /// <summary>
+        /// The feed's subject and caption, and the rooms it draws besides the shell (ROOM-SCOPE-PLAN
+        /// §3.2 c, D10; RS4): the room it looks into - the staged room, the conversation's floor and
+        /// each of the pair's walker rooms, the last ceremony's room, or the player's.
+        /// </summary>
+        public bool TryGetLiveFeedSubject(out Vector3 at, out string caption, out RoomSet rooms)
         {
             at = Vector3.zero;
             caption = "";
+            rooms = RoomSet.WholeHouse;
             if (projected == null) return false;
             var markers = RoomMarkers();
             if (markers.Length == 0) return false;
@@ -90,6 +99,7 @@ namespace Gamesim.Episode
             {
                 at = scene.transform.position;
                 caption = RoomLabels.Title(scene.RoomName) + (meeting ? " \u00b7 THE HOUSE IS GATHERING" : " \u00b7 SOMETHING'S GOING ON");
+                rooms = FeedRooms(RoomSet.Of(scene.RoomName));
                 return true;
             }
 
@@ -108,19 +118,35 @@ namespace Gamesim.Episode
             if (latest != null)
             {
                 at = (latest.FirstSlot + latest.SecondSlot) * 0.5f;
-                room = NearestMarker(markers, at);
+                room = FloorMarker(markers, at, null);
                 bool witnessed = ReferenceEquals(npcShownLease, latest) && !string.IsNullOrEmpty(ObservedNpcConversation);
                 caption = witnessed ? ObservedNpcConversation : RoomCaption(room);
+                var pairRooms = room != null ? RoomSet.Of(room.RoomName) : RoomSet.None;
+                pairRooms = pairRooms.With(RoomSet.Of(WalkerRoomOfHousemate(latest.FirstId))).With(RoomSet.Of(WalkerRoomOfHousemate(latest.SecondId)));
+                rooms = FeedRooms(pairRooms);
                 return true;
             }
 
             var ceremonyRoom = lastCeremonyKind != null ? CeremonyRoom(lastCeremonyKind) : null;
             room = ceremonyRoom != null ? markers.FirstOrDefault(m => m.RoomName == ceremonyRoom) : null;
-            if (room == null && player != null) room = NearestMarker(markers, player.transform.position);
+            if (room == null && player != null) room = FloorMarker(markers, player.transform.position, player.transform);
             if (room == null) return false;
             at = room.transform.position;
             caption = RoomCaption(room);
+            rooms = FeedRooms(RoomSet.Of(room.RoomName));
             return true;
+        }
+
+        /// <summary>The rooms a feed's subject names, or every room where the floors cannot say.</summary>
+        private static RoomSet FeedRooms(RoomSet named) => named.IsEmpty ? RoomSet.WholeHouse : named;
+
+        /// <summary>A houseguest's walker room by id, or null for one with no body in the house.</summary>
+        private string WalkerRoomOfHousemate(string id)
+        {
+            if (string.IsNullOrEmpty(id) || housemates == null) return null;
+            foreach (var npc in housemates)
+                if (npc != null && npc.Id == id) return npc.gameObject.activeInHierarchy ? WalkerRoomOf(npc.transform) : null;
+            return null;
         }
 
         /// <summary>"KITCHEN · 2 HOUSEGUESTS": the room as the set names it, and the notebook's count for it.</summary>

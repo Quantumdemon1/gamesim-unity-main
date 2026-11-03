@@ -29,7 +29,7 @@ namespace Gamesim.Tests.PlayMode
                 && PlayerDeals.Available(state, v.id).Contains(DealKind.VoteEvict));
             Assume.That(voter, Is.Not.Null, "A voter with a body who could be put a vote deal.");
             var npc = bodies.Single(n => n.Id == voter.id);
-            WarpPlayer(npc.transform.position + (player.transform.position - npc.transform.position).normalized * 1.4f);
+            WarpToTalk(npc, npc.transform.position + (player.transform.position - npc.transform.position).normalized * 1.4f);
             yield return null;
             Assert.That(director.TryOpenNpc(voter.id), Is.True, "The conversation opens.");
             yield return null;

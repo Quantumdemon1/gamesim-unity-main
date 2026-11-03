@@ -163,6 +163,8 @@ namespace Gamesim.Tests.PlayMode
             // until it is, so capturing immediately photographs an empty house, which would make the
             // review frames quietly misleading about what the game looks like.
             yield return SettleCast();
+            // From RS5 the set under the HUD is the room view of the player's room.
+            Debug.Log("[Gamesim] HUD review captures over " + (cameraRig.IsRoomView ? "the room view of the " + HouseRoomScope.RoomId(cameraRig.ViewRoom) : "the whole house"));
 
             var canvas = director.GetComponentsInChildren<Canvas>(true)
                 .FirstOrDefault(c => c.renderMode == RenderMode.ScreenSpaceOverlay && c.isActiveAndEnabled);
@@ -222,6 +224,9 @@ namespace Gamesim.Tests.PlayMode
         {
             yield return SettleCast();
             var camera = cameraRig.ViewCamera;
+            // The default framing is the room view's from RS5: the player's room at its farthest zoom.
+            Debug.Log(string.Format("[Gamesim] cast legibility · the default framing: {0} at {1:F2} m",
+                cameraRig.IsRoomView ? "the room view of the " + HouseRoomScope.RoomId(cameraRig.ViewRoom) : "the whole house", cameraRig.Distance));
 
             foreach (var visual in SceneComponents<CharacterPresentation>())
             {
@@ -263,8 +268,14 @@ namespace Gamesim.Tests.PlayMode
             if (!Application.isBatchMode) yield break;
             yield return SettleCast();
 
-            foreach (var distance in new[] { 24f, 17f, 10f })
+            // The room view's range from RS5 - its room's farthest, the middle and the nearest four metres (D4,
+            // D11) - and then the dollhouse's 24, 17 and 10 with the whole house held, the setting's view.
+            float farthest = cameraRig.FreeFarthestDistance, nearest = cameraRig.NearestDistance;
+            var framings = new[] { farthest, (farthest + nearest) * .5f, nearest, 24f, 17f, 10f };
+            for (int index = 0; index < framings.Length; index++)
             {
+                float distance = framings[index];
+                if (index == 3) RoomViewHoldTheDollhouse();
                 SetCameraDistance(distance);
                 for (int i = 0; i < 40; i++) yield return null; // the rig smooths toward the target
 
@@ -280,11 +291,12 @@ namespace Gamesim.Tests.PlayMode
                     "[Gamesim] camera framing · distance {0}: cast {1:P1} to {2:P1} of frame height",
                     distance, sizes.Length == 0 ? 0f : sizes.Min(), sizes.Length == 0 ? 0f : sizes.Max()));
 
-                yield return CaptureFraming("camera-distance-" + distance.ToString("0"));
+                yield return CaptureFraming((index < 3 ? "camera-room-view-distance-" : "camera-distance-") + distance.ToString("0.##"));
             }
 
             SetCameraDistance(24f);
             for (int i = 0; i < 20; i++) yield return null;
+            yield return RoomViewLetGoOfTheDollhouse();
         }
 
         private void SetCameraDistance(float distance)
@@ -618,7 +630,7 @@ namespace Gamesim.Tests.PlayMode
                 {
                     var npc = SceneComponents<HouseNpc>().FirstOrDefault(actor => actor.gameObject.activeInHierarchy);
                     if (npc == null) return false;
-                    WarpPlayer(npc.transform.position
+                    WarpToTalk(npc, npc.transform.position
                         + (player.transform.position - npc.transform.position).normalized * 1.4f);
                     return director.TryOpenNpc(npc.Id);
                 }),

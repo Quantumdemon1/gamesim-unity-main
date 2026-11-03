@@ -175,7 +175,9 @@ namespace Gamesim.House
                 // Wider than the shot, so the confessional fills the frame instead of showing the next
                 // room's walls and neon at both edges.
                 panel.transform.localScale=new Vector3(4.6f,2.9f,.10f);
-                var collider=panel.GetComponent<Collider>();collider.enabled=false;Destroy(collider);
+                // At once, not at the frame's end: the backdrop is placed in its room below, this frame,
+                // and a piece that still has a collider is never put on a room layer (RS2a).
+                var collider=panel.GetComponent<Collider>();collider.enabled=false;DestroyImmediate(collider);
             }
             var shader=Shader.Find("Universal Render Pipeline/Lit") ?? Shader.Find("Standard");
             if(shader!=null)
@@ -187,6 +189,8 @@ namespace Gamesim.House
             InterviewLight("Diary key",new Vector3(-1.2f,2.2f,1.7f),1.5f,new Color(1f,.93f,.84f));
             InterviewLight("Diary fill",new Vector3(1.4f,1.8f,1.4f),.7f,new Color(.78f,.87f,1f));
             DiaryStudioBranding.Dress(studio.transform,brandingMaterials);
+            // The backdrop on the private room's layer in the frame it is built (ROOM-SCOPE-PLAN RS2a).
+            HouseRoomScope.PlaceDressing(studio.transform);
         }
 
         private void DestroyBranding()

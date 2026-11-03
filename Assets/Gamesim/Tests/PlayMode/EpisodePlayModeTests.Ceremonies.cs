@@ -36,6 +36,8 @@ namespace Gamesim.Tests.PlayMode
                 { CeremonySting.EvictionKind, "EVICTION" },
             };
             var outstanding = new HashSet<string>(expected.Keys);
+            // The beats photographed while a ceremony's own shot held the view (RS6a): its room drawn.
+            var framed = new List<string>();
 
             var sting = SceneComponents<CeremonySting>().FirstOrDefault();
             Assert.That(sting, Is.Not.Null, "The episode should stage a ceremony sting at startup.");
@@ -156,12 +158,16 @@ namespace Gamesim.Tests.PlayMode
                         Assert.That(LastActive("Status"), Is.Null, "The status line stands down while the strip says the meeting.");
                 }
 
+                if (Rs6aAssertACardsViewDrawsItsRoom(committed.kind)) framed.Add(committed.kind);
                 yield return CaptureCeremony(committed.kind);
                 outstanding.Remove(committed.kind);
             }
 
             Assert.That(outstanding, Is.Empty,
                 "These ceremonies never showed a card during a played episode: " + string.Join(", ", outstanding));
+            // The keys and the vote hold their framing for as long as they play, and both were asserted playing.
+            Assert.That(framed.Contains(CeremonySting.NominationKind) && framed.Contains(CeremonySting.EvictionKind), Is.True,
+                "The nomination's and the eviction's frames are of their rooms, framed; framed: " + string.Join(", ", framed) + ".");
         }
 
         /// <summary>

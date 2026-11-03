@@ -385,6 +385,8 @@ namespace Gamesim.Episode
             // First, and whatever else returns early: the dip is only a clock, and a frame that
             // skipped it would hold the house black for as long as a card or a load owned the frame.
             TickTravelDip();
+            // Every body's room by the floors, before anything this frame reads one (RS1).
+            TickRoomScope();
             TickTravelBeacons();
             TickSleepLight();
             // The staged ceremony before the ceremonies' bookkeeping: its card starts here, and the
@@ -516,6 +518,8 @@ namespace Gamesim.Episode
                 // chain in two places, which is two chances to disagree about what E does.
                 var choice = ChooseInteraction(out var npc);
                 if (npc != promptNpc) { promptNpc = npc; npcPrompt = npc != null ? "E  ·  Talk to " + npc.DisplayName : null; }
+                // Who the prompt names, for the room scope's prompt rule (RS4): drawn wherever the view is.
+                promptNamed = choice == InteractTarget.Talk || choice == InteractTarget.Invitation ? npc : null;
                 string prompt = "", hint = null;
                 if (IsPlayerHouseActivityActive && playerActivityInHouse) prompt = HouseFurniture.StopPrompt(playerActivityKind);
                 else if (choice == InteractTarget.Invitation) prompt = "E  ·  Hear " + npc.DisplayName + " out";
@@ -532,7 +536,7 @@ namespace Gamesim.Episode
                 else if (choice == InteractTarget.StepIn) prompt = "E  \u00b7  " + EpisodeHud.StepInCaption;
                 hud.SetPrompt(InputGlossary.PromptFor(prompt, padHints), hint);
             }
-            else hud.SetPrompt("");
+            else { hud.SetPrompt(""); promptNamed = null; }
         }
 
         /// <summary>
@@ -710,6 +714,7 @@ namespace Gamesim.Episode
         private void ClosePanelsInternal(bool render)
         {
             paidStoryViewToken = null;
+            hereTagged.Clear();
             CancelNpcInvitation();
             ResetConversationNavigation();
             CancelConversationExchange(false);
@@ -772,7 +777,7 @@ namespace Gamesim.Episode
             // Any panel opening ends the overview: the shot it took goes with it. A conversation's
             // two-shot ends with the conversation; the diary's chair shot is released here, which
             // covers Escape and the walk-away close alike.
-            if (overviewOpen) { LeaveOverview(); if (cameraRig != null) cameraRig.ReleaseShot(OverviewSeconds); }
+            if (overviewOpen) { LeaveOverview(); if (cameraRig != null) cameraRig.ReleaseShot(OverviewSeconds); ResumeTheWatchAfterTheOverview(); }
             // Not while the opening plays: it is holding the camera and the player, and gives both
             // back when it ends.
             if (cameraRig != null && !OpeningOwnsHouse) { cameraRig.EndConversation(); cameraRig.ReleaseShot(DiaryShotSeconds); cameraRig.ControlsEnabled = !blockedRecovery; }
@@ -1360,6 +1365,8 @@ namespace Gamesim.Episode
         private void Render()
         {
             paidStoryViewToken = null;
+            // The free-time cards tag HERE again as they are drawn (the room scope's prompt rule, RS4).
+            hereTagged.Clear();
             conversationNavigationShowing = false;
             conversationMenuToken = null;
             pitchNavigationView = null;
@@ -1722,6 +1729,12 @@ namespace Gamesim.Episode
 
         private void OnDisable()
         {
+            // Before anything can return early: the lamps' hook goes, with every lamp it has off (RS3).
+            UnhookLampScope();
+            // A framing goes with its cards: its coroutine dies with the object, and a flag it never cleared
+            // would keep the room scope's ceremony source on after re-activation (RS6a).
+            if (ceremonyFrame != null) { StopCoroutine(ceremonyFrame); ceremonyFrame = null; }
+            IsFramingCeremony = false;
             if (!IsReady) return;
             // Sibling scene roots may already be destroyed during unloading. Never rebuild UI here.
             ClosePanelsInternal(false); if (hud != null) hud.SetVisible(false);
@@ -1737,6 +1750,8 @@ namespace Gamesim.Episode
         }
         private void OnEnable()
         {
+            // Ready or not: the lamps' hook reads the scope as each render begins (RS3).
+            HookLampScope();
             if (!IsReady) return;
             hud?.SetVisible(true); ClosePanels();
         }

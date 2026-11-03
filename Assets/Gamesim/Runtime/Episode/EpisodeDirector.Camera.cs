@@ -105,6 +105,12 @@ namespace Gamesim.Episode
             if (bodies.Length == 0) return;
             var centre = bodies.Aggregate(Vector3.zero, (sum, body) => sum + body.position) / bodies.Length;
             if (bodies.Any(body => Vector3.Distance(body.position, centre) > EventShotReach * .5f)) return;
+            // The rooms of the people it frames (ROOM-SCOPE-PLAN D6, RS6b), each one's walker room as the
+            // shot is taken; and what the view drew as it is taken, read before the shot is the view's
+            // source, drawn with them until its 0.8 s move lands (free play's whole house until RS5).
+            var rooms = RoomSet.None;
+            foreach (var body in bodies) rooms = rooms.With(RoomSet.Of(WalkerRoomOf(body)));
+            var left = ViewedRooms;
             framedEventId = item.id;
             // The pivot under the floor puts the faces in the upper third, over the card, and the
             // card over their legs - mockup-04's frame.
@@ -112,11 +118,24 @@ namespace Gamesim.Episode
             {
                 Focus = centre - Vector3.up * .2f, Distance = EventShotDistance, Pitch = EventShotPitch, KeepYaw = true,
                 FieldOfView = HouseCameraRig.TwoShotFieldOfView, Seconds = EventShotSeconds, DepthOfFieldWeight = 1f,
+                Rooms = rooms, TravelFromRooms = left,
             });
+            houseEventTakeovers = cameraRig.ViewTakeovers;
         }
 
         /// <summary>Whether the camera is on a house event's people, for a test.</summary>
         public bool IsFramingHouseEvent => framedEventId != null && cameraRig != null && cameraRig.HasShot && (phaseOpen || sceneCardOpen);
+
+        /// <summary>The rig's <see cref="HouseCameraRig.ViewTakeovers"/> just after the house event's shot.</summary>
+        private int houseEventTakeovers = -1;
+
+        /// <summary>
+        /// Whether the house event's shot holds the camera (ROOM-SCOPE-PLAN RS6b): it is framing the event
+        /// and nothing has taken the view since its shot - a panel closed over it lets the shot go. The room
+        /// scope's house-event source is the shot's only while this holds.
+        /// </summary>
+        public bool HouseEventShotHoldsTheCamera
+            => IsFramingHouseEvent && houseEventTakeovers >= 0 && cameraRig.ViewTakeovers == houseEventTakeovers;
 
         private Transform BodyFor(string id)
         {

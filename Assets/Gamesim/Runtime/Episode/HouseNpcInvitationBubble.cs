@@ -46,6 +46,34 @@ namespace Gamesim.Episode
         public UnityEngine.UI.Button NotNowControl => deferButton;
 
         /// <summary>
+        /// Whether the speaker's body is drawn (ROOM-SCOPE-PLAN §3.2 e, RS4): the bubble is over a body
+        /// the main view draws, or not up at all. Withheld, its panel is down - so it is not visible and
+        /// not a prompt - and the offer it carries stands, to show the moment the speaker is drawn. The
+        /// director sets it from the room scope, late in the frame, and it is taken at once.
+        /// </summary>
+        public bool SpeakerDrawn
+        {
+            get => speakerDrawn;
+            set
+            {
+                if (speakerDrawn == value) return;
+                speakerDrawn = value;
+                if (root == null || !root.activeSelf || panel == null) return;
+                if (value) { Place(false); return; }
+                LetGoOfFocus();
+                panel.gameObject.SetActive(false);
+            }
+        }
+
+        private bool speakerDrawn = true;
+        /// <summary>
+        /// New words or a new size the panel has not been fitted to yet: a placement that returned
+        /// before fitting - the speaker withheld (RS4), the anchor off the screen - leaves it owed to
+        /// the next one that draws, so the panel never comes up at the last invitation's size.
+        /// </summary>
+        private bool sizeOwed;
+
+        /// <summary>
         /// The camera the line is placed for: the director's view (its camera rig's), set by the owner. While it is
         /// unset, or gone, the main camera, as the bubble always used.
         /// </summary>
@@ -86,10 +114,16 @@ namespace Gamesim.Episode
         {
             boundView = null;
             if (root == null) return;
+            LetGoOfFocus();
+            root.SetActive(false);
+        }
+
+        /// <summary>A selected control of the bubble's lets go: the keyboard never stays on a control that is not drawn.</summary>
+        private void LetGoOfFocus()
+        {
             var events = EventSystem.current;
             if (events != null && events.currentSelectedGameObject != null
                 && events.currentSelectedGameObject.transform.IsChildOf(root.transform)) events.SetSelectedGameObject(null);
-            root.SetActive(false);
         }
 
         /// <summary>Optional owner entry point for keyboard/pad focus; showing an invitation never steals it.</summary>
@@ -115,9 +149,11 @@ namespace Gamesim.Episode
 
         private void Place(bool textChanged)
         {
+            if (textChanged) sizeOwed = true;
             // Explicitly: a camera that has gone is Unity's fake null, which ?? would keep.
             var camera = ViewCamera != null ? ViewCamera : Camera.main;
-            if (camera == null || canvasRect == null) { panel.gameObject.SetActive(false); return; }
+            // A speaker the room scope does not draw has no bubble over them (RS4).
+            if (camera == null || canvasRect == null || !speakerDrawn) { panel.gameObject.SetActive(false); return; }
             var viewport = camera.WorldToViewportPoint(anchor);
             if (viewport.z <= 0f || viewport.x < 0f || viewport.x > 1f || viewport.y < 0f || viewport.y > 1f)
             { panel.gameObject.SetActive(false); return; }
@@ -131,7 +167,7 @@ namespace Gamesim.Episode
                 safe = hud != null ? hud.WorldCaptionSafeBounds : Rect.MinMaxRect(24, 100, frame.x - 24, frame.y - 80);
                 lastFrame = frame; nextBoundsAt = Time.unscaledTime + .5f;
             }
-            if (textChanged || frameChanged || panel.sizeDelta.x > safe.width) SizeForText();
+            if (sizeOwed || frameChanged || panel.sizeDelta.x > safe.width) { SizeForText(); sizeOwed = false; }
             if (!RectTransformUtility.ScreenPointToLocalPointInRectangle(canvasRect, projected, null, out var local)) return;
             float half = panel.sizeDelta.x * .5f;
             float x = Mathf.Clamp(local.x + frame.x * .5f, safe.xMin + half, Mathf.Max(safe.xMin + half, safe.xMax - half));

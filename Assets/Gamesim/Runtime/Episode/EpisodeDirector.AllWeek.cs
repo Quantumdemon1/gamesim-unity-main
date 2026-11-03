@@ -68,6 +68,8 @@ namespace Gamesim.Episode
         /// </summary>
         private bool ActWatchAllowed => ActsStageable && !IsPanelOpen && !challengeActive && !CeremonyOverlays.OnScreen && !TourIsUp
             && !FrontDoorUp && playerIsActive && !overviewOpen && !durableCommitInProgress && !diaryOpen
+            // Looking away from the player's room is not looking, as the overview is not (D18, RS5).
+            && !LookingAwayFromThePlayer
             && EpisodeEngine.Window(projected) != Windows.None;
 
         private void TickAllWeekActs(float delta)

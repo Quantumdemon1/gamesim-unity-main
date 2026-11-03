@@ -507,6 +507,11 @@ namespace Gamesim.Tests.PlayMode
             Vector3 Drawn() { var hips = HipsOf(body); return hips != null ? hips.position : body.transform.position + Vector3.up * 0.95f; }
             string Where(Vector2? at) => at.HasValue ? at.Value.ToString("F2") : "behind the lens";
             Assert.That(InsideTheFrame(InTheFrame(cameraRig.ViewCamera, Drawn())), Is.True, "They are framed where they stand: " + Where(InTheFrame(cameraRig.ViewCamera, Drawn())));
+            // The opening is the whole house until it hands over (ROOM-SCOPE-PLAN D6, RS6b): the introduction's
+            // shot names it, and the main camera draws every room and every body.
+            Assert.That(director.CurrentRoomScopeSource, Is.EqualTo(Gamesim.Episode.EpisodeDirector.RoomScopeSource.Opening), "The opening has the view,");
+            Assert.That(cameraRig.Rooms.IsWholeHouse, Is.True, "and the introduction's shot names the whole house (" + cameraRig.Rooms + ").");
+            Rs6bAssertTheWholeHouse("An introduction");
 
             SequenceButtons(opening, "Calculated").Single().onClick.Invoke();
             yield return WaitFor(() => FadedIn(SequenceNode(opening, "Answer")), 3f, "The answer comes up where the question was.");
@@ -557,6 +562,8 @@ namespace Gamesim.Tests.PlayMode
             seen = InTheFrame(cameraRig.ViewCamera, Drawn());
             Assert.That(InsideTheFrame(seen), Is.True, "Once the shot has followed, their body is in the frame: hips at " + Drawn().ToString("F2") + " -> " + Where(seen) + ".");
             Assert.That(opening.CurrentGuestId, Is.EqualTo(firstGuest), "It is still their card.");
+            Assert.That(cameraRig.Rooms.IsWholeHouse, Is.True, "The shot taken again as it follows them names the whole house too (" + cameraRig.Rooms + ").");
+            Rs6bAssertTheWholeHouse("The introduction's shot, followed");
 
             opening.SkipIntroductions();
             yield return WaitFor(() => !opening.IsPlaying, 5f, "Skipping the introductions ends the opening.");

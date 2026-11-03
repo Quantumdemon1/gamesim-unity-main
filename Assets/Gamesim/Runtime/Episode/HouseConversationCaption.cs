@@ -59,6 +59,29 @@ namespace Gamesim.Episode
         /// <summary>How long the line on screen holds once shown, in seconds. A read for tests.</summary>
         public float HoldSeconds => holdFor;
 
+        /// <summary>
+        /// Whether the pair's bodies are drawn (ROOM-SCOPE-PLAN §3.2 e, RS4): the line is drawn over a
+        /// pair the main view draws, or not at all. Withheld, its panel is down while the line itself,
+        /// its reading time and what it says (<see cref="CurrentText"/>, which the Nearby card and the
+        /// live feed read) carry on: only the drawing waits for the pair. The director sets it from
+        /// the room scope, late in the frame, and it is taken at once.
+        /// </summary>
+        public bool PairDrawn
+        {
+            get => pairDrawn;
+            set
+            {
+                if (pairDrawn == value) return;
+                pairDrawn = value;
+                if (root == null || !root.activeSelf || panel == null) return;
+                if (!value) panel.gameObject.SetActive(false);
+                else if (anchored) Place();
+                else { panel.gameObject.SetActive(true); PlaceBanner(); }
+            }
+        }
+
+        private bool pairDrawn = true;
+
         /// <summary>Whether the line stays up only to be read: the pair is out of sight, and it goes once its time is up.</summary>
         public bool IsReleasing => releasing && root != null && root.activeSelf;
 
@@ -117,6 +140,8 @@ namespace Gamesim.Episode
         private void PlaceBanner()
         {
             if(canvasRect==null)return;
+            // A pair the room scope does not draw has no line drawn about them (RS4).
+            if(!pairDrawn){panel.gameObject.SetActive(false);return;}
             var safe=SafeBounds();
             SizeForText(Mathf.Min(BannerWidth,safe.width),BannerHeight);
             panel.anchoredPosition=new Vector2(safe.center.x,safe.yMax);
@@ -135,7 +160,8 @@ namespace Gamesim.Episode
             if (camera == null || canvasRect == null) return;
 
             var screen = camera.WorldToScreenPoint(anchorWorld);
-            if (screen.z <= 0f) { panel.gameObject.SetActive(false); return; }
+            // Behind the lens, or over a pair the room scope does not draw (RS4): no bubble.
+            if (screen.z <= 0f || !pairDrawn) { panel.gameObject.SetActive(false); return; }
             panel.gameObject.SetActive(true);
 
             if (!RectTransformUtility.ScreenPointToLocalPointInRectangle(

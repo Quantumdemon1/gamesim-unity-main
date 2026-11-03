@@ -129,6 +129,7 @@ namespace Gamesim.Tests.PlayMode
             AssertOnAGround(openHint.Find("Label"), "The Continue hint as the door opens", shown: true);
             AssertOnAGround(SequenceLabels(openChip).Single(label => label.name == "Counter").transform, "The reveal's count as the door opens", shown: true);
             Assert.That(openChip.GetComponent<CanvasGroup>().alpha, Is.GreaterThanOrEqualTo(0.99f), "The count's chip has faded in.");
+            Rs6bAssertTheOpeningDrawsTheWholeHouse("03, the door opens");
             yield return CaptureFraming("opening-staged-03-door-open", settle: false, inspect: frame =>
             {
                 AssertFaceIsDrawn(frame, openThird.Find("Portrait"), "The player's face in the lower third as the door opens");
@@ -158,6 +159,7 @@ namespace Gamesim.Tests.PlayMode
             var guestThird = SequenceNode(opening, "Lower third");
             Assert.That(SequenceTexts(guestThird, "Name").Single(), Does.Contain(first.name), "The lower third names them.");
             Assert.That(SequenceTexts(guestThird, "Counter").Single(), Is.EqualTo("2 of " + cast.Count));
+            Rs6bAssertTheOpeningDrawsTheWholeHouse("04, a houseguest on the mark");
             yield return CaptureFraming("opening-staged-04-guest-on-mark", settle: false, inspect: frame =>
                 AssertFaceIsDrawn(frame, guestThird.Find("Portrait"), first.name + "'s face in the lower third on the mark"));
 
@@ -253,6 +255,7 @@ namespace Gamesim.Tests.PlayMode
                 float height = cameraRig.ViewCamera.transform.position.y;
                 Assert.That(height, Is.GreaterThan(lastHeight), "The camera is higher " + when + " than at the frame before: the crane rises.");
                 lastHeight = height;
+                Rs6bAssertTheOpeningDrawsTheWholeHouse(moment.Name + ", " + when);
                 yield return CaptureFraming(moment.Name, settle: false);
             }
             // Continue on the walk-in, as a player might: the introductions put anybody not yet home
@@ -279,6 +282,7 @@ namespace Gamesim.Tests.PlayMode
             var headerGround = column.Find(OpeningSequence.GroundName);
             // The last choice, which the keyboard is not on: the same raised fill, at rest.
             var restingRow = SequenceButtons(opening, "Bold").Single().transform;
+            Rs6bAssertTheOpeningDrawsTheWholeHouse("10, the first introduction");
             yield return CaptureFraming("opening-staged-10-meet-card", settle: true, inspect: frame =>
             {
                 AssertFaceIsDrawn(frame, card.Find("Portrait"), guests[0].name + "'s face on their card");

@@ -130,6 +130,14 @@ namespace Gamesim.Tests.PlayMode
             string next = director.ScreenRoom;
             var place = director.StationPosition + Vector3.up * EpisodeTravelBeacons.Height;
             var hud = director.GetComponentInChildren<EpisodeHud>(true);
+            // The dollhouse's pin from 19 m out: the whole house held (RS5's room view never goes that far; its
+            // own next stop is pinned by WayFinding_TheNextStopIsPinnedAndClickableAtEveryRoomViewDistance), and
+            // today's heading with it, as the "Show the whole house" setting brings it back from the room view (D12):
+            // the room view's first late pass turned the camera to the player's room's best heading (D4), and at
+            // heading 0 the far end's shot has the screen's place behind the camera, not off the frame.
+            RoomViewHoldTheDollhouse();
+            cameraRig.EaseToItsOwnFraming();
+            Assert.That(cameraRig.Yaw, Is.EqualTo(cameraRig.OwnYaw).Within(.01f), "Today's heading, the scene's own.");
             var far = SceneComponents<HouseRoomMarker>().Where(marker => marker.isActiveAndEnabled)
                 .OrderByDescending(marker => (marker.transform.position - director.StationPosition).sqrMagnitude).First().transform.position;
             cameraRig.SetReducedMotion(true);
@@ -143,7 +151,8 @@ namespace Gamesim.Tests.PlayMode
                 outOfSight = natural.z > .5f && (!cameraRig.ViewCamera.pixelRect.Contains(natural) || hud.Covers(natural));
                 if (outOfSight && director.TravelBeacons != null && cameraRig.Distance >= EpisodeTravelBeacons.ShownFrom) break;
             }
-            Assert.That(outOfSight, Is.True, "From the far end of the house the screen's own place is out of sight.");
+            Assert.That(outOfSight, Is.True, "From the far end of the house the screen's own place is out of sight (heading "
+                + cameraRig.transform.eulerAngles.y.ToString("0.0") + ").");
             // The shot holds still from here on: nothing is followed, so the icon stays where it is measured.
             yield return null;
             yield return null;

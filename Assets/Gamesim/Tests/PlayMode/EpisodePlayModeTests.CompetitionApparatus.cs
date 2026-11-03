@@ -158,6 +158,8 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(screen.Paused,Is.False);
             Assert.That(meetings.CompetitionArrivals,Is.EqualTo(houseSize-1),"Every owned NPC independently reacquires native arrival proof after the real resume.");
             AssertCapturedCompetitionField(houseSize,"Mental after explicit resume");
+            // The competition's shot names the yard (RS6a, D7): with nothing held it is the view, the whole field drawn in it.
+            Rs6aAssertTheCompetitionDrawsTheYard("Mental after explicit resume",everyone:true);
             yield return CaptureCompetitionFullField("Mental",houseSize);
             Assert.That(director.Snapshot.revision,Is.EqualTo(before.revision));
             Assert.That(director.Snapshot.randomState,Is.EqualTo(before.randomState));
@@ -284,6 +286,8 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(anchors,Has.Count.EqualTo(11),"The six-member veto field has six actual audience members in the twelve-person house.");
             var contestants=new HashSet<string>(EpisodeEngine.CompetitionPlayers(before).Select(actor=>actor.id));
             Assert.That(anchors.Keys.Count(id=>!contestants.Contains(id)),Is.EqualTo(6));
+            // The competition's shot names the yard (RS6a, D7): with nothing held it is the view, every body in the yard drawn.
+            Rs6aAssertTheCompetitionDrawsTheYard("the veto audience",everyone:false);
             if(Application.isBatchMode)yield return CaptureActualInstrument("veto-audience-paused",PauseActualVetoAudience,false,false);
             else yield return PauseActualVetoAudience();
             yield return CancelInstrumentAttempt(before);

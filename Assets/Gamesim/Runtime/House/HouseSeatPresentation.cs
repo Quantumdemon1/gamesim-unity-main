@@ -344,7 +344,15 @@ namespace Gamesim.House
         }
 
         /// <summary>Presentation picking uses visible body bounds and real occlusion, never extra physics colliders.</summary>
-        public static bool TryPickNpc(Scene scene,Ray ray,out HouseNpc npc)
+        public static bool TryPickNpc(Scene scene,Ray ray,out HouseNpc npc)=>TryPickNpc(scene,ray,null,out npc);
+
+        /// <summary>
+        /// The seated pick through <paramref name="drawnBy"/>'s eyes (ROOM-SCOPE-PLAN §3.2 f, RS4): a
+        /// seated houseguest that camera does not draw cannot be picked, and a body it does not draw
+        /// stands in the way of nothing (<see cref="HouseScopePick"/>). With no camera, the pick as it
+        /// always was; with the whole house drawn, the same answer.
+        /// </summary>
+        public static bool TryPickNpc(Scene scene,Ray ray,Camera drawnBy,out HouseNpc npc)
         {
             npc=null;float nearest=500f;
             foreach(var seat in occupied)
@@ -352,6 +360,7 @@ namespace Gamesim.House
                 if(seat==null || !seat.Active || seat.body==null || seat.gameObject.scene!=scene)continue;
                 var candidate=seat.GetComponent<HouseNpc>();
                 if(candidate==null || !candidate.isActiveAndEnabled)continue;
+                if(drawnBy!=null && !HouseScopePick.Draws(drawnBy.cullingMask,candidate.transform))continue;
                 float distance=nearest;
                 bool hitBody=false;
                 foreach(var renderer in seat.body.GetComponentsInChildren<Renderer>())
@@ -365,7 +374,8 @@ namespace Gamesim.House
                 if(count==pickHits.Length)continue;
                 bool blocked=false;
                 for(int index=0;index<count;index++)
-                    if(!pickHits[index].transform.IsChildOf(candidate.transform)){blocked=true;break;}
+                    if(!pickHits[index].transform.IsChildOf(candidate.transform)
+                        && (drawnBy==null || HouseScopePick.Draws(drawnBy,pickHits[index].collider))){blocked=true;break;}
                 if(blocked)continue;
                 npc=candidate;nearest=distance;
             }

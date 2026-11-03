@@ -568,11 +568,17 @@ namespace Gamesim.Episode
             destination = Vector3.zero; float bestDistance = float.PositiveInfinity;
             var filter = new NavMeshQueryFilter { agentTypeID = seasonPlayer.Agent.agentTypeID, areaMask = seasonPlayer.Agent.areaMask };
             var path = new NavMeshPath();
+            // Talk needs the two on one floor (RSW), and the sight line below passes over the south
+            // wing's 1.1 m walls and through doorways: only a spot whose walk ends on their floor, as
+            // the click's own walk over is aimed.
+            var scope = seasonDirector.RoomScope;
+            int theirs = scope != null ? RoomLayers.IndexOf(seasonDirector.WalkerRoomOf(npc.transform)) : -1;
             for (int direction = 0; direction < 12; direction++)
             {
                 float angle = direction * Mathf.PI / 6;
                 var candidate = npc.transform.position + new Vector3(Mathf.Cos(angle),0,Mathf.Sin(angle)) * 1.8f;
                 if (!NavMesh.SamplePosition(candidate,out var hit,.45f,filter) || Mathf.Abs(hit.position.y - npc.transform.position.y) > .3f
+                    || (theirs >= 0 && !HouseWhoIsWhere.WalkEndsIn(scope,theirs,hit.position,seasonPlayer.Agent.stoppingDistance))
                     || !seasonPlayer.Agent.CalculatePath(hit.position,path) || path.status != NavMeshPathStatus.PathComplete) continue;
                 var origin = hit.position + Vector3.up * 1.15f;
                 var offset = npc.transform.position + Vector3.up * 1.15f - origin;

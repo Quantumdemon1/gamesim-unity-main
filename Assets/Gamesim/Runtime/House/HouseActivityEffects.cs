@@ -15,6 +15,11 @@ namespace Gamesim.House
     ///
     /// <para>Motion is the decoration: under reduced motion none of it plays. Presentation only - the
     /// particles draw their own randomness, never the season's.</para>
+    ///
+    /// <para>Each is placed on its room's layer as it is built (ROOM-SCOPE-PLAN RS2a): the bubbles and
+    /// the steam rise where they were made, and the splashes, which follow the swimmer, are placed again
+    /// wherever <see cref="Tick"/> moves them, by the emitter's point, so they are drawn with the pool's
+    /// room and left out with it.</para>
     /// </summary>
     [DisallowMultipleComponent]
     public sealed class HouseActivityEffects : MonoBehaviour
@@ -91,6 +96,9 @@ namespace Gamesim.House
                 Upward(splash, .25f, 20f);
                 effects.Splash = splash;
             }
+            if (effects.Bubbles != null) HouseRoomScope.PlaceDressing(effects.Bubbles.transform);
+            if (effects.Steam != null) HouseRoomScope.PlaceDressing(effects.Steam.transform);
+            if (effects.Splash != null) HouseRoomScope.PlaceDressing(effects.Splash.transform);
             return effects;
         }
 
@@ -103,7 +111,15 @@ namespace Gamesim.House
             Set(Bubbles, !reducedMotion, reducedMotion);
             Set(Steam, cooking && !reducedMotion, reducedMotion);
             if (Splash != null && swimmer.HasValue)
-                Splash.transform.position = new Vector3(swimmer.Value.x, PoolWaterLine, swimmer.Value.z);
+            {
+                var at = new Vector3(swimmer.Value.x, PoolWaterLine, swimmer.Value.z);
+                // Moved, placed again in the same call (RS2a); a swimmer standing still moves nothing.
+                if (Splash.transform.position != at)
+                {
+                    Splash.transform.position = at;
+                    HouseRoomScope.PlaceDressing(Splash.transform);
+                }
+            }
             Set(Splash, swimmer.HasValue && !reducedMotion, reducedMotion);
         }
 

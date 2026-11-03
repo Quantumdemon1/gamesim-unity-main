@@ -38,6 +38,10 @@ namespace Gamesim.Tests.PlayMode
             // collections of children they enumerate, and every body has the same children.
             Assert.That(cameraRig.FocusedSubject, Is.SameAs(maya.transform), "The camera follows the portrait's houseguest.");
             yield return null;
+            // Following is live (RS5): the view is the followed houseguest's room, cut to if it is another.
+            Assert.That(director.CurrentRoomScopeSource, Is.EqualTo(EpisodeDirector.RoomScopeSource.Following), "Following is the view's source,");
+            Assert.That(cameraRig.ViewRoom, Is.EqualTo(RoomLayers.IndexOf(director.WalkerRoomOf(maya.transform))), "and the room view frames their room.");
+            int followedRoom = cameraRig.ViewRoom;
             var ring = GameObject.Find(FollowRing.RingName);
             Assert.That(ring, Is.Not.Null, "A ring marks who is followed.");
             Assert.That(Vector3.Distance(new Vector3(ring.transform.position.x, 0, ring.transform.position.z),
@@ -70,6 +74,7 @@ namespace Gamesim.Tests.PlayMode
             ButtonWithCaption(EpisodeHud.CastFollowCaption(first, true)).onClick.Invoke();
             yield return null;
             Assert.That(cameraRig.FocusedSubject, Is.Null, "Stop following, from the same card, lets go.");
+            Assert.That(cameraRig.ViewRoom, Is.EqualTo(followedRoom), "The room the follow showed stays the view, watched (RS5).");
             Assert.That(GameObject.Find(FollowRing.RingName), Is.Null, "and the ring goes with it");
             Assert.That(GameObject.Find(FollowRing.SpotlightName), Is.Null, "and so does the spotlight");
             Assert.That(director.GetComponentsInChildren<RectTransform>().Any(t => t.name == EpisodeHud.FollowChipName), Is.False, "and so does the chip");
@@ -222,9 +227,14 @@ namespace Gamesim.Tests.PlayMode
             yield return PressKey(Key.RightBracket);
             var first = cameraRig.FocusedSubject;
             Assert.That(first, Is.Not.Null, "] starts following the first active houseguest.");
+            yield return null;
+            // Following is live (RS5): each press frames the followed houseguest's room.
+            Assert.That(cameraRig.ViewRoom, Is.EqualTo(RoomLayers.IndexOf(director.WalkerRoomOf(first))), "] frames their room.");
             yield return PressKey(Key.RightBracket);
             var second = cameraRig.FocusedSubject;
             Assert.That(second, Is.Not.Null.And.Not.SameAs(first), "] again moves to the next.");
+            yield return null;
+            Assert.That(cameraRig.ViewRoom, Is.EqualTo(RoomLayers.IndexOf(director.WalkerRoomOf(second))), "] again frames the next one's room.");
             yield return PressKey(Key.LeftBracket);
             Assert.That(cameraRig.FocusedSubject, Is.SameAs(first), "[ goes back.");
 

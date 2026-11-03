@@ -133,7 +133,7 @@ namespace Gamesim.Tests.PlayMode
                 EpisodeEngine.Voters(state).Where(v => !v.isPlayer).Select(v => v.name + " " + string.Join("/", v.traits) + " view "
                     + state.Score(v.id, state.playerId) + (bodies.Any(n => n.Id == v.id) ? " body" : " no body"))));
             var npc = bodies.Single(n => n.Id == voter.id);
-            WarpPlayer(npc.transform.position + (player.transform.position - npc.transform.position).normalized * 1.4f);
+            WarpToTalk(npc, npc.transform.position + (player.transform.position - npc.transform.position).normalized * 1.4f);
             yield return null;
             Assert.That(director.TryOpenNpc(voter.id), Is.True, "The conversation opens.");
             yield return null;

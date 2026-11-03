@@ -78,13 +78,17 @@ namespace Gamesim.Episode
         {
             if (!IsReady || blockedRecovery || challengeActive || cameraRig == null) return false;
             if (IsPanelOpen) ClosePanels();
+            // A jury or evicted player's watch under the map comes back when the map is left (RS6b).
+            if (!overviewOpen) RememberTheWatchUnderTheOverview();
             overviewOpen = true;
             briefingOpen = false;
+            // The house's map is the whole house, named in the call (ROOM-SCOPE-PLAN D1, D6, RS6b).
             cameraRig.MoveTo(new HouseCameraRig.Shot
             {
                 Focus = cameraRig.HouseCenter - Quaternion.Euler(0f, cameraRig.Yaw, 0f) * Vector3.forward * OverviewLift,
                 Distance = cameraRig.FarthestDistance, Pitch = OverviewPitch, KeepYaw = true,
                 Orthographic = true, OrthographicSize = OverviewOrthographicSize, Seconds = OverviewSeconds,
+                Rooms = RoomSet.WholeHouse,
             });
             if (roomLabels == null) roomLabels = RoomLabels.Attach(gameObject);
             // Each chip is a way there: the overview is the house's map.
@@ -102,6 +106,7 @@ namespace Gamesim.Episode
             if (!overviewOpen) return;
             LeaveOverview();
             if (cameraRig != null) cameraRig.ReleaseShot(OverviewSeconds);
+            ResumeTheWatchAfterTheOverview();
             Render();
         }
 
@@ -118,6 +123,8 @@ namespace Gamesim.Episode
         {
             if (!overviewOpen || cameraRig == null || cameraRig.HasShot) return;
             LeaveOverview();
+            // The viewer took the camera: a watch under the map stays the viewer's (RS6b).
+            watchUnderOverview = false;
             Render();
         }
 

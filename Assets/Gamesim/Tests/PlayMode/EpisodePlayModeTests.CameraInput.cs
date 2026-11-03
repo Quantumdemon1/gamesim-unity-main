@@ -24,8 +24,9 @@ namespace Gamesim.Tests.PlayMode
         [UnityTest]
         public IEnumerator CameraInput_AMiddleDragKeepsTheGroundUnderTheCursor()
         {
-            SetCameraDistance(20f);
-            yield return SettleCamera();
+            // In the room view (RS5): over the living room's middle at 6 m, where its clamp leaves the focus
+            // metres to move in, and the player there for the recentre.
+            yield return CameraInputInTheRoomView();
             var mouse = TestMouse();
             var at = new Vector2(Screen.width * 0.5f, Screen.height * 0.5f);
             var delta = new Vector2(80f, 0f);
@@ -52,8 +53,9 @@ namespace Gamesim.Tests.PlayMode
         [UnityTest]
         public IEnumerator CameraInput_TheScreensEdgePansWhenEdgePanningIsOn()
         {
-            SetCameraDistance(20f);
-            yield return SettleCamera();
+            // In the room view (RS5): over the living room's middle at 6 m, where its clamp leaves the focus
+            // metres to move in, and the player there for the recentre.
+            yield return CameraInputInTheRoomView();
             var mouse = TestMouse();
             var band = cameraRig.EdgePanBand * 0.5f;
             // A spot on the right edge with no HUD under it; the edge pans only off the chrome.
@@ -97,8 +99,9 @@ namespace Gamesim.Tests.PlayMode
         [UnityTest]
         public IEnumerator CameraInput_AGamepadOrbitsPansZoomsAndRecentersThroughTheSameRig()
         {
-            SetCameraDistance(20f);
-            yield return SettleCamera();
+            // In the room view (RS5): over the living room's middle at 6 m, where its clamp leaves the focus
+            // metres to move in, and the player there for the recentre.
+            yield return CameraInputInTheRoomView();
             var pad = TestGamepad();
 
             var yawBefore = cameraRig.transform.rotation.eulerAngles.y;
@@ -137,6 +140,27 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(cameraRig.Actions.Next.WasPressedThisFrame(), Is.True, "The right shoulder is the next-houseguest action.");
             InputSystem.QueueStateEvent(pad, new GamepadState());
             yield return null;
+        }
+
+        /// <summary>
+        /// The free camera as the room view frames the living room (RS5): the player at its middle, the view on
+        /// them, then a free move to the room's centre at 6 m - a watching view of the same room - settled.
+        /// </summary>
+        private IEnumerator CameraInputInTheRoomView()
+        {
+            director.ClosePanels();
+            yield return null;
+            var scope = ScopeOf(director);
+            int living = RoomLayers.IndexOf("Living");
+            ScopePlace(player.transform, ScopeOpenFloor(scope, living), 2f);
+            cameraRig.RecenterOnPlayer();
+            yield return null;
+            var centre = scope.Box(living).center;
+            cameraRig.MoveTo(new Vector3(centre.x, cameraRig.HouseCenter.y, centre.y), 6f);
+            yield return SettleCamera();
+            Assert.That(cameraRig.IsRoomView, Is.True, "The free camera is the room view,");
+            Assert.That(cameraRig.ViewRoom, Is.EqualTo(living), "over the living room,");
+            Assert.That(cameraRig.DesiredDistance, Is.EqualTo(6f).Within(.01f), "at 6 m.");
         }
 
         private Vector3 Under(Plane plane, Vector2 screen)

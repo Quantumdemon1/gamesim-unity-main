@@ -146,7 +146,9 @@ namespace Gamesim.Presentation
             var quad = GameObject.CreatePrimitive(PrimitiveType.Quad);
             quad.name = name;
             var collider = quad.GetComponent<Collider>();
-            if (collider != null) { collider.enabled = false; Object.Destroy(collider); }
+            // At once, not at the frame's end: the studio is placed in its room in this frame
+            // (DiarySeatPose, ROOM-SCOPE-PLAN RS2a), and a piece with a collider never takes a room's layer.
+            if (collider != null) { collider.enabled = false; Object.DestroyImmediate(collider); }
             quad.transform.SetParent(studio, false);
             quad.transform.localPosition = at;
             // A quad faces -z; turned half round it faces the camera and reads the right way round.

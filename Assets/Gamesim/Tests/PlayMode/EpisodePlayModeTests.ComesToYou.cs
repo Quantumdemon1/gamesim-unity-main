@@ -1453,9 +1453,10 @@ namespace Gamesim.Tests.PlayMode
 
             // Somebody else standing still - in no meeting under way, and holding no reservation of the house's (an
             // activity, an act, a wander, a meeting or a scene), so nothing walks or stands them up while followed - the
-            // farthest from the player first, whose follow takes the player out of the frame. The camera rides over to
-            // each in turn; the dialogue's own opening is held meanwhile, so a line that comes up stays a line, and the
-            // visit stays in flight while the player is in frame.
+            // farthest from the player first, whose follow takes the player out of the frame. The camera goes to each in
+            // turn - into their room, with a cut where it is another room's (RS5), a view that leaves the player out and
+            // so is out of frame whatever the room's framing takes in; the dialogue's own opening is held meanwhile, so a
+            // line that comes up stays a line, and the visit stays in flight while the player is in frame.
             var coordinator = NpcRead<HouseMeetingCoordinator>("npcMeetings");
             Assert.That(coordinator, Is.Not.Null, "The house's world.");
             var walking = new HashSet<string>(StringComparer.Ordinal);

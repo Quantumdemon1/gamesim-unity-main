@@ -25,11 +25,18 @@ namespace Gamesim.House
     /// the room, and the television goes. Two chairs cloned from the table's face it side by side
     /// - the hot seats - the sofa is turned to face it with its cushions, and gets three seats, and
     /// standing marks are laid behind the hot seats for the rest of the house, with one beside the
-    /// screen for the Head of Household.</para>
+    /// screen for the Head of Household. The shipped house authors its own screen and gallery
+    /// (MOCKUP-PASS-PLAN M21): the screen is found by <see cref="LivingScreenName"/> and kept, and the
+    /// gallery's seats are anchored as they stand, so there nothing is cloned.</para>
     ///
     /// <para>Nothing here is saved: the scene is never re-saved for it, a reload dresses it again,
     /// and a house dressed differently - no table, no sofa - simply gets fewer seats, never
     /// phantom ones. Presentation only.</para>
+    ///
+    /// <para>What it builds or moves is placed on the layer of the room it stands in, in the same call
+    /// (ROOM-SCOPE-PLAN RS2a, <see cref="HouseRoomScope.PlaceDressing"/>): in a house without a screen
+    /// or gallery of its own, the living room's screen and hot seats are copies of the nomination
+    /// room's props, so a copy goes by where it stands, never by the layer it was copied with.</para>
     /// </summary>
     public static class CeremonySets
     {
@@ -46,7 +53,7 @@ namespace Gamesim.House
         /// <summary>The prototype's television, which the living room's screen replaces.</summary>
         public const string TelevisionName = "Television";
         public const string TelevisionConsoleName = "Television console";
-        /// <summary>The living room's screen: the set's screen prop, cloned, named so the episode station never mistakes it for its own.</summary>
+        /// <summary>The living room's screen: the house's own, authored under this name (HouseLivingGallery), or the set's screen prop cloned where it has none; named so the episode station never mistakes it for its own.</summary>
         public const string LivingScreenName = ScreenSurface.PropName + " (Living)";
 
         /// <summary>The least room between chairs along the ring: a chair is about 0.57 wide.</summary>
@@ -104,12 +111,20 @@ namespace Gamesim.House
             }
             var dressing = root.GetComponent<Dressing>();
             if (dressing == null) dressing = root.AddComponent<Dressing>();
+            var moved = new List<Transform>();
             if (dressing.houseguests != houseguests)
             {
-                DressTheTable(scene, root.transform, houseguests);
+                DressTheTable(scene, root.transform, houseguests, moved);
                 dressing.houseguests = houseguests;
             }
-            if (!dressing.livingDressed) dressing.livingDressed = DressTheLivingRoom(scene, root.transform);
+            if (!dressing.livingDressed) dressing.livingDressed = DressTheLivingRoom(scene, root.transform, moved);
+            // Every piece built or moved, on its room's layer as it now stands (RS2a): the copies under
+            // the root, and the scene's own props the dressing moved - the ring's chairs, the sofa and
+            // what sits on it.
+            if (moved.Count == 0) return;
+            HouseRoomScope.PlaceDressing(root.transform);
+            foreach (var piece in moved)
+                if (piece != null && !piece.IsChildOf(root.transform)) HouseRoomScope.PlaceDressing(piece);
         }
 
         /// <summary>Strikes the dressing: the clones go, the moved props stay where they are. For tests.</summary>
@@ -196,7 +211,7 @@ namespace Gamesim.House
             return new Vector3(centre.x + radius * Mathf.Cos(angle), centre.y, centre.z + radius * Mathf.Sin(angle));
         }
 
-        private static void DressTheTable(Scene scene, Transform root, int houseguests)
+        private static void DressTheTable(Scene scene, Transform root, int houseguests, List<Transform> moved)
         {
             var marker = Marker(scene, NominationRoom);
             if (marker == null) return;
@@ -222,6 +237,7 @@ namespace Gamesim.House
             for (int i = 0; i < chairs.Count; i++)
             {
                 var chair = chairs[i];
+                moved.Add(chair);
                 if (i >= wanted) { chair.gameObject.SetActive(false); continue; }
                 chair.gameObject.SetActive(true);
                 var at = RingPlace(centre, headAngle, wanted, i);
@@ -324,7 +340,7 @@ namespace Gamesim.House
 
         // ------------------------------------------------------------ the living room
 
-        private static bool DressTheLivingRoom(Scene scene, Transform root)
+        private static bool DressTheLivingRoom(Scene scene, Transform root, List<Transform> moved)
         {
             var marker = Marker(scene, LivingRoom);
             if (marker == null) return false;
@@ -345,6 +361,7 @@ namespace Gamesim.House
                 var console = all.FirstOrDefault(t => t.name == TelevisionConsoleName && bounds.Contains(new Vector3(t.position.x, bounds.center.y, t.position.z)));
                 float x = television != null ? television.position.x : console != null ? console.position.x : bounds.center.x;
                 screen = Clone(source, root, LivingScreenName);
+                moved.Add(screen);
                 // The clone carries the nomination room's idle board, which read NOMINATIONS over the
                 // living room on eviction night; here the board is dark until a card mounts. Its
                 // renderer is switched off rather than its object, because a card hides and brings
@@ -384,6 +401,7 @@ namespace Gamesim.House
                 var at = stage + outward * HotSeatDistance + aside * (slot == 0 ? -HotSeatGap * 0.5f : HotSeatGap * 0.5f);
                 chair.gameObject.SetActive(true);
                 chair.SetPositionAndRotation(at, Quaternion.Euler(0f, hotYaw, 0f));
+                moved.Add(chair);
                 var seat = HouseInteractionAnchor.Create(chair, CeremonySeating.HotSeat, LivingRoom, slot, at, hotYaw, true, Vector3.back * SeatApproach);
                 float height = Height(chair);
                 if (height > 0.3f) seat.SetSeatHeight(height * SeatShare);
@@ -410,8 +428,10 @@ namespace Gamesim.House
                         if (prop.position.y < floorY + 0.2f || Flat(prop.position, pivot) > 0.9f) continue;
                         if (prop.parent != null && prop.parent != sofa.parent) continue;
                         prop.SetPositionAndRotation(pivot + spin * (prop.position - pivot), spin * prop.rotation);
+                        moved.Add(prop);
                     }
                     sofa.rotation = spin * sofa.rotation;
+                    moved.Add(sofa);
                     Physics.SyncTransforms();
                 }
                 float sofaHeight = Height(sofa);

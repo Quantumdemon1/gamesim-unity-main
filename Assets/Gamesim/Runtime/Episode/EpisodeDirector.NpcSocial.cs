@@ -89,11 +89,14 @@ namespace Gamesim.Episode
 
         /// <summary>
         /// Whether listening in is on offer: a conversation being witnessed, its line not one left up only to be read
-        /// (A10), and listening in allowed. The Nearby card shows it whenever no panel is open, and a houseguest's ask
-        /// waits on it (EpisodeDirector.ComesToYou.cs): one expression for both.
+        /// (A10), the pair one the room scope draws (D18, RS5: witnessed through a doorway, they are out of the view,
+        /// and the line over them waits for them as well, RS4's PairDrawn), and listening in allowed. The Nearby card
+        /// shows it whenever no panel is open, and a houseguest's ask waits on it (EpisodeDirector.ComesToYou.cs): one
+        /// expression for both, so an ask never waits on an offer the view does not show.
         /// </summary>
         private bool NearbyOfferUp => !string.IsNullOrEmpty(ObservedNpcConversation)
-            && !(npcCaption != null && npcCaption.IsReleasing) && CanListenIn;
+            && !(npcCaption != null && npcCaption.IsReleasing) && !(npcCaption != null && !npcCaption.PairDrawn)
+            && CanListenIn;
         public string NpcAutonomyDiagnostic => npcWorldFailure;
         /// <summary>Read-only proof for explicit QA; never a command or UI knowledge source.</summary>
         public bool IsNpcConversationPhysicallyReady(long sequence) => npcMeetings != null
@@ -510,6 +513,9 @@ namespace Gamesim.Episode
                     // approaches stay reserved; they are not where seated faces are rendered.
                     var between = visibleMidpoint+Vector3.up*(lease.Seated ? .35f : CaptionHeadHeight-1.15f);
                     npcCaption.CaptionTime = captionTime;
+                    // Drawn only over a pair the room scope draws (RS4); the witness itself is unchanged.
+                    captionFirstId = pending.firstId; captionSecondId = pending.secondId;
+                    npcCaption.PairDrawn = IsBodyDrawn(HousemateBody(pending.firstId)) && IsBodyDrawn(HousemateBody(pending.secondId));
                     npcCaption.Show(projected.Find(pending.firstId).name, projected.Find(pending.secondId).name,
                         pending.topic, TextScale, between);
                     npcShownLease = lease;

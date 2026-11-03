@@ -49,7 +49,9 @@ namespace Gamesim.Episode
             && !challengeActive && headingToNpcId == null && !headingToStation && arrivingIn == null
             && talkSpot == null && !(activityHolds && IsPlayerHouseActivityActive) && NpcInvitation.PhaseAllows(projected.phase)
             && npcMeetings != null && npcMeetings.IsReady && !npcMeetings.HasSceneStage
-            && !npcMeetings.HasOpeningStage && !npcMeetings.HasCeremonyStage && !npcMeetings.HasCompetitionStage;
+            && !npcMeetings.HasOpeningStage && !npcMeetings.HasCeremonyStage && !npcMeetings.HasCompetitionStage
+            // The player looking away from their own room (D18, RS5): the invitation waits for the view to come back.
+            && !LookingAwayFromThePlayer;
 
         private void TickNpcInvitations()
         {
@@ -89,6 +91,8 @@ namespace Gamesim.Episode
                         if (npcInvitationBubble == null) npcInvitationBubble = gameObject.AddComponent<HouseNpcInvitationBubble>();
                         object view = npcInvitationView; long generation = npcInvitationLoad;
                         var invitation = npcInvitationNow;
+                        // Only over a speaker the room scope draws (RS4): withheld, the offer waits for them.
+                        npcInvitationBubble.SpeakerDrawn = IsBodyDrawn(HousemateBody(invitation.NpcId));
                         npcInvitationBubble.Show(projected.Find(invitation.NpcId).name, invitation.OpeningLine, TextScale, anchor,
                             () => HearNpcInvitation(view, generation, invitation),
                             () => DeferNpcInvitation(view, generation, invitation), view);

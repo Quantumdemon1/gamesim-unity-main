@@ -303,7 +303,7 @@ namespace Gamesim.Episode
                 var near = PairShot(first, second);
                 near.Distance = Mathf.Max(0.9f, wide.Distance - 0.7f);
                 near.Seconds = Mathf.Max(0.4f, seconds - 0.1f);
-                Schedule(0.05f, () => director.cameraRig.MoveTo(near));
+                Schedule(0.05f, () => Move(near));
             }
 
             /// <summary>Relief in the red chair: a look to the holder and, where the body has it, the seated fist pump.</summary>

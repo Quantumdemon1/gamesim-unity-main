@@ -66,7 +66,7 @@ namespace Gamesim.Tests.PlayMode
                 {
                     var npc = SceneComponents<HouseNpc>().FirstOrDefault(actor => actor.gameObject.activeInHierarchy);
                     if (npc == null) return false;
-                    WarpPlayer(npc.transform.position + (player.transform.position - npc.transform.position).normalized * 1.4f);
+                    WarpToTalk(npc, npc.transform.position + (player.transform.position - npc.transform.position).normalized * 1.4f);
                     return director.TryOpenNpc(npc.Id);
                 }, null),
                 ("a ceremony's strip", () =>
@@ -148,22 +148,37 @@ namespace Gamesim.Tests.PlayMode
                 .Where(rect => rect.name == HouseNpc.PlateName).ToList();
             Assert.That(plates, Is.Not.Empty, "The houseguests wear their plates.");
             yield return null;
-            foreach (var plate in plates)
-                Assert.That(plate.localScale.x, Is.EqualTo(0.0055f * 1.4f).Within(1e-6f), "Every plate grows with the text: " + HierarchyPath(plate));
+            // Free play is the room view (RS5): whoever stands outside the player's room and its doorway band is
+            // hidden, and a hidden body's plate is down and unsized until the body is drawn again (RS4). Every drawn
+            // plate grows on the frame; the hidden ones as the whole house draws them, in the very call - the hold
+            // kept to the end, so the standard size reaches every plate too.
+            bool Hidden(RectTransform plate) { var npc = plate.GetComponentInParent<HouseNpc>(true); return npc != null && npc.BodyHidden; }
+            foreach (var plate in plates.Where(plate => !Hidden(plate)))
+                Assert.That(plate.localScale.x, Is.EqualTo(0.0055f * 1.4f).Within(1e-6f), "Every drawn plate grows with the text: " + HierarchyPath(plate));
+            var whole = new object();
+            director.HoldWholeHouse(whole);
+            try
+            {
+                Assert.That(plates.Where(Hidden).Select(plate => HierarchyPath(plate)), Is.Empty, "The whole house held hides nobody.");
+                foreach (var plate in plates)
+                    Assert.That(plate.localScale.x, Is.EqualTo(0.0055f * 1.4f).Within(1e-6f),
+                        "Every plate grows with the text, a hidden one in the call that draws it again: " + HierarchyPath(plate));
 
-            // The witnessed conversation's line, clamped at the larger size until now.
-            var caption = SceneComponents<HouseConversationCaption>().Single();
-            caption.Show("Maya Hassan", "Riley Johnson", "strategy", director.TextScale);
-            yield return null;
-            var line = caption.GetComponentsInChildren<TMP_Text>(true).First(label => label.text == caption.CurrentText);
-            Assert.That(line.fontSize, Is.EqualTo(Mathf.RoundToInt(19 * 1.4f)), "The witnessed line at the largest size.");
-            caption.Hide();
+                // The witnessed conversation's line, clamped at the larger size until now.
+                var caption = SceneComponents<HouseConversationCaption>().Single();
+                caption.Show("Maya Hassan", "Riley Johnson", "strategy", director.TextScale);
+                yield return null;
+                var line = caption.GetComponentsInChildren<TMP_Text>(true).First(label => label.text == caption.CurrentText);
+                Assert.That(line.fontSize, Is.EqualTo(Mathf.RoundToInt(19 * 1.4f)), "The witnessed line at the largest size.");
+                caption.Hide();
 
-            director.SetTextSize(TextSize.Standard);
-            yield return null; yield return null;
-            Assert.That(HouseNpc.NameScale, Is.EqualTo(1f));
-            foreach (var plate in plates.Where(plate => plate != null))
-                Assert.That(plate.localScale.x, Is.EqualTo(0.0055f).Within(1e-6f), "and back with the standard size.");
+                director.SetTextSize(TextSize.Standard);
+                yield return null; yield return null;
+                Assert.That(HouseNpc.NameScale, Is.EqualTo(1f));
+                foreach (var plate in plates.Where(plate => plate != null))
+                    Assert.That(plate.localScale.x, Is.EqualTo(0.0055f).Within(1e-6f), "and back with the standard size.");
+            }
+            finally { director.Release(whole); }
         }
 
         /// <summary>

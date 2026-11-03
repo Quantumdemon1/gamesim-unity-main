@@ -135,6 +135,10 @@ namespace Gamesim.Tests.PlayMode
             var before = director.Snapshot;
             ButtonWithCaption("Practice this competition").onClick.Invoke();
             yield return null; yield return null;
+            // The attempt's shot names the yard (RS6a, D7): with nothing held it is the view, the yard alone once
+            // its move from the briefing has landed (asserted after the sign, below).
+            Assert.That(cameraRig.ReducedMotion, Is.False, "The fixture's rig is not under reduced motion, so the attempt takes its shot.");
+            Assert.That(director.IsFramingCompetition, Is.True, "The attempt's shot holds the camera.");
 
             var sign = SceneComponents<TextMeshPro>()
                 .SingleOrDefault(text => text.name == EpisodeDirector.CompetitionSignName && text.gameObject.activeInHierarchy);
@@ -199,6 +203,10 @@ namespace Gamesim.Tests.PlayMode
                 "The sign's lowest line stands no more than " + EpisodeDirector.CompetitionSignOverWall + " m over the "
                 + EpisodeDirector.CompetitionBackdropHeight + " m wall: its foot at " + foot.ToString("0.00") + ", the cap at " + cap.ToString("0.00") + ".");
 
+            // Landed, the yard alone (RS6a, D7): on its way the move drew the briefing's whole house.
+            yield return ScopeWaitUntilLanded();
+            Rs6aAssertTheCompetitionDrawsTheYard("the practice", everyone: false);
+
             if (Application.isBatchMode)
             {
                 // The game's screen stands over the yard while the house walks to its stations; the
@@ -206,7 +214,7 @@ namespace Gamesim.Tests.PlayMode
                 var game = SceneComponents<CompetitionGameScreen>().SingleOrDefault();
                 var surface = game != null ? game.GetComponent<Canvas>() : null;
                 if (surface != null) surface.enabled = false;
-                yield return CaptureSet("competition-yard-sign", sign.transform.position + Vector3.down * 1.4f, 10f, 6f, 0f);
+                yield return CaptureSet("competition-yard-sign", sign.transform.position + Vector3.down * 1.4f, 10f, 6f, 0f, EpisodeDirector.CompetitionRooms);
                 if (surface != null) surface.enabled = true;
             }
             Assert.That(director.Snapshot.revision, Is.EqualTo(before.revision), "A practice commits nothing.");

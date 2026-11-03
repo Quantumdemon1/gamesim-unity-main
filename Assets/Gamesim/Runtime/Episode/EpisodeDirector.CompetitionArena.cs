@@ -284,6 +284,9 @@ namespace Gamesim.Episode
                 bounds.max.y+CompetitionBackdropHeight+CompetitionSignOverWall);
             sign.transform.position=new Vector3(bounds.center.x,lowest+foot,signZ);
             competitionSign=label; competitionOverlaysShown=true;
+            // The stage on the yard's layer as it is built (ROOM-SCOPE-PLAN RS2a): the sign now, each
+            // instrument the frame it is first drawn - they wait inactive until their station is taken.
+            HouseRoomScope.PlaceDressing(competitionArenaRoot.transform);
             TickCompetitionArena(); return competitionArenaStaging;
         }
 
@@ -652,11 +655,14 @@ namespace Gamesim.Episode
                     && playerInstrument.Instrument==CompetitionApparatus.Family.GripRig && cameraRig!=null && !cameraRig.ReducedMotion)
                 {
                     competitionEffortFramed=true;
+                    // The yard, as every competition shot names it (D7), drawn on its way with what the view drew (RS6a).
                     cameraRig.MoveTo(new HouseCameraRig.Shot
                     {
                         Focus=competitionPlayerStationPosition+Vector3.up*1.05f+competitionPlayerStation.transform.forward*.20f,
                         Distance=6.6f,Pitch=19f,Yaw=competitionPlayerStationFacing+35f,FieldOfView=40f,Seconds=CompetitionShotSeconds,
+                        Rooms=CompetitionRooms,TravelFromRooms=ViewedRooms,
                     });
+                    competitionFramed=true;
                 }
             }
             foreach(var pair in competitionArenaActors)

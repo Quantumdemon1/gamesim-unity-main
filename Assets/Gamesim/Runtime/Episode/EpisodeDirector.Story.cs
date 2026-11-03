@@ -83,14 +83,35 @@ namespace Gamesim.Episode
             return "Week " + record.Week + ": " + holder + " used the veto to save " + saved + "; " + replacement + " went on the block.";
         }
 
+        /// <summary>
+        /// What a voter told the player this week about their vote, in words: the claim a rules-2 conversation copied.
+        /// Null rather than a throw if a name ever stops resolving; the conversation still draws, without the line.
+        /// </summary>
+        private static string StatementLine(EpisodeState state, DialogueRules.StatementView word)
+        {
+            string speaker = state.Find(word.SpeakerId)?.name, target = state.Find(word.TargetId)?.name;
+            if (speaker == null || target == null) return null;
+            return word.TargetId == state.playerId
+                ? speaker + " told you this week they are voting you out."
+                : speaker + " told you this week they are voting out " + target + ".";
+        }
+
         private void RenderStoryBeat(EpisodeState state, HouseEventState item)
         {
             hud.StoryBeatHeader(StoryText.Eyebrow(item), StoryText.Title(item), StoryText.Narrative(state, item));
-            if (item.contentId?.StartsWith(DialogueCampaignV2.TemplateId + ":", StringComparison.Ordinal) == true
+            if ((item.contentId?.StartsWith(DialogueCampaignV2.TemplateId + ":", StringComparison.Ordinal) == true
+                    || item.contentId?.StartsWith(DialogueCampaignWord.TemplateId + ":", StringComparison.Ordinal) == true)
                 && DialogueRules.TryReadPublicRescue(state, item.id, out var record))
             {
                 // Only this detached public projection reaches the HUD; never the cloned private proof.
                 string line = PublicRescueLine(state, record);
+                if (line != null) hud.Paragraph(line);
+            }
+            // Dialogue rules 2: the word the voter gave the player, as they gave it. What they said, never their ballot.
+            if (item.contentId?.StartsWith(DialogueCampaignWord.TemplateId + ":", StringComparison.Ordinal) == true
+                && DialogueRules.TryReadStatement(state, item.id, out var word))
+            {
+                string line = StatementLine(state, word);
                 if (line != null) hud.Paragraph(line);
             }
             if (storyStepEvent == item.id)

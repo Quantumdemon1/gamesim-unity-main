@@ -523,7 +523,8 @@ namespace Gamesim.Tests.EditMode
             switch (corruption)
             {
                 case "off": s.dialogueRulesVersion = 0; break;
-                case "unknown": s.dialogueRulesVersion = 2; break;
+                // Unknown means past the bound: 2 is defined since dialogue D2, and refused at schema 29 for its schema (DialogueRules2LadderTests).
+                case "unknown": s.dialogueRulesVersion = DialogueRules.Version + 1; break;
                 case "duplicate": s.dialogue.episodes.Add(s.dialogue.episodes[0].Clone()); break;
                 case "orphan": s.dialogue.episodes.Clear(); break;
                 case "future-family": s.unifiedCommitments.Add(new UnifiedCommitmentState { conditionalVeto = new ConditionalVetoTermsState() }); break;

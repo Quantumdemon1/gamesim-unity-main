@@ -27,6 +27,7 @@ namespace Gamesim.Tests.EditMode
     public sealed class FrozenEpisodeV29IntegrationTests
     {
         private const string EdgeReason = "The all-week rules' records are only ever between two houseguests.";
+        private const string RulesTwoAt29 = "Dialogue rules are not enabled in this build.";
         private static readonly string[] Current29 =
         {
             "s29-default-w2-social", "s29-mode1-allweek-w3-veto-meeting", "s29-mode2-allweek-w3-campaign",
@@ -88,6 +89,7 @@ namespace Gamesim.Tests.EditMode
                 Assert.That(migrated, Is.False);
                 Assert.That(dispatch.Message, Is.EqualTo(frozen.Message));
                 if (defect == "player-edge") Assert.That(dispatch.Message, Is.EqualTo(EdgeReason));
+                if (defect == "dialogue-rules-2") Assert.That(dispatch.Message, Is.EqualTo(RulesTwoAt29));
                 before.AssertUnchanged(bad);
             }
         }
@@ -242,7 +244,7 @@ namespace Gamesim.Tests.EditMode
             {
                 yield return new TestCaseData(season, "alumni-history-npc", true);
                 yield return new TestCaseData(season, "alumni-history-player", true);
-                yield return new TestCaseData(season, "dialogue-rules-2", false);
+                // Rules 2 at 29 is not a parity row: RulesTwoAtTwentyNineIsRefusedInTheFrozenReadersWordsBeforeAnyLift holds it.
                 yield return new TestCaseData(season, "dialogue-rules-3", false);
                 yield return new TestCaseData(season, "dialogue-rules-minus-1", false);
                 yield return new TestCaseData(season, "story-rules-10", false);
@@ -278,6 +280,33 @@ namespace Gamesim.Tests.EditMode
             }
             yield return new TestCaseData("roles-pitch-board", "pitch-impact", false);
             yield return new TestCaseData("roles-pitch-board", "fourth-pitcher", false);
+        }
+
+        /// <summary>
+        /// Dialogue rules 2 is defined from schema 30 (decision 7, DIALOGUE-PLAN §6 items 4, 5 and 7): the frozen schema-29
+        /// reader refuses a schema-29 season on rules 2 in its own words, and a real load stops there, before any lift. Lifted
+        /// by hand to 30 it would be a rules-2 season the live validator judges on rules 2's terms, so the two readers are not
+        /// compared on it; rules 3 and -1 stay parity rows. This holds the whole-state wording pin DialogueRules2LadderTests
+        /// held while new seasons were written at 29 (ALL-STAR-HISTORIES-PLAN 8.5, the merge with claude/dialogue-v2), on the
+        /// four seasons the parity rows mutate.
+        /// </summary>
+        [TestCase("s29-default-w2-social")]
+        [TestCase("s29-mode2-allweek-w3-campaign")]
+        [TestCase("dialogue-finish-personal")]
+        [TestCase("roles-keep-the-block-kept")]
+        public void RulesTwoAtTwentyNineIsRefusedInTheFrozenReadersWordsBeforeAnyLift(string season)
+        {
+            var payload = season.StartsWith("s29-", StringComparison.Ordinal) ? Fixture(season) : Retained29(Built(season));
+            Assert.That(Agree(payload, season), Is.Null, "The control is lawful.");
+            var mutated = (JObject)payload.DeepClone();
+            Mutate(mutated, "dialogue-rules-2");
+            var held = new TokenImage(mutated);
+            Assert.That(FrozenVerdict((JObject)mutated.DeepClone()), Is.EqualTo(RulesTwoAt29), season + " on rules 2 is not a lawful schema-29 season.");
+            bool migrated = true;
+            var load = Assert.Throws<InvalidDataException>(() => EpisodeSaveMigrations.PrepareCurrentPayload(mutated, out migrated));
+            Assert.That(migrated, Is.False);
+            Assert.That(load.Message, Is.EqualTo(RulesTwoAt29), "A real load stops at the frozen reader, in its words.");
+            held.AssertUnchanged(mutated);
         }
 
         [TestCaseSource(nameof(Mutations))]

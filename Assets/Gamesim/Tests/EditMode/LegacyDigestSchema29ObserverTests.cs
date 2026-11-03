@@ -296,7 +296,8 @@ namespace Gamesim.Tests.EditMode
             {
                 case "schema": state.schemaVersion = 28; break;
                 case "duplicate-cast": state.contestants[1].id = state.contestants[0].id; break;
-                case "unknown-version": state.dialogueRulesVersion = 2; break;
+                // Unknown means past the bound: 2 is defined since dialogue D2 and, at the live schema 30, a lawful rules-2 season.
+                case "unknown-version": state.dialogueRulesVersion = DialogueRules.Version + 1; break;
                 case "conditional-term": state.unifiedCommitments.Last().conditionalVeto = new ConditionalVetoTermsState(); break;
                 case "archive": state.unifiedVoteReveals[0].ballots[0].targetId = "not-a-cast-id"; break;
                 default:
@@ -433,7 +434,8 @@ namespace Gamesim.Tests.EditMode
             switch (defect)
             {
                 case "rules-0": source = Fresh(2); break;
-                case "unknown-version": source.dialogueRulesVersion = 2; break;
+                // Past the bound, as above: rules 2 is a defined version at 30, never an unknown one.
+                case "unknown-version": source.dialogueRulesVersion = DialogueRules.Version + 1; break;
                 case "conditional-term":
                     // A conditional term needs a canonical row to sit on: the played season's, on rules 1.
                     source = PlayedDecisionWitness();

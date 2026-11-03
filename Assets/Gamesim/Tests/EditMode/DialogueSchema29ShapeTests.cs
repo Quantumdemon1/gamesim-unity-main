@@ -177,7 +177,9 @@ namespace Gamesim.Tests.EditMode
                 Assert.That(fields[name], Is.EqualTo(1), "The reviewed fresh prerequisite is present: " + name);
         }
 
-        [TestCase(-1)] [TestCase(2)] [TestCase(int.MaxValue)]
+        // Unknown means past the bound (DialogueRules.Version, 2 since dialogue D2): at the live schema 30 rules 2 is a defined
+        // version, which rules 2's own validator judges, so 2 would no longer test an unknown rule.
+        [TestCase(-1)] [TestCase(DialogueRules.Version + 1)] [TestCase(int.MaxValue)]
         public void UnknownDialogueRuleRefusesEvenWithEmptyStorageWithoutRepair(int version)
         {
             var state = ContentCatalog.Create(2903); Accepted29(state);

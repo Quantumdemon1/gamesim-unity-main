@@ -101,7 +101,7 @@ namespace Gamesim.Editor
             {
                 // A copy already moved: verify it and change nothing.
                 report.alreadyApplied = true;
-                Verify(report, floor.max.y, approaches);
+                Verify(report, surface, floor.max.y, approaches);
                 Write(project, report);
                 Debug.Log("[Gamesim] Kitchen doorway already open: " + Describe(report));
                 return;
@@ -147,7 +147,7 @@ namespace Gamesim.Editor
             surface.BuildNavMesh();
             var candidate = surface.navMeshData;
             if (candidate == null) throw new InvalidOperationException("The kitchen doorway's navigation bake produced no data.");
-            Verify(report, floor.max.y, approaches);
+            Verify(report, surface, floor.max.y, approaches);
             EditorUtility.CopySerialized(candidate, original);
             surface.navMeshData = original;
             EditorUtility.SetDirty(original);
@@ -175,16 +175,15 @@ namespace Gamesim.Editor
             if (AssetDatabase.AssetPathToGUID(AssetDatabase.GetAssetPath(surface.navMeshData)) != report.navigationGuid
                 || Mathf.Abs(Bounds(run).min.x - RunLeft) > .005f || Mathf.Abs(run.localScale.x - Stretch) > .0005f)
                 throw new InvalidOperationException("The saved house lost the run's place or its navigation asset's identity.");
-            Verify(report, floor.max.y, approaches);
+            Verify(report, surface, floor.max.y, approaches);
             report.reopenedAndVerified = true;
             Write(project, report);
             Debug.Log("[Gamesim] Kitchen doorway opened: " + Describe(report));
         }
 
         /// <summary>The bake as it stands, against the house before: no room pair or approach lost, the doorway a metre wide and walked through.</summary>
-        private static void Verify(Report report, float floorY, HashSet<string> approachesBefore)
+        private static void Verify(Report report, NavMeshSurface surface, float floorY, HashSet<string> approachesBefore)
         {
-            var surface = UnityEngine.Object.FindObjectsByType<NavMeshSurface>(FindObjectsInactive.Include, FindObjectsSortMode.None).Single();
             report.roomPairsAfter = HouseNavigationAudit.ReachablePairs(surface, surface.navMeshData);
             var approaches = ReachableApproaches(surface.gameObject.scene);
             report.approachesAfter = approaches.Count;

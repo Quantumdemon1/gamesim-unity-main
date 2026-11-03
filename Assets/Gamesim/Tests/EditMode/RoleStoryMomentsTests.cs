@@ -247,6 +247,75 @@ namespace Gamesim.Tests.EditMode
         }
 
         /// <summary>
+        /// The storyline list is no tell (§3.4's "still a tell"; the owner's quick fixes, 2026-11-03, "the backdoor leak"). In a
+        /// backdoor week where the coin says no the backdoor runs and no card reaches the player, so the free-time panel and the
+        /// Storylines tab, which both list <see cref="StorylinesShown.Running"/>, do not name it. On a yes its card reaches the
+        /// player and it is listed, as the pawn conversation is in a week without a backdoor: the same list either way.
+        /// </summary>
+        [Test]
+        public void TheStorylineListNamesABackdoorOnlyOnceItReachesThePlayer()
+        {
+            var no = PawnWeek(backdoor: true, coin: false, drawn: false);
+            var quiet = no.after.storylines.Single(x => x.templateId == Backdoor && x.week == no.after.week);
+            Assert.That(StorylineStatus.Running(quiet.status) && quiet.beatId != null, Is.True, "The plan runs.");
+            Assert.That(no.after.houseEvents.Where(e => e.cycleId == quiet.id), Is.Empty, "No card was drawn for it,");
+            Assert.That(StorylinesShown.Shown(no.after, quiet), Is.False, "and no line of it reached the player,");
+            Assert.That(StorylinesShown.Running(no.after).Select(x => x.id), Has.None.EqualTo(quiet.id), "so the list does not name it.");
+
+            var yes = PawnWeek(backdoor: true, coin: true);
+            var plan = yes.after.storylines.Single(x => x.templateId == Backdoor && x.week == yes.after.week);
+            Assert.That(StorylinesShown.Shown(yes.after, plan), Is.True, "Its card is the player's.");
+            Assert.That(StorylinesShown.Running(yes.after).Select(x => x.id), Has.Some.EqualTo(plan.id), "Listed once it reaches them.");
+
+            var talk = PawnWeek(backdoor: false, coin: true);
+            var pawn = talk.after.storylines.Single(x => x.templateId == PawnTalk && x.week == talk.after.week);
+            Assert.That(StorylinesShown.Running(talk.after).Select(x => x.id), Has.Some.EqualTo(pawn.id), "The pawn conversation alike.");
+            Assert.That(StoryCatalog.Find(pawn.templateId).title, Is.EqualTo(StoryCatalog.Find(plan.templateId).title), "under the same title.");
+        }
+
+        /// <summary>
+        /// What reaches the player (<see cref="StorylinesShown.Shown"/>): a card or a scene of the storyline's own, or a step's line
+        /// whose audience is everybody or names them. An NPC's line, said to the houseguests in it, reaches nobody else.
+        /// </summary>
+        [Test]
+        public void AStorylineReachesThePlayerByItsCardOrALineTheyCanRead()
+        {
+            var s = SeasonBuilder.Create(new SeasonBuilder.Choice { HouseSize = 8 }, 4411u);
+            var npcs = s.contestants.Where(c => !c.isPlayer).Select(c => c.id).Take(2).ToList();
+            StorylineState Cycle(string id, int week)
+            {
+                var made = new StorylineState { id = id, templateId = Backdoor, category = "The Backdoor", title = "The Backdoor", beatId = "plan",
+                    status = StorylineStatus.Active, week = week, lane = StoryLanes.Game };
+                s.storylines.Add(made);
+                return made;
+            }
+            var line = Cycle("story-shown-line", 1);
+            s.events.Add(new EpisodeEvent { sequence = 900, week = 1, kind = StoryLog.Outcome, text = "Theirs.", audienceIds = new List<string>(npcs) });
+            line.path.Add(new StoryStepState { beatId = "plan", optionId = "quiet", result = StoryResults.Npc, week = 1, logSequence = 900 });
+            Assert.That(StorylinesShown.Shown(s, line), Is.False, "An NPC's line reaches only the houseguests in it.");
+            Assert.That(StorylinesShown.Running(s), Is.Empty);
+            s.events.Add(new EpisodeEvent { sequence = 901, week = 1, kind = StoryLog.Outcome, text = "Yours.", audienceIds = new List<string> { s.playerId, npcs[0] } });
+            line.path.Add(new StoryStepState { beatId = "plan", optionId = "pawn", result = StoryResults.Plain, week = 1, logSequence = 901 });
+            Assert.That(StorylinesShown.Shown(s, line), Is.True, "A line that names the player reaches them.");
+
+            var everybody = Cycle("story-shown-everybody", 1);
+            s.events.Add(new EpisodeEvent { sequence = 902, week = 1, kind = StoryLog.Outcome, text = "Everybody's.", audienceIds = new List<string>() });
+            everybody.path.Add(new StoryStepState { beatId = "plan", optionId = "pawn", result = StoryResults.Plain, week = 1, logSequence = 902 });
+            Assert.That(StorylinesShown.Shown(s, everybody), Is.True, "A line with no audience is everybody's.");
+
+            var card = Cycle("story-shown-card", 0);
+            Assert.That(StorylinesShown.Shown(s, card), Is.False, "Nothing of it yet.");
+            s.houseEvents.Add(new HouseEventState { id = "house-event-shown", kind = HouseEventKind.Story, cycleId = card.id, week = 1, resolved = true });
+            Assert.That(StorylinesShown.Shown(s, card), Is.True, "Its card, even answered.");
+
+            var ended = Cycle("story-shown-ended", 0);
+            s.houseEvents.Add(new HouseEventState { id = "house-event-ended", kind = HouseEventKind.Story, cycleId = ended.id, week = 1 });
+            ended.status = StorylineStatus.Completed;
+            Assert.That(StorylinesShown.Running(s).Select(x => x.id), Is.EqualTo(new[] { "story-shown-card", "story-shown-everybody", "story-shown-line" }),
+                "The running ones that reached the player, by week and then id.");
+        }
+
+        /// <summary>
         /// The pawn conversation looks the same with and without a backdoor behind it (§5.3): the same Head of Household naming the
         /// same player in the same week, once with a plan and once without, draws the same card - eyebrow, arc and beat title,
         /// narrative, venue, surface, closing anchor, who it names and stages, and every answer's caption, words, risk, approach,

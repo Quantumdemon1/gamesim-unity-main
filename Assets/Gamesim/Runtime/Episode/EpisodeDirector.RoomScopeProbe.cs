@@ -15,6 +15,9 @@ namespace Gamesim.Episode
         internal void HoldHouseForViewsProbe(PortVerification probe)
         {
             if (probe == null || !probe.IsViewsProbe) throw new InvalidOperationException("Only the views probe holds the house still.");
+            // As the editor's hold does (LIVE-SAVE-PLAN): what the house has installed reaches disk first, so a held
+            // house's disk is its memory and no write of owed seconds lands inside the measured views.
+            FlushUnsavedNpcTime("hold");
             npcDiagnosticsSuspended = true;
             DisposeNpcSocialWorld();
         }

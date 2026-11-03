@@ -682,7 +682,7 @@ Re-run RS0's measurement at the same views, the whole-house view through the set
 | V8 | The diary interview |
 | V9 | The W3 full-field capture's eye, re-derived from the props branch's `FullFieldView` once that lands |
 
-**Bodies.** The cast stands at fixed marks, held for the probe, so before and after see the same placement: at 16, two per room; at 12, two in each north-block room, the Yard and Nomination, with HoH and Games empty. A second pass at 16 with the NPC world running reports the live spread. The sizes come from `--gamesim-house-size` and `--gamesim-stress-roster` where a roster seats fewer.
+**Bodies.** The cast stands at fixed marks, held for the probe, so before and after see the same placement: at 16, two per room; at 12, two in each north-block room, the Yard and Nomination, with HoH and Games empty. A second pass at 16 with the NPC world running reports the live spread. The sizes come from `--gamesim-house-size` and `--gamesim-stress-roster` where a roster seats fewer. Since the live-save batching (main `2b9ec559`, merged at `75a76461`), the probe's hold writes the house's owed seconds before it stands the world down, as the editor's hold does, so no write of owed seconds lands inside the measured views.
 
 **Two builds, four passes.**
 - **Release build, graphical** (profile-candidate's rules): frame time (median, p95, p99), CPU main and render thread, at 12 and 16 on fixed marks and at 16 on the live world; the 300 s profile at 16 on today's default.

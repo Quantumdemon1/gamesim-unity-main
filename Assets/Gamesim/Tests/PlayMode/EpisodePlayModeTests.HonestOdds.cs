@@ -346,8 +346,7 @@ namespace Gamesim.Tests.PlayMode
                     hud.Tag(deal, word + " · " + EpisodeDirector.DealTag);
                     PleaTagFits(deal, scale, "the deal row with '" + word + "'" + at, failures);
                 }
-                Assert.That(failures, Is.Empty, string.Join("
-", failures));
+                Assert.That(failures, Is.Empty, string.Join("\n", failures));
                 director.ClosePanels();
                 yield return null;
             }

@@ -141,19 +141,26 @@ namespace Gamesim.Tests.PlayMode
 
                 // A still pointer over a moving camera: the pool slides out from under it, and the
                 // words go with it. The free move to the pool is a watching view of the yard (RS5), so the
-                // camera goes to another room's: the private room's, a cut away from the pool.
+                // camera goes to another room's: the private room's, a cut away from the pool, onto bare floor.
                 Assert.That(cameraRig.ViewRoom, Is.EqualTo(RoomLayers.IndexOf("Yard")), "The free move to the pool watches the yard.");
                 var scope = ScopeOf(director);
-                var privateBox = scope.Box(RoomLayers.IndexOf("Private"));
-                cameraRig.MoveTo(new Vector3(privateBox.center.x, pool.Position.y, privateBox.center.y), 10f);
+                int privateRoom = RoomLayers.IndexOf("Private");
+                var privateBox = scope.Box(privateRoom);
+                // Not the private room's middle (rs7v): the diary chair stands a metre from it (bb_set_diarychair at (7, 0, 4)),
+                // and the cut there at 10 m put the chair under the still pointer, the pool's mid-frame point, where the hover
+                // rightly says "Go to the diary room". The room's north end at the pool's own 6 m instead: there the room clamp
+                // (HouseRoomView.Clamp) reaches 3.6 m from the middle, and the same framing stands over bare floor.
+                cameraRig.MoveTo(new Vector3(privateBox.center.x, pool.Position.y, privateBox.yMax - 1.5f), poolView);
+                var tipText = tip.GetComponentInChildren<TMPro.TMP_Text>();
                 float moving = Time.realtimeSinceStartup + 4f;
                 while (Time.realtimeSinceStartup < moving && tip.gameObject.activeInHierarchy) yield return null;
-                Assert.That(tip.gameObject.activeInHierarchy, Is.False, "The camera moved the pool away from a still pointer.");
+                Assert.That(cameraRig.ViewRoom, Is.EqualTo(privateRoom), "The move cut to the private room's view.");
+                Assert.That(tip.gameObject.activeInHierarchy ? tipText.text : null, Is.Null, "The camera moved the pool away from a still pointer.");
                 // Back to the same framing (the yard's heading, the pool its focus), under the still pointer.
                 cameraRig.MoveTo(pool.Position, poolView);
                 moving = Time.realtimeSinceStartup + 4f;
                 while (Time.realtimeSinceStartup < moving && !tip.gameObject.activeInHierarchy) yield return null;
-                Assert.That(tip.gameObject.activeInHierarchy, Is.True, "And brought it back.");
+                Assert.That(tip.gameObject.activeInHierarchy ? tipText.text : null, Is.EqualTo(HouseFurniture.SwimCaption), "And brought it back.");
 
                 var away = new Vector2(camera.pixelRect.xMin + 6f, camera.pixelRect.center.y);
                 InputSystem.QueueStateEvent(mouse, new MouseState { position = away });

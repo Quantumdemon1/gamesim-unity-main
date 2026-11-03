@@ -297,6 +297,82 @@ namespace Gamesim.Tests.PlayMode
             }
         }
 
+        /// <summary>
+        /// Every plea tag sits whole in its chip at every text size (the owner's quick fixes, 2026-11-03, "the plea tag"). The
+        /// deal plea's " · binds you next week" measured 191 ("about even") and 188 ("favourable") in Inter at twelve against
+        /// the chip's 184 inside at text size 1.0, so its last word wrapped onto a second line the 22-high chip cut off, while
+        /// the label's text still read whole. Its words are now <see cref="EpisodeDirector.DealTag"/>. Measured here, at 1.0,
+        /// 1.2 and 1.4: every approach's own tag, and the deal row's tag with each of the five odds words it can carry, drawn
+        /// by the HUD's own Tag in the row's place - one line, at its full size (never shrunk), not truncated, every glyph
+        /// drawn, inside its chip. The captions are found by their words, unchanged.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator HonestOdds_EveryPleaTagFitsItsChipAtEveryTextSize()
+        {
+            Assert.That(EpisodeDirector.DealTag, Is.EqualTo("binds next week"));
+            var hud = director.GetComponent<EpisodeHud>();
+            foreach (var textSize in TextSizes.All)
+            {
+                string hoh = null;
+                yield return InstallStrategySeason(41, state =>
+                {
+                    state.phase = EpisodePhase.Nomination;
+                    hoh = state.hohId = state.Active.First(actor => !actor.isPlayer).id;
+                });
+                yield return ApplyTextSize(textSize);
+                yield return TalkTo(hoh);
+                yield return EnterConversationCategory(EpisodeDirector.GameCategoryCaption);
+                var state = director.Snapshot;
+                ButtonWithCaption(EpisodeHud.LobbyAskCaption(state, state.Find(hoh).name, LobbyAsk.Spare, state.playerId)).onClick.Invoke();
+                yield return null;
+                state = director.Snapshot;
+                float scale = TextSizes.Scale(textSize);
+                string at = " at the " + TextSizes.Name(textSize) + " text";
+                var failures = new List<string>();
+                foreach (string approach in LobbyApproach.All)
+                {
+                    var row = ButtonWithCaption(EpisodeHud.LobbyApproachCaption(approach, true));
+                    string word = KnownOdds.Plea(state, hoh, LobbyAsk.Spare, state.playerId, approach).word;
+                    if (approach == LobbyApproach.Deal)
+                        Assert.That(TagWords(row), Is.EqualTo(word + " · " + EpisodeDirector.DealTag), "The deal row's tag" + at + ".");
+                    PleaTagFits(row, scale, approach + at, failures);
+                }
+                // The deal row's tag with every odds word it can carry, the HUD's own Tag drawing each in the row's place.
+                var deal = ButtonWithCaption(EpisodeHud.LobbyApproachCaption(LobbyApproach.Deal, true));
+                foreach (string word in new[] { KnownOdds.Likely, KnownOdds.Favourable, KnownOdds.AboutEven, KnownOdds.AStretch, KnownOdds.Unlikely })
+                {
+                    var old = deal.transform.Find("Tag");
+                    if (old != null) Object.DestroyImmediate(old.gameObject);
+                    hud.Tag(deal, word + " · " + EpisodeDirector.DealTag);
+                    PleaTagFits(deal, scale, "the deal row with '" + word + "'" + at, failures);
+                }
+                Assert.That(failures, Is.Empty, string.Join("
+", failures));
+                director.ClosePanels();
+                yield return null;
+            }
+        }
+
+        /// <summary>A row's tag on one line of its chip at its full size, untruncated, every glyph drawn, inside the chip; logged.</summary>
+        private static void PleaTagFits(Button row, float scale, string where, List<string> failures)
+        {
+            var tag = row.transform.Find("Tag") as RectTransform;
+            var label = tag != null ? tag.GetComponentInChildren<TMP_Text>(true) : null;
+            if (label == null) { failures.Add(where + ": no tag"); return; }
+            Canvas.ForceUpdateCanvases();
+            label.ForceMeshUpdate(true);
+            int glyphs = label.text.Count(c => !char.IsWhiteSpace(c));
+            int drawn = Enumerable.Range(0, label.textInfo.characterCount).Count(i => label.textInfo.characterInfo[i].isVisible);
+            int full = Mathf.RoundToInt(12f * scale);
+            float width = label.textBounds.size.x, room = label.rectTransform.rect.width;
+            string fit = where + ": '" + label.text + "' " + width.ToString("0.0") + " in " + room.ToString("0.0") + " (chip "
+                + tag.rect.width.ToString("0.0") + "), font " + label.fontSize.ToString("0.#") + " of " + full + ", lines "
+                + label.textInfo.lineCount + ", truncated " + label.isTextTruncated + ", drawn " + drawn + " of " + glyphs;
+            TestContext.Out.WriteLine(fit);
+            if (label.textInfo.lineCount != 1 || label.isTextTruncated || drawn != glyphs || Mathf.RoundToInt(label.fontSize) != full || width > room + .5f)
+                failures.Add(fit);
+        }
+
         [UnityTest]
         public IEnumerator HonestOdds_PastTheDealCeilingTheTableSaysWhyItIsEmpty()
         {

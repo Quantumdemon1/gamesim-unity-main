@@ -48,8 +48,8 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(crossings.Count, Is.GreaterThanOrEqualTo(12), "The house's ten doorways, the corner ones by their halves and their middles.");
             ScopeParkHouseguests(scope);
             var guest = SceneComponents<HouseNpc>().First(npc => npc.isActiveAndEnabled);
-            // Both carried by their transforms, as RS1's walk does: the bake closes the kitchen's door to
-            // the private room, and the narrow doorways' middles are off the mesh.
+            // Both carried by their transforms, as RS1's walk does: the narrow doorways' middles are off
+            // the mesh (and the bake closed the kitchen's door to the private room until the quick fixes).
             var agent = player.Agent;
             bool agentPlaces = agent.updatePosition;
             agent.ResetPath();

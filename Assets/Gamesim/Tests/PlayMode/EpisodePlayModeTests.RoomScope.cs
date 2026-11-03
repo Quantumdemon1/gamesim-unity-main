@@ -119,9 +119,10 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(director.ViewedRooms.IsWholeHouse, Is.False, "Free play is live from RS5: the scope draws the player's room, not the whole house.");
             Assert.That(director.ViewedRooms, Is.EqualTo(cameraRig.Rooms), "the rig's.");
             // The walker rule reads only the feet, so the player is carried through each doorway by
-            // its transform rather than warped along the NavMesh: the bake closes the kitchen's door
-            // to the private room behind the kitchen run, and its half-metre erosion keeps the
-            // narrow doorways' middles off the mesh. The agent takes the player back at the end.
+            // its transform rather than warped along the NavMesh: its half-metre erosion keeps the
+            // narrow doorways' middles off the mesh (and until the quick fixes, 2026-11-03, the bake
+            // closed the kitchen's door to the private room behind the kitchen run). The agent takes
+            // the player back at the end.
             var agent = player.Agent;
             bool agentPlaces = agent.updatePosition;
             agent.ResetPath();
@@ -164,7 +165,8 @@ namespace Gamesim.Tests.PlayMode
             var scope = ScopeOf(director);
             ScopeParkHouseguests(scope);
             // The Living-to-Bedroom doorway, named: six doorways are 2.8 m wide to float rounding, and the
-            // runner-up by width, Kitchen to Private, is the one the baked NavMesh closes.
+            // runner-up by width, Kitchen to Private, has the kitchen run standing in front of it (the bake
+            // closed it until the quick fixes, 2026-11-03, and leaves it narrower than its walls).
             int living = RoomLayers.IndexOf("Living"), bedroom = RoomLayers.IndexOf("Bedroom");
             var door = ScopeDoorways(scope).First(c => c.From == living && c.To == bedroom);
             var across = (door.End - door.Start).normalized;

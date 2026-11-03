@@ -29,16 +29,144 @@
 # 8642 of 8642.
 # 8932 = the full NoUMA run at 45d2f015 (role moments R4+R5, 2026-10-23), 8932 of 8932: R0 to R5's EditMode
 # cases on top of 8642. R6's 38 RoleStoryMomentsTests cases raise it once R6's own full run has counted them.
+# 8982 = 8932 + R6's 38 RoleStoryMomentsTests cases (on main, first counted here) + BatchMcpBridgeIsolationTests' 12
+# (10 TestCase rows and 2 tests): the full NoUMA run at e2670955 (this branch with claude/uma-retention-tidy, both on
+# main 772828ba, 2026-10-27), 8982 of 8982.
+# 9016 = 8982 + the props batch's 34: HouseSmallPropAssetTests' 29 (14 x 2 TestCaseSource plus
+# SavedEpisodeUsesExactlyTheSixteenSelectedAuthoredProps) and RoomFinishTests' 5, which pass only with the 14 imported
+# props, their 30 materials and the re-saved EpisodeHouse.unity. The props batch's own full NoUMA run at 423b82ca
+# (aafb7399 with PR #33's test-only 5a61dde4, 2026-10-26) ran 9004 of 9004 = 8970 + 34; the two sets' cases are
+# disjoint, so the floor is their sum.
+# Dialogue D1's own history, on 8932:
 # 8963 = 8932 + dialogue D1's 31 shared cases, first run under the Mono harness (2026-10-25): ShippedRulesTests 14 (the
 # cast screen's options), StressHouseTests 1 (the chip writes the pinned version) and LegacyDigestSchema29ObserverTests
 # 16 (the native-29 arm; the old enabled-dialogue refusal case became an admission test). Not yet counted by a full run.
 # 8967 = 8963 + the 4 OldSaveAcceptanceTests cases of D1's fixture, s29-mode2-dialogue1-w2-campaign (Mono harness).
 # 8971 = 8967 + D1's review: DialogueCampaignRulesTests.TheDialogueSchemaIsALowerBoundFromTwentyNine, 4 shared cases
 # (28, 29, 30, 31), run under the Mono harness (2026-10-25). Not yet counted by a full run.
+# 8976 = 8971 + dialogue D1b's 5 shared DialogueCampaignPleaFallbackTests cases (owner, 2026-10-25: never lose the plea),
+# run by dotnet test (2026-10-25). Not yet counted by a full run.
+# 8977 = 8976 + D1b's review: DialogueCampaignPleaFallbackTests.TheOpenConversationsOwnVoterPleadsInItForNoFurtherAction,
+# shared, run by dotnet test (2026-10-25). Not yet counted by a full run.
+# 9015 = 8977 + R6's 38 RoleStoryMomentsTests cases, which this file had not yet counted (main's own full run at
+# 7f754510 counted 8970 = 8932 + 38): the full NoUMA run at the scratch test head 83c3273c (this branch's 15f0c07d +
+# the test-only claude/camera-speed-test-clock 5a61dde4, 2026-10-26), 9015 of 9015 = 8970 + D1's 45.
+# 9061 = main's 9016 + D1's 45: the two branches' cases are disjoint, so the floor is their sum.
+# All-Star step 1's own history, on 8932:
+# 8936 = 8932 + AS1a's four shared cases, the alumni audit (WebIntroductionsTests 2, CastTemplateTests 2).
+# 8937 = 8936 + AS1a's EditMode-only save-store case (AlumniAuditSaveTests 1).
+# 9088 = 8937 + SCH30 step 1's 151: FrozenEpisodeV29IntegrationTests 126, FreshSeasonStateDigestTests 22 and the
+# shared FrozenV29SerializerCacheTests 3, run under Unity's Mono (2026-10-25). The full NoUMA run at a4d7b177
+# (2026-10-26) ran 9126 of 9126 = 8970 + step 1's 156.
+# 9217 = main's 9061 + step 1's 156: disjoint cases, so the floor is their sum.
+# Offers slice 1 (OFFERS-COME-TO-YOU-PLAN), on 9217:
+# 9242 = 9217 + the slice's 25 EditMode cases: ComesToYouTests' 22 (shared with the subset) and
+# ComesToYouStillnessTests' 3, as the Lister counts them and Unity's Mono runs them (2026-10-30). Not yet measured in Unity.
+# Offers slice 3 (the walk-over holds), on 9242:
+# 9245 = 9242 + ComesToYouWalkOverTests' 3 EditMode-only cases (the travel budget, the heading hand-back, the box
+# floor), as the Lister counts them and Unity's Mono runs them (2026-10-30). Not yet measured in Unity.
+# 9245 counted: the full NoUMA run at e9f7ed2d (offers2, 2026-10-31), 9245 of 9245, no re-runs. c5cdb972 changed
+# PlayMode tests only, and its own set (offers3) re-ran the 28-case EditMode gate green.
+# All-Star SCH30 step 2 and H1b's own history, on step 1's 9088:
+# 9181 = 9088 + SCH30 step 2's 93: the shared 50 below, PersistenceV30MigrationTests 28, PersistenceMigrationTests' native
+# inverse cases 8 -> 20 (+12) and PersistenceV29MigrationTests' direct-29 and direct-30 controls 3 -> 6 (+3).
+# 9193 = 9181 + SCH30's review fix: the three schema-30 old-save fixtures, four OldSaveAcceptanceTests cases each
+# (241 -> 253), run under Unity's Mono (2026-10-25).
+# 9246 = 9193 + H1b's 53, run under Unity's Mono (2026-10-26): AlumniHistoriesTests' 31 shared cases,
+# AlumniHistoriesSaveTests 4, AlumniHistoriesRecapTests 1, PooledSchema30ShapeTests' validation pin 7 -> 12 (+5),
+# LegacyDigestSchema30ObserverTests +11 (the nonzero-pooled case per value 1 -> 3, never projected 1, admitted
+# natively 8) and PersistenceV30MigrationTests' store refusals 5 -> 6 (+1).
+# 9250 = 9246 + H1b's alumni-on old-save fixture, four OldSaveAcceptanceTests cases (253 -> 257), run under Unity's
+# Mono (2026-10-26).
+# 9379 = main's 9217 + SCH30 step 2 and H1b's 162 (9250 - 9088; the branch at b99f700b, main 772828ba merged in,
+# counts 9288 = 8970 + step 1's 156 + 162): disjoint cases, so the floor is their sum.
+# 9388 = 9379 + the merge's own 9 (the histories with dialogue D1, ALL-STAR-HISTORIES-PLAN 8.5, 2026-10-29):
+# ShippedRulesTests 1 (the cast screen's options start the shipped form's histories, the chip on and off), and D1's
+# s29-mode2-dialogue1-w2-campaign in SCH30's lists of schema-29 writers: FrozenEpisodeV29IntegrationTests 4 (the
+# direct-29 cases, 2, and two malformed rows), PersistenceV30MigrationTests 3 and PooledSchema30ShapeTests 1.
+# OldSaveAcceptanceTests holds 64 fixtures, 261 cases (main's 60 and the branch's 63 share 59), each side's already
+# counted. Run class by class under Unity's Mono; not yet counted by a full run.
+# 9390 = 9388 + the merge review's 2 shared LegacyDigestSchema30ObserverTests cases (39 -> 41): an All-Stars season
+# started with the preview chip takes the alumni arm at 30 and never the native 29, and the retained native-29 entry
+# takes D1's writer fixture as it is. Listed and run class by class under Unity's Mono (2026-10-29); not yet counted by
+# a full run.
+# 9405 = 9390 + S1's 15 shared AlumniLoyaltyTests cases (alumni rules 2, section 14): listed by the Lister under
+# Unity's Mono (2026-10-30), and the affected classes run there; not yet counted by a full Unity run.
+# 9415 = 9405 + S2's 10 shared KnownBlocsTests cases (alumni rules 3, section 14): listed by the Lister under
+# Unity's Mono (2026-10-30), 9415, and the affected classes run there; not yet measured in Unity.
+# 9425 = 9415 + S3's 10 shared CounterBlocTests cases (alumni rules 4, section 14): listed by the Lister under
+# Unity's Mono (2026-10-30), 9425, and the affected classes run there; not yet measured in Unity.
+# 9426 = 9425 + the S3 review's shared CounterBlocTests case (a bloc hunt never names a pact-mate): listed by the
+# Lister under Unity's Mono (2026-10-31), 9426, and the affected classes run there; not yet measured in Unity.
+# 9451 = 9426 + S3b's 25 shared cases (alumni rules 5, section 14.L, outsider pacts that grow): CounterPactGrowthTests
+# 24 and CounterBlocTests' sibling at 5, listed by the Lister under Unity's Mono (2026-10-31), 9451, and the affected
+# classes run there; not yet measured in Unity.
+# 9453 = 9451 + the S3b review's 2 shared CounterPactGrowthTests cases (a pact that has lost a member never grows
+# again; no join while a target agreement stands inside the pact-to-be): listed by the Lister under Unity's Mono
+# (2026-10-31), 9453, and the affected classes run there; not yet measured in Unity.
+# S4 (the 14.H report and the pact watch, section 14) adds no EditMode case: BalanceLabAlumniReportTests is compiled
+# out of Unity, as the balance lab is. The Lister under Unity's Mono listed 9453 (2026-10-31); not yet measured in Unity.
+# The S4 review's 3 cases are in the same file, so they add none either: the Lister listed 9453 again (2026-10-31).
+# 9463 = 9453 + S5's 10 shared PastGamesReadTests cases (what the player is shown of the past games, section 14.F):
+# listed by the Lister under Unity's Mono (2026-10-31), 9463, and the affected classes run there; not yet measured in
+# Unity.
+# The S5 review's fixes add checks to those cases, not cases: the Lister listed 9463 again (2026-11-01).
+# 9469 = 9463 + S6's old-save fixture, s30-mode2-allstars-alumni5-w3-campaign (alumni rules 5 frozen, section 14.I):
+# its four OldSaveAcceptanceTests cases and the fifth that holds its grown pact (261 -> 266), and the shared
+# BallotPrivacyTests case that pins the sentinel's whole-word nominee (OLD-SAVE-ACCEPTANCE F8). Listed by the Lister
+# under Unity's Mono (2026-11-01), 9469, and the classes run there; not yet measured in Unity.
+# The S6 review's fixes add checks to those cases, not cases: the Lister listed 9469 again (2026-11-01).
+# 9497 = main's 9217 + the offers' 28 (9245 - 9217, PR #39) + the All-Star histories' 252 (9469 - 9217): disjoint cases, so the floor is their sum (2026-11-01).
+# 9271 = 9217 + F9's 54 ExactDoublesTests cases (OLD-SAVE-ACCEPTANCE F9): 50 shared with the subset, and 3 save-store
+# cases and the web import's, EditMode only. The Lister counted 9271 in the NoUMA offline build and the Mono harness
+# ran the 54, 54 of 54 (2026-11-01, after the review). Not yet counted by a full run.
+# 9551 = 9217 + main's 280 (9497 - 9217) + the save-read fix (F9)'s 54 (9271 - 9217): disjoint cases, so the floor is their sum (2026-11-01).
+# The live-save batching (LIVE-SAVE-PLAN), on 9217:
+# 9236 = 9217 + its 19 EditMode cases: PersistenceTests 6, NpcSaveCadenceTests 8 (shared with the subset) and
+# NpcCommitTimingsTests 5. Counted: the full NoUMA run at 35ab8574 (ls1, 2026-11-01), 9236 of 9236, no re-runs.
+# 9516 = 9217 + main's 280 (9497 - 9217) + the live-save batching's 19 (9236 - 9217): disjoint cases, so the floor is their sum (2026-11-01).
+# 9570 = 9497 + main's 54 (9551 - 9497) + the live-save batching's 19 (9516 - 9497): disjoint cases, so the floor is their sum (2026-11-02).
+# The room scope's own history (claude/room-scope, Set A at 2a81aef3):
+# 9034 = 8932 + R6's 38 RoleStoryMomentsTests cases (on main, first counted here) + the room scope's 64: RS1's 11
+# (HouseRoomScopeTests 7, HouseRoomScopeWalkerTests 3, HouseRoomScopePlanTests 1), RSW's 5 (HouseWhoIsWhereTests)
+# and RS0's 48 (VerificationViewsTests): the full NoUMA run at 2a81aef3 (room scope Set A, 2026-10-27), 9034 of 9034.
+# 9281 = main's 9217 + the room scope's 64 (RS1's 11, RSW's 5 and RS0's 48): disjoint cases, so the floor is their sum.
+# 9291 = 9281 + RS3's 10 plain HouseRoomScopeLampTests cases (the lamps' rule 1, the room views 8, the whole house 1),
+# counted offline under the Mono harness (2026-11-01), 10 of 10; not yet run in Unity.
+# 9298 = 9291 + RS4's 7 plain HouseRoomScopeBodyTests cases (the bodies' rule 3, the layer rule 1, the main camera's
+# mask 2, the live feed's 1), counted offline under the Mono harness (2026-11-01), 7 of 7; not yet run in Unity.
+# 9302 = 9298 + RS2a's 4 plain HouseRoomScopeDressingTests cases (the dressing's layer rule 3, the emitter's point 1),
+# counted offline under the Mono harness (2026-11-01), 4 of 4; not yet run in Unity.
+# 9308 = 9302 + RS2b's 6: 3 plain HouseRoomScopePickTests cases (the per-renderer rule 1, the hover's key 1, the
+# proxy's layer 1), counted offline under the Mono harness (2026-11-01), 3 of 3, and 3 HouseScopePickTests cases on
+# colliders they build (a proxy drawn as its prop, a click over a hidden prop to the floor, floors and walls their own),
+# counted offline from the source and the compiled assembly (2026-11-01); not yet run in Unity.
+# 9309 = 9308 + the RS2b review's 1 plain HouseRoomScopePickTests case (the hover's room-view rule,
+# UnderARoomViewTheHoverLooksAgainUnderAStillPointer), counted offline under the Mono harness (2026-11-01), 4 of 4;
+# not yet run in Unity.
+# 9311 = 9309 + RS6b's 2 plain RoomScopeShotScanTests cases (RoomScope_EveryShotNamesItsRooms, the source scan of the
+# camera's callers under Runtime/, and RoomScope_TheShotScanReadsCodeAndTheRoomsItNames, the scan's own rules),
+# counted offline under the Mono harness (2026-11-01), 2 of 2; not yet run in Unity.
+# 9319 = 9311 + RS5's 8 plain cases: HouseRoomViewTests 5 (the farthest zoom per room and the four-metre nearest, the
+# best headings, the room clamp narrowing with the zoom, the camera over its room, the 0.6 s a walk's change waits) and
+# HouseRoomScopeDoorwayTests 3 (the doorways from the walls, a corner doorway's halves, the icon's doorway), counted
+# offline under the Mono harness (2026-11-01), 8 of 8 (44 of 44 with the room scope's other plain fixtures and the
+# shot scan, whose default list RS5 emptied); not yet run in Unity.
+# 9320 = 9319 + RS5's review fix's 1 plain case: HouseRoomScopeDoorwayTests.AnOpeningNobodyCanWalkThroughIsNoDoorway (an
+# opening the walk on the NavMesh refuses, the kitchen run's gap into the private room, is no doorway), counted offline
+# under the Mono harness (2026-11-01); not yet run in Unity.
+# 9600 = 9217 + main's 280 (9497 - 9217) + the room scope's 103 (9320 - 9217): disjoint cases, so the floor is their sum (2026-11-01).
+# 9602 = 9600 + the merge review's 2 plain RoomScopeBubbleScanTests cases (RoomScope_EveryInvitationLineWaitsForADrawnSpeaker,
+# the source scan that every Show of the invitation bubble under Runtime/ - the invitation's and the ask's - sets
+# SpeakerDrawn for its speaker just before, and that the room scope reads the visit's speaker on both paths; and
+# RoomScope_TheBubbleScanReadsTheGateAndItsSpeaker, the scan's own rules), counted offline under the Mono harness
+# (2026-11-02); not yet run in Unity.
+# 9675 = 9497 + main's 73 (9570 - 9497) + the room scope's 105 (9602 - 9497): disjoint cases, so the floor is their sum (2026-11-02).
 # 9037 = 8971 + dialogue D2's 66: 64 shared (DialogueRules2LadderTests 10, DialogueRules2ValidatorTests 38,
 # DialogueRules2EngineTests 16) and 2 EditMode-only (DialogueRules2PublicRescueTests), run under the Mono harness at the live
 # 29 (2026-10-25). Below schema 30 the 16 engine and 2 rescue cases assert rules 2's refusal; from the bump they play it.
-Gamesim.EditModeTests 9037
+# 9741 = 8971 + main's 704 (9675 - 8971) + dialogue D2's 66 (9037 - 8971): disjoint cases, so the floor is their sum (2026-11-02).
+Gamesim.EditModeTests 9741
 # The UMA-free build. 1215 = 1236, the count after the consolidation's lanes (S2a, S2b, S4a), less the 7
 # farewell probes moved to Gamesim.DiagnosticsPlayModeTests and the 14 farewell readiness tests that now
 # compile only under GAMESIM_UMA (judged on the UMA cast); 1230 = 1215 + S2d's 7, S4b's 2, S4c's 2 and
@@ -57,9 +185,102 @@ Gamesim.EditModeTests 9037
 # 45d2f015 (2026-10-23), 1319 passed and one red, an invitation-press timing flake that passed 3 of 3 alone.
 # 1322 = 1320 + R5b's 2 shared pitch-board fit tests (FitsTheStageWithItsAnswersTwoByTwo and
 # AFullPromiseRecordStillFitsTheStage): the full NoUMA run at 0c12976a (2026-10-25), 1322 of 1322.
-# 1329 = 1322 + dialogue D1's 7 shared tests: the V2 Cite route, and the cast screen's conversation preview (its
+# 1323 = 1322 + CeremonyRevealPlayModeTests.Cards_TheirTimeStartsWhenTheyAreDrawn (e99df811, whose own full
+# NoUMA run on the earlier main ran 1303 of 1303 on 2026-10-24).
+# 1326 = 1323 + 3840c58d's 3 shared play-frame tests (JuryReveal_ItsTimeStartsWhenItIsDrawn,
+# VetoDraw_TheRevealsTimeStartsWhenItIsDrawn, Result_ItsTimeStartsWhenItIsDrawn): the full NoUMA run at 7f754510
+# (main b208d46d merged in, 2026-10-25), 1326 of 1326.
+# 1345 = 1326 + the props batch's 19 shared cases: CompetitionApparatusMeshKitPlayModeTests' 7 (its six fixtures
+# and the installed-kit case; they pass only with the 39 imported parts and ApparatusMeshKit.asset), the apparatus
+# class's 9 and the 3 scenery cases (the drawn-set-piece case at 6 and 16 entrants, and the south-yard case): the
+# full NoUMA run at 423b82ca (2026-10-26), 1345 of 1345.
+# Dialogue D1's own history, on 1326:
+# 1333 = 1326 + dialogue D1's 7 shared tests: the V2 Cite route, and the cast screen's conversation preview (its
 # start, the creator, the keyboard and pad, and the footer at text sizes 1.0, 1.2 and 1.4). Compiled offline only.
-Gamesim.PlayModeTests 1329
+# 1334 = 1333 + dialogue D1b's shared DialogueCampaign_ARefusedConversationLeavesTheDesperatePleaAsTheOneShotPlea.
+# Compiled offline only (main 772828ba merged in).
+# 1334 counted: the full NoUMA run at 83c3273c (2026-10-26), 1334 of 1334, no re-runs.
+# 1353 = main's 1345 + D1's 8: disjoint cases, so the floor is their sum.
+# Offers slice 1 (OFFERS-COME-TO-YOU-PLAN), on 1353:
+# 1366 = 1353 + the slice's 13 shared ComesToYou_ tests (EpisodePlayModeTests.ComesToYou): compiled offline, not
+# yet run. Not yet counted by a full run.
+# 1367 = 1366 + the review's ComesToYou_AStalledFrameDoesNotOpenTheDialogue: compiled offline, not yet run.
+# Offers slice 2, on 1367:
+# 1373 = 1367 + the slice's 6 shared ComesToYou_ tests (the card, plan tests 11-16): compiled offline, not yet run.
+# Not yet counted by a full run.
+# 1374 = 1373 + the review's ComesToYou_ASpotThatFitsNoVisitorBringsTheFirstAskAsACard (plan test 17): compiled
+# offline, not yet run.
+# Offers slice 3, on 1374:
+# 1382 = 1374 + the slice's 8 shared tests: HouseNpcInvitationPlayModeTests' 3 coordinator cases (NpcInvitation_),
+# 4 director-level ComesToYou_ tests and NpcInvitationBubble_PlacesTheLineOnItsViewAndElseOnTheMainCamera:
+# compiled offline, not yet run. Not yet counted by a full run.
+# Offers slice 1's three missing tests (plan G, "Also in slice 1"), on 1382:
+# 1385 = 1382 + 3 shared ComesToYou_ tests (SceneWaitingDoesNotStallAVisitInFlight,
+# FollowingSomeoneElseCancelsWithoutAMiss, APullYieldsAfterItsTime): compiled offline, not yet run.
+# 1385 counted: the full NoUMA run at e9f7ed2d (offers2, 2026-10-31), 1385 of 1385, no re-runs; c5cdb972 changed
+# only the offers tests, which offers3's 136-case gate re-ran green.
+# The All-Star histories' S4 (2026-10-31) adds no PlayMode case: 1353 stands, not yet measured in Unity.
+# 1357 = 1353 + the All-Star histories' S5's 4 shared EpisodePlayModeTests.PastGames tests (section 14.F's page,
+# profile and diary, 14.L.J's three-face and four-face cards, the caption audit and the cast screen's season): compiled
+# offline with and without UMA (2026-10-31); not yet measured in Unity.
+# The S5 review's fixes add checks to those 4 tests, not tests: 1357 stands (2026-11-01).
+# 1389 = main's 1353 + the offers' 32 (1385 - 1353, PR #39) + the All-Star histories' 4 (1357 - 1353): disjoint cases, so the floor is their sum (2026-11-01).
+# The live-save batching, on 1353:
+# 1370 = 1353 + EpisodePlayModeTests.LiveSave's 17 shared tests. Counted: the full NoUMA run at 35ab8574 (ls1,
+# 2026-11-01), 1370 of 1370, no re-runs.
+# 1406 = 1353 + main's 36 (1389 - 1353) + the live-save batching's 17 (1370 - 1353): disjoint cases, so the floor is their sum (2026-11-01).
+# The room scope's own history (claude/room-scope, Set A at 2a81aef3):
+# 1344 = 1326 + the room scope's 18 shared tests: RS1's 6 (5 RoomScope_ cases and the prototype's), RSW's 9
+# (WhoIsWhere_, WalkIn_, Talk_, FreeTime_, Beacons_ and LiveFeed_ cases) and RS0's 3 (the culling and light pins):
+# the full NoUMA run at 2a81aef3 (room scope Set A, 2026-10-27), 1344 of 1344.
+# 1371 = main's 1353 + the room scope's 18 (RS1's 6, RSW's 9 and RS0's 3, all shared): disjoint cases, so the floor is their sum.
+# 1376 = 1371 + RS3's 5 shared RoomScope_ lamp tests (EpisodePlayModeTests.RoomScopeLamps), counted offline from the
+# compiled assembly (2026-11-01); not yet run in Unity.
+# 1383 = 1376 + RS4's 7 shared RoomScope_ body and mask tests (EpisodePlayModeTests.RoomScopeBodies; the changed
+# NameTags_ and NamePlates_ cases add none), counted offline from the source (2026-11-01); not yet run in Unity.
+# 1384 = 1383 + the RS4 review's 1 shared RoomScope_TheTwoShotsTwoAndTheFollowedAreDrawnWhereverTheyStand, counted
+# offline from the source and the compiled assembly (2026-11-01); not yet run in Unity.
+# 1395 = 1384 + RS2a's 11 shared RoomScope_ dressing cases (EpisodePlayModeTests.RoomScopeDressing: 5 tests and the 6
+# staging points' cases; the changed TheLiveFeedDrawsItsOwnRoom, ABodyIsDrawnInItsRoomAndInItsDoorway and
+# EveryRigMoveReportsItsRooms add none), counted offline from the source and the compiled assembly (2026-11-01); not yet
+# run in Unity.
+# 1397 = 1395 + RS2b's 2 shared RoomScope_ pick tests (EpisodePlayModeTests.RoomScopePicks:
+# AClickPassesThroughHiddenFurnitureToTheFloor, HoverSkipsHiddenFurniture), counted offline from the source and the
+# compiled assembly (2026-11-01); not yet run in Unity.
+# 1401 = 1397 + RS6a's 4 shared RoomScope_ shot tests (EpisodePlayModeTests.RoomScopeShots:
+# ACeremonyMoveDrawsBothRoomsUntilItLands, TheVetoMeetingDrawsItsRoom, TheCompetitionDrawsTheYard and R19's
+# AHiddenBodyNeverPullsTheBoomIn; RS2a's NoSourceIsLiveYet renamed OnlyTheCeremoniesAndCompetitionsAreLive and the nine
+# changed ceremony and competition tests add none), counted offline from the source and the compiled assembly
+# (2026-11-01); not yet run in Unity.
+# 1402 = 1401 + RS6a's review test (EpisodePlayModeTests.RoomScopeShots: AFramingTheViewerTakesOverIsTheWholeHouse),
+# counted offline from the source and the compiled assembly (2026-11-01); not yet run in Unity.
+# 1408 = 1402 + RS6b's 6 shared RoomScope_ tests (EpisodePlayModeTests.RoomScopeOtherShots:
+# TheOverviewTheOpeningAndTheWalkOutDrawTheWholeHouse, ACaptureOfAnotherRoomDrawsThatRoomOnItsFirstFrame,
+# AHouseEventShotDrawsItsPeoplesRooms, AnActivityWarpLandsScoped, AConversationDrawsThePairsRooms and
+# AJuryWatchDrawsTheWatchedRoom; RS6a's OnlyTheCeremoniesAndCompetitionsAreLive renamed OnlyFreePlayAndFollowingAreNotLive,
+# and the changed diary, opening, walk-out, live-feed and room-scope tests add none), counted offline from the source
+# and the compiled assembly (2026-11-01); not yet run in Unity.
+# 1423 = 1408 + RS5's 15 shared tests (EpisodePlayModeTests.RoomView: RoomView_TheFreeCameraStaysOverItsRoom,
+# TheFarthestZoomIsFixedPerRoomAndOrbitNeverPullsIn, EnteringARoomCutsToItsFraming, ReducedMotionCutsBetweenRooms,
+# FollowingAHouseguestFollowsTheirRoom, StoppingAFollowKeepsTheWatchedRoomUntilThePlayerActs, TabAcrossRoomsCuts,
+# ALoadInADoorwayTakesTheNearestFloor, TheNearestZoomIsFourMetres and TheOpeningHandsOverWithACutToThePlayersRoom;
+# WayFinding_TheNextStopIsPinnedAndClickableAtEveryRoomViewDistance and EachAdjacentRoomsIconReachesItsRoom;
+# LookingAway_AFollowElsewhereGivesNoSightingOrWalkInFromThePlayersRoom;
+# RoomScope_TheWholeHouseSettingDrawsEverythingAndSurvivesARestart; Settings_TheHouseViewCaptionIsUnusedAndFitsAtEveryTextSize;
+# RS2a's OnlyFreePlayAndFollowingAreNotLive renamed EverySourceIsLiveAndTheWholeHouseIsAHold, RS6a's
+# AFramingTheViewerTakesOverIsTheWholeHouse renamed AFramingTheViewerTakesOverIsTheirView, and the plan's 30 listed
+# tests and the room-scope tests changed add none), counted offline from the source and the compiled assembly
+# (2026-11-01); not yet run in Unity.
+# 1426 = 1423 + RS5's review fixes' 3 shared tests (EpisodePlayModeTests.RoomView:
+# RoomView_LeavingTheOverviewByADragCutsTheLensWithTheCamera, LookingAway_TheWalkInWatchWaitsWhileAFollowIsElsewhere and
+# LookingAway_TheNearbyCardWaitsOnAPairTheViewHides; the changed tests add none), counted offline from the source and
+# the compiled assembly (2026-11-01); not yet run in Unity.
+# 1462 = 1353 + main's 36 (1389 - 1353) + the room scope's 73 (1426 - 1353): disjoint cases, so the floor is their sum (2026-11-01).
+# The lane's run rs4 at 08489ad1 (no UMA, 2026-11-02) ran 1462: 1453 passed and 9 failed, all nine the tests'.
+# 1463 = 1462 + the rs4 fixes' review's 1 shared test (EpisodePlayModeTests.RoomView: WayFinding_NoIconStandsOnAnother),
+# counted offline from the source and the compiled assembly (2026-11-02); not yet run in Unity.
+# 1480 = 1389 + main's 17 (1406 - 1389) + the room scope's 74 (1463 - 1389): disjoint cases, so the floor is their sum (2026-11-02).
+Gamesim.PlayModeTests 1480
 # The UMA build of the same assembly, read by a plan built without -WithoutUma. 1281 = the 1241 above + the
 # 40 tests that compile only under GAMESIM_UMA, as run at r1 (2026-10-16): in EpisodePlayModeTests,
 # GroundedFarewell 11, Creator 9, HouseLife 8, Emotes 3, OpeningCaptures 2, and one each in CreatorEntry,
@@ -69,8 +290,68 @@ Gamesim.PlayModeTests 1329
 # 1360 = 1342 + the same 18 shared role-moments tests: the full UMA-build run at 45d2f015 (2026-10-23), 1360 of 1360.
 # 1362 = 1360 + R5b's same 2 shared tests: the full UMA-build run at 0c12976a (2026-10-25), 1362 of 1362, in one
 # process with the AI Assistant MCP bridge off (UNITY_MCP_DISABLE_BATCH=1), peak private commit 8.4 GiB.
-# 1369 = 1362 + dialogue D1's same 7 shared tests.
-Gamesim.PlayModeTests.UmaBuild 1369
+# 1363 = 1362 + the same shared ceremony test (e99df811, whose own full UMA-build run on the earlier main ran
+# 1343 of 1343 on 2026-10-25, as six process groups whose union was checked case by case).
+# 1366 = 1363 + the same 3 shared play-frame tests: the full UMA-build run at 7f754510 (2026-10-25), 1366 of
+# 1366, in one process with the MCP bridge off.
+# 1385 = 1366 + the same 19 shared props cases: the full UMA-build run at 423b82ca (2026-10-27), 1385 of 1385, in
+# one process with the MCP bridge off.
+# Dialogue D1's own history, on 1366:
+# 1373 = 1366 + dialogue D1's same 7 shared tests.
+# 1374 = 1373 + dialogue D1b's same shared test.
+# 1374 counted: the full UMA-build run at 83c3273c (2026-10-26), 1374 of 1374, in one process with the MCP bridge
+# off, no re-runs; Gamesim.Uma.PlayModeTests 129 of 129 in the same set.
+# 1393 = main's 1385 + D1's same 8: disjoint cases, so the floor is their sum.
+# Offers slice 1, on 1393:
+# 1406 = 1393 + the same 13 shared ComesToYou_ tests: compiled offline, not yet run. Not yet counted by a full run.
+# 1407 = 1406 + the same review test, ComesToYou_AStalledFrameDoesNotOpenTheDialogue: compiled offline, not yet run.
+# Offers slice 2, on 1407:
+# 1413 = 1407 + the same 6 shared ComesToYou_ tests: compiled offline, not yet run. Not yet counted by a full run.
+# 1414 = 1413 + the same review test, ComesToYou_ASpotThatFitsNoVisitorBringsTheFirstAskAsACard: compiled offline,
+# not yet run.
+# Offers slice 3, on 1414:
+# 1422 = 1414 + the same 8 shared tests: compiled offline, not yet run. Not yet counted by a full run.
+# Offers slice 1's three missing tests, on 1422:
+# 1425 = 1422 + the same 3 shared ComesToYou_ tests: compiled offline, not yet run.
+# 1425 counted: the full UMA-build run at c5cdb972 (offers3, 2026-11-01), 1425 of 1425, in one process with the MCP
+# bridge off, no re-runs; Gamesim.Uma.PlayModeTests 132 of 132 in the same set.
+# 1397 = 1393 + the All-Star histories' S5's same 4 shared tests: compiled offline with UMA (2026-10-31); not yet
+# measured in Unity.
+# The S5 review's fixes add checks to those 4 tests, not tests: 1397 stands (2026-11-01).
+# 1429 = main's 1393 + the offers' 32 (1425 - 1393, PR #39) + the All-Star histories' 4 (1397 - 1393): disjoint cases, so the floor is their sum (2026-11-01).
+# 1410 = 1393 + the live-save batching's same 17 shared tests (LiveSave.cs has no GAMESIM_UMA branch): not run in
+# the UMA build, which the branch does not touch (no UMA, body or garment file).
+# 1446 = 1393 + main's 36 (1429 - 1393) + the live-save batching's 17 (1410 - 1393): disjoint cases, so the floor is their sum (2026-11-01).
+# The room scope's own history (claude/room-scope, Set A at 2a81aef3):
+# 1384 = 1366 + the same 18 shared room-scope tests: the full UMA-build run at 2a81aef3 (2026-10-27), 1384 of 1384,
+# in one process with the MCP bridge off.
+# 1411 = main's 1393 + the room scope's 18 (the same 18 shared tests): disjoint cases, so the floor is their sum.
+# 1416 = 1411 + RS3's same 5 shared RoomScope_ lamp tests, counted offline (2026-11-01) and compiled in the
+# UMA offline build (D:\GamesimPlay's dag, 8 of 8 assemblies, 2026-11-01); not yet run in Unity.
+# 1425 = 1416 + RS4's same 7 shared tests and its 2 under GAMESIM_UMA (RoomScope_AHiddenBodyKeepsItsPoseLive,
+# RoomScope_AnOutfitChangeKeepsTheBodyInItsRoom), counted offline (2026-11-01) and compiled in the UMA offline build
+# (D:\GamesimPlay's dag, 8 of 8 assemblies); not yet run in Unity.
+# 1426 = 1425 + the RS4 review's same 1 shared test, counted offline (2026-11-01) and compiled in the UMA offline
+# build (D:\GamesimPlay's dag); not yet run in Unity.
+# 1437 = 1426 + RS2a's same 11 shared cases, counted offline (2026-11-01) and compiled in the UMA offline build
+# (D:\GamesimPlay's dag); not yet run in Unity.
+# 1439 = 1437 + RS2b's same 2 shared pick tests, counted offline (2026-11-01) and compiled in the UMA offline build
+# (D:\GamesimPlay's dag, 8 of 8 assemblies); not yet run in Unity.
+# 1443 = 1439 + RS6a's same 4 shared shot tests, counted offline (2026-11-01) and compiled in the UMA offline build
+# (D:\GamesimPlay's dag, 8 of 8 assemblies); not yet run in Unity.
+# 1444 = 1443 + RS6a's same review test, counted offline (2026-11-01) and compiled in the UMA offline build
+# (D:\GamesimPlay's dag, 8 of 8 assemblies); not yet run in Unity.
+# 1450 = 1444 + RS6b's same 6 shared tests, counted offline (2026-11-01) and compiled in the UMA offline build
+# (D:\GamesimPlay's dag, 8 of 8 assemblies); not yet run in Unity.
+# 1465 = 1450 + RS5's same 15 shared tests, counted offline (2026-11-01) and compiled in the UMA offline build
+# (D:\GamesimPlay's dag, 8 of 8 assemblies); not yet run in Unity.
+# 1468 = 1465 + RS5's review fixes' same 3 shared tests, counted offline (2026-11-01) and compiled in the UMA offline
+# build (D:\GamesimPlay's dag, 8 of 8 assemblies); not yet run in Unity.
+# 1504 = 1393 + main's 36 (1429 - 1393) + the room scope's 75 (1468 - 1393): disjoint cases, so the floor is their sum (2026-11-01).
+# 1505 = 1504 + the rs4 fixes' review's same shared test, counted offline (2026-11-02) and compiled in the UMA offline
+# build (D:\GamesimPlay's dag, 8 of 8 assemblies); not yet run in Unity.
+# 1522 = 1429 + main's 17 (1446 - 1429) + the room scope's 76 (1505 - 1429): disjoint cases, so the floor is their sum (2026-11-02).
+Gamesim.PlayModeTests.UmaBuild 1522
 # The UMA bodies: runs only where the GAMESIM_UMA define is set (the working tree and the D: copy).
 # 82 = the 89 run on 2026-10-15, less the 7 farewell probes moved to Gamesim.Uma.DiagnosticsPlayModeTests;
 # 85 = 82 + the 3 farewell readiness decision tests (UmaFarewellReadinessDecisionPlayModeTests, 2026-10-16);
@@ -78,7 +359,15 @@ Gamesim.PlayModeTests.UmaBuild 1369
 # 129 = 90 + the dialogue V2 source's 39 (UmaTriangleReaderFencePlayModeTests 38, UmaAnimatorGraphLifetimePlayModeTests 1):
 # the full run at b26b28cc (2026-10-22), 129 of 129, on a vendor with Tools/UmaPatches/triangle-reader-fence01
 # applied. The 38 fail on an unpatched vendor by design; every UMA copy needs the patch applied by hand.
-Gamesim.Uma.PlayModeTests 129
+# 132 = 129 + UmaBodyRetentionPlayModeTests' 3: the full run at e2670955 (this branch with
+# claude/batch-mcp-bridge-off, both on main 772828ba, 2026-10-27), 132 of 132, in one process with the MCP bridge off.
+# The room scope's own history (claude/room-scope, Set A at 2a81aef3):
+# 130 = 129 + RS0's UmaRoomScopeBodiesPlayModeTests.Bodies_EveryAnimatorAlwaysAnimates: the full run at 2a81aef3
+# (room scope Set A, 2026-10-27), 130 of 130, in one process with the MCP bridge off.
+# 133 = main's 132 + the room scope's 1 (RS0's AlwaysAnimate pin): disjoint cases, so the floor is their sum.
+# 134 = 133 + RS4's UmaRoomScopeBodiesPlayModeTests.Bodies_ARebuiltBodyKeepsAlwaysAnimate, compiled in the UMA
+# offline build (2026-11-01); not yet run in Unity.
+Gamesim.Uma.PlayModeTests 134
 # Diagnostics: feasibility and diagnostic probes, never shipping acceptance. They compile only under
 # GAMESIM_DIAGNOSTICS, which only a diagnostic run adds to the test copy (GAMESIM_DIAGNOSTICS=1 with
 # sync-and-run.sh or the locked runner); the UMA one needs GAMESIM_UMA too. The floor counts that they
@@ -116,5 +405,62 @@ Gamesim.Uma.DiagnosticsPlayModeTests 10
 # 10801 = 10768 + dialogue D1's 33: the same 31 as EditMode's, and the digest checkpoint's 2 native-arm cases
 # (CommitmentRulesSeasonDigestsNativeTests, compiled out of Unity). dotnet test ran 10801 of 10801 (2026-10-25).
 # 10805 = 10801 + the same 4 schema-bound cases of D1's review.
+# 10810 = 10805 + dialogue D1b's same 5 cases.
+# 10811 = 10810 + the same case of D1b's review (the open conversation's own voter). dotnet test ran 10811 of 10811.
+# All-Star step 1's own history, on 10768:
+# 10772 = 10768 + AS1a's same four shared cases (WebIntroductionsTests 2, CastTemplateTests 2).
+# 16198 = 10772 + SCH30 step 1's Frozen29 reader: Frozen28's archived internal cases and literal fixture controls
+# carried to schema 29 (5423) and the same three cache cases: what dotnet test Tools/SimulationTests ran (2026-10-25).
+# 16241 = main's 10811 + step 1's 5430: disjoint cases, so the floor is their sum.
+# Offers slice 1 (OFFERS-COME-TO-YOU-PLAN), on 16241:
+# 16263 = 16241 + the same 22 ComesToYouTests cases: what dotnet test Tools/SimulationTests ran (2026-10-30).
+# All-Star SCH30 step 2 and H1b's own history, on step 1's 16198:
+# 16248 = 16198 + SCH30 step 2's shared 50: LegacyDigestSchema30ObserverTests 28, PooledSchema30ShapeTests 16, the
+# live-schema pin per builder (ShippedRulesTests 1 -> 6) and the checkpoint at 30 (LegacyDigestSchema29ObserverTests 1).
+# 16303 = 16248 + H1b's 55: AlumniHistoriesTests 39 (31 shared, 8 in the subset only, against the internal
+# control), PooledSchema30ShapeTests +5 and LegacyDigestSchema30ObserverTests +11: what dotnet test
+# Tools/SimulationTests ran (2026-10-26).
+# 16346 = main's 16241 + SCH30 step 2 and H1b's 105 (16303 - 16198): disjoint cases, so the floor is their sum.
+# 16348 = 16346 + the merge's own 2, both shared (ShippedRulesTests 1, PooledSchema30ShapeTests 1): what dotnet test
+# Tools/SimulationTests ran on the merge (2026-10-29), 16348 of 16348.
+# 16351 = 16348 + the merge review's 3: the same 2 LegacyDigestSchema30ObserverTests cases and Frozen29's literal
+# control of D1's schema-29 writer (Frozen29LiteralFixtureTests 37 -> 38): what dotnet test Tools/SimulationTests ran
+# (2026-10-29), 16351 of 16351.
+# 16366 = 16351 + S1's 15 AlumniLoyaltyTests cases: what dotnet test Tools/SimulationTests ran (2026-10-30),
+# 16366 of 16366.
+# 16376 = 16366 + S2's 10 KnownBlocsTests cases: what dotnet test Tools/SimulationTests ran (2026-10-30),
+# 16376 of 16376.
+# 16386 = 16376 + S3's 10 CounterBlocTests cases: what dotnet test Tools/SimulationTests ran (2026-10-30),
+# 16386 of 16386.
+# 16387 = 16386 + the S3 review's CounterBlocTests case: what dotnet test Tools/SimulationTests ran (2026-10-31),
+# 16387 of 16387.
+# 16412 = 16387 + S3b's 25 (CounterPactGrowthTests 24, CounterBlocTests 1): what dotnet test Tools/SimulationTests
+# ran (2026-10-31), 16412 of 16412.
+# 16414 = 16412 + the S3b review's 2 CounterPactGrowthTests cases: what dotnet test Tools/SimulationTests ran
+# (2026-10-31), 16414 of 16414.
+# 16420 = 16414 + S4's 6 BalanceLabAlumniReportTests cases (the 14.H report's arms and 14.L.H's pact watch, by
+# fixtures; dotnet only, as the lab is): what dotnet test Tools/SimulationTests ran (2026-10-31), 16420 of 16420.
+# 16423 = 16420 + the S4 review's 3 BalanceLabAlumniReportTests cases (the known-pair rows and who left a grown pact,
+# the pooled ratios and McNemar's call, the report built from synthetic seasons): what dotnet test
+# Tools/SimulationTests ran (2026-10-31), 16423 of 16423.
+# 16433 = 16423 + S5's 10 PastGamesReadTests cases (what the player is shown of the past games, section 14.F): what
+# dotnet test Tools/SimulationTests ran (2026-10-31), 16433 of 16433.
+# The S5 review's fixes add checks to those cases, not cases: what dotnet test Tools/SimulationTests ran (2026-11-01),
+# 16433 of 16433 again. The count leaves out the [Explicit] cases, ModeOneSeasonDigests among them: it ran with a
+# filter of its own, 2 of 2.
+# 16434 = 16433 + S6's BallotPrivacyTests case (the sentinel reads the nominee as a word of its own, section 14.J's S6):
+# what dotnet test Tools/SimulationTests ran (2026-11-01), 16434 of 16434. S6's old-save fixture adds none here:
+# OldSaveAcceptanceTests is EditMode only.
+# The S6 review's fixes add checks to that case, not cases (the sentinel finds the player in "your" again): what dotnet
+# test Tools/SimulationTests ran (2026-11-01), 16434 of 16434 again.
+# 16456 = main's 16241 + the offers' 22 (16263 - 16241, PR #39) + the All-Star histories' 193 (16434 - 16241): disjoint cases, so the floor is their sum (2026-11-01).
+# 16291 = 16241 + F9's same 50 shared ExactDoublesTests cases (the 3 save-store cases and the web import's are
+# EditMode's): dotnet test ran 16291 of 16291 (2026-11-01, after the review).
+# 16506 = 16241 + main's 215 (16456 - 16241) + the save-read fix (F9)'s 50 (16291 - 16241): disjoint cases, so the floor is their sum (2026-11-01).
+# 16249 = 16241 + the live-save batching's 8 NpcSaveCadenceTests: what dotnet test Tools/SimulationTests ran at
+# 35ab8574 (ls1, 2026-11-01), 16249 of 16249.
+# 16464 = 16241 + main's 215 (16456 - 16241) + the live-save batching's 8 (16249 - 16241): disjoint cases, so the floor is their sum (2026-11-01).
+# 16514 = 16456 + main's 50 (16506 - 16456) + the live-save batching's 8 (16464 - 16456): disjoint cases, so the floor is their sum (2026-11-02).
 # 10869 = 10805 + dialogue D2's 64 shared cases. dotnet test ran 10869 of 10869 (2026-10-25).
-Gamesim.SimulationTests 10869
+# 16578 = 10805 + main's 5709 (16514 - 10805) + dialogue D2's 64 (10869 - 10805): disjoint cases, so the floor is their sum (2026-11-02).
+Gamesim.SimulationTests 16578

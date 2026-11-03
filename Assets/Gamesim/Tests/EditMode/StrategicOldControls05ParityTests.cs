@@ -80,7 +80,7 @@ namespace Gamesim.Tests.EditMode
         public void CompleteOrdinaryApplyAndReadMatchImmutableOldReference(string caseId)
         {
             var row = records.Single(record => (string)record["caseId"] == caseId);
-            string before = Original((JObject)row["inputOriginalUtf8"]);
+            string before = AtTheLiveSchema(Original((JObject)row["inputOriginalUtf8"]));
             string request = Original((JObject)row["commandOriginalUtf8"]);
             var input = JsonConvert.DeserializeObject<EpisodeState>(before, Fields);
             var command = JsonConvert.DeserializeObject<EpisodeCommand>(request, Fields);
@@ -92,9 +92,9 @@ namespace Gamesim.Tests.EditMode
             Assert.That(Image(input), Is.EqualTo(before));
             var engine = new EpisodeEngine(input); var result = engine.Apply(command); var published = engine.Snapshot;
             Assert.That(Image(input), Is.EqualTo(before)); Assert.That(Image(command), Is.EqualTo(request));
-            Assert.That(Image(result), Is.EqualTo(Original((JObject)row["resultOriginalUtf8"])), "Entire CommandResult, not filtered owner fields.");
-            Assert.That(Image(result.state), Is.EqualTo(Original((JObject)row["resultStateOriginalUtf8"])));
-            Assert.That(Image(published), Is.EqualTo(Original((JObject)row["publishedOriginalUtf8"])));
+            Assert.That(Image(result), Is.EqualTo(AtTheLiveSchema(Original((JObject)row["resultOriginalUtf8"]))), "Entire CommandResult, not filtered owner fields.");
+            Assert.That(Image(result.state), Is.EqualTo(AtTheLiveSchema(Original((JObject)row["resultStateOriginalUtf8"]))));
+            Assert.That(Image(published), Is.EqualTo(AtTheLiveSchema(Original((JObject)row["publishedOriginalUtf8"]))));
             Assert.That(EpisodeValidation.TryValidate(published, out string error), Is.True, error);
             var afterRead = Parse(Image(VoteRead.Read(published)));
             Assert.That(ExactCapturedJson.Equal(afterRead, row["afterRead"]), Is.True,
@@ -193,6 +193,29 @@ namespace Gamesim.Tests.EditMode
             Assert.That(reader.Read(), Is.False, "Exactly one original JSON object."); return result;
         }
         private static string Image(object value) => JsonConvert.SerializeObject(value, Formatting.None, Fields);
+
+        /// <summary>
+        /// SCH30: the references were captured at schema 29, and the live schema is 30. Every captured state in an image
+        /// (a state, or the one a CommandResult carries) is read through schema 30's own literals - UpgradeV29ToV30's: the
+        /// pooled fields off, after the dialogue store, the header 30. The retained packs are never edited.
+        /// </summary>
+        private static string AtTheLiveSchema(string image)
+        {
+            var root = Parse(image);
+            int lifted = 0;
+            foreach (var state in root.DescendantsAndSelf().OfType<JObject>().Where(obj => obj.Property("dialogue") != null
+                && obj["schemaVersion"]?.Type == JTokenType.Integer && (int)obj["schemaVersion"] == 29).ToArray())
+            {
+                var dialogue = state.Property("dialogue");
+                dialogue.AddAfterSelf(new JProperty("tuningRulesVersion", 0));
+                dialogue.AddAfterSelf(new JProperty("alumniCatalogEdition", JValue.CreateNull()));
+                dialogue.AddAfterSelf(new JProperty("alumniRulesVersion", 0));
+                state["schemaVersion"] = 30;
+                lifted++;
+            }
+            Assert.That(lifted, Is.GreaterThan(0), "Every captured image holds a schema-29 state.");
+            return root.ToString(Formatting.None);
+        }
         private static string Sha(byte[] bytes) { using var hash = SHA256.Create(); return BitConverter.ToString(hash.ComputeHash(bytes)).Replace("-", ""); }
         // Exact comparison of captured JSON values, never a new gameplay oracle.
         // Read DTOs have captured-value provenance, NOT separately retained original fragment bytes.

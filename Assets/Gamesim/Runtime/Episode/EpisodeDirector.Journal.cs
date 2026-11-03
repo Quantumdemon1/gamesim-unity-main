@@ -18,7 +18,7 @@ namespace Gamesim.Episode
     public sealed partial class EpisodeDirector
     {
         /// <summary>
-        /// Who is standing in which room, right now, by nearest room marker.
+        /// Who is standing in which room, right now, by the floor each stands on.
         ///
         /// <para>Scene-local, like the diary-room lookup: a second loaded house must not contribute
         /// markers to this one. Read from live transforms rather than from the simulation, because
@@ -85,14 +85,19 @@ namespace Gamesim.Episode
         private List<HouseMap.Room> HouseOccupancy(EpisodeState state) => HouseOccupancy(state, out _);
 
         /// <summary>
-        /// Who is standing in which room, right now, by nearest room marker: one entry for each
-        /// houseguest in the house, found through the body the director bound to them.
+        /// Who is standing in which room, right now, by the floor each stands on: one entry for each
+        /// room the markers name, and each houseguest in the house - found through the body the
+        /// director bound to them - in the entry for their walker room (<see cref="OccupancyRoom"/>;
+        /// ROOM-SCOPE-PLAN RSW).
         ///
         /// <para>It used to scan every character body in the scene, spare ones included, and look
         /// each up by the id it carried - so a switched-off spare that still held an old id could
         /// list someone twice, and a houseguest whose body did not resolve was silently dropped.
         /// Now it walks the roster: everyone in the house is either in exactly one room or in
         /// <paramref name="unplaced"/>, which says only that the house has no body to read for them.</para>
+        ///
+        /// <para>It read the nearest room marker, which named another room for 39.5% of the living
+        /// room's floor and 37.3% of the kitchen's (D14).</para>
         /// </summary>
         private List<HouseMap.Room> HouseOccupancy(EpisodeState state, out List<HouseMap.Occupant> unplaced)
         {
@@ -119,16 +124,7 @@ namespace Gamesim.Episode
             {
                 var body = BodyFor(actor.id);
                 if (body == null) { unplaced.Add(Person(actor)); continue; }
-
-                HouseRoomMarker nearest = null;
-                float best = float.MaxValue;
-                foreach (var marker in markers)
-                {
-                    float distance = (marker.transform.position - body.position).sqrMagnitude;
-                    if (distance >= best) continue;
-                    best = distance; nearest = marker;
-                }
-                occupants[nearest.RoomName].Add(Person(actor));
+                occupants[OccupancyRoom(body, markers)].Add(Person(actor));
             }
 
             foreach (var marker in markers) rooms.Add(new HouseMap.Room(marker.RoomName, occupants[marker.RoomName]));
@@ -455,7 +451,7 @@ namespace Gamesim.Episode
         /// <summary>
         /// The records the player holds that involve someone: the season's ceremony counts, which
         /// the whole house watched, and the promises, alliances and declarations the player was a
-        /// party to. Nothing between two other people.
+        /// party to. Nothing between two other people, except the public record of past games.
         /// </summary>
         private List<string> ProfileRecords(EpisodeState state, ContestantState actor, string first)
         {
@@ -464,6 +460,9 @@ namespace Gamesim.Episode
                 "Head of Household " + Times(actor.hohWins) + " \u00b7 Veto " + Times(actor.vetoWins)
                     + " \u00b7 Nominated " + Times(actor.timesNominated),
             };
+            // An All-Star's career and past games, which the whole house knows (ALL-STAR-HISTORIES-PLAN
+            // \u00a714.F.1): from alumni rules 3, and none of them a record of the player's this season.
+            lines.AddRange(KnownBlocs.ProfileLines(state, actor.id));
             int personal = 0;
             foreach (var promise in CommitmentReferences.Promises(state).Where(p => (p.fromId == state.playerId && p.toId == actor.id)
                          || (p.fromId == actor.id && p.toId == state.playerId)))
@@ -485,7 +484,8 @@ namespace Gamesim.Episode
                     ? "You declared loyalty to " + first : first + " declared loyalty to you"));
                 personal++;
             }
-            if (personal == 0) lines.Add("No promises, alliances or declarations between you.");
+            // "...between you this season." when a past game of theirs is on the record, from alumni rules 3.
+            if (personal == 0) lines.Add(KnownBlocs.ProfileEmptyLine(state, actor.id));
             return lines;
         }
 

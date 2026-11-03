@@ -51,6 +51,45 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(spot.transform.position.y, Is.GreaterThan(plateTop + .5f),
                 "The light hangs well over the plate, never in front of the name: " + spot.transform.position.y + " against " + plateTop + ".");
 
+            // Plates are for drawn houseguests only (RS4): on the followed one's room - the follow's own room
+            // view from RS5, and the scope held - they keep theirs whatever the view, and anyone the view hides
+            // has theirs down. One of the others stands in a room well away from them and from the player, so
+            // somebody is hidden.
+            var other = npcs.FirstOrDefault(npc => npc != chosen);
+            Assert.That(other, Is.Not.Null, "A second houseguest to stand away.");
+            var scope = ScopeOf(director);
+            int away = Rs4FarRoom(scope, chosen.transform.position, player.transform.position);
+            ScopePlace(other.transform, ScopeOpenFloor(scope, away), 2f);
+            var owner = new object();
+            director.HoldRoomScope(owner);
+            try
+            {
+                yield return null;
+                Assert.That(director.IsBodyDrawn(chosen.transform), Is.True, "The followed houseguest is drawn.");
+                Assert.That(chosen.BodyHidden, Is.False, "and keeps their plate under the spotlight.");
+                Assert.That(npcs.Any(npc => npc.BodyHidden), Is.True,
+                    other.Id + ", in the " + RoomLayers.RoomIds[away] + ", away from the followed one's room: somebody's plate is held down.");
+                foreach (var npc in npcs)
+                {
+                    bool hidden = !director.IsBodyDrawn(npc.transform);
+                    Assert.That(npc.BodyHidden, Is.EqualTo(hidden), npc.Id + "'s plate goes with their body.");
+                    if (hidden) Assert.That(npc.PlateAlpha, Is.Zero, npc.Id + " is hidden: no plate.");
+                }
+            }
+            finally { director.Release(owner); }
+            // Let go, the follow is still the room view (RS5: following is live, so with nothing held the view draws
+            // the followed one's room): the plates go with the bodies, and whoever stands outside it keeps theirs
+            // down. Only the whole house - the setting's view (D12), here a test's hold - brings every plate back.
+            Assert.That(director.CurrentRoomScopeSource, Is.EqualTo(EpisodeDirector.RoomScopeSource.Following), "Let go, the view is the follow's own,");
+            Assert.That(director.IsBodyDrawn(chosen.transform), Is.True, "the followed houseguest drawn,");
+            Assert.That(npcs.Any(npc => npc.BodyHidden), Is.True,
+                other.Id + ", in the " + RoomLayers.RoomIds[away] + ", is still left out by the follow's room view: a plate stays down with nothing held.");
+            foreach (var npc in npcs)
+                Assert.That(npc.BodyHidden, Is.EqualTo(!director.IsBodyDrawn(npc.transform)), npc.Id + "'s plate goes with their body, nothing held.");
+            RoomViewHoldTheDollhouse();
+            Assert.That(npcs.Any(npc => npc.BodyHidden), Is.False, "The whole house held, no plate is held down by the scope.");
+            yield return RoomViewLetGoOfTheDollhouse();
+
             if (Application.isBatchMode) yield return CaptureFraming("followed");
             director.FollowHouseguest(chosen.Id);
             yield return null;

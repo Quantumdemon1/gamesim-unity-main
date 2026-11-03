@@ -19,7 +19,7 @@ namespace Gamesim.Tests.PlayMode
         private IEnumerator OpenVoterConversation(ContestantState voter)
         {
             var npc = SceneComponents<HouseNpc>().Single(n => n.Id == voter.id);
-            WarpPlayer(npc.transform.position + (player.transform.position - npc.transform.position).normalized * 1.4f);
+            WarpToTalk(npc, npc.transform.position + (player.transform.position - npc.transform.position).normalized * 1.4f);
             yield return null;
             Assert.That(director.TryOpenNpc(voter.id), Is.True, "The conversation opens.");
             yield return null;

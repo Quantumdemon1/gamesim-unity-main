@@ -62,6 +62,8 @@ non-batch editors and a project not explicitly named by the authorization flag.
 It also requires the project's leaf directory to contain `Acceptance`.
 
 ```powershell
+# Keeps the AI Assistant MCP bridge off in this batch editor (Tools/README.md).
+$env:UNITY_MCP_DISABLE_BATCH = '1'
 & 'C:\Program Files\Unity\Hub\Editor\6000.6.0f1\Editor\Unity.exe' `
   -batchmode -projectPath 'D:\GamesimAcceptance' `
   -executeMethod Gamesim.Uma.Editor.HouseGarmentAuthoring.Build `

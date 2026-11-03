@@ -101,9 +101,18 @@ namespace Gamesim.Episode
         /// <summary>Who the player clicked and is walking towards, or null. A read, as above.</summary>
         public string WalkingToId => headingToNpcId;
 
+        /// <summary>
+        /// Whether houseguests bring their asks to the player (OFFERS-COME-TO-YOU-PLAN, EpisodeDirector.ComesToYou.cs):
+        /// walk over, say their line and open it as a dialogue, or open on it when the player talks to them. Null is the
+        /// default: on in the editor and the standalone player, off under -batchmode. Every PlayMode fixture that binds
+        /// a director and every PortVerification route set it false, so the audited behaviour holds - the invitation
+        /// and its invited view as they always ran. A change mid-session lets any visit go and starts both afresh.
+        /// </summary>
+        public bool? AsksEnabled { get; set; }
+
         // The opening counts too: it owns the house while it plays, so the player cannot walk, the
         // houseguests do not tick and nothing underneath answers a key.
-        public bool IsPanelOpen => blockedRecovery || focusedNpc != null || phaseOpen || settingsOpen || sceneCardOpen
+        public bool IsPanelOpen => blockedRecovery || focusedNpc != null || phaseOpen || settingsOpen || sceneCardOpen || askCardOpen
                                    || journalOpen || diaryOpen || houseActivitiesOpen || juryHouseOverHouse || IsWeeklyRecapOpen || IsSeasonReportOpen
                                    || (competitionCard != null && competitionCard.IsPlaying) || OpeningOwnsHouse;
         /// <summary>Whether the season report is up: a full-screen card over the house, a panel by any reckoning.</summary>
@@ -376,6 +385,8 @@ namespace Gamesim.Episode
             // First, and whatever else returns early: the dip is only a clock, and a frame that
             // skipped it would hold the house black for as long as a card or a load owned the frame.
             TickTravelDip();
+            // Every body's room by the floors, before anything this frame reads one (RS1).
+            TickRoomScope();
             TickTravelBeacons();
             TickSleepLight();
             // The staged ceremony before the ceremonies' bookkeeping: its card starts here, and the
@@ -451,7 +462,9 @@ namespace Gamesim.Episode
             // A dismissing key is consumed for the whole frame, even if the result updated first.
             if (competitionCard != null && competitionCard.OwnsInput) return;
             if (competitionInputSuspended) SyncCompetitionResultInput();
-            TickNpcInvitations();
+            // Houseguests bringing their asks to the player (EpisodeDirector.ComesToYou.cs); with AsksEnabled off,
+            // the invitation as it always ran.
+            TickAsks();
             TickNpcSocialRuntime(Time.unscaledDeltaTime);
             TickConversationPresentation();
             TickHouseActivities();
@@ -505,6 +518,8 @@ namespace Gamesim.Episode
                 // chain in two places, which is two chances to disagree about what E does.
                 var choice = ChooseInteraction(out var npc);
                 if (npc != promptNpc) { promptNpc = npc; npcPrompt = npc != null ? "E  ·  Talk to " + npc.DisplayName : null; }
+                // Who the prompt names, for the room scope's prompt rule (RS4): drawn wherever the view is.
+                promptNamed = choice == InteractTarget.Talk || choice == InteractTarget.Invitation ? npc : null;
                 string prompt = "", hint = null;
                 if (IsPlayerHouseActivityActive && playerActivityInHouse) prompt = HouseFurniture.StopPrompt(playerActivityKind);
                 else if (choice == InteractTarget.Invitation) prompt = "E  ·  Hear " + npc.DisplayName + " out";
@@ -521,7 +536,7 @@ namespace Gamesim.Episode
                 else if (choice == InteractTarget.StepIn) prompt = "E  \u00b7  " + EpisodeHud.StepInCaption;
                 hud.SetPrompt(InputGlossary.PromptFor(prompt, padHints), hint);
             }
-            else hud.SetPrompt("");
+            else { hud.SetPrompt(""); promptNamed = null; }
         }
 
         /// <summary>
@@ -699,6 +714,7 @@ namespace Gamesim.Episode
         private void ClosePanelsInternal(bool render)
         {
             paidStoryViewToken = null;
+            hereTagged.Clear();
             CancelNpcInvitation();
             ResetConversationNavigation();
             CancelConversationExchange(false);
@@ -709,6 +725,9 @@ namespace Gamesim.Episode
             if (HouseBindings.Listening) { HouseBindings.Cancel(); rebindMessage = null; }
             CloseHouseActivities(!render);
             if (focusedNpc != null) focusedNpc.GetComponent<CharacterPresentation>()?.SetTalking(false);
+            // The headings an ask gave go with the panel, and only those: a talk spot's or a ceremony's, set before
+            // this close, stays (EpisodeDirector.ComesToYou.cs).
+            ClearAskFacing();
             // What the player came into a conversation for goes with the conversation; a houseguest's
             // screen over free time goes with the panel.
             if (focusedNpc != null) conversationIntent = null;
@@ -733,6 +752,9 @@ namespace Gamesim.Episode
             castMenuFor = null; emoteMenuOpen = false; campaignMore = false;
             ClearLobbyDraft();
             if (sceneCardOpen) { sceneCardOpen = false; sceneCardCycle = null; ClearStoryStep(); }
+            // An ask's card goes as Think it over does: set aside for the phase if still unanswered, and the next ask
+            // waits its gap (EpisodeDirector.ComesToYou.cs).
+            EndAskCard();
             // Escape cancels without committing, so the run goes with the panel. Leaving it would
             // let a competition keep ticking behind a closed screen and commit itself later.
             challengeRun = null;
@@ -755,7 +777,7 @@ namespace Gamesim.Episode
             // Any panel opening ends the overview: the shot it took goes with it. A conversation's
             // two-shot ends with the conversation; the diary's chair shot is released here, which
             // covers Escape and the walk-away close alike.
-            if (overviewOpen) { LeaveOverview(); if (cameraRig != null) cameraRig.ReleaseShot(OverviewSeconds); }
+            if (overviewOpen) { LeaveOverview(); if (cameraRig != null) cameraRig.ReleaseShot(OverviewSeconds); ResumeTheWatchAfterTheOverview(); }
             // Not while the opening plays: it is holding the camera and the player, and gives both
             // back when it ends.
             if (cameraRig != null && !OpeningOwnsHouse) { cameraRig.EndConversation(); cameraRig.ReleaseShot(DiaryShotSeconds); cameraRig.ControlsEnabled = !blockedRecovery; }
@@ -832,20 +854,24 @@ namespace Gamesim.Episode
             // snapshot is the engine's copy already, so it is read once.
             var blockBefore = engine.Snapshot.nominees ?? new List<string>();
             var wasNominated = new HashSet<string>(blockBefore);
-            // Player and NPC candidates share durable publication ordering. A phase
-            // transition cancels invalid NPC activity inside this same saved candidate.
+            // A decision's candidate carries every operation the house has installed: its write is also the
+            // house's. A phase transition cancels invalid NPC activity inside this same saved candidate.
             var candidate = new EpisodeEngine(engine.Snapshot);
             var result = candidate.Apply(command);
             if (result.accepted)
             {
                 CancelNpcInvitation();
-                if (TryPersistCandidate(result.state, out var installed, out var failure))
+                if (TryPersistTimed(result.state, "command", out var installed, out var failure))
                 { engine = new EpisodeEngine(installed); result.state = engine.Snapshot; }
                 else
                 {
                     BeginPersistenceNotice(failure);
-                    message = failure;
-                    PauseNpcSocialForPanel();
+                    // The decision's own line, even where it reads as the house's failure did: a retry that lands
+                    // later keeps it (EndSessionSaveFailure).
+                    message = failure; sessionSaveFailure = null;
+                    // Stopped without the panel's write: its retry could clear this notice of a decision that
+                    // was not committed, inside the action that just failed.
+                    SuspendNpcWorldWithoutSaving();
                     Render();
                     return new CommandResult { reason = failure, state = Snapshot };
                 }
@@ -1339,6 +1365,8 @@ namespace Gamesim.Episode
         private void Render()
         {
             paidStoryViewToken = null;
+            // The free-time cards tag HERE again as they are drawn (the room scope's prompt rule, RS4).
+            hereTagged.Clear();
             conversationNavigationShowing = false;
             conversationMenuToken = null;
             pitchNavigationView = null;
@@ -1380,7 +1408,7 @@ namespace Gamesim.Episode
             // warning - amber, and kept on the status line below - with nothing to draw a panel
             // for: passed as a recovery it built the episode panel empty over the house, Close
             // built it again, and the diary's way there went grey (D9).
-            hud.Begin(state, statusCopy, blockedRecovery, phaseOpen || focusedNpc != null || settingsOpen || journalOpen || diaryOpen || houseActivitiesOpen || sceneCardOpen || juryHouseOverHouse,
+            hud.Begin(state, statusCopy, blockedRecovery, phaseOpen || focusedNpc != null || settingsOpen || journalOpen || diaryOpen || houseActivitiesOpen || sceneCardOpen || askCardOpen || juryHouseOverHouse,
                 warning: npcSaveSuspended || npcWorldFailed);
             hud.SetStatusGuidanceVisible(!string.IsNullOrEmpty(statusCopy), blockedRecovery || npcSaveSuspended || npcWorldFailed || commandNotice);
             hud.ShowSaveFeedback(!blockedRecovery && !npcSaveSuspended && !npcWorldFailed && !commandNotice && saveFeedbackUntil > Time.unscaledTime);
@@ -1530,6 +1558,8 @@ namespace Gamesim.Episode
                 RenderConversationNavigation(state, npc, window);
                 return;
             }
+            // An ask that came to the player as a card where they stand (EpisodeDirector.ComesToYou.cs).
+            if (askCardOpen) { AskCard(state); return; }
             if (sceneCardOpen) { SceneCard(state); return; }
             if (!phaseOpen) return;
             if (RenderActionPurchase(state)) return;
@@ -1699,6 +1729,12 @@ namespace Gamesim.Episode
 
         private void OnDisable()
         {
+            // Before anything can return early: the lamps' hook goes, with every lamp it has off (RS3).
+            UnhookLampScope();
+            // A framing goes with its cards: its coroutine dies with the object, and a flag it never cleared
+            // would keep the room scope's ceremony source on after re-activation (RS6a).
+            if (ceremonyFrame != null) { StopCoroutine(ceremonyFrame); ceremonyFrame = null; }
+            IsFramingCeremony = false;
             if (!IsReady) return;
             // Sibling scene roots may already be destroyed during unloading. Never rebuild UI here.
             ClosePanelsInternal(false); if (hud != null) hud.SetVisible(false);
@@ -1714,6 +1750,8 @@ namespace Gamesim.Episode
         }
         private void OnEnable()
         {
+            // Ready or not: the lamps' hook reads the scope as each render begins (RS3).
+            HookLampScope();
             if (!IsReady) return;
             hud?.SetVisible(true); ClosePanels();
         }

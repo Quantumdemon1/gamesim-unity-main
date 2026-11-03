@@ -183,7 +183,7 @@ namespace Gamesim.Tests.PlayMode
             try
             {
                 // Step beside them at the last possible moment, for the same reason.
-                WarpPlayer(npc.transform.position
+                WarpToTalk(npc, npc.transform.position
                     + (player.transform.position - npc.transform.position).normalized * 1.4f);
                 yield return null;
                 float gap = Vector3.Distance(player.transform.position, npc.transform.position);
@@ -575,7 +575,7 @@ namespace Gamesim.Tests.PlayMode
             yield return null;
 
             var npc = SceneComponents<HouseNpc>().First(actor => actor.gameObject.activeInHierarchy);
-            WarpPlayer(npc.transform.position
+            WarpToTalk(npc, npc.transform.position
                 + (player.transform.position - npc.transform.position).normalized * 1.4f);
             yield return null;
             Assert.That(director.TryOpenNpc(npc.Id), Is.True, "There is nothing to photograph if it never opened.");
@@ -666,7 +666,7 @@ namespace Gamesim.Tests.PlayMode
             director.ClosePanels();
             yield return null;
             var npc = SceneComponents<HouseNpc>().First(actor => actor.gameObject.activeInHierarchy);
-            WarpPlayer(npc.transform.position
+            WarpToTalk(npc, npc.transform.position
                 + (player.transform.position - npc.transform.position).normalized * 1.4f);
             yield return null;
             Assert.That(director.TryOpenNpc(npc.Id), Is.True);

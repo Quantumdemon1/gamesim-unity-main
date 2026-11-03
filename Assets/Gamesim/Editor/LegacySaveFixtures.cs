@@ -1,13 +1,5 @@
 using System;
 using System.IO;
-using System.Linq;
-using System.Reflection;
-using System.Security.Cryptography;
-using System.Text;
-using Gamesim.Persistence;
-using Gamesim.Simulation;
-using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
 using UnityEditor;
 using UnityEngine;
 
@@ -18,17 +10,21 @@ namespace Gamesim.Editor
     ///
     /// Acceptance criterion A7 was previously blocked on "an accepted V4/V5 QA save" — an archived
     /// artefact that has to survive alongside the repository and is simply unavailable on a machine
-    /// that never had it. The migration itself is covered by five Edit Mode test files; what only a
-    /// real old file can show is that the *player build* loads and upgrades one. Generating that file
-    /// on demand makes the criterion runnable anywhere instead of dependent on an archive.
+    /// that never had it. The migration itself is covered by the Edit Mode migration and old-save
+    /// acceptance tests; what only a real old file can show is that the *player build* loads and
+    /// upgrades one.
     ///
-    /// Writing the payload by hand rather than through the production writer is the point: the
-    /// current writer only emits schema 6, so a genuine v5 has to be assembled from a serialized
-    /// state with the fields that version did not have removed.
+    /// The file is the old-save acceptance set's schema-5 fixture, copied byte for byte: a save the
+    /// Codex port's schema-5 source snapshot wrote with its own store (Assets/Plans/OLD-SAVE-ACCEPTANCE.md,
+    /// manifest id s05-default-w3-hoh), sealed by that store and replayed by OldSaveAcceptanceTests.
+    /// It replaces a capture of the live state with later fields stripped by hand. That capture had to be
+    /// edited on every schema bump and had fallen behind since schema 14, so the shape check of
+    /// FrozenEpisodeV5 refused it; a file an old build really wrote never needs that edit.
     /// </summary>
     public static class LegacySaveFixtures
     {
         private const string RootVariable = "GAMESIM_LEGACY_SAVE_ROOT";
+        private const string Schema5Fixture = "s05-default-w3-hoh.save.json";
 
         [MenuItem("Gamesim/Port/Write Legacy V5 QA Save", priority = 200)]
         public static void WriteLegacyV5Save()
@@ -42,70 +38,17 @@ namespace Gamesim.Editor
                 return;
             }
 
-            Directory.CreateDirectory(root);
-            var path = Path.Combine(root, "episode.json");
-            File.WriteAllText(path, Envelope(CaptureAsV5(ContentCatalog.Create(601))));
-            Debug.Log("[Gamesim] Legacy v5 QA save written -> " + path);
-        }
-
-        /// <summary>
-        /// Serializes current state, then removes what schema 6 added and stamps the old version.
-        /// `npcSocial` is the whole of that difference, which is why the v5→v6 migration's job is to
-        /// seed it rather than to reshape anything.
-        /// </summary>
-        private static JObject CaptureAsV5(EpisodeState state)
-        {
-            var payload = JObject.FromObject(state, ProductionSerializer());
-            payload.Remove("npcSocial");
-            // Nothing added after schema 5 existed in v5 either, and the stored shape is checked
-            // field for field: a capture that still carries any of it is not a v5 payload.
-            foreach (var field in new[] { "evictionStage", "evictionSpeeches", "backdoorTargetId",
-                         "outOfPhaseSocialActions", "openingBeatsSeen", "socialBudgetRulesStartWeek",
-                         "deals", "dealRulesStartWeek", "boughtActionPoints", "houseEvents", "eventRulesStartWeek",
-                         "storylines", "activeModifiers", "storyRulesStartWeek", "competitionRulesVersion" })
-                payload.Remove(field);
-            foreach (var value in (JArray)payload["contestants"])
-                foreach (var field in new[] { "occupation", "archetype", "age", "hometown", "bio", "sourceTemplateId", "appearance" })
-                    ((JObject)value).Remove(field);
-            payload["schemaVersion"] = 5;
-            return payload;
-        }
-
-        /// <summary>The save writer's own serializer, so the fixture matches what the game would have written.</summary>
-        private static JsonSerializer ProductionSerializer() => (JsonSerializer)typeof(EpisodeSaveStore).Assembly
-            .GetType("Gamesim.Persistence.SaveJson", true)
-            .GetMethod("Serializer", BindingFlags.Public | BindingFlags.Static)
-            .Invoke(null, null);
-
-        /// <summary>
-        /// The on-disk envelope, with the checksum computed over a canonically ordered payload so it
-        /// does not depend on property order. This mirrors the migration tests' helper deliberately:
-        /// a fixture the loader accepts for the wrong reason would prove nothing.
-        /// </summary>
-        private static string Envelope(JObject payload)
-        {
-            JToken Order(JToken token)
+            var source = Path.Combine(Application.dataPath, "Gamesim", "Tests", "EditMode", "Fixtures", "OldSaves", Schema5Fixture);
+            if (!File.Exists(source))
             {
-                if (token is JObject obj)
-                    return new JObject(obj.Properties().OrderBy(p => p.Name, StringComparer.Ordinal)
-                        .Select(p => new JProperty(p.Name, Order(p.Value))));
-                if (token is JArray array) return new JArray(array.Select(Order));
-                return token.DeepClone();
+                Debug.LogError("[Gamesim] The schema-5 fixture is missing: " + source);
+                return;
             }
 
-            using var hash = SHA256.Create();
-            var checksum = BitConverter
-                .ToString(hash.ComputeHash(Encoding.UTF8.GetBytes(Order(payload).ToString(Formatting.None))))
-                .Replace("-", string.Empty).ToLowerInvariant();
-
-            return new JObject
-            {
-                ["format"] = "gamesim-unity-save",
-                ["version"] = 1,
-                ["savedAt"] = "2026-09-10T00:00:00.0000000Z",
-                ["checksum"] = checksum,
-                ["state"] = payload.DeepClone(),
-            }.ToString(Formatting.Indented);
+            Directory.CreateDirectory(root);
+            var path = Path.Combine(root, "episode.json");
+            File.WriteAllBytes(path, File.ReadAllBytes(source));
+            Debug.Log("[Gamesim] Legacy v5 QA save written -> " + path + " (a copy of " + Schema5Fixture + ")");
         }
     }
 }

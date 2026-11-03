@@ -43,12 +43,20 @@ namespace Gamesim.Episode
         /// </summary>
         private bool ConversationBeat(EpisodeState state, string npcId)
         {
-            if (state.Find(state.playerId)?.status != ContestantStatus.Active) return false;
-            var item = EpisodeEngine.OpenStoryBeats(state).FirstOrDefault(e => e.surface == StorySurfaces.Conversation
-                && (e.involvedIds.Contains(npcId) || e.cast.Any(role => role.contestantId == npcId)));
+            var item = ConversationBeatWith(state, npcId);
             if (item == null) return false;
             RenderStoryBeat(state, item);
             return true;
+        }
+
+        /// <summary>Whether a beat a conversation raised with this houseguest is open: the conversation would be that beat.</summary>
+        private static bool HasConversationBeat(EpisodeState state, string npcId) => ConversationBeatWith(state, npcId) != null;
+
+        private static HouseEventState ConversationBeatWith(EpisodeState state, string npcId)
+        {
+            if (state.Find(state.playerId)?.status != ContestantStatus.Active) return null;
+            return EpisodeEngine.OpenStoryBeats(state).FirstOrDefault(e => e.surface == StorySurfaces.Conversation
+                && (e.involvedIds.Contains(npcId) || e.cast.Any(role => role.contestantId == npcId)));
         }
 
         /// <summary>A Diary Room summons, in the room's pending tab.</summary>
@@ -625,8 +633,9 @@ namespace Gamesim.Episode
             if (!npcMeetings.CanBeginSceneStage) return;
             // Nor over an invitation on its way to the player or up in front of them: whichever is up
             // keeps the floor until it is answered (D18). Spent on a later frame than the beat's first,
-            // the try would otherwise withdraw an invitation the player had already been offered.
-            if (npcInvitationNow != null) return;
+            // the try would otherwise withdraw an invitation the player had already been offered. A houseguest
+            // bringing an ask (EpisodeDirector.ComesToYou.cs) is a visit in flight the same way.
+            if (NpcVisitInFlight) return;
             sceneStagedBeat = beat.id;
             string room = VenueRoom(beat.venue);
             var ids = beat.involvedIds.Concat(beat.cast.Select(role => role.contestantId))

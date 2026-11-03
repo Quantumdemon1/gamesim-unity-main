@@ -99,6 +99,16 @@ namespace Gamesim.Presentation
         private CeremonyPace pace = CeremonyPace.Suspenseful;
         private int shown = -1;
         private float elapsed, upFor, speed = 1f;
+
+        /// <summary>
+        /// The frame the card was played in. Neither it nor the next is the card's own time, as on the
+        /// takeover and the strip: the first update's delta can be the frame before the card was
+        /// played, and the next's is the frame it was played in - the commit, the house's render and
+        /// this card's own build - before anybody had seen it. Counted, a long one spent the fade, the
+        /// Head of Household's line and even keys before the card was drawn, and made a press in
+        /// flight look read.
+        /// </summary>
+        private int playedFrame;
         private bool playing, reduced, blockShown, lastKeyPending, usingPad, markPlaced;
         private Frame frame;
         private ScreenSurface surface;
@@ -198,6 +208,7 @@ namespace Gamesim.Presentation
             reduced = reducedMotion;
             elapsed = 0f;
             upFor = 0f;
+            playedFrame = Time.frameCount;
             shown = -1;
             blockShown = false;
             lastKeyPending = false;
@@ -268,6 +279,8 @@ namespace Gamesim.Presentation
         {
             if (!playing) return;
             CeremonyOverlays.Showing();
+            // Nothing from before its first frame on screen is the card's time (playedFrame).
+            if (Time.frameCount - playedFrame <= 1) return;
             upFor += Time.unscaledDeltaTime;
             FollowDevice();
 

@@ -6,6 +6,7 @@ using System.Linq;
 using System.Reflection;
 using System.Security.Cryptography;
 using System.Text;
+using Gamesim.Persistence;
 using Gamesim.Simulation;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
@@ -23,8 +24,11 @@ namespace Gamesim.Tests.EditMode
     /// power copy, then makes the final plea the Strategic plea's roll. The carrier is read through
     /// <see cref="Application.dataPath"/>, so this file runs in the editor and under the Mono harness, not the dotnet subset.
     ///
-    /// <para>The only edits are the declared enrolment (rules 2) and, from the schema-30 bump, the schema field the bump's
-    /// own upgrade writes (dialogue adds no field, DIALOGUE-PLAN §6). Below schema 30 the test holds rules 2's refusal.</para>
+    /// <para>The carrier is a schema-29 capture. Each case loads it to the live schema 30 through the real dispatch
+    /// (<see cref="EpisodeSaveMigrations.PrepareCurrentPayload"/>: the frozen schema-29 reader, then the upgrade's pooled
+    /// literals; dialogue adds no field, DIALOGUE-PLAN §6), and the only edit is the declared enrolment (rules 2). So the
+    /// test plays rules 2 at 30 on a state a real load writes; below 30,
+    /// <see cref="DialogueRules2Season.HeldBelowItsSchema"/> would hold rules 2's refusal.</para>
     /// </summary>
     public sealed class DialogueRules2PublicRescueTests
     {
@@ -36,6 +40,7 @@ namespace Gamesim.Tests.EditMode
             FloatParseHandling = FloatParseHandling.Double, MaxDepth = 64, ContractResolver = new PublicFieldsOnly()
         };
         private EpisodeState carried;
+        private string carriedJson;
         private string voter;
 
         private sealed class PublicFieldsOnly : DefaultContractResolver
@@ -53,7 +58,8 @@ namespace Gamesim.Tests.EditMode
             byte[] bytes = Convert.FromBase64String((string)carrier["base64"]);
             using (var hash = SHA256.Create())
                 Assert.That(BitConverter.ToString(hash.ComputeHash(bytes)).Replace("-", ""), Is.EqualTo(OriginalSha));
-            carried = JsonConvert.DeserializeObject<EpisodeState>(new UTF8Encoding(false, true).GetString(bytes), Fields);
+            carriedJson = new UTF8Encoding(false, true).GetString(bytes);
+            carried = JsonConvert.DeserializeObject<EpisodeState>(carriedJson, Fields);
             Assert.That(carried.dialogueRulesVersion, Is.Zero);
             Assert.That(carried.week, Is.EqualTo(5));
             voter = EpisodeEngine.Voters(carried).Single(p => !p.isPlayer).id;
@@ -63,11 +69,17 @@ namespace Gamesim.Tests.EditMode
 
         private EpisodeState Enrolled()
         {
-            var s = carried.Clone();
+            // The real load's dispatch takes the schema-29 capture to the live schema (DIALOGUE-PLAN §6 item 7, ALL-STAR §8.5):
+            // the frozen schema-29 reader accepts it whole, then UpgradeV29ToV30 adds schema 30's pooled off literals.
+            JObject capture;
+            using (var reader = new JsonTextReader(new StringReader(carriedJson))
+                       { DateParseHandling = DateParseHandling.None, FloatParseHandling = FloatParseHandling.Double, MaxDepth = 64 })
+                capture = JObject.Load(reader, new JsonLoadSettings { DuplicatePropertyNameHandling = DuplicatePropertyNameHandling.Error });
+            var loaded = EpisodeSaveMigrations.PrepareCurrentPayload(capture, out bool migrated);
+            Assert.That(migrated, Is.True, "A schema-29 capture migrates.");
+            var s = JsonConvert.DeserializeObject<EpisodeState>(loaded.ToString(Formatting.None), Fields);
+            Assert.That(s.schemaVersion, Is.EqualTo(R2.Start(1).schemaVersion), "The live schema, as a real load writes it.");
             s.dialogueRulesVersion = DialogueRules.Rules2;
-            // The live schema: what the bump's upgrade writes, with no dialogue field. At the bump this carrier loads through
-            // the real migration instead of this assignment (DIALOGUE-PLAN §6 item 7), so it holds what a real load writes.
-            s.schemaVersion = R2.Start(1).schemaVersion;
             Assert.That(EpisodeValidation.TryValidate(s, out string error), Is.True, error);
             return s;
         }

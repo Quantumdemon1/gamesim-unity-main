@@ -37,6 +37,7 @@ namespace Gamesim.Episode
         private readonly List<List<float>> startupStageFrames = new List<List<float>>();
         private int startupStage = -1;
         private double readySeconds = -1, sampleStartSeconds = -1, bodyAssemblySeconds = -1;
+        private int steadySampleFirstFrame = -1;
         private int bodiesAssemblingAtSampleStart = -1;
         private bool bodiesAssembled, openingWasPlaying;
 
@@ -87,6 +88,7 @@ namespace Gamesim.Episode
         {
             startupStage = -1;
             sampleStartSeconds = started;
+            steadySampleFirstFrame = Time.frameCount;
             bodiesAssemblingAtSampleStart = BodiesAssembling();
             if (bodiesAssemblingAtSampleStart > 0)
                 errors.Add(bodiesAssemblingAtSampleStart + " bodies were still assembling when the steady sample began; their construction is inside it.");
@@ -184,6 +186,7 @@ namespace Gamesim.Episode
             report.startup = VerificationFrameSummary.Of("startup", startupStageFrames.SelectMany(stage => stage));
             report.startupReadySeconds = readySeconds;
             report.startupSampleBeganSeconds = sampleStartSeconds;
+            report.steadySampleFirstFrame = steadySampleFirstFrame;
             report.bodyAssemblySeconds = bodyAssemblySeconds;
             report.bodiesAssembled = bodiesAssembled;
             report.bodiesAssemblingAtSampleStart = bodiesAssemblingAtSampleStart;

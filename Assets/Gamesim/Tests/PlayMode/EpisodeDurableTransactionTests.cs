@@ -49,6 +49,8 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(Application.CanStreamedLevelBeLoaded(EpisodeScene), Is.True);
             yield return SceneManager.LoadSceneAsync(EpisodeScene, LoadSceneMode.Single);
             director = SceneObjects<EpisodeDirector>().Single();
+            // The audited behaviour, in the editor as in a batch run: no houseguest brings an ask over.
+            director.AsksEnabled = false;
             float deadline = Time.realtimeSinceStartup + 10f;
             while (!director.IsReady && Time.realtimeSinceStartup < deadline) yield return null;
             Assert.That(director.IsReady, Is.True, "The real episode scene did not initialize.");
@@ -301,26 +303,37 @@ namespace Gamesim.Tests.PlayMode
             var before = director.Snapshot;
             var originalFiles = CaptureFiles();
             int writes = 0;
+            EpisodeState written = null;
             SetSaveHook(candidate =>
             {
                 writes++;
-                if (writes == 1)
-                {
-                    Assert.That(candidate.npcSocial.clockTick, Is.EqualTo(before.npcSocial.clockTick + 1));
-                    Assert.That(candidate.revision, Is.EqualTo(before.revision + 1));
-                    throw new IOException("Injected whole-second pre-write failure.");
-                }
-                // Deliberately succeed if a buggy SaveNow attempts its fallback write.
+                // Save installs the whole second first, and its one write carries it.
+                Assert.That(candidate.npcSocial.clockTick, Is.EqualTo(before.npcSocial.clockTick + 1));
+                Assert.That(candidate.revision, Is.EqualTo(before.revision + 1));
+                if (writes == 1) throw new IOException("Injected whole-second pre-write failure.");
+                // The explicit retry writes the same installed state.
+                written = candidate;
                 new EpisodeSaveStore(director.SavePath).Save(candidate);
             });
 
             director.SaveNow();
 
-            Assert.That(writes, Is.EqualTo(1), "A failed whole-tick flush must abort this SaveNow invocation.");
-            AssertStateEquals(before, director.Snapshot);
+            Assert.That(writes, Is.EqualTo(1), "A failed save must abort this SaveNow invocation: no second, older write.");
+            var installed = director.Snapshot;
+            Assert.That(installed.npcSocial.clockTick, Is.EqualTo(before.npcSocial.clockTick + 1));
+            Assert.That(installed.revision, Is.EqualTo(before.revision + 1));
+            Assert.That(installed.randomState, Is.EqualTo(before.randomState));
+            Assert.That(installed.npcSocial.randomState, Is.EqualTo(before.npcSocial.randomState));
             AssertFilesEqual(originalFiles);
             Assert.That(GetField<bool>("npcSaveSuspended"), Is.True);
             Assert.That(director.StatusMessage, Does.Not.Contain("Saved locally"));
+
+            director.SaveNow(); // The explicit retry: the session memory holds, and no further second.
+            Assert.That(writes, Is.EqualTo(2));
+            AssertStateEquals(installed, written);
+            AssertStateEquals(installed, director.Snapshot);
+            AssertDiskEquals(installed);
+            Assert.That(GetField<bool>("npcSaveSuspended"), Is.False);
             yield break;
         }
 
@@ -348,7 +361,9 @@ namespace Gamesim.Tests.PlayMode
             director.SaveNow();
 
             Assert.That(writes, Is.EqualTo(1), "The recovery flag can change during Flush; SaveNow must check its result before another write.");
-            AssertStateEquals(before, director.Snapshot);
+            // The whole second was installed before the one write; the foreign primary still locks recovery.
+            Assert.That(director.Snapshot.npcSocial.clockTick, Is.EqualTo(before.npcSocial.clockTick + 1));
+            Assert.That(director.Snapshot.revision, Is.EqualTo(before.revision + 1));
             AssertRecoveryLocked();
             AssertFilesEqual(retained);
             Assert.That(director.StatusMessage, Does.Not.Contain("Saved locally"));

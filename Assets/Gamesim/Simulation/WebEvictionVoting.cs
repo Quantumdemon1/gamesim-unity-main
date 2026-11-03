@@ -126,6 +126,10 @@ namespace Gamesim.Simulation
         // Native unified rules only. Derived from the sole canonical authority, never saved or
         // reconstructed from web fixtures, and never writable commitment mirrors.
         public List<WebVoteSafetyTerm> safetyTerms = new List<WebVoteSafetyTerm>();
+        // Native alumni rules 3 only (ALL-STAR-HISTORIES-PLAN §14.D.4): derived, never saved. The alumni's public record
+        // in this voter's threat for each nominee (KnownBlocs.VoteTerms), nonzero entries only. Empty below 3 and on
+        // every imported web round, so the web's threat is the web's.
+        public List<WebVoteAlumniTerm> alumniTerms = new List<WebVoteAlumniTerm>();
     }
 
     [Serializable] public sealed class WebVoteSafetyTerm
@@ -134,6 +138,19 @@ namespace Gamesim.Simulation
         public double obligation;
         public int brokenIncidents;
         public List<string> evidenceIds = new List<string>();
+    }
+
+    /// <summary>
+    /// One nominee's alumni terms in a voter's threat (ALL-STAR-HISTORIES-PLAN §14.D.4), the vote's mirror of the
+    /// nomination threat's (<see cref="ThreatAssessment.TotalWithPastGames"/>): the risk of the known pairs they sit in as
+    /// this voter reads it, inside the alliance component's cap of twenty, and their career, in the threat's sum. Derived
+    /// for one ballot from the season (<see cref="KnownBlocs.VoteTerms"/>), never saved, and no factor of its own: it is
+    /// part of "threat".
+    /// </summary>
+    [Serializable] public sealed class WebVoteAlumniTerm
+    {
+        public string nomineeId;
+        public double pairRisk, career;
     }
 
     public sealed class WebVoteSpeechAppeal
@@ -275,6 +292,8 @@ namespace Gamesim.Simulation
                 obligations = EpisodeEngine.LeverTerms(state, voterId),
             };
             if (UnifiedCommitments.SafetyAuthorityOn(state)) options.safetyTerms = SafetyTerms(state, voterId);
+            // An All-Star season from alumni rules 3 (§14.D.4): the alumni's public record in the threat, as the nominations read it.
+            if (AlumniRules.At(state, AlumniRules.Reputation)) options.alumniTerms = KnownBlocs.VoteTerms(state, voterId);
             BlockSpeeches.Configure(state, options);
             return options;
         }
@@ -402,15 +421,24 @@ namespace Gamesim.Simulation
 
         // Retain the unique three-argument source leaf used by the legacy contract tests.
         private static double Threat(WebVoteContestant evaluator, WebVoteContestant target, WebVoteState state) =>
-            ThreatWithSafety(evaluator, target, state, 0);
+            ThreatWithSafety(evaluator, target, state, 0, null);
 
-        private static double ThreatWithSafety(WebVoteContestant evaluator, WebVoteContestant target, WebVoteState state, int safetyBreaches)
+        /// <summary>
+        /// The source's threat, with the native unified rules' safety breaches and, from alumni rules 3, the nominee's
+        /// alumni terms (<see cref="WebVoteAlumniTerm"/>, ALL-STAR-HISTORIES-PLAN §14.D.4): the known pairs' risk inside the
+        /// alliance cap of twenty, and the career in the sum. The sum has no reputation clamp of fifteen, so a career the
+        /// nomination threat's clamp cuts counts here in full. Null, or an entry of noughts, is the source's threat exactly.
+        /// </summary>
+        private static double ThreatWithSafety(WebVoteContestant evaluator, WebVoteContestant target, WebVoteState state, int safetyBreaches,
+            WebVoteAlumniTerm alumni)
         {
             double competition = Math.Min(40, target.hohWins * 8 + target.vetoWins * 6);
             var others = state.allActive.Where(c => c.id != target.id && c.id != evaluator.id).ToArray();
             double average = others.Length == 0 ? 0 : others.Sum(c => Score(state, c.id, target.id)) / others.Length;
             double social = others.Length == 0 ? 15 : Clamp((average + 100) * 0.15, 0, 30);
-            double alliance = Math.Min(20, state.alliances.Where(a => Active(a) && a.members.Contains(target.id)).Sum(a => a.members.Count * 4));
+            double blocs = state.alliances.Where(a => Active(a) && a.members.Contains(target.id)).Sum(a => a.members.Count * 4);
+            if (alumni != null && alumni.pairRisk != 0) blocs += alumni.pairRisk;
+            double alliance = Math.Min(20, blocs);
             double potential = (target.stats.competition / 10) * 3 + (target.stats.strategic / 10) * 2;
             if (target.stats.social >= 7 && target.stats.strategic >= 7) potential += 2;
             double broken = Math.Min(8, (state.deals.Count(d => d.status == "broken" && HeldAgainst(d, target.id)
@@ -418,7 +446,9 @@ namespace Gamesim.Simulation
             var arc = target.isPlayer ? state.relationshipArcs.FirstOrDefault(a => a.npcId == evaluator.id) : null;
             double arcThreat = arc?.arcType == "rivalry" ? Math.Min(7, Math.Floor(arc.intensity / 15)) :
                 arc?.arcType == "friendship" ? -Math.Min(5, Math.Floor(arc.intensity / 20)) : 0;
-            return Clamp(competition + social + alliance + Math.Min(10, potential) + broken + arcThreat, 0, 100);
+            double threat = competition + social + alliance + Math.Min(10, potential) + broken + arcThreat;
+            if (alumni != null && alumni.career != 0) threat += alumni.career;
+            return Clamp(threat, 0, 100);
         }
 
         /// <summary>
@@ -594,6 +624,7 @@ namespace Gamesim.Simulation
         {
             var alliance = AllianceLoyalty(o.voter.id, nominee.id, o.state);
             var safety = o.safetyTerms?.FirstOrDefault(term => term.nomineeId == nominee.id);
+            var alumni = o.alumniTerms?.FirstOrDefault(term => term.nomineeId == nominee.id);
             var deal = DealObligationWithSafety(o.voter.id, nominee.id, o.state, safety);
             var arc = nominee.isPlayer ? o.state.relationshipArcs.FirstOrDefault(a => a.npcId == o.voter.id) : null;
             double history = arc == null ? 0 : (arc.arcType == "rivalry" ? -1 : arc.arcType == "friendship" ? 1 : 0) * arc.intensity;
@@ -603,7 +634,7 @@ namespace Gamesim.Simulation
             var factors = new List<WebVoteFactor>
             {
                 Factor("relationship", Score(o.state, o.voter.id, nominee.id) * weights.relationship, "private", "relationship:" + o.voter.id + ":" + nominee.id),
-                Factor("threat", -ThreatWithSafety(o.voter, nominee, o.state, safety?.brokenIncidents ?? 0) * weights.threat, "public", "resume:" + nominee.id),
+                Factor("threat", -ThreatWithSafety(o.voter, nominee, o.state, safety?.brokenIncidents ?? 0, alumni) * weights.threat, "public", "resume:" + nominee.id),
                 Factor("alliance", alliance.value * weights.alliance, "private", alliance.evidenceIds.ToArray()),
                 Factor("deal", deal.value * weights.deal, "private", deal.evidenceIds.ToArray()),
                 Factor("strategicValue", StrategicValue(o.voter, nominee, o.state) * weights.strategicValue * 0.5, "private"),

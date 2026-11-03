@@ -50,7 +50,7 @@ namespace Gamesim.Simulation
         public sealed class Finalist
         {
             public string id;
-            /// <summary>Their own line, the one they introduced themselves with (<see cref="WebIntroductions.IntroLine"/>).</summary>
+            /// <summary>Their own line, the one they introduced themselves with (<see cref="WebIntroductions.IntroLine(int, ContestantState)"/>).</summary>
             public string line;
             public string grade;
             public int wins;
@@ -87,7 +87,7 @@ namespace Gamesim.Simulation
             var actor = s.Find(finalistId);
             if (actor == null) return null;
             var read = new Finalist { id = actor.id };
-            read.line = WebIntroductions.IntroLine(unchecked((int)s.seed), actor.id, actor.name, actor.traits);
+            read.line = WebIntroductions.IntroLine(unchecked((int)s.seed), actor);
 
             read.wins = Wins(s, actor);
             read.grade = Grade(s, actor);

@@ -17,6 +17,20 @@ namespace Gamesim.Episode
         public bool IsHouseActivityOpen => houseActivitiesOpen;
         public bool IsPlayerHouseActivityActive => playerActivity!=null && !playerActivity.Released;
 
+        /// <summary>The rig's <see cref="HouseCameraRig.ViewTakeovers"/> just after an activity warp's camera calls; -1 for an activity reached on foot.</summary>
+        private int activityWarpTakeovers=-1;
+
+        /// <summary>
+        /// Whether the activity warp holds the camera (ROOM-SCOPE-PLAN RS6b, D6): the player was warped to an
+        /// activity begun in the house, it goes on, and nothing has taken the view since the warp's cut and
+        /// its follow - a pan, a zoom, a follow of someone else, a panel's shot. The room scope's activity
+        /// source is the warp's only while this holds: an activity walked or run to, and the house after it
+        /// ends, are free play's (the whole house until RS5).
+        /// </summary>
+        public bool ActivityWarpHoldsTheCamera
+            => activityWarpTakeovers>=0 && cameraRig!=null && cameraRig.ViewTakeovers==activityWarpTakeovers
+               && playerActivityInHouse && IsPlayerHouseActivityActive;
+
         /// <summary>
         /// Whether the player's activity was begun from the house itself - a click on the bed, the
         /// pool, the stove - rather than from the House Activities menu. Those run in free roam:
@@ -196,9 +210,13 @@ namespace Gamesim.Episode
             // interrupted and resumes it on release, which is right for a panel opened mid-walk
             // and wrong for getting out of bed: the player would set off after the old errand.
             player.StopHere();
+            // A warp's cut and its blink set the room scope at once (ROOM-SCOPE-PLAN D6, RS6b): the cut names
+            // the player's room at the activity, so the activity's room is drawn from the blink's first frame.
+            activityWarpTakeovers=-1;
+            bool warped=false;
             if(player.TryMeasureRoute(anchor.Approach,out float metres) && metres>HousePlayerController.WarpRouteMetres
                 && player.TryWarpTo(anchor.Approach))
-            {cameraRig?.CutTo(player.transform);BeginTravelDip();}
+            {cameraRig?.CutTo(player.transform);BeginTravelDip();warped=true;}
             if(!npcMeetings.TryReservePlayerActivity(player,anchor,out var lease,out var reason))
             {RefuseActivity(reason);return;}
             playerActivity=lease;playerActivityInHouse=true;playerActivityKind=kind;
@@ -208,6 +226,8 @@ namespace Gamesim.Episode
             DressPlayer(projected);
             // In close enough to see what they are doing: from the far view a swimmer is a dot.
             cameraRig?.FocusSubject(player.transform);
+            // The warp's view is the activity's from here, for as long as it goes on and nothing else takes the camera.
+            if(warped && cameraRig!=null)activityWarpTakeovers=cameraRig.ViewTakeovers;
             // Guidance in the device's words, as the diary's way in is: on the status line for as
             // long as they are at it, never replaced by the phase's own line (D10). The notice keeps
             // the line itself (S2A-R1): what the message says next while they are there - a

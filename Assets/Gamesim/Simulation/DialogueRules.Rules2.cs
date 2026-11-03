@@ -10,9 +10,9 @@ namespace Gamesim.Simulation
     /// entry funding, the voter's keyed answers and the exact validator of a rules-2 conversation.
     ///
     /// <para>Rules 1 keeps its own code in DialogueRules.cs, keyed to <c>== 1</c>, untouched. Rules 2 is defined only
-    /// from schema 30 (<see cref="Rules2Schema"/>, decision 7): at the live schema 29 every rules-2 season is refused,
-    /// so the frozen schema-29 reader holds dialogue rules 0 and 1 only. Nothing here reads <see cref="Version"/> for
-    /// behaviour.</para>
+    /// from schema 30 (<see cref="Rules2Schema"/>, decision 7): a rules-2 season at schema 29 is refused, so the frozen
+    /// schema-29 reader holds dialogue rules 0 and 1 only, and the live schema 30 admits it. Nothing here reads
+    /// <see cref="Version"/> for behaviour.</para>
     /// </summary>
     public static partial class DialogueRules
     {
@@ -130,11 +130,9 @@ namespace Gamesim.Simulation
             return true;
         }
 
-        /// <summary>
-        /// Whether a refused conversation leaves its plea to be made the ordinary way (DIALOGUE-PLAN §5.5): from rules 2
-        /// a refusal never takes a plea away. Rules 1 locks the Emotional plea instead, as merged.
-        /// </summary>
-        public static bool KeepsThePleaWhenRefused(EpisodeState s) => On(s) && s.dialogueRulesVersion >= Rules2;
+        // A refused rules-2 conversation leaves its plea to be made the ordinary way through the one helper every version
+        // calls, PleaWithoutConversation (DialogueRules.cs; DIALOGUE-PLAN §5.5; owner, 2026-10-25: "Never lose the plea").
+        // D2's own KeepsThePleaWhenRefused, which kept rules 1's lock, retired at D2's merge with D1b (§7, D2 as built).
 
         // ---------------------------------------------------------------- the voter's answers (engine-side, keyed)
 

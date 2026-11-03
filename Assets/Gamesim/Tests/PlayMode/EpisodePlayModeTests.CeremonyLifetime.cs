@@ -45,7 +45,9 @@ namespace Gamesim.Tests.PlayMode
                 yield return PlayUntilTheKeyCeremony(keys);
                 Assert.That(keys.ShowingBlock, Is.False, "The keys should still be coming out.");
 
-                // Past the read-first delay, and still well inside the key-by-key stage.
+                // Past the read-first delay, and still well inside the key-by-key stage. The card's time
+                // starts on the frame after the one that played it, and so does this wait.
+                yield return null;
                 float readable = Time.unscaledTime + 0.8f;
                 while (Time.unscaledTime < readable) yield return null;
                 Assert.That(keys.ShowingBlock, Is.False, "The keys should still be coming out.");

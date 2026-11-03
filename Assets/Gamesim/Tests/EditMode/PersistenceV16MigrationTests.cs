@@ -39,7 +39,7 @@ namespace Gamesim.Tests.EditMode
             var old = V15(); string original = old.ToString();
             var migrated = EpisodeSaveMigrations.PrepareCurrentPayload(old, out var changed);
             Assert.That(changed, Is.True);
-            Assert.That((int)migrated["schemaVersion"], Is.EqualTo(29));
+            Assert.That((int)migrated["schemaVersion"], Is.EqualTo(30));
             int week = (int)old["week"];
             Assert.That((int)migrated["story"]["rulesStartWeek"], Is.EqualTo(week + 1));
             Assert.That((int)migrated["story"]["rulesVersion"], Is.EqualTo(StoryRules.Threads), "The step's own literal, never a new season's StoryRules.Current.");

@@ -85,11 +85,11 @@ namespace Gamesim.Simulation
             bool prospectiveVote = canonicalMode == UnifiedVoteFamilyValidation.Version;
             bool prospectiveSafety = canonicalMode == UnifiedCommitments.ProspectiveVersion || prospectiveVote;
             error = null;
-            if (s == null || s.schemaVersion != 29) return Fail(out error, "Unsupported episode schema.");
+            if (s == null || s.schemaVersion != EpisodeState.LiveSchema) return Fail(out error, "Unsupported episode schema.");
             // The unpublished pilot has a complete local semantic owner. Unknown versions still
             // refuse; default/legacy rules stay inert and keep their original storage diagnostics.
-            // A defined version is admitted only at the schema that introduced it or later (DIALOGUE-PLAN §2): rules 2
-            // from 30, so at 29 it refuses here in the words it always has, and the frozen schema-29 reader agrees.
+            // A defined version is admitted only from the schema that introduced it (DIALOGUE-PLAN §2): rules 2 from 30.
+            // A schema-29 state is refused above, and the frozen schema-29 reader refuses rules 2 in these same words.
             if (s.dialogueRulesVersion != 0 && !DialogueRules.Admits(s.dialogueRulesVersion, s.schemaVersion))
                 return Fail(out error, "Dialogue rules are not enabled in this build.");
             if (s.dialogueRulesVersion == 0 && (s.dialogue == null || s.dialogue.episodes == null || s.dialogue.grants == null
@@ -100,6 +100,16 @@ namespace Gamesim.Simulation
             // Pending exceptions are exact registered receipt objects, never a raised effective
             // root revision. Every other invariant below sees the candidate's actual revision.
             if (!DialogueRules.TryValidate(s, pending, out error)) return false;
+            // Schema 30's pooled fields (SCH30, ALL-STAR-HISTORIES-PLAN 5.3): each holds a value this build defines, and
+            // the slice that defines a value widens this in the same step. The tuning rules: 0 only, until B9. The alumni
+            // rules: 0 with no edition, or 1 (H1b) to AlumniRules.Latest (5 from §14.L's growing pacts) with an
+            // edition this build knows. Every value from 1 writes the same opening, so the histories' receipts are checked
+            // with the ledger the same way at each (TryValidateAlumni). A season may not hold a value no code reads.
+            if (!AlumniRules.IsDefined(s.alumniRulesVersion) || s.tuningRulesVersion != 0
+                || s.alumniRulesVersion == AlumniRules.Off && s.alumniCatalogEdition != null)
+                return Fail(out error, "Schema 30's pooled rules are not enabled in this build.");
+            if (s.alumniRulesVersion >= AlumniRules.Histories && AlumniEditions.Find(s.alumniCatalogEdition) == null)
+                return Fail(out error, "The alumni rules need the edition their season was built from.");
             if (prospectiveSafety)
             {
                 if (s.unifiedCommitmentRulesVersion != canonicalMode
@@ -471,6 +481,7 @@ namespace Gamesim.Simulation
             if (prospectiveSafety && (!TryValidateStory(s, out error) || !TryValidateLedger(s, out error))) return false;
             return TryValidateV2(s, out error) && TryValidateV3(s, out error) && TryValidateNpcSocial(s, out error)
                 && TryValidateStory(s, out error) && TryValidateLedger(s, out error) && TryValidateWaveD(s, out error)
+                && TryValidateAlumni(s, out error)
                 && (!prospectiveSafety || TryValidateUnifiedSafetyReferences(s, prospectiveVote, out error))
                 && (!prospectiveVote || TryValidateUnifiedVoteReferences(s, out error));
         }

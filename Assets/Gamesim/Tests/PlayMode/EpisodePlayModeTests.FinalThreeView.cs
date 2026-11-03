@@ -1,4 +1,5 @@
 using System.Collections;
+using System.Collections.Generic;
 using System.Linq;
 using Gamesim.Episode;
 using Gamesim.House;
@@ -199,7 +200,8 @@ namespace Gamesim.Tests.PlayMode
         /// named over their heads, the player as the lists name them; in an ordinary week nobody
         /// is. Two of them side by side still wear a name each, one lifted clear of the other, and
         /// the frame is captured with the rooms and the names in it. None of it takes a click, and
-        /// it goes with the icons when the camera closes in.
+        /// it goes with the icons when the camera closes in. In the room view a finalist the view
+        /// hides is named over their room's icon, the next stop's too where it waits at the frame's top.
         /// </summary>
         [UnityTest]
         public IEnumerator Endgame_AtMapDistanceTheRoomsAndTheFewAreNamed()
@@ -286,6 +288,175 @@ namespace Gamesim.Tests.PlayMode
             while (Time.realtimeSinceStartup < deadline && cameraRig.Distance > EpisodeTravelBeacons.HiddenBelow - .5f) yield return null;
             yield return null;
             Assert.That(Naming(), Is.False, "Close up, the name plates name them.");
+
+            // The room view (D17, RS5): a finalist the view hides wears their name over their room's icon, not
+            // over a body that is not drawn.
+            cameraRig.ClearSubject();
+            yield return RoomViewLetGoOfTheDollhouse();
+            var scope = ScopeOf(director);
+            int playerRoom = RoomLayers.IndexOf(director.WalkerRoomOf(player.transform));
+            int elsewhere = Rs4FarRoom(scope, player.transform.position);
+            ScopePlace(partner.transform, ScopeOpenFloor(scope, elsewhere), 2f);
+            cameraRig.RecenterOnPlayer();
+            yield return null;
+            yield return RoomViewWaitOutTheLastChange();
+            Assert.That(cameraRig.ViewRoom, Is.EqualTo(playerRoom), "The room view frames the player's room,");
+            Assert.That(director.IsBodyDrawn(partner.transform), Is.False, partner.DisplayName + ", in the " + RoomLayers.RoomIds[elsewhere] + ", is hidden.");
+            string theirs = RoomLayers.RoomIds[elsewhere];
+            yield return WaitFor(() => director.TravelBeacons.IsNaming(partner.Id) && director.TravelBeacons.TryPlacedAt(theirs, out _), 3f,
+                partner.DisplayName + " is named, and the " + theirs + "'s icon is up.");
+            Assert.That(director.TravelBeacons.TryPlacedAt(theirs, out var iconAt), Is.True);
+            var hung = ScreenRect(NameChips().Last(rect => rect.name == EpisodeTravelBeacons.NameChipPrefix + partner.Id));
+            Assert.That(Mathf.Abs(hung.center.x - iconAt.x), Is.LessThan(hung.width * .5f + 4f), "The name hangs over the " + theirs + "'s icon (" + hung + " against " + iconAt + "),");
+            // Hung as every name chip is (EpisodeTravelBeacons.PlaceNames, since the T0 review): over the icon, clear of
+            // it, or - where the space over it is the frame's edge, the chrome or another name - on its other side,
+            // under the room's name and clear of it. Either way in the icon's column (above), never on the icon or its words.
+            var theirIcon = ScreenRect(BeaconFor(theirs));
+            var theirTag = ScreenRect((RectTransform)BeaconFor(theirs).Find(EpisodeTravelBeacons.RoomNameName));
+            Assert.That(hung.yMin >= theirIcon.yMax || hung.yMax <= theirTag.yMin, Is.True,
+                "over it, or under its room's name where the space over it is taken, clear of both (the name " + hung + ", the icon "
+                + theirIcon + ", the room's name " + theirTag + ").");
+
+            // A houseguest the room view draws wears the plate it shows over every drawn body (RS5), and no chip over the
+            // plate as well, the name twice (the fixes' review): the third finalist, stood beside the player in the middle of
+            // the player's room, is drawn with the plate up and no chip, and the player, who has no plate, keeps theirs.
+            director.SuspendNpcAutonomyForDiagnostics();
+            var third = SceneComponents<HouseNpc>().First(body => body.gameObject.activeInHierarchy && body.Id != partner.Id
+                && state.Active.Any(actor => !actor.isPlayer && actor.id == body.Id));
+            var middle = ScopeOpenFloor(scope, playerRoom);
+            ScopePlace(player.transform, middle, 2f);
+            Assert.That(NavMesh.SamplePosition(middle + Vector3.right * 1.2f, out var besideThePlayer, 1f, NavMesh.AllAreas), Is.True, "There is floor beside the player.");
+            ScopePlace(third.transform, besideThePlayer.position, 2f);
+            cameraRig.RecenterOnPlayer();
+            yield return null;
+            yield return RoomViewWaitOutTheLastChange();
+            Assert.That(cameraRig.ViewRoom, Is.EqualTo(playerRoom), "The view still frames the player's room.");
+            yield return WaitFor(() => director.IsBodyDrawn(third.transform) && director.TravelBeacons.IsNaming(state.playerId), 3f,
+                third.DisplayName + ", beside the player, is drawn, and the player is named mid-frame.");
+            Assert.That(third.RoomViewPlates, Is.True, "The room view shows " + third.DisplayName + "'s plate,");
+            Assert.That(director.TravelBeacons.IsNaming(third.Id), Is.False, "so no name chip hangs over it as well.");
+
+            // And a hidden finalist's name reads as their room's alone (D17(3), the fixes' review): over their room's icon,
+            // moved past it and the names before it only, never lifted past a neighbour's icon to hang over it. The partner
+            // stands in the nomination room - from the living room's view its icon and the games room's wait at the frame's
+            // edge the same way (the lane's rs4 captures), and from the Head of Household's its icon stands at the doorway
+            // with the yard's and the games room's beside it - and in each of the nine framings the name is shown in, it is
+            // nearest the nomination room's icon, touches no other icon or room's name, and hangs in the icon's column.
+            ScopePlace(partner.transform, ScopeOpenFloor(scope, RoomLayers.IndexOf("Nomination")), 2f);
+            var misread = new List<string>();
+            foreach (var viewedRoom in new[] { "Living", "HoH" })
+            {
+                int room = RoomLayers.IndexOf(viewedRoom);
+                cameraRig.SetReducedMotion(false);
+                yield return RoomViewPlayerIn(scope, room);
+                cameraRig.SetReducedMotion(true);
+                int namedIn = 0;
+                float nearest = HouseRoomView.NearestDistance, farthest = HouseRoomView.FarthestDistance(room);
+                foreach (float distance in new[] { nearest, (nearest + farthest) * .5f, farthest })
+                    foreach (float yaw in new[] { 0f, 45f, 90f })
+                    {
+                        RoomViewSetYaw(yaw);
+                        SetCameraDistance(distance);
+                        yield return null;
+                        yield return null;
+                        yield return null;
+                        string where = viewedRoom + " at " + distance.ToString("0.##") + " m, yaw " + yaw;
+                        if (director.IsBodyDrawn(partner.transform)) { misread.Add(where + ": " + partner.DisplayName + " is drawn"); continue; }
+                        if (!director.TravelBeacons.IsNaming(partner.Id)) continue;
+                        namedIn++;
+                        var name = ScreenRect(NameChips().Last(rect => rect.name == EpisodeTravelBeacons.NameChipPrefix + partner.Id));
+                        string closest = null;
+                        float best = float.PositiveInfinity;
+                        foreach (var id in RoomLayers.RoomIds)
+                        {
+                            var icon = BeaconFor(id);
+                            if (icon == null || !icon.gameObject.activeInHierarchy) continue;
+                            float away = (ScreenCentre(icon) - name.center).sqrMagnitude;
+                            if (away < best) { best = away; closest = id; }
+                            if (id == "Nomination") continue;
+                            var tag = icon.Find(EpisodeTravelBeacons.RoomNameName) as RectTransform;
+                            if (ScreenRect(icon).Overlaps(name) || (tag != null && tag.gameObject.activeSelf && ScreenRect(tag).Overlaps(name)))
+                                misread.Add(where + ": the name (" + name + ") is on the " + id + "'s icon or its room's name");
+                        }
+                        if (closest != "Nomination") misread.Add(where + ": the name (" + name + ") is nearest the " + closest + "'s icon");
+                        var own = BeaconFor("Nomination");
+                        var ownIcon = ScreenRect(own);
+                        var ownTag = ScreenRect((RectTransform)own.Find(EpisodeTravelBeacons.RoomNameName));
+                        if (Mathf.Abs(name.center.x - ownIcon.center.x) >= name.width * .5f + 4f || (name.yMin < ownIcon.yMax && name.yMax > ownTag.yMin))
+                            misread.Add(where + ": the name (" + name + ") is out of the nomination room's icon's column (the icon " + ownIcon + ", its name " + ownTag + ")");
+                    }
+                if (namedIn == 0) misread.Add(viewedRoom + ": " + partner.DisplayName + " is named in none of the nine framings");
+            }
+
+            // And the next stop's own (the claims' fourth review): the finalists hidden in the next stop's room - the yard the
+            // competition is in, or the diary room when one is owed - wear their names over its icon where it waits at the
+            // frame's top under the shade, the icon moving down for the air over it no further than half a footprint for
+            // each name. From the living room, with no doorway to either, the icon waits at the frame's edge its way, at the
+            // top in some of the nine framings: each framing is read with the partner and the third finalist in the
+            // nomination room, then with both in the next stop's room, and where the icon stood at the top both names hang
+            // over it in its column, and it stands within a footprint of where it stood.
+            string next = director.TravelBeacons.NextStop;
+            Assert.That(next, Is.EqualTo("Yard").Or.EqualTo("Private"), "At the Final 3 the next stop is the competition's yard or the diary room.");
+            int living = RoomLayers.IndexOf("Living");
+            var livingFloor = ScopeOpenFloor(scope, living);
+            float livingNearest = HouseRoomView.NearestDistance, livingFarthest = HouseRoomView.FarthestDistance(living);
+            var framings = new List<(float distance, float yaw)>();
+            foreach (float distance in new[] { livingNearest, (livingNearest + livingFarthest) * .5f, livingFarthest })
+                foreach (float yaw in new[] { 0f, 45f, 90f })
+                    framings.Add((distance, yaw));
+            var atTheTop = new Vector2?[framings.Count];
+            var overTheNextStop = new List<string>();
+            foreach (string inRoom in new[] { "Nomination", next })
+            {
+                var floorThere = ScopeOpenFloor(scope, RoomLayers.IndexOf(inRoom));
+                Assert.That(NavMesh.SamplePosition(floorThere + Vector3.right * 1.2f, out var besideThePartner, 1f, NavMesh.AllAreas), Is.True,
+                    "There is floor beside the " + inRoom + "'s middle.");
+                ScopePlace(partner.transform, floorThere, 2f);
+                ScopePlace(third.transform, besideThePartner.position, 2f);
+                cameraRig.SetReducedMotion(false);
+                yield return RoomViewPlayerIn(scope, living);
+                yield return WaitFor(() => director.WalkerRoomOf(partner.transform) == inRoom && director.WalkerRoomOf(third.transform) == inRoom
+                    && !director.IsBodyDrawn(partner.transform) && !director.IsBodyDrawn(third.transform), 3f,
+                    partner.DisplayName + " and " + third.DisplayName + " stand in the " + inRoom + ", hidden from the living room's view.");
+                cameraRig.SetReducedMotion(true);
+                for (int framing = 0; framing < framings.Count; framing++)
+                {
+                    RoomViewSetYaw(framings[framing].yaw);
+                    SetCameraDistance(framings[framing].distance);
+                    RoomViewSetDesired(new Vector3(livingFloor.x, cameraRig.transform.position.y, livingFloor.z), framings[framing].distance);
+                    yield return null;
+                    yield return null;
+                    yield return null;
+                    string where = "Living at " + framings[framing].distance.ToString("0.##") + " m, yaw " + framings[framing].yaw + ", the two in the " + inRoom;
+                    var icons = director.TravelBeacons;
+                    if (!icons.TryPlacedAt(next, out var at)) { overTheNextStop.Add(where + ": the next stop's icon is not shown"); continue; }
+                    if (inRoom != next)
+                    {
+                        var frame = cameraRig.ViewCamera.pixelRect;
+                        if (icons.IsPinned(next) && at.y >= frame.yMin + .75f * frame.height) atTheTop[framing] = at;
+                        continue;
+                    }
+                    if (atTheTop[framing] == null) continue;
+                    var nextIcon = ScreenRect(BeaconFor(next));
+                    // The code's footprint: half the icon's side and the badges' reach past it (Side * .5 + 8 of Side 46).
+                    float footprint = nextIcon.width * (31f / 46f);
+                    if ((at - atTheTop[framing].Value).magnitude > 2f * footprint + 1f)
+                        overTheNextStop.Add(where + ": the next stop's icon moved " + (at - atTheTop[framing].Value).magnitude.ToString("0") + " px from "
+                            + atTheTop[framing].Value + ", past half a footprint (" + footprint.ToString("0") + " px) for each of the two names");
+                    foreach (var finalist in new[] { partner, third })
+                    {
+                        if (director.IsBodyDrawn(finalist.transform)) { overTheNextStop.Add(where + ": " + finalist.DisplayName + " is drawn"); continue; }
+                        if (!icons.IsNaming(finalist.Id)) { overTheNextStop.Add(where + ": " + finalist.DisplayName + " is not named, the icon at the top (" + at + ")"); continue; }
+                        var name = ScreenRect(NameChips().Last(rect => rect.name == EpisodeTravelBeacons.NameChipPrefix + finalist.Id));
+                        if (name.yMin < nextIcon.yMax - .5f || Mathf.Abs(name.center.x - nextIcon.center.x) >= name.width * .5f + 4f)
+                            overTheNextStop.Add(where + ": " + finalist.DisplayName + "'s name (" + name + ") does not hang over the " + next + "'s icon (" + nextIcon + ")");
+                    }
+                }
+            }
+            cameraRig.SetReducedMotion(false);
+            Assert.That(misread, Is.Empty, misread.Count + " found: " + string.Join("; ", misread.Take(12)));
+            Assert.That(atTheTop.Any(spot => spot != null), Is.True, "From the living room the " + next + "'s icon waits at the frame's top in one of the nine framings.");
+            Assert.That(overTheNextStop, Is.Empty, overTheNextStop.Count + " found: " + string.Join("; ", overTheNextStop.Take(12)));
         }
 
         /// <summary>

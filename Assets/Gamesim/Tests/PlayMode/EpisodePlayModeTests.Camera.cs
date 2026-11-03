@@ -13,13 +13,17 @@ namespace Gamesim.Tests.PlayMode
     /// Camera Phase 1 (MASTER-PLAN §3.E): the pitch follows the distance and keeps the orbit's
     /// offset, the wheel zooms toward whatever is under the cursor, and a wall between the camera
     /// and its focus pulls the camera in for as long as it is there - without changing the distance
-    /// the player asked for.
+    /// the player asked for. From RS5 the nearest zoom is four metres (D11) and the free camera is the room
+    /// view: the dollhouse's own curve and wheel are read with the whole house held, and the room view's
+    /// pitch keeps the same curve over the rig's own metres; the wall's pull-in is read in the room view.
     /// </summary>
     public sealed partial class EpisodePlayModeTests
     {
         [UnityTest]
         public IEnumerator Camera_CloseAuthoredShotsCheckObstaclesInsideTheExplorationMinimum()
         {
+            // The exploration minimum is four metres (D11, RS5), whatever the scene's saved ten: a 2.8 m interview is inside it.
+            Assert.That(cameraRig.NearestDistance,Is.EqualTo(4f),"The free camera's nearest zoom is four metres.");
             cameraRig.SetReducedMotion(true);cameraRig.ControlsEnabled=false;
             cameraRig.MoveTo(new HouseCameraRig.Shot { Focus=new Vector3(0,5,0),Distance=2.8f,Pitch=10,Yaw=0,Seconds=0 });
             yield return null;
@@ -39,6 +43,23 @@ namespace Gamesim.Tests.PlayMode
         [UnityTest]
         public IEnumerator Camera_PitchFollowsTheDistanceAndKeepsTheOrbitOffset()
         {
+            // The room view keeps the same curve: at a room's farthest zoom the pitch is the curve's for that
+            // distance over the rig's own metres, plus the offset - not the curve's far end (RS5).
+            director.ClosePanels();
+            yield return null;
+            yield return SettleCamera();
+            Assert.That(cameraRig.IsRoomView, Is.True, "The free camera starts as the room view.");
+            SetCameraDistance(cameraRig.FarthestDistance);
+            yield return SettleCamera();
+            Assert.That(cameraRig.DesiredDistance, Is.EqualTo(cameraRig.FreeFarthestDistance).Within(.001f), "The room view zooms out no farther than its room's own.");
+            Assert.That(cameraRig.Pitch - cameraRig.PitchFor(cameraRig.DesiredDistance), Is.EqualTo(cameraRig.PitchOffset).Within(0.5f),
+                "The room's farthest feeds the rig's own pitch curve.");
+            Assert.That(cameraRig.PitchFor(cameraRig.FreeFarthestDistance), Is.LessThan(cameraRig.PitchFor(cameraRig.FarthestDistance) - 5f),
+                "and is not its far end, which stays the whole house's.");
+
+            // The dollhouse's curve, from end to end: the whole house held, today's free camera (4 to 34 m).
+            RoomViewHoldTheDollhouse();
+            yield return null;
             SetCameraDistance(cameraRig.FarthestDistance);
             yield return SettleCamera();
             float far = cameraRig.Pitch;
@@ -69,11 +90,16 @@ namespace Gamesim.Tests.PlayMode
             yield return SettleCamera();
             Assert.That(cameraRig.Pitch - cameraRig.PitchFor(cameraRig.DesiredDistance), Is.EqualTo(offset).Within(0.5f),
                 "The zoom must not undo the orbit.");
+            yield return RoomViewLetGoOfTheDollhouse();
         }
 
         [UnityTest]
         public IEnumerator Camera_ZoomsTowardWhatIsUnderTheCursor()
         {
+            // The dollhouse's wheel, from 24 m: the whole house held, today's free camera (RS5). The room view's
+            // zoom stays inside its room (RoomView_TheFreeCameraStaysOverItsRoom).
+            RoomViewHoldTheDollhouse();
+            yield return null;
             SetCameraDistance(24f);
             yield return SettleCamera();
             var focusBefore = cameraRig.DesiredFocus;
@@ -100,16 +126,21 @@ namespace Gamesim.Tests.PlayMode
         [UnityTest]
         public IEnumerator Camera_PullsInWhileAWallOccludesTheFocusAndLetsGoAfter()
         {
+            // In the room view (RS5): the room's own farthest zoom, which leaves room for a wall past the
+            // four-metre minimum (D11).
             SetCameraDistance(cameraRig.FarthestDistance);
             yield return SettleCamera();
+            Assert.That(cameraRig.IsRoomView, Is.True, "The free camera is the room view.");
             float far = cameraRig.Distance;
+            Assert.That(far, Is.EqualTo(cameraRig.FreeFarthestDistance).Within(0.05f), "at its room's farthest zoom.");
             Assert.That(cameraRig.AppliedDistance, Is.EqualTo(far).Within(0.05f), "Nothing in the way to begin with.");
 
             // A wall stood on the boom line, beyond the zoom minimum. Anything nearer the focus than
             // the player could zoom to never counts, so the chair beside the focus cannot yank the
             // camera onto the floor - and the pull-in never passes that minimum either.
             float wallAt = cameraRig.NearestDistance + 4f;
-            Assume.That(wallAt, Is.LessThan(far - 1f), "The rig must have room between its zoom limits for this to mean anything.");
+            // Asserted, not assumed: the room view's range is the code this slice changes (ROOM-SCOPE-PLAN §5.1).
+            Assert.That(wallAt, Is.LessThan(far - 1f), "The room view leaves room between its zoom limits (4 m to " + far + " m) for a wall.");
             var wall = TestWall(wallAt);
             try
             {

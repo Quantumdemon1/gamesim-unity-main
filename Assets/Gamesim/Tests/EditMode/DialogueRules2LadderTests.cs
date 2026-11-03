@@ -53,7 +53,9 @@ namespace Gamesim.Tests.EditMode
         /// the season's schema, never the build's. Whole-state validation refuses it in the words it always used, which are
         /// the frozen schema-29 reader's; that half reads the live schema, so it is asserted only while new seasons are
         /// written at 29. From the pooled bump the live validator refuses schema 29 itself, and that wording pin moves to the
-        /// frozen reader's tests (DIALOGUE-PLAN §6 item 7), so this case stays green across the bump.
+        /// frozen reader's tests (DIALOGUE-PLAN §6 item 7), so this case stays green across the bump. Since D2's merge new
+        /// seasons are written at 30, the whole-state half no longer runs, and
+        /// FrozenEpisodeV29IntegrationTests.RulesTwoAtTwentyNineIsRefusedInTheFrozenReadersWordsBeforeAnyLift holds those words.
         /// </summary>
         [TestCase(2)] [TestCase(3)]
         public void AtSchema29ALaterVersionIsRefusedInTheFrozenReadersWords(int version)
@@ -66,7 +68,13 @@ namespace Gamesim.Tests.EditMode
             Assert.That(DialogueRules.On(s), Is.False);
             Assert.That(DialogueRules.TryValidate(s, out string error), Is.False);
             Assert.That(error, Is.EqualTo(version == 2 ? "Dialogue rules version 2 needs schema 30 or later." : "Unsupported dialogue rules version."));
-            Assert.That(DialogueRules.KeepsThePleaWhenRefused(s), Is.False);
+            // The plea's fallback is one helper for every version (owner, 2026-10-25: never lose the plea): below its schema
+            // rules 2 is not on, so even in a Campaign it has no rules-2 fallback to give and no open talk to point to.
+            var campaign = s.Clone(); campaign.phase = EpisodePhase.Campaign;
+            string voter = campaign.contestants.First(c => !c.isPlayer).id;
+            Assert.That(DialogueRules.PleaWithoutConversation(campaign, voter, out string reason), Is.False);
+            Assert.That(reason, Is.Null);
+            Assert.That(DialogueRules.PleaInOpenConversation(campaign, voter), Is.False);
             if (!writtenAt29) return;
             Assert.That(EpisodeValidation.TryValidate(s, out error), Is.False);
             Assert.That(error, Is.EqualTo("Dialogue rules are not enabled in this build."));

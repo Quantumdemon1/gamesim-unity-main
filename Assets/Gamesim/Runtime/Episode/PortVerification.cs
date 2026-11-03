@@ -54,6 +54,8 @@ namespace Gamesim.Episode
             bool sized = VerificationPerformance.TryReadHouseSize(args, out int askedHouseSize);
             string stressRefusal = VerificationPerformance.StressRosterRefusal(args, askedHouseSize);
             if (stressRefusal != null) { Debug.LogError(stressRefusal); Application.Quit(2); return; }
+            string viewsRefusal = VerificationViews.Refusal(args);
+            if (viewsRefusal != null) { Debug.LogError(viewsRefusal); Application.Quit(2); return; }
             if (!args.Contains("--gamesim-verify")) return;
             int root = Array.IndexOf(args, "--gamesim-save-root");
             if (root < 0 || root + 1 >= args.Length || !Path.IsPathRooted(args[root + 1]))
@@ -74,6 +76,7 @@ namespace Gamesim.Episode
                 runner.seconds = Math.Clamp(parsed, 10, 1800);
             runner.houseSize = sized ? Math.Clamp(askedHouseSize, 3, 16) : 0;
             runner.stressRoster = args.Contains(VerificationPerformance.StressRosterArgument);
+            runner.ReadViewsRequest(args);
         }
 
         private IEnumerator Start()
@@ -91,6 +94,8 @@ namespace Gamesim.Episode
             { director = FindAnyObjectByType<EpisodeDirector>(); yield return null; }
             if (director == null || !director.IsReady)
             { errors.Add("The bootstrap did not reach a ready episode."); Finish(0, false); yield break; }
+            // Every route verifies the audited behaviour: houseguests do not bring their asks over (OFFERS-COME-TO-YOU-PLAN).
+            director.AsksEnabled = false;
             readySeconds = Time.realtimeSinceStartupAsDouble;
             if (verifyCreator || lookSheet) startupStage = -1;
             if (verifyCreator) { yield return RunCreatorVerification(director); yield break; }
@@ -98,6 +103,8 @@ namespace Gamesim.Episode
             if (lookSheet) { yield return RunLookSheet(); FinishLookSheet(); yield break; }
             // Uncapped from here, so the startup's frames are its cost and not the display's interval.
             director.SetFrameCap(ProfileFrameCap);
+            // Each house commit's parts, written beside the frames when the player quits (NpcCommitTimings).
+            director.commitTimingForVerification = new NpcCommitTimings();
             BeginStartupStage("season");
             var player = FindAnyObjectByType<HousePlayerController>();
             var rooms = FindObjectsByType<HouseRoomMarker>().OrderBy(room => room.RoomName, StringComparer.Ordinal).ToArray();
@@ -148,6 +155,8 @@ namespace Gamesim.Episode
             measuredHouseSize = director.Snapshot.contestants.Count;
             // The opening put away and every body built before anything is measured or captured.
             yield return SettleTheHouse();
+            // The room scope's views (ROOM-SCOPE-PLAN §5.3) are a mode of their own: the house held still, no profile.
+            if (viewsRequest != null) { yield return RunViews(director); yield break; }
             BeginStartupStage("verification");
             // Started a stage early, so the counters hold a frame's sample when the steady sample reads them.
             StartMemoryRecorders();
@@ -357,7 +366,7 @@ namespace Gamesim.Episode
         private bool ProfileWorkloadCycleCompleted => profileVisitedRooms.Count == profileRoomCount
             && profileJournalRequests > 0 && profileSettingsRequests > 0 && profileStationRequests > 0;
         private static double Percentile(List<long> values, double p) => values.Count == 0 ? 0 : values[Math.Min(values.Count - 1, (int)Math.Ceiling(values.Count * p) - 1)];
-        private void OnDestroy() { Application.logMessageReceived -= CollectError; gc.Dispose(); DisposeMemoryRecorders(); }
+        private void OnDestroy() { Application.logMessageReceived -= CollectError; gc.Dispose(); DisposeMemoryRecorders(); DisposeViews(); }
 
         [Serializable] private sealed class VerificationReport
         {
@@ -379,6 +388,10 @@ namespace Gamesim.Episode
             public List<VerificationFrameSummary> startupStages;
             // bodyAssemblySeconds: from the measured season's start (seasonStartedSeconds) until every body was built.
             public double startupReadySeconds, startupSampleBeganSeconds, bodyAssemblySeconds;
+            // Time.frameCount as the steady sample began: a commit timed in frame F (npc-commit-timing-ms.csv) stretches
+            // the time recorded in frame F + 1, which is the frames file's data row F + 1 - steadySampleFirstFrame
+            // counted from 0 under its "ms" header: its line F + 3 - steadySampleFirstFrame, counted from 1.
+            public int steadySampleFirstFrame;
             public bool bodiesAssembled, openingSkipped;
             public int bodiesAssemblingAtSampleStart;
             // Memory through the steady sample, in bytes (-1 unavailable; the driver estimate is 0 in release players).

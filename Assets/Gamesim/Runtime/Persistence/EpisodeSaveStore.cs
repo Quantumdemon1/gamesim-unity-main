@@ -22,6 +22,15 @@ namespace Gamesim.Persistence
         private static readonly ConcurrentDictionary<string, object> Gates = new ConcurrentDictionary<string, object>(StringComparer.OrdinalIgnoreCase);
         private readonly string path;
         private readonly object gate;
+        // The primary's bytes as this store last proved them good: the bytes it installed, once their
+        // read-back and the swap succeeded, or the bytes a load or a backup recovery read and
+        // validated. Before an overwrite, a primary that still holds exactly these is compared rather
+        // than parsed again (63 ms at 271 KB); any other primary gets the whole check. Null when nothing
+        // is proven: a failed read of the primary and a swap that may have touched it clear them, and
+        // another slot is another store. Read and written under the gate only.
+        private byte[] proven;
+        // How many saves that comparison let through without parsing the primary (PersistenceTests).
+        private int primaryParsesSkipped;
         public string SavePath => path;
         public string BackupPath => path + ".backup";
 
@@ -48,14 +57,19 @@ namespace Gamesim.Persistence
             lock (gate)
             {
                 Directory.CreateDirectory(Path.GetDirectoryName(path));
-                if (File.Exists(path) && !TryRead(path, out _, out _, out var unopened))
+                if (File.Exists(path))
                 {
-                    // A save that could not be opened - held past the wait, or denied - may be fine.
-                    // It still blocks the overwrite, as the IOException of a failed save rather than
-                    // the verdict that the file is damaged and needs recovering.
-                    if (unopened != null)
-                        throw new IOException("The current save could not be opened to check it before saving; it was left as it is.", unopened);
-                    throw new InvalidDataException("The current save is unreadable. Choose backup recovery or another slot before saving; existing copies were preserved.");
+                    if (!TryRead(path, proven, out var current, out _, out var unopened, out _))
+                    {
+                        proven = null;
+                        // A save that could not be opened - held past the wait, or denied - may be fine.
+                        // It still blocks the overwrite, as the IOException of a failed save rather than
+                        // the verdict that the file is damaged and needs recovering.
+                        if (unopened != null)
+                            throw new IOException("The current save could not be opened to check it before saving; it was left as it is.", unopened);
+                        throw new InvalidDataException("The current save is unreadable. Choose backup recovery or another slot before saving; existing copies were preserved.");
+                    }
+                    if (current == null) primaryParsesSkipped++;
                 }
                 Install(bytes, rotateBackup: true);
             }
@@ -65,7 +79,8 @@ namespace Gamesim.Persistence
         {
             lock (gate)
             {
-                if (TryRead(path, out state, out message))
+                // The bytes this read validated are the ones remembered; a failed read leaves none.
+                if (TryRead(path, null, out state, out message, out _, out proven))
                 {
                     message = "Local episode loaded and validated." + (string.IsNullOrEmpty(message) ? "" : " " + message);
                     return true;
@@ -100,7 +115,7 @@ namespace Gamesim.Persistence
 
                     // The backup is intentionally not a replacement target, even if the primary was damaged.
                     Install(backupBytes, rotateBackup: false);
-                    if (!TryRead(path, out state, out var installedError)) throw new InvalidDataException(installedError);
+                    if (!TryRead(path, null, out state, out var installedError, out _, out proven)) throw new InvalidDataException(installedError);
                     message = "Backup restored and validated. The backup remains available."
                         // Not the path: it carries the player's user name and they can do nothing
                         // with it. That the previous file was kept is the entire message.
@@ -110,6 +125,7 @@ namespace Gamesim.Persistence
                 }
                 catch (Exception error) when (SaveJson.IsExpected(error))
                 {
+                    proven = null;
                     message = "Backup recovery failed; existing backup was preserved. " + SaveJson.Explain(error);
                     return false;
                 }
@@ -122,8 +138,12 @@ namespace Gamesim.Persistence
             try
             {
                 SaveJson.WriteNewDurable(temporary, bytes);
-                if (!TryRead(temporary, out _, out var reason)) throw new InvalidDataException(reason);
+                if (!TryRead(temporary, null, out _, out var reason, out _, out var installed)) throw new InvalidDataException(reason);
+                // A swap that fails can have moved the primary aside already, so until it is done
+                // nothing about the primary is proven.
+                proven = null;
                 SaveJson.SwapIntoPlace(temporary, path, rotateBackup ? BackupPath : null);
+                proven = installed;
             }
             finally
             {
@@ -137,21 +157,34 @@ namespace Gamesim.Persistence
         }
 
         private static bool TryRead(string file, out EpisodeState state, out string message) =>
-            TryRead(file, out state, out message, out _);
+            TryRead(file, null, out state, out message, out _, out _);
 
+        /// <param name="proven">Bytes already proved good for this file, or null. A file that holds
+        /// exactly these passes as they did, compared rather than parsed again, and gives no state;
+        /// any other content gets the whole check.</param>
         /// <param name="unopened">The filesystem error when the file could not be read at all, which
         /// says nothing about its content (<see cref="SaveJson.IsFilesystemError"/>); null when it was
         /// read, is absent, or failed on what it holds.</param>
-        private static bool TryRead(string file, out EpisodeState state, out string message, out Exception unopened)
+        /// <param name="read">The bytes that passed, read once and checked as read, for a caller to
+        /// remember; null when the read failed.</param>
+        private static bool TryRead(string file, byte[] proven, out EpisodeState state, out string message, out Exception unopened, out byte[] read)
         {
             state = null;
             unopened = null;
+            read = null;
             message = "No local save exists in this slot.";
             try
             {
                 if (!File.Exists(file)) return false;
                 if (new FileInfo(file).Length > SaveJson.MaximumBytes) throw new InvalidDataException("Save exceeds the supported size limit.");
-                var envelope = SaveJson.ParseObject(SaveJson.ReadText(file));
+                var bytes = SaveJson.ReadBytes(file);
+                if (proven != null && bytes.AsSpan().SequenceEqual(proven))
+                {
+                    message = null;
+                    read = bytes;
+                    return true;
+                }
+                var envelope = SaveJson.ParseObject(SaveJson.DecodeText(bytes));
                 if (envelope.Properties().Any(property => !new[] { "format", "version", "savedAt", "checksum", "state" }.Contains(property.Name))
                     || (string)envelope["format"] != Format || envelope["version"]?.Type != JTokenType.Integer
                     || (long)envelope["version"] != 1)
@@ -180,6 +213,7 @@ namespace Gamesim.Persistence
                 if (parsed.story.rulesStartWeek > parsed.week)
                     message = (string.IsNullOrEmpty(message) ? "" : message + " ")
                         + "Story arcs begin in week " + parsed.story.rulesStartWeek + "; the current week is unchanged.";
+                read = bytes;
                 return true;
             }
             catch (Exception error) when (SaveJson.IsExpected(error))
@@ -209,6 +243,17 @@ namespace Gamesim.Persistence
         });
 
         public static JObject ParseObject(string json)
+        {
+            var result = ParseObjectAsRead(json);
+            ExactDoubles.Correct(result, json); // Mono's double parse is not correctly rounded (F9)
+            return result;
+        }
+
+        // Json.NET's read alone, for the web import (OLD-SAVE-ACCEPTANCE F9). A web file has no checksum for
+        // ExactDoubles' settle step to serve, and that step moves a value Mono reads right today (111.08155) to
+        // the neighbour Mono's writer gives the text. Its own name, not an overload: tests and Tools/OldSaves
+        // find ParseObject by name alone.
+        public static JObject ParseObjectAsRead(string json)
         {
             if (json == null || Encoding.UTF8.GetByteCount(json) > MaximumBytes)
                 throw new InvalidDataException("JSON is missing or exceeds the eight MiB size limit.");
@@ -337,6 +382,27 @@ namespace Gamesim.Persistence
             string text = null;
             WaitOutHolds(() => text = File.ReadAllText(path, Encoding.UTF8));
             return text;
+        }
+
+        /// <summary>
+        /// A store's file as bytes, waiting out a hold on it as <see cref="ReadText"/> does, for a
+        /// reader that keeps exactly what it checked; <see cref="DecodeText"/> decodes them.
+        /// </summary>
+        public static byte[] ReadBytes(string path)
+        {
+            byte[] bytes = null;
+            WaitOutHolds(() => bytes = File.ReadAllBytes(path));
+            return bytes;
+        }
+
+        /// <summary>
+        /// The text <see cref="ReadText"/> reads from a file holding <paramref name="bytes"/>: UTF-8
+        /// unless a byte order mark names another encoding, as File.ReadAllText decides.
+        /// </summary>
+        public static string DecodeText(byte[] bytes)
+        {
+            using var reader = new StreamReader(new MemoryStream(bytes, false), Encoding.UTF8, true);
+            return reader.ReadToEnd();
         }
 
         /// <summary>

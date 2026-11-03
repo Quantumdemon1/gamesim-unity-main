@@ -97,6 +97,8 @@ namespace Gamesim.Episode
             PauseNpcSocialForPanel();
             if (blockedRecovery) return false;
             ClosePanels();EndDiaryVisit(true);CloseHouseActivities(true);diaryOpen = true;
+            // The chair shot is taken once the player sits (StartDiaryShot): until then the view is the view's own.
+            diaryShotTakeovers = -1;
             diaryTab = DiaryTab.Record; diaryTabChosen = false; diaryRulesOpen = false;
             // The line under the frame said how to get in here - "walk to the private room, then
             // press E" - for the whole visit. It says where the player is now.
@@ -153,6 +155,27 @@ namespace Gamesim.Episode
             return true;
         }
 
+        /// <summary>The rig's <see cref="HouseCameraRig.ViewTakeovers"/> just after the chair shot; -1 until it is taken in this visit.</summary>
+        private int diaryShotTakeovers = -1;
+
+        /// <summary>
+        /// Whether the diary's chair shot holds the camera (ROOM-SCOPE-PLAN RS6b): the diary is open and
+        /// nothing has taken the view since its shot - the visit's end lets the shot go. The room scope's
+        /// diary source is the chair shot's only while this holds; the walk to the chair and the sitting
+        /// down before it are the view's own (free play's, the whole house until RS5).
+        /// </summary>
+        public bool DiaryShotHoldsTheCamera
+            => diaryOpen && cameraRig != null && diaryShotTakeovers >= 0 && cameraRig.ViewTakeovers == diaryShotTakeovers;
+
+        /// <summary>The rooms the diary's shot draws (D6): the private room, which holds the diary set.</summary>
+        public static RoomSet DiaryShotRooms => RoomSet.Of("Private");
+
+        /// <summary>
+        /// The chair shot names the private room (ROOM-SCOPE-PLAN D6, RS6b): its 0.8 s move draws what the
+        /// view drew as it left - free play's whole house until RS5 - with the private room until it lands,
+        /// and from its landing the private room alone, so the yard behind the studio backdrop is not
+        /// drawn. Under reduced motion it is a cut, the private room from the call.
+        /// </summary>
         private void StartDiaryShot()
         {
             if(!diaryOpen || diarySeat==null || !diarySeat.IsSettled || cameraRig==null)return;
@@ -160,13 +183,17 @@ namespace Gamesim.Episode
             var look=diarySeat.FacePosition-Vector3.up*.1f;
             var line = look - eye;
             float distance = line.magnitude;
+            // What the view drew as the shot takes it, read before the shot is the view's source.
+            var left = ViewedRooms;
             cameraRig.MoveTo(new HouseCameraRig.Shot
             {
                 Focus = look, Distance = distance,
                 Pitch = Mathf.Asin(Mathf.Clamp(-line.y / distance, -1f, 1f)) * Mathf.Rad2Deg,
                 Yaw = Mathf.Atan2(line.x, line.z) * Mathf.Rad2Deg,
                 FieldOfView = DiaryShotFieldOfView, Seconds = DiaryShotSeconds, DepthOfFieldWeight = DiaryShotDepthOfField,
+                Rooms = DiaryShotRooms, TravelFromRooms = left,
             });
+            diaryShotTakeovers = cameraRig.ViewTakeovers;
         }
 
         private void EndDiaryVisit(bool immediately=false)
@@ -456,6 +483,13 @@ namespace Gamesim.Episode
                 ? "Used in every competition you enter."
                 : "Used only when you simulate a weekly competition.";
 
+        /// <summary>
+        /// The record's row for a player on an All-Star's own card (ALL-STAR-HISTORIES-PLAN §14.F.3),
+        /// and the row's name after <see cref="EpisodeHud.DiaryRecordRowPrefix"/>. Not "Career record",
+        /// which begins a status message of the career page's.
+        /// </summary>
+        public const string BeforeThisSeasonCaption = "Before this season";
+
         private void RenderDiaryRecordTab(EpisodeState state, bool choice)
         {
             bool ballotCast = state.phase == EpisodePhase.Eviction && state.votes.Any(vote => vote.voterId == state.playerId);
@@ -472,7 +506,7 @@ namespace Gamesim.Episode
             RenderBlockSpeechReadback(state);
             int reflections = state.playerPersona.history.Count;
             int jurors = state.jurySentiment.jurors.Count;
-            hud.RecordSummary(new List<(string, string, string, string)>
+            var rows = new List<(string, string, string, string)>
             {
                 ("Study preparation", PackArt.KitIconBook, state.playerStudyBonus + " / 5",
                     StudyUseShort(state)),
@@ -484,7 +518,13 @@ namespace Gamesim.Episode
                     jurors == 0 ? "None yet" : state.jurySentiment.overallSentiment.ToString("+0;-0;0"),
                     jurors == 0 ? "No one is on the jury yet, so nothing is recorded."
                         : "Across " + jurors + (jurors == 1 ? " juror" : " jurors") + ". Not a vote prediction."),
-            });
+            };
+            // A player on an All-Star's own card walked in with that alumnus's public record, from alumni
+            // rules 3 (ALL-STAR-HISTORIES-PLAN §14.F.3): a row of its own, after the room's three. A
+            // newcomer has none.
+            var before = KnownBlocs.PlayerRecord(state);
+            if (before != null) rows.Add((BeforeThisSeasonCaption, PackArt.KitIconPerson, before.Value, before.Note));
+            hud.RecordSummary(rows);
             hud.Disclosure(EpisodeHud.DiaryRulesCaption, diaryRulesOpen, () => { diaryRulesOpen = !diaryRulesOpen; Render(); });
             if (!diaryRulesOpen) return;
             hud.Aside("Study preparation: saved between weeks; " + StudyUse(state) + ". It stays between 0 and 5 and changes only when you confirm a study approach.");

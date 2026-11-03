@@ -317,7 +317,7 @@ namespace Gamesim.Tests.EditMode
                 for (int depth = 0; depth < 12 && !string.IsNullOrEmpty(at); depth++)
                 {
                     string candidate = Path.Combine(at, "Assets", "Gamesim");
-                    if (File.Exists(Path.Combine(candidate, "Simulation", "SeasonBuilder.cs"))) { found.Add(Path.GetFullPath(candidate)); break; }
+                    if (File.Exists(Path.Combine(candidate, "Simulation", "SeasonBuilder.cs"))) { found.Add(WithoutLongPathPrefix(Path.GetFullPath(candidate))); break; }
                     string next = Path.GetDirectoryName(at);
                     if (next == at) break;
                     at = next;
@@ -326,5 +326,13 @@ namespace Gamesim.Tests.EditMode
             Assert.That(found, Has.Count.EqualTo(1), "Exactly one Assets/Gamesim source tree above the test: " + string.Join(", ", found));
             return found.Single();
         }
+
+        /// <summary>
+        /// A path without Windows' extended-length prefix: past about 248 characters the test host gives the binary's
+        /// location as \\?\C:\... while the working directory reads C:\..., one tree under two spellings.
+        /// </summary>
+        private static string WithoutLongPathPrefix(string path) =>
+            path.StartsWith(@"\\?\UNC\", StringComparison.Ordinal) ? @"\\" + path.Substring(8)
+            : path.StartsWith(@"\\?\", StringComparison.Ordinal) ? path.Substring(4) : path;
     }
 }

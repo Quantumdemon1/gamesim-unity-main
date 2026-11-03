@@ -23,17 +23,34 @@ namespace Gamesim.Simulation
     public static class ShippedRules
     {
         /// <summary>Switches every shipped rule on for a fresh, unplayed season, from week one.</summary>
-        public static void ApplyFresh(EpisodeState fresh) => ApplyFresh(fresh, null);
+        public static void ApplyFresh(EpisodeState fresh) => ApplyFresh(fresh, null, alumniHistories: true);
 
         /// <summary>
         /// The same, with what the player chose on the cast screen (DIALOGUE-PLAN D1). Null, or a choice with
         /// nothing opted in, gives exactly <see cref="ApplyFresh(EpisodeState)"/>. The one option today is the
         /// preview chip, <see cref="SeasonBuilder.Choice.CampaignConversations"/>: it starts the season on the
         /// pinned <see cref="DialogueRules.Offered"/>, never the bound <see cref="DialogueRules.Version"/>, and is
-        /// written last, after every rule the pilot's prerequisites read (DialogueRules.Prerequisites). It draws
-        /// nothing, logs nothing and mints no id, as the rest of this method does not.
+        /// written after every rule the pilot's prerequisites read (DialogueRules.Prerequisites); only the alumni
+        /// histories follow it. The chip draws nothing, logs nothing and mints no id; in a season that seats an
+        /// alumnus the histories after it mint their ids, as they do through <see cref="ApplyFresh(EpisodeState)"/>.
         /// </summary>
-        public static void ApplyFresh(EpisodeState fresh, SeasonBuilder.Choice options)
+        public static void ApplyFresh(EpisodeState fresh, SeasonBuilder.Choice options) => ApplyFresh(fresh, options, alumniHistories: true);
+
+        /// <summary>
+        /// The same, with the alumni histories' last step left out when <paramref name="alumniHistories"/> is false:
+        /// for the balance lab's paired control only (ALL-STAR-HISTORIES-PLAN §9: a harness may hold a fresh season at
+        /// an earlier alumni rules value for its control; shipping never does). Internal, so the director and every
+        /// other assembly reach only the shipped form.
+        /// </summary>
+        internal static void ApplyFresh(EpisodeState fresh, bool alumniHistories) => ApplyFresh(fresh, null, alumniHistories);
+
+        /// <summary>
+        /// The one body every form above runs (ALL-STAR-HISTORIES-PLAN 8.5, the merge of the histories with dialogue D1):
+        /// the shipped rules, then the cast screen's preview chip, then the alumni histories as the very last step. Two
+        /// bodies would let the options form, which the director's StartSeason calls, start a season without its histories
+        /// while every test of the one-argument form stayed green. Only the balance lab's control passes false.
+        /// </summary>
+        internal static void ApplyFresh(EpisodeState fresh, SeasonBuilder.Choice options, bool alumniHistories)
         {
             if (fresh == null) throw new ArgumentNullException(nameof(fresh));
             fresh.competitionRulesVersion = CompetitionRules.Current;
@@ -76,6 +93,13 @@ namespace Gamesim.Simulation
             // in on the cast screen. Like every rule here it is never inferred while loading, recovering,
             // migrating or importing: a season keeps the dialogue rules it began on.
             if (options != null && options.CampaignConversations) fresh.dialogueRulesVersion = DialogueRules.Offered;
+            // The All-Star histories (ALL-STAR-HISTORIES-PLAN H1b), last: after the first impressions, so a pair's
+            // standing is its first impression plus its past game, and after the commitment rules and the unified
+            // mode, so the Hitmen's final two is written under the season's own deal rules. After the preview chip
+            // too, so the cast screen's every choice starts the same histories (ALL-STAR-HISTORIES-PLAN 8.5). The alumni
+            // rules new seasons start from (AlumniRules.Latest: 5, the growing pacts, §14.A, §14.L) only in a season
+            // that seats an identity-intact alumnus; every other season stays at 0, as it was.
+            if (alumniHistories) EpisodeEngine.EnableAlumniHistories(fresh);
         }
 
         /// <summary>
@@ -111,6 +135,8 @@ namespace Gamesim.Simulation
                 Field("pactPlanRulesStartWeek", s.pactPlanRulesStartWeek),
                 Field("allWeekRulesStartWeek", s.allWeekRulesStartWeek),
                 Field("dialogueRulesVersion", s.dialogueRulesVersion),
+                Field("alumniRulesVersion", s.alumniRulesVersion),
+                Field("tuningRulesVersion", s.tuningRulesVersion),
                 Field("npcSocial.rulesStartWeek", s.npcSocial?.rulesStartWeek ?? 0),
                 Field("story.rulesStartWeek", s.story?.rulesStartWeek ?? 0),
                 Field("story.rulesVersion", s.story?.rulesVersion ?? 0),

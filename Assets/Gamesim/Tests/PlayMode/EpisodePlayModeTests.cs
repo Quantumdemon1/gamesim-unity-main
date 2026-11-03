@@ -54,6 +54,10 @@ namespace Gamesim.Tests.PlayMode
         [UnityTearDown]
         public IEnumerator CleanUpIsolatedEpisode()
         {
+            // A test that pinned the frame time and went red, or timed out, never ran its own finally: the runner stops
+            // the test's enumerator without disposing of it. The pin goes here as well, so one red cannot run every later
+            // test at the pinned frame time.
+            Time.captureDeltaTime = 0f;
             if (testKeyboard != null && testKeyboard.added) InputSystem.RemoveDevice(testKeyboard);
             testKeyboard = null;
             if (testMouse != null && testMouse.added) InputSystem.RemoveDevice(testMouse);
@@ -373,10 +377,17 @@ namespace Gamesim.Tests.PlayMode
             // ...and once a test has frozen the director for a reload, nothing does: what the test
             // wrote there is the season the reload is for.
             File.Delete(path);
+            // Seconds owed as well: the house's own writes - where it stops, and at quit - are writes too.
+            var cadence = NpcRead<NpcSaveCadence>("npcSaveCadence");
+            cadence.Begin(director.Snapshot); cadence.Installed();
             director.FreezeForReloadForDiagnostics();
             director.SaveNow();
+            director.SuspendNpcAutonomyForDiagnostics();
+            NpcInvoke("OnApplicationQuit");
+            NpcInvoke("FlushForLeaving", "focus", false);
             yield return null;
             Assert.That(File.Exists(path), Is.False, "A director frozen for a reload writes nothing.");
+            Assert.That(cadence.Clean, Is.False, "Nothing was written, so the seconds are still owed.");
         }
 
         private IEnumerator ReloadEpisode()
@@ -409,6 +420,9 @@ namespace Gamesim.Tests.PlayMode
                 "^Gamesim episode ready: [0-9]+ contestants, validated simulation, local recovery and accessible HUD connected\\.$"));
             yield return SceneManager.LoadSceneAsync(EpisodeScene, LoadSceneMode.Single);
             director = SceneComponents<EpisodeDirector>().Single();
+            // The suites test the audited behaviour, the same in the editor as in a batch run: houseguests do not bring
+            // their asks over unless a test opts in after this (OFFERS-COME-TO-YOU-PLAN).
+            director.AsksEnabled = false;
             var deadline = Time.realtimeSinceStartup + 10f;
             while (!director.IsReady && Time.realtimeSinceStartup < deadline) yield return null;
             Assert.That(director.IsReady, Is.True, "Episode startup did not finish.");

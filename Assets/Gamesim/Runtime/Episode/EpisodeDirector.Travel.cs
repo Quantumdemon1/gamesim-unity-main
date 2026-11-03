@@ -99,6 +99,46 @@ namespace Gamesim.Episode
             if (clear >= 1f) travelDip.enabled = false;
         }
 
+        /// <summary>The rig's <see cref="HouseCameraRig.ViewTakeovers"/> just after a jury or evicted player's watch; -1 before any.</summary>
+        private int watchTakeovers = -1;
+
+        /// <summary>
+        /// Whether a jury or evicted player's watch holds the camera (ROOM-SCOPE-PLAN RS6b, D6): the player
+        /// cannot move, nothing has taken the view since the watch's move - a pan, a zoom, a follow, the
+        /// overview - and the camera has come in on it (<see cref="HouseCameraRig.HasArrivedOn"/>): the watch
+        /// is a free move with no clock, so until the camera arrives over the watched room the view keeps
+        /// what it drew, and no room goes before the camera has moved (RS6a's rule for a timed move). The
+        /// room scope's watching source is the watch's only while this holds; before any watch, and after
+        /// one is taken back, the view is the view's own (RS5 decides it: the room nearest the camera's
+        /// focus). The overview opened over a watch and left by its own way out gives it back
+        /// (<see cref="ResumeTheWatchAfterTheOverview"/>).
+        /// </summary>
+        public bool WatchHoldsTheCamera
+            => !playerIsActive && cameraRig != null && cameraRig.HasArrivedOn(watchTakeovers);
+
+        /// <summary>Whether a watch claims the view: made, the player out of the house, and nothing has taken the view since, arrived or not.</summary>
+        private bool WatchClaimsTheCamera
+            => !playerIsActive && watchTakeovers >= 0 && cameraRig != null && cameraRig.ViewTakeovers == watchTakeovers;
+
+        /// <summary>Whether a watch claimed the view as the overview opened over it.</summary>
+        private bool watchUnderOverview;
+
+        /// <summary>The overview opening: whether it opens over a watch, read before its shot takes the view.</summary>
+        private void RememberTheWatchUnderTheOverview() => watchUnderOverview = WatchClaimsTheCamera;
+
+        /// <summary>
+        /// The overview left by its own way out - its button, Escape, a panel (ROOM-SCOPE-PLAN RS6b, §1.2):
+        /// its shot's release takes the camera back to the watch's point and the rig's rooms back to the
+        /// watched room, so a watch it opened over holds again from the release, drawn once the camera has
+        /// come back in on it. A follow taken over the map, or camera input that ended it, is the viewer's.
+        /// </summary>
+        private void ResumeTheWatchAfterTheOverview()
+        {
+            if (watchUnderOverview && !playerIsActive && cameraRig != null && cameraRig.FocusedSubject == null)
+                watchTakeovers = cameraRig.ViewTakeovers;
+            watchUnderOverview = false;
+        }
+
         /// <summary>
         /// Takes the player to a room: the diary room's chair for the private room, the episode
         /// screen for the room it stands in, and a clear spot on the floor for the rest. For a
@@ -112,7 +152,14 @@ namespace Gamesim.Episode
             if (!playerIsActive)
             {
                 ClosePanels();
-                cameraRig?.MoveTo(marker.transform.position, cameraRig.DesiredDistance);
+                // The watch names the watched room in the call (ROOM-SCOPE-PLAN D6, RS6b): the room itself,
+                // not the floor under its marker, drawn once the camera has come in on it and for as long as
+                // the watch holds the camera.
+                if (cameraRig != null)
+                {
+                    cameraRig.MoveTo(marker.transform.position, cameraRig.DesiredDistance, 0f, RoomSet.Of(room));
+                    watchTakeovers = cameraRig.ViewTakeovers;
+                }
                 message = "Watching the " + RoomLabels.InSentence(room) + ".";
                 Render();
                 return;
@@ -166,8 +213,8 @@ namespace Gamesim.Episode
 
         /// <summary>
         /// The houseguests other than the player in each room, read the way the notebook's Who Is
-        /// Where reads them - the roster, by nearest room marker - so the icons and the notebook
-        /// never disagree.
+        /// Where reads them - the roster, by the floor each stands on (RSW) - so the icons and the
+        /// notebook never disagree.
         /// </summary>
         private void CountHouseguestsByRoom()
         {
@@ -255,12 +302,12 @@ namespace Gamesim.Episode
                 foreach (var marker in RoomMarkers()) if (marker.isActiveAndEnabled) beaconRooms[marker.RoomName] = marker;
                 travelBeacons.Build(beaconRooms.Values, PressTravelBeacon);
             }
-            // Where the player stands changes at walking pace; four times a second is plenty.
+            // Where the player stands changes at walking pace; four times a second is plenty. The room
+            // scope's query, kept, rather than a new one each time (ROOM-SCOPE-PLAN RS1).
             if (Time.unscaledTime >= nextBeaconRoomCheck)
             {
                 nextBeaconRoomCheck = Time.unscaledTime + .25f;
-                beaconPlayerRoom = HouseRoomQuery.TryCreate(gameObject.scene, out var rooms, out _)
-                    && player.Agent != null && rooms.TryLocate(player.transform.position, player.Agent.radius, out var room) ? room : null;
+                beaconPlayerRoom = BeaconRoomOf(player);
             }
             if (Time.unscaledTime >= nextBeaconCount)
             {
@@ -275,6 +322,12 @@ namespace Gamesim.Episode
             // One reader, kept: a method group passed every frame is a new delegate every frame.
             if (houseguestsIn == null) houseguestsIn = HouseguestsIn;
             travelBeacons.Annotate(houseguestsIn, playerIsActive ? next : null, StagedRoom(projected, out _));
+            // The room view's way-finding (D17, RS5): the icons at the viewed room's doorways, the few the view
+            // hides named over their rooms' icons. Readers kept, as above.
+            if (beaconDoorway == null) beaconDoorway = BeaconDoorway;
+            if (beaconHiddenIn == null) beaconHiddenIn = BeaconHiddenIn;
+            int viewing = cameraRig != null ? cameraRig.ViewRoom : -1;
+            travelBeacons.RoomView(viewing >= 0 ? RoomLayers.RoomIds[viewing] : null, beaconDoorway, beaconHiddenIn);
             // The chrome as points and as rects, kept as the reader is: the icons ask about an
             // icon's square and the room's name under it as one rect each.
             if (chromeCovers == null) chromeCovers = hud.Covers;
@@ -284,11 +337,40 @@ namespace Gamesim.Episode
                 BeaconAnchor, chromeCovers, chromeCoversBox);
         }
 
+        /// <summary>
+        /// The room the player's feet are in, by the room query's safe interior (none in a doorway),
+        /// through the scope's kept query. A query that no longer holds its house - a floor gone -
+        /// is let go, so the next check builds the scope again, as a fresh query each time did.
+        /// </summary>
+        private string BeaconRoomOf(HousePlayerController walker)
+        {
+            if (walker == null || walker.Agent == null || !EnsureRoomScope()) return null;
+            var rooms = roomScope.Query;
+            if (rooms.TryLocate(walker.transform.position, walker.Agent.radius, out var room)) return room;
+            if (!rooms.TryValidateScene(out _)) DropRoomScope();
+            return null;
+        }
+
         /// <summary>What the icons ask the HUD's chrome, made once.</summary>
         private System.Func<Vector2, bool> chromeCovers;
         private System.Func<Rect, bool> chromeCoversBox;
 
         /// <summary>Where a room's icon floats: over the screen, over the diary chair, over the middle of the rest.</summary>
+        private System.Func<string, Vector3> beaconDoorway;
+        private System.Func<Transform, string> beaconHiddenIn;
+
+        /// <summary>The middle of the viewed room's doorway to <paramref name="room"/> nearest the camera's focus, or a point whose x is NaN where none leads there (D17).</summary>
+        private Vector3 BeaconDoorway(string room)
+        {
+            int viewing = cameraRig != null ? cameraRig.ViewRoom : -1;
+            if (roomScope != null && viewing >= 0 && roomScope.TryDoorway(viewing, RoomLayers.IndexOf(room), cameraRig.transform.position, out var door))
+                return door.Middle;
+            return new Vector3(float.NaN, 0f, 0f);
+        }
+
+        /// <summary>The room a body the room scope hides stands in; null for a body it draws (D17).</summary>
+        private string BeaconHiddenIn(Transform body) => body != null && !IsBodyDrawn(body) ? WalkerRoomOf(body) : null;
+
         private Vector3 BeaconAnchor(string room)
         {
             if (room == StationRoomId() && HouseRoomQuery.Finite(StationPosition)) return StationPosition;

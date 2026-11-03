@@ -65,7 +65,8 @@ namespace Gamesim.Tests.EditMode
             var former = HistoricalPayload("s28-mode2-allweek-w3-campaign");
             var row = ((JArray)former["unifiedCommitments"]).OfType<JObject>().First();
             Assert.That(OrderedFields(typeof(EpisodeState)).Select(f => f.Name),
-                Is.EqualTo(former.Properties().Select(p => p.Name).Concat(new[] { "dialogueRulesVersion", "dialogue" })));
+                Is.EqualTo(former.Properties().Select(p => p.Name).Concat(new[] { "dialogueRulesVersion", "dialogue" })
+                    .Concat(new[] { "alumniRulesVersion", "alumniCatalogEdition", "tuningRulesVersion" })));
             Assert.That(OrderedFields(typeof(UnifiedCommitmentState)).Select(f => f.Name),
                 Is.EqualTo(row.Properties().Select(p => p.Name).Concat(new[] { "conditionalVeto" })));
             Assert.That(Member(typeof(EpisodeState), "dialogueRulesVersion").FieldType, Is.EqualTo(typeof(int)));
@@ -176,7 +177,9 @@ namespace Gamesim.Tests.EditMode
                 Assert.That(fields[name], Is.EqualTo(1), "The reviewed fresh prerequisite is present: " + name);
         }
 
-        [TestCase(-1)] [TestCase(2)] [TestCase(int.MaxValue)]
+        // Unknown means past the bound (DialogueRules.Version, 2 since dialogue D2): at the live schema 30 rules 2 is a defined
+        // version, which rules 2's own validator judges, so 2 would no longer test an unknown rule.
+        [TestCase(-1)] [TestCase(DialogueRules.Version + 1)] [TestCase(int.MaxValue)]
         public void UnknownDialogueRuleRefusesEvenWithEmptyStorageWithoutRepair(int version)
         {
             var state = ContentCatalog.Create(2903); Accepted29(state);
@@ -200,6 +203,9 @@ namespace Gamesim.Tests.EditMode
             payload.Add("dialogueRulesVersion", 0);
             payload.Add("dialogue", JObject.Parse("{'episodes':[],'grants':[],'vetoOccasions':[]}"));
             foreach (JObject oldRow in (JArray)payload["unifiedCommitments"]) oldRow.Add("conditionalVeto", JValue.CreateNull());
+            // Schema 30's pooled off literals (SCH30): the season is a current one.
+            payload.Add("alumniRulesVersion", 0); payload.Add("alumniCatalogEdition", JValue.CreateNull()); payload.Add("tuningRulesVersion", 0);
+            payload["schemaVersion"] = 30;
             var state = payload.ToObject<EpisodeState>(JsonSerializer.Create(new JsonSerializerSettings
             {
                 ObjectCreationHandling = ObjectCreationHandling.Replace,
@@ -253,7 +259,7 @@ namespace Gamesim.Tests.EditMode
 
         private static void Accepted29(EpisodeState state)
         {
-            Assert.That(state.schemaVersion, Is.EqualTo(29), "R1 is not adopted yet; never mask this as an ignored test.");
+            Assert.That(state.schemaVersion, Is.EqualTo(30), "The live schema; never mask this as an ignored test.");
             Assert.That(EpisodeValidation.TryValidate(state, out string reason), Is.True, reason);
         }
         private static void RefusedUnchanged(EpisodeState state)

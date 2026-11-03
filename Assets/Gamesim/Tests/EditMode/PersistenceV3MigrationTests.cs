@@ -112,7 +112,7 @@ namespace Gamesim.Tests.EditMode
             var before = source.ToString(Formatting.None);
             var current = EpisodeSaveMigrations.PrepareCurrentPayload(source, out var migrated);
             Assert.That(migrated, Is.True);
-            Assert.That((int)current["schemaVersion"], Is.EqualTo(29));
+            Assert.That((int)current["schemaVersion"], Is.EqualTo(30));
             var oldV2 = version == 1 ? EpisodeSaveMigrations.PrepareV2Payload(source, out _) : source;
             Assert.That(current.Properties().Select(p => p.Name).Except(oldV2.Properties().Select(p => p.Name)), Is.EquivalentTo(new[]
             {
@@ -159,7 +159,9 @@ namespace Gamesim.Tests.EditMode
                 // Schema 28: Wave D's three start weeks, all zero; no beat, plan, line or receipt is inferred.
                 "allianceLeakRulesStartWeek", "pactPlanRulesStartWeek", "allWeekRulesStartWeek",
                 // Schema 29: no dialogue authority or history is enrolled by migration.
-                "dialogueRulesVersion", "dialogue"
+                "dialogueRulesVersion", "dialogue",
+                // Schema 30 (SCH30): the pooled fields, every one off; no alumni history or tuning is enrolled.
+                "alumniRulesVersion", "alumniCatalogEdition", "tuningRulesVersion"
             }));
             Assert.That(current["dialogueRulesVersion"]?.Type, Is.EqualTo(JTokenType.Integer));
             Assert.That((int)current["dialogueRulesVersion"], Is.Zero);
@@ -224,13 +226,13 @@ namespace Gamesim.Tests.EditMode
             File.WriteAllText(fixture.Store.SavePath, PersistenceMigrationTests.Envelope(source), new UTF8Encoding(false));
             var originalBytes = File.ReadAllBytes(fixture.Store.SavePath);
             Assert.That(fixture.Store.TryLoad(out var loaded, out var message), Is.True, message);
-            Assert.That(loaded.schemaVersion, Is.EqualTo(29));
+            Assert.That(loaded.schemaVersion, Is.EqualTo(30));
             Assert.That(loaded.dialogueRulesVersion, Is.Zero);
             Assert.That(loaded.dialogue, Is.Not.Null);
             Assert.That(loaded.dialogue.episodes, Is.Not.Null.And.Empty);
             Assert.That(loaded.dialogue.grants, Is.Not.Null.And.Empty);
             Assert.That(loaded.dialogue.vetoOccasions, Is.Not.Null.And.Empty);
-            Assert.That(message, Does.Contain("Schema 2").And.Contain("schema 29 in memory"));
+            Assert.That(message, Does.Contain("Schema 2").And.Contain("schema 30 in memory"));
             Assert.That(loaded.randomState, Is.Zero);
             Assert.That(loaded.relationships[0].events[0].description, Is.EqualTo("Pinned directed history"));
             Assert.That(loaded.relationshipArcs[0].weeklyHistory[0].reason, Is.EqualTo("Pinned arc history"));
@@ -239,7 +241,7 @@ namespace Gamesim.Tests.EditMode
             Assert.That(Directory.GetFiles(fixture.DirectoryPath), Has.Length.EqualTo(1));
             fixture.Store.Save(loaded);
             Assert.That(File.ReadAllBytes(fixture.Store.BackupPath), Is.EqualTo(originalBytes));
-            Assert.That((int)JObject.Parse(File.ReadAllText(fixture.Store.SavePath))["state"]["schemaVersion"], Is.EqualTo(29));
+            Assert.That((int)JObject.Parse(File.ReadAllText(fixture.Store.SavePath))["state"]["schemaVersion"], Is.EqualTo(30));
             Assert.That(fixture.Store.TryLoad(out _, out message), Is.True, message);
             Assert.That(message, Does.Not.Contain("migrated"));
         }
@@ -252,7 +254,7 @@ namespace Gamesim.Tests.EditMode
             File.WriteAllText(fixture.Store.SavePath, "broken primary");
             var original = File.ReadAllBytes(fixture.Store.BackupPath);
             Assert.That(fixture.Store.TryRecoverBackup(out var state, out var message), Is.True, message);
-            Assert.That(state.schemaVersion, Is.EqualTo(29));
+            Assert.That(state.schemaVersion, Is.EqualTo(30));
             Assert.That(state.dialogueRulesVersion, Is.Zero);
             Assert.That(state.dialogue, Is.Not.Null);
             Assert.That(state.dialogue.episodes, Is.Not.Null.And.Empty);
@@ -261,7 +263,7 @@ namespace Gamesim.Tests.EditMode
             Assert.That(File.ReadAllBytes(fixture.Store.SavePath), Is.EqualTo(original));
             Assert.That(File.ReadAllBytes(fixture.Store.BackupPath), Is.EqualTo(original));
             Assert.That(File.ReadAllText(Directory.GetFiles(fixture.DirectoryPath, "*.before-recovery-*.json").Single()), Is.EqualTo("broken primary"));
-            Assert.That(message, Does.Contain("Schema 2").And.Contain("schema 29 in memory"));
+            Assert.That(message, Does.Contain("Schema 2").And.Contain("schema 30 in memory"));
         }
 
         [TestCase(false)]

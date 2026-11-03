@@ -208,9 +208,11 @@ namespace Gamesim.Editor
                 EditorUtility.SetDirty(marker.transform);
             }
 
+            // The camera the project ships at (ROOM-SCOPE-PLAN §8 item 8, D11, RS5): 24 m out, 34 at most and
+            // 4 at nearest, the rig's own defaults. This used to write 48 and 56, which a measurement found the
+            // running game never converged from (HouseCameraFraming).
             var cameraSettings = new SerializedObject(rig);
-            cameraSettings.FindProperty("distance").floatValue = 48f;
-            cameraSettings.FindProperty("maximumDistance").floatValue = Mathf.Max(56f, cameraSettings.FindProperty("maximumDistance").floatValue);
+            HouseCameraFraming.WriteSourceDefaults(cameraSettings);
             cameraSettings.ApplyModifiedPropertiesWithoutUndo();
             rig.Configure(player.transform);
             player.Configure(rig.ViewCamera);

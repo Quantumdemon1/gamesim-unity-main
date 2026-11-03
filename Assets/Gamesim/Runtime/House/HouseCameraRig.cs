@@ -94,6 +94,23 @@ namespace Gamesim.House
             public float Seconds;
             /// <summary>The close-up volume's weight while the shot holds, 0..1.</summary>
             public float DepthOfFieldWeight;
+            /// <summary>
+            /// The rooms the shot is about (ROOM-SCOPE-PLAN §3.2 a). A shot that names none is the
+            /// whole house, so a caller that forgets draws too much, never too little.
+            /// </summary>
+            public RoomSet Rooms;
+            /// <summary>
+            /// The floor room under the shot's focus, and a conversation's pair, with any named in
+            /// <see cref="Rooms"/> as well: a caller names the rooms of the people it frames there.
+            /// </summary>
+            public bool RoomsFromFocus;
+            /// <summary>
+            /// The rooms the view drew as the shot is taken, drawn with its own until a timed shot lands
+            /// (ROOM-SCOPE-PLAN §3.2 a, RS6a): a caller whose view was a whole house names it here, so
+            /// the move draws what was on screen rather than the rooms the rig was keeping. None: the
+            /// rig's own rooms, as every shot that names none.
+            /// </summary>
+            public RoomSet TravelFromRooms;
         }
 
         /// <summary>The scene volume a shot weights in: depth of field for the close shots.</summary>
@@ -142,6 +159,82 @@ namespace Gamesim.House
         private DepthOfField closeUpDepthOfField;
         private bool closeUpVolumeLookedUp;
 
+        // ------------------------------------------------------------------------------------
+        // The rooms a view is about (ROOM-SCOPE-PLAN §3.2 a, RS1). Every move says, in the same call,
+        // which rooms it frames: a shot its own (named, from its focus, or the whole house when it
+        // names none); a cut or a follow its subject's, tracked as they walk; a free move the floor
+        // under its point; a timed move both ends until it lands (its start the rooms the caller
+        // says the view drew, a whole house among them, or else the rig's own). Free play, before any move and
+        // after F, is the player's room, tracked: a pan, a shot or a conversation that ends gives it
+        // back. Computed and reported only: nothing here writes the camera's culling mask, and with
+        // no room scope (a house with no director) every answer is the whole house.
+        // ------------------------------------------------------------------------------------
+
+        private enum RoomsBy : byte { WholeHouse, Named, Body, Point, ShotFocus }
+
+        private struct RoomTarget
+        {
+            public RoomsBy By;
+            /// <summary>Named: the rooms. Body, Point and ShotFocus: the rooms they last resolved to.</summary>
+            public int Bits;
+            /// <summary>ShotFocus: the rooms the shot named, drawn with its focus's.</summary>
+            public int Also;
+            public Transform Body;
+            public Vector3 Focus;
+        }
+
+        private const int WholeHouseRooms = (1 << RoomLayers.Count) - 1;
+        private HouseRoomScope roomScope;
+        private RoomTarget roomTarget, shotReturnRooms, conversationReturnRooms;
+        private bool roomTargetSet;
+        /// <summary>A timed move's starting rooms, drawn with its end's until it lands.</summary>
+        private int roomsTravelFrom;
+
+        // ------------------------------------------------------------------------------------
+        // The room view (ROOM-SCOPE-PLAN §3.2 g, D4, D5, RS5). While the director wants it - free play,
+        // following and watching, with nothing holding the whole house - and no shot or conversation
+        // holds the camera, the free camera stays over one room: the room its view is about (the player's,
+        // the followed houseguest's, a watched room). The farthest zoom is the room's own, the focus is
+        // clamped inside the room narrowing with the zoom, and a change of room is a cut onto the new
+        // room's framing: its best heading nearest the yaw, the subject clamped, the distance no farther
+        // than the room's. A walker changes the room at most once per 0.6 s. With no director - the
+        // prototype house - or with the whole house held ("Show the whole house", D12), it is today's
+        // free camera, exactly.
+        // ------------------------------------------------------------------------------------
+
+        private System.Func<bool> roomViewWanted;
+        /// <summary>The room the room view frames, kept across shots and conversations, so a view that comes back to it eases rather than cuts; -1 before the first.</summary>
+        private int viewRoom = -1;
+        /// <summary>The body whose walk the shown room follows (a follow's or free play's), or null: its tracked room waits on the 0.6 s.</summary>
+        private Transform viewRoomBody;
+        private float viewRoomChangedAt = float.NegativeInfinity;
+        private bool roomViewOn, roomViewWasOn, roomViewCutWanted = true;
+        private int roomViewCuts;
+
+        /// <summary>
+        /// The director's say on the room view (ROOM-SCOPE-PLAN RS5): asked each frame in the rig's late
+        /// pass, before it moves. Null - a house with no director - is today's free camera.
+        /// </summary>
+        public System.Func<bool> RoomViewWanted { get => roomViewWanted; set => roomViewWanted = value; }
+
+        /// <summary>Whether the free camera is the room view this frame, as the rig's last late pass found it.</summary>
+        public bool IsRoomView => roomViewOn && viewRoom >= 0;
+
+        /// <summary>The room the room view frames this frame (by the layers' order), or -1 when it is not the room view.</summary>
+        public int ViewRoom => IsRoomView ? viewRoom : -1;
+
+        /// <summary>The farthest the free camera zooms out now: the viewed room's own in the room view (D4), else the rig's maximum.</summary>
+        public float FreeFarthestDistance => IsRoomView ? Mathf.Max(minimumDistance, HouseRoomView.FarthestDistance(viewRoom)) : maximumDistance;
+
+        /// <summary>How many times the room view has cut into a room: at a door, a follow across rooms, a return, its first frame.</summary>
+        public int RoomViewCuts => roomViewCuts;
+
+        /// <summary>
+        /// Asks the room view to cut onto its room's framing the next time it frames one, wherever the
+        /// camera stands: the opening's hand-over (D6) and a return to the player's room.
+        /// </summary>
+        public void CutToRoomView() => roomViewCutWanted = true;
+
         public Camera ViewCamera
         {
             get
@@ -156,6 +249,14 @@ namespace Gamesim.House
         }
 
         public bool IsConversationFocused { get; private set; }
+
+        /// <summary>
+        /// Whether a body is one of the two the conversation's two-shot holds: the room scope draws
+        /// them whatever room they stand in (ROOM-SCOPE-PLAN §3.2 e, RS4).
+        /// </summary>
+        public bool IsConversationSubject(Transform body)
+            => IsConversationFocused && body != null && (body == conversationPlayer || body == conversationNpc);
+
         public bool IsSubjectFocused => subject != null;
         public Transform FocusedSubject => subject;
         public bool ControlsEnabled { get; set; } = true;
@@ -181,6 +282,27 @@ namespace Gamesim.House
         public float PitchFor(float wantedDistance) =>
             Mathf.Lerp(closePitch, farPitch, Mathf.InverseLerp(minimumDistance, maximumDistance, wantedDistance));
         public bool ReducedMotion => reducedMotion;
+
+        /// <summary>
+        /// The rooms the current view is about, resolved now: a followed body is tracked to where it
+        /// stands, and a timed move in flight reports both ends. The whole house with no room scope.
+        /// </summary>
+        public RoomSet Rooms => RoomSet.FromBits(ResolveRooms());
+
+        /// <summary>
+        /// Counts what takes the view (ROOM-SCOPE-PLAN RS6a): every change of the rooms it is about - each
+        /// move, shot, cut, follow, release and F - and every frame of input that moves the camera (a pan,
+        /// a drag, an orbit, a zoom, the screen's edge). A caller whose free move claims the view reads it
+        /// just after its call: while it is unchanged, the camera is still on that move.
+        /// </summary>
+        public int ViewTakeovers => viewTakeovers;
+        private int viewTakeovers;
+
+        /// <summary>The house's rooms, as the director built them; null in a house with no director.</summary>
+        public HouseRoomScope RoomScope => roomScope;
+
+        /// <summary>Hands the rig the house's rooms. Until it has them, it reports the whole house.</summary>
+        public void UseRoomScope(HouseRoomScope scope) => roomScope = scope;
 
         /// <summary>The rig's actions, for whoever else reads them - the director, for the shoulders.</summary>
         public HouseCameraActions Actions { get { EnsureActions(); return actions; } }
@@ -273,7 +395,7 @@ namespace Gamesim.House
             {
                 desiredFocus = ConversationFocus();
                 desiredDistance = Mathf.Clamp(12f, minimumDistance, maximumDistance);
-                MoveTo(TwoShot(conversationPlayer, conversationNpc));
+                TakeTwoShot(conversationPlayer, conversationNpc);
             }
         }
 
@@ -289,6 +411,9 @@ namespace Gamesim.House
             {
                 previousFocus = desiredFocus;
                 previousDistance = desiredDistance;
+                // The two-shot lets a follow go, and the view comes back to where it was: a houseguest's
+                // room, kept, or free play's, the player's, tracked.
+                conversationReturnRooms = Watching(CurrentRoomTarget());
             }
 
             conversationPlayer = player;
@@ -300,8 +425,52 @@ namespace Gamesim.House
             desiredDistance = Mathf.Clamp(12f, minimumDistance, maximumDistance);
             // The two-shot (V5) rides on top of the dollhouse framing above, which is what the
             // camera falls back to if anything but the conversation's own end drops the shot.
-            MoveTo(TwoShot(player, npc));
+            TakeTwoShot(player, npc);
         }
+
+        /// <summary>
+        /// Whether the conversation's own two-shot holds the camera (ROOM-SCOPE-PLAN RS6b): a conversation
+        /// is focused, the shot is the two-shot it took - under reduced motion it takes none and keeps the
+        /// viewer's, and any other shot, a release or a drop lets it go - and the camera has come in on it:
+        /// from the first late pass at which it stands within <see cref="ArrivalTolerance"/> of the shot. The
+        /// two-shot has no clock (the ordinary smoothing brings the camera in from the dollhouse's distance
+        /// in about a third of a second), so until it arrives the view keeps what it drew, as a timed move
+        /// draws what it left until it lands (RS6a): no room goes before the camera has moved. The room
+        /// scope's conversation source is the two-shot's only while this holds.
+        /// </summary>
+        public bool HoldsTheTwoShot => IsConversationFocused && activeShot.HasValue && twoShotHeld && twoShotArrived;
+        private bool twoShotHeld, twoShotArrived;
+
+        /// <summary>
+        /// How near the camera stands to where an untimed move is going for it to have come in on it
+        /// (ROOM-SCOPE-PLAN RS6b): the two-shot's arrival (<see cref="HoldsTheTwoShot"/>) and a free move's
+        /// (<see cref="HasArrivedOn"/>).
+        /// </summary>
+        public const float ArrivalTolerance = 0.5f;
+
+        /// <summary>
+        /// Takes the two-shot on the pair: the shot that names the pair's rooms, and the one <see cref="HoldsTheTwoShot"/>
+        /// reads. Taken again over its own held and arrived shot - a lens change, the HUD's published width -
+        /// it stays arrived: the camera is already on the pair, and the view does not drop their rooms.
+        /// </summary>
+        private void TakeTwoShot(Transform player, Transform npc)
+        {
+            bool arrived = HoldsTheTwoShot;
+            MoveTo(TwoShot(player, npc));
+            twoShotHeld = true;
+            twoShotArrived = arrived;
+        }
+
+        /// <summary>
+        /// Whether the camera has come in on the view a caller took (ROOM-SCOPE-PLAN RS6b):
+        /// <paramref name="takeovers"/> is the caller's read of <see cref="ViewTakeovers"/> just after its
+        /// move; nothing has taken the view since, and at a late pass since the move no timed move was in
+        /// flight and the camera stood within <see cref="ArrivalTolerance"/> of where it is going. A free
+        /// move has no clock, so a caller whose view should not drop rooms before the camera has moved
+        /// (a jury or evicted player's watch) reads this rather than its call.
+        /// </summary>
+        public bool HasArrivedOn(int takeovers) => takeovers >= 0 && takeovers == viewTakeovers && arrivedOnTakeovers == takeovers;
+        private int arrivedOnTakeovers = -1;
 
         /// <summary>A bystander nearer the two-shot's eye than this would fill the frame with their back.</summary>
         public const float TwoShotClearance = 2.2f;
@@ -332,10 +501,13 @@ namespace Gamesim.House
             float side = preferredClear || !alternativeClear ? nearer : farther;
             var pivot = TwoShotPivot(side);
             conversationRequestedFieldOfView = ConversationLensFieldOfView;
+            // The pair's rooms (ROOM-SCOPE-PLAN D6, RS6b): the floor under the pivot and each of the two's
+            // walker room, tracked as they stand, so a conversation draws where its pair is.
             return new Shot
             {
                 Focus = pivot, Distance = TwoShotDistance, Pitch = TwoShotPitch, Yaw = side,
                 FieldOfView = conversationRequestedFieldOfView, Seconds = TwoShotSeconds, DepthOfFieldWeight = 1f,
+                RoomsFromFocus = true,
             };
         }
 
@@ -394,6 +566,7 @@ namespace Gamesim.House
 
             subject = target;
             if (IsConversationFocused) return;
+            SetRooms(BodyRooms(target));
             if (!reframe) { desiredFocus = SubjectFocus(); return; }
             DropShot(true);
             desiredFocus = SubjectFocus();
@@ -416,6 +589,9 @@ namespace Gamesim.House
             DropShot(true);
             subject = target;
             travelSeconds = 0f;
+            // The far side's room at once: the cut, and the blink a warp draws over it, show it from
+            // their first frame.
+            SetRooms(BodyRooms(target));
             desiredFocus = SubjectFocus();
             transform.position = desiredFocus;
             distance = desiredDistance;
@@ -423,6 +599,12 @@ namespace Gamesim.House
             ApplyCameraImmediately();
             // The lens too: a shot released just before the cut - the overview's orthographic
             // morph, a close-up's depth of field - would otherwise go on easing out on the far side.
+            SnapLensToItsOwn();
+        }
+
+        /// <summary>The lens back to the camera's own at once - its field of view, no orthographic morph, no depth of field: a cut's.</summary>
+        private void SnapLensToItsOwn()
+        {
             if (defaultFieldOfView > 0f) lensFieldOfView = defaultFieldOfView;
             lensOrthographic = 0f;
             depthOfFieldWeight = 0f;
@@ -446,6 +628,9 @@ namespace Gamesim.House
             subject = null;
             desiredFocus = ClampFocus(transform.position);
             desiredDistance = distance;
+            // Watching: the room a houseguest's follow last showed stays the view's until something
+            // moves it. Letting the player go is still free play: their room, tracked.
+            if (roomTargetSet && roomTarget.By == RoomsBy.Body) SetRooms(Watching(roomTarget));
         }
 
         /// <summary>
@@ -472,6 +657,8 @@ namespace Gamesim.House
             travelSeconds = 0f;
             desiredFocus = ClampFocus(focus);
             desiredDistance = Mathf.Clamp(wantedDistance, minimumDistance, maximumDistance);
+            // A free move watches the floor under its point, or the nearest one.
+            SetRooms(new RoomTarget { By = RoomsBy.Point, Focus = desiredFocus });
         }
 
         /// <summary>
@@ -483,11 +670,21 @@ namespace Gamesim.House
         public void MoveTo(in Shot shot)
         {
             Initialize();
+            // A two-shot taken again is held again by its taker (TakeTwoShot); any other shot is not one.
+            twoShotHeld = false;
+            twoShotArrived = false;
+            int before = ResolveRooms();
+            if (!shot.TravelFromRooms.IsEmpty) before = shot.TravelFromRooms.Bits;
             if (!activeShot.HasValue)
             {
                 shotReturnFocus = desiredFocus;
                 shotReturnDistance = desiredDistance;
                 shotReturnYaw = yaw;
+                // The view goes back to where it was, not after whoever it followed: a houseguest's room,
+                // kept, or free play's, the player's, tracked.
+                shotReturnRooms = Watching(CurrentRoomTarget());
+                // And which view it took the camera from, by the count of what has taken the view (RS5).
+                shotTookTheViewOn = viewTakeovers;
             }
             ClearSubject();
             activeShot = shot;
@@ -496,7 +693,37 @@ namespace Gamesim.House
             desiredFocus = ClampFocus(shot.Focus);
             float farthest = ViewCamera != null ? viewCamera.farClipPlane - 5f : 100f;
             desiredDistance = Mathf.Clamp(shot.Distance, 0.5f, Mathf.Max(0.5f, farthest));
+            SetRooms(shot.RoomsFromFocus ? new RoomTarget { By = RoomsBy.ShotFocus, Focus = desiredFocus, Also = shot.Rooms.Bits }
+                : shot.Rooms.IsEmpty ? new RoomTarget { By = RoomsBy.WholeHouse }
+                : new RoomTarget { By = RoomsBy.Named, Bits = shot.Rooms.Bits });
             BeginTravel(shot.Seconds);
+            if (IsTravelling) roomsTravelFrom = before;
+        }
+
+        /// <summary>
+        /// Whether the shot holding the camera took it straight from the view <paramref name="takeovers"/> was read
+        /// on (<see cref="ViewTakeovers"/> just after a free move): nothing else took the view between them.
+        /// </summary>
+        public bool ShotTookTheViewOn(int takeovers) => activeShot.HasValue && !IsConversationFocused && shotTookTheViewOn == takeovers;
+        private int shotTookTheViewOn = -1;
+
+        /// <summary>
+        /// The view a shot taken over a free move goes back to when it is let go (ROOM-SCOPE-PLAN RS5): the
+        /// ceremony framing, ending under a panel's or a competition's shot, hands it the way back it would have
+        /// taken itself - <paramref name="focus"/> at <paramref name="distance"/>, about <paramref name="tracked"/>
+        /// (free play on the player), else the <paramref name="rooms"/> named, else the floor under the focus -
+        /// rather than dropping the shot, so the shot's release comes back to where the viewer was, not to the
+        /// ceremony's room. Nothing without a shot, or over a conversation's, which keeps its own way back.
+        /// </summary>
+        public void ReturnTheShotTo(Vector3 focus, float distance, Transform tracked, RoomSet rooms)
+        {
+            if (!activeShot.HasValue || IsConversationFocused) return;
+            shotTookTheViewOn = -1;
+            shotReturnFocus = focus;
+            shotReturnDistance = distance;
+            shotReturnRooms = tracked != null ? BodyRooms(tracked)
+                : !rooms.IsEmpty ? new RoomTarget { By = RoomsBy.Named, Bits = rooms.Bits }
+                : new RoomTarget { By = RoomsBy.Point, Focus = ClampFocus(focus) };
         }
 
         /// <summary>
@@ -506,12 +733,19 @@ namespace Gamesim.House
         public void ReleaseShot(float seconds)
         {
             if (!activeShot.HasValue) return;
+            int before = ResolveRooms();
             activeShot = null;
+            twoShotHeld = false;
+            twoShotArrived = false;
             yaw = shotReturnYaw;
             travelSeconds = 0f;
             desiredFocus = ClampFocus(shotReturnFocus);
             desiredDistance = Mathf.Clamp(shotReturnDistance, minimumDistance, maximumDistance);
+            // A subject followed through the shot (a follow that kept it) is who the camera goes on
+            // following, so theirs; otherwise the rooms the view was about before the shot.
+            SetRooms(subject != null ? BodyRooms(subject) : shotReturnRooms);
             BeginTravel(seconds);
+            if (IsTravelling) roomsTravelFrom = before;
         }
 
         /// <summary>Tracks a staged subject as its seated pose settles, without restarting the camera move.</summary>
@@ -526,6 +760,7 @@ namespace Gamesim.House
             shot.Pitch=Mathf.Asin(Mathf.Clamp(-line.y/length,-1f,1f))*Mathf.Rad2Deg;
             shot.Yaw=Mathf.Atan2(line.x,line.z)*Mathf.Rad2Deg;
             activeShot=shot; desiredFocus=ClampFocus(focus); desiredDistance=length; yaw=Mathf.Repeat(shot.Yaw,360f);
+            if(roomTargetSet && roomTarget.By==RoomsBy.ShotFocus)roomTarget.Focus=desiredFocus;
         }
 
         /// <summary>A move or an input that takes the camera decides the view itself; the shot just ends.</summary>
@@ -534,6 +769,8 @@ namespace Gamesim.House
             if (!activeShot.HasValue) return;
             var shot = activeShot.Value;
             activeShot = null;
+            twoShotHeld = false;
+            twoShotArrived = false;
             // A timed move still in flight would otherwise carry its clock onto whatever focus the
             // caller sets next and land there in a frame, which reads as a cut.
             travelSeconds = 0f;
@@ -617,10 +854,68 @@ namespace Gamesim.House
         /// so a scripted beat lands when the script says. Under reduced motion it lands at once.
         /// Any other move, or input, ends the travel where it is.
         /// </summary>
-        public void MoveTo(Vector3 focus, float wantedDistance, float seconds)
+        public void MoveTo(Vector3 focus, float wantedDistance, float seconds) => MoveTo(focus, wantedDistance, seconds, RoomSet.None);
+
+        /// <summary>
+        /// The same timed move, naming the rooms it frames (ROOM-SCOPE-PLAN §3.2 a, RS6a): those rooms
+        /// rather than the floor under its point, and the rooms it leaves with them until it lands. A
+        /// move that names none watches the floor under its point, as every free move does.
+        /// <paramref name="from"/> is what the view drew as the move starts, when the caller knows it
+        /// (a whole house the rig's own rooms do not say); none: the rig's own rooms.
+        /// </summary>
+        public void MoveTo(Vector3 focus, float wantedDistance, float seconds, RoomSet rooms, RoomSet from = default)
         {
+            Initialize();
+            int before = ResolveRooms();
+            if (!from.IsEmpty) before = from.Bits;
             MoveTo(focus, wantedDistance);
+            if (!rooms.IsEmpty) SetRooms(new RoomTarget { By = RoomsBy.Named, Bits = rooms.Bits });
             BeginTravel(seconds);
+            // Both ends drawn until it lands: the rooms it leaves and the one it goes to.
+            if (IsTravelling) roomsTravelFrom = before;
+        }
+
+        /// <summary>
+        /// The same timed move, ending on a body's room, tracked (ROOM-SCOPE-PLAN RS5): landed, the view is
+        /// about <paramref name="tracked"/> as they walk - free play's on the player, after the ceremony
+        /// framing's move back - not a named copy of the room they stood in as it started; the rooms it
+        /// leaves are drawn with it until it lands.
+        /// </summary>
+        public void MoveTo(Vector3 focus, float wantedDistance, float seconds, Transform tracked)
+        {
+            Initialize();
+            int before = ResolveRooms();
+            MoveTo(focus, wantedDistance);
+            if (tracked != null) SetRooms(BodyRooms(tracked));
+            BeginTravel(seconds);
+            if (IsTravelling) roomsTravelFrom = before;
+        }
+
+        /// <summary>
+        /// The free camera's own framing, as the scene set it (its distance and heading): today's dollhouse
+        /// view, which "Show the whole house" (ROOM-SCOPE-PLAN D12, RS5) brings back when it is switched on
+        /// from the room view.
+        /// </summary>
+        public float OwnDistance { get { Initialize(); return ownDistance; } }
+        public float OwnYaw { get { Initialize(); return ownYaw; } }
+        private float ownDistance = 24f, ownYaw = 45f;
+
+        /// <summary>
+        /// Eases the free camera out to its own framing (<see cref="OwnDistance"/> and <see cref="OwnYaw"/>,
+        /// over the house's middle unless it follows someone), keeping what the view is about: switched on
+        /// from the room view, "Show the whole house" is today's view as well as today's drawing (D12). Not
+        /// over a shot or a conversation, which frame themselves. Like input, it takes the view from a free
+        /// move that claimed it.
+        /// </summary>
+        public void EaseToItsOwnFraming()
+        {
+            Initialize();
+            if (activeShot.HasValue || IsConversationFocused) return;
+            travelSeconds = 0f;
+            yaw = ownYaw;
+            desiredDistance = Mathf.Clamp(ownDistance, minimumDistance, maximumDistance);
+            if (subject == null) desiredFocus = ClampFocus(houseCenter);
+            viewTakeovers++;
         }
 
         /// <summary>Whether the last <see cref="MoveTo"/> has effectively landed.</summary>
@@ -634,6 +929,21 @@ namespace Gamesim.House
         public float FarthestDistance => maximumDistance;
         public float NearestDistance => minimumDistance;
 
+        /// <summary>
+        /// Sets the nearest free zoom (ROOM-SCOPE-PLAN D11, RS5: four metres, which the episode scene's saved
+        /// ten undid a day after it was decided), keeping the pitch the camera is at now: the offset is
+        /// taken again against the curve's new near end, which <see cref="PitchFor"/> lerps from.
+        /// </summary>
+        public void UseNearestDistance(float metres)
+        {
+            Initialize();
+            if (float.IsNaN(metres) || float.IsInfinity(metres)) return;
+            float shown = Mathf.Clamp(PitchFor(distance) + pitchOffset, 45f, 70f);
+            minimumDistance = Mathf.Clamp(metres, 1f, maximumDistance);
+            pitchOffset = Mathf.Clamp(shown - PitchFor(distance), -20f, 20f);
+            if (!activeShot.HasValue) desiredDistance = Mathf.Clamp(desiredDistance, minimumDistance, maximumDistance);
+        }
+
         public void EndConversation()
         {
             if (!IsConversationFocused)
@@ -644,6 +954,8 @@ namespace Gamesim.House
             IsConversationFocused = false;
             conversationPlayer = null;
             conversationNpc = null;
+            // Back to whoever is followed, or to the rooms the view was about before the conversation.
+            SetRooms(subject != null ? BodyRooms(subject) : conversationReturnRooms);
             if (reducedMotion)
             {
                 DropShot(false);
@@ -682,7 +994,7 @@ namespace Gamesim.House
                         {
                             // The effective lens also moves the pivot. Recheck both candidate eyes
                             // before an aspect change adopts that new framing at the same HUD offset.
-                            MoveTo(TwoShot(conversationPlayer, conversationNpc));
+                            TakeTwoShot(conversationPlayer, conversationNpc);
                         }
                         else
                         {
@@ -710,6 +1022,7 @@ namespace Gamesim.House
                 }
             }
 
+            ApplyRoomView();
             // A shot's angle is its own; everything else stays inside the dollhouse's range.
             pitch = activeShot.HasValue ? activeShot.Value.Pitch : Mathf.Clamp(PitchFor(desiredDistance) + pitchOffset, 45f, 70f);
             var blend = reducedMotion ? 1f : 1f - Mathf.Exp(-smoothing * Time.unscaledDeltaTime);
@@ -736,6 +1049,17 @@ namespace Gamesim.House
             viewCamera.transform.localPosition = new Vector3(0f, 0f, -appliedDistance);
             viewCamera.transform.localRotation = Quaternion.identity;
             ApplyLens(blend);
+            // Every frame, so a followed body's room changes on the frame its feet cross the line
+            // whether or not anything reads it then.
+            if (roomScope != null) ResolveRooms();
+            // The camera come in on an untimed move, read after it has moved for the frame and before the
+            // director's late pass draws it (ROOM-SCOPE-PLAN RS6b): the two-shot's, kept until the shot goes,
+            // and a free move's, kept until anything else takes the view.
+            if (!IsTravelling && HasArrived(ArrivalTolerance))
+            {
+                if (twoShotHeld && IsConversationFocused && activeShot.HasValue) twoShotArrived = true;
+                arrivedOnTakeovers = viewTakeovers;
+            }
         }
 
         /// <summary>
@@ -866,7 +1190,9 @@ namespace Gamesim.House
                 || actions.Recenter.WasPressedThisFrame();
             if (moving && IsTravelling) travelSeconds = 0f;
             // Input takes the camera back from a shot where it is: the player took the wheel.
-            if (moving) DropShot(false);
+            if (moving) TakeTheWheel();
+            // And from a free move that claimed the view: a framing whose camera the player moved is not its view (RS6a).
+            if (moving) viewTakeovers++;
             float dt = Time.unscaledDeltaTime;
             bool pointerOverUi = EventSystem.current != null && EventSystem.current.IsPointerOverGameObject();
             var pointer = actions.Point.ReadValue<Vector2>();
@@ -901,7 +1227,7 @@ namespace Gamesim.House
                 if (EdgePanActive && Pointer.current != null)
                 {
                     var edge = EdgeDirection(pointer);
-                    if (edge.sqrMagnitude > 0f) { DropShot(false); PanBy(edge, dt); }
+                    if (edge.sqrMagnitude > 0f) { TakeTheWheel(); PanBy(edge, dt); viewTakeovers++; }
                 }
             }
 
@@ -912,14 +1238,23 @@ namespace Gamesim.House
             float zoomRate = actions.ZoomRate.ReadValue<float>();
             if (!Mathf.Approximately(zoomRate, 0f)) ZoomBy(zoomRate * gamepadZoomSpeed * dt, pointer, false);
 
-            if (actions.Recenter.WasPressedThisFrame() && playerTarget != null)
-            {
-                ClearSubject();
-                desiredFocus = ClampFocus(new Vector3(playerTarget.position.x, houseCenter.y, playerTarget.position.z));
-            }
+            // F is back to free play: the player's room, a cut onto it in the room view if it is another room.
+            if (actions.Recenter.WasPressedThisFrame() && playerTarget != null) RecenterOnPlayer();
 
             var movement = actions.Pan.ReadValue<Vector2>();
             if (movement.sqrMagnitude > 0f) PanBy(Vector2.ClampMagnitude(movement, 1f), dt);
+        }
+
+        /// <summary>
+        /// Input takes the camera from a shot where it is (the player took the wheel), and the view is what the
+        /// shot left again (ROOM-SCOPE-PLAN RS5): a follow the shot kept, else the view it took over - free
+        /// play's, a follow's or a watch's - so the room view comes back on it, as leaving the overview does.
+        /// </summary>
+        private void TakeTheWheel()
+        {
+            if (!activeShot.HasValue) return;
+            DropShot(false);
+            SetRooms(subject != null ? BodyRooms(subject) : shotReturnRooms);
         }
 
         /// <summary>A drag in pixels, or a stick's share of a second, turned into yaw and tilt.</summary>
@@ -968,7 +1303,8 @@ namespace Gamesim.House
         private void ZoomBy(float metres, Vector2 pointer, bool towardCursor)
         {
             float before = desiredDistance;
-            desiredDistance = Mathf.Clamp(desiredDistance - metres, minimumDistance, maximumDistance);
+            // In the room view, no farther than the room's own farthest zoom (D4).
+            desiredDistance = Mathf.Clamp(desiredDistance - metres, minimumDistance, FreeFarthestDistance);
             if (towardCursor && subject == null && TryCursorPoint(pointer, out var under))
             {
                 float fraction = 1f - desiredDistance / Mathf.Max(before, 0.001f);
@@ -1084,7 +1420,7 @@ namespace Gamesim.House
                 // that actual shifted eye as well, without reopening or moving either actor.
                 if (IsConversationFocused && !reducedMotion && activeShot.HasValue
                     && conversationPlayer != null && conversationNpc != null)
-                    MoveTo(TwoShot(conversationPlayer, conversationNpc));
+                    TakeTwoShot(conversationPlayer, conversationNpc);
             }
         }
 
@@ -1100,6 +1436,246 @@ namespace Gamesim.House
             focus.y = subject.position.y + subjectHeight;
             return focus;
         }
+
+        private void SetRooms(RoomTarget target)
+        {
+            roomTarget = target;
+            roomTargetSet = true;
+            roomsTravelFrom = 0;
+            viewTakeovers++;
+            // A call that names the view's rooms is not a walk: its body's room is reported as it stands, and
+            // the room view's next pass changes to it at once rather than waiting out the 0.6 s (RS5).
+            viewRoomBody = null;
+        }
+
+        private static RoomTarget BodyRooms(Transform body) => new RoomTarget { By = RoomsBy.Body, Body = body };
+
+        /// <summary>
+        /// The room view, once a late pass, after input and the follow have set where the camera is going
+        /// and before it moves (ROOM-SCOPE-PLAN §3.2 g, RS5). Off - no director, the whole house held, a
+        /// source that is not free play's, following's or watching's, a shot or a conversation - it leaves
+        /// everything as today's free camera. On, it finds the one room the view is about; a change of room
+        /// is a cut (D5), except that a walker's waits out 0.6 s since the last change and that a timed move
+        /// in flight lands where it is going first; a view that comes on with the camera anywhere but over
+        /// its room - the first frame, the setting switched off - cuts too, and a cut asked for
+        /// (<see cref="CutToRoomView"/>: the opening's hand-over, the setting switched off) is made even over
+        /// a timed move, which it ends, lens and all. Then the distance is kept to the room's farthest zoom
+        /// and the focus inside the room's clamp.
+        /// </summary>
+        private void ApplyRoomView()
+        {
+            bool wanted = roomScope != null && roomViewWanted != null && !activeShot.HasValue && !IsConversationFocused;
+            if (wanted)
+            {
+                try { wanted = roomViewWanted(); }
+                catch (System.Exception e) { Debug.LogException(e, this); wanted = false; }
+            }
+            roomViewOn = wanted;
+            if (!wanted)
+            {
+                viewRoomBody = null;
+                roomViewWasOn = false;
+                return;
+            }
+            int room = FreeViewRoom(out var walker);
+            if (room < 0 || !roomScope.Has(room))
+            {
+                // The view is about more than one room or none (a timed move's two ends, a named set): no clamp.
+                roomViewOn = false;
+                viewRoomBody = null;
+                roomViewWasOn = false;
+                return;
+            }
+            bool walked = walker != null && ReferenceEquals(walker, viewRoomBody) && roomViewWasOn;
+            bool changed = false;
+            if (room != viewRoom)
+            {
+                // A walker's room waits out the last change (the subject is drawn meanwhile); anything else changes at once.
+                if (walked && viewRoom >= 0 && HouseRoomView.Waits(Time.unscaledTime, viewRoomChangedAt)) room = viewRoom;
+                else changed = true;
+            }
+            viewRoomBody = walker;
+            if (changed)
+            {
+                viewRoom = room;
+                viewRoomChangedAt = Time.unscaledTime;
+                // A walk that changes the rooms changes the view as much as a call does.
+                if (walked) viewTakeovers++;
+            }
+            float farthest = Mathf.Max(minimumDistance, HouseRoomView.FarthestDistance(viewRoom));
+            var box = roomScope.Box(viewRoom);
+            // A cut asked for (the opening's hand-over, the setting switched off, the look sheet's view of the
+            // player's room) is made whatever is in flight: the opening lets its close-up go with a timed move in
+            // the very call that hands over, and the hand-over is a cut (D6). Otherwise a timed move lands first.
+            bool cut = roomViewCutWanted
+                || (!IsTravelling && ((changed && roomViewWasOn) || !HouseRoomView.Over(box, transform.position, distance, farthest)));
+            if (cut) CutIntoRoom(viewRoom, farthest, box);
+            desiredDistance = Mathf.Clamp(desiredDistance, minimumDistance, farthest);
+            desiredFocus = HouseRoomView.Clamp(box, desiredFocus, desiredDistance, minimumDistance, farthest);
+            roomViewWasOn = true;
+        }
+
+        /// <summary>
+        /// The one room the free view is about: a followed or tracked body's walker room (the body is
+        /// <paramref name="walker"/>), a named room or the floor under a free move's point; -1 for more
+        /// than one room or none.
+        /// </summary>
+        private int FreeViewRoom(out Transform walker)
+        {
+            walker = null;
+            var target = CurrentRoomTarget();
+            switch (target.By)
+            {
+                case RoomsBy.Body:
+                    if (target.Body == null) return SingleRoom(target.Bits);
+                    walker = target.Body;
+                    return roomScope.Track(target.Body);
+                case RoomsBy.Named:
+                    return SingleRoom(target.Bits);
+                case RoomsBy.Point:
+                    return roomScope.RoomUnder(target.Focus);
+                default:
+                    return -1;
+            }
+        }
+
+        private static int SingleRoom(int bits)
+        {
+            if (bits == 0 || (bits & (bits - 1)) != 0) return -1;
+            for (int i = 0; i < RoomLayers.Count; i++) if (bits == 1 << i) return i;
+            return -1;
+        }
+
+        /// <summary>
+        /// The cut into a room (§3.2 g, D5): the heading turns to the room's best heading nearest the yaw,
+        /// the focus is the subject (or the body the view tracks, or where it was going) clamped inside the
+        /// room, the distance is the smaller of the wanted one and the room's farthest, all on this frame
+        /// with no easing; the camera has arrived where its view goes.
+        /// </summary>
+        private void CutIntoRoom(int room, float farthest, Rect box)
+        {
+            roomViewCutWanted = false;
+            roomViewCuts++;
+            yaw = HouseRoomView.NearestBestHeading(room, yaw);
+            desiredDistance = Mathf.Clamp(desiredDistance, minimumDistance, farthest);
+            var focus = desiredFocus;
+            if (subject != null) focus = SubjectFocus();
+            else if (viewRoomBody != null) focus = new Vector3(viewRoomBody.position.x, desiredFocus.y, viewRoomBody.position.z);
+            desiredFocus = HouseRoomView.Clamp(box, ClampFocus(focus), desiredDistance, minimumDistance, farthest);
+            transform.position = desiredFocus;
+            distance = desiredDistance;
+            travelSeconds = 0f;
+            pitch = Mathf.Clamp(PitchFor(distance) + pitchOffset, 45f, 70f);
+            ApplyCameraImmediately();
+            // The lens with the rest, as a warp's cut does: a shot let go just before - the opening's close-up
+            // with its depth of field, the overview's orthographic morph left by a drag - would otherwise go on
+            // easing out over the room the cut has already framed.
+            SnapLensToItsOwn();
+            arrivedOnTakeovers = viewTakeovers;
+        }
+
+        /// <summary>
+        /// Back to free play on the player (F, ROOM-SCOPE-PLAN RS5): no follow, the focus over the player
+        /// and the view the player's room, tracked; in the room view a cut onto it if it is another room.
+        /// </summary>
+        public void RecenterOnPlayer()
+        {
+            Initialize();
+            if (playerTarget == null) return;
+            ClearSubject();
+            desiredFocus = ClampFocus(new Vector3(playerTarget.position.x, houseCenter.y, playerTarget.position.z));
+            SetRooms(BodyRooms(playerTarget));
+        }
+
+        /// <summary>
+        /// Whether the view is free play's on the player: the player's room, tracked - before any move, or
+        /// after F, a walk or travel. A player out of the house (jury or evicted) watches a room instead.
+        /// </summary>
+        public bool ViewsThePlayer
+            => playerTarget != null && (!roomTargetSet || (roomTarget.By == RoomsBy.Body && roomTarget.Body == playerTarget));
+
+        /// <summary>
+        /// The view of a player out of the house before any watch (§1.2, RS5): the room nearest the
+        /// camera's focus - the floor box under it, else the nearest - watched until a watch, a follow or a
+        /// move takes the view. Nothing without the house's rooms.
+        /// </summary>
+        public void WatchTheRoomUnderTheFocus()
+        {
+            Initialize();
+            if (roomScope == null) return;
+            int room = roomScope.RoomUnder(desiredFocus);
+            if (room < 0) return;
+            if (subject != null && subject == playerTarget) ClearSubject();
+            SetRooms(new RoomTarget { By = RoomsBy.Named, Bits = 1 << room });
+        }
+
+        /// <summary>What the view is about now; before any move, free play's: the player.</summary>
+        private RoomTarget CurrentRoomTarget()
+        {
+            if (roomTargetSet) return roomTarget;
+            return playerTarget != null ? BodyRooms(playerTarget) : new RoomTarget { By = RoomsBy.WholeHouse };
+        }
+
+        /// <summary>
+        /// A followed houseguest's rooms as they are now, kept: the room a stopped follow leaves the
+        /// view on. The player is free play's room and stays tracked: a pan after a floor click, or a
+        /// shot or conversation begun in free play, comes back to wherever the player is then.
+        /// </summary>
+        private RoomTarget Watching(RoomTarget target)
+        {
+            if (target.By != RoomsBy.Body || (playerTarget != null && target.Body == playerTarget)) return target;
+            int bits = ResolveTarget(ref target);
+            return new RoomTarget { By = RoomsBy.Named, Bits = bits };
+        }
+
+        private int ResolveRooms()
+        {
+            if (roomScope == null) return WholeHouseRooms;
+            if (!roomTargetSet)
+            {
+                if (playerTarget == null) return WholeHouseRooms;
+                SetRooms(BodyRooms(playerTarget));
+            }
+            int bits = ResolveTarget(ref roomTarget);
+            if (IsTravelling) bits |= roomsTravelFrom;
+            return bits == 0 ? WholeHouseRooms : bits;
+        }
+
+        /// <summary>A target's rooms now, remembered on it; 0 for one that cannot say (the whole house).</summary>
+        private int ResolveTarget(ref RoomTarget target)
+        {
+            if (roomScope == null) return WholeHouseRooms;
+            switch (target.By)
+            {
+                case RoomsBy.Named:
+                    return target.Bits;
+                case RoomsBy.Body:
+                    // A body gone keeps the room it was last in.
+                    if (target.Body != null)
+                    {
+                        int tracked = roomScope.Track(target.Body);
+                        // The room view shows the room it last changed to while it follows this body's walk:
+                        // a change inside 0.6 s of the last waits there (RS5, §3.2 a), the body drawn meanwhile.
+                        if (roomViewOn && viewRoom >= 0 && ReferenceEquals(target.Body, viewRoomBody)) tracked = viewRoom;
+                        target.Bits = RoomBit(tracked, target.Bits);
+                    }
+                    return target.Bits;
+                case RoomsBy.Point:
+                    return target.Bits = RoomBit(roomScope.RoomUnder(target.Focus), 0);
+                case RoomsBy.ShotFocus:
+                    int bits = RoomBit(roomScope.RoomUnder(target.Focus), 0) | target.Also;
+                    if (IsConversationFocused)
+                    {
+                        if (conversationPlayer != null) bits |= RoomBit(roomScope.Track(conversationPlayer), 0);
+                        if (conversationNpc != null) bits |= RoomBit(roomScope.Track(conversationNpc), 0);
+                    }
+                    return target.Bits = bits;
+                default:
+                    return WholeHouseRooms;
+            }
+        }
+
+        private static int RoomBit(int room, int otherwise) => room >= 0 && room < RoomLayers.Count ? 1 << room : otherwise;
 
         private Vector3 ClampFocus(Vector3 focus)
         {
@@ -1121,6 +1697,9 @@ namespace Gamesim.House
             pitch = Mathf.Clamp(pitch, 45f, 70f);
             distance = Mathf.Clamp(distance, minimumDistance, maximumDistance);
             desiredDistance = distance;
+            // The scene's own framing, for "Show the whole house" to bring back (RS5, D12).
+            ownDistance = distance;
+            ownYaw = Mathf.Repeat(yaw, 360f);
             // The authored pitch is kept exactly, as the offset from what the distance would choose:
             // the first frame must not reframe a view somebody set up, reduced motion or not.
             pitchOffset = Mathf.Clamp(pitch - PitchFor(distance), -20f, 20f);

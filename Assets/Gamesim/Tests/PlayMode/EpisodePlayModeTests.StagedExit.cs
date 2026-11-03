@@ -490,13 +490,17 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(words, Has.Some.EqualTo("GOODBYE"), "saying goodbye,");
             Assert.That(words, Has.Some.EqualTo(EpisodeDirector.GoodbyeLine(director.Snapshot, evicted, EpisodeDirector.GoodbyeMoment.Standing)),
                 "with the words for where they are: standing, not at the door.");
+            // The goodbye is the stage's (RS6a): its room. The walk out is the whole house (ROOM-SCOPE-PLAN D6, RS6b).
+            Rs6aAssertTheStageDrawsItsRoom("The goodbye");
             yield return CaptureFraming("walk-out-goodbye", settle: false);
             yield return WaitFor(() => director.WalkOutAtTheDoor, EpisodeDirector.GoodbyeSeconds + EpisodeDirector.WalkOutSeconds, "the door opens for them");
             yield return RealSeconds(0.6f);
+            Rs6bAssertTheWalkOutDrawsTheWholeHouse("The door open, the evicted at it");
             yield return CaptureFraming("walk-out-door", settle: false);
             OpeningDoorSet Door() { var root = SceneRoot(OpeningDoorSet.RootName); return root != null ? root.GetComponent<OpeningDoorSet>() : null; }
             yield return WaitFor(() => Door() == null || (!Door().IsOpen && Door().Openness <= 0.01f), EpisodeDirector.WalkOutSeconds, "the door shuts behind them");
             Assert.That(Door(), Is.Not.Null, "The shot holds on the shut door.");
+            Rs6bAssertTheWalkOutDrawsTheWholeHouse("The door shut behind them");
             yield return CaptureFraming("walk-out-shut", settle: false);
             yield return WaitFor(() => !director.StagedExitRunning, EpisodeDirector.WalkOutSeconds, "the exit ends");
             yield return WaitFor(() => !director.IsCeremonyStaged, 3f, "the house gets up");

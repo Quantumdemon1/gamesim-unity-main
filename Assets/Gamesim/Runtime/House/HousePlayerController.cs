@@ -318,27 +318,55 @@ namespace Gamesim.House
         /// <summary>
         /// The piece of furniture under the pointer, or null, and where the pointer is. Raised as
         /// the pointer moves, so whoever listens can say what a click there would do before it is
-        /// made. The same pick the click makes, so the words and the click cannot disagree.
+        /// made, and as what the camera draws under a still pointer changes (RS2b). The same pick the
+        /// click makes, so the words and the click cannot disagree.
         /// </summary>
         public event System.Action<HouseInteractionAnchor, Vector2> FurnitureHovered;
         private Vector2 lastHover = new Vector2(float.NaN, float.NaN);
         private Matrix4x4 lastHoverView;
+        private int lastHoverMask;
+        private Collider lastHoverCollider;
 
         private void TickHover(Mouse mouse)
         {
             if (FurnitureHovered == null || viewCamera == null || mouse == null) return;
             var screen = mouse.position.ReadValue();
-            // A still pointer over a moving camera is pointing at something new.
+            // A still pointer over a moving camera is pointing at something new, and so is one over a
+            // still camera whose rooms the room scope changes (RS2b, §3.2 f): a room taken out of the
+            // mask takes its furniture out from under the pointer, and one put back brings it back.
             var view = viewCamera.worldToCameraMatrix;
-            if (screen == lastHover && view == lastHoverView) return;
-            lastHover = screen; lastHoverView = view;
-            HouseInteractionAnchor under = null;
-            if (!Gamesim.Presentation.CeremonyOverlays.OnScreen
+            int mask = viewCamera.cullingMask;
+            bool still = screen == lastHover && view == lastHoverView && RoomLayers.SameRooms(mask, lastHoverMask);
+            // Every room drawn, the scope hides nothing: a still pointer is over what it was.
+            if (still && RoomLayers.DrawsEveryRoom(mask)) return;
+            // Past anything the room scope does not draw (RS4, RS2b, §3.2 f): a hidden body is not under
+            // the pointer, nor is hidden furniture, whose collision proxy is passed over for what stands
+            // behind it - the floor, which says nothing.
+            RaycastHit hit = default;
+            bool pointing = !Gamesim.Presentation.CeremonyOverlays.OnScreen
                 && !(EventSystem.current != null && EventSystem.current.IsPointerOverGameObject())
-                && Physics.Raycast(ScreenRay(viewCamera, screen), out var hit, 500f, HouseLayers.Pick, QueryTriggerInteraction.Ignore))
-                under = HouseFurniture.AtProp(gameObject.scene, hit.transform, hit.point);
+                && TryPointAt(ScreenRay(viewCamera, screen), out hit);
+            var pointed = pointing ? hit.collider : null;
+            // A room left out, what the camera draws can change under a still pointer with no change of
+            // mask - a piece of dressing gone to the shell or placed the frame it is first drawn (RS2a), a
+            // body hidden or shown in a doorway (RS4) - so the pick is made again every frame, and the hover
+            // speaks only when it lands on another collider: one filtered ray a frame, only under a room view.
+            if (still && ReferenceEquals(pointed, lastHoverCollider)) return;
+            lastHover = screen; lastHoverView = view; lastHoverMask = mask; lastHoverCollider = pointed;
+            var under = pointing ? HouseFurniture.AtProp(gameObject.scene, hit.transform, hit.point) : null;
             FurnitureHovered(under, screen);
         }
+
+        /// <summary>
+        /// What the pointer or a click on a ray lands on: the one pick the hover and the click both
+        /// make, so what the hover says a click does is what it does. Pick, not Sight: furniture
+        /// included. Past anything the room scope does not draw (RS4, RS2b, §3.2 f, D13): a hidden
+        /// houseguest, or a piece of furniture whose room the main camera leaves out (its collision proxy
+        /// is its prop's, <see cref="HouseScopePick.OwnerOf"/>), is passed over for whatever stands behind
+        /// it, the floor included; with the whole house drawn, <c>Physics.Raycast</c>'s hit.
+        /// </summary>
+        public bool TryPointAt(Ray ray, out RaycastHit hit)
+            => HouseScopePick.Raycast(viewCamera, ray, 500f, HouseLayers.Pick, out hit);
 
         private void Update()
         {
@@ -397,13 +425,17 @@ namespace Gamesim.House
         public void DispatchClick(Ray ray, Vector2 screen)
         {
             if (!InputEnabled) return;
-            if(HouseSeatPresentation.TryPickNpc(gameObject.scene,ray,out var seatedGuest))
+            // What the room scope does not draw cannot be clicked (RS4, RS2b, §3.2 f, D13): a hidden
+            // houseguest, seated or standing, and hidden furniture are passed over, and the click goes on to
+            // whatever is behind them - the floor, which walks the player there; the furniture pick below
+            // reads only what the camera draws. With the whole house drawn, the click as it always was.
+            if(HouseSeatPresentation.TryPickNpc(gameObject.scene,ray,viewCamera,out var seatedGuest))
             {
                 if (!Select(seatedGuest)) CameraRig?.FocusSubject(seatedGuest.transform);
                 return;
             }
             // Pick, not Sight: a click is meant to hit the thing under the cursor, furniture included.
-            if (!Physics.Raycast(ray, out var hit, 500f, HouseLayers.Pick, QueryTriggerInteraction.Ignore))
+            if (!TryPointAt(ray, out var hit))
             {
                 return;
             }

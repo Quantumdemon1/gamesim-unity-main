@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using Gamesim.House;
 using Gamesim.Simulation;
 using UnityEngine;
 
@@ -48,7 +49,9 @@ namespace Gamesim.Presentation
         {
             if (state?.contestants == null) return;
             Collect();
-            Arrange(state.contestants.Count);
+            // Laid out again, the frames hang where they now are: each on its room's layer in the same
+            // call (ROOM-SCOPE-PLAN RS2a), the frames put away waiting until they are shown again.
+            if (Arrange(state.contestants.Count)) HouseRoomScope.PlaceDressing(transform);
 
             Bind(state);
 
@@ -119,11 +122,11 @@ namespace Gamesim.Presentation
         /// would read as ten empty keys; so the first <paramref name="count"/> frames are laid out
         /// as two centred rows (the primitive three-by-two wall is left as built), and the rest go
         /// dark and inactive. The pitch and the row heights are read from the placed frames, so the
-        /// grid is stated once, in the export.
+        /// grid is stated once, in the export. True when it laid the frames out again.
         /// </summary>
-        private void Arrange(int count)
+        private bool Arrange(int count)
         {
-            if (frames.Count < 16 || count <= 0 || arrangedFor == count) return;
+            if (frames.Count < 16 || count <= 0 || arrangedFor == count) return false;
             arrangedFor = count;
             int perRow = Mathf.Clamp(Mathf.CeilToInt(count / 2f), 1, 8);
             float pitch = Mathf.Abs(frames[1].localPosition.z - frames[0].localPosition.z);
@@ -141,6 +144,7 @@ namespace Gamesim.Presentation
                 float y = row == 0 ? topY : bottomY;
                 frame.localPosition = new Vector3(frame.localPosition.x, y, z);
             }
+            return true;
         }
 
         private int arrangedFor;

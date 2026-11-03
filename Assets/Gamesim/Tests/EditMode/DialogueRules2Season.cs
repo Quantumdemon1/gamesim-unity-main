@@ -15,12 +15,13 @@ namespace Gamesim.Tests.EditMode
     /// the literal 2, walked by the plain public walk to a campaign where the player is nominated, the house's open asks
     /// answered with their own neutral exits. Past the enrolment nothing is assigned by hand.
     ///
-    /// <para><b>Rules 2 exists only from schema 30</b> (decision 7): at the live schema 29 every rules-2 season is refused,
-    /// and no test can play one. So every test that plays one starts with <see cref="HeldBelowItsSchema"/>: below schema
-    /// 30 it asserts that refusal everywhere a season could meet it (validation, the engine, the rules' own gate) and the
-    /// test ends there; from the pooled bump on it returns false and the test plays the conversation. The conversation arm
-    /// was proven when D2 was built, ahead of the bump, on a scratch copy of this tree with the live schema moved to 30,
-    /// exactly as the bump moves it (the D2 report records the run); D2 lands after the bump (DIALOGUE-PLAN §6 item 5). Nothing here reads <see cref="DialogueRules.Offered"/>: the chip stays on
+    /// <para><b>Rules 2 exists only from schema 30</b> (decision 7): a rules-2 season at schema 29 is refused, and while
+    /// new seasons were written at 29 no test could play one. So every test that plays one starts with
+    /// <see cref="HeldBelowItsSchema"/>: below schema 30 it asserts that refusal everywhere a season could meet it
+    /// (validation, the engine, the rules' own gate) and the test ends there; from the pooled bump on it returns false and
+    /// the test plays the conversation, as it does at the live 30 since D2's merge. The conversation arm was first proven
+    /// when D2 was built, ahead of the bump, on a scratch copy of this tree with the live schema moved to 30, exactly as the
+    /// bump moves it (the D2 report records the run); D2 lands after the bump (DIALOGUE-PLAN §6 item 5). Nothing here reads <see cref="DialogueRules.Offered"/>: the chip stays on
     /// rules 1 until rules 2 freezes.</para>
     /// </summary>
     internal static class DialogueRules2Season

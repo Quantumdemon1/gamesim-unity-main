@@ -109,13 +109,43 @@ namespace Gamesim.House
         private bool plateCovered;
 
         /// <summary>
+        /// Whether the room scope has this houseguest's body hidden (ROOM-SCOPE-PLAN §3.2 e, RS4): they
+        /// stand in a room the view leaves out, so their plate is down, and nothing turns it to the
+        /// camera, fades it or sizes it until they are drawn again. Kept apart from
+        /// <see cref="PlateSuppressed"/>, which the show and the chrome write for everyone at once.
+        /// Taken at once, like <see cref="PlateCovered"/>: the director sets it late in the frame, after
+        /// this plate has been placed, and a body drawn again has its plate placed there and then.
+        /// </summary>
+        public bool BodyHidden
+        {
+            get => bodyHidden;
+            set
+            {
+                if (bodyHidden == value) return;
+                bodyHidden = value;
+                if (!value && nameLabel != null) PlaceLabel();
+                ApplyPlateAlpha();
+            }
+        }
+
+        private bool bodyHidden;
+
+        /// <summary>
+        /// Whether the main view is the room view (ROOM-SCOPE-PLAN §3.2 g, RS5): the director sets it every
+        /// frame. There every drawn body's plate is fully shown, since every drawn body is in the viewed
+        /// room or its doorway band, inside the room's farthest zoom; the fade by distance
+        /// (<see cref="NameTagNear"/> to <see cref="NameTagFar"/>) is the whole house's and the shots' only.
+        /// </summary>
+        public bool RoomViewPlates { get; set; }
+
+        /// <summary>
         /// The plate's alpha from what holds it: down for the show or a board, down under the
-        /// chrome, up whatever the distance for the one the player is with, and faded with the
-        /// distance for everyone else.
+        /// chrome, down while the room scope hides the body, up whatever the distance for the one the
+        /// player is with, and faded with the distance for everyone else.
         /// </summary>
         private void ApplyPlateAlpha()
         {
-            if (plateGroup != null) plateGroup.alpha = PlateSuppressed || plateCovered ? 0f : spotlit ? 1f : NameTagAlpha;
+            if (plateGroup != null) plateGroup.alpha = PlateSuppressed || plateCovered || bodyHidden ? 0f : spotlit ? 1f : NameTagAlpha;
         }
 
         /// <summary>How much of the plate is drawn this frame, 0 to 1. A read for tests.</summary>
@@ -203,6 +233,15 @@ namespace Gamesim.House
                 return;
             }
 
+            // Hidden by the room scope (RS4): the plate is down, and none of its billboard or fade work
+            // is done until the body is drawn again (BodyHidden places it then).
+            if (bodyHidden) return;
+            PlaceLabel();
+        }
+
+        /// <summary>The label and its plate over the head, turned to the camera, faded and sized for its distance.</summary>
+        private void PlaceLabel()
+        {
             var seat=GetComponent<HouseSeatPresentation>();
             if(seat!=null && seat.Active)nameLabel.transform.position=seat.VisualFocus+Vector3.up*.35f;
             else if(labelPositionKnown)nameLabel.transform.localPosition=labelRestPosition;
@@ -219,7 +258,7 @@ namespace Gamesim.House
                 // Close-range only (camera Phase 4): a name over every head from across the house is
                 // a screen of labels; at a conversation's distance it is who you are talking to.
                 float away = Vector3.Distance(labelCamera.transform.position, nameLabel.transform.position);
-                NameTagAlpha = Mathf.Clamp01((NameTagFar - away) / Mathf.Max(0.01f, NameTagFar - NameTagNear));
+                NameTagAlpha = RoomViewPlates ? 1f : Mathf.Clamp01((NameTagFar - away) / Mathf.Max(0.01f, NameTagFar - NameTagNear));
                 // A tag is sized for the dollhouse's distances; a director's shot comes within a few
                 // metres, where the same tag would fill the top of the frame. Inside the near
                 // distance it shrinks with the range instead, down to a floor that still reads.

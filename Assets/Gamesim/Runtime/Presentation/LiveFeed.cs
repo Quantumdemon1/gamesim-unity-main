@@ -1,4 +1,5 @@
 using System;
+using Gamesim.House;
 using UnityEngine;
 using UnityEngine.Rendering;
 using UnityEngine.Rendering.Universal;
@@ -10,6 +11,11 @@ namespace Gamesim.Presentation
     /// wherever the director says the action is, rendered into a card-sized texture every third
     /// frame from above the walls. Never the main camera: the name tags and the follow ring read
     /// <see cref="Camera.main"/>, and a feed that took the tag would turn every label toward it.
+    ///
+    /// <para>It draws the house's shell and its own room (ROOM-SCOPE-PLAN §3.2 c, D10; RS4): the rooms
+    /// it is aimed with (<see cref="Rooms"/>) go into its camera's mask before each render and every
+    /// other room layer stays out, whatever the main view draws. A body the main view hides stands on
+    /// its own room's layer, so the feed still films the people in the room it looks into.</para>
     /// </summary>
     [DisallowMultipleComponent]
     public sealed class LiveFeed : MonoBehaviour
@@ -55,12 +61,20 @@ namespace Gamesim.Presentation
             => Aim(at, fromYaw, pendingCaption);
 
         public void Aim(Vector3 at, float fromYaw, string caption)
+            => Aim(at, fromYaw, caption, RoomSet.WholeHouse);
+
+        /// <summary>Aims the feed, naming the rooms it draws besides the shell: no room, or every room, draws them all.</summary>
+        public void Aim(Vector3 at, float fromYaw, string caption, RoomSet rooms)
         {
             subject = at;
             yaw = fromYaw;
             pendingCaption = caption ?? "";
+            Rooms = rooms;
             HasSubject = true;
         }
+
+        /// <summary>The rooms the feed draws besides the shell (§3.2 c): the room it looks into. The whole house until aimed.</summary>
+        public RoomSet Rooms { get; private set; } = RoomSet.WholeHouse;
 
         public void Clear() => HasSubject = false;
 
@@ -97,6 +111,9 @@ namespace Gamesim.Presentation
             var eye = subject + Quaternion.Euler(0f, yaw, 0f) * Offset;
             feedCamera.transform.position = eye;
             feedCamera.transform.rotation = Quaternion.LookRotation(subject + Vector3.up * 0.9f - eye, Vector3.up);
+            // The shell and its own room: only bits 20 to 27 are the feed's to write.
+            int mask = RoomLayers.OwnRoomMask(feedCamera.cullingMask, Rooms);
+            if (mask != feedCamera.cullingMask) feedCamera.cullingMask = mask;
             feedCamera.Render();
             // Camera.Render completes before the overlay is drawn. The card's caption and pixels
             // therefore become visible in the same frame, even when re-aiming between cadence ticks.

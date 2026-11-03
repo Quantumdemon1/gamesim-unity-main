@@ -244,7 +244,14 @@ namespace Gamesim.Simulation
     [Serializable]
     public sealed class EpisodeState
     {
-        public int schemaVersion = 29;
+        /// <summary>
+        /// The save schema this build writes and its live validators hold a season to (EpisodeValidation,
+        /// EpisodeSaveValidation): named once, so the next bump is this line. A rule that a schema introduced reads a
+        /// lower bound on the schema that introduced it (DialogueRules.On: 29 or later), never this.
+        /// </summary>
+        public const int LiveSchema = 30;
+
+        public int schemaVersion = LiveSchema;
         public int competitionRulesVersion = 1;
         public string sessionId;
         public uint seed, randomState;
@@ -514,6 +521,16 @@ namespace Gamesim.Simulation
         // admits only rule 0 and empty storage; fresh enrollment is not implemented here.
         public int dialogueRulesVersion;
         public DialogueState dialogue = new DialogueState();
+
+        // Schema 30 (SCH30, ALL-STAR-HISTORIES-PLAN 5.1): the pooled fields, appended in this fixed order. Each holds its
+        // off value in every season until the slice that defines a value, and validation accepts only that value until
+        // then. A migrated season carries them off for ever: nothing is inferred.
+        /// <summary>The alumni rules: the fresh-season gate for every alumni behaviour, the player histories first (H1b defines 1). 0 for off.</summary>
+        public int alumniRulesVersion;
+        /// <summary>The id of the alumni histories' edition a season was built from; null with the alumni rules off.</summary>
+        public string alumniCatalogEdition;
+        /// <summary>B9's tuning rules (BALANCE_BASELINE.md); 0 for off, B9's first tuning slice defines the first value.</summary>
+        public int tuningRulesVersion;
 
         public ContestantState Find(string id) => contestants.FirstOrDefault(c => c.id == id);
         public IEnumerable<ContestantState> Active => contestants.Where(c => c.status == ContestantStatus.Active);

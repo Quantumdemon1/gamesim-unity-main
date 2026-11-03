@@ -54,8 +54,10 @@ namespace Gamesim.Tests.PlayMode
             // frame rather than a footnote.
             yield return Shoot("walkthrough-00-first-frame");
 
-            // 01 — the same view once the rig has settled: the shipped default framing.
+            // 01 — the same view once the rig has settled: the shipped default framing, the room view of the
+            // player's room from RS5 (its farthest zoom).
             yield return SettleCamera();
+            Debug.Log("[Gamesim] walkthrough · the default framing is " + (cameraRig.IsRoomView ? "the room view of the " + HouseRoomScope.RoomId(cameraRig.ViewRoom) : "the whole house"));
             yield return Shoot("walkthrough-01-arrival");
             LogBeat("arrival", director.Snapshot);
 
@@ -65,7 +67,7 @@ namespace Gamesim.Tests.PlayMode
             SetCameraDistance(10f);
             for (int i = 0; i < 40; i++) yield return null;
             yield return Shoot("walkthrough-02-cast-close-up");
-            SetCameraDistance(24f);
+            SetCameraDistance(cameraRig.FreeFarthestDistance);
             yield return SettleCamera();
 
             // 01b — the first-run tour. Driven explicitly rather than by clearing the seen flag:
@@ -113,7 +115,7 @@ namespace Gamesim.Tests.PlayMode
                 yield return Shoot("walkthrough-02b-memory-wall");
 
                 cameraRig.EndConversation();
-                SetCameraDistance(24f);
+                SetCameraDistance(cameraRig.FreeFarthestDistance);
                 yield return SettleCamera();
             }
 
@@ -304,6 +306,10 @@ namespace Gamesim.Tests.PlayMode
             var configured = typeof(HouseCameraRig)
                 .GetField("distance", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)
                 ?.GetValue(cameraRig);
+            // From RS5 the startup framing is the room view's: the player's room at its farthest zoom.
+            Debug.Log("[Gamesim] startup framing · " + (cameraRig.IsRoomView
+                ? "the room view of the " + HouseRoomScope.RoomId(cameraRig.ViewRoom) + ", farthest " + cameraRig.FreeFarthestDistance + " m"
+                : "the whole house") + ", nearest " + cameraRig.NearestDistance + " m");
 
             int[] marks = { 0, 15, 30, 60, 120, 240, 480 };
             int next = 0;

@@ -78,6 +78,16 @@ namespace Gamesim.Presentation
         private bool playing, reduced, fieldShown;
         private int turned = -1;
 
+        /// <summary>
+        /// The frame the card was played in. Neither it nor the next is the card's own time, as on the
+        /// key ceremony and the live eviction: the first update's delta can be the frame before the
+        /// card was played, and the next's is the frame it was played in - the commit, its save, the
+        /// house's render and this card's own build - before anybody had seen it. Counted, a long one
+        /// spent the fade, the beat with every chip in the bag and even chips before the card was
+        /// drawn, and made a press in flight look read.
+        /// </summary>
+        private int playedFrame;
+
         /// <summary>Matches the HUD's text size, so a large-text player gets a large card.</summary>
         public float FontScale { get; set; } = 1f;
 
@@ -136,6 +146,7 @@ namespace Gamesim.Presentation
             reduced = reducedMotion;
             elapsed = 0f;
             upFor = 0f;
+            playedFrame = Time.frameCount;
             turned = -1;
             fieldShown = false;
             playing = true;
@@ -182,6 +193,8 @@ namespace Gamesim.Presentation
         {
             if (!playing) return;
             CeremonyOverlays.Showing();
+            // Nothing from before its first frame on screen is the card's time (playedFrame).
+            if (Time.frameCount - playedFrame <= 1) return;
             float step = Time.unscaledDeltaTime;
             upFor += step;
 

@@ -272,13 +272,16 @@ namespace Gamesim.Tests.EditMode
             if (R2.HeldBelowItsSchema()) return;
             var engine = Fresh(out var s);
             string voter = Found.Voters[0];
-            Assert.That(DialogueRules.KeepsThePleaWhenRefused(s), Is.True, "From rules 2 a refusal never takes a plea away.");
-            var rules1 = s.Clone(); rules1.dialogueRulesVersion = DialogueRules.Rules1;
-            Assert.That(DialogueRules.On(rules1), Is.True);
-            Assert.That(DialogueRules.KeepsThePleaWhenRefused(rules1), Is.False, "Rules 1 keeps its lock, as merged.");
+            // One helper decides it for every version since D1b (owner, 2026-10-25: never lose the plea): while the talk can
+            // start the press is the talk, and once it cannot the plea is the ordinary one-shot plea, in CanStart's words.
+            Assert.That(DialogueRules.PleaWithoutConversation(s, voter, out _), Is.False, "The house is free: the press is the conversation.");
             var entered = R2.Accepted(engine, R2.Entry(s, voter));
             var left = R2.Accepted(engine, R2.Choice(entered, DialogueCampaignWord.Leave));
-            Assert.That(DialogueRules.CanStart(left, voter, out _), Is.False);
+            Assert.That(DialogueRules.CanStart(left, voter, out string refusal), Is.False);
+            Assert.That(DialogueRules.PleaInOpenConversation(left, voter), Is.False, "The talk was left: no open talk holds the plea.");
+            Assert.That(DialogueRules.PleaWithoutConversation(left, voter, out string why), Is.True,
+                "From rules 2, as from rules 1, a refusal never takes a plea away.");
+            Assert.That(why, Is.EqualTo(refusal), "The panel gives CanStart's own words.");
             var pleaded = R2.Accepted(engine, R2.Plea(left, voter, LobbyApproach.Emotional));
             Assert.That(pleaded.lobbies.Count(l => l.week == pleaded.week && l.deciderId == voter), Is.EqualTo(1));
             Assert.That(R2.Remaining(pleaded), Is.EqualTo(R2.Remaining(s) - 2), "The talk's action and the plea's own: nothing free.");

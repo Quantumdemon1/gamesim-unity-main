@@ -86,7 +86,8 @@ namespace Gamesim.Tests.EditMode
         public void TheReportsArmsPairBySeedAndEachEnrolsAtItsOwnValue()
         {
             Assert.That(BalanceLabAlumniReport.ReportArms, Is.EqualTo(new[] { 5, 4, 3, 2, 1, 0 }));
-            Assert.That(BalanceLabAlumniReport.ReportArms[0], Is.EqualTo(AlumniRules.Latest), "5 is the shipped arm.");
+            Assert.That(BalanceLabAlumniReport.ReportArms[0], Is.EqualTo(BalanceLabAlumniReport.ShippedArm), "5 is the shipped arm.");
+            Assert.That(BalanceLabAlumniReport.ShippedArm, Is.EqualTo(AlumniRules.GrowingPacts), "S6's value, held since the titled names (6, words only) ship.");
             Assert.That(BalanceLabAlumniReport.Comparisons, Is.EqualTo(new[] { (2, 1), (3, 2), (4, 3), (5, 4), (4, 0), (5, 0) }));
             var cells = BalanceLabAlumniReport.ReportCells();
             Assert.That(cells, Has.Count.EqualTo(48), "Sizes 8 and 12, four players, six arms.");
@@ -97,7 +98,9 @@ namespace Gamesim.Tests.EditMode
             {
                 Assert.That(g.Select(BalanceLabAlumniReport.ArmOf), Is.EqualTo(BalanceLabAlumniReport.ReportArms), g.Key);
                 var shipped = g.First();
-                Assert.That(shipped.alumniHeld == 0 && !shipped.alumniOff && !shipped.House.Contains("/alumni"), Is.True, g.Key + ": the shipped arm is the cell left unheld.");
+                Assert.That(BalanceLabAlumniReport.ArmOf(shipped) == BalanceLabAlumniReport.ShippedArm && !shipped.alumniOff
+                    && shipped.alumniHeld == (BalanceLabAlumniReport.ShippedArm == AlumniRules.Latest ? 0 : BalanceLabAlumniReport.ShippedArm), Is.True,
+                    g.Key + ": the shipped arm is the cell left unheld, or held at 5 while a later value that changes only words is the latest.");
                 string pairs = null;
                 foreach (var cell in g)
                 {

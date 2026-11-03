@@ -494,7 +494,7 @@ namespace Gamesim.Simulation
             // The free exit says a line to each pact it ended, naming the betrayer and the pact: this
             // pact's only when it is that exact line (one that cut a betrayer out of a bigger pact did
             // not end it, and a pact whose name holds another's is a different pact).
-            if (partners.Any(a => lines.Contains(Allegiance.CutTiesLine(a.name, alliance.name, true))))
+            if (partners.Any(a => lines.Contains(Allegiance.CutTiesLine(s, a.name, alliance.name, true))))
                 return CutTies;
             return null;
         }

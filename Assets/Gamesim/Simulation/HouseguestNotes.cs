@@ -242,7 +242,8 @@ namespace Gamesim.Simulation
         public static bool IsTheVote(Note note) => note.kind == Kinds.Vote;
         public static bool IsYourRead(Note note) => note.kind == Kinds.Read || note.kind == Kinds.Came || note.kind == Kinds.Memory;
 
-        private static string FirstName(string name) => string.IsNullOrEmpty(name) ? "" : name.Split(' ')[0];
+        /// <summary>A note is display text, built from the state each time it is read and never saved: the display's first name, past a title.</summary>
+        private static string FirstName(string name) => CharacterNames.FirstName(name);
 
         /// <summary>A promise's kind as the notes say it; the notebook's own words, unlocalised here.</summary>
         public static string PromiseWord(PromiseKind kind)

@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Linq;
 using Gamesim.Simulation;
 using NUnit.Framework;
@@ -56,6 +57,52 @@ namespace Gamesim.Tests.EditMode
             other.name = "Ana\tLima Souza";
             var price = new Negotiation.Price { kind = DealKind.VoteSave, payerId = s.playerId, aboutId = other.id };
             Assert.That(Negotiation.PriceWords(s, price), Is.EqualTo("your vote to keep Ana\tLima this week"));
+        }
+
+        /// <summary>
+        /// The names the engine writes are the season's (alumni rules 6, <see cref="AlumniRules.TitledNames"/>; the owner's
+        /// "the 'Dr.' names", 2026-11-03). From 6 the betrayal's offer, its cut-ties line, the house's name for a pact and a
+        /// story's pact call Dr. Will Kirby Will. Below 6 - every season saved before it, all of them below it for ever -
+        /// they say "Dr.", as those seasons were played, so their replays write the words they wrote.
+        /// </summary>
+        [TestCase(AlumniRules.TitledNames, "Will")]
+        [TestCase(AlumniRules.GrowingPacts, "Dr.")]
+        [TestCase(AlumniRules.Histories, "Dr.")]
+        public void TheNamesTheEngineWritesCallATitledAlumnusByTheSeasonsRule(int value, string first)
+        {
+            Assert.That(AlumniRules.TitledNames, Is.EqualTo(6), "The next free value after S6's 5.");
+            Assert.That(AlumniRules.Latest, Is.EqualTo(AlumniRules.TitledNames), "Fresh All-Star seasons start at 6.");
+            var s = AlumniHistoriesTests.AllStars(8, 1u, value: value);
+            var will = s.contestants.Single(c => c.sourceTemplateId == "dr-will-kirby");
+            Assert.That(will.name, Is.EqualTo("Dr. Will Kirby"), "The alumni catalogue's one titled name.");
+            Assert.That(will.isPlayer, Is.False);
+            var other = s.contestants.First(c => !c.isPlayer && c.id != will.id && c.status == ContestantStatus.Active);
+            string theirs = FinalistRead.FirstName(other.name);
+
+            Assert.That(CharacterNames.SeasonFirstName(s, will.name), Is.EqualTo(first));
+            Assert.That(CharacterNames.SeasonFirstName(s, other.name), Is.EqualTo(theirs), "An untitled name reads the same at every value.");
+            Assert.That(Allegiance.Offer(s, will.name), Is.EqualTo("You can cut ties with " + first + " this week at no cost, or stay allied."));
+            Assert.That(Allegiance.CutTiesLine(s, will.name, "The Pact", false), Is.EqualTo("You cut ties with Dr. Will Kirby after they turned on The Pact. "
+                + first + " is out of it, the rest of you keep it, and nobody holds it against you."));
+            Assert.That(PactNames.HouseName(s, new[] { will.id }), Is.EqualTo("The " + first + " Pact"));
+            Assert.That(PactNames.HouseName(s, new[] { other.id, will.id }), Is.EqualTo("The " + theirs + " and " + first + " Pact"));
+            var pact = NpcAlliances.FormFromStory(s, new List<string> { will.id, other.id });
+            Assert.That(pact, Is.Not.Null);
+            Assert.That(pact.name, Is.EqualTo("The " + first + " and " + theirs + " Pact"), "A story's pact is named by the same rule.");
+        }
+
+        /// <summary>A season off the alumni rules - a Regular house, or any season saved before schema 30 - writes the name cut at its first space, as it always did.</summary>
+        [Test]
+        public void ASeasonOffTheAlumniRulesWritesTheNameAsItAlwaysDid()
+        {
+            var s = SeasonBuilder.Create(new SeasonBuilder.Choice { HouseSize = 8 }, 3301u);
+            ShippedRules.ApplyFresh(s);
+            Assert.That(s.alumniRulesVersion, Is.EqualTo(AlumniRules.Off));
+            Assert.That(CharacterNames.SeasonFirstName(s, "Dr. Will Kirby"), Is.EqualTo("Dr."));
+            Assert.That(CharacterNames.SeasonFirstName(s, "Janelle Pierzina"), Is.EqualTo("Janelle"));
+            Assert.That(CharacterNames.SeasonFirstName(null, "Dr. Will Kirby"), Is.EqualTo("Dr."), "No season, no rule: the old cut.");
+            Assert.That(CharacterNames.SeasonFirstName(s, null), Is.EqualTo(""));
+            Assert.That(CharacterNames.SeasonFirstName(s, ""), Is.EqualTo(""));
         }
 
         [TestCase("Dr. Will Kirby", "W")]

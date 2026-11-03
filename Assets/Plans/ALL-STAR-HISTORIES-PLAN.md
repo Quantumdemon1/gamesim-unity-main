@@ -1155,6 +1155,10 @@ histories-first order, and it carries every field in 5.1.
 - **Settled at S6** (2026-11-01). Growth is kept (the owner's call on the stop conditions, 14.H), so 5 is not
   released, and S6 freezes it with its old-save fixture (14.J's as-built note). The next free alumni rules value is 6:
   AS7's, and it carries the behaviour of 2 to 5. Telling AS7's track is the lead's.
+- **The titled names took 6** (the quick fixes, 2026-11-03, the owner's "the 'Dr.' names"; a delegated call, confirmed by
+  "Yes your judgment on questions and proceed"): from alumni rules 6 the pact names and the betrayal's lines the engine
+  writes call Dr. Will Kirby Will (`CharacterNames.SeasonFirstName`), words only, so every season below 6 replays the
+  words it wrote; AS7 takes the next free value, 7, and carries 6.
 
 **With dialogue:**
 - **The joint note's final §6 is SCH30's input.** It adds no dialogue field to 5.1, and it fixes 8.2's dialogue scope
@@ -2193,7 +2197,7 @@ Every new test uses only public members, so the new files compile in Unity's Edi
 - **The fifth case**, `OldSaveAcceptanceTests.TheAlumniFiveCellIsSavedWithAHouseguestsPactGrownPastTwoAndKeptToItself`, holds the file to that state through the store: the two live pairs and the bound of 4, the pact and its private fact, and the recruit's week-3 "was joined" rows beside both founders, both ways (the pairs, the bound and the rows asserted exactly since S6's review). The four per-fixture cases load and replay it, read it with every reader, pin its seventeen holds and recover it from the backup. The manifest test counts it as the 57th cell, `…/dialogue0/alumni5/allstars`. Its `holdsDigest` is `37f1e67f5dea9dfe`.
 - **The ballot sentinel, fixed in the test.** The fixture's reader case failed in 18 of its states. In the finalist read's lean "Danielle Reyes · Vanessa · voted to evict them" (a ballot the player knows, from week 7's unanimous count), `BallotPrivacyTests.NamesTheBallot` found the "Dan" in Danielle's name and took the line for her hidden week-3 ballot against Dan Gheesling. A houseguest nominee's first name now has to stand as a word of its own; the player is still found as "you" anywhere, "your" included (S6's review kept that, since a ballot against the player may say "your"). The check is only narrower, and `BallotPrivacyTests.TheSentinelNamesTheNomineeOnlyAsAWordOfItsOwn` pins it (OLD-SAVE-ACCEPTANCE F8). No reader changed. The PlayMode sentinel's copy is unchanged.
 - **Floors:** EditMode 9463 to 9469: `OldSaveAcceptanceTests` 261 to 266, and the sentinel's pin. The subset 16433 to 16434: the pin. `OldSaveAcceptanceTests` is EditMode only.
-- **From S6, values 2 to 5 are frozen.** A change to any of them is a later value, and the next free value is 6, AS7's (§10). S6 merges and syncs nothing. Landing on the consolidation line and main, and syncing the play copy, are the lead's.
+- **From S6, values 2 to 5 are frozen.** A change to any of them is a later value, and the next free value is 6, AS7's (§10); since 2026-11-03 6 is the titled names' and AS7's is 7. S6 merges and syncs nothing. Landing on the consolidation line and main, and syncing the play copy, are the lead's.
 - **One code comment goes stale at S6.** The `AlumniRules` summary (`Simulation/AlumniHistories.cs:23-25`) still says value 5 "is released if the owner withdraws growth before §14's freeze (S6)" and that AS7 takes "the next free value after S6". S6 leaves it, because it changes no Simulation file and `51dd14a5` stays the build that wrote and froze the fixture. AS7's value-6 commit, which adds 6 in that block, rewords it to say that 5 was kept and frozen at S6 (2026-11-01) and that AS7 is 6 (14.L.K's "Tell AS7").
 - **Found while searching:** the 12-house at 3146 cannot be saved. Under Mono the store refuses its own save on the read-back (OLD-SAVE-ACCEPTANCE F9). The writer is right: Mono writes the double's shortest text, and its parse of that text comes back one bit off, so any load of such a text is refused under Mono too. This is for the lead, not S6.
 - **Proof, offline only:**
@@ -2310,7 +2314,7 @@ Every line number below was checked read-only against the committed tree at `4ab
 2. **Withdrawing it is easy.** If the owner turns growth down after S4, S3b's code comes out before S6 and `Latest` stays 4. Nothing from S1 to S5 is merged or synced before S6 (14.J), so no season is saved at 5 outside tests.
 3. **The cost is small:** one constant, one lab arm, and the EditMode-only `Latest + 1` pins move to 6 on their own (14.G).
 
-**At S6.** S6 freezes the latest value the owner keeps (14.I gives the fixtures). AS7 takes the next free value after S6. Because a value is a bound, AS7's value carries growth. As built (2026-11-01): the owner kept growth (14.H), so S6 froze 5, and AS7's value is 6.
+**At S6.** S6 freezes the latest value the owner keeps (14.I gives the fixtures). AS7 takes the next free value after S6. Because a value is a bound, AS7's value carries growth. As built (2026-11-01): the owner kept growth (14.H), so S6 froze 5, and AS7's value was to be 6. The quick fixes took 6 first (2026-11-03, the titled names: `AlumniRules.TitledNames`, words only), so AS7 takes the next free value, 7, in landing order.
 
 **The claim.** Alumni rules 5 is claimed by S3b and released if growth is withdrawn before S6. It is the alumni rules field, not competition rules 5, which is PC5's (§9, `:1045`). Growth was kept (14.H), so the claim stands and S6 froze 5.
 
@@ -2763,5 +2767,5 @@ The fixtures:
   - the Power Shift comment (`Simulation/Story/StoryCatalog.HouseRemembers.cs:583-584`) goes stale, and the story now casts grown pacts first and leaks them (`:586-627`);
   - their `AllianceLeave` edits a grown pact's members (`Simulation/Story/EpisodeEngine.StoryEffects.cs:209-210`): their call;
   - story trios can hunt and target their own member through `CommonThreat` at every value: their call, under their own gate.
-- **Tell AS7** to take the next free value after S6: 6, since S6 froze 5 (2026-11-01). Its value-6 commit also rewords the `AlumniRules` summary (`Simulation/AlumniHistories.cs:23-25`), which went stale at S6, to say that 5 was kept and frozen at S6 (2026-11-01) and that AS7 is 6 (14.J's as-built note for S6).
+- **Tell AS7** to take the next free value after S6: 6, since S6 froze 5 (2026-11-01). Its value-6 commit also rewords the `AlumniRules` summary (`Simulation/AlumniHistories.cs:23-25`), which went stale at S6, to say that 5 was kept and frozen at S6 (2026-11-01) and that AS7 is 6 (14.J's as-built note for S6). **Superseded (2026-11-03):** the quick fixes took 6 for the titled names and reworded that summary; AS7 takes 7 and carries 6's words.
 - **Tell S1 to S3's builders now** to name `value:` in their behaviour tests.

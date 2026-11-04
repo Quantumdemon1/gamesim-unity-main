@@ -304,13 +304,14 @@ namespace Gamesim.Tests.PlayMode
         /// the label's text still read whole. Its words are now <see cref="EpisodeDirector.DealTag"/>. Measured here, at 1.0,
         /// 1.2 and 1.4: every approach's own tag, and the deal row's tag with each of the five odds words it can carry, drawn
         /// by the HUD's own Tag in the row's place - one line, at its full size (never shrunk), not truncated, every glyph
-        /// drawn, inside its chip. The captions are found by their words, unchanged.
+        /// drawn, inside its chip. The captions are found by their words, unchanged. The HUD that redraws the deal row is read
+        /// after each install: the install reloads the scene, and a HUD read before it was the last director's, still at 1.0,
+        /// so at 1.2 it drew the five tags in chips and fonts of 1.0 while the panel's own deal row sat at 14 in 202 of 214.
         /// </summary>
         [UnityTest]
         public IEnumerator HonestOdds_EveryPleaTagFitsItsChipAtEveryTextSize()
         {
             Assert.That(EpisodeDirector.DealTag, Is.EqualTo("binds next week"));
-            var hud = director.GetComponent<EpisodeHud>();
             foreach (var textSize in TextSizes.All)
             {
                 string hoh = null;
@@ -328,6 +329,9 @@ namespace Gamesim.Tests.PlayMode
                 state = director.Snapshot;
                 float scale = TextSizes.Scale(textSize);
                 string at = " at the " + TextSizes.Name(textSize) + " text";
+                // The live director's HUD, the one that drew this panel: InstallStrategySeason reloaded the scene.
+                var hud = director.GetComponent<EpisodeHud>();
+                Assert.That(hud.FontScale, Is.EqualTo(scale).Within(.001f), "The HUD redrawing the deal row draws" + at + ".");
                 var failures = new List<string>();
                 foreach (string approach in LobbyApproach.All)
                 {

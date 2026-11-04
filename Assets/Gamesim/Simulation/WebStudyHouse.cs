@@ -33,8 +33,15 @@ namespace Gamesim.Simulation
             return Math.Max(5, Math.Min(95, chance));
         }
 
+        /// <summary>The source's limit on preparation, five: the cap every season before B9 studies to.</summary>
+        public const int SourceCap = 5;
+
         public static WebStudyPlan PlanStudy(int currentBonus, string approachId,
-            IReadOnlyList<string> sourcePersonalityTraits, double roll)
+            IReadOnlyList<string> sourcePersonalityTraits, double roll) => PlanStudy(currentBonus, approachId, sourcePersonalityTraits, roll, SourceCap);
+
+        /// <summary>The same with the season's own cap (B9: <see cref="TuningRules.StudyLimit"/>); the one roll is drawn and read exactly as at five.</summary>
+        public static WebStudyPlan PlanStudy(int currentBonus, string approachId,
+            IReadOnlyList<string> sourcePersonalityTraits, double roll, int cap)
         {
             int chance = SuccessChance(approachId, sourcePersonalityTraits);
             CheckRoll(roll);
@@ -42,19 +49,25 @@ namespace Gamesim.Simulation
             // Actual outcome handler grants memorize +1 even when the dialog roll failed.
             int delta = approachId == "memorize-layout" ? 1 : success ? 2 : -1;
             return new WebStudyPlan { chance = chance, success = success, bonusDelta = delta,
-                studyBonus = ApplyBonus(currentBonus, delta) };
+                studyBonus = ApplyBonus(currentBonus, delta, cap) };
         }
 
         public static WebStudyPlan PlanStudy(int currentBonus, string approachId,
-            IReadOnlyList<string> sourcePersonalityTraits, Func<double> nextRoll)
+            IReadOnlyList<string> sourcePersonalityTraits, Func<double> nextRoll) => PlanStudy(currentBonus, approachId, sourcePersonalityTraits, nextRoll, SourceCap);
+
+        public static WebStudyPlan PlanStudy(int currentBonus, string approachId,
+            IReadOnlyList<string> sourcePersonalityTraits, Func<double> nextRoll, int cap)
         {
             ValidateApproach(approachId);
             if (nextRoll == null) throw new ArgumentNullException(nameof(nextRoll));
-            return PlanStudy(currentBonus, approachId, sourcePersonalityTraits, nextRoll());
+            return PlanStudy(currentBonus, approachId, sourcePersonalityTraits, nextRoll(), cap);
         }
 
-        public static int ApplyBonus(int currentBonus, int delta) =>
-            (int)Math.Max(0L, Math.Min(5L, (long)currentBonus + delta));
+        public static int ApplyBonus(int currentBonus, int delta) => ApplyBonus(currentBonus, delta, SourceCap);
+
+        /// <summary>Preparation after a study's change, held to 0 and <paramref name="cap"/>.</summary>
+        public static int ApplyBonus(int currentBonus, int delta, int cap) =>
+            (int)Math.Max(0L, Math.Min((long)cap, (long)currentBonus + delta));
 
         /// <summary>Original fast-forward.ts caller, not the normal played/skip scoring route.</summary>
         public static double FastForwardCompetitionBonus(double phaseEventCompBonus, int playerStudyBonus)

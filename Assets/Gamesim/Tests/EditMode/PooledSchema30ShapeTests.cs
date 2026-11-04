@@ -68,16 +68,17 @@ namespace Gamesim.Tests.EditMode
         /// <summary>
         /// Live validation accepts only the values a slice has defined (5.3): the tuning rules 0 until B9; the alumni rules
         /// 0 with no edition, or from H1b 1 to AlumniRules.Latest with edition 1, where a fresh All-Stars season now starts
-        /// at Latest (ALL-STAR-HISTORIES-PLAN 14.G: the undefined case is Latest + 1). Earlier name, at SCH30, when only the
+        /// at Latest (ALL-STAR-HISTORIES-PLAN 14.G: the undefined case is Latest + 1); the tuning rules from 0 to
+        /// TuningRules.Latest, where a fresh season starts at 1 from B9 (the undefined case is Latest + 1). Earlier name, at SCH30, when only the
         /// off values were defined: LiveValidationAcceptsOnlyTheOffValuesUntilEachSliceDefinesOne.
         /// </summary>
         [TestCase(true, "alumniRulesVersion", AlumniRules.Latest + 1, NotEnabled)] [TestCase(true, "alumniRulesVersion", -1, NotEnabled)]
         [TestCase(true, "alumniRulesVersion", int.MaxValue, NotEnabled)]
-        [TestCase(true, "tuningRulesVersion", 1, NotEnabled)] [TestCase(true, "tuningRulesVersion", -1, NotEnabled)]
+        [TestCase(true, "tuningRulesVersion", TuningRules.Latest + 1, NotEnabled)] [TestCase(true, "tuningRulesVersion", -1, NotEnabled)]
         [TestCase(true, "alumniCatalogEdition", "allstar-histories-2", NoEdition)] [TestCase(true, "alumniCatalogEdition", "", NoEdition)]
         [TestCase(true, "alumniCatalogEdition", null, NoEdition)]
         [TestCase(false, "alumniCatalogEdition", "allstar-histories-1", NotEnabled)] [TestCase(false, "alumniCatalogEdition", "", NotEnabled)]
-        [TestCase(false, "alumniRulesVersion", 1, NoEdition)] [TestCase(false, "tuningRulesVersion", 1, NotEnabled)]
+        [TestCase(false, "alumniRulesVersion", 1, NoEdition)] [TestCase(false, "tuningRulesVersion", TuningRules.Latest + 1, NotEnabled)]
         public void LiveValidationAcceptsOnlyTheValuesASliceHasDefined(bool allStars, string field, object value, string expected)
         {
             var state = SeasonBuilder.Create(new SeasonBuilder.Choice { HouseSize = 8, Roster = allStars ? CastTemplates.Roster.AllStars : CastTemplates.Roster.Regular }, 3002u);

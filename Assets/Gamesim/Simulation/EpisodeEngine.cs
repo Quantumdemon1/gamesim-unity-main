@@ -352,6 +352,7 @@ namespace Gamesim.Simulation
                     string crossed = next == EpisodePhase.Nomination ? StoryAnchors.HohCrowned
                         : next == EpisodePhase.VetoMeeting ? StoryAnchors.VetoWon : null;
                     if (crossed != null && StoryOn(s)) StoryLapse(s, crossed);
+                    if (TuningRules.At(s, TuningRules.Bands) && (s.phase == EpisodePhase.HoH || s.phase == EpisodePhase.Veto)) SpendPreparation(s);
                     s.competitionResolved = false; Phase(s, next);
                     // A nominee asks the player for the veto while it is still theirs to use; and under the role moments
                     // the Head of Household, right after them, asks the player to leave the block alone (R4).
@@ -622,6 +623,36 @@ namespace Gamesim.Simulation
             if (rulesVersion >= CompetitionRules.Widened) return CompetitionRules.Category(phase, week, seed);
             int rotation = week + (rulesVersion >= 2 && phase == EpisodePhase.Veto ? 1 : 0);
             return rotation % 3 == 1 ? "Skill" : rotation % 3 == 2 ? "Mental" : "Endurance";
+        }
+
+        /// <summary>
+        /// B9's preparation, at the Advance out of a weekly Head of Household or veto (B9-BALANCE-PLAN §3.1, decision 5):
+        /// a competition the player entered - played, assisted or simulated - used it, and it is spent
+        /// (<see cref="TuningRules.AfterUse"/>); a throw gives every bonus up and keeps it. A Head of Household the player
+        /// sat out, they watched (<see cref="TuningRules.AfterWatchedHoH"/>). The final Head of Household's three parts all
+        /// count it, since no competition follows them. Reads the week's ledger row; draws nothing, and logs only a change,
+        /// so a season with no preparation plays as it would at tuning 0.
+        /// </summary>
+        private static void SpendPreparation(EpisodeState s)
+        {
+            if (s.ledger == null) return;
+            string kind = s.phase.ToString();
+            var row = s.ledger.competitions.LastOrDefault(r => r.week == s.week && r.kind == kind);
+            if (row == null) return;
+            if (row.entry == CompetitionEntry.Played || row.entry == CompetitionEntry.Assist || row.entry == CompetitionEntry.Simulated)
+            {
+                int left = TuningRules.AfterUse(s, s.playerStudyBonus);
+                if (left == s.playerStudyBonus) return;
+                s.playerStudyBonus = left;
+                Log(s, "study-house", "Your preparation was used in the competition. Preparation: " + left + "/" + TuningRules.PreparationOutOf(s) + ".", s.playerId);
+            }
+            else if (row.placement == 0 && s.phase == EpisodePhase.HoH)
+            {
+                int left = TuningRules.AfterWatchedHoH(s, s.playerStudyBonus);
+                if (left == s.playerStudyBonus) return;
+                s.playerStudyBonus = left;
+                Log(s, "study-house", "You watched the Head of Household competition and learned from it. Preparation: " + left + "/" + TuningRules.PreparationOutOf(s) + ".", s.playerId);
+            }
         }
 
         /// <summary>Rules 3 applies the same earned preparation to every player entry route.</summary>

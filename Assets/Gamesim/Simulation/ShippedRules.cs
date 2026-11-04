@@ -54,6 +54,9 @@ namespace Gamesim.Simulation
         {
             if (fresh == null) throw new ArgumentNullException(nameof(fresh));
             fresh.competitionRulesVersion = CompetitionRules.Current;
+            // B9's balance bands (B9-BALANCE-PLAN §4.3): a plain int, drawing nothing; every save, migration, import and
+            // test-built season stays at 0 and plays as it always did.
+            fresh.tuningRulesVersion = TuningRules.Shipped;
             fresh.haveNotRulesStartWeek = 1;
             fresh.strategyRulesStartWeek = 1;
             // Every season the director starts plays under the story system from week one:

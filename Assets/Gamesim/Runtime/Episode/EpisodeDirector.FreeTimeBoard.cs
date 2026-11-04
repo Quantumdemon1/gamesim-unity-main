@@ -371,7 +371,7 @@ namespace Gamesim.Episode
                 string eventId = beat.id;
                 return (StoryText.Title(beat), (Action)(() => OpenFreeTimeBeat(eventId)));
             }).ToList();
-            spec.Preparation = state.playerStudyBonus > 0 ? "Preparation " + state.playerStudyBonus + "/5" : null;
+            spec.Preparation = state.playerStudyBonus > 0 ? "Preparation " + state.playerStudyBonus + "/" + TuningRules.PreparationOutOf(state) : null;
             spec.HaveNot = HaveNots.Is(state, state.playerId) ? HaveNotLine : null;
 
             // The house as cards, those in the room with the player first, with the week's role on each photo.

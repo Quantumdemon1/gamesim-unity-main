@@ -101,15 +101,18 @@ namespace Gamesim.Simulation
             // root revision. Every other invariant below sees the candidate's actual revision.
             if (!DialogueRules.TryValidate(s, pending, out error)) return false;
             // Schema 30's pooled fields (SCH30, ALL-STAR-HISTORIES-PLAN 5.3): each holds a value this build defines, and
-            // the slice that defines a value widens this in the same step. The tuning rules: 0 only, until B9. The alumni
+            // the slice that defines a value widens this in the same step. The tuning rules: 0 to TuningRules.Latest (1 from
+            // B9, the balance bands), on competition rules 4 or later. The alumni
             // rules: 0 with no edition, or 1 (H1b) to AlumniRules.Latest (5 from §14.L's growing pacts) with an
             // edition this build knows. Every value from 1 writes the same opening, so the histories' receipts are checked
             // with the ledger the same way at each (TryValidateAlumni). A season may not hold a value no code reads.
-            if (!AlumniRules.IsDefined(s.alumniRulesVersion) || s.tuningRulesVersion != 0
+            if (!AlumniRules.IsDefined(s.alumniRulesVersion) || !TuningRules.IsDefined(s.tuningRulesVersion)
                 || s.alumniRulesVersion == AlumniRules.Off && s.alumniCatalogEdition != null)
                 return Fail(out error, "Schema 30's pooled rules are not enabled in this build.");
             if (s.alumniRulesVersion >= AlumniRules.Histories && AlumniEditions.Find(s.alumniCatalogEdition) == null)
                 return Fail(out error, "The alumni rules need the edition their season was built from.");
+            if (TuningRules.At(s, TuningRules.Bands) && s.competitionRulesVersion < CompetitionRules.Widened)
+                return Fail(out error, "The tuning rules need competition rules 4.");
             if (prospectiveSafety)
             {
                 if (s.unifiedCommitmentRulesVersion != canonicalMode
@@ -172,7 +175,12 @@ namespace Gamesim.Simulation
                 return Fail(out error, "Commitment-rules activation week must be within the saved season boundary.");
             if (s.socialBudgetRulesStartWeek < 1 || s.socialBudgetRulesStartWeek > 101 || s.socialBudgetRulesStartWeek > s.week + 1)
                 return Fail(out error, "Social-budget activation week must be within the saved season boundary.");
-            if (s.playerStudyBonus < 0 || s.playerStudyBonus > 5) return Fail(out error, "Study preparation must be between zero and five.");
+            // B9's tuning holds preparation to its own bound (TuningRules.PreparationBound): two in a house of eight or
+            // fewer, else one. Every season before it, five.
+            if (s.playerStudyBonus < 0 || s.playerStudyBonus > TuningRules.PreparationBound(s))
+                return Fail(out error, !TuningRules.At(s, TuningRules.Bands) ? "Study preparation must be between zero and five."
+                    : TuningRules.PreparationBound(s) == TuningRules.SmallHouseCap ? "Study preparation must be between zero and two."
+                    : "Study preparation must be between zero and one.");
             if (s.contestants == null || s.contestants.Count < MinimumCast || s.contestants.Count > MaximumCast || s.contestants.Any(c => c == null))
                 return Fail(out error, "A house holds between " + MinimumCast + " and " + MaximumCast + " contestants.");
             if (s.contestants.Select(c => c.id).Distinct(StringComparer.Ordinal).Count() != s.contestants.Count || s.contestants.Count(c => c.isPlayer) != 1 ||

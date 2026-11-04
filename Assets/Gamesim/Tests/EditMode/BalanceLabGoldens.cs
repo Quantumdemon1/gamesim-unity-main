@@ -33,12 +33,13 @@ namespace Gamesim.Tests.EditMode
         /// <see cref="ShippedRules.Fields"/> of a fresh season when the digests below were recorded. dialogueRulesVersion=0
         /// came with the field (9d87b59e): a fresh season plays no dialogue, and no cell moved. alumniRulesVersion=0 and
         /// tuningRulesVersion=0 came with schema 30 (SCH30): a fresh season plays neither, and no cell moved.
+        /// tuningRulesVersion=1 came with B9 (B9-BALANCE-PLAN decision 8): every fresh season plays the balance bands.
         /// </summary>
         internal const string Rules = "competitionRulesVersion=4,readRulesStartWeek=1,leverRulesStartWeek=1,weekRulesStartWeek=1,economyRulesVersion=1,"
             + "agencyRulesStartWeek=1,finaleRulesStartWeek=1,commitmentRulesStartWeek=1,unifiedCommitmentRulesVersion=2,unifiedHearingRulesVersion=1,"
             + "blocRulesStartWeek=1,socialBudgetRulesStartWeek=1,dealRulesStartWeek=1,eventRulesStartWeek=1,storyRulesStartWeek=1,haveNotRulesStartWeek=1,"
             + "strategyRulesStartWeek=1,allianceLeakRulesStartWeek=1,pactPlanRulesStartWeek=1,allWeekRulesStartWeek=1,dialogueRulesVersion=0,"
-            + "alumniRulesVersion=0,tuningRulesVersion=0,"
+            + "alumniRulesVersion=0,tuningRulesVersion=1,"
             + "npcSocial.rulesStartWeek=1,story.rulesStartWeek=1,story.rulesVersion=9";
 
         /// <summary>
@@ -49,57 +50,59 @@ namespace Gamesim.Tests.EditMode
         /// review's finding 3), and (every budget) a veto's, a lie's and a scheme's moves between two houseguests doing the
         /// same (the arcs review's finding 8, EpisodeEngine.ChangeBetween). Every cell moved when D2 went into ApplyFresh and
         /// again with V6; the budget-300 cells moved again with the arcs fix; every cell moved again with the change paths.
+        /// Every cell moved again with B9's tuning rules 1 (B9-BALANCE-PLAN decision 8), re-recorded at B9-3: the Game Sense
+        /// weights re-read every season's verdict, and the studying and countering players play B9's preparation and tally.
         /// </summary>
         internal static readonly string[] Recorded =
         {
-            "passive/Regular/8/npc0 b37cafc96696903e",
-            "random/Regular/8/npc0 8ef488be47080709",
-            "social/Regular/8/npc0 53eeaa44532fd7f1",
-            "reader/Regular/8/npc0 5e16fca5422d52ce",
-            "schemer/Regular/8/npc0 b42c6d9fce90c8f4",
-            "loyalist/Regular/8/npc0 09f3465308e715e3",
-            "floater/Regular/8/npc0 f76090aa7b40bf0f",
-            "beast/Regular/8/npc0 0b7fcf4f7e4608e6",
-            "novice/Regular/8/npc0 72e7bc6226db9cda",
-            "exploit/Regular/8/npc0 94e8fda2f2e66933",
-            "oracle-reader/Regular/8/npc0 a74525454301730f",
-            "oracle-skilled/Regular/8/npc0 9a8d509156ebc7e4",
-            "passive/Regular/12/npc0 e54be2fdf3531462",
-            "random/Regular/12/npc0 d3db8a9b38a483f7",
-            "social/Regular/12/npc0 50ad3c5d9f699468",
-            "reader/Regular/12/npc0 f496b93d7d7e5ab3",
-            "schemer/Regular/12/npc0 1b117bfdbdc98439",
-            "loyalist/Regular/12/npc0 8e42ebb9d4c66eca",
-            "floater/Regular/12/npc0 3febfd9a8c1e25ac",
-            "beast/Regular/12/npc0 cc59cb80d3606058",
-            "novice/Regular/12/npc0 2761abf253718d5a",
-            "exploit/Regular/12/npc0 70cfbad1e36accb2",
-            "oracle-reader/Regular/12/npc0 8624c61c2935935c",
-            "oracle-skilled/Regular/12/npc0 c9a6ce37f0fbc9be",
-            "passive/Regular/8/npc300 d8a9aeccf2b04eb7",
-            "random/Regular/8/npc300 5d455805a4718090",
-            "social/Regular/8/npc300 e55ce43885024785",
-            "reader/Regular/8/npc300 3c6993af9fcefde7",
-            "schemer/Regular/8/npc300 ea348d2f24f38c0b",
-            "loyalist/Regular/8/npc300 73383199d8adb540",
-            "floater/Regular/8/npc300 8c4d59a9149c447c",
-            "beast/Regular/8/npc300 ff777e305485034c",
-            "novice/Regular/8/npc300 4a735a57214cb3b5",
-            "exploit/Regular/8/npc300 7a532d85ea1b409c",
-            "oracle-reader/Regular/8/npc300 aa7571858bd363e8",
-            "oracle-skilled/Regular/8/npc300 524c71f83bea9aa3",
-            "passive/Regular/12/npc300 c12665fbaf9a8290",
-            "random/Regular/12/npc300 fc141897fcef4794",
-            "social/Regular/12/npc300 e21cb70719ae521b",
-            "reader/Regular/12/npc300 e210da97ce1b5702",
-            "schemer/Regular/12/npc300 e1148e72d779d081",
-            "loyalist/Regular/12/npc300 4ea89b6d4cb9e29a",
-            "floater/Regular/12/npc300 ba774cc442461548",
-            "beast/Regular/12/npc300 45044431cff86ba8",
-            "novice/Regular/12/npc300 502f9c8008906531",
-            "exploit/Regular/12/npc300 261544cd6853370d",
-            "oracle-reader/Regular/12/npc300 569caa0f1a4890fc",
-            "oracle-skilled/Regular/12/npc300 fa6b7f1ba5578ea7",
+            "passive/Regular/8/npc0 b1811c8b0b95635c",
+            "random/Regular/8/npc0 4a5bc2ad067c022b",
+            "social/Regular/8/npc0 5e215abcbe270332",
+            "reader/Regular/8/npc0 40ad827bb2229d65",
+            "schemer/Regular/8/npc0 ef7fe4f603a0d62f",
+            "loyalist/Regular/8/npc0 3531b4b19d087131",
+            "floater/Regular/8/npc0 7d9447d181fc954d",
+            "beast/Regular/8/npc0 668b1534b2ae285f",
+            "novice/Regular/8/npc0 8518823a4ed0aabd",
+            "exploit/Regular/8/npc0 fb3fe1e326ef1903",
+            "oracle-reader/Regular/8/npc0 fbe3c4638077b0b0",
+            "oracle-skilled/Regular/8/npc0 129b40399003928b",
+            "passive/Regular/12/npc0 15cb0fcee29a7e4d",
+            "random/Regular/12/npc0 c4468689e0161f31",
+            "social/Regular/12/npc0 14c5a0939d897a83",
+            "reader/Regular/12/npc0 b8a17f3177bf69a4",
+            "schemer/Regular/12/npc0 2679ce84f39b4d12",
+            "loyalist/Regular/12/npc0 159a44090caa84c0",
+            "floater/Regular/12/npc0 b5f09357202def57",
+            "beast/Regular/12/npc0 1baa66be158a9e65",
+            "novice/Regular/12/npc0 8c23a082e737f7fe",
+            "exploit/Regular/12/npc0 f10c3f6fdf3ccc39",
+            "oracle-reader/Regular/12/npc0 a5c434f8825a2ace",
+            "oracle-skilled/Regular/12/npc0 a3df71289db87b8e",
+            "passive/Regular/8/npc300 a505b5e6564f9710",
+            "random/Regular/8/npc300 69e091335a7b03d8",
+            "social/Regular/8/npc300 e7e1f5621e68b5f5",
+            "reader/Regular/8/npc300 620023669861fdae",
+            "schemer/Regular/8/npc300 6f00f9450877cb5d",
+            "loyalist/Regular/8/npc300 970250bb134c7075",
+            "floater/Regular/8/npc300 df2c5106eed3a3df",
+            "beast/Regular/8/npc300 a3910d828298a006",
+            "novice/Regular/8/npc300 2ef29f4836d3c737",
+            "exploit/Regular/8/npc300 fa06987417c36a7e",
+            "oracle-reader/Regular/8/npc300 434f1900aedef470",
+            "oracle-skilled/Regular/8/npc300 e79cdaec1db2a1f4",
+            "passive/Regular/12/npc300 032cf812140aeae7",
+            "random/Regular/12/npc300 9ab37701436d410b",
+            "social/Regular/12/npc300 7c068a161a094c4d",
+            "reader/Regular/12/npc300 04b255f5380e2ca2",
+            "schemer/Regular/12/npc300 461b6dcd8157c558",
+            "loyalist/Regular/12/npc300 2e2e2955d68ff9c7",
+            "floater/Regular/12/npc300 c824a8db7e9c6c50",
+            "beast/Regular/12/npc300 b0708bf0f4934257",
+            "novice/Regular/12/npc300 41fbff1b1b13438e",
+            "exploit/Regular/12/npc300 9438c82a02e30789",
+            "oracle-reader/Regular/12/npc300 e538646c7735358a",
+            "oracle-skilled/Regular/12/npc300 283de34d715acc48",
         };
 
         /// <summary>The shipped rules' tuple as a fresh season takes it now.</summary>

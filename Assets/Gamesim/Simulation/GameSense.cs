@@ -17,7 +17,7 @@ namespace Gamesim.Simulation
     public static class GameSense
     {
         public const string Competitions = "competitions", Strategy = "strategy", Social = "social";
-        /// <summary>The faces' weights in the number: strategy is the game, the other two are half of it between them.</summary>
+        /// <summary>The faces' weights in the number at tuning 0: strategy is the game, the other two are half of it between them. B9's are <see cref="TuningRules.SenseWeights"/>.</summary>
         public const double CompetitionWeight = 0.3, StrategyWeight = 0.4, SocialWeight = 0.3;
         /// <summary>Where a face starts before the ledger says anything: the middle.</summary>
         public const double Base = 50;
@@ -62,7 +62,9 @@ namespace Gamesim.Simulation
             report.competitions = Face(notes, Competitions);
             report.strategy = Face(notes, Strategy);
             report.social = Face(notes, Social);
-            report.score = (int)Math.Round(report.competitions * CompetitionWeight + report.strategy * StrategyWeight + report.social * SocialWeight);
+            // The weights are the season's (B9: TuningRules.SenseWeights); these constants are tuning 0's.
+            var weights = TuningRules.SenseWeights(s);
+            report.score = (int)Math.Round(report.competitions * weights.competitions + report.strategy * weights.strategy + report.social * weights.social);
             report.moments = notes.Where(n => n.points > 0 && n.rowKind != "standing").OrderByDescending(n => n.points).ThenBy(n => n.week).Take(3).ToList();
             report.missed = notes.Where(n => n.points < 0).OrderBy(n => n.points).ThenBy(n => n.week).Take(3).ToList();
             return report;

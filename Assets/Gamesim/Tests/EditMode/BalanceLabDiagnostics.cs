@@ -136,10 +136,58 @@ namespace Gamesim.Tests.EditMode
             new SenseFormula { name = "today (0.3 / 0.4 / 0.3, faces 0-100)" },
             new SenseFormula { name = "faces unbounded", clamp = false },
             new SenseFormula { name = "weights 0.2 / 0.6 / 0.2", competitions = 0.2, strategy = 0.6, social = 0.2 },
+            new SenseFormula { name = "weights 0.25 / 0.5 / 0.25", competitions = 0.25, strategy = 0.5, social = 0.25 },
             new SenseFormula { name = "strategy notes x1.5", strategyScale = 1.5 },
             new SenseFormula { name = "weights 0.2 / 0.6 / 0.2, strategy notes x1.5", competitions = 0.2, strategy = 0.6, social = 0.2, strategyScale = 1.5 },
             new SenseFormula { name = "weights 0 / 0.7 / 0.3 (no competitions face)", competitions = 0, strategy = 0.7, social = 0.3 },
         };
+
+        /// <summary>A season's own Game Sense formula: tuning 0's weights on a held cell, B9's (TuningRules) otherwise.</summary>
+        internal static SenseFormula OwnFormula(BalanceLab.SeasonRun r) => r.cell.tuningHeld
+            ? SenseFormulas[0]
+            : new SenseFormula { name = "tuning 1", competitions = TuningRules.CompetitionWeight, strategy = TuningRules.StrategyWeight, social = TuningRules.SocialWeight };
+
+        /// <summary>
+        /// Q1's band (B7, B9-BALANCE-PLAN §3.3): the share of accepted Countered plans whose counter carried, over every
+        /// accepted counter, by house - as played, and replayed from each counter's tally under today's rule, K1 (a tie
+        /// carries only where a member came round), K5 (no nominee's say counts) and both, on the same pre-answer states.
+        /// A tally the replay cannot read is counted as unavailable, never guessed; "own rule mismatches" counts the tallies
+        /// whose replay under their season's own rule differs from what was played (0 expected).
+        /// </summary>
+        internal static string CounterTallies(IReadOnlyList<BalanceLab.SeasonRun> runs)
+        {
+            var md = new StringBuilder();
+            md.AppendLine("### Q1: counters carried (B7: 35-50% of accepted Countered plans)");
+            md.AppendLine();
+            var ok = runs.Where(r => r.error == null).ToList();
+            var tallies = ok.SelectMany(r => r.counterTallies.Select(t => (house: BalanceLabReports.HouseOf(r.cell), size: r.cell.size, t))).ToList();
+            if (tallies.Count == 0) { md.AppendLine("No accepted counters."); md.AppendLine(); return md.ToString(); }
+            var rules = new (string name, bool k1, bool k5)[] { ("today's rule", false, false), ("K1", true, false), ("K5", false, true), ("K1 and K5 (tuning 1)", true, true) };
+            var houses = tallies.GroupBy(x => x.house).OrderBy(g => g.First().size).Select(g => (name: g.Key, list: g.Select(x => x.t).ToList())).ToList();
+            houses.Add(("all", tallies.Select(x => x.t).ToList()));
+            md.AppendLine("| | " + string.Join(" | ", houses.Select(h => h.name)) + " |");
+            md.AppendLine("|---|" + string.Concat(houses.Select(_ => "---|")));
+            string Share(List<BalanceLab.CounterTally> list, Func<BalanceLab.CounterTally, bool?> carries)
+            {
+                var read = list.Select(carries).Where(c => c.HasValue).ToList();
+                if (read.Count == 0) return "unavailable";
+                int carried = read.Count(c => c.Value);
+                var ci = BalanceLab.Wilson(carried, read.Count);
+                return carried + " / " + read.Count + " = " + Num(100.0 * carried / read.Count, "0.0") + "% [" + Num(100 * ci.low, "0.0") + ", " + Num(100 * ci.high, "0.0") + "]"
+                    + (read.Count < list.Count ? " (" + (list.Count - read.Count) + " unavailable)" : "");
+            }
+            md.AppendLine("| as played | " + string.Join(" | ", houses.Select(h => Share(h.list, t => t.carried))) + " |");
+            foreach (var rule in rules)
+                md.AppendLine("| replayed, " + rule.name + " | " + string.Join(" | ", houses.Select(h => Share(h.list, t => t.CarriesUnder(rule.k1, rule.k5)))) + " |");
+            int mismatched = tallies.Count(x => x.t.CarriesUnder(x.t.tuning >= TuningRules.Bands, x.t.tuning >= TuningRules.Bands) is bool c && c != x.t.carried);
+            md.AppendLine();
+            md.AppendLine("Accepted counters: " + tallies.Count + "; ties " + tallies.Count(x => x.t.cameRound >= 0
+                && 1 + x.t.cameRound + x.t.forCounterSays == x.t.forPlanSays - x.t.cameRound) + " (today's tally); in pacts the player founded "
+                + tallies.Count(x => x.t.playerFounded) + "; the player among the says " + tallies.Count(x => x.t.playerInSays)
+                + "; own rule mismatches " + mismatched + ".");
+            md.AppendLine();
+            return md.ToString();
+        }
 
         /// <summary>
         /// Q2 (Game Sense's gap, target re-set to at least 10 at both sizes with a bootstrap low end over 5): the gated
@@ -154,8 +202,8 @@ namespace Gamesim.Tests.EditMode
             md.AppendLine("### Q2 what-if: Game Sense's gap, the gated reader against random on the same seasons (T0)");
             md.AppendLine();
             if (ok.Count == 0) { md.AppendLine("No seasons with Game Sense's notes."); md.AppendLine(); return md.ToString(); }
-            int drift = ok.Max(r => Math.Abs(SenseFormulas[0].Score(r.gameSenseRows) - r.autopsy.gameSense));
-            md.AppendLine("Today's formula replayed from the notes differs from the autopsy's score by at most " + drift + ". The interval is a bootstrap 95% of the paired difference.");
+            int drift = ok.Max(r => Math.Abs(OwnFormula(r).Score(r.gameSenseRows) - r.autopsy.gameSense));
+            md.AppendLine("Each season's own formula (its tuning's weights) replayed from the notes differs from the autopsy's score by at most " + drift + ". The interval is a bootstrap 95% of the paired difference.");
             md.AppendLine();
             var houses = ok.GroupBy(r => BalanceLabReports.HouseOf(r.cell)).OrderBy(g => g.First().cell.size).ToList();
             foreach (var (first, second) in new[] { (BalancePolicies.Reader, BalancePolicies.Random), (BalancePolicies.OracleReader, BalancePolicies.Random) })

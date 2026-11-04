@@ -248,6 +248,8 @@ namespace Gamesim.Episode
                 || state.pendingDiary != null
                 || EpisodeEngine.SocialActionsSpent(state) >= EpisodeEngine.SocialActionBudget(state)) return;
             if (choiceId != "memorize-layout" && choiceId != "sneak-peek") return;
+            // Under B9's tuning a study at the limit is refused, so none is staged (B9-BALANCE-PLAN decision 6).
+            if (StudyFull(state)) return;
             bool memorize = choiceId == "memorize-layout";
             int chance = WebStudyHouse.SuccessChance(choiceId, null);
             diaryDraft = new DiaryDecisionDraft
@@ -257,10 +259,11 @@ namespace Gamesim.Episode
                     + "\nCost: 1 social action ("
                     + (EpisodeEngine.SocialActionBudget(state) - EpisodeEngine.SocialActionsSpent(state))
                     + " of " + EpisodeEngine.SocialActionBudget(state) + " remaining this week)."
-                    + (memorize ? "\nGuaranteed +1 preparation, up to the limit of 5."
+                    + (TuningRules.At(state, TuningRules.Bands) ? StudyReviewTuned(state, memorize, chance)
+                    : (memorize ? "\nGuaranteed +1 preparation, up to the limit of 5."
                         : "\nSuccess chance: " + chance + "%. Success adds 2 preparation; failure removes 1.")
                     + "\nPreparation stays between 0 and 5. Current preparation: " + state.playerStudyBonus + "/5."
-                    + " Even at a limit, confirming uses one action."
+                    + " Even at a limit, confirming uses one action.")
                     + "\nPreparation is " + StudyUse(state) + "."
             };
             Render();
@@ -473,13 +476,16 @@ namespace Gamesim.Episode
         /// was the engine's (UI-UX-PASS-PLAN D0, the play sweep's row 37).
         /// </summary>
         public static string StudyUse(EpisodeState state) =>
-            state != null && state.competitionRulesVersion >= 3
+            TuningRules.At(state, TuningRules.Bands)
+                ? "used up by the next weekly HoH or veto competition you enter, however you play it; the final HoH's three parts all count it"
+                : state != null && state.competitionRulesVersion >= 3
                 ? "used in every competition you enter, however you play it, the final HoH's three parts included"
                 : "used only when you choose to simulate a weekly HoH or veto competition, not when you play one yourself or in the final HoH";
 
         /// <summary>The same, in the record row's few words.</summary>
         public static string StudyUseShort(EpisodeState state) =>
-            state != null && state.competitionRulesVersion >= 3
+            TuningRules.At(state, TuningRules.Bands) ? "Used up by your next weekly competition."
+                : state != null && state.competitionRulesVersion >= 3
                 ? "Used in every competition you enter."
                 : "Used only when you simulate a weekly competition.";
 
@@ -508,7 +514,7 @@ namespace Gamesim.Episode
             int jurors = state.jurySentiment.jurors.Count;
             var rows = new List<(string, string, string, string)>
             {
-                ("Study preparation", PackArt.KitIconBook, state.playerStudyBonus + " / 5",
+                ("Study preparation", PackArt.KitIconBook, state.playerStudyBonus + " / " + TuningRules.PreparationOutOf(state),
                     StudyUseShort(state)),
                 ("Diary persona", PackArt.KitIconPerson, state.playerPersona.current,
                     reflections + (reflections == 1 ? " recorded reflection." : " recorded reflections.")),
@@ -610,7 +616,7 @@ namespace Gamesim.Episode
         {
             hud.DiarySection("YOUR DIARY RECORD");
             hud.DiaryRecord(
-                ("star", "Study preparation: " + state.playerStudyBonus + "/5",
+                ("star", "Study preparation: " + state.playerStudyBonus + "/" + TuningRules.PreparationOutOf(state),
                     "Saved between weeks; " + StudyUse(state) + "."),
                 ("journal", "Current diary persona: " + state.playerPersona.current + ".",
                     "Recorded reflections: " + state.playerPersona.history.Count + "."),
@@ -624,7 +630,7 @@ namespace Gamesim.Episode
             if (state.phase != EpisodePhase.Social || state.Find(state.playerId)?.status != ContestantStatus.Active) return false;
             hud.DiarySection("STUDY THE HOUSE");
             // Where preparation stands, beside the ways to raise it.
-            hud.Paragraph("Study preparation: " + state.playerStudyBonus + "/5");
+            hud.Paragraph("Study preparation: " + state.playerStudyBonus + "/" + TuningRules.PreparationOutOf(state));
             string cost = "Study here in the private room during free time. Each confirmed approach uses one of the "
                 + EpisodeEngine.SocialActionBudget(state) + " social actions this week allows. "
                 + "Opening, reading, and cancelling cost nothing.";
@@ -632,12 +638,44 @@ namespace Gamesim.Episode
             { hud.Paragraph("Answer or skip your pending private reflection before studying."); return true; }
             if (EpisodeEngine.SocialActionsSpent(state) >= EpisodeEngine.SocialActionBudget(state))
             { hud.Paragraph("No social actions remain in this window. Return to the episode screen when ready to continue."); return true; }
+            if (TuningRules.At(state, TuningRules.Bands)) return RenderStudyTuned(state, cost);
             hud.OptionCard(EpisodeHud.StudyMemorizeCaption, "Guaranteed +1 preparation, up to the limit of 5.", "house",
                 () => ReviewStudyHouse(state, "memorize-layout"));
             hud.OptionCard(EpisodeHud.StudySneakCaption, WebStudyHouse.SuccessChance("sneak-peek", null)
                 + "% success chance: +2 preparation on success, \u22121 on failure.", "eye",
                 () => ReviewStudyHouse(state, "sneak-peek"));
             hud.Aside("Preparation stays between 0 and 5, and changes only when you confirm. " + cost);
+            return true;
+        }
+
+        /// <summary>Under B9's tuning: whether preparation is at the season's study limit, so a study would be refused.</summary>
+        private static bool StudyFull(EpisodeState state) =>
+            TuningRules.At(state, TuningRules.Bands) && state.playerStudyBonus >= TuningRules.StudyLimit(state);
+
+        /// <summary>The study review's rules under B9's tuning: the season's own limit, and no study at it.</summary>
+        private static string StudyReviewTuned(EpisodeState state, bool memorize, int chance)
+        {
+            int limit = TuningRules.StudyLimit(state);
+            return (memorize ? "\nGuaranteed +1 preparation, up to the limit of " + limit + "."
+                    : "\nSuccess chance: " + chance + "%. Success adds 2 preparation, up to the limit of " + limit + "; failure removes 1.")
+                + "\nCurrent preparation: " + state.playerStudyBonus + "/" + TuningRules.PreparationOutOf(state) + ".";
+        }
+
+        /// <summary>The study section's choices under B9's tuning: none once preparation is full.</summary>
+        private bool RenderStudyTuned(EpisodeState state, string cost)
+        {
+            int limit = TuningRules.StudyLimit(state);
+            if (StudyFull(state))
+            {
+                hud.Paragraph("Your preparation is full. The next weekly HoH or veto competition you enter uses it up.");
+                return true;
+            }
+            hud.OptionCard(EpisodeHud.StudyMemorizeCaption, "Guaranteed +1 preparation, up to the limit of " + limit + ".", "house",
+                () => ReviewStudyHouse(state, "memorize-layout"));
+            hud.OptionCard(EpisodeHud.StudySneakCaption, WebStudyHouse.SuccessChance("sneak-peek", null)
+                + "% success chance: +2 preparation on success, \u22121 on failure, up to the limit of " + limit + ".", "eye",
+                () => ReviewStudyHouse(state, "sneak-peek"));
+            hud.Aside("Preparation is used up by the next weekly HoH or veto you enter, and changes only when you confirm. " + cost);
             return true;
         }
 

@@ -121,7 +121,7 @@ namespace Gamesim.Tests.EditMode
         /// </summary>
         [TestCase("alumniRulesVersion", 1, "The alumni rules need the edition their season was built from.")]
         [TestCase("alumniRulesVersion", AlumniRules.Latest + 1, "Schema 30's pooled rules are not enabled in this build.")]
-        [TestCase("tuningRulesVersion", 1, "Schema 30's pooled rules are not enabled in this build.")]
+        [TestCase("tuningRulesVersion", TuningRules.Latest + 1, "Schema 30's pooled rules are not enabled in this build.")]
         public void ANonzeroPooledValueIsAnInvalidCurrentSourceAndIsNeverErased(string field, int value, string expected)
         {
             var state = LegacyDigestSchema27TestStates.Witness(2, "promise");
@@ -158,12 +158,12 @@ namespace Gamesim.Tests.EditMode
             var state = SeasonBuilder.Create(new SeasonBuilder.Choice { HouseSize = 8, Roster = CastTemplates.Roster.AllStars }, 3006u);
             ShippedRules.ApplyFresh(state);
             if (defect == "alumni-off") { state.alumniRulesVersion = AlumniRules.Off; state.alumniCatalogEdition = null; }
-            if (defect == "invalid-source") state.tuningRulesVersion = 1;
+            if (defect == "invalid-source") state.tuningRulesVersion = TuningRules.Latest + 1;
             var fields = LegacyDigestSchema30Observer.WithoutGetters(JObject.FromObject(state));
             switch (defect)
             {
                 case "edition-text": fields["alumniCatalogEdition"] = "allstar-histories-2"; break;
-                case "tuning-json": fields["tuningRulesVersion"] = 1; break;
+                case "tuning-json": fields["tuningRulesVersion"] = state.tuningRulesVersion + 1; break;
                 case "order": { var p = fields.Property("alumniRulesVersion"); p.Remove(); fields.Add(p); break; }
                 case "unknown-root": fields["unknown30"] = 0; break;
                 case "header-29": fields["schemaVersion"] = 29; break;
@@ -187,7 +187,7 @@ namespace Gamesim.Tests.EditMode
                 {
                     "alumni-off" => "Only a season on the alumni rules is admitted natively.",
                     "edition-text" => "The native edition must be the season's own.",
-                    "tuning-json" => "Only present integer-zero tuning rules may be admitted.",
+                    "tuning-json" => "The native tuning rules must be the season's own.",
                     "order" => "The pooled fields must follow the dialogue store, in their declared order.",
                     "unknown-root" => "The JSON is not this current state's exact own view.",
                     "header-29" => "Only literal schema30 is a native input.",

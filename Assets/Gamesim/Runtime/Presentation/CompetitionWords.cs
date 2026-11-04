@@ -114,8 +114,21 @@ namespace Gamesim.Presentation
         /// and the Throw card says so; this sentence does not claim it.
         /// </summary>
         public static string EarnedRule(int preparation) =>
-            "Play it, let the day decide or take the accessible alternative: what you have earned counts the same - your preparation"
-            + (preparation > 0 ? " (" + preparation + " of 5)" : "")
-            + ", the week's events and the story so far. Playing, or the accessible alternative, adds your performance on top; your preparation carries over to later weeks.";
+            EarnedRule(preparation, WebStudyHouse.SourceCap, false);
+
+        /// <summary>
+        /// The same for a season: tuning 0's sentence exactly; under B9's tuning (<see cref="TuningRules.Bands"/>) the
+        /// preparation out of the season's own limit, and that a weekly competition uses it up.
+        /// </summary>
+        public static string EarnedRule(EpisodeState state) => state == null ? EarnedRule(0)
+            : EarnedRule(state.playerStudyBonus, TuningRules.PreparationOutOf(state), TuningRules.At(state, TuningRules.Bands));
+
+        private static string EarnedRule(int preparation, int outOf, bool spent) => !spent
+            ? "Play it, let the day decide or take the accessible alternative: what you have earned counts the same - your preparation"
+                + (preparation > 0 ? " (" + preparation + " of " + outOf + ")" : "")
+                + ", the week's events and the story so far. Playing, or the accessible alternative, adds your performance on top; your preparation carries over to later weeks."
+            : "Play it, let the day decide or take the accessible alternative: what you have earned counts the same - your preparation"
+                + (preparation > 0 ? " (" + preparation + " of " + outOf + ")" : "")
+                + ", the week's events and the story so far. Playing, or the accessible alternative, adds your performance on top. A weekly Head of Household or veto you enter uses your preparation up; the final Head of Household's three parts all count it.";
     }
 }

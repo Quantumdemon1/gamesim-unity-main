@@ -58,7 +58,8 @@ namespace Gamesim.Tests.EditMode
         /// projection holds a source to before it removes anything - the complete current validator, literal schema 30,
         /// the JSON the state's own view, the pooled fields after the dialogue store in their declared order - with the
         /// alumni rules and edition the state's own (validation has bound the edition to the rules) and the tuning rules
-        /// still 0. Nothing is removed and nothing changes; the fields come back as they went in.
+        /// the state's own (0 before B9, 1 for a fresh season from it). Nothing is removed and nothing changes; the fields
+        /// come back as they went in.
         /// </summary>
         internal static JObject AdmitNative30(EpisodeState state, JObject fields)
         {
@@ -72,7 +73,9 @@ namespace Gamesim.Tests.EditMode
                     "Only a season on the alumni rules is admitted natively.");
                 Require(fields["alumniCatalogEdition"]?.Type == JTokenType.String && (string)fields["alumniCatalogEdition"] == state.alumniCatalogEdition,
                     "The native edition must be the season's own.");
-                Require(Integer(fields["tuningRulesVersion"], 0), "Only present integer-zero tuning rules may be admitted.");
+                // From B9 a fresh season starts on tuning 1 (TuningRules.Shipped), which exists only from 30 too: the native
+                // arm admits the season's own value, as it does its alumni rules.
+                Require(Integer(fields["tuningRulesVersion"], state.tuningRulesVersion), "The native tuning rules must be the season's own.");
                 var names = fields.Properties().Select(p => p.Name).ToList();
                 int dialogue = names.IndexOf("dialogue");
                 Require(dialogue >= 0 && Pooled.Select((name, i) => names.IndexOf(name) == dialogue + 1 + i).All(at => at),

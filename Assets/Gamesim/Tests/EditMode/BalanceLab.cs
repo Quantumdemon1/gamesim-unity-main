@@ -74,15 +74,23 @@ namespace Gamesim.Tests.EditMode
             /// Shipping never does.
             /// </summary>
             public int alumniHeld;
+            /// <summary>
+            /// B9's control (B9-BALANCE-PLAN decision 8): the fresh season held at tuning 0 after ApplyFresh, as a harness
+            /// may hold one, so it plays every season before B9's numbers. The seed is the shipped cell's, so arms pair.
+            /// Shipping never does.
+            /// </summary>
+            public bool tuningHeld;
 
-            /// <summary>The house; a player card, the histories' controls and a held alumni value are named only when set, so every earlier cell keeps its name.</summary>
+            /// <summary>The house; a player card, the histories' controls, a held alumni value and held tuning are named only when set, so every earlier cell keeps its name.</summary>
             public string House => roster + "/" + size.ToString(CultureInfo.InvariantCulture) + "/npc" + npcTicks.ToString(CultureInfo.InvariantCulture)
                 + (playerTemplate == null ? "" : "/as-" + playerTemplate) + (alumniOff ? "/alumni0" : "") + (impressionsOff ? "/impressions0" : "")
-                + (alumniHeld == 0 ? "" : "/alumni" + alumniHeld.ToString(CultureInfo.InvariantCulture));
+                + (alumniHeld == 0 ? "" : "/alumni" + alumniHeld.ToString(CultureInfo.InvariantCulture)) + (tuningHeld ? "/tuning0" : "");
             /// <summary>The house the season's seed is drawn for: the roster and size at budget nought, whatever the cell's budget, so budgets pair.</summary>
             public string SeedHouse => roster + "/" + size.ToString(CultureInfo.InvariantCulture) + "/npc0";
             public string Key => policy + "/" + House + "/" + performance;
             public override string ToString() => Key;
+            /// <summary>This cell held at tuning 0 (<see cref="tuningHeld"/>): the same seasons as they played before B9.</summary>
+            public Cell HeldAtTuning0() { var held = (Cell)MemberwiseClone(); held.tuningHeld = true; return held; }
         }
 
         internal static List<Cell> Grid(IEnumerable<string> policies, IEnumerable<int> sizes, string performance = PerformanceModel.ByPolicy,
@@ -115,6 +123,8 @@ namespace Gamesim.Tests.EditMode
             public double finaleSeconds;
             /// <summary>Every member a counter of the player's could reach, at every plan the player answered (B6a).</summary>
             public readonly List<CounterMember> counterMembers = new List<CounterMember>();
+            /// <summary>Every accepted Countered plan's tally (B9, Q1), read on the state before the answer.</summary>
+            public readonly List<CounterTally> counterTallies = new List<CounterTally>();
             /// <summary>
             /// The NPC world (B5b, <see cref="BalanceLabNpcWorld"/>): operations installed, of them ticks and conversation
             /// starts; scans, the pairings they tried and held; operations the engine refused; and the milliseconds the
@@ -243,6 +253,7 @@ namespace Gamesim.Tests.EditMode
             if (cell.impressionsOff) fresh.agencyRulesStartWeek = 1;
             ShippedRules.ApplyFresh(fresh, alumniHistories: !cell.alumniOff);
             if (cell.alumniHeld != 0 && AlumniRules.On(fresh)) fresh.alumniRulesVersion = cell.alumniHeld;
+            if (cell.tuningHeld) fresh.tuningRulesVersion = TuningRules.Off;
             return fresh;
         }
 
@@ -1010,6 +1021,52 @@ namespace Gamesim.Tests.EditMode
                         cameRound = row.cameRound != null && row.cameRound.Contains(say.memberId),
                         carried = row.stance == PactPlanStance.Countered && row.targetId == row.counterId,
                     });
+                if (row.stance != PactPlanStance.Countered) continue;
+                string founder = pact == null ? null : EpisodeEngine.Founder(pact);
+                run.counterTallies.Add(new CounterTally
+                {
+                    week = row.week, counterId = row.counterId, planId = plan,
+                    forCounterSays = standing.Count(x => x.targetId == row.counterId),
+                    forPlanSays = plan == null ? 0 : standing.Count(x => x.targetId == plan),
+                    counterSaysByNominees = standing.Count(x => x.targetId == row.counterId && before.nominees.Contains(x.memberId)),
+                    planSaysByNominees = plan == null ? 0 : standing.Count(x => x.targetId == plan && before.nominees.Contains(x.memberId)),
+                    cameRound = row.cameRound == null ? -1 : row.cameRound.Count,
+                    playerFounded = pact != null && EpisodeEngine.PlayerFounded(before, pact),
+                    founderSaid = founder == null ? null : standing.FirstOrDefault(x => x.memberId == founder)?.targetId,
+                    founderCame = founder != null && row.cameRound != null && row.cameRound.Contains(founder),
+                    playerInSays = was.says != null && was.says.Any(x => x != null && x.memberId == before.playerId),
+                    tuning = before.tuningRulesVersion,
+                    carried = row.targetId == row.counterId,
+                });
+            }
+        }
+
+        /// <summary>
+        /// An accepted counter's tally (B9's Q1, B9-BALANCE-PLAN §3.3), read on the state before the answer: the standing
+        /// says for the counter and for the members' plan (and how many of each a nominee said), how many came round, the
+        /// founder, and whether it carried. <see cref="BalanceLabDiagnostics.CounterTallies"/> replays the settlement from it
+        /// under each rule.
+        /// </summary>
+        internal sealed class CounterTally
+        {
+            public int week, forCounterSays, forPlanSays, counterSaysByNominees, planSaysByNominees, cameRound, tuning;
+            public string counterId, planId, founderSaid;
+            public bool playerFounded, founderCame, playerInSays, carried;
+
+            /// <summary>
+            /// Whether the counter carries under a rule: K5 counts no nominee's say, K1 lets a player-founded tie carry
+            /// only where a member came round (<see cref="PactPlans.Settle"/>'s counter branch). Null where the tally cannot
+            /// be read (no came-round list).
+            /// </summary>
+            public bool? CarriesUnder(bool k1, bool k5)
+            {
+                if (cameRound < 0) return null;
+                int forCounter = 1 + cameRound + forCounterSays - (k5 ? counterSaysByNominees : 0);
+                int forPlan = forPlanSays - (k5 ? planSaysByNominees : 0) - cameRound;
+                if (forCounter != forPlan) return forCounter > forPlan;
+                if (playerFounded && (!k1 || cameRound > 0)) return true;
+                if (!playerFounded && founderSaid != null) return founderCame || founderSaid == counterId;
+                return false;
             }
         }
 

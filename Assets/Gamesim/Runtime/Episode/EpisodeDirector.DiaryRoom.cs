@@ -477,10 +477,22 @@ namespace Gamesim.Episode
         /// </summary>
         public static string StudyUse(EpisodeState state) =>
             TuningRules.At(state, TuningRules.Bands)
-                ? "used up by the next weekly HoH or veto competition you enter, however you play it; the final HoH's three parts all count it"
+                ? "used up by the next weekly HoH or veto competition you enter, unless you throw it; the final HoH's three parts all count it"
                 : state != null && state.competitionRulesVersion >= 3
                 ? "used in every competition you enter, however you play it, the final HoH's three parts included"
                 : "used only when you choose to simulate a weekly HoH or veto competition, not when you play one yourself or in the final HoH";
+
+        /// <summary>
+        /// The record's rules line on study preparation, behind the disclosure: before B9's tuning exactly as it always read
+        /// (between 0 and 5, changed only by a study); under it (<see cref="TuningRules.Bands"/>) the season's own limit, and
+        /// what else moves it - a weekly competition uses it up and, in a house of eight or fewer, a Head of Household sat
+        /// out with some banked adds one.
+        /// </summary>
+        public static string StudyRulesLine(EpisodeState state) => !TuningRules.At(state, TuningRules.Bands)
+            ? "Study preparation: saved between weeks; " + StudyUse(state) + ". It stays between 0 and 5 and changes only when you confirm a study approach."
+            : "Study preparation: saved between weeks; " + StudyUse(state) + ". A confirmed study raises it, up to "
+                + TuningRules.StudyLimit(state) + (TuningRules.InSmallHouse(state)
+                    ? "; watching a Head of Household you sit out, with some banked, adds one, up to " + TuningRules.SmallHouseCap : "") + ".";
 
         /// <summary>The same, in the record row's few words.</summary>
         public static string StudyUseShort(EpisodeState state) =>
@@ -533,7 +545,7 @@ namespace Gamesim.Episode
             hud.RecordSummary(rows);
             hud.Disclosure(EpisodeHud.DiaryRulesCaption, diaryRulesOpen, () => { diaryRulesOpen = !diaryRulesOpen; Render(); });
             if (!diaryRulesOpen) return;
-            hud.Aside("Study preparation: saved between weeks; " + StudyUse(state) + ". It stays between 0 and 5 and changes only when you confirm a study approach.");
+            hud.Aside(StudyRulesLine(state));
             hud.Aside("Diary persona: each confirmed reflection adds one to your persona history; your displayed persona may remain unchanged.");
             hud.Aside("Jury impression: an impression, not a promise. A reflection can shift it for each current juror, within the ledger's limits. It is not a directed-trust change or a jury ballot.");
         }
@@ -675,7 +687,7 @@ namespace Gamesim.Episode
             hud.OptionCard(EpisodeHud.StudySneakCaption, WebStudyHouse.SuccessChance("sneak-peek", null)
                 + "% success chance: +2 preparation on success, \u22121 on failure, up to the limit of " + limit + ".", "eye",
                 () => ReviewStudyHouse(state, "sneak-peek"));
-            hud.Aside("Preparation is used up by the next weekly HoH or veto you enter, and changes only when you confirm. " + cost);
+            hud.Aside("Preparation is used up by the next weekly HoH or veto you enter; a study changes it only when you confirm. " + cost);
             return true;
         }
 

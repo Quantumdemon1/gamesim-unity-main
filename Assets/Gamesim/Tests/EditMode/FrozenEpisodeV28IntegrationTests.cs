@@ -244,7 +244,11 @@ namespace Gamesim.Tests.EditMode
             EpisodeState witnessed = null;
             for (uint seed = 1; seed <= 40 && witnessed == null; seed++)
             {
-                var engine = new EpisodeEngine(UnifiedVotePublicCommandTests.Fresh(seed));
+                // Held at tuning 0 from its start (B9-BALANCE-PLAN decision 8): the lie's season is taken to its schema-28
+                // view, which a season on B9's tuning, a rule of schema 30's, has not; held, it walks exactly as before B9.
+                var start = UnifiedVotePublicCommandTests.Fresh(seed);
+                start.tuningRulesVersion = TuningRules.Off;
+                var engine = new EpisodeEngine(start);
                 for (int step = 0; step < 800 && engine.Snapshot.phase != EpisodePhase.Finished && engine.Snapshot.week <= 6; step++)
                 {
                     var before = engine.Snapshot;

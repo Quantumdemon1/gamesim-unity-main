@@ -7,6 +7,9 @@ Design note B9-0, 2026-11-03. Docs only: it changes no code, save, test or rule.
 - says how B9 is measured and accepted;
 - says what B9 hands on.
 
+**What shipped differs from this design: see *As built*** at the end (round 3's S8F rather than §3.1's cap of 3, the K1
+and K5 counter, a preparation bound of 2 or 1). The sections before it are the design as first written.
+
 **The owner's words, 2026-11-03.** Verbatim: "Set the B9 balance bands, so role moments, the dialogue stack and the All-Star work can follow." The lead set the bands in §1 as a delegated call. That call rests on those words and on the owner's standing "Yes your judgment on questions and proceed". Every band comes from a target the documents already state; none is new. The owner signs off B9's final numbers in its PR, before it merges.
 
 **Evidence base.** Branch `claude/b9-balance`, cut from main `26b65f09` (PR #44, dialogue D2). Two measurements match today's code:
@@ -30,6 +33,9 @@ Paths are relative to `Assets/Gamesim/`, except those that start at the reposito
 ---
 
 ## 0. The short version
+
+*As designed, 2026-11-03. What shipped: S8F, K1 and K5, the bound 2 or 1 (As built). Today's gap at 8 on 480 seeds is
+10.2 [8.9, 11.5], which already meets B5; the 8.7 below is the 100-seed headline's.*
 
 - **The bands (§1).**
   - The studier wins 60-70% of weekly competitions, at 8 and at 12.
@@ -83,7 +89,7 @@ B7 has two older readings. On the headline's 480 seeds at a91462b4, 35 of 52 car
   - The ratio of the player's nominations to a houseguest's is 1.18 at 8 and 1.08 at 12 on 100 seeds (1.08 and 1.00 on 480 at a91462b4).
   - No plan states a target, and BALANCE_BASELINE's decision 7 is no tuning.
   - B9 cannot move it for the passive player (§3.4).
-- **Q5, the story pariah rate.** 16.3% at 8 and 45.1% at 12 on 100 seeds, against a target of at most 20%. It belongs to story rules 10 (§8).
+- **Q5, the story pariah rate.** 16.3% at 8 and 45.1% at 12 on 100 seeds (every policy; the studier's own is 5.5% and 28.5%), against a target of at most 20%. It belongs to story rules 10 (§8).
 - **Win rates.** The beast (87.0% and 56.0% of seasons on 100 seeds today), the studier at 0.8, the passive player, and every headline policy.
 - **The proposed B-1 band.** A skilled policy wins at least 1.5 times the base rate (BALANCE_BASELINE.md:753).
 - **The 45-minute season at 8.** The lab reads about 51 minutes.
@@ -153,7 +159,7 @@ The choice is the set whose screen puts B1-B4 nearest the middle of their bands,
   - The digests that hash the score (`ModeOneSeasonDigests`, `CommitmentRulesSeasonDigests`) build their seasons by hand at tuning 0, so they do not move.
 - **Candidates.**
   - 0.2 / 0.6 / 0.2, the default. On today's 100 seeds it gives 13.2 [10.2, 16.2] at 8 and 12.5 [9.9, 15.3] at 12. On 480 seeds at a91462b4 it gave 13.7 [12.1, 15.2] and 12.4 [11.4, 13.4]. Both meet the band.
-  - 0.25 / 0.5 / 0.25, the smaller change. Not yet measured.
+  - 0.25 / 0.5 / 0.25, the smaller change. Measured since (As built): 12.4 [11.0, 13.8] at 8 and 10.7 [9.8, 11.6] at 12 on 480 seeds, which also meets the band.
   - 0 / 0.7 / 0.3 also meets the band, but it takes the competitions out of the verdict, and STRATEGY-LOOP-PLAN §5 gives the verdict three faces. It is reported only.
 - **No season is played per weight set.**
   - The weights only re-read each season's notes, so every set is replayed on the same seasons (`BalanceLabDiagnostics.GameSenseWhatIf`).
@@ -193,7 +199,7 @@ The choice is the set whose screen puts B1-B4 nearest the middle of their bands,
 ### 3.4 Q4: reported, not tuned
 
 - The nomination weight is `NominationWeight` (`Simulation/EpisodeEngine.cs:865-872`), together with `StrategyRules.NominationReluctance` (`Simulation/StrategyRules.cs:425-468`), the story's terms and the threat.
-- The passive player neither studies nor convenes a war room. Its tuning-1 seasons are therefore its tuning-0 seasons, field for field, and B9 cannot move Q4 for it. The hand-off headline reports Q4 for every policy.
+- The passive player neither studies nor convenes a war room. Its tuning-1 seasons are therefore its tuning-0 seasons in play, field for field but the Game Sense total, which the weights re-read (As built), and B9 cannot move Q4 for it. The hand-off headline reports Q4 for every policy.
 - If the owner ever wants Q4 tuned, it is keyed the same way, as tuning 2.
 
 ## 4. Versions: old seasons unchanged, new seasons on B9
@@ -359,7 +365,7 @@ B9 is accepted when all of the following hold under the chosen set.
 - **Nothing old moves.**
   - Set 0 replays today's competition rows.
   - On held cells, `BudgetNoughtRows` stays `5481eec784acd1ed`.
-  - The passive player's tuning-1 rows equal its tuning-0 rows.
+  - The passive player's tuning-1 rows equal its tuning-0 rows, the Game Sense total aside (the weights re-read every verdict).
   - Every digest held at 0 is unchanged, and every old-save fixture replays to its record.
 - **Tests.** Each at its floor:
   - the dotnet subset;
@@ -403,7 +409,7 @@ If no set meets every band, B9 reports the nearest set to the owner, with each b
 
 ## 8. What B9 does not do
 
-- **Q5.** The story pariah rate (target at most 20%; 16.3% and 45.1% today) belongs to story rules 10, and R7's enrolment waits for it. B9 reports it as the next dependency and measures nothing for it.
+- **Q5.** The story pariah rate (target at most 20%; 16.3% and 45.1% today) belongs to story rules 10, and R7's enrolment waits for it. Reported, not tuned: B9 names it as the next dependency. B9 itself raises the studier's pariah rate, from 5.5% to 14.6% at 8 and from 28.5% to 47.2% at 12 (As built, For the owner); the all-policy rate is not re-measured at tuning 1.
 - **Q4.** Reported, not tuned (§3.4).
 - **Role moments, dialogue and the All-Star histories.** B9 tunes the seasons they will join, with all three switched off.
 - **The 45-minute season and B-1.** Reported, not tuned.
@@ -489,8 +495,12 @@ season wins are the studier at fixed 0.5 on competition seeds 0-799 (Wilson 95%)
   board and screen, the campaign screen and the competition brief (`CompetitionWords.EarnedRule(state)`). Under tuning 1
   the diary offers no study at the limit and says why; `StudyUse` says the next weekly competition uses it up unless the
   player throws it; and the record's rules line (at tuning 0 its old sentence) names the season's study limit and, in a
-  house of eight or fewer, the watch. Those three sentences live in `Runtime/Presentation/StudyWords.cs`, Unity-free like
-  `CompetitionWords`, and the director's `StudyUse` and `StudyUseShort` read them there. Two new log lines, both private to the player: "Your preparation was used in the competition." and "You watched the Head of
+  house of eight or fewer, the watch. In the final week, when no weekly competition follows, the study section, its
+  aside, the record's row and the engine's refusal say the final Head of Household's three parts count it, and once those
+  are over, or for a player out of the house, the row says no competition is left. These sentences live in
+  `Runtime/Presentation/StudyWords.cs`, Unity-free like `CompetitionWords`, and the director reads them there; the
+  refusal is `TuningRules.FullRefusal`. A full preparation is no pending choice either, so on its own it no longer opens
+  the diary on the decision tab. Two new log lines, both private to the player: "Your preparation was used in the competition." and "You watched the Head of
   Household competition and learned from it." The standalone verify's opt-in study workload reads the season's limit.
 
 ### Where the build departs from the plan's text
@@ -501,6 +511,18 @@ season wins are the studier at fixed 0.5 on competition seeds 0-799 (Wilson 95%)
   fewer, which put all four intervals inside.
 - **§3.3's shapes.** The count on today's seasons put K1, K2 and both at 29.5%, under the band, so neither E nor F was
   played. K5 (a nominee's say is not counted; a nominee cannot vote) is round 2's; with K1 it measured 44.3%.
+- **Decision 5's watch.** Decision 5 keeps preparation when the player watches. Under S8F, in a house of eight or fewer,
+  a Head of Household the player sits out with some banked adds one instead (`AfterWatchedHoH`). Since the review fixes
+  (2026-11-05) only a player still in the house learns from it: the ledger writes "watched" for a juror too, and a juror
+  holding a point (a throw keeps it, and a replacement nominee plays no veto) was told it learned from the competition.
+  No lab policy throws, so no lab row moves.
+- **Decision 8's AllWeekSeasonDigests twins were not made.** Its 54 records are `CommitmentRulesSeasonDigests`'
+  hand-built seasons, which stay at tuning 0. Its `Fresh` arms (the combined Wave D digest and `SettleByHouseSize`)
+  start through `ShippedRules.ApplyFresh` and so play tuning 1, but they assert invariants and record no digest, so
+  there was nothing to twin.
+- **§4.7's PersistenceMigrationTests pins (:305, :423, :469) were kept.** They refuse to strip enabled tuning rules to
+  schema 29 or below ("Never erase enabled tuning rules"), which is still right: a season on tuning 1 has no schema-29
+  form. Only the pins that said tuning 1 is undefined moved.
 - **§4.2's bound** is 2 or 1, not 0-3.
 - **The lab's tally table** replays today's rule, K1, K5 and both from each counter's tally, not K2.
 - **§4.7's PlayMode tests need no change.** The three it names (`EpisodeStudyPlayModeTests`, the diary record's and
@@ -513,17 +535,28 @@ season wins are the studier at fixed 0.5 on competition seeds 0-799 (Wilson 95%)
   "Study preparation: 1/5", "1 / 5", `Math.Min(5, budget)`) stay as tuning 0's copy pins, and `FreeTimeMetrics11` reads the
   count's denominator from `TuningRules.PreparationOutOf` (exactly 5 there). PlayMode does not run in this PR's proofs;
   the lead's UMA PlayMode set is the gate.
-- **Not done in this PR** (§4.7 and §7): the tuning-1 old-save cell `s30-mode2-allweek-tuning1-w3-campaign` (and with it
-  a native-30 route for a Regular season on the tuning rules in `CurrentOldSaveTrace`: today only the alumni rules take
-  that route, and the observers' own test seasons are held at tuning 0); the 100-seed tuning-1 headline for the hand-off.
-  Both are named for the owner in the PR.
+- **Not done in this PR** (§4.7 and §7), and put to the owner below: the tuning-1 old-save cell
+  `s30-mode2-allweek-tuning1-w3-campaign`, with the native-30 route for a Regular season on the tuning rules it needs in
+  `CurrentOldSaveTrace` (today only the alumni rules take that route, and the observers' own test seasons are held at
+  tuning 0); and the 100-seed tuning-1 headline for the hand-off. This departs from OLD-SAVE-ACCEPTANCE's rule (the
+  owner, 2026-10-15), which asks for one fixture per save version and rules combination, recorded by the build that
+  writes it.
 
 ### What moved, and what was kept
 
 - **Kept at tuning 0, byte for byte:** `BalanceLabTests.BudgetNoughtRows` (`5481eec784acd1ed`, every cell held at tuning
-  0); every season digest tier (they build their seasons by hand at tuning 0); `FreshSeasonStateDigestTests`' 21 records
+  0); the season digest tiers that build their seasons by hand (commitment rules, mode one, the leaks, the war rooms,
+  the mode-two sweeps and `AllWeekSeasonDigests`' 54 records); `FreshSeasonStateDigestTests`' 21 records
   (with the one tuning int taken back to 0, as the alumni histories are); the dialogue preview witness and the legacy
   observers' mode-2 season (held at tuning 0: a season on the tuning rules has no schema-29 form).
+- **On tuning 1 because they start through `ShippedRules.ApplyFresh`, and unchanged:** `AllWeekSeasonDigests.Fresh` (the
+  combined Wave D digest and `SettleByHouseSize`, invariants only), `UnifiedVotePublicCommandTests.Fresh` and `Play` (the
+  unified vote's rest; its one reader that goes below schema 30 holds its season through `Play(seed, size, tuningHeld:
+  true)`), and `RoleStoryPools.OldSeasons`' three shipped seasons (`shipped-2101`, `shipped-2102`,
+  `shipped-mode0-2103`), which `OldSeasonsDrawTheirPoolsExactlyAsBefore` pins. They pass unchanged because their walkers
+  never study or counter and nothing they assert moved. So that pin's "old seasons" now include tuning 1: holding them
+  at tuning 0 is one line in a story-session file, `RoleStoryMomentsTests.cs`, and is left to that session to make or
+  decline.
 - **Held at tuning 0 by the tests that take a fresh season below schema 30** (decision 8; a season on the tuning rules has
   no schema-29 form): `FrozenEpisodeV29IntegrationTests`' role-moment and dialogue seasons (`00d10b5c`) and
   `FrozenEpisodeV28IntegrationTests`' lie walk (`9c88b434`), each from its start, so each walks exactly as before B9.
@@ -531,8 +564,19 @@ season wins are the studier at fixed 0.5 on competition seeds 0-799 (Wilson 95%)
   the reference competition tier's own lines) and `StudierTuning1Rows`; `BalanceLabTests.BudgetNoughtTuning1Rows`;
   `CompetitionWordsTests.TheEarnedLineCountsPreparationOutOfTheSeasonsOwnLimit` (the briefing's earned line: at tuning 0
   the old sentence for 0, 1, 3 and 5 banked; at tuning 1 out of the season's limit, used up rather than carried over);
-  `TuningCopyTests` (2: `StudyWords` at tuning 0, word for word, and at tuning 1 in a house of 8, its final week, and a
-  house of 12). Both run in the subset and in the editor.
+  `TuningCopyTests` (3: `StudyWords` at tuning 0, word for word; at tuning 1 in a house of 8, its final week, and a
+  house of 12; and the words for what is left to use preparation in, through the final week, the jury and the finale).
+  Both are compiled into the subset and the editor; the proofs below say which runs have run them.
+- **The review's pins (2026-11-05)**, in `TuningRulesTests`, each at both tunings: a throw keeps preparation and a
+  simulated Head of Household spends it; a veto the player plays after a thrown Head of Household spends it; in the final
+  week a study fills to 2 in a house of 8 and 1 in a house of 12, a study past it is refused with the final week's
+  words, and the final Head of Household's three parts spend nothing; a juror with a point learns nothing from watching;
+  a nominee's say for the plan counts on neither side (K5 on its own: the earlier case fell to K1 as well); and a tie a
+  member came round in still carries (K1's other half). The sneak-peek case now takes a seed whose roll succeeds, so the
+  limit binds, and the Game Sense case a week whose two weightings round apart. One PlayMode case,
+  `StudyDiary_UnderTuningOneTheStudyStopsAtTheSeasonsLimitAndSaysWhatUsesItUp`, installs a tuning-1 season and studies it
+  to its limit through the diary's controls; it is compiled by the offline compiles and listed, and runs in the lead's
+  UMA PlayMode set.
 - **Re-recorded with the reason:** `BalanceLabGoldens` (all 48 cells and the `Rules` tuple, `tuningRulesVersion=1`); the
   parts' stamp is `balance-lab-parts/v8`.
 - **Moved to the first undefined value** (`TuningRules.Latest + 1`): the refusal pins in `PooledSchema30ShapeTests`,
@@ -600,37 +644,89 @@ its status compared before and after, both unchanged):
 - Its later dotnet steps were held, before they started, by the machine gate that gives Codex the machine
   (`D:/GamesimQuiet`, from 08:06), and were stopped while held; round 5 runs them on the head.
 
-**Still to run on the head (round 5).** `9dbb3677` moves the diary's three study sentences into `StudyWords` and adds
-`StudyWords.cs` and TuningCopyTests to the subset. Simulation and the lab are unchanged since `03b61ec7`, so round 1's
-digest tiers and lab pins and round 4's Mono fixtures stand for them. Round 5 was queued at 08:55 on 2026-11-05 and
-waited behind Codex's machine gate until it was stopped at 13:00, before any step had started. It still has to run:
-- the subset at its new floor (16,592), with TuningCopyTests and CompetitionWordsTests by name;
-- both offline compiles and the listers (EditMode 9,754);
-- the four copy fixtures under Unity's Mono;
-- the digest tiers by name, budget nought and its twin, and the budget-0 goldens.
+**Round 5 never ran.** It was queued on `9dbb3677` (the diary's study sentences moved into `StudyWords`, and
+`StudyWords.cs` and TuningCopyTests added to the subset) at 08:55 on 2026-11-05, and waited behind Codex's machine gate
+until it was stopped at 13:00, before any step had started. So no build has yet compiled or run `9dbb3677` or anything
+after it: TuningCopyTests has passed in no harness, and the subset floor of 16,592 was counted from the source.
+
+**Round 6, on the review fixes' head (2026-11-05), runs what round 5 would have and what the fixes touch.** The fixes
+change Simulation only under tuning 1 (the juror's watch; the final week's refusal words) and draw nothing new, and no
+lab policy throws, so no tuning-0 digest and no lab row can move; round 6 runs them all the same, because the head has
+never run:
+- the subset at its floor (16,599), with TuningRulesTests, TuningCopyTests and CompetitionWordsTests by name;
+- both offline compiles and the listers (EditMode 9,761, PlayMode 1,481, the UMA build's 1,523, Uma 134);
+- TuningRulesTests, TuningCopyTests, CompetitionWordsTests and EpisodePreparationTests under Unity's Mono;
+- the digest tiers by name, budget nought and its twin, the budget-0 goldens, and a budget-300 goldens slice, so the
+  re-recorded budget-300 lines are seen passing once.
+Until it has run, the floors raised since round 4 (EditMode 9,761, the subset 16,599, PlayMode 1,481, the UMA build's
+1,523) are counts from the source, marked provisional in `Tools/baseline.txt`.
 
 ### For the owner
 
-- **Sign off the numbers** above (decision 9), and two rule calls inside them:
-  - K1 and K5 change D3's tally rule (D3-L4) for new seasons: a nominee's say no longer counts, and the player as founder
-    no longer takes a tie on their own say alone.
-  - S8F depends on the cast that moved in: the watch and the final week's 2 apply in houses of eight or fewer.
+- **Sign off the numbers** above (decision 9). Inside them are delegated calls, each still open to the owner:
+  - the bands themselves, including the three the plans stated rather than the owner (B2, B4 and B7; decision 1);
+  - tuning rules 1 rather than competition rules 5, which B9 releases (decision 2);
+  - when preparation is spent: at the Advance out of a weekly Head of Household or veto the player entered, a throw
+    keeping it (decision 5);
+  - a study at the limit is refused, with nothing spent (decision 6);
+  - the weights 0.2 / 0.6 / 0.2, where 0.25 / 0.5 / 0.25 also meets B5-B6 (decision 7);
+  - decision 10's open question: whether any season was saved between `3f23e76b` and the reach amendment (if one was,
+    the war rooms' reach constants move behind the tuning rules);
+  - and two rule calls: K1 and K5 change D3's tally rule (D3-L4) for new seasons (a nominee's say no longer counts, and
+    the player as founder no longer takes a tie on their own say alone); and S8F depends on the cast that moved in (the
+    watch and the final week's 2 apply in houses of eight or fewer), which departs from §3.1's single cap.
+- **B7, read plainly.** The pooled estimate is inside the band: 27 of 61, 44.3%. Each house on its own is outside it: 15
+  of 26 (57.7%) at 8, above, and 12 of 35 (34.3%) at 12, below. The interval, [32.5, 56.7], crosses both edges. Decision
+  4 judges B7 on the pooled estimate, so B7 is met only in that sense, and the pooled figure depends on the lab's mix of
+  counters by house. If the owner wants B7 to hold per house, it needs a size-aware counter rule, or about 1,500
+  war-room seeds to narrow the interval (decision 4's estimate).
+- **What else B9 changes, measured but not banded** (round 3, the studier at 0.5 unless named; tuning 0 in brackets;
+  8 / 12):
+  - **NPC outcomes change in every fresh studier season:** in 200 of 200 paired seasons at each size. Seasons an NPC wins
+    go from 53 to 142 of 200 at 8 and from 104 to 147 at 12. The war-room and passive players' NPC outcomes change in 0-2
+    of 480.
+  - **The final-week lever reaches B3 by making the final Head of Household from three a near-lock at 8:** the studier
+    wins it 94.6% of the time (84.6% without the lever); at 12 the lever would make it 98.9% (90.7%), which is why it
+    stays out of casts of 9 to 12. That is Q3's "competitions dominate", moved to the season's last competition.
+  - **Shorter sessions:** the player stays 4.75 / 5.86 weeks (5.34 / 6.70), and a session runs 21.8 / 25.2 minutes
+    (24.2 / 29.1); seasons still last 6 / 10 weeks.
+  - **The beast** wins 48% / 52% of seasons (87% / 56%, 100 seeds).
+  - **Every fresh season's Game Sense verdict is re-weighted,** the finale page's included: the faces and their notes
+    are unchanged, the score is not.
+  - **Every band was measured at NPC budget 0** (the lab's `npc0`). The shipped game also ticks the free-roam NPC world,
+    which no lab tier drives (REMAINING_WORK:69: "That lab context does not establish native shipping-world balance"),
+    so the shipped game's rates may differ from these.
+  - **Q5 for the studier rises,** from 5.5% to 14.6% at 8 (still inside the at-most-20% target) and from 28.5% to 47.2%
+    at 12; the passive and war-room players are unchanged. The all-policy rate (16.3% / 45.1% at `26b65f09`) is not
+    re-measured at tuning 1. Story rules 10 is the next dependency.
+  - **Q4** moves only for players who study (0.54 to 0.75 at 8, 0.80 to 0.91 at 12).
 - **Found while measuring, not changed:** the player loses every jury tie (`ResolveJury`'s source tie rule gives a tie
   to the second finalist in cast order, and the player won none of the ties measured). About a third of the studier's
   final twos at 8 end 3-3, which is why B3 was hard at 8. A fair keyed coin would let plain set C meet B1-B4 with no cast
   switch (about 32.7% at 8 and 26.9% at 12). It is a finale rule with source parity, so it is the owner's call.
 - **Casts between and below the bands** are not banded. Under tuning 1 every weekly estimate from 4 to 12 is inside
   60-70%; season wins at 9, 10 and 11 are 35.3%, 31.3% and 26.7% (300 seeds), and at 4-7 between 8.0% and 29.7%.
-- **Q4** moves only for players who study (0.54 to 0.75 at 8, 0.80 to 0.91 at 12); **Q5** stays out of range (14.6% at
-  8, 47.2% at 12): story rules 10 is the next dependency.
 - **R7 and D7.** R7's enrolment and D7 are planned to land together, but D6 runs after R7's measurement: the lead
   settles the order with R7.
 - **The words a tuning-1 season shows** are new sentences (tuning 0's are unchanged): the study's limit ("up to the
   limit of 1", or 2 in a small house's final week), "Your preparation is full. The next weekly HoH or veto competition
-  you enter uses it up.", the record's "Used up by your next weekly competition.", the rules line's watch, the briefing's
-  "A weekly Head of Household or veto you enter uses your preparation up", and the two private log lines. They are
-  read best in play.
-- **Not done, and why** (§4.7, §7): the tuning-1 old-save cell, which needs a native-30 route for a Regular season on the
-  tuning rules in `CurrentOldSaveTrace` and a fixture written by `Tools/OldSaves`' recorder at this build; and the
-  100-seed hand-off headline (about an hour of both slots), left while the machine is Codex's. R7 and D6 run their own
-  tuning-1 arms either way.
+  you enter uses it up, unless you throw it." (in the final week "Your preparation is full. All three parts of the final
+  Head of Household count it."), the record's "Used up by your next weekly competition." ("Counts in the final HoH's
+  three parts." in the final week, "No competition is left to use it in." after it or out of the house), the rules
+  line's watch, the briefing's "A weekly Head of Household or veto you enter uses your preparation up", and the two
+  private log lines. They are read best in play.
+- **Asked of the owner: waive the old-save rule for tuning 1 until B9-4, or hold the merge for it.** OLD-SAVE-ACCEPTANCE
+  (the owner, 2026-10-15) means "committed fixture saves, one per save version and rules combination", and §9 puts the
+  tuning-1 cell, `s30-mode2-allweek-tuning1-w3-campaign`, in B9-3. It is not in this PR: it needs a native-30 route for a
+  Regular season on the tuning rules in `CurrentOldSaveTrace` and its observer (admitting the season's own tuning value,
+  as the alumni arm's `AdmitNative30` does) and a fixture recorded by `Tools/OldSaves`' recorder built from this commit,
+  and every dotnet, compile and Mono job has been held for Codex since 08:06 on 2026-11-05. The cost of waiving it:
+  until the cell is recorded nothing replays a tuning-1 save to a digest, so a later change to tuning-1 play (R7, R8 or
+  D6 building on B9) would pass old-save acceptance unseen; and a cell recorded after the merge pins whatever tuning 1
+  plays then, not the numbers signed off here. So if the owner waives it, B9-4 records the cell from this PR's merge
+  commit, before anything that changes tuning-1 play lands.
+- **Asked of the owner: accept the 100-seed headline's deferral, or hold the merge for it.** §7 lists the 100-seed
+  tuning-1 headline (all 12 policies at budget 0, with Q4 and the pacing tables) as an input R7, D6 and story rules 10
+  take from B9. Without it there is no tuning-1 figure for the all-policy Q5, for the skilled policies beyond the beast's
+  100 seeds, or for the pacing tables. It is about an hour of both CPU slots (`BALANCE_TIER=headline` in parts of 20),
+  left while the machine is Codex's. R7 and D6 run their own tuning-1 arms either way.

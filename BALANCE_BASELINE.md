@@ -48,7 +48,7 @@ B9's PR. The tables further down are tuning 0's and are not re-measured here.
 | Studier at 0.8, season wins at 8 / 12 | - | 35.5% (200 seeds) / 34.1% (800) | reported |
 | Beast, season wins at 8 / 12 (100 seeds) | 87% / 56% | 48% / 52% | reported |
 | Q4, the studier's nomination ratio at 8 / 12 | 0.54 / 0.80 | 0.75 / 0.91 | reported |
-| Q5, pariah seasons, the studier at 8 / 12 | 5.5% / 28.5% | 14.6% / 47.2% | story rules 10 |
+| Q5, pariah seasons, the studier at 8 / 12 (B9 raises it; the all-policy 16.3% / 45.1% is not re-measured at tuning 1) | 5.5% / 28.5% | 14.6% / 47.2% | story rules 10 |
 
 The passive player's and the war-room players' seasons are tuning 0's but for the Game Sense total (the weights) and,
 for the war-room players, the 58 of 4,800 seasons that hold a counter K1 or K5 settles differently.
@@ -71,9 +71,12 @@ and the same tier held at tuning 0 (`BALANCE_TUNING=0`) replays the reference ro
 - `TuningRulesTests.StudierTuning0Rows` (`9b9bf8a15644b745`) and `StudierTuning1Rows` (`0f53e79cd8e9a2f2`): four studier
   seasons, held and at tuning 1; the first is four lines of the reference tier above.
 - The parts' stamp is `balance-lab-parts/v8`, so no part played before B9 merges with one played after.
-- Every season digest tier (commitment rules, mode one, the leaks, the war rooms, all week, the mode-two sweeps) builds
-  its seasons by hand at tuning 0 and passes unchanged; so do `FreshSeasonStateDigestTests`' records, with the one int
-  taken back.
+- The season digest tiers that build their seasons by hand (commitment rules, mode one, the leaks, the war rooms, the
+  mode-two sweeps and `AllWeekSeasonDigests`' 54 records) play tuning 0 and pass unchanged; so do
+  `FreshSeasonStateDigestTests`' records, with the one int taken back. Three start through `ShippedRules.ApplyFresh` and
+  so play tuning 1: `AllWeekSeasonDigests.Fresh` (the combined Wave D digest and `SettleByHouseSize`, invariants only),
+  `UnifiedVotePublicCommandTests.Fresh` and `Play` (the unified vote's rest), and `RoleStoryPools.OldSeasons`' three
+  shipped seasons (`OldSeasonsDrawTheirPoolsExactlyAsBefore`). They pass unchanged: their walkers never study or counter.
 
 **The lab's new reads.** A cell field `tuningHeld` (named `/tuning0`, seeded as its shipped cell) and the tier-wide
 `BALANCE_TUNING=0`; the view's `PreparationCap`, which the studier and the beast study up to; the war-room tier prints the

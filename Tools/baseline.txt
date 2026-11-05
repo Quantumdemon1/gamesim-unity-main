@@ -166,7 +166,13 @@
 # DialogueRules2EngineTests 16) and 2 EditMode-only (DialogueRules2PublicRescueTests), run under the Mono harness at the live
 # 29 (2026-10-25). Below schema 30 the 16 engine and 2 rescue cases assert rules 2's refusal; from the bump they play it.
 # 9741 = 8971 + main's 704 (9675 - 8971) + dialogue D2's 66 (9037 - 8971): disjoint cases, so the floor is their sum (2026-11-02).
-Gamesim.EditModeTests 9741
+# 9745 = 9741 + the quick fixes' titled names, 4 shared CharacterNamesTests cases (alumni rules 6, 5 and 1, and a season
+# off the alumni rules), counted offline (2026-11-03); not yet run in Unity.
+# 9747 = 9745 + the quick fixes' storyline list, 2 shared RoleStoryMomentsTests cases (StorylinesShown), counted
+# offline (2026-11-03); not yet run in Unity.
+# 9748 = 9747 + the quick fixes' review, 1 shared RoleStoryMomentsTests test (the board's THREADS strip and the story
+# card read StorylinesShown), counted offline (2026-11-03); not yet run in Unity.
+Gamesim.EditModeTests 9748
 # The UMA-free build. 1215 = 1236, the count after the consolidation's lanes (S2a, S2b, S4a), less the 7
 # farewell probes moved to Gamesim.DiagnosticsPlayModeTests and the 14 farewell readiness tests that now
 # compile only under GAMESIM_UMA (judged on the UMA cast); 1230 = 1215 + S2d's 7, S4b's 2, S4c's 2 and
@@ -280,7 +286,17 @@ Gamesim.EditModeTests 9741
 # 1463 = 1462 + the rs4 fixes' review's 1 shared test (EpisodePlayModeTests.RoomView: WayFinding_NoIconStandsOnAnother),
 # counted offline from the source and the compiled assembly (2026-11-02); not yet run in Unity.
 # 1480 = 1389 + main's 17 (1406 - 1389) + the room scope's 74 (1463 - 1389): disjoint cases, so the floor is their sum (2026-11-02).
-Gamesim.PlayModeTests 1480
+# 1481 = 1480 + the quick fixes' plea tag, 1 shared test (EpisodePlayModeTests.HonestOdds:
+# HonestOdds_EveryPleaTagFitsItsChipAtEveryTextSize), counted offline from the source and the compiled assembly
+# (2026-11-03); not yet run in Unity.
+# 1484 = 1481 + the quick fixes' footer, 3 shared cases (EpisodePlayModeTests.CastConversationPreview:
+# CastSelect_TheFootersPartsKeepApartAtEveryTextSize at 1.0, 1.2 and 1.4), counted offline from the source and the
+# compiled assembly (2026-11-03); not yet run in Unity.
+# 1485 = 1484 + the quick fixes' kitchen doorway, 1 shared test (EpisodePlayModeTests.RoomScope:
+# RoomScope_TheKitchenDoorwayIsWalkedThroughOnTheBakedNavMesh; WayFinding_EachAdjacentRoomsIconReachesItsRoom changed,
+# adding none), counted offline from the source and the compiled assembly (2026-11-03); not yet run in Unity. Both
+# pass only on the scene and NavMesh HouseKitchenDoorway.AuthorAcceptance writes.
+Gamesim.PlayModeTests 1485
 # The UMA build of the same assembly, read by a plan built without -WithoutUma. 1281 = the 1241 above + the
 # 40 tests that compile only under GAMESIM_UMA, as run at r1 (2026-10-16): in EpisodePlayModeTests,
 # GroundedFarewell 11, Creator 9, HouseLife 8, Emotes 3, OpeningCaptures 2, and one each in CreatorEntry,
@@ -351,7 +367,13 @@ Gamesim.PlayModeTests 1480
 # 1505 = 1504 + the rs4 fixes' review's same shared test, counted offline (2026-11-02) and compiled in the UMA offline
 # build (D:\GamesimPlay's dag, 8 of 8 assemblies); not yet run in Unity.
 # 1522 = 1429 + main's 17 (1446 - 1429) + the room scope's 76 (1505 - 1429): disjoint cases, so the floor is their sum (2026-11-02).
-Gamesim.PlayModeTests.UmaBuild 1522
+# 1523 = 1522 + the quick fixes' same plea tag test, counted offline (2026-11-03) and compiled in the UMA offline
+# build; not yet run in Unity.
+# 1526 = 1523 + the quick fixes' same 3 footer cases, counted offline (2026-11-03) and compiled in the UMA offline
+# build; not yet run in Unity.
+# 1527 = 1526 + the quick fixes' same kitchen doorway test, counted offline (2026-11-03) and compiled in the UMA
+# offline build; not yet run in Unity.
+Gamesim.PlayModeTests.UmaBuild 1527
 # The UMA bodies: runs only where the GAMESIM_UMA define is set (the working tree and the D: copy).
 # 82 = the 89 run on 2026-10-15, less the 7 farewell probes moved to Gamesim.Uma.DiagnosticsPlayModeTests;
 # 85 = 82 + the 3 farewell readiness decision tests (UmaFarewellReadinessDecisionPlayModeTests, 2026-10-16);
@@ -463,4 +485,7 @@ Gamesim.Uma.DiagnosticsPlayModeTests 10
 # 16514 = 16456 + main's 50 (16506 - 16456) + the live-save batching's 8 (16464 - 16456): disjoint cases, so the floor is their sum (2026-11-02).
 # 10869 = 10805 + dialogue D2's 64 shared cases. dotnet test ran 10869 of 10869 (2026-10-25).
 # 16578 = 10805 + main's 5709 (16514 - 10805) + dialogue D2's 64 (10869 - 10805): disjoint cases, so the floor is their sum (2026-11-02).
-Gamesim.SimulationTests 16578
+# 16582 = 16578 + the quick fixes' titled names, 4 CharacterNamesTests cases (2026-11-03).
+# 16584 = 16582 + the quick fixes' storyline list, 2 RoleStoryMomentsTests cases (2026-11-03).
+# 16585 = 16584 + the quick fixes' review, 1 RoleStoryMomentsTests case (the strip and the story card) (2026-11-03).
+Gamesim.SimulationTests 16585

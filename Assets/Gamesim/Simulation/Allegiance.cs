@@ -77,17 +77,17 @@ namespace Gamesim.Simulation
         /// <summary>The record of a betrayal, on the player's record of the betrayer: "Riley nominated you despite The Riley Pact."</summary>
         public static string Record(string name, string act, IEnumerable<string> pacts) => name + " " + act + " despite " + Join(pacts) + ".";
 
-        /// <summary>The choice a betrayal the player knows of opens.</summary>
-        public static string Offer(string name) => "You can cut ties with " + FirstName(name) + " this week at no cost, or stay allied.";
+        /// <summary>The choice a betrayal the player knows of opens. The first name is the season's (<see cref="CharacterNames.SeasonFirstName"/>): the line is saved.</summary>
+        public static string Offer(EpisodeState s, string name) => "You can cut ties with " + CharacterNames.SeasonFirstName(s, name) + " this week at no cost, or stay allied.";
 
         /// <summary>
         /// The free exit's line for one pact: a pact of two is over; a bigger one goes on without the
         /// betrayer. "You cut ties with Riley Chen after they turned on The Riley Pact. It is over, and
         /// nobody holds it against you."
         /// </summary>
-        public static string CutTiesLine(string name, string pact, bool ended) =>
+        public static string CutTiesLine(EpisodeState s, string name, string pact, bool ended) =>
             "You cut ties with " + name + " after they turned on " + pact + ". "
-            + (ended ? "It is over" : FirstName(name) + " is out of it, the rest of you keep it") + ", and nobody holds it against you.";
+            + (ended ? "It is over" : CharacterNames.SeasonFirstName(s, name) + " is out of it, the rest of you keep it") + ", and nobody holds it against you.";
 
         // ------------------------------------------------------------ the record of a betrayal
 
@@ -359,7 +359,5 @@ namespace Gamesim.Simulation
             if (list.Count <= 1) return list.FirstOrDefault() ?? "";
             return string.Join(", ", list.Take(list.Count - 1)) + " and " + list.Last();
         }
-
-        private static string FirstName(string name) => string.IsNullOrEmpty(name) ? "" : name.Split(' ')[0];
     }
 }

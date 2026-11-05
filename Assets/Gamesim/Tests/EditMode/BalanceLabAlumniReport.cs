@@ -147,9 +147,17 @@ namespace Gamesim.Tests.EditMode
         // ================================================================ 14.H: loyalty, reputation and known blocs
 
         /// <summary>
-        /// The report's arms (ALL-STAR-HISTORIES-PLAN 14.H, 14.L.H), the shipped value first: 5 (<see cref="AlumniRules.Latest"/>,
-        /// the cell left unheld), 4, 3, 2 and 1 held as a harness holds one (the lab's <c>alumniHeld</c>, 14.G), and 0, the
-        /// season without the histories (the lab's <c>alumniOff</c>, H1b's control: a held 0 would keep the opening's receipts).
+        /// The arm the report calls shipped: 5, the value S6 measured and froze (2026-11-01). The titled names (6,
+        /// <see cref="AlumniRules.TitledNames"/>, 2026-11-03) are what new seasons start at since, and they change only the
+        /// words the engine writes, so this report goes on measuring 5, held there as a harness holds a value.
+        /// </summary>
+        internal const int ShippedArm = AlumniRules.GrowingPacts;
+
+        /// <summary>
+        /// The report's arms (ALL-STAR-HISTORIES-PLAN 14.H, 14.L.H), the shipped value first: 5 (<see cref="ShippedArm"/>, held
+        /// since 6 became <see cref="AlumniRules.Latest"/>), 4, 3, 2 and 1 held as a harness holds one (the lab's
+        /// <c>alumniHeld</c>, 14.G), and 0, the season without the histories (the lab's <c>alumniOff</c>, H1b's control: a held
+        /// 0 would keep the opening's receipts).
         /// </summary>
         internal static readonly int[] ReportArms =
             { AlumniRules.GrowingPacts, AlumniRules.CounterBlocs, AlumniRules.Reputation, AlumniRules.Loyalty, AlumniRules.Histories, AlumniRules.Off };
@@ -192,8 +200,8 @@ namespace Gamesim.Tests.EditMode
             if (string.IsNullOrEmpty(folder)) folder = Path.Combine(TestContext.CurrentContext.WorkDirectory, "balance");
             Directory.CreateDirectory(folder);
             var cells = ReportCells();
-            // The shipped arm is the latest value, and every held arm enrols at its own value.
-            Assert.That(ReportArms[0], Is.EqualTo(AlumniRules.Latest), "The report's first arm is the shipped value.");
+            // The shipped arm is S6's latest value, and every held arm enrols at its own value.
+            Assert.That(ReportArms[0], Is.EqualTo(ShippedArm), "The report's first arm is its shipped value.");
             var started = DateTime.Now;
             var clock = BalanceLab.Clock();
             var runs = BalanceLab.Run(cells, seeds, threads);
@@ -622,7 +630,7 @@ namespace Gamesim.Tests.EditMode
         };
 
         private static string Who((string policy, string card) p) => p.card == null ? p.policy + " newcomer" : p.policy + " on " + p.card;
-        private static string Arm(int arm) => arm == AlumniRules.Latest ? arm + " (shipped)" : arm == AlumniRules.Off ? "0 (no histories)" : arm + " (held)";
+        private static string Arm(int arm) => arm == BalanceLabAlumniReport.ShippedArm ? arm + " (shipped)" : arm == AlumniRules.Off ? "0 (no histories)" : arm + " (held)";
         private static string N(double v, string format) => BalanceLab.Num(v, format);
         private static string Signed(double v, string format) => BalanceLab.Num(v, "+" + format + ";-" + format + ";" + format);
         private static string Rate(int k, int n) => n == 0 ? "n/a" : BalanceLab.Pct((double)k / n) + " " + BalanceLab.Interval(BalanceLab.Wilson(k, n)) + " (" + k + "/" + n + ")";
@@ -696,7 +704,7 @@ namespace Gamesim.Tests.EditMode
             json["mustBeZero"] = zeroRows;
 
             // ------------------------------------------------ the near-zero rule
-            int latest = AlumniRules.Latest;
+            int latest = BalanceLabAlumniReport.ShippedArm;
             var nearRows = new List<object>();
             var eightLow = new List<string>();
             var twelve = new List<string>();

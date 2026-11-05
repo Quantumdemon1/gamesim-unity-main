@@ -440,16 +440,10 @@ namespace Gamesim.Episode
         {
             int threads = EpisodeEngine.Threads(state).Count(t => t.ending == null);
             hud.BeginSideCard(EpisodeHud.ThreadsCardName, "THREADS & STORYLINES", threads > 0 ? threads.ToString() : null, UiTheme.Accent);
-            if (!StoryInPlay(state)) hud.CardLine("Nothing in play yet. Threads start from what you do.", 13, UiTheme.Muted);
+            if (!StorylinesShown.InPlay(state)) hud.CardLine(StorylinesShown.NothingInPlay, 13, UiTheme.Muted);
             StorylinesBlock(state);
             hud.EndSideCard();
         }
-
-        /// <summary>Whether the story's blocks have anything to say: a play, a thread, a storyline running or a modifier of the player's.</summary>
-        private static bool StoryInPlay(EpisodeState state) =>
-            EpisodeEngine.Plays(state).Any(p => p.ending == null) || EpisodeEngine.Threads(state).Any(t => t.ending == null)
-            || state.storylines.Any(x => x.beatId != null && StorylineStatus.Running(x.status) && StoryCatalog.Find(x.templateId)?.play == null && x.lane != StoryLanes.Thread)
-            || state.activeModifiers.Any(m => m.weeksLeft > 0 && string.IsNullOrEmpty(m.ownerId));
 
         // ------------------------------------------------------------ a houseguest's screen
 

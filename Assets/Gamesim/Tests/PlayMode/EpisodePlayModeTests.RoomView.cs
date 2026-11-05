@@ -814,8 +814,9 @@ namespace Gamesim.Tests.PlayMode
         /// <summary>
         /// Every other room keeps an icon with its count (D17): from the living room each room a doorway leads
         /// to has its icon at that doorway, every other room's is on screen at the frame's edge, and a press on
-        /// a neighbour's icon takes the player into that room. From the kitchen, the gap into the private room
-        /// that nobody can walk through is no doorway: the private room's icon waits at the frame's edge.
+        /// a neighbour's icon takes the player into that room. From the kitchen, the doorway into the private
+        /// room is walked through since the kitchen run moved into the corner (the quick fixes, 2026-11-03; it
+        /// was no doorway while the run and the agents' erosion closed it): the private room's icon stands at it.
         /// </summary>
         [UnityTest]
         public IEnumerator WayFinding_EachAdjacentRoomsIconReachesItsRoom()
@@ -851,20 +852,20 @@ namespace Gamesim.Tests.PlayMode
             }
             Assert.That(failures, Is.Empty, string.Join("; ", failures));
 
-            // From the kitchen: the gap into the private room is no doorway anybody walks through - the kitchen run
-            // and the agents' erosion close it on the baked NavMesh (section 2.1) - so the private room's icon waits
-            // at the frame's edge, while the living room's stands at a doorway that leads there.
+            // From the kitchen: the doorway into the private room is walked through on the baked NavMesh since the
+            // kitchen run moved into the corner (section 2.1; the quick fixes, 2026-11-03), so the private room's icon
+            // stands at it, as the living room's stands at the doorway that leads there.
             int kitchen = RoomLayers.IndexOf("Kitchen"), privateRoom = RoomLayers.IndexOf("Private");
             yield return RoomViewPlayerIn(scope, kitchen);
             yield return null;
             yield return null;
             Assert.That(beacons.RoomViewRoom, Is.EqualTo("Kitchen"), "The icons are placed for the room view of the kitchen.");
-            Assert.That(scope.TryDoorway(kitchen, privateRoom, cameraRig.transform.position, out var gap), Is.False,
-                "No walkable doorway joins the kitchen to the private room" + (gap.Width > 0f ? ": " + gap : "") + ".");
+            Assert.That(scope.TryDoorway(kitchen, privateRoom, cameraRig.transform.position, out var gap), Is.True,
+                "A walkable doorway joins the kitchen to the private room.");
+            Assert.That(gap.Middle.x, Is.InRange(5.6f, 8.4f), "It is the gap in the wall between them: " + gap + ".");
             Assert.That(scope.TryDoorway(kitchen, living, cameraRig.transform.position, out _), Is.True, "A doorway joins the kitchen to the living room.");
             Assert.That(BeaconFor("Private") != null && BeaconFor("Private").gameObject.activeInHierarchy, Is.True, "The private room keeps its icon,");
-            Assert.That(beacons.IsAtDoorway("Private"), Is.False, "not over the gap nobody walks through,");
-            Assert.That(beacons.IsPinned("Private"), Is.True, "but at the frame's edge.");
+            Assert.That(beacons.IsAtDoorway("Private"), Is.True, "at the doorway that leads there.");
             Assert.That(beacons.IsAtDoorway("Living"), Is.True, "The living room's icon stands at the kitchen's doorway that leads there.");
             yield return RoomViewPlayerIn(scope, living);
 

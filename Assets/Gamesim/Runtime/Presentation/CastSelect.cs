@@ -1277,7 +1277,10 @@ namespace Gamesim.Presentation
         /// </summary>
         private void Footer()
         {
-            Space(8f);
+            // Four over the footer's first line, and in the wide footer four under it: the start's glow, ten past its
+            // edge and seven past its row, reached 3 into the box of "You will play as" when the bar followed the line
+            // with no gap (the quick fixes, 2026-11-03). The bar stands where it stood.
+            Space(4f);
             if (!string.IsNullOrEmpty(resumeError))
                 Text(resumeError, 14f, UiTheme.Warning, 64f, TextAlignmentOptions.Center);
             var chosen = string.IsNullOrEmpty(selectedId) ? null : CastTemplates.Find(selectedId);
@@ -1293,6 +1296,7 @@ namespace Gamesim.Presentation
             // enough to press.
             if (WideFooter)
             {
+                Space(4f);
                 var bar = Row(68f);
                 const float group = 1168f;
                 float left = -group * .5f;
@@ -1314,6 +1318,10 @@ namespace Gamesim.Presentation
                 var bar = Row(64f);
                 HouseSizePanel(bar, -Mathf.Min(1040f, Width - Pad * 2f) * .5f, Mathf.Min(1040f, Width - Pad * 2f), false);
                 Text(HouseSizeFootnote, FootnoteSize, UiTheme.Muted, 20f, TextAlignmentOptions.Center);
+                // The start's glow reaches 7 over its row's top: eight between the footnote and the row, so it
+                // stops 1 short of the footnote's box, which it ran 7 into (the quick fixes, 2026-11-03). The
+                // footer's first line moved up 4 and the line under the row lost 3 to pay for it.
+                Space(8f);
                 // The chip, the start and cancel as one group of 844, the narrowest frame's row: 17 between
                 // them, so that the start's glow, ten past its edge, stops 7 short of the chip and of cancel.
                 var row = Row(60f);
@@ -1321,10 +1329,10 @@ namespace Gamesim.Presentation
                 float left = -group * .5f;
                 ConversationPreviewChip(row, left + 130f, 260f, HouseSizeChipHeight);
                 StartButtons(row, left + 277f + 150f, 300f, left + 594f + 125f, 250f);
-                // The start's glow reaches 7 under the row's foot, a pixel past its gap of 6: the line
-                // starts 3 below the glow, and ends 4 above the footer's foot.
-                Space(4f);
-                Text(ConversationPreviewLine, FootnoteSize, UiTheme.Muted, 20f, TextAlignmentOptions.Center).name = ConversationPreviewLineName;
+                // The start's glow reaches 7 under the row's foot, a pixel past its gap of 6: the line, in a box
+                // 1.3 times its thirteen, starts 2 below the glow, and ends 4 above the footer's foot.
+                Space(3f);
+                Text(ConversationPreviewLine, FootnoteSize, UiTheme.Muted, 17f, TextAlignmentOptions.Center).name = ConversationPreviewLineName;
             }
             Space(Pad * .5f);
         }
@@ -1438,16 +1446,30 @@ namespace Gamesim.Presentation
             var heading = Line(panel, "HOUSE SIZE", 14f, UiTheme.Paper, -9f, 20f, 16f, 220f, TextAlignmentOptions.Left);
             if (heading != null && semibold != null) heading.font = semibold;
             // Two lines of 13 beside the chips, in a box 1.3 times each; one line across the wide panel.
-            var range = Line(panel, "Between " + SeasonBuilder.MinimumHouse + " and " + largest + " on this roster, including you.",
-                FootnoteSize, UiTheme.Muted, -31f, compact ? 34f : 20f, 16f, compact ? 188f : panelWidth * .5f - 16f, TextAlignmentOptions.TopLeft);
-            if (range != null) { range.fontSizeMin = FootnoteSize; if (compact) range.textWrappingMode = TextWrappingModes.Normal; }
-
             // Fewer, the count, More - from the panel's right edge inward: 140-wide chips either side
             // of a 96-wide count, after the range line's 188 and a gap, in the 600 the panel has.
             float fewerX = left + panelWidth - 319f;
             float countX = left + panelWidth - 195f;
             float moreX = left + panelWidth - 71f;
-            if (!compact) { fewerX = 55f; countX = 250f; moreX = 435f; }
+            float countWidth = compact ? 96f : 210f;
+            if (!compact)
+            {
+                // The narrow footer's panel, min(1040, width - 56) wide: 150-wide chips either side of the count, from its
+                // right edge inward too - More 10 inside the glass, the count 5 left of it, Fewer 15 left of that. At the
+                // full 1040 they stand where they always stood (55, 250 and 435 from the centre). They used to stand
+                // there on a narrower panel too, so More ran past the glass on a canvas under 1172 wide: by 11 on 5:4,
+                // 1280x1024, at the largest text (the quick fixes, 2026-11-03). The count gives up width before the range
+                // line does: 190 at the narrowest frame's 844, the range line keeping 300 for its 288.
+                countWidth = Mathf.Min(210f, panelWidth - 654f);
+                moreX = left + panelWidth - 85f;
+                countX = moreX - 80f - countWidth * .5f;
+                fewerX = countX - countWidth * .5f - 90f;
+            }
+            var range = Line(panel, "Between " + SeasonBuilder.MinimumHouse + " and " + largest + " on this roster, including you.",
+                FootnoteSize, UiTheme.Muted, -31f, compact ? 34f : 20f, 16f,
+                compact ? 188f : Mathf.Min(panelWidth * .5f - 16f, fewerX - 75f - 8f - (left + 16f)), TextAlignmentOptions.TopLeft);
+            if (range != null) { range.fontSizeMin = FootnoteSize; if (compact) range.textWrappingMode = TextWrappingModes.Normal; }
+
             var caption = HudPrimitives.Label("House size", bar, 16f, UiTheme.Paper, TextAlignmentOptions.Center);
             if (semibold != null) caption.font = semibold;
             // The count and its noun; "including you" is the range line's, under the heading, where
@@ -1455,7 +1477,7 @@ namespace Gamesim.Presentation
             caption.text = houseSize + " houseguests";
             caption.rectTransform.anchorMin = caption.rectTransform.anchorMax = new Vector2(0.5f, 0.5f);
             caption.rectTransform.pivot = new Vector2(0.5f, 0.5f);
-            caption.rectTransform.sizeDelta = new Vector2(compact ? 96f : 210f, compact ? 44f : 26f);
+            caption.rectTransform.sizeDelta = new Vector2(countWidth, compact ? 44f : 26f);
             caption.rectTransform.anchoredPosition = new Vector2(countX, 0f);
             caption.enableAutoSizing = true; caption.fontSizeMax = compact ? 15f : 16f; caption.fontSizeMin = FootnoteSize;
             caption.textWrappingMode = compact ? TextWrappingModes.Normal : TextWrappingModes.NoWrap;

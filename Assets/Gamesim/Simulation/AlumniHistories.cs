@@ -20,10 +20,11 @@ namespace Gamesim.Simulation
     /// (<see cref="KnownBlocs.CounterDesire"/>, <see cref="KnownBlocs.CounterTarget"/>). <see cref="GrowingPacts"/> is the
     /// owner's answer of the same day (§14.L), "Yes, let outsider pacts grow past two": while a known pair stands, a pact the
     /// houseguests formed themselves outside it takes members past two, while nobody outside it knows of it
-    /// (<see cref="NpcAlliances.TryJoin"/>, <see cref="KnownBlocs.CounterPactBound"/>). Value 5 is released if the owner
-    /// withdraws growth before §14's freeze (S6). The campaigns (AS7) take the next free value after S6, and H1d's other
-    /// parts (after B9) later ones, in landing order. Only range checks and "new seasons start here" may read
-    /// <see cref="Latest"/>.
+    /// (<see cref="NpcAlliances.TryJoin"/>, <see cref="KnownBlocs.CounterPactBound"/>). The owner kept growth, and S6 froze
+    /// 5 (2026-11-01). <see cref="TitledNames"/> is the quick fixes' (the owner's "the 'Dr.' names", 2026-11-03): the names
+    /// the engine writes call a titled alumnus by their first name past the title, words only. The campaigns (AS7) take
+    /// the next free value, 7, and H1d's other parts (after B9) later ones, in landing order. Only range checks and "new
+    /// seasons start here" may read <see cref="Latest"/>.
     /// </para>
     ///
     /// <para>A season is never moved onto these rules after it starts: load, migration, recovery and the importer
@@ -75,11 +76,22 @@ namespace Gamesim.Simulation
         public const int GrowingPacts = 5;
 
         /// <summary>
+        /// The quick fixes (2026-11-03), the owner's "the 'Dr.' names": everything of <see cref="GrowingPacts"/>, and the
+        /// names the engine writes into the season - a pact's name, the betrayal's offer and its cut-ties line - call a
+        /// titled houseguest by their first name past the title, as every display already does ("The Will Pact", "You
+        /// can cut ties with Will", not "The Dr. Pact" and "with Dr."; <see cref="CharacterNames.SeasonFirstName"/>).
+        /// Titled names come only from the alumni catalogue (Dr. Will Kirby), so the alumni rules carry it. Words only:
+        /// nobody weighs a name, so a season plays as it would at 5. Below it every name is cut at its first space, as
+        /// it was when the seasons saved before it were played, so their replays write the words they wrote.
+        /// </summary>
+        public const int TitledNames = 6;
+
+        /// <summary>
         /// The highest value this build defines: for range checks and for new seasons only. Fresh seasons that seat an
         /// alumnus start here (§14.A); a value a test or the lab holds is a field write after that, valid while every value
         /// up to this one writes the same opening.
         /// </summary>
-        public const int Latest = GrowingPacts;
+        public const int Latest = TitledNames;
 
         /// <summary>Whether a saved value is one this build defines (validation's range).</summary>
         public static bool IsDefined(int version) => version >= Off && version <= Latest;

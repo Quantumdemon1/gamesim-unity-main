@@ -18,10 +18,11 @@ namespace Gamesim.House
     /// <para>An opening is a doorway only if somebody can walk through it (D17: "the doorway that leads
     /// there"): on the baked NavMesh, a walk from <see cref="DoorwayWalkReach"/> inside one floor to as far
     /// inside the other, through its middle, of no more than <see cref="DoorwayWalkMetres"/>. The gap
-    /// between the kitchen and the private room, which the kitchen run and the agents' erosion close
-    /// (section 2.1), is not one: from the kitchen the private room's icon waits at the frame's edge rather
-    /// than over a gap a press would walk round through two rooms. The plain rule takes that walk as a
-    /// second function too; a house with no NavMesh baked keeps every opening its walls show.</para>
+    /// between the kitchen and the private room was not one while the kitchen run and the agents' erosion
+    /// closed it (section 2.1): the private room's icon waited at the frame's edge rather than over a gap a
+    /// press would walk round through two rooms. The run moved into the corner (the quick fixes, 2026-11-03,
+    /// HouseKitchenDoorway), and it is walked through. The plain rule takes that walk as a second function
+    /// too; a house with no NavMesh baked keeps every opening its walls show.</para>
     /// </summary>
     public sealed partial class HouseRoomScope
     {

@@ -45,6 +45,16 @@ namespace Gamesim.Episode
         /// </summary>
         public const string NoConversationTag = "no talk now";
 
+        /// <summary>
+        /// The deal plea's words after its odds (the owner's quick fixes, 2026-11-03, "the plea tag"): a deal binds the
+        /// player next week. Short for the same reason as <see cref="NoConversationTag"/>: "about even · binds you next
+        /// week" measured 191 and "favourable · binds you next week" 188 in Inter at twelve against the chip's 184 inside at
+        /// text size 1.0, so "week" wrapped onto a second line the 22-high chip cut off. The longest now, "about even ·
+        /// binds next week", measures 166 there, and the tag scales with the text: one line at full size at 1.0, 1.2 and
+        /// 1.4. The caption beside it ("All-in deal", "Make a deal") is unchanged.
+        /// </summary>
+        public const string DealTag = "binds next week";
+
         /// <summary>The locked desperate plea's tag when the voter's own conversation is open: its final plea is that plea.</summary>
         public const string OpenConversationTag = "in your open talk";
 
@@ -101,7 +111,7 @@ namespace Gamesim.Episode
                 {
                     string how = approach;
                     string tag = KnownOdds.Plea(state, decider, ask, subject, how).word
-                        + (how == LobbyApproach.Deal ? " · binds you next week" : how == LobbyApproach.Pressure ? " · can backfire" : "");
+                        + (how == LobbyApproach.Deal ? " · " + DealTag : how == LobbyApproach.Pressure ? " · can backfire" : "");
                     bool entry = paidCampaign && how == LobbyApproach.Emotional && !withoutTalk;
                     bool available = !entry || DialogueRules.TryBuildEntryCommand(state, decider, out _);
                     if (withoutTalk && how == LobbyApproach.Emotional) tag += " · " + NoConversationTag;

@@ -122,11 +122,13 @@ namespace Gamesim.Tests.EditMode
         }
 
         /// <summary>
-        /// An opening nobody can walk through is not a doorway (D17, the RS5 review): the gap between the kitchen
-        /// and the private room, closed on the baked NavMesh by the kitchen run and the agents' erosion (section
-        /// 2.1), is refused by the walk, so from the kitchen no doorway leads to the private room and its icon
-        /// goes to the frame's edge; every other opening is kept, each walked from 0.6 m inside one floor to 0.6 m
-        /// inside the other through its middle, and the second opening joining two rooms still serves them.
+        /// An opening nobody can walk through is not a doorway (D17, the RS5 review): a gap the walk refuses - as
+        /// the baked NavMesh refused the one between the kitchen and the private room, closed by the kitchen run and
+        /// the agents' erosion (section 2.1) until the quick fixes opened it (2026-11-03) - leads nowhere, so from
+        /// the kitchen no doorway would lead to the private room and its icon would go to the frame's edge; every
+        /// other opening is kept, each walked from 0.6 m inside one floor to 0.6 m inside the other through its
+        /// middle, and the second opening joining two rooms still serves them. The walk here is synthetic: it
+        /// closes that gap whatever the bake says, so the rule is held on a house that no longer has a closed one.
         /// </summary>
         [Test]
         public void AnOpeningNobodyCanWalkThroughIsNoDoorway()
@@ -135,7 +137,7 @@ namespace Gamesim.Tests.EditMode
             int kitchen = RoomLayers.IndexOf("Kitchen"), privateRoom = RoomLayers.IndexOf("Private"), living = RoomLayers.IndexOf("Living");
             var gap = Gaps.Single(g => g.First == "Kitchen" && g.Second == "Private");
             var walks = new List<Vector3[]>();
-            // The kitchen run: a walk across z = 0 between the gap's ends is refused, as the NavMesh refuses it.
+            // A closed gap, as the kitchen run's was before the quick fixes: a walk across z = 0 between its ends is refused.
             bool Walkable(Vector3 from, Vector3 to)
             {
                 walks.Add(new[] { from, to });
@@ -146,7 +148,7 @@ namespace Gamesim.Tests.EditMode
             var found = new List<HouseRoomScope.Doorway>();
             house.FindDoorways(WallAcross, found, Walkable);
             string report = string.Join(", ", found);
-            Assert.That(found.Any(door => door.Joins(kitchen, privateRoom)), Is.False, "The kitchen run's gap is no doorway: " + report);
+            Assert.That(found.Any(door => door.Joins(kitchen, privateRoom)), Is.False, "A gap the walk refuses is no doorway: " + report);
             Assert.That(found.Count, Is.EqualTo(11), "The other eleven, the corner doorways' halves among them: " + report);
             Assert.That(found.Count(door => door.Joins(living, kitchen)), Is.EqualTo(2), "Both of the living room's doorways into the kitchen.");
             Assert.That(walks.Count, Is.EqualTo(12), "Every opening a doorway's width is walked, once.");

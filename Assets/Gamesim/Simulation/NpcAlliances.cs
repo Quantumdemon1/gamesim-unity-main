@@ -181,9 +181,9 @@ namespace Gamesim.Simulation
             if (state.alliances.Any(a => a.active && ids.All(a.members.Contains))) return null;
             if (state.alliances.Count >= 100) return null;
             string name = ids.Count == 2
-                ? "The " + state.Find(ids[0]).name.Split(' ')[0] + " and " + state.Find(ids[1]).name.Split(' ')[0] + " Pact"
-                : "The " + string.Join(", ", ids.Take(ids.Count - 1).Select(id => state.Find(id).name.Split(' ')[0]))
-                  + " and " + state.Find(ids.Last()).name.Split(' ')[0] + " Pact";
+                ? "The " + First(state, ids[0]) + " and " + First(state, ids[1]) + " Pact"
+                : "The " + string.Join(", ", ids.Take(ids.Count - 1).Select(id => First(state, id)))
+                  + " and " + First(state, ids.Last()) + " Pact";
             var alliance = new AllianceState
             {
                 id = "alliance-story-" + state.nextSequence++, name = name.Length > 100 ? name.Substring(0, 100) : name,
@@ -347,10 +347,12 @@ namespace Gamesim.Simulation
 
         // ---------------------------------------------------------------- internals
 
+        /// <summary>A member's first name as the season writes it into a pact's name (<see cref="CharacterNames.SeasonFirstName"/>).</summary>
+        private static string First(EpisodeState state, string id) => CharacterNames.SeasonFirstName(state, state.Find(id).name);
+
         private static void Form(EpisodeState state, string first, string second)
         {
-            string name = "The " + state.Find(first).name.Split(' ')[0]
-                          + " and " + state.Find(second).name.Split(' ')[0] + " Pact";
+            string name = "The " + First(state, first) + " and " + First(state, second) + " Pact";
             var alliance = new AllianceState
             {
                 id = HouseguestPactPrefix + state.nextSequence,

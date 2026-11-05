@@ -1186,6 +1186,10 @@ If B9's plan needs another field, it joins the pool before the list closes.
 either lands at 29 before step 1 lands on main, its values join the frozen reader in the same step. After that, they
 are defined only at `schemaVersion >= 30` (8.2).
 
+**Update, B9 (2026-11-03):** B9 landed PC5's preparation as tuning rules 1 and released competition rules 5
+(B9-BALANCE-PLAN decision 2); the next slice that changes how a competition is scored takes 5 - Will's throw here, or PC6's
+minigames, whichever lands first. The paragraph below is history.
+
 **With the competitions topic** (tell it when it next runs): PC5 is competition rules 5, and PC6's minigames take 6 or
 later. Will's throw takes the next free value when H1d lands, and is measured with PC5's lab runs.
 - **PC5 defines competition rules 5 only at `schemaVersion >= 30`**, and so do PC6's 6 and later and the throw's value.

@@ -484,6 +484,7 @@ None of these slices adds a persisted field. If one ever did, it would be qualif
 
 ## 9. Competition rules 5
 
+- **Update, B9 (2026-11-03).** B9 landed PC5's preparation as tuning rules 1 (`tuningRulesVersion`, B9-BALANCE-PLAN decision 2) and released competition rules 5: it is unclaimed, and the next slice that changes how a competition is scored takes it (Will's throw in H1d or PC6's minigames, whichever lands first). The claim below is history.
 - **The claim.** Competition rules 5 is claimed for PC5, the competition part of B9 (the props and competitions line), so no other slice takes it. PC6's new minigames take 6 or later.
 - **No field.** It lives in the existing `competitionRulesVersion`, which validation bounds by `CompetitionRules.Current` (Simulation/EpisodeValidation.cs:134) and `ApplyFresh` writes (Simulation/ShippedRules.cs:29). So it needs nothing from schema 30.
 - **When PC5 lands.** `CompetitionRules.Current` (Simulation/CompetitionRules.cs:41-42) and `CompetitionMiniGames.CurrentRules` (Runtime/Presentation/CompetitionMiniGames.cs:23) move together. Rules 5 freezes the first time `ApplyFresh` writes it.

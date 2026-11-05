@@ -395,6 +395,8 @@
     <Compile Include="$(EditMode)MusicFadeTests.cs" />
     <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/CompetitionWords.cs" />
     <Compile Include="$(EditMode)CompetitionWordsTests.cs" />
+    <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/StudyWords.cs" />
+    <Compile Include="$(EditMode)TuningCopyTests.cs" />
     <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/FinalChoiceWords.cs" />
     <Compile Include="$(EditMode)FinalChoiceWordsTests.cs" />
     <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/CompetitionMiniGames.cs" />

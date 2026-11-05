@@ -167,8 +167,8 @@
 # 29 (2026-10-25). Below schema 30 the 16 engine and 2 rescue cases assert rules 2's refusal; from the bump they play it.
 # 9741 = 8971 + main's 704 (9675 - 8971) + dialogue D2's 66 (9037 - 8971): disjoint cases, so the floor is their sum (2026-11-02).
 # 9751 = 9741 + B9's TuningRulesTests, 10 cases compiled into the editor (its eleventh, the lab pin, is Tools/SimulationTests only) (2026-11-03).
-# 9754 = 9751 + B9's copy pins: CompetitionWordsTests' earned line at tuning 0 and 1 (1) and TuningCopyTests' diary lines (2,
-# editor only) (2026-11-05).
+# 9754 = 9751 + B9's copy pins: CompetitionWordsTests' earned line at tuning 0 and 1 (1) and TuningCopyTests' diary lines
+# (StudyWords, 2) (2026-11-05).
 Gamesim.EditModeTests 9754
 # The UMA-free build. 1215 = 1236, the count after the consolidation's lanes (S2a, S2b, S4a), less the 7
 # farewell probes moved to Gamesim.DiagnosticsPlayModeTests and the 14 farewell readiness tests that now
@@ -467,5 +467,6 @@ Gamesim.Uma.DiagnosticsPlayModeTests 10
 # 10869 = 10805 + dialogue D2's 64 shared cases. dotnet test ran 10869 of 10869 (2026-10-25).
 # 16578 = 10805 + main's 5709 (16514 - 10805) + dialogue D2's 64 (10869 - 10805): disjoint cases, so the floor is their sum (2026-11-02).
 # 16589 = 16578 + B9's TuningRulesTests, 11 cases; its other new tests are [Explicit] tiers (budget nought's twin) (2026-11-03).
-# 16590 = 16589 + B9's CompetitionWordsTests earned-line pin (2026-11-05).
-Gamesim.SimulationTests 16590
+# 16592 = 16589 + B9's copy pins: CompetitionWordsTests' earned line (1) and TuningCopyTests' diary lines (2), with
+# StudyWords.cs, the diary's study words, compiled in (2026-11-05).
+Gamesim.SimulationTests 16592

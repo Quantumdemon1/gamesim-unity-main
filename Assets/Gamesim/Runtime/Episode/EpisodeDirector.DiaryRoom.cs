@@ -468,38 +468,13 @@ namespace Gamesim.Episode
         /// full rules behind a disclosure rather than in the reading column.
         /// </summary>
         /// <summary>
-        /// Where study preparation counts, as the season's competition rules have it. From rules 3
-        /// the engine adds it on every player entry route (EpisodeEngine.CommonCompetitionBonus):
-        /// the weekly competitions however they are played, and all three parts of the final Head
-        /// of Household. Before rules 3 only the weekly simulated option read it - said in the
-        /// player's words, as the button that chooses it is: "the weekly simulated HoH/Veto option"
-        /// was the engine's (UI-UX-PASS-PLAN D0, the play sweep's row 37).
+        /// Where study preparation counts, as the season's rules have it: the diary's words, <see cref="StudyWords.Use"/>
+        /// (competition rules 3 and B9's tuning read there, Unity-free, so the subset pins them).
         /// </summary>
-        public static string StudyUse(EpisodeState state) =>
-            TuningRules.At(state, TuningRules.Bands)
-                ? "used up by the next weekly HoH or veto competition you enter, unless you throw it; the final HoH's three parts all count it"
-                : state != null && state.competitionRulesVersion >= 3
-                ? "used in every competition you enter, however you play it, the final HoH's three parts included"
-                : "used only when you choose to simulate a weekly HoH or veto competition, not when you play one yourself or in the final HoH";
+        public static string StudyUse(EpisodeState state) => StudyWords.Use(state);
 
-        /// <summary>
-        /// The record's rules line on study preparation, behind the disclosure: before B9's tuning exactly as it always read
-        /// (between 0 and 5, changed only by a study); under it (<see cref="TuningRules.Bands"/>) the season's own limit, and
-        /// what else moves it - a weekly competition uses it up and, in a house of eight or fewer, a Head of Household sat
-        /// out with some banked adds one.
-        /// </summary>
-        public static string StudyRulesLine(EpisodeState state) => !TuningRules.At(state, TuningRules.Bands)
-            ? "Study preparation: saved between weeks; " + StudyUse(state) + ". It stays between 0 and 5 and changes only when you confirm a study approach."
-            : "Study preparation: saved between weeks; " + StudyUse(state) + ". A confirmed study raises it, up to "
-                + TuningRules.StudyLimit(state) + (TuningRules.InSmallHouse(state)
-                    ? "; watching a Head of Household you sit out, with some banked, adds one, up to " + TuningRules.SmallHouseCap : "") + ".";
-
-        /// <summary>The same, in the record row's few words.</summary>
-        public static string StudyUseShort(EpisodeState state) =>
-            TuningRules.At(state, TuningRules.Bands) ? "Used up by your next weekly competition."
-                : state != null && state.competitionRulesVersion >= 3
-                ? "Used in every competition you enter."
-                : "Used only when you simulate a weekly competition.";
+        /// <summary>The same, in the record row's few words (<see cref="StudyWords.UseShort"/>).</summary>
+        public static string StudyUseShort(EpisodeState state) => StudyWords.UseShort(state);
 
         /// <summary>
         /// The record's row for a player on an All-Star's own card (ALL-STAR-HISTORIES-PLAN §14.F.3),
@@ -545,7 +520,7 @@ namespace Gamesim.Episode
             hud.RecordSummary(rows);
             hud.Disclosure(EpisodeHud.DiaryRulesCaption, diaryRulesOpen, () => { diaryRulesOpen = !diaryRulesOpen; Render(); });
             if (!diaryRulesOpen) return;
-            hud.Aside(StudyRulesLine(state));
+            hud.Aside(StudyWords.RulesLine(state));
             hud.Aside("Diary persona: each confirmed reflection adds one to your persona history; your displayed persona may remain unchanged.");
             hud.Aside("Jury impression: an impression, not a promise. A reflection can shift it for each current juror, within the ledger's limits. It is not a directed-trust change or a jury ballot.");
         }

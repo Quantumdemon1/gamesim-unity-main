@@ -169,7 +169,10 @@
 # 9751 = 9741 + B9's TuningRulesTests, 10 cases compiled into the editor (its eleventh, the lab pin, is Tools/SimulationTests only) (2026-11-03).
 # 9754 = 9751 + B9's copy pins: CompetitionWordsTests' earned line at tuning 0 and 1 (1) and TuningCopyTests' diary lines
 # (StudyWords, 2) (2026-11-05).
-Gamesim.EditModeTests 9754
+# 9761 = 9754 + B9's review fixes: TuningRulesTests 6 (a throw and a simulation, the veto after a throw, the final week, a
+# juror's watch, K5 on its own, K1's tie a member came round in) and TuningCopyTests 1 (the final week's words), counted
+# from the source; the lister of round 6 checks it (2026-11-05).
+Gamesim.EditModeTests 9761
 # The UMA-free build. 1215 = 1236, the count after the consolidation's lanes (S2a, S2b, S4a), less the 7
 # farewell probes moved to Gamesim.DiagnosticsPlayModeTests and the 14 farewell readiness tests that now
 # compile only under GAMESIM_UMA (judged on the UMA cast); 1230 = 1215 + S2d's 7, S4b's 2, S4c's 2 and
@@ -283,7 +286,9 @@ Gamesim.EditModeTests 9754
 # 1463 = 1462 + the rs4 fixes' review's 1 shared test (EpisodePlayModeTests.RoomView: WayFinding_NoIconStandsOnAnother),
 # counted offline from the source and the compiled assembly (2026-11-02); not yet run in Unity.
 # 1480 = 1389 + main's 17 (1406 - 1389) + the room scope's 74 (1463 - 1389): disjoint cases, so the floor is their sum (2026-11-02).
-Gamesim.PlayModeTests 1480
+# 1481 = 1480 + B9's StudyDiary_UnderTuningOneTheStudyStopsAtTheSeasonsLimitAndSaysWhatUsesItUp, counted from the source and
+# listed offline; not yet run in Unity (2026-11-05).
+Gamesim.PlayModeTests 1481
 # The UMA build of the same assembly, read by a plan built without -WithoutUma. 1281 = the 1241 above + the
 # 40 tests that compile only under GAMESIM_UMA, as run at r1 (2026-10-16): in EpisodePlayModeTests,
 # GroundedFarewell 11, Creator 9, HouseLife 8, Emotes 3, OpeningCaptures 2, and one each in CreatorEntry,
@@ -354,7 +359,8 @@ Gamesim.PlayModeTests 1480
 # 1505 = 1504 + the rs4 fixes' review's same shared test, counted offline (2026-11-02) and compiled in the UMA offline
 # build (D:\GamesimPlay's dag, 8 of 8 assemblies); not yet run in Unity.
 # 1522 = 1429 + main's 17 (1446 - 1429) + the room scope's 76 (1505 - 1429): disjoint cases, so the floor is their sum (2026-11-02).
-Gamesim.PlayModeTests.UmaBuild 1522
+# 1523 = 1522 + the same B9 diary case, listed in the UMA offline build; not yet run in Unity (2026-11-05).
+Gamesim.PlayModeTests.UmaBuild 1523
 # The UMA bodies: runs only where the GAMESIM_UMA define is set (the working tree and the D: copy).
 # 82 = the 89 run on 2026-10-15, less the 7 farewell probes moved to Gamesim.Uma.DiagnosticsPlayModeTests;
 # 85 = 82 + the 3 farewell readiness decision tests (UmaFarewellReadinessDecisionPlayModeTests, 2026-10-16);
@@ -468,5 +474,7 @@ Gamesim.Uma.DiagnosticsPlayModeTests 10
 # 16578 = 10805 + main's 5709 (16514 - 10805) + dialogue D2's 64 (10869 - 10805): disjoint cases, so the floor is their sum (2026-11-02).
 # 16589 = 16578 + B9's TuningRulesTests, 11 cases; its other new tests are [Explicit] tiers (budget nought's twin) (2026-11-03).
 # 16592 = 16589 + B9's copy pins: CompetitionWordsTests' earned line (1) and TuningCopyTests' diary lines (2), with
-# StudyWords.cs, the diary's study words, compiled in (2026-11-05).
-Gamesim.SimulationTests 16592
+# StudyWords.cs, the diary's study words, compiled in (2026-11-05). 16592 was counted from the source: no run observed it.
+# 16599 = 16592 + B9's review fixes: TuningRulesTests 6 and TuningCopyTests 1, as in the EditMode floor (2026-11-05).
+# Provisional until a full subset run on the head observes it (B9-BALANCE-PLAN, As built, Proofs).
+Gamesim.SimulationTests 16599

@@ -26,12 +26,32 @@ namespace Gamesim.Presentation
                 ? "used in every competition you enter, however you play it, the final HoH's three parts included"
                 : "used only when you choose to simulate a weekly HoH or veto competition, not when you play one yourself or in the final HoH";
 
-        /// <summary>The same, in the record row's few words.</summary>
+        /// <summary>
+        /// The same, in the record row's few words. Under B9's tuning, by what is left to use it in: the next weekly
+        /// competition; in the final week the final Head of Household's three parts, since no weekly one follows; and once
+        /// those are over, or for a player out of the house, nothing.
+        /// </summary>
         public static string UseShort(EpisodeState state) =>
-            TuningRules.At(state, TuningRules.Bands) ? "Used up by your next weekly competition."
+            TuningRules.At(state, TuningRules.Bands)
+                ? (NoneLeft(state) ? "No competition is left to use it in."
+                    : TuningRules.FinalWeek(state) ? "Counts in the final HoH's three parts."
+                    : "Used up by your next weekly competition.")
                 : state != null && state.competitionRulesVersion >= 3
                 ? "Used in every competition you enter."
                 : "Used only when you simulate a weekly competition.";
+
+        /// <summary>
+        /// Under B9's tuning, the study section's word once preparation is at the season's limit and no study is offered:
+        /// what it waits for. In the final week that is the final Head of Household, all three parts of which count it.
+        /// </summary>
+        public static string FullLine(EpisodeState state) => TuningRules.FinalWeek(state)
+            ? "Your preparation is full. All three parts of the final Head of Household count it."
+            : "Your preparation is full. The next weekly HoH or veto competition you enter uses it up, unless you throw it.";
+
+        /// <summary>Under B9's tuning, the study section's aside beside the two ways to study: what uses preparation, this week.</summary>
+        public static string StudyAside(EpisodeState state) => TuningRules.FinalWeek(state)
+            ? "Preparation counts in all three parts of the final HoH; a study changes it only when you confirm."
+            : "Preparation is used up by the next weekly HoH or veto you enter, unless you throw it; a study changes it only when you confirm.";
 
         /// <summary>
         /// The record's rules line on study preparation, behind the disclosure: before B9's tuning exactly as it always read
@@ -44,5 +64,14 @@ namespace Gamesim.Presentation
             : "Study preparation: saved between weeks; " + Use(state) + ". A confirmed study raises it, up to "
                 + TuningRules.StudyLimit(state) + (TuningRules.InSmallHouse(state)
                     ? "; watching a Head of Household you sit out, with some banked, adds one, up to " + TuningRules.SmallHouseCap : "") + ".";
+
+        /// <summary>No competition is left that would count preparation: the player is out of the house, or the final Head of Household is over.</summary>
+        private static bool NoneLeft(EpisodeState s)
+        {
+            var you = s?.Find(s.playerId);
+            if (you == null || you.status != ContestantStatus.Active) return true;
+            return s.phase == EpisodePhase.FinalEviction || s.phase == EpisodePhase.JuryQuestioning || s.phase == EpisodePhase.FinalSpeeches
+                || s.phase == EpisodePhase.Jury || s.phase == EpisodePhase.Finished;
+        }
     }
 }

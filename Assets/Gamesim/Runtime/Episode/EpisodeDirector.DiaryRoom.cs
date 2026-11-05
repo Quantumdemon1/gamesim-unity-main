@@ -422,7 +422,8 @@ namespace Gamesim.Episode
             var me = state.Find(state.playerId);
             if (me == null || me.status != ContestantStatus.Active) return false;
             if (EpisodeEngine.OpenSummons(state) != null) return true;
-            if (state.phase == EpisodePhase.Social
+            // Under B9's tuning a full preparation offers no study, so it is no choice either (StudyFull).
+            if (state.phase == EpisodePhase.Social && !StudyFull(state)
                 && EpisodeEngine.SocialActionsSpent(state) < EpisodeEngine.SocialActionBudget(state)) return true;
             return HasPlayerDecision(state);
         }
@@ -654,7 +655,7 @@ namespace Gamesim.Episode
             int limit = TuningRules.StudyLimit(state);
             if (StudyFull(state))
             {
-                hud.Paragraph("Your preparation is full. The next weekly HoH or veto competition you enter uses it up.");
+                hud.Paragraph(StudyWords.FullLine(state));
                 return true;
             }
             hud.OptionCard(EpisodeHud.StudyMemorizeCaption, "Guaranteed +1 preparation, up to the limit of " + limit + ".", "house",
@@ -662,7 +663,7 @@ namespace Gamesim.Episode
             hud.OptionCard(EpisodeHud.StudySneakCaption, WebStudyHouse.SuccessChance("sneak-peek", null)
                 + "% success chance: +2 preparation on success, \u22121 on failure, up to the limit of " + limit + ".", "eye",
                 () => ReviewStudyHouse(state, "sneak-peek"));
-            hud.Aside("Preparation is used up by the next weekly HoH or veto you enter; a study changes it only when you confirm. " + cost);
+            hud.Aside(StudyWords.StudyAside(state) + " " + cost);
             return true;
         }
 

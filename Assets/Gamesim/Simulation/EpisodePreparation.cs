@@ -22,8 +22,7 @@ namespace Gamesim.Simulation
             // it is refused before it spends anything (B9-BALANCE-PLAN decision 6): before B9 it spent the action for
             // nothing, and a sneak-peek there could only lose.
             int limit = TuningRules.StudyLimit(s);
-            Require(!TuningRules.At(s, TuningRules.Bands) || s.playerStudyBonus < limit,
-                "Your preparation is full. It is used in the next Head of Household or veto competition you enter.");
+            Require(!TuningRules.At(s, TuningRules.Bands) || s.playerStudyBonus < limit, TuningRules.FullRefusal(s));
             // Native cast stores traits, not source personalityTraits. Do not merge those fields.
             var plan = WebStudyHouse.PlanStudy(s.playerStudyBonus, c.targetId, null, () => Roll(s), limit);
             s.playerStudyBonus = plan.studyBonus;

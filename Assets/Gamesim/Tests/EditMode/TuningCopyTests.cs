@@ -57,5 +57,56 @@ namespace Gamesim.Tests.EditMode
             foreach (var line in new[] { StudyWords.Use(small), StudyWords.RulesLine(small), StudyWords.RulesLine(big) })
                 Assert.That(line, Does.Not.Contain("5"), "No tuned line names tuning 0's five.");
         }
+
+        /// <summary>
+        /// Under tuning 1 the study section's words and the record row's say what is left to use preparation in: the next
+        /// weekly Head of Household or veto, unless it is thrown; in the final week, when three remain and the final Head of
+        /// Household follows the free time directly (EpisodeEngine's Advance out of Social), its three parts; and once those
+        /// are over, or for a player out of the house, nothing. Tuning 0's record row reads as it always did in all of them.
+        /// </summary>
+        [Test]
+        public void UnderTuningOneTheStudyWordsSayWhatIsLeftToUsePreparationIn()
+        {
+            const string Weekly = "Used up by your next weekly competition.", Final = "Counts in the final HoH's three parts.",
+                None = "No competition is left to use it in.";
+            foreach (int size in new[] { 8, 12 })
+            {
+                var s = SeasonBuilder.Create(new SeasonBuilder.Choice { HouseSize = size }, 1709u);
+                s.tuningRulesVersion = TuningRules.Bands;
+                s.phase = EpisodePhase.Social;
+                Assert.That(StudyWords.UseShort(s), Is.EqualTo(Weekly), "At " + size);
+                Assert.That(StudyWords.FullLine(s), Is.EqualTo("Your preparation is full. The next weekly HoH or veto competition you enter uses it up, unless you throw it."));
+                Assert.That(StudyWords.StudyAside(s), Is.EqualTo("Preparation is used up by the next weekly HoH or veto you enter, unless you throw it; a study changes it only when you confirm."));
+                Assert.That(TuningRules.FullRefusal(s), Is.EqualTo("Your preparation is full. It is used in the next Head of Household or veto competition you enter."));
+
+                var juror = s.Clone();
+                juror.Find(juror.playerId).status = ContestantStatus.Jury;
+                Assert.That(StudyWords.UseShort(juror), Is.EqualTo(None), "A juror has no competition left, at " + size);
+
+                // The final week: three remain, and the final Head of Household is all that is left.
+                foreach (var gone in s.contestants.Where(c => !c.isPlayer).Skip(2)) gone.status = ContestantStatus.Evicted;
+                Assert.That(s.Active.Count(), Is.EqualTo(3));
+                Assert.That(StudyWords.UseShort(s), Is.EqualTo(Final), "At " + size);
+                Assert.That(StudyWords.FullLine(s), Is.EqualTo("Your preparation is full. All three parts of the final Head of Household count it."));
+                Assert.That(StudyWords.StudyAside(s), Is.EqualTo("Preparation counts in all three parts of the final HoH; a study changes it only when you confirm."));
+                Assert.That(TuningRules.FullRefusal(s), Is.EqualTo("Your preparation is full. All three parts of the final Head of Household count it."));
+                foreach (var phase in new[] { EpisodePhase.FinalHoHPart1, EpisodePhase.FinalHoHPart2, EpisodePhase.FinalHoHPart3 })
+                {
+                    s.phase = phase;
+                    Assert.That(StudyWords.UseShort(s), Is.EqualTo(Final), phase + " at " + size);
+                }
+                foreach (var phase in new[] { EpisodePhase.FinalEviction, EpisodePhase.JuryQuestioning, EpisodePhase.FinalSpeeches, EpisodePhase.Jury, EpisodePhase.Finished })
+                {
+                    s.phase = phase;
+                    Assert.That(StudyWords.UseShort(s), Is.EqualTo(None), phase + " at " + size);
+                }
+
+                foreach (var held in new[] { s, juror })
+                {
+                    held.tuningRulesVersion = TuningRules.Off;
+                    Assert.That(StudyWords.UseShort(held), Is.EqualTo("Used in every competition you enter."), "Tuning 0's row, at " + size);
+                }
+            }
+        }
     }
 }

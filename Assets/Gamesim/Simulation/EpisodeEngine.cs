@@ -629,7 +629,8 @@ namespace Gamesim.Simulation
         /// B9's preparation, at the Advance out of a weekly Head of Household or veto (B9-BALANCE-PLAN §3.1, decision 5):
         /// a competition the player entered - played, assisted or simulated - used it, and it is spent
         /// (<see cref="TuningRules.AfterUse"/>); a throw gives every bonus up and keeps it. A Head of Household the player
-        /// sat out, they watched (<see cref="TuningRules.AfterWatchedHoH"/>). The final Head of Household's three parts all
+        /// sat out while still in the house, they watched (<see cref="TuningRules.AfterWatchedHoH"/>); the ledger writes
+        /// "watched" for a juror too, who learns nothing from it. The final Head of Household's three parts all
         /// count it, since no competition follows them. Reads the week's ledger row; draws nothing, and logs only a change,
         /// so a season with no preparation plays as it would at tuning 0.
         /// </summary>
@@ -646,7 +647,7 @@ namespace Gamesim.Simulation
                 s.playerStudyBonus = left;
                 Log(s, "study-house", "Your preparation was used in the competition. Preparation: " + left + "/" + TuningRules.PreparationOutOf(s) + ".", s.playerId);
             }
-            else if (row.placement == 0 && s.phase == EpisodePhase.HoH)
+            else if (row.placement == 0 && s.phase == EpisodePhase.HoH && s.Find(s.playerId)?.status == ContestantStatus.Active)
             {
                 int left = TuningRules.AfterWatchedHoH(s, s.playerStudyBonus);
                 if (left == s.playerStudyBonus) return;

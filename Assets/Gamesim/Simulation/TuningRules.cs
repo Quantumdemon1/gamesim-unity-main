@@ -63,8 +63,8 @@ namespace Gamesim.Simulation
         /// <summary>Tuning 1's small house: the cast that moved in, eight or fewer.</summary>
         public static bool InSmallHouse(EpisodeState s) => s?.contestants == null || s.contestants.Count <= SmallHouse;
 
-        /// <summary>The final week: three remain.</summary>
-        private static bool FinalWeek(EpisodeState s) => s?.contestants != null && s.Active.Count() == 3;
+        /// <summary>The final week: three remain, and the final Head of Household is the only competition left.</summary>
+        public static bool FinalWeek(EpisodeState s) => s?.contestants != null && s.Active.Count() == 3;
 
         /// <summary>
         /// What a study fills preparation to: five at tuning 0; at tuning 1, one, or two in the final week of a small house.
@@ -72,6 +72,14 @@ namespace Gamesim.Simulation
         /// </summary>
         public static int StudyLimit(EpisodeState s) =>
             !At(s, Bands) ? UnspentLimit : InSmallHouse(s) && FinalWeek(s) ? SmallHouseCap : StudyCap;
+
+        /// <summary>
+        /// Tuning 1's refusal of a study at the limit, by what the preparation waits for: the next weekly Head of Household
+        /// or veto, or in the final week the final Head of Household, whose three parts all count it.
+        /// </summary>
+        public static string FullRefusal(EpisodeState s) => FinalWeek(s)
+            ? "Your preparation is full. All three parts of the final Head of Household count it."
+            : "Your preparation is full. It is used in the next Head of Household or veto competition you enter.";
 
         /// <summary>The most preparation a season may hold (validation): five at tuning 0; at tuning 1, two in a small house, else one.</summary>
         public static int PreparationBound(EpisodeState s) =>
@@ -87,7 +95,7 @@ namespace Gamesim.Simulation
         /// <summary>
         /// What is left after a weekly Head of Household the player sat out: at tuning 1 in a small house, a player who has
         /// studied watched it and learned, one more up to <see cref="SmallHouseCap"/>; otherwise unchanged. A player who
-        /// never studies never moves.
+        /// never studies never moves. The engine asks only while the player is in the house: a juror watches nothing.
         /// </summary>
         public static int AfterWatchedHoH(EpisodeState s, int preparation) =>
             At(s, Bands) && InSmallHouse(s) && preparation > 0 ? Math.Min(SmallHouseCap, preparation + 1) : preparation;

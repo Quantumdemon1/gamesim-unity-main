@@ -535,12 +535,12 @@ season wins are the studier at fixed 0.5 on competition seeds 0-799 (Wilson 95%)
   "Study preparation: 1/5", "1 / 5", `Math.Min(5, budget)`) stay as tuning 0's copy pins, and `FreeTimeMetrics11` reads the
   count's denominator from `TuningRules.PreparationOutOf` (exactly 5 there). PlayMode does not run in this PR's proofs;
   the lead's UMA PlayMode set is the gate.
-- **Not done in this PR** (§4.7 and §7), and put to the owner below: the tuning-1 old-save cell
-  `s30-mode2-allweek-tuning1-w3-campaign`, with the native-30 route for a Regular season on the tuning rules it needs in
-  `CurrentOldSaveTrace` (today only the alumni rules take that route, and the observers' own test seasons are held at
-  tuning 0); and the 100-seed tuning-1 headline for the hand-off. This departs from OLD-SAVE-ACCEPTANCE's rule (the
-  owner, 2026-10-15), which asks for one fixture per save version and rules combination, recorded by the build that
-  writes it.
+- **The tuning-1 old-save cell came with the review fixes** (2026-11-05), not with B9-3's first commit:
+  `s30-mode2-allweek-tuning1-w3-campaign`, written and recorded by `8a0cee2e` (OLD-SAVE-ACCEPTANCE 2.8), with a native-30
+  route for a season on the tuning rules alone in `CurrentOldSaveTrace` and the historical `FindDecision` reader
+  (`LegacyDigestSchema30Observer.AdmitNativeTuned30`; a season on the alumni rules and tuning 1 together stays the alumni
+  arm's). An All-Stars season from this build (alumni rules 5 and tuning 1) has no cell of its own yet.
+- **Not done in this PR** (§7), and put to the owner below: the 100-seed tuning-1 headline for the hand-off.
 
 ### What moved, and what was kept
 
@@ -576,7 +576,9 @@ season wins are the studier at fixed 0.5 on competition seeds 0-799 (Wilson 95%)
   limit binds, and the Game Sense case a week whose two weightings round apart. One PlayMode case,
   `StudyDiary_UnderTuningOneTheStudyStopsAtTheSeasonsLimitAndSaysWhatUsesItUp`, installs a tuning-1 season and studies it
   to its limit through the diary's controls; it is compiled by the offline compiles and listed, and runs in the lead's
-  UMA PlayMode set.
+  UMA PlayMode set. `LegacyDigestSchema30ObserverTests.ASeasonOnTheTuningRulesIsAdmittedNativelyAtThirtyAndOnlyThere` (9)
+  pins the tuning arm and each of its refusals, and OldSaveAcceptanceTests plays the tuning-1 cell (4 cases) and reads
+  every schema-30 row's tuning rules back from its save.
 - **Re-recorded with the reason:** `BalanceLabGoldens` (all 48 cells and the `Rules` tuple, `tuningRulesVersion=1`); the
   parts' stamp is `balance-lab-parts/v8`.
 - **Moved to the first undefined value** (`TuningRules.Latest + 1`): the refusal pins in `PooledSchema30ShapeTests`,
@@ -646,20 +648,41 @@ its status compared before and after, both unchanged):
 
 **Round 5 never ran.** It was queued on `9dbb3677` (the diary's study sentences moved into `StudyWords`, and
 `StudyWords.cs` and TuningCopyTests added to the subset) at 08:55 on 2026-11-05, and waited behind Codex's machine gate
-until it was stopped at 13:00, before any step had started. So no build has yet compiled or run `9dbb3677` or anything
-after it: TuningCopyTests has passed in no harness, and the subset floor of 16,592 was counted from the source.
+until it was stopped at 13:00, before any step had started. So until round 6 no build had compiled or run `9dbb3677` or
+anything after it: TuningCopyTests had passed in no harness, and the subset floor of 16,592 was counted from the source.
 
-**Round 6, on the review fixes' head (2026-11-05), runs what round 5 would have and what the fixes touch.** The fixes
-change Simulation only under tuning 1 (the juror's watch; the final week's refusal words) and draw nothing new, and no
-lab policy throws, so no tuning-0 digest and no lab row can move; round 6 runs them all the same, because the head has
-never run:
-- the subset at its floor (16,599), with TuningRulesTests, TuningCopyTests and CompetitionWordsTests by name;
-- both offline compiles and the listers (EditMode 9,761, PlayMode 1,481, the UMA build's 1,523, Uma 134);
-- TuningRulesTests, TuningCopyTests, CompetitionWordsTests and EpisodePreparationTests under Unity's Mono;
-- the digest tiers by name, budget nought and its twin, the budget-0 goldens, and a budget-300 goldens slice, so the
-  re-recorded budget-300 lines are seen passing once.
-Until it has run, the floors raised since round 4 (EditMode 9,761, the subset 16,599, PlayMode 1,481, the UMA build's
-1,523) are counts from the source, marked provisional in `Tools/baseline.txt`.
+**Round 6 ran on `8a0cee2e`, the review fixes' first two commits** (2026-11-05, 15:20 to 15:31, between two of Codex's
+holds; a git-archive snapshot for dotnet, the tree read only for the Mono kit, its files hashed and its status compared
+before and after, both unchanged). The fixes change Simulation only under tuning 1 (the juror's watch; the final week's
+refusal words) and draw nothing new, and no lab policy throws, so no tuning-0 digest and no lab row can move:
+- **The build** of the subset: 0 errors, 0 warnings. **The subset:** 16,597 of 16,599 passed, the floor counted. The two
+  failures were the tests', not the rules': the juror case compared the Head of Household's week with the free time's
+  (the week turns at the Advance out of free time), and K1's positive case seated a sixth houseguest the six-seat default
+  catalogue does not have. Both are corrected in the next commit.
+- **The offline compiles** without UMA and with it: 0 errors in every assembly, no asmdef difference from either copy,
+  and no new warning on a line B9 added. The listers count EditMode 9,761, PlayMode 1,481, the UMA build's PlayMode 1,523
+  and Uma 134, each its floor: the new PlayMode case compiles in both builds.
+- **Under Unity's Mono:** TuningCopyTests 3 of 3 (its first run in any harness), CompetitionWordsTests 9 of 9,
+  EpisodePreparationTests 9 of 9, and TuningRulesTests 14 of 16 (the same two).
+- **Budget nought's tuning-1 twin** passed at `1ee55c2a92571363` (16:42, after Codex's hold at 15:26 had let it start):
+  the juror's watch moved no lab row.
+- **Not run on `8a0cee2e`:** the digest tiers by name, budget nought held, the budget-0 goldens and the budget-300
+  slice. Codex held the machine again from 15:26 to past 19:15, with one gap of about a minute at 16:33. Simulation is
+  unchanged after `8a0cee2e`; round 1's tiers and round 4's Mono fixtures stand for tuning 0, since the fixes change
+  Simulation only under tuning 1, and the one tier that reads tuning-1 play (the twin) passed.
+
+**The tuning-1 cell and the two corrected cases (the review fixes' third commit): recorded, compiled, not yet run.**
+- **What ran** (16:32 to 16:37, in one gap between Codex's holds, through cpu-lock2): the recorder built from
+  `8a0cee2e`'s Simulation and Persistence (0 errors); the cell generated twice (the same state, only `savedAt`
+  differing), recorded twice (the same script and digests) and replayed by the same build (season, state and text
+  digests all match); the offline compile without UMA of the tree holding the cell, its route and the corrected cases (0
+  errors in all five assemblies); and the holds probe under Unity's Mono (the cell 9a04dfc1f6d52a6e, both controls their
+  committed values).
+- **What has not run:** the corrected TuningRulesTests cases (2), the tuning arm's observer test (9 cases),
+  OldSaveAcceptanceTests on the cell (4 cases, and the inventory test's new cell), the subset at 16,608 and the
+  EditMode lister at 9,774. `D:/ClaudeScratch/b9/fix/phase4.sh` runs all of them, and round 6's parked digest steps, on
+  exactly the committed bytes (its `cell/tested2.sha` guards them); the floors 9,774 and 16,608 are counts from the
+  source until it has.
 
 ### For the owner
 
@@ -715,16 +738,11 @@ Until it has run, the floors raised since round 4 (EditMode 9,761, the subset 16
   three parts." in the final week, "No competition is left to use it in." after it or out of the house), the rules
   line's watch, the briefing's "A weekly Head of Household or veto you enter uses your preparation up", and the two
   private log lines. They are read best in play.
-- **Asked of the owner: waive the old-save rule for tuning 1 until B9-4, or hold the merge for it.** OLD-SAVE-ACCEPTANCE
-  (the owner, 2026-10-15) means "committed fixture saves, one per save version and rules combination", and §9 puts the
-  tuning-1 cell, `s30-mode2-allweek-tuning1-w3-campaign`, in B9-3. It is not in this PR: it needs a native-30 route for a
-  Regular season on the tuning rules in `CurrentOldSaveTrace` and its observer (admitting the season's own tuning value,
-  as the alumni arm's `AdmitNative30` does) and a fixture recorded by `Tools/OldSaves`' recorder built from this commit,
-  and every dotnet, compile and Mono job has been held for Codex since 08:06 on 2026-11-05. The cost of waiving it:
-  until the cell is recorded nothing replays a tuning-1 save to a digest, so a later change to tuning-1 play (R7, R8 or
-  D6 building on B9) would pass old-save acceptance unseen; and a cell recorded after the merge pins whatever tuning 1
-  plays then, not the numbers signed off here. So if the owner waives it, B9-4 records the cell from this PR's merge
-  commit, before anything that changes tuning-1 play lands.
+- **The tuning-1 old-save cell is in this PR** (OLD-SAVE-ACCEPTANCE 2.8), as the owner's rule of 2026-10-15 asks: one
+  fixture per save version and rules combination, recorded by the build that writes it. Its walker never studies or
+  counters, so it pins tuning 1's save, load and replay (and the field itself), not B9's levers in play; the engine pins
+  and the lab's pins hold those. From here a change to how a tuning-1 season saves, loads or plays the walker's season
+  turns it red; a change to a lever itself is the engine's and the lab's pins to catch.
 - **Asked of the owner: accept the 100-seed headline's deferral, or hold the merge for it.** §7 lists the 100-seed
   tuning-1 headline (all 12 policies at budget 0, with Q4 and the pacing tables) as an input R7, D6 and story rules 10
   take from B9. Without it there is no tuning-1 figure for the all-policy Q5, for the skilled policies beyond the beast's

@@ -281,7 +281,9 @@ namespace Gamesim.Tests.EditMode
             WalkWhile(engine, s => s.phase == EpisodePhase.HoH);
             var after = engine.Snapshot;
             var row = after.ledger.competitions.Last(r => r.kind == "HoH");
-            Assert.That((row.week, row.entry, row.placement), Is.EqualTo((start.week, CompetitionEntry.Watched, 0)), "Precondition: the player sat it out.");
+            // The week turns at the Advance out of the free time: the Head of Household is the next week's.
+            Assert.That(after.week, Is.GreaterThan(start.week), "Precondition: past the free time into the next week.");
+            Assert.That((row.week, row.entry, row.placement), Is.EqualTo((after.week, CompetitionEntry.Watched, 0)), "Precondition: the player sat it out.");
             Assert.That(after.Find(after.playerId).status, Is.Not.EqualTo(ContestantStatus.Active));
             Assert.That(after.playerStudyBonus, Is.EqualTo(1), "Out of the house, watching teaches nothing.");
             Assert.That(after.events.Any(e => e.kind == "study-house" && e.text.StartsWith("You watched the Head of Household", StringComparison.Ordinal)), Is.False);
@@ -407,32 +409,33 @@ namespace Gamesim.Tests.EditMode
         [Test]
         public void UnderTuningOneATieStillCarriesThePlayersCounterWhereAMemberCameRound()
         {
-            // The player's pact of three voters off the block, all saying the plan: two Sneaky, who never come round, and one
-            // Loyal member who thinks the world of the player. On the first seed where the Loyal one comes round on their coin
-            // it is two against two - the player and the convert against the two still on the plan - a tie a member came
-            // round in, so the counter carries under tuning 1 as it does today (K1 refuses only a tie nobody came round in).
+            // The player's pact of the two voters and the Head of Household (the default catalogue seats six, so they are the
+            // three off the block), all saying the plan: two Sneaky, who never come round, and one Loyal voter who thinks the
+            // world of the player. On the first seed where the Loyal one comes round on their coin it is two against two - the
+            // player and the convert against the two still on the plan - a tie a member came round in, so the counter carries
+            // under tuning 1 as it does today (K1 refuses only a tie nobody came round in).
             for (uint seed = 1; seed <= 60; seed++)
             {
                 var s = PactPlanTests.WarRoom(out var pact, seed: seed);
                 var npcs = s.Active.Where(c => !c.isPlayer).Select(c => c.id).ToList();
-                pact.members.Add(npcs[5]);
+                pact.members.Add(npcs[0]);
                 PactPlanTests.Warm(s, pact);
-                foreach (var id in new[] { npcs[3], npcs[4] }) s.Find(id).traits = new List<string> { "Sneaky" };
-                s.Find(npcs[5]).traits = new List<string> { "Loyal" };
-                PactPlanTests.SetScore(s, npcs[5], s.playerId, 100);
-                if (!PactPlans.ComesRound(s, PactPlanTests.PactId, npcs[5])) continue;
+                foreach (var id in new[] { npcs[3], npcs[0] }) s.Find(id).traits = new List<string> { "Sneaky" };
+                s.Find(npcs[4]).traits = new List<string> { "Loyal" };
+                PactPlanTests.SetScore(s, npcs[4], s.playerId, 100);
+                if (!PactPlans.ComesRound(s, PactPlanTests.PactId, npcs[4])) continue;
                 string plan = s.nominees[0], counter = s.nominees[1];
-                Assert.That(new[] { npcs[3], npcs[4], npcs[5] }.Intersect(s.nominees), Is.Empty, "Precondition: the three are off the block.");
+                Assert.That(new[] { npcs[3], npcs[4], npcs[0] }.Intersect(s.nominees), Is.Empty, "Precondition: the three are off the block.");
                 Assert.That(EpisodeEngine.PlayerFounded(s, pact), Is.True);
-                var row = PactPlanTests.Row(s, (npcs[3], plan), (npcs[4], plan), (npcs[5], plan));
+                var row = PactPlanTests.Row(s, (npcs[3], plan), (npcs[4], plan), (npcs[0], plan));
                 var today = PactPlans.Settle(s, pact, row, PactPlans.Counter, counter);
-                Assert.That(today.cameRound, Is.EqualTo(new[] { npcs[5] }), "Seed " + seed + ": the Loyal member came round.");
+                Assert.That(today.cameRound, Is.EqualTo(new[] { npcs[4] }), "Seed " + seed + ": the Loyal member came round.");
                 Assert.That((today.stance, today.targetId), Is.EqualTo((PactPlanStance.Countered, counter)), "Tuning 0: two against two, the player's side.");
                 var tuned = s.Clone();
                 tuned.competitionRulesVersion = CompetitionRules.Widened;
                 tuned.tuningRulesVersion = TuningRules.Bands;
                 var settled = PactPlans.Settle(tuned, tuned.alliances.Single(a => a.id == PactPlanTests.PactId), row, PactPlans.Counter, counter);
-                Assert.That(settled.cameRound, Is.EqualTo(new[] { npcs[5] }), "The same coin at tuning 1.");
+                Assert.That(settled.cameRound, Is.EqualTo(new[] { npcs[4] }), "The same coin at tuning 1.");
                 Assert.That((settled.stance, settled.targetId), Is.EqualTo((PactPlanStance.Countered, counter)), "Tuning 1: a tie a member came round in carries.");
                 return;
             }

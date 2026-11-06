@@ -173,7 +173,8 @@
 # juror's watch, K5 on its own, K1's tie a member came round in) and TuningCopyTests 1 (the final week's words), counted
 # from the source; round 6's lister counted 9761 (2026-11-05).
 # 9774 = 9761 + the tuning-1 old-save cell: OldSaveAcceptanceTests' four cases for s30-mode2-allweek-tuning1-w3-campaign and
-# LegacyDigestSchema30ObserverTests' tuning arm, 9 (2026-11-05).
+# LegacyDigestSchema30ObserverTests' tuning arm, 9 (2026-11-05). Counted from the source; no run has observed it (round 7,
+# fix7/phase5.sh, runs the lister).
 Gamesim.EditModeTests 9774
 # The UMA-free build. 1215 = 1236, the count after the consolidation's lanes (S2a, S2b, S4a), less the 7
 # farewell probes moved to Gamesim.DiagnosticsPlayModeTests and the 14 farewell readiness tests that now
@@ -480,4 +481,5 @@ Gamesim.Uma.DiagnosticsPlayModeTests 10
 # 16599 = 16592 + B9's review fixes: TuningRulesTests 6 and TuningCopyTests 1, as in the EditMode floor (2026-11-05).
 # Round 6's subset counted 16599 (two of them failing, both test faults, fixed in the next commit) (2026-11-05).
 # 16608 = 16599 + LegacyDigestSchema30ObserverTests' tuning arm, 9; OldSaveAcceptanceTests is the editor's only (2026-11-05).
+# Counted from the source; no run has observed it (round 7, fix7/phase5.sh, runs the subset).
 Gamesim.SimulationTests 16608

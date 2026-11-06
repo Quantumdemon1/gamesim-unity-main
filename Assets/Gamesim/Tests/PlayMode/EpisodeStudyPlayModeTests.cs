@@ -304,6 +304,18 @@ namespace Gamesim.Tests.PlayMode
             }
             Assert.That(ActiveDiaryText(), Does.Contain(StudyWords.RulesLine(full)));
             AssertEquivalent(full, director.Snapshot);
+
+            // A fresh open, with no tab chosen: a full preparation is no choice (DiaryHasChoice's !StudyFull), so the record's
+            // tab opens first and says nothing is pending. Last, because opening a panel may commit the NPC world's ticks.
+            director.ClosePanels();
+            yield return OpenDiaryFixturePanel();
+            var reopened = director.Snapshot;
+            Assert.That((reopened.playerStudyBonus, reopened.phase, reopened.pendingDiary == null, EpisodeEngine.OpenSummons(reopened) == null),
+                Is.EqualTo((1, EpisodePhase.Social, true, true)), "Precondition: still full in free time, with nothing else owed.");
+            var status = ActiveRect(EpisodeHud.DiaryStatusName);
+            Assert.That(status, Is.Not.Null, "With the study full and nothing else to decide, the record's tab opens first.");
+            Assert.That(status.GetComponentsInChildren<TMPro.TMP_Text>().Select(label => label.text), Does.Contain("No private decision pending"));
+            Assert.That(DiaryHasButton(EpisodeHud.StudyMemorizeCaption), Is.False);
         }
 
         private static EpisodeState StudyUiExpected(EpisodeState before, EpisodeCommandKind kind, string choice = null)

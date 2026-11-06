@@ -3419,7 +3419,7 @@
    "writerDigest": "89c0df40f42e4f6b",
    "writerSchema": 30,
    "writerCommands": 47,
-   "note": "The tuning-1 cell (B9-BALANCE-PLAN 4.7): the shipped rules at schema 30 for a fresh Regular season of 8 (ShippedRules.ApplyFresh: the vote family, mode 2, with the all-week rules, the leaks and the war rooms; dialogue rules 0, alumni rules 0), which the B9 build (8a0cee2e) starts on tuning rules 1, B9's balance bands: preparation spent when used and a study's limit of 1 (2 in a house of eight's final week, and a watched Head of Household adds one), Game Sense weighed 0.2 / 0.6 / 0.2, and the war room's counter under K1 and K5. Played to mid-season and saved at the week-3 campaign by that build; seed 3001, the tuning-0 Regular cell's own, so the two pair. Its writer is its reference.",
+   "note": "The tuning-1 cell (B9-BALANCE-PLAN 4.7): the shipped rules at schema 30 for a fresh Regular season of 8 (ShippedRules.ApplyFresh: the vote family, mode 2, with the all-week rules, the leaks and the war rooms; dialogue rules 0, alumni rules 0), which the B9 build (8a0cee2e) starts on tuning rules 1. Played to mid-season and saved at the week-3 campaign by that build; seed 3001, the tuning-0 Regular cell's own. The walker never studies or counters, so no B9 lever fires: its commands and checkpoints are the tuning-0 cell's, and the save differs from that cell's only in tuningRulesVersion. It pins the save, load and replay of a tuning-1 save, not the levers. Its writer is its reference.",
    "holdsDigest": "9a04dfc1f6d52a6e"
   }
  ],

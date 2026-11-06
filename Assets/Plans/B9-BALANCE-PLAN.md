@@ -575,8 +575,11 @@ season wins are the studier at fixed 0.5 on competition seeds 0-799 (Wilson 95%)
   member came round in still carries (K1's other half). The sneak-peek case now takes a seed whose roll succeeds, so the
   limit binds, and the Game Sense case a week whose two weightings round apart. One PlayMode case,
   `StudyDiary_UnderTuningOneTheStudyStopsAtTheSeasonsLimitAndSaysWhatUsesItUp`, installs a tuning-1 season and studies it
-  to its limit through the diary's controls; it is compiled by the offline compiles and listed, and runs in the lead's
-  UMA PlayMode set. `LegacyDigestSchema30ObserverTests.ASeasonOnTheTuningRulesIsAdmittedNativelyAtThirtyAndOnlyThere` (9)
+  to its limit through the diary's controls, and last opens the diary afresh: with the study full and nothing else owed,
+  the record's tab opens first and reads "No private decision pending" (the runtime fix the test exposed: a full
+  preparation is no pending choice, `DiaryHasChoice`'s `!StudyFull`). It is compiled by the offline compiles and listed,
+  and has not run in Unity: it runs in the lead's UMA PlayMode set, and its pass is quoted before sign-off.
+  `LegacyDigestSchema30ObserverTests.ASeasonOnTheTuningRulesIsAdmittedNativelyAtThirtyAndOnlyThere` (9)
   pins the tuning arm and each of its refusals, and OldSaveAcceptanceTests plays the tuning-1 cell (4 cases) and reads
   every schema-30 row's tuning rules back from its save.
 - **Re-recorded with the reason:** `BalanceLabGoldens` (all 48 cells and the `Rules` tuple, `tuningRulesVersion=1`); the
@@ -669,7 +672,10 @@ refusal words) and draw nothing new, and no lab policy throws, so no tuning-0 di
 - **Not run on `8a0cee2e`:** the digest tiers by name, budget nought held, the budget-0 goldens and the budget-300
   slice. Codex held the machine again from 15:26 to past 19:15, with one gap of about a minute at 16:33. Simulation is
   unchanged after `8a0cee2e`; round 1's tiers and round 4's Mono fixtures stand for tuning 0, since the fixes change
-  Simulation only under tuning 1, and the one tier that reads tuning-1 play (the twin) passed.
+  Simulation only under tuning 1. The twin is not the only tier that reads tuning-1 play: all 48 goldens do (their
+  `Rules` tuple is a fresh season's, `tuningRulesVersion=1`), and so do the tiers that start through `ApplyFresh`
+  (above). None of those had run on `8a0cee2e` or later, and the 24 budget-300 cells, recorded in round 1 before the
+  juror's guard, had never been seen passing.
 
 **The tuning-1 cell and the two corrected cases (the review fixes' third commit): recorded, compiled, not yet run.**
 - **What ran** (16:32 to 16:37, in one gap between Codex's holds, through cpu-lock2): the recorder built from
@@ -680,9 +686,9 @@ refusal words) and draw nothing new, and no lab policy throws, so no tuning-0 di
   committed values).
 - **What has not run:** the corrected TuningRulesTests cases (2), the tuning arm's observer test (9 cases),
   OldSaveAcceptanceTests on the cell (4 cases, and the inventory test's new cell), the subset at 16,608 and the
-  EditMode lister at 9,774. `D:/ClaudeScratch/b9/fix/phase4.sh` runs all of them, and round 6's parked digest steps, on
-  exactly the committed bytes (its `cell/tested2.sha` guards them); the floors 9,774 and 16,608 are counts from the
-  source until it has.
+  EditMode lister at 9,774. Round 7 (`D:/ClaudeScratch/b9/fix7/phase5.sh`) runs all of them, round 6's parked digest
+  steps, the budget-0 goldens and all six budget-300 slices, on a git-archive snapshot of the head and the tree read
+  only; the floors 9,774 and 16,608 are counts from the source until it has.
 
 ### For the owner
 
@@ -739,10 +745,20 @@ refusal words) and draw nothing new, and no lab policy throws, so no tuning-0 di
   line's watch, the briefing's "A weekly Head of Household or veto you enter uses your preparation up", and the two
   private log lines. They are read best in play.
 - **The tuning-1 old-save cell is in this PR** (OLD-SAVE-ACCEPTANCE 2.8), as the owner's rule of 2026-10-15 asks: one
-  fixture per save version and rules combination, recorded by the build that writes it. Its walker never studies or
-  counters, so it pins tuning 1's save, load and replay (and the field itself), not B9's levers in play; the engine pins
-  and the lab's pins hold those. From here a change to how a tuning-1 season saves, loads or plays the walker's season
-  turns it red; a change to a lever itself is the engine's and the lab's pins to catch.
+  fixture per save version and rules combination, recorded by the build that writes it. **The tuning-1 cell pins the
+  save, load and replay of a tuning-1 save, not the levers.** Its walker never studies or counters, so no lever fires:
+  its season is the tuning-0 Regular cell's exactly (the same 47 commands, the same week, phase, revision and random
+  state at all 48 checkpoints, the same `holdsDigest`), and the save differs only in `tuningRulesVersion`. A change to a
+  lever (the preparation's spend or watch, the study's limit, K1 and K5, the weights; R7, R8 and D6 build on them) still
+  passes old-save acceptance. In Unity's EditMode gate the levers are pinned by TuningRulesTests alone; the lab's pins
+  are the dotnet subset's or `[Explicit]` tiers compiled out of the editor. A second tuning-1 cell, from a recorder
+  profile that studies (and counters in a war room) and saved with preparation banked in a house of eight, would carry
+  the levers through old-save acceptance; the recorder has no such profile, and it is not in this PR (the owner's call
+  whether B9 should wait for it).
+- **The tuning-1 diary is unproven in Unity.** `StudyDiary_UnderTuningOneTheStudyStopsAtTheSeasonsLimitAndSaysWhatUsesItUp`
+  (with its check that a fresh open shows the record's tab and "No private decision pending" once the study is full)
+  compiles in both offline builds and is listed, but has never run: the lead's UMA PlayMode set is its gate, and its pass
+  is quoted here before sign-off.
 - **Asked of the owner: accept the 100-seed headline's deferral, or hold the merge for it.** §7 lists the 100-seed
   tuning-1 headline (all 12 policies at budget 0, with Q4 and the pacing tables) as an input R7, D6 and story rules 10
   take from B9. Without it there is no tuning-1 figure for the all-policy Q5, for the skilled policies beyond the beast's

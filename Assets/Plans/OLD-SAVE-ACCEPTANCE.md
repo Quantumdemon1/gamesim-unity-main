@@ -730,6 +730,16 @@ rules 5 and tuning 1 together, which the alumni arm admits already (2.6), and ha
 - Checked for anything typed: the player is "You", the cast is the shipped roster, the only text is the walker's fixed
   lines and the house's own lines, and no path appears.
 
+**What it pins, and what it does not.** The cell pins the save, load and replay of a tuning-1 save (and the field
+itself), not B9's levers. The walker never studies or counters, so no lever fires in its replay: its 47 commands, and
+the week, phase, revision and random state at all 48 checkpoints, are the tuning-0 Regular cell's; the two saved states
+differ only in `tuningRulesVersion`; and the two cells' `holdsDigest` is the same value. So a change to a lever (the
+preparation's spend or watch, the study's limit, K1 and K5, the Game Sense weights) still passes old-save acceptance. In
+Unity's EditMode gate those levers are pinned by TuningRulesTests alone; the lab's pins run in the dotnet subset
+(TuningRulesTests' lab case) or as `[Explicit]` tiers compiled out of the editor. A second tuning-1 cell from a recorder
+profile that studies (and counters in a war room), saved with preparation banked in a house of eight, would carry the
+levers through old-save acceptance; the recorder has no such profile yet, and none is in B9.
+
 **Checkpoints.** A season on the tuning rules has no schema-29 view: tuning 1 exists only from 30. `CurrentOldSaveTrace`
 admits a season on the tuning rules alone natively at 30
 (`LegacyDigestSchema30Observer.AdmitNativeTuned30`: complete validation, literal 30, the JSON the state's own view, the

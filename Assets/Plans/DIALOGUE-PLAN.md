@@ -2,7 +2,7 @@
 
 Design note P0, 2026-10-25. It revises D0 (9d5b1f83) into the joint design note of the master plan's Stage 0. Docs only: it changes no code, save, test or rule.
 
-It settles dialogue's own rules, and the numbers dialogue shares with other work: the pooled schema 30 that the All-Star histories build (§6, final) and competition rules 5 (§9). The owner approves it once.
+It settles dialogue's own rules, and the numbers dialogue shares with other work: the pooled schema 30 that the All-Star histories build (§6, final) and competition rules 5 (§9; released by B9, which landed PC5's preparation as tuning rules 1). The owner approves it once.
 
 **The owner's instruction, 2026-10-25.** About dialogue V2 the owner said: "Fix them so they work and implement these changes now." This plan therefore goes ahead on the defaults in §1, recorded here as the owner's instruction to implement now with these defaults. Each default stays open to the owner's change, and §1 says what changing it costs. Shipped seasons stay on dialogue rules 0 until D7.
 
@@ -55,7 +55,7 @@ This note also makes the calls below. They are open to the owner too.
 | 10 | What the veto question costs | "If you win the veto, will you use it on me?" costs the window's action, and no grant pays for it. | Let the nominee's grant pay for it. |
 | 11 | **P0.** Storyline budget | At most **32 conversations a season**, never in the last eight storylines. Nothing is pruned. A refused conversation leaves its plea available as the one-shot plea (§5.5). | No budget: dialogue and the story pool compete for the same 92, and late in a long season either one starves the other. |
 | 12 | **P0.** Consultation windows | **The existing windows and phases** (§4.1). | A new window changes the length of every save's `windowActions`, which validation checks (Simulation/EpisodeValidation.cs:148). That means a migration. |
-| 13 | **P0.** Competition rules 5 | Claimed for PC5, the competition part of B9 (§9). | - |
+| 13 | **P0.** Competition rules 5 | Claimed for PC5, the competition part of B9 (§9). **Released by B9** (tuning rules 1; B9-BALANCE-PLAN decision 2), see §9: 5 is unclaimed. | - |
 
 **The owner's answer on P1(a), 2026-10-25.** Rules 1 locked the desperate (Emotional) plea while its conversation could not start, in about one nominated Campaign week in two (§7, D1 as built). Asked whether rules 1 keeps that lock or takes the rules-2 fallback before it freezes, the owner answered, verbatim: "Never lose the plea". So while the conversation cannot start, the desperate plea is the ordinary one-click plea for its one action, with no conversation that time, and the conversation is offered again once the house moment is answered. Switching dialogue on must never make a week worse than switching it off. Rules 1 and every later version share the one fallback (§5.5), built in D1b (§7).
 
@@ -484,6 +484,7 @@ None of these slices adds a persisted field. If one ever did, it would be qualif
 
 ## 9. Competition rules 5
 
+- **Update, B9 (2026-11-03).** B9 landed PC5's preparation as tuning rules 1 (`tuningRulesVersion`, B9-BALANCE-PLAN decision 2) and released competition rules 5: it is unclaimed, and the next slice that changes how a competition is scored takes it (Will's throw in H1d or PC6's minigames, whichever lands first). The claim below is history.
 - **The claim.** Competition rules 5 is claimed for PC5, the competition part of B9 (the props and competitions line), so no other slice takes it. PC6's new minigames take 6 or later.
 - **No field.** It lives in the existing `competitionRulesVersion`, which validation bounds by `CompetitionRules.Current` (Simulation/EpisodeValidation.cs:134) and `ApplyFresh` writes (Simulation/ShippedRules.cs:29). So it needs nothing from schema 30.
 - **When PC5 lands.** `CompetitionRules.Current` (Simulation/CompetitionRules.cs:41-42) and `CompetitionMiniGames.CurrentRules` (Runtime/Presentation/CompetitionMiniGames.cs:23) move together. Rules 5 freezes the first time `ApplyFresh` writes it.
@@ -497,4 +498,4 @@ None of these slices adds a persisted field. If one ever did, it would be qualif
 - **Free warmth.** The +3/-3 lands at most once a conversation, a conversation costs an action or a grant, and each NPC gives one occasion of a kind a week.
 - **Privacy.** Previews show only public facts and what the player knows. Role moments' privacy tests (§5.3 of that plan) apply.
 - **Captions are a contract.** The chip and every new answer get new captions, checked unused. Nothing is appended to an existing caption.
-- **Two sessions share the branch.** This note claims dialogue rules 2 to 5, in dialogue's own field, and records competition rules 5 for PC5. It claims no schema number: schema 30 is the histories', provisional until the story session confirms it (ALL-STAR-HISTORIES-PLAN §10). It claims no command kind either: `StartDialogue` and `ChooseDialogue` carry every conversation (Simulation/EpisodeState.cs:697-700), and the next free kind stays 66. Story rules 10, the story session's fix for the pariah rate, still stands between R7 and D7.
+- **Two sessions share the branch.** This note claims dialogue rules 2 to 5, in dialogue's own field, and records that B9 released competition rules 5 (it was PC5's). It claims no schema number: schema 30 is the histories', provisional until the story session confirms it (ALL-STAR-HISTORIES-PLAN §10). It claims no command kind either: `StartDialogue` and `ChooseDialogue` carry every conversation (Simulation/EpisodeState.cs:697-700), and the next free kind stays 66. Story rules 10, the story session's fix for the pariah rate, still stands between R7 and D7.

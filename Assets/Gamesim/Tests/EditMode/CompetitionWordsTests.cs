@@ -104,6 +104,37 @@ namespace Gamesim.Tests.EditMode
             Assert.That(CompetitionWords.EarnedRule(3), Does.Not.Contain("However you enter"));
         }
 
+        /// <summary>
+        /// B9 (B9-BALANCE-PLAN §4.7): the briefing's earned line counts preparation out of the season's own limit. A season
+        /// before B9's tuning reads the sentence it always read, byte for byte; under tuning 1 the count is out of the study's
+        /// limit, and the line says a weekly competition uses it up instead of that it carries over.
+        /// </summary>
+        [Test]
+        public void TheEarnedLineCountsPreparationOutOfTheSeasonsOwnLimit()
+        {
+            var state = Fixture(1708, EpisodePhase.HoH);
+            Assert.That(state.tuningRulesVersion, Is.Zero);
+            foreach (int banked in new[] { 0, 1, 3, 5 })
+            {
+                state.playerStudyBonus = banked;
+                Assert.That(CompetitionWords.EarnedRule(state), Is.EqualTo(CompetitionWords.EarnedRule(banked)), "Tuning 0 with " + banked + " banked.");
+            }
+            Assert.That(CompetitionWords.EarnedRule((EpisodeState)null), Is.EqualTo(CompetitionWords.EarnedRule(0)));
+
+            state.tuningRulesVersion = TuningRules.Bands;
+            state.playerStudyBonus = 1;
+            string tuned = CompetitionWords.EarnedRule(state);
+            Assert.That(tuned, Does.Contain("your preparation (1 of " + TuningRules.PreparationOutOf(state) + ")"));
+            Assert.That(tuned, Does.Not.Contain("of 5").And.Not.Contain("carries over"));
+            Assert.That(tuned, Does.Contain("A weekly Head of Household or veto you enter uses your preparation up"));
+            Assert.That(tuned, Does.StartWith("Play it, let the day decide or take the accessible alternative:"));
+            AssertNoJargon(tuned);
+            state.playerStudyBonus = 2; // a watch took it past the study's limit, in a house of eight or fewer
+            Assert.That(CompetitionWords.EarnedRule(state), Does.Contain("your preparation (2 of 2)"));
+            state.playerStudyBonus = 0;
+            Assert.That(CompetitionWords.EarnedRule(state), Does.Not.Contain("preparation ("), "Nothing banked, no count.");
+        }
+
         [Test]
         public void TheEnginesScaffoldingIsNeverAStoryLine()
         {

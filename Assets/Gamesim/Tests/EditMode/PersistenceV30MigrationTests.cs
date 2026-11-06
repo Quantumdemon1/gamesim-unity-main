@@ -128,7 +128,8 @@ namespace Gamesim.Tests.EditMode
 
         // From H1b the alumni rules define 1, with its edition, and from section 14 every value to AlumniRules.Latest:
         // "alumni-rule" holds the first undefined value, Latest + 1 (it held 1 at SCH30 and 2 at H1b), and "alumni-unedited"
-        // holds 1 without the edition its season was built from.
+        // holds 1 without the edition its season was built from. From B9 the tuning rules define 1 (TuningRules.Bands):
+        // "tuning-rule" holds the first undefined value, TuningRules.Latest + 1 (it held 1 until B9).
         [TestCase("alumni-rule")] [TestCase("alumni-unedited")] [TestCase("alumni-edition")] [TestCase("tuning-rule")] [TestCase("future-header")]
         [TestCase("missing-pooled")]
         public void TheStoreRefusesAThirtyHoldingAPooledValueOrAFutureSchemaWithoutChangingAFile(string defect)
@@ -139,7 +140,7 @@ namespace Gamesim.Tests.EditMode
                 case "alumni-rule": current["alumniRulesVersion"] = AlumniRules.Latest + 1; break;
                 case "alumni-unedited": current["alumniRulesVersion"] = 1; break;
                 case "alumni-edition": current["alumniCatalogEdition"] = "allstar-histories-1"; break;
-                case "tuning-rule": current["tuningRulesVersion"] = 1; break;
+                case "tuning-rule": current["tuningRulesVersion"] = TuningRules.Latest + 1; break;
                 case "future-header": current["schemaVersion"] = 31; break;
                 default: current.Remove("tuningRulesVersion"); break;
             }

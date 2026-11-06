@@ -49,7 +49,8 @@ namespace Gamesim.Tests.EditMode
                 cells = () => PerformanceModel.Levels.SelectMany(level => BalanceLab.Grid(new[] { BalancePolicies.Passive }, HeadlineSizes, PerformanceModel.Fixed(level))).ToList(),
                 tables = Performance },
             new TierSpec { name = "warrooms", title = "War-room tier", per = "policy and house", seedsVariable = "BALANCE_WARROOM_SEEDS", defaultSeeds = 100,
-                cells = () => BalanceLab.Grid(WarRoomPolicies, HeadlineSizes), tables = runs => { var md = new StringBuilder(); WarRooms(md, runs); md.Append(BalanceLabDiagnostics.CounterWhatIf(runs)); return md.ToString(); } },
+                cells = () => BalanceLab.Grid(WarRoomPolicies, HeadlineSizes), tables = runs => { var md = new StringBuilder(); WarRooms(md, runs); md.Append(BalanceLabDiagnostics.CounterWhatIf(runs));
+                    md.Append(BalanceLabDiagnostics.CounterTallies(runs)); Sense(md, runs); md.Append(BalanceLabDiagnostics.GameSenseWhatIf(runs)); return md.ToString(); } },
             new TierSpec { name = "npc", title = "NPC budget tier", per = "policy, house and budget", seedsVariable = "BALANCE_NPC_SEEDS", defaultSeeds = 200,
                 cells = NpcGrid, tables = runs => NpcBudget(runs) + BalanceLabDiagnostics.NominationDecomposition(runs) + BalanceLabDiagnostics.PariahDecomposition(runs) },
             new TierSpec { name = "projection", title = "Projection tier", per = "house and budget", seedsVariable = "BALANCE_PROJECTION_SEEDS", defaultSeeds = 400,
@@ -690,7 +691,8 @@ namespace Gamesim.Tests.EditMode
                 double G(string policy) => Mean(runs.Where(r => r.error == null && HouseOf(r.cell) == size && r.cell.policy == policy).Select(r => (double)r.autopsy.gameSense));
                 md.AppendLine();
                 md.AppendLine("Size " + size + ": gated reader minus random " + BalanceLab.Num(G(BalancePolicies.Reader) - G(BalancePolicies.Random), "0.0")
-                    + "; oracle reader minus random " + BalanceLab.Num(G(BalancePolicies.OracleReader) - G(BalancePolicies.Random), "0.0") + " (target 20).");
+                    + " (B5-B6: at least 10, its low end above 5, in the paired table)"
+                    + "; oracle reader minus random " + BalanceLab.Num(G(BalancePolicies.OracleReader) - G(BalancePolicies.Random), "0.0") + " (reported, no band).");
             }
             md.AppendLine();
         }

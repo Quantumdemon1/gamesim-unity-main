@@ -27,6 +27,10 @@ namespace Gamesim.Tests.EditMode
     /// receipt, the Hitmen's final two and its handshake, the sequences they took, the alumni rules and edition) must still
     /// hash to its schema-29 record. So the histories are the only change, byte for byte, and every other season is
     /// untouched.</para>
+    ///
+    /// <para><b>From B9</b> every fresh season starts on tuning 1 (<see cref="TuningRules.Shipped"/>, B9-BALANCE-PLAN §4.3), a
+    /// plain int that draws, mints and logs nothing. No digest is re-recorded for it either: with that one field taken back
+    /// to 0 the season must hash to its schema-29 record, so the int is B9's only change to a fresh season.</para>
     /// </summary>
     public sealed class FreshSeasonStateDigestTests
     {
@@ -90,6 +94,9 @@ namespace Gamesim.Tests.EditMode
                 Assert.That(s.relationships.SelectMany(r => r.events).Count(AlumniHistories.IsReceipt), Is.EqualTo(4), "Three seated pairs, four receipts.");
                 s = AlumniHistoriesTests.WithoutHistories(s);
             }
+            // B9: a fresh season's tuning is the shipped value, and nothing else of B9's is in its opening state.
+            Assert.That(s.tuningRulesVersion, Is.EqualTo(applyFresh ? TuningRules.Shipped : TuningRules.Off), "B9: new seasons start on tuning 1.");
+            s.tuningRulesVersion = TuningRules.Off;
             var payload = Payload(s);
             // SCH30 step 2: the live schema is 30; the test inverse takes the season back to the retained 29 (the pooled
             // fields at their off literals removed, the header 29) before it is hashed against the 29 build's record.

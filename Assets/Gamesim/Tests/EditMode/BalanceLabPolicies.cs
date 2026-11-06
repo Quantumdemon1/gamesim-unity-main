@@ -304,7 +304,7 @@ namespace Gamesim.Tests.EditMode
 
         protected override EpisodeCommand Act(PlayerView v)
         {
-            if (!studies || !v.ActionsLeft || v.Phase != EpisodePhase.Social || v.Preparation >= 5 || WasRefused(EpisodeCommandKind.StudyHouse, "memorize-layout")) return null;
+            if (!studies || !v.ActionsLeft || v.Phase != EpisodePhase.Social || v.Preparation >= v.PreparationCap || WasRefused(EpisodeCommandKind.StudyHouse, "memorize-layout")) return null;
             return Make(v, EpisodeCommandKind.StudyHouse, "memorize-layout");
         }
     }
@@ -710,8 +710,9 @@ namespace Gamesim.Tests.EditMode
         {
             if (v.FirstNight) return MeetTheHouse(v, WebIntroductions.Bold);
             if (!v.ActionsLeft) return null;
-            // Study until the preparation is full (five), which it then keeps all season.
-            if (v.Phase == EpisodePhase.Social && v.Preparation < 5 && !WasRefused(EpisodeCommandKind.StudyHouse, "memorize-layout"))
+            // Study until the preparation is full: five before B9's tuning, which it then keeps all season; under it, the
+            // season's limit, which the next weekly competition spends.
+            if (v.Phase == EpisodePhase.Social && v.Preparation < v.PreparationCap && !WasRefused(EpisodeCommandKind.StudyHouse, "memorize-layout"))
                 return Make(v, EpisodeCommandKind.StudyHouse, "memorize-layout");
             return Say(v, EpisodeCommandKind.Talk, Best(v.Others, id => v.PresumedView(id)));
         }

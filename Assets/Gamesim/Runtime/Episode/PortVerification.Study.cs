@@ -12,12 +12,17 @@ namespace Gamesim.Episode
     {
         private bool verifyStudy;
         private StudyReport studyReport;
-        private const int StudyConfirmations = 5;
+        /// <summary>
+        /// The confirmations the walk makes: the season's study limit (B9-BALANCE-PLAN §4.7), five at tuning 0 and one at
+        /// tuning 1, read from the fresh season when the workload starts.
+        /// </summary>
+        private int StudyConfirmations = TuningRules.UnspentLimit;
 
         private IEnumerator ExerciseSeasonStudy(bool graphical)
         {
             studyReport.status = "Running";
             var original = seasonDirector.Snapshot;
+            StudyConfirmations = TuningRules.StudyLimit(original);
             RequireSeason(original.phase == EpisodePhase.Social && original.week == 1
                 && original.Find(original.playerId).status == ContestantStatus.Active
                 && original.pendingDiary == null && original.playerStudyBonus == 0
@@ -65,7 +70,7 @@ namespace Gamesim.Episode
                 expectedRng.NextDouble(); // A local expectation only; never installed in the game.
                 RequireSeason(after.revision == before.revision + 1 && after.socialActions == before.socialActions + 1
                     && EpisodeEngine.SocialActionsSpent(after) == EpisodeEngine.SocialActionsSpent(before) + 1
-                    && after.playerStudyBonus == Math.Min(5, before.playerStudyBonus + 1)
+                    && after.playerStudyBonus == Math.Min(StudyConfirmations, before.playerStudyBonus + 1)
                     && after.randomState == expectedRng.State && !seasonDirector.HasDiaryDecisionDraft,
                     "One actual memorize confirmation must cost one of the window's actions, draw once, and add one bounded preparation.");
                 RequireSeason(after.acceptedCommandIds.Count == before.acceptedCommandIds.Count + 1
@@ -98,7 +103,7 @@ namespace Gamesim.Episode
                     randomStateBefore = before.randomState.ToString(), randomStateAfter = after.randomState.ToString()
                 });
             }
-            RequireSeason(seasonDirector.Snapshot.playerStudyBonus == 5, "Five legal memorizes must reach preparation5.");
+            RequireSeason(seasonDirector.Snapshot.playerStudyBonus == StudyConfirmations, "The legal memorizes must reach the season's study limit.");
             studyReport.preparationCapReached = true;
             studyReport.noRollBeforeConfirmation = studyReport.reviewNoMutationChecks == StudyConfirmations + 1;
             studyReport.trustPersonaMemoriesPreserved = studyReport.privateEffectChecks == StudyConfirmations;
@@ -107,7 +112,7 @@ namespace Gamesim.Episode
                 - EpisodeEngine.SocialActionsSpent(seasonDirector.Snapshot);
             yield return CaptureSeason("study-result", graphical);
             yield return SaveReloadSeason("after-five-study-confirmations");
-            RequireSeason(seasonDirector.Snapshot.playerStudyBonus == 5, "Reload must retain the earned preparation.");
+            RequireSeason(seasonDirector.Snapshot.playerStudyBonus == StudyConfirmations, "Reload must retain the earned preparation.");
             studyReport.studySaveReloadChecks++;
         }
 
@@ -141,7 +146,7 @@ namespace Gamesim.Episode
         }
 
         /// <summary>How many of five confirmations the window's actions left cannot pay for.</summary>
-        private static int MissingStudyActions(EpisodeState state) =>
+        private int MissingStudyActions(EpisodeState state) =>
             StudyConfirmations - (EpisodeEngine.SocialActionBudget(state) - EpisodeEngine.SocialActionsSpent(state));
 
         private void RequireStudyUnchanged(EpisodeState expected, string operation)
@@ -153,7 +158,7 @@ namespace Gamesim.Episode
         private IEnumerator SimulateStudyWeeklyCompetition(EpisodeState before, bool graphical)
         {
             RequireSeason((before.phase == EpisodePhase.HoH || before.phase == EpisodePhase.Veto)
-                && !before.competitionResolved && before.playerStudyBonus == 5,
+                && !before.competitionResolved && (TuningRules.At(before, TuningRules.Bands) || before.playerStudyBonus == StudyConfirmations),
                 "The study simulation path applies only to an unresolved prepared weekly competition.");
             var participants = EpisodeEngine.CompetitionPlayers(before).ToArray();
             RequireSeason(participants.Any(actor => actor.isPlayer), "Study QA cannot assign eligibility to the player.");
@@ -186,7 +191,7 @@ namespace Gamesim.Episode
             RequireSeason((before.phase == EpisodePhase.HoH ? after.hohId : after.vetoHolderId) == expectedWinner,
                 "The recorded weekly winner must match the actual weighted scores, with stable ties.");
             var playerScore = after.competitionScores.Single(score => score.contestantId == before.playerId).score;
-            RequireSeason(playerScore > playerWithoutPreparation, "Earned preparation must actually affect the weekly player's simulated score.");
+            RequireSeason(before.playerStudyBonus == 0 || playerScore > playerWithoutPreparation, "Earned preparation must actually affect the weekly player's simulated score.");
             studyReport.weeklySimulatedChecks++;
             if (before.phase == EpisodePhase.HoH) studyReport.simulatedHohChecks++; else studyReport.simulatedVetoChecks++;
             studyReport.weeklyCompetitions.Add(new StudyCompetitionCheck
@@ -219,7 +224,11 @@ namespace Gamesim.Episode
 
         private void ObserveStudyTransition(EpisodeState before, EpisodeState after)
         {
-            RequireSeason(before.playerStudyBonus == 5 && after.playerStudyBonus == 5,
+            // Under B9's tuning a weekly competition spends it, so the walk holds it to the season's bound instead.
+            if (TuningRules.At(before, TuningRules.Bands))
+                RequireSeason(after.playerStudyBonus >= 0 && after.playerStudyBonus <= TuningRules.PreparationBound(after),
+                    "Study preparation must stay within the season's bound.");
+            else RequireSeason(before.playerStudyBonus == 5 && after.playerStudyBonus == 5,
                 "Earned study preparation must survive every later phase, week and finale decision without being spent.");
             studyReport.preparationDecisionChecks++;
             if (before.phase != after.phase) studyReport.phaseTransitionChecks++;
@@ -235,7 +244,7 @@ namespace Gamesim.Episode
                 && studyReport.trustPersonaMemoriesPreserved && studyReport.preparationCapReached
                 && studyReport.studySaveReloadChecks >= 1 && studyReport.weeklySimulatedChecks >= 1
                 && studyReport.finaleSimulationAbsentChecks >= 1 && studyReport.phaseTransitionChecks >= 1
-                && studyReport.weekTransitionChecks >= 1 && studyReport.preparationAtEnd == 5 && seasonReport.finished;
+                && studyReport.weekTransitionChecks >= 1 && (StudyConfirmations != TuningRules.UnspentLimit || studyReport.preparationAtEnd == 5) && seasonReport.finished;
             if (!complete) RecordSeasonError("The explicitly requested study workload did not complete every mandatory study/weekly/finale/persistence check.");
             if (studyReport == null) return;
             studyReport.status = complete && seasonErrors.Count == 0 ? "Passed" : "Failed";

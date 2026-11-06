@@ -32,6 +32,58 @@ go through the ledger and write none of the player's arcs, at every budget; the 
 0.86) and no finding's reading; the player's final-two rate at 8 leans up 4 points, the one number to watch at the
 next rerun.
 
+## B9: the balance bands, tuning rules 1 (2026-11-03)
+
+**From B9 every new season plays tuning rules 1** (`ShippedRules.ApplyFresh` writes `TuningRules.Shipped`), and every
+season before it, saved, migrated or built by a test, stays at 0 and plays as the tables below say. The bands, the rule
+set and its measurement are in `Assets/Plans/B9-BALANCE-PLAN.md` (§1 and *As built*); the owner signs off the numbers in
+B9's PR. The tables further down are tuning 0's and are not re-measured here.
+
+| | Tuning 0 (`26b65f09`) | Tuning 1 | Band |
+|---|---|---|---|
+| Studier at 0.5, weekly wins at 8 / 12 (800 seeds) | 95.2% / 94.7% (200 seeds) | 64.5% [63.2, 65.8] / 61.6% [60.4, 62.8] | 60-70% |
+| Studier at 0.5, season wins at 8 / 12 (800 seeds) | 73.5% / 48.0% (200 seeds) | 28.6% [25.6, 31.9] / 24.8% [21.9, 27.9] | 25-35% / 18-28% |
+| Game Sense gap, reader minus random, at 8 / 12 (480 seeds) | 10.2 [8.9, 11.5] / 8.7 [7.8, 9.5] | 14.6 [13.1, 16.2] / 12.7 [11.6, 13.7] | at least 10, low end above 5 |
+| Accepted counters that carried (480 seeds) | 46 / 61 = 75.4% | 27 / 61 = 44.3% [32.5, 56.7] | 35-50% |
+| Studier at 0.8, season wins at 8 / 12 | - | 35.5% (200 seeds) / 34.1% (800) | reported |
+| Beast, season wins at 8 / 12 (100 seeds) | 87% / 56% | 48% / 52% | reported |
+| Q4, the studier's nomination ratio at 8 / 12 | 0.54 / 0.80 | 0.75 / 0.91 | reported |
+| Q5, pariah seasons, the studier at 8 / 12 (B9 raises it; the all-policy 16.3% / 45.1% is not re-measured at tuning 1) | 5.5% / 28.5% | 14.6% / 47.2% | story rules 10 |
+
+The passive player's and the war-room players' seasons are tuning 0's but for the Game Sense total (the weights) and,
+for the war-room players, the 58 of 4,800 seasons that hold a counter K1 or K5 settles differently.
+
+**How it was measured.** B9-1's three rounds in scratch copies whose `TuningRules` read their numbers from the
+environment (D:/ClaudeScratch/b9/r1-r3, the knob diffs beside them), with the parts runner: the competition tier
+(`BALANCE_TIER=competition`) on seeds 0-799 and the war-room tier (`BALANCE_TIER=warrooms`) on 0-479, in parts of 200
+and 40, at the parts' stamp v7. The committed build replays them: its competition tier on seeds 0-199 and its war rooms
+on 0-39 equal the scratch rows season by season (timing, the scratch-only fields and the new tally's shape left out),
+and the same tier held at tuning 0 (`BALANCE_TUNING=0`) replays the reference rows `92c74b608cc446a0` exactly.
+
+**The pins (the way 1f199651 re-pinned budget nought).**
+- `BalanceLabTests.BudgetNoughtRows` stays `5481eec784acd1ed`: the test now holds every cell at tuning 0
+  (`Cell.HeldAtTuning0`), and its rows are main's byte for byte. Its twin `BudgetNoughtPlaysTheSeasonsB9Measured` pins
+  the same seasons at tuning 1, `1ee55c2a92571363`: 521 of its 564 rows move, 473 of them only in the Game Sense total
+  (the weights re-read every season's verdict) and 48 in play - 47 of the beast's, who studies, and one schemer's, whose
+  counter K1 or K5 settled differently.
+- `BalanceLabGoldens` moved in all 48 cells, and its `Rules` tuple now ends `tuningRulesVersion=1`: the goldens pin what a
+  fresh season plays, and every fresh season moved for the same reasons. Re-recorded at B9-3 from the committed build.
+- `TuningRulesTests.StudierTuning0Rows` (`9b9bf8a15644b745`) and `StudierTuning1Rows` (`0f53e79cd8e9a2f2`): four studier
+  seasons, held and at tuning 1; the first is four lines of the reference tier above.
+- The parts' stamp is `balance-lab-parts/v8`, so no part played before B9 merges with one played after.
+- The season digest tiers that build their seasons by hand (commitment rules, mode one, the leaks, the war rooms, the
+  mode-two sweeps and `AllWeekSeasonDigests`' 54 records) play tuning 0 and pass unchanged; so do
+  `FreshSeasonStateDigestTests`' records, with the one int taken back. Three start through `ShippedRules.ApplyFresh` and
+  so play tuning 1: `AllWeekSeasonDigests.Fresh` (the combined Wave D digest and `SettleByHouseSize`, invariants only),
+  `UnifiedVotePublicCommandTests.Fresh` and `Play` (the unified vote's rest), and `RoleStoryPools.OldSeasons`' three
+  shipped seasons (`OldSeasonsDrawTheirPoolsExactlyAsBefore`). They pass unchanged: their walkers never study or counter.
+
+**The lab's new reads.** A cell field `tuningHeld` (named `/tuning0`, seeded as its shipped cell) and the tier-wide
+`BALANCE_TUNING=0`; the view's `PreparationCap`, which the studier and the beast study up to; the war-room tier prints the
+counter tally table (`BalanceLabDiagnostics.CounterTallies`: as played, and replayed under today's rule, K1, K5 and
+both), Game Sense by policy and Q2's what-if with 0.25 / 0.5 / 0.25 added, each season's drift read against its own
+tuning's weights.
+
 ## Whose numbers are these
 
 Every table and finding below is this run's unless it says otherwise. Where an older number is quoted beside a new
@@ -303,6 +355,8 @@ still out of reach for a novice-like tester (B7).**
   `PLAYTEST_PROTOCOL.md`.
 
 ## The tuning questions (BALANCE plan §4), with what T0 measured
+
+B9 (tuning rules 1, above) answers Q1, Q2 and Q3 for every new season; the rows below are tuning 0's, as T0 measured them. Q3's boundary is tuning rules 1, not competition rules 5, and Q4 and Q5 are not tuned by B9.
 
 | question | measured (this run; B6b in parentheses) | what it decides | boundary |
 |---|---|---|---|

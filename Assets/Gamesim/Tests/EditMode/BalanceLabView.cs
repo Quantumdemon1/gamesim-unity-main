@@ -97,8 +97,10 @@ namespace Gamesim.Tests.EditMode
         public bool ActionsLeft => InTheHouse && InAWindow && ActionsSpent < ActionBudget;
         public bool CanBuyAction => ExtraActionPurchaseChoice.Available(s);
         public int BoughtThisWeek => s.boughtActionPoints;
-        /// <summary>The player's competition preparation from studying the house, out of five: the study's own line says it.</summary>
+        /// <summary>The player's competition preparation from studying the house: the study's own line says it, out of its limit.</summary>
         public int Preparation => s.playerStudyBonus;
+        /// <summary>What a study fills preparation to now (<see cref="TuningRules.StudyLimit"/>): five before B9's tuning, one or two under it. The study's own line says it.</summary>
+        public int PreparationCap => TuningRules.StudyLimit(s);
         /// <summary>Whether the player is a Have-Not this week: the house announces it.</summary>
         public bool HaveNot => s.haveNots != null && s.haveNots.Contains(s.playerId);
 

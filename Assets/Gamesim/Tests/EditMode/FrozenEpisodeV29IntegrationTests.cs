@@ -569,6 +569,7 @@ namespace Gamesim.Tests.EditMode
                 var s = SeasonBuilder.Create(new SeasonBuilder.Choice { HouseSize = 8 }, 1111u);
                 ShippedRules.ApplyFresh(s);
                 s.story.rulesVersion = StoryRules.Roles; // The tests' opt-in until the enrolment (ROLE-MOMENTS-PLAN §4.2).
+                s.tuningRulesVersion = TuningRules.Off; // Held: a schema-29 season has no tuning field (B9-BALANCE-PLAN decision 8).
                 BuiltCache[season] = s;
             }
             else if (season == "roles-pitch-board")
@@ -585,19 +586,34 @@ namespace Gamesim.Tests.EditMode
                 Assert.That(s.ledger.replies.Any(r => r.kind == ReplyCards.Pitch && r.replyKey == HoHPitches.TurnDownKey
                     && r.toThem != ReplyCards.Find(ReplyCards.Pitch, HoHPitches.TurnDownKey).ToThem), Is.True,
                     "A turned-down pitch on the board records its tone's cost, not the answer's own number.");
-                BuiltCache[season] = s;
+                BuiltCache[season] = HeldAtTuning0(s);
             }
             else
             {
                 var engine = RoleKeepTheBlockTests.Board(RoleTone.Calculated, out _, out _, out _);
                 var meeting = engine.Snapshot;
                 var taken = RoleVetoBoardTests.Apply(engine, RoleVetoBoardTests.Answer(meeting, RoleKeepTheBlockTests.HoldOf(meeting).id, true));
-                BuiltCache["roles-keep-the-block-asked"] = taken;
+                BuiltCache["roles-keep-the-block-asked"] = HeldAtTuning0(taken);
                 var kept = RoleVetoBoardTests.Apply(engine, RoleVetoBoardTests.Decide(taken, false, null));
                 Assert.That(RoleKeepTheBlockTests.HoldOf(kept).status, Is.EqualTo(DealStatus.Fulfilled));
-                BuiltCache["roles-keep-the-block-kept"] = kept;
+                BuiltCache["roles-keep-the-block-kept"] = HeldAtTuning0(kept);
             }
             return BuiltCache[season].Clone();
+        }
+
+        /// <summary>
+        /// A week-one role-moments walk (their fixtures start fresh seasons, on B9's tuning since B9-3) taken as a pre-B9
+        /// build played it: a schema-29 season has no tuning field (B9-BALANCE-PLAN decision 8). Exact, because nothing of
+        /// B9's had played yet: no preparation studied or spent, no counter settled, so only the int differs.
+        /// </summary>
+        private static EpisodeState HeldAtTuning0(EpisodeState s)
+        {
+            Assert.That(s.playerStudyBonus, Is.Zero, "Nothing of B9's preparation played.");
+            Assert.That(s.events.Any(e => e.kind == "study-house"), Is.False, "No study, no spend, no watch.");
+            Assert.That(s.ledger.plans.Any(p => p.stance == PactPlanStance.Countered), Is.False, "No counter settled.");
+            var held = s.Clone();
+            held.tuningRulesVersion = TuningRules.Off;
+            return held;
         }
 
         /// <summary>
@@ -646,6 +662,7 @@ namespace Gamesim.Tests.EditMode
             var fresh = SeasonBuilder.Create(new SeasonBuilder.Choice { HouseSize = 8 }, 1);
             ShippedRules.ApplyFresh(fresh);
             fresh.dialogueRulesVersion = 1; // The fixtures' opt-in, as D1's chip writes it.
+            fresh.tuningRulesVersion = TuningRules.Off; // D1's schema-29 build predates B9's tuning (B9-BALANCE-PLAN decision 8).
             var engine = new EpisodeEngine(fresh);
             for (int step = 0; step < 96 && engine.Snapshot.phase != EpisodePhase.Campaign; step++)
             {

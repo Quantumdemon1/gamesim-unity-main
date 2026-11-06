@@ -63,10 +63,11 @@ namespace Gamesim.Tests.EditMode
             { "pactPlanRulesStartWeek", 1 },
             { "allWeekRulesStartWeek", 1 },
             { "dialogueRulesVersion", 0 },
-            // Schema 30's pooled rule fields (SCH30): the tuning rules off until B9. The alumni rules are the cast's: 0
-            // here, for a season that seats no alumnus; a season that seats one starts at 1 (H1b, AlumniShipped).
+            // Schema 30's pooled rule fields (SCH30): the tuning rules at B9's balance bands (tuning 1, TuningRules.Shipped)
+            // from B9. The alumni rules are the cast's: 0 here, for a season that seats no alumnus; a season that seats one
+            // starts at 1 (H1b, AlumniShipped).
             { "alumniRulesVersion", 0 },
-            { "tuningRulesVersion", 0 },
+            { "tuningRulesVersion", 1 },
             { "npcSocial.rulesStartWeek", 1 },
             { "story.rulesStartWeek", 1 },
             { "story.rulesVersion", 9 },
@@ -132,6 +133,8 @@ namespace Gamesim.Tests.EditMode
         private static void DirectorInlineSetupWithItsLaterRules(EpisodeState fresh)
         {
             fresh.competitionRulesVersion = CompetitionRules.Current;
+            // B9's balance bands (B9-BALANCE-PLAN §4.3): tuning 1, a plain int that draws nothing.
+            fresh.tuningRulesVersion = TuningRules.Shipped;
             fresh.haveNotRulesStartWeek = 1;
             fresh.strategyRulesStartWeek = 1;
             EpisodeEngine.EnableStory(fresh);
@@ -188,7 +191,7 @@ namespace Gamesim.Tests.EditMode
                 bool alumni = SeatsAlumni(builder, roster);
                 Assert.That(s.alumniRulesVersion, Is.EqualTo(alumni ? AlumniRules.Latest : AlumniRules.Off), builder + " " + size + " " + roster + ": the cast's alumni rules.");
                 Assert.That(s.alumniCatalogEdition, Is.EqualTo(alumni ? AlumniEditions.Histories1Id : null), "Edition 1 with the alumni rules, none without.");
-                Assert.That(s.tuningRulesVersion, Is.Zero, "The tuning rules are off until B9.");
+                Assert.That(s.tuningRulesVersion, Is.EqualTo(TuningRules.Bands), "A shipped season starts on B9's tuning (TuningRules.Shipped, a pinned 1).");
                 Assert.That(EpisodeValidation.TryValidate(s, out string error), Is.True, error);
             }
         }
@@ -300,6 +303,9 @@ namespace Gamesim.Tests.EditMode
             var witness = DialoguePreviewWitness.Find();
             var chip = SeasonBuilder.Create(new SeasonBuilder.Choice { HouseSize = 8 }, witness.Seed);
             ShippedRules.ApplyFresh(chip, new SeasonBuilder.Choice { HouseSize = 8, CampaignConversations = true });
+            // The witness is held at tuning 0 (B9-BALANCE-PLAN decision 8): the chip's season is its start but for B9's int.
+            Assert.That(chip.tuningRulesVersion, Is.EqualTo(TuningRules.Shipped));
+            chip.tuningRulesVersion = TuningRules.Off;
             Assert.That(Json(chip), Is.EqualTo(Json(DialoguePreviewWitness.Start(witness.Seed))),
                 "seed " + witness.Seed + ": the chip's season is the witness's start.");
             var before = witness.Campaign;

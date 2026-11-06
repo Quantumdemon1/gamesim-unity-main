@@ -520,7 +520,7 @@ namespace Gamesim.Tests.EditMode
             Refused(NoEdition, bad => bad.alumniCatalogEdition = "");
             Refused(NotEnabled, bad => bad.alumniRulesVersion = AlumniRules.Latest + 1);
             Refused(NotEnabled, bad => bad.alumniRulesVersion = -1);
-            Refused(NotEnabled, bad => bad.tuningRulesVersion = 1);
+            Refused(NotEnabled, bad => bad.tuningRulesVersion = TuningRules.Latest + 1);
             var regular = SeasonBuilder.Create(new SeasonBuilder.Choice { HouseSize = 8 }, 62u);
             ShippedRules.ApplyFresh(regular);
             regular.alumniCatalogEdition = "allstar-histories-1";

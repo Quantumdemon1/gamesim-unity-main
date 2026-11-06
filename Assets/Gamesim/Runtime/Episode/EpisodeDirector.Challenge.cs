@@ -230,7 +230,7 @@ namespace Gamesim.Episode
                 // worth in the game's own measure, and that who they are and the day decide the rest.
                 CompetitionWords.PerformanceRule(PerformanceRange(state), state.phase == EpisodePhase.FinalHoHPart1),
             };
-            if (state.competitionRulesVersion >= 3) rules.Add(CompetitionWords.EarnedRule(state.playerStudyBonus));
+            if (state.competitionRulesVersion >= 3) rules.Add(CompetitionWords.EarnedRule(state));
             hud.CompetitionActions("Practice this competition", () => StartChallenge(state, true), rules);
 
             hud.Section("COMPETE FOR REAL");

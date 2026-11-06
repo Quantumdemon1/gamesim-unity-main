@@ -688,7 +688,16 @@ refusal words) and draw nothing new, and no lab policy throws, so no tuning-0 di
   OldSaveAcceptanceTests on the cell (4 cases, and the inventory test's new cell), the subset at 16,608 and the
   EditMode lister at 9,774. Round 7 (`D:/ClaudeScratch/b9/fix7/phase5.sh`) runs all of them, round 6's parked digest
   steps, the budget-0 goldens and all six budget-300 slices, on a git-archive snapshot of the head and the tree read
-  only; the floors 9,774 and 16,608 are counts from the source until it has.
+  only, with both offline compiles (the tuning-1 diary case's new check) and the listers; the floors 9,774 and 16,608
+  are counts from the source until it has.
+
+**Round 7 never ran.** It was queued on `76a34035` (review round 2: the diary's default tab pinned, the cell's reach
+said plainly) at 20:03 on 2026-11-05 and waited behind Codex's machine gate (held since 16:34; Codex's request was
+renewed at 20:16) until it was stopped at 10:06 on 2026-11-06, before any step had started. So since round 6 only
+the cell's steps above have run (the recorder, the no-UMA offline compile of the tree holding the cell and the
+corrected cases, and the holds probe), and `76a34035`'s new PlayMode check has not been compiled. It runs as it
+stands on the head (`bash D:/ClaudeScratch/b9/fix7/phase5.sh <head>`, reusing its snapshot while the snapshot's paths
+are unchanged).
 
 ### For the owner
 

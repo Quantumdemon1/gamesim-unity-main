@@ -188,6 +188,113 @@ namespace Gamesim.Tests.PlayMode
             yield return null;
         }
 
+        /// <summary>
+        /// The footer's own parts keep apart at every text size (the owner's quick fixes, 2026-11-03, "the footer"), on 16:9,
+        /// 4:3, 5:4, 1:1 and 21:9, with the preview off and on. The start's glow, drawn ten past its edge, clears the box of
+        /// "You will play as" above it (it ran 3 into it in the wide footer), the footnote's box (7 into it in the narrow
+        /// one) and the line under it. The house size's Fewer, its count and More lie inside the panel's glass (More ran 11
+        /// past it on 5:4, 1280x1024, at the largest text: the narrow panel shrinks with the frame and its controls stood at
+        /// fixed places), the count's caption and the range line beside Fewer draw whole, and every part is in the footer.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator CastSelect_TheFootersPartsKeepApartAtEveryTextSize([Values(1f, 1.2f, 1.4f)] float text)
+        {
+            yield return OpenCastScreen();
+            var screen = CastScreen();
+            CastButtons(CastTemplates.Find("emma-brown").Name)[0].onClick.Invoke();
+            yield return null;
+            var canvas = screen.GetComponent<Canvas>();
+            var failures = new List<string>();
+            try
+            {
+                screen.FontScale = text;
+                foreach (var frame in new[] { (wide: 1600, high: 900, shape: "16:9"), (wide: 1024, high: 768, shape: "4:3"),
+                             (wide: 1280, high: 1024, shape: "5:4"), (wide: 1024, high: 1024, shape: "1:1"), (wide: 2560, high: 1080, shape: "21:9") })
+                {
+                    yield return LayCastScreenOutAt(frame.wide, frame.high, text);
+                    foreach (bool on in new[] { false, true })
+                    {
+                        if (screen.CampaignConversations != on)
+                        {
+                            PreviewChip(!on)[0].onClick.Invoke();
+                            yield return null;
+                        }
+                        Canvas.ForceUpdateCanvases();
+                        FooterPartsKeepApart(screen, frame.shape + " " + frame.wide + "x" + frame.high + " at text " + text.ToString("0.0")
+                            + ", " + (on ? "on" : "off"), failures);
+                    }
+                }
+            }
+            finally
+            {
+                canvas.renderMode = RenderMode.ScreenSpaceOverlay;
+                screen.FontScale = TextSizes.Scale(director.TextSize);
+            }
+            screen.Dismiss();
+            yield return null;
+            Assert.That(failures, Is.Empty, string.Join("\n", failures));
+        }
+
+        /// <summary>The footer's parts measured on one frame, each gap and margin logged, each fault added to <paramref name="failures"/>.</summary>
+        private void FooterPartsKeepApart(CastSelect screen, string shape, List<string> failures)
+        {
+            var root = (RectTransform)screen.transform;
+            // As drawn, a glow included (the bounds take in every child), and a box by its own rect.
+            Rect Drawn(RectTransform rect) { var b = RectTransformUtility.CalculateRelativeRectTransformBounds(root, rect); return new Rect(b.min, b.size); }
+            Rect Own(RectTransform rect)
+            {
+                var corners = new Vector3[4];
+                rect.GetWorldCorners(corners);
+                Vector2 low = root.InverseTransformPoint(corners[0]), high = root.InverseTransformPoint(corners[2]);
+                return Rect.MinMaxRect(Mathf.Min(low.x, high.x), Mathf.Min(low.y, high.y), Mathf.Max(low.x, high.x), Mathf.Max(low.y, high.y));
+            }
+            void Apart(string what, Rect a, Rect b)
+            {
+                var inset = new Rect(a.x + .5f, a.y + .5f, a.width - 1f, a.height - 1f);
+                bool clear = !inset.Overlaps(b);
+                float gap = Mathf.Max(Mathf.Max(b.yMin - a.yMax, a.yMin - b.yMax), Mathf.Max(b.xMin - a.xMax, a.xMin - b.xMax));
+                TestContext.Out.WriteLine(shape + ": " + what + ", gap " + gap.ToString("0.0") + (clear ? "" : " OVERLAP"));
+                if (!clear) failures.Add(shape + ": " + what + " overlap by " + (-gap).ToString("0.0") + ": " + a + " / " + b);
+            }
+            void Inside(string what, Rect a, Rect box)
+            {
+                bool inside = a.xMin >= box.xMin - .5f && a.xMax <= box.xMax + .5f && a.yMin >= box.yMin - .5f && a.yMax <= box.yMax + .5f;
+                string margins = "left " + (a.xMin - box.xMin).ToString("0.0") + ", right " + (box.xMax - a.xMax).ToString("0.0")
+                    + ", top " + (box.yMax - a.yMax).ToString("0.0") + ", foot " + (a.yMin - box.yMin).ToString("0.0");
+                TestContext.Out.WriteLine(shape + ": " + what + ": " + margins + (inside ? "" : " OUTSIDE"));
+                if (!inside) failures.Add(shape + ": " + what + " lies outside (" + margins + "): " + a + " in " + box);
+            }
+            void Whole(TMP_Text label)
+            {
+                label.ForceMeshUpdate(true);
+                int glyphs = label.text.Count(c => !char.IsWhiteSpace(c));
+                int drawn = Enumerable.Range(0, label.textInfo.characterCount).Count(i => label.textInfo.characterInfo[i].isVisible);
+                if (label.isTextOverflowing || label.isTextTruncated || drawn != glyphs)
+                    failures.Add(shape + ": '" + label.text + "' draws " + drawn + " of " + glyphs + " glyphs in " + label.rectTransform.rect.size.ToString("0.0"));
+            }
+            TMP_Text Label(System.Func<TMP_Text, bool> which) => screen.GetComponentsInChildren<TMP_Text>().Last(label => label.isActiveAndEnabled && which(label));
+            RectTransform Control(string caption) => (RectTransform)CastButtons(caption).Last().transform;
+
+            var footer = Own(screen.GetComponentsInChildren<RectTransform>().Last(rect => rect.name == "Fixed season footer" && rect.gameObject.activeInHierarchy));
+            var start = Drawn(Control(CastSelect.StartCaption));
+            Apart("the start's glow and 'You will play as'", start, Own(Label(label => label.text.StartsWith("You will play as")).rectTransform));
+            Apart("the start's glow and the footnote", start, Own(Label(label => label.text.StartsWith("A shorter season")).rectTransform));
+            Apart("the start's glow and the preview line", start, Own(Label(label => label.name == CastSelect.ConversationPreviewLineName).rectTransform));
+            var panel = Own(screen.GetComponentsInChildren<RectTransform>().Last(rect => rect.name == CastSelect.HouseSizePanelName && rect.gameObject.activeInHierarchy));
+            Inside("the house size panel in the footer", panel, footer);
+            var fewer = Drawn(Control("Fewer houseguests"));
+            Inside("Fewer in the house size's glass", fewer, panel);
+            Inside("More in the house size's glass", Drawn(Control("More houseguests")), panel);
+            var count = Label(label => label.name == "House size");
+            Inside("the count in the house size's glass", Own(count.rectTransform), panel);
+            Whole(count);
+            var range = Label(label => label.text.StartsWith("Between "));
+            Whole(range);
+            Apart("the range line and Fewer", Own(range.rectTransform), fewer);
+            Inside("the start in the footer", start, footer);
+            Inside("cancel in the footer", Drawn(Control(CastSelect.CancelCaption)), footer);
+        }
+
         private void AssertThePreviewFits(CastSelect screen, string shape, bool on)
         {
             Canvas.ForceUpdateCanvases();

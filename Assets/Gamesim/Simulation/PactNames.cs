@@ -51,7 +51,7 @@ namespace Gamesim.Simulation
         public static string HouseName(EpisodeState s, IList<string> ids)
         {
             var firsts = (ids ?? new List<string>()).Select(id => s?.Find(id)?.name).Where(name => !string.IsNullOrEmpty(name))
-                .Select(name => name.Split(' ')[0]).ToList();
+                .Select(name => CharacterNames.SeasonFirstName(s, name)).ToList();
             if (firsts.Count == 0) return null;
             if (firsts.Count == 1) return "The " + firsts[0] + " Pact";
             return "The " + string.Join(", ", firsts.Take(firsts.Count - 1)) + " and " + firsts.Last() + " Pact";

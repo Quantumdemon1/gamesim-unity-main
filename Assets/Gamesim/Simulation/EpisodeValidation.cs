@@ -103,7 +103,7 @@ namespace Gamesim.Simulation
             // Schema 30's pooled fields (SCH30, ALL-STAR-HISTORIES-PLAN 5.3): each holds a value this build defines, and
             // the slice that defines a value widens this in the same step. The tuning rules: 0 to TuningRules.Latest (1 from
             // B9, the balance bands), on competition rules 4 or later. The alumni
-            // rules: 0 with no edition, or 1 (H1b) to AlumniRules.Latest (5 from §14.L's growing pacts) with an
+            // rules: 0 with no edition, or 1 (H1b) to AlumniRules.Latest (6 from the titled names) with an
             // edition this build knows. Every value from 1 writes the same opening, so the histories' receipts are checked
             // with the ledger the same way at each (TryValidateAlumni). A season may not hold a value no code reads.
             if (!AlumniRules.IsDefined(s.alumniRulesVersion) || !TuningRules.IsDefined(s.tuningRulesVersion)

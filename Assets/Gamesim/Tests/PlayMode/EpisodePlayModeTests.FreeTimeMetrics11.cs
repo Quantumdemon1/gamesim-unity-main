@@ -651,11 +651,16 @@ namespace Gamesim.Tests.PlayMode
             return inventory;
         }
 
+        /// <summary>
+        /// The strip's line, worked out here: the running storylines it counts are the ones that have reached the player
+        /// (<see cref="StorylinesShown.Shown"/>; the quick fixes' backdoor leak, 2026-11-03), with no card waiting.
+        /// </summary>
         private static string FreeTimeExpectedStoryLine11(EpisodeState state)
         {
             var parts = EpisodeEngine.Threads(state).Where(thread => thread.ending == null).Select(thread => thread.label).ToList();
             int playing = state.storylines.Count(item => item.beatId != null && StorylineStatus.Running(item.status)
                 && StoryCatalog.Find(item.templateId)?.play == null && item.lane != StoryLanes.Thread
+                && StorylinesShown.Shown(state, item)
                 && !state.houseEvents.Any(beat => !beat.resolved && beat.cycleId == item.id));
             if (playing > 0) parts.Add(playing + (playing == 1 ? " storyline playing out" : " storylines playing out"));
             foreach (var modifier in state.activeModifiers.Where(item => item.weeksLeft > 0 && string.IsNullOrEmpty(item.ownerId)))

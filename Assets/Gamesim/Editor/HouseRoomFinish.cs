@@ -301,27 +301,28 @@ namespace Gamesim.Editor
             if (run != null)
             {
                 // The run's sections, left to right as its script lays them (bb_set_kitchenrun.py):
-                // fridge 0.8, doors 1.2, sink 0.9, drawers 0.9, stove 0.9, doors 1.2, end 0.5.
+                // fridge 0.8, doors 1.2, sink 0.9, drawers 0.9, stove 0.9, doors 1.2, end 0.5. Each
+                // place below but the pantry's is along the run as authored, times the run's stretch
+                // along its length (0.921875 since the doorway beside it opened, HouseKitchenDoorway;
+                // 1 before); the pantry keeps its gaps from the toaster.
                 var rb = Measure(run.gameObject);
+                float along = run.lossyScale.x;
                 float left = rb.min.x, front = rb.min.z, counter = room.FloorTop + 0.92f, mid = rb.center.z;
                 var into = Vector3.back;   // the run faces -z, into the room
                 const string panels = Pack6 + "Kitchen/";
                 // Rhythm: fridge / dishwasher / sink / drawers / cooktop and oven / doors.
-                if (Decal(group, "Fridge panel", panels + "appliance_panel_fridge.png", new Vector3(left + 0.40f, room.FloorTop + 0.30f, front - 0.012f), 0.60f, into) != null) count++;
-                if (Decal(group, "Dishwasher panel", panels + "appliance_panel_coffee.png", new Vector3(left + 1.40f, room.FloorTop + 0.78f, front - 0.012f), 0.60f, into) != null) count++;
-                if (Decal(group, "Oven panel", panels + "appliance_panel_oven.png", new Vector3(left + 4.25f, room.FloorTop + 0.72f, front - 0.012f), 0.60f, into) != null) count++;
+                if (Decal(group, "Fridge panel", panels + "appliance_panel_fridge.png", new Vector3(left + 0.40f * along, room.FloorTop + 0.30f, front - 0.012f), 0.60f, into) != null) count++;
+                if (Decal(group, "Dishwasher panel", panels + "appliance_panel_coffee.png", new Vector3(left + 1.40f * along, room.FloorTop + 0.78f, front - 0.012f), 0.60f, into) != null) count++;
+                if (Decal(group, "Oven panel", panels + "appliance_panel_oven.png", new Vector3(left + 4.25f * along, room.FloorTop + 0.72f, front - 0.012f), 0.60f, into) != null) count++;
                 // Coffee, beside the machine over the drawers.
-                if (PieceAt(group, "Coffee tin", "bb_set_coffee_tin", new Vector3(left + 3.00f, counter, mid + 0.05f), 0f) != null) count++;
-                if (PieceAt(group, "Jar", "bb_set_food_jar", new Vector3(left + 3.70f, counter, mid + 0.08f), 0f) != null) count++;
-                // The pantry, beside the toaster, every label to the room (a model's front is its -z,
-                // and the run faces -z). The blue bag stands past the toaster's end: at 5.50 its corner
-                // was 2 cm inside the toaster and its label half behind it; the bottle is beyond it.
-                if (PieceAt(group, "Cereal", "bb_set_cereal_carton", new Vector3(left + 4.85f, counter, mid + 0.10f), 12f) != null) count++;
-                if (PieceAt(group, "Snack bag", "bb_set_snack_gold", new Vector3(left + 5.08f, counter, mid + 0.06f), -8f) != null) count++;
-                if (PieceAt(group, "Snack bag", "bb_set_snack_blue", new Vector3(left + 5.55f, counter, mid + 0.02f), 20f) != null) count++;
+                if (PieceAt(group, "Coffee tin", "bb_set_coffee_tin", new Vector3(left + 3.00f * along, counter, mid + 0.05f), 0f) != null) count++;
+                if (PieceAt(group, "Jar", "bb_set_food_jar", new Vector3(left + 3.70f * along, counter, mid + 0.08f), 0f) != null) count++;
+                // The pantry, beside the toaster, at its own gaps from it (Pantry): the run's stretch
+                // moves the toaster and never closes them.
+                count += PlacePantry(group, ToasterMiddle(house, room, left, along), counter, mid).Count;
                 // A folded authored towel on the end panel. The room-finish layer keeps the same
                 // support point, but the prop now has the thickness and folds of the set's model.
-                if (PieceAt(group, "Dish towel", "bb_set_towel", new Vector3(left + 6.15f, counter, mid), 0f) != null) count++;
+                if (PieceAt(group, "Dish towel", "bb_set_towel", new Vector3(left + 6.15f * along, counter, mid), 0f) != null) count++;
             }
 
             // The long table's rug, centred under it.
@@ -337,6 +338,101 @@ namespace Gamesim.Editor
             if (east.HasValue && Sign(group, "Kitchen sign", east.Value, Pack5 + "RoomSignage/kitchen_sign.png",
                 new Color(0.90f, 0.95f, 1.00f) * 1.2f, 1.4f, room.Bounds.center.z - east.Value.Centre.z, 1.05f) != null) count++;
             return count;
+        }
+
+        /// <summary>
+        /// The kitchen's pantry beside the toaster, every label to the room (a model's front is its -z, and the run
+        /// faces -z): the cereal and the gold bag on the toaster's left, the blue bag past its end and the bottle
+        /// beyond it. Each is (its name, its model, its gap along the run from the toaster's middle, its depth from the
+        /// run's middle, its yaw), as authored on the run before the doorway (the toaster's middle 5.30 along it).
+        /// The gaps are the toaster's, not the run's: drawn 0.921875 as long to open the doorway, the run moves its
+        /// toaster (a plan row) with it, and scaling these gaps too, 1.7 and 2.0 cm narrower, put the gold bag into the
+        /// toaster's side and the blue bag's label against its end (RoomFinishTests, the quick fixes' qf1 run,
+        /// 2026-11-03). At 0.20 past the toaster the blue bag's corner was 2 cm inside it and its label half behind it.
+        /// </summary>
+        private static readonly (string Name, string Model, float FromToaster, float Depth, float Yaw)[] Pantry =
+        {
+            ("Cereal", "bb_set_cereal_carton", -0.45f, 0.10f, 12f),
+            ("Snack bag", "bb_set_snack_gold", -0.22f, 0.06f, -8f),
+            ("Snack bag", "bb_set_snack_blue", 0.25f, 0.02f, 20f),
+        };
+
+        /// <summary>The toaster's middle along the run as authored, from its fridge end (HouseSetPieces' toaster row): where the pantry stands when the house has no toaster.</summary>
+        private const float ToasterAlong = 5.30f;
+
+        /// <summary>The middle, along the house's x, of the toaster the pantry stands beside: the placed one's, measured; with none, where its row puts it.</summary>
+        private static float ToasterMiddle(House house, Room room, float left, float along)
+        {
+            var toaster = house.Pieces(room, "toaster").FirstOrDefault(piece => piece.gameObject.activeInHierarchy);
+            return toaster != null ? Measure(toaster.gameObject).center.x : left + ToasterAlong * along;
+        }
+
+        /// <summary>The <see cref="Pantry"/> on the counter at <paramref name="counter"/>, beside the toaster's middle <paramref name="toaster"/>; the pieces placed, in order.</summary>
+        private static List<GameObject> PlacePantry(Transform group, float toaster, float counter, float mid)
+        {
+            var placed = new List<GameObject>();
+            foreach (var (name, model, fromToaster, depth, yaw) in Pantry)
+            {
+                var piece = PieceAt(group, name, model, new Vector3(toaster + fromToaster, counter, mid + depth), yaw);
+                if (piece != null) placed.Add(piece);
+            }
+            return placed;
+        }
+
+        /// <summary>
+        /// The kitchen's <see cref="Pantry"/> placed again in <paramref name="scene"/>, a house the pass already finished,
+        /// exactly as a run of the pass places it, and nothing else: no material, no other piece, no group, and each of
+        /// the three keeps its object and its place among its siblings. For <see cref="HouseKitchenDoorway.ClearTheCounter"/>
+        /// and <see cref="HouseKitchenDoorway.AuthorAcceptance"/>, which move only these collider-free, non-static,
+        /// shadowless pieces and so need neither a NavMesh nor a lighting bake. Returns the three, in the pass's order;
+        /// throws when the scene does not hold them side by side as the pass made them.
+        /// </summary>
+        public static Transform[] PlaceThePantryAgain(Scene scene)
+        {
+            var (world, root, group, found) = LocateThePantry(scene);
+            var house = new House(world, root);
+            var room = house.Room("Kitchen floor");
+            var run = room != null ? house.Pieces(room, "bb_set_kitchenrun").FirstOrDefault() : null;
+            if (run == null) throw new InvalidOperationException("No kitchen floor or kitchen run in " + scene.path + ".");
+            int first = found[0].GetSiblingIndex();
+
+            kept = new Kept();
+            try
+            {
+                // Everything before the pantry in the group is claimed where it stands, so each of the three is
+                // claimed at its own sibling index and nothing in the group moves among its siblings.
+                for (int i = 0; i < first; i++) kept.Claim(group, group.GetChild(i));
+                var rb = Measure(run.gameObject);
+                float along = run.lossyScale.x, counter = room.FloorTop + 0.92f, mid = rb.center.z;
+                var placed = PlacePantry(group, ToasterMiddle(house, room, rb.min.x, along), counter, mid).Select(piece => piece.transform).ToArray();
+                if (!placed.SequenceEqual(found))
+                    throw new InvalidOperationException("Placing the kitchen's pantry again made or took other objects than the three it found.");
+                return placed;
+            }
+            finally { kept = null; }
+        }
+
+        /// <summary>The kitchen's <see cref="Pantry"/> as it stands in <paramref name="scene"/>, in the pass's order; throws as <see cref="PlaceThePantryAgain"/> does.</summary>
+        public static Transform[] ThePantry(Scene scene) => LocateThePantry(scene).Found;
+
+        /// <summary>The house, the pass's root, its kitchen group and the pantry's three in it, side by side in the pass's order (an earlier run's).</summary>
+        private static (Transform World, Transform Root, Transform Group, Transform[] Found) LocateThePantry(Scene scene)
+        {
+            var world = scene.GetRootGameObjects().FirstOrDefault(go => go.name == WorldRoot);
+            var root = world != null ? world.transform.Find(RootName) : null;
+            var group = root != null ? root.Find("Kitchen") : null;
+            if (group == null) throw new InvalidOperationException("No '" + RootName + "/Kitchen' group in " + scene.path + ": run the room finish first.");
+            var names = new HashSet<string>(Pantry.Select(item => item.Name), StringComparer.Ordinal);
+            var found = group.Cast<Transform>().Where(child => names.Contains(child.name)).ToArray();
+            int first = found.Length > 0 ? found[0].GetSiblingIndex() : -1;
+            bool asMade = found.Length == Pantry.Length && !found.Where((child, i) => child.GetSiblingIndex() != first + i).Any()
+                && found.Select(child => PrefabUtility.GetPrefabAssetPathOfNearestInstanceRoot(child.gameObject) ?? "")
+                    .SequenceEqual(Pantry.Select(item => HouseCatalogue.Resolve(item.Model, out _)).Select(source => source != null ? AssetDatabase.GetAssetPath(source) : "?"));
+            if (!asMade)
+                throw new InvalidOperationException("The kitchen's pantry is not the pass's " + Pantry.Length + ", side by side in its order: "
+                    + string.Join(", ", found.Select(child => child.name + "[" + child.GetSiblingIndex() + "] ("
+                        + Path.GetFileNameWithoutExtension(PrefabUtility.GetPrefabAssetPathOfNearestInstanceRoot(child.gameObject) ?? "") + ")")) + ".");
+            return (world.transform, root, group, found);
         }
 
         /// <summary>

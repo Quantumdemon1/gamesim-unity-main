@@ -233,7 +233,7 @@ namespace Gamesim.Tests.EditMode
         public void AnOutsiderJoinsACounterPactAtFiveWhileAKnownPairIsLive()
         {
             Assert.That(AlumniRules.GrowingPacts, Is.EqualTo(5));
-            Assert.That(AlumniRules.Latest, Is.EqualTo(AlumniRules.GrowingPacts), "Fresh All-Star seasons start at 5 (§14.L.A).");
+            Assert.That(AlumniRules.Latest, Is.GreaterThanOrEqualTo(AlumniRules.GrowingPacts), "Fresh All-Star seasons grow pacts (§14.L.A): 5 is a bound.");
             Assert.That(NpcAlliances.JoinWelcomeLine, Is.EqualTo(-5), "One rumour above the sour line.");
             Assert.That(KnownBlocs.CounterPactMargin, Is.EqualTo(1));
 

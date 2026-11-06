@@ -44,7 +44,7 @@ namespace Gamesim.Simulation
             RelationshipLedger.RecordOneWay(s, s.playerId, npcId, Allegiance.BetrayedType, Allegiance.BetrayalImpact, record);
             bool hidden = ballot && !KnownBallots.Knows(s, s.week, npcId);
             if (hidden) Log(s, Allegiance.LogKind, record, npcId);
-            else Log(s, Allegiance.LogKind, record + " " + Allegiance.Offer(npc.name), s.playerId, npcId);
+            else Log(s, Allegiance.LogKind, record + " " + Allegiance.Offer(s, npc.name), s.playerId, npcId);
         }
 
         /// <summary>
@@ -95,7 +95,7 @@ namespace Gamesim.Simulation
                 var audience = new[] { s.playerId }.Concat(pact.members.Where(id => id != s.playerId)).Distinct().ToArray();
                 // A pact of two ends; a bigger one goes on without them (shared with C5's leave).
                 bool ends = TakeOutOfPact(s, pact, betrayer.id);
-                Log(s, "alliance", Allegiance.CutTiesLine(betrayer.name, pact.name, ends), audience);
+                Log(s, "alliance", Allegiance.CutTiesLine(s, betrayer.name, pact.name, ends), audience);
             }
         }
     }

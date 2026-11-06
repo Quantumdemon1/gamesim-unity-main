@@ -273,7 +273,7 @@ namespace Gamesim.Simulation
             }
             var pact = new AllianceState
             {
-                id = "alliance-" + s.nextSequence, name = "The " + npc.name.Split(' ')[0] + " Pact",
+                id = "alliance-" + s.nextSequence, name = "The " + CharacterNames.SeasonFirstName(s, npc.name) + " Pact",
                 members = new List<string> { s.playerId, npcId },
             };
             // Under the commitment rules (C5) no two of the player's standing pacts share a name.

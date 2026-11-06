@@ -242,24 +242,19 @@ namespace Gamesim.Episode
         /// <summary>
         /// The stories running this week, and what each story left behind: one line each, in the
         /// free-time panel beside the budget they draw on. A modifier says how long it has left,
-        /// because a bonus with no end date is a number the player cannot plan around.
+        /// because a bonus with no end date is a number the player cannot plan around. A storyline
+        /// is listed only once it has reached the player (<see cref="StorylinesShown"/>): a backdoor
+        /// runs every backdoor week, and listing it with no card gave the plan away.
         /// </summary>
         private void StorylinesBlock(EpisodeState state)
         {
             PlaysBlock(state, finished: false);
             ThreadsBlock(state, finished: false);
-            var running = state.storylines.Where(x => x.beatId != null && StorylineStatus.Running(x.status)
-                                                      && StoryCatalog.Find(x.templateId)?.play == null && x.lane != StoryLanes.Thread)
-                .OrderBy(x => x.week).ThenBy(x => x.id, StringComparer.Ordinal).ToList();
+            var running = StorylinesShown.Rows(state);
             var mine = state.activeModifiers.Where(m => m.weeksLeft > 0 && string.IsNullOrEmpty(m.ownerId)).ToList();
             if (running.Count == 0 && mine.Count == 0) return;
             hud.Heading("STORYLINES");
-            foreach (var cycle in running)
-            {
-                var arc = StoryCatalog.Find(cycle.templateId);
-                bool waiting = state.houseEvents.Any(e => !e.resolved && e.cycleId == cycle.id);
-                hud.StoryLine(arc?.title ?? cycle.title, waiting ? "waiting on you" : "still playing out");
-            }
+            foreach (var row in running) hud.StoryLine(row.Title, row.Line);
             foreach (var modifier in mine)
             {
                 string effect = string.Join(", ", new[]

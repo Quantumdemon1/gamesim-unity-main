@@ -222,11 +222,16 @@ namespace Gamesim.Tests.EditMode
                 case "alumni-json": fields["alumniRulesVersion"] = 1; break;
                 case "edition-text": fields["alumniCatalogEdition"] = "allstar-histories-1"; break;
                 case "tuning-json": fields["tuningRulesVersion"] = state.tuningRulesVersion + 1; break;
-                case "order": { var p = fields.Property("tuningRulesVersion"); p.Remove(); fields.Add(p); break; }
+                // The tuning rules are the state's last field, so moving them to the end would change nothing: they go ahead
+                // of the alumni rules instead, as the pooled-order test's "swapped" case moves them.
+                case "order": { var p = fields.Property("tuningRulesVersion"); p.Remove(); fields.Property("alumniRulesVersion").AddBeforeSelf(p); break; }
                 case "unknown-root": fields["unknown30"] = 0; break;
                 case "header-29": fields["schemaVersion"] = 29; break;
             }
             string stateBefore = Text(state), fieldsBefore = Text(fields);
+            if (defect == "order")
+                Assert.That(fields.Properties().Select(p => p.Name).Where(name => Array.IndexOf(LegacyDigestSchema30Observer.Pooled, name) >= 0),
+                    Is.EqualTo(new[] { "tuningRulesVersion", "alumniRulesVersion", "alumniCatalogEdition" }), "The defect really moves the field.");
             if (defect == null)
             {
                 Assert.That(LegacyDigestSchema30Observer.OnTheTuningRulesAlone(state), Is.True);

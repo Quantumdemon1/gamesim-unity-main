@@ -644,11 +644,168 @@ namespace Gamesim.Tests.EditMode
             Assert.That(BalanceLab.Jsonl(parts), Is.EqualTo(whole));
             Assert.That(parts.Select(r => r.index), Is.EqualTo(new[] { 0, 1, 2, 0, 1, 2 }));
             // What the rows leave out survives too: the autopsy whole, and the diagnostics' own records, the pact watch's
-            // (ALL-STAR-HISTORIES-PLAN 14.L.H) among them.
-            string Rest(BalanceLab.SeasonRun r) => Newtonsoft.Json.JsonConvert.SerializeObject(new { r.autopsy, r.gameSenseRows, r.nominations, r.pariah, r.preparation, r.counterMembers, r.counterTallies, r.pactWatch });
+            // (ALL-STAR-HISTORIES-PLAN 14.L.H) and Q5's other definitions (STORY-RULES-10-PLAN) among them.
+            string Rest(BalanceLab.SeasonRun r) => Newtonsoft.Json.JsonConvert.SerializeObject(new
+            {
+                r.autopsy, r.gameSenseRows, r.nominations, r.pariah, r.preparation, r.counterMembers, r.counterTallies, r.pactWatch,
+                r.pariahInHouse, r.pariahAtClosings, r.pariahBySize, paceInHouse = r.pace?.pariahInHouse, r.cell.storyRules, r.cell.House,
+            });
             Assert.That(parts.Select(Rest), Is.EqualTo(one.Select(Rest)));
             Assert.That(one.Sum(r => r.gameSenseRows.Count), Is.GreaterThan(0), "Game Sense's rows were kept.");
             Assert.That(parts.All(r => r.pactWatch != null), Is.True, "The pact watch was kept.");
+
+            // A six-house season seldom has a pariah, so story rules 10's records are filled in by hand: each survives the
+            // part, and none of them, nor the cell's story rules, reaches the row the digests hash.
+            var filled = one[0];
+            string row = BalanceLab.Row(filled);
+            BalanceLab.PariahRecord Sample(bool inHouse) => new BalanceLab.PariahRecord
+            {
+                week = 4, houseCount = 6, holders = 3, targetId = "target", inHouse = inHouse, causes = new List<string> { GrudgeCauses.Nominated, GrudgeCauses.ReplacementVeto },
+                meanSeverity = 53.5, stacks = 3,
+                holderRows = new List<BalanceLab.PariahHolder>
+                {
+                    new BalanceLab.PariahHolder { holderId = "first", cause = GrudgeCauses.Nominated, severity = 67.25, originWeek = 2, count = 2 },
+                    new BalanceLab.PariahHolder { holderId = "second", cause = GrudgeCauses.ReplacementVeto, severity = 40, originWeek = 4, count = 1 },
+                },
+                veto = new BalanceLab.PariahVeto { holderId = "target", used = true, selfSave = !inHouse, replacementId = "second" },
+            };
+            filled.pariah = Sample(inHouse: false);
+            filled.pariahInHouse = Sample(inHouse: true);
+            filled.pariahAtClosings = true;
+            filled.pariahBySize = true;
+            filled.pace.pariahInHouse = true;
+            filled.cell = filled.cell.AtStoryRules(StoryRules.Latest);
+            var back = BalanceLabParts.RoundTrip(filled);
+            Assert.That(Rest(back), Is.EqualTo(Rest(filled)));
+            Assert.That(back.pariah.holderRows.Select(h => h.holderId + "/" + h.cause + "/" + h.severity.ToString(CultureInfo.InvariantCulture) + "/" + h.count),
+                Is.EqualTo(new[] { "first/nominated/67.25/2", "second/replacement-veto/40/1" }), "The holders' rows are read back, not merely written.");
+            Assert.That(back.cell.House, Does.EndWith("/story" + StoryRules.Latest.ToString(CultureInfo.InvariantCulture)));
+            Assert.That(BalanceLab.Row(filled), Is.EqualTo(row), "Q5's other definitions and a cell's story rules stay out of the hashed row.");
+            Assert.That(BalanceLab.Row(back), Is.EqualTo(row));
+        }
+
+        /// <summary>
+        /// STORY-RULES-10-PLAN §5: a cell plays other story rules only when it names them, and only a version this build
+        /// defines from Threads on other than Current; the name says so, the seeds pair, and an unset cell is the cell it
+        /// always was. Every such version is walked, not only Latest, so the value BALANCE_STORY=10 measures (Blame) goes
+        /// through the same gate, the name and Fresh; after the enrolment the walk holds Threads instead.
+        /// </summary>
+        [Test]
+        public void ACellPlaysLaterStoryRulesOnlyWhenItNamesThem()
+        {
+            var shipped = new BalanceLab.Cell { policy = BalancePolicies.Passive, size = 8 };
+            Assert.That(shipped.House, Is.EqualTo("Regular/8/npc0"), "An unset cell keeps its name.");
+            Assert.That(BalanceLab.Fresh(shipped, 1u).story.rulesVersion, Is.EqualTo(StoryRules.Current), "...and EnableStory's rules.");
+            var later = shipped.AtStoryRules(StoryRules.Latest);
+            Assert.That(later.House, Is.EqualTo("Regular/8/npc0/story" + StoryRules.Latest.ToString(CultureInfo.InvariantCulture)));
+            Assert.That(later.HeldAtTuning0().House, Does.EndWith("/tuning0/story" + StoryRules.Latest.ToString(CultureInfo.InvariantCulture)), "Held and opted in, both named.");
+            Assert.That(BalanceLab.Fresh(later, 1u).story.rulesVersion, Is.EqualTo(StoryRules.Latest));
+            Assert.That(BalanceLab.Seed(later, 5), Is.EqualTo(BalanceLab.Seed(shipped, 5)), "The arms play the same seasons.");
+            Assert.That(shipped.storyRules, Is.Zero, "Opting a copy in leaves the cell it came from alone.");
+            Assert.That(BalanceLab.CheckedStoryRules(0), Is.Zero);
+            int taken = 0;
+            for (int version = StoryRules.Threads; version <= StoryRules.Latest; version++)
+            {
+                if (version == StoryRules.Current) continue;
+                string named = "/story" + version.ToString(CultureInfo.InvariantCulture);
+                Assert.That(BalanceLab.CheckedStoryRules(version), Is.EqualTo(version), named);
+                var at = shipped.AtStoryRules(version);
+                Assert.That(at.House, Is.EqualTo("Regular/8/npc0" + named), named);
+                Assert.That(BalanceLab.Fresh(at, 1u).story.rulesVersion, Is.EqualTo(version), named + ": Fresh plays it.");
+                taken++;
+            }
+            Assert.That(taken, Is.EqualTo(StoryRules.Latest - StoryRules.Threads), "Every defined version from Threads on but Current is taken.");
+            Assert.Throws<ArgumentException>(() => BalanceLab.CheckedStoryRules(StoryRules.Current), "Current is what every season plays: another name for the same seasons.");
+            Assert.Throws<ArgumentException>(() => BalanceLab.CheckedStoryRules(StoryRules.Threads - 1), "Older than any arm the lab pairs.");
+            Assert.Throws<ArgumentException>(() => BalanceLab.CheckedStoryRules(StoryRules.Latest + 1), "A value this build does not define.");
+            Assert.Throws<ArgumentException>(() => BalanceLab.CheckedStoryRules(-1));
+            Assert.Throws<ArgumentException>(() => BalanceLab.Fresh(new BalanceLab.Cell { policy = BalancePolicies.Passive, size = 8, storyRules = StoryRules.Current }, 1u),
+                "A cell built with the field directly is checked as it is played.");
+        }
+
+        /// <summary>
+        /// STORY-RULES-10-PLAN §5: DP, a pariah run counted only while the player is in the house. The same three holders
+        /// at fifty against one houseguest, two Advances running, make a D0 run either way; DP counts it only with the
+        /// player in, in the lab's watch and the pacing report's alike. D2 asks an eight for three holders and a twelve for
+        /// five; D1 asks for the same target on two eviction nights running.
+        /// </summary>
+        [Test]
+        public void APariahRunIsInThePlayersHouseOnlyWhileThePlayerIsIn()
+        {
+            foreach (bool playerIn in new[] { true, false })
+            {
+                var s = PariahFixture(8, 3, out string target);
+                if (!playerIn) s.Find(s.playerId).status = ContestantStatus.Evicted;
+                var run = new BalanceLab.SeasonRun();
+                var watch = new BalanceLab.PariahWatch();
+                var pace = new StoryPacingTests.Pace();
+                var advance = EpisodeEngineTests.Command(s, EpisodeCommandKind.Advance);
+                watch.Advance(s, run);
+                pace.Watch(advance, s);
+                Assert.That(run.pariah, Is.Null, "One Advance is not a run.");
+                watch.Advance(s, run);
+                pace.Watch(advance, s);
+                string label = playerIn ? "player in" : "player out";
+                Assert.That(run.pariah, Is.Not.Null, label + ": D0 counts the run either way.");
+                Assert.That(pace.pariah, Is.True, label);
+                Assert.That(run.pariah.inHouse, Is.EqualTo(playerIn), label);
+                Assert.That(run.pariahInHouse != null, Is.EqualTo(playerIn), label + ": DP, the lab's watch.");
+                Assert.That(pace.pariahInHouse, Is.EqualTo(playerIn), label + ": DP, the pacing report's.");
+                Assert.That(run.pariah.targetId, Is.EqualTo(target), label);
+                Assert.That(run.pariah.holderRows.Select(h => (h.cause, h.severity, h.originWeek, h.count)), Is.EqualTo(Enumerable.Repeat((GrudgeCauses.Nominated, 50.0, 1, 1), 3)), label);
+                Assert.That(run.pariah.veto, Is.Null, label + ": no veto decided in week one.");
+                Assert.That(run.pariahBySize, Is.True, label + ": seven houseguests ask three holders, as D0 does.");
+                Assert.That(run.pariahAtClosings, Is.False, label + ": no eviction night closed.");
+                s.phase = EpisodePhase.Eviction;
+                watch.Closing(s, run);
+                Assert.That(run.pariahAtClosings, Is.False, label + ": one eviction night is not two.");
+                watch.Closing(s, run);
+                Assert.That(run.pariahAtClosings, Is.True, label + ": D1.");
+            }
+
+            // D1 asks for the same target on both nights, not some target on each: the three move to another houseguest
+            // before the second night, so two nights that each had a qualifier are no D1 run until the new target's own
+            // second night.
+            {
+                var s = PariahFixture(8, 3, out string first);
+                var three = Grudges.HoldersAgainst(s, first, 40);
+                string second = s.contestants.Where(c => !c.isPlayer && c.id != first && !three.Contains(c.id)).Select(c => c.id).OrderBy(id => id, StringComparer.Ordinal).First();
+                var run = new BalanceLab.SeasonRun();
+                var watch = new BalanceLab.PariahWatch();
+                s.phase = EpisodePhase.Eviction;
+                watch.Closing(s, run);
+                s.story.grudges.Clear();
+                foreach (string holder in three) Assert.That(Grudges.Add(s, holder, second, 50, GrudgeCauses.Nominated), Is.Not.Null);
+                watch.Closing(s, run);
+                Assert.That(run.pariahAtClosings, Is.False, "Two nights, a different target each: not D1.");
+                watch.Closing(s, run);
+                Assert.That(run.pariahAtClosings, Is.True, "The second target's second night: D1.");
+            }
+
+            // D2 at twelve: eleven houseguests ask five holders, so three make a D0 run and no D2 run; five make both.
+            foreach (int holders in new[] { 3, 5 })
+            {
+                var s = PariahFixture(12, holders, out _);
+                var run = new BalanceLab.SeasonRun();
+                var watch = new BalanceLab.PariahWatch();
+                watch.Advance(s, run);
+                watch.Advance(s, run);
+                Assert.That(run.pariah, Is.Not.Null, holders + " holders: D0.");
+                Assert.That(run.pariahBySize, Is.EqualTo(holders >= 5), holders + " holders: D2.");
+            }
+        }
+
+        /// <summary>A fresh season with the story on and <paramref name="holders"/> houseguests holding fifty against the lowest-id one.</summary>
+        private static EpisodeState PariahFixture(int size, int holders, out string target)
+        {
+            var s = SeasonBuilder.Create(new SeasonBuilder.Choice { HouseSize = size }, 41u);
+            EpisodeEngine.EnableStory(s);
+            var npcs = s.contestants.Where(c => !c.isPlayer).Select(c => c.id).OrderBy(id => id, StringComparer.Ordinal).ToList();
+            target = npcs[0];
+            Assert.That(s.hohId, Is.Null, "Precondition: nobody reigns, so nobody is exempt.");
+            Assert.That(s.story.grudges, Is.Empty, "Precondition: no grudge but the fixture's.");
+            foreach (string holder in npcs.Skip(1).Take(holders)) Assert.That(Grudges.Add(s, holder, target, 50, GrudgeCauses.Nominated), Is.Not.Null);
+            return s;
         }
 
         [Test]

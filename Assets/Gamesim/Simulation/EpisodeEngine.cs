@@ -1072,7 +1072,7 @@ namespace Gamesim.Simulation
                 MoodLift(s, saved);
                 // Under the role moments a replacement the player turned down at their pitch takes it easier (R5).
                 var honestNo = HonestNos(s, new[] { replacement });
-                StoryReplacement(s, replacement);
+                StoryReplacement(s, replacement, saved);
                 EaseHonestNos(s, honestNo);
                 // Between two houseguests, under D2's rules, through the ledger and no arc (ChangeBetween).
                 ChangeBetween(s, saved, s.vetoHolderId, 25, Name(s, s.vetoHolderId) + " used POV to save " + Target(s, saved, s.vetoHolderId), null, VetoSaveEvent);

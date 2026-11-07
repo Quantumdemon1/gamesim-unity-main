@@ -28,6 +28,8 @@ namespace Gamesim.Tests.EditMode
     {
         private const string EdgeReason = "The all-week rules' records are only ever between two houseguests.";
         private const string RulesTwoAt29 = "Dialogue rules are not enabled in this build.";
+        /// <summary>The frozen reader's words for story rules 10, Blame, which its own ladder never held.</summary>
+        private const string StoryRulesTenAt29 = "Unsupported story rules version.";
         private static readonly string[] Current29 =
         {
             "s29-default-w2-social", "s29-mode1-allweek-w3-veto-meeting", "s29-mode2-allweek-w3-campaign",
@@ -90,6 +92,7 @@ namespace Gamesim.Tests.EditMode
                 Assert.That(dispatch.Message, Is.EqualTo(frozen.Message));
                 if (defect == "player-edge") Assert.That(dispatch.Message, Is.EqualTo(EdgeReason));
                 if (defect == "dialogue-rules-2") Assert.That(dispatch.Message, Is.EqualTo(RulesTwoAt29));
+                if (defect == "story-rules-10") Assert.That(dispatch.Message, Is.EqualTo(StoryRulesTenAt29));
                 before.AssertUnchanged(bad);
             }
         }
@@ -245,9 +248,9 @@ namespace Gamesim.Tests.EditMode
                 yield return new TestCaseData(season, "alumni-history-npc", true);
                 yield return new TestCaseData(season, "alumni-history-player", true);
                 // Rules 2 at 29 is not a parity row: RulesTwoAtTwentyNineIsRefusedInTheFrozenReadersWordsBeforeAnyLift holds it.
+                // Nor is story rules 10, defined from 30 as Blame: StoryRulesTenAtTwentyNineIsRefusedInTheFrozenReadersWordsBeforeAnyLift.
                 yield return new TestCaseData(season, "dialogue-rules-3", false);
                 yield return new TestCaseData(season, "dialogue-rules-minus-1", false);
-                yield return new TestCaseData(season, "story-rules-10", false);
                 yield return new TestCaseData(season, "story-rules-12", false);
                 yield return new TestCaseData(season, "conditional-veto", false);
                 yield return new TestCaseData(season, "grant", false);
@@ -273,11 +276,9 @@ namespace Gamesim.Tests.EditMode
                 yield return new TestCaseData(season, "response-key", false);
                 yield return new TestCaseData(season, "entry-grant", false);
             }
+            // Taken down to 10 these are not parity rows either: StoryRulesTenAtTwentyNineIsRefusedInTheFrozenReadersWordsBeforeAnyLift.
             foreach (string season in new[] { "roles-pitch-board", "roles-keep-the-block-asked", "roles-keep-the-block-kept" })
-            {
                 yield return new TestCaseData(season, "story-rules-threads", false);
-                yield return new TestCaseData(season, "story-rules-10", false);
-            }
             yield return new TestCaseData("roles-pitch-board", "pitch-impact", false);
             yield return new TestCaseData("roles-pitch-board", "fourth-pitcher", false);
         }
@@ -307,6 +308,88 @@ namespace Gamesim.Tests.EditMode
             Assert.That(migrated, Is.False);
             Assert.That(load.Message, Is.EqualTo(RulesTwoAt29), "A real load stops at the frozen reader, in its words.");
             held.AssertUnchanged(mutated);
+        }
+
+        /// <summary>
+        /// Story rules 10, <see cref="StoryRules.Blame"/> (the pariah fix, STORY-RULES-10-PLAN §4), is defined from schema 30:
+        /// the live validator, which reads only 30, accepts it, and the frozen schema-29 reader, whose own ladder has no 10,
+        /// refuses it. So a schema-29 season at 10 is refused in the frozen reader's words and a real load stops there, before
+        /// any lift; the two readers are not compared on it, as they were while neither defined 10. Lifted by hand to 30, a
+        /// season lawful at threads is lawful at 10. A role moments' season taken down to 10 is still refused at 30, for the
+        /// role moments' own records exactly as at threads, and never for its version: Blame is below Roles. The four
+        /// seasons the parity rows mutate, and the other two role moments' seasons the Roles rows did.
+        /// </summary>
+        [TestCase("s29-default-w2-social")]
+        [TestCase("s29-mode2-allweek-w3-campaign")]
+        [TestCase("dialogue-finish-personal")]
+        [TestCase("roles-keep-the-block-kept")]
+        [TestCase("roles-keep-the-block-asked")]
+        [TestCase("roles-pitch-board")]
+        public void StoryRulesTenAtTwentyNineIsRefusedInTheFrozenReadersWordsBeforeAnyLift(string season)
+        {
+            var payload = season.StartsWith("s29-", StringComparison.Ordinal) ? Fixture(season) : Retained29(Built(season));
+            Assert.That(Agree(payload, season), Is.Null, "The control is lawful.");
+            bool roles = season.StartsWith("roles-", StringComparison.Ordinal);
+            var mutated = (JObject)payload.DeepClone();
+            Mutate(mutated, "story-rules-10");
+            var held = new TokenImage(mutated);
+            // A role moments' season may meet a check of the role moments' records first, in the same words at 29 and 30.
+            string frozen = FrozenVerdict((JObject)mutated.DeepClone());
+            if (roles) Assert.That(frozen, Is.Not.Null, season + " at story rules 10 is not a lawful schema-29 season.");
+            else Assert.That(frozen, Is.EqualTo(StoryRulesTenAt29), season + " at story rules 10 is not a lawful schema-29 season.");
+            bool migrated = true;
+            var load = Assert.Throws<InvalidDataException>(() => EpisodeSaveMigrations.PrepareCurrentPayload(mutated, out migrated));
+            Assert.That(migrated, Is.False);
+            Assert.That(load.Message, Is.EqualTo(frozen), "A real load stops at the frozen reader, in its words.");
+            held.AssertUnchanged(mutated);
+
+            string live = Live(Pooled30(mutated));
+            if (!roles) Assert.That(live, Is.Null, season + " lifted to 30 at story rules 10 is a lawful season.");
+            else
+            {
+                var atThreads = (JObject)payload.DeepClone();
+                Mutate(atThreads, "story-rules-threads");
+                Assert.That(live, Is.Not.Null.And.Not.EqualTo(StoryRulesTenAt29), season + ": refused at 30 for its records, not its version.");
+                Assert.That(live, Is.EqualTo(Live(Pooled30(atThreads))), season + ": at 10 as at threads, below the role moments.");
+            }
+            held.AssertUnchanged(mutated);
+        }
+
+        /// <summary>
+        /// A season at story rules 10 is a schema-30 season like any other: a shipped season opted in to Blame, as tests opt
+        /// in until its enrolment, plays two weeks and their two veto meetings, and the real store saves it at 30, loads it
+        /// read-only and unmigrated with every field it held, and saves and reloads it again unchanged.
+        /// </summary>
+        [Test]
+        public void ASeasonAtStoryRulesTenRoundTripsThroughTheRealStoreAtThirty()
+        {
+            var start = SeasonBuilder.Create(new SeasonBuilder.Choice { HouseSize = 8 }, 1111u);
+            ShippedRules.ApplyFresh(start);
+            start.story.rulesVersion = StoryRules.Blame; // The tests' opt-in until the enrolment (STORY-RULES-10-PLAN §4).
+            var engine = new EpisodeEngine(start);
+            for (int i = 0; i < 4000 && engine.Snapshot.week < 3 && engine.Snapshot.phase != EpisodePhase.Finished; i++)
+            {
+                var at = engine.Snapshot;
+                var result = engine.Apply(EpisodeEngineTests.NextCommand(at));
+                Assert.That(result.accepted, Is.True, "week " + at.week + " " + at.phase + ": " + result.reason);
+            }
+            var played = engine.Snapshot;
+            Assert.That(played.week, Is.EqualTo(3), "Two weeks played, and two veto meetings.");
+            Assert.That(played.story.rulesVersion, Is.EqualTo(StoryRules.Blame), "Nothing moves a season's story rules.");
+
+            using var slot = new Slot();
+            slot.Store.Save(played);
+            var written = (JObject)JObject.Parse(File.ReadAllText(slot.Store.SavePath))["state"];
+            Assert.That((int)written["schemaVersion"], Is.EqualTo(30));
+            Assert.That((int)written["story"]["rulesVersion"], Is.EqualTo(StoryRules.Blame));
+            byte[] bytes = File.ReadAllBytes(slot.Store.SavePath);
+            Assert.That(slot.Store.TryLoad(out var loaded, out string message), Is.True, message);
+            Assert.That(File.ReadAllBytes(slot.Store.SavePath), Is.EqualTo(bytes), "Loading current data never rewrites it.");
+            Assert.That(loaded.schemaVersion, Is.EqualTo(30));
+            Assert.That(JToken.DeepEquals(Payload(loaded), Payload(played)), Is.True, "Every saved field survives at 30.");
+            slot.Store.Save(loaded);
+            Assert.That(slot.Store.TryLoad(out var again, out message), Is.True, message);
+            Assert.That(JToken.DeepEquals(Payload(again), Payload(played)), Is.True, "And again, from its own save.");
         }
 
         [TestCaseSource(nameof(Mutations))]

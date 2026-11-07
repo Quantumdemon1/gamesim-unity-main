@@ -260,10 +260,10 @@ namespace Gamesim.Tests.EditMode
         }
 
         /// <summary>
-        /// Threads or any later story milestone (ROLE-MOMENTS-PLAN R0): enrolling Roles must not switch the pilot
-        /// off for good. An earlier milestone still refuses ("story-version" above).
+        /// Threads or any later story milestone (ROLE-MOMENTS-PLAN R0): enrolling Blame, the pariah fix, or Roles
+        /// must not switch the pilot off for good. An earlier milestone still refuses ("story-version" above).
         /// </summary>
-        [TestCase(StoryRules.Threads)] [TestCase(StoryRules.Roles)]
+        [TestCase(StoryRules.Threads)] [TestCase(StoryRules.Blame)] [TestCase(StoryRules.Roles)]
         public void ThePilotHoldsAtThreadsAndAtALaterStoryMilestone(int version)
         {
             foreach (var s in new[] { Empty(), Witness("active-case") })

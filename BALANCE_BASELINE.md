@@ -70,7 +70,9 @@ and the same tier held at tuning 0 (`BALANCE_TUNING=0`) replays the reference ro
   fresh season plays, and every fresh season moved for the same reasons. Re-recorded at B9-3 from the committed build.
 - `TuningRulesTests.StudierTuning0Rows` (`9b9bf8a15644b745`) and `StudierTuning1Rows` (`0f53e79cd8e9a2f2`): four studier
   seasons, held and at tuning 1; the first is four lines of the reference tier above.
-- The parts' stamp is `balance-lab-parts/v8`, so no part played before B9 merges with one played after.
+- The parts' stamp was `balance-lab-parts/v8`, so no part played before B9 merges with one played after. Story rules
+  10's define commit moved it to `v9`: its pariah measures (in the player's house, at two eviction nights, by house
+  size) entered the part record.
 - The season digest tiers that build their seasons by hand (commitment rules, mode one, the leaks, the war rooms, the
   mode-two sweeps and `AllWeekSeasonDigests`' 54 records) play tuning 0 and pass unchanged; so do
   `FreshSeasonStateDigestTests`' records, with the one int taken back. Three start through `ShippedRules.ApplyFresh` and

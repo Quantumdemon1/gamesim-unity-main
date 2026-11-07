@@ -699,6 +699,32 @@ corrected cases, and the holds probe), and `76a34035`'s new PlayMode check has n
 stands on the head (`bash D:/ClaudeScratch/b9/fix7/phase5.sh <head>`, reusing its snapshot while the snapshot's paths
 are unchanged).
 
+**Round 8 ran on `dd603e28`, the merge of main** (main at `22059773`, the quick fixes; 2026-11-06, 21:01 to 22:45, in
+the gap after Codex released). It was round 7's steps on the merge (`D:/ClaudeScratch/b9/fix8/phase6.sh`): a git-archive
+snapshot for dotnet, the tree read only for the Mono kit, its status the same before and after.
+- **The build** of the subset: 0 errors, 0 warnings. **The subset:** 16,614 of 16,615 passed, the merged floor counted.
+  **By name** (TuningRulesTests, TuningCopyTests, CompetitionWordsTests and both observers): 140 of 141.
+- **The offline compiles** without UMA and with it: 0 errors in every assembly (5 and 8), no asmdef difference from
+  either copy, and no warning in a file the merge changed. The listers count the merged floors exactly: EditMode 9,781,
+  PlayMode 1,486, the UMA build's PlayMode 1,528 and Uma 134.
+- **Under Unity's Mono:** TuningRulesTests 16 of 16 (the two corrected cases' first pass), TuningCopyTests 3 of 3,
+  LegacyDigestSchema29ObserverTests 62 of 62, OldSaveAcceptanceTests 270 of 270 (the tuning-1 cell's cases among them)
+  and LegacyDigestSchema30ObserverTests 49 of 50.
+- **Every digest tier and golden passed:** mode one, the leaks and the war rooms (2 each), budget nought held (1), the
+  budget-0 goldens (2), commitment rules (2), all week (4), the mode-two sweep's rest (58), the unified vote's rest (14),
+  the readers' parity rest (28), and all six budget-300 slices (at 8 and at 12), so the 24 budget-300 cells have now been
+  seen passing.
+- **The one failure was the test's, not the observer's:** the tuning arm's observer test, its `"order"` case, in the
+  subset and under Mono alike. Its defect moved `tuningRulesVersion` to the end of the JSON, but the tuning rules are the
+  state's last field, so the move changed nothing and the observer rightly admitted the fields. `6ed18c3a` moves them
+  ahead of the alumni rules instead, as the pooled-order test's `"swapped"` case does, and asserts that the pooled
+  fields really read out of order before the observer sees them. The observer is unchanged.
+
+**Round 9 is queued on `6ed18c3a`** (2026-11-07 10:19, `D:/ClaudeScratch/b9/fix9/b9-r9.sh`): the lead's UMA set, the
+Unity gate, from a frozen detached checkout (`D:/GamesimB9Qual`). EditMode 9,781 (the corrected case among them),
+`Gamesim.Uma.PlayModeTests` 134 and the UMA build's PlayMode 1,528 run in one UMA session, then the subset (floor
+16,615). It waits for Codex's hold to lift and for C: to have 6 GB free. It is the tuning-1 diary case's gate (below).
+
 ### For the owner
 
 - **Sign off the numbers** above (decision 9). Inside them are delegated calls, each still open to the owner:
@@ -766,8 +792,8 @@ are unchanged).
   whether B9 should wait for it).
 - **The tuning-1 diary is unproven in Unity.** `StudyDiary_UnderTuningOneTheStudyStopsAtTheSeasonsLimitAndSaysWhatUsesItUp`
   (with its check that a fresh open shows the record's tab and "No private decision pending" once the study is full)
-  compiles in both offline builds and is listed, but has never run: the lead's UMA PlayMode set is its gate, and its pass
-  is quoted here before sign-off.
+  compiles in both offline builds and is listed, but has never run: the lead's UMA PlayMode set is its gate (round 9,
+  queued), and its pass is quoted here before sign-off.
 - **Asked of the owner: accept the 100-seed headline's deferral, or hold the merge for it.** §7 lists the 100-seed
   tuning-1 headline (all 12 policies at budget 0, with Q4 and the pacing tables) as an input R7, D6 and story rules 10
   take from B9. Without it there is no tuning-1 figure for the all-policy Q5, for the skilled policies beyond the beast's

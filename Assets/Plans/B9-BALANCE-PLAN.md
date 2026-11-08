@@ -452,21 +452,23 @@ The owner signs off the numbers below in the PR before it merges; tuning 1 freez
 
 ### The numbers against the bands
 
-The rule set is round 3's **S8F**, with **K1 and K5** for the counter and the **0.2 / 0.6 / 0.2** weights. Weekly and
-season wins are the studier at fixed 0.5 on competition seeds 0-799 (Wilson 95%); B5-B7 are the war rooms on seeds 0-479.
+The rule set is round 4's: preparation of 1 in every house (round 3's **S8F** small-house boost dropped), **K1 and K5**
+for the counter, the **0.2 / 0.6 / 0.2** weights, and the keyed jury tiebreak. Weekly and season wins are the studier at
+fixed 0.5 on competition seeds 0-799 (Wilson 95%; round 4's lab, below); B5-B7 are the war rooms on seeds 0-479. Round 3's
+S8F figures, before the tiebreak, were 64.5%, 61.6%, 28.6% and 24.8%.
 
 | # | Band | Today (`26b65f09`) | Tuning 1 | Verdict |
 |---|---|---|---|---|
-| B1 | weekly wins at 8: 60-70% | 95.2% [94.0, 96.2] | 3,309 of 5,132 = **64.5% [63.2, 65.8]** (HoH 76.9%, veto 56.3%) | met, interval inside |
+| B1 | weekly wins at 8: 60-70% | 95.2% [94.0, 96.2] | 3,017 of 4,836 = **62.4% [61.0, 63.7]** (HoH 76.6%, veto 53.1%) | met, interval inside |
 | B2 | weekly wins at 12: 60-70% | 94.7% [93.6, 95.7] | 3,879 of 6,299 = **61.6% [60.4, 62.8]** (HoH 75.4%, veto 51.9%) | met, interval inside |
-| B3 | season wins at 8: 25-35% | 73.5% [67.0, 79.1] | 229 of 800 = **28.6% [25.6, 31.9]** | met, interval inside |
-| B4 | season wins at 12: 18-28% | 48.0% [41.2, 54.9] | 198 of 800 = **24.8% [21.9, 27.9]** | met, interval inside |
+| B3 | season wins at 8: 25-35% | 73.5% [67.0, 79.1] | 263 of 800 = **32.9% [29.7, 36.2]** | met on the estimate; the interval crosses 35 |
+| B4 | season wins at 12: 18-28% | 48.0% [41.2, 54.9] | 214 of 800 = **26.8% [23.8, 29.9]** | met on the estimate; the interval crosses 28 |
 | B5 | the gap at 8: at least 10, low end above 5 | 10.2 [8.9, 11.5] (today's weights, 480 seeds) | **14.6 [13.1, 16.2]** | met |
 | B6 | the gap at 12 | 8.7 [7.8, 9.5] (fails) | **12.7 [11.6, 13.7]** | met |
 | B7 | 35-50% of accepted counters carry | 46 of 61 = 75.4% [63.3, 84.5] | 27 of 61 = **44.3% [32.5, 56.7]** | met on the estimate (decision 4) |
 
 - The weekly intervals are Wilson's, which treats each competition as independent. A season-clustered bootstrap is
-  narrower ([63.6, 65.4] at 8, [60.5, 62.6] at 12): competitions in one season are negatively correlated, so §6's
+  narrower ([61.4, 63.3] at 8, [60.5, 62.6] at 12): competitions in one season are negatively correlated, so §6's
   "slightly narrow" is the wrong way round, and Wilson is the conservative reading.
 - 0.25 / 0.5 / 0.25, the smaller change, also meets B5-B6 on the same seasons (12.4 [11.0, 13.8] and 10.7 [9.8, 11.6]).
   The default stays 0.2 / 0.6 / 0.2 (decision 7); the war-room tier prints both.
@@ -479,10 +481,11 @@ season wins are the studier at fixed 0.5 on competition seeds 0-799 (Wilson 95%)
     anything (decision 6).
   - It is spent at the Advance out of a weekly Head of Household or veto the player entered - played, assisted or
     simulated (`EpisodeEngine.SpendPreparation`). A throw keeps it; the final Head of Household's three parts all count it.
-  - **In a house that moved in eight or fewer** (`TuningRules.SmallHouse`): a player who has studied and sits a Head of
-    Household out learns from watching it, one more up to 2 (`AfterWatchedHoH`); and the final week's study fills to 2.
-    Casts of 9 to 12 get neither.
-  - Validation holds preparation to 2 in a house of eight or fewer and to 1 otherwise; 5 at tuning 0.
+  - A Head of Household the player sits out leaves it as it was, and the final week's study fills to 1, in every house.
+    (Rounds 2 and 3 added a small house's watch and a final week's 2, `SmallHouse` and `AfterWatchedHoH`; round 4 dropped
+    both before tuning 1 shipped.)
+  - Validation holds preparation to 1 in every house; 5 at tuning 0.
+- **The jury's tiebreak** (round 4, below): a tied jury goes to the finalist the season's keyed coin names.
 - **Game Sense** weighs its faces 0.2 / 0.6 / 0.2 (`SenseWeights`); the faces and their notes are unchanged.
 - **The counter** (`PactPlans.Settle`): a nominee's standing say counts on neither side of the tally (K5), and a tie in
   a pact the player founded carries the counter only where a member came round (K1); otherwise the founder rule runs
@@ -494,28 +497,28 @@ season wins are the studier at fixed 0.5 on competition seeds 0-799 (Wilson 95%)
   is byte for byte as it was): the study's log line, the diary's study section, record row and review, the free-time
   board and screen, the campaign screen and the competition brief (`CompetitionWords.EarnedRule(state)`). Under tuning 1
   the diary offers no study at the limit and says why; `StudyUse` says the next weekly competition uses it up unless the
-  player throws it; and the record's rules line (at tuning 0 its old sentence) names the season's study limit and, in a
-  house of eight or fewer, the watch. In the final week, when no weekly competition follows, the study section, its
+  player throws it; and the record's rules line (at tuning 0 its old sentence) names the season's study limit. In the final week, when no weekly competition follows, the study section, its
   aside, the record's row and the engine's refusal say the final Head of Household's three parts count it, and once those
   are over, or for a player out of the house, the row says no competition is left. These sentences live in
   `Runtime/Presentation/StudyWords.cs`, Unity-free like `CompetitionWords`, and the director reads them there; the
   refusal is `TuningRules.FullRefusal`. A full preparation is no pending choice either, so on its own it no longer opens
-  the diary on the decision tab. Two new log lines, both private to the player: "Your preparation was used in the competition." and "You watched the Head of
-  Household competition and learned from it." The standalone verify's opt-in study workload reads the season's limit.
+  the diary on the decision tab. One new log line, private to the player: "Your preparation was used in the competition."
+  (The dropped watch had a second.) The standalone verify's opt-in study workload reads the season's limit.
 
 ### Where the build departs from the plan's text
 
 - **§3.1's candidate is not what shipped.** Round 1 screened A-D: no single cap with the spend met B3 and B4 together
   (at 8 every spend-all cap left season wins near 24-26%; only keeping a veto bonus lifted them, at 79% weekly). Round 2's
   watch (M8) met B3 on its estimate; round 3 added the final week's study (S8F) and confined both to houses of eight or
-  fewer, which put all four intervals inside.
+  fewer, which put all four intervals inside. Round 4 dropped both again: with the jury tiebreak, the plain spend of
+  round 1 meets B1-B4 (below), so tuning 1 is §3.1's single cap after all.
 - **§3.3's shapes.** The count on today's seasons put K1, K2 and both at 29.5%, under the band, so neither E nor F was
   played. K5 (a nominee's say is not counted; a nominee cannot vote) is round 2's; with K1 it measured 44.3%.
 - **Decision 5's watch.** Decision 5 keeps preparation when the player watches. Under S8F, in a house of eight or fewer,
   a Head of Household the player sits out with some banked adds one instead (`AfterWatchedHoH`). Since the review fixes
   (2026-11-05) only a player still in the house learns from it: the ledger writes "watched" for a juror too, and a juror
   holding a point (a throw keeps it, and a replacement nominee plays no veto) was told it learned from the competition.
-  No lab policy throws, so no lab row moves.
+  No lab policy throws, so no lab row moves. Round 4 dropped the watch, so decision 5 holds as written.
 - **Decision 8's AllWeekSeasonDigests twins were not made.** Its 54 records are `CommitmentRulesSeasonDigests`'
   hand-built seasons, which stay at tuning 0. Its `Fresh` arms (the combined Wave D digest and `SettleByHouseSize`)
   start through `ShippedRules.ApplyFresh` and so play tuning 1, but they assert invariants and record no digest, so
@@ -737,8 +740,8 @@ Unity gate, from a frozen detached checkout (`D:/GamesimB9Qual`). EditMode 9,781
   - decision 10's open question: whether any season was saved between `3f23e76b` and the reach amendment (if one was,
     the war rooms' reach constants move behind the tuning rules);
   - and two rule calls: K1 and K5 change D3's tally rule (D3-L4) for new seasons (a nominee's say no longer counts, and
-    the player as founder no longer takes a tie on their own say alone); and S8F depends on the cast that moved in (the
-    watch and the final week's 2 apply in houses of eight or fewer), which departs from §3.1's single cap.
+    the player as founder no longer takes a tie on their own say alone). (S8F's dependence on the cast that moved in was a
+    third; round 4 dropped it.)
 - **B7, read plainly.** The pooled estimate is inside the band: 27 of 61, 44.3%. Each house on its own is outside it: 15
   of 26 (57.7%) at 8, above, and 12 of 35 (34.3%) at 12, below. The interval, [32.5, 56.7], crosses both edges. Decision
   4 judges B7 on the pooled estimate, so B7 is met only in that sense, and the pooled figure depends on the lab's mix of
@@ -749,9 +752,10 @@ Unity gate, from a frozen detached checkout (`D:/GamesimB9Qual`). EditMode 9,781
   - **NPC outcomes change in every fresh studier season:** in 200 of 200 paired seasons at each size. Seasons an NPC wins
     go from 53 to 142 of 200 at 8 and from 104 to 147 at 12. The war-room and passive players' NPC outcomes change in 0-2
     of 480.
-  - **The final-week lever reaches B3 by making the final Head of Household from three a near-lock at 8:** the studier
-    wins it 94.6% of the time (84.6% without the lever); at 12 the lever would make it 98.9% (90.7%), which is why it
-    stays out of casts of 9 to 12. That is Q3's "competitions dominate", moved to the season's last competition.
+  - **The final-week lever reached B3 by making the final Head of Household from three a near-lock at 8:** the studier
+    won it 94.6% of the time (84.6% without the lever); at 12 the lever would have made it 98.9% (90.7%). That was Q3's
+    "competitions dominate", moved to the season's last competition. Round 4 dropped the lever: with the tiebreak and
+    without it, the studier wins 85.5% of the final HoHs it reaches at 8.
   - **Shorter sessions:** the player stays 4.75 / 5.86 weeks (5.34 / 6.70), and a session runs 21.8 / 25.2 minutes
     (24.2 / 29.1); seasons still last 6 / 10 weeks.
   - **The beast** wins 48% / 52% of seasons (87% / 56%, 100 seeds).
@@ -773,12 +777,12 @@ Unity gate, from a frozen detached checkout (`D:/GamesimB9Qual`). EditMode 9,781
 - **R7 and D7.** R7's enrolment and D7 are planned to land together, but D6 runs after R7's measurement: the lead
   settles the order with R7.
 - **The words a tuning-1 season shows** are new sentences (tuning 0's are unchanged): the study's limit ("up to the
-  limit of 1", or 2 in a small house's final week), "Your preparation is full. The next weekly HoH or veto competition
+  limit of 1"), "Your preparation is full. The next weekly HoH or veto competition
   you enter uses it up, unless you throw it." (in the final week "Your preparation is full. All three parts of the final
   Head of Household count it."), the record's "Used up by your next weekly competition." ("Counts in the final HoH's
-  three parts." in the final week, "No competition is left to use it in." after it or out of the house), the rules
-  line's watch, the briefing's "A weekly Head of Household or veto you enter uses your preparation up", and the two
-  private log lines. They are read best in play.
+  three parts." in the final week, "No competition is left to use it in." after it or out of the house), the briefing's
+  "A weekly Head of Household or veto you enter uses your preparation up", the private log line, and the finale's line
+  on who a tied jury's draw gives the win to. They are read best in play.
 - **The tuning-1 old-save cell is in this PR** (OLD-SAVE-ACCEPTANCE 2.8), as the owner's rule of 2026-10-15 asks: one
   fixture per save version and rules combination, recorded by the build that writes it. **The tuning-1 cell pins the
   save, load and replay of a tuning-1 save, not the levers.** Its walker never studies or counters, so no lever fires:
@@ -859,6 +863,7 @@ records a pass or a merge.
    - **The default:** if B1 and B3 are met without the boost (§6's tests), tuning 1 drops it (the watch and the final
      week's 2). The final-HoH win rate is reported either way.
    - If they are not met, both sets go to the owner with their final-HoH rates. B9 widens no band.
+   - **Result:** met without the boost, so tuning 1 dropped it (`f5fb8cb6`; "Round 4: the lab", below).
 4. **The headline** (call 4) is story rules 10's control on seeds 0-99, once story rules 10 has merged B9's final head.
    - Two leak proofs show that it reproduces B9's final rules, with the digests taken from B9's own head.
    - One part (seeds 0-9) is also played on B9's head and compared row for row.
@@ -918,8 +923,8 @@ nothing below has run in Unity or the dotnet subset.
 
 ### Round 4: save and reload coverage (as built)
 
-Item 2 above (the owner's call 5), built 2026-11-07 in this worktree beside the tiebreak. Uncommitted, and not yet
-compiled or run: the machine was held.
+Item 2 above (the owner's call 5), built 2026-11-07 beside the tiebreak and committed in `1bea9cf5`; the verification
+kit ran it there (below). The boost's drop (`f5fb8cb6`) changed the cases at eight, as this section now reads.
 
 - **`TuningSaveReloadTests`, 12 cases in the subset and 13 in the editor.** Each of the twelve plays a tuning-1 season
   through a save and a load, and plays the same commands on the same season straight through. The two states are
@@ -935,13 +940,14 @@ compiled or run: the machine was held.
     the spend reads the week's Played row from a load; the Advance spends it with the same private line (1).
   - A throw keeps the point across a load; after a second load, the veto the player enters spends it (1).
   - A study at the limit of 1, after a load, is refused in the same words, with nothing spent or drawn (1).
-  - Editor only, the store's bound: a tuning-1 season of twelve holding 2 is refused on save and on load (a file sealed
-    by hand with a valid checksum), with "Study preparation must be between zero and one."; at 1 it loads. A season of
-    eight holding 2 outside its final week loads, and saves and loads again (1).
-  - The final week, at 8 and 12. A load after every study: the study fills to 2 at 8 and 1 at 12, and the next is refused
-    in the final week's words. Loads before the final Head of Household and between its first two parts: part 1's
-    explanation counts the preparation, and no part spends it (2).
-  - The small house's watch after a load: one more, up to 2, at 8; nothing at 12 (2).
+  - Editor only, the store's bound: a tuning-1 season of twelve, one of eight and one of eight in its final week, each
+    holding 2, are refused on save and on load (a file sealed by hand with a valid checksum), with "Study preparation
+    must be between zero and one."; seasons of twelve and of eight at 1 load, and save and load again (1).
+  - The final week, at 8 and 12. A load after every study: the study fills to 1 at both, and the next is refused in the
+    final week's words. Loads before the final Head of Household and between its first two parts: part 1's explanation
+    counts the preparation, and no part spends it (2).
+  - A Head of Household sat out after a load leaves the point as it was, with no line, at 8 and at 12 (2). (Before the
+    boost's drop, the case at 8 learned one more from watching, up to 2.)
   - The war room's counter, answered through the engine after a load (4): K5 with a nominee's say for the counter (the
     plan holds; the tuning-0 twin carries the counter); K5 alone, with a nominee's say for the plan (the counter carries
     two to one); K1 with a tie nobody came round in (the plan holds; the twin carries the counter); and K1 with a tie a
@@ -950,9 +956,9 @@ compiled or run: the machine was held.
     and the same again a week later (1).
 - **What catches a lever dropped on load.** Through the real store, the carry's own field-for-field check fails first.
   Each case also fails on its own lever. If the load reset the tuning to 0: the point would not be spent, a study at the
-  limit would be accepted, the watch would add nothing, the K5 and K1-none counters would carry, and Game Sense would
-  read 0.3 / 0.4 / 0.3. If it dropped the point: the score would be one less, the spend and watch lines would be missing,
-  and the final week's preparation would be short.
+  limit would be accepted, the K5 and K1-none counters would carry, and Game Sense would read 0.3 / 0.4 / 0.3. If it
+  dropped the point: the score would be one less, the spend line would be missing, and the final week's preparation
+  would be short.
 - **The seasons** are the season builder's, put on tuning 1 by hand as TuningRulesTests does, and the war rooms are
   PactPlanTests'. They are not `ShippedRules.ApplyFresh` seasons, because the plain walk is proven on built seasons. The
   studier cell below is the shipped season.
@@ -964,14 +970,69 @@ compiled or run: the machine was held.
   OLD-SAVE-ACCEPTANCE 2.9, with its seed rule, manifest row and test edits. B9's final head records it in the next engine
   window. A profile that also counters in a war room is not modest work; 2.9 says what it would take.
 - **What may move.**
-  - If item 3 drops the small house's boost, the watch's case at 8 (2 becomes 1, with no line) and the final week's case
-    at 8 (its limit becomes 1) change with it.
+  - Item 3 dropped the small house's boost: the sat-out case at 8 now keeps 1, with no line, and the final week's case
+    at 8 fills to 1 (`f5fb8cb6`).
   - The tiebreak can move the tuning-1 old-save cell, `s30-mode2-allweek-tuning1-w3-campaign`. Its replay plays the
     shipped season to the finale on tuning 1, so if its jury tied, the coin now decides; and if its final Head of
     Household is a houseguest, their read of a tie is now a half. OldSaveAcceptanceTests on that cell is the check. If it moved, B9's final head records it again
     (tuning 1 never shipped).
 - **Needs an engine run:** both offline compiles; the subset with 12 more cases and the EditMode run with 13; then the
   recorder's build and the studier cell.
+
+### Round 4: the lab, the boost dropped, and the kit (2026-11-07 evening)
+
+**The lab** (item 3; `D:/ClaudeScratch/b9/r4`, head `1bea9cf5`, 19:12 to 21:14 Pacific through the gate, every part
+under 30 minutes). The studier at fixed 0.5 on competition seeds 0-799. At 8 it ran two snapshots, with the boost and
+without it (the second set `TuningRules.SmallHouse` to 0). At 12 it ran one, since the boost never reaches a cast of 9 or
+more: seeds 0-99 at 12 played without it equal the boost's, row for row.
+
+| | With the boost | Without it | Band |
+|---|---|---|---|
+| B1, weekly wins at 8 | 3,309 of 5,132 = 64.5% [63.2, 65.8] | 3,017 of 4,836 = **62.4% [61.0, 63.7]** | 60-70%: both met, intervals inside |
+| B3, season wins at 8 | 308 of 800 = 38.5% [35.2, 41.9] | 263 of 800 = **32.9% [29.7, 36.2]** | 25-35%: not met with it; met without it on the estimate, the interval crossing 35 |
+| The studier reached the final three at 8 | 553 seasons (69.1%) | 483 (60.4%) | reported |
+| ... and won the final Head of Household | 94.6% [92.4, 96.2] | **85.5% [82.1, 88.4]** | reported (call 1) |
+| Tied juries the studier sat in, and won | 78 of 155 = 50.3% | 71 of 139 = 51.1% | the coin: fair-coin p 1 and 0.865 |
+
+- **At 12** (no boost to drop): B2 3,879 of 6,299 = **61.6% [60.4, 62.8]**, met with the interval inside; B4 214 of 800
+  = **26.8% [23.8, 29.9]**, met on the estimate, the interval crossing 28. Tied juries: 16 of 34 won (47.1%, p 0.864).
+- Paired on the same seeds at 8, the boost won 126 seasons the build without it lost, and lost 81 it won (McNemar p 0.002).
+- Call 3's projections were about 32.7% at 8 and 26.9% at 12. The measurements are 32.9% and 26.8%.
+- **The default applies.** B1 and B3 are met without the boost, so tuning 1 drops it (`f5fb8cb6`). A study fills
+  preparation to 1 in every house and week, a Head of Household sat out leaves it as it was, and validation holds it to 1.
+  The final-HoH rate the owner asked about is 85.5% without the boost (round 3 measured 84.6% without the final week's
+  lever, before the tiebreak).
+- **The replay.** The head's seasons replay B9-1's records wherever the tiebreak cannot reach. At 8, 676 of 800 are
+  equal and 124 differ (the final eviction in 19, a tied jury's winner alone in 105); at 12, 722 are equal and 78 differ.
+  The tiebreak can account for every difference, and none moved before the final eviction. The first report counted the
+  lab cell's `tuningHeld` flag, which rounds 1-3's records predate, as a difference in every season; the report now
+  leaves it out (`runs/report-first.txt` keeps the first).
+- **B5-B7 on the tiebreak's head.** The war rooms, seeds 0-479, were played again because 51 of the screen's 400 seasons
+  moved at the final eviction or after. B5 is 14.6 [13.1, 16.1], B6 12.7 [11.6, 13.7], and B7 27 of 61 = 44.3% [32.5,
+  56.7] (15 of 26 at 8, 12 of 35 at 12): the same as before the tiebreak. The war-room players never study (only the
+  studier and the beast do), so dropping the boost cannot move them.
+
+**The verification kit at `1bea9cf5`** (`D:/ClaudeScratch/b9/r4v`, 19:19 to 21:20, stopped once the boost was dropped).
+- Both offline compiles were clean: EditMode 9,814 listed, the UMA build's PlayMode 1,528 and `Gamesim.Uma.PlayModeTests`
+  134, and no new warnings on added lines.
+- The subset ran 16,642: 16,640 passed. Its two failures are pins round 4 may move: `StudierTuning1Rows` (to
+  `0298658507fb377c`; tuning 0's `9b9bf8a15644b745` held) and RoleStory's `shipped-mode0-2103`.
+- Under the editor's Mono, all passed: TuningRulesTests 16, TuningCopyTests 3, the schema-30 observer 50, PersistenceTests
+  30, the v30 migration 32, UnifiedVoteSaveStoreTests 16, ShippedRulesTests 36, TuningSaveReloadTests 13, JuryTiebreakTests
+  15, and OldSaveAcceptanceTests 270 of 270.
+- **Three cases cannot run outside Unity:** two of the five
+  `JuryTiebreakEditorTests.TheFinalePanelSaysWhoATieGoesToAsTheSeasonSettlesIt`, and
+  `CeremonyTruthTests.TheJuryLineCountsTheRealJuryAndNamesWhoATieGoesTo`. They build `EpisodeDirector`, whose type
+  initializer calls a Unity colour function the stand-alone Mono cannot resolve. They wait for the Unity EditMode batch.
+- **Pins.** `BudgetNoughtRows` held at `5481eec784acd1ed`. `BudgetNoughtTuning1Rows` moved (to `bc8172604171d7ab`), and
+  so did the goldens (21 of 24 budget-0 cells, and the first 300-seed tier at 12). All of them move again with the boost's
+  drop, so they are re-pinned at the new head.
+- The tuning-1 old-save cell (2.8) did not move: its record at `1bea9cf5` matched the fixture.
+- The studier cell (2.9) was recorded at `1bea9cf5` (seed 3002). That record is superseded: the cell is recorded again
+  at the final head, by the seed rule 2.9 names for the boost's drop.
+
+**Next.** The kit again at the new head, with the pins re-pinned from its evidence, 2.9 recorded and the floors raised.
+Then the Unity batches through the new runner: the EditMode run, with the three Unity-only cases, and the UMA set.
 
 ### Round 9's results (diagnostic)
 

@@ -41,8 +41,8 @@ B9's PR. The tables further down are tuning 0's and are not re-measured here.
 
 | | Tuning 0 (`26b65f09`) | Tuning 1 | Band |
 |---|---|---|---|
-| Studier at 0.5, weekly wins at 8 / 12 (800 seeds) | 95.2% / 94.7% (200 seeds) | 64.5% [63.2, 65.8] / 61.6% [60.4, 62.8] | 60-70% |
-| Studier at 0.5, season wins at 8 / 12 (800 seeds) | 73.5% / 48.0% (200 seeds) | 28.6% [25.6, 31.9] / 24.8% [21.9, 27.9] | 25-35% / 18-28% |
+| Studier at 0.5, weekly wins at 8 / 12 (800 seeds) | 95.2% / 94.7% (200 seeds) | 62.4% [61.0, 63.7] / 61.6% [60.4, 62.8] | 60-70% |
+| Studier at 0.5, season wins at 8 / 12 (800 seeds) | 73.5% / 48.0% (200 seeds) | 32.9% [29.7, 36.2] / 26.8% [23.8, 29.9] | 25-35% / 18-28% |
 | Game Sense gap, reader minus random, at 8 / 12 (480 seeds) | 10.2 [8.9, 11.5] / 8.7 [7.8, 9.5] | 14.6 [13.1, 16.2] / 12.7 [11.6, 13.7] | at least 10, low end above 5 |
 | Accepted counters that carried (480 seeds) | 46 / 61 = 75.4% | 27 / 61 = 44.3% [32.5, 56.7] | 35-50% |
 | Studier at 0.8, season wins at 8 / 12 | - | 35.5% (200 seeds) / 34.1% (800) | reported |
@@ -50,8 +50,14 @@ B9's PR. The tables further down are tuning 0's and are not re-measured here.
 | Q4, the studier's nomination ratio at 8 / 12 | 0.54 / 0.80 | 0.75 / 0.91 | reported |
 | Q5, pariah seasons, the studier at 8 / 12 (B9 raises it; the all-policy 16.3% / 45.1% is not re-measured at tuning 1) | 5.5% / 28.5% | 14.6% / 47.2% | story rules 10 |
 
-The passive player's and the war-room players' seasons are tuning 0's but for the Game Sense total (the weights) and,
-for the war-room players, the 58 of 4,800 seasons that hold a counter K1 or K5 settles differently.
+The first four rows are round 4's (B9-BALANCE-PLAN, "Round 4: the lab"): tuning 1 as it ships, with the jury's keyed
+tiebreak and without the small house's preparation boost, which round 4 dropped. The rows below them (the studier at 0.8,
+the beast, Q4 and Q5) are round 3's, measured with that boost and before the tiebreak; the 100-seed all-policy headline
+(the owner's call 4) measures them again.
+
+The passive player's and the war-room players' seasons are tuning 0's but for the Game Sense total (the weights), the
+tiebreak where a jury ties, and, for the war-room players, the 58 of 4,800 seasons that hold a counter K1 or K5 settles
+differently.
 
 **How it was measured.** B9-1's three rounds in scratch copies whose `TuningRules` read their numbers from the
 environment (D:/ClaudeScratch/b9/r1-r3, the knob diffs beside them), with the parts runner: the competition tier

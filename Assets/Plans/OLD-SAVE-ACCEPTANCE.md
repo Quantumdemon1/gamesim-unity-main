@@ -701,9 +701,10 @@ point), and the case passes.
 ### 2.8 Schema 30 at tuning rules 1: written by the B9 build (2026-11-05)
 
 **Why this one.** From B9-3 (B9-BALANCE-PLAN, §4.7) `ShippedRules.ApplyFresh` writes `TuningRules.Shipped`, 1, so
-every new season starts on B9's balance bands: preparation spent when used and a study's limit of 1 (2 in a house of
-eight's final week, where a watched Head of Household also adds one), Game Sense weighed 0.2 / 0.6 / 0.2, and the war
-room's counter under K1 and K5. That is a rules combination no earlier build writes, so its cell is recorded by the
+every new season starts on B9's balance bands: preparation spent when used and a study's limit of 1, Game Sense weighed
+0.2 / 0.6 / 0.2, the war room's counter under K1 and K5, and (from round 4) a tied jury settled by the season's keyed
+coin. (When this cell was written, a house of eight also had a final week's 2 and a watch adding one; round 4 dropped
+them before tuning 1 shipped.) That is a rules combination no earlier build writes, so its cell is recorded by the
 build that writes it. The Regular season is the one the plan names; an All-Stars season from this build is on alumni
 rules 5 and tuning 1 together, which the alumni arm admits already (2.6), and has no cell of its own yet.
 
@@ -734,7 +735,7 @@ rules 5 and tuning 1 together, which the alumni arm admits already (2.6), and ha
 itself), not B9's levers. The walker never studies or counters, so no lever fires in its replay: its 47 commands, and
 the week, phase, revision and random state at all 48 checkpoints, are the tuning-0 Regular cell's; the two saved states
 differ only in `tuningRulesVersion`; and the two cells' `holdsDigest` is the same value. So a change to a lever (the
-preparation's spend or watch, the study's limit, K1 and K5, the Game Sense weights) still passes old-save acceptance. In
+preparation's spend, the study's limit, K1 and K5, the Game Sense weights) still passes old-save acceptance. In
 Unity's EditMode gate those levers are pinned by TuningRulesTests alone; the lab's pins run in the dotnet subset
 (TuningRulesTests' lab case) or as `[Explicit]` tiers compiled out of the editor. A second tuning-1 cell from a recorder
 profile that studies (and counters in a war room), saved with preparation banked in a house of eight, would carry the
@@ -753,8 +754,10 @@ the alumni rules and the tuning rules together stays the alumni arm's.
 **Why this one.** The owner's call 5 of 2026-11-07 (B9-BALANCE-PLAN, "The owner's calls"): save and reload coverage must
 exercise the tuning. The tuning-1 cell (2.8) never studies, so no lever fires in its replay. This cell is the same
 shipped Regular season of eight, walked by a walker that studies and saved with a point of preparation banked. Its replay
-loads the save with the point banked and plays on with the studies. So the spend, the study's limit and, in a house of
-eight, the watch and the final week's 2 fire after the load, and a change to any of them moves the season digest.
+loads the save with the point banked and plays on with the studies. So the spend, the study's limit and the final Head
+of Household's three parts counting the final week's point fire after the load, and a change to any of them moves the
+season digest. (Tuning 1 first had a small house's watch and a final week's 2 as well; B9's round 4 dropped them before
+it shipped, `f5fb8cb6`.)
 
 **The profile** (in the recorder since 2026-11-07, not yet compiled or run: the machine was held).
 
@@ -767,8 +770,9 @@ eight, the watch and the final week's 2 fire after the load, and a change to any
 - `generate ... <week> <phase> studier` and `record <save> <out> studier` take it. With no walker, or `plain`, both do
   exactly what they did, so no earlier fixture moves. A studier save's session id ends in `-studier`.
 - `record ... studier` also prints a `levers:` line: the tuning and the preparation at the load, then, after the load,
-  the studies, the points used in a competition, the points learned from watching, the final week's fills to 2, and how
-  the player finished. The seed is chosen by it.
+  the studies, the points used in a competition, what the player held, in the house, as the final Head of Household
+  began ("the final HoH reached with N banked", or "not reached in the house"), and how the player finished. The seed is
+  chosen by it. (Until the boost's drop it counted the points learned from watching and the final week's fills to 2.)
   - The counts are tallied command by command, from the lines each accepted command logged. They are not the final log
     less the loaded one: the engine keeps only the last 256 lines, so by the finale the weeks just after the load are gone
     from it, and a difference of the two logs could be short, zero or negative.
@@ -780,10 +784,10 @@ eight, the watch and the final week's 2 fire after the load, and a change to any
 - Id `s30-mode2-allweek-tuning1-studier-w2-hoh`: `generate <out> <seed> 8 director 2 HoH studier`, saved at the first
   state of week 2's Head of Household, before it is played, with the point the free time before it banked.
 - **The seed:** the first from 3001 whose save holds `playerStudyBonus` 1 with the player in the house, and whose
-  `record ... studier` line shows, after the load, at least one point used, at least one learned from watching, and a fill
-  to 2 in the final week. If no seed up to 3200 has all three, the first with the first two, and this section says so.
-  If the owner's measurement drops the small house's boost from tuning 1 (B9 round 4, item 3), the watch and the fill are
-  no longer tuning 1's: the seed then needs a point used and the final Head of Household reached with one banked.
+  `record ... studier` line shows, after the load, at least one point used and the final Head of Household reached with
+  one banked. (The rule first asked for a point learned from watching and a fill to 2 as well; B9's round 4 dropped both
+  from tuning 1, as this rule's fallback foresaw.) If no seed up to 3200 has both, the first with a point used, and this
+  section says so.
 - **The writer is B9's final head**, after the tiebreak and the boost's decision: tuning 1 freezes at sign-off, and from
   2.3 on a cell is written and recorded by the build that writes it. The recorder is built as in 2.8
   (`OLDSAVE_SOURCE_TREE=1`, a `git archive` extract of the head's `Simulation` and `Runtime/Persistence`, this tree's

@@ -129,7 +129,11 @@ namespace Gamesim.Tests.EditMode
             Assert.That(tuned, Does.Contain("A weekly Head of Household or veto you enter uses your preparation up"));
             Assert.That(tuned, Does.StartWith("Play it, let the day decide or take the accessible alternative:"));
             AssertNoJargon(tuned);
-            Assert.That(tuned, Does.Contain("your preparation (1 of 1)"), "Tuning 1 counts out of one in every house.");
+            // The final week of this house of six, where tuning 1's dropped small-house boost counted out of two ("1 of 2").
+            foreach (var gone in state.contestants.Where(c => !c.isPlayer).Skip(2)) gone.status = ContestantStatus.Evicted;
+            Assert.That(TuningRules.FinalWeek(state), Is.True, "Precondition: the final week of a house of six.");
+            Assert.That(CompetitionWords.EarnedRule(state), Does.Contain("your preparation (1 of 1)"),
+                "Tuning 1 counts out of one in every house, its final week too.");
             state.playerStudyBonus = 0;
             Assert.That(CompetitionWords.EarnedRule(state), Does.Not.Contain("preparation ("), "Nothing banked, no count.");
         }

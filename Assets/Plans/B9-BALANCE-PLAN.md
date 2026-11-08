@@ -463,7 +463,7 @@ S8F figures, before the tiebreak, were 64.5%, 61.6%, 28.6% and 24.8%.
 | B2 | weekly wins at 12: 60-70% | 94.7% [93.6, 95.7] | 3,879 of 6,299 = **61.6% [60.4, 62.8]** (HoH 75.4%, veto 51.9%) | met, interval inside |
 | B3 | season wins at 8: 25-35% | 73.5% [67.0, 79.1] | 263 of 800 = **32.9% [29.7, 36.2]** | met on the estimate; the interval crosses 35 |
 | B4 | season wins at 12: 18-28% | 48.0% [41.2, 54.9] | 214 of 800 = **26.8% [23.8, 29.9]** | met on the estimate; the interval crosses 28 |
-| B5 | the gap at 8: at least 10, low end above 5 | 10.2 [8.9, 11.5] (today's weights, 480 seeds) | **14.6 [13.1, 16.2]** | met |
+| B5 | the gap at 8: at least 10, low end above 5 | 10.2 [8.9, 11.5] (today's weights, 480 seeds) | **14.6 [13.1, 16.1]** | met |
 | B6 | the gap at 12 | 8.7 [7.8, 9.5] (fails) | **12.7 [11.6, 13.7]** | met |
 | B7 | 35-50% of accepted counters carry | 46 of 61 = 75.4% [63.3, 84.5] | 27 of 61 = **44.3% [32.5, 56.7]** | met on the estimate (decision 4) |
 
@@ -1099,7 +1099,225 @@ at `7ab18ab0`, every Unity session under the owner's 45-minute limit (2,700 s fr
   - Memory: Unity at most 8.2 GB, the system's commit at most 54.3 of 75.9 GB; C: 7.1 GB free throughout.
 
 So B9's head has passed its Unity coverage inside the owner's limit; this closes the qualification gate round 9 could
-not. **Still before the merge (the owner's calls):** call 4's 100-seed all-policy headline. Story rules 10's control
-(C0, seeds 0-99) is to supply it if it reproduces B9's own rows on seeds 0-29; it is queued at story rules 10's head
-`1685df59`, which fixes a compile error the verification found in that branch's own test fixture (B9's code is
-unchanged). PR #46 stays a draft.
+not. **Call 4's headline is below** (*Call 4: the 100-seed tuning-1 headline*): story rules 10's control C0 played it on
+a lab snapshot of story rules 10's head `1685df59` (every season at story rules 10, its knobs at today's values), and
+its rows on seeds 0-29 equal B9's own, 720 of 720. **Still before the merge:** the owner's decision whether that
+headline meets call 4, and the sign-off of the numbers (decision 9), with what that section lists as open. PR #46 stays
+a draft.
+
+### Call 4: the 100-seed tuning-1 headline (2026-11-08)
+
+Call 4 asks for the 100-seed, all-policy headline before B9 merges, and lets story rules 10's control supply it if it
+demonstrably reproduces B9's final rules. This is the headline C0 supplies for call 4. It records numbers, not a
+sign-off or a merge. For these figures it supersedes §8's and *For the owner*'s "not re-measured at tuning 1" (the
+all-policy Q5), *For the owner*'s beast at 48% / 52%, and the As-built "Not done in this PR"; *For the owner*'s
+question on the headline's deferral was answered by call 4.
+
+**Where it comes from.**
+- **C0, story rules 10's control** (`D:/ClaudeScratch/sr10/runs/C0/results`: the merge report `headline.md`, one row a
+  season in `headline.jsonl`, and `studier.md` and `studier.jsonl`). It played a snapshot (`f2a5bdc59dbf8655`) of story
+  rules 10's head `1685df59`, which merges B9's head `7ab18ab0`, on 2026-11-08 from 07:04 to 08:26 Pacific.
+  - The headline tier: all 12 policies at 8 and 12, seeds 0-99, NPC budget 0: 2,400 seasons. Every one starts through
+    `ShippedRules.ApplyFresh`, so every one plays tuning 1.
+  - The studier cells: the competition tier's studier at fixed 0.5, at 8 and 12, seeds 0-199: 400 seasons.
+  - **0 errors:** the report reads "0 of 2400", and no row of the 2,400 or of the studier's 400 carries one.
+- **What differs from B9's head.** The snapshot is `1685df59` plus the lab's scratch edit
+  (`D:/ClaudeScratch/sr10/scratch_edit.diff`, never committed).
+  - `1685df59` adds one rule in Simulation: story rules 10's Blame (`StoryRules.Blame = 10`, what a veto replacement
+    holds against the holder). As committed, `StoryRules.Current` stays 9, so no fresh season reaches it.
+  - The scratch edit sets `Current = Blame`, so **every C0 season plays story rules 10**. It puts the Blame rule behind
+    story rules 10's knobs, and adds scratch paths (the grudge settles, the heat fade, the mood line's filter) and the
+    lab's read-only observers. C0 sets the knobs to today's values: SELF=0, RV=40, scope all, EVEN=SAVED=HEAT=0. At
+    those values the Blame branch writes rules 9's 40 against any holder, and the other scratch paths do nothing. The
+    leak proofs and the row matches below test that equivalence.
+  - The lab's files gained a cell field for the story rules (0 in C0: the season's own, which is 10 in the snapshot)
+    and story rules 10's pariah measures (the parts' stamp `v9`), which add report columns, not row fields.
+- **The two leak proofs** (`runs/lab.log`, 07:20 and 07:25), on C0's snapshot: `BudgetNoughtPlaysTheSeasonsB9Measured`
+  printed `a89a8120050e9460` and `BudgetNoughtPlaysTheSeasonsItPlayedBeforeTheDriver` printed `5481eec784acd1ed`, the
+  digests B9's own head printed that night (`runs/expected-digests.txt`, 02:01). Each hashes 564 rows, the smoke grid
+  (one season a cell, its 24 All-Stars seasons included) and the headline grid on seeds 0-19: the first at tuning 1, the
+  second held at tuning 0.
+- **The row match** (`runs/lab.log`, 08:26; `runs/b9head/compare.txt`). B9's own head played the headline grid on seeds
+  0-29 (720 seasons, `runs/b9head/results/rows.jsonl`), and C0's rows on those seeds equal them byte for byte: **720 of
+  720**, 240 of them on seeds 20-29, outside the digest.
+- **Two more comparisons**, byte for byte, against round 4's lab rows (`D:/ClaudeScratch/b9/r4/runs`), by
+  `D:/ClaudeLane/b9h/compute.py` (its output is `figures.txt` beside it; every figure below that neither report prints
+  comes from it):
+  - C0's five war-room players (random, reader, schemer, loyalist, floater) on seeds 0-99: 1,000 of 1,000 equal round
+    4's war rooms, 700 of them on seeds 30-99. Round 4 played them at `1bea9cf5`, whose Simulation differs from
+    `7ab18ab0` only by the boost's drop, and the war-room players never study.
+  - C0's studier cells: 400 of 400 equal round 4's studier rows on seeds 0-199 (at 8 the build without the boost).
+- **What this proves, and what it does not.**
+  - Seeds 0-29 are B9's head's own seasons, in all 24 cells. The war-room players' seeds 30-99 are round 4's seasons,
+    the ones B5-B7 rest on.
+  - The other seven policies' seeds 30-99 (passive, social, beast, novice, exploit and the two oracles: 980 seasons)
+    have no row from B9's side. 840 of them, the six policies that never study, equal the archived tuning-0 rows (below)
+    up to the final eviction: every earlier eviction, every weekly competition, the player's competitions before the
+    final Head of Household, and the pariah and pile-on counts (`D:/ClaudeLane/b9h/fixer_verify.py`). A difference
+    acting before the final eviction would have shown there. From the final eviction on, and in the beast's 140 seasons
+    (it studies from week 1, so it has no comparator), they rest on the code: at C0's knob values the rules-10 branch
+    writes what rules 9 writes. That part is an argument, not a comparison.
+
+**Tuning 0 on the same seeds.** The change-paths lane's 100-seed headline (`lanes/arcs2-lab/after-headline.jsonl`, and
+its report `after-headline.md`, the source of the tuning-0 pacing figures below; §1's "today" figures on 100 seeds)
+played the same seasons at tuning 0: the seeds hash the roster, the size and the index, not the rules. The two pair
+season by season. Those tuning-0 rows were not played again at `7ab18ab0`; only seeds 0-19 are pinned there
+(`5481eec784acd1ed`).
+
+**Every policy** (the report's tables; tuning 0 in brackets where it differs). Season wins carry Wilson 95%; b/c pairs
+tuning 1 with tuning 0 on the same seasons (b: won only at tuning 1; c: won only at tuning 0), with McNemar's exact p.
+Weekly wins are the share won of the weekly Heads of Household and vetoes the player played. Q4 is the player's
+nominations a week in the house over a houseguest's (F4). Q5 is the share of seasons with a pariah (the target, D0).
+
+| policy | size | season wins, tuning 1 | final two | tuning 0 | b/c, p | weekly wins | Q4 | Q5 | decisions / week |
+|---|---|---|---|---|---|---|---|---|---|
+| passive | 8 | 19.0% [12.5, 27.8] | 22% | 14% | 5/0, 0.062 | 50.5% | 1.18 | 19% | 4.0 |
+| random | 8 | 26.0% [18.4, 35.4] | 46% | 20% | 6/0, 0.031 | 54.1% | 0.72 | 22% | 14.0 |
+| social | 8 | 20.0% [13.3, 28.9] | 40% | 16% | 4/0, 0.125 | 51.9% | 0.82 | 16% | 17.4 |
+| reader | 8 | 32.0% [23.7, 41.7] | 51% | 26% | 7/1, 0.070 | 52.6% | 0.83 | 20% | 19.4 |
+| schemer | 8 | 17.0% [10.9, 25.5] | 49% | 11% | 6/0, 0.031 | 52.0% | 0.85 | 18% | 19.1 |
+| loyalist | 8 | 25.0% [17.5, 34.3] | 41% | 16% | 9/0, 0.004 | 50.1% | 0.87 | 18% | 18.0 (18.1) |
+| floater | 8 | 30.0% [21.9, 39.6] | 36% | 28% | 3/1, 0.625 | 50.9% | 0.78 | 12% | 16.2 (16.3) |
+| beast | 8 | 63.0% [53.2, 71.8] | 78% (96%) | 87% | 7/31, < 0.001 | 76.1% (97.8%) | 0.51 (0.44) | 13% (1%) | 16.0 (15.6) |
+| novice | 8 | 12.0% [7.0, 19.8] | 30% | 7% | 5/0, 0.062 | 46.8% | 0.95 | 12% | 14.3 |
+| exploit | 8 | 21.0% [14.2, 30.0] | 44% | 10% | 11/0, < 0.001 | 52.0% | 0.92 | 14% | 36.2 |
+| oracle-reader | 8 | 28.0% [20.1, 37.5] | 43% | 25% | 3/0, 0.250 | 49.0% | 0.77 | 15% | 16.3 |
+| oracle-skilled | 8 | 19.0% [12.5, 27.8] | 33% | 17% | 2/0, 0.500 | 49.7% | 0.95 | 28% | 9.6 |
+| passive | 12 | 15.0% [9.3, 23.3] | 15% | 15% | 0/0, 1.000 | 50.0% | 1.08 | 48% | 3.8 |
+| random | 12 | 24.0% [16.7, 33.2] | 28% | 19% | 5/0, 0.062 | 54.1% | 0.95 | 48% | 14.9 |
+| social | 12 | 29.0% [21.0, 38.5] | 36% | 26% | 3/0, 0.250 | 54.2% | 0.85 | 39% | 18.9 |
+| reader | 12 | 28.0% [20.1, 37.5] | 35% | 25% | 3/0, 0.250 | 52.3% | 0.76 | 45% | 25.9 |
+| schemer | 12 | 29.0% [21.0, 38.5] | 32% | 25% | 4/0, 0.125 | 54.0% | 0.73 | 44% | 20.3 |
+| loyalist | 12 | 24.0% [16.7, 33.2] | 24% | 24% | 1/1, 1.000 | 52.8% | 0.86 | 48% | 18.8 |
+| floater | 12 | 24.0% [16.7, 33.2] | 29% | 22% | 2/0, 0.500 | 51.6% | 0.90 | 38% | 17.2 |
+| beast | 12 | 52.0% [42.3, 61.5] | 55% (57%) | 56% | 22/26, 0.665 | 78.6% (99.1%) | 0.67 (0.69) | 30% (23%) | 17.0 (17.1) |
+| novice | 12 | 18.0% [11.7, 26.7] | 25% | 17% | 1/0, 1.000 | 44.6% | 0.92 | 55% | 15.1 |
+| exploit | 12 | 20.0% [13.3, 28.9] | 29% | 18% | 2/0, 0.500 | 54.7% | 0.92 | 53% | 44.1 |
+| oracle-reader | 12 | 31.0% [22.8, 40.6] | 32% | 29% | 2/0, 0.500 | 50.6% | 0.83 | 52% | 22.7 |
+| oracle-skilled | 12 | 29.0% [21.0, 38.5] | 34% | 27% | 2/0, 0.500 | 51.4% | 0.75 | 48% | 10.4 |
+
+Every final two but the beast's is within 4 points of tuning 0's. Weekly wins and Q5 are tuning 0's exactly for every
+policy but the beast, the one headline policy that studies. Q4 is tuning 0's to the reported precision: the random
+player's at 8 moves in the fourth decimal (0.71861 against 0.71852), from its one K1/K5 season.
+
+**What moved, and why.**
+- **The jury's tiebreak lifts the player at 8.** At tuning 0 the player lost every tied jury: 0 of 147 at 8 and 0 of 42
+  at 12, across all 12 policies. At tuning 1 the player won 70 of 147 = **47.6% [39.7, 55.7]** at 8 (fair-coin p 0.621)
+  and 25 of 44 = **56.8% [42.2, 70.3]** at 12 (p 0.451). Season wins over all policies rose from 277 to 312 of 1,200 at 8
+  and from 303 to 323 at 12.
+  - At 8, eleven policies win more and the beast fewer. Four rises are significant at p < 0.05: random, schemer,
+    loyalist and exploit. At 12 none is.
+- **The rest is the final eviction.** Of the 1,100 seasons at each size of the 11 policies that never study, 84 (at 8)
+  and 67 (at 12) equal their tuning-0 rows, 816 and 929 differ only in the Game Sense total (the weights), and 200 and
+  104 differ in play. In all but one of those, every eviction before the final one, every weekly competition and every
+  competition the player played are tuning 0's: what differs is the final eviction, the jury and what follows from them
+  (the tiebreak, and the final Head of Household's read of a tie as a half). The one is a random player's season at 8,
+  where K1 or K5 settled a counter differently. In six more seasons a counter settled differently (two at 8, four at
+  12) and changed none of those.
+  - So §6's "the passive player's tuning-1 rows equal its tuning-0 rows, the Game Sense total aside" held before the
+    tiebreak. With it, 20 of the passive player's 100 seasons at 8 and 7 of 100 at 12 differ in play, each only from the
+    final eviction on.
+- **The beast.** A preparation of 1, spent at each weekly competition, takes its weekly wins from 97.8% to 537 of 706 =
+  **76.1% [72.8, 79.1]** at 8, and from 99.1% to 734 of 934 = **78.6% [75.8, 81.1]** at 12. Its season wins fall from 87%
+  to **63.0% [53.2, 71.8]** at 8 (b/c 7/31, p < 0.001) and from 56% to **52.0% [42.3, 61.5]** at 12 (22/26, p 0.665).
+  - This revises *For the owner*'s 48% at 8, which was round 3's (with the boost, before the tiebreak). The 52% at 12
+    stands.
+
+**The skilled policies beyond the beast** (the report's B-1 table: the proposed band, a knowledge-gated skilled policy
+winning at least 1.5 / size, 18.8% at 8 and 12.5% at 12).
+- At 8, the reader (32.0% [23.7, 41.7]) and the floater (30.0% [21.9, 39.6]) clear it with the interval's low end. The
+  social player (20.0%) and the loyalist (25.0%) clear it on the estimate only, and the schemer (17.0% [10.9, 25.5])
+  does not. At tuning 0 on the same seeds the reader cleared it on the estimate (26.0% [18.4, 35.4]) and the floater
+  with its low end (28.0% [20.1, 37.5]), and the other three did not.
+- At 12 all five clear it with the low end, as at tuning 0.
+- The oracle reader wins 28.0% [20.1, 37.5] at 8 and 31.0% [22.8, 40.6] at 12, and the oracle-skilled 19.0% [12.5, 27.8]
+  and 29.0% [21.0, 38.5]. The gated reader is not apart from the oracle reader (25/21, p 0.659 at 8; 19/22, p 0.755 at
+  12). It beats the oracle-skilled at 8 (25/12, p 0.047), and not at 12 (19/20, p 1.000). These are McNemar's exact p,
+  as in the table; the report prints 0.658 and 0.049, by the lab's continuity-corrected chi-square from 25 discordant
+  pairs.
+
+**Q4 and Q5, every policy** (in the table).
+- **Q4.** The passive player's ratio is 1.18 at 8 and 1.08 at 12, as §1 read it at tuning 0. Only the beast's moves: 0.44
+  to 0.51 at 8, 0.69 to 0.67 at 12. The studier, on C0's studier cells (seeds 0-199): 0.83 at 8 and 0.92 at 12 (round 3
+  read 0.75 and 0.91; tuning 0, 0.54 and 0.80).
+- **Q5, all policies** (target at most 20%): 207 of 1,200 = **17.3% [15.2, 19.5]** at 8 and 548 of 1,200 = **45.7% [42.9,
+  48.5]** at 12, against 16.3% and 45.1% at tuning 0 on the same seasons. The rise is the beast's alone: every other
+  policy's pariah seasons are its tuning-0 ones (b/c 0/0). The beast's go from 1 to 13 at 8 (12/0, p < 0.001) and from 23
+  to 30 at 12 (24/17, p 0.349).
+  - At 8, two policies are over 20%: the random player (22%) and the oracle-skilled (28%).
+  - The studier, on C0's studier cells: 28 of 200 = 14.0% [9.9, 19.5] at 8 and 81 of 200 = 40.5% [33.9, 47.4] at 12
+    (round 3 read 14.6% and 47.2%; tuning 0, 5.5% and 28.5%).
+  - Q5 stays story rules 10's (§8). The report also prints that plan's own readings beside the target (in the player's
+    house, and holders by house size).
+
+**The pacing tables** (the report's story pace and pacing tables; tuning 0 in brackets).
+
+| house | budgeted asks / season (target 4-6) | weeks with a card (30-60%) | stories finished (about 3) | pile-on seasons (at most 25%) | pariah seasons (at most 20%) | ceremony s / regular week | finale reveal s |
+|---|---|---|---|---|---|---|---|
+| 8 | 4.9 (4.9) | 51.7% (52.0%) | 4.6 (4.6) | 0.1% (0.1%) | 17.3% (16.3%) | 43.9-44.9 (42.9-44.9) | 21.8 (21.8) |
+| 12 | 8.9 (8.9) | 53.1% (53.2%) | 8.1 (8.1) | 0.8% (0.8%) | 45.7% (45.1%) | 49.6-50.5 (49.0-50.5) | 24.6 (24.6) |
+
+- Decisions a week in the house (the last column above) are within 0.03 of tuning 0's for every policy but the beast at
+  8 (15.6 to 16.0). The bracketed figures for the loyalist and the floater at 8 and the beast at 12 are rounding: those
+  differences are 0.007 a week at 8 and 0.015 for the beast at 12. The ceremony range moves only at its low end, which
+  is the beast's.
+- The session's length (the 45-minute season at 8) is not in the headline report, so it is not measured again here.
+
+**The bands these seasons measure.** B1-B4 are the studier's (the competition tier), B5-B7 the war-room players'. In
+every row these seasons are round 4's own on their seeds, row for row (above), so they cannot revise round 4's figures,
+which §6 judges on 800 and 480 seeds: round 4's figure stands for every band. The last column reads the subset alone,
+which is not a band verdict.
+
+| # | Band | B9's measurement (round 4) | These seasons | On these seasons alone |
+|---|---|---|---|---|
+| B1 | weekly wins at 8: 60-70% | 3,017 of 4,836 = 62.4% [61.0, 63.7] (seeds 0-799) | 720 of 1,198 = 60.1% [57.3, 62.8] (seeds 0-199) | estimate inside; the interval crosses 60 |
+| B2 | weekly wins at 12: 60-70% | 3,879 of 6,299 = 61.6% [60.4, 62.8] | 992 of 1,628 = 60.9% [58.5, 63.3] | estimate inside; the interval crosses 60 |
+| B3 | season wins at 8: 25-35% | 263 of 800 = 32.9% [29.7, 36.2] | 66 of 200 = 33.0% [26.9, 39.8] | estimate inside; the interval crosses 35 |
+| B4 | season wins at 12: 18-28% | 214 of 800 = 26.8% [23.8, 29.9] | 57 of 200 = 28.5% [22.7, 35.1] | estimate just over 28 |
+| B5 | the gap at 8: at least 10, low end above 5 | 14.6 [13.1, 16.1] (seeds 0-479) | **13.3 [10.2, 16.2]** (seeds 0-99) | gap at least 10, low end above 5, on 100 seeds |
+| B6 | the gap at 12 | 12.7 [11.6, 13.7] | **12.5 [9.9, 15.3]** | gap at least 10, low end above 5, on 100 seeds |
+| B7 | 35-50% of accepted counters carry | 27 of 61 = 44.3% [32.5, 56.7] | 7 of 14 = **50.0% [26.8, 73.2]** | at the top edge, on 14 counters; by house the other way round |
+
+- **B1-B4.** C0's studier cells are seeds 0-199 of round 4's population, row for row. So they cannot revise round 4's
+  800-seed figures, which §6 judges; they show that C0 plays round 4's seasons. B1-B4 stand as round 4 read them.
+- **B5-B6.** These seasons' own scores are on 0.2 / 0.6 / 0.2: the report's Game Sense table gives the reader minus the
+  random player as 13.3 and 12.5, as its 0.2 / 0.6 / 0.2 row does. Tuning 0's weights on the same seasons give 8.7 [6.3,
+  11.1] and 8.6 [6.5, 10.7], and 0.25 / 0.5 / 0.25 gives 11.0 [8.3, 13.7] and 10.6 [8.4, 13.1]. From the rows'
+  whole-number scores, compute.py reads 13.25 [10.1, 16.4] and 12.53 [9.9, 15.1].
+- **B7, read as call 2 says: the pooled lab criterion.** These 14 counters are among round 4's 61, so they do not replace
+  it. By house they lie the other way round from round 4's: 2 of 5 = 40.0% [11.8, 76.9] at 8 and 5 of 9 = 55.6% [26.7,
+  81.1] at 12, where round 4 read 57.7% and 34.3%. Per house these do not establish balance at each size (call 2); they
+  stay visible beside the pooled interval. At tuning 0 the same 14 all carried: 14 of 14 = 100.0% [78.5, 100.0].
+
+**The studier's final Head of Household (call 1).**
+- The owner asked for the 94.6% at 8 to be examined before the rule freezes. That was round 3's, with the small house's
+  boost. Without it, round 4 read 413 of 483 = **85.5% [82.1, 88.4]** at 8 and 245 of 270 = **90.7% [86.7, 93.6]** at 12
+  (seeds 0-799). On C0's studier cells (round 4's seeds 0-199, row for row) it is 103 of 119 = 86.6% [79.3, 91.6] at 8
+  and 64 of 70 = 91.4% [82.5, 96.0] at 12.
+- The tiebreak cannot move it: the keyed coin acts after the final Head of Household's third part. Preparation does: the
+  studier's one point counts in all three parts (decision 5), and the boost's second point had taken it to 94.6%.
+- For comparison, not paired (other policies, each at its own performance): the 11 headline policies that never study
+  win 396 of the 617 final Heads of Household they reach at 8, 64.2% [60.3, 67.9] (the passive player 22 of 37, 59.5%
+  [43.5, 73.7]), and 300 of 387 at 12, 77.5% [73.1, 81.4]. Their rates are tuning 0's exactly.
+- So the final is no longer round 3's near-lock, but the studier still wins about six in seven of those it reaches at
+  8. B3 is met with it (32.9%). What took the plain spend's season wins at 8 from round 1's 24-26% to that figure was the
+  tiebreak, not the final.
+
+**What the owner still has to decide.**
+- **The sign-off of the numbers** (decision 9): round 4's bands, with this headline beside them, and the unbanded
+  figures it moves (the beast at 8, the all-policy Q5, the skilled policies' rise at 8).
+- **Whether this headline meets call 4:** seeds 0-29 are compared with B9's head and the war-room players' seeds 30-99
+  with round 4. Of the other seven policies' seeds 30-99, the six that never study equal tuning 0's rows up to the final
+  eviction; from there on, and in the beast's 140 seasons, they rest on the code argument above.
+- **§6's "Nothing old moves" for the passive player** (and §3.4's "its tuning-0 seasons in play"): met only up to the
+  final eviction. From there the tiebreak (call 3) and the final Head of Household's read of a tie as a half move 20 of
+  the passive player's 100 seasons at 8 and 7 of 100 at 12. The sign-off accepts that amendment, or §6 is restated.
+- **The final Head of Household** (call 1): whether 85.5% at 8 and 90.7% at 12 are acceptable as tuning 1 freezes, or
+  decision 5's three parts change.
+- The questions already open in this plan, by reference: the delegated calls under *For the owner* that call 1 did not
+  name (decisions 5 and 6, and decision 10's reach history); the sneak-peek study ("Round 4: the lab", found by the
+  review of the drop); and the final Head of Household's read of a tie as a half, or the coin shown before the
+  player's own final choice ("Round 4: the jury tiebreak"). Call 1 accepted the bands, the versioned tuning rules, K1
+  and K5 and the weights in principle; the sign-off confirms them.
+
+PR #46 stays a draft.

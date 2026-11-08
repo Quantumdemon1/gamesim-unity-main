@@ -43,7 +43,7 @@ B9's PR. The tables further down are tuning 0's and are not re-measured here.
 |---|---|---|---|
 | Studier at 0.5, weekly wins at 8 / 12 (800 seeds) | 95.2% / 94.7% (200 seeds) | 62.4% [61.0, 63.7] / 61.6% [60.4, 62.8] | 60-70% |
 | Studier at 0.5, season wins at 8 / 12 (800 seeds) | 73.5% / 48.0% (200 seeds) | 32.9% [29.7, 36.2] / 26.8% [23.8, 29.9] | 25-35% / 18-28% |
-| Game Sense gap, reader minus random, at 8 / 12 (480 seeds) | 10.2 [8.9, 11.5] / 8.7 [7.8, 9.5] | 14.6 [13.1, 16.2] / 12.7 [11.6, 13.7] | at least 10, low end above 5 |
+| Game Sense gap, reader minus random, at 8 / 12 (480 seeds) | 10.2 [8.9, 11.5] / 8.7 [7.8, 9.5] | 14.6 [13.1, 16.1] / 12.7 [11.6, 13.7] | at least 10, low end above 5 |
 | Accepted counters that carried (480 seeds) | 46 / 61 = 75.4% | 27 / 61 = 44.3% [32.5, 56.7] | 35-50% |
 | Studier at 0.8, season wins at 8 / 12 | - | 35.5% (200 seeds) / 34.1% (800) | reported |
 | Beast, season wins at 8 / 12 (100 seeds) | 87% / 56% | 48% / 52% | reported |
@@ -53,7 +53,11 @@ B9's PR. The tables further down are tuning 0's and are not re-measured here.
 The first four rows are round 4's (B9-BALANCE-PLAN, "Round 4: the lab"): tuning 1 as it ships, with the jury's keyed
 tiebreak and without the small house's preparation boost, which round 4 dropped. The rows below them (the studier at 0.8,
 the beast, Q4 and Q5) are round 3's, measured with that boost and before the tiebreak; the 100-seed all-policy headline
-(the owner's call 4) measures them again.
+(the owner's call 4) measures them again. That headline is now in B9-BALANCE-PLAN, "Call 4: the 100-seed tuning-1
+headline (2026-11-08)" (story rules 10's control C0, seeds 0-99), which reads the beast at 63% / 52% and the all-policy
+Q5 at 17.3% / 45.7%, and, on C0's studier cells (0.5, seeds 0-199), the studier's Q4 at 0.83 / 0.92 and Q5 at 14.0% /
+40.5%. The studier at 0.8 is not measured again. That section supersedes the table's beast row and the Q5 row's "not
+re-measured" note.
 
 The passive player's and the war-room players' seasons are tuning 0's but for the Game Sense total (the weights), the
 tiebreak where a jury ties, and, for the war-room players, the 58 of 4,800 seasons that hold a counter K1 or K5 settles

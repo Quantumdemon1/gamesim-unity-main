@@ -33,10 +33,13 @@ namespace Gamesim.Tests.PlayMode
     ///
     /// <para>Text size: a reload reads the isolated save root's default preferences and comes back at the standard text, so
     /// the size is chosen after every load, as a player chooses it (ApplyTextSize), and the HUD's scale is asserted. At each
-    /// size every label box the rules-2 panel adds - the paragraphs, the plea rows' tags, and each tile's caption, risk word,
-    /// description and foot - stands at least 1.3 times the largest size its words are drawn at (Inter draws nothing in a
-    /// box under 1.21 of it) and draws every glyph. Controls are found by their captions; the house is held, as in the
-    /// neighbouring dialogue tests, and revisions are read with the panel already open.</para>
+    /// size every label box the panel draws stands at least 1.3 times the largest size its words are drawn at (Inter draws
+    /// nothing in a box under 1.21 of it) and draws every glyph: on the plea panel everything from its heading to its way
+    /// back (the question, the odds note, the no-talk paragraph, each approach's caption and tag); on a reply everything from
+    /// the beat's eyebrow to its last tile (the title, the narrative, the line, "What do you do?", and each tile's caption,
+    /// risk word, description and foot). Controls are found by their captions; the house is held, as in the neighbouring
+    /// dialogue tests, and a press's revision is measured from a snapshot taken with the conversation's panel already open
+    /// (OpenRules2Entry's <c>rules2Opened</c>, the plea panel's <c>pre</c>).</para>
     /// </summary>
     public sealed partial class EpisodePlayModeTests
     {
@@ -47,6 +50,9 @@ namespace Gamesim.Tests.PlayMode
         private const int Rules2LieHouse = 8, Rules2LieSteps = 25;
 
         private string rules2Voter, rules2Against;
+
+        /// <summary>The state OpenRules2Entry read with the voter's panel open, before the vote ask: what the entry's press is measured from.</summary>
+        private EpisodeState rules2Opened;
 
         // ---------------------------------------------------------------- (i) the fallback plea panel
 
@@ -89,7 +95,8 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(director.GetComponent<EpisodeHud>().FontScale, Is.EqualTo(scale).Within(.001f), "The panel is drawn" + at + ".");
             var failures = new List<string>();
             Rules2LabelWhole(Rules2ShownLabel(line), "The no-talk paragraph" + at, failures);
-            Rules2LabelWhole(Rules2ShownLabel(ask + ". How do you put it?"), "The plea's question" + at, failures);
+            var question = Rules2ShownLabel(ask + ". How do you put it?");
+            Rules2LabelWhole(question, "The plea's question" + at, failures);
             foreach (string approach in LobbyApproach.All)
             {
                 var row = FindButton(EpisodeHud.LobbyApproachCaption(approach, true));
@@ -97,6 +104,21 @@ namespace Gamesim.Tests.PlayMode
                 var tag = row.transform.Find("Tag");
                 Rules2LabelWhole(tag != null ? tag.GetComponentInChildren<TMP_Text>(true) : null, approach + "'s tag" + at, failures);
             }
+            // Every label the plea panel draws, from its heading (drawn just above the question) to its way back: the
+            // heading, the question, the odds note, the no-talk paragraph, each approach's caption and tag, "Ask something else".
+            var panel = question.transform.parent;
+            int first = question.transform.GetSiblingIndex() - 1;
+            var heading = first >= 0 ? panel.GetChild(first).GetComponent<TMP_Text>() : null;
+            Assert.That(heading != null && heading.text == EpisodeDirector.LobbyHeading(source), Is.True,
+                "The plea panel's heading stands over its question" + at + ".");
+            var back = FindButton(EpisodeHud.LobbyBackCaption);
+            Assert.That(back.transform.parent, Is.SameAs(panel), "The way back is the plea panel's last row" + at + ".");
+            var panelLabels = Rules2LabelsBetween(panel, first, back.transform.GetSiblingIndex());
+            foreach (string copy in LobbyApproach.All.Select(approach => EpisodeHud.LobbyApproachCaption(approach, true))
+                .Concat(new[] { EpisodeHud.LobbyBackCaption, line, question.text, heading.text }))
+                Assert.That(panelLabels.Count(label => label.text == copy), Is.EqualTo(1), "'" + copy + "' is one of the plea panel's labels" + at + ".");
+            Assert.That(panelLabels.Count(label => label.name == EpisodeHud.OddsNoteName), Is.EqualTo(1), "The odds note is one of them" + at + ".");
+            foreach (var label in panelLabels) Rules2LabelWhole(label, "The plea panel" + at, failures);
             Assert.That(failures, Is.Empty, string.Join("\n", failures));
             AssertEveryLabelDraws((RectTransform)plea.transform, "The desperate plea's row" + at);
 
@@ -151,8 +173,8 @@ namespace Gamesim.Tests.PlayMode
 
             yield return OpenRules2Entry(rules2Voter);
             var entered = director.Snapshot;
-            Assert.That(entered.revision, Is.EqualTo(before.revision + 1), "One command opened the conversation.");
-            Assert.That(DialogueUiRemaining(entered), Is.EqualTo(DialogueUiRemaining(before) - 1), "for the plea's one action.");
+            Assert.That(entered.revision, Is.EqualTo(rules2Opened.revision + 1), "One command opened the conversation.");
+            Assert.That(DialogueUiRemaining(entered), Is.EqualTo(DialogueUiRemaining(rules2Opened) - 1), "for the plea's one action.");
             var episode = entered.dialogue.episodes.Single();
             var cycle = entered.storylines.Single(c => c.id == episode.id);
             Assert.That(cycle.templateId, Is.EqualTo(DialogueCampaignWord.TemplateId), "Rules 2's vote-word tree.");
@@ -196,7 +218,7 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(Rules2Told(closed, rules2Against).targetId, Is.EqualTo(closed.playerId));
             yield return OpenRules2Entry(rules2Against);
             var second = director.Snapshot;
-            Assert.That(second.revision, Is.EqualTo(closed.revision + 1));
+            Assert.That(second.revision, Is.EqualTo(rules2Opened.revision + 1), "One command opened the second conversation.");
             var secondEpisode = second.dialogue.episodes.Single(e => e.npcId == rules2Against);
             var secondCycle = second.storylines.Single(c => c.id == secondEpisode.id);
             Assert.That(DialogueCampaignWord.AnswerOf(secondCycle.beatId), Is.EqualTo(DialogueCampaignWord.Against), "They tell the player straight.");
@@ -232,8 +254,8 @@ namespace Gamesim.Tests.PlayMode
 
             yield return OpenRules2Entry(rules2Voter);
             var entered = director.Snapshot;
-            Assert.That(entered.revision, Is.EqualTo(before.revision + 1), "One command opened the conversation.");
-            Assert.That(DialogueUiRemaining(entered), Is.EqualTo(DialogueUiRemaining(before) - 1), "for the plea's one action.");
+            Assert.That(entered.revision, Is.EqualTo(rules2Opened.revision + 1), "One command opened the conversation.");
+            Assert.That(DialogueUiRemaining(entered), Is.EqualTo(DialogueUiRemaining(rules2Opened) - 1), "for the plea's one action.");
             var episode = entered.dialogue.episodes.Single();
             var cycle = entered.storylines.Single(c => c.id == episode.id);
             Assert.That(cycle.templateId, Is.EqualTo(DialogueCampaignWord.TemplateId), "Rules 2's vote-word tree, not V2's.");
@@ -296,7 +318,7 @@ namespace Gamesim.Tests.PlayMode
 
             yield return OpenRules2Entry(rules2Voter);
             var entered = director.Snapshot;
-            Assert.That(entered.revision, Is.EqualTo(before.revision + 1), "One command opened the conversation.");
+            Assert.That(entered.revision, Is.EqualTo(rules2Opened.revision + 1), "One command opened the conversation.");
             var episode = entered.dialogue.episodes.Single(e => e.npcId == rules2Voter && e.week == entered.week);
             var cycle = entered.storylines.Single(c => c.id == episode.id);
             Assert.That(cycle.beatId, Is.EqualTo(DialogueCampaignWord.ReplyBeat(DialogueCampaignWord.Word, false, true)), "The word, with the lie beside it.");
@@ -517,12 +539,16 @@ namespace Gamesim.Tests.PlayMode
                 "The HUD draws at the " + TextSizes.Name(size) + " text.");
         }
 
-        /// <summary>The real way in: the voter, the conversation category, the vote ask, then "Desperate plea", which starts the talk.</summary>
+        /// <summary>
+        /// The real way in: the voter, the conversation category, the vote ask, then "Desperate plea", which starts the talk.
+        /// The state is read once the voter's panel is open (<see cref="rules2Opened"/>): opening a panel flushes the house's
+        /// ticks, so a press is measured from there, never from before the panel.
+        /// </summary>
         private IEnumerator OpenRules2Entry(string voter)
         {
             yield return TalkTo(voter);
             yield return EnterConversationCategory(EpisodeDirector.GameCategoryCaption);
-            var source = director.Snapshot;
+            var source = rules2Opened = director.Snapshot;
             byte[] bytes = File.ReadAllBytes(director.SavePath);
             ButtonWithCaption(EpisodeHud.LobbyAskCaption(source, source.Find(voter).name, LobbyAsk.Vote, source.playerId)).onClick.Invoke();
             yield return null;
@@ -536,8 +562,9 @@ namespace Gamesim.Tests.PlayMode
 
         /// <summary>
         /// The open reply on screen: <paramref name="line"/> drawn once as its paragraph, <paramref name="pressable"/> a live
-        /// tile, and every label the reply adds laid out whole at the text <paramref name="scale"/>: the paragraph, and each
-        /// of the <paramref name="options"/> tiles, two to a row in cells 96 times the scale high.
+        /// tile, the <paramref name="options"/> tiles two to a row in cells 96 times the scale high, and every label the reply
+        /// draws laid out whole at the text <paramref name="scale"/>, from the beat's eyebrow to its last tile: the eyebrow,
+        /// the title, the narrative, the line, "What do you do?", and each tile's caption, risk word, description and foot.
         /// </summary>
         private void AssertRules2Reply(string line, int options, string pressable, float scale, string where)
         {
@@ -545,7 +572,8 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(ShownText(), Does.Contain(line), where + ": the line is drawn, in words.");
             Assert.That(ButtonWithCaption(EpisodeHud.EventChoiceCaption(pressable)), Is.Not.Null, where + ": '" + pressable + "' is pressable.");
             var failures = new List<string>();
-            Rules2LabelWhole(Rules2ShownLabel(line), where + ", the line", failures);
+            var said = Rules2ShownLabel(line);
+            Rules2LabelWhole(said, where + ", the line", failures);
             Canvas.ForceUpdateCanvases();
             var grid = ActiveRect(EpisodeHud.StoryChoicesName);
             Assert.That(grid, Is.Not.Null, where + ": the reply's tiles are on screen.");
@@ -554,11 +582,36 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(layout.cellSize.y, Is.EqualTo(96f * scale).Within(.01f), where + ": cells 96 high at the text scale.");
             var tiles = grid.GetComponentsInChildren<Button>().Where(tile => tile.IsActive()).ToList();
             Assert.That(tiles.Count, Is.EqualTo(options), where + ": a tile for each option.");
+
+            // The beat's head, found in the reply's own column: the title nearest above the tiles, the eyebrow just over it.
+            var s = director.Snapshot;
+            var open = DialogueRules.Active(s);
+            Assert.That(open, Is.Not.Null, where + ": a conversation is open.");
+            var item = s.houseEvents.Single(e => e.id == s.storylines.Single(c => c.id == open.id).eventId);
+            string title = StoryText.Title(item), eyebrow = (StoryText.Eyebrow(item) ?? "STORY").ToUpperInvariant();
+            var column = grid.parent;
+            Assert.That(said.transform.parent, Is.SameAs(column), where + ": the line is the reply's paragraph.");
+            int last = grid.GetSiblingIndex();
+            var head = Enumerable.Range(0, last).Select(index => column.GetChild(index)).Where(child => child.gameObject.activeInHierarchy)
+                .Select(child => child.GetComponent<TMP_Text>()).LastOrDefault(label => label != null && label.text == title);
+            Assert.That(head != null, Is.True, where + ": the beat's title '" + title + "' heads the reply.");
+            int first = head.transform.GetSiblingIndex() - 1;
+            var mark = first >= 0 ? column.GetChild(first).GetComponent<TMP_Text>() : null;
+            Assert.That(mark != null && mark.text == eyebrow, Is.True, where + ": the eyebrow '" + eyebrow + "' stands over the title.");
+            var labels = Rules2LabelsBetween(column, first, last);
+            Assert.That(labels.Contains(said), Is.True, where + ": the line is drawn between the beat's head and its tiles.");
             foreach (var tile in tiles)
-                foreach (var label in tile.GetComponentsInChildren<TMP_Text>().Where(text => text.gameObject.activeInHierarchy && !string.IsNullOrWhiteSpace(text.text)))
-                    Rules2LabelWhole(label, where + ", the tile '" + tile.name + "'", failures);
+                Assert.That(tile.GetComponentsInChildren<TMP_Text>().Where(text => text.gameObject.activeInHierarchy && !string.IsNullOrWhiteSpace(text.text))
+                    .All(text => labels.Contains(text)), Is.True, where + ": the tile '" + tile.name + "' is swept.");
+            foreach (var label in labels) Rules2LabelWhole(label, where, failures);
             Assert.That(failures, Is.Empty, string.Join("\n", failures));
         }
+
+        /// <summary>Every live label with words in the children <paramref name="first"/> to <paramref name="last"/> of <paramref name="column"/>, nested ones too.</summary>
+        private static List<TMP_Text> Rules2LabelsBetween(Transform column, int first, int last) =>
+            Enumerable.Range(first, last - first + 1).Select(index => column.GetChild(index)).Where(child => child.gameObject.activeInHierarchy)
+                .SelectMany(child => child.GetComponentsInChildren<TMP_Text>())
+                .Where(label => label.gameObject.activeInHierarchy && !string.IsNullOrWhiteSpace(label.text)).ToList();
 
         /// <summary>The one label on screen showing exactly <paramref name="text"/>.</summary>
         private TMP_Text Rules2ShownLabel(string text)

@@ -439,7 +439,7 @@ namespace Gamesim.Tests.EditMode
                 Assert.That((long)o["schemaVersion"], Is.EqualTo(29), "Do not project future or wrongly grouped dialogue storage.");
                 var observer29 = typeof(CommitmentRulesSeasonDigests).Assembly
                     .GetType("Gamesim.Tests.EditMode.LegacyDigestSchema29Observer", true);
-                // The native-29 arm (DIALOGUE-PLAN D1): a season on dialogue rules 1 - the cast screen's preview -
+                // The native-29 arm (DIALOGUE-PLAN D1): a season on dialogue rules 1 - the cast screen's preview until it moved to rules 2 -
                 // has no schema-28 form and no recorded digest, so it is digested as it is: the observer's native
                 // admission, its own JSON, then every reader as for any season. None of the legacy removals below
                 // applies to it, and rules 0 still goes through the unchanged projection.

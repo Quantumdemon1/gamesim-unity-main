@@ -19,8 +19,9 @@ namespace Gamesim.Tests.EditMode
     /// two (P1(a)); these tests pin the fallback that replaced the lock.
     ///
     /// <para>The witness is a pair of seasons from one seed, walked in step by the plain public walk: the shipped season
-    /// enrolled on rules 1 by the literal, as every rules-1 test enrols it (DIALOGUE-PLAN §2; the chip's season is that
-    /// start, field for field, ShippedRulesTests), and the same shipped season left on rules 0, the chip off. Past the
+    /// enrolled on rules 1 by the literal, as every rules-1 test enrols it (DIALOGUE-PLAN §2; it was the chip's season,
+    /// field for field, until the chip moved to rules 2, whose own seasons share this fallback through the same helper),
+    /// and the same shipped season left on rules 0, the chip off. "The chip on" below means this rules-1 season. Past the
     /// enrolment nothing is assigned by hand: no nominee, counter, roll, house moment or store row.</para>
     /// </summary>
     public sealed class DialogueCampaignPleaFallbackTests
@@ -175,7 +176,7 @@ namespace Gamesim.Tests.EditMode
             var on = new EpisodeEngine(w.On);
             var off = new EpisodeEngine(w.Off);
             var s = on.Snapshot;
-            Assert.That(DialogueRules.On(s), Is.True, "The chip's season plays dialogue rules 1.");
+            Assert.That(DialogueRules.On(s), Is.True, "The rules-1 season (the chip's until it moved to rules 2) plays dialogue rules 1.");
             Assert.That(DialogueRules.On(off.Snapshot), Is.False, "and its twin plays none.");
 
             // The conversation cannot start, and the plea is not taken away: the press is the one-shot plea, saying why.

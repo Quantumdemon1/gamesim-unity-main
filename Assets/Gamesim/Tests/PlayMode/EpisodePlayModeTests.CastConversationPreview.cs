@@ -15,7 +15,8 @@ namespace Gamesim.Tests.PlayMode
 {
     /// <summary>
     /// The cast screen's conversation preview (DIALOGUE-PLAN D1): a chip in the footer, off whenever the screen opens,
-    /// that starts the next season on the pinned dialogue rules 1 - the merged pilot - and nothing else. Driven through the
+    /// that starts the next season on the pinned dialogue rules - 2, D2's vote-word conversation, since the chip moved
+    /// from D1's pilot, rules 1 - and nothing else. Driven through the
     /// screen's own controls: the mouse's press, the keyboard's and the pad's ring, and the creator's start; and laid out
     /// at the three text sizes on 16:9, 4:3 and 21:9, inside the footer's two fixed heights, every label set at thirteen
     /// or more in a box 1.3 times its type and drawing its words.
@@ -37,9 +38,9 @@ namespace Gamesim.Tests.PlayMode
         }
 
         [UnityTest]
-        public IEnumerator CastSelect_TheConversationPreviewIsOffUntilChosenAndStartsTheSeasonOnDialogueRules1()
+        public IEnumerator CastSelect_TheConversationPreviewIsOffUntilChosenAndStartsTheSeasonOnDialogueRules2()
         {
-            Assert.That(DialogueRules.Offered, Is.EqualTo(1), "The chip offers the merged pilot, dialogue rules 1, frozen with D1.");
+            Assert.That(DialogueRules.Offered, Is.EqualTo(2), "The chip writes dialogue rules 2 since this change: D2's vote-word tree, frozen by the move.");
             var before = director.Snapshot;
             string slot = director.SavePath;
             new Gamesim.Persistence.EpisodeSaveStore(slot).Save(before);
@@ -70,10 +71,10 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(CastScreen().IsShowing, Is.False);
             var fresh = director.Snapshot;
             Assert.That(fresh.sessionId, Is.Not.EqualTo(before.sessionId), "A new season started.");
-            Assert.That(fresh.dialogueRulesVersion, Is.EqualTo(1), "The preview's season plays dialogue rules 1.");
+            Assert.That(fresh.dialogueRulesVersion, Is.EqualTo(2), "The preview's season plays dialogue rules 2, the chip's since this change.");
             Assert.That(DialogueRules.On(fresh), Is.True);
             Assert.That(new Gamesim.Persistence.EpisodeSaveStore(director.SavePath).TryLoad(out var disk, out string message), Is.True, message);
-            Assert.That(disk.dialogueRulesVersion, Is.EqualTo(1), "The season carries it on disk, as its own rule.");
+            Assert.That(disk.dialogueRulesVersion, Is.EqualTo(2), "The season carries it on disk, as its own rule.");
 
             // The next time the screen opens it is off again: nothing remembered the last choice.
             string previewSession = fresh.sessionId;
@@ -112,7 +113,8 @@ namespace Gamesim.Tests.PlayMode
             yield return null;
             Assert.That(Creator().IsShowing, Is.False, "The season started from the creator.");
             Assert.That(director.Snapshot.sessionId, Is.Not.EqualTo(before));
-            Assert.That(director.Snapshot.dialogueRulesVersion, Is.EqualTo(1), "The creator's start keeps the preview chosen on the cast screen.");
+            Assert.That(director.Snapshot.dialogueRulesVersion, Is.EqualTo(2),
+                "The creator's start keeps the preview chosen on the cast screen: rules 2, the chip's since this change.");
         }
 
         /// <summary>

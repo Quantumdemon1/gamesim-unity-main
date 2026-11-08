@@ -23,13 +23,15 @@ namespace Gamesim.Simulation
         private const int MaximumAction = EpisodeEngine.LegacySocialActionBudget + WebSocialVocabulary.PurchaseCeiling;
 
         /// <summary>
-        /// The dialogue rules the cast screen's preview chip starts a season on (DIALOGUE-PLAN §2, D1): a pinned
-        /// literal, frozen the day a shipped path could first write it, and moved by hand only when a later stack
-        /// brings the chip a new version. Never <see cref="Version"/>, the bound: a season keeps the rules it began
-        /// on, so a chip that wrote the bound would change the rules of every opted-in season the day it moved.
-        /// Tests that mean rules 1 write the literal 1; only the chip's own tests read this, and pin its value.
+        /// The dialogue rules the cast screen's preview chip starts a season on (DIALOGUE-PLAN §2): a pinned literal,
+        /// moved by hand only when a later stack brings the chip a new version. Rules 2 (D2's vote-word tree), since
+        /// the stack after the schema-30 bump moved the chip from D1's rules 1: a version freezes the first time a
+        /// shipped path can write it, so rules 2 is frozen from that commit as D2 built it, and the next dialogue stack
+        /// is rules 3. Never <see cref="Version"/>, the bound: a season keeps the rules it began on, so a chip that
+        /// wrote the bound would change the rules of every opted-in season the day it moved. Tests that mean a version
+        /// write its literal; only the chip's own tests read this, and pin its value.
         /// </summary>
-        public const int Offered = 1;
+        public const int Offered = 2;
 
         // Schema 29 introduced the dialogue store, and a later schema carries it as it is (DIALOGUE-PLAN §6, item 1):
         // a lower bound, so the next schema's bump cannot switch every rules-1 season off. A version is on at the

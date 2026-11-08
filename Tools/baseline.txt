@@ -190,7 +190,10 @@
 # rules-2 season on the tuning arm and on its own, 6; an All-Stars one on the alumni arm, 1; rules 1 on tuning 1, 2;
 # every native-30 arm's frozen dialogue literal and closed store, 20; the dialogue arm's own contract, 12). The subset
 # ran all 41 (2026-11-08); no Unity run has observed the floor yet.
-Gamesim.EditModeTests 9859
+# 9863 = 9859 + the chip's move to dialogue rules 2, 4 shared cases: DialogueRules2CapacityTests 3 (the budget's and the
+# room's refusals at each limit and one step short of it) and LegacyDigestSchema30ObserverTests 1 (the chip's All-Stars
+# season's rules-1 twin). Counted from the source; the subset ran all 4 (2026-11-08); no Unity run has observed it yet.
+Gamesim.EditModeTests 9863
 # The UMA-free build. 1215 = 1236, the count after the consolidation's lanes (S2a, S2b, S4a), less the 7
 # farewell probes moved to Gamesim.DiagnosticsPlayModeTests and the 14 farewell readiness tests that now
 # compile only under GAMESIM_UMA (judged on the UMA cast); 1230 = 1215 + S2d's 7, S4b's 2, S4c's 2 and
@@ -525,4 +528,6 @@ Gamesim.Uma.DiagnosticsPlayModeTests 10
 # 16686 = 16642 + the observers' native-30 dialogue arm: LegacyDigestSchema30ObserverTests' 41 shared cases and
 # CommitmentRulesSeasonDigestsNativeTests' 3 (the rules-2 digest and its two refusals): dotnet test Tools/SimulationTests
 # ran exactly 16686 of 16686 on the commit that adds them (2026-11-08).
-Gamesim.SimulationTests 16686
+# 16690 = 16686 + the chip's move to dialogue rules 2: DialogueRules2CapacityTests 3 and LegacyDigestSchema30ObserverTests'
+# rules-1 All-Stars twin 1. dotnet test Tools/SimulationTests ran exactly 16690 of 16690 on the commit that adds them (2026-11-08).
+Gamesim.SimulationTests 16690

@@ -66,7 +66,7 @@ namespace Gamesim.Tests.EditMode
         /// <summary>
         /// The native-29 arm's state-bound entries (DIALOGUE-PLAN D1, carried to schema 30 at the merge with SCH30,
         /// ALL-STAR-HISTORIES-PLAN 8.5): a current state on dialogue rules 1, the pilot the cast screen's preview chip
-        /// starts, taken to its schema-29 view with its store kept - never to 28, where a store holding conversations has
+        /// started until it moved to rules 2, taken to its schema-29 view with its store kept - never to 28, where a store holding conversations has
         /// no form - and admitted there by the retained-29 observer's native contract
         /// (<see cref="LegacyDigestSchema29Observer.NativeRetained29"/>), which hands it back as a detached copy.
         /// Admission is D1's, at the live header: the complete current validator, literal schema 30, literal dialogue

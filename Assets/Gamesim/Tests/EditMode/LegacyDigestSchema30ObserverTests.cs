@@ -331,12 +331,14 @@ namespace Gamesim.Tests.EditMode
         }
 
         /// <summary>
-        /// The merge of the histories with dialogue D1 (ALL-STAR-HISTORIES-PLAN 8.5): an All-Stars season started with the
-        /// cast screen's preview chip is on the alumni rules and on dialogue rules 1 at once, so both arms' tests hold for
-        /// it and their order decides. The alumni arm comes first at both digest boundaries: the season is admitted natively
-        /// at 30 and checkpointed there only, its FindDecision answers are read from its canonical rows, and the native-29
-        /// arm, which projects to 29, refuses it by the alumni check. Were the arms reordered, every checkpoint and every
-        /// answer of such a season would throw.
+        /// The merge of the histories with dialogue D1 (ALL-STAR-HISTORIES-PLAN 8.5), re-pinned when the chip moved to
+        /// dialogue rules 2: an All-Stars season started with the cast screen's preview chip is on the alumni rules and on
+        /// rules 2 at once. Rules 2 has no schema-29 view, so the native-29 arm's test no longer holds for it: the alumni arm
+        /// admits it natively at 30, holding its dialogue rules at the frozen 2 (a JSON 2.0 is refused in rules 2's words),
+        /// it is checkpointed at 30 only and refused below in rules 2's own words, which the boundary says ahead of the
+        /// alumni arm's, its FindDecision answers are read from its canonical rows, and the native-29 arm and the dialogue
+        /// arm each refuse it in their own words. The arm order the chip's rules-1 season once proved is held by its
+        /// hand-enrolled twin below.
         /// </summary>
         [Test]
         public void AnAllStarsSeasonStartedWithThePreviewTakesTheAlumniArmAtThirtyAndNeverTheNativeTwentyNine()
@@ -345,32 +347,83 @@ namespace Gamesim.Tests.EditMode
             ShippedRules.ApplyFresh(chip, new SeasonBuilder.Choice
                 { HouseSize = 8, Roster = CastTemplates.Roster.AllStars, CampaignConversations = true });
             Assert.That(chip.alumniRulesVersion, Is.EqualTo(AlumniRules.Latest), "The chip season seats its alumni's histories.");
-            Assert.That(chip.dialogueRulesVersion, Is.EqualTo(1), "The chip season plays the preview.");
+            Assert.That(chip.dialogueRulesVersion, Is.EqualTo(2), "The chip season plays the preview: rules 2, which the chip writes since this change.");
             Assert.That(chip.schemaVersion, Is.EqualTo(30));
             Assert.That(EpisodeValidation.TryValidate(chip, out string reason), Is.True, reason);
             Assert.That(LegacyDigestSchema30Observer.OnTheAlumniRules(chip), Is.True);
-            Assert.That(LegacyDigestSchema30Observer.IsNative29(chip), Is.True, "Both arms' tests hold; the order decides.");
+            Assert.That(LegacyDigestSchema30Observer.IsNative29(chip), Is.False, "Rules 2 has no schema-29 view: only the alumni arm's test holds.");
+            Assert.That(LegacyDigestSchema30Observer.OnDialogueRules2Alone(chip), Is.False, "It is on the alumni rules too.");
             var fields = OldSaveTrace.Fields(chip);
             var trace = JObject.FromObject(chip);
             string stateBefore = Text(chip), fieldsBefore = Text(fields), traceBefore = Text(trace);
 
             Assert.That(Text(LegacyDigestSchema30Observer.AdmitNative30(chip, fields)), Is.EqualTo(fieldsBefore), "Admitted as it is.");
+            var fractional = (JObject)fields.DeepClone();
+            fractional["dialogueRulesVersion"] = 2.0;
+            Assert.That(Refusal(() => LegacyDigestSchema30Observer.AdmitNative30(chip, fractional)),
+                Is.EqualTo("Only present integer-two dialogue rules are admitted natively."),
+                "The alumni arm holds the chip season's dialogue rules at the frozen 2.");
             Assert.That(CurrentOldSaveTrace.Checkpoint(chip, 30), Is.EqualTo(OldSaveTrace.Checkpoint(chip, 30)),
                 "Checkpointed at the live 30 as the recorder checkpoints its own schema: the hash of its own fields.");
             foreach (int schema in new[] { 29, 28 })
-            {
-                var below = Assert.Throws<InvalidDataException>(() => CurrentOldSaveTrace.Checkpoint(chip, schema), "schema " + schema);
-                Assert.That(below.Message, Is.EqualTo("A season on the alumni rules has no reference schema below 30."), "schema " + schema);
-            }
+                Assert.That(Refusal(() => CurrentOldSaveTrace.Checkpoint(chip, schema)),
+                    Is.EqualTo("A season on dialogue rules 2 has no reference schema below 30."),
+                    "schema " + schema + ": rules 2's words, ahead of the alumni arm's, since the chip writes rules 2.");
             Assert.That(Text(LegacyDigestSchema30Observer.FindDecisionAnswers28(chip)),
                 Is.EqualTo(Text(LegacyDigestSchema29Observer.FindDecisionAnswersOfAnAdmittedSource28(chip))),
                 "The historical FindDecision reader admits it at 30 and reads the same canonical rows.");
-            var nativeFields = Assert.Throws<InvalidDataException>(() => LegacyDigestSchema30Observer.NativeFields29(chip, fields));
+            Assert.That(Refusal(() => LegacyDigestSchema30Observer.NativeFields29(chip, fields)),
+                Is.EqualTo("Only present integer-one dialogue rules are admitted natively."), "The native-29 arm takes rules 1 alone.");
+            Assert.That(Refusal(() => LegacyDigestSchema30Observer.NativeTrace29(chip, trace)),
+                Is.EqualTo("Only present integer-one dialogue rules are admitted natively."));
+            Assert.That(Refusal(() => LegacyDigestSchema30Observer.Rules2Trace30(chip, trace)),
+                Is.EqualTo("Only a season on dialogue rules 2 alone is admitted natively by the dialogue arm."));
+            Assert.That(Text(chip), Is.EqualTo(stateBefore));
+            Assert.That(Text(fields), Is.EqualTo(fieldsBefore));
+            Assert.That(Text(trace), Is.EqualTo(traceBefore));
+        }
+
+        /// <summary>
+        /// The chip's All-Stars season before the chip moved to rules 2, kept as a twin enrolled on dialogue rules 1 by the
+        /// literal (DIALOGUE-PLAN §2): on the alumni rules and on rules 1 at once, so both the alumni arm's and the native-29
+        /// arm's tests hold for it and their order decides. The alumni arm comes first at both digest boundaries: the season
+        /// is admitted natively at 30 and checkpointed there only, its FindDecision answers are read from its canonical rows,
+        /// and the native-29 arm, which projects to 29, refuses it by the alumni check. Were the arms reordered, every
+        /// checkpoint and every answer of such a season would throw.
+        /// </summary>
+        [Test]
+        public void AnAllStarsSeasonOnDialogueRules1TakesTheAlumniArmBeforeTheNativeTwentyNine()
+        {
+            var twin = SeasonBuilder.Create(new SeasonBuilder.Choice { HouseSize = 8, Roster = CastTemplates.Roster.AllStars }, 3007u);
+            ShippedRules.ApplyFresh(twin);
+            Assert.That(twin.dialogueRulesVersion, Is.Zero, "A shipped season starts on dialogue rules 0.");
+            twin.dialogueRulesVersion = 1;
+            Assert.That(twin.alumniRulesVersion, Is.EqualTo(AlumniRules.Latest), "The season seats its alumni's histories.");
+            Assert.That(twin.schemaVersion, Is.EqualTo(30));
+            Assert.That(EpisodeValidation.TryValidate(twin, out string reason), Is.True, reason);
+            Assert.That(LegacyDigestSchema30Observer.OnTheAlumniRules(twin), Is.True);
+            Assert.That(LegacyDigestSchema30Observer.IsNative29(twin), Is.True, "Both arms' tests hold; the order decides.");
+            var fields = OldSaveTrace.Fields(twin);
+            var trace = JObject.FromObject(twin);
+            string stateBefore = Text(twin), fieldsBefore = Text(fields), traceBefore = Text(trace);
+
+            Assert.That(Text(LegacyDigestSchema30Observer.AdmitNative30(twin, fields)), Is.EqualTo(fieldsBefore), "Admitted as it is.");
+            Assert.That(CurrentOldSaveTrace.Checkpoint(twin, 30), Is.EqualTo(OldSaveTrace.Checkpoint(twin, 30)),
+                "Checkpointed at the live 30 as the recorder checkpoints its own schema: the hash of its own fields.");
+            foreach (int schema in new[] { 29, 28 })
+            {
+                var below = Assert.Throws<InvalidDataException>(() => CurrentOldSaveTrace.Checkpoint(twin, schema), "schema " + schema);
+                Assert.That(below.Message, Is.EqualTo("A season on the alumni rules has no reference schema below 30."), "schema " + schema);
+            }
+            Assert.That(Text(LegacyDigestSchema30Observer.FindDecisionAnswers28(twin)),
+                Is.EqualTo(Text(LegacyDigestSchema29Observer.FindDecisionAnswersOfAnAdmittedSource28(twin))),
+                "The historical FindDecision reader admits it at 30 and reads the same canonical rows.");
+            var nativeFields = Assert.Throws<InvalidDataException>(() => LegacyDigestSchema30Observer.NativeFields29(twin, fields));
             Assert.That(nativeFields.Message, Is.EqualTo("Only present integer-zero alumni rules may be projected."),
                 "The native-29 arm refuses it by the alumni projection's own check.");
-            var nativeTrace = Assert.Throws<InvalidDataException>(() => LegacyDigestSchema30Observer.NativeTrace29(chip, trace));
+            var nativeTrace = Assert.Throws<InvalidDataException>(() => LegacyDigestSchema30Observer.NativeTrace29(twin, trace));
             Assert.That(nativeTrace.Message, Is.EqualTo("Only present integer-zero alumni rules may be projected."));
-            Assert.That(Text(chip), Is.EqualTo(stateBefore));
+            Assert.That(Text(twin), Is.EqualTo(stateBefore));
             Assert.That(Text(fields), Is.EqualTo(fieldsBefore));
             Assert.That(Text(trace), Is.EqualTo(traceBefore));
         }
@@ -482,7 +535,8 @@ namespace Gamesim.Tests.EditMode
         }
 
         /// <summary>
-        /// The cast screen's chip season from B9 - dialogue rules 1 on tuning 1, here by the literal 1, never the chip - is on
+        /// The cast screen's chip season from B9 until the chip moved to rules 2 - dialogue rules 1 on tuning 1, here by the
+        /// literal 1, never the chip (whose season is now rules 2 on tuning 1, the tuning arm's played rules-2 case) - is on
         /// the tuning arm, which is asked before the native-29 arm, and since the dialogue arm landed the tuning arm holds the
         /// season's dialogue rules too (the matrix below refuses each defect). Before the conversation and with it open it is admitted at 30
         /// as it is and checkpointed there alone; the native-29 arm refuses it by the projection's tuning literal.
@@ -656,7 +710,7 @@ namespace Gamesim.Tests.EditMode
             return state;
         }
 
-        /// <summary>An All-Stars season enrolled on dialogue rules 2 by the literal (the chip offers rules 1 until rules 2 freezes).</summary>
+        /// <summary>An All-Stars season enrolled on dialogue rules 2 by the literal (§2: tests never read the chip, which writes rules 2 since its move).</summary>
         private static EpisodeState AllStarsOnRules2()
         {
             var state = SeasonBuilder.Create(new SeasonBuilder.Choice { HouseSize = 8, Roster = CastTemplates.Roster.AllStars }, 3008u);
@@ -669,7 +723,7 @@ namespace Gamesim.Tests.EditMode
         }
 
         /// <summary>
-        /// A season on dialogue rules 1 and tuning 1, the chip's season from B9, by the literal 1: the shipped start, or the
+        /// A season on dialogue rules 1 and tuning 1, the chip's season from B9 until the chip moved to rules 2, by the literal 1: the shipped start, or the
         /// preview witness's open conversation with its tuning held at 0 moved to tuning 1 by hand.
         /// </summary>
         private static EpisodeState Rules1Tuned(string stage)

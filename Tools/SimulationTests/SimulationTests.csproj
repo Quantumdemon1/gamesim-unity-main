@@ -53,6 +53,8 @@
     <Compile Include="$(EditMode)DialogueRules2LadderTests.cs" />
     <Compile Include="$(EditMode)DialogueRules2ValidatorTests.cs" />
     <Compile Include="$(EditMode)DialogueRules2EngineTests.cs" />
+    <!-- Rules 2's budget and room refusals, at each limit and one step short of it, since the chip writes rules 2. -->
+    <Compile Include="$(EditMode)DialogueRules2CapacityTests.cs" />
     <Compile Include="$(EditMode)DialogueCampaignPleaFallbackTests.cs" />
     <!-- NpcInvitation.cs is included by the whole Simulation glob above. -->
     <Compile Include="$(EditMode)NpcInvitationTests.cs" />

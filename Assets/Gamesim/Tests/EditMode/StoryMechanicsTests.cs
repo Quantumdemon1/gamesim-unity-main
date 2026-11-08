@@ -273,11 +273,12 @@ namespace Gamesim.Tests.EditMode
         {
             var s = Season();
             var npcs = Npcs(s);
-            hoh = npcs[0].id; holder = npcs[3].id;
-            string friend = npcs[1].id, other = npcs[2].id;
-            SetTheVetoMeeting(s, hoh, new[] { friend, other }, holder, npcs[4].id);
-            s.relationships.First(r => r.fromId == holder && r.toId == friend).score = 90;
-            s.relationships.First(r => r.fromId == holder && r.toId == other).score = -60;
+            // The lambdas read a local copy: C# refuses an out parameter inside a lambda (CS1628).
+            string keeper = npcs[3].id, friend = npcs[1].id, other = npcs[2].id;
+            hoh = npcs[0].id; holder = keeper;
+            SetTheVetoMeeting(s, hoh, new[] { friend, other }, keeper, npcs[4].id);
+            s.relationships.First(r => r.fromId == keeper && r.toId == friend).score = 90;
+            s.relationships.First(r => r.fromId == keeper && r.toId == other).score = -60;
             Assert.That(EpisodeEngine.NpcVetoSave(s), Is.EqualTo(friend), "Off the block, the holder saves a friend.");
             return s;
         }

@@ -524,7 +524,13 @@ namespace Gamesim.Tests.EditMode
             Assert.That(Text(retainedTrace), Is.EqualTo(retainedTraceBefore));
             Assert.That(Text(retainedFields), Is.EqualTo(retainedFieldsBefore));
             if (defect == "rules-0") Assert.DoesNotThrow(() => CurrentOldSaveTrace.Checkpoint(source, 29), "Rules 0 keeps its own arm.");
-            if (invalid) Assert.Throws<InvalidDataException>(() => CurrentOldSaveTrace.Checkpoint(source, 29));
+            // Refused by the validator, never by a schema boundary that happens to hold too: an undefined version is no
+            // rules-2 season, so no arm's boundary may refuse it ahead of the check that owns it.
+            if (defect == "unknown-version")
+                Assert.That(LegacyDigestSchema30Observer.OnDialogueRules2Alone(source), Is.False, "The dialogue arm takes the literal 2 alone.");
+            if (invalid)
+                Assert.That(Assert.Throws<InvalidDataException>(() => CurrentOldSaveTrace.Checkpoint(source, 29)).Message,
+                    Does.StartWith("The current source state is invalid:"), defect + ": the validator's own refusal.");
             Assert.That(Text(source), Is.EqualTo(stateBefore));
         }
 

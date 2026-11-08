@@ -44,14 +44,15 @@ namespace Gamesim.Tests.EditMode
         internal static bool IsNative29(EpisodeState state) => state != null && state.dialogueRulesVersion == 1;
 
         /// <summary>
-        /// Whether a state is the dialogue arm's (DIALOGUE-PLAN D2): dialogue rules from 2 - every version from 2 needs
-        /// schema 30 (DialogueRules.SchemaFor) - with the alumni and the tuning rules at 0. Such a season has no schema-29
-        /// view, so its digests are taken at the live 30 through <see cref="Rules2Fields30"/> and
-        /// <see cref="Rules2Trace30"/>, which admit the literal 2 alone. From B9 every fresh season starts on tuning 1, so
-        /// only a hand-built season (a harness holding tuning 0) is this arm's; a fresh one is the tuning arm's.
+        /// Whether a state is the dialogue arm's (DIALOGUE-PLAN D2): dialogue rules exactly 2, by the literal - the frozen
+        /// set that needs schema 30 (DialogueRules.SchemaFor) - with the alumni and the tuning rules at 0. Such a season has
+        /// no schema-29 view, so its digests are taken at the live 30 through <see cref="Rules2Fields30"/> and
+        /// <see cref="Rules2Trace30"/>, which admit the literal 2 alone. An undefined version is no arm's: it falls through
+        /// to the projection, whose first check, the complete validator, refuses it. From B9 every fresh season starts on
+        /// tuning 1, so only a hand-built season (a harness holding tuning 0) is this arm's; a fresh one is the tuning arm's.
         /// </summary>
         internal static bool OnDialogueRules2Alone(EpisodeState state) =>
-            state != null && state.alumniRulesVersion == 0 && state.tuningRulesVersion == 0 && state.dialogueRulesVersion >= 2;
+            state != null && state.alumniRulesVersion == 0 && state.tuningRulesVersion == 0 && state.dialogueRulesVersion == 2;
 
         /// <summary>
         /// Whether a state is on B9's tuning rules and not on the alumni rules: every fresh Regular season from B9-3

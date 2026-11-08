@@ -391,8 +391,9 @@ namespace Gamesim.Tests.EditMode
                 // 28 form and no recorded digest. The schema-30 observer's own native entry admits it at 30 unprojected -
                 // the pooled three at their off literals, the store kept - and that 30 is digested as it is, then every
                 // reader. A digest season is on neither pooled rules; one that were would be refused there, by the dialogue
-                // arm's own words, as this checkpoint has no alumni or tuning arm for any season.
-                if (o["dialogueRulesVersion"]?.Type == JTokenType.Integer && (long)o["dialogueRulesVersion"] >= 2)
+                // arm's own words, as this checkpoint has no alumni or tuning arm for any season. Rules 2 by the literal, as the
+                // observer's own router keys it: an undefined version is no rules-2 season, and the validator refuses it below.
+                if (o["dialogueRulesVersion"]?.Type == JTokenType.Integer && (long)o["dialogueRulesVersion"] == 2)
                 {
                     var rules2 = observer30.GetMethod("Rules2Trace30", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static,
                         null, new[] { typeof(EpisodeState), typeof(JObject) }, null);

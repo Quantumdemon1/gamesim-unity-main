@@ -401,7 +401,6 @@ namespace Gamesim.Tests.EditMode
             var trace = JObject.FromObject(state);
             var fields = OldSaveTrace.Fields(state);
             string stateBefore = Text(state), traceBefore = Text(trace), fieldsBefore = Text(fields);
-            string below;
             if (arm == "alone")
             {
                 var nativeTrace = LegacyDigestSchema30Observer.Rules2Trace30(state, trace);
@@ -416,7 +415,6 @@ namespace Gamesim.Tests.EditMode
                 Assert.That(Text(fields), Is.EqualTo(fieldsBefore));
                 Assert.That(Refusal(() => LegacyDigestSchema30Observer.AdmitNativeTuned30(state, fields)),
                     Is.EqualTo("Only a season on the tuning rules alone is admitted natively by the tuning arm."));
-                below = "A season on dialogue rules 2 has no reference schema below 30.";
             }
             else
             {
@@ -425,13 +423,14 @@ namespace Gamesim.Tests.EditMode
                     Is.EqualTo("Only a season on dialogue rules 2 alone is admitted natively by the dialogue arm."));
                 Assert.That(Refusal(() => LegacyDigestSchema30Observer.Rules2Fields30(state, fields)),
                     Is.EqualTo("Only a season on dialogue rules 2 alone is admitted natively by the dialogue arm."));
-                below = "A season on the tuning rules has no reference schema below 30.";
             }
             Assert.That(CurrentOldSaveTrace.Checkpoint(state, 30), Is.EqualTo(OldSaveTrace.Checkpoint(state, 30)),
                 "Checkpointed at the live 30 as the recorder checkpoints its own schema.");
+            // Below 30 in rules 2's own words on either arm, the tuning arm's season (the one a shipped path writes) too.
             foreach (int schema in new[] { 29, 28, 26 })
-                Assert.That(Refusal(() => CurrentOldSaveTrace.Checkpoint(state, schema)), Is.EqualTo(below),
-                    "schema " + schema + ": no form below 30, never the rules-1 words.");
+                Assert.That(Refusal(() => CurrentOldSaveTrace.Checkpoint(state, schema)),
+                    Is.EqualTo("A season on dialogue rules 2 has no reference schema below 30."),
+                    "schema " + schema + ": no form below 30, never the rules-1 words nor the tuning arm's.");
             Assert.That(Text(LegacyDigestSchema30Observer.FindDecisionAnswers28(state)),
                 Is.EqualTo(Text(LegacyDigestSchema29Observer.FindDecisionAnswersOfAnAdmittedSource28(state))),
                 "The historical FindDecision reader admits it at 30 and reads the same canonical rows.");
@@ -452,8 +451,9 @@ namespace Gamesim.Tests.EditMode
 
         /// <summary>
         /// An All-Stars season on dialogue rules 2 is on the alumni rules too, so the alumni arm, asked first, admits it at
-        /// 30 - holding its dialogue rules as the dialogue arm does - and it is checkpointed there alone; the dialogue arm and
-        /// the native-29 arm refuse it, each in its own words.
+        /// 30 - holding its dialogue rules as the dialogue arm does - and it is checkpointed there alone, refused below 30 in
+        /// rules 2's own words, which the boundary says ahead of the alumni arm's; the dialogue arm and the native-29 arm
+        /// refuse it, each in its own words.
         /// </summary>
         [Test]
         public void AnAllStarsSeasonOnDialogueRules2TakesTheAlumniArmAtThirty()
@@ -469,7 +469,7 @@ namespace Gamesim.Tests.EditMode
             Assert.That(CurrentOldSaveTrace.Checkpoint(state, 30), Is.EqualTo(OldSaveTrace.Checkpoint(state, 30)));
             foreach (int schema in new[] { 29, 28 })
                 Assert.That(Refusal(() => CurrentOldSaveTrace.Checkpoint(state, schema)),
-                    Is.EqualTo("A season on the alumni rules has no reference schema below 30."), "schema " + schema);
+                    Is.EqualTo("A season on dialogue rules 2 has no reference schema below 30."), "schema " + schema);
             Assert.That(Text(LegacyDigestSchema30Observer.FindDecisionAnswers28(state)),
                 Is.EqualTo(Text(LegacyDigestSchema29Observer.FindDecisionAnswersOfAnAdmittedSource28(state))));
             Assert.That(Refusal(() => LegacyDigestSchema30Observer.Rules2Trace30(state, trace)),

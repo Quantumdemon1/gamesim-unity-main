@@ -190,7 +190,10 @@
 # rules-2 season on the tuning arm and on its own, 6; an All-Stars one on the alumni arm, 1; rules 1 on tuning 1, 2;
 # every native-30 arm's frozen dialogue literal and closed store, 20; the dialogue arm's own contract, 12). The subset
 # ran all 41 (2026-11-08); no Unity run has observed the floor yet.
-Gamesim.EditModeTests 9859
+# 9864 = 9859 + the rules-2 HUD's witnesses, 5 shared cases: DialogueRules2HudWitnessTests 4 (the fallback, the word for
+# and against, the four-tile reply, the rescue carrier) and DialogueCampaignPleaFallbackTests' rules-2 twin 1. The
+# filtered subset ran all 5 (2026-11-08); no Unity run has observed the floor yet.
+Gamesim.EditModeTests 9864
 # The UMA-free build. 1215 = 1236, the count after the consolidation's lanes (S2a, S2b, S4a), less the 7
 # farewell probes moved to Gamesim.DiagnosticsPlayModeTests and the 14 farewell readiness tests that now
 # compile only under GAMESIM_UMA (judged on the UMA cast); 1230 = 1215 + S2d's 7, S4b's 2, S4c's 2 and
@@ -317,7 +320,10 @@ Gamesim.EditModeTests 9859
 # adding none), counted offline from the source and the compiled assembly (2026-11-03); not yet run in Unity. Both
 # pass only on the scene and NavMesh HouseKitchenDoorway.AuthorAcceptance writes.
 # 1486 = 1480 + B9's 1 (1481 - 1480) + the quick fixes' 5 (1485 - 1480): disjoint cases, so the floor is their sum (2026-11-06).
-Gamesim.PlayModeTests 1486
+# 1498 = 1486 + the rules-2 HUD's 12 shared cases (EpisodePlayModeTests.DialogueRules2Hud: the fallback plea panel, the
+# voter's word, the public rescue and the four-tile reply, each at the standard, larger and largest text), counted from
+# the source and compiled offline (2026-11-08); no Unity run has observed them yet.
+Gamesim.PlayModeTests 1498
 # The UMA build of the same assembly, read by a plan built without -WithoutUma. 1281 = the 1241 above + the
 # 40 tests that compile only under GAMESIM_UMA, as run at r1 (2026-10-16): in EpisodePlayModeTests,
 # GroundedFarewell 11, Creator 9, HouseLife 8, Emotes 3, OpeningCaptures 2, and one each in CreatorEntry,
@@ -396,7 +402,9 @@ Gamesim.PlayModeTests 1486
 # 1527 = 1526 + the quick fixes' same kitchen doorway test, counted offline (2026-11-03) and compiled in the UMA
 # offline build; not yet run in Unity.
 # 1528 = 1522 + B9's 1 (1523 - 1522) + the quick fixes' 5 (1527 - 1522): disjoint cases, so the floor is their sum (2026-11-06).
-Gamesim.PlayModeTests.UmaBuild 1528
+# 1540 = 1528 + the rules-2 HUD's same 12 shared cases, counted from the source; compiled offline without UMA only, and no
+# Unity run has observed them yet (2026-11-08).
+Gamesim.PlayModeTests.UmaBuild 1540
 # The UMA bodies: runs only where the GAMESIM_UMA define is set (the working tree and the D: copy).
 # 82 = the 89 run on 2026-10-15, less the 7 farewell probes moved to Gamesim.Uma.DiagnosticsPlayModeTests;
 # 85 = 82 + the 3 farewell readiness decision tests (UmaFarewellReadinessDecisionPlayModeTests, 2026-10-16);
@@ -525,4 +533,6 @@ Gamesim.Uma.DiagnosticsPlayModeTests 10
 # 16686 = 16642 + the observers' native-30 dialogue arm: LegacyDigestSchema30ObserverTests' 41 shared cases and
 # CommitmentRulesSeasonDigestsNativeTests' 3 (the rules-2 digest and its two refusals): dotnet test Tools/SimulationTests
 # ran exactly 16686 of 16686 on the commit that adds them (2026-11-08).
-Gamesim.SimulationTests 16686
+# 16691 = 16686 + the rules-2 HUD's witnesses: DialogueRules2HudWitnessTests 4 and DialogueCampaignPleaFallbackTests'
+# rules-2 twin 1: dotnet test Tools/SimulationTests ran exactly 16691 of 16691 on the commit that adds them (2026-11-08).
+Gamesim.SimulationTests 16691

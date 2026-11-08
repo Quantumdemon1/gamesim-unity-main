@@ -54,6 +54,8 @@
     <Compile Include="$(EditMode)DialogueRules2ValidatorTests.cs" />
     <Compile Include="$(EditMode)DialogueRules2EngineTests.cs" />
     <Compile Include="$(EditMode)DialogueCampaignPleaFallbackTests.cs" />
+    <!-- The seasons the rules-2 HUD's PlayMode tests replay, proven headlessly (EpisodePlayModeTests.DialogueRules2Hud). -->
+    <Compile Include="$(EditMode)DialogueRules2HudWitnessTests.cs" />
     <!-- NpcInvitation.cs is included by the whole Simulation glob above. -->
     <Compile Include="$(EditMode)NpcInvitationTests.cs" />
     <!-- ComesToYou.cs (the asks that come to the player) is included by the Simulation glob too. -->

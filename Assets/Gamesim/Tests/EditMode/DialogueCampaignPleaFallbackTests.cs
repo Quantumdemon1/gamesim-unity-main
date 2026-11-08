@@ -22,6 +22,9 @@ namespace Gamesim.Tests.EditMode
     /// enrolled on rules 1 by the literal, as every rules-1 test enrols it (DIALOGUE-PLAN §2; the chip's season is that
     /// start, field for field, ShippedRulesTests), and the same shipped season left on rules 0, the chip off. Past the
     /// enrolment nothing is assigned by hand: no nominee, counter, roll, house moment or store row.</para>
+    ///
+    /// <para>One case repeats the twin on dialogue rules 2, enrolled by the literal 2 (the HUD's rules-2 plea panel,
+    /// EpisodePlayModeTests.DialogueRules2Hud): the same search, the same press, field for field the chip-off season's.</para>
     /// </summary>
     public sealed class DialogueCampaignPleaFallbackTests
     {
@@ -35,7 +38,7 @@ namespace Gamesim.Tests.EditMode
             internal string Voter, Other;
         }
 
-        private static Witness found;
+        private static Witness found, foundOnRules2;
 
         private sealed class SavedFields : DefaultContractResolver
         {
@@ -55,12 +58,13 @@ namespace Gamesim.Tests.EditMode
 
         private static string Json(object value) => JsonConvert.SerializeObject(value, new JsonSerializerSettings { ContractResolver = SavedFieldContracts });
 
-        private static EpisodeState Start(uint seed, bool dialogue)
+        /// <summary>The shipped season of a seed, enrolled on dialogue rules <paramref name="rules"/> by its literal when <paramref name="dialogue"/>.</summary>
+        private static EpisodeState Start(uint seed, bool dialogue, int rules = 1)
         {
             var fresh = SeasonBuilder.Create(new SeasonBuilder.Choice { HouseSize = 8 }, seed);
             ShippedRules.ApplyFresh(fresh);
             Assert.That(fresh.dialogueRulesVersion, Is.Zero);
-            if (dialogue) fresh.dialogueRulesVersion = 1;
+            if (dialogue) fresh.dialogueRulesVersion = rules;
             return fresh;
         }
 
@@ -78,15 +82,23 @@ namespace Gamesim.Tests.EditMode
         /// </summary>
         private static Witness Find()
         {
-            if (found == null) found = Search();
+            if (found == null) found = Search(1);
             return new Witness { Seed = found.Seed, On = found.On.Clone(), Off = found.Off.Clone(), Voter = found.Voter, Other = found.Other };
         }
 
-        private static Witness Search()
+        /// <summary>The same search on dialogue rules 2, enrolled by the literal 2 (it stopped at seed 2's week-2 Campaign, step 26, as rules 1's does, on 2026-11-08).</summary>
+        private static Witness FindOnRules2()
+        {
+            if (foundOnRules2 == null) foundOnRules2 = Search(2);
+            var w = foundOnRules2;
+            return new Witness { Seed = w.Seed, On = w.On.Clone(), Off = w.Off.Clone(), Voter = w.Voter, Other = w.Other };
+        }
+
+        private static Witness Search(int rules)
         {
             for (uint seed = 1; seed <= 24; seed++)
             {
-                var on = new EpisodeEngine(Start(seed, true));
+                var on = new EpisodeEngine(Start(seed, true, rules));
                 var off = new EpisodeEngine(Start(seed, false));
                 for (int step = 0; step < 400; step++)
                 {
@@ -101,8 +113,8 @@ namespace Gamesim.Tests.EditMode
                         if (waiting.Count >= 2)
                         {
                             Assert.That(Json(off.Snapshot), Is.EqualTo(Json(s)), "seed " + seed + ": the chip changes nothing before the plea.");
-                            TestContext.Out.WriteLine("Plea fallback witness: seed " + seed + ", week " + s.week + " campaign, revision " + s.revision
-                                + ", " + waiting.Count + " voters waiting on the house moment.");
+                            TestContext.Out.WriteLine("Plea fallback witness on dialogue rules " + rules + ": seed " + seed + ", week " + s.week
+                                + " campaign, step " + step + ", revision " + s.revision + ", " + waiting.Count + " voters waiting on the house moment.");
                             return new Witness { Seed = seed, On = s.Clone(), Off = off.Snapshot.Clone(), Voter = waiting[0], Other = waiting[1] };
                         }
                     }
@@ -113,7 +125,7 @@ namespace Gamesim.Tests.EditMode
                     Assert.That(b.accepted, Is.True, "seed " + seed + ": the chip-off season refused what the chip-on one took: " + next.kind + ": " + b.reason);
                 }
             }
-            Assert.Fail("No nominated Campaign of 24 seeds met an open house moment with two actions left and two voters waiting on it.");
+            Assert.Fail("No nominated Campaign of 24 seeds on dialogue rules " + rules + " met an open house moment with two actions left and two voters waiting on it.");
             return null;
         }
 
@@ -217,6 +229,62 @@ namespace Gamesim.Tests.EditMode
             Assert.That(DialogueRules.Active(talking)?.npcId, Is.EqualTo(w.Other), "The conversation opens.");
             Assert.That(Remaining(talking), Is.EqualTo(Remaining(answered) - 1), "for the plea's one action.");
             Assert.That(Pleadable(off.Snapshot), Does.Contain(w.Other), "where the chip-off season offers the plain plea.");
+        }
+
+        /// <summary>
+        /// The same fallback on dialogue rules 2, the HUD's rules-2 plea panel's engine half (EpisodePlayModeTests.DialogueRules2Hud):
+        /// the shipped season enrolled on rules 2 by the literal 2, walked in step with its chip-off twin to the first nominated
+        /// Campaign with a house moment open, two actions left and two voters waiting on it. Rules 2 refuses the conversation
+        /// in its own words, and the press is the chip-off season's one-shot plea field for field, the dialogue rules version
+        /// aside. Once the house is answered the other voter's press opens a conversation on rules 2's vote-word tree.
+        /// Nothing here reads the chip's version: the season is enrolled by the literal, as every rules-2 test enrols it.
+        /// </summary>
+        [Test]
+        public void OnDialogueRules2TheOneShotPleaIsTheChipOffSeasonsPleaFieldForField()
+        {
+            if (DialogueRules2Season.HeldBelowItsSchema()) return;
+            var w = FindOnRules2();
+            var on = new EpisodeEngine(w.On);
+            var off = new EpisodeEngine(w.Off);
+            var s = on.Snapshot;
+            Assert.That(s.dialogueRulesVersion, Is.EqualTo(2), "Enrolled by the literal 2.");
+            Assert.That(DialogueRules.On(s), Is.True, "The season plays dialogue rules 2.");
+            Assert.That(DialogueRules.On(off.Snapshot), Is.False, "and its twin plays none.");
+
+            Assert.That(DialogueRules.TryBuildEntryCommand(s, w.Voter, out _), Is.False, "The house moment holds the conversation.");
+            Assert.That(DialogueRules.PleaWithoutConversation(s, w.Voter, out string why), Is.True,
+                "owner, 2026-10-25: never lose the plea. Rules 2's refusal leaves the one-shot plea too.");
+            Assert.That(why, Is.EqualTo(HouseMoment), "in CanStart's own words, which rules 2 keeps.");
+            Assert.That(DialogueRules.PleaWithoutConversation(off.Snapshot, w.Voter, out why), Is.False, "Without dialogue the plea is the plea.");
+            Assert.That(Pleadable(off.Snapshot), Does.Contain(w.Voter), "The chip-off season offers this plea,");
+            Assert.That(Remaining(off.Snapshot), Is.EqualTo(Remaining(s)), "for the same action.");
+
+            var press = Plea(s, w.Voter);
+            var withChip = Accepted(on, press);
+            var withoutChip = Accepted(off, press);
+            Assert.That(Json(withChip), Is.EqualTo(Json(withoutChip)), "The press draws exactly what the chip-off season's draws: the whole saved state.");
+            Assert.That(withChip.randomState, Is.EqualTo(withoutChip.randomState), "the same main-stream roll,");
+            Assert.That(withChip.dialogueRulesVersion, Is.EqualTo(2), "and the season stays on rules 2.");
+            var lobby = withChip.lobbies.Last();
+            Assert.That((lobby.week, lobby.phase, lobby.deciderId, lobby.ask, lobby.subjectId, lobby.approach),
+                Is.EqualTo((s.week, EpisodePhase.Campaign, w.Voter, LobbyAsk.Vote, s.playerId, LobbyApproach.Emotional)), "the desperate plea itself,");
+            Assert.That(Json(lobby), Is.EqualTo(Json(withoutChip.lobbies.Last())), "with the same answer and influence.");
+            Assert.That(Remaining(withChip), Is.EqualTo(Remaining(s) - 1), "It cost its one action.");
+            Assert.That(withChip.dialogue.episodes, Is.Empty, "No conversation that time.");
+
+            // The conversation is not spent: once the moment is answered the other voter's press opens it, on rules 2's tree.
+            AnswerTheHouse(on, off);
+            var answered = on.Snapshot;
+            Assert.That(DialogueRules.CanStart(answered, w.Other, out why), Is.True, why);
+            Assert.That(DialogueRules.PleaWithoutConversation(answered, w.Other, out _), Is.False, "With the house free the press is the conversation again.");
+            Assert.That(DialogueRules.TryBuildEntryCommand(answered, w.Other, out var entry), Is.True);
+            entry.id = "plea-fallback-entry";
+            var talking = Accepted(on, entry);
+            var open = DialogueRules.Active(talking);
+            Assert.That(open?.npcId, Is.EqualTo(w.Other), "The conversation opens,");
+            Assert.That(DialogueRules.Cycle(talking, open).templateId, Is.EqualTo(DialogueCampaignWord.TemplateId), "on rules 2's vote-word tree,");
+            Assert.That(DialogueCampaignWord.AnswerOf(DialogueRules.Cycle(talking, open).beatId), Is.Not.Null, "at the voter's answer,");
+            Assert.That(Remaining(talking), Is.EqualTo(Remaining(answered) - 1), "for the plea's one action.");
         }
 
         [Test]

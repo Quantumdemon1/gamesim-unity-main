@@ -1002,6 +1002,11 @@ more: seeds 0-99 at 12 played without it equal the boost's, row for row.
   preparation to 1 in every house and week, a Head of Household sat out leaves it as it was, and validation holds it to 1.
   The final-HoH rate the owner asked about is 85.5% without the boost (round 3 measured 84.6% without the final week's
   lever, before the tiebreak).
+- **Found by the review of the drop, not changed (the owner's call).** At tuning 1 every study starts from 0, since a
+  study at the limit is refused. So the sneak-peek approach (+2 on success, -1 on failure, held to the limit of 1) can
+  reach only what memorizing gives for certain, and it succeeds about 45% of the time. Before the drop it could reach 2
+  in a small house's final week. Its card says the limit ("up to the limit of 1"), so the copy is true; whether the
+  option should change is a design question.
 - **The replay.** The head's seasons replay B9-1's records wherever the tiebreak cannot reach. At 8, 676 of 800 are
   equal and 124 differ (the final eviction in 19, a tied jury's winner alone in 105); at 12, 722 are equal and 78 differ.
   The tiebreak can account for every difference, and none moved before the final eviction. The first report counted the

@@ -439,6 +439,13 @@ namespace Gamesim.Simulation
             {
                 if (activeCount != 0 || s.contestants.Count(c => c.status == ContestantStatus.Winner) != 1 || s.contestants.Count(c => c.status == ContestantStatus.RunnerUp) != 1 ||
                     s.Find(s.winnerId)?.status != ContestantStatus.Winner || s.Find(s.runnerUpId)?.status != ContestantStatus.RunnerUp) return Fail(out error, "Invalid terminal result.");
+                // Tuning 1 (TuningRules.JuryTieWinner, the owner's call 3 of 2026-11-07): a tied jury, an empty one included as
+                // the engine counts it, crowns the season's keyed coin, re-derived here from the seed and the pair, so a save
+                // whose tied jury crowned the other finalist is refused. Tuning 0 asks nothing new: its tie went by cast order.
+                if (TuningRules.KeyedJuryTiebreak(s)
+                    && s.votes.Count(v => v.targetId == s.winnerId) == s.votes.Count(v => v.targetId == s.runnerUpId)
+                    && TuningRules.JuryTieWinner(s.seed, s.winnerId, s.runnerUpId) != s.winnerId)
+                    return Fail(out error, TuningRules.JuryTieRefusal);
             }
             else if (activeCount < 2 || s.contestants.Any(c => c.status == ContestantStatus.Winner || c.status == ContestantStatus.RunnerUp)) return Fail(out error, "Invalid active cast.");
             if ((s.phase == EpisodePhase.Jury || s.phase == EpisodePhase.JuryQuestioning || s.phase == EpisodePhase.FinalSpeeches) && activeCount != 2)

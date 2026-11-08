@@ -308,7 +308,9 @@ namespace Gamesim.Episode
         /// <summary>
         /// The jury's line on the finale panel: how many jurors there really are, and - when an even
         /// jury could split - who a tie goes to, by name. It said "Four jurors" whatever the house, and
-        /// the default house seats six.
+        /// the default house seats six. A tie goes where the engine sends it: under tuning 1 to the
+        /// season's keyed coin for the pair (<see cref="TuningRules.JuryTieWinner"/>), before it to the
+        /// second finalist in cast order.
         /// </summary>
         public static string JuryLine(EpisodeState state)
         {
@@ -316,8 +318,18 @@ namespace Gamesim.Episode
             string line = jurors == 1 ? "One juror chooses the winner." : jurors + " jurors choose the winner.";
             var finalists = state?.contestants?.Where(actor => actor.status == ContestantStatus.Active).ToList();
             if (jurors > 0 && jurors % 2 == 0 && finalists != null && finalists.Count == 2)
-                line += " If they split evenly, the win goes to " + (finalists[1].id == state.playerId ? "you" : finalists[1].name)
-                    + ", as the reference game's tie rule has it.";
+            {
+                if (TuningRules.KeyedJuryTiebreak(state))
+                {
+                    string won = TuningRules.JuryTieWinner(state.seed, finalists[0].id ?? "", finalists[1].id ?? "");
+                    var tie = finalists[0].id == won ? finalists[0] : finalists[1];
+                    line += " If they split evenly, the season's tiebreak draw gives the win to "
+                        + (tie.id == state.playerId ? "you" : tie.name) + ".";
+                }
+                else
+                    line += " If they split evenly, the win goes to " + (finalists[1].id == state.playerId ? "you" : finalists[1].name)
+                        + ", as the reference game's tie rule has it.";
+            }
             return line;
         }
     }

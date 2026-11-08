@@ -799,3 +799,191 @@ Unity gate, from a frozen detached checkout (`D:/GamesimB9Qual`). EditMode 9,781
   take from B9. Without it there is no tuning-1 figure for the all-policy Q5, for the skilled policies beyond the beast's
   100 seeds, or for the pacing tables. It is about an hour of both CPU slots (`BALANCE_TIER=headline` in parts of 20),
   left while the machine is Codex's. R7 and D6 run their own tuning-1 arms either way.
+
+### The owner's calls (2026-11-07)
+
+The owner answered the five calls above in the lead's session on 2026-11-07. PR #46 stays a draft. Nothing below
+records a pass or a merge.
+
+- **Round 9** (the UMA set on `6ed18c3a`) is diagnostic evidence.
+  - Its Unity session ran past the owner's 45-minute limit for a test batch, so it cannot close B9's qualification gate.
+    That does not mean the code failed.
+  - Its results are kept, with the evidence accepted before it.
+  - The UMA coverage is re-run on B9's final head, in batches under 45 minutes, by the new runner.
+- **Call 1, accepted in principle:** the bands, the versioned tuning rules, K1 and K5, and the 0.2 / 0.6 / 0.2 weights.
+  - **Held:** the small-house preparation boost (the watch and the final week's 2), until the jury tie is fixed.
+  - The studier's 94.6% final-HoH win rate at 8 is to be examined before that rule freezes.
+- **Call 2:** B7 is accepted only as its declared lab criterion, the pooled 44.3% [32.5, 56.7].
+  - The separate figures, 57.7% at 8 and 34.3% at 12, do not establish balance at each size.
+  - They stay visible beside the interval.
+  - More seeds would narrow the interval; they would not necessarily close the difference.
+- **Call 3:** fix the player's systematic loss of jury ties, for new rules.
+  - The tiebreak is fair, seeded and replay-stable, and loading a save cannot reroll it.
+  - Historical outcomes are kept through explicit rule versioning.
+  - Then measure whether ordinary preparation meets the bands without the small-house boost.
+  - The projected season-win rates (about 32.7% at 8 and 26.9% at 12) are hypotheses, not measurements: changed rules
+    need new evidence.
+- **Call 4:** the 100-seed, all-policy headline is required before B9 merges.
+  - Story rules 10's control run may supply it, if it demonstrably reproduces B9's final rules.
+  - Valid evidence is shared, not measured twice.
+- **Call 5:** save and reload coverage that exercises the tuning is required.
+  - It covers banked preparation, spending it after a load, the limits and the final week.
+  - It also covers the counter's changed tally and the Game Sense calculation.
+  - The existing tuning-1 old-save cell never activates these rules, so it does not establish their compatibility.
+
+### Round 4: what the calls need (the lead's plan)
+
+1. **The tiebreak joins tuning rules 1.**
+   - Tuning 1 has never shipped. B9 is unmerged and has not been delivered to Play. The 132 episode files on the
+     owner's machine (66 saves and their backups) were counted on 2026-11-07 without reading any name: 6 carry a tuning
+     field, all at 0, and none is at 1.
+   - Tuning 1 freezes at sign-off, so the tiebreak is part of its definition from the start.
+   - A tuning-0 season keeps the source rule (a tie goes to the second finalist in cast order), byte for byte.
+   - The draw is a keyed coin: a stable hash of the season's seed and the two finalists' ids, in id order. It draws
+     nothing from the season's random stream, so no other outcome moves and no load, replay or earlier choice changes
+     it once the finalists are known.
+   - Validation re-derives it, so a saved season whose winner contradicts it is refused.
+2. **Save and reload coverage** (call 5): round trips through the real store at schema 30, against the same season
+   played straight through:
+   - a tuning-1 season in a house of eight that banks preparation, saves, loads and spends it at the next weekly
+     competition;
+   - the study limit after a load;
+   - the final week's study and the final Head of Household's three parts;
+   - a war room's counter settled after a load (K1 and K5);
+   - the Game Sense score read after a load.
+   An old-save acceptance cell recorded from a profile that studies and counters is added if the recorder can carry
+   one; it is recorded in the next machine window.
+3. **The boost, measured without it** (call 3): the competition tier on the new head, studier at a fixed 0.5, seeds
+   0-799. At 8 it runs with and without the boost; at 12 it runs once, since the boost never reaches a cast of 9 or more.
+   - Each part is a CPU chunk under 30 minutes, through the gate.
+   - **The default:** if B1 and B3 are met without the boost (§6's tests), tuning 1 drops it (the watch and the final
+     week's 2). The final-HoH win rate is reported either way.
+   - If they are not met, both sets go to the owner with their final-HoH rates. B9 widens no band.
+4. **The headline** (call 4) is story rules 10's control on seeds 0-99, once story rules 10 has merged B9's final head.
+   - Two leak proofs show that it reproduces B9's final rules, with the digests taken from B9's own head.
+   - One part (seeds 0-9) is also played on B9's head and compared row for row.
+5. **The UMA coverage** is re-run on the final head, in batches under 45 minutes (above).
+
+### Round 4: the jury tiebreak (as built)
+
+Item 1 above, built 2026-11-07 in this worktree. Uncommitted, and not yet compiled or run: the machine was held, so
+nothing below has run in Unity or the dotnet subset.
+
+- **The rule** is `TuningRules.JuryTieWinner(seed, a, b)`, read where `TuningRules.KeyedJuryTiebreak(s)` holds (tuning 1
+  and later).
+  - It is a keyed coin: FNV-1a 64 over a fixed key (`TuningRules.JuryTiebreakKey`), the season's saved `seed` and the
+    two finalists' ids in ordinal order, then MurmurHash3's 64-bit finalizer. The low bit picks the winner of the
+    id-ordered pair.
+  - The finalizer is needed: FNV-1a's own low bit is only the parity of its input bytes, not a fair coin.
+  - It adds no saved field, draws nothing from the season's stream and reads no cast order. The seed is set when a
+    season is built and never changes, so a load or a replay cannot reroll a tie.
+- **The engine** (`EpisodeEngine.ResolveJury`). At tuning 1 a tie goes to the coin and logs "Jury tie: the season's
+  tiebreak draw gives the win to you." (or the finalist's name). It keeps the `jury-tie` kind and its place before the
+  crowning. Tuning 0 runs the old code: the same winner, line, line order and draws.
+- **The final Head of Household's read** (`EpisodeEngine.FinalJuryChance`, C9) also read a tie by cast order. At tuning
+  1 it counts a tie as half a win, the coin's expected value, and never reads the coin. Tuning 0 keeps the cast-order
+  read, unchanged.
+  - Why not the coin (the review): the player never sees the coin before the jury. A houseguest final Head of Household
+    who read it would take the player mostly where the tie goes against the player, and cut them where it goes their
+    way. The player would then win fewer than half of their ties beside a houseguest final Head of Household: a smaller
+    form of the bias call 3 removes.
+  - The other way out is to show the player the coin before their own final choice. That is the lead's or the owner's
+    call; the code takes the half until then.
+  - So the final Head of Household's choice can change in a tuning-1 season under the commitment rules. It draws
+    nothing.
+- **Validation** (`EpisodeValidation`, a finished season). At tuning 1 a tied count, 0-0 included, must have crowned
+  the coin, or the season is refused with `TuningRules.JuryTieRefusal`. Tuning 0 is asked nothing new. No `Frozen*`
+  reader changed: a tuning-1 season has no schema-29 form.
+- **The words.** The finale panel's jury line (`EpisodeDirector.JuryLine`) at tuning 1 says "If they split evenly, the
+  season's tiebreak draw gives the win to ...". Tuning 0's words are unchanged. The jury reveal and the season report say
+  "the house's tie rule", and the weekly recap and the log's icon read the kind, so they hold for both.
+- **Tests.** `JuryTiebreakTests`, 15 cases, in the subset and the editor: tuning 0's rule and line, tuning 1's coin and
+  line, fairness (the player-side finalist wins 192 of 400 built ties), cast order, no draw, validation's refusal, the
+  final Head of Household's read, and seven literal pins of the coin. `JuryTiebreakEditorTests`, 5 cases, editor only:
+  the real store at schema 30 before the jury resolves, the store's refusal on save and on load, and the panel's line.
+  The pins were computed by an independent Python version of the hash, not by the C# build.
+- **What may move.** Every tuning-1 pin whose seasons reach a tied jury, or a final Head of Household's choice that the
+  read of a tie decides (now a half, where it was all or nothing by cast order): `BalanceLabTests.BudgetNoughtTuning1Rows` (`1ee55c2a92571363`),
+  `TuningRulesTests.StudierTuning1Rows` (`0f53e79cd8e9a2f2`), `BalanceLabGoldens` (48 cells), and
+  `RoleStoryPools.OldSeasons`' three shipped seasons. Tuning 0's pins cannot move. B9's numbers above (B1-B7) and the
+  replay of B9-1's scratch records were measured before the tiebreak. Item 3's lab (`D:/ClaudeScratch/b9/r4`)
+  measures B1-B4 again on the new head. It also replays B9-1's records season by season: a season may differ only where
+  the final eviction or a tied jury's winner moved. For B5-B7 it plays the war rooms' seeds 0-39 against round 2's E2.
+  If any season's final eviction, outcome or Game Sense moved there, it plays seeds 0-479 and derives B5-B7 again.
+- **Needs an engine run:** both offline compiles; the subset and the EditMode run with the two new fixtures; the pins
+  above, re-recorded only if they moved, with the reason; then item 3 on the new head.
+  - Item 3's snapshot script (`make_snap.sh` in the lab folder) refuses a head whose `EpisodeEngine.FinalChoice.cs` has
+    no `TuningRules.JuryTieWinner(` call. Since the review it has none: it reads `TuningRules.KeyedJuryTiebreak(`. The
+    script's check for that file must look for that call instead before it is run on the new head.
+
+### Round 4: save and reload coverage (as built)
+
+Item 2 above (the owner's call 5), built 2026-11-07 in this worktree beside the tiebreak. Uncommitted, and not yet
+compiled or run: the machine was held.
+
+- **`TuningSaveReloadTests`, 12 cases in the subset and 13 in the editor.** Each of the twelve plays a tuning-1 season
+  through a save and a load, and plays the same commands on the same season straight through. The two states are
+  compared before and after every command. The thirteenth, editor only, is the store's bound (below).
+  - In Unity the save and the load are the real store's, at the live schema (30), in a temporary slot for each test. The
+    file must hold the season's tuning and preparation, the load must neither migrate nor rewrite it, and the loaded
+    season must equal the saved one, field for field.
+  - The subset has no store. There the load is the saved fields' JSON round trip, as the subset's other reload tests
+    make it. It proves the scenarios and that the levers are keyed to saved fields; the EditMode run is the store's proof.
+- **The cases.**
+  - A point banked in a house of eight, saved, loaded, and spent at the next Head of Household. The player's score is one
+    more than the same commands give with the point dropped. A second load falls between the result and its Advance, so
+    the spend reads the week's Played row from a load; the Advance spends it with the same private line (1).
+  - A throw keeps the point across a load; after a second load, the veto the player enters spends it (1).
+  - A study at the limit of 1, after a load, is refused in the same words, with nothing spent or drawn (1).
+  - Editor only, the store's bound: a tuning-1 season of twelve holding 2 is refused on save and on load (a file sealed
+    by hand with a valid checksum), with "Study preparation must be between zero and one."; at 1 it loads. A season of
+    eight holding 2 outside its final week loads, and saves and loads again (1).
+  - The final week, at 8 and 12. A load after every study: the study fills to 2 at 8 and 1 at 12, and the next is refused
+    in the final week's words. Loads before the final Head of Household and between its first two parts: part 1's
+    explanation counts the preparation, and no part spends it (2).
+  - The small house's watch after a load: one more, up to 2, at 8; nothing at 12 (2).
+  - The war room's counter, answered through the engine after a load (4): K5 with a nominee's say for the counter (the
+    plan holds; the tuning-0 twin carries the counter); K5 alone, with a nominee's say for the plan (the counter carries
+    two to one); K1 with a tie nobody came round in (the plan holds; the twin carries the counter); and K1 with a tie a
+    member came round in (it carries). Each also matches `PactPlans.Settle` on the loaded season.
+  - Game Sense read after a load: the straight-through score, on 0.2 / 0.6 / 0.2, and not tuning 0's on the same faces;
+    and the same again a week later (1).
+- **What catches a lever dropped on load.** Through the real store, the carry's own field-for-field check fails first.
+  Each case also fails on its own lever. If the load reset the tuning to 0: the point would not be spent, a study at the
+  limit would be accepted, the watch would add nothing, the K5 and K1-none counters would carry, and Game Sense would
+  read 0.3 / 0.4 / 0.3. If it dropped the point: the score would be one less, the spend and watch lines would be missing,
+  and the final week's preparation would be short.
+- **The seasons** are the season builder's, put on tuning 1 by hand as TuningRulesTests does, and the war rooms are
+  PactPlanTests'. They are not `ShippedRules.ApplyFresh` seasons, because the plain walk is proven on built seasons. The
+  studier cell below is the shipped season.
+- **Old-save acceptance.** The recorder has a studier profile (`Tools/OldSaves/Recorder.cs`: `generate ... studier`,
+  `record ... studier`): the plain walk with up to two studies in each free time. A study refused at the limit, with the
+  window spent or out of the house is skipped; any other refusal stops the walk. Its `levers:` line is tallied command by
+  command (the log keeps only 256 lines), and a record with no study after the load exits 5. The plain walk
+  is unchanged, so no fixture moves. The cell, `s30-mode2-allweek-tuning1-studier-w2-hoh`, is defined in
+  OLD-SAVE-ACCEPTANCE 2.9, with its seed rule, manifest row and test edits. B9's final head records it in the next engine
+  window. A profile that also counters in a war room is not modest work; 2.9 says what it would take.
+- **What may move.**
+  - If item 3 drops the small house's boost, the watch's case at 8 (2 becomes 1, with no line) and the final week's case
+    at 8 (its limit becomes 1) change with it.
+  - The tiebreak can move the tuning-1 old-save cell, `s30-mode2-allweek-tuning1-w3-campaign`. Its replay plays the
+    shipped season to the finale on tuning 1, so if its jury tied, the coin now decides; and if its final Head of
+    Household is a houseguest, their read of a tie is now a half. OldSaveAcceptanceTests on that cell is the check. If it moved, B9's final head records it again
+    (tuning 1 never shipped).
+- **Needs an engine run:** both offline compiles; the subset with 12 more cases and the EditMode run with 13; then the
+  recorder's build and the studier cell.
+
+### Round 9's results (diagnostic)
+
+Round 9 ran B9's UMA set on `6ed18c3a` in the UMA test copy, 2026-11-07, 12:13 to 16:39 Pacific. Its two Unity sessions
+took 113 and 133 minutes, past the owner's 45-minute limit for a test batch, so under the owner's ruling it closes
+nothing; the results are kept as evidence.
+- EditMode on the UMA copy: 9,781 of 9,781 passed.
+- `Gamesim.Uma.PlayModeTests`: 134 of 134 passed.
+- The UMA build's PlayMode: 1,527 of 1,528 passed. The tuning-1 diary case,
+  `StudyDiary_UnderTuningOneTheStudyStopsAtTheSeasonsLimitAndSaysWhatUsesItUp`, ran in Unity for the first time and
+  passed.
+- The one failure, `FreeTime_AskingForInformationOpensTheConversationOnWhatYouCameToAsk`, read the season before
+  opening a conversation; the panel's flush of free time committed an NPC tick (revision 0 to 1). Its three re-runs
+  passed. Round 4 suspends NPC autonomy at the start of that test, as its neighbours do.
+- The subset was not run: the lead stopped the set before it, and round 4 changes the head.

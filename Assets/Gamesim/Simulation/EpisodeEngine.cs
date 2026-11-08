@@ -1248,10 +1248,22 @@ namespace Gamesim.Simulation
                     + Target(s, preferred.id, juror.id) + " to win.");
             }
             int firstVotes = s.votes.Count(v => v.targetId == finalists[0].id), secondVotes = s.votes.Count(v => v.targetId == finalists[1].id);
-            var ordered = firstVotes > secondVotes ? finalists : new[] { finalists[1], finalists[0] };
-            // The source reveal's strict > comparison awards a tie to the second cast-order finalist.
-            if (firstVotes == secondVotes)
-                Log(s, "jury-tie", "Jury tie: the source game's tie rule awards the win to the second finalist in cast order.");
+            ContestantState[] ordered;
+            if (firstVotes == secondVotes && TuningRules.KeyedJuryTiebreak(s))
+            {
+                // Tuning 1 (the owner's call 3 of 2026-11-07): the season's keyed coin for this pair, from the saved seed
+                // and the two ids. It draws nothing from the stream and reads no cast order, so a load cannot reroll it.
+                string won = TuningRules.JuryTieWinner(s.seed, finalists[0].id, finalists[1].id);
+                ordered = won == finalists[0].id ? finalists : new[] { finalists[1], finalists[0] };
+                Log(s, "jury-tie", "Jury tie: the season's tiebreak draw gives the win to " + Target(s, won, null) + ".");
+            }
+            else
+            {
+                ordered = firstVotes > secondVotes ? finalists : new[] { finalists[1], finalists[0] };
+                // The source reveal's strict > comparison awards a tie to the second cast-order finalist.
+                if (firstVotes == secondVotes)
+                    Log(s, "jury-tie", "Jury tie: the source game's tie rule awards the win to the second finalist in cast order.");
+            }
             s.winnerId = ordered[0].id; s.runnerUpId = ordered[1].id;
             ordered[0].status = ContestantStatus.Winner; ordered[1].status = ContestantStatus.RunnerUp;
             // The story's threads end here, reading the jury they were heading for (plan 31).

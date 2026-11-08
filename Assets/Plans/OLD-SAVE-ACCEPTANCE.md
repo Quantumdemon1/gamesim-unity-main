@@ -738,7 +738,8 @@ preparation's spend or watch, the study's limit, K1 and K5, the Game Sense weigh
 Unity's EditMode gate those levers are pinned by TuningRulesTests alone; the lab's pins run in the dotnet subset
 (TuningRulesTests' lab case) or as `[Explicit]` tiers compiled out of the editor. A second tuning-1 cell from a recorder
 profile that studies (and counters in a war room), saved with preparation banked in a house of eight, would carry the
-levers through old-save acceptance; the recorder has no such profile yet, and none is in B9.
+levers through old-save acceptance; the recorder has no such profile yet, and none is in B9. (2026-11-07: the recorder
+has a studier profile now, and its cell is defined in 2.9, not yet recorded.)
 
 **Checkpoints.** A season on the tuning rules has no schema-29 view: tuning 1 exists only from 30. `CurrentOldSaveTrace`
 admits a season on the tuning rules alone natively at 30
@@ -746,6 +747,75 @@ admits a season on the tuning rules alone natively at 30
 pooled fields in order, alumni rules 0 and a null edition, the season's own tuning rules) and checkpoints it at 30 only,
 as the recorder's `OldSaveTrace.Checkpoint` does. The historical `FindDecision` reader admits it the same way. A season on
 the alumni rules and the tuning rules together stays the alumni arm's.
+
+### 2.9 Schema 30 at tuning rules 1, the studier: defined, not yet recorded (2026-11-07)
+
+**Why this one.** The owner's call 5 of 2026-11-07 (B9-BALANCE-PLAN, "The owner's calls"): save and reload coverage must
+exercise the tuning. The tuning-1 cell (2.8) never studies, so no lever fires in its replay. This cell is the same
+shipped Regular season of eight, walked by a walker that studies and saved with a point of preparation banked. Its replay
+loads the save with the point banked and plays on with the studies. So the spend, the study's limit and, in a house of
+eight, the watch and the final week's 2 fire after the load, and a change to any of them moves the season digest.
+
+**The profile** (in the recorder since 2026-11-07, not yet compiled or run: the machine was held).
+
+- `Walker.Studier` (`Tools/OldSaves/Recorder.cs`) is the plain walk with a study ("memorize-layout") tried up to twice in
+  each free time, before the talks. A study refused at the season's limit, with the window's actions spent, or out of
+  the house is skipped and leaves nothing in the script. Only those refusals are skipped, matched word for word (the two
+  sentences of `TuningRules.FullRefusal` and the study's own two); any other refusal of a study stops the walk. So a
+  regression that refuses every study cannot record a cell that exercises nothing. The study's command kind and the
+  refusals are read as literals, so the recorder still compiles at builds without them.
+- `generate ... <week> <phase> studier` and `record <save> <out> studier` take it. With no walker, or `plain`, both do
+  exactly what they did, so no earlier fixture moves. A studier save's session id ends in `-studier`.
+- `record ... studier` also prints a `levers:` line: the tuning and the preparation at the load, then, after the load,
+  the studies, the points used in a competition, the points learned from watching, the final week's fills to 2, and how
+  the player finished. The seed is chosen by it.
+  - The counts are tallied command by command, from the lines each accepted command logged. They are not the final log
+    less the loaded one: the engine keeps only the last 256 lines, so by the finale the weeks just after the load are gone
+    from it, and a difference of the two logs could be short, zero or negative.
+  - If no study was accepted after the load, `record ... studier` writes the record but exits 5 ("NO STUDY"): such a
+    record exercises no lever.
+
+**The cell.**
+
+- Id `s30-mode2-allweek-tuning1-studier-w2-hoh`: `generate <out> <seed> 8 director 2 HoH studier`, saved at the first
+  state of week 2's Head of Household, before it is played, with the point the free time before it banked.
+- **The seed:** the first from 3001 whose save holds `playerStudyBonus` 1 with the player in the house, and whose
+  `record ... studier` line shows, after the load, at least one point used, at least one learned from watching, and a fill
+  to 2 in the final week. If no seed up to 3200 has all three, the first with the first two, and this section says so.
+  If the owner's measurement drops the small house's boost from tuning 1 (B9 round 4, item 3), the watch and the fill are
+  no longer tuning 1's: the seed then needs a point used and the final Head of Household reached with one banked.
+- **The writer is B9's final head**, after the tiebreak and the boost's decision: tuning 1 freezes at sign-off, and from
+  2.3 on a cell is written and recorded by the build that writes it. The recorder is built as in 2.8
+  (`OLDSAVE_SOURCE_TREE=1`, a `git archive` extract of the head's `Simulation` and `Runtime/Persistence`, this tree's
+  `OldSaveTrace.cs`, `Recorder.cs` and `Rules.Shipped.cs`).
+- Generated twice and recorded twice (the same state but `savedAt`; the same script and digests), replayed by the same
+  build, its `holdsDigest` taken by the probe 2.5 to 2.8 used, and checked for anything typed as 2.8 was.
+
+**What the tests need once it is recorded.**
+
+- The save, its replay file and their two metas under `Fixtures/OldSaves`, and its manifest row after the tuning-1 cell's,
+  with `generated` set to the seed followed by "8 director 2 HoH studier", and one new key, `walker`: "studier".
+- In `OldSaveAcceptanceTests`: the id in `Episodes`; `Cell` adds "/" and the walker where a row names one other than
+  "plain", so every earlier cell keeps its name; and the expected cells gain
+  `30/director/uc2/allweek1/leaks1/plans1/dialogue0/alumni0/regular/tuning1/studier`.
+- Checkpoints as in 2.8: admitted natively at 30 by the tuning arm, which does not read preparation.
+
+**Not in it: the counter.** A profile that also counters in a war room is not modest work, so the recorder has none. It
+would take:
+
+- a walker that founds or joins a pact of three or more with the player in it (an alliance offer accepted on a draw,
+  then grown), all by reflection or behind a define, since the recorder compiles at builds without the war rooms (before
+  schema 28);
+- in the campaign, once the block is set, the war room held (`AllianceMeet` through a member at it) where
+  `PactPlans.Convenes`, and the plan answered with the other nominee (`AnswerPactPlan`);
+- a seed search for a season whose walk, after the load, settles a counter that K1 or K5 decides, with the recorder
+  printing the tally under both rules to choose it. Such counters are not rare but not most: on B9's lab count, 46 of 61
+  accepted counters carry under the old rule and 27 under K1 and K5;
+- or, instead of a new walker, the lab's war-room policy (`BalanceLabPolicies`), which already forms pacts and counters,
+  moved into the recorder's build with the lab's view of the season that it reads.
+
+Until then the counter across a load is pinned by `TuningSaveReloadTests` (B9-BALANCE-PLAN, round 4), through the real
+store in Unity's EditMode run.
 
 ## 3. Findings
 

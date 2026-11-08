@@ -69,20 +69,26 @@ and the same tier held at tuning 0 (`BALANCE_TUNING=0`) replays the reference ro
 **The pins (the way 1f199651 re-pinned budget nought).**
 - `BalanceLabTests.BudgetNoughtRows` stays `5481eec784acd1ed`: the test now holds every cell at tuning 0
   (`Cell.HeldAtTuning0`), and its rows are main's byte for byte. Its twin `BudgetNoughtPlaysTheSeasonsB9Measured` pins
-  the same seasons at tuning 1, `1ee55c2a92571363`: 521 of its 564 rows move, 473 of them only in the Game Sense total
-  (the weights re-read every season's verdict) and 48 in play - 47 of the beast's, who studies, and one schemer's, whose
-  counter K1 or K5 settled differently.
-- `BalanceLabGoldens` moved in all 48 cells, and its `Rules` tuple now ends `tuningRulesVersion=1`: the goldens pin what a
-  fresh season plays, and every fresh season moved for the same reasons. Re-recorded at B9-3 from the committed build.
-- `TuningRulesTests.StudierTuning0Rows` (`9b9bf8a15644b745`) and `StudierTuning1Rows` (`0f53e79cd8e9a2f2`): four studier
-  seasons, held and at tuning 1; the first is four lines of the reference tier above.
+  the same seasons at tuning 1. At B9-3 that was `1ee55c2a92571363`: 521 of its 564 rows moved, 473 of them only in the
+  Game Sense total (the weights re-read every season's verdict) and 48 in play - 47 of the beast's, who studies, and one
+  schemer's, whose counter K1 or K5 settled differently. Round 4 re-pinned it to `a89a8120050e9460`: the keyed jury
+  tiebreak moved it, and tuning 1 without the small house's boost moved the beast's rows again.
+- `BalanceLabGoldens` moved in all 48 cells at B9-3, and its `Rules` tuple now ends `tuningRulesVersion=1`: the goldens
+  pin what a fresh season plays, and every fresh season moved for the same reasons. Round 4 re-recorded 43 of the 48 at
+  `46459d3e`, for the tiebreak and the boost's drop.
+- `TuningRulesTests.StudierTuning0Rows` (`9b9bf8a15644b745`) and `StudierTuning1Rows`: four studier seasons, held and at
+  tuning 1; the first is four lines of the reference tier above. The second was `0f53e79cd8e9a2f2` (round 3's S8F) and
+  is `7eb55ed0d28b2d5e` from round 4.
+- `RoleStoryPools.OldSeasons`' `shipped-mode0-2103` moved with the tiebreak (its jury ties) and was re-pinned in round 4;
+  the other two shipped seasons and `story-10-3` (tuning 0) hold.
 - The parts' stamp is `balance-lab-parts/v8`, so no part played before B9 merges with one played after.
 - The season digest tiers that build their seasons by hand (commitment rules, mode one, the leaks, the war rooms, the
   mode-two sweeps and `AllWeekSeasonDigests`' 54 records) play tuning 0 and pass unchanged; so do
   `FreshSeasonStateDigestTests`' records, with the one int taken back. Three start through `ShippedRules.ApplyFresh` and
   so play tuning 1: `AllWeekSeasonDigests.Fresh` (the combined Wave D digest and `SettleByHouseSize`, invariants only),
   `UnifiedVotePublicCommandTests.Fresh` and `Play` (the unified vote's rest), and `RoleStoryPools.OldSeasons`' three
-  shipped seasons (`OldSeasonsDrawTheirPoolsExactlyAsBefore`). They pass unchanged: their walkers never study or counter.
+  shipped seasons (`OldSeasonsDrawTheirPoolsExactlyAsBefore`). They passed unchanged at B9-3: their walkers never study or
+  counter. (Round 4's tiebreak moved one of the shipped seasons, above.)
 
 **The lab's new reads.** A cell field `tuningHeld` (named `/tuning0`, seeded as its shipped cell) and the tier-wide
 `BALANCE_TUNING=0`; the view's `PreparationCap`, which the studier and the beast study up to; the war-room tier prints the

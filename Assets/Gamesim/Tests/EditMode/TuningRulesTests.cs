@@ -478,8 +478,12 @@ namespace Gamesim.Tests.EditMode
         /// </summary>
         internal const string StudierTuning0Rows = "9b9bf8a15644b745";
 
-        /// <summary>The same four seasons at tuning 1: the rows B9's measurement played (round 3's S8F) - re-pinned only with B9's numbers.</summary>
-        internal const string StudierTuning1Rows = "0f53e79cd8e9a2f2";
+        /// <summary>
+        /// The same four seasons at tuning 1 - re-pinned only with B9's numbers. Round 3's S8F played 0f53e79cd8e9a2f2; round 4
+        /// re-pinned it (B9-BALANCE-PLAN, "Round 4: the lab"): the keyed jury tiebreak and the final Head of Household's
+        /// half-a-tie read (1bea9cf5) moved it, and tuning 1 without the small house's boost (f5fb8cb6) moved it again.
+        /// </summary>
+        internal const string StudierTuning1Rows = "7eb55ed0d28b2d5e";
 
         [Test]
         public void ATuningNoughtSeasonPlaysTheRowsItPlayedBeforeB9AndATuningOneSeasonB9s()

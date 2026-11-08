@@ -183,7 +183,10 @@
 # card read StorylinesShown), counted offline (2026-11-03); not yet run in Unity.
 # 9781 = 9741 + B9's 33 (9774 - 9741) + the quick fixes' 7 (9748 - 9741): disjoint cases, so the floor is their sum (2026-11-06).
 # Counted from the two sides; no run has observed it on the merge.
-Gamesim.EditModeTests 9781
+# 9818 = 9781 + B9 round 4's 33 (JuryTiebreakTests 15, JuryTiebreakEditorTests 5, TuningSaveReloadTests 13) + the
+# studier old-save cell's 4 OldSaveAcceptanceTests cases (OLD-SAVE-ACCEPTANCE 2.9). The lister counted 9814 at 46459d3e
+# (the r4w kit) and 9818 with the cell (2026-11-07); no Unity run has observed it yet.
+Gamesim.EditModeTests 9818
 # The UMA-free build. 1215 = 1236, the count after the consolidation's lanes (S2a, S2b, S4a), less the 7
 # farewell probes moved to Gamesim.DiagnosticsPlayModeTests and the 14 farewell readiness tests that now
 # compile only under GAMESIM_UMA (judged on the UMA cast); 1230 = 1215 + S2d's 7, S4b's 2, S4c's 2 and
@@ -513,4 +516,6 @@ Gamesim.Uma.DiagnosticsPlayModeTests 10
 # 16585 = 16584 + the quick fixes' review, 1 RoleStoryMomentsTests case (the strip and the story card) (2026-11-03).
 # 16615 = 16578 + B9's 30 (16608 - 16578) + the quick fixes' 7 (16585 - 16578): disjoint cases, so the floor is their sum (2026-11-06).
 # Counted from the two sides; no run has observed it on the merge.
-Gamesim.SimulationTests 16615
+# 16642 = 16615 + B9 round 4's 27 (JuryTiebreakTests 15, TuningSaveReloadTests 12): the subset ran exactly 16642 at
+# 1bea9cf5 (r4v) and at 46459d3e (r4w), 2026-11-07.
+Gamesim.SimulationTests 16642

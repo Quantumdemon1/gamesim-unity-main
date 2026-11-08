@@ -792,8 +792,8 @@ Unity gate, from a frozen detached checkout (`D:/GamesimB9Qual`). EditMode 9,781
   passes old-save acceptance. In Unity's EditMode gate the levers are pinned by TuningRulesTests alone; the lab's pins
   are the dotnet subset's or `[Explicit]` tiers compiled out of the editor. A second tuning-1 cell, from a recorder
   profile that studies (and counters in a war room) and saved with preparation banked in a house of eight, would carry
-  the levers through old-save acceptance; the recorder has no such profile, and it is not in this PR (the owner's call
-  whether B9 should wait for it).
+  the levers through old-save acceptance. Round 4 added it for preparation: the studier cell (OLD-SAVE-ACCEPTANCE 2.9).
+  A countering walker is still not built, so K1 and K5 are pinned by TuningRulesTests and TuningSaveReloadTests alone.
 - **The tuning-1 diary is unproven in Unity.** `StudyDiary_UnderTuningOneTheStudyStopsAtTheSeasonsLimitAndSaysWhatUsesItUp`
   (with its check that a fresh open shows the record's tab and "No private decision pending" once the study is full)
   compiles in both offline builds and is listed, but has never run: the lead's UMA PlayMode set is its gate (round 9,
@@ -1036,8 +1036,26 @@ more: seeds 0-99 at 12 played without it equal the boost's, row for row.
 - The studier cell (2.9) was recorded at `1bea9cf5` (seed 3002). That record is superseded: the cell is recorded again
   at the final head, by the seed rule 2.9 names for the boost's drop.
 
-**Next.** The kit again at the new head, with the pins re-pinned from its evidence, 2.9 recorded and the floors raised.
-Then the Unity batches through the new runner: the EditMode run, with the three Unity-only cases, and the UMA set.
+**The kit at `46459d3e`** (`D:/ClaudeScratch/b9/r4w`, a copy of r4v that takes its head as a setting; 22:05 to 23:12).
+- Both offline compiles clean, no new warnings on lines added since `1bea9cf5`, and every count as expected: the subset
+  ran 16,642, the EditMode lister 9,814, PlayMode 1,486 and 1,528, the UMA assembly 134.
+- The subset and the by-name run failed only on their pins. Under the editor's Mono every touched fixture passed, and
+  old-save acceptance 270 of 270; the same three Unity-only cases were named, not run.
+- **The pins, re-pinned from its printed values** (the reasons: `1bea9cf5`'s tiebreak and half-a-tie read, and
+  `f5fb8cb6`'s boost drop):
+  - `TuningRulesTests.StudierTuning1Rows` to `7eb55ed0d28b2d5e`; tuning 0's `9b9bf8a15644b745` held.
+  - `BalanceLabTests.BudgetNoughtTuning1Rows` to `a89a8120050e9460`; tuning 0's `BudgetNoughtRows` `5481eec784acd1ed` held.
+  - `BalanceLabGoldens`: 43 of 48 cells (21 of 24 at budget 0, 22 of 24 at budget 300).
+  - `RoleStoryPools.OldSeasons`' `shipped-mode0-2103`; the other three seasons held (`story-10-3` plays tuning 0).
+- **The studier cell (2.9) is recorded** at `46459d3e`: seed 3002, 95 commands, digest `e8ffbf3d8b048029`. After the
+  load it studies four times, uses four points and reaches the final Head of Household with one banked, and the player
+  wins. Its `holdsDigest` is `9c69bdfa915b11ef`, taken by the probe 2.5 to 2.8 used, which gave the three controls'
+  committed values again. OLD-SAVE-ACCEPTANCE 2.9 has the details. So tuning 1's preparation now fires in an old-save
+  replay; the counter (K1 and K5) still does not, since the recorder has no countering walker (2.9, "Not in it").
+- The floors rise: EditMode 9,781 to 9,818 (round 4's 33 and the cell's 4), the subset 16,615 to 16,642.
+
+**Next.** The kit once more at the re-pinned head, as the confirming run. Then the Unity batches through the new
+runner: the EditMode run, with the three Unity-only cases, and the UMA set.
 
 ### Round 9's results (diagnostic)
 

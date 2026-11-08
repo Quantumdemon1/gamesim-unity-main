@@ -740,7 +740,7 @@ Unity's EditMode gate those levers are pinned by TuningRulesTests alone; the lab
 (TuningRulesTests' lab case) or as `[Explicit]` tiers compiled out of the editor. A second tuning-1 cell from a recorder
 profile that studies (and counters in a war room), saved with preparation banked in a house of eight, would carry the
 levers through old-save acceptance; the recorder has no such profile yet, and none is in B9. (2026-11-07: the recorder
-has a studier profile now, and its cell is defined in 2.9, not yet recorded.)
+has a studier profile now, and its cell, 2.9, was recorded by B9 round 4's build.)
 
 **Checkpoints.** A season on the tuning rules has no schema-29 view: tuning 1 exists only from 30. `CurrentOldSaveTrace`
 admits a season on the tuning rules alone natively at 30
@@ -749,7 +749,7 @@ pooled fields in order, alumni rules 0 and a null edition, the season's own tuni
 as the recorder's `OldSaveTrace.Checkpoint` does. The historical `FindDecision` reader admits it the same way. A season on
 the alumni rules and the tuning rules together stays the alumni arm's.
 
-### 2.9 Schema 30 at tuning rules 1, the studier: defined, not yet recorded (2026-11-07)
+### 2.9 Schema 30 at tuning rules 1, the studier: written by B9 round 4's build (2026-11-07)
 
 **Why this one.** The owner's call 5 of 2026-11-07 (B9-BALANCE-PLAN, "The owner's calls"): save and reload coverage must
 exercise the tuning. The tuning-1 cell (2.8) never studies, so no lever fires in its replay. This cell is the same
@@ -759,7 +759,7 @@ of Household's three parts counting the final week's point fire after the load, 
 season digest. (Tuning 1 first had a small house's watch and a final week's 2 as well; B9's round 4 dropped them before
 it shipped, `f5fb8cb6`.)
 
-**The profile** (in the recorder since 2026-11-07, not yet compiled or run: the machine was held).
+**The profile** (in the recorder since 2026-11-07; first compiled and run by B9 round 4's verification kits).
 
 - `Walker.Studier` (`Tools/OldSaves/Recorder.cs`) is the plain walk with a study ("memorize-layout") tried up to twice in
   each free time, before the talks. A study refused at the season's limit, with the window's actions spent, or out of
@@ -795,7 +795,27 @@ it shipped, `f5fb8cb6`.)
 - Generated twice and recorded twice (the same state but `savedAt`; the same script and digests), replayed by the same
   build, its `holdsDigest` taken by the probe 2.5 to 2.8 used, and checked for anything typed as 2.8 was.
 
-**What the tests need once it is recorded.**
+**How it was made** (2026-11-07, `D:/ClaudeScratch/b9/r4w`: the verification kit at `46459d3e`, then `cell29/`).
+
+- The recorder was built from a `git archive` extract of `46459d3e`'s `Simulation` and `Runtime/Persistence`, as in 2.8.
+  The simulation of B9's final head is that commit's: the commits after it change tests, fixtures and documents only.
+- **The seed is 3002**, the first from 3001 with both: the save holds `playerStudyBonus` 1 with the player in the house,
+  and the record's line reads "levers: tuning 1, banked at the load 1; after the load: studies 4, used 4, the final HoH
+  reached with 1 banked; the player won".
+- Saved at week 2's Head of Household, revision 19. Generated twice: the same state, only `savedAt` differs. Recorded
+  twice: 95 commands, digest `e8ffbf3d8b048029`, state `2e01f57849ce26b6`, text `7470fd330ff97b3f`, identical records.
+  Replayed by the same build: 95 of 95, every digest a match.
+- The kit's check of 2.8 at the head held: 2.8's save, recorded at `8a0cee2e` and at `46459d3e`, still matches its
+  fixture, so neither the tiebreak nor the boost's drop reaches that cell (its walker never studies, and its jury does
+  not tie).
+- `add29.py` copied the save and the replay byte for byte, gave each a meta with a fresh GUID, and appended the row after
+  the 2.8 cell's: the 2.8 row's keys with `walker` after `generated`. Its `holdsDigest` (`9c69bdfa915b11ef`) is
+  `HoldAnswers` under the editor's Mono, by the probe 2.5 to 2.8 used. The same probe gives its three controls' committed
+  values again: the tuning-0 Regular cell and the 2.8 cell `9a04dfc1f6d52a6e`, the default scene's `1030960a3a7ad9cd`.
+- Checked for anything typed: the player is "You", the cast is the shipped roster, and no path appears.
+- With the cell, the EditMode lister counts 9,818 cases, and OldSaveAcceptanceTests 274 (4 of them this cell's).
+
+**What the tests need** (done with the cell).
 
 - The save, its replay file and their two metas under `Fixtures/OldSaves`, and its manifest row after the tuning-1 cell's,
   with `generated` set to the seed followed by "8 director 2 HoH studier", and one new key, `walker`: "studier".

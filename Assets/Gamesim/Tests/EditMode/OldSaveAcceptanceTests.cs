@@ -108,6 +108,10 @@ namespace Gamesim.Tests.EditMode
             // Written by B9-3's build (B9-BALANCE-PLAN §4.7), schema 30 at tuning rules 1: a fresh shipped Regular season,
             // which every new season since B9 starts on.
             "s30-mode2-allweek-tuning1-w3-campaign",
+            // Written by B9 round 4's build (46459d3e; OLD-SAVE-ACCEPTANCE 2.9), the same season walked by the studier and
+            // saved with a point of preparation banked, so tuning 1's preparation (its spend, the study's limit and the
+            // final Head of Household counting it) fires after the load.
+            "s30-mode2-allweek-tuning1-studier-w2-hoh",
         };
 
         /// <summary>
@@ -172,7 +176,8 @@ namespace Gamesim.Tests.EditMode
             // preview's (D1); from schema 30 the alumni rules and the cast too, the default scene's season and the shipped
             // season of each roster at alumni rules 0, from H1b the shipped All-Stars season at alumni rules 1, and from S6
             // the same season at alumni rules 5, the value S6 froze; from B9 the shipped Regular season at tuning rules 1, which
-            // every new season starts on (a cell names its tuning only where it is on). A cell counts only a fixture saved in a week, before the
+            // every new season starts on (a cell names its tuning only where it is on), and from B9's round 4 the same season
+            // walked by the studier (a cell names its walker only where it is not the plain one). A cell counts only a fixture saved in a week, before the
             // finale, with a script to play: one saved at the finale or after it is read, never a cell's replay.
             var replayed = Manifest["episodes"].Where(e => (int)e["commands"] > 0 && !FinalePhases.Contains((string)e["phase"])).ToList();
             Assert.That(Manifest["episodes"].Except(replayed).Select(e => (string)e["id"]), Is.EquivalentTo(ReadOnly),
@@ -202,10 +207,11 @@ namespace Gamesim.Tests.EditMode
                 "30/director/uc2/allweek1/leaks1/plans1/dialogue0/alumni1/allstars",
                 "30/director/uc2/allweek1/leaks1/plans1/dialogue0/alumni5/allstars",
                 "30/director/uc2/allweek1/leaks1/plans1/dialogue0/alumni0/regular/tuning1",
+                "30/director/uc2/allweek1/leaks1/plans1/dialogue0/alumni0/regular/tuning1/studier",
             }));
         }
 
-        /// <summary>A fixture's cell: schema, profile, the rules the readers branch on, for the director's schema 22 which of its shapes, from schema 29 the dialogue rules, from schema 30 the alumni rules and the cast, and from B9 the tuning rules where they are on.</summary>
+        /// <summary>A fixture's cell: schema, profile, the rules the readers branch on, for the director's schema 22 which of its shapes, from schema 29 the dialogue rules, from schema 30 the alumni rules and the cast, from B9 the tuning rules where they are on, and the recorder's walker where it is not the plain one (OLD-SAVE-ACCEPTANCE 2.9).</summary>
         private static string Cell(JToken e)
         {
             int On(string rule) => Math.Min(1, (int?)e["rules"][rule] ?? 0);
@@ -216,7 +222,8 @@ namespace Gamesim.Tests.EditMode
                 + (schema == 22 && profile == "director" ? (id.Contains("-early-") ? "/early" : id.Contains("-middle-") ? "/middle" : "/late") : "")
                 + (schema >= 29 ? "/dialogue" + (int)e["rules"]["dialogueRulesVersion"] : "")
                 + (schema >= 30 ? "/alumni" + (int)e["rules"]["alumniRulesVersion"] + "/" + (string)e["cast"] : "")
-                + (schema >= 30 && ((int?)e["rules"]["tuningRulesVersion"] ?? 0) != 0 ? "/tuning" + (int)e["rules"]["tuningRulesVersion"] : "");
+                + (schema >= 30 && ((int?)e["rules"]["tuningRulesVersion"] ?? 0) != 0 ? "/tuning" + (int)e["rules"]["tuningRulesVersion"] : "")
+                + ((string)e["walker"] is string walker && walker != "plain" ? "/" + walker : "");
         }
 
         // ------------------------------------------------------------------ load, migrate, validate, replay

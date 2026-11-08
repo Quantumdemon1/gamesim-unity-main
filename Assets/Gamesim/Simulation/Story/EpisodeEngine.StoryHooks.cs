@@ -31,10 +31,11 @@ namespace Gamesim.Simulation
         }
 
         /// <summary>
-        /// What a veto replacement holds against a veto holder who saved somebody else, under
+        /// What a veto replacement holds against a houseguest veto holder who saved somebody else, under
         /// <see cref="StoryRules.Blame"/>: half the Head of Household's seventy, under the forty line the
         /// house's gang-ups read (the pile-on's cast, the pariah count, <see cref="AllianceGrudgeLine"/>).
-        /// At thirty or more a bitter juror still reads it for its first weeks. A self-save writes nothing.
+        /// At thirty or more a bitter juror still reads it for its first weeks. A houseguest's self-save
+        /// writes nothing; the player's veto keeps the forty either way.
         /// </summary>
         public const double ReplacementVetoAtBlame = 35;
 
@@ -47,9 +48,10 @@ namespace Gamesim.Simulation
         /// for what they chose, and who was <paramref name="saved"/> says which. A holder who saved
         /// themselves forced nobody - anyone on the block would have done the same, and the Head of
         /// Household chose the replacement - so nothing is written against them; one who saved somebody
-        /// else chose to, and it stings at <see cref="ReplacementVetoAtBlame"/>. The same for the player
-        /// as veto holder. The Head of Household's seventy is unchanged, and below Blame every call is
-        /// the one it always was.</para>
+        /// else chose to, and it stings at <see cref="ReplacementVetoAtBlame"/>. That is for houseguests
+        /// who hold the veto (C1n, decision 3 as accepted): the player as veto holder is resented at the
+        /// forty it always was, whoever they saved, so the player's own veto plays as it did. The Head of
+        /// Household's seventy is unchanged, and below Blame every call is the one it always was.</para>
         /// </summary>
         private static void StoryReplacement(EpisodeState s, string replacement, string saved)
         {
@@ -57,7 +59,7 @@ namespace Gamesim.Simulation
             if (s.hohId != null && s.hohId != replacement) Grudges.Add(s, replacement, s.hohId, 70, GrudgeCauses.Replacement, alliedMultiplier: true);
             if (s.vetoHolderId != null && s.vetoHolderId != s.hohId && s.vetoHolderId != replacement)
             {
-                if (!StoryAt(s, StoryRules.Blame)) Grudges.Add(s, replacement, s.vetoHolderId, 40, GrudgeCauses.ReplacementVeto);
+                if (!StoryAt(s, StoryRules.Blame) || s.vetoHolderId == s.playerId) Grudges.Add(s, replacement, s.vetoHolderId, 40, GrudgeCauses.ReplacementVeto);
                 else if (saved != s.vetoHolderId) Grudges.Add(s, replacement, s.vetoHolderId, ReplacementVetoAtBlame, GrudgeCauses.ReplacementVeto);
             }
         }

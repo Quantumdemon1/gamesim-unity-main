@@ -186,7 +186,12 @@
 # 9818 = 9781 + B9 round 4's 33 (JuryTiebreakTests 15, JuryTiebreakEditorTests 5, TuningSaveReloadTests 13) + the
 # studier old-save cell's 4 OldSaveAcceptanceTests cases (OLD-SAVE-ACCEPTANCE 2.9). The lister counted 9814 at 46459d3e
 # (the r4w kit) and 9818 with the cell (2026-11-07); no Unity run has observed it yet.
-Gamesim.EditModeTests 9818
+# 9831 = 9818 + story rules 10's 13 (the define commit 36ca4055 and its fixture fix 1685df59: StoryMechanicsTests 8,
+# RoleRulesTests 4, DialogueCampaignRulesTests 1; FrozenEpisodeV29IntegrationTests adds 7 and drops its 7 "story-rules-10"
+# mutation rows; BalanceLabTests' 2 are Tools/SimulationTests only). The no-UMA lister counted exactly 9831 at 1685df59 in
+# story rules 10's verification, a green run (2026-11-08). The C1n commit renames one StoryMechanicsTests test (its two
+# cases) and adds none.
+Gamesim.EditModeTests 9831
 # The UMA-free build. 1215 = 1236, the count after the consolidation's lanes (S2a, S2b, S4a), less the 7
 # farewell probes moved to Gamesim.DiagnosticsPlayModeTests and the 14 farewell readiness tests that now
 # compile only under GAMESIM_UMA (judged on the UMA cast); 1230 = 1215 + S2d's 7, S4b's 2, S4c's 2 and
@@ -518,4 +523,8 @@ Gamesim.Uma.DiagnosticsPlayModeTests 10
 # Counted from the two sides; no run has observed it on the merge.
 # 16642 = 16615 + B9 round 4's 27 (JuryTiebreakTests 15, TuningSaveReloadTests 12): the subset ran exactly 16642 at
 # 1bea9cf5 (r4v) and at 46459d3e (r4w), 2026-11-07.
-Gamesim.SimulationTests 16642
+# 16657 = 16642 + story rules 10's 15 (the define commit 36ca4055 and its fixture fix 1685df59: StoryMechanicsTests 8,
+# RoleRulesTests 4, DialogueCampaignRulesTests 1, BalanceLabTests 2): the subset ran exactly 16657 of 16657 at 1685df59 in
+# story rules 10's verification, green (2026-11-08). The C1n commit renames one StoryMechanicsTests test (its two cases)
+# and adds none.
+Gamesim.SimulationTests 16657

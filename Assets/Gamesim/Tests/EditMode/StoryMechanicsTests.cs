@@ -157,12 +157,13 @@ namespace Gamesim.Tests.EditMode
         }
 
         /// <summary>
-        /// One rule for whoever holds the veto (STORY-RULES-10-PLAN decision 3), the player included, whose own command
-        /// names who is saved: pulling themselves off the block, the player is not resented for it under Blame; using it on
-        /// somebody else, they are, at thirty-five. Under threads, forty either way.
+        /// Blame covers houseguests who hold the veto, not the player (C1n, STORY-RULES-10-PLAN decision 3 as accepted):
+        /// whether the player's own command pulls themselves off the block or saves somebody else, the replacement resents
+        /// the player at the forty it always was, under Blame exactly as under threads, with the same cause, and the rule
+        /// draws nothing, mints nothing and says nothing.
         /// </summary>
         [TestCase(true)] [TestCase(false)]
-        public void ThePlayersVetoFollowsTheSameRule(bool selfSave)
+        public void ThePlayersVetoKeepsTheFortyUnderBlame(bool selfSave)
         {
             var meeting = Season();
             var npcs = Npcs(meeting);
@@ -174,9 +175,13 @@ namespace Gamesim.Tests.EditMode
             string replacement = Replacement(meeting, threads, blame);
 
             Assert.That(Grudges.Severity(threads, replacement, you), Is.EqualTo(40).Within(0.001), "Under threads, forty against the player.");
-            if (selfSave) Assert.That(Row(blame, replacement, you), Is.Null, "Under Blame the player's self-save forces nobody either.");
-            else Assert.That(Grudges.Severity(blame, replacement, you), Is.EqualTo(EpisodeEngine.ReplacementVetoAtBlame).Within(0.001),
-                "Under Blame the player's veto for somebody else stings at thirty-five.");
+            Assert.That(Grudges.Severity(blame, replacement, you), Is.EqualTo(40).Within(0.001),
+                selfSave ? "Under Blame the player's self-save still costs the forty." : "Under Blame the player's veto for somebody else still costs the forty.");
+            Assert.That(Row(blame, replacement, you).cause, Is.EqualTo(GrudgeCauses.ReplacementVeto), "The same cause as under threads.");
+            Assert.That(Grudges.HoldersAgainst(blame, you, 40), Does.Contain(replacement), "On the forty line, as under threads.");
+            Assert.That(blame.randomState, Is.EqualTo(threads.randomState), "The player's veto draws nothing new,");
+            Assert.That(blame.nextSequence, Is.EqualTo(threads.nextSequence), "mints nothing,");
+            Assert.That(blame.events.Count, Is.EqualTo(threads.events.Count), "and says nothing.");
         }
 
         /// <summary>

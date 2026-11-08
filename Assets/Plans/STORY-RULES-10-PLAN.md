@@ -14,7 +14,8 @@ draft). Nothing here has been run yet: Codex holds the machine. Every figure for
 lab runs (§5). The figures for today's seasons are counted from the archived 100-seed tuning-0 headline at `26b65f09`
 (`D:/ClaudeScratchArchive/2026-10-27-session-4edb7311/lanes/arcs2-lab/after/part-*.json`: 12 policies, 100 seeds, at 8
 and at 12) and from B9's studier runs (`D:/ClaudeScratch/b9/r3/runs/M8F-*`). Two independent readers recounted the
-load-bearing ones.
+load-bearing ones. Since then the lab has run (2026-11-08): the screen adopted C1n, and C1n passed acceptance on the
+held-out seeds (§6, As accepted). The estimates further down are kept as they were written, and say so.
 
 Paths are relative to `Assets/Gamesim/` unless they start at the repository root.
 
@@ -48,7 +49,11 @@ Paths are relative to `Assets/Gamesim/` unless they start at the repository root
     the veto holder.
   - A veto used to save somebody else still stings, at 35: half the Head of Household's 70, and under the 40 line the
     house's gang-ups read.
-  - Only if the screen shows it is needed: two "settling scores" rules between houseguests (C2, §3.2).
+  - **As accepted, C1n** (decision 3): both rules cover houseguests who hold the veto. The player's own veto is
+    unchanged: the replacement resents the player at 40, whoever the player saved. The screen chose C1n because C1, the
+    same rule for every holder, moved the studier's B4 to 29.0%, above its 28% bar.
+  - Only if the screen shows it is needed: two "settling scores" rules between houseguests (C2, §3.2). Not built: the
+    smaller set passed the screen, so C2 was never adopted (§6, As accepted).
 - **Versions** (§4). Every change is keyed to story rules 10. Seasons at 0-9, every save and every import replay byte
   for byte. No schema bump, no new field, no new value outside the closed vocabulary schema 30 already admits.
 - **Measurement** (§5). Seeds 0-99 are for development, seeds 100-199 for acceptance (the owner's decision, §11).
@@ -63,6 +68,8 @@ Paths are relative to `Assets/Gamesim/` unless they start at the repository root
     B9's final head, the leak proofs match the digests B9's own head printed, and B9's own rows match C0's.
 - **Acceptance** (§6). D0 at most 20% at 8 and, separately, at most 20% at 12, pooled across the 12 policies, on seeds
   100-199 only, each with its Wilson interval and every policy's rate beside it. DP, D1 and D2 are reported, not gating.
+  - **Passed, 2026-11-08, by C1n** (§6, As accepted): 3.9% [3.0, 5.2] at 8 and 17.6% [15.5, 19.8] at 12, against the
+    control's 19.1% and 49.0% on the same seasons. B1-B7 and the pace at 8 are in their bands.
 - **A finding the owner should see** (§1, decision 1). Three quarters of first pariah runs come after the player has
   been evicted, when the story system has already stopped telling the house. While the player is in the house, today's
   rates are 3.6% at 8 and 12.0% at 12, already under 20%. This note keeps D0, the plans' own measure, as the target, and
@@ -114,7 +121,7 @@ Each row is the default adopted under the delegated call. Each stays open to the
 |---|---|---|---|
 | 1 | The acceptance measure | **D0, unchanged**: the plans' own rule, at most 20% at 8 and at 12, on all 12 policies at tuning 1, budget 0. DP, D1 (two eviction nights running) and D2 (holders scaled by house size) are printed beside it, never instead. | Judge on DP: today's seasons already meet it (3.6% and 12.0%), and C1 only lowers it further. C2 would not be needed. |
 | 2 | The twelve's bar | 20%, as the pacing table says. The alumni report's "pariah-free at least 45%" for the twelve (`Tests/EditMode/BalanceLabAlumniReport.cs:173`) is not used. | A bar scaled to the weeks a pariah can happen in is about 36% at 12. |
-| 3 | Whose veto the rule covers | Everyone's, the player's included: one rule. | C1n: NPC holders only. It is the fallback if B4 rises above 28%. |
+| 3 | Whose veto the rule covers | Everyone's, the player's included: one rule. **Resolved to C1n by the screen (2026-11-08):** C1 met the screen's Q5 rule (14.2% at 12 on seeds 0-39) and moved B1-B4 by under 2 points, but its studier's B4 was 29.0% on competition seeds 0-199, above 28%, which is this row's fallback. C1n's B4 there was 28.0%, and C1n passed acceptance (§6, As accepted). So the rule covers houseguest holders; the player's veto keeps the 40. | C1, the same rule for the player: it would need the owner's word, and it was not played on the acceptance seeds. |
 | 4 | The value for a veto used on somebody else | 35, "half the seventy". | 38 or 39 also sits under the line; they keep more of the old weight in the jury and vote terms. |
 | 5 | C2, settling scores | Screened when rule 2 (CF1 above 16% at 12) or rule 3 (C1 above 18% at 12, or its studier moving B1-B4 2 points or more) calls for it (§5). Built into the committed rules only if adopted: C1 misses rule 3 and C2 passes it. Houseguest targets only: the player's grudges already settle through the player's own stories. | Ship it anyway, for the story, or never. |
 | 6 | C3, faster fading of ceremony grudges between houseguests | Not built. It reverses season-long memory, so it needs the owner's word. | Taken only if C2 still misses at 12. |
@@ -126,7 +133,7 @@ Each row is the default adopted under the delegated call. Each stays open to the
 
 ## 3. The rules
 
-### 3.1 C1: the veto's grudges (built)
+### 3.1 C1n: the veto's grudges (built)
 
 `StoryReplacement(s, replacement, saved)` in `Simulation/Story/EpisodeEngine.StoryHooks.cs`. `ResolveVeto` already knows
 who was saved when it writes the grudge (`Simulation/EpisodeEngine.cs:1058-1075`; the NPC holder saves themselves when
@@ -134,11 +141,17 @@ they are on the block, `:880`; the player's command names the saved houseguest).
 
 - The replacement's 70 (84 between allies) against the Head of Household is unchanged.
 - Below story rules 10: the replacement resents the veto holder at 40, as today.
-- At story rules 10 or above:
+- At story rules 10 or above, for a houseguest veto holder:
   - when the veto holder saved themselves, the replacement writes no grudge against them;
   - when the veto saved somebody else, the grudge is 35.
+- At story rules 10 or above, for the player as veto holder: 40, whoever the player saved, as below 10.
 
-What 35 keeps and loses:
+The define commit (`36ca4055`) built C1, the same rule for every holder, the player included. The screen adopted C1n
+(decision 3), and the C1n commit narrowed the rule to houseguest holders: the player's branch writes the old 40 again,
+exactly as the lab's `SR10_VETO_SCOPE=npc` knob played it on the acceptance seeds. It draws nothing, mints nothing and
+logs nothing new.
+
+What 35 keeps and loses (a houseguest holder's veto for somebody else; the player's veto is not changed):
 - Below 40, so it no longer counts for the pariah, the pile-on cast, `GrudgeRefusesAlliance`, `NpcAlliances`'
   grudge check, the Confront target or the bad-blood cast.
 - Still read where the line is lower: the jury term (30 or more) for 3 week turns, the Game Sense note and `HasRival`
@@ -357,6 +370,70 @@ snapshot's pass marker.
 - **The suites:** the dotnet subset against the floors in `Tools/baseline.txt`; the offline EditMode compile and the
   Mono kit for the Role, Frozen, Persistence and StoryMechanics fixtures; the UMA PlayMode set as the only Unity gate.
 
+### As accepted (2026-11-08)
+
+**The set: C1n** (`SR10_SELF=1 SR10_RV=35 SR10_VETO_SCOPE=npc`, every other knob at today's value): C1 for houseguest
+veto holders, the player's veto at the old 40. Played by the lab's snapshot `f2a5bdc59dbf8655` of head `1685df59`, with
+C0 on the same snapshot and build. Sources, all in the scratch lab (`D:/ClaudeScratch/sr10/runs/`, never committed):
+`sr10-report.txt` (its SCREEN, ACCEPT and VERDICT lines and the tables quoted below), `acceptance.done` (complete, 9102 s,
+2026-11-08 14:15), and `C1n/results/warrooms.md` (B5-B7, read by hand).
+
+**The screen** (development seeds 0-39; it chose the set, it is never the verdict).
+- C1: 14.2% [11.3, 17.6] at 12 (68/480; C0 44.2% on the same 480, McNemar 149/5), 3.5% at 8; B1-B4 moved +0.1, +0.5,
+  -1.0, +0.5, but its B4 was 29.0%, above 28%.
+- C1n: 13.8% [11.0, 17.1] at 12 (66/480; McNemar 149/3, p 2.05e-40), 3.5% at 8; B1-B4 moved +0.0, +0.4, -1.5, -0.5,
+  B4 28.0%.
+- The SCREEN line: "adopt C1n (13.8% at 12 on seeds 0-39, B1-B4 within 2 points, B4 28.0%): C1 passed rule 3 but its B4
+  is 29.0%, above 28%, and C1n is the plan's fallback".
+- C2 was not screened. Rule 2 asked for its screen beside C1's (CF1 at 12 was 17.6% on seeds 0-99, above 16%), but rule
+  3 adopts the smallest set that passes, and C1, then C1n, passed it; so C2's screen could not change the adoption (the
+  lab's log, `runs/lab.log`, at the first SCREEN line).
+- The finalist (seeds 40-99, informational): 3.1% [2.0, 4.6] at 8 (C0 16.9%) and 16.1% [13.6, 19.0] at 12 (C0 46.7%).
+
+**The verdict** (acceptance seeds 100-199, frozen and held out), as the report prints it:
+> VERDICT: PASS C1n, Q5 under D0 on the held-out acceptance seeds 100-199 [snapshot f2a5bdc59dbf8655, the lab's; head
+> 1685df59] (the 12 policies pooled, 1200 seasons a house): at 8 3.9% [3.0, 5.2] (47/1200), at most 20%; at 12 17.6%
+> [15.5, 19.8] (211/1200), at most 20%.
+
+Paired with C0 on the same seasons (McNemar per size, pooled across the policies; reported, not gating):
+- at 8: C0 19.1% on the same 1200, b/c 182/0, p 3.26e-55;
+- at 12: C0 49.0% on the same 1200, b/c 384/7, p 1.06e-103.
+
+Every policy's own rate is in the report beside the pass. At 8 they run from 1.0% to 9.0% (oracle-skilled). At 12 they
+run from 10.0% (beast) to 27.0% [19.3, 36.4] (social), and two policies are above 20% on their own 100 seasons: social
+and random (24.0%). The pass is pooled, as decided (§11); these are reported, not gating.
+
+**Secondary, reported, not gating** (the same seasons, C1n against C0): DP 0.8% [0.4, 1.4] at 8 and 4.7% [3.6, 6.0] at
+12 (C0 4.8% and 16.7%); D1 0.0% and 0.5% (C0 0.0% and 1.2%); D2 3.9% and 14.4% (C0 19.1% and 39.8%). No first run of
+C1n's has a fresh 40 (0 of 47 at 8, 0 of 211 at 12; C0's 82.1% and 69.4%). The self-save share §10 called unmeasured:
+98.5% of the NPC vetoes used at 8 and 98.0% at 12 are self-saves (C0).
+
+**B1-B4** (the studier at a fixed 0.5, competition seeds 0-799), as the ACCEPT line prints them: B1 62.4% [61.0, 63.8]
+(3018/4836), B2 61.5% [60.3, 62.7] (3863/6277), B3 32.1% [29.0, 35.4] (257/800), B4 26.2% [23.3, 29.4] (210/800), all
+in band (B4's is 18-28%).
+
+**B5-B7** (war-room seeds 0-479, a manual read of `C1n/results/warrooms.md`; the report checks no band there).
+- B5-B6, the Game Sense gap, gated reader minus random with B9's weights 0.2 / 0.6 / 0.2: 14.5 [12.9, 16.0] at 8 and
+  12.6 [11.5, 13.7] at 12. Both meet: at least 10, the low end above 5.
+- B7, accepted counters that carry (35-50%, pooled, the owner's call): 26 of 60 = 43.3% [31.6, 55.9], in band. At 8
+  alone 14/25 = 56.0%, at 12 alone 12/35 = 34.3% (reported; the criterion is pooled). The interval is wide: there were
+  only 60 accepted counters, and it runs past the band at both ends, so the band is met by the rate, not by the whole
+  interval.
+
+**The pace at 8** (acceptance seeds 100-199, the 12 policies, 1,200 seasons; C0 on the same seasons beside each): budgeted
+asks 4.8 (C0 4.9; band 4-6); weeks with a card 51.5% (51.6%; 30-60%); seasons with an NPC removal 0.0% (0.0%; at most
+10%); showmances 1.03 (1.03; 0.5-1.5); seasons with a pile-on 0.0% (0.4%; at most 25%); stories finished 4.5 (4.5;
+"about 3", no band). The last is a miss C0 shares, so it belongs to the headline's population, not to Blame (above).
+Side effects (reported): the Q4 nomination ratio is 0.84 at 8 and 0.86 at 12 under both sets; pile-on seasons at 12
+are 0.4% (C0 2.2%), as decision 7 expected.
+
+**Still open at this record.**
+- The byte-for-byte item above, the committed rule replaying C1n's scratch rows on headline seeds 0-19, has not been
+  run against the C1n commit. Its hunk is the lab's npc scope with the knobs at C1n's values.
+- `StoryPacingTests.PacingReport` at 9 and 10 has not run (§5, step 6).
+- The UMA PlayMode set (the suites, above) has not run on the C1n commit.
+- The enrolment (§8) is the next commit. The owner signs off these numbers in the PR before it merges.
+
 ## 7. Tests and pins
 
 **Define commit.**
@@ -364,6 +441,12 @@ snapshot's pass marker.
   stings at 35 (out of the 40 count, still read by the jury term); the player's veto follows the same rule; a past Head
   of Household's self-save makes no third holder (3 holders at 9, 2 at 10); Roles plays the Blame rules; a save at
   story rules 10 round-trips at schema 30.
+
+**The C1n commit** (after acceptance, before the enrolment). The player's-veto test becomes
+`ThePlayersVetoKeepsTheFortyUnderBlame`, the same two cases (a self-save, a save for somebody else) against the same
+rules-9 twin: under Blame the replacement resents the player at 40 with the same cause, on the 40 line, and the twins'
+streams, sequences and logs agree. The define commit's C1 branch for the player fails both cases. No other test pinned
+the player's veto at Blame; the count is unchanged.
 - The pins that named 10 as undefined: `RoleRulesTests` (the reserved-10 message, the doc, the `IsDefined` cases),
   `FrozenEpisodeV29IntegrationTests` (10 stays refused by Frozen29 in its own words, while the live validator accepts
   it), `DialogueCampaignRulesTests` (every defined version).
@@ -387,23 +470,39 @@ snapshot's pass marker.
 
 ## 9. What moves for the player
 
-Under C1 (all estimates until the screen):
+**As accepted, C1n.**
+- The player's own veto is unchanged: the replacement resents the player at 40 whether the player saved themselves or
+  somebody else, as below story rules 10. The Game Sense "-3" note, the jury bitterness from that row and the one-week
+  refusal of an alliance are as they were.
+- What moves is the house: a houseguest who saves themselves with the veto is no longer resented by the replacement,
+  and one who saves somebody else costs 35. Past Heads of Household are ganged up on less often after a veto week, and
+  the pile-on arc becomes rarer (pile-on seasons at 8 0.0%, C0 0.4%; at 12 0.4%, C0 2.2%; §6, As accepted).
+- Measured (§6, As accepted): B1 62.4%, B2 61.5%, B3 32.1%, B4 26.2% on competition seeds 0-799; at the screen,
+  against C0 on seeds 0-199, B1 +0.0, B2 +0.4, B3 -1.5, B4 -0.5 points. Q4's nomination ratio is 0.84 at 8 and 0.86 at
+  12, as C0's.
+
+Under C1, the define commit's rule (estimates written before the screen, kept as they were):
 - A player who saves themselves with the veto is no longer resented by the replacement. There is no Game Sense "-3"
   note, no jury bitterness from that row, and no one-week refusal of an alliance.
 - A veto used on somebody else costs 35: it falls under the jury's 30 after 3 week turns instead of 5, and under the
   note's 20 after 8 instead of 10.
 - Past Heads of Household are ganged up on less often after a veto week, and the pile-on arc becomes rarer.
-- Expected: B3 and B4 +0 to +2 points, B1 and B2 about 0, Q4 +0 to +0.02.
+- Expected: B3 and B4 +0 to +2 points, B1 and B2 about 0, Q4 +0 to +0.02. At the screen, C1's B4 was 29.0%, above its
+  28% bar, so C1n was adopted instead.
 
 C2 would add only change between houseguests. Past NPC Heads of Household survive a little longer, so the player is a
 little more often a nomination pick (Q4 up a little), and NPC pacts are a little more common.
 
 ## 10. Risks
 
-- **The twelve may land near the line under C1.** Hence the counterfactuals and C2.
+- **The twelve may land near the line under C1.** Hence the counterfactuals and C2. As accepted, C1n's twelve is 17.6%
+  [15.5, 19.8]: under the line, with the interval's top 0.2 points below it, and two policies above 20% on their own.
 - **Feedback.** Settled houseguests vote and nominate more softly, so past Heads of Household survive longer, and some
   reign twice. More NPC pacts mean more allied votes against.
-- **B4 has 3.2 points of headroom.** The fallback is C1n.
+- **B4 had 3.2 points of headroom.** C1 took it to 29.0% at the screen, so the fallback was taken. Under C1n, B4 is
+  26.2% [23.3, 29.4] on competition seeds 0-799: 1.8 points under the 28% bar, with the interval's top above it.
+- **B7's interval is wide.** 43.3% [31.6, 55.9] on 60 accepted counters: in band by its rate, while the interval runs
+  past 35% and 50% both.
 - **The pile-on arc may become near-dead content.**
 - **Roles (11) seasons change at define.** Only tests opt into 11, but several walk past a used veto: the week-two
   walks of `RoleVetoBoardTests.WeekTwoVetoes` (seeds 7101-7160) and everything built on them (`RoleKeepTheBlockTests`,
@@ -411,7 +510,8 @@ little more often a nomination pick (Q4 up a little), and NPC pacts are a little
   seasons of `RoleStoryMomentsTests.SeasonsUnderTheRoleMomentsKeepTheirMomentsInBounds`. Their seed searches and floors
   are re-run first; any re-pin is recorded as a delegated call.
 - **The runs wait for the machine:** Codex's hold, B9's round 9 and C:'s free space.
-- **The self-save share is unmeasured** until the control pass records it.
+- **The self-save share is unmeasured** until the control pass records it. Measured since: 98.5% of the NPC vetoes
+  used at 8 and 98.0% at 12 are self-saves (C0, acceptance seeds).
 
 ## 11. For the owner
 
@@ -435,3 +535,13 @@ The questions as they were put:
    under the line.
 3. **C2 and C3,** only if the screen needs them.
 4. **The pile-on arc** becomes rarer.
+
+**Status, 2026-11-08** (the lead's record, not the owner's words).
+- The lab ran on the owner's measure. The screen adopted C1n under the plan's own fallback (decision 3): C1's B4 was
+  29.0%, above 28%. So question 2's rule now covers houseguests who hold the veto, and the player's own veto keeps the
+  40, self-save or not. That is a delegated call; it stays open to the owner in the PR.
+- C1n passed acceptance on the held-out seeds 100-199: 3.9% at 8 and 17.6% at 12, pooled, each at most 20% (§6, As
+  accepted). B1-B7 and the pace at 8 are in their bands; B7's interval is wide.
+- C2 and C3 were not needed. The pile-on arc is rarer (question 4).
+- The C1n commit makes the committed rule C1n. The enrolment (§8) comes next; then the owner signs off the numbers in
+  the PR before it merges.

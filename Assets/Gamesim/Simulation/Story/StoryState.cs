@@ -287,11 +287,12 @@ namespace Gamesim.Simulation
         /// Blame (STORY-RULES-10-PLAN, the pariah fix, Q5): who the house blames for a veto's replacement. A
         /// past Head of Household's two nominees resent them all season, and the usual third holder at the
         /// forty line was a fresh grudge from the veto: they won it, used it, and the replacement resented
-        /// them. A holder who saved themselves forced nobody - the Head of Household chose the replacement,
-        /// who already resents them - so the replacement writes nothing against the holder; one who saved
-        /// somebody else chose to, and it stings at <see cref="EpisodeEngine.ReplacementVetoAtBlame"/>, half
-        /// the Head of Household's seventy, under the forty line the house's gang-ups read. One rule for
-        /// everyone who holds the veto, the player included. Below it, forty against any holder, as before.
+        /// them. A houseguest holder who saved themselves forced nobody - the Head of Household chose the
+        /// replacement, who already resents them - so the replacement writes nothing against the holder; one
+        /// who saved somebody else chose to, and it stings at <see cref="EpisodeEngine.ReplacementVetoAtBlame"/>,
+        /// half the Head of Household's seventy, under the forty line the house's gang-ups read. Houseguest
+        /// holders only (C1n, the plan's decision 3 as accepted): the player's own veto keeps the forty, self-save
+        /// or not. Below it, forty against any holder, as before.
         /// </summary>
         public const int Blame = 10;
         /// <summary>

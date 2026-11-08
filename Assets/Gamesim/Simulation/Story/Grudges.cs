@@ -99,7 +99,7 @@ namespace Gamesim.Simulation
         /// which is the point - "you put me up in week one" is a season-long memory - so real
         /// forgiveness comes through story beats rather than time. For the same reason the pariah
         /// fix (<see cref="StoryRules.Blame"/>) changes what a veto writes, not how fast anything
-        /// fades: a holder who saved themselves gets no grudge to remember.
+        /// fades: a houseguest holder who saved themselves gets no grudge to remember.
         /// </summary>
         public static void Age(EpisodeState state)
         {

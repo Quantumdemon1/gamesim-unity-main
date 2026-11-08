@@ -10,7 +10,8 @@ using R2 = Gamesim.Tests.EditMode.DialogueRules2Season;
 namespace Gamesim.Tests.EditMode
 {
     /// <summary>
-    /// Dialogue rules 2's two capacity refusals (DIALOGUE-PLAN §5.5), frozen with rules 2 when the chip moved to it, each
+    /// Dialogue rules 2's two capacity refusals (DIALOGUE-PLAN §5.5), frozen with rules 2 at the merge that lets the chip
+    /// write it (§2), the budget P1(d)'s measurement leaves included (the budget is read, never written here), each
     /// reached through the gate that returns it, <see cref="DialogueRules.CanStart"/> - and so the HUD's entry plan, its
     /// fallback (<see cref="DialogueRules.PleaWithoutConversation"/>) and the engine's entry - at its limit, and one step
     /// short of it, where the conversation still opens through the HUD's own entry plan:
@@ -24,9 +25,9 @@ namespace Gamesim.Tests.EditMode
     /// <para>Capacity fixtures, NOT catalogue-produced history, as DialogueCampaignCapacityTests' are: a genuine rules-2
     /// campaign the plain public walk reaches supplies every gameplay fact, and only inert rows are added - for the room
     /// that fixture's completed legacy storylines and resolved ambient events (<see cref="DialogueCapacityFixture.Pad"/>),
-    /// and for the budget closed copies of one conversation the engine played, re-keyed into earlier weeks with the
-    /// sequence counter moved past their ids. Every state handed to CanStart or the engine passes the complete
-    /// EpisodeValidation.</para>
+    /// and for the budget closed copies of one conversation the engine played, re-keyed to earlier weeks' voters with the
+    /// sequence counter moved past their ids (padding at plausible occasions, not occasions the season held: see Slots).
+    /// Every state handed to CanStart or the engine passes the complete EpisodeValidation.</para>
     /// </summary>
     public sealed class DialogueRules2CapacityTests
     {
@@ -87,8 +88,9 @@ namespace Gamesim.Tests.EditMode
         /// The budget: a season that has had 31 conversations still opens a 32nd through the HUD's entry plan, and once that
         /// one is left - left, not finished: every started conversation counts - the season has had all of rules 2's, so the
         /// next voter's is refused in the budget's words, though the voter is eligible, their occasion unused and the house
-        /// far from its storyline and event bounds. The 31 are closed copies of one conversation the engine played in this
-        /// campaign, re-keyed into the season's earlier weeks; the 32nd and the refusal are the engine's own.
+        /// far from its storyline and event bounds, and an action left. The 31 are closed copies of one conversation the
+        /// engine played in this campaign, re-keyed to the season's earlier weeks' voters; the 32nd and the refusal are the
+        /// engine's own.
         /// </summary>
         [Test]
         public void TheThirtySecondConversationIsTheSeasonsLastAndTheNextIsRefusedInTheBudgetsWords()
@@ -117,6 +119,7 @@ namespace Gamesim.Tests.EditMode
             Assert.That(left.houseEvents.Count, Is.LessThanOrEqualTo(DialogueRules.MaximumEvents - DialogueRules.StepsFor(DialogueRules.Rules2)),
                 "House events to spare.");
             Assert.That(left.houseEvents.Any(e => !e.resolved && HouseEventKind.Asks(e.kind)), Is.False, "No house moment waits.");
+            Assert.That(R2.Remaining(left), Is.GreaterThanOrEqualTo(1), "An action is left this week.");
 
             Assert.That(DialogueRules.CanStart(left, other, out string reason), Is.False);
             Assert.That(reason, Is.EqualTo(DialogueRules.BudgetRefusal));
@@ -178,8 +181,9 @@ namespace Gamesim.Tests.EditMode
         /// <summary>
         /// The first campaign in seeds 1 to 24 of twelve houseguests, walked by the plain public walk, in which the player is
         /// nominated in a week late enough that the earlier weeks hold <paramref name="copies"/> occasions, the house's asks
-        /// are answered, two voters can be talked to with an action left, and the house has room for the copies and two
-        /// conversations more. There, on a detached copy, the first voter whose conversation opens without their word on the
+        /// are answered, two voters can be talked to with two actions left (the 32nd conversation's and one more, so the
+        /// week's actions never stand in the next voter's way), and the house has room for the copies and two conversations
+        /// more. There, on a detached copy, the first voter whose conversation opens without their word on the
         /// vote and without a rescue to cite is talked to and left at the reply: the conversation the copies are made of.
         /// </summary>
         private static LateCampaign FindLateCampaign(int copies)
@@ -200,7 +204,7 @@ namespace Gamesim.Tests.EditMode
                         var slots = Slots(s);
                         var voters = EpisodeEngine.Voters(s).Where(c => !c.isPlayer).Select(c => c.id)
                             .Where(id => DialogueRules.CanStart(s, id, out _)).ToArray();
-                        if (slots.Count >= copies && voters.Length >= 2 && R2.Remaining(s) >= 1 && s.dialogue.episodes.Count == 0
+                        if (slots.Count >= copies && voters.Length >= 2 && R2.Remaining(s) >= 2 && s.dialogue.episodes.Count == 0
                             && s.storylines.Count + copies + 2 < DialogueRules.Rules2StorylineCeiling
                             && s.houseEvents.Count + 2 * copies + 2 * steps <= DialogueRules.MaximumEvents - steps)
                         {
@@ -223,18 +227,34 @@ namespace Gamesim.Tests.EditMode
         }
 
         /// <summary>
-        /// Every earlier week's campaign occasion with somebody in the season, the player aside, in week then cast order,
-        /// leaving out anyone who ever used the veto to save the player before that week: a copy is a conversation with no
-        /// rescue to cite, which rules 2 offers wherever one exists (DialogueRules.PublicRescueSource), so those are skipped.
+        /// The copies' occasions: each earlier week's voters, in week then cast order, read from that week's power row as
+        /// <see cref="EpisodeEngine.Voters"/> reads them on its campaign - everybody still in the house that week (a
+        /// houseguest's eviction row is their last week), the player, that week's Head of Household and its final block
+        /// aside - leaving out anyone who used the veto to save the player before that week: a copy is a conversation with
+        /// no rescue to cite, which rules 2 offers wherever one exists (DialogueRules.PublicRescueSource).
+        /// <para>Padding at plausible occasions, not occasions the season held: a campaign occasion also needs the player on
+        /// that week's final block (DialogueRules' Eligible), and 31 of those take the player on the block in five earlier
+        /// weeks of a house of twelve (9 + 8 + 7 + 6 voters is 30), which this search does not look for. The budget
+        /// counts the season's rows (every started conversation, §5.5), and the validator reads no episode's voter
+        /// against its week, so these rows are what the gate counts.</para>
         /// </summary>
         private static List<(int week, string npc)> Slots(EpisodeState s)
         {
-            var rescues = s.ledger?.power?.Where(row => row != null && row.vetoUsed && row.savedId == s.playerId).ToList()
-                ?? new List<PowerRow>();
+            var power = s.ledger?.power?.Where(row => row != null).ToList() ?? new List<PowerRow>();
+            var rescues = power.Where(row => row.vetoUsed && row.savedId == s.playerId).ToList();
             var slots = new List<(int week, string npc)>();
             for (int week = 1; week < s.week; week++)
+            {
+                var row = power.LastOrDefault(p => p.week == week);
+                if (row == null) continue;
                 foreach (var person in s.contestants.Where(c => !c.isPlayer))
-                    if (!rescues.Any(row => row.week < week && row.vetoHolderId == person.id)) slots.Add((week, person.id));
+                {
+                    int? last = power.LastOrDefault(p => p.evicteeId == person.id)?.week;
+                    bool inTheHouse = last == null ? person.status == ContestantStatus.Active : last >= week;
+                    if (!inTheHouse || person.id == row.hohId || (row.nominees != null && row.nominees.Contains(person.id))) continue;
+                    if (!rescues.Any(rescue => rescue.week < week && rescue.vetoHolderId == person.id)) slots.Add((week, person.id));
+                }
+            }
             return slots;
         }
 

@@ -695,8 +695,8 @@ namespace Gamesim.OldSaves
         {
             // An open campaign conversation (dialogue rules 1, D1, or 2, the chip's since its move) is answered before
             // anything else, with its node's first option that is not the exit: on rules 1 the case, then the plea; on
-            // rules 2 the case, the reply's first option, then the plea. Only a season on dialogue rules has one, so
-            // every older fixture's walk is unchanged.
+            // rules 2 the reply's first option, then the plea (the entry already took the open node's case). Only a
+            // season on dialogue rules has one, so every older fixture's walk is unchanged.
             var conversation = Dialogue.Choice(s, this);
             if (conversation != null) { yield return conversation; yield break; }
 #if OLDSAVE_BEFORE_SCHEMA3

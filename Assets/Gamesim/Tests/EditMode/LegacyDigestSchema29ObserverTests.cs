@@ -347,7 +347,8 @@ namespace Gamesim.Tests.EditMode
         // ------------------------------------------------------------------ the native-29 arm (dialogue D1)
 
         /// <summary>
-        /// A season on the preview, before its conversation (rules 1, the empty store) and with it open (one
+        /// A season on dialogue rules 1 by the literal (<see cref="DialoguePreviewWitness"/>, the preview's rules until the
+        /// chip moved to rules 2, which this arm refuses), before its conversation (the empty store) and with it open (one
         /// campaign episode, its storyline and its house events): each is admitted at 29 as it is - the trace with
         /// its getters, the fields without - returned detached, never projected, and checkpointed at 29 with the
         /// retained hash algorithm. It has no schema-28 form, so a checkpoint below 29 and both rules-0

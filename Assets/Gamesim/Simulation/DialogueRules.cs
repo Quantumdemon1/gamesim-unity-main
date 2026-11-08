@@ -26,10 +26,11 @@ namespace Gamesim.Simulation
         /// The dialogue rules the cast screen's preview chip starts a season on (DIALOGUE-PLAN §2): a pinned literal,
         /// moved by hand only when a later stack brings the chip a new version. Rules 2 (D2's vote-word tree), since
         /// the stack after the schema-30 bump moved the chip from D1's rules 1: a version freezes the first time a
-        /// shipped path can write it, so rules 2 is frozen from that commit as D2 built it, and the next dialogue stack
-        /// is rules 3. Never <see cref="Version"/>, the bound: a season keeps the rules it began on, so a chip that
-        /// wrote the bound would change the rules of every opted-in season the day it moved. Tests that mean a version
-        /// write its literal; only the chip's own tests read this, and pin its value.
+        /// shipped path can write it, the merge that lets the chip write it, so rules 2 freezes as D2 built it at the
+        /// merge that lands that stack, with the conversation budget P1(d)'s measurement leaves (§5.5), and the next
+        /// dialogue stack is rules 3. Never <see cref="Version"/>, the bound: a season keeps the rules it began on, so a
+        /// chip that wrote the bound would change the rules of every opted-in season the day it moved. Tests that mean a
+        /// version write its literal; only the chip's own tests read this, and pin its value.
         /// </summary>
         public const int Offered = 2;
 

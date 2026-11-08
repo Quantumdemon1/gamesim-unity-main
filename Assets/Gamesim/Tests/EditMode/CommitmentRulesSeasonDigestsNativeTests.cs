@@ -24,6 +24,11 @@ namespace Gamesim.Tests.EditMode
     {
         private const BindingFlags Private = BindingFlags.NonPublic | BindingFlags.Static;
 
+        /// <summary>
+        /// A season on dialogue rules 1 by the literal (<see cref="DialoguePreviewWitness"/>), the preview's season
+        /// until the chip moved to rules 2; the name is kept so the stamped runner lists hold. The chip's rules since
+        /// that move, rules 2, are digested by <see cref="ARules2SeasonIsDigestedAtThirtyAsItIsThenByEveryReader"/>.
+        /// </summary>
         [Test]
         public void APreviewSeasonIsDigestedAtItsOwnSchemaThenByEveryReader()
         {

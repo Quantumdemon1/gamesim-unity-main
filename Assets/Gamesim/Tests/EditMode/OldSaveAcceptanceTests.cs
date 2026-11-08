@@ -45,7 +45,11 @@ namespace Gamesim.Tests.EditMode
     /// and a fresh shipped season of each roster, Regular and All-Stars, at alumni rules 0; they load as they are, with
     /// no migration. The H1b build (0fef7b59) wrote the alumni-on cell: the same shipped All-Stars season at alumni
     /// rules 1, with its histories and the Hitmen's final two. The build S6 froze alumni rules 5 at (51dd14a5) wrote the
-    /// alumni-5 cell: the same season at alumni rules 5, saved with a houseguests' pact grown past two and kept to itself.</para>
+    /// alumni-5 cell: the same season at alumni rules 5, saved with a houseguests' pact grown past two and kept to itself.
+    /// B9's builds wrote the tuning-1 cells, the shipped Regular season on tuning rules 1, walked plainly (8a0cee2e) and by
+    /// the studier (46459d3e). B9's head (7ab18ab0), the last build whose cast screen chip starts dialogue rules 1, wrote
+    /// the dialogue-1 cell at 30: that season with the conversation preview on, at dialogue rules 1 and tuning rules 1,
+    /// saved mid-conversation at its case node and checkpointed at 30 by the observers' tuning arm.</para>
     ///
     /// <para>Three digests (<see cref="OldSaveTrace"/>): the season's - the cross-build gate - must be the reference
     /// build's; the whole state's, blind to prose, and the verbatim text are this build's, pinned when the fixture was
@@ -112,6 +116,10 @@ namespace Gamesim.Tests.EditMode
             // saved with a point of preparation banked, so tuning 1's preparation (its spend, the study's limit and the
             // final Head of Household counting it) fires after the load.
             "s30-mode2-allweek-tuning1-studier-w2-hoh",
+            // Written by B9's head (7ab18ab0; OLD-SAVE-ACCEPTANCE 2.10), the last build whose cast screen chip starts dialogue
+            // rules 1: a fresh shipped Regular season with the conversation preview on, schema 30 at dialogue rules 1 and
+            // tuning rules 1, saved mid-conversation at its case node.
+            "s30-mode2-dialogue1-tuning1-w1-campaign",
         };
 
         /// <summary>
@@ -158,7 +166,8 @@ namespace Gamesim.Tests.EditMode
                     Assert.That((string)entry["referenceBuild"], Is.EqualTo((string)entry["writer"]),
                         (string)entry["id"] + ": a generated schema-29-or-later fixture is written and recorded by the build that writes its schema.");
                 // From schema 30 a cell also names the alumni rules and the cast (ALL-STAR-HISTORIES-PLAN 8.7). Both are read
-                // from the save itself, so a row cannot name a cell its file is not.
+                // from the save itself, so a row cannot name a cell its file is not; so are the tuning rules and, since the
+                // dialogue-1 cell at 30 (OLD-SAVE-ACCEPTANCE 2.10), the dialogue rules.
                 if ((string)entry["kind"] == "episode" && (int)entry["schema"] >= 30)
                 {
                     var saved = (JObject)JObject.Parse(File.ReadAllText(Path.Combine(Root, (string)entry["save"])))["state"];
@@ -166,6 +175,7 @@ namespace Gamesim.Tests.EditMode
                     Assert.That((string)entry["cast"], Is.EqualTo(alumni ? "allstars" : "regular"), (string)entry["id"] + ": the cast the save seats.");
                     Assert.That((int)entry["rules"]["alumniRulesVersion"], Is.EqualTo((int)saved["alumniRulesVersion"]), (string)entry["id"] + ": the save's own alumni rules.");
                     Assert.That((int)entry["rules"]["tuningRulesVersion"], Is.EqualTo((int)saved["tuningRulesVersion"]), (string)entry["id"] + ": the save's own tuning rules.");
+                    Assert.That((int)entry["rules"]["dialogueRulesVersion"], Is.EqualTo((int)saved["dialogueRulesVersion"]), (string)entry["id"] + ": the save's own dialogue rules.");
                 }
             }
             // One replayed fixture per cell of the plan's matrix: every schema a build wrote (not 1 or 8, which no surviving
@@ -177,7 +187,9 @@ namespace Gamesim.Tests.EditMode
             // season of each roster at alumni rules 0, from H1b the shipped All-Stars season at alumni rules 1, and from S6
             // the same season at alumni rules 5, the value S6 froze; from B9 the shipped Regular season at tuning rules 1, which
             // every new season starts on (a cell names its tuning only where it is on), and from B9's round 4 the same season
-            // walked by the studier (a cell names its walker only where it is not the plain one). A cell counts only a fixture saved in a week, before the
+            // walked by the studier (a cell names its walker only where it is not the plain one), and from B9's head the shipped
+            // Regular season the conversation preview starts at 30, dialogue rules 1 on tuning rules 1, written by the last build
+            // whose chip starts rules 1. A cell counts only a fixture saved in a week, before the
             // finale, with a script to play: one saved at the finale or after it is read, never a cell's replay.
             var replayed = Manifest["episodes"].Where(e => (int)e["commands"] > 0 && !FinalePhases.Contains((string)e["phase"])).ToList();
             Assert.That(Manifest["episodes"].Except(replayed).Select(e => (string)e["id"]), Is.EquivalentTo(ReadOnly),
@@ -208,6 +220,7 @@ namespace Gamesim.Tests.EditMode
                 "30/director/uc2/allweek1/leaks1/plans1/dialogue0/alumni5/allstars",
                 "30/director/uc2/allweek1/leaks1/plans1/dialogue0/alumni0/regular/tuning1",
                 "30/director/uc2/allweek1/leaks1/plans1/dialogue0/alumni0/regular/tuning1/studier",
+                "30/director/uc2/allweek1/leaks1/plans1/dialogue1/alumni0/regular/tuning1",
             }));
         }
 
@@ -628,6 +641,64 @@ namespace Gamesim.Tests.EditMode
             }
             Assert.That(JoinWeeks(pact.members[0], pact.members[1]).Concat(JoinWeeks(pact.members[1], pact.members[0])), Is.Empty,
                 "The founders' own row is the birth, not a join.");
+        }
+
+        // ------------------------------------------------------------------ the dialogue-1 cell at 30
+
+        /// <summary>
+        /// The last cell the cast screen's chip writes on dialogue rules 1 (OLD-SAVE-ACCEPTANCE 2.10): the shipped Regular
+        /// season of eight with the conversation preview on, at schema 30 on tuning rules 1 and alumni rules 0, written by
+        /// B9's head (7ab18ab0), the last build whose chip starts rules 1. The four cases every fixture has load and replay
+        /// it, read it with every reader, pin its seventeen holds and recover it from the backup; this one holds the file to
+        /// the point it was saved at: the week-1 campaign with the player nominated, one conversation open with the voter,
+        /// its opening answered and spent, and D1's case node waiting unanswered. Rules 1 copies no statement.
+        /// Seed 3101, the first from 3101 at which the recorder's converse opens a conversation.
+        /// </summary>
+        [Test]
+        public void TheDialogueOneCellAtThirtyIsSavedMidConversationAtItsCaseNode()
+        {
+            const string id = "s30-mode2-dialogue1-tuning1-w1-campaign";
+            var entry = Entry(id);
+            using var slot = new Slot((string)entry["save"]);
+            Assert.That(slot.Store.TryLoad(out var s, out string message), Is.True, message);
+            Assert.That(message, Does.Not.Contain("migrated"), "Saved at 30, it loads as it is.");
+            Assert.That(s.schemaVersion, Is.EqualTo(30));
+            Assert.That(s.dialogueRulesVersion, Is.EqualTo(DialogueRules.Rules1), "Saved on dialogue rules 1, the chip's before rules 2.");
+            Assert.That((int)entry["rules"]["dialogueRulesVersion"], Is.EqualTo(DialogueRules.Rules1));
+            Assert.That(s.tuningRulesVersion, Is.EqualTo(TuningRules.Bands), "On tuning rules 1, as every fresh season from B9.");
+            Assert.That((int)entry["rules"]["tuningRulesVersion"], Is.EqualTo(TuningRules.Bands));
+            Assert.That(s.alumniRulesVersion, Is.EqualTo(0), "The Regular cast: no alumnus, alumni rules 0.");
+            Assert.That(s.alumniCatalogEdition, Is.Null);
+            Assert.That(DialogueRules.On(s), Is.True);
+            Assert.That(s.week, Is.EqualTo(1));
+            Assert.That(s.phase, Is.EqualTo(EpisodePhase.Campaign));
+            Assert.That(s.nominees, Does.Contain(s.playerId), "The player is nominated: the campaign the conversation belongs to.");
+
+            Assert.That(s.dialogue.episodes.Count, Is.EqualTo(1), "One conversation in the store.");
+            var episode = DialogueRules.Active(s);
+            Assert.That(episode, Is.SameAs(s.dialogue.episodes[0]), "It is still open.");
+            Assert.That(episode.npcId, Is.EqualTo("alex-chen"), "The first voter in the engine's order the conversation can start with.");
+            Assert.That(s.Find(episode.npcId).status, Is.EqualTo(ContestantStatus.Active));
+            Assert.That(episode.occasionKind, Is.EqualTo(DialogueCampaignV1.Kind));
+            Assert.That(episode.occasionId, Is.EqualTo(DialogueRules.Occasion(s.week, episode.npcId)));
+            Assert.That(episode.contentVersion, Is.EqualTo(DialogueCampaignV1.ContentVersion));
+            Assert.That(episode.entry.kind, Is.EqualTo(DialogueCampaignV1.EntryKind), "Entered with an action.");
+            Assert.That(episode.entry.windowActionAfter, Is.EqualTo(episode.entry.windowActionBefore + 1), "One action spent.");
+            Assert.That(episode.responses.Select(r => r.responseKey), Is.EqualTo(new[] { DialogueCampaignV1.TemplateId + "/hear-your-case" }),
+                "The opening answered: the voter will hear the case.");
+            Assert.That(episode.statement, Is.Null, "Rules 1 copies no statement.");
+            Assert.That(episode.evidence, Is.Empty);
+            Assert.That(episode.time, Is.Null, "No ending receipt: the conversation has not ended.");
+
+            var cycle = s.storylines.Single(x => x.id == episode.id);
+            Assert.That(cycle.templateId, Is.EqualTo(DialogueCampaignV1.TemplateId), "No public rescue to cite: D1's own template.");
+            Assert.That(cycle.status, Is.EqualTo(StorylineStatus.Active));
+            Assert.That(cycle.path.Select(p => p.beatId + "/" + p.optionId), Is.EqualTo(new[] { DialogueCampaignV1.Open + "/" + DialogueCampaignV1.OpenCase }));
+            Assert.That(cycle.beatId, Is.EqualTo(DialogueCampaignV1.Case), "Saved at the case node.");
+            var item = s.houseEvents.Single(x => x.id == cycle.eventId);
+            Assert.That(item.resolved, Is.False, "The case node waits for the player's answer.");
+            Assert.That(item.choices.Select(c => c.optionId), Is.EqualTo(new[] { DialogueCampaignV1.Appeal, DialogueCampaignV1.Leave }));
+            Assert.That(item.lapseOptionId, Is.EqualTo(DialogueCampaignV1.Leave));
         }
 
         // ------------------------------------------------------------------ refused on purpose

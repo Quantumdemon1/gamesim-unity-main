@@ -197,7 +197,11 @@
 # and against, the four-tile reply, the rescue carrier) and DialogueCampaignPleaFallbackTests' rules-2 twin 1. The
 # filtered subset ran all 5 (2026-11-08); disjoint from the chip's 4, so the floor is their sum (the merge, 2026-11-08);
 # no Unity run has observed it yet.
-Gamesim.EditModeTests 9868
+# 9873 = 9868 + the dialogue-1 old-save cell at 30 (OLD-SAVE-ACCEPTANCE 2.10): OldSaveAcceptanceTests' four cases for
+# s30-mode2-dialogue1-tuning1-w1-campaign and its own case, 5, EditMode only. The lister counted 9864 on its own branch
+# (9859 + 5), and the Mono harness ran the five (2026-11-08); disjoint from the chip's and the HUD's, so the floor is the
+# sum (the merge, 2026-11-08); no Unity run has observed it yet.
+Gamesim.EditModeTests 9873
 # The UMA-free build. 1215 = 1236, the count after the consolidation's lanes (S2a, S2b, S4a), less the 7
 # farewell probes moved to Gamesim.DiagnosticsPlayModeTests and the 14 farewell readiness tests that now
 # compile only under GAMESIM_UMA (judged on the UMA cast); 1230 = 1215 + S2d's 7, S4b's 2, S4c's 2 and

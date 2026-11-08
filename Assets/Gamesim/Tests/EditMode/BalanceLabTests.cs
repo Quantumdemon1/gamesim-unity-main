@@ -602,11 +602,14 @@ namespace Gamesim.Tests.EditMode
         internal const string BudgetNoughtRows = "5481eec784acd1ed";
 
         /// <summary>
-        /// The same seasons at tuning 1, B9's balance bands (B9-BALANCE-PLAN decision 8), recorded at B9-3: 521 of the 564
-        /// rows move, 473 only in the Game Sense total (the weights read every season's verdict anew) and 48 in play, 47 of
-        /// the beast's (who studies) and one schemer's (a counter K1 or K5 settled). BALANCE_BASELINE.md, "B9".
+        /// The same seasons at tuning 1, B9's balance bands (B9-BALANCE-PLAN decision 8), recorded at B9-3 as
+        /// 1ee55c2a92571363: 521 of the 564 rows moved, 473 only in the Game Sense total (the weights read every season's
+        /// verdict anew) and 48 in play, 47 of the beast's (who studies) and one schemer's (a counter K1 or K5 settled).
+        /// Re-pinned in round 4 (B9-BALANCE-PLAN, "Round 4: the lab"): the keyed jury tiebreak and the final Head of
+        /// Household's half-a-tie read moved it (1bea9cf5), and tuning 1 without the small house's boost moved the beast's
+        /// rows again (f5fb8cb6). BALANCE_BASELINE.md, "B9".
         /// </summary>
-        internal const string BudgetNoughtTuning1Rows = "1ee55c2a92571363";
+        internal const string BudgetNoughtTuning1Rows = "a89a8120050e9460";
 
         [Test, Explicit("B5b: budget nought plays, byte for byte, the seasons it played before the NPC world's driver, held at tuning 0 (about 5 min). Run by name.")]
         public void BudgetNoughtPlaysTheSeasonsItPlayedBeforeTheDriver() => BudgetNought(held: true, "budget0", BudgetNoughtRows);

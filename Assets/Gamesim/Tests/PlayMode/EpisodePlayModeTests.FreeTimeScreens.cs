@@ -341,6 +341,10 @@ namespace Gamesim.Tests.PlayMode
         public IEnumerator FreeTime_AskingForInformationOpensTheConversationOnWhatYouCameToAsk()
         {
             yield return SettleCast();
+            // The subject is the intent, not the house's own clock. Opening the conversation flushes the free time
+            // built up since the last NPC tick, and a whole second of it commits a tick and moves the revision this
+            // test holds still (B9's round 9, 2026-11-07: revision 0 to 1, then three re-runs passed).
+            director.SuspendNpcAutonomyForDiagnostics();
             var state = director.Snapshot;
             Assume.That(state.phase, Is.EqualTo(EpisodePhase.Social));
             var who = state.Active.First(c => !c.isPlayer);

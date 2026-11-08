@@ -108,7 +108,8 @@ namespace Gamesim.Tests.EditMode
             {
                 { "shipped-2101", "d3fed206ab096ac0eae840c76db846ca5d6ff6860617565e928fe39b5c6eb88c" },
                 { "shipped-2102", "292684190876ca9a4e31040bfa2163f2434b013385027359d3f18829f55c5e84" },
-                { "shipped-mode0-2103", "6d896d9b6b775babba5b3e8de3a6387b0cbd364be55d56d555684c2e8ccb8b6a" },
+                // Re-pinned in B9's round 4: a shipped season plays tuning 1, and its jury tie now goes by the keyed coin (1bea9cf5).
+                { "shipped-mode0-2103", "c0c224a764070984238389c5b442d4f76ee3fdab0eebccb7ecb5d68f0bcc1afa" },
                 { "story-10-3", "d2a0e1093d327454cce6b8ee5e4e6384d8698efdb5e986922e2c6d2560922182" },
             };
             foreach (var (name, start) in RoleStoryPools.OldSeasons())

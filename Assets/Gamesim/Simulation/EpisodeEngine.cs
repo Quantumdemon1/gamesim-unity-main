@@ -629,10 +629,9 @@ namespace Gamesim.Simulation
         /// B9's preparation, at the Advance out of a weekly Head of Household or veto (B9-BALANCE-PLAN §3.1, decision 5):
         /// a competition the player entered - played, assisted or simulated - used it, and it is spent
         /// (<see cref="TuningRules.AfterUse"/>); a throw gives every bonus up and keeps it. A Head of Household the player
-        /// sat out while still in the house, they watched (<see cref="TuningRules.AfterWatchedHoH"/>); the ledger writes
-        /// "watched" for a juror too, who learns nothing from it. The final Head of Household's three parts all
-        /// count it, since no competition follows them. Reads the week's ledger row; draws nothing, and logs only a change,
-        /// so a season with no preparation plays as it would at tuning 0.
+        /// sat out leaves it as it was (B9 first built a small house's watch here, which tuning 1 dropped before it shipped).
+        /// The final Head of Household's three parts all count it, since no competition follows them. Reads the week's
+        /// ledger row; draws nothing, and logs only a change, so a season with no preparation plays as it would at tuning 0.
         /// </summary>
         private static void SpendPreparation(EpisodeState s)
         {
@@ -646,13 +645,6 @@ namespace Gamesim.Simulation
                 if (left == s.playerStudyBonus) return;
                 s.playerStudyBonus = left;
                 Log(s, "study-house", "Your preparation was used in the competition. Preparation: " + left + "/" + TuningRules.PreparationOutOf(s) + ".", s.playerId);
-            }
-            else if (row.placement == 0 && s.phase == EpisodePhase.HoH && s.Find(s.playerId)?.status == ContestantStatus.Active)
-            {
-                int left = TuningRules.AfterWatchedHoH(s, s.playerStudyBonus);
-                if (left == s.playerStudyBonus) return;
-                s.playerStudyBonus = left;
-                Log(s, "study-house", "You watched the Head of Household competition and learned from it. Preparation: " + left + "/" + TuningRules.PreparationOutOf(s) + ".", s.playerId);
             }
         }
 
@@ -1248,10 +1240,22 @@ namespace Gamesim.Simulation
                     + Target(s, preferred.id, juror.id) + " to win.");
             }
             int firstVotes = s.votes.Count(v => v.targetId == finalists[0].id), secondVotes = s.votes.Count(v => v.targetId == finalists[1].id);
-            var ordered = firstVotes > secondVotes ? finalists : new[] { finalists[1], finalists[0] };
-            // The source reveal's strict > comparison awards a tie to the second cast-order finalist.
-            if (firstVotes == secondVotes)
-                Log(s, "jury-tie", "Jury tie: the source game's tie rule awards the win to the second finalist in cast order.");
+            ContestantState[] ordered;
+            if (firstVotes == secondVotes && TuningRules.KeyedJuryTiebreak(s))
+            {
+                // Tuning 1 (the owner's call 3 of 2026-11-07): the season's keyed coin for this pair, from the saved seed
+                // and the two ids. It draws nothing from the stream and reads no cast order, so a load cannot reroll it.
+                string won = TuningRules.JuryTieWinner(s.seed, finalists[0].id, finalists[1].id);
+                ordered = won == finalists[0].id ? finalists : new[] { finalists[1], finalists[0] };
+                Log(s, "jury-tie", "Jury tie: the season's tiebreak draw gives the win to " + Target(s, won, null) + ".");
+            }
+            else
+            {
+                ordered = firstVotes > secondVotes ? finalists : new[] { finalists[1], finalists[0] };
+                // The source reveal's strict > comparison awards a tie to the second cast-order finalist.
+                if (firstVotes == secondVotes)
+                    Log(s, "jury-tie", "Jury tie: the source game's tie rule awards the win to the second finalist in cast order.");
+            }
             s.winnerId = ordered[0].id; s.runnerUpId = ordered[1].id;
             ordered[0].status = ContestantStatus.Winner; ordered[1].status = ContestantStatus.RunnerUp;
             // The story's threads end here, reading the jury they were heading for (plan 31).

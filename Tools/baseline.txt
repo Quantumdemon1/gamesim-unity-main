@@ -190,7 +190,10 @@
 # rules-2 season on the tuning arm and on its own, 6; an All-Stars one on the alumni arm, 1; rules 1 on tuning 1, 2;
 # every native-30 arm's frozen dialogue literal and closed store, 20; the dialogue arm's own contract, 12). The subset
 # ran all 41 (2026-11-08); no Unity run has observed the floor yet.
-Gamesim.EditModeTests 9859
+# 9864 = 9859 + the dialogue-1 old-save cell at 30 (OLD-SAVE-ACCEPTANCE 2.10): OldSaveAcceptanceTests' four cases for
+# s30-mode2-dialogue1-tuning1-w1-campaign and its own case, 5. The lister counted 9864, and the Mono harness ran the five
+# (2026-11-08); no Unity run has observed the floor yet.
+Gamesim.EditModeTests 9864
 # The UMA-free build. 1215 = 1236, the count after the consolidation's lanes (S2a, S2b, S4a), less the 7
 # farewell probes moved to Gamesim.DiagnosticsPlayModeTests and the 14 farewell readiness tests that now
 # compile only under GAMESIM_UMA (judged on the UMA cast); 1230 = 1215 + S2d's 7, S4b's 2, S4c's 2 and

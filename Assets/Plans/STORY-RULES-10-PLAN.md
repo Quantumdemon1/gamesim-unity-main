@@ -51,8 +51,18 @@ Paths are relative to `Assets/Gamesim/` unless they start at the repository root
   - Only if the screen shows it is needed: two "settling scores" rules between houseguests (C2, §3.2).
 - **Versions** (§4). Every change is keyed to story rules 10. Seasons at 0-9, every save and every import replay byte
   for byte. No schema bump, no new field, no new value outside the closed vocabulary schema 30 already admits.
-- **Measurement** (§5). A control set at story rules 10 with today's numbers must replay today exactly. Then C1, then C2
-  only if C1 is not enough. The control pass doubles as B9's deferred tuning-1 headline.
+- **Measurement** (§5). Seeds 0-99 are for development, seeds 100-199 for acceptance (the owner's decision, §11).
+  - Development: a control set, C0, at story rules 10 with today's numbers must replay B9's seasons exactly (the leak
+    proofs, against digests printed by B9's own head). C0 plays all 12 policies on seeds 0-99. The screen tries C1 on
+    seeds 0-39, and C2 when rule 2 (CF1 above 16% at 12) or rule 3 (C1 above 18% at 12, or its studier moving B1-B4
+    2 points or more) calls for it. The set it picks plays seeds 40-99 as the finalist.
+  - Acceptance: seeds 100-199 are frozen and held out. The unchanged control and the adopted set both play them, all
+    12 policies, at 8 and at 12, paired by seed. Only the set the screen adopted plays them; another set needs the
+    owner's word.
+  - C0 on seeds 0-99 doubles as B9's 100-seed headline only when the three conditions of §5 hold: this branch holds
+    B9's final head, the leak proofs match the digests B9's own head printed, and B9's own rows match C0's.
+- **Acceptance** (§6). D0 at most 20% at 8 and, separately, at most 20% at 12, pooled across the 12 policies, on seeds
+  100-199 only, each with its Wilson interval and every policy's rate beside it. DP, D1 and D2 are reported, not gating.
 - **A finding the owner should see** (§1, decision 1). Three quarters of first pariah runs come after the player has
   been evicted, when the story system has already stopped telling the house. While the player is in the house, today's
   rates are 3.6% at 8 and 12.0% at 12, already under 20%. This note keeps D0, the plans' own measure, as the target, and
@@ -106,13 +116,13 @@ Each row is the default adopted under the delegated call. Each stays open to the
 | 2 | The twelve's bar | 20%, as the pacing table says. The alumni report's "pariah-free at least 45%" for the twelve (`Tests/EditMode/BalanceLabAlumniReport.cs:173`) is not used. | A bar scaled to the weeks a pariah can happen in is about 36% at 12. |
 | 3 | Whose veto the rule covers | Everyone's, the player's included: one rule. | C1n: NPC holders only. It is the fallback if B4 rises above 28%. |
 | 4 | The value for a veto used on somebody else | 35, "half the seventy". | 38 or 39 also sits under the line; they keep more of the old weight in the jury and vote terms. |
-| 5 | C2, settling scores | Built only if the screen shows C1 alone leaves the twelve above 18% (§5). Houseguest targets only: the player's grudges already settle through the player's own stories. | Ship it anyway, for the story, or never. |
+| 5 | C2, settling scores | Screened when rule 2 (CF1 above 16% at 12) or rule 3 (C1 above 18% at 12, or its studier moving B1-B4 2 points or more) calls for it (§5). Built into the committed rules only if adopted: C1 misses rule 3 and C2 passes it. Houseguest targets only: the player's grudges already settle through the player's own stories. | Ship it anyway, for the story, or never. |
 | 6 | C3, faster fading of ceremony grudges between houseguests | Not built. It reverses season-long memory, so it needs the owner's word. | Taken only if C2 still misses at 12. |
 | 7 | The pile-on arc becomes rarer | Accepted and reported. | - |
 | 8 | The name | `StoryRules.Blame`. | Any name; it is one constant. |
 | 9 | Define and enrol | One PR, two commits: define with `Current` held at Threads, then enrol by moving `Current`, as R7's plan does for Roles. | Keep 10 defined but unenrolled until R7. |
 | 10 | The ledger's -15 after a veto (`Simulation/EpisodeEngine.cs:1080`) | Left as it is. It belongs to the relationship ledger, not the story system, and no pariah reads it. | - |
-| 11 | The control pass | It doubles as B9's deferred 100-seed tuning-1 headline (B9 owner call 4), once the leak proofs pass. | Run the headline separately. |
+| 11 | The control pass | C0 on development seeds 0-99 may stand in for B9's 100-seed, all-policy headline (B9 owner call 4) only when this branch holds B9's final head and the three conditions of §5 hold. Otherwise B9's headline runs on B9's branch. | Run the headline separately. |
 
 ## 3. The rules
 
@@ -163,6 +173,16 @@ writes a log line. `Grudges.Settle(state, holder, target, atMost)` sets the seve
   - seasons at 0-9 replay byte for byte, and so does every save: the migration writes a literal 9
     (`Runtime/Persistence/EpisodeSaveMigrations.cs:542`), and so does the web importer (`Runtime/Persistence/WebSaveImporter.cs:211`);
   - Roles (11) plays story rules 10 as well, as the ladder requires.
+- **No existing season is at 11 (checked 2026-11-07, at the owner's request).** A `>=` gate would change a saved season
+  at Roles, so this was counted, not assumed:
+  - no shipped path writes a version above `Current`: a new season takes `StoryRules.Current`, which is Threads
+    (`Simulation/Story/EpisodeEngine.Story.cs:75`), and so do the migration and the web importer (above);
+  - the 132 episode files on the owner's machine (66 saves and their backups; Play writes to the same folder) were read
+    without printing any name: every story rules value is 6 or 9, and none is 10 or 11;
+  - no repository fixture holds a season at 11.
+  So the only seasons at Roles are the ones tests build, and Roles is not enrolled. The Role walks that change at
+  define are re-pinned as tests, not as saves (§10). If a season at 11 ever turned up before Blame enrols, Blame's
+  gate would need to leave 11 out, and that would go to the owner first.
 - **Schema 30 only, automatically.** The live validator accepts only schema 30 (`Simulation/EpisodeValidation.cs:88`).
   The frozen schema-29 reader keeps refusing 10 with "Unsupported story rules version." No frozen reader is edited
   (ALL-STAR-HISTORIES-PLAN 8.2).
@@ -173,8 +193,26 @@ writes a log line. `Grudges.Settle(state, holder, target, atMost)` sets the seve
 
 ## 5. Measurement
 
+**The seeds** (the owner's decision of 2026-11-07, §11). A season's seed is its house and its seed index.
+- *Development seeds 0-99.* C0's full headline (all 12 policies, at 8 and at 12), the screen (C1, and C2 if called
+  for, on seeds 0-39) and the finalist (the adopted set on seeds 40-99). Everything that is tuned or chosen is chosen
+  here. The screen's decision rule below is a development rule.
+- *Acceptance seeds 100-199.* Frozen and held out: nothing is tuned on them, and nothing is read on them before the
+  screen has chosen. The unchanged control C0 and the adopted set both play them, all 12 policies, at 8 and at 12. The
+  comparison is paired by seed, policy and size: McNemar per size, pooled across the policies. They are read for one
+  set: `acceptance.sh` refuses a set the SCREEN line did not adopt, and a second set besides C0, unless its third
+  argument is `owner` (on the owner's word only; lab.log records it). The VERDICT then names any other set that has read
+  them, and says it needs the owner's word.
+- *The combined 0-199 summary* may be printed. It is labelled as combined and is never the verdict.
+- The studier and the war rooms keep their own tiers' seeds (the order of runs, below, and §6).
+
 **The scratch copy.** As B9 did: a copy of the branch on D: (`D:/ClaudeScratch/sr10/snap`), never committed, always
-run through `cpu-lock2.sh`.
+run through `cpu-lock2.sh`. It is made from a named head of this branch (`make_snap.sh <head>`; the define commit
+`36ca4055` when none is named), and every launcher takes the same head. The verification refuses a dirty tree or
+another head, so the plan's edits are committed first and the new head is named to every launcher. A head that differs
+from `36ca4055` only in `Assets/Plans/` keeps the define commit's digest literals and exact counts
+(`tools/lab-head.sh`'s `code_as_old`); its snapshot id is its own. The snapshot id is in every part's `.ok` marker, and
+the analysis reads only parts of the lab's current snapshot.
 - `Current = 10` there, so every lab season plays 10.
 - Knobs read once per process: `SR10_SELF` (a self-save writes nothing), `SR10_RV` (the value for a veto used on somebody
   else), `SR10_EVEN`, `SR10_SAVED` (C2), `SR10_VETO_SCOPE` (all or NPC holders), `SR10_HEAT` (C3). Their description is
@@ -184,53 +222,138 @@ run through `cpu-lock2.sh`.
 
 **The committed lab** (built in the define commit) can play any cell at a defined story rules version from Threads
 on, other than Current (`BALANCE_STORY`, a `/story10` suffix on the house label; after enrolment the same switch holds
-a cell at 9), and records DP, D1, D2, the holders' rows and the run week's veto. None of it enters a hashed row: `BudgetNoughtRows` (`5481eec784acd1ed`), `BudgetNoughtTuning1Rows`
-(`1ee55c2a92571363`) and the 48 goldens do not move.
+a cell at 9), and records DP, D1, D2, the holders' rows and the run week's veto. None of it enters a hashed row:
+`BudgetNoughtRows`, `BudgetNoughtTuning1Rows` and the 48 goldens do not move (`5481eec784acd1ed` and
+`1ee55c2a92571363` at `23b04e46`).
 
 **The sets, in screen order** (estimates unverified):
 
 | Set | Knobs | 8 (D0) | 12 (D0) | Role |
 |---|---|---|---|---|
-| C0, the control | rules 10, every knob at today's value | 16-18% | 45-48% | Must replay today's seasons exactly (the leak proofs). Records D0, DP, D1, D2, CF1 and CF2. Doubles as B9's tuning-1 headline. |
+| C0, the control | rules 10, every knob at today's value | 16-18% | 45-48% | Must replay B9's seasons exactly (the leak proofs). Records D0, DP, D1, D2, CF1 and CF2. On seeds 0-99 it may stand in for B9's headline (below); on seeds 100-199 it is the acceptance control. |
 | C1 | self-save writes nothing; 35 otherwise | 5-8% | 16-22% | The rule built here. |
-| C2 | C1 + Even 30 + Saved 10 | 4-7% | 12-18% | Only if CF1 or C1's screen is above 18% at 12. |
+| C2 | C1 + Even 30 + Saved 10 | 4-7% | 12-18% | Screened when rule 2 or rule 3 below calls for it. |
 | C1n | C1, NPC veto holders only | about C1 | about C1 | Only if B4 rises above 28%. |
 | C3 | C2 + ceremony grudges fade 6 more a week | 4-6% | 9-15% | Only with the owner's word, if C2 misses. |
 
-**The decision rule.**
-1. In the control pass, read CF1 and CF2 at 12.
-2. If CF1 is at most 16%, screen C1 only; otherwise screen C1 and C2.
+**The decision rule** (development seeds only; it picks the set that goes to acceptance and is never the verdict).
+1. In the control pass, read CF1 and CF2 at 12 (seeds 0-99).
+2. If CF1 is at most 16%, screen C1 first; otherwise screen C1 and C2.
 3. Adopt the smallest set whose paired screen at 12 is at most 18% (headline seeds 0-39, McNemar against C0), and whose
-   studier check moves B1-B4 by less than 2 points.
+   studier check moves B1-B4 by less than 2 points (competition seeds 0-199, on the seasons both played). If C1 misses
+   this, screen C2.
 4. If C2 is still above 20% at 12, stop: C3 or the measure goes to the owner.
 
-**The order of runs**, one background job at a time per slot:
-1. The build (82 s), then the two leak proofs at rules 10 with every knob at today's value: `BudgetNoughtTuning1Rows`
-   must give `1ee55c2a92571363`, and `BudgetNoughtRows` `5481eec784acd1ed` (about 5 minutes each).
-2. C0: the headline, seeds 0-99, in five parts of 20 on both slots (B9's `headline.sh` pattern), and the studier at a
-   fixed 0.5, competition tier, seeds 0-199.
-3. The screen: C1 (and C2 if called for) on headline seeds 0-39, with the studier check.
-4. The finalist on seeds 40-99, then the acceptance on seeds 100-199; the competition tier at 800 seeds (B1-B4) and the
-   war rooms at 480 (B5-B7); `StoryPacingTests.PacingReport` at 9 and 10.
+The screen reads only parts of the lab's snapshot: a set whose screen parts are of another snapshot counts as not
+screened, and C0's development parts of another snapshot leave the SCREEN line "not decided".
 
-About 10-14 hours of one core, about half on both slots. **Nothing starts while Codex holds the machine**, and the lab
-gives way to the UMA PlayMode run: B9's round 9 goes first, and a lab part never starts while a Unity test run holds the
-lane, because CPU jobs beside it stretch PlayMode frames.
+**B9's 100-seed headline** (B9's owner call 4). C0 on seeds 0-99 doubles as B9's 100-seed, all-policy headline only
+when all three hold:
+- this branch has merged B9's final head, and the lab plays a snapshot of that merge;
+- the leak proofs pass against the digests B9's own head prints. `runs/b9-head.sh <B9's head>` plays
+  `BudgetNoughtPlaysTheSeasonsItPlayedBeforeTheDriver` and `BudgetNoughtPlaysTheSeasonsB9Measured` on a snapshot of
+  B9's head and writes them to `runs/expected-digests.txt`. The digest tests must include one that plays the rules B9's
+  final head ships: if that head ships a change under a new rule version (the jury tiebreak, for one) with its own
+  digest test, that test joins the list. `b9-head.sh` refuses a B9 head that has a `BudgetNought*` test the list does
+  not run. The literals in this note are B9's at `23b04e46` and serve the define commit, and heads that differ from it
+  only in `Assets/Plans/`;
+- headline seeds 0-29 are also played on B9's head, in three parts of 10 (the merge needs parts from seed 0), and
+  compared with C0's rows, row for row (`runs/b9rows.py`; the row is what the digests hash). Seeds 20-29 are the new
+  evidence: `BudgetNoughtPlaysTheSeasonsB9Measured` already hashes the headline grid on seeds 0-19 at B9's shipped
+  tuning, so on 0-19 the rows add only the parts round trip.
 
-**Analysis.** `sr10.py`, on B9's `bands.py` (`load`, `wilson`, `mcnemar`, `side`). Each set against C0, paired by
-policy, size and seed, on: Q5 under D0, DP, D1 and D2, by house and by policy; the decomposition (the fresh-40 share,
-self-saves, causes); the pacing table; B1-B7, Q4, bitter jurors, NPC pacts and deals, the pile-on rate; and the share
-of paired seasons whose NPC outcomes changed.
+Otherwise C0 is a development control only, and B9's headline is run on B9's own branch.
+
+**The order of runs.** Every CPU part is its own step, under 30 minutes, through the gate (below).
+0. Commit the plan's edits first: the verification refuses a dirty tree. Then name the new head to every launcher, in
+   this order: `make_snap.sh <head>`; `verify/launch.sh <head>` (job sr10v); `lab-launch.sh <head>` (job sr10lab),
+   which waits for the verification's build. A head that differs from `36ca4055` only in `Assets/Plans/` needs nothing
+   more: its leak proofs want the define commit's literals and the verification its exact counts, 16630 and 9794.
+1. For a head whose code differs from the define commit's (B9's final head merged, for one), first on B9's head
+   (`b9-head.sh <B9's head>`): a snapshot, the check that the lab runs every `BudgetNought*` test it has, its build,
+   the two digest tests (one step each) and headline seeds 0-29 in three parts of 10 with its merge.
+2. The build (82 s), then the two leak proofs at rules 10 with every knob at today's value: each must pass and print
+   the digest B9's head printed (one step each).
+3. C0 on development seeds 0-99, in ten parts of 10 seeds, and the studier at a fixed 0.5, competition tier, seeds
+   0-199, on both slots (`lab-launch.sh <head>`); then the B9 row comparison.
+4. The screen: C1 (and C2 if called for, `screen-c2.sh`) on seeds 0-39 in four parts of 10, with the studier check.
+5. Acceptance, only when the lead launches it after the screen (`acceptance.sh <set> <head>`, for the set the SCREEN
+   line adopted): the finalist (the set on seeds 40-99); C0 and the set on the acceptance seeds 100-199, in parts of
+   10, side by side; the set's competition tier on seeds 0-799 in parts of 200 (B1-B4); its war rooms on seeds 0-479 in
+   parts of 40 (B5-B7). A new head or snapshot replays the development parts (`lab-launch.sh`) but never these: run
+   `acceptance.sh` again on it, or the VERDICT stays incomplete.
+6. `StoryPacingTests.PacingReport` at 9 and 10 is in no launcher: it cannot be cut into parts, and no timing of it
+   exists. It runs as its own step once one is measured under 30 minutes. Until then the pace is read from the
+   headline parts (§6).
+
+**Steps and timings.** The owner's machine rules: every CPU part is one step under 30 minutes, and every step enters
+the gate on its own. `yield-to-unity.sh` runs before each `cpu-lock2` slot (a Unity test run, Codex's request file,
+`claude-held`, a stale gate alive file, Codex engine work) and again inside the slot. Nothing chains past a Codex
+request. The stop file ends a job between steps. A part the same snapshot already played is skipped. Every launcher
+first waits for Codex's window (`after-codex.sh`). Part sizes come from slot timings measured on B9's runs, with a
+wide margin:
+
+| Step | Size | Measured in one slot | Estimate |
+|---|---|---|---|
+| Headline part | 10 seeds, 240 seasons | BudgetNought's 564 seasons in 8 min 46 s to 14 min 26 s (0.9-1.5 s a season) | 4-6 min |
+| Studier part | 200 seeds, at 8 and 12 | 800 seeds at 12 in 20.4 min, at 8 in 4.5 min | about 6 min |
+| War-room part | 40 seeds | 8.7 and 12.3 min | at most about 12 min |
+| Leak proof or digest test | one test | 8 min 46 s to 14 min 26 s | under 15 min |
+| Build | - | 82 s | - |
+| Verification: the dotnet subset | one run | 7 min 6 s to 10 min 46 s (B9 rounds 3-8) | 7-11 min |
+| Verification: the by-name fixtures | ten fixtures, no reports | B9's by-name run 32.5 s; a part of the subset | under 11 min |
+| Verification: the BudgetNought pins | one test each | 8 min 46 s to 14 min 26 s | 9-14.5 min |
+| Verification: Goldens0 | two tests | 7.9 min (round 8) | about 8 min |
+| Verification: Goldens300Size8First | one test | 3.5 min (round 8) | about 4 min |
+| Mono kit, no-UMA part | compile, harness build, listers | 3.6 min (round 8) | about 4 min |
+| Mono kit, fixtures part | nine fixtures | FrozenEpisodeV29Integration 23-32 s, PersistenceV30Migration 5-7 s, the two Role persistence fixtures 3-5 s each, StoryMechanics and DialogueCampaignRules 2 s each. RoleRules, RoleVetoBoard and RoleKeepTheBlock: no Mono timing; 0.2, 0.7 and 2.4 s of test time in round 8's dotnet subset | a few minutes |
+| Mono kit, UMA part | compile, listers, warnings, integrity | 4.1 min (round 8) | about 4 min |
+
+The headline parts were 20 seeds. At 10 the slowest measured rate stays five times under 30 minutes. B9's round-8 Mono
+kit ran as one step for 37.5 minutes, 29 of them `OldSaveAcceptanceTests`, which is not in this list. This kit runs as
+three steps (`mono-nouma`, `mono-fixtures`, `mono-uma`), each entering the gate on its own, so no step relies on the
+three unmeasured Role fixtures staying short. In all about 7.5 hours of one core (development about 2, B9's head about
+45 minutes, acceptance about 4.5), about half that on both slots. **Nothing starts while Codex holds the machine**,
+and the lab gives way to the UMA PlayMode run: B9's round 9 goes first, and a lab part never starts while a Unity test
+run holds the lane, because CPU jobs beside it stretch PlayMode frames.
+
+**Analysis.** `sr10.py`, on B9's `bands.py` (`load`, `wilson`, `mcnemar`, `side`). It prints three labelled blocks:
+the development seeds 0-99 (the screen's RULE lines and one SCREEN line), the acceptance seeds 100-199 (the pass and
+one VERDICT line), and the combined seeds 0-199 last. In each, every set against C0, paired by policy, size and seed:
+Q5 under D0, DP, D1 and D2, by house and by policy; the decomposition (the fresh-40 share, self-saves, causes); the
+pacing table; Q4, bitter jurors, NPC pacts and deals, the pile-on rate; and the share of paired seasons whose NPC
+outcomes changed. B1-B4 come from the studier parts. B5-B7 are a manual read of the war rooms' merged tables: the
+war-room parts are listed by name, never loaded, and no band is checked there. The VERDICT reads "incomplete" until C0
+and the set each have every acceptance season, played by the lab's current snapshot and one build, each with its own
+knob line (C0 exactly today's values). The VERDICT line names the snapshot and head. A missing control is never a pass.
+The report waits in the gate like any step (it reads about 10,000 seasons at acceptance), and `lab.done` quotes only a
+report the same run wrote. A merge's `.from` (whose rows they are) is written only when every part merged carries the
+snapshot's pass marker.
 
 ## 6. Acceptance
 
-- **Q5 (D0) at most 20% at 8 and at 12**, on headline seeds 0-199 (2,400 seasons a house), quoted with its Wilson
-  interval, and a significant McNemar against C0. DP, D1 and D2 printed beside it.
-- **B1-B7 still in their bands** (B9-BALANCE-PLAN, As built). B4 at most 28%, or the switch to C1n.
+- **The pass: Q5 (D0) at most 20% at 8, and separately at most 20% at 12**, pooled across the 12 policies, on the
+  acceptance seeds 100-199 only (1,200 seasons a house). Each is quoted with its Wilson 95% interval, and every
+  policy's own rate and interval is reported beside it. C0 plays the same seeds, policies and sizes, and the paired
+  McNemar per size, pooled across the policies, is reported with the verdict. It does not gate: the pass mark is the
+  rate. Without C0's acceptance seasons the verdict is incomplete, never a pass.
+- **Secondary, reported, not gating:** DP (while the player is in the house), D1 and D2, on the same seeds, with C0
+  beside them.
+- **Never the verdict:** the screen on seeds 0-39, the finalist on seeds 40-99 and the combined 0-199 summary.
+- **B1-B7 still in their bands** (B9-BALANCE-PLAN, As built). B1-B4: the adopted set's studier at a fixed 0.5 on
+  competition seeds 0-799, the seeds B9 read its bands on (seeds 0-199 were also the screen's side check). B5-B7: its
+  war rooms on seeds 0-479, read by hand from the merged tables (`runs/<set>/results/warrooms.md`); the report checks no
+  band there. B4 at most 28%, or the switch to C1n.
 - **The pace at 8 still in its bands:** budgeted asks 4-6, weeks with a card 30-60%, stories finished about 3, NPC
-  removals at most 10%, showmances 0.5-1.5, pile-ons at most 25%.
-- **Byte for byte:** the committed constants replay the scratch rows of the chosen set (headline seeds 0-19), and both
-  BudgetNought digests are unchanged by the define commit.
+  removals at most 10% (of seasons with a removal window), showmances 0.5-1.5, pile-ons at most 25%. Read on the
+  adopted set's headline seasons at 8 on the acceptance seeds 100-199, with C0's on the same seasons beside each. The
+  bands were set on `StoryPacingTests.PacingReport`'s population (StorySeason's default eight on both rosters, plus six
+  and twelve), not the headline's twelve policies, so a miss C0 shares is the population's, not Blame's.
+  `StoryPacingTests.PacingReport` at 9 and 10 (its own fixed 1,920 seasons) is the cross-check, once it can run as one
+  step under 30 minutes (§5).
+- **Byte for byte:** the committed constants replay the scratch rows of the chosen set on headline seeds 0-19 (the
+  development seeds), and both BudgetNought digests are unchanged by the define commit: the digests B9's own head
+  prints (`5481eec784acd1ed` and `1ee55c2a92571363` at `23b04e46`).
 - **The suites:** the dotnet subset against the floors in `Tools/baseline.txt`; the offline EditMode compile and the
   Mono kit for the Role, Frozen, Persistence and StoryMechanics fixtures; the UMA PlayMode set as the only Unity gate.
 
@@ -291,6 +414,20 @@ little more often a nomination pick (Q4 up a little), and NPC pacts are a little
 - **The self-save share is unmeasured** until the control pass records it.
 
 ## 11. For the owner
+
+**Answered on 2026-11-07.** The owner's words, condensed:
+- **The measure is D0**, the whole season. The pass mark stays at most 20%, separately at 8 and at 12, pooled across
+  the twelve policies. Each policy's figure and the confidence intervals are reported beside it. DP, while the player
+  is in the house, is a secondary measure.
+- **Before the acceptance runs, two fixes to the measurement:**
+  - seeds 100-199 are frozen as the held-out acceptance set, and the development seeds and the combined 0-199 summary
+    are kept clearly apart from it;
+  - the unchanged control is run on those same acceptance seeds, policies and house sizes, because the paired
+    comparison cannot use a control measured only on seeds 0-99.
+- **Check the saves at version 11:** done, §4. None exists.
+- These are design and acceptance decisions. B9's PR stays a draft, and no pass or merge is recorded.
+
+The questions as they were put:
 
 1. **The measure.** D0 (whole season) stays the target. DP (while you are in the house) is 3.6% and 12.0% today,
    already under 20%. Say if you would rather judge on DP.

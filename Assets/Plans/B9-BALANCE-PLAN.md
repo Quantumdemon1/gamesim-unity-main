@@ -1071,3 +1071,35 @@ nothing; the results are kept as evidence.
   opening a conversation; the panel's flush of free time committed an NPC tick (revision 0 to 1). Its three re-runs
   passed. Round 4 suspends NPC autonomy at the start of that test, as its neighbours do.
 - The subset was not run: the lead stopped the set before it, and round 4 changes the head.
+
+### B9's head `7ab18ab0`: the confirming kit and the Unity gate (2026-11-07 to 11-08)
+
+**The kit at `7ab18ab0`** (`D:/ClaudeScratch/b9/r4w`, 2026-11-07 23:23 to 00:26 Pacific; 27 steps, none over 30 minutes):
+- Both offline compiles clean, no new warnings on lines added since `1bea9cf5`.
+- The subset: 16,642 of 16,642 passed. Every count matched its floor: the EditMode lister 9,818, PlayMode 1,486 and
+  1,528, the UMA assembly 134. `Tools/baseline.txt` keeps its floors.
+- Every pin printed its committed value: budget nought held (`5481eec784acd1ed`) and at tuning 1
+  (`a89a8120050e9460`), the budget-0 goldens and all six budget-300 slices. Story rules 10's `b9-head.sh`, playing the
+  two budget-nought tests on its own snapshot of `7ab18ab0`, printed the same two digests.
+- Under the editor's Mono every touched fixture passed, and old-save acceptance 274 of 274 (68, 67 and 139). The 2.8
+  cell is unchanged at the head; the 2.9 studier cell is the one `7ab18ab0` recorded.
+- Three Unity-only cases were named, not run: `JuryTiebreakEditorTests`' two finale-panel cases and
+  `CeremonyTruthTests.TheJuryLineCountsTheRealJuryAndNamesWhoATieGoesTo`. They ran in Unity below.
+
+**The Unity gate**, through the new runner (`D:/ClaudeLane/q4`), from the frozen detached checkout `D:/GamesimB9Qual`
+at `7ab18ab0`, every Unity session under the owner's 45-minute limit (2,700 s from its birth, no grace):
+- The runner's smoke (q4smoke1, 2026-11-08 00:39): `Gamesim.Uma.PlayModeTests` 134 of 134 in one batch, Unity 319 s.
+- Set b9q1, 2026-11-08 00:50 to 07:01 Pacific:
+  - EditMode on the UMA copy: 9,818 of 9,818 passed in 7 batches (Unity 842 to 1,600 s each). The three Unity-only
+    cases are among them.
+  - The UMA build's PlayMode: 1,528 of 1,528 passed in 9 batches (Unity 202 to 1,388 s each). Round 9's one failure,
+    `FreeTime_AskingForInformationOpensTheConversationOnWhatYouCameToAsk`, passed on its first run.
+  - No re-runs and no overrun. Each set's union: complete (every planned case ran once), disjoint (no case in two
+    batches), every case placed; VERDICT PASS.
+  - Memory: Unity at most 8.2 GB, the system's commit at most 54.3 of 75.9 GB; C: 7.1 GB free throughout.
+
+So B9's head has passed its Unity coverage inside the owner's limit; this closes the qualification gate round 9 could
+not. **Still before the merge (the owner's calls):** call 4's 100-seed all-policy headline. Story rules 10's control
+(C0, seeds 0-99) is to supply it if it reproduces B9's own rows on seeds 0-29; it is queued at story rules 10's head
+`1685df59`, which fixes a compile error the verification found in that branch's own test fixture (B9's code is
+unchanged). PR #46 stays a draft.

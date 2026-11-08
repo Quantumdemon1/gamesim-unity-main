@@ -200,8 +200,10 @@ namespace Gamesim.OldSaves
 
         /// <summary>
         /// For the studier walker (B9's tuning levers, OLD-SAVE-ACCEPTANCE 2.9): what preparation did in the recorded walk
-        /// after the load - the studies, the points used in a competition, the points learned from watching a Head of
-        /// Household, and the final week's study that filled it to two - so a seed can be chosen by it.
+        /// after the load - the studies, the points used in a competition, and what the player held as the final Head of
+        /// Household began (the final week's study, which all three parts count) - so a seed can be chosen by it. Tuning 1
+        /// first had a small house's boost (a point learned from watching a Head of Household, the final week's study to
+        /// two); the owner's measurement dropped it before it shipped, and with it the two tallies that counted it.
         /// <para>Tallied command by command, from the lines each accepted command logged (sequence at or past the state's
         /// <c>nextSequence</c> before it). Not the final log against the loaded one: the engine keeps only the last 256
         /// lines, so by the finale the weeks just after the load are gone from it (the review of 2026-11-07). Read through the
@@ -214,7 +216,10 @@ namespace Gamesim.OldSaves
             /// <summary>The studies accepted after the load.</summary>
             public int Studies { get; private set; }
 
-            private int used, watched, filledToTwo;
+            private int used;
+
+            /// <summary>The preparation the player held, in the house, at the first state of the final Head of Household's first part; -1 if the walk never reached it so.</summary>
+            private int atFinalHoH = -1;
 
             public LeverTally(EpisodeState loaded) { next = NextSequence(OldSaveTrace.Fields(loaded)); }
 
@@ -232,10 +237,13 @@ namespace Gamesim.OldSaves
                         string line = (string)text;
                         if (line.StartsWith("You studied the house", StringComparison.Ordinal)) Studies++;
                         if (line.StartsWith("Your preparation was used in the competition.", StringComparison.Ordinal)) used++;
-                        if (line.StartsWith("You watched the Head of Household competition", StringComparison.Ordinal)) watched++;
-                        if (line.EndsWith("Preparation: 2/2. One social action spent.", StringComparison.Ordinal)) filledToTwo++;
                     }
                 next = Math.Max(next, NextSequence(fields));
+                // By name and through the saved fields, as above, so it compiles at builds without the final Head of
+                // Household's parts or the study; such a build never reaches it.
+                if (atFinalHoH < 0 && after.phase.ToString() == "FinalHoHPart1"
+                    && after.contestants != null && after.contestants.Any(c => c != null && c.id == after.playerId && c.status.ToString() == "Active"))
+                    atFinalHoH = fields["playerStudyBonus"] != null && fields["playerStudyBonus"].Type == JTokenType.Integer ? (int)fields["playerStudyBonus"] : 0;
             }
 
             /// <summary>The <c>levers:</c> line: the tuning and the preparation at the load, the tallies after it, and how the player finished.</summary>
@@ -244,7 +252,8 @@ namespace Gamesim.OldSaves
                 string Value(JToken token) => token == null ? "none" : token.ToString();
                 var at = OldSaveTrace.Fields(loaded);
                 return "levers: tuning " + Value(at["tuningRulesVersion"]) + ", banked at the load " + Value(at["playerStudyBonus"])
-                    + "; after the load: studies " + Studies + ", used " + used + ", watched " + watched + ", filled to two " + filledToTwo
+                    + "; after the load: studies " + Studies + ", used " + used
+                    + (atFinalHoH < 0 ? ", the final HoH not reached in the house" : ", the final HoH reached with " + atFinalHoH + " banked")
                     + "; the player " + (final.winnerId == final.playerId ? "won" : final.runnerUpId == final.playerId ? "was runner-up" : "did not reach the final two");
             }
 

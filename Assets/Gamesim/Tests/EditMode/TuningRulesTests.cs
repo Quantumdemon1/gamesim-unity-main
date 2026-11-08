@@ -31,28 +31,24 @@ namespace Gamesim.Tests.EditMode
         }
 
         [Test]
-        public void ThePreparationLimitsAreFiveBeforeB9AndOneOrTwoUnderIt()
+        public void ThePreparationLimitsAreFiveBeforeB9AndOneUnderItInEveryHouseAndWeek()
         {
+            // Tuning 1 dropped the small house's boost before it shipped (the owner's call 1 and round 4's lab): a house of
+            // eight or fewer holds one point, in its final week too, as a house of twelve does.
             foreach (int size in new[] { 6, 8, 9, 12 })
             {
                 var s = Built(size, 3u, TuningRules.Off);
-                Assert.That((TuningRules.StudyLimit(s), TuningRules.PreparationBound(s)), Is.EqualTo((5, 5)), "Tuning 0 at " + size);
+                Assert.That((TuningRules.StudyLimit(s), TuningRules.PreparationBound(s), TuningRules.PreparationOutOf(s)), Is.EqualTo((5, 5, 5)), "Tuning 0 at " + size);
                 s.tuningRulesVersion = TuningRules.Bands;
-                bool small = size <= TuningRules.SmallHouse;
-                Assert.That(TuningRules.InSmallHouse(s), Is.EqualTo(small));
-                Assert.That((TuningRules.StudyLimit(s), TuningRules.PreparationBound(s)), Is.EqualTo((1, small ? 2 : 1)), "Tuning 1 at " + size);
+                Assert.That((TuningRules.StudyLimit(s), TuningRules.PreparationBound(s), TuningRules.PreparationOutOf(s)), Is.EqualTo((1, 1, 1)), "Tuning 1 at " + size);
                 // The final week: three remain.
                 foreach (var gone in s.contestants.Where(c => !c.isPlayer).Skip(2)) gone.status = ContestantStatus.Evicted;
-                Assert.That(s.Active.Count(), Is.EqualTo(3));
-                Assert.That(TuningRules.StudyLimit(s), Is.EqualTo(small ? 2 : 1), "The final week's study fills to two only in a small house, at " + size);
+                Assert.That((s.Active.Count(), TuningRules.FinalWeek(s)), Is.EqualTo((3, true)));
+                Assert.That((TuningRules.StudyLimit(s), TuningRules.PreparationBound(s), TuningRules.PreparationOutOf(s)), Is.EqualTo((1, 1, 1)),
+                    "The final week's study fills to one, at " + size);
                 s.tuningRulesVersion = TuningRules.Off;
-                Assert.That(TuningRules.StudyLimit(s), Is.EqualTo(5));
+                Assert.That((TuningRules.StudyLimit(s), TuningRules.PreparationBound(s), TuningRules.PreparationOutOf(s)), Is.EqualTo((5, 5, 5)));
             }
-            var watched = Built(8, 3u, TuningRules.Bands);
-            watched.playerStudyBonus = 2;
-            Assert.That(TuningRules.PreparationOutOf(watched), Is.EqualTo(2), "The copy counts out of the limit, or the preparation where watching took it past.");
-            watched.tuningRulesVersion = TuningRules.Off;
-            Assert.That(TuningRules.PreparationOutOf(watched), Is.EqualTo(5));
         }
 
         // ---------------------------------------------------------------- the study
@@ -115,7 +111,7 @@ namespace Gamesim.Tests.EditMode
             Assert.That(WebStudyHouse.ApplyBonus(4, 2), Is.EqualTo(5));
         }
 
-        // ---------------------------------------------------------------- the spend and the watch
+        // ---------------------------------------------------------------- the spend, and a Head of Household sat out
 
         [Test]
         public void AWeeklyCompetitionThePlayerEntersSpendsPreparationUnderTuningOneOnly()
@@ -147,8 +143,10 @@ namespace Gamesim.Tests.EditMode
         }
 
         [Test]
-        public void AStudiedPlayerWhoSitsAHeadOfHouseholdOutLearnsFromWatchingItInASmallHouseOnly()
+        public void AHeadOfHouseholdThePlayerSitsOutLeavesTheirPreparationAsItWasInEveryHouse()
         {
+            // B9 first built a small house's watch here (one more, up to two, at eight); tuning 1 dropped it before it
+            // shipped. Sitting a Head of Household out neither spends the point nor adds one, at either tuning and size.
             foreach (int size in new[] { 8, 12 })
             {
                 uint seed = OutgoingHohSeed(size);
@@ -161,17 +159,16 @@ namespace Gamesim.Tests.EditMode
                         Assert.That(engine.Snapshot.hohId, Is.EqualTo(engine.Snapshot.playerId), "Precondition: the player is the outgoing Head of Household.");
                         Assert.That(engine.Snapshot.playerStudyBonus, Is.Zero, "Nothing spent that was not studied.");
                         if (studies) Accept(engine, Command(engine.Snapshot, EpisodeCommandKind.StudyHouse, "memorize-layout"));
+                        long since = engine.Snapshot.nextSequence;
                         WalkWhile(engine, s => s.phase != EpisodePhase.HoH);
                         WalkWhile(engine, s => s.phase == EpisodePhase.HoH);
                         var after = engine.Snapshot;
                         var row = after.ledger.competitions.Last(r => r.kind == "HoH");
                         Assert.That(row.week, Is.EqualTo(after.week));
                         Assert.That((row.entry, row.placement), Is.EqualTo((CompetitionEntry.Watched, 0)), "Precondition: they sat it out.");
-                        int expected = !studies ? 0 : tuning == TuningRules.Bands && size <= TuningRules.SmallHouse ? 2 : 1;
-                        Assert.That(after.playerStudyBonus, Is.EqualTo(expected), "size " + size + ", tuning " + tuning + ", studied " + studies);
-                        bool logged = after.events.Any(e => e.kind == "study-house" && e.text.StartsWith("You watched the Head of Household", StringComparison.Ordinal));
-                        Assert.That(logged, Is.EqualTo(expected == 2));
-                        if (logged) Assert.That(after.events.Last(e => e.kind == "study-house").text, Does.EndWith("Preparation: 2/2."));
+                        Assert.That(after.playerStudyBonus, Is.EqualTo(studies ? 1 : 0), "size " + size + ", tuning " + tuning + ", studied " + studies);
+                        Assert.That(after.events.Where(e => e.sequence >= since && e.kind == "study-house").Select(e => e.text), Is.Empty,
+                            "Nothing used and nothing learned is logged: size " + size + ", tuning " + tuning + ", studied " + studies);
                         Assert.That(EpisodeValidation.TryValidate(after, out string error), Is.True, error);
                     }
             }
@@ -231,8 +228,8 @@ namespace Gamesim.Tests.EditMode
                 foreach (int tuning in new[] { TuningRules.Off, TuningRules.Bands })
                 {
                     var engine = FinalWeek(size, tuning);
-                    bool small = size <= TuningRules.SmallHouse, tuned = tuning == TuningRules.Bands;
-                    int limit = !tuned ? TuningRules.UnspentLimit : small ? TuningRules.SmallHouseCap : TuningRules.StudyCap;
+                    bool tuned = tuning == TuningRules.Bands;
+                    int limit = tuned ? TuningRules.StudyCap : TuningRules.UnspentLimit;
                     Assert.That(TuningRules.StudyLimit(engine.Snapshot), Is.EqualTo(limit));
                     // Three memorizes: tuning 0 banks three of five; tuning 1 fills to the limit and refuses the rest.
                     int banked = 0;
@@ -272,8 +269,9 @@ namespace Gamesim.Tests.EditMode
         public void AJurorWithPreparationLearnsNothingFromWatchingAHeadOfHousehold()
         {
             // Out of the house with one banked (a throw keeps it, and a replacement nominee plays no veto), in a house of
-            // eight at tuning 1: the ledger writes the next Head of Household "watched" for the player, but nobody learns
-            // from it out of the house.
+            // eight at tuning 1: the ledger writes the next Head of Household "watched" for the player, and the point stays
+            // where it was. (B9's first build taught a studied player in a small house from watching; this case kept a juror
+            // out of it, and still holds now that tuning 1 has no watch.)
             var engine = new EpisodeEngine(OutOfTheHouse(8, TuningRules.Bands));
             var start = engine.Snapshot;
             Assert.That(start.playerStudyBonus, Is.EqualTo(1));
@@ -295,10 +293,13 @@ namespace Gamesim.Tests.EditMode
         public void ValidationHoldsPreparationToTheTuningsBoundAndAdmitsNoTuningPastOne()
         {
             var small = Built(8, 5u, TuningRules.Bands);
-            small.playerStudyBonus = 2;
+            small.playerStudyBonus = 1;
             Valid(small);
-            small.playerStudyBonus = 3;
-            Refused(small, "Study preparation must be between zero and two.");
+            small.playerStudyBonus = 2;
+            Refused(small, "Study preparation must be between zero and one.");
+            foreach (var gone in small.contestants.Where(c => !c.isPlayer).Skip(2)) gone.status = ContestantStatus.Evicted;
+            Assert.That(TuningRules.FinalWeek(small), Is.True, "Precondition: the final week of a house of eight.");
+            Refused(small, "Study preparation must be between zero and one.");
             var big = Built(12, 5u, TuningRules.Bands);
             big.playerStudyBonus = 1;
             Valid(big);

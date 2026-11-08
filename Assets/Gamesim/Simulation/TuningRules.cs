@@ -17,17 +17,22 @@ namespace Gamesim.Simulation
         public const int Off = 0;
 
         /// <summary>
-        /// B9, the balance bands (the owner, 2026-11-03: "Set the B9 balance bands"). Four levers, and the jury's tiebreak
+        /// B9, the balance bands (the owner, 2026-11-03: "Set the B9 balance bands"). Three levers, and the jury's tiebreak
         /// (the owner's call 3 of 2026-11-07, <see cref="JuryTieWinner"/>), part of tuning 1 before it ever shipped:
         /// <list type="bullet">
-        /// <item>preparation is spent when it is used, and a study fills it to one (<see cref="StudyLimit"/>, <see cref="AfterUse"/>);</item>
-        /// <item>in a house that moved in eight or fewer, a player who has studied and sits a Head of Household out learns
-        /// from watching it (<see cref="AfterWatchedHoH"/>), and the final week's study fills it to two;</item>
+        /// <item>preparation is spent when it is used, and a study fills it to one, in every house and every week
+        /// (<see cref="StudyLimit"/>, <see cref="AfterUse"/>);</item>
         /// <item>Game Sense weighs strategy more: 0.2 / 0.6 / 0.2 (<see cref="SenseWeights"/>);</item>
         /// <item>a war room's counter counts no nominee's say, and a tie carries it only if a member came round
         /// (<see cref="NomineesHaveNoSay"/>, <see cref="TieNeedsAMemberRound"/>);</item>
         /// <item>a tied jury is settled by the season's keyed coin, not by cast order (<see cref="KeyedJuryTiebreak"/>).</item>
         /// </list>
+        /// <para>B9 first built a fourth: in a house that moved in eight or fewer, a studied player who sat a Head of
+        /// Household out learned from watching it, and the final week's study filled preparation to two. The owner's call 1
+        /// of 2026-11-07 held it until the jury tie was fixed. Measured again with the tiebreak (round 4's lab, 800 seasons),
+        /// the studier at eight met both bands without it (weekly wins 62.4%, season wins 32.9%) and went over the season
+        /// band with it (38.5%, against 25 to 35%), so tuning 1 dropped it before it ever shipped. Preparation is one point
+        /// everywhere.</para>
         /// </summary>
         public const int Bands = 1;
 
@@ -44,14 +49,8 @@ namespace Gamesim.Simulation
         /// <summary>Tuning 0's preparation: a study fills it to five, and it is never spent.</summary>
         public const int UnspentLimit = 5;
 
-        /// <summary>Tuning 1: a study fills preparation to one.</summary>
+        /// <summary>Tuning 1: a study fills preparation to one, in every house and every week.</summary>
         public const int StudyCap = 1;
-
-        /// <summary>Tuning 1, in a house of <see cref="SmallHouse"/> or fewer: the final week's study fills it to two, and so can watching a Head of Household.</summary>
-        public const int SmallHouseCap = 2;
-
-        /// <summary>Tuning 1's small house: a cast that moved in eight or fewer.</summary>
-        public const int SmallHouse = 8;
 
         /// <summary>Tuning 1's Game Sense weights: strategy is the game, the other two a fifth each.</summary>
         public const double CompetitionWeight = 0.2, StrategyWeight = 0.6, SocialWeight = 0.2;
@@ -62,18 +61,14 @@ namespace Gamesim.Simulation
         /// <summary>Whether a season plays a behaviour introduced at <paramref name="version"/>: a bound, never a gate on one number.</summary>
         public static bool At(EpisodeState s, int version) => s != null && s.tuningRulesVersion >= version;
 
-        /// <summary>Tuning 1's small house: the cast that moved in, eight or fewer.</summary>
-        public static bool InSmallHouse(EpisodeState s) => s?.contestants == null || s.contestants.Count <= SmallHouse;
-
         /// <summary>The final week: three remain, and the final Head of Household is the only competition left.</summary>
         public static bool FinalWeek(EpisodeState s) => s?.contestants != null && s.Active.Count() == 3;
 
         /// <summary>
-        /// What a study fills preparation to: five at tuning 0; at tuning 1, one, or two in the final week of a small house.
-        /// Under tuning 1 a study at or past it is refused before it spends anything.
+        /// What a study fills preparation to: five at tuning 0, one at tuning 1. Under tuning 1 a study at or past it is
+        /// refused before it spends anything.
         /// </summary>
-        public static int StudyLimit(EpisodeState s) =>
-            !At(s, Bands) ? UnspentLimit : InSmallHouse(s) && FinalWeek(s) ? SmallHouseCap : StudyCap;
+        public static int StudyLimit(EpisodeState s) => !At(s, Bands) ? UnspentLimit : StudyCap;
 
         /// <summary>
         /// Tuning 1's refusal of a study at the limit, by what the preparation waits for: the next weekly Head of Household
@@ -83,24 +78,14 @@ namespace Gamesim.Simulation
             ? "Your preparation is full. All three parts of the final Head of Household count it."
             : "Your preparation is full. It is used in the next Head of Household or veto competition you enter.";
 
-        /// <summary>The most preparation a season may hold (validation): five at tuning 0; at tuning 1, two in a small house, else one.</summary>
-        public static int PreparationBound(EpisodeState s) =>
-            !At(s, Bands) ? UnspentLimit : InSmallHouse(s) ? SmallHouseCap : StudyCap;
+        /// <summary>The most preparation a season may hold (validation): the study's limit, five at tuning 0 and one at tuning 1, since nothing else adds to it.</summary>
+        public static int PreparationBound(EpisodeState s) => StudyLimit(s);
 
-        /// <summary>What the copy counts preparation out of: five at tuning 0; at tuning 1 the study's limit, or the preparation itself when watching took it past.</summary>
-        public static int PreparationOutOf(EpisodeState s) =>
-            !At(s, Bands) ? UnspentLimit : Math.Max(StudyLimit(s), s.playerStudyBonus);
+        /// <summary>What the copy counts preparation out of: the study's limit, five at tuning 0 and one at tuning 1.</summary>
+        public static int PreparationOutOf(EpisodeState s) => StudyLimit(s);
 
         /// <summary>What is left of preparation after a weekly Head of Household or veto the player entered: all of it at tuning 0, none at tuning 1.</summary>
         public static int AfterUse(EpisodeState s, int preparation) => At(s, Bands) ? 0 : preparation;
-
-        /// <summary>
-        /// What is left after a weekly Head of Household the player sat out: at tuning 1 in a small house, a player who has
-        /// studied watched it and learned, one more up to <see cref="SmallHouseCap"/>; otherwise unchanged. A player who
-        /// never studies never moves. The engine asks only while the player is in the house: a juror watches nothing.
-        /// </summary>
-        public static int AfterWatchedHoH(EpisodeState s, int preparation) =>
-            At(s, Bands) && InSmallHouse(s) && preparation > 0 ? Math.Min(SmallHouseCap, preparation + 1) : preparation;
 
         /// <summary>Game Sense's weights: 0.3 / 0.4 / 0.3 at tuning 0 (<see cref="GameSense"/>'s constants), 0.2 / 0.6 / 0.2 at tuning 1.</summary>
         public static (double competitions, double strategy, double social) SenseWeights(EpisodeState s) => At(s, Bands)

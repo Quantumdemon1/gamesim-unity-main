@@ -56,14 +56,11 @@ namespace Gamesim.Presentation
         /// <summary>
         /// The record's rules line on study preparation, behind the disclosure: before B9's tuning exactly as it always read
         /// (between 0 and 5, changed only by a study); under it (<see cref="TuningRules.Bands"/>) the season's own study
-        /// limit, and what else moves it - a weekly competition uses it up and, in a house of eight or fewer, a Head of
-        /// Household sat out with some banked adds one.
+        /// limit, one, beside what uses it up.
         /// </summary>
         public static string RulesLine(EpisodeState state) => !TuningRules.At(state, TuningRules.Bands)
             ? "Study preparation: saved between weeks; " + Use(state) + ". It stays between 0 and 5 and changes only when you confirm a study approach."
-            : "Study preparation: saved between weeks; " + Use(state) + ". A confirmed study raises it, up to "
-                + TuningRules.StudyLimit(state) + (TuningRules.InSmallHouse(state)
-                    ? "; watching a Head of Household you sit out, with some banked, adds one, up to " + TuningRules.SmallHouseCap : "") + ".";
+            : "Study preparation: saved between weeks; " + Use(state) + ". A confirmed study raises it, up to " + TuningRules.StudyLimit(state) + ".";
 
         /// <summary>No competition is left that would count preparation: the player is out of the house, or the final Head of Household is over.</summary>
         private static bool NoneLeft(EpisodeState s)

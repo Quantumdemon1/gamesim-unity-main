@@ -175,11 +175,10 @@ namespace Gamesim.Simulation
                 return Fail(out error, "Commitment-rules activation week must be within the saved season boundary.");
             if (s.socialBudgetRulesStartWeek < 1 || s.socialBudgetRulesStartWeek > 101 || s.socialBudgetRulesStartWeek > s.week + 1)
                 return Fail(out error, "Social-budget activation week must be within the saved season boundary.");
-            // B9's tuning holds preparation to its own bound (TuningRules.PreparationBound): two in a house of eight or
-            // fewer, else one. Every season before it, five.
+            // B9's tuning holds preparation to its own bound (TuningRules.PreparationBound): one in every house. Every
+            // season before it, five.
             if (s.playerStudyBonus < 0 || s.playerStudyBonus > TuningRules.PreparationBound(s))
                 return Fail(out error, !TuningRules.At(s, TuningRules.Bands) ? "Study preparation must be between zero and five."
-                    : TuningRules.PreparationBound(s) == TuningRules.SmallHouseCap ? "Study preparation must be between zero and two."
                     : "Study preparation must be between zero and one.");
             if (s.contestants == null || s.contestants.Count < MinimumCast || s.contestants.Count > MaximumCast || s.contestants.Any(c => c == null))
                 return Fail(out error, "A house holds between " + MinimumCast + " and " + MaximumCast + " contestants.");

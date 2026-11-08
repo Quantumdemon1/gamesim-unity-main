@@ -17,10 +17,10 @@ namespace Gamesim.Tests.EditMode
     /// B9's tuning rules across a save and a load (B9-BALANCE-PLAN, the owner's call 5 of 2026-11-07): each lever of tuning 1
     /// played through a save and a load and compared, command for command, with the same season played straight through.
     /// Preparation banked in a house of eight and spent at the next Head of Household after the load; a throw keeping it
-    /// across a load and the veto after a second load spending it; the study's limit after a load, 1, and 2 in a small
-    /// house's final week; the small house's watch; the final Head of Household's three parts counting it across loads; a
-    /// war room's counter settled after a load under K5 and K1; and the Game Sense score read after a load. In Unity alone,
-    /// the real store holds preparation to its bound by house size, on save and on load.
+    /// across a load and the veto after a second load spending it; the study's limit after a load, 1, in the final week
+    /// too; a Head of Household sat out after a load leaving it as it was; the final Head of Household's three parts
+    /// counting it across loads; a war room's counter settled after a load under K5 and K1; and the Game Sense score read
+    /// after a load. In Unity alone, the real store holds preparation to its bound, one in every house, on save and on load.
     ///
     /// <para><b>The save and the load</b> (<see cref="Carry"/>). In Unity they are the real store's (<c>EpisodeSaveStore</c>)
     /// at the live schema, 30, in a temporary slot of each test's own: the file must hold the season's own tuning and
@@ -31,19 +31,18 @@ namespace Gamesim.Tests.EditMode
     /// <para><b>What catches a lever dropped on load.</b> Were the store to load a season at tuning 0, or without its banked
     /// preparation, the carry's own comparison fails at once, and so does each test's lever: the point would not be spent
     /// (the Head of Household's case) or not be in the score, the throw's case and the final week's would lose the point,
-    /// a study at the limit would be accepted, the watch would not add one, the war room's tally would count the nominee's
-    /// say or carry an unbroken tie (the K5 and K1-none cases), and Game Sense would weigh 0.3 / 0.4 / 0.3.</para>
+    /// a study at the limit would be accepted, the war room's tally would count the nominee's say or carry an unbroken tie
+    /// (the K5 and K1-none cases), and Game Sense would weigh 0.3 / 0.4 / 0.3.</para>
     ///
     /// <para>The seasons are the season builder's, put on tuning 1 by hand as <see cref="TuningRulesTests"/> does, and the
     /// war rooms <see cref="PactPlanTests.WarRoom"/>'s; every walk is <see cref="EpisodeEngineTests.NextCommand"/>. The
-    /// expected numbers are tuning 1's as built: a study fills to 1, a small house's final week to 2, and the watch adds one
-    /// up to 2. If the owner's measurement drops the small house's boost from tuning 1, the watch's case at 8 and the final
-    /// week's at 8 move with it.</para>
+    /// expected numbers are tuning 1's as built: a study fills to 1 in every house and week. Round 4 first wrote them with
+    /// the small house's boost (the final week's study to 2 and a watch adding one, at eight); the owner's measurement
+    /// dropped it from tuning 1 before it shipped, and the cases at eight moved with it.</para>
     /// </summary>
     public sealed class TuningSaveReloadTests
     {
         private const string UsedLine = "Your preparation was used in the competition. Preparation: 0/1.";
-        private const string WatchedLine = "You watched the Head of Household competition and learned from it. Preparation: 2/2.";
 
         // ---------------------------------------------------------------- preparation: banked, saved, loaded, spent
 
@@ -158,55 +157,57 @@ namespace Gamesim.Tests.EditMode
 
 #if UNITY_5_3_OR_NEWER
         /// <summary>
-        /// The limits through the real store (Unity only: the subset has no store). Validation holds preparation to two in a
-        /// house that moved in eight and to one in a house of twelve, in any week. A tuning-1 season of twelve holding two is
-        /// refused on save, with nothing written, and on load from a file sealed by hand with a valid checksum, in
-        /// validation's words; the same file at one loads. A season of eight holding two outside its final week, where only
-        /// watching a Head of Household can put it, loads from the same kind of file, and saves and loads again.
+        /// The limits through the real store (Unity only: the subset has no store). Validation holds a tuning-1 season's
+        /// preparation to one in every house and week. A season of twelve, one of eight, and one of eight in its final week,
+        /// holding two, are each refused on save, with nothing written, and on load from a file sealed by hand with a valid
+        /// checksum, in validation's words. A season of twelve and one of eight at one load from the same kind of file, and
+        /// save and load again. (Two in a house of eight loaded while tuning 1 had the small house's boost; the owner's
+        /// measurement dropped it before it shipped.)
         /// </summary>
         [Test]
-        public void TheStoreHoldsPreparationToItsBoundByHouseSizeOnSaveAndOnLoad()
+        public void TheStoreHoldsPreparationToOneInEveryHouseOnSaveAndOnLoad()
         {
-            const string TwelveBound = "Study preparation must be between zero and one.";
-            var twelve = Built(12, 5u);
-            twelve.playerStudyBonus = 2;
-            var refused = Assert.Throws<InvalidDataException>(() => store.Save(twelve));
-            Assert.That(refused.Message, Is.EqualTo(TwelveBound));
-            Assert.That(File.Exists(store.SavePath), Is.False, "Nothing is written.");
-            File.WriteAllText(store.SavePath, PersistenceMigrationTests.Envelope(Payload(twelve)));
-            Assert.That(store.TryLoad(out var loaded, out string message), Is.False, "Two in a house of twelve is refused on load.");
-            Assert.That(loaded, Is.Null);
-            Assert.That(message, Does.Contain(TwelveBound));
-            Assert.That(message, Does.Not.Contain("checksum"), "Refused for the bound, not the seal.");
-
-            var atOne = Built(12, 5u);
-            atOne.playerStudyBonus = 1;
-            var one = new EpisodeSaveStore(Path.Combine(directory, "twelve-at-one.json"));
-            File.WriteAllText(one.SavePath, PersistenceMigrationTests.Envelope(Payload(atOne)));
-            Assert.That(one.TryLoad(out loaded, out message), Is.True, message);
-            Assert.That((loaded.tuningRulesVersion, loaded.playerStudyBonus), Is.EqualTo((TuningRules.Bands, 1)), "The same route at the bound loads.");
-
-            var eight = Built(8, 5u);
-            eight.playerStudyBonus = 2;
-            Assert.That((TuningRules.InSmallHouse(eight), TuningRules.FinalWeek(eight), TuningRules.StudyLimit(eight)), Is.EqualTo((true, false, 1)),
-                "Precondition: a house of eight outside its final week, where a study stops at one.");
-            var small = new EpisodeSaveStore(Path.Combine(directory, "eight.json"));
-            File.WriteAllText(small.SavePath, PersistenceMigrationTests.Envelope(Payload(eight)));
-            Assert.That(small.TryLoad(out loaded, out message), Is.True, message);
-            Assert.That((loaded.tuningRulesVersion, loaded.playerStudyBonus), Is.EqualTo((TuningRules.Bands, 2)), "Two in a house of eight loads.");
-            small.Save(loaded);
-            Assert.That(small.TryLoad(out loaded, out message), Is.True, message);
-            Assert.That(loaded.playerStudyBonus, Is.EqualTo(2), "Saved and loaded again by the store itself.");
+            const string Bound = "Study preparation must be between zero and one.";
+            var lastWeek = Built(8, 5u);
+            foreach (var gone in lastWeek.contestants.Where(c => !c.isPlayer).Skip(2)) gone.status = ContestantStatus.Evicted;
+            Assert.That((TuningRules.FinalWeek(lastWeek), TuningRules.StudyLimit(lastWeek)), Is.EqualTo((true, 1)),
+                "Precondition: a house of eight in its final week, where a study stops at one too.");
+            foreach (var (name, season) in new[] { ("twelve", Built(12, 5u)), ("eight", Built(8, 5u)), ("eight-final-week", lastWeek) })
+            {
+                season.playerStudyBonus = 2;
+                var held = new EpisodeSaveStore(Path.Combine(directory, name + "-at-two.json"));
+                var refused = Assert.Throws<InvalidDataException>(() => held.Save(season), name);
+                Assert.That(refused.Message, Is.EqualTo(Bound), name);
+                Assert.That(File.Exists(held.SavePath), Is.False, "Nothing is written: " + name);
+                File.WriteAllText(held.SavePath, PersistenceMigrationTests.Envelope(Payload(season)));
+                Assert.That(held.TryLoad(out var none, out string why), Is.False, "Two is refused on load: " + name);
+                Assert.That(none, Is.Null, name);
+                Assert.That(why, Does.Contain(Bound), name);
+                Assert.That(why, Does.Not.Contain("checksum"), "Refused for the bound, not the seal: " + name);
+            }
+            foreach (int size in new[] { 12, 8 })
+            {
+                string name = size == 12 ? "twelve" : "eight";
+                var season = Built(size, 5u);
+                season.playerStudyBonus = 1;
+                var one = new EpisodeSaveStore(Path.Combine(directory, name + "-at-one.json"));
+                File.WriteAllText(one.SavePath, PersistenceMigrationTests.Envelope(Payload(season)));
+                Assert.That(one.TryLoad(out var loaded, out string message), Is.True, message);
+                Assert.That((loaded.tuningRulesVersion, loaded.playerStudyBonus), Is.EqualTo((TuningRules.Bands, 1)), "The same route at the bound loads: " + name);
+                one.Save(loaded);
+                Assert.That(one.TryLoad(out loaded, out message), Is.True, message);
+                Assert.That(loaded.playerStudyBonus, Is.EqualTo(1), "Saved and loaded again by the store itself: " + name);
+            }
         }
 #endif
 
         /// <summary>
         /// The final week's free time, three left: the season is saved and loaded, and saved and loaded again after every
-        /// study. A study fills preparation to the final week's limit - 2 in a house that moved in eight, 1 in a house of
+        /// study. A study fills preparation to the final week's limit - 1, in a house that moved in eight as in one of
         /// twelve - and the next is refused in the final week's words. Saved and loaded before the final Head of Household
         /// and between its first two parts, all three parts count the preparation and none spends it, as straight through.
         /// </summary>
-        [TestCase(8, 2)]
+        [TestCase(8, 1)]
         [TestCase(12, 1)]
         public void TheFinalWeeksStudyAndTheFinalHeadOfHouseholdsThreePartsCountItAcrossLoads(int size, int limit)
         {
@@ -261,16 +262,17 @@ namespace Gamesim.Tests.EditMode
             Valid(after);
         }
 
-        // ---------------------------------------------------------------- the small house's watch
+        // ---------------------------------------------------------------- a Head of Household sat out after a load
 
         /// <summary>
         /// The free time after the player's week as Head of Household: a study banks one point, the season is saved and
-        /// loaded, and the next Head of Household is played without the player. In a house that moved in eight they learn
-        /// from watching it, one more up to 2, with its private line; in a house of twelve the point stays as it was.
+        /// loaded, and the next Head of Household is played without the player. The point stays as it was, with no line, in
+        /// a house that moved in eight as in one of twelve. (Tuning 1 first taught a studied player in a house of eight
+        /// from watching, one more up to 2; the owner's measurement dropped the watch before it shipped.)
         /// </summary>
-        [TestCase(8, 2)]
-        [TestCase(12, 1)]
-        public void AStudiedPlayerWhoSitsAHeadOfHouseholdOutAfterALoadLearnsFromWatchingItInASmallHouseOnly(int size, int expected)
+        [TestCase(8)]
+        [TestCase(12)]
+        public void AHeadOfHouseholdThePlayerSitsOutAfterALoadLeavesTheirPreparationAsItWas(int size)
         {
             var straight = new EpisodeEngine(Built(size, OutgoingHohSeed(size)));
             WalkWhile(straight, OutgoingHoh);
@@ -287,8 +289,8 @@ namespace Gamesim.Tests.EditMode
             var after = loaded.Snapshot;
             var row = after.ledger.competitions.Last(r => r.kind == "HoH");
             Assert.That((row.week, row.entry, row.placement), Is.EqualTo((after.week, CompetitionEntry.Watched, 0)), "Precondition: they sat it out.");
-            Assert.That(after.playerStudyBonus, Is.EqualTo(expected), "After the load, at " + size + ".");
-            Assert.That(NewStudyLines(loadedState, after), Is.EqualTo(expected == 2 ? new[] { WatchedLine } : new string[0]));
+            Assert.That(after.playerStudyBonus, Is.EqualTo(1), "After the load, at " + size + ".");
+            Assert.That(NewStudyLines(loadedState, after), Is.Empty, "Nothing used and nothing learned is logged, at " + size + ".");
             Valid(after);
         }
 

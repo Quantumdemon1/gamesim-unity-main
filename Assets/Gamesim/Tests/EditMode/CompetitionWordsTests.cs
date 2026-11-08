@@ -129,8 +129,7 @@ namespace Gamesim.Tests.EditMode
             Assert.That(tuned, Does.Contain("A weekly Head of Household or veto you enter uses your preparation up"));
             Assert.That(tuned, Does.StartWith("Play it, let the day decide or take the accessible alternative:"));
             AssertNoJargon(tuned);
-            state.playerStudyBonus = 2; // a watch took it past the study's limit, in a house of eight or fewer
-            Assert.That(CompetitionWords.EarnedRule(state), Does.Contain("your preparation (2 of 2)"));
+            Assert.That(tuned, Does.Contain("your preparation (1 of 1)"), "Tuning 1 counts out of one in every house.");
             state.playerStudyBonus = 0;
             Assert.That(CompetitionWords.EarnedRule(state), Does.Not.Contain("preparation ("), "Nothing banked, no count.");
         }

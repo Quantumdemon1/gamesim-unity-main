@@ -67,8 +67,9 @@ namespace Gamesim.Tests.EditMode
 
         /// <summary>
         /// Under the role moments the veto board keeps its own asks - the nominees' and the Head of Household's ask to
-        /// keep the block - whose no and silence carry the card's price, which the board says. An ordinary offer the same
-        /// week still comes to the player. Without the role moments the same nominees' asks are listed.
+        /// keep the block - whose no and silence carry the card's price, which the board says: the waiting list holds them,
+        /// and neither the invitation nor the queue raises them (R7, Q8). An ordinary offer the same week still comes to
+        /// the player. Without the role moments the same nominees' asks are listed.
         /// </summary>
         [Test]
         public void RoleBoardAsksStayOnTheBoard()
@@ -93,9 +94,11 @@ namespace Gamesim.Tests.EditMode
             var board = nominees.Select(d => d.id).Concat(new[] { keep.id }).ToList();
             var waiting = WaitingOnYou.Read(s).items.Select(item => item.id).ToList();
             var invitations = NpcInvitation.Available(s).Select(row => row.RecordId).ToList();
-            Assert.That(board.All(id => waiting.Contains(id) && invitations.Contains(id)), Is.True,
-                "The premise: both readers list every board ask, so only the exclusion keeps them out. Waiting: "
-                + string.Join(", ", waiting) + "; raisable: " + string.Join(", ", invitations));
+            Assert.That(board.All(id => waiting.Contains(id)), Is.True,
+                "The premise: every board ask waits on the player. Waiting: " + string.Join(", ", waiting));
+            Assert.That(invitations.Intersect(board), Is.Empty,
+                "and no invitation raises one: the board's asks are not the invitation's under the role moments (R7, Q8). Raisable: "
+                + string.Join(", ", invitations));
 
             var asks = ComesToYou.Read(s).Select(ask => ask.recordId).ToList();
             Assert.That(asks.Intersect(board), Is.Empty, "The board's asks stay on the board: " + string.Join(", ", asks));

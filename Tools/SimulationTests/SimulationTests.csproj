@@ -364,6 +364,8 @@
     <Compile Include="$(EditMode)RolePitchBoardTests.cs" />
     <!-- R6: the story moments - the pawn conversation in any week, quiet tears, the pool's "nothing" offset and the storyline ceiling. -->
     <Compile Include="$(EditMode)RoleStoryMomentsTests.cs" />
+    <!-- R7: the abuse checklist - one word on the veto, a broken word's next ask, comfort farming, renomination, stale and doubled answers, the invitation. -->
+    <Compile Include="$(EditMode)RoleAbuseTests.cs" />
     <Compile Include="$(EditMode)NominationStepsTests.cs" />
     <Compile Include="$(EditMode)ThreatAssessmentTests.cs" />
     <Compile Include="$(EditMode)WebDiaryParityTests.cs" />

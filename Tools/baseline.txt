@@ -196,7 +196,10 @@
 # 9837 = 9831 + the story-rules-10 old-save cell (OLD-SAVE-ACCEPTANCE 2.12): OldSaveAcceptanceTests' four cases for
 # s30-mode2-allweek-story10-tuning1-w2-hoh and its two own cases, 6. The no-UMA lister counted exactly 9837 (and the
 # class 280), and the Mono harness ran the whole class (2026-11-08); no Unity run has observed the floor yet.
-Gamesim.EditModeTests 9837
+# 9851 = 9837 + R7's abuse checklist (C2, ROLE-MOMENTS-PLAN R7): the 13 shared RoleAbuseTests cases and the EditMode-only
+# RoleAbusePersistenceTests case, 14. The no-UMA lister counted exactly 9851 (2026-11-09), and the Mono harness ran both
+# classes, 13 of 13 and 1 of 1, passed; no Unity run has observed the floor yet.
+Gamesim.EditModeTests 9851
 # The UMA-free build. 1215 = 1236, the count after the consolidation's lanes (S2a, S2b, S4a), less the 7
 # farewell probes moved to Gamesim.DiagnosticsPlayModeTests and the 14 farewell readiness tests that now
 # compile only under GAMESIM_UMA (judged on the UMA cast); 1230 = 1215 + S2d's 7, S4b's 2, S4c's 2 and
@@ -323,7 +326,10 @@ Gamesim.EditModeTests 9837
 # adding none), counted offline from the source and the compiled assembly (2026-11-03); not yet run in Unity. Both
 # pass only on the scene and NavMesh HouseKitchenDoorway.AuthorAcceptance writes.
 # 1486 = 1480 + B9's 1 (1481 - 1480) + the quick fixes' 5 (1485 - 1480): disjoint cases, so the floor is their sum (2026-11-06).
-Gamesim.PlayModeTests 1486
+# 1489 = 1486 + R7's abuse checklist (C2), 3 shared tests (EpisodePlayModeTests.RoleAbuse: the board's old yes after a load,
+# and a failed save on a board yes and on a pitch promise), counted offline from the source and the compiled assembly (the
+# no-UMA lister counted 1489, 2026-11-09); not yet run in Unity.
+Gamesim.PlayModeTests 1489
 # The UMA build of the same assembly, read by a plan built without -WithoutUma. 1281 = the 1241 above + the
 # 40 tests that compile only under GAMESIM_UMA, as run at r1 (2026-10-16): in EpisodePlayModeTests,
 # GroundedFarewell 11, Creator 9, HouseLife 8, Emotes 3, OpeningCaptures 2, and one each in CreatorEntry,
@@ -402,7 +408,9 @@ Gamesim.PlayModeTests 1486
 # 1527 = 1526 + the quick fixes' same kitchen doorway test, counted offline (2026-11-03) and compiled in the UMA
 # offline build; not yet run in Unity.
 # 1528 = 1522 + B9's 1 (1523 - 1522) + the quick fixes' 5 (1527 - 1522): disjoint cases, so the floor is their sum (2026-11-06).
-Gamesim.PlayModeTests.UmaBuild 1528
+# 1531 = 1528 + R7's abuse checklist (C2), the same 3 shared EpisodePlayModeTests.RoleAbuse tests, counted from the source
+# and listed in the no-UMA build (2026-11-09); the UMA offline build was not compiled for it. Not yet run in Unity.
+Gamesim.PlayModeTests.UmaBuild 1531
 # The UMA bodies: runs only where the GAMESIM_UMA define is set (the working tree and the D: copy).
 # 82 = the 89 run on 2026-10-15, less the 7 farewell probes moved to Gamesim.Uma.DiagnosticsPlayModeTests;
 # 85 = 82 + the 3 farewell readiness decision tests (UmaFarewellReadinessDecisionPlayModeTests, 2026-10-16);
@@ -534,4 +542,6 @@ Gamesim.Uma.DiagnosticsPlayModeTests 10
 # and adds none.
 # Story rules 10's enrolment (2026-11-08) adds two [Explicit] BalanceLabTests (budget nought's rules-10 twins), which
 # the subset does not execute: it ran exactly 16657 of 16657 at the enrolment's tree, green.
-Gamesim.SimulationTests 16657
+# 16670 = 16657 + R7's abuse checklist (C2, ROLE-MOMENTS-PLAN R7): RoleAbuseTests, 13 cases. The subset ran exactly
+# 16670 of 16670 at C2's tree, green (2026-11-09).
+Gamesim.SimulationTests 16670

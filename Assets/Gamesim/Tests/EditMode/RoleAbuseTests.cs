@@ -12,10 +12,10 @@ namespace Gamesim.Tests.EditMode
     /// player who games the boards cannot get. (1) The holder can put no word on the veto to anybody, so the board's one word is
     /// the only one; (2) a word taken and broken at the decision books the yes's +4 and the breach's -45 with the asker and
     /// nothing else, and the breach keeps that asker's next ask away until they read the player a breach's fifteen warmer;
-    /// (3) a greedy comforter answers quiet tears at most once a week, so its +5 comes at most once a week in the house, and
-    /// each seat leaves one favour - favours over one houseguest stack, as the lead decided (R7, Q7); (4) the pawn talk's word
-    /// taken, the player who puts that Head of Household up next week breaks their own promise of safety, in every commitment
-    /// mode; (5) a board ask after the veto decision, a pitch after the nominations and the pawn card after the veto
+    /// (3) a greedy comforter's every answer to quiet tears moves one +5, at most one a week, and a comfort leaves no favour -
+    /// favours over one houseguest stack, as the lead decided (R7, Q7); (4) the pawn talk's word taken, the player who puts
+    /// that Head of Household up next week breaks their own promise of safety, in every commitment mode; (5) a board ask
+    /// after the veto decision (in every commitment mode), a pitch after the nominations and the pawn card after the veto
     /// competition are refused and change nothing; (7) a promise to a pitcher and a seat with quiet tears, pressed twice,
     /// commit once; (9) an invitation never raises the veto board's own asks under the role moments (R7, Q8). Every season
     /// here opts into the role moments by assignment (story rules Roles) and every control is held at threads by name, so
@@ -31,8 +31,9 @@ namespace Gamesim.Tests.EditMode
         /// <summary>
         /// At the meeting the holder can put no word on the veto to anybody - a veto commitment binds only a houseguest who holds
         /// the veto, and a keep-the-block deal is never the player's to put - before a yes on the board and after one: the deal
-        /// table offers neither to any houseguest, and the engine refuses the proposal and moves nothing. So the board's one word
-        /// is the only word on the veto the player can give. (The board's own refusal of a second yes is
+        /// table offers neither to any houseguest, and the engine refuses the proposal in the deal rules' own words (not the
+        /// window's or the budget's) and moves nothing. So the board's one word is the only word on the veto the player can
+        /// give. (The board's own refusal of a second yes is
         /// RoleVetoBoardTests.UnderRolesASecondVetoYesIsRefusedAndChangesNothing; a keep-the-block yes against a nominee's,
         /// RoleKeepTheBlockTests.AKeepTheBlockYesAndAVetoYesLockEachOther.)
         /// </summary>
@@ -57,8 +58,17 @@ namespace Gamesim.Tests.EditMode
                 foreach (string to in new[] { first, second, hoh })
                     foreach (string kind in new[] { DealKind.VetoUse, DealKind.VetoHold })
                     {
+                        // Refused by the deal rules themselves, in their words: not by the window, the week's budget or the
+                        // form of the command. A veto commitment is refused because they do not hold the veto - or, put to
+                        // the nominee whose ask the player said yes to, because that word is the arrangement they have.
+                        string name = s.Find(to).name;
+                        string words = kind == DealKind.VetoHold ? "That is not a deal anybody in this house would recognise."
+                            : ReferenceEquals(s, taken) && to == first ? "You already have that arrangement with " + name + "."
+                            : name + " does not hold the veto.";
+                        Assert.That(PlayerDeals.CanPropose(s, to, kind, null, out string why), Is.False, when + ": " + kind + " to " + to);
+                        Assert.That(why, Is.EqualTo(words), when + ": " + kind + " to " + to);
                         var refused = new EpisodeEngine(s).Apply(Command(s, EpisodeCommandKind.ProposeDeal, to, null, kind));
-                        Assert.That(refused.accepted, Is.False, when + ": " + kind + " put to " + to + " is refused.");
+                        Assert.That((refused.accepted, refused.reason), Is.EqualTo((false, why)), when + ": " + kind + " put to " + to + " is refused in those words.");
                     }
                 Assert.That(Json(s), Is.EqualTo(before), when + ": nothing moved.");
             }
@@ -133,13 +143,17 @@ namespace Gamesim.Tests.EditMode
         /// <summary>
         /// A greedy comforter: RoleStoryMomentsTests' eleven seasons under the role moments
         /// (SeasonsUnderTheRoleMomentsKeepTheirMomentsInBounds), walked by the test policy with the player answering every quiet
-        /// tears card put to them - sitting with them a while where that is shown and a seat is left, else comforting them. They
-        /// answer at most one card a week, so the +5 those answers move comes at most once a week in the house; each seat leaves
-        /// exactly one favour more and a comfort none, inside the story's 32. (Quiet tears' once a week is
-        /// RoleStoryMomentsTests.QuietTearsComesAtMostOnceAWeek; the favours' stacking, the next test.)
+        /// tears card put to them - sitting with them a while where that is shown and a seat is left, else comforting them. Each
+        /// answer moves the player with them by exactly one +5, as they take it (the card carries one, and the score moves by
+        /// one, never two); the season books at most one such move a week; a comfort leaves no favour (and a seat, where the
+        /// walk gets one, exactly one), inside the story's 32. The walk is thin - these seasons bring few cards and no seat -
+        /// so it is no proof of the moment's rest or of a seat's favour: quiet tears' once a week is
+        /// RoleStoryMomentsTests.QuietTearsComesAtMostOnceAWeek, a seat's one favour its
+        /// SittingWithThemAWhileCostsTheSeatAndLeavesAFavourOwed and ASeatWithQuietTearsPressedTwiceSpendsOneSeatAndLeavesOneFavour
+        /// here, and the favours' stacking the next test.
         /// </summary>
         [Test]
-        public void AGreedyComforterGetsOneAnswerAWeekAndOneFavourASeat()
+        public void AGreedyComforterMovesOneFiveAnAnswerAndAtMostOneAWeek()
         {
             int answered = 0, seats = 0;
             foreach (uint seed in new uint[] { 7601, 7602, 7682, 7621, 7622, 7623, 7624, 7625, 7626, 7627, 7628 })
@@ -148,14 +162,13 @@ namespace Gamesim.Tests.EditMode
                 ShippedRules.ApplyFresh(start);
                 start.story.rulesVersion = StoryRules.Roles;
                 var engine = new EpisodeEngine(start);
-                var inTheHouse = new HashSet<int>();
                 var answers = new List<(int week, string subject, string option)>();
+                var moves = new List<int>();
                 for (int i = 0; i < 4000 && engine.Snapshot.phase != EpisodePhase.Finished; i++)
                 {
                     var s = engine.Snapshot;
                     string where = "seed " + seed + " week " + s.week + " " + s.phase + ": ";
                     bool active = s.Find(s.playerId).status == ContestantStatus.Active;
-                    if (active) inTheHouse.Add(s.week);
                     var card = active ? s.houseEvents.FirstOrDefault(e => !e.resolved && e.contentId == TearsCard) : null;
                     if (card != null)
                     {
@@ -179,6 +192,12 @@ namespace Gamesim.Tests.EditMode
                         if (chosen != null)
                         {
                             answers.Add((s.week, subject, chosen));
+                            var option = card.choices.Single(c => c.optionId == chosen);
+                            Assert.That(option.effects.Count(e => e.kind == StoryEffects.Move && e.fromId == s.playerId && e.toId == subject && e.amount == 5),
+                                Is.EqualTo(1), where + chosen + " carries one +5 with them,");
+                            double moved = result.state.Score(s.playerId, subject) - s.Score(s.playerId, subject);
+                            Assert.That(moved, Is.EqualTo(OneFive(s, card, option, subject)).Within(1e-9), where + chosen + " and moves it once.");
+                            moves.Add(s.week);
                             Assert.That(Favours(result.state, subject), Is.EqualTo(held + (chosen == "sit-a-while" && room ? 1 : 0)),
                                 where + chosen + ": one favour a seat, none a comfort.");
                             continue;
@@ -189,14 +208,31 @@ namespace Gamesim.Tests.EditMode
                 }
                 var end = engine.Snapshot;
                 Assert.That(end.phase, Is.EqualTo(EpisodePhase.Finished), "seed " + seed);
-                Assert.That(answers.GroupBy(a => a.week).Where(g => g.Count() > 1).Select(g => g.Key), Is.Empty, "seed " + seed + ": at most one answer a week.");
-                Assert.That(answers.Count, Is.LessThanOrEqualTo(inTheHouse.Count), "seed " + seed + ": a +5 at most once a week in the house.");
+                Assert.That(answers.GroupBy(a => a.week).Where(g => g.Count() > 1).Select(g => g.Key), Is.Empty, "seed " + seed + ": at most one answer a week,");
+                Assert.That(moves.GroupBy(week => week).Where(g => g.Count() > 1).Select(g => g.Key), Is.Empty, "seed " + seed + ": so at most one +5 a week.");
                 Assert.That(end.story.hooks.Count(h => !h.spent), Is.LessThanOrEqualTo(32), "seed " + seed + ": inside the story's bound.");
                 answered += answers.Count;
                 seats += answers.Count(a => a.option == "sit-a-while");
             }
             TestContext.WriteLine("The greedy player answered " + answered + " quiet tears cards, " + seats + " of them seats.");
             Assert.That(answered, Is.GreaterThan(0), "The greedy player answered quiet tears in some season (" + seats + " of them seats).");
+        }
+
+        /// <summary>
+        /// What one +5 from the player to <paramref name="subject"/> moves the player's score with them by, answering
+        /// <paramref name="card"/> with <paramref name="option"/> on <paramref name="s"/>: the gain as they take it - the reception
+        /// of the option's approach by the person it is aimed at, a hidden hot-button grating (EpisodeEngine.ResolveStoryBeat, an
+        /// unchecked option) - with the player's social bonus, inside the score's bounds.
+        /// </summary>
+        private static double OneFive(EpisodeState s, HouseEventState card, HouseEventChoice option, string subject)
+        {
+            var aimed = s.Find(option.subjectId ?? card.involvedIds.FirstOrDefault());
+            int reception = 0;
+            if (aimed != null && aimed.id == subject && option.approach != null)
+                reception = Lore.HiddenHotButton(s, aimed.id, option.approach) != null ? -1 : StoryOdds.VisibleReception(s, aimed, option.approach);
+            double before = s.Score(s.playerId, subject);
+            double one = WebRules.RelationshipDelta(Personality.Received(5, reception), s.Find(s.playerId).stats.social, true);
+            return WebRules.ClampScore(before + one) - before;
         }
 
         /// <summary>
@@ -303,19 +339,30 @@ namespace Gamesim.Tests.EditMode
         /// <summary>
         /// The board's asks answered after the veto decision - a yes, to take a word nothing can keep now, or a no, to pay a no's
         /// price in place of the silence the decision charged - are refused in the engine's words when sent against the decision's
-        /// revision, and are stale against the meeting's. Nothing moves. (An ask answered twice is
-        /// RoleVetoBoardTests.ADoubleClickOrARepeatedCommandCommitsOneYes.)
+        /// revision, and are stale against the meeting's. Nothing moves, in every commitment mode. One guard is pinned here: the
+        /// engine answers only a deal it finds still proposed (EpisodeEngine.RespondToDeal's lookup among the plain deals). A
+        /// board ask is a plain deal in every mode - no canonical row carries one, which this asserts - so the check
+        /// RespondToDeal makes on a canonical row is never on a board ask's path, and this test says nothing about it (an
+        /// answered canonical offer answered again is UnifiedSafetyModeTwoTests.AHousesSafetyOfferIsACanonicalOfferAnsweredOnItsRow
+        /// and UnifiedVoteCreatorTests.AnOffersAnswerIsWrittenOnItsCanonicalRow). Without the lookup's "still proposed" a late
+        /// no would commit in every mode, the Head of Household's late yes in every mode, and a nominee's late yes in modes 0
+        /// and 1; in mode 2 a nominee's late yes would still be refused, but in the vote store's words (it will not reserve
+        /// the vote price of an ask that is settled), so there the test holds that yes by the refusal's wording. (An ask
+        /// answered twice is RoleVetoBoardTests.ADoubleClickOrARepeatedCommandCommitsOneYes.)
         /// </summary>
-        [Test]
-        public void ABoardAskAnsweredAfterTheDecisionIsRefusedAndChangesNothing()
+        [TestCase(0)] [TestCase(1)] [TestCase(2)]
+        public void ABoardAskAnsweredAfterTheDecisionIsRefusedAndChangesNothing(int mode)
         {
-            var engine = RoleKeepTheBlockTests.Board(RoleTone.Calculated, out _, out _, out _);
+            var engine = RoleKeepTheBlockTests.Board(RoleTone.Calculated, out _, out _, out _, mode: mode);
             var meeting = engine.Snapshot;
             var asks = RoleOffers.BoardAsks(meeting);
             Assert.That(asks, Has.Count.EqualTo(3), "The nominees' asks and the Head of Household's.");
             var decided = RoleVetoBoardTests.Apply(engine, RoleVetoBoardTests.Decide(meeting, false, null));
             Assert.That((decided.phase, decided.vetoResolved), Is.EqualTo((EpisodePhase.VetoMeeting, true)));
             Assert.That(asks.Select(ask => decided.deals.Single(d => d.id == ask.id).status), Has.None.EqualTo(DealStatus.Proposed), "(the decision settled them)");
+            // Plain deals in every commitment mode: no canonical row carries a board ask, so the engine looks one up among the
+            // deals still proposed and nowhere else.
+            Assert.That(decided.unifiedCommitments.Where(row => asks.Any(ask => ask.id == row.id)), Is.Empty, "(no canonical row carries a board ask)");
             string json = Json(engine.Snapshot);
             foreach (var ask in asks)
                 foreach (bool yes in new[] { true, false })

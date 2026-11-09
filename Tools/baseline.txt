@@ -199,7 +199,10 @@
 # 9851 = 9837 + R7's abuse checklist (C2, ROLE-MOMENTS-PLAN R7): the 13 shared RoleAbuseTests cases and the EditMode-only
 # RoleAbusePersistenceTests case, 14. The no-UMA lister counted exactly 9851 (2026-11-09), and the Mono harness ran both
 # classes, 13 of 13 and 1 of 1, passed; no Unity run has observed the floor yet.
-Gamesim.EditModeTests 9851
+# 9853 = 9851 + the abuse checklist's review (C2): the board ask answered after the veto decision runs in commitment
+# modes 0, 1 and 2, two more RoleAbuseTests cases (15). The no-UMA lister counted exactly 9853 (2026-11-09), and the Mono
+# harness ran both classes, 15 of 15 and 1 of 1, passed; no Unity run has observed the floor yet.
+Gamesim.EditModeTests 9853
 # The UMA-free build. 1215 = 1236, the count after the consolidation's lanes (S2a, S2b, S4a), less the 7
 # farewell probes moved to Gamesim.DiagnosticsPlayModeTests and the 14 farewell readiness tests that now
 # compile only under GAMESIM_UMA (judged on the UMA cast); 1230 = 1215 + S2d's 7, S4b's 2, S4c's 2 and
@@ -544,4 +547,7 @@ Gamesim.Uma.DiagnosticsPlayModeTests 10
 # the subset does not execute: it ran exactly 16657 of 16657 at the enrolment's tree, green.
 # 16670 = 16657 + R7's abuse checklist (C2, ROLE-MOMENTS-PLAN R7): RoleAbuseTests, 13 cases. The subset ran exactly
 # 16670 of 16670 at C2's tree, green (2026-11-09).
-Gamesim.SimulationTests 16670
+# 16672 = 16670 + the abuse checklist's review (C2): the board ask answered after the veto decision runs in commitment
+# modes 0, 1 and 2, two more RoleAbuseTests cases (15). The subset ran exactly 16672 of 16672 at the review's tree, green
+# (2026-11-09).
+Gamesim.SimulationTests 16672

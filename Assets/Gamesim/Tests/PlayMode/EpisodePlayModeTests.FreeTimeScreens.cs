@@ -39,16 +39,17 @@ namespace Gamesim.Tests.PlayMode
         /// head's old name leads with FREE TIME and the actions left, with what moving on loses in it
         /// rather than under the way on; the play, the threads and where the player is stay in view
         /// beside the decision - the play in the hero, the threads on the story strip, the room in the
-        /// footer - and the house's cards and the moves are rows of the board.
+        /// footer - and the house's cards and the moves are rows of the board. Pinned to free time with
+        /// nothing waiting, the story on and the house held (InstallFreeTime): on the default season the
+        /// legacy walk-in watch can commit a house event while the cast settles, which keeps the old column.
         /// </summary>
         [UnityTest]
         public IEnumerator FreeTime_LeadsWithTheActionsLeftAndKeepsItsContextBesideTheDecision()
         {
+            yield return InstallFreeTime(8, FreeTimeWaiting.Nothing);
             yield return OpenFreeTime();
             var state = director.Snapshot;
-            Assume.That(state.phase, Is.EqualTo(EpisodePhase.Social), "The fixture opens in free time.");
-            Assume.That(state.houseEvents.Any(item => !item.resolved && !item.IsStory), Is.False,
-                "The fixture's free time has no legacy house event, which keeps its band.");
+            Assert.That(state.phase, Is.EqualTo(EpisodePhase.Social), "The fixture opens in free time.");
             Assert.That(director.IsFreeTimeBoard, Is.True, "Free time is the board.");
             var panel = ActiveRect("Episode panel");
             var head = ActiveRect(EpisodeHud.ScreenHeadName);

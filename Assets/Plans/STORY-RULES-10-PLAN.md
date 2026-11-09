@@ -429,7 +429,8 @@ are 0.4% (C0 2.2%), as decision 7 expected.
 
 **Still open at this record.**
 - The byte-for-byte item above, the committed rule replaying C1n's scratch rows on headline seeds 0-19, has not been
-  run against the C1n commit. Its hunk is the lab's npc scope with the knobs at C1n's values.
+  run against the C1n commit. Its hunk is the lab's npc scope with the knobs at C1n's values. (Run since, on the
+  enrolled head: all 480 seasons equal, §8, As built.)
 - `StoryPacingTests.PacingReport` at 9 and 10 has not run (§5, step 6).
 - The UMA PlayMode set (the suites, above) has not run on the C1n commit.
 - The enrolment (§8) is the next commit. The owner signs off these numbers in the PR before it merges. (Made on
@@ -528,6 +529,57 @@ season starts at 10 where it opted in.
 recorded by the build that writes it, so its writer is this commit, and it is the next step. The PlayMode re-pins above
 have not run (Unity only); the UMA PlayMode set is the gate.
 
+### As built (2026-11-08)
+
+**The commits** on `claude/story-rules-10` (not on main): the define commit `36ca4055` and its fixture fix `1685df59`;
+C1n, `5dcd2b17`; the enrolment, `5863d964`; the old-save cell, `0d538392`; and this record. B9's head `7ab18ab0` is
+merged below them.
+
+**Held, re-recorded and re-pinned at the enrolment** (above, As enrolled; the enrolment's own runs):
+- held at threads by name: the season digest tiers built by hand and every tier that plays their seasons, the below-30
+  list and `LegacyDigestSchema27TestStates.Fresh`, `RoleStoryPools.OldSeasons`, both budget-nought pins (which printed
+  B9's digests exactly) and `TuningRulesTests`' studier pins;
+- re-recorded: `BalanceLabGoldens`' 48 cells, and the two new rules-10 budget-nought twins (`63356f631a00ed8a`, 192 of
+  564 rows moved; `ad1ca9f42d182824`, 209 moved);
+- re-pinned, 9 to 10: `RoleRulesTests`, `ShippedRulesTests`, the four dialogue fixtures, `DialogueCampaignRulesTests`'
+  story-version case (to `Threads - 1`), the schema-30 round trip at 10, and in PlayMode two tests that have not run.
+  Before the re-pins the whole subset failed 43 of 16657, every one a shipped-rules pin of 9; after them, and on the
+  enrolment as committed, 16657 of 16657.
+
+**The replay** (§6's byte-for-byte item, run on the enrolled head `5863d964`, the scratch lab's harness at
+`D:/ClaudeScratch/sr10/enrol/replay`): the committed build plays the headline tier on development seeds 0-19 (24 cells,
+480 seasons) exactly as the lab's C1n rows, every committed field equal, with no seasons missing on either side; only
+the lab's own counters and the wall-clock stopwatches are left out. The same comparer against C0's rows parts 254 of
+the 480 seasons and against C1's (every holder) 232, so the committed build plays C1n, not C1. The two budget-nought
+pins, re-run on the committed bytes, print `5481eec784acd1ed` and `a89a8120050e9460`.
+
+**The old-save cell** (`0d538392`, OLD-SAVE-ACCEPTANCE 2.12; that plan's 2.10 and 2.11 are the dialogue line's, on
+another branch).
+`s30-mode2-allweek-story10-tuning1-w2-hoh`, written and recorded by the enrolled head: the shipped Regular season of
+eight at schema 30 on story rules 10 and tuning rules 1, saved at the first state of week 2's Head of Household (seed
+3102, the first from 3101 with a veto the Blame rule decides before the save point and another after the load). In week 1
+a houseguest who was not the Head of Household saved herself with the veto and a houseguest was named, who holds no
+grudge against her; after the load the script plays a houseguest's self-save in week 3 (no grudge) and the player's three
+self-saves (a forty each, C1n). 93 commands, season digest `892724e0bc1e4efd`. The control: the same commands with the
+season forced to story rules 9 are all accepted and give another digest (`87a0539f5b2b4755`; `84f812dbf65bfe6a` with the
+story rules put back to 10, parting first at checkpoint 26, the houseguest's veto in week 3). Two new
+`OldSaveAcceptanceTests` cases hold the file to its stop point and rules and keep the control.
+
+**The floors** (`Tools/baseline.txt`): `Gamesim.SimulationTests` 16657, as the C1n commit set it (16642 and the define
+commit's 15); the cell adds no subset test, and no subset test enumerates the old-save folder. `Gamesim.EditModeTests`
+9837: 9831 and the cell's six (its four per-fixture cases and its two own).
+
+**Still open.** The UMA PlayMode set (the only Unity gate) and the two PlayMode re-pins; `StoryPacingTests.PacingReport`
+at 9 and 10 (§5, step 6); a re-run of the two rules-10 budget-nought twins and the 48 goldens with their pasted values
+(each was checked by script against the run that printed it); the season-digest tiers of
+`CommitmentRulesSeasonDigests`, which are `[Explicit]` and held at threads by name. The owner signs off the numbers in
+the PR before it merges.
+
+**R7 can follow now.** ROLE-MOMENTS-PLAN has R7's enrolment wait "for every milestone below Roles to be finished";
+story rules 10 is defined, accepted, enrolled and has its old-save cell, and the ladder has no gap (`IsDefined` is
+`0 <= version <= Latest`). Roles (11) plays the Blame rule too, as the ladder requires (§4), so when R7 moves `Current`
+from `Blame` to `Roles` its seasons keep C1n. The role-moments session is to be told (§8, above).
+
 ## 9. What moves for the player
 
 **As accepted, C1n.**
@@ -607,3 +659,6 @@ The questions as they were put:
   the PR before it merges.
 - Enrolled (§8, As enrolled): every new season starts on story rules 10. Saved seasons keep their version, and the save
   migration and the web importer still write threads. The old-save cell at 10 is the next step.
+- Built (§8, As built): the enrolled head replays the lab's C1n rows exactly, and its own season at story rules 10 is an
+  old-save cell, with the control that story rules 9 plays its commands otherwise. R7 (Roles, story rules 11) can
+  follow. Open: the UMA PlayMode set and `StoryPacingTests.PacingReport`; the owner's sign-off in the PR.

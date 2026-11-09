@@ -45,7 +45,11 @@ namespace Gamesim.Tests.EditMode
     /// and a fresh shipped season of each roster, Regular and All-Stars, at alumni rules 0; they load as they are, with
     /// no migration. The H1b build (0fef7b59) wrote the alumni-on cell: the same shipped All-Stars season at alumni
     /// rules 1, with its histories and the Hitmen's final two. The build S6 froze alumni rules 5 at (51dd14a5) wrote the
-    /// alumni-5 cell: the same season at alumni rules 5, saved with a houseguests' pact grown past two and kept to itself.</para>
+    /// alumni-5 cell: the same season at alumni rules 5, saved with a houseguests' pact grown past two and kept to itself.
+    /// B9's builds wrote the tuning-1 cells, the shipped Regular season on tuning rules 1, walked plainly (8a0cee2e) and by
+    /// the studier (46459d3e). The enrolled head of story rules 10 (5863d964) wrote the story-rules-10 cell: the shipped
+    /// Regular season every new season is since the enrolment, on Blame and tuning rules 1, saved after a houseguest's veto
+    /// and played on through another, so the Blame rule decides a holder's grudge on both sides of the save.</para>
     ///
     /// <para>Three digests (<see cref="OldSaveTrace"/>): the season's - the cross-build gate - must be the reference
     /// build's; the whole state's, blind to prose, and the verbatim text are this build's, pinned when the fixture was
@@ -112,6 +116,10 @@ namespace Gamesim.Tests.EditMode
             // saved with a point of preparation banked, so tuning 1's preparation (its spend, the study's limit and the
             // final Head of Household counting it) fires after the load.
             "s30-mode2-allweek-tuning1-studier-w2-hoh",
+            // Written by story rules 10's enrolled head (5863d964; OLD-SAVE-ACCEPTANCE 2.12, STORY-RULES-10-PLAN §8), schema 30
+            // at story rules 10 on tuning rules 1: a fresh shipped Regular season, saved after a houseguest's veto and played on
+            // through another, so the Blame rule decides the holder's grudge before the save and after the load.
+            "s30-mode2-allweek-story10-tuning1-w2-hoh",
         };
 
         /// <summary>
@@ -158,7 +166,8 @@ namespace Gamesim.Tests.EditMode
                     Assert.That((string)entry["referenceBuild"], Is.EqualTo((string)entry["writer"]),
                         (string)entry["id"] + ": a generated schema-29-or-later fixture is written and recorded by the build that writes its schema.");
                 // From schema 30 a cell also names the alumni rules and the cast (ALL-STAR-HISTORIES-PLAN 8.7). Both are read
-                // from the save itself, so a row cannot name a cell its file is not.
+                // from the save itself, so a row cannot name a cell its file is not; so are the tuning rules and, since the
+                // story-rules-10 cell (OLD-SAVE-ACCEPTANCE 2.12), the story rules, which name a cell from Blame on.
                 if ((string)entry["kind"] == "episode" && (int)entry["schema"] >= 30)
                 {
                     var saved = (JObject)JObject.Parse(File.ReadAllText(Path.Combine(Root, (string)entry["save"])))["state"];
@@ -166,6 +175,8 @@ namespace Gamesim.Tests.EditMode
                     Assert.That((string)entry["cast"], Is.EqualTo(alumni ? "allstars" : "regular"), (string)entry["id"] + ": the cast the save seats.");
                     Assert.That((int)entry["rules"]["alumniRulesVersion"], Is.EqualTo((int)saved["alumniRulesVersion"]), (string)entry["id"] + ": the save's own alumni rules.");
                     Assert.That((int)entry["rules"]["tuningRulesVersion"], Is.EqualTo((int)saved["tuningRulesVersion"]), (string)entry["id"] + ": the save's own tuning rules.");
+                    Assert.That((int)entry["story"]["rulesVersion"], Is.EqualTo((int)saved["story"]["rulesVersion"]), (string)entry["id"] + ": the save's own story rules.");
+                    Assert.That((int)entry["story"]["rulesStartWeek"], Is.EqualTo((int)saved["story"]["rulesStartWeek"]), (string)entry["id"] + ": the save's own story start week.");
                 }
             }
             // One replayed fixture per cell of the plan's matrix: every schema a build wrote (not 1 or 8, which no surviving
@@ -177,7 +188,9 @@ namespace Gamesim.Tests.EditMode
             // season of each roster at alumni rules 0, from H1b the shipped All-Stars season at alumni rules 1, and from S6
             // the same season at alumni rules 5, the value S6 froze; from B9 the shipped Regular season at tuning rules 1, which
             // every new season starts on (a cell names its tuning only where it is on), and from B9's round 4 the same season
-            // walked by the studier (a cell names its walker only where it is not the plain one). A cell counts only a fixture saved in a week, before the
+            // walked by the studier (a cell names its walker only where it is not the plain one), and from story rules 10's
+            // enrolment the shipped Regular season at story rules 10, which every new season starts on (a cell names its story
+            // rules only from Blame on, so every earlier cell keeps its name). A cell counts only a fixture saved in a week, before the
             // finale, with a script to play: one saved at the finale or after it is read, never a cell's replay.
             var replayed = Manifest["episodes"].Where(e => (int)e["commands"] > 0 && !FinalePhases.Contains((string)e["phase"])).ToList();
             Assert.That(Manifest["episodes"].Except(replayed).Select(e => (string)e["id"]), Is.EquivalentTo(ReadOnly),
@@ -208,10 +221,11 @@ namespace Gamesim.Tests.EditMode
                 "30/director/uc2/allweek1/leaks1/plans1/dialogue0/alumni5/allstars",
                 "30/director/uc2/allweek1/leaks1/plans1/dialogue0/alumni0/regular/tuning1",
                 "30/director/uc2/allweek1/leaks1/plans1/dialogue0/alumni0/regular/tuning1/studier",
+                "30/director/uc2/allweek1/leaks1/plans1/dialogue0/alumni0/regular/tuning1/story10",
             }));
         }
 
-        /// <summary>A fixture's cell: schema, profile, the rules the readers branch on, for the director's schema 22 which of its shapes, from schema 29 the dialogue rules, from schema 30 the alumni rules and the cast, from B9 the tuning rules where they are on, and the recorder's walker where it is not the plain one (OLD-SAVE-ACCEPTANCE 2.9).</summary>
+        /// <summary>A fixture's cell: schema, profile, the rules the readers branch on, for the director's schema 22 which of its shapes, from schema 29 the dialogue rules, from schema 30 the alumni rules and the cast, from B9 the tuning rules where they are on, the story rules from Blame on (OLD-SAVE-ACCEPTANCE 2.12), and the recorder's walker where it is not the plain one (OLD-SAVE-ACCEPTANCE 2.9).</summary>
         private static string Cell(JToken e)
         {
             int On(string rule) => Math.Min(1, (int?)e["rules"][rule] ?? 0);
@@ -223,6 +237,7 @@ namespace Gamesim.Tests.EditMode
                 + (schema >= 29 ? "/dialogue" + (int)e["rules"]["dialogueRulesVersion"] : "")
                 + (schema >= 30 ? "/alumni" + (int)e["rules"]["alumniRulesVersion"] + "/" + (string)e["cast"] : "")
                 + (schema >= 30 && ((int?)e["rules"]["tuningRulesVersion"] ?? 0) != 0 ? "/tuning" + (int)e["rules"]["tuningRulesVersion"] : "")
+                + (e["story"] is JObject story && (int)story["rulesVersion"] >= StoryRules.Blame ? "/story" + (int)story["rulesVersion"] : "")
                 + ((string)e["walker"] is string walker && walker != "plain" ? "/" + walker : "");
         }
 
@@ -628,6 +643,175 @@ namespace Gamesim.Tests.EditMode
             }
             Assert.That(JoinWeeks(pact.members[0], pact.members[1]).Concat(JoinWeeks(pact.members[1], pact.members[0])), Is.Empty,
                 "The founders' own row is the birth, not a join.");
+        }
+
+        // ------------------------------------------------------------------ the story-rules-10 cell
+
+        private const string StoryTenCell = "s30-mode2-allweek-story10-tuning1-w2-hoh";
+
+        /// <summary>
+        /// The first cell at story rules 10 (STORY-RULES-10-PLAN §8; OLD-SAVE-ACCEPTANCE 2.12): the shipped Regular season of
+        /// eight as every new season starts since the enrolment, on Blame and tuning rules 1, written and recorded by the
+        /// enrolled head (5863d964). The four cases every fixture has load and replay it, read it with every reader, pin its
+        /// seventeen holds and recover it from the backup; this one holds the file to the point it was saved at and to the veto
+        /// it was chosen for: the first state of week 2's Head of Household, at story rules 10, after week 1's veto, which a
+        /// houseguest who was not the Head of Household used to save herself, with a houseguest named. So the replacement
+        /// holds the Head of Household's grudge and none against the holder, where story rules 9 writes a forty.
+        /// Seed 3102, the first from 3101 with such a veto before the save point and another after the load.
+        /// </summary>
+        [Test]
+        public void TheStoryRulesTenCellIsSavedAtWeekTwosHeadOfHouseholdAfterAHouseguestsSelfSave()
+        {
+            var entry = Entry(StoryTenCell);
+            using var slot = new Slot((string)entry["save"]);
+            Assert.That(slot.Store.TryLoad(out var s, out string message), Is.True, message);
+            Assert.That(message, Does.Not.Contain("migrated"), "Saved at 30, it loads as it is.");
+            Assert.That(s.schemaVersion, Is.EqualTo(30));
+            Assert.That(s.story.rulesVersion, Is.EqualTo(StoryRules.Blame), "Saved at story rules 10, every new season's since the enrolment.");
+            Assert.That((int)entry["story"]["rulesVersion"], Is.EqualTo(StoryRules.Blame));
+            Assert.That(s.story.rulesStartWeek, Is.EqualTo(1));
+            Assert.That(s.tuningRulesVersion, Is.EqualTo(TuningRules.Bands), "On tuning rules 1, as every fresh season from B9.");
+            Assert.That(s.dialogueRulesVersion, Is.EqualTo(0), "A shipped season without the conversation preview.");
+            Assert.That(s.alumniRulesVersion, Is.EqualTo(0), "The Regular cast: no alumnus, alumni rules 0.");
+            Assert.That(s.alumniCatalogEdition, Is.Null);
+            Assert.That(s.unifiedCommitmentRulesVersion, Is.EqualTo(2), "The shipped mode 2.");
+            Assert.That(s.contestants.Count, Is.EqualTo(8));
+            Assert.That(s.Find(s.playerId).name, Is.EqualTo("You"));
+
+            // The stop point: the first state of week 2's Head of Household, before it is played.
+            Assert.That(s.week, Is.EqualTo(2));
+            Assert.That(s.phase, Is.EqualTo(EpisodePhase.HoH));
+            Assert.That(s.competitionResolved, Is.False, "Week 2's Head of Household is not played yet.");
+            Assert.That(s.hohId, Is.Null);
+            Assert.That(s.revision, Is.EqualTo(19));
+            var replay = JObject.Parse(File.ReadAllText(Path.Combine(Root, (string)entry["replay"])));
+            Assert.That((int)replay["checkpoints"][0]["revision"], Is.EqualTo(s.revision), "The script starts where the file stops.");
+
+            // Week 1's veto, before the save point: the Head of Household jordan-taylor put quinn-martinez and casey-wilson up;
+            // quinn-martinez won the veto and saved herself, and alex-chen was named (and evicted that week).
+            Assert.That(s.previousHohId, Is.EqualTo("jordan-taylor"));
+            Assert.That(s.contestants.Where(c => c.vetoWins > 0).Select(c => c.id + " " + c.vetoWins), Is.EqualTo(new[] { "quinn-martinez 1" }),
+                "One veto played, won by a houseguest.");
+            Assert.That(s.Find("quinn-martinez").nominationWeeks, Is.EqualTo(new[] { 1 }), "The holder was on the block: a self-save.");
+            Assert.That(s.Find("alex-chen").nominationWeeks, Is.EqualTo(new[] { 1 }), "The replacement.");
+            Assert.That(s.Find("alex-chen").isPlayer, Is.False);
+            Assert.That(s.events.Where(e => e.week == 1 && e.kind == "veto").Select(e => e.text),
+                Is.EqualTo(new[] { "Quinn Martinez saves herself; Alex Chen is the replacement nominee." }));
+            var replaced = s.story.grudges.Single(g => g.holderId == "alex-chen" && g.targetId == "jordan-taylor");
+            Assert.That(replaced.cause, Is.EqualTo(GrudgeCauses.Replacement), "The replacement resents the Head of Household who named them.");
+            Assert.That(replaced.originWeek, Is.EqualTo(1));
+            Assert.That(s.story.grudges.Where(g => g.holderId == "alex-chen" && g.targetId == "quinn-martinez"), Is.Empty,
+                "Under Blame a houseguest's self-save forces nobody: no grudge against the holder (story rules 9 writes a forty).");
+        }
+
+        /// <summary>
+        /// The story-rules-10 cell's script, played from the save: the veto uses it passes through, each with the
+        /// replacement's grudge against the holder before and after it. In week 3 emma-brown, who is not the Head of Household
+        /// (the player is), saves herself and casey-wilson is named: the Blame rule writes nothing. The player's own three
+        /// vetoes keep the forty (C1n, decision 3 as accepted). Then the control: the same commands, the season forced to
+        /// story rules 9 at the load, are all accepted, and the only use that changes is week 3's, where 9 writes the forty;
+        /// hashed with the story rules put back to 10, so the field alone cannot part them, the season parts from the
+        /// recorded one first there, at checkpoint 26, and its digest is another. So the cell pins story rules 10.
+        /// </summary>
+        [Test]
+        public void TheStoryRulesTenCellPlaysTheBlameRuleAfterTheLoadAndPartsFromStoryRulesNineThere()
+        {
+            var entry = Entry(StoryTenCell);
+            var expected = new[]
+            {
+                "8 week 2: player saves player, quinn-martinez named, HoH jamie-roberts: none -> replacement-veto 40 x1 w2",
+                "26 week 3: emma-brown saves emma-brown, casey-wilson named, HoH player: none -> none",
+                "43 week 4: player saves player, emma-brown named, HoH riley-johnson: nominated 68 x1 w3 -> replacement-veto 88 x2 w3",
+                "61 week 5: player saves player, riley-johnson named, HoH casey-wilson: none -> replacement-veto 40 x1 w5",
+            };
+
+            using (var slot = new Slot((string)entry["save"]))
+            {
+                Assert.That(slot.Store.TryLoad(out var loaded, out string message), Is.True, message);
+                var uses = new List<string>();
+                int index = -1;
+                var (digest, _, _, _) = Replay(StoryTenCell, loaded, (before, after) =>
+                {
+                    index++;
+                    string use = VetoUse(before, after, index);
+                    if (use != null) uses.Add(use);
+                });
+                Assert.That(digest, Is.EqualTo((string)entry["digest"]));
+                Assert.That(uses, Is.EqualTo(expected), "The vetoes the script plays through, at story rules 10.");
+            }
+
+            // The control: the same commands at story rules 9.
+            using (var slot = new Slot((string)entry["save"]))
+            {
+                Assert.That(slot.Store.TryLoad(out var forced, out string message), Is.True, message);
+                Assert.That(forced.story.rulesVersion, Is.EqualTo(StoryRules.Blame));
+                forced.story.rulesVersion = StoryRules.Threads;
+                var replay = JObject.Parse(File.ReadAllText(Path.Combine(Root, (string)entry["replay"])));
+                var checkpoints = (JArray)replay["checkpoints"];
+                var asItIs = new List<string>();
+                var putBack = new List<string>();
+                int partsAsItIs = -1, partsPutBack = -1;
+                void Check(EpisodeState s, int at)
+                {
+                    string recorded = (string)checkpoints[at]["season"];
+                    string season = CurrentOldSaveTrace.Checkpoint(s, CurrentOldSaveTrace.Current).season;
+                    asItIs.Add(season);
+                    if (partsAsItIs < 0 && season.Substring(0, 16) != recorded) partsAsItIs = at;
+                    s.story.rulesVersion = StoryRules.Blame;
+                    season = CurrentOldSaveTrace.Checkpoint(s, CurrentOldSaveTrace.Current).season;
+                    s.story.rulesVersion = StoryRules.Threads;
+                    putBack.Add(season);
+                    if (partsPutBack < 0 && season.Substring(0, 16) != recorded) partsPutBack = at;
+                }
+                Check(forced, 0);
+                var engine = new EpisodeEngine(forced);
+                var uses = new List<string>();
+                int i = 0;
+                foreach (JObject row in (JArray)replay["commands"])
+                {
+                    var before = engine.Snapshot;
+                    var applied = engine.Apply(row.ToObject<EpisodeCommand>());
+                    i++;
+                    Assert.That(applied.accepted, Is.True, "At story rules 9, command " + i + " (week " + before.week + " " + before.phase + ") refused: " + applied.reason);
+                    Check(applied.state, i);
+                    string use = VetoUse(before, applied.state, i);
+                    if (use != null) uses.Add(use);
+                }
+                Assert.That(i, Is.EqualTo(checkpoints.Count - 1), "Every command of the script is played at story rules 9 too.");
+                Assert.That(uses, Is.EqualTo(new[]
+                {
+                    expected[0],
+                    "26 week 3: emma-brown saves emma-brown, casey-wilson named, HoH player: none -> replacement-veto 40 x1 w3",
+                    expected[2], expected[3],
+                }), "At story rules 9 the houseguest's self-save writes the forty; the player's vetoes are as at 10.");
+                Assert.That(partsPutBack, Is.EqualTo(26), "With the story rules put back to 10, the season parts first at the houseguest's veto.");
+                Assert.That(OldSaveTrace.Digest(putBack), Is.Not.EqualTo((string)entry["digest"]));
+                Assert.That(partsAsItIs, Is.EqualTo(0), "As it is, the season's own story rules part it at the load.");
+                Assert.That(OldSaveTrace.Digest(asItIs), Is.Not.EqualTo((string)entry["digest"]), "The same commands at story rules 9 give another season digest.");
+            }
+        }
+
+        /// <summary>
+        /// The veto used by the command that led from <paramref name="before"/> to <paramref name="after"/>, as a line: the
+        /// checkpoint, the week, the holder, whom they saved, who was named, the Head of Household, and the replacement's grudge
+        /// against the holder before and after; null for any other command. A veto use takes one nominee off the block and
+        /// puts one on in the same week, and logs the veto line that saves; anything else that moves the block logs none.
+        /// </summary>
+        private static string VetoUse(EpisodeState before, EpisodeState after, int index)
+        {
+            if (before == null || before.week != after.week) return null;
+            var off = before.nominees.Except(after.nominees).ToList();
+            var on = after.nominees.Except(before.nominees).ToList();
+            bool saves = after.events.Any(e => e.sequence >= before.nextSequence && e.kind == "veto" && (e.text.Contains(" saves ") || e.text.Contains(" save ")));
+            Assert.That(off.Count == 1 && on.Count == 1, Is.EqualTo(saves), "Checkpoint " + index + ": a veto that saves changes the block by one, and only it does.");
+            if (!saves) return null;
+            string holder = after.vetoHolderId;
+            string Row(EpisodeState s)
+            {
+                var g = s.story.grudges.FirstOrDefault(x => x.holderId == on[0] && x.targetId == holder);
+                return g == null ? "none" : g.cause + " " + g.severity.ToString("0.##", CultureInfo.InvariantCulture) + " x" + g.count + " w" + g.originWeek;
+            }
+            return index + " week " + after.week + ": " + holder + " saves " + off[0] + ", " + on[0] + " named, HoH " + after.hohId + ": " + Row(before) + " -> " + Row(after);
         }
 
         // ------------------------------------------------------------------ refused on purpose

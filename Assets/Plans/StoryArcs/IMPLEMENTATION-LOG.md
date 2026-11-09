@@ -385,4 +385,5 @@ all milestones M0-M6, owner decisions = the recommended defaults in 20 §9 and 2
 - Floors: Sim 16657 (16642 and the define commit's 15); EditMode 9837 (9818, the define commit's 13 and the old-save
   cell's 6).
 - R7 (Roles, story rules 11, ROLE-MOMENTS-PLAN) can follow now: story rules 10 is defined, accepted and enrolled, the
-  ladder has no gap, and Roles plays the Blame rule as well (the plan, §4 and §8).
+  ladder has no gap, and Roles plays the Blame rule as well (the plan, §4 and §8). What R7 inherits (`Current` is Blame,
+  the pins that move with it, what stays held by name) is listed in the plan's §8, "What R7 inherits".

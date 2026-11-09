@@ -625,8 +625,9 @@ namespace Gamesim.Tests.EditMode
 
         /// <summary>
         /// <see cref="BudgetNoughtTuning1Rows"/>' seasons at story rules 10, Blame: tuning 1 and story rules 10 together, the
-        /// seasons the game ships since the enrolment (STORY-RULES-10-PLAN §8), recorded at it: 209 of the 564 rows moved
-        /// from the held tuning-1 twin.
+        /// seasons the game ships from the enrolment (STORY-RULES-10-PLAN §8), recorded at it: 209 of the 564 rows moved
+        /// from the held tuning-1 twin. Both rules-10 twins name Blame, so a later enrolment holds them there
+        /// (<see cref="BudgetNought"/>).
         /// </summary>
         internal const string BudgetNoughtTuning1BlameRows = "ad1ca9f42d182824";
 
@@ -637,27 +638,31 @@ namespace Gamesim.Tests.EditMode
         public void BudgetNoughtPlaysTheSeasonsB9Measured() => BudgetNought(tuningHeld: false, StoryRules.Threads, "budget0-tuning1", BudgetNoughtTuning1Rows);
 
         [Test, Explicit("Story rules 10: budget nought's seasons held at tuning 0, at story rules 10, the enrolled story rules (about 5 min). Run by name.")]
-        public void BudgetNoughtPlaysTheDriversSeasonsAtStoryRulesTen() => BudgetNought(tuningHeld: true, 0, "budget0-story10", BudgetNoughtBlameRows);
+        public void BudgetNoughtPlaysTheDriversSeasonsAtStoryRulesTen() => BudgetNought(tuningHeld: true, StoryRules.Blame, "budget0-story10", BudgetNoughtBlameRows);
 
         [Test, Explicit("Story rules 10: budget nought's seasons at tuning 1 and story rules 10, the shipped seasons (about 5 min). Run by name.")]
-        public void BudgetNoughtPlaysTheShippedSeasonsAtStoryRulesTen() => BudgetNought(tuningHeld: false, 0, "budget0-tuning1-story10", BudgetNoughtTuning1BlameRows);
+        public void BudgetNoughtPlaysTheShippedSeasonsAtStoryRulesTen() => BudgetNought(tuningHeld: false, StoryRules.Blame, "budget0-tuning1-story10", BudgetNoughtTuning1BlameRows);
 
         /// <summary>
-        /// Budget nought's grid, held at tuning 0 or not, at <paramref name="storyRules"/> through the cell's story field (0:
-        /// EnableStory's own, <see cref="StoryRules.Current"/>), hashed against <paramref name="expected"/>.
+        /// Budget nought's grid, held at tuning 0 or not, at story rules <paramref name="storyRules"/>, hashed against
+        /// <paramref name="expected"/>. Each pin names the story rules its digest was recorded at, never Current: while they
+        /// are <see cref="StoryRules.Current"/> the seasons play EnableStory's own (a cell may not name Current,
+        /// <see cref="BalanceLab.CheckedStoryRules"/>), and once a later milestone enrols they are held through the cell's
+        /// story field, as the enrolment held the rules-9 pins. So when R7 moves Current from Blame to Roles, the rules-10
+        /// twins keep playing 10 and keep their digests; they are never re-recorded at the new Current.
         /// </summary>
         private static void BudgetNought(bool tuningHeld, int storyRules, string name, string expected)
         {
+            int held = storyRules == StoryRules.Current ? 0 : storyRules;
             List<BalanceLab.Cell> Cells(List<BalanceLab.Cell> cells) =>
-                cells.Select(c => tuningHeld ? c.HeldAtTuning0() : c).Select(c => storyRules == 0 ? c : c.AtStoryRules(storyRules)).ToList();
+                cells.Select(c => tuningHeld ? c.HeldAtTuning0() : c).Select(c => held == 0 ? c : c.AtStoryRules(held)).ToList();
             var smoke = BalanceLab.Run(Cells(BalanceLabReports.FullGrid()), 1);
             var headline = BalanceLab.Run(Cells(BalanceLab.Grid(BalancePolicies.All, BalanceLabReports.HeadlineSizes)), 20);
             string rows = BalanceLab.Jsonl(smoke) + BalanceLab.Jsonl(headline);
             TestContext.WriteLine("Rows: " + BalanceLab.Write(name, rows) + "; hash " + Hash(rows));
             Assert.That(smoke.Concat(headline).All(r => r.cell.npcTicks == 0 && r.npcOps == 0), Is.True);
-            int played = storyRules == 0 ? StoryRules.Current : storyRules;
-            Assert.That(smoke.Concat(headline).All(r => BalanceLab.Fresh(r.cell, r.seed).story.rulesVersion == played), Is.True,
-                "Every season starts on story rules " + played + ".");
+            Assert.That(smoke.Concat(headline).All(r => BalanceLab.Fresh(r.cell, r.seed).story.rulesVersion == storyRules), Is.True,
+                "Every season starts on story rules " + storyRules + ".");
             Assert.That(Hash(rows), Is.EqualTo(expected));
         }
 

@@ -188,8 +188,9 @@ writes a log line. `Grudges.Settle(state, holder, target, atMost)` sets the seve
   - Roles (11) plays story rules 10 as well, as the ladder requires.
 - **No existing season is at 11 (checked 2026-11-07, at the owner's request).** A `>=` gate would change a saved season
   at Roles, so this was counted, not assumed:
-  - no shipped path writes a version above `Current`: a new season takes `StoryRules.Current`, which is Threads
-    (`Simulation/Story/EpisodeEngine.Story.cs:75`), and so do the migration and the web importer (above);
+  - no shipped path writes a version above `Current`: a new season takes `StoryRules.Current`, which was Threads at this
+    check and is Blame since the enrolment (`5863d964`, §8) (`Simulation/Story/EpisodeEngine.Story.cs:75`), and the
+    migration and the web importer write Threads (above);
   - the 132 episode files on the owner's machine (66 saves and their backups; Play writes to the same folder) were read
     without printing any name: every story rules value is 6 or 9, and none is 10 or 11;
   - no repository fixture holds a season at 11.
@@ -235,9 +236,11 @@ the analysis reads only parts of the lab's current snapshot.
 
 **The committed lab** (built in the define commit) can play any cell at a defined story rules version from Threads
 on, other than Current (`BALANCE_STORY`, a `/story10` suffix on the house label; after enrolment the same switch holds
-a cell at 9), and records DP, D1, D2, the holders' rows and the run week's veto. None of it enters a hashed row:
-`BudgetNoughtRows`, `BudgetNoughtTuning1Rows` and the 48 goldens do not move (`5481eec784acd1ed` and
-`1ee55c2a92571363` at `23b04e46`).
+a cell at 9), and records DP, D1, D2, the holders' rows and the run week's veto. None of it enters a hashed row: at the
+define commit `BudgetNoughtRows`, `BudgetNoughtTuning1Rows` and the 48 goldens did not move (`5481eec784acd1ed` and
+`1ee55c2a92571363` at `23b04e46`, the define commit's base). Since then B9's round 4 re-pinned the tuning-1 pin to
+`a89a8120050e9460` (B9's final head `7ab18ab0`, `runs/expected-digests.txt`), and the enrolment re-recorded the 48
+goldens and holds both budget-nought pins at story rules 9 (§8).
 
 **The sets, in screen order** (estimates unverified):
 
@@ -366,7 +369,9 @@ snapshot's pass marker.
   step under 30 minutes (§5).
 - **Byte for byte:** the committed constants replay the scratch rows of the chosen set on headline seeds 0-19 (the
   development seeds), and both BudgetNought digests are unchanged by the define commit: the digests B9's own head
-  prints (`5481eec784acd1ed` and `1ee55c2a92571363` at `23b04e46`).
+  prints, `5481eec784acd1ed` and, since B9's round 4, `a89a8120050e9460` at B9's final head `7ab18ab0`
+  (`runs/expected-digests.txt`; `1ee55c2a92571363` at `23b04e46`, before round 4). After the enrolment both pins are
+  held at story rules 9 and print these two (§8).
 - **The suites:** the dotnet subset against the floors in `Tools/baseline.txt`; the offline EditMode compile and the
   Mono kit for the Role, Frozen, Persistence and StoryMechanics fixtures; the UMA PlayMode set as the only Unity gate.
 
@@ -443,16 +448,16 @@ are 0.4% (C0 2.2%), as decision 7 expected.
   stings at 35 (out of the 40 count, still read by the jury term); the player's veto follows the same rule; a past Head
   of Household's self-save makes no third holder (3 holders at 9, 2 at 10); Roles plays the Blame rules; a save at
   story rules 10 round-trips at schema 30.
+- The pins that named 10 as undefined: `RoleRulesTests` (the reserved-10 message, the doc, the `IsDefined` cases),
+  `FrozenEpisodeV29IntegrationTests` (10 stays refused by Frozen29 in its own words, while the live validator accepts
+  it), `DialogueCampaignRulesTests` (every defined version).
+- The lab: the part round trip keeps the new fields; DP is false once the player is out.
 
 **The C1n commit** (after acceptance, before the enrolment). The player's-veto test becomes
 `ThePlayersVetoKeepsTheFortyUnderBlame`, the same two cases (a self-save, a save for somebody else) against the same
 rules-9 twin: under Blame the replacement resents the player at 40 with the same cause, on the 40 line, and the twins'
 streams, sequences and logs agree. The define commit's C1 branch for the player fails both cases. No other test pinned
 the player's veto at Blame; the count is unchanged.
-- The pins that named 10 as undefined: `RoleRulesTests` (the reserved-10 message, the doc, the `IsDefined` cases),
-  `FrozenEpisodeV29IntegrationTests` (10 stays refused by Frozen29 in its own words, while the live validator accepts
-  it), `DialogueCampaignRulesTests` (every defined version).
-- The lab: the part round trip keeps the new fields; DP is false once the player is out.
 
 **Enrol commit.** §8.
 
@@ -570,15 +575,46 @@ commit's 15); the cell adds no subset test, and no subset test enumerates the ol
 9837: 9831 and the cell's six (its four per-fixture cases and its two own).
 
 **Still open.** The UMA PlayMode set (the only Unity gate) and the two PlayMode re-pins; `StoryPacingTests.PacingReport`
-at 9 and 10 (§5, step 6); a re-run of the two rules-10 budget-nought twins and the 48 goldens with their pasted values
-(each was checked by script against the run that printed it); the season-digest tiers of
+at 9 and 10 (§5, step 6); a re-run of the 48 goldens with their pasted values (each was checked by script against the
+run that printed it; the two rules-10 budget-nought twins were re-run after the review, below, and pass); the season-digest tiers of
 `CommitmentRulesSeasonDigests`, which are `[Explicit]` and held at threads by name. The owner signs off the numbers in
 the PR before it merges.
 
 **R7 can follow now.** ROLE-MOMENTS-PLAN has R7's enrolment wait "for every milestone below Roles to be finished";
 story rules 10 is defined, accepted, enrolled and has its old-save cell, and the ladder has no gap (`IsDefined` is
 `0 <= version <= Latest`). Roles (11) plays the Blame rule too, as the ladder requires (§4), so when R7 moves `Current`
-from `Blame` to `Roles` its seasons keep C1n. The role-moments session is to be told (§8, above).
+from `Blame` to `Roles` its seasons keep C1n. The role-moments session is to be told (§8, above), with this list.
+
+**What R7 inherits** (written for R7's builder; ROLE-MOMENTS-PLAN is that session's to edit). ROLE-MOMENTS-PLAN still
+says `Current` stays Threads until R7, that fresh seasons enrol only when R7 moves it, and that R7 re-records
+`CommitmentRulesSeasonDigests`; all three predate this enrolment.
+- `StoryRules.Current` is `Blame` (`Simulation/Story/StoryState.cs`), so R7 moves it from Blame, not from Threads.
+- Pins of a new season's story rules at Blame or 10, which R7's move breaks and which move to Roles or 11 with it:
+  `RoleRulesTests` (`Current` is Blame; the shipped season's version), `ShippedRulesTests` (the map's
+  `story.rulesVersion 10` and the chip's Blame), `FreshSeasonStateDigestTests` (it asserts Blame, then hashes at 9), the
+  dialogue fixtures `DialogueCampaignEngineTests`, `DialogueCampaignDealClosureTests`, `DialogueSchema29ShapeTests` and
+  `DialoguePendingSaveTests` (`Is.EqualTo(10)`), in PlayMode `EpisodeDurableTransactionTests.DialogueCampaign` and
+  `OfferBoard_WithoutRolesTheMeetingDrawsTheRowsItAlwaysDrew`, and `BalanceLabGoldens`' `Rules` tuple with its 48 cells
+  (re-recorded). `FrozenEpisodeV29IntegrationTests.ASeasonAtStoryRulesTenRoundTripsThroughTheRealStoreAtThirty` is about
+  a season at 10: it goes back to opting in at Blame by assignment, as it did before the enrolment.
+- Held by name, never re-recorded: everything held at threads above (`CommitmentRulesSeasonDigests` and every tier that
+  plays its seasons, `PinnedVoteSeason`, the below-30 list, `LegacyDigestSchema27TestStates.Fresh`,
+  `RoleStoryPools.OldSeasons`, both rules-9 budget-nought pins, `TuningRulesTests`' studier pins), and the story-rules-10
+  old-save cell, a saved season at 10.
+- The two rules-10 budget-nought twins name Blame: once `Current` is past it they are held there through the cell's
+  story field (`CheckedStoryRules` then admits Blame and refuses Roles) and keep `63356f631a00ed8a` and
+  `ad1ca9f42d182824`, unless R7's own code moves the seasons they play, which is what they are there to show. A
+  rules-11 budget-nought pin, if R7 wants one, is a twin of its own.
+- The bounds keyed to `Current` (`ShippedRulesTests`, `StorySeasonTests`, `AllianceLeakTests`, the lab's
+  `CheckedStoryRules`) move with it on their own.
+
+**After the review** (2026-11-09). The two rules-10 budget-nought twins named no story rules (0, EnableStory's own), so
+at R7 they would have played 11 under names that say ten and failed only on the hash. They now name Blame, and
+`BudgetNought` plays a named version through EnableStory while it is Current and through the cell's story field once
+it is not, asserting that every season starts on it. Re-run on that code with nothing else changed, both pass and
+print the recorded digests (`63356f631a00ed8a`, `ad1ca9f42d182824`). §4, §5 and §6 now date the statements the
+enrolment left stale (Current was Threads; the 48 goldens did not move; the tuning-1 pin before B9's round 4), §7's
+define-commit list is whole again, and the list above is the R7 handoff.
 
 ## 9. What moves for the player
 

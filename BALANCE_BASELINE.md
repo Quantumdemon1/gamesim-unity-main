@@ -48,7 +48,7 @@ B9's PR. The tables further down are tuning 0's and are not re-measured here.
 | Studier at 0.8, season wins at 8 / 12 | - | 35.5% (200 seeds) / 34.1% (800) | reported |
 | Beast, season wins at 8 / 12 (100 seeds) | 87% / 56% | 48% / 52% | reported |
 | Q4, the studier's nomination ratio at 8 / 12 | 0.54 / 0.80 | 0.75 / 0.91 | reported |
-| Q5, pariah seasons, the studier at 8 / 12 (B9 raises it; the all-policy 16.3% / 45.1% is not re-measured at tuning 1) | 5.5% / 28.5% | 14.6% / 47.2% | at most 20% at each size. Story rules 10 (C1n), enrolled: all 12 policies pooled at tuning 1 on the held-out seeds 100-199 (1,200 seasons a house), 3.9% [3.0, 5.2] / 17.6% [15.5, 19.8]; C0, the same seasons under today's rule, 19.1% / 49.0% (McNemar b/c 182/0 and 384/7; STORY-RULES-10-PLAN §6) |
+| Q5, pariah seasons, the studier at 8 / 12 (B9 raises it; the all-policy 16.3% / 45.1% is re-measured at tuning 1 by STORY-RULES-10's C0, story rules 9: 17.2% / 45.7% on seeds 0-99, 19.1% / 49.0% on 100-199) | 5.5% / 28.5% | 14.6% / 47.2% | at most 20% at each size. Story rules 10 (C1n), enrolled: all 12 policies pooled at tuning 1 on the held-out seeds 100-199 (1,200 seasons a house), 3.9% [3.0, 5.2] / 17.6% [15.5, 19.8]; C0, the same seasons under story rules 9, 19.1% / 49.0% (McNemar b/c 182/0 and 384/7; STORY-RULES-10-PLAN §6) |
 
 The first four rows are round 4's (B9-BALANCE-PLAN, "Round 4: the lab"): tuning 1 as it ships, with the jury's keyed
 tiebreak and without the small house's preparation boost, which round 4 dropped. The rows below them (the studier at 0.8,
@@ -106,7 +106,7 @@ that holds its tuning:
 - `BalanceLabGoldens` re-recorded: its `Rules` tuple ends `story.rulesVersion=10`, and all 48 cells moved and were
   recorded at the enrolment.
 - The acceptance it enrolled on (STORY-RULES-10-PLAN §6, As accepted): Q5 (D0) 3.9% [3.0, 5.2] at 8 and 17.6%
-  [15.5, 19.8] at 12 on the held-out seeds 100-199, the 12 policies pooled at tuning 1, with C0 (today's rule, the same
+  [15.5, 19.8] at 12 on the held-out seeds 100-199, the 12 policies pooled at tuning 1, with C0 (story rules 9, the same
   seasons) at 19.1% and 49.0%. B1-B4 (the studier at 0.5, competition seeds 0-799): 62.4%, 61.5%, 32.1% and 26.2%, in
   band; the Game Sense gap (B5-B6) 14.5 at 8 and 12.6 at 12; B7 43.3% [31.6, 55.9] pooled; the pace at 8 in its bands
   (stories finished 4.5, as C0's, against an unbanded "about 3"). The enrolled head replays C1n's lab rows on the

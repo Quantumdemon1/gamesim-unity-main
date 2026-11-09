@@ -282,14 +282,28 @@ namespace Gamesim.Tests.PlayMode
         /// panel. For a moment the panel takes no pointer press either way: a double click on a
         /// card's name opens their screen and does nothing else, and one on "Back to free time" goes
         /// back and does nothing else - the panel stays open and nothing is committed. Once the moment
-        /// has passed a deliberate press works.
+        /// has passed a deliberate press works. The fixture is pinned to free time with nothing waiting,
+        /// the story on and the house held (InstallFreeTime), because on the director's default season,
+        /// whose story is off, the legacy walk-in watch commits a house event while the cast settles,
+        /// and free time then draws the old column, not the board.
         /// </summary>
         [UnityTest]
         public IEnumerator FreeTime_ADoubleClickBetweenTheBoardAndAHouseguestsScreenTakesNoSecondPress()
         {
+            yield return InstallFreeTime(8, FreeTimeWaiting.Nothing);
             yield return OpenFreeTime();
             var state = director.Snapshot;
-            Assert.That(director.IsFreeTimeBoard, Is.True, "Free time is the board.");
+            // What the board needs, said beside each board assert, so a red names the term that failed.
+            string Terms()
+            {
+                var now = director.Snapshot;
+                return " Phase " + now.phase + ", unresolved non-story house events "
+                    + now.houseEvents.Count(item => !item.resolved && !item.IsStory) + ", diary prompt "
+                    + (now.pendingDiary != null ? "waiting" : "none") + ", houseguest screen " + (director.HouseguestScreenFor ?? "none")
+                    + ", phase panel " + (director.IsPhasePanelOpen ? "open" : "closed") + ", challenge "
+                    + (director.IsChallengeActive ? "active" : "none") + ", layout " + Hud.CurrentActivityLayout + ".";
+            }
+            Assert.That(director.IsFreeTimeBoard, Is.True, "Free time is the board." + Terms());
             var who = state.Active.First(c => !c.isPlayer);
             Button NameOnTheBoard() => ActiveRect(EpisodeHud.HouseCardsName).GetComponentsInChildren<Button>(true).First(b => b.name == who.name);
 
@@ -316,14 +330,14 @@ namespace Gamesim.Tests.PlayMode
             revision = director.Snapshot.revision;
             Assert.That(PressAt(backPoint), Is.SameAs(back.gameObject), "The press lands on 'Back to free time'.");
             Assert.That(director.HouseguestScreenFor, Is.Null, "Back on the board,");
-            Assert.That(director.IsFreeTimeBoard, Is.True);
+            Assert.That(director.IsFreeTimeBoard, Is.True, "Free time is the board again." + Terms());
             Assert.That(Hud.PointerHeld, Is.True, "holding the pointer off as it replaces the screen.");
             yield return null; yield return null;
             Assert.That(Hud.PointerHeld, Is.True, "The hold outlasts a frame or two.");
             stray = PressAt(backPoint);
             Assert.That(stray == null || !stray.transform.IsChildOf(ActiveRect(ModalRoot)), Is.True,
                 "The second press of a double click on 'Back to free time' lands on " + (stray != null ? stray.name : "nothing") + ".");
-            Assert.That(director.IsPanelOpen && director.IsFreeTimeBoard, Is.True, "The panel stays open, on the board,");
+            Assert.That(director.IsPanelOpen && director.IsFreeTimeBoard, Is.True, "The panel stays open, on the board," + Terms());
             Assert.That(director.Snapshot.revision, Is.EqualTo(revision), "and nothing is committed.");
 
             // Once the moment has passed, a deliberate press works.

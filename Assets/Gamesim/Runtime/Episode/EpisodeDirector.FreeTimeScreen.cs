@@ -157,7 +157,7 @@ namespace Gamesim.Episode
             hud.BeginColumns(300f);
             HouseAsCards(state);
             HouseMoves(state, true);
-            if (state.playerStudyBonus > 0) hud.Footnote("Preparation banked for competitions: " + state.playerStudyBonus + "/5.");
+            if (state.playerStudyBonus > 0) hud.Footnote("Preparation banked for competitions: " + state.playerStudyBonus + "/" + TuningRules.PreparationOutOf(state) + ".");
             hud.SideColumn();
             LocationCard(state);
             CurrentPlayCard(state);

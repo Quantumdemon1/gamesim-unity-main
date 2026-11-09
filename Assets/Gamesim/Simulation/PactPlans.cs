@@ -284,7 +284,8 @@ namespace Gamesim.Simulation
         /// player, those who came round and those who already said the counter against those still on the
         /// plan. More says wins; a tie goes to the founder's side - the player where they founded the pact,
         /// else the NPC founder's final say - and with no founder here the plan stands. The player calls it
-        /// only where the counter carried.</item>
+        /// only where the counter carried. Under B9's tuning a nominee's say counts on neither side, and the player
+        /// as founder takes a tie only where a member came round; otherwise the plan stands.</item>
         /// <item><b>Lie low, and the lapse:</b> the plan, or on a split the NPC founder's say, else the first
         /// in the pact's order; an NPC calls it. Void - no target, no call - where the pact has ended, no say
         /// stands, or the block no longer stands as the plan named it.</item>
@@ -312,10 +313,13 @@ namespace Gamesim.Simulation
                 result.counterId = chosenId;
                 foreach (string id in here.Where(id => Said(id) == plan))
                     if (ComesRound(s, pact.id, id)) result.cameRound.Add(id);
-                int forCounter = 1 + result.cameRound.Count + standing.Count(say => say.targetId == chosenId);
-                int forPlan = standing.Count(say => say.targetId == plan) - result.cameRound.Count;
+                // B9's tuning (TuningRules.Bands): a nominee cannot vote, so a nominee's say counts on neither side (K5);
+                // and a tie carries the player's counter only if a member came round (K1), else it falls to the rule below.
+                var counted = TuningRules.NomineesHaveNoSay(s) ? standing.Where(say => s.nominees == null || !s.nominees.Contains(say.memberId)).ToList() : standing;
+                int forCounter = 1 + result.cameRound.Count + counted.Count(say => say.targetId == chosenId);
+                int forPlan = counted.Count(say => say.targetId == plan) - result.cameRound.Count;
                 if (forCounter != forPlan) target = forCounter > forPlan ? chosenId : plan;
-                else if (EpisodeEngine.PlayerFounded(s, pact)) target = chosenId;
+                else if (EpisodeEngine.PlayerFounded(s, pact) && (!TuningRules.TieNeedsAMemberRound(s) || result.cameRound.Count > 0)) target = chosenId;
                 else if (founder != null && Said(founder) != null) target = result.cameRound.Contains(founder) ? chosenId : Said(founder);
                 else target = plan;
             }

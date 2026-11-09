@@ -597,18 +597,35 @@ namespace Gamesim.Tests.EditMode
         // houseguests go through the ledger and write no arc (EpisodeEngine.ChangeBetween), which budget nought plays too.
         // Re-pinned for the alumni histories (3878f7a1d2ea39a8 at main's 37416049; ALL-STAR-HISTORIES-PLAN 8.8, "From
         // H1b"): the smoke grid's 24 All-Stars seasons seat alumni and play their histories, and its 540 Regular rows are
-        // main's byte for byte.
+        // main's byte for byte. From B9 (B9-BALANCE-PLAN decision 8) every cell is held at tuning 0, so this keeps the rows
+        // every season played before B9; its twin below pins the same seasons at tuning 1.
         internal const string BudgetNoughtRows = "5481eec784acd1ed";
 
-        [Test, Explicit("B5b: budget nought plays, byte for byte, the seasons it played before the NPC world's driver (about 5 min). Run by name.")]
-        public void BudgetNoughtPlaysTheSeasonsItPlayedBeforeTheDriver()
+        /// <summary>
+        /// The same seasons at tuning 1, B9's balance bands (B9-BALANCE-PLAN decision 8), recorded at B9-3 as
+        /// 1ee55c2a92571363: 521 of the 564 rows moved, 473 only in the Game Sense total (the weights read every season's
+        /// verdict anew) and 48 in play, 47 of the beast's (who studies) and one schemer's (a counter K1 or K5 settled).
+        /// Re-pinned in round 4 (B9-BALANCE-PLAN, "Round 4: the lab"): the keyed jury tiebreak and the final Head of
+        /// Household's half-a-tie read moved it (1bea9cf5), and tuning 1 without the small house's boost moved the beast's
+        /// rows again (f5fb8cb6). BALANCE_BASELINE.md, "B9".
+        /// </summary>
+        internal const string BudgetNoughtTuning1Rows = "a89a8120050e9460";
+
+        [Test, Explicit("B5b: budget nought plays, byte for byte, the seasons it played before the NPC world's driver, held at tuning 0 (about 5 min). Run by name.")]
+        public void BudgetNoughtPlaysTheSeasonsItPlayedBeforeTheDriver() => BudgetNought(held: true, "budget0", BudgetNoughtRows);
+
+        [Test, Explicit("B9: budget nought's seasons at tuning 1, the shipped tuning (about 5 min). Run by name.")]
+        public void BudgetNoughtPlaysTheSeasonsB9Measured() => BudgetNought(held: false, "budget0-tuning1", BudgetNoughtTuning1Rows);
+
+        private static void BudgetNought(bool held, string name, string expected)
         {
-            var smoke = BalanceLab.Run(BalanceLabReports.FullGrid(), 1);
-            var headline = BalanceLab.Run(BalanceLab.Grid(BalancePolicies.All, BalanceLabReports.HeadlineSizes), 20);
+            List<BalanceLab.Cell> Cells(List<BalanceLab.Cell> cells) => held ? cells.Select(c => c.HeldAtTuning0()).ToList() : cells;
+            var smoke = BalanceLab.Run(Cells(BalanceLabReports.FullGrid()), 1);
+            var headline = BalanceLab.Run(Cells(BalanceLab.Grid(BalancePolicies.All, BalanceLabReports.HeadlineSizes)), 20);
             string rows = BalanceLab.Jsonl(smoke) + BalanceLab.Jsonl(headline);
-            TestContext.WriteLine("Rows: " + BalanceLab.Write("budget0", rows) + "; hash " + Hash(rows));
+            TestContext.WriteLine("Rows: " + BalanceLab.Write(name, rows) + "; hash " + Hash(rows));
             Assert.That(smoke.Concat(headline).All(r => r.cell.npcTicks == 0 && r.npcOps == 0), Is.True);
-            Assert.That(Hash(rows), Is.EqualTo(BudgetNoughtRows));
+            Assert.That(Hash(rows), Is.EqualTo(expected));
         }
 
         /// <summary>The 16-hex SHA-256 the season digests use (CommitmentRulesSeasonDigests).</summary>
@@ -631,7 +648,7 @@ namespace Gamesim.Tests.EditMode
             Assert.That(parts.Select(r => r.index), Is.EqualTo(new[] { 0, 1, 2, 0, 1, 2 }));
             // What the rows leave out survives too: the autopsy whole, and the diagnostics' own records, the pact watch's
             // (ALL-STAR-HISTORIES-PLAN 14.L.H) among them.
-            string Rest(BalanceLab.SeasonRun r) => Newtonsoft.Json.JsonConvert.SerializeObject(new { r.autopsy, r.gameSenseRows, r.nominations, r.pariah, r.preparation, r.counterMembers, r.pactWatch });
+            string Rest(BalanceLab.SeasonRun r) => Newtonsoft.Json.JsonConvert.SerializeObject(new { r.autopsy, r.gameSenseRows, r.nominations, r.pariah, r.preparation, r.counterMembers, r.counterTallies, r.pactWatch });
             Assert.That(parts.Select(Rest), Is.EqualTo(one.Select(Rest)));
             Assert.That(one.Sum(r => r.gameSenseRows.Count), Is.GreaterThan(0), "Game Sense's rows were kept.");
             Assert.That(parts.All(r => r.pactWatch != null), Is.True, "The pact watch was kept.");

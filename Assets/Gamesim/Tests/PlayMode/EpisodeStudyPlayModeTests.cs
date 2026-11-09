@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using System.Linq;
 using Gamesim.Episode;
+using Gamesim.Persistence;
 using Gamesim.Presentation;
 using Gamesim.Simulation;
 using NUnit.Framework;
@@ -230,6 +231,91 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(director.TryOpenPhasePanel(), Is.True);
             Assert.That(ActiveDiaryText(), Does.Contain("WEEK " + director.Snapshot.week + " · Season complete"));
             Assert.That(ActiveDiaryText(), Does.Not.Contain("0 houseguests remain"));
+        }
+
+        /// <summary>
+        /// B9's tuning in the diary room (B9-BALANCE-PLAN §4.7): every new season since B9 starts on tuning 1, but the
+        /// director's own season without a save, and every other study test's, stays at 0. So this installs a season on
+        /// tuning 1 (competition rules 4, which tuning 1 needs), saved and loaded, and studies it to its limit of one: the
+        /// card and the review name that limit, a confirmed study counts out of it, and once it is full no study is offered or
+        /// staged and the section says what uses it up. The record's row and rules line read the season's own words.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator StudyDiary_UnderTuningOneTheStudyStopsAtTheSeasonsLimitAndSaysWhatUsesItUp()
+        {
+            var tuned = ContentCatalog.Create(20260910);
+            tuned.competitionRulesVersion = CompetitionRules.Current;
+            tuned.tuningRulesVersion = TuningRules.Bands;
+            Assert.That(EpisodeValidation.TryValidate(tuned, out var reason), Is.True, reason);
+            new EpisodeSaveStore(director.SavePath).Save(tuned);
+            yield return ReloadEpisode();
+            yield return OpenDiaryFixturePanel();
+            var before = director.Snapshot;
+            Assert.That(before.tuningRulesVersion, Is.EqualTo(TuningRules.Bands), "Precondition: the season is on tuning 1.");
+            Assert.That(before.phase, Is.EqualTo(EpisodePhase.Social));
+            Assert.That((before.playerStudyBonus, TuningRules.StudyLimit(before)), Is.EqualTo((0, 1)), "Precondition: nothing banked, and week one's limit is one.");
+
+            ButtonWithCaption(EpisodeDirector.DiaryPendingTabCaption).onClick.Invoke();
+            yield return null; yield return null;
+            Assert.That(ActiveDiaryText(), Does.Contain("Study preparation: 0/1"));
+            Assert.That(ActiveDiaryText(), Does.Contain("Guaranteed +1 preparation, up to the limit of 1."));
+            Assert.That(ActiveDiaryText(), Does.Contain(StudyWords.StudyAside(before)));
+            ButtonWithCaption(EpisodeHud.StudyMemorizeCaption).onClick.Invoke();
+            yield return null; yield return null;
+            Assert.That(director.HasDiaryDecisionDraft, Is.True);
+            Assert.That(ActiveDiaryText(), Does.Contain("Current preparation: 0/1."));
+            Assert.That(ActiveDiaryText(), Does.Not.Contain("Preparation stays between 0 and 5."), "Tuning 0's review rule is not shown.");
+            AssertEquivalent(before, director.Snapshot);
+            var expected = StudyUiExpected(before, EpisodeCommandKind.StudyHouse, "memorize-layout");
+            ButtonWithCaption(EpisodeHud.StudyConfirmCaption).onClick.Invoke();
+            yield return null; yield return null;
+            var full = director.Snapshot;
+            Assert.That(full.playerStudyBonus, Is.EqualTo(1));
+            Assert.That(full.playerStudyBonus, Is.EqualTo(expected.playerStudyBonus));
+            Assert.That(full.randomState, Is.EqualTo(expected.randomState));
+            Assert.That(director.HasDiaryDecisionDraft, Is.False);
+
+            // Full: no way to study is offered, the section says what uses preparation up, and nothing stages a study.
+            ButtonWithCaption(EpisodeDirector.DiaryPendingTabCaption).onClick.Invoke();
+            yield return null; yield return null;
+            Assert.That(ActiveDiaryText(), Does.Contain("Study preparation: 1/1"));
+            Assert.That(DiaryHasButton(EpisodeHud.StudyMemorizeCaption), Is.False);
+            Assert.That(DiaryHasButton(EpisodeHud.StudySneakCaption), Is.False);
+            Assert.That(ActiveDiaryText(), Does.Contain(StudyWords.FullLine(full)));
+            foreach (string approach in new[] { "memorize-layout", "sneak-peek" })
+            {
+                director.ReviewStudyHouse(approach);
+                Assert.That(director.HasDiaryDecisionDraft, Is.False, "A study at the limit is never staged: " + approach);
+            }
+            director.ConfirmDiaryDecision();
+            AssertEquivalent(full, director.Snapshot);
+
+            // The record: counted out of the season's limit, in the season's own words; the rules line names the limit.
+            ButtonWithCaption(EpisodeDirector.DiaryRecordTabCaption).onClick.Invoke();
+            yield return null; yield return null;
+            var row = ActiveRect(EpisodeHud.DiaryRecordRowPrefix + "Study preparation").GetComponentsInChildren<TMPro.TMP_Text>()
+                .Select(label => label.text).ToArray();
+            Assert.That(row, Does.Contain("1 / 1"));
+            Assert.That(row, Does.Contain(StudyWords.UseShort(full)));
+            if (!ActiveDiaryText().Contains(StudyWords.RulesLine(full)))
+            {
+                ButtonWithCaption(EpisodeHud.DiaryRulesCaption).onClick.Invoke();
+                yield return null; yield return null;
+            }
+            Assert.That(ActiveDiaryText(), Does.Contain(StudyWords.RulesLine(full)));
+            AssertEquivalent(full, director.Snapshot);
+
+            // A fresh open, with no tab chosen: a full preparation is no choice (DiaryHasChoice's !StudyFull), so the record's
+            // tab opens first and says nothing is pending. Last, because opening a panel may commit the NPC world's ticks.
+            director.ClosePanels();
+            yield return OpenDiaryFixturePanel();
+            var reopened = director.Snapshot;
+            Assert.That((reopened.playerStudyBonus, reopened.phase, reopened.pendingDiary == null, EpisodeEngine.OpenSummons(reopened) == null),
+                Is.EqualTo((1, EpisodePhase.Social, true, true)), "Precondition: still full in free time, with nothing else owed.");
+            var status = ActiveRect(EpisodeHud.DiaryStatusName);
+            Assert.That(status, Is.Not.Null, "With the study full and nothing else to decide, the record's tab opens first.");
+            Assert.That(status.GetComponentsInChildren<TMPro.TMP_Text>().Select(label => label.text), Does.Contain("No private decision pending"));
+            Assert.That(DiaryHasButton(EpisodeHud.StudyMemorizeCaption), Is.False);
         }
 
         private static EpisodeState StudyUiExpected(EpisodeState before, EpisodeCommandKind kind, string choice = null)

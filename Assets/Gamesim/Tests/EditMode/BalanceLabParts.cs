@@ -31,7 +31,7 @@ namespace Gamesim.Tests.EditMode
         /// v6: a season carries its pact watch and its own time (ALL-STAR-HISTORIES-PLAN 14.L.H, <see cref="BalanceLab.PactWatch"/>).
         /// v7: the watch's record gains its founders out, its final scores' hash and its own error (S4's review).
         /// </summary>
-        internal const string Stamp = "balance-lab-parts/v7";
+        internal const string Stamp = "balance-lab-parts/v8";
 
         private static BalanceLabReports.TierSpec TierFromEnvironment()
         {
@@ -54,7 +54,17 @@ namespace Gamesim.Tests.EditMode
             var fresh = SeasonBuilder.Create(new SeasonBuilder.Choice { HouseSize = 8 }, 1u);
             ShippedRules.ApplyFresh(fresh);
             return Stamp + " | " + string.Join(",", ShippedRules.Fields(fresh).Select(f => f.Key + "=" + f.Value.ToString(CultureInfo.InvariantCulture)))
-                + " | " + string.Join(",", tier.cells().Select(c => c.Key));
+                + " | " + string.Join(",", CellsOf(tier).Select(c => c.Key));
+        }
+
+        /// <summary>
+        /// A tier's cells: as the tier names them, or every one held at tuning 0 when BALANCE_TUNING is 0 (B9's control,
+        /// B9-BALANCE-PLAN decision 8), so a tier replays the seasons it played before B9. The held cells' names say so.
+        /// </summary>
+        internal static List<BalanceLab.Cell> CellsOf(BalanceLabReports.TierSpec tier)
+        {
+            var cells = tier.cells();
+            return Environment.GetEnvironmentVariable("BALANCE_TUNING") == "0" ? cells.Select(c => c.HeldAtTuning0()).ToList() : cells;
         }
 
         [Test, Explicit("Plays one part of a tier: BALANCE_TIER, seed indices BALANCE_FROM to BALANCE_FROM + BALANCE_COUNT - 1, saved under BALANCE_PARTS. Run by name.")]
@@ -64,7 +74,7 @@ namespace Gamesim.Tests.EditMode
             int from = Math.Max(0, int.TryParse(Environment.GetEnvironmentVariable("BALANCE_FROM"), NumberStyles.Integer, CultureInfo.InvariantCulture, out int f) ? f : 0);
             int count = BalanceLabReports.FromEnvironment("BALANCE_COUNT", 10);
             var clock = BalanceLab.Clock();
-            var runs = BalanceLab.RunPart(tier.cells(), from, count);
+            var runs = BalanceLab.RunPart(CellsOf(tier), from, count);
             double minutes = clock.Elapsed.TotalMinutes;
             var part = new Part { stamp = StampOf(tier), tier = tier.name, from = from, count = count, minutes = minutes, runs = runs.Select(Record.Of).ToList() };
             string path = Path.Combine(Folder(tier), "part-" + from.ToString("D5", CultureInfo.InvariantCulture) + "-" + (from + count).ToString("D5", CultureInfo.InvariantCulture) + ".json");
@@ -90,7 +100,7 @@ namespace Gamesim.Tests.EditMode
                 Assert.That(part.from, Is.EqualTo(next), "The parts cover the indices once each, from nought: a gap or an overlap at " + next + ".");
                 next = part.from + part.count;
             }
-            var cells = tier.cells();
+            var cells = CellsOf(tier);
             var runs = parts.SelectMany(p => p.runs).Select(r => r.ToRun())
                 .OrderBy(r => cells.FindIndex(c => c.Key == r.cell.Key)).ThenBy(r => r.index).ToList();
             Assert.That(runs.Count, Is.EqualTo(cells.Count * next), "Every cell's every season.");
@@ -128,6 +138,7 @@ namespace Gamesim.Tests.EditMode
             public SortedDictionary<int, double> ceremonyByWeek = new SortedDictionary<int, double>();
             public double finaleSeconds;
             public List<BalanceLab.CounterMember> counterMembers = new List<BalanceLab.CounterMember>();
+            public List<BalanceLab.CounterTally> counterTallies = new List<BalanceLab.CounterTally>();
             public int npcOps, npcTicks, npcStarts, npcScans, npcTries, npcHeld, npcRejected, pairs, pairsNearBound, pairsAtBound;
             public double npcMilliseconds;
             public SortedDictionary<string, double> gameSenseRows = new SortedDictionary<string, double>(StringComparer.Ordinal);
@@ -143,7 +154,7 @@ namespace Gamesim.Tests.EditMode
                 commands = r.commands, own = r.own, fallbacks = r.fallbacks, refusals = r.refusals, freeActions = r.freeActions,
                 refusalsByKind = new SortedDictionary<string, int>(r.refusalsByKind, StringComparer.Ordinal),
                 decisionsByWeek = new SortedDictionary<int, int>(r.decisionsByWeek), ceremonyByWeek = new SortedDictionary<int, double>(r.ceremonyByWeek),
-                finaleSeconds = r.finaleSeconds, counterMembers = r.counterMembers.ToList(),
+                finaleSeconds = r.finaleSeconds, counterMembers = r.counterMembers.ToList(), counterTallies = r.counterTallies.ToList(),
                 npcOps = r.npcOps, npcTicks = r.npcTicks, npcStarts = r.npcStarts, npcScans = r.npcScans, npcTries = r.npcTries, npcHeld = r.npcHeld,
                 npcRejected = r.npcRejected, npcMilliseconds = r.npcMilliseconds, pairs = r.pairs, pairsNearBound = r.pairsNearBound, pairsAtBound = r.pairsAtBound,
                 gameSenseRows = new SortedDictionary<string, double>(r.gameSenseRows, StringComparer.Ordinal), nominations = r.nominations.ToList(), pariah = r.pariah,
@@ -166,6 +177,7 @@ namespace Gamesim.Tests.EditMode
                 foreach (var p in decisionsByWeek) r.decisionsByWeek[p.Key] = p.Value;
                 foreach (var p in ceremonyByWeek) r.ceremonyByWeek[p.Key] = p.Value;
                 r.counterMembers.AddRange(counterMembers ?? new List<BalanceLab.CounterMember>());
+                r.counterTallies.AddRange(counterTallies ?? new List<BalanceLab.CounterTally>());
                 return r;
             }
         }

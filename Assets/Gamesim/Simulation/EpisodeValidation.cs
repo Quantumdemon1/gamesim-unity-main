@@ -101,15 +101,18 @@ namespace Gamesim.Simulation
             // root revision. Every other invariant below sees the candidate's actual revision.
             if (!DialogueRules.TryValidate(s, pending, out error)) return false;
             // Schema 30's pooled fields (SCH30, ALL-STAR-HISTORIES-PLAN 5.3): each holds a value this build defines, and
-            // the slice that defines a value widens this in the same step. The tuning rules: 0 only, until B9. The alumni
+            // the slice that defines a value widens this in the same step. The tuning rules: 0 to TuningRules.Latest (1 from
+            // B9, the balance bands), on competition rules 4 or later. The alumni
             // rules: 0 with no edition, or 1 (H1b) to AlumniRules.Latest (6 from the titled names) with an
             // edition this build knows. Every value from 1 writes the same opening, so the histories' receipts are checked
             // with the ledger the same way at each (TryValidateAlumni). A season may not hold a value no code reads.
-            if (!AlumniRules.IsDefined(s.alumniRulesVersion) || s.tuningRulesVersion != 0
+            if (!AlumniRules.IsDefined(s.alumniRulesVersion) || !TuningRules.IsDefined(s.tuningRulesVersion)
                 || s.alumniRulesVersion == AlumniRules.Off && s.alumniCatalogEdition != null)
                 return Fail(out error, "Schema 30's pooled rules are not enabled in this build.");
             if (s.alumniRulesVersion >= AlumniRules.Histories && AlumniEditions.Find(s.alumniCatalogEdition) == null)
                 return Fail(out error, "The alumni rules need the edition their season was built from.");
+            if (TuningRules.At(s, TuningRules.Bands) && s.competitionRulesVersion < CompetitionRules.Widened)
+                return Fail(out error, "The tuning rules need competition rules 4.");
             if (prospectiveSafety)
             {
                 if (s.unifiedCommitmentRulesVersion != canonicalMode
@@ -172,7 +175,11 @@ namespace Gamesim.Simulation
                 return Fail(out error, "Commitment-rules activation week must be within the saved season boundary.");
             if (s.socialBudgetRulesStartWeek < 1 || s.socialBudgetRulesStartWeek > 101 || s.socialBudgetRulesStartWeek > s.week + 1)
                 return Fail(out error, "Social-budget activation week must be within the saved season boundary.");
-            if (s.playerStudyBonus < 0 || s.playerStudyBonus > 5) return Fail(out error, "Study preparation must be between zero and five.");
+            // B9's tuning holds preparation to its own bound (TuningRules.PreparationBound): one in every house. Every
+            // season before it, five.
+            if (s.playerStudyBonus < 0 || s.playerStudyBonus > TuningRules.PreparationBound(s))
+                return Fail(out error, !TuningRules.At(s, TuningRules.Bands) ? "Study preparation must be between zero and five."
+                    : "Study preparation must be between zero and one.");
             if (s.contestants == null || s.contestants.Count < MinimumCast || s.contestants.Count > MaximumCast || s.contestants.Any(c => c == null))
                 return Fail(out error, "A house holds between " + MinimumCast + " and " + MaximumCast + " contestants.");
             if (s.contestants.Select(c => c.id).Distinct(StringComparer.Ordinal).Count() != s.contestants.Count || s.contestants.Count(c => c.isPlayer) != 1 ||
@@ -431,6 +438,13 @@ namespace Gamesim.Simulation
             {
                 if (activeCount != 0 || s.contestants.Count(c => c.status == ContestantStatus.Winner) != 1 || s.contestants.Count(c => c.status == ContestantStatus.RunnerUp) != 1 ||
                     s.Find(s.winnerId)?.status != ContestantStatus.Winner || s.Find(s.runnerUpId)?.status != ContestantStatus.RunnerUp) return Fail(out error, "Invalid terminal result.");
+                // Tuning 1 (TuningRules.JuryTieWinner, the owner's call 3 of 2026-11-07): a tied jury, an empty one included as
+                // the engine counts it, crowns the season's keyed coin, re-derived here from the seed and the pair, so a save
+                // whose tied jury crowned the other finalist is refused. Tuning 0 asks nothing new: its tie went by cast order.
+                if (TuningRules.KeyedJuryTiebreak(s)
+                    && s.votes.Count(v => v.targetId == s.winnerId) == s.votes.Count(v => v.targetId == s.runnerUpId)
+                    && TuningRules.JuryTieWinner(s.seed, s.winnerId, s.runnerUpId) != s.winnerId)
+                    return Fail(out error, TuningRules.JuryTieRefusal);
             }
             else if (activeCount < 2 || s.contestants.Any(c => c.status == ContestantStatus.Winner || c.status == ContestantStatus.RunnerUp)) return Fail(out error, "Invalid active cast.");
             if ((s.phase == EpisodePhase.Jury || s.phase == EpisodePhase.JuryQuestioning || s.phase == EpisodePhase.FinalSpeeches) && activeCount != 2)

@@ -1021,6 +1021,13 @@ a main-based cherry-pick would work, but it records digests of cards the branch 
 
 ## 9. Balance: what ships with the histories, and what waits for B9
 
+**Update, B9 (2026-11-05).** B9 has set the balance bands and meets them for every new season, on tuning rules 1
+(`tuningRulesVersion`; B9-BALANCE-PLAN, *As built*), subject to the owner's sign-off in its PR. It landed PC5's
+preparation there and released competition rules 5 (its decision 2): 5 is unclaimed, and the next slice that changes how
+a competition is scored takes it, so Will's throw may take 5 if H1d lands before PC6's minigames. H1d measures against
+B9's lab tiers and tables. The section below was written before B9: where it says B9 is unresolved, quotes the 95% and
+73.5% as today's, or gives rules 5 to PC5, read this note.
+
 **The histories move balance in seasons that seat alumni, and only there.** B9 is unresolved: the studier wins about
 95% of weekly competitions against a 60-70% target, and 73.5% of 8-house seasons against 25-35%
 (`BALANCE_BASELINE.md`, Q3). The master plan's rule for H1 is that the parts that move balance wait for B9.
@@ -1084,7 +1091,7 @@ waits.
 
   It is a pure function of the saved state, with no draw. It is read only when both gates hold, the competition
   rules version and H1d's alumni value. A season below either keeps today's competitions.
-- **Measured** with PC5's paired 100-seed lab runs, together with the competitions topic.
+- **Measured** with B9's lab tiers (paired 100-seed runs), together with the competitions topic.
 
 **How it is measured:**
 - **`BalanceLab`'s All-Stars grids at 8 and 12** (`Tests/EditMode/BalanceLabReports.cs:26,66,104`), paired seeds,
@@ -1146,7 +1153,7 @@ histories-first order, and it carries every field in 5.1.
   2026-10-29 (section 1).
 - **Not claimed:** no command kind (the next free stays 66), no story milestone (10 stays the story session's, 11 is
   Roles), no dialogue rules version (the joint note claims 2 to 5 in dialogue's own field), and no competition rules
-  version (5 is PC5's; the throw's is claimed with the competitions topic at H1d).
+  version (competition rules 5 is unclaimed since B9 released it; the throw's is claimed with the competitions topic at H1d).
 - **Alumni rules 2, 3 and 4 are taken by section 14** (the owner's direction, 2026-10-29), and 5 by its 14.L (next
   claim). The campaigns (AS7) take the next free value after S6. Because the value is a bound, AS7's value carries the
   behaviour of 2 to 5 (2 to 4 if growth is withdrawn). Tell AS7's track when it next runs.
@@ -1191,6 +1198,10 @@ If B9's plan needs another field, it joins the pool before the list closes.
 **With role moments** (tell them): R7 (enrolment) and R8 (the holder's offer, a new origin value) wait for B9. If
 either lands at 29 before step 1 lands on main, its values join the frozen reader in the same step. After that, they
 are defined only at `schemaVersion >= 30` (8.2).
+
+**Update, B9 (2026-11-03):** B9 landed PC5's preparation as tuning rules 1 and released competition rules 5
+(B9-BALANCE-PLAN decision 2); the next slice that changes how a competition is scored takes 5 - Will's throw here, or PC6's
+minigames, whichever lands first. The paragraph below is history.
 
 **With the competitions topic** (tell it when it next runs): PC5 is competition rules 5, and PC6's minigames take 6 or
 later. Will's throw takes the next free value when H1d lands, and is measured with PC5's lab runs.
@@ -1287,7 +1298,7 @@ edition.
 | D-H8 | Where the line falls for "the parts that move balance wait for B9" | **New terms in a decision rule wait** (career reputation, pair risk, the vote shield, Will's throw, the repertoires, the stats). **The opening state is built in H1b**, measured and not tuned. It enrols fresh seasons only if no headline rate in the alumni cells moves beyond seed noise. Otherwise H1b lands with `ApplyFresh` not enrolling until B9, unless the owner decides otherwise (section 9). A stricter reading would hold enrolment back in every case; the gate keeps that protection wherever it matters. **The exception, decided by the owner on 2026-10-29 (section 14):** alumni rules 2 to 4 read their new terms now, and All-Star seasons default to them; so does 5, outsider pacts that grow (14.L, D-H13) |
 | D-H9 | AS3's commitment association, if its derivation proof has not run when SCH30's list closes | **Run the proof first**: it needs no Unity. If it cannot run in time, the lead chooses between adding the null field to 30 as insurance and accepting a later schema 31 for it |
 | D-H10 | Reserve B9's `tuningRulesVersion` in 30 before B9 has a plan | **Yes**, at 0, with validation accepting only 0 until B9 defines a value. An unused int costs far less than a schema 31 (5.1). The joint note's §6 recommends the same |
-| D-H11 (owner, peer sessions) | Close schema 29 when SCH30's step 1 lands on main (8.2) | **Yes.** From that landing, story rules 10, R7, R8, competition rules 5 (PC5), PC6's 6 and later, Will's throw value and every other new closed value are defined only at `schemaVersion >= 30`, with D1's chip as the one named exception. It binds the story session, role moments and the competitions topic, so it is recorded as "delegated call, confirmed by the owner". **Decided by the owner, 2026-10-29: "Close it" (section 1).** |
+| D-H11 (owner, peer sessions) | Close schema 29 when SCH30's step 1 lands on main (8.2) | **Yes.** From that landing, story rules 10, R7, R8, competition rules 5 (PC5's when this was decided; unclaimed since B9 released it, B9-BALANCE-PLAN decision 2), PC6's 6 and later, Will's throw value and every other new closed value are defined only at `schemaVersion >= 30`, with D1's chip as the one named exception. It binds the story session, role moments and the competitions topic, so it is recorded as "delegated call, confirmed by the owner". **Decided by the owner, 2026-10-29: "Close it" (section 1).** |
 | D-H12 (owner) | The owner's direction for All-Star seasons: default loyalty that changes and decays, reputations, known connections (section 1) | **The direction's three values, decided by the owner** (2026-10-29): alumni rules 2 (loyalty), 3 (reputation and known pairs) and 4 (counter-blocs), section 14. Fresh seasons start at the latest; outsider pacts grow past two from alumni rules 5 (14.L, D-H13) |
 | D-H13 (owner) | Should outsider pacts be allowed to grow past two while a known bloc stands? | **Yes.** "Yes, let outsider pacts grow past two." Alumni rules 5 (14.L): up to two plus the live known pairs, never past four; the cap still counts pacts, one each. Decided by the owner, 2026-10-29 |
 

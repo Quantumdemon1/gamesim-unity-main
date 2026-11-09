@@ -173,7 +173,7 @@ namespace Gamesim.Episode
                 }.Where(x => x != null));
                 rows.Add((modifier.name, (effect.Length == 0 ? "" : effect + ", ") + modifier.weeksLeft + (modifier.weeksLeft == 1 ? " week left" : " weeks left")));
             }
-            if (state.playerStudyBonus > 0) rows.Add(("Preparation banked for competitions", state.playerStudyBonus + "/5"));
+            if (state.playerStudyBonus > 0) rows.Add(("Preparation banked for competitions", state.playerStudyBonus + "/" + TuningRules.PreparationOutOf(state)));
             return rows;
         }
     }

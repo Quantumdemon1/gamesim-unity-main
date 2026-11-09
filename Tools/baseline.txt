@@ -166,13 +166,27 @@
 # DialogueRules2EngineTests 16) and 2 EditMode-only (DialogueRules2PublicRescueTests), run under the Mono harness at the live
 # 29 (2026-10-25). Below schema 30 the 16 engine and 2 rescue cases assert rules 2's refusal; from the bump they play it.
 # 9741 = 8971 + main's 704 (9675 - 8971) + dialogue D2's 66 (9037 - 8971): disjoint cases, so the floor is their sum (2026-11-02).
+# 9751 = 9741 + B9's TuningRulesTests, 10 cases compiled into the editor (its eleventh, the lab pin, is Tools/SimulationTests only) (2026-11-03).
+# 9754 = 9751 + B9's copy pins: CompetitionWordsTests' earned line at tuning 0 and 1 (1) and TuningCopyTests' diary lines
+# (StudyWords, 2) (2026-11-05).
+# 9761 = 9754 + B9's review fixes: TuningRulesTests 6 (a throw and a simulation, the veto after a throw, the final week, a
+# juror's watch, K5 on its own, K1's tie a member came round in) and TuningCopyTests 1 (the final week's words), counted
+# from the source; round 6's lister counted 9761 (2026-11-05).
+# 9774 = 9761 + the tuning-1 old-save cell: OldSaveAcceptanceTests' four cases for s30-mode2-allweek-tuning1-w3-campaign and
+# LegacyDigestSchema30ObserverTests' tuning arm, 9 (2026-11-05). Counted from the source; no run has observed it (round 7,
+# fix7/phase5.sh, runs the lister).
 # 9745 = 9741 + the quick fixes' titled names, 4 shared CharacterNamesTests cases (alumni rules 6, 5 and 1, and a season
 # off the alumni rules), counted offline (2026-11-03); not yet run in Unity.
 # 9747 = 9745 + the quick fixes' storyline list, 2 shared RoleStoryMomentsTests cases (StorylinesShown), counted
 # offline (2026-11-03); not yet run in Unity.
 # 9748 = 9747 + the quick fixes' review, 1 shared RoleStoryMomentsTests test (the board's THREADS strip and the story
 # card read StorylinesShown), counted offline (2026-11-03); not yet run in Unity.
-Gamesim.EditModeTests 9748
+# 9781 = 9741 + B9's 33 (9774 - 9741) + the quick fixes' 7 (9748 - 9741): disjoint cases, so the floor is their sum (2026-11-06).
+# Counted from the two sides; no run has observed it on the merge.
+# 9818 = 9781 + B9 round 4's 33 (JuryTiebreakTests 15, JuryTiebreakEditorTests 5, TuningSaveReloadTests 13) + the
+# studier old-save cell's 4 OldSaveAcceptanceTests cases (OLD-SAVE-ACCEPTANCE 2.9). The lister counted 9814 at 46459d3e
+# (the r4w kit) and 9818 with the cell (2026-11-07); no Unity run has observed it yet.
+Gamesim.EditModeTests 9818
 # The UMA-free build. 1215 = 1236, the count after the consolidation's lanes (S2a, S2b, S4a), less the 7
 # farewell probes moved to Gamesim.DiagnosticsPlayModeTests and the 14 farewell readiness tests that now
 # compile only under GAMESIM_UMA (judged on the UMA cast); 1230 = 1215 + S2d's 7, S4b's 2, S4c's 2 and
@@ -286,6 +300,8 @@ Gamesim.EditModeTests 9748
 # 1463 = 1462 + the rs4 fixes' review's 1 shared test (EpisodePlayModeTests.RoomView: WayFinding_NoIconStandsOnAnother),
 # counted offline from the source and the compiled assembly (2026-11-02); not yet run in Unity.
 # 1480 = 1389 + main's 17 (1406 - 1389) + the room scope's 74 (1463 - 1389): disjoint cases, so the floor is their sum (2026-11-02).
+# 1481 = 1480 + B9's StudyDiary_UnderTuningOneTheStudyStopsAtTheSeasonsLimitAndSaysWhatUsesItUp, counted from the source and
+# listed offline; not yet run in Unity (2026-11-05).
 # 1481 = 1480 + the quick fixes' plea tag, 1 shared test (EpisodePlayModeTests.HonestOdds:
 # HonestOdds_EveryPleaTagFitsItsChipAtEveryTextSize), counted offline from the source and the compiled assembly
 # (2026-11-03); not yet run in Unity.
@@ -296,7 +312,8 @@ Gamesim.EditModeTests 9748
 # RoomScope_TheKitchenDoorwayIsWalkedThroughOnTheBakedNavMesh; WayFinding_EachAdjacentRoomsIconReachesItsRoom changed,
 # adding none), counted offline from the source and the compiled assembly (2026-11-03); not yet run in Unity. Both
 # pass only on the scene and NavMesh HouseKitchenDoorway.AuthorAcceptance writes.
-Gamesim.PlayModeTests 1485
+# 1486 = 1480 + B9's 1 (1481 - 1480) + the quick fixes' 5 (1485 - 1480): disjoint cases, so the floor is their sum (2026-11-06).
+Gamesim.PlayModeTests 1486
 # The UMA build of the same assembly, read by a plan built without -WithoutUma. 1281 = the 1241 above + the
 # 40 tests that compile only under GAMESIM_UMA, as run at r1 (2026-10-16): in EpisodePlayModeTests,
 # GroundedFarewell 11, Creator 9, HouseLife 8, Emotes 3, OpeningCaptures 2, and one each in CreatorEntry,
@@ -367,13 +384,15 @@ Gamesim.PlayModeTests 1485
 # 1505 = 1504 + the rs4 fixes' review's same shared test, counted offline (2026-11-02) and compiled in the UMA offline
 # build (D:\GamesimPlay's dag, 8 of 8 assemblies); not yet run in Unity.
 # 1522 = 1429 + main's 17 (1446 - 1429) + the room scope's 76 (1505 - 1429): disjoint cases, so the floor is their sum (2026-11-02).
+# 1523 = 1522 + the same B9 diary case, listed in the UMA offline build; not yet run in Unity (2026-11-05).
 # 1523 = 1522 + the quick fixes' same plea tag test, counted offline (2026-11-03) and compiled in the UMA offline
 # build; not yet run in Unity.
 # 1526 = 1523 + the quick fixes' same 3 footer cases, counted offline (2026-11-03) and compiled in the UMA offline
 # build; not yet run in Unity.
 # 1527 = 1526 + the quick fixes' same kitchen doorway test, counted offline (2026-11-03) and compiled in the UMA
 # offline build; not yet run in Unity.
-Gamesim.PlayModeTests.UmaBuild 1527
+# 1528 = 1522 + B9's 1 (1523 - 1522) + the quick fixes' 5 (1527 - 1522): disjoint cases, so the floor is their sum (2026-11-06).
+Gamesim.PlayModeTests.UmaBuild 1528
 # The UMA bodies: runs only where the GAMESIM_UMA define is set (the working tree and the D: copy).
 # 82 = the 89 run on 2026-10-15, less the 7 farewell probes moved to Gamesim.Uma.DiagnosticsPlayModeTests;
 # 85 = 82 + the 3 farewell readiness decision tests (UmaFarewellReadinessDecisionPlayModeTests, 2026-10-16);
@@ -485,7 +504,18 @@ Gamesim.Uma.DiagnosticsPlayModeTests 10
 # 16514 = 16456 + main's 50 (16506 - 16456) + the live-save batching's 8 (16464 - 16456): disjoint cases, so the floor is their sum (2026-11-02).
 # 10869 = 10805 + dialogue D2's 64 shared cases. dotnet test ran 10869 of 10869 (2026-10-25).
 # 16578 = 10805 + main's 5709 (16514 - 10805) + dialogue D2's 64 (10869 - 10805): disjoint cases, so the floor is their sum (2026-11-02).
+# 16589 = 16578 + B9's TuningRulesTests, 11 cases; its other new tests are [Explicit] tiers (budget nought's twin) (2026-11-03).
+# 16592 = 16589 + B9's copy pins: CompetitionWordsTests' earned line (1) and TuningCopyTests' diary lines (2), with
+# StudyWords.cs, the diary's study words, compiled in (2026-11-05). 16592 was counted from the source: no run observed it.
+# 16599 = 16592 + B9's review fixes: TuningRulesTests 6 and TuningCopyTests 1, as in the EditMode floor (2026-11-05).
+# Round 6's subset counted 16599 (two of them failing, both test faults, fixed in the next commit) (2026-11-05).
+# 16608 = 16599 + LegacyDigestSchema30ObserverTests' tuning arm, 9; OldSaveAcceptanceTests is the editor's only (2026-11-05).
+# Counted from the source; no run has observed it (round 7, fix7/phase5.sh, runs the subset).
 # 16582 = 16578 + the quick fixes' titled names, 4 CharacterNamesTests cases (2026-11-03).
 # 16584 = 16582 + the quick fixes' storyline list, 2 RoleStoryMomentsTests cases (2026-11-03).
 # 16585 = 16584 + the quick fixes' review, 1 RoleStoryMomentsTests case (the strip and the story card) (2026-11-03).
-Gamesim.SimulationTests 16585
+# 16615 = 16578 + B9's 30 (16608 - 16578) + the quick fixes' 7 (16585 - 16578): disjoint cases, so the floor is their sum (2026-11-06).
+# Counted from the two sides; no run has observed it on the merge.
+# 16642 = 16615 + B9 round 4's 27 (JuryTiebreakTests 15, TuningSaveReloadTests 12): the subset ran exactly 16642 at
+# 1bea9cf5 (r4v) and at 46459d3e (r4w), 2026-11-07.
+Gamesim.SimulationTests 16642

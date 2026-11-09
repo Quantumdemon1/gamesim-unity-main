@@ -162,8 +162,14 @@ namespace Gamesim.Simulation
         /// jury as it will sit - everybody already on it, and the third finalist, cut - each juror weighing
         /// the two as the jury does (<see cref="WebJuryVoting.Score"/>), with a final impression of up to
         /// <see cref="WebJuryVoting.FinalImpression"/> either way on each, as the engine's jury draws them;
-        /// the chance of a majority of those votes, and a tie as the reveal awards it, to the second of the
-        /// two in cast order. A player on the jury is read by their own views.
+        /// the chance of a majority of those votes, and a tie as the engine awards it: to the second of the
+        /// two in cast order. Under tuning 1 the season's keyed coin settles a tie
+        /// (<see cref="TuningRules.JuryTieWinner"/>), and a tie counts as half a win. The Head of Household
+        /// never reads the coin itself: the player first sees it on the finale panel, once the final two are
+        /// set, so a houseguest who chose by it would know what the player does not, and would leave the
+        /// player beside them mostly where the coin goes against the player (B9 round 4, the review). A
+        /// player on the jury is read by their
+        /// own views.
         ///
         /// <para>The jury is read as the cut would leave it (the review's M1): on a copy of the season, the
         /// engine's own final eviction (<see cref="FinalEvict"/>) is run with the other finalist cut, so the
@@ -190,12 +196,17 @@ namespace Gamesim.Simulation
                 double p = BeatChance(WebJuryVoting.Score(jury, juror, hohId) - WebJuryVoting.Score(jury, juror, finalistId));
                 for (int k = jurors.Count; k >= 0; k--) votes[k] = votes[k] * (1 - p) + (k > 0 ? votes[k - 1] * p : 0);
             }
-            bool tieIsTheirs = jury.contestants.FindIndex(c => c.id == hohId) > jury.contestants.FindIndex(c => c.id == finalistId);
+            // Who a tie goes to. Before tuning 1, as ResolveJury settles it: the second of the two in cast order. Under
+            // tuning 1 the season's coin settles it, but the Head of Household does not read the coin. A tie counts
+            // at the coin's expected value, a half, for every seed and pair, so the choice cannot follow the coin.
+            bool keyed = TuningRules.KeyedJuryTiebreak(s);
+            bool tieIsTheirs = !keyed && jury.contestants.FindIndex(c => c.id == hohId) > jury.contestants.FindIndex(c => c.id == finalistId);
             double win = 0;
             for (int k = 0; k <= jurors.Count; k++)
             {
                 int against = jurors.Count - k;
                 if (k > against || (k == against && tieIsTheirs)) win += votes[k];
+                else if (k == against && keyed) win += votes[k] * 0.5;
             }
             return Math.Max(0, Math.Min(1, win));
         }

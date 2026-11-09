@@ -285,6 +285,11 @@
     <!-- Explicit, and compiled out of Unity: D4's recorded-season evidence over the digests' 54 seasons, run on demand. -->
     <Compile Include="$(EditMode)AllianceLeakSeasonDigests.cs" />
     <Compile Include="$(EditMode)PactPlanTests.cs" />
+    <Compile Include="$(EditMode)TuningRulesTests.cs" />
+    <!-- B9's jury tiebreak (round 4): the engine, the coin and validation. JuryTiebreakEditorTests (the real store, the panel) is the editor's only. -->
+    <Compile Include="$(EditMode)JuryTiebreakTests.cs" />
+    <!-- B9 round 4, call 5: the tuning levers across a save and a load. Here the load is the saved fields' JSON round trip; the editor carries through the real store. -->
+    <Compile Include="$(EditMode)TuningSaveReloadTests.cs" />
     <Compile Include="$(EditMode)PactPlanReaderTests.cs" />
     <!-- Explicit, and compiled out of Unity: D3's recorded-season evidence over the digests' 54 seasons, run on demand. -->
     <Compile Include="$(EditMode)PactPlanSeasonDigests.cs" />
@@ -394,6 +399,8 @@
     <Compile Include="$(EditMode)MusicFadeTests.cs" />
     <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/CompetitionWords.cs" />
     <Compile Include="$(EditMode)CompetitionWordsTests.cs" />
+    <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/StudyWords.cs" />
+    <Compile Include="$(EditMode)TuningCopyTests.cs" />
     <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/FinalChoiceWords.cs" />
     <Compile Include="$(EditMode)FinalChoiceWordsTests.cs" />
     <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/CompetitionMiniGames.cs" />

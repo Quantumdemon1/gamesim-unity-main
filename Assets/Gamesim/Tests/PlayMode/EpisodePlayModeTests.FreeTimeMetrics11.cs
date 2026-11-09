@@ -477,7 +477,7 @@ namespace Gamesim.Tests.PlayMode
             var threads = Part(strip, EpisodeHud.ThreadsCardName, "threads", shown.Strip);
             Copy(threads, "Segment label", "THREADS", "threads.label", shown.Strip);
             Copy(threads, "Segment value", FreeTimeExpectedStoryLine11(state), "threads.value", shown.Strip);
-            Copy(strip, EpisodeHud.PreparationName, state.playerStudyBonus > 0 ? "Preparation " + state.playerStudyBonus + "/5" : null,
+            Copy(strip, EpisodeHud.PreparationName, state.playerStudyBonus > 0 ? "Preparation " + state.playerStudyBonus + "/" + TuningRules.PreparationOutOf(state) : null,
                 "preparation", shown.Strip && state.playerStudyBonus > 0);
             bool haveNot = HaveNots.Is(state, state.playerId);
             FreeTimeIssue11(failures, haveNot == (waiting == FreeTimeWaiting.HaveNot), "RequiredHaveNotFixture");

@@ -18,14 +18,19 @@ namespace Gamesim.Simulation
             Require(rules ? SocialActionsSpent(s) < SocialActionBudget(s) : s.socialActions < 18,
                 "This social window is complete. Continue the episode.");
             Require(c.targetId == "memorize-layout" || c.targetId == "sneak-peek", "Choose a supported study approach.");
+            // Under B9's tuning (TuningRules.Bands) a study fills preparation to the season's limit, and one at or past
+            // it is refused before it spends anything (B9-BALANCE-PLAN decision 6): before B9 it spent the action for
+            // nothing, and a sneak-peek there could only lose.
+            int limit = TuningRules.StudyLimit(s);
+            Require(!TuningRules.At(s, TuningRules.Bands) || s.playerStudyBonus < limit, TuningRules.FullRefusal(s));
             // Native cast stores traits, not source personalityTraits. Do not merge those fields.
-            var plan = WebStudyHouse.PlanStudy(s.playerStudyBonus, c.targetId, null, () => Roll(s));
+            var plan = WebStudyHouse.PlanStudy(s.playerStudyBonus, c.targetId, null, () => Roll(s), limit);
             s.playerStudyBonus = plan.studyBonus;
             if (rules) SpendSocialAction(s);
             else s.socialActions++;
             string result = c.targetId == "memorize-layout" ? "You studied the house; preparation increased by one, up to its cap." :
                 plan.success ? "Your risky preparation attempt succeeded." : "Your risky preparation attempt failed; study progress was reduced, down to its floor.";
-            Log(s, "study-house", result + " Preparation: " + s.playerStudyBonus + "/5. One social action spent.", s.playerId);
+            Log(s, "study-house", result + " Preparation: " + s.playerStudyBonus + "/" + TuningRules.PreparationOutOf(s) + ". One social action spent.", s.playerId);
         }
 
         private static void SimulateWeeklyCompetition(EpisodeState s, EpisodeCommand c)

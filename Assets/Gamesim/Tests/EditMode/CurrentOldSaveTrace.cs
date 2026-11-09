@@ -32,6 +32,14 @@ namespace Gamesim.Tests.EditMode
                 if (schema != Current) throw new InvalidDataException("A season on the alumni rules has no reference schema below " + Current + ".");
                 return Hash(LegacyDigestSchema30Observer.AdmitNative30(state, own));
             }
+            // B9: a season on the tuning rules (every fresh Regular season from B9-3) has no 29 or 28 view either: tuning 1
+            // exists only from 30. The tuning arm admits it natively, and it is checkpointed at the live 30 alone, as the
+            // recorder's OldSaveTrace.Checkpoint does a state at its own schema.
+            if (LegacyDigestSchema30Observer.OnTheTuningRulesAlone(state))
+            {
+                if (schema != Current) throw new InvalidDataException("A season on the tuning rules has no reference schema below " + Current + ".");
+                return Hash(LegacyDigestSchema30Observer.AdmitNativeTuned30(state, own));
+            }
             // The native-29 arm (DIALOGUE-PLAN D1): a season on dialogue rules 1 is written at 29 by the build that
             // started it, so it has no older reference and no schema-28 form. Since SCH30 it loads at 30: the schema-30
             // observer binds the state, admits it whole and by the pilot's own validator, and takes it to its 29 with the

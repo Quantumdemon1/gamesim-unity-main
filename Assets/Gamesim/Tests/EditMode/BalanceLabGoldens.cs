@@ -33,12 +33,13 @@ namespace Gamesim.Tests.EditMode
         /// <see cref="ShippedRules.Fields"/> of a fresh season when the digests below were recorded. dialogueRulesVersion=0
         /// came with the field (9d87b59e): a fresh season plays no dialogue, and no cell moved. alumniRulesVersion=0 and
         /// tuningRulesVersion=0 came with schema 30 (SCH30): a fresh season plays neither, and no cell moved.
+        /// tuningRulesVersion=1 came with B9 (B9-BALANCE-PLAN decision 8): every fresh season plays the balance bands.
         /// </summary>
         internal const string Rules = "competitionRulesVersion=4,readRulesStartWeek=1,leverRulesStartWeek=1,weekRulesStartWeek=1,economyRulesVersion=1,"
             + "agencyRulesStartWeek=1,finaleRulesStartWeek=1,commitmentRulesStartWeek=1,unifiedCommitmentRulesVersion=2,unifiedHearingRulesVersion=1,"
             + "blocRulesStartWeek=1,socialBudgetRulesStartWeek=1,dealRulesStartWeek=1,eventRulesStartWeek=1,storyRulesStartWeek=1,haveNotRulesStartWeek=1,"
             + "strategyRulesStartWeek=1,allianceLeakRulesStartWeek=1,pactPlanRulesStartWeek=1,allWeekRulesStartWeek=1,dialogueRulesVersion=0,"
-            + "alumniRulesVersion=0,tuningRulesVersion=0,"
+            + "alumniRulesVersion=0,tuningRulesVersion=1,"
             + "npcSocial.rulesStartWeek=1,story.rulesStartWeek=1,story.rulesVersion=9";
 
         /// <summary>
@@ -49,57 +50,62 @@ namespace Gamesim.Tests.EditMode
         /// review's finding 3), and (every budget) a veto's, a lie's and a scheme's moves between two houseguests doing the
         /// same (the arcs review's finding 8, EpisodeEngine.ChangeBetween). Every cell moved when D2 went into ApplyFresh and
         /// again with V6; the budget-300 cells moved again with the arcs fix; every cell moved again with the change paths.
+        /// Every cell moved again with B9's tuning rules 1 (B9-BALANCE-PLAN decision 8), re-recorded at B9-3: the Game Sense
+        /// weights re-read every season's verdict, and the studying and countering players play B9's preparation and tally.
+        /// 43 of the 48 moved again in B9's round 4 and were re-recorded at 46459d3e: the keyed jury tiebreak and the final
+        /// Head of Household's half-a-tie read move every season whose jury ties or whose final choice a tie decides, and
+        /// tuning 1 without the small house's boost moves the beast's.
         /// </summary>
         internal static readonly string[] Recorded =
         {
-            "passive/Regular/8/npc0 b37cafc96696903e",
-            "random/Regular/8/npc0 8ef488be47080709",
-            "social/Regular/8/npc0 53eeaa44532fd7f1",
-            "reader/Regular/8/npc0 5e16fca5422d52ce",
-            "schemer/Regular/8/npc0 b42c6d9fce90c8f4",
-            "loyalist/Regular/8/npc0 09f3465308e715e3",
-            "floater/Regular/8/npc0 f76090aa7b40bf0f",
-            "beast/Regular/8/npc0 0b7fcf4f7e4608e6",
-            "novice/Regular/8/npc0 72e7bc6226db9cda",
-            "exploit/Regular/8/npc0 94e8fda2f2e66933",
-            "oracle-reader/Regular/8/npc0 a74525454301730f",
-            "oracle-skilled/Regular/8/npc0 9a8d509156ebc7e4",
-            "passive/Regular/12/npc0 e54be2fdf3531462",
-            "random/Regular/12/npc0 d3db8a9b38a483f7",
-            "social/Regular/12/npc0 50ad3c5d9f699468",
-            "reader/Regular/12/npc0 f496b93d7d7e5ab3",
-            "schemer/Regular/12/npc0 1b117bfdbdc98439",
-            "loyalist/Regular/12/npc0 8e42ebb9d4c66eca",
-            "floater/Regular/12/npc0 3febfd9a8c1e25ac",
-            "beast/Regular/12/npc0 cc59cb80d3606058",
-            "novice/Regular/12/npc0 2761abf253718d5a",
-            "exploit/Regular/12/npc0 70cfbad1e36accb2",
-            "oracle-reader/Regular/12/npc0 8624c61c2935935c",
-            "oracle-skilled/Regular/12/npc0 c9a6ce37f0fbc9be",
-            "passive/Regular/8/npc300 d8a9aeccf2b04eb7",
-            "random/Regular/8/npc300 5d455805a4718090",
-            "social/Regular/8/npc300 e55ce43885024785",
-            "reader/Regular/8/npc300 3c6993af9fcefde7",
-            "schemer/Regular/8/npc300 ea348d2f24f38c0b",
-            "loyalist/Regular/8/npc300 73383199d8adb540",
-            "floater/Regular/8/npc300 8c4d59a9149c447c",
-            "beast/Regular/8/npc300 ff777e305485034c",
-            "novice/Regular/8/npc300 4a735a57214cb3b5",
-            "exploit/Regular/8/npc300 7a532d85ea1b409c",
-            "oracle-reader/Regular/8/npc300 aa7571858bd363e8",
-            "oracle-skilled/Regular/8/npc300 524c71f83bea9aa3",
-            "passive/Regular/12/npc300 c12665fbaf9a8290",
-            "random/Regular/12/npc300 fc141897fcef4794",
-            "social/Regular/12/npc300 e21cb70719ae521b",
-            "reader/Regular/12/npc300 e210da97ce1b5702",
-            "schemer/Regular/12/npc300 e1148e72d779d081",
-            "loyalist/Regular/12/npc300 4ea89b6d4cb9e29a",
-            "floater/Regular/12/npc300 ba774cc442461548",
-            "beast/Regular/12/npc300 45044431cff86ba8",
-            "novice/Regular/12/npc300 502f9c8008906531",
-            "exploit/Regular/12/npc300 261544cd6853370d",
-            "oracle-reader/Regular/12/npc300 569caa0f1a4890fc",
-            "oracle-skilled/Regular/12/npc300 fa6b7f1ba5578ea7",
+            "passive/Regular/8/npc0 b72540e62bb1cbaf",
+            "random/Regular/8/npc0 9167a2e2f5c943f1",
+            "social/Regular/8/npc0 50c541694578a60e",
+            "reader/Regular/8/npc0 0d5ac33235d1753a",
+            "schemer/Regular/8/npc0 4120223d11ed29ec",
+            "loyalist/Regular/8/npc0 d82553c3f3f5eadf",
+            "floater/Regular/8/npc0 87fe01a909aef762",
+            "beast/Regular/8/npc0 91ac498907686e18",
+            "novice/Regular/8/npc0 a4189075778cea38",
+            "exploit/Regular/8/npc0 b004ba40c2f387bd",
+            "oracle-reader/Regular/8/npc0 b8aa1cef64a04f1a",
+            "oracle-skilled/Regular/8/npc0 e451e6b616e89fe4",
+            "passive/Regular/12/npc0 67bc7d6c9d20b1d5",
+            "random/Regular/12/npc0 7dd8a05d46700ac8",
+            "social/Regular/12/npc0 7547d92346c5af01",
+            "reader/Regular/12/npc0 b8a17f3177bf69a4",
+            "schemer/Regular/12/npc0 83d599d9ad894455",
+            "loyalist/Regular/12/npc0 cb302e5fef1d61af",
+            "floater/Regular/12/npc0 b5f09357202def57",
+            "beast/Regular/12/npc0 c50a0c34abffee48",
+            "novice/Regular/12/npc0 68e6ccb41c4305e4",
+            "exploit/Regular/12/npc0 efe3950c09241610",
+            "oracle-reader/Regular/12/npc0 355d5a77931d4d1c",
+            "oracle-skilled/Regular/12/npc0 a3df71289db87b8e",
+            "passive/Regular/8/npc300 92caf986a2b9870c",
+            "random/Regular/8/npc300 a742cfd4ad6204a8",
+            "social/Regular/8/npc300 54382c1b909b9c15",
+            "reader/Regular/8/npc300 147d8497063b079c",
+            "schemer/Regular/8/npc300 cc64c4af74880277",
+            "loyalist/Regular/8/npc300 c4864aea89b23a6d",
+            "floater/Regular/8/npc300 e66c189f578015cd",
+            "beast/Regular/8/npc300 d68ff330535e95b4",
+            "novice/Regular/8/npc300 d89aee68434124f2",
+            "exploit/Regular/8/npc300 fa06987417c36a7e",
+            "oracle-reader/Regular/8/npc300 cde51b6cc1dc305d",
+            "oracle-skilled/Regular/8/npc300 096b001399f0ad2e",
+            "passive/Regular/12/npc300 c3cb1eb2dade5361",
+            "random/Regular/12/npc300 fbf88794270a94eb",
+            "social/Regular/12/npc300 ef637c579e281f2a",
+            "reader/Regular/12/npc300 ee5576e7de0654d7",
+            "schemer/Regular/12/npc300 7ce61aab3f73a80a",
+            "loyalist/Regular/12/npc300 aaa0da56832e4a33",
+            "floater/Regular/12/npc300 0480bb461d4d4c59",
+            "beast/Regular/12/npc300 871d70662b936001",
+            "novice/Regular/12/npc300 a74d628211040b61",
+            "exploit/Regular/12/npc300 6a5e0c95bd3d1263",
+            "oracle-reader/Regular/12/npc300 e538646c7735358a",
+            "oracle-skilled/Regular/12/npc300 d6f4ff90efbca491",
         };
 
         /// <summary>The shipped rules' tuple as a fresh season takes it now.</summary>

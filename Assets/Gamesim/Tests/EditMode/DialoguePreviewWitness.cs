@@ -37,12 +37,17 @@ namespace Gamesim.Tests.EditMode
             return new Witness { Seed = found.Seed, Voter = found.Voter, Campaign = found.Campaign.Clone(), Conversation = found.Conversation.Clone() };
         }
 
-        /// <summary>The witness's house of eight for a seed, before its first command: the shipped season, then dialogue rules 1 by its literal.</summary>
+        /// <summary>
+        /// The witness's house of eight for a seed, before its first command: the shipped season, then dialogue rules 1 by
+        /// its literal, held at tuning 0 - the pilot's schema-29 build that writes a rules-1 season predates B9's tuning, and
+        /// a season on the tuning rules has no schema-29 form (B9-BALANCE-PLAN decision 8: a harness may hold one).
+        /// </summary>
         internal static EpisodeState Start(uint seed)
         {
             var fresh = SeasonBuilder.Create(new SeasonBuilder.Choice { HouseSize = 8 }, seed);
             ShippedRules.ApplyFresh(fresh);
             fresh.dialogueRulesVersion = 1;
+            fresh.tuningRulesVersion = TuningRules.Off;
             return fresh;
         }
 

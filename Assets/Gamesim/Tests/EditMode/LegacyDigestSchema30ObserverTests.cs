@@ -121,7 +121,7 @@ namespace Gamesim.Tests.EditMode
         /// </summary>
         [TestCase("alumniRulesVersion", 1, "The alumni rules need the edition their season was built from.")]
         [TestCase("alumniRulesVersion", AlumniRules.Latest + 1, "Schema 30's pooled rules are not enabled in this build.")]
-        [TestCase("tuningRulesVersion", 1, "Schema 30's pooled rules are not enabled in this build.")]
+        [TestCase("tuningRulesVersion", TuningRules.Latest + 1, "Schema 30's pooled rules are not enabled in this build.")]
         public void ANonzeroPooledValueIsAnInvalidCurrentSourceAndIsNeverErased(string field, int value, string expected)
         {
             var state = LegacyDigestSchema27TestStates.Witness(2, "promise");
@@ -158,12 +158,12 @@ namespace Gamesim.Tests.EditMode
             var state = SeasonBuilder.Create(new SeasonBuilder.Choice { HouseSize = 8, Roster = CastTemplates.Roster.AllStars }, 3006u);
             ShippedRules.ApplyFresh(state);
             if (defect == "alumni-off") { state.alumniRulesVersion = AlumniRules.Off; state.alumniCatalogEdition = null; }
-            if (defect == "invalid-source") state.tuningRulesVersion = 1;
+            if (defect == "invalid-source") state.tuningRulesVersion = TuningRules.Latest + 1;
             var fields = LegacyDigestSchema30Observer.WithoutGetters(JObject.FromObject(state));
             switch (defect)
             {
                 case "edition-text": fields["alumniCatalogEdition"] = "allstar-histories-2"; break;
-                case "tuning-json": fields["tuningRulesVersion"] = 1; break;
+                case "tuning-json": fields["tuningRulesVersion"] = state.tuningRulesVersion + 1; break;
                 case "order": { var p = fields.Property("alumniRulesVersion"); p.Remove(); fields.Add(p); break; }
                 case "unknown-root": fields["unknown30"] = 0; break;
                 case "header-29": fields["schemaVersion"] = 29; break;
@@ -187,7 +187,76 @@ namespace Gamesim.Tests.EditMode
                 {
                     "alumni-off" => "Only a season on the alumni rules is admitted natively.",
                     "edition-text" => "The native edition must be the season's own.",
-                    "tuning-json" => "Only present integer-zero tuning rules may be admitted.",
+                    "tuning-json" => "The native tuning rules must be the season's own.",
+                    "order" => "The pooled fields must follow the dialogue store, in their declared order.",
+                    "unknown-root" => "The JSON is not this current state's exact own view.",
+                    "header-29" => "Only literal schema30 is a native input.",
+                    _ => "The current source state is invalid:",
+                };
+                Assert.That(error.Message, Does.Contain(expected));
+                if (defect == "invalid-source") Assert.Throws<InvalidDataException>(() => LegacyDigestSchema30Observer.FindDecisionAnswers28(state));
+            }
+            Assert.That(Text(fields), Is.EqualTo(fieldsBefore));
+            Assert.That(Text(state), Is.EqualTo(stateBefore));
+        }
+
+        /// <summary>
+        /// B9's native-30 arm: a fresh Regular season since B9-3 is on the tuning rules alone (tuning 1, alumni rules 0), which
+        /// exist only from 30, so it is admitted at the live 30 unprojected, under the alumni arm's contract with the alumni
+        /// rules at zero and the edition null, and checkpointed there only; the alumni arm still refuses it, and every defect
+        /// is refused and changes nothing.
+        /// </summary>
+        [TestCase(null)] [TestCase("tuning-off")] [TestCase("alumni-json")] [TestCase("edition-text")] [TestCase("tuning-json")]
+        [TestCase("order")] [TestCase("unknown-root")] [TestCase("header-29")] [TestCase("invalid-source")]
+        public void ASeasonOnTheTuningRulesIsAdmittedNativelyAtThirtyAndOnlyThere(string defect)
+        {
+            var state = SeasonBuilder.Create(new SeasonBuilder.Choice { HouseSize = 8 }, 3007u);
+            ShippedRules.ApplyFresh(state);
+            Assert.That((state.alumniRulesVersion, state.tuningRulesVersion), Is.EqualTo((AlumniRules.Off, TuningRules.Shipped)),
+                "Precondition: a fresh Regular season, on tuning 1 and not on the alumni rules.");
+            if (defect == "tuning-off") state.tuningRulesVersion = TuningRules.Off;
+            if (defect == "invalid-source") state.tuningRulesVersion = TuningRules.Latest + 1;
+            var fields = LegacyDigestSchema30Observer.WithoutGetters(JObject.FromObject(state));
+            switch (defect)
+            {
+                case "alumni-json": fields["alumniRulesVersion"] = 1; break;
+                case "edition-text": fields["alumniCatalogEdition"] = "allstar-histories-1"; break;
+                case "tuning-json": fields["tuningRulesVersion"] = state.tuningRulesVersion + 1; break;
+                // The tuning rules are the state's last field, so moving them to the end would change nothing: they go ahead
+                // of the alumni rules instead, as the pooled-order test's "swapped" case moves them.
+                case "order": { var p = fields.Property("tuningRulesVersion"); p.Remove(); fields.Property("alumniRulesVersion").AddBeforeSelf(p); break; }
+                case "unknown-root": fields["unknown30"] = 0; break;
+                case "header-29": fields["schemaVersion"] = 29; break;
+            }
+            string stateBefore = Text(state), fieldsBefore = Text(fields);
+            if (defect == "order")
+                Assert.That(fields.Properties().Select(p => p.Name).Where(name => Array.IndexOf(LegacyDigestSchema30Observer.Pooled, name) >= 0),
+                    Is.EqualTo(new[] { "tuningRulesVersion", "alumniRulesVersion", "alumniCatalogEdition" }), "The defect really moves the field.");
+            if (defect == null)
+            {
+                Assert.That(LegacyDigestSchema30Observer.OnTheTuningRulesAlone(state), Is.True);
+                Assert.That(LegacyDigestSchema30Observer.OnTheAlumniRules(state), Is.False);
+                Assert.That(Text(LegacyDigestSchema30Observer.AdmitNativeTuned30(state, fields)), Is.EqualTo(fieldsBefore), "Admitted as it is.");
+                var alumniArm = Assert.Throws<InvalidDataException>(() => LegacyDigestSchema30Observer.AdmitNative30(state, fields));
+                Assert.That(alumniArm.Message, Does.Contain("Only a season on the alumni rules is admitted natively."), "The alumni arm is unchanged.");
+                Refused(state, JObject.FromObject(state), "Only present integer-zero tuning rules may be projected.");
+                Assert.That(CurrentOldSaveTrace.Checkpoint(state, 30), Is.EqualTo(OldSaveTrace.Checkpoint(state, 30)),
+                    "Checkpointed at the live 30 as the recorder checkpoints its own schema.");
+                var below = Assert.Throws<InvalidDataException>(() => CurrentOldSaveTrace.Checkpoint(state, 29));
+                Assert.That(below.Message, Is.EqualTo("A season on the tuning rules has no reference schema below 30."));
+                Assert.That(Text(LegacyDigestSchema30Observer.FindDecisionAnswers28(state)),
+                    Is.EqualTo(Text(LegacyDigestSchema29Observer.FindDecisionAnswersOfAnAdmittedSource28(state))),
+                    "The historical FindDecision reader admits it at 30 and reads the same canonical rows.");
+            }
+            else
+            {
+                var error = Assert.Throws<InvalidDataException>(() => LegacyDigestSchema30Observer.AdmitNativeTuned30(state, fields));
+                string expected = defect switch
+                {
+                    "tuning-off" => "Only a season on the tuning rules alone is admitted natively by the tuning arm.",
+                    "alumni-json" => "Only present integer-zero alumni rules are admitted by the tuning arm.",
+                    "edition-text" => "Only a present-null alumni edition is admitted by the tuning arm.",
+                    "tuning-json" => "The native tuning rules must be the season's own.",
                     "order" => "The pooled fields must follow the dialogue store, in their declared order.",
                     "unknown-root" => "The JSON is not this current state's exact own view.",
                     "header-29" => "Only literal schema30 is a native input.",

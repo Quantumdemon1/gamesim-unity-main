@@ -352,6 +352,7 @@ namespace Gamesim.Simulation
                     string crossed = next == EpisodePhase.Nomination ? StoryAnchors.HohCrowned
                         : next == EpisodePhase.VetoMeeting ? StoryAnchors.VetoWon : null;
                     if (crossed != null && StoryOn(s)) StoryLapse(s, crossed);
+                    if (TuningRules.At(s, TuningRules.Bands) && (s.phase == EpisodePhase.HoH || s.phase == EpisodePhase.Veto)) SpendPreparation(s);
                     s.competitionResolved = false; Phase(s, next);
                     // A nominee asks the player for the veto while it is still theirs to use; and under the role moments
                     // the Head of Household, right after them, asks the player to leave the block alone (R4).
@@ -622,6 +623,29 @@ namespace Gamesim.Simulation
             if (rulesVersion >= CompetitionRules.Widened) return CompetitionRules.Category(phase, week, seed);
             int rotation = week + (rulesVersion >= 2 && phase == EpisodePhase.Veto ? 1 : 0);
             return rotation % 3 == 1 ? "Skill" : rotation % 3 == 2 ? "Mental" : "Endurance";
+        }
+
+        /// <summary>
+        /// B9's preparation, at the Advance out of a weekly Head of Household or veto (B9-BALANCE-PLAN §3.1, decision 5):
+        /// a competition the player entered - played, assisted or simulated - used it, and it is spent
+        /// (<see cref="TuningRules.AfterUse"/>); a throw gives every bonus up and keeps it. A Head of Household the player
+        /// sat out leaves it as it was (B9 first built a small house's watch here, which tuning 1 dropped before it shipped).
+        /// The final Head of Household's three parts all count it, since no competition follows them. Reads the week's
+        /// ledger row; draws nothing, and logs only a change, so a season with no preparation plays as it would at tuning 0.
+        /// </summary>
+        private static void SpendPreparation(EpisodeState s)
+        {
+            if (s.ledger == null) return;
+            string kind = s.phase.ToString();
+            var row = s.ledger.competitions.LastOrDefault(r => r.week == s.week && r.kind == kind);
+            if (row == null) return;
+            if (row.entry == CompetitionEntry.Played || row.entry == CompetitionEntry.Assist || row.entry == CompetitionEntry.Simulated)
+            {
+                int left = TuningRules.AfterUse(s, s.playerStudyBonus);
+                if (left == s.playerStudyBonus) return;
+                s.playerStudyBonus = left;
+                Log(s, "study-house", "Your preparation was used in the competition. Preparation: " + left + "/" + TuningRules.PreparationOutOf(s) + ".", s.playerId);
+            }
         }
 
         /// <summary>Rules 3 applies the same earned preparation to every player entry route.</summary>
@@ -1216,10 +1240,22 @@ namespace Gamesim.Simulation
                     + Target(s, preferred.id, juror.id) + " to win.");
             }
             int firstVotes = s.votes.Count(v => v.targetId == finalists[0].id), secondVotes = s.votes.Count(v => v.targetId == finalists[1].id);
-            var ordered = firstVotes > secondVotes ? finalists : new[] { finalists[1], finalists[0] };
-            // The source reveal's strict > comparison awards a tie to the second cast-order finalist.
-            if (firstVotes == secondVotes)
-                Log(s, "jury-tie", "Jury tie: the source game's tie rule awards the win to the second finalist in cast order.");
+            ContestantState[] ordered;
+            if (firstVotes == secondVotes && TuningRules.KeyedJuryTiebreak(s))
+            {
+                // Tuning 1 (the owner's call 3 of 2026-11-07): the season's keyed coin for this pair, from the saved seed
+                // and the two ids. It draws nothing from the stream and reads no cast order, so a load cannot reroll it.
+                string won = TuningRules.JuryTieWinner(s.seed, finalists[0].id, finalists[1].id);
+                ordered = won == finalists[0].id ? finalists : new[] { finalists[1], finalists[0] };
+                Log(s, "jury-tie", "Jury tie: the season's tiebreak draw gives the win to " + Target(s, won, null) + ".");
+            }
+            else
+            {
+                ordered = firstVotes > secondVotes ? finalists : new[] { finalists[1], finalists[0] };
+                // The source reveal's strict > comparison awards a tie to the second cast-order finalist.
+                if (firstVotes == secondVotes)
+                    Log(s, "jury-tie", "Jury tie: the source game's tie rule awards the win to the second finalist in cast order.");
+            }
             s.winnerId = ordered[0].id; s.runnerUpId = ordered[1].id;
             ordered[0].status = ContestantStatus.Winner; ordered[1].status = ContestantStatus.RunnerUp;
             // The story's threads end here, reading the jury they were heading for (plan 31).

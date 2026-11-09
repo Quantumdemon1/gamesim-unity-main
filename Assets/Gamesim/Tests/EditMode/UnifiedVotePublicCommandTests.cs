@@ -47,11 +47,18 @@ namespace Gamesim.Tests.EditMode
         /// One season walked through the public engine to the jury's verdict by the busy player (<see cref="ModeTwoReaderSweep.Busy"/>),
         /// the plain walk moving it on wherever the busy player is refused. Every accepted state is checked as it is reached.
         /// </summary>
-        internal static Played Play(uint seed, int size)
+        internal static Played Play(uint seed, int size) => Play(seed, size, tuningHeld: false);
+
+        /// <summary>
+        /// The same, or with the fresh season held at tuning 0 from its start (B9-BALANCE-PLAN decision 8): for the readers
+        /// that take a played season to its schema-29 view, which a season on B9's tuning, a rule of schema 30's, has not.
+        /// </summary>
+        internal static Played Play(uint seed, int size, bool tuningHeld)
         {
-            string key = seed + "/" + size;
+            string key = seed + "/" + size + (tuningHeld ? "/tuning0" : "");
             if (Cache.TryGetValue(key, out var cached)) return cached;
             var played = new Played { Fresh = Fresh(seed, size) };
+            if (tuningHeld) played.Fresh.tuningRulesVersion = TuningRules.Off;
             Assert.That(played.Fresh.unifiedCommitmentRulesVersion, Is.EqualTo(UnifiedVoteFamilyValidation.Version), "A fresh season is mode 2.");
             var engine = new EpisodeEngine(played.Fresh);
             for (int step = 0; step < 4000 && engine.Snapshot.phase != EpisodePhase.Finished; step++)

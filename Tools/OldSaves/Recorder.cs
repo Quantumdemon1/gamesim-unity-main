@@ -3,9 +3,14 @@
 // build's own Simulation and Persistence sources, and runs it under the editor's Mono - the runtime the EditMode
 // tests replay on. C# 9 and nothing newer than that build's API: it has to compile at every commit it is pointed at.
 //
-//   record  <save> <out>                     load a save with that build's store, play it to its end, write the script and digest
+//   record  <save> <out> [walker]            load a save with that build's store, play it to its end, write the script and digest
 //   replay  <save> <record folder>           what the EditMode test does: apply a recorded script, say where it parts (OLDSAVE_RESULT, OLDSAVE_DUMP)
-//   generate <out> <seed> <size> <rules> <week> <phase>   play a fresh seeded season to a point and save it with that build's store
+//   generate <out> <seed> <size> <rules> <week> <phase> [walker]   play a fresh seeded season to a point and save it with that build's store
+//                                            [walker] is "plain" (the default: every fixture before B9's studier cell) or
+//                                            "studier": the plain walk that also studies in each free time, up to twice,
+//                                            a study refused for an expected reason skipped (B9's tuning levers,
+//                                            OLD-SAVE-ACCEPTANCE 2.9); record then prints what the levers did after the load,
+//                                            and exits 5 if no study was accepted after it
 //   continue <save> <out> <week> <phase>     load an older save with that build's store, play it on to a point and save it
 //                                            with that store: the file a player who carried the season on has, at that build's schema
 //   converse <out> <seed> <size> <last week> a fresh seeded season (director, that build's Rules.Fresh, which must switch the
@@ -72,17 +77,18 @@ namespace Gamesim.OldSaves
                 }
 #endif
 #if !OLDSAVE_SHAPE_ONLY
-                if (args.Length >= 3 && args[0] == "record") return Record(args[1], args[2]);
+                if (args.Length >= 3 && args[0] == "record") return Record(args[1], args[2], args.Length >= 4 ? args[3] : Walker.Plain);
                 if (args.Length >= 3 && args[0] == "replay") return Replay(args[1], args[2]);
                 if (args.Length >= 3 && args[0] == "recover") return Recover(args[1], args[2]);
                 if (args.Length >= 7 && args[0] == "generate")
-                    return Generate(args[1], uint.Parse(args[2]), int.Parse(args[3]), args[4], int.Parse(args[5]), (EpisodePhase)Enum.Parse(typeof(EpisodePhase), args[6]));
+                    return Generate(args[1], uint.Parse(args[2]), int.Parse(args[3]), args[4], int.Parse(args[5]), (EpisodePhase)Enum.Parse(typeof(EpisodePhase), args[6]),
+                        args.Length >= 8 ? args[7] : Walker.Plain);
                 if (args.Length >= 5 && args[0] == "continue")
                     return Continue(args[1], args[2], int.Parse(args[3]), (EpisodePhase)Enum.Parse(typeof(EpisodePhase), args[4]));
                 if (args.Length >= 5 && args[0] == "converse")
                     return Converse(args[1], uint.Parse(args[2]), int.Parse(args[3]), int.Parse(args[4]));
 #endif
-                Console.Error.WriteLine("usage: record <save> <out> | recover <save> <out> | generate <out> <seed> <size> <rules> <week> <phase> | continue <save> <out> <week> <phase> | converse <out> <seed> <size> <last week>");
+                Console.Error.WriteLine("usage: record <save> <out> [walker] | recover <save> <out> | generate <out> <seed> <size> <rules> <week> <phase> [walker] | continue <save> <out> <week> <phase> | converse <out> <seed> <size> <last week>");
                 return 2;
             }
             catch (Exception error)
@@ -95,8 +101,9 @@ namespace Gamesim.OldSaves
 #if !OLDSAVE_SHAPE_ONLY
         // ------------------------------------------------------------------ record
 
-        private static int Record(string save, string outDir)
+        private static int Record(string save, string outDir, string walkerName)
         {
+            bool studies = Walker.Studies(walkerName);
             Directory.CreateDirectory(outDir);
             var bytes = File.ReadAllBytes(save);
             var slot = Path.Combine(outDir, "slot");
@@ -133,7 +140,8 @@ namespace Gamesim.OldSaves
 
             Check(state, 0);
             var engine = new EpisodeEngine(state);
-            var walker = new Walker();
+            var walker = new Walker("oldsave-", studies);
+            var levers = studies ? new LeverTally(state) : null;
             int step = 0;
             for (; step < 4000 && engine.Snapshot.phase != EpisodePhase.Finished; step++)
             {
@@ -144,7 +152,7 @@ namespace Gamesim.OldSaves
                 {
                     var tried = engine.Apply(command);
                     if (tried.accepted) { applied = tried; chosen = command; break; }
-                    if (!walker.MayRefuse(command))
+                    if (!walker.MayRefuse(command, tried.reason))
                         throw new InvalidOperationException("Week " + s.week + " " + s.phase + " " + command.kind + " refused: " + tried.reason);
                 }
                 if (applied == null) throw new InvalidOperationException("Week " + s.week + " " + s.phase + ": no command was accepted.");
@@ -152,6 +160,7 @@ namespace Gamesim.OldSaves
                 row["kindName"] = chosen.kind.ToString();
                 script.Add(row);
                 Check(applied.state, step + 1);
+                levers?.Add(applied.state);
             }
             var final = engine.Snapshot;
             if (final.phase != EpisodePhase.Finished) throw new InvalidOperationException("Unfinished after " + step + " commands.");
@@ -175,7 +184,81 @@ namespace Gamesim.OldSaves
             Directory.Delete(slot, true);
             Console.WriteLine("schema " + schema + " commands " + step + " digest " + record["digest"] + " state " + record["stateDigest"] + " text " + record["textDigest"]
                 + " winner " + final.winnerId + " | " + message);
+            if (studies)
+            {
+                Console.WriteLine(levers.Line(state, final));
+                // A walk that studied nothing after the load exercises no lever: a regression that refuses every study, or
+                // a save the player cannot study from. The record is written, but the cell is no use.
+                if (levers.Studies == 0)
+                {
+                    Console.Error.WriteLine("NO STUDY: the studier walk had no study accepted after the load, so the record exercises no lever.");
+                    return 5;
+                }
+            }
             return 0;
+        }
+
+        /// <summary>
+        /// For the studier walker (B9's tuning levers, OLD-SAVE-ACCEPTANCE 2.9): what preparation did in the recorded walk
+        /// after the load - the studies, the points used in a competition, and what the player held as the final Head of
+        /// Household began (the final week's study, which all three parts count) - so a seed can be chosen by it. Tuning 1
+        /// first had a small house's boost (a point learned from watching a Head of Household, the final week's study to
+        /// two); the owner's measurement dropped it before it shipped, and with it the two tallies that counted it.
+        /// <para>Tallied command by command, from the lines each accepted command logged (sequence at or past the state's
+        /// <c>nextSequence</c> before it). Not the final log against the loaded one: the engine keeps only the last 256
+        /// lines, so by the finale the weeks just after the load are gone from it (the review of 2026-11-07). Read through the
+        /// saved fields, so it compiles at every build; a build without those lines counts zeros.</para>
+        /// </summary>
+        private sealed class LeverTally
+        {
+            private long next;
+
+            /// <summary>The studies accepted after the load.</summary>
+            public int Studies { get; private set; }
+
+            private int used;
+
+            /// <summary>The preparation the player held, in the house, at the first state of the final Head of Household's first part; -1 if the walk never reached it so.</summary>
+            private int atFinalHoH = -1;
+
+            public LeverTally(EpisodeState loaded) { next = NextSequence(OldSaveTrace.Fields(loaded)); }
+
+            /// <summary>Counts the lines the command that led to <paramref name="after"/> logged.</summary>
+            public void Add(EpisodeState after)
+            {
+                var fields = OldSaveTrace.Fields(after);
+                if (fields["events"] is JArray events)
+                    foreach (var e in events)
+                    {
+                        var sequence = e["sequence"];
+                        var text = e["text"];
+                        if (sequence == null || sequence.Type != JTokenType.Integer || (long)sequence < next) continue;
+                        if (text == null || text.Type != JTokenType.String) continue;
+                        string line = (string)text;
+                        if (line.StartsWith("You studied the house", StringComparison.Ordinal)) Studies++;
+                        if (line.StartsWith("Your preparation was used in the competition.", StringComparison.Ordinal)) used++;
+                    }
+                next = Math.Max(next, NextSequence(fields));
+                // By name and through the saved fields, as above, so it compiles at builds without the final Head of
+                // Household's parts or the study; such a build never reaches it.
+                if (atFinalHoH < 0 && after.phase.ToString() == "FinalHoHPart1"
+                    && after.contestants != null && after.contestants.Any(c => c != null && c.id == after.playerId && c.status.ToString() == "Active"))
+                    atFinalHoH = fields["playerStudyBonus"] != null && fields["playerStudyBonus"].Type == JTokenType.Integer ? (int)fields["playerStudyBonus"] : 0;
+            }
+
+            /// <summary>The <c>levers:</c> line: the tuning and the preparation at the load, the tallies after it, and how the player finished.</summary>
+            public string Line(EpisodeState loaded, EpisodeState final)
+            {
+                string Value(JToken token) => token == null ? "none" : token.ToString();
+                var at = OldSaveTrace.Fields(loaded);
+                return "levers: tuning " + Value(at["tuningRulesVersion"]) + ", banked at the load " + Value(at["playerStudyBonus"])
+                    + "; after the load: studies " + Studies + ", used " + used
+                    + (atFinalHoH < 0 ? ", the final HoH not reached in the house" : ", the final HoH reached with " + atFinalHoH + " banked")
+                    + "; the player " + (final.winnerId == final.playerId ? "won" : final.runnerUpId == final.playerId ? "was runner-up" : "did not reach the final two");
+            }
+
+            private static long NextSequence(JObject fields) =>
+                fields["nextSequence"] != null && fields["nextSequence"].Type == JTokenType.Integer ? (long)fields["nextSequence"] : 0;
         }
 
         /// <summary>
@@ -413,10 +496,13 @@ namespace Gamesim.OldSaves
         /// <paramref name="phase"/>, then saved by that build's store. The session id is fixed, so a regeneration
         /// writes the same state; only the envelope's savedAt differs. "director-allstars" is "director" with the cast
         /// screen's All-Stars roster picked (SCH30, ALL-STAR-HISTORIES-PLAN 8.7): every season-builder build has the
-        /// roster choice (44fa4580), and "director" stays exactly what it always wrote.
+        /// roster choice (44fa4580), and "director" stays exactly what it always wrote. <paramref name="walkerName"/>
+        /// "studier" walks with the studies (B9's tuning levers, OLD-SAVE-ACCEPTANCE 2.9) and names the session so;
+        /// "plain" writes what generate always wrote.
         /// </summary>
-        private static int Generate(string outFile, uint seed, int size, string rules, int week, EpisodePhase phase)
+        private static int Generate(string outFile, uint seed, int size, string rules, int week, EpisodePhase phase, string walkerName)
         {
+            bool studies = Walker.Studies(walkerName);
             EpisodeState fresh;
             if (rules == "director" || rules == "director-allstars")
             {
@@ -431,8 +517,8 @@ namespace Gamesim.OldSaves
             }
             else if (rules == "default") fresh = ContentCatalog.Create(seed);
             else throw new ArgumentException("rules is director, director-allstars or default");
-            fresh.sessionId = "oldsave-" + rules + "-" + seed + "-" + size;
-            return PlayOnAndSave(fresh, new Walker("generate-"), outFile, week, phase);
+            fresh.sessionId = "oldsave-" + rules + "-" + seed + "-" + size + (studies ? "-" + Walker.Studier : "");
+            return PlayOnAndSave(fresh, new Walker("generate-", studies), outFile, week, phase);
         }
 
         /// <summary>
@@ -505,7 +591,7 @@ namespace Gamesim.OldSaves
                 {
                     var tried = engine.Apply(command);
                     if (tried.accepted) { applied = tried; break; }
-                    if (!walker.MayRefuse(command))
+                    if (!walker.MayRefuse(command, tried.reason))
                         throw new InvalidOperationException("Week " + s.week + " " + s.phase + " " + command.kind + " refused: " + tried.reason);
                 }
                 if (applied == null) throw new InvalidOperationException("Week " + s.week + " " + s.phase + ": no command was accepted.");
@@ -529,7 +615,7 @@ namespace Gamesim.OldSaves
                 {
                     var tried = engine.Apply(command);
                     if (tried.accepted) { applied = tried; break; }
-                    if (!walker.MayRefuse(command))
+                    if (!walker.MayRefuse(command, tried.reason))
                         throw new InvalidOperationException("Week " + s.week + " " + s.phase + " " + command.kind + " refused: " + tried.reason);
                 }
                 if (applied == null) throw new InvalidOperationException("Week " + s.week + " " + s.phase + ": no command was accepted.");
@@ -551,18 +637,58 @@ namespace Gamesim.OldSaves
     /// social week up to two conversations, with the houseguest the season's revision picks. Deterministic in the state
     /// alone, so the build that records a script and any build that replays it agree on what it chose; only the
     /// recorder runs it - a replay reads the script.
+    /// <para>The studier profile (<see cref="Studier"/>, B9's tuning levers, OLD-SAVE-ACCEPTANCE 2.9) is the same walk with
+    /// a study ("memorize-layout") tried up to twice in each free time, before the talks. A study refused at the season's
+    /// limit, with the window's actions spent, or out of the house is skipped and leaves nothing in the script; any other
+    /// refusal of a study stops the walk. The plain profile tries none, so every fixture before it walks exactly as it did.</para>
     /// </summary>
     public sealed class Walker
     {
+        /// <summary>The walk every fixture before B9's studier cell was made with.</summary>
+        public const string Plain = "plain";
+
+        /// <summary>The plain walk that also studies in each free time (B9's tuning levers).</summary>
+        public const string Studier = "studier";
+
+        /// <summary>The study's command kind, by name: the recorder compiles at builds older than the study.</summary>
+        private const string StudyKind = "StudyHouse";
+
+        private const int StudiesAFreeTime = 2;
+
         private readonly Dictionary<int, int> talks = new Dictionary<int, int>();
+        private readonly Dictionary<string, int> studied = new Dictionary<string, int>();
         private readonly string prefix;
+        private readonly bool studies;
         private int sequence;
 
-        /// <summary>A walker naming its commands <paramref name="prefix"/>0001 on: "oldsave-" records a script, "generate-" plays a fresh season to its save point and "continue-" an older save on to its, so a script's ids never meet the save's own.</summary>
-        public Walker(string prefix = "oldsave-") { this.prefix = prefix; }
+        /// <summary>A walker naming its commands <paramref name="prefix"/>0001 on: "oldsave-" records a script, "generate-" plays a fresh season to its save point and "continue-" an older save on to its, so a script's ids never meet the save's own. With <paramref name="studies"/>, the studier profile.</summary>
+        public Walker(string prefix = "oldsave-", bool studies = false) { this.prefix = prefix; this.studies = studies; }
 
-        public bool MayRefuse(EpisodeCommand command) => command.kind == EpisodeCommandKind.Talk
-            || (command.kind == EpisodeCommandKind.AnswerJury && command.secondTargetId == "A");
+        /// <summary>Whether a walker profile studies: <see cref="Plain"/> (or none) does not, <see cref="Studier"/> does; any other name is refused.</summary>
+        public static bool Studies(string name)
+        {
+            if (string.IsNullOrEmpty(name) || name == Plain) return false;
+            if (name == Studier) return true;
+            throw new ArgumentException("walker is " + Plain + " or " + Studier + ", not " + name);
+        }
+
+        /// <summary>
+        /// The refusals of a study the studier skips, word for word: the two sentences of TuningRules.FullRefusal (the
+        /// weekly limit and the final week's), the window's actions spent, and a player out of the house. Literals, since
+        /// the recorder compiles at builds without TuningRules. Any other refusal of a study stops the walk, so a regression
+        /// that refuses every study (a wrong gate, a wrong approach id) cannot record a studier cell that exercises nothing.
+        /// </summary>
+        private static readonly string[] ExpectedStudyRefusals =
+        {
+            "Your preparation is full. It is used in the next Head of Household or veto competition you enter.",
+            "Your preparation is full. All three parts of the final Head of Household count it.",
+            "This social window is complete. Continue the episode.",
+            "Only an active player can study.",
+        };
+
+        public bool MayRefuse(EpisodeCommand command, string reason) => command.kind == EpisodeCommandKind.Talk
+            || (command.kind == EpisodeCommandKind.AnswerJury && command.secondTargetId == "A")
+            || (studies && command.kind.ToString() == StudyKind && ExpectedStudyRefusals.Contains(reason));
 
         public IEnumerable<EpisodeCommand> Candidates(EpisodeState s, int step)
         {
@@ -578,6 +704,20 @@ namespace Gamesim.OldSaves
             if (s.phase == EpisodePhase.Social && s.pendingDiary == null)
 #endif
             {
+                // The studier: up to twice in each free time, before the talks. A free time is keyed by its week and the
+                // number in the house, so two free times that share a week's number each get their own.
+                if (studies)
+                {
+                    string window = s.week + "/" + s.Active.Count();
+                    studied.TryGetValue(window, out int tried);
+                    if (tried < StudiesAFreeTime)
+                    {
+                        studied[window] = tried + 1;
+                        var study = Command(s, (EpisodeCommandKind)Enum.Parse(typeof(EpisodeCommandKind), StudyKind));
+                        study.targetId = "memorize-layout";
+                        yield return study;
+                    }
+                }
                 talks.TryGetValue(s.week, out int done);
                 var others = s.Active.Where(c => !c.isPlayer).OrderBy(c => c.id, StringComparer.Ordinal).ToList();
                 if (done < 2 && others.Count > 0)

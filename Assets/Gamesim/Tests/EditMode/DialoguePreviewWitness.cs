@@ -12,9 +12,10 @@ namespace Gamesim.Tests.EditMode
     /// assigned by hand: no nominee, counter, roll or store row.
     ///
     /// <para>Rules 1 by its literal, never by the chip: tests that mean rules 1 never read
-    /// <see cref="DialogueRules.Offered"/> (DIALOGUE-PLAN §2), which moves when a later stack brings the chip a new
-    /// version, and would then hand these schema-29, rules-1 tests a season on another version. That the chip's
-    /// season is this start, field for field, is the chip's own tests' to say (ShippedRulesTests).</para>
+    /// <see cref="DialogueRules.Offered"/> (DIALOGUE-PLAN §2), which moved to rules 2 when the chip was moved after the
+    /// schema-30 bump, and would otherwise hand these schema-29, rules-1 tests a season on another version. The chip's
+    /// season was this start, field for field, until that move; since it, the chip's season is rules 2's witness start
+    /// (DialogueRules2Season), which the chip's own tests say (ShippedRulesTests).</para>
     /// </summary>
     internal static class DialoguePreviewWitness
     {

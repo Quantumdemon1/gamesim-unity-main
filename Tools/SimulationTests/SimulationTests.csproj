@@ -53,7 +53,11 @@
     <Compile Include="$(EditMode)DialogueRules2LadderTests.cs" />
     <Compile Include="$(EditMode)DialogueRules2ValidatorTests.cs" />
     <Compile Include="$(EditMode)DialogueRules2EngineTests.cs" />
+    <!-- Rules 2's budget and room refusals, at each limit and one step short of it, since the chip writes rules 2. -->
+    <Compile Include="$(EditMode)DialogueRules2CapacityTests.cs" />
     <Compile Include="$(EditMode)DialogueCampaignPleaFallbackTests.cs" />
+    <!-- The seasons the rules-2 HUD's PlayMode tests replay, proven headlessly (EpisodePlayModeTests.DialogueRules2Hud). -->
+    <Compile Include="$(EditMode)DialogueRules2HudWitnessTests.cs" />
     <!-- NpcInvitation.cs is included by the whole Simulation glob above. -->
     <Compile Include="$(EditMode)NpcInvitationTests.cs" />
     <!-- ComesToYou.cs (the asks that come to the player) is included by the Simulation glob too. -->
@@ -486,6 +490,8 @@
     <!-- B6b: the headline's cells at budgets 0 and 300, pinned (explicit). -->
     <Compile Include="$(EditMode)BalanceLabGoldens.cs" />
     <Compile Include="$(EditMode)BalanceLabDiagnostics.cs" />
+    <!-- DIALOGUE-PLAN §5.5's P1(d) (explicit): the storyline and house-event peaks rules 2's conversation budget must fit under. -->
+    <Compile Include="$(EditMode)BalanceLabConversationBudget.cs" />
 
     <!--
       Several parity tests already carry an #else branch for running outside the editor: without

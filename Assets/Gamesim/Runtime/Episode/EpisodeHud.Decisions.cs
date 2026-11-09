@@ -402,7 +402,10 @@ namespace Gamesim.Episode
         private TMP_Text DecisionText(Transform parent, string value, int size, Color color)
         {
             var text = NewText(parent, value, size, color);
-            text.gameObject.AddComponent<LayoutElement>().minHeight = size * FontScale + 8f;
+            // At least 1.3 times the type it is drawn at, the HUD's rule for a label box (Inter's line is 1.21 of it). Eight
+            // units of air give that below about 27 points; a 22-point title at the largest text is drawn at 31 and had 38.8,
+            // 1.25 of it (a beat's title, a house event's, a nomination step's head).
+            text.gameObject.AddComponent<LayoutElement>().minHeight = Mathf.Max(size * FontScale + 8f, text.fontSize * 1.3f);
             return text;
         }
     }

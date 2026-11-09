@@ -16,7 +16,8 @@
 //   converse <out> <seed> <size> <last week> a fresh seeded season (director, that build's Rules.Fresh, which must switch the
 //                                            dialogue rules on: Rules.Preview.cs) played to its first campaign with the player
 //                                            nominated and a voter to talk to, the house's open asks answered, the campaign
-//                                            conversation opened, and saved there, at its first node (dialogue D1)
+//                                            conversation opened, and saved there, at its first node (dialogue D1), on the
+//                                            dialogue rules that build's chip writes: 1 at D1's build, 2 from the chip's move
 //   shape                                   every saved field path of that build (OLDSAVE_DEFINES=OLDSAVE_SHAPE_ONLY compiles only this)
 //   migrate <save> <out>                     the schema-28 payload this build's chain hands on (what a schema-29 step would validate)
 //   resave  <save> <out>                     load with that build's store and save again, as the next autosave would
@@ -692,9 +693,10 @@ namespace Gamesim.OldSaves
 
         public IEnumerable<EpisodeCommand> Candidates(EpisodeState s, int step)
         {
-            // An open campaign conversation (dialogue rules 1, D1) is answered before anything else, with its node's
-            // first option that is not the exit: the case, then the plea. Only a season on dialogue rules has one, so
-            // every older fixture's walk is unchanged.
+            // An open campaign conversation (dialogue rules 1, D1, or 2, the chip's since its move) is answered before
+            // anything else, with its node's first option that is not the exit: on rules 1 the case, then the plea; on
+            // rules 2 the reply's first option, then the plea (the entry already took the open node's case). Only a
+            // season on dialogue rules has one, so every older fixture's walk is unchanged.
             var conversation = Dialogue.Choice(s, this);
             if (conversation != null) { yield return conversation; yield break; }
 #if OLDSAVE_BEFORE_SCHEMA3
@@ -828,7 +830,8 @@ namespace Gamesim.OldSaves
     }
 
     /// <summary>
-    /// The campaign conversation's public commands (dialogue rules 1, D1), planned by the engine's own builders - the ones
+    /// The campaign conversation's public commands (dialogue rules 1, D1, and every later version: the builders dispatch
+    /// on the season's own rules), planned by the engine's own builders - the ones
     /// the HUD calls - and reached by reflection, so the recorder still compiles at every build before dialogue rules.
     /// There each answer is that no conversation is on, and nothing is planned.
     /// </summary>

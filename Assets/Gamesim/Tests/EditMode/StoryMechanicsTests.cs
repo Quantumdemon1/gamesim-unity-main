@@ -93,8 +93,8 @@ namespace Gamesim.Tests.EditMode
         // ---------------------------------------------------------------- the veto's grudges (story rules 10, Blame)
         //
         // Each rule is played twice from the same veto meeting: under threads, held there by name so it stays the
-        // rules-9 twin when Current moves, and under Blame, opted in by assignment after the story is switched on,
-        // as tests opt a season in until its enrolment (RoleRulesTests' AtRoles).
+        // rules-9 twin now that Current has moved to Blame (STORY-RULES-10-PLAN §8), and under Blame, also named by
+        // assignment after the story is switched on, as it was opted in before its enrolment (RoleRulesTests' AtRoles).
 
         /// <summary>
         /// A self-save forced nobody (STORY-RULES-10-PLAN §3.1): under Blame the replacement writes nothing against a

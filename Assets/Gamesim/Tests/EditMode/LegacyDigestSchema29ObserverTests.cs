@@ -553,7 +553,7 @@ namespace Gamesim.Tests.EditMode
 
         private static EpisodeState PlayedDecisionWitness()
         {
-            var state = UnifiedVotePublicCommandTests.Play(6u, 8, tuningHeld: true).Final.Clone();
+            var state = UnifiedVotePublicCommandTests.Play(6u, 8, held: true).Final.Clone();
             Valid(state);
             Assert.That(state.schemaVersion, Is.EqualTo(30));
             Assert.That(state.unifiedCommitmentRulesVersion, Is.EqualTo(2));
@@ -577,7 +577,9 @@ namespace Gamesim.Tests.EditMode
             Assert.That(state.schemaVersion, Is.EqualTo(30), "The live schema; never relabel an older object.");
             // Mode 2 is a fresh shipped season held at tuning 0 (B9-BALANCE-PLAN decision 8): these observers take a
             // current season to its schema-29 and 28 views, which a season on B9's tuning, a rule of schema 30's, has not.
-            if (mode == 2) { ShippedRules.ApplyFresh(state); state.tuningRulesVersion = TuningRules.Off; }
+            // Both modes are held at story rules 9, threads, by name (STORY-RULES-10-PLAN §8), for the same reason: the
+            // frozen schema-29 and 28 readers refuse story rules 10.
+            if (mode == 2) { ShippedRules.ApplyFresh(state); state.tuningRulesVersion = TuningRules.Off; state.story.rulesVersion = StoryRules.Threads; }
             else if (mode == 1)
             {
                 state.competitionRulesVersion = CompetitionRules.Current;
@@ -586,6 +588,7 @@ namespace Gamesim.Tests.EditMode
                 EpisodeEngine.EnableWeek(state); EpisodeEngine.EnableAgency(state); EpisodeEngine.EnableFinale(state);
                 EpisodeEngine.EnableCommitments(state); EpisodeEngine.EnableEconomy(state);
                 state.unifiedCommitmentRulesVersion = 1;
+                state.story.rulesVersion = StoryRules.Threads;
             }
             Valid(state);
             if (mode > 0)

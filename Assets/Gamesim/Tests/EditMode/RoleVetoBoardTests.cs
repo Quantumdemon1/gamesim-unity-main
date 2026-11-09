@@ -642,7 +642,8 @@ namespace Gamesim.Tests.EditMode
         private static readonly Dictionary<(int mode, bool roles), List<EpisodeState>> Walks = new Dictionary<(int, bool), List<EpisodeState>>();
 
         /// <summary>
-        /// A season at story rules Roles (or at Threads, the shipped rules, without <paramref name="roles"/>) in commitment
+        /// A season at story rules Roles (or at Threads, by name, without <paramref name="roles"/>: the shipped rules until
+        /// story rules 10's enrolment, held there since) in commitment
         /// mode <paramref name="mode"/>, played through the public engine to week two's veto competition with the player
         /// neither Head of Household nor on the block, and the two nominees clean of any record with the player that the
         /// ladder reads; then handed the veto, as R1's fixture hands it. The first nominee is shaped to wear

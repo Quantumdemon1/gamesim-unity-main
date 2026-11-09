@@ -27,9 +27,10 @@ namespace Gamesim.Tests.EditMode
             Assert.That(StoryRules.Roles, Is.EqualTo(11), "Claimed as 11, with 10 kept for the story session's pariah fix.");
             Assert.That(StoryRules.Blame, Is.EqualTo(StoryRules.Roles - 1), "10 is the pariah fix, Blame, defined below Roles.");
             Assert.That(StoryRules.Latest, Is.EqualTo(StoryRules.Roles), "The bound is the last milestone this build defines.");
-            Assert.That(StoryRules.Current, Is.EqualTo(StoryRules.Threads), "A season the game starts moves only at an enrolment: Blame's, then R7.");
+            // Story rules 10 is enrolled (STORY-RULES-10-PLAN §8): a season the game starts plays Blame, one below Roles.
+            Assert.That(StoryRules.Current, Is.EqualTo(StoryRules.Blame), "A season the game starts moves only at an enrolment: Blame's is made, R7's waits.");
             var shipped = Shipped();
-            Assert.That(shipped.story.rulesVersion, Is.EqualTo(StoryRules.Threads));
+            Assert.That(shipped.story.rulesVersion, Is.EqualTo(StoryRules.Blame));
             Assert.That(EpisodeEngine.RolesOn(shipped), Is.False, "A season the game starts today plays no role moment.");
             Assert.That(EpisodeEngine.RolesOn(null), Is.False);
         }

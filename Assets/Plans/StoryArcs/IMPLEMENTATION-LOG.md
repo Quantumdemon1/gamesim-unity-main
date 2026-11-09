@@ -359,3 +359,16 @@ all milestones M0-M6, owner decisions = the recommended defaults in 20 §9 and 2
   against 40% (22 points). ThreadsReport: 2.6 threads a season; 112 of the 113 seasons that pass week
   one have two or three; every thread ends at its climax or a stated end.
 - Floors: EditMode 1857, PlayMode 615, Uma 64, Sim 1052.
+
+## Story rules 10, Blame: the pariah fix (STORY-RULES-10-PLAN, 2026-11-07/08)
+- No story session was active, so the lead built story rules 10, reserved for the pariah fix (Q5), on the owner's
+  word. The plan is `Assets/Plans/STORY-RULES-10-PLAN.md`; its sections 6 and 8 record the acceptance and the enrolment.
+- The rule, as accepted (C1n): a houseguest who holds the veto and saves themselves is not resented by the replacement;
+  one who saves somebody else is resented at 35 (`EpisodeEngine.ReplacementVetoAtBlame`), under the forty line. The
+  player's own veto keeps the old 40. It is read through `StoryAt(s, StoryRules.Blame)`, so seasons below 10 replay as
+  they did, and Roles (11) plays it too.
+- Accepted on the held-out seeds 100-199 (the 12 policies pooled, tuning 1): pariah seasons 3.9% at 8 and 17.6% at 12,
+  against 19.1% and 49.0% for the unchanged rules on the same seasons. The pile-on arc is rarer.
+- Enrolled: `StoryRules.Current` is `Blame`, so every new season starts on story rules 10. The save migration and the web
+  importer still write threads. The tests that pin a season's older behaviour are held at threads by name; the lab's
+  goldens were re-recorded, and its budget-nought pins keep B9's digests with rules-10 twins beside them (the plan, §8).

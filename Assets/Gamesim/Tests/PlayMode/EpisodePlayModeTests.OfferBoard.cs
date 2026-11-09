@@ -24,7 +24,8 @@ namespace Gamesim.Tests.PlayMode
     /// caption, the card's heading and one line. A season without the role moments draws the rows exactly as it did.
     ///
     /// <para>The meeting is reached through the engine, as R1's tone tests reach it: an eight-house season under the
-    /// shipped rules - at story rules Roles, or left at Threads - walked to week one's veto, the player handed it, and
+    /// shipped rules - at story rules Roles, or left at the shipped story rules (Blame since story rules 10's enrolment) -
+    /// walked to week one's veto, the player handed it, and
     /// the advance into the meeting files both nominees' asks the way the engine always does.</para>
     /// </summary>
     public sealed partial class EpisodePlayModeTests
@@ -37,8 +38,8 @@ namespace Gamesim.Tests.PlayMode
         /// order, which follows the filing, is not the block's: a board drawn in the rows' order shows. A seed whose ids
         /// happen to sort the other way is passed over. At <paramref name="roles"/> the story plays at Roles, the Head of
         /// Household held at nothing toward the player so they never ask to keep the block (R4) and the board stays the
-        /// nominees' two cards, whatever the seed's Head of Household makes of the player; otherwise at the Threads every
-        /// shipped season plays.
+        /// nominees' two cards, whatever the seed's Head of Household makes of the player; otherwise at the story rules every
+        /// shipped season plays (Blame, since story rules 10's enrolment).
         /// </summary>
         private static EpisodeState OfferBoardSeason(bool roles)
         {
@@ -277,10 +278,10 @@ namespace Gamesim.Tests.PlayMode
         }
 
         /// <summary>
-        /// A season at Threads - every season shipped today - draws the meeting's asks as the rows it always drew, piece
-        /// for piece where they always stood: in <see cref="NpcDeals.Pending"/>'s order, a heading, the deal's sentence
-        /// with its price, the yes and the no, each the offer's described control, between the meeting's head and "USE
-        /// THE VETO"; and no board.
+        /// A season without the role moments - every season shipped today, at Blame since story rules 10's enrolment -
+        /// draws the meeting's asks as the rows it always drew, piece for piece where they always stood: in
+        /// <see cref="NpcDeals.Pending"/>'s order, a heading, the deal's sentence with its price, the yes and the no, each
+        /// the offer's described control, between the meeting's head and "USE THE VETO"; and no board.
         /// </summary>
         [UnityTest]
         public IEnumerator OfferBoard_WithoutRolesTheMeetingDrawsTheRowsItAlwaysDrew()
@@ -290,7 +291,9 @@ namespace Gamesim.Tests.PlayMode
             LandThePanel();
             yield return null;
             var state = director.Snapshot;
-            Assert.That(state.story.rulesVersion, Is.EqualTo(StoryRules.Threads), "The shipped story rules.");
+            // Story rules 10 (STORY-RULES-10-PLAN §8): the shipped story rules moved from threads to Blame, which changes only
+            // what a houseguest's used veto writes, after this week-one meeting; the asks and rows before it are as they were.
+            Assert.That(state.story.rulesVersion, Is.EqualTo(StoryRules.Blame), "The shipped story rules.");
             Assert.That(ActiveRect(EpisodeHud.OfferBoardName), Is.Null, "No board without the role moments.");
 
             var offers = NpcDeals.Pending(state).Where(deal => deal.type == DealKind.VetoUse && deal.week == state.week).ToList();

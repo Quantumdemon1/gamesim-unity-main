@@ -598,7 +598,10 @@ namespace Gamesim.Tests.EditMode
         // Re-pinned for the alumni histories (3878f7a1d2ea39a8 at main's 37416049; ALL-STAR-HISTORIES-PLAN 8.8, "From
         // H1b"): the smoke grid's 24 All-Stars seasons seat alumni and play their histories, and its 540 Regular rows are
         // main's byte for byte. From B9 (B9-BALANCE-PLAN decision 8) every cell is held at tuning 0, so this keeps the rows
-        // every season played before B9; its twin below pins the same seasons at tuning 1.
+        // every season played before B9; its twin below pins the same seasons at tuning 1. From story rules 10's enrolment
+        // (STORY-RULES-10-PLAN §8) every cell is held at story rules 9 as well, through the cell's story field, so this and
+        // its tuning-1 twin keep exactly the rows B9's own head 7ab18ab0 printed; the rules-10 twins below pin the same
+        // seasons as they play now.
         internal const string BudgetNoughtRows = "5481eec784acd1ed";
 
         /// <summary>
@@ -607,24 +610,54 @@ namespace Gamesim.Tests.EditMode
         /// verdict anew) and 48 in play, 47 of the beast's (who studies) and one schemer's (a counter K1 or K5 settled).
         /// Re-pinned in round 4 (B9-BALANCE-PLAN, "Round 4: the lab"): the keyed jury tiebreak and the final Head of
         /// Household's half-a-tie read moved it (1bea9cf5), and tuning 1 without the small house's boost moved the beast's
-        /// rows again (f5fb8cb6). BALANCE_BASELINE.md, "B9".
+        /// rows again (f5fb8cb6). BALANCE_BASELINE.md, "B9". Held at story rules 9 since story rules 10's enrolment, as
+        /// <see cref="BudgetNoughtRows"/> is.
         /// </summary>
         internal const string BudgetNoughtTuning1Rows = "a89a8120050e9460";
 
-        [Test, Explicit("B5b: budget nought plays, byte for byte, the seasons it played before the NPC world's driver, held at tuning 0 (about 5 min). Run by name.")]
-        public void BudgetNoughtPlaysTheSeasonsItPlayedBeforeTheDriver() => BudgetNought(held: true, "budget0", BudgetNoughtRows);
+        /// <summary>
+        /// <see cref="BudgetNoughtRows"/>' seasons, held at tuning 0, at story rules 10, Blame (STORY-RULES-10-PLAN §8): the
+        /// story rules every fresh season starts on since the enrolment, recorded at it. Only C1n's veto rule differs from
+        /// the held twin, so the rows move where a houseguest used the veto and the season went on from a different grudge:
+        /// 192 of the 564 rows moved.
+        /// </summary>
+        internal const string BudgetNoughtBlameRows = "63356f631a00ed8a";
 
-        [Test, Explicit("B9: budget nought's seasons at tuning 1, the shipped tuning (about 5 min). Run by name.")]
-        public void BudgetNoughtPlaysTheSeasonsB9Measured() => BudgetNought(held: false, "budget0-tuning1", BudgetNoughtTuning1Rows);
+        /// <summary>
+        /// <see cref="BudgetNoughtTuning1Rows"/>' seasons at story rules 10, Blame: tuning 1 and story rules 10 together, the
+        /// seasons the game ships since the enrolment (STORY-RULES-10-PLAN §8), recorded at it: 209 of the 564 rows moved
+        /// from the held tuning-1 twin.
+        /// </summary>
+        internal const string BudgetNoughtTuning1BlameRows = "ad1ca9f42d182824";
 
-        private static void BudgetNought(bool held, string name, string expected)
+        [Test, Explicit("B5b: budget nought plays, byte for byte, the seasons it played before the NPC world's driver, held at tuning 0 and story rules 9 (about 5 min). Run by name.")]
+        public void BudgetNoughtPlaysTheSeasonsItPlayedBeforeTheDriver() => BudgetNought(tuningHeld: true, StoryRules.Threads, "budget0", BudgetNoughtRows);
+
+        [Test, Explicit("B9: budget nought's seasons at tuning 1, the shipped tuning, held at story rules 9 (about 5 min). Run by name.")]
+        public void BudgetNoughtPlaysTheSeasonsB9Measured() => BudgetNought(tuningHeld: false, StoryRules.Threads, "budget0-tuning1", BudgetNoughtTuning1Rows);
+
+        [Test, Explicit("Story rules 10: budget nought's seasons held at tuning 0, at story rules 10, the enrolled story rules (about 5 min). Run by name.")]
+        public void BudgetNoughtPlaysTheDriversSeasonsAtStoryRulesTen() => BudgetNought(tuningHeld: true, 0, "budget0-story10", BudgetNoughtBlameRows);
+
+        [Test, Explicit("Story rules 10: budget nought's seasons at tuning 1 and story rules 10, the shipped seasons (about 5 min). Run by name.")]
+        public void BudgetNoughtPlaysTheShippedSeasonsAtStoryRulesTen() => BudgetNought(tuningHeld: false, 0, "budget0-tuning1-story10", BudgetNoughtTuning1BlameRows);
+
+        /// <summary>
+        /// Budget nought's grid, held at tuning 0 or not, at <paramref name="storyRules"/> through the cell's story field (0:
+        /// EnableStory's own, <see cref="StoryRules.Current"/>), hashed against <paramref name="expected"/>.
+        /// </summary>
+        private static void BudgetNought(bool tuningHeld, int storyRules, string name, string expected)
         {
-            List<BalanceLab.Cell> Cells(List<BalanceLab.Cell> cells) => held ? cells.Select(c => c.HeldAtTuning0()).ToList() : cells;
+            List<BalanceLab.Cell> Cells(List<BalanceLab.Cell> cells) =>
+                cells.Select(c => tuningHeld ? c.HeldAtTuning0() : c).Select(c => storyRules == 0 ? c : c.AtStoryRules(storyRules)).ToList();
             var smoke = BalanceLab.Run(Cells(BalanceLabReports.FullGrid()), 1);
             var headline = BalanceLab.Run(Cells(BalanceLab.Grid(BalancePolicies.All, BalanceLabReports.HeadlineSizes)), 20);
             string rows = BalanceLab.Jsonl(smoke) + BalanceLab.Jsonl(headline);
             TestContext.WriteLine("Rows: " + BalanceLab.Write(name, rows) + "; hash " + Hash(rows));
             Assert.That(smoke.Concat(headline).All(r => r.cell.npcTicks == 0 && r.npcOps == 0), Is.True);
+            int played = storyRules == 0 ? StoryRules.Current : storyRules;
+            Assert.That(smoke.Concat(headline).All(r => BalanceLab.Fresh(r.cell, r.seed).story.rulesVersion == played), Is.True,
+                "Every season starts on story rules " + played + ".");
             Assert.That(Hash(rows), Is.EqualTo(expected));
         }
 

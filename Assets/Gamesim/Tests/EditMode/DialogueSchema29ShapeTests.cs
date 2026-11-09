@@ -166,7 +166,8 @@ namespace Gamesim.Tests.EditMode
             Assert.That(state.unifiedHearingRulesVersion, Is.EqualTo(1));
             Assert.That(state.economyRulesVersion, Is.EqualTo(1));
             Assert.That(state.story, Is.Not.Null);
-            Assert.That(state.story.rulesVersion, Is.EqualTo(9));
+            // The shipped story rules: 10, Blame, since its enrolment (STORY-RULES-10-PLAN §8; it was 9, threads).
+            Assert.That(state.story.rulesVersion, Is.EqualTo(10));
             var fields = ShippedRules.Fields(state).ToDictionary(row => row.Key, row => row.Value);
             foreach (string name in new[]
             {

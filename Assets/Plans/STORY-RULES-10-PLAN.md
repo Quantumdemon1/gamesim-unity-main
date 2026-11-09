@@ -432,7 +432,8 @@ are 0.4% (C0 2.2%), as decision 7 expected.
   run against the C1n commit. Its hunk is the lab's npc scope with the knobs at C1n's values.
 - `StoryPacingTests.PacingReport` at 9 and 10 has not run (§5, step 6).
 - The UMA PlayMode set (the suites, above) has not run on the C1n commit.
-- The enrolment (§8) is the next commit. The owner signs off these numbers in the PR before it merges.
+- The enrolment (§8) is the next commit. The owner signs off these numbers in the PR before it merges. (Made on
+  2026-11-08: §8, As enrolled.)
 
 ## 7. Tests and pins
 
@@ -467,6 +468,65 @@ the player's veto at Blame; the count is unchanged.
   version is part of every cell's stamp entry already.
 - A new old-save cell at story rules 10 (`Tools/OldSaves`).
 - BALANCE_BASELINE's Q5 row and the story IMPLEMENTATION-LOG updated. The role-moments session is told: R7 can follow.
+
+### As enrolled (2026-11-08)
+
+**What `Current` reads.** A grep of `StoryRules.Current`, `Threads` and `Blame` in `Simulation`, `Runtime` and the tests
+before the move (the rule that a `Current` constant is a bound, never a gate):
+- Live code reads `Current` in one place, `EpisodeEngine.EnableStory`: the value a season switched on today starts at.
+  Every rule reads the milestone that introduced it (`StoryAt(s, StoryRules.Threads)`, `StoryAt(s, StoryRules.Blame)`,
+  `>= StoryRules.Roles`, the catalogue's `template.rulesVersion` floors, the dialogue pilot's `>= Threads`), so the move
+  changes which rules a new season plays and nothing about a saved one.
+- The frozen readers' `StoryRules.Current` (schema 24 and 25's validators, the schema-28 and 29 read-only copies) is
+  their own frozen ladder, `Current = Threads`, not the live constant: they keep refusing 10. The save migration writes a
+  literal 9 and the web importer `StoryRules.Threads`, as before.
+- In the tests, `Current` is a bound where it appears (`ShippedRulesTests`, `StorySeasonTests`, the lab's
+  `CheckedStoryRules`, which now admits threads and refuses Blame); the pins of 9 were `RoleRulesTests`,
+  `ShippedRulesTests`' map, and the shipped-rules asserts listed below.
+
+**Moved.** `StoryRules.Current = Blame`; its doc says it is a new season's value. `RoleRulesTests` and `ShippedRulesTests`:
+9 becomes 10.
+
+**Held at threads by name**, each through the mechanism it already held B9's tuning with (the field written after
+`ShippedRules.ApplyFresh` or `EnableStory`, or the lab cell's story field):
+- `CommitmentRulesSeasonDigests.Season` (the director and harness sets), and with it every tier that plays its seasons
+  (mode one, the leaks, the war rooms, `AllWeekSeasonDigests`' 54 records); `PinnedVoteSeason.Fresh`, and with it the
+  mode-two sweeps;
+- the below-30 list: `FrozenEpisodeV28IntegrationTests`' lie walk, `FrozenEpisodeV29IntegrationTests`' dialogue route,
+  `LegacyDigestSchema29ObserverTests.Fresh` (both modes), `DialoguePreviewWitness.Start` (`ShippedRulesTests`' chip
+  comparison takes the int back, as it takes B9's), `UnifiedVotePublicCommandTests.Play(held: true)` (was `tuningHeld`),
+  `FrozenEpisodeV25ContractTests.Fresh`, and `FreshSeasonStateDigestTests` (it asserts 10, then takes the int back to 9
+  before it hashes, as it does B9's tuning);
+- not on the list above, for the same reason: `LegacyDigestSchema27TestStates.Fresh`, the lawful witness the schema-30
+  observer's tests and `RoleRulesTests`' frozen-reader controls take to their schema-27 and 28 views;
+- `RoleStoryPools.OldSeasons`, all four seasons. `StoryMechanicsTests`' rules-9 twins were already held by name.
+
+**Re-pinned**, because a shipped season's story rules moved from 9 to 10 and the test asserts them: the dialogue fixtures
+`DialogueCampaignEngineTests`, `DialogueCampaignDealClosureTests`, `DialogueSchema29ShapeTests`, `DialoguePendingSaveTests`,
+and in PlayMode `EpisodeDurableTransactionTests.DialogueCampaign` and `OfferBoard_WithoutRolesTheMeetingDrawsTheRowsItAlwaysDrew`
+(their week-one meetings come before any veto is decided, so nothing else they read moves). `DialogueCampaignRulesTests`'
+"story-version" case took one below a shipped season's version, threads until now; it names the milestone below the
+pilot's floor, `Threads - 1`. `ASeasonAtStoryRulesTenRoundTripsThroughTheRealStoreAtThirty` asserts that the shipped
+season starts at 10 where it opted in.
+
+**The lab.**
+- `BudgetNoughtPlaysTheSeasonsItPlayedBeforeTheDriver` and `BudgetNoughtPlaysTheSeasonsB9Measured` hold every cell at
+  story rules 9 through the cell's story field (`Cell.AtStoryRules(StoryRules.Threads)`), and each asserts that every
+  season it plays starts there. They print exactly the digests B9's own head `7ab18ab0` printed
+  (`runs/expected-digests.txt`): `5481eec784acd1ed` at tuning 0 and `a89a8120050e9460` at tuning 1.
+- Their rules-10 twins, recorded at the enrolment: `BudgetNoughtPlaysTheDriversSeasonsAtStoryRulesTen` (tuning 0),
+  `63356f631a00ed8a`, 192 of its 564 rows moved from the held run; `BudgetNoughtPlaysTheShippedSeasonsAtStoryRulesTen`
+  (tuning 1, the seasons the game ships), `ad1ca9f42d182824`, 209 moved.
+- `TuningRulesTests.StudierTuning1Rows` is held, not re-recorded, and so is `StudierTuning0Rows`: both are B9's numbers,
+  which B9 measured at story rules 9, so both arms are held there through the cell's story field and keep
+  `7eb55ed0d28b2d5e` and `9b9bf8a15644b745`. Story rules 10's own studier seasons are measured in §6 (B1-B4).
+- `BalanceLabGoldens`: the `Rules` tuple ends `story.rulesVersion=10`, and the 48 cells were re-recorded at the
+  enrolment, because every fresh season plays Blame: all 48 moved (budget 0 and 300, at 8 and 12, the twelve players).
+- The parts' stamp stays v9 (above).
+
+**Not in this commit.** The old-save cell at story rules 10: from OLD-SAVE-ACCEPTANCE 2.3 on a cell is written and
+recorded by the build that writes it, so its writer is this commit, and it is the next step. The PlayMode re-pins above
+have not run (Unity only); the UMA PlayMode set is the gate.
 
 ## 9. What moves for the player
 
@@ -545,3 +605,5 @@ The questions as they were put:
 - C2 and C3 were not needed. The pile-on arc is rarer (question 4).
 - The C1n commit makes the committed rule C1n. The enrolment (§8) comes next; then the owner signs off the numbers in
   the PR before it merges.
+- Enrolled (§8, As enrolled): every new season starts on story rules 10. Saved seasons keep their version, and the save
+  migration and the web importer still write threads. The old-save cell at 10 is the next step.

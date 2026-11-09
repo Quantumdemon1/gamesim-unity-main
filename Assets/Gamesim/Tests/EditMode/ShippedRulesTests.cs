@@ -70,7 +70,8 @@ namespace Gamesim.Tests.EditMode
             { "tuningRulesVersion", 1 },
             { "npcSocial.rulesStartWeek", 1 },
             { "story.rulesStartWeek", 1 },
-            { "story.rulesVersion", 9 },
+            // Story rules 10, Blame, from its enrolment (STORY-RULES-10-PLAN §8; it was 9, threads).
+            { "story.rulesVersion", 10 },
         };
 
         /// <summary>
@@ -303,9 +304,12 @@ namespace Gamesim.Tests.EditMode
             var witness = DialoguePreviewWitness.Find();
             var chip = SeasonBuilder.Create(new SeasonBuilder.Choice { HouseSize = 8 }, witness.Seed);
             ShippedRules.ApplyFresh(chip, new SeasonBuilder.Choice { HouseSize = 8, CampaignConversations = true });
-            // The witness is held at tuning 0 (B9-BALANCE-PLAN decision 8): the chip's season is its start but for B9's int.
+            // The witness is held at tuning 0 (B9-BALANCE-PLAN decision 8) and at story rules 9 (STORY-RULES-10-PLAN §8): the
+            // chip's season is its start but for B9's int and story rules 10's.
             Assert.That(chip.tuningRulesVersion, Is.EqualTo(TuningRules.Shipped));
             chip.tuningRulesVersion = TuningRules.Off;
+            Assert.That(chip.story.rulesVersion, Is.EqualTo(StoryRules.Blame));
+            chip.story.rulesVersion = StoryRules.Threads;
             Assert.That(Json(chip), Is.EqualTo(Json(DialoguePreviewWitness.Start(witness.Seed))),
                 "seed " + witness.Seed + ": the chip's season is the witness's start.");
             var before = witness.Campaign;

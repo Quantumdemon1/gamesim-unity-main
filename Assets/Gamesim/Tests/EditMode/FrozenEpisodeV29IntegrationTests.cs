@@ -356,16 +356,17 @@ namespace Gamesim.Tests.EditMode
         }
 
         /// <summary>
-        /// A season at story rules 10 is a schema-30 season like any other: a shipped season opted in to Blame, as tests opt
-        /// in until its enrolment, plays two weeks and their two veto meetings, and the real store saves it at 30, loads it
-        /// read-only and unmigrated with every field it held, and saves and reloads it again unchanged.
+        /// A season at story rules 10 is a schema-30 season like any other: a shipped season, on Blame since its enrolment,
+        /// plays two weeks and their two veto meetings, and the real store saves it at 30, loads it read-only and unmigrated
+        /// with every field it held, and saves and reloads it again unchanged.
         /// </summary>
         [Test]
         public void ASeasonAtStoryRulesTenRoundTripsThroughTheRealStoreAtThirty()
         {
             var start = SeasonBuilder.Create(new SeasonBuilder.Choice { HouseSize = 8 }, 1111u);
             ShippedRules.ApplyFresh(start);
-            start.story.rulesVersion = StoryRules.Blame; // The tests' opt-in until the enrolment (STORY-RULES-10-PLAN §4).
+            // Opted in by assignment until the enrolment; since it (STORY-RULES-10-PLAN §8) the shipped season starts there.
+            Assert.That(start.story.rulesVersion, Is.EqualTo(StoryRules.Blame), "A shipped season starts on story rules 10.");
             var engine = new EpisodeEngine(start);
             for (int i = 0; i < 4000 && engine.Snapshot.week < 3 && engine.Snapshot.phase != EpisodePhase.Finished; i++)
             {
@@ -746,6 +747,7 @@ namespace Gamesim.Tests.EditMode
             ShippedRules.ApplyFresh(fresh);
             fresh.dialogueRulesVersion = 1; // The fixtures' opt-in, as D1's chip writes it.
             fresh.tuningRulesVersion = TuningRules.Off; // D1's schema-29 build predates B9's tuning (B9-BALANCE-PLAN decision 8).
+            fresh.story.rulesVersion = StoryRules.Threads; // ...and story rules 10, which Frozen29 refuses (STORY-RULES-10-PLAN §8).
             var engine = new EpisodeEngine(fresh);
             for (int step = 0; step < 96 && engine.Snapshot.phase != EpisodePhase.Campaign; step++)
             {

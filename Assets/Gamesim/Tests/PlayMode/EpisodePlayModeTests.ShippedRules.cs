@@ -40,7 +40,7 @@ namespace Gamesim.Tests.PlayMode
             expected = SeasonBuilder.Create(new SeasonBuilder.Choice(), started.seed);
             ShippedRules.ApplyFresh(expected, preview);
             Assert.That(ShippedRules.Fields(started), Is.EqualTo(ShippedRules.Fields(expected)), "The cast screen's season with the preview on.");
-            Assert.That(started.dialogueRulesVersion, Is.EqualTo(1), "The preview starts the season on the pinned dialogue rules 1.");
+            Assert.That(started.dialogueRulesVersion, Is.EqualTo(2), "The preview starts the season on the pinned dialogue rules 2, the chip's since this change.");
             Assert.That(DialogueRules.On(started), Is.True);
             Assert.That(preview.CampaignConversations, Is.True, "The director reads the choice and writes nothing to it.");
         }

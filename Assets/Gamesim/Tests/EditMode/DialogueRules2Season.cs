@@ -21,8 +21,9 @@ namespace Gamesim.Tests.EditMode
     /// (validation, the engine, the rules' own gate) and the test ends there; from the pooled bump on it returns false and
     /// the test plays the conversation, as it does at the live 30 since D2's merge. The conversation arm was first proven
     /// when D2 was built, ahead of the bump, on a scratch copy of this tree with the live schema moved to 30, exactly as the
-    /// bump moves it (the D2 report records the run); D2 lands after the bump (DIALOGUE-PLAN §6 item 5). Nothing here reads <see cref="DialogueRules.Offered"/>: the chip stays on
-    /// rules 1 until rules 2 freezes.</para>
+    /// bump moves it (the D2 report records the run); D2 lands after the bump (DIALOGUE-PLAN §6 item 5). Nothing here reads <see cref="DialogueRules.Offered"/>: the season is
+    /// enrolled by the literal 2 (§2), which since the chip moved to rules 2 is also the chip's season for the same seed, field for
+    /// field (ShippedRulesTests holds that), and stays rules 2 when the chip moves on.</para>
     /// </summary>
     internal static class DialogueRules2Season
     {

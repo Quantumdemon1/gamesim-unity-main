@@ -28,7 +28,8 @@ namespace Gamesim.Tests.EditMode
 
         /// <summary>
         /// The native-29 arm's contract (DIALOGUE-PLAN D1): a retained schema-29 object on dialogue rules 1, the pilot the
-        /// cast screen's preview chip starts, admitted at schema 29 itself and handed back unchanged, as a detached copy.
+        /// cast screen's preview chip started until it moved to rules 2, admitted at schema 29 itself and handed back unchanged,
+        /// as a detached copy.
         /// Never projected: a store holding conversations has no schema-28 form, and dropping it would digest another
         /// season. The projections above still take only rules 0 with the empty store, exactly as before.
         /// <para>Since the merge with SCH30 (ALL-STAR-HISTORIES-PLAN 8.5) it takes a retained schema-29 JSON object and no

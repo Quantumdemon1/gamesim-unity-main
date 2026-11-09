@@ -33,16 +33,20 @@ namespace Gamesim.Tests.EditMode
         }
 
         /// <summary>
-        /// The chip writes the pinned <see cref="DialogueRules.Offered"/>, and rules 2 is not frozen (§2): no shipped path
-        /// can write it until schema 30 defines it, so the chip stays on rules 1 and the default on 0.
+        /// The chip writes the pinned <see cref="DialogueRules.Offered"/>: rules 2 since the first stack after the schema-30
+        /// bump moved it from rules 1, which froze rules 2 as D2 built it (§2: a version freezes the first time a shipped
+        /// path can write it). It is a defined version a new season's schema admits, never the bound by reference, and the
+        /// shipped default stays on 0 until D7.
         /// </summary>
         [Test]
-        public void TheChipStaysOnRules1AndTheDefaultOn0UntilRules2Freezes()
+        public void TheChipWritesRules2AndTheDefaultStaysOn0()
         {
-            Assert.That(DialogueRules.Offered, Is.EqualTo(1));
+            Assert.That(DialogueRules.Offered, Is.EqualTo(2), "The chip writes rules 2 since this change.");
             var chip = SeasonBuilder.Create(new SeasonBuilder.Choice { HouseSize = 8, CampaignConversations = true }, 7);
             ShippedRules.ApplyFresh(chip, new SeasonBuilder.Choice { HouseSize = 8, CampaignConversations = true });
-            Assert.That(chip.dialogueRulesVersion, Is.EqualTo(1));
+            Assert.That(chip.dialogueRulesVersion, Is.EqualTo(2), "The chip's season is on rules 2 since this change.");
+            Assert.That(DialogueRules.Admits(chip.dialogueRulesVersion, chip.schemaVersion), Is.True, "A new season's schema admits it.");
+            Assert.That(DialogueRules.On(chip), Is.True);
             var plain = SeasonBuilder.Create(new SeasonBuilder.Choice { HouseSize = 8 }, 7);
             ShippedRules.ApplyFresh(plain);
             Assert.That(plain.dialogueRulesVersion, Is.Zero);

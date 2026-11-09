@@ -196,7 +196,31 @@
 # 9837 = 9831 + the story-rules-10 old-save cell (OLD-SAVE-ACCEPTANCE 2.12): OldSaveAcceptanceTests' four cases for
 # s30-mode2-allweek-story10-tuning1-w2-hoh and its two own cases, 6. The no-UMA lister counted exactly 9837 (and the
 # class 280), and the Mono harness ran the whole class (2026-11-08); no Unity run has observed the floor yet.
-Gamesim.EditModeTests 9837
+# 9859 = 9818 + the observers' native-30 dialogue arm, 41 shared LegacyDigestSchema30ObserverTests cases (a played
+# rules-2 season on the tuning arm and on its own, 6; an All-Stars one on the alumni arm, 1; rules 1 on tuning 1, 2;
+# every native-30 arm's frozen dialogue literal and closed store, 20; the dialogue arm's own contract, 12). The subset
+# ran all 41 (2026-11-08); no Unity run has observed the floor yet.
+# 9863 = 9859 + the chip's move to dialogue rules 2, 4 shared cases: DialogueRules2CapacityTests 3 (the budget's and the
+# room's refusals at each limit and one step short of it) and LegacyDigestSchema30ObserverTests 1 (the chip's All-Stars
+# season's rules-1 twin). Counted from the source; the subset ran all 4 (2026-11-08); no Unity run has observed it yet.
+# 9868 = 9863 + the rules-2 HUD's witnesses, 5 shared cases: DialogueRules2HudWitnessTests 4 (the fallback, the word for
+# and against, the four-tile reply, the rescue carrier) and DialogueCampaignPleaFallbackTests' rules-2 twin 1. The
+# filtered subset ran all 5 (2026-11-08); disjoint from the chip's 4, so the floor is their sum (the merge, 2026-11-08);
+# no Unity run has observed it yet.
+# 9873 = 9868 + the dialogue-1 old-save cell at 30 (OLD-SAVE-ACCEPTANCE 2.10): OldSaveAcceptanceTests' four cases for
+# s30-mode2-dialogue1-tuning1-w1-campaign and its own case, 5, EditMode only. The lister counted 9864 on its own branch
+# (9859 + 5), and the Mono harness ran the five (2026-11-08); disjoint from the chip's and the HUD's, so the floor is the
+# sum (the merge, 2026-11-08); no Unity run has observed it yet.
+# 9878 = 9873 + the dialogue-2 old-save cell at 30 (OLD-SAVE-ACCEPTANCE 2.11): OldSaveAcceptanceTests' four cases for
+# s30-mode2-dialogue2-tuning1-w1-campaign and its own case, 5, EditMode only (the subset compiles none of them, so it
+# stays 16695). The lister counted 9878, and the Mono harness ran the whole class, 284 of 284 (2026-11-08); no Unity
+# run has observed it yet.
+# 9897 = 9818 + main's 60 (9878 - 9818: B9's plan text and the dialogue chip 2, #46 and #47) + story rules 10's 19
+# (9837 - 9818): disjoint cases, so the floor is their sum (the merge of main into story rules 10, 2026-11-09).
+# OldSaveAcceptanceTests is 290 on the merge (70 fixtures' four cases each, the manifest case, the two refused cases, the
+# two careers and the alumni-5, dialogue-1, dialogue-2 and story-rules-10 cells' 1 + 1 + 1 + 2 own cases). Counted from
+# the two sides; no run has observed it on the merge.
+Gamesim.EditModeTests 9897
 # The UMA-free build. 1215 = 1236, the count after the consolidation's lanes (S2a, S2b, S4a), less the 7
 # farewell probes moved to Gamesim.DiagnosticsPlayModeTests and the 14 farewell readiness tests that now
 # compile only under GAMESIM_UMA (judged on the UMA cast); 1230 = 1215 + S2d's 7, S4b's 2, S4c's 2 and
@@ -323,7 +347,10 @@ Gamesim.EditModeTests 9837
 # adding none), counted offline from the source and the compiled assembly (2026-11-03); not yet run in Unity. Both
 # pass only on the scene and NavMesh HouseKitchenDoorway.AuthorAcceptance writes.
 # 1486 = 1480 + B9's 1 (1481 - 1480) + the quick fixes' 5 (1485 - 1480): disjoint cases, so the floor is their sum (2026-11-06).
-Gamesim.PlayModeTests 1486
+# 1498 = 1486 + the rules-2 HUD's 12 shared cases (EpisodePlayModeTests.DialogueRules2Hud: the fallback plea panel, the
+# voter's word, the public rescue and the four-tile reply, each at the standard, larger and largest text), counted from
+# the source and compiled offline (2026-11-08); no Unity run has observed them yet.
+Gamesim.PlayModeTests 1498
 # The UMA build of the same assembly, read by a plan built without -WithoutUma. 1281 = the 1241 above + the
 # 40 tests that compile only under GAMESIM_UMA, as run at r1 (2026-10-16): in EpisodePlayModeTests,
 # GroundedFarewell 11, Creator 9, HouseLife 8, Emotes 3, OpeningCaptures 2, and one each in CreatorEntry,
@@ -402,7 +429,9 @@ Gamesim.PlayModeTests 1486
 # 1527 = 1526 + the quick fixes' same kitchen doorway test, counted offline (2026-11-03) and compiled in the UMA
 # offline build; not yet run in Unity.
 # 1528 = 1522 + B9's 1 (1523 - 1522) + the quick fixes' 5 (1527 - 1522): disjoint cases, so the floor is their sum (2026-11-06).
-Gamesim.PlayModeTests.UmaBuild 1528
+# 1540 = 1528 + the rules-2 HUD's same 12 shared cases, counted from the source; compiled offline without UMA only, and no
+# Unity run has observed them yet (2026-11-08).
+Gamesim.PlayModeTests.UmaBuild 1540
 # The UMA bodies: runs only where the GAMESIM_UMA define is set (the working tree and the D: copy).
 # 82 = the 89 run on 2026-10-15, less the 7 farewell probes moved to Gamesim.Uma.DiagnosticsPlayModeTests;
 # 85 = 82 + the 3 farewell readiness decision tests (UmaFarewellReadinessDecisionPlayModeTests, 2026-10-16);
@@ -534,4 +563,15 @@ Gamesim.Uma.DiagnosticsPlayModeTests 10
 # and adds none.
 # Story rules 10's enrolment (2026-11-08) adds two [Explicit] BalanceLabTests (budget nought's rules-10 twins), which
 # the subset does not execute: it ran exactly 16657 of 16657 at the enrolment's tree, green.
-Gamesim.SimulationTests 16657
+# 16686 = 16642 + the observers' native-30 dialogue arm: LegacyDigestSchema30ObserverTests' 41 shared cases and
+# CommitmentRulesSeasonDigestsNativeTests' 3 (the rules-2 digest and its two refusals): dotnet test Tools/SimulationTests
+# ran exactly 16686 of 16686 on the commit that adds them (2026-11-08).
+# 16690 = 16686 + the chip's move to dialogue rules 2: DialogueRules2CapacityTests 3 and LegacyDigestSchema30ObserverTests'
+# rules-1 All-Stars twin 1. dotnet test Tools/SimulationTests ran exactly 16690 of 16690 on the commit that adds them (2026-11-08).
+# 16695 = 16690 + the rules-2 HUD's witnesses: DialogueRules2HudWitnessTests 4 and DialogueCampaignPleaFallbackTests'
+# rules-2 twin 1 (16691 of 16691 on the HUD's own commit): disjoint from the chip's, so the floor is their sum (the merge,
+# 2026-11-08).
+# 16710 = 16642 + main's 53 (16695 - 16642: the dialogue chip 2's observers, chip and HUD witnesses) + story rules 10's
+# 15 (16657 - 16642): disjoint cases, so the floor is their sum (the merge of main into story rules 10, 2026-11-09).
+# Counted from the two sides; no run has observed it on the merge.
+Gamesim.SimulationTests 16710

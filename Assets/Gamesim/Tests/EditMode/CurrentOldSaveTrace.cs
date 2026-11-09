@@ -21,9 +21,23 @@ namespace Gamesim.Tests.EditMode
         /// </summary>
         private const int NativeSchema = 29;
 
+        /// <summary>
+        /// The schema the dialogue arm is keyed to: 30, the one that defined dialogue rules 2 (DIALOGUE-PLAN D2, decision 7;
+        /// DialogueRules.SchemaFor). A literal, never <see cref="Current"/>, for the reason <see cref="NativeSchema"/> is one:
+        /// a later bump moves Current, and a rules-2 season saved at 30 still names 30 here. It has no form below it.
+        /// </summary>
+        private const int Rules2Schema = 30;
+
         internal static (string season, string blind, string text) Checkpoint(EpisodeState state, int schema)
         {
             var own = OldSaveTrace.Fields(state);
+            // DIALOGUE-PLAN D2: a season on dialogue rules 2, by the literal, exists only from 30 (decision 7), so it has no
+            // 29 and no 28 form whichever arm admits it - the recorder's literals would take it to a "29" no build wrote. The
+            // refusal is this boundary's, in rules 2's own words, ahead of every arm: the fresh rules-2 season is on the
+            // tuning rules and an All-Stars one on the alumni rules, and each is refused below 30 for its dialogue rules
+            // first. An undefined version is no rules-2 season: it falls through, and the validator refuses it.
+            if (state != null && state.dialogueRulesVersion == 2 && schema != Rules2Schema)
+                throw new InvalidDataException("A season on dialogue rules 2 has no reference schema below " + Rules2Schema + ".");
             // H1b: a season on the alumni rules holds histories that exist only from schema 30, so it has no 29 or 28
             // view. The schema-30 observer admits it natively, and it is checkpointed at the live 30 alone, as the
             // recorder's OldSaveTrace.Checkpoint does a state at its own schema.
@@ -40,6 +54,11 @@ namespace Gamesim.Tests.EditMode
                 if (schema != Current) throw new InvalidDataException("A season on the tuning rules has no reference schema below " + Current + ".");
                 return Hash(LegacyDigestSchema30Observer.AdmitNativeTuned30(state, own));
             }
+            // The dialogue arm (DIALOGUE-PLAN D2): a season on dialogue rules 2 and neither pooled rules. The schema-30
+            // observer admits it natively, and it is checkpointed at 30 alone: the boundary above has refused every other
+            // schema. On the alumni or the tuning rules too, it is their arm's above, which holds its dialogue rules the same way.
+            if (LegacyDigestSchema30Observer.OnDialogueRules2Alone(state))
+                return Hash(LegacyDigestSchema30Observer.Rules2Fields30(state, own));
             // The native-29 arm (DIALOGUE-PLAN D1): a season on dialogue rules 1 is written at 29 by the build that
             // started it, so it has no older reference and no schema-28 form. Since SCH30 it loads at 30: the schema-30
             // observer binds the state, admits it whole and by the pilot's own validator, and takes it to its 29 with the

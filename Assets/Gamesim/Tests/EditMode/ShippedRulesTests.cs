@@ -238,30 +238,32 @@ namespace Gamesim.Tests.EditMode
         }
 
         /// <summary>
-        /// The preview chip: a season opted in plays the pinned dialogue rules 1 from week one, and is otherwise the
-        /// shipped season to the field - exactly the season the pilot's own fixtures enrol by hand (ShippedRules
-        /// then dialogueRulesVersion = 1). It validates, the pilot is on, the engine takes it, and the opt-in drew
-        /// nothing, minted nothing and logged nothing. The chip writes <see cref="DialogueRules.Offered"/>, pinned
-        /// here by its literal, never the bound: when the bound moves this pin does not, and when the chip moves
-        /// to a new version it is re-pinned with a reason (DIALOGUE-PLAN §2).
+        /// The preview chip: a season opted in plays the pinned dialogue rules 2 from week one, and is otherwise the
+        /// shipped season to the field - exactly the season rules 2's own fixtures enrol by hand (ShippedRules then
+        /// dialogueRulesVersion = 2, DialogueRules2Season.Start). It validates at the live schema 30, the dialogue rules
+        /// are on, the engine takes it, and the opt-in drew nothing, minted nothing and logged nothing. The chip writes
+        /// <see cref="DialogueRules.Offered"/>, pinned here by its literal, never the bound: when the bound moves this pin
+        /// does not, and when the chip moves to a new version it is re-pinned with a reason (DIALOGUE-PLAN §2). Re-pinned
+        /// from 1 to 2 when the chip moved from D1's pilot to D2's vote-word tree, which froze rules 2.
         /// </summary>
         [TestCaseSource(nameof(Builders))]
-        public void ThePreviewStartsTheSeasonOnThePinnedDialogueRules1AndChangesNothingElse(string builder, int size, CastTemplates.Roster roster)
+        public void ThePreviewStartsTheSeasonOnThePinnedDialogueRules2AndChangesNothingElse(string builder, int size, CastTemplates.Roster roster)
         {
-            Assert.That(DialogueRules.Offered, Is.EqualTo(1), "The chip offers dialogue rules 1, the merged pilot, frozen with D1.");
+            Assert.That(DialogueRules.Offered, Is.EqualTo(2), "The chip writes dialogue rules 2 since this change: D2's vote-word tree, frozen by the move.");
             foreach (uint seed in new[] { 1u, 77u })
             {
                 var hand = Build(builder, size, roster, seed);
                 ShippedRules.ApplyFresh(hand);
-                hand.dialogueRulesVersion = 1;
+                hand.dialogueRulesVersion = 2;
                 var chip = Build(builder, size, roster, seed);
                 uint random = chip.randomState;
                 int sequence = chip.nextSequence, events = chip.events.Count;
                 ShippedRules.ApplyFresh(chip, new SeasonBuilder.Choice { HouseSize = size, Roster = roster, CampaignConversations = true });
-                Assert.That(Json(chip), Is.EqualTo(Json(hand)), builder + " " + size + " seed " + seed + ": the shipped season with dialogue rules 1, and nothing else.");
-                Assert.That(chip.dialogueRulesVersion, Is.EqualTo(1));
+                Assert.That(Json(chip), Is.EqualTo(Json(hand)), builder + " " + size + " seed " + seed + ": the shipped season with dialogue rules 2, and nothing else.");
+                Assert.That(chip.dialogueRulesVersion, Is.EqualTo(2), "The chip writes rules 2 since this change.");
+                Assert.That(chip.schemaVersion, Is.GreaterThanOrEqualTo(DialogueRules.Rules2Schema), "Rules 2 is defined from schema 30, which new seasons are written at.");
                 foreach (var field in ShippedRules.Fields(chip))
-                    Assert.That(field.Value, Is.EqualTo(field.Key == "dialogueRulesVersion" ? 1 : ShippedValue(builder, roster, field.Key)), builder + " " + size + ": " + field.Key);
+                    Assert.That(field.Value, Is.EqualTo(field.Key == "dialogueRulesVersion" ? 2 : ShippedValue(builder, roster, field.Key)), builder + " " + size + ": " + field.Key);
                 Assert.That(chip.alumniCatalogEdition, Is.EqualTo(SeatsAlumni(builder, roster) ? AlumniEditions.Histories1Id : null), builder + " " + size + ": the edition.");
                 // Since H1b the shipped form itself mints ids in a season that seats an alumnus - the histories' receipts
                 // and the Hitmen's deal - so there the chip's season mints exactly what the shipped season mints, no more.
@@ -271,7 +273,7 @@ namespace Gamesim.Tests.EditMode
                 Assert.That(chip.dialogue.episodes, Is.Empty); Assert.That(chip.dialogue.grants, Is.Empty); Assert.That(chip.dialogue.vetoOccasions, Is.Empty);
                 Assert.That(EpisodeValidation.TryValidate(chip, out var error), Is.True, error);
                 Assert.That(DialogueRules.TryValidate(chip, out error), Is.True, error);
-                Assert.That(DialogueRules.On(chip), Is.True, "The pilot is on in a season opted in.");
+                Assert.That(DialogueRules.On(chip), Is.True, "The dialogue rules are on in a season opted in.");
                 Assert.DoesNotThrow(() => new EpisodeEngine(chip), "The public engine takes it.");
             }
         }
@@ -288,35 +290,39 @@ namespace Gamesim.Tests.EditMode
             Assert.That(new SeasonBuilder.Choice().Copy().CampaignConversations, Is.False);
             var fresh = SeasonBuilder.Create(copy, 3011u);
             ShippedRules.ApplyFresh(fresh, copy);
-            Assert.That(fresh.dialogueRulesVersion, Is.EqualTo(1), "A season started from the creator's copy plays the preview.");
+            Assert.That(fresh.dialogueRulesVersion, Is.EqualTo(2), "A season started from the creator's copy plays the preview: rules 2, which the chip writes since this change.");
         }
 
         /// <summary>
         /// A season opted in reaches the conversation it was opted in for: the first nominated campaign a plain walk
         /// meets in the first week opens one through the public entry command the HUD builds, paid with one action.
-        /// The witness enrols rules 1 by its literal (DIALOGUE-PLAN §2); the chip's season for the witness's seed is
-        /// that start, field for field, so the walk it takes is the chip season's own. No nominee, counter or roll is
-        /// assigned by hand.
+        /// Since the chip moved to rules 2 the witness is rules 2's (<see cref="DialogueRules2Season"/>, which enrols rules 2
+        /// by its literal, DIALOGUE-PLAN §2): the chip's season for the witness's seed is that start, field for field -
+        /// tuning 1 included, as every fresh season from B9 - so the walk it takes is the chip season's own, and the
+        /// conversation it opens is D2's vote-word tree, not D1's pilot (DialoguePreviewWitness, rules 1 by its literal,
+        /// is the rules-1 tests' and no longer the chip's). No nominee, counter or roll is assigned by hand.
         /// </summary>
         [Test]
         public void ASeasonStartedWithThePreviewOpensACampaignConversationThroughThePublicEntry()
         {
-            var witness = DialoguePreviewWitness.Find();
+            var witness = DialogueRules2Season.FindCampaign();
             var chip = SeasonBuilder.Create(new SeasonBuilder.Choice { HouseSize = 8 }, witness.Seed);
             ShippedRules.ApplyFresh(chip, new SeasonBuilder.Choice { HouseSize = 8, CampaignConversations = true });
-            // The witness is held at tuning 0 (B9-BALANCE-PLAN decision 8) and at story rules 9 (STORY-RULES-10-PLAN §8): the
-            // chip's season is its start but for B9's int and story rules 10's.
-            Assert.That(chip.tuningRulesVersion, Is.EqualTo(TuningRules.Shipped));
-            chip.tuningRulesVersion = TuningRules.Off;
-            Assert.That(chip.story.rulesVersion, Is.EqualTo(StoryRules.Blame));
-            chip.story.rulesVersion = StoryRules.Threads;
-            Assert.That(Json(chip), Is.EqualTo(Json(DialoguePreviewWitness.Start(witness.Seed))),
-                "seed " + witness.Seed + ": the chip's season is the witness's start.");
-            var before = witness.Campaign;
-            var opened = witness.Conversation;
-            Assert.That(before.dialogueRulesVersion, Is.EqualTo(1), "The season is the chip's own, on dialogue rules 1.");
+            Assert.That(chip.tuningRulesVersion, Is.EqualTo(TuningRules.Shipped), "Tuning 1, as the rules-2 witness plays it: nothing is held by hand.");
+            Assert.That(chip.story.rulesVersion, Is.EqualTo(StoryRules.Blame),
+                "Story rules 10, as every new season since its enrolment (STORY-RULES-10-PLAN §8) and as the rules-2 witness plays it: nothing is held by hand.");
+            Assert.That(Json(chip), Is.EqualTo(Json(DialogueRules2Season.Start(witness.Seed))),
+                "seed " + witness.Seed + ": the chip's season is the rules-2 witness's start (the chip writes rules 2 since this change).");
+            var before = witness.State;
+            string voter = witness.Voters[0];
+            Assert.That(before.dialogueRulesVersion, Is.EqualTo(2), "The season is the chip's own, on dialogue rules 2 since this change.");
+            Assert.That(before.story.rulesVersion, Is.EqualTo(StoryRules.Blame), "And on story rules 10, the shipped season's since the enrolment.");
             Assert.That(before.dialogue.episodes, Is.Empty);
-            Assert.That(DialogueRules.Active(opened)?.npcId, Is.EqualTo(witness.Voter), "seed " + witness.Seed);
+            var opened = DialogueRules2Season.Accepted(new EpisodeEngine(before.Clone()), DialogueRules2Season.Entry(before, voter));
+            var episode = DialogueRules.Active(opened);
+            Assert.That(episode?.npcId, Is.EqualTo(voter), "seed " + witness.Seed);
+            Assert.That(DialogueRules.Cycle(opened, episode).templateId, Is.EqualTo(DialogueCampaignWord.TemplateId),
+                "The chip's season opens rules 2's vote-word tree, never rules 1's pilot.");
             Assert.That(opened.revision, Is.EqualTo(before.revision + 1), "One command opened it.");
             Assert.That(EpisodeEngine.SocialActionsSpent(opened), Is.EqualTo(EpisodeEngine.SocialActionsSpent(before) + 1), "One action, as the plea costs.");
             Assert.That(opened.dialogue.episodes, Has.Count.EqualTo(1));
@@ -329,7 +335,8 @@ namespace Gamesim.Tests.EditMode
         /// starts its histories whatever the player chose. The All-Stars roster of eight and the stress house, through
         /// <see cref="ShippedRules.ApplyFresh(EpisodeState, SeasonBuilder.Choice)"/>, build exactly the season
         /// <see cref="ShippedRules.ApplyFresh(EpisodeState)"/> builds, the latest alumni rules and edition 1 included; with the
-        /// preview chip on as well, the same season on dialogue rules 1, its histories still written last.
+        /// preview chip on as well, the same season on the chip's dialogue rules - 2 since the chip moved from D1's 1 -
+        /// its histories still written last.
         /// </summary>
         [Test]
         public void TheCastScreensOptionsStartTheSameHistoriesAsTheShippedForm()
@@ -346,8 +353,9 @@ namespace Gamesim.Tests.EditMode
                     Assert.That(Json(given), Is.EqualTo(Json(shipped)), builder + " seed " + seed + ": the options form is the shipped season, histories included.");
                     var chip = Build(builder, size, roster, seed);
                     ShippedRules.ApplyFresh(chip, new SeasonBuilder.Choice { Roster = roster, HouseSize = size, CampaignConversations = true });
-                    shipped.dialogueRulesVersion = 1;
-                    Assert.That(Json(chip), Is.EqualTo(Json(shipped)), builder + " seed " + seed + ": the chip adds dialogue rules 1 and nothing else.");
+                    shipped.dialogueRulesVersion = 2;
+                    Assert.That(Json(chip), Is.EqualTo(Json(shipped)), builder + " seed " + seed
+                        + ": the chip adds dialogue rules 2 (its version since this change) and nothing else.");
                     Assert.That(chip.alumniRulesVersion, Is.EqualTo(AlumniRules.Latest));
                     Assert.That(EpisodeValidation.TryValidate(chip, out string error), Is.True, error);
                 }

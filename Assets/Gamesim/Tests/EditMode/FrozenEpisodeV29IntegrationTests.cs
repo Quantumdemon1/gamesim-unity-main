@@ -745,7 +745,7 @@ namespace Gamesim.Tests.EditMode
 
             var fresh = SeasonBuilder.Create(new SeasonBuilder.Choice { HouseSize = 8 }, 1);
             ShippedRules.ApplyFresh(fresh);
-            fresh.dialogueRulesVersion = 1; // The fixtures' opt-in, as D1's chip writes it.
+            fresh.dialogueRulesVersion = 1; // The fixtures' opt-in, as D1's chip wrote it (the chip writes rules 2 since its move).
             fresh.tuningRulesVersion = TuningRules.Off; // D1's schema-29 build predates B9's tuning (B9-BALANCE-PLAN decision 8).
             fresh.story.rulesVersion = StoryRules.Threads; // ...and story rules 10, which Frozen29 refuses (STORY-RULES-10-PLAN §8).
             var engine = new EpisodeEngine(fresh);

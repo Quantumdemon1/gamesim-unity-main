@@ -390,6 +390,24 @@ namespace Gamesim.Tests.EditMode
                 Assert.That((long)o["schemaVersion"], Is.EqualTo(30), "Do not project future or wrongly grouped pooled storage.");
                 var observer30 = typeof(CommitmentRulesSeasonDigests).Assembly
                     .GetType("Gamesim.Tests.EditMode.LegacyDigestSchema30Observer", true);
+                // The dialogue arm (DIALOGUE-PLAN D2): a season on dialogue rules 2 exists only from 30, so it has no 29, no
+                // 28 form and no recorded digest. The schema-30 observer's own native entry admits it at 30 unprojected -
+                // the pooled three at their off literals, the store kept - and that 30 is digested as it is, then every
+                // reader. A digest season is on neither pooled rules; one that were would be refused there, by the dialogue
+                // arm's own words, as this checkpoint has no alumni or tuning arm for any season. Rules 2 by the literal, as the
+                // observer's own router keys it: an undefined version is no rules-2 season, and the validator refuses it below.
+                if (o["dialogueRulesVersion"]?.Type == JTokenType.Integer && (long)o["dialogueRulesVersion"] == 2)
+                {
+                    var rules2 = observer30.GetMethod("Rules2Trace30", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static,
+                        null, new[] { typeof(EpisodeState), typeof(JObject) }, null);
+                    Assert.That(rules2, Is.Not.Null, "A rules-2 season needs the observer's native-30 admission; it never skips coverage.");
+                    Assert.That(rules2.ReturnType, Is.EqualTo(typeof(JObject)));
+                    var native = (JObject)rules2.Invoke(null, new object[] { s, o });
+                    Assert.That((long)native["schemaVersion"], Is.EqualTo(30), "Rules 2 has no older form: the season is digested at 30, store and all.");
+                    trace.Append(native.ToString(Formatting.None)).Append('\n');
+                    Readers(s, trace);
+                    return;
+                }
                 // The native-29 arm (DIALOGUE-PLAN D1) at the live 30 (ALL-STAR-HISTORIES-PLAN 8.5): a season on dialogue
                 // rules 1 has no schema-28 form and no recorded digest. The schema-30 observer's native entry admits it and
                 // takes it to its 29 - only the pooled three, off, removed; the store kept - and that 29 is digested as it
@@ -424,7 +442,7 @@ namespace Gamesim.Tests.EditMode
                 Assert.That((long)o["schemaVersion"], Is.EqualTo(29), "Do not project future or wrongly grouped dialogue storage.");
                 var observer29 = typeof(CommitmentRulesSeasonDigests).Assembly
                     .GetType("Gamesim.Tests.EditMode.LegacyDigestSchema29Observer", true);
-                // The native-29 arm (DIALOGUE-PLAN D1): a season on dialogue rules 1 - the cast screen's preview -
+                // The native-29 arm (DIALOGUE-PLAN D1): a season on dialogue rules 1 - the cast screen's preview until it moved to rules 2 -
                 // has no schema-28 form and no recorded digest, so it is digested as it is: the observer's native
                 // admission, its own JSON, then every reader as for any season. None of the legacy removals below
                 // applies to it, and rules 0 still goes through the unchanged projection.

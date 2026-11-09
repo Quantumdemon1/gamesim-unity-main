@@ -347,7 +347,8 @@ namespace Gamesim.Tests.EditMode
         // ------------------------------------------------------------------ the native-29 arm (dialogue D1)
 
         /// <summary>
-        /// A season on the preview, before its conversation (rules 1, the empty store) and with it open (one
+        /// A season on dialogue rules 1 by the literal (<see cref="DialoguePreviewWitness"/>, the preview's rules until the
+        /// chip moved to rules 2, which this arm refuses), before its conversation (the empty store) and with it open (one
         /// campaign episode, its storyline and its house events): each is admitted at 29 as it is - the trace with
         /// its getters, the fields without - returned detached, never projected, and checkpointed at 29 with the
         /// retained hash algorithm. It has no schema-28 form, so a checkpoint below 29 and both rules-0
@@ -524,7 +525,13 @@ namespace Gamesim.Tests.EditMode
             Assert.That(Text(retainedTrace), Is.EqualTo(retainedTraceBefore));
             Assert.That(Text(retainedFields), Is.EqualTo(retainedFieldsBefore));
             if (defect == "rules-0") Assert.DoesNotThrow(() => CurrentOldSaveTrace.Checkpoint(source, 29), "Rules 0 keeps its own arm.");
-            if (invalid) Assert.Throws<InvalidDataException>(() => CurrentOldSaveTrace.Checkpoint(source, 29));
+            // Refused by the validator, never by a schema boundary that happens to hold too: an undefined version is no
+            // rules-2 season, so no arm's boundary may refuse it ahead of the check that owns it.
+            if (defect == "unknown-version")
+                Assert.That(LegacyDigestSchema30Observer.OnDialogueRules2Alone(source), Is.False, "The dialogue arm takes the literal 2 alone.");
+            if (invalid)
+                Assert.That(Assert.Throws<InvalidDataException>(() => CurrentOldSaveTrace.Checkpoint(source, 29)).Message,
+                    Does.StartWith("The current source state is invalid:"), defect + ": the validator's own refusal.");
             Assert.That(Text(source), Is.EqualTo(stateBefore));
         }
 

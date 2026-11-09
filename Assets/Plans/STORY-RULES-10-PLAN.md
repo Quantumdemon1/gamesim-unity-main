@@ -499,13 +499,21 @@ before the move (the rule that a `Current` constant is a bound, never a gate):
   (mode one, the leaks, the war rooms, `AllWeekSeasonDigests`' 54 records); `PinnedVoteSeason.Fresh`, and with it the
   mode-two sweeps;
 - the below-30 list: `FrozenEpisodeV28IntegrationTests`' lie walk, `FrozenEpisodeV29IntegrationTests`' dialogue route,
-  `LegacyDigestSchema29ObserverTests.Fresh` (both modes), `DialoguePreviewWitness.Start` (`ShippedRulesTests`' chip
-  comparison takes the int back, as it takes B9's), `UnifiedVotePublicCommandTests.Play(held: true)` (was `tuningHeld`),
+  `LegacyDigestSchema29ObserverTests.Fresh` (both modes), `DialoguePreviewWitness.Start` (the rules-1 tests' witness;
+  until the merge with main's dialogue chip 2, 2026-11-09, `ShippedRulesTests`' chip comparison took the int back from
+  it, as it takes B9's; since the merge the chip comparison is with `DialogueRules2Season.Start`, unheld, and asserts
+  the chip's season on Blame), `UnifiedVotePublicCommandTests.Play(held: true)` (was `tuningHeld`),
   `FrozenEpisodeV25ContractTests.Fresh`, and `FreshSeasonStateDigestTests` (it asserts 10, then takes the int back to 9
   before it hashes, as it does B9's tuning);
 - not on the list above, for the same reason: `LegacyDigestSchema27TestStates.Fresh`, the lawful witness the schema-30
   observer's tests and `RoleRulesTests`' frozen-reader controls take to their schema-27 and 28 views;
 - `RoleStoryPools.OldSeasons`, all four seasons. `StoryMechanicsTests`' rules-9 twins were already held by name.
+- added at the merge with main (B9, #46, and the dialogue chip 2, #47; 2026-11-09): main's rules-2 HUD walks,
+  `DialogueRules2HudWitnessTests.Start` and its PlayMode copy `EpisodePlayModeTests.Rules2PlainWalk` (the field written
+  after `ShippedRules.ApplyFresh`, before the literal dialogue rules 2). Main proved their pinned walks (seed 2, 26
+  steps; seed 1, 10 steps; seed 28, 25 steps) at threads, and Blame changes what a houseguest's used veto writes, which
+  the two week-2 walks may meet; at threads the merged engine plays them exactly as main's (story rules 10's one engine
+  change, the veto grudge in `StoryReplacement`, is gated on Blame). They are HUD tests, not story tests; neither hold had run when the merge was resolved.
 
 **Re-pinned**, because a shipped season's story rules moved from 9 to 10 and the test asserts them: the dialogue fixtures
 `DialogueCampaignEngineTests`, `DialogueCampaignDealClosureTests`, `DialogueSchema29ShapeTests`, `DialoguePendingSaveTests`,
@@ -558,8 +566,8 @@ the lab's own counters and the wall-clock stopwatches are left out. The same com
 the 480 seasons and against C1's (every holder) 232, so the committed build plays C1n, not C1. The two budget-nought
 pins, re-run on the committed bytes, print `5481eec784acd1ed` and `a89a8120050e9460`.
 
-**The old-save cell** (`0d538392`, OLD-SAVE-ACCEPTANCE 2.12; that plan's 2.10 and 2.11 are the dialogue line's, on
-another branch).
+**The old-save cell** (`0d538392`, OLD-SAVE-ACCEPTANCE 2.12; that plan's 2.10 and 2.11 are the dialogue line's, written
+on another branch and merged into this one with main on 2026-11-09, with no renumbering).
 `s30-mode2-allweek-story10-tuning1-w2-hoh`, written and recorded by the enrolled head: the shipped Regular season of
 eight at schema 30 on story rules 10 and tuning rules 1, saved at the first state of week 2's Head of Household (seed
 3102, the first from 3101 with a veto the Blame rule decides before the save point and another after the load). In week 1
@@ -599,8 +607,8 @@ says `Current` stays Threads until R7, that fresh seasons enrol only when R7 mov
   a season at 10: it goes back to opting in at Blame by assignment, as it did before the enrolment.
 - Held by name, never re-recorded: everything held at threads above (`CommitmentRulesSeasonDigests` and every tier that
   plays its seasons, `PinnedVoteSeason`, the below-30 list, `LegacyDigestSchema27TestStates.Fresh`,
-  `RoleStoryPools.OldSeasons`, both rules-9 budget-nought pins, `TuningRulesTests`' studier pins), and the story-rules-10
-  old-save cell, a saved season at 10.
+  `RoleStoryPools.OldSeasons`, both rules-9 budget-nought pins, `TuningRulesTests`' studier pins, and since the merge
+  with main the rules-2 HUD walks), and the story-rules-10 old-save cell, a saved season at 10.
 - The two rules-10 budget-nought twins name Blame: once `Current` is past it they are held there through the cell's
   story field (`CheckedStoryRules` then admits Blame and refuses Roles) and keep `63356f631a00ed8a` and
   `ad1ca9f42d182824`, unless R7's own code moves the seasons they play, which is what they are there to show. A

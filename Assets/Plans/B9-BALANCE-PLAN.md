@@ -1320,4 +1320,26 @@ which is not a band verdict.
   player's own final choice ("Round 4: the jury tiebreak"). Call 1 accepted the bands, the versioned tuning rules, K1
   and K5 and the weights in principle; the sign-off confirms them.
 
-PR #46 stays a draft.
+### Signed off (2026-11-09)
+
+The lead put six questions to the owner, each with a recommendation. The owner answered **"accept all"**, so each
+recommendation stands:
+1. **The numbers are signed off:** round 4's bands with this headline beside them. That confirms call 1's
+   acceptance in principle of the bands, the versioned tuning rules, K1 and K5, and the weights.
+2. **This headline meets call 4.** That includes the seven policies' seeds 30-99 resting on the code argument from the
+   final eviction on.
+3. **§6's "Nothing old moves" for the passive player is amended:** it holds up to the final eviction. From there,
+   the tiebreak (call 3) is the intended change.
+4. **The final Head of Household is accepted as tuning 1 freezes:** 85.5% at 8 and 90.7% at 12. It is to be revisited
+   if it plays too easily.
+5. **The sneak-peek study merges as built.** A follow-up is to give it a reason to be chosen at tuning 1.
+6. **K1 and K5 stay pinned by `TuningRulesTests` and `TuningSaveReloadTests` (call 5).** An old-save cell needs a
+   countering recorder walker, and that is a follow-up.
+
+The questions this section names only by reference stand as built, as delegated calls. They were not put to the owner
+one by one:
+- decisions 5 and 6;
+- decision 10's reach history;
+- the final Head of Household reading a tie as a half.
+
+PR #46 merges into main.

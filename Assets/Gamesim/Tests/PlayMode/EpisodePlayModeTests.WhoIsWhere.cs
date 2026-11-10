@@ -353,12 +353,14 @@ namespace Gamesim.Tests.PlayMode
         /// The free-time board's HERE is the player's floor. With the player in the bedroom: a
         /// houseguest across the wall in the living room - whose nearest marker is the bedroom's - is
         /// not here; one in the bedroom's far corner by the yard - whose nearest marker is the yard's -
-        /// is; and one in the middle of the bedroom is, by either rule.
+        /// is; and one in the middle of the bedroom is, by either rule. Pinned to free time with nothing
+        /// waiting, the story on and the house held (InstallFreeTime holds it, as this test did): on the
+        /// default season the legacy walk-in watch can commit a house event while the cast settles.
         /// </summary>
         [UnityTest]
         public IEnumerator FreeTime_HereMeansThisFloor()
         {
-            director.SuspendNpcAutonomyForDiagnostics();
+            yield return InstallFreeTime(8, FreeTimeWaiting.Nothing);
             yield return OpenFreeTime();
             Assert.That(director.IsFreeTimeBoard, Is.True, "Free time is the board.");
             var state = director.Snapshot;

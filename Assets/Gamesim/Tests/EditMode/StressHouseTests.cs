@@ -322,7 +322,8 @@ namespace Gamesim.Tests.EditMode
         /// (DIALOGUE-PLAN D1, risk 3): ShippedRules writes the field in exactly one place, from that constant, and never
         /// from the bound <see cref="DialogueRules.Version"/>, which moves whenever a later build defines a version. A
         /// season keeps the rules it began on, so a chip that wrote the bound would move every opted-in season's rules.
-        /// Read from the source because, while both are 1, no season can tell them apart.
+        /// Read from the source because, while both are 2 (since the chip moved to rules 2), no season can tell them apart.
+        /// The regex pins the symbol, not its value, so the chip's move left this test as it was.
         /// </summary>
         [Test]
         public void TheChipWritesThePinnedDialogueRulesNeverTheBound()

@@ -29,8 +29,9 @@ namespace Gamesim.Simulation
         /// The same, with what the player chose on the cast screen (DIALOGUE-PLAN D1). Null, or a choice with
         /// nothing opted in, gives exactly <see cref="ApplyFresh(EpisodeState)"/>. The one option today is the
         /// preview chip, <see cref="SeasonBuilder.Choice.CampaignConversations"/>: it starts the season on the
-        /// pinned <see cref="DialogueRules.Offered"/>, never the bound <see cref="DialogueRules.Version"/>, and is
-        /// written after every rule the pilot's prerequisites read (DialogueRules.Prerequisites); only the alumni
+        /// pinned <see cref="DialogueRules.Offered"/> (dialogue rules 2 since the chip moved from D1's rules 1), never
+        /// the bound <see cref="DialogueRules.Version"/>, and is written after every rule the dialogue rules'
+        /// prerequisites read (DialogueRules.Prerequisites, which every version shares); only the alumni
         /// histories follow it. The chip draws nothing, logs nothing and mints no id; in a season that seats an
         /// alumnus the histories after it mint their ids, as they do through <see cref="ApplyFresh(EpisodeState)"/>.
         /// </summary>

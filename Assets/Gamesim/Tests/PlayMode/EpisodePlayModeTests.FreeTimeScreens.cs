@@ -39,16 +39,17 @@ namespace Gamesim.Tests.PlayMode
         /// head's old name leads with FREE TIME and the actions left, with what moving on loses in it
         /// rather than under the way on; the play, the threads and where the player is stay in view
         /// beside the decision - the play in the hero, the threads on the story strip, the room in the
-        /// footer - and the house's cards and the moves are rows of the board.
+        /// footer - and the house's cards and the moves are rows of the board. Pinned to free time with
+        /// nothing waiting, the story on and the house held (InstallFreeTime): on the default season the
+        /// legacy walk-in watch can commit a house event while the cast settles, which keeps the old column.
         /// </summary>
         [UnityTest]
         public IEnumerator FreeTime_LeadsWithTheActionsLeftAndKeepsItsContextBesideTheDecision()
         {
+            yield return InstallFreeTime(8, FreeTimeWaiting.Nothing);
             yield return OpenFreeTime();
             var state = director.Snapshot;
-            Assume.That(state.phase, Is.EqualTo(EpisodePhase.Social), "The fixture opens in free time.");
-            Assume.That(state.houseEvents.Any(item => !item.resolved && !item.IsStory), Is.False,
-                "The fixture's free time has no legacy house event, which keeps its band.");
+            Assert.That(state.phase, Is.EqualTo(EpisodePhase.Social), "The fixture opens in free time.");
             Assert.That(director.IsFreeTimeBoard, Is.True, "Free time is the board.");
             var panel = ActiveRect("Episode panel");
             var head = ActiveRect(EpisodeHud.ScreenHeadName);
@@ -119,11 +120,15 @@ namespace Gamesim.Tests.PlayMode
         /// the footer's strip, and no row of the screen under the pinned bar - on the 16:9 frame at
         /// the resting text size the whole screen holds in the stage's height; at the larger text
         /// its scroll stands clear of the footer, and the log says how far the column runs. Before
-        /// anybody is Head of Household the context says nothing is decided yet, never "safe".
+        /// anybody is Head of Household the context says nothing is decided yet, never "safe". The
+        /// fixture is pinned once, to a house of six with nothing waiting, the story on and the house
+        /// held (InstallFreeTime), because on the director's default season the legacy walk-in watch
+        /// can commit a house event while the cast settles, and free time then draws the old column.
         /// </summary>
         [UnityTest]
         public IEnumerator FreeTime_AHouseguestsScreenOpensFromTheirCardWithThreeWaysToSpendTheActionAndReturns()
         {
+            yield return InstallFreeTime(6, FreeTimeWaiting.Nothing);
             foreach (var (textSize, larger) in TextScales.Steps)
             {
                 yield return ApplyTextSize(textSize);
@@ -282,14 +287,28 @@ namespace Gamesim.Tests.PlayMode
         /// panel. For a moment the panel takes no pointer press either way: a double click on a
         /// card's name opens their screen and does nothing else, and one on "Back to free time" goes
         /// back and does nothing else - the panel stays open and nothing is committed. Once the moment
-        /// has passed a deliberate press works.
+        /// has passed a deliberate press works. The fixture is pinned to free time with nothing waiting,
+        /// the story on and the house held (InstallFreeTime), because on the director's default season,
+        /// whose story is off, the legacy walk-in watch can commit a house event while the cast settles,
+        /// and free time then draws the old column, not the board.
         /// </summary>
         [UnityTest]
         public IEnumerator FreeTime_ADoubleClickBetweenTheBoardAndAHouseguestsScreenTakesNoSecondPress()
         {
+            yield return InstallFreeTime(8, FreeTimeWaiting.Nothing);
             yield return OpenFreeTime();
             var state = director.Snapshot;
-            Assert.That(director.IsFreeTimeBoard, Is.True, "Free time is the board.");
+            // What the board needs, said beside each board assert, so a red names the term that failed.
+            string Terms()
+            {
+                var now = director.Snapshot;
+                return " Phase " + now.phase + ", unresolved non-story house events "
+                    + now.houseEvents.Count(item => !item.resolved && !item.IsStory) + ", diary prompt "
+                    + (now.pendingDiary != null ? "waiting" : "none") + ", houseguest screen " + (director.HouseguestScreenFor ?? "none")
+                    + ", phase panel " + (director.IsPhasePanelOpen ? "open" : "closed") + ", challenge "
+                    + (director.IsChallengeActive ? "active" : "none") + ", layout " + Hud.CurrentActivityLayout + ".";
+            }
+            Assert.That(director.IsFreeTimeBoard, Is.True, "Free time is the board." + Terms());
             var who = state.Active.First(c => !c.isPlayer);
             Button NameOnTheBoard() => ActiveRect(EpisodeHud.HouseCardsName).GetComponentsInChildren<Button>(true).First(b => b.name == who.name);
 
@@ -316,14 +335,14 @@ namespace Gamesim.Tests.PlayMode
             revision = director.Snapshot.revision;
             Assert.That(PressAt(backPoint), Is.SameAs(back.gameObject), "The press lands on 'Back to free time'.");
             Assert.That(director.HouseguestScreenFor, Is.Null, "Back on the board,");
-            Assert.That(director.IsFreeTimeBoard, Is.True);
+            Assert.That(director.IsFreeTimeBoard, Is.True, "Free time is the board again." + Terms());
             Assert.That(Hud.PointerHeld, Is.True, "holding the pointer off as it replaces the screen.");
             yield return null; yield return null;
             Assert.That(Hud.PointerHeld, Is.True, "The hold outlasts a frame or two.");
             stray = PressAt(backPoint);
             Assert.That(stray == null || !stray.transform.IsChildOf(ActiveRect(ModalRoot)), Is.True,
                 "The second press of a double click on 'Back to free time' lands on " + (stray != null ? stray.name : "nothing") + ".");
-            Assert.That(director.IsPanelOpen && director.IsFreeTimeBoard, Is.True, "The panel stays open, on the board,");
+            Assert.That(director.IsPanelOpen && director.IsFreeTimeBoard, Is.True, "The panel stays open, on the board," + Terms());
             Assert.That(director.Snapshot.revision, Is.EqualTo(revision), "and nothing is committed.");
 
             // Once the moment has passed, a deliberate press works.

@@ -120,11 +120,15 @@ namespace Gamesim.Tests.PlayMode
         /// the footer's strip, and no row of the screen under the pinned bar - on the 16:9 frame at
         /// the resting text size the whole screen holds in the stage's height; at the larger text
         /// its scroll stands clear of the footer, and the log says how far the column runs. Before
-        /// anybody is Head of Household the context says nothing is decided yet, never "safe".
+        /// anybody is Head of Household the context says nothing is decided yet, never "safe". The
+        /// fixture is pinned once, to a house of six with nothing waiting, the story on and the house
+        /// held (InstallFreeTime), because on the director's default season the legacy walk-in watch
+        /// can commit a house event while the cast settles, and free time then draws the old column.
         /// </summary>
         [UnityTest]
         public IEnumerator FreeTime_AHouseguestsScreenOpensFromTheirCardWithThreeWaysToSpendTheActionAndReturns()
         {
+            yield return InstallFreeTime(6, FreeTimeWaiting.Nothing);
             foreach (var (textSize, larger) in TextScales.Steps)
             {
                 yield return ApplyTextSize(textSize);

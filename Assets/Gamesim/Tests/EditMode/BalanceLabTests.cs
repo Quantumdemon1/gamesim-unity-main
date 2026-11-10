@@ -717,7 +717,10 @@ namespace Gamesim.Tests.EditMode
             filled.pariahAtClosings = true;
             filled.pariahBySize = true;
             filled.pace.pariahInHouse = true;
-            filled.cell = filled.cell.AtStoryRules(StoryRules.Latest).AnsweringBoards();
+            // A version a cell can opt into: Latest, or Blame once Latest is Current (BudgetNought's pattern), so the
+            // round trip keeps working when the enrolment moves Current.
+            int optedIn = StoryRules.Latest == StoryRules.Current ? StoryRules.Blame : StoryRules.Latest;
+            filled.cell = filled.cell.AtStoryRules(optedIn).AnsweringBoards();
             // R7's A1 records, filled in by hand as well: a role week with every count, a word and its minutes.
             var week = filled.promptsByWeek[3] = new BalanceLab.WeekPrompts { week = 3 };
             week.playerHoh = week.playerVetoHolder = week.playerNominated = true;
@@ -742,7 +745,7 @@ namespace Gamesim.Tests.EditMode
             Assert.That(read.answers.Where(p => p.Value > 0).Select(p => p.Key + "=" + p.Value), Is.EqualTo(new[] { "keep-the-block=1", "pitch=2" }));
             Assert.That(read.words.Keys, Is.EqualTo(BalanceLab.PromptWatch.WordClasses.OrderBy(k => k, StringComparer.Ordinal)), "Every key is written.");
             Assert.That((back.storylines, back.storylinesPeak), Is.EqualTo((97, 97)));
-            Assert.That(back.cell.House, Does.EndWith("/story" + StoryRules.Latest.ToString(CultureInfo.InvariantCulture) + "/boards1"));
+            Assert.That(back.cell.House, Does.EndWith("/story" + optedIn.ToString(CultureInfo.InvariantCulture) + "/boards1"));
             Assert.That(back.cell.answersBoards, Is.True);
             Assert.That(BalanceLab.Row(filled), Is.EqualTo(row), "Q5's other definitions, R7's records, a cell's story rules and its board answering stay out of the hashed row.");
             Assert.That(BalanceLab.Row(back), Is.EqualTo(row));

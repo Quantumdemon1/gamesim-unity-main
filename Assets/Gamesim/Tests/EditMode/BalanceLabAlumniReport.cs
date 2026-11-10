@@ -372,6 +372,8 @@ namespace Gamesim.Tests.EditMode
             AddMean(Pairs, "goodwill share of past-game receipts at the end", "0.000", r => W(r).goodwill);
             AddRate(Pairs, "pile-on seasons", r => r.pace == null ? (double?)null : Flag(r.pace.pileOns > 0), watch: false, primary: true);
             AddRate(Pairs, "pariah-free seasons", r => r.pace == null ? (double?)null : Flag(!r.pace.pariah), watch: false, primary: true);
+            // DP (STORY-RULES-10-PLAN): the same rule while the player is in the house, beside the row above; stop condition 1 reads that one.
+            AddRate(Pairs, "pariah-free seasons in the player's house (DP)", r => r.pace == null ? (double?)null : Flag(!r.pace.pariahInHouse), watch: false);
             AddRate(Pairs, "one houseguest put up three or more weeks running", r => Flag(W(r).putUpThreeRunning));
             AddMean(Pace, "commands a season", "0.0", r => r.commands, watch: false);
             AddMean(Pace, "weeks a season", "0.0", r => r.autopsy.weeks, watch: false);

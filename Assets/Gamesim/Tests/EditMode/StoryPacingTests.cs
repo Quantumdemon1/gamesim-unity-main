@@ -22,6 +22,11 @@ namespace Gamesim.Tests.EditMode
             /// </summary>
             public int weeks, weeksWithACard, asks, budgetedAsks, summons, showmances, npcRemovals, pileOns, arcsFinished, storiesFinished;
             public bool removalWindow, pariah;
+            /// <summary>
+            /// DP (STORY-RULES-10-PLAN): the same pariah run, counted only while the player is in the house, where the story
+            /// system can still tell the house turning on someone. Reported beside <see cref="pariah"/>, never instead of it.
+            /// </summary>
+            public bool pariahInHouse;
             public readonly Dictionary<int, int> asksByWeek = new Dictionary<int, int>();
             public readonly Dictionary<int, int> budgetedByWeek = new Dictionary<int, int>();
             public readonly Dictionary<int, int> summonsByWeek = new Dictionary<int, int>();
@@ -31,11 +36,13 @@ namespace Gamesim.Tests.EditMode
             /// <summary>Each week's asks, as "arc/beat (lane, surface)", for a failure to say what asked.</summary>
             public readonly Dictionary<int, List<string>> askedByWeek = new Dictionary<int, List<string>>();
 
-            // The watch's own notes: beats already seen, asks already counted, the pariah run.
+            // The watch's own notes: beats already seen, asks already counted, the pariah run, and DP's.
             private readonly HashSet<string> seen = new HashSet<string>();
             private readonly HashSet<string> asked = new HashSet<string>();
             private string pariahTarget;
             private int pariahRun;
+            private string pariahInHouseTarget;
+            private int pariahInHouseRun;
 
             /// <summary>
             /// Watches one accepted command: every beat it newly put to the player, counted as the airtime
@@ -88,6 +95,11 @@ namespace Gamesim.Tests.EditMode
                         .Where(x => x.holders >= 3).Select(x => x.id).OrderBy(id => id, StringComparer.Ordinal).FirstOrDefault();
                     if (target != null && target == pariahTarget) { if (++pariahRun >= 2) pariah = true; }
                     else { pariahTarget = target; pariahRun = target != null ? 1 : 0; }
+                    // DP: the same pick while the player is in the house; their absence is no pick, so a run that
+                    // straddles their eviction does not count.
+                    string inHouse = after.Find(after.playerId)?.status == ContestantStatus.Active ? target : null;
+                    if (inHouse != null && inHouse == pariahInHouseTarget) { if (++pariahInHouseRun >= 2) pariahInHouse = true; }
+                    else { pariahInHouseTarget = inHouse; pariahInHouseRun = inHouse != null ? 1 : 0; }
                 }
             }
 
@@ -163,10 +175,15 @@ namespace Gamesim.Tests.EditMode
         /// <summary>
         /// The plan's rate targets over its 1,920 seasons: eight house sizes' worth of the default
         /// eight, both rosters, and the six and twelve beside them. A report for tuning, not a check.
+        ///
+        /// <para>BALANCE_STORY plays every season at another story rules value, opted in after EnableStory as the balance
+        /// lab's cells are (<see cref="BalanceLabParts.StoryRulesFromEnvironment"/>), so a milestone is read before and after.</para>
         /// </summary>
         [Test, Explicit("Diagnostic: prints the pacing measures against the plan's targets.")]
         public void PacingReport()
         {
+            int story = BalanceLabParts.StoryRulesFromEnvironment();
+            if (story != 0) TestContext.WriteLine("Story rules " + story + " (BALANCE_STORY), opted in after EnableStory.");
             var groups = new List<(string name, int size, CastTemplates.Roster roster, int seasons)>
             {
                 ("default eight, regular", 8, CastTemplates.Roster.Regular, 960),
@@ -178,7 +195,7 @@ namespace Gamesim.Tests.EditMode
             {
                 var paces = new List<Pace>();
                 for (int i = 0; i < group.seasons; i++)
-                    paces.Add(Measure(StorySeasonTests.StorySeason((uint)(i * 97 + group.size * 13 + 7), group.size, group.roster), i * 31 + group.size));
+                    paces.Add(Measure(StorySeasonTests.StorySeason((uint)(i * 97 + group.size * 13 + 7), group.size, group.roster, story), i * 31 + group.size));
                 double weeks = paces.Sum(p => p.weeks);
                 TestContext.WriteLine("== " + group.name + " (" + paces.Count + " seasons)");
                 TestContext.WriteLine("  weeks with a card:       " + (paces.Sum(p => p.weeksWithACard) / weeks).ToString("P0") + "   (target 30-60%)");
@@ -191,6 +208,7 @@ namespace Gamesim.Tests.EditMode
                     TestContext.WriteLine("  seasons with a removal:  " + ((double)windows.Count(p => p.npcRemovals > 0) / windows.Count).ToString("P1") + "   (target at most 10%)");
                 TestContext.WriteLine("  seasons with a pile-on:  " + ((double)paces.Count(p => p.pileOns > 0) / paces.Count).ToString("P0") + "   (target at most 25%)");
                 TestContext.WriteLine("  pariah-free seasons:     " + ((double)paces.Count(p => !p.pariah) / paces.Count).ToString("P0") + "   (target at least 80%)");
+                TestContext.WriteLine("  pariah-free, player in:  " + ((double)paces.Count(p => !p.pariahInHouse) / paces.Count).ToString("P0") + "   (DP: the same rule while the player is in the house; reported beside, not a target)");
                 TestContext.WriteLine("  stories finished:        " + paces.Average(p => p.storiesFinished).ToString("0.0") + "   (target about 3; moments besides: "
                     + paces.Average(p => p.arcsFinished - p.storiesFinished).ToString("0.0") + ")");
             }

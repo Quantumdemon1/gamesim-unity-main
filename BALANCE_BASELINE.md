@@ -48,7 +48,7 @@ B9's PR. The tables further down are tuning 0's and are not re-measured here.
 | Studier at 0.8, season wins at 8 / 12 | - | 35.5% (200 seeds) / 34.1% (800) | reported |
 | Beast, season wins at 8 / 12 (100 seeds) | 87% / 56% | 48% / 52% | reported |
 | Q4, the studier's nomination ratio at 8 / 12 | 0.54 / 0.80 | 0.75 / 0.91 | reported |
-| Q5, pariah seasons, the studier at 8 / 12 (B9 raises it; the all-policy 16.3% / 45.1% is not re-measured at tuning 1) | 5.5% / 28.5% | 14.6% / 47.2% | story rules 10 |
+| Q5, pariah seasons, the studier at 8 / 12 (B9 raises it; the all-policy 16.3% / 45.1% is re-measured at tuning 1 by STORY-RULES-10's C0, story rules 9: 17.2% / 45.7% on seeds 0-99, 19.1% / 49.0% on 100-199) | 5.5% / 28.5% | 14.6% / 47.2% | at most 20% at each size. Story rules 10 (C1n), enrolled: all 12 policies pooled at tuning 1 on the held-out seeds 100-199 (1,200 seasons a house), 3.9% [3.0, 5.2] / 17.6% [15.5, 19.8]; C0, the same seasons under story rules 9, 19.1% / 49.0% (McNemar b/c 182/0 and 384/7; STORY-RULES-10-PLAN §6) |
 
 The first four rows are round 4's (B9-BALANCE-PLAN, "Round 4: the lab"): tuning 1 as it ships, with the jury's keyed
 tiebreak and without the small house's preparation boost, which round 4 dropped. The rows below them (the studier at 0.8,
@@ -56,8 +56,9 @@ the beast, Q4 and Q5) are round 3's, measured with that boost and before the tie
 (the owner's call 4) measures them again. That headline is now in B9-BALANCE-PLAN, "Call 4: the 100-seed tuning-1
 headline (2026-11-08)" (story rules 10's control C0, seeds 0-99), which reads the beast at 63% / 52% and the all-policy
 Q5 at 17.3% / 45.7%, and, on C0's studier cells (0.5, seeds 0-199), the studier's Q4 at 0.83 / 0.92 and Q5 at 14.0% /
-40.5%. The studier at 0.8 is not measured again. That section supersedes the table's beast row and the Q5 row's "not
-re-measured" note.
+40.5%. The studier at 0.8 is not measured again. That section supersedes the table's beast row; the Q5 row's
+all-policy note, re-measured by the same C0 on story rules 10's branch, already quotes it (its 17.2% at 8 and this
+17.3% are the same 207 of 1,200, 17.25%, rounded each way).
 
 The passive player's and the war-room players' seasons are tuning 0's but for the Game Sense total (the weights), the
 tiebreak where a jury ties, and, for the war-room players, the 58 of 4,800 seasons that hold a counter K1 or K5 settles
@@ -85,7 +86,9 @@ and the same tier held at tuning 0 (`BALANCE_TUNING=0`) replays the reference ro
   is `7eb55ed0d28b2d5e` from round 4.
 - `RoleStoryPools.OldSeasons`' `shipped-mode0-2103` moved with the tiebreak (its jury ties) and was re-pinned in round 4;
   the other two shipped seasons and `story-10-3` (tuning 0) hold.
-- The parts' stamp is `balance-lab-parts/v8`, so no part played before B9 merges with one played after.
+- The parts' stamp was `balance-lab-parts/v8`, so no part played before B9 merges with one played after. Story rules
+  10's define commit moved it to `v9`: its pariah measures (in the player's house, at two eviction nights, by house
+  size) entered the part record.
 - The season digest tiers that build their seasons by hand (commitment rules, mode one, the leaks, the war rooms, the
   mode-two sweeps and `AllWeekSeasonDigests`' 54 records) play tuning 0 and pass unchanged; so do
   `FreshSeasonStateDigestTests`' records, with the one int taken back. Three start through `ShippedRules.ApplyFresh` and
@@ -93,6 +96,29 @@ and the same tier held at tuning 0 (`BALANCE_TUNING=0`) replays the reference ro
   `UnifiedVotePublicCommandTests.Fresh` and `Play` (the unified vote's rest), and `RoleStoryPools.OldSeasons`' three
   shipped seasons (`OldSeasonsDrawTheirPoolsExactlyAsBefore`). They passed unchanged at B9-3: their walkers never study or
   counter. (Round 4's tiebreak moved one of the shipped seasons, above.)
+
+**Story rules 10's enrolment (2026-11-08, STORY-RULES-10-PLAN §8).** Every new season starts on story rules 10 (Blame)
+as well as tuning 1. The pins above that keep B9's numbers are held at story rules 9 by name, each through the mechanism
+that holds its tuning:
+- `BudgetNoughtRows` and `BudgetNoughtTuning1Rows` keep `5481eec784acd1ed` and `a89a8120050e9460`: both tests hold every
+  cell at story rules 9 too (`Cell.AtStoryRules(StoryRules.Threads)`), and printed exactly B9's head's digests at the
+  enrolment. Their rules-10 twins pin the same seasons at story rules 10: `63356f631a00ed8a` at tuning 0 (192 of 564
+  rows moved) and `ad1ca9f42d182824` at tuning 1, the shipped seasons (209 moved).
+- `TuningRulesTests`' studier pins are B9's numbers: both arms are held at story rules 9 and keep their hashes.
+- The season digest tiers built by hand (`CommitmentRulesSeasonDigests.Season`, `PinnedVoteSeason.Fresh`, and the tiers
+  that play their seasons), `FreshSeasonStateDigestTests` (the int taken back), `UnifiedVotePublicCommandTests.Play`'s held
+  form, the legacy observers' seasons and `RoleStoryPools.OldSeasons` are held at story rules 9 by name; so, since the
+  merge with main's dialogue chip 2 (2026-11-09), are its rules-2 HUD walks (`DialogueRules2HudWitnessTests.Start` and
+  `EpisodePlayModeTests.Rules2PlainWalk`), proven at story rules 9.
+- `BalanceLabGoldens` re-recorded: its `Rules` tuple ends `story.rulesVersion=10`, and all 48 cells moved and were
+  recorded at the enrolment.
+- The acceptance it enrolled on (STORY-RULES-10-PLAN §6, As accepted): Q5 (D0) 3.9% [3.0, 5.2] at 8 and 17.6%
+  [15.5, 19.8] at 12 on the held-out seeds 100-199, the 12 policies pooled at tuning 1, with C0 (story rules 9, the same
+  seasons) at 19.1% and 49.0%. B1-B4 (the studier at 0.5, competition seeds 0-799): 62.4%, 61.5%, 32.1% and 26.2%, in
+  band; the Game Sense gap (B5-B6) 14.5 at 8 and 12.6 at 12; B7 43.3% [31.6, 55.9] pooled; the pace at 8 in its bands
+  (stories finished 4.5, as C0's, against an unbanded "about 3"). The enrolled head replays C1n's lab rows on the
+  headline seeds 0-19 exactly (480 seasons), and its own build wrote the old-save cell at story rules 10
+  (OLD-SAVE-ACCEPTANCE 2.12).
 
 **The lab's new reads.** A cell field `tuningHeld` (named `/tuning0`, seeded as its shipped cell) and the tier-wide
 `BALANCE_TUNING=0`; the view's `PreparationCap`, which the studier and the beast study up to; the war-room tier prints the
@@ -380,7 +406,7 @@ B9 (tuning rules 1, above) answers Q1, Q2 and Q3 for every new season; the rows 
 | **Q2. Game Sense gap** (target at least 10 at both sizes, low end over 5) | Today **9.6 [8.3, 10.8] at 8 and 8.5 [7.6, 9.2] at 12** (B6b 7.8 [6.5, 9.2] and 9.9 [9.1, 10.7]): **still not met at either size**, closer at 8 and further at 12. Replayed from each season's notes on the same seasons: weights 0.2/0.6/0.2 give 13.7 [12.1, 15.2] and 12.4 [11.4, 13.4] (B6b 11.1 and 13.9), both meet; dropping the competitions face (0/0.7/0.3) 15.7 and 14.3 (B6b 13.1 and 15.4); unbounded faces 17.4 and 35.8 (B6b 11.4 and 38.0); strategy notes x1.5 alone lowers it (8.8 and 6.5, the clamp). The gap is still strategy: unclaimed and claimed opportunities (+27.6 and +45.8 points a season; B6b +24.6 and +45.8), calls (+2.8 and +17.1; B6b +1.8 and +15.6), ballots (+2.6 and +9.4; B6b +1.4 and +9.5); the competitions face is at 90-96 for both and the clamp hides +19.8 at 12 (B6b +31.5). | Re-weighting the faces still meets the re-set target at both sizes; the weights are the cheapest lever. | B9 (`tuningRulesVersion`): any formula change moves the rules-off digests |
 | **Q3. Competitions dominate** (beast 83.1% and 59.2% of seasons; B6b 82.5% and 61.3%) | Preparation, not performance: the studier at .5 wins 95% of weekly competitions and 73.5% / 49.5% of seasons against passive's 50% and 13.0% / 16.0% (B6b 64% / 45.5% against 9.5% / 9.0%); at .8 the passive player wins only 66-68% weekly. | The v5 candidate (preparation spent on use, cap 3) is aimed at the right lever; prototype it against the studier cells. | competitionRulesVersion 5 (B9 per the decisions) |
 | **Q4. Passive newcomer nominated more** (now 1.08 and 1.00; B6b 1.13 and 1.43) | At 12 no longer: D2's close after the HoH reaches the newcomer before the first nominations (nominated in week one 9% against B6b's 53%). At 8 a little: the strategy windows' terms (-28 against the mean candidate; B6b -32) and a lower view (-16; B6b -21); the novice is at 0.94 and 0.89 (B6b 1.03). At 300 ticks nothing changes for passive (0.618 to 0.611 a week at 8, 0.456 to 0.442 at 12; B6b 0.61 to 0.59 and 0.60 to 0.61), and the two rates B6b saw move at 300 (social at 8, reader at 12) no longer do (F5). B6b had neither D2 nor the arcs fix and no control was run at 300, so this may be either of them, or B6b's noise; only at 900 does the control show the arc artefact. | Default: no tuning (decision 7); at 12 there is nothing left to tune. | B9 if tuned |
-| **Q5. Story pariah rate** (16.8% at 8, 45.5% at 12; B6b 17.2% and 43.6%; target at most 20%) | Every pariah target had won a Head of Household (100% at both sizes; two or more 15% and 28%). The holders' grudges: nominated 52-53%, the veto's replacement 25-29%, a replacement 12%, voted against 3%. At 12 the run comes at week 5.9 with 7.1 in the house. The NPC world does not change it (15.0% and 44.6% at 300 against 14.4% and 43.2% at 0 on the same 500 seasons; B6b 11.4% and 42.0% at 300). | The pariah is a past Head of Household's nomination grudges, not repeat HoHs alone; for the story session: the nomination grudge (70, x1.2 allied), the replacement grudges, and a definition scaled by house size. | story rules 10 (story session) |
+| **Q5. Story pariah rate** (16.8% at 8, 45.5% at 12; B6b 17.2% and 43.6%; target at most 20%) | Every pariah target had won a Head of Household (100% at both sizes; two or more 15% and 28%). The holders' grudges: nominated 52-53%, the veto's replacement 25-29%, a replacement 12%, voted against 3%. At 12 the run comes at week 5.9 with 7.1 in the house. The NPC world does not change it (15.0% and 44.6% at 300 against 14.4% and 43.2% at 0 on the same 500 seasons; B6b 11.4% and 42.0% at 300). | The pariah is a past Head of Household's nomination grudges, not repeat HoHs alone; for the story session: the nomination grudge (70, x1.2 allied), the replacement grudges, and a definition scaled by house size. | story rules 10 (STORY-RULES-10-PLAN; the story session was inactive, the lead built it): C1n accepted on the held-out seeds 100-199, the 12 policies pooled at tuning 1, 3.9% [3.0, 5.2] at 8 and 17.6% [15.5, 19.8] at 12, against C0's 19.1% and 49.0% on the same seasons; DP 0.8% and 4.7% (C0 4.8% and 16.7%); enrolled 2026-11-08, with its old-save cell (OLD-SAVE-ACCEPTANCE 2.12) |
 
 ## The war rooms (D3)
 

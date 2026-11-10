@@ -164,6 +164,13 @@ namespace Gamesim.Tests.EditMode
             md.AppendLine(tier.title + ": " + runs.Count + " seasons (" + seeds + " per " + tier.per + ") in " + BalanceLab.Num(minutes, "0.0") + " min on "
                 + Environment.ProcessorCount + " threads; rows in " + rows + ".");
             md.AppendLine();
+            // The rows never say which story rules played (BalanceLab.Cell.storyRules), and the tables group by house size, so the report does.
+            var later = runs.Select(r => r.cell?.storyRules ?? 0).Where(v => v != 0).Distinct().OrderBy(v => v).ToList();
+            if (later.Count > 0)
+            {
+                md.AppendLine("Played at story rules " + string.Join(", ", later.Select(v => v.ToString(CultureInfo.InvariantCulture))) + " (BALANCE_STORY), opted in after ApplyFresh.");
+                md.AppendLine();
+            }
             md.Append(tier.tables(runs));
             File.WriteAllText(Path.Combine(TestContext.CurrentContext.WorkDirectory, "balance", tier.name + ".md"), md.ToString(), new UTF8Encoding(false));
             TestContext.WriteLine(md.ToString());
@@ -748,11 +755,13 @@ namespace Gamesim.Tests.EditMode
             md.AppendLine();
             md.AppendLine("Asks are the beats put to the player, a storyline's beats closing at one anchor one ask; the first night, summons and plays apart; "
                 + "budgeted asks leave out production's must-fires and urgent moments. A pariah season has some houseguest (not the reigning Head of Household) "
-                + "with three in the house at forty against them after two Advances running. The last column is the autopsy's own count, every story house event "
-                + "in the final state, which is not comparable with the plan's targets.");
+                + "with three in the house at forty against them after two Advances running; that column (D0) is the target. Beside it, never instead of it "
+                + "(STORY-RULES-10-PLAN), DP counts the same run only while the player is in the house, and D2 the same run with the holders scaled by house "
+                + "size, max(3, ceil((NPCs in the house - 1) / 2)), as the balance lab's pariah watch counts it. The last column is the autopsy's own count, every "
+                + "story house event in the final state, which is not comparable with the plan's targets.");
             md.AppendLine();
-            md.AppendLine("| house | budgeted asks / season (target 4-6) | + must-fires | summons | play offers | weeks with a card (target 30-60%) | stories finished (target about 3) | moments | seasons with a pariah (target at most 20%) | NPC showmances | seasons with an NPC removal | seasons with a pile-on (target at most 25%) | story house events / season (autopsy) |");
-            md.AppendLine("|---|---|---|---|---|---|---|---|---|---|---|---|---|");
+            md.AppendLine("| house | budgeted asks / season (target 4-6) | + must-fires | summons | play offers | weeks with a card (target 30-60%) | stories finished (target about 3) | moments | seasons with a pariah (target at most 20%) | in the player's house (DP) | D2: holders by house size | NPC showmances | seasons with an NPC removal | seasons with a pile-on (target at most 25%) | story house events / season (autopsy) |");
+            md.AppendLine("|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|");
             foreach (var house in sizes)
             {
                 var list = Of(house).Where(r => r.pace != null).ToList();
@@ -763,7 +772,8 @@ namespace Gamesim.Tests.EditMode
                     + BalanceLab.Num(paces.Average(p => p.asks - p.budgetedAsks), "0.0") + " | " + BalanceLab.Num(paces.Average(p => p.summons), "0.0") + " | "
                     + BalanceLab.Num(paces.Average(p => p.playOffers), "0.0") + " | " + BalanceLab.Pct(paces.Sum(p => p.weeksWithACard) / weeks) + " | "
                     + BalanceLab.Num(paces.Average(p => p.storiesFinished), "0.0") + " | " + BalanceLab.Num(paces.Average(p => p.arcsFinished - p.storiesFinished), "0.0") + " | "
-                    + BalanceLab.Pct((double)paces.Count(p => p.pariah) / paces.Count) + " | " + BalanceLab.Num(paces.Average(p => p.showmances), "0.00") + " | "
+                    + BalanceLab.Pct((double)paces.Count(p => p.pariah) / paces.Count) + " | " + BalanceLab.Pct((double)paces.Count(p => p.pariahInHouse) / paces.Count) + " | "
+                    + BalanceLab.Pct((double)list.Count(r => r.pariahBySize) / list.Count) + " | " + BalanceLab.Num(paces.Average(p => p.showmances), "0.00") + " | "
                     + BalanceLab.Pct((double)paces.Count(p => p.npcRemovals > 0) / paces.Count) + " | " + BalanceLab.Pct((double)paces.Count(p => p.pileOns > 0) / paces.Count) + " | "
                     + BalanceLab.Num(list.Average(r => r.autopsy.story.asks), "0.0") + " |");
             }

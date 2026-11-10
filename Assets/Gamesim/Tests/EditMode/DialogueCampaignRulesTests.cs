@@ -243,7 +243,9 @@ namespace Gamesim.Tests.EditMode
                 case "mode": s.unifiedCommitmentRulesVersion = 1; break;
                 case "hearing": s.unifiedHearingRulesVersion = 0; break;
                 case "economy": s.economyRulesVersion = 0; break;
-                case "story-version": s.story.rulesVersion--; break;
+                // The milestone below the pilot's floor, by name: one below a shipped season's version was threads until story
+                // rules 10's enrolment (STORY-RULES-10-PLAN §8), and since it is threads itself, which the pilot holds at.
+                case "story-version": s.story.rulesVersion = StoryRules.Threads - 1; break;
                 case "read": s.readRulesStartWeek = 2; break;
                 case "lever": s.leverRulesStartWeek = 2; break;
                 case "week": s.weekRulesStartWeek = 2; break;
@@ -260,10 +262,10 @@ namespace Gamesim.Tests.EditMode
         }
 
         /// <summary>
-        /// Threads or any later story milestone (ROLE-MOMENTS-PLAN R0): enrolling Roles must not switch the pilot
-        /// off for good. An earlier milestone still refuses ("story-version" above).
+        /// Threads or any later story milestone (ROLE-MOMENTS-PLAN R0): enrolling Blame, the pariah fix, or Roles
+        /// must not switch the pilot off for good. An earlier milestone still refuses ("story-version" above).
         /// </summary>
-        [TestCase(StoryRules.Threads)] [TestCase(StoryRules.Roles)]
+        [TestCase(StoryRules.Threads)] [TestCase(StoryRules.Blame)] [TestCase(StoryRules.Roles)]
         public void ThePilotHoldsAtThreadsAndAtALaterStoryMilestone(int version)
         {
             foreach (var s in new[] { Empty(), Witness("active-case") })

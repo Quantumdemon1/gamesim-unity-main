@@ -30,8 +30,10 @@ namespace Gamesim.Tests.EditMode
         /// v5: so do a veto's, a lie's and a scheme's moves between two houseguests (EpisodeEngine.ChangeBetween), at every budget.
         /// v6: a season carries its pact watch and its own time (ALL-STAR-HISTORIES-PLAN 14.L.H, <see cref="BalanceLab.PactWatch"/>).
         /// v7: the watch's record gains its founders out, its final scores' hash and its own error (S4's review).
+        /// v8: B9's tuning bands. v9: story rules 10's measure (STORY-RULES-10-PLAN §5): a cell's story rules, the pariah
+        /// record's holders' rows, veto and player in the house, DP's own record, D1 and D2, and the pace's DP.
         /// </summary>
-        internal const string Stamp = "balance-lab-parts/v8";
+        internal const string Stamp = "balance-lab-parts/v9";
 
         private static BalanceLabReports.TierSpec TierFromEnvironment()
         {
@@ -59,12 +61,30 @@ namespace Gamesim.Tests.EditMode
 
         /// <summary>
         /// A tier's cells: as the tier names them, or every one held at tuning 0 when BALANCE_TUNING is 0 (B9's control,
-        /// B9-BALANCE-PLAN decision 8), so a tier replays the seasons it played before B9. The held cells' names say so.
+        /// B9-BALANCE-PLAN decision 8), so a tier replays the seasons it played before B9; and every one played at the
+        /// story rules BALANCE_STORY names (<see cref="StoryRulesFromEnvironment"/>), so a milestone is measured before it
+        /// is enrolled. The held and opted-in cells' names say so, and so does the stamp.
         /// </summary>
         internal static List<BalanceLab.Cell> CellsOf(BalanceLabReports.TierSpec tier)
         {
             var cells = tier.cells();
-            return Environment.GetEnvironmentVariable("BALANCE_TUNING") == "0" ? cells.Select(c => c.HeldAtTuning0()).ToList() : cells;
+            if (Environment.GetEnvironmentVariable("BALANCE_TUNING") == "0") cells = cells.Select(c => c.HeldAtTuning0()).ToList();
+            int story = StoryRulesFromEnvironment();
+            return story == 0 ? cells : cells.Select(c => c.AtStoryRules(story)).ToList();
+        }
+
+        /// <summary>
+        /// BALANCE_STORY: the story rules a tier's cells play at (<see cref="BalanceLab.Cell.storyRules"/>). Unset, empty
+        /// or 0 plays EnableStory's own, as every tier always has; anything else must be a version this build defines
+        /// from Threads on other than Current (<see cref="BalanceLab.CheckedStoryRules"/>), or the run stops here.
+        /// </summary>
+        internal static int StoryRulesFromEnvironment()
+        {
+            string value = Environment.GetEnvironmentVariable("BALANCE_STORY");
+            if (string.IsNullOrWhiteSpace(value)) return 0;
+            if (!int.TryParse(value.Trim(), NumberStyles.Integer, CultureInfo.InvariantCulture, out int version))
+                throw new ArgumentException("BALANCE_STORY is not a whole number: " + value);
+            return BalanceLab.CheckedStoryRules(version);
         }
 
         [Test, Explicit("Plays one part of a tier: BALANCE_TIER, seed indices BALANCE_FROM to BALANCE_FROM + BALANCE_COUNT - 1, saved under BALANCE_PARTS. Run by name.")]
@@ -144,6 +164,8 @@ namespace Gamesim.Tests.EditMode
             public SortedDictionary<string, double> gameSenseRows = new SortedDictionary<string, double>(StringComparer.Ordinal);
             public List<BalanceLab.NominationRecord> nominations = new List<BalanceLab.NominationRecord>();
             public BalanceLab.PariahRecord pariah;
+            public BalanceLab.PariahRecord pariahInHouse;
+            public bool pariahAtClosings, pariahBySize;
             public int preparation;
             public BalanceLab.PactRecord pactWatch;
             public double seasonMilliseconds;
@@ -158,6 +180,7 @@ namespace Gamesim.Tests.EditMode
                 npcOps = r.npcOps, npcTicks = r.npcTicks, npcStarts = r.npcStarts, npcScans = r.npcScans, npcTries = r.npcTries, npcHeld = r.npcHeld,
                 npcRejected = r.npcRejected, npcMilliseconds = r.npcMilliseconds, pairs = r.pairs, pairsNearBound = r.pairsNearBound, pairsAtBound = r.pairsAtBound,
                 gameSenseRows = new SortedDictionary<string, double>(r.gameSenseRows, StringComparer.Ordinal), nominations = r.nominations.ToList(), pariah = r.pariah,
+                pariahInHouse = r.pariahInHouse, pariahAtClosings = r.pariahAtClosings, pariahBySize = r.pariahBySize,
                 preparation = r.preparation, pactWatch = r.pactWatch, seasonMilliseconds = r.seasonMilliseconds,
             };
 
@@ -169,7 +192,8 @@ namespace Gamesim.Tests.EditMode
                     commands = commands, own = own, fallbacks = fallbacks, refusals = refusals, freeActions = freeActions, finaleSeconds = finaleSeconds,
                     npcOps = npcOps, npcTicks = npcTicks, npcStarts = npcStarts, npcScans = npcScans, npcTries = npcTries, npcHeld = npcHeld,
                     npcRejected = npcRejected, npcMilliseconds = npcMilliseconds, pairs = pairs, pairsNearBound = pairsNearBound, pairsAtBound = pairsAtBound,
-                    pariah = pariah, preparation = preparation, pactWatch = pactWatch, seasonMilliseconds = seasonMilliseconds,
+                    pariah = pariah, pariahInHouse = pariahInHouse, pariahAtClosings = pariahAtClosings, pariahBySize = pariahBySize,
+                    preparation = preparation, pactWatch = pactWatch, seasonMilliseconds = seasonMilliseconds,
                 };
                 foreach (var p in gameSenseRows ?? new SortedDictionary<string, double>()) r.gameSenseRows[p.Key] = p.Value;
                 r.nominations.AddRange(nominations ?? new List<BalanceLab.NominationRecord>());
@@ -186,20 +210,20 @@ namespace Gamesim.Tests.EditMode
         internal sealed class PaceCounts
         {
             public int weeks, weeksWithACard, asks, budgetedAsks, summons, showmances, npcRemovals, pileOns, arcsFinished, storiesFinished, playOffers;
-            public bool removalWindow, pariah;
+            public bool removalWindow, pariah, pariahInHouse;
 
             internal static PaceCounts Of(StoryPacingTests.Pace p) => p == null ? null : new PaceCounts
             {
                 weeks = p.weeks, weeksWithACard = p.weeksWithACard, asks = p.asks, budgetedAsks = p.budgetedAsks, summons = p.summons, showmances = p.showmances,
                 npcRemovals = p.npcRemovals, pileOns = p.pileOns, arcsFinished = p.arcsFinished, storiesFinished = p.storiesFinished, playOffers = p.playOffers,
-                removalWindow = p.removalWindow, pariah = p.pariah,
+                removalWindow = p.removalWindow, pariah = p.pariah, pariahInHouse = p.pariahInHouse,
             };
 
             internal StoryPacingTests.Pace ToPace() => new StoryPacingTests.Pace
             {
                 weeks = weeks, weeksWithACard = weeksWithACard, asks = asks, budgetedAsks = budgetedAsks, summons = summons, showmances = showmances,
                 npcRemovals = npcRemovals, pileOns = pileOns, arcsFinished = arcsFinished, storiesFinished = storiesFinished, playOffers = playOffers,
-                removalWindow = removalWindow, pariah = pariah,
+                removalWindow = removalWindow, pariah = pariah, pariahInHouse = pariahInHouse,
             };
         }
     }

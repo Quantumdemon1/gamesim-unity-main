@@ -97,7 +97,9 @@ namespace Gamesim.Simulation
         /// A week older: every grudge fades by two, and one below ten is forgiven once the holder
         /// likes the target again. At two a week a nomination's seventy outlasts a whole season,
         /// which is the point - "you put me up in week one" is a season-long memory - so real
-        /// forgiveness comes through story beats rather than time.
+        /// forgiveness comes through story beats rather than time. For the same reason the pariah
+        /// fix (<see cref="StoryRules.Blame"/>) changes what a veto writes, not how fast anything
+        /// fades: a houseguest holder who saved themselves gets no grudge to remember.
         /// </summary>
         public static void Age(EpisodeState state)
         {

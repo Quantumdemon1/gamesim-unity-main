@@ -284,14 +284,32 @@ namespace Gamesim.Simulation
         /// <summary>Threads (plan 31): two or three season-long stories seeded from the cast, told in chapters.</summary>
         public const int Threads = 9;
         /// <summary>
+        /// Blame (STORY-RULES-10-PLAN, the pariah fix, Q5): who the house blames for a veto's replacement. A
+        /// past Head of Household's two nominees resent them all season, and the usual third holder at the
+        /// forty line was a fresh grudge from the veto: they won it, used it, and the replacement resented
+        /// them. A houseguest holder who saved themselves forced nobody - the Head of Household chose the
+        /// replacement, who already resents them - so the replacement writes nothing against the holder; one
+        /// who saved somebody else chose to, and it stings at <see cref="EpisodeEngine.ReplacementVetoAtBlame"/>,
+        /// half the Head of Household's seventy, under the forty line the house's gang-ups read. Houseguest
+        /// holders only (C1n, the plan's decision 3 as accepted): the player's own veto keeps the forty, self-save
+        /// or not. Below it, forty against any holder, as before.
+        /// </summary>
+        public const int Blame = 10;
+        /// <summary>
         /// Roles (ROLE-MOMENTS-PLAN): what comes to the player when they win the HoH or the veto, or are
-        /// nominated. Claimed as 11 on 2026-10-22; 10 is the story session's, for the pariah fix. Read
+        /// nominated. Claimed as 11 on 2026-10-22, with 10 kept for the story session's pariah fix, which is
+        /// <see cref="Blame"/>; every gate is a lower bound, so a season at Roles plays Blame's rules too. Read
         /// through <see cref="EpisodeEngine.RolesOn"/>, which also wants the rules the moments are built on.
         /// </summary>
         public const int Roles = 11;
 
-        /// <summary>What a season switched on today plays under. Roles waits for its enrolment (R7), and that for every milestone below it.</summary>
-        public const int Current = Threads;
+        /// <summary>
+        /// What a season switched on today plays under: a new season's value (<see cref="EpisodeEngine.EnableStory"/>),
+        /// never a gate - every rule reads the milestone that introduced it. Blame is enrolled (STORY-RULES-10-PLAN §8)
+        /// since the lab measured it and C1n passed acceptance on the held-out seeds; a season keeps the version it was
+        /// started on, and the save migration and the web importer still write threads. Roles waits for its own (R7).
+        /// </summary>
+        public const int Current = Blame;
 
         /// <summary>
         /// The last milestone this build defines: the bound a saved season and the catalogue are held to,
@@ -301,12 +319,12 @@ namespace Gamesim.Simulation
         public const int Latest = Roles;
 
         /// <summary>
-        /// Whether this build defines the version: 0 (off), every milestone to <see cref="Threads"/>, and
-        /// <see cref="Roles"/>. Up to Threads the ladder had no gap, so a bound was enough; 10 is claimed
-        /// but no code defines it, and a season may not hold a version nothing reads. The story session's
-        /// milestone closes the gap when it lands.
+        /// Whether this build defines the version: 0 (off) and every milestone to <see cref="Latest"/>. The
+        /// ladder has no gap, so the bound is enough. While 10 was claimed and no code read it, it was refused
+        /// here, because a season may not hold a version nothing reads; <see cref="Blame"/> closed the gap.
+        /// The frozen readers keep their own ladders, with no 10 in them, so a season at 10 is a schema-30 one.
         /// </summary>
-        public static bool IsDefined(int version) => version >= 0 && version <= Latest && (version <= Threads || version >= Roles);
+        public static bool IsDefined(int version) => version >= 0 && version <= Latest;
 
         public const int Lenient = 0, Standard = 1;
     }

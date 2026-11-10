@@ -186,6 +186,16 @@
 # 9818 = 9781 + B9 round 4's 33 (JuryTiebreakTests 15, JuryTiebreakEditorTests 5, TuningSaveReloadTests 13) + the
 # studier old-save cell's 4 OldSaveAcceptanceTests cases (OLD-SAVE-ACCEPTANCE 2.9). The lister counted 9814 at 46459d3e
 # (the r4w kit) and 9818 with the cell (2026-11-07); no Unity run has observed it yet.
+# 9831 = 9818 + story rules 10's 13 (the define commit 36ca4055 and its fixture fix 1685df59: StoryMechanicsTests 8,
+# RoleRulesTests 4, DialogueCampaignRulesTests 1; FrozenEpisodeV29IntegrationTests adds 7 and drops its 7 "story-rules-10"
+# mutation rows; BalanceLabTests' 2 are Tools/SimulationTests only). The no-UMA lister counted exactly 9831 at 1685df59 in
+# story rules 10's verification, a green run (2026-11-08). The C1n commit renames one StoryMechanicsTests test (its two
+# cases) and adds none.
+# Story rules 10's enrolment (2026-11-08) adds no EditMode case: it moves pins and holds others at threads. The no-UMA
+# lister counted exactly 9831 at the enrolment's tree (twice, before and after its dialogue re-pins).
+# 9837 = 9831 + the story-rules-10 old-save cell (OLD-SAVE-ACCEPTANCE 2.12): OldSaveAcceptanceTests' four cases for
+# s30-mode2-allweek-story10-tuning1-w2-hoh and its two own cases, 6. The no-UMA lister counted exactly 9837 (and the
+# class 280), and the Mono harness ran the whole class (2026-11-08); no Unity run has observed the floor yet.
 # 9859 = 9818 + the observers' native-30 dialogue arm, 41 shared LegacyDigestSchema30ObserverTests cases (a played
 # rules-2 season on the tuning arm and on its own, 6; an All-Stars one on the alumni arm, 1; rules 1 on tuning 1, 2;
 # every native-30 arm's frozen dialogue literal and closed store, 20; the dialogue arm's own contract, 12). The subset
@@ -205,7 +215,12 @@
 # s30-mode2-dialogue2-tuning1-w1-campaign and its own case, 5, EditMode only (the subset compiles none of them, so it
 # stays 16695). The lister counted 9878, and the Mono harness ran the whole class, 284 of 284 (2026-11-08); no Unity
 # run has observed it yet.
-Gamesim.EditModeTests 9878
+# 9897 = 9818 + main's 60 (9878 - 9818: B9's plan text and the dialogue chip 2, #46 and #47) + story rules 10's 19
+# (9837 - 9818): disjoint cases, so the floor is their sum (the merge of main into story rules 10, 2026-11-09).
+# OldSaveAcceptanceTests is 290 on the merge (70 fixtures' four cases each, the manifest case, the two refused cases, the
+# two careers and the alumni-5, dialogue-1, dialogue-2 and story-rules-10 cells' 1 + 1 + 1 + 2 own cases). Counted from
+# the two sides; no run has observed it on the merge.
+Gamesim.EditModeTests 9897
 # The UMA-free build. 1215 = 1236, the count after the consolidation's lanes (S2a, S2b, S4a), less the 7
 # farewell probes moved to Gamesim.DiagnosticsPlayModeTests and the 14 farewell readiness tests that now
 # compile only under GAMESIM_UMA (judged on the UMA cast); 1230 = 1215 + S2d's 7, S4b's 2, S4c's 2 and
@@ -542,6 +557,12 @@ Gamesim.Uma.DiagnosticsPlayModeTests 10
 # Counted from the two sides; no run has observed it on the merge.
 # 16642 = 16615 + B9 round 4's 27 (JuryTiebreakTests 15, TuningSaveReloadTests 12): the subset ran exactly 16642 at
 # 1bea9cf5 (r4v) and at 46459d3e (r4w), 2026-11-07.
+# 16657 = 16642 + story rules 10's 15 (the define commit 36ca4055 and its fixture fix 1685df59: StoryMechanicsTests 8,
+# RoleRulesTests 4, DialogueCampaignRulesTests 1, BalanceLabTests 2): the subset ran exactly 16657 of 16657 at 1685df59 in
+# story rules 10's verification, green (2026-11-08). The C1n commit renames one StoryMechanicsTests test (its two cases)
+# and adds none.
+# Story rules 10's enrolment (2026-11-08) adds two [Explicit] BalanceLabTests (budget nought's rules-10 twins), which
+# the subset does not execute: it ran exactly 16657 of 16657 at the enrolment's tree, green.
 # 16686 = 16642 + the observers' native-30 dialogue arm: LegacyDigestSchema30ObserverTests' 41 shared cases and
 # CommitmentRulesSeasonDigestsNativeTests' 3 (the rules-2 digest and its two refusals): dotnet test Tools/SimulationTests
 # ran exactly 16686 of 16686 on the commit that adds them (2026-11-08).
@@ -550,4 +571,7 @@ Gamesim.Uma.DiagnosticsPlayModeTests 10
 # 16695 = 16690 + the rules-2 HUD's witnesses: DialogueRules2HudWitnessTests 4 and DialogueCampaignPleaFallbackTests'
 # rules-2 twin 1 (16691 of 16691 on the HUD's own commit): disjoint from the chip's, so the floor is their sum (the merge,
 # 2026-11-08).
-Gamesim.SimulationTests 16695
+# 16710 = 16642 + main's 53 (16695 - 16642: the dialogue chip 2's observers, chip and HUD witnesses) + story rules 10's
+# 15 (16657 - 16642): disjoint cases, so the floor is their sum (the merge of main into story rules 10, 2026-11-09).
+# Counted from the two sides; no run has observed it on the merge.
+Gamesim.SimulationTests 16710

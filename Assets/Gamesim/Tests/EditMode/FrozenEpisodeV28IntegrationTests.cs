@@ -246,8 +246,10 @@ namespace Gamesim.Tests.EditMode
             {
                 // Held at tuning 0 from its start (B9-BALANCE-PLAN decision 8): the lie's season is taken to its schema-28
                 // view, which a season on B9's tuning, a rule of schema 30's, has not; held, it walks exactly as before B9.
+                // Held at story rules 9, threads, by name too (STORY-RULES-10-PLAN §8): the frozen schema-28 reader refuses 10.
                 var start = UnifiedVotePublicCommandTests.Fresh(seed);
                 start.tuningRulesVersion = TuningRules.Off;
+                start.story.rulesVersion = StoryRules.Threads;
                 var engine = new EpisodeEngine(start);
                 for (int step = 0; step < 800 && engine.Snapshot.phase != EpisodePhase.Finished && engine.Snapshot.week <= 6; step++)
                 {

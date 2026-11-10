@@ -207,6 +207,9 @@ namespace Gamesim.Tests.EditMode
                 s.strategyRulesStartWeek = 1; s.blocRulesStartWeek = 1;
                 EpisodeEngine.EnableStory(s); EpisodeEngine.EnableRead(s); EpisodeEngine.EnableLevers(s); EpisodeEngine.EnableAgency(s);
             }
+            // Held at story rules 9, threads, by name (STORY-RULES-10-PLAN §8): the recorded seasons are the ones the build
+            // before the rules played, at threads, which that build already named; EnableStory now gives story rules 10.
+            if (s.story.rulesStartWeek != 0) s.story.rulesVersion = StoryRules.Threads;
             if (rulesOn)
             {
                 // By reflection, so the file compiles against the build before the rules too.

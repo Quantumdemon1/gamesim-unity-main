@@ -23,8 +23,9 @@ namespace Gamesim.Tests.EditMode
     /// for command, ids included. Where a test needs it the walk then answers the house's asks with their own neutral exits
     /// and asks voters where their vote is, through EpisodePlayModeTests.DialogueUiCommand's ids. The PlayMode installers
     /// replay exactly these walks instead of searching; each case here asserts the stop state its PlayMode test needs and
-    /// what entering the conversation there draws, through the HUD's own public plans. Past the enrolment nothing is
-    /// assigned by hand, and nothing reads the chip's version. Which houseguest is the voter is derived, never named.</para>
+    /// what entering the conversation there draws, through the HUD's own public plans. Past the enrolment and the story
+    /// rules' hold at threads (<see cref="Start"/>) nothing is assigned by hand, and nothing reads the chip's version. Which
+    /// houseguest is the voter is derived, never named.</para>
     ///
     /// <para>The public rescue has no walked witness: in 1,800 walked seasons (seeds 1 to 300, houses of 8, 10 and 12, this
     /// walk and EpisodeEngineTests.NextCommand's) no houseguest ever used the veto to save the player. Its season is the
@@ -54,12 +55,18 @@ namespace Gamesim.Tests.EditMode
 
         // ---------------------------------------------------------------- the PlayMode suite's walk, copied
 
-        /// <summary>The shipped season of a seed, enrolled on dialogue rules 2 by the literal 2.</summary>
+        /// <summary>
+        /// The shipped season of a seed, enrolled on dialogue rules 2 by the literal 2, and held at story rules 9, threads, by
+        /// name (STORY-RULES-10-PLAN §8): the pinned walks were proven on the story rules every new season started on before
+        /// story rules 10's enrolment, and Blame changes what a houseguest's used veto writes, which a walk into week 2 may
+        /// meet. The PlayMode installers hold it the same way.
+        /// </summary>
         internal static EpisodeState Start(uint seed, int house)
         {
             var fresh = SeasonBuilder.Create(new SeasonBuilder.Choice { HouseSize = house }, seed);
             ShippedRules.ApplyFresh(fresh);
             Assert.That(fresh.dialogueRulesVersion, Is.Zero, "A shipped season starts on dialogue rules 0.");
+            fresh.story.rulesVersion = StoryRules.Threads;
             fresh.dialogueRulesVersion = 2;
             Assert.That(fresh.schemaVersion, Is.GreaterThanOrEqualTo(DialogueRules.Rules2Schema), "Rules 2 is defined from schema 30.");
             Assert.That(DialogueRules.On(fresh), Is.True);

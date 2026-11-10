@@ -41,7 +41,9 @@ namespace Gamesim.Tests.EditMode
         /// <summary>
         /// The witness's house of eight for a seed, before its first command: the shipped season, then dialogue rules 1 by
         /// its literal, held at tuning 0 - the pilot's schema-29 build that writes a rules-1 season predates B9's tuning, and
-        /// a season on the tuning rules has no schema-29 form (B9-BALANCE-PLAN decision 8: a harness may hold one).
+        /// a season on the tuning rules has no schema-29 form (B9-BALANCE-PLAN decision 8: a harness may hold one) - and at
+        /// story rules 9, threads, for the same reason: that build predates story rules 10, which the frozen schema-29 reader
+        /// refuses (STORY-RULES-10-PLAN §8).
         /// </summary>
         internal static EpisodeState Start(uint seed)
         {
@@ -49,6 +51,7 @@ namespace Gamesim.Tests.EditMode
             ShippedRules.ApplyFresh(fresh);
             fresh.dialogueRulesVersion = 1;
             fresh.tuningRulesVersion = TuningRules.Off;
+            fresh.story.rulesVersion = StoryRules.Threads;
             return fresh;
         }
 

@@ -14,11 +14,18 @@ namespace Gamesim.Tests.EditMode
     /// </summary>
     public sealed class StorySeasonTests
     {
+        /// <summary>
+        /// A season with the story system on, and the read and agency rules the director switches on with it.
+        /// <paramref name="storyRules"/> 0 keeps EnableStory's own rules (<see cref="StoryRules.Current"/>); any other value
+        /// is written right after it, as a test opts a season in to a milestone not yet enrolled (the pacing report before
+        /// and after one).
+        /// </summary>
         internal static EpisodeState StorySeason(uint seed, int houseSize = 8,
-            CastTemplates.Roster roster = CastTemplates.Roster.Regular)
+            CastTemplates.Roster roster = CastTemplates.Roster.Regular, int storyRules = 0)
         {
             var state = SeasonBuilder.Create(new SeasonBuilder.Choice { HouseSize = houseSize, Roster = roster }, seed);
             EpisodeEngine.EnableStory(state);
+            if (storyRules != 0) state.story.rulesVersion = storyRules;
             // The read rules, as the director switches them on for every season it starts: under them
             // every alliance is a private fact at birth. Never in SeasonBuilder, whose recorded seasons
             // and seeded fixtures would shift.

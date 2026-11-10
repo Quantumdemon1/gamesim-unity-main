@@ -1083,7 +1083,8 @@ namespace Gamesim.Tests.EditMode
         private static readonly Dictionary<(int mode, bool roles, int week), List<EpisodeState>> Walks = new Dictionary<(int, bool, int), List<EpisodeState>>();
 
         /// <summary>
-        /// Seasons at story rules Roles (or at Threads, the shipped rules, without <paramref name="roles"/>) in commitment mode
+        /// Seasons at story rules Roles (or at Threads, by name, without <paramref name="roles"/>: the shipped rules until story
+        /// rules 10's enrolment, held there since) in commitment mode
         /// <paramref name="mode"/>, played through the public engine to week <paramref name="week"/>'s Head of Household
         /// competition (week two's unless asked), unresolved, with the player in the game. Four seeds.
         /// </summary>
@@ -1437,20 +1438,26 @@ namespace Gamesim.Tests.EditMode
             StoryAnchors.EvictionEve, StoryAnchors.EvictionNight,
         };
 
+        /// <summary>
+        /// Each held at story rules 9, threads, by name (STORY-RULES-10-PLAN §8): the recorded pools are the seasons as they
+        /// played before Blame was enrolled, and an old season's story rules are at most threads.
+        /// </summary>
         internal static IEnumerable<(string name, EpisodeState start)> OldSeasons()
         {
             foreach (uint seed in new uint[] { 2101, 2102 })
             {
                 var shipped = SeasonBuilder.Create(new SeasonBuilder.Choice { HouseSize = 8 }, seed);
                 ShippedRules.ApplyFresh(shipped);
+                shipped.story.rulesVersion = StoryRules.Threads;
                 yield return ("shipped-" + seed, shipped);
             }
             var mode0 = SeasonBuilder.Create(new SeasonBuilder.Choice { HouseSize = 8 }, 2103u);
             ShippedRules.ApplyFresh(mode0);
             mode0.unifiedCommitmentRulesVersion = 0;
             mode0.unifiedHearingRulesVersion = 0;
+            mode0.story.rulesVersion = StoryRules.Threads;
             yield return ("shipped-mode0-2103", mode0);
-            yield return ("story-10-3", StorySeasonTests.StorySeason(3u, 10));
+            yield return ("story-10-3", StorySeasonTests.StorySeason(3u, 10, storyRules: StoryRules.Threads));
         }
 
         internal static string Fingerprint(EpisodeState start)

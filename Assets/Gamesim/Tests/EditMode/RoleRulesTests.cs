@@ -14,32 +14,40 @@ namespace Gamesim.Tests.EditMode
     /// The role moments' rule (ROLE-MOMENTS-PLAN R0, §4.2-4.3): story rules 11, <see cref="StoryRules.Roles"/>,
     /// defined and held to the validator but enrolled in no shipped season, and <see cref="EpisodeEngine.RolesOn"/>,
     /// the one test every Roles path reads. Nothing here plays a moment. The frozen readers keep their own copy of
-    /// the ladder and refuse the new milestone. Pure simulation and JSON, so the Unity-free subset runs it as well
-    /// as the editor; the schema-24 reader's refusal is FrozenEpisodeV24ContractTests' "roles-story" case.
+    /// the ladder and refuse the new milestone, and the story session's 10 below it, <see cref="StoryRules.Blame"/>.
+    /// Pure simulation and JSON, so the Unity-free subset runs it as well as the editor; the schema-24 reader's
+    /// refusal is FrozenEpisodeV24ContractTests' "roles-story" case, and the schema-29 reader's refusal of 10 is
+    /// FrozenEpisodeV29IntegrationTests' StoryRulesTenAtTwentyNineIsRefusedInTheFrozenReadersWordsBeforeAnyLift.
     /// </summary>
     public sealed class RoleRulesTests
     {
         [Test]
         public void RolesIsClaimedAsElevenAndWaitsForItsEnrolment()
         {
-            Assert.That(StoryRules.Roles, Is.EqualTo(11), "10 is the story session's, for the pariah fix.");
+            Assert.That(StoryRules.Roles, Is.EqualTo(11), "Claimed as 11, with 10 kept for the story session's pariah fix.");
+            Assert.That(StoryRules.Blame, Is.EqualTo(StoryRules.Roles - 1), "10 is the pariah fix, Blame, defined below Roles.");
             Assert.That(StoryRules.Latest, Is.EqualTo(StoryRules.Roles), "The bound is the last milestone this build defines.");
-            Assert.That(StoryRules.Current, Is.EqualTo(StoryRules.Threads), "A season the game starts moves only at R7.");
+            // Story rules 10 is enrolled (STORY-RULES-10-PLAN §8): a season the game starts plays Blame, one below Roles.
+            Assert.That(StoryRules.Current, Is.EqualTo(StoryRules.Blame), "A season the game starts moves only at an enrolment: Blame's is made, R7's waits.");
             var shipped = Shipped();
-            Assert.That(shipped.story.rulesVersion, Is.EqualTo(StoryRules.Threads));
+            Assert.That(shipped.story.rulesVersion, Is.EqualTo(StoryRules.Blame));
             Assert.That(EpisodeEngine.RolesOn(shipped), Is.False, "A season the game starts today plays no role moment.");
             Assert.That(EpisodeEngine.RolesOn(null), Is.False);
         }
 
-        /// <summary>The ladder is exact: off, every milestone to threads, then Roles. 10 is claimed, not defined.</summary>
+        /// <summary>
+        /// The ladder is exact: off, then every milestone to Latest, with no gap. 10 was claimed before any code read it,
+        /// and refused until then; it is Blame, the story session's pariah fix.
+        /// </summary>
         [TestCase(-1, false)] [TestCase(0, true)] [TestCase(StoryRules.Spine, true)] [TestCase(StoryRules.Reach, true)]
-        [TestCase(StoryRules.Threads, true)] [TestCase(10, false)] [TestCase(StoryRules.Roles, true)]
+        [TestCase(StoryRules.Threads, true)] [TestCase(StoryRules.Blame, true)] [TestCase(StoryRules.Roles, true)]
         [TestCase(StoryRules.Latest + 1, false)] [TestCase(int.MaxValue, false)]
         public void OnlyAMilestoneSomeCodeDefinesIsDefined(int version, bool defined) =>
             Assert.That(StoryRules.IsDefined(version), Is.EqualTo(defined));
 
+        /// <summary>A live season is schema 30, so it may hold any defined milestone, Blame's 10 included; past Latest it is refused.</summary>
         [TestCase(StoryRules.Threads, true)] [TestCase(StoryRules.Roles, true)]
-        [TestCase(10, false)] [TestCase(StoryRules.Latest + 1, false)]
+        [TestCase(StoryRules.Blame, true)] [TestCase(StoryRules.Latest + 1, false)]
         public void TheValidatorHoldsALiveSeasonToTheDefinedMilestones(int version, bool accepted)
         {
             var s = Shipped();
@@ -117,7 +125,20 @@ namespace Gamesim.Tests.EditMode
         /// their own projections, and schema 28 has its own read-only copy.
         /// </summary>
         [TestCase("FrozenEpisodeV25")] [TestCase("FrozenEpisodeV26")] [TestCase("FrozenEpisodeV27")] [TestCase("FrozenEpisodeV28")]
-        public void EveryFrozenReaderRefusesAHistoricalSeasonAtRoles(string reader)
+        public void EveryFrozenReaderRefusesAHistoricalSeasonAtRoles(string reader) => RefusedAt(reader, StoryRules.Roles);
+
+        /// <summary>
+        /// The same readers refuse Blame's 10, the pariah fix defined below Roles: their ladders end at threads, so a
+        /// historical save can never hold it either, and a season at 10 is a schema-30 season with no older form. The
+        /// same control at threads, and the same refusal in the readers' own words.
+        /// </summary>
+        [TestCase("FrozenEpisodeV25")] [TestCase("FrozenEpisodeV26")] [TestCase("FrozenEpisodeV27")] [TestCase("FrozenEpisodeV28")]
+        public void EveryFrozenReaderRefusesAHistoricalSeasonAtBlame(string reader) => RefusedAt(reader, StoryRules.Blame);
+
+        // ------------------------------------------------------------------ helpers
+
+        /// <summary>The lawful witness at threads is the reader's to accept; at <paramref name="version"/> it is refused, unrepaired.</summary>
+        private static void RefusedAt(string reader, int version)
         {
             var payload = Literal(reader);
             string control = Text(payload);
@@ -125,14 +146,12 @@ namespace Gamesim.Tests.EditMode
             Assert.That(Text(payload), Is.EqualTo(control));
             Assert.That((int)payload["story"]["rulesVersion"], Is.EqualTo(StoryRules.Threads));
 
-            payload["story"]["rulesVersion"] = StoryRules.Roles;
+            payload["story"]["rulesVersion"] = version;
             string before = Text(payload);
             var refusal = Assert.Throws<InvalidDataException>(() => Contract(reader, payload));
             Assert.That(Messages(refusal), Has.Some.EqualTo("Unsupported story rules version."), string.Join(" | ", Messages(refusal)));
             Assert.That(Text(payload), Is.EqualTo(before), "A refused historical payload is preserved, not repaired.");
         }
-
-        // ------------------------------------------------------------------ helpers
 
         private static EpisodeState Shipped()
         {

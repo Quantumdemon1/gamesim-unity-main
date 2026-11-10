@@ -68,6 +68,9 @@ namespace Gamesim.Tests.EditMode
             EpisodeEngine.EnableStory(s); EpisodeEngine.EnableRead(s); EpisodeEngine.EnableLevers(s); EpisodeEngine.EnableWeek(s);
             EpisodeEngine.EnableEconomy(s); EpisodeEngine.EnableAgency(s); EpisodeEngine.EnableFinale(s); EpisodeEngine.EnableCommitments(s);
             s.unifiedCommitmentRulesVersion = mode; s.unifiedHearingRulesVersion = mode;
+            // Held at story rules 9, threads, by name (STORY-RULES-10-PLAN §8): the staged fixtures' seasons, their pins and
+            // their schema-28 and 29 readers are the seasons they were before story rules 10 was enrolled.
+            s.story.rulesVersion = StoryRules.Threads;
             Assert.That(EpisodeValidation.TryValidate(s, out var error), Is.True, error);
             return s;
         }

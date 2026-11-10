@@ -47,18 +47,24 @@ namespace Gamesim.Tests.EditMode
         /// One season walked through the public engine to the jury's verdict by the busy player (<see cref="ModeTwoReaderSweep.Busy"/>),
         /// the plain walk moving it on wherever the busy player is refused. Every accepted state is checked as it is reached.
         /// </summary>
-        internal static Played Play(uint seed, int size) => Play(seed, size, tuningHeld: false);
+        internal static Played Play(uint seed, int size) => Play(seed, size, held: false);
 
         /// <summary>
-        /// The same, or with the fresh season held at tuning 0 from its start (B9-BALANCE-PLAN decision 8): for the readers
-        /// that take a played season to its schema-29 view, which a season on B9's tuning, a rule of schema 30's, has not.
+        /// The same, or with the fresh season held from its start at tuning 0 (B9-BALANCE-PLAN decision 8) and at story rules
+        /// 9, threads, by name (STORY-RULES-10-PLAN §8): for the readers that take a played season to its schema-29 view, which
+        /// a season on B9's tuning, a rule of schema 30's, has not, nor one at story rules 10, which the frozen schema-29
+        /// reader refuses.
         /// </summary>
-        internal static Played Play(uint seed, int size, bool tuningHeld)
+        internal static Played Play(uint seed, int size, bool held)
         {
-            string key = seed + "/" + size + (tuningHeld ? "/tuning0" : "");
+            string key = seed + "/" + size + (held ? "/tuning0/story9" : "");
             if (Cache.TryGetValue(key, out var cached)) return cached;
             var played = new Played { Fresh = Fresh(seed, size) };
-            if (tuningHeld) played.Fresh.tuningRulesVersion = TuningRules.Off;
+            if (held)
+            {
+                played.Fresh.tuningRulesVersion = TuningRules.Off;
+                played.Fresh.story.rulesVersion = StoryRules.Threads;
+            }
             Assert.That(played.Fresh.unifiedCommitmentRulesVersion, Is.EqualTo(UnifiedVoteFamilyValidation.Version), "A fresh season is mode 2.");
             var engine = new EpisodeEngine(played.Fresh);
             for (int step = 0; step < 4000 && engine.Snapshot.phase != EpisodePhase.Finished; step++)

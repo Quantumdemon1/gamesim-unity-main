@@ -846,6 +846,9 @@ namespace Gamesim.Tests.EditMode
             // stream is changed; actual StartSeason/disk activation has independent native tests.
             state.unifiedCommitmentRulesVersion = mode == 0 ? 0 : 1;
             state.unifiedHearingRulesVersion = mode == 2 ? 1 : 0;
+            // Held at story rules 9, threads, by name (STORY-RULES-10-PLAN §8): these seasons are taken to their schema-25
+            // view, and the frozen schema-25 contract's ladder ends at threads, so it refuses story rules 10.
+            state.story.rulesVersion = StoryRules.Threads;
             AssertMode(state, mode); return state;
         }
 

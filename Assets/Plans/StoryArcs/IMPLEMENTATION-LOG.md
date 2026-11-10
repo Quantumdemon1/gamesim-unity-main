@@ -359,3 +359,31 @@ all milestones M0-M6, owner decisions = the recommended defaults in 20 §9 and 2
   against 40% (22 points). ThreadsReport: 2.6 threads a season; 112 of the 113 seasons that pass week
   one have two or three; every thread ends at its climax or a stated end.
 - Floors: EditMode 1857, PlayMode 615, Uma 64, Sim 1052.
+
+## Story rules 10, Blame: the pariah fix (STORY-RULES-10-PLAN, 2026-11-07/08)
+- No story session was active, so the lead built story rules 10, reserved for the pariah fix (Q5), on the owner's
+  word. The plan is `Assets/Plans/STORY-RULES-10-PLAN.md`; its sections 6 and 8 record the acceptance and the enrolment.
+- The rule, as accepted (C1n): a houseguest who holds the veto and saves themselves is not resented by the replacement;
+  one who saves somebody else is resented at 35 (`EpisodeEngine.ReplacementVetoAtBlame`), under the forty line. The
+  player's own veto keeps the old 40. It is read through `StoryAt(s, StoryRules.Blame)`, so seasons below 10 replay as
+  they did, and Roles (11) plays it too.
+- Accepted on the held-out seeds 100-199 (the 12 policies pooled, tuning 1): pariah seasons 3.9% at 8 and 17.6% at 12,
+  against 19.1% and 49.0% for the unchanged rules on the same seasons. The pile-on arc is rarer.
+- Enrolled: `StoryRules.Current` is `Blame`, so every new season starts on story rules 10. The save migration and the web
+  importer still write threads. The tests that pin a season's older behaviour are held at threads by name; the lab's
+  goldens were re-recorded, and its budget-nought pins keep B9's digests with rules-10 twins beside them (the plan, §8).
+- What was built on `claude/story-rules-10`: the define commit (36ca4055, with its fixture fix 1685df59:
+  `StoryRules.Blame`, the rule held behind `Current` at threads), C1n (5dcd2b17: the player's veto keeps the 40, after
+  the screen), the enrolment (5863d964) and the old-save cell (0d538392). Accepted with Wilson intervals: 3.9%
+  [3.0, 5.2] at 8 and 17.6% [15.5, 19.8] at 12, each at most 20%; paired with the unchanged rules (McNemar b/c 182/0 and
+  384/7); while the player is in the house 0.8% and 4.7% (4.8% and 16.7% before). B1-B7 and the pace at 8 stay in their
+  bands (the plan, §6).
+- Checked byte for byte: the enrolled head replays the lab's C1n rows on the development seeds 0-19 exactly (480
+  seasons), and the budget-nought pins held at threads still print B9's digests. The old-save cell at story rules 10
+  (OLD-SAVE-ACCEPTANCE 2.12) is the enrolled head's own season, saved after a houseguest's self-saving veto and replayed
+  through another; the same commands at story rules 9 part from it at that veto.
+- Floors: Sim 16657 (16642 and the define commit's 15); EditMode 9837 (9818, the define commit's 13 and the old-save
+  cell's 6).
+- R7 (Roles, story rules 11, ROLE-MOMENTS-PLAN) can follow now: story rules 10 is defined, accepted and enrolled, the
+  ladder has no gap, and Roles plays the Blame rule as well (the plan, §4 and §8). What R7 inherits (`Current` is Blame,
+  the pins that move with it, what stays held by name) is listed in the plan's §8, "What R7 inherits".

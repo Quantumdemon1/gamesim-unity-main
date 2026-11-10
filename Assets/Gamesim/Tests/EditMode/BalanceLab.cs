@@ -80,17 +80,45 @@ namespace Gamesim.Tests.EditMode
             /// Shipping never does.
             /// </summary>
             public bool tuningHeld;
+            /// <summary>
+            /// The story rules a fresh season plays at (STORY-RULES-10-PLAN §5), or 0 for EnableStory's own
+            /// (<see cref="StoryRules.Current"/>), as every cell always played. Any other milestone from
+            /// <see cref="StoryRules.Threads"/> on is written after ApplyFresh, as a test opts a season in: one defined but
+            /// not yet enrolled, so the lab can measure it before it ships, or Threads itself once a later one enrols, so a
+            /// cell can keep the seasons it played (<see cref="CheckedStoryRules"/>). The seed is the shipped cell's, so arms
+            /// pair. Shipping never does.
+            /// </summary>
+            public int storyRules;
 
-            /// <summary>The house; a player card, the histories' controls, a held alumni value and held tuning are named only when set, so every earlier cell keeps its name.</summary>
+            /// <summary>The house; a player card, the histories' controls, a held alumni value, held tuning and story rules other than EnableStory's are named only when set, so every earlier cell keeps its name.</summary>
             public string House => roster + "/" + size.ToString(CultureInfo.InvariantCulture) + "/npc" + npcTicks.ToString(CultureInfo.InvariantCulture)
                 + (playerTemplate == null ? "" : "/as-" + playerTemplate) + (alumniOff ? "/alumni0" : "") + (impressionsOff ? "/impressions0" : "")
-                + (alumniHeld == 0 ? "" : "/alumni" + alumniHeld.ToString(CultureInfo.InvariantCulture)) + (tuningHeld ? "/tuning0" : "");
+                + (alumniHeld == 0 ? "" : "/alumni" + alumniHeld.ToString(CultureInfo.InvariantCulture)) + (tuningHeld ? "/tuning0" : "")
+                + (storyRules == 0 ? "" : "/story" + storyRules.ToString(CultureInfo.InvariantCulture));
             /// <summary>The house the season's seed is drawn for: the roster and size at budget nought, whatever the cell's budget, so budgets pair.</summary>
             public string SeedHouse => roster + "/" + size.ToString(CultureInfo.InvariantCulture) + "/npc0";
             public string Key => policy + "/" + House + "/" + performance;
             public override string ToString() => Key;
             /// <summary>This cell held at tuning 0 (<see cref="tuningHeld"/>): the same seasons as they played before B9.</summary>
             public Cell HeldAtTuning0() { var held = (Cell)MemberwiseClone(); held.tuningHeld = true; return held; }
+            /// <summary>This cell played at story rules other than EnableStory's (<see cref="storyRules"/>): the same seasons, opted in or held.</summary>
+            public Cell AtStoryRules(int version) { var at = (Cell)MemberwiseClone(); at.storyRules = CheckedStoryRules(version); return at; }
+        }
+
+        /// <summary>
+        /// A story rules value a cell may be played at: 0 (EnableStory's own), or a version this build defines from
+        /// <see cref="StoryRules.Threads"/> on other than <see cref="StoryRules.Current"/>. The test is keyed to Current, not
+        /// to a milestone's name, so it stays right as a milestone enrols: today it takes the defined milestones above
+        /// Threads, and once a later one is Current it takes Threads too, which is how the enrolment holds a cell at the
+        /// seasons it played. Current itself would play what every season already plays under a new name, a version below
+        /// Threads older rules than any arm the lab pairs, and an undefined one would fail validation at the first Advance,
+        /// so each is refused before a season is played.
+        /// </summary>
+        internal static int CheckedStoryRules(int version)
+        {
+            if (version == 0 || (StoryRules.IsDefined(version) && version >= StoryRules.Threads && version != StoryRules.Current)) return version;
+            throw new ArgumentException("A cell's story rules are 0 or a version this build defines from Threads (" + StoryRules.Threads.ToString(CultureInfo.InvariantCulture)
+                + ") on other than Current (" + StoryRules.Current.ToString(CultureInfo.InvariantCulture) + "), not " + version.ToString(CultureInfo.InvariantCulture) + ".");
         }
 
         internal static List<Cell> Grid(IEnumerable<string> policies, IEnumerable<int> sizes, string performance = PerformanceModel.ByPolicy,
@@ -141,6 +169,14 @@ namespace Gamesim.Tests.EditMode
             public readonly List<NominationRecord> nominations = new List<NominationRecord>();
             /// <summary>Q5: the season's first pariah run, as the story pacing report counts one; null for none.</summary>
             public PariahRecord pariah;
+            // Q5's other definitions (STORY-RULES-10-PLAN §5): reported beside D0 (pariah above, the acceptance measure), never
+            // instead of it, and like it never in the rows (PariahWatch).
+            /// <summary>DP: the season's first pariah run while the player was in the house, counted on its own; null for none.</summary>
+            public PariahRecord pariahInHouse;
+            /// <summary>D1: some target qualified as two eviction nights running closed.</summary>
+            public bool pariahAtClosings;
+            /// <summary>D2: a run of two Advances on a target held against by max(3, ceil((NPCs in the house - 1) / 2)) in the house.</summary>
+            public bool pariahBySize;
             /// <summary>Q3: the player's competition preparation at the season's end (out of five).</summary>
             public int preparation;
             /// <summary>
@@ -192,11 +228,39 @@ namespace Gamesim.Tests.EditMode
         {
             /// <summary>The week, those in the house, the holders at forty or more, the target's competition wins, and the most HoH wins of any houseguest then.</summary>
             public int week, houseCount, holders, targetHohWins, targetVetoWins, npcHohWinsMax;
-            /// <summary>Each holder's grudge against the target: its cause, as the grudge first came.</summary>
+            /// <summary>
+            /// Each holder's grudge against the target: its cause, as the newest write named it. A stack takes the incoming
+            /// cause (Grudges.Add), so a nomination's seventy stacked by a voted-against reads as voted-against.
+            /// </summary>
             public List<string> causes = new List<string>();
             public double meanSeverity;
-            /// <summary>How many times the holders' grudges were stacked, summed.</summary>
+            /// <summary>The holders' grudges' writes, summed: a grudge written once counts one, and each stack one more.</summary>
             public int stacks;
+            // Story rules 10's measure (STORY-RULES-10-PLAN §5), read beside the fields above and, like them, never in a row.
+            /// <summary>The target.</summary>
+            public string targetId;
+            /// <summary>Whether the player was in the house (Active) at the run's second Advance, where the story system still tells the house.</summary>
+            public bool inHouse;
+            /// <summary>Each holder's grudge row against the target, in the store's order (the causes above are theirs).</summary>
+            public List<PariahHolder> holderRows = new List<PariahHolder>();
+            /// <summary>The run week's veto as the ledger's power row keeps it (RecordVeto); null while that week's veto is undecided, or in a week without one.</summary>
+            public PariahVeto veto;
+        }
+
+        /// <summary>Q5: one holder's grudge row against a pariah run's target, as the store held it at the run's second Advance.</summary>
+        internal sealed class PariahHolder
+        {
+            public string holderId, cause;
+            public double severity;
+            /// <summary>The week the grudge was first written, and how many writes it has taken (one for a single write).</summary>
+            public int originWeek, count;
+        }
+
+        /// <summary>Q5: the run week's veto - who held it, whether they used it, whether on themselves, and who went up in the saved one's place.</summary>
+        internal sealed class PariahVeto
+        {
+            public string holderId, replacementId;
+            public bool used, selfSave;
         }
 
         /// <summary>
@@ -245,13 +309,14 @@ namespace Gamesim.Tests.EditMode
         /// A cell's fresh season under the shipped rules. The histories' controls leave only their own parts out: the
         /// histories' step (ShippedRules.ApplyFresh's internal form) and, for "both together", agency's first impressions.
         /// A held alumni value is written over the shipped one when the season enrolled (14.H); a season that did not is left
-        /// at 0.
+        /// at 0. Later story rules (<see cref="Cell.storyRules"/>) are written right after ApplyFresh switched the story on.
         /// </summary>
         internal static EpisodeState Fresh(Cell cell, uint seed)
         {
             var fresh = SeasonBuilder.Create(new SeasonBuilder.Choice { HouseSize = cell.size, Roster = cell.roster, PlayerTemplateId = cell.playerTemplate }, seed);
             if (cell.impressionsOff) fresh.agencyRulesStartWeek = 1;
             ShippedRules.ApplyFresh(fresh, alumniHistories: !cell.alumniOff);
+            if (cell.storyRules != 0) fresh.story.rulesVersion = CheckedStoryRules(cell.storyRules);
             if (cell.alumniHeld != 0 && AlumniRules.On(fresh)) fresh.alumniRulesVersion = cell.alumniHeld;
             if (cell.tuningHeld) fresh.tuningRulesVersion = TuningRules.Off;
             return fresh;
@@ -270,8 +335,7 @@ namespace Gamesim.Tests.EditMode
             var agent = BalancePolicies.Create(cell.policy);
             var changes = new List<SeasonAutopsy.PhaseChange>();
             run.pace = new StoryPacingTests.Pace { removalWindow = fresh.contestants.Count >= 7 };
-            string pariahTarget = null;
-            int pariahRun = 0;
+            var pariahs = new PariahWatch();
             var s = engine.Snapshot;
             var watched = s;
             while (s.phase != EpisodePhase.Finished && run.commands < CommandCap)
@@ -294,7 +358,7 @@ namespace Gamesim.Tests.EditMode
                 if (used.kind == EpisodeCommandKind.Advance && s.phase == EpisodePhase.Nomination && s.nominees.Count == 0 && after.nominees.Count == 2
                     && s.hohId != s.playerId && s.Find(s.playerId).status == ContestantStatus.Active)
                     run.nominations.Add(Nominations(s, after));
-                if (used.kind == EpisodeCommandKind.Advance) PariahWatch(after, run, ref pariahTarget, ref pariahRun);
+                if (used.kind == EpisodeCommandKind.Advance) pariahs.Advance(after, run);
                 if (pacts != null)
                 {
                     // The NPC world's operations since the last command (B5b) are watched as a step of their own. A watch that
@@ -308,6 +372,8 @@ namespace Gamesim.Tests.EditMode
                 run.pace.Watch(used, after);
                 bool phaseChange = SeasonAutopsy.IsPhaseChange(s, after);
                 if (phaseChange) changes.Add(new SeasonAutopsy.PhaseChange(s, after));
+                // D1 reads the eviction nights the autopsy reads: the state each closed on, before the phase moved on.
+                if (phaseChange) pariahs.Closing(s, run);
                 if ((phaseChange || used.kind == EpisodeCommandKind.Advance) && !EpisodeValidation.TryValidate(after, out string invalid))
                 {
                     run.error = "week " + after.week + " " + after.phase + " after " + used.kind + ": invalid: " + invalid;
@@ -345,24 +411,91 @@ namespace Gamesim.Tests.EditMode
             };
         }
 
-        /// <summary>T0 Q5: the story pacing report's pariah rule, after every Advance (StoryPacingTests.Pace.Watch, copied), and the season's first run recorded.</summary>
-        private static void PariahWatch(EpisodeState after, SeasonRun run, ref string pariahTarget, ref int pariahRun)
+        /// <summary>
+        /// T0 Q5's watch over one season. D0, the acceptance measure: the story pacing report's pariah rule after every
+        /// Advance (StoryPacingTests.Pace.Watch, copied), the season's first run recorded. Beside it, never instead of it
+        /// (STORY-RULES-10-PLAN §5): DP, the same pick counted only while the player is in the house, its first run recorded
+        /// on its own; D2, the same rule with the holders scaled by house size; and D1, the same target qualifying as two
+        /// eviction nights running close. It only reads the states it is shown and writes only the season's records, which
+        /// no row carries, so the rows the digests hash are the same with it.
+        /// </summary>
+        internal sealed class PariahWatch
         {
-            var target = after.Active.Where(c => !c.isPlayer && c.id != after.hohId)
-                .Select(c => (c.id, holders: Grudges.HoldersAgainst(after, c.id, 40).Count(h => after.Find(h)?.status == ContestantStatus.Active)))
-                .Where(x => x.holders >= 3).Select(x => x.id).OrderBy(id => id, StringComparer.Ordinal).FirstOrDefault();
-            if (target != null && target == pariahTarget) { pariahRun++; }
-            else { pariahTarget = target; pariahRun = target != null ? 1 : 0; }
-            if (pariahRun < 2 || run.pariah != null) return;
-            var holders = Grudges.HoldersAgainst(after, target, 40).Where(h => after.Find(h)?.status == ContestantStatus.Active).ToList();
-            var grudges = after.story.grudges.Where(g => g.targetId == target && holders.Contains(g.holderId)).ToList();
-            var victim = after.Find(target);
-            run.pariah = new PariahRecord
+            /// <summary>The holders at forty or more a target needs, as the pacing report and the pile-on ask.</summary>
+            internal const int HoldersNeeded = 3;
+
+            private readonly Streak d0 = new Streak(), inHouse = new Streak(), bySize = new Streak();
+            /// <summary>The targets that qualified as the last eviction night closed.</summary>
+            private List<string> lastNight = new List<string>();
+
+            /// <summary>One rule's run: the target it picked at the last Advance, and for how many Advances running.</summary>
+            private sealed class Streak
             {
-                week = after.week, houseCount = after.Active.Count(), holders = holders.Count, targetHohWins = victim.hohWins, targetVetoWins = victim.vetoWins,
-                npcHohWinsMax = after.contestants.Where(c => !c.isPlayer).Max(c => c.hohWins),
-                causes = grudges.Select(g => g.cause ?? "").ToList(), meanSeverity = grudges.Count == 0 ? 0 : grudges.Average(g => g.severity), stacks = grudges.Sum(g => g.count),
-            };
+                private string target;
+                private int length;
+
+                /// <summary>Moves the run on to this Advance's pick (null for none) and says how long it is now.</summary>
+                public int Step(string pick)
+                {
+                    if (pick != null && pick == target) length++;
+                    else { target = pick; length = pick != null ? 1 : 0; }
+                    return length;
+                }
+            }
+
+            /// <summary>After an Advance: every run moves on, and D0's and DP's first runs are recorded.</summary>
+            internal void Advance(EpisodeState after, SeasonRun run)
+            {
+                var candidates = Candidates(after);
+                string pick = candidates.Where(x => x.holders >= HoldersNeeded).Select(x => x.id).FirstOrDefault();
+                bool playerIn = after.Find(after.playerId)?.status == ContestantStatus.Active;
+                if (d0.Step(pick) >= 2 && run.pariah == null) run.pariah = Record(after, pick, playerIn);
+                // DP: the player's absence is no pick, so a run that straddles their eviction does not count either.
+                if (inHouse.Step(playerIn ? pick : null) >= 2 && run.pariahInHouse == null) run.pariahInHouse = Record(after, pick, playerIn);
+                // D2: a twelve's eleven houseguests ask five holders; an eight's seven ask three, as D0 does.
+                int npcs = after.Active.Count(c => !c.isPlayer);
+                int scaled = Math.Max(HoldersNeeded, (int)Math.Ceiling((npcs - 1) / 2.0));
+                if (bySize.Step(candidates.Where(x => x.holders >= scaled).Select(x => x.id).FirstOrDefault()) >= 2) run.pariahBySize = true;
+            }
+
+            /// <summary>
+            /// As a phase closes on <paramref name="closing"/>. On an eviction night (the states the autopsy's pariah weeks
+            /// read) D1 asks whether a target that qualified as the last night closed qualifies again.
+            /// </summary>
+            internal void Closing(EpisodeState closing, SeasonRun run)
+            {
+                if (closing.phase != EpisodePhase.Eviction || closing.story == null) return;
+                var tonight = Candidates(closing).Where(x => x.holders >= HoldersNeeded).Select(x => x.id).ToList();
+                if (tonight.Intersect(lastNight, StringComparer.Ordinal).Any()) run.pariahAtClosings = true;
+                lastNight = tonight;
+            }
+
+            /// <summary>Those the rule can pick - not the player, not the reigning Head of Household - lowest id first, each with their holders in the house at forty or more.</summary>
+            private static List<(string id, int holders)> Candidates(EpisodeState s) =>
+                s.Active.Where(c => !c.isPlayer && c.id != s.hohId)
+                    .Select(c => (c.id, holders: Grudges.HoldersAgainst(s, c.id, 40).Count(h => s.Find(h)?.status == ContestantStatus.Active)))
+                    .OrderBy(x => x.id, StringComparer.Ordinal).ToList();
+
+            /// <summary>The run on <paramref name="target"/> as its second Advance left it: the holders and their rows, the target's record, the week's veto.</summary>
+            private static PariahRecord Record(EpisodeState after, string target, bool playerIn)
+            {
+                var holders = Grudges.HoldersAgainst(after, target, 40).Where(h => after.Find(h)?.status == ContestantStatus.Active).ToList();
+                var grudges = after.story.grudges.Where(g => g.targetId == target && holders.Contains(g.holderId)).ToList();
+                var victim = after.Find(target);
+                var power = after.ledger?.power?.LastOrDefault(p => p != null && p.week == after.week);
+                return new PariahRecord
+                {
+                    week = after.week, houseCount = after.Active.Count(), holders = holders.Count, targetHohWins = victim.hohWins, targetVetoWins = victim.vetoWins,
+                    npcHohWinsMax = after.contestants.Where(c => !c.isPlayer).Max(c => c.hohWins),
+                    causes = grudges.Select(g => g.cause ?? "").ToList(), meanSeverity = grudges.Count == 0 ? 0 : grudges.Average(g => g.severity), stacks = grudges.Sum(g => g.count),
+                    targetId = target, inHouse = playerIn,
+                    holderRows = grudges.Select(g => new PariahHolder { holderId = g.holderId, cause = g.cause ?? "", severity = g.severity, originWeek = g.originWeek, count = g.count }).ToList(),
+                    veto = power?.vetoHolderId == null ? null : new PariahVeto
+                    {
+                        holderId = power.vetoHolderId, used = power.vetoUsed, selfSave = power.vetoUsed && power.savedId == power.vetoHolderId, replacementId = power.replacementId,
+                    },
+                };
+            }
         }
 
         // ---------------------------------------------------------------- the pact watch (ALL-STAR-HISTORIES-PLAN 14.H, 14.L.H)

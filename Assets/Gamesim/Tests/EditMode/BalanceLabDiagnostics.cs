@@ -323,28 +323,43 @@ namespace Gamesim.Tests.EditMode
         // ---------------------------------------------------------------- Q5: the pariah
 
         /// <summary>
-        /// Q5 (story pariah rate): every season's first pariah run as the story pacing report counts one, by house - the
-        /// holders' grudge causes, the target's competition record against the house's strongest, the week and the
-        /// house's size then.
+        /// Q5 (story pariah rate): every season's first pariah run as the story pacing report counts one (D0, the target),
+        /// by house - the holders' grudge causes, the target's competition record against the house's strongest, the week
+        /// and the house's size then; for story rules 10, the share of those runs a fresh forty completed and the share
+        /// whose target won that week's veto and saved themselves with it, the route rules 10's veto change cuts (another
+        /// houseguest's self-save that week made somebody else a holder, so it is no part of this run); and beside D0,
+        /// never instead of it, the seasons the other definitions count (STORY-RULES-10-PLAN): DP, D1 and D2.
         /// </summary>
         internal static string PariahDecomposition(IReadOnlyList<BalanceLab.SeasonRun> runs)
         {
             var md = new StringBuilder();
             md.AppendLine("### Q5: the pariah runs decomposed (T0)");
             md.AppendLine();
-            md.AppendLine("| house | seasons | with a pariah | mean week | in the house then | holders | target's HoH wins (house's most) | target won a HoH | target won two | causes of the holders' grudges |");
-            md.AppendLine("|---|---|---|---|---|---|---|---|---|---|");
+            md.AppendLine("D0, the target, is each season's first run as the story pacing report counts one, and the columns up to the causes read those runs. "
+                + "A fresh forty is a holder's replacement-veto row written once: that week's veto, at the line for one week. The target's own self-save is the run week's "
+                + "veto won by the target and used on themselves, whose replacement holds forty against them for it. "
+                + "The last three count seasons of the house's, beside D0: DP the same rule while the player is in the house, "
+                + "D1 the same target as two eviction nights running close, D2 the same rule with max(3, ceil((NPCs in the house - 1) / 2)) holders.");
+            md.AppendLine();
+            md.AppendLine("| house | seasons | with a pariah | mean week | in the house then | holders | target's HoH wins (house's most) | target won a HoH | target won two | causes of the holders' grudges "
+                + "| a fresh forty among the holders | the target's own self-save | DP: in the player's house | D1: two eviction nights | D2: holders by house size |");
+            md.AppendLine("|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|");
             foreach (var house in runs.Where(r => r.error == null).GroupBy(r => BalanceLabReports.HouseOf(r.cell)).OrderBy(g => (int)g.First().cell.roster * 1000000 + g.First().cell.size * 10000 + g.First().cell.npcTicks))
             {
                 var list = house.ToList();
+                string Seasons(Func<BalanceLab.SeasonRun, bool> counted) { int n = list.Count(counted); return n + " (" + BalanceLab.Pct((double)n / list.Count) + ")"; }
+                string beside = Seasons(r => r.pariahInHouse != null) + " | " + Seasons(r => r.pariahAtClosings) + " | " + Seasons(r => r.pariahBySize) + " |";
                 var p = list.Where(r => r.pariah != null).Select(r => r.pariah).ToList();
-                if (p.Count == 0) { md.AppendLine("| " + house.Key + " | " + list.Count + " | 0 | - | - | - | - | - | - | - |"); continue; }
+                if (p.Count == 0) { md.AppendLine("| " + house.Key + " | " + list.Count + " | 0 | - | - | - | - | - | - | - | - | - | " + beside); continue; }
                 var causes = p.SelectMany(x => x.causes).GroupBy(c => c).Select(g => (cause: g.Key, n: g.Count())).OrderByDescending(x => x.n).ToList();
                 double all = causes.Sum(x => x.n);
+                int fresh = p.Count(x => x.holderRows != null && x.holderRows.Any(h => h.cause == GrudgeCauses.ReplacementVeto && h.count == 1));
+                int selfSaves = p.Count(x => x.veto != null && x.veto.selfSave && x.veto.holderId == x.targetId);
                 md.AppendLine("| " + house.Key + " | " + list.Count + " | " + BalanceLab.Pct((double)p.Count / list.Count) + " | " + Num(p.Average(x => x.week), "0.0") + " | " + Num(p.Average(x => x.houseCount), "0.0")
                     + " | " + Num(p.Average(x => x.holders), "0.0") + " | " + Num(p.Average(x => x.targetHohWins), "0.00") + " (" + Num(p.Average(x => x.npcHohWinsMax), "0.00") + ") | "
                     + BalanceLab.Pct((double)p.Count(x => x.targetHohWins >= 1) / p.Count) + " | " + BalanceLab.Pct((double)p.Count(x => x.targetHohWins >= 2) / p.Count) + " | "
-                    + string.Join(", ", causes.Select(x => (x.cause.Length == 0 ? "?" : x.cause) + " " + BalanceLab.Pct(x.n / all))) + " |");
+                    + string.Join(", ", causes.Select(x => (x.cause.Length == 0 ? "?" : x.cause) + " " + BalanceLab.Pct(x.n / all))) + " | "
+                    + BalanceLab.Pct((double)fresh / p.Count) + " | " + BalanceLab.Pct((double)selfSaves / p.Count) + " | " + beside);
             }
             md.AppendLine();
             return md.ToString();

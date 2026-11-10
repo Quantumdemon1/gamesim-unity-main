@@ -31,16 +31,37 @@ namespace Gamesim.Simulation
         }
 
         /// <summary>
+        /// What a veto replacement holds against a houseguest veto holder who saved somebody else, under
+        /// <see cref="StoryRules.Blame"/>: half the Head of Household's seventy, under the forty line the
+        /// house's gang-ups read (the pile-on's cast, the pariah count, <see cref="AllianceGrudgeLine"/>).
+        /// At thirty or more a bitter juror still reads it for its first weeks. A houseguest's self-save
+        /// writes nothing; the player's veto keeps the forty either way.
+        /// </summary>
+        public const double ReplacementVetoAtBlame = 35;
+
+        /// <summary>
         /// A veto replacement resents the Head of Household who named them (70, ×1.2 allied) and the
         /// veto holder who forced it (40, native). The direction is the intuitive one, not the web
         /// fold's argument-order inversion (21 §7, D-B).
+        ///
+        /// <para>Under <see cref="StoryRules.Blame"/> (STORY-RULES-10-PLAN §3.1) the holder is blamed only
+        /// for what they chose, and who was <paramref name="saved"/> says which. A holder who saved
+        /// themselves forced nobody - anyone on the block would have done the same, and the Head of
+        /// Household chose the replacement - so nothing is written against them; one who saved somebody
+        /// else chose to, and it stings at <see cref="ReplacementVetoAtBlame"/>. That is for houseguests
+        /// who hold the veto (C1n, decision 3 as accepted): the player as veto holder is resented at the
+        /// forty it always was, whoever they saved, so the player's own veto plays as it did. The Head of
+        /// Household's seventy is unchanged, and below Blame every call is the one it always was.</para>
         /// </summary>
-        private static void StoryReplacement(EpisodeState s, string replacement)
+        private static void StoryReplacement(EpisodeState s, string replacement, string saved)
         {
             if (!StoryAt(s, StoryRules.Grudges) || replacement == null || replacement == s.playerId) return;
             if (s.hohId != null && s.hohId != replacement) Grudges.Add(s, replacement, s.hohId, 70, GrudgeCauses.Replacement, alliedMultiplier: true);
             if (s.vetoHolderId != null && s.vetoHolderId != s.hohId && s.vetoHolderId != replacement)
-                Grudges.Add(s, replacement, s.vetoHolderId, 40, GrudgeCauses.ReplacementVeto);
+            {
+                if (!StoryAt(s, StoryRules.Blame) || s.vetoHolderId == s.playerId) Grudges.Add(s, replacement, s.vetoHolderId, 40, GrudgeCauses.ReplacementVeto);
+                else if (saved != s.vetoHolderId) Grudges.Add(s, replacement, s.vetoHolderId, ReplacementVetoAtBlame, GrudgeCauses.ReplacementVeto);
+            }
         }
 
         /// <summary>

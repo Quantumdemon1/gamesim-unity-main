@@ -483,19 +483,25 @@ namespace Gamesim.Tests.EditMode
         /// re-pinned it (B9-BALANCE-PLAN, "Round 4: the lab"): the keyed jury tiebreak and the final Head of Household's
         /// half-a-tie read (1bea9cf5) moved it, and tuning 1 without the small house's boost (f5fb8cb6) moved it again.
         /// </summary>
+        // Held, not re-recorded, at story rules 10's enrolment (STORY-RULES-10-PLAN §8): both pins are B9's numbers, which B9
+        // measured at story rules 9, so both arms are held there through the cell's story field and keep their hashes. Story
+        // rules 10's own studier seasons are measured in the plan's acceptance (B1-B4, section 6), not pinned here.
         internal const string StudierTuning1Rows = "7eb55ed0d28b2d5e";
 
         [Test]
         public void ATuningNoughtSeasonPlaysTheRowsItPlayedBeforeB9AndATuningOneSeasonB9s()
         {
-            var cells = BalanceLab.Grid(new[] { BalancePolicies.Studier }, new[] { 8, 12 }, PerformanceModel.Fixed(0.5));
-            var held = cells.Select(c => new BalanceLab.Cell { policy = c.policy, size = c.size, performance = c.performance, tuningHeld = true }).ToList();
+            var cells = BalanceLab.Grid(new[] { BalancePolicies.Studier }, new[] { 8, 12 }, PerformanceModel.Fixed(0.5))
+                .Select(c => c.AtStoryRules(StoryRules.Threads)).ToList();
+            var held = cells.Select(c => new BalanceLab.Cell { policy = c.policy, size = c.size, performance = c.performance, tuningHeld = true }
+                .AtStoryRules(StoryRules.Threads)).ToList();
             var before = BalanceLab.Run(held, 2);
             var tuned = BalanceLab.Run(cells, 2);
             Assert.That(before.Concat(tuned).Where(r => r.error != null).Select(r => r.error), Is.Empty);
             string beforeRows = BalanceLab.Jsonl(before), tunedRows = BalanceLab.Jsonl(tuned);
             TestContext.WriteLine("tuning 0 " + BalanceLabTests.Hash(beforeRows) + "; tuning 1 " + BalanceLabTests.Hash(tunedRows));
-            Assert.That(held.Select(c => c.House), Is.EqualTo(new[] { "Regular/8/npc0/tuning0", "Regular/12/npc0/tuning0" }));
+            Assert.That(held.Select(c => c.House), Is.EqualTo(new[] { "Regular/8/npc0/tuning0/story9", "Regular/12/npc0/tuning0/story9" }));
+            Assert.That(cells.Select(c => c.House), Is.EqualTo(new[] { "Regular/8/npc0/story9", "Regular/12/npc0/story9" }), "Both arms are held at threads.");
             Assert.That(held.Select(c => BalanceLab.Seed(c, 0)), Is.EqualTo(cells.Select(c => BalanceLab.Seed(c, 0))), "A held cell plays its shipped cell's seasons.");
             Assert.That(BalanceLabTests.Hash(beforeRows), Is.EqualTo(StudierTuning0Rows), "Tuning 0 plays the seasons it played before B9.");
             Assert.That(BalanceLabTests.Hash(tunedRows), Is.EqualTo(StudierTuning1Rows), "Tuning 1 plays the seasons B9's measurement played.");

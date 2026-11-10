@@ -464,6 +464,9 @@ namespace Gamesim.Tests.EditMode
             // phase, random stream, audience, receipt or history is converted or cleared.
             state.unifiedCommitmentRulesVersion = mode == 0 ? 0 : 1;
             state.unifiedHearingRulesVersion = mode == 2 ? 1 : 0;
+            // Held at story rules 9, threads, by name (STORY-RULES-10-PLAN §8): every witness here is taken to its schema-27
+            // and 28 views and read by the frozen readers, whose ladders end at threads and refuse story rules 10.
+            state.story.rulesVersion = StoryRules.Threads;
             Valid(state); return state;
         }
 

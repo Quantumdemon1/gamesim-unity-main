@@ -24,8 +24,9 @@ namespace Gamesim.Tests.PlayMode
     /// the reply, and the tallest reply rules 2 draws, four tiles with the word's line above them. Before these no PlayMode
     /// test reached a rules-2 conversation; every Dialogue* installer enrols the literal 1.
     ///
-    /// <para>Every season here is a shipped season enrolled on rules 2 by the literal 2, never the chip's version, and
-    /// replays a walk proven headlessly first: DialogueRules2HudWitnessTests (EditMode, in the subset) pins each seed, house
+    /// <para>Every season here is a shipped season enrolled on rules 2 by the literal 2, never the chip's version, held at
+    /// story rules 9 by name since story rules 10's enrolment (the walks were proven before it), and replays a walk proven
+    /// headlessly first: DialogueRules2HudWitnessTests (EditMode, in the subset) pins each seed, house
     /// size and step count, copies this suite's NextCommand command for command, and asserts the stop state each test below
     /// needs. The installers replay the walk and assert the same stop, so a walk that moves fails here in words rather than
     /// searching on blind. The rescue is the EditMode suite's own retained carrier (the rules-1 citing test's), enrolled on
@@ -350,12 +351,16 @@ namespace Gamesim.Tests.PlayMode
 
         // ---------------------------------------------------------------- installers: the witnesses' walks, replayed
 
-        /// <summary>The shipped season of a seed enrolled on rules 2 by the literal 2, walked by this suite's own NextCommand.</summary>
+        /// <summary>
+        /// The shipped season of a seed enrolled on rules 2 by the literal 2, held at story rules 9, threads, by name as its
+        /// witness holds it (DialogueRules2HudWitnessTests.Start, STORY-RULES-10-PLAN §8), walked by this suite's own NextCommand.
+        /// </summary>
         private static EpisodeEngine Rules2PlainWalk(uint seed, int house, int steps)
         {
             var fresh = SeasonBuilder.Create(new SeasonBuilder.Choice { HouseSize = house }, seed);
             ShippedRules.ApplyFresh(fresh);
             Assert.That(fresh.dialogueRulesVersion, Is.Zero);
+            fresh.story.rulesVersion = StoryRules.Threads; // The witnesses' walks were proven before story rules 10's enrolment.
             fresh.dialogueRulesVersion = 2; // The rules-2 enrolment by its literal, never the chip's version.
             Assert.That(DialogueRules.On(fresh), Is.True, "Rules 2 is on at the live schema.");
             var engine = new EpisodeEngine(fresh);

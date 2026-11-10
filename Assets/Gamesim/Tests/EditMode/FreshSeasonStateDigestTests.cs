@@ -31,6 +31,11 @@ namespace Gamesim.Tests.EditMode
     /// <para><b>From B9</b> every fresh season starts on tuning 1 (<see cref="TuningRules.Shipped"/>, B9-BALANCE-PLAN §4.3), a
     /// plain int that draws, mints and logs nothing. No digest is re-recorded for it either: with that one field taken back
     /// to 0 the season must hash to its schema-29 record, so the int is B9's only change to a fresh season.</para>
+    ///
+    /// <para><b>From story rules 10's enrolment</b> every fresh season starts on Blame (<see cref="StoryRules.Blame"/>,
+    /// STORY-RULES-10-PLAN §8), a plain int at the start, which draws, mints and logs nothing (lore is cast as before). It is
+    /// held at threads here by name, as B9's tuning is: with that one field taken back to 9 the season must hash to its
+    /// schema-29 record, so the int is the enrolment's only change to a fresh season.</para>
     /// </summary>
     public sealed class FreshSeasonStateDigestTests
     {
@@ -97,6 +102,12 @@ namespace Gamesim.Tests.EditMode
             // B9: a fresh season's tuning is the shipped value, and nothing else of B9's is in its opening state.
             Assert.That(s.tuningRulesVersion, Is.EqualTo(applyFresh ? TuningRules.Shipped : TuningRules.Off), "B9: new seasons start on tuning 1.");
             s.tuningRulesVersion = TuningRules.Off;
+            // Story rules 10: a fresh season starts on Blame, and nothing else of the enrolment is in its opening state.
+            if (applyFresh)
+            {
+                Assert.That(s.story.rulesVersion, Is.EqualTo(StoryRules.Blame), "Story rules 10: new seasons start on Blame.");
+                s.story.rulesVersion = StoryRules.Threads;
+            }
             var payload = Payload(s);
             // SCH30 step 2: the live schema is 30; the test inverse takes the season back to the retained 29 (the pooled
             // fields at their off literals removed, the header 29) before it is hashed against the 29 build's record.

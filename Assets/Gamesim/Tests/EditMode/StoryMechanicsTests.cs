@@ -7,9 +7,9 @@ using NUnit.Framework;
 namespace Gamesim.Tests.EditMode
 {
     /// <summary>
-    /// The story system's rules one at a time: who resents whom after a nomination, what a grudge
-    /// does to the nomination sort, the vote and the jury, who can see an alliance, how a backdoor
-    /// lands, how production's ladder climbs, and that none of it moves the season's own stream.
+    /// The story system's rules one at a time: who resents whom after a nomination or a veto, what a
+    /// grudge does to the nomination sort, the vote and the jury, who can see an alliance, how a
+    /// backdoor lands, how production's ladder climbs, and that none of it moves the season's own stream.
     /// </summary>
     public sealed class StoryMechanicsTests
     {
@@ -89,6 +89,232 @@ namespace Gamesim.Tests.EditMode
             Assert.That(Grudges.Add(s, s.playerId, Npcs(s)[0].id, 50, GrudgeCauses.Story), Is.Null);
             Assert.That(s.story.grudges, Is.Empty);
         }
+
+        // ---------------------------------------------------------------- the veto's grudges (story rules 10, Blame)
+        //
+        // Each rule is played twice from the same veto meeting: under threads, held there by name so it stays the
+        // rules-9 twin now that Current has moved to Blame (STORY-RULES-10-PLAN §8), and under Blame, also named by
+        // assignment after the story is switched on, as it was opted in before its enrolment (RoleRulesTests' AtRoles).
+
+        /// <summary>
+        /// A self-save forced nobody (STORY-RULES-10-PLAN §3.1): under Blame the replacement writes nothing against a
+        /// veto holder who pulled themselves off the block; under threads, the forty it always was. The Head of
+        /// Household who named them is resented at seventy (84 between allies) under both. The rule draws nothing,
+        /// mints nothing and says nothing: the twins' streams, sequences and logs are the same.
+        /// </summary>
+        [Test]
+        public void ASelfSaveForcesNobody()
+        {
+            var meeting = SelfSaveMeeting(out string hoh, out string holder);
+            Assert.That(meeting.story.grudges, Is.Empty, "Nobody holds anything yet.");
+            var threads = Resolved(meeting, StoryRules.Threads);
+            var blame = Resolved(meeting, StoryRules.Blame);
+            string replacement = Replacement(meeting, threads, blame);
+
+            Assert.That(Grudges.Severity(threads, replacement, holder), Is.EqualTo(40).Within(0.001), "Under threads, forty against the holder.");
+            Assert.That(Row(threads, replacement, holder).cause, Is.EqualTo(GrudgeCauses.ReplacementVeto));
+            Assert.That(Row(blame, replacement, holder), Is.Null, "Under Blame a self-save writes nothing against the holder.");
+            double againstHoh = meeting.Allied(replacement, hoh) ? 84 : 70;
+            foreach (var after in new[] { threads, blame })
+            {
+                Assert.That(Grudges.Severity(after, replacement, hoh), Is.EqualTo(againstHoh).Within(0.001), "The Head of Household's seventy is unchanged.");
+                Assert.That(Row(after, replacement, hoh).cause, Is.EqualTo(GrudgeCauses.Replacement));
+            }
+            Assert.That(blame.randomState, Is.EqualTo(threads.randomState), "The rule draws nothing,");
+            Assert.That(blame.nextSequence, Is.EqualTo(threads.nextSequence), "mints nothing,");
+            Assert.That(blame.events.Count, Is.EqualTo(threads.events.Count), "and says nothing.");
+        }
+
+        /// <summary>
+        /// A veto used on somebody else was the holder's choice, and still stings (STORY-RULES-10-PLAN §3.1): under Blame
+        /// at <see cref="EpisodeEngine.ReplacementVetoAtBlame"/>, half the Head of Household's seventy. That is under the
+        /// forty line, so the replacement is no longer one of the holders the house's gang-ups and the pariah count read;
+        /// it is thirty or more, so a bitter juror still reads it. Under threads, the forty it always was.
+        /// </summary>
+        [Test]
+        public void AVetoForSomebodyElseStingsAtHalfTheSeventy()
+        {
+            var meeting = SaveForAnotherMeeting(out string hoh, out string holder);
+            Assert.That(meeting.story.grudges, Is.Empty, "Nobody holds anything yet.");
+            var threads = Resolved(meeting, StoryRules.Threads);
+            var blame = Resolved(meeting, StoryRules.Blame);
+            string replacement = Replacement(meeting, threads, blame);
+            Assert.That(EpisodeEngine.ReplacementVetoAtBlame, Is.EqualTo(70 / 2), "Half the Head of Household's seventy.");
+
+            Assert.That(Grudges.Severity(threads, replacement, holder), Is.EqualTo(40).Within(0.001), "Under threads, forty against the holder.");
+            Assert.That(Grudges.HoldersAgainst(threads, holder, 40), Does.Contain(replacement), "On the forty line under threads.");
+            Assert.That(Grudges.Severity(blame, replacement, holder), Is.EqualTo(EpisodeEngine.ReplacementVetoAtBlame).Within(0.001),
+                "Under Blame a veto for somebody else stings at thirty-five.");
+            Assert.That(Row(blame, replacement, holder).cause, Is.EqualTo(GrudgeCauses.ReplacementVeto), "The same cause, a smaller number.");
+            Assert.That(Grudges.HoldersAgainst(blame, holder, 40), Does.Not.Contain(replacement), "Under the forty line the gang-ups read.");
+            Assert.That(blame.story.bonds.Any(b => (b.aId == replacement && b.bId == holder) || (b.aId == holder && b.bId == replacement)), Is.False,
+                "No bond between them, so the jury term is the grudge's alone.");
+            Assert.That(StoryConsumers.JuryStory(blame, replacement, holder), Is.EqualTo(-0.15 * EpisodeEngine.ReplacementVetoAtBlame).Within(0.001),
+                "At thirty or more a bitter juror still reads it.");
+            foreach (var after in new[] { threads, blame })
+                Assert.That(Grudges.Severity(after, replacement, hoh), Is.EqualTo(meeting.Allied(replacement, hoh) ? 84 : 70).Within(0.001),
+                    "The Head of Household's seventy is unchanged.");
+        }
+
+        /// <summary>
+        /// Blame covers houseguests who hold the veto, not the player (C1n, STORY-RULES-10-PLAN decision 3 as accepted):
+        /// whether the player's own command pulls themselves off the block or saves somebody else, the replacement resents
+        /// the player at the forty it always was, under Blame exactly as under threads, with the same cause, and the rule
+        /// draws nothing, mints nothing and says nothing.
+        /// </summary>
+        [TestCase(true)] [TestCase(false)]
+        public void ThePlayersVetoKeepsTheFortyUnderBlame(bool selfSave)
+        {
+            var meeting = Season();
+            var npcs = Npcs(meeting);
+            string hoh = npcs[0].id, you = meeting.playerId, saved = selfSave ? you : npcs[1].id;
+            SetTheVetoMeeting(meeting, hoh, new[] { saved, npcs[2].id }, you, npcs[3].id);
+            Assert.That(meeting.story.grudges, Is.Empty, "Nobody holds anything yet.");
+            var threads = Resolved(meeting, StoryRules.Threads, saved);
+            var blame = Resolved(meeting, StoryRules.Blame, saved);
+            string replacement = Replacement(meeting, threads, blame);
+
+            Assert.That(Grudges.Severity(threads, replacement, you), Is.EqualTo(40).Within(0.001), "Under threads, forty against the player.");
+            Assert.That(Grudges.Severity(blame, replacement, you), Is.EqualTo(40).Within(0.001),
+                selfSave ? "Under Blame the player's self-save still costs the forty." : "Under Blame the player's veto for somebody else still costs the forty.");
+            Assert.That(Row(blame, replacement, you).cause, Is.EqualTo(GrudgeCauses.ReplacementVeto), "The same cause as under threads.");
+            Assert.That(Grudges.HoldersAgainst(blame, you, 40), Does.Contain(replacement), "On the forty line, as under threads.");
+            Assert.That(blame.randomState, Is.EqualTo(threads.randomState), "The player's veto draws nothing new,");
+            Assert.That(blame.nextSequence, Is.EqualTo(threads.nextSequence), "mints nothing,");
+            Assert.That(blame.events.Count, Is.EqualTo(threads.events.Count), "and says nothing.");
+        }
+
+        /// <summary>
+        /// The pariah's usual route (STORY-RULES-10-PLAN §1), built by hand: a past Head of Household's two nominees still
+        /// hold seventy against them when, nominated in their turn, they win the veto and save themselves. Under threads
+        /// the replacement's fresh forty is the third holder at the forty line, a pariah's count; under Blame there is no
+        /// third, so two.
+        /// </summary>
+        [Test]
+        public void APastHeadOfHouseholdsSelfSaveMakesNoThirdHolder()
+        {
+            var meeting = Season();
+            var npcs = Npcs(meeting);
+            string pastHoh = npcs[0].id, first = npcs[1].id, second = npcs[2].id, hoh = npcs[3].id;
+            Grudges.Add(meeting, first, pastHoh, 70, GrudgeCauses.Nominated);
+            Grudges.Add(meeting, second, pastHoh, 70, GrudgeCauses.Nominated);
+            SetTheVetoMeeting(meeting, hoh, new[] { pastHoh, npcs[4].id }, pastHoh, npcs[5].id);
+            Assert.That(Grudges.HoldersAgainst(meeting, pastHoh, 40), Is.EquivalentTo(new[] { first, second }), "Their two nominees.");
+            Assert.That(EpisodeEngine.NpcVetoSave(meeting), Is.EqualTo(pastHoh), "On the block, they save themselves.");
+            var threads = Resolved(meeting, StoryRules.Threads);
+            var blame = Resolved(meeting, StoryRules.Blame);
+            string replacement = Replacement(meeting, threads, blame);
+            Assert.That(new[] { first, second }, Does.Not.Contain(replacement), "A third houseguest is named.");
+
+            var underThreads = Grudges.HoldersAgainst(threads, pastHoh, 40);
+            Assert.That(underThreads, Has.Count.EqualTo(3), "Under threads, a third holder: " + string.Join(", ", underThreads));
+            Assert.That(underThreads, Does.Contain(replacement));
+            Assert.That(Grudges.HoldersAgainst(blame, pastHoh, 40), Is.EquivalentTo(new[] { first, second }), "Under Blame, still two.");
+        }
+
+        /// <summary>
+        /// Every story gate is a lower bound, so a season at Roles plays Blame's rules as well (the ladder's own rule: Roles
+        /// waits for every milestone below it). The rule reads the story's version, not <see cref="EpisodeEngine.RolesOn"/>.
+        /// </summary>
+        [Test]
+        public void RolesPlaysTheBlameRules()
+        {
+            var selfSave = SelfSaveMeeting(out _, out string holder);
+            var self = Resolved(selfSave, StoryRules.Roles);
+            Assert.That(Row(self, Replacement(selfSave, self), holder), Is.Null, "A self-save at Roles forces nobody.");
+
+            var forAnother = SaveForAnotherMeeting(out _, out string saver);
+            var other = Resolved(forAnother, StoryRules.Roles);
+            Assert.That(Grudges.Severity(other, Replacement(forAnother, other), saver), Is.EqualTo(EpisodeEngine.ReplacementVetoAtBlame).Within(0.001),
+                "A veto for somebody else at Roles stings at thirty-five.");
+        }
+
+        /// <summary>
+        /// Whole seasons at Blame, at eight and at twelve: every command the engine takes is validated before it is installed
+        /// (<see cref="StorySeasonTests.Play"/>), each season finishes and validates, and none moves off its story rules.
+        /// </summary>
+        [Test]
+        public void SeasonsAtTheBlameRulesFinishWithEveryCommandValidated([Values(8, 12)] int size)
+        {
+            for (uint seed = 1; seed <= 3; seed++)
+            {
+                var s = Season(seed * 41 + (uint)size, size);
+                s.story.rulesVersion = StoryRules.Blame;
+                var run = StorySeasonTests.Play(s, (int)seed * 13 + size);
+                Assert.That(run.final.story.rulesVersion, Is.EqualTo(StoryRules.Blame), "Nothing moves a season's story rules.");
+            }
+        }
+
+        /// <summary>
+        /// Week one's veto meeting, set by hand: a houseguest Head of Household, <paramref name="nominees"/> on the block and
+        /// the veto with <paramref name="holder"/>. The Head of Household dislikes <paramref name="named"/>, likes the rest
+        /// of the house and the player most, so a used veto's replacement is a houseguest.
+        /// </summary>
+        private static void SetTheVetoMeeting(EpisodeState s, string hoh, string[] nominees, string holder, string named)
+        {
+            s.phase = EpisodePhase.VetoMeeting;
+            s.hohId = hoh;
+            s.nominees = nominees.ToList();
+            s.vetoHolderId = holder;
+            s.vetoPlayers = new[] { hoh }.Concat(nominees).Concat(new[] { holder }).Concat(s.Active.Select(c => c.id))
+                .Distinct().Take(EpisodeEngine.VetoPlayerCount(s.Active.Count())).ToList();
+            foreach (var edge in s.relationships.Where(r => r.fromId == hoh))
+                edge.score = edge.toId == named ? -60 : edge.toId == s.playerId ? 90 : 60;
+        }
+
+        /// <summary>A houseguest holds the veto from the block, and saves themselves.</summary>
+        private static EpisodeState SelfSaveMeeting(out string hoh, out string holder)
+        {
+            var s = Season();
+            var npcs = Npcs(s);
+            hoh = npcs[0].id; holder = npcs[1].id;
+            SetTheVetoMeeting(s, hoh, new[] { holder, npcs[2].id }, holder, npcs[3].id);
+            Assert.That(EpisodeEngine.NpcVetoSave(s), Is.EqualTo(holder), "On the block, the holder saves themselves.");
+            return s;
+        }
+
+        /// <summary>A houseguest holds the veto off the block, fond of one nominee and cold to the other, and saves the one.</summary>
+        private static EpisodeState SaveForAnotherMeeting(out string hoh, out string holder)
+        {
+            var s = Season();
+            var npcs = Npcs(s);
+            // The lambdas read a local copy: C# refuses an out parameter inside a lambda (CS1628).
+            string keeper = npcs[3].id, friend = npcs[1].id, other = npcs[2].id;
+            hoh = npcs[0].id; holder = keeper;
+            SetTheVetoMeeting(s, hoh, new[] { friend, other }, keeper, npcs[4].id);
+            s.relationships.First(r => r.fromId == keeper && r.toId == friend).score = 90;
+            s.relationships.First(r => r.fromId == keeper && r.toId == other).score = -60;
+            Assert.That(EpisodeEngine.NpcVetoSave(s), Is.EqualTo(friend), "Off the block, the holder saves a friend.");
+            return s;
+        }
+
+        /// <summary>
+        /// The meeting decided on a copy at <paramref name="rules"/>: a houseguest holder's by Advance, the player's by their
+        /// own command saving <paramref name="playerSaves"/>.
+        /// </summary>
+        private static EpisodeState Resolved(EpisodeState meeting, int rules, string playerSaves = null)
+        {
+            var s = meeting.Clone();
+            s.story.rulesVersion = rules;
+            var command = Command(s, playerSaves == null ? EpisodeCommandKind.Advance : EpisodeCommandKind.ResolveVeto);
+            if (playerSaves != null) { command.useVeto = true; command.targetId = playerSaves; }
+            var after = Apply(s, command);
+            Assert.That(after.vetoResolved, Is.True, "The veto meeting is decided.");
+            Assert.That(after.story.rulesVersion, Is.EqualTo(rules));
+            return after;
+        }
+
+        /// <summary>Who went up in the saved nominee's place: the same houseguest in every twin, never the player.</summary>
+        private static string Replacement(EpisodeState meeting, params EpisodeState[] decided)
+        {
+            var named = decided.Select(d => d.nominees.Single(id => !meeting.nominees.Contains(id))).Distinct().ToList();
+            Assert.That(named, Has.Count.EqualTo(1), "The twins name the same replacement: " + string.Join(", ", named));
+            Assert.That(named[0], Is.Not.EqualTo(meeting.playerId), "A houseguest is named: only houseguests hold grudges.");
+            return named[0];
+        }
+
+        private static GrudgeState Row(EpisodeState s, string holderId, string targetId) =>
+            s.story.grudges.SingleOrDefault(g => g.holderId == holderId && g.targetId == targetId);
 
         // ---------------------------------------------------------------- the vote and the jury
 

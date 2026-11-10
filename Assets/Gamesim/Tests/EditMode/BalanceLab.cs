@@ -33,7 +33,7 @@ namespace Gamesim.Tests.EditMode
     /// into an indexed array; nothing in a row depends on the run's timing or order, so two runs write the
     /// same JSONL byte for byte.</para>
     /// </summary>
-    internal static class BalanceLab
+    internal static partial class BalanceLab
     {
         /// <summary>The longest season the lab will walk before calling it stuck.</summary>
         public const int CommandCap = 6000;
@@ -89,12 +89,20 @@ namespace Gamesim.Tests.EditMode
             /// pair. Shipping never does.
             /// </summary>
             public int storyRules;
+            /// <summary>
+            /// R7's opt-in board answering (R7 build plan C1, A2; the lead's decision Q3): a knowledge-gated player answers the role
+            /// moments' boards before the decision they come before - a player Head of Household's pitches before it nominates, a
+            /// holder's veto meeting asks before it decides the veto - each answer following the decision the player has already
+            /// worked out (<see cref="GatedPolicy.AnswersBoards"/>). Off, as every cell always played, no player answers a board.
+            /// The rules and the seed are the shipped cell's, so arms pair; the oracles are unchanged. Shipping has no such switch.
+            /// </summary>
+            public bool answersBoards;
 
-            /// <summary>The house; a player card, the histories' controls, a held alumni value, held tuning and story rules other than EnableStory's are named only when set, so every earlier cell keeps its name.</summary>
+            /// <summary>The house; a player card, the histories' controls, a held alumni value, held tuning, story rules other than EnableStory's and board answering are named only when set, so every earlier cell keeps its name.</summary>
             public string House => roster + "/" + size.ToString(CultureInfo.InvariantCulture) + "/npc" + npcTicks.ToString(CultureInfo.InvariantCulture)
                 + (playerTemplate == null ? "" : "/as-" + playerTemplate) + (alumniOff ? "/alumni0" : "") + (impressionsOff ? "/impressions0" : "")
                 + (alumniHeld == 0 ? "" : "/alumni" + alumniHeld.ToString(CultureInfo.InvariantCulture)) + (tuningHeld ? "/tuning0" : "")
-                + (storyRules == 0 ? "" : "/story" + storyRules.ToString(CultureInfo.InvariantCulture));
+                + (storyRules == 0 ? "" : "/story" + storyRules.ToString(CultureInfo.InvariantCulture)) + (answersBoards ? "/boards1" : "");
             /// <summary>The house the season's seed is drawn for: the roster and size at budget nought, whatever the cell's budget, so budgets pair.</summary>
             public string SeedHouse => roster + "/" + size.ToString(CultureInfo.InvariantCulture) + "/npc0";
             public string Key => policy + "/" + House + "/" + performance;
@@ -103,6 +111,8 @@ namespace Gamesim.Tests.EditMode
             public Cell HeldAtTuning0() { var held = (Cell)MemberwiseClone(); held.tuningHeld = true; return held; }
             /// <summary>This cell played at story rules other than EnableStory's (<see cref="storyRules"/>): the same seasons, opted in or held.</summary>
             public Cell AtStoryRules(int version) { var at = (Cell)MemberwiseClone(); at.storyRules = CheckedStoryRules(version); return at; }
+            /// <summary>This cell with its player answering the boards (<see cref="answersBoards"/>): the same seasons, the boards answered.</summary>
+            public Cell AnsweringBoards() { var answering = (Cell)MemberwiseClone(); answering.answersBoards = true; return answering; }
         }
 
         /// <summary>
@@ -186,6 +196,17 @@ namespace Gamesim.Tests.EditMode
             public PactRecord pactWatch;
             /// <summary>The season's wall-clock milliseconds on its thread, for the report's pacing (timed: never in the rows).</summary>
             public double seasonMilliseconds;
+            // R7's A1 records (R7 build plan C1): never in the rows, which the goldens hash.
+            /// <summary>
+            /// Each week's prompts put to the player, their answers, the role-week flags and the week's minutes (<see cref="WeekPrompts"/>,
+            /// whose summary documents the format), one entry for every week from 1 to the season's last.
+            /// </summary>
+            public readonly SortedDictionary<int, WeekPrompts> promptsByWeek = new SortedDictionary<int, WeekPrompts>();
+            /// <summary>
+            /// The season's storylines at its end, and the most any state the lab was shown held: the same number, since nothing
+            /// removes a storyline (<see cref="EpisodeEngine.StorylineCeiling"/>), so the end's count is the season's peak.
+            /// </summary>
+            public int storylines, storylinesPeak;
             public bool Won => autopsy != null && autopsy.outcome == SeasonAutopsy.Outcomes.Winner;
             public bool FinalTwo => autopsy != null && (autopsy.outcome == SeasonAutopsy.Outcomes.Winner || autopsy.outcome == SeasonAutopsy.Outcomes.RunnerUp);
         }
@@ -332,10 +353,11 @@ namespace Gamesim.Tests.EditMode
             // The NPC world (B5b): every operation installs a new engine, and every command goes to the world's.
             var world = cell.npcTicks > 0 ? new BalanceLabNpcWorld(engine, cell.npcTicks, run) : null;
             Func<EpisodeEngine> engineOf = world == null ? (Func<EpisodeEngine>)(() => engine) : world.Current;
-            var agent = BalancePolicies.Create(cell.policy);
+            var agent = BalancePolicies.Create(cell.policy, cell.answersBoards);
             var changes = new List<SeasonAutopsy.PhaseChange>();
             run.pace = new StoryPacingTests.Pace { removalWindow = fresh.contestants.Count >= 7 };
             var pariahs = new PariahWatch();
+            var prompts = new PromptWatch();
             var s = engine.Snapshot;
             var watched = s;
             while (s.phase != EpisodePhase.Finished && run.commands < CommandCap)
@@ -344,6 +366,7 @@ namespace Gamesim.Tests.EditMode
                 if (world != null && world.SpendSlice()) s = world.Engine.Snapshot;
                 var applied = Step(engineOf, world == null ? (Func<bool>)null : world.SpendRest, agent, s, run, out var used, out var at);
                 s = at; // The state the command was applied to: the world may have spent the phase's rest before it.
+                run.storylinesPeak = Math.Max(run.storylinesPeak, s.storylines.Count);
                 if (!applied.accepted)
                 {
                     run.error = "week " + s.week + " " + s.phase + "/" + s.evictionStage + ": the walker's " + used.kind + " was refused: " + applied.reason;
@@ -370,6 +393,11 @@ namespace Gamesim.Tests.EditMode
                     watched = after;
                 }
                 run.pace.Watch(used, after);
+                // R7's A1 records: what the command answered, read on the state it was applied to; then what the state it
+                // left puts to the player, as the pace watch reads its asks.
+                prompts.Answer(used, s, run);
+                prompts.Look(after, run);
+                run.storylinesPeak = Math.Max(run.storylinesPeak, after.storylines.Count);
                 bool phaseChange = SeasonAutopsy.IsPhaseChange(s, after);
                 if (phaseChange) changes.Add(new SeasonAutopsy.PhaseChange(s, after));
                 // D1 reads the eviction nights the autopsy reads: the state each closed on, before the phase moved on.
@@ -386,6 +414,8 @@ namespace Gamesim.Tests.EditMode
             run.autopsy = SeasonAutopsy.Of(changes, s);
             run.pace.Close(s);
             Ceremonies(run);
+            run.storylines = s.storylines.Count;
+            PromptWatch.Close(run);
             Saturation(run, s);
             // T0 Q2 and Q3: Game Sense's notes by face and row kind; the player's preparation.
             foreach (var g in GameSense.Evaluate(s).notes.GroupBy(n => n.face + "/" + n.rowKind))

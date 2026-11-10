@@ -261,6 +261,20 @@ namespace Gamesim.Tests.EditMode
         /// <summary>Houseguests offering to swear loyalty to the player.</summary>
         public IReadOnlyList<string> OathOffers => s.oathOpportunities.ToList();
 
+        /// <summary>
+        /// Whether a card waiting on the player takes an answer now, as the screen enables its answers (<see cref="HoHPitches.Answerable"/>):
+        /// under the role moments any pitch on the board; otherwise only the card waiting first.
+        /// </summary>
+        public bool Answerable(string cardId) => HoHPitches.Answerable(s, cardId);
+
+        /// <summary>
+        /// The veto meeting's board, as the screen draws it (<see cref="RoleOffers.BoardAsks"/>): the nominees' veto asks still
+        /// waiting on the player, in the board's public order, and under the role moments the Head of Household's ask to keep
+        /// the block after them (its type <see cref="DealKind.VetoHold"/>). Under Blame the same asks are the meeting's rows.
+        /// </summary>
+        public IReadOnlyList<Offer> BoardAsks => RoleOffers.BoardAsks(s)
+            .Select(d => new Offer { id = d.id, fromId = d.proposerId, type = d.type, aboutId = d.targetId }).ToList();
+
         // ---------------------------------------------------------------- what the screen offers
 
         /// <summary>Whether the open window lets the player say this to this houseguest: the rule the screen asks before it offers a word.</summary>

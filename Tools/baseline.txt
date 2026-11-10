@@ -534,4 +534,7 @@ Gamesim.Uma.DiagnosticsPlayModeTests 10
 # and adds none.
 # Story rules 10's enrolment (2026-11-08) adds two [Explicit] BalanceLabTests (budget nought's rules-10 twins), which
 # the subset does not execute: it ran exactly 16657 of 16657 at the enrolment's tree, green.
-Gamesim.SimulationTests 16657
+# 16663 = 16657 + R7's C1 6 (the lab's prompt records and opt-in board answering: BalanceLabBoardsTests 6; the parts
+# round-trip test BalanceLabTests gains checks, not cases): the subset ran exactly 16663 of 16663 on C1's tree, green
+# (2026-11-09). Lab files only: EditMode and PlayMode +0.
+Gamesim.SimulationTests 16663

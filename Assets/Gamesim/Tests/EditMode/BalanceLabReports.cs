@@ -171,6 +171,12 @@ namespace Gamesim.Tests.EditMode
                 md.AppendLine("Played at story rules " + string.Join(", ", later.Select(v => v.ToString(CultureInfo.InvariantCulture))) + " (BALANCE_STORY), opted in after ApplyFresh.");
                 md.AppendLine();
             }
+            // Nor whether the players answered the boards (BalanceLab.Cell.answersBoards, R7's A2).
+            if (runs.Any(r => r.cell != null && r.cell.answersBoards))
+            {
+                md.AppendLine("The knowledge-gated players answered the role boards before their decisions (BALANCE_BOARDS=1).");
+                md.AppendLine();
+            }
             md.Append(tier.tables(runs));
             File.WriteAllText(Path.Combine(TestContext.CurrentContext.WorkDirectory, "balance", tier.name + ".md"), md.ToString(), new UTF8Encoding(false));
             TestContext.WriteLine(md.ToString());
@@ -295,9 +301,10 @@ namespace Gamesim.Tests.EditMode
         private static string Pct(double rate) => BalanceLab.Pct(rate);
 
         /// <summary>The weeks a season's player spent in the house: up to the week they went out, or every week.</summary>
-        private static IEnumerable<int> WeeksInTheHouse(BalanceLab.SeasonRun r) => Enumerable.Range(1, Math.Max(0, r.autopsy.playerOutWeek > 0 ? r.autopsy.playerOutWeek : r.autopsy.weeks));
+        internal static IEnumerable<int> WeeksInTheHouse(BalanceLab.SeasonRun r) => Enumerable.Range(1, Math.Max(0, r.autopsy.playerOutWeek > 0 ? r.autopsy.playerOutWeek : r.autopsy.weeks));
 
-        private static (double ceremony, double competition, double freeRoam, int decisions) WeekParts(BalanceLab.SeasonRun r, int week) =>
+        /// <summary>A week's minutes in their parts, as the projections and R7's records (<see cref="BalanceLab.WeekPrompts.minutes"/>) sum them.</summary>
+        internal static (double ceremony, double competition, double freeRoam, int decisions) WeekParts(BalanceLab.SeasonRun r, int week) =>
             (r.ceremonyByWeek.TryGetValue(week, out double c) ? c : 0,
              Projection.CompetitionSeconds(r.seed, week, r.autopsy.competitionsPlayedByWeek.TryGetValue(week, out var phases) ? phases : null),
              r.cell.npcTicks, r.decisionsByWeek.TryGetValue(week, out int d) ? d : 0);

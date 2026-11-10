@@ -486,6 +486,9 @@
     <!-- B6b: the headline's cells at budgets 0 and 300, pinned (explicit). -->
     <Compile Include="$(EditMode)BalanceLabGoldens.cs" />
     <Compile Include="$(EditMode)BalanceLabDiagnostics.cs" />
+    <!-- R7 (ROLE-MOMENTS-PLAN): each week's prompts, answers and minutes, out of the rows; the opt-in board answering, by fixtures. -->
+    <Compile Include="$(EditMode)BalanceLabPrompts.cs" />
+    <Compile Include="$(EditMode)BalanceLabBoardsTests.cs" />
 
     <!--
       Several parity tests already carry an #else branch for running outside the editor: without

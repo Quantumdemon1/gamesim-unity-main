@@ -285,7 +285,7 @@ namespace Gamesim.Tests.PlayMode
         /// back and does nothing else - the panel stays open and nothing is committed. Once the moment
         /// has passed a deliberate press works. The fixture is pinned to free time with nothing waiting,
         /// the story on and the house held (InstallFreeTime), because on the director's default season,
-        /// whose story is off, the legacy walk-in watch commits a house event while the cast settles,
+        /// whose story is off, the legacy walk-in watch can commit a house event while the cast settles,
         /// and free time then draws the old column, not the board.
         /// </summary>
         [UnityTest]

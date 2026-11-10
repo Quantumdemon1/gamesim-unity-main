@@ -724,8 +724,8 @@ namespace Gamesim.Tests.EditMode
 
         /// <summary>
         /// The waiting list, the invitation, the conversation and the page: the ask is a question about the veto that goes
-        /// with the decision; the Head of Household opens with the veto; a yes and a no are said as what they are; and the
-        /// page names it, what it binds and that it waits on the player.
+        /// with the decision; it stays on the board, and a keep-the-block deal an invitation does raise opens with the veto;
+        /// a yes and a no are said as what they are; and the page names it, what it binds and that it waits on the player.
         /// </summary>
         [Test]
         public void TheWaitingListTheInvitationTheExchangeAndThePageReadIt()
@@ -736,9 +736,14 @@ namespace Gamesim.Tests.EditMode
             var item = WaitingOnYou.Read(meeting).items.Single(i => i.id == hold.id);
             Assert.That((item.kind, item.lapses, item.lapsesOnAdvance, item.fromId), Is.EqualTo((WaitingOnYou.Kind.VetoAsk, WaitingOnYou.Lapse.VetoDecision, false, hoh)),
                 "A question about the veto, going with the decision the player makes.");
-            var invitation = NpcInvitation.Available(meeting).Single(i => i.RecordId == hold.id);
+            // The Head of Household's own ask stays on the board, never an invitation (R7, Q8); a keep-the-block deal that is no
+            // card - a story's - opens with the veto.
+            Assert.That(NpcInvitation.Available(meeting).Select(i => i.RecordId), Does.Not.Contain(hold.id), "The board's ask is no invitation.");
+            var unboarded = meeting.Clone();
+            HoldOf(unboarded).id = "deal-story-keep";
+            var invitation = NpcInvitation.Available(unboarded).Single(i => i.RecordId == "deal-story-keep");
             Assert.That(invitation.OpeningLine, Is.EqualTo("Can we talk about the veto? I'd like my nominations to stand."));
-            Assert.That(invitation.IsCurrent(meeting), Is.True);
+            Assert.That(invitation.IsCurrent(unboarded), Is.True);
 
             var page = CommitmentsRead.With(meeting, hoh).Single(c => c.id == hold.id);
             Assert.That((page.kind, page.title, page.binds, page.outcome, page.term),

@@ -220,7 +220,16 @@
 # OldSaveAcceptanceTests is 290 on the merge (70 fixtures' four cases each, the manifest case, the two refused cases, the
 # two careers and the alumni-5, dialogue-1, dialogue-2 and story-rules-10 cells' 1 + 1 + 1 + 2 own cases). Counted from
 # the two sides; no run has observed it on the merge.
-Gamesim.EditModeTests 9897
+# 9851 = 9837 + R7's abuse checklist (C2, ROLE-MOMENTS-PLAN R7): the 13 shared RoleAbuseTests cases and the EditMode-only
+# RoleAbusePersistenceTests case, 14. The no-UMA lister counted exactly 9851 (2026-11-09), and the Mono harness ran both
+# classes, 13 of 13 and 1 of 1, passed; no Unity run has observed the floor yet.
+# 9853 = 9851 + the abuse checklist's review (C2): the board ask answered after the veto decision runs in commitment
+# modes 0, 1 and 2, two more RoleAbuseTests cases (15). The no-UMA lister counted exactly 9853 (2026-11-09), and the Mono
+# harness ran both classes, 15 of 15 and 1 of 1, passed; no Unity run has observed the floor yet.
+# 9913 = 9897 + R7's abuse checklist's 16 (9853 - 9837): disjoint cases, so the floor is their sum
+# (the merge of the abuse checklist into role moments R7, 2026-11-09). Counted from the two sides; no run has
+# observed it on the merge.
+Gamesim.EditModeTests 9913
 # The UMA-free build. 1215 = 1236, the count after the consolidation's lanes (S2a, S2b, S4a), less the 7
 # farewell probes moved to Gamesim.DiagnosticsPlayModeTests and the 14 farewell readiness tests that now
 # compile only under GAMESIM_UMA (judged on the UMA cast); 1230 = 1215 + S2d's 7, S4b's 2, S4c's 2 and
@@ -350,7 +359,13 @@ Gamesim.EditModeTests 9897
 # 1498 = 1486 + the rules-2 HUD's 12 shared cases (EpisodePlayModeTests.DialogueRules2Hud: the fallback plea panel, the
 # voter's word, the public rescue and the four-tile reply, each at the standard, larger and largest text), counted from
 # the source and compiled offline (2026-11-08); no Unity run has observed them yet.
-Gamesim.PlayModeTests 1498
+# 1489 = 1486 + R7's abuse checklist (C2), 3 shared tests (EpisodePlayModeTests.RoleAbuse: the board's old yes after a load,
+# and a failed save on a board yes and on a pitch promise), counted offline from the source and the compiled assembly (the
+# no-UMA lister counted 1489, 2026-11-09); not yet run in Unity.
+# 1501 = 1498 + R7's abuse checklist's 3 (1489 - 1486): disjoint cases, so the floor is their sum
+# (the merge of the abuse checklist into role moments R7, 2026-11-09). Counted from the two sides; no run has
+# observed it on the merge.
+Gamesim.PlayModeTests 1501
 # The UMA build of the same assembly, read by a plan built without -WithoutUma. 1281 = the 1241 above + the
 # 40 tests that compile only under GAMESIM_UMA, as run at r1 (2026-10-16): in EpisodePlayModeTests,
 # GroundedFarewell 11, Creator 9, HouseLife 8, Emotes 3, OpeningCaptures 2, and one each in CreatorEntry,
@@ -431,7 +446,12 @@ Gamesim.PlayModeTests 1498
 # 1528 = 1522 + B9's 1 (1523 - 1522) + the quick fixes' 5 (1527 - 1522): disjoint cases, so the floor is their sum (2026-11-06).
 # 1540 = 1528 + the rules-2 HUD's same 12 shared cases, counted from the source; compiled offline without UMA only, and no
 # Unity run has observed them yet (2026-11-08).
-Gamesim.PlayModeTests.UmaBuild 1540
+# 1531 = 1528 + R7's abuse checklist (C2), the same 3 shared EpisodePlayModeTests.RoleAbuse tests, counted from the source
+# and listed in the no-UMA build (2026-11-09); the UMA offline build was not compiled for it. Not yet run in Unity.
+# 1543 = 1540 + R7's abuse checklist's 3 (1531 - 1528): disjoint cases, so the floor is their sum
+# (the merge of the abuse checklist into role moments R7, 2026-11-09). Counted from the two sides; no run has
+# observed it on the merge.
+Gamesim.PlayModeTests.UmaBuild 1543
 # The UMA bodies: runs only where the GAMESIM_UMA define is set (the working tree and the D: copy).
 # 82 = the 89 run on 2026-10-15, less the 7 farewell probes moved to Gamesim.Uma.DiagnosticsPlayModeTests;
 # 85 = 82 + the 3 farewell readiness decision tests (UmaFarewellReadinessDecisionPlayModeTests, 2026-10-16);
@@ -579,4 +599,12 @@ Gamesim.Uma.DiagnosticsPlayModeTests 10
 # (2026-11-09). Lab files only: EditMode and PlayMode +0.
 # 16716 = 16710 + R7's C1 6 (16663 - 16657): disjoint cases, so the floor is their sum (the merge of story rules
 # 10's head 31a9f857 into role moments R7, 2026-11-09). Counted from the two sides; no run has observed it on the merge.
-Gamesim.SimulationTests 16716
+# 16670 = 16657 + R7's abuse checklist (C2, ROLE-MOMENTS-PLAN R7): RoleAbuseTests, 13 cases. The subset ran exactly
+# 16670 of 16670 at C2's tree, green (2026-11-09).
+# 16672 = 16670 + the abuse checklist's review (C2): the board ask answered after the veto decision runs in commitment
+# modes 0, 1 and 2, two more RoleAbuseTests cases (15). The subset ran exactly 16672 of 16672 at the review's tree, green
+# (2026-11-09).
+# 16731 = 16716 + R7's abuse checklist's 15 (16672 - 16657): disjoint cases, so the floor is their sum
+# (the merge of the abuse checklist into role moments R7, 2026-11-09). Counted from the two sides; no run has
+# observed it on the merge.
+Gamesim.SimulationTests 16731

@@ -271,6 +271,16 @@ namespace Gamesim.Tests.PlayMode
             return outcome == null ? null : EpisodeDirector.EventLine(state, outcome);
         }
 
+        // The paragraph the page draws right under its WHAT HAPPENED heading (a heading and a paragraph are one label
+        // each, siblings in the page's order), or null when no heading is up.
+        private string ExchangeFlowNarrated()
+        {
+            var shown = director.GetComponentsInChildren<TMP_Text>(true)
+                .Where(label => label.gameObject.activeInHierarchy).Select(label => label.text).ToList();
+            int heading = shown.FindLastIndex(text => text.Contains("WHAT HAPPENED"));
+            return heading >= 0 && heading + 1 < shown.Count ? shown[heading + 1] : null;
+        }
+
         [UnityTest]
         public IEnumerator ConversationExchange_ASpokenActEndsOnItsCategoryPageWithWhatHappened()
         {
@@ -294,6 +304,7 @@ namespace Gamesim.Tests.PlayMode
                 "The spoken lines hand back to the page the act was chosen on.");
             Assert.That(ShownText(), Does.Contain("WHAT HAPPENED"), "After the spoken lines the page says what came of them,");
             Assert.That(ShownText(), Does.Contain(talkLine), "in the act's own line.");
+            Assert.That(ExchangeFlowNarrated(), Does.Contain(talkLine), "drawn under the heading.");
 
             // Skipped: a promise, its lines passed over, still ends on its result.
             var promised = director.Snapshot;
@@ -310,6 +321,10 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(director.IsConversationExchangePlaying, Is.False);
             Assert.That(ShownText(), Does.Contain("WHAT HAPPENED"));
             Assert.That(ShownText(), Does.Contain(promiseLine), "The newer act's line is the one shown.");
+            string narrated = ExchangeFlowNarrated();
+            Assert.That(narrated, Does.Contain(promiseLine), "The newer act's line is drawn under the heading,");
+            if (promiseLine != talkLine)
+                Assert.That(narrated, Does.Not.Contain(talkLine), "and the first act's line is gone from it.");
             AssertExchangeFlowUnchanged(committed, savedBytes);
 
             // Back to the topics: the result was read on its page, and the wheel does not repeat it.

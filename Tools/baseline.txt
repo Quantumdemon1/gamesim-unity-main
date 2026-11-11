@@ -220,7 +220,10 @@
 # OldSaveAcceptanceTests is 290 on the merge (70 fixtures' four cases each, the manifest case, the two refused cases, the
 # two careers and the alumni-5, dialogue-1, dialogue-2 and story-rules-10 cells' 1 + 1 + 1 + 2 own cases). Counted from
 # the two sides; no run has observed it on the merge.
-Gamesim.EditModeTests 9897
+# 9911 = 9897 + the All-Star intake's 14 (AppearanceAccessoryPlaceTests 8, WardrobeSlotsTests 6): the lister counted
+# 9911 at 290758d2, the Mono harness ran both classes (8 of 8 and 6 of 6), and the intake's targeted Unity batch at
+# 290758d2 ran both among its 68 appearance cases, 68 of 68 (2026-11-11). No full EditMode run has observed 9911.
+Gamesim.EditModeTests 9911
 # The UMA-free build. 1215 = 1236, the count after the consolidation's lanes (S2a, S2b, S4a), less the 7
 # farewell probes moved to Gamesim.DiagnosticsPlayModeTests and the 14 farewell readiness tests that now
 # compile only under GAMESIM_UMA (judged on the UMA cast); 1230 = 1215 + S2d's 7, S4b's 2, S4c's 2 and
@@ -431,7 +434,11 @@ Gamesim.PlayModeTests 1498
 # 1528 = 1522 + B9's 1 (1523 - 1522) + the quick fixes' 5 (1527 - 1522): disjoint cases, so the floor is their sum (2026-11-06).
 # 1540 = 1528 + the rules-2 HUD's same 12 shared cases, counted from the source; compiled offline without UMA only, and no
 # Unity run has observed them yet (2026-11-08).
-Gamesim.PlayModeTests.UmaBuild 1540
+# 1543 = 1540 + the All-Star intake's 3 creator tests (EpisodePlayModeTests' creator pages; compiled with UMA only, so
+# the floor without UMA stays 1498): the lister counted 1543 at 290758d2, and the intake's targeted Unity batch there
+# ran the three among its 132 creator and appearance cases, 132 of 132 (2026-11-11). No full PlayMode run has
+# observed 1543.
+Gamesim.PlayModeTests.UmaBuild 1543
 # The UMA bodies: runs only where the GAMESIM_UMA define is set (the working tree and the D: copy).
 # 82 = the 89 run on 2026-10-15, less the 7 farewell probes moved to Gamesim.Uma.DiagnosticsPlayModeTests;
 # 85 = 82 + the 3 farewell readiness decision tests (UmaFarewellReadinessDecisionPlayModeTests, 2026-10-16);
@@ -447,7 +454,10 @@ Gamesim.PlayModeTests.UmaBuild 1540
 # 133 = main's 132 + the room scope's 1 (RS0's AlwaysAnimate pin): disjoint cases, so the floor is their sum.
 # 134 = 133 + RS4's UmaRoomScopeBodiesPlayModeTests.Bodies_ARebuiltBodyKeepsAlwaysAnimate, compiled in the UMA
 # offline build (2026-11-01); not yet run in Unity.
-Gamesim.Uma.PlayModeTests 134
+# 153 = 134 + the All-Star intake's 19 UmaWardrobeContractPlayModeTests cases (every wardrobe catalog entry held to
+# the part contract): the intake's targeted Unity batch at 290758d2 ran the whole assembly, 153 of 153 (2026-11-11),
+# on a vendor with the triangle patch applied.
+Gamesim.Uma.PlayModeTests 153
 # Diagnostics: feasibility and diagnostic probes, never shipping acceptance. They compile only under
 # GAMESIM_DIAGNOSTICS, which only a diagnostic run adds to the test copy (GAMESIM_DIAGNOSTICS=1 with
 # sync-and-run.sh or the locked runner); the UMA one needs GAMESIM_UMA too. The floor counts that they

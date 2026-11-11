@@ -310,9 +310,23 @@ namespace Gamesim.Uma.Editor
                 {
                     var game = (SortedDictionary<string, double>)gameReadback;
                     double worst = 0;
+                    var apart = new List<string>();
                     for (int d = 0; d < c.DnaNames.Length; d++)
-                        if (game.TryGetValue(c.DnaNames[d], out double g)) worst = Math.Max(worst, Math.Abs(g - c.Readback[d]));
+                        if (game.TryGetValue(c.DnaNames[d], out double g))
+                        {
+                            double gap = Math.Abs(g - c.Readback[d]);
+                            worst = Math.Max(worst, gap);
+                            // A name the bare body requested at the game's value and read back elsewhere: not the game's merge.
+                            if (!double.IsNaN(c.Requested[d]) && gap > FaceFitWork.ReadbackTolerance)
+                                apart.Add(c.DnaNames[d] + " game " + g.ToString("R", CultureInfo.InvariantCulture) + " bare " + c.Readback[d].ToString("R", CultureInfo.InvariantCulture));
+                        }
+                    if (apart.Count > 0)
+                    {
+                        report("error: " + sample.Id + ": the bare body does not reproduce the game's read-back (tolerance 1e-5): " + string.Join("; ", apart));
+                        yield break;
+                    }
                     extra.Set("gameVsBareMaxDifference", worst);
+                    extra.Set("gameVsBareAgree", worst <= FaceFitWork.ReadbackTolerance);
                 }
                 foreach (var pair in extra) c.Extra.Set(pair.Key, pair.Value);
                 if (topologyKey == null)

@@ -370,7 +370,7 @@ namespace Gamesim.Uma.Editor
             .Set("samples.npz", "positions/normals (S,V,3) float32 metres in the export frame; requested/readback (S,D) float64 in dna_names order, requested NaN where the sample did not request the name; slot_names/slot_offset/slot_count: rows offset..offset+count-1 are that slot's vertices, so the slot-local index is row - offset; triangles (T,3) rows; uv0 (V,2); bone_indices/bone_weights (V,4) the four largest skin weights; bone_names, bone_parents (-1: none), bind_poses (B,4,4) row-major; bone_local (S,B,10) local position, rotation xyzw, scale after DNA; bone_position (S,B,3) export frame; vertex_region (V,) index into region_names; dominant_bone (V,) the bone that decided the region (-1: none); moved_sample/moved_vertex/moved_mm: every vertex of every sample farther than movedThresholdMm from baseline-a")
             .Set("baseline", "source house = Gamesim's house proportions; look = that look's own merge (the names the game sets, house then the look's Dna, at the values read back from the game's build); values = given. In a race sweep every name the source does not set is requested at the default UMA holds for it (its DNA asset's defaultValue), listed per name in baselineNames with its source and read-back.")
             .Set("unrequestedReadBack", "every name read back from a fresh bare body that requested the house values and nothing else: what the race leaves an unrequested name at (information only)")
-            .Set("person samples", "built through the game's own entry (UmaBodyProvider.TryCreate with the look's appearance id) and read back; then a fresh bare body requesting only the names the game's merge sets (the keys of the house proportions and of the look's Dna) at the game's read-back values, every other name left where the race builds it. gameReadback and gameVsBareMaxDifference record both read-backs. Built twice (a, b): their largest difference is that person's noise floor.")
+            .Set("person samples", "built through the game's own entry (UmaBodyProvider.TryCreate with the look's appearance id) and read back; then a fresh bare body requesting only the names the game's merge sets (the keys of the house proportions and of the look's Dna) at the game's read-back values, every other name left where the race builds it. gameReadback and gameVsBareMaxDifference record both read-backs; gameVsBareAgree is true when every name agrees within 1e-5, and a name the bare body requested that does not stops the run. Built twice (a, b): their largest difference is that person's noise floor.")
             .Set("noiseFloorMm", "the largest vertex distance between two builds of the same request (baseline-a and baseline-b, or a person's a and b)")
             .Set("regions", "rule dominant-bone-v1 (regionSteps): inside the first head slot, the bone carrying a vertex's largest skin weight decides face, ears, skull, neck or body; regionBoneMap lists every bone that decided a vertex, regionCounts the vertices of each region per slot")
             .Set("readbackWithin1e5", "every DNA name the sample requested reads back from the built body within 1e-5 of the request")
@@ -438,7 +438,7 @@ namespace Gamesim.Uma.Editor
                     entry.Set(key, record[key]);
                 entry.Set("topologyChanged", changed);
                 if (plan[i].Overrides.Count > 0) entry.Set("overrides", new SortedDictionary<string, double>(plan[i].Overrides, StringComparer.Ordinal));
-                foreach (var key in new[] { "gameReadback", "gameVsBareMaxDifference" })
+                foreach (var key in new[] { "gameReadback", "gameVsBareMaxDifference", "gameVsBareAgree" })
                     if (record.TryGet(key, out var value)) entry.Set(key, value);
                 if (!changed && positions.Length == baseline.Length)
                 {
@@ -472,7 +472,8 @@ namespace Gamesim.Uma.Editor
                 var bb = plan.Any(p => p.Id == other) ? Floats(work, other, "positions") : null;
                 persons.Add(new JsonObject().Set("appearanceId", person.AppearanceId).Set("sample", person.Id)
                     .Set("noiseFloorMm", bb != null && bb.Length == a.Length ? (object)FaceFitStats.MaxMm(a, bb, 0, a.Length / 3) : null)
-                    .Set("gameVsBareMaxDifference", records[plan.IndexOf(person)]["gameVsBareMaxDifference"]));
+                    .Set("gameVsBareMaxDifference", records[plan.IndexOf(person)]["gameVsBareMaxDifference"])
+                    .Set("gameVsBareAgree", records[plan.IndexOf(person)]["gameVsBareAgree"]));
             }
             manifest.Set("persons", persons);
 
@@ -578,7 +579,8 @@ namespace Gamesim.Uma.Editor
                         .Set("topologyChanged", changed)
                         .Set("noiseFloorMm", repeat.Length == person.Length ? (object)FaceFitStats.MaxMm(person, repeat, 0, v) : null)
                         .Set("personSample", personA)
-                        .Set("gameVsBareMaxDifference", ReadRecord(work, personA)["gameVsBareMaxDifference"]);
+                        .Set("gameVsBareMaxDifference", ReadRecord(work, personA)["gameVsBareMaxDifference"])
+                        .Set("gameVsBareAgree", ReadRecord(work, personA)["gameVsBareAgree"]);
                     if (!changed)
                     {
                         var largest = Largest(positions, person, topology);

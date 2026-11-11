@@ -211,7 +211,7 @@ namespace Gamesim.Uma.Tests
         /// A marked finish works only on a material the part has to itself: UMA draws Atlas slots that
         /// share a UMAMaterial (by objectName) with one material. UseExistingMaterial draws the project
         /// asset itself, which the flattening pass would change for every character: such a part of the
-        /// game's own content carries the mark.
+        /// game's own content carries the mark, and a marked material is always of that type.
         /// </summary>
         [UnityTest]
         public IEnumerator EveryAuthoredFinishPartHasAMaterialOfItsOwn()
@@ -229,12 +229,14 @@ namespace Gamesim.Uma.Tests
                 {
                     bool keeps = UmaStylizer.KeepsAuthoredFinish(material.material);
                     if (Authored(entry) && material.materialType == UMAMaterial.MaterialType.UseExistingMaterial)
-                        Assert.That(keeps, Is.True, entry.id + ": " + slot + " draws its project material itself; mark it.");
+                        Assert.That(keeps, Is.True, entry.id + ": " + slot + " draws its project material itself (UseExistingMaterial), which "
+                            + "only metal jewellery and watches may, and they must carry " + UmaStylizer.AuthoredPbrTag + " = "
+                            + UmaStylizer.AuthoredPbrVersion + ". Cloth, hair, shoes and caps use an Atlas or NoAtlas material.");
                     if (!keeps) continue;
                     marked.Add(material);
-                    Assert.That(material.materialType == UMAMaterial.MaterialType.NoAtlas
-                        || material.materialType == UMAMaterial.MaterialType.UseExistingMaterial, Is.True,
-                        entry.id + ": a marked finish needs a material of its own, never an atlas.");
+                    // Ruling C8: a marked finish sits only on a UseExistingMaterial material, as contract item 12 says.
+                    Assert.That(material.materialType, Is.EqualTo(UMAMaterial.MaterialType.UseExistingMaterial),
+                        entry.id + ": a marked finish is drawn from the part's own project material (UseExistingMaterial), never an atlas or a NoAtlas copy.");
                     Assert.That(MarkedFinishSlots, Does.Contain(recipe.wardrobeSlot),
                         entry.id + ": the finish mark is for metal jewellery and watches.");
                     var item = catalog.Items.FirstOrDefault(value => value.Id == entry.id);

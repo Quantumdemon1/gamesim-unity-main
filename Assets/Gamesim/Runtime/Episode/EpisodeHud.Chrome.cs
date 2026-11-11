@@ -282,9 +282,11 @@ namespace Gamesim.Episode
             // A finished season still sends the player to the episode screen - the rail's button
             // and the station's icon both call it that - and then says what waits there. "Next
             // stop: season report" named a place no control, icon or beacon in the house is called:
-            // the report is a button inside the episode screen, and only once it is open.
-            : state.phase == EpisodePhase.Finished ? "Next stop: episode screen · season report"
-            : "Next stop: episode screen";
+            // the report is a button inside the episode screen, and only once it is open. While the
+            // screen is open the line says the player is there, as the diary's lines do (UI-UX U1).
+            : state.phase == EpisodePhase.Finished
+                ? (director != null && director.IsPhasePanelOpen ? "Here: the episode screen · season report" : "Next stop: episode screen · season report")
+            : director != null && director.IsPhasePanelOpen ? "Here: the episode screen" : "Next stop: episode screen";
 
         /// <summary>The objective chip's endgame mark, named apart from the objectives card's row marks.</summary>
         public const string ObjectiveCrownName = "Objective crown";

@@ -407,6 +407,8 @@
     <Compile Include="$(EditMode)TuningCopyTests.cs" />
     <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/FinalChoiceWords.cs" />
     <Compile Include="$(EditMode)FinalChoiceWordsTests.cs" />
+    <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/ObjectiveWords.cs" />
+    <Compile Include="$(EditMode)ObjectiveWordsTests.cs" />
     <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/CompetitionMiniGames.cs" />
     <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/MiniGameRun.cs" />
     <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/MiniGameRun.Dice.cs" />

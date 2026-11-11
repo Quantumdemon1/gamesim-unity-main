@@ -12,12 +12,16 @@ namespace Gamesim.Uma.Tests
 {
     /// <summary>
     /// U5: which form of a Face recipe paints the head on each race (the face-surface route; the result picks the form
-    /// the contract names). A runtime Face recipe in the DIRECT form (one slot entry naming the head slot
-    /// UMA30_Body_UDIM1001_slot, as the stock Freckled_Light_U recipe has it) and one in the PLACEHOLDER form (a slot entry
-    /// handed to the first built slot tagged Face, as the stock Adult_F recipe has it), each built on both races. Each
-    /// case asserts what its form must do to be the contract's: the built recipe holds exactly one slot made from the head
-    /// slot, the recipe's overlay is in that slot's list, and the generated head texture under it differs from a bare
-    /// build's. A red case is information (that form does not work on that race), never something to weaken.
+    /// the contract names). Both stock forms are tag placeholders: UMA unpacks a slot entry with isPlaceholderSlot true
+    /// as a slot with no asset and hands its overlays to the built slots carrying its tag. The UDIM-id placeholder (one
+    /// entry with the slot id UMA30_Body_UDIM1001_slot and the tag Face, as the stock Freckled_Light_U recipe has it) and
+    /// the Face placeholder (the stock Adult_F recipe's 'Face Placeholder' entry) are each built on both races. Each case
+    /// first asserts that its copied recipe's one entry is still a placeholder tagged Face (this fixture proves the
+    /// placeholder form only; the asset form, isPlaceholderSlot false, is not offered and not tested), then what the
+    /// form must do to be the contract's: the built recipe holds exactly one slot made from the head slot, the recipe's
+    /// overlay is in that slot's list, and the generated head texture under it differs from a control build that wears
+    /// the same recipe with a transparent overlay (so the recipe's shared colours cannot pass for the paint), in the
+    /// paint's own direction. A red case is information (that form does not work on that race), never something to weaken.
     ///
     /// <para>The overlay is a runtime copy of the stock one with a solid texture, so the paint is unmistakable; nothing
     /// is written to the project, and every runtime entry is taken out of the UMA index again.</para>
@@ -25,8 +29,9 @@ namespace Gamesim.Uma.Tests
     public sealed class UmaFaceFormPlayModeTests
     {
         private const string HeadSlot = "UMA30_Body_UDIM1001_slot";
-        private const string DirectSource = "Freckled_Light_U_Wardrobe", DirectOverlay = "Freckled_Light_U_Overlay";
-        private const string PlaceholderSource = "Adult_F_Wardrobe", PlaceholderOverlay = "Adult_F_Overlay";
+        private const string UdimPlaceholderSource = "Freckled_Light_U_Wardrobe", UdimPlaceholderOverlay = "Freckled_Light_U_Overlay";
+        private const string FacePlaceholderSource = "Adult_F_Wardrobe", FacePlaceholderOverlay = "Adult_F_Overlay";
+        private static readonly Color Paint = new Color(1f, 0f, 1f, 1f), Clear = new Color(0f, 0f, 0f, 0f);
 
         private GameObject stage;
         private readonly List<UnityEngine.Object> made = new List<UnityEngine.Object>();
@@ -55,42 +60,83 @@ namespace Gamesim.Uma.Tests
             LogAssert.ignoreFailingMessages = false;
         }
 
-        [UnityTest] public IEnumerator DirectForm_PaintsTheOneHeadSlot_OnTheMaleBody() => Case(UmaCastLibrary.MaleRace, DirectSource, DirectOverlay);
-        [UnityTest] public IEnumerator DirectForm_PaintsTheOneHeadSlot_OnTheFemaleBody() => Case(UmaCastLibrary.FemaleRace, DirectSource, DirectOverlay);
-        [UnityTest] public IEnumerator PlaceholderForm_PaintsTheOneHeadSlot_OnTheMaleBody() => Case(UmaCastLibrary.MaleRace, PlaceholderSource, PlaceholderOverlay);
-        [UnityTest] public IEnumerator PlaceholderForm_PaintsTheOneHeadSlot_OnTheFemaleBody() => Case(UmaCastLibrary.FemaleRace, PlaceholderSource, PlaceholderOverlay);
+        [UnityTest] public IEnumerator UdimIdPlaceholderForm_PaintsTheOneHeadSlot_OnTheMaleBody() => Case(UmaCastLibrary.MaleRace, UdimPlaceholderSource, UdimPlaceholderOverlay);
+        [UnityTest] public IEnumerator UdimIdPlaceholderForm_PaintsTheOneHeadSlot_OnTheFemaleBody() => Case(UmaCastLibrary.FemaleRace, UdimPlaceholderSource, UdimPlaceholderOverlay);
+        [UnityTest] public IEnumerator FacePlaceholderForm_PaintsTheOneHeadSlot_OnTheMaleBody() => Case(UmaCastLibrary.MaleRace, FacePlaceholderSource, FacePlaceholderOverlay);
+        [UnityTest] public IEnumerator FacePlaceholderForm_PaintsTheOneHeadSlot_OnTheFemaleBody() => Case(UmaCastLibrary.FemaleRace, FacePlaceholderSource, FacePlaceholderOverlay);
 
         private IEnumerator Case(string race, string sourceRecipe, string sourceOverlay)
         {
             yield return null;
-            string form = sourceRecipe == DirectSource ? "direct" : "placeholder";
+            string form = sourceRecipe == UdimPlaceholderSource ? "udim-id placeholder" : "face placeholder";
             var index = UMAAssetIndexer.Instance;
             Assert.That(index, Is.Not.Null);
             Assert.That(index.Generator, Is.Not.Null, "UMA has a generator");
 
-            // The overlay: the stock one's copy with a solid magenta texture, under a name of its own.
+            // The probe recipe paints solid magenta; the control wears the same recipe with a transparent overlay, so the
+            // two builds differ in the paint alone (the copied recipe's shared colours are on both).
+            var probe = MakeRecipe(race, sourceRecipe, sourceOverlay, Paint, "paint");
+            var control = MakeRecipe(race, sourceRecipe, sourceOverlay, Clear, "clear");
+
+            // The precondition, read as UMA reads it (the unpacked slot list): the one entry is a placeholder tagged Face.
+            var entries = probe.recipe.PackedLoad().slotsV3.Where(slot => slot != null && !string.IsNullOrEmpty(slot.id)).ToArray();
+            string described = string.Join("; ", entries.Select(e => "'" + e.id + "' isPlaceholderSlot " + e.isPlaceholderSlot + " Tags [" + string.Join(", ", e.Tags ?? new string[0]) + "]"));
+            Assert.That(entries.Length == 1 && entries[0].isPlaceholderSlot && entries[0].Tags != null && entries[0].Tags.Contains("Face"), Is.True,
+                "the stock recipe " + sourceRecipe + "'s form changed: U5 proves the placeholder form only (one slot entry, isPlaceholderSlot true, tagged Face); it has " + described);
+
+            var plain = new Built();
+            yield return Build(race, control.recipe, plain);
+            var painted = new Built();
+            yield return Build(race, probe.recipe, painted);
+
+            // Exactly one built slot made from the head slot (UMA's baked copy of it counts as it).
+            var slots = painted.Avatar.umaData.umaRecipe.slotDataList.Where(slot => slot != null).ToArray();
+            var heads = slots.Where(slot => slot.slotName != null && (slot.slotName == HeadSlot || slot.slotName.StartsWith(HeadSlot + "_baked", StringComparison.Ordinal))).ToArray();
+            var receivers = slots.Where(slot => slot.GetOverlayList().Any(o => o != null && o.overlayName == probe.overlay.name)).Select(slot => slot.slotName).ToArray();
+            Debug.Log("[face form] " + form + " form on " + race + ": entry " + described + "; the overlay went to [" + string.Join(", ", receivers) + "]");
+            Debug.Log("[face form] " + form + " form on " + race + ": built slots " + string.Join(", ", slots.Select(slot => slot.slotName + "[" + string.Join("+", slot.GetOverlayList().Where(o => o != null).Select(o => o.overlayName)) + "]")));
+            Assert.That(heads.Length, Is.EqualTo(1), "the " + form + " form on " + race + " builds exactly one head slot; built: " + string.Join(", ", heads.Select(h => h.slotName)));
+            var head = heads[0];
+            Assert.That(head.GetOverlayList().Any(o => o != null && o.overlayName == probe.overlay.name), Is.True,
+                "the " + form + " form's overlay is on the head slot on " + race + "; there: " + string.Join(", ", head.GetOverlayList().Where(o => o != null).Select(o => o.overlayName)));
+
+            // The generated head texture under it differs from the control's, and toward the paint: magenta lifts red and
+            // blue against green.
+            var plainMean = HeadMean(plain.Avatar, out string plainWhere);
+            var paintedMean = HeadMean(painted.Avatar, out string paintedWhere);
+            float apart = Mathf.Abs(plainMean.r - paintedMean.r) + Mathf.Abs(plainMean.g - paintedMean.g) + Mathf.Abs(plainMean.b - paintedMean.b);
+            float Magenta(Color c) => (c.r + c.b) / 2f - c.g;
+            Debug.Log("[face form] " + form + " form on " + race + ": head texture mean, control (transparent overlay) " + plainMean + " (" + plainWhere + "), painted " + paintedMean
+                + " (" + paintedWhere + "), apart " + apart + ", magenta " + Magenta(plainMean) + " -> " + Magenta(paintedMean));
+            Assert.That(apart, Is.GreaterThan(.05f), "the " + form + " form's paint reaches the generated head texture on " + race);
+            Assert.That(Magenta(paintedMean) - Magenta(plainMean), Is.GreaterThan(.02f), "and it is the magenta paint that reaches it on " + race);
+        }
+
+        /// <summary>A runtime copy of a stock Face recipe for one race, naming a copy of its overlay filled with one colour; both join the index.</summary>
+        private (UMAWardrobeRecipe recipe, OverlayDataAsset overlay) MakeRecipe(string race, string sourceRecipe, string sourceOverlay, Color fill, string what)
+        {
+            var index = UMAAssetIndexer.Instance;
             var stockOverlay = index.GetAsset<OverlayDataAsset>(sourceOverlay);
             Assert.That(stockOverlay, Is.Not.Null, sourceOverlay + " is in the Global Library");
-            string tag = Guid.NewGuid().ToString("N").Substring(0, 10);
+            string tag = what + "_" + Guid.NewGuid().ToString("N").Substring(0, 10);
             var overlay = UnityEngine.Object.Instantiate(stockOverlay);
-            overlay.name = "GamesimFaceProbe_" + form + "_" + tag;
+            overlay.name = "GamesimFaceProbe_" + tag;
             overlay._oldOverlayName = overlay.name;
-            var paint = new Texture2D(256, 256, TextureFormat.RGBA32, false) { name = overlay.name + "_Texture" };
-            paint.SetPixels(Enumerable.Repeat(new Color(1f, 0f, 1f, 1f), 256 * 256).ToArray());
-            paint.Apply();
+            var texture = new Texture2D(256, 256, TextureFormat.RGBA32, false) { name = overlay.name + "_Texture" };
+            texture.SetPixels(Enumerable.Repeat(fill, 256 * 256).ToArray());
+            texture.Apply();
             var textures = overlay.textureList;
             Assert.That(textures, Is.Not.Empty, sourceOverlay + " has a texture to replace");
-            textures[0] = paint;
-            made.Add(overlay); made.Add(paint);
+            textures[0] = texture;
+            made.Add(overlay); made.Add(texture);
             Assert.That(index.AddAssetItem(new AssetItem(typeof(OverlayDataAsset), overlay.name, "", overlay), noDirty: true), Is.True, "the probe overlay joins the index");
             indexed.Add((typeof(OverlayDataAsset), overlay.name));
 
-            // The recipe: the stock one's copy, for this race, naming the probe overlay instead of its own.
             var stockRecipe = index.GetAsset<UMAWardrobeRecipe>(sourceRecipe);
             Assert.That(stockRecipe, Is.Not.Null, sourceRecipe + " is in the Global Library");
             Assert.That(stockRecipe.recipeString, Does.Contain("\"" + sourceOverlay + "\""), sourceRecipe + " names " + sourceOverlay);
             var recipe = UnityEngine.Object.Instantiate(stockRecipe);
-            recipe.name = "GamesimFaceProbe_" + form + "_Recipe_" + tag;
+            recipe.name = "GamesimFaceProbe_Recipe_" + tag;
             recipe.compatibleRaces = new List<string> { race };
             recipe.recipeString = stockRecipe.recipeString.Replace("\"" + sourceOverlay + "\"", "\"" + overlay.name + "\"");
             recipe.hideFlags = HideFlags.DontSave;
@@ -98,29 +144,7 @@ namespace Gamesim.Uma.Tests
             Assert.That(recipe.wardrobeSlot, Is.EqualTo("Face"));
             Assert.That(index.AddAssetItem(new AssetItem(typeof(UMAWardrobeRecipe), recipe.name, "", recipe), noDirty: true), Is.True, "the probe recipe joins the index");
             indexed.Add((typeof(UMAWardrobeRecipe), recipe.name));
-            string formSlot = recipe.PackedLoad().slotsV3.First(slot => slot != null && !string.IsNullOrEmpty(slot.id)).id;
-            Debug.Log("[face form] " + form + " form on " + race + ": the recipe's slot entry is '" + formSlot + "'");
-
-            var bare = new Built();
-            yield return Build(race, null, bare);
-            var painted = new Built();
-            yield return Build(race, recipe, painted);
-
-            // Exactly one built slot made from the head slot (UMA's baked copy of it counts as it).
-            var slots = painted.Avatar.umaData.umaRecipe.slotDataList.Where(slot => slot != null).ToArray();
-            var heads = slots.Where(slot => slot.slotName != null && (slot.slotName == HeadSlot || slot.slotName.StartsWith(HeadSlot + "_baked", StringComparison.Ordinal))).ToArray();
-            Debug.Log("[face form] " + form + " form on " + race + ": built slots " + string.Join(", ", slots.Select(slot => slot.slotName + "[" + string.Join("+", slot.GetOverlayList().Where(o => o != null).Select(o => o.overlayName)) + "]")));
-            Assert.That(heads.Length, Is.EqualTo(1), "the " + form + " form on " + race + " builds exactly one head slot; built: " + string.Join(", ", heads.Select(h => h.slotName)));
-            var head = heads[0];
-            Assert.That(head.GetOverlayList().Any(o => o != null && o.overlayName == overlay.name), Is.True,
-                "the " + form + " form's overlay is on the head slot on " + race + "; there: " + string.Join(", ", head.GetOverlayList().Where(o => o != null).Select(o => o.overlayName)));
-
-            // The generated head texture under it differs from a bare body's.
-            var bareMean = HeadMean(bare.Avatar, out string bareWhere);
-            var paintedMean = HeadMean(painted.Avatar, out string paintedWhere);
-            float apart = Mathf.Abs(bareMean.r - paintedMean.r) + Mathf.Abs(bareMean.g - paintedMean.g) + Mathf.Abs(bareMean.b - paintedMean.b);
-            Debug.Log("[face form] " + form + " form on " + race + ": head texture mean, bare " + bareMean + " (" + bareWhere + "), painted " + paintedMean + " (" + paintedWhere + "), apart " + apart);
-            Assert.That(apart, Is.GreaterThan(.05f), "the " + form + " form's paint reaches the generated head texture on " + race);
+            return (recipe, overlay);
         }
 
         private sealed class Built { public DynamicCharacterAvatar Avatar; }
@@ -128,9 +152,9 @@ namespace Gamesim.Uma.Tests
         /// <summary>A bare body of the race (as the game sets an avatar up, no default recipes), wearing <paramref name="recipe"/> if one is given.</summary>
         private IEnumerator Build(string race, UMAWardrobeRecipe recipe, Built into)
         {
-            var root = new GameObject("face form body " + race + (recipe != null ? " painted" : " bare"));
+            var root = new GameObject("face form body " + race + " " + (recipe != null ? recipe.name : "bare"));
             root.transform.SetParent(stage.transform, false);
-            root.transform.localPosition = new Vector3(recipe != null ? 2f : -2f, 0f, 0f);
+            root.transform.localPosition = new Vector3(2f * stage.transform.childCount, 0f, 0f);
             root.AddComponent<Animator>();
             var avatar = root.AddComponent<DynamicCharacterAvatar>();
             avatar.activeRace.name = race;

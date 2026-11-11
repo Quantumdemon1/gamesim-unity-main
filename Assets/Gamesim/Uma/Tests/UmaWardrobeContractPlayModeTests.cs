@@ -594,16 +594,26 @@ namespace Gamesim.Uma.Tests
             }
         }
 
+        /// <summary>
+        /// Each marked material of the part is drawn with the values it was authored with. The drawn
+        /// material is found by identity (UseExistingMaterial draws the asset itself), else by name (should
+        /// UMA draw a copy: an Instantiate keeps the name and adds a suffix), and only failing both among
+        /// the marked materials of its shader. The round builder wears at most one part with a
+        /// marked finish on an avatar, so no other part's material can stand in for this one's.
+        /// </summary>
         private static void AssertFinishes(DynamicCharacterAvatar avatar, string id, IEnumerable<Finish> finishes, string when)
         {
             var drawn = avatar.GetComponentsInChildren<Renderer>(true).SelectMany(renderer => renderer.sharedMaterials)
-                .Where(UmaStylizer.KeepsAuthoredFinish).ToList();
+                .Where(value => value != null && UmaStylizer.KeepsAuthoredFinish(value)).ToList();
             foreach (var finish in finishes)
             {
-                var material = drawn.FirstOrDefault(value => value == finish.Source || value.shader == finish.Source.shader);
-                Assert.That(material, Is.Not.Null, id + ": its marked material is drawn " + when + ".");
-                foreach (var value in finish.Values)
-                    Assert.That(material.GetFloat(value.Key), Is.EqualTo(value.Value).Within(.001f), id + " keeps its authored finish " + when + ".");
+                var own = drawn.Where(value => value == finish.Source).ToList();
+                if (own.Count == 0) own = drawn.Where(value => value.name.StartsWith(finish.Source.name, StringComparison.Ordinal)).ToList();
+                if (own.Count == 0) own = drawn.Where(value => value.shader == finish.Source.shader).ToList();
+                Assert.That(own, Is.Not.Empty, id + ": its marked material " + finish.Source.name + " is drawn " + when + ".");
+                bool Keeps(Material material) => finish.Values.All(value => Mathf.Abs(material.GetFloat(value.Key) - value.Value) <= .001f);
+                Assert.That(own.Any(Keeps), Is.True, id + " keeps the authored finish of " + finish.Source.name + " " + when + ": drawn "
+                    + string.Join("; ", own.Select(material => material.name + " " + string.Join(",", finish.Values.Keys.Select(key => material.GetFloat(key).ToString("0.###"))))));
             }
         }
 
@@ -636,12 +646,15 @@ namespace Gamesim.Uma.Tests
             int round = 0;
             while (parts.Count > 0)
             {
-                // One avatar per body per round, wearing at most one part per place.
+                // One avatar per body per round, wearing at most one part per place, and at most one part
+                // with a marked finish: two marked metal parts usually share a shader, and each part's
+                // finish is read off what the avatar draws.
                 foreach (var group in parts.GroupBy(part => part.Body).ToList())
                 {
                     var taken = new List<(AppearanceItem Item, string Body, string[] Slots, List<Finish> Finishes)>();
                     foreach (var part in group)
-                        if (taken.All(other => other.Item.Slot != part.Item.Slot && !WardrobeSlots.Twins(other.Item.Slot).Contains(part.Item.Slot)))
+                        if (taken.All(other => other.Item.Slot != part.Item.Slot && !WardrobeSlots.Twins(other.Item.Slot).Contains(part.Item.Slot)
+                            && (other.Finishes.Count == 0 || part.Finishes.Count == 0)))
                             taken.Add(part);
                     var appearance = catalog.ChangeBody(catalog.Materialize(CharacterAppearance.Preset("player")), group.Key);
                     foreach (var part in taken) AppearanceEditing.Wear(appearance, part.Item, catalog);

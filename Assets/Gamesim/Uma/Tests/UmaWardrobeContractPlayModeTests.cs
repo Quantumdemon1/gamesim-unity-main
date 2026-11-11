@@ -476,8 +476,9 @@ namespace Gamesim.Uma.Tests
             yield return null;
             pieces = UmaAllStarPiecesPlayModeTests.TaggedForStar(new UmaAppearanceCatalog(), duplicate: false);
             EachIdMaterializesIntoItsRecipesSlot(UmaAllStarPiecesPlayModeTests.TaggedCatalog(pieces));
+            var removed = pieces;
             RemoveTaggedPieces();
-            UmaAllStarPiecesPlayModeTests.AssertNoTaggedEntryInstalled();
+            UmaAllStarPiecesPlayModeTests.AssertNothingLeft(removed);
         }
 
         [UnityTest]
@@ -486,8 +487,9 @@ namespace Gamesim.Uma.Tests
             yield return null;
             pieces = UmaAllStarPiecesPlayModeTests.TaggedForStar(new UmaAppearanceCatalog(), duplicate: false);
             NoLookWearsAUmaItemAndItsTwin(UmaAllStarPiecesPlayModeTests.TaggedCatalog(pieces));
+            var removed = pieces;
             RemoveTaggedPieces();
-            UmaAllStarPiecesPlayModeTests.AssertNoTaggedEntryInstalled();
+            UmaAllStarPiecesPlayModeTests.AssertNothingLeft(removed);
         }
 
         [UnityTest]

@@ -34,9 +34,12 @@ namespace Gamesim.Uma.Tests
             public readonly UMAAssetIndexer Index = UMAAssetIndexer.Instance;
             public readonly UmaWardrobeCatalog Extension = ScriptableObject.CreateInstance<UmaWardrobeCatalog>();
             public readonly Dictionary<string, UMAWardrobeRecipe> Recipes = new Dictionary<string, UMAWardrobeRecipe>(StringComparer.Ordinal);
-            private readonly int originalCount;
+            /// <summary>The clones' names in the index, and what the installed content held before them (AssertNothingLeft).</summary>
+            public readonly List<string> Names = new List<string>();
+            public readonly int OriginalCount;
+            public readonly string[] TaggedBefore = InstalledTaggedIds();
 
-            public Pieces() { Extension.name = "All-Star pieces fixture"; originalCount = Index.SerializedItems.Count; }
+            public Pieces() { Extension.name = "All-Star pieces fixture"; OriginalCount = Index.SerializedItems.Count; }
 
             /// <summary>A hidden entry tagged for <paramref name="tags"/>, cloned from <paramref name="source"/> (re-slotted when <paramref name="slot"/> is given).</summary>
             public void Add(string id, AppearanceItem source, UmaAppearanceCatalog installed, string slot, params string[] tags)
@@ -46,6 +49,7 @@ namespace Gamesim.Uma.Tests
                 recipe.hideFlags = HideFlags.DontSave;
                 if (slot != null) recipe.wardrobeSlot = slot;
                 Recipes.Add(id, recipe);
+                Names.Add(recipe.name);
                 Assert.That(Index.AddAssetItem(new AssetItem(typeof(UMAWardrobeRecipe), recipe.name, "", recipe), noDirty: true), Is.True);
                 Extension.entries.Add(new UmaWardrobeEntry { id = id, recipeName = recipe.name, label = "All-Star test " + id, tags = tags.ToList(), pickerHidden = true });
             }
@@ -56,7 +60,7 @@ namespace Gamesim.Uma.Tests
             public void Dispose()
             {
                 foreach (var recipe in Recipes.Values) Index.RemoveAsset(typeof(UMAWardrobeRecipe), recipe.name, refresh: false);
-                while (Index.SerializedItems.Count > originalCount && Index.SerializedItems.Last() == null)
+                while (Index.SerializedItems.Count > OriginalCount &&Index.SerializedItems.Last() == null)
                     Index.SerializedItems.RemoveAt(Index.SerializedItems.Count - 1);
                 foreach (var recipe in Recipes.Values) Object.Destroy(recipe);
                 Object.Destroy(Extension);
@@ -93,10 +97,22 @@ namespace Gamesim.Uma.Tests
             return catalog;
         }
 
-        /// <summary>The last line of a test with tagged pieces: once they are removed, the installed catalog holds no worn-by: entry.</summary>
-        internal static void AssertNoTaggedEntryInstalled() =>
-            Assert.That(new UmaAppearanceCatalog().Items.Where(item => item.Tags.Any(tag => tag.StartsWith(LookPieces.WornBy, StringComparison.Ordinal)))
-                .Select(item => item.Id), Is.Empty, "A tagged entry outlived its test.");
+        /// <summary>The ids of the installed catalog's items that carry a worn-by: tag (none in this repository; delivered pieces where they are installed).</summary>
+        internal static string[] InstalledTaggedIds() =>
+            new UmaAppearanceCatalog().Items.Where(item => item.Tags.Any(tag => tag.StartsWith(LookPieces.WornBy, StringComparison.Ordinal)))
+                .Select(item => item.Id).OrderBy(id => id, StringComparer.Ordinal).ToArray();
+
+        /// <summary>
+        /// The last line of a test with tagged pieces, once they are removed: no clone is left in UMA's index, the
+        /// index is back to its length, and the installed tagged entries are the ones there were before the test.
+        /// </summary>
+        internal static void AssertNothingLeft(Pieces removed)
+        {
+            foreach (string name in removed.Names)
+                Assert.That(removed.Index.HasAsset<UMAWardrobeRecipe>(name), Is.False, name + " outlived its test in UMA's index.");
+            Assert.That(removed.Index.SerializedItems.Count, Is.EqualTo(removed.OriginalCount), "The index is back to its length.");
+            Assert.That(InstalledTaggedIds(), Is.EqualTo(removed.TaggedBefore), "A tagged entry outlived its test.");
+        }
 
         private Pieces pieces;
 
@@ -134,7 +150,12 @@ namespace Gamesim.Uma.Tests
             try
             {
                 pieces = TaggedForStar(installed, duplicate: true);
+                // An entry tagged for her that is not available is never worn: it would win her Face slot (its id is lower) if it were.
+                pieces.Add("allstar-test-a-unavailable", installed.Items.Last(item => item.Slot == "Face" && item.Fits(UmaCastLibrary.FemaleRace)
+                    && !UmaAppearanceCatalog.IsGrown(item.Id)), installed, null, LookPieces.WornBy + Star);
+                pieces.Extension.entries.Last().available = false;
                 var catalog = TaggedCatalog(pieces);
+                Assert.That(AppearanceEditing.Find(catalog, "allstar-test-a-unavailable"), Is.Null, "An unavailable entry is no item.");
                 var mine = Worn;
                 foreach (string id in mine.Concat(new[] { "allstar-test-hair-b" }))
                     Assert.That(AppearanceEditing.Find(catalog, id)?.PickerHidden, Is.True, id + " is a hidden item.");
@@ -145,7 +166,9 @@ namespace Gamesim.Uma.Tests
                     Assert.That(outfit.Single(worn => worn.itemId == id).slot, Is.EqualTo(pieces.Recipes[id].wardrobeSlot), id);
                 Assert.That(outfit.Select(worn => worn.itemId), Has.No.Member("allstar-test-hair-b"), "The lowest id of two wins.");
                 Assert.That(outfit.Count(worn => worn.slot == "Hair"), Is.EqualTo(1), "In place of her own hair.");
-                Assert.That(AppearanceEditing.LookItemIds(catalog, CharacterAppearance.Preset(Star)), Is.SupersetOf(mine));
+                Assert.That(AppearanceEditing.LookItemIds(catalog, CharacterAppearance.Preset(Star)), Is.SupersetOf(mine)
+                    .And.No.Member("allstar-test-a-unavailable"));
+                Assert.That(outfit.Select(worn => worn.itemId), Has.No.Member("allstar-test-a-unavailable"), "Not available: not worn.");
                 // Her face and hair stay on in the water and in bed (the swim and sleep sets keep those slots).
                 foreach (string context in new[] { CharacterOutfits.Swimwear, CharacterOutfits.Sleepwear })
                 {
@@ -181,8 +204,9 @@ namespace Gamesim.Uma.Tests
                         "Her save keeps its own outfit: " + id);
                 Assert.That(warnings, Has.Count.EqualTo(1), "One warning for her Hair slot: " + string.Join(" | ", warnings));
                 Assert.That(warnings[0], Does.Contain("Hair"));
+                var removed = pieces;
                 RemoveTaggedPieces();
-                AssertNoTaggedEntryInstalled();
+                AssertNothingLeft(removed);
             }
             finally
             {

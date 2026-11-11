@@ -152,21 +152,26 @@ namespace Gamesim.Uma.Tests
         {
             yield return null;
             Assert.That(UMAAssetIndexer.Instance, Is.Not.Null, "The Global Library must be present for any of this to work.");
-            AtMostOnePieceInEachWardrobeSlot(new UmaAppearanceCatalog(), tagged: false);
+            AtMostOnePieceInEachWardrobeSlot(new UmaAppearanceCatalog());
         }
+
+        /// <summary>Whether an item of <paramref name="catalog"/> carries <c>worn-by:</c> the look (LookWardrobe then gives a new array).</summary>
+        private static bool TaggedFor(UmaAppearanceCatalog catalog, string appearanceId) =>
+            catalog.Items.Any(item => item.Tags.Contains(LookPieces.WornBy + appearanceId));
 
         /// <summary>
         /// Each look's own lines and, beside them, the look as it is worn (with the pieces a catalog tag names it
-        /// for); with no tagged entry the two are the same array.
+        /// for); for a look no catalog item is tagged for, the two are the same array. Keyed on what the catalog
+        /// holds, so the walkers hold where delivered pieces are installed too.
         /// </summary>
-        private static void AtMostOnePieceInEachWardrobeSlot(UmaAppearanceCatalog catalog, bool tagged)
+        private static void AtMostOnePieceInEachWardrobeSlot(UmaAppearanceCatalog catalog)
         {
             var indexer = UMAAssetIndexer.Instance;
             foreach (var appearanceId in UmaCastLibrary.AppearanceIds)
             {
                 Assert.That(UmaCastLibrary.TryGet(appearanceId, out var look), Is.True);
                 var dressed = catalog.LookWardrobe(appearanceId, look.Race, look.Wardrobe);
-                if (!tagged) Assert.That(dressed, Is.SameAs(look.Wardrobe), appearanceId + ": no tagged entry, nothing changes.");
+                if (!TaggedFor(catalog, appearanceId)) Assert.That(dressed, Is.SameAs(look.Wardrobe), appearanceId + ": no tagged entry, nothing changes.");
                 foreach (var wardrobe in new[] { look.Wardrobe, dressed }.Distinct())
                 {
                     var bySlot = new Dictionary<string, string>();
@@ -194,17 +199,17 @@ namespace Gamesim.Uma.Tests
         {
             yield return null;
             Assert.That(UMAAssetIndexer.Instance, Is.Not.Null);
-            EveryRecipeCutForTheRaceItIsWornOn(new UmaAppearanceCatalog(), tagged: false);
+            EveryRecipeCutForTheRaceItIsWornOn(new UmaAppearanceCatalog());
         }
 
-        private static void EveryRecipeCutForTheRaceItIsWornOn(UmaAppearanceCatalog catalog, bool tagged)
+        private static void EveryRecipeCutForTheRaceItIsWornOn(UmaAppearanceCatalog catalog)
         {
             var indexer = UMAAssetIndexer.Instance;
             foreach (var appearanceId in UmaCastLibrary.AppearanceIds)
             {
                 Assert.That(UmaCastLibrary.TryGet(appearanceId, out var look), Is.True);
                 var dressed = catalog.LookWardrobe(appearanceId, look.Race, look.Wardrobe);
-                if (!tagged) Assert.That(dressed, Is.SameAs(look.Wardrobe), appearanceId + ": no tagged entry, nothing changes.");
+                if (!TaggedFor(catalog, appearanceId)) Assert.That(dressed, Is.SameAs(look.Wardrobe), appearanceId + ": no tagged entry, nothing changes.");
                 foreach (var recipeName in look.Wardrobe.Concat(dressed).Distinct())
                 {
                     // Pieces built in code are no recipes (EveryCastLook_ResolvesItsRaceAndWardrobe checks them).
@@ -230,9 +235,10 @@ namespace Gamesim.Uma.Tests
         {
             yield return null;
             pieces = UmaAllStarPiecesPlayModeTests.TaggedForStar(new UmaAppearanceCatalog(), duplicate: false);
-            AtMostOnePieceInEachWardrobeSlot(UmaAllStarPiecesPlayModeTests.TaggedCatalog(pieces), tagged: true);
+            AtMostOnePieceInEachWardrobeSlot(UmaAllStarPiecesPlayModeTests.TaggedCatalog(pieces));
+            var removed = pieces;
             RemoveTaggedPieces();
-            UmaAllStarPiecesPlayModeTests.AssertNoTaggedEntryInstalled();
+            UmaAllStarPiecesPlayModeTests.AssertNothingLeft(removed);
         }
 
         [UnityTest]
@@ -240,9 +246,10 @@ namespace Gamesim.Uma.Tests
         {
             yield return null;
             pieces = UmaAllStarPiecesPlayModeTests.TaggedForStar(new UmaAppearanceCatalog(), duplicate: false);
-            EveryRecipeCutForTheRaceItIsWornOn(UmaAllStarPiecesPlayModeTests.TaggedCatalog(pieces), tagged: true);
+            EveryRecipeCutForTheRaceItIsWornOn(UmaAllStarPiecesPlayModeTests.TaggedCatalog(pieces));
+            var removed = pieces;
             RemoveTaggedPieces();
-            UmaAllStarPiecesPlayModeTests.AssertNoTaggedEntryInstalled();
+            UmaAllStarPiecesPlayModeTests.AssertNothingLeft(removed);
         }
 #endif
     }

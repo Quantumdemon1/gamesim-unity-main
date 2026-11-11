@@ -34,7 +34,7 @@ namespace Gamesim.Uma.Editor
 
         public int VertexCount => Positions.Length / 3;
 
-        /// <summary>The topology's fingerprint: slot names and counts, and the triangles.</summary>
+        /// <summary>The topology's fingerprint: slot names and counts, the bone list in its order, and the triangles.</summary>
         public string TopologyKey()
         {
             var bytes = new List<byte>();
@@ -42,6 +42,8 @@ namespace Gamesim.Uma.Editor
             {
                 bytes.AddRange(System.Text.Encoding.UTF8.GetBytes(SlotNames[k] + ":" + SlotCount[k] + ";"));
             }
+            // Per-sample bone arrays are stacked by row against the first capture's bones, so a reordered rig is a changed topology.
+            bytes.AddRange(System.Text.Encoding.UTF8.GetBytes("bones:" + string.Join("|", BoneNames ?? new string[0]) + ";"));
             var tris = new byte[Triangles.Length * 4];
             Buffer.BlockCopy(Triangles, 0, tris, 0, tris.Length);
             bytes.AddRange(tris);
@@ -353,7 +355,7 @@ namespace Gamesim.Uma.Editor
             .Set("noiseFloorMm", "the largest vertex distance between two builds of the same request (baseline-a and baseline-b, or a person's a and b)")
             .Set("regions", "rule dominant-bone-v1 (regionSteps): inside the first head slot, the bone carrying a vertex's largest skin weight decides face, ears, skull, neck or body; regionBoneMap lists every bone that decided a vertex, regionCounts the vertices of each region per slot")
             .Set("readbackWithin1e5", "every DNA name the sample requested reads back from the built body within 1e-5 of the request")
-            .Set("topologyChanged", "true when any sample's slots, vertex counts or triangles differ from the first capture's");
+            .Set("topologyChanged", "true when any sample's slots, vertex counts, bone list or triangles differ from the first capture's");
 
         /// <summary>The region rule's record, from the topology the first capture wrote.</summary>
         private static void Regions(JsonObject manifest, string work)

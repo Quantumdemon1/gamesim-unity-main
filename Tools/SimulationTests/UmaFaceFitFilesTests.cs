@@ -397,6 +397,43 @@ namespace Gamesim.Tools.Tests
             Assert.That(FaceFitStats.SlotMatches("UMA30_Body_UDIM1002_slot", "UMA30_Body_UDIM1001_slot"), Is.False);
         }
 
+        /// <summary>
+        /// Step 4 asks where a bone sits in the BUILT skeleton: when Head and LeftEar carry no skin weight they are not in
+        /// the bone list, so walking the listed parents loses them; the capture's per-bone flag from the real hierarchy keeps them.
+        /// </summary>
+        [Test]
+        public void Regions_FindHeadInTheBuiltSkeleton_WhenItsBonesCarryNoWeight()
+        {
+            //                  0        1             2                3      4
+            var names = new[] { "Spine", "NeckAdjust", "LeftEarAdjust", "Jaw", "HeadAdjust" };
+            var parents = new[] { -1, 0, -1, -1, -1 };   // Head and LeftEar are unskinned, so the listed parents stop short
+            var underHead = new[] { false, false, true, true, true };
+            Assert.That(FaceFitStats.RegionOfBone(2, names, parents), Is.EqualTo("body"), "the listed parents alone lose the ear");
+            Assert.That(FaceFitStats.RegionOfBone(2, names, parents, underHead), Is.EqualTo("ears"));
+            Assert.That(FaceFitStats.RegionOfBone(3, names, parents, underHead), Is.EqualTo("face"));
+            Assert.That(FaceFitStats.RegionOfBone(4, names, parents, underHead), Is.EqualTo("skull"));
+            Assert.That(FaceFitStats.RegionOfBone(1, names, parents, underHead), Is.EqualTo("neck"));
+            Assert.That(FaceFitStats.RegionOfBone(0, names, parents, underHead), Is.EqualTo("body"));
+
+            var c = Capture(new[] { "headSize" }, new[] { .72 }, 0f);
+            c.BoneParents = new[] { -1, -1, -1, -1, -1 };
+            c.BoneUnderHead = new[] { false, false, false, true, true };
+            FaceFitWork.WriteTopology(folder, c, FaceFitJob.DefaultHeadSlots);
+            var topology = FaceFitWork.ReadNpz(Path.Combine(folder, FaceFitWork.TopologyName + ".npz"));
+            Assert.That(topology["vertex_region"].AsInt8().Select(r => topology["region_names"].AsUnicode()[r]),
+                Is.EqualTo(new[] { "skull", "ears", "face", "neck", "body", "body" }), "the regions come from the hierarchy flag");
+        }
+
+        [Test]
+        public void TheTopologyKey_CoversTheBoneOrder()
+        {
+            var a = Capture(new[] { "headSize" }, new[] { .72 }, 0f);
+            var b = Capture(new[] { "headSize" }, new[] { .72 }, 0f);
+            Assert.That(b.TopologyKey(), Is.EqualTo(a.TopologyKey()));
+            b.BoneNames = new[] { "Spine", "NeckAdjust", "Head", "Jaw", "LeftEarAdjust" };
+            Assert.That(b.TopologyKey(), Is.Not.EqualTo(a.TopologyKey()), "a reordered rig is a changed topology");
+        }
+
         [Test]
         public void AHeadSlotWithoutFaceOrEars_StopsTheExport()
         {

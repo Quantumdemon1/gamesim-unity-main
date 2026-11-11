@@ -164,7 +164,11 @@ namespace Gamesim.Presentation
 
         private static void Put(CharacterOutfit outfit, AppearanceItem item, ICharacterAppearanceCatalog catalog)
         {
+            // A code-built piece and a UMA item on the same place on the body (WardrobeSlots.Twins) are never
+            // worn together: wearing either takes the other off.
+            var twins = WardrobeSlots.Twins(item.Slot);
             outfit.wardrobe.RemoveAll(worn => worn.slot == item.Slot || item.SuppressedSlots.Contains(worn.slot)
+                || Array.IndexOf(twins, worn.slot) >= 0
                 || item.Conflicts.Any(conflict => Find(catalog, conflict)?.Matches(worn.itemId) == true || conflict == worn.itemId)
                 || catalog.Items.Any(other => other.Matches(worn.itemId) &&
                     (other.SuppressedSlots.Contains(item.Slot) || other.Conflicts.Any(item.Matches))));

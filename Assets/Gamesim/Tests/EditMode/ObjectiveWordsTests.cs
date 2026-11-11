@@ -120,6 +120,7 @@ namespace Gamesim.Tests.EditMode
             settle(done);
             string words = ObjectiveWords.For(done);
             Assert.That(words, Is.EqualTo(expected), "The window after '" + task + "'.");
+            Assert.That(words.Length, Is.LessThanOrEqualTo(ObjectiveWords.MaxLength), "The window's words fit the box: '" + words + "'.");
             Assert.That(words, Is.Not.EqualTo(task), "The card no longer asks for the settled task.");
             Assert.That(ObjectiveWords.For(open), Is.EqualTo(task), "The open state itself is untouched.");
         }
@@ -147,9 +148,18 @@ namespace Gamesim.Tests.EditMode
             AssertWindow(vote, s => s.votes.Add(new VoteState { voterId = s.playerId, targetId = Other(s, 1) }), "Your vote is in");
             AssertWindow(vote, s => s.evictionResolved = true, "The house has voted");
             AssertWindow(vote, s => s.evictionStage = EvictionStage.Results, "The house has voted");
+            // The house's vote outranks the player's own ballot: once it is in, the card says so.
+            var voted = vote.Clone();
+            voted.votes.Add(new VoteState { voterId = voted.playerId, targetId = Other(voted, 1) });
+            AssertWindow(voted, s => s.evictionResolved = true, "The house has voted");
+            AssertWindow(voted, s => s.evictionStage = EvictionStage.Results, "The house has voted");
 
             var tie = WithRole(EpisodePhase.Eviction, "HoH");
             AssertWindow(tie, s => s.evictionStage = EvictionStage.Tiebreaker, "Break the tie");
+            // The tie is the HoH's alone: a nominee at the tiebreak still faces the vote.
+            var tied = WithRole(EpisodePhase.Eviction, "nominee");
+            tied.evictionStage = EvictionStage.Tiebreaker;
+            Assert.That(ObjectiveWords.For(tied), Is.EqualTo("Face the house vote"), "Only the HoH breaks the tie.");
         }
 
         [Test]

@@ -407,6 +407,11 @@
     <Compile Include="$(EditMode)WardrobeSlotsTests.cs" />
     <!-- The UMA content folder's binary pin in .gitattributes: reads the repository's files, so it lives here. -->
     <Compile Include="UmaContentBinaryPinTests.cs" />
+    <!-- The UMA face-fit export's engine-free half (its files, job, plan and assembly; Gamesim.Uma.Editor compiles the same files) and its tests. -->
+    <Compile Include="$(RootDir)Assets/Gamesim/Uma/Editor/UmaFaceFitFiles.cs" />
+    <Compile Include="$(RootDir)Assets/Gamesim/Uma/Editor/UmaFaceFitPlan.cs" />
+    <Compile Include="$(RootDir)Assets/Gamesim/Uma/Editor/UmaFaceFitWork.cs" />
+    <Compile Include="UmaFaceFitFilesTests.cs" />
     <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/CompetitionWords.cs" />
     <Compile Include="$(EditMode)CompetitionWordsTests.cs" />
     <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/StudyWords.cs" />

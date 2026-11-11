@@ -39,5 +39,7 @@ namespace Gamesim.Uma
         public List<string> tags = new List<string>();
         public int fallbackPriority = 100;
         public bool available = true;
+        [Tooltip("Worn where a library look names it; never offered by the creator's pickers, Randomise or substitution.")]
+        public bool pickerHidden;   // default false: an asset without the line is offered exactly as today
     }
 }

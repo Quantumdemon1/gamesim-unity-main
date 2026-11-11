@@ -126,7 +126,8 @@ namespace Gamesim.Uma
                     StyleGroup = entry?.styleGroup,
                     Tags = entry?.tags?.ToArray() ?? Array.Empty<string>(),
                     FallbackPriority = entry?.fallbackPriority ?? 100,
-                    Label = !string.IsNullOrWhiteSpace(entry?.label) ? entry.label
+                    PickerHidden = entry?.pickerHidden ?? false,
+                    Label =!string.IsNullOrWhiteSpace(entry?.label) ? entry.label
                         : string.IsNullOrWhiteSpace(recipe.DisplayValue) ? Label(recipe.name) : recipe.DisplayValue,
                     CompatibleBodies = compatible,
                     SuppressedSlots = recipe.suppressWardrobeSlots.ToArray(),
@@ -172,7 +173,8 @@ namespace Gamesim.Uma
         public AppearanceItem FindEquivalent(string itemId, string slot, string bodyId)
         {
             var original = AppearanceEditing.Find(this, itemId);
-            return items.Where(item => item.Slot == slot && item.Fits(bodyId))
+            // A picker-hidden item is worn only where a library look names it: never a substitute.
+            return items.Where(item => item.Slot == slot && item.Fits(bodyId) && !item.PickerHidden)
                 .OrderByDescending(item => original != null && !string.IsNullOrEmpty(original.StyleGroup) && item.StyleGroup == original.StyleGroup)
                 .ThenByDescending(item => original == null ? 0 : item.Tags.Intersect(original.Tags).Count())
                 .ThenBy(item => item.FallbackPriority).ThenBy(item => item.Id, StringComparer.Ordinal).FirstOrDefault();

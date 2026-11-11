@@ -1151,7 +1151,8 @@ namespace Gamesim.Presentation
                 foreach (string slot in new[] { "Hair", "Eyebrows", "Beard", "Chest", "Legs", "Feet" })
                 {
                     if (randomLocks.Contains(AppearanceEditing.IsCharacterSlot(slot) ? "Hair" : "Clothing")) continue;
-                    var choices = Catalog.Items.Where(item => item.Slot == slot && item.Fits(draft.Appearance.bodyId)).ToList();
+                    // The offered items only: Randomize never picks a picker-hidden one, on any draft.
+                    var choices = AppearanceEditing.Choices(Catalog, new[] { slot }, draft.Appearance.bodyId);
                     if (choices.Count > 0) AppearanceEditing.Wear(draft.Appearance, choices[cosmeticRandom.Next(choices.Count)], Catalog);
                 }
                 // Accessories as well, on the outfit being edited - and most often none: a random

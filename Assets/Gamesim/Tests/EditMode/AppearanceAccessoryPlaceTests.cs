@@ -19,7 +19,21 @@ namespace Gamesim.Tests.EditMode
             public IReadOnlyList<AppearanceBodyOption> Bodies { get; } = new[] { new AppearanceBodyOption("body", "Body") };
             public IReadOnlyList<AppearanceControl> Controls { get; } = new AppearanceControl[0];
             public IReadOnlyList<AppearanceItem> Items => All;
-            public CharacterAppearance Materialize(CharacterAppearance appearance) => appearance;
+            /// <summary>Library looks by presetId: the item ids each one wears, as the UMA catalog's library does.</summary>
+            public readonly Dictionary<string, string[]> Looks = new Dictionary<string, string[]>();
+
+            /// <summary>An appearance with no body yet is dressed in its look, as the UMA catalog does; any other is returned as it is.</summary>
+            public CharacterAppearance Materialize(CharacterAppearance appearance)
+            {
+                if (appearance == null || !string.IsNullOrEmpty(appearance.bodyId)) return appearance;
+                var dressed = appearance.Clone();
+                dressed.bodyId = "body";
+                var outfit = AppearanceEditing.Outfit(dressed);
+                if (Looks.TryGetValue(dressed.presetId ?? "", out var ids) || Looks.TryGetValue(dressed.fallbackId ?? "", out ids))
+                    foreach (string id in ids)
+                        outfit.wardrobe.Add(new AppearanceWardrobe { slot = AppearanceEditing.Find(this, id)?.Slot ?? "Missing-" + outfit.wardrobe.Count, itemId = id });
+                return dressed;
+            }
             public CharacterAppearance ChangeBody(CharacterAppearance appearance, string bodyId) => appearance;
         }
 
@@ -94,6 +108,104 @@ namespace Gamesim.Tests.EditMode
             foreach (var kept in new[] { glasses, cap, chain, bracelet, shirt, hair, earrings })
                 Assert.That(WornIn(appearance, kept.Slot), Is.EqualTo(kept.Id), "A watch leaves " + kept.Slot + " alone.");
             Assert.That(appearance.outfits[0].wardrobe.Count, Is.EqualTo(8));
+        }
+
+        private static AppearanceItem Hidden(string id, string slot)
+        {
+            var item = Item(id, slot);
+            item.PickerHidden = true;
+            return item;
+        }
+
+        private static string Ids(IEnumerable<AppearanceItem> items) => string.Join(",", items.Select(item => item.Id));
+
+        /// <summary>
+        /// With no picker-hidden item a one-slot row offers what the creator offered before: every
+        /// item of the slot that fits the body, in catalog order - kept or not. A two-slot place puts
+        /// the code-built slot's items first, whatever the catalog's order.
+        /// </summary>
+        [Test]
+        public void ChoicesOfAOneSlotRowAreTodaysItemsInTodaysOrder()
+        {
+            var catalog = new StubCatalog();
+            var other = Item("tee-other-body", "Chest");
+            other.CompatibleBodies = new[] { "other" };
+            var fitted = Item("tee-fitted", "Chest");
+            fitted.CompatibleBodies = new[] { "body", "other" };
+            catalog.All.AddRange(new[]
+            {
+                Item("gamesim.example.earrings.a", "Ears"), Item("tee-b", "Chest"), other, Item("gs-acc-hoops", "Earrings"),
+                Item("hair-a", "Hair"), fitted, Item("tee-a", "Chest"), Item("gs-acc-studs", "Earrings"), Item("gamesim.example.watch.a", "Hands"),
+            });
+            foreach (string slot in new[] { "Chest", "Hair", "Earrings", "Ears", "Hands", "Eyewear", "Legs" })
+            {
+                var today = catalog.Items.Where(item => item.Slot == slot && item.Fits("body")).ToList();
+                Assert.That(AppearanceEditing.Choices(catalog, new[] { slot }, "body"), Is.EqualTo(today), slot);
+                Assert.That(AppearanceEditing.Choices(catalog, new[] { slot }, "body", new[] { "tee-b", "gs-acc-hoops" }), Is.EqualTo(today),
+                    slot + ": a keep list changes nothing while no item is hidden.");
+            }
+            Assert.That(Ids(AppearanceEditing.Choices(catalog, new[] { "Chest" }, "body")), Is.EqualTo("tee-b,tee-fitted,tee-a"));
+            Assert.That(Ids(AppearanceEditing.Choices(catalog, WardrobeSlots.Place("Ears"), "body")),
+                Is.EqualTo("gs-acc-hoops,gs-acc-studs,gamesim.example.earrings.a"), "The code-built pieces first, then the UMA twin's.");
+            Assert.That(Ids(AppearanceEditing.Choices(catalog, WardrobeSlots.Place("Earrings"), "body")),
+                Is.EqualTo(Ids(AppearanceEditing.Choices(catalog, WardrobeSlots.Place("Ears"), "body"))), "Either slot names the same place.");
+        }
+
+        /// <summary>
+        /// A picker-hidden item is offered only to a draft whose own library look names it (by id or
+        /// alias), or while it is worn; never to anyone else, never with no keep list (Randomize), and
+        /// never on a body it does not fit.
+        /// </summary>
+        [Test]
+        public void AHiddenItemIsOfferedOnlyToItsOwnLookOrWhileWorn()
+        {
+            var hoops = Item("gs-acc-hoops", "Earrings");
+            var drops = Hidden("gamesim.example.earrings.drop", "Ears");
+            drops.Aliases = new[] { "Example_Drop_Recipe" };
+            var offered = Item("gamesim.example.earrings.stud", "Ears");
+            var catalog = new StubCatalog();
+            catalog.All.AddRange(new[] { drops, hoops, offered });
+            catalog.Looks["example-star"] = new[] { "Example_Drop_Recipe" };
+            catalog.Looks["player"] = new[] { "gs-acc-hoops" };
+            var place = WardrobeSlots.Place("Earrings");
+
+            List<string> Keep(CharacterAppearance draft)
+            {
+                var keep = AppearanceEditing.LookItemIds(catalog, draft);
+                keep.AddRange(draft.outfits.SelectMany(outfit => outfit.wardrobe).Where(worn => place.Contains(worn.slot)).Select(worn => worn.itemId));
+                return keep;
+            }
+
+            var custom = CharacterAppearance.Preset("player");
+            custom.bodyId = "body";
+            Assert.That(Ids(AppearanceEditing.Choices(catalog, place, "body", Keep(custom))), Is.EqualTo("gs-acc-hoops,gamesim.example.earrings.stud"),
+                "A draft from a look that names no hidden item is never offered one.");
+
+            var star = CharacterAppearance.Preset("example-star");
+            star.bodyId = "body";
+            star.outfits.Add(new CharacterOutfit { id = star.activeOutfit });
+            Assert.That(AppearanceEditing.LookItemIds(catalog, star), Is.EqualTo(new[] { "Example_Drop_Recipe" }));
+            Assert.That(Ids(AppearanceEditing.Choices(catalog, place, "body", Keep(star))),
+                Is.EqualTo("gs-acc-hoops,gamesim.example.earrings.drop,gamesim.example.earrings.stud"),
+                "The look that names it (by an alias) offers it, in catalog order after the code-built pieces, so the draft may step off it and back.");
+
+            Assert.That(Ids(AppearanceEditing.Choices(catalog, place, "body")), Is.EqualTo("gs-acc-hoops,gamesim.example.earrings.stud"),
+                "With no keep list - Randomize - it is never a choice.");
+
+            var moved = CharacterAppearance.Preset("player");
+            moved.bodyId = "body";
+            moved.outfits.Add(new CharacterOutfit { id = moved.activeOutfit });
+            moved.outfits[0].wardrobe.Add(new AppearanceWardrobe { slot = "Ears", itemId = drops.Id });
+            Assert.That(AppearanceEditing.Choices(catalog, place, "body", Keep(moved)).Contains(drops), Is.True,
+                "A draft that moved to another look keeps it among its choices while it is worn.");
+            moved.outfits[0].wardrobe.Clear();
+            Assert.That(AppearanceEditing.Choices(catalog, place, "body", Keep(moved)).Contains(drops), Is.False,
+                "Once taken off, it is gone from that draft's choices.");
+
+            drops.CompatibleBodies = new[] { "other" };
+            Assert.That(AppearanceEditing.Choices(catalog, place, "body", Keep(star)).Contains(drops), Is.False,
+                "Kept or not, an item is offered only on a body it fits.");
+            Assert.That(AppearanceEditing.LookItemIds(null, star), Is.Empty);
         }
     }
 }

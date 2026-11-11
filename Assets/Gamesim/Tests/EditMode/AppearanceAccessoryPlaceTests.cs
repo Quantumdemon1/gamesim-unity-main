@@ -300,6 +300,15 @@ namespace Gamesim.Tests.EditMode
             wearing.outfits[0].wardrobe.Add(new AppearanceWardrobe { slot = "Hands", itemId = "gamesim.example.hands.hidden" });
             AppearanceEditing.RollAccessories(wearing, withHidden, new System.Random(7), .5);
             Assert.That(WornIn(wearing, "Hands"), Is.Null, "A row with no offered piece rolls bare: it takes a worn hidden piece off, as a bare roll takes off a code-built one.");
+
+            // A bare roll on a row of two slots takes off the whole place, the UMA twin as well as the row's own slot.
+            var bare = Starting(withHidden);
+            bare.outfits[0].wardrobe.Add(new AppearanceWardrobe { slot = "Ears", itemId = "gamesim.example.ears.hidden" });
+            bare.outfits[0].wardrobe.Add(new AppearanceWardrobe { slot = "Helmet", itemId = "gamesim.example.helmet.hidden" });
+            AppearanceEditing.RollAccessories(bare, withHidden, new System.Random(7), 0);
+            Assert.That(WornIn(bare, "Ears"), Is.Null, "A bare earrings roll takes the Ears piece off too.");
+            Assert.That(WornIn(bare, "Helmet"), Is.Null, "A bare headwear roll takes the Helmet piece off too.");
+            Assert.That(WornIn(bare, "Headwear"), Is.Null, "And the code-built cap the look began with.");
         }
 
         [Test]

@@ -128,7 +128,16 @@ namespace Gamesim.Tests.EditMode
 
             var alias = new[] { "hair-a", "top-a-recipe" };
             Assert.That(Apply("look-a", alias, warnings, overOld), Is.EqualTo(new[] { "hair-a", "top-a-recipe", "piece-outer" }),
-                "A line written as an alias matches the over: id of its item.");
+                "A line written as an alias (or recipe name) matches an over: tag naming its item's id.");
+            Assert.That(Apply("look-a", Look, warnings, Piece("piece-outer", Female, "worn-by:look-a", "over:top-a-recipe")),
+                Is.EqualTo(Look.Concat(new[] { "piece-outer" }).ToArray()), "A line written as the id matches an over: tag naming an alias.");
+            var unknown = new[] { "hair-a", "top-x" };
+            Assert.That(Apply("look-a", unknown, warnings, Piece("piece-outer", Female, "worn-by:look-a", "over:top-x")),
+                Is.EqualTo(new[] { "hair-a", "top-x", "piece-outer" }), "Neither resolves, and the raw strings are equal: worn.");
+            Assert.That(Apply("look-a", unknown, warnings, Piece("piece-outer", Female, "worn-by:look-a", "over:top-y")),
+                Is.EqualTo(unknown), "Neither resolves, and the raw strings differ: left off.");
+            Assert.That(Apply("look-a", Look, warnings, overOld, Piece("piece-outer-b", Female, "worn-by:look-a", "over:piece-outer")),
+                Is.EqualTo(Look.Concat(new[] { "piece-outer" }).ToArray()), "No chains: one outer piece never makes way for another.");
             Assert.That(Apply("look-a", Look, warnings, Piece("piece-outer-b", Female, "worn-by:look-a", "over:top-z", "over:top-a"), overOld),
                 Is.EqualTo(Look.Concat(new[] { "piece-outer" }).ToArray()), "Two outer pieces that both apply: the lowest id.");
             Assert.That(warnings, Has.Count.EqualTo(1), "Only the duplicate warned; leaving an outer piece off says nothing.");

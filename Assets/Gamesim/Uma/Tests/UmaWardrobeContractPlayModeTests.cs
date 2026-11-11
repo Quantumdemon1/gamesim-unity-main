@@ -464,20 +464,30 @@ namespace Gamesim.Uma.Tests
             yield return null;
         }
 
-        /// <summary>The two look walkers again with pieces tagged for one All-Star in the catalog (UmaAllStarPiecesPlayModeTests).</summary>
+        // The two look walkers again with pieces tagged for one All-Star in the catalog (UmaAllStarPiecesPlayModeTests).
+        private UmaAllStarPiecesPlayModeTests.Pieces pieces;
+
+        [TearDown]
+        public void RemoveTaggedPieces() { pieces?.Dispose(); pieces = null; }
+
         [UnityTest]
-        public IEnumerator EveryLibraryLookWithPiecesTaggedForALookMaterializesIntoItsSlotsWithoutTwins()
+        public IEnumerator EveryLibraryLookMaterializesEachIdIntoItsRecipesSlotWithATaggedPiece()
         {
             yield return null;
-            using (var pieces = UmaAllStarPiecesPlayModeTests.TaggedForStar(new UmaAppearanceCatalog(), duplicate: false))
-            {
-                var catalog = pieces.Catalog();
-                Assert.That(catalog.Diagnostics, Is.Empty);
-                Assert.That(AppearanceEditing.LookItemIds(catalog, CharacterAppearance.Preset(UmaAllStarPiecesPlayModeTests.Star)),
-                    Is.SupersetOf(pieces.Recipes.Keys), "The walk sees the tagged pieces.");
-                EachIdMaterializesIntoItsRecipesSlot(catalog);
-                NoLookWearsAUmaItemAndItsTwin(catalog);
-            }
+            pieces = UmaAllStarPiecesPlayModeTests.TaggedForStar(new UmaAppearanceCatalog(), duplicate: false);
+            EachIdMaterializesIntoItsRecipesSlot(UmaAllStarPiecesPlayModeTests.TaggedCatalog(pieces));
+            RemoveTaggedPieces();
+            UmaAllStarPiecesPlayModeTests.AssertNoTaggedEntryInstalled();
+        }
+
+        [UnityTest]
+        public IEnumerator NoLibraryLookWearsAUmaItemAndItsCodeBuiltTwinWithATaggedPiece()
+        {
+            yield return null;
+            pieces = UmaAllStarPiecesPlayModeTests.TaggedForStar(new UmaAppearanceCatalog(), duplicate: false);
+            NoLookWearsAUmaItemAndItsTwin(UmaAllStarPiecesPlayModeTests.TaggedCatalog(pieces));
+            RemoveTaggedPieces();
+            UmaAllStarPiecesPlayModeTests.AssertNoTaggedEntryInstalled();
         }
 
         [UnityTest]

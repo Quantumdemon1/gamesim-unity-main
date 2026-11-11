@@ -24,6 +24,8 @@ namespace Gamesim.Uma.Tests
     {
         private const string CatalogFolder = "Gamesim/CharacterCatalog";
         internal const string Star = "janelle-pierzina", Other = "danielle-reyes";
+        /// <summary>The pieces TaggedForStar dresses her in (a duplicate hair, when asked for, is not among them).</summary>
+        internal static readonly string[] Worn = { "allstar-test-face", "allstar-test-hair-a", "allstar-test-ears" };
 
 #if UNITY_EDITOR
         /// <summary>Runtime copies of installed recipes in UMA's index, with their own catalog: no AssetDatabase write, no lasting index edit.</summary>
@@ -81,6 +83,26 @@ namespace Gamesim.Uma.Tests
             return pieces;
         }
 
+        /// <summary>The installed catalogs and the pieces' own: no diagnostic, and her look sees the pieces.</summary>
+        internal static UmaAppearanceCatalog TaggedCatalog(Pieces pieces)
+        {
+            var catalog = pieces.Catalog();
+            Assert.That(catalog.Diagnostics, Is.Empty);
+            Assert.That(AppearanceEditing.LookItemIds(catalog, CharacterAppearance.Preset(Star)), Is.SupersetOf(Worn),
+                "The tagged pieces are in her look.");
+            return catalog;
+        }
+
+        /// <summary>The last line of a test with tagged pieces: once they are removed, the installed catalog holds no worn-by: entry.</summary>
+        internal static void AssertNoTaggedEntryInstalled() =>
+            Assert.That(new UmaAppearanceCatalog().Items.Where(item => item.Tags.Any(tag => tag.StartsWith(LookPieces.WornBy, StringComparison.Ordinal)))
+                .Select(item => item.Id), Is.Empty, "A tagged entry outlived its test.");
+
+        private Pieces pieces;
+
+        [TearDown]
+        public void RemoveTaggedPieces() { pieces?.Dispose(); pieces = null; }
+
         private sealed class Built { public CharacterBodyBuildState State; public DynamicCharacterAvatar Avatar; }
 
         private static IEnumerator Build(UmaBodyProvider provider, string id, CharacterAppearance appearance, Transform parent, Built into)
@@ -111,49 +133,56 @@ namespace Gamesim.Uma.Tests
             Application.logMessageReceived += Count;
             try
             {
-                using (var pieces = TaggedForStar(installed, duplicate: true))
+                pieces = TaggedForStar(installed, duplicate: true);
+                var catalog = TaggedCatalog(pieces);
+                var mine = Worn;
+                foreach (string id in mine.Concat(new[] { "allstar-test-hair-b" }))
+                    Assert.That(AppearanceEditing.Find(catalog, id)?.PickerHidden, Is.True, id + " is a hidden item.");
+
+                var outfit = catalog.Materialize(CharacterAppearance.Preset(Star)).outfits.Single().wardrobe;
+                Assert.That(outfit.Where(worn => worn.slot.StartsWith("Missing-", StringComparison.Ordinal)), Is.Empty);
+                foreach (string id in mine)
+                    Assert.That(outfit.Single(worn => worn.itemId == id).slot, Is.EqualTo(pieces.Recipes[id].wardrobeSlot), id);
+                Assert.That(outfit.Select(worn => worn.itemId), Has.No.Member("allstar-test-hair-b"), "The lowest id of two wins.");
+                Assert.That(outfit.Count(worn => worn.slot == "Hair"), Is.EqualTo(1), "In place of her own hair.");
+                Assert.That(AppearanceEditing.LookItemIds(catalog, CharacterAppearance.Preset(Star)), Is.SupersetOf(mine));
+                // Her face and hair stay on in the water and in bed (the swim and sleep sets keep those slots).
+                foreach (string context in new[] { CharacterOutfits.Swimwear, CharacterOutfits.Sleepwear })
                 {
-                    var catalog = pieces.Catalog();
-                    Assert.That(catalog.Diagnostics, Is.Empty);
-                    string[] mine = { "allstar-test-face", "allstar-test-hair-a", "allstar-test-ears" };
-                    foreach (string id in mine.Concat(new[] { "allstar-test-hair-b" }))
-                        Assert.That(AppearanceEditing.Find(catalog, id)?.PickerHidden, Is.True, id + " is a hidden item.");
-
-                    var outfit = catalog.Materialize(CharacterAppearance.Preset(Star)).outfits.Single().wardrobe;
-                    Assert.That(outfit.Where(worn => worn.slot.StartsWith("Missing-", StringComparison.Ordinal)), Is.Empty);
-                    foreach (string id in mine)
-                        Assert.That(outfit.Single(worn => worn.itemId == id).slot, Is.EqualTo(pieces.Recipes[id].wardrobeSlot), id);
-                    Assert.That(outfit.Select(worn => worn.itemId), Has.No.Member("allstar-test-hair-b"), "The lowest id of two wins.");
-                    Assert.That(outfit.Count(worn => worn.slot == "Hair"), Is.EqualTo(1), "In place of her own hair.");
-                    Assert.That(AppearanceEditing.LookItemIds(catalog, CharacterAppearance.Preset(Star)), Is.SupersetOf(mine));
-                    var draft = catalog.Materialize(new CharacterAppearance { presetId = "custom-draft", fallbackId = Star });
-                    Assert.That(draft.outfits.Single().wardrobe.Select(worn => worn.itemId), Is.SupersetOf(mine), "A draft from her look wears them.");
-                    var other = catalog.Materialize(CharacterAppearance.Preset(Other)).outfits.Single().wardrobe.Select(worn => worn.itemId).ToArray();
-                    Assert.That(other.Intersect(pieces.Recipes.Keys), Is.Empty, Other + " wears none of them.");
-
-                    var provider = new UmaBodyProvider(catalog);
-                    var star = new Built();
-                    yield return Build(provider, Star, null, parent.transform, star);
-                    var beside = new Built();
-                    yield return Build(provider, Other, null, parent.transform, beside);
-                    Assert.That(string.IsNullOrEmpty(star.State.Substitution), Is.True, star.State.Substitution);
-                    foreach (string id in mine)
-                    {
-                        var recipe = pieces.Recipes[id];
-                        Assert.That(star.Avatar.GetWardrobeItem(recipe.wardrobeSlot)?.name, Is.EqualTo(recipe.name), id + " is on her body.");
-                        Assert.That(beside.Avatar.GetWardrobeItem(recipe.wardrobeSlot)?.name, Is.Not.EqualTo(recipe.name), id + " is not on " + Other + ".");
-                    }
-
-                    var kept = new Built();
-                    yield return Build(provider, Star, catalog.Materialize(saved), parent.transform, kept);
-                    Assert.That(catalog.Materialize(saved).outfits.Single().wardrobe.Select(worn => worn.itemId),
-                        Is.EqualTo(saved.outfits.Single().wardrobe.Select(worn => worn.itemId)), "A saved outfit is never added to.");
-                    foreach (string id in mine)
-                        Assert.That(kept.Avatar.GetWardrobeItem(pieces.Recipes[id].wardrobeSlot)?.name, Is.Not.EqualTo(pieces.Recipes[id].name),
-                            "Her save keeps its own outfit: " + id);
-                    Assert.That(warnings, Has.Count.EqualTo(1), "One warning for her Hair slot: " + string.Join(" | ", warnings));
-                    Assert.That(warnings[0], Does.Contain("Hair"));
+                    var changed = CharacterOutfits.ForActivity(catalog.Materialize(CharacterAppearance.Preset(Star)), context);
+                    Assert.That(changed.activeOutfit, Is.EqualTo(context));
+                    Assert.That(changed.outfits.Single(set => set.id == context).wardrobe.Select(worn => worn.itemId),
+                        Is.SupersetOf(new[] { "allstar-test-face", "allstar-test-hair-a" }), context);
                 }
+                var draft = catalog.Materialize(new CharacterAppearance { presetId = "custom-draft", fallbackId = Star });
+                Assert.That(draft.outfits.Single().wardrobe.Select(worn => worn.itemId), Is.SupersetOf(mine), "A draft from her look wears them.");
+                var other = catalog.Materialize(CharacterAppearance.Preset(Other)).outfits.Single().wardrobe.Select(worn => worn.itemId).ToArray();
+                Assert.That(other.Intersect(pieces.Recipes.Keys), Is.Empty, Other + " wears none of them.");
+
+                var provider = new UmaBodyProvider(catalog);
+                var star = new Built();
+                yield return Build(provider, Star, null, parent.transform, star);
+                var beside = new Built();
+                yield return Build(provider, Other, null, parent.transform, beside);
+                Assert.That(string.IsNullOrEmpty(star.State.Substitution), Is.True, star.State.Substitution);
+                foreach (string id in mine)
+                {
+                    var recipe = pieces.Recipes[id];
+                    Assert.That(star.Avatar.GetWardrobeItem(recipe.wardrobeSlot)?.name, Is.EqualTo(recipe.name), id + " is on her body.");
+                    Assert.That(beside.Avatar.GetWardrobeItem(recipe.wardrobeSlot)?.name, Is.Not.EqualTo(recipe.name), id + " is not on " + Other + ".");
+                }
+
+                var kept = new Built();
+                yield return Build(provider, Star, catalog.Materialize(saved), parent.transform, kept);
+                Assert.That(catalog.Materialize(saved).outfits.Single().wardrobe.Select(worn => worn.itemId),
+                    Is.EqualTo(saved.outfits.Single().wardrobe.Select(worn => worn.itemId)), "A saved outfit is never added to.");
+                foreach (string id in mine)
+                    Assert.That(kept.Avatar.GetWardrobeItem(pieces.Recipes[id].wardrobeSlot)?.name, Is.Not.EqualTo(pieces.Recipes[id].name),
+                        "Her save keeps its own outfit: " + id);
+                Assert.That(warnings, Has.Count.EqualTo(1), "One warning for her Hair slot: " + string.Join(" | ", warnings));
+                Assert.That(warnings[0], Does.Contain("Hair"));
+                RemoveTaggedPieces();
+                AssertNoTaggedEntryInstalled();
             }
             finally
             {

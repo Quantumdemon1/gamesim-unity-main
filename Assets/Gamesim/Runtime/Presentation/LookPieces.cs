@@ -31,9 +31,10 @@ namespace Gamesim.Presentation
         /// <paramref name="race"/> in place of the look's line in its slot and in that slot's twins
         /// (<see cref="WardrobeSlots.Twins"/>), or appended when the look has nothing there. Per slot the
         /// lowest id (ordinal) wins; a second piece or one that does not fit the race gives one warning
-        /// for the look and slot. A piece with <c>over:</c> tags is worn only when the wardrobe, once the
-        /// other pieces are in, holds an item one of them names (<paramref name="idOf"/> maps a line or
-        /// a tag's id to the one id both are compared by); otherwise it is left off without a word.
+        /// for the look and slot. A piece with <c>over:</c> tags (an outer layer) is worn only when the
+        /// wardrobe, once the pieces without one are in, holds an item one of them names: the two compared
+        /// ordinally after <paramref name="idOf"/> (the caller's: a line or a tag's id to its item's id).
+        /// One outer piece never makes way for another. Otherwise it is left off without a word.
         /// </summary>
         public static string[] Apply(string lookId, string race, string[] wardrobe, IReadOnlyList<Piece> pieces,
             Func<string, string> slotOf, Func<string, string> idOf, ICollection<string> warnings)

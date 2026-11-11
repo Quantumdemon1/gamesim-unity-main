@@ -357,6 +357,21 @@ namespace Gamesim.Uma.Editor
             return new string(chars);
         }
 
+        /// <summary>
+        /// The one spelling of a race in a file or folder name: lowercase, every run of characters outside [a-z0-9] one
+        /// hyphen, no hyphen at either end ("Human Male 3.0" is "human-male-3-0").
+        /// </summary>
+        public static string RaceSlug(string race)
+        {
+            var slug = new System.Text.StringBuilder();
+            foreach (char ch in (race ?? "").ToLowerInvariant())
+            {
+                if ((ch >= 'a' && ch <= 'z') || (ch >= '0' && ch <= '9')) slug.Append(ch);
+                else if (slug.Length > 0 && slug[slug.Length - 1] != '-') slug.Append('-');
+            }
+            return slug.ToString().TrimEnd('-');
+        }
+
         /// <summary>The positions one name is swept to around its baseline value.</summary>
         public static List<double> PositionsFor(double baseline, IList<double> positions)
         {

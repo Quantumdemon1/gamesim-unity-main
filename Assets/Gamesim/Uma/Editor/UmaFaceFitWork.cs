@@ -66,6 +66,14 @@ namespace Gamesim.Uma.Editor
         public const double ReadbackTolerance = 1e-5;
         public const string ManifestName = "manifest.json", SamplesName = "samples.npz", TopologyName = "topology";
 
+        /// <summary>
+        /// A read-back round's manifest: one per race in r&lt;n&gt;/ (manifest-&lt;race slug&gt;.json), so the male and the
+        /// female candidates of one round share contract S4's folder. A plain manifest.json there is never this tool's.
+        /// </summary>
+        public static string RoundManifestName(string race) => "manifest-" + FaceFitPlan.RaceSlug(race) + ".json";
+
+        public static string RoundFolder(string outputFolder, int round) => Path.Combine(outputFolder, "r" + round.ToString(CultureInfo.InvariantCulture));
+
         public static string Folder(string outputFolder, string jobSha) => Path.Combine(outputFolder, ".work-" + jobSha.Substring(0, 16));
 
         public static bool IsFinished(string work, string id) => File.Exists(Path.Combine(work, id + ".json"));
@@ -479,7 +487,7 @@ namespace Gamesim.Uma.Editor
             return manifest;
         }
 
-        /// <summary>The read-back's files: per round r&lt;n&gt;/&lt;appearanceId&gt;.npz and r&lt;n&gt;/manifest.json (written last).</summary>
+        /// <summary>The read-back's files: per round r&lt;n&gt;/&lt;appearanceId&gt;.npz and r&lt;n&gt;/manifest-&lt;race slug&gt;.json (written last).</summary>
         public static List<JsonObject> AssembleReadback(FaceFitJob job, string work, IList<PlannedSample> plan, JsonObject head)
         {
             var topology = ReadNpz(Path.Combine(work, TopologyName + ".npz"));
@@ -487,10 +495,12 @@ namespace Gamesim.Uma.Editor
             var manifests = new List<JsonObject>();
             foreach (int round in plan.Where(p => p.Kind == PlannedSample.Candidate).Select(p => p.Round).Distinct().OrderBy(r => r))
             {
-                string folder = Path.Combine(job.OutputFolder, "r" + round.ToString(CultureInfo.InvariantCulture));
+                string folder = RoundFolder(job.OutputFolder, round);
                 Directory.CreateDirectory(folder);
+                if (File.Exists(Path.Combine(folder, ManifestName)))
+                    throw new IOException(Path.Combine(folder, ManifestName) + " is a plain manifest.json in a read-back round folder; this tool writes " + RoundManifestName(job.Race) + " and never touches that file");
                 // A round whose manifest this job wrote already (a run stopped between two rounds' manifests) is done.
-                if (File.Exists(Path.Combine(folder, ManifestName))) continue;
+                if (File.Exists(Path.Combine(folder, RoundManifestName(job.Race)))) continue;
                 var candidates = new List<object>();
                 foreach (var c in plan.Where(p => p.Kind == PlannedSample.Candidate && p.Round == round))
                 {
@@ -545,7 +555,7 @@ namespace Gamesim.Uma.Editor
                 manifest.Set("complete", true);
                 manifest.Set("candidates", candidates);
                 manifest.Set("finishedUtc", DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ssZ", CultureInfo.InvariantCulture));
-                WriteOnce.Text(Path.Combine(folder, ManifestName), Json.Write(manifest));
+                WriteOnce.Text(Path.Combine(folder, RoundManifestName(job.Race)), Json.Write(manifest));
                 manifests.Add(manifest);
             }
             return manifests;
@@ -580,7 +590,15 @@ namespace Gamesim.Uma.Editor
             complete = false;
             var manifests = new List<string>();
             if (job.Mode == FaceFitJob.SweepMode) manifests.Add(Path.Combine(job.OutputFolder, ManifestName));
-            else foreach (int round in job.Candidates.Select(c => c.Round).Distinct()) manifests.Add(Path.Combine(job.OutputFolder, "r" + round, ManifestName));
+            else
+                foreach (int round in job.Candidates.Select(c => c.Round).Distinct().OrderBy(r => r))
+                {
+                    string plain = Path.Combine(RoundFolder(job.OutputFolder, round), ManifestName);
+                    if (File.Exists(plain))
+                        return "error: " + plain + " is a plain manifest.json in a read-back round folder; it is not this tool's (each race's round manifest is "
+                            + RoundManifestName(job.Race) + "), so the job stops and leaves it as it is";
+                    manifests.Add(Path.Combine(RoundFolder(job.OutputFolder, round), RoundManifestName(job.Race)));
+                }
             int found = 0;
             foreach (var path in manifests)
             {

@@ -262,6 +262,106 @@ namespace Gamesim.Tools.Tests
             Assert.That(plan[2].Overrides["jawsSize"], Is.EqualTo(.61));
         }
 
+        [Test]
+        public void ARaceIsSpelledInFileNamesOneWay()
+        {
+            Assert.That(FaceFitPlan.RaceSlug("Human Male 3.0"), Is.EqualTo("human-male-3-0"));
+            Assert.That(FaceFitPlan.RaceSlug("Human Female 3.0"), Is.EqualTo("human-female-3-0"));
+            Assert.That(FaceFitPlan.RaceSlug("  A--b__C. "), Is.EqualTo("a-b-c"));
+            Assert.That(FaceFitWork.RoundManifestName("Human Male 3.0"), Is.EqualTo("manifest-human-male-3-0.json"));
+        }
+
+        private FaceFitJob ReadbackJob(string race, string output, string appearanceId, string extra = "")
+        {
+            var job = Parse("{\"mode\": \"readback\", \"race\": \"" + race + "\", \"gameCommit\": \"" + new string('c', 40) + "\", \"outputFolder\": "
+                + Json.Write(output).Trim() + ", \"candidates\": [{\"appearanceId\": \"" + appearanceId + "\", \"round\": 1, \"values\": {\"headSize\": 0.6}}]" + extra + "}", out var errors);
+            Assert.That(errors, Is.Empty);
+            return job;
+        }
+
+        /// <summary>A read-back run as the Unity side drives it, with made-up captures: null when Finished answered first.</summary>
+        private static string RunReadback(FaceFitJob job)
+        {
+            string finished = FaceFitWork.Finished(job, out _);
+            if (finished != null) return finished;
+            string work = FaceFitWork.Open(job, out _);
+            var plan = FaceFitPlan.Readback(job);
+            foreach (var sample in plan)
+            {
+                if (FaceFitWork.IsFinished(work, sample.Id)) continue;
+                var capture = Capture(new[] { "headSize" }, new[] { sample.Overrides.TryGetValue("headSize", out var o) ? o : .72 }, 0f);
+                FaceFitWork.WriteTopology(work, capture, job.HeadSlots);
+                FaceFitWork.WriteSample(work, sample, capture, null);
+            }
+            FaceFitWork.AssembleReadback(job, work, plan, new JsonObject());
+            return null;
+        }
+
+        private static Dictionary<string, string> Hashes(string root) =>
+            Directory.GetFiles(root, "*", SearchOption.AllDirectories).ToDictionary(f => f, Sha256.File);
+
+        /// <summary>Contract S4's readback/r&lt;n&gt;/ holds both races of a round: one manifest per race, each naming only its own candidates.</summary>
+        [Test]
+        public void BothRacesOfARound_ShareItsFolder_EachWithItsOwnManifest()
+        {
+            string output = Path.Combine(folder, "readback");
+            var male = ReadbackJob("Human Male 3.0", output, "male-look");
+            var female = ReadbackJob("Human Female 3.0", output, "female-look");
+            Assert.That(RunReadback(male), Is.Null);
+            Assert.That(RunReadback(female), Is.Null, "the female job of the same round is not refused");
+            string round = Path.Combine(output, "r1");
+            Assert.That(File.Exists(Path.Combine(round, FaceFitWork.ManifestName)), Is.False, "no plain manifest.json in a round folder");
+            foreach (var (race, look) in new[] { ("human-male-3-0", "male-look"), ("human-female-3-0", "female-look") })
+            {
+                var manifest = (JsonObject)Json.Parse(File.ReadAllText(Path.Combine(round, "manifest-" + race + ".json")));
+                var files = ((List<object>)manifest["candidates"]).Cast<JsonObject>().Select(c => (string)c["file"]).ToList();
+                Assert.That(files, Is.EqualTo(new[] { look + ".npz" }), race + "'s manifest names only its own candidates");
+                Assert.That(manifest["round"], Is.EqualTo(1));
+                Assert.That(File.Exists(Path.Combine(round, look + ".npz")), Is.True);
+            }
+
+            // The same job again is finished and changes nothing.
+            var before = Hashes(output);
+            Assert.That(RunReadback(male), Does.StartWith("complete"));
+            Assert.That(Hashes(output), Is.EqualTo(before), "a finished job rewrites no file");
+
+            // Another job of the same race in the same round is refused.
+            var other = ReadbackJob("Human Male 3.0", output, "male-look", ", \"description\": \"another job\"");
+            Assert.That(RunReadback(other), Does.StartWith("error").And.Contain("another job"));
+            Assert.That(Hashes(output), Is.EqualTo(before));
+        }
+
+        [Test]
+        public void APlainManifestInARoundFolder_StopsTheReadback_AndIsLeftAsItIs()
+        {
+            string output = Path.Combine(folder, "readback-plain");
+            Directory.CreateDirectory(Path.Combine(output, "r1"));
+            string plain = Path.Combine(output, "r1", FaceFitWork.ManifestName);
+            File.WriteAllText(plain, "{\"someone\": \"else\"}");
+            var outcome = RunReadback(ReadbackJob("Human Male 3.0", output, "male-look"));
+            Assert.That(outcome, Does.StartWith("error").And.Contain("plain manifest.json"), outcome);
+            Assert.That(File.ReadAllText(plain), Is.EqualTo("{\"someone\": \"else\"}"));
+            Assert.That(Directory.GetFiles(Path.Combine(output, "r1")), Is.EqualTo(new[] { plain }), "nothing else is written in the round folder");
+        }
+
+        /// <summary>A kill after a candidate file was published but before the round manifest: the same job finishes the round.</summary>
+        [Test]
+        public void AReadbackKilledBeforeItsRoundManifest_FinishesOnTheNextRun()
+        {
+            string output = Path.Combine(folder, "readback-kill");
+            var job = ReadbackJob("Human Male 3.0", output, "male-look");
+            Assert.That(RunReadback(job), Is.Null);
+            string manifest = Path.Combine(output, "r1", FaceFitWork.RoundManifestName(job.Race));
+            string candidate = Path.Combine(output, "r1", "male-look.npz");
+            string sha = Sha256.File(candidate);
+            File.Delete(manifest);   // as if the run stopped between the candidate file and the manifest
+            File.WriteAllText(manifest + WriteOnce.PartSuffix, "half");
+            Assert.That(RunReadback(job), Is.Null, "the round is not finished, so the same job runs again");
+            Assert.That(File.Exists(manifest), Is.True);
+            Assert.That(File.Exists(manifest + WriteOnce.PartSuffix), Is.False);
+            Assert.That(Sha256.File(candidate), Is.EqualTo(sha), "the published candidate file is kept, not rewritten");
+        }
+
         // ------------------------------------------------------------------ statistics
 
         [Test]

@@ -574,4 +574,7 @@ Gamesim.Uma.DiagnosticsPlayModeTests 10
 # 16710 = 16642 + main's 53 (16695 - 16642: the dialogue chip 2's observers, chip and HUD witnesses) + story rules 10's
 # 15 (16657 - 16642): disjoint cases, so the floor is their sum (the merge of main into story rules 10, 2026-11-09).
 # Counted from the two sides; no run has observed it on the merge.
-Gamesim.SimulationTests 16710
+# 16716 = 16710 + the All-Star intake's 6 WardrobeSlotsTests cases (the slot lists, the twins, the Accessories page's rows,
+# the swim and sleep sets, and the two save proofs): dotnet test Tools/SimulationTests ran exactly 16716 of 16716 on the
+# commit that adds them, from main at fceeaa24 (2026-11-10).
+Gamesim.SimulationTests 16716

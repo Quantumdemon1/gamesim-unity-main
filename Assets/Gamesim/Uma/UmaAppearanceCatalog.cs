@@ -103,7 +103,7 @@ namespace Gamesim.Uma
                 }
             }
 
-            var slots = new HashSet<string> { "Hair", "Beard", "Eyebrows", "Face", "Chest", "Legs", "Feet", "BottomUnderlayer", "TopUnderlayer" };
+            var slots = new HashSet<string>(WardrobeSlots.Uma, StringComparer.Ordinal);
             foreach (var recipe in index.GetAllAssets<UMAWardrobeRecipe>().Where(recipe => recipe != null).OrderBy(recipe => recipe.name, StringComparer.Ordinal))
             {
                 if (!slots.Contains(recipe.wardrobeSlot)) continue;

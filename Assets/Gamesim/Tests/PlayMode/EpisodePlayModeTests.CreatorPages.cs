@@ -1165,21 +1165,55 @@ namespace Gamesim.Tests.PlayMode
             yield return null;
             Assert.That(Worn("Eyewear"), Is.Null, "The starting look wears no glasses.");
             Assert.That(CastButtons("Black frames"), Has.Length.EqualTo(1), "Offered while not hidden.");
+
+            // The premise, so the checks below are never vacuous: with nothing hidden, this seed rolls the
+            // glasses on some roll, and some roll ends wearing a top. A roll's draws depend on the body and
+            // on how many choices each row has, never on what is worn, so the same seed with the two pieces
+            // hidden walks the same draws: without the hidden filter those rolls would wear them again.
+            const int seed = 20260925;
+            string bodyId = creator.Draft.Appearance.bodyId;
+            Assert.That(AppearanceEditing.Choices(catalog, new[] { "Chest" }, bodyId).Count, Is.GreaterThan(1),
+                "Hiding one top leaves the row others, so a roll draws as often.");
+            Assert.That(AppearanceEditing.Choices(catalog, new[] { "Eyewear" }, bodyId).Count, Is.GreaterThan(1));
+            creator.RandomSeed = seed;
+            int rolls = 0, glassesRoll = -1, topRoll = -1;
+            string firstTop = null;
+            while (rolls < 100 && (glassesRoll < 0 || topRoll < 0))
+            {
+                CastButtons("Randomize").Single().onClick.Invoke();
+                yield return null;
+                if (glassesRoll < 0 && Worn("Eyewear") == id) glassesRoll = rolls;
+                if (topRoll < 0 && Worn("Chest") != null) { topRoll = rolls; firstTop = Worn("Chest"); }
+                rolls++;
+            }
+            Assert.That(glassesRoll, Is.GreaterThanOrEqualTo(0), "With nothing hidden, the seed rolls the glasses within 100 tries.");
+            Assert.That(topRoll, Is.GreaterThanOrEqualTo(0), "With nothing hidden, a roll wears a top.");
+            var top = AppearanceEditing.Find(catalog, firstTop);
+            Assert.That(top, Is.Not.Null);
+            if (Worn("Eyewear") != null)
+            {
+                CastButtons("Remove eyewear").Single().onClick.Invoke();
+                yield return null;
+            }
+            Assert.That(Worn("Eyewear"), Is.Null);
             try
             {
                 glasses.PickerHidden = true;
+                top.PickerHidden = true;
                 CastButtons("Accessories")[0].onClick.Invoke();
                 yield return null;
                 Assert.That(CastButtons("Black frames"), Is.Empty, "A look that does not name the hidden piece is never offered it.");
-                Assert.That(CastButtons("Remove eyewear"), Is.Not.Empty, "The row is there with its other frames.");
+                Assert.That(CastButtons("Previous eyewear"), Has.Length.EqualTo(1), "The row is there with its other frames (Remove is off: nothing is worn).");
 
-                creator.RandomSeed = 20260925;
-                for (int roll = 0; roll < 30; roll++)
+                creator.RandomSeed = seed;
+                for (int roll = 0; roll < Mathf.Max(rolls, 30); roll++)
                 {
                     CastButtons("Randomize").Single().onClick.Invoke();
                     yield return null;
                     Assert.That(Worn("Eyewear"), Is.Not.EqualTo(id), "Roll " + roll + " never wears the hidden piece.");
+                    if (roll == topRoll) Assert.That(Worn("Chest"), Is.Not.EqualTo(firstTop), "Roll " + roll + ": Randomize's garments never pick a hidden top.");
                 }
+                top.PickerHidden = false;
                 CastButtons("Reset accessories").Single().onClick.Invoke();
                 yield return null;
                 Assert.That(Worn("Eyewear"), Is.Not.EqualTo(id), "Reset never adds it to a draft that began without it.");
@@ -1197,7 +1231,7 @@ namespace Gamesim.Tests.PlayMode
                 yield return null;
                 Assert.That(Worn("Eyewear"), Is.EqualTo(id));
             }
-            finally { glasses.PickerHidden = false; }
+            finally { glasses.PickerHidden = false; top.PickerHidden = false; }
         }
 #endif
 

@@ -542,8 +542,41 @@ namespace Gamesim.Uma.Editor
             done(result, null);
         }
 
-        /// <summary>Reads the built body: every slot in the recipe's order, its vertices from the renderer UMA put it in.</summary>
+        /// <summary>
+        /// Reads the built body with its root put, for the read only, at the world origin, unturned, at world scale 1 (its
+        /// place, turn and scale are restored after). The export frame is then exact by construction: every renderer is at
+        /// world scale 1, so a baked vertex means the same whatever BakeMesh's scale convention, and the root's frame is
+        /// the world's.
+        /// </summary>
         private static FaceFitCapture Read(DynamicCharacterAvatar avatar, IDictionary<string, double> requested)
+        {
+            var root = avatar.transform;
+            Vector3 position = root.localPosition, scale = root.localScale;
+            Quaternion rotation = root.localRotation;
+            try
+            {
+                root.SetPositionAndRotation(Vector3.zero, Quaternion.identity);
+                var lossy = root.lossyScale;
+                root.localScale = new Vector3(scale.x / lossy.x, scale.y / lossy.y, scale.z / lossy.z);
+                foreach (var renderer in avatar.umaData.GetRenderers() ?? new SkinnedMeshRenderer[0])
+                    if (renderer != null && (renderer.transform.lossyScale - Vector3.one).sqrMagnitude > 1e-10f)
+                        throw new InvalidOperationException("the renderer " + renderer.name + " stands at world scale " + renderer.transform.lossyScale.ToString("F6")
+                            + " with the root at scale 1, so the export frame cannot be made exact");
+                return ReadAtOrigin(avatar, requested);
+            }
+            finally
+            {
+                if (root != null)
+                {
+                    root.localPosition = position;
+                    root.localRotation = rotation;
+                    root.localScale = scale;
+                }
+            }
+        }
+
+        /// <summary>Reads the built body: every slot in the recipe's order, its vertices from the renderer UMA put it in.</summary>
+        private static FaceFitCapture ReadAtOrigin(DynamicCharacterAvatar avatar, IDictionary<string, double> requested)
         {
             var data = avatar.umaData;
             var root = avatar.transform;

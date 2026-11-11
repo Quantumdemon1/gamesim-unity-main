@@ -127,7 +127,7 @@ namespace Gamesim.Uma
                     Tags = entry?.tags?.ToArray() ?? Array.Empty<string>(),
                     FallbackPriority = entry?.fallbackPriority ?? 100,
                     PickerHidden = entry?.pickerHidden ?? false,
-                    Label =!string.IsNullOrWhiteSpace(entry?.label) ? entry.label
+                    Label = !string.IsNullOrWhiteSpace(entry?.label) ? entry.label
                         : string.IsNullOrWhiteSpace(recipe.DisplayValue) ? Label(recipe.name) : recipe.DisplayValue,
                     CompatibleBodies = compatible,
                     SuppressedSlots = recipe.suppressWardrobeSlots.ToArray(),

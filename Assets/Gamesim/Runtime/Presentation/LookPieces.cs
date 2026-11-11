@@ -82,7 +82,7 @@ namespace Gamesim.Presentation
         /// exponent, in the fewest decimals (at most six) that read back to exactly the same float. A value
         /// that would need rounding throws rather than being written. No line end.
         ///
-        /// <para>The boundary hash of a look (posted by the lead, compared by Codex's checker): the first 16
+        /// <para>The boundary hash of a look (what the content checker compares a fitted part against): the first 16
         /// hex digits, lower case, of the SHA-256 of this line's UTF-8 bytes, without its line end.</para>
         /// </summary>
         public static string LibraryLine(string id, string race, IEnumerable<KeyValuePair<string, float>> dna)

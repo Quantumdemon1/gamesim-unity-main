@@ -23,7 +23,12 @@ namespace Gamesim.Uma.Tests
     public sealed class UmaAllStarPiecesPlayModeTests
     {
         private const string CatalogFolder = "Gamesim/CharacterCatalog";
-        internal const string Star = "janelle-pierzina", Other = "danielle-reyes";
+        /// <summary>
+        /// Two fictional house guests, not All-Stars: the fixture must hold in a copy that carries delivered pieces,
+        /// and no delivered piece names these two. Star wears her own hair (a piece replaces it) and nothing in
+        /// Face or Ears (a piece is added there).
+        /// </summary>
+        internal const string Star = "jamie-roberts", Other = "quinn-martinez";
         /// <summary>The pieces TaggedForStar dresses her in (a duplicate hair, when asked for, is not among them).</summary>
         internal static readonly string[] Worn = { "allstar-test-face", "allstar-test-hair-a", "allstar-test-ears" };
 
@@ -73,6 +78,9 @@ namespace Gamesim.Uma.Tests
         /// </summary>
         internal static Pieces TaggedForStar(UmaAppearanceCatalog installed, bool duplicate)
         {
+            foreach (string look in new[] { Star, Other })
+                Assert.That(installed.Items.Where(item => item.Tags.Contains(LookPieces.WornBy + look)).Select(item => item.Id), Is.Empty,
+                    "The fixture's two looks must be looks no installed piece names: pick another for " + look + ".");
             var pieces = new Pieces();
             string female = UmaCastLibrary.FemaleRace;
             UmaCastLibrary.TryGet(Star, out var look);

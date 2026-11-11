@@ -464,7 +464,7 @@ namespace Gamesim.Uma.Tests
             yield return null;
         }
 
-        // The two look walkers again with pieces tagged for one All-Star in the catalog (UmaAllStarPiecesPlayModeTests).
+        // The two look walkers again with pieces tagged for one library look in the catalog (UmaAllStarPiecesPlayModeTests).
         private UmaAllStarPiecesPlayModeTests.Pieces pieces;
 
         [TearDown]

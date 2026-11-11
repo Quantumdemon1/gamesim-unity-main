@@ -70,7 +70,16 @@ namespace Gamesim.Tests.PlayMode
                     Settled = () => !Menu().IsShowing, Done = () => !Menu().IsShowing },
                 // A first launch: the authored season is in memory, nothing is on disk and the menu
                 // offers no Continue, so Escape and B leave it up rather than start a season nobody chose.
-                new BackCase { Name = "main menu, on a first launch", Open = () => Step(() => director.OpenMainMenu()),
+                // The slot is emptied after the hold, whose flush can write NPC time installed since the
+                // reload; the held house writes nothing more.
+                new BackCase { Name = "main menu, on a first launch",
+                    Open = () => Step(() =>
+                    {
+                        var store = new Gamesim.Persistence.EpisodeSaveStore(director.SavePath);
+                        foreach (var path in new[] { store.SavePath, store.BackupPath })
+                            if (File.Exists(path)) File.Delete(path);
+                        director.OpenMainMenu();
+                    }),
                     Done = () => Menu().IsShowing && !Menu().OffersContinue && director.SeasonInProgress },
                 // With none - the slot's save unreadable, the house in recovery - the menu has
                 // nowhere to close to: Escape and B both leave it up, and nothing under it acts.

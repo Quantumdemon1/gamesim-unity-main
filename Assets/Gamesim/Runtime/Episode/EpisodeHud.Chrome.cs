@@ -449,11 +449,11 @@ namespace Gamesim.Episode
 
         /// <summary>
         /// The objective chip's title: what the endgame is about, in the outline's words, or the
-        /// ordinary 'Current Objective'. The next-stop line under it is untouched.
+        /// task of the week from <see cref="ObjectiveWords"/>. The next-stop line under it is untouched.
         /// </summary>
         public static string ObjectiveTitle(EpisodeState state)
         {
-            if (state == null) return "Current Objective";
+            if (state == null) return ObjectiveWords.Fallback;
             if (state.phase == EpisodePhase.Finished) return "Season complete";
             if (IsFinalTwo(state)) return "The jury decides";
             if (IsFinalThree(state))
@@ -462,7 +462,7 @@ namespace Gamesim.Episode
                     return state.hohId == state.playerId ? "One decision remains" : "The final Head of Household decides";
                 return "Final Head of Household ahead";
             }
-            return "Current Objective";
+            return ObjectiveWords.For(state);
         }
 
         /// <summary>A phase in the one or two words the week chip has room for.</summary>

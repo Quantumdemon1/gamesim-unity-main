@@ -471,6 +471,54 @@ namespace Gamesim.Tools.Tests
             return c;
         }
 
+        private FaceFitJob OwnJob(string output, string extra = ", \"plan\": {\"randomCount\": 0}, \"persons\": []")
+        {
+            var job = Parse(JobText(extra, output), out var errors);
+            Assert.That(errors, Is.Empty);
+            return job;
+        }
+
+        /// <summary>
+        /// A run killed between a sample's .npz and its record (or the topology's) leaves an .npz with no record. The next
+        /// run clears it as unfinished work, builds that sample once more, and the job still assembles.
+        /// </summary>
+        [Test]
+        public void AnNpzWithoutItsRecord_IsUnfinishedWork_AndTheNextRunRebuildsIt()
+        {
+            var job = OwnJob(Path.Combine(folder, "orphan"));
+            var names = new[] { "headSize", "noseSize" };
+            var baseline = new Dictionary<string, double> { ["headSize"] = .72, ["noseSize"] = .5 };
+            var plan = FaceFitPlan.Sweep(job, names, baseline, Array.Empty<string>(), unrequested: false, fresh: false);
+            string work = FaceFitWork.Open(job, out _);
+            FaceFitCapture Make(PlannedSample s) => Capture(names, names.Select(n => s.Overrides.TryGetValue(n, out var o) ? o : baseline[n]).ToArray(), 0f);
+
+            // The kill: the topology's .npz and one sample's .npz are in place, neither record is.
+            FaceFitWork.WriteTopology(work, Make(plan[0]), job.HeadSlots);
+            File.Delete(Path.Combine(work, FaceFitWork.TopologyName + ".json"));
+            FaceFitWork.WriteSample(work, plan[0], Make(plan[0]), null);
+            File.Delete(Path.Combine(work, plan[0].Id + ".json"));
+            Assert.That(FaceFitWork.IsFinished(work, plan[0].Id), Is.False);
+
+            FaceFitWork.Open(job, out int cleared);
+            Assert.That(cleared, Is.EqualTo(2), "the next run clears both orphaned .npz files");
+            Assert.That(File.Exists(Path.Combine(work, plan[0].Id + ".npz")), Is.False);
+            Assert.That(File.Exists(Path.Combine(work, FaceFitWork.TopologyName + ".npz")), Is.False);
+
+            // Even without that sweep, writing the sample and the topology again over an orphan works.
+            FaceFitWork.WriteTopology(work, Make(plan[0]), job.HeadSlots);
+            File.Delete(Path.Combine(work, FaceFitWork.TopologyName + ".json"));
+            FaceFitWork.WriteTopology(work, Make(plan[0]), job.HeadSlots);
+            Assert.That(File.Exists(Path.Combine(work, FaceFitWork.TopologyName + ".json")), Is.True, "the topology's record is written after an orphaned .npz");
+            FaceFitWork.WriteSample(work, plan[0], Make(plan[0]), null);
+            File.Delete(Path.Combine(work, plan[0].Id + ".json"));
+            FaceFitWork.WriteSample(work, plan[0], Make(plan[0]), null);
+            Assert.That(FaceFitWork.IsFinished(work, plan[0].Id), Is.True);
+
+            foreach (var sample in plan.Skip(1)) FaceFitWork.WriteSample(work, sample, Make(sample), null);
+            var manifest = FaceFitWork.AssembleSweep(job, work, plan, names, new JsonObject());
+            Assert.That(manifest["complete"], Is.EqualTo(true));
+        }
+
         [Test]
         public void ASweepAssembles_FromFinishedSamples()
         {

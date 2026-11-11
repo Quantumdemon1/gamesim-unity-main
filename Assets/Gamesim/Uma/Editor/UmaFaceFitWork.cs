@@ -84,12 +84,31 @@ namespace Gamesim.Uma.Editor
             Directory.CreateDirectory(job.OutputFolder);
             string work = Folder(job.OutputFolder, job.Sha);
             Directory.CreateDirectory(work);
-            partsDeleted = WriteOnce.DeleteParts(work);
+            partsDeleted = WriteOnce.DeleteParts(work) + DeleteOrphans(work);
             string copy = Path.Combine(work, "job.json");
             if (!File.Exists(copy)) WriteOnce.Text(copy, job.Text);
             else if (Sha256.File(copy) != Sha256.Text(job.Text.Replace("\r\n", "\n")))
                 throw new IOException("the work folder " + work + " holds a different job; give this job its own output folder");
             return work;
+        }
+
+        /// <summary>
+        /// Deletes every work-folder .npz whose .json record is missing (a sample's or the topology's): a run stopped
+        /// between the two writes leaves one, and the record's existence is what "finished" means, so it is this job's
+        /// own unfinished work, rebuilt by the next run. Staged final files (publish-*) are Publish's to judge.
+        /// </summary>
+        public static int DeleteOrphans(string work)
+        {
+            int deleted = 0;
+            foreach (var npz in Directory.GetFiles(work, "*.npz", SearchOption.TopDirectoryOnly))
+            {
+                string stem = Path.GetFileNameWithoutExtension(npz);
+                if (stem.StartsWith("publish-", StringComparison.Ordinal)) continue;
+                if (File.Exists(Path.Combine(work, stem + ".json"))) continue;
+                File.Delete(npz);
+                deleted++;
+            }
+            return deleted;
         }
 
         public static void WriteNpz(string path, IEnumerable<KeyValuePair<string, NpyArray>> members)
@@ -139,7 +158,9 @@ namespace Gamesim.Uma.Editor
         public static void WriteTopology(string work, FaceFitCapture c, IList<string> headSlots)
         {
             string path = Path.Combine(work, TopologyName + ".npz");
-            if (File.Exists(path)) return;
+            // The record is the marker, as for a sample: an .npz without it is unfinished and written again.
+            if (File.Exists(Path.Combine(work, TopologyName + ".json"))) return;
+            if (File.Exists(path)) File.Delete(path);
             int v = c.VertexCount, b = c.BoneNames.Length;
             var regions = FaceFitStats.Regions(c.SlotNames, c.SlotOffset, c.SlotCount, headSlots, c.BoneIndices, c.BoneWeights, c.BoneNames, c.BoneParents,
                 out var regionNames, out var dominant);
@@ -193,7 +214,10 @@ namespace Gamesim.Uma.Editor
         public static void WriteSample(string work, PlannedSample s, FaceFitCapture c, string topologyKey)
         {
             int v = c.VertexCount, b = c.BoneNames.Length;
-            WriteNpz(Path.Combine(work, s.Id + ".npz"), new[]
+            // An .npz without its record is this job's unfinished work (a run stopped between the two writes): write it again.
+            string arrays = Path.Combine(work, s.Id + ".npz");
+            if (File.Exists(arrays) && !IsFinished(work, s.Id)) File.Delete(arrays);
+            WriteNpz(arrays, new[]
             {
                 M("positions", NpyArray.Float32(c.Positions, v, 3)),
                 M("normals", NpyArray.Float32(c.Normals, v, 3)),

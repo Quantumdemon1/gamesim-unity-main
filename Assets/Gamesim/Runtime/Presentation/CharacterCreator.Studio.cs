@@ -799,7 +799,10 @@ namespace Gamesim.Presentation
             if (active != null) keep.AddRange(active.wardrobe.Where(item => place.Contains(item.slot)).Select(item => item.itemId));
             var choices = AppearanceEditing.Choices(Catalog, place, appearance.bodyId, keep);
             if (choices.Count == 0) return;
-            var selected = AppearanceEditing.Outfit(appearance).wardrobe.FirstOrDefault(item => place.Contains(item.slot));
+            // What the body shows: where a save names both pieces of a place, the UMA item (the body
+            // build leaves the code-built twin off). A place of one slot reads its slot as before.
+            var wornHere = AppearanceEditing.Outfit(appearance).wardrobe.Where(item => place.Contains(item.slot)).ToList();
+            var selected = wornHere.FirstOrDefault(item => item.slot == place[place.Length - 1]) ?? wornHere.FirstOrDefault();
             int index = choices.FindIndex(item => item.Matches(selected?.itemId));
             string worn = index >= 0 ? choices[index].Label : selected == null ? "None" : "Saved item unavailable";
             StudioHeading(slotLabel.ToUpperInvariant(), worn + "  ·  " + choices.Count + " styles");

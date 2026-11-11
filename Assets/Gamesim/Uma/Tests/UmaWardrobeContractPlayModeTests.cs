@@ -726,7 +726,9 @@ namespace Gamesim.Uma.Tests
             var marked = Shiny("Marked", UmaStylizer.AuthoredPbrTag, UmaStylizer.AuthoredPbrVersion);
             var plain = Shiny("Plain");
             var wrongValue = Shiny("Wrong value", UmaStylizer.AuthoredPbrTag, "2");
-            var wrongName = Shiny("Wrong name", "GamesimAuthoredPbr", UmaStylizer.AuthoredPbrVersion);
+            // A name with other letters, not the mark in another case: Unity matches a tag's name without
+            // regard to case, so "GamesimAuthoredPbr" reads as the mark itself and keeps its finish.
+            var wrongName = Shiny("Wrong name", "GamesimAuthoredFinish", UmaStylizer.AuthoredPbrVersion);
             var root = new GameObject("Authored finish part");
             owned.Add(root);
             root.AddComponent<MeshRenderer>().sharedMaterials = new[] { marked, plain, wrongValue, wrongName };

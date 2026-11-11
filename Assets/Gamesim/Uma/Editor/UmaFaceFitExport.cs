@@ -645,6 +645,20 @@ namespace Gamesim.Uma.Editor
             int boneCount = bones.Count;
             c.BoneNames = bones.Select(b => b != null ? b.name : "").ToArray();
             c.BoneParents = bones.Select(b => b != null && b.parent != null ? bones.IndexOf(b.parent) : -1).ToArray();
+
+            // The built skeleton itself, not only the skinned bones: which bones sit under Head (the region rule's step 4),
+            // and the two EarAdjust bones the manifest must carry whether or not they are skinned.
+            var skeleton = root.GetComponentsInChildren<Transform>(true);
+            var headBone = skeleton.FirstOrDefault(t => t.name == "Head");
+            c.BoneUnderHead = bones.Select(b => b != null && headBone != null && b != headBone && b.IsChildOf(headBone)).ToArray();
+            c.EarAdjust = new Dictionary<string, float[]>(StringComparer.Ordinal);
+            foreach (string ear in new[] { "LeftEarAdjust", "RightEarAdjust" })
+            {
+                var bone = skeleton.FirstOrDefault(t => t.name == ear);
+                if (bone == null) throw new InvalidOperationException("the built skeleton has no " + ear + " bone: contract S1 needs both EarAdjust positions");
+                var at = root.InverseTransformPoint(bone.position);
+                c.EarAdjust[ear] = new[] { at.x, at.y, at.z };
+            }
             c.BindPoses = new float[boneCount * 16];
             c.BoneLocal = new float[boneCount * 10];
             c.BonePosition = new float[boneCount * 3];

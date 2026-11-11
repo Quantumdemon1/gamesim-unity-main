@@ -547,12 +547,21 @@ namespace Gamesim.Uma.Editor
         }
 
         /// <summary>The head slot's region of a vertex whose dominant bone is <paramref name="bone"/> (steps 2 to 5 of dominant-bone-v1).</summary>
-        public static string RegionOfBone(int bone, IList<string> boneNames, IList<int> boneParents)
+        public static string RegionOfBone(int bone, IList<string> boneNames, IList<int> boneParents) => RegionOfBone(bone, boneNames, boneParents, null);
+
+        /// <summary>
+        /// As above, with step 4 answered by <paramref name="underHead"/> (per bone: a descendant of Head in the built
+        /// skeleton, read from the real hierarchy) when it is given, so a bone whose ancestors carry no skin weight, and
+        /// so are not in the bone list, is still found under Head.
+        /// </summary>
+        public static string RegionOfBone(int bone, IList<string> boneNames, IList<int> boneParents, IList<bool> underHead)
         {
             if (bone < 0 || bone >= boneNames.Count) return Body;
             string name = boneNames[bone] ?? "";
             if (name.IndexOf("Neck", StringComparison.Ordinal) >= 0) return "neck";
             if (name == "Head" || name == "HeadAdjust") return "skull";
+            if (underHead != null && bone < underHead.Count)
+                return underHead[bone] ? (name.IndexOf("Ear", StringComparison.Ordinal) >= 0 ? "ears" : "face") : Body;
             int guard = 0;
             for (int up = boneParents[bone]; up >= 0 && up < boneNames.Count && guard++ < 1000; up = boneParents[up])
                 if (boneNames[up] == "Head") return name.IndexOf("Ear", StringComparison.Ordinal) >= 0 ? "ears" : "face";
@@ -565,7 +574,7 @@ namespace Gamesim.Uma.Editor
         /// </summary>
         public static sbyte[] Regions(IList<string> slotNames, int[] slotOffset, int[] slotCount, IList<string> headSlots,
             int[] boneIndices, float[] boneWeights, IList<string> boneNames, IList<int> boneParents,
-            out List<string> regionNames, out int[] dominant)
+            out List<string> regionNames, out int[] dominant, IList<bool> underHead = null)
         {
             regionNames = new List<string>(HeadRegions);
             for (int h = 1; h < headSlots.Count; h++) regionNames.Add(headSlots[h]);
@@ -584,7 +593,7 @@ namespace Gamesim.Uma.Editor
                     int bone = DominantBone(boneIndices, boneWeights, v);
                     dominant[v] = bone;
                     int code = bodyCode;
-                    if (head == 0) code = regionNames.IndexOf(RegionOfBone(bone, boneNames, boneParents));
+                    if (head == 0) code = regionNames.IndexOf(RegionOfBone(bone, boneNames, boneParents, underHead));
                     else if (head > 0) code = regionNames.IndexOf(headSlots[head]);
                     regions[v] = (sbyte)code;
                 }

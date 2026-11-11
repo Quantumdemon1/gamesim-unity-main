@@ -503,6 +503,8 @@ namespace Gamesim.Tools.Tests
                 Requested = values.ToArray(),
                 Readback = values.ToArray(),
                 Seconds = .25,
+                // As Read takes them from the built skeleton: RightEarAdjust is not a skinned bone here.
+                EarAdjust = new Dictionary<string, float[]> { ["LeftEarAdjust"] = new[] { .07f, 1.6f, 0f }, ["RightEarAdjust"] = new[] { -.07f, 1.6f, 0f } },
             };
             c.Positions[0] += shift;
             return c;
@@ -554,6 +556,19 @@ namespace Gamesim.Tools.Tests
             foreach (var sample in plan.Skip(1)) FaceFitWork.WriteSample(work, sample, Make(sample), null);
             var manifest = FaceFitWork.AssembleSweep(job, work, plan, names, new JsonObject());
             Assert.That(manifest["complete"], Is.EqualTo(true));
+        }
+
+        [Test]
+        public void ABodyWithoutAnEarAdjustBone_StopsTheAssembly()
+        {
+            var c = Capture(new[] { "headSize" }, new[] { .72 }, 0f);
+            c.EarAdjust = null;   // and RightEarAdjust is not a skinned bone either
+            var sample = new PlannedSample { Id = "baseline-a", Kind = PlannedSample.Baseline, Repeat = "a" };
+            FaceFitWork.WriteTopology(folder, c, FaceFitJob.DefaultHeadSlots);
+            FaceFitWork.WriteSample(folder, sample, c, null);
+            var topology = FaceFitWork.ReadNpz(Path.Combine(folder, FaceFitWork.TopologyName + ".npz"));
+            var e = Assert.Throws<InvalidDataException>(() => FaceFitWork.Measure(new JsonObject(), folder, sample.Id, topology, FaceFitJob.DefaultHeadSlots));
+            Assert.That(e.Message, Does.Contain("RightEarAdjust"));
         }
 
         [Test]
@@ -639,7 +654,7 @@ namespace Gamesim.Tools.Tests
             Assert.That(((JsonObject)manifest["headSymmetryMm"])["slot"], Is.EqualTo("UMA30_Body_UDIM1001_slot"));
             var ears = (JsonObject)manifest["earAdjust"];
             Assert.That(ears["LeftEarAdjust"], Is.Not.Null);
-            Assert.That(ears["RightEarAdjust"], Is.Null, "a bone the body lacks is null, not invented");
+            Assert.That((double)((List<object>)ears["RightEarAdjust"])[0], Is.EqualTo(-.07).Within(1e-6), "an unskinned EarAdjust bone comes from the built skeleton");
             var written = (JsonObject)Json.Parse(File.ReadAllText(Path.Combine(output, FaceFitWork.ManifestName)));
             Assert.That(((JsonObject)written["samplesFile"])["sha256"], Is.EqualTo(Sha256.File(Path.Combine(output, FaceFitWork.SamplesName))));
             Assert.Throws<IOException>(() => FaceFitWork.AssembleSweep(job, work, plan, names, new JsonObject()), "a finished manifest is never rewritten");

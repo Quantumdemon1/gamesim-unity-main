@@ -24,6 +24,8 @@ namespace Gamesim.Uma.Editor
         public float[] BoneWeights;             // V x 4
         public string[] BoneNames;
         public int[] BoneParents;               // -1 for a bone whose parent is not a bone of the mesh
+        public bool[] BoneUnderHead;            // B: a descendant of the bone Head in the built skeleton (null: walk BoneParents)
+        public Dictionary<string, float[]> EarAdjust; // LeftEarAdjust/RightEarAdjust from the built skeleton, xyz in the export frame
         public float[] BindPoses;               // B x 4 x 4, row-major
         public float[] BoneLocal;               // B x 10: local position xyz, rotation xyzw, scale xyz (after DNA)
         public float[] BonePosition;            // B x 3, in the export frame
@@ -165,7 +167,7 @@ namespace Gamesim.Uma.Editor
             if (File.Exists(path)) File.Delete(path);
             int v = c.VertexCount, b = c.BoneNames.Length;
             var regions = FaceFitStats.Regions(c.SlotNames, c.SlotOffset, c.SlotCount, headSlots, c.BoneIndices, c.BoneWeights, c.BoneNames, c.BoneParents,
-                out var regionNames, out var dominant);
+                out var regionNames, out var dominant, c.BoneUnderHead);
 
             // The rule's own record: per slot the vertices of each region, and every bone that decided a head-slot vertex.
             var counts = new JsonObject();
@@ -247,6 +249,13 @@ namespace Gamesim.Uma.Editor
                 .Set("vertices", v).Set("bones", b).Set("topologyKey", key).Set("topologyChanged", topologyKey != null && key != topologyKey)
                 .Set("maxReadbackError", c.MaxReadbackError()).Set("readbackWithin1e5", c.MaxReadbackError() <= ReadbackTolerance)
                 .Set("seconds", Math.Round(c.Seconds, 3)).Set("slots", slots).Set("requested", requested).Set("readback", readback);
+            if (c.EarAdjust != null)
+            {
+                var ears = new JsonObject();
+                foreach (var pair in c.EarAdjust.OrderBy(p => p.Key, StringComparer.Ordinal))
+                    ears.Set(pair.Key, pair.Value.Select(x => (object)(double)x).ToList());
+                record.Set("earAdjust", ears);
+            }
             foreach (var pair in c.Extra) record.Set(pair.Key, pair.Value);
             WriteOnce.Text(Path.Combine(work, s.Id + ".json"), Json.Write(record));
         }
@@ -324,10 +333,20 @@ namespace Gamesim.Uma.Editor
                 + "vertices baked in the DNA rebuild's own CharacterUpdated); Unity axes (x right, y up, z forward); the midsagittal plane is x = 0");
             manifest.Set("midsagittal", new JsonObject().Set("point", new List<object> { 0.0, 0.0, 0.0 }).Set("normal", new List<object> { 1.0, 0.0, 0.0 }));
             var ears = new JsonObject().Set("measuredOn", id);
+            // Read from the built skeleton (whether or not the bone is skinned), else from the skinned bones; contract S1
+            // needs both, so a body without one stops the assembly rather than writing a null.
+            var captured = ReadRecord(work, id).TryGet("earAdjust", out var held) ? held as JsonObject : null;
             foreach (string ear in new[] { "LeftEarAdjust", "RightEarAdjust" })
             {
-                int at = Array.IndexOf(bones, ear);
-                ears.Set(ear, at < 0 ? null : (object)Point(bonePositions, at));
+                object point = null;
+                if (captured != null && captured.TryGet(ear, out var xyz) && xyz is List<object> list && list.Count == 3) point = list;
+                else
+                {
+                    int at = Array.IndexOf(bones, ear);
+                    if (at >= 0) point = Point(bonePositions, at);
+                }
+                if (point == null) throw new InvalidDataException("sample " + id + " has no " + ear + " bone: contract S1 needs both EarAdjust positions");
+                ears.Set(ear, point);
             }
             manifest.Set("earAdjust", ears);
             var slotNames = topology["slot_names"].AsUnicode();

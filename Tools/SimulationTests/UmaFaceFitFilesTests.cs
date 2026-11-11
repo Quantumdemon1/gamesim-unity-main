@@ -520,6 +520,19 @@ namespace Gamesim.Tools.Tests
         }
 
         [Test]
+        public void PositionsSharingASampleId_AreRefused()
+        {
+            Parse(JobText(", \"plan\": {\"positions\": [0.3333, 0.3334]}"), out var errors);
+            Assert.That(string.Join("\n", errors), Does.Contain("share the sample id position 0.333"), string.Join("\n", errors));
+            Parse(JobText(", \"plan\": {\"positionsByName\": {\"headSize\": [0.1, 0.1004]}}"), out errors);
+            Assert.That(string.Join("\n", errors), Does.Contain("share the sample id position"), string.Join("\n", errors));
+            var job = OwnJob(Path.Combine(folder, "ids"));
+            var baseline = new Dictionary<string, double> { ["headSize"] = .72 };
+            Assert.Throws<ArgumentException>(() => FaceFitPlan.Sweep(job, new[] { "headSize", "headSize" }, baseline, Array.Empty<string>(), unrequested: false, fresh: false),
+                "a plan whose two samples share an id is refused");
+        }
+
+        [Test]
         public void ASweepAssembles_FromFinishedSamples()
         {
             string root = Proof ?? folder;

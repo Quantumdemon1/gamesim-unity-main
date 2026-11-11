@@ -253,6 +253,10 @@ namespace Gamesim.Uma.Editor
             {
                 if (!(item is double d) || d < 0 || d > 1) { errors.Add("\"" + label + "\" holds " + Show(item) + "; each must be a number from 0 to 1"); continue; }
                 if (positions.Any(x => Math.Abs(x - d) < 1e-9)) errors.Add("\"" + label + "\" names " + Show(d) + " twice");
+                // A slider sample's id carries its position to three decimals, so two positions must differ there.
+                else if (positions.Any(x => FaceFitPlan.Num(x) == FaceFitPlan.Num(d)))
+                    errors.Add("\"" + label + "\" names " + Show(positions.First(x => FaceFitPlan.Num(x) == FaceFitPlan.Num(d))) + " and " + Show(d)
+                        + ", which share the sample id position " + FaceFitPlan.Num(d) + "; positions must differ in their first three decimals");
                 else positions.Add(d);
             }
             return positions;
@@ -446,6 +450,9 @@ namespace Gamesim.Uma.Editor
                 foreach (string repeat in new[] { "a", "b" })
                     plan.Add(new PlannedSample { Id = SafeId("person-" + person + "-" + repeat), Kind = PlannedSample.Person, AppearanceId = person, Repeat = repeat, Fresh = true });
             if (job.RepeatBaseline) plan.Add(new PlannedSample { Id = "baseline-b", Kind = PlannedSample.Baseline, Repeat = "b", Fresh = fresh });
+            // One id is one file: two samples sharing one would stack the same capture into two rows.
+            var twice = plan.GroupBy(p => p.Id, StringComparer.Ordinal).Where(g => g.Count() > 1).Select(g => g.Key).ToList();
+            if (twice.Count > 0) throw new ArgumentException("the plan gives two samples the same id: " + string.Join(", ", twice));
             return plan;
         }
 

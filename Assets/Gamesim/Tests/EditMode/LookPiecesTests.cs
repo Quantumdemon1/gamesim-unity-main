@@ -21,7 +21,7 @@ namespace Gamesim.Tests.EditMode
             ["hair-a"] = "Hair", ["brows-a"] = "Eyebrows", ["top-a"] = "Chest", ["top-a-recipe"] = "Chest", ["legs-a"] = "Legs",
             ["ears-a"] = "Ears", ["gs-hoops"] = "Earrings",
             ["piece-hair"] = "Hair", ["piece-face"] = "Face", ["piece-ears"] = "Ears", ["piece-top"] = "Chest",
-            ["piece-a"] = "Hair", ["piece-b"] = "Hair", ["piece-c"] = "Hair", ["piece-outer"] = "Waist", ["piece-outer-b"] = "Waist",
+            ["piece-a"] = "Hair", ["piece-b"] = "Hair", ["piece-B"] = "Hair", ["piece-c"] = "Hair", ["piece-outer"] = "Waist", ["piece-outer-b"] = "Waist",
         };
 
         /// <summary>The one id a line and an over: tag are compared by: an alias reads as its item's id.</summary>
@@ -106,6 +106,9 @@ namespace Gamesim.Tests.EditMode
             Assert.That(worn, Is.EqualTo(new[] { "piece-b", "brows-a", "top-a", "legs-a", "ears-a", "gs-hoops", "piece-face" }),
                 "The lowest id that fits: a lower one cut for the other race is skipped.");
             Assert.That(warnings, Has.Count.EqualTo(1), "Still one for the Hair slot, none for the Face slot.");
+
+            worn = Apply("look-a", Look, null, Piece("piece-a", Female, "worn-by:look-a"), Piece("piece-B", Female, "worn-by:look-a"));
+            Assert.That(worn[0], Is.EqualTo("piece-B"), "Ordinal, not culture order: an upper-case B sorts before a lower-case a.");
         }
 
         [Test]
@@ -169,8 +172,11 @@ namespace Gamesim.Tests.EditMode
             }
             Assert.That(LookPieces.LibraryLine("x", Male, new Dictionary<string, float> { ["b"] = 0f, ["B"] = .09f, ["a"] = .44f, ["c"] = .125f }),
                 Is.EqualTo("x\tHuman Male 3.0\tB=0.09\ta=0.44\tb=0\tc=0.125"), "Ordinal order, no exponent, the fewest decimals.");
+            Assert.That(LookPieces.LibraryLine("x", Male, new Dictionary<string, float> { ["a"] = .0625f, ["b"] = -0f }),
+                Is.EqualTo("x\tHuman Male 3.0\ta=0.0625\tb=0"), "Up to six decimals when exact, and a negative zero is written 0.");
             Assert.That(LookPieces.LibraryLine("x", Male, new Dictionary<string, float>()), Is.EqualTo("x\tHuman Male 3.0"));
-            foreach (float value in new[] { 1f / 3f, .0000001f, float.NaN, float.PositiveInfinity })
+            // 2^-12 = 0.000244140625 is exact as a float but needs twelve decimals: past the six, so it throws.
+            foreach (float value in new[] { 1f / 3f, .0000001f, .000244140625f, float.NaN, float.PositiveInfinity })
                 Assert.Throws<ArgumentException>(() => LookPieces.LibraryLine("x", Male, new Dictionary<string, float> { ["a"] = value }),
                     "A value that needs rounding is never written.");
             Assert.Throws<ArgumentException>(() => LookPieces.LibraryLine("x\ty", Male, new Dictionary<string, float>()));

@@ -220,7 +220,10 @@
 # OldSaveAcceptanceTests is 290 on the merge (70 fixtures' four cases each, the manifest case, the two refused cases, the
 # two careers and the alumni-5, dialogue-1, dialogue-2 and story-rules-10 cells' 1 + 1 + 1 + 2 own cases). Counted from
 # the two sides; no run has observed it on the merge.
-Gamesim.EditModeTests 9897
+# 9905 = 9897 + the UI stack's 8 (ObjectiveWordsTests, slice U1: the objective card's words): the lister counted
+# 9905 at each of the stack's three heads, and the 8 ran in U1's targeted Unity batch, 8 of 8 (2026-11-11). No full
+# EditMode run has observed 9905 yet.
+Gamesim.EditModeTests 9905
 # The UMA-free build. 1215 = 1236, the count after the consolidation's lanes (S2a, S2b, S4a), less the 7
 # farewell probes moved to Gamesim.DiagnosticsPlayModeTests and the 14 farewell readiness tests that now
 # compile only under GAMESIM_UMA (judged on the UMA cast); 1230 = 1215 + S2d's 7, S4b's 2, S4c's 2 and
@@ -350,7 +353,12 @@ Gamesim.EditModeTests 9897
 # 1498 = 1486 + the rules-2 HUD's 12 shared cases (EpisodePlayModeTests.DialogueRules2Hud: the fallback plea panel, the
 # voter's word, the public rescue and the four-tile reply, each at the standard, larger and largest text), counted from
 # the source and compiled offline (2026-11-08); no Unity run has observed them yet.
-Gamesim.PlayModeTests 1498
+# 1502 = 1498 + the UI stack's 4 shared cases in EpisodePlayModeTests: U1's two 'Here: the episode screen' tests
+# (Objective_SaysHereWhileTheEpisodeScreenIsOpen, Finale_TheObjectiveSaysHereWhileTheEpisodeScreenIsOpen), U2's
+# MainMenu_WithASeasonOnDiskTheCastScreenOffersToKeepIt and U3's
+# ConversationExchange_ASpokenActEndsOnItsCategoryPageWithWhatHappened. The lister counted 1500, 1501 and 1502 at the
+# three heads (2026-11-11). Compiled in this build; they ran in Unity in the UMA build only (see UmaBuild below).
+Gamesim.PlayModeTests 1502
 # The UMA build of the same assembly, read by a plan built without -WithoutUma. 1281 = the 1241 above + the
 # 40 tests that compile only under GAMESIM_UMA, as run at r1 (2026-10-16): in EpisodePlayModeTests,
 # GroundedFarewell 11, Creator 9, HouseLife 8, Emotes 3, OpeningCaptures 2, and one each in CreatorEntry,
@@ -431,7 +439,10 @@ Gamesim.PlayModeTests 1498
 # 1528 = 1522 + B9's 1 (1523 - 1522) + the quick fixes' 5 (1527 - 1522): disjoint cases, so the floor is their sum (2026-11-06).
 # 1540 = 1528 + the rules-2 HUD's same 12 shared cases, counted from the source; compiled offline without UMA only, and no
 # Unity run has observed them yet (2026-11-08).
-Gamesim.PlayModeTests.UmaBuild 1540
+# 1544 = 1540 + the UI stack's same 4 shared cases: the lister counted 1542, 1543 and 1544 at the three heads, and
+# each case passed in its own slice's targeted Unity batch (uiq1, uiq2, uiq3; 2026-11-11). No full run of this
+# assembly has observed 1544 yet.
+Gamesim.PlayModeTests.UmaBuild 1544
 # The UMA bodies: runs only where the GAMESIM_UMA define is set (the working tree and the D: copy).
 # 82 = the 89 run on 2026-10-15, less the 7 farewell probes moved to Gamesim.Uma.DiagnosticsPlayModeTests;
 # 85 = 82 + the 3 farewell readiness decision tests (UmaFarewellReadinessDecisionPlayModeTests, 2026-10-16);
@@ -574,4 +585,6 @@ Gamesim.Uma.DiagnosticsPlayModeTests 10
 # 16710 = 16642 + main's 53 (16695 - 16642: the dialogue chip 2's observers, chip and HUD witnesses) + story rules 10's
 # 15 (16657 - 16642): disjoint cases, so the floor is their sum (the merge of main into story rules 10, 2026-11-09).
 # Counted from the two sides; no run has observed it on the merge.
-Gamesim.SimulationTests 16710
+# 16718 = 16710 + ObjectiveWordsTests' 8 (the same cases as EditMode's, linked into the subset by slice U1): dotnet
+# test ran 16718 passed, 0 failed, 0 skipped on the stack's top head (1b9e9166, 2026-11-11).
+Gamesim.SimulationTests 16718

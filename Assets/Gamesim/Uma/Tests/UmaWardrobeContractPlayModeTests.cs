@@ -21,9 +21,11 @@ namespace Gamesim.Uma.Tests
     /// items (an entry whose recipe is missing from UMA's index yields no item and no diagnostic), so
     /// a part delivered later is held to the same rules with no change here.
     ///
-    /// <para>Every entry: its recipe, slot, ids, label, finish mark and place. The game's own content
-    /// - an entry whose id starts <c>gamesim.</c> or that no picker offers - that draws its project
-    /// material itself must carry the finish mark.</para>
+    /// <para>Two tiers. Every entry: its recipe, slot, ids, label, finish mark and place. The game's
+    /// own content - an entry whose id starts <c>gamesim.</c> or that no picker offers - is also held
+    /// to the rules a delivered part's files must meet: a named thumbnail is valid, each slot carries
+    /// its own name and has vertices, and the part is worn after a save and a reload and keeps a
+    /// marked finish through a rebuild. Stock UMA entries (<c>uma-</c> ids) are not held to those.</para>
     /// </summary>
     [TestFixture]
     public sealed class UmaWardrobeContractPlayModeTests
@@ -39,6 +41,8 @@ namespace Gamesim.Uma.Tests
             ["Clothing"] = new[] { "Chest", "Legs", "Feet", "TopUnderlayer", "BottomUnderlayer" },
             ["Accessories"] = WardrobeSlots.Accessories,
         };
+        /// <summary>The shared colours an accessory may declare: the person's own, never a dye channel.</summary>
+        private static readonly string[] PersonColours = { "Skin", "Hair", "Eyes", "Brows" };
         /// <summary>Ruling 16: the finish mark is for metal jewellery and watches, worn in these places.</summary>
         private static readonly string[] MarkedFinishSlots = { "Ears", "Shoulders", "Arms", "Hands" };
 
@@ -46,6 +50,28 @@ namespace Gamesim.Uma.Tests
             BumpScale = Shader.PropertyToID("_BumpScale");
 
         private readonly List<Object> owned = new List<Object>();
+        /// <summary>Each authored slot's mesh label as the fixture found it, before any avatar of its own was built.</summary>
+        private Dictionary<string, string> meshLabels;
+
+        [OneTimeSetUp]
+        public void ReadMeshLabels()
+        {
+            // Stock UMA relabels a slot's source meshData in memory on every build (meshData.SlotName =
+            // slotName), so a label read after a build proves nothing. Read once, before this fixture
+            // builds an avatar. An earlier fixture in a long session may still have built the part and
+            // masked a wrong label: the asset on disk is the checker's to judge (contract item 18).
+            meshLabels = new Dictionary<string, string>(StringComparer.Ordinal);
+            var index = UMAAssetIndexer.Instance;
+            if (index == null) return;
+            foreach (var entry in Entries().Where(Authored))
+            {
+                var recipe = index.GetAsset<UMAWardrobeRecipe>(entry.recipeName);
+                if (recipe == null) continue;
+                foreach (var slot in SlotAssets(recipe))
+                    if (slot != null && slot.meshData != null) meshLabels[slot.slotName] = slot.meshData.SlotName;
+            }
+        }
+
         [TearDown]
         public void DestroyOwned()
         {
@@ -69,6 +95,26 @@ namespace Gamesim.Uma.Tests
 
         private static string[] SlotIds(UMAWardrobeRecipe recipe) => (recipe.PackedLoad().slotsV3 ?? Array.Empty<UMAPackedRecipeBase.PackedSlotDataV3>())
             .Where(part => part != null && !string.IsNullOrEmpty(part.id)).Select(part => part.id).Distinct().ToArray();
+
+        private static IEnumerable<SlotDataAsset> SlotAssets(UMAWardrobeRecipe recipe) =>
+            SlotIds(recipe).Select(id => UMAAssetIndexer.Instance.GetAsset<SlotDataAsset>(id));
+
+        /// <summary>
+        /// Each slot of a recipe with the UMAMaterial UMA draws it with: the slot's own, else its first
+        /// overlay's (a slot asset names no material of its own; the overlays carry it).
+        /// </summary>
+        private static List<(string Slot, UMAMaterial Material)> SlotMaterials(UMAWardrobeRecipe recipe)
+        {
+            var found = new List<(string Slot, UMAMaterial Material)>();
+            foreach (var slot in recipe.GetCachedRecipe().slotDataList)
+            {
+                if (slot == null) continue;
+                var material = slot.material;
+                if (material == null) material = slot.GetOverlay(0)?.asset?.GetMaterial();
+                if (material != null) found.Add((slot.slotName, material));
+            }
+            return found;
+        }
 
         private static string[] GameBodies(UmaAppearanceCatalog catalog, UMAWardrobeRecipe recipe) =>
             catalog.Bodies.Select(body => body.Id).Where(recipe.compatibleRaces.Contains).ToArray();
@@ -203,6 +249,15 @@ namespace Gamesim.Uma.Tests
         }
 
         [Test]
+        public void EveryAccessoryItemDeclaresNoDyeChannel()
+        {
+            var catalog = new UmaAppearanceCatalog();
+            foreach (var item in catalog.Items.Where(item => WardrobeSlots.UmaAccessories.Contains(item.Slot)))
+                Assert.That(item.ColorChannels.Except(PersonColours), Is.Empty,
+                    item.Id + " is an accessory: a shared colour of its own would draw a swatch row and save as an outfit colour.");
+        }
+
+        [Test]
         public void NoHelmetRecipeSuppressesHair()
         {
             var index = UMAAssetIndexer.Instance;
@@ -215,6 +270,19 @@ namespace Gamesim.Uma.Tests
                     Assert.That(suppressed, Does.Not.Contain("Hair"), entry.id + ": UMA would hide all the hair, and the creator would drop the hair choice.");
                 Assert.That(suppressed.Intersect(WardrobeSlots.CodeBuiltAccessories), Is.Empty,
                     entry.id + ": the game pairs the code-built places itself.");
+            }
+        }
+
+        [Test]
+        public void AnUnavailableOrAbsentRecipeIsNeverAnItem()
+        {
+            var index = UMAAssetIndexer.Instance;
+            var catalog = new UmaAppearanceCatalog();
+            foreach (var entry in Entries())
+            {
+                if (entry.available && index.GetAsset<UMAWardrobeRecipe>(entry.recipeName) != null) continue;
+                Assert.That(catalog.Items.Any(item => item.Id == entry.id), Is.False, entry.id + " is offered.");
+                Assert.That(AppearanceEditing.Find(catalog, entry.id), Is.Null, entry.id);
             }
         }
 
@@ -368,6 +436,31 @@ namespace Gamesim.Uma.Tests
         }
 
         [UnityTest]
+        public IEnumerator AnUnavailableOrAbsentRuntimeRecipeIsNeverAnItem()
+        {
+            yield return null;
+            using (var content = new RuntimeContent())
+            {
+                var installed = new UmaAppearanceCatalog();
+                var source = installed.Items.First(value => !UmaAppearanceCatalog.IsGrown(value.Id) && value.Slot == "Chest");
+                var recipe = content.Copy(installed.ResolveRecipeName(source.Id), "Retired");
+                string absent = "GamesimContract-Absent-" + Guid.NewGuid().ToString("N");
+                content.Extension.entries.Add(new UmaWardrobeEntry { id = "contract-retired", recipeName = recipe.name, label = "Contract retired", available = false });
+                content.Extension.entries.Add(new UmaWardrobeEntry { id = "contract-absent", recipeName = absent, label = "Contract absent" });
+                var catalog = content.Catalog();
+                Assert.That(catalog.Diagnostics, Is.Empty);
+                Assert.That(content.Index.GetAsset<UMAWardrobeRecipe>(recipe.name), Is.Not.Null, "The retired part is installed.");
+                foreach (string id in new[] { "contract-retired", "contract-absent" })
+                {
+                    Assert.That(AppearanceEditing.Find(catalog, id), Is.Null, id + " is never an item.");
+                    Assert.That(catalog.Items.Any(item => item.Id == id), Is.False, id);
+                }
+                Assert.That(catalog.ResolveRecipeName("contract-retired"), Is.EqualTo(recipe.name), "A save naming it still finds its recipe.");
+            }
+            yield return null;
+        }
+
+        [UnityTest]
         public IEnumerator AnEarsItemIsWornAndTheCodeBuiltEarringsAreNot()
         {
             var cast = new GameObject("Contract provider", typeof(GamesimUmaCast));
@@ -412,6 +505,189 @@ namespace Gamesim.Uma.Tests
             yield return null;
         }
 #endif
+
+        // --------------------------------------------------------- the game's own content: files
+
+        /// <summary>The second tier must hold something, or its checks would pass on nothing.</summary>
+        [Test]
+        public void TheGamesOwnContentIsHeldToThePartRules()
+        {
+            Assert.That(Entries().Where(entry => entry.available && Authored(entry)), Is.Not.Empty,
+                "No entry is the game's own content (an id starting gamesim., or picker-hidden).");
+        }
+
+        [Test]
+        public void EveryAuthoredPartsSlotsCarryTheirOwnNameAndHaveVertices()
+        {
+            var index = UMAAssetIndexer.Instance;
+            foreach (var entry in Entries().Where(entry => entry.available && Authored(entry)))
+            {
+                var recipe = index.GetAsset<UMAWardrobeRecipe>(entry.recipeName);
+                Assert.That(recipe, Is.Not.Null, entry.id);
+                var slots = SlotIds(recipe);
+                Assert.That(slots, Is.Not.Empty, entry.id + " builds no slot.");
+                foreach (string id in slots)
+                {
+                    var slot = index.GetAsset<SlotDataAsset>(id);
+                    Assert.That(slot, Is.Not.Null, entry.id + ": slot " + id + " is not in UMA's index.");
+                    Assert.That(slot.meshData, Is.Not.Null, entry.id + ": " + id + " has no mesh.");
+                    Assert.That(slot.meshData.vertexCount, Is.GreaterThan(0), entry.id + ": " + id + " has no vertices.");
+                    string label = meshLabels != null && meshLabels.TryGetValue(slot.slotName, out var before) ? before : slot.meshData.SlotName;
+                    Assert.That(label, Is.EqualTo(slot.slotName), entry.id + ": the mesh of " + id + " carries another slot's name.");
+                }
+            }
+        }
+
+        /// <summary>
+        /// A thumbnail is optional (a part with none shows the kit icon). One that is named must be
+        /// right: a Sprite, present, and one for each of the game's bodies the part fits.
+        /// </summary>
+        [Test]
+        public void EveryNamedThumbnailIsASpriteForEachBodyThePartFits()
+        {
+            var index = UMAAssetIndexer.Instance;
+            var catalog = new UmaAppearanceCatalog();
+            foreach (var entry in Entries().Where(entry => entry.available && Authored(entry)))
+            {
+                var recipe = index.GetAsset<UMAWardrobeRecipe>(entry.recipeName);
+                Assert.That(recipe, Is.Not.Null, entry.id);
+                var thumbs = recipe.wardrobeRecipeThumbs ?? new List<WardrobeRecipeThumb>();
+#if UNITY_EDITOR
+                // A reference to a file that is gone, or to a PNG not imported as a Sprite (it has no Sprite
+                // to point at), reads as null here; the inspector's test tells it from no reference at all.
+                var serialized = new UnityEditor.SerializedObject(recipe);
+                var rows = serialized.FindProperty("wardrobeRecipeThumbs");
+                for (int i = 0; rows != null && i < rows.arraySize; i++)
+                {
+                    var thumb = rows.GetArrayElementAtIndex(i).FindPropertyRelative("thumb");
+                    Assert.That(thumb == null || thumb.objectReferenceValue != null || thumb.objectReferenceEntityIdValue.Equals(default(EntityId)), Is.True,
+                        entry.id + " names a thumbnail that is missing or is not a Sprite.");
+                }
+                serialized.Dispose();
+#endif
+                // A row with no picture names none: the part shows the kit icon in its row.
+                var named = thumbs.Where(thumb => thumb != null && thumb.thumb != null).ToList();
+                if (named.Count == 0) continue;
+#if UNITY_EDITOR
+                foreach (var thumb in named)
+                {
+                    string path = UnityEditor.AssetDatabase.GetAssetPath(thumb.thumb);
+                    var importer = UnityEditor.AssetImporter.GetAtPath(path) as UnityEditor.TextureImporter;
+                    Assert.That(importer?.textureType, Is.EqualTo(UnityEditor.TextureImporterType.Sprite), entry.id + ": " + path + " is not imported as a Sprite.");
+                }
+#endif
+                foreach (string body in GameBodies(catalog, recipe))
+                    Assert.That(named.Any(thumb => thumb.race == body), Is.True, entry.id + " names a thumbnail, but none for " + body + ".");
+            }
+        }
+
+        // ---------------------------------------------------- the game's own content: on a body
+
+        /// <summary>The material values a marked finish is authored with, read before any body is built.</summary>
+        private sealed class Finish
+        {
+            public Material Source; public readonly Dictionary<int, float> Values = new Dictionary<int, float>();
+            public Finish(Material source)
+            {
+                Source = source;
+                foreach (int id in new[] { Metallic, Smoothness, BumpScale }) if (source.HasProperty(id)) Values[id] = source.GetFloat(id);
+            }
+        }
+
+        private static void AssertFinishes(DynamicCharacterAvatar avatar, string id, IEnumerable<Finish> finishes, string when)
+        {
+            var drawn = avatar.GetComponentsInChildren<Renderer>(true).SelectMany(renderer => renderer.sharedMaterials)
+                .Where(UmaStylizer.KeepsAuthoredFinish).ToList();
+            foreach (var finish in finishes)
+            {
+                var material = drawn.FirstOrDefault(value => value == finish.Source || value.shader == finish.Source.shader);
+                Assert.That(material, Is.Not.Null, id + ": its marked material is drawn " + when + ".");
+                foreach (var value in finish.Values)
+                    Assert.That(material.GetFloat(value.Key), Is.EqualTo(value.Value).Within(.001f), id + " keeps its authored finish " + when + ".");
+            }
+        }
+
+        /// <summary>
+        /// The game's own parts on a real avatar: saved and read back as a season save is, built with
+        /// no substitute, each slot of the part built with vertices, and a marked finish kept on the
+        /// first build and after a rebuild (a colour change rebuilds and runs the flattening again).
+        /// Parts are worn several to an avatar where their places differ, one avatar per round.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator EveryAuthoredPartIsWornAfterASaveAndReloadAndKeepsItsFinishThroughARebuild()
+        {
+            var cast = new GameObject("Contract provider", typeof(GamesimUmaCast));
+            owned.Add(cast);
+            yield return null;
+            var index = UMAAssetIndexer.Instance;
+            var catalog = new UmaAppearanceCatalog();
+            var provider = new UmaBodyProvider(catalog);
+            var parts = new List<(AppearanceItem Item, string Body, string[] Slots, List<Finish> Finishes)>();
+            foreach (var entry in Entries().Where(entry => entry.available && Authored(entry)))
+            {
+                var recipe = index.GetAsset<UMAWardrobeRecipe>(entry.recipeName);
+                var item = catalog.Items.FirstOrDefault(value => value.Id == entry.id);
+                Assert.That(item, Is.Not.Null, entry.id + " is an item.");
+                var finishes = SlotMaterials(recipe).Where(slot => UmaStylizer.KeepsAuthoredFinish(slot.Material.material))
+                    .Select(slot => new Finish(slot.Material.material)).ToList();
+                parts.Add((item, item.CompatibleBodies[0], SlotIds(recipe), finishes));
+            }
+            Assert.That(parts, Is.Not.Empty);
+            int round = 0;
+            while (parts.Count > 0)
+            {
+                // One avatar per body per round, wearing at most one part per place.
+                foreach (var group in parts.GroupBy(part => part.Body).ToList())
+                {
+                    var taken = new List<(AppearanceItem Item, string Body, string[] Slots, List<Finish> Finishes)>();
+                    foreach (var part in group)
+                        if (taken.All(other => other.Item.Slot != part.Item.Slot && !WardrobeSlots.Twins(other.Item.Slot).Contains(part.Item.Slot)))
+                            taken.Add(part);
+                    var appearance = catalog.ChangeBody(catalog.Materialize(CharacterAppearance.Preset("player")), group.Key);
+                    foreach (var part in taken) AppearanceEditing.Wear(appearance, part.Item, catalog);
+                    var loaded = JsonUtility.FromJson<CharacterAppearance>(JsonUtility.ToJson(appearance));
+                    Assert.That(loaded.ContentKey(), Is.EqualTo(appearance.ContentKey()), "The save reads back unchanged.");
+                    Assert.That(catalog.Materialize(loaded).ContentKey(), Is.EqualTo(loaded.ContentKey()), "Reading a save never rewrites it.");
+
+                    var actor = new GameObject("Contract actor " + round);
+                    actor.transform.position = new Vector3(round * 3f, 0f, 0f);
+                    owned.Add(actor);
+                    var built = new BuiltBody();
+                    yield return Build(provider, loaded, actor.transform, built);
+                    var slotData = built.Avatar.umaData.umaRecipe.slotDataList.Where(slot => slot != null).ToList();
+                    foreach (var part in taken)
+                    {
+                        Assert.That(built.Avatar.GetWardrobeItem(part.Item.Slot)?.name, Is.EqualTo(catalog.ResolveRecipeName(part.Item.Id)),
+                            part.Item.Id + " is worn after a save and a reload.");
+                        foreach (string id in part.Slots)
+                        {
+                            var slot = slotData.FirstOrDefault(value => value.slotName == id);
+                            Assert.That(slot, Is.Not.Null, part.Item.Id + ": " + id + " is built.");
+                            Assert.That(slot.asset.meshData.vertexCount, Is.GreaterThan(0), part.Item.Id + ": " + id + " has vertices.");
+                        }
+                        AssertFinishes(built.Avatar, part.Item.Id, part.Finishes, "on its first build");
+                    }
+                    Assert.That(built.Avatar.GetRenderers().Sum(renderer => renderer != null && renderer.sharedMesh != null ? renderer.sharedMesh.vertexCount : 0),
+                        Is.GreaterThan(0), "The body has a mesh.");
+
+                    int updates = 0;
+                    void Updated(UMAData data) => updates++;
+                    built.Avatar.OnCharacterUpdated += Updated;
+                    built.Avatar.UpdateColors(true);
+                    double deadline = Time.realtimeSinceStartupAsDouble + 20;
+                    while (updates == 0 && Time.realtimeSinceStartupAsDouble < deadline) yield return null;
+                    built.Avatar.OnCharacterUpdated -= Updated;
+                    Assert.That(updates, Is.GreaterThan(0), "The body rebuilt.");
+                    yield return null;
+                    foreach (var part in taken) AssertFinishes(built.Avatar, part.Item.Id, part.Finishes, "after a rebuild");
+
+                    Object.Destroy(actor);
+                    foreach (var part in taken) parts.Remove(part);
+                    round++;
+                }
+            }
+            yield return null;
+        }
 
         // ------------------------------------------------------------------- the finish mark
 

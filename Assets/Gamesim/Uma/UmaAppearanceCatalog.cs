@@ -209,7 +209,8 @@ namespace Gamesim.Uma
                 {
                     var grown = IsGrown(id) ? AppearanceEditing.Find(this, id) : null;
                     if (grown != null) { outfit.wardrobe.Add(new AppearanceWardrobe { slot = grown.Slot, itemId = grown.Id }); continue; }
-                    var recipe = index?.GetAsset<UMAWardrobeRecipe>(id);
+                    // A look may name a catalog id or an alias: the index is keyed by the recipe's own name.
+                    var recipe = index?.GetAsset<UMAWardrobeRecipe>(ResolveRecipeName(id));
                     if (recipe != null) outfit.wardrobe.Add(new AppearanceWardrobe { slot = recipe.wardrobeSlot, itemId = AppearanceEditing.Find(this, id)?.Id ?? id });
                     // Missing selections retain their ID too; installing the content later restores them.
                     else outfit.wardrobe.Add(new AppearanceWardrobe { slot = "Missing-" + outfit.wardrobe.Count, itemId = id });

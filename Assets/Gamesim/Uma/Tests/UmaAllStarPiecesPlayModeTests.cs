@@ -78,9 +78,9 @@ namespace Gamesim.Uma.Tests
         /// </summary>
         internal static Pieces TaggedForStar(UmaAppearanceCatalog installed, bool duplicate)
         {
-            foreach (string look in new[] { Star, Other })
-                Assert.That(installed.Items.Where(item => item.Tags.Contains(LookPieces.WornBy + look)).Select(item => item.Id), Is.Empty,
-                    "The fixture's two looks must be looks no installed piece names: pick another for " + look + ".");
+            foreach (string lookId in new[] { Star, Other })
+                Assert.That(installed.Items.Where(item => item.Tags.Contains(LookPieces.WornBy + lookId)).Select(item => item.Id), Is.Empty,
+                    "The fixture's two looks must be looks no installed piece names: pick another for " + lookId + ".");
             var pieces = new Pieces();
             string female = UmaCastLibrary.FemaleRace;
             UmaCastLibrary.TryGet(Star, out var look);

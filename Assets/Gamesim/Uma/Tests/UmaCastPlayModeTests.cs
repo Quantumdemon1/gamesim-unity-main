@@ -180,8 +180,12 @@ namespace Gamesim.Uma.Tests
             Assert.That(mesh, Is.Not.Null);
 
             // The stylize pass runs on CharacterUpdated, which is the same frame the mesh appears.
-            foreach (var material in mesh.sharedMaterials.Where(m => m != null))
+            // A part marked to keep its authored finish is left alone; everything else is flattened,
+            // and at least one material is judged, so the test cannot pass on a body of marked parts.
+            int judged = 0;
+            foreach (var material in mesh.sharedMaterials.Where(m => m != null && !UmaStylizer.KeepsAuthoredFinish(m)))
             {
+                judged++;
                 if (material.HasProperty("_Smoothness"))
                     Assert.That(material.GetFloat("_Smoothness"), Is.LessThanOrEqualTo(0.1f),
                         material.name + " is still glossy; the house is flat-shaded.");
@@ -191,6 +195,7 @@ namespace Gamesim.Uma.Tests
                     Assert.That(material.GetFloat("_BumpScale"), Is.EqualTo(0f).Within(0.001f),
                         material.name + " still carries normal-map detail the set does not have.");
             }
+            Assert.That(judged, Is.GreaterThan(0), "The body has materials the house look flattens.");
         }
 
         [UnityTest]

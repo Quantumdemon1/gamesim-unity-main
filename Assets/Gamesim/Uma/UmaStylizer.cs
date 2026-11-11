@@ -36,6 +36,19 @@ namespace Gamesim.Uma
         /// <summary>The skin shader's own subsurface tint, tuned for a light complexion, and a deep one's.</summary>
         private static readonly Color LightSubsurface = new Color(0.93f, 0.375f, 0.313f), DeepSubsurface = new Color(0.5f, 0.27f, 0.2f);
 
+        /// <summary>
+        /// The override tag a part's own material carries to keep the finish it was authored with:
+        /// metal jewellery and watches, whose shine is the point of them. Set in the material's
+        /// stringTagMap as <c>GamesimAuthoredPBR: 1</c>. No shipped material carries it, so every
+        /// body is flattened exactly as before unless a part opts out.
+        /// </summary>
+        public const string AuthoredPbrTag = "GamesimAuthoredPBR";
+        public const string AuthoredPbrVersion = "1";
+
+        /// <summary>True for a material marked to keep its authored finish (the tag, at exactly this value).</summary>
+        public static bool KeepsAuthoredFinish(Material material) =>
+            material != null && material.GetTag(AuthoredPbrTag, false, string.Empty) == AuthoredPbrVersion;
+
         /// <summary>Flattens every material under <paramref name="root"/>. Safe to call repeatedly.</summary>
         public static void Apply(GameObject root) => Apply(root, null);
 
@@ -59,7 +72,8 @@ namespace Gamesim.Uma
                 if (renderer.GetComponent<GrownPiece>() != null) continue;
                 foreach (var material in renderer.sharedMaterials)
                 {
-                    if (material == null) continue;
+                    // A part marked as authored keeps its finish: neither flattened nor tuned as skin.
+                    if (material == null || KeepsAuthoredFinish(material)) continue;
                     Flatten(material);
                     if (material.HasProperty(SmoothnessRemapId)) TuneSkin(material, depth);
                 }

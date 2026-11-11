@@ -5,6 +5,7 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using Gamesim.Presentation;
+using Gamesim.Simulation;
 using NUnit.Framework;
 using UMA;
 using UMA.CharacterSystem;

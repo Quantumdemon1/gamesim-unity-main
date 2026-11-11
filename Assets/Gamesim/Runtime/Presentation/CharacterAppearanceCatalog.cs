@@ -84,6 +84,34 @@ namespace Gamesim.Presentation
                 .Where(worn => worn != null && !string.IsNullOrEmpty(worn.itemId)).Select(worn => worn.itemId).Distinct().ToList();
         }
 
+        /// <summary>Takes off whatever <paramref name="outfit"/> wears on <paramref name="place"/>: every slot of it.</summary>
+        public static void TakeOff(CharacterOutfit outfit, IReadOnlyList<string> place) =>
+            outfit?.wardrobe.RemoveAll(worn => place.Contains(worn.slot));
+
+        /// <summary>
+        /// Whether the Clothing page's reset owns <paramref name="slot"/>: everything but the hair, the
+        /// face's details and the accessories, which have pages of their own.
+        /// </summary>
+        public static bool IsClothingResetSlot(string slot) => !CharacterSlots.Contains(slot) && !WardrobeSlots.IsAccessory(slot);
+
+        /// <summary>
+        /// Randomize's accessories, on the outfit being edited: for each Accessories row, about one
+        /// roll in <paramref name="odds"/> wears one of the row's offered pieces, otherwise the place
+        /// is bare. A row with no offered piece draws nothing from <paramref name="random"/>, so rows
+        /// that only hidden items fill leave the draws as they were; and a hidden piece is never worn.
+        /// </summary>
+        public static void RollAccessories(CharacterAppearance a, ICharacterAppearanceCatalog c, System.Random random, double odds)
+        {
+            foreach (string row in WardrobeSlots.AccessoryRows)
+            {
+                var place = WardrobeSlots.Place(row);
+                var choices = Choices(c, place, a.bodyId);
+                if (choices.Count > 0 && random.NextDouble() < odds)
+                    Wear(a, choices[random.Next(choices.Count)], c);
+                else TakeOff(Outfit(a), place);
+            }
+        }
+
         /// <summary>Compare every outfit, including clothes removed by a conflict or body change.</summary>
         public static string DescribeSubstitutions(CharacterAppearance before, CharacterAppearance after,
             ICharacterAppearanceCatalog catalog)

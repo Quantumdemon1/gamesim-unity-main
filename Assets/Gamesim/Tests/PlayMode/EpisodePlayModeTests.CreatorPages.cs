@@ -1145,6 +1145,105 @@ namespace Gamesim.Tests.PlayMode
 
 #if GAMESIM_UMA
         // UMA only: these pages dress a modular body, and only UMA builds one.
+        /// <summary>
+        /// A picker-hidden piece is worn where a library look names it and offered only in that look's
+        /// own row: a draft from a look without it never sees it, and Randomize and Reset never put it
+        /// on. Riley's black frames stand in for an All-Star's piece, hidden for the test.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator Creator_AStartingLooksHiddenPieceIsWornAndRandomizeNeverAddsOne()
+        {
+            yield return OpenCreator();
+            var creator = Creator();
+            Assert.That(CharacterBodySource.Provider, Is.InstanceOf<IModularCharacterBodyProvider>());
+            var catalog = ((IModularCharacterBodyProvider)CharacterBodySource.Provider).Catalog;
+            string id = ProceduralAccessories.Prefix + "glasses";
+            var glasses = AppearanceEditing.Find(catalog, id);
+            Assert.That(glasses, Is.Not.Null);
+            string Worn(string slot) => AppearanceEditing.Outfit(creator.Draft.Appearance).wardrobe.FirstOrDefault(item => item.slot == slot)?.itemId;
+            CastButtons("Accessories")[0].onClick.Invoke();
+            yield return null;
+            Assert.That(Worn("Eyewear"), Is.Null, "The starting look wears no glasses.");
+            Assert.That(CastButtons("Black frames"), Has.Length.EqualTo(1), "Offered while not hidden.");
+            try
+            {
+                glasses.PickerHidden = true;
+                CastButtons("Accessories")[0].onClick.Invoke();
+                yield return null;
+                Assert.That(CastButtons("Black frames"), Is.Empty, "A look that does not name the hidden piece is never offered it.");
+                Assert.That(CastButtons("Remove eyewear"), Is.Not.Empty, "The row is there with its other frames.");
+
+                creator.RandomSeed = 20260925;
+                for (int roll = 0; roll < 30; roll++)
+                {
+                    CastButtons("Randomize").Single().onClick.Invoke();
+                    yield return null;
+                    Assert.That(Worn("Eyewear"), Is.Not.EqualTo(id), "Roll " + roll + " never wears the hidden piece.");
+                }
+                CastButtons("Reset accessories").Single().onClick.Invoke();
+                yield return null;
+                Assert.That(Worn("Eyewear"), Is.Not.EqualTo(id), "Reset never adds it to a draft that began without it.");
+
+                creator.Show(new SeasonBuilder.Choice(), CharacterDraft.FromAppearance(CastTemplates.Find("riley-johnson")), _ => { }, () => { });
+                yield return null;
+                CastButtons("Accessories")[0].onClick.Invoke();
+                yield return null;
+                Assert.That(Worn("Eyewear"), Is.EqualTo(id), "Riley's look still wears its hidden piece.");
+                CastButtons("Remove eyewear").Single().onClick.Invoke();
+                yield return null;
+                Assert.That(Worn("Eyewear"), Is.Null);
+                Assert.That(CastButtons("Black frames"), Has.Length.EqualTo(1), "His own look's piece stays among his choices, so he can step back to it.");
+                CastButtons("Black frames").Single().onClick.Invoke();
+                yield return null;
+                Assert.That(Worn("Eyewear"), Is.EqualTo(id));
+            }
+            finally { glasses.PickerHidden = false; }
+        }
+#endif
+
+#if GAMESIM_UMA
+        // UMA only: these pages dress a modular body, and only UMA builds one.
+        /// <summary>
+        /// Reset accessories puts back only what fits the body the draft has now: a piece of the
+        /// starting look fitted to another body stays off. Riley's black frames are made to fit no
+        /// body for the test.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator Creator_ResetAccessoriesRestoresOnlyWhatFitsTheBody()
+        {
+            yield return OpenCreator();
+            var creator = Creator();
+            Assert.That(CharacterBodySource.Provider, Is.InstanceOf<IModularCharacterBodyProvider>());
+            var catalog = ((IModularCharacterBodyProvider)CharacterBodySource.Provider).Catalog;
+            string id = ProceduralAccessories.Prefix + "glasses";
+            var glasses = AppearanceEditing.Find(catalog, id);
+            Assert.That(glasses, Is.Not.Null);
+            string Worn(string slot) => AppearanceEditing.Outfit(creator.Draft.Appearance).wardrobe.FirstOrDefault(item => item.slot == slot)?.itemId;
+            creator.Show(new SeasonBuilder.Choice(), CharacterDraft.FromAppearance(CastTemplates.Find("riley-johnson")), _ => { }, () => { });
+            yield return null;
+            CastButtons("Accessories")[0].onClick.Invoke();
+            yield return null;
+            Assert.That(Worn("Eyewear"), Is.EqualTo(id), "Riley's look wears his glasses.");
+            CastButtons("Remove eyewear").Single().onClick.Invoke();
+            yield return null;
+            Assert.That(Worn("Eyewear"), Is.Null);
+            var fitted = glasses.CompatibleBodies;
+            try
+            {
+                glasses.CompatibleBodies = new[] { "gamesim.test.no-such-body" };
+                CastButtons("Reset accessories").Single().onClick.Invoke();
+                yield return null;
+                Assert.That(Worn("Eyewear"), Is.Null, "A starting piece that does not fit the body is not put back.");
+            }
+            finally { glasses.CompatibleBodies = fitted; }
+            CastButtons("Reset accessories").Single().onClick.Invoke();
+            yield return null;
+            Assert.That(Worn("Eyewear"), Is.EqualTo(id), "One that fits is.");
+        }
+#endif
+
+#if GAMESIM_UMA
+        // UMA only: these pages dress a modular body, and only UMA builds one.
         /// <summary>The face page offers its features under headings, the jaw among them.</summary>
         [UnityTest]
         public IEnumerator Creator_TheFaceGroupsItsFeaturesUnderHeadings()

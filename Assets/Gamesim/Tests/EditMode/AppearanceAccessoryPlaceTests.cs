@@ -207,5 +207,132 @@ namespace Gamesim.Tests.EditMode
                 "Kept or not, an item is offered only on a body it fits.");
             Assert.That(AppearanceEditing.LookItemIds(null, star), Is.Empty);
         }
+
+        /// <summary>The code-built pieces of today's catalog, a few of each place, and clothes beside them.</summary>
+        private static StubCatalog CodeBuiltCatalog()
+        {
+            var catalog = new StubCatalog();
+            catalog.All.AddRange(new[]
+            {
+                Item("gs-acc-glasses", "Eyewear"), Item("gs-acc-round", "Eyewear"), Item("gs-acc-shades", "Eyewear"),
+                Item("gs-acc-cap", "Headwear"), Item("gs-acc-beanie", "Headwear"),
+                Item("gs-acc-studs", "Earrings"), Item("gs-acc-hoops", "Earrings"), Item("gs-acc-silver", "Earrings"),
+                Item("gs-acc-chain", "Neckwear"), Item("gs-acc-collar", "Neckwear"),
+                Item("tee", "Chest"), Item("jeans", "Legs"), Item("hair", "Hair"),
+            });
+            return catalog;
+        }
+
+        private static CharacterAppearance Starting(StubCatalog catalog) =>
+            Dressed(catalog.All.Single(item => item.Id == "tee"), catalog.All.Single(item => item.Id == "hair"), catalog.All.Single(item => item.Id == "gs-acc-cap"));
+
+        private static string Outfit(CharacterAppearance appearance) =>
+            string.Join(",", appearance.outfits.SelectMany(outfit => outfit.wardrobe.Select(worn => outfit.id + ":" + worn.slot + "=" + worn.itemId)));
+
+        /// <summary>
+        /// Randomize's accessory loop as the creator ran it before the Accessories rows became
+        /// places (CharacterCreator.Studio.cs, RandomizeAppearance), word for word but for its names.
+        /// </summary>
+        private static void TodaysLoop(CharacterAppearance appearance, ICharacterAppearanceCatalog catalog, System.Random cosmeticRandom, double accessoryOdds)
+        {
+            foreach (string slot in new[] { "Eyewear", "Headwear", "Earrings", "Neckwear" })
+            {
+                var choices = catalog.Items.Where(item => item.Slot == slot && item.Fits(appearance.bodyId)).ToList();
+                if (choices.Count > 0 && cosmeticRandom.NextDouble() < accessoryOdds)
+                    AppearanceEditing.Wear(appearance, choices[cosmeticRandom.Next(choices.Count)], catalog);
+                else AppearanceEditing.Outfit(appearance).wardrobe.RemoveAll(item => item.slot == slot);
+            }
+        }
+
+        /// <summary>
+        /// For a catalog with no UMA accessory, RollAccessories wears what the old loop wore and leaves
+        /// the random sequence where it left it: the same houseguests roll as before, seed for seed.
+        /// </summary>
+        [Test]
+        public void RollAccessoriesDrawsAsTodaysLoopDid()
+        {
+            var catalog = CodeBuiltCatalog();
+            foreach (double odds in new[] { .3, .8 })
+                for (int seed = 1; seed <= 20; seed++)
+                {
+                    var before = Starting(catalog);
+                    var after = Starting(catalog);
+                    var old = new System.Random(seed);
+                    var now = new System.Random(seed);
+                    for (int roll = 0; roll < 3; roll++)
+                    {
+                        TodaysLoop(before, catalog, old, odds);
+                        AppearanceEditing.RollAccessories(after, catalog, now, odds);
+                        Assert.That(Outfit(after), Is.EqualTo(Outfit(before)), "Seed " + seed + ", odds " + odds + ", roll " + roll);
+                    }
+                    Assert.That(now.Next(), Is.EqualTo(old.Next()), "Seed " + seed + ", odds " + odds + ": the next draw is the same.");
+                }
+        }
+
+        /// <summary>
+        /// Hidden UMA pieces in every accessory slot change nothing about a roll: no row offers them,
+        /// so the same seed wears the same pieces and leaves the same next draw.
+        /// </summary>
+        [Test]
+        public void RollingAccessoriesDrawsTheSameWithHiddenUmaItemsPresent()
+        {
+            var plain = CodeBuiltCatalog();
+            var withHidden = CodeBuiltCatalog();
+            foreach (string slot in WardrobeSlots.UmaAccessories)
+                withHidden.All.Add(Hidden("gamesim.example." + slot.ToLowerInvariant() + ".hidden", slot));
+            for (int seed = 1; seed <= 20; seed++)
+            {
+                var a = Starting(plain);
+                var b = Starting(withHidden);
+                var first = new System.Random(seed);
+                var second = new System.Random(seed);
+                for (int roll = 0; roll < 3; roll++)
+                {
+                    AppearanceEditing.RollAccessories(a, plain, first, .5);
+                    AppearanceEditing.RollAccessories(b, withHidden, second, .5);
+                    Assert.That(Outfit(b), Is.EqualTo(Outfit(a)), "Seed " + seed + ", roll " + roll);
+                    Assert.That(b.outfits.SelectMany(outfit => outfit.wardrobe).Any(worn => worn.itemId.EndsWith(".hidden")), Is.False, "No hidden piece is ever rolled.");
+                }
+                Assert.That(second.Next(), Is.EqualTo(first.Next()), "Seed " + seed + ": the next draw is the same.");
+            }
+
+            var wearing = Starting(withHidden);
+            wearing.outfits[0].wardrobe.Add(new AppearanceWardrobe { slot = "Hands", itemId = "gamesim.example.hands.hidden" });
+            AppearanceEditing.RollAccessories(wearing, withHidden, new System.Random(7), .5);
+            Assert.That(WornIn(wearing, "Hands"), Is.Null, "A row with no offered piece rolls bare: it takes a worn hidden piece off, as a bare roll takes off a code-built one.");
+        }
+
+        [Test]
+        public void TakingOffAPlaceClearsBothOfItsSlots()
+        {
+            var hoops = Item("gs-acc-hoops", "Earrings");
+            var drops = Item("gamesim.example.earrings.a", "Ears");
+            var watch = Item("gamesim.example.watch.a", "Hands");
+            var bracelet = Item("gamesim.example.bracelet.a", "Arms");
+            var shirt = Item("shirt", "Chest");
+            // Both sides of a place at once, as a save from before the twin rule could hold them.
+            var appearance = Dressed(hoops, drops, watch, bracelet, shirt);
+            var outfit = appearance.outfits[0];
+
+            AppearanceEditing.TakeOff(outfit, WardrobeSlots.Place("Earrings"));
+            Assert.That(WornIn(appearance, "Earrings"), Is.Null);
+            Assert.That(WornIn(appearance, "Ears"), Is.Null, "Remove clears the place's UMA side too.");
+            Assert.That(outfit.wardrobe.Select(worn => worn.slot), Is.EqualTo(new[] { "Hands", "Arms", "Chest" }));
+
+            AppearanceEditing.TakeOff(outfit, WardrobeSlots.Place("Hands"));
+            Assert.That(outfit.wardrobe.Select(worn => worn.slot), Is.EqualTo(new[] { "Arms", "Chest" }), "A place of one slot clears that slot alone.");
+            AppearanceEditing.TakeOff(null, WardrobeSlots.Place("Arms"));
+        }
+
+        [Test]
+        public void ClothingResetLeavesEveryAccessorySlotToItsPage()
+        {
+            foreach (string slot in WardrobeSlots.Accessories)
+                Assert.That(AppearanceEditing.IsClothingResetSlot(slot), Is.False, slot + " is the Accessories page's to reset.");
+            foreach (string slot in AppearanceEditing.CharacterSlots)
+                Assert.That(AppearanceEditing.IsClothingResetSlot(slot), Is.False, slot + " has a page of its own.");
+            foreach (string slot in new[] { "Chest", "Legs", "Feet", "TopUnderlayer", "BottomUnderlayer", "Missing-3" })
+                Assert.That(AppearanceEditing.IsClothingResetSlot(slot), Is.True, slot + " is the Clothing page's, as before.");
+        }
     }
 }

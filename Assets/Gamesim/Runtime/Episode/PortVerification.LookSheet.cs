@@ -462,7 +462,6 @@ namespace Gamesim.Episode
             yield return null; yield return null;
         }
 
-        /// <summary>A click on any active button under any root, by caption; the walk's helper only searches under the director.</summary>
         /// <summary>The cast screen's back chip by the words it carries now: either of its two captions.</summary>
         private static string BackChipCaption() =>
             SceneManager.GetActiveScene().GetRootGameObjects()
@@ -471,6 +470,7 @@ namespace Gamesim.Episode
                     && b.GetComponentsInChildren<TMPro.TMP_Text>(true).Any(t => t.text == CastSelect.BackToMenuCaption))
                 ? CastSelect.BackToMenuCaption : CastSelect.CancelCaption;
 
+        /// <summary>A click on any active button under any root, by caption; the walk's helper only searches under the director.</summary>
         private IEnumerator ClickAny(string caption)
         {
             var button = SceneManager.GetActiveScene().GetRootGameObjects()

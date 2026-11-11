@@ -165,6 +165,46 @@ namespace Gamesim.Tests.PlayMode
             director.ClosePanels();
         }
 
+        /// <summary>
+        /// Once the season is over and the episode screen is open, the objective says the player is
+        /// there, and what waits there, rather than sending them to the screen they stand at (UI U1).
+        /// It is the longest form of the line, so it must still fit its chip. Run in the full HUD,
+        /// whose top-bar chip stays up under the screen; the density is put back after.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator Finale_TheObjectiveSaysHereWhileTheEpisodeScreenIsOpen()
+        {
+            yield return InstallFinishedSeason();
+            bool originalCompact = director.CompactHud;
+            try
+            {
+                director.SetCompactHud(false);
+                director.ClosePanels();
+                yield return null;
+
+                var rail = ControlCarrying("Go to episode screen");
+                Assert.That(rail, Is.Not.Null, "The HUD offers the episode screen.");
+                rail.onClick.Invoke();
+                yield return null; yield return null;
+                Assert.That(director.IsPhasePanelOpen, Is.True, "The control opens the episode screen.");
+
+                var labels = LastActive("Objective").GetComponentsInChildren<TMP_Text>().ToList();
+                string lines = string.Join(" | ", labels.Select(label => label.text));
+                var here = labels.FirstOrDefault(label => label.text.StartsWith("Here: the episode screen"));
+                Assert.That(here, Is.Not.Null, "The objective says the player is at the episode screen: " + lines);
+                Assert.That(here.text, Does.Contain("season report"), "and what waits there.");
+                here.ForceMeshUpdate();
+                Assert.That(here.isTextOverflowing, Is.False, "and it fits its chip: '" + here.text + "'.");
+                Assert.That(labels.Any(label => label.text.StartsWith("Next stop:")), Is.False,
+                    "and sends them nowhere they already are: " + lines);
+            }
+            finally
+            {
+                director.ClosePanels();
+                director.SetCompactHud(originalCompact);
+            }
+        }
+
         /// <summary>The finale's ways on, as its panel and its keyboard ring carry them: each once.</summary>
         private static readonly string[] FinaleWaysOn =
         {

@@ -70,7 +70,11 @@ namespace Gamesim.Presentation
                 case EpisodePhase.Veto:
                     return s.vetoPlayers != null && s.vetoPlayers.Contains(me) ? "Win the Power of Veto" : "Watch the veto competition";
                 case EpisodePhase.VetoMeeting:
-                    return holder ? "Decide on the veto" : "The veto holder decides";
+                    if (holder) return "Decide on the veto";
+                    // A housemate's veto that saves a nominee leaves the HoH to name who goes up instead: the
+                    // meeting waits on the player then (ruling L1a). NpcVetoSave is a pure read, no draw.
+                    return hoh && !string.IsNullOrEmpty(s.vetoHolderId) && s.nominees != null && EpisodeEngine.NpcVetoSave(s) != null
+                        ? "Name a replacement nominee" : "The veto holder decides";
                 case EpisodePhase.Campaign:
                     return nominee ? "Campaign to stay" : hoh ? "Hear the campaign" : "Choose your vote";
                 case EpisodePhase.Eviction:

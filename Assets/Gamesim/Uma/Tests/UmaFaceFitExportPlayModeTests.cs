@@ -14,7 +14,8 @@ namespace Gamesim.Uma.Tests
 {
     /// <summary>
     /// The face-fit export tool (Gamesim.Uma.Editor's UmaFaceFitExport, reached by reflection as the lead's run reaches it)
-    /// on real UMA bodies: two samples and a repeat of the baseline into a folder outside the project, the files it
+    /// on real UMA bodies: two samples, a library look's person samples (the game's own merge) and a repeat of the
+    /// baseline into a folder outside the project, the files it
     /// writes, the export frame, that a slider moves vertices and a repeat does not, that a finished file is never
     /// overwritten, that a stopped run resumes without redoing a sample, and that a wrong job stops before anything is built.
     /// Stock UMA data only; the temporary folder is deleted.
@@ -45,11 +46,14 @@ namespace Gamesim.Uma.Tests
             LogAssert.ignoreFailingMessages = false;
         }
 
-        private string Job(string name, string output, string extra = "")
+        /// <summary>A public regular-season look of the race: its person samples go through the game's own merge (no All-Star needed).</summary>
+        private const string Person = "alex-chen";
+
+        private string Job(string name, string output, string extra = "", string persons = "")
         {
             string path = Path.Combine(folder, name + ".json");
             File.WriteAllText(path, "{\n  \"mode\": \"sweep\",\n  \"race\": \"" + Race + "\",\n  \"gameCommit\": \"" + Commit + "\",\n  \"outputFolder\": \""
-                + output.Replace("\\", "\\\\") + "\",\n  \"plan\": {\"sweepNames\": [\"jawsSize\"], \"positions\": [0.75], \"randomCount\": 0},\n  \"persons\": []" + extra + "\n}\n");
+                + output.Replace("\\", "\\\\") + "\",\n  \"plan\": {\"sweepNames\": [\"jawsSize\"], \"positions\": [0.75], \"randomCount\": 0},\n  \"persons\": [" + persons + "]" + extra + "\n}\n");
             return path;
         }
 
@@ -71,7 +75,8 @@ namespace Gamesim.Uma.Tests
         public IEnumerator TwoSamplesExport_WithTheirManifestAndArrays_AndASecondRunRedoesNothing()
         {
             string output = Path.Combine(folder, "export");
-            string job = Job("job", output);
+            Assert.That(UmaCastLibrary.TryGet(Person, out var look) && look.Race == Race, Is.True, Person + " is a " + Race + " look of the library");
+            string job = Job("job", output, persons: "\"" + Person + "\"");
             var outcomes = new List<string>();
             yield return Export(job, outcomes);
             Assert.That(outcomes[0], Does.StartWith("complete"), outcomes[0]);
@@ -91,17 +96,19 @@ namespace Gamesim.Uma.Tests
                 + Number(manifest, "max") + " mm, p99 " + Number(manifest, "p99") + " mm, median " + Number(manifest, "median") + " mm");
             Assert.That(noise, Is.LessThan(.01), "the same DNA built twice lands within a hundredth of a millimetre");
 
-            // The arrays: four samples (baseline a, jawsSize .75, the house-only build, baseline b), every slot's vertices, every DNA name.
+            // The arrays: six samples (baseline a, jawsSize .75, the house-only build, the person twice, baseline b), every
+            // slot's vertices, every DNA name.
             var npz = NpzPeek.Read(Path.Combine(output, "samples.npz"));
             var ids = npz["sample_ids"].Strings();
-            Assert.That(ids, Is.EqualTo(new[] { "baseline-a", "slider-jawsSize-0.750", "unrequested", "baseline-b" }));
+            Assert.That(ids, Is.EqualTo(new[] { "baseline-a", "slider-jawsSize-0.750", "unrequested", "person-" + Person + "-a", "person-" + Person + "-b", "baseline-b" }));
+            const int PersonA = 3, PersonB = 4, BaselineB = 5, Samples = 6;
             int v = npz["slot_count"].Ints().Sum();
             int d = npz["dna_names"].Strings().Length;
             Assert.That(v, Is.GreaterThan(1000), "a whole body's vertices");
-            Assert.That(npz["positions"].Shape, Is.EqualTo(new[] { 4, v, 3 }));
-            Assert.That(npz["normals"].Shape, Is.EqualTo(new[] { 4, v, 3 }));
-            Assert.That(npz["requested"].Shape, Is.EqualTo(new[] { 4, d }));
-            Assert.That(npz["readback"].Shape, Is.EqualTo(new[] { 4, d }));
+            Assert.That(npz["positions"].Shape, Is.EqualTo(new[] { Samples, v, 3 }));
+            Assert.That(npz["normals"].Shape, Is.EqualTo(new[] { Samples, v, 3 }));
+            Assert.That(npz["requested"].Shape, Is.EqualTo(new[] { Samples, d }));
+            Assert.That(npz["readback"].Shape, Is.EqualTo(new[] { Samples, d }));
             Assert.That(npz["dominant_bone"].Shape, Is.EqualTo(new[] { v }));
             Assert.That(npz["uv0"].Shape, Is.EqualTo(new[] { v, 2 }));
             Assert.That(npz["bone_weights"].Shape, Is.EqualTo(new[] { v, 4 }));
@@ -123,6 +130,18 @@ namespace Gamesim.Uma.Tests
                 if (!double.IsNaN(requested[i]))
                     Assert.That(readback[i], Is.EqualTo(requested[i]).Within(1e-5), names[i % d] + " of sample " + ids[i / d] + " reads back as requested");
             Assert.That(Enumerable.Range(0, d).All(n => !double.IsNaN(requested[n])), Is.True, "the race baseline requests every name");
+
+            // A person's sample is the game's own merge: it requests exactly the names the game sets (the house proportions'
+            // and the look's Dna's), at the values the game's build read back, and the bare body reproduces them.
+            var gameSets = new HashSet<string>(UmaCastLibrary.HouseProportions.Keys.Concat(look.Dna.Keys).Where(names.Contains));
+            foreach (int row in new[] { PersonA, PersonB })
+            {
+                var asked = new HashSet<string>(Enumerable.Range(0, d).Where(n => !double.IsNaN(requested[row * d + n])).Select(n => names[n]));
+                Assert.That(asked, Is.EquivalentTo(gameSets), ids[row] + " requests exactly the names the game's merge sets");
+            }
+            Assert.That(manifest, Does.Contain("\"gameVsBareAgree\": true"), "the bare body reproduces the game's read-back");
+            Assert.That(manifest, Does.Not.Contain("\"gameVsBareAgree\": false"));
+            Assert.That(Number(manifest, "gameVsBareMaxDifference"), Is.LessThanOrEqualTo(1e-5));
 
             // A name nobody sets is requested at the default UMA holds for it, never at .5 by our own hand: EyePosition's.
             int eye = names.IndexOf("EyePosition");
@@ -151,13 +170,15 @@ namespace Gamesim.Uma.Tests
                 }
                 return max;
             }
-            double slider = Max(1, 0), repeat = Max(3, 0);
-            Debug.Log("[face-fit test] jawsSize .75 moves a vertex up to " + slider + " mm; the repeated baseline " + repeat + " mm");
+            double slider = Max(1, 0), repeat = Max(BaselineB, 0), person = Max(PersonB, PersonA);
+            Debug.Log("[face-fit test] jawsSize .75 moves a vertex up to " + slider + " mm; the repeated baseline " + repeat + " mm; the person built twice " + person + " mm");
             Assert.That(slider, Is.GreaterThan(.5), "jawsSize .75 moves the jaw");
             Assert.That(repeat, Is.LessThan(.01), "the repeated baseline stays put");
+            Assert.That(person, Is.LessThan(.01), "the person built twice lands within a hundredth of a millimetre (their noise floor)");
             var moved = npz["moved_sample"].Ints().Distinct().ToArray();
             Assert.That(moved, Has.Member(1), "the slider sample has moved vertices");
-            Assert.That(moved, Has.No.Member(3), "the repeated baseline has none");
+            Assert.That(moved, Has.Member(PersonA), "the person (another height and build) differs from the house baseline");
+            Assert.That(moved, Has.No.Member(BaselineB), "the repeated baseline has none");
 
             // The same job again: nothing is redone, nothing rewritten.
             var before = Stamps(output);

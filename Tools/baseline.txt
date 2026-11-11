@@ -577,4 +577,7 @@ Gamesim.Uma.DiagnosticsPlayModeTests 10
 # 16716 = 16710 + the All-Star intake's 6 WardrobeSlotsTests cases (the slot lists, the twins, the Accessories page's rows,
 # the swim and sleep sets, and the two save proofs): dotnet test Tools/SimulationTests ran exactly 16716 of 16716 on the
 # commit that adds them, from main at fceeaa24 (2026-11-10).
-Gamesim.SimulationTests 16716
+# 16718 = 16716 + the All-Star intake's 2 UmaContentBinaryPinTests cases (the UMA content folder's binary pin is in
+# .gitattributes, and every .asset there that is not YAML text is covered by it): dotnet test Tools/SimulationTests
+# ran exactly 16718 of 16718 on the commit that adds them (2026-11-10).
+Gamesim.SimulationTests 16718

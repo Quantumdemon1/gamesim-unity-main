@@ -405,6 +405,8 @@
     <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/WardrobeSlots.cs" />
     <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/CharacterOutfits.cs" />
     <Compile Include="$(EditMode)WardrobeSlotsTests.cs" />
+    <!-- The UMA content folder's binary pin in .gitattributes: reads the repository's files, so it lives here. -->
+    <Compile Include="UmaContentBinaryPinTests.cs" />
     <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/CompetitionWords.cs" />
     <Compile Include="$(EditMode)CompetitionWordsTests.cs" />
     <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/StudyWords.cs" />

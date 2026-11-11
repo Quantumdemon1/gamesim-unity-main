@@ -151,16 +151,19 @@ namespace Gamesim.Uma.Tests
         public IEnumerator EveryLook_WearsAtMostOnePieceInEachWardrobeSlot()
         {
             yield return null;
+            Assert.That(UMAAssetIndexer.Instance, Is.Not.Null, "The Global Library must be present for any of this to work.");
+            AtMostOnePieceInEachWardrobeSlot(new UmaAppearanceCatalog());
+        }
+
+        /// <summary>Each look as it is worn: its wardrobe with the pieces a catalog tag names it for (none, in the installed catalog).</summary>
+        private static void AtMostOnePieceInEachWardrobeSlot(UmaAppearanceCatalog catalog)
+        {
             var indexer = UMAAssetIndexer.Instance;
-            Assert.That(indexer, Is.Not.Null, "The Global Library must be present for any of this to work.");
-
-            var catalog = new UmaAppearanceCatalog();
-
             foreach (var appearanceId in UmaCastLibrary.AppearanceIds)
             {
                 Assert.That(UmaCastLibrary.TryGet(appearanceId, out var look), Is.True);
                 var bySlot = new Dictionary<string, string>();
-                foreach (var recipeName in look.Wardrobe)
+                foreach (var recipeName in catalog.LookWardrobe(appearanceId, look.Race, look.Wardrobe))
                 {
                     // Pieces built in code are no recipes (EveryCastLook_ResolvesItsRaceAndWardrobe checks them).
                     if (UmaAppearanceCatalog.IsGrown(recipeName)) continue;
@@ -182,15 +185,17 @@ namespace Gamesim.Uma.Tests
         public IEnumerator EveryWardrobeRecipe_IsCutForTheRaceItIsWornOn()
         {
             yield return null;
+            Assert.That(UMAAssetIndexer.Instance, Is.Not.Null);
+            EveryRecipeCutForTheRaceItIsWornOn(new UmaAppearanceCatalog());
+        }
+
+        private static void EveryRecipeCutForTheRaceItIsWornOn(UmaAppearanceCatalog catalog)
+        {
             var indexer = UMAAssetIndexer.Instance;
-            Assert.That(indexer, Is.Not.Null);
-
-            var catalog = new UmaAppearanceCatalog();
-
             foreach (var appearanceId in UmaCastLibrary.AppearanceIds)
             {
                 Assert.That(UmaCastLibrary.TryGet(appearanceId, out var look), Is.True);
-                foreach (var recipeName in look.Wardrobe)
+                foreach (var recipeName in catalog.LookWardrobe(appearanceId, look.Race, look.Wardrobe))
                 {
                     // Pieces built in code are no recipes (EveryCastLook_ResolvesItsRaceAndWardrobe checks them).
                     if (UmaAppearanceCatalog.IsGrown(recipeName)) continue;
@@ -202,5 +207,24 @@ namespace Gamesim.Uma.Tests
                 }
             }
         }
+
+#if UNITY_EDITOR
+        /// <summary>The two walkers again with pieces tagged for one All-Star in the catalog (UmaAllStarPiecesPlayModeTests).</summary>
+        [UnityTest]
+        public IEnumerator EveryLook_WithPiecesTaggedForALook_StillWearsOnePiecePerSlotCutForItsRace()
+        {
+            yield return null;
+            using (var pieces = UmaAllStarPiecesPlayModeTests.TaggedForStar(new UmaAppearanceCatalog(), duplicate: false))
+            {
+                var catalog = pieces.Catalog();
+                Assert.That(catalog.Diagnostics, Is.Empty);
+                Assert.That(UmaCastLibrary.TryGet(UmaAllStarPiecesPlayModeTests.Star, out var look), Is.True);
+                Assert.That(catalog.LookWardrobe(UmaAllStarPiecesPlayModeTests.Star, look.Race, look.Wardrobe), Is.SupersetOf(pieces.Recipes.Keys),
+                    "The walk sees the tagged pieces.");
+                AtMostOnePieceInEachWardrobeSlot(catalog);
+                EveryRecipeCutForTheRaceItIsWornOn(catalog);
+            }
+        }
+#endif
     }
 }

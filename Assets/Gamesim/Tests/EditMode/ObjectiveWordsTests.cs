@@ -112,6 +112,40 @@ namespace Gamesim.Tests.EditMode
             Assert.That(ObjectiveWords.For(WithRole(EpisodePhase.Campaign, "other")), Is.EqualTo("Choose your vote"));
         }
 
+        /// <summary>
+        /// A housemate holds the veto and will use it: the meeting waits on the HoH to name the
+        /// replacement, so the HoH's card says so (ruling L1a). Where the veto saves nobody, the holder
+        /// still decides; a player who is both HoH and holder decides on the veto first.
+        /// </summary>
+        [Test]
+        public void AtTheVetoMeetingTheHoHNamesTheReplacementWhenAHousemateUsesTheVeto()
+        {
+            var saving = WithRole(EpisodePhase.VetoMeeting, "HoH");
+            saving.nominees = new List<string> { Other(saving, 1), Other(saving, 2) };
+            saving.vetoHolderId = Other(saving, 1);
+            Assert.That(EpisodeEngine.NpcVetoSave(saving), Is.EqualTo(Other(saving, 1)), "Precondition: a holder on the block saves themself.");
+            string words = ObjectiveWords.For(saving);
+            Assert.That(words, Is.EqualTo("Name a replacement nominee"));
+            Assert.That(words.Length, Is.LessThanOrEqualTo(ObjectiveWords.MaxLength), "'" + words + "' fits the box.");
+            AssertWindow(saving, s => s.vetoResolved = true, "The veto meeting is over");
+
+            // The Final 4 lock: a holder off the block may not use the veto, so it saves nobody.
+            var locked = WithRole(EpisodePhase.VetoMeeting, "HoH");
+            locked.nominees = new List<string> { Other(locked, 1), Other(locked, 2) };
+            locked.vetoHolderId = Other(locked, 0);
+            foreach (var gone in locked.contestants.Where(c => !c.isPlayer && c.id != Other(locked, 0)
+                && c.id != Other(locked, 1) && c.id != Other(locked, 2)).ToList())
+                gone.status = ContestantStatus.Evicted;
+            Assert.That(locked.Active.Count(), Is.EqualTo(4), "Precondition: the Final 4.");
+            Assert.That(EpisodeEngine.NpcVetoSave(locked), Is.Null, "Precondition: the veto saves nobody.");
+            Assert.That(ObjectiveWords.For(locked), Is.EqualTo("The veto holder decides"));
+
+            var both = WithRole(EpisodePhase.VetoMeeting, "HoH");
+            both.nominees = new List<string> { Other(both, 1), Other(both, 2) };
+            both.vetoHolderId = both.playerId;
+            Assert.That(ObjectiveWords.For(both), Is.EqualTo("Decide on the veto"), "The holder's own decision comes first.");
+        }
+
         /// <summary>A phase's done window, from a state with the task open, cloned with the flag set.</summary>
         private static void AssertWindow(EpisodeState open, Action<EpisodeState> settle, string expected)
         {

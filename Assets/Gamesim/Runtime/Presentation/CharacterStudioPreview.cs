@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using Gamesim.Simulation;
 using UnityEngine;
 
@@ -17,6 +18,13 @@ namespace Gamesim.Presentation
         private float buildAt, turn, zoom = 1f;
         private int revision;
         private bool dirty, building, headShot;
+        private bool fitDeformedBody, settleRenders;
+        private bool renderPending, posePending, publishBuild;
+        private int renderAtFrame, renderRevision;
+        private string readyStatus;
+        private Renderer[] framingRenderers;
+        private Mesh framingMesh;
+        private readonly List<Vector3> framingVertices = new List<Vector3>();
         private double requestedAt;
         private double buildStartedAt;
         public float BuildTimeoutSeconds { get; set; } = 20f;
@@ -24,22 +32,26 @@ namespace Gamesim.Presentation
         /// <summary>Original body state immediately before fallback releases it; null after a new request.</summary>
         public string LastFailureDiagnostic { get; private set; }
         public Texture Texture => texture;
-        public bool IsBuilding => dirty || building;
+        /// <summary>Includes a requested creator view whose old pixels are still displayed.</summary>
+        public bool IsBuilding => dirty || building || renderPending;
         public string Status { get; private set; }
         public event Action StatusChanged;
         public const string FallbackDisplayStatus = "Preview unavailable.\nYour look is kept.";
         /// <summary>The compact screen copy; Status retains the detailed failure reason for diagnostics.</summary>
         public string DisplayStatus => CanRetry ? FallbackDisplayStatus : Status;
+        /// <summary>The last published image's key. A requested view is ready only when !IsBuilding too.</summary>
         public string CompletedKey => shownKey;
         /// <summary>How far round the body is turned, in degrees: what a drag or a slow turn has done to it.</summary>
         public float Turn => turn;
         public double LastBuildMilliseconds { get; private set; }
 
-        public static CharacterStudioPreview Create(string name = "Character studio")
+        public static CharacterStudioPreview Create(string name = "Character studio", bool fitDeformedBody = false, bool settleRenders = false)
         {
             var root = new GameObject(name) { hideFlags = HideFlags.DontSave };
             root.transform.position = new Vector3(nextStage++ * 20f, -6500f, 0f);
             var preview = root.AddComponent<CharacterStudioPreview>();
+            preview.fitDeformedBody = fitDeformedBody;
+            preview.settleRenders = settleRenders;
             preview.Initialise();
             return preview;
         }
@@ -103,6 +115,7 @@ namespace Gamesim.Presentation
             LastFailureDiagnostic = null;
             pending = appearance.Clone();
             revision++;
+            renderPending = posePending = publishBuild = false;
             requestedAt = Time.realtimeSinceStartupAsDouble;
             dirty = true;
             buildAt = Time.unscaledTime + .16f;
@@ -126,6 +139,8 @@ namespace Gamesim.Presentation
         private void Update()
         {
             if (dirty && Time.unscaledTime >= buildAt) Build();
+            // Provider completion and image publication are separate. IsBuilding also includes this queue.
+            if (settleRenders && renderPending && !building && !dirty) AdvanceRender();
             if (!building || dirty) return;
             if (subject == null || Time.realtimeSinceStartupAsDouble - buildStartedAt >= Mathf.Clamp(BuildTimeoutSeconds, .05f, 60f))
             {
@@ -143,6 +158,16 @@ namespace Gamesim.Presentation
         private void Complete(CharacterBodyBuildState state)
         {
             building = false;
+            // Only the creator opts in. The cast's slow turn renders every frame and must not bake.
+            framingRenderers = fitDeformedBody ? subject.GetComponentsInChildren<Renderer>() : null;
+            if (settleRenders)
+            {
+                readyStatus = state != null && !string.IsNullOrEmpty(state.Substitution) ? state.Substitution
+                    : fallbackStatus ?? "Preview ready";
+                publishBuild = true;
+                RenderCompleted();
+                return;
+            }
             shownKey = requestedKey;
             LastBuildMilliseconds = (Time.realtimeSinceStartupAsDouble - requestedAt) * 1000;
             Status = state != null && !string.IsNullOrEmpty(state.Substitution) ? state.Substitution
@@ -205,6 +230,9 @@ namespace Gamesim.Presentation
 
         private void ReleaseBody()
         {
+            renderPending = posePending = publishBuild = false;
+            framingRenderers = null;
+            framingVertices.Clear();
             if (buildRoot != null) { buildRoot.SetActive(false); DestroyOwned(buildRoot); }
             buildRoot = null;
             subject = null;
@@ -212,7 +240,7 @@ namespace Gamesim.Presentation
 
         private void OnDisable()
         {
-            if (!building && !dirty) return;
+            if (!building && !dirty && !renderPending) return;
             ReleaseBody();
             dirty = building = false;
             requestedKey = null;
@@ -226,11 +254,58 @@ namespace Gamesim.Presentation
         private void RenderCompleted()
         {
             if (building || dirty || subject == null || cameraRig == null) return;
+            if (settleRenders)
+            {
+                renderPending = posePending = true;
+                renderRevision = revision;
+                Status = "Updating preview…";
+                StatusChanged?.Invoke();
+                return;
+            }
             subject.transform.localRotation = Quaternion.Euler(0f, turn, 0f);
-            var renderers = subject.GetComponentsInChildren<Renderer>();
-            if (renderers.Length == 0) return;
+            RenderCurrent();
+        }
+
+        private void AdvanceRender()
+        {
+            if (renderRevision != revision) { renderPending = posePending = publishBuild = false; return; }
+            try
+            {
+                if (subject == null) throw new InvalidOperationException("The preview body was released.");
+                if (posePending)
+                {
+                    // Apply in Update, before the two intervening ordinary animation/render cycles.
+                    subject.transform.localRotation = Quaternion.Euler(0f, turn, 0f);
+                    posePending = false;
+                    renderAtFrame = Time.frameCount + 2;
+                    return;
+                }
+                if (Time.frameCount < renderAtFrame) return;
+                if (!RenderCurrent()) throw new InvalidOperationException("The preview has no renderers.");
+                if (!renderPending || posePending || renderRevision != revision) return;
+                renderPending = false;
+                shownKey = requestedKey;
+                if (publishBuild) LastBuildMilliseconds = (Time.realtimeSinceStartupAsDouble - requestedAt) * 1000;
+                publishBuild = false;
+                Status = readyStatus ?? "Preview ready";
+                StatusChanged?.Invoke();
+            }
+            catch (Exception error)
+            {
+                renderPending = posePending = publishBuild = false;
+                CanRetry = true;
+                Status = "The preview could not be rendered (" + error.GetType().Name + "). Your look is kept. Retry preview to try again.";
+                StatusChanged?.Invoke();
+            }
+        }
+
+        private bool RenderCurrent()
+        {
+            var renderers = framingRenderers ?? subject.GetComponentsInChildren<Renderer>();
+            if (renderers.Length == 0) return false;
             var bounds = renderers[0].bounds;
             foreach (var renderer in renderers) bounds.Encapsulate(renderer.bounds);
+            if (fitDeformedBody && !headShot) bounds = DeformedBounds(renderers);
             var animator = subject.GetComponentInChildren<Animator>();
             Transform head = animator != null && animator.isHuman ? animator.GetBoneTransform(HumanBodyBones.Head) : null;
             Vector3 target = headShot
@@ -238,14 +313,83 @@ namespace Gamesim.Presentation
                 : bounds.center;
             float height = headShot ? Mathf.Max(.48f, bounds.size.y * .33f) : Mathf.Max(1.4f, bounds.size.y) * 1.13f;
             float distance = height / (2f * Mathf.Tan(cameraRig.fieldOfView * Mathf.Deg2Rad * .5f)) / zoom;
+            if (fitDeformedBody && !headShot)
+                distance = FittedDistance(bounds, target, distance * zoom) / zoom;
             cameraRig.transform.position = target + new Vector3(0f, headShot ? .015f : .08f, distance);
             cameraRig.transform.LookAt(target);
             cameraRig.Render();
+            return true;
+        }
+
+        private Bounds DeformedBounds(Renderer[] renderers)
+        {
+            bool found = false;
+            var bounds = new Bounds();
+            foreach (var renderer in renderers)
+            {
+                if (renderer is SkinnedMeshRenderer skin && skin.sharedMesh != null && skin.sharedMesh.vertexCount > 0)
+                {
+                    if (framingMesh == null) framingMesh = new Mesh
+                    { name = "Creator framing sample", hideFlags = HideFlags.DontSave };
+                    // Bake without transform scale; the full matrix below applies it exactly once,
+                    // including a non-uniformly scaled or rotated hierarchy. Never alter culling bounds.
+                    skin.BakeMesh(framingMesh, false);
+                    framingMesh.GetVertices(framingVertices);
+                    var toWorld = skin.transform.localToWorldMatrix;
+                    foreach (var vertex in framingVertices)
+                    {
+                        var world = toWorld.MultiplyPoint3x4(vertex);
+                        if (!found) { bounds = new Bounds(world, Vector3.zero); found = true; }
+                        else bounds.Encapsulate(world);
+                    }
+                }
+                else
+                {
+                    if (!found) { bounds = renderer.bounds; found = true; }
+                    else bounds.Encapsulate(renderer.bounds);
+                }
+            }
+            return bounds;
+        }
+
+        private float FittedDistance(Bounds bounds, Vector3 target, float minimum)
+        {
+            const float padding = 1.13f;
+            float vertical = Mathf.Tan(cameraRig.fieldOfView * Mathf.Deg2Rad * .5f) / padding;
+            float horizontal = vertical * cameraRig.aspect;
+            // A containing sphere supplies a guaranteed upper bracket. The exact box projection
+            // then keeps the existing height floor/padding without paying for that sphere's slack.
+            float halfAngle = Mathf.Atan(Mathf.Min(vertical, horizontal));
+            float maximum = Mathf.Max(minimum, bounds.extents.magnitude / Mathf.Sin(halfAngle));
+            if (Fits(minimum)) return minimum;
+            for (int i = 0; i < 20; i++)
+            {
+                float middle = (minimum + maximum) * .5f;
+                if (Fits(middle)) maximum = middle;
+                else minimum = middle;
+            }
+            return maximum;
+
+            bool Fits(float distance)
+            {
+                var position = target + new Vector3(0f, .08f, distance);
+                var rotation = Quaternion.Inverse(Quaternion.LookRotation(target - position, Vector3.up));
+                for (int corner = 0; corner < 8; corner++)
+                {
+                    var point = bounds.center + Vector3.Scale(bounds.extents, new Vector3(
+                        (corner & 1) == 0 ? -1f : 1f, (corner & 2) == 0 ? -1f : 1f, (corner & 4) == 0 ? -1f : 1f));
+                    var local = rotation * (point - position);
+                    if (local.z < cameraRig.nearClipPlane || Mathf.Abs(local.x) > local.z * horizontal
+                        || Mathf.Abs(local.y) > local.z * vertical) return false;
+                }
+                return true;
+            }
         }
 
         private void OnDestroy()
         {
             ReleaseBody();
+            if (framingMesh != null) { DestroyOwned(framingMesh); framingMesh = null; }
             if (cameraRig != null) cameraRig.targetTexture = null;
             if (texture != null) { texture.Release(); DestroyOwned(texture); texture = null; }
         }

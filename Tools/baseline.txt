@@ -457,7 +457,11 @@ Gamesim.PlayModeTests.UmaBuild 1543
 # 153 = 134 + the All-Star intake's 19 UmaWardrobeContractPlayModeTests cases (every wardrobe catalog entry held to
 # the part contract): the intake's targeted Unity batch at 290758d2 ran the whole assembly, 153 of 153 (2026-11-11),
 # on a vendor with the triangle patch applied.
-Gamesim.Uma.PlayModeTests 153
+# 163 = 153 + face slice 2's 10 (UmaFaceFormPlayModeTests, UmaFaceFitExportPlayModeTests, UmaHairIdMapPlayModeTests
+# and UmaFaceFitExportRunPlayModeTests: which face form paints the head on each body type, the face-fit export, a
+# hair's own root-to-tip map, and the run test the real export uses): the slice's targeted Unity batch at e74b3db8 ran
+# the whole assembly, 163 of 163 (set fs2tg2, 2026-11-12), on a vendor with the triangle patch applied.
+Gamesim.Uma.PlayModeTests 163
 # Diagnostics: feasibility and diagnostic probes, never shipping acceptance. They compile only under
 # GAMESIM_DIAGNOSTICS, which only a diagnostic run adds to the test copy (GAMESIM_DIAGNOSTICS=1 with
 # sync-and-run.sh or the locked runner); the UMA one needs GAMESIM_UMA too. The floor counts that they
@@ -590,4 +594,6 @@ Gamesim.Uma.DiagnosticsPlayModeTests 10
 # 16718 = 16716 + the All-Star intake's 2 UmaContentBinaryPinTests cases (the UMA content folder's binary pin is in
 # .gitattributes, and every .asset there that is not YAML text is covered by it): dotnet test Tools/SimulationTests
 # ran exactly 16718 of 16718 on the commit that adds them (2026-11-10).
-Gamesim.SimulationTests 16718
+# 16745 = 16718 + face slice 2's 27 UmaFaceFitFilesTests cases (the export's file writer, read back from outside):
+# dotnet test Tools/SimulationTests ran exactly 16745 of 16745 on the slice at c0a6444f (2026-11-11).
+Gamesim.SimulationTests 16745

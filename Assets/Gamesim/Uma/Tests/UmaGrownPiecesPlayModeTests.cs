@@ -352,6 +352,14 @@ namespace Gamesim.Uma.Tests
         {
             var curls = new Built(); yield return Build(curls, new[] { "Hair_Poofy", "gs-acc-cap" });
             var crop = new Built(); yield return Build(crop, new[] { "gs-hair-buzz", "gs-acc-cap" });
+            // Both caps are measured in the standing pose they were fitted in, so each body's own
+            // moment in the idle, with its head turned a little, cannot change one width against
+            // the other.
+            foreach (var body in new[] { curls.Body, crop.Body }) { var rig = Rig(body); rig.Rebind(); rig.Update(0f); }
+            Assert.That(Quaternion.Angle(
+                    Quaternion.Inverse(curls.Body.Root.transform.rotation) * Rig(curls.Body).GetBoneTransform(HumanBodyBones.Head).rotation,
+                    Quaternion.Inverse(crop.Body.Root.transform.rotation) * Rig(crop.Body).GetBoneTransform(HumanBodyBones.Head).rotation),
+                Is.LessThan(1f), "Both heads stand alike when the caps are measured");
             var overCurls = Local(curls.Body, Piece(curls.Body, "gs-acc-cap").GetComponent<MeshRenderer>());
             var overCrop = Local(crop.Body, Piece(crop.Body, "gs-acc-cap").GetComponent<MeshRenderer>());
             Assert.That(Mathf.Abs(overCurls.size.x - overCrop.size.x), Is.LessThan(.004f),

@@ -223,7 +223,11 @@
 # 9911 = 9897 + the All-Star intake's 14 (AppearanceAccessoryPlaceTests 8, WardrobeSlotsTests 6): the lister counted
 # 9911 at 290758d2, the Mono harness ran both classes (8 of 8 and 6 of 6), and the intake's targeted Unity batch at
 # 290758d2 ran both among its 68 appearance cases, 68 of 68 (2026-11-11). No full EditMode run has observed 9911.
-Gamesim.EditModeTests 9911
+# 9920 = 9911 + face slice 1's 9 LookPiecesTests cases (E1 to E9: a piece tagged worn-by a look is dressed on it,
+# and the library line's format): the lister counted 9920 at 9cce3f9d, the Mono harness ran the class (9 of 9), and
+# the slice's targeted Unity batch ran the nine as its EditMode part, 9 of 9 (set fs1tg3 at a432660d, 2026-11-12).
+# No full EditMode run has observed 9920.
+Gamesim.EditModeTests 9920
 # The UMA-free build. 1215 = 1236, the count after the consolidation's lanes (S2a, S2b, S4a), less the 7
 # farewell probes moved to Gamesim.DiagnosticsPlayModeTests and the 14 farewell readiness tests that now
 # compile only under GAMESIM_UMA (judged on the UMA cast); 1230 = 1215 + S2d's 7, S4b's 2, S4c's 2 and
@@ -457,7 +461,10 @@ Gamesim.PlayModeTests.UmaBuild 1543
 # 153 = 134 + the All-Star intake's 19 UmaWardrobeContractPlayModeTests cases (every wardrobe catalog entry held to
 # the part contract): the intake's targeted Unity batch at 290758d2 ran the whole assembly, 153 of 153 (2026-11-11),
 # on a vendor with the triangle patch applied.
-Gamesim.Uma.PlayModeTests 153
+# 159 = 153 + face slice 1's 6 (UmaAllStarPiecesPlayModeTests' U1 and U4, and the tagged-piece case of each of the
+# four look walkers): the slice's targeted Unity batch at a432660d ran the whole assembly, 159 of 159 (set fs1tg2,
+# 2026-11-12), on a vendor with the triangle patch applied.
+Gamesim.Uma.PlayModeTests 159
 # Diagnostics: feasibility and diagnostic probes, never shipping acceptance. They compile only under
 # GAMESIM_DIAGNOSTICS, which only a diagnostic run adds to the test copy (GAMESIM_DIAGNOSTICS=1 with
 # sync-and-run.sh or the locked runner); the UMA one needs GAMESIM_UMA too. The floor counts that they
@@ -590,4 +597,6 @@ Gamesim.Uma.DiagnosticsPlayModeTests 10
 # 16718 = 16716 + the All-Star intake's 2 UmaContentBinaryPinTests cases (the UMA content folder's binary pin is in
 # .gitattributes, and every .asset there that is not YAML text is covered by it): dotnet test Tools/SimulationTests
 # ran exactly 16718 of 16718 on the commit that adds them (2026-11-10).
-Gamesim.SimulationTests 16718
+# 16727 = 16718 + face slice 1's 9 LookPiecesTests cases (the same nine the EditMode floor counts): dotnet test
+# Tools/SimulationTests ran exactly 16727 of 16727 on the slice at 9cce3f9d (2026-11-11).
+Gamesim.SimulationTests 16727

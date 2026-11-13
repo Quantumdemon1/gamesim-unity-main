@@ -381,7 +381,7 @@ namespace Gamesim.Presentation
         {
             if (studioPreview == null)
             {
-                studioPreview = CharacterStudioPreview.Create();
+                studioPreview = CharacterStudioPreview.Create(fitDeformedBody: true, settleRenders: true);
                 // A build may finish after the form's Update. Publish its words and retry state
                 // together rather than leaving one frame showing the previous build's status.
                 studioPreview.StatusChanged += RefreshPreviewStatus;

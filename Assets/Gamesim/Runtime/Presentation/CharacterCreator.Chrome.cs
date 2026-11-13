@@ -544,6 +544,14 @@ namespace Gamesim.Presentation
                 var photo = HudPrimitives.RectPortrait(card, "Picture", null, face, new Vector2(picture, picture), 8);
                 photo.anchorMin = photo.anchorMax = new Vector2(.5f, 1f); photo.pivot = new Vector2(.5f, 1f);
                 photo.anchoredPosition = new Vector2(0f, -6f);
+                var placeholder = new GameObject("Portrait placeholder", typeof(RectTransform), typeof(UnityEngine.UI.Image)).GetComponent<UnityEngine.UI.Image>();
+                placeholder.rectTransform.SetParent(photo, false);
+                placeholder.sprite = UiTheme.Icon("houseguest");
+                placeholder.color = new Color(UiTheme.Accent.r, UiTheme.Accent.g, UiTheme.Accent.b, .7f);
+                placeholder.preserveAspect = true; placeholder.raycastTarget = false;
+                placeholder.rectTransform.anchorMin = placeholder.rectTransform.anchorMax = new Vector2(.5f, .5f);
+                placeholder.rectTransform.sizeDelta = new Vector2(picture * .55f, picture * .55f);
+                photo.GetComponentInChildren<CharacterPortraitBinding>().SetPlaceholder(placeholder);
             }
             else if (texture != null)
             {

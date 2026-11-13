@@ -302,16 +302,19 @@ namespace Gamesim.Tests.PlayMode
         public void Endgame_TheFrameReadsTheEndgameFromTheState()
         {
             var state = director.Snapshot;
-            Assume.That(state.Active.Count(), Is.GreaterThan(3));
+            Assert.That(state.Active.Count(), Is.GreaterThan(3));
             Assert.That(EpisodeHud.IsFinalThree(state), Is.False);
             Assert.That(EpisodeHud.IsFinalTwo(state), Is.False);
             Assert.That(EpisodeHud.IsEndgame(state), Is.False);
             Assert.That(EpisodeHud.EndgameLabel(state), Is.Null);
-            Assert.That(EpisodeHud.ObjectiveTitle(state), Is.EqualTo("Current Objective"));
+            // An ordinary week names its task, not "Current Objective". The table is spelled whole:
+            // the OfferBadges partial has a method named ObjectiveWords.
+            Assert.That(EpisodeHud.ObjectiveTitle(state), Is.EqualTo(Gamesim.Presentation.ObjectiveWords.For(state))
+                .And.Not.EqualTo(Gamesim.Presentation.ObjectiveWords.Fallback));
 
             var three = state.Clone();
             foreach (var actor in three.Active.Where(actor => !actor.isPlayer).Skip(2).ToList()) actor.status = ContestantStatus.Jury;
-            Assume.That(three.Active.Count(), Is.EqualTo(3));
+            Assert.That(three.Active.Count(), Is.EqualTo(3));
             three.phase = EpisodePhase.FinalHoHPart2;
             Assert.That(EpisodeHud.IsFinalThree(three), Is.True);
             Assert.That(EpisodeHud.EndgameLabel(three), Is.EqualTo("FINAL 3"));

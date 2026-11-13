@@ -257,6 +257,9 @@ namespace Gamesim.Episode
             bool fromMenu = mainMenu != null && mainMenu.IsShowing;
             if (fromMenu) mainMenu.Hide();
             Action back = fromMenu ? (Action)OpenMainMenu : Render;
+            // From a menu that offered no Continue there is no season to keep, and back is the
+            // menu: the cast screen's back chip says that instead. Read after Hide, which keeps it.
+            bool freshStart = fromMenu && !mainMenu.OffersContinue;
             // Each screen that can commit is named as the way back from a failed start, so the
             // player lands where they pressed it: see StartSeason(choice, failed).
             castSelect.Show(choice => StartSeason(choice, castSelect.Resume), back,
@@ -272,7 +275,7 @@ namespace Gamesim.Episode
                     if (castSelect.PreferredCreatorMode == CharacterCreator.EntryMode.Quick)
                         characterCreator.ShowQuick(choice, draft, commit, returnToCast);
                     else characterCreator.Show(choice, draft, commit, returnToCast);
-                });
+                }, freshStart);
             // Setup is one of the screens the music rule silences, and putting one up is not a
             // render: from the finale's panel, the report or settings the season's track played
             // on under the cast screen until something else happened to repaint.

@@ -673,6 +673,10 @@ namespace Gamesim.Uma
         public static bool Resolve(string characterId, string appearanceId, out UmaCastLook look)
             => TryGet(characterId, out look) || TryGet(appearanceId, out look);
 
+        /// <summary>The id <see cref="Resolve"/> finds the look by (the character's own first), or null when neither has one.</summary>
+        public static string ResolveId(string characterId, string appearanceId)
+            => TryGet(characterId, out _) ? characterId : TryGet(appearanceId, out _) ? appearanceId : null;
+
         private static Color Hex(string value)
         {
             ColorUtility.TryParseHtmlString("#" + value, out var color);

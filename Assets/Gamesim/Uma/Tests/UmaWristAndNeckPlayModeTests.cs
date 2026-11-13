@@ -569,8 +569,8 @@ namespace Gamesim.Uma.Tests
         /// <summary>
         /// Two bodies with their own skin and outfit colours wear the same authored watch: the watch is drawn as
         /// authored on both, and each body is drawn in its own skin and its own shirt dye, read on the built
-        /// recipes after both are up (UMA hands matching slots one overlay list, so a dye edited in place
-        /// would repaint the other body).
+        /// recipes after both are up. (UMA gives every avatar its own colour copies, so one body's dye cannot
+        /// reach the other; the case pins that each body is drawn in the colours it was given.)
         /// </summary>
         [UnityTest]
         public IEnumerator TwoBodiesWearingOneWatchKeepTheirOwnColours()
@@ -582,7 +582,7 @@ namespace Gamesim.Uma.Tests
             string female = UmaCastLibrary.FemaleRace;
             var first = Player(installed, female);
             var second = Player(installed, female);
-            // Both wear the same stock shirt, so UMA hands the two bodies the same overlays to dye.
+            // Both wear the same stock shirt, from the same recipe asset; each body dyes its own copy.
             string shirt = WearAShirt(installed, first, female);
             Assert.That(WearAShirt(installed, second, female), Is.EqualTo(shirt), "Both bodies wear the same shirt.");
             var shirtRecipe = UMAAssetIndexer.Instance.GetAsset<UMAWardrobeRecipe>(installed.ResolveRecipeName(shirt));

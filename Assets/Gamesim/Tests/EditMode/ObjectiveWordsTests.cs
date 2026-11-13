@@ -196,6 +196,94 @@ namespace Gamesim.Tests.EditMode
             Assert.That(ObjectiveWords.For(tied), Is.EqualTo("Face the house vote"), "Only the HoH breaks the tie.");
         }
 
+        /// <summary><paramref name="s"/> as a story season whose player serves production's sit-out penalty this week.</summary>
+        private static EpisodeState SittingOut(EpisodeState s)
+        {
+            EpisodeEngine.EnableStory(s);
+            Production.For(s, s.playerId, true).sitsOutWeek = s.week;
+            return s;
+        }
+
+        private static bool Fielded(EpisodeState s) => EpisodeEngine.CompetitionPlayers(s).Any(c => c.id == s.playerId);
+
+        /// <summary>
+        /// A player serving production's penalty sits out the Head of Household competition
+        /// (EpisodeEngine.CompetitionPlayers leaves them out, and the competition panel briefs them as a
+        /// spectator), so the card says to watch it, as it does for the outgoing HoH, and never to win it.
+        /// </summary>
+        [Test]
+        public void APlayerSittingOutProductionsPenaltyWatchesTheHoHCompetition()
+        {
+            var story = Week(EpisodePhase.HoH);
+            EpisodeEngine.EnableStory(story);
+            Assert.That(Fielded(story), Is.True, "Precondition: a story season fields a player without a penalty.");
+            Assert.That(ObjectiveWords.For(story), Is.EqualTo("Win Head of Household"));
+
+            var sitting = SittingOut(Week(EpisodePhase.HoH));
+            Assert.That(Production.SitsOut(sitting, sitting.playerId), Is.True, "Precondition: the penalty is this week's.");
+            Assert.That(Fielded(sitting), Is.False, "Precondition: the engine leaves the player out of the field.");
+            Assert.That(ObjectiveWords.For(sitting), Is.EqualTo("Watch the HoH competition"));
+
+            // The penalty is a week's: one served last week leaves the player in this week's field.
+            var served = SittingOut(Week(EpisodePhase.HoH));
+            served.week++;
+            Assert.That(Fielded(served), Is.True, "Precondition: last week's penalty is spent.");
+            Assert.That(ObjectiveWords.For(served), Is.EqualTo("Win Head of Household"));
+
+            // Once the competition is won the window names the result, penalty or not.
+            AssertWindow(sitting, s => { s.competitionResolved = true; s.hohId = Other(s, 0); }, "The new HoH is crowned");
+        }
+
+        /// <summary>
+        /// Production's penalty is the HoH competition's alone: at the veto the draw decides who plays, so
+        /// a drawn player under this week's penalty is still asked to win it, and one the draw left out
+        /// (or a veto with no draw recorded) watches.
+        /// </summary>
+        [Test]
+        public void AtTheVetoTheDrawDecidesPenaltyOrNot()
+        {
+            var drawn = SittingOut(WithRole(EpisodePhase.Veto, "veto player"));
+            Assert.That(Production.SitsOut(drawn, drawn.playerId), Is.False, "Precondition: the penalty does not reach the veto.");
+            Assert.That(Fielded(drawn), Is.True, "Precondition: the draw fields the player.");
+            Assert.That(ObjectiveWords.For(drawn), Is.EqualTo("Win the Power of Veto"));
+
+            var left = SittingOut(WithRole(EpisodePhase.Veto, "other"));
+            Assert.That(ObjectiveWords.For(left), Is.EqualTo("Watch the veto competition"));
+
+            var undrawn = Week(EpisodePhase.Veto);
+            undrawn.vetoPlayers = null;
+            Assert.That(ObjectiveWords.For(undrawn), Is.EqualTo("Watch the veto competition"), "No draw, no field.");
+        }
+
+        /// <summary>
+        /// The card and the engine agree on every open competition the table names: it asks the player to
+        /// win exactly when EpisodeEngine.CompetitionPlayers fields them, for each role, the outgoing HoH
+        /// and the penalty included.
+        /// </summary>
+        [Test]
+        public void TheCardAsksToWinExactlyWhenTheEngineFieldsThePlayer()
+        {
+            int fielded = 0, watching = 0;
+            foreach (var phase in new[] { EpisodePhase.HoH, EpisodePhase.Veto })
+            foreach (var role in RoleNames.Where(role => role != "evicted"))
+            foreach (var setup in new Func<EpisodeState, EpisodeState>[]
+                     {
+                         s => s,
+                         SittingOut,
+                         s => { s.previousHohId = s.playerId; return s; },
+                     })
+            {
+                var s = setup(WithRole(phase, role));
+                bool inField = Fielded(s);
+                string words = ObjectiveWords.For(s);
+                Assert.That(words.StartsWith("Win "), Is.EqualTo(inField), phase + " as " + role + ": '" + words + "'");
+                Assert.That(words.StartsWith("Watch "), Is.EqualTo(!inField), phase + " as " + role + ": '" + words + "'");
+                if (inField) fielded++; else watching++;
+            }
+            Assert.That(fielded, Is.GreaterThan(0), "Some cases field the player.");
+            Assert.That(watching, Is.GreaterThan(0), "Some cases leave the player out.");
+        }
+
         [Test]
         public void APlayerOutOfTheGameWatchesEvenWithARoleLeftInState()
         {

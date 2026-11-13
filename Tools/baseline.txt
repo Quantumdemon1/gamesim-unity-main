@@ -241,7 +241,22 @@
 # 9930 = 9929 + face slice 3's review case LookPiecesTests.E11 (every look's fit-set values in LibraryLooks.txt lie in
 # their measured ranges, Part B): the lister counted 9930 at 500e1f64 (2026-11-13), and the Unity-free suite ran the
 # case (below). No Unity EditMode run has observed 9930 yet.
-Gamesim.EditModeTests 9930
+# 9931 = 9928 + the objective sit-out fix's 3 ObjectiveWordsTests cases (a player serving production's sit-out penalty
+# watches the HoH competition; at the veto the draw decides, penalty or not; the card asks to win exactly when
+# EpisodeEngine.CompetitionPlayers fields the player): the test lister counted 9931 on branch claude/ui-objective-sitout,
+# whose head adds only this file to 8834afeb (2026-11-12). No Unity run has observed them yet.
+# 9939 = 9928 + the creator convergence branch's 11: CharacterStudioFramingTests 10 (the creator's studio frames the
+# posed body: the crown and the width in frame, the buffers, the zoom and face focus, the cast turn left unbaked, the
+# shutdown's ownership) and CharacterCreatorStudioOptInTests 1 (the creator's one-line opt-in, read from its source).
+# Disjoint from main's cases, so the floor is their sum. The lister counted 9939 on the branch at cc4303bc, and dotnet
+# test ran the opt-in case (2026-11-12). No Unity run has observed the 11 or 9939 yet.
+# 9942 = 9939 + the objective sit-out fix's 3: disjoint from the creator convergence branch's cases, so the floor is the
+# sum (the merge of main into the sit-out slice at its landing, 2026-11-13). Counted from the two sides; no run has
+# observed 9942.
+# 9944 = 9942 + Will's face slice's 2 (LookPiecesTests E10 and E11): disjoint from the creator convergence branch's and the
+# sit-out fix's cases, so the floor is the sum (the merge of main into face slice 3 at its landing, 2026-11-13). Counted
+# from the two sides; no run has observed 9944.
+Gamesim.EditModeTests 9944
 # The UMA-free build. 1215 = 1236, the count after the consolidation's lanes (S2a, S2b, S4a), less the 7
 # farewell probes moved to Gamesim.DiagnosticsPlayModeTests and the 14 farewell readiness tests that now
 # compile only under GAMESIM_UMA (judged on the UMA cast); 1230 = 1215 + S2d's 7, S4b's 2, S4c's 2 and
@@ -376,7 +391,12 @@ Gamesim.EditModeTests 9930
 # MainMenu_WithASeasonOnDiskTheCastScreenOffersToKeepIt and U3's
 # ConversationExchange_ASpokenActEndsOnItsCategoryPageWithWhatHappened. The lister counted 1500, 1501 and 1502 at the
 # three heads (2026-11-11). Compiled in this build; they ran in Unity in the UMA build only (see UmaBuild below).
-Gamesim.PlayModeTests 1502
+# 1507 = 1502 + the creator convergence branch's 5 new CharacterStudioRecoveryPlayModeTests cases (8 to 13): three for
+# the studio's settled publication (the shown pixels are kept until the latest pose has rendered, a superseded look
+# never publishes, a pending publication is cancelled on disable and disposal) and two for the creator thumbnail's
+# placeholder (shown until the matching portrait is ready, and again after an invalidation or a rebinding). The lister
+# counted 1507 on the branch at cc4303bc without UMA (2026-11-12). No Unity run has observed them yet.
+Gamesim.PlayModeTests 1507
 # The UMA build of the same assembly, read by a plan built without -WithoutUma. 1281 = the 1241 above + the
 # 40 tests that compile only under GAMESIM_UMA, as run at r1 (2026-10-16): in EpisodePlayModeTests,
 # GroundedFarewell 11, Creator 9, HouseLife 8, Emotes 3, OpeningCaptures 2, and one each in CreatorEntry,
@@ -467,7 +487,10 @@ Gamesim.PlayModeTests 1502
 # 1547 = 1540 + the All-Star intake's 3 + the UI stack's 4: disjoint cases, so the floor is their sum (the merge of main
 # into the UI stack's last slice at its landing, 2026-11-12). The UI stack's full run of this assembly observed 1544 of
 # 1544 at 8aea8d7b (set uiqf2, 2026-11-12). Counted from the two sides; no run has observed 1547 on the merge.
-Gamesim.PlayModeTests.UmaBuild 1547
+# 1552 = 1547 + the creator convergence branch's same 5 CharacterStudioRecoveryPlayModeTests cases (see PlayModeTests
+# above): the lister counted 1552 on the branch at cc4303bc in the UMA offline build (2026-11-12). No Unity run has
+# observed them or 1552 yet.
+Gamesim.PlayModeTests.UmaBuild 1552
 # The UMA bodies: runs only where the GAMESIM_UMA define is set (the working tree and the D: copy).
 # 82 = the 89 run on 2026-10-15, less the 7 farewell probes moved to Gamesim.Uma.DiagnosticsPlayModeTests;
 # 85 = 82 + the 3 farewell readiness decision tests (UmaFarewellReadinessDecisionPlayModeTests, 2026-10-16);
@@ -499,7 +522,14 @@ Gamesim.PlayModeTests.UmaBuild 1547
 # 170 = 169 + face slice 3's review case UmaAllStarPiecesPlayModeTests.WillsBuiltBodyCarriesHisFittedFace (Will built
 # as a season builds him; his body's DNA carries his 26 fitted face values): the lister counted 170 at 500e1f64
 # (2026-11-13). No Unity run has observed 170 yet.
-Gamesim.Uma.PlayModeTests 170
+# 175 = 169 + the wrist and neck places' 6 (UmaWristAndNeckPlayModeTests: a Hands and an Arms piece on each body, a
+# Shoulders piece in the code-built Neckwear place, a save and a reload with a rebuild, an authored textured part drawn
+# with its own material and maps, two bodies sharing one watch, and the pool and bed bodies left bare): counted by the
+# offline lister in the UMA build of claude/slots-a-wrist-neck (175, 2026-11-12); no Unity run has observed them yet.
+# 176 = 175 + Will's face slice's 1 (WillsBuiltBodyCarriesHisFittedFace): disjoint from the wrist and neck places' six, so
+# the floor is the sum (the merge of main into face slice 3 at its landing, 2026-11-13). Each slice's batch ran the whole
+# assembly as it stood on that slice (175 and 170); counted from the two sides, no run has observed 176.
+Gamesim.Uma.PlayModeTests 176
 # Diagnostics: feasibility and diagnostic probes, never shipping acceptance. They compile only under
 # GAMESIM_DIAGNOSTICS, which only a diagnostic run adds to the test copy (GAMESIM_DIAGNOSTICS=1 with
 # sync-and-run.sh or the locked runner); the UMA one needs GAMESIM_UMA too. The floor counts that they
@@ -647,4 +677,14 @@ Gamesim.Uma.DiagnosticsPlayModeTests 10
 # Tools/SimulationTests ran exactly 16763 of 16763 on the slice at b1a2e811 (2026-11-13).
 # 16764 = 16763 + face slice 3's review case LookPiecesTests.E11 (the same case the EditMode floor counts): dotnet test
 # Tools/SimulationTests ran exactly 16764 of 16764 on a copy of the slice at 500e1f64 (2026-11-13).
-Gamesim.SimulationTests 16764
+# 16765 = 16762 + the objective sit-out fix's 3 ObjectiveWordsTests cases (the same three the EditMode floor counts):
+# dotnet test Tools/SimulationTests ran exactly 16765 of 16765 on the slice at 8834afeb (2026-11-12). No Unity run has
+# observed them yet.
+# 16763 = 16762 + the creator convergence branch's CharacterCreatorStudioOptInTests 1 (the same case the EditMode floor
+# counts, linked into the subset): dotnet test Tools/SimulationTests ran exactly 16763 of 16763 on the branch at
+# cc4303bc (2026-11-12).
+# 16766 = 16763 + the objective sit-out fix's 3: the sum, as above (the merge of main into the sit-out slice at its
+# landing, 2026-11-13).
+# 16768 = 16766 + Will's face slice's 2: the sum, as above (the merge of main into face slice 3 at its landing,
+# 2026-11-13).
+Gamesim.SimulationTests 16768

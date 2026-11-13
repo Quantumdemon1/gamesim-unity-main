@@ -62,13 +62,13 @@ namespace Gamesim.Presentation
                 case EpisodePhase.Social:
                     return "Make this week's moves";
                 case EpisodePhase.HoH:
-                    return s.previousHohId == me ? "Watch the HoH competition" : "Win Head of Household";
+                    return InTheField(s, me) ? "Win Head of Household" : "Watch the HoH competition";
                 case EpisodePhase.Nomination:
                     return hoh ? "Name your nominees" : "The HoH is naming nominees";
                 case EpisodePhase.VetoSelection:
                     return "The veto players are drawn";
                 case EpisodePhase.Veto:
-                    return s.vetoPlayers != null && s.vetoPlayers.Contains(me) ? "Win the Power of Veto" : "Watch the veto competition";
+                    return InTheField(s, me) ? "Win the Power of Veto" : "Watch the veto competition";
                 case EpisodePhase.VetoMeeting:
                     if (holder) return "Decide on the veto";
                     // A housemate's veto that saves a nominee leaves the HoH to name who goes up instead: the
@@ -83,5 +83,16 @@ namespace Gamesim.Presentation
                     return Fallback;
             }
         }
+
+        /// <summary>
+        /// Whether the player is in the field of the competition the phase plays: the engine's own list,
+        /// <see cref="EpisodeEngine.CompetitionPlayers"/>, the one the competition panel briefs from, so
+        /// the card never asks a player to win what they are not in. It leaves out the outgoing Head of
+        /// Household, a houseguest serving production's sit-out penalty at the HoH competition, and
+        /// everybody the veto draw did not name. A veto with no draw recorded has no field.
+        /// </summary>
+        private static bool InTheField(EpisodeState s, string me) =>
+            (s.phase != EpisodePhase.Veto || s.vetoPlayers != null)
+            && EpisodeEngine.CompetitionPlayers(s).Any(c => c.id == me);
     }
 }

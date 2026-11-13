@@ -282,9 +282,11 @@ namespace Gamesim.Episode
             // A finished season still sends the player to the episode screen - the rail's button
             // and the station's icon both call it that - and then says what waits there. "Next
             // stop: season report" named a place no control, icon or beacon in the house is called:
-            // the report is a button inside the episode screen, and only once it is open.
-            : state.phase == EpisodePhase.Finished ? "Next stop: episode screen · season report"
-            : "Next stop: episode screen";
+            // the report is a button inside the episode screen, and only once it is open. While the
+            // screen is open the line says the player is there, as the diary's lines do (UI-UX U1).
+            : state.phase == EpisodePhase.Finished
+                ? (director != null && director.IsPhasePanelOpen ? "Here: the episode screen · season report" : "Next stop: episode screen · season report")
+            : director != null && director.IsPhasePanelOpen ? "Here: the episode screen" : "Next stop: episode screen";
 
         /// <summary>The objective chip's endgame mark, named apart from the objectives card's row marks.</summary>
         public const string ObjectiveCrownName = "Objective crown";
@@ -449,11 +451,11 @@ namespace Gamesim.Episode
 
         /// <summary>
         /// The objective chip's title: what the endgame is about, in the outline's words, or the
-        /// ordinary 'Current Objective'. The next-stop line under it is untouched.
+        /// task of the week from <see cref="ObjectiveWords"/>. The next-stop line under it is untouched.
         /// </summary>
         public static string ObjectiveTitle(EpisodeState state)
         {
-            if (state == null) return "Current Objective";
+            if (state == null) return ObjectiveWords.Fallback;
             if (state.phase == EpisodePhase.Finished) return "Season complete";
             if (IsFinalTwo(state)) return "The jury decides";
             if (IsFinalThree(state))
@@ -462,7 +464,7 @@ namespace Gamesim.Episode
                     return state.hohId == state.playerId ? "One decision remains" : "The final Head of Household decides";
                 return "Final Head of Household ahead";
             }
-            return "Current Objective";
+            return ObjectiveWords.For(state);
         }
 
         /// <summary>A phase in the one or two words the week chip has room for.</summary>

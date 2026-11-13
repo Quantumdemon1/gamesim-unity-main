@@ -171,10 +171,10 @@ namespace Gamesim.Presentation
                 "Everyone in the house, along the bottom. Click a face to follow them with the camera. Under each name is their mood; once you know them, a tag says where you stand.",
                 CastRail.StripName),
             new Step("overlay", "Phase Panels",
-                "A phase is the part of the week the house is in, such as free time, nominations or the vote. Open the episode screen for its decisions; the Current Objective explains what comes next. Conversations show your words, then the houseguest's reply. Continue conversation reads the next line; Skip conversation moves on after the action has already happened.",
+                "A phase is the part of the week the house is in, such as free time, nominations or the vote. Open the episode screen for its decisions; the objective at the top left explains what comes next. Conversations show your words, then the houseguest's reply. Continue conversation reads the next line; Skip conversation moves on after the action has already happened.",
                 "Episode panel", "Objective"),
             new Step("ready", "You're Ready!",
-                "Whenever you are unsure what to do next, the Current Objective names what the house is waiting on. Good luck!"),
+                "Whenever you are unsure what to do next, the objective at the top left names what the house is waiting on. Good luck!"),
         };
 
         private Canvas canvas;

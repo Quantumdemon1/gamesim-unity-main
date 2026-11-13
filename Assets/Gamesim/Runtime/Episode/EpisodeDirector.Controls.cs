@@ -247,8 +247,10 @@ namespace Gamesim.Episode
             // Topmost first. The main menu sits above the cast screen, which sits above the
             // HUD; closing a panel underneath either of them would leave a screen on top of the
             // house with nothing behind it. The menu itself ignores Escape when there is no
-            // season to go back to, because there is nowhere for it to close to.
-            if (mainMenu != null && mainMenu.IsShowing) { if (SeasonInProgress) CloseMainMenu(); }
+            // season to go back to, because there is nowhere for it to close to - and on a first
+            // launch, where the season in memory is the authored one nobody chose, it goes by what
+            // it shows: no Continue on the menu, nothing for Escape or B to continue.
+            if (mainMenu != null && mainMenu.IsShowing) { if (SeasonInProgress && mainMenu.OffersContinue) CloseMainMenu(); }
             // The creator draws above the cast screen, so it takes Escape first — otherwise
             // the screen underneath would close out from under the form on top of it.
             else if (characterCreator != null && characterCreator.IsShowing) characterCreator.Dismiss();

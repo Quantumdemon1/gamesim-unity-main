@@ -140,17 +140,56 @@ namespace Gamesim.Uma.Tests
             return actor;
         }
 
-        /// <summary>Each slot of the recipe is built on the body, with vertices.</summary>
+        /// <summary>
+        /// Each slot of the recipe is built on the body, and the piece has geometry: at least one of its slots
+        /// has vertices, the same demand <see cref="FreeSources"/> makes of a source. A stock recipe may also
+        /// carry a slot with no mesh of its own (a utility slot), which is built but draws nothing.
+        /// </summary>
         private static void AssertBuilt(DynamicCharacterAvatar avatar, string place, UMAWardrobeRecipe recipe, string[] slots, string what)
         {
             Assert.That(avatar.GetWardrobeItem(place)?.name, Is.EqualTo(recipe.name), what + " is worn in " + place + ".");
             var built = avatar.umaData.umaRecipe.slotDataList.Where(slot => slot != null).ToList();
+            int withGeometry = 0;
             foreach (string id in slots)
             {
                 var slot = built.FirstOrDefault(value => value.slotName == id);
                 Assert.That(slot, Is.Not.Null, what + ": " + id + " is built.");
-                Assert.That(slot.asset.meshData.vertexCount, Is.GreaterThan(0), what + ": " + id + " has vertices.");
+                if (slot.asset?.meshData != null && slot.asset.meshData.vertexCount > 0) withGeometry++;
             }
+            Assert.That(withGeometry, Is.GreaterThan(0), what + ": a built slot has vertices.");
+        }
+
+        /// <summary>
+        /// The stock shirt the look wears in Chest, put on first when the look wears none: the one the
+        /// outfit names, or the first plain one the race can wear.
+        /// </summary>
+        private static string WearAShirt(UmaAppearanceCatalog installed, CharacterAppearance appearance, string race)
+        {
+            var worn = AppearanceEditing.Outfit(appearance).wardrobe.FirstOrDefault(item => item.slot == "Chest");
+            if (worn != null && !UmaAppearanceCatalog.IsGrown(worn.itemId)) return worn.itemId;
+            var shirt = installed.Items.FirstOrDefault(value => value.Slot == "Chest" && value.Fits(race) && !value.PickerHidden
+                && !UmaAppearanceCatalog.IsGrown(value.Id) && value.SuppressedSlots.Length == 0 && value.Conflicts.Length == 0
+                && UMAAssetIndexer.Instance.GetAsset<UMAWardrobeRecipe>(installed.ResolveRecipeName(value.Id)) != null);
+            Assert.That(shirt, Is.Not.Null, "A stock shirt for " + race + ".");
+            AppearanceEditing.Wear(appearance, shirt, installed);
+            return shirt.Id;
+        }
+
+        /// <summary>
+        /// Every private colour on the shirt's built overlays is this body's fabric dye: the merged
+        /// garment-lifecycle check (UmaHouseGarmentLifecyclePlayModeTests.AssertWorn), read on what was built.
+        /// </summary>
+        private static void AssertShirtDyed(DynamicCharacterAvatar avatar, UMAWardrobeRecipe shirt, Color dye, string what)
+        {
+            Assert.That(avatar.GetWardrobeItem("Chest")?.name, Is.EqualTo(shirt.name), what + " wears the shirt.");
+            var names = SlotIds(shirt);
+            var overlays = avatar.umaData.umaRecipe.slotDataList.Where(slot => slot != null && names.Contains(slot.slotName))
+                .SelectMany(slot => slot.GetOverlayList()).Where(overlay => overlay?.colorData != null && !overlay.colorData.IsASharedColor).ToArray();
+            Assert.That(overlays, Is.Not.Empty, what + "'s shirt has a private colour to dye.");
+            foreach (var overlay in overlays)
+                for (int channel = 0; channel < 3; channel++)
+                    Assert.That(overlay.colorData.channelMask[0][channel], Is.EqualTo(dye[channel]).Within(.002f),
+                        what + "'s shirt (" + overlay.overlayName + ") is drawn in its own dye, channel " + channel + ".");
         }
 
         private static string[] CodeBuiltPieces(CharacterBody body) => body.Root.GetComponentsInChildren<GrownPiece>()
@@ -529,7 +568,9 @@ namespace Gamesim.Uma.Tests
 
         /// <summary>
         /// Two bodies with their own skin and outfit colours wear the same authored watch: the watch is drawn as
-        /// authored on both, and each body keeps its own skin (UMA hands matching slots one overlay list).
+        /// authored on both, and each body is drawn in its own skin and its own shirt dye, read on the built
+        /// recipes after both are up (UMA hands matching slots one overlay list, so a dye edited in place
+        /// would repaint the other body).
         /// </summary>
         [UnityTest]
         public IEnumerator TwoBodiesWearingOneWatchKeepTheirOwnColours()
@@ -541,6 +582,11 @@ namespace Gamesim.Uma.Tests
             string female = UmaCastLibrary.FemaleRace;
             var first = Player(installed, female);
             var second = Player(installed, female);
+            // Both wear the same stock shirt, so UMA hands the two bodies the same overlays to dye.
+            string shirt = WearAShirt(installed, first, female);
+            Assert.That(WearAShirt(installed, second, female), Is.EqualTo(shirt), "Both bodies wear the same shirt.");
+            var shirtRecipe = UMAAssetIndexer.Instance.GetAsset<UMAWardrobeRecipe>(installed.ResolveRecipeName(shirt));
+            Assert.That(shirtRecipe, Is.Not.Null, shirt + " is a UMA recipe.");
             var taken = WornSlotIds(installed, first);
             taken.UnionWith(WornSlotIds(installed, second));
             var watch = content.Author(installed, FreeSources(installed, first, female, 1)[0], female, "contract-shared-watch", "Hands", 1f, .8f);
@@ -564,13 +610,17 @@ namespace Gamesim.Uma.Tests
             {
                 AssertBuilt(bodies[i].Avatar, "Hands", watch.Recipe, new[] { watch.Slot }, "The watch on body " + i);
                 AssertDrawnAsAuthored(bodies[i].Avatar, watch, "on body " + i);
-                var skin = bodies[i].Avatar.GetColor("Skin");
+                // What is drawn, read after both bodies are built: the second body's dye and skin must not
+                // have reached the first body's overlays, nor the first's the second's.
+                AssertShirtDyed(bodies[i].Avatar, shirtRecipe, fabrics[i], "Body " + i);
+                var recipe = bodies[i].Avatar.umaData.umaRecipe;
+                var skin = recipe.sharedColors?.FirstOrDefault(colour => colour != null && colour.name == "Skin");
                 var wanted = UmaBodyProvider.SkinColour(skins[i]);
-                Assert.That(skin, Is.Not.Null, "Body " + i + " has a skin colour.");
+                Assert.That(skin, Is.Not.Null, "Body " + i + " is built with a shared skin colour.");
                 for (int channel = 0; channel < 3; channel++)
                 {
-                    Assert.That(skin.channelMask[0][channel], Is.EqualTo(wanted.channelMask[0][channel]).Within(.002f), "Body " + i + " keeps its own skin.");
-                    Assert.That(skin.channelAdditiveMask[0][channel], Is.EqualTo(wanted.channelAdditiveMask[0][channel]).Within(.002f), "Body " + i + " keeps its own skin.");
+                    Assert.That(skin.channelMask[0][channel], Is.EqualTo(wanted.channelMask[0][channel]).Within(.002f), "Body " + i + " is drawn in its own skin.");
+                    Assert.That(skin.channelAdditiveMask[0][channel], Is.EqualTo(wanted.channelAdditiveMask[0][channel]).Within(.002f), "Body " + i + " is drawn in its own skin.");
                 }
             }
             yield return null;

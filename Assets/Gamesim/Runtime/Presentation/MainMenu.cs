@@ -40,6 +40,13 @@ namespace Gamesim.Presentation
         public bool IsShowing => group != null && group.alpha > 0f;
 
         /// <summary>
+        /// Whether the last <see cref="Show"/> offered Continue: whether there was a season on disk
+        /// to go back to. Hiding the menu keeps it, because the cast screen the menu steps aside for
+        /// still has to know whether the player came from a first launch.
+        /// </summary>
+        public bool OffersContinue { get; private set; }
+
+        /// <summary>
         /// The "larger text" setting, applied by magnifying the whole screen. The layout is fixed in
         /// reference pixels, so growing the type alone would push it out of boxes that did not grow.
         /// </summary>
@@ -93,6 +100,7 @@ namespace Gamesim.Presentation
             Action onContinue, Action onNewSeason, Action onSettings, Action onQuit,
             string career = null)
         {
+            OffersContinue = canContinue;
             Rebuild(canContinue, note, onContinue, onNewSeason, onSettings, onQuit, career);
             group.alpha = 1f;
             group.blocksRaycasts = true;

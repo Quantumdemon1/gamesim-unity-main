@@ -46,6 +46,8 @@ namespace Gamesim.Presentation
         private ICharacterAppearanceCatalog Catalog => (CharacterBodySource.Provider as IModularCharacterBodyProvider)?.Catalog;
         private RectTransform studioControls;
         private float studioCursor, studioWidth;
+        /// <summary>The item ids of the draft's own library look, read once per build of the page (AppearanceEditing.LookItemIds).</summary>
+        private List<string> lookItemIds = new List<string>();
         private string appearanceNotice;
         private Button undoAppearanceButton, redoAppearanceButton;
         private Button retryPreviewButton;
@@ -464,6 +466,8 @@ namespace Gamesim.Presentation
             }
             if (!string.IsNullOrEmpty(appearanceNotice))
                 StudioText(appearanceNotice, 30f + appearanceNotice.Count(value => value == '\n') * 22f, UiTheme.Accent);
+            // Once per build of the page: the draft's own library look, whose picker-hidden pieces its rows keep offering.
+            lookItemIds = AppearanceEditing.LookItemIds(Catalog, draft.Appearance);
             switch (appearanceCategory)
             {
                 case "Body":
@@ -480,7 +484,8 @@ namespace Gamesim.Presentation
                     break;
                 case "Accessories":
                     OutfitSelector();
-                    foreach (var slot in ProceduralAccessories.Slots) WardrobeStrip(slot);
+                    // A row per place on the body: a code-built piece and its UMA twin share one.
+                    foreach (var slot in WardrobeSlots.AccessoryRows) WardrobeStrip(slot);
                     StudioText("Each piece is fitted to the face and build you have made, and worn with this outfit.", 26f);
                     break;
                 case "Hair":
@@ -776,7 +781,7 @@ namespace Gamesim.Presentation
 
         private static string SlotLabel(string slot) => slot == "TopUnderlayer" ? "Underwear top" : slot == "BottomUnderlayer" ? "Underwear bottoms"
             : slot == "Chest" ? "Top" : slot == "Legs" ? "Bottoms" : slot == "Feet" ? "Shoes" : slot == "Beard" ? "Facial hair"
-            : slot == "Face" ? "Face details" : slot;
+            : slot == "Face" ? "Face details" : slot == "Hands" ? "Watch" : slot == "Arms" ? "Armwear" : slot;
 
         /// <summary>
         /// A wardrobe slot as a strip of thumbnails around the one worn, the arrows wearing the style
@@ -786,9 +791,18 @@ namespace Gamesim.Presentation
         {
             string slotLabel = SlotLabel(slot);
             var appearance = Catalog.Materialize(draft.Appearance);
-            var choices = Catalog.Items.Where(item => item.Slot == slot && item.Fits(appearance.bodyId)).ToList();
+            // The row is a place on the body: the slot and, for a code-built piece, its UMA twin.
+            var place = WardrobeSlots.Place(slot);
+            // Offered items, plus the picker-hidden ones the draft's own look names or it wears now.
+            var keep = new List<string>(lookItemIds);
+            var active = appearance.outfits?.FirstOrDefault(outfit => outfit.id == appearance.activeOutfit);
+            if (active != null) keep.AddRange(active.wardrobe.Where(item => place.Contains(item.slot)).Select(item => item.itemId));
+            var choices = AppearanceEditing.Choices(Catalog, place, appearance.bodyId, keep);
             if (choices.Count == 0) return;
-            var selected = AppearanceEditing.Outfit(appearance).wardrobe.FirstOrDefault(item => item.slot == slot);
+            // What the body shows: where a save names both pieces of a place, the UMA item (the body
+            // build leaves the code-built twin off). A place of one slot reads its slot as before.
+            var wornHere = AppearanceEditing.Outfit(appearance).wardrobe.Where(item => place.Contains(item.slot)).ToList();
+            var selected = wornHere.FirstOrDefault(item => item.slot == place[place.Length - 1]) ?? wornHere.FirstOrDefault();
             int index = choices.FindIndex(item => item.Matches(selected?.itemId));
             string worn = index >= 0 ? choices[index].Label : selected == null ? "None" : "Saved item unavailable";
             StudioHeading(slotLabel.ToUpperInvariant(), worn + "  ·  " + choices.Count + " styles");
@@ -821,7 +835,7 @@ namespace Gamesim.Presentation
                     // outfit: off one alone, changing clothes would put the freckles back.
                     var sets = AppearanceEditing.IsCharacterSlot(slot) ? draft.Appearance.outfits
                         : new List<CharacterOutfit> { AppearanceEditing.Outfit(draft.Appearance) };
-                    foreach (var set in sets) set.wardrobe.RemoveAll(item => item.slot == slot);
+                    foreach (var set in sets) AppearanceEditing.TakeOff(set, place);
                 }));
             remove.name = "Remove " + slot.ToLowerInvariant();
             Enable(remove, selected != null);
@@ -1015,7 +1029,7 @@ namespace Gamesim.Presentation
                 else if (appearanceCategory == "Clothing")
                 {
                     // Everything but the hair, the face's details and the accessories, which have pages of their own.
-                    bool Garment(string slot) => !AppearanceEditing.CharacterSlots.Contains(slot) && !ProceduralAccessories.Slots.Contains(slot);
+                    bool Garment(string slot) => AppearanceEditing.IsClothingResetSlot(slot);
                     foreach (var outfit in draft.Appearance.outfits)
                     {
                         var baseline = original.outfits.FirstOrDefault(item => item.id == outfit.id) ?? original.outfits.First();
@@ -1031,9 +1045,11 @@ namespace Gamesim.Presentation
                     var outfit = AppearanceEditing.Outfit(draft.Appearance);
                     var baseline = original.outfits.FirstOrDefault(item => item.id == outfit.id)
                         ?? original.outfits.FirstOrDefault(item => item.id == original.activeOutfit) ?? original.outfits.FirstOrDefault();
-                    outfit.wardrobe.RemoveAll(item => ProceduralAccessories.Slots.Contains(item.slot));
+                    // Only what fits the body it now has: a piece fitted to another body is not put back.
+                    outfit.wardrobe.RemoveAll(item => WardrobeSlots.IsAccessory(item.slot));
                     if (baseline != null)
-                        outfit.wardrobe.AddRange(baseline.wardrobe.Where(item => ProceduralAccessories.Slots.Contains(item.slot)).Select(item => item.Clone()));
+                        outfit.wardrobe.AddRange(baseline.wardrobe.Where(item => WardrobeSlots.IsAccessory(item.slot)
+                            && (AppearanceEditing.Find(Catalog, item.itemId)?.Fits(draft.Appearance.bodyId) ?? true)).Select(item => item.Clone()));
                 }
                 else
                 {
@@ -1151,19 +1167,14 @@ namespace Gamesim.Presentation
                 foreach (string slot in new[] { "Hair", "Eyebrows", "Beard", "Chest", "Legs", "Feet" })
                 {
                     if (randomLocks.Contains(AppearanceEditing.IsCharacterSlot(slot) ? "Hair" : "Clothing")) continue;
-                    var choices = Catalog.Items.Where(item => item.Slot == slot && item.Fits(draft.Appearance.bodyId)).ToList();
+                    // The offered items only: Randomize never picks a picker-hidden one, on any draft.
+                    var choices = AppearanceEditing.Choices(Catalog, new[] { slot }, draft.Appearance.bodyId);
                     if (choices.Count > 0) AppearanceEditing.Wear(draft.Appearance, choices[cosmeticRandom.Next(choices.Count)], Catalog);
                 }
                 // Accessories as well, on the outfit being edited - and most often none: a random
                 // houseguest is somebody, not the jewellery counter. Their page's lock keeps them.
                 if (!randomLocks.Contains("Accessories"))
-                    foreach (string slot in ProceduralAccessories.Slots)
-                    {
-                        var choices = Catalog.Items.Where(item => item.Slot == slot && item.Fits(draft.Appearance.bodyId)).ToList();
-                        if (choices.Count > 0 && cosmeticRandom.NextDouble() < AccessoryOdds)
-                            AppearanceEditing.Wear(draft.Appearance, choices[cosmeticRandom.Next(choices.Count)], Catalog);
-                        else AppearanceEditing.Outfit(draft.Appearance).wardrobe.RemoveAll(item => item.slot == slot);
-                    }
+                    AppearanceEditing.RollAccessories(draft.Appearance, Catalog, cosmeticRandom, AccessoryOdds);
                 // Skin first, then the eyes and hair that go with it, weighted by its depth: drawn
                 // apart, half the deep-skinned houseguests had blue or grey eyes and most had blonde,
                 // red or white hair.

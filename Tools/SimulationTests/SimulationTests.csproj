@@ -396,11 +396,17 @@
       the competition's words to the player, which read the committed state and nothing else; the
       final choice's words, the caption every walk presses and the chips' order, read from the
       finalist read; and the mini-games' own runs, which keep their clock and their generator to
-      themselves (the word board's deal is pinned here). Only a file with no `using UnityEngine` belongs here; a
+      themselves (the word board's deal is pinned here); the wardrobe's slot lists and the outfits worn for an
+      activity, plain data over the saved look. Only a file with no `using UnityEngine` belongs here; a
       presentation file that grows one leaves.
     -->
     <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/MusicFade.cs" />
     <Compile Include="$(EditMode)MusicFadeTests.cs" />
+    <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/WardrobeSlots.cs" />
+    <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/CharacterOutfits.cs" />
+    <Compile Include="$(EditMode)WardrobeSlotsTests.cs" />
+    <!-- The UMA content folder's binary pin in .gitattributes: reads the repository's files, so it lives here. -->
+    <Compile Include="UmaContentBinaryPinTests.cs" />
     <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/CompetitionWords.cs" />
     <Compile Include="$(EditMode)CompetitionWordsTests.cs" />
     <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/StudyWords.cs" />

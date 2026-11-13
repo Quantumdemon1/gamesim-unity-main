@@ -103,7 +103,7 @@ namespace Gamesim.Uma
                 }
             }
 
-            var slots = new HashSet<string> { "Hair", "Beard", "Eyebrows", "Face", "Chest", "Legs", "Feet", "BottomUnderlayer", "TopUnderlayer" };
+            var slots = new HashSet<string>(WardrobeSlots.Uma, StringComparer.Ordinal);
             foreach (var recipe in index.GetAllAssets<UMAWardrobeRecipe>().Where(recipe => recipe != null).OrderBy(recipe => recipe.name, StringComparer.Ordinal))
             {
                 if (!slots.Contains(recipe.wardrobeSlot)) continue;
@@ -126,6 +126,7 @@ namespace Gamesim.Uma
                     StyleGroup = entry?.styleGroup,
                     Tags = entry?.tags?.ToArray() ?? Array.Empty<string>(),
                     FallbackPriority = entry?.fallbackPriority ?? 100,
+                    PickerHidden = entry?.pickerHidden ?? false,
                     Label = !string.IsNullOrWhiteSpace(entry?.label) ? entry.label
                         : string.IsNullOrWhiteSpace(recipe.DisplayValue) ? Label(recipe.name) : recipe.DisplayValue,
                     CompatibleBodies = compatible,
@@ -172,7 +173,8 @@ namespace Gamesim.Uma
         public AppearanceItem FindEquivalent(string itemId, string slot, string bodyId)
         {
             var original = AppearanceEditing.Find(this, itemId);
-            return items.Where(item => item.Slot == slot && item.Fits(bodyId))
+            // A picker-hidden item is worn only where a library look names it: never a substitute.
+            return items.Where(item => item.Slot == slot && item.Fits(bodyId) && !item.PickerHidden)
                 .OrderByDescending(item => original != null && !string.IsNullOrEmpty(original.StyleGroup) && item.StyleGroup == original.StyleGroup)
                 .ThenByDescending(item => original == null ? 0 : item.Tags.Intersect(original.Tags).Count())
                 .ThenBy(item => item.FallbackPriority).ThenBy(item => item.Id, StringComparer.Ordinal).FirstOrDefault();
@@ -209,7 +211,8 @@ namespace Gamesim.Uma
                 {
                     var grown = IsGrown(id) ? AppearanceEditing.Find(this, id) : null;
                     if (grown != null) { outfit.wardrobe.Add(new AppearanceWardrobe { slot = grown.Slot, itemId = grown.Id }); continue; }
-                    var recipe = index?.GetAsset<UMAWardrobeRecipe>(id);
+                    // A look may name a catalog id or an alias: the index is keyed by the recipe's own name.
+                    var recipe = index?.GetAsset<UMAWardrobeRecipe>(ResolveRecipeName(id));
                     if (recipe != null) outfit.wardrobe.Add(new AppearanceWardrobe { slot = recipe.wardrobeSlot, itemId = AppearanceEditing.Find(this, id)?.Id ?? id });
                     // Missing selections retain their ID too; installing the content later restores them.
                     else outfit.wardrobe.Add(new AppearanceWardrobe { slot = "Missing-" + outfit.wardrobe.Count, itemId = id });

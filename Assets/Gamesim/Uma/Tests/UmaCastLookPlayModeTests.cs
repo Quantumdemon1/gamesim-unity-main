@@ -154,14 +154,18 @@ namespace Gamesim.Uma.Tests
             var indexer = UMAAssetIndexer.Instance;
             Assert.That(indexer, Is.Not.Null, "The Global Library must be present for any of this to work.");
 
+            var catalog = new UmaAppearanceCatalog();
+
             foreach (var appearanceId in UmaCastLibrary.AppearanceIds)
             {
                 Assert.That(UmaCastLibrary.TryGet(appearanceId, out var look), Is.True);
                 var bySlot = new Dictionary<string, string>();
                 foreach (var recipeName in look.Wardrobe)
                 {
-                    var recipe = indexer.GetAsset<UMAWardrobeRecipe>(recipeName);
-                    if (recipe == null) continue;   // the resolution test owns that failure
+                    // Pieces built in code are no recipes (EveryCastLook_ResolvesItsRaceAndWardrobe checks them).
+                    if (UmaAppearanceCatalog.IsGrown(recipeName)) continue;
+                    var recipe = indexer.GetAsset<UMAWardrobeRecipe>(catalog.ResolveRecipeName(recipeName));
+                    Assert.That(recipe, Is.Not.Null, appearanceId + " wears '" + recipeName + "', which does not resolve.");
                     Assert.That(bySlot.ContainsKey(recipe.wardrobeSlot), Is.False,
                         appearanceId + " wears both '" + (bySlot.TryGetValue(recipe.wardrobeSlot, out var first) ? first : "?")
                         + "' and '" + recipeName + "' in the " + recipe.wardrobeSlot + " slot; only the second would show.");
@@ -181,13 +185,17 @@ namespace Gamesim.Uma.Tests
             var indexer = UMAAssetIndexer.Instance;
             Assert.That(indexer, Is.Not.Null);
 
+            var catalog = new UmaAppearanceCatalog();
+
             foreach (var appearanceId in UmaCastLibrary.AppearanceIds)
             {
                 Assert.That(UmaCastLibrary.TryGet(appearanceId, out var look), Is.True);
                 foreach (var recipeName in look.Wardrobe)
                 {
-                    var recipe = indexer.GetAsset<UMAWardrobeRecipe>(recipeName);
-                    if (recipe == null) continue;
+                    // Pieces built in code are no recipes (EveryCastLook_ResolvesItsRaceAndWardrobe checks them).
+                    if (UmaAppearanceCatalog.IsGrown(recipeName)) continue;
+                    var recipe = indexer.GetAsset<UMAWardrobeRecipe>(catalog.ResolveRecipeName(recipeName));
+                    Assert.That(recipe, Is.Not.Null, appearanceId + " wears '" + recipeName + "', which does not resolve.");
                     Assert.That(recipe.compatibleRaces, Does.Contain(look.Race),
                         appearanceId + " is a " + look.Race + " and wears '" + recipeName
                         + "', which is cut for " + string.Join(", ", recipe.compatibleRaces) + ".");

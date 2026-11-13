@@ -1145,6 +1145,296 @@ namespace Gamesim.Tests.PlayMode
 
 #if GAMESIM_UMA
         // UMA only: these pages dress a modular body, and only UMA builds one.
+        /// <summary>
+        /// A picker-hidden piece is worn where a library look names it and offered only in that look's
+        /// own row: a draft from a look without it never sees it, and Randomize and Reset never put it
+        /// on. Riley's black frames stand in for an All-Star's piece, hidden for the test.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator Creator_AStartingLooksHiddenPieceIsWornAndRandomizeNeverAddsOne()
+        {
+            yield return OpenCreator();
+            var creator = Creator();
+            Assert.That(CharacterBodySource.Provider, Is.InstanceOf<IModularCharacterBodyProvider>());
+            var catalog = ((IModularCharacterBodyProvider)CharacterBodySource.Provider).Catalog;
+            string id = ProceduralAccessories.Prefix + "glasses";
+            var glasses = AppearanceEditing.Find(catalog, id);
+            Assert.That(glasses, Is.Not.Null);
+            string Worn(string slot) => AppearanceEditing.Outfit(creator.Draft.Appearance).wardrobe.FirstOrDefault(item => item.slot == slot)?.itemId;
+            CastButtons("Accessories")[0].onClick.Invoke();
+            yield return null;
+            Assert.That(Worn("Eyewear"), Is.Null, "The starting look wears no glasses.");
+            Assert.That(CastButtons("Black frames"), Has.Length.EqualTo(1), "Offered while not hidden.");
+
+            // The premise, so the checks below are never vacuous: with nothing hidden, this seed rolls the
+            // glasses on some roll, and some roll ends wearing a top. A roll's draws depend on the body and
+            // on how many choices each row has, never on what is worn, so the same seed with the two pieces
+            // hidden walks the same draws: without the hidden filter those rolls would wear them again.
+            const int seed = 20260925;
+            string bodyId = creator.Draft.Appearance.bodyId;
+            Assert.That(AppearanceEditing.Choices(catalog, new[] { "Chest" }, bodyId).Count, Is.GreaterThan(1),
+                "Hiding one top leaves the row others, so a roll draws as often.");
+            Assert.That(AppearanceEditing.Choices(catalog, new[] { "Eyewear" }, bodyId).Count, Is.GreaterThan(1));
+            creator.RandomSeed = seed;
+            int rolls = 0, glassesRoll = -1, topRoll = -1;
+            string firstTop = null;
+            while (rolls < 100 && (glassesRoll < 0 || topRoll < 0))
+            {
+                CastButtons("Randomize").Single().onClick.Invoke();
+                yield return null;
+                if (glassesRoll < 0 && Worn("Eyewear") == id) glassesRoll = rolls;
+                if (topRoll < 0 && Worn("Chest") != null) { topRoll = rolls; firstTop = Worn("Chest"); }
+                rolls++;
+            }
+            Assert.That(glassesRoll, Is.GreaterThanOrEqualTo(0), "With nothing hidden, the seed rolls the glasses within 100 tries.");
+            Assert.That(topRoll, Is.GreaterThanOrEqualTo(0), "With nothing hidden, a roll wears a top.");
+            var top = AppearanceEditing.Find(catalog, firstTop);
+            Assert.That(top, Is.Not.Null);
+            if (Worn("Eyewear") != null)
+            {
+                CastButtons("Remove eyewear").Single().onClick.Invoke();
+                yield return null;
+            }
+            Assert.That(Worn("Eyewear"), Is.Null);
+            try
+            {
+                glasses.PickerHidden = true;
+                top.PickerHidden = true;
+                CastButtons("Accessories")[0].onClick.Invoke();
+                yield return null;
+                Assert.That(CastButtons("Black frames"), Is.Empty, "A look that does not name the hidden piece is never offered it.");
+                Assert.That(CastButtons("Previous eyewear"), Has.Length.EqualTo(1), "The row is there with its other frames (Remove is off: nothing is worn).");
+
+                creator.RandomSeed = seed;
+                for (int roll = 0; roll < Mathf.Max(rolls, 30); roll++)
+                {
+                    CastButtons("Randomize").Single().onClick.Invoke();
+                    yield return null;
+                    Assert.That(Worn("Eyewear"), Is.Not.EqualTo(id), "Roll " + roll + " never wears the hidden piece.");
+                    if (roll == topRoll) Assert.That(Worn("Chest"), Is.Not.EqualTo(firstTop), "Roll " + roll + ": Randomize's garments never pick a hidden top.");
+                }
+                top.PickerHidden = false;
+                CastButtons("Reset accessories").Single().onClick.Invoke();
+                yield return null;
+                Assert.That(Worn("Eyewear"), Is.Not.EqualTo(id), "Reset never adds it to a draft that began without it.");
+
+                creator.Show(new SeasonBuilder.Choice(), CharacterDraft.FromAppearance(CastTemplates.Find("riley-johnson")), _ => { }, () => { });
+                yield return null;
+                CastButtons("Accessories")[0].onClick.Invoke();
+                yield return null;
+                Assert.That(Worn("Eyewear"), Is.EqualTo(id), "Riley's look still wears its hidden piece.");
+                CastButtons("Remove eyewear").Single().onClick.Invoke();
+                yield return null;
+                Assert.That(Worn("Eyewear"), Is.Null);
+                Assert.That(CastButtons("Black frames"), Has.Length.EqualTo(1), "His own look's piece stays among his choices, so he can step back to it.");
+                CastButtons("Black frames").Single().onClick.Invoke();
+                yield return null;
+                Assert.That(Worn("Eyewear"), Is.EqualTo(id));
+            }
+            finally { glasses.PickerHidden = false; top.PickerHidden = false; }
+        }
+#endif
+
+#if GAMESIM_UMA
+        // UMA only: these pages dress a modular body, and only UMA builds one.
+        /// <summary>
+        /// Reset accessories puts back only what fits the body the draft has now: a piece of the
+        /// starting look fitted to another body stays off. Riley's black frames are made to fit no
+        /// body for the test.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator Creator_ResetAccessoriesRestoresOnlyWhatFitsTheBody()
+        {
+            yield return OpenCreator();
+            var creator = Creator();
+            Assert.That(CharacterBodySource.Provider, Is.InstanceOf<IModularCharacterBodyProvider>());
+            var catalog = ((IModularCharacterBodyProvider)CharacterBodySource.Provider).Catalog;
+            string id = ProceduralAccessories.Prefix + "glasses";
+            var glasses = AppearanceEditing.Find(catalog, id);
+            Assert.That(glasses, Is.Not.Null);
+            string Worn(string slot) => AppearanceEditing.Outfit(creator.Draft.Appearance).wardrobe.FirstOrDefault(item => item.slot == slot)?.itemId;
+            creator.Show(new SeasonBuilder.Choice(), CharacterDraft.FromAppearance(CastTemplates.Find("riley-johnson")), _ => { }, () => { });
+            yield return null;
+            CastButtons("Accessories")[0].onClick.Invoke();
+            yield return null;
+            Assert.That(Worn("Eyewear"), Is.EqualTo(id), "Riley's look wears his glasses.");
+            CastButtons("Remove eyewear").Single().onClick.Invoke();
+            yield return null;
+            Assert.That(Worn("Eyewear"), Is.Null);
+            var fitted = glasses.CompatibleBodies;
+            try
+            {
+                glasses.CompatibleBodies = new[] { "gamesim.test.no-such-body" };
+                CastButtons("Reset accessories").Single().onClick.Invoke();
+                yield return null;
+                Assert.That(Worn("Eyewear"), Is.Null, "A starting piece that does not fit the body is not put back.");
+            }
+            finally { glasses.CompatibleBodies = fitted; }
+            CastButtons("Reset accessories").Single().onClick.Invoke();
+            yield return null;
+            Assert.That(Worn("Eyewear"), Is.EqualTo(id), "One that fits is.");
+        }
+#endif
+
+#if GAMESIM_UMA
+        // UMA only: these pages dress a modular body, and only UMA builds one.
+        /// <summary>
+        /// A UMA piece on a place a code-built piece also takes is one row with the code-built pieces:
+        /// wearing either takes the other off, Remove clears the place, Undo and Redo walk it back
+        /// exactly, and the row names what the body shows. A hidden piece worn now stays among the
+        /// row's choices; pieces on the hands and arms get the Watch and Armwear rows; the Clothing
+        /// reset leaves them all alone and the Accessories reset puts back what the draft began with.
+        /// No catalog item lives in Ears, Hands or Arms today, so three code-built pieces stand in,
+        /// moved into those slots for the test: the gold studs (Ears), the round wire frames (Hands)
+        /// and the sunglasses (Arms). The general counterpart of an All-Star piece's creator journey.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator Creator_ATwinPlacesUmaPieceIsWornRemovedUndoneAndResetWithItsRow()
+        {
+            yield return OpenCreator();
+            var creator = Creator();
+            Assert.That(CharacterBodySource.Provider, Is.InstanceOf<IModularCharacterBodyProvider>());
+            var catalog = ((IModularCharacterBodyProvider)CharacterBodySource.Provider).Catalog;
+            string prefix = ProceduralAccessories.Prefix, studsId = prefix + "studs", hoopsId = prefix + "hoops",
+                roundId = prefix + "glasses-round", sunId = prefix + "sunglasses";
+            var studs = AppearanceEditing.Find(catalog, studsId);
+            var round = AppearanceEditing.Find(catalog, roundId);
+            var sun = AppearanceEditing.Find(catalog, sunId);
+            Assert.That(new[] { studs, round, sun }, Has.All.Not.Null);
+            string Worn(string slot) => AppearanceEditing.Outfit(creator.Draft.Appearance).wardrobe.FirstOrDefault(item => item.slot == slot)?.itemId;
+            string Key() => creator.Draft.Appearance.ContentKey();
+            // A wardrobe row's heading detail: what it wears and how many styles it offers.
+            string Row(string worn, int styles) => worn + "  ·  " + styles + " styles";
+            List<string> Details() => creator.GetComponentsInChildren<TMPro.TMP_Text>().Where(text => text.name == "Heading detail").Select(text => text.text).ToList();
+            bool Heading(string title) => creator.GetComponentsInChildren<TMPro.TMP_Text>().Any(text => text.text == title);
+            IEnumerator Click(string caption)
+            {
+                var buttons = CastButtons(caption);
+                Assert.That(buttons, Has.Length.EqualTo(1), "One '" + caption + "' control.");
+                buttons[0].onClick.Invoke();
+                yield return null;
+            }
+            IEnumerator Page(string page)
+            {
+                CastButtons(page)[0].onClick.Invoke();
+                yield return null;
+            }
+
+            string studsSlot = studs.Slot, roundSlot = round.Slot, sunSlot = sun.Slot;
+            try
+            {
+                studs.Slot = "Ears"; round.Slot = "Hands"; sun.Slot = "Arms";
+                // A draft that begins wearing the studs as an Ears piece, so the Accessories reset has one to put back.
+                var start = CharacterDraft.Blank();
+                start.Appearance = catalog.Materialize(start.Appearance);
+                var began = AppearanceEditing.Outfit(start.Appearance);
+                began.wardrobe.RemoveAll(worn => WardrobeSlots.IsAccessory(worn.slot));
+                began.wardrobe.Add(new AppearanceWardrobe { slot = "Ears", itemId = studsId });
+                creator.Show(new SeasonBuilder.Choice(), start, _ => { }, () => { });
+                yield return null;
+                yield return Page("Accessories");
+                string bodyId = creator.Draft.Appearance.bodyId;
+                Assert.That(AppearanceEditing.Choices(catalog, WardrobeSlots.Place("Earrings"), bodyId).Select(item => item.Id),
+                    Is.EqualTo(new[] { hoopsId, prefix + "hoops-silver", prefix + "drops", studsId }),
+                    "The earrings row offers the code-built pieces, then the Ears piece (the arrows below count on it).");
+                Assert.That(AppearanceEditing.Choices(catalog, new[] { "Hands" }, bodyId).Select(item => item.Id), Is.EqualTo(new[] { roundId }));
+                Assert.That(AppearanceEditing.Choices(catalog, new[] { "Arms" }, bodyId).Select(item => item.Id), Is.EqualTo(new[] { sunId }));
+                Assert.That(Worn("Ears"), Is.EqualTo(studsId), "The draft begins with the Ears piece.");
+                Assert.That(Heading("EARRINGS"), Is.True);
+                Assert.That(Details(), Does.Contain(Row("Gold studs", 4)), "The earrings row names the Ears piece it wears.");
+
+                // Wearing either piece of the place takes the other off.
+                yield return Click("Previous earrings");
+                Assert.That(Worn("Earrings"), Is.EqualTo(prefix + "drops"));
+                Assert.That(Worn("Ears"), Is.Null, "The code-built drops take the Ears piece off.");
+                yield return Click("Next earrings");
+                Assert.That(Worn("Ears"), Is.EqualTo(studsId));
+                Assert.That(Worn("Earrings"), Is.Null, "The Ears piece takes the code-built drops off.");
+
+                // Remove clears the whole place; Undo and Redo walk it back and forth exactly.
+                string wearing = Key();
+                yield return Click("Remove earrings");
+                Assert.That(Worn("Ears"), Is.Null);
+                Assert.That(Worn("Earrings"), Is.Null);
+                string bare = Key();
+                yield return Click("Undo");
+                Assert.That(Key(), Is.EqualTo(wearing), "Undo puts the Ears piece back exactly.");
+                yield return Click("Redo");
+                Assert.That(Key(), Is.EqualTo(bare), "Redo takes it off again.");
+                yield return Click("Undo");
+                Assert.That(Key(), Is.EqualTo(wearing));
+                Assert.That(JsonUtility.FromJson<CharacterAppearance>(JsonUtility.ToJson(creator.Draft.Appearance)).ContentKey(), Is.EqualTo(wearing),
+                    "It reads back from a save unchanged.");
+
+                // A save that names both pieces of the place (written here directly: the creator never makes
+                // one): the row names the Ears piece, which is what the body shows.
+                var outfit = AppearanceEditing.Outfit(creator.Draft.Appearance);
+                outfit.wardrobe.RemoveAll(worn => worn.slot == "Earrings" || worn.slot == "Ears");
+                outfit.wardrobe.Add(new AppearanceWardrobe { slot = "Earrings", itemId = hoopsId });
+                outfit.wardrobe.Add(new AppearanceWardrobe { slot = "Ears", itemId = studsId });
+                yield return Page("Accessories");
+                Assert.That(Details(), Does.Contain(Row("Gold studs", 4)), "Both worn: the row names the UMA piece the body shows.");
+                Assert.That(Details(), Does.Not.Contain(Row("Gold hoops", 4)));
+                yield return Click("Remove earrings");
+                Assert.That(Worn("Ears"), Is.Null, "Remove takes both pieces of the place off.");
+                Assert.That(Worn("Earrings"), Is.Null);
+
+                // A hidden piece worn now stays among its row's choices; once it is off, a hidden piece the
+                // draft's look does not name is not offered. (No other row offers three styles.)
+                yield return Click("Next earrings");
+                yield return Click("Previous earrings");
+                Assert.That(Worn("Ears"), Is.EqualTo(studsId));
+                studs.PickerHidden = true;
+                yield return Page("Accessories");
+                Assert.That(Details(), Does.Contain(Row("Gold studs", 4)), "Worn now, so still offered.");
+                yield return Click("Remove earrings");
+                Assert.That(Details(), Does.Contain(Row("None", 3)), "Off and hidden: not offered.");
+                studs.PickerHidden = false;
+                yield return Page("Accessories");
+
+                // The hands and the arms are rows of their own, under the ruled captions.
+                Assert.That(Heading("WATCH"), Is.True, "A piece on the hands has the Watch row.");
+                Assert.That(Heading("ARMWEAR"), Is.True, "A piece on the arms has the Armwear row.");
+                foreach (string caption in new[] { "Previous watch", "Next watch", "Previous armwear", "Next armwear" })
+                    Assert.That(CastButtons(caption), Has.Length.EqualTo(1), caption);
+                Assert.That(CastButtons("Remove watch"), Is.Empty, "Nothing on the hands yet: Remove is off.");
+                yield return Click("Next watch");
+                Assert.That(Worn("Hands"), Is.EqualTo(roundId));
+                yield return Click("Next armwear");
+                Assert.That(Worn("Arms"), Is.EqualTo(sunId));
+                Assert.That(CastButtons("Remove watch"), Has.Length.EqualTo(1));
+                Assert.That(CastButtons("Remove armwear"), Has.Length.EqualTo(1));
+                yield return Click("Next earrings");
+                yield return Click("Previous earrings");
+                Assert.That(Worn("Ears"), Is.EqualTo(studsId));
+
+                // The Clothing page's reset leaves every accessory to its own page.
+                yield return Page("Clothing");
+                yield return Click("Reset clothing");
+                Assert.That(Worn("Ears"), Is.EqualTo(studsId), "The Clothing reset leaves the Ears piece.");
+                Assert.That(Worn("Hands"), Is.EqualTo(roundId), "And the hands.");
+                Assert.That(Worn("Arms"), Is.EqualTo(sunId), "And the arms.");
+
+                // The Accessories reset puts back what the draft began with: the Ears piece, and nothing else.
+                yield return Page("Accessories");
+                yield return Click("Remove earrings");
+                Assert.That(Worn("Ears"), Is.Null);
+                yield return Click("Reset accessories");
+                Assert.That(Worn("Ears"), Is.EqualTo(studsId), "The Accessories reset puts the Ears piece back.");
+                Assert.That(Worn("Earrings"), Is.Null);
+                Assert.That(Worn("Hands"), Is.Null, "And takes off what the draft began without.");
+                Assert.That(Worn("Arms"), Is.Null);
+            }
+            finally
+            {
+                studs.Slot = studsSlot; round.Slot = roundSlot; sun.Slot = sunSlot;
+                studs.PickerHidden = false;
+            }
+        }
+#endif
+
+#if GAMESIM_UMA
+        // UMA only: these pages dress a modular body, and only UMA builds one.
         /// <summary>The face page offers its features under headings, the jaw among them.</summary>
         [UnityTest]
         public IEnumerator Creator_TheFaceGroupsItsFeaturesUnderHeadings()

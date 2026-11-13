@@ -33,6 +33,12 @@ namespace Gamesim.Presentation
         public string[] Conflicts = Array.Empty<string>();
         public string[] ColorChannels = Array.Empty<string>();
         public Sprite Thumbnail;
+        /// <summary>
+        /// Worn only where a library look names it: never offered by a picker, by Randomize, by a
+        /// reset or as a substitute (see <see cref="AppearanceEditing.Choices"/>). The item stays in
+        /// the catalog, so a look or a save that names it finds it and wears it.
+        /// </summary>
+        public bool PickerHidden;
         public bool Fits(string body) => CompatibleBodies.Length == 0 || CompatibleBodies.Contains(body);
         public bool Matches(string id) => Id == id || Aliases.Contains(id);
     }
@@ -51,6 +57,60 @@ namespace Gamesim.Presentation
     {
         public static AppearanceItem Find(ICharacterAppearanceCatalog catalog, string id) =>
             catalog?.Items.FirstOrDefault(item => item.Matches(id));
+
+        /// <summary>
+        /// The choices a row offers: the place's offered items that fit the body, plus any
+        /// picker-hidden item named in <paramref name="keep"/> (the draft's own library look, and
+        /// what is worn now). A place of two slots lists the code-built slot's items first, then its
+        /// twin's; within a slot, catalog order. For one slot and no hidden item this is every item
+        /// of the slot that fits, in catalog order, as the creator listed them before.
+        /// </summary>
+        public static List<AppearanceItem> Choices(ICharacterAppearanceCatalog catalog, IReadOnlyList<string> place, string bodyId,
+            ICollection<string> keep = null) =>
+            place.SelectMany(slot => catalog.Items.Where(item => item.Slot == slot && item.Fits(bodyId)
+                && (!item.PickerHidden || (keep != null && keep.Any(item.Matches))))).ToList();
+
+        /// <summary>
+        /// The item ids of the library look <paramref name="appearance"/> starts from (its presetId,
+        /// or its fallbackId), as the catalog would dress it: what a row keeps among its choices for
+        /// this character even when picker-hidden. Empty without a catalog.
+        /// </summary>
+        public static List<string> LookItemIds(ICharacterAppearanceCatalog catalog, CharacterAppearance appearance)
+        {
+            if (catalog == null || appearance == null) return new List<string>();
+            var look = catalog.Materialize(new CharacterAppearance { presetId = appearance.presetId, fallbackId = appearance.fallbackId });
+            if (look?.outfits == null) return new List<string>();
+            return look.outfits.SelectMany(outfit => outfit?.wardrobe ?? new List<AppearanceWardrobe>())
+                .Where(worn => worn != null && !string.IsNullOrEmpty(worn.itemId)).Select(worn => worn.itemId).Distinct().ToList();
+        }
+
+        /// <summary>Takes off whatever <paramref name="outfit"/> wears on <paramref name="place"/>: every slot of it.</summary>
+        public static void TakeOff(CharacterOutfit outfit, IReadOnlyList<string> place) =>
+            outfit?.wardrobe.RemoveAll(worn => place.Contains(worn.slot));
+
+        /// <summary>
+        /// Whether the Clothing page's reset owns <paramref name="slot"/>: everything but the hair, the
+        /// face's details and the accessories, which have pages of their own.
+        /// </summary>
+        public static bool IsClothingResetSlot(string slot) => !CharacterSlots.Contains(slot) && !WardrobeSlots.IsAccessory(slot);
+
+        /// <summary>
+        /// Randomize's accessories, on the outfit being edited: for each Accessories row, about one
+        /// roll in <paramref name="odds"/> wears one of the row's offered pieces, otherwise the place
+        /// is bare. A row with no offered piece draws nothing from <paramref name="random"/>, so rows
+        /// that only hidden items fill leave the draws as they were; and a hidden piece is never worn.
+        /// </summary>
+        public static void RollAccessories(CharacterAppearance a, ICharacterAppearanceCatalog c, System.Random random, double odds)
+        {
+            foreach (string row in WardrobeSlots.AccessoryRows)
+            {
+                var place = WardrobeSlots.Place(row);
+                var choices = Choices(c, place, a.bodyId);
+                if (choices.Count > 0 && random.NextDouble() < odds)
+                    Wear(a, choices[random.Next(choices.Count)], c);
+                else TakeOff(Outfit(a), place);
+            }
+        }
 
         /// <summary>Compare every outfit, including clothes removed by a conflict or body change.</summary>
         public static string DescribeSubstitutions(CharacterAppearance before, CharacterAppearance after,
@@ -164,7 +224,11 @@ namespace Gamesim.Presentation
 
         private static void Put(CharacterOutfit outfit, AppearanceItem item, ICharacterAppearanceCatalog catalog)
         {
+            // A code-built piece and a UMA item on the same place on the body (WardrobeSlots.Twins) are never
+            // worn together: wearing either takes the other off.
+            var twins = WardrobeSlots.Twins(item.Slot);
             outfit.wardrobe.RemoveAll(worn => worn.slot == item.Slot || item.SuppressedSlots.Contains(worn.slot)
+                || Array.IndexOf(twins, worn.slot) >= 0
                 || item.Conflicts.Any(conflict => Find(catalog, conflict)?.Matches(worn.itemId) == true || conflict == worn.itemId)
                 || catalog.Items.Any(other => other.Matches(worn.itemId) &&
                     (other.SuppressedSlots.Contains(item.Slot) || other.Conflicts.Any(item.Matches))));

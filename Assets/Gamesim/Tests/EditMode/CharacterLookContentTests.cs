@@ -191,6 +191,9 @@ namespace Gamesim.Tests.EditMode
             }
             foreach (string slot in ProceduralAccessories.Slots)
                 Assert.That(ProceduralAccessories.Items.Any(item => item.Slot == slot), Is.True, slot + " has something to wear.");
+            // The code-built slots are the wardrobe's one list of them, not a copy that could drift from it.
+            Assert.That(ProceduralAccessories.Slots, Is.SameAs(WardrobeSlots.CodeBuiltAccessories));
+            Assert.That(ProceduralAccessories.Slots, Is.EqualTo(new[] { "Eyewear", "Headwear", "Earrings", "Neckwear" }));
             // Textured hair the library lacked: close crops through to long protective styles.
             foreach (string wanted in new[] { "gs-hair-fade", "gs-hair-afro", "gs-hair-locs", "gs-hair-braids", "gs-hair-cornrows" })
                 Assert.That(ProceduralHair.Find(wanted), Is.Not.Null, wanted);

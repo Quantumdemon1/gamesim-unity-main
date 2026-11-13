@@ -238,7 +238,10 @@
 # 9929 = 9928 + face slice 3's 1 LookPiecesTests case (E10: Will's line in LibraryLooks.txt holds his 26 fitted face
 # values and his other values as before): the lister counted 9929 at b1a2e811 (2026-11-13), and the Unity-free suite ran
 # the case (below). No Unity EditMode run has observed 9929 yet.
-Gamesim.EditModeTests 9929
+# 9930 = 9929 + face slice 3's review case LookPiecesTests.E11 (every look's fit-set values in LibraryLooks.txt lie in
+# their measured ranges, Part B): the lister counted 9930 at 500e1f64 (2026-11-13), and the Unity-free suite ran the
+# case (below). No Unity EditMode run has observed 9930 yet.
+Gamesim.EditModeTests 9930
 # The UMA-free build. 1215 = 1236, the count after the consolidation's lanes (S2a, S2b, S4a), less the 7
 # farewell probes moved to Gamesim.DiagnosticsPlayModeTests and the 14 farewell readiness tests that now
 # compile only under GAMESIM_UMA (judged on the UMA cast); 1230 = 1215 + S2d's 7, S4b's 2, S4c's 2 and
@@ -493,7 +496,10 @@ Gamesim.PlayModeTests.UmaBuild 1547
 # 169 = 153 + face slice 1's 6 + face slice 2's 10: disjoint cases, so the floor is their sum (the merge of main into face
 # slice 2 at its landing, 2026-11-12). Each slice's batch ran the whole assembly as it stood on that slice (159 and 163);
 # counted from the two sides, no run has observed 169.
-Gamesim.Uma.PlayModeTests 169
+# 170 = 169 + face slice 3's review case UmaAllStarPiecesPlayModeTests.WillsBuiltBodyCarriesHisFittedFace (Will built
+# as a season builds him; his body's DNA carries his 26 fitted face values): the lister counted 170 at 500e1f64
+# (2026-11-13). No Unity run has observed 170 yet.
+Gamesim.Uma.PlayModeTests 170
 # Diagnostics: feasibility and diagnostic probes, never shipping acceptance. They compile only under
 # GAMESIM_DIAGNOSTICS, which only a diagnostic run adds to the test copy (GAMESIM_DIAGNOSTICS=1 with
 # sync-and-run.sh or the locked runner); the UMA one needs GAMESIM_UMA too. The floor counts that they
@@ -639,4 +645,6 @@ Gamesim.Uma.DiagnosticsPlayModeTests 10
 # 16762 = 16735 + face slice 2's 27: the sum, as above (the merge of main into face slice 2 at its landing, 2026-11-12).
 # 16763 = 16762 + face slice 3's 1 LookPiecesTests case (E10, the same case the EditMode floor counts): dotnet test
 # Tools/SimulationTests ran exactly 16763 of 16763 on the slice at b1a2e811 (2026-11-13).
-Gamesim.SimulationTests 16763
+# 16764 = 16763 + face slice 3's review case LookPiecesTests.E11 (the same case the EditMode floor counts): dotnet test
+# Tools/SimulationTests ran exactly 16764 of 16764 on a copy of the slice at 500e1f64 (2026-11-13).
+Gamesim.SimulationTests 16764

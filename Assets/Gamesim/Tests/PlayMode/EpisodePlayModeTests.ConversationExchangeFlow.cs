@@ -258,6 +258,83 @@ namespace Gamesim.Tests.PlayMode
             AssertExchangeFlowUnchanged(latest, latestBytes);
         }
 
+        // The line the category page narrates for an accepted act, read as the director reads it: the last event of
+        // the command the player may see, before any beat of the house's that the same commit carried.
+        private static string ExchangeFlowOutcomeLine(EpisodeState before, CommandResult result)
+        {
+            var state = result.state;
+            var outcome = state.events.Where(e => e.sequence >= before.nextSequence
+                && (result.beatsFromSequence <= 0 || e.sequence < result.beatsFromSequence)
+                && (e.audienceIds.Count == 0 || e.audienceIds.Contains(state.playerId))
+                && !KnownBallots.TellsAnUnknownBallot(state, e))
+                .LastOrDefault(e => !EpisodeEngine.IsScaffolding(e.kind));
+            return outcome == null ? null : EpisodeDirector.EventLine(state, outcome);
+        }
+
+        // The paragraph the page draws right under its WHAT HAPPENED heading (a heading and a paragraph are one label
+        // each, siblings in the page's order), or null when no heading is up.
+        private string ExchangeFlowNarrated()
+        {
+            var shown = director.GetComponentsInChildren<TMP_Text>(true)
+                .Where(label => label.gameObject.activeInHierarchy).Select(label => label.text).ToList();
+            int heading = shown.FindLastIndex(text => text.Contains("WHAT HAPPENED"));
+            return heading >= 0 && heading + 1 < shown.Count ? shown[heading + 1] : null;
+        }
+
+        [UnityTest]
+        public IEnumerator ConversationExchange_ASpokenActEndsOnItsCategoryPageWithWhatHappened()
+        {
+            yield return InstallExchangeFlowHouse();
+            yield return EnterConversationCategory(EpisodeDirector.ConnectCategoryCaption);
+
+            // Heard to the end: both lines read with Continue.
+            var before = director.Snapshot;
+            var talk = director.Submit(ExchangeFlowCommand(before, EpisodeCommandKind.SmallTalk));
+            Assert.That(talk.accepted, Is.True, talk.reason);
+            string talkLine = ExchangeFlowOutcomeLine(before, talk);
+            Assert.That(talkLine, Is.Not.Null.And.Not.Empty, "Small talk lands a line the player may read.");
+            yield return null;
+            Assert.That(director.IsConversationExchangePlaying, Is.True, "The act is spoken first.");
+            ButtonWithCaption(EpisodeHud.ConversationContinueCaption).onClick.Invoke();
+            yield return null;
+            ButtonWithCaption(EpisodeHud.ConversationContinueCaption).onClick.Invoke();
+            yield return null;
+            Assert.That(director.IsConversationExchangePlaying, Is.False);
+            Assert.That(director.CurrentConversationCategory, Is.EqualTo(EpisodeDirector.ConnectCategoryCaption),
+                "The spoken lines hand back to the page the act was chosen on.");
+            Assert.That(ShownText(), Does.Contain("WHAT HAPPENED"), "After the spoken lines the page says what came of them,");
+            Assert.That(ShownText(), Does.Contain(talkLine), "in the act's own line.");
+            Assert.That(ExchangeFlowNarrated(), Does.Contain(talkLine), "drawn under the heading.");
+
+            // Skipped: a promise, its lines passed over, still ends on its result.
+            var promised = director.Snapshot;
+            var promise = director.Submit(ExchangeFlowCommand(promised, EpisodeCommandKind.PromiseSafety));
+            Assert.That(promise.accepted, Is.True, promise.reason);
+            var committed = director.Snapshot;
+            byte[] savedBytes = File.ReadAllBytes(director.SavePath);
+            string promiseLine = ExchangeFlowOutcomeLine(promised, promise);
+            Assert.That(promiseLine, Is.Not.Null.And.Not.Empty, "A promise lands a line the player may read.");
+            yield return null;
+            Assert.That(director.IsConversationExchangePlaying, Is.True);
+            ButtonWithCaption(EpisodeHud.ConversationSkipCaption).onClick.Invoke();
+            yield return null;
+            Assert.That(director.IsConversationExchangePlaying, Is.False);
+            Assert.That(ShownText(), Does.Contain("WHAT HAPPENED"));
+            Assert.That(ShownText(), Does.Contain(promiseLine), "The newer act's line is the one shown.");
+            string narrated = ExchangeFlowNarrated();
+            Assert.That(narrated, Does.Contain(promiseLine), "The newer act's line is drawn under the heading,");
+            if (promiseLine != talkLine)
+                Assert.That(narrated, Does.Not.Contain(talkLine), "and the first act's line is gone from it.");
+            AssertExchangeFlowUnchanged(committed, savedBytes);
+
+            // Back to the topics: the result was read on its page, and the wheel does not repeat it.
+            ButtonWithCaption(EpisodeDirector.ConversationTopicsBackCaption).onClick.Invoke();
+            yield return null;
+            Assert.That(ActiveRect(EpisodeHud.DialName), Is.Not.Null);
+            Assert.That(ShownText(), Does.Not.Contain("WHAT HAPPENED"));
+            AssertExchangeFlowUnchanged(committed, savedBytes);
+        }
+
         [UnityTest]
         public IEnumerator ConversationExchange_UnsupportedPrivateMoveKeepsItsOutcomeAsNarrationWithoutInventingSpeech()
         {

@@ -235,12 +235,19 @@
 # 8aea8d7b (set uiqf2, 2026-11-12). Counted from the two sides; no run has observed 9919 on the merge.
 # 9928 = 9919 + face slice 1's 9: disjoint from the intake's and the UI stack's cases, so the floor is the sum (the merge
 # of main into face slice 1 at its landing, 2026-11-12). Counted from the two sides; no run has observed 9928.
+# 9931 = 9928 + the objective sit-out fix's 3 ObjectiveWordsTests cases (a player serving production's sit-out penalty
+# watches the HoH competition; at the veto the draw decides, penalty or not; the card asks to win exactly when
+# EpisodeEngine.CompetitionPlayers fields the player): the test lister counted 9931 on branch claude/ui-objective-sitout,
+# whose head adds only this file to 8834afeb (2026-11-12). No Unity run has observed them yet.
 # 9939 = 9928 + the creator convergence branch's 11: CharacterStudioFramingTests 10 (the creator's studio frames the
 # posed body: the crown and the width in frame, the buffers, the zoom and face focus, the cast turn left unbaked, the
 # shutdown's ownership) and CharacterCreatorStudioOptInTests 1 (the creator's one-line opt-in, read from its source).
 # Disjoint from main's cases, so the floor is their sum. The lister counted 9939 on the branch at cc4303bc, and dotnet
 # test ran the opt-in case (2026-11-12). No Unity run has observed the 11 or 9939 yet.
-Gamesim.EditModeTests 9939
+# 9942 = 9939 + the objective sit-out fix's 3: disjoint from the creator convergence branch's cases, so the floor is the
+# sum (the merge of main into the sit-out slice at its landing, 2026-11-13). Counted from the two sides; no run has
+# observed 9942.
+Gamesim.EditModeTests 9942
 # The UMA-free build. 1215 = 1236, the count after the consolidation's lanes (S2a, S2b, S4a), less the 7
 # farewell probes moved to Gamesim.DiagnosticsPlayModeTests and the 14 farewell readiness tests that now
 # compile only under GAMESIM_UMA (judged on the UMA cast); 1230 = 1215 + S2d's 7, S4b's 2, S4c's 2 and
@@ -651,7 +658,12 @@ Gamesim.Uma.DiagnosticsPlayModeTests 10
 # merge yet.
 # 16735 = 16726 + face slice 1's 9: the sum, as above (the merge of main into face slice 1 at its landing, 2026-11-12).
 # 16762 = 16735 + face slice 2's 27: the sum, as above (the merge of main into face slice 2 at its landing, 2026-11-12).
+# 16765 = 16762 + the objective sit-out fix's 3 ObjectiveWordsTests cases (the same three the EditMode floor counts):
+# dotnet test Tools/SimulationTests ran exactly 16765 of 16765 on the slice at 8834afeb (2026-11-12). No Unity run has
+# observed them yet.
 # 16763 = 16762 + the creator convergence branch's CharacterCreatorStudioOptInTests 1 (the same case the EditMode floor
 # counts, linked into the subset): dotnet test Tools/SimulationTests ran exactly 16763 of 16763 on the branch at
 # cc4303bc (2026-11-12).
-Gamesim.SimulationTests 16763
+# 16766 = 16763 + the objective sit-out fix's 3: the sum, as above (the merge of main into the sit-out slice at its
+# landing, 2026-11-13).
+Gamesim.SimulationTests 16766

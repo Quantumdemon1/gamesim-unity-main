@@ -405,6 +405,9 @@
     <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/WardrobeSlots.cs" />
     <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/CharacterOutfits.cs" />
     <Compile Include="$(EditMode)WardrobeSlotsTests.cs" />
+    <!-- A look wears the pieces tagged for it, and LibraryLooks.txt's line: plain strings, no engine. -->
+    <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/LookPieces.cs" />
+    <Compile Include="$(EditMode)LookPiecesTests.cs" />
     <!-- The UMA content folder's binary pin in .gitattributes: reads the repository's files, so it lives here. -->
     <Compile Include="UmaContentBinaryPinTests.cs" />
     <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/CompetitionWords.cs" />

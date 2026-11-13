@@ -235,7 +235,12 @@
 # 8aea8d7b (set uiqf2, 2026-11-12). Counted from the two sides; no run has observed 9919 on the merge.
 # 9928 = 9919 + face slice 1's 9: disjoint from the intake's and the UI stack's cases, so the floor is the sum (the merge
 # of main into face slice 1 at its landing, 2026-11-12). Counted from the two sides; no run has observed 9928.
-Gamesim.EditModeTests 9928
+# 9939 = 9928 + the creator convergence branch's 11: CharacterStudioFramingTests 10 (the creator's studio frames the
+# posed body: the crown and the width in frame, the buffers, the zoom and face focus, the cast turn left unbaked, the
+# shutdown's ownership) and CharacterCreatorStudioOptInTests 1 (the creator's one-line opt-in, read from its source).
+# Disjoint from main's cases, so the floor is their sum. The lister counted 9939 on the branch at cc4303bc, and dotnet
+# test ran the opt-in case (2026-11-12). No Unity run has observed the 11 or 9939 yet.
+Gamesim.EditModeTests 9939
 # The UMA-free build. 1215 = 1236, the count after the consolidation's lanes (S2a, S2b, S4a), less the 7
 # farewell probes moved to Gamesim.DiagnosticsPlayModeTests and the 14 farewell readiness tests that now
 # compile only under GAMESIM_UMA (judged on the UMA cast); 1230 = 1215 + S2d's 7, S4b's 2, S4c's 2 and
@@ -370,7 +375,12 @@ Gamesim.EditModeTests 9928
 # MainMenu_WithASeasonOnDiskTheCastScreenOffersToKeepIt and U3's
 # ConversationExchange_ASpokenActEndsOnItsCategoryPageWithWhatHappened. The lister counted 1500, 1501 and 1502 at the
 # three heads (2026-11-11). Compiled in this build; they ran in Unity in the UMA build only (see UmaBuild below).
-Gamesim.PlayModeTests 1502
+# 1507 = 1502 + the creator convergence branch's 5 new CharacterStudioRecoveryPlayModeTests cases (8 to 13): three for
+# the studio's settled publication (the shown pixels are kept until the latest pose has rendered, a superseded look
+# never publishes, a pending publication is cancelled on disable and disposal) and two for the creator thumbnail's
+# placeholder (shown until the matching portrait is ready, and again after an invalidation or a rebinding). The lister
+# counted 1507 on the branch at cc4303bc without UMA (2026-11-12). No Unity run has observed them yet.
+Gamesim.PlayModeTests 1507
 # The UMA build of the same assembly, read by a plan built without -WithoutUma. 1281 = the 1241 above + the
 # 40 tests that compile only under GAMESIM_UMA, as run at r1 (2026-10-16): in EpisodePlayModeTests,
 # GroundedFarewell 11, Creator 9, HouseLife 8, Emotes 3, OpeningCaptures 2, and one each in CreatorEntry,
@@ -461,7 +471,10 @@ Gamesim.PlayModeTests 1502
 # 1547 = 1540 + the All-Star intake's 3 + the UI stack's 4: disjoint cases, so the floor is their sum (the merge of main
 # into the UI stack's last slice at its landing, 2026-11-12). The UI stack's full run of this assembly observed 1544 of
 # 1544 at 8aea8d7b (set uiqf2, 2026-11-12). Counted from the two sides; no run has observed 1547 on the merge.
-Gamesim.PlayModeTests.UmaBuild 1547
+# 1552 = 1547 + the creator convergence branch's same 5 CharacterStudioRecoveryPlayModeTests cases (see PlayModeTests
+# above): the lister counted 1552 on the branch at cc4303bc in the UMA offline build (2026-11-12). No Unity run has
+# observed them or 1552 yet.
+Gamesim.PlayModeTests.UmaBuild 1552
 # The UMA bodies: runs only where the GAMESIM_UMA define is set (the working tree and the D: copy).
 # 82 = the 89 run on 2026-10-15, less the 7 farewell probes moved to Gamesim.Uma.DiagnosticsPlayModeTests;
 # 85 = 82 + the 3 farewell readiness decision tests (UmaFarewellReadinessDecisionPlayModeTests, 2026-10-16);
@@ -634,4 +647,7 @@ Gamesim.Uma.DiagnosticsPlayModeTests 10
 # merge yet.
 # 16735 = 16726 + face slice 1's 9: the sum, as above (the merge of main into face slice 1 at its landing, 2026-11-12).
 # 16762 = 16735 + face slice 2's 27: the sum, as above (the merge of main into face slice 2 at its landing, 2026-11-12).
-Gamesim.SimulationTests 16762
+# 16763 = 16762 + the creator convergence branch's CharacterCreatorStudioOptInTests 1 (the same case the EditMode floor
+# counts, linked into the subset): dotnet test Tools/SimulationTests ran exactly 16763 of 16763 on the branch at
+# cc4303bc (2026-11-12).
+Gamesim.SimulationTests 16763

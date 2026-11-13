@@ -1,5 +1,7 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
+using System.IO;
 using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
@@ -10,7 +12,8 @@ namespace Gamesim.Tests.EditMode
 {
     /// <summary>
     /// A look wears the pieces a catalog entry's <c>worn-by:</c> tag names it for (<see cref="LookPieces.Apply"/>),
-    /// and LibraryLooks.txt's line (<see cref="LookPieces.LibraryLine"/>). Plain strings: no UMA, no engine.
+    /// and LibraryLooks.txt's line (<see cref="LookPieces.LibraryLine"/>), and Will's fitted face in the file. Plain strings
+    /// and one plain file read: no UMA, no engine.
     /// </summary>
     public sealed class LookPiecesTests
     {
@@ -180,6 +183,122 @@ namespace Gamesim.Tests.EditMode
                 Assert.Throws<ArgumentException>(() => LookPieces.LibraryLine("x", Male, new Dictionary<string, float> { ["a"] = value }),
                     "A value that needs rounding is never written.");
             Assert.Throws<ArgumentException>(() => LookPieces.LibraryLine("x\ty", Male, new Dictionary<string, float>()));
+        }
+
+        // ------------------------------------------------------------------------- Will's face
+
+        /// <summary>
+        /// Will's face: fitted to his reference with the game's own face sliders, then built in the game and compared
+        /// (12 November 2026). The fit set's 26 changed values, as UmaCastLibrary's look gives them.
+        /// </summary>
+        private static readonly Dictionary<string, float> WillFitted = new Dictionary<string, float>(StringComparer.Ordinal)
+        {
+            ["BrowPosition"] = .56f, ["cheekPosition"] = .52f, ["cheekPronounced"] = .49f, ["cheekSize"] = .34f,
+            ["chinPosition"] = .36f, ["chinPronounced"] = .58f, ["chinSize"] = .46f, ["eyeRotation"] = .53f,
+            ["eyeSize"] = .13f, ["foreheadPosition"] = .40f, ["foreheadSize"] = .41f, ["headWidth"] = .91f,
+            ["jawsPosition"] = .29f, ["jawsSize"] = .72f, ["lipsSize"] = .34f, ["lowCheekPosition"] = .53f,
+            ["lowCheekPronounced"] = .52f, ["mandibleSize"] = .43f, ["mouthSize"] = .53f, ["noseBroken"] = .51f,
+            ["noseCurve"] = .38f, ["noseInclination"] = .27f, ["nosePosition"] = .75f, ["nosePronounced"] = .57f,
+            ["noseSize"] = .37f, ["noseWidth"] = .60f,
+        };
+
+        /// <summary>His other merged values, as they were before the fit (main at 7a3038a9): the house's, and his own height.</summary>
+        private static readonly Dictionary<string, float> WillKept = new Dictionary<string, float>(StringComparer.Ordinal)
+        {
+            ["armWidth"] = .62f, ["feetSize"] = .66f, ["forearmWidth"] = .62f, ["handsSize"] = .68f, ["headSize"] = .72f,
+            ["height"] = .21f, ["legsSize"] = .62f, ["lowerMuscle"] = .58f, ["neckThickness"] = .6f, ["upperMuscle"] = .58f,
+        };
+
+        /// <summary>
+        /// Will's line in LibraryLooks.txt holds his 26 fitted face values and, for every other name, the value it had
+        /// before the fit, and no name besides. UmaAllStarPiecesPlayModeTests.LibraryLooksTxtIsTheLibraryByteForByte holds
+        /// the file to the merge the game makes for his body (the house's values, then his look's), so the body gets these.
+        /// Plain file reading: the editor finds the file through <c>Application.dataPath</c>, the subset by walking up
+        /// from its own binary.
+        /// </summary>
+        [Test]
+        public void E10_WillsLineCarriesHisFittedFaceAndKeepsHisOtherValues()
+        {
+            string line = File.ReadAllText(LibraryLooksPath(), Encoding.UTF8).Split('\n')
+                .Single(text => text.StartsWith("dr-will-kirby\t", StringComparison.Ordinal));
+            string[] fields = line.Split('\t');
+            Assert.That(fields[1], Is.EqualTo(Male));
+            var values = fields.Skip(2).Select(field => field.Split('=')).ToDictionary(pair => pair[0],
+                pair => float.Parse(pair[1], NumberStyles.Float, CultureInfo.InvariantCulture), StringComparer.Ordinal);
+            Assert.That(WillFitted.Keys.Intersect(WillKept.Keys), Is.Empty, "A name is fitted or kept, not both.");
+            Assert.That(values.Keys, Is.EquivalentTo(WillFitted.Keys.Concat(WillKept.Keys)), "His names are the 26 fitted and the kept, no other.");
+            foreach (var entry in WillFitted)
+                Assert.That(values[entry.Key], Is.EqualTo(entry.Value), "fitted " + entry.Key);
+            foreach (var entry in WillKept)
+                Assert.That(values[entry.Key], Is.EqualTo(entry.Value), "kept " + entry.Key);
+        }
+
+        // ------------------------------------------------------------------------- The measured ranges (Part B)
+
+        /// <summary>
+        /// The face route's 34-slider fit set: the 39 face sliders except headSize, neckThickness, cheekWidth, EyePosition,
+        /// Happy_DNA and ElfEars (33), plus headSize.
+        /// </summary>
+        private static readonly string[] FitSet =
+        {
+            "BrowPosition", "cheekPosition", "cheekPronounced", "cheekSize", "chinPosition", "chinPronounced", "chinSize",
+            "earsPitch", "earsPosition", "earsRotation", "earsSize", "earsYaw", "eyeRotation", "eyeSize", "eyeSpacing",
+            "foreheadPosition", "foreheadSize", "headSize", "headWidth", "jawsPosition", "jawsSize", "lipsSize",
+            "lowCheekPosition", "lowCheekPronounced", "mandibleSize", "mouthSize", "noseBroken", "noseCurve", "noseFlatten",
+            "noseInclination", "nosePosition", "nosePronounced", "noseSize", "noseWidth",
+        };
+
+        // The measured ranges, measured on the game's own export on 12 November 2026: the three sliders sampled across
+        // their whole travel (eyeSize, headSize, headWidth) hold from 0 to 1; every other fit-set slider from .25 to .75.
+        private static readonly string[] WideRange = { "eyeSize", "headSize", "headWidth" };
+        private const float WideLow = 0f, WideHigh = 1f, MeasuredLow = .25f, MeasuredHigh = .75f;
+
+        /// <summary>
+        /// Every look's line in LibraryLooks.txt holds each fit-set value it sets inside that slider's measured range. A name
+        /// of the fit set a look does not set is not checked; a name outside the fit set (height, the body) is not either.
+        /// </summary>
+        [Test]
+        public void E11_EveryLooksFitSetValuesLieInTheirMeasuredRanges()
+        {
+            Assert.That(FitSet, Has.Length.EqualTo(34).And.Unique);
+            Assert.That(FitSet, Is.SupersetOf(WideRange));
+            string[] lines = File.ReadAllText(LibraryLooksPath(), Encoding.UTF8).Split('\n').Where(text => text.Length > 0).ToArray();
+            Assert.That(lines, Is.Not.Empty);
+            var outside = new List<string>();
+            int checkedValues = 0;
+            foreach (string line in lines)
+            {
+                string[] fields = line.Split('\t');
+                foreach (string field in fields.Skip(2))
+                {
+                    string[] pair = field.Split('=');
+                    if (!FitSet.Contains(pair[0], StringComparer.Ordinal)) continue;
+                    float value = float.Parse(pair[1], NumberStyles.Float, CultureInfo.InvariantCulture);
+                    bool wide = WideRange.Contains(pair[0], StringComparer.Ordinal);
+                    float low = wide ? WideLow : MeasuredLow, high = wide ? WideHigh : MeasuredHigh;
+                    checkedValues++;
+                    if (value < low || value > high)
+                        outside.Add(fields[0] + " " + pair[0] + "=" + pair[1] + " (measured range "
+                            + low.ToString(CultureInfo.InvariantCulture) + " to " + high.ToString(CultureInfo.InvariantCulture) + ")");
+                }
+            }
+            Assert.That(checkedValues, Is.GreaterThan(0), "The file's looks set fit-set values.");
+            Assert.That(outside, Is.Empty, "A look's fit-set value lies outside its slider's measured range: " + string.Join("; ", outside));
+        }
+
+        private static string LibraryLooksPath()
+        {
+#if UNITY_EDITOR
+            return Path.GetFullPath(Path.Combine(UnityEngine.Application.dataPath, "Gamesim", "Uma", "LibraryLooks.txt"));
+#else
+            for (var directory = new DirectoryInfo(AppContext.BaseDirectory); directory != null; directory = directory.Parent)
+            {
+                string candidate = Path.Combine(directory.FullName, "Assets", "Gamesim", "Uma", "LibraryLooks.txt");
+                if (File.Exists(candidate)) return Path.GetFullPath(candidate);
+            }
+            Assert.Fail("Assets/Gamesim/Uma/LibraryLooks.txt was not found above " + AppContext.BaseDirectory);
+            return null;
+#endif
         }
     }
 }

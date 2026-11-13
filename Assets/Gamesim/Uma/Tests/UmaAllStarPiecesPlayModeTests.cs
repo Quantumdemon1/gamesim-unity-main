@@ -258,5 +258,107 @@ namespace Gamesim.Uma.Tests
                 Is.EqualTo(JunLine), "Jun's values are frozen.");
         }
 #endif
+
+        // ------------------------------------------------------------------------- Will's face, on his built body
+
+        private const string Will = "dr-will-kirby";
+
+        /// <summary>
+        /// Will's face: fitted to his reference with the game's own face sliders, then built in the game and compared
+        /// (12 November 2026). The fit set's 26 changed values, as UmaCastLibrary's look gives them.
+        /// </summary>
+        private static readonly Dictionary<string, float> WillFitted = new Dictionary<string, float>(StringComparer.Ordinal)
+        {
+            ["BrowPosition"] = .56f, ["cheekPosition"] = .52f, ["cheekPronounced"] = .49f, ["cheekSize"] = .34f,
+            ["chinPosition"] = .36f, ["chinPronounced"] = .58f, ["chinSize"] = .46f, ["eyeRotation"] = .53f,
+            ["eyeSize"] = .13f, ["foreheadPosition"] = .40f, ["foreheadSize"] = .41f, ["headWidth"] = .91f,
+            ["jawsPosition"] = .29f, ["jawsSize"] = .72f, ["lipsSize"] = .34f, ["lowCheekPosition"] = .53f,
+            ["lowCheekPronounced"] = .52f, ["mandibleSize"] = .43f, ["mouthSize"] = .53f, ["noseBroken"] = .51f,
+            ["noseCurve"] = .38f, ["noseInclination"] = .27f, ["nosePosition"] = .75f, ["nosePronounced"] = .57f,
+            ["noseSize"] = .37f, ["noseWidth"] = .60f,
+        };
+
+        /// <summary>
+        /// Will, as a season puts him in the house: his template's contestant, its appearance resolved by the season's
+        /// snapshot, attached through the registered provider. The provider's own lookup (the appearance's presetId in
+        /// UmaCastLibrary) finds his library look, and the season's appearance, which the provider writes over that
+        /// look, carries his 26 fitted values. His built body's DNA carries every one of them within .001. Nothing on
+        /// the route from his look to the body may clamp: two of them, eyeSize .13 and headWidth .91, lie outside the
+        /// creator sliders' .25 to .75, and a clamp anywhere on the route would move those first.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator WillsBuiltBodyCarriesHisFittedFace()
+        {
+            var cast = new GameObject("Will's face provider", typeof(GamesimUmaCast));
+            var actor = new GameObject("Will's face houseguest");
+            try
+            {
+                yield return null;
+                Assert.That(CharacterBodySource.Provider, Is.TypeOf<UmaBodyProvider>(), "The game's own provider builds him.");
+                Assert.That(UmaCastLibrary.TryGet(Will, out var look), Is.True);
+                foreach (var entry in WillFitted)
+                    Assert.That(look.Dna.TryGetValue(entry.Key, out float own) && own == entry.Value, Is.True,
+                        "His look sets " + entry.Key + " " + entry.Value + " (LookPiecesTests.E10 pins his line).");
+
+                var season = new EpisodeState();
+                season.contestants.Add(CastTemplates.ToContestant(CastTemplates.Find(Will), false));
+                CharacterAppearanceSnapshots.Materialize(season);
+                var houseguest = season.contestants.Single();
+
+                // The look the provider builds him from, found the way UmaBodyProvider.TryCreate finds it: the season's
+                // appearance's presetId (his own id when it has none), resolved in the cast library before the request's
+                // fallback, which CharacterPresentation fills with the primitive rig's id (not his look's).
+                var appearance = houseguest.appearance;
+                Assert.That(appearance, Is.Not.Null, "The season gave him an appearance.");
+                Assert.That(appearance.provider, Is.EqualTo("uma"), "The season's appearance is for UMA's provider.");
+                string canonical = ContentCatalog.CanonicalId(houseguest.id);
+                string lookId = appearance.presetId ?? canonical;
+                string fallback = CharacterPresentation.AppearanceId(houseguest, canonical);
+                Assert.That(UmaCastLibrary.ResolveId(lookId, fallback), Is.EqualTo(Will), "The provider finds his look by his own id.");
+                Assert.That(UmaCastLibrary.Resolve(lookId, fallback, out var resolved) && ReferenceEquals(resolved, look), Is.True,
+                    "The provider's lookup gives his library look itself.");
+                Assert.That(appearance.bodyId, Is.EqualTo(look.Race), "The season builds him on his look's race.");
+                // The provider writes the season's appearance over the look (appearance.dna wins), so the season carries his values.
+                foreach (var entry in WillFitted)
+                {
+                    var saved = appearance.dna.Where(value => value.id == entry.Key).Select(value => value.value).ToArray();
+                    Assert.That(saved.Length == 1 && Math.Abs(saved[0] - entry.Value) <= .001f, Is.True,
+                        "The season's appearance carries his " + entry.Key + " " + entry.Value + " once; it holds ["
+                        + string.Join(", ", saved.Select(value => value.ToString()).ToArray()) + "].");
+                }
+
+                var presentation = CharacterPresentation.Attach(actor, houseguest, Color.white);
+                Assert.That(presentation.IsBodyAssembling, Is.True, "He is assembling from the frame he is attached.");
+                // Bounded in seconds, not frames (a batchmode frame is under a millisecond); past AssemblyTimeoutSeconds
+                // he would get the primitive rig, which the assertions below refuse.
+                DynamicCharacterAvatar avatar = null;
+                double deadline = Time.realtimeSinceStartupAsDouble + 2 * CharacterPresentation.AssemblyTimeoutSeconds;
+                while (Time.realtimeSinceStartupAsDouble < deadline)
+                {
+                    avatar = actor.GetComponentInChildren<DynamicCharacterAvatar>(true);
+                    if (!presentation.IsBodyAssembling) break;
+                    yield return null;
+                }
+                Assert.That(presentation.IsBodyAssembling, Is.False, "His body never finished assembling.");
+                Assert.That(presentation.IsPrimitiveBody, Is.False, "He is a UMA body, not the primitive rig (his assembly timed out).");
+                Assert.That(avatar, Is.Not.Null, "He is a UMA body, not the primitive rig.");
+                var state = avatar.GetComponent<CharacterBodyBuildState>();
+                Assert.That(state != null && state.Ready, Is.True, "His body's build state is ready (after the DNA pass).");
+                Assert.That(state.Substitution, Is.Null.Or.Empty, "He wears his own clothes, none substituted.");
+
+                var dna = avatar.GetDNA();
+                var off = new List<string>();
+                foreach (var entry in WillFitted)
+                {
+                    if (!dna.TryGetValue(entry.Key, out var setter)) off.Add(entry.Key + " missing (wanted " + entry.Value + ")");
+                    else if (Math.Abs(setter.Value - entry.Value) > .001f) off.Add(entry.Key + " " + setter.Value + " (wanted " + entry.Value + ")");
+                }
+                Assert.That(off, Is.Empty, "His built body's DNA must carry his 26 fitted values within .001. eyeSize .13 and headWidth .91 lie "
+                    + "outside the creator sliders' .25 to .75: a clamp on the route from his look to his body moves them first. Off: "
+                    + string.Join(", ", off));
+            }
+            finally { Object.Destroy(actor); Object.Destroy(cast); }
+            yield return null;
+        }
     }
 }

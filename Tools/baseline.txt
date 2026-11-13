@@ -235,6 +235,12 @@
 # 8aea8d7b (set uiqf2, 2026-11-12). Counted from the two sides; no run has observed 9919 on the merge.
 # 9928 = 9919 + face slice 1's 9: disjoint from the intake's and the UI stack's cases, so the floor is the sum (the merge
 # of main into face slice 1 at its landing, 2026-11-12). Counted from the two sides; no run has observed 9928.
+# 9929 = 9928 + face slice 3's 1 LookPiecesTests case (E10: Will's line in LibraryLooks.txt holds his 26 fitted face
+# values and his other values as before): the lister counted 9929 at b1a2e811 (2026-11-13), and the Unity-free suite ran
+# the case (below). No Unity EditMode run has observed 9929 yet.
+# 9930 = 9929 + face slice 3's review case LookPiecesTests.E11 (every look's fit-set values in LibraryLooks.txt lie in
+# their measured ranges, Part B): the lister counted 9930 at 500e1f64 (2026-11-13), and the Unity-free suite ran the
+# case (below). No Unity EditMode run has observed 9930 yet.
 # 9931 = 9928 + the objective sit-out fix's 3 ObjectiveWordsTests cases (a player serving production's sit-out penalty
 # watches the HoH competition; at the veto the draw decides, penalty or not; the card asks to win exactly when
 # EpisodeEngine.CompetitionPlayers fields the player): the test lister counted 9931 on branch claude/ui-objective-sitout,
@@ -247,7 +253,10 @@
 # 9942 = 9939 + the objective sit-out fix's 3: disjoint from the creator convergence branch's cases, so the floor is the
 # sum (the merge of main into the sit-out slice at its landing, 2026-11-13). Counted from the two sides; no run has
 # observed 9942.
-Gamesim.EditModeTests 9942
+# 9944 = 9942 + Will's face slice's 2 (LookPiecesTests E10 and E11): disjoint from the creator convergence branch's and the
+# sit-out fix's cases, so the floor is the sum (the merge of main into face slice 3 at its landing, 2026-11-13). Counted
+# from the two sides; no run has observed 9944.
+Gamesim.EditModeTests 9944
 # The UMA-free build. 1215 = 1236, the count after the consolidation's lanes (S2a, S2b, S4a), less the 7
 # farewell probes moved to Gamesim.DiagnosticsPlayModeTests and the 14 farewell readiness tests that now
 # compile only under GAMESIM_UMA (judged on the UMA cast); 1230 = 1215 + S2d's 7, S4b's 2, S4c's 2 and
@@ -510,11 +519,17 @@ Gamesim.PlayModeTests.UmaBuild 1552
 # 169 = 153 + face slice 1's 6 + face slice 2's 10: disjoint cases, so the floor is their sum (the merge of main into face
 # slice 2 at its landing, 2026-11-12). Each slice's batch ran the whole assembly as it stood on that slice (159 and 163);
 # counted from the two sides, no run has observed 169.
+# 170 = 169 + face slice 3's review case UmaAllStarPiecesPlayModeTests.WillsBuiltBodyCarriesHisFittedFace (Will built
+# as a season builds him; his body's DNA carries his 26 fitted face values): the lister counted 170 at 500e1f64
+# (2026-11-13). No Unity run has observed 170 yet.
 # 175 = 169 + the wrist and neck places' 6 (UmaWristAndNeckPlayModeTests: a Hands and an Arms piece on each body, a
 # Shoulders piece in the code-built Neckwear place, a save and a reload with a rebuild, an authored textured part drawn
 # with its own material and maps, two bodies sharing one watch, and the pool and bed bodies left bare): counted by the
 # offline lister in the UMA build of claude/slots-a-wrist-neck (175, 2026-11-12); no Unity run has observed them yet.
-Gamesim.Uma.PlayModeTests 175
+# 176 = 175 + Will's face slice's 1 (WillsBuiltBodyCarriesHisFittedFace): disjoint from the wrist and neck places' six, so
+# the floor is the sum (the merge of main into face slice 3 at its landing, 2026-11-13). Each slice's batch ran the whole
+# assembly as it stood on that slice (175 and 170); counted from the two sides, no run has observed 176.
+Gamesim.Uma.PlayModeTests 176
 # Diagnostics: feasibility and diagnostic probes, never shipping acceptance. They compile only under
 # GAMESIM_DIAGNOSTICS, which only a diagnostic run adds to the test copy (GAMESIM_DIAGNOSTICS=1 with
 # sync-and-run.sh or the locked runner); the UMA one needs GAMESIM_UMA too. The floor counts that they
@@ -658,6 +673,10 @@ Gamesim.Uma.DiagnosticsPlayModeTests 10
 # merge yet.
 # 16735 = 16726 + face slice 1's 9: the sum, as above (the merge of main into face slice 1 at its landing, 2026-11-12).
 # 16762 = 16735 + face slice 2's 27: the sum, as above (the merge of main into face slice 2 at its landing, 2026-11-12).
+# 16763 = 16762 + face slice 3's 1 LookPiecesTests case (E10, the same case the EditMode floor counts): dotnet test
+# Tools/SimulationTests ran exactly 16763 of 16763 on the slice at b1a2e811 (2026-11-13).
+# 16764 = 16763 + face slice 3's review case LookPiecesTests.E11 (the same case the EditMode floor counts): dotnet test
+# Tools/SimulationTests ran exactly 16764 of 16764 on a copy of the slice at 500e1f64 (2026-11-13).
 # 16765 = 16762 + the objective sit-out fix's 3 ObjectiveWordsTests cases (the same three the EditMode floor counts):
 # dotnet test Tools/SimulationTests ran exactly 16765 of 16765 on the slice at 8834afeb (2026-11-12). No Unity run has
 # observed them yet.
@@ -666,4 +685,6 @@ Gamesim.Uma.DiagnosticsPlayModeTests 10
 # cc4303bc (2026-11-12).
 # 16766 = 16763 + the objective sit-out fix's 3: the sum, as above (the merge of main into the sit-out slice at its
 # landing, 2026-11-13).
-Gamesim.SimulationTests 16766
+# 16768 = 16766 + Will's face slice's 2: the sum, as above (the merge of main into face slice 3 at its landing,
+# 2026-11-13).
+Gamesim.SimulationTests 16768

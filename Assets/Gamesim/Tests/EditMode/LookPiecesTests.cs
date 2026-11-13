@@ -233,6 +233,59 @@ namespace Gamesim.Tests.EditMode
                 Assert.That(values[entry.Key], Is.EqualTo(entry.Value), "kept " + entry.Key);
         }
 
+        // ------------------------------------------------------------------------- The measured ranges (Part B)
+
+        /// <summary>
+        /// The face route's 34-slider fit set: the 39 face sliders except headSize, neckThickness, cheekWidth, EyePosition,
+        /// Happy_DNA and ElfEars (33), plus headSize.
+        /// </summary>
+        private static readonly string[] FitSet =
+        {
+            "BrowPosition", "cheekPosition", "cheekPronounced", "cheekSize", "chinPosition", "chinPronounced", "chinSize",
+            "earsPitch", "earsPosition", "earsRotation", "earsSize", "earsYaw", "eyeRotation", "eyeSize", "eyeSpacing",
+            "foreheadPosition", "foreheadSize", "headSize", "headWidth", "jawsPosition", "jawsSize", "lipsSize",
+            "lowCheekPosition", "lowCheekPronounced", "mandibleSize", "mouthSize", "noseBroken", "noseCurve", "noseFlatten",
+            "noseInclination", "nosePosition", "nosePronounced", "noseSize", "noseWidth",
+        };
+
+        // The measured ranges, measured on the game's own export on 12 November 2026: the three sliders sampled across
+        // their whole travel (eyeSize, headSize, headWidth) hold from 0 to 1; every other fit-set slider from .25 to .75.
+        private static readonly string[] WideRange = { "eyeSize", "headSize", "headWidth" };
+        private const float WideLow = 0f, WideHigh = 1f, MeasuredLow = .25f, MeasuredHigh = .75f;
+
+        /// <summary>
+        /// Every look's line in LibraryLooks.txt holds each fit-set value it sets inside that slider's measured range. A name
+        /// of the fit set a look does not set is not checked; a name outside the fit set (height, the body) is not either.
+        /// </summary>
+        [Test]
+        public void E11_EveryLooksFitSetValuesLieInTheirMeasuredRanges()
+        {
+            Assert.That(FitSet, Has.Length.EqualTo(34).And.Unique);
+            Assert.That(FitSet, Is.SupersetOf(WideRange));
+            string[] lines = File.ReadAllText(LibraryLooksPath(), Encoding.UTF8).Split('\n').Where(text => text.Length > 0).ToArray();
+            Assert.That(lines, Is.Not.Empty);
+            var outside = new List<string>();
+            int checkedValues = 0;
+            foreach (string line in lines)
+            {
+                string[] fields = line.Split('\t');
+                foreach (string field in fields.Skip(2))
+                {
+                    string[] pair = field.Split('=');
+                    if (!FitSet.Contains(pair[0], StringComparer.Ordinal)) continue;
+                    float value = float.Parse(pair[1], NumberStyles.Float, CultureInfo.InvariantCulture);
+                    bool wide = WideRange.Contains(pair[0], StringComparer.Ordinal);
+                    float low = wide ? WideLow : MeasuredLow, high = wide ? WideHigh : MeasuredHigh;
+                    checkedValues++;
+                    if (value < low || value > high)
+                        outside.Add(fields[0] + " " + pair[0] + "=" + pair[1] + " (measured range "
+                            + low.ToString(CultureInfo.InvariantCulture) + " to " + high.ToString(CultureInfo.InvariantCulture) + ")");
+                }
+            }
+            Assert.That(checkedValues, Is.GreaterThan(0), "The file's looks set fit-set values.");
+            Assert.That(outside, Is.Empty, "A look's fit-set value lies outside its slider's measured range: " + string.Join("; ", outside));
+        }
+
         private static string LibraryLooksPath()
         {
 #if UNITY_EDITOR

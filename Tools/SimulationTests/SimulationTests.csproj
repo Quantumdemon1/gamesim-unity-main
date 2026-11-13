@@ -398,17 +398,33 @@
       the competition's words to the player, which read the committed state and nothing else; the
       final choice's words, the caption every walk presses and the chips' order, read from the
       finalist read; and the mini-games' own runs, which keep their clock and their generator to
-      themselves (the word board's deal is pinned here). Only a file with no `using UnityEngine` belongs here; a
+      themselves (the word board's deal is pinned here); the wardrobe's slot lists and the outfits worn for an
+      activity, plain data over the saved look. Only a file with no `using UnityEngine` belongs here; a
       presentation file that grows one leaves.
     -->
     <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/MusicFade.cs" />
     <Compile Include="$(EditMode)MusicFadeTests.cs" />
+    <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/WardrobeSlots.cs" />
+    <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/CharacterOutfits.cs" />
+    <Compile Include="$(EditMode)WardrobeSlotsTests.cs" />
+    <!-- A look wears the pieces tagged for it, and LibraryLooks.txt's line: plain strings, no engine. -->
+    <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/LookPieces.cs" />
+    <Compile Include="$(EditMode)LookPiecesTests.cs" />
+    <!-- The UMA content folder's binary pin in .gitattributes: reads the repository's files, so it lives here. -->
+    <Compile Include="UmaContentBinaryPinTests.cs" />
+    <!-- The UMA face-fit export's engine-free half (its files, job, plan and assembly; Gamesim.Uma.Editor compiles the same files) and its tests. -->
+    <Compile Include="$(RootDir)Assets/Gamesim/Uma/Editor/UmaFaceFitFiles.cs" />
+    <Compile Include="$(RootDir)Assets/Gamesim/Uma/Editor/UmaFaceFitPlan.cs" />
+    <Compile Include="$(RootDir)Assets/Gamesim/Uma/Editor/UmaFaceFitWork.cs" />
+    <Compile Include="UmaFaceFitFilesTests.cs" />
     <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/CompetitionWords.cs" />
     <Compile Include="$(EditMode)CompetitionWordsTests.cs" />
     <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/StudyWords.cs" />
     <Compile Include="$(EditMode)TuningCopyTests.cs" />
     <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/FinalChoiceWords.cs" />
     <Compile Include="$(EditMode)FinalChoiceWordsTests.cs" />
+    <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/ObjectiveWords.cs" />
+    <Compile Include="$(EditMode)ObjectiveWordsTests.cs" />
     <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/CompetitionMiniGames.cs" />
     <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/MiniGameRun.cs" />
     <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/MiniGameRun.Dice.cs" />
@@ -470,6 +486,8 @@
     <Compile Include="$(EditMode)SeasonAutopsyTests.cs" />
     <!-- B5a: the NPC world's pairing, out of the director's route planner. -->
     <Compile Include="$(EditMode)NpcPairingTests.cs" />
+    <!-- The creator's studio opt-in (fit the posed body, show only rendered views), read from its source. -->
+    <Compile Include="$(EditMode)CharacterCreatorStudioOptInTests.cs" />
     <!--
       The balance lab (B2-B4), compiled out of Unity: the player's view, the policies, the performance
       model, the lab, its smoke tier (not Explicit) and its explicit report tiers. The ceremony timings

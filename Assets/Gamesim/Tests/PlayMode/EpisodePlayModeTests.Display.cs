@@ -255,6 +255,43 @@ namespace Gamesim.Tests.PlayMode
             }
         }
 
+        /// <summary>
+        /// While the episode screen is open the objective's next stop says the player is there,
+        /// "Here: the episode screen", as the diary's lines do; once it closes it sends them there
+        /// again. Run in the full HUD, whose top-bar chip stays up under the screen (the compact
+        /// card stands down for it); the density is put back after.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator Objective_SaysHereWhileTheEpisodeScreenIsOpen()
+        {
+            bool originalCompact = director.CompactHud;
+            try
+            {
+                director.SetCompactHud(false);
+                director.ClosePanels();
+                yield return null;
+                WarpPlayer(director.StationPosition);
+                Assert.That(director.TryOpenPhasePanel(), Is.True, "The episode screen opens beside its station.");
+                yield return null; yield return null;
+                var lines = LastActive("Objective").GetComponentsInChildren<TMPro.TMP_Text>().Select(label => label.text).ToList();
+                Assert.That(lines.Any(line => line.StartsWith("Here: the episode screen")), Is.True,
+                    "The objective says the player is at the episode screen: " + string.Join(" | ", lines));
+                Assert.That(lines.Any(line => line.StartsWith("Next stop:")), Is.False,
+                    "and sends them nowhere they already are: " + string.Join(" | ", lines));
+
+                director.ClosePanels();
+                yield return null; yield return null;
+                lines = LastActive("Objective").GetComponentsInChildren<TMPro.TMP_Text>().Select(label => label.text).ToList();
+                Assert.That(lines.Any(line => line.StartsWith("Next stop: episode screen")), Is.True,
+                    "Closed, the objective sends the player to the screen again: " + string.Join(" | ", lines));
+            }
+            finally
+            {
+                director.ClosePanels();
+                director.SetCompactHud(originalCompact);
+            }
+        }
+
         private Button ButtonStarting(string prefix)
         {
             var button = director.GetComponentsInChildren<Button>(true).FirstOrDefault(b => b.IsActive()

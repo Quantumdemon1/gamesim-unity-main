@@ -328,7 +328,8 @@ namespace Gamesim.Uma.Tests
             yield return null;
             var catalog = new UmaAppearanceCatalog();
             Assert.That(catalog.Diagnostics, Is.Empty);
-            var details = catalog.Items.Where(item => item.Slot == "Face").ToList();
+            // Only what a picker offers: a hidden face piece (an All-Star's own) is worn by its look, never offered.
+            var details = catalog.Items.Where(item => item.Slot == "Face" && !item.PickerHidden).ToList();
             Assert.That(details, Has.Count.EqualTo(11), "Every face detail in the house wardrobe is offered.");
             foreach (var detail in details)
             {

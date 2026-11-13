@@ -106,6 +106,12 @@ namespace Gamesim.Presentation
         /// <summary>The caption the start control carries. Tests and the tour find it by this text.</summary>
         public const string StartCaption = "Start this season";
         public const string CancelCaption = "Cancel — keep this season";
+        /// <summary>
+        /// The same control's caption on a first launch, reached from a main menu that offered no
+        /// Continue: there is no season to keep, and backing out goes to the menu. Its object keeps
+        /// the <see cref="CancelCaption"/> name.
+        /// </summary>
+        public const string BackToMenuCaption = "Back to the menu";
 
         /// <summary>Names the card's parts carry, so a test can find them without guessing.</summary>
         public const string CardGlowName = "Glow";
@@ -135,6 +141,8 @@ namespace Gamesim.Presentation
         private Action<SeasonBuilder.Choice> onStart;
         private Action onCancel;
         private Action<SeasonBuilder.Choice, CharacterDraft> onCustomise;
+        /// <summary>Whether this showing came from a first launch's menu: the back chip says <see cref="BackToMenuCaption"/>.</summary>
+        private bool freshStart;
 
         private CanvasScaler scaler;
         private bool libraryMode;
@@ -299,14 +307,17 @@ namespace Gamesim.Presentation
         /// The same, with the creator attached. <paramref name="customise"/> receives the choice as
         /// it stands and the draft to open — built from the selected card, or blank when there is
         /// none. Without it the creator controls are simply not drawn, so a caller that has no
-        /// creator still gets a working cast screen.
+        /// creator still gets a working cast screen. <paramref name="freshStart"/> is true when the
+        /// screen was opened from a main menu with no season to continue, and backing out goes back
+        /// to that menu: the back chip then says so rather than offering to keep a season.
         /// </summary>
         public void Show(Action<SeasonBuilder.Choice> start, Action cancel,
-            Action<SeasonBuilder.Choice, CharacterDraft> customise)
+            Action<SeasonBuilder.Choice, CharacterDraft> customise, bool freshStart = false)
         {
             onStart = start;
             onCancel = cancel;
             onCustomise = customise;
+            this.freshStart = freshStart;
             roster = CastTemplates.Roster.Regular;
             category = CastTemplates.AllCategories;
             selectedId = null;
@@ -1515,7 +1526,9 @@ namespace Gamesim.Presentation
             var startWords = start.GetComponentInChildren<TMP_Text>();
             if (startWords != null) { startWords.fontSizeMax = 20f; startWords.fontSize = 20f; }
             HudPrimitives.Chevron(start.transform, Color.white, 14f).anchoredPosition = new Vector2(-22f, 0f);
-            var cancel = Chip(bar, CancelCaption, cancelX, cancelWidth, false, Dismiss);
+            var cancel = Chip(bar, freshStart ? BackToMenuCaption : CancelCaption, cancelX, cancelWidth, false, Dismiss);
+            // The object keeps its one name whichever words it carries.
+            cancel.gameObject.name = CancelCaption;
             ((RectTransform)cancel.transform).sizeDelta = new Vector2(cancelWidth, 46f);
         }
 

@@ -21,7 +21,7 @@ namespace Gamesim.Presentation
     {
         public const string Prefix = "gs-acc-";
         public const string RootName = "Gamesim accessory";
-        public static readonly string[] Slots = { "Eyewear", "Headwear", "Earrings", "Neckwear" };
+        public static readonly string[] Slots = WardrobeSlots.CodeBuiltAccessories;
 
         public enum Shape { FramedGlasses, RoundGlasses, Sunglasses, Visor, Studs, Hoops, Drops, Chain, Collar, Beads, BowTie, TruckerCap, Beanie }
 

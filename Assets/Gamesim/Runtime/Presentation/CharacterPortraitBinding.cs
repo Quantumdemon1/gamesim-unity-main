@@ -11,6 +11,14 @@ namespace Gamesim.Presentation
         private RawImage image;
         private CharacterPortraits.PortraitRequest request;
         private float refreshAt;
+        private UnityEngine.UI.Image placeholder;
+
+        /// <summary>An optional creator thumbnail icon, shown only while its bound face is unavailable.</summary>
+        public void SetPlaceholder(UnityEngine.UI.Image value)
+        {
+            placeholder = value;
+            RefreshPlaceholder();
+        }
 
         public void Set(ContestantState contestant)
         {
@@ -30,16 +38,23 @@ namespace Gamesim.Presentation
 
         private void Refresh()
         {
-            if (request == null || image == null) return;
+            if (request == null || image == null) { RefreshPlaceholder(); return; }
             var texture = CharacterPortraits.Get(request);
             refreshAt = Time.unscaledTime + (texture == null ? .1f : .5f);
-            if (texture == null)
+            if (texture == null || (texture is RenderTexture pending && !pending.IsCreated()))
             {
                 if (image.texture == null || (image.texture is RenderTexture previous && !previous.IsCreated())) image.enabled = false;
+                RefreshPlaceholder();
                 return;
             }
             image.texture = texture;
             image.enabled = true;
+            RefreshPlaceholder();
+        }
+
+        private void RefreshPlaceholder()
+        {
+            if (placeholder != null) placeholder.enabled = placeholder.sprite != null && (image == null || !image.enabled);
         }
     }
 }

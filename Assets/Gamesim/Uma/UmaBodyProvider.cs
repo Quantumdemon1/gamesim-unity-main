@@ -104,6 +104,9 @@ namespace Gamesim.Uma
                     "open UMA > Global Library and rebuild the index");
                 return false;
             }
+            // The library look, not a saved outfit: it wears the pieces a catalog tag names it for.
+            if (look.Wardrobe == preset.Wardrobe)
+                look.Wardrobe = ((UmaAppearanceCatalog)Catalog).LookWardrobe(UmaCastLibrary.ResolveId(appearanceId, request.FallbackId), look.Race, preset.Wardrobe);
 
             var root = new GameObject("UMA Body");
             root.transform.SetParent(parent, false);
@@ -152,6 +155,8 @@ namespace Gamesim.Uma
             // Pieces built in code are not UMA recipes: they are fitted once the body is built.
             string grownHair = null;
             var accessories = new List<string>();
+            // The UMA slots a recipe actually dressed (the recipe's own slot, never a saved Missing-n).
+            var umaWorn = new HashSet<string>(StringComparer.Ordinal);
             foreach (var recipeName in look.Wardrobe)
             {
                 if (ProceduralHair.IsProcedural(recipeName)) { grownHair = recipeName; continue; }
@@ -172,10 +177,14 @@ namespace Gamesim.Uma
                     if (recipe == null) continue;
                 }
                 avatar.preloadWardrobeRecipes.recipes.Add(new DynamicCharacterAvatar.WardrobeRecipeListItem(recipe));
+                umaWorn.Add(recipe.wardrobeSlot);
                 // A saved outfit names its slots; a look straight from the library wears each recipe in its own.
                 string wornSlot = wornSet != null ? wornSet.FirstOrDefault(item => item.itemId == recipeName)?.slot : recipe.wardrobeSlot;
                 if (wornSlot != null) dressed[wornSlot] = recipe;
             }
+            // A UMA item and the code-built piece on the same place are never shown together: a look or a
+            // save that names both shows the UMA item. The saved choice is kept as it is.
+            accessories.RemoveAll(id => WardrobeSlots.Twins(ProceduralAccessories.Find(id)?.Slot).Any(umaWorn.Contains));
 
             // Skin and hair go in raw: see SkinColour and HairColour.
             avatar.SetRawColor(SkinColor, SkinColour(look.Skin), false);

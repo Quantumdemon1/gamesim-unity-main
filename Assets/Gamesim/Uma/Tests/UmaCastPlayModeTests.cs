@@ -57,6 +57,8 @@ namespace Gamesim.Uma.Tests
             yield return null;
             var indexer = UMAAssetIndexer.Instance;
             Assert.That(indexer, Is.Not.Null, "The Global Library must be present for any of this to work.");
+            // A look may name a catalog id: the product resolves it to its recipe's name, and so does this test.
+            var catalog = new UmaAppearanceCatalog();
 
             foreach (var appearanceId in UmaCastLibrary.AppearanceIds)
             {
@@ -74,7 +76,7 @@ namespace Gamesim.Uma.Tests
                             appearanceId + " wears '" + recipeName + "', which nothing builds.");
                         continue;
                     }
-                    Assert.That(indexer.GetAsset<UMAWardrobeRecipe>(recipeName), Is.Not.Null,
+                    Assert.That(indexer.GetAsset<UMAWardrobeRecipe>(catalog.ResolveRecipeName(recipeName)), Is.Not.Null,
                         appearanceId + " wears '" + recipeName + "', which is not in the Global Library.");
                 }
             }
@@ -178,8 +180,12 @@ namespace Gamesim.Uma.Tests
             Assert.That(mesh, Is.Not.Null);
 
             // The stylize pass runs on CharacterUpdated, which is the same frame the mesh appears.
-            foreach (var material in mesh.sharedMaterials.Where(m => m != null))
+            // A part marked to keep its authored finish is left alone; everything else is flattened,
+            // and at least one material is judged, so the test cannot pass on a body of marked parts.
+            int judged = 0;
+            foreach (var material in mesh.sharedMaterials.Where(m => m != null && !UmaStylizer.KeepsAuthoredFinish(m)))
             {
+                judged++;
                 if (material.HasProperty("_Smoothness"))
                     Assert.That(material.GetFloat("_Smoothness"), Is.LessThanOrEqualTo(0.1f),
                         material.name + " is still glossy; the house is flat-shaded.");
@@ -189,6 +195,7 @@ namespace Gamesim.Uma.Tests
                     Assert.That(material.GetFloat("_BumpScale"), Is.EqualTo(0f).Within(0.001f),
                         material.name + " still carries normal-map detail the set does not have.");
             }
+            Assert.That(judged, Is.GreaterThan(0), "The body has materials the house look flattens.");
         }
 
         [UnityTest]

@@ -410,7 +410,19 @@ namespace Gamesim.Uma
                 Brows = Hair("Soft black"),
                 Eyes = Eyes("Dark brown"),
                 Fabric = new Dictionary<string, Color> { ["Chest"] = Hex("5A4636") },
-                Dna = new Dictionary<string, float> { ["height"] = .21f, ["cheekPronounced"] = .62f, ["noseCurve"] = .56f, ["jawsSize"] = .6f },
+                // His face: fitted to his reference with the game's own face sliders, then built in the game and compared
+                // (12 November 2026). These are the fit set's 26 changed values; head size and the rest are the house's.
+                Dna = new Dictionary<string, float>
+                {
+                    ["height"] = .21f,
+                    ["BrowPosition"] = .56f, ["cheekPosition"] = .52f, ["cheekPronounced"] = .49f, ["cheekSize"] = .34f,
+                    ["chinPosition"] = .36f, ["chinPronounced"] = .58f, ["chinSize"] = .46f, ["eyeRotation"] = .53f,
+                    ["eyeSize"] = .13f, ["foreheadPosition"] = .40f, ["foreheadSize"] = .41f, ["headWidth"] = .91f,
+                    ["jawsPosition"] = .29f, ["jawsSize"] = .72f, ["lipsSize"] = .34f, ["lowCheekPosition"] = .53f,
+                    ["lowCheekPronounced"] = .52f, ["mandibleSize"] = .43f, ["mouthSize"] = .53f, ["noseBroken"] = .51f,
+                    ["noseCurve"] = .38f, ["noseInclination"] = .27f, ["nosePosition"] = .75f, ["nosePronounced"] = .57f,
+                    ["noseSize"] = .37f, ["noseWidth"] = .60f,
+                },
             },
 
             // The Undercover Boss. Fair, a sandy buzz cut, blue eyes, stocky, a blue plaid shirt.
@@ -672,6 +684,10 @@ namespace Gamesim.Uma
         /// </summary>
         public static bool Resolve(string characterId, string appearanceId, out UmaCastLook look)
             => TryGet(characterId, out look) || TryGet(appearanceId, out look);
+
+        /// <summary>The id <see cref="Resolve"/> finds the look by (the character's own first), or null when neither has one.</summary>
+        public static string ResolveId(string characterId, string appearanceId)
+            => TryGet(characterId, out _) ? characterId : TryGet(appearanceId, out _) ? appearanceId : null;
 
         private static Color Hex(string value)
         {

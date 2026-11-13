@@ -102,6 +102,10 @@ namespace Gamesim.Tests.PlayMode
         [UnityTest]
         public IEnumerator MainMenu_NewSeasonOpensTheCastScreenAndCancellingReturnsHere()
         {
+            // A first launch: nothing on disk, so there is no season to keep and the way back says so.
+            var store = new EpisodeSaveStore(director.SavePath);
+            foreach (var path in new[] { store.SavePath, store.BackupPath })
+                if (File.Exists(path)) File.Delete(path);
             var before = director.Snapshot;
 
             director.OpenMainMenu();
@@ -117,7 +121,12 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(CastButtons(CastSelect.StartCaption), Has.Length.EqualTo(1),
                 "The cast screen's controls must be reachable, not buried under the menu.");
 
-            CastButtons(CastSelect.CancelCaption)[0].onClick.Invoke();
+            Assert.That(CastButtons(CastSelect.CancelCaption), Is.Empty,
+                "With no season on disk there is none to keep: the back chip must not promise one.");
+            var back = CastButtons(CastSelect.BackToMenuCaption);
+            Assert.That(back, Has.Length.EqualTo(1), "On a first launch the back chip says where it goes.");
+            Assert.That(back[0].name, Is.EqualTo(CastSelect.CancelCaption), "The control keeps its one object name.");
+            back[0].onClick.Invoke();
             yield return null;
             yield return null;
 
@@ -125,6 +134,39 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(Menu().IsShowing, Is.True, "Cancelling must return to where the player came from.");
             Assert.That(director.Snapshot.sessionId, Is.EqualTo(before.sessionId),
                 "Nothing may be built by opening and backing out of the cast screen.");
+        }
+
+        /// <summary>
+        /// With a season on disk the menu offers Continue, and the cast screen reached from it keeps
+        /// the old words: backing out keeps that season.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator MainMenu_WithASeasonOnDiskTheCastScreenOffersToKeepIt()
+        {
+            new EpisodeSaveStore(director.SavePath).Save(director.Snapshot);
+            var before = director.Snapshot;
+
+            director.OpenMainMenu();
+            yield return null;
+            yield return null;
+            Assert.That(CastButtons(MainMenu.ContinueCaption), Has.Length.EqualTo(1), "The menu offers the season on disk.");
+
+            CastButtons(MainMenu.NewSeasonCaption)[0].onClick.Invoke();
+            yield return null;
+            yield return null;
+
+            Assert.That(CastScreen().IsShowing, Is.True);
+            Assert.That(CastButtons(CastSelect.BackToMenuCaption), Is.Empty, "There is a season to keep.");
+            var cancel = CastButtons(CastSelect.CancelCaption);
+            Assert.That(cancel, Has.Length.EqualTo(1), "The back chip offers to keep it.");
+            cancel[0].onClick.Invoke();
+            yield return null;
+            yield return null;
+
+            Assert.That(CastScreen().IsShowing, Is.False);
+            Assert.That(Menu().IsShowing, Is.True, "Backing out returns to the menu,");
+            Assert.That(CastButtons(MainMenu.ContinueCaption), Has.Length.EqualTo(1), "which still offers the season.");
+            Assert.That(director.Snapshot.sessionId, Is.EqualTo(before.sessionId), "Nothing is built.");
         }
 
         [UnityTest]

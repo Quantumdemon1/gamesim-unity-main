@@ -19,6 +19,8 @@ namespace Gamesim.Uma
         private readonly Dictionary<string, string> recipeNames = new Dictionary<string, string>(StringComparer.Ordinal);
         private readonly Dictionary<string, string[]> dnaByBody = new Dictionary<string, string[]>(StringComparer.Ordinal);
         private readonly List<string> diagnostics = new List<string>();
+        private readonly List<LookPieces.Piece> tagged = new List<LookPieces.Piece>();
+        private readonly HashSet<string> warned = new HashSet<string>(StringComparer.Ordinal);
         public IReadOnlyList<string> Diagnostics => diagnostics;
         public IReadOnlyList<AppearanceBodyOption> Bodies => bodies;
         public IReadOnlyList<AppearanceItem> Items => items;
@@ -103,7 +105,7 @@ namespace Gamesim.Uma
                 }
             }
 
-            var slots = new HashSet<string> { "Hair", "Beard", "Eyebrows", "Face", "Chest", "Legs", "Feet", "BottomUnderlayer", "TopUnderlayer" };
+            var slots = new HashSet<string>(WardrobeSlots.Uma, StringComparer.Ordinal);
             foreach (var recipe in index.GetAllAssets<UMAWardrobeRecipe>().Where(recipe => recipe != null).OrderBy(recipe => recipe.name, StringComparer.Ordinal))
             {
                 if (!slots.Contains(recipe.wardrobeSlot)) continue;
@@ -126,6 +128,7 @@ namespace Gamesim.Uma
                     StyleGroup = entry?.styleGroup,
                     Tags = entry?.tags?.ToArray() ?? Array.Empty<string>(),
                     FallbackPriority = entry?.fallbackPriority ?? 100,
+                    PickerHidden = entry?.pickerHidden ?? false,
                     Label = !string.IsNullOrWhiteSpace(entry?.label) ? entry.label
                         : string.IsNullOrWhiteSpace(recipe.DisplayValue) ? Label(recipe.name) : recipe.DisplayValue,
                     CompatibleBodies = compatible,
@@ -135,6 +138,11 @@ namespace Gamesim.Uma
                     Thumbnail = recipe.GetWardrobeRecipeThumbFor(compatible[0]),
                 });
             }
+
+            // The items a catalog tag names a library look for (LookPieces): only an item can be worn.
+            foreach (var item in items)
+                if (item.Tags.Any(tag => tag.StartsWith(LookPieces.WornBy, StringComparison.Ordinal)))
+                    tagged.Add(new LookPieces.Piece { Id = item.Id, Slot = item.Slot, Tags = item.Tags, Races = item.CompatibleBodies });
 
             // What UMA's library has none of, built in code and fitted to the body: textured hair
             // (see ProceduralHair) and accessories (see ProceduralAccessories). Both bodies wear all of it.
@@ -169,10 +177,27 @@ namespace Gamesim.Uma
         /// <summary>An item built in code rather than a UMA recipe: grown hair or an accessory.</summary>
         public static bool IsGrown(string id) => ProceduralHair.IsProcedural(id) || ProceduralAccessories.IsProcedural(id);
 
+        /// <summary>
+        /// The library look <paramref name="lookId"/> resolved by, as it is worn: its wardrobe with the pieces a
+        /// catalog tag names it for (<see cref="LookPieces.Apply"/>); its own array when none is. Warns once per catalog.
+        /// </summary>
+        public string[] LookWardrobe(string lookId, string race, string[] wardrobe)
+        {
+            if (lookId == null || tagged.Count == 0) return wardrobe;
+            var warnings = new List<string>();
+            var worn = LookPieces.Apply(lookId, race, wardrobe, tagged,
+                id => AppearanceEditing.Find(this, id)?.Slot ?? UMAAssetIndexer.Instance?.GetAsset<UMAWardrobeRecipe>(ResolveRecipeName(id))?.wardrobeSlot,
+                id => AppearanceEditing.Find(this, id)?.Id ?? id, warnings);
+            foreach (string warning in warnings)
+                if (warned.Add(warning)) Debug.LogWarning("[Gamesim.Uma] " + warning);
+            return worn;
+        }
+
         public AppearanceItem FindEquivalent(string itemId, string slot, string bodyId)
         {
             var original = AppearanceEditing.Find(this, itemId);
-            return items.Where(item => item.Slot == slot && item.Fits(bodyId))
+            // A picker-hidden item is worn only where a library look names it: never a substitute.
+            return items.Where(item => item.Slot == slot && item.Fits(bodyId) && !item.PickerHidden)
                 .OrderByDescending(item => original != null && !string.IsNullOrEmpty(original.StyleGroup) && item.StyleGroup == original.StyleGroup)
                 .ThenByDescending(item => original == null ? 0 : item.Tags.Intersect(original.Tags).Count())
                 .ThenBy(item => item.FallbackPriority).ThenBy(item => item.Id, StringComparer.Ordinal).FirstOrDefault();
@@ -205,11 +230,12 @@ namespace Gamesim.Uma
             if (!appearance.colors.Any(value => value.id == "Eyes")) AppearanceEditing.SetColor(appearance, "Eyes", look.Eyes);
             var outfit = AppearanceEditing.Outfit(appearance);
             if (outfit.wardrobe.Count == 0)
-                foreach (string id in look.Wardrobe)
+                foreach (string id in LookWardrobe(UmaCastLibrary.ResolveId(appearance.presetId, appearance.fallbackId), look.Race, look.Wardrobe))
                 {
                     var grown = IsGrown(id) ? AppearanceEditing.Find(this, id) : null;
                     if (grown != null) { outfit.wardrobe.Add(new AppearanceWardrobe { slot = grown.Slot, itemId = grown.Id }); continue; }
-                    var recipe = index?.GetAsset<UMAWardrobeRecipe>(id);
+                    // A look may name a catalog id or an alias: the index is keyed by the recipe's own name.
+                    var recipe = index?.GetAsset<UMAWardrobeRecipe>(ResolveRecipeName(id));
                     if (recipe != null) outfit.wardrobe.Add(new AppearanceWardrobe { slot = recipe.wardrobeSlot, itemId = AppearanceEditing.Find(this, id)?.Id ?? id });
                     // Missing selections retain their ID too; installing the content later restores them.
                     else outfit.wardrobe.Add(new AppearanceWardrobe { slot = "Missing-" + outfit.wardrobe.Count, itemId = id });

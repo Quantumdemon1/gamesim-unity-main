@@ -59,9 +59,28 @@ namespace Gamesim.Tests.PlayMode
             CompetitionResult results = null;
             var cases = new List<BackCase>
             {
+                // A season behind it is one on disk, the one Continue offers: written first, since
+                // every case starts from an emptied save root.
                 new BackCase { Name = "main menu, with a season behind it", MayCommit = true,
-                    Open = () => Step(() => director.OpenMainMenu()),
+                    Open = () => Step(() =>
+                    {
+                        new Gamesim.Persistence.EpisodeSaveStore(director.SavePath).Save(director.Snapshot);
+                        director.OpenMainMenu();
+                    }),
                     Settled = () => !Menu().IsShowing, Done = () => !Menu().IsShowing },
+                // A first launch: the authored season is in memory, nothing is on disk and the menu
+                // offers no Continue, so Escape and B leave it up rather than start a season nobody chose.
+                // The slot is emptied after the hold, whose flush can write NPC time installed since the
+                // reload; the held house writes nothing more.
+                new BackCase { Name = "main menu, on a first launch",
+                    Open = () => Step(() =>
+                    {
+                        var store = new Gamesim.Persistence.EpisodeSaveStore(director.SavePath);
+                        foreach (var path in new[] { store.SavePath, store.BackupPath })
+                            if (File.Exists(path)) File.Delete(path);
+                        director.OpenMainMenu();
+                    }),
+                    Done = () => Menu().IsShowing && !Menu().OffersContinue && director.SeasonInProgress },
                 // With none - the slot's save unreadable, the house in recovery - the menu has
                 // nowhere to close to: Escape and B both leave it up, and nothing under it acts.
                 new BackCase { Name = "main menu, with no season to go back to", Open = OpenMainMenuWithNoSeasonForBack,

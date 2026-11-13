@@ -333,7 +333,7 @@ namespace Gamesim.Uma.Tests
                 .Where(value => ReferenceEquals(value.Material, part.Drawing)).ToList();
             Assert.That(drawnOn, Is.Not.Empty, what + ": its own material is on the body (UseExistingMaterial draws it, never a copy).");
             Assert.That(drawnOn.Any(value => value.Renderer.sharedMesh != null && value.Index < value.Renderer.sharedMesh.subMeshCount
-                && value.Renderer.sharedMesh.GetIndexCount(value.Index) > 0), Is.True, what + ": its submesh has triangles.");
+                && value.Renderer.sharedMesh.GetSubMesh(value.Index).indexCount > 0), Is.True, what + ": its submesh has triangles.");
 
             var drawing = part.Drawing;
             Assert.That(drawing.GetTexture(BaseMap), Is.SameAs(part.Texture), what + ": drawn with its own texture, not an atlas.");

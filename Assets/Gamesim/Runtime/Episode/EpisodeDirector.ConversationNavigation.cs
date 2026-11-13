@@ -167,7 +167,10 @@ namespace Gamesim.Episode
                 if (ConversationNavigationCurrent(token, state, npc.id)) BackConversationNavigation(true);
             });
             if (cameraRig != null) cameraRig.ConversationWindowOffset = hud.ConversationWindowOffset;
-            if (!acceptedExchangeWasPresented && !string.IsNullOrEmpty(conversationNarration))
+            // What came of the act is said on its category's page whether or not its lines were spoken: an ask,
+            // a promise or a deal used to end on the trust chip alone, its result (intel learned, a deal refused)
+            // only in lines the player may have skipped (UI U3). The topics view above keeps its own gate.
+            if (!string.IsNullOrEmpty(conversationNarration))
             { hud.Heading("WHAT HAPPENED"); hud.Paragraph(conversationNarration); }
             if (lastSocialAction.HasValue) hud.OutcomeChips(lastSocialDelta);
 

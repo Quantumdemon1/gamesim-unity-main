@@ -104,6 +104,9 @@ namespace Gamesim.Uma
                     "open UMA > Global Library and rebuild the index");
                 return false;
             }
+            // The library look, not a saved outfit: it wears the pieces a catalog tag names it for.
+            if (look.Wardrobe == preset.Wardrobe)
+                look.Wardrobe = ((UmaAppearanceCatalog)Catalog).LookWardrobe(UmaCastLibrary.ResolveId(appearanceId, request.FallbackId), look.Race, preset.Wardrobe);
 
             var root = new GameObject("UMA Body");
             root.transform.SetParent(parent, false);

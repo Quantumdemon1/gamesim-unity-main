@@ -291,10 +291,11 @@ namespace Gamesim.Uma.Tests
         // ------------------------------------------------------------------------------- the looks
 
         [Test]
-        public void EveryLibraryLookMaterializesEachIdIntoItsRecipesSlot()
+        public void EveryLibraryLookMaterializesEachIdIntoItsRecipesSlot() => EachIdMaterializesIntoItsRecipesSlot(new UmaAppearanceCatalog());
+
+        private static void EachIdMaterializesIntoItsRecipesSlot(UmaAppearanceCatalog catalog)
         {
             var index = UMAAssetIndexer.Instance;
-            var catalog = new UmaAppearanceCatalog();
             foreach (string id in UmaCastLibrary.AppearanceIds)
                 foreach (var worn in catalog.Materialize(CharacterAppearance.Preset(id)).outfits.SelectMany(outfit => outfit.wardrobe))
                 {
@@ -306,9 +307,10 @@ namespace Gamesim.Uma.Tests
         }
 
         [Test]
-        public void NoLibraryLookWearsAUmaItemAndItsCodeBuiltTwin()
+        public void NoLibraryLookWearsAUmaItemAndItsCodeBuiltTwin() => NoLookWearsAUmaItemAndItsTwin(new UmaAppearanceCatalog());
+
+        private static void NoLookWearsAUmaItemAndItsTwin(UmaAppearanceCatalog catalog)
         {
-            var catalog = new UmaAppearanceCatalog();
             foreach (string id in UmaCastLibrary.AppearanceIds)
                 foreach (var outfit in catalog.Materialize(CharacterAppearance.Preset(id)).outfits)
                 {
@@ -460,6 +462,34 @@ namespace Gamesim.Uma.Tests
                 Assert.That(catalog.ResolveRecipeName("contract-retired"), Is.EqualTo(recipe.name), "A save naming it still finds its recipe.");
             }
             yield return null;
+        }
+
+        // The two look walkers again with pieces tagged for one library look in the catalog (UmaAllStarPiecesPlayModeTests).
+        private UmaAllStarPiecesPlayModeTests.Pieces pieces;
+
+        [TearDown]
+        public void RemoveTaggedPieces() { pieces?.Dispose(); pieces = null; }
+
+        [UnityTest]
+        public IEnumerator EveryLibraryLookMaterializesEachIdIntoItsRecipesSlotWithATaggedPiece()
+        {
+            yield return null;
+            pieces = UmaAllStarPiecesPlayModeTests.TaggedForStar(new UmaAppearanceCatalog(), duplicate: false);
+            EachIdMaterializesIntoItsRecipesSlot(UmaAllStarPiecesPlayModeTests.TaggedCatalog(pieces));
+            var removed = pieces;
+            RemoveTaggedPieces();
+            UmaAllStarPiecesPlayModeTests.AssertNothingLeft(removed);
+        }
+
+        [UnityTest]
+        public IEnumerator NoLibraryLookWearsAUmaItemAndItsCodeBuiltTwinWithATaggedPiece()
+        {
+            yield return null;
+            pieces = UmaAllStarPiecesPlayModeTests.TaggedForStar(new UmaAppearanceCatalog(), duplicate: false);
+            NoLookWearsAUmaItemAndItsTwin(UmaAllStarPiecesPlayModeTests.TaggedCatalog(pieces));
+            var removed = pieces;
+            RemoveTaggedPieces();
+            UmaAllStarPiecesPlayModeTests.AssertNothingLeft(removed);
         }
 
         [UnityTest]

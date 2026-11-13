@@ -220,10 +220,22 @@
 # OldSaveAcceptanceTests is 290 on the merge (70 fixtures' four cases each, the manifest case, the two refused cases, the
 # two careers and the alumni-5, dialogue-1, dialogue-2 and story-rules-10 cells' 1 + 1 + 1 + 2 own cases). Counted from
 # the two sides; no run has observed it on the merge.
+# 9905 = 9897 + the UI stack's 8 (ObjectiveWordsTests, slice U1: the objective card's words): the lister counted
+# 9905 at each of the stack's three heads, and the 8 ran in U1's targeted Unity batch, 8 of 8 (2026-11-11). No full
+# EditMode run has observed 9905 yet.
 # 9911 = 9897 + the All-Star intake's 14 (AppearanceAccessoryPlaceTests 8, WardrobeSlotsTests 6): the lister counted
 # 9911 at 290758d2, the Mono harness ran both classes (8 of 8 and 6 of 6), and the intake's targeted Unity batch at
 # 290758d2 ran both among its 68 appearance cases, 68 of 68 (2026-11-11). No full EditMode run has observed 9911.
-Gamesim.EditModeTests 9911
+# 9920 = 9911 + face slice 1's 9 LookPiecesTests cases (E1 to E9: a piece tagged worn-by a look is dressed on it,
+# and the library line's format): the lister counted 9920 at 9cce3f9d, the Mono harness ran the class (9 of 9), and
+# the slice's targeted Unity batch ran the nine as its EditMode part, 9 of 9 (set fs1tg3 at a432660d, 2026-11-12).
+# No full EditMode run has observed 9920.
+# 9919 = 9897 + the All-Star intake's 14 + the UI stack's 8: disjoint cases, so the floor is their sum (the merge of main
+# into the UI stack's last slice at its landing, 2026-11-12). The UI stack's full EditMode run observed 9905 of 9905 at
+# 8aea8d7b (set uiqf2, 2026-11-12). Counted from the two sides; no run has observed 9919 on the merge.
+# 9928 = 9919 + face slice 1's 9: disjoint from the intake's and the UI stack's cases, so the floor is the sum (the merge
+# of main into face slice 1 at its landing, 2026-11-12). Counted from the two sides; no run has observed 9928.
+Gamesim.EditModeTests 9928
 # The UMA-free build. 1215 = 1236, the count after the consolidation's lanes (S2a, S2b, S4a), less the 7
 # farewell probes moved to Gamesim.DiagnosticsPlayModeTests and the 14 farewell readiness tests that now
 # compile only under GAMESIM_UMA (judged on the UMA cast); 1230 = 1215 + S2d's 7, S4b's 2, S4c's 2 and
@@ -353,7 +365,12 @@ Gamesim.EditModeTests 9911
 # 1498 = 1486 + the rules-2 HUD's 12 shared cases (EpisodePlayModeTests.DialogueRules2Hud: the fallback plea panel, the
 # voter's word, the public rescue and the four-tile reply, each at the standard, larger and largest text), counted from
 # the source and compiled offline (2026-11-08); no Unity run has observed them yet.
-Gamesim.PlayModeTests 1498
+# 1502 = 1498 + the UI stack's 4 shared cases in EpisodePlayModeTests: U1's two 'Here: the episode screen' tests
+# (Objective_SaysHereWhileTheEpisodeScreenIsOpen, Finale_TheObjectiveSaysHereWhileTheEpisodeScreenIsOpen), U2's
+# MainMenu_WithASeasonOnDiskTheCastScreenOffersToKeepIt and U3's
+# ConversationExchange_ASpokenActEndsOnItsCategoryPageWithWhatHappened. The lister counted 1500, 1501 and 1502 at the
+# three heads (2026-11-11). Compiled in this build; they ran in Unity in the UMA build only (see UmaBuild below).
+Gamesim.PlayModeTests 1502
 # The UMA build of the same assembly, read by a plan built without -WithoutUma. 1281 = the 1241 above + the
 # 40 tests that compile only under GAMESIM_UMA, as run at r1 (2026-10-16): in EpisodePlayModeTests,
 # GroundedFarewell 11, Creator 9, HouseLife 8, Emotes 3, OpeningCaptures 2, and one each in CreatorEntry,
@@ -434,11 +451,17 @@ Gamesim.PlayModeTests 1498
 # 1528 = 1522 + B9's 1 (1523 - 1522) + the quick fixes' 5 (1527 - 1522): disjoint cases, so the floor is their sum (2026-11-06).
 # 1540 = 1528 + the rules-2 HUD's same 12 shared cases, counted from the source; compiled offline without UMA only, and no
 # Unity run has observed them yet (2026-11-08).
+# 1544 = 1540 + the UI stack's same 4 shared cases: the lister counted 1542, 1543 and 1544 at the three heads, and
+# each case passed in its own slice's targeted Unity batch (uiq1, uiq2, uiq3; 2026-11-11). No full run of this
+# assembly has observed 1544 yet.
 # 1543 = 1540 + the All-Star intake's 3 creator tests (EpisodePlayModeTests' creator pages; compiled with UMA only, so
 # the floor without UMA stays 1498): the lister counted 1543 at 290758d2, and the intake's targeted Unity batch there
 # ran the three among its 132 creator and appearance cases, 132 of 132 (2026-11-11). No full PlayMode run has
 # observed 1543.
-Gamesim.PlayModeTests.UmaBuild 1543
+# 1547 = 1540 + the All-Star intake's 3 + the UI stack's 4: disjoint cases, so the floor is their sum (the merge of main
+# into the UI stack's last slice at its landing, 2026-11-12). The UI stack's full run of this assembly observed 1544 of
+# 1544 at 8aea8d7b (set uiqf2, 2026-11-12). Counted from the two sides; no run has observed 1547 on the merge.
+Gamesim.PlayModeTests.UmaBuild 1547
 # The UMA bodies: runs only where the GAMESIM_UMA define is set (the working tree and the D: copy).
 # 82 = the 89 run on 2026-10-15, less the 7 farewell probes moved to Gamesim.Uma.DiagnosticsPlayModeTests;
 # 85 = 82 + the 3 farewell readiness decision tests (UmaFarewellReadinessDecisionPlayModeTests, 2026-10-16);
@@ -461,7 +484,13 @@ Gamesim.PlayModeTests.UmaBuild 1543
 # and UmaFaceFitExportRunPlayModeTests: which face form paints the head on each body type, the face-fit export, a
 # hair's own root-to-tip map, and the run test the real export uses): the slice's targeted Unity batch at e74b3db8 ran
 # the whole assembly, 163 of 163 (set fs2tg2, 2026-11-12), on a vendor with the triangle patch applied.
-Gamesim.Uma.PlayModeTests 163
+# 159 = 153 + face slice 1's 6 (UmaAllStarPiecesPlayModeTests' U1 and U4, and the tagged-piece case of each of the
+# four look walkers): the slice's targeted Unity batch at a432660d ran the whole assembly, 159 of 159 (set fs1tg2,
+# 2026-11-12), on a vendor with the triangle patch applied.
+# 169 = 153 + face slice 1's 6 + face slice 2's 10: disjoint cases, so the floor is their sum (the merge of main into face
+# slice 2 at its landing, 2026-11-12). Each slice's batch ran the whole assembly as it stood on that slice (159 and 163);
+# counted from the two sides, no run has observed 169.
+Gamesim.Uma.PlayModeTests 169
 # Diagnostics: feasibility and diagnostic probes, never shipping acceptance. They compile only under
 # GAMESIM_DIAGNOSTICS, which only a diagnostic run adds to the test copy (GAMESIM_DIAGNOSTICS=1 with
 # sync-and-run.sh or the locked runner); the UMA one needs GAMESIM_UMA too. The floor counts that they
@@ -588,6 +617,8 @@ Gamesim.Uma.DiagnosticsPlayModeTests 10
 # 16710 = 16642 + main's 53 (16695 - 16642: the dialogue chip 2's observers, chip and HUD witnesses) + story rules 10's
 # 15 (16657 - 16642): disjoint cases, so the floor is their sum (the merge of main into story rules 10, 2026-11-09).
 # Counted from the two sides; no run has observed it on the merge.
+# 16718 = 16710 + ObjectiveWordsTests' 8 (the same cases as EditMode's, linked into the subset by slice U1): dotnet
+# test ran 16718 passed, 0 failed, 0 skipped on the stack's top head (1b9e9166, 2026-11-11).
 # 16716 = 16710 + the All-Star intake's 6 WardrobeSlotsTests cases (the slot lists, the twins, the Accessories page's rows,
 # the swim and sleep sets, and the two save proofs): dotnet test Tools/SimulationTests ran exactly 16716 of 16716 on the
 # commit that adds them, from main at fceeaa24 (2026-11-10).
@@ -596,4 +627,11 @@ Gamesim.Uma.DiagnosticsPlayModeTests 10
 # ran exactly 16718 of 16718 on the commit that adds them (2026-11-10).
 # 16745 = 16718 + face slice 2's 27 UmaFaceFitFilesTests cases (the export's file writer, read back from outside):
 # dotnet test Tools/SimulationTests ran exactly 16745 of 16745 on the slice at c0a6444f (2026-11-11).
-Gamesim.SimulationTests 16745
+# 16727 = 16718 + face slice 1's 9 LookPiecesTests cases (the same nine the EditMode floor counts): dotnet test
+# Tools/SimulationTests ran exactly 16727 of 16727 on the slice at 9cce3f9d (2026-11-11).
+# 16726 = 16710 + the All-Star intake's 8 + the UI stack's 8: disjoint cases, so the floor is their sum (the merge of main
+# into the UI stack's last slice at its landing, 2026-11-12). Counted from the two sides; dotnet test has not run on the
+# merge yet.
+# 16735 = 16726 + face slice 1's 9: the sum, as above (the merge of main into face slice 1 at its landing, 2026-11-12).
+# 16762 = 16735 + face slice 2's 27: the sum, as above (the merge of main into face slice 2 at its landing, 2026-11-12).
+Gamesim.SimulationTests 16762

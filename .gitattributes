@@ -18,6 +18,8 @@
 *.sh text eol=lf
 *.ps1 text eol=lf
 *.py text eol=lf
+# The lane hashes each look's line of LibraryLooks.txt and a test pins its bytes: LF on every checkout.
+Assets/Gamesim/Uma/LibraryLooks.txt text eol=lf
 
 *.png binary
 *.jpg binary

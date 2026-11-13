@@ -19,6 +19,8 @@ namespace Gamesim.Uma
         private readonly Dictionary<string, string> recipeNames = new Dictionary<string, string>(StringComparer.Ordinal);
         private readonly Dictionary<string, string[]> dnaByBody = new Dictionary<string, string[]>(StringComparer.Ordinal);
         private readonly List<string> diagnostics = new List<string>();
+        private readonly List<LookPieces.Piece> tagged = new List<LookPieces.Piece>();
+        private readonly HashSet<string> warned = new HashSet<string>(StringComparer.Ordinal);
         public IReadOnlyList<string> Diagnostics => diagnostics;
         public IReadOnlyList<AppearanceBodyOption> Bodies => bodies;
         public IReadOnlyList<AppearanceItem> Items => items;
@@ -137,6 +139,11 @@ namespace Gamesim.Uma
                 });
             }
 
+            // The items a catalog tag names a library look for (LookPieces): only an item can be worn.
+            foreach (var item in items)
+                if (item.Tags.Any(tag => tag.StartsWith(LookPieces.WornBy, StringComparison.Ordinal)))
+                    tagged.Add(new LookPieces.Piece { Id = item.Id, Slot = item.Slot, Tags = item.Tags, Races = item.CompatibleBodies });
+
             // What UMA's library has none of, built in code and fitted to the body: textured hair
             // (see ProceduralHair) and accessories (see ProceduralAccessories). Both bodies wear all of it.
             if (bodies.Count == 0) return;
@@ -169,6 +176,22 @@ namespace Gamesim.Uma
 
         /// <summary>An item built in code rather than a UMA recipe: grown hair or an accessory.</summary>
         public static bool IsGrown(string id) => ProceduralHair.IsProcedural(id) || ProceduralAccessories.IsProcedural(id);
+
+        /// <summary>
+        /// The library look <paramref name="lookId"/> resolved by, as it is worn: its wardrobe with the pieces a
+        /// catalog tag names it for (<see cref="LookPieces.Apply"/>); its own array when none is. Warns once per catalog.
+        /// </summary>
+        public string[] LookWardrobe(string lookId, string race, string[] wardrobe)
+        {
+            if (lookId == null || tagged.Count == 0) return wardrobe;
+            var warnings = new List<string>();
+            var worn = LookPieces.Apply(lookId, race, wardrobe, tagged,
+                id => AppearanceEditing.Find(this, id)?.Slot ?? UMAAssetIndexer.Instance?.GetAsset<UMAWardrobeRecipe>(ResolveRecipeName(id))?.wardrobeSlot,
+                id => AppearanceEditing.Find(this, id)?.Id ?? id, warnings);
+            foreach (string warning in warnings)
+                if (warned.Add(warning)) Debug.LogWarning("[Gamesim.Uma] " + warning);
+            return worn;
+        }
 
         public AppearanceItem FindEquivalent(string itemId, string slot, string bodyId)
         {
@@ -207,7 +230,7 @@ namespace Gamesim.Uma
             if (!appearance.colors.Any(value => value.id == "Eyes")) AppearanceEditing.SetColor(appearance, "Eyes", look.Eyes);
             var outfit = AppearanceEditing.Outfit(appearance);
             if (outfit.wardrobe.Count == 0)
-                foreach (string id in look.Wardrobe)
+                foreach (string id in LookWardrobe(UmaCastLibrary.ResolveId(appearance.presetId, appearance.fallbackId), look.Race, look.Wardrobe))
                 {
                     var grown = IsGrown(id) ? AppearanceEditing.Find(this, id) : null;
                     if (grown != null) { outfit.wardrobe.Add(new AppearanceWardrobe { slot = grown.Slot, itemId = grown.Id }); continue; }

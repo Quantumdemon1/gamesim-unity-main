@@ -235,7 +235,10 @@
 # 8aea8d7b (set uiqf2, 2026-11-12). Counted from the two sides; no run has observed 9919 on the merge.
 # 9928 = 9919 + face slice 1's 9: disjoint from the intake's and the UI stack's cases, so the floor is the sum (the merge
 # of main into face slice 1 at its landing, 2026-11-12). Counted from the two sides; no run has observed 9928.
-Gamesim.EditModeTests 9928
+# 9929 = 9928 + face slice 3's 1 LookPiecesTests case (E10: Will's line in LibraryLooks.txt holds his 26 fitted face
+# values and his other values as before): the lister counted 9929 at b1a2e811 (2026-11-13), and the Unity-free suite ran
+# the case (below). No Unity EditMode run has observed 9929 yet.
+Gamesim.EditModeTests 9929
 # The UMA-free build. 1215 = 1236, the count after the consolidation's lanes (S2a, S2b, S4a), less the 7
 # farewell probes moved to Gamesim.DiagnosticsPlayModeTests and the 14 farewell readiness tests that now
 # compile only under GAMESIM_UMA (judged on the UMA cast); 1230 = 1215 + S2d's 7, S4b's 2, S4c's 2 and
@@ -634,4 +637,6 @@ Gamesim.Uma.DiagnosticsPlayModeTests 10
 # merge yet.
 # 16735 = 16726 + face slice 1's 9: the sum, as above (the merge of main into face slice 1 at its landing, 2026-11-12).
 # 16762 = 16735 + face slice 2's 27: the sum, as above (the merge of main into face slice 2 at its landing, 2026-11-12).
-Gamesim.SimulationTests 16762
+# 16763 = 16762 + face slice 3's 1 LookPiecesTests case (E10, the same case the EditMode floor counts): dotnet test
+# Tools/SimulationTests ran exactly 16763 of 16763 on the slice at b1a2e811 (2026-11-13).
+Gamesim.SimulationTests 16763

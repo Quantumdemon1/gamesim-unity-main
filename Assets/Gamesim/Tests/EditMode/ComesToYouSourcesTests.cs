@@ -48,8 +48,8 @@ namespace Gamesim.Tests.EditMode
 
         /// <summary>
         /// S2. A pitch is never a Card: a valid pitch waiting first (the player Head of Household in the nomination) lists
-        /// no row at all in OF-a, and a confrontation filed behind it is not the card the player can answer, so it is not
-        /// listed either.
+        /// no Card row - in OF-a no row at all; from OF-p on it is its own source's one row, a Pitch (S10) - and a
+        /// confrontation filed behind it is not the card the player can answer, so it is not listed either.
         /// </summary>
         [Test]
         public void APitchIsNeverACard()
@@ -61,7 +61,9 @@ namespace Gamesim.Tests.EditMode
             Assert.That(HoHPitches.ValidCard(s, pitch), Is.True, "The premise: a pitch the player can hear.");
             Assert.That(WaitingOnYou.Read(s).items.Single(item => item.id == pitch.id).kind, Is.EqualTo(WaitingOnYou.Kind.Card),
                 "and the waiting list holds it as a card.");
-            Assert.That(ComesToYou.Read(s), Is.Empty, "No row: a pitch's walk-up is its own source, not a Card.");
+            // OF-p (offers slice 4p) repins this line: OF-a read no row here; the pitch is now its own source's row.
+            Assert.That(ComesToYou.Read(s).Select(ask => (ask.source, ask.recordId)), Is.EqualTo(new[] { (ComesToYou.Source.Pitch, pitch.id) }),
+                "No Card row: a pitch's walk-up is its own source.");
 
             s.replyCards.Add(new ReplyCardState { id = "reply-90", week = s.week, kind = ReplyCards.Confrontation, fromId = Npc(s, 1) });
             Assert.That(ComesToYou.Read(s).Where(ask => ask.source == ComesToYou.Source.Card), Is.Empty,
@@ -267,6 +269,151 @@ namespace Gamesim.Tests.EditMode
                 var late = social.Clone(); late.phase = phase;
                 Assert.That(ComesToYou.Read(late), Is.Empty, phase + ": from the final Head of Household on nobody comes.");
             }
+        }
+
+        // ================================================================== OF-p: the pitchers walk up (Source.Pitch)
+        //
+        // The pitches are the ones the engine deals as the nominations open (CourtTheHoH), on RolePitchBoardTests' crowned
+        // season: at story rules Roles, written by name, the board (HoldTheBoard keeps three, in its order); at Threads, written
+        // by name, every courting houseguest's pitch, one at a time. Neither leans on StoryRules.Current.
+
+        /// <summary>
+        /// S10. The pitchers walk up in every season. With the board every unanswered board pitch is a
+        /// <see cref="ComesToYou.Source.Pitch"/> row, in <c>s.replyCards</c> order: the card's id, its pitcher, the kind, the
+        /// week, the pitch's line and lapse line, never whispered. Without it only the pitch waiting first is, the one the
+        /// one-at-a-time answers take. Once the nominations are made, none is.
+        /// </summary>
+        [Test]
+        public void PitchersWalkUpInEverySeason()
+        {
+            var engine = RolePitchBoardTests.Dealt(RolePitchBoardTests.Crowned(), out var board, RoleTone.Pragmatic, RoleTone.Pragmatic, RoleTone.Pragmatic);
+            var s = engine.Snapshot;
+            Assert.That(HoHPitches.OnTheBoard(s), Is.True, "The premise: the board.");
+            var asks = ComesToYou.Read(s);
+            Assert.That(asks.Select(ask => (ask.source, ask.recordId, ask.askerId)),
+                Is.EqualTo(s.replyCards.Select(card => (ComesToYou.Source.Pitch, card.id, card.fromId))), "Every board pitch, in the board's order.");
+            Assert.That(asks.Select(ask => ask.askerId), Is.EqualTo(board));
+            foreach (var ask in asks)
+            {
+                Assert.That((ask.type, ask.week, ask.line, ask.lapseLine, ask.lapses, ask.lapsesOnAdvance, ask.whisper),
+                    Is.EqualTo((ReplyCards.Pitch, s.week, ComesToYou.PitchLine, ComesToYou.LapseNominations, WaitingOnYou.Lapse.NominationSet, false, false)), ask.askerId);
+                Assert.That(ask.IsCurrent(s), Is.True, ask.askerId);
+                Assert.That(ComesToYou.Find(s, ask.recordId)?.source, Is.EqualTo(ComesToYou.Source.Pitch));
+            }
+
+            var others = s.Active.Where(c => !c.isPlayer && !board.Contains(c.id)).Select(c => c.id).Take(2).ToArray();
+            var nominated = RolePitchBoardTests.Apply(engine, RolePitchBoardTests.Command(s, EpisodeCommandKind.Nominate, others[0], others[1]));
+            Assert.That(HoHPitches.Available(nominated), Is.False, "The premise: the nominations are made.");
+            Assert.That(ComesToYou.Read(nominated).Where(ask => ask.source == ComesToYou.Source.Pitch), Is.Empty, "Nobody pitches after the nominations.");
+            Assert.That(asks.Any(ask => ask.IsCurrent(nominated)), Is.False);
+
+            var old = OneAtATime(out var oldEngine);
+            var first = old.replyCards[0];
+            var oldAsks = ComesToYou.Read(old);
+            Assert.That(oldAsks.Select(ask => (ask.source, ask.recordId, ask.askerId)), Is.EqualTo(new[] { (ComesToYou.Source.Pitch, first.id, first.fromId) }),
+                "Before the board only the pitch waiting first comes.");
+            Assert.That((oldAsks[0].line, oldAsks[0].lapseLine), Is.EqualTo((ComesToYou.PitchLine, ComesToYou.LapseNominations)));
+        }
+
+        /// <summary>
+        /// S11. The pitches come first, in the board's order: before every offer and every card, in <c>s.replyCards</c> order,
+        /// even where the pitchers' ids run the other way. A pitch is never a Card row.
+        /// </summary>
+        [Test]
+        public void PitchesComeFirstInTheBoardsOrder()
+        {
+            var crowned = RolePitchBoardTests.Crowned();
+            var board = Enumerable.Reverse(RolePitchBoardTests.Board(crowned)).ToArray();
+            Assert.That(board, Is.EqualTo(board.OrderByDescending(id => id, StringComparer.Ordinal)), "The premise: the ids run downward.");
+            var shaped = RolePitchBoardTests.Shaped(crowned, board, RoleTone.Pragmatic, RoleTone.Pragmatic, RoleTone.Pragmatic);
+            var engine = new EpisodeEngine(shaped);
+            var s = RolePitchBoardTests.Apply(engine, RolePitchBoardTests.Command(shaped, EpisodeCommandKind.Advance)).Clone();
+            Assert.That(s.replyCards.Select(card => card.fromId), Is.EqualTo(board), "The board, dealt warmest first: the ids downward.");
+            Assert.That(ComesToYou.Read(s).Select(ask => ask.askerId), Is.EqualTo(board), "The pitches in the board's order, never by id.");
+
+            // An offer and a card besides: a confrontation waiting first, the one card the player can answer, and an offer.
+            var others = s.Active.Where(c => !c.isPlayer && !board.Contains(c.id)).Select(c => c.id).OrderBy(id => id, StringComparer.Ordinal).ToArray();
+            s.replyCards.Insert(0, new ReplyCardState { id = "reply-60", week = s.week, kind = ReplyCards.Confrontation, fromId = others[0] });
+            Offer(s, others[0], DealKind.Partnership, NpcDeals.OfferPrefix + "902");
+            var asks = ComesToYou.Read(s);
+            Assert.That(asks.Select(ask => ask.source), Does.Contain(ComesToYou.Source.Card).And.Contain(ComesToYou.Source.Offer),
+                "The premise: a card and an offer are listed too.");
+            Assert.That(asks.Take(board.Length).Select(ask => (ask.source, ask.askerId)), Is.EqualTo(board.Select(id => (ComesToYou.Source.Pitch, id))),
+                "The pitches first, in the board's order.");
+            Assert.That(asks.Skip(board.Length).Select(ask => ask.source), Has.None.EqualTo(ComesToYou.Source.Pitch), "and nothing after them is a pitch.");
+            Assert.That(asks.Where(ask => ask.source == ComesToYou.Source.Card).Select(ask => ask.type), Has.None.EqualTo(ReplyCards.Pitch), "A pitch is never a Card.");
+        }
+
+        /// <summary>
+        /// S12. A pitch stops being current once it is answered, but not on a feel-out: an answer takes that pitcher out of
+        /// the queue and leaves the others; a feel-out leaves it standing; making the nominations ends them all. Before the
+        /// board, answering the pitch waiting first brings the next pitcher.
+        /// </summary>
+        [Test]
+        public void APitchStopsBeingCurrentOnceAnsweredButNotOnAFeelOut()
+        {
+            var engine = RolePitchBoardTests.Dealt(RolePitchBoardTests.Crowned(), out var board, RoleTone.Pragmatic, RoleTone.Pragmatic, RoleTone.Pragmatic);
+            var s = engine.Snapshot;
+            var asks = ComesToYou.Read(s);
+            Assert.That(asks, Has.Count.EqualTo(3));
+            string json = JsonConvert.SerializeObject(s);
+            Assert.That(asks.All(ask => ask.IsCurrent(s)), Is.True);
+            Assert.That(JsonConvert.SerializeObject(s), Is.EqualTo(json), "Reading the pitches writes nothing.");
+
+            var heard = RolePitchBoardTests.Apply(engine, RolePitchBoardTests.Answer(s, asks[1].recordId, HoHPitches.HearKey));
+            Assert.That(asks.Select(ask => ask.IsCurrent(heard)), Is.EqualTo(new[] { true, false, true }), "The answered pitcher leaves; the others stay.");
+            Assert.That(ComesToYou.Read(heard).Select(ask => ask.askerId), Is.EqualTo(new[] { board[0], board[2] }));
+
+            var felt = RolePitchBoardTests.Apply(engine, RolePitchBoardTests.Answer(heard, asks[0].recordId, HoHPitches.FeelOutKey));
+            Assert.That(HoHPitches.Assessed(felt, felt.replyCards.Single(card => card.id == asks[0].recordId)), Is.True, "The premise: felt out.");
+            Assert.That(asks[0].IsCurrent(felt), Is.True, "A feel-out is not an answer: the pitch still stands.");
+            Assert.That(ComesToYou.Read(felt).Select(ask => ask.askerId), Is.EqualTo(new[] { board[0], board[2] }), "and still comes.");
+
+            var others = felt.Active.Where(c => !c.isPlayer && !board.Contains(c.id)).Select(c => c.id).Take(2).ToArray();
+            var nominated = RolePitchBoardTests.Apply(engine, RolePitchBoardTests.Command(felt, EpisodeCommandKind.Nominate, others[0], others[1]));
+            Assert.That(asks.Any(ask => ask.IsCurrent(nominated)), Is.False, "The nominations end them all.");
+
+            var old = OneAtATime(out var oldEngine);
+            var firstAsk = ComesToYou.Read(old).Single();
+            var oldFelt = RolePitchBoardTests.Apply(oldEngine, RolePitchBoardTests.Answer(old, firstAsk.recordId, HoHPitches.FeelOutKey));
+            Assert.That(firstAsk.IsCurrent(oldFelt), Is.True, "Before the board too, a feel-out leaves the pitch standing.");
+            var next = old.replyCards[1];
+            var oldHeard = RolePitchBoardTests.Apply(oldEngine, RolePitchBoardTests.Answer(oldFelt, firstAsk.recordId, HoHPitches.TurnDownKey));
+            Assert.That(firstAsk.IsCurrent(oldHeard), Is.False, "Answered, it stops.");
+            Assert.That(ComesToYou.Read(oldHeard).Select(ask => (ask.source, ask.recordId)), Is.EqualTo(new[] { (ComesToYou.Source.Pitch, next.id) }),
+                "and the next pitcher comes, one at a time.");
+        }
+
+        /// <summary>S13. A pitch opens "Can we talk about your nominations?" and says "It stands until you nominate.", plain words.</summary>
+        [Test]
+        public void APitchSaysItStandsUntilYouNominate()
+        {
+            Assert.That(ComesToYou.PitchLine, Is.EqualTo("Can we talk about your nominations?"));
+            Assert.That(ComesToYou.PitchLine, Does.Not.Contain("\"").And.Not.Contain("“"), "The speech card adds its own quote marks.");
+            Assert.That(ComesToYou.LapseNominations, Is.EqualTo("It stands until you nominate."));
+            Assert.That(ComesToYou.PitchLapseLine(WaitingOnYou.Lapse.NominationSet), Is.EqualTo(ComesToYou.LapseNominations));
+            Assert.That(ComesToYou.PitchLapseLine(WaitingOnYou.Lapse.CampaignCloses), Is.Null);
+            Assert.That(ComesToYou.CardLine(ReplyCards.Pitch), Is.Null, "A pitch has no card's line.");
+
+            var s = OneAtATime(out _);
+            var ask = ComesToYou.Read(s).Single();
+            Assert.That((ask.line, ask.lapseLine), Is.EqualTo((ComesToYou.PitchLine, ComesToYou.LapseNominations)));
+        }
+
+        /// <summary>
+        /// RolePitchBoardTests' crowned season at story rules Threads, written by name, advanced into the nominations by the
+        /// engine: every courting houseguest's pitch, answered one at a time.
+        /// </summary>
+        private static EpisodeState OneAtATime(out EpisodeEngine engine)
+        {
+            var crowned = RolePitchBoardTests.Crowned(roles: false);
+            Assert.That(crowned.story.rulesVersion, Is.EqualTo(StoryRules.Threads), "The premise: a season before the role moments.");
+            engine = new EpisodeEngine(crowned);
+            var s = RolePitchBoardTests.Apply(engine, RolePitchBoardTests.Command(crowned, EpisodeCommandKind.Advance));
+            Assert.That(HoHPitches.Available(s) && !HoHPitches.OnTheBoard(s), Is.True, "Pitches heard, with no board.");
+            Assert.That(s.replyCards.Count(card => card.kind == ReplyCards.Pitch), Is.GreaterThan(1), "More than one pitcher came.");
+            Assert.That(s.replyCards.All(card => card.kind == ReplyCards.Pitch), Is.True, "Only pitches wait.");
+            return s;
         }
 
         // ------------------------------------------------------------------ the houses

@@ -25,6 +25,12 @@ namespace Gamesim.Simulation
     /// pitch, whose walk-up is its own source. A card needs no offer: it is read before the deal rows, so a house with no
     /// offer at all still lists it.</para>
     ///
+    /// <para><b>Pitches (slice 4p).</b> The houseguests pitching a player Head of Household before the nominations walk up
+    /// too, as <see cref="Source.Pitch"/> rows: every pitch the player can answer now (<see cref="HoHPitches.Answerable"/>) -
+    /// under the role moments every unanswered pitch on the board, in the order the board was dealt (the order
+    /// <c>HoldTheBoard</c> stored in <c>s.replyCards</c>), and before them only the pitch waiting first. They come before
+    /// every offer and card: the nominations end every other walk-up of the phase as they end the pitches.</para>
+    ///
     /// <para><b>Its order is public.</b> The ids follow the order the asks were filed in, which is the
     /// warmest first (<see cref="NpcDeals.Propose"/>, <see cref="NpcDeals.AskForTheVeto"/>), and the deal
     /// table's order (<see cref="NpcDeals.Pending"/>) breaks its ties by id, so neither is used: what
@@ -37,10 +43,11 @@ namespace Gamesim.Simulation
     public static class ComesToYou
     {
         /// <summary>
-        /// Where an ask comes from: a weekly offer, a question about the veto, or a reply card (a confrontation, gossip or
-        /// a plea). Values are appended, never reordered. The pitches come next; slice 5 the story's approaches.
+        /// Where an ask comes from: a weekly offer, a question about the veto, a reply card (a confrontation, gossip or a
+        /// plea), or a pitch to the player Head of Household. Values are appended, never reordered. Slice 5 adds the
+        /// story's approaches.
         /// </summary>
-        public enum Source { Offer, VetoAsk, Card }
+        public enum Source { Offer, VetoAsk, Card, Pitch }
 
         /// <summary>One ask a houseguest can bring to the player: the record, who asks, their opening line and when it goes.</summary>
         public sealed class Ask
@@ -77,8 +84,10 @@ namespace Gamesim.Simulation
             /// Whether this ask still stands in <paramref name="s"/>: for an offer or a veto ask, the same session, week
             /// and phase, the player still in the game and the very offer still waiting with the same terms; for a card,
             /// the same session, player, week and phase, the player still in the game, the very card still waiting (same
-            /// id, kind, sender, subject and week), still listed as waiting and still the one the player can answer. A
-            /// clock revision alone does not end it. False for an ask this reader did not build.
+            /// id, kind, sender, subject and week), still listed as waiting and still the one the player can answer; for a
+            /// pitch, all of a card's and the pitch still one the player hears (<see cref="HoHPitches.ValidCard"/>), which a
+            /// feel-out leaves standing and an answer or the nominations end. A clock revision alone does not end it. False
+            /// for an ask this reader did not build.
             /// </summary>
             public bool IsCurrent(EpisodeState s)
             {
@@ -89,6 +98,8 @@ namespace Gamesim.Simulation
                         return invitation != null && invitation.IsCurrent(s);
                     case Source.Card:
                         return CardIsCurrent(s);
+                    case Source.Pitch:
+                        return CardIsCurrent(s) && HoHPitches.ValidCard(s, s.replyCards.FirstOrDefault(row => row != null && row.id == card.id));
                     default:
                         return false;
                 }
@@ -128,6 +139,11 @@ namespace Gamesim.Simulation
                             GossipLine = "Got a minute? I think you've heard what I've been saying.",
                             PleaLine = "Can we talk? It's about the vote.";
 
+        /// <summary>What a houseguest pitching the player Head of Household opens with (slice 4p), in plain words.</summary>
+        public const string PitchLine = "Can we talk about your nominations?";
+        /// <summary>The line for a pitch, which the nominations clear.</summary>
+        public const string LapseNominations = "It stands until you nominate.";
+
         /// <summary>
         /// Every ask the houseguests can bring to the player in <paramref name="s"/>, in public order. Empty for no
         /// state, a player out of the game, and from the final Head of Household on.
@@ -140,7 +156,9 @@ namespace Gamesim.Simulation
             if (!reading.Any) return asks.AsReadOnly();
             var seen = new HashSet<string>(StringComparer.Ordinal);
             // A card needs no offer, so the cards come before the invitations are read: a house with no offer lists one.
+            // So does a pitch.
             AddCards(s, reading, asks, seen);
+            AddPitches(s, reading, asks, seen);
             var invitations = NpcInvitation.Available(s);
             if (invitations.Count == 0) return InPublicOrder(s, asks).ToList().AsReadOnly();
             var pending = NpcDeals.Pending(s);
@@ -194,6 +212,37 @@ namespace Gamesim.Simulation
                 });
             }
         }
+
+        /// <summary>
+        /// The pitches that can come to the player Head of Household (slice 4p): each pitch <see cref="WaitingOnYou"/> lists
+        /// - so one <see cref="HoHPitches.ValidCard"/> passes, before the nominations - that the player can answer now
+        /// (<see cref="HoHPitches.Answerable"/>). Under the role moments that is every pitch on the board, in the order the
+        /// waiting list reads them, which is the board's dealt order in <c>s.replyCards</c>; before them, only the pitch
+        /// waiting first. An answered pitch has left <c>s.replyCards</c>, so its pitcher is not listed again.
+        /// </summary>
+        private static void AddPitches(EpisodeState s, WaitingOnYou.Reading reading, List<Ask> asks, HashSet<string> seen)
+        {
+            foreach (var item in reading.items)
+            {
+                if (item == null || item.kind != WaitingOnYou.Kind.Card || item.type != ReplyCards.Pitch || string.IsNullOrEmpty(item.id)) continue;
+                if (!HoHPitches.Answerable(s, item.id)) continue;
+                var card = s.replyCards.FirstOrDefault(row => row != null && row.id == item.id && row.fromId == item.fromId);
+                if (card == null || !seen.Add(item.id)) continue;
+                asks.Add(new Ask(s, card)
+                {
+                    source = Source.Pitch,
+                    recordId = card.id, askerId = card.fromId, type = card.kind, week = card.week,
+                    lapses = item.lapses, lapsesOnAdvance = item.lapsesOnAdvance,
+                    line = PitchLine,
+                    lapseLine = PitchLapseLine(item.lapses),
+                    whisper = false,
+                });
+            }
+        }
+
+        /// <summary>How long a pitch stands, in words: until the player nominates; null for any other lapse.</summary>
+        public static string PitchLapseLine(WaitingOnYou.Lapse lapses) =>
+            lapses == WaitingOnYou.Lapse.NominationSet ? LapseNominations : null;
 
         /// <summary>What a houseguest with a card of this kind opens with; null for a kind that does not come to the player.</summary>
         public static string CardLine(string kind)
@@ -260,17 +309,28 @@ namespace Gamesim.Simulation
         }
 
         /// <summary>
-        /// The public order: what the next advance lets go first; the newest week; the louder kind
+        /// The public order: the pitches first, in the board's own order (where they stand in <c>s.replyCards</c>, never by
+        /// asker id); then what the next advance lets go first; the newest week; the louder kind
         /// (<see cref="NpcDeals.Urgency"/>); a veto ask by its asker's place on the block, everyone else after; then
         /// the asker's id and the record's id. Never the filing order, which is the warmest first.
         /// </summary>
         private static IEnumerable<Ask> InPublicOrder(EpisodeState s, List<Ask> asks) =>
-            asks.OrderByDescending(ask => ask.lapsesOnAdvance)
+            asks.OrderBy(ask => ask.source == Source.Pitch ? 0 : 1)
+                .ThenBy(ask => PitchPlace(s, ask))
+                .ThenByDescending(ask => ask.lapsesOnAdvance)
                 .ThenByDescending(ask => ask.week)
                 .ThenByDescending(ask => NpcDeals.Urgency(ask.type))
                 .ThenBy(ask => BlockPlace(s, ask))
                 .ThenBy(ask => ask.askerId, StringComparer.Ordinal)
                 .ThenBy(ask => ask.recordId, StringComparer.Ordinal);
+
+        /// <summary>A pitch's place in <c>s.replyCards</c>, the board's dealt order; 0 for every other source, which this key leaves as it was.</summary>
+        private static int PitchPlace(EpisodeState s, Ask ask)
+        {
+            if (ask.source != Source.Pitch) return 0;
+            int place = s.replyCards.FindIndex(card => card != null && card.id == ask.recordId);
+            return place >= 0 ? place : int.MaxValue;
+        }
 
         private static int BlockPlace(EpisodeState s, Ask ask)
         {

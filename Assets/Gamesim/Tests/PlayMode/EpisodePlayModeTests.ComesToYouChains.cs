@@ -427,13 +427,16 @@ namespace Gamesim.Tests.PlayMode
             yield return PlayOutTheChainExchange();
             Assert.That(NpcRead<int>("askPhaseShown"), Is.EqualTo(shownAfterTheWalk), "The chain counted no presentation.");
 
-            float clock = NpcRead<float>("askClock");
+            // The answered offer's dialogue has let go on its last render, so Back to topics starts no gap here; closing
+            // the conversation does, on the next frame's ask tick, as before this slice.
             ButtonWithCaption(EpisodeDirector.ConversationTopicsBackCaption).onClick.Invoke();
-            Assert.That(NpcRead<float>("askNextAt"), Is.GreaterThanOrEqualTo(clock + EpisodeDirector.AskGapSeconds - .01f), "Back to topics starts the gap, as today.");
+            float clock = NpcRead<float>("askClock");
             director.ClosePanels();
             Assert.That(ComesToYou.Read(director.Snapshot).Where(ask => ask.askerId != ComesMaya).Select(ask => ask.recordId).First(),
                 Is.EqualTo(jamieOffer), "The premise: Jamie's offer is the queue's next.");
-            yield return null; yield return null;
+            yield return null;
+            Assert.That(NpcRead<float>("askNextAt"), Is.GreaterThanOrEqualTo(clock + EpisodeDirector.AskGapSeconds - .01f), "Closing starts the gap, as today.");
+            yield return null;
             NpcWrite("askNextAt", 0f);
             yield return WaitForTheFirstVisit(new string[0]);
             Assert.That(director.CurrentNpcInvitationRecordId, Is.EqualTo(jamieOffer), "The next walk-up is the queue's next, as it was.");

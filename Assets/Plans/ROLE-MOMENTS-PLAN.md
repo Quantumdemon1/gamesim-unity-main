@@ -728,8 +728,26 @@ Later, outside this plan:
 **The measurement.** The lab measured R0, the role moments as built at the abuse checklist's head, once on the held-out
 seeds 200-299 (the studier on competition seeds 0-799, the war rooms on 0-479), against criteria 1-7 and B8 for the
 owner. No change inside story rules 11 and no cut was tried first (the run decided on 2026-11-10).
-- VERDICT: *to be filled from the acceptance report when the run has ended* (the ACCEPT lines for criteria 1-7, ACCEPT
-  B8, and the verdict line, word for word).
+- VERDICT: **PASS.** The held-out run ended on 2026-11-14. Report `r7-report.txt`, sha256
+  `e27ea1ac8b4a75ffbf90915daf91632e706f68bfcd759f863e3fcc77e7ddd7f7`, on head `bcb56fd2247766cd1a9a117458638b8ef139af67`,
+  snapshot `b25d799d3bcdf343`; set R0 against baseline B, 2400 seasons an arm. Band B7 (the war rooms' counters) is out
+  low in both arms, R0 and the baseline alike, so it passes by the criterion's own rule that a miss shared with the
+  baseline passes; every other band of C6 is in band, B4 included. The report's ACCEPT lines for criteria 1-7, ACCEPT B8
+  and its verdict line, word for word:
+
+```
+ACCEPT C1 integrity: R errors 0 of 2400 seasons (B 0 of 2400); R not at 11 from week 1: 0; B not at 10 or with a Roles-only prompt: 0; seasons without prompt records: 0; paired seeds unequal: 0 of 2400; duplicates R 0 B 0 [pass]
+ACCEPT C2 net prompts a season at 8, R - B paired (engaged <= 0, passive <= +2): passive -3.04 (100 pairs; no-pitch +0.08); social -3.68 (100 pairs; no-pitch -0.28); reader -2.84 (100 pairs; no-pitch +0.03); schemer -2.71 (100 pairs; no-pitch +0.51); loyalist -3.24 (100 pairs; no-pitch -0.39); exploit -3.56 (100 pairs; no-pitch -0.17; a probe, gates nothing); no pair dropped [pass]
+ACCEPT C3 boards: R's most a week: veto-board cards 3, pitch cards 3, keep-the-block 1; weeks over (3, 3, 1): 0. Q1 gate at 8, prompts per role week R - B <= +1: social/HoH -1.73 (R 194 wk, B 194 wk); social/holder -0.65 (R 194 wk, B 194 wk); social/nominated -0.29 (R 169 wk, B 162 wk); reader/HoH -1.33 (R 207 wk, B 204 wk); reader/holder -0.31 (R 190 wk, B 195 wk); reader/nominated -0.06 (R 161 wk, B 167 wk); schemer/HoH -1.89 (R 209 wk, B 194 wk); schemer/holder -0.59 (R 193 wk, B 181 wk); schemer/nominated -0.09 (R 157 wk, B 153 wk); loyalist/HoH -1.22 (R 180 wk, B 193 wk); loyalist/holder -0.63 (R 194 wk, B 193 wk); loyalist/nominated -0.45 (R 161 wk, B 158 wk) [pass]
+ACCEPT C3 reported (not gating), R at 8: role weeks with 2+ Roles-only prompts: HoH 0.0% [0.0, 0.2] (0/2328), with the pitch board 79.7% [78.0, 81.3] (1855/2328); holder 0.9% [0.6, 1.4] (22/2316), with the pitch board 25.9% [24.1, 27.7] (599/2316); nominated 0.6% [0.4, 1.1] (12/1918), with the pitch board 0.6% [0.4, 1.1] (12/1918); narrower variant, keep-the-block cards per role week R - B: HoH +0.000; holder +0.030; nominated +0.000
+ACCEPT C4 pace at 8 (12 policies, R 1200 seasons, B 1200): budgeted asks 5.1 (4-6) in band, B 4.9 in band; weeks with a card 53.2% (30-60%) in band, B 52.4% in band; NPC-removal seasons of 1200 with a window 0.0% (at most 10%) in band, B 0.0% in band; showmances 1.03 (0.5-1.5) in band, B 1.03 in band; pile-on seasons 0.0% (at most 25%) in band, B 0.0% in band; stories finished 4.7 (no band), B 4.7 - [pass]
+ACCEPT C5 storylines at 12: R most 36, mean 21.9, seasons at 92+ 0, at 100+ 0; B most 36; seasons whose end count is not their peak 0 [pass]
+ACCEPT C6 B9's bands on R (B beside; a miss B shares passes): B1 R 62.3% [61.0, 63.7] (3017/4840), B 62.4% [61.0, 63.8] (3018/4836): in band; B2 R 60.8% [59.6, 62.1] (3757/6175), B 61.5% [60.3, 62.7] (3863/6277): in band; B3 R 32.9% [29.7, 36.2] (263/800), B 32.1% [29.0, 35.4] (257/800): in band; B4 R 24.4% [21.5, 27.5] (195/800), B 26.2% [23.3, 29.4] (210/800): in band; B5 at 8 on the held-out headline: R 15.8 [12.1, 19.4] (100 pairs), B 15.5 [11.9, 18.9] (100 pairs): in band (war rooms: R 13.8 [12.2, 15.3] (480 pairs), B 14.5 [13.0, 16.2] (480 pairs)); B6 at 12 on the held-out headline: R 11.1 [8.5, 13.8] (100 pairs), B 10.2 [7.9, 12.5] (100 pairs): in band (war rooms: R 12.1 [11.1, 13.2] (480 pairs), B 12.3 [11.3, 13.4] (480 pairs)); B7 war rooms 0-479, 8 and 12 pooled: R 32.8% [22.3, 45.3] (20/61) OUT low, B 30.9% [21.2, 42.6] (21/68) OUT low: OUT, shared with B (beside, not gating: at 8 R 30.8% [16.5, 50.0] (8/26), B 50.0% [31.4, 68.6] (12/24); at 12 R 34.3% [20.8, 50.8] (12/35), B 20.5% [11.2, 34.5] (9/44); held-out headline's counters R 36.4% [15.2, 64.6] (4/11), B 37.5% [18.5, 61.4] (6/16); variant headline and war rooms together R 33.3% [23.5, 44.8] (24/72), B 32.1% [23.1, 42.7] (27/84)) [pass]
+ACCEPT C7 D0 pooled over the 12 policies: at 8: R 3.5% [2.6, 4.7] (42/1200); B 3.3% [2.5, 4.5] (40/1200); paired R - B +0.2 points; McNemar B-only 18, R-only 20, p 0.871; at 12: R 18.3% [16.2, 20.6] (220/1200); B 16.4% [14.4, 18.6] (197/1200); paired R - B +1.9 points; McNemar B-only 97, R-only 120, p 0.135 [pass]
+ACCEPT B8 (a 3-card board read in 30 s at the median): not lab-gated, for the owner (the lab assumes 30 s a decision)
+VERDICT: PASS R0: criteria 1-7 pass on the held-out seeds on snapshot b25d799d3bcdf343 of bcb56fd2
+```
+
 - The cut: none was called. The owner's rule of 2026-11-13: a miss on band B4 alone (the careful player's win rate at 12
   seats) accepts R7 as built; any other miss stops and goes to him.
 
@@ -753,9 +771,10 @@ DialoguePendingSaveTests and PlayMode EpisodeDurableTransactionTests.DialogueCam
 because they read `Current` or search the shipped season: StorySeasonTests' switch test, AllianceLeakTests' restore, the
 lab's parts round trip, and the dialogue-rules-2 cluster on `DialogueRules2Season` (the chip's own season; a search that
 finds another witness is re-searched). The seeds the cluster's searches print, on R1's head (Blame) and on the switch's
-(Roles), from the subset's own output: every witness keeps its seed but two, both of which pass. DialogueRules2EngineTests'
-caught lie moved from seed 1 (12 seats, week 6) to seed 2 (week 2), and DialogueRules2CapacityTests' budget campaign
-keeps seed 1 and week 7 but its copied conversation reads another reply (a guarded one, not a concerned one).
+(Roles), from the subset's own output: every witness keeps its seed and its reading but two, both of which pass. Only
+DialogueRules2EngineTests' caught lie changed its seed, from seed 1 (12 seats, week 6) to seed 2 (week 2).
+DialogueRules2CapacityTests' budget campaign kept its seed and week (seed 1, week 7); only the reply in its copied
+conversation changed (a guarded one, not a concerned one).
 
 **What was held, by name.** A test whose season the switch would move but which is about something else writes
 `story.rulesVersion = Blame` after `ApplyFresh` or `EnableStory`: the fixtures of AllWeekCadenceTests, AlumniHistoriesTests,

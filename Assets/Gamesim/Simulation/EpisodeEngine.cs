@@ -352,6 +352,7 @@ namespace Gamesim.Simulation
                     string crossed = next == EpisodePhase.Nomination ? StoryAnchors.HohCrowned
                         : next == EpisodePhase.VetoMeeting ? StoryAnchors.VetoWon : null;
                     if (crossed != null && StoryOn(s)) StoryLapse(s, crossed);
+                    if (crossed != null) RecordHeadToHead(s, crossed);
                     if (TuningRules.At(s, TuningRules.Bands) && (s.phase == EpisodePhase.HoH || s.phase == EpisodePhase.Veto)) SpendPreparation(s);
                     s.competitionResolved = false; Phase(s, next);
                     // A nominee asks the player for the veto while it is still theirs to use; and under the role moments

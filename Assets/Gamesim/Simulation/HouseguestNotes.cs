@@ -85,12 +85,15 @@ namespace Gamesim.Simulation
                 string how = claim.source == ClaimSource.Told ? first + " told you: evict "
                     : claim.source == ClaimSource.Overheard ? "Overheard: " + first + " is voting out "
                     : "Told the pact they'd vote out ";
+                // From story rules 12 a lie judged by the ballot is worded as what happened, said one name and voted the other,
+                // because a changed mind is judged a lie too (plan 32 §G4); the tell is what tells them apart.
+                bool worded = ally || EpisodeEngine.StoryAt(s, StoryRules.Manners);
                 string verdict = claim.status == ClaimStatus.Kept ? " · and did"
-                    : claim.status == ClaimStatus.Lied ? (ally ? " · voted the other way" : " · a lie") : "";
+                    : claim.status == ClaimStatus.Lied ? (worded ? " · voted the other way" : " · a lie") : "";
                 notes.Add(new Note
                 {
                     week = claim.week, kind = Kinds.Vote, text = how + Name(claim.targetId) + verdict,
-                    brief = claim.status == ClaimStatus.Lied ? (ally ? "Voted the other way" : "Lied to you about the vote")
+                    brief = claim.status == ClaimStatus.Lied ? (worded ? "Voted the other way" : "Lied to you about the vote")
                         : claim.status == ClaimStatus.Kept ? (ally ? "Told the pact the truth about the vote" : "Told you the truth about the vote")
                         : "Says: evict " + FirstName(Name(claim.targetId)),
                 });
@@ -230,12 +233,80 @@ namespace Gamesim.Simulation
             // left out while that ballot is not yours to know (KnownBallots; decision 4).
             foreach (var memory in KnownBallots.PlayerMemories(s).Where(m => m.subjectId == id && !string.IsNullOrEmpty(m.text)))
                 notes.Add(new Note { week = memory.week, kind = Kinds.Memory, text = memory.text });
+            // The house talks back (plan 32 §G4, story rules 12): this week's answer as it was said, read from its record, never
+            // the log; and, beside it, a manner this voter was caught lying in before. Only at 12, so every season below it reads
+            // as it always did (the digests serialise this page).
+            if (EpisodeEngine.StoryAt(s, StoryRules.Manners))
+            {
+                var said = EpisodeEngine.Said(s, id, s.week);
+                if (said != null)
+                {
+                    string stated = said.stance == Candour.Neutral ? null
+                        : s.ledger.claims.LastOrDefault(c => c.week == s.week && c.voterId == id && c.source == ClaimSource.Told)?.targetId;
+                    bool open = s.ledger.claims.Any(c => c.week == s.week && c.voterId == id && c.source == ClaimSource.Told && c.status == ClaimStatus.Open)
+                        || said.stance == Candour.Neutral;
+                    bool before = open && EpisodeEngine.TellsOf(s, id).Contains(said.manner);
+                    notes.Add(new Note
+                    {
+                        week = s.week, kind = Kinds.Vote,
+                        text = first + ": \"" + HouseAnswers.VoteAnswer(s, s.week, who, said.manner, stated) + "\" (" + HouseAnswers.MannerWords(said.manner) + ")"
+                            + (before ? " · " + HouseAnswers.LastTimeTheyLied : ""),
+                        brief = before ? "Sounded like they did when they lied" : Capital(HouseAnswers.MannerWords(said.manner)),
+                    });
+                }
+            }
 
             return notes.OrderByDescending(n => n.week).ThenBy(n => Array.IndexOf(KindOrder, n.kind)).ToList();
         }
 
         /// <summary>The latest thing you have on them, in a few words for a card, or null when there is nothing.</summary>
         public static string Brief(EpisodeState s, string id) => For(s, id).FirstOrDefault(n => n.brief != null)?.brief;
+
+        /// <summary>One block of the house talk on a houseguest's profile: a heading and its lines.</summary>
+        public sealed class Block
+        {
+            public string Heading;
+            public List<string> Lines = new List<string>();
+        }
+
+        public const string TheirMannerHeading = "Their manner", WhatYouveLearnedHeading = "What you've learned";
+
+        /// <summary>
+        /// The house talk's blocks for a houseguest's profile (plan 32 §C, S1), from story rules 12 only and each only where
+        /// its evidence exists: "Their manner" once the player has heard them answer (their voice, and this week's answer as
+        /// it was said), and "What you've learned" once the reveal has caught them lying with a tell. Never a number and never
+        /// a band; never "How they seem to see you", which joins from 13. Empty below 12.
+        /// </summary>
+        public static List<Block> HouseTalkBlocks(EpisodeState s, string id)
+        {
+            var blocks = new List<Block>();
+            var who = s?.Find(id);
+            if (who == null || who.isPlayer || !EpisodeEngine.StoryAt(s, StoryRules.Manners)) return blocks;
+            string first = FirstName(who.name);
+
+            var heard = s.ledger.claims.Any(c => c.voterId == id && c.source == ClaimSource.Told)
+                || s.ledger.standings.Any(r => r.fromId == id && r.toId == s.playerId && r.source == ClaimSource.Deflected);
+            if (heard)
+            {
+                var manner = new Block { Heading = TheirMannerHeading };
+                manner.Lines.Add(HouseAnswers.VoiceWords(Voice.Of(who, false)));
+                var said = EpisodeEngine.Said(s, id, s.week);
+                if (said != null) manner.Lines.Add("This week, asked about the vote: " + HouseAnswers.MannerWords(said.manner));
+                blocks.Add(manner);
+            }
+
+            var tells = EpisodeEngine.TellsOf(s, id);
+            if (tells.Count > 0)
+            {
+                var learned = new Block { Heading = WhatYouveLearnedHeading };
+                foreach (string tell in tells)
+                    learned.Lines.Add("When " + first + " lied to you about the vote, " + HouseAnswers.MannerWords(tell));
+                blocks.Add(learned);
+            }
+            return blocks;
+        }
+
+        private static string Capital(string words) => string.IsNullOrEmpty(words) ? words : char.ToUpperInvariant(words[0]) + words.Substring(1);
 
         /// <summary>Whether a note is one of a kind of thing: their word (promises, offers, calls, pacts), the vote, or your reads (reads, what came to you, what you remember).</summary>
         public static bool IsTheirWord(Note note) => note.kind == Kinds.Word || note.kind == Kinds.Offer || note.kind == Kinds.Pact;

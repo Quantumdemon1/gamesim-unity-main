@@ -759,6 +759,6 @@ Gamesim.Uma.DiagnosticsPlayModeTests 10
 # 16812 = 16808 + offers slice 4p's 4 ComesToYouSourcesTests cases (the same 4 the EditMode floor counts): dotnet test
 # Tools/SimulationTests ran exactly 16812 of 16812 on the slice at 108e5ba1 (2026-11-13).
 # 16818 = 16812 + offers slice 4b's 6 ComesToYouSourcesTests cases (the same 6 the EditMode floor counts): dotnet test
-# Tools/SimulationTests ran exactly 16822 of 16822 on a copy of the slice at cf377748 that held 4 builder trials
-# besides, never committed (16818 + 4, 2026-11-14).
+# Tools/SimulationTests ran exactly 16818 of 16818 on the slice (and 16822 of 16822 on a copy at cf377748 with 4 builder trials
+# besides, never committed), 2026-11-14.
 Gamesim.SimulationTests 16818

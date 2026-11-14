@@ -28,6 +28,10 @@ namespace Gamesim.Episode
         // none of the Pull's and none of the offer's.
         public const string ReplyHearCaption = "Hear what they want";
         public const string ReplyNotNowCaption = "Not this minute";
+        // A pitch's pair (offers slice 4p), to the player Head of Household. Not "Hear them", the start of the Pull's
+        // "Hear them out"; none of the offer's or a card's.
+        public const string PitchHearCaption = "Hear their pitch";
+        public const string PitchNotNowCaption = "Let it wait";
         // A caption's box sits this far inside its button, above and below.
         private const float CaptionInset = 4f;
         private GameObject root;

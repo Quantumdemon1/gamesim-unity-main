@@ -59,6 +59,8 @@ namespace Gamesim.Tests.EditMode
             Assert.That(deals.Select(ask => ask.recordId), Is.EquivalentTo(both));
             Assert.That(deals.Select(ask => ask.recordId), Is.EquivalentTo(new[] { "deal-ask-1", "deal-veto-2" }));
             Assert.That(asks.Where(ask => ask.source == ComesToYou.Source.Card).Select(ask => ask.recordId), Is.EqualTo(new[] { "reply-4" }));
+            // Its place is the public order's, with no key of its own: after the louder veto ask, before Maya's offer by asker.
+            Assert.That(asks.Select(ask => ask.recordId), Is.EqualTo(new[] { "deal-veto-2", "reply-4", "deal-ask-1" }));
 
             var offer = asks.Single(ask => ask.recordId == "deal-ask-1");
             Assert.That((offer.source, offer.askerId, offer.type, offer.week), Is.EqualTo((ComesToYou.Source.Offer, Maya, DealKind.Partnership, s.week)));

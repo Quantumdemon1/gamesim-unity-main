@@ -70,8 +70,8 @@ namespace Gamesim.Tests.EditMode
             { "tuningRulesVersion", 1 },
             { "npcSocial.rulesStartWeek", 1 },
             { "story.rulesStartWeek", 1 },
-            // Story rules 10, Blame, from its enrolment (STORY-RULES-10-PLAN §8; it was 9, threads).
-            { "story.rulesVersion", 10 },
+            // Story rules 11, Roles, from its enrolment (ROLE-MOMENTS-PLAN R7; it was 10, Blame, from STORY-RULES-10-PLAN §8, and 9, threads, before).
+            { "story.rulesVersion", 11 },
         };
 
         /// <summary>
@@ -309,14 +309,14 @@ namespace Gamesim.Tests.EditMode
             var chip = SeasonBuilder.Create(new SeasonBuilder.Choice { HouseSize = 8 }, witness.Seed);
             ShippedRules.ApplyFresh(chip, new SeasonBuilder.Choice { HouseSize = 8, CampaignConversations = true });
             Assert.That(chip.tuningRulesVersion, Is.EqualTo(TuningRules.Shipped), "Tuning 1, as the rules-2 witness plays it: nothing is held by hand.");
-            Assert.That(chip.story.rulesVersion, Is.EqualTo(StoryRules.Blame),
-                "Story rules 10, as every new season since its enrolment (STORY-RULES-10-PLAN §8) and as the rules-2 witness plays it: nothing is held by hand.");
+            Assert.That(chip.story.rulesVersion, Is.EqualTo(StoryRules.Roles),
+                "Story rules 11, as every new season since its enrolment (ROLE-MOMENTS-PLAN R7) and as the rules-2 witness plays it: nothing is held by hand.");
             Assert.That(Json(chip), Is.EqualTo(Json(DialogueRules2Season.Start(witness.Seed))),
                 "seed " + witness.Seed + ": the chip's season is the rules-2 witness's start (the chip writes rules 2 since this change).");
             var before = witness.State;
             string voter = witness.Voters[0];
             Assert.That(before.dialogueRulesVersion, Is.EqualTo(2), "The season is the chip's own, on dialogue rules 2 since this change.");
-            Assert.That(before.story.rulesVersion, Is.EqualTo(StoryRules.Blame), "And on story rules 10, the shipped season's since the enrolment.");
+            Assert.That(before.story.rulesVersion, Is.EqualTo(StoryRules.Roles), "And on story rules 11, the shipped season's since R7's enrolment.");
             Assert.That(before.dialogue.episodes, Is.Empty);
             var opened = DialogueRules2Season.Accepted(new EpisodeEngine(before.Clone()), DialogueRules2Season.Entry(before, voter));
             var episode = DialogueRules.Active(opened);

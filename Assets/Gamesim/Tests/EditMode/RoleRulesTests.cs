@@ -12,7 +12,7 @@ namespace Gamesim.Tests.EditMode
 {
     /// <summary>
     /// The role moments' rule (ROLE-MOMENTS-PLAN R0, §4.2-4.3): story rules 11, <see cref="StoryRules.Roles"/>,
-    /// defined and held to the validator but enrolled in no shipped season, and <see cref="EpisodeEngine.RolesOn"/>,
+    /// defined and held to the validator and enrolled in every new season since R7, and <see cref="EpisodeEngine.RolesOn"/>,
     /// the one test every Roles path reads. Nothing here plays a moment. The frozen readers keep their own copy of
     /// the ladder and refuse the new milestone, and the story session's 10 below it, <see cref="StoryRules.Blame"/>.
     /// Pure simulation and JSON, so the Unity-free subset runs it as well as the editor; the schema-24 reader's
@@ -22,16 +22,16 @@ namespace Gamesim.Tests.EditMode
     public sealed class RoleRulesTests
     {
         [Test]
-        public void RolesIsClaimedAsElevenAndWaitsForItsEnrolment()
+        public void RolesIsClaimedAsElevenAndEveryNewSeasonPlaysIt()
         {
             Assert.That(StoryRules.Roles, Is.EqualTo(11), "Claimed as 11, with 10 kept for the story session's pariah fix.");
             Assert.That(StoryRules.Blame, Is.EqualTo(StoryRules.Roles - 1), "10 is the pariah fix, Blame, defined below Roles.");
             Assert.That(StoryRules.Latest, Is.EqualTo(StoryRules.Roles), "The bound is the last milestone this build defines.");
-            // Story rules 10 is enrolled (STORY-RULES-10-PLAN §8): a season the game starts plays Blame, one below Roles.
-            Assert.That(StoryRules.Current, Is.EqualTo(StoryRules.Blame), "A season the game starts moves only at an enrolment: Blame's is made, R7's waits.");
+            // Story rules 11 is enrolled (ROLE-MOMENTS-PLAN R7; Blame's was STORY-RULES-10-PLAN §8): a season the game starts plays Roles.
+            Assert.That(StoryRules.Current, Is.EqualTo(StoryRules.Roles), "A season the game starts moves only at an enrolment: R7's is made.");
             var shipped = Shipped();
-            Assert.That(shipped.story.rulesVersion, Is.EqualTo(StoryRules.Blame));
-            Assert.That(EpisodeEngine.RolesOn(shipped), Is.False, "A season the game starts today plays no role moment.");
+            Assert.That(shipped.story.rulesVersion, Is.EqualTo(StoryRules.Roles));
+            Assert.That(EpisodeEngine.RolesOn(shipped), Is.True, "A season the game starts today plays the role moments.");
             Assert.That(EpisodeEngine.RolesOn(null), Is.False);
         }
 
@@ -160,7 +160,7 @@ namespace Gamesim.Tests.EditMode
             return s;
         }
 
-        /// <summary>A shipped season opted in to Roles, as tests opt in until the enrolment (ROLE-MOMENTS-PLAN §4.2).</summary>
+        /// <summary>A shipped season at Roles: opted in by name, as tests did until the enrolment (ROLE-MOMENTS-PLAN §4.2), and what ApplyFresh gives since R7.</summary>
         private static EpisodeState AtRoles()
         {
             var s = Shipped();

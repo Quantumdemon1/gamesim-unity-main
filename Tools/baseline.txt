@@ -442,7 +442,12 @@ Gamesim.EditModeTests 9989
 # observed them yet.
 # 1541 = 1534 + W2-HR1's 7 (1517 - 1510): disjoint cases, so the floor is their sum (the merge of W2-HR1 into W2-HR2,
 # 2026-11-14). Counted from the two sides; no run has observed 1541 on the merge.
-Gamesim.PlayModeTests 1541
+# 1547 = 1541 + W2-HR2's 6 new EpisodePlayModeTests.HoHSuitePitches cases (the player Head of Household's pitchers
+# wait in or by the HoH suite: standing and apart, a click from the farthest room opens the board and its answer is
+# today's, before the role moments the one waiting first, the names said, the reply asks off, a walk-up takes its
+# pitcher and gives them back). The lister counted 1547 on the branch at 09977a5a without UMA (2026-11-14). No Unity
+# run has observed them yet.
+Gamesim.PlayModeTests 1547
 # The UMA build of the same assembly, read by a plan built without -WithoutUma. 1281 = the 1241 above + the
 # 40 tests that compile only under GAMESIM_UMA, as run at r1 (2026-10-16): in EpisodePlayModeTests,
 # GroundedFarewell 11, Creator 9, HouseLife 8, Emotes 3, OpeningCaptures 2, and one each in CreatorEntry,
@@ -552,7 +557,9 @@ Gamesim.PlayModeTests 1541
 # the UMA offline build lists them in the set's preparation (hr1tg1). No Unity run has observed them yet.
 # 1586 = 1579 + W2-HR1's same 7 (1562 - 1555): disjoint cases, so the floor is their sum (the merge of W2-HR1 into
 # W2-HR2, 2026-11-14). Counted from the two sides; no run has observed 1586 on the merge.
-Gamesim.PlayModeTests.UmaBuild 1586
+# 1592 = 1586 + W2-HR2's same 6 EpisodePlayModeTests.HoHSuitePitches cases (see PlayModeTests above): the lister
+# counted 1592 on the branch at 09977a5a in the UMA offline build (2026-11-14). No Unity run has observed them yet.
+Gamesim.PlayModeTests.UmaBuild 1592
 # The UMA bodies: runs only where the GAMESIM_UMA define is set (the working tree and the D: copy).
 # 82 = the 89 run on 2026-10-15, less the 7 farewell probes moved to Gamesim.Uma.DiagnosticsPlayModeTests;
 # 85 = 82 + the 3 farewell readiness decision tests (UmaFarewellReadinessDecisionPlayModeTests, 2026-10-16);

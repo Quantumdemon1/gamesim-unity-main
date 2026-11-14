@@ -106,6 +106,8 @@ namespace Gamesim.Episode
         /// </summary>
         private void TalkOnInteract(HouseNpc npc)
         {
+            // A pitcher waiting in or by the player Head of Household's suite: E hears their pitch, as a click does (plan HR-2).
+            if (TryApproachSuitePitcher(npc)) return;
             bool again = talkSpot != null && !talkSpotOpen && talkSpot.NpcId == npc.Id;
             if (again) EndTalkSpot();
             else if (headingToNpcId != npc.Id && TryWalkToTalkSpot(npc)) return;

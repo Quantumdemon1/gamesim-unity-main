@@ -156,6 +156,8 @@ namespace Gamesim.Episode
             // as E does (EpisodeDirector.ComesToYou.cs): the visit's lease would otherwise read them as busy to a talk
             // spot, and the open would let the visit go before it could open on the ask.
             if (AsksOn && AskClickHears && VisibleNpcInvitationSpeaker() == npc && TryHearVisibleNpcInvitation()) return;
+            // A pitcher waiting in or by the player Head of Household's suite: their pitch, here or on arrival (plan HR-2).
+            if (TryApproachSuitePitcher(npc)) return;
             if (talkSpot != null && !talkSpotOpen && talkSpot.NpcId == npc.Id) EndTalkSpot();
             else if (TryWalkToTalkSpot(npc)) return;
             if (CanTalk(npc) && TryOpenNpc(npc.Id)) { CancelTravel(); player.StopHere(); return; }
@@ -210,6 +212,8 @@ namespace Gamesim.Episode
 
             // TryOpenNpc can still refuse - an eviction lands between the range check and the open -
             // so the intent is only let go once a conversation actually exists.
+            // A pitcher waiting in or by the player Head of Household's suite opens their pitch instead (plan HR-2).
+            if (CanTalk(npc) && SuitePitcherStandsThere(npc.Id) && HearSuitePitch(npc.Id)) { CancelTravel(); player.StopHere(); return; }
             if (CanTalk(npc) && TryOpenNpc(npc.Id)) { CancelTravel(); player.StopHere(); return; }
 
             // Re-aim when they have moved far enough from where they were aimed at to matter, or

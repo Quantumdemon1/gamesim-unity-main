@@ -336,7 +336,7 @@ namespace Gamesim.Tests.EditMode
             s.replyCards.Insert(0, new ReplyCardState { id = "reply-60", week = s.week, kind = ReplyCards.Confrontation, fromId = others[0] });
             Offer(s, others[0], DealKind.Partnership, NpcDeals.OfferPrefix + "902");
             var asks = ComesToYou.Read(s);
-            Assert.That(asks.Select(ask => ask.source), Does.Contain(ComesToYou.Source.Card).And.Contain(ComesToYou.Source.Offer),
+            Assert.That(asks.Select(ask => ask.source), Has.Member(ComesToYou.Source.Card).And.Member(ComesToYou.Source.Offer),
                 "The premise: a card and an offer are listed too.");
             Assert.That(asks.Take(board.Length).Select(ask => (ask.source, ask.askerId)), Is.EqualTo(board.Select(id => (ComesToYou.Source.Pitch, id))),
                 "The pitches first, in the board's order.");

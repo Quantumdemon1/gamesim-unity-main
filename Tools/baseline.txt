@@ -277,7 +277,11 @@
 # StoryRulesTwelveAtTwentyNine cases (its parity row moved from 12 to 13: no count). HouseTalkCapacityTests is compiled
 # out of Unity. The no-UMA lister counted 10035 on the slice at 5541b4a6 before the 4; the Mono harness ran the V29
 # class 134 of 134 (2026-11-14); no Unity run has observed 10039 yet.
-Gamesim.EditModeTests 10039
+# 10059 = 10039 + the house talk's manners' review fix (plan 32 S1): 20 cases. HouseTalkValidationTests 19 (the house
+# talk's records refused below story rules 12, 3; malformed at 12, 13; well-formed at 12, 3) and HouseTalkNotesTests 1
+# (an information partner's reading after the ask leaves the quoted answer alone). The same 20 the subset floor counts;
+# checked by the listers on this commit (2026-11-14); no Unity run has observed 10059 yet.
+Gamesim.EditModeTests 10059
 # The UMA-free build. 1215 = 1236, the count after the consolidation's lanes (S2a, S2b, S4a), less the 7
 # farewell probes moved to Gamesim.DiagnosticsPlayModeTests and the 14 farewell readiness tests that now
 # compile only under GAMESIM_UMA (judged on the UMA cast); 1230 = 1215 + S2d's 7, S4b's 2, S4c's 2 and
@@ -751,4 +755,7 @@ Gamesim.Uma.DiagnosticsPlayModeTests 10
 # HouseTalkCapacityTests' 2 (the sixteen-seat cooldown capacity, compiled out of Unity). dotnet test
 # Tools/SimulationTests ran exactly 16866 of 16866 on the slice at 5541b4a6 (2026-11-14). The held digests are
 # Explicit (run by filter) and not counted.
-Gamesim.SimulationTests 16866
+# 16886 = 16866 + the house talk's manners' review fix (plan 32 S1): the same 20 cases the EditMode floor counts
+# (HouseTalkValidationTests 19, HouseTalkNotesTests 1), checked by dotnet test Tools/SimulationTests on this commit
+# (2026-11-14).
+Gamesim.SimulationTests 16886

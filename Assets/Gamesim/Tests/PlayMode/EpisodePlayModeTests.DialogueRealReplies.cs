@@ -259,6 +259,9 @@ namespace Gamesim.Tests.PlayMode
             // actor/nominee/AP/history/card, provider, or private engine API is used.
             var fresh = SeasonBuilder.Create(new SeasonBuilder.Choice { HouseSize = 8 }, 4);
             ShippedRules.ApplyFresh(fresh);
+            // Held at story rules 10, Blame, by name (ROLE-MOMENTS-PLAN R7), as its EditMode twin
+            // (DialogueCampaignRealReplySaveTests): the route was observed there; at Roles week three opens on a story ask.
+            fresh.story.rulesVersion = StoryRules.Blame;
             Assert.That(fresh.dialogueRulesVersion, Is.Zero);
             fresh.dialogueRulesVersion = 1; // Unpublished pilot opt-in, not fresh-rule activation.
             string original = JsonUtility.ToJson(fresh);

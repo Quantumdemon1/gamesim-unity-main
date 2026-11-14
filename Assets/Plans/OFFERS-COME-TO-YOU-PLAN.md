@@ -1,6 +1,6 @@
 # Offers come to you: houseguests bring their asks as a dialogue
 
-Plan, 2026-10-30, revised after review, then checked claim by claim against origin/main 37416049 (49 corrections upheld after an adversarial pass, 8 refuted). The owner answered its five questions the same day (their defaults). Slices 1 to 3 are built on claude/offers-come-to-you (5adef5bf and 1aa78549, 0fd5e837 and a26186ae, 8a6bd311), each adversarially reviewed and fixed; their EditMode and dotnet proofs pass, and their PlayMode tests are compiled but not yet run in Unity. The three PlayMode tests of section G's "Also in slice 1" list that were missing (`ComesToYou_SceneWaitingDoesNotStallAVisitInFlight`, `ComesToYou_FollowingSomeoneElseCancelsWithoutAMiss`, `ComesToYou_APullYieldsAfterItsTime`) are now in, compiled but not yet run in Unity. Slices 4 and 5 are not built.
+Plan, 2026-10-30, revised after review, then checked claim by claim against origin/main 37416049 (49 corrections upheld after an adversarial pass, 8 refuted). The owner answered its five questions the same day (their defaults). Slices 1 to 3 are built on claude/offers-come-to-you (5adef5bf and 1aa78549, 0fd5e837 and a26186ae, 8a6bd311), each adversarially reviewed and fixed; their EditMode and dotnet proofs pass, and their PlayMode tests are compiled but not yet run in Unity. The three PlayMode tests of section G's "Also in slice 1" list that were missing (`ComesToYou_SceneWaitingDoesNotStallAVisitInFlight`, `ComesToYou_FollowingSomeoneElseCancelsWithoutAMiss`, `ComesToYou_APullYieldsAfterItsTime`) are now in, compiled but not yet run in Unity. Slices 1 to 3 merged to main in pull request #39 (2026-11-01). Slices 4 and 5 are not built. Slice 4's source contract and test list were written on 2026-11-13 against main 0ab29719 (§C.4 "Slice 4's sources", §H slice 4), for three pull requests: OF-a, reply cards; OF-p, pitches; OF-b, chaining.
 
 **The owner, 2026-10-30:** "Something else that needs to be fixed, when someone comes to you with a deal, you have to look through the menu to find it, but it should just pop up as dialogue like an RPG as an offer or have them approach you"
 
@@ -382,11 +382,110 @@ A new source adds:
 
 **Bubble captions.** Each source's pair is fixed, distinct from every other source's and from the Pull's six (R/EpisodeHud.Story.cs:149-156). Slice 4 adds the overload `HouseNpcInvitationBubble.Show(npcName, line, fontScale, worldAnchor, hearThemOut, defer, hearCaption, notNowCaption, view = null)`. The current `Show` calls it with `HearCaption` and `NotNowCaption`. The captions are applied on every Show, not only in `Create` (R/HouseNpcInvitationBubble.cs:164-165, 201-211). Keep the raw pair in fields, as slice 3 does for the line. Set each button's label to `Localisation.Text(raw)` and its GameObject name to the raw caption, on the same two Button objects, so the identity of `HearControl` and `NotNowControl`, the explicit navigation (:166-170) and `Focus` are unchanged. `SizeForText` measures the two labels' current text instead of the constants (:120-121). Show's `changed` (:46) also counts a change of either raw caption, so the bubble re-sizes. A blank caption hides the bubble, as a blank line does (:41-43).
 
+*On origin/main 0ab29719 (slice 3 as built), read for slice 4:* `Show` is at R/HouseNpcInvitationBubble.cs:90-111. It already sets both labels from `Localisation.Text` of the two constants on every Show (:100, :104), counts a change of either shown caption in `changed` (:101-102), and `SizeForText` already measures the labels' shown text (:179-185). So the overload adds only this: it takes the raw pair, keeps it in two fields beside `rawLine` (:40), sets each label from `Localisation.Text(raw)`, renames the two Button GameObjects to the raw pair (they are named once, at `Create`, :233-234, through `Button(caption, …)`, :272-274, whose name is the control's identity), counts a change of either raw caption in `changed`, and hides on a blank caption. The old `Show` signature forwards with `HearCaption` and `NotNowCaption`, so the deal sources' bubble, its names and its captions are byte for byte today's. `HearControl` and `NotNowControl` (:45-46) stay the same two objects, and the explicit navigation (:237-241) is not rebuilt.
+
 **Shared by every source:** the queue, the gates, gaps, caps, misses, set-aside, the visit, auto-open, the frame, Think it over, the reply page, focus, the pointer hold, readings and the floor.
 
 **Line variety.** Choose a line from a bank with FNV-1a 32 over the record id's UTF-16 units, modulo the bank size. Never use `string.GetHashCode`, which .NET Core randomises per process, and never a draw.
 
 **The Story Pull's set-aside.** `declinedPulls` (R/EpisodeDirector.Story.cs:343) is keyed by beat or walk-in and is not cleared by phase. It joins `askSetAside`'s model in slice 5, when the Pull's Approach becomes a source.
+
+#### Slice 4's sources, as they are to be built
+
+Written 2026-11-13 against origin/main 0ab29719 and the R7 branch (claude/role-moments-r7 bcb56fd2), whose landing (W1-R1) is slice 4's base. Every line cite below was read there. Slice 4 is split in three pull requests, which land in this order:
+- **OF-a**: the Card source and the caption overload;
+- **OF-p**: the Pitch source (the owner, 13 Nov, on the pitches question Q-4: "They should walk up to you as HOH");
+- **OF-b**: same-asker chaining over all four sources.
+
+Veto-board asks still stay on the board (the owner, 30 Oct, question 3), because their silence is priced and a pitch's is not.
+
+**What the code already says, and slice 4 keeps.**
+- A reply card is a `ReplyCardState` in `s.replyCards` (S/ReplyCards.cs:210-220) of kind confrontation, gossip, plea or pitch (:23). `ReplyCards.LegacyKinds` is the first three (:25).
+- It is answered by `ReplyToHouseguest` with the card's id as target and the reply's key as text (S/EpisodeEngine.Strategy.cs:181-233). The command removes the card (:202). The one runtime sender is `ReplyChoice` (R/EpisodeDirector.ReplyChoices.cs:12-26, the commit at :24).
+- `ReplyChoice` commits only while `HoHPitches.Answerable(projected, cardId)` (:20). That is the card waiting first (`ReplyCards.Pending`, S/ReplyCards.cs:102), or, under the role moments, any pitch on the board (S/HoHPitches.cs:117-122). Every surface draws only that card: the free-time hero (R/EpisodeDirector.FreeTimeBoard.cs:282-305), the campaign board (R/EpisodeDirector.CampaignScreen.cs:51, 78-97) and the strategy page (R/EpisodeDirector.Strategy.cs:353-373).
+- `WaitingOnYou.Read` lists every card as `Kind.Card` (S/WaitingOnYou.cs:102-113). Its lapse is `CampaignCloses`, `FreeTimeEnds` or `Open` by phase (:221-239), and `NominationSet` for a pitch (:106). It leaves out a pitch that `HoHPitches.ValidCard` refuses (:107).
+- `ComesToYou.Read` skips `Kind.Card` items (S/ComesToYou.cs:99). It also returns empty when the state has no invitation (:92-93), which happens before any card could be read.
+- `ConversationExchange.Create` plays no exchange for `ReplyToHouseguest`, because its target is the card's id and not a person (S/ConversationExchange.cs:48-65). The answer's own log line is `ReplyCards.Outcome` (S/EpisodeEngine.Strategy.cs:226; S/ReplyCards.cs:187-205).
+- `NpcDeals.Urgency` of a non-deal kind is 0 (S/NpcDeals.cs:483-495).
+- After W1-R1, `NpcInvitation.Eligible` also drops a veto-board ask under the role moments (S/NpcInvitation.cs:76 on bcb56fd2). `ComesToYou.Read` keeps its own exclusion (S/ComesToYou.cs:106-107) as the second guard. Neither touches reply cards.
+
+**Nothing new is saved, rolled or logged.** The reader stays pure. No command, no reply key, no `ReplyRow` field and no schema or rules version is added. ComesToYou is read by Runtime only, so a new source cannot move a season digest. The proof is that every answer sends the command a surface sends today. Under the plan's Simulation freeze, slice 4's one Simulation file is S/ComesToYou.cs, and it lands after the R7 stack.
+
+**Source `Card` (OF-a): a confrontation, gossip or plea.**
+1. *Enum.* Append `Card` after `VetoAsk`, and later `Pitch` after `Card`. Never reorder: the values are not saved, but tests name them.
+2. *Rows.* For each `Kind.Card` item of `WaitingOnYou.Read(s)` whose type is in `ReplyCards.LegacyKinds` and for which `HoHPitches.Answerable(s, item.id)` holds, there is one row. So there is at most one row: the card waiting first, and only when it is not a pitch. These rows are built before the invitation early return (:92-93), so a card is listed in a state with no offer at all. A pitch is never a `Card` row.
+3. *Fields.*
+   - `recordId` = the card's id; `askerId` = `card.fromId`; `type` = `card.kind`; `week` = `card.week`.
+   - `lapses` and `lapsesOnAdvance` are the item's own.
+   - `line` = the kind's opening line (constants on `ComesToYou`, said in the bubble and in the dialogue's speech card; plain words with no quote marks, because `AskSpeech` adds its own, R/EpisodeHud.AskDialogue.cs:99-103):
+     - confrontation: "Can we talk? It's about where we stand.";
+     - gossip: "Got a minute? I think you've heard what I've been saying.";
+     - plea: "Can we talk? It's about the vote.".
+   - `lapseLine`:
+     - `CampaignCloses`: "It stands until campaigning closes.";
+     - `FreeTimeEnds`: "It stands until free time ends.";
+     - `Open`: null.
+   - `whisper` = false for all three. No card is said in private today.
+   - The gossip card's asker is the gossiper (`fromId`), whom all three of its answers address (S/ReplyCards.cs:56-61). The card's own words stay as they are ("You just found out that …").
+4. *IsCurrent.* The `Ask` keeps a private clone of the card (`ReplyCardState.Clone`, :219) and the session, player, week and phase it was read in, as the deal sources keep their invitation. It is current while all of these hold: the same session, player, week and phase; the player is active; a card with the same id, kind, `fromId`, `aboutId` and week is still in `s.replyCards`; `WaitingOnYou.Read(s)` still lists it as a `Kind.Card` item (presence and the final-HoH cut-off); and `HoHPitches.Answerable(s, id)` holds. So it stops being current once it is answered, once its phase clears it, and once another card stands ahead of it.
+5. *Order.* The cards join the same public sort (§C.1) with no new key. Their urgency is 0 and their block place is last, so a card sorts by `lapsesOnAdvance`, week and asker id against the offers. With no card waiting, `Read` returns exactly today's rows in today's order.
+6. *Caps and clocks.* All of them are shared, and the Card source has none of its own: the record, phase and week caps, the asker gap, the gaps, misses, retries, set-aside, card-due, the gates and the conversation gate `NpcInvitationConversationAvailable` (R/EpisodeDirector.NpcInvitations.cs:133-136). Confrontations and gossip wait in free time, pleas in the campaign: both are phases that gate allows.
+7. *Dispatch* (R/EpisodeDirector.ComesToYou.cs:776-824).
+   - `AskOpensInPerson(Card)` is true.
+   - `AskBubbleCaptions(Card)` = `HouseNpcInvitationBubble.ReplyHearCaption` "Hear what they want" and `ReplyNotNowCaption` "Not this minute". These are new constants. Neither occurs anywhere under Assets/Gamesim on main, and neither is a Pull caption.
+   - `AskBody(Card)` draws the card's three answers as `PendingReplyCard` does (R/EpisodeDirector.Strategy.cs:360-366), each through `ReplyChoice(state, card.id, reply.Key, BeginReplyChoices())`:
+     - caption `EpisodeHud.ReplyCaption(reply.Label)`, description `ReplyCardPayoffs.Description`, tag `EpisodeHud.RiskTag(reply.Risk)`;
+     - each answer with a reading through `ReadAskControl` (the caption, the asker's full name, then the card's title).
+     - These are the same captions, keys and command as today's surfaces.
+8. *The frame* (R/EpisodeHud.AskDialogue.cs).
+   - `AskDialogue` gets an overload that takes the heading. The deal sources pass `AskOfferHeading` ("THEIR OFFER"), so they draw as today.
+   - A card passes `ReplyCards.Title(s, card)` as the heading and `ReplyCards.Message(s, card)` as the terms. These are the words the free-time hero and the campaign board show today (R/EpisodeDirector.FreeTimeBoard.cs:289-290; R/EpisodeDirector.CampaignScreen.cs:82-83).
+   - Eyebrows: the walk-over keeps `AskWalkOverEyebrow`, and the card host keeps `AskDirectEyebrow`. A raised card uses a new `AskCardRaisedEyebrow(first)` = FIRST + " WANTS A WORD", because "HAS AN OFFER FOR YOU" would be untrue for a card.
+9. *In person.*
+   - `OpenOnAsk` sets `conversationCategory = DealsCategoryCaption` and `invitedDealId = card id` for a card too. The existing gate at R/EpisodeDirector.ConversationNavigation.cs:156-157 then reaches `RenderAskDialogue` with no edit to that file.
+   - The director keeps the open dialogue's source in a field beside `askDialogueWay`. `RenderAskDialogue` (R/EpisodeDirector.ComesToYou.cs:621-658) dispatches on it, and for a card finds its record in `s.replyCards`, not in `NpcDeals.Pending` (:623).
+   - Once the card is gone (answered, lapsed or no longer first), it lets the dialogue go as today (:624-628) and also clears `conversationCategory`. The conversation then lands on its topics wheel, not on a Deals page that invites nothing.
+   - Think it over (walk-over) and Back to topics behave as for an offer. A card left unanswered costs nothing more than what the houseguest already did (S/ReplyCards.cs:17-19), and the lapse line says when it goes.
+10. *On the card host* (slice 2's `AskCard`, :709-740). The card is found in `s.replyCards` (not :713-714's deal lookup). An answer there makes no `ConversationExchange`. So `CaptureAskCardReply` keeps instead the answer's visible log line (the `reply` event the command wrote), and the page shows it under a new name `AskOutcomeName`, then Back to the house. It never shows `AskGoneLine` ("That offer is no longer on the table."). A card that went before any answer shows a new `AskCardGoneLine`, "They've moved on.".
+11. *The switch.* `public bool? ReplyAsksEnabled { get; set; }`. When it is null it follows `AsksOn`; when false, `CurrentAsks()` drops the Card and Pitch rows (the reader stays pure and lists them). Slice 1-3 tests therefore read today's queue even with a card waiting. Their installer's save carries no reply card, and OF-a asserts that.
+
+**Source `Pitch` (OF-p): the people pitching a player Head of Household walk up.** The owner (13 Nov, Q-4) asked for this in every season.
+- **What already happens.** The engine deals the pitches as the nomination opens (`CourtTheHoH`). Under the role moments it keeps at most three, in the board's order (`HoldTheBoard`, S/HoHPitches.cs:145-154; `BoardSize`, :85). An answer is free: `ReplyToHouseguest` spends no social action. Silence on a pitch costs nothing. No count, timing or decision budget changes.
+- **Rows.** There is one row for each `Kind.Card` item of kind pitch for which `HoHPitches.Answerable(s, id)` holds. `WaitingOnYou` has already dropped every pitch `HoHPitches.ValidCard` refuses (S/WaitingOnYou.cs:107), so `HoHPitches.Available` holds: the player is Head of Household, in the nomination, before anyone is named (S/HoHPitches.cs:14-17).
+  - **With the board** (`HoHPitches.OnTheBoard`, :111): every unanswered board pitch is listed, in `s.replyCards` order. That is the `BoardPicks` order `HoldTheBoard` stored, never a fresh `BoardPicks` call.
+  - **Without the board** (a season started before R7): only the pitch waiting first is listed, the one the one-at-a-time answers can take.
+  - Either way an answered pitcher leaves the queue.
+- **Order.** Pitch rows come first, before every offer and card, in their `s.replyCards` order and never by asker id. A pitch lapses as the nominations are made, which ends every other walk-up of the phase. Without a pitch the order is §C.1's.
+- **One walker at a time.** This is the shared queue's own rule. The pitches share the phase's three presentations (`AskPresentationsPerPhase`) with any offer then.
+- **IsCurrent.** As for Card, plus `HoHPitches.ValidCard(s, card)`. A feel-out (`HoHPitches.FeelOutKey`) is not an answer: `ValidCard` ignores its row (:24-25), so the pitch stays current after one.
+- **The line and the lapse line.** The opening line is "Can we talk about your nominations?". `NominationSet` gives "It stands until you nominate.", which is kept on the row for any frame that shows it.
+- **Captions.** `HouseNpcInvitationBubble.PitchHearCaption` "Hear their pitch" and `PitchNotNowCaption` "Let it wait". Both are new and occur nowhere under Assets/Gamesim on main. The plan row's "Hear them" is not taken as the caption, because it is the start of the Pull's "Hear them out".
+- **Hear opens the pitches.** `AskOpensInPerson(Pitch)` is false: a pitch opens no conversation and no ask dialogue.
+  - Hear (its button, E, a click on the pitcher or the auto-open) opens the nomination screen, the phase's own panel, with its pitches shown. That is the state "Hear houseguest pitches" sets (`nominationPitchesDismissed = false` in `PitchNavigation`, R/EpisodeDirector.NominationScreen.cs:115-127; the caption `HearHoHPitchesCaption`, R/EpisodeHud.NominationScreen.cs:30). It does not go through that callback, which needs a panel already open (:121).
+  - With the board, that draws the board (`PitchOfferBoard`, R/EpisodeDirector.Strategy.cs:251), every card in its dealt order and unchanged. Without it, it draws the one-at-a-time answers (`NominationPitch`, R/EpisodeDirector.NominationScreen.cs:79-81).
+  - It counts one presentation for the walker's record and sets that record aside for the phase.
+  - Not right now (Escape on the bubble) sets it aside, commits nothing and costs nothing: silence on a pitch is free. The nomination screen and the diary keep "Hear houseguest pitches" as the way in when nobody walks up.
+- **The gate.** A pitch is held to no conversation gate. `AskMayCome` and `AskCanStillCome` (R/EpisodeDirector.ComesToYou.cs:453-465) ask `NpcInvitationConversationAvailable` only of the sources that open a conversation; a pitch's gate is its own `IsCurrent`.
+- **When the pitcher cannot come.** A pitch that becomes card-due (two misses, or 10 s of its pitcher's own refusals) gets no card. It is walked over no more this phase and stays on the nomination screen, because the card host would only stand in for the board.
+- **Files.** OF-p's one edit to R/EpisodeDirector.Strategy.cs opens the board from a walk-up. It comes after HR-1's WindowLine edit there.
+
+**Same-asker chaining (OF-b): "There's something else".** It is built after OF-p lands and covers all four sources: Offer, VetoAsk, Card and Pitch.
+- **When it shows.** It is offered only after an answer in the ask dialogue or on the card host, and only while `CurrentAsks()`, re-read on the committed state, lists another ask from the same asker that passes `AskCanStillCome`.
+  - That ask is found through a new pure helper, `ComesToYou.NextFrom(asks, askerId, afterRecordId, canStillCome)`: the asker's next listed ask in public order, or null.
+  - It is never offered before an answer: Think it over and Back to topics stay the only ways past an unanswered ask.
+  - It never chains across askers.
+  - A pitch answered on the board or on the one-at-a-time page offers no chain, because those surfaces do not change.
+- **The page and the control.**
+  - In person, `RenderAskDialogue` keeps the dialogue up for one more page instead of letting it go: the answer's exchange (a deal) or outcome line (a card); then a control captioned `AskSomethingElseCaption` "There's something else" (new); then Back to topics.
+  - On the card host, the control goes beside Back to the house.
+  - The keyboard opens on "There's something else". There is no pointer hold, because the answer has already been given.
+- **What pressing it does.**
+  - It opens the next ask in the same conversation or card, with a new way `Chained` and the raised eyebrow of that ask's source. A next ask that is a pitch opens the pitches as Hear does.
+  - It counts no presentation and sets no asker gap, because the player asked for it. It does set that ask aside as it opens.
+  - It is not capped: the phase and week caps limit only unasked presentations.
+- **The other ways out.** Back to topics, or closing, starts the gap as today.
+
+**Outside the offers plan.** HR-1 (the NPC Head of Household waits in the HoH room while a decider) and HR-2 (a player HoH's pitchers wait in or by the room, and approaching one opens their pitch as OF-p does) are planned in PLAN-R7-HTB r4, not here. HR-2 calls OF-p's opener and lands after OF-b.
 
 ---
 
@@ -398,8 +497,8 @@ A new source adds:
 | 2. Nominee's veto ask `deal-veto-`, outside the role moments | Yes, where the conversation gate allows it: the week's windows, or a decider (R/EpisodeDirector.NpcInvitations.cs:121-124). Otherwise it stays on the meeting rows (R/EpisodeDirector.Strategy.cs:159-176, `VetoOffers`, which R/EpisodeDirector.VetoMeeting.cs:221 draws when the role moments are off). | 1-2 |
 | 2b. Nominee's veto ask under the role moments | No. It stays on the veto board, which shows its tone, its stakes and that silence costs more than a no. Option for slice 4: a card drawn from `RoleOffers.CardOf` (S/Story/RoleOffers.cs:189), with `SilenceLine` as its lapse line, no Think it over focus, and the board's order. | — (they stay on the board: owner question 3, answered 2026-10-30) |
 | 3. Keep-the-block `deal-keep-` (role moments only) | As 2b. Under role moments the Head of Household is a decider at the meeting (S/StrategyRules.cs:105-108); without this exclusion they would walk over ahead of the nominees. | — (4) |
-| 4. Reply cards (confrontation, gossip, plea) | Yes. The "SOMEBODY CAME TO YOU" hero (R/EpisodeHud.cs:272) becomes the visit. Answers go through `ReplyToHouseguest` (S/EpisodeEngine.Strategy.cs:181-233). | 4 |
-| 5. HoH pitch `reply-pitch-` | Yes, in Nomination. Without the role moments (off the board) only the card waiting first, `ReplyCards.Pending` (S/ReplyCards.cs:102), can be answered (S/EpisodeEngine.HoHPitches.cs:13; `HoHPitches.Answerable`, S/HoHPitches.cs:117-122). So a pitch is offered only while it is that card (`ReplyCards.Pending(s)?.kind == ReplyCards.Pitch`, as R/EpisodeDirector.NominationScreen.cs:78 checks), and `BoardPicks` plays no part there. Under the role moments (on the board) any waiting pitch can be answered, and `HoldTheBoard` (S/HoHPitches.cs:145-154) has already stored them in `BoardPicks` order, so the first pitch waiting in `s.replyCards` is offered, never a fresh `BoardPicks` call. The pitch board stays. | 4 |
+| 4. Reply cards (confrontation, gossip, plea) | Yes. The "SOMEBODY CAME TO YOU" hero (R/EpisodeHud.cs:272) becomes the visit. Answers go through `ReplyToHouseguest` (S/EpisodeEngine.Strategy.cs:181-233). *As written for OF-a (§C.4, source `Card`, 2026-11-13):* only the card waiting first can come, because it is the only one `ReplyChoice` lets the player answer (R/EpisodeDirector.ReplyChoices.cs:20). The hero, the campaign board and the strategy page keep drawing it as today. | 4 (OF-a) |
+| 5. HoH pitch `reply-pitch-` | Yes, in Nomination. Without the role moments (off the board) only the card waiting first, `ReplyCards.Pending` (S/ReplyCards.cs:102), can be answered (S/EpisodeEngine.HoHPitches.cs:13; `HoHPitches.Answerable`, S/HoHPitches.cs:117-122). So a pitch is offered only while it is that card (`ReplyCards.Pending(s)?.kind == ReplyCards.Pitch`, as R/EpisodeDirector.NominationScreen.cs:78 checks), and `BoardPicks` plays no part there. Under the role moments (on the board) any waiting pitch can be answered, and `HoldTheBoard` (S/HoHPitches.cs:145-154) has already stored them in `BoardPicks` order, so the first pitch waiting in `s.replyCards` is offered, never a fresh `BoardPicks` call. The pitch board stays. *As written for OF-p (§C.4, source `Pitch`, 2026-11-13, after the owner's answer to Q-4 that pitchers walk up to the HoH):* the pitchers walk up in every season, one at a time. Under the role moments every unanswered board pitch comes, in the board's order. Without them only the pitch waiting first comes. Hear opens the existing pitches, the board or the one-at-a-time answers, unchanged; a pitch opens no dialogue of its own. | 4 (OF-p) |
 | 6. Story "approach" beat | Yes. The walk-over replaces the Pull's Approach surface (R/EpisodeDirector.Story.cs:424-432). In person the beat opens in the conversation's Story branch, the frame's in-person host; `OpenSceneCard` is the card fallback when the speaker cannot come (StoryArcs/32 §D0). | 5 (storyline plan) |
 | 7. Counter (C7) | Never; it lives inside the player's own refused proposal | — |
 | 8. War-room plan | Never; the player called the meeting | — |
@@ -546,7 +645,19 @@ During the walk-over the player keeps full control.
 | 3 | `R/HouseNpcInvitationBubble.cs` | Localisation with the raw line kept, 1.3× boxes, `ViewCamera` with a `Camera.main` fallback; the legacy invitation gets them too |
 | 3 | `R/EpisodeDirector.cs` | `ClosePanelsInternal` calls `ClearAskFacing()`, which clears only the facing an ask set |
 | 4 | `R/HouseNpcInvitationBubble.cs` | Caption overload: relabel and rename the same two controls, measure the shown captions, count a caption change in `changed` |
-| 1, 2, 3 | `Tools/baseline.txt` | The floors the slice's tests raise (see Commit hygiene) |
+| 4 (OF-a) | `S/ComesToYou.cs` | `Source.Card`, its rows before the invitation early return, `IsCurrent` over a private card clone, the opening and lapse lines (§C.4, "Slice 4's sources") |
+| 4 (OF-a) | `R/EpisodeDirector.ComesToYou.cs` | `ReplyAsksEnabled`; the Card cases of `AskOpensInPerson`, `AskBubbleCaptions` and `AskBody`; the dialogue's source field; `RenderAskDialogue`, `AskCard`, `EndAskCard` and `CaptureAskCardReply` dispatching on it |
+| 4 (OF-a) | `R/HouseNpcInvitationBubble.cs` | The caption overload (as above), with `ReplyHearCaption` and `ReplyNotNowCaption` |
+| 4 (OF-a) | `R/EpisodeHud.AskDialogue.cs` | `AskDialogue`'s heading overload, `AskCardRaisedEyebrow`, `AskOutcomeName`, `AskCardGoneLine` |
+| 4 (OF-a) | `T/EditMode/ComesToYouSourcesTests.cs` (+ meta); `Tools/SimulationTests/SimulationTests.csproj` beside :64 | EditMode tests S1-S9 (§H) |
+| 4 (OF-a) | `T/PlayMode/EpisodePlayModeTests.ComesToYouReplies.cs` (+ meta) | PlayMode tests R1-R9 (§H) |
+| 4 (OF-p) | `S/ComesToYou.cs`; `R/EpisodeDirector.ComesToYou.cs` (the Pitch cases, the per-source conversation gate, Hear opening the pitches); `R/EpisodeDirector.Strategy.cs` (the board opened from a walk-up, after HR-1's edit); `R/HouseNpcInvitationBubble.cs` (`PitchHearCaption`, `PitchNotNowCaption`) | `Source.Pitch` |
+| 4 (OF-p) | `T/EditMode/ComesToYouSourcesTests.cs` (its own section); new `T/PlayMode/EpisodePlayModeTests.ComesToYouPitches.cs` (+ meta) | EditMode S10-S13, PlayMode P1-P5 (§H) |
+| 4 (OF-b) | `S/ComesToYou.cs` (`NextFrom`); `R/EpisodeDirector.ComesToYou.cs`; `R/EpisodeHud.AskDialogue.cs` | Chaining: `AskWay.Chained`, `AskSomethingElseCaption` |
+| 4 (OF-b) | `T/EditMode/ComesToYouSourcesTests.cs` (its own section); new `T/PlayMode/EpisodePlayModeTests.ComesToYouChains.cs` (+ meta) | EditMode S14, PlayMode C1-C3 (§H) |
+| 1, 2, 3, 4 | `Tools/baseline.txt` | The floors the slice's tests raise (see Commit hygiene) |
+
+Slice 4 edits neither `T/EditMode/ComesToYouTests.cs` nor `T/PlayMode/EpisodePlayModeTests.ComesToYou.cs`: R7's follow-or-hold audit (W1-R2) may edit them, so slice 4's cases go in its own files.
 
 **Slice 3 details:**
 - **Coordinator.**
@@ -563,6 +674,7 @@ During the walk-over the player keeps full control.
 - Slice 1: `Gamesim.EditModeTests` rises by the EditMode cases (ComesToYouTests and ComesToYouStillnessTests); `Gamesim.SimulationTests` rises by ComesToYouTests' cases only, which it shares through SimulationTests.csproj. `Gamesim.PlayModeTests` and `Gamesim.PlayModeTests.UmaBuild` each rise by the case count of PlayMode tests 1-10 and the "also in slice 1" cases; the tests are shared, so both lines move.
 - Slice 2: both PlayMode lines rise by tests 11-16.
 - Slice 3: both PlayMode lines rise by the HouseNpcInvitationPlayModeTests and director-level cases.
+- Slice 4 (OF-a, OF-p, OF-b, each its own pull request): `Gamesim.EditModeTests` and `Gamesim.SimulationTests` each rise by the ComesToYouSourcesTests cases the pull request adds; both PlayMode lines rise by its new PlayMode cases. As the lane does now, the floors are the slice's last commit, that file only, and the lead sums them with main's at landing.
 - `Gamesim.Uma.PlayModeTests` and the Diagnostics lines do not change.
 - A slice qualifies PlayMode with a filtered run, so mark its PlayMode raises "Not yet counted by a full run" until a full NoUMA and UMA-build run counts them.
 
@@ -746,6 +858,97 @@ Each slice is built, qualified and landed before the next.
    - The reply-card and pitch sources, the bubble's caption overload, and same-asker chaining: the footer offers "There's something else" only when that asker has a second listed ask.
    - Not built (owner question 3, answered 2026-10-30: they stay on the board): veto-board cards from `RoleOffers.CardOf` in board order.
    - Optional: a PortVerification `PendingOfferDialogue` route behind a verification option. It answers the **same offer with the same `RespondToDeal` at the same point**, so the audited command list does not change (memory: removing a step re-rolls the season).
+   - *Written for building, 2026-11-13.* The contract is §C.4, "Slice 4's sources". There are three pull requests, in this order:
+     - **OF-a**: the Card source, the caption overload and the card's page. It is built on the R7 landing and lands with stack O1, after its full set.
+     - **OF-p**: the Pitch source. It is built after OF-a and the R7 stack land.
+     - **OF-b**: chaining over all four sources. It is built after OF-p lands and before plan 32's S1.
+     - None adds a saved field, a command, a draw or a log line.
+
+   **Slice 4's tests.** The rules of §G's "Every test" hold for every PlayMode case below, and also these:
+   - each test wraps its body in `PinnedClock` (T/PlayMode/EpisodePlayModeTests.ComesToYou.cs:343);
+   - each test sets `director.AsksEnabled = true` and `director.ReplyAsksEnabled` explicitly after the reload;
+   - no test ticks the NPC world by hand or calls `HoldTheHouseForTheFixture`.
+
+   The card fixture `InstallComesToYouReplyHouse(string kind, bool withOffers)` lives in OF-a's partial. It does not edit EpisodePlayModeTests.NpcInvitationFlow.cs or EpisodePlayModeTests.ComesToYou.cs.
+   - It builds the house as `SaveNpcInvitationFlowState` does. Without offers, it clears the proposed deals.
+   - It files one card from Maya: through `ReplyCards.Offer` where `StrategyRules.Apply` holds, otherwise as `InstallReplyPayoff` writes one (T/PlayMode/EpisodePlayModeTests.ReplyPayoffs.cs:16-27). The test says which.
+   - The phase is free time for a confrontation or gossip, and the campaign for a plea, with Maya a nominee and `aboutId` the other nominee.
+   - It then follows `InstallComesToYouHouse`'s steps 1-5.
+
+   OF-p's pitch fixture puts the player in the nomination as Head of Household, with the pitches the engine deals (`CourtTheHoH`), in a season with the board and in one without it.
+
+   *EditMode, T/EditMode/ComesToYouSourcesTests.cs* (in the subset through SimulationTests.csproj; each pull request appends its own section). Build the states with `ContentCatalog.Create` as ComesToYouTests does, and check purity with `JsonConvert`.
+   - OF-a:
+     - S1. `ACardOfEachLegacyKindReadsAsACard` (one case per kind, so 3 cases): one row with `Source.Card`, the card's id as record, `fromId` as asker, the kind as type, the kind's opening line, the phase's lapse line, and `whisper` false.
+     - S2. `APitchIsNeverACard`: a valid pitch waiting first yields no Card row. In OF-a it yields no row at all.
+     - S3. `OnlyTheCardWaitingFirstIsListed`: two cards from two senders list one row, the first. Once `ReplyToHouseguest` answers it, through the engine, the second is listed.
+     - S4. `ACardStopsBeingCurrentOnceAnsweredOrLapsed`: current as read. Not current after an answer, after the advance that clears it, after its sender leaves the house, after its `aboutId` changes, or in another phase or week.
+     - S5. `WithNoCardTheQueueIsTodays`: on ComesToYouTests' offer and role-board states, `Read` equals its §C.1 oracle (the intersection of `WaitingOnYou.Read`'s non-card items and `NpcInvitation.Available`, in the §C.1 sort), row for row and field for field. Adding a card leaves every other row identical and in the same order.
+     - S6. `ACardReadsWithNoInvitation`: with no pending deal at all, one confrontation lists exactly one row. Today's reader returns empty here (S/ComesToYou.cs:92-93).
+     - S7. `ACardTakesItsPlaceInThePublicOrder`: against same-week offers, a card that lapses on this advance comes first; an older card comes after a newer offer; a vote_save (urgency 150) comes before the card (urgency 0); then by asker id.
+     - S8. `ReadingACardWritesNothing`: the state's JSON is the same before and after `Read`, `Find` and `IsCurrent`.
+     - S9. `CardsSayWhenTheyGo`: "It stands until campaigning closes." in the campaign and "It stands until free time ends." in free time. A departed sender lists nothing, and nothing is listed from the final Head of Household on.
+   - OF-p:
+     - S10. `PitchersWalkUpInEverySeason`. With the board, every unanswered board pitch is a `Source.Pitch` row, in `s.replyCards` order. Without it, only the pitch waiting first is. Once the nominations are made (`HoHPitches.Available` false), none is.
+     - S11. `PitchesComeFirstInTheBoardsOrder`: pitch rows sort before every offer and card, in `s.replyCards` order, even where the asker ids run the other way. A pitch is never a Card row.
+     - S12. `APitchStopsBeingCurrentOnceAnsweredButNotOnAFeelOut`: an answer takes that pitcher out and leaves the others; a feel-out does not; making the nominations ends them all.
+     - S13. `APitchSaysItStandsUntilYouNominate`: its opening and lapse lines.
+   - OF-b:
+     - S14. `TheNextAskIsTheSameAskersOnly`: `ComesToYou.NextFrom` returns the asker's next listed ask in public order. It never returns another asker's ask or one that fails `canStillCome`, and returns null when there is none.
+   - Mutation pass. Each mutant must fail a case:
+     - list every card, not only the answerable one;
+     - list a pitch as a Card;
+     - read the cards after the invitation early return;
+     - `IsCurrent` ignoring the phase or the `aboutId`;
+     - swap the two lapse lines;
+     - give a card the highest urgency;
+     - (OF-p) list only the first board pitch;
+     - (OF-p) order the pitches by asker id;
+     - (OF-p) end a pitch on a feel-out;
+     - (OF-b) `NextFrom` crossing askers.
+
+     Hash the files before the round and check them with `sha256sum -c` after any interruption.
+
+   *PlayMode, OF-a: T/PlayMode/EpisodePlayModeTests.ComesToYouReplies.cs*, every method named `ComesToYou_Reply…`. No method on main or on the R7 branch starts with `ComesToYou_Reply`, `ComesToYou_Pitch` or `ComesToYou_Chain` (checked 2026-11-13). `ComesToYou_Card…` is taken by the slice 2 tests.
+   - R1. `ComesToYou_ReplyAConfrontationWalksUpAndOpensAsADialogue`. No press: the dialogue opens by itself, with way WalkOver and `CurrentAskRecordId` the card's id.
+     - The bubble showed "Hear what they want" and "Not this minute" on the same `HearControl` and `NotNowControl` objects (`Is.SameAs`), named by the raw captions.
+     - The heading is `ReplyCards.Title`, the terms are `ReplyCards.Message`, and the line label is the quoted opening line.
+     - Exactly the three `ReplyCaption` answers, Think it over and Back to topics are drawn.
+     - `PointerHeld` is true on the open frame, Think it over is selected after 2 frames, and the save bytes are unchanged.
+     - Press "Apologize": exactly one `ReplyToHouseguest` with the card's id and key `apologize` (`AssertIntentCommand`), and revision +1. The card is gone, the dialogue is let go and the conversation is on its topics wheel. The detached engine gives the same result for the same command.
+   - R2. `ComesToYou_ReplyAPleaWalksUpInTheCampaign`: Promise support sends the same command and key as the campaign board's press.
+   - R3. `ComesToYou_ReplyGossipComesFromTheGossiper`: the asker is the card's `fromId`, and Gossip back sends key `gossip-back`.
+   - R4. `ComesToYou_ReplyTalkingToTheSenderRaisesTheCard`: way Raised, the eyebrow "MAYA WANTS A WORD", no Think it over, and Back to topics selected after 2 frames. It is raised once a phase.
+   - R5. `ComesToYou_ReplyOnlyTheCardWaitingFirstComes`: with two cards from two senders, only the first card's sender walks over. After it is answered and the gap is released with `NpcWrite`, the second comes.
+   - R6. `ComesToYou_ReplyACardComesWithNoOfferInTheHouse`: with no deal pending, the card still walks up.
+   - R7. `ComesToYou_ReplyTheCardHostShowsTheOutcome` (`AskWalkOvers = false`): the card host opens on the card. After an answer it shows the answer's log line under `AskOutcomeName`, never `AskGoneLine`, then Back to the house.
+   - R8. `ComesToYou_ReplyOffWithTheSwitchAndByDefault`:
+     - with `ReplyAsksEnabled = false`, a card and Maya's and Jamie's offers, only the offers come, as in slices 1-3;
+     - with `AsksEnabled` at its fixture default (false), nothing comes;
+     - the free-time hero still draws the card either way.
+   - R9. `ComesToYou_ReplyTheDialogueFitsAtLargest`: at Largest, 1920×1080, the label sweep holds (box ≥ 1.3× its font) and all three answers sit inside the viewport. No capture.
+
+   *PlayMode, OF-p: T/PlayMode/EpisodePlayModeTests.ComesToYouPitches.cs*, every method named `ComesToYou_Pitch…`.
+   - P1. `ComesToYou_PitchWalksUpAndHearOpensTheBoard` (a season with the board).
+     - The first pitcher in the board's order walks over, and the bubble shows "Hear their pitch" and "Let it wait".
+     - Hear opens the nomination screen on the pitch board, every card in its dealt order and unchanged. No command is sent and the bytes are unchanged.
+     - Answering a card there sends the board's own command and key.
+   - P2. `ComesToYou_PitchBeforeR7OpensTheOneAtATimeAnswers` (a season without the board): only the pitch waiting first walks up, and Hear opens the one-at-a-time answers on that pitch.
+   - P3. `ComesToYou_PitchOneWalkerAtATimeInTheBoardsOrder`: once the first pitch is answered and the gap is released with `NpcWrite`, the next unanswered pitcher walks up. An answered pitcher never does.
+   - P4. `ComesToYou_PitchNotNowCostsNothing`: Not right now commits nothing (the bytes are unchanged), and the nomination screen's "Hear houseguest pitches" still opens the board.
+   - P5. `ComesToYou_PitchNoneOnceTheNominationsAreMade`: no pitcher walks up after the nominations, and a busy pitcher gets no card.
+
+   *PlayMode, OF-b: T/PlayMode/EpisodePlayModeTests.ComesToYouChains.cs*, every method named `ComesToYou_Chain…`.
+   - C1. `ComesToYou_ChainThereIsSomethingElse`: Maya has an offer and a confrontation. After the first is answered, "There's something else" shows and is selected. Pressing it opens the other ask with way Chained; no presentation is counted, the ask is set aside, and the bytes are unchanged until the next answer.
+   - C2. `ComesToYou_ChainOnlyForTheSameAskerAndAfterAnAnswer`: the control is absent before an answer, absent when only another asker has an ask, and absent when the second ask fails `AskCanStillCome`.
+   - C3. `ComesToYou_ChainOnTheCardHost`: the control sits beside Back to the house.
+
+   **The Unity batch for each pull request** (the lead's):
+   - OF-a: `ComesToYou_;NpcInvitation;HudStatus_TheInvitationBubbleAndTheStoryPull;OfferBoard_;PitchBoard_;ReplyCards_AConfrontationWaitsOnTheFreeTimePanelAndIsAnswered`. The last name is the free-time hero's own answer path, which slice 4 must leave as it is.
+   - OF-p: `ComesToYou_;PitchBoard_;OfferBoard_;NpcInvitation`.
+   - OF-b: OF-a's set.
+
+   `ComesToYou_` covers every new `ComesToYou_Reply…`, `ComesToYou_Pitch…` and `ComesToYou_Chain…` case and every slice 1-3 case. On main, OF-a's prefixes match about 28 + 15 + 1 + 12 + 8 + 1 method names, the new cases not counted. The rest of this section's qualification list holds, except captures, which the owner's play replaces (2026-11-01).
 5. **Storyline plan.** Story approach beats and covert asks become sources. The Pull's Approach hands over to the walk-over, which opens the beat in the conversation's Story branch, with the scene card as the card fallback. `declinedPulls` joins the set-aside model. Per-character line banks use the FNV pick. This slice is owned by the storyline design.
 
 ---

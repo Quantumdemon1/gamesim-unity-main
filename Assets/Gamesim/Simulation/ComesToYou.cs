@@ -19,6 +19,12 @@ namespace Gamesim.Simulation
     /// its silence carry the card's tone's price, which the board says and a dialogue that opens on
     /// "Think it over" would present as free.</para>
     ///
+    /// <para><b>Reply cards (slice 4a).</b> A houseguest who came to the player with a confrontation, gossip or a
+    /// plea (<see cref="ReplyCards.LegacyKinds"/>) and waits on an answer is listed too, as a <see cref="Source.Card"/>:
+    /// only the card waiting first, the one the player can answer (<see cref="HoHPitches.Answerable"/>), and never a
+    /// pitch, whose walk-up is its own source. A card needs no offer: it is read before the deal rows, so a house with no
+    /// offer at all still lists it.</para>
+    ///
     /// <para><b>Its order is public.</b> The ids follow the order the asks were filed in, which is the
     /// warmest first (<see cref="NpcDeals.Propose"/>, <see cref="NpcDeals.AskForTheVeto"/>), and the deal
     /// table's order (<see cref="NpcDeals.Pending"/>) breaks its ties by id, so neither is used: what
@@ -30,14 +36,17 @@ namespace Gamesim.Simulation
     /// </summary>
     public static class ComesToYou
     {
-        /// <summary>Where an ask comes from. Slice 4 adds the reply cards and the pitches; slice 5 the story's approaches.</summary>
-        public enum Source { Offer, VetoAsk }
+        /// <summary>
+        /// Where an ask comes from: a weekly offer, a question about the veto, or a reply card (a confrontation, gossip or
+        /// a plea). Values are appended, never reordered. The pitches come next; slice 5 the story's approaches.
+        /// </summary>
+        public enum Source { Offer, VetoAsk, Card }
 
         /// <summary>One ask a houseguest can bring to the player: the record, who asks, their opening line and when it goes.</summary>
         public sealed class Ask
         {
             public Source source;
-            /// <summary>The record's id (a deal's), who is asking, the record's kind, the line they open with, and when it goes in words (null when nothing takes it away).</summary>
+            /// <summary>The record's id (a deal's or a card's), who is asking, the record's kind, the line they open with, and when it goes in words (null when nothing takes it away).</summary>
             public string recordId, askerId, type, line, lapseLine;
             /// <summary>The week the record was put to the player.</summary>
             public int week;
@@ -48,14 +57,28 @@ namespace Gamesim.Simulation
             /// <summary>The deal sources' own check, the conversation's invitation, which revalidates the exact offer.</summary>
             private NpcInvitation invitation;
 
+            /// <summary>A card's own check: a copy of the card as read, and the session, player, week and phase it was read in.</summary>
+            private ReplyCardState card;
+            private string readSession, readPlayer;
+            private int readWeek;
+            private EpisodePhase readPhase;
+
             public Ask() { }
 
             internal Ask(NpcInvitation invitation) { this.invitation = invitation; }
 
+            internal Ask(EpisodeState s, ReplyCardState card)
+            {
+                this.card = card.Clone();
+                readSession = s.sessionId; readPlayer = s.playerId; readWeek = s.week; readPhase = s.phase;
+            }
+
             /// <summary>
             /// Whether this ask still stands in <paramref name="s"/>: for an offer or a veto ask, the same session, week
-            /// and phase, the player still in the game and the very offer still waiting with the same terms. A clock
-            /// revision alone does not end it. False for an ask this reader did not build.
+            /// and phase, the player still in the game and the very offer still waiting with the same terms; for a card,
+            /// the same session, player, week and phase, the player still in the game, the very card still waiting (same
+            /// id, kind, sender, subject and week), still listed as waiting and still the one the player can answer. A
+            /// clock revision alone does not end it. False for an ask this reader did not build.
             /// </summary>
             public bool IsCurrent(EpisodeState s)
             {
@@ -64,9 +87,23 @@ namespace Gamesim.Simulation
                     case Source.Offer:
                     case Source.VetoAsk:
                         return invitation != null && invitation.IsCurrent(s);
+                    case Source.Card:
+                        return CardIsCurrent(s);
                     default:
                         return false;
                 }
+            }
+
+            private bool CardIsCurrent(EpisodeState s)
+            {
+                if (card == null || s == null || s.sessionId != readSession || s.playerId != readPlayer
+                    || s.week != readWeek || s.phase != readPhase) return false;
+                if (s.Find(s.playerId)?.status != ContestantStatus.Active) return false;
+                var waiting = s.replyCards?.FirstOrDefault(row => row != null && row.id == card.id);
+                if (waiting == null || waiting.kind != card.kind || waiting.fromId != card.fromId
+                    || waiting.aboutId != card.aboutId || waiting.week != card.week) return false;
+                if (!WaitingOnYou.Read(s).items.Any(item => item.kind == WaitingOnYou.Kind.Card && item.id == card.id)) return false;
+                return HoHPitches.Answerable(s, card.id);
             }
 
             public override string ToString() => source + " " + type + " " + recordId + " from " + askerId;
@@ -78,6 +115,18 @@ namespace Gamesim.Simulation
         public const string LapseThisCampaign = "It stands until this week's campaign opens.";
         /// <summary>The line for this week's offer, which next week's campaign writes off.</summary>
         public const string LapseNextCampaign = "It stands until next week's campaign opens.";
+        /// <summary>The line for a card the close of campaigning clears.</summary>
+        public const string LapseCampaignCloses = "It stands until campaigning closes.";
+        /// <summary>The line for a card the end of free time clears.</summary>
+        public const string LapseFreeTimeEnds = "It stands until free time ends.";
+
+        /// <summary>
+        /// What a houseguest with a card opens with, in plain words: the dialogue's speech card adds its own quote marks.
+        /// The card's own words (<see cref="ReplyCards.Message"/>) stay what the card says under it.
+        /// </summary>
+        public const string ConfrontationLine = "Can we talk? It's about where we stand.",
+                            GossipLine = "Got a minute? I think you've heard what I've been saying.",
+                            PleaLine = "Can we talk? It's about the vote.";
 
         /// <summary>
         /// Every ask the houseguests can bring to the player in <paramref name="s"/>, in public order. Empty for no
@@ -89,11 +138,13 @@ namespace Gamesim.Simulation
             if (s == null) return asks.AsReadOnly();
             var reading = WaitingOnYou.Read(s);
             if (!reading.Any) return asks.AsReadOnly();
+            var seen = new HashSet<string>(StringComparer.Ordinal);
+            // A card needs no offer, so the cards come before the invitations are read: a house with no offer lists one.
+            AddCards(s, reading, asks, seen);
             var invitations = NpcInvitation.Available(s);
-            if (invitations.Count == 0) return asks.AsReadOnly();
+            if (invitations.Count == 0) return InPublicOrder(s, asks).ToList().AsReadOnly();
             var pending = NpcDeals.Pending(s);
             bool roles = EpisodeEngine.RolesOn(s);
-            var seen = new HashSet<string>(StringComparer.Ordinal);
             foreach (var item in reading.items)
             {
                 if (item == null || item.kind == WaitingOnYou.Kind.Card || string.IsNullOrEmpty(item.id)) continue;
@@ -116,6 +167,55 @@ namespace Gamesim.Simulation
                 });
             }
             return InPublicOrder(s, asks).ToList().AsReadOnly();
+        }
+
+        /// <summary>
+        /// The reply cards that can come to the player: each card <see cref="WaitingOnYou"/> lists, of a legacy kind
+        /// (confrontation, gossip, plea; never a pitch), that the player can answer now - so at most one, the card
+        /// waiting first (<see cref="HoHPitches.Answerable"/>, as every surface that answers a card asks).
+        /// </summary>
+        private static void AddCards(EpisodeState s, WaitingOnYou.Reading reading, List<Ask> asks, HashSet<string> seen)
+        {
+            foreach (var item in reading.items)
+            {
+                if (item == null || item.kind != WaitingOnYou.Kind.Card || string.IsNullOrEmpty(item.id)) continue;
+                if (Array.IndexOf(ReplyCards.LegacyKinds, item.type) < 0) continue;
+                if (!HoHPitches.Answerable(s, item.id)) continue;
+                var card = s.replyCards.FirstOrDefault(row => row != null && row.id == item.id && row.fromId == item.fromId);
+                if (card == null || !seen.Add(item.id)) continue;
+                asks.Add(new Ask(s, card)
+                {
+                    source = Source.Card,
+                    recordId = card.id, askerId = card.fromId, type = card.kind, week = card.week,
+                    lapses = item.lapses, lapsesOnAdvance = item.lapsesOnAdvance,
+                    line = CardLine(card.kind),
+                    lapseLine = CardLapseLine(item.lapses),
+                    whisper = false,
+                });
+            }
+        }
+
+        /// <summary>What a houseguest with a card of this kind opens with; null for a kind that does not come to the player.</summary>
+        public static string CardLine(string kind)
+        {
+            switch (kind)
+            {
+                case ReplyCards.Confrontation: return ConfrontationLine;
+                case ReplyCards.Gossip: return GossipLine;
+                case ReplyCards.Plea: return PleaLine;
+                default: return null;
+            }
+        }
+
+        /// <summary>How long a card stands, in words: until campaigning closes, until free time ends, or null when nothing takes it away.</summary>
+        public static string CardLapseLine(WaitingOnYou.Lapse lapses)
+        {
+            switch (lapses)
+            {
+                case WaitingOnYou.Lapse.CampaignCloses: return LapseCampaignCloses;
+                case WaitingOnYou.Lapse.FreeTimeEnds: return LapseFreeTimeEnds;
+                default: return null;
+            }
         }
 
         /// <summary>The ask for one record in <paramref name="s"/>, or null when it is not listed.</summary>

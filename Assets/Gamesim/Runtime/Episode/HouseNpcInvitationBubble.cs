@@ -24,6 +24,10 @@ namespace Gamesim.Episode
         // caption names one control. These never shipped, so no contract changes.
         public const string HearCaption = "Hear their offer";
         public const string NotNowCaption = "Not right now";
+        // A reply card's pair (offers slice 4a): a confrontation, gossip or a plea is not an offer. Captions of their own,
+        // none of the Pull's and none of the offer's.
+        public const string ReplyHearCaption = "Hear what they want";
+        public const string ReplyNotNowCaption = "Not this minute";
         // A caption's box sits this far inside its button, above and below.
         private const float CaptionInset = 4f;
         private GameObject root;
@@ -38,6 +42,8 @@ namespace Gamesim.Episode
         private Vector2 lastFrame;
         // The line as the owner gave it, before the localisation layer: the change test and CurrentText read it.
         private string rawLine;
+        // The two captions as the owner gave them: each button's name, its identity, is the raw caption.
+        private string rawHear = HearCaption, rawNotNow = NotNowCaption;
 
         public bool IsVisible => root != null && root.activeSelf && panel != null && panel.gameObject.activeSelf;
         /// <summary>The line on screen as the owner gave it - never its translation - or empty while nothing shows.</summary>
@@ -87,20 +93,34 @@ namespace Gamesim.Episode
         public static float LabelBoxHeight(float fontSize, float preferredHeight) =>
             Mathf.Max(preferredHeight, Mathf.Ceil(fontSize * 1.32f) + 1f);
 
+        /// <summary>The offer's bubble: <see cref="HearCaption"/> and <see cref="NotNowCaption"/>, as it has always been.</summary>
         public void Show(string npcName, string line, float fontScale, Vector3 worldAnchor,
-            Action hearThemOut, Action defer, object view = null)
+            Action hearThemOut, Action defer, object view = null) =>
+            Show(npcName, line, fontScale, worldAnchor, hearThemOut, defer, HearCaption, NotNowCaption, view);
+
+        /// <summary>
+        /// The bubble with a source's own two captions (OFFERS-COME-TO-YOU-PLAN §C.4): the same two Button objects, their
+        /// navigation and focus unchanged, each named for its raw caption and labelled with its localised words. A blank
+        /// caption hides the bubble, as a blank line does.
+        /// </summary>
+        public void Show(string npcName, string line, float fontScale, Vector3 worldAnchor,
+            Action hearThemOut, Action defer, string hearCaption, string notNowCaption, object view = null)
         {
             if (string.IsNullOrWhiteSpace(npcName) || string.IsNullOrWhiteSpace(line)
+                || string.IsNullOrWhiteSpace(hearCaption) || string.IsNullOrWhiteSpace(notNowCaption)
                 || !HouseRoomQuery.Finite(worldAnchor) || hearThemOut == null || defer == null)
             { Hide(); return; }
             if (root == null) Create();
             float requestedScale = Mathf.Clamp(fontScale, 1f, TextSizes.Scale(TextSize.Largest));
             // The player reads the localised words; the raw line is what changed and what CurrentText says.
             string shownName = Localisation.Text(npcName), shownLine = Localisation.Text(line);
-            string hear = Localisation.Text(HearCaption), notNow = Localisation.Text(NotNowCaption);
+            string hear = Localisation.Text(hearCaption), notNow = Localisation.Text(notNowCaption);
             bool changed = rawLine != line || speaker.text != shownName || words.text != shownLine
+                || rawHear != hearCaption || rawNotNow != notNowCaption
                 || hearLabel.text != hear || deferLabel.text != notNow || !Mathf.Approximately(scale, requestedScale);
             rawLine = line; speaker.text = shownName; words.text = shownLine; scale = requestedScale;
+            if (rawHear != hearCaption) { rawHear = hearCaption; hearButton.gameObject.name = hearCaption; }
+            if (rawNotNow != notNowCaption) { rawNotNow = notNowCaption; deferButton.gameObject.name = notNowCaption; }
             hearLabel.text = hear; deferLabel.text = notNow;
             object nextView = view ?? (boundView != null && !changed ? boundView : new object());
             if (!ReferenceEquals(boundView, nextView)) BindActions(nextView, hearThemOut, defer);
@@ -230,8 +250,8 @@ namespace Gamesim.Episode
             tailObject.GetComponent<UnityEngine.UI.Image>().color = UiTheme.Ink;
             tailObject.GetComponent<UnityEngine.UI.Image>().raycastTarget = false;
             speaker = Text("Invitation speaker", UiTheme.Accent); words = Text(LineName, Color.white);
-            hearButton = Button(HearCaption, true);
-            deferButton = Button(NotNowCaption, false);
+            hearButton = Button(rawHear, true);
+            deferButton = Button(rawNotNow, false);
             hearLabel = hearButton.GetComponentInChildren<TMP_Text>();
             deferLabel = deferButton.GetComponentInChildren<TMP_Text>();
             var navigation = new UnityEngine.UI.Navigation { mode = UnityEngine.UI.Navigation.Mode.Explicit,

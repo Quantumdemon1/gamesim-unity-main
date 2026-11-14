@@ -436,7 +436,13 @@ Gamesim.EditModeTests 9989
 # houseguest's offer, never to another houseguest, only for an ask that can still come, on the card host, a card then
 # the same sender's next card, an offer then their pitch, the queue goes on as it was), counted from the source. Not yet
 # run in Unity.
-Gamesim.PlayModeTests 1534
+# 1517 = 1510 + W2-HR1's 7 new EpisodePlayModeTests.HoHSuite cases (an NPC Head of Household waits in the HoH suite:
+# the window line, a panel, the trip from the farthest room, a staged act, the names said, a player Head of Household,
+# the plea in the suite). The lister counted 1517 on the branch at ae845226 without UMA (2026-11-13). No Unity run has
+# observed them yet.
+# 1541 = 1534 + W2-HR1's 7 (1517 - 1510): disjoint cases, so the floor is their sum (the merge of W2-HR1 into W2-HR2,
+# 2026-11-14). Counted from the two sides; no run has observed 1541 on the merge.
+Gamesim.PlayModeTests 1541
 # The UMA build of the same assembly, read by a plan built without -WithoutUma. 1281 = the 1241 above + the
 # 40 tests that compile only under GAMESIM_UMA, as run at r1 (2026-10-16): in EpisodePlayModeTests,
 # GroundedFarewell 11, Creator 9, HouseLife 8, Emotes 3, OpeningCaptures 2, and one each in CreatorEntry,
@@ -542,7 +548,11 @@ Gamesim.PlayModeTests 1534
 # 1572 = 1561 + offers slice 4p's same 11 shared cases (5 ComesToYou_Pitch, 6 ComesToYou_Reply), counted from the source.
 # Not yet run in Unity.
 # 1579 = 1572 + offers slice 4b's same 7 shared ComesToYou_Chain cases, counted from the source. Not yet run in Unity.
-Gamesim.PlayModeTests.UmaBuild 1579
+# 1562 = 1555 + W2-HR1's same 7 EpisodePlayModeTests.HoHSuite cases (see PlayModeTests above), counted from the source;
+# the UMA offline build lists them in the set's preparation (hr1tg1). No Unity run has observed them yet.
+# 1586 = 1579 + W2-HR1's same 7 (1562 - 1555): disjoint cases, so the floor is their sum (the merge of W2-HR1 into
+# W2-HR2, 2026-11-14). Counted from the two sides; no run has observed 1586 on the merge.
+Gamesim.PlayModeTests.UmaBuild 1586
 # The UMA bodies: runs only where the GAMESIM_UMA define is set (the working tree and the D: copy).
 # 82 = the 89 run on 2026-10-15, less the 7 farewell probes moved to Gamesim.Uma.DiagnosticsPlayModeTests;
 # 85 = 82 + the 3 farewell readiness decision tests (UmaFarewellReadinessDecisionPlayModeTests, 2026-10-16);

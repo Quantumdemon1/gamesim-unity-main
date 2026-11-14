@@ -2,6 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using Gamesim.Episode;
+using Gamesim.House;
 using Gamesim.Persistence;
 using Gamesim.Simulation;
 using NUnit.Framework;

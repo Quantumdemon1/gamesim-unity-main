@@ -235,14 +235,15 @@ namespace Gamesim.Simulation
                 notes.Add(new Note { week = memory.week, kind = Kinds.Memory, text = memory.text });
             // The house talks back (plan 32 §G4, story rules 12): this week's answer as it was said, read from its record, never
             // the log; and, beside it, a manner this voter was caught lying in before. Only at 12, so every season below it reads
-            // as it always did (the digests serialise this page).
+            // as it always did (the digests serialise this page). The ask's claim is the week's first Told claim: an information
+            // partner's reading is written after it, as campaigning closes.
             if (EpisodeEngine.StoryAt(s, StoryRules.Manners))
             {
                 var said = EpisodeEngine.Said(s, id, s.week);
                 if (said != null)
                 {
                     string stated = said.stance == Candour.Neutral ? null
-                        : s.ledger.claims.LastOrDefault(c => c.week == s.week && c.voterId == id && c.source == ClaimSource.Told)?.targetId;
+                        : s.ledger.claims.FirstOrDefault(c => c.week == s.week && c.voterId == id && c.source == ClaimSource.Told)?.targetId;
                     bool open = s.ledger.claims.Any(c => c.week == s.week && c.voterId == id && c.source == ClaimSource.Told && c.status == ClaimStatus.Open)
                         || said.stance == Candour.Neutral;
                     bool before = open && EpisodeEngine.TellsOf(s, id).Contains(said.manner);

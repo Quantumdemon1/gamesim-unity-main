@@ -91,5 +91,36 @@ namespace Gamesim.Tests.EditMode
             Assert.That(lines.Any(l => l.Contains("lied")), Is.False, "Nothing learned before a reveal.");
             Assert.That(lines.Any(l => l.Contains(Candour.Dishonest) || l.Contains(Candour.Honest)), Is.False, "Never the stance.");
         }
+
+        [Test]
+        public void AnInformationPartnersReadingAfterTheAskNeverChangesTheQuotedAnswer()
+        {
+            // Under the commitment rules an information partner the player asked during the campaign also passes a reading as
+            // campaigning closes: a second Told claim this week, which may name the other nominee. The note quotes the ask.
+            int differed = 0;
+            for (uint seed = 1; seed <= 40; seed++)
+            {
+                var s = VoteAnswerTests.Campaign(StoryRules.Manners, seed, true);
+                string npc = VoteAnswerTests.Voter(s, 0);
+                s.Find(npc).traits = new List<string> { "Sneaky", "Competitive" };
+                s.deals.Add(new DealState
+                {
+                    id = "deal-info", type = DealKind.InformationSharing, proposerId = s.playerId, recipientId = npc,
+                    status = DealStatus.Active, week = s.week, expiresWeek = 0, trustImpact = DealKind.DefaultTrust(DealKind.InformationSharing),
+                });
+                var asked = VoteAnswerTests.Accepted(s, EpisodeCommandKind.AskVote, npc);
+                if (EpisodeEngine.Said(asked, npc, asked.week).stance == Candour.Neutral) continue;
+                string line = asked.events.Last(e => e.kind == "vote-read").text;
+                string quoted = line.Substring(line.IndexOf('"') + 1).TrimEnd('"');
+                var closed = VoteAnswerTests.Accepted(asked, EpisodeCommandKind.Advance, null);
+                var told = closed.ledger.claims.Where(c => c.week == closed.week && c.voterId == npc && c.source == ClaimSource.Told).ToList();
+                Assert.That(told.Count, Is.EqualTo(2), "seed " + seed + ": the ask's claim, then the reading's.");
+                if (told[0].targetId != told[1].targetId) differed++;
+                var note = HouseguestNotes.For(closed, npc).Single(n => n.text.Contains("\" ("));
+                Assert.That(note.text, Does.StartWith(FinalistRead.FirstName(closed.Find(npc).name) + ": \"" + quoted + "\" ("),
+                    "seed " + seed + ": the answer as the ask said it, whatever the reading named.");
+            }
+            Assert.That(differed, Is.GreaterThan(0), "Some reading named the other nominee, so the order mattered.");
+        }
     }
 }

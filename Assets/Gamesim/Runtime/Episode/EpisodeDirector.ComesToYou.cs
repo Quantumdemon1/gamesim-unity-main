@@ -20,6 +20,11 @@ namespace Gamesim.Episode
     /// visitor, or <see cref="AskWalkOvers"/> off (the card). The queue is <see cref="ComesToYou"/>, in its public
     /// order, one at a time.</para>
     ///
+    /// <para><b>"There's something else" (slice 4b).</b> Once the player answers an ask in the dialogue or on the card, and the
+    /// same houseguest has another ask in the queue that could still come, the page stays up with "There's something else":
+    /// it opens that ask in the same conversation or card (way Chained), or their pitch as Hear does. The player asked for
+    /// it, so it counts no presentation and sets no asker gap. Never across houseguests, never before an answer.</para>
+    ///
     /// <para><b>The walk-over holds.</b> The asker walks on a budget of their own route, and the player's time to answer
     /// starts once they are there (HouseMeetingCoordinator.TryReserveNpcInvitation's answerFromArrival). They turn to the
     /// player as they arrive and the player turns to them as the dialogue opens; letting go - the visit's end, a panel's
@@ -40,8 +45,11 @@ namespace Gamesim.Episode
     /// </summary>
     public sealed partial class EpisodeDirector
     {
-        /// <summary>How the ask the player is facing came to them.</summary>
-        public enum AskWay { None, WalkOver, Raised, Card }
+        /// <summary>
+        /// How the ask the player is facing came to them. Chained (slice 4b): the player asked for it with "There's something
+        /// else", after answering another ask from the same houseguest, in the same dialogue or card. Values are appended.
+        /// </summary>
+        public enum AskWay { None, WalkOver, Raised, Card, Chained }
 
         // ---------------------------------------------------------------- the switch
 
@@ -188,6 +196,16 @@ namespace Gamesim.Episode
         // arrive, and the player turned to the asker as the dialogue opens. ClearAskFacing lets go only of these.
         private float askPlayerYaw = float.NaN, askAskerYaw = float.NaN;
         private CharacterPresentation askPlayerFacing, askAskerFacing;
+        // Same-asker chaining (slice 4b). The in-person dialogue's mark: the session, week, phase and last accepted command of
+        // the state it was last drawn on while its record still waited - so a record gone with a command of the player's
+        // since, in the same phase, is one the dialogue's own answers took (nothing else is on that page). The record the
+        // chain page was last drawn for (its first draw puts the keyboard on "There's something else"). The card host's
+        // answer, and whether the card on screen came by the chain.
+        private string askDialogueMarkSession, askDialogueMarkCommand, askChainPageFor;
+        private int askDialogueMarkWeek;
+        private EpisodePhase askDialogueMarkPhase;
+        private bool askDialogueMarked, askCardAnswered, askCardChained;
+        private string askCardChainFor;
 
         // ---------------------------------------------------------------- public reads, for tests
 
@@ -205,7 +223,8 @@ namespace Gamesim.Episode
         /// <summary>Who is asking: the card's houseguest, else the dialogue's, else the visitor's.</summary>
         public string CurrentAskerId => askCardOpen ? askCard?.askerId : askDialogueWith ?? askNow?.askerId;
         /// <summary>How the ask on screen came: the card, else how the dialogue opened; None for a visit still on its way, or nothing.</summary>
-        public AskWay CurrentAskWay => askCardOpen ? AskWay.Card : askDialogueWith != null ? askDialogueWay : AskWay.None;
+        public AskWay CurrentAskWay => askCardOpen ? (askCardChained ? AskWay.Chained : AskWay.Card)
+            : askDialogueWith != null ? askDialogueWay : AskWay.None;
 
         // ---------------------------------------------------------------- gates
 
@@ -664,6 +683,7 @@ namespace Gamesim.Episode
         {
             askDialogueWith = null; askDialogueRecordId = null; askDialogueWay = AskWay.None; askDialogueFirstRender = false;
             askDialogueSource = ComesToYou.Source.Offer;
+            askDialogueMarked = false; askDialogueMarkSession = null; askDialogueMarkCommand = null; askChainPageFor = null;
         }
 
         /// <summary>
@@ -674,14 +694,18 @@ namespace Gamesim.Episode
         /// </summary>
         private bool RenderAskDialogue(EpisodeState state, ContestantState npc, object token)
         {
+            // Answered, with something else from the same houseguest waiting: the chain's page (slice 4b).
+            if (RenderAskChainPage(state, npc, token)) return true;
             if (askDialogueSource == ComesToYou.Source.Card) return RenderCardDialogue(state, npc, token);
             var offer = NpcDeals.Pending(state).FirstOrDefault(d => d.proposerId == npc.id && d.id == invitedDealId);
             if (offer == null)
             {
                 invitedDealId = null; askDialogueRecordId = null; askDialogueWay = AskWay.None;
+                askDialogueMarked = false; askChainPageFor = null;
                 hud.DropFocusAsked(); hud.EndPointerHold();
                 return false;
             }
+            MarkAskDialogue(state);
             bool walkOver = askDialogueWay == AskWay.WalkOver;
             string first = FinalistRead.FirstName(npc.name);
             var ask = AskFrame(state, npc, offer, walkOver ? EpisodeHud.AskWalkOverEyebrow(first) : EpisodeHud.AskRaisedEyebrow(first), true);
@@ -704,6 +728,7 @@ namespace Gamesim.Episode
             {
                 invitedDealId = null; askDialogueRecordId = null; askDialogueWay = AskWay.None;
                 askDialogueSource = ComesToYou.Source.Offer; conversationCategory = null;
+                askDialogueMarked = false; askChainPageFor = null;
                 hud.DropFocusAsked(); hud.EndPointerHold();
                 hud.SpeakerTitle(npc.id, npc.name, npc.pronouns);
                 if (!string.IsNullOrEmpty(conversationNarration)) { hud.Heading("WHAT HAPPENED"); hud.Paragraph(conversationNarration); }
@@ -716,6 +741,7 @@ namespace Gamesim.Episode
                 if (cameraRig != null) cameraRig.ConversationWindowOffset = hud.ConversationWindowOffset;
                 return true;
             }
+            MarkAskDialogue(state);
             bool walkOver = askDialogueWay == AskWay.WalkOver;
             string first = FinalistRead.FirstName(npc.name);
             CardFrame(state, npc, card, walkOver ? EpisodeHud.AskWalkOverEyebrow(first) : EpisodeHud.AskCardRaisedEyebrow(first), true);
@@ -754,6 +780,149 @@ namespace Gamesim.Episode
             if (cameraRig != null) cameraRig.ConversationWindowOffset = hud.ConversationWindowOffset;
         }
 
+        // ---------------------------------------------------------------- same-asker chaining (slice 4b)
+
+        /// <summary>
+        /// The ask "There's something else" opens after <paramref name="afterRecordId"/>: the same houseguest's next listed ask
+        /// in the queue read on the committed state, of any source, that could still come (<see cref="AskCanStillCome"/>:
+        /// current, not set aside, under its own cap, its way in open) - <see cref="ComesToYou.NextFrom"/>. Null when there
+        /// is none, and with asks off. A source added to the queue chains with no change here.
+        /// </summary>
+        private ComesToYou.Ask AskChainNext(string askerId, string afterRecordId) =>
+            AsksOn && projected != null && askerId != null
+                ? ComesToYou.NextFrom(CurrentAsks(), askerId, afterRecordId, AskCanStillCome) : null;
+
+        /// <summary>
+        /// The record "There's something else" would open now, or null: on the in-person dialogue once its ask is answered, or
+        /// on the card once its ask is answered. A read for tests.
+        /// </summary>
+        public string AskChainNextRecordId => askCardOpen
+            ? (askCardAnswered && askCard != null ? AskChainNext(askCard.askerId, askCard.recordId)?.recordId : null)
+            : askDialogueWith != null && askDialogueRecordId != null && AskDialogueAnswered(projected)
+                ? AskChainNext(askDialogueWith, askDialogueRecordId)?.recordId : null;
+
+        /// <summary>
+        /// Notes the state the in-person dialogue is drawn on while its record still waits: its session, week, phase and the
+        /// last command the season accepted. The page draws only the ask's answers and the ways out that answer nothing, so
+        /// a record gone after a command of the player's since, in the same phase, went by one of those answers.
+        /// </summary>
+        private void MarkAskDialogue(EpisodeState state)
+        {
+            askDialogueMarked = true;
+            askDialogueMarkSession = state.sessionId; askDialogueMarkWeek = state.week; askDialogueMarkPhase = state.phase;
+            askDialogueMarkCommand = state.acceptedCommandIds?.LastOrDefault();
+        }
+
+        /// <summary>
+        /// Whether the dialogue's ask was answered in it: drawn while it waited (<see cref="MarkAskDialogue"/>), gone now, and a
+        /// command accepted since in the same session, week and phase. A card or an offer the phase took away is not answered
+        /// (the lead's ruling 1 on OF-a: the conversation says what happened), nor is anything after a load.
+        /// </summary>
+        private bool AskDialogueAnswered(EpisodeState state) => askDialogueMarked && state != null
+            && state.sessionId == askDialogueMarkSession && state.week == askDialogueMarkWeek && state.phase == askDialogueMarkPhase
+            && state.acceptedCommandIds?.LastOrDefault() != askDialogueMarkCommand
+            && !AskRecordWaiting(state, askDialogueSource, askDialogueRecordId, askDialogueWith);
+
+        /// <summary>Whether an in-person ask's record still waits on the player: a reply card still the one they can answer, or the offer still pending.</summary>
+        private static bool AskRecordWaiting(EpisodeState state, ComesToYou.Source source, string recordId, string askerId)
+        {
+            if (state == null || recordId == null) return false;
+            if (source == ComesToYou.Source.Card)
+                return state.replyCards.Any(c => c != null && c.id == recordId && c.fromId == askerId) && HoHPitches.Answerable(state, recordId);
+            return NpcDeals.Pending(state).Any(d => d.proposerId == askerId && d.id == recordId);
+        }
+
+        /// <summary>
+        /// The in-person dialogue once its ask is answered, when the same houseguest has something else waiting (slice 4b,
+        /// OFFERS-COME-TO-YOU-PLAN §C.4 "Same-asker chaining"): the dialogue stays up one more page - what happened (the
+        /// answer's own line; a deal's exchange has played before it), then "There's something else", then Back to topics.
+        /// The keyboard opens on "There's something else"; no pointer hold, because the answer has been given. False, and
+        /// the dialogue goes as it always has, when it was not answered here or nothing else from them can come.
+        /// </summary>
+        private bool RenderAskChainPage(EpisodeState state, ContestantState npc, object token)
+        {
+            if (askDialogueRecordId == null || askDialogueWith != npc.id || !AskDialogueAnswered(state)) return false;
+            if (AskChainNext(npc.id, askDialogueRecordId) == null) return false;
+            bool first = askChainPageFor != askDialogueRecordId;
+            askChainPageFor = askDialogueRecordId;
+            hud.EndPointerHold();
+            hud.SpeakerTitle(npc.id, npc.name, npc.pronouns);
+            if (!string.IsNullOrEmpty(conversationNarration)) { hud.Heading("WHAT HAPPENED"); hud.Paragraph(conversationNarration); }
+            hud.Action(EpisodeHud.AskSomethingElseCaption, () =>
+            {
+                if (ConversationNavigationCurrent(token, state, npc.id)) ChainAsk(npc.id);
+            });
+            hud.Action(ConversationTopicsBackCaption, () =>
+            {
+                if (ConversationNavigationCurrent(token, state, npc.id)) BackConversationNavigation(true);
+            });
+            if (first) hud.FocusWhenWired(EpisodeHud.AskSomethingElseCaption);
+            else hud.KeepFocusAsked();
+            if (cameraRig != null) cameraRig.ConversationWindowOffset = hud.ConversationWindowOffset;
+            return true;
+        }
+
+        /// <summary>
+        /// "There's something else" in the conversation: the same houseguest's next ask opens in the same conversation, with
+        /// way <see cref="AskWay.Chained"/> and the raised eyebrow of its source; a pitch opens the pitches as Hear does
+        /// (<see cref="OpenHoHPitches"/>), and the conversation goes with the gap any close starts. The player asked for it,
+        /// so no presentation is counted and no asker gap set, and no cap applies; the ask is set aside as it opens.
+        /// Nothing is committed: its answers are its source's own.
+        /// </summary>
+        private void ChainAsk(string npcId)
+        {
+            if (askDialogueWith != npcId || askDialogueRecordId == null || !AskDialogueAnswered(projected)) return;
+            var next = AskChainNext(npcId, askDialogueRecordId);
+            if (next == null) { Render(); return; }
+            askSetAside.Add(next.recordId);
+            if (AskOpensThePitches(next))
+            {
+                askNextAt = askClock + AskGapSeconds;
+                ClearAskDialogue();
+                hud.DropFocusAsked();
+                if (!OpenHoHPitches()) Render();
+                return;
+            }
+            conversationNarration = null; lastSocialAction = null;
+            conversationCategory = DealsCategoryCaption; invitedDealId = next.recordId;
+            askDialogueRecordId = next.recordId; askDialogueSource = next.source; askDialogueWay = AskWay.Chained;
+            askDialogueFirstRender = true; askDialogueMarked = false; askChainPageFor = null;
+            conversationMenuToken = new object();
+            Render();
+        }
+
+        /// <summary>
+        /// The card's ways back once its ask is answered: "There's something else" beside Back to the house when the same
+        /// houseguest has another ask that can come (the keyboard on it as the page first draws), else Back to the house alone.
+        /// </summary>
+        private void AskCardWaysOut()
+        {
+            var answered = askCard;
+            var next = askCardAnswered && answered != null ? AskChainNext(answered.askerId, answered.recordId) : null;
+            if (next != null) hud.Action(EpisodeHud.AskSomethingElseCaption, () => ChainAskCard(answered));
+            hud.Action(SceneCardDoneCaption, ClosePanels);
+            if (next == null) { hud.DropFocusAsked(); return; }
+            if (askCardChainFor != answered.recordId) { askCardChainFor = answered.recordId; hud.FocusWhenWired(EpisodeHud.AskSomethingElseCaption); }
+            else hud.KeepFocusAsked();
+        }
+
+        /// <summary>
+        /// "There's something else" on the card: the same houseguest's next ask on the same card, way
+        /// <see cref="AskWay.Chained"/> with its source's raised eyebrow, or the pitches as Hear opens them (the card closes as
+        /// any panel does). No presentation, no asker gap, no cap; set aside as it opens.
+        /// </summary>
+        private void ChainAskCard(ComesToYou.Ask answered)
+        {
+            if (!askCardOpen || answered == null || !ReferenceEquals(askCard, answered) || !askCardAnswered) return;
+            var next = AskChainNext(answered.askerId, answered.recordId);
+            if (next == null) { Render(); return; }
+            askSetAside.Add(next.recordId);
+            if (AskOpensThePitches(next)) { if (!OpenHoHPitches()) Render(); return; }
+            askCard = next; askCardReply = null; askCardOutcome = null; askCardAnswered = false; askCardChained = true;
+            askCardChainFor = null; askCardFirstRender = true;
+            Render();
+        }
+
         /// <summary>
         /// A reply card's frame, in the conversation or on the card (slice 4a): the eyebrow, the sender, their standing and
         /// mood, their opening line, then the card's own title and words - what the free-time hero and the campaign board
@@ -788,10 +957,16 @@ namespace Gamesim.Episode
             }).ToList());
         }
 
-        /// <summary>Whether the in-person dialogue is open on this houseguest's reply card: it is the conversation, as an invited offer is.</summary>
-        private bool AskCardDialogueOpen(EpisodeState state, string npcId) => AsksOn && askDialogueSource == ComesToYou.Source.Card
+        /// <summary>
+        /// Whether the in-person dialogue is the conversation with this houseguest, as an invited offer is, so a story beat
+        /// does not take it over: open on their reply card, or (slice 4b) on the page that offers their something else once
+        /// an ask is answered.
+        /// </summary>
+        private bool AskCardDialogueOpen(EpisodeState state, string npcId) => AsksOn
             && invitedDealId != null && invitedDealId == askDialogueRecordId && askDialogueWith == npcId
-            && state?.replyCards != null && state.replyCards.Any(c => c != null && c.id == invitedDealId && c.fromId == npcId);
+            && ((askDialogueSource == ComesToYou.Source.Card
+                    && state?.replyCards != null && state.replyCards.Any(c => c != null && c.id == invitedDealId && c.fromId == npcId))
+                || (conversationCategory == DealsCategoryCaption && AskDialogueAnswered(state) && AskChainNext(npcId, askDialogueRecordId) != null));
 
         /// <summary>
         /// An ask's frame, in the conversation or on the card: the eyebrow, the asker, their standing and mood, their
@@ -827,6 +1002,7 @@ namespace Gamesim.Episode
             if (projected == null || !ask.IsCurrent(projected)) return false;
             ClosePanels();
             askCardOpen = true; askCard = ask; askCardReply = null; askCardOutcome = null; askCardFirstRender = true;
+            askCardAnswered = false; askCardChained = false; askCardChainFor = null;
             askSetAside.Add(ask.recordId);
             CountAskPresentation(ask);
             if (player != null) player.SetInputEnabled(false);
@@ -852,14 +1028,16 @@ namespace Gamesim.Episode
             var npc = ask != null ? state.Find(ask.askerId) : null;
             if (askCardReply != null || offer == null || npc == null)
             {
-                // Nothing left to answer, so nothing to hold the keyboard or the pointer off: the way back is the page's control.
-                hud.DropFocusAsked(); hud.EndPointerHold();
+                // Nothing left to answer, so nothing to hold the keyboard or the pointer off: the way back is the page's control
+                // (and, after an answer, the same houseguest's something else).
+                hud.EndPointerHold();
                 if (askCardReply != null) hud.AskReply(askCardReply.NpcId, askCardReply.PlayerLine, askCardReply.NpcLine);
                 else hud.Paragraph(EpisodeHud.AskGoneLine);
-                hud.Action(SceneCardDoneCaption, ClosePanels);
+                AskCardWaysOut();
                 return;
             }
-            var shown = AskFrame(state, npc, offer, EpisodeHud.AskDirectEyebrow, false);
+            var shown = AskFrame(state, npc, offer,
+                askCardChained ? EpisodeHud.AskRaisedEyebrow(FinalistRead.FirstName(npc.name)) : EpisodeHud.AskDirectEyebrow, false);
             AskBody(state, shown ?? ask, offer);
             hud.Action(EpisodeHud.ThinkItOverCaption, ClosePanels);
             hud.AskMoreWaiting(AskCapReached ? 0 : ComesToYou.OtherAskers(CurrentAsks(), npc.id, AskCanStillCome));
@@ -888,13 +1066,14 @@ namespace Gamesim.Episode
             var npc = state.Find(ask.askerId);
             if (askCardOutcome != null || card == null || npc == null || !HoHPitches.Answerable(state, card.id))
             {
-                hud.DropFocusAsked(); hud.EndPointerHold();
+                hud.EndPointerHold();
                 if (askCardOutcome != null) hud.AskOutcome(askCardOutcome);
                 else hud.Paragraph(EpisodeHud.AskCardGoneLine);
-                hud.Action(SceneCardDoneCaption, ClosePanels);
+                AskCardWaysOut();
                 return;
             }
-            CardFrame(state, npc, card, EpisodeHud.AskDirectEyebrow, false);
+            CardFrame(state, npc, card,
+                askCardChained ? EpisodeHud.AskCardRaisedEyebrow(FinalistRead.FirstName(npc.name)) : EpisodeHud.AskDirectEyebrow, false);
             CardBody(state, card);
             hud.Action(EpisodeHud.ThinkItOverCaption, ClosePanels);
             hud.AskMoreWaiting(AskCapReached ? 0 : ComesToYou.OtherAskers(CurrentAsks(), npc.id, AskCanStillCome));
@@ -925,6 +1104,7 @@ namespace Gamesim.Episode
                 askNextAt = askClock + AskGapSeconds;
             }
             askCardOpen = false; askCard = null; askCardReply = null; askCardOutcome = null; askCardFirstRender = false;
+            askCardAnswered = false; askCardChained = false; askCardChainFor = null;
         }
 
         /// <summary>
@@ -936,6 +1116,8 @@ namespace Gamesim.Episode
         {
             var ask = askCard;
             if (ask == null || before == null || result?.state == null) return;
+            // The card's ask is answered: its page may offer the same houseguest's something else (slice 4b).
+            if (command != null && command.targetId == ask.recordId) askCardAnswered = true;
             var state = result.state;
             var visible = state.events.Where(e => e.sequence >= before.nextSequence
                 && (result.beatsFromSequence <= 0 || e.sequence < result.beatsFromSequence)
@@ -1114,6 +1296,7 @@ namespace Gamesim.Episode
             // A card up is the old season's: what it asked goes now, so closing it sets nothing aside and starts no gap.
             // The panel itself closes with the panels (the load's, or the switch's).
             askCard = null; askCardReply = null; askCardOutcome = null;
+            askCardAnswered = false; askCardChained = false; askCardChainFor = null;
         }
     }
 

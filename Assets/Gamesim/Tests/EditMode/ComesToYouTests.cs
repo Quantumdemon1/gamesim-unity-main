@@ -24,7 +24,8 @@ namespace Gamesim.Tests.EditMode
         /// still answerable (<see cref="WaitingOnYou.Read"/>, its cards left out), joined to what a houseguest can raise
         /// with them now (<see cref="NpcInvitation.Available"/>). The house below holds one of each that only one reader
         /// lists - an offer about somebody who has left, which waits but cannot be raised, and last week's offer at the
-        /// veto meeting from somebody not deciding it, which could be raised but is past answering - and a card.
+        /// veto meeting from somebody not deciding it, which could be raised but is past answering - and a card, which the
+        /// deal rows leave out and which is listed as its own source.
         /// </summary>
         [Test]
         public void ReadListsTheAnswerableOffersAndVetoAsksOnly()
@@ -53,8 +54,11 @@ namespace Gamesim.Tests.EditMode
                     && invitations.Any(row => row.RecordId == item.id && row.NpcId == item.fromId))
                 .Select(item => item.id).ToList();
             var asks = ComesToYou.Read(s);
-            Assert.That(asks.Select(ask => ask.recordId), Is.EquivalentTo(both));
-            Assert.That(asks.Select(ask => ask.recordId), Is.EquivalentTo(new[] { "deal-ask-1", "deal-veto-2" }));
+            // The card is a source of its own since offers slice 4a (ComesToYouSourcesTests): the deal rows ignore it.
+            var deals = asks.Where(ask => ask.source != ComesToYou.Source.Card).ToList();
+            Assert.That(deals.Select(ask => ask.recordId), Is.EquivalentTo(both));
+            Assert.That(deals.Select(ask => ask.recordId), Is.EquivalentTo(new[] { "deal-ask-1", "deal-veto-2" }));
+            Assert.That(asks.Where(ask => ask.source == ComesToYou.Source.Card).Select(ask => ask.recordId), Is.EqualTo(new[] { "reply-4" }));
 
             var offer = asks.Single(ask => ask.recordId == "deal-ask-1");
             Assert.That((offer.source, offer.askerId, offer.type, offer.week), Is.EqualTo((ComesToYou.Source.Offer, Maya, DealKind.Partnership, s.week)));

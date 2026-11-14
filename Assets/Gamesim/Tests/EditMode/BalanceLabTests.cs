@@ -755,19 +755,21 @@ namespace Gamesim.Tests.EditMode
         /// STORY-RULES-10-PLAN §5: a cell plays other story rules only when it names them, and only a version this build
         /// defines from Threads on other than Current; the name says so, the seeds pair, and an unset cell is the cell it
         /// always was. Every such version is walked, not only Latest, so the value BALANCE_STORY=10 measures (Blame) goes
-        /// through the same gate, the name and Fresh; after the enrolment the walk holds Threads instead.
+        /// through the same gate, the name and Fresh; after the enrolment the walk holds Threads instead. Since R7 enrolled
+        /// Roles, Latest is Current, so the named arm is Blame, the version below it: the cell plays other story rules, not
+        /// only later ones.
         /// </summary>
         [Test]
-        public void ACellPlaysLaterStoryRulesOnlyWhenItNamesThem()
+        public void ACellPlaysOtherStoryRulesOnlyWhenItNamesThem()
         {
             var shipped = new BalanceLab.Cell { policy = BalancePolicies.Passive, size = 8 };
             Assert.That(shipped.House, Is.EqualTo("Regular/8/npc0"), "An unset cell keeps its name.");
             Assert.That(BalanceLab.Fresh(shipped, 1u).story.rulesVersion, Is.EqualTo(StoryRules.Current), "...and EnableStory's rules.");
-            var later = shipped.AtStoryRules(StoryRules.Latest);
-            Assert.That(later.House, Is.EqualTo("Regular/8/npc0/story" + StoryRules.Latest.ToString(CultureInfo.InvariantCulture)));
-            Assert.That(later.HeldAtTuning0().House, Does.EndWith("/tuning0/story" + StoryRules.Latest.ToString(CultureInfo.InvariantCulture)), "Held and opted in, both named.");
-            Assert.That(BalanceLab.Fresh(later, 1u).story.rulesVersion, Is.EqualTo(StoryRules.Latest));
-            Assert.That(BalanceLab.Seed(later, 5), Is.EqualTo(BalanceLab.Seed(shipped, 5)), "The arms play the same seasons.");
+            var other = shipped.AtStoryRules(StoryRules.Blame);
+            Assert.That(other.House, Is.EqualTo("Regular/8/npc0/story" + StoryRules.Blame.ToString(CultureInfo.InvariantCulture)));
+            Assert.That(other.HeldAtTuning0().House, Does.EndWith("/tuning0/story" + StoryRules.Blame.ToString(CultureInfo.InvariantCulture)), "Held and opted in, both named.");
+            Assert.That(BalanceLab.Fresh(other, 1u).story.rulesVersion, Is.EqualTo(StoryRules.Blame));
+            Assert.That(BalanceLab.Seed(other, 5), Is.EqualTo(BalanceLab.Seed(shipped, 5)), "The arms play the same seasons.");
             Assert.That(shipped.storyRules, Is.Zero, "Opting a copy in leaves the cell it came from alone.");
             Assert.That(BalanceLab.CheckedStoryRules(0), Is.Zero);
             int taken = 0;

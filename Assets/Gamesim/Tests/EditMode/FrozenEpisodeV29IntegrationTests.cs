@@ -356,8 +356,8 @@ namespace Gamesim.Tests.EditMode
         }
 
         /// <summary>
-        /// A season at story rules 10 is a schema-30 season like any other: a shipped season, on Blame since its enrolment,
-        /// plays two weeks and their two veto meetings, and the real store saves it at 30, loads it read-only and unmigrated
+        /// A season at story rules 10 is a schema-30 season like any other: a shipped season held on Blame by name (every new
+        /// season's rules from that enrolment to R7's), plays two weeks and their two veto meetings, and the real store saves it at 30, loads it read-only and unmigrated
         /// with every field it held, and saves and reloads it again unchanged.
         /// </summary>
         [Test]
@@ -365,8 +365,9 @@ namespace Gamesim.Tests.EditMode
         {
             var start = SeasonBuilder.Create(new SeasonBuilder.Choice { HouseSize = 8 }, 1111u);
             ShippedRules.ApplyFresh(start);
-            // Opted in by assignment until the enrolment; since it (STORY-RULES-10-PLAN §8) the shipped season starts there.
-            Assert.That(start.story.rulesVersion, Is.EqualTo(StoryRules.Blame), "A shipped season starts on story rules 10.");
+            // Opted in by assignment until story rules 10's enrolment (STORY-RULES-10-PLAN §8), when the shipped season started
+            // there; since R7's it starts on Roles, so the season at 10 is held by name again.
+            start.story.rulesVersion = StoryRules.Blame;
             var engine = new EpisodeEngine(start);
             for (int i = 0; i < 4000 && engine.Snapshot.week < 3 && engine.Snapshot.phase != EpisodePhase.Finished; i++)
             {

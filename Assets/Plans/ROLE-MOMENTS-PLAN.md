@@ -758,7 +758,10 @@ CastTemplateTests, BetweenHouseguestsTests, EpisodeNpcSocialTests, NpcPairingTes
 unified safety and unified vote fixtures, WaveDInertSchema28Tests, and in PlayMode the all-week, walk-in, public agreement
 and ComesToYou story-house fixtures; the offer and pitch boards' without-roles arms; the schema-30 round trip at story
 rules 10; the lab's named-arm test (renamed `ACellPlaysOtherStoryRulesOnlyWhenItNamesThem`) and the conversation budget's
-arms A and C. Held unchanged at threads, as story rules 10's enrolment held them: CommitmentRulesSeasonDigests and the
+arms A and C. Found by the runs and held the same way: the dialogue pilot's fixed witnesses (the seed-4 route to week
+three's campaign in DialogueCampaignRealReplySaveTests and its PlayMode twin, which at Roles meets a role week's story
+ask; the seed-14 incoming offer), and AlumniLoyaltyTests' opening comparison, which holds its fresh season as the
+AllStars fixture does. Held unchanged at threads, as story rules 10's enrolment held them: CommitmentRulesSeasonDigests and the
 tiers that play its seasons, PinnedVoteSeason, the rules-9 and rules-10 budget-nought pins, TuningRulesTests' studier pins,
 `RoleStoryPools.OldSeasons`, the web import's pin (PersistenceTests) and the schema-16 migration's step.
 

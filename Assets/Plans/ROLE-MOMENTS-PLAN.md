@@ -736,8 +736,10 @@ owner. No change inside story rules 11 and no cut was tried first (the run decid
 **The switch.** `StoryRules.Current = Roles` (Simulation/Story/StoryState.cs): every new season the game starts plays
 story rules 11, so the role moments come to the player in every new season. Nothing else in Simulation or Runtime
 changed: every rule reads the milestone that introduced it, and `EnableStory`, the one reader of `Current`, writes a new
-season's value. A saved season keeps the version it was started on (a load never calls `EnableStory`); the save migration
-and the web importer still write threads (decision 14); the frozen readers keep their own ladders, which end at threads.
+season's value. A saved season keeps the version it was started on: a load reads the saved `story.rulesVersion` back,
+and the one load step that calls `EnableStory`, the schema-16 migration of a save from before the story system, writes 9
+over its value at once, as the web importer writes threads over its own call (decision 14). The frozen readers keep their
+own ladders, which end at threads.
 No saved field was added: 11 is written into the existing `story.rulesVersion`, and the schema stays 30. This is the
 first of four enrolments of the story plan of 13 Nov: plan 32's stacks move `Current` again, to 12, 13 and 14, each at
 its own enrolment once it is built and measured.
@@ -750,7 +752,10 @@ dialogue fixtures of DialogueCampaignEngineTests, DialogueCampaignDealClosureTes
 DialoguePendingSaveTests and PlayMode EpisodeDurableTransactionTests.DialogueCampaign (10 to 11). Followed with no edit,
 because they read `Current` or search the shipped season: StorySeasonTests' switch test, AllianceLeakTests' restore, the
 lab's parts round trip, and the dialogue-rules-2 cluster on `DialogueRules2Season` (the chip's own season; a search that
-finds another witness is re-searched).
+finds another witness is re-searched). The seeds the cluster's searches print, on R1's head (Blame) and on the switch's
+(Roles), from the subset's own output: every witness keeps its seed but two, both of which pass. DialogueRules2EngineTests'
+caught lie moved from seed 1 (12 seats, week 6) to seed 2 (week 2), and DialogueRules2CapacityTests' budget campaign
+keeps seed 1 and week 7 but its copied conversation reads another reply (a guarded one, not a concerned one).
 
 **What was held, by name.** A test whose season the switch would move but which is about something else writes
 `story.rulesVersion = Blame` after `ApplyFresh` or `EnableStory`: the fixtures of AllWeekCadenceTests, AlumniHistoriesTests,
@@ -763,11 +768,20 @@ three's campaign in DialogueCampaignRealReplySaveTests and its PlayMode twin, wh
 ask; the seed-14 incoming offer), and AlumniLoyaltyTests' opening comparison, which holds its fresh season as the
 AllStars fixture does. Held unchanged at threads, as story rules 10's enrolment held them: CommitmentRulesSeasonDigests and the
 tiers that play its seasons, PinnedVoteSeason, the rules-9 and rules-10 budget-nought pins, TuningRulesTests' studier pins,
-`RoleStoryPools.OldSeasons`, the web import's pin (PersistenceTests) and the schema-16 migration's step.
+`RoleStoryPools.OldSeasons`, the web import's pin (PersistenceTests) and the schema-16 migration's step. Three of the
+holds at Blame rest on no failing run of their own: the seed-14 incoming offer, the PlayMode twin of the seed-4 route
+(its EditMode twin failed) and ComesToYou's `SaveWithTheStoryOn`. They stand at Blame by name, by the lead's ruling of
+13 Nov.
 
 **The lab's records.** BalanceLabGoldens' `Rules` tuple ends `story.rulesVersion=11`, and its 48 cells are re-recorded
 at the enrolment with the reason in the file; the budget-nought tests gain Explicit rules-11 twins beside the rules-10
-ones. *To be filled when they are recorded, after the measurement has ended.*
+ones. Recorded on the switch's head without waiting for the verdict (the lead's ruling of 13 Nov: they record what the
+code does at `Current = Roles`; if the verdict stops the stack and a number is tuned, they are recorded again then). All
+48 cells moved; the rules-11 twins hash `2a39d289ab2e77ec` (tuning 0) and `393c1559fd68ed67` (tuning 1, the shipped
+seasons). The lab's R0 rows answer the boards and the golden cells do not, so the two cannot be compared row by row: the
+boards-on path is the replay's (the switch's head 2892a4e8 plays the headline's development seeds 0-19 at
+`BALANCE_BOARDS=1` exactly as the lab's R0 rows: 480 of 480 seasons equal), and the goldens were checked by a second
+run of every chunk and both twins, which passed with the pasted values.
 
 **Old saves.** OLD-SAVE-ACCEPTANCE.md cell 2.13: a schema-30, mode-2 season at story rules 11, saved at a veto meeting
 with a pending keep-the-block row, written by the enrolled head (its own slice).

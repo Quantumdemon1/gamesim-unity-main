@@ -267,7 +267,11 @@
 # observed it on the merge.
 # 9960 = 9944 + role moments R7's 16 (9913 - 9897): disjoint cases, so the floor is their sum (the merge of main
 # 0ab29719 into role moments R7 at its landing, 2026-11-13). Counted from the two sides; no run has observed 9960.
-Gamesim.EditModeTests 9960
+# 9968 = 9960 + the house talk's levels (plan 32 HT0): HouseTalkRulesTests, 8 cases (the three numbers, Latest
+# still Roles, none defined, the validator's refusal of each). RolesSeasonDigests is compiled out of Unity. The
+# Mono harness ran HouseTalkRulesTests 8 of 8 and RoleRulesTests 43 of 43, passed, on the slice at 8e9a933a
+# (2026-11-14); the no-UMA lister counts the head; no Unity run has observed 9968 yet.
+Gamesim.EditModeTests 9968
 # The UMA-free build. 1215 = 1236, the count after the consolidation's lanes (S2a, S2b, S4a), less the 7
 # farewell probes moved to Gamesim.DiagnosticsPlayModeTests and the 14 farewell readiness tests that now
 # compile only under GAMESIM_UMA (judged on the UMA cast); 1230 = 1215 + S2d's 7, S4b's 2, S4c's 2 and
@@ -729,4 +733,7 @@ Gamesim.Uma.DiagnosticsPlayModeTests 10
 # observed it on the merge.
 # 16789 = 16768 + role moments R7's 21 (16731 - 16710): disjoint cases, so the floor is their sum (the merge of main
 # 0ab29719 into role moments R7 at its landing, 2026-11-13). Counted from the two sides.
-Gamesim.SimulationTests 16789
+# 16797 = 16789 + the house talk's levels (plan 32 HT0): the same 8 HouseTalkRulesTests cases the EditMode floor
+# counts. dotnet test Tools/SimulationTests ran exactly 16797 of 16797 on the slice at 8e9a933a (2026-11-14). Its
+# RolesSeasonDigests is Explicit (run by filter: 1 of 1 passed there) and not counted.
+Gamesim.SimulationTests 16797

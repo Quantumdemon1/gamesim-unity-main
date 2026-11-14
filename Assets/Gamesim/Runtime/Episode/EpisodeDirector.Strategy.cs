@@ -149,7 +149,11 @@ namespace Gamesim.Episode
 
         /// <summary>
         /// The house's pointer, on the phase panel: who is deciding, and that there is time for a
-        /// word with them. Null when no window is open.
+        /// word with them. Null when no window is open. Each decider is placed where the house puts them
+        /// (plan HR-1): the Head of Household waits in the HoH suite (<see cref="SuiteHeadId"/>), so the
+        /// line sends the player there for them, and anybody else is in the house - at the veto meeting
+        /// with two deciders, "Find {holder} in the house or {Head} in the HoH room". The room is named
+        /// for the whole window, the Head's trip up included: the plea is made wherever they are found.
         /// </summary>
         public static string WindowLine(EpisodeState state)
         {
@@ -159,9 +163,11 @@ namespace Gamesim.Episode
             string names = string.Join(" or ", deciders.Select(id => state.Find(id).name));
             string what = state.phase == EpisodePhase.Nomination ? "Nominations are " + names + "'s call."
                 : "The veto meeting is next.";
+            string head = SuiteHeadId(state);
+            string where = string.Join(" or ", deciders.Select(id => state.Find(id).name + (id == head ? " in the HoH room" : " in the house")));
             // Under the week's windows the count is the window's, and what is not spent here does not
             // carry; the old weekly pool is the week's.
-            return what + " Find " + names + " in the house for a word before it happens: you have "
+            return what + " Find " + where + " for a word before it happens: you have "
                 + left + (left == 1 ? " conversation" : " conversations")
                 + (EpisodeEngine.WeekRulesOn(state) ? " left in this window." : " left this week.");
         }

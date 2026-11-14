@@ -398,7 +398,15 @@ all milestones M0-M6, owner decisions = the recommended defaults in 20 §9 and 2
   `ApplyFresh` or `EnableStory`; the rules-9 and rules-10 pins keep their digests; the lab's goldens are re-recorded (all
   48 cells moved) and its budget-nought tests gain rules-11 twins (`2a39d289ab2e77ec`, `393c1559fd68ed67`). The full
   list of what moved and what held is the plan's §6.4.
-- Measured once on the held-out seeds 200-299 before the switch lands: *the verdict, word for word, when the run has
-  ended* (the plan's §6.4).
+- Measured once on the held-out seeds 200-299 before the switch lands: PASS (2026-11-14; report `r7-report.txt`, sha256
+  `e27ea1ac8b4a75ffbf90915daf91632e706f68bfcd759f863e3fcc77e7ddd7f7`, head `bcb56fd2247766cd1a9a117458638b8ef139af67`,
+  snapshot `b25d799d3bcdf343`; the ACCEPT lines are in the plan's §6.4). Band B7 is out low in both arms, R0 and the
+  baseline alike, so it passes by the criterion's own rule that a miss shared with the baseline passes. The verdict,
+  word for word:
+
+```
+VERDICT: PASS R0: criteria 1-7 pass on the held-out seeds on snapshot b25d799d3bcdf343 of bcb56fd2
+```
+
 - This is the first of four enrolments: plan 32 (the house talks back) moves `Current` to 12, 13 and 14, one stack at a
   time, each once it is built and measured.

@@ -685,15 +685,17 @@ namespace Gamesim.Tests.EditMode
             Assert.That(BalanceLab.Jsonl(parts), Is.EqualTo(whole));
             Assert.That(parts.Select(r => r.index), Is.EqualTo(new[] { 0, 1, 2, 0, 1, 2 }));
             // What the rows leave out survives too: the autopsy whole, and the diagnostics' own records, the pact watch's
-            // (ALL-STAR-HISTORIES-PLAN 14.L.H) and Q5's other definitions (STORY-RULES-10-PLAN) among them.
+            // (ALL-STAR-HISTORIES-PLAN 14.L.H), Q5's other definitions (STORY-RULES-10-PLAN) and R7's A1 records among them.
             string Rest(BalanceLab.SeasonRun r) => Newtonsoft.Json.JsonConvert.SerializeObject(new
             {
                 r.autopsy, r.gameSenseRows, r.nominations, r.pariah, r.preparation, r.counterMembers, r.counterTallies, r.pactWatch,
                 r.pariahInHouse, r.pariahAtClosings, r.pariahBySize, paceInHouse = r.pace?.pariahInHouse, r.cell.storyRules, r.cell.House,
+                r.promptsByWeek, r.storylines, r.storylinesPeak, r.cell.answersBoards,
             });
             Assert.That(parts.Select(Rest), Is.EqualTo(one.Select(Rest)));
             Assert.That(one.Sum(r => r.gameSenseRows.Count), Is.GreaterThan(0), "Game Sense's rows were kept.");
             Assert.That(parts.All(r => r.pactWatch != null), Is.True, "The pact watch was kept.");
+            Assert.That(parts.All(r => r.promptsByWeek.Count == r.autopsy.weeks && r.storylines > 0), Is.True, "R7's records were kept, a week each.");
 
             // A six-house season seldom has a pariah, so story rules 10's records are filled in by hand: each survives the
             // part, and none of them, nor the cell's story rules, reaches the row the digests hash.
@@ -715,13 +717,37 @@ namespace Gamesim.Tests.EditMode
             filled.pariahAtClosings = true;
             filled.pariahBySize = true;
             filled.pace.pariahInHouse = true;
-            filled.cell = filled.cell.AtStoryRules(StoryRules.Latest);
+            // A version a cell can opt into: Latest, or Blame once Latest is Current (BudgetNought's pattern), so the
+            // round trip keeps working when the enrolment moves Current.
+            int optedIn = StoryRules.Latest == StoryRules.Current ? StoryRules.Blame : StoryRules.Latest;
+            filled.cell = filled.cell.AtStoryRules(optedIn).AnsweringBoards();
+            // R7's A1 records, filled in by hand as well: a role week with every count, a word and its minutes.
+            var week = filled.promptsByWeek[3] = new BalanceLab.WeekPrompts { week = 3 };
+            week.playerHoh = week.playerVetoHolder = week.playerNominated = true;
+            week.vetoBoardCards = 3;
+            week.keepTheBlockCards = 1;
+            week.pitchCards = 2;
+            week.storyAsks[BalanceLab.PromptWatch.QuietTears] = 1;
+            week.storyAsks[BalanceLab.PromptWatch.PawnTalk] = 1;
+            week.storyAsks[BalanceLab.PromptWatch.OtherStory] = 2;
+            week.answers[BalanceLab.PromptWatch.KeepTheBlock] = 1;
+            week.answers[BalanceLab.PromptWatch.Pitch] = 2;
+            week.words[BalanceLab.PromptWatch.KeepTheBlock] = 1;
+            week.minutes = 41.25;
+            filled.storylines = filled.storylinesPeak = 97;
             var back = BalanceLabParts.RoundTrip(filled);
             Assert.That(Rest(back), Is.EqualTo(Rest(filled)));
             Assert.That(back.pariah.holderRows.Select(h => h.holderId + "/" + h.cause + "/" + h.severity.ToString(CultureInfo.InvariantCulture) + "/" + h.count),
                 Is.EqualTo(new[] { "first/nominated/67.25/2", "second/replacement-veto/40/1" }), "The holders' rows are read back, not merely written.");
-            Assert.That(back.cell.House, Does.EndWith("/story" + StoryRules.Latest.ToString(CultureInfo.InvariantCulture)));
-            Assert.That(BalanceLab.Row(filled), Is.EqualTo(row), "Q5's other definitions and a cell's story rules stay out of the hashed row.");
+            var read = back.promptsByWeek[3];
+            Assert.That((read.playerHoh, read.playerVetoHolder, read.playerNominated, read.vetoBoardCards, read.keepTheBlockCards, read.pitchCards, read.Shown, read.minutes),
+                Is.EqualTo((true, true, true, 3, 1, 2, 9, 41.25)), "R7's records are read back, not merely written.");
+            Assert.That(read.answers.Where(p => p.Value > 0).Select(p => p.Key + "=" + p.Value), Is.EqualTo(new[] { "keep-the-block=1", "pitch=2" }));
+            Assert.That(read.words.Keys, Is.EqualTo(BalanceLab.PromptWatch.WordClasses.OrderBy(k => k, StringComparer.Ordinal)), "Every key is written.");
+            Assert.That((back.storylines, back.storylinesPeak), Is.EqualTo((97, 97)));
+            Assert.That(back.cell.House, Does.EndWith("/story" + optedIn.ToString(CultureInfo.InvariantCulture) + "/boards1"));
+            Assert.That(back.cell.answersBoards, Is.True);
+            Assert.That(BalanceLab.Row(filled), Is.EqualTo(row), "Q5's other definitions, R7's records, a cell's story rules and its board answering stay out of the hashed row.");
             Assert.That(BalanceLab.Row(back), Is.EqualTo(row));
         }
 

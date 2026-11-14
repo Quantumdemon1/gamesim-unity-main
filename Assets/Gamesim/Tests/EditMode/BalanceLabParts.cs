@@ -32,8 +32,11 @@ namespace Gamesim.Tests.EditMode
         /// v7: the watch's record gains its founders out, its final scores' hash and its own error (S4's review).
         /// v8: B9's tuning bands. v9: story rules 10's measure (STORY-RULES-10-PLAN §5): a cell's story rules, the pariah
         /// record's holders' rows, veto and player in the house, DP's own record, D1 and D2, and the pace's DP.
+        /// v10: R7's A1 records (R7 build plan C1): each week's prompts, answers, role-week flags and minutes
+        /// (<see cref="BalanceLab.WeekPrompts"/>), the season's storylines at its end and at their peak, and a cell's board
+        /// answering (<see cref="BalanceLab.Cell.answersBoards"/>).
         /// </summary>
-        internal const string Stamp = "balance-lab-parts/v9";
+        internal const string Stamp = "balance-lab-parts/v10";
 
         private static BalanceLabReports.TierSpec TierFromEnvironment()
         {
@@ -63,14 +66,30 @@ namespace Gamesim.Tests.EditMode
         /// A tier's cells: as the tier names them, or every one held at tuning 0 when BALANCE_TUNING is 0 (B9's control,
         /// B9-BALANCE-PLAN decision 8), so a tier replays the seasons it played before B9; and every one played at the
         /// story rules BALANCE_STORY names (<see cref="StoryRulesFromEnvironment"/>), so a milestone is measured before it
-        /// is enrolled. The held and opted-in cells' names say so, and so does the stamp.
+        /// is enrolled; and with BALANCE_BOARDS=1 every one's player answering the role boards (<see cref="BoardsFromEnvironment"/>,
+        /// R7's A2). The held, opted-in and answering cells' names say so, and so does the stamp.
         /// </summary>
         internal static List<BalanceLab.Cell> CellsOf(BalanceLabReports.TierSpec tier)
         {
             var cells = tier.cells();
             if (Environment.GetEnvironmentVariable("BALANCE_TUNING") == "0") cells = cells.Select(c => c.HeldAtTuning0()).ToList();
             int story = StoryRulesFromEnvironment();
-            return story == 0 ? cells : cells.Select(c => c.AtStoryRules(story)).ToList();
+            if (story != 0) cells = cells.Select(c => c.AtStoryRules(story)).ToList();
+            return BoardsFromEnvironment() ? cells.Select(c => c.AnsweringBoards()).ToList() : cells;
+        }
+
+        /// <summary>
+        /// BALANCE_BOARDS: whether a tier's players answer the role boards (<see cref="BalanceLab.Cell.answersBoards"/>). Unset,
+        /// empty or 0 leaves them unanswered, as every tier always has; 1 answers them; anything else stops the run here.
+        /// </summary>
+        internal static bool BoardsFromEnvironment() => Boards(Environment.GetEnvironmentVariable("BALANCE_BOARDS"));
+
+        /// <summary><see cref="BoardsFromEnvironment"/>'s reading of a value.</summary>
+        internal static bool Boards(string value)
+        {
+            if (string.IsNullOrWhiteSpace(value) || value.Trim() == "0") return false;
+            if (value.Trim() == "1") return true;
+            throw new ArgumentException("BALANCE_BOARDS is 0 or 1, not " + value);
         }
 
         /// <summary>
@@ -169,9 +188,13 @@ namespace Gamesim.Tests.EditMode
             public int preparation;
             public BalanceLab.PactRecord pactWatch;
             public double seasonMilliseconds;
+            /// <summary>R7's A1 records (stamp v10): <see cref="BalanceLab.WeekPrompts"/> by week, and the season's storylines at its end and peak.</summary>
+            public SortedDictionary<int, BalanceLab.WeekPrompts> promptsByWeek = new SortedDictionary<int, BalanceLab.WeekPrompts>();
+            public int storylines, storylinesPeak;
 
             internal static Record Of(BalanceLab.SeasonRun r) => new Record
             {
+                promptsByWeek = new SortedDictionary<int, BalanceLab.WeekPrompts>(r.promptsByWeek), storylines = r.storylines, storylinesPeak = r.storylinesPeak,
                 cell = r.cell, index = r.index, seed = r.seed, error = r.error, autopsy = r.autopsy, pace = PaceCounts.Of(r.pace),
                 commands = r.commands, own = r.own, fallbacks = r.fallbacks, refusals = r.refusals, freeActions = r.freeActions,
                 refusalsByKind = new SortedDictionary<string, int>(r.refusalsByKind, StringComparer.Ordinal),
@@ -193,8 +216,9 @@ namespace Gamesim.Tests.EditMode
                     npcOps = npcOps, npcTicks = npcTicks, npcStarts = npcStarts, npcScans = npcScans, npcTries = npcTries, npcHeld = npcHeld,
                     npcRejected = npcRejected, npcMilliseconds = npcMilliseconds, pairs = pairs, pairsNearBound = pairsNearBound, pairsAtBound = pairsAtBound,
                     pariah = pariah, pariahInHouse = pariahInHouse, pariahAtClosings = pariahAtClosings, pariahBySize = pariahBySize,
-                    preparation = preparation, pactWatch = pactWatch, seasonMilliseconds = seasonMilliseconds,
+                    preparation = preparation, pactWatch = pactWatch, seasonMilliseconds = seasonMilliseconds, storylines = storylines, storylinesPeak = storylinesPeak,
                 };
+                foreach (var p in promptsByWeek ?? new SortedDictionary<int, BalanceLab.WeekPrompts>()) r.promptsByWeek[p.Key] = p.Value;
                 foreach (var p in gameSenseRows ?? new SortedDictionary<string, double>()) r.gameSenseRows[p.Key] = p.Value;
                 r.nominations.AddRange(nominations ?? new List<BalanceLab.NominationRecord>());
                 foreach (var p in refusalsByKind) r.refusalsByKind[p.Key] = p.Value;

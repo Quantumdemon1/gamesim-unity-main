@@ -1072,7 +1072,9 @@ namespace Gamesim.Tests.EditMode
 
         // ------------------------------------------------------------------ fixtures
 
-        private sealed class Pawn
+        // Pawn, PawnWeek, JustAPawn, TearsCard and OpenTears are internal for R7's abuse checklist (RoleAbuseTests,
+        // RoleAbusePersistenceTests), which plays its moments on these same fixtures.
+        internal sealed class Pawn
         {
             public string hohId, target;
             public EpisodeState walked, before;
@@ -1183,7 +1185,7 @@ namespace Gamesim.Tests.EditMode
         /// <paramref name="second"/> asks it: with or without a backdoor planned, on the coin's yes or no, its card put to the
         /// player where <paramref name="drawn"/> asks it. The engine is after the names.
         /// </summary>
-        private static Pawn PawnWeek(bool backdoor, bool coin, int mode = 2, bool roles = true, bool drawn = true, int week = 2, bool second = false)
+        internal static Pawn PawnWeek(bool backdoor, bool coin, int mode = 2, bool roles = true, bool drawn = true, int week = 2, bool second = false)
         {
             foreach (var walked in AtTheHoH(mode, roles, week))
                 foreach (string hoh in Contenders(walked))
@@ -1251,7 +1253,7 @@ namespace Gamesim.Tests.EditMode
         }
 
         /// <summary>The Just a Pawn card waiting on the player, either variant, or null.</summary>
-        private static HouseEventState JustAPawn(EpisodeState s) =>
+        internal static HouseEventState JustAPawn(EpisodeState s) =>
             s.houseEvents.FirstOrDefault(e => !e.resolved && e.contentId != null && e.contentId.EndsWith(":just-a-pawn", StringComparison.Ordinal));
 
         /// <summary>An earlier week's conversation with this Head of Household: a finished storyline whose plan took the route given.</summary>
@@ -1298,7 +1300,7 @@ namespace Gamesim.Tests.EditMode
         }
 
         /// <summary>The open quiet tears card.</summary>
-        private static HouseEventState OpenTears(EpisodeState s) =>
+        internal static HouseEventState OpenTears(EpisodeState s) =>
             s.houseEvents.Single(e => !e.resolved && e.contentId == Tears + ":tears");
 
         /// <summary>
@@ -1326,7 +1328,7 @@ namespace Gamesim.Tests.EditMode
             }
         }
 
-        private static EpisodeEngine TearsCard(bool playerHoh, string anchor, out EpisodeState s)
+        internal static EpisodeEngine TearsCard(bool playerHoh, string anchor, out EpisodeState s)
         {
             var engine = TearsCards(playerHoh, anchor).FirstOrDefault();
             s = engine?.Snapshot;

@@ -256,7 +256,18 @@
 # 9944 = 9942 + Will's face slice's 2 (LookPiecesTests E10 and E11): disjoint from the creator convergence branch's and the
 # sit-out fix's cases, so the floor is the sum (the merge of main into face slice 3 at its landing, 2026-11-13). Counted
 # from the two sides; no run has observed 9944.
-Gamesim.EditModeTests 9944
+# 9851 = 9837 + R7's abuse checklist (C2, ROLE-MOMENTS-PLAN R7): the 13 shared RoleAbuseTests cases and the EditMode-only
+# RoleAbusePersistenceTests case, 14. The no-UMA lister counted exactly 9851 (2026-11-09), and the Mono harness ran both
+# classes, 13 of 13 and 1 of 1, passed; no Unity run has observed the floor yet.
+# 9853 = 9851 + the abuse checklist's review (C2): the board ask answered after the veto decision runs in commitment
+# modes 0, 1 and 2, two more RoleAbuseTests cases (15). The no-UMA lister counted exactly 9853 (2026-11-09), and the Mono
+# harness ran both classes, 15 of 15 and 1 of 1, passed; no Unity run has observed the floor yet.
+# 9913 = 9897 + R7's abuse checklist's 16 (9853 - 9837): disjoint cases, so the floor is their sum
+# (the merge of the abuse checklist into role moments R7, 2026-11-09). Counted from the two sides; no run has
+# observed it on the merge.
+# 9960 = 9944 + role moments R7's 16 (9913 - 9897): disjoint cases, so the floor is their sum (the merge of main
+# 0ab29719 into role moments R7 at its landing, 2026-11-13). Counted from the two sides; no run has observed 9960.
+Gamesim.EditModeTests 9960
 # The UMA-free build. 1215 = 1236, the count after the consolidation's lanes (S2a, S2b, S4a), less the 7
 # farewell probes moved to Gamesim.DiagnosticsPlayModeTests and the 14 farewell readiness tests that now
 # compile only under GAMESIM_UMA (judged on the UMA cast); 1230 = 1215 + S2d's 7, S4b's 2, S4c's 2 and
@@ -396,7 +407,15 @@ Gamesim.EditModeTests 9944
 # never publishes, a pending publication is cancelled on disable and disposal) and two for the creator thumbnail's
 # placeholder (shown until the matching portrait is ready, and again after an invalidation or a rebinding). The lister
 # counted 1507 on the branch at cc4303bc without UMA (2026-11-12). No Unity run has observed them yet.
-Gamesim.PlayModeTests 1507
+# 1489 = 1486 + R7's abuse checklist (C2), 3 shared tests (EpisodePlayModeTests.RoleAbuse: the board's old yes after a load,
+# and a failed save on a board yes and on a pitch promise), counted offline from the source and the compiled assembly (the
+# no-UMA lister counted 1489, 2026-11-09); not yet run in Unity.
+# 1501 = 1498 + R7's abuse checklist's 3 (1489 - 1486): disjoint cases, so the floor is their sum
+# (the merge of the abuse checklist into role moments R7, 2026-11-09). Counted from the two sides; no run has
+# observed it on the merge.
+# 1510 = 1507 + role moments R7's 3 (1501 - 1498): disjoint cases, so the floor is their sum (the merge of main 0ab29719
+# into role moments R7 at its landing, 2026-11-13). Counted from the two sides; no run has observed 1510.
+Gamesim.PlayModeTests 1510
 # The UMA build of the same assembly, read by a plan built without -WithoutUma. 1281 = the 1241 above + the
 # 40 tests that compile only under GAMESIM_UMA, as run at r1 (2026-10-16): in EpisodePlayModeTests,
 # GroundedFarewell 11, Creator 9, HouseLife 8, Emotes 3, OpeningCaptures 2, and one each in CreatorEntry,
@@ -490,7 +509,15 @@ Gamesim.PlayModeTests 1507
 # 1552 = 1547 + the creator convergence branch's same 5 CharacterStudioRecoveryPlayModeTests cases (see PlayModeTests
 # above): the lister counted 1552 on the branch at cc4303bc in the UMA offline build (2026-11-12). No Unity run has
 # observed them or 1552 yet.
-Gamesim.PlayModeTests.UmaBuild 1552
+# 1531 = 1528 + R7's abuse checklist (C2), the same 3 shared EpisodePlayModeTests.RoleAbuse tests, counted from the source
+# and listed in the no-UMA build (2026-11-09); the UMA offline build was not compiled for it. Not yet run in Unity.
+# 1543 = 1540 + R7's abuse checklist's 3 (1531 - 1528): disjoint cases, so the floor is their sum
+# (the merge of the abuse checklist into role moments R7, 2026-11-09). Counted from the two sides; no run has
+# observed it on the merge.
+# 1555 = 1552 + role moments R7's same 3 shared cases (1543 - 1540): disjoint cases, so the floor is their sum (the
+# merge of main 0ab29719 into role moments R7 at its landing, 2026-11-13). Counted from the two sides; no run has
+# observed 1555.
+Gamesim.PlayModeTests.UmaBuild 1555
 # The UMA bodies: runs only where the GAMESIM_UMA define is set (the working tree and the D: copy).
 # 82 = the 89 run on 2026-10-15, less the 7 farewell probes moved to Gamesim.Uma.DiagnosticsPlayModeTests;
 # 85 = 82 + the 3 farewell readiness decision tests (UmaFarewellReadinessDecisionPlayModeTests, 2026-10-16);
@@ -687,4 +714,19 @@ Gamesim.Uma.DiagnosticsPlayModeTests 10
 # landing, 2026-11-13).
 # 16768 = 16766 + Will's face slice's 2: the sum, as above (the merge of main into face slice 3 at its landing,
 # 2026-11-13).
-Gamesim.SimulationTests 16768
+# 16663 = 16657 + R7's C1 6 (the lab's prompt records and opt-in board answering: BalanceLabBoardsTests 6; the parts
+# round-trip test BalanceLabTests gains checks, not cases): the subset ran exactly 16663 of 16663 on C1's tree, green
+# (2026-11-09). Lab files only: EditMode and PlayMode +0.
+# 16716 = 16710 + R7's C1 6 (16663 - 16657): disjoint cases, so the floor is their sum (the merge of story rules
+# 10's head 31a9f857 into role moments R7, 2026-11-09). Counted from the two sides; no run has observed it on the merge.
+# 16670 = 16657 + R7's abuse checklist (C2, ROLE-MOMENTS-PLAN R7): RoleAbuseTests, 13 cases. The subset ran exactly
+# 16670 of 16670 at C2's tree, green (2026-11-09).
+# 16672 = 16670 + the abuse checklist's review (C2): the board ask answered after the veto decision runs in commitment
+# modes 0, 1 and 2, two more RoleAbuseTests cases (15). The subset ran exactly 16672 of 16672 at the review's tree, green
+# (2026-11-09).
+# 16731 = 16716 + R7's abuse checklist's 15 (16672 - 16657): disjoint cases, so the floor is their sum
+# (the merge of the abuse checklist into role moments R7, 2026-11-09). Counted from the two sides; no run has
+# observed it on the merge.
+# 16789 = 16768 + role moments R7's 21 (16731 - 16710): disjoint cases, so the floor is their sum (the merge of main
+# 0ab29719 into role moments R7 at its landing, 2026-11-13). Counted from the two sides.
+Gamesim.SimulationTests 16789

@@ -63,12 +63,17 @@ namespace Gamesim.Simulation
                 && offer.week == offeredWeek && offer.expiresWeek == expiresWeek);
         }
 
+        // Under the role moments the veto board's own asks - the nominees' and the Head of Household's ask to keep the block -
+        // stay on the board, where their tone and what a no and silence cost are said (ROLE-MOMENTS-PLAN R7, the lead's Q8).
+        // They wait only at the meeting, a phase an invitation plays in with the conversation open, so without this an
+        // invitation - the director's way whenever the asks are off - would raise them there. A reader: no rule reads it.
         private static bool Eligible(EpisodeState state, DealState offer) => offer != null
             && !string.IsNullOrEmpty(offer.id) && DealKind.IsKnown(offer.type)
             && offer.status == DealStatus.Proposed && offer.recipientId == state.playerId
             && offer.proposerId != state.playerId && state.Find(offer.proposerId)?.status == ContestantStatus.Active
             && (!DealKind.NamesATarget(offer.type)
-                || state.Find(offer.targetId)?.status == ContestantStatus.Active);
+                || state.Find(offer.targetId)?.status == ContestantStatus.Active)
+            && !(EpisodeEngine.RolesOn(state) && RoleOffers.IsBoardAsk(state, offer));
 
         private static string Opening(EpisodeState state, DealState offer)
         {
@@ -77,7 +82,8 @@ namespace Gamesim.Simulation
             switch (offer.type)
             {
                 case DealKind.VetoUse: return "Can we talk? I need your help with the veto.";
-                // The Head of Household's ask to keep the block (ROLE-MOMENTS-PLAN R4), only under the role moments.
+                // A keep-the-block deal (ROLE-MOMENTS-PLAN R4), only under the role moments; the Head of Household's own ask
+                // stays on the board (Eligible), so this is any other one's.
                 case DealKind.VetoHold: return "Can we talk about the veto? I'd like my nominations to stand.";
                 case DealKind.VoteSave: return "Can we talk about your vote to keep " + (about ?? "me") + "?";
                 case DealKind.VoteEvict: return "Can we talk about voting against " + (about ?? "the other nominee") + "?";

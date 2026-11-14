@@ -368,6 +368,8 @@
     <Compile Include="$(EditMode)RolePitchBoardTests.cs" />
     <!-- R6: the story moments - the pawn conversation in any week, quiet tears, the pool's "nothing" offset and the storyline ceiling. -->
     <Compile Include="$(EditMode)RoleStoryMomentsTests.cs" />
+    <!-- R7: the abuse checklist - one word on the veto, a broken word's next ask, comfort farming, renomination, stale and doubled answers, the invitation. -->
+    <Compile Include="$(EditMode)RoleAbuseTests.cs" />
     <Compile Include="$(EditMode)NominationStepsTests.cs" />
     <Compile Include="$(EditMode)ThreatAssessmentTests.cs" />
     <Compile Include="$(EditMode)WebDiaryParityTests.cs" />
@@ -510,6 +512,9 @@
     <Compile Include="$(EditMode)BalanceLabDiagnostics.cs" />
     <!-- DIALOGUE-PLAN §5.5's P1(d) (explicit): the storyline and house-event peaks rules 2's conversation budget must fit under. -->
     <Compile Include="$(EditMode)BalanceLabConversationBudget.cs" />
+    <!-- R7 (ROLE-MOMENTS-PLAN): each week's prompts, answers and minutes, out of the rows; the opt-in board answering, by fixtures. -->
+    <Compile Include="$(EditMode)BalanceLabPrompts.cs" />
+    <Compile Include="$(EditMode)BalanceLabBoardsTests.cs" />
 
     <!--
       Several parity tests already carry an #else branch for running outside the editor: without

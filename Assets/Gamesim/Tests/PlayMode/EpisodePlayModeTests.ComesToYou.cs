@@ -1894,6 +1894,8 @@ namespace Gamesim.Tests.PlayMode
             var store = new EpisodeSaveStore(director.SavePath);
             Assert.That(store.TryLoad(out var state, out string message), Is.True, message);
             EpisodeEngine.EnableStory(state, state.week);
+            // Held at Blame by name since R7 enrolled Roles: the staging is about the walk-in's Pull, not the role moments.
+            state.story.rulesVersion = StoryRules.Blame;
             Assert.That(EpisodeEngine.OpenStoryBeats(state), Is.Empty, "Nothing open: the only Pull is the walk-in a test stages.");
             Assert.That(EpisodeValidation.TryValidate(state, out string reason), Is.True, reason);
             store.Save(state);

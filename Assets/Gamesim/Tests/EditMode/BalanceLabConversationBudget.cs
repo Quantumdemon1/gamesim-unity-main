@@ -29,9 +29,10 @@ namespace Gamesim.Tests.EditMode
     ///
     /// <para><b>The arms</b> (BALANCE_P1D_ARMS, by default all four). A: sixteen houseguests, the verification stress
     /// house (<see cref="SeasonBuilder.CreateVerificationStressHouse"/>, both rosters, so an alumni season) under the
-    /// shipped rules. B: A with the story at <see cref="StoryRules.Roles"/>, the tests' opt-in until R7 enrols it. C:
+    /// shipped rules, its story held at <see cref="StoryRules.Blame"/> by name. B: A with the story at
+    /// <see cref="StoryRules.Roles"/>, the shipped story rules since R7 enrolled them (by name too). C:
     /// twelve houseguests of the regular cast as the cast screen builds them (<see cref="SeasonBuilder.Create"/>, through
-    /// <see cref="BalanceLab.Fresh"/>) under the shipped rules. D: C with Roles. A and B play the same seeds, and so do C
+    /// <see cref="BalanceLab.Fresh"/>) under the shipped rules, held at Blame. D: C with Roles. A and B play the same seeds, and so do C
     /// and D, whose seeds are the lab's own at twelve; every player plays the same seeds.</para>
     ///
     /// <para><b>The knobs</b>: BALANCE_P1D_POLICIES (by default the NPC tier's five), BALANCE_P1D_FROM and
@@ -57,9 +58,9 @@ namespace Gamesim.Tests.EditMode
 
         internal static readonly Arm[] Arms =
         {
-            new Arm { name = "A", size = 16, stress = true, about = "the verification stress house of 16, story rules as shipped" },
+            new Arm { name = "A", size = 16, stress = true, about = "the verification stress house of 16, story rules Blame (10)" },
             new Arm { name = "B", size = 16, stress = true, roles = true, about = "the verification stress house of 16, story rules Roles" },
-            new Arm { name = "C", size = 12, about = "a regular cast of 12, story rules as shipped" },
+            new Arm { name = "C", size = 12, about = "a regular cast of 12, story rules Blame (10)" },
             new Arm { name = "D", size = 12, roles = true, about = "a regular cast of 12, story rules Roles" },
         };
 
@@ -134,7 +135,7 @@ namespace Gamesim.Tests.EditMode
             ? SeededRandom.HashSeed("balance-lab/v1/Stress/" + arm.size.ToString(CultureInfo.InvariantCulture) + "/npc0/" + index.ToString(CultureInfo.InvariantCulture))
             : BalanceLab.Seed(new BalanceLab.Cell { size = arm.size }, index);
 
-        /// <summary>The arm's fresh season under the shipped rules, the role moments opted in where the arm asks.</summary>
+        /// <summary>The arm's fresh season under the shipped rules, its story rules named by the arm: Roles or Blame.</summary>
         internal static EpisodeState Fresh(Arm arm, BalanceLab.Cell cell, uint seed)
         {
             EpisodeState fresh;
@@ -145,7 +146,9 @@ namespace Gamesim.Tests.EditMode
                 ShippedRules.ApplyFresh(fresh);
             }
             else fresh = BalanceLab.Fresh(cell, seed);
-            if (arm.roles) fresh.story.rulesVersion = StoryRules.Roles; // The tests' opt-in until the enrolment (ROLE-MOMENTS-PLAN §4.2, R7).
+            // Both arms by name (decision minor 8): Roles, the shipped story rules since R7's enrolment, and Blame, the rules
+            // before it, which arms A and C measured as "shipped" when P1(d) ran.
+            fresh.story.rulesVersion = arm.roles ? StoryRules.Roles : StoryRules.Blame;
             return fresh;
         }
 

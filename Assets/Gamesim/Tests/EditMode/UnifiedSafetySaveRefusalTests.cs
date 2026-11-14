@@ -197,6 +197,8 @@ namespace Gamesim.Tests.EditMode
             s.haveNotRulesStartWeek = 1;
             s.strategyRulesStartWeek = 1;
             EpisodeEngine.EnableStory(s);
+            // Held at story rules 10, Blame, by name (ROLE-MOMENTS-PLAN R7): the test is about something else, and EnableStory now gives Roles.
+            s.story.rulesVersion = StoryRules.Blame;
             EpisodeEngine.EnableRead(s);
             EpisodeEngine.EnableLevers(s);
             EpisodeEngine.EnableWeek(s);

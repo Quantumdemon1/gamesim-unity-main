@@ -304,6 +304,25 @@ namespace Gamesim.Simulation
         public const int Roles = 11;
 
         /// <summary>
+        /// Manners (plan 32, "The house talks back", Stack A): how each houseguest answers you - candour, tells,
+        /// the vote answer bank - and overhearing. Claimed as 12 by the owner on 2026-10-30 (plan 32, answer 1) and
+        /// named here before any code reads it: not yet defined (<see cref="IsDefined"/> refuses it) until its stack's
+        /// first slice moves <see cref="Latest"/> to it, and played by new seasons only at its own enrolment.
+        /// </summary>
+        public const int Manners = 12;
+        /// <summary>
+        /// Gossip (plan 32, Stack B): how each houseguest seems to see you, and the house's talkers. Claimed as 13
+        /// with <see cref="Manners"/>, and refused the same way until its stack's first slice defines it.
+        /// </summary>
+        public const int Gossip = 13;
+        /// <summary>
+        /// ComesToYou (plan 32, Stack C): the acquaintance threads, quiet asks and the house's events, and the
+        /// houseguests who walk up with them. Claimed as 14 with <see cref="Manners"/>, and refused the same way
+        /// until its stack's first slice defines it. A level, not the <c>ComesToYou</c> reader that shares its name.
+        /// </summary>
+        public const int ComesToYou = 14;
+
+        /// <summary>
         /// What a season switched on today plays under: a new season's value (<see cref="EpisodeEngine.EnableStory"/>),
         /// never a gate - every rule reads the milestone that introduced it. Roles is enrolled (ROLE-MOMENTS-PLAN R7,
         /// "As built") after the lab's held-out balance check, as Blame was before it (STORY-RULES-10-PLAN §8); a season
@@ -315,7 +334,8 @@ namespace Gamesim.Simulation
         /// <summary>
         /// The last milestone this build defines: the bound a saved season and the catalogue are held to,
         /// never a behaviour (<c>CompetitionMiniGames.CurrentRules</c>' rule). A season plays above
-        /// <see cref="Current"/> only when a test opts it in.
+        /// <see cref="Current"/> only when a test opts it in. The house talk's three levels are claimed above it
+        /// and stay undefined until their slices reach them (plan 32 §L).
         /// </summary>
         public const int Latest = Roles;
 

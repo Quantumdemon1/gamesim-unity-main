@@ -267,7 +267,12 @@
 # observed it on the merge.
 # 9960 = 9944 + role moments R7's 16 (9913 - 9897): disjoint cases, so the floor is their sum (the merge of main
 # 0ab29719 into role moments R7 at its landing, 2026-11-13). Counted from the two sides; no run has observed 9960.
-Gamesim.EditModeTests 9960
+# 9967 = 9960 + the story-rules-11 old-save cell's 7 (OLD-SAVE-ACCEPTANCE 2.13, W1-R3; re-recorded at W1-R2's head
+# eb918637, which adds no case, and the merge of that head left R2's floor at 9960): OldSaveAcceptanceTests' four
+# per-fixture cases for s30-mode2-allweek-story11-tuning1-w3-veto-meeting and the cell's three own cases. The no-UMA
+# lister counted exactly 9967 (2026-11-13), and the Mono harness ran the manifest case and the cell's seven, passed;
+# no Unity run has observed the floor yet.
+Gamesim.EditModeTests 9967
 # The UMA-free build. 1215 = 1236, the count after the consolidation's lanes (S2a, S2b, S4a), less the 7
 # farewell probes moved to Gamesim.DiagnosticsPlayModeTests and the 14 farewell readiness tests that now
 # compile only under GAMESIM_UMA (judged on the UMA cast); 1230 = 1215 + S2d's 7, S4b's 2, S4c's 2 and

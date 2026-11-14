@@ -36,6 +36,10 @@ namespace Gamesim.Tests.EditMode
     /// STORY-RULES-10-PLAN §8), a plain int at the start, which draws, mints and logs nothing (lore is cast as before). It is
     /// held at threads here by name, as B9's tuning is: with that one field taken back to 9 the season must hash to its
     /// schema-29 record, so the int is the enrolment's only change to a fresh season.</para>
+    ///
+    /// <para><b>From story rules 11's enrolment</b> (ROLE-MOMENTS-PLAN R7) every fresh season starts on Roles
+    /// (<see cref="StoryRules.Roles"/>), the same plain int one higher: the role moments draw, mint and log nothing before
+    /// the first week is played, so the same hold at threads takes the season back to the same record.</para>
     /// </summary>
     public sealed class FreshSeasonStateDigestTests
     {
@@ -102,10 +106,10 @@ namespace Gamesim.Tests.EditMode
             // B9: a fresh season's tuning is the shipped value, and nothing else of B9's is in its opening state.
             Assert.That(s.tuningRulesVersion, Is.EqualTo(applyFresh ? TuningRules.Shipped : TuningRules.Off), "B9: new seasons start on tuning 1.");
             s.tuningRulesVersion = TuningRules.Off;
-            // Story rules 10: a fresh season starts on Blame, and nothing else of the enrolment is in its opening state.
+            // Story rules 11 (R7; 10 before it): a fresh season starts on Roles, and nothing else of either enrolment is in its opening state.
             if (applyFresh)
             {
-                Assert.That(s.story.rulesVersion, Is.EqualTo(StoryRules.Blame), "Story rules 10: new seasons start on Blame.");
+                Assert.That(s.story.rulesVersion, Is.EqualTo(StoryRules.Roles), "Story rules 11: new seasons start on Roles.");
                 s.story.rulesVersion = StoryRules.Threads;
             }
             var payload = Payload(s);

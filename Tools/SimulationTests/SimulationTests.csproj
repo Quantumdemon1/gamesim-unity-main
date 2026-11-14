@@ -372,6 +372,8 @@
     <Compile Include="$(EditMode)RoleAbuseTests.cs" />
     <!-- Plan 32 HT0: the house talk's three story-rules levels, claimed and not yet defined (12, 13, 14). -->
     <Compile Include="$(EditMode)HouseTalkRulesTests.cs" />
+    <!-- Explicit, and compiled out of Unity: story rules 11's held seasons, the house talk's replay guard, run on demand. -->
+    <Compile Include="$(EditMode)RolesSeasonDigests.cs" />
     <Compile Include="$(EditMode)NominationStepsTests.cs" />
     <Compile Include="$(EditMode)ThreatAssessmentTests.cs" />
     <Compile Include="$(EditMode)WebDiaryParityTests.cs" />

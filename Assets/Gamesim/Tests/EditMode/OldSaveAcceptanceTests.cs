@@ -134,6 +134,10 @@ namespace Gamesim.Tests.EditMode
             // at story rules 10 on tuning rules 1: a fresh shipped Regular season, saved after a houseguest's veto and played on
             // through another, so the Blame rule decides the holder's grudge before the save and after the load.
             "s30-mode2-allweek-story10-tuning1-w2-hoh",
+            // Written by the role moments' enrolled head (ROLE-MOMENTS-PLAN R7; OLD-SAVE-ACCEPTANCE 2.13), schema 30 at story
+            // rules 11 on tuning rules 1: a fresh shipped Regular season, saved at a veto meeting with the Head of Household's
+            // keep-the-block ask to the player waiting for its answer.
+            "s30-mode2-allweek-story11-tuning1-w3-veto-meeting",
         };
 
         /// <summary>
@@ -209,7 +213,7 @@ namespace Gamesim.Tests.EditMode
             // whose chip starts rules 1, and from the chip-2 stack's head the same season on dialogue rules 2, written by the
             // build whose chip starts rules 2, and from story rules 10's enrolment the shipped Regular season at story rules 10,
             // which every new season starts on (a cell names its story rules only from Blame on, so every earlier cell keeps its
-            // name). A cell counts only a fixture saved in a week, before the
+            // name), and from the role moments' enrolment the same season at story rules 11. A cell counts only a fixture saved in a week, before the
             // finale, with a script to play: one saved at the finale or after it is read, never a cell's replay.
             var replayed = Manifest["episodes"].Where(e => (int)e["commands"] > 0 && !FinalePhases.Contains((string)e["phase"])).ToList();
             Assert.That(Manifest["episodes"].Except(replayed).Select(e => (string)e["id"]), Is.EquivalentTo(ReadOnly),
@@ -243,6 +247,7 @@ namespace Gamesim.Tests.EditMode
                 "30/director/uc2/allweek1/leaks1/plans1/dialogue1/alumni0/regular/tuning1",
                 "30/director/uc2/allweek1/leaks1/plans1/dialogue2/alumni0/regular/tuning1",
                 "30/director/uc2/allweek1/leaks1/plans1/dialogue0/alumni0/regular/tuning1/story10",
+                "30/director/uc2/allweek1/leaks1/plans1/dialogue0/alumni0/regular/tuning1/story11",
             }));
         }
 
@@ -955,6 +960,188 @@ namespace Gamesim.Tests.EditMode
                 return g == null ? "none" : g.cause + " " + g.severity.ToString("0.##", CultureInfo.InvariantCulture) + " x" + g.count + " w" + g.originWeek;
             }
             return index + " week " + after.week + ": " + holder + " saves " + off[0] + ", " + on[0] + " named, HoH " + after.hohId + ": " + Row(before) + " -> " + Row(after);
+        }
+
+        private const string StoryElevenCell = "s30-mode2-allweek-story11-tuning1-w3-veto-meeting";
+
+        /// <summary>
+        /// The first cell at story rules 11 (ROLE-MOMENTS-PLAN R7; OLD-SAVE-ACCEPTANCE 2.13): the shipped Regular season of
+        /// 8 as every new season starts since the role moments' enrolment, on Roles and tuning rules 1, saved at the
+        /// first state of week 3's veto meeting with the Head of Household's keep-the-block ask (R4, a
+        /// <see cref="DealKind.VetoHold"/> row, <see cref="NpcDeals.KeepTheBlockPrefix"/>) waiting for the player's answer.
+        /// The four cases every fixture has load and replay it, read it with every reader, pin its seventeen holds and
+        /// recover it from the backup; this one holds the file to the point it was saved at and to the ask it was chosen
+        /// for: the Head of Household, a houseguest, asks the player, who holds the veto and is off the block, beside a
+        /// nominee's own ask. Seed 3520, the first from 3201 at 8 whose plain walk files such an ask by week 4.
+        /// </summary>
+        [Test]
+        public void TheStoryRulesElevenCellIsSavedAtTheVetoMeetingWithTheHeadOfHouseholdsKeepTheBlockAskPending()
+        {
+            var entry = Entry(StoryElevenCell);
+            using var slot = new Slot((string)entry["save"]);
+            Assert.That(slot.Store.TryLoad(out var s, out string message), Is.True, message);
+            Assert.That(message, Does.Not.Contain("migrated"), "Saved at 30, it loads as it is.");
+            Assert.That(s.schemaVersion, Is.EqualTo(30));
+            Assert.That(s.story.rulesVersion, Is.EqualTo(StoryRules.Roles), "Saved at story rules 11, every new season's since the role moments' enrolment.");
+            Assert.That((int)entry["story"]["rulesVersion"], Is.EqualTo(StoryRules.Roles));
+            Assert.That(s.story.rulesStartWeek, Is.EqualTo(1));
+            Assert.That(EpisodeEngine.RolesOn(s), Is.True, "The role moments are on.");
+            Assert.That(s.tuningRulesVersion, Is.EqualTo(TuningRules.Bands), "On tuning rules 1, as every fresh season from B9.");
+            Assert.That(s.dialogueRulesVersion, Is.EqualTo(0), "A shipped season without the conversation preview.");
+            Assert.That(s.alumniRulesVersion, Is.EqualTo(0), "The Regular cast: no alumnus, alumni rules 0.");
+            Assert.That(s.alumniCatalogEdition, Is.Null);
+            Assert.That(s.unifiedCommitmentRulesVersion, Is.EqualTo(2), "The shipped mode 2.");
+            Assert.That(s.contestants.Count, Is.EqualTo(8));
+            Assert.That(s.Find(s.playerId).name, Is.EqualTo("You"));
+
+            // The stop point: the first state of week 3's veto meeting, before the player decides.
+            Assert.That(s.week, Is.EqualTo(3));
+            Assert.That(s.phase, Is.EqualTo(EpisodePhase.VetoMeeting));
+            Assert.That(s.vetoResolved, Is.False, "The veto is not decided yet.");
+            Assert.That(s.revision, Is.EqualTo(43));
+            var replay = JObject.Parse(File.ReadAllText(Path.Combine(Root, (string)entry["replay"])));
+            Assert.That((int)replay["checkpoints"][0]["revision"], Is.EqualTo(s.revision), "The script starts where the file stops.");
+
+            // The ask: the Head of Household, a houseguest, asks the player - who holds the veto and is off the block - to
+            // leave the nominations as they are, beside the nominees' own asks for the veto.
+            Assert.That(s.hohId, Is.EqualTo("quinn-martinez"));
+            Assert.That(s.Find(s.hohId).isPlayer, Is.False);
+            Assert.That(s.vetoHolderId, Is.EqualTo(s.playerId), "The player holds the veto.");
+            Assert.That(s.nominees, Is.EquivalentTo(new[] { "riley-johnson", "alex-chen" }));
+            Assert.That(s.nominees, Does.Not.Contain(s.playerId));
+            var hold = s.deals.Single(d => NpcDeals.IsKeepTheBlockId(d.id));
+            Assert.That((hold.id, hold.type, hold.status, hold.proposerId, hold.recipientId, hold.week, hold.expiresWeek),
+                Is.EqualTo(("deal-keep-274", DealKind.VetoHold, DealStatus.Proposed, s.hohId, s.playerId, 3, 3)),
+                "One keep-the-block ask, from the Head of Household to the player, binding this week, not yet answered.");
+            Assert.That(RoleOffers.VetoAsks(s).Where(ask => s.nominees.Contains(ask.proposerId)).Select(ask => ask.proposerId),
+                Is.EquivalentTo(new[] { "alex-chen" }), "A nominee's own ask is on the board: the Head of Household's is a counter-offer.");
+            Assert.That(EpisodeValidation.TryValidate(s, out string error), Is.True, error);
+        }
+
+        /// <summary>
+        /// The control: the same file with its story rules resealed to 10 (the save's rulesVersion rewritten and its
+        /// checksum computed again, as the store computes it) is refused by the store - "A season without the role moments
+        /// has none of their records." - and left exactly as it was. What makes it refuse is the Head of Household's
+        /// keep-the-block row: below Roles no season holds one (EpisodeValidation). So the cell pins story rules 11: no
+        /// season at 10 can stand in for it.
+        /// </summary>
+        [Test]
+        public void TheStoryRulesElevenCellResealedAtStoryRulesTenIsRefusedAndLeftAsItWas()
+        {
+            var entry = Entry(StoryElevenCell);
+            using var slot = new Slot((string)entry["save"]);
+            var saveJson = typeof(EpisodeSaveStore).Assembly.GetType("Gamesim.Persistence.SaveJson", true);
+            var envelope = (JObject)saveJson.GetMethod("ParseObject", BindingFlags.Public | BindingFlags.Static)
+                .Invoke(null, new object[] { File.ReadAllText(slot.Store.SavePath) });
+            var payload = (JObject)envelope["state"];
+            Assert.That((int)payload["story"]["rulesVersion"], Is.EqualTo(StoryRules.Roles));
+            payload["story"]["rulesVersion"] = StoryRules.Blame;
+            string canonical = (string)saveJson.GetMethod("Canonical", BindingFlags.Public | BindingFlags.Static).Invoke(null, new object[] { payload });
+            envelope["checksum"] = (string)saveJson.GetMethod("Hash", BindingFlags.Public | BindingFlags.Static).Invoke(null, new object[] { canonical });
+            File.WriteAllText(slot.Store.SavePath, envelope.ToString(Formatting.None));
+            var resealed = File.ReadAllBytes(slot.Store.SavePath);
+
+            Assert.That(new EpisodeSaveStore(slot.Store.SavePath).TryLoad(out var refused, out string message), Is.False,
+                "A season at story rules 10 holding the role moments' records is refused.");
+            Assert.That(refused, Is.Null);
+            Assert.That(message, Does.Contain("A season without the role moments has none of their records."));
+            Assert.That(message, Does.Not.Contain("checksum"), "Refused for what it holds, not for a damaged file.");
+            Assert.That(File.ReadAllBytes(slot.Store.SavePath), Is.EqualTo(resealed), "The refused file is left as it was.");
+
+            // In memory: the keep-the-block row alone makes it refuse; without it the same season at 10 validates.
+            using var original = new Slot((string)entry["save"]);
+            Assert.That(original.Store.TryLoad(out var s, out string loaded), Is.True, loaded);
+            s.story.rulesVersion = StoryRules.Blame;
+            Assert.That(EpisodeValidation.TryValidate(s, out string error), Is.False);
+            Assert.That(error, Is.EqualTo("A season without the role moments has none of their records."));
+            s.deals.RemoveAll(d => NpcDeals.IsKeepTheBlockId(d.id));
+            Assert.That(EpisodeValidation.TryValidate(s, out error), Is.True, "Without the Head of Household's row, nothing else in the file is the role moments' own: " + error);
+        }
+
+        /// <summary>
+        /// The ask answered from the load, as a player who loads the file answers it: taken, saved and loaded again through the
+        /// store, then kept (the veto not used: the Head of Household thinks eight better of the player) or broken (the veto
+        /// used on a nominee: -45, against the player's word); and left alone, as the recorded script leaves it, it lapses at
+        /// the decision, where the script's walker uses the veto anyway: the Head of Household was defied (-5 and a grudge),
+        /// never a breach. Each end validates.
+        /// </summary>
+        [Test]
+        public void TheStoryRulesElevenCellsKeepTheBlockAskIsKeptBrokenOrLeftFromTheLoad()
+        {
+            var entry = Entry(StoryElevenCell);
+            foreach (bool use in new[] { false, true })
+            {
+                string what = use ? "taken, then broken" : "taken, then kept";
+                using var slot = new Slot((string)entry["save"]);
+                Assert.That(slot.Store.TryLoad(out var loaded, out string message), Is.True, message);
+                string hoh = loaded.hohId, holdId = loaded.deals.Single(d => NpcDeals.IsKeepTheBlockId(d.id)).id;
+                int broken = NpcDeals.BrokenDeals(loaded, loaded.playerId);
+                var taken = Applied(new EpisodeEngine(loaded), Act(loaded, EpisodeCommandKind.RespondToDeal, holdId, text: EpisodeEngine.AcceptDeal));
+                Assert.That(taken.deals.Single(d => d.id == holdId).status, Is.EqualTo(DealStatus.Active), what);
+
+                // Saved with the word given and loaded again: the row comes back as it was.
+                slot.Store.Save(taken);
+                Assert.That(new EpisodeSaveStore(slot.Store.SavePath).TryLoad(out var again, out message), Is.True, message);
+                Assert.That(JsonConvert.SerializeObject(again.deals.Single(d => d.id == holdId)), Is.EqualTo(JsonConvert.SerializeObject(taken.deals.Single(d => d.id == holdId))), what);
+
+                string saved = use ? again.nominees[0] : null;
+                var decide = Act(again, EpisodeCommandKind.ResolveVeto, saved, EpisodeEngine.ReplacementCandidates(again).FirstOrDefault()?.id);
+                decide.useVeto = use;
+                var settled = Applied(new EpisodeEngine(again), decide);
+                var hold = settled.deals.Single(d => d.id == holdId);
+                var fromHoh = settled.relationships.Where(r => r.fromId == hoh && r.toId == settled.playerId).SelectMany(r => r.events)
+                    .Where(e => e.week == settled.week && (e.type == "deal_fulfilled" || e.type == "deal_broken")).Select(e => e.type + " " + e.impactScore).ToList();
+                if (use)
+                {
+                    Assert.That((hold.status, hold.brokenById, hold.settledWeek), Is.EqualTo((DealStatus.Broken, settled.playerId, settled.week)), what);
+                    Assert.That(fromHoh, Is.EqualTo(new[] { "deal_broken -45" }), what + ": High, raised to Critical for an accepted offer.");
+                    Assert.That(NpcDeals.BrokenDeals(settled, settled.playerId), Is.EqualTo(broken + 1), what + ": against the player's word.");
+                }
+                else
+                {
+                    Assert.That((hold.status, hold.brokenById, hold.settledWeek), Is.EqualTo((DealStatus.Fulfilled, (string)null, settled.week)), what);
+                    Assert.That(fromHoh, Is.EqualTo(new[] { "deal_fulfilled 8" }), what + ": kept at the Low weight.");
+                    Assert.That(NpcDeals.BrokenDeals(settled, settled.playerId), Is.EqualTo(broken), what);
+                }
+                Assert.That(EpisodeValidation.TryValidate(settled, out string error), Is.True, what + ": " + error);
+            }
+
+            // Left alone, as the recorded script leaves it: the ask lapses at the decision.
+            using (var slot = new Slot((string)entry["save"]))
+            {
+                Assert.That(slot.Store.TryLoad(out var loaded, out string message), Is.True, message);
+                string holdId = loaded.deals.Single(d => NpcDeals.IsKeepTheBlockId(d.id)).id;
+                string hoh = loaded.hohId, name = loaded.Find(hoh).name;
+                int broken = NpcDeals.BrokenDeals(loaded, loaded.playerId);
+                EpisodeState decided = null, undecided = null;
+                var (digest, _, _, _) = Replay(StoryElevenCell, loaded, (before, after) =>
+                {
+                    if (decided == null && before != null && before.week == loaded.week && before.deals.Single(d => d.id == holdId).status == DealStatus.Proposed
+                        && after.deals.Single(d => d.id == holdId).status != DealStatus.Proposed) { undecided = before; decided = after; }
+                });
+                Assert.That(digest, Is.EqualTo((string)entry["digest"]));
+                Assert.That(decided, Is.Not.Null, "The script settles the ask in its week.");
+                Assert.That(decided.deals.Single(d => d.id == holdId).status, Is.EqualTo(DealStatus.Expired), "The script never answers it: it lapses.");
+                Assert.That(decided.vetoResolved, Is.True, "Settled at the veto decision.");
+                Assert.That(!decided.nominees.SequenceEqual(undecided.nominees), Is.True, "The script's walker uses the veto.");
+                Assert.That(decided.events.Count(e => e.kind == "deal" && e.text == "You used the veto after " + name + " asked you not to."), Is.EqualTo(1),
+                    "Used anyway, the Head of Household was defied.");
+                Assert.That(NpcDeals.BrokenDeals(decided, decided.playerId), Is.EqualTo(broken), "A lapse is never a breach.");
+            }
+        }
+
+        private static EpisodeCommand Act(EpisodeState s, EpisodeCommandKind kind, string target = null, string second = null, string text = null) =>
+            new EpisodeCommand
+            {
+                id = "oldsave-r7-" + kind + "-" + s.revision + "-" + target, actorId = s.playerId, kind = kind,
+                targetId = target, secondTargetId = second, text = text, expectedRevision = s.revision, expectedPhase = s.phase,
+            };
+
+        private static EpisodeState Applied(EpisodeEngine engine, EpisodeCommand command)
+        {
+            var result = engine.Apply(command);
+            Assert.That(result.accepted, Is.True, command.kind + " " + command.targetId + ": " + result.reason);
+            return result.state;
         }
 
         // ------------------------------------------------------------------ refused on purpose

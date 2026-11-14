@@ -382,6 +382,7 @@
     <Compile Include="$(EditMode)VoteAnswerTests.cs" />
     <Compile Include="$(EditMode)LineBankLintTests.cs" />
     <Compile Include="$(EditMode)HouseTalkNotesTests.cs" />
+    <Compile Include="$(EditMode)HouseTalkValidationTests.cs" />
     <Compile Include="$(EditMode)NominationStepsTests.cs" />
     <Compile Include="$(EditMode)ThreatAssessmentTests.cs" />
     <Compile Include="$(EditMode)WebDiaryParityTests.cs" />

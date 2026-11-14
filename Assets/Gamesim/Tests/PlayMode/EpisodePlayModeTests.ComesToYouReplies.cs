@@ -135,8 +135,10 @@ namespace Gamesim.Tests.PlayMode
         [UnityTest]
         public IEnumerator ComesToYou_ReplyAConfrontationWalksUpAndOpensAsADialogue() => PinnedClock(AConfrontationWalksUpHeld);
 
+        // No offer in the house (offers slice 4b): with Maya's offer waiting too, the answered card's page would offer her
+        // "There's something else" instead of letting the dialogue go (EpisodePlayModeTests.ComesToYouChains.cs pins that).
         private IEnumerator AConfrontationWalksUpHeld() =>
-            WithTheHouseHeld(() => InstallComesToYouReplyVisit(ReplyCards.Confrontation, true), AConfrontationWalksUp);
+            WithTheHouseHeld(() => InstallComesToYouReplyVisit(ReplyCards.Confrontation, false), AConfrontationWalksUp);
 
         private IEnumerator AConfrontationWalksUp()
         {

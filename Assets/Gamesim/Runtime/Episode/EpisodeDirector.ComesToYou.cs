@@ -56,6 +56,16 @@ namespace Gamesim.Episode
         /// </summary>
         public bool AskWalkOvers { get; set; } = true;
 
+        /// <summary>
+        /// Whether a houseguest with a reply card - a confrontation, gossip or a plea - brings it to the player as an ask
+        /// (offers slice 4a). Null, the default, follows <see cref="AsksEnabled"/>, as every ask does; false keeps the cards
+        /// on the screens that have always drawn them, and the queue is the offers' alone. The reader still lists them.
+        /// Nothing saves it.
+        /// </summary>
+        public bool? ReplyAsksEnabled { get; set; }
+
+        private bool ReplyAsksOn => ReplyAsksEnabled ?? AsksOn;
+
         // ---------------------------------------------------------------- the owner's choices
 
         /// <summary>
@@ -153,9 +163,14 @@ namespace Gamesim.Episode
         private string askDialogueWith, askDialogueRecordId;
         private AskWay askDialogueWay;
         private bool askDialogueFirstRender;
-        // The queue, read again whenever the installed state is another.
+        // The queue, read again whenever the installed state is another, or the reply cards' switch is turned.
         private IReadOnlyList<ComesToYou.Ask> asksCache = Array.Empty<ComesToYou.Ask>();
         private EpisodeState asksCacheSource;
+        private bool asksCacheReplies;
+        // The source of the ask the in-person dialogue is open on: an offer's frame, or a reply card's (slice 4a).
+        private ComesToYou.Source askDialogueSource;
+        // A reply card answered on the card: the answer's own log line, for the card's page (slice 4a).
+        private string askCardOutcome;
         // How long the Story Pull now up has held asks back (owner question 5).
         private float askPullHeld;
         private string askPullKey;
@@ -338,8 +353,9 @@ namespace Gamesim.Episode
                 // Only over an asker the room scope draws (RS4), as the invitation's line: withheld, the line's clock
                 // waits with it, so nothing opens on a line the player was never shown.
                 npcInvitationBubble.SpeakerDrawn = IsBodyDrawn(HousemateBody(ask.askerId));
+                var captions = AskBubbleCaptions(ask.source);
                 npcInvitationBubble.Show(projected.Find(ask.askerId).name, ask.line, TextScale, anchor,
-                    () => HearAsk(view, generation, ask), () => DeferAsk(view, generation, ask), view);
+                    () => HearAsk(view, generation, ask), () => DeferAsk(view, generation, ask), captions.hear, captions.notNow, view);
             }
             else
             {
@@ -427,13 +443,18 @@ namespace Gamesim.Episode
             }
         }
 
-        /// <summary>The queue in public order, read again whenever the installed state is another.</summary>
+        /// <summary>
+        /// The queue in public order, read again whenever the installed state is another; without the reply cards'
+        /// switch (<see cref="ReplyAsksEnabled"/>), the offers' alone.
+        /// </summary>
         private IReadOnlyList<ComesToYou.Ask> CurrentAsks()
         {
-            if (!ReferenceEquals(asksCacheSource, projected))
+            bool replies = ReplyAsksOn;
+            if (!ReferenceEquals(asksCacheSource, projected) || asksCacheReplies != replies)
             {
-                asksCacheSource = projected;
-                asksCache = projected != null ? ComesToYou.Read(projected) : Array.Empty<ComesToYou.Ask>();
+                asksCacheSource = projected; asksCacheReplies = replies;
+                var read = projected != null ? ComesToYou.Read(projected) : Array.Empty<ComesToYou.Ask>();
+                asksCache = replies ? read : read.Where(ask => ask.source != ComesToYou.Source.Card).ToList().AsReadOnly();
             }
             return asksCache;
         }
@@ -574,7 +595,7 @@ namespace Gamesim.Episode
             if (person == null) return;
             PrepareConversationNavigation(projected, person);
             conversationCategory = DealsCategoryCaption; invitedDealId = ask.recordId;
-            askDialogueWith = npcId; askDialogueRecordId = ask.recordId;
+            askDialogueWith = npcId; askDialogueRecordId = ask.recordId; askDialogueSource = ask.source;
             askDialogueWay = walkOver ? AskWay.WalkOver : AskWay.Raised;
             askDialogueFirstRender = true;
             askSetAside.Add(ask.recordId);
@@ -610,6 +631,7 @@ namespace Gamesim.Episode
         private void ClearAskDialogue()
         {
             askDialogueWith = null; askDialogueRecordId = null; askDialogueWay = AskWay.None; askDialogueFirstRender = false;
+            askDialogueSource = ComesToYou.Source.Offer;
         }
 
         /// <summary>
@@ -620,6 +642,7 @@ namespace Gamesim.Episode
         /// </summary>
         private bool RenderAskDialogue(EpisodeState state, ContestantState npc, object token)
         {
+            if (askDialogueSource == ComesToYou.Source.Card) return RenderCardDialogue(state, npc, token);
             var offer = NpcDeals.Pending(state).FirstOrDefault(d => d.proposerId == npc.id && d.id == invitedDealId);
             if (offer == null)
             {
@@ -631,7 +654,50 @@ namespace Gamesim.Episode
             string first = FinalistRead.FirstName(npc.name);
             var ask = AskFrame(state, npc, offer, walkOver ? EpisodeHud.AskWalkOverEyebrow(first) : EpisodeHud.AskRaisedEyebrow(first), true);
             AskBody(state, ask, offer);
-            string id = offer.id;
+            AskDialogueWays(state, npc, token, walkOver, offer.id);
+            return true;
+        }
+
+        /// <summary>
+        /// A reply card's dialogue in the conversation (slice 4a): the frame under the card's title, the card's three
+        /// answers - the same captions, keys and command every card surface sends - Think it over for a walk-over, Back to
+        /// topics, and who else wants a word. Once the card is gone - answered, cleared, or no longer the one the player
+        /// can answer - the dialogue is let go and the conversation leaves the Deals page, which invites nothing for a
+        /// card: what happened (the answer's own line) with Back to topics, or the topics on the next render.
+        /// </summary>
+        private bool RenderCardDialogue(EpisodeState state, ContestantState npc, object token)
+        {
+            var card = state.replyCards.FirstOrDefault(c => c != null && c.id == invitedDealId && c.fromId == npc.id);
+            if (card == null || !HoHPitches.Answerable(state, card.id))
+            {
+                invitedDealId = null; askDialogueRecordId = null; askDialogueWay = AskWay.None;
+                askDialogueSource = ComesToYou.Source.Offer; conversationCategory = null;
+                hud.DropFocusAsked(); hud.EndPointerHold();
+                hud.SpeakerTitle(npc.id, npc.name, npc.pronouns);
+                if (!string.IsNullOrEmpty(conversationNarration)) { hud.Heading("WHAT HAPPENED"); hud.Paragraph(conversationNarration); }
+                hud.Action(ConversationTopicsBackCaption, () =>
+                {
+                    if (!ConversationNavigationCurrent(token, state, npc.id)) return;
+                    // With nothing said to clear, the topics are simply the next render.
+                    if (!BackConversationNavigation(true)) Render();
+                });
+                if (cameraRig != null) cameraRig.ConversationWindowOffset = hud.ConversationWindowOffset;
+                return true;
+            }
+            bool walkOver = askDialogueWay == AskWay.WalkOver;
+            string first = FinalistRead.FirstName(npc.name);
+            CardFrame(state, npc, card, walkOver ? EpisodeHud.AskWalkOverEyebrow(first) : EpisodeHud.AskCardRaisedEyebrow(first), true);
+            CardBody(state, card);
+            AskDialogueWays(state, npc, token, walkOver, card.id);
+            return true;
+        }
+
+        /// <summary>
+        /// The dialogue's ways past its answers, for every source: Think it over for a walk-over, Back to topics, who else
+        /// wants a word; the keyboard on the way out that answers nothing and the pointer held off the panel as it opens.
+        /// </summary>
+        private void AskDialogueWays(EpisodeState state, ContestantState npc, object token, bool walkOver, string id)
+        {
             if (walkOver)
                 hud.Action(EpisodeHud.ThinkItOverCaption, () =>
                 {
@@ -654,8 +720,46 @@ namespace Gamesim.Episode
                 hud.KeepFocusAsked();
             }
             if (cameraRig != null) cameraRig.ConversationWindowOffset = hud.ConversationWindowOffset;
-            return true;
         }
+
+        /// <summary>
+        /// A reply card's frame, in the conversation or on the card (slice 4a): the eyebrow, the sender, their standing and
+        /// mood, their opening line, then the card's own title and words - what the free-time hero and the campaign board
+        /// say - and how long it stands. The queue's row, or null once it no longer lists the card.
+        /// </summary>
+        private ComesToYou.Ask CardFrame(EpisodeState state, ContestantState npc, ReplyCardState card, string eyebrow, bool inConversation)
+        {
+            var ask = ComesToYou.Find(state, card.id);
+            string line = ask != null ? ask.line : ComesToYou.CardLine(card.kind);
+            string mood = npc.mood != "Neutral" ? MoodLine(state, npc) : null;
+            string standing = Standing(state, npc.id) + (mood != null ? " · " + mood.Substring("Mood: ".Length) : "");
+            hud.AskDialogue(npc.id, eyebrow, npc.pronouns, standing, line, false, ReplyCards.Title(state, card),
+                ReplyCards.Message(state, card), ask?.lapseLine, inConversation);
+            return ask;
+        }
+
+        /// <summary>
+        /// A reply card's three answers, as every card surface draws them (the strategy page's PendingReplyCard): the
+        /// answer's caption, what it does, its risk, and the one command every surface sends, ReplyToHouseguest with the
+        /// card's id and the answer's key (<see cref="ReplyChoice"/>); each with what a screen reader says for it.
+        /// </summary>
+        private void CardBody(EpisodeState state, ReplyCardState card)
+        {
+            object view = BeginReplyChoices();
+            string name = state.Find(card.fromId)?.name ?? "";
+            string title = ReplyCards.Title(state, card), cardId = card.id;
+            hud.AskChoices(ReplyCards.Replies(card.kind).Select(reply =>
+            {
+                string caption = EpisodeHud.ReplyCaption(reply.Label);
+                return (caption, ReplyCardPayoffs.Description(state, card, reply), EpisodeHud.RiskTag(reply.Risk),
+                    ReplyChoice(state, cardId, reply.Key, view), EpisodeHud.AskReading(caption, name, title));
+            }).ToList());
+        }
+
+        /// <summary>Whether the in-person dialogue is open on this houseguest's reply card: it is the conversation, as an invited offer is.</summary>
+        private bool AskCardDialogueOpen(EpisodeState state, string npcId) => AsksOn && askDialogueSource == ComesToYou.Source.Card
+            && invitedDealId != null && invitedDealId == askDialogueRecordId && askDialogueWith == npcId
+            && state?.replyCards != null && state.replyCards.Any(c => c != null && c.id == invitedDealId && c.fromId == npcId);
 
         /// <summary>
         /// An ask's frame, in the conversation or on the card: the eyebrow, the asker, their standing and mood, their
@@ -690,7 +794,7 @@ namespace Gamesim.Episode
             // The flush may have installed the house's time: the ask must still be the one waiting.
             if (projected == null || !ask.IsCurrent(projected)) return false;
             ClosePanels();
-            askCardOpen = true; askCard = ask; askCardReply = null; askCardFirstRender = true;
+            askCardOpen = true; askCard = ask; askCardReply = null; askCardOutcome = null; askCardFirstRender = true;
             askSetAside.Add(ask.recordId);
             CountAskPresentation(ask);
             if (player != null) player.SetInputEnabled(false);
@@ -710,6 +814,7 @@ namespace Gamesim.Episode
         {
             hud.SetActivityLayout(EpisodeHud.ActivityLayout.Stage);
             var ask = askCard;
+            if (ask != null && ask.source == ComesToYou.Source.Card) { ReplyAskCard(state, ask); return; }
             var offer = ask == null ? null
                 : NpcDeals.Pending(state).FirstOrDefault(d => d.id == ask.recordId && d.proposerId == ask.askerId);
             var npc = ask != null ? state.Find(ask.askerId) : null;
@@ -740,6 +845,41 @@ namespace Gamesim.Episode
         }
 
         /// <summary>
+        /// A reply card's page on the card host (slice 4a): the card's frame and its three answers, Think it over and who
+        /// else wants a word. Once answered, the answer's own log line under <see cref="EpisodeHud.AskOutcomeName"/> - an
+        /// answer to a card plays no exchange - and never the offer's "no longer on the table"; once the card went before
+        /// any answer, <see cref="EpisodeHud.AskCardGoneLine"/>; either way, Back to the house.
+        /// </summary>
+        private void ReplyAskCard(EpisodeState state, ComesToYou.Ask ask)
+        {
+            var card = state.replyCards.FirstOrDefault(c => c != null && c.id == ask.recordId && c.fromId == ask.askerId);
+            var npc = state.Find(ask.askerId);
+            if (askCardOutcome != null || card == null || npc == null || !HoHPitches.Answerable(state, card.id))
+            {
+                hud.DropFocusAsked(); hud.EndPointerHold();
+                if (askCardOutcome != null) hud.AskOutcome(askCardOutcome);
+                else hud.Paragraph(EpisodeHud.AskCardGoneLine);
+                hud.Action(SceneCardDoneCaption, ClosePanels);
+                return;
+            }
+            CardFrame(state, npc, card, EpisodeHud.AskDirectEyebrow, false);
+            CardBody(state, card);
+            hud.Action(EpisodeHud.ThinkItOverCaption, ClosePanels);
+            hud.AskMoreWaiting(AskCapReached ? 0 : ComesToYou.OtherAskers(CurrentAsks(), npc.id, AskCanStillCome));
+            if (askCardFirstRender)
+            {
+                askCardFirstRender = false;
+                hud.HoldPointerOffPanel(EpisodeHud.PointerHoldSeconds);
+                hud.FocusWhenWired(EpisodeHud.ThinkItOverCaption);
+            }
+            else
+            {
+                hud.KeepPointerHold();
+                hud.KeepFocusAsked();
+            }
+        }
+
+        /// <summary>
         /// The card goes, as every panel does (ClosePanelsInternal): Think it over, Escape, Back to the house. An ask still
         /// waiting unanswered is set aside for the phase, and after any card the next ask waits its gap.
         /// </summary>
@@ -749,10 +889,10 @@ namespace Gamesim.Episode
             var ask = askCard;
             if (ask != null)
             {
-                if (askCardReply == null && projected != null && ask.IsCurrent(projected)) askSetAside.Add(ask.recordId);
+                if (askCardReply == null && askCardOutcome == null && projected != null && ask.IsCurrent(projected)) askSetAside.Add(ask.recordId);
                 askNextAt = askClock + AskGapSeconds;
             }
-            askCardOpen = false; askCard = null; askCardReply = null; askCardFirstRender = false;
+            askCardOpen = false; askCard = null; askCardReply = null; askCardOutcome = null; askCardFirstRender = false;
         }
 
         /// <summary>
@@ -769,13 +909,21 @@ namespace Gamesim.Episode
                 && (result.beatsFromSequence <= 0 || e.sequence < result.beatsFromSequence)
                 && (e.audienceIds.Count == 0 || e.audienceIds.Contains(state.playerId))
                 && !KnownBallots.TellsAnUnknownBallot(state, e)).ToList();
+            // A reply card's answer plays no exchange: the card keeps the answer's own log line instead (slice 4a).
+            if (ask.source == ComesToYou.Source.Card)
+            {
+                if (command == null || command.kind != EpisodeCommandKind.ReplyToHouseguest || command.targetId != ask.recordId) return;
+                var reply = visible.LastOrDefault(e => e.kind == "reply");
+                if (reply != null) askCardOutcome = EventLine(state, reply);
+                return;
+            }
             var exchange = ConversationExchange.Create(before, state, command, visible);
             if (exchange != null && exchange.NpcId == ask.askerId) askCardReply = exchange;
         }
 
         // ---------------------------------------------------------------- the sources (plan §C.4)
 
-        /// <summary>Whether an ask opens on the in-person dialogue through <see cref="OpenOnAsk"/>: an offer and a veto ask do.</summary>
+        /// <summary>Whether an ask opens on the in-person dialogue through <see cref="OpenOnAsk"/>: an offer, a veto ask and a reply card do.</summary>
         private static bool AskOpensInPerson(ComesToYou.Ask ask)
         {
             if (ask == null) return false;
@@ -783,6 +931,7 @@ namespace Gamesim.Episode
             {
                 case ComesToYou.Source.Offer:
                 case ComesToYou.Source.VetoAsk:
+                case ComesToYou.Source.Card:
                     return true;
                 default:
                     return false;
@@ -791,12 +940,14 @@ namespace Gamesim.Episode
 
         /// <summary>
         /// The bubble's two captions for an ask's source, each pair its own and none of the Pull's. The deal sources keep
-        /// the invitation's; the bubble takes others from slice 4, which adds the overload that relabels it.
+        /// the invitation's; a reply card says "Hear what they want" and "Not this minute" (slice 4a).
         /// </summary>
         private static (string hear, string notNow) AskBubbleCaptions(ComesToYou.Source source)
         {
             switch (source)
             {
+                case ComesToYou.Source.Card:
+                    return (HouseNpcInvitationBubble.ReplyHearCaption, HouseNpcInvitationBubble.ReplyNotNowCaption);
                 default:
                     return (HouseNpcInvitationBubble.HearCaption, HouseNpcInvitationBubble.NotNowCaption);
             }
@@ -915,7 +1066,7 @@ namespace Gamesim.Episode
             askSpotBlockedFor = 0f; askCardSettle = 0f;
             // A card up is the old season's: what it asked goes now, so closing it sets nothing aside and starts no gap.
             // The panel itself closes with the panels (the load's, or the switch's).
-            askCard = null; askCardReply = null;
+            askCard = null; askCardReply = null; askCardOutcome = null;
         }
     }
 

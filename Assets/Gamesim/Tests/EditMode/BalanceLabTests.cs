@@ -644,6 +644,25 @@ namespace Gamesim.Tests.EditMode
         public void BudgetNoughtPlaysTheShippedSeasonsAtStoryRulesTen() => BudgetNought(tuningHeld: false, StoryRules.Blame, "budget0-tuning1-story10", BudgetNoughtTuning1BlameRows);
 
         /// <summary>
+        /// <see cref="BudgetNoughtRows"/>' seasons, held at tuning 0, at story rules 11, Roles (ROLE-MOMENTS-PLAN R7): the
+        /// story rules every fresh season starts on since that enrolment, recorded at it.
+        /// </summary>
+        internal const string BudgetNoughtRolesRows = "2a39d289ab2e77ec";
+
+        /// <summary>
+        /// <see cref="BudgetNoughtTuning1Rows"/>' seasons at story rules 11, Roles: tuning 1 and story rules 11 together, the
+        /// seasons the game ships from R7's enrolment, recorded at it. Both rules-11 twins name Roles, so a later enrolment
+        /// holds them there (<see cref="BudgetNought"/>).
+        /// </summary>
+        internal const string BudgetNoughtTuning1RolesRows = "393c1559fd68ed67";
+
+        [Test, Explicit("Story rules 11: budget nought's seasons held at tuning 0, at story rules 11, the enrolled story rules (about 20 min). Run by name.")]
+        public void BudgetNoughtPlaysTheDriversSeasonsAtStoryRulesEleven() => BudgetNought(tuningHeld: true, StoryRules.Roles, "budget0-story11", BudgetNoughtRolesRows);
+
+        [Test, Explicit("Story rules 11: budget nought's seasons at tuning 1 and story rules 11, the shipped seasons (about 15 min). Run by name.")]
+        public void BudgetNoughtPlaysTheShippedSeasonsAtStoryRulesEleven() => BudgetNought(tuningHeld: false, StoryRules.Roles, "budget0-tuning1-story11", BudgetNoughtTuning1RolesRows);
+
+        /// <summary>
         /// Budget nought's grid, held at tuning 0 or not, at story rules <paramref name="storyRules"/>, hashed against
         /// <paramref name="expected"/>. Each pin names the story rules its digest was recorded at, never Current: while they
         /// are <see cref="StoryRules.Current"/> the seasons play EnableStory's own (a cell may not name Current,
@@ -755,19 +774,21 @@ namespace Gamesim.Tests.EditMode
         /// STORY-RULES-10-PLAN §5: a cell plays other story rules only when it names them, and only a version this build
         /// defines from Threads on other than Current; the name says so, the seeds pair, and an unset cell is the cell it
         /// always was. Every such version is walked, not only Latest, so the value BALANCE_STORY=10 measures (Blame) goes
-        /// through the same gate, the name and Fresh; after the enrolment the walk holds Threads instead.
+        /// through the same gate, the name and Fresh; after the enrolment the walk holds Threads instead. Since R7 enrolled
+        /// Roles, Latest is Current, so the named arm is Blame, the version below it: the cell plays other story rules, not
+        /// only later ones.
         /// </summary>
         [Test]
-        public void ACellPlaysLaterStoryRulesOnlyWhenItNamesThem()
+        public void ACellPlaysOtherStoryRulesOnlyWhenItNamesThem()
         {
             var shipped = new BalanceLab.Cell { policy = BalancePolicies.Passive, size = 8 };
             Assert.That(shipped.House, Is.EqualTo("Regular/8/npc0"), "An unset cell keeps its name.");
             Assert.That(BalanceLab.Fresh(shipped, 1u).story.rulesVersion, Is.EqualTo(StoryRules.Current), "...and EnableStory's rules.");
-            var later = shipped.AtStoryRules(StoryRules.Latest);
-            Assert.That(later.House, Is.EqualTo("Regular/8/npc0/story" + StoryRules.Latest.ToString(CultureInfo.InvariantCulture)));
-            Assert.That(later.HeldAtTuning0().House, Does.EndWith("/tuning0/story" + StoryRules.Latest.ToString(CultureInfo.InvariantCulture)), "Held and opted in, both named.");
-            Assert.That(BalanceLab.Fresh(later, 1u).story.rulesVersion, Is.EqualTo(StoryRules.Latest));
-            Assert.That(BalanceLab.Seed(later, 5), Is.EqualTo(BalanceLab.Seed(shipped, 5)), "The arms play the same seasons.");
+            var other = shipped.AtStoryRules(StoryRules.Blame);
+            Assert.That(other.House, Is.EqualTo("Regular/8/npc0/story" + StoryRules.Blame.ToString(CultureInfo.InvariantCulture)));
+            Assert.That(other.HeldAtTuning0().House, Does.EndWith("/tuning0/story" + StoryRules.Blame.ToString(CultureInfo.InvariantCulture)), "Held and opted in, both named.");
+            Assert.That(BalanceLab.Fresh(other, 1u).story.rulesVersion, Is.EqualTo(StoryRules.Blame));
+            Assert.That(BalanceLab.Seed(other, 5), Is.EqualTo(BalanceLab.Seed(shipped, 5)), "The arms play the same seasons.");
             Assert.That(shipped.storyRules, Is.Zero, "Opting a copy in leaves the cell it came from alone.");
             Assert.That(BalanceLab.CheckedStoryRules(0), Is.Zero);
             int taken = 0;

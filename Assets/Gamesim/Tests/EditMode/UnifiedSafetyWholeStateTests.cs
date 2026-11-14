@@ -444,6 +444,8 @@ namespace Gamesim.Tests.EditMode
             // Use the real boundary setter before the source deal and nomination writers;
             // do not switch hearing rules or erase an already emitted fact to fake this control.
             EpisodeEngine.EnableStory(s, storyBegins);
+            // Held at story rules 10, Blame, by name (ROLE-MOMENTS-PLAN R7): the test is about something else, and EnableStory now gives Roles.
+            s.story.rulesVersion = StoryRules.Blame;
             Assert.That(YourWord.On(s), Is.False);
             AcceptedUnchanged(s);
             var owned = WritePolicy(s, false);
@@ -681,6 +683,8 @@ namespace Gamesim.Tests.EditMode
             s.competitionRulesVersion = CompetitionRules.Current;
             s.haveNotRulesStartWeek = 1; s.strategyRulesStartWeek = 1;
             EpisodeEngine.EnableStory(s); EpisodeEngine.EnableRead(s); EpisodeEngine.EnableLevers(s);
+            // Held at story rules 10, Blame, by name (ROLE-MOMENTS-PLAN R7): the test is about something else, and EnableStory now gives Roles.
+            s.story.rulesVersion = StoryRules.Blame;
             EpisodeEngine.EnableWeek(s); EpisodeEngine.EnableEconomy(s); EpisodeEngine.EnableAgency(s);
             EpisodeEngine.EnableFinale(s); EpisodeEngine.EnableCommitments(s);
             Assert.That(EpisodeValidation.TryValidate(s, out string initialError), Is.True, initialError);

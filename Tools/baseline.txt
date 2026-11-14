@@ -273,7 +273,10 @@
 # 9983 = 9979 + offers slice 4p's 4 ComesToYouSourcesTests cases (S10 to S13: the pitches to a player Head of Household
 # come to the player as the queue's Pitch source; OFFERS-COME-TO-YOU-PLAN section H; S2 repinned, not added). Counted from
 # the source; the same 4 run in the Unity-free suite (16812 below). No Unity run has observed 9983 yet.
-Gamesim.EditModeTests 9983
+# 9989 = 9983 + offers slice 4b's 6 ComesToYouSourcesTests cases (S14, and S15's five pairs: the same houseguest's next
+# ask once one is answered, ComesToYou.NextFrom; OFFERS-COME-TO-YOU-PLAN section H). Counted from the source; the same 6
+# run in the Unity-free suite (16818 below). No Unity run has observed 9989 yet.
+Gamesim.EditModeTests 9989
 # The UMA-free build. 1215 = 1236, the count after the consolidation's lanes (S2a, S2b, S4a), less the 7
 # farewell probes moved to Gamesim.DiagnosticsPlayModeTests and the 14 farewell readiness tests that now
 # compile only under GAMESIM_UMA (judged on the UMA cast); 1230 = 1215 + S2d's 7, S4b's 2, S4c's 2 and
@@ -429,7 +432,11 @@ Gamesim.EditModeTests 9983
 # nominations) and 6 ComesToYou_Reply cases slice 4a left (a plea in the campaign, two cards one at a time, the dialogue
 # at Largest, a card gone in the conversation, the card host's "They've moved on.", no card in slice 1's house), counted
 # from the source. Not yet run in Unity.
-Gamesim.PlayModeTests 1527
+# 1534 = 1527 + offers slice 4b's 7 ComesToYou_Chain cases (EpisodePlayModeTests.ComesToYouChains: a card then the same
+# houseguest's offer, never to another houseguest, only for an ask that can still come, on the card host, a card then
+# the same sender's next card, an offer then their pitch, the queue goes on as it was), counted from the source. Not yet
+# run in Unity.
+Gamesim.PlayModeTests 1534
 # The UMA build of the same assembly, read by a plan built without -WithoutUma. 1281 = the 1241 above + the
 # 40 tests that compile only under GAMESIM_UMA, as run at r1 (2026-10-16): in EpisodePlayModeTests,
 # GroundedFarewell 11, Creator 9, HouseLife 8, Emotes 3, OpeningCaptures 2, and one each in CreatorEntry,
@@ -534,7 +541,8 @@ Gamesim.PlayModeTests 1527
 # 1561 = 1555 + offers slice 4a's same 6 shared ComesToYou_Reply cases, counted from the source. Not yet run in Unity.
 # 1572 = 1561 + offers slice 4p's same 11 shared cases (5 ComesToYou_Pitch, 6 ComesToYou_Reply), counted from the source.
 # Not yet run in Unity.
-Gamesim.PlayModeTests.UmaBuild 1572
+# 1579 = 1572 + offers slice 4b's same 7 shared ComesToYou_Chain cases, counted from the source. Not yet run in Unity.
+Gamesim.PlayModeTests.UmaBuild 1579
 # The UMA bodies: runs only where the GAMESIM_UMA define is set (the working tree and the D: copy).
 # 82 = the 89 run on 2026-10-15, less the 7 farewell probes moved to Gamesim.Uma.DiagnosticsPlayModeTests;
 # 85 = 82 + the 3 farewell readiness decision tests (UmaFarewellReadinessDecisionPlayModeTests, 2026-10-16);
@@ -750,4 +758,7 @@ Gamesim.Uma.DiagnosticsPlayModeTests 10
 # Tools/SimulationTests ran exactly 16808 of 16808 on the slice at a65ca2b6 (2026-11-13).
 # 16812 = 16808 + offers slice 4p's 4 ComesToYouSourcesTests cases (the same 4 the EditMode floor counts): dotnet test
 # Tools/SimulationTests ran exactly 16812 of 16812 on the slice at 108e5ba1 (2026-11-13).
-Gamesim.SimulationTests 16812
+# 16818 = 16812 + offers slice 4b's 6 ComesToYouSourcesTests cases (the same 6 the EditMode floor counts): dotnet test
+# Tools/SimulationTests ran exactly 16822 of 16822 on a copy of the slice at cf377748 that held 4 builder trials
+# besides, never committed (16818 + 4, 2026-11-14).
+Gamesim.SimulationTests 16818

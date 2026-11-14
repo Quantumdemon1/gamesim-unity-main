@@ -644,6 +644,25 @@ namespace Gamesim.Tests.EditMode
         public void BudgetNoughtPlaysTheShippedSeasonsAtStoryRulesTen() => BudgetNought(tuningHeld: false, StoryRules.Blame, "budget0-tuning1-story10", BudgetNoughtTuning1BlameRows);
 
         /// <summary>
+        /// <see cref="BudgetNoughtRows"/>' seasons, held at tuning 0, at story rules 11, Roles (ROLE-MOMENTS-PLAN R7): the
+        /// story rules every fresh season starts on since that enrolment, recorded at it.
+        /// </summary>
+        internal const string BudgetNoughtRolesRows = "2a39d289ab2e77ec";
+
+        /// <summary>
+        /// <see cref="BudgetNoughtTuning1Rows"/>' seasons at story rules 11, Roles: tuning 1 and story rules 11 together, the
+        /// seasons the game ships from R7's enrolment, recorded at it. Both rules-11 twins name Roles, so a later enrolment
+        /// holds them there (<see cref="BudgetNought"/>).
+        /// </summary>
+        internal const string BudgetNoughtTuning1RolesRows = "393c1559fd68ed67";
+
+        [Test, Explicit("Story rules 11: budget nought's seasons held at tuning 0, at story rules 11, the enrolled story rules (about 20 min). Run by name.")]
+        public void BudgetNoughtPlaysTheDriversSeasonsAtStoryRulesEleven() => BudgetNought(tuningHeld: true, StoryRules.Roles, "budget0-story11", BudgetNoughtRolesRows);
+
+        [Test, Explicit("Story rules 11: budget nought's seasons at tuning 1 and story rules 11, the shipped seasons (about 15 min). Run by name.")]
+        public void BudgetNoughtPlaysTheShippedSeasonsAtStoryRulesEleven() => BudgetNought(tuningHeld: false, StoryRules.Roles, "budget0-tuning1-story11", BudgetNoughtTuning1RolesRows);
+
+        /// <summary>
         /// Budget nought's grid, held at tuning 0 or not, at story rules <paramref name="storyRules"/>, hashed against
         /// <paramref name="expected"/>. Each pin names the story rules its digest was recorded at, never Current: while they
         /// are <see cref="StoryRules.Current"/> the seasons play EnableStory's own (a cell may not name Current,

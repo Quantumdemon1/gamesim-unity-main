@@ -35,13 +35,14 @@ namespace Gamesim.Tests.EditMode
         /// tuningRulesVersion=0 came with schema 30 (SCH30): a fresh season plays neither, and no cell moved.
         /// tuningRulesVersion=1 came with B9 (B9-BALANCE-PLAN decision 8): every fresh season plays the balance bands.
         /// story.rulesVersion=10 came with story rules 10's enrolment (STORY-RULES-10-PLAN §8): every fresh season plays Blame.
+        /// story.rulesVersion=11 came with story rules 11's enrolment (ROLE-MOMENTS-PLAN R7): every fresh season plays Roles.
         /// </summary>
         internal const string Rules = "competitionRulesVersion=4,readRulesStartWeek=1,leverRulesStartWeek=1,weekRulesStartWeek=1,economyRulesVersion=1,"
             + "agencyRulesStartWeek=1,finaleRulesStartWeek=1,commitmentRulesStartWeek=1,unifiedCommitmentRulesVersion=2,unifiedHearingRulesVersion=1,"
             + "blocRulesStartWeek=1,socialBudgetRulesStartWeek=1,dealRulesStartWeek=1,eventRulesStartWeek=1,storyRulesStartWeek=1,haveNotRulesStartWeek=1,"
             + "strategyRulesStartWeek=1,allianceLeakRulesStartWeek=1,pactPlanRulesStartWeek=1,allWeekRulesStartWeek=1,dialogueRulesVersion=0,"
             + "alumniRulesVersion=0,tuningRulesVersion=1,"
-            + "npcSocial.rulesStartWeek=1,story.rulesStartWeek=1,story.rulesVersion=10";
+            + "npcSocial.rulesStartWeek=1,story.rulesStartWeek=1,story.rulesVersion=11";
 
         /// <summary>
         /// Each cell's digest: "policy/roster/size/npcN hash". Recorded with every shipped rule on: the war rooms played,
@@ -58,58 +59,60 @@ namespace Gamesim.Tests.EditMode
         /// tuning 1 without the small house's boost moves the beast's. All 48 moved again with story rules 10's enrolment
         /// (STORY-RULES-10-PLAN §8) and were re-recorded at it: every fresh season starts on Blame, under which a houseguest
         /// who uses the veto is resented less by the replacement (nothing for a self-save, 35 for a save of somebody else),
-        /// and the seasons go on from those grudges.
+        /// and the seasons go on from those grudges. All 48 moved again with story rules 11's enrolment (ROLE-MOMENTS-PLAN R7)
+        /// and were re-recorded at it: every fresh season starts on Roles, under which the role moments play - the offer and
+        /// pitch boards' costs, keep-the-block, the pawn talk and quiet tears - and the seasons go on from what they changed.
         /// </summary>
         internal static readonly string[] Recorded =
         {
-            "passive/Regular/8/npc0 63806f6ffbbd4512",
-            "random/Regular/8/npc0 4cf2290b35b49c85",
-            "social/Regular/8/npc0 133fd776ac35dbea",
-            "reader/Regular/8/npc0 1eebbacf2db9c404",
-            "schemer/Regular/8/npc0 e233c60f3b639ddd",
-            "loyalist/Regular/8/npc0 1f011b99b02ccec3",
-            "floater/Regular/8/npc0 36a6e75c4cd5eeb7",
-            "beast/Regular/8/npc0 5423c8352b68d170",
-            "novice/Regular/8/npc0 99a4b23a57ad2754",
-            "exploit/Regular/8/npc0 271955ab730dbb1e",
-            "oracle-reader/Regular/8/npc0 50ff9776b8c3d98f",
-            "oracle-skilled/Regular/8/npc0 e68a9e83d372e8eb",
-            "passive/Regular/12/npc0 91c79c688a5f1408",
-            "random/Regular/12/npc0 65101ed8eaec30cc",
-            "social/Regular/12/npc0 71ae1d30dcfdff43",
-            "reader/Regular/12/npc0 337038a57bac4e4a",
-            "schemer/Regular/12/npc0 95eb1de50fa9b083",
-            "loyalist/Regular/12/npc0 8c5e5b920305068a",
-            "floater/Regular/12/npc0 321778c4b92e8054",
-            "beast/Regular/12/npc0 bf1282ab6222bd93",
-            "novice/Regular/12/npc0 44e103295e9b8f42",
-            "exploit/Regular/12/npc0 07242f8c395ed629",
-            "oracle-reader/Regular/12/npc0 4184b16b85bc3b09",
-            "oracle-skilled/Regular/12/npc0 eade59c5219c083e",
-            "passive/Regular/8/npc300 0a81e851b2123d6e",
-            "random/Regular/8/npc300 5d008a97c3601d20",
-            "social/Regular/8/npc300 00890dd70fa85fb5",
-            "reader/Regular/8/npc300 f6265a9c2294c47b",
-            "schemer/Regular/8/npc300 cec3b0b889c3b55d",
-            "loyalist/Regular/8/npc300 45495e041d230d24",
-            "floater/Regular/8/npc300 0c33d94165da4159",
-            "beast/Regular/8/npc300 a857ee516c1fbb21",
-            "novice/Regular/8/npc300 658421ff009579f2",
-            "exploit/Regular/8/npc300 53eb34d04dffe81e",
-            "oracle-reader/Regular/8/npc300 a9ed1d65bc352cc4",
-            "oracle-skilled/Regular/8/npc300 dc0332f3c5b2e633",
-            "passive/Regular/12/npc300 f7809dcdca1a5b7c",
-            "random/Regular/12/npc300 281d59b1c32809b5",
-            "social/Regular/12/npc300 4eb1f872995849f7",
-            "reader/Regular/12/npc300 4a768a056e12faa1",
-            "schemer/Regular/12/npc300 b9b8d4df7c18f8ee",
-            "loyalist/Regular/12/npc300 ec4c0a0778255f9a",
-            "floater/Regular/12/npc300 7e09e58481039ad4",
-            "beast/Regular/12/npc300 02165c22f97014db",
-            "novice/Regular/12/npc300 b1e7f4d791ffcfe9",
-            "exploit/Regular/12/npc300 a966f92afeb034e4",
-            "oracle-reader/Regular/12/npc300 27e1ecbb6ca0991c",
-            "oracle-skilled/Regular/12/npc300 570a1791fac49223",
+            "passive/Regular/8/npc0 793c75032876d011",
+            "random/Regular/8/npc0 c95a65956048eaf4",
+            "social/Regular/8/npc0 521dd0c48f780b77",
+            "reader/Regular/8/npc0 d5523fbc06d34ad1",
+            "schemer/Regular/8/npc0 846eec0c91a69671",
+            "loyalist/Regular/8/npc0 18058f456abc0e87",
+            "floater/Regular/8/npc0 217cb344885a7cfd",
+            "beast/Regular/8/npc0 2c267bcf21557934",
+            "novice/Regular/8/npc0 151c7ca67d8cc6ab",
+            "exploit/Regular/8/npc0 4b4fb65bdbbbac0d",
+            "oracle-reader/Regular/8/npc0 f55ad73bce2a0317",
+            "oracle-skilled/Regular/8/npc0 c45a31d5b8b014d9",
+            "passive/Regular/12/npc0 c2657b1559c01f73",
+            "random/Regular/12/npc0 a5bf441940905c68",
+            "social/Regular/12/npc0 5bd50de396b9c5a4",
+            "reader/Regular/12/npc0 b40129f82d7e4e64",
+            "schemer/Regular/12/npc0 615c595ac70b06b3",
+            "loyalist/Regular/12/npc0 1a0bd847f9ec563d",
+            "floater/Regular/12/npc0 8631a4e0665513a7",
+            "beast/Regular/12/npc0 88d9d5a0a55d38cd",
+            "novice/Regular/12/npc0 fe438f71319bbffa",
+            "exploit/Regular/12/npc0 bf864c335b708bd0",
+            "oracle-reader/Regular/12/npc0 0611f0922e27e33b",
+            "oracle-skilled/Regular/12/npc0 f13c58ad9c0294ca",
+            "passive/Regular/8/npc300 e19cca6ff3f8a36a",
+            "random/Regular/8/npc300 2f32a8f76503bb3b",
+            "social/Regular/8/npc300 72bd344cdeb49ed8",
+            "reader/Regular/8/npc300 a9db58d8b542eb4c",
+            "schemer/Regular/8/npc300 7ffca01fcff340c1",
+            "loyalist/Regular/8/npc300 21ec46dfb3b6770d",
+            "floater/Regular/8/npc300 df45700c5e2d6ee4",
+            "beast/Regular/8/npc300 0f8ece1d383b7e9c",
+            "novice/Regular/8/npc300 1c364d1cee552c8e",
+            "exploit/Regular/8/npc300 e1eabf3bcf6a2335",
+            "oracle-reader/Regular/8/npc300 0268ec9466772d7c",
+            "oracle-skilled/Regular/8/npc300 fc0dbb54de0aa2be",
+            "passive/Regular/12/npc300 6c7700c16a1735be",
+            "random/Regular/12/npc300 6a833161cca2d80a",
+            "social/Regular/12/npc300 abc10a3c12cad1fd",
+            "reader/Regular/12/npc300 5c245a18b2aeae65",
+            "schemer/Regular/12/npc300 ea1dc458dece550f",
+            "loyalist/Regular/12/npc300 04d7434313779e51",
+            "floater/Regular/12/npc300 8db1345b8937851c",
+            "beast/Regular/12/npc300 6483b9700ee15954",
+            "novice/Regular/12/npc300 3b0a9cd2d1f8b548",
+            "exploit/Regular/12/npc300 c3fd3a5a565c4dfa",
+            "oracle-reader/Regular/12/npc300 96f800b516274b20",
+            "oracle-skilled/Regular/12/npc300 9dc8e8e9dcaf6a23",
         };
 
         /// <summary>The shipped rules' tuple as a fresh season takes it now.</summary>

@@ -395,8 +395,9 @@ all milestones M0-M6, owner decisions = the recommended defaults in 20 §9 and 2
   The save migration and the web importer still write threads; a saved season keeps its version. No saved field and no
   schema: 11 is written into `story.rulesVersion`.
 - Held by name, as story rules 10's enrolment held threads: the tests about another mechanism write `Blame` after
-  `ApplyFresh` or `EnableStory`; the rules-9 and rules-10 pins keep their digests; the lab's goldens are re-recorded and
-  its budget-nought tests gain rules-11 twins. The full list of what moved and what held is the plan's §6.4.
+  `ApplyFresh` or `EnableStory`; the rules-9 and rules-10 pins keep their digests; the lab's goldens are re-recorded (all
+  48 cells moved) and its budget-nought tests gain rules-11 twins (`2a39d289ab2e77ec`, `393c1559fd68ed67`). The full
+  list of what moved and what held is the plan's §6.4.
 - Measured once on the held-out seeds 200-299 before the switch lands: *the verdict, word for word, when the run has
   ended* (the plan's §6.4).
 - This is the first of four enrolments: plan 32 (the house talks back) moves `Current` to 12, 13 and 14, one stack at a

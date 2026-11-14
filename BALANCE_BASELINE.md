@@ -129,14 +129,17 @@ name, and how:
   their hashes, held at threads as before.
 - The rules-10 twins keep `63356f631a00ed8a` and `ad1ca9f42d182824`: a test names its story rules, never `Current`, so the
   cells now name 10 (`/story10`), and the row the digests hash carries no cell name.
-- New Explicit rules-11 twins pin the same seasons at story rules 11, tuning 0 and tuning 1: *their digests are recorded
-  when the measurement has ended*.
-- `BalanceLabGoldens` is re-recorded: its `Rules` tuple ends `story.rulesVersion=11`, and its 48 cells are re-recorded
-  at the enrolment, each with its reason (*when the measurement has ended*).
+- New Explicit rules-11 twins pin the same seasons at story rules 11: `2a39d289ab2e77ec` at tuning 0 and
+  `393c1559fd68ed67` at tuning 1, the shipped seasons.
+- `BalanceLabGoldens` is re-recorded: its `Rules` tuple ends `story.rulesVersion=11`, and all 48 of its cells moved and
+  are re-recorded at the enrolment, with the reason in the file. A second run of every chunk and of both twins passed
+  with the pasted values. They were recorded before the verdict, by the lead's ruling: they record what the code does at
+  `Current = Roles`, and are recorded again if the verdict has a number tuned.
 - The acceptance it enrolls on: R0 as built, once, on the held-out seeds 200-299 (the studier on competition seeds 0-799,
   the war rooms on 0-479), criteria 1-7 and B8: *the ACCEPT lines and the VERDICT, word for word, when the run has
-  ended*. The enrolled head replays the lab's adopted Roles rows on the headline seeds 0-19 (*to be checked*), and its own
-  build writes the old-save cell at story rules 11 (OLD-SAVE-ACCEPTANCE 2.13).
+  ended*. The enrolled head replays the lab's adopted Roles rows on the headline seeds 0-19: checked on the switch's
+  head 2892a4e8 at `BALANCE_BOARDS=1`, 480 of 480 seasons equal to the lab's R0 rows. Its own build writes the old-save
+  cell at story rules 11 (OLD-SAVE-ACCEPTANCE 2.13).
 
 **The lab's new reads.** A cell field `tuningHeld` (named `/tuning0`, seeded as its shipped cell) and the tier-wide
 `BALANCE_TUNING=0`; the view's `PreparationCap`, which the studier and the beast study up to; the war-room tier prints the

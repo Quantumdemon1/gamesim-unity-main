@@ -590,6 +590,56 @@ namespace Gamesim.Episode
             askNextAt = askClock + AskGapSeconds;
         }
 
+        /// <summary>
+        /// Plan HR-2: the player Head of Household went up to a pitcher waiting in or by the suite
+        /// (<see cref="SuitePitcherStandsThere"/>) and hears them there, as the walk-up's Hear does (<see cref="HearPitch"/>):
+        /// the nomination's own panel on the pitches (<see cref="OpenHoHPitches"/>) - the board in a role-moments season, the
+        /// one-at-a-time answer before, which is this pitcher's, since only the pitch waiting first is listed then. It opens the
+        /// pitches and never a conversation, so it costs nothing and meets no window refusal; nothing is answered or committed
+        /// by it. The player went to them, so no presentation is counted and no asker's gap is set (as a chained ask, slice
+        /// 4b): their pitch is set aside for the phase, so they do not walk up with it as well, and the next walk-up waits the
+        /// gap any heard ask starts. A visit on its way lets go first. False, and nothing changed, when the pitch is no longer
+        /// heard.
+        /// </summary>
+        private bool HearSuitePitch(string npcId)
+        {
+            if (!AsksOn || !ReplyAsksOn || projected == null || npcId == null) return false;
+            var ask = CurrentAsks().FirstOrDefault(row => row.askerId == npcId && AskOpensThePitches(row) && row.IsCurrent(projected));
+            if (ask == null) return false;
+            CancelAskVisit();
+            if (!OpenHoHPitches()) return false;
+            askSetAside.Add(ask.recordId);
+            askNextAt = askClock + AskGapSeconds;
+            return true;
+        }
+
+        /// <summary>
+        /// A click, or E, on a pitcher standing in or by the suite for the player Head of Household (plan HR-2): within talking
+        /// reach their pitch opens at once (<see cref="HearSuitePitch"/>); farther off the player walks over, as a click on
+        /// anybody does, but straight to them and never to a talk spot, and the pitch opens on arrival (the walk's own tick,
+        /// EpisodeDirector.Conversation.cs). False for anybody else, or when neither can start: the click goes its usual way.
+        /// </summary>
+        private bool TryApproachSuitePitcher(HouseNpc npc)
+        {
+            if (npc == null || player == null || !SuitePitcherStandsThere(npc.Id)) return false;
+            if (CanTalk(npc))
+            {
+                if (!HearSuitePitch(npc.Id)) return false;
+                CancelTravel();
+                player.StopHere();
+                return true;
+            }
+            if (!TryApproach(npc, out var approach) || !player.TryRunTo(approach)) return false;
+            CancelTravel();
+            headingToNpcId = npc.Id;
+            headingToNpcAt = npc.transform.position;
+            headingToNpcDeadline = Time.unscaledTime + WalkTimeout;
+            cameraRig?.FocusSubject(player.transform, false);
+            message = "Heading over to " + npc.DisplayName;
+            Render();
+            return true;
+        }
+
         /// <summary>Not right now, or Escape on the line: put off for the phase, counted, and the next ask waits its gap. For a pitch ("Let it wait") as for any ask: silence on a pitch costs nothing.</summary>
         private void DeferAsk(object view, long generation, ComesToYou.Ask ask)
         {

@@ -313,5 +313,135 @@ namespace Gamesim.Tests.PlayMode
             yield return WaitFor(() => director.SuitePitcherTripForDiagnostics(walker), 3f, "Back to the suite.");
             Assert.That(director.Snapshot.replyCards.Select(card => card.id), Is.EqualTo(comesPitchIds), "Nothing answered.");
         }
+
+        // ------------------------------------------------------------------ 7. E on a pitcher there, as a click (stack O2's fixes)
+
+        private static readonly MethodInfo SuiteInteract =
+            typeof(EpisodeDirector).GetMethod("TalkOnInteract", BindingFlags.Instance | BindingFlags.NonPublic);
+
+        /// <summary>
+        /// The review's finding on HR-2: E within reach of a pitcher standing in or by the suite hears their pitch as a click
+        /// does - the nomination's own panel on the pitches, never a conversation or a talk spot - and commits nothing.
+        /// </summary>
+        [UnityTest, Timeout(300000)]
+        public IEnumerator HoHSuite_PitchEOnAPitcherThereOpensThePitches() => PinnedClock(PitchEKeyHeld);
+
+        private IEnumerator PitchEKeyHeld() => WithTheHouseHeld(() => InstallComesToYouPitchHouse(true, false), PitchEKey);
+
+        private IEnumerator PitchEKey()
+        {
+            Assert.That(SuiteInteract, Is.Not.Null);
+            var pitchers = SuitePitcherOrder();
+            yield return SuitePitchersArrive(pitchers);
+            string pitchId = comesPitchIds[1], pitcher = pitchers[1];
+            var body = SuiteBody(pitcher);
+            StandBeside(body);
+            var before = director.Snapshot;
+            byte[] bytes = File.ReadAllBytes(director.SavePath);
+            SuiteInteract.Invoke(director, new object[] { body });
+            // The press frame.
+            Assert.That(director.IsPhasePanelOpen, Is.True, "E opens the nomination's own panel,");
+            Assert.That(director.TalkingToId, Is.Null, "not a conversation,");
+            Assert.That(director.CurrentAskWay, Is.EqualTo(EpisodeDirector.AskWay.None), "nor an ask dialogue.");
+            Assert.That(director.IsAskSetAside(pitchId), Is.True, "Their pitch is set aside, as a click sets it.");
+            AssertEquivalent(before, director.Snapshot);
+            CollectionAssert.AreEqual(bytes, File.ReadAllBytes(director.SavePath), "Hearing commits nothing.");
+            yield return null;
+            LandThePanel();
+            yield return null;
+            var board = LastActive(EpisodeHud.OfferBoardName);
+            Assert.That(board, Is.Not.Null, "The board,");
+            Assert.That(OfferCards(board), Has.Length.EqualTo(comesPitchIds.Length), "every pitch on it.");
+            director.ClosePanels();
+        }
+
+        // ------------------------------------------------------------------ 8. the pitchers' spots: off the furniture and apart, by the picker's own checks
+
+        private static readonly MethodInfo PitcherSpotPicker =
+            typeof(EpisodeDirector).GetMethod("TryPickPitcherSpot", BindingFlags.Instance | BindingFlags.NonPublic);
+
+        /// <summary>The pitcher spot picker's answer for this body, called as the trip calls it; the spot, or null for none.</summary>
+        private Vector3? PickPitcherSpot(HouseNpc npc)
+        {
+            var args = new object[] { npc, null };
+            return (bool)PitcherSpotPicker.Invoke(director, args) ? (Vector3?)(Vector3)args[1] : null;
+        }
+
+        /// <summary>
+        /// The review's finding on HR-2: a pitcher's spot keeps off the furniture and clear of every other pitcher's chosen spot
+        /// by the picker's own checks, not by chance. With the picker's one marker moved onto the suite's furniture, and then
+        /// onto another pitcher's chosen spot with that pitcher's body stepped away from it, the first spot it tries - the
+        /// marker's own - is refused each time, and every spot it gives is off the furniture and apart from every chosen spot.
+        /// </summary>
+        [UnityTest, Timeout(300000)]
+        public IEnumerator HoHSuite_PitcherSpotsKeepOffTheFurnitureAndApart() => PinnedClock(PitcherSpotsHeld);
+
+        private IEnumerator PitcherSpotsHeld() => WithTheHouseHeld(() => InstallComesToYouPitchHouse(true, false), PitcherSpots);
+
+        private IEnumerator PitcherSpots()
+        {
+            Assert.That(PitcherSpotPicker, Is.Not.Null);
+            var pitchers = SuitePitcherOrder();
+            yield return SuitePitchersArrive(pitchers);
+            // Somebody who is not pitching asks the picker, so their own spot is never the one kept clear of.
+            var asker = SceneComponents<HouseNpc>().First(npc => npc.gameObject.activeInHierarchy && !pitchers.Contains(npc.Id));
+            var capsule = asker.GetComponent<CapsuleCollider>();
+            float radius = capsule != null ? capsule.radius : .35f, height = capsule != null ? capsule.height : 1.9f;
+            float apart = 2f * radius + .3f;
+            var chosen = pitchers.Select(id => director.SuitePitcherSpotForDiagnostics(id)).ToArray();
+            Assert.That(chosen.All(spot => !float.IsNaN(spot.x)), Is.True, "Every pitcher has a chosen spot.");
+            var marker = ActiveRoomMarkers().First(m => m.RoomName == EpisodeDirector.SuiteRoom);
+            var home = marker.transform.position;
+            // A pitcher whose chosen spot is on the suite's own floor, where the picker looks first.
+            int inSuite = System.Array.FindIndex(chosen, spot => RoomAt(spot, radius) == EpisodeDirector.SuiteRoom);
+            Assert.That(inSuite, Is.GreaterThanOrEqualTo(0), "The premise: a pitcher's chosen spot is in the suite.");
+            var moved = SuiteBody(pitchers[inSuite]);
+            var movedFrom = moved.transform.position;
+            try
+            {
+                NpcWrite("suiteMarkers", new[] { marker });
+
+                // On the furniture.
+                var furniture = SuiteFurnitureFloor(home, radius, height);
+                marker.transform.position = new Vector3(furniture.x, home.y, furniture.z);
+                int found = 0;
+                for (int pick = 0; pick < 30; pick++)
+                {
+                    var spot = PickPitcherSpot(asker);
+                    if (spot == null) continue;
+                    found++;
+                    Assert.That(SuiteFeetInFurniture(spot.Value, radius, height), Is.False, "Off the furniture (pick " + pick + ").");
+                    foreach (var other in chosen)
+                        Assert.That(FlatDistance(spot.Value, other), Is.GreaterThanOrEqualTo(apart - .01f), "Apart from every chosen spot (pick " + pick + ").");
+                }
+                Assert.That(found, Is.GreaterThan(0), "With the marker on the furniture the picker still finds clear floor.");
+
+                // On that pitcher's chosen spot, their body stepped away, so only the keep-apart check can refuse it.
+                var agent = moved.GetComponent<NavMeshAgent>();
+                var away = SuiteFarthestFloor(radius, out _);
+                if (agent != null && agent.enabled) Assert.That(agent.Warp(away), Is.True);
+                else moved.transform.position = away;
+                Physics.SyncTransforms();
+                marker.transform.position = new Vector3(chosen[inSuite].x, home.y, chosen[inSuite].z);
+                found = 0;
+                for (int pick = 0; pick < 30; pick++)
+                {
+                    var spot = PickPitcherSpot(asker);
+                    if (spot == null) continue;
+                    found++;
+                    Assert.That(FlatDistance(spot.Value, chosen[inSuite]), Is.GreaterThanOrEqualTo(apart - .01f),
+                        "Another pitcher's chosen spot is kept clear even with nobody standing on it (pick " + pick + ").");
+                }
+                Assert.That(found, Is.GreaterThan(0), "and the picker finds another spot.");
+            }
+            finally
+            {
+                marker.transform.position = home;
+                NpcWrite("suiteMarkers", null);
+                var agent = moved != null ? moved.GetComponent<NavMeshAgent>() : null;
+                if (agent != null && agent.enabled) agent.Warp(movedFrom);
+                Physics.SyncTransforms();
+            }
+        }
     }
 }

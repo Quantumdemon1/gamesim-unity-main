@@ -59,8 +59,8 @@ namespace Gamesim.Tests.PlayMode
                     Assert.That(state.unifiedCommitmentRulesVersion, Is.EqualTo(2));
                     Assert.That(state.unifiedHearingRulesVersion, Is.EqualTo(1));
                     Assert.That(state.economyRulesVersion, Is.EqualTo(1));
-                    // The shipped story rules: 10, Blame, since its enrolment (STORY-RULES-10-PLAN §8; it was 9, threads).
-                    Assert.That(state.story.rulesVersion, Is.EqualTo(10));
+                    // The shipped story rules: 11, Roles, since its enrolment (ROLE-MOMENTS-PLAN R7; it was 10, Blame, and 9, threads, before).
+                    Assert.That(state.story.rulesVersion, Is.EqualTo(11));
                     Assert.That(state.allWeekRulesStartWeek, Is.EqualTo(1));
                     TestContext.Out.WriteLine("Durable dialogue witness: seed " + seed + ", week 1, revision " + state.revision + ".");
                     return;

@@ -49,6 +49,7 @@ namespace Gamesim.Tests.EditMode
         [TestCase("tell:nobody-seated:hedged")]
         [TestCase("h2h:{w}:comp:{npc}")]
         [TestCase("h2h:{w}:hoh:{p}")]
+        [TestCase("h2h:{w}:hoh:nobody-seated")]
         [TestCase("h2h:{w+1}:veto:{npc}")]
         public void AtTwelveAMalformedRecordIsRefused(string template)
         {

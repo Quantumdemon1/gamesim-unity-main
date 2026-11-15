@@ -297,7 +297,10 @@
 # 10085 = 9994 (main: the old-save cell, offers slice 4a, the house talk's levels) + the house talk's manners' 91
 # (10059 - 9968 on the slice: 71 and the review fix's 20): disjoint cases, so the floor is their sum (the merge of
 # main ada068a4 into the house talk's manners for its landing, 2026-11-14). Counted from the two sides.
-Gamesim.EditModeTests 10085
+# 10086 = 10085 + the house talk's manners' landing check (plan 32 S1): HouseTalkValidationTests 1, an h2h: record that
+# names nobody seated is refused at story rules 12 (the second review's surviving mutant N3). The same 1 the subset floor
+# counts.
+Gamesim.EditModeTests 10086
 # The UMA-free build. 1215 = 1236, the count after the consolidation's lanes (S2a, S2b, S4a), less the 7
 # farewell probes moved to Gamesim.DiagnosticsPlayModeTests and the 14 farewell readiness tests that now
 # compile only under GAMESIM_UMA (judged on the UMA cast); 1230 = 1215 + S2d's 7, S4b's 2, S4c's 2 and
@@ -801,4 +804,6 @@ Gamesim.Uma.DiagnosticsPlayModeTests 10
 # 16905 = 16816 (main) + the house talk's manners' 89 (16886 - 16797 on the slice): disjoint cases, so the floor is
 # their sum (the merge of main ada068a4 into the house talk's manners for its landing, 2026-11-14). Counted from
 # the two sides.
-Gamesim.SimulationTests 16905
+# 16906 = 16905 + the house talk's manners' landing check (plan 32 S1): the same 1 HouseTalkValidationTests case the
+# EditMode floor counts.
+Gamesim.SimulationTests 16906

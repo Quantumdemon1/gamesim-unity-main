@@ -31,6 +31,10 @@ namespace Gamesim.Simulation
     /// <c>HoldTheBoard</c> stored in <c>s.replyCards</c>), and before them only the pitch waiting first. They come before
     /// every offer and card: the nominations end every other walk-up of the phase as they end the pitches.</para>
     ///
+    /// <para><b>One person going on (slice 4b).</b> Once the player has answered one houseguest's ask, the director offers
+    /// that houseguest's next listed ask in the same dialogue, "There's something else", through <see cref="NextFrom"/>:
+    /// the same queue, the same order, any source.</para>
+    ///
     /// <para><b>Its order is public.</b> The ids follow the order the asks were filed in, which is the
     /// warmest first (<see cref="NpcDeals.Propose"/>, <see cref="NpcDeals.AskForTheVeto"/>), and the deal
     /// table's order (<see cref="NpcDeals.Pending"/>) breaks its ties by id, so neither is used: what
@@ -287,6 +291,27 @@ namespace Gamesim.Simulation
                 askers.Add(ask.askerId);
             }
             return askers.Count;
+        }
+
+        /// <summary>
+        /// The ask the same houseguest still has for the player once one of theirs is answered (offers slice 4b, "There's
+        /// something else"): the first of <paramref name="askerId"/>'s asks in <paramref name="asks"/> - the queue in public
+        /// order, read again on the committed state - other than <paramref name="afterRecordId"/> (normally already gone
+        /// from that reading) that passes <paramref name="canStillCome"/>; null when there is none. Never another
+        /// houseguest's ask: a chain is one person going on, not the queue moving up. Every source is listed the same way,
+        /// so a source added to <see cref="Read"/> chains with no change here.
+        /// </summary>
+        public static Ask NextFrom(IReadOnlyList<Ask> asks, string askerId, string afterRecordId, Func<Ask, bool> canStillCome)
+        {
+            if (asks == null || string.IsNullOrEmpty(askerId)) return null;
+            foreach (var ask in asks)
+            {
+                if (ask == null || ask.askerId != askerId) continue;
+                if (afterRecordId != null && ask.recordId == afterRecordId) continue;
+                if (canStillCome != null && !canStillCome(ask)) continue;
+                return ask;
+            }
+            return null;
         }
 
         /// <summary>Whether an ask of this kind is said in private: the final two and three, and sharing what you hear.</summary>

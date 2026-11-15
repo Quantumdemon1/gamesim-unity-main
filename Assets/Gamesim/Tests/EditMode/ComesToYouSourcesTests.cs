@@ -400,6 +400,122 @@ namespace Gamesim.Tests.EditMode
             Assert.That((ask.line, ask.lapseLine), Is.EqualTo((ComesToYou.PitchLine, ComesToYou.LapseNominations)));
         }
 
+        // ================================================================== OF-b: "There's something else" (ComesToYou.NextFrom)
+        //
+        // The chain reads the queue again on the state the answer left. An answer here is what the engine's own answer
+        // leaves behind - ReplyToHouseguest removes the card, RespondToDeal takes the offer out of the pending table - written
+        // directly, as the fixtures above write their records; the PlayMode cases press the real answers.
+
+        /// <summary>
+        /// S14. The next ask is the same asker's only: <see cref="ComesToYou.NextFrom"/> gives the asker's next listed ask in
+        /// public order - past another houseguest's that stands between - never another asker's, never one that fails
+        /// canStillCome, and null when there is none. Reading it writes nothing.
+        /// </summary>
+        [Test]
+        public void TheNextAskIsTheSameAskersOnly()
+        {
+            var s = State(EpisodePhase.Campaign);
+            var card = Card(s, ReplyCards.Confrontation, Maya);
+            Offer(s, Jamie, DealKind.Partnership, "deal-ask-1");
+            Offer(s, Maya, DealKind.Partnership, "deal-ask-2");
+            Offer(s, Maya, DealKind.Partnership, "deal-ask-3");
+            var asks = ComesToYou.Read(s);
+            Assert.That(asks.Select(ask => (ask.source, ask.askerId, ask.recordId)), Is.EqualTo(new[]
+            {
+                (ComesToYou.Source.Card, Maya, card.id), (ComesToYou.Source.Offer, Jamie, "deal-ask-1"),
+                (ComesToYou.Source.Offer, Maya, "deal-ask-2"), (ComesToYou.Source.Offer, Maya, "deal-ask-3"),
+            }), "The premise: Maya's card, Jamie's offer, then Maya's two offers, in the public order.");
+            string json = JsonConvert.SerializeObject(s);
+
+            Assert.That(ComesToYou.NextFrom(asks, Maya, card.id, null)?.recordId, Is.EqualTo("deal-ask-2"),
+                "Maya's next, in public order, past Jamie's that stands between.");
+            Assert.That(ComesToYou.NextFrom(asks, Maya, "deal-ask-2", null)?.recordId, Is.EqualTo(card.id),
+                "The answered record is skipped wherever it stands; the asker's first other ask comes.");
+            Assert.That(ComesToYou.NextFrom(asks, Jamie, "deal-ask-1", null), Is.Null, "Jamie has nothing else, and Maya's never stand in.");
+            Assert.That(ComesToYou.NextFrom(asks, Maya, card.id, ask => ask.recordId != "deal-ask-2")?.recordId, Is.EqualTo("deal-ask-3"),
+                "One that cannot still come is passed over,");
+            Assert.That(ComesToYou.NextFrom(asks, Maya, card.id, ask => ask.askerId != Maya), Is.Null, "and with none that can, nothing.");
+            Assert.That(ComesToYou.NextFrom(asks, Taylor, null, null), Is.Null, "A houseguest with no ask has nothing else.");
+            Assert.That(ComesToYou.NextFrom(null, Maya, card.id, null), Is.Null);
+            Assert.That(ComesToYou.NextFrom(asks, null, card.id, null), Is.Null);
+            Assert.That(ComesToYou.NextFrom(new ComesToYou.Ask[] { null }, Maya, null, null), Is.Null);
+
+            // Answered: the card leaves, and the queue read again chains to Maya's first offer, current on that state.
+            s.replyCards.RemoveAll(row => row.id == card.id);
+            var again = ComesToYou.Read(s);
+            var next = ComesToYou.NextFrom(again, Maya, card.id, ask => ask.IsCurrent(s));
+            Assert.That((next?.source, next?.recordId), Is.EqualTo(((ComesToYou.Source?)ComesToYou.Source.Offer, "deal-ask-2")));
+            s.replyCards.Add(card);
+            Assert.That(JsonConvert.SerializeObject(s), Is.EqualTo(json), "Reading the chain writes nothing.");
+        }
+
+        /// <summary>
+        /// S15. Every pair of sources one houseguest can hold chains, in both reads: before the answer (where the second is
+        /// listed already) and on the answered state, the next ask is the other one, of its own source, current. A card from
+        /// the same sender behind the first is listed only once the first is answered, as the cards always come one at a
+        /// time. A pitch comes after an offer's answer (the pitches are the queue's first rows, so it is the chain's last).
+        /// </summary>
+        [TestCase("card then offer")] [TestCase("offer then offer")] [TestCase("card then card")]
+        [TestCase("veto ask then offer")] [TestCase("offer then pitch")]
+        public void EveryPairOneHouseguestCanHoldChains(string pair)
+        {
+            EpisodeState s;
+            string asker, first, second;
+            ComesToYou.Source firstSource, secondSource;
+            switch (pair)
+            {
+                case "card then offer":
+                    s = State(EpisodePhase.Campaign); asker = Maya;
+                    first = Card(s, ReplyCards.Confrontation, Maya).id; second = Offer(s, Maya, DealKind.Partnership, "deal-ask-1").id;
+                    firstSource = ComesToYou.Source.Card; secondSource = ComesToYou.Source.Offer;
+                    break;
+                case "offer then offer":
+                    s = State(EpisodePhase.Campaign); asker = Maya;
+                    first = Offer(s, Maya, DealKind.Partnership, "deal-ask-1").id; second = Offer(s, Maya, DealKind.Partnership, "deal-ask-2").id;
+                    firstSource = secondSource = ComesToYou.Source.Offer;
+                    break;
+                case "card then card":
+                    s = State(EpisodePhase.Social); asker = Maya;
+                    first = Card(s, ReplyCards.Confrontation, Maya).id; second = Card(s, ReplyCards.Gossip, Maya, Jamie).id;
+                    firstSource = secondSource = ComesToYou.Source.Card;
+                    break;
+                case "veto ask then offer":
+                    s = State(EpisodePhase.VetoMeeting); asker = Taylor;
+                    s.nominees = new List<string> { Taylor, Casey };
+                    s.hohId = Maya; s.vetoHolderId = Maya;
+                    first = Offer(s, Taylor, DealKind.VetoUse, "deal-veto-1").id; second = Offer(s, Taylor, DealKind.Partnership, "deal-ask-2").id;
+                    firstSource = ComesToYou.Source.VetoAsk; secondSource = ComesToYou.Source.Offer;
+                    break;
+                default:
+                    s = PitchHouse(); asker = Npc(s, 0);
+                    var pitch = new ReplyCardState { id = "reply-pitch-" + s.week + "-" + asker, week = s.week, kind = ReplyCards.Pitch, fromId = asker };
+                    s.replyCards.Add(pitch);
+                    first = Offer(s, asker, DealKind.Partnership, "deal-ask-1").id; second = pitch.id;
+                    firstSource = ComesToYou.Source.Offer; secondSource = ComesToYou.Source.Pitch;
+                    break;
+            }
+            var asks = ComesToYou.Read(s);
+            var mine = asks.Where(ask => ask.askerId == asker).ToList();
+            if (pair == "card then card")
+                Assert.That(mine.Select(ask => ask.recordId), Is.EqualTo(new[] { first }), pair + ": the premise, only the card waiting first is listed.");
+            else
+            {
+                Assert.That(mine.Select(ask => (ask.source, ask.recordId)), Is.EquivalentTo(new[] { (firstSource, first), (secondSource, second) }),
+                    pair + ": the premise, both are listed.");
+                Assert.That(ComesToYou.NextFrom(asks, asker, first, ask => ask.IsCurrent(s))?.recordId, Is.EqualTo(second), pair + ": before the answer.");
+            }
+
+            // The answer, as the engine leaves it.
+            if (firstSource == ComesToYou.Source.Card) s.replyCards.RemoveAll(row => row.id == first);
+            else s.deals.Single(row => row.id == first).status = DealStatus.Declined;
+            var again = ComesToYou.Read(s);
+            Assert.That(again.Select(ask => ask.recordId), Has.No.Member(first), pair + ": the answered ask has left the queue.");
+            var next = ComesToYou.NextFrom(again, asker, first, ask => ask.IsCurrent(s));
+            Assert.That((next?.source, next?.recordId, next?.askerId), Is.EqualTo(((ComesToYou.Source?)secondSource, second, asker)),
+                pair + ": the chain is the same houseguest's other ask.");
+            Assert.That(ComesToYou.NextFrom(again, asker, second, ask => ask.IsCurrent(s)), Is.Null, pair + ": and after it, nothing.");
+        }
+
         /// <summary>
         /// RolePitchBoardTests' crowned season at story rules Threads, written by name, advanced into the nominations by the
         /// engine: every courting houseguest's pitch, answered one at a time.

@@ -54,7 +54,7 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(CompetitionGameScreen.AnyDrawn,Is.False,"The committed result has replaced the attempt board.");
             yield return Frames(3);
             Assert.That(director.IsHouseUnderChrome,Is.True,"The real result still owns the house view.");
-            AssertYardPublicWords(yardCanvas,lettering,scenery,true,"under the committed result, with no attempt board drawn");
+            AssertYardPublicWords(yardCanvas,lettering,scenery,true,false,"under the committed result, with no attempt board drawn");
             Assert.That(displays.HeadOfHouseholdId,Is.EqualTo(hoh.id));
             Assert.That(displays.HeadOfHouseholdName,Is.EqualTo(hoh.name));
             Assert.That(displays.YardText,Does.Contain(hoh.name));
@@ -87,7 +87,7 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(resultCard.IsPlaying,Is.False,"The real Continue pointer release dismisses the result.");
             if(director.IsPanelOpen){yield return PressKey(Key.Escape);yield return Frames(3);}
             Assert.That(director.IsHouseUnderChrome,Is.False,"Native dismissal returns the actual world display to the house.");
-            AssertYardPublicWords(yardCanvas,lettering,scenery,false,"after native result/panel dismissal");
+            AssertYardPublicWords(yardCanvas,lettering,scenery,false,false,"after native result/panel dismissal");
             Assert.That(yardLabel.text,Is.EqualTo(HousePublicDisplays.PublicYardText(state)),"The latest committed words return with the canvas.");
             Assert.That(director.Snapshot.hohId,Is.EqualTo(state.hohId));
             Assert.That(director.Snapshot.revision,Is.EqualTo(state.revision));
@@ -306,10 +306,19 @@ namespace Gamesim.Tests.PlayMode
                 label.text="Week "+state.week+"\n"+EpisodeDirector.CompetitionTitleFor(state)+"\nWinner: "+hoh
                     +"\nHead of Household: "+hoh+"\nPower of Veto: "+(state.Find(state.vetoHolderId)?.name??"Not yet decided");
                 Canvas.ForceUpdateCanvases();label.ForceMeshUpdate();
-                Assert.That(PublicSurfacesVisible(surfaces,eye,out var blocker),Is.False,
-                    "The original wide rectangle plus long role/name lines must reproduce an actual glyph obstruction.");
-                Assert.That(blocker,Does.Contain("opaque mesh face: bb_set_comp_gate"),
-                    "The control must fail on the real retained gate, not on a looser viewport or missing-text predicate.");
+                // The control needs the course's gate standing in front of the display. In everyday life the
+                // gates are put away with the rest of the course (competition yard, slice 2), and a gate put
+                // away blocks nothing; the words still fit its opening for when it stands.
+                bool gateStands=SceneComponents<Renderer>().Any(r=>r.name==EpisodeDirector.CompetitionGateName && r.enabled && r.gameObject.activeInHierarchy);
+                if(gateStands)
+                {
+                    Assert.That(PublicSurfacesVisible(surfaces,eye,out var blocker),Is.False,
+                        "The original wide rectangle plus long role/name lines must reproduce an actual glyph obstruction.");
+                    Assert.That(blocker,Does.Contain("opaque mesh face: bb_set_comp_gate"),
+                        "The control must fail on the real retained gate, not on a looser viewport or missing-text predicate.");
+                }
+                else if(!PublicSurfacesVisible(surfaces,eye,out var other))
+                    Assert.That(other,Does.Not.Contain(EpisodeDirector.CompetitionGateName),"A gate put away blocks nothing: "+other);
             }
             finally
             {

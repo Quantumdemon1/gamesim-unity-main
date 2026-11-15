@@ -50,7 +50,8 @@ namespace Gamesim.Episode
             // opened from: the screen's flag holds for the whole attempt while the HUD and its panel
             // stand down, and asked as a panel, the sign and the discs never drew at all - not even
             // in the look sheet's capture, which switches the board off to photograph the yard.
-            bool arenaUnder = challengeActive ? boardDrawn || CeremonyOverlays.OnScreen : under;
+            // A competition's show owns the frame with the chrome held aside: its sign and readouts draw.
+            bool arenaUnder = challengeActive ? boardDrawn || CeremonyOverlays.OnScreen : competitionShow == null && under;
             SetCompetitionOverlaysVisible(!arenaUnder);
             if (publicDisplays == null) publicDisplays = HousePublicDisplays.Find(gameObject.scene);
             // Public yard lettering follows the same owner as the arena's sign: the board,

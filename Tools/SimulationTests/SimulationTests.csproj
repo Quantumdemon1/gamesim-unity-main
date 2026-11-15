@@ -75,6 +75,9 @@
     -->
     <Compile Include="$(EditMode)CastSizeTests.cs" />
     <Compile Include="$(EditMode)CompetitionRulesV4Tests.cs" />
+    <!-- Competition show slice 1: the show's plan reads the committed standings and draws nothing; pure, so it runs here too. -->
+    <Compile Include="$(EditMode)CompetitionShowPlanTests.cs" />
+    <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/CompetitionShowPlan.cs" />
     <Compile Include="$(EditMode)HaveNotTests.cs" />
     <Compile Include="$(EditMode)StrategyRulesTests.cs" />
     <Compile Include="$(EditMode)VetoDrawTests.cs" />

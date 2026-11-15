@@ -392,6 +392,8 @@ namespace Gamesim.Episode
             // The staged ceremony before the ceremonies' bookkeeping: its card starts here, and the
             // hold on the chrome reads whether it is still telling its story.
             TickCeremonyStage();
+            // A competition's show in the yard, from its walk out to its card (EpisodeDirector.CompetitionShow.cs).
+            TickCompetitionShow();
             TickCeremonies();
             // After both have moved on: the chip says what a press does while a stage runs.
             TickSkipChip();
@@ -861,6 +863,8 @@ namespace Gamesim.Episode
             if (result.accepted)
             {
                 CancelNpcInvitation();
+                // A competition show still running is over: this commit has the screen now, and its card stays unplayed.
+                if (competitionShow != null) EndCompetitionArena();
                 if (TryPersistTimed(result.state, "command", out var installed, out var failure))
                 { engine = new EpisodeEngine(installed); result.state = engine.Snapshot; }
                 else
@@ -947,12 +951,25 @@ namespace Gamesim.Episode
                     // it plays on under the standings: the veto draw's field sat behind the veto's
                     // result, its players and its "press to continue" showing through the glass.
                     EndCeremonyCards();
-                    if (competitionCard != null)
-                        competitionCard.Play(CompetitionTitle(result.state),
-                            EpisodeEngine.CompetitionCategory(wasPhase, wasWeek, result.state.competitionRulesVersion, result.state.seed), result.state.week,
-                            standings, reducedMotion, CompetitionPerformanceExplanation(result.state), pendingAttemptLine ?? ThrowAttemptLine(result.state),
-                            WinnersMark(wasPhase));
-                    React(CompetitionWinnerId(result.state, standings), CharacterPresentation.Reaction.Cheered);
+                    var committedState = result.state;
+                    string category = EpisodeEngine.CompetitionCategory(wasPhase, wasWeek, committedState.competitionRulesVersion, committedState.seed);
+                    string title = CompetitionTitle(committedState), explanation = CompetitionPerformanceExplanation(committedState);
+                    string attemptLine = pendingAttemptLine ?? ThrowAttemptLine(committedState);
+                    var mark = WinnersMark(wasPhase);
+                    string winnerId = CompetitionWinnerId(committedState, standings);
+                    Action playResult = () =>
+                    {
+                        if (competitionCard != null)
+                            competitionCard.Play(title, category, committedState.week, standings, reducedMotion, explanation, attemptLine, mark);
+                        React(winnerId, CharacterPresentation.Reaction.Cheered);
+                    };
+                    // An endurance competition decided without the ranked game is staged in the yard
+                    // first, from these committed standings (EpisodeDirector.CompetitionShow.cs); the
+                    // card plays when it is done. Not when another card of this commit would take
+                    // the screen over it, and never for the ranked game's own commit.
+                    bool companions = CommittedEvents(committedState, knownSequence).Any(entry =>
+                        entry.kind == CeremonyTakeover.VetoSelectionKind || CeremonySting.IsCeremony(entry.kind) || StoryFallout.IsFallout(entry.kind));
+                    if (companions || !TryBeginCompetitionShow(exchangeBefore, committedState, wasPhase, category, playResult)) playResult();
                 }
 
                 // The veto field. Previously the one phase the episode passed through in silence.
@@ -1071,7 +1088,13 @@ namespace Gamesim.Episode
                     }
                     // The final Head of Household's bracket as each part opens, and its crowning as
                     // the final eviction does (EpisodeDirector.FinalHoH.cs; ENDGAME-PLAN F3).
-                    else PlayFinalHoHCard(result.state, wasPhase, wasActive);
+                    // Behind a competition show's standings when one holds them: Part 1's show ends on
+                    // its card and the bracket for Part 2 with it, as they played together before.
+                    else
+                    {
+                        var bracketState = result.state;
+                        AfterCompetitionShow(() => PlayFinalHoHCard(bracketState, wasPhase, wasActive));
+                    }
                 }
                 if (revealed) HoldHudForReveal();
                 if ((!revealed || vetoStaged) && command.kind != EpisodeCommandKind.MarkOpeningBeat && command.kind != EpisodeCommandKind.Introduce)

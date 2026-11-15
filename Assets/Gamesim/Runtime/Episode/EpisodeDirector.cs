@@ -1554,7 +1554,7 @@ namespace Gamesim.Episode
                 // open with them it is the conversation, and the dial comes back once it is answered.
                 bool invitedOffer = invitedDealId != null && NpcDeals.Pending(state)
                     .Any(offer => offer.proposerId == npc.id && offer.id == invitedDealId);
-                if (!invitedOffer && ConversationBeat(state, npc.id)) return;
+                if (!invitedOffer && !AskCardDialogueOpen(state, npc.id) && ConversationBeat(state, npc.id)) return;
                 RenderConversationNavigation(state, npc, window);
                 return;
             }

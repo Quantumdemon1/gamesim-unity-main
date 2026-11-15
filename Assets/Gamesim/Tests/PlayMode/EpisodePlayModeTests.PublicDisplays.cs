@@ -298,6 +298,7 @@ namespace Gamesim.Tests.PlayMode
             var state=director.Snapshot;
             Assert.That(state.phase,Is.EqualTo(EpisodePhase.HoH));Assert.That(state.competitionResolved,Is.True);
             string hoh=state.Find(state.hohId).name;
+            GameObject[] gates=null;
             try
             {
                 // Reproduce both parts of the retained native defect on the same actual
@@ -306,25 +307,31 @@ namespace Gamesim.Tests.PlayMode
                 label.text="Week "+state.week+"\n"+EpisodeDirector.CompetitionTitleFor(state)+"\nWinner: "+hoh
                     +"\nHead of Household: "+hoh+"\nPower of Veto: "+(state.Find(state.vetoHolderId)?.name??"Not yet decided");
                 Canvas.ForceUpdateCanvases();label.ForceMeshUpdate();
-                // The control needs the course's gate standing in front of the display. In everyday life the
-                // gates are put away with the rest of the course (competition yard, slice 2), and a gate put
-                // away blocks nothing; the words still fit its opening for when it stands.
-                bool gateStands=SceneComponents<Renderer>().Any(r=>r.name==EpisodeDirector.CompetitionGateName && r.enabled && r.gameObject.activeInHierarchy);
-                if(gateStands)
-                {
-                    Assert.That(PublicSurfacesVisible(surfaces,eye,out var blocker),Is.False,
-                        "The original wide rectangle plus long role/name lines must reproduce an actual glyph obstruction.");
-                    Assert.That(blocker,Does.Contain("opaque mesh face: bb_set_comp_gate"),
-                        "The control must fail on the real retained gate, not on a looser viewport or missing-text predicate.");
-                }
-                else if(!PublicSurfacesVisible(surfaces,eye,out var other))
+                // Everyday life first: the course's gates are put away (competition yard, slice 2), so the
+                // old wide words are blocked by no gate.
+                Assert.That(SceneComponents<Renderer>().Any(r=>r.name==EpisodeDirector.CompetitionGateName && r.gameObject.activeInHierarchy),Is.False,
+                    "Under the dismissed result the yard is in everyday life: no gate stands.");
+                if(!PublicSurfacesVisible(surfaces,eye,out var other))
                     Assert.That(other,Does.Not.Contain(EpisodeDirector.CompetitionGateName),"A gate put away blocks nothing: "+other);
+                // The control: stand the put-away gates where the course deploys them; the old wide words must
+                // then be blocked by a real gate, proving PublicSurfacesVisible catches a real obstruction.
+                gates=director.CompetitionYardStowed.Where(piece=>piece!=null && piece.GetComponentsInChildren<Renderer>(true)
+                    .Any(r=>r.name==EpisodeDirector.CompetitionGateName)).ToArray();
+                Assert.That(gates,Is.Not.Empty,"The course's gates are among the yard's put-away pieces.");
+                foreach(var gate in gates)gate.SetActive(true);
+                Assert.That(PublicSurfacesVisible(surfaces,eye,out var blocker),Is.False,
+                    "The original wide rectangle plus long role/name lines must reproduce an actual glyph obstruction.");
+                Assert.That(blocker,Does.Contain("opaque mesh face: bb_set_comp_gate"),
+                    "The control must fail on the real retained gate, not on a looser viewport or missing-text predicate.");
             }
             finally
             {
+                if(gates!=null)foreach(var gate in gates)if(gate!=null)gate.SetActive(false);
                 rect.offsetMin=min;rect.offsetMax=max;label.text=current;
                 Canvas.ForceUpdateCanvases();label.ForceMeshUpdate();
             }
+            Assert.That(SceneComponents<Renderer>().Any(r=>r.name==EpisodeDirector.CompetitionGateName && r.gameObject.activeInHierarchy),Is.False,
+                "The control puts the gates away again.");
             Assert.That(PublicSurfacesVisible(surfaces,eye,out var restored),Is.True,
                 "The real current public glyphs must again clear the actual opaque geometry after control cleanup: "+restored);
             Assert.That(label.text,Is.EqualTo(HousePublicDisplays.PublicYardText(state)));

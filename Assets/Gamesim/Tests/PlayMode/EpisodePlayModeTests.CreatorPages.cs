@@ -46,11 +46,13 @@ namespace Gamesim.Tests.PlayMode
                                 CastButtons(category)[0].onClick.Invoke();
                                 yield return null;
                                 AssertCreatorFits(creator, page + " / " + category + " at " + scale);
+                                AssertNoSlogan(creator, "The creator's " + page + " / " + category + " at " + scale, "GAMESIM");
                                 if (scale == 1f && Application.isBatchMode) yield return CaptureCreatorFraming("creator-appearance-" + category.ToLowerInvariant());
                             }
                         else
                         {
                             AssertCreatorFits(creator, page + " at " + scale);
+                            AssertNoSlogan(creator, "The creator's " + page + " at " + scale, "GAMESIM");
                             if (scale == 1f && Application.isBatchMode)
                                 yield return CaptureCreatorFraming("creator-" + page.ToLowerInvariant().Replace(' ', '-'),
                                     expectPreview: page == "Identity" || page == "Review");

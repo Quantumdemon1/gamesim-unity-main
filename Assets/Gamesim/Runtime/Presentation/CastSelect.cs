@@ -420,11 +420,7 @@ namespace Gamesim.Presentation
             MainMenu.CornerLight(scrim, PackArt.GlowCyan, new Vector2(1f, 1f), new Vector2(1000f, 700f), .28f);
             HudPrimitives.Vignette(scrim);
             float margin = (frame - Width) * .5f;
-            if (margin >= SideDressing)
-            {
-                Brand(scrim);
-                CornerLines(scrim);
-            }
+            if (margin >= SideDressing) Brand(scrim);
 
             content = new GameObject("Fixed setup navigation", typeof(RectTransform)).GetComponent<RectTransform>();
             content.SetParent(scrim, false);
@@ -1774,25 +1770,6 @@ namespace Gamesim.Presentation
             strap.rectTransform.pivot = new Vector2(0f, 1f);
             strap.rectTransform.sizeDelta = new Vector2(300f - left, 20f);
             strap.rectTransform.anchoredPosition = new Vector2(left + 2f, -44f);
-        }
-
-        /// <summary>The spaced lines in the lower corners, in the house's own voice.</summary>
-        private static void CornerLines(RectTransform scrim)
-        {
-            CornerLine(scrim, "Corner line left", "PEOPLE PLAY DIFFERENT\nSTORIES HERE.", 0f, TextAlignmentOptions.BottomLeft);
-            CornerLine(scrim, "Corner line right", "STRATEGY. FRIENDSHIPS.\nBIGGER STORIES.", 1f, TextAlignmentOptions.BottomRight);
-        }
-
-        private static void CornerLine(RectTransform scrim, string name, string words, float side, TextAlignmentOptions align)
-        {
-            var line = HudPrimitives.Label(name, scrim, 14f, new Color(UiTheme.Muted.r, UiTheme.Muted.g, UiTheme.Muted.b, .8f), align);
-            line.text = Localisation.Text(words);
-            line.characterSpacing = 6f;
-            line.lineSpacing = 12f;
-            line.rectTransform.anchorMin = line.rectTransform.anchorMax = new Vector2(side, 0f);
-            line.rectTransform.pivot = new Vector2(side, 0f);
-            line.rectTransform.sizeDelta = new Vector2(Mathf.Min(300f, SideDressing * 2f - 40f), 60f);
-            line.rectTransform.anchoredPosition = new Vector2(side < .5f ? 32f : -32f, 34f);
         }
 
         private RectTransform Row(float height)

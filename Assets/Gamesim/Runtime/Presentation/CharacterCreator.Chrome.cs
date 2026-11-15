@@ -22,10 +22,9 @@ namespace Gamesim.Presentation
     }
 
     /// <summary>
-    /// The creator's frame, as the four mockups draw it: the brand in the corner, the title and its
-    /// strap in the middle, the house's line in neon at the right, the five steps as tabs under
-    /// them, glass panels for the page, and a footer with the way back on the left and the way on
-    /// at the right.
+    /// The creator's frame, after the four mockups: the brand in the corner, the title in the
+    /// middle, the five steps as tabs under them, glass panels for the page, and a footer with the
+    /// way back on the left and the way on at the right.
     ///
     /// <para>Laid out from the frame the canvas actually has - the scaler's reference, shrunk by the
     /// larger text and stretched by the screen's shape - so a page fills a 4:3 window and a 16:9 one
@@ -115,17 +114,9 @@ namespace Gamesim.Presentation
             title.enableVertexGradient = true;
             title.colorGradient = new VertexGradient(UiTheme.Paper, UiTheme.Paper, UiTheme.Glow, UiTheme.Glow);
             title.textWrappingMode = TextWrappingModes.NoWrap;
-            PlaceTop(title.rectTransform, 0f, 18f, 900f, 58f);
-            var strap = HudPrimitives.Label("Studio strap", scrim, 15f, UiTheme.Accent, TextAlignmentOptions.Center);
-            strap.text = Localisation.Text("SAME HOUSE. DIFFERENT STORIES.");
-            strap.characterSpacing = 9f; strap.textWrappingMode = TextWrappingModes.NoWrap;
-            PlaceTop(strap.rectTransform, 0f, 78f, 640f, 22f);
-            foreach (float side in new[] { -1f, 1f })
-            {
-                var rule = HudPrimitives.Fill("Strap rule", scrim, new Color(UiTheme.Glow.r, UiTheme.Glow.g, UiTheme.Glow.b, .7f), 1);
-                PlaceTop(rule, side * 360f, 89f, 72f, 2f);
-            }
-            if (frame.x >= 1560f) BuildTagline(scrim);
+            // The title stands alone: no slogan under it and no neon line in the corner (the owner,
+            // 2026-11-14). It is centred in the band above the steps, level with the brand.
+            PlaceTop(title.rectTransform, 0f, 26f, 900f, 58f);
             BuildSteps(scrim);
             BuildEntryModes(scrim);
         }
@@ -148,28 +139,6 @@ namespace Gamesim.Presentation
             strap.text = Localisation.Text("THE HOUSE");
             strap.characterSpacing = 3f;
             Place(strap.rectTransform, Margin + 62f, 64f, 240f, 20f);
-        }
-
-        /// <summary>The house's line in the corner, lit like the sign on the set.</summary>
-        private void BuildTagline(RectTransform scrim)
-        {
-            var glow = new GameObject("Tagline glow", typeof(RectTransform), typeof(Image)).GetComponent<Image>();
-            glow.rectTransform.SetParent(scrim, false);
-            glow.sprite = UiTheme.Pack(PackArt.GlowPurple) ?? UiTheme.Circle();
-            glow.color = new Color(UiTheme.Flirt.r, UiTheme.Flirt.g, UiTheme.Flirt.b, .22f); glow.raycastTarget = false;
-            PlaceRight(glow.rectTransform, Margin + 170f, 6f, 300f, 110f);
-            var neon = HudPrimitives.Label("Tagline", scrim, 26f, UiTheme.Hex("FF7AD9"), TextAlignmentOptions.Center);
-            neon.text = Localisation.Text("Good People\nBigger Stories");
-            neon.fontStyle = FontStyles.Italic; neon.lineSpacing = -18f;
-            var semibold = UiTheme.Font(UiTheme.Weight.SemiBold); if (semibold != null) neon.font = semibold;
-            PlaceRight(neon.rectTransform, Margin + 190f, 16f, 260f, 80f);
-            neon.rectTransform.localRotation = Quaternion.Euler(0f, 0f, 6f);
-            var rule = HudPrimitives.Fill("Tagline rule", scrim, new Color(UiTheme.Muted.r, UiTheme.Muted.g, UiTheme.Muted.b, .5f), 1);
-            PlaceRight(rule, Margin + 166f, 22f, 2f, 70f);
-            var line = HudPrimitives.Label("Tagline strap", scrim, 12f, UiTheme.Muted, TextAlignmentOptions.TopLeft);
-            line.text = Localisation.Text("YOU\nCHOOSE\nTHE NEXT ICON.");
-            line.characterSpacing = 5f; line.lineSpacing = 6f;
-            PlaceRight(line.rectTransform, Margin, 22f, 150f, 70f);
         }
 
         /// <summary>The five steps, each a tab with its glyph; the one on screen is lit.</summary>
@@ -592,13 +561,6 @@ namespace Gamesim.Presentation
         {
             rect.anchorMin = rect.anchorMax = new Vector2(.5f, 1f); rect.pivot = new Vector2(.5f, 1f);
             rect.anchoredPosition = new Vector2(x, -y); rect.sizeDelta = new Vector2(w, h);
-        }
-
-        /// <summary>From the frame's right edge, y down from the top.</summary>
-        private static void PlaceRight(RectTransform rect, float right, float y, float w, float h)
-        {
-            rect.anchorMin = rect.anchorMax = new Vector2(1f, 1f); rect.pivot = new Vector2(1f, 1f);
-            rect.anchoredPosition = new Vector2(-right, -y); rect.sizeDelta = new Vector2(w, h);
         }
     }
 }

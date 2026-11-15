@@ -217,15 +217,14 @@ namespace Gamesim.Presentation
             houseLine.rectTransform.anchoredPosition = new Vector2(left + markSide + gap + wordWidth * .5f, -(cursor - 10f));
             cursor += 30f;
 
-            // The show's line, letterspaced as the HUD's tagline is, and the promise under it.
-            var strap = Text(column, "GOOD PEOPLE  \u00b7  BIGGER STORIES", 15f, UiTheme.Heading, 26f, ref cursor);
-            strap.characterSpacing = 10f;
-            var semibold = UiTheme.Font(UiTheme.Weight.SemiBold);
-            if (semibold != null) strap.font = semibold;
-            var promise = Text(column, "A house, a vote, and everyone watching.", 19f, UiTheme.Paper, 34f, ref cursor);
-            promise.fontStyle = FontStyles.Italic;
-            if (!string.IsNullOrEmpty(note)) Text(column, note, 14f, UiTheme.Warning, 40f, ref cursor);
-            cursor += 22f;
+            // No slogan and no promise line under the name (the owner, 2026-11-14): the title, then
+            // the note when there is one, then the controls.
+            if (!string.IsNullOrEmpty(note))
+            {
+                cursor += 12f;
+                Text(column, note, 14f, UiTheme.Warning, 40f, ref cursor);
+            }
+            cursor += 34f;
 
             // The controls on one glass card, the pack's resting panel, as every mockup gathers
             // its choices.

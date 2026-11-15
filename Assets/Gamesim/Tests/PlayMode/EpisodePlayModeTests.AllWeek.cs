@@ -36,6 +36,8 @@ namespace Gamesim.Tests.PlayMode
             {
                 var start = ContentCatalog.Create(seed);
                 ShippedRules.ApplyFresh(start);
+                // Held at story rules 10, Blame, by name (ROLE-MOMENTS-PLAN R7): the test is about something else, and EnableStory now gives Roles.
+                start.story.rulesVersion = StoryRules.Blame;
                 start.allWeekRulesStartWeek = 1;
                 var engine = new EpisodeEngine(start);
                 for (int guard = 0; guard < 400; guard++)

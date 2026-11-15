@@ -27,6 +27,8 @@ namespace Gamesim.Tests.EditMode
         {
             var s = SeasonBuilder.Create(new SeasonBuilder.Choice { HouseSize = 8 }, seed);
             ShippedRules.ApplyFresh(s);
+            // Held at story rules 10, Blame, by name (ROLE-MOMENTS-PLAN R7): the test is about something else, and EnableStory now gives Roles.
+            s.story.rulesVersion = StoryRules.Blame;
             if (!allWeek) s.allWeekRulesStartWeek = 0;
             Assert.That(EpisodeEngine.AllWeekOn(s), Is.EqualTo(allWeek));
             return s;

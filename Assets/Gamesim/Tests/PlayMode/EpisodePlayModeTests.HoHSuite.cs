@@ -30,6 +30,12 @@ namespace Gamesim.Tests.PlayMode
         /// <summary>The bound a trip from the farthest room keeps, in frames of <see cref="SuiteFrameSeconds"/>: thirty seconds of game time.</summary>
         private const int SuiteTripFrameBound = 900;
 
+        /// <summary>
+        /// The game time a jog up from the farthest room keeps (stack O2's fixes): the walk took 19.1 s on 14 Nov, the lead's
+        /// line is about 12 s, and the jog's 4 m/s makes it about 11 s; the bound leaves a little for the turns.
+        /// </summary>
+        private const float SuiteJogTripSeconds = 14f;
+
         /// <summary>Nominations with the first houseguest as Head of Household, the names not yet said.</summary>
         private static void SuiteAtNominations(EpisodeState state)
         {
@@ -172,6 +178,9 @@ namespace Gamesim.Tests.PlayMode
                 var drifted = bodies.FirstOrDefault(npc => FlatDistance(npc.transform.position, held[npc.Id]) > .3f);
                 Assert.That(drifted, Is.Null, "Nobody moves" + (drifted != null ? ": " + drifted.Id + " did." : "."));
 
+                // The stroll's next look is far off as the panel closes, so a trip on its cadence could not start next frame
+                // (the review's finding on HR-1: the trip keeps no 1.5 s cadence).
+                NpcWrite("nextWanderCheck", Time.unscaledTime + 10f);
                 director.ClosePanels();
                 yield return null;
                 Assert.That(director.SuiteHeadForDiagnostics, Is.EqualTo(hoh));
@@ -205,6 +214,19 @@ namespace Gamesim.Tests.PlayMode
                 var from = body.transform.position;
                 string fromRoom = RoomAt(body.transform);
                 Assert.That(fromRoom, Is.Not.EqualTo(EpisodeDirector.SuiteRoom), "They start outside it.");
+                // A jog up, for this trip alone: the Head's pace and run take, and nobody else's.
+                var headMotion = body.GetComponent<HouseNpcMotion>();
+                var headVisual = body.GetComponent<CharacterPresentation>();
+                Assert.That(headMotion.Speed, Is.EqualTo(EpisodeDirector.SuiteTripSpeed).Within(.001f), "The Head jogs up to the suite,");
+                Assert.That(director.SuiteJoggingForDiagnostics(hoh), Is.True);
+                if (headVisual != null) Assert.That(headVisual.IsRunning, Is.True, "on the run take.");
+                foreach (var other in SceneComponents<HouseNpc>().Where(npc => npc.gameObject.activeInHierarchy && npc.Id != hoh))
+                {
+                    var motion = other.GetComponent<HouseNpcMotion>();
+                    if (motion != null) Assert.That(motion.Speed, Is.EqualTo(HouseNpcMotion.DefaultSpeed).Within(.001f), other.Id + " walks at the house's pace.");
+                    var visual = other.GetComponent<CharacterPresentation>();
+                    if (visual != null) Assert.That(visual.IsRunning, Is.False, other.Id + " does not run.");
+                }
                 int frames = -1;
                 yield return SuiteArrival(hoh, took => frames = took);
                 float seconds = frames * SuiteFrameSeconds;
@@ -213,6 +235,12 @@ namespace Gamesim.Tests.PlayMode
                     + frames + " frames = " + seconds.ToString("0.0") + " s of game time.");
                 Assert.That(frames, Is.LessThanOrEqualTo(SuiteTripFrameBound),
                     "The Head is in the suite within " + SuiteTripFrameBound * SuiteFrameSeconds + " s of game time; took " + seconds + " s.");
+                // At the jog the farthest room is about 12 s away (the walk took 19.1 s on 14 Nov): the Head is up there soon.
+                Assert.That(seconds, Is.LessThanOrEqualTo(SuiteJogTripSeconds),
+                    "At a jog the Head is in the suite within " + SuiteJogTripSeconds + " s of game time; took " + seconds.ToString("0.0") + " s.");
+                yield return null;
+                Assert.That(director.SuiteJoggingForDiagnostics(hoh), Is.False, "Arrived, they stand: the jog is over");
+                if (headVisual != null) Assert.That(headVisual.IsRunning, Is.False, "and the run take off.");
 
                 // Standing: no seat, no activity, and not in the suite's furniture.
                 Assert.That(SuiteSeated(body), Is.False, "The Head stands.");
@@ -335,8 +363,107 @@ namespace Gamesim.Tests.PlayMode
                 yield return Frames(30);
                 Assert.That(director.SuiteHeadForDiagnostics, Is.Null, "Nobody is sent up again.");
                 Assert.That(director.SuiteTripForDiagnostics, Is.False);
+
+                // Back to the usual rooms (the review's finding on HR-1): the stroll takes the Head like anybody else. It looks
+                // every frame here, and everybody else it has sent stays resting, so its one send a look comes to the Head.
+                var house = SuiteHouse();
+                var rest = NpcRead<Dictionary<string, float>>("wanderRestUntil");
+                float until = Time.realtimeSinceStartup + 20f;
+                while (!house.IsWandering(hoh) && Time.realtimeSinceStartup < until)
+                {
+                    NpcWrite("nextWanderCheck", 0f);
+                    foreach (string id in rest.Keys.ToList()) rest[id] = id == hoh ? 0f : Time.unscaledTime + 1000f;
+                    yield return null;
+                }
+                Assert.That(house.IsWandering(hoh), Is.True, "Once the names are said the stroll takes the Head like anybody else,");
+                Assert.That(director.SuiteTripForDiagnostics, Is.False, "on a stroll, not a trip to the suite,");
+                Assert.That(director.SuiteJoggingForDiagnostics(hoh), Is.False, "and at a walk:");
+                Assert.That(SuiteBody(hoh).GetComponent<HouseNpcMotion>().Speed, Is.EqualTo(HouseNpcMotion.DefaultSpeed).Within(.001f),
+                    "the house's own pace.");
             }
             finally { Time.captureDeltaTime = 0f; }
+        }
+
+        private static readonly System.Reflection.MethodInfo SuiteSpotPicker = typeof(EpisodeDirector).GetMethod("TryPickSuiteSpot",
+            System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+
+        /// <summary>The suite spot picker's answer for this body, called as the trip calls it; the spot, or null for none.</summary>
+        private Vector3? PickSuiteSpot(HouseNpc npc)
+        {
+            var args = new object[] { npc, null };
+            return (bool)SuiteSpotPicker.Invoke(director, args) ? (Vector3?)(Vector3)args[1] : null;
+        }
+
+        /// <summary>Whether a body of this size standing at <paramref name="feet"/> would stand in a piece of furniture (HouseLayers.Furniture).</summary>
+        private static bool SuiteFeetInFurniture(Vector3 feet, float radius, float height) =>
+            Physics.CheckCapsule(feet + Vector3.up * (radius + .05f), feet + Vector3.up * (height - radius), radius,
+                1 << HouseLayers.Furniture, QueryTriggerInteraction.Ignore);
+
+        /// <summary>
+        /// A floor point in the suite where a body would stand in the suite's furniture (a bed, a chair): the floor the NavMesh
+        /// finds nearest the middle of a furniture proxy in the suite. Fails when the suite has none.
+        /// </summary>
+        private static Vector3 SuiteFurnitureFloor(Vector3 suiteMarker, float radius, float height)
+        {
+            foreach (var proxy in Physics.OverlapSphere(suiteMarker, 8f, 1 << HouseLayers.Furniture, QueryTriggerInteraction.Ignore)
+                .OrderBy(collider => FlatDistance(collider.bounds.center, suiteMarker)))
+            {
+                if (!NavMesh.SamplePosition(proxy.bounds.center, out var hit, 2f, NavMesh.AllAreas)) continue;
+                if (RoomAt(hit.position, radius) != EpisodeDirector.SuiteRoom) continue;
+                if (SuiteFeetInFurniture(hit.position, radius, height)) return hit.position;
+            }
+            Assert.Fail("No furniture in the suite stands over its floor.");
+            return default;
+        }
+
+        /// <summary>
+        /// The review's finding on HR-1: the spot the Head is sent to is on the suite's own floor and off its furniture by the
+        /// picker's checks, not by where the suite's marker happens to stand. With the picker's one marker moved onto the
+        /// suite's furniture, the marker's own spot (the first it tries) is refused and every spot it gives is clear; moved to
+        /// the room farthest from the suite, it gives none, because nothing within its reach is the suite's floor.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator HoHSuite_TheSuiteSpotIsOnItsFloorAndOffItsFurniture()
+        {
+            yield return InstallStrategySeason(41, SuiteAtNominations);
+            string hoh = director.Snapshot.hohId;
+            HouseRoomMarker marker = null;
+            Vector3 home = default;
+            try
+            {
+                yield return SuiteWorld();
+                Assert.That(SuiteSpotPicker, Is.Not.Null);
+                var npc = SuiteBody(hoh);
+                var capsule = npc.GetComponent<CapsuleCollider>();
+                float radius = capsule != null ? capsule.radius : .35f, height = capsule != null ? capsule.height : 1.9f;
+                marker = ActiveRoomMarkers().First(m => m.RoomName == EpisodeDirector.SuiteRoom);
+                home = marker.transform.position;
+                NpcWrite("suiteMarkers", new[] { marker });
+
+                var furniture = SuiteFurnitureFloor(home, radius, height);
+                marker.transform.position = new Vector3(furniture.x, home.y, furniture.z);
+                int found = 0;
+                for (int pick = 0; pick < 40; pick++)
+                {
+                    var spot = PickSuiteSpot(npc);
+                    if (spot == null) continue;
+                    found++;
+                    Assert.That(RoomAt(spot.Value, radius), Is.EqualTo(EpisodeDirector.SuiteRoom), "Every spot is on the suite's floor (pick " + pick + ").");
+                    Assert.That(SuiteFeetInFurniture(spot.Value, radius, height), Is.False, "and off its furniture (pick " + pick + ").");
+                }
+                Assert.That(found, Is.GreaterThan(0), "With the marker on the furniture the picker still finds the suite's clear floor.");
+
+                var far = SuiteFarthestFloor(radius, out string farRoom);
+                marker.transform.position = far;
+                for (int pick = 0; pick < 20; pick++)
+                    Assert.That(PickSuiteSpot(npc), Is.Null, "From the " + farRoom + " no spot within reach is the suite's (pick " + pick + ").");
+            }
+            finally
+            {
+                if (marker != null) marker.transform.position = home;
+                NpcWrite("suiteMarkers", null);
+                Time.captureDeltaTime = 0f;
+            }
         }
 
         [UnityTest]

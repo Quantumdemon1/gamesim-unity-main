@@ -709,6 +709,9 @@ namespace Gamesim.Tests.EditMode
                 {
                     var shipped = SeasonBuilder.Create(new SeasonBuilder.Choice { HouseSize = size, Roster = CastTemplates.Roster.AllStars, PlayerTemplateId = player }, seed);
                     ShippedRules.ApplyFresh(shipped);
+                    // Held at story rules 10, Blame, by name as the AllStars fixture holds it (ROLE-MOMENTS-PLAN R7), so the
+                    // two differ in the alumni field alone.
+                    shipped.story.rulesVersion = StoryRules.Blame;
                     Assert.That(shipped.alumniRulesVersion, Is.EqualTo(AlumniRules.Latest), "The writer writes the latest value.");
                     Assert.That(AlumniRules.Latest, Is.GreaterThanOrEqualTo(Two), "Values above 2 move no pin here (§14.G).");
                     for (int value = One; value <= AlumniRules.Latest; value++)

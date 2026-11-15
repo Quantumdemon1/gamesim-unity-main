@@ -34,7 +34,8 @@ namespace Gamesim.Tests.PlayMode
         /// <summary>
         /// The player Head of Household before the nominations, three pitches waiting - from a Threatening houseguest, an Earnest
         /// one and a Pragmatic one, each recommending somebody - under the role moments, or, without <paramref name="roles"/>, the
-        /// shipped story rules; saved and loaded, with the house's own clock held so nothing commits under the test.
+        /// story rules before them (Blame, held by name since R7 enrolled Roles in every shipped season); saved and loaded, with
+        /// the house's own clock held so nothing commits under the test.
         /// </summary>
         private IEnumerator InstallPitchBoard(bool roles, bool fullRecord = false)
         {
@@ -45,7 +46,7 @@ namespace Gamesim.Tests.PlayMode
                 EpisodeEngine.EnableCommitments(state);
                 EpisodeEngine.EnableAgency(state);
                 EpisodeEngine.EnableStory(state);
-                if (roles) state.story.rulesVersion = StoryRules.Roles;
+                state.story.rulesVersion = roles ? StoryRules.Roles : StoryRules.Blame;
                 state.economyRulesVersion = 1;
                 state.phase = EpisodePhase.Nomination;
                 state.hohId = state.playerId;

@@ -454,7 +454,7 @@ None of these needs schema 30.
 **Storyline capacity.** Validation refuses more than 100 storylines (Simulation/EpisodeValidation.cs:335), and every command's result is validated before it is installed (Simulation/EpisodeEngine.cs:44-47,62-70). The story pool checks capacity only when dialogue is on (Simulation/Story/EpisodeEngine.Story.cs:417,501). Under Roles:
 - the pool starts nothing new at 92 or more storylines, keeping 8 for rule-driven arcs (backdoor, pawn conversation, production);
 - `StartCycle` refuses at 100, as it already does under dialogue;
-- the lab reports the most storylines any 16-houseguest season reaches.
+- the lab reports the most storylines any 16-houseguest season reaches. *As built (R7):* at 12, the largest house the cast screen builds (Simulation/SeasonBuilder.cs clamps a house to 12); §6.4.
 
 *Built (R6):* `Castable` refuses at `EpisodeEngine.PoolStorylineCeiling` (92) under Roles, whatever starts the arc - the pool, a thread's chapter, a conversation, production's notice for a houseguest - and `StartCycle` at `StorylineCeiling` (100), so a rule-driven arc that would take the season past validation's bound does not start and the command stands. So the last eight are kept for the backdoor, the pawn conversation and production's ladder **for the player** (the Diary Room's warning, penalty and removal); a houseguest's `on-notice` is cast like the pool's arcs and stops at 92 with them, and only its storyline is lost: the strike itself still lands (R6's review). The lab's measurement waits for R7.
 
@@ -476,12 +476,12 @@ None of these needs schema 30.
 **Claimed, 2026-10-22 (R0).** Story rules **11** is claimed for Roles. **10 stays reserved** for the story session's pariah fix (BALANCE_BASELINE.md:313). No story session was active, so the claim follows decision 2's recommended answer; tell the story session when it next runs. Enrolment (R7) waits for every milestone below Roles, 10 included. Until 10 is defined, validation refuses it: `StoryRules.IsDefined` accepts 0 to 9 and 11 only, because a season may not hold a version no code reads. Line citations stay against eb092c67 (the evidence base above); R0's insertions move later lines in EpisodeEngine.Story.cs, StoryCatalog.PhaseBeats.cs and DialogueRules.cs.
 
 **Under option A:**
-- `StoryRules.Latest` becomes the validation bound (Simulation/Story/EpisodeStoryValidation.cs:28) and the catalogue lint bound. `Current` stays `Threads` until R7. This follows the precedent `CompetitionMiniGames.CurrentRules`: "a bound, never a behaviour" (Runtime/Presentation/CompetitionMiniGames.cs:21-23).
+- `StoryRules.Latest` becomes the validation bound (Simulation/Story/EpisodeStoryValidation.cs:28) and the catalogue lint bound. `Current` stayed below Roles until R7 (`Threads`, then `Blame` from STORY-RULES-10-PLAN §8); R7 moved it to `Roles` (§6.4). This follows the precedent `CompetitionMiniGames.CurrentRules`: "a bound, never a behaviour" (Runtime/Presentation/CompetitionMiniGames.cs:21-23).
 - **The frozen validators are not touched.** They already carry pinned copies with `Current = Threads` (Runtime/Persistence/FrozenV24Validator.Vocabulary.cs:391-418; Runtime/Persistence/FrozenV25Validator.Vocabulary.cs:393-420; Runtime/Persistence/FrozenV28ReadOnly.Leaves.cs:1494-1512). A test confirms they refuse Roles.
 - `DialogueRules.Prerequisites` changes from `story.rulesVersion == StoryRules.Threads` to `>=` (Simulation/DialogueRules.cs:448), or enrolment would switch dialogue off for good.
 - The web importer pins `StoryRules.Threads` (Runtime/Persistence/WebSaveImporter.cs:206 calls `EnableStory`, which sets the live `Current`). The schema-16 migration already pins 9 (Runtime/Persistence/EpisodeSaveMigrations.cs:499-506). Without the pin, an imported web season would hold Roles once R7 moves `Current`. The importer turns on the commitment and lever rules from the week after (Runtime/Persistence/WebSaveImporter.cs:207-213) but never the strategy rules or the economy, so `RolesOn` is false there anyway; the pin keeps the Roles templates out, because the pool filters on a template's version alone.
 - `RolesOn(s)` = story rules ≥ Roles **and** `StrategyRules.Apply` **and** `CommitmentRulesOn` **and** `LeverRulesOn`. The pitch board also needs `EconomyRulesOn` and `AgencyOn`, as `HoHPitches.Available` does (Simulation/HoHPitches.cs:13-16). Validation of `veto_hold` and the new id prefixes uses the same test.
-- `EnableStory` keeps setting `Current` (Simulation/Story/EpisodeEngine.Story.cs:37), and `ShippedRules.ApplyFresh` calls it (Simulation/ShippedRules.cs:36). Fresh seasons are therefore enrolled only when R7 moves `Current`. Until then, tests opt in by setting `s.story.rulesVersion = StoryRules.Roles`.
+- `EnableStory` keeps setting `Current` (Simulation/Story/EpisodeEngine.Story.cs:37), and `ShippedRules.ApplyFresh` calls it (Simulation/ShippedRules.cs:36). Fresh seasons are therefore enrolled only when R7 moves `Current`. Until then, tests opt in by setting `s.story.rulesVersion = StoryRules.Roles`. *As built (R7):* `Current` is `Roles` (Simulation/Story/StoryState.cs), so every new season starts on story rules 11; tests that pin an older season's behaviour name `Blame` (or `Threads`) after `ApplyFresh` or `EnableStory` instead (§6.4).
 
 ### 4.3 Old saves replay byte for byte
 
@@ -671,7 +671,7 @@ Quiet tears comes at most once a week, so the net is about **+0.05 to +0.1 story
 ### 6.1 Slices
 
 Each slice is built, fully tested, independently reviewed and landed on its own. Since 2026-10-23 (the owner's amendment to OWNER-DECISIONS §3) a slice may build on a committed slice not yet qualified, and one full set on the newest head qualifies every slice beneath it, with at most three unqualified at once.
-- R0 to R6 change nothing in shipping seasons: `Current` stays at Threads until R7.
+- R0 to R6 changed nothing in shipping seasons: `Current` stayed below Roles (Threads, then Blame from story rules 10's enrolment) until R7 moved it to Roles (§6.4).
 - "Subset" means `dotnet test Tools/SimulationTests`.
 - EditMode and PlayMode run on a D: copy, alone; PlayMode captures run on a screen of their own.
 
@@ -684,7 +684,7 @@ Each slice is built, fully tested, independently reviewed and landed on its own.
 | **R4 Keep-the-block** | **(1)** `DealKind.VetoHold` (appended, titled, Roles-only, never player-proposed). **(2)** `AskToKeepTheBlock` (counter-offer only, `BackdoorPlanned`). **(3)** The raw final-two price path for `deal-keep-` in `AskPrice`, `StrikeTheAskPrice` and `AcceptedOffer`. **(4)** The `Hold` verdict with its kept weight. **(5)** The defied-HoH change and grudge. **(6)** Expiry. **(7)** Every reader in §3.3. | Subset and EditMode: **(1)** filing conditions (no nominee ask, backdoor, warmth, Final 4, player nominated); **(2)** kept +8 and broken -45 attributed to the player; **(3)** price voided; **(4)** locks both ways; **(5)** validation refuses it without Roles; **(6)** `CanPropose` refuses it in every season; **(7)** `YourWeek.ReadDeal` reads its lines; **(8)** modes 0/1/2 | L | Many readers |
 | **R5 The pitch board** | Cap of 3 (2 warmest and 1 coolest by the player's reading); any order; Promise pays at the nominations; Turn down eases the grudge; tone decline costs | Subset: **(1)** cap and selection; **(2)** answering in any order; **(3)** nominating clears; **(4)** the +8 lands only for those left off; **(5)** a replacement breaks it; **(6)** the ease. PlayMode: board layouts. | M | Changes E4 behaviour (Roles only) |
 | **R6 Story moments** | **(1)** `the-pawn-talk` and the coin on the backdoor opener, with the Roles twins. **(2)** `quiet-tears`. **(3)** The Fallout's weight 0 under Roles. **(4)** The "nothing" offset. **(5)** The storyline capacity guard. **(6)** Each Roles template asks `RolesOn` in its cast or weight: `Castable` and `StartStory` filter on a template's version alone (Simulation/Story/EpisodeEngine.Story.cs:416,486; Simulation/Story/EpisodeEngine.Threads.cs:155). | EditMode and subset: **(1)** StoryCatalogLintTests; **(2)** old pools unchanged at every anchor; **(3)** the pawn conversation's text identical with and without a backdoor; **(4)** once per HoH per season; **(5)** the twins hidden in old seasons; **(6)** airtime held; **(7)** nameless memories; **(8)** costsAction refused at 0 seats; **(9)** capacity at 92/100; **(10)** no Roles template casts at story rules 11 while `RolesOn` is false | M | Airtime crowding; the backdoor arc's routing |
-| **R7 Enrolment and measurement** | **(1)** `StoryRules.Current = Roles`. **(2)** Re-record BalanceLabGoldens and CommitmentRulesSeasonDigests. **(3)** B9 cohorts and the pacing lab against §5.5's budget. **(4)** With the old-save lane, a **schema-29, mode-2, Roles fixture saved at the veto meeting with a `veto_hold` pending**, and the story version added to the manifest's cells (OLD-SAVE-ACCEPTANCE.md at HEAD, lines 3-5 and 150-158). **(5)** The abuse checklist. **(6)** Keep R0's web-import story assertion (Tests/EditMode/PersistenceTests.cs): it can fail only once `Current` moves. | The full EditMode run. B9: weekly wins, Winner rate, counter-carry. The lab: minutes a week, decisions per policy, the most storylines at 16. Abuse: **(1)** accepting both asks; **(2)** accept-then-break loops; **(3)** comfort farming; **(4)** renomination; **(5)** a stale card after a phase advance; **(6)** load mid-board; **(7)** a double click; **(8)** a failed save; **(9)** an interrupted NPC approach. | M | Golden churn (expected); the owner signs off on the numbers before merge |
+| **R7 Enrolment and measurement** | **(1)** `StoryRules.Current = Roles`. **(2)** Re-record BalanceLabGoldens (CommitmentRulesSeasonDigests is held at threads by name, not re-recorded: §6.4). **(3)** B9 cohorts and the pacing lab against §5.5's budget. **(4)** With the old-save lane, a **schema-30, mode-2, Roles fixture saved at the veto meeting with a `veto_hold` pending** (OLD-SAVE-ACCEPTANCE.md cell 2.13; the manifest's cells carry the story version since cell 2.12). **(5)** The abuse checklist. **(6)** Keep R0's web-import story assertion (Tests/EditMode/PersistenceTests.cs): it can fail only once `Current` moves. | The full EditMode run. B9: weekly wins, Winner rate, counter-carry. The lab: minutes a week, decisions per policy, the most storylines at 12. Abuse: **(1)** accepting both asks; **(2)** accept-then-break loops; **(3)** comfort farming; **(4)** renomination; **(5)** a stale card after a phase advance; **(6)** load mid-board; **(7)** a double click; **(8)** a failed save; **(9)** an interrupted NPC approach. | M | Golden churn (expected); the owner signs off on the numbers before merge |
 | **R8 The holder's offer** (only after B9 and the owner's sign-off) | **(1)** `OfferTheVeto`. **(2)** The player-paid price ladder (a voting bloc this week, or a final two). **(3)** The new mode-2 origin with admission, validation and voiding. **(4)** The substitution rule in `CanLobby`. **(5)** Reader wording for a player-owed price. | Subset and EditMode: **(1)** filing conditions, including "would save anyway" makes no difference; **(2)** an NPC breach makes a Betrayal; **(3)** the price voided when the holder breaks; **(4)** the 60d8f629 sibling; **(5)** modes 0/1/2; **(6)** `WillNotSave` and the cold-partner coin. B9 rerun with R8 on. | L | Balance: it makes being nominated survivable |
 
 Later, outside this plan:
@@ -722,6 +722,88 @@ Later, outside this plan:
 | 13 | Keep story moments out of week 1 before its eviction night, though screenshot 2 shows week 1 (the board itself plays in week 1)? | **Yes.** |
 | 14 | Keep imported web saves on story rules 9 after enrolment? | **Yes.** |
 | 15 | Trait-picked price kinds, allies approaching the holder, and the nominated holder's "vote to keep me" ask? | **Defer** to after R8. |
+
+### 6.4 R7 as built (2026-11-13)
+
+**The measurement.** The lab measured R0, the role moments as built at the abuse checklist's head, once on the held-out
+seeds 200-299 (the studier on competition seeds 0-799, the war rooms on 0-479), against criteria 1-7 and B8 for the
+owner. No change inside story rules 11 and no cut was tried first (the run decided on 2026-11-10).
+- VERDICT: **PASS.** The held-out run ended on 2026-11-14. Report `r7-report.txt`, sha256
+  `e27ea1ac8b4a75ffbf90915daf91632e706f68bfcd759f863e3fcc77e7ddd7f7`, on head `bcb56fd2247766cd1a9a117458638b8ef139af67`,
+  snapshot `b25d799d3bcdf343`; set R0 against baseline B, 2400 seasons an arm. Band B7 (the war rooms' counters) is out
+  low in both arms, R0 and the baseline alike, so it passes by the criterion's own rule that a miss shared with the
+  baseline passes; every other band of C6 is in band, B4 included. The report's ACCEPT lines for criteria 1-7, ACCEPT B8
+  and its verdict line, word for word:
+
+```
+ACCEPT C1 integrity: R errors 0 of 2400 seasons (B 0 of 2400); R not at 11 from week 1: 0; B not at 10 or with a Roles-only prompt: 0; seasons without prompt records: 0; paired seeds unequal: 0 of 2400; duplicates R 0 B 0 [pass]
+ACCEPT C2 net prompts a season at 8, R - B paired (engaged <= 0, passive <= +2): passive -3.04 (100 pairs; no-pitch +0.08); social -3.68 (100 pairs; no-pitch -0.28); reader -2.84 (100 pairs; no-pitch +0.03); schemer -2.71 (100 pairs; no-pitch +0.51); loyalist -3.24 (100 pairs; no-pitch -0.39); exploit -3.56 (100 pairs; no-pitch -0.17; a probe, gates nothing); no pair dropped [pass]
+ACCEPT C3 boards: R's most a week: veto-board cards 3, pitch cards 3, keep-the-block 1; weeks over (3, 3, 1): 0. Q1 gate at 8, prompts per role week R - B <= +1: social/HoH -1.73 (R 194 wk, B 194 wk); social/holder -0.65 (R 194 wk, B 194 wk); social/nominated -0.29 (R 169 wk, B 162 wk); reader/HoH -1.33 (R 207 wk, B 204 wk); reader/holder -0.31 (R 190 wk, B 195 wk); reader/nominated -0.06 (R 161 wk, B 167 wk); schemer/HoH -1.89 (R 209 wk, B 194 wk); schemer/holder -0.59 (R 193 wk, B 181 wk); schemer/nominated -0.09 (R 157 wk, B 153 wk); loyalist/HoH -1.22 (R 180 wk, B 193 wk); loyalist/holder -0.63 (R 194 wk, B 193 wk); loyalist/nominated -0.45 (R 161 wk, B 158 wk) [pass]
+ACCEPT C3 reported (not gating), R at 8: role weeks with 2+ Roles-only prompts: HoH 0.0% [0.0, 0.2] (0/2328), with the pitch board 79.7% [78.0, 81.3] (1855/2328); holder 0.9% [0.6, 1.4] (22/2316), with the pitch board 25.9% [24.1, 27.7] (599/2316); nominated 0.6% [0.4, 1.1] (12/1918), with the pitch board 0.6% [0.4, 1.1] (12/1918); narrower variant, keep-the-block cards per role week R - B: HoH +0.000; holder +0.030; nominated +0.000
+ACCEPT C4 pace at 8 (12 policies, R 1200 seasons, B 1200): budgeted asks 5.1 (4-6) in band, B 4.9 in band; weeks with a card 53.2% (30-60%) in band, B 52.4% in band; NPC-removal seasons of 1200 with a window 0.0% (at most 10%) in band, B 0.0% in band; showmances 1.03 (0.5-1.5) in band, B 1.03 in band; pile-on seasons 0.0% (at most 25%) in band, B 0.0% in band; stories finished 4.7 (no band), B 4.7 - [pass]
+ACCEPT C5 storylines at 12: R most 36, mean 21.9, seasons at 92+ 0, at 100+ 0; B most 36; seasons whose end count is not their peak 0 [pass]
+ACCEPT C6 B9's bands on R (B beside; a miss B shares passes): B1 R 62.3% [61.0, 63.7] (3017/4840), B 62.4% [61.0, 63.8] (3018/4836): in band; B2 R 60.8% [59.6, 62.1] (3757/6175), B 61.5% [60.3, 62.7] (3863/6277): in band; B3 R 32.9% [29.7, 36.2] (263/800), B 32.1% [29.0, 35.4] (257/800): in band; B4 R 24.4% [21.5, 27.5] (195/800), B 26.2% [23.3, 29.4] (210/800): in band; B5 at 8 on the held-out headline: R 15.8 [12.1, 19.4] (100 pairs), B 15.5 [11.9, 18.9] (100 pairs): in band (war rooms: R 13.8 [12.2, 15.3] (480 pairs), B 14.5 [13.0, 16.2] (480 pairs)); B6 at 12 on the held-out headline: R 11.1 [8.5, 13.8] (100 pairs), B 10.2 [7.9, 12.5] (100 pairs): in band (war rooms: R 12.1 [11.1, 13.2] (480 pairs), B 12.3 [11.3, 13.4] (480 pairs)); B7 war rooms 0-479, 8 and 12 pooled: R 32.8% [22.3, 45.3] (20/61) OUT low, B 30.9% [21.2, 42.6] (21/68) OUT low: OUT, shared with B (beside, not gating: at 8 R 30.8% [16.5, 50.0] (8/26), B 50.0% [31.4, 68.6] (12/24); at 12 R 34.3% [20.8, 50.8] (12/35), B 20.5% [11.2, 34.5] (9/44); held-out headline's counters R 36.4% [15.2, 64.6] (4/11), B 37.5% [18.5, 61.4] (6/16); variant headline and war rooms together R 33.3% [23.5, 44.8] (24/72), B 32.1% [23.1, 42.7] (27/84)) [pass]
+ACCEPT C7 D0 pooled over the 12 policies: at 8: R 3.5% [2.6, 4.7] (42/1200); B 3.3% [2.5, 4.5] (40/1200); paired R - B +0.2 points; McNemar B-only 18, R-only 20, p 0.871; at 12: R 18.3% [16.2, 20.6] (220/1200); B 16.4% [14.4, 18.6] (197/1200); paired R - B +1.9 points; McNemar B-only 97, R-only 120, p 0.135 [pass]
+ACCEPT B8 (a 3-card board read in 30 s at the median): not lab-gated, for the owner (the lab assumes 30 s a decision)
+VERDICT: PASS R0: criteria 1-7 pass on the held-out seeds on snapshot b25d799d3bcdf343 of bcb56fd2
+```
+
+- The cut: none was called. The owner's rule of 2026-11-13: a miss on band B4 alone (the careful player's win rate at 12
+  seats) accepts R7 as built; any other miss stops and goes to him.
+
+**The switch.** `StoryRules.Current = Roles` (Simulation/Story/StoryState.cs): every new season the game starts plays
+story rules 11, so the role moments come to the player in every new season. Nothing else in Simulation or Runtime
+changed: every rule reads the milestone that introduced it, and `EnableStory`, the one reader of `Current`, writes a new
+season's value. A saved season keeps the version it was started on: a load reads the saved `story.rulesVersion` back,
+and the one load step that calls `EnableStory`, the schema-16 migration of a save from before the story system, writes 9
+over its value at once, as the web importer writes threads over its own call (decision 14). The frozen readers keep their
+own ladders, which end at threads.
+No saved field was added: 11 is written into the existing `story.rulesVersion`, and the schema stays 30. This is the
+first of four enrolments of the story plan of 13 Nov: plan 32's stacks move `Current` again, to 12, 13 and 14, each at
+its own enrolment once it is built and measured.
+
+**What moved with it (re-pinned, because the test asserts a shipped season's story rules):** RoleRulesTests' enrolment
+test (Current, the shipped season's version, `RolesOn(shipped)` now true; renamed
+`RolesIsClaimedAsElevenAndEveryNewSeasonPlaysIt`), ShippedRulesTests (ApplyFresh's map 10 to 11; the preview chip and its
+rules-2 witness to Roles), FreshSeasonStateDigestTests (asserts Roles, still hashes at threads, so no digest moved), the
+dialogue fixtures of DialogueCampaignEngineTests, DialogueCampaignDealClosureTests, DialogueSchema29ShapeTests,
+DialoguePendingSaveTests and PlayMode EpisodeDurableTransactionTests.DialogueCampaign (10 to 11). Followed with no edit,
+because they read `Current` or search the shipped season: StorySeasonTests' switch test, AllianceLeakTests' restore, the
+lab's parts round trip, and the dialogue-rules-2 cluster on `DialogueRules2Season` (the chip's own season; a search that
+finds another witness is re-searched). The seeds the cluster's searches print, on R1's head (Blame) and on the switch's
+(Roles), from the subset's own output: every witness keeps its seed and its reading but two, both of which pass. Only
+DialogueRules2EngineTests' caught lie changed its seed, from seed 1 (12 seats, week 6) to seed 2 (week 2).
+DialogueRules2CapacityTests' budget campaign kept its seed and week (seed 1, week 7); only the reply in its copied
+conversation changed (a guarded one, not a concerned one).
+
+**What was held, by name.** A test whose season the switch would move but which is about something else writes
+`story.rulesVersion = Blame` after `ApplyFresh` or `EnableStory`: the fixtures of AllWeekCadenceTests, AlumniHistoriesTests,
+CastTemplateTests, BetweenHouseguestsTests, EpisodeNpcSocialTests, NpcPairingTests, FinalChoiceSeasonHarness, the
+unified safety and unified vote fixtures, WaveDInertSchema28Tests, and in PlayMode the all-week, walk-in, public agreement
+and ComesToYou story-house fixtures; the offer and pitch boards' without-roles arms; the schema-30 round trip at story
+rules 10; the lab's named-arm test (renamed `ACellPlaysOtherStoryRulesOnlyWhenItNamesThem`) and the conversation budget's
+arms A and C. Found by the runs and held the same way: the dialogue pilot's fixed witnesses (the seed-4 route to week
+three's campaign in DialogueCampaignRealReplySaveTests and its PlayMode twin, which at Roles meets a role week's story
+ask; the seed-14 incoming offer), and AlumniLoyaltyTests' opening comparison, which holds its fresh season as the
+AllStars fixture does. Held unchanged at threads, as story rules 10's enrolment held them: CommitmentRulesSeasonDigests and the
+tiers that play its seasons, PinnedVoteSeason, the rules-9 and rules-10 budget-nought pins, TuningRulesTests' studier pins,
+`RoleStoryPools.OldSeasons`, the web import's pin (PersistenceTests) and the schema-16 migration's step. Three of the
+holds at Blame rest on no failing run of their own: the seed-14 incoming offer, the PlayMode twin of the seed-4 route
+(its EditMode twin failed) and ComesToYou's `SaveWithTheStoryOn`. They stand at Blame by name, by the lead's ruling of
+13 Nov.
+
+**The lab's records.** BalanceLabGoldens' `Rules` tuple ends `story.rulesVersion=11`, and its 48 cells are re-recorded
+at the enrolment with the reason in the file; the budget-nought tests gain Explicit rules-11 twins beside the rules-10
+ones. Recorded on the switch's head without waiting for the verdict (the lead's ruling of 13 Nov: they record what the
+code does at `Current = Roles`; if the verdict stops the stack and a number is tuned, they are recorded again then). All
+48 cells moved; the rules-11 twins hash `2a39d289ab2e77ec` (tuning 0) and `393c1559fd68ed67` (tuning 1, the shipped
+seasons). The lab's R0 rows answer the boards and the golden cells do not, so the two cannot be compared row by row: the
+boards-on path is the replay's (the switch's head 2892a4e8 plays the headline's development seeds 0-19 at
+`BALANCE_BOARDS=1` exactly as the lab's R0 rows: 480 of 480 seasons equal), and the goldens were checked by a second
+run of every chunk and both twins, which passed with the pasted values.
+
+**Old saves.** OLD-SAVE-ACCEPTANCE.md cell 2.13: a schema-30, mode-2 season at story rules 11, saved at a veto meeting
+with a pending keep-the-block row, written by the enrolled head (its own slice).
 
 ---
 

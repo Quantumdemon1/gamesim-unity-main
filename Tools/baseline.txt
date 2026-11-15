@@ -267,16 +267,36 @@
 # observed it on the merge.
 # 9960 = 9944 + role moments R7's 16 (9913 - 9897): disjoint cases, so the floor is their sum (the merge of main
 # 0ab29719 into role moments R7 at its landing, 2026-11-13). Counted from the two sides; no run has observed 9960.
+# 9967 = 9960 + the story-rules-11 old-save cell's 7 (OLD-SAVE-ACCEPTANCE 2.13, W1-R3; re-recorded at W1-R2's head
+# eb918637, which adds no case, and the merge of that head left R2's floor at 9960): OldSaveAcceptanceTests' four
+# per-fixture cases for s30-mode2-allweek-story11-tuning1-w3-veto-meeting and the cell's three own cases. The no-UMA
+# lister counted exactly 9967 (2026-11-13), and the Mono harness ran the manifest case and the cell's seven, passed;
+# no Unity run has observed the floor yet.
 # 9979 = 9960 + offers slice 4a's 19 ComesToYouSourcesTests cases (S1 three kinds, S2, S3, S4 nine changes, S5 to S9: a
 # reply card comes to the player as the queue's Card source; OFFERS-COME-TO-YOU-PLAN section H). Counted from the source;
 # the same 19 run in the Unity-free suite (16808 below). No Unity run has observed 9979 yet.
+# 9986 = 9960 + the old-save cell's 7 (9967 - 9960) + offers slice 4a's 19 (9979 - 9960): disjoint cases, so the floor
+# is their sum (the merge of offers slice 4a into the R7 stack's combined head, 2026-11-14). Counted from the two sides.
+# 9968 = 9960 + the house talk's levels (plan 32 HT0): HouseTalkRulesTests, 8 cases (the three numbers, Latest
+# still Roles, none defined, the validator's refusal of each). RolesSeasonDigests is compiled out of Unity. The
+# Mono harness ran HouseTalkRulesTests 8 of 8 and RoleRulesTests 43 of 43, passed, on the slice at 8e9a933a
+# (2026-11-14); the no-UMA lister counts the head; no Unity run has observed 9968 yet.
+# 9994 = 9960 + the old-save cell's 7 + offers slice 4a's 19 (9986 - 9960) + the house talk's levels' 8 (9968 - 9960):
+# disjoint cases, so the floor is their sum (the merge of HT0 into the R7 stack's combined head, 2026-11-14). Counted
+# from the two sides.
+# 9994 observed: the full UMA suite (set s1full1, 2026-11-14, on the stack's combined test head) ran 9994 EditMode
+# cases, 9993 passed; the one failure, a source-layout scan, was fixed and passed in set s1gap1 the same day.
 # 9983 = 9979 + offers slice 4p's 4 ComesToYouSourcesTests cases (S10 to S13: the pitches to a player Head of Household
 # come to the player as the queue's Pitch source; OFFERS-COME-TO-YOU-PLAN section H; S2 repinned, not added). Counted from
 # the source; the same 4 run in the Unity-free suite (16812 below). No Unity run has observed 9983 yet.
+# 9998 = 9994 + offers slice 4p's 4 (9983 - 9979): disjoint cases, so the floor is their sum (the merge of main
+# ada068a4 into offers slice 4p, 2026-11-14). Counted from the two sides; no run has observed 9998.
 # 9989 = 9983 + offers slice 4b's 6 ComesToYouSourcesTests cases (S14, and S15's five pairs: the same houseguest's next
 # ask once one is answered, ComesToYou.NextFrom; OFFERS-COME-TO-YOU-PLAN section H). Counted from the source; the same 6
 # run in the Unity-free suite (16818 below). No Unity run has observed 9989 yet.
-Gamesim.EditModeTests 9989
+# 10004 = 9998 + offers slice 4b's 6 (9989 - 9983): disjoint cases, so the floor is their sum (the merge of offers
+# slice 4p, holding main ada068a4, into offers slice 4b, 2026-11-14). Counted from the two sides; no run has observed 10004.
+Gamesim.EditModeTests 10004
 # The UMA-free build. 1215 = 1236, the count after the consolidation's lanes (S2a, S2b, S4a), less the 7
 # farewell probes moved to Gamesim.DiagnosticsPlayModeTests and the 14 farewell readiness tests that now
 # compile only under GAMESIM_UMA (judged on the UMA cast); 1230 = 1215 + S2d's 7, S4b's 2, S4c's 2 and
@@ -427,19 +447,27 @@ Gamesim.EditModeTests 9989
 # 1516 = 1510 + offers slice 4a's 6 ComesToYou_Reply cases (EpisodePlayModeTests.ComesToYouReplies: a confrontation walks
 # up and opens as a dialogue, gossip from the gossiper, a raised card, a card with no offer in the house, the card host's
 # outcome, the switch off and the default), counted from the source. Not yet run in Unity.
+# 1517 = 1510 + W2-HR1's 7 new EpisodePlayModeTests.HoHSuite cases (an NPC Head of Household waits in the HoH suite:
+# the window line, a panel, the trip from the farthest room, a staged act, the names said, a player Head of Household,
+# the plea in the suite). The lister counted 1517 on the branch at ae845226 without UMA (2026-11-13). No Unity run has
+# observed them yet.
+# 1523 = 1510 + offers slice 4a's 6 (1516 - 1510) + W2-HR1's 7 (1517 - 1510): disjoint cases, so the floor is their sum
+# (the merge of HoH room slice 1 into the R7 stack's combined head, 2026-11-14). Counted from the two sides.
+# 1523 is a lister count only: the full UMA suite of 2026-11-14 (set s1full1) ran the UMA build, not this one.
 # 1527 = 1516 + offers slice 4p's 11: 5 ComesToYou_Pitch cases (EpisodePlayModeTests.ComesToYouPitches: a pitch walks up
 # and Hear opens the board, before the board the one-at-a-time answer, one walker at a time, Let it wait, none after the
 # nominations) and 6 ComesToYou_Reply cases slice 4a left (a plea in the campaign, two cards one at a time, the dialogue
 # at Largest, a card gone in the conversation, the card host's "They've moved on.", no card in slice 1's house), counted
 # from the source. Not yet run in Unity.
+# 1534 = 1523 + offers slice 4p's 11 (1527 - 1516): disjoint cases, so the floor is their sum (the merge of main
+# ada068a4 into offers slice 4p, 2026-11-14). Counted from the two sides; no run has observed 1534.
 # 1534 = 1527 + offers slice 4b's 7 ComesToYou_Chain cases (EpisodePlayModeTests.ComesToYouChains: a card then the same
 # houseguest's offer, never to another houseguest, only for an ask that can still come, on the card host, a card then
 # the same sender's next card, an offer then their pitch, the queue goes on as it was), counted from the source. Not yet
 # run in Unity.
-# 1517 = 1510 + W2-HR1's 7 new EpisodePlayModeTests.HoHSuite cases (an NPC Head of Household waits in the HoH suite:
-# the window line, a panel, the trip from the farthest room, a staged act, the names said, a player Head of Household,
-# the plea in the suite). The lister counted 1517 on the branch at ae845226 without UMA (2026-11-13). No Unity run has
-# observed them yet.
+# 1541 = 1534 (offers slice 4p with main) + offers slice 4b's 7 (its own 1534 - 1527): disjoint cases, so the floor is
+# their sum (the merge of offers slice 4p into offers slice 4b, 2026-11-14). Counted from the two sides; no run has
+# observed 1541.
 # 1541 = 1534 + W2-HR1's 7 (1517 - 1510): disjoint cases, so the floor is their sum (the merge of W2-HR1 into W2-HR2,
 # 2026-11-14). Counted from the two sides; no run has observed 1541 on the merge.
 # 1547 = 1541 + W2-HR2's 6 new EpisodePlayModeTests.HoHSuitePitches cases (the player Head of Household's pitchers
@@ -447,11 +475,17 @@ Gamesim.EditModeTests 9989
 # today's, before the role moments the one waiting first, the names said, the reply asks off, a walk-up takes its
 # pitcher and gives them back). The lister counted 1547 on the branch at 09977a5a without UMA (2026-11-14). No Unity
 # run has observed them yet.
+# 1547 = 1541 (offers slice 4b with slice 4p and main) + HoH room slice 2's own 6 (1547 - 1541 on the slice; the
+# W2-HR1 cases the slice had merged are main's, already in 1523): disjoint cases, so the floor is their sum (the merge
+# of offers slice 4b into HoH room slice 2, 2026-11-14). Counted from the two sides; no run has observed 1547 on it.
 # 1554 = 1547 + stack O2's fix slice's 7 new cases: EpisodePlayModeTests.ComesToYouPitches P6-P8 (a pitch due as a
 # card, and every pitch with walk-overs off, is not counted as still coming; the reply asks off drop the pitches),
 # ComesToYouChains C8 (a lapse is not an answer), HoHSuite_TheSuiteSpotIsOnItsFloorAndOffItsFurniture, and
 # HoHSuitePitches 7-8 (E on a pitcher there; the pitchers' spots off the furniture and apart). No Unity run has
 # observed them yet.
+# 1554 = 1547 (HoH room slice 2 with offers slices 4b and 4p and main) + the fix slice's 7 (1554 - 1547 on the
+# slice): disjoint cases, so the floor is their sum (the merge of HoH room slice 2 into stack O2's fix slice,
+# 2026-11-14). Counted from the two sides; no run has observed 1554 on it.
 Gamesim.PlayModeTests 1554
 # The UMA build of the same assembly, read by a plan built without -WithoutUma. 1281 = the 1241 above + the
 # 40 tests that compile only under GAMESIM_UMA, as run at r1 (2026-10-16): in EpisodePlayModeTests,
@@ -555,16 +589,30 @@ Gamesim.PlayModeTests 1554
 # merge of main 0ab29719 into role moments R7 at its landing, 2026-11-13). Counted from the two sides; no run has
 # observed 1555.
 # 1561 = 1555 + offers slice 4a's same 6 shared ComesToYou_Reply cases, counted from the source. Not yet run in Unity.
-# 1572 = 1561 + offers slice 4p's same 11 shared cases (5 ComesToYou_Pitch, 6 ComesToYou_Reply), counted from the source.
-# Not yet run in Unity.
-# 1579 = 1572 + offers slice 4b's same 7 shared ComesToYou_Chain cases, counted from the source. Not yet run in Unity.
 # 1562 = 1555 + W2-HR1's same 7 EpisodePlayModeTests.HoHSuite cases (see PlayModeTests above), counted from the source;
 # the UMA offline build lists them in the set's preparation (hr1tg1). No Unity run has observed them yet.
+# 1568 = 1555 + offers slice 4a's same 6 (1561 - 1555) + W2-HR1's same 7 (1562 - 1555): disjoint cases, so the floor
+# is their sum (the merge of HoH room slice 1 into the R7 stack's combined head, 2026-11-14). Counted from the two sides.
+# 1568 observed: the full UMA suite (set s1full1, 2026-11-14, on the stack's combined test head) ran 1568 of 1568.
+# 1572 = 1561 + offers slice 4p's same 11 shared cases (5 ComesToYou_Pitch, 6 ComesToYou_Reply), counted from the source.
+# Not yet run in Unity.
+# 1579 = 1568 + offers slice 4p's same 11 (1572 - 1561): disjoint cases, so the floor is their sum (the merge of main
+# ada068a4 into offers slice 4p, 2026-11-14). Counted from the two sides; no run has observed 1579.
+# 1579 = 1572 + offers slice 4b's same 7 shared ComesToYou_Chain cases, counted from the source. Not yet run in Unity.
+# 1586 = 1579 (offers slice 4p with main) + offers slice 4b's same 7 (its own 1579 - 1572): disjoint cases, so the
+# floor is their sum (the merge of offers slice 4p into offers slice 4b, 2026-11-14). Counted from the two sides; no run
+# has observed 1586.
 # 1586 = 1579 + W2-HR1's same 7 (1562 - 1555): disjoint cases, so the floor is their sum (the merge of W2-HR1 into
 # W2-HR2, 2026-11-14). Counted from the two sides; no run has observed 1586 on the merge.
 # 1592 = 1586 + W2-HR2's same 6 EpisodePlayModeTests.HoHSuitePitches cases (see PlayModeTests above): the lister
 # counted 1592 on the branch at 09977a5a in the UMA offline build (2026-11-14). No Unity run has observed them yet.
+# 1592 = 1586 (offers slice 4b with slice 4p and main) + HoH room slice 2's same 6 (1592 - 1586 on the slice; the
+# W2-HR1 cases are main's, already in 1568): disjoint cases, so the floor is their sum (the merge of offers slice 4b
+# into HoH room slice 2, 2026-11-14). Counted from the two sides; no run has observed 1592 on it.
 # 1599 = 1592 + stack O2's fix slice's same 7 cases (see PlayModeTests above). No Unity run has observed them yet.
+# 1599 = 1592 (HoH room slice 2 with offers slices 4b and 4p and main) + the fix slice's same 7 (1599 - 1592 on the
+# slice): disjoint cases, so the floor is their sum (the merge of HoH room slice 2 into stack O2's fix slice,
+# 2026-11-14). Counted from the two sides; no run has observed 1599 on it.
 Gamesim.PlayModeTests.UmaBuild 1599
 # The UMA bodies: runs only where the GAMESIM_UMA define is set (the working tree and the D: copy).
 # 82 = the 89 run on 2026-10-15, less the 7 farewell probes moved to Gamesim.Uma.DiagnosticsPlayModeTests;
@@ -604,6 +652,7 @@ Gamesim.PlayModeTests.UmaBuild 1599
 # 176 = 175 + Will's face slice's 1 (WillsBuiltBodyCarriesHisFittedFace): disjoint from the wrist and neck places' six, so
 # the floor is the sum (the merge of main into face slice 3 at its landing, 2026-11-13). Each slice's batch ran the whole
 # assembly as it stood on that slice (175 and 170); counted from the two sides, no run has observed 176.
+# 176 observed: the full UMA suite (set s1full1, 2026-11-14, on the stack's combined test head) ran 176 of 176.
 Gamesim.Uma.PlayModeTests 176
 # Diagnostics: feasibility and diagnostic probes, never shipping acceptance. They compile only under
 # GAMESIM_DIAGNOSTICS, which only a diagnostic run adds to the test copy (GAMESIM_DIAGNOSTICS=1 with
@@ -779,9 +828,18 @@ Gamesim.Uma.DiagnosticsPlayModeTests 10
 # 0ab29719 into role moments R7 at its landing, 2026-11-13). Counted from the two sides.
 # 16808 = 16789 + offers slice 4a's 19 ComesToYouSourcesTests cases (the same 19 the EditMode floor counts): dotnet test
 # Tools/SimulationTests ran exactly 16808 of 16808 on the slice at a65ca2b6 (2026-11-13).
+# 16797 = 16789 + the house talk's levels (plan 32 HT0): the same 8 HouseTalkRulesTests cases the EditMode floor
+# counts. dotnet test Tools/SimulationTests ran exactly 16797 of 16797 on the slice at 8e9a933a (2026-11-14). Its
+# RolesSeasonDigests is Explicit (run by filter: 1 of 1 passed there) and not counted.
+# 16816 = 16789 + offers slice 4a's 19 (16808 - 16789) + the house talk's levels' 8 (16797 - 16789): disjoint cases, so
+# the floor is their sum (the merge of HT0 into the R7 stack's combined head, 2026-11-14). Counted from the two sides.
 # 16812 = 16808 + offers slice 4p's 4 ComesToYouSourcesTests cases (the same 4 the EditMode floor counts): dotnet test
 # Tools/SimulationTests ran exactly 16812 of 16812 on the slice at 108e5ba1 (2026-11-13).
+# 16820 = 16816 + offers slice 4p's 4 (16812 - 16808): disjoint cases, so the floor is their sum (the merge of main
+# ada068a4 into offers slice 4p, 2026-11-14). Counted from the two sides.
 # 16818 = 16812 + offers slice 4b's 6 ComesToYouSourcesTests cases (the same 6 the EditMode floor counts): dotnet test
 # Tools/SimulationTests ran exactly 16818 of 16818 on the slice (and 16822 of 16822 on a copy at cf377748 with 4 builder trials
 # besides, never committed), 2026-11-14.
-Gamesim.SimulationTests 16818
+# 16826 = 16820 + offers slice 4b's 6 (16818 - 16812): disjoint cases, so the floor is their sum (the merge of offers
+# slice 4p, holding main ada068a4, into offers slice 4b, 2026-11-14). Counted from the two sides.
+Gamesim.SimulationTests 16826

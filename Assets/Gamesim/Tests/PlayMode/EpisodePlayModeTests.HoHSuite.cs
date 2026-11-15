@@ -222,10 +222,10 @@ namespace Gamesim.Tests.PlayMode
                 if (headVisual != null) Assert.That(headVisual.IsRunning, Is.True, "on the run take.");
                 foreach (var other in SceneComponents<HouseNpc>().Where(npc => npc.gameObject.activeInHierarchy && npc.Id != hoh))
                 {
-                    var motion = other.GetComponent<HouseNpcMotion>();
-                    if (motion != null) Assert.That(motion.Speed, Is.EqualTo(HouseNpcMotion.DefaultSpeed).Within(.001f), other.Id + " walks at the house's pace.");
-                    var visual = other.GetComponent<CharacterPresentation>();
-                    if (visual != null) Assert.That(visual.IsRunning, Is.False, other.Id + " does not run.");
+                    var otherMotion = other.GetComponent<HouseNpcMotion>();
+                    if (otherMotion != null) Assert.That(otherMotion.Speed, Is.EqualTo(HouseNpcMotion.DefaultSpeed).Within(.001f), other.Id + " walks at the house's pace.");
+                    var otherVisual = other.GetComponent<CharacterPresentation>();
+                    if (otherVisual != null) Assert.That(otherVisual.IsRunning, Is.False, other.Id + " does not run.");
                 }
                 int frames = -1;
                 yield return SuiteArrival(hoh, took => frames = took);

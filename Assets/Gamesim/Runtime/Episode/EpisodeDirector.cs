@@ -1258,6 +1258,9 @@ namespace Gamesim.Episode
             var state = engine.Snapshot;
             projected = state;
             HousePublicDisplays.Project(gameObject.scene,state);
+            // The yard of everyday life, the competition equipment put away, whenever no competition stands on
+            // it: the first projection, a load and every commit after (competition yard, slice 2). Nothing saved.
+            SettleCompetitionYard();
             playerIsActive = state.Find(state.playerId).status == ContestantStatus.Active;
             promptNpc = null; npcPrompt = null;
             // Finale night brings the jury back into the living room; their places are chosen once.
@@ -1769,6 +1772,8 @@ namespace Gamesim.Episode
             if (keyCeremony != null) keyCeremony.Cancel();
             CancelVetoDrawReveal();
             EndCeremonyStage();
+            // A competition still standing - a show - ends with the director: the yard goes back to everyday life.
+            if (competitionArenaRoot != null || competitionShow != null) EndCompetitionArena();
             DisposeNpcSocialWorld();
         }
         private void OnEnable()

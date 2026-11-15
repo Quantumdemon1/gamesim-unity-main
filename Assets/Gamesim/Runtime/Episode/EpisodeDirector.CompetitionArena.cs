@@ -56,8 +56,36 @@ namespace Gamesim.Episode
         private const float CompetitionGapStep=.15f;
         private const int CompetitionGapStepsPerPlace=12;
 
-        /// <summary>The yard's everyday pieces the arena has put away while it stands (competition show, slice 1).</summary>
-        private CompetitionYardDressing competitionYard;
+        /// <summary>
+        /// The one owner of what stands in the yard when (competition show, slice 1; competition yard,
+        /// slice 2): everyday life with the competition equipment put away, or a competition's set
+        /// deployed while the arena stands. Never saved.
+        /// </summary>
+        private readonly CompetitionYardDressing competitionYard=new CompetitionYardDressing();
+
+        /// <summary>The yard's floor, found once.</summary>
+        private BoxCollider competitionYardDeck;
+
+        private BoxCollider CompetitionYardDeck()
+        {
+            // An explicit Unity null check: a destroyed floor reads as missing and is looked up again.
+            if(competitionYardDeck==null)
+                competitionYardDeck=gameObject.scene.GetRootGameObjects().SelectMany(root=>root.GetComponentsInChildren<BoxCollider>())
+                    .FirstOrDefault(c=>c.name=="Competition yard floor");
+            return competitionYardDeck;
+        }
+
+        /// <summary>
+        /// Everyday life in the yard whenever no competition stands on it: the director's first
+        /// projection, a load, a recovery, every projection after a commit (competition yard, slice 2).
+        /// A competition's set is taken down only by the arena's own end.
+        /// </summary>
+        private void SettleCompetitionYard()
+        {
+            if(competitionArenaRoot!=null || competitionShow!=null)return;
+            var deck=CompetitionYardDeck();
+            if(deck!=null)competitionYard.Everyday(deck);
+        }
 
         /// <summary>The id of the player's own station in the arena: the attempt's, or a show's when the player competed and has a station.</summary>
         private string CompetitionArenaPlayerId => challengeOrigin!=null ? challengeOrigin.playerId
@@ -97,6 +125,14 @@ namespace Gamesim.Episode
         /// </summary>
         private bool BeginCompetitionArena(EpisodeState state,CompetitionShowRun show)
         {
+            // An exception part way through building the arena ends it: the yard goes back to everyday
+            // life and nothing is left holding a body or a route (competition yard, slice 2).
+            try { return BeginCompetitionArenaCore(state,show); }
+            catch { EndCompetitionArena(); throw; }
+        }
+
+        private bool BeginCompetitionArenaCore(EpisodeState state,CompetitionShowRun show)
+        {
             CancelNpcInvitation();
             EndCompetitionArena();
             // The show's own stage comes first: a ceremony still holding its seats lets go for the arena.
@@ -119,10 +155,11 @@ namespace Gamesim.Episode
             competitionArenaRoot.transform.SetParent(floor.transform,false);
             var scale=floor.transform.lossyScale;
             competitionArenaRoot.transform.localScale=new Vector3(1/scale.x,1/scale.y,1/scale.z);
-            // The backyard changes for the competition: the everyday pieces in the field are put away
-            // before the scenery is read, so the stations may stand where they stood, and come back
-            // with the arena's end (CompetitionYardDressing).
-            competitionYard=CompetitionYardDressing.Strike(floor,competitionArenaRoot.transform);
+            // The backyard changes for the competition: the course put away in everyday life is deployed
+            // as its set, then the pieces in the field are put away before the scenery is read, so the
+            // stations stand where they always have; everyday life comes back with the arena's end
+            // (CompetitionYardDressing).
+            competitionYard.Deploy(floor,competitionArenaRoot.transform,category);
             // The yard's collider-free set dressing - the entrance arch, the course's gates, signs and
             // backdrop, the display - is invisible to the physics below. Every station and audience
             // place clears it as well, with the same whole reservation (CompetitionStageScenery).
@@ -877,7 +914,7 @@ namespace Gamesim.Episode
                 // The yard as it was, whatever ended the arena - a throw in the teardown above included;
                 // and a show running on it is over.
                 competitionArenaStaging=false;
-                if(competitionYard!=null){competitionYard.Restore();competitionYard=null;}
+                if(competitionYard.State==CompetitionYardDressing.YardState.Competition)competitionYard.Restore();
                 EndCompetitionShowState();
             }
         }

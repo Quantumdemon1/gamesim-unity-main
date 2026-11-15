@@ -850,25 +850,36 @@ namespace Gamesim.Episode
 
         private void EndCompetitionArena()
         {
-            string arenaPlayer=CompetitionArenaPlayerId;
-            competitionArenaStaging=false;EndCompetitionCast();
-            if(arenaPlayer!=null && competitionBodies.TryGetValue(arenaPlayer,out var playerBody) && playerBody.contact!=null)
-                playerBody.contact.Release();
-            foreach(var visual in competitionPoses.Keys.ToArray())ReleaseCompetitionStance(visual);
-            if(player!=null && player.ReleaseActivityMove(competitionPlayerOwner))
-                player.GetComponent<CharacterPresentation>()?.SetFacing(float.NaN);
-            competitionPlayerStation=null;
-            competitionEffortFramed=false;
-            competitionArenaWasReady=false;
-            competitionSign=null;competitionArenaMarks.Clear();competitionOverlaysShown=true;
-            competitionInstruments.Clear();
-            competitionBodies.Clear();
-            competitionFootprints.Clear();
-            competitionRouteOwners.Clear();competitionStageFloor=null;competitionScenery=null;competitionFitGate=null;
-            if(competitionArenaRoot!=null){Destroy(competitionArenaRoot);competitionArenaRoot=null;}
-            // The yard as it was, whatever ended the arena; and a show running on it is over.
-            if(competitionYard!=null){competitionYard.Restore();competitionYard=null;}
-            EndCompetitionShowState();
+            try
+            {
+                string arenaPlayer=CompetitionArenaPlayerId;
+                competitionArenaStaging=false;EndCompetitionCast();
+                if(arenaPlayer!=null && competitionBodies.TryGetValue(arenaPlayer,out var playerBody) && playerBody.contact!=null)
+                    playerBody.contact.Release();
+                foreach(var visual in competitionPoses.Keys.ToArray())ReleaseCompetitionStance(visual);
+                if(player!=null && player.ReleaseActivityMove(competitionPlayerOwner))
+                {
+                    var playerVisual=player.GetComponent<CharacterPresentation>();
+                    if(playerVisual!=null)playerVisual.SetFacing(float.NaN);
+                }
+                competitionPlayerStation=null;
+                competitionEffortFramed=false;
+                competitionArenaWasReady=false;
+                competitionSign=null;competitionArenaMarks.Clear();competitionOverlaysShown=true;
+                competitionInstruments.Clear();
+                competitionBodies.Clear();
+                competitionFootprints.Clear();
+                competitionRouteOwners.Clear();competitionStageFloor=null;competitionScenery=null;competitionFitGate=null;
+                if(competitionArenaRoot!=null){Destroy(competitionArenaRoot);competitionArenaRoot=null;}
+            }
+            finally
+            {
+                // The yard as it was, whatever ended the arena - a throw in the teardown above included;
+                // and a show running on it is over.
+                competitionArenaStaging=false;
+                if(competitionYard!=null){competitionYard.Restore();competitionYard=null;}
+                EndCompetitionShowState();
+            }
         }
     }
 }

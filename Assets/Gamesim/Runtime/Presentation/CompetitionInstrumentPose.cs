@@ -92,7 +92,8 @@ namespace Gamesim.Presentation
                 Transform spine=animator.GetBoneTransform(HumanBodyBones.Chest)??animator.GetBoneTransform(HumanBodyBones.Spine);
                 if(spine!=null)
                 {
-                    float phase=(GetInstanceID()&1023)*.37f,t=Time.time;
+                    // Each body's own phase, from where it stands: neighbours never shake in step.
+                    float phase=Mathf.Repeat(transform.position.x*1.37f+transform.position.z*2.11f,6.2832f),t=Time.time;
                     float shake=(Mathf.Sin(t*23f+phase)*.6f+Mathf.Sin(t*37f+phase*1.7f)*.4f)*strain*2.2f;
                     float lean=-strain*5f;
                     Write(spine,Quaternion.AngleAxis(lean+shake,transform.right)*Quaternion.AngleAxis(shake*.7f,transform.forward)*spine.rotation);

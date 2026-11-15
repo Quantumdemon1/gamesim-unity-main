@@ -98,6 +98,7 @@ namespace Gamesim.Episode
             wanderRestUntil.Clear();
             // Whoever was on the way to the suite stopped with everybody: sent again the first frame the house may move.
             suiteSent = false;
+            SuiteJog(null);
             foreach (var trip in suitePitchers.Values) trip.sent = false;
         }
 
@@ -108,6 +109,41 @@ namespace Gamesim.Episode
 
         /// <summary>How long a trip to the suite that found no spot or no route waits before it looks again.</summary>
         private const float SuiteRetrySeconds = .5f;
+
+        /// <summary>
+        /// The Head of Household's pace on the trip up to the suite, metres a second: the jog the house already has - the
+        /// player's own run (HousePlayerController's 4 m/s on its run take) - for this trip alone, so the Head is up there
+        /// soon after the window opens (from the farthest room about 19 s at the house's 2.2 m/s walk). Nobody else's pace
+        /// changes; the stroll's next leg, or the lease's end, puts the house's walk back (HouseNpcMotion.Release).
+        /// </summary>
+        public const float SuiteTripSpeed = 4f;
+
+        /// <summary>Who jogs up to the suite now, their run take on; null for nobody.</summary>
+        private string suiteJogger;
+
+        /// <summary>Whether a houseguest is on the jog up to the suite now, for tests.</summary>
+        public bool SuiteJoggingForDiagnostics(string id) => id != null && id == suiteJogger;
+
+        /// <summary>
+        /// Puts the run take on the one jogging up to the suite and off whoever had it, so a Head standing in the suite,
+        /// stopped under a panel or let go by the window walks again.
+        /// </summary>
+        private void SuiteJog(string id)
+        {
+            if (id == suiteJogger) return;
+            SuiteRunTake(suiteJogger, false);
+            suiteJogger = id;
+            SuiteRunTake(id, true);
+        }
+
+        private void SuiteRunTake(string id, bool on)
+        {
+            if (id == null || housemates == null) return;
+            var npc = housemates.FirstOrDefault(actor => actor != null && actor.Id == id);
+            if (npc == null) return;
+            var visual = npc.GetComponent<CharacterPresentation>();
+            if (visual != null) visual.SetRunning(on);
+        }
 
         /// <summary>The Head of Household the suite holds, the spot they were sent to, and whether that trip is still theirs.</summary>
         private string suiteHeadId;
@@ -140,7 +176,13 @@ namespace Gamesim.Episode
         {
             string head = SuiteHeadId(projected);
             if (head == suiteHeadId) return head;
-            if (suiteHeadId != null && npcMeetings.IsWandering(suiteHeadId)) wanderRestUntil[suiteHeadId] = Time.unscaledTime;
+            // Let go on the way up, they walk the rest at the house's pace.
+            if (suiteHeadId != null && npcMeetings.IsWandering(suiteHeadId))
+            {
+                wanderRestUntil[suiteHeadId] = Time.unscaledTime;
+                npcMeetings.SetWanderSpeed(suiteHeadId, 0f);
+            }
+            SuiteJog(null);
             suiteHeadId = head;
             suiteSpotChosen = suiteSent = false;
             suiteRetryAt = 0f;
@@ -161,10 +203,15 @@ namespace Gamesim.Episode
         /// </summary>
         private void KeepHeadInSuite(string head)
         {
-            if (head == null) return;
-            // The trip is still theirs: on the way, or standing at the spot.
-            if (suiteSent && npcMeetings.IsWandering(head)) return;
+            if (head == null) { SuiteJog(null); return; }
+            // The trip is still theirs: on the way (at a jog), or standing at the spot.
+            if (suiteSent && npcMeetings.IsWandering(head))
+            {
+                SuiteJog(npcMeetings.WanderArrived(head) ? null : head);
+                return;
+            }
             suiteSent = false;
+            SuiteJog(null);
             if (projected.Find(head)?.status != ContestantStatus.Active) return;
             // A staged act holds them where it happens (EpisodeDirector.AllWeek), and their own walk-up has them.
             if (npcMeetings.ActHoldsActor(head)) return;
@@ -173,15 +220,24 @@ namespace Gamesim.Episode
             var npc = housemates.FirstOrDefault(actor => actor != null && actor.Id == head && actor.gameObject.activeInHierarchy);
             if (npc == null) return;
             // The spot chosen for this window, kept for the window; a fresh one only if it no longer takes them.
-            if (suiteSpotChosen && npcMeetings.TryWander(head, suiteSpot)) { suiteSent = true; return; }
+            if (suiteSpotChosen && npcMeetings.TryWander(head, suiteSpot)) { SuiteTripSetOff(head); return; }
             if (TryPickSuiteSpot(npc, out var spot) && npcMeetings.TryWander(head, spot))
             {
                 suiteSpot = spot;
-                suiteSpotChosen = suiteSent = true;
+                suiteSpotChosen = true;
+                SuiteTripSetOff(head);
                 return;
             }
             suiteRetryAt = Time.unscaledTime + SuiteRetrySeconds;
             return;
+        }
+
+        /// <summary>The Head's trip is under way: at a jog (<see cref="SuiteTripSpeed"/>), on this leg alone.</summary>
+        private void SuiteTripSetOff(string head)
+        {
+            suiteSent = true;
+            npcMeetings.SetWanderSpeed(head, SuiteTripSpeed);
+            SuiteJog(head);
         }
 
         /// <summary>

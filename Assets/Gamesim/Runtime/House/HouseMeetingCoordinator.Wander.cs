@@ -56,6 +56,18 @@ namespace Gamesim.House
             return true;
         }
 
+        /// <summary>
+        /// Walks a wandering houseguest's leg at another pace, metres a second, or at the house's own again for zero or
+        /// less (HouseNpcMotion.SetSpeed): the Head of Household's jog up to the HoH suite. The next leg, or the lease's end,
+        /// puts the house's pace back, as taking or releasing a route always does. False when they are not wandering.
+        /// </summary>
+        public bool SetWanderSpeed(string id, float metresPerSecond)
+        {
+            if (id == null || !wanderLeases.TryGetValue(id, out var lease) || lease.token == null || lease.actor.motion == null) return false;
+            lease.actor.motion.SetSpeed(metresPerSecond);
+            return true;
+        }
+
         /// <summary>Whether a wandering houseguest has reached where they were going.</summary>
         public bool WanderArrived(string id) =>
             wanderLeases.TryGetValue(id, out var lease) && lease.token != null && lease.actor.motion != null

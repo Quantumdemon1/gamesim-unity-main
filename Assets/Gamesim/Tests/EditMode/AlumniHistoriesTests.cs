@@ -232,6 +232,8 @@ namespace Gamesim.Tests.EditMode
         {
             var s = SeasonBuilder.Create(new SeasonBuilder.Choice { HouseSize = size, Roster = CastTemplates.Roster.AllStars, PlayerTemplateId = player }, seed);
             ShippedRules.ApplyFresh(s);
+            // Held at story rules 10, Blame, by name (ROLE-MOMENTS-PLAN R7): the test is about something else, and EnableStory now gives Roles.
+            s.story.rulesVersion = StoryRules.Blame;
             Assert.That(AlumniRules.On(s) && s.alumniRulesVersion == AlumniRules.Latest, Is.True, "The shipped All-Stars season enrols at the latest alumni rules.");
             s.alumniRulesVersion = value;
             return s;

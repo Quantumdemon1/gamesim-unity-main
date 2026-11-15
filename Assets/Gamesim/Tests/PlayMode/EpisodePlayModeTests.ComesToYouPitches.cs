@@ -367,5 +367,102 @@ namespace Gamesim.Tests.PlayMode
                 "The nomination screen still has every pitch.");
             director.ClosePanels();
         }
+
+        // ------------------------------------------------------------------ P6-P8 (stack O2's fixes): who the "N more" line counts, and the switch
+
+        /// <summary>The "N more" line's count as a dialogue or card would draw it beside somebody who is not pitching: every pitcher who could still come.</summary>
+        private int PitchersStillComing() => director.AskMoreWaitingForDiagnostics(director.Snapshot.playerId);
+
+        /// <summary>
+        /// The review's finding on 4p, its first half: the "N more" line counts only asks that can still come by themselves.
+        /// A pitcher out of their own reach long enough is due as a card, and a pitch has none (P5), so they are walked over
+        /// no more this phase and are not counted - the others still are.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator ComesToYou_PitchDueAsACardIsNotCountedAsWaiting() => PinnedClock(APitchDueAsACardHeld);
+
+        private IEnumerator APitchDueAsACardHeld() =>
+            WithTheHouseHeld(() => InstallComesToYouPitchHouse(true), APitchDueAsACard);
+
+        private IEnumerator APitchDueAsACard()
+        {
+            var pitches = comesPitchIds;
+            Assert.That(PitchersStillComing(), Is.EqualTo(pitches.Length), "The premise: every pitcher on the board can still walk up.");
+            var unreachable = NpcRead<Dictionary<string, float>>("askUnreachable");
+            unreachable[pitches[0]] = EpisodeDirector.AskUnreachableSecondsBeforeCard;
+            Assert.That(PitchersStillComing(), Is.EqualTo(pitches.Length - 1), "A pitcher due as a card never comes, so is not counted.");
+            unreachable.Remove(pitches[0]);
+            Assert.That(PitchersStillComing(), Is.EqualTo(pitches.Length), "Back in reach, counted again.");
+            yield return null;
+        }
+
+        /// <summary>
+        /// The finding's second half: with walk-overs off every ask comes as a card, and a pitch has none, so no pitcher is
+        /// counted as still coming; turned back on, every one is.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator ComesToYou_PitchWithWalkOversOffIsNotCountedAsWaiting() => PinnedClock(PitchesWithWalkOversOffHeld);
+
+        private IEnumerator PitchesWithWalkOversOffHeld() =>
+            WithTheHouseHeld(() => InstallComesToYouPitchHouse(true, false), PitchesWithWalkOversOff);
+
+        private IEnumerator PitchesWithWalkOversOff()
+        {
+            Assert.That(director.AskWalkOvers, Is.False, "The premise: walk-overs off.");
+            Assert.That(PitchersStillComing(), Is.Zero, "No pitcher is counted: none can come as a card.");
+            director.AskWalkOvers = true;
+            Assert.That(PitchersStillComing(), Is.EqualTo(comesPitchIds.Length), "Walk-overs on: every pitcher can come again.");
+            director.AskWalkOvers = false;
+            yield return null;
+        }
+
+        /// <summary>
+        /// Plan C.4 item 11 (the review's finding on 4p): with the reply asks' switch off the queue is the offers' alone, so
+        /// no pitch is listed, nobody walks up with one, none is counted, and the nomination screen still has every pitch. The
+        /// switch is off before asks are, so no visit can set out on the queue with the pitches in it.
+        /// </summary>
+        [UnityTest, Timeout(300000)]
+        public IEnumerator ComesToYou_PitchNoneWithReplyAsksOff() => PinnedClock(NoPitchWithRepliesOffHeld);
+
+        private IEnumerator NoPitchWithRepliesOffHeld() =>
+            WithTheHouseHeld(() => InstallComesToYouPitchHouseRepliesOff(), NoPitchWithRepliesOff);
+
+        /// <summary><see cref="InstallComesToYouPitchHouse"/> with <see cref="EpisodeDirector.ReplyAsksEnabled"/> false from before asks turn on.</summary>
+        private IEnumerator InstallComesToYouPitchHouseRepliesOff()
+        {
+            SaveComesToYouPitchState(true);
+            yield return ReloadEpisode();
+            director.BuildNpcWorldForDiagnostics();
+            Assert.That(director.NpcAutonomyDiagnostic, Is.Null, "The house's world is built.");
+            director.ReplyAsksEnabled = false;
+            yield return TurnAsksOnInTheLoadedHouse(new string[0], true);
+            Assert.That(director.Snapshot.replyCards.Select(card => card.id), Is.EqualTo(comesPitchIds), "The pitches survived the load.");
+        }
+
+        private IEnumerator NoPitchWithRepliesOff()
+        {
+            var pitches = comesPitchIds;
+            Assert.That(director.AsksAreOn, Is.True, "Asks are on,");
+            Assert.That(director.ReplyAsksEnabled, Is.False, "the reply asks' switch is off,");
+            Assert.That(ComesToYou.Read(director.Snapshot).Select(ask => ask.recordId), Is.EqualTo(pitches), "and the reader still lists every pitch.");
+            Assert.That(PitchersStillComing(), Is.Zero, "The director's queue drops them: none is counted.");
+            NpcWrite("npcApproachDiagnosticsSuppressed", true);
+            float until = Time.realtimeSinceStartup + 8f;
+            while (Time.realtimeSinceStartup < until)
+            {
+                Assert.That(director.CurrentNpcInvitationRecordId, Is.Null, "Nobody walks up with a pitch.");
+                Assert.That(director.IsAskCardOpen, Is.False, "and no card comes.");
+                yield return null;
+            }
+            yield return OpenStation();
+            LandThePanel();
+            yield return null;
+            Assert.That(OfferCards(LastActive(EpisodeHud.OfferBoardName)), Has.Length.EqualTo(pitches.Length),
+                "The nomination screen still has every pitch.");
+            director.ClosePanels();
+            yield return null;
+            director.ReplyAsksEnabled = true;
+            Assert.That(PitchersStillComing(), Is.EqualTo(pitches.Length), "Switched on, the pitches are the queue's again.");
+        }
     }
 }

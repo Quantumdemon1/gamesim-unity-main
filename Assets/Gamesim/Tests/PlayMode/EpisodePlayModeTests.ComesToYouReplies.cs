@@ -521,8 +521,12 @@ namespace Gamesim.Tests.PlayMode
             WithTheHouseHeld(() => InstallComesToYouReplyVisit(ReplyCards.Confrontation, false), ACardGoneInTheConversation);
 
         /// <summary>
-        /// The lead's ruling 1: once the card has gone - here before any answer, free time ending under the open dialogue - the
-        /// conversation leaves the Deals page and says what happened, with Back to topics; nothing is left to answer.
+        /// The lead's ruling 1, where a card can go unanswered: a reply card goes before any answer only as free time (or the
+        /// campaign) ends - EpisodeEngine clears the cards with the phase - and the HoH competition that follows is a ceremony
+        /// with nobody deciding, so the conversation with Maya becomes the ceremony's notice card: the house cannot talk now,
+        /// which is what happened, and never the card's dialogue or a Deals page. Nothing is left to answer or think over,
+        /// and closing it lets the dialogue go. (Offers slice 4p first wrote this case expecting the dialogue's own WHAT
+        /// HAPPENED with Back to topics; that page is the answered card's, and no conversation follows an advance with it.)
         /// </summary>
         private IEnumerator ACardGoneInTheConversation()
         {
@@ -530,17 +534,26 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(director.CurrentAskRecordId, Is.EqualTo(comesReplyCardId));
             yield return WaitOutThePointerHold();
             AdvanceTheSeason();
+            Assert.That(director.Snapshot.phase, Is.EqualTo(EpisodePhase.HoH), "The premise: free time ended into the HoH competition,");
+            Assert.That(StrategyRules.IsDecider(director.Snapshot, ComesMaya), Is.False, "where Maya decides nothing.");
             // The commit's own render.
             Assert.That(director.TalkingToId, Is.EqualTo(ComesMaya), "Still with Maya.");
-            Assert.That(director.CurrentConversationCategory, Is.Null, "Off the Deals page, which invites nothing for a card.");
-            Assert.That(director.CurrentAskWay, Is.EqualTo(EpisodeDirector.AskWay.None), "The dialogue is let go.");
-            Assert.That(director.CurrentAskRecordId, Is.Null);
+            Canvas.ForceUpdateCanvases();
+            Assert.That(ActiveRect(EpisodeHud.ConversationNoticeName), Is.Not.Null, "The conversation is the ceremony's notice card.");
+            Assert.That(ActiveRect(EpisodeHud.ConversationLockName).GetComponentsInChildren<TMPro.TMP_Text>().Single().text,
+                Is.EqualTo(EpisodeDirector.ConversationUnavailableLine), "It says the house cannot talk now.");
+            // A frame on, past the dialogue's Destroy-deferred chrome.
+            yield return null;
             foreach (var reply in ReplyCards.Replies(ReplyCards.Confrontation))
                 Assert.That(ButtonWithCaptionOrNull(EpisodeHud.ReplyCaption(reply.Label)), Is.Null, "Nothing left to answer: " + reply.Label);
             Assert.That(ButtonWithCaptionOrNull(EpisodeHud.ThinkItOverCaption), Is.Null, "Nothing left to think over.");
-            Assert.That(FindButton(EpisodeDirector.ConversationTopicsBackCaption), Is.Not.Null, "Back to topics.");
+            Assert.That(ButtonWithCaptionOrNull(EpisodeDirector.ConversationTopicsBackCaption), Is.Null, "No Deals page to go back from.");
             director.ClosePanels();
             yield return null;
+            yield return null;
+            Assert.That(director.TalkingToId, Is.Null, "Closed.");
+            Assert.That(director.CurrentAskWay, Is.EqualTo(EpisodeDirector.AskWay.None), "Closed, the dialogue is let go.");
+            Assert.That(director.CurrentAskRecordId, Is.Null);
         }
 
         // ------------------------------------------------------------------ the card host's "They've moved on."

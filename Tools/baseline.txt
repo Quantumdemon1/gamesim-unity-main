@@ -478,7 +478,15 @@ Gamesim.EditModeTests 10004
 # 1547 = 1541 (offers slice 4b with slice 4p and main) + HoH room slice 2's own 6 (1547 - 1541 on the slice; the
 # W2-HR1 cases the slice had merged are main's, already in 1523): disjoint cases, so the floor is their sum (the merge
 # of offers slice 4b into HoH room slice 2, 2026-11-14). Counted from the two sides; no run has observed 1547 on it.
-Gamesim.PlayModeTests 1547
+# 1554 = 1547 + stack O2's fix slice's 7 new cases: EpisodePlayModeTests.ComesToYouPitches P6-P8 (a pitch due as a
+# card, and every pitch with walk-overs off, is not counted as still coming; the reply asks off drop the pitches),
+# ComesToYouChains C8 (a lapse is not an answer), HoHSuite_TheSuiteSpotIsOnItsFloorAndOffItsFurniture, and
+# HoHSuitePitches 7-8 (E on a pitcher there; the pitchers' spots off the furniture and apart). No Unity run has
+# observed them yet.
+# 1554 = 1547 (HoH room slice 2 with offers slices 4b and 4p and main) + the fix slice's 7 (1554 - 1547 on the
+# slice): disjoint cases, so the floor is their sum (the merge of HoH room slice 2 into stack O2's fix slice,
+# 2026-11-14). Counted from the two sides; no run has observed 1554 on it.
+Gamesim.PlayModeTests 1554
 # The UMA build of the same assembly, read by a plan built without -WithoutUma. 1281 = the 1241 above + the
 # 40 tests that compile only under GAMESIM_UMA, as run at r1 (2026-10-16): in EpisodePlayModeTests,
 # GroundedFarewell 11, Creator 9, HouseLife 8, Emotes 3, OpeningCaptures 2, and one each in CreatorEntry,
@@ -601,7 +609,11 @@ Gamesim.PlayModeTests 1547
 # 1592 = 1586 (offers slice 4b with slice 4p and main) + HoH room slice 2's same 6 (1592 - 1586 on the slice; the
 # W2-HR1 cases are main's, already in 1568): disjoint cases, so the floor is their sum (the merge of offers slice 4b
 # into HoH room slice 2, 2026-11-14). Counted from the two sides; no run has observed 1592 on it.
-Gamesim.PlayModeTests.UmaBuild 1592
+# 1599 = 1592 + stack O2's fix slice's same 7 cases (see PlayModeTests above). No Unity run has observed them yet.
+# 1599 = 1592 (HoH room slice 2 with offers slices 4b and 4p and main) + the fix slice's same 7 (1599 - 1592 on the
+# slice): disjoint cases, so the floor is their sum (the merge of HoH room slice 2 into stack O2's fix slice,
+# 2026-11-14). Counted from the two sides; no run has observed 1599 on it.
+Gamesim.PlayModeTests.UmaBuild 1599
 # The UMA bodies: runs only where the GAMESIM_UMA define is set (the working tree and the D: copy).
 # 82 = the 89 run on 2026-10-15, less the 7 farewell probes moved to Gamesim.Uma.DiagnosticsPlayModeTests;
 # 85 = 82 + the 3 farewell readiness decision tests (UmaFarewellReadinessDecisionPlayModeTests, 2026-10-16);

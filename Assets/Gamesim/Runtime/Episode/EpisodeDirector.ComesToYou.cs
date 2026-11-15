@@ -520,6 +520,21 @@ namespace Gamesim.Episode
             && !askSetAside.Contains(ask.recordId) && AskPresentationsOf(ask.recordId) < askRecordCap
             && AskWayInOpen(ask);
 
+        /// <summary>
+        /// Whether an ask could still come to the player by itself this phase, for the "N more" line: one that can still come
+        /// (<see cref="AskCanStillCome"/>), less a pitch that is due as a card - out of its pitcher's reach long enough, missed
+        /// twice, or every pitch with walk-overs off - because a pitch has no card (<see cref="AskComesAsACard"/>): it stays on
+        /// the nomination screen and is walked over no more this phase. "There's something else" keeps
+        /// <see cref="AskCanStillCome"/>: the player asks for it there, and a pitch then opens the pitches as Hear does.
+        /// </summary>
+        private bool AskMayStillWalkUp(ComesToYou.Ask ask) => AskCanStillCome(ask) && (AskComesAsACard(ask) || !AskCardDue(ask.recordId));
+
+        /// <summary>How many other houseguests the "N more" line says still want a word, beside <paramref name="npcId"/>; none at the cap.</summary>
+        private int AskMoreWaitingCount(string npcId) => AskCapReached ? 0 : ComesToYou.OtherAskers(CurrentAsks(), npcId, AskMayStillWalkUp);
+
+        /// <summary>The "N more" line's count beside <paramref name="npcId"/> as a dialogue or card would draw it now; 0 with asks off. A read for tests.</summary>
+        public int AskMoreWaitingForDiagnostics(string npcId) => AsksOn && projected != null ? AskMoreWaitingCount(npcId) : 0;
+
         /// <summary>Whether an ask comes as a card rather than walked over: missed twice, its asker out of reach long enough, or walk-overs off.</summary>
         private bool AskCardDue(string recordId) => !AskWalkOvers || AskMissCount(recordId) >= AskMissesBeforeCard
             || AskUnreachableFor(recordId) >= AskUnreachableSecondsBeforeCard;
@@ -817,7 +832,7 @@ namespace Gamesim.Episode
             {
                 if (ConversationNavigationCurrent(token, state, npc.id)) BackConversationNavigation(true);
             });
-            hud.AskMoreWaiting(AskCapReached ? 0 : ComesToYou.OtherAskers(CurrentAsks(), npc.id, AskCanStillCome));
+            hud.AskMoreWaiting(AskMoreWaitingCount(npc.id));
             if (askDialogueFirstRender)
             {
                 askDialogueFirstRender = false;
@@ -1092,7 +1107,7 @@ namespace Gamesim.Episode
                 askCardChained ? EpisodeHud.AskRaisedEyebrow(FinalistRead.FirstName(npc.name)) : EpisodeHud.AskDirectEyebrow, false);
             AskBody(state, shown ?? ask, offer);
             hud.Action(EpisodeHud.ThinkItOverCaption, ClosePanels);
-            hud.AskMoreWaiting(AskCapReached ? 0 : ComesToYou.OtherAskers(CurrentAsks(), npc.id, AskCanStillCome));
+            hud.AskMoreWaiting(AskMoreWaitingCount(npc.id));
             if (askCardFirstRender)
             {
                 askCardFirstRender = false;
@@ -1128,7 +1143,7 @@ namespace Gamesim.Episode
                 askCardChained ? EpisodeHud.AskCardRaisedEyebrow(FinalistRead.FirstName(npc.name)) : EpisodeHud.AskDirectEyebrow, false);
             CardBody(state, card);
             hud.Action(EpisodeHud.ThinkItOverCaption, ClosePanels);
-            hud.AskMoreWaiting(AskCapReached ? 0 : ComesToYou.OtherAskers(CurrentAsks(), npc.id, AskCanStillCome));
+            hud.AskMoreWaiting(AskMoreWaitingCount(npc.id));
             if (askCardFirstRender)
             {
                 askCardFirstRender = false;

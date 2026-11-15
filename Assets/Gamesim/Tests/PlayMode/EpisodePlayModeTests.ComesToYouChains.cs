@@ -442,5 +442,45 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(director.CurrentNpcInvitationRecordId, Is.EqualTo(jamieOffer), "The next walk-up is the queue's next, as it was.");
             Assert.That(director.CurrentAskerId, Is.EqualTo(ComesJamie));
         }
+
+        // ------------------------------------------------------------------ C8 (stack O2's fixes). a lapse is not an answer
+
+        [UnityTest]
+        public IEnumerator ComesToYou_ChainALapseIsNotAnAnswer() => PinnedClock(ALapseIsNotAnAnswerHeld);
+
+        private IEnumerator ALapseIsNotAnAnswerHeld() =>
+            WithTheHouseHeld(() => InstallComesToYouChainVisit(ReplyCards.Confrontation, true), ALapseIsNotAnAnswer);
+
+        /// <summary>
+        /// The review's finding on OF-b (the lead's ruling 1): Maya's card and her offer, the card's dialogue open, and the card
+        /// gone unanswered as free time ends - a command the season accepted, but not one of the dialogue's answers. Nothing
+        /// offers "There's something else": the conversation is the ceremony's notice card, the chain has no next ask, and
+        /// closing lets the dialogue go. (A card goes unanswered only with the phase, into a ceremony nobody talks in, where
+        /// her offer cannot come either; so this pins what the player sees, and the dialogue's own phase check stays a guard.)
+        /// </summary>
+        private IEnumerator ALapseIsNotAnAnswer()
+        {
+            string cardId = comesReplyCardId;
+            MayasChainOffer();
+            yield return WaitForAskDialogue(ComesMaya);
+            Assert.That(director.CurrentAskRecordId, Is.EqualTo(cardId));
+            yield return null; yield return null;
+            Assert.That(ButtonWithCaptionOrNull(EpisodeHud.AskSomethingElseCaption), Is.Null, "Never before an answer.");
+            yield return WaitOutThePointerHold();
+            AdvanceTheSeason();
+            Assert.That(director.Snapshot.phase, Is.EqualTo(EpisodePhase.HoH), "The premise: free time ended into the HoH competition.");
+            Assert.That(director.TalkingToId, Is.EqualTo(ComesMaya), "Still with Maya.");
+            Assert.That(director.AskChainNextRecordId, Is.Null, "A lapse is not an answer: no next ask.");
+            // The commit's own render.
+            Canvas.ForceUpdateCanvases();
+            Assert.That(ActiveRect(EpisodeHud.ConversationNoticeName), Is.Not.Null, "The conversation is the ceremony's notice card.");
+            yield return null; yield return null;
+            Assert.That(ButtonWithCaptionOrNull(EpisodeHud.AskSomethingElseCaption), Is.Null, "Nothing offers \"There's something else\",");
+            Assert.That(ButtonWithCaptionOrNull(EpisodeHud.DealAcceptCaption), Is.Null, "and her offer is not opened in it.");
+            director.ClosePanels();
+            yield return null; yield return null;
+            Assert.That(director.CurrentAskWay, Is.EqualTo(EpisodeDirector.AskWay.None), "Closed, the dialogue is let go.");
+            Assert.That(director.AskChainNextRecordId, Is.Null);
+        }
     }
 }

@@ -132,7 +132,51 @@ namespace Gamesim.Tests.EditMode
             }
         }
 
+        [Test]
+        public void TheLargestFieldPlaysInAboutTwentySecondsAndItsBoundWaitsForTheWinner()
+        {
+            var plan = CompetitionShowPlan.For(FieldOf(16), EpisodePhase.HoH, "Endurance");
+            foreach (bool quick in new[] { false, true })
+            {
+                float assembled = CompetitionShowPlan.AssemblySeconds(quick) + plan.CardAt(quick, false);
+                Assert.That(assembled, Is.LessThanOrEqualTo(20f), "The whole field at its stations by the walk out's end: within twenty seconds.");
+                Assert.That(CompetitionShowPlan.PrincipalSeconds(quick), Is.GreaterThan(CompetitionShowPlan.AssemblySeconds(quick)),
+                    "A late winner is waited for past the walk out.");
+                Assert.That(plan.HardSeconds(quick, false), Is.GreaterThanOrEqualTo(CompetitionShowPlan.PrincipalSeconds(quick) + plan.CardAt(quick, false)),
+                    "A hold that starts at the last moment the winner is waited for still reaches its cheer and card.");
+                Assert.That(plan.HardSeconds(quick, false), Is.LessThanOrEqualTo(22.5f), "and the bound stays near the twenty.");
+            }
+        }
+
+        [Test]
+        public void ThoseLeftOutNeitherLetGoNorMoveTheOthersOrder()
+        {
+            var plan = CompetitionShowPlan.For(FieldOf(8), EpisodePhase.HoH, "Endurance");
+            var holding = new HashSet<string>(plan.Standings.Where((id, i) => i % 3 != 2));
+            var order = plan.DropOrderAmong(holding);
+            Assert.That(order, Is.EqualTo(plan.DropOrder.Where(holding.Contains).ToList()), "The standings' order, from the bottom, among those holding on.");
+            Assert.That(order, Does.Not.Contain(plan.WinnerId));
+            Assert.That(plan.DropOrderAmong(new HashSet<string>(plan.Standings)), Is.EqualTo(plan.DropOrder), "The whole field holding on drops as planned.");
+            foreach (bool quick in new[] { false, true })
+            {
+                for (int i = 0; i < order.Count; i++)
+                    Assert.That(plan.Strain(order, order[i], CompetitionShowPlan.DropAt(i, order.Count, quick), quick), Is.EqualTo(1f).Within(1e-5),
+                        "Effort peaks as each of those holding on lets go.");
+                Assert.That(CompetitionShowPlan.CardAt(order.Count, quick, false), Is.LessThanOrEqualTo(plan.CardAt(quick, false)), "A smaller hold is no longer.");
+            }
+        }
+
         // ------------------------------------------------------------ fixtures
+
+        private static EpisodeState FieldOf(int fieldSize)
+        {
+            var state = SeasonBuilder.Create(new SeasonBuilder.Choice(), 11);
+            var ids = Enumerable.Range(0, fieldSize).Select(i => i < state.contestants.Count ? state.contestants[i].id : "extra-" + i).ToList();
+            while (state.contestants.Count < fieldSize)
+                state.contestants.Add(new ContestantState { id = ids[state.contestants.Count], name = "Extra " + state.contestants.Count, status = ContestantStatus.Active, stats = new ContestantStats() });
+            state.competitionScores = ids.Select((id, i) => new CompetitionScore { contestantId = id, score = 100 - i }).ToList();
+            return state;
+        }
 
         private static EpisodeState EnduranceHoH()
         {

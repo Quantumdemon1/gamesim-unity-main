@@ -299,7 +299,9 @@
 # 10015 = 10004 + competition show slice 1's 11 CompetitionShowPlanTests cases (shared with the subset): the show's
 # plan from the committed standings (3 ways in), Part 1 by its drop times, endurance only, no write and no draw, and
 # the beats (5 field sizes). No Unity run has observed them yet.
-Gamesim.EditModeTests 10015
+# 10017 = 10015 + the slice's fix's 2 CompetitionShowPlanTests cases (shared with the subset): the largest field
+# within about twenty seconds with its bound waiting for the winner, and those left out neither let go nor move the order.
+Gamesim.EditModeTests 10017
 # The UMA-free build. 1215 = 1236, the count after the consolidation's lanes (S2a, S2b, S4a), less the 7
 # farewell probes moved to Gamesim.DiagnosticsPlayModeTests and the 14 farewell readiness tests that now
 # compile only under GAMESIM_UMA (judged on the UMA cast); 1230 = 1215 + S2d's 7, S4b's 2, S4c's 2 and
@@ -849,4 +851,5 @@ Gamesim.Uma.DiagnosticsPlayModeTests 10
 # 16826 = 16820 + offers slice 4b's 6 (16818 - 16812): disjoint cases, so the floor is their sum (the merge of offers
 # slice 4p, holding main ada068a4, into offers slice 4b, 2026-11-14). Counted from the two sides.
 # 16837 = 16826 + competition show slice 1's 11 CompetitionShowPlanTests cases (the same 11 the EditMode floor counts).
-Gamesim.SimulationTests 16837
+# 16839 = 16837 + the slice's fix's same 2 CompetitionShowPlanTests cases.
+Gamesim.SimulationTests 16839

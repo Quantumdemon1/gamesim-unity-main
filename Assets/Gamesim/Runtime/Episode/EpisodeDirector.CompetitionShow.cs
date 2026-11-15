@@ -49,6 +49,8 @@ namespace Gamesim.Episode
             public IReadOnlyList<string> Stationed { get; internal set; }
             /// <summary>Who let go, in the order they did.</summary>
             public IReadOnlyList<string> Drops { get; internal set; }
+            /// <summary>Who had a station but had not reached it when the hold started, and so was left out of the staging.</summary>
+            public IReadOnlyList<string> LeftOut { get; internal set; }
             /// <summary>Who cheered, or null when the show ended before the cheer.</summary>
             public string Cheered { get; internal set; }
             /// <summary>How far the cheering body's root stood from its station's place when it cheered, in metres; NaN without a cheer.</summary>
@@ -70,13 +72,17 @@ namespace Gamesim.Episode
             public Action PlayCard;
             public readonly List<Action> AfterCard = new List<Action>();
             public bool Quick, Reduced, Skipped, CardPlayed;
-            public float StartedAt, HoldFrom = -1f, HardBy, PressGuardUntil;
+            public float StartedAt, HoldFrom = -1f, HardBy, PressGuardUntil, CheeredAt;
             public int NextDrop;
             public readonly List<string> Dropped = new List<string>();
             public readonly HashSet<string> Out = new HashSet<string>();
             public readonly Dictionary<string, float> SideAt = new Dictionary<string, float>();
             public readonly Dictionary<string, HouseInteractionAnchor> SideMarks = new Dictionary<string, HouseInteractionAnchor>();
             public readonly List<string> Stationed = new List<string>();
+            /// <summary>Who lets go, in order, among those at their stations when the hold started; set then.</summary>
+            public IReadOnlyList<string> DropOrder;
+            /// <summary>Who had a station but had not reached it when the hold started: left out of the staging.</summary>
+            public readonly List<string> LeftOut = new List<string>();
             public bool Cheered;
             public float CheerOffset = float.NaN;
             public int PutAway;
@@ -146,6 +152,8 @@ namespace Gamesim.Episode
             run.HardBy = now + plan.HardSeconds(run.Quick, run.Reduced);
             if (!BeginCompetitionArena(committed, run) || competitionShow != run)
             {
+                // The arena refused on its first tick and the show already played its card: not twice.
+                if (run.CardPlayed) return true;
                 if (competitionShow == run) EndCompetitionArena();
                 Debug.Log("Competition show declined: " + (competitionArenaStatus ?? "the arena could not be built"));
                 return false;
@@ -156,6 +164,13 @@ namespace Gamesim.Episode
             {
                 EndCompetitionArena();
                 Debug.Log("Competition show declined: fewer than two of the field could take a station.");
+                return false;
+            }
+            if (!run.Stationed.Contains(plan.WinnerId))
+            {
+                // The winner cheers at their station or not at all: without one there is no show to stage.
+                EndCompetitionArena();
+                Debug.Log("Competition show declined: the winner could not take a station.");
                 return false;
             }
             run.PutAway = competitionYard != null ? competitionYard.Hidden.Count : 0;
@@ -215,18 +230,32 @@ namespace Gamesim.Episode
             var plan = run.Plan;
             if (!run.HoldBegun)
             {
-                if (!CompetitionShowFieldArrived(run) && now - run.StartedAt < CompetitionShowPlan.AssemblySeconds(run.Quick)) return;
-                run.HoldFrom = now;
+                // The hold waits for the field at its stations. Once the walk out is up it starts with those
+                // there, provided the winner and a stationed player are; past the wait for those two the card
+                // plays without a show, so nobody lets go or cheers away from their rig.
+                float waited = now - run.StartedAt;
+                if (!CompetitionShowFieldArrived(run))
+                {
+                    if (waited < CompetitionShowPlan.AssemblySeconds(run.Quick)) return;
+                    if (!CompetitionShowPrincipalsArrived(run))
+                    {
+                        if (waited < CompetitionShowPlan.PrincipalSeconds(run.Quick)) return;
+                        Debug.Log("[Gamesim competition show] the winner did not reach their station in time; the card plays. " + CompetitionStageDiagnostic(), this);
+                        FinishCompetitionShow(); return;
+                    }
+                }
+                BeginCompetitionShowHold(run, now);
             }
             float t = now - run.HoldFrom;
+            int drops = run.DropOrder.Count;
             if (run.Reduced)
             {
-                if (t >= plan.CardAt(run.Quick, true)) FinishCompetitionShow();
+                if (t >= CompetitionShowPlan.CardAt(drops, run.Quick, true)) FinishCompetitionShow();
                 return;
             }
-            while (run.NextDrop < plan.DropOrder.Count && t >= plan.DropAt(run.NextDrop, run.Quick))
+            while (run.NextDrop < drops && t >= CompetitionShowPlan.DropAt(run.NextDrop, drops, run.Quick))
             {
-                DropCompetitionShowEntrant(run, plan.DropOrder[run.NextDrop], run.NextDrop == plan.DropOrder.Count - 1);
+                DropCompetitionShowEntrant(run, run.DropOrder[run.NextDrop], run.NextDrop == drops - 1 && run.DropOrder[run.NextDrop] == plan.Standings[1]);
                 run.NextDrop++;
             }
             foreach (var id in run.SideAt.Where(pair => now >= pair.Value).Select(pair => pair.Key).ToArray())
@@ -234,19 +263,53 @@ namespace Gamesim.Episode
                 run.SideAt.Remove(id);
                 SendCompetitionShowEntrantAside(run, id);
             }
-            if (!run.Cheered && t >= plan.CheerAt(run.Quick)) CheerCompetitionShowWinner(run);
-            if (t >= plan.CardAt(run.Quick, false)) FinishCompetitionShow();
+            // The winner cheers at their station only: pushed off it, the cheer waits (the show's bound still holds).
+            if (!run.Cheered && t >= CompetitionShowPlan.CheerAt(drops, run.Quick) && CompetitionShowArrived(run, plan.WinnerId))
+            {
+                run.CheeredAt = now;
+                CheerCompetitionShowWinner(run);
+            }
+            if (run.Cheered && now - run.CheeredAt >= CompetitionShowPlan.CheerSeconds(run.Quick)) FinishCompetitionShow();
+        }
+
+        /// <summary>
+        /// The hold starts: those at their stations hold on and let go in the reverse order of the
+        /// standings; anybody stationed but still walking is left out of the staging - no drop, no
+        /// gesture - and goes to their place at the side.
+        /// </summary>
+        private void BeginCompetitionShowHold(CompetitionShowRun run, float now)
+        {
+            run.HoldFrom = now;
+            var holding = new HashSet<string>();
+            foreach (var id in run.Stationed)
+            {
+                if (CompetitionShowArrived(run, id)) holding.Add(id);
+                else { run.LeftOut.Add(id); run.Out.Add(id); run.SideAt[id] = now; }
+            }
+            run.DropOrder = run.Plan.DropOrderAmong(holding);
+            if (run.LeftOut.Count > 0)
+                Debug.Log("[Gamesim competition show] left out, still walking when the hold began: " + string.Join(", ", run.LeftOut), this);
+        }
+
+        /// <summary>Whether this stationed competitor stands at their station.</summary>
+        private bool CompetitionShowArrived(CompetitionShowRun run, string id)
+        {
+            if (id == run.Plan.PlayerId) return player != null && player.ActivityHasArrived(competitionPlayerOwner);
+            return npcMeetings != null && npcMeetings.CompetitionActorArrived(id);
         }
 
         /// <summary>Whether every stationed competitor stands at their station.</summary>
         private bool CompetitionShowFieldArrived(CompetitionShowRun run)
         {
-            foreach (var id in run.Stationed)
-            {
-                if (id == run.Plan.PlayerId) { if (player == null || !player.ActivityHasArrived(competitionPlayerOwner)) return false; }
-                else if (npcMeetings == null || !npcMeetings.CompetitionActorArrived(id)) return false;
-            }
+            foreach (var id in run.Stationed) if (!CompetitionShowArrived(run, id)) return false;
             return true;
+        }
+
+        /// <summary>Whether the winner, and the player when they have a station, stand at their stations.</summary>
+        private bool CompetitionShowPrincipalsArrived(CompetitionShowRun run)
+        {
+            if (!CompetitionShowArrived(run, run.Plan.WinnerId)) return false;
+            return !run.Stationed.Contains(run.Plan.PlayerId) || CompetitionShowArrived(run, run.Plan.PlayerId);
         }
 
         /// <summary>Whether the show has let this competitor go: dropped, or the winner once cheering.</summary>
@@ -261,7 +324,7 @@ namespace Gamesim.Episode
         {
             var run = competitionShow;
             if (run == null || !run.HoldBegun || run.Reduced || CompetitionShowReleased(id)) return 0f;
-            return run.Plan.Strain(id, Time.unscaledTime - run.HoldFrom, run.Quick);
+            return run.Plan.Strain(run.DropOrder, id, Time.unscaledTime - run.HoldFrom, run.Quick);
         }
 
         /// <summary>One competitor lets go: hands off the grip, the rig reads out, a shrug - or the runner-up's shock - then the walk aside.</summary>
@@ -299,7 +362,8 @@ namespace Gamesim.Episode
                     Debug.Log("[Gamesim competition show] the player stays by their rig: " + reason, this);
                     player.TryBeginActivityMove(competitionPlayerOwner, competitionPlayerStationPosition, out _);
                 }
-                player.GetComponent<CharacterPresentation>()?.SetFacing(float.NaN);
+                var playerVisual = player.GetComponent<CharacterPresentation>();
+                if (playerVisual != null) playerVisual.SetFacing(float.NaN);
                 return;
             }
             if (npcMeetings != null && !npcMeetings.MoveCompetitionActor(id, mark))
@@ -402,7 +466,7 @@ namespace Gamesim.Episode
             competitionShow = null;
             LastCompetitionShow = new CompetitionShowRecord
             {
-                Standings = run.Plan.Standings.ToArray(), Stationed = run.Stationed.ToArray(), Drops = run.Dropped.ToArray(),
+                Standings = run.Plan.Standings.ToArray(), Stationed = run.Stationed.ToArray(), Drops = run.Dropped.ToArray(), LeftOut = run.LeftOut.ToArray(),
                 Cheered = run.Cheered ? run.Plan.WinnerId : null, CheerOffset = run.CheerOffset, CardPlayed = run.CardPlayed,
                 Skipped = run.Skipped, Reduced = run.Reduced, PutAway = run.PutAway,
             };

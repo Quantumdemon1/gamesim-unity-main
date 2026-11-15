@@ -95,7 +95,7 @@ namespace Gamesim.Tests.PlayMode
                     mostRigs = Mathf.Max(mostRigs, SceneComponents<CompetitionApparatus>()
                         .Count(rig => rig.gameObject.activeInHierarchy && rig.Instrument == CompetitionApparatus.Family.GripRig));
                     if (holdSeen < 0f) holdSeen = Time.realtimeSinceStartup;
-                    // Skipped once the rigs stand, before anybody has let go (the first drop is 2 s in).
+                    // Skipped once the rigs stand, before anybody has let go (the first drop is 1.5 s in).
                     if (skip && (mostRigs >= 2 || Time.realtimeSinceStartup > holdSeen + 1f)) { yield return PressKey(Key.Enter); break; }
                 }
                 yield return null;
@@ -107,13 +107,18 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(record.Skipped, Is.EqualTo(skip));
             Assert.That(record.Standings, Is.EqualTo(standings), "The show plays the committed standings.");
             Assert.That(record.Stationed, Is.EquivalentTo(field), "Every competitor of the committed field - and only they - took a station.");
-            // A latecomer still walking when their drop falls never stands at their rig: the show starts
-            // with whoever is there once its assembly is up, so the count is at least the hold's pair.
+            // A latecomer still walking when the walk out is up is left out of the staging and never stands at
+            // their rig, so the count is at least the hold's pair; the winner is never left out.
             Assert.That(mostRigs, Is.GreaterThanOrEqualTo(2), "The field stood at grip rigs in the yard while they held on.");
             Assert.That(mostRigs, Is.LessThanOrEqualTo(field.Count), "No rig for anybody outside the field.");
+            Assert.That(record.LeftOut, Is.Not.Null);
+            Assert.That(record.LeftOut, Does.Not.Contain(standings[0]), "The winner holds on at their station.");
+            Assert.That(record.LeftOut.Count, Is.LessThanOrEqualTo(field.Count - 2), "At least the hold's pair holds on.");
+            if (record.LeftOut.Count > 0) Debug.Log("[Gamesim competition show test] left out, still walking: " + string.Join(", ", record.LeftOut));
             if (!skip)
             {
-                Assert.That(record.Drops, Is.EqualTo(standings.Skip(1).Reverse().ToList()), "They let go from the bottom of the standings up.");
+                Assert.That(record.Drops, Is.EqualTo(standings.Skip(1).Reverse().Where(id => !record.LeftOut.Contains(id)).ToList()),
+                    "Those holding on let go from the bottom of the standings up; nobody left out lets go.");
                 Assert.That(record.Cheered, Is.EqualTo(standings[0]), "The last one on, the winner, cheers.");
                 Assert.That(record.CheerOffset, Is.LessThan(.6f), "at their own station.");
             }

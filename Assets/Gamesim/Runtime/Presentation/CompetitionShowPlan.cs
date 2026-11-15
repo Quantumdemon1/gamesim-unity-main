@@ -78,22 +78,39 @@ namespace Gamesim.Presentation
 
         // ------------------------------------------------------------ the beats, in unscaled seconds
 
-        /// <summary>How long the field is given to walk out to its stations before the hold starts with whoever is there.</summary>
-        public static float AssemblySeconds(bool quick) => quick ? 6f : 10f;
+        /// <summary>
+        /// How long the field is given to walk out to its stations. Once it is up the hold starts with
+        /// whoever stands at a station, provided the winner (and the player, when they have a station)
+        /// is there; anybody still walking is left out of the staging and goes to the side.
+        /// </summary>
+        public static float AssemblySeconds(bool quick) => quick ? 6f : 9f;
+
+        /// <summary>
+        /// How long the show waits, from its start, for the winner and a stationed player to reach their
+        /// stations; past it the show gives way to the card, so nobody cheers or lets go away from their rig.
+        /// </summary>
+        public static float PrincipalSeconds(bool quick) => quick ? 7.5f : 11f;
 
         /// <summary>Everybody holding on before the first one lets go.</summary>
-        public static float OpeningHoldSeconds(bool quick) => quick ? 1f : 2f;
+        public static float OpeningHoldSeconds(bool quick) => quick ? .75f : 1.5f;
 
-        /// <summary>The seconds between one drop and the next: the drops share a window of 1.1 s each, 3 to 8 s in all, half that when quick.</summary>
+        /// <summary>The seconds between one drop and the next: the drops share a window of 1.1 s each, 3 to 6 s in all, half that when quick.</summary>
         public static float DropSpacing(int drops, bool quick)
         {
             if (drops <= 0) return 0f;
             float window = drops * 1.1f;
             if (window < 3f) window = 3f;
-            if (window > 8f) window = 8f;
+            if (window > 6f) window = 6f;
             if (quick) window *= .5f;
             return window / drops;
         }
+
+        /// <summary>
+        /// The drop order among those holding on when the hold starts: the standings from the bottom,
+        /// as <see cref="DropOrder"/>, less anybody who did not reach a station in time.
+        /// </summary>
+        public IReadOnlyList<string> DropOrderAmong(ICollection<string> holding)
+            => holding == null ? DropOrder : DropOrder.Where(holding.Contains).ToList();
 
         /// <summary>The cheer at the winner's station, before the standings card.</summary>
         public static float CheerSeconds(bool quick) => quick ? 1.5f : 2.5f;
@@ -104,29 +121,45 @@ namespace Gamesim.Presentation
         /// <summary>Under reduced motion there are no drops and no cheer: the field holds a still pose this long, and the card follows.</summary>
         public const float ReducedHoldSeconds = 1.5f;
 
-        /// <summary>When, from the start of the hold, the <paramref name="index"/>th drop falls.</summary>
-        public float DropAt(int index, bool quick) => OpeningHoldSeconds(quick) + DropSpacing(DropOrder.Count, quick) * index;
+        /// <summary>When, from the start of the hold, the <paramref name="index"/>th of <paramref name="drops"/> drops falls.</summary>
+        public static float DropAt(int index, int drops, bool quick) => OpeningHoldSeconds(quick) + DropSpacing(drops, quick) * index;
 
-        /// <summary>When, from the start of the hold, the winner is the last one on and cheers.</summary>
-        public float CheerAt(bool quick) => OpeningHoldSeconds(quick) + DropSpacing(DropOrder.Count, quick) * DropOrder.Count;
+        /// <summary>When, from the start of the hold, the winner is the last one on after <paramref name="drops"/> drops and cheers.</summary>
+        public static float CheerAt(int drops, bool quick) => OpeningHoldSeconds(quick) + DropSpacing(drops, quick) * drops;
 
-        /// <summary>When, from the start of the hold, the standings card plays.</summary>
-        public float CardAt(bool quick, bool reduced) => reduced ? ReducedHoldSeconds : CheerAt(quick) + CheerSeconds(quick);
+        /// <summary>When, from the start of the hold, the standings card plays after <paramref name="drops"/> drops.</summary>
+        public static float CardAt(int drops, bool quick, bool reduced) => reduced ? ReducedHoldSeconds : CheerAt(drops, quick) + CheerSeconds(quick);
 
-        /// <summary>The longest a show may run from its start, the walk out included, before it gives way to the card regardless.</summary>
-        public float HardSeconds(bool quick, bool reduced) => AssemblySeconds(quick) + CardAt(quick, reduced) + 4f;
+        /// <summary>When, from the start of the hold, the <paramref name="index"/>th drop falls, the whole field holding on.</summary>
+        public float DropAt(int index, bool quick) => DropAt(index, DropOrder.Count, quick);
+
+        /// <summary>When, from the start of the hold, the winner is the last one on and cheers, the whole field holding on.</summary>
+        public float CheerAt(bool quick) => CheerAt(DropOrder.Count, quick);
+
+        /// <summary>When, from the start of the hold, the standings card plays, the whole field holding on.</summary>
+        public float CardAt(bool quick, bool reduced) => CardAt(DropOrder.Count, quick, reduced);
+
+        /// <summary>
+        /// The longest a show may run from its start, the walk out included, before it gives way to the
+        /// card regardless: the wait for the winner, the whole field's hold, and a second to spare.
+        /// </summary>
+        public float HardSeconds(bool quick, bool reduced) => PrincipalSeconds(quick) + CardAt(quick, reduced) + 1f;
 
         /// <summary>
         /// How hard <paramref name="id"/> is working at <paramref name="t"/> seconds into the hold, 0
         /// to 1: each houseguest's effort climbs to its peak at the moment they let go, and the
         /// winner's to most of it at the end. Presentation only: the body's shake and the grip meter.
         /// </summary>
-        public float Strain(string id, float t, bool quick)
+        public float Strain(string id, float t, bool quick) => Strain(DropOrder, id, t, quick);
+
+        /// <summary>The same, when only <paramref name="dropOrder"/> holds on (<see cref="DropOrderAmong"/>).</summary>
+        public float Strain(IReadOnlyList<string> dropOrder, string id, float t, bool quick)
         {
             if (t <= 0f) return 0f;
+            if (dropOrder == null) dropOrder = DropOrder;
             int index = -1;
-            for (int i = 0; i < DropOrder.Count; i++) if (DropOrder[i] == id) { index = i; break; }
-            float peak = index >= 0 ? DropAt(index, quick) : CheerAt(quick);
+            for (int i = 0; i < dropOrder.Count; i++) if (dropOrder[i] == id) { index = i; break; }
+            float peak = index >= 0 ? DropAt(index, dropOrder.Count, quick) : CheerAt(dropOrder.Count, quick);
             float top = index >= 0 ? 1f : .85f;
             if (peak <= 0f) return top;
             float strain = t / peak;

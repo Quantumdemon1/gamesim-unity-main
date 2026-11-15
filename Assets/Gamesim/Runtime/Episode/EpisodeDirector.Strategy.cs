@@ -246,6 +246,29 @@ namespace Gamesim.Episode
         public static bool PitchBoardShows(EpisodeState state) => RoleOffers.PitchBoardShows(state);
 
         /// <summary>
+        /// The Head of Household's pitches opened for a pitcher who walked up (offers slice 4p, EpisodeDirector.ComesToYou.cs):
+        /// the nomination's own panel, wherever the player stands, on its pitches - the state "Hear houseguest pitches" sets -
+        /// so under the role moments the board (<see cref="PitchOfferBoard"/>), every card in its dealt order and unchanged,
+        /// and before them the one-at-a-time answer on the pitch waiting first. Like every panel the player opens, the house's
+        /// due time is flushed first. It answers nothing and commits nothing. False when the pitches are no longer heard by then.
+        /// </summary>
+        private bool OpenHoHPitches()
+        {
+            if (!IsReady || blockedRecovery || projected == null || !HoHPitches.Available(projected)) return false;
+            headingToStation = false;
+            PauseNpcSocialForPanel();
+            // The flush may have installed the house's time: the pitches must still be heard.
+            if (blockedRecovery || projected == null || !HoHPitches.Available(projected)) return false;
+            ClosePanels();
+            phaseOpen = true;
+            nominationPitchesDismissed = false;
+            if (player != null) player.SetInputEnabled(false);
+            if (cameraRig != null) cameraRig.ControlsEnabled = false;
+            Render();
+            return true;
+        }
+
+        /// <summary>
         /// The Head of Household's pitches on the offer board (ROLE-MOMENTS-PLAN R5, §3.1): at most three cards, in the order
         /// the board was dealt (<see cref="RoleOffers.PitchBoardCards"/>), each the pitcher's face, tone, situation, read, line,
         /// recommendation, stakes, history and - once felt out - what they said, over the pitch's four answers under their own

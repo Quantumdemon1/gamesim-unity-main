@@ -4,6 +4,7 @@ using System.Linq;
 using Gamesim.Episode;
 using Gamesim.House;
 using Gamesim.Persistence;
+using Gamesim.Presentation;
 using Gamesim.Simulation;
 using NUnit.Framework;
 using UnityEngine;
@@ -28,9 +29,10 @@ namespace Gamesim.Tests.PlayMode
         /// The invitation flow's house (SaveNpcInvitationFlowState's relationships and spent actions), with the generator's
         /// offers from Maya and Jamie only when <paramref name="withOffers"/>, the strategy windows on from this week, and one
         /// card from Maya filed by the rules' own <see cref="ReplyCards.Offer"/>: a confrontation or gossip (about Jamie), in
-        /// free time. Saved; returns the card's id.
+        /// free time; or a plea about Jamie in the campaign, Maya and Jamie on the block (offers slice 4p's leftovers of 4a).
+        /// With <paramref name="secondSender"/>, a confrontation from them filed after Maya's. Saved; returns Maya's card's id.
         /// </summary>
-        private string SaveComesToYouReplyState(string kind, bool withOffers)
+        private string SaveComesToYouReplyState(string kind, bool withOffers, string secondSender = null)
         {
             var state = ContentCatalog.Create(6123);
             state.dealRulesStartWeek = 1;
@@ -49,14 +51,22 @@ namespace Gamesim.Tests.PlayMode
                     "The actual generator puts offers from Maya and Jamie.");
             }
             else Assert.That(NpcDeals.Pending(state), Is.Empty, "No offer in the house.");
-            state.socialActions = EpisodeEngine.SocialActionBudget(state);
             Assert.That(state.phase, Is.EqualTo(EpisodePhase.Social), "Free time, where a confrontation and gossip wait.");
+            if (kind == ReplyCards.Plea) OnTheBlockInTheCampaign(state);
+            state.socialActions = EpisodeEngine.SocialActionBudget(state);
             Assert.That(state.replyCards, Is.Empty, "The invitation flow's house carries no card, so slices 1-3 read today's queue.");
             state.strategyRulesStartWeek = state.week;
             Assert.That(StrategyRules.Apply(state), Is.True);
-            ReplyCards.Offer(state, kind, ComesMaya, kind == ReplyCards.Gossip ? ComesJamie : null);
-            Assert.That(state.replyCards.Select(card => (card.kind, card.fromId)), Is.EqualTo(new[] { (kind, ComesMaya) }),
-                "One card, from Maya, filed by the rules' own Offer.");
+            ReplyCards.Offer(state, kind, ComesMaya, kind == ReplyCards.Gossip || kind == ReplyCards.Plea ? ComesJamie : null);
+            var filed = new List<(string, string)> { (kind, ComesMaya) };
+            if (secondSender != null)
+            {
+                state.nextSequence++;
+                ReplyCards.Offer(state, ReplyCards.Confrontation, secondSender, null);
+                filed.Add((ReplyCards.Confrontation, secondSender));
+            }
+            Assert.That(state.replyCards.Select(card => (card.kind, card.fromId)), Is.EqualTo(filed),
+                "Maya's card first, filed by the rules' own Offer.");
             var first = ComesToYou.Read(state).First();
             Assert.That((first.source, first.recordId), Is.EqualTo((ComesToYou.Source.Card, state.replyCards[0].id)),
                 "The card leads the queue: free time's end clears it on the next advance.");
@@ -66,12 +76,30 @@ namespace Gamesim.Tests.PlayMode
         }
 
         /// <summary>
+        /// The campaign, where a plea waits: Maya and Jamie on the block, Head of Household and veto holder the first
+        /// houseguest who is neither, the veto settled and its lineup seated with all three.
+        /// </summary>
+        private static void OnTheBlockInTheCampaign(EpisodeState state)
+        {
+            var others = state.Active.Where(person => !person.isPlayer && person.id != ComesMaya && person.id != ComesJamie)
+                .Select(person => person.id).ToList();
+            state.phase = EpisodePhase.Campaign;
+            state.hohId = others[0];
+            state.nominees = new List<string> { ComesMaya, ComesJamie };
+            state.vetoHolderId = others[0];
+            state.vetoPlayers = new[] { others[0], ComesMaya, ComesJamie }.Concat(state.Active.Select(person => person.id)).Distinct()
+                .Take(EpisodeEngine.VetoPlayerCount(state.Active.Count())).ToList();
+            state.vetoResolved = true;
+        }
+
+        /// <summary>
         /// The reply house saved and reloaded, the reply cards' switch set to <paramref name="replies"/>, asks on and taken
         /// effect with the house's pairing held (TurnAsksOnInTheLoadedHouse). No visit waited for.
         /// </summary>
-        private IEnumerator InstallComesToYouReplyHouse(string kind, bool withOffers, bool? replies = true, bool walkOvers = true)
+        private IEnumerator InstallComesToYouReplyHouse(string kind, bool withOffers, bool? replies = true, bool walkOvers = true,
+            string secondSender = null)
         {
-            comesReplyCardId = SaveComesToYouReplyState(kind, withOffers);
+            comesReplyCardId = SaveComesToYouReplyState(kind, withOffers, secondSender);
             yield return ReloadEpisode();
             director.ReplyAsksEnabled = replies;
             yield return TurnAsksOnInTheLoadedHouse(new string[0], true);
@@ -357,6 +385,211 @@ namespace Gamesim.Tests.PlayMode
             var state = director.Snapshot;
             Assert.That(ShownText(), Does.Contain(ReplyCards.Title(state, state.replyCards.Single(row => row.id == comesReplyCardId))), "Maya's.");
             director.ClosePanels();
+        }
+
+        // ================================================================== slice 4a's leftovers, built in 4p (the lead's ruling 4)
+
+        /// <summary>The advance from where the season stands, as the episode screen's "Continue episode" commits it: free time ends, and every card goes.</summary>
+        private CommandResult AdvanceTheSeason()
+        {
+            var state = director.Snapshot;
+            var result = director.Submit(new EpisodeCommand
+            {
+                id = "comes-to-you-reply-advance-" + state.revision, actorId = state.playerId, expectedPhase = state.phase,
+                expectedRevision = state.revision, kind = EpisodeCommandKind.Advance,
+            });
+            Assert.That(result.accepted, Is.True, result.reason);
+            Assert.That(director.Snapshot.replyCards.Any(row => row.id == comesReplyCardId), Is.False, "The premise: the card went, unanswered.");
+            return result;
+        }
+
+        // ------------------------------------------------------------------ R2. a plea walks up in the campaign
+
+        [UnityTest]
+        public IEnumerator ComesToYou_ReplyAPleaWalksUpInTheCampaign() => PinnedClock(APleaInTheCampaignHeld);
+
+        private IEnumerator APleaInTheCampaignHeld() =>
+            WithTheHouseHeld(() => InstallComesToYouReplyVisit(ReplyCards.Plea, false), APleaInTheCampaign);
+
+        private IEnumerator APleaInTheCampaign()
+        {
+            string cardId = comesReplyCardId;
+            var installed = director.Snapshot;
+            var card = installed.replyCards.Single(row => row.id == cardId);
+            Assert.That(installed.phase, Is.EqualTo(EpisodePhase.Campaign), "The campaign, where a plea waits.");
+            Assert.That((card.kind, card.fromId, card.aboutId), Is.EqualTo((ReplyCards.Plea, ComesMaya, ComesJamie)), "Maya pleads, Jamie the other nominee.");
+            yield return WaitForAskDialogue(ComesMaya);
+            Assert.That(director.CurrentAskWay, Is.EqualTo(EpisodeDirector.AskWay.WalkOver));
+            Assert.That(director.CurrentAskRecordId, Is.EqualTo(cardId));
+            yield return WaitForBodies();
+            Assert.That(LastLabel(EpisodeHud.AskLineName)?.text, Is.EqualTo("\"" + ComesToYou.PleaLine + "\""));
+            Assert.That(LastLabel(EpisodeHud.AskLapseName)?.text, Is.EqualTo(ComesToYou.LapseCampaignCloses));
+            foreach (var reply in ReplyCards.Replies(ReplyCards.Plea))
+                Assert.That(FindButton(EpisodeHud.ReplyCaption(reply.Label)), Is.Not.Null, reply.Label);
+
+            yield return WaitOutThePointerHold();
+            var justBefore = director.Snapshot;
+            ButtonWithCaption(EpisodeHud.ReplyCaption(ReplyCards.Find(ReplyCards.Plea, "promise").Label)).onClick.Invoke();
+            // The campaign board's own press: ReplyToHouseguest with the card's id and the key "promise".
+            AssertIntentCommand(justBefore, EpisodeCommandKind.ReplyToHouseguest, cardId, "promise");
+            Assert.That(director.Snapshot.socialActions, Is.EqualTo(justBefore.socialActions), "Answering is free.");
+            director.ClosePanels();
+        }
+
+        // ------------------------------------------------------------------ R5. two cards, one at a time
+
+        [UnityTest, Timeout(300000)]
+        public IEnumerator ComesToYou_ReplyOnlyTheCardWaitingFirstComes() => PinnedClock(OnlyTheFirstCardHeld);
+
+        private IEnumerator OnlyTheFirstCardHeld() =>
+            WithTheHouseHeld(() => InstallComesToYouReplyHouse(ReplyCards.Confrontation, false, secondSender: ComesJamie), OnlyTheFirstCard);
+
+        private IEnumerator OnlyTheFirstCard()
+        {
+            string mayaCard = comesReplyCardId;
+            string jamieCard = director.Snapshot.replyCards.Single(row => row.fromId == ComesJamie).id;
+            Assert.That(ComesToYou.Read(director.Snapshot).Select(ask => (ask.source, ask.recordId)),
+                Is.EqualTo(new[] { (ComesToYou.Source.Card, mayaCard) }), "Two cards wait; only the first is listed.");
+            yield return WaitForTheFirstVisit(new string[0]);
+            Assert.That(director.CurrentNpcInvitationRecordId, Is.EqualTo(mayaCard), "Maya, whose card waits first, comes.");
+            yield return WaitForAskDialogue(ComesMaya);
+            yield return WaitOutThePointerHold();
+            var justBefore = director.Snapshot;
+            ButtonWithCaption(EpisodeHud.ReplyCaption("Apologize")).onClick.Invoke();
+            AssertIntentCommand(justBefore, EpisodeCommandKind.ReplyToHouseguest, mayaCard, "apologize");
+            Assert.That(ComesToYou.Read(director.Snapshot).Select(ask => (ask.source, ask.recordId)),
+                Is.EqualTo(new[] { (ComesToYou.Source.Card, jamieCard) }), "Answered, Jamie's card is the one waiting first.");
+            director.ClosePanels();
+            // The closed dialogue starts the gap on the next tick; then the gap is released.
+            yield return null; yield return null;
+            NpcWrite("askNextAt", 0f);
+            yield return WaitForTheFirstVisit(new string[0]);
+            Assert.That(director.CurrentNpcInvitationRecordId, Is.EqualTo(jamieCard), "Jamie comes with the next card.");
+            Assert.That(director.CurrentAskerId, Is.EqualTo(ComesJamie));
+        }
+
+        // ------------------------------------------------------------------ R9. the dialogue fits at Largest
+
+        [UnityTest]
+        public IEnumerator ComesToYou_ReplyTheDialogueFitsAtLargest() => PinnedClock(TheReplyFitsAtLargestHeld);
+
+        private IEnumerator TheReplyFitsAtLargestHeld() =>
+            WithTheHouseHeld(() => InstallComesToYouReplyAtLargest(), TheReplyFitsAtLargest);
+
+        /// <summary>The reply house, then Largest chosen as a player chooses it (the reload restores the default size), before any visit.</summary>
+        private IEnumerator InstallComesToYouReplyAtLargest()
+        {
+            yield return InstallComesToYouReplyHouse(ReplyCards.Confrontation, false);
+            yield return ApplyTextSize(TextSize.Largest);
+            Assert.That(director.TextSize, Is.EqualTo(TextSize.Largest), "The size took, so this pass is not vacuous.");
+        }
+
+        private IEnumerator TheReplyFitsAtLargest()
+        {
+            yield return WaitForAskDialogue(ComesMaya, 45f);
+            Assert.That(director.CurrentAskRecordId, Is.EqualTo(comesReplyCardId));
+            yield return WaitForBodies();
+            yield return WaitOutThePointerHold();
+            Assert.That(director.TextSize, Is.EqualTo(TextSize.Largest), "Still at Largest.");
+            AssertEveryLabelDraws("The reply dialogue at Largest");
+            foreach (var name in new[] { EpisodeHud.AskLineName, EpisodeHud.AskStandingName, EpisodeHud.AskTermsName, EpisodeHud.AskLapseName })
+            {
+                var label = LastLabel(name);
+                Assert.That(label, Is.Not.Null, name + " is drawn.");
+                Canvas.ForceUpdateCanvases();
+                Assert.That(label.rectTransform.rect.height, Is.GreaterThanOrEqualTo(label.fontSize * 1.3f - .5f), name + "'s box.");
+                Assert.That(label.fontSize, Is.GreaterThanOrEqualTo(12f), name + " at 1080p.");
+                Assert.That(label.preferredHeight, Is.LessThanOrEqualTo(label.rectTransform.rect.height + .5f), name + " fits.");
+            }
+            // At 1920x1080 (the HUD's 1600x900 canvas) the card's three answers sit inside the viewport as the dialogue opens.
+            yield return AtFrame(1600, 900, () =>
+            {
+                foreach (var reply in ReplyCards.Replies(ReplyCards.Confrontation))
+                    AssertInsideItsViewport(FindButton(EpisodeHud.ReplyCaption(reply.Label)), "At Largest, 1920x1080: " + reply.Label);
+            });
+            director.ClosePanels();
+        }
+
+        // ------------------------------------------------------------------ a card gone without an answer, in the conversation
+
+        [UnityTest]
+        public IEnumerator ComesToYou_ReplyACardGoneInTheConversationSaysWhatHappened() => PinnedClock(ACardGoneInTheConversationHeld);
+
+        private IEnumerator ACardGoneInTheConversationHeld() =>
+            WithTheHouseHeld(() => InstallComesToYouReplyVisit(ReplyCards.Confrontation, false), ACardGoneInTheConversation);
+
+        /// <summary>
+        /// The lead's ruling 1: once the card has gone - here before any answer, free time ending under the open dialogue - the
+        /// conversation leaves the Deals page and says what happened, with Back to topics; nothing is left to answer.
+        /// </summary>
+        private IEnumerator ACardGoneInTheConversation()
+        {
+            yield return WaitForAskDialogue(ComesMaya);
+            Assert.That(director.CurrentAskRecordId, Is.EqualTo(comesReplyCardId));
+            yield return WaitOutThePointerHold();
+            AdvanceTheSeason();
+            // The commit's own render.
+            Assert.That(director.TalkingToId, Is.EqualTo(ComesMaya), "Still with Maya.");
+            Assert.That(director.CurrentConversationCategory, Is.Null, "Off the Deals page, which invites nothing for a card.");
+            Assert.That(director.CurrentAskWay, Is.EqualTo(EpisodeDirector.AskWay.None), "The dialogue is let go.");
+            Assert.That(director.CurrentAskRecordId, Is.Null);
+            foreach (var reply in ReplyCards.Replies(ReplyCards.Confrontation))
+                Assert.That(ButtonWithCaptionOrNull(EpisodeHud.ReplyCaption(reply.Label)), Is.Null, "Nothing left to answer: " + reply.Label);
+            Assert.That(ButtonWithCaptionOrNull(EpisodeHud.ThinkItOverCaption), Is.Null, "Nothing left to think over.");
+            Assert.That(FindButton(EpisodeDirector.ConversationTopicsBackCaption), Is.Not.Null, "Back to topics.");
+            director.ClosePanels();
+            yield return null;
+        }
+
+        // ------------------------------------------------------------------ the card host's "They've moved on."
+
+        [UnityTest]
+        public IEnumerator ComesToYou_ReplyTheCardHostSaysTheyMovedOn() => PinnedClock(TheCardHostSaysTheyMovedOnHeld);
+
+        private IEnumerator TheCardHostSaysTheyMovedOnHeld() =>
+            WithTheHouseHeld(() => InstallComesToYouReplyHouse(ReplyCards.Confrontation, false, true, false), TheCardHostSaysTheyMovedOn);
+
+        private IEnumerator TheCardHostSaysTheyMovedOn()
+        {
+            yield return WaitForAskCardUp("the reply card");
+            Assert.That(director.CurrentAskRecordId, Is.EqualTo(comesReplyCardId), "The card host carries Maya's card.");
+            yield return WaitForBodies();
+            yield return WaitOutThePointerHold();
+            AdvanceTheSeason();
+            // The commit's own render: the card went before any answer.
+            Assert.That(director.IsAskCardOpen, Is.True, "The card stays up to say so.");
+            Assert.That(ShownText(), Does.Contain(EpisodeHud.AskCardGoneLine), "\"They've moved on.\"");
+            Assert.That(EpisodeHud.AskCardGoneLine, Is.EqualTo("They've moved on."));
+            Assert.That(ShownText(), Does.Not.Contain(EpisodeHud.AskGoneLine), "Never the offer's \"no longer on the table\".");
+            Assert.That(LastLabel(EpisodeHud.AskOutcomeName), Is.Null, "Nothing was answered, so no outcome.");
+            foreach (var reply in ReplyCards.Replies(ReplyCards.Confrontation))
+                Assert.That(ButtonWithCaptionOrNull(EpisodeHud.ReplyCaption(reply.Label)), Is.Null, "Nothing left to answer: " + reply.Label);
+            FindButton(EpisodeDirector.SceneCardDoneCaption).onClick.Invoke();
+            Assert.That(director.IsAskCardOpen, Is.False, "Back to the house closes the card.");
+            yield return null;
+        }
+
+        // ------------------------------------------------------------------ the review's two notes
+
+        /// <summary>
+        /// Slices 1-3 read today's queue with the reply cards' switch at its default: the invitation flow's own saved house -
+        /// as installed, and with Taylor's third ask - carries no reply card, so nothing a card or a pitch adds reaches their
+        /// queue; and a freshly bound director's reply switch is null, following asks, which the fixture turns off.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator ComesToYou_ReplyNoCardInSliceOnesHouseAndTheSwitchFollowsByDefault()
+        {
+            Assert.That(director.AsksEnabled, Is.False, "The fixture turns asks off as it binds the director.");
+            Assert.That(director.ReplyAsksEnabled, Is.Null, "A freshly bound director's reply switch follows the asks.");
+            foreach (bool threeAsks in new[] { false, true })
+            {
+                SaveNpcInvitationFlowState(threeAsks);
+                Assert.That(new EpisodeSaveStore(director.SavePath).TryLoad(out var saved, out string error), Is.True, error);
+                Assert.That(saved.replyCards, Is.Empty, "The invitation flow's saved house carries no reply card (three asks: " + threeAsks + ").");
+                Assert.That(ComesToYou.Read(saved).Select(ask => ask.source), Has.None.EqualTo(ComesToYou.Source.Card).And.None.EqualTo(ComesToYou.Source.Pitch),
+                    "Its queue is the offers' alone.");
+            }
+            yield break;
         }
     }
 }

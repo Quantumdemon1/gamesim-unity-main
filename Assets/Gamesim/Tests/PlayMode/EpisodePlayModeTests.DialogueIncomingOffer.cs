@@ -189,6 +189,9 @@ namespace Gamesim.Tests.PlayMode
             // A source change invalidating that witness fails this bounded test; no repair/skip.
             var fresh = SeasonBuilder.Create(new SeasonBuilder.Choice { HouseSize = 8 }, 14);
             ShippedRules.ApplyFresh(fresh);
+            // Held at story rules 10, Blame, by name (ROLE-MOMENTS-PLAN R7): the witness was retained there, and under the
+            // role moments the veto board's own asks no longer come as invitations (NpcInvitation.Eligible).
+            fresh.story.rulesVersion = StoryRules.Blame;
             Assert.That(fresh.dialogueRulesVersion, Is.Zero);
             fresh.dialogueRulesVersion = 1;
             string original = JsonUtility.ToJson(fresh);

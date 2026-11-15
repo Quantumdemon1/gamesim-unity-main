@@ -303,6 +303,8 @@ namespace Gamesim.Tests.EditMode
         {
             var s = SeasonBuilder.Create(new SeasonBuilder.Choice { Roster = CastTemplates.Roster.AllStars, HouseSize = 12 }, 4242u);
             ShippedRules.ApplyFresh(s);
+            // Held at story rules 10, Blame, by name (ROLE-MOMENTS-PLAN R7): the test is about something else, and EnableStory now gives Roles.
+            s.story.rulesVersion = StoryRules.Blame;
             return s;
         }
 

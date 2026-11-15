@@ -28,6 +28,9 @@ namespace Gamesim.Tests.EditMode
         {
             var fresh = SeasonBuilder.Create(new SeasonBuilder.Choice { HouseSize = 8 }, 4);
             ShippedRules.ApplyFresh(fresh);
+            // Held at story rules 10, Blame, by name (ROLE-MOMENTS-PLAN R7): the fixed route was observed there, and at Roles
+            // the week-three campaign opens with a role week's story ask the route never answers.
+            fresh.story.rulesVersion = StoryRules.Blame;
             Assert.That(fresh.dialogueRulesVersion, Is.Zero, "This fixture must not enable shipping defaults.");
             fresh.dialogueRulesVersion = 1; // The sole unpublished fresh-fixture rule opt-in.
             Assert.That(fresh.unifiedCommitmentRulesVersion, Is.EqualTo(2));

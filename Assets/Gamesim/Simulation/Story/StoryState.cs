@@ -305,11 +305,12 @@ namespace Gamesim.Simulation
 
         /// <summary>
         /// What a season switched on today plays under: a new season's value (<see cref="EpisodeEngine.EnableStory"/>),
-        /// never a gate - every rule reads the milestone that introduced it. Blame is enrolled (STORY-RULES-10-PLAN §8)
-        /// since the lab measured it and C1n passed acceptance on the held-out seeds; a season keeps the version it was
-        /// started on, and the save migration and the web importer still write threads. Roles waits for its own (R7).
+        /// never a gate - every rule reads the milestone that introduced it. Roles is enrolled (ROLE-MOMENTS-PLAN R7,
+        /// "As built") after the lab's held-out balance check, as Blame was before it (STORY-RULES-10-PLAN §8); a season
+        /// keeps the version it was started on, and the save migration and the web importer still write threads. A later
+        /// milestone moves this only at its own enrolment, once it is built and measured.
         /// </summary>
-        public const int Current = Blame;
+        public const int Current = Roles;
 
         /// <summary>
         /// The last milestone this build defines: the bound a saved season and the catalogue are held to,

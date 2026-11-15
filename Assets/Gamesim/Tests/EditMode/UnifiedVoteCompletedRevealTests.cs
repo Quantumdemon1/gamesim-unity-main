@@ -463,6 +463,8 @@ namespace Gamesim.Tests.EditMode
                 initial.competitionRulesVersion = CompetitionRules.Current;
                 initial.haveNotRulesStartWeek = 1; initial.strategyRulesStartWeek = 1;
                 EpisodeEngine.EnableStory(initial); EpisodeEngine.EnableRead(initial); EpisodeEngine.EnableLevers(initial);
+                // Held at story rules 10, Blame, by name (ROLE-MOMENTS-PLAN R7): the test is about something else, and EnableStory now gives Roles.
+                initial.story.rulesVersion = StoryRules.Blame;
                 EpisodeEngine.EnableWeek(initial); EpisodeEngine.EnableEconomy(initial); EpisodeEngine.EnableAgency(initial);
                 EpisodeEngine.EnableFinale(initial); EpisodeEngine.EnableCommitments(initial);
                 initial.unifiedCommitmentRulesVersion = mode; initial.unifiedHearingRulesVersion = mode;

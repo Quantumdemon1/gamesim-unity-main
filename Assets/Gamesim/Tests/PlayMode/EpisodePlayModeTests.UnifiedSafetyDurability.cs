@@ -402,6 +402,8 @@ namespace Gamesim.Tests.PlayMode
                 fresh.competitionRulesVersion = CompetitionRules.Current;
                 fresh.haveNotRulesStartWeek = fresh.strategyRulesStartWeek = 1;
                 EpisodeEngine.EnableStory(fresh); EpisodeEngine.EnableRead(fresh);
+                // Held at story rules 10, Blame, by name (ROLE-MOMENTS-PLAN R7): the test is about something else, and EnableStory now gives Roles.
+                fresh.story.rulesVersion = StoryRules.Blame;
                 EpisodeEngine.EnableLevers(fresh); EpisodeEngine.EnableWeek(fresh);
                 EpisodeEngine.EnableEconomy(fresh); EpisodeEngine.EnableAgency(fresh);
                 EpisodeEngine.EnableFinale(fresh); EpisodeEngine.EnableCommitments(fresh);

@@ -350,10 +350,12 @@ namespace Gamesim.Episode
                 var ask = askNow;
                 // There, close and in sight: they turn to the player, the house's own presentation leaving them be.
                 if (float.IsNaN(askAskerYaw)) TurnAskerToPlayer(ask.askerId, true);
+                // Read before the gate, never between it and the Show: the gate is the statement just before the Show
+                // (RoomScopeBubbleScanTests reads it there).
+                var captions = AskBubbleCaptions(ask.source);
                 // Only over an asker the room scope draws (RS4), as the invitation's line: withheld, the line's clock
                 // waits with it, so nothing opens on a line the player was never shown.
                 npcInvitationBubble.SpeakerDrawn = IsBodyDrawn(HousemateBody(ask.askerId));
-                var captions = AskBubbleCaptions(ask.source);
                 npcInvitationBubble.Show(projected.Find(ask.askerId).name, ask.line, TextScale, anchor,
                     () => HearAsk(view, generation, ask), () => DeferAsk(view, generation, ask), captions.hear, captions.notNow, view);
             }

@@ -40,9 +40,9 @@ namespace Gamesim.Tests.EditMode
 
         // Recorded at competition slice 4. Rules 3's and 4's selectors are untouched by rules 5: these are the selections
         // they made before it, and a digest that moves is a regression, never a re-record.
-        private const string Version3Digest = "RECORD", Version4Digest = "RECORD";
+        private const string Version3Digest = "893f38c3d8af13da", Version4Digest = "b16b6b29cf4e18a1";
         // Rules 5's own selections, new with it.
-        private const string Version5Digest = "RECORD";
+        private const string Version5Digest = "42734bfe8c35d936";
 
         [Test]
         public void TheRulesThreeAndFourSelectionsAreThePublishedOnes()

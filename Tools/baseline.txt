@@ -308,7 +308,10 @@
 # game's family (an unknown game keeps its card), the beats telling the committed standings in order, the hard bound
 # for sixteen, and staging that neither writes the season nor draws from it. The offline listers counted 10059 on the
 # slice. No Unity run has observed them yet.
-Gamesim.EditModeTests 10059
+# 10081 = 10059 + competition ring tower slice 4's 22: CompetitionRules5Tests' 6 and RingTowerPuzzleTests' 12 (shared
+# with the subset), and RingTowerRingRouteTests' 4 (EditMode only): rules 5's selector, the tower's rules and score,
+# and the rings made from the stacks' authored profile. No Unity run has observed them yet.
+Gamesim.EditModeTests 10081
 # The UMA-free build. 1215 = 1236, the count after the consolidation's lanes (S2a, S2b, S4a), less the 7
 # farewell probes moved to Gamesim.DiagnosticsPlayModeTests and the 14 farewell readiness tests that now
 # compile only under GAMESIM_UMA (judged on the UMA cast); 1230 = 1215 + S2d's 7, S4b's 2, S4c's 2 and
@@ -505,7 +508,10 @@ Gamesim.EditModeTests 10059
 # 1573 = 1566 + competition staging slice 3's 7 EpisodePlayModeTests.CompetitionStaging_* cases (a podium quiz, a
 # table of dice, a course run, a skip mid-run, reduced motion, sixteen on the course, the same result with shows on
 # and off). The offline listers counted 1573 on the slice. No Unity run has observed them yet.
-Gamesim.PlayModeTests 1573
+# 1579 = 1573 + competition ring tower slice 4's 6 EpisodePlayModeTests.RingTower_* cases (the ranked tower by clicks,
+# a refused move, practice by the keyboard and by the pad, the unplayed routes, a watched veto). No Unity run has
+# observed them yet.
+Gamesim.PlayModeTests 1579
 # The UMA build of the same assembly, read by a plan built without -WithoutUma. 1281 = the 1241 above + the
 # 40 tests that compile only under GAMESIM_UMA, as run at r1 (2026-10-16): in EpisodePlayModeTests,
 # GroundedFarewell 11, Creator 9, HouseLife 8, Emotes 3, OpeningCaptures 2, and one each in CreatorEntry,
@@ -636,7 +642,8 @@ Gamesim.PlayModeTests 1573
 # 1611 = 1606 + competition yard slice 2's same 5 cases (see PlayModeTests above). No Unity run has observed them yet.
 # 1618 = 1611 + competition staging slice 3's same 7 cases (see PlayModeTests above). The offline listers counted 1618
 # on the slice. No Unity run has observed them yet.
-Gamesim.PlayModeTests.UmaBuild 1618
+# 1624 = 1618 + competition ring tower slice 4's same 6 cases (see PlayModeTests above). No Unity run has observed them yet.
+Gamesim.PlayModeTests.UmaBuild 1624
 # The UMA bodies: runs only where the GAMESIM_UMA define is set (the working tree and the D: copy).
 # 82 = the 89 run on 2026-10-15, less the 7 farewell probes moved to Gamesim.Uma.DiagnosticsPlayModeTests;
 # 85 = 82 + the 3 farewell readiness decision tests (UmaFarewellReadinessDecisionPlayModeTests, 2026-10-16);
@@ -870,4 +877,6 @@ Gamesim.Uma.DiagnosticsPlayModeTests 10
 # 16847 = 16839 + competition yard slice 2's 8 CompetitionYardPiecesTests cases (the same 8 the EditMode floor counts).
 # 16881 = 16847 + competition staging slice 3's 34 CompetitionShowFamiliesTests cases (the same 34 the EditMode floor
 # counts): dotnet test Tools/SimulationTests ran exactly 16881 of 16881 on the slice at fbb01817 (2026-11-16).
-Gamesim.SimulationTests 16881
+# 16899 = 16881 + competition ring tower slice 4's 18 (CompetitionRules5Tests' 6 and RingTowerPuzzleTests' 12, the same
+# 18 the EditMode floor counts): the tower's own run counted 16865 = 16847 + 18 (2026-11-16).
+Gamesim.SimulationTests 16899

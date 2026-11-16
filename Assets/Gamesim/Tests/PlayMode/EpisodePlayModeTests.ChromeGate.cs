@@ -457,7 +457,7 @@ namespace Gamesim.Tests.PlayMode
                 var npcs = SceneComponents<HouseNpc>().Where(npc => npc.gameObject.activeInHierarchy).ToList();
                 Assert.That(npcs, Is.Not.Empty, "The house has houseguests to name.");
                 AssertArenaOverlays(sign, discs, npcs, false, "under the board");
-                AssertYardPublicWords(publicCanvas, expected, scenery, true, "under the board");
+                AssertYardPublicWords(publicCanvas, expected, scenery, true, true, "under the board");
                 Assert.That(sign.text, Is.Not.Empty, "The sign keeps its words under the board.");
 
                 var updatedPublic = director.Snapshot.Clone();
@@ -465,7 +465,7 @@ namespace Gamesim.Tests.PlayMode
                 string latestWords = HousePublicDisplays.PublicYardText(updatedPublic);
                 HousePublicDisplays.Project(player.gameObject.scene, updatedPublic);
                 Assert.That(publicLabel.text, Is.EqualTo(latestWords), "Public projection still updates while its canvas is hidden.");
-                AssertYardPublicWords(publicCanvas, expected, scenery, true, "after hidden projection");
+                AssertYardPublicWords(publicCanvas, expected, scenery, true, true, "after hidden projection");
 
                 // The board in play, the yard framed, and the frame through a capture's lens.
                 if (screen.IsAssembling)
@@ -474,7 +474,7 @@ namespace Gamesim.Tests.PlayMode
                 yield return ThroughTheLens(1600, 900, () =>
                 {
                     AssertNoWorldLabelOnTheBoard(screen, "The practice board through the capture's lens", true);
-                    AssertYardPublicWords(publicCanvas, expected, scenery, true, "through the capture lens");
+                    AssertYardPublicWords(publicCanvas, expected, scenery, true, true, "through the capture lens");
                 });
 
                 var surface = screen.GetComponent<Canvas>();
@@ -483,17 +483,17 @@ namespace Gamesim.Tests.PlayMode
                 Assert.That(screen.IsDrawn, Is.False, "A board whose canvas is off is not drawn.");
                 Assert.That(director.IsHouseUnderChrome, Is.True, "The episode screen the attempt was opened from is still open,");
                 AssertArenaOverlays(sign, discs, npcs, true, "with the board off");
-                AssertYardPublicWords(publicCanvas, expected, scenery, false, "with the board off");
+                AssertYardPublicWords(publicCanvas, expected, scenery, false, true, "with the board off");
                 Assert.That(publicLabel.text, Is.EqualTo(latestWords), "The world-only view reads the latest projection, not stale words.");
 
                 surface.enabled = true;
                 yield return Frames(3);
                 AssertArenaOverlays(sign, discs, npcs, false, "with the board back");
-                AssertYardPublicWords(publicCanvas, expected, scenery, true, "with the board back");
+                AssertYardPublicWords(publicCanvas, expected, scenery, true, true, "with the board back");
                 director.ClosePanels();
                 yield return Frames(3);
                 Assert.That(screen.IsDrawn, Is.False, "Closing the attempt relinquishes the yard view.");
-                AssertYardPublicWords(publicCanvas, expected, scenery, false, "after close");
+                AssertYardPublicWords(publicCanvas, expected, scenery, false, false, "after close");
                 Assert.That(publicLabel.text, Is.EqualTo(latestWords));
             }
             finally
@@ -507,13 +507,16 @@ namespace Gamesim.Tests.PlayMode
         }
 
         private static void AssertYardPublicWords(Canvas publicCanvas, IEnumerable<(Renderer Renderer, bool Enabled)> lettering,
-            IEnumerable<(Renderer Renderer, bool Enabled)> scenery, bool hidden, string when)
+            IEnumerable<(Renderer Renderer, bool Enabled)> scenery, bool hidden, bool standing, string when)
         {
             Assert.That(publicCanvas.enabled, Is.EqualTo(!hidden), "The public yard canvas is " + (hidden ? "hidden " : "restored ") + when + ".");
             foreach (var word in lettering)
             {
                 Assert.That(word.Renderer.enabled, Is.EqualTo(hidden ? false : word.Enabled), "Authored " + word.Renderer.name + " respects original visibility " + when + ".");
-                Assert.That(word.Renderer.gameObject.activeInHierarchy, Is.True, "Chrome changes lettering output, never its physical scene ownership.");
+                // Chrome changes the lettering's output, never whether it stands: the lettering stands with the competition's
+                // set and is put away with it in everyday life (competition yard, slice 2), which is the yard's one owner's call.
+                Assert.That(word.Renderer.gameObject.activeInHierarchy, Is.EqualTo(standing),
+                    "Authored " + word.Renderer.name + " " + (standing ? "stands with the deployed set " : "is put away with the course ") + when + ".");
             }
             foreach (var part in scenery)
                 Assert.That(part.Renderer.enabled, Is.EqualTo(part.Enabled), "The physical backdrop and its neon stay " + when + ".");

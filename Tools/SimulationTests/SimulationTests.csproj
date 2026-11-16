@@ -78,6 +78,9 @@
     <!-- Competition show slice 1: the show's plan reads the committed standings and draws nothing; pure, so it runs here too. -->
     <Compile Include="$(EditMode)CompetitionShowPlanTests.cs" />
     <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/CompetitionShowPlan.cs" />
+    <!-- Competition yard slice 2: the list of what stands in the yard when; pure, so it runs here too. -->
+    <Compile Include="$(EditMode)CompetitionYardPiecesTests.cs" />
+    <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/CompetitionYardPieces.cs" />
     <Compile Include="$(EditMode)HaveNotTests.cs" />
     <Compile Include="$(EditMode)StrategyRulesTests.cs" />
     <Compile Include="$(EditMode)VetoDrawTests.cs" />

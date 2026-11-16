@@ -76,8 +76,10 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(after.revision, Is.EqualTo(before.revision + 1), caption + ": the result commits at once, as it always has.");
             Assert.That(director.IsCompetitionShowRunning, Is.True, caption + ": the committed endurance result is staged in the yard.");
             Assert.That(CompetitionCardPlaying(), Is.False, "The standings card waits for the show.");
+            // The course is deployed as the show's set, and its pieces in the station field struck (competition yard, slice 2).
+            AssertDeployedYard("Endurance", caption + ": while the show is staged");
             var putAway = director.CompetitionYardPutAway.ToArray();
-            Assert.That(putAway, Is.Not.Empty, "The yard's everyday pieces standing in the field are put away.");
+            Assert.That(putAway, Is.Not.Empty, "The set's pieces standing in the field are struck.");
             Assert.That(putAway.All(renderer => renderer != null && !renderer.enabled), Is.True);
             var standings = CommittedStandings(after);
             yield return null;
@@ -124,8 +126,9 @@ namespace Gamesim.Tests.PlayMode
             }
             else Assert.That(record.Drops.Count, Is.LessThan(standings.Count - 1), "The press cut the show short.");
             Assert.That(CompetitionCardPlaying(), Is.True, "The standings card follows the show.");
-            Assert.That(putAway.All(renderer => renderer == null || renderer.enabled), Is.True, "Every piece put away is back.");
+            Assert.That(putAway.All(renderer => renderer == null || renderer.enabled), Is.True, "Every piece struck from the field is switched back on,");
             Assert.That(director.CompetitionYardPutAway, Is.Empty);
+            AssertEverydayYard(caption + (skip ? ", skipped," : "") + " once the show is over");
             yield return null;
             Assert.That(SceneComponents<CompetitionApparatus>(), Is.Empty, "No rig is left in the yard.");
             Assert.That(SceneComponents<Transform>().Any(node => node.name == "Competition stage runtime"), Is.False, "No stage is left in the yard.");
@@ -188,6 +191,7 @@ namespace Gamesim.Tests.PlayMode
             var field = EpisodeEngine.CompetitionPlayers(before).Select(actor => actor.id).ToList();
             ButtonWithCaption(EpisodeHud.SimulateCompetitionCaption).onClick.Invoke();
             Assert.That(director.IsCompetitionShowRunning, Is.True, "Reduced motion still places the field.");
+            AssertDeployedYard("Endurance", "for the still show");
             var putAway = director.CompetitionYardPutAway.ToArray();
             float held = -1f, deadline = Time.realtimeSinceStartup + 60f;
             while (director.IsCompetitionShowRunning && Time.realtimeSinceStartup < deadline)
@@ -208,6 +212,7 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(record.Stationed, Is.EquivalentTo(field));
             Assert.That(CompetitionCardPlaying(), Is.True, "The card follows the still hold.");
             Assert.That(putAway.All(renderer => renderer == null || renderer.enabled), Is.True, "The yard is put back.");
+            AssertEverydayYard("after the still show");
             yield return null;
             Assert.That(SceneComponents<CompetitionApparatus>(), Is.Empty);
         }
@@ -216,6 +221,7 @@ namespace Gamesim.Tests.PlayMode
         public IEnumerator CompetitionShow_TheRankedGameIsItsOwnShowAndCommitsToItsCardAtOnce()
         {
             yield return EnterInstrumentAttempt("Endurance", ranked: true, beforeEntry: () => director.CompetitionShowsInBatchRuns = true);
+            AssertDeployedYard("Endurance", "while the player plays the ranked game");
             var putAway = director.CompetitionYardPutAway.ToArray();
             Assert.That(putAway, Is.Not.Empty, "The yard changes for the player's own game as well.");
             Assert.That(putAway.All(renderer => !renderer.enabled), Is.True);
@@ -228,6 +234,7 @@ namespace Gamesim.Tests.PlayMode
             yield return null; yield return null;
             Assert.That(CompetitionCardPlaying(), Is.True, "Its card plays at once, as it always has.");
             Assert.That(putAway.All(renderer => renderer == null || renderer.enabled), Is.True, "The yard is put back with the arena.");
+            AssertEverydayYard("under the ranked game's card");
             Assert.That(SceneComponents<CompetitionApparatus>(), Is.Empty);
         }
 
@@ -239,7 +246,8 @@ namespace Gamesim.Tests.PlayMode
             ButtonWithCaption(EpisodeHud.SimulateCompetitionCaption).onClick.Invoke();
             Assert.That(director.Snapshot.revision, Is.EqualTo(before.revision + 1));
             Assert.That(director.IsCompetitionShowRunning, Is.False, "Slice 1 stages endurance only.");
-            Assert.That(director.CompetitionYardPutAway, Is.Empty, "Nothing in the yard is put away.");
+            Assert.That(director.CompetitionYardPutAway, Is.Empty, "Nothing in the field is struck.");
+            AssertEverydayYard("for a kind that is not staged: the course is never deployed");
             yield return null; yield return null;
             Assert.That(CompetitionCardPlaying(), Is.True, "The card plays at once, as it always has.");
             Assert.That(SceneComponents<CompetitionApparatus>(), Is.Empty);

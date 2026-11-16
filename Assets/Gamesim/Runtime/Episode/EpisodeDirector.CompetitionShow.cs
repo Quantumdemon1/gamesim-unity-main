@@ -112,7 +112,16 @@ namespace Gamesim.Episode
         public CompetitionShowRecord LastCompetitionShow { get; private set; }
 
         /// <summary>The yard's renderers the arena has put away now (its own game's or a show's). Empty when none.</summary>
-        public IReadOnlyList<Renderer> CompetitionYardPutAway => competitionYard != null ? competitionYard.Hidden : (IReadOnlyList<Renderer>)Array.Empty<Renderer>();
+        public IReadOnlyList<Renderer> CompetitionYardPutAway => competitionYard.Hidden;
+
+        /// <summary>Whether the yard's course is deployed as a competition's set now (competition yard, slice 2); false in everyday life.</summary>
+        public bool CompetitionYardDeployed => competitionYard.State == CompetitionYardDressing.YardState.Competition;
+
+        /// <summary>The kind of competition the course is deployed for; null in everyday life.</summary>
+        public string CompetitionYardKind => competitionYard.Kind;
+
+        /// <summary>The competition equipment put away for everyday life now (competition yard, slice 2). Empty while a set is deployed.</summary>
+        public IReadOnlyList<GameObject> CompetitionYardStowed => competitionYard.Stowed;
 
         /// <summary>Skips the running show: the card plays now. What the skip chip's press does; public for tests.</summary>
         public void SkipCompetitionShow()
@@ -173,7 +182,7 @@ namespace Gamesim.Episode
                 Debug.Log("Competition show declined: the winner could not take a station.");
                 return false;
             }
-            run.PutAway = competitionYard != null ? competitionYard.Hidden.Count : 0;
+            run.PutAway = competitionYard.Hidden.Count;
             // The chrome stands aside as for a reveal, the house's input is held, and the camera takes the yard.
             HoldHudForReveal(redraw: true);
             if (player != null) player.SetInputEnabled(false);

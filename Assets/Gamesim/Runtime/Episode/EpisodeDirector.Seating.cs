@@ -178,13 +178,16 @@ namespace Gamesim.Episode
             return reason == null;
         }
 
-        /// <summary>The course's nearest standing prop to a spot, by its origin, and how far it is across the floor.</summary>
+        /// <summary>
+        /// The course's nearest standing prop to a spot, by its origin, and how far it is across the floor.
+        /// Put-away props count too: the spot must stay clear of where they stand when the course deploys.
+        /// </summary>
         private Transform NearestCourseProp(Vector3 feet, out float distance)
         {
             Transform nearest = null;
             distance = float.PositiveInfinity;
             foreach (var root in gameObject.scene.GetRootGameObjects())
-                foreach (var node in root.GetComponentsInChildren<Transform>())
+                foreach (var node in root.GetComponentsInChildren<Transform>(true))
                 {
                     if (Array.IndexOf(CourseStandingProps, node.name) < 0) continue;
                     float flat = FlatDistance(node.position, feet);

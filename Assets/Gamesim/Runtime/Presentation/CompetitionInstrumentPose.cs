@@ -26,6 +26,16 @@ namespace Gamesim.Presentation
 
         public void SetFitGate(Func<CompetitionApparatus,bool> gate)=>fitGate=gate;
 
+        /// <summary>
+        /// A staged show's effort, 0 to 1 (competition show, slice 1): while the hands hold the grip
+        /// the body leans back against it and shakes, more as the effort grows. Zero - the default,
+        /// and always under reduced motion and in the player's own game - writes nothing. The lean is
+        /// a bone write like the hands', undone each frame before the animator's next pose.
+        /// </summary>
+        public void SetStrain(float value)=>strain=Mathf.Clamp01(value);
+        public float Strain=>strain;
+        private float strain;
+
         public void Bind(CompetitionApparatus apparatus,MiniGameRun run,bool active,bool isPaused,bool readyForFit=false)
         {
             instrument=apparatus;
@@ -74,6 +84,21 @@ namespace Gamesim.Presentation
             // component from inside the gate, so re-check its binding before writing any bone.
             if(fitGate!=null && !fitGate(instrument))return;
             if(instrument==null || !instrument.isActiveAndEnabled || (!holding && !pressing))return;
+            if(holding && strain>0f)
+            {
+                // Leaning back against the weight, and the shake of a held effort: two uneven
+                // frequencies so it never reads as a loop. Before the hands, which then reach from
+                // the moved shoulders.
+                Transform spine=animator.GetBoneTransform(HumanBodyBones.Chest)??animator.GetBoneTransform(HumanBodyBones.Spine);
+                if(spine!=null)
+                {
+                    // Each body's own phase, from where it stands: neighbours never shake in step.
+                    float phase=Mathf.Repeat(transform.position.x*1.37f+transform.position.z*2.11f,6.2832f),t=Time.time;
+                    float shake=(Mathf.Sin(t*23f+phase)*.6f+Mathf.Sin(t*37f+phase*1.7f)*.4f)*strain*2.2f;
+                    float lean=-strain*5f;
+                    Write(spine,Quaternion.AngleAxis(lean+shake,transform.right)*Quaternion.AngleAxis(shake*.7f,transform.forward)*spine.rotation);
+                }
+            }
             if(holding)
             {
                 Transform anchor=instrument.transform.parent;
@@ -124,7 +149,7 @@ namespace Gamesim.Presentation
 
         public void Release()
         {
-            Restore();instrument=null;holding=pressing=fitReady=false;fitGate=null;HasContact=false;lastHits=lastRoll=0;pressUntil=0;
+            Restore();instrument=null;holding=pressing=fitReady=false;fitGate=null;HasContact=false;lastHits=lastRoll=0;pressUntil=0;strain=0f;
         }
         private void OnDisable()=>Release();
         private void OnDestroy()=>Release();

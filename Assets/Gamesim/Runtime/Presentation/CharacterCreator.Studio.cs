@@ -148,13 +148,6 @@ namespace Gamesim.Presentation
                 Seen(button, 10);
                 y += pitch;
             }
-            if (r.height - y > 150f)
-            {
-                var quote = Words(side, "“Same house.\nDifferent stories.\nMake them yours.”", 17f, UiTheme.Paper,
-                    new Rect(22f, r.height - 150f, r.width - 40f, 90f));
-                quote.fontStyle = FontStyles.Italic;
-                Words(side, "— GAMESIM", 14f, UiTheme.Heading, new Rect(22f, r.height - 54f, r.width - 40f, 22f), TextAlignmentOptions.TopRight);
-            }
         }
 
         private static string CategoryIcon(string category)
@@ -217,18 +210,6 @@ namespace Gamesim.Presentation
             image.rectTransform.sizeDelta = new Vector2(pictureWidth, pictureHeight);
             // The studio leaves a margin under the feet; take it back so they meet the ring.
             image.rectTransform.anchoredPosition = new Vector2(0f, -pictureHeight * .05f);
-
-            if (full && r.width >= 460f)
-            {
-                var side = Words(stage, "REAL\nPLAYERS\nBIGGER\nPOSSIBILITIES", 15f, new Color(UiTheme.Accent.r, UiTheme.Accent.g, UiTheme.Accent.b, .8f),
-                    new Rect(8f, 70f, 200f, 120f));
-                side.characterSpacing = 4f; side.lineSpacing = 8f;
-                var neon = Words(stage, "Same House.\nDifferent Stories.", 30f, UiTheme.Hex("FF7AD9"),
-                    new Rect(r.width - 250f, 80f, 240f, 110f), TextAlignmentOptions.Center, "Preview neon");
-                neon.fontStyle = FontStyles.Italic; neon.lineSpacing = -20f;
-                var semibold = UiTheme.Font(UiTheme.Weight.SemiBold); if (semibold != null) neon.font = semibold;
-                neon.rectTransform.localRotation = Quaternion.Euler(0f, 0f, 8f);
-            }
 
             // The turntable: the arrows either side of its name, on the ring's front edge.
             var turntable = HudPrimitives.Fill("Turntable", stage, new Color(UiTheme.GlassFill.r, UiTheme.GlassFill.g, UiTheme.GlassFill.b, .92f), 26);

@@ -444,7 +444,7 @@ Veto-board asks still stay on the board (the owner, 30 Oct, question 3), because
 9. *In person.*
    - `OpenOnAsk` sets `conversationCategory = DealsCategoryCaption` and `invitedDealId = card id` for a card too. The existing gate at R/EpisodeDirector.ConversationNavigation.cs:156-157 then reaches `RenderAskDialogue` with no edit to that file.
    - The director keeps the open dialogue's source in a field beside `askDialogueWay`. `RenderAskDialogue` (R/EpisodeDirector.ComesToYou.cs:621-658) dispatches on it, and for a card finds its record in `s.replyCards`, not in `NpcDeals.Pending` (:623).
-   - Once the card is gone (answered, lapsed or no longer first), it lets the dialogue go as today (:624-628) and also clears `conversationCategory`. The conversation then lands on its topics wheel, not on a Deals page that invites nothing.
+   - Once the card is gone (answered, lapsed or no longer first), it lets the dialogue go as today (:624-628) and also clears `conversationCategory`. The conversation then shows "WHAT HAPPENED" (the answer's own line, when there is one) with Back to topics, which leads to its topics wheel, not a Deals page that invites nothing (the lead's ruling on OF-a's review, 13 Nov).
    - Think it over (walk-over) and Back to topics behave as for an offer. A card left unanswered costs nothing more than what the houseguest already did (S/ReplyCards.cs:17-19), and the lapse line says when it goes.
 10. *On the card host* (slice 2's `AskCard`, :709-740). The card is found in `s.replyCards` (not :713-714's deal lookup). An answer there makes no `ConversationExchange`. So `CaptureAskCardReply` keeps instead the answer's visible log line (the `reply` event the command wrote), and the page shows it under a new name `AskOutcomeName`, then Back to the house. It never shows `AskGoneLine` ("That offer is no longer on the table."). A card that went before any answer shows a new `AskCardGoneLine`, "They've moved on.".
 11. *The switch.* `public bool? ReplyAsksEnabled { get; set; }`. When it is null it follows `AsksOn`; when false, `CurrentAsks()` drops the Card and Pitch rows (the reader stays pure and lists them). Slice 1-3 tests therefore read today's queue even with a card waiting. Their installer's save carries no reply card, and OF-a asserts that.
@@ -486,6 +486,11 @@ Veto-board asks still stay on the board (the owner, 30 Oct, question 3), because
 - **The other ways out.** Back to topics, or closing, starts the gap as today.
 
 **Outside the offers plan.** HR-1 (the NPC Head of Household waits in the HoH room while a decider) and HR-2 (a player HoH's pitchers wait in or by the room, and approaching one opens their pitch as OF-p does) are planned in PLAN-R7-HTB r4, not here. HR-2 calls OF-p's opener and lands after OF-b.
+
+**Stack O2's fix slice (2026-11-14), after OF-p, OF-b and HR-2.**
+- *Item 9, a card gone before any answer.* A reply card goes unanswered only with the phase: free time's end (into the HoH competition) or the campaign's (into eviction night). Both are ceremonies with nobody deciding, so the conversation there is the ceremony's notice card ("Conversation unavailable during this ceremony."), never the card's dialogue or a Deals page. Item 9's "WHAT HAPPENED" with Back to topics is the answered card's page. OF-p's case `ComesToYou_ReplyACardGoneInTheConversationSaysWhatHappened` expected that page after an advance and failed at its first Unity run (set o2tg1); it now pins the notice. The product did not change.
+- *The "N more" line (the Pitch source).* It counts an ask only if it can still come by itself. A pitch that is due as a card is left out: its pitcher has been out of reach long enough or missed twice, or walk-overs are off. A pitch has no card, so it would never come. "There's something else" still offers such a pitch, because the player asks for it there.
+- *HR-1's trip.* The NPC Head of Household jogs up to the suite (4 m/s on the run take, the player's own run) for that trip alone. The walk from the farthest room took 19.1 s.
 
 ---
 

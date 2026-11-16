@@ -28,6 +28,11 @@ namespace Gamesim.Episode
         public const string AskOutcomeName = "Ask outcome";
         /// <summary>What a reply card's page says when the card went before any answer (slice 4a).</summary>
         public const string AskCardGoneLine = "They've moved on.";
+        /// <summary>
+        /// The control an answered ask's page offers when the same houseguest has another ask waiting (slice 4b): it opens
+        /// that ask in the same dialogue or card. No other control says it.
+        /// </summary>
+        public const string AskSomethingElseCaption = "There's something else";
 
         /// <summary>The walk-over's eyebrow: "MAYA PULLS YOU ASIDE".</summary>
         public static string AskWalkOverEyebrow(string first) => (first ?? "").ToUpperInvariant() + " PULLS YOU ASIDE";

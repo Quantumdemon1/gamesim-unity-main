@@ -202,7 +202,7 @@ namespace Gamesim.Episode
             // committed result, and the house walking to its seats is the reveal's first beat.
             // The veto's draw holds it too: the status line names the drawn before its chips come out.
             bool revealing = VetoDrawRevealing || (keyCeremony != null && keyCeremony.IsPlaying) || (voteReveal != null && voteReveal.IsPlaying)
-                || JuryRevealPlaying || CeremonyStageNarrating;
+                || JuryRevealPlaying || CeremonyStageNarrating || CompetitionShowNarrating;
             // A staged eviction keeps the chrome aside past its card, through the goodbye and the
             // walk out to the door shut behind them (MOCKUP-PASS-PLAN M19). Not folded into
             // `revealing`: the walk out starts once nothing narrates, and an exit that counted as

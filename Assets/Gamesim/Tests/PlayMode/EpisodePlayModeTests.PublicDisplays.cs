@@ -54,7 +54,7 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(CompetitionGameScreen.AnyDrawn,Is.False,"The committed result has replaced the attempt board.");
             yield return Frames(3);
             Assert.That(director.IsHouseUnderChrome,Is.True,"The real result still owns the house view.");
-            AssertYardPublicWords(yardCanvas,lettering,scenery,true,"under the committed result, with no attempt board drawn");
+            AssertYardPublicWords(yardCanvas,lettering,scenery,true,false,"under the committed result, with no attempt board drawn");
             Assert.That(displays.HeadOfHouseholdId,Is.EqualTo(hoh.id));
             Assert.That(displays.HeadOfHouseholdName,Is.EqualTo(hoh.name));
             Assert.That(displays.YardText,Does.Contain(hoh.name));
@@ -87,7 +87,7 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(resultCard.IsPlaying,Is.False,"The real Continue pointer release dismisses the result.");
             if(director.IsPanelOpen){yield return PressKey(Key.Escape);yield return Frames(3);}
             Assert.That(director.IsHouseUnderChrome,Is.False,"Native dismissal returns the actual world display to the house.");
-            AssertYardPublicWords(yardCanvas,lettering,scenery,false,"after native result/panel dismissal");
+            AssertYardPublicWords(yardCanvas,lettering,scenery,false,false,"after native result/panel dismissal");
             Assert.That(yardLabel.text,Is.EqualTo(HousePublicDisplays.PublicYardText(state)),"The latest committed words return with the canvas.");
             Assert.That(director.Snapshot.hohId,Is.EqualTo(state.hohId));
             Assert.That(director.Snapshot.revision,Is.EqualTo(state.revision));
@@ -298,6 +298,7 @@ namespace Gamesim.Tests.PlayMode
             var state=director.Snapshot;
             Assert.That(state.phase,Is.EqualTo(EpisodePhase.HoH));Assert.That(state.competitionResolved,Is.True);
             string hoh=state.Find(state.hohId).name;
+            GameObject[] gates=null;
             try
             {
                 // Reproduce both parts of the retained native defect on the same actual
@@ -306,6 +307,18 @@ namespace Gamesim.Tests.PlayMode
                 label.text="Week "+state.week+"\n"+EpisodeDirector.CompetitionTitleFor(state)+"\nWinner: "+hoh
                     +"\nHead of Household: "+hoh+"\nPower of Veto: "+(state.Find(state.vetoHolderId)?.name??"Not yet decided");
                 Canvas.ForceUpdateCanvases();label.ForceMeshUpdate();
+                // Everyday life first: the course's gates are put away (competition yard, slice 2), so the
+                // old wide words are blocked by no gate.
+                Assert.That(SceneComponents<Renderer>().Any(r=>r.name==EpisodeDirector.CompetitionGateName && r.gameObject.activeInHierarchy),Is.False,
+                    "Under the dismissed result the yard is in everyday life: no gate stands.");
+                if(!PublicSurfacesVisible(surfaces,eye,out var other))
+                    Assert.That(other,Does.Not.Contain(EpisodeDirector.CompetitionGateName),"A gate put away blocks nothing: "+other);
+                // The control: stand the put-away gates where the course deploys them; the old wide words must
+                // then be blocked by a real gate, proving PublicSurfacesVisible catches a real obstruction.
+                gates=director.CompetitionYardStowed.Where(piece=>piece!=null && piece.GetComponentsInChildren<Renderer>(true)
+                    .Any(r=>r.name==EpisodeDirector.CompetitionGateName)).ToArray();
+                Assert.That(gates,Is.Not.Empty,"The course's gates are among the yard's put-away pieces.");
+                foreach(var gate in gates)gate.SetActive(true);
                 Assert.That(PublicSurfacesVisible(surfaces,eye,out var blocker),Is.False,
                     "The original wide rectangle plus long role/name lines must reproduce an actual glyph obstruction.");
                 Assert.That(blocker,Does.Contain("opaque mesh face: bb_set_comp_gate"),
@@ -313,9 +326,12 @@ namespace Gamesim.Tests.PlayMode
             }
             finally
             {
+                if(gates!=null)foreach(var gate in gates)if(gate!=null)gate.SetActive(false);
                 rect.offsetMin=min;rect.offsetMax=max;label.text=current;
                 Canvas.ForceUpdateCanvases();label.ForceMeshUpdate();
             }
+            Assert.That(SceneComponents<Renderer>().Any(r=>r.name==EpisodeDirector.CompetitionGateName && r.gameObject.activeInHierarchy),Is.False,
+                "The control puts the gates away again.");
             Assert.That(PublicSurfacesVisible(surfaces,eye,out var restored),Is.True,
                 "The real current public glyphs must again clear the actual opaque geometry after control cleanup: "+restored);
             Assert.That(label.text,Is.EqualTo(HousePublicDisplays.PublicYardText(state)));

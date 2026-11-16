@@ -501,9 +501,16 @@ namespace Gamesim.Episode
             pendingAttemptLine = CompetitionGameScreen.AttemptLine(challengeRun);
             EndCompetitionArena();
             challengeActive = false;
-            var result = Submit(new EpisodeCommand { id = challengeCommandId, actorId = challengeOrigin.playerId,
-                expectedPhase = challengeOrigin.phase, expectedRevision = challengeOrigin.revision,
-                kind = EpisodeCommandKind.Compete, performance = challengeRun.Performance });
+            // Played live: the ranked game's own arena was the show (EpisodeDirector.CompetitionShow.cs).
+            competitionLiveCommit = true;
+            CommandResult result;
+            try
+            {
+                result = Submit(new EpisodeCommand { id = challengeCommandId, actorId = challengeOrigin.playerId,
+                    expectedPhase = challengeOrigin.phase, expectedRevision = challengeOrigin.revision,
+                    kind = EpisodeCommandKind.Compete, performance = challengeRun.Performance });
+            }
+            finally { competitionLiveCommit = false; }
             challengeCommitting = false;
             pendingAttemptLine = null;
             if (!result.accepted)
@@ -690,7 +697,10 @@ namespace Gamesim.Episode
             if (challengeHits < 3) return;
             if (challengePractice) { message = "Practice complete. Your season is unchanged."; CancelChallenge(); return; }
             EndCompetitionArena();
-            challengeActive = false; Commit(challengeOrigin, EpisodeCommandKind.Compete, performance:challengeTotal / 3);
+            // Played live: the attempt was the show (EpisodeDirector.CompetitionShow.cs).
+            challengeActive = false; competitionLiveCommit = true;
+            try { Commit(challengeOrigin, EpisodeCommandKind.Compete, performance:challengeTotal / 3); }
+            finally { competitionLiveCommit = false; }
             if (cameraRig != null) cameraRig.ReleaseShot(CompetitionShotSeconds);
         }
     }

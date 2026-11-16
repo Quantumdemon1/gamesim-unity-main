@@ -144,7 +144,7 @@ namespace Gamesim.Episode
             state.npcSocial != null && !NpcSocialState.IsEligiblePhase(state.phase) && !FinaleNight(state.phase)
             && NpcSocialState.AutonomyHasBegun(state) && state.Find(state.playerId)?.status == ContestantStatus.Active
             && state.Active.Count(actor => !actor.isPlayer) >= 2
-            && (!Application.isBatchMode || StagesInBatchRuns || WalkOutsInBatchRuns || ActsInBatchRuns);
+            && (!Application.isBatchMode || StagesInBatchRuns || WalkOutsInBatchRuns || ActsInBatchRuns || CompetitionShowsInBatchRuns);
 
         /// <summary>
         /// Editor-only: builds the house's world now, as a season's first social phase does and a

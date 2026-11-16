@@ -26,6 +26,29 @@ namespace Gamesim.Tests.PlayMode
     {
         private MainMenu Menu() => director.GetComponentInChildren<MainMenu>(true);
 
+        /// <summary>
+        /// The front door's and the creator's slogans and their decoration, taken out at the owner's
+        /// word (2026-11-14): no live label carries one, no object of theirs is built, and the words
+        /// that stay - the game's name - are still drawn.
+        /// </summary>
+        private static readonly string[] RemovedSlogans =
+            { "bigger stories", "different stories", "everyone watching", "next icon", "possibilities", "make them yours" };
+        private static readonly string[] RemovedSloganObjects =
+            { "Tagline", "Tagline glow", "Tagline rule", "Tagline strap", "Studio strap", "Strap rule", "Preview neon" };
+
+        private static void AssertNoSlogan(Component screen, string where, params string[] kept)
+        {
+            var words = screen.GetComponentsInChildren<TMPro.TMP_Text>(false).Select(label => label.text ?? string.Empty).ToArray();
+            foreach (string slogan in RemovedSlogans)
+                Assert.That(words.Where(text => text.Replace('\n', ' ').ToLowerInvariant().Contains(slogan)), Is.Empty,
+                    where + " draws no \"" + slogan + "\" line.");
+            var names = screen.GetComponentsInChildren<Transform>(false).Select(t => t.name).ToArray();
+            foreach (string name in RemovedSloganObjects)
+                Assert.That(names, Has.No.Member(name), where + " builds no " + name + ".");
+            foreach (string word in kept)
+                Assert.That(words, Has.Member(word), where + " still draws " + word + ".");
+        }
+
         [UnityTest]
         public IEnumerator MainMenu_DoesNotOpenItselfWhenASaveRootIsSupplied()
         {
@@ -54,6 +77,8 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(CastButtons(MainMenu.NewSeasonCaption), Has.Length.EqualTo(1));
             Assert.That(CastButtons(MainMenu.SettingsCaption), Has.Length.EqualTo(1));
             Assert.That(CastButtons(MainMenu.QuitCaption), Has.Length.EqualTo(1));
+            // The name stands without a slogan or a promise line under it (the owner, 2026-11-14).
+            AssertNoSlogan(Menu(), "The main menu", "GAMESIM", "THE HOUSE");
 
             director.CloseMainMenu();
             yield return null;

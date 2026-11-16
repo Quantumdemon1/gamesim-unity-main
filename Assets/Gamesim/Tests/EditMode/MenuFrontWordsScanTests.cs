@@ -99,16 +99,16 @@ namespace Gamesim.Tests.EditMode
         [Test]
         public void TheScans_FindWhatTheyForbid()
         {
-            Assert.That(WordProblems("A.cs", Code("hud.Action(\"Recover validated backup\", go); // validated in a comment"), DeveloperWords),
+            Assert.That(WordProblems("A.cs", Code("hud.Action(\"Recover validated backup\", go); // validated in a comment"), DeveloperWords).ToList(),
                 Has.Count.EqualTo(1), "A developer word on screen, and none in a comment.");
-            Assert.That(HeadingProblems("A.cs", Code("hud.Heading(\"Display\"); hud.Section(\"SOUND\"); hud.SectionHeading(\"CAMERA\");")),
+            Assert.That(HeadingProblems("A.cs", Code("hud.Heading(\"Display\"); hud.Section(\"SOUND\"); hud.SectionHeading(\"CAMERA\");")).ToList(),
                 Has.Count.EqualTo(2), "Both other styles; the one style passes.");
-            Assert.That(HeadingProblems("Episode/EpisodeDirector.Controls.cs", Code("hud.Heading(context); hud.Section(\"CONTROLS\");")),
+            Assert.That(HeadingProblems("Episode/EpisodeDirector.Controls.cs", Code("hud.Heading(context); hud.Section(\"CONTROLS\");")).ToList(),
                 Has.Count.EqualTo(1), "Controls keeps its lines' second-level headings; its section takes the one style.");
             Assert.That(Literals(Code("Chip(row, \"Cast slots\", 0f); var slot = 1; // \"Edit slot\"")).Count(text => Slot.IsMatch(text)),
                 Is.EqualTo(1), "A slot on screen, not in a name or a comment.");
-            Assert.That(MarkProblems("Presentation/Screen.cs", Code("mark.sprite = UiTheme.Pack(PackArt.IconHome);")), Has.Count.EqualTo(1));
-            Assert.That(MarkProblems("Presentation/Screen.cs", Code("var eye = UiTheme.Icon(\"eye\"); Box(\"Eye emblem\", card);")),
+            Assert.That(MarkProblems("Presentation/Screen.cs", Code("mark.sprite = UiTheme.Pack(PackArt.IconHome);")).ToList(), Has.Count.EqualTo(1));
+            Assert.That(MarkProblems("Presentation/Screen.cs", Code("var eye = UiTheme.Icon(\"eye\"); Box(\"Eye emblem\", card);")).ToList(),
                 Has.Count.EqualTo(1), "An eye emblem of a card's own.");
             Assert.That(MarkProblems("Presentation/Screen.cs", Code("var mark = BrandMark.Draw(\"Brand mark\", brand, UiTheme.Heading);")), Is.Empty);
         }

@@ -133,6 +133,51 @@ namespace Gamesim.Tests.EditMode
         }
 
         [Test]
+        public void TheAttemptEndsWhenTheTowerIsHomeAndFeedsItsScoreAsEveryGameDoes()
+        {
+            var run = new MiniGameRun(CompetitionMiniGames.Kind.Tower, 11, CompetitionMiniGames.TowerRules);
+            Assert.That(run.Definition, Is.SameAs(Gamesim.Simulation.CompetitionDefinitions.RingTower));
+            Assert.That(run.TimeLimit, Is.EqualTo(90));
+            run.Tick(30);
+            Assert.That(run.PickStack(1), Is.EqualTo(RingTowerPuzzle.Refusal.EmptyStack));
+            Assert.That(run.Feedback, Is.EqualTo("Stack 2 is empty"));
+            foreach (var (from, to) in RingTowerPuzzle.Solution(4))
+            {
+                Assert.That(run.Finished, Is.False);
+                run.PickStack(from); run.PickStack(to);
+            }
+            Assert.That(run.Finished, Is.True, "The tower home ends the attempt at once, so the time left counts.");
+            Assert.That(run.Score, Is.EqualTo(RingTowerPuzzle.Score(true, 15, 15, 60, 90, 4, 4)));
+            Assert.That(run.Performance, Is.EqualTo(run.Score / 10).Within(1e-9), "0 to 1, as Compete takes it.");
+            Assert.That(run.PickStack(0), Is.EqualTo(RingTowerPuzzle.Refusal.Finished));
+
+            var late = new MiniGameRun(CompetitionMiniGames.Kind.Tower, 11, CompetitionMiniGames.TowerRules);
+            late.PickStack(0); late.PickStack(2);
+            late.Tick(200);
+            Assert.That(late.Finished, Is.True, "The clock ends an unfinished tower.");
+            Assert.That(late.Score, Is.Zero, "No ring home.");
+        }
+
+        [Test]
+        public void TheTowerIsRulesFivesAndPlaysItsOwnDefinitionOnly()
+        {
+            Assert.Throws<ArgumentOutOfRangeException>(() => new MiniGameRun(CompetitionMiniGames.Kind.Tower, 1, CompetitionMiniGames.WidenedRules));
+            Assert.Throws<ArgumentException>(() => new MiniGameRun(CompetitionMiniGames.Kind.Tower, 1, CompetitionMiniGames.TowerRules,
+                Gamesim.Simulation.CompetitionDefinitions.HouseMemory));
+            Assert.Throws<ArgumentException>(() => new MiniGameRun(CompetitionMiniGames.Kind.Memory, 1, CompetitionMiniGames.TowerRules,
+                Gamesim.Simulation.CompetitionDefinitions.RingTower));
+            Assert.That(CompetitionMiniGames.For(Gamesim.Simulation.CompetitionDefinitions.RingTower, "Mental"), Is.EqualTo(CompetitionMiniGames.Kind.Tower));
+            Assert.That(CompetitionMiniGames.For(Gamesim.Simulation.CompetitionDefinitions.HouseMemory, "Mental"), Is.EqualTo(CompetitionMiniGames.Kind.Memory));
+            Assert.That(CompetitionMiniGames.For(null, "Mental"), Is.EqualTo(CompetitionMiniGames.Kind.Memory), "No definition: the kind's game.");
+            Assert.That(CompetitionMiniGames.EnterCaption(CompetitionMiniGames.Kind.Tower), Is.EqualTo("Enter tower challenge"), "Captions are a contract.");
+            Assert.That(CompetitionMiniGames.Brief(CompetitionMiniGames.Kind.Tower, CompetitionMiniGames.TowerRules),
+                Does.Contain("never a larger ring on a smaller one"), "The briefing says the rule plainly.");
+            var memory = new MiniGameRun(CompetitionMiniGames.Kind.Memory, 1, CompetitionMiniGames.TowerRules);
+            Assert.That(memory.Tower, Is.Null);
+            Assert.That(memory.PickStack(0), Is.EqualTo(RingTowerPuzzle.Refusal.NoSuchStack), "Only the tower takes a pick.");
+        }
+
+        [Test]
         public void ThePuzzlesOwnScoreReadsItsState()
         {
             var tower = new RingTowerPuzzle();

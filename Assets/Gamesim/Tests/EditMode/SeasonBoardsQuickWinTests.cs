@@ -70,5 +70,29 @@ namespace Gamesim.Tests.EditMode
             ceremony.events[0].phase = EpisodePhase.Nomination;
             Assert.That(EpisodeDirector.LastMoveLine(ceremony, 7), Is.Null, "A line from outside free time is not a move.");
         }
+
+        [Test]
+        public void ASightingTheHouseCommitsIsNeverTheLastMove()
+        {
+            var state = FreeTime(3);
+            var line = state.events[0];
+            Assert.That(EpisodeDirector.IsFreeTimeMove(new EpisodeCommand { kind = EpisodeCommandKind.DiscussGame }, state, line, 7),
+                Is.True, "The player's own move is noted.");
+            Assert.That(EpisodeDirector.IsFreeTimeMove(new EpisodeCommand { kind = EpisodeCommandKind.WitnessNpcAct }, state, line, 7),
+                Is.False, "Walking past an NPC's act is not a move.");
+            Assert.That(EpisodeDirector.IsFreeTimeMove(new EpisodeCommand { kind = EpisodeCommandKind.WitnessProximity }, state, line, 7),
+                Is.False, "Walking in on two houseguests is not a move.");
+            Assert.That(EpisodeDirector.IsFreeTimeMove(new EpisodeCommand { kind = EpisodeCommandKind.Advance }, state, line, 7), Is.False);
+        }
+
+        [Test]
+        public void AMoveIsNotedOnlyByALineItsOwnCommitWrote()
+        {
+            var state = FreeTime(3);
+            var move = new EpisodeCommand { kind = EpisodeCommandKind.SmallTalk };
+            Assert.That(EpisodeDirector.IsFreeTimeMove(move, state, state.events[0], 7), Is.True, "A line this commit wrote.");
+            Assert.That(EpisodeDirector.IsFreeTimeMove(move, state, state.events[0], 8), Is.False,
+                "A commit that logged nothing of its own must not point the line at an older one.");
+        }
     }
 }

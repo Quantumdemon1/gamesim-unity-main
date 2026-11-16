@@ -107,14 +107,34 @@ namespace Gamesim.Episode
         /// time after it, and showing the player a line of free time's own week. The way on and the
         /// opening's bookkeeping are not moves. Called by <see cref="Submit"/> with the line it showed.
         /// </summary>
-        private void NoteFreeTimeMove(EpisodeCommand command, EpisodeState after, EpisodeEvent visible)
+        private void NoteFreeTimeMove(EpisodeCommand command, EpisodeState after, EpisodeEvent visible, int sequenceBefore)
         {
-            if (command == null || after == null || visible == null) return;
-            if (command.kind == EpisodeCommandKind.Advance || command.kind == EpisodeCommandKind.MarkOpeningBeat) return;
-            if (after.phase != EpisodePhase.Social || visible.phase != EpisodePhase.Social || visible.week != after.week) return;
+            if (!IsFreeTimeMove(command, after, visible, sequenceBefore)) return;
             freeTimeLastMoveSequence = visible.sequence;
             freeTimeLastMoveLoad = loadGeneration;
             freeTimeLastMoveSession = after.sessionId;
+        }
+
+        /// <summary>
+        /// Whether a commit is a move of the player's for the "Last move" line: accepted in free time and
+        /// still in it, and showing a line of this week's free time that this very commit wrote (its
+        /// sequence is at least the season's next sequence before the commit). The way on, the opening's
+        /// bookkeeping and the sightings the house commits as the player walks past (an NPC act or two
+        /// houseguests in a room) are not moves: they never replace the move the player made.
+        /// </summary>
+        public static bool IsFreeTimeMove(EpisodeCommand command, EpisodeState after, EpisodeEvent visible, int sequenceBefore)
+        {
+            if (command == null || after == null || visible == null) return false;
+            switch (command.kind)
+            {
+                case EpisodeCommandKind.Advance:
+                case EpisodeCommandKind.MarkOpeningBeat:
+                case EpisodeCommandKind.WitnessNpcAct:
+                case EpisodeCommandKind.WitnessProximity:
+                    return false;
+            }
+            if (visible.sequence < sequenceBefore) return false;
+            return after.phase == EpisodePhase.Social && visible.phase == EpisodePhase.Social && visible.week == after.week;
         }
 
         /// <summary>The board's "Last move" line for this state: null before the week's first move, after a load, and in another season.</summary>

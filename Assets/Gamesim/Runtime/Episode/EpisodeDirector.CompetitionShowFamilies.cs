@@ -69,6 +69,8 @@ namespace Gamesim.Episode
 
         /// <summary>How far in front of a post (toward the house) a course's turn mark is tried, nearest last.</summary>
         private static readonly float[] CourseMarkDistances = { 4.5f, 4f, 3.5f, 3f, 2.5f, 2f };
+        // Straight back toward the house first; where that yard is not clear, to either side of the post.
+        private static readonly Vector3[] CourseMarkDirections = { Vector3.back, Vector3.left, Vector3.right };
 
         /// <summary>One competitor's state in a family show.</summary>
         private sealed class CompetitionShowActor
@@ -500,8 +502,8 @@ namespace Gamesim.Episode
 
         /// <summary>
         /// Each post's turn mark, straight in front of it toward the house, as far as is clear (4.5 m
-        /// down to 2 m): a whole standing reservation clear of every station, place and set piece, as
-        /// the side marks are. A post with no clear mark runs no leg.
+        /// down to 2 m), or to either side where that is not clear: a whole standing reservation clear
+        /// of every station, place and set piece, as the side marks are. A post with no clear mark runs no leg.
         /// </summary>
         private void ReserveCompetitionCourseMarks(CompetitionShowRun show, EpisodeState state, IReadOnlyCollection<string> staged,
             HouseRoomQuery rooms, NavMeshQueryFilter filter, Collider floor, List<Vector3> used)
@@ -522,9 +524,12 @@ namespace Gamesim.Episode
                         || !competitionArenaActors.TryGetValue(id, out var anchor) || anchor == null) continue;
                     self = body.root.transform; radius = body.capsule.radius; height = body.capsule.height; post = anchor.Position;
                 }
+                bool marked = false;
+                foreach (var direction in CourseMarkDirections)
                 foreach (float distance in CourseMarkDistances)
                 {
-                    var wanted = post + Vector3.back * distance;
+                    if (marked) break;
+                    var wanted = post + direction * distance;
                     if (!rooms.TrySampleFloor(wanted, radius, filter, .25f, out var position, out var room) || room != "Yard") continue;
                     if (used.Any(p => (p - position).sqrMagnitude < 1.6f) || !rooms.HasCapsuleClearance(position, radius, height, self)) continue;
                     var footprint = CompetitionStageFootprint.Actor(position, radius, height);
@@ -532,7 +537,7 @@ namespace Gamesim.Episode
                     var mark = HouseInteractionAnchor.Create(competitionArenaRoot.transform, "competition-course", "Yard", 200 + show.CourseMarks.Count,
                         position, CompetitionContestantFacing, false);
                     show.CourseMarks[id] = mark; used.Add(mark.Approach); competitionFootprints[id + ":course"] = footprint;
-                    break;
+                    marked = true;
                 }
             }
         }

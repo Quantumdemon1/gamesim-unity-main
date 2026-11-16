@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using Gamesim.Simulation;
 using TMPro;
 using UnityEngine;
@@ -119,6 +120,7 @@ namespace Gamesim.Presentation
             PlaceTop(title.rectTransform, 0f, 26f, 900f, 58f);
             BuildSteps(scrim);
             BuildEntryModes(scrim);
+            BuildSettingsGear(scrim);
         }
 
         private void BuildBrand(RectTransform scrim)
@@ -156,7 +158,94 @@ namespace Gamesim.Presentation
                 var button = Pill(navigation, page, new Rect(i * (tab + gap), 0f, tab, 52f), on ? Tone.TabActive : Tone.Tab,
                     () => GoTo(page), icon: StepIcon(page));
                 button.name = page;
+                TabFocus(button);
             }
+        }
+
+        /// <summary>
+        /// A step tab's focus is a thin underline in the paper colour, and the focused tab is not
+        /// brightened: the keyboard or the pad on a tab must never read as a second lit step. The
+        /// glow ring every other control takes is the lit step's own look on these tabs.
+        /// </summary>
+        private static void TabFocus(Button button)
+        {
+            var colours = button.colors;
+            colours.selectedColor = colours.normalColor;
+            button.colors = colours;
+            var focus = button.GetComponent<CreatorFocus>();
+            if (focus == null || focus.Ring == null) return;
+            var ring = focus.Ring;
+            ring.sprite = null; ring.type = Image.Type.Simple; ring.color = UiTheme.Paper;
+            var rect = ring.rectTransform;
+            rect.anchorMin = new Vector2(0f, 0f); rect.anchorMax = new Vector2(1f, 0f); rect.pivot = new Vector2(.5f, 1f);
+            rect.sizeDelta = new Vector2(-28f, TabFocusHeight); rect.anchoredPosition = new Vector2(0f, -4f);
+        }
+
+        /// <summary>The underline a focused step tab carries (<see cref="TabFocus"/>).</summary>
+        public const float TabFocusHeight = 3f;
+
+        /// <summary>The way on to the next step: its caption names the step.</summary>
+        public static string NextCaption(string page) => "Next: " + page;
+
+        /// <summary>The way on keeps one name across the steps, so the keyboard stays on it as the page turns.</summary>
+        public const string NextButtonName = "Next step";
+
+        /// <summary>The header's gear, which opens Settings and comes back to this page.</summary>
+        public const string SettingsCaption = "Settings";
+
+        private Action<Action> openSettings;
+
+        /// <summary>
+        /// The game's Settings, for the header's gear: handed the way back to this page with the
+        /// draft as it stands. Without it the creator offers no gear.
+        /// </summary>
+        public void ConfigureSettings(Action<Action> open)
+        {
+            openSettings = open;
+            if (IsShowing) Rebuild();
+        }
+
+        private void BuildSettingsGear(RectTransform scrim)
+        {
+            if (openSettings == null) return;
+            var gear = GlyphButton(scrim, SettingsCaption, new Rect(frame.x - Margin - 52f, 24f, 52f, 52f), null,
+                UiTheme.Icon("settings"), OpenSettingsFromGear);
+            gear.name = SettingsCaption;
+        }
+
+        /// <summary>
+        /// Steps aside for Settings. Nothing of the form is reset: the draft, the step and the way
+        /// back stay as they are, and closing Settings puts the form up again on the same step.
+        /// </summary>
+        private void OpenSettingsFromGear()
+        {
+            var open = openSettings;
+            if (open == null || !IsShowing) return;
+            string error = resumeError;
+            Hide();
+            open(() => ReturnFromSettings(error));
+        }
+
+        private void ReturnFromSettings(string error)
+        {
+            if (IsShowing) return;
+            resumeError = error;
+            Rebuild();
+            group.alpha = 1f; group.blocksRaycasts = true; group.interactable = true;
+        }
+
+        /// <summary>The step on screen, for tests and the tour.</summary>
+        public string Page => studioPage;
+
+        /// <summary>The Identity step opens with the text cursor in its name, the one field it needs.</summary>
+        private void FocusNameField()
+        {
+            var events = EventSystem.current;
+            if (events == null || events.alreadySelecting) return;
+            var field = GetComponentsInChildren<TMP_InputField>().FirstOrDefault(item => item.name == "Name field" && item.IsActive());
+            if (field == null) return;
+            // Selecting the field puts the caret in it (TMP_InputField activates on select).
+            events.SetSelectedGameObject(field.gameObject);
         }
 
         private static string StepIcon(string page)
@@ -184,6 +273,7 @@ namespace Gamesim.Presentation
             pendingDeleteProfile = null;
             confirmingNew = false;
             Rebuild();
+            if (page == "Identity") FocusNameField();
         }
 
         /// <summary>The name to show for a draft that has none yet.</summary>
@@ -203,24 +293,30 @@ namespace Gamesim.Presentation
             footer.sizeDelta = new Vector2(0f, FooterHeight); footer.anchoredPosition = Vector2.zero;
             bool ready = draft.TryValidate(out var error);
             float y = 18f;
-            Pill(footer, editingCastSlot ? CancelSlotCaption : BackCaption, new Rect(Margin, y, 280f, 64f), Tone.Secondary, Dismiss,
+            // Wide enough for "Back to the cast (draft kept)" at its own size.
+            const float back = 340f;
+            Pill(footer, editingCastSlot ? CancelSlotCaption : BackCaption, new Rect(Margin, y, back, 64f), Tone.Secondary, Dismiss,
                 icon: PackArt.KitIconArrowBack);
             var pages = ActivePages;
             bool last = PageIndex == pages.Length - 1;
             string start = editingCastSlot ? ApplySlotCaption : StartCaption;
             float right = frame.x - Margin;
+            // One bright way on: the next step, named. Starting from here is the quieter choice
+            // beside it; on the last step starting is the way on.
             if (!last)
             {
                 var next = pages[PageIndex + 1];
-                Pill(footer, "Continue", new Rect(right - 300f, y - 4f, 300f, 72f), Tone.Primary, () => GoTo(next),
-                    subtitle: "Next: " + next + "  ·  Step " + (PageIndex + 1) + " of " + pages.Length, icon: PackArt.KitIconChevronRight, iconRight: true);
-                right -= 300f + 16f;
+                Pill(footer, NextCaption(next), new Rect(right - 320f, y - 4f, 320f, 72f), Tone.Primary, () => GoTo(next),
+                    subtitle: "Step " + (PageIndex + 1) + " of " + pages.Length, icon: PackArt.KitIconChevronRight, iconRight: true)
+                    .name = NextButtonName;
+                right -= 320f + 16f;
             }
-            var go = Pill(footer, start, new Rect(right - (last ? 360f : 300f), last ? y - 4f : y, last ? 360f : 300f, last ? 72f : 64f),
-                last ? (ready ? Tone.Primary : Tone.Secondary) : (ready ? Tone.Ready : Tone.Secondary), StartSeason,
+            float startWidth = last ? 360f : 280f;
+            var go = Pill(footer, start, new Rect(right - startWidth, last ? y - 4f : y + 6f, startWidth, last ? 72f : 52f),
+                last && ready ? Tone.Primary : Tone.Secondary, StartSeason,
                 subtitle: last ? (editingCastSlot ? "Back to the cast with this edit" : "Step " + pages.Length + " of " + pages.Length) : null);
             go.name = start;
-            float statusLeft = Margin + 280f + 24f, statusRight = right - (last ? 360f : 300f) - 24f;
+            float statusLeft = Margin + back + 24f, statusRight = right - startWidth - 24f;
             var status = HudPrimitives.Label("Footer status", footer, 16f,
                 ready && string.IsNullOrEmpty(resumeError) ? UiTheme.Positive : UiTheme.Warning, TextAlignmentOptions.Center);
             status.text = Localisation.Text(!string.IsNullOrEmpty(resumeError) ? resumeError : ready

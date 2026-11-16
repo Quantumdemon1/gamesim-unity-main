@@ -32,7 +32,7 @@ namespace Gamesim.Presentation
     {
         /// <summary>Captions tests and the tour find these controls by.</summary>
         public const string StartCaption = "Start with this houseguest";
-        public const string BackCaption = "Back to the cast";
+        public const string BackCaption = "Back to the cast (draft kept)";
         public const string ApplySlotCaption = "Apply to cast slot";
         public const string CancelSlotCaption = "Cancel slot edit";
 

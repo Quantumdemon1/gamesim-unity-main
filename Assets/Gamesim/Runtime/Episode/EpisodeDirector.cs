@@ -228,6 +228,7 @@ namespace Gamesim.Episode
             characterCreator.ConfigureProfiles(profileStore);
             castSelect.ConfigureProfiles(profileStore);
             castSelect.ConfigureCreator(characterCreator);
+            characterCreator.ConfigureSettings(OpenSettingsFromCreator);
             mainMenu = MainMenu.Attach(gameObject);
             // The front door is a screen too: while any of these is up, it owns the keyboard.
             hud.RegisterOverlay(castSelect.GetComponent<CanvasGroup>());
@@ -745,6 +746,8 @@ namespace Gamesim.Episode
             ForgetInformationShare();
             // Settings the main menu opened say so until they close (EpisodeDirector.Controls.cs).
             if (settingsOpen) settingsFromFrontDoor = false;
+            // Settings the creator's gear opened put the creator back as they close (EpisodeDirector.CreatorSettings.cs).
+            if (settingsOpen) ReturnToCreatorAfterSettings(render);
             focusedNpc = null; lastSocialDelta = 0d; phaseOpen = false; settingsOpen = false; journalOpen = false; challengeActive = false;
             replyCardView = null;
             blockSpeechView = null;

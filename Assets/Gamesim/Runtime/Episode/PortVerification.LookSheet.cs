@@ -673,7 +673,7 @@ namespace Gamesim.Episode
             var state = seasonDirector.Snapshot;
             if (!EpisodeEngine.IsCompetition(state.phase)) throw new InvalidOperationException("No competition with the player was reached.");
             yield return OpenSeasonStation();
-            var game = CompetitionMiniGames.For(EpisodeEngine.CompetitionCategory(state));
+            var game = seasonDirector.CompetitionGameFor(state);
             yield return ClickSeasonButton(CompetitionMiniGames.EnterCaption(game));
             double prepareUntil = Time.realtimeSinceStartupAsDouble + 40;
             while (seasonDirector.IsChallengeActive && CompetitionSurface() != null && !CompetitionSurface().IsPlaying

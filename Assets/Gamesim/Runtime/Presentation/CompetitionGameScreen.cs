@@ -170,6 +170,8 @@ namespace Gamesim.Presentation
                 // The luck and social boards play their attempt themselves and ask for sounds by cue.
                 case CompetitionMiniGames.Kind.Dice: BuildDice(); break;
                 case CompetitionMiniGames.Kind.Words: BuildWords(); break;
+                // The ring tower's board is the yard's stacks drawn small; the stacks themselves stand behind it.
+                case CompetitionMiniGames.Kind.Tower: BuildTower(); break;
             }
             BuildOverlay();
             BuildFinishPlate();
@@ -396,6 +398,7 @@ namespace Gamesim.Presentation
                 case CompetitionMiniGames.Kind.Endurance: RefreshEndurance(); break;
                 case CompetitionMiniGames.Kind.Dice: RefreshDice(); break;
                 case CompetitionMiniGames.Kind.Words: RefreshWords(); break;
+                case CompetitionMiniGames.Kind.Tower: RefreshTower(); break;
             }
             RefreshBoardEdge();
         }

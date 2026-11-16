@@ -105,17 +105,25 @@ namespace Gamesim.Presentation
             bool widenedGame = kind == CompetitionMiniGames.Kind.Dice || kind == CompetitionMiniGames.Kind.Words;
             if (widenedGame && rulesVersion < CompetitionMiniGames.WidenedRules)
                 throw new ArgumentOutOfRangeException(nameof(rulesVersion), "The luck and social games are rules 4's.");
+            if (kind == CompetitionMiniGames.Kind.Tower && rulesVersion < CompetitionMiniGames.TowerRules)
+                throw new ArgumentOutOfRangeException(nameof(rulesVersion), "The ring tower is rules 5's.");
+            if (kind == CompetitionMiniGames.Kind.Tower && definition != null && definition.Pattern != CompetitionPattern.RingTower)
+                throw new ArgumentException("The ring tower plays the ring tower's definition only.", nameof(definition));
+            if (kind != CompetitionMiniGames.Kind.Tower && definition != null && definition.Pattern == CompetitionPattern.RingTower)
+                throw new ArgumentException("The ring tower's definition plays the ring tower only.", nameof(definition));
             RulesVersion = rulesVersion;
             string category = CompetitionMiniGames.CategoryOf(kind);
             if (definition != null && (rulesVersion < 3 || definition.Category != category))
                 throw new ArgumentException("The competition definition must match the game and rules version.", nameof(definition));
-            Definition = rulesVersion >= 3 ? definition ?? CompetitionDefinitions.Standard(category) : null;
+            Definition = rulesVersion >= 3 ? definition ?? (kind == CompetitionMiniGames.Kind.Tower ? CompetitionDefinitions.RingTower
+                : CompetitionDefinitions.Standard(category)) : null;
             TimeLimit = Definition?.Duration ?? CompetitionMiniGames.TimeLimit(kind);
             random = new SeededRandom(seed);
             if (kind == CompetitionMiniGames.Kind.Memory) Deal();
             if (kind == CompetitionMiniGames.Kind.Reaction) nextTargetAt = FirstTargetDelay;
             if (kind == CompetitionMiniGames.Kind.Dice) { DealDice(); Feedback = "Roll the dice"; }
             if (kind == CompetitionMiniGames.Kind.Words) { DealWords(words); Feedback = "Spell the word"; }
+            if (kind == CompetitionMiniGames.Kind.Tower) { Tower = new RingTowerPuzzle(); Feedback = "Pick a stack to lift its top ring"; }
         }
 
         // ---------------------------------------------------------------- the clock
@@ -219,6 +227,7 @@ namespace Gamesim.Presentation
                     break;
                 case CompetitionMiniGames.Kind.Dice: Score = DiceScore(); break;
                 case CompetitionMiniGames.Kind.Words: Score = WordsScore(); break;
+                case CompetitionMiniGames.Kind.Tower: Score = Tower.Score(Remaining, TimeLimit); break;
             }
         }
 

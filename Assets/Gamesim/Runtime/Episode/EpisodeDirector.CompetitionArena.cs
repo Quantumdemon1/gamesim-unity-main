@@ -164,6 +164,8 @@ namespace Gamesim.Episode
             // backdrop, the display - is invisible to the physics below. Every station and audience
             // place clears it as well, with the same whole reservation (CompetitionStageScenery).
             competitionScenery=CompetitionStageScenery.Collect(floor,competitionArenaRoot.transform);
+            // A ring tower is played on the yard's stacks: they stand again and carry the playable rings (EpisodeDirector.RingTower.cs).
+            DeployRingTower(floor,definition);
             var filter=new NavMeshQueryFilter{agentTypeID=player.Agent.agentTypeID,areaMask=player.Agent.areaMask};
             var playerCapsule=player.GetComponent<CapsuleCollider>();
             float layoutRadius=Mathf.Max(player.Agent.radius,playerCapsule!=null?playerCapsule.radius:0);
@@ -216,13 +218,16 @@ namespace Gamesim.Episode
             // A show stations the player only when they competed; one watching stays where they are.
             bool stationPlayer=show==null || show.Plan.PlayerInField;
             if(stationPlayer)
-            foreach(var wanted in contestantCandidates)
+            foreach(var wanted in RingTowerPlayerCandidates(contestantCandidates))
             {
                 if(!rooms.TrySampleFloor(wanted,player.Agent.radius,filter,.25f,out var position,out var room)
                     || room!="Yard" || !rooms.HasCapsuleClearance(position,player.Agent.radius,player.Agent.height,player.transform))continue;
                 float facing=CompetitionContestantFacing;
                 float radius=Mathf.Max(player.Agent.radius,playerCapsule!=null?playerCapsule.radius:0);
-                var footprint=CompetitionStageFootprint.Station(instrumentFamily,position,facing,radius,player.Agent.height,
+                // At the ring tower the player stands at the stacks with no instrument of their own: a standing reservation.
+                var footprint=competitionRingTower!=null
+                    ?CompetitionStageFootprint.Actor(position,radius,player.Agent.height,Mathf.Max(.25f,player.Agent.stoppingDistance+.1f))
+                    :CompetitionStageFootprint.Station(instrumentFamily,position,facing,radius,player.Agent.height,
                     Mathf.Max(.25f,player.Agent.stoppingDistance+.1f));
                 if(!FitsCompetitionFootprint(footprint,floor,player.transform) || !player.TryBeginActivityMove(competitionPlayerOwner,position,out _))continue;
                 competitionRouteOwners.Add(player.transform);
@@ -285,7 +290,7 @@ namespace Gamesim.Episode
                                 anchor=seat;footprint=seatedFootprint;usedSeats.Add(seat);break;
                             }
                     var audiencePreferred=new Vector3(bounds.min.x+2f,bounds.max.y,bounds.center.z);
-                    IEnumerable<Vector3> actorCandidates=contestants.Contains(actor.id) ? contestantCandidates
+                    IEnumerable<Vector3> actorCandidates=contestants.Contains(actor.id) ? RingTowerFieldCandidates(contestantCandidates,bounds)
                         :candidates.OrderBy(p=>(p-audiencePreferred).sqrMagnitude);
                     if(anchor==null)
                         foreach(var wanted in actorCandidates)
@@ -343,9 +348,13 @@ namespace Gamesim.Episode
                 }
             }
             Color accent=phase==EpisodePhase.Veto?UiTheme.Award:UiTheme.Gold;
-            if(competitionPlayerStation!=null)AddCompetitionInstrument(state.playerId,competitionPlayerStation,definition,category,accent);
-            foreach(var pair in competitionArenaActors.Where(pair=>contestants.Contains(pair.Key)))
-                AddCompetitionInstrument(pair.Key,pair.Value,definition,category,accent);
+            // The ring tower's equipment is the yard's stacks: nobody gets a console, and nobody pretends to solve.
+            if(!RingTowerArena(definition))
+            {
+                if(competitionPlayerStation!=null)AddCompetitionInstrument(state.playerId,competitionPlayerStation,definition,category,accent);
+                foreach(var pair in competitionArenaActors.Where(pair=>contestants.Contains(pair.Key)))
+                    AddCompetitionInstrument(pair.Key,pair.Value,definition,category,accent);
+            }
             var sign=new GameObject(CompetitionSignName,typeof(TextMeshPro));
             sign.transform.SetParent(competitionArenaRoot.transform,false);
             // Facing the deck, where the house and the competition camera look from - the backdrop's

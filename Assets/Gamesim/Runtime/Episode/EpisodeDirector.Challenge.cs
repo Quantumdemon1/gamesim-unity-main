@@ -201,7 +201,7 @@ namespace Gamesim.Episode
             // A final part heads its sheet with the bracket: the parts played and who won them, the
             // part in hand, and what is still locked (MOCKUP-PASS-PLAN M13). Nothing in other weeks.
             hud.FinalHoHBracket(state);
-            var game = CompetitionMiniGames.For(EpisodeEngine.CompetitionCategory(state));
+            var game = CompetitionGame(state);
             var field = EpisodeEngine.CompetitionPlayers(state).ToArray();
             var definition = CompetitionDefinitions.For(state);
             string stakes = (state.phase == EpisodePhase.Veto ? "At stake: the power to save a nominee from eviction."
@@ -269,7 +269,7 @@ namespace Gamesim.Episode
             hud.SetActivityLayout(EpisodeHud.ActivityLayout.Competition);
             FrameBriefing();
             hud.FinalHoHBracket(state);
-            var game = CompetitionMiniGames.For(EpisodeEngine.CompetitionCategory(state));
+            var game = CompetitionGame(state);
             var field = EpisodeEngine.CompetitionPlayers(state).ToArray();
             var definition = CompetitionDefinitions.For(state);
             string stakes = (state.phase == EpisodePhase.Veto ? "At stake: the power to save a nominee from eviction."
@@ -307,6 +307,8 @@ namespace Gamesim.Episode
                 facts.Add(new EpisodeHud.BriefingFact(UiTheme.Icon("houseguest"), "Houseguests' names", "The house you are in"));
             else switch (game)
             {
+                case CompetitionMiniGames.Kind.Tower:
+                    facts.Add(new EpisodeHud.BriefingFact(target, RingTowerPuzzle.StandardRings + " rings, 3 stacks", "First stack to the last")); break;
                 case CompetitionMiniGames.Kind.Memory:
                     facts.Add(new EpisodeHud.BriefingFact(UiTheme.Pack("Pack1_Foundation/Icons_PNG/grid"), "Eight pairs", "A 4 by 4 board")); break;
                 case CompetitionMiniGames.Kind.Reaction:
@@ -327,6 +329,7 @@ namespace Gamesim.Episode
                     : game == CompetitionMiniGames.Kind.Reaction ? "Hit the targets"
                     : game == CompetitionMiniGames.Kind.Dice ? "Keep a high total"
                     : game == CompetitionMiniGames.Kind.Words ? "Spell as many as you can"
+                    : game == CompetitionMiniGames.Kind.Tower ? "Move the tower"
                     : state.competitionRulesVersion >= CompetitionMiniGames.ImprovedRules
                         ? "Hold " + (seconds * .65).ToString("0.#") + " for full marks" : "Hold as long as you can";
                 facts.Add(new EpisodeHud.BriefingFact(clock, seconds.ToString("0") + " seconds", goal));
@@ -359,7 +362,7 @@ namespace Gamesim.Episode
             { challengeActive = false; challengeOrigin = null; message = competitionArenaStatus; BeginSystemNotice(); Render(); return; }
             FrameCompetition();
             var kind = timingBarForDiagnostics ? CompetitionMiniGames.Kind.Precision
-                : CompetitionMiniGames.For(EpisodeEngine.CompetitionCategory(state));
+                : CompetitionGame(state);
             challengeRun = kind == CompetitionMiniGames.Kind.Precision ? null : new MiniGameRun(kind,
                 CompetitionMiniGames.AttemptSeed(state.seed, state.week, (int)state.phase, state.competitionRulesVersion, practice),
                 state.competitionRulesVersion, CompetitionDefinitions.For(state), ScrambleWords(state));
@@ -640,6 +643,8 @@ namespace Gamesim.Episode
         private void FrameCompetition()
         {
             if (cameraRig == null || cameraRig.ReducedMotion) return;
+            // The ring tower frames its three stacks instead (EpisodeDirector.RingTower.cs).
+            if (FrameRingTower()) return;
             // On its way it draws what the view drew as it left - the briefing's whole house, read before
             // the shot makes the competition the view's source - with the yard, and the yard alone landed (RS6a).
             cameraRig.MoveTo(new HouseCameraRig.Shot

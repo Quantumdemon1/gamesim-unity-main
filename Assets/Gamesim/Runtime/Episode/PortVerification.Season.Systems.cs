@@ -155,7 +155,7 @@ namespace Gamesim.Episode
         /// </summary>
         private IEnumerator PlaySeasonMiniGame(EpisodeState state, bool graphical)
         {
-            var kind = CompetitionMiniGames.For(EpisodeEngine.CompetitionCategory(state));
+            var kind = seasonDirector.CompetitionGameFor(state);
             yield return ClickSeasonButton(CompetitionMiniGames.EnterCaption(kind));
             RequireSeason(seasonDirector.IsChallengeActive && seasonDirector.Snapshot.revision == state.revision,
                 "Entering a challenge must open it without committing.");
@@ -164,6 +164,9 @@ namespace Gamesim.Episode
             double deadline = Time.realtimeSinceStartupAsDouble + CompetitionMiniGames.TimeLimit(kind) + 55;
             int inputs = 0;
             var faces = new Dictionary<string, List<int>>();
+            // The ring tower: the fewest moves, picked on the board's stacks as a player picks them.
+            var towerPicks = RingTowerPuzzle.Solution(RingTowerPuzzle.StandardRings).SelectMany(move => new[] { move.from, move.to }).ToList();
+            int towerPick = 0;
             while (seasonDirector.IsChallengeActive && Time.realtimeSinceStartupAsDouble < deadline)
             {
                 CheckSeasonDeadline();
@@ -203,6 +206,14 @@ namespace Gamesim.Episode
                     case CompetitionMiniGames.Kind.Words:
                         yield return SpellSeasonWord();
                         if (lastClickLanded) inputs++;
+                        break;
+                    case CompetitionMiniGames.Kind.Tower:
+                        if (towerPick < towerPicks.Count && CompetitionSurface() != null && CompetitionSurface().IsPlaying)
+                        {
+                            yield return TryClickCompetitionControl(CompetitionGameScreen.StackCaption(towerPicks[towerPick]));
+                            if (lastClickLanded) { inputs++; towerPick++; }
+                        }
+                        else yield return null;
                         break;
                     default:
                         yield return FlipSeasonCards(faces);

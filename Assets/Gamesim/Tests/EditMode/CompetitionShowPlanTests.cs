@@ -166,6 +166,94 @@ namespace Gamesim.Tests.EditMode
             }
         }
 
+        // ------------------------------------------------------------ the walk out keeps pace with the wait
+
+        [TestCase(false)]
+        [TestCase(true)]
+        public void TheWalkOutEndsALittleInsideTheWaitForTheField(bool quick)
+        {
+            float walkOut = CompetitionShowPlan.WalkOutSeconds(quick), wait = CompetitionShowPlan.AssemblySeconds(quick);
+            Assert.That(walkOut, Is.LessThan(wait), "The field is meant to be at its stations before the wait for it is up.");
+            Assert.That(wait - walkOut, Is.EqualTo(quick ? 1f : 1.5f).Within(1e-5), "A little inside: a second and a half, a second when quick.");
+            Assert.That(walkOut, Is.GreaterThan(wait * .5f), "and no more than a little.");
+            Assert.That(CompetitionShowPlan.AssemblySeconds(quick), Is.EqualTo(quick ? 6f : 9f), "The wait itself is as it was.");
+            Assert.That(CompetitionShowPlan.PrincipalSeconds(quick), Is.EqualTo(quick ? 7.5f : 11f), "and the wait for the winner.");
+        }
+
+        [Test]
+        public void TheWalkOutPaceIsNeverUnderTheWalkNorOverTheTopPace()
+        {
+            Assert.That(CompetitionShowPlan.WalkPace, Is.EqualTo(2.2f), "The house's walk.");
+            Assert.That(CompetitionShowPlan.TopWalkOutPace, Is.GreaterThan(CompetitionShowPlan.WalkPace));
+            Assert.That(CompetitionShowPlan.TopWalkOutPace, Is.LessThanOrEqualTo(4f), "No faster than the player's own run.");
+            foreach (float metres in new[] { -3f, 0f, .2f, .5f, .6f, 1f, 3.5f, 8f, 14f, 22f, 30f, 45f, 120f })
+            foreach (float seconds in new[] { -2f, 0f, .05f, .3f, 1f, 2.5f, 5f, 7.5f, 9f, 20f })
+            {
+                float pace = CompetitionShowPlan.WalkOutPace(metres, seconds);
+                Assert.That(pace, Is.GreaterThanOrEqualTo(CompetitionShowPlan.WalkPace), metres + " m in " + seconds + " s: never under the walk.");
+                Assert.That(pace, Is.LessThanOrEqualTo(CompetitionShowPlan.TopWalkOutPace), metres + " m in " + seconds + " s: never over the top pace.");
+            }
+            Assert.That(CompetitionShowPlan.WalkOutPace(3f, 7.5f), Is.EqualTo(CompetitionShowPlan.WalkPace), "A short route in good time is walked.");
+            Assert.That(CompetitionShowPlan.WalkOutPace(100f, 2f), Is.EqualTo(CompetitionShowPlan.TopWalkOutPace), "Out of reach: the top pace, and no more.");
+        }
+
+        [Test]
+        public void AWalkerWithinReachArrivesByTheWalkOutsTime()
+        {
+            float walkOut = CompetitionShowPlan.WalkOutSeconds(false);
+            Assert.That(30f / walkOut, Is.LessThanOrEqualTo(CompetitionShowPlan.TopWalkOutPace + 1e-4f), "A 30 m route - the far end of the house - is within reach of the normal walk out.");
+            // The routes the first Head of Household's walk out measured: about 27 m for three of five, at the walk 12.5 s.
+            Assert.That(27.7f / CompetitionShowPlan.WalkPace, Is.GreaterThan(CompetitionShowPlan.AssemblySeconds(false)), "At the walk, the far three missed the wait.");
+            Assert.That(27.7f / CompetitionShowPlan.WalkOutPace(27.7f, walkOut), Is.LessThanOrEqualTo(walkOut + 1e-3f), "Paced, they are there by the walk out's time.");
+            for (float metres = .6f; metres <= 40f; metres += .7f)
+            for (float seconds = .25f; seconds <= 9f; seconds += .25f)
+            {
+                if (metres / seconds > CompetitionShowPlan.TopWalkOutPace) continue;
+                float pace = CompetitionShowPlan.WalkOutPace(metres, seconds);
+                Assert.That(pace * seconds, Is.GreaterThanOrEqualTo(metres - 1e-3f), metres + " m in " + seconds + " s is within reach: in time at " + pace + " m/s.");
+            }
+            // Read again later with the route that is left, the pace that was right still is: a walker on time is not hurried further.
+            float first = CompetitionShowPlan.WalkOutPace(20f, 7.5f);
+            float later = CompetitionShowPlan.WalkOutPace(20f - first * 2.5f, 5f);
+            Assert.That(later, Is.EqualTo(first).Within(1e-4), "On schedule, the pace holds.");
+            Assert.That(CompetitionShowPlan.WalkOutPace(20f - first * 1.5f, 5f), Is.GreaterThan(first), "A walker held up a second is hurried to catch up.");
+        }
+
+        [Test]
+        public void AnUnknownOrSpentRouteHurriesAtTheTopPaceAndTheLastStepIsWalked()
+        {
+            Assert.That(CompetitionShowPlan.WalkOutPace(float.PositiveInfinity, 6f), Is.EqualTo(CompetitionShowPlan.TopWalkOutPace), "A route of unknown length: hurry.");
+            Assert.That(CompetitionShowPlan.WalkOutPace(float.NaN, 6f), Is.EqualTo(CompetitionShowPlan.TopWalkOutPace));
+            Assert.That(CompetitionShowPlan.WalkOutPace(6f, 0f), Is.EqualTo(CompetitionShowPlan.TopWalkOutPace), "The walk out's time is up: hurry.");
+            Assert.That(CompetitionShowPlan.WalkOutPace(6f, -1.5f), Is.EqualTo(CompetitionShowPlan.TopWalkOutPace), "and past it.");
+            Assert.That(CompetitionShowPlan.WalkOutPace(6f, float.NaN), Is.EqualTo(CompetitionShowPlan.TopWalkOutPace));
+            Assert.That(CompetitionShowPlan.WalkOutPace(CompetitionShowPlan.LastStepMetres, 0f), Is.EqualTo(CompetitionShowPlan.WalkPace), "The last step is walked, never run on the spot.");
+            Assert.That(CompetitionShowPlan.WalkOutPace(0f, 3f), Is.EqualTo(CompetitionShowPlan.WalkPace), "A route walked.");
+            Assert.That(CompetitionShowPlan.WalkOutPace(-1f, 3f), Is.EqualTo(CompetitionShowPlan.WalkPace), "No route.");
+        }
+
+        [Test]
+        public void TheRunGaitComesOnAtARunAndHoldsWithoutFlicker()
+        {
+            Assert.That(CompetitionShowPlan.RunsAt(CompetitionShowPlan.WalkPace, false), Is.False, "The walk is walked.");
+            Assert.That(CompetitionShowPlan.RunsAt(CompetitionShowPlan.WalkPace, true), Is.False, "and puts a runner back to the walk.");
+            Assert.That(CompetitionShowPlan.RunsAt(CompetitionShowPlan.TopWalkOutPace, false), Is.True, "The top pace is a run.");
+            Assert.That(CompetitionShowPlan.RunsAt(CompetitionShowPlan.RunGaitPace, false), Is.True);
+            Assert.That(CompetitionShowPlan.RunGaitPace, Is.GreaterThan(CompetitionShowPlan.WalkGaitPace));
+            Assert.That(CompetitionShowPlan.WalkGaitPace, Is.GreaterThan(CompetitionShowPlan.WalkPace));
+            // A pace wavering between the two thresholds keeps whichever gait the walker has.
+            bool running = false;
+            int changes = 0;
+            foreach (float pace in new[] { 2.2f, 2.8f, 2.9f, 3.1f, 2.8f, 2.7f, 2.9f, 3.0f, 2.65f, 2.8f, 2.5f, 2.7f, 2.9f, 2.2f })
+            {
+                bool next = CompetitionShowPlan.RunsAt(pace, running);
+                if (next != running) changes++;
+                running = next;
+            }
+            Assert.That(changes, Is.EqualTo(2), "On at 3.1 m/s, off at 2.5 m/s, and nothing between.");
+            Assert.That(running, Is.False);
+        }
+
         // ------------------------------------------------------------ fixtures
 
         private static EpisodeState FieldOf(int fieldSize)

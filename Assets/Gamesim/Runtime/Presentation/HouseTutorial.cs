@@ -53,7 +53,16 @@ namespace Gamesim.Presentation
         /// <summary>The captions tests and screen readers find the tour's controls by. Never decorated: the chevron on Next is its own object.</summary>
         public const string NextCaption = "Next";
         public const string FinishCaption = "Let's Go!";
-        public const string SkipCaption = "Skip Tutorial";
+        public const string SkipCaption = "Skip the tour";
+        /// <summary>The step before: on every step but the first, where there is none.</summary>
+        public const string BackCaption = "Back";
+
+        /// <summary>
+        /// How to see the tour again, on every card, so it is there at the moment of skipping. True
+        /// because the house's Settings carry a "Replay the tour" control (EpisodeDirector.Season.cs).
+        /// </summary>
+        public const string ReplayNote = "You can replay the tour any time from Settings.";
+        public const string ReplayNoteName = "Replay note";
 
         /// <summary>The names of the tour's parts, so a test can measure them without guessing.</summary>
         public const string StepLayerName = "Tour step";
@@ -182,8 +191,8 @@ namespace Gamesim.Presentation
         private RectTransform[] dims;
         private CanvasGroup layerGroup, cardGroup;
         private Image mark;
-        private TMP_Text counter, title, body, nextLabel, skipLabel;
-        private Button next, skip;
+        private TMP_Text counter, title, body, nextLabel, skipLabel, backLabel, replayNote;
+        private Button next, skip, back;
         private int step = -1;
         private readonly List<Step> visible = new List<Step>();
         private Func<string, RectTransform> anchorLookup;
@@ -298,6 +307,22 @@ namespace Gamesim.Presentation
             Render();
         }
 
+        /// <summary>
+        /// The step before, with no step sound: the sound is the reference build's for going on. A
+        /// step whose chrome has gone since is dropped as it would be going forward, which leaves
+        /// the player on the step they were on.
+        /// </summary>
+        public void Back()
+        {
+            if (step <= 0) return;
+            step--;
+            fadeFrom = layerGroup.alpha;
+            Render();
+            // The keyboard stays on Back while there is a step before; on the first step, Next.
+            if (EventSystem.current != null && IsShowing)
+                EventSystem.current.SetSelectedGameObject(step > 0 ? back.gameObject : next.gameObject);
+        }
+
         /// <summary>Leaves the tour and remembers that, so the offer to an imported season does not come back.</summary>
         public void Skip() => Finish();
 
@@ -328,6 +353,7 @@ namespace Gamesim.Presentation
             title.text = Localisation.Text(current.Title);
             body.text = Localisation.Text(BodyFor(current));
             nextLabel.text = Localisation.Text(step == visible.Count - 1 ? FinishCaption : NextCaption);
+            if (back.gameObject.activeSelf != step > 0) back.gameObject.SetActive(step > 0);
 
             Layout();
             stepAge = 0f;
@@ -570,6 +596,8 @@ namespace Gamesim.Presentation
             body.fontSize = 15f * s;
             nextLabel.fontSize = 15f * s;
             skipLabel.fontSize = 14f * s;
+            backLabel.fontSize = 14f * s;
+            replayNote.fontSize = 14f * s;
 
             float y = pad, counterX = pad, counterHeight = 18f * s;
             if (mark != null)
@@ -588,13 +616,20 @@ namespace Gamesim.Presentation
             Row(body.rectTransform, pad, y, inner, bodyHeight);
             y += bodyHeight + 18f * s;
 
-            float buttonHeight = 36f * s, nextWidth = 124f * s, skipWidth = 132f * s;
+            // Skip at the left, then Back beside Next at the right: the way on and the way back together.
+            float buttonHeight = 36f * s, nextWidth = 124f * s, skipWidth = 116f * s, backWidth = 76f * s;
             Row((RectTransform)skip.transform, pad - 10f * s, y, skipWidth, buttonHeight);
             Row((RectTransform)next.transform, width - pad - nextWidth, y, nextWidth, buttonHeight);
+            Row((RectTransform)back.transform, width - pad - nextWidth - 8f * s - backWidth, y, backWidth, buttonHeight);
             // The words clear of the chevron, which is a mark of its own beside them.
             nextLabel.rectTransform.offsetMin = new Vector2(10f * s, 0f);
             nextLabel.rectTransform.offsetMax = new Vector2(-24f * s, 0f);
-            y += buttonHeight + pad;
+            y += buttonHeight + 8f * s;
+
+            // How to see it again, under the buttons, in the card's quiet type.
+            float noteHeight = Mathf.Ceil(Mathf.Max(replayNote.GetPreferredValues(replayNote.text, inner, 0f).y, replayNote.fontSize * 1.3f)) + 2f;
+            Row(replayNote.rectTransform, pad, y, inner, noteHeight);
+            y += noteHeight + pad;
 
             card.sizeDelta = new Vector2(width, y);
         }
@@ -683,6 +718,16 @@ namespace Gamesim.Presentation
             skip = TextButton(SkipCaption, card, UiTheme.Muted, 14f);
             skipLabel = skip.GetComponentInChildren<TMP_Text>();
             skip.onClick.AddListener(Skip);
+
+            // Back is quieter than Next: words in the accent with no fill, brightening to the paper
+            // with the keyboard on them as the skip's do.
+            back = TextButton(BackCaption, card, UiTheme.Accent, 14f);
+            backLabel = back.GetComponentInChildren<TMP_Text>();
+            back.onClick.AddListener(Back);
+            back.gameObject.SetActive(false);
+
+            replayNote = HudPrimitives.Label(ReplayNoteName, card, 14f, UiTheme.Muted, TextAlignmentOptions.TopLeft);
+            replayNote.text = Localisation.Text(ReplayNote);
         }
 
         /// <summary>A child of the card, placed from its top-left corner in already-scaled units.</summary>
@@ -723,7 +768,7 @@ namespace Gamesim.Presentation
             {
                 // A control with no fill has only its words to be seen by, so they are what
                 // brightens: from the ink they rest in to the HUD's paper. The tint used to go on
-                // the transparent fill, and a tint of nothing is nothing - "Skip Tutorial" looked
+                // the transparent fill, and a tint of nothing is nothing - "Skip the tour" looked
                 // the same with the keyboard on it as off. The fill stays its hit area, kept in the
                 // canvas's batch at alpha 0 as the spotlight ring's is.
                 button.targetGraphic = label;

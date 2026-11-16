@@ -96,7 +96,7 @@ namespace Gamesim.Episode
         /// </summary>
         private void ControlsSettings()
         {
-            hud.Section("CONTROLS");
+            hud.SectionHeading("CONTROLS");
             hud.Disclosure(controlsShown ? HideControlsCaption : ShowControlsCaption, controlsShown,
                 () =>
                 {

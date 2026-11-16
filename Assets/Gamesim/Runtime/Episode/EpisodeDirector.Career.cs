@@ -71,7 +71,7 @@ namespace Gamesim.Episode
         private void CareerSettings()
         {
             if (career == null) return;
-            hud.Heading("YOUR CAREER");
+            hud.SectionHeading("YOUR CAREER");
             var summary = CareerNow();
             // A record the load could not use reads as no seasons, but it is still on disk and
             // refuses every finale until it is read or set aside: the panel does not call it empty,

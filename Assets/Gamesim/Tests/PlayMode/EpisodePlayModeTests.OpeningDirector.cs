@@ -292,7 +292,7 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(player.InputEnabled, Is.True);
         }
 
-        /// <summary>The tour takes the keyboard on "Next": with "Skip Tutorial" first, Enter left the tour.</summary>
+        /// <summary>The tour takes the keyboard on "Next": with "Skip the tour" first, Enter left the tour.</summary>
         [UnityTest]
         public IEnumerator Tutorial_KeyboardFocusLandsOnNext()
         {

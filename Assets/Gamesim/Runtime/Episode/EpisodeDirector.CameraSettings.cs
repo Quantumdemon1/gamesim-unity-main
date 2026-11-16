@@ -84,7 +84,7 @@ namespace Gamesim.Episode
         /// <summary>The settings' camera block: the speed, cycled, and the tilt, flipped.</summary>
         private void CameraSettings()
         {
-            hud.Heading("CAMERA");
+            hud.SectionHeading("CAMERA");
             hud.Action(CameraSpeedCaption(cameraSpeedPercent), () =>
             {
                 int at = Array.IndexOf(CameraSpeeds, cameraSpeedPercent);

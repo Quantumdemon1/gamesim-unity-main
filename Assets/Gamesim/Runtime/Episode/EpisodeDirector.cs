@@ -857,7 +857,9 @@ namespace Gamesim.Episode
             // Who was on the block before this command: a veto ceremony is the difference. The same
             // block in the order it was named seats a staged veto meeting's red chairs; the
             // snapshot is the engine's copy already, so it is read once.
-            var blockBefore = engine.Snapshot.nominees ?? new List<string>();
+            var snapshotBefore = engine.Snapshot;
+            var blockBefore = snapshotBefore.nominees ?? new List<string>();
+            int sequenceBefore = snapshotBefore.nextSequence;
             var wasNominated = new HashSet<string>(blockBefore);
             // A decision's candidate carries every operation the house has installed: its write is also the
             // house's. A phase transition cancels invalid NPC activity inside this same saved candidate.
@@ -893,6 +895,8 @@ namespace Gamesim.Episode
                     && (result.beatsFromSequence <= 0 || e.sequence < result.beatsFromSequence))
                 : null;
             message = result.accepted ? StatusLine(result.state, visible) ?? "Decision committed." : result.reason;
+            // The free-time board keeps it as the player's last move (menu review quick win 18).
+            if (result.accepted) NoteFreeTimeMove(command, result.state, visible, sequenceBefore);
             commandNotice = !result.accepted;
             systemNotice = null;
             activityNotice = null;

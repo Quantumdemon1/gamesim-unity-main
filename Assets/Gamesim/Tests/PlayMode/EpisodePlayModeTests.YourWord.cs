@@ -111,7 +111,7 @@ namespace Gamesim.Tests.PlayMode
 
                 string where = "Your word" + size;
                 Canvas.ForceUpdateCanvases();
-                Assert.That(NotebookText(), Does.Contain("Your word"), where + " names itself.");
+                Assert.That(NotebookText(), Does.Contain(EpisodeDirector.YourWordCaption), where + " names itself.");
                 Assert.That(ActiveRect(EpisodeDirector.NotebookSection.Word), Is.Not.Null, where + " carries its mark.");
                 AssertPageDoor(EpisodeDirector.BackToYourNotesCaption, where);
                 var dealCard = ActiveRect(EpisodeHud.WordOpenCardPrefix + seeded.Find(dealWith).name);
@@ -298,7 +298,7 @@ namespace Gamesim.Tests.PlayMode
                 ButtonWithCaption(state.Find(safe).name).onClick.Invoke();
                 string breach = CommitmentsRead.Warning(state, CommitmentsRead.WouldBreak(state, CommitmentsRead.Decision.Nominate(other.id, safe)));
                 Assert.That(breach, Is.EqualTo("Nominating " + WordFirst(state, safe) + " breaks your safety deal with " + WordThem(state, safe) + "."));
-                string brief = "Committing these breaks 1 of your commitments (see " + EpisodeDirector.YourWordCaption + ") and lets 1 storyline pass.";
+                string brief = "Committing these breaks 1 entry in " + EpisodeDirector.YourWordCaption + " and lets 1 storyline pass.";
 
                 Canvas.ForceUpdateCanvases();
                 var strip = ActiveRect(EpisodeHud.StrategyStripName);

@@ -21,7 +21,9 @@ namespace Gamesim.Tests.EditMode
     /// on a roster's house, or the stress house past twelve) in houses of 6, 8, 12 and 16, six seeds each, with
     /// <c>story.rulesVersion</c> written as <see cref="StoryRules.Roles"/> BY NAME after ApplyFresh - as
     /// CommitmentRulesSeasonDigests holds its seasons at <see cref="StoryRules.Threads"/> - so a later enrolment that moves
-    /// <see cref="StoryRules.Current"/> leaves them where they are. Each is played to its end by the digests' walker and by
+    /// <see cref="StoryRules.Current"/> leaves them where they are, and with <c>competitionRulesVersion</c> written as
+    /// <see cref="CompetitionRules.Widened"/> (4, the rules they were recorded under) for the same reason: competition
+    /// rules 5 moved <see cref="CompetitionRules.Current"/>. Each is played to its end by the digests' walker and by
     /// their busy player, every command the walker gives legal and every season finishing, and digested as each week opens
     /// and at the end - the whole state's JSON, then every reader CommitmentRulesSeasonDigests digests (warmth, threat,
     /// trust, the jury's obligations and score, the deal odds and their words, the story's odds, the houseguest notes, Game
@@ -145,6 +147,10 @@ namespace Gamesim.Tests.EditMode
             // Held at story rules 11, the role moments, by name (plan 32 §Q1): ApplyFresh writes Current, which each
             // house-talk enrolment moves; these seasons stay the role moments' own.
             s.story.rulesVersion = StoryRules.Roles;
+            // Held at competition rules 4 by name as well: these seasons were recorded under them, and ApplyFresh writes
+            // Current, which competition rules 5 (the ring tower) moved. Only which game a competition deals reads it,
+            // and nothing is dealt before the season's first competition, so the pin plays the recorded seasons.
+            s.competitionRulesVersion = CompetitionRules.Widened;
             Assert.That(EpisodeValidation.TryValidate(s, out var invalid), Is.True, invalid);
             return s;
         }

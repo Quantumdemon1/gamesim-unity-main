@@ -111,6 +111,9 @@ namespace Gamesim.Tests.EditMode
             Assert.That(MarkProblems("Presentation/Screen.cs", Code("var eye = UiTheme.Icon(\"eye\"); Box(\"Eye emblem\", card);")).ToList(),
                 Has.Count.EqualTo(1), "An eye emblem of a card's own.");
             Assert.That(MarkProblems("Presentation/Screen.cs", Code("var mark = BrandMark.Draw(\"Brand mark\", brand, UiTheme.Heading);")), Is.Empty);
+            Assert.That(MarkProblems("Presentation/CharacterCreator.Studio.cs", Code(FaceCategoryIcon)), Is.Empty, "The Face category's eye is no brand.");
+            Assert.That(MarkProblems("Presentation/CharacterCreator.Studio.cs", Code("mark.sprite = UiTheme.Pack(PackArt.KitIconEye);")).ToList(),
+                Has.Count.EqualTo(1), "Any other eye in the creator is still a mark of its own.");
         }
 
         private static IEnumerable<string> WordProblems(string file, string code, IEnumerable<string> words) =>
@@ -128,8 +131,13 @@ namespace Gamesim.Tests.EditMode
         }
 
         /// <summary>A mark drawn from the art directly, or a card's own eye emblem.</summary>
+        /// <summary>The one line the brand scan lets use the eye: the creator's Face category icon.</summary>
+        private const string FaceCategoryIcon = "case \"Face\": return PackArt.KitIconEye;";
+
         private static IEnumerable<string> MarkProblems(string file, string code)
         {
+            // The creator's Face category wears the eye as a category icon (menu quick win 5), not as the brand.
+            if (file == "Presentation/CharacterCreator.Studio.cs") code = code.Replace(FaceCategoryIcon, "");
             if (code.Contains("PackArt.IconHome") || code.Contains("PackArt.KitIconEye"))
                 yield return file + " draws a mark from the art: the brand is BrandMark's.";
             if (code.Contains("\"Eye emblem\"") && !file.StartsWith("Presentation/OpeningDoor", StringComparison.Ordinal))

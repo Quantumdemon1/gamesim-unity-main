@@ -125,7 +125,7 @@ namespace Gamesim.Presentation
         {
             var mark = new GameObject("Brand mark", typeof(RectTransform), typeof(Image)).GetComponent<Image>();
             mark.rectTransform.SetParent(scrim, false);
-            mark.sprite = UiTheme.Pack(PackArt.IconHome) ?? UiTheme.Icon("house");
+            mark.sprite = BrandMark.Sprite();
             mark.color = UiTheme.Heading; mark.preserveAspect = true; mark.raycastTarget = false;
             Place(mark.rectTransform, Margin - 4f, 24f, 54f, 54f);
             var word = HudPrimitives.Label("Brand word", scrim, 36f, Color.white, TextAlignmentOptions.TopLeft);

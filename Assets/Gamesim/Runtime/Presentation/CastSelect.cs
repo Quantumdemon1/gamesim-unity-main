@@ -515,36 +515,47 @@ namespace Gamesim.Presentation
         {
             if (onCustomise == null) return;
             var row = Row(44f);
-            Chip(row, "Choose a houseguest", -448f, 216f, !libraryMode && !castSlotsMode, () => { libraryMode = false; castSlotsMode = false; scrollToTop = true; Rebuild(); });
-            Chip(row, CharacterCreator.CreateCaption, -224f, 216f, false, () => OpenCreator(CharacterDraft.Blank(), CharacterCreator.EntryMode.Quick));
-            Chip(row, retainedDraft == null ? CharacterCreator.CustomiseCaption : "Resume setup", 0f, 216f, false, () =>
+            // Widths to the words: the last tab's name is the page's whole title (the menu review's
+            // quick win 15), and at an even 216 it shrank under the 14 px a label may be.
+            Chip(row, "Choose a houseguest", -456f, 200f, !libraryMode && !castSlotsMode, () => { libraryMode = false; castSlotsMode = false; scrollToTop = true; Rebuild(); });
+            Chip(row, CharacterCreator.CreateCaption, -230f, 236f, false, () => OpenCreator(CharacterDraft.Blank(), CharacterCreator.EntryMode.Quick));
+            Chip(row, retainedDraft == null ? CharacterCreator.CustomiseCaption : "Resume setup", -18f, 172f, false, () =>
             {
                 if (retainedDraft != null) { OpenCreator(retainedDraft.Copy(), retainedCreatorMode); return; }
                 var chosen = CastTemplates.Find(selectedId);
                 OpenCreator(chosen == null ? CharacterDraft.Blank() : CharacterDraft.FromAppearance(chosen));
             });
-            Chip(row, "My Houseguests", 224f, 216f, libraryMode, () => { libraryMode = true; castSlotsMode = false; scrollToTop = true; Rebuild(); });
-            Chip(row, "Cast slots", 448f, 216f, castSlotsMode, () => { castSlotsMode = true; libraryMode = false; scrollToTop = true; Rebuild(); });
+            Chip(row, "My Houseguests", 162f, 172f, libraryMode, () => { libraryMode = true; castSlotsMode = false; scrollToTop = true; Rebuild(); });
+            Chip(row, SeasonHouseguestsCaption, 406f, 300f, castSlotsMode, () => { castSlotsMode = true; libraryMode = false; scrollToTop = true; Rebuild(); });
         }
+
+        /// <summary>
+        /// The page of houseguests the player adds to this season, and its tab: "Cast slots" until
+        /// the menu review, which keeps "slot" for a save. Its controls say "houseguest" with the
+        /// place in the list, since the same saved houseguest may be added twice.
+        /// </summary>
+        public const string SeasonHouseguestsCaption = "Your houseguests in this season";
+        public static string EditSeasonHouseguestCaption(int place) => "Edit houseguest " + place;
+        public static string RemoveSeasonHouseguestCaption(int place) => "Remove houseguest " + place;
 
         private void CastSlots()
         {
-            Text("CUSTOM CAST — " + customHouseguests.Count + " OF " + (houseSize - 1) + " NPC SLOTS", 22f, UiTheme.Paper, 42f, TextAlignmentOptions.Left);
-            Text("Add saved houseguests. Remaining slots use the chosen roster. Repeated profiles become distinct contestants with independent season state.",
+            Text(SeasonHouseguestsCaption.ToUpperInvariant() + " — " + customHouseguests.Count + " OF " + (houseSize - 1) + " ADDED", 22f, UiTheme.Paper, 42f, TextAlignmentOptions.Left);
+            Text("Add saved houseguests to the season. The rest of the house comes from the chosen roster. A houseguest added twice plays as two separate people.",
                 15f, UiTheme.Muted, 54f, TextAlignmentOptions.Left);
             for (int i = 0; i < customHouseguests.Count; i++)
             {
                 int slot = i;
-                Text("Slot " + (i + 1) + ": " + customHouseguests[i].name, 17f, UiTheme.Accent, 30f, TextAlignmentOptions.Left);
+                Text((i + 1) + ". " + customHouseguests[i].name, 17f, UiTheme.Accent, 30f, TextAlignmentOptions.Left);
                 var row = Row(46f);
-                if (creator != null) Chip(row, "Edit slot " + (i + 1), -165f, 300f, false, () => EditCastSlot(slot));
-                Chip(row, "Remove slot " + (i + 1), 165f, 300f, false, () => { customHouseguests.RemoveAt(slot); Rebuild(); });
+                if (creator != null) Chip(row, EditSeasonHouseguestCaption(i + 1), -165f, 300f, false, () => EditCastSlot(slot));
+                Chip(row, RemoveSeasonHouseguestCaption(i + 1), 165f, 300f, false, () => { customHouseguests.RemoveAt(slot); Rebuild(); });
             }
             Text("SAVED HOUSEGUESTS", 18f, UiTheme.Paper, 40f, TextAlignmentOptions.Left);
             var store = ProfileStore;
             var profiles = store.List();
             foreach (string error in store.ReadErrors) Text(error, 14f, UiTheme.Warning, 46f, TextAlignmentOptions.Left);
-            if (profiles.Count == 0) Text("Create and save a houseguest first. Their profile will be available here.",
+            if (profiles.Count == 0) Text("Create and save a houseguest first. They will be listed here.",
                 16f, UiTheme.Muted, 56f, TextAlignmentOptions.Left);
             var visibleProfiles = profileBrowser.Draw(Row(48f), profiles, Rebuild);
             if (profiles.Count > 0 && visibleProfiles.Count == 0)
@@ -1617,7 +1628,7 @@ namespace Gamesim.Presentation
         private void ResumeCastSlot(int slot)
         {
             Resume();
-            pendingSlotFocus = "Edit slot " + (slot + 1);
+            pendingSlotFocus = EditSeasonHouseguestCaption(slot + 1);
             RestoreSlotFocus();
         }
 
@@ -1740,16 +1751,13 @@ namespace Gamesim.Presentation
             brand.sizeDelta = new Vector2(300f, 64f);
             brand.anchoredPosition = new Vector2(32f, -26f);
             float left = 0f;
-            var houseMark = UiTheme.Pack(PackArt.IconHome);
-            if (houseMark != null)
+            var mark = BrandMark.Draw("Brand mark", brand, UiTheme.Heading);
+            if (mark != null)
             {
-                var mark = new GameObject("Brand mark", typeof(RectTransform), typeof(Image)).GetComponent<Image>();
-                mark.rectTransform.SetParent(brand, false);
                 mark.rectTransform.anchorMin = mark.rectTransform.anchorMax = new Vector2(0f, 1f);
                 mark.rectTransform.pivot = new Vector2(0f, 1f);
                 mark.rectTransform.sizeDelta = new Vector2(52f, 52f);
                 mark.rectTransform.anchoredPosition = new Vector2(0f, -2f);
-                mark.sprite = houseMark; mark.color = UiTheme.Heading; mark.preserveAspect = true; mark.raycastTarget = false;
                 left = 62f;
             }
             var word = HudPrimitives.Label("Brand word", brand, 36f, Color.white, TextAlignmentOptions.TopLeft);

@@ -77,7 +77,7 @@ namespace Gamesim.Tests.PlayMode
             SeasonBuilder.Choice choice = null;
             cast.Show(value => choice = value, () => { }, (_, __) => Assert.Fail("Adding an NPC must not reopen the player creator."));
             cast.SetDraft(loadedProfile.ToDraft());
-            Click(cast, "Cast slots");
+            Click(cast, "Your houseguests in this season");
             Click(cast, "Add Garment lifecycle guest to the cast");
             Click(cast, "Add Garment lifecycle guest to the cast");
             Click(cast, CastSelect.StartCaption);

@@ -147,6 +147,12 @@ namespace Gamesim.Tests.PlayMode
                     yield return null; yield return null;
                     foreach (string page in new[] { "Identity", CharacterCreator.QuickCaption })
                     {
+                        // The Quick / Detailed switch is the Appearance step's alone (menu quick win 9).
+                        if (page == CharacterCreator.QuickCaption)
+                        {
+                            CastButtons("Appearance").Single().onClick.Invoke();
+                            yield return null; yield return null;
+                        }
                         CastButtons(page).Single().onClick.Invoke();
                         yield return null; yield return null;
                         var scroll = creator.GetComponentsInChildren<UnityEngine.UI.ScrollRect>().Single();

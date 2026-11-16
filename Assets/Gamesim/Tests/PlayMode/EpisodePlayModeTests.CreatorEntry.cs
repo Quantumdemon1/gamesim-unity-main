@@ -109,6 +109,8 @@ namespace Gamesim.Tests.PlayMode
             var original = sameDraft.Copy();
             yield return CreatorEntrySubmit(CharacterCreator.DetailedCaption);
             yield return CreatorEntrySubmit("Identity");
+            // The switch is the Appearance step's alone (menu quick win 9).
+            yield return CreatorEntrySubmit("Appearance");
             yield return CreatorEntrySubmit(CharacterCreator.QuickCaption);
             Assert.That(creator.Draft, Is.SameAs(sameDraft));
             AssertCreatorEntryDraft(original, creator.Draft);
@@ -132,14 +134,24 @@ namespace Gamesim.Tests.PlayMode
             yield return OpenCreator(detailed: false);
             CreatorEntryName("Shared Robin");
             yield return CreatorEntrySubmit("Review");
-            yield return CreatorEntrySubmit(CharacterCreator.DetailedCaption);
             Assert.That(Creator().GetComponentsInChildren<Transform>().Any(item => item.name == "Review houseguest"), Is.True);
-            yield return CreatorEntrySubmit(CharacterCreator.QuickCaption);
+            // The Quick / Detailed switch is the Appearance step's alone (menu quick win 9): the
+            // shared pages are reached in either mode by their tabs, and are the same pages.
+            Assert.That(CastButtons(CharacterCreator.DetailedCaption), Is.Empty, "No mode switch on Review.");
+            yield return CreatorEntrySubmit(CharacterCreator.QuickPageCaption);
+            yield return CreatorEntrySubmit(CharacterCreator.DetailedCaption);
+            yield return CreatorEntrySubmit("Review");
+            Assert.That(Creator().Mode, Is.EqualTo(CharacterCreator.EntryMode.Detailed));
+            Assert.That(Creator().GetComponentsInChildren<Transform>().Any(item => item.name == "Review houseguest"), Is.True,
+                "Detailed reaches the same Review.");
             yield return CreatorEntrySubmit("My Houseguests");
             yield return CreatorEntrySubmit("Save this houseguest");
-            yield return CreatorEntrySubmit(CharacterCreator.DetailedCaption);
-            Assert.That(CastButtons("Save this houseguest"), Has.Length.EqualTo(1), "The shared library stays open.");
+            Assert.That(CastButtons(CharacterCreator.QuickCaption), Is.Empty, "No mode switch on the library.");
+            yield return CreatorEntrySubmit("Appearance");
             yield return CreatorEntrySubmit(CharacterCreator.QuickCaption);
+            yield return CreatorEntrySubmit("My Houseguests");
+            Assert.That(Creator().Mode, Is.EqualTo(CharacterCreator.EntryMode.Quick));
+            Assert.That(CastButtons("Save this houseguest"), Has.Length.EqualTo(1), "Quick reaches the same library.");
             yield return CreatorEntrySubmit("Rename Shared Robin");
             Assert.That(Creator().Mode, Is.EqualTo(CharacterCreator.EntryMode.Detailed));
             Assert.That(Creator().GetComponentsInChildren<TMP_InputField>().Any(field => field.name == "Name field"), Is.True);

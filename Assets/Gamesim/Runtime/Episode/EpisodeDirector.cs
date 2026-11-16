@@ -890,6 +890,8 @@ namespace Gamesim.Episode
                     && (result.beatsFromSequence <= 0 || e.sequence < result.beatsFromSequence))
                 : null;
             message = result.accepted ? StatusLine(result.state, visible) ?? "Decision committed." : result.reason;
+            // The free-time board keeps it as the player's last move (menu review quick win 18).
+            if (result.accepted) NoteFreeTimeMove(command, result.state, visible);
             commandNotice = !result.accepted;
             systemNotice = null;
             activityNotice = null;

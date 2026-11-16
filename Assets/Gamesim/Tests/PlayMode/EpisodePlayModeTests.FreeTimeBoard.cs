@@ -1113,7 +1113,7 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(everyControl.Contains(EpisodeHud.CampaignNextCaption), Is.EqualTo(cardPages.Length > 1),
                 where + ": with the way on to the rest of the house exactly when the suite names more than one page of cards.");
             foreach (string caption in new[] { EpisodeDirector.ExploreTheHouseCaption, EpisodeDirector.OverviewListenCaption, EpisodeHud.RallyHouseCaption,
-                EpisodeHud.AirLaundryCaption, EpisodeDirector.DoAnActivityCaption, EpisodeHud.BuyBurnOneCaption, EpisodeHud.BuySpreadCaption })
+                EpisodeHud.AirLaundryCaption, EpisodeDirector.DoAnActivityCaption, EpisodeDirector.BuyAnActionCaption })
                 Assert.That(everyControl, Does.Contain(caption), where + ": '" + caption + "' is on a page.");
 
             // The mouse: a press where "Next page" stands turns the page, and commits nothing - the

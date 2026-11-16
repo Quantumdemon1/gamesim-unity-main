@@ -100,7 +100,7 @@ namespace Gamesim.Tests.PlayMode
                 Assert.That(chip, Is.Not.Null, "The conversations left are a chip.");
                 int budget = EpisodeEngine.SocialActionBudget(state);
                 Assert.That(chip.GetComponentsInChildren<TMP_Text>().Select(label => label.text),
-                    Is.EquivalentTo(new[] { "Interactions available", Mathf.Max(0, budget - EpisodeEngine.SocialActionsSpent(state)) + " of " + budget }),
+                    Is.EquivalentTo(new[] { EpisodeHud.ActionsLeftLabel, Mathf.Max(0, budget - EpisodeEngine.SocialActionsSpent(state)) + " of " + budget }),
                     "in the meter's own words.");
 
                 bool footUp = ActiveRect(EpisodeHud.CampaignCardsName) != null;

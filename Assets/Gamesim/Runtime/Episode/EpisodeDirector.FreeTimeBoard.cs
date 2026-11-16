@@ -76,6 +76,67 @@ namespace Gamesim.Episode
         /// <summary>The words at a tile's foot: what it costs, that it is free, or why it is locked.</summary>
         public const string TileCostsAction = "Cost: 1 action", TileFree = "Free", TileNoActionsLeft = "No actions left";
 
+        /// <summary>
+        /// The budget card's one way to the ways of buying an action (menu review quick win 19): the two
+        /// crowded its foot, and now stand behind it. Pressing it only shows them; nothing is bought
+        /// until one of them is pressed, at the same price and by the same command as before.
+        /// </summary>
+        public const string BuyAnActionCaption = "Buy an action", BuyAnActionPrice = "Two ways, paid in goodwill";
+
+        /// <summary>Whether the budget card shows the ways to buy an action rather than the one button behind which they stand. View state: closing the panel or a new free time puts them away.</summary>
+        private bool freeTimeBuyOpen;
+
+        /// <summary>Whether the board's ways to buy an action are out. A read for tests.</summary>
+        public bool FreeTimeBuyOptionsShown => freeTimeBuyOpen;
+
+        /// <summary>The words the "Last move" line opens with (menu review quick win 18).</summary>
+        public const string LastMovePrefix = "Last move · ";
+
+        /// <summary>
+        /// The player's last move in free time: the sequence of the line its commit showed in the status
+        /// line, and the load and the season it was made in. View state, and only a pointer into the
+        /// season's own log: the words are read from the record each time, and a load or a new season
+        /// (the load generation and the session move on) leaves nothing to point at.
+        /// </summary>
+        private int freeTimeLastMoveSequence = -1;
+        private long freeTimeLastMoveLoad = -1;
+        private string freeTimeLastMoveSession;
+
+        /// <summary>
+        /// Notes a commit as the player's last move when it is one: accepted in free time, still in free
+        /// time after it, and showing the player a line of free time's own week. The way on and the
+        /// opening's bookkeeping are not moves. Called by <see cref="Submit"/> with the line it showed.
+        /// </summary>
+        private void NoteFreeTimeMove(EpisodeCommand command, EpisodeState after, EpisodeEvent visible)
+        {
+            if (command == null || after == null || visible == null) return;
+            if (command.kind == EpisodeCommandKind.Advance || command.kind == EpisodeCommandKind.MarkOpeningBeat) return;
+            if (after.phase != EpisodePhase.Social || visible.phase != EpisodePhase.Social || visible.week != after.week) return;
+            freeTimeLastMoveSequence = visible.sequence;
+            freeTimeLastMoveLoad = loadGeneration;
+            freeTimeLastMoveSession = after.sessionId;
+        }
+
+        /// <summary>The board's "Last move" line for this state: null before the week's first move, after a load, and in another season.</summary>
+        private string FreeTimeLastMove(EpisodeState state) =>
+            freeTimeLastMoveLoad == loadGeneration && state != null && freeTimeLastMoveSession == state.sessionId
+                ? LastMoveLine(state, freeTimeLastMoveSequence) : null;
+
+        /// <summary>
+        /// "Last move · " and the status line's words for the logged line at <paramref name="sequence"/>:
+        /// null when the season is not in free time, when the log no longer holds the line, or when it
+        /// is not a free-time line of this very week - a week that has turned starts with none.
+        /// </summary>
+        public static string LastMoveLine(EpisodeState state, int sequence)
+        {
+            if (state == null || sequence < 0 || state.phase != EpisodePhase.Social) return null;
+            var line = state.events.LastOrDefault(e => e.sequence == sequence);
+            if (line == null || line.week != state.week || line.phase != EpisodePhase.Social) return null;
+            if (line.audienceIds.Count > 0 && !line.audienceIds.Contains(state.playerId)) return null;
+            string words = StatusLine(state, line);
+            return string.IsNullOrEmpty(words) ? null : LastMovePrefix + words;
+        }
+
         /// <summary>The beat opened from the board's banner or its strip, while it is open. View state.</summary>
         private string freeTimeOpenedBeat;
         /// <summary>
@@ -120,6 +181,7 @@ namespace Gamesim.Episode
             freeTimeOpenedBeat = null;
             freeTimeBeatFocusBack = false;
             freeTimePage = 0;
+            freeTimeBuyOpen = false;
             freeTimeView = null;
             // A panel opened again opens to a pointer and a keyboard that have moved on: nothing to
             // hold off, and no focus left to land.
@@ -263,6 +325,21 @@ namespace Gamesim.Episode
             Render();
         }
 
+        /// <summary>
+        /// "Buy an action" pressed: the two ways to buy one take its place, and nothing is committed.
+        /// The press may be the first of two, and the second would land on whichever way now stands
+        /// under the pointer, so the pointer is held off the panel a moment; the keyboard goes to the
+        /// first way, which only opens its picker.
+        /// </summary>
+        private void ShowFreeTimeBuys()
+        {
+            if (freeTimeBuyOpen) return;
+            freeTimeBuyOpen = true;
+            Render();
+            hud.HoldPointerOffPanel(EpisodeHud.PointerHoldSeconds);
+            hud.FocusWhenWired(EpisodeHud.BuyBurnOneCaption);
+        }
+
         /// <summary>Back from a beat to the board, its answer still waiting.</summary>
         private void CloseFreeTimeBeat()
         {
@@ -348,7 +425,9 @@ namespace Gamesim.Episode
             spec.Copy = FreeTimeCostLine(state);
             spec.Unused = UnusedActionsNote(state);
             spec.Buys = new List<EpisodeHud.BuyButton>();
-            if (WebSocialVocabulary.PurchaseCeiling - state.boughtActionPoints > 0)
+            if (WebSocialVocabulary.PurchaseCeiling - state.boughtActionPoints > 0 && !freeTimeBuyOpen)
+                spec.Buys.Add(new EpisodeHud.BuyButton { Caption = BuyAnActionCaption, Price = BuyAnActionPrice, Choose = ShowFreeTimeBuys });
+            else if (WebSocialVocabulary.PurchaseCeiling - state.boughtActionPoints > 0)
             {
                 spec.Buys.Add(new EpisodeHud.BuyButton
                 {
@@ -373,6 +452,7 @@ namespace Gamesim.Episode
             }).ToList();
             spec.Preparation = state.playerStudyBonus > 0 ? "Preparation " + state.playerStudyBonus + "/" + TuningRules.PreparationOutOf(state) : null;
             spec.HaveNot = HaveNots.Is(state, state.playerId) ? HaveNotLine : null;
+            spec.LastMove = FreeTimeLastMove(state);
 
             // The house as cards, those in the room with the player first, with the week's role on each photo.
             var here = HouseOccupancy(state).FirstOrDefault(room => room.Occupants != null && room.Occupants.Any(person => person.IsPlayer));

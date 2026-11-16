@@ -304,7 +304,10 @@
 # 10025 = 10017 + competition yard slice 2's 8 CompetitionYardPiecesTests cases (shared with the subset): what is put
 # away in everyday life and what stays, each listed once with a reason, the name stem (5 rows), and nothing unlisted put away.
 # No Unity run has observed them yet.
-Gamesim.EditModeTests 10025
+# 10049 = 10025 + menu quick wins slice 1's 24 cases: part a's 7 MenuQuickWinsCreatorTests, part b's 5
+# MenuFrontWordsScanTests (shared with the subset), part c's 7 SeasonBoardsQuickWinTests and the integration's 5
+# MenuQuickWinsIntegrationTests. Counted by the offline listers; no Unity run has observed them yet.
+Gamesim.EditModeTests 10049
 # The UMA-free build. 1215 = 1236, the count after the consolidation's lanes (S2a, S2b, S4a), less the 7
 # farewell probes moved to Gamesim.DiagnosticsPlayModeTests and the 14 farewell readiness tests that now
 # compile only under GAMESIM_UMA (judged on the UMA cast); 1230 = 1215 + S2d's 7, S4b's 2, S4c's 2 and
@@ -498,7 +501,10 @@ Gamesim.EditModeTests 10025
 # watched endurance shows, the skip, reduced motion, the ranked game and another kind). No Unity run has observed them yet.
 # 1566 = 1561 + competition yard slice 2's 5 EpisodePlayModeTests.CompetitionYard_* cases (everyday life, the briefing,
 # practice, the ranked game, a load during practice). No Unity run has observed them yet.
-Gamesim.PlayModeTests 1566
+# 1590 = 1566 + menu quick wins slice 1's 24 cases: part a's 14 (MenuQuickWinsCreatorPlayModeTests 12 and
+# EpisodePlayModeTests.MenuQuickWinsCreator 2), part b's 7 EpisodePlayModeTests.MenuFront and part c's 3
+# EpisodePlayModeTests.SeasonBoardsQuickWins cases. Counted by the offline listers.
+Gamesim.PlayModeTests 1590
 # The UMA build of the same assembly, read by a plan built without -WithoutUma. 1281 = the 1241 above + the
 # 40 tests that compile only under GAMESIM_UMA, as run at r1 (2026-10-16): in EpisodePlayModeTests,
 # GroundedFarewell 11, Creator 9, HouseLife 8, Emotes 3, OpeningCaptures 2, and one each in CreatorEntry,
@@ -627,7 +633,8 @@ Gamesim.PlayModeTests 1566
 # 2026-11-14). Counted from the two sides; no run has observed 1599 on it.
 # 1606 = 1599 + competition show slice 1's same 7 cases (see PlayModeTests above). No Unity run has observed them yet.
 # 1611 = 1606 + competition yard slice 2's same 5 cases (see PlayModeTests above). No Unity run has observed them yet.
-Gamesim.PlayModeTests.UmaBuild 1611
+# 1635 = 1611 + menu quick wins slice 1's same 24 cases (see PlayModeTests above).
+Gamesim.PlayModeTests.UmaBuild 1635
 # The UMA bodies: runs only where the GAMESIM_UMA define is set (the working tree and the D: copy).
 # 82 = the 89 run on 2026-10-15, less the 7 farewell probes moved to Gamesim.Uma.DiagnosticsPlayModeTests;
 # 85 = 82 + the 3 farewell readiness decision tests (UmaFarewellReadinessDecisionPlayModeTests, 2026-10-16);
@@ -859,4 +866,5 @@ Gamesim.Uma.DiagnosticsPlayModeTests 10
 # 16837 = 16826 + competition show slice 1's 11 CompetitionShowPlanTests cases (the same 11 the EditMode floor counts).
 # 16839 = 16837 + the slice's fix's same 2 CompetitionShowPlanTests cases.
 # 16847 = 16839 + competition yard slice 2's 8 CompetitionYardPiecesTests cases (the same 8 the EditMode floor counts).
-Gamesim.SimulationTests 16847
+# 16852 = 16847 + menu quick wins slice 1's 5 MenuFrontWordsScanTests cases (the same 5 the EditMode floor counts).
+Gamesim.SimulationTests 16852

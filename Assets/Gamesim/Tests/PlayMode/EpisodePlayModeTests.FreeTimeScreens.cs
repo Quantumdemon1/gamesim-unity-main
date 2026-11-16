@@ -58,7 +58,7 @@ namespace Gamesim.Tests.PlayMode
             var labels = head.GetComponentsInChildren<TMP_Text>().ToList();
             Assert.That(Words(head), Does.Contain("FREE TIME"), "The card says the screen's name,");
             Assert.That(labels.Single(text => text.name == EpisodeHud.ActionsLeftCountName).text, Is.EqualTo(left.ToString()), "how many actions are left, large,");
-            Assert.That(labels.Single(text => text.name == EpisodeHud.ActionsLeftWordName).text, Is.EqualTo(left == 1 ? "ACTION LEFT" : "ACTIONS LEFT"));
+            Assert.That(labels.Single(text => text.name == EpisodeHud.ActionsLeftWordName).text, Is.EqualTo(EpisodeHud.ActionsLeftLabel));
             Assert.That(labels.Single(text => text.name == EpisodeHud.BudgetRuleName).text, Is.EqualTo(EpisodeDirector.BudgetRule(state)), "the week's rule,");
             Assert.That(labels.Single(text => text.name == EpisodeHud.BudgetCopyName).text, Is.EqualTo(EpisodeDirector.FreeTimeCostLine(state)),
                 "and what costs an action, and what moving on loses.");

@@ -32,9 +32,11 @@ namespace Gamesim.Presentation
     {
         /// <summary>Captions tests and the tour find these controls by.</summary>
         public const string StartCaption = "Start with this houseguest";
-        public const string BackCaption = "Back to the cast";
-        public const string ApplySlotCaption = "Apply to cast slot";
-        public const string CancelSlotCaption = "Cancel slot edit";
+        public const string BackCaption = "Back to the cast (draft kept)";
+        public const string ApplySlotCaption = "Apply to this houseguest";
+        public const string CancelSlotCaption = "Cancel this edit";
+        /// <summary>What Identity says while it edits a houseguest already in the season's cast.</summary>
+        public const string EditingCastLine = "A member of the cast, as the house will meet them. Changes apply to this houseguest in this season only.";
 
         /// <summary>How the cast screen offers this one.</summary>
         public const string CreateCaption = "Create your own houseguest";

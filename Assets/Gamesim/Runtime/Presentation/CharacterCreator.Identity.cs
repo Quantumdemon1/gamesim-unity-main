@@ -43,7 +43,7 @@ namespace Gamesim.Presentation
             var box = Panel("Identity form", scrim, r, true);
             float x = 28f, width = r.width - 56f;
             float top = SectionHeading(box, x, 22f, width, PackArt.KitIconNote, "IDENTITY");
-            Words(box, editingCastSlot ? "A member of the cast, as the house will meet them. Applying changes this slot only."
+            Words(box, editingCastSlot ? EditingCastLine
                     : "Who the house meets on the first night. Everything here is yours; the rest of the cast is unchanged.", 15f,
                 UiTheme.Muted, new Rect(x, top, width, 44f)).textWrappingMode = TextWrappingModes.Normal;
             top += 52f;
@@ -60,7 +60,7 @@ namespace Gamesim.Presentation
             }
             float air = Mathf.Clamp((available - fixedParts - leastBio) / 6f, 0f, 20f);
             float bioHeight = Mathf.Clamp(available - fixedParts - 4f * air, leastBio, 200f);
-            Field(host, "Name", draft.Name, CharacterDraft.NameLimit, false, new Rect(left, y, width, 76f), value => draft.Name = value);
+            Field(host, "Name", draft.Name, CharacterDraft.NameLimit, false, new Rect(left, y, width, 76f), value => draft.Name = value, required: true);
             y += 84f + air;
             float half = (width - 20f) * .5f;
             Field(host, "Occupation", draft.Occupation, CharacterDraft.ShortLimit, false, new Rect(left, y, half, 76f), value => draft.Occupation = value);
@@ -91,9 +91,10 @@ namespace Gamesim.Presentation
         /// rebuilds itself whenever anything else is touched and an uncommitted field would be lost.
         /// </para>
         /// </summary>
-        private void Field(Transform parent, string caption, string value, int limit, bool multiline, Rect r, Action<string> write)
+        private void Field(Transform parent, string caption, string value, int limit, bool multiline, Rect r, Action<string> write, bool required = false)
         {
-            var label = Words(parent, caption.ToUpperInvariant(), 14f, UiTheme.Heading, new Rect(r.x, r.y, r.width, 20f), name: caption);
+            // A field the houseguest cannot be made without says so above it and in its empty box.
+            var label = Words(parent, RequiredLabel(caption, required).ToUpperInvariant(), 14f, UiTheme.Heading, new Rect(r.x, r.y, r.width, 20f), name: caption);
             label.characterSpacing = 2f;
             var box = HudPrimitives.Fill(caption + " field", parent, new Color(UiTheme.Ink.r, UiTheme.Ink.g, UiTheme.Ink.b, .55f), 10);
             Place(box, r.x, r.y + 26f, r.width, r.height - 26f);
@@ -103,7 +104,7 @@ namespace Gamesim.Presentation
             text.text = string.Empty;
             Inset(text.rectTransform, 16f, multiline ? 10f : 4f);
             var hint = HudPrimitives.Label("Placeholder", box, 18f, UiTheme.Muted, multiline ? TextAlignmentOptions.TopLeft : TextAlignmentOptions.MidlineLeft);
-            hint.text = Localisation.Text(multiline ? "A few lines the house will learn about you" : caption);
+            hint.text = Localisation.Text(multiline ? "A few lines the house will learn about you" : RequiredLabel(caption, required));
             hint.fontStyle = FontStyles.Italic;
             Inset(hint.rectTransform, 16f, multiline ? 10f : 4f);
             var input = box.gameObject.AddComponent<EpisodeSpeechInputField>();
@@ -131,6 +132,9 @@ namespace Gamesim.Presentation
                 }
             });
         }
+
+        /// <summary>A field's words, marked when the houseguest cannot be made without it: "Name (required)".</summary>
+        public static string RequiredLabel(string caption, bool required) => required ? caption + " (required)" : caption;
 
         /// <summary>
         /// Age as the mockup draws it: the number, a slider across the legal range, and a step either

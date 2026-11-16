@@ -26,6 +26,8 @@ namespace Gamesim.Tests.PlayMode
         {
             // A preceding Cancel or houseguest-screen transition can still own the pointer.
             if (director.GetComponentInChildren<EpisodeHud>().PointerHeld) yield return WaitOutThePointerHold();
+            // On the free-time board the ways to buy stand behind "Buy an action" (menu review quick win 19).
+            yield return RevealBuyOptions();
             ButtonWithCaption(EpisodeHud.BuyBurnOneCaption).onClick.Invoke();
             // Observe the guard at the actual replacement, not after an arbitrarily slow UMA frame
             // has legitimately outlived its real-time duration.
@@ -180,6 +182,7 @@ namespace Gamesim.Tests.PlayMode
                 yield return ApplyTextSize(textSize);
                 yield return OpenStation();
                 var before = director.Snapshot;
+                yield return RevealBuyOptions();
                 yield return KeyboardSubmit(EpisodeHud.BuyBurnOneCaption);
                 yield return null; yield return null;
                 Assert.That(EventSystem.current.currentSelectedGameObject?.name, Is.EqualTo(EpisodeDirector.BurnBridgeCancelCaption),

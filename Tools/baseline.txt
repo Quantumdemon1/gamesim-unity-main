@@ -304,11 +304,40 @@
 # 10025 = 10017 + competition yard slice 2's 8 CompetitionYardPiecesTests cases (shared with the subset): what is put
 # away in everyday life and what stays, each listed once with a reason, the name stem (5 rows), and nothing unlisted put away.
 # No Unity run has observed them yet.
+# 10039 = 9968 + the house talk's manners (plan 32 S1): 71 cases. RegardTests 29, CandourTests 13, VoteAnswerTests 12,
+# LineBankLintTests 5, HouseTalkNotesTests 5, HouseTalkRulesTests 11 (was 8: Latest is Manners, 12 valid live and
+# refused by the four frozen readers, 13 and 14 still refused), and FrozenEpisodeV29IntegrationTests' 4 new
+# StoryRulesTwelveAtTwentyNine cases (its parity row moved from 12 to 13: no count). HouseTalkCapacityTests is compiled
+# out of Unity. The no-UMA lister counted 10035 on the slice at 5541b4a6 before the 4; the Mono harness ran the V29
+# class 134 of 134 (2026-11-14); no Unity run has observed 10039 yet.
+# 10059 = 10039 + the house talk's manners' review fix (plan 32 S1): 20 cases. HouseTalkValidationTests 19 (the house
+# talk's records refused below story rules 12, 3; malformed at 12, 13; well-formed at 12, 3) and HouseTalkNotesTests 1
+# (an information partner's reading after the ask leaves the quoted answer alone). The same 20 the subset floor counts;
+# checked by the listers on this commit (2026-11-14); no Unity run has observed 10059 yet.
+# 10085 = 9994 (main: the old-save cell, offers slice 4a, the house talk's levels) + the house talk's manners' 91
+# (10059 - 9968 on the slice: 71 and the review fix's 20): disjoint cases, so the floor is their sum (the merge of
+# main ada068a4 into the house talk's manners for its landing, 2026-11-14). Counted from the two sides.
+# 10086 = 10085 + the house talk's manners' landing check (plan 32 S1): HouseTalkValidationTests 1, an h2h: record that
+# names nobody seated is refused at story rules 12 (the second review's surviving mutant N3). The same 1 the subset floor
+# counts.
+# 10117 = 10025 (main: stack O2, the wording slice, competition slices 1 and 2) + the house talk's manners' 92
+# (10086 - 9994 on the slice: 71, the review fix's 20 and the landing check's 1): disjoint cases, so the floor is
+# their sum (the merge of main 9a741c9b into the house talk's manners for its landing, 2026-11-16). Counted from
+# the two sides.
+# 10049 = 10025 + menu quick wins slice 1's 24 cases: part a's 7 MenuQuickWinsCreatorTests, part b's 5
+# MenuFrontWordsScanTests (shared with the subset), part c's 7 SeasonBoardsQuickWinTests and the integration's 5
+# MenuQuickWinsIntegrationTests. Counted by the offline listers; no Unity run has observed them yet.
+# 10141 = 10117 (main 25977d60, with the house talk's manners) + the menu quick wins' 24 (10049 - 10025 on this
+# branch): disjoint cases, so the floor is their sum (the merge of main 25977d60 into the menu quick wins for its
+# landing, 2026-11-16). Counted from the two sides.
 # 10059 = 10025 + competition staging slice 3's 34 CompetitionShowFamiliesTests cases (shared with the subset): each
 # game's family (an unknown game keeps its card), the beats telling the committed standings in order, the hard bound
 # for sixteen, and staging that neither writes the season nor draws from it. The offline listers counted 10059 on the
 # slice. No Unity run has observed them yet.
-Gamesim.EditModeTests 10059
+# 10175 = 10141 (the menu quick wins' landing head e13c428a, with main 25977d60) + the competition staging families'
+# 34 (10059 - 10025 on this branch): disjoint cases, so the floor is their sum (the merge of the menu quick wins'
+# landing head into the staging families for the stacked landing, 2026-11-16). Counted from the two sides.
+Gamesim.EditModeTests 10175
 # The UMA-free build. 1215 = 1236, the count after the consolidation's lanes (S2a, S2b, S4a), less the 7
 # farewell probes moved to Gamesim.DiagnosticsPlayModeTests and the 14 farewell readiness tests that now
 # compile only under GAMESIM_UMA (judged on the UMA cast); 1230 = 1215 + S2d's 7, S4b's 2, S4c's 2 and
@@ -502,10 +531,28 @@ Gamesim.EditModeTests 10059
 # watched endurance shows, the skip, reduced motion, the ranked game and another kind). No Unity run has observed them yet.
 # 1566 = 1561 + competition yard slice 2's 5 EpisodePlayModeTests.CompetitionYard_* cases (everyday life, the briefing,
 # practice, the ranked game, a load during practice). No Unity run has observed them yet.
+# 1511 = 1510 + the house talk's manners (plan 32 S1): EpisodePlayModeTests.HouseTalkProfile, 1 case (the profile's
+# "What you've learned" block at story rules 12 and none at 11). The no-UMA lister counted 1511 on the slice at
+# 5541b4a6 (2026-11-14); no Unity run has observed it yet.
+# 1524 = 1523 (main: offers slice 4a and HoH room slice 1) + the house talk's manners' 1 (1511 - 1510 on the
+# slice): disjoint cases, so the floor is their sum (the merge of main ada068a4 into the house talk's manners for
+# its landing, 2026-11-14). Counted from the two sides; no run has observed 1524.
+# 1567 = 1566 (main) + the house talk's manners' 1 (1524 - 1523 on the slice): disjoint cases, so the floor is
+# their sum (the merge of main 9a741c9b into the house talk's manners for its landing, 2026-11-16). Counted from
+# the two sides; no run has observed 1567.
+# 1590 = 1566 + menu quick wins slice 1's 24 cases: part a's 14 (MenuQuickWinsCreatorPlayModeTests 12 and
+# EpisodePlayModeTests.MenuQuickWinsCreator 2), part b's 7 EpisodePlayModeTests.MenuFront and part c's 3
+# EpisodePlayModeTests.SeasonBoardsQuickWins cases. Counted by the offline listers.
+# 1591 = 1567 (main 25977d60, with the house talk's manners) + the menu quick wins' 24 (1590 - 1566 on this branch):
+# disjoint cases, so the floor is their sum (the merge of main 25977d60 into the menu quick wins for its landing,
+# 2026-11-16). Counted from the two sides.
 # 1573 = 1566 + competition staging slice 3's 7 EpisodePlayModeTests.CompetitionStaging_* cases (a podium quiz, a
 # table of dice, a course run, a skip mid-run, reduced motion, sixteen on the course, the same result with shows on
 # and off). The offline listers counted 1573 on the slice. No Unity run has observed them yet.
-Gamesim.PlayModeTests 1573
+# 1598 = 1591 (the menu quick wins' landing head e13c428a, with main 25977d60) + the competition staging families' 7
+# (1573 - 1566 on this branch): disjoint cases, so the floor is their sum (the merge of the menu quick wins' landing
+# head into the staging families for the stacked landing, 2026-11-16). Counted from the two sides.
+Gamesim.PlayModeTests 1598
 # The UMA build of the same assembly, read by a plan built without -WithoutUma. 1281 = the 1241 above + the
 # 40 tests that compile only under GAMESIM_UMA, as run at r1 (2026-10-16): in EpisodePlayModeTests,
 # GroundedFarewell 11, Creator 9, HouseLife 8, Emotes 3, OpeningCaptures 2, and one each in CreatorEntry,
@@ -634,9 +681,24 @@ Gamesim.PlayModeTests 1573
 # 2026-11-14). Counted from the two sides; no run has observed 1599 on it.
 # 1606 = 1599 + competition show slice 1's same 7 cases (see PlayModeTests above). No Unity run has observed them yet.
 # 1611 = 1606 + competition yard slice 2's same 5 cases (see PlayModeTests above). No Unity run has observed them yet.
+# 1556 = 1555 + the house talk's manners' same shared case (plan 32 S1, HouseTalkProfile). The UMA lister counted 1556
+# on the slice at 5541b4a6 (2026-11-14); no Unity run has observed it yet.
+# 1569 = 1568 (main) + the house talk's manners' same shared case (1556 - 1555 on the slice): disjoint cases, so
+# the floor is their sum (the merge of main ada068a4 into the house talk's manners for its landing, 2026-11-14).
+# Counted from the two sides; no run has observed 1569.
+# 1612 = 1611 (main) + the house talk's manners' same shared case (1569 - 1568 on the slice): disjoint cases, so
+# the floor is their sum (the merge of main 9a741c9b into the house talk's manners for its landing, 2026-11-16).
+# Counted from the two sides; no run has observed 1612.
+# 1635 = 1611 + menu quick wins slice 1's same 24 cases (see PlayModeTests above).
+# 1636 = 1612 (main 25977d60, with the house talk's manners) + the menu quick wins' 24 (1635 - 1611 on this branch):
+# disjoint cases, so the floor is their sum (the merge of main 25977d60 into the menu quick wins for its landing,
+# 2026-11-16). Counted from the two sides.
 # 1618 = 1611 + competition staging slice 3's same 7 cases (see PlayModeTests above). The offline listers counted 1618
 # on the slice. No Unity run has observed them yet.
-Gamesim.PlayModeTests.UmaBuild 1618
+# 1643 = 1636 (the menu quick wins' landing head e13c428a, with main 25977d60) + the competition staging families' 7
+# (1618 - 1611 on this branch): disjoint cases, so the floor is their sum (the merge of the menu quick wins' landing
+# head into the staging families for the stacked landing, 2026-11-16). Counted from the two sides.
+Gamesim.PlayModeTests.UmaBuild 1643
 # The UMA bodies: runs only where the GAMESIM_UMA define is set (the working tree and the D: copy).
 # 82 = the 89 run on 2026-10-15, less the 7 farewell probes moved to Gamesim.Uma.DiagnosticsPlayModeTests;
 # 85 = 82 + the 3 farewell readiness decision tests (UmaFarewellReadinessDecisionPlayModeTests, 2026-10-16);
@@ -868,6 +930,28 @@ Gamesim.Uma.DiagnosticsPlayModeTests 10
 # 16837 = 16826 + competition show slice 1's 11 CompetitionShowPlanTests cases (the same 11 the EditMode floor counts).
 # 16839 = 16837 + the slice's fix's same 2 CompetitionShowPlanTests cases.
 # 16847 = 16839 + competition yard slice 2's 8 CompetitionYardPiecesTests cases (the same 8 the EditMode floor counts).
+# 16866 = 16797 + the house talk's manners (plan 32 S1): the same 67 cases the EditMode floor counts, and
+# HouseTalkCapacityTests' 2 (the sixteen-seat cooldown capacity, compiled out of Unity). dotnet test
+# Tools/SimulationTests ran exactly 16866 of 16866 on the slice at 5541b4a6 (2026-11-14). The held digests are
+# Explicit (run by filter) and not counted.
+# 16886 = 16866 + the house talk's manners' review fix (plan 32 S1): the same 20 cases the EditMode floor counts
+# (HouseTalkValidationTests 19, HouseTalkNotesTests 1), checked by dotnet test Tools/SimulationTests on this commit
+# (2026-11-14).
+# 16905 = 16816 (main) + the house talk's manners' 89 (16886 - 16797 on the slice): disjoint cases, so the floor is
+# their sum (the merge of main ada068a4 into the house talk's manners for its landing, 2026-11-14). Counted from
+# the two sides.
+# 16906 = 16905 + the house talk's manners' landing check (plan 32 S1): the same 1 HouseTalkValidationTests case the
+# EditMode floor counts.
+# 16937 = 16847 (main) + the house talk's manners' 90 (16906 - 16816 on the slice): disjoint cases, so the floor is
+# their sum (the merge of main 9a741c9b into the house talk's manners for its landing, 2026-11-16). Counted from
+# the two sides.
+# 16852 = 16847 + menu quick wins slice 1's 5 MenuFrontWordsScanTests cases (the same 5 the EditMode floor counts).
+# 16942 = 16937 (main 25977d60, with the house talk's manners) + the menu quick wins' 5 (16852 - 16847 on this
+# branch): disjoint cases, so the floor is their sum (the merge of main 25977d60 into the menu quick wins for its
+# landing, 2026-11-16). Counted from the two sides.
 # 16881 = 16847 + competition staging slice 3's 34 CompetitionShowFamiliesTests cases (the same 34 the EditMode floor
 # counts): dotnet test Tools/SimulationTests ran exactly 16881 of 16881 on the slice at fbb01817 (2026-11-16).
-Gamesim.SimulationTests 16881
+# 16976 = 16942 (the menu quick wins' landing head e13c428a, with main 25977d60) + the competition staging families'
+# 34 (16881 - 16847 on this branch): disjoint cases, so the floor is their sum (the merge of the menu quick wins'
+# landing head into the staging families for the stacked landing, 2026-11-16). Counted from the two sides.
+Gamesim.SimulationTests 16976

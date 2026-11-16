@@ -425,7 +425,7 @@ namespace Gamesim.Tests.PlayMode
             int left = Mathf.Max(0, EpisodeEngine.SocialActionBudget(state) - EpisodeEngine.SocialActionsSpent(state));
             Copy(budget, "Budget eyebrow", "FREE TIME", "budget.eyebrow", shown.Hero);
             Copy(budget, EpisodeHud.ActionsLeftCountName, left.ToString(), "budget.count", shown.Hero);
-            Copy(budget, EpisodeHud.ActionsLeftWordName, left == 1 ? "ACTION LEFT" : "ACTIONS LEFT", "budget.word", shown.Hero);
+            Copy(budget, EpisodeHud.ActionsLeftWordName, EpisodeHud.ActionsLeftLabel, "budget.word", shown.Hero);
             Copy(budget, EpisodeHud.BudgetRuleName, EpisodeDirector.BudgetRule(state), "budget.rule", shown.Hero);
             Copy(budget, EpisodeHud.BudgetCopyName, EpisodeDirector.FreeTimeCostLine(state), "budget.cost", shown.Hero);
             string unused = EpisodeDirector.UnusedActionsNote(state);
@@ -434,10 +434,9 @@ namespace Gamesim.Tests.PlayMode
             var buys = Part(budget, EpisodeHud.BuyActionsName, "budget.buys", shown.Hero && canBuy);
             if (canBuy && shown.Hero)
             {
-                var burn = Control(buys, EpisodeHud.BuyBurnOneCaption, "buy.burn");
-                Copy(burn, "Buy price", Mathf.Abs((int)WebSocialVocabulary.BurnOneCost) + " goodwill · choose a housemate", "buy.burn.price");
-                var spread = Control(buys, EpisodeHud.BuySpreadCaption, "buy.spread");
-                Copy(spread, "Buy price", Mathf.Abs((int)WebSocialVocabulary.SpreadAllCost) + " goodwill with every housemate", "buy.spread.price");
+                // The ways to buy stand behind one "Buy an action" until it is pressed (menu review quick win 19).
+                var opener = Control(buys, EpisodeDirector.BuyAnActionCaption, "buy.opener");
+                Copy(opener, "Buy price", EpisodeDirector.BuyAnActionPrice, "buy.opener.price");
                 Copy(budget, EpisodeHud.BoughtOutName, null, "budget.boughtOut", false);
             }
             else if (shown.Hero) Copy(budget, EpisodeHud.BoughtOutName, "You have bought as much time as the house will give you this "
@@ -751,7 +750,7 @@ namespace Gamesim.Tests.PlayMode
                 FreeTimeRequiredCopy11(board, EpisodeHud.UnusedActionsNoteName, EpisodeDirector.UnusedActionsNote(state), failures);
                 FreeTimeRequiredCopy11(board, "Budget eyebrow", "FREE TIME", failures);
                 FreeTimeRequiredCopy11(board, EpisodeHud.ActionsLeftCountName, left.ToString(), failures);
-                FreeTimeRequiredCopy11(board, EpisodeHud.ActionsLeftWordName, left == 1 ? "ACTION LEFT" : "ACTIONS LEFT", failures);
+                FreeTimeRequiredCopy11(board, EpisodeHud.ActionsLeftWordName, EpisodeHud.ActionsLeftLabel, failures);
             }
             if (rows[0] != null) FreeTimeIssue11(failures, rows[0].rect.height >= 104f * scale - .5f, "HeroFloor");
             var expectedCards = FreeTimeExpectedEightCards11(out var capturedRooms);
@@ -801,8 +800,7 @@ namespace Gamesim.Tests.PlayMode
                     EpisodeHud.RallyHouseCaption, EpisodeHud.AirLaundryCaption, EpisodeDirector.DoAnActivityCaption })
                     FreeTimeRequiredControl11(caption, failures);
             if (shown.Hero)
-                foreach (string caption in new[] { EpisodeHud.BuyBurnOneCaption, EpisodeHud.BuySpreadCaption })
-                    FreeTimeRequiredControl11(caption, failures);
+                FreeTimeRequiredControl11(EpisodeDirector.BuyAnActionCaption, failures);
             foreach (string caption in new[] { EpisodeDirector.BeginNextCompetitionCaption, EpisodeDirector.StayInTheHouseCaption })
                 FreeTimeRequiredControl11(caption, failures);
             FreeTimeIssue11(failures, LiveButtonsCarrying(EpisodeDirector.BeginNextCompetitionCaption) == 1, "OneLiveWayOn");
@@ -899,7 +897,7 @@ namespace Gamesim.Tests.PlayMode
             float copyLeast = labels.Where(label => label.path.EndsWith("/" + EpisodeHud.BudgetRuleName, StringComparison.Ordinal)
                 || label.path.EndsWith("/" + EpisodeHud.BudgetCopyName, StringComparison.Ordinal)).Sum(label => Mathf.Ceil(label.minimumPreferredHeight) + 2f);
             var buy = FreeTimePagePart11(board, EpisodeHud.BuyActionsName, shown.Hero, failures);
-            if (buy != null) FreeTimeIssue11(failures, buy.childCount == 2, "RequiredTwoBuyControls");
+            if (buy != null) FreeTimeIssue11(failures, buy.childCount == 1, "RequiredOneBuyControl");
             if (buy != null) foreach (Transform button in buy) FreeTimeRequiredFrame11((RectTransform)button, failures);
             return new FreeTimeMetric11
             {

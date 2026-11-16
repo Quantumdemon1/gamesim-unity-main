@@ -214,10 +214,10 @@ namespace Gamesim.Episode
             CreatorRequire(creator.Draft.Name == profileName && creator.Draft.Appearance.ContentKey() == authored.ContentKey(),
                 "Cast selection must use the same saved profile library.");
             yield return CreatorClick(CharacterCreator.BackCaption);
-            yield return CreatorClick("Cast slots");
+            yield return CreatorClick("Your houseguests in this season");
             yield return CreatorClick("Add " + profileName + " to the cast");
             yield return CreatorClick("Add " + profileName + " to the cast");
-            yield return CreatorClick("Edit slot 1");
+            yield return CreatorClick("Edit houseguest 1");
             CreatorRequire(CreatorButton(CharacterCreator.ApplySlotCaption) != null && CreatorButton(CharacterCreator.StartCaption) == null,
                 "An NPC edit must apply to its slot instead of starting a season.");
             yield return CreatorClick("Identity");

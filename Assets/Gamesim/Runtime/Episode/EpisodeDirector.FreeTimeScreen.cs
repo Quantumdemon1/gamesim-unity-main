@@ -210,7 +210,7 @@ namespace Gamesim.Episode
         public static string BudgetRule(EpisodeState state)
         {
             if (!EpisodeEngine.WeekRulesOn(state))
-                return "The house gives you half its number in actions each week, so the budget tightens as people leave.";
+                return "The house gives you half its number in actions each week, so you have fewer actions as people leave.";
             int window = EpisodeEngine.Window(state);
             if (window == Windows.None) return null;
             if (EpisodeEngine.IsFirstNight(state))
@@ -354,10 +354,10 @@ namespace Gamesim.Episode
             if (left > 0)
             {
                 string purchases = left + (left == 1 ? " purchase" : " purchases") + " left.";
-                tiles.Add(Tile(EpisodeHud.BuyBurnOneCaption, "One more interaction for " + Mathf.Abs((int)WebSocialVocabulary.BurnOneCost)
+                tiles.Add(Tile(EpisodeHud.BuyBurnOneCaption, "One more action for " + Mathf.Abs((int)WebSocialVocabulary.BurnOneCost)
                         + " goodwill with a housemate you choose. " + purchases,
                     EpisodeCommandKind.BuyActionPoint, "exit", () => OpenActionPurchase(state), "Risky", "Gains 1 action"));
-                tiles.Add(Tile(EpisodeHud.BuySpreadCaption, "One more interaction for " + Mathf.Abs((int)WebSocialVocabulary.SpreadAllCost)
+                tiles.Add(Tile(EpisodeHud.BuySpreadCaption, "One more action for " + Mathf.Abs((int)WebSocialVocabulary.SpreadAllCost)
                         + " goodwill with every housemate. " + purchases,
                     EpisodeCommandKind.BuyActionPoint, "chat", () => Commit(state, EpisodeCommandKind.BuyActionPoint, text: WebSocialVocabulary.SpreadAll), null, "Gains 1 action"));
             }

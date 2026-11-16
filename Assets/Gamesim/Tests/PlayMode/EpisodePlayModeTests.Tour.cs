@@ -152,7 +152,7 @@ namespace Gamesim.Tests.PlayMode
 
         /// <summary>
         /// The reference build's seven steps, in its order, with this HUD's titles; the controls line
-        /// on the first card; "Skip Tutorial" on every card, "Next" on all but the last and "Let's
+        /// on the first card; "Skip the tour" on every card, "Next" on all but the last and "Let's
         /// Go!" on the last; and at the batchmode window, each lit step's ring round the real HUD
         /// chrome it names.
         /// </summary>
@@ -174,7 +174,7 @@ namespace Gamesim.Tests.PlayMode
                 Assert.That(tour.StepIndex, Is.EqualTo(i), step);
                 Assert.That(TourText(tour, "Title"), Is.EqualTo(step));
                 Assert.That(TourText(tour, "Counter"), Is.EqualTo((i + 1) + " of " + TourTitles.Length), step);
-                Assert.That(TourButton(tour, "Skip Tutorial"), Is.Not.Null, step + ": the skip is on every card.");
+                Assert.That(TourButton(tour, "Skip the tour"), Is.Not.Null, step + ": the skip is on every card.");
                 Assert.That(TourButton(tour, last ? "Let's Go!" : "Next"), Is.Not.Null, step);
                 Assert.That(TourButton(tour, last ? "Next" : "Let's Go!"), Is.Null, step);
 
@@ -329,7 +329,7 @@ namespace Gamesim.Tests.PlayMode
             }
         }
 
-        /// <summary>The step sound plays once for every press of Next and never for Skip Tutorial.</summary>
+        /// <summary>The step sound plays once for every press of Next and never for Skip the tour.</summary>
         [UnityTest]
         public IEnumerator Tour_StepSoundPlaysOnEveryNextAndNeverOnTheSkip()
         {
@@ -348,9 +348,9 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(sounds, Is.EqualTo(2));
             yield return null;
 
-            TourButton(tour, "Skip Tutorial").onClick.Invoke();
-            Assert.That(tour.IsShowing, Is.False, "Skip Tutorial leaves the tour.");
-            Assert.That(sounds, Is.EqualTo(2), "Skip Tutorial makes no step sound.");
+            TourButton(tour, "Skip the tour").onClick.Invoke();
+            Assert.That(tour.IsShowing, Is.False, "Skip the tour leaves the tour.");
+            Assert.That(sounds, Is.EqualTo(2), "Skip the tour makes no step sound.");
             yield return null;
             tour.StepSound = null;
         }
@@ -536,7 +536,7 @@ namespace Gamesim.Tests.PlayMode
         }
 
         /// <summary>
-        /// "Skip Tutorial" can be seen with the keyboard on it. It has no fill, so its words are what
+        /// "Skip the tour" can be seen with the keyboard on it. It has no fill, so its words are what
         /// brighten, from the grey they rest in to the HUD's paper white, and settle back when the
         /// keyboard leaves; the caption is the same throughout. The tint went on its transparent
         /// fill, and moving from Next to it changed nothing on it at all.
@@ -551,7 +551,7 @@ namespace Gamesim.Tests.PlayMode
             {
                 var events = EventSystem.current;
                 Assert.That(events, Is.Not.Null, "The fixture has an event system to focus with.");
-                var skip = TourButton(tour, "Skip Tutorial");
+                var skip = TourButton(tour, "Skip the tour");
                 var next = TourButton(tour, "Next");
                 Assert.That(skip, Is.Not.Null);
                 Assert.That(events.currentSelectedGameObject, Is.SameAs(next.gameObject), "The tour lands on Next.");
@@ -564,7 +564,7 @@ namespace Gamesim.Tests.PlayMode
                 float focused = TourSeen(skip);
                 Assert.That(focused - resting, Is.GreaterThan(.2f),
                     "With the keyboard on it the skip looks " + focused.ToString("0.000") + " bright, against " + resting.ToString("0.000") + " at rest.");
-                Assert.That(TourButton(tour, "Skip Tutorial"), Is.SameAs(skip), "The caption is untouched: the words brighten, they do not change.");
+                Assert.That(TourButton(tour, "Skip the tour"), Is.SameAs(skip), "The caption is untouched: the words brighten, they do not change.");
 
                 events.SetSelectedGameObject(next.gameObject);
                 yield return TourRealSeconds(.3f);

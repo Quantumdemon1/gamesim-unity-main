@@ -495,7 +495,7 @@ namespace Gamesim.Simulation
             if (prospectiveSafety && (!TryValidateStory(s, out error) || !TryValidateLedger(s, out error))) return false;
             return TryValidateV2(s, out error) && TryValidateV3(s, out error) && TryValidateNpcSocial(s, out error)
                 && TryValidateStory(s, out error) && TryValidateLedger(s, out error) && TryValidateWaveD(s, out error)
-                && TryValidateAlumni(s, out error)
+                && TryValidateAlumni(s, out error) && TryValidateHouseTalk(s, out error)
                 && (!prospectiveSafety || TryValidateUnifiedSafetyReferences(s, prospectiveVote, out error))
                 && (!prospectiveVote || TryValidateUnifiedVoteReferences(s, out error));
         }

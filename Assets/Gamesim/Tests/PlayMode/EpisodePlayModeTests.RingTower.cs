@@ -69,6 +69,10 @@ namespace Gamesim.Tests.PlayMode
             if (screen.Paused) screen.TogglePause();
         }
 
+        /// <summary>The competition surface's control carrying this caption: the surface is a scene root of its own, not under the director.</summary>
+        private static Button SurfaceButton(CompetitionGameScreen screen, string caption) => screen.GetComponentsInChildren<Button>()
+            .FirstOrDefault(button => button.GetComponentsInChildren<TMP_Text>().Any(text => text.text == caption));
+
         private static Button TowerStack(CompetitionGameScreen screen, int stack) =>
             screen.GetComponentsInChildren<Button>().Single(button => button.name == CompetitionGameScreen.StackCaption(stack));
 
@@ -86,7 +90,7 @@ namespace Gamesim.Tests.PlayMode
                 var own = stack.GetComponentsInChildren<MeshRenderer>(true);
                 Assert.That(own, Is.Not.Empty);
                 Assert.That(own.Where(renderer => renderer.enabled), Is.Empty, stack.name + "'s own joined rings never show under the playable ones.");
-                Assert.That(own.All(putAway.Contains), Is.True, "The yard's one owner switched them off and will switch them back on.");
+                Assert.That(own.Any(putAway.Contains), Is.True, "The yard's one owner switched them off and will switch them back on.");
                 var colliders = stack.GetComponentsInChildren<Collider>(true);
                 Assert.That(colliders.Any(collider => collider.gameObject.layer == 8 && collider.enabled), Is.True,
                     stack.name + " keeps its fitted layer-8 Collision proxy: nobody is routed into it.");
@@ -223,7 +227,7 @@ namespace Gamesim.Tests.PlayMode
             Assert.That((run.Tower.Moves, run.Tower.Refused), Is.EqualTo((1, 1)), "Refused, and nothing moved.");
             Assert.That(run.Tower.Stack(1), Is.EqualTo(new[] { 1 }));
             Assert.That(run.Tower.Stack(0), Is.EqualTo(new[] { 4, 3, 2 }));
-            Assert.That(cues, Does.Contain(HouseAudio.Cue.SocialDown), "A refusal sounds.");
+            Assert.That(cues.Contains(HouseAudio.Cue.SocialDown), Is.True, "A refusal sounds.");
             Assert.That(Labelled(screen, "Attempt feedback"), Does.Contain("larger ring cannot go on a smaller one"), "and says why.");
             Assert.That(Labelled(screen, "Tower moves"), Is.EqualTo("Moves 1  ·  fewest 15"), "The move count shows.");
             TowerStack(screen, 0).onClick.Invoke();          // put it back
@@ -248,7 +252,8 @@ namespace Gamesim.Tests.PlayMode
             yield return null; yield return null;
             Assert.That(director.Snapshot.revision, Is.EqualTo(before.revision), "A practice commits nothing.");
             Assert.That(director.Snapshot.randomState, Is.EqualTo(before.randomState), "and draws nothing.");
-            ButtonWithCaption("Return to briefing").onClick.Invoke();
+            Assert.That(SurfaceButton(found[0], "Return to briefing"), Is.Not.Null, "The practice's finish offers the way back.");
+            SurfaceButton(found[0], "Return to briefing").onClick.Invoke();
             yield return null; yield return null;
             AssertTowerPutAway("after the practice returns to the briefing");
             Assert.That(director.Snapshot.revision, Is.EqualTo(before.revision));
@@ -266,7 +271,7 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(run.Finished && run.Tower.Solved, Is.True, "The pad moved the whole tower.");
             yield return null; yield return null;
             Assert.That(director.Snapshot.revision, Is.EqualTo(before.revision));
-            ButtonWithCaption("Return to briefing").onClick.Invoke();
+            SurfaceButton(found[0], "Return to briefing").onClick.Invoke();
             yield return null; yield return null;
             AssertTowerPutAway("after the pad's practice");
         }

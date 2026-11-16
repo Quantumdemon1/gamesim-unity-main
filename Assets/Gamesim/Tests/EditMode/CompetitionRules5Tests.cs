@@ -76,7 +76,7 @@ namespace Gamesim.Tests.EditMode
                         if (CompetitionDefinitions.Version4(seed, week, phase) != CompetitionDefinitions.RingTower)
                             Assert.That(CompetitionDefinitions.Version3(seed, week, phase), Is.Not.SameAs(CompetitionDefinitions.RingTower));
                     }
-            Assert.That(CompetitionDefinitions.All, Does.Not.Contain(CompetitionDefinitions.RingTower), "The console games' list stays rules 4's.");
+            Assert.That(CompetitionDefinitions.All.Contains(CompetitionDefinitions.RingTower), Is.False, "The console games' list stays rules 4's.");
             var ids = CompetitionDefinitions.Catalogue.Select(definition => definition.Id).ToList();
             Assert.That(ids.Distinct().Count(), Is.EqualTo(ids.Count), "Every published id is its own.");
             Assert.That(ids.Last(), Is.EqualTo("ring-tower-v5"));

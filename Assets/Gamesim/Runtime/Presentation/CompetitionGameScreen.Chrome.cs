@@ -316,9 +316,9 @@ namespace Gamesim.Presentation
         private static Color ToneOf(string text)
         {
             if (text.StartsWith("Hit", StringComparison.Ordinal) || text.StartsWith("Pair found", StringComparison.Ordinal)
-                || text.StartsWith("Solved", StringComparison.Ordinal)) return UiTheme.Positive;
+                || text.StartsWith("Solved", StringComparison.Ordinal) || text.StartsWith("Tower complete", StringComparison.Ordinal)) return UiTheme.Positive;
             if (text.StartsWith("Missed", StringComparison.Ordinal) || text.StartsWith("No match", StringComparison.Ordinal)
-                || text.StartsWith("Not quite", StringComparison.Ordinal)) return UiTheme.Danger;
+                || text.StartsWith("Not quite", StringComparison.Ordinal) || text.StartsWith("Not allowed", StringComparison.Ordinal)) return UiTheme.Danger;
             if (text.StartsWith("Too early", StringComparison.Ordinal)) return UiTheme.Warning;
             return UiTheme.Paper;
         }

@@ -113,6 +113,65 @@ namespace Gamesim.Presentation
         /// </summary>
         public static float PrincipalSeconds(bool quick) => quick ? 7.5f : 11f;
 
+        // ------------------------------------------------------------ the walk out's pace
+
+        /// <summary>The house's walk, metres a second (HouseNpcMotion.DefaultSpeed; the plan names no Unity type).</summary>
+        public const float WalkPace = 2.2f;
+
+        /// <summary>
+        /// The fastest the walk out hurries anybody, metres a second: the player's own run across the
+        /// house (HousePlayerController's run). It carries a 30 m route - the far end of the house to
+        /// the yard's back row - inside the walk out (<see cref="WalkOutSeconds"/>, 7.5 s), and is a
+        /// little over the course's run (3.8 m/s), which covers only a few metres at a time.
+        /// </summary>
+        public const float TopWalkOutPace = 4f;
+
+        /// <summary>At this pace or over, a hurried houseguest takes the run gait.</summary>
+        public const float RunGaitPace = 3f;
+
+        /// <summary>Taken, the run gait is kept until the pace falls under this: no flicker between gaits.</summary>
+        public const float WalkGaitPace = 2.6f;
+
+        /// <summary>The last step to a station, metres: walked, never hurried, so nobody runs on the spot at their station.</summary>
+        public const float LastStepMetres = .5f;
+
+        /// <summary>How often each walker's remaining route is read again and their pace set, seconds.</summary>
+        public const float WalkOutRereadSeconds = .25f;
+
+        /// <summary>How long before the hold's wait is up the walk out means the field to be at its stations.</summary>
+        public static float WalkOutMargin(bool quick) => quick ? 1f : 1.5f;
+
+        /// <summary>
+        /// When, from the show's start, every stationed competitor is meant to stand at their station:
+        /// a little inside the wait for the field (<see cref="AssemblySeconds"/>), so a late start, a
+        /// queue at the yard's door or a detour still has the margin.
+        /// </summary>
+        public static float WalkOutSeconds(bool quick) => AssemblySeconds(quick) - WalkOutMargin(quick);
+
+        /// <summary>
+        /// The pace, metres a second, that brings a walker with <paramref name="remainingMetres"/> of
+        /// route still to go to their station in <paramref name="secondsLeft"/>: never under the house's
+        /// walk and never over <see cref="TopWalkOutPace"/>. A route of unknown length (NaN or infinite)
+        /// or no time left is hurried at the top pace; the last step (<see cref="LastStepMetres"/>) or
+        /// less, a route already walked or a negative length is walked.
+        /// </summary>
+        public static float WalkOutPace(float remainingMetres, float secondsLeft)
+        {
+            if (float.IsNaN(remainingMetres) || float.IsInfinity(remainingMetres)) return TopWalkOutPace;
+            if (remainingMetres <= LastStepMetres) return WalkPace;
+            if (float.IsNaN(secondsLeft) || secondsLeft <= .05f) return TopWalkOutPace;
+            float pace = remainingMetres / secondsLeft;
+            if (pace < WalkPace) return WalkPace;
+            if (pace > TopWalkOutPace) return TopWalkOutPace;
+            return pace;
+        }
+
+        /// <summary>
+        /// Whether a walker at <paramref name="pace"/> runs: from <see cref="RunGaitPace"/> up, and once
+        /// <paramref name="runningNow"/>, until the pace falls under <see cref="WalkGaitPace"/>.
+        /// </summary>
+        public static bool RunsAt(float pace, bool runningNow) => runningNow ? pace >= WalkGaitPace : pace >= RunGaitPace;
+
         /// <summary>Everybody holding on before the first one lets go.</summary>
         public static float OpeningHoldSeconds(bool quick) => quick ? .75f : 1.5f;
 

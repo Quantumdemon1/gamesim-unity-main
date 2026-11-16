@@ -26,8 +26,10 @@ namespace Gamesim.Presentation
         /// <summary>Whether a competition of this kind is staged as a show.</summary>
         public static bool Shows(string category) => category == EnduranceKind;
 
-        private CompetitionShowPlan(EpisodePhase phase, string category, string playerId, List<string> standings)
+        private CompetitionShowPlan(EpisodePhase phase, string category, string playerId, List<string> standings,
+            CompetitionShowFamily family = CompetitionShowFamily.Hold)
         {
+            Family = family;
             Phase = phase;
             Category = category;
             PlayerId = playerId;
@@ -37,6 +39,9 @@ namespace Gamesim.Presentation
             drops.Reverse();
             DropOrder = drops;
         }
+
+        /// <summary>How the show is staged: a hold at grip rigs (slice 1), or a podium, table or course (slice 3).</summary>
+        public CompetitionShowFamily Family { get; }
 
         /// <summary>The phase the competition was played in (the committed state may have moved on: Part 1 to Part 2).</summary>
         public EpisodePhase Phase { get; }
@@ -75,6 +80,23 @@ namespace Gamesim.Presentation
             if (standings.Count < 2) return null;
             return new CompetitionShowPlan(phase, category, committed.playerId, standings);
         }
+
+        /// <summary>
+        /// The show for a competition of the game <paramref name="gameId"/> (null for a season with no
+        /// authored games), staged in the game's family (competition staging, slice 3,
+        /// <see cref="CompetitionShowFamilies"/>); null for a game the show does not know.
+        /// </summary>
+        public static CompetitionShowPlan For(EpisodeState committed, EpisodePhase phase, string category, string gameId)
+        {
+            var family = CompetitionShowFamilies.For(gameId, category);
+            if (family == null) return null;
+            if (family == CompetitionShowFamily.Hold) return For(committed, phase, category);
+            var hold = For(committed, phase, EnduranceKind);
+            return hold == null ? null : new CompetitionShowPlan(phase, category, committed.playerId, hold.Standings.ToList(), family.Value);
+        }
+
+        /// <summary>The timeline of a podium, table or course show for its whole field; null for a hold.</summary>
+        public CompetitionShowTimeline Timeline(bool quick) => CompetitionShowTimeline.For(Family, Standings, quick);
 
         // ------------------------------------------------------------ the beats, in unscaled seconds
 
@@ -143,7 +165,8 @@ namespace Gamesim.Presentation
         /// The longest a show may run from its start, the walk out included, before it gives way to the
         /// card regardless: the wait for the winner, the whole field's hold, and a second to spare.
         /// </summary>
-        public float HardSeconds(bool quick, bool reduced) => PrincipalSeconds(quick) + CardAt(quick, reduced) + 1f;
+        public float HardSeconds(bool quick, bool reduced) => PrincipalSeconds(quick)
+            + (Family == CompetitionShowFamily.Hold || reduced ? CardAt(quick, reduced) : Timeline(quick).CardAt) + 1f;
 
         /// <summary>
         /// How hard <paramref name="id"/> is working at <paramref name="t"/> seconds into the hold, 0

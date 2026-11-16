@@ -33,7 +33,7 @@ namespace Gamesim.Tests.PlayMode
             yield return CreatorEntrySubmit("Your houseguests in this season");
             for (int slot = 0; slot < 11; slot++) yield return CreatorEntrySubmit("Add Keep Return Guest to the cast");
             CastScreen().GetComponentsInChildren<TMP_InputField>().Single(field => field.name == "Profile name search").text = "Keep";
-            yield return CreatorEntrySubmit("Search profiles");
+            yield return CreatorEntrySubmit(CharacterProfileBrowser.OneBoxSearchCaption);
             Assert.That(CastButtons("Add Other Return Guest to the cast"), Is.Empty, "The non-default profile filter is applied.");
             Assert.That(CastGridScroll().content.rect.height, Is.GreaterThan(CastGridScroll().viewport.rect.height), "This route has a real scroll position to preserve.");
         }

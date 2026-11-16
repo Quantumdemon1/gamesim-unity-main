@@ -43,7 +43,7 @@ namespace Gamesim.Presentation
             var box = Panel("Identity form", scrim, r, true);
             float x = 28f, width = r.width - 56f;
             float top = SectionHeading(box, x, 22f, width, PackArt.KitIconNote, "IDENTITY");
-            Words(box, editingCastSlot ? "A member of the cast, as the house will meet them. Applying changes this slot only."
+            Words(box, editingCastSlot ? EditingCastLine
                     : "Who the house meets on the first night. Everything here is yours; the rest of the cast is unchanged.", 15f,
                 UiTheme.Muted, new Rect(x, top, width, 44f)).textWrappingMode = TextWrappingModes.Normal;
             top += 52f;

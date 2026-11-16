@@ -61,7 +61,7 @@ namespace Gamesim.Presentation
         /// How to see the tour again, on every card, so it is there at the moment of skipping. True
         /// because the house's Settings carry a "Replay the tour" control (EpisodeDirector.Season.cs).
         /// </summary>
-        public const string ReplayNote = "You can replay the tour any time from Settings.";
+        public const string ReplayNote = "You can replay the tour from Settings in the house.";
         public const string ReplayNoteName = "Replay note";
 
         /// <summary>The names of the tour's parts, so a test can measure them without guessing.</summary>

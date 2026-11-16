@@ -156,7 +156,7 @@ namespace Gamesim.Episode
         /// </summary>
         public const string RecoverBackupCaption = "Recover backup (keeps a copy of this save)";
         public const string NewSeasonInNewSlotCaption = "New season in a new slot (keeps this season)";
-        public const string AccessibilityLine = "Everything said in the house and at the ceremonies is captioned. Every mouse control has a keyboard key, and the precision competitions have an untimed, assisted way to play.";
+        public const string AccessibilityLine = "Everything said in the house and at the ceremonies is captioned. Every screen can be used with the keyboard or a controller.";
         public const string ImportHeading = "IMPORT A WEB SAVE";
         public const string ImportLine = "Bring in a season saved by the web version of the game. Only simple saves come in: six houseguests still playing, saved between ceremonies, with no ceremony results to carry over. Any other save is set aside unchanged, never cut down to fit.";
 

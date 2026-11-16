@@ -153,7 +153,7 @@ namespace Gamesim.Presentation
         private CharacterCreator creator;
         private string pendingSlotFocus;
         private CharacterProfileStore profileStore;
-        private readonly CharacterProfileBrowser profileBrowser = new CharacterProfileBrowser();
+        private readonly CharacterProfileBrowser profileBrowser = new CharacterProfileBrowser { OneBox = true };
         public CharacterProfileStore ProfileStore => profileStore ?? (profileStore = new CharacterProfileStore());
 
         // The details' live model: one studio, kept between rebuilds so a click does not rebuild the body.

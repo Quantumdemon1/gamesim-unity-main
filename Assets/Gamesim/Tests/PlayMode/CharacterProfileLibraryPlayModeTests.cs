@@ -207,7 +207,7 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(cast.GetComponentsInChildren<CharacterPortraitBinding>(), Has.Length.EqualTo(CharacterProfileBrowser.PageSize));
             search = cast.GetComponentsInChildren<TMP_InputField>().Single(field => field.name == "Profile name search");
             search.text = "GUEST 07";
-            Click(cast, "Search profiles");
+            Click(cast, CharacterProfileBrowser.OneBoxSearchCaption);
             Assert.That(Buttons(cast, "Choose Guest 07"), Has.Length.EqualTo(1));
             Assert.That(Buttons(cast, "Choose Guest 01"), Is.Empty);
             Assert.That(cast.GetComponentsInChildren<CharacterPortraitBinding>(), Has.Length.EqualTo(1));
@@ -247,9 +247,9 @@ namespace Gamesim.Tests.PlayMode
             creator.Hide();
             cast.Show(_ => { }, () => { }, (_, __) => { });
             Click(cast, "My Houseguests");
-            yield return CheckBrowserTextScale(cast, scale => cast.FontScale = scale);
+            yield return CheckBrowserTextScale(cast, scale => cast.FontScale = scale, 2);
             Click(cast, "Your houseguests in this season");
-            yield return CheckBrowserTextScale(cast, scale => cast.FontScale = scale);
+            yield return CheckBrowserTextScale(cast, scale => cast.FontScale = scale, 2);
         }
 
         private static IEnumerator CheckBrowserTextScale(Component screen, Action<float> setScale, int controlCount = 5)

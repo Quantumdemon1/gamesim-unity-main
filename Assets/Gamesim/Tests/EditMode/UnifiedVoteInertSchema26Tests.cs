@@ -137,7 +137,7 @@ namespace Gamesim.Tests.EditMode
         {
             var s = ContentCatalog.Create(2505);
             Assert.That(s.unifiedCommitments, Is.Empty); Assert.That(s.promises.Any(p => p.kind == PromiseKind.Safety), Is.False);
-            s.competitionRulesVersion = CompetitionRules.Current; s.haveNotRulesStartWeek = s.strategyRulesStartWeek = 1;
+            s.competitionRulesVersion = CompetitionRules.Widened; s.haveNotRulesStartWeek = s.strategyRulesStartWeek = 1;
             EpisodeEngine.EnableStory(s); EpisodeEngine.EnableRead(s); EpisodeEngine.EnableLevers(s); EpisodeEngine.EnableWeek(s);
             EpisodeEngine.EnableEconomy(s); EpisodeEngine.EnableAgency(s); EpisodeEngine.EnableFinale(s); EpisodeEngine.EnableCommitments(s);
             s.unifiedCommitmentRulesVersion = 1; s.unifiedHearingRulesVersion = hearing ? 1 : 0;

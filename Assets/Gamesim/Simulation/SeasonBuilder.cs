@@ -178,7 +178,10 @@ namespace Gamesim.Simulation
         {
             sessionId = "gamesim-" + seed.ToString("x8"),
             seed = seed,
-            competitionRulesVersion = CompetitionRules.Current,
+            // Rules 4, the last rules a built season was written with: a season the game starts is moved on to the
+            // current rules by ShippedRules.ApplyFresh, the one place a shipped rule is switched on. Every fixture and
+            // recorded season built here without it stays byte-identical to what it was before rules 5 (the ring tower).
+            competitionRulesVersion = CompetitionRules.Widened,
             haveNotRulesStartWeek = 1,
             strategyRulesStartWeek = 1,
             npcSocial = NpcSocialState.Create(seed),

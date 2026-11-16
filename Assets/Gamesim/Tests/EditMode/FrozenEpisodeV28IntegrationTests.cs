@@ -250,6 +250,7 @@ namespace Gamesim.Tests.EditMode
                 var start = UnifiedVotePublicCommandTests.Fresh(seed);
                 start.tuningRulesVersion = TuningRules.Off;
                 start.story.rulesVersion = StoryRules.Threads;
+                start.competitionRulesVersion = CompetitionRules.Widened; // Held at competition rules 4: rules 5 (the ring tower) is newer than every older schema's reader.
                 var engine = new EpisodeEngine(start);
                 for (int step = 0; step < 800 && engine.Snapshot.phase != EpisodePhase.Finished && engine.Snapshot.week <= 6; step++)
                 {

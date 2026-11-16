@@ -35,7 +35,7 @@ namespace Gamesim.Tests.PlayMode
         private IEnumerator InstallRules4AtFirstHoH(uint seed)
         {
             var initial = ContentCatalog.Create(seed);
-            initial.competitionRulesVersion = CompetitionRules.Current;
+            initial.competitionRulesVersion = CompetitionRules.Widened;
             Assert.That(EpisodeValidation.TryValidate(initial, out var reason), Is.True, reason);
             new EpisodeSaveStore(director.SavePath).Save(initial);
             yield return ReloadEpisode();
@@ -47,7 +47,7 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(director.TryOpenPhasePanel(), Is.True);
             yield return null;
             Assert.That(director.Snapshot.phase, Is.EqualTo(EpisodePhase.HoH));
-            Assert.That(director.Snapshot.competitionRulesVersion, Is.EqualTo(CompetitionRules.Current));
+            Assert.That(director.Snapshot.competitionRulesVersion, Is.EqualTo(CompetitionRules.Widened));
         }
 
         /// <summary>Enters the ranked game from the briefing and plays through its assembly and count.</summary>
@@ -118,7 +118,7 @@ namespace Gamesim.Tests.PlayMode
         {
             director.StartSeason(new SeasonBuilder.Choice());
             yield return null;
-            Assert.That(director.Snapshot.competitionRulesVersion, Is.EqualTo(CompetitionRules.Current), "A season started now plays rules 4.");
+            Assert.That(director.Snapshot.competitionRulesVersion, Is.EqualTo(CompetitionRules.Current), "A season started now plays the current rules (5, the ring tower, since competition slice 4).");
             Assert.That(director.Snapshot.haveNotRulesStartWeek, Is.EqualTo(1), "and names Have-Nots from its first week.");
             Assert.That(director.Snapshot.strategyRulesStartWeek, Is.EqualTo(1), "and opens the strategy windows.");
             // Started without a roster choice - the default cast - it plays the same.
@@ -189,7 +189,7 @@ namespace Gamesim.Tests.PlayMode
         /// </summary>
         private static EpisodeState OpeningThrow(uint seed, out EpisodeState atHoH)
         {
-            var probe = ContentCatalog.Create(seed); probe.competitionRulesVersion = CompetitionRules.Current;
+            var probe = ContentCatalog.Create(seed); probe.competitionRulesVersion = CompetitionRules.Widened;
             var engine = new EpisodeEngine(probe);
             var advanced = engine.Apply(new EpisodeCommand { id = "begin", actorId = probe.playerId, expectedPhase = probe.phase,
                 expectedRevision = probe.revision, kind = EpisodeCommandKind.Advance });

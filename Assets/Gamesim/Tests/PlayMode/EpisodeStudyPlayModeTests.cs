@@ -244,7 +244,7 @@ namespace Gamesim.Tests.PlayMode
         public IEnumerator StudyDiary_UnderTuningOneTheStudyStopsAtTheSeasonsLimitAndSaysWhatUsesItUp()
         {
             var tuned = ContentCatalog.Create(20260910);
-            tuned.competitionRulesVersion = CompetitionRules.Current;
+            tuned.competitionRulesVersion = CompetitionRules.Widened;
             tuned.tuningRulesVersion = TuningRules.Bands;
             Assert.That(EpisodeValidation.TryValidate(tuned, out var reason), Is.True, reason);
             new EpisodeSaveStore(director.SavePath).Save(tuned);

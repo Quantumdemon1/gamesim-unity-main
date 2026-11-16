@@ -122,7 +122,7 @@ namespace Gamesim.Tests.EditMode
             var s = ContentCatalog.Create(seed); Assert.That(s.unifiedCommitments, Is.Empty);
             Assert.That(s.promises.Any(p => p.kind == PromiseKind.Safety), Is.False);
             Assert.That(s.deals.Any(d => d.type == DealKind.SafetyAgreement), Is.False);
-            s.competitionRulesVersion = CompetitionRules.Current; s.haveNotRulesStartWeek = s.strategyRulesStartWeek = 1;
+            s.competitionRulesVersion = CompetitionRules.Widened; s.haveNotRulesStartWeek = s.strategyRulesStartWeek = 1;
             EpisodeEngine.EnableStory(s); EpisodeEngine.EnableRead(s); EpisodeEngine.EnableLevers(s); EpisodeEngine.EnableWeek(s);
             EpisodeEngine.EnableEconomy(s); EpisodeEngine.EnableAgency(s); EpisodeEngine.EnableFinale(s); EpisodeEngine.EnableCommitments(s);
             // Test-only fresh selection on asserted empty stores, never a conversion of existing history.

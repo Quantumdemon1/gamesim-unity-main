@@ -129,8 +129,9 @@ namespace Gamesim.Tests.EditMode
             Assert.Throws<ArgumentOutOfRangeException>(() => new MiniGameRun(CompetitionMiniGames.Kind.Words, 1, 3));
             Assert.That(CompetitionMiniGames.For("Luck"), Is.EqualTo(CompetitionMiniGames.Kind.Dice));
             Assert.That(CompetitionMiniGames.For("Social"), Is.EqualTo(CompetitionMiniGames.Kind.Words));
+            // The ring tower (rules 5) is dealt by its definition, not by its kind: a mental competition plays it only when its definition is the tower.
             foreach (CompetitionMiniGames.Kind kind in Enum.GetValues(typeof(CompetitionMiniGames.Kind)))
-                if (kind != CompetitionMiniGames.Kind.Precision)
+                if (kind != CompetitionMiniGames.Kind.Precision && kind != CompetitionMiniGames.Kind.Tower)
                     Assert.That(CompetitionMiniGames.For(CompetitionMiniGames.CategoryOf(kind)), Is.EqualTo(kind), kind + "'s category plays it.");
             var captions = Enum.GetValues(typeof(CompetitionMiniGames.Kind)).Cast<CompetitionMiniGames.Kind>().Select(CompetitionMiniGames.EnterCaption).ToList();
             Assert.That(captions.Distinct().Count(), Is.EqualTo(captions.Count), "Every game's control has words of its own.");

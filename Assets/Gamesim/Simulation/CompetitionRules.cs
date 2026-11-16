@@ -37,9 +37,22 @@ namespace Gamesim.Simulation
     /// </summary>
     public static class CompetitionRules
     {
-        /// <summary>The rules this version introduced, and the rules a new season is created under.</summary>
+        /// <summary>The rules this version introduced: five kinds, the heavier minigame, a real throw.</summary>
         public const int Widened = 4;
-        public const int Current = Widened;
+
+        /// <summary>
+        /// Rules 5 (competition ring tower, slice 4): rules 4 with one more mental game, the Ring Tower, played on
+        /// the yard's three neon stacks (<c>CompetitionDefinitions.Version5</c>). The kinds, their order, the weights,
+        /// the rolls and the throw are rules 4's: only which mental game is dealt changes. Behaviour is keyed to this
+        /// version, never to <see cref="Current"/>.
+        /// </summary>
+        public const int RingTower = 5;
+
+        /// <summary>
+        /// The newest rules a season may be played under: a bound for validation, and the rules
+        /// <c>ShippedRules.ApplyFresh</c> starts every season the game starts on. Never a behaviour.
+        /// </summary>
+        public const int Current = RingTower;
 
         public const string Skill = "Skill", Mental = "Mental", Endurance = "Endurance", Luck = "Luck", Social = "Social";
 

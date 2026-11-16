@@ -304,11 +304,15 @@ namespace Gamesim.Tests.EditMode
         [Test]
         public void NewSeasonsPlayRulesFourAndTheSaveAcceptsThem()
         {
-            Assert.That(CompetitionRules.Current, Is.EqualTo(4));
+            // Rules 4 is still what it was; since competition slice 4 a new season plays rules 5, the ring tower's, and the save takes both.
+            Assert.That(CompetitionRules.Widened, Is.EqualTo(4));
+            Assert.That(CompetitionRules.Current, Is.EqualTo(CompetitionRules.RingTower).And.EqualTo(5));
             var state = ContentCatalog.Create(9);
             state.competitionRulesVersion = 4;
             Assert.That(EpisodeValidation.TryValidate(state, out var reason), Is.True, reason);
             state.competitionRulesVersion = 5;
+            Assert.That(EpisodeValidation.TryValidate(state, out reason), Is.True, reason);
+            state.competitionRulesVersion = 6;
             Assert.That(EpisodeValidation.TryValidate(state, out _), Is.False, "Rules from the future are refused.");
         }
 

@@ -393,7 +393,7 @@ namespace Gamesim.Tests.EditMode
         private static EpisodeState BaseFresh(uint seed, bool builtRoster)
         {
             var s = builtRoster ? SeasonBuilder.Create(new SeasonBuilder.Choice { HouseSize = 8 }, seed) : ContentCatalog.Create(seed);
-            s.competitionRulesVersion = CompetitionRules.Current;
+            s.competitionRulesVersion = CompetitionRules.Widened;
             s.haveNotRulesStartWeek = 1; s.strategyRulesStartWeek = 1;
             EpisodeEngine.EnableStory(s); EpisodeEngine.EnableRead(s); EpisodeEngine.EnableLevers(s);
             // Held at story rules 10, Blame, by name (ROLE-MOMENTS-PLAN R7): the test is about something else, and EnableStory now gives Roles.

@@ -56,7 +56,8 @@ namespace Gamesim.Tests.EditMode
         public void CurrentSavesRejectInvalidRecipesAndUnsupportedRules()
         {
             var state = SeasonBuilder.Create(new SeasonBuilder.Choice(), 6);
-            Assert.That(state.competitionRulesVersion, Is.EqualTo(CompetitionRules.Current), "A new season plays the current competition rules.");
+            // A built season starts on rules 4; ShippedRules.ApplyFresh moves a season the game starts on to the current rules (5, the ring tower).
+            Assert.That(state.competitionRulesVersion, Is.EqualTo(CompetitionRules.Widened), "A built season starts on rules 4.");
             state.contestants[1].appearance.dna.Add(new AppearanceValue { id = "height", value = float.NaN });
             Assert.That(EpisodeValidation.TryValidate(state, out _), Is.False);
             state.contestants[1].appearance.dna.Clear(); state.competitionRulesVersion = CompetitionRules.Current + 1;

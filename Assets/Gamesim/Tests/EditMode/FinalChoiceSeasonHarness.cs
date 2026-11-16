@@ -137,7 +137,7 @@ namespace Gamesim.Tests.EditMode
         {
             // The director's rule set (EpisodeDirector.StartSeason), with the commitment rules from week one or not at all.
             var s = SeasonBuilder.Create(new SeasonBuilder.Choice { HouseSize = size }, seed);
-            s.competitionRulesVersion = CompetitionRules.Current;
+            s.competitionRulesVersion = CompetitionRules.Widened;
             s.haveNotRulesStartWeek = 1; s.strategyRulesStartWeek = 1;
             EpisodeEngine.EnableStory(s); EpisodeEngine.EnableRead(s); EpisodeEngine.EnableLevers(s);
             // Held at story rules 10, Blame, by name (ROLE-MOMENTS-PLAN R7): the test is about something else, and EnableStory now gives Roles.

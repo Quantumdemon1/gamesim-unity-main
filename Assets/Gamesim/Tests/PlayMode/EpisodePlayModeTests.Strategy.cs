@@ -32,7 +32,7 @@ namespace Gamesim.Tests.PlayMode
         private static EpisodeState StrategySeason(uint seed, System.Action<EpisodeState> shape)
         {
             var state = ContentCatalog.Create(seed);
-            state.competitionRulesVersion = CompetitionRules.Current;
+            state.competitionRulesVersion = CompetitionRules.Widened;
             state.haveNotRulesStartWeek = 1;
             state.strategyRulesStartWeek = 1;
             shape?.Invoke(state);

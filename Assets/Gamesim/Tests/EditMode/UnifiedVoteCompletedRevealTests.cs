@@ -460,7 +460,7 @@ namespace Gamesim.Tests.EditMode
                 if (Games.TryGetValue(key, out var played)) return played;
                 var initial = SeasonBuilder.Create(new SeasonBuilder.Choice { HouseSize = size, Roster = CastTemplates.Roster.Regular }, 1);
                 Assert.That(initial.contestants.Count, Is.EqualTo(size), "No factory clamp may masquerade as tested cast coverage.");
-                initial.competitionRulesVersion = CompetitionRules.Current;
+                initial.competitionRulesVersion = CompetitionRules.Widened;
                 initial.haveNotRulesStartWeek = 1; initial.strategyRulesStartWeek = 1;
                 EpisodeEngine.EnableStory(initial); EpisodeEngine.EnableRead(initial); EpisodeEngine.EnableLevers(initial);
                 // Held at story rules 10, Blame, by name (ROLE-MOMENTS-PLAN R7): the test is about something else, and EnableStory now gives Roles.

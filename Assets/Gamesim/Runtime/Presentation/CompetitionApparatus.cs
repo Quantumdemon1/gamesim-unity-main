@@ -366,6 +366,26 @@ namespace Gamesim.Presentation
         }
 
         /// <summary>
+        /// A staged show's grip rig (competition show, slice 1): the meter drains as the houseguest
+        /// tires (<paramref name="remaining"/>, 1 to 0), the counterweight stays up while they hold
+        /// and drops when they let go, and the readout says which. The committed standings decide
+        /// who lets go; this only draws it. Other families keep their resting faces.
+        /// </summary>
+        public void ShowHold(float remaining, bool holding)
+        {
+            if (Instrument != Family.GripRig || gripBar == null || weight == null) return;
+            GripFraction = holding ? Mathf.Clamp01(remaining) : 0f;
+            gripBar.localScale = new Vector3(.035f, .69f * GripFraction, .025f);
+            gripBar.localPosition = new Vector3(.30f, gripHeight - .415f + .345f * GripFraction, Front - .085f);
+            Colorize(gripRenderer, GripFraction < .25f ? UiTheme.Danger : UiTheme.Positive);
+            weight.localPosition = new Vector3(0, holding ? gripHeight + .18f : gripHeight - .31f, Front + .15f);
+            SetWord(progress, holding ? ShowHoldingWord : ShowOutWord);
+        }
+
+        /// <summary>What a show's grip rig says while its houseguest holds on, and once they let go.</summary>
+        public const string ShowHoldingWord = "Holding", ShowOutWord = "Out";
+
+        /// <summary>
         /// Another entrant's station, which has no attempt to mirror. Its console shows the unlit faces
         /// the player's console shows before its first input, on both sides: every key on its
         /// <see cref="UnlitCap"/> under a paper glyph. A Signals console shows its four directions with

@@ -166,7 +166,7 @@ namespace Gamesim.Episode
         /// Exactly while the stage holds the house's input (<see cref="CeremonyStage.OwnsThePress"/>),
         /// so the press the chip names is never also a press on the HUD.
         /// </summary>
-        private bool SkipChipWanted => IsCeremonyStaged && ceremonyStage.OwnsThePress;
+        private bool SkipChipWanted => IsCeremonyStaged && ceremonyStage.OwnsThePress || CompetitionShowNarrating;
 
         /// <summary>The HUD's chrome on screen this frame, for the chip to stand clear of. Reused, never shared.</summary>
         private readonly List<Rect> chromeUnderSkipChip = new List<Rect>();

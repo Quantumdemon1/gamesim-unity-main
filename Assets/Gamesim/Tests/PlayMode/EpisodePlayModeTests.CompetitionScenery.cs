@@ -130,13 +130,22 @@ namespace Gamesim.Tests.PlayMode
             // The house's drawings standing on the deck: everything under the floor's root but the arena's
             // own, effects and floor paint (lanes, start lines, neon strips), which an instrument's stance
             // rails lie on. Not limited to the deck's rectangle, so the shell's yard walls count as well.
-            var pieces=floor.transform.root.GetComponentsInChildren<MeshRenderer>()
-                .Where(renderer=>renderer.enabled && !renderer.transform.IsChildOf(stage) && renderer.transform!=floor.transform
-                    && renderer.bounds.max.y>deck.max.y+CompetitionStageScenery.Rise)
+            // The arena puts the yard's everyday pieces inside the field away (renderers and colliders off)
+            // while it stands, so the measured set is what is drawn now; the put-away ones are counted
+            // beside it, so the dressed yard still has to be there in full, and is not an empty set.
+            var putAway=new HashSet<Renderer>(director.CompetitionYardPutAway);
+            // A put-away renderer is measured by its mesh, as a disabled renderer's own bounds are not relied on.
+            var dressed=floor.transform.root.GetComponentsInChildren<MeshRenderer>()
+                .Where(renderer=>(renderer.enabled || putAway.Contains(renderer)) && !renderer.transform.IsChildOf(stage) && renderer.transform!=floor.transform)
                 .Where(renderer=>{var filter=renderer.GetComponent<MeshFilter>();return filter!=null && filter.sharedMesh!=null;})
+                .Where(renderer=>PieceBounds(renderer).max.y>deck.max.y+CompetitionStageScenery.Rise)
                 .ToArray();
+            var pieces=dressed.Where(renderer=>renderer.enabled).ToArray();
             Assert.That(pieces.Any(renderer=>renderer.name=="bb_set_entrancearch"),Is.True,"The entrance arch is among the drawn pieces measured.");
-            Assert.That(pieces.Count(renderer=>DeckHolds(deck,renderer.bounds.center)),Is.GreaterThanOrEqualTo(20),"The dressed yard's set pieces are measured, not an empty set.");
+            int dressedOnDeck=dressed.Count(renderer=>DeckHolds(deck,PieceBounds(renderer).center));
+            int drawnOnDeck=pieces.Count(renderer=>DeckHolds(deck,renderer.bounds.center));
+            Assert.That(dressedOnDeck,Is.GreaterThanOrEqualTo(20),"The dressed yard's set pieces, drawn or put away for the field, are all there.");
+            Assert.That(drawnOnDeck,Is.GreaterThan(0),"Pieces still drawn on the deck are measured, not an empty set ("+(dressedOnDeck-drawnOnDeck)+" put away).");
             var triangles=new Dictionary<MeshRenderer,Vector3[]>();
             var failures=new List<string>();
             var stations=new List<string>();
@@ -166,6 +175,17 @@ namespace Gamesim.Tests.PlayMode
             }
             Debug.Log("[Gamesim stations] "+category+" at "+houseSize+": stations "+string.Join(" ",stations)+"; "+pieces.Length+" drawn pieces measured.");
             Assert.That(failures,Is.Empty,string.Join("\n",failures));
+        }
+
+        /// <summary>A drawn renderer's own bounds; a put-away one's from its mesh's box in the world.</summary>
+        private static Bounds PieceBounds(MeshRenderer renderer)
+        {
+            if(renderer.enabled)return renderer.bounds;
+            var local=renderer.GetComponent<MeshFilter>().sharedMesh.bounds;var matrix=renderer.transform.localToWorldMatrix;
+            var box=new Bounds(matrix.MultiplyPoint3x4(local.center),Vector3.zero);
+            for(int x=-1;x<=1;x+=2)for(int y=-1;y<=1;y+=2)for(int z=-1;z<=1;z+=2)
+                box.Encapsulate(matrix.MultiplyPoint3x4(local.center+Vector3.Scale(local.extents,new Vector3(x,y,z))));
+            return box;
         }
 
         private static bool DeckHolds(Bounds deck,Vector3 point)

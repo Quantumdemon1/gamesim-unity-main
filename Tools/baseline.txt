@@ -296,7 +296,12 @@
 # run in the Unity-free suite (16818 below). No Unity run has observed 9989 yet.
 # 10004 = 9998 + offers slice 4b's 6 (9989 - 9983): disjoint cases, so the floor is their sum (the merge of offers
 # slice 4p, holding main ada068a4, into offers slice 4b, 2026-11-14). Counted from the two sides; no run has observed 10004.
-Gamesim.EditModeTests 10004
+# 10015 = 10004 + competition show slice 1's 11 CompetitionShowPlanTests cases (shared with the subset): the show's
+# plan from the committed standings (3 ways in), Part 1 by its drop times, endurance only, no write and no draw, and
+# the beats (5 field sizes). No Unity run has observed them yet.
+# 10017 = 10015 + the slice's fix's 2 CompetitionShowPlanTests cases (shared with the subset): the largest field
+# within about twenty seconds with its bound waiting for the winner, and those left out neither let go nor move the order.
+Gamesim.EditModeTests 10017
 # The UMA-free build. 1215 = 1236, the count after the consolidation's lanes (S2a, S2b, S4a), less the 7
 # farewell probes moved to Gamesim.DiagnosticsPlayModeTests and the 14 farewell readiness tests that now
 # compile only under GAMESIM_UMA (judged on the UMA cast); 1230 = 1215 + S2d's 7, S4b's 2, S4c's 2 and
@@ -486,7 +491,9 @@ Gamesim.EditModeTests 10004
 # 1554 = 1547 (HoH room slice 2 with offers slices 4b and 4p and main) + the fix slice's 7 (1554 - 1547 on the
 # slice): disjoint cases, so the floor is their sum (the merge of HoH room slice 2 into stack O2's fix slice,
 # 2026-11-14). Counted from the two sides; no run has observed 1554 on it.
-Gamesim.PlayModeTests 1554
+# 1561 = 1554 + competition show slice 1's 7 EpisodePlayModeTests.CompetitionShow_* cases (simulated, thrown and
+# watched endurance shows, the skip, reduced motion, the ranked game and another kind). No Unity run has observed them yet.
+Gamesim.PlayModeTests 1561
 # The UMA build of the same assembly, read by a plan built without -WithoutUma. 1281 = the 1241 above + the
 # 40 tests that compile only under GAMESIM_UMA, as run at r1 (2026-10-16): in EpisodePlayModeTests,
 # GroundedFarewell 11, Creator 9, HouseLife 8, Emotes 3, OpeningCaptures 2, and one each in CreatorEntry,
@@ -613,7 +620,8 @@ Gamesim.PlayModeTests 1554
 # 1599 = 1592 (HoH room slice 2 with offers slices 4b and 4p and main) + the fix slice's same 7 (1599 - 1592 on the
 # slice): disjoint cases, so the floor is their sum (the merge of HoH room slice 2 into stack O2's fix slice,
 # 2026-11-14). Counted from the two sides; no run has observed 1599 on it.
-Gamesim.PlayModeTests.UmaBuild 1599
+# 1606 = 1599 + competition show slice 1's same 7 cases (see PlayModeTests above). No Unity run has observed them yet.
+Gamesim.PlayModeTests.UmaBuild 1606
 # The UMA bodies: runs only where the GAMESIM_UMA define is set (the working tree and the D: copy).
 # 82 = the 89 run on 2026-10-15, less the 7 farewell probes moved to Gamesim.Uma.DiagnosticsPlayModeTests;
 # 85 = 82 + the 3 farewell readiness decision tests (UmaFarewellReadinessDecisionPlayModeTests, 2026-10-16);
@@ -842,4 +850,6 @@ Gamesim.Uma.DiagnosticsPlayModeTests 10
 # besides, never committed), 2026-11-14.
 # 16826 = 16820 + offers slice 4b's 6 (16818 - 16812): disjoint cases, so the floor is their sum (the merge of offers
 # slice 4p, holding main ada068a4, into offers slice 4b, 2026-11-14). Counted from the two sides.
-Gamesim.SimulationTests 16826
+# 16837 = 16826 + competition show slice 1's 11 CompetitionShowPlanTests cases (the same 11 the EditMode floor counts).
+# 16839 = 16837 + the slice's fix's same 2 CompetitionShowPlanTests cases.
+Gamesim.SimulationTests 16839

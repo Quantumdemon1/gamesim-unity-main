@@ -84,6 +84,38 @@ namespace Gamesim.House
             return false;
         }
 
+        /// <summary>
+        /// Sends one staged houseguest on to another stage place - a show's dropped competitor to
+        /// the side of the yard - under a new token, keeping them in the stage. When no route
+        /// reaches the new place they are kept where they stand under a new token at their own
+        /// place; when even that fails they are let go of the stage alone, standing where they are.
+        /// Returns whether they are on their way to the new place.
+        /// </summary>
+        public bool MoveCompetitionActor(string id,HouseInteractionAnchor anchor)
+        {
+            for(int i=0;i<competitionLeases.Count;i++)
+            {
+                var lease=competitionLeases[i];
+                if(lease.actor.id!=id)continue;
+                if(anchor==null||!anchor.isActiveAndEnabled||anchor.RoomId!="Yard"||lease.actor.motion==null)return false;
+                lease.actor.motion.Release(lease.token);
+                lease.actor.motion.SetPaused(false);
+                string token="competition-side:"+i+":"+System.Guid.NewGuid().ToString("N");
+                if(lease.actor.motion.TryReserveAndPath(token,anchor.Approach))
+                {
+                    lease.anchor=anchor;lease.position=anchor.Position;lease.approach=anchor.Approach;lease.facing=anchor.Facing;lease.token=token;
+                    return true;
+                }
+                string stay="competition-stay:"+i+":"+System.Guid.NewGuid().ToString("N");
+                if(lease.anchor!=null && lease.anchor.isActiveAndEnabled && lease.actor.motion.TryReserveAndPath(stay,lease.approach))
+                {lease.token=stay;return false;}
+                lease.actor.motion.SetPaused(paused);
+                competitionLeases.RemoveAt(i);
+                return false;
+            }
+            return false;
+        }
+
         public void EndCompetitionStage()
         {
             foreach(var lease in competitionLeases)

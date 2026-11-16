@@ -386,7 +386,7 @@ namespace Gamesim.Episode
         {
             // The record as the window stands, so the captions say what the window is (A12).
             ReadWindowIntoRecord();
-            hud.Heading("Display");
+            hud.SectionHeading("DISPLAY");
             hud.Action(compactHud ? "Show full HUD" : "Use compact HUD",()=>SetCompactHud(!compactHud));
             hud.Paragraph("Compact HUD keeps the cast, next objective and controls visible. House details stay in the notebook and Overview.");
             hud.Action("Quality: " + QualityName(qualityTier) + "  (change)", () =>

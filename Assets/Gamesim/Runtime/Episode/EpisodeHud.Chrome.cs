@@ -217,7 +217,7 @@ namespace Gamesim.Episode
             Anchor(brand, new Vector2(0, 1), new Vector2(0, 1), new Vector2(14f, -TopBarTop), new Vector2(BrandWidth, TopBarHeight));
 
             float left = 0f;
-            var outline = UiTheme.Pack(PackArt.IconHome);
+            var outline = BrandMark.Sprite();
             if (outline != null)
             {
                 var mark = new GameObject("Brand mark", typeof(RectTransform), typeof(Image)).GetComponent<Image>();
@@ -226,7 +226,7 @@ namespace Gamesim.Episode
                 mark.sprite = outline; mark.color = UiTheme.Heading; mark.preserveAspect = true; mark.raycastTarget = false;
                 left = 50f;
             }
-            else if (HudPrimitives.Glyph("Brand mark", brand, "house", UiTheme.Heading, new Vector2(4f, -10f), 32f) != null) left = 46f;
+            else if (HudPrimitives.Glyph("Brand mark", brand, BrandMark.Glyph, UiTheme.Heading, new Vector2(4f, -10f), 32f) != null) left = 46f;
 
             // Inter's line at 30 is 36 tall; the box is 38 so the capitals are not clipped at the
             // top, and the word may shrink a little on a canvas that ever narrows the brand.

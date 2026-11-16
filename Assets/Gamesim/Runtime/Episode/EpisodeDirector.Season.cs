@@ -80,8 +80,9 @@ namespace Gamesim.Episode
             hud.SetActivityLayout(EpisodeHud.ActivityLayout.Settings);
             hud.ScreenHeader(EpisodeHud.SettingsHeaderName, SettingsEyebrow(),
                 blockedRecovery ? "SAVE RECOVERY" : "SETTINGS & SAVES", UiTheme.Icon("settings"));
-            hud.Aside("Offline play is available. No credentials or online connection are required.");
-            hud.Section("YOUR SAVE");
+            // That the game is offline is said once, by the eyebrow over the title (SettingsEyebrow):
+            // a line here said it a second time, and a paragraph at the foot a third (quick win 13).
+            hud.SectionHeading("YOUR SAVE");
             // The slot's name, not its path: this panel used to print the full file path,
             // which on Windows contains the player's user name, and which they can do
             // nothing with. The name is the part that tells one slot from another.
@@ -89,10 +90,10 @@ namespace Gamesim.Episode
             hud.Aside(message);
             hud.Action("Save now  [F5]", SaveNow);
             hud.Action("Reload current slot", LoadNow);
-            hud.Action("Recover validated backup (preserve current file)", RecoverBackup);
-            hud.Action("New season in a NEW slot (preserves this season)", NewSeason);
+            hud.Action(RecoverBackupCaption, RecoverBackup);
+            hud.Action(NewSeasonInNewSlotCaption, NewSeason);
             hud.Action("Main menu", OpenMainMenu);
-            hud.Section("SOUND");
+            hud.SectionHeading("SOUND");
             hud.VolumeSlider("Master volume", volumePercent, muted ? UiTheme.Muted : UiTheme.Accent, SetMasterVolumeLive, SetMasterVolumeFromSlider);
             hud.Action("Volume down", () => { volumePercent = Mathf.Max(0, volumePercent - 10); ApplyPreferences(); Render(); });
             hud.Action("Volume up", () => { volumePercent = Mathf.Min(100, volumePercent + 10); ApplyPreferences(); Render(); });
@@ -107,7 +108,9 @@ namespace Gamesim.Episode
                 hud.Action(SoundPictures.DownCaption(each), () => { SetChannelVolume(each, SoundPictures.Stepped(ChannelVolumePercent(each), false)); hud.FocusWhenWired(SoundPictures.DownCaption(each)); });
                 hud.Action(SoundPictures.UpCaption(each), () => { SetChannelVolume(each, SoundPictures.Stepped(ChannelVolumePercent(each), true)); hud.FocusWhenWired(SoundPictures.UpCaption(each)); });
             }
-            hud.Section("ACCESSIBILITY");
+            hud.SectionHeading("ACCESSIBILITY");
+            // What every screen offers, under the section it is about (it stood under the career).
+            hud.Aside(AccessibilityLine);
             hud.Action(reducedMotion ? "Enable character motion" : "Reduce character motion", () => { reducedMotion = !reducedMotion; ApplyPreferences(); Render(); });
             hud.Action(reducedAudio ? "Full sound" : "Reduce sound", () => { reducedAudio = !reducedAudio; ApplyPreferences(); Render(); });
             // The two sizes not in use, each by its own control (A8): "Use larger text" and "Use
@@ -128,7 +131,9 @@ namespace Gamesim.Episode
                 SetCaptionTime(captionTime == CaptionTime.Longer ? CaptionTime.Standard : CaptionTime.Longer);
                 hud.FocusWhenWired(CaptionTiming.Caption(captionTime));
             });
-            hud.Section("CEREMONIES");
+            // The first-run tour again, from the house: the tour's own card says it is here.
+            if (CanReplayTour) hud.Action(ReplayTourCaption, ReplayTour);
+            hud.SectionHeading("CEREMONIES");
             // The key ceremony and the live eviction reveal one name at a time; suspenseful holds a
             // beat on each, quick keeps them brisk. Either can be sped up or skipped while it plays,
             // by the keys or the pad's buttons as the device last pressed names them (A4f).
@@ -137,12 +142,40 @@ namespace Gamesim.Episode
                 () => { SetCeremonyPace(ceremonyPace == CeremonyPace.Suspenseful ? CeremonyPace.Quick : CeremonyPace.Suspenseful); Render(); });
             DisplaySettings();
             CareerSettings();
-            hud.Paragraph("All dialogue and ceremony information is captioned. Mouse buttons and keyboard alternatives are available; precision competitions have an untimed assisted option.");
-            hud.Heading("Import a supported web save");
-            hud.Paragraph("Supports receipt-free, six-active-cast social snapshots. Complex in-progress web saves are rejected and archived unchanged, never silently simplified.");
+            hud.SectionHeading(ImportHeading);
+            hud.Paragraph(ImportLine);
             hud.PathInput("Full path to exported JSON", ImportFile);
-            hud.Paragraph("Optional cloud login and generated AI dialogue are not configured. The local episode never waits for those services.");
             ControlsSettings();
+        }
+
+        /// <summary>
+        /// The panel's words in plain English (the menu review's quick win 13). They spoke of a
+        /// "validated backup", "receipt-free, six-active-cast social snapshots" and a cloud login
+        /// and AI dialogue that "are not configured"; that the game needs no connection is said
+        /// once, by the eyebrow at the top.
+        /// </summary>
+        public const string RecoverBackupCaption = "Recover backup (keeps a copy of this save)";
+        public const string NewSeasonInNewSlotCaption = "New season in a new slot (keeps this season)";
+        public const string AccessibilityLine = "Everything said in the house and at the ceremonies is captioned. Every mouse control has a keyboard key, and the precision competitions have an untimed, assisted way to play.";
+        public const string ImportHeading = "IMPORT A WEB SAVE";
+        public const string ImportLine = "Bring in a season saved by the web version of the game. Only simple saves come in: six houseguests still playing, saved between ceremonies, with no ceremony results to carry over. Any other save is set aside unchanged, never cut down to fit.";
+
+        /// <summary>The control that plays the first-run tour again, and the words its card points to.</summary>
+        public const string ReplayTourCaption = "Replay the tour";
+
+        /// <summary>
+        /// The tour is offered again only from the house's own Settings: from the front door or a
+        /// save in recovery there is no house on screen for it to point at, and never while the
+        /// opening has the house.
+        /// </summary>
+        private bool CanReplayTour => tutorial != null && !settingsFromFrontDoor && !blockedRecovery && !OpeningOwnsHouse;
+
+        /// <summary>Closes Settings and plays the tour from its first step, whether or not it was seen.</summary>
+        public void ReplayTour()
+        {
+            if (!CanReplayTour) return;
+            ClosePanels();
+            tutorial.Show(FindChrome);
         }
 
         public void SaveNow()

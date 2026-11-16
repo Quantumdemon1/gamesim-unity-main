@@ -78,10 +78,10 @@ namespace Gamesim.Tests.PlayMode
             Click(cast, "My Houseguests");
             Assert.That(Buttons(cast, "Choose Isolated A edited"), Has.Length.EqualTo(1));
             Assert.That(Buttons(cast, "Choose Other library"), Is.Empty);
-            Click(cast, "Cast slots");
+            Click(cast, "Your houseguests in this season");
             Click(cast, "Add Isolated A edited to the cast");
             Click(cast, "Add Isolated A edited to the cast");
-            Click(cast, "Edit slot 1");
+            Click(cast, "Edit houseguest 1");
             Click(creator, "Identity");
             creator.GetComponentsInChildren<TMP_InputField>().Single(field => field.name == "Name field").text = "Cast only";
             Click(creator, CharacterCreator.ApplySlotCaption);
@@ -214,7 +214,7 @@ namespace Gamesim.Tests.PlayMode
             Click(cast, "Choose Guest 07");
             Assert.That(creator.Draft.Name, Is.EqualTo("Guest 07"));
             Click(creator, CharacterCreator.BackCaption);
-            Click(cast, "Cast slots");
+            Click(cast, "Your houseguests in this season");
             Click(cast, "Add Guest 07 to the cast");
             Click(cast, "Add Guest 07 to the cast");
             Click(cast, CastSelect.StartCaption);
@@ -248,7 +248,7 @@ namespace Gamesim.Tests.PlayMode
             cast.Show(_ => { }, () => { }, (_, __) => { });
             Click(cast, "My Houseguests");
             yield return CheckBrowserTextScale(cast, scale => cast.FontScale = scale);
-            Click(cast, "Cast slots");
+            Click(cast, "Your houseguests in this season");
             yield return CheckBrowserTextScale(cast, scale => cast.FontScale = scale);
         }
 

@@ -74,6 +74,8 @@ namespace Gamesim.Simulation
             // deflect and never lie. A member gone cold, or whose betrayal the player knows of, answers as
             // anybody does. Never without the rules.
             bool ally = SharesIntel(s, target.id);
+            // From story rules 12 the house talks back (plan 32 §G1): the same ask, answered in a voice and a manner.
+            if (StoryAt(s, StoryRules.Manners)) { AnswerTheVote(s, target, view, ally); return; }
             // A strategist who is not close to you keeps it to themselves. No roll: nothing to keep.
             if (!ally && target.traits.Contains("Strategic") && !target.traits.Contains("Loyal") && view < 25)
             {
@@ -124,6 +126,8 @@ namespace Gamesim.Simulation
                 // (NPC-AGENCY-PLAN.md §4): information about what people are doing.
                 string doing = NpcAgendas.Describe(s, target.id, NpcAgendas.Of(s, target.id));
                 Log(s, "vote-read", "You read " + target.name + ": they're " + band + "." + (doing != null ? " " + doing + "." : ""), s.playerId, target.id);
+                // From 12 the read also has a word on what they told you this week (plan 32 §G4).
+                if (StoryAt(s, StoryRules.Manners)) ReadTheClaim(s, target);
                 return;
             }
             // A miss is still the week's attempt: on the record as one, so it cannot be tried again
@@ -186,10 +190,14 @@ namespace Gamesim.Simulation
                 claim.status = ballot.targetId == claim.targetId ? ClaimStatus.Kept : ClaimStatus.Lied;
                 if (claim.status != ClaimStatus.Lied || claim.source != ClaimSource.Told) continue;
                 string liar = Name(s, claim.voterId);
-                Change(s, s.playerId, claim.voterId, VoteLieCost, liar + " lied to you about the vote", "vote-lie");
+                // From 12 the cost is a keyed change (plan 32 §G4), so the reveal draws nothing from the season's stream.
+                if (StoryAt(s, StoryRules.Manners))
+                    ChangeKeyed(s, s.playerId, claim.voterId, VoteLieCost, "w" + s.week + ":vote-lie:" + claim.voterId, liar + " lied to you about the vote", "vote-lie");
+                else Change(s, s.playerId, claim.voterId, VoteLieCost, liar + " lied to you about the vote", "vote-lie");
                 Remember(s, s.playerId, claim.voterId, liar + " told me in week " + s.week + " they would vote out " + Name(s, claim.targetId)
                     + ", and voted out " + Name(s, ballot.targetId) + ".", true);
                 Log(s, "vote-lie", liar + " told you " + Name(s, claim.targetId) + " and voted " + Name(s, ballot.targetId) + ".", s.playerId, claim.voterId);
+                if (StoryAt(s, StoryRules.Manners)) LearnTell(s, claim.voterId);
             }
             foreach (var row in s.ledger.ballots.Where(b => b.week == s.week && b.voterId == s.playerId))
                 row.correct = row.readBefore != null && row.readBefore == evicted;

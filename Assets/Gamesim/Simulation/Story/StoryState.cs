@@ -335,9 +335,10 @@ namespace Gamesim.Simulation
         /// The last milestone this build defines: the bound a saved season and the catalogue are held to,
         /// never a behaviour (<c>CompetitionMiniGames.CurrentRules</c>' rule). A season plays above
         /// <see cref="Current"/> only when a test opts it in. The house talk's three levels are claimed above it
-        /// and stay undefined until their slices reach them (plan 32 §L).
+        /// and each is defined by its stack's first slice (plan 32 §L): <see cref="Manners"/> by S1, the vote answer's
+        /// manners and tells; <see cref="Gossip"/> and <see cref="ComesToYou"/> stay undefined until S3 and S5a.
         /// </summary>
-        public const int Latest = Roles;
+        public const int Latest = Manners;
 
         /// <summary>
         /// Whether this build defines the version: 0 (off) and every milestone to <see cref="Latest"/>. The

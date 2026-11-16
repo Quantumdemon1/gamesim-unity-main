@@ -35,7 +35,7 @@ namespace Gamesim.Tests.PlayMode
         private IEnumerator InstallRules4AtFirstHoH(uint seed)
         {
             var initial = ContentCatalog.Create(seed);
-            initial.competitionRulesVersion = CompetitionRules.Current;
+            initial.competitionRulesVersion = CompetitionRules.Widened;
             Assert.That(EpisodeValidation.TryValidate(initial, out var reason), Is.True, reason);
             new EpisodeSaveStore(director.SavePath).Save(initial);
             yield return ReloadEpisode();
@@ -47,7 +47,7 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(director.TryOpenPhasePanel(), Is.True);
             yield return null;
             Assert.That(director.Snapshot.phase, Is.EqualTo(EpisodePhase.HoH));
-            Assert.That(director.Snapshot.competitionRulesVersion, Is.EqualTo(CompetitionRules.Current));
+            Assert.That(director.Snapshot.competitionRulesVersion, Is.EqualTo(CompetitionRules.Widened));
         }
 
         /// <summary>Enters the ranked game from the briefing and plays through its assembly and count.</summary>

@@ -255,10 +255,11 @@ namespace Gamesim.Tests.EditMode
 
         private static EpisodeState HoHOf(string kind)
         {
+            // Pinned to rules 4 (Widened), as the cases' name says: a later rules version may deal a game the show does not know.
             uint seed = 1;
-            while (EpisodeEngine.CompetitionCategory(EpisodePhase.HoH, 1, CompetitionRules.Current, seed) != kind) seed++;
+            while (EpisodeEngine.CompetitionCategory(EpisodePhase.HoH, 1, CompetitionRules.Widened, seed) != kind) seed++;
             var state = ContentCatalog.Create(seed);
-            state.competitionRulesVersion = CompetitionRules.Current; state.phase = EpisodePhase.HoH;
+            state.competitionRulesVersion = CompetitionRules.Widened; state.phase = EpisodePhase.HoH;
             Assert.That(EpisodeEngine.CompetitionCategory(state), Is.EqualTo(kind));
             return state;
         }

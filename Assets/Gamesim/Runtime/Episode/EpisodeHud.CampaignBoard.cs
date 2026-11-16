@@ -546,10 +546,13 @@ namespace Gamesim.Episode
             float mark = 20f * s, words = 10f * s;
             if (EndScreenKit.Picture("Icon", chip, null, "star", UiTheme.Gold, new Vector2(10f * s + mark * .5f, -chipHeight * .5f), mark) != null)
                 words += mark + 8f * s;
-            var label = FixedText(chip, "Interactions available", 11, UiTheme.Muted, new Vector2(words, -3f * s), new Vector2(chipWidth - words - 8f * s, 15f * s));
+            // The budget's one name, "Actions left", as the free-time board and the top bar say it (menu
+            // review quick win 20), at 14 px in a box 1.3 times as tall; the count under it.
+            var label = FixedText(chip, ActionsLeftLabel, 14, UiTheme.Muted, new Vector2(words, -1f * s), new Vector2(chipWidth - words - 8f * s, 19f * s));
             label.name = "Actions label";
-            AutoSize(label, 9);
-            var count = FixedText(chip, left + " of " + budget, 15, UiTheme.Gold, new Vector2(words, -18f * s), new Vector2(chipWidth - words - 8f * s, 20f * s));
+            label.textWrappingMode = TextWrappingModes.NoWrap;
+            AutoSize(label, 14);
+            var count = FixedText(chip, left + " of " + budget, 15, UiTheme.Gold, new Vector2(words, -20f * s), new Vector2(chipWidth - words - 8f * s, 20f * s));
             count.name = "Actions count";
             if (semibold != null) count.font = semibold;
             AutoSize(count, 11);

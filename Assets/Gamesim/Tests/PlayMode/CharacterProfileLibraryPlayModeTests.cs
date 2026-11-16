@@ -78,10 +78,10 @@ namespace Gamesim.Tests.PlayMode
             Click(cast, "My Houseguests");
             Assert.That(Buttons(cast, "Choose Isolated A edited"), Has.Length.EqualTo(1));
             Assert.That(Buttons(cast, "Choose Other library"), Is.Empty);
-            Click(cast, "Cast slots");
+            Click(cast, "Your houseguests in this season");
             Click(cast, "Add Isolated A edited to the cast");
             Click(cast, "Add Isolated A edited to the cast");
-            Click(cast, "Edit slot 1");
+            Click(cast, "Edit houseguest 1");
             Click(creator, "Identity");
             creator.GetComponentsInChildren<TMP_InputField>().Single(field => field.name == "Name field").text = "Cast only";
             Click(creator, CharacterCreator.ApplySlotCaption);
@@ -190,11 +190,11 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(Buttons(creator, "Guest 01"), Is.Empty);
             Assert.That(creator.GetComponentsInChildren<CharacterPortraitBinding>(), Has.Length.EqualTo(1));
             Assert.That(UnityEngine.EventSystems.EventSystem.current.currentSelectedGameObject.name, Is.EqualTo("Profile name search"));
-            Click(creator, "Clear search");
-            Click(creator, "Next profiles");
+            Click(creator, CharacterProfileBrowser.ClearSearchCaption);
+            Click(creator, CharacterProfileBrowser.OneBoxNextCaption);
             Assert.That(Buttons(creator, "Guest 07"), Has.Length.EqualTo(1));
             Assert.That(creator.GetComponentsInChildren<CharacterPortraitBinding>(), Has.Length.EqualTo(1));
-            Assert.That(Buttons(creator, "Next profiles").Single().IsInteractable(), Is.False);
+            Assert.That(Buttons(creator, CharacterProfileBrowser.OneBoxNextCaption).Single().IsInteractable(), Is.False);
             Click(creator, "Guest 07");
             Assert.That(creator.Draft.Name, Is.EqualTo("Guest 07"));
             creator.Hide();
@@ -207,14 +207,14 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(cast.GetComponentsInChildren<CharacterPortraitBinding>(), Has.Length.EqualTo(CharacterProfileBrowser.PageSize));
             search = cast.GetComponentsInChildren<TMP_InputField>().Single(field => field.name == "Profile name search");
             search.text = "GUEST 07";
-            Click(cast, "Search profiles");
+            Click(cast, CharacterProfileBrowser.OneBoxSearchCaption);
             Assert.That(Buttons(cast, "Choose Guest 07"), Has.Length.EqualTo(1));
             Assert.That(Buttons(cast, "Choose Guest 01"), Is.Empty);
             Assert.That(cast.GetComponentsInChildren<CharacterPortraitBinding>(), Has.Length.EqualTo(1));
             Click(cast, "Choose Guest 07");
             Assert.That(creator.Draft.Name, Is.EqualTo("Guest 07"));
             Click(creator, CharacterCreator.BackCaption);
-            Click(cast, "Cast slots");
+            Click(cast, "Your houseguests in this season");
             Click(cast, "Add Guest 07 to the cast");
             Click(cast, "Add Guest 07 to the cast");
             Click(cast, CastSelect.StartCaption);
@@ -242,16 +242,17 @@ namespace Gamesim.Tests.PlayMode
             creator.ConfigureProfiles(library); cast.ConfigureProfiles(library);
             creator.Show(new SeasonBuilder.Choice(), profile.ToDraft(), _ => { }, () => { });
             Click(creator, "My Houseguests");
-            yield return CheckBrowserTextScale(creator, scale => creator.FontScale = scale);
+            // The creator's one-box row (menu quick win 10): the box and its magnifier, no pager on one page.
+            yield return CheckBrowserTextScale(creator, scale => creator.FontScale = scale, 2);
             creator.Hide();
             cast.Show(_ => { }, () => { }, (_, __) => { });
             Click(cast, "My Houseguests");
-            yield return CheckBrowserTextScale(cast, scale => cast.FontScale = scale);
-            Click(cast, "Cast slots");
-            yield return CheckBrowserTextScale(cast, scale => cast.FontScale = scale);
+            yield return CheckBrowserTextScale(cast, scale => cast.FontScale = scale, 2);
+            Click(cast, "Your houseguests in this season");
+            yield return CheckBrowserTextScale(cast, scale => cast.FontScale = scale, 2);
         }
 
-        private static IEnumerator CheckBrowserTextScale(Component screen, Action<float> setScale)
+        private static IEnumerator CheckBrowserTextScale(Component screen, Action<float> setScale, int controlCount = 5)
         {
             float standardHeight = 0f;
             foreach (float scale in TextScales.All)
@@ -265,7 +266,7 @@ namespace Gamesim.Tests.PlayMode
                 var scroll = search.GetComponentInParent<ScrollRect>();
                 Assert.That(scroll, Is.Not.Null);
                 var controls = row.GetComponentsInChildren<Selectable>();
-                Assert.That(controls, Has.Length.EqualTo(5));
+                Assert.That(controls, Has.Length.EqualTo(controlCount));
                 foreach (var control in controls)
                 {
                     var bounds = RectTransformUtility.CalculateRelativeRectTransformBounds(scroll.viewport, control.transform);
@@ -274,7 +275,8 @@ namespace Gamesim.Tests.PlayMode
                     Assert.That(bounds.min.y, Is.GreaterThanOrEqualTo(scroll.viewport.rect.yMin - .01f), control.name);
                     Assert.That(bounds.max.y, Is.LessThanOrEqualTo(scroll.viewport.rect.yMax + .01f), control.name);
                 }
-                foreach (var label in row.GetComponentsInChildren<TMP_Text>())
+                // A glyph's caption is its name, never drawn: only drawn words are measured.
+                foreach (var label in row.GetComponentsInChildren<TMP_Text>().Where(text => text.enabled))
                 {
                     Assert.That(label.fontSize, Is.GreaterThanOrEqualTo(15f), label.name);
                     label.ForceMeshUpdate();

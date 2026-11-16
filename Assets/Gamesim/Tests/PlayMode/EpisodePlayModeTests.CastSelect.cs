@@ -235,10 +235,10 @@ namespace Gamesim.Tests.PlayMode
             yield return OpenCastScreen();
             CastButtons(CastTemplates.RosterName(CastTemplates.Roster.AllStars))[0].onClick.Invoke();
             CastButtons("More houseguests")[0].onClick.Invoke();
-            CastButtons("Cast slots")[0].onClick.Invoke();
+            CastButtons("Your houseguests in this season")[0].onClick.Invoke();
             CastButtons("Add Library guest to the cast")[0].onClick.Invoke();
             CastButtons("Add Library guest to the cast")[0].onClick.Invoke();
-            CastButtons("Edit slot 1")[0].onClick.Invoke();
+            CastButtons("Edit houseguest 1")[0].onClick.Invoke();
             CastButtons("Identity")[0].onClick.Invoke();
             Creator().GetComponentsInChildren<TMPro.TMP_InputField>()
                 .Single(field => field.name == "Name field").text = "Retry guest";
@@ -275,10 +275,10 @@ namespace Gamesim.Tests.PlayMode
                 Assert.That(visibleError.transform.parent.name, Is.EqualTo("Fixed season footer"),
                     "The failure must be on the active modal beside retry, outside the scrolling cast list.");
                 Assert.That(CastButtons(CastSelect.StartCaption), Has.Length.EqualTo(1));
-                Assert.That(CastButtons("Edit slot 1"), Has.Length.EqualTo(1));
-                Assert.That(CastButtons("Edit slot 2"), Has.Length.EqualTo(1));
+                Assert.That(CastButtons("Edit houseguest 1"), Has.Length.EqualTo(1));
+                Assert.That(CastButtons("Edit houseguest 2"), Has.Length.EqualTo(1));
                 Assert.That(CastScreen().GetComponentsInChildren<TMPro.TMP_Text>()
-                    .Any(label => label.text == "Slot 1: Retry guest"), Is.True);
+                    .Any(label => label.text == "1. Retry guest"), Is.True);
                 AssertPreviewReads(true, "Back from the failed start");
                 Assert.That(director.SavePath, Is.EqualTo(previousPath));
                 AssertEquivalent(before, director.Snapshot);

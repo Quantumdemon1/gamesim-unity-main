@@ -36,8 +36,8 @@ namespace Gamesim.Tests.PlayMode
             // Arrange two explicit instances without touching the user's profile directory.
             var slots = (List<CharacterProfile>)typeof(CastSelect).GetField("customHouseguests", BindingFlags.Instance | BindingFlags.NonPublic).GetValue(cast);
             slots.Add(profile.Clone()); slots.Add(profile.Clone());
-            Click(cast, "Cast slots");
-            Click(cast, "Edit slot 1");
+            Click(cast, "Your houseguests in this season");
+            Click(cast, "Edit houseguest 1");
             Assert.That(creator.IsShowing, Is.True);
             Assert.That(cast.IsShowing, Is.False);
             Assert.That(creator.GetComponentsInChildren<Button>().Any(button => Caption(button) == CharacterCreator.StartCaption), Is.False);
@@ -52,7 +52,7 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(slots[0].name, Is.EqualTo("Edited NPC"));
             Assert.That(slots[1].name, Is.EqualTo(profile.name));
             Assert.That(profile.name, Is.Not.EqualTo("Edited NPC"));
-            Click(cast, "Edit slot 1");
+            Click(cast, "Edit houseguest 1");
             Assert.That(creator.Mode, Is.EqualTo(CharacterCreator.EntryMode.Detailed), "Each explicit edit begins in Detailed.");
             creator.Draft.Name = "Discard this";
             Click(creator, CharacterCreator.CancelSlotCaption);

@@ -105,7 +105,7 @@ namespace Gamesim.Tests.EditMode
             var pool = SeasonBuilder.Create(new SeasonBuilder.Choice { HouseSize = 8 }, 5u);
             Assert.That(EpisodeEngine.WeekRulesOn(pool), Is.False);
             Assert.That(EpisodeDirector.BudgetRule(pool),
-                Is.EqualTo("The house gives you half its number in actions each week, so the budget tightens as people leave."));
+                Is.EqualTo("The house gives you half its number in actions each week, so you have fewer actions as people leave."));
         }
 
         /// <summary>

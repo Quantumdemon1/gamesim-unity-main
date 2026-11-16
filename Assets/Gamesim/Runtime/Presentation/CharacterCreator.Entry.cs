@@ -1,6 +1,7 @@
 using System;
 using System.Linq;
 using Gamesim.Simulation;
+using TMPro;
 using UnityEngine;
 
 namespace Gamesim.Presentation
@@ -45,14 +46,24 @@ namespace Gamesim.Presentation
             studioPage = page;
         }
 
+        /// <summary>What the Quick / Detailed switch changes, in the words beside it.</summary>
+        public const string ModesLabel = "How much to set up:";
+
+        /// <summary>The switch belongs to the look's step - Appearance, or Quick setup - and shows nowhere else.</summary>
+        public static bool ModesShowOn(string page) => page == "Appearance" || page == QuickPageCaption;
+
         private void BuildEntryModes(RectTransform scrim)
         {
+            if (!ModesShowOn(studioPage)) return;
             var row = new GameObject("Creator modes", typeof(RectTransform)).GetComponent<RectTransform>();
             row.SetParent(scrim, false);
-            PlaceTop(row, 0f, 174f, 340f, 42f);
-            Pill(row, QuickCaption, new Rect(0f, 0f, 164f, 42f), entryMode == EntryMode.Quick ? Tone.Selected : Tone.Secondary,
-                () => SwitchMode(EntryMode.Quick), size: 16f);
-            Pill(row, DetailedCaption, new Rect(176f, 0f, 164f, 42f), entryMode == EntryMode.Detailed ? Tone.Selected : Tone.Secondary,
+            const float label = 200f, gap = 14f;
+            PlaceTop(row, 0f, 174f, label + gap + 340f, 42f);
+            var words = Words(row, ModesLabel, 16f, UiTheme.Muted, new Rect(0f, 0f, label, 42f), TextAlignmentOptions.MidlineRight, "Creator modes label");
+            words.textWrappingMode = TextWrappingModes.NoWrap;
+            Pill(row, QuickCaption, new Rect(label + gap, 0f, 164f, 42f), entryMode == EntryMode.Quick ? Tone.Selected : Tone.Secondary,
+                () => SwitchMode(EntryMode.Quick), subtitle: null, icon: null, size: 16f);
+            Pill(row, DetailedCaption, new Rect(label + gap + 176f, 0f, 164f, 42f), entryMode == EntryMode.Detailed ? Tone.Selected : Tone.Secondary,
                 () => SwitchMode(EntryMode.Detailed), size: 16f);
         }
 
@@ -74,14 +85,18 @@ namespace Gamesim.Presentation
             top += 52f;
             quickControls = ScrollArea(box, "Quick fields", new Rect(12f, top, form - 24f, area.height - top - 12f), 520f);
             float inner = form - 48f;
-            Field(quickControls, "Name", draft.Name, CharacterDraft.NameLimit, false, new Rect(12f, 0f, inner, 76f), value => draft.Name = value);
-            AgeRow(quickControls, new Rect(12f, 88f, inner, 80f));
-            PronounRow(quickControls, new Rect(12f, 180f, inner, 100f));
-            // Use the same preset controls and whole-look Undo contract as the detailed studio.
+            // The starting faces first: they are what the page is for. Use the same preset controls
+            // and whole-look Undo contract as the detailed studio; the name, age and pronouns follow.
             studioControls = quickControls;
             studioWidth = form - 24f;
-            studioCursor = 296f;
+            studioCursor = 0f;
             StartingLooks();
+            float fields = studioCursor;
+            Field(quickControls, "Name", draft.Name, CharacterDraft.NameLimit, false, new Rect(12f, fields, inner, 76f), value => draft.Name = value,
+                required: true);
+            AgeRow(quickControls, new Rect(12f, fields + 88f, inner, 80f));
+            PronounRow(quickControls, new Rect(12f, fields + 180f, inner, 100f));
+            studioCursor = fields + 296f;
             if (Catalog != null)
             {
                 BodyChoices();

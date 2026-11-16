@@ -30,17 +30,17 @@ namespace Gamesim.Tests.PlayMode
                 var draft = CharacterDraft.FromAppearance(template); draft.Name = name;
                 Assert.That(CastScreen().ProfileStore.Save(CharacterProfile.FromDraft(Guid.NewGuid().ToString("N"), draft), out var error), Is.True, error);
             }
-            yield return CreatorEntrySubmit("Cast slots");
+            yield return CreatorEntrySubmit("Your houseguests in this season");
             for (int slot = 0; slot < 11; slot++) yield return CreatorEntrySubmit("Add Keep Return Guest to the cast");
             CastScreen().GetComponentsInChildren<TMP_InputField>().Single(field => field.name == "Profile name search").text = "Keep";
-            yield return CreatorEntrySubmit("Search profiles");
+            yield return CreatorEntrySubmit(CharacterProfileBrowser.OneBoxSearchCaption);
             Assert.That(CastButtons("Add Other Return Guest to the cast"), Is.Empty, "The non-default profile filter is applied.");
             Assert.That(CastGridScroll().content.rect.height, Is.GreaterThan(CastGridScroll().viewport.rect.height), "This route has a real scroll position to preserve.");
         }
 
         private IEnumerator OpenReturnSlot(Action<float> rememberScroll)
         {
-            CastButtons("Edit slot 7").Single().Select();
+            CastButtons("Edit houseguest 7").Single().Select();
             yield return null; yield return null;
             rememberScroll(CastGridScroll().content.anchoredPosition.y);
             yield return PressKey(Key.Enter);
@@ -52,7 +52,7 @@ namespace Gamesim.Tests.PlayMode
         {
             Assert.That(Creator().IsShowing, Is.False);
             Assert.That(CastScreen().IsShowing, Is.True);
-            Assert.That(EventSystem.current.currentSelectedGameObject, Is.EqualTo(CastButtons("Edit slot 7").Single().gameObject),
+            Assert.That(EventSystem.current.currentSelectedGameObject, Is.EqualTo(CastButtons("Edit houseguest 7").Single().gameObject),
                 "Apply and Back return native keyboard focus to the same slot.");
             Assert.That(CastGridScroll().content.anchoredPosition.y, Is.EqualTo(scroll).Within(1f), "Returning keeps the place in the list.");
             Assert.That(CastScreen().GetComponentsInChildren<TMP_InputField>().Single(field => field.name == "Profile name search").text,
@@ -62,8 +62,8 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(type.GetField("category", BindingFlags.Instance | BindingFlags.NonPublic).GetValue(CastScreen()),
                 Is.EqualTo(CastTemplates.Find("emma-brown").Category));
             Assert.That(type.GetField("selectedId", BindingFlags.Instance | BindingFlags.NonPublic).GetValue(CastScreen()), Is.EqualTo("emma-brown"));
-            Assert.That(CastScreen().GetComponentsInChildren<TMP_Text>().Any(label => label.text == "Slot 7: " + name), Is.True);
-            var slot = CastButtons("Edit slot 7").Single().GetComponent<RectTransform>();
+            Assert.That(CastScreen().GetComponentsInChildren<TMP_Text>().Any(label => label.text == "7. " + name), Is.True);
+            var slot = CastButtons("Edit houseguest 7").Single().GetComponent<RectTransform>();
             Assert.That(Encloses(ScreenRect(CastGridScroll().viewport), ScreenRect(slot)), Is.True, "The returned focus is visible.");
         }
 

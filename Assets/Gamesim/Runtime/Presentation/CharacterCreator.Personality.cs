@@ -261,7 +261,7 @@ namespace Gamesim.Presentation
             var box = Panel("Personality summary", scrim, r);
             float x = 22f, width = r.width - 44f;
             Words(box, editingCastSlot ? "ARCHETYPE" : "YOUR ARCHETYPE", 14f, UiTheme.Heading, new Rect(x, 22f, width, 20f), TextAlignmentOptions.Center).characterSpacing = 3f;
-            var archetype = Words(box, string.IsNullOrWhiteSpace(draft.Archetype) ? "The Newcomer" : draft.Archetype, 30f, UiTheme.Hex("FF7AD9"),
+            var archetype = Words(box, string.IsNullOrWhiteSpace(draft.Archetype) ? "The Newcomer" : draft.Archetype, 30f, UiTheme.Accent,
                 new Rect(x, 44f, width, 44f), TextAlignmentOptions.Center, "Archetype");
             var bold = UiTheme.Font(UiTheme.Weight.Bold); if (bold != null) archetype.font = bold;
             archetype.enableAutoSizing = true; archetype.fontSizeMax = 30f; archetype.fontSizeMin = 16f;

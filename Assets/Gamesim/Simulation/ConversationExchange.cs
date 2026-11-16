@@ -233,6 +233,21 @@ namespace Gamesim.Simulation
         {
             const string player = "Where's your head at on this week's vote?";
             var matches = new List<ConversationExchange>();
+            // From story rules 12 the answer is the voter's own line (plan 32 §G1 step 9), quoted in the published receipt:
+            // shown as it was said. The record says whether it named anybody; nothing is projected again.
+            if (EpisodeEngine.StoryAt(before, StoryRules.Manners))
+            {
+                string prefix = "You asked " + npc.name + " where their head is at. \"";
+                foreach (var source in events.Where(item => item.kind == "vote-read" && item.text != null
+                             && item.text.StartsWith(prefix, StringComparison.Ordinal) && item.text.EndsWith("\"", StringComparison.Ordinal)
+                             && item.text.Length > prefix.Length + 1))
+                {
+                    string said = source.text.Substring(prefix.Length, source.text.Length - prefix.Length - 1);
+                    var record = EpisodeEngine.Said(after, npc.id, before.week);
+                    matches.Add(new ConversationExchange(after, npc.id, player, said, source.text, record != null && record.stance != Candour.Neutral));
+                }
+                return matches.Count == 1 ? matches[0] : null;
+            }
             string deflection = npc.name + " wouldn't say where their vote is. \"Ask me after.\"";
             foreach (var source in events.Where(item => item.kind == "vote-read" && item.text == deflection))
                 matches.Add(new ConversationExchange(after, npc.id, player, "Ask me after.", source.text, false));

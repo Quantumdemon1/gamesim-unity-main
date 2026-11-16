@@ -131,6 +131,8 @@ namespace Gamesim.Episode
             int missing = MissingStudyActions(state);
             RequireSeason(missing <= WebSocialVocabulary.PurchaseCeiling - state.boughtActionPoints,
                 "Five study confirmations must fit in move-in night's window with the time the house will sell.");
+            // The ways to buy stand behind the budget card's one "Buy an action" (menu review quick win 19).
+            if (SeasonButtonsCarrying(EpisodeDirector.BuyAnActionCaption).Length > 0) yield return ClickSeasonButton(EpisodeDirector.BuyAnActionCaption);
             for (int bought = 0; bought < missing; bought++)
             {
                 var before = seasonDirector.Snapshot;

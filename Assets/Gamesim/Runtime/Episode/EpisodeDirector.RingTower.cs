@@ -84,8 +84,8 @@ namespace Gamesim.Episode
         }
 
         /// <summary>
-        /// The player's places for a ring tower: in front of the middle stack, facing it, then a little to either
-        /// side, then every place the arena would give them anyway. Any other competition: the arena's own.
+        /// The player's places for a ring tower: in front of the middle stack and a step to its side, facing the
+        /// stacks, then straight in front of it, then every place the arena would give them anyway. Any other competition: the arena's own.
         /// </summary>
         private IEnumerable<Vector3> RingTowerPlayerCandidates(IEnumerable<Vector3> arena)
         {
@@ -93,7 +93,8 @@ namespace Gamesim.Episode
             var middle = competitionRingTower.PegFoot(1);
             var preferred = new List<Vector3>();
             foreach (float back in new[] { 1.25f, 1.45f, 1.7f })
-                foreach (float side in new[] { 0f, -.5f, .5f })
+                // Beside the middle peg's line first, west of it (the shot looks from a little east): the body hides no stack.
+                foreach (float side in new[] { -1.1f, 1.1f, 0f })
                     preferred.Add(new Vector3(middle.x + side, middle.y, middle.z - back));
             return preferred.Concat(arena);
         }

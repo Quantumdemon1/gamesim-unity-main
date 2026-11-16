@@ -203,18 +203,20 @@ namespace Gamesim.Presentation
         public void Place(bool snap)
         {
             float step = RingSpeed * Mathf.Max(0f, Time.unscaledDeltaTime) * Mathf.Max(.2f, scale);
+            // The stacks stand metres apart: a ring snaps only on a jump wider than the whole tower, and crosses faster the wider it is.
+            float span = pegFeet.Count > 1 ? (pegFeet[pegFeet.Count - 1] - pegFeet[0]).magnitude : 0f, snapBeyond = span + 2f * Mathf.Max(.2f, scale);
             for (int size = 1; size <= rings.Count; size++)
             {
                 var ring = rings[size - 1];
                 if (ring == null) continue;
                 var home = Home(size);
-                if (snap || (ring.position - home).sqrMagnitude > 25f) { ring.position = home; continue; }
+                if (snap || (ring.position - home).sqrMagnitude > snapBeyond * snapBeyond) { ring.position = home; continue; }
                 var at = ring.position;
                 // Up first, then across, then down: a ring is lifted off its peg, never dragged through the next.
                 float top = (PlinthHeight + PegHeight + LiftClearance) * scale + pegFeet[0].y;
                 bool across = Mathf.Abs(at.x - home.x) > .001f || Mathf.Abs(at.z - home.z) > .001f;
                 if (across && at.y < top - .001f) ring.position = Vector3.MoveTowards(at, new Vector3(at.x, top, at.z), step);
-                else if (across) ring.position = Vector3.MoveTowards(at, new Vector3(home.x, top, home.z), step);
+                else if (across) ring.position = Vector3.MoveTowards(at, new Vector3(home.x, top, home.z), step * Mathf.Max(1f, span / 4f));
                 else ring.position = Vector3.MoveTowards(at, home, step);
             }
         }

@@ -287,6 +287,7 @@ namespace Gamesim.Tests.PlayMode
                 ButtonWithCaption(caption).onClick.Invoke();
                 Assert.That(director.CompetitionRingTowerShown, Is.Null, caption + ": no tower is staged.");
                 Assert.That(director.CompetitionYardDeployed, Is.False, caption + ": nothing is staged in the yard.");
+                Assert.That(director.IsCompetitionShowRunning, Is.False, caption + ": the show has no family for the tower.");
                 yield return null; yield return null;
                 var after = director.Snapshot;
                 Assert.That(after.revision, Is.EqualTo(before.revision + 1), caption + " commits once, at once.");
@@ -317,6 +318,8 @@ namespace Gamesim.Tests.PlayMode
             var before = director.Snapshot;
             ButtonWithCaption("Watch eligible housemates compete").onClick.Invoke();
             Assert.That(director.CompetitionRingTowerShown, Is.Null, "A watched tower stages nothing.");
+            Assert.That(director.IsCompetitionShowRunning, Is.False, "A watched tower plays no show: the show has no family for it.");
+            Assert.That(director.CompetitionYardDeployed, Is.False, "A watched tower deploys nothing in the yard.");
             yield return null; yield return null;
             Assert.That(director.Snapshot.revision, Is.EqualTo(before.revision + 1), "Watching commits once.");
             Assert.That(director.Snapshot.competitionResolved, Is.True);

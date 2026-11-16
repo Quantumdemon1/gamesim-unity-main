@@ -34,7 +34,7 @@ namespace Gamesim.Episode
         private System.Func<CompetitionApparatus,bool> competitionFitGate;
         /// <summary>The complete reserved station envelopes, for world-fit diagnostics.</summary>
         public IReadOnlyDictionary<string,CompetitionStageFootprint> CompetitionFootprints=>competitionFootprints;
-        private sealed class CompetitionPose { public CharacterPresentation.Pose previous, written; public CompetitionInstrumentPose contact; }
+        private sealed class CompetitionPose { public CharacterPresentation.Pose previous, written; public CharacterPresentation.BodyActivity writtenActivity=CharacterPresentation.BodyActivity.Posing; public CompetitionInstrumentPose contact; }
         private readonly Dictionary<CharacterPresentation,CompetitionPose> competitionPoses=new Dictionary<CharacterPresentation,CompetitionPose>();
         private readonly List<HouseSeatPresentation> competitionAudienceSeats=new List<HouseSeatPresentation>();
         private readonly object competitionPlayerOwner=new object();
@@ -333,7 +333,7 @@ namespace Gamesim.Episode
                     competitionFootprints[actor.id]=footprint;
                     if(anchor.Seated)competitionFootprints[actor.id+":approach"]=CompetitionStageFootprint.Actor(anchor.Approach,capsule.radius,capsule.height);
                 }
-                if(show!=null)ReserveCompetitionShowSideMarks(show,state,ids,rooms,filter,floor,candidates.Concat(gaps),used);
+                if(show!=null)ReserveCompetitionShowMarks(show,state,ids,rooms,filter,floor,candidates.Concat(gaps),used);
                 string stageReason=null;
                 if(ids.Count>0 && npcMeetings.BeginCompetitionStage(ids,anchors,out stageReason))
                 {
@@ -736,11 +736,14 @@ namespace Gamesim.Episode
                     float strain=CompetitionShowStrain(id);
                     if(competitionShow.HoldBegun)instrument.ShowHold(1f-strain*.9f,true);
                     if(body.contact!=null)body.contact.SetStrain(strain);
+                    CompetitionShowFamilyFace(id,instrument);
                 }
         }
 
         private void CompetitionStance(CharacterPresentation visual,bool arrived,CompetitionApparatus instrument)
         {
+            // A podium, table or course show poses its own field (EpisodeDirector.CompetitionShowFamilies.cs).
+            if(competitionShow!=null && competitionShow.Plan.Family!=CompetitionShowFamily.Hold){CompetitionShowFamilyStance(visual,arrived,instrument);return;}
             if(visual==null || !arrived || instrument==null || !visual.IsStill || !visual.CanAct(CharacterPresentation.BodyActivity.Posing))return;
             if(!competitionPoses.TryGetValue(visual,out var own))
             {
@@ -770,7 +773,7 @@ namespace Gamesim.Episode
         {
             if(visual==null || !competitionPoses.TryGetValue(visual,out var own))return;
             if(own.contact!=null)own.contact.Release();
-            if(visual.Activity==CharacterPresentation.BodyActivity.Posing && visual.HeldPose==own.written)
+            if(visual.Activity==own.writtenActivity && visual.HeldPose==own.written)
             {visual.SetActivity(CharacterPresentation.BodyActivity.None);visual.SetPose(own.previous);}
             competitionPoses.Remove(visual);
         }

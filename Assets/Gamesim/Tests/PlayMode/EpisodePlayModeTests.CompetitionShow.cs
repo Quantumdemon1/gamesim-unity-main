@@ -241,11 +241,30 @@ namespace Gamesim.Tests.PlayMode
         [UnityTest, Timeout(300000)]
         public IEnumerator CompetitionShow_AnotherKindKeepsItsCardAtOnce()
         {
-            yield return InstallShowAtFirstHoH("Skill");
+            // Since the staging families (slice 3) every game of the catalogue is staged, by its game: the
+            // one competition left unstaged is one the show does not know - here a season from before
+            // rules 3, whose skill competition has no authored game at all.
+            var initial = ContentCatalog.Create(1);
+            initial.competitionRulesVersion = 2;
+            Assert.That(EpisodeValidation.TryValidate(initial, out var reason), Is.True, reason);
+            new EpisodeSaveStore(director.SavePath).Save(initial);
+            yield return ReloadEpisode();
+            WarpPlayer(director.StationPosition);
+            Assert.That(director.TryOpenPhasePanel(), Is.True);
+            ButtonWithCaption("Begin the next competition").onClick.Invoke();
+            yield return null;
+            AskForTheShow();
+            yield return BuildTheWorldForTheShow();
+            WarpPlayer(director.StationPosition);
+            Assert.That(director.TryOpenPhasePanel(), Is.True);
+            yield return null;
             var before = director.Snapshot;
+            Assert.That(before.phase, Is.EqualTo(EpisodePhase.HoH));
+            Assert.That(EpisodeEngine.CompetitionCategory(before), Is.EqualTo("Skill"));
+            Assert.That(CompetitionDefinitions.For(before), Is.Null, "No authored game: a competition the show does not know.");
             ButtonWithCaption(EpisodeHud.SimulateCompetitionCaption).onClick.Invoke();
             Assert.That(director.Snapshot.revision, Is.EqualTo(before.revision + 1));
-            Assert.That(director.IsCompetitionShowRunning, Is.False, "Slice 1 stages endurance only.");
+            Assert.That(director.IsCompetitionShowRunning, Is.False, "A game the show does not know is not staged.");
             Assert.That(director.CompetitionYardPutAway, Is.Empty, "Nothing in the field is struck.");
             AssertEverydayYard("for a kind that is not staged: the course is never deployed");
             yield return null; yield return null;

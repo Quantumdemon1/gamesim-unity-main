@@ -36,6 +36,16 @@ namespace Gamesim.Presentation
         public float Strain=>strain;
         private float strain;
 
+        /// <summary>
+        /// A staged show's press (competition staging, slice 3): while set, the right hand works the
+        /// instrument - the pad, the tray, and in a show the memory and letter consoles too, which the
+        /// player's own game never reaches for. The show sets it on and off in its own rhythm; zero
+        /// (the default, and every release) leaves the hands to the animation as before.
+        /// </summary>
+        public void SetShowPress(bool value)=>showPress=value;
+        public bool ShowPress=>showPress;
+        private bool showPress;
+
         public void Bind(CompetitionApparatus apparatus,MiniGameRun run,bool active,bool isPaused,bool readyForFit=false)
         {
             instrument=apparatus;
@@ -50,7 +60,7 @@ namespace Gamesim.Presentation
         {
             Restore();HasContact=false;
             if(instrument==null || !fitReady)return;
-            if(instrument.Instrument==CompetitionApparatus.Family.PairConsole || instrument.Instrument==CompetitionApparatus.Family.WordConsole)
+            if(!showPress && (instrument.Instrument==CompetitionApparatus.Family.PairConsole || instrument.Instrument==CompetitionApparatus.Family.WordConsole))
             {fitGate?.Invoke(instrument);return;}
             Animator animator=GetComponentInChildren<Animator>();
             if(animator==null || !animator.isHuman || !animator.isActiveAndEnabled)
@@ -83,7 +93,7 @@ namespace Gamesim.Presentation
             // fitted solids and unowned bodies before activation. Cancellation can release this
             // component from inside the gate, so re-check its binding before writing any bone.
             if(fitGate!=null && !fitGate(instrument))return;
-            if(instrument==null || !instrument.isActiveAndEnabled || (!holding && !pressing))return;
+            if(instrument==null || !instrument.isActiveAndEnabled || (!holding && !pressing && !showPress))return;
             if(holding && strain>0f)
             {
                 // Leaning back against the weight, and the shake of a held effort: two uneven
@@ -149,7 +159,7 @@ namespace Gamesim.Presentation
 
         public void Release()
         {
-            Restore();instrument=null;holding=pressing=fitReady=false;fitGate=null;HasContact=false;lastHits=lastRoll=0;pressUntil=0;strain=0f;
+            Restore();instrument=null;holding=pressing=fitReady=false;fitGate=null;HasContact=false;lastHits=lastRoll=0;pressUntil=0;strain=0f;showPress=false;
         }
         private void OnDisable()=>Release();
         private void OnDestroy()=>Release();

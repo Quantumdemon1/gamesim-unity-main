@@ -65,7 +65,7 @@ namespace Gamesim.Episode
             public int PutAway { get; internal set; }
         }
 
-        private sealed class CompetitionShowRun
+        private sealed partial class CompetitionShowRun
         {
             public CompetitionShowPlan Plan;
             public CompetitionDefinition Definition;
@@ -145,7 +145,8 @@ namespace Gamesim.Episode
         {
             if (!CompetitionShows || competitionLiveCommit || (Application.isBatchMode && !CompetitionShowsInBatchRuns)
                 || before == null || committed == null || playCard == null) return false;
-            var plan = CompetitionShowPlan.For(committed, phase, category);
+            // By game, in the game's family (competition staging, slice 3): a game the show does not know commits to its card at once.
+            var plan = CompetitionShowPlan.For(committed, phase, category, CompetitionDefinitions.For(before)?.Id);
             if (plan == null) return false;
             string declined = CompetitionShowDeclined();
             if (declined != null) { Debug.Log("Competition show declined: " + declined); return false; }
@@ -262,6 +263,8 @@ namespace Gamesim.Episode
                 if (t >= CompetitionShowPlan.CardAt(drops, run.Quick, true)) FinishCompetitionShow();
                 return;
             }
+            // A podium, table or course show plays its own beats (EpisodeDirector.CompetitionShowFamilies.cs).
+            if (plan.Family != CompetitionShowFamily.Hold) { TickCompetitionShowFamily(run, now, t); return; }
             while (run.NextDrop < drops && t >= CompetitionShowPlan.DropAt(run.NextDrop, drops, run.Quick))
             {
                 DropCompetitionShowEntrant(run, run.DropOrder[run.NextDrop], run.NextDrop == drops - 1 && run.DropOrder[run.NextDrop] == plan.Standings[1]);
@@ -323,7 +326,7 @@ namespace Gamesim.Episode
 
         /// <summary>Whether the show has let this competitor go: dropped, or the winner once cheering.</summary>
         private bool CompetitionShowReleased(string id) => competitionShow != null && id != null
-            && (competitionShow.Out.Contains(id) || competitionShow.Cheered && id == competitionShow.Plan.WinnerId);
+            && (competitionShow.Out.Contains(id) || competitionShow.Cheered && id == competitionShow.Plan.WinnerId || CompetitionShowAway(id));
 
         /// <summary>Whether this competitor holds on in the running show now.</summary>
         private bool CompetitionShowGripping(string id) => competitionShow != null && competitionShow.HoldBegun && !CompetitionShowReleased(id);
@@ -428,6 +431,7 @@ namespace Gamesim.Episode
             var visual = body != null ? body.visual : null;
             if (visual == null || competitionShow == null) return;
             visual.SetTalking(false); visual.SetArguing(false); visual.SetSeated(false);
+            if (CompetitionShowAway(id)) { visual.SetFacing(float.NaN); return; }
             if (id == competitionShow.Plan.WinnerId)
             {
                 if (competitionArenaActors.TryGetValue(id, out var anchor) && anchor != null) visual.SetFacing(anchor.Facing);
@@ -443,6 +447,7 @@ namespace Gamesim.Episode
             if (player == null || competitionShow == null) return;
             var visual = player.GetComponent<CharacterPresentation>();
             if (visual == null) return;
+            if (CompetitionShowAway(competitionShow.Plan.PlayerId)) { visual.SetFacing(float.NaN); return; }
             if (competitionShow.Plan.WinnerId == competitionShow.Plan.PlayerId) { visual.SetFacing(competitionPlayerStationFacing); return; }
             bool there = player.ActivityHasArrived(competitionPlayerOwner);
             visual.SetFacing(there && competitionShow.Cheered ? CompetitionShowFacingWinner(player.transform.position) : float.NaN);
@@ -473,6 +478,7 @@ namespace Gamesim.Episode
             var run = competitionShow;
             if (run == null) return;
             competitionShow = null;
+            EndCompetitionShowFamily(run);
             LastCompetitionShow = new CompetitionShowRecord
             {
                 Standings = run.Plan.Standings.ToArray(), Stationed = run.Stationed.ToArray(), Drops = run.Dropped.ToArray(), LeftOut = run.LeftOut.ToArray(),

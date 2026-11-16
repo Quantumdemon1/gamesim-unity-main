@@ -27,6 +27,8 @@ namespace Gamesim.Episode
         public const string ProfileIdentityName = "Profile identity";
         public const string ProfileTrustName = "Profile trust";
         public const string ProfileRecordsName = "Profile records";
+        /// <summary>The name of a house-talk block's card on the profile: the prefix and the block's heading (plan 32 §C).</summary>
+        public const string ProfileBlockPrefix = "Profile block · ";
         public const string ProfileBackCaption = "Back to Houseguests";
 
         /// <summary>One row of the directory, in words the director has already decided.</summary>
@@ -47,6 +49,11 @@ namespace Gamesim.Episode
             public IList<string> Traits = new List<string>();
             public IList<string> Memories = new List<string>();
             public IList<string> Records = new List<string>();
+            /// <summary>
+            /// The house talk's blocks (plan 32 §C, from story rules 12): a heading and its lines each, drawn between "What you
+            /// remember" and "Other records". Empty below 12, so a profile there draws as it always did.
+            /// </summary>
+            public IList<(string Heading, IList<string> Lines)> Blocks = new List<(string Heading, IList<string> Lines)>();
             public Action Back;
         }
 
@@ -316,6 +323,20 @@ namespace Gamesim.Episode
                 float memoriesHeight = my + 10f * s;
                 Anchor(memories, new Vector2(0, 1), new Vector2(0, 1), new Vector2(left, -ry), new Vector2(rightWidth, memoriesHeight));
                 ry += memoriesHeight + 24f * s;
+            }
+
+            // The house talk's blocks (plan 32 §C): each non-empty one a heading and a card of its own, uniquely named.
+            foreach (var block in view.Blocks)
+            {
+                if (block.Lines == null || block.Lines.Count == 0 || string.IsNullOrEmpty(block.Heading)) continue;
+                ry = PlacedCopy(root, block.Heading, 21, UiTheme.Weight.SemiBold, Paper, left + 4f * s, ry, rightWidth) + 10f * s;
+                var card = HudPrimitives.KitCard(ProfileBlockPrefix + block.Heading, root, false, 14f);
+                float by = 18f * s;
+                foreach (var line in block.Lines)
+                    by = PlacedCopy(card, line, 17, UiTheme.Weight.Regular, Paper, pad, by, rightWidth - 2f * pad) + 8f * s;
+                float blockHeight = by + 10f * s;
+                Anchor(card, new Vector2(0, 1), new Vector2(0, 1), new Vector2(left, -ry), new Vector2(rightWidth, blockHeight));
+                ry += blockHeight + 24f * s;
             }
 
             // The records you hold that involve them.

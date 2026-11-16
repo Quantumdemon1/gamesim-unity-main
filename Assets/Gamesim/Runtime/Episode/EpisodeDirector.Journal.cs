@@ -429,6 +429,7 @@ namespace Gamesim.Episode
                 Records = ProfileRecords(state, actor, first),
                 Back = BackToHouseguests,
             };
+            HouseTalkBlocks(state, actor, view);
             hud.HouseguestProfile(view);
             hud.Mark(NotebookSection.People);
         }

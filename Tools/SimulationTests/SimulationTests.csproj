@@ -382,6 +382,15 @@
     <Compile Include="$(EditMode)HouseTalkRulesTests.cs" />
     <!-- Explicit, and compiled out of Unity: story rules 11's held seasons, the house talk's replay guard, run on demand. -->
     <Compile Include="$(EditMode)RolesSeasonDigests.cs" />
+    <!-- Plan 32 S1: the story's cooldown table holds the house talk's keys at sixteen seats (compiled out of Unity). -->
+    <Compile Include="$(EditMode)HouseTalkCapacityTests.cs" />
+    <!-- Plan 32 S1: Regard, Candour and the manners; the vote answer at 12; its bank; the notes and the profile blocks. -->
+    <Compile Include="$(EditMode)RegardTests.cs" />
+    <Compile Include="$(EditMode)CandourTests.cs" />
+    <Compile Include="$(EditMode)VoteAnswerTests.cs" />
+    <Compile Include="$(EditMode)LineBankLintTests.cs" />
+    <Compile Include="$(EditMode)HouseTalkNotesTests.cs" />
+    <Compile Include="$(EditMode)HouseTalkValidationTests.cs" />
     <Compile Include="$(EditMode)NominationStepsTests.cs" />
     <Compile Include="$(EditMode)ThreatAssessmentTests.cs" />
     <Compile Include="$(EditMode)WebDiaryParityTests.cs" />

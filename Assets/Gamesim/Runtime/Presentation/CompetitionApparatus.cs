@@ -14,7 +14,7 @@ namespace Gamesim.Presentation
     /// no instrument invents NPC scores, reveals hidden cards, accepts input or advances RNG.
     /// The actor's reserved floor anchor and the simulation remain authoritative.
     /// </summary>
-    public sealed class CompetitionApparatus : MonoBehaviour
+    public sealed partial class CompetitionApparatus : MonoBehaviour
     {
         public enum Family { Signals, PairConsole, GripRig, DiceTray, WordConsole }
         public Family Instrument { get; private set; }

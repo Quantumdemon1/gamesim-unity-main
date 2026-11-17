@@ -706,3 +706,7 @@ The questions as they were put:
 - Built (§8, As built): the enrolled head replays the lab's C1n rows exactly, and its own season at story rules 10 is an
   old-save cell, with the control that story rules 9 plays its commands otherwise. R7 (Roles, story rules 11) can
   follow. Open: the UMA PlayMode set and `StoryPacingTests.PacingReport`; the owner's sign-off in the PR.
+- **Status, 2026-11-17.** Merged as PR #48 on 2026-11-10, after a targeted Unity batch on the UMA build at 31a9f857
+  (548 EditMode and 99 PlayMode cases, all passed; the PR's comment of 2026-11-10). Under the owner's test policy of
+  2026-11-09, the full UMA suite ran once on the stack's final head, with R7, on 2026-11-14 (PRs #62 and #63). No run of
+  `StoryPacingTests.PacingReport` at story rules 9 and 10 is recorded.

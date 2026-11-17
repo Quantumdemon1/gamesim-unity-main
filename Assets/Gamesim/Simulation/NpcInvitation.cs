@@ -81,6 +81,8 @@ namespace Gamesim.Simulation
                 : offer.targetId == state.playerId ? "you" : state.Find(offer.targetId)?.name;
             switch (offer.type)
             {
+                // A veto holder's offer (ROLE-MOMENTS-PLAN R8) is the holder's to make, not a nominee's ask.
+                case DealKind.VetoUse when NpcDeals.IsHolderOfferId(offer.id): return "Can we talk? I've got the veto, and I could use it on you.";
                 case DealKind.VetoUse: return "Can we talk? I need your help with the veto.";
                 // A keep-the-block deal (ROLE-MOMENTS-PLAN R4), only under the role moments; the Head of Household's own ask
                 // stays on the board (Eligible), so this is any other one's.

@@ -93,6 +93,9 @@ namespace Gamesim.Simulation
                     // before the strategy windows keep offering it, as they always did.
                     if (StrategyRules.Apply(state) && state.vetoResolved)
                         return Refuse(out reason, "The veto has already been decided this week.");
+                    // The holder's own offer waits on the player (R8): it is answered first, as a plea to them would be.
+                    if (EpisodeEngine.HolderOfferOn(state) && StrategyRules.HolderOfferThisWeek(state, toId)?.status == DealStatus.Proposed)
+                        return Refuse(out reason, StrategyRules.AnswerTheOfferRefusal);
                     break;
                 case DealKind.AllianceInvite:
                     if (state.Allied(state.playerId, toId))

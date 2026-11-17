@@ -2028,6 +2028,15 @@ The same pattern, one schema on (2026-10-25, `claude/all-star-histories`):
   saved at a veto meeting with the Head of Household's keep-the-block ask to the player pending, with the control that the
   same file resealed at 10 is refused. The plan 32 levels (12 to 14) get their cells from the builds that offer them
   (A-ON, B-ON, C-ON), the same way.
+- **Competition rules 5 has no cell yet** (recorded 2026-11-17). The Ring Tower (5d1daabf, PR #77, merged 2026-11-16)
+  starts every fresh season on competition rules 5 through `ShippedRules.ApplyFresh`; a built season stays at 4
+  (`SeasonBuilder.NewState`). No file written by a rules-5 build exists, so a shipped season saved today has no cell, against
+  the duty the dialogue and story rules follow above: each shipped rules version gets its cell from the build that first
+  writes it. Owed: a cell written and recorded by a build at or after 464056c6, with `Rules.Shipped.cs`, saved after the
+  season's first Ring Tower (it always falls in the first three weeks), and qualified by a full EditMode run. It is
+  written with the Windows toolchain (`Tools/OldSaves/build.sh`, the editor's Mono). A recorder built under .NET 10
+  refuses the Mono-written fixtures' checksums (checked 2026-11-17 on six fixtures; F9, `SaveJson.ParseObject`), so it
+  cannot stand in for the editor's Mono here.
 - **70 of the branch's new EditMode cases were first proven under the Mono harness** (2026-10-22): 57 recovery cases
   and 12 schema-29 cases in `OldSaveAcceptanceTests` (172 to 241), and the AP-0 pin. The full Unity EditMode run at
   6909f2bc then ran all of them (8642 of 8642). The floor moved to 8642 with 3ecb5382.

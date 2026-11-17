@@ -414,7 +414,7 @@ If no set meets every band, B9 reports the nearest set to the owner, with each b
 - **Role moments, dialogue and the All-Star histories.** B9 tunes the seasons they will join, with all three switched off.
 - **The 45-minute season and B-1.** Reported, not tuned.
 - **The reach history.** The war rooms' reach constants stay as they are, unless the owner confirms the season named in decision 10.
-- **Competition rules 5.** Not taken (decision 2).
+- **Competition rules 5.** Not taken (decision 2). *Taken since by the Ring Tower (PR #77, 2026-11-16).*
 - **A schema.** None. Anything that needs a new field stops B9 (§4.5).
 
 ## 9. Slices

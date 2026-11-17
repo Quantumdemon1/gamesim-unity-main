@@ -356,11 +356,13 @@ namespace Gamesim.Simulation
                     if (TuningRules.At(s, TuningRules.Bands) && (s.phase == EpisodePhase.HoH || s.phase == EpisodePhase.Veto)) SpendPreparation(s);
                     s.competitionResolved = false; Phase(s, next);
                     // A nominee asks the player for the veto while it is still theirs to use; and under the role moments
-                    // the Head of Household, right after them, asks the player to leave the block alone (R4).
+                    // the Head of Household, right after them, asks the player to leave the block alone (R4). Under the
+                    // holder's offer a houseguest holding the veto offers to use it on the player, for a price (R8).
                     if (next == EpisodePhase.VetoMeeting)
                     {
                         NpcDeals.AskForTheVeto(s);
                         NpcDeals.AskToKeepTheBlock(s);
+                        NpcDeals.OfferTheVeto(s);
                     }
                     // Under agency, whoever has no claim on the new Head of Household courts them
                     // before the nominations (NPC-AGENCY-PLAN.md §4).
@@ -406,11 +408,14 @@ namespace Gamesim.Simulation
                         Require(s.vetoHolderId != s.playerId, "Choose whether to use the veto first.");
                         var saved = NpcVetoSave(s);
                         Require(saved == null || s.hohId != s.playerId, "The veto will be used. As HoH, choose the replacement nominee.");
+                        // A holder's offer to the player (R8), as the player last saw it, before anything moves.
+                        var holderOffer = HolderOfferAsSeen(s);
                         // The house's last beats before the veto is used (D2, §1): the holder's decision stands
                         // as the player saw it asked for.
                         Close(s);
                         var replacement = saved == null ? null : NpcReplacement(s);
-                        ResolveVeto(s, saved != null, saved, replacement); return;
+                        ResolveVeto(s, saved != null, saved, replacement);
+                        SettleTheHolderOffer(s, holderOffer); return;
                     }
                     if (StoryOn(s)) StoryLapse(s, StoryAnchors.BlockSet);
                     // A nominee begging for votes and somebody courting the Head of Household are
@@ -901,11 +906,30 @@ namespace Gamesim.Simulation
             StrategyRules.VetoWillingness(s, holderId, id) + StoryConsumers.SavePreference(s, holderId, id) - s.Score(holderId, id);
 
         /// <summary>
+        /// Whether, given their word to <paramref name="nomineeId"/> - a veto commitment's pull (<see cref="StrategyRules.VetoCommitmentPull"/>)
+        /// on that nominee alone - the holder's decision would save that nominee: <see cref="NpcVetoSave"/>'s own rule, the
+        /// same order, line and refusals, read with the word added. The holder's offer (ROLE-MOMENTS-PLAN R8) is made only
+        /// where it would, so a word given is a word the holder can keep. Whether they would have saved them without it is
+        /// not asked. False wherever the holder could save nobody, or is on the block.
+        /// </summary>
+        public static bool SavesWithTheWord(EpisodeState s, string holderId, string nomineeId)
+        {
+            if (holderId == null || nomineeId == null || VetoIsLockedAtFinalFour(s) || !ReplacementCandidates(s).Any()
+                || s.nominees.Contains(holderId) || !s.nominees.Contains(nomineeId)) return false;
+            double line = StrategyRules.VetoLine(s, holderId);
+            double Weight(string id) => SaveWeight(s, holderId, id) + (id == nomineeId ? StrategyRules.VetoCommitmentPull : 0);
+            return s.nominees.OrderByDescending(Weight)
+                .FirstOrDefault(id => Weight(id) > line
+                                      && !StoryConsumers.WillNotSave(s, holderId, id)
+                                      && !ColdPartnerLeavesThemUp(s, holderId, id)) == nomineeId;
+        }
+
+        /// <summary>
         /// The showmance veto dilemma from the other side: a partner who is cold and steady enough
         /// (Honest −2 or lower, Steady 2 or higher) may leave you up. A keyed coin, so the Execute-
-        /// time check and the Advance agree on it.
+        /// time check and the Advance agree on it, and the holder's offer (R8) reads it too.
         /// </summary>
-        private static bool ColdPartnerLeavesThemUp(EpisodeState s, string holderId, string nomineeId)
+        internal static bool ColdPartnerLeavesThemUp(EpisodeState s, string holderId, string nomineeId)
         {
             if (!StoryAt(s, StoryRules.Bonds) || !Bonds.Holds(s, holderId, nomineeId, BondKinds.Showmance)) return false;
             var axes = Personality.Of(s.Find(holderId));
@@ -2249,6 +2273,19 @@ namespace Gamesim.Simulation
                     && Negotiation.AskPrice(s, deal) is Negotiation.Price askPrice && UnifiedVoteStore.IsVote(askPrice.kind))
                     Require(UnifiedVoteStore.CanAddAskPrice(s, deal.id, Negotiation.DraftPrice(s, askPrice, deal.id, Negotiation.PricePrefix + s.nextSequence),
                         out string priceReservation), priceReservation);
+                // A veto holder's offer (R8, §3.4b) is taken at its price, which the player pays: refused once the holder could
+                // no longer keep their word (something moved since they offered it) or no price fits, and in mode 2 a vote price
+                // is reserved as a canonical row before the yes moves anything, as a nominee's is.
+                bool holderOffer = HolderOfferOn(s) && modeTwo == null && canonical == null && RoleOffers.IsHolderOffer(s, deal);
+                if (holderOffer)
+                {
+                    Require(SavesWithTheWord(s, deal.proposerId, s.playerId), Negotiation.HolderWordGoneRefusal);
+                    var holderPrice = Negotiation.HolderOfferPrice(s, deal.proposerId);
+                    Require(holderPrice != null, Negotiation.HolderPriceGoneRefusal);
+                    if (UnifiedVoteStore.On(s) && UnifiedVoteStore.IsVote(holderPrice.kind))
+                        Require(UnifiedVoteStore.CanAddHolderOfferPrice(s, deal.id,
+                            Negotiation.DraftPrice(s, holderPrice, deal.id, Negotiation.PricePrefix + s.nextSequence), out string holderReservation), holderReservation);
+                }
                 // The offer lapsed at the end of this week; the arrangement it becomes runs for as
                 // long as its own kind runs for, which for a final two or a partnership is no limit.
                 if (modeTwo != null)
@@ -2278,8 +2315,10 @@ namespace Gamesim.Simulation
                 Remember(s, s.playerId, deal.proposerId, "I accepted a " + title + " from " + from.name + ".", true);
                 Log(s, "deal", "You accepted a " + title + " from " + from.name + ".", s.playerId, deal.proposerId);
                 if (deal.type == DealKind.AllianceInvite) AllyThroughInvitation(s, deal.proposerId);
-                // Under the commitment rules (C7) a nominee's veto ask carries a price, struck with the yes.
+                // Under the commitment rules (C7) a nominee's veto ask carries a price, struck with the yes; and a veto
+                // holder's offer (R8) the price the player pays for it.
                 if (CommitmentRulesOn(s)) StrikeTheAskPrice(s, deal);
+                if (holderOffer) StrikeTheHolderOfferPrice(s, deal);
                 return;
             }
 

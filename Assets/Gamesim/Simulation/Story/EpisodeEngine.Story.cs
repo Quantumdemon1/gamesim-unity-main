@@ -36,6 +36,21 @@ namespace Gamesim.Simulation
         public static bool RolesOn(EpisodeState s) =>
             StoryAt(s, StoryRules.Roles) && StrategyRules.Apply(s) && CommitmentRulesOn(s) && LeverRulesOn(s);
 
+        /// <summary>
+        /// Whether this season plays the holder's offer (ROLE-MOMENTS-PLAN R8, §3.4b): the story at
+        /// <see cref="StoryRules.HolderOffer"/> and the role moments it is built on (<see cref="RolesOn"/>). Every R8 rule
+        /// reads this. No season the game starts plays it before its enrolment, which follows the house talk's levels.
+        /// </summary>
+        public static bool HolderOfferOn(EpisodeState s) => RolesOn(s) && StoryAt(s, StoryRules.HolderOffer);
+
+        /// <summary>
+        /// Whether the holder's offer played in <paramref name="week"/> of this season: <see cref="RolesOnIn"/> at that week,
+        /// with the story at <see cref="StoryRules.HolderOffer"/>. Validation reads it for R8's own records - an offer and
+        /// the price struck for it - as it reads <see cref="RolesOnIn"/> for R4's.
+        /// </summary>
+        public static bool HolderOfferOnIn(EpisodeState s, int week) =>
+            RolesOnIn(s, week) && s.story.rulesVersion >= StoryRules.HolderOffer;
+
         /// <summary>The most storylines a season may hold: validation's bound (EpisodeValidation), and nothing prunes them.</summary>
         public const int StorylineCeiling = 100;
 

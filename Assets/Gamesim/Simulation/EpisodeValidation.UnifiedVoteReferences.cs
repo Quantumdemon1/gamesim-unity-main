@@ -53,7 +53,7 @@ namespace Gamesim.Simulation
                 return taken && neutral && answered && (row.origin == UnifiedCommitments.PlayerDeal
                     || row.origin == UnifiedCommitments.NpcOffer || row.origin == UnifiedCommitments.CounterDeal
                     || row.origin == UnifiedCommitments.CounterPrice || row.origin == UnifiedVoteFamilyValidation.VetoAskPrice
-                    || row.origin == UnifiedVoteFamilyValidation.OwnVetoPrice);
+                    || row.origin == UnifiedVoteFamilyValidation.OwnVetoPrice || row.origin == UnifiedVoteFamilyValidation.HolderOfferPrice);
             string source = row.subtype + (row.targetId != null ? ":" + row.targetId : "");
             if (opportunity.source != source || opportunity.note == null) return false;
             string prefix = (row.makerId == s.playerId ? "put to " + row.beneficiaryId

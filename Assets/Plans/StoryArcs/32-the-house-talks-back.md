@@ -1677,6 +1677,8 @@ The nine slices of §O become these. Each lands as its own PR, in this order, af
 
 S9 of §O is gone: its paired reports, goldens and enrolment are A-ON, B-ON and C-ON, one per stack.
 
+**Landed, as of 2026-11-17.** Orders 1 to 7 are on main: OF-a (PR #64), HR-1 (#65) and HT0 (#66) on 2026-11-14; OF-p (#68), OF-b (#69), HR-2 (#70) and the offers fixes (#71) on 2026-11-15; and S1 (#74) on 2026-11-16, which lands dark. The next slice is S2a. Nothing from S2a on is built.
+
 ### Q4. Hot files, one PR at a time, in landing order
 
 - `SS/StoryState.cs`, the `StoryRules` block: R7's switch-on, then HT0, S1, A-ON, S3, B-ON, S5a, C-ON.

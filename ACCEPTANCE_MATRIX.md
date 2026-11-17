@@ -268,7 +268,7 @@ against; run to impressions, it produces a feeling.
 
 | # | Criterion | Method | Threshold |
 |---|---|---|---|
-| E1 | Episode pacing | Timed play of one full episode | 30–45 minutes without skipping |
+| E1 | Season pacing | Timed play of one whole season (the owner, 2026-11-17) | 8 players: 45 minutes or less without skipping; 12 players: up to about two hours |
 | E2 | First-time comprehension | ≥ 3 players who have never seen the build | each reaches eviction unaided |
 | E3 | A decision feels consequential | Post-play interview | each player can name a promise or betrayal that changed a later outcome, and why |
 | E4 | Loss is intentional | Play a losing run | the ending reads as an ending, not a failure state |
@@ -289,14 +289,14 @@ optimistically, so they stay empty until a real session fills them.
 
 | # | Result | Raw numbers | Notes |
 |---|---|---|---|
-| E1 | not run | — | minutes per participant, and where the time went |
+| E1 | not run | — | season minutes per participant, each week's minutes, and where the time went |
 | E2 | not run | — | every stall: what they tried, what unstuck them |
 | E3 | not run | — | their account in their words, against the committed events |
 | E4 | not run | — | needs a participant actually evicted; do not stage it |
 | E5 | not run | — | judge framing, not bodies; see the two known issues in the protocol |
 
-Record failures with their numbers. A 22-minute run and a 70-minute run both miss E1 and mean
-opposite things.
+Record failures with their numbers. A 50-minute season and a 120-minute season both miss E1 at 8 players
+and mean opposite things.
 
 ## F — Broadcast presentation (added after V7 was pinned)
 

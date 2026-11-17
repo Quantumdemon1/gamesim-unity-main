@@ -308,6 +308,61 @@ namespace Gamesim.Simulation
             }
         }
 
+        /// <summary>
+        /// The price a veto holder puts on their word to use the veto on the player (ROLE-MOMENTS-PLAN R8, §3.4b): what the
+        /// player pays for it, chosen from public facts only - the first that fits of a voting bloc with the holder at this
+        /// week's vote (<see cref="DealKind.VoteTogether"/>), which the player can pay only if saved, and at the endgame a
+        /// final two. Never one the two of them already hold. Null without the holder's offer, for a holder who is the player
+        /// or nobody, where no price fits - no offer is then made - or once the season holds as many deals as it may
+        /// (<see cref="NpcDeals.DealCeiling"/>).
+        /// </summary>
+        public static Price HolderOfferPrice(EpisodeState s, string holderId)
+        {
+            var holder = s?.Find(holderId);
+            if (!EpisodeEngine.HolderOfferOn(s) || holder == null || holder.isPlayer) return null;
+            if (UnifiedVoteStore.DealCount(s) >= NpcDeals.DealCeiling) return null;
+            foreach (string kind in new[] { DealKind.VoteTogether, DealKind.FinalTwo })
+                if (HolderPriceFits(s, holderId, kind))
+                    return new Price { kind = kind, payerId = s.playerId, payeeId = holderId, expiresWeek = kind == DealKind.VoteTogether ? s.week : 0 };
+            return null;
+        }
+
+        /// <summary>
+        /// Whether the player can pay this price for a holder's word on the veto: a voting bloc at this week's vote, while it
+        /// is still to come and the holder votes in it - the player, saved, would vote beside them; or a final two at the
+        /// endgame. Neither held twice.
+        /// </summary>
+        public static bool HolderPriceFits(EpisodeState s, string holderId, string kind)
+        {
+            switch (kind)
+            {
+                case DealKind.VoteTogether:
+                    return !s.evictionResolved && EpisodeEngine.Voters(s).Any(v => v.id == holderId)
+                           && !Binding(s, s.playerId, holderId, DealKind.VoteTogether, null);
+                case DealKind.FinalTwo:
+                    return s.Active.Count() <= NpcDeals.EndgameSize && !Binding(s, s.playerId, holderId, DealKind.FinalTwo, null);
+                default:
+                    return false;
+            }
+        }
+
+        /// <summary>A veto holder's offer's price, said under it - the incoming offer's card's line, for the screen's own slice -: "In return, you would owe Maya Hassan a voting bloc this week." Null where it carries none.</summary>
+        public static string HolderOfferPriceLine(EpisodeState s, DealState offer)
+        {
+            var price = NpcDeals.IsHolderOfferId(offer?.id) ? HolderOfferPrice(s, offer.proposerId) : null;
+            return price == null ? null : "In return, you would owe " + Name(s, offer.proposerId) + " " + PriceWords(s, price) + ".";
+        }
+
+        /// <summary>The price struck with the player's yes to a holder's offer: "For their word on the veto, you owe Maya Hassan a voting bloc this week."</summary>
+        public static string HolderPriceStruckLine(EpisodeState s, Price price) =>
+            "For their word on the veto, you owe " + Name(s, price.payeeId) + " " + PriceWords(s, price) + ".";
+
+        /// <summary>A holder's offer answered yes after its price stopped fitting: the offer is no longer on the table as it was put.</summary>
+        public const string HolderPriceGoneRefusal = "Their price no longer fits, so that offer is no longer on the table.";
+
+        /// <summary>A holder's offer answered yes after the holder stopped being able to keep their word: they have taken it back.</summary>
+        public const string HolderWordGoneRefusal = "They have thought better of it, so that offer is no longer on the table.";
+
         /// <summary>The price as a deal: proposed by the one who pays it, to the one owed it, standing at once, and linked to what it buys.</summary>
         public static DealState DraftPrice(EpisodeState s, Price price, string boughtId, string id) =>
             new DealState

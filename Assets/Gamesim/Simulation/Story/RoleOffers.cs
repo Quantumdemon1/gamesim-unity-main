@@ -150,8 +150,23 @@ namespace Gamesim.Simulation
         /// <summary>Whether a deal is a card of the veto board: a nominee's veto ask, or the Head of Household's ask to keep the block.</summary>
         public static bool IsBoardAsk(EpisodeState s, DealState d) => IsVetoAsk(s, d) || IsKeepTheBlockAsk(s, d);
 
-        /// <summary>The moment an ask on the board is (<see cref="RoleQuotes.Moments"/>): the Head of Household's keep-the-block, or a nominee's veto ask.</summary>
-        public static string MomentOf(DealState ask) => ask?.type == DealKind.VetoHold ? RoleQuotes.KeepTheBlock : RoleQuotes.VetoAsk;
+        /// <summary>
+        /// Whether a deal is this week's offer from a houseguest holding the veto, answered or not (R8, §3.4b): a veto
+        /// commitment put to the player this week, as <see cref="NpcDeals.OfferTheVeto"/> files one - keyed on its id
+        /// (<see cref="NpcDeals.HolderOfferPrefix"/>). Never a card of the veto board, which is drawn only for a player who
+        /// holds the veto: the player is on the block here, and the offer comes to them.
+        /// </summary>
+        public static bool IsHolderOffer(EpisodeState s, DealState d) =>
+            s != null && d != null && d.type == DealKind.VetoUse && d.week == s.week && d.recipientId == s.playerId && d.proposerId != s.playerId
+            && NpcDeals.IsHolderOfferId(d.id);
+
+        /// <summary>
+        /// The moment an ask is (<see cref="RoleQuotes.Moments"/>): the Head of Household's keep-the-block, a veto holder's
+        /// offer (R8), or a nominee's veto ask.
+        /// </summary>
+        public static string MomentOf(DealState ask) =>
+            ask?.type == DealKind.VetoHold ? RoleQuotes.KeepTheBlock
+            : NpcDeals.IsHolderOfferId(ask?.id) ? RoleQuotes.HolderOffer : RoleQuotes.VetoAsk;
 
         /// <summary>
         /// The tone an ask's card wears: the asker's, in the role their moment gives them (<see cref="RoleTone.Of"/>) - a

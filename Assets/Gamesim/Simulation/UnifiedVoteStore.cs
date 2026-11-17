@@ -178,6 +178,26 @@ namespace Gamesim.Simulation
             return true;
         }
 
+        /// <summary>Reservation only, before the player's yes moves anything: a veto holder's offer and the voting bloc the player pays for it (R8). Writes nothing.</summary>
+        internal static bool CanAddHolderOfferPrice(EpisodeState s, string offerId, DealState price, out string error) =>
+            UnifiedVoteAdmission.TryAcceptedHolderOfferPrice(s, offerId, price, out _, out error);
+
+        /// <summary>
+        /// The holder's offer's voting bloc, written where the source strikes it (R8): after the yes, at the sequence the season
+        /// has reached. <see cref="CanAddHolderOfferPrice"/> reserved it before the yes; the struck row is admitted again as it
+        /// is written, its answered offer linked to it. The offer itself stays raw and names its price.
+        /// </summary>
+        internal static bool TryInstallHolderOfferPrice(EpisodeState s, DealState offer, DealState price, out string error)
+        {
+            error = null;
+            if (!On(s) || offer == null || !s.deals.Contains(offer))
+                return Refuse(out error, "Strike only the voting bloc of the holder's offer this command answered.");
+            if (!UnifiedVoteAdmission.TryStruckHolderOfferPrice(s, offer, price, out var row, out error)) return Refused(s);
+            s.unifiedCommitments.Add(row);
+            offer.linkedDealId = price.id;
+            return true;
+        }
+
         // Every row of the plan is detached and already admitted together; nothing between these
         // appends can refuse, so the pair is written whole, in the source's own order.
         private static void Install(EpisodeState s, UnifiedVoteAdmissionPlan plan)

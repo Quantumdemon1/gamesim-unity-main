@@ -1153,7 +1153,8 @@ histories-first order, and it carries every field in 5.1.
   2026-10-29 (section 1).
 - **Not claimed:** no command kind (the next free stays 66), no story milestone (10 stays the story session's, 11 is
   Roles), no dialogue rules version (the joint note claims 2 to 5 in dialogue's own field), and no competition rules
-  version (competition rules 5 is unclaimed since B9 released it; the throw's is claimed with the competitions topic at H1d).
+  version (competition rules 5 was unclaimed after B9 released it, and the Ring Tower took it on 2026-11-16, PR #77; the
+  throw's is claimed with the competitions topic at H1d, and takes 6 or later).
 - **Alumni rules 2, 3 and 4 are taken by section 14** (the owner's direction, 2026-10-29), and 5 by its 14.L (next
   claim). The campaigns (AS7) take the next free value after S6. Because the value is a bound, AS7's value carries the
   behaviour of 2 to 5 (2 to 4 if growth is withdrawn). Tell AS7's track when it next runs.
@@ -1202,6 +1203,10 @@ are defined only at `schemaVersion >= 30` (8.2).
 **Update, B9 (2026-11-03):** B9 landed PC5's preparation as tuning rules 1 and released competition rules 5
 (B9-BALANCE-PLAN decision 2); the next slice that changes how a competition is scored takes 5 - Will's throw here, or PC6's
 minigames, whichever lands first. The paragraph below is history.
+
+**Update, 2026-11-17:** competition rules 5 is taken. The Ring Tower (5d1daabf, PR #77, merged 2026-11-16) is
+`CompetitionRules.RingTower = 5`, and `ShippedRules.ApplyFresh` writes it for every new season. Will's throw takes 6 or
+later when H1d lands.
 
 **With the competitions topic** (tell it when it next runs): PC5 is competition rules 5, and PC6's minigames take 6 or
 later. Will's throw takes the next free value when H1d lands, and is measured with PC5's lab runs.

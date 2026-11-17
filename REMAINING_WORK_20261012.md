@@ -1,5 +1,13 @@
 # Gamesim Unity: remaining completion work
 
+> **Status, 2026-11-17: historical.** This handoff dates from 2026-10-12, and later work supersedes much of it. Items 1-3
+> are done or overtaken: the schema-28 reader landed and schema 29 passed the owner's save gate (PR #28); B9 is merged and
+> signed off (PR #46, 2026-11-09); and the owner made the farewell a noncontact beat (the standing decisions in
+> OWNER-DECISIONS-2026-10-22), which replaces item 3's contact grounding. Item 4 is partly done: the
+> authored props and competition parts are in (PR #35). Items 5-7 (the combined revalidation and accessibility, a fresh
+> release candidate with the GTX 1060 profile, and three first-time testers, then promotion) remain open. The plans under
+> `Assets/Plans` hold the current state of each piece of work.
+
 Working handoff for the owner, 2026-10-12. This is task-local documentation, not a replacement for the project's roadmap or implementation ledger, now appended to Doc16 with exact Doc15 preimages preserved. The live C: project and open D:/GamesimPlay are preserved. Implementation candidates remain in D:/GamesimIntegration20261010; reviewed external source is not yet integrated gameplay.
 
 ## Confirmed progress

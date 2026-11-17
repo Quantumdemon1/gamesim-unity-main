@@ -321,6 +321,15 @@ namespace Gamesim.Simulation
         /// until its stack's first slice defines it. A level, not the <c>ComesToYou</c> reader that shares its name.
         /// </summary>
         public const int ComesToYou = 14;
+        /// <summary>
+        /// HolderOffer (ROLE-MOMENTS-PLAN R8, §3.4b): a houseguest who holds the veto offers to use it on the player, who is
+        /// on the block, for a price the player pays. A role moment, so 15 or above (the owner's answer of 2026-10-30, plan 32
+        /// answer 1), and enrolled after the house talk's three levels (the owner, 2026-11-17). Defined ahead of
+        /// <see cref="Gossip"/> and <see cref="ComesToYou"/> by the one documented exception in <see cref="IsDefined"/> (the
+        /// owner, 2026-11-17), so it can be built and tested now; no season the game starts plays it before its enrolment.
+        /// Read through <see cref="EpisodeEngine.HolderOfferOn"/>, which also wants the role moments it is built on.
+        /// </summary>
+        public const int HolderOffer = 15;
 
         /// <summary>
         /// What a season switched on today plays under: a new season's value (<see cref="EpisodeEngine.EnableStory"/>),
@@ -341,12 +350,21 @@ namespace Gamesim.Simulation
         public const int Latest = Manners;
 
         /// <summary>
-        /// Whether this build defines the version: 0 (off) and every milestone to <see cref="Latest"/>. The
-        /// ladder has no gap, so the bound is enough. While 10 was claimed and no code read it, it was refused
-        /// here, because a season may not hold a version nothing reads; <see cref="Blame"/> closed the gap.
-        /// The frozen readers keep their own ladders, with no 10 in them, so a season at 10 is a schema-30 one.
+        /// Whether this build defines the version: 0 (off) and every milestone to <see cref="Latest"/>, and
+        /// <see cref="HolderOffer"/>. Below <see cref="Latest"/> the ladder has no gap, so the bound is enough. While 10
+        /// was claimed and no code read it, it was refused here, because a season may not hold a version nothing reads;
+        /// <see cref="Blame"/> closed the gap. The frozen readers keep their own ladders, with no 10 in them, so a season
+        /// at 10 is a schema-30 one.
+        ///
+        /// <para><b>The one exception: <see cref="HolderOffer"/>.</b> The owner chose on 2026-11-17 to define 15 ahead of
+        /// <see cref="Gossip"/> and <see cref="ComesToYou"/>, so the holder's offer (R8) can be built and tested while
+        /// the house talk's levels are still being built. 15 is read by R8's own rules, so the rule above holds for it;
+        /// 13 and 14 stay refused until their stacks define them. Every gate is a lower bound, so a season at 15 also plays
+        /// whatever 12 to 14 have built - today <see cref="Manners"/>' answer manners - which is the order the enrolments
+        /// follow. No season the game starts holds 15 before R8's enrolment, so only tests write it. When
+        /// <see cref="Latest"/> itself reaches <see cref="HolderOffer"/>, the bound covers it and this clause goes.</para>
         /// </summary>
-        public static bool IsDefined(int version) => version >= 0 && version <= Latest;
+        public static bool IsDefined(int version) => version >= 0 && version <= Latest || version == HolderOffer;
 
         public const int Lenient = 0, Standard = 1;
     }

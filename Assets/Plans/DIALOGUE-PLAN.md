@@ -55,7 +55,7 @@ This note also makes the calls below. They are open to the owner too.
 | 10 | What the veto question costs | "If you win the veto, will you use it on me?" costs the window's action, and no grant pays for it. | Let the nominee's grant pay for it. |
 | 11 | **P0.** Storyline budget | At most **32 conversations a season**, never in the last eight storylines. Nothing is pruned. A refused conversation leaves its plea available as the one-shot plea (§5.5). | No budget: dialogue and the story pool compete for the same 92, and late in a long season either one starves the other. |
 | 12 | **P0.** Consultation windows | **The existing windows and phases** (§4.1). | A new window changes the length of every save's `windowActions`, which validation checks (Simulation/EpisodeValidation.cs:148). That means a migration. |
-| 13 | **P0.** Competition rules 5 | Claimed for PC5, the competition part of B9 (§9). **Released by B9** (tuning rules 1; B9-BALANCE-PLAN decision 2), see §9: 5 is unclaimed. | - |
+| 13 | **P0.** Competition rules 5 | Claimed for PC5, the competition part of B9 (§9). **Released by B9** (tuning rules 1; B9-BALANCE-PLAN decision 2), see §9. **Taken by the Ring Tower** (PR #77, 2026-11-16). | - |
 
 **The owner's answer on P1(a), 2026-10-25.** Rules 1 locked the desperate (Emotional) plea while its conversation could not start, in about one nominated Campaign week in two (§7, D1 as built). Asked whether rules 1 keeps that lock or takes the rules-2 fallback before it freezes, the owner answered, verbatim: "Never lose the plea". So while the conversation cannot start, the desperate plea is the ordinary one-click plea for its one action, with no conversation that time, and the conversation is offered again once the house moment is answered. Switching dialogue on must never make a week worse than switching it off. Rules 1 and every later version share the one fallback (§5.5), built in D1b (§7).
 
@@ -377,7 +377,7 @@ The lead settles the order, and the All-Star plan's §10 follows it.
 | **D5c** Conversation time | 4 | The +1 and -1 receipts that `WindowBudget` reads (§4) | "One more conversation in this window", or "The argument cost you an opportunity" | M |
 | **D5b** Consultations | 5 | The HoH and veto consultations and their grants (§4.1) | As HoH or veto holder, one conversation on the house | L |
 | **D6** Measurement | - | Lab policies start and answer conversations. Paired 100-seed runs with dialogue on and off, after R7's B9, with NPC ticks on. The ROLE doc's diagnostics (:158). Pacing against 45 minutes at 8 players. The owner signs off the numbers. | Nothing; a report | L, mostly compute |
-| **D7** On by default | latest | `ApplyFresh` writes `Shipped`, the latest frozen version, together with R7. Goldens and digests are re-recorded with the reasons stated. The fixture and manifest cell for a shipped season, a season-walk route through a conversation, and the largest text size. The owner decides whether the chip stays as an opt-out. | Every new season | M |
+| **D7** On by default | latest | `ApplyFresh` writes `Shipped`, the latest frozen version, together with R7 (*2026-11-17: R7 enrolled on its own, PRs #59, #62 and #63, 2026-11-14 to 15; D7 is now a later step of its own, after D6*). Goldens and digests are re-recorded with the reasons stated. The fixture and manifest cell for a shipped season, a season-walk route through a conversation, and the largest text size. The owner decides whether the chip stays as an opt-out. | Every new season | M |
 
 None of these slices adds a persisted field. If one ever did, it would be qualified alone and take schema 31.
 
@@ -539,6 +539,7 @@ None of these slices adds a persisted field. If one ever did, it would be qualif
 ## 9. Competition rules 5
 
 - **Update, B9 (2026-11-03).** B9 landed PC5's preparation as tuning rules 1 (`tuningRulesVersion`, B9-BALANCE-PLAN decision 2) and released competition rules 5: it is unclaimed, and the next slice that changes how a competition is scored takes it (Will's throw in H1d or PC6's minigames, whichever lands first). The claim below is history.
+- **Update, 2026-11-17.** Competition rules 5 is taken: the Ring Tower (5d1daabf, PR #77, merged 2026-11-16) is `CompetitionRules.RingTower = 5`, which `ShippedRules.ApplyFresh` writes for every new season. Will's throw and PC6's other minigames take 6 or later.
 - **The claim.** Competition rules 5 is claimed for PC5, the competition part of B9 (the props and competitions line), so no other slice takes it. PC6's new minigames take 6 or later.
 - **No field.** It lives in the existing `competitionRulesVersion`, which validation bounds by `CompetitionRules.Current` (Simulation/EpisodeValidation.cs:134) and `ApplyFresh` writes (Simulation/ShippedRules.cs:29). So it needs nothing from schema 30.
 - **When PC5 lands.** `CompetitionRules.Current` (Simulation/CompetitionRules.cs:41-42) and `CompetitionMiniGames.CurrentRules` (Runtime/Presentation/CompetitionMiniGames.cs:23) move together. Rules 5 freezes the first time `ApplyFresh` writes it.

@@ -99,6 +99,8 @@ makes sense."
 - It is not a deadline on test-suite processes. The audited pipeline's per-suite deadlines stand,
   and the 2,700-second zero-grace rule on native test runs is withdrawn. If the owner meant test
   runs, this item is corrected.
+- **2026-11-17 (owner):** "E1 should measure the whole season, 45 minutes for 8 players." `PLAYTEST_PROTOCOL.md` E1
+  and `ACCEPTANCE_MATRIX.md` now time a whole season, and the old 30–45 minutes per episode is withdrawn.
 
 ## Standing decisions, unchanged (15-17 Oct)
 

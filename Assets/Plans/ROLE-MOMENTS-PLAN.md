@@ -695,7 +695,7 @@ Later, outside this plan:
 
 ### 6.2 Cross-cutting risks
 
-- **Balance.** Weekly HoH/Veto wins already run at 95.23% against a 60-70% target, and the season Winner rate is 73.5% against 25-35% (REMAINING_WORK_20261012.md:62-63,67). Role moments make a role worth more. The lapse costs and the stricter pitch economics push the other way. Enrolment (R7) waits for B9; R8 waits for B9 and a second sign-off.
+- **Balance.** Weekly HoH/Veto wins already run at 95.23% against a 60-70% target, and the season Winner rate is 73.5% against 25-35% (REMAINING_WORK_20261012.md:62-63,67). Role moments make a role worth more. The lapse costs and the stricter pitch economics push the other way. Enrolment (R7) waits for B9; R8 waits for B9 and a second sign-off. *Status, 2026-11-17: B9 merged on 2026-11-09 (PR #46) and R7 is enrolled (PRs #59, #62 and #63, 2026-11-14 to 15), so R8 now waits only on the owner's second sign-off.*
 - **Two sessions share the branch.**
   - The story-rules number is claimed with the story session.
   - The pawn conversation touches the backdoor arc's routing, which the story session owns.
@@ -718,7 +718,7 @@ Later, outside this plan:
 | 9 | Let quiet tears replace The Fallout under Roles, at most once a week, with role moments adding their weight to "nothing"; cut "a shoulder" from v1? | **Yes.** |
 | 10 | No new currency and no +1 social point; the two "take your time" choices cost the window's seat and pay in visible receipts (a favour owed)? | **Yes.** Defer +1/-1 time to Layer 2. |
 | 11 | Pacing budget: at most +1 modal decision per role week, net ≤ 0 per season at 8 for engaged play, and a three-card board read in ≤ 30 s, measured before enrolment? | **Yes.** |
-| 12 | The holder's priced offer to a nominated player: build it only after B9 and a second sign-off on its numbers (R8)? | **Yes**, to the shape; the go/no-go waits for B9. |
+| 12 | The holder's priced offer to a nominated player: build it only after B9 and a second sign-off on its numbers (R8)? | **Yes**, to the shape; the go/no-go waits for B9. *B9 merged on 2026-11-09 (PR #46): the go/no-go is the owner's.* |
 | 13 | Keep story moments out of week 1 before its eviction night, though screenshot 2 shows week 1 (the board itself plays in week 1)? | **Yes.** |
 | 14 | Keep imported web saves on story rules 9 after enrolment? | **Yes.** |
 | 15 | Trait-picked price kinds, allies approaching the holder, and the nominated holder's "vote to keep me" ask? | **Defer** to after R8. |

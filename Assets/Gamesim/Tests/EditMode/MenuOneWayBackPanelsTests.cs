@@ -55,7 +55,6 @@ namespace Gamesim.Tests.EditMode
             var wanted = new[]
             {
                 ("Episode/EpisodeHud.Roster.cs", "WayBack(ProfileBackCaption, view.Back)"),
-                ("Episode/EpisodeDirector.YourWord.cs", "hud.WayBack(BackToYourNotesCaption"),
                 ("Episode/EpisodeDirector.FreeTimeBoard.cs", "hud.WayBack(BackToFreeTimeCaption, CloseFreeTimeBeat)"),
                 ("Episode/EpisodeDirector.FreeTimeBoard.cs", "hud.WayBack(BackToFreeTimeCaption, CloseHouseguestScreen)"),
                 ("Episode/EpisodeDirector.FreeTimeScreen.cs", "hud.WayBack(BackToFreeTimeCaption, CloseHouseguestScreen)"),
@@ -66,7 +65,8 @@ namespace Gamesim.Tests.EditMode
             var gone = new[]
             {
                 ("Episode/EpisodeHud.Roster.cs", "KitButton(root, ProfileBackCaption"),
-                ("Episode/EpisodeDirector.YourWord.cs", "PageDoor(BackToYourNotesCaption"),
+                // Menu slice 3: Deals & promises is the notes' sibling in the notebook's strip, with no way back at all.
+                ("Episode/EpisodeDirector.YourWord.cs", "BackToYourNotesCaption"),
                 ("Episode/EpisodeDirector.FreeTimeBoard.cs", "PinnedSecondary(BackToFreeTimeCaption"),
                 ("Episode/EpisodeDirector.FreeTimeScreen.cs", "hud.Action(BackToFreeTimeCaption"),
                 ("Episode/EpisodeDirector.Story.cs", "hud.Action(EpisodeHud.StoryBackCaption"),
@@ -126,7 +126,7 @@ namespace Gamesim.Tests.EditMode
                 Gamesim.Episode.EpisodeHud.ProfileBackCaption, Gamesim.Episode.EpisodeHud.StoryBackCaption,
                 Gamesim.Episode.EpisodeHud.DiaryCancelCaption, Gamesim.Episode.EpisodeHud.StudyCancelCaption,
                 Gamesim.Episode.EpisodeHud.DiaryCancelReflectionCaption, Gamesim.Episode.EpisodeDirector.BackToFreeTimeCaption,
-                Gamesim.Episode.EpisodeDirector.BackToYourNotesCaption, WeeklyRecapScreen.BackCaption,
+                WeeklyRecapScreen.BackCaption,
                 WeeklyRecapScreen.BackToHouseCaption, WeeklyRecapScreen.BackToNotebookCaption,
             })
                 Assert.That(WayOut.IsWayBack(caption), Is.True, "'" + caption + "' says where it goes back to.");

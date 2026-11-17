@@ -486,10 +486,32 @@ namespace Gamesim.Tests.PlayMode
         /// <para>For the handful of tests whose subject IS that a control is unavailable - an
         /// evicted player's travel buttons, a spent action - where insisting on pressability would
         /// assert the opposite of the thing under test.</para>
+        ///
+        /// <para>One name per thing (menu slices 2 and 3) puts a few captions on a row of the left
+        /// rail and on a control of a panel at once - "Deals &amp; promises" is the rail's row, the
+        /// notebook strip's tab and the conversation's topic. Where the rail's row and another control
+        /// carry the words, the other is the one meant: the rail's row is found only when it is the
+        /// only control carrying them. Every other caption is still one control or a failure.</para>
         /// </summary>
-        private Button FindButton(string caption) =>
-            director.GetComponentsInChildren<Button>(true).Single(item => item.IsActive()
-                && item.GetComponentsInChildren<TMPro.TMP_Text>(true).Any(text => text.text == caption));
+        private Button FindButton(string caption)
+        {
+            var carrying = director.GetComponentsInChildren<Button>(true).Where(item => item.IsActive()
+                && item.GetComponentsInChildren<TMPro.TMP_Text>(true).Any(text => text.text == caption)).ToArray();
+            if (carrying.Length > 1)
+            {
+                var offTheRail = carrying.Where(item => !OnTheRail(item.transform)).ToArray();
+                if (offTheRail.Length > 0) carrying = offTheRail;
+            }
+            return carrying.Single();
+        }
+
+        /// <summary>Whether a control is a row of the left rail (under <see cref="IconRail.RootName"/>).</summary>
+        private static bool OnTheRail(Transform item)
+        {
+            for (var at = item; at != null; at = at.parent)
+                if (at.name == IconRail.RootName) return true;
+            return false;
+        }
 
         /// <summary>
         /// Brings a control inside a scroll view into view, the way a player would.

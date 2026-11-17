@@ -725,10 +725,20 @@ namespace Gamesim.Episode
             }
         }
 
-        /// <summary>Every live, pressable control showing this caption.</summary>
-        private Button[] SeasonButtonsCarrying(string caption) => VisibleSeasonButtons()
-            .Where(button => button.IsActive() && button.IsInteractable()
-                && button.GetComponentsInChildren<TMPro.TMP_Text>().Any(label => label.text == caption)).ToArray();
+        /// <summary>
+        /// Every live, pressable control showing this caption. One name per thing (menu slice 3) puts
+        /// "Deals &amp; promises" on a row of the left rail and on the conversation's topic at once:
+        /// where the rail's row and another control carry the words, the other is the one meant.
+        /// </summary>
+        private Button[] SeasonButtonsCarrying(string caption)
+        {
+            var carrying = VisibleSeasonButtons()
+                .Where(button => button.IsActive() && button.IsInteractable()
+                    && button.GetComponentsInChildren<TMPro.TMP_Text>().Any(label => label.text == caption)).ToArray();
+            if (carrying.Length < 2) return carrying;
+            var offTheRail = carrying.Where(button => button.GetComponentsInParent<Transform>(true).All(at => at.name != IconRail.RootName)).ToArray();
+            return offTheRail.Length > 0 ? offTheRail : carrying;
+        }
 
         private Button[] VisibleSeasonButtons()
         {

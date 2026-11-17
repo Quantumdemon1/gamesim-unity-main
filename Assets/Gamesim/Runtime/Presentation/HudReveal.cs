@@ -15,7 +15,8 @@ namespace Gamesim.Presentation
     [DisallowMultipleComponent]
     public sealed class HudReveal : MonoBehaviour
     {
-        private const float Duration = 0.16f;
+        /// <summary>How long a reveal takes: the reading frame's fade (menu slice 3) is this, and at most a fifth of a second.</summary>
+        public const float Duration = 0.16f;
 
         private RectTransform rect;
         private CanvasGroup group;

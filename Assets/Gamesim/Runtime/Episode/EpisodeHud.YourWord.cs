@@ -219,7 +219,8 @@ namespace Gamesim.Episode
         /// One houseguest's commitments on the Your word page: their face, their name and where
         /// they are, then a line for each commitment - what it is, what it binds, until when and how
         /// it ended, in that ending's colour as well as its words - and how many more the card is
-        /// not showing. Named by its section's prefix and the houseguest's full name. Not a control.
+        /// not showing. Named by its section's prefix and the houseguest's full name. Not a control;
+        /// their name is a link to their profile, opened from Deals &amp; promises (menu slice 3).
         /// </summary>
         public RectTransform WordCard(string prefix, ContestantState actor, string status, IList<WordLine> lines, int more)
         {
@@ -236,6 +237,7 @@ namespace Gamesim.Episode
             if (semibold != null) name.font = semibold;
             name.textWrappingMode = TextWrappingModes.NoWrap;
             AutoSize(name, 12);
+            ProfileLink(name, actor, EpisodeDirector.NotebookSection.Word);
             if (!string.IsNullOrEmpty(status))
             {
                 var side = FixedText(card, status, 13, UiTheme.Muted, new Vector2(-pad, -(y + 4f * s)), new Vector2(inner * .4f, 13f * 1.3f * s));

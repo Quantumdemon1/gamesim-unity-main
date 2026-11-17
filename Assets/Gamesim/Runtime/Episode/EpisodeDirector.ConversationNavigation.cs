@@ -13,7 +13,7 @@ namespace Gamesim.Episode
         public const string DealsCategoryCaption = DealsAndPromisesName;
         public const string PressureCategoryCaption = "Pressure and rumours";
         public const string TogetherCategoryCaption = "Do something together";
-        public const string ConversationTopicsBackCaption = WayOut.BackPrefix + "topics";
+        public const string ConversationTopicsBackCaption = WayOut.BackPrefix + "the topics";
         /// <summary>
         /// A category page's way back while a level inside it is open (menu slice 2, change 1): with one
         /// verb's people open, back to the page's choices; with a plea's approaches open, back to what

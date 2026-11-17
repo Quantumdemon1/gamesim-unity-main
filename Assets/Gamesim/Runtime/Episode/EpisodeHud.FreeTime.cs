@@ -791,6 +791,11 @@ namespace Gamesim.Episode
         /// One houseguest's notes (the notebook's notes page): their face, their name and status, where
         /// you stand with them by your own reading, then what you have on them, newest first, and how
         /// many more lines the page is not showing.
+        ///
+        /// <para>Menu slice 3: where you stand is the one trust chip, drawn from your trust in them as
+        /// every reading page draws it, so <paramref name="standingWord"/> and
+        /// <paramref name="standingColour"/> (the web's five-band word, which said it a second way) are
+        /// no longer drawn. Their name is a link to their profile, opened from the notes.</para>
         /// </summary>
         public RectTransform NotesCard(ContestantState actor, string status, string standingWord, Color standingColour, IList<string> lines, int more)
         {
@@ -807,11 +812,23 @@ namespace Gamesim.Episode
             if (semibold != null) name.font = semibold;
             name.textWrappingMode = TextWrappingModes.NoWrap;
             AutoSize(name, 12);
-            var side = FixedText(card, standingWord + (string.IsNullOrEmpty(status) ? "" : "  ·  " + status), 13, standingColour,
-                new Vector2(-pad, -(y + 4f * s)), new Vector2(inner * .4f, 18f * s));
-            side.alignment = TextAlignmentOptions.Right;
-            side.rectTransform.anchorMin = side.rectTransform.anchorMax = side.rectTransform.pivot = new Vector2(1, 1);
+            ProfileLink(name, actor, EpisodeDirector.NotebookSection.Notes);
+            if (!string.IsNullOrEmpty(status))
+            {
+                var side = FixedText(card, status, 14, UiTheme.Muted,
+                    new Vector2(-pad, -(y + 4f * s)), new Vector2(inner * .4f, Mathf.Ceil(14f * 1.3f * s) + 2f));
+                side.alignment = TextAlignmentOptions.Right;
+                side.rectTransform.anchorMin = side.rectTransform.anchorMax = side.rectTransform.pivot = new Vector2(1, 1);
+            }
             y += 30f * s;
+            var state = director != null ? director.Snapshot : null;
+            if (state != null)
+            {
+                var chip = TrustChip.Build(card, state.Score(state.playerId, actor.id), Mathf.Round(15f * s), s, true);
+                chip.anchorMin = chip.anchorMax = chip.pivot = new Vector2(0, 1);
+                chip.anchoredPosition = new Vector2(left, -y);
+                y += chip.sizeDelta.y + 6f * s;
+            }
             if (lines != null)
                 foreach (var line in lines)
                     y = PlacedCopy(card, line, 15, UiTheme.Weight.Regular, UiTheme.Muted, left, y, inner) + 4f * s;

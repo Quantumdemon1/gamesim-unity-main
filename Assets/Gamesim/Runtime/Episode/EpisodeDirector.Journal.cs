@@ -200,6 +200,7 @@ namespace Gamesim.Episode
             journalSection = section;
             // The rail's Houseguests entry is the directory, from a profile as from anywhere else.
             profileId = null;
+            profileFrom = null;
             hud.RequestScrollTo(section);
             Render();
         }
@@ -207,6 +208,8 @@ namespace Gamesim.Episode
         /// <summary>What a redesigned notebook page says of itself in its head.</summary>
         private (string Title, string Subtitle) NotebookPageHead(string section)
         {
+            if (section == NotebookSection.People && ProfileId != null && ProfileId == Snapshot?.playerId)
+                return (YourCardTitle, "What the game has shown you about your own houseguest, gathered in one place");
             if (section == NotebookSection.People && ProfileId != null)
                 return ("Houseguest profile", "A focused view of the same permitted records \u2014 not access to private thoughts");
             if (section == NotebookSection.Rooms) return ("Who is where", "Room directory \u00b7 where everyone in the house is right now");
@@ -281,23 +284,87 @@ namespace Gamesim.Episode
         /// rail keeps Houseguests lit, and "Back to Houseguests" returns to the directory as it was
         /// left, its filter and search intact.
         /// </summary>
-        public void ShowHouseguestProfile(string contestantId)
+        public void ShowHouseguestProfile(string contestantId) => ShowHouseguestProfile(contestantId, null);
+
+        /// <summary>
+        /// Opens a houseguest's profile from a notebook page (menu slice 3, ruling N6 ii): a page
+        /// reached from a page, so its way back names the page it came from - "Back to your notes",
+        /// "Back to Relationships" - and Escape and B take it there, the page as it was left. Opened
+        /// from anywhere else (the cast's menu, the overview's glance, the directory itself) it goes
+        /// back to the directory, as it always did.
+        /// </summary>
+        public void ShowHouseguestProfile(string contestantId, string fromSection)
         {
             var actor = Snapshot != null ? Snapshot.Find(contestantId) : null;
             if (actor == null || actor.isPlayer) return;
-            if (!journalOpen || journalSection != NotebookSection.People) OpenNotebookAt(NotebookSection.People, scroll: false);
+            OpenProfile(contestantId, fromSection);
+        }
+
+        /// <summary>
+        /// The "You" card (ruling N6 iv): the profile's frame for the player's own houseguest, opened
+        /// by the first row of the directory. It gathers what the game already shows the player about
+        /// themselves; nothing on it is computed for it.
+        /// </summary>
+        public void ShowYourCard()
+        {
+            var you = Snapshot != null ? Snapshot.Find(Snapshot.playerId) : null;
+            if (you == null) return;
+            OpenProfile(you.id, NotebookSection.People);
+        }
+
+        private void OpenProfile(string contestantId, string fromSection)
+        {
+            // Only a notebook page that is on screen is somewhere to go back to.
+            bool fromPage = fromSection != null && fromSection != NotebookSection.People && journalOpen
+                && journalSection == fromSection && ProfilePlace(fromSection) != null;
+            if (!journalOpen || (journalSection != NotebookSection.People && !fromPage)) OpenNotebookAt(NotebookSection.People, scroll: false);
+            journalSection = NotebookSection.People;
+            profileFrom = fromPage ? fromSection : null;
             profileId = contestantId;
             hud.RequestScrollTo(NotebookSection.People);
             Render();
         }
 
-        /// <summary>Back from a profile to the directory.</summary>
+        /// <summary>Back from a profile to the page it was opened from: the directory, or the notebook page that opened it.</summary>
         public void BackToHouseguests()
         {
             if (profileId == null) return;
             profileId = null;
-            hud.RequestScrollTo(NotebookSection.People);
+            string back = profileFrom ?? NotebookSection.People;
+            profileFrom = null;
+            journalSection = back;
+            hud.RequestScrollTo(back);
             Render();
+        }
+
+        /// <summary>The notebook page a profile on screen was opened from, or null when it goes back to the directory.</summary>
+        private string profileFrom;
+
+        /// <summary>The page a profile on screen goes back to (a notebook section), or null with no profile up.</summary>
+        public string ProfileReturnsTo => ProfileId == null ? null : profileFrom ?? NotebookSection.People;
+
+        /// <summary>
+        /// The plain name of a notebook page as a profile's way back says it ("Back to your notes"),
+        /// or null for a page that does not open profiles.
+        /// </summary>
+        public static string ProfilePlace(string section)
+        {
+            switch (section)
+            {
+                case NotebookSection.People: return EpisodeHud.HouseguestsPlace;
+                case NotebookSection.Notes: return "your notes";
+                case NotebookSection.Word: return DealsAndPromisesName;
+                case NotebookSection.Alliances: return "Alliances";
+                case NotebookSection.Network: return "Relationships";
+                default: return null;
+            }
+        }
+
+        /// <summary>A profile's way back, for the page it was opened from (the directory's when that is unknown).</summary>
+        public static string ProfileBackCaptionFor(string section)
+        {
+            string place = ProfilePlace(section ?? NotebookSection.People) ?? EpisodeHud.HouseguestsPlace;
+            return place == EpisodeHud.HouseguestsPlace ? EpisodeHud.ProfileBackCaption : WayOut.BackTo(place);
         }
 
         /// <summary>Why a conversation has nothing to choose outside free time, in the house's own word for it.</summary>
@@ -339,13 +406,10 @@ namespace Gamesim.Episode
         /// It is the player's own reading, so it is shown as the number it is - no band name is
         /// derived from it here.
         /// </summary>
-        public static string TrustFigure(double score) => score.ToString("+0;-0;0");
+        public static string TrustFigure(double score) => TrustChip.Figure(score);
 
-        private static Color TrustTint(double score)
-        {
-            double whole = Math.Round(score, MidpointRounding.AwayFromZero);
-            return whole > 0 ? UiTheme.Allied : whole < 0 ? UiTheme.Conflict : UiTheme.Muted;
-        }
+        /// <summary>The trust chip's colour for a score (menu slice 3): one set of bands wherever trust is drawn.</summary>
+        private static Color TrustTint(double score) => TrustChip.Tint(TrustChip.BandOf(score));
 
         /// <summary>
         /// The houseguest directory (Kit 6's preview 03): All, Active and Jury, a search, and a
@@ -355,6 +419,7 @@ namespace Gamesim.Episode
         {
             var chosen = profileId != null ? state.Find(profileId) : null;
             if (chosen != null && !chosen.isPlayer) { RenderHouseguestProfile(state, chosen); return; }
+            if (chosen != null && chosen.isPlayer) { RenderYourCard(state, chosen); return; }
             profileId = null;
 
             var others = state.contestants.Where(c => !c.isPlayer).ToList();
@@ -381,14 +446,17 @@ namespace Gamesim.Episode
                 return new EpisodeHud.RosterEntry
                 {
                     Name = c.name, Detail = CardLine(c), Status = StatusWord(c.status),
-                    Trust = TrustFigure(score), TrustTint = TrustTint(score), Character = c,
-                    Open = () => ShowHouseguestProfile(id),
+                    Trust = TrustFigure(score), TrustScore = score, Character = c,
+                    Open = () => ShowHouseguestProfile(id, NotebookSection.People),
                 };
             }).ToList();
             string empty = peopleFilter == PeopleFilter.Jury ? "No one is on the jury yet."
                 : peopleFilter == PeopleFilter.Active ? "No other houseguest is still in the house."
                 : "There are no other houseguests.";
             hud.RosterTable(entries, peopleSearch, empty);
+            // The first row is the player's own card (ruling N6 iv), whatever the filter.
+            var you = state.Find(state.playerId);
+            if (you != null) hud.YourRow(you, ShowYourCard);
             hud.NotebookFooter("Trust is your character\u2019s view. Mood, jury status, and relationships are not the same field.",
                 "House activities", OpenHouseActivities);
         }
@@ -404,32 +472,25 @@ namespace Gamesim.Episode
             double score = state.Score(state.playerId, actor.id);
             bool inHouse = actor.status == ContestantStatus.Active || actor.status == ContestantStatus.Winner
                 || actor.status == ContestantStatus.RunnerUp;
-            var facts = new List<string>();
-            if (actor.age > 0) facts.Add(actor.age.ToString());
-            if (!string.IsNullOrEmpty(actor.occupation)) facts.Add(actor.occupation);
-            var view = new EpisodeHud.ProfileView
-            {
-                Name = actor.name,
-                Archetype = actor.archetype,
-                Facts = facts.Count > 0 ? string.Join(" \u00b7 ", facts) : null,
-                Hometown = string.IsNullOrEmpty(actor.hometown) ? null : "From " + actor.hometown,
-                About = string.IsNullOrEmpty(actor.bio) ? null : actor.bio,
-                Status = "Status: " + StatusWord(actor.status),
-                // Mood is what the house can see of someone; a juror is not in the house to be seen.
-                Mood = inHouse ? MoodLine(state, actor) : null,
-                Trust = TrustFigure(score),
-                TrustTint = TrustTint(score),
-                TrustNote = "This is your character\u2019s relationship value, not " + first + "\u2019s private opinion of you.",
-                Character = actor,
-                Traits = actor.traits != null ? actor.traits.Where(t => !string.IsNullOrEmpty(t)).ToList() : new List<string>(),
-                Memories = KnownBallots.PlayerMemories(state)
-                    .Where(m => m.subjectId == actor.id && !string.IsNullOrEmpty(m.text))
-                    .OrderByDescending(m => m.week).Take(3)
-                    .Select(m => "Week " + m.week + " \u00b7 " + NarrativeDisplay.Render(state, MemoryWords.Said(state, m))).ToList(),
-                Records = ProfileRecords(state, actor, first),
-                Back = BackToHouseguests,
-            };
+            var view = ProfileIdentity(actor);
+            view.Status = "Status: " + StatusWord(actor.status);
+            // Mood is what the house can see of someone; a juror is not in the house to be seen.
+            view.Mood = inHouse ? MoodLine(state, actor) : null;
+            // Where the room directory has them standing now (menu slice 3, N6 i).
+            view.Location = inHouse ? ProfileWhere(state, actor) : null;
+            view.TrustScore = score;
+            view.TrustNote = "This is your character\u2019s relationship value, not " + first + "\u2019s private opinion of you.";
+            view.Memories = KnownBallots.PlayerMemories(state)
+                .Where(m => m.subjectId == actor.id && !string.IsNullOrEmpty(m.text))
+                .OrderByDescending(m => m.week).Take(3)
+                .Select(m => "Week " + m.week + " \u00b7 " + NarrativeDisplay.Render(state, MemoryWords.Said(state, m))).ToList();
+            view.Records = ProfileRecords(state, actor, first);
+            view.Back = BackToHouseguests;
+            // A page reached from a page: its way back names the page it came from (N6 ii).
+            view.BackCaption = ProfileBackCaptionFor(profileFrom);
             HouseTalkBlocks(state, actor, view);
+            // What the notes, the vote and the alliances pages show of them, by their own words (N6 i).
+            ProfileSourceBlocks(state, actor, view);
             hud.HouseguestProfile(view);
             hud.Mark(NotebookSection.People);
         }
@@ -456,11 +517,7 @@ namespace Gamesim.Episode
         /// </summary>
         private List<string> ProfileRecords(EpisodeState state, ContestantState actor, string first)
         {
-            var lines = new List<string>
-            {
-                "Head of Household " + Times(actor.hohWins) + " \u00b7 Veto " + Times(actor.vetoWins)
-                    + " \u00b7 Nominated " + Times(actor.timesNominated),
-            };
+            var lines = new List<string> { CeremonyRecord(actor) };
             // An All-Star's career and past games, which the whole house knows (ALL-STAR-HISTORIES-PLAN
             // \u00a714.F.1): from alumni rules 3, and none of them a record of the player's this season.
             lines.AddRange(KnownBlocs.ProfileLines(state, actor.id));
@@ -715,7 +772,7 @@ namespace Gamesim.Episode
         {
             PauseNpcSocialForPanel(); ClosePanels();
             journalSection = section; journalOpen = true; roomsFilter = HouseMap.Filter.All;
-            peopleFilter = PeopleFilter.All; peopleSearch = string.Empty; profileId = null; votesTab = VotesTab.Results; notesFilter = NotesFilter.Everyone;
+            peopleFilter = PeopleFilter.All; peopleSearch = string.Empty; profileId = null; profileFrom = null; votesTab = VotesTab.Results; notesFilter = NotesFilter.Everyone;
             player.SetInputEnabled(false); cameraRig.ControlsEnabled = false;
             if (scroll) hud.RequestScrollTo(section);
             Render();

@@ -852,4 +852,7 @@ questions and proceed."
 testing where you try to navigate the game and take screenshots, rather just implement and let me check and give you
 feedback." The freeze is judged by the owner's own play; the verify-only timing log stays for a later measurement.
 
-Still open: the Unity set of 10.2 (its automated suites).
+Still open: the Unity set of 10.2 (its automated suites). *Status, 2026-11-17: run without UMA at 35ab8574 on
+2026-11-01, EditMode 9236 of 9236 and PlayMode 1370 of 1370 with no re-runs, and the subset 16249 of 16249 (694d8d68);
+the UMA build was not run, as the branch touched no UMA, body or garment file. Merged as PR #42 on 2026-11-02. The
+RS0 timing runs of 10.3 are still not run: the owner judges the freeze in play.*

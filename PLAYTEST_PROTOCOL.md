@@ -8,6 +8,9 @@ The schema-13 review candidate is undergoing fresh automated, rendered and perfo
 verification. Historical passes in `ACCEPTANCE_MATRIX.md` do not certify it. Run this protocol only
 against the new candidate identified by its executable hash, build report and source manifest.
 
+*Status, 2026-11-17: the schema-13 candidate above is long superseded (main writes schema 30). Pin a fresh candidate from
+main before the first participant, and record its hash, build report and source manifest as above.*
+
 ## The camera default is 24, and now actually is
 
 This section previously recorded a discrepancy: `HouseCameraRig` declared `distance = 24` with a
@@ -141,6 +144,12 @@ Either way a tester evicted before any commitment of theirs settled is "not obse
 ## E1 — Pacing
 
 **Threshold: 30–45 minutes to finish one episode, without skipping.**
+
+*Open for the owner, 2026-11-17.* The owner set a season-length target on 2026-10-22 (OWNER-DECISIONS-2026-10-22 §6):
+an 8-player season should be playable in 45 minutes or less, and a 12-player season in up to about two hours, and it
+belongs in this protocol. It has not been carried in. It does not fit this threshold, which is per episode (one week):
+at 30–45 minutes a week, an 8-player season takes several hours. The owner decides what E1 measures before the first
+participant.
 
 Start the clock when they take control and stop it at the eviction recap. Record the raw number even
 when it falls outside the band — a 22-minute run and a 70-minute run fail the same criterion and mean

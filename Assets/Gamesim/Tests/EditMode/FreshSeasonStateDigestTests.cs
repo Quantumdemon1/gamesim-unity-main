@@ -112,6 +112,16 @@ namespace Gamesim.Tests.EditMode
                 Assert.That(s.story.rulesVersion, Is.EqualTo(StoryRules.Roles), "Story rules 11: new seasons start on Roles.");
                 s.story.rulesVersion = StoryRules.Threads;
             }
+            // Competition rules 5 (the ring tower, competition slice 4): a fresh season starts on rules 5, a plain int that draws,
+            // mints and logs nothing before a competition is played. Held at rules 4 by name, as B9's tuning is, the season must
+            // hash to its schema-29 record, so the int is rules 5's only change to a fresh season. The default scene's season
+            // never passes through ApplyFresh and keeps the competition rules its catalogue writes: nothing is asserted or
+            // held for it, and its record pins the value.
+            if (applyFresh)
+            {
+                Assert.That(s.competitionRulesVersion, Is.EqualTo(CompetitionRules.RingTower), "Rules 5: new seasons start on the ring tower's rules.");
+                s.competitionRulesVersion = CompetitionRules.Widened;
+            }
             var payload = Payload(s);
             // SCH30 step 2: the live schema is 30; the test inverse takes the season back to the retained 29 (the pooled
             // fields at their off literals removed, the header 29) before it is hashed against the 29 build's record.

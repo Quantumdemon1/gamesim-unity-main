@@ -407,7 +407,7 @@ namespace Gamesim.Tests.EditMode
                     var initial = SeasonBuilder.Create(new SeasonBuilder.Choice { HouseSize = size, Roster = CastTemplates.Roster.Regular }, seed);
                     Assert.That(initial.contestants.Count, Is.EqualTo(size));
                     Assert.That(initial.promises, Is.Empty); Assert.That(initial.deals, Is.Empty);
-                    initial.competitionRulesVersion = CompetitionRules.Current;
+                    initial.competitionRulesVersion = CompetitionRules.Widened;
                     initial.haveNotRulesStartWeek = 1; initial.strategyRulesStartWeek = 1;
                     EpisodeEngine.EnableStory(initial); EpisodeEngine.EnableRead(initial); EpisodeEngine.EnableLevers(initial);
                     // Held at story rules 10, Blame, by name (ROLE-MOMENTS-PLAN R7): the test is about something else, and EnableStory now gives Roles.

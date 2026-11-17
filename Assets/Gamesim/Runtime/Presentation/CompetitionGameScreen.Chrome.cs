@@ -105,6 +105,8 @@ namespace Gamesim.Presentation
                         + " Click, type or press A on a letter; " + KeyBindings.BoardKey("Undo", false, "Backspace") + " / " + KeyBindings.BoardKey("Undo", true, "X")
                         + " takes one back; a wrong spelling clears. "
                         + "Typing spells, so P is a letter here: Start or the Pause button pauses.";
+                case CompetitionMiniGames.Kind.Tower:
+                    return rules + " Pick a stack to lift its top ring, then the stack to put it on; pick it again to put it back. Click a stack, or arrows / D-pad and Enter / A.";
                 default: return rules;
             }
         }
@@ -314,9 +316,9 @@ namespace Gamesim.Presentation
         private static Color ToneOf(string text)
         {
             if (text.StartsWith("Hit", StringComparison.Ordinal) || text.StartsWith("Pair found", StringComparison.Ordinal)
-                || text.StartsWith("Solved", StringComparison.Ordinal)) return UiTheme.Positive;
+                || text.StartsWith("Solved", StringComparison.Ordinal) || text.StartsWith("Tower complete", StringComparison.Ordinal)) return UiTheme.Positive;
             if (text.StartsWith("Missed", StringComparison.Ordinal) || text.StartsWith("No match", StringComparison.Ordinal)
-                || text.StartsWith("Not quite", StringComparison.Ordinal)) return UiTheme.Danger;
+                || text.StartsWith("Not quite", StringComparison.Ordinal) || text.StartsWith("Not allowed", StringComparison.Ordinal)) return UiTheme.Danger;
             if (text.StartsWith("Too early", StringComparison.Ordinal)) return UiTheme.Warning;
             return UiTheme.Paper;
         }
@@ -369,6 +371,10 @@ namespace Gamesim.Presentation
                 case CompetitionMiniGames.Kind.Dice:
                     yield return usingPad ? ("D-pad", "Roll / Keep") : ("Arrows", "Roll / Keep");
                     yield return usingPad ? ("A", "Press") : ("Enter", "Press");
+                    break;
+                case CompetitionMiniGames.Kind.Tower:
+                    yield return usingPad ? ("D-pad", "Choose stack") : ("Arrows", "Choose stack");
+                    yield return usingPad ? ("A", "Lift / put down") : ("Enter", "Lift / put down");
                     break;
                 case CompetitionMiniGames.Kind.Words:
                     yield return usingPad ? ("A", "Choose letter") : ("A–Z", "Spell");

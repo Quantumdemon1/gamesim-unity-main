@@ -485,7 +485,7 @@ namespace Gamesim.Tests.EditMode
         private static EpisodeState Played(uint seed)
         {
             var s = ContentCatalog.Create(seed);
-            s.competitionRulesVersion = CompetitionRules.Current; s.haveNotRulesStartWeek = s.strategyRulesStartWeek = 1;
+            s.competitionRulesVersion = CompetitionRules.Widened; s.haveNotRulesStartWeek = s.strategyRulesStartWeek = 1;
             EpisodeEngine.EnableStory(s); EpisodeEngine.EnableRead(s); EpisodeEngine.EnableLevers(s); EpisodeEngine.EnableWeek(s);
             // Held at story rules 10, Blame, by name (ROLE-MOMENTS-PLAN R7): the test is about something else, and EnableStory now gives Roles.
             s.story.rulesVersion = StoryRules.Blame;

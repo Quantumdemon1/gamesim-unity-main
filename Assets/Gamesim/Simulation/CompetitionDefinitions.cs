@@ -4,7 +4,7 @@ using System.Globalization;
 
 namespace Gamesim.Simulation
 {
-    public enum CompetitionPattern { Standard, AlternatingWindows, PreviewPairs, PressureWaves, HouseguestNames }
+    public enum CompetitionPattern { Standard, AlternatingWindows, PreviewPairs, PressureWaves, HouseguestNames, RingTower }
 
     /// <summary>Immutable authored mechanics. Published IDs and their rules must never be repurposed.</summary>
     public sealed class CompetitionDefinition
@@ -66,15 +66,34 @@ namespace Gamesim.Simulation
             "houseguest-scramble-v4", "Houseguest Scramble", "Social", CompetitionPattern.HouseguestNames, 30,
             "Unscramble the first names of this season's houseguests by choosing their letters in order. A longer name scores more: 1.5 points for four letters, 2 for five or six, 2.5 for seven or eight.");
 
+        // Rules 5 (competition ring tower, slice 4): a mental game played on the yard's own three neon
+        // stacks rather than on a console. The tower of Hanoi, said plainly; four rings, so the fewest
+        // moves is fifteen.
+        public static readonly CompetitionDefinition RingTower = new CompetitionDefinition(
+            "ring-tower-v5", "Ring Tower", "Mental", CompetitionPattern.RingTower, 90,
+            "Move the tower of four rings from the first stack to the last, one ring at a time, never a larger ring on a smaller one. "
+            + "Finishing earns most; fewer moves and time left add to it. Fifteen moves is the fewest it can be done in.");
+
+        /// <summary>
+        /// Every console game: the boards rules 3 and 4 deal, each played on a station's console. The ring
+        /// tower is played on the yard's stacks instead, so it is not here (every console's tests walk this
+        /// list); <see cref="Catalogue"/> holds every game a season can deal.
+        /// </summary>
         public static IReadOnlyList<CompetitionDefinition> All { get; } = Array.AsReadOnly(new[] {
             SignalSprint, SwitchbackSignals, HouseMemory, FirstImpressions, HoldYourGround, PressureCooker,
             RollTheDice, WordScramble, HouseguestScramble });
+
+        /// <summary>Every game any rules deal: the console games and rules 5's ring tower. Published ids, never reused.</summary>
+        public static IReadOnlyList<CompetitionDefinition> Catalogue { get; } = Array.AsReadOnly(new[] {
+            SignalSprint, SwitchbackSignals, HouseMemory, FirstImpressions, HoldYourGround, PressureCooker,
+            RollTheDice, WordScramble, HouseguestScramble, RingTower });
 
         public static CompetitionDefinition Standard(string category) => category == "Skill" ? SignalSprint
             : category == "Mental" ? HouseMemory : category == "Endurance" ? HoldYourGround
             : category == "Luck" ? RollTheDice : category == "Social" ? WordScramble : null;
 
         public static CompetitionDefinition For(EpisodeState state) => state.competitionRulesVersion < 3 ? null
+            : state.competitionRulesVersion >= CompetitionRules.RingTower ? Version5(state.seed, state.week, state.phase)
             : state.competitionRulesVersion >= CompetitionRules.Widened ? Version4(state.seed, state.week, state.phase)
             : Version3(state.seed, state.week, state.phase);
 
@@ -124,6 +143,43 @@ namespace Gamesim.Simulation
             if (category == CompetitionRules.Mental) return variant ? FirstImpressions : HouseMemory;
             if (category == CompetitionRules.Social) return variant ? HouseguestScramble : WordScramble;
             return variant ? PressureCooker : HoldYourGround;
+        }
+
+        /// <summary>
+        /// Rules 5's frozen selector: rules 4's, but for the mental kind. Every other mental competition of
+        /// a season is the <see cref="RingTower"/>, starting with its first - so a new season's first mental
+        /// competition, always in its first three weeks, is the tower - and the ones between alternate the
+        /// two memory boards from a variant the season's seed picks. Rules 4's selector itself is untouched,
+        /// so a season under rules 4 deals exactly what it always dealt. No season random state is read.
+        /// </summary>
+        public static CompetitionDefinition Version5(uint seasonSeed, int week, EpisodePhase phase)
+        {
+            var dealt = Version4(seasonSeed, week, phase);
+            if (phase == EpisodePhase.FinalHoHPart1 || phase == EpisodePhase.FinalHoHPart2 || phase == EpisodePhase.FinalHoHPart3
+                || dealt.Category != CompetitionRules.Mental) return dealt;
+            int appearance = Appearance(seasonSeed, week, phase, CompetitionRules.Mental);
+            if (appearance % 2 == 0) return RingTower;
+            uint offset = SeededRandom.HashSeed(seasonSeed.ToString(CultureInfo.InvariantCulture) + "/" + CompetitionRules.Mental + "/competition-v5");
+            bool variant = ((offset + (uint)(appearance / 2)) & 1u) != 0;
+            return variant ? FirstImpressions : HouseMemory;
+        }
+
+        /// <summary>
+        /// How many times <paramref name="category"/> has come round already this season before this
+        /// competition, HoH before veto each week: rules 4's count, written out again for rules 5 so rules 4's
+        /// own selector stays as it was published.
+        /// </summary>
+        private static int Appearance(uint seasonSeed, int week, EpisodePhase phase, string category)
+        {
+            int appearance = 0;
+            for (int earlier = 1; earlier <= week; earlier++)
+            {
+                if (earlier == week && phase != EpisodePhase.Veto) break;
+                if (CompetitionRules.Category(EpisodePhase.HoH, earlier, seasonSeed) == category) appearance++;
+                if (earlier == week) break;
+                if (CompetitionRules.Category(EpisodePhase.Veto, earlier, seasonSeed) == category) appearance++;
+            }
+            return appearance;
         }
     }
 }

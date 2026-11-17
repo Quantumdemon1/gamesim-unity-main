@@ -52,6 +52,7 @@ namespace Gamesim.Tests.EditMode
             fresh.dialogueRulesVersion = 1;
             fresh.tuningRulesVersion = TuningRules.Off;
             fresh.story.rulesVersion = StoryRules.Threads;
+            fresh.competitionRulesVersion = CompetitionRules.Widened; // Held at competition rules 4: rules 5 (the ring tower) is newer than every older schema's reader.
             return fresh;
         }
 

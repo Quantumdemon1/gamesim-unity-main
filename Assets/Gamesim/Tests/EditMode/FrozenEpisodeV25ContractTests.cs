@@ -838,7 +838,7 @@ namespace Gamesim.Tests.EditMode
             Assert.That(state.unifiedCommitments, Is.Empty);
             Assert.That(state.promises.Any(p => p.kind == PromiseKind.Safety), Is.False);
             Assert.That(state.deals.Any(d => d.type == DealKind.SafetyAgreement), Is.False);
-            state.competitionRulesVersion = CompetitionRules.Current; state.haveNotRulesStartWeek = state.strategyRulesStartWeek = 1;
+            state.competitionRulesVersion = CompetitionRules.Widened; state.haveNotRulesStartWeek = state.strategyRulesStartWeek = 1;
             EpisodeEngine.EnableStory(state); EpisodeEngine.EnableRead(state); EpisodeEngine.EnableLevers(state);
             EpisodeEngine.EnableWeek(state); EpisodeEngine.EnableEconomy(state); EpisodeEngine.EnableAgency(state);
             EpisodeEngine.EnableFinale(state); EpisodeEngine.EnableCommitments(state);

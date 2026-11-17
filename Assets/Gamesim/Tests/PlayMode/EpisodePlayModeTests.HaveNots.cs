@@ -23,7 +23,7 @@ namespace Gamesim.Tests.PlayMode
         private IEnumerator InstallHaveNotSeason(uint seed, System.Action<EpisodeState> shape)
         {
             var state = ContentCatalog.Create(seed);
-            state.competitionRulesVersion = CompetitionRules.Current;
+            state.competitionRulesVersion = CompetitionRules.Widened;
             state.haveNotRulesStartWeek = 1;
             shape?.Invoke(state);
             Assert.That(EpisodeValidation.TryValidate(state, out var reason), Is.True, reason);

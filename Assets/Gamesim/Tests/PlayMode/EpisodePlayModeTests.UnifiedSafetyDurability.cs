@@ -399,7 +399,7 @@ namespace Gamesim.Tests.PlayMode
                 var fresh = ContentCatalog.Create(seed);
                 Assert.That(fresh.unifiedCommitmentRulesVersion, Is.Zero);
                 Assert.That(fresh.unifiedHearingRulesVersion, Is.Zero);
-                fresh.competitionRulesVersion = CompetitionRules.Current;
+                fresh.competitionRulesVersion = CompetitionRules.Widened;
                 fresh.haveNotRulesStartWeek = fresh.strategyRulesStartWeek = 1;
                 EpisodeEngine.EnableStory(fresh); EpisodeEngine.EnableRead(fresh);
                 // Held at story rules 10, Blame, by name (ROLE-MOMENTS-PLAN R7): the test is about something else, and EnableStory now gives Roles.

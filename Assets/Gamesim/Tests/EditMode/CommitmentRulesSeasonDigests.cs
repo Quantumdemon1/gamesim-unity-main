@@ -197,7 +197,7 @@ namespace Gamesim.Tests.EditMode
             var s = SeasonBuilder.Create(new SeasonBuilder.Choice { HouseSize = size }, seed);
             if (config == "director")
             {
-                s.competitionRulesVersion = CompetitionRules.Current;
+                s.competitionRulesVersion = CompetitionRules.Widened;
                 s.haveNotRulesStartWeek = 1; s.strategyRulesStartWeek = 1;
                 EpisodeEngine.EnableStory(s); EpisodeEngine.EnableRead(s); EpisodeEngine.EnableLevers(s);
                 EpisodeEngine.EnableWeek(s); EpisodeEngine.EnableAgency(s); EpisodeEngine.EnableFinale(s);

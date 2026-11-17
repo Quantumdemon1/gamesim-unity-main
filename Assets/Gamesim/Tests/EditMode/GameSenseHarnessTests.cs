@@ -40,7 +40,7 @@ namespace Gamesim.Tests.EditMode
             {
                 // A controlled E1 comparison: both arms have exactly the fresh director's other
                 // rules. The original harness above remains unchanged when no arm is selected.
-                s.competitionRulesVersion = CompetitionRules.Current;
+                s.competitionRulesVersion = CompetitionRules.Widened;
                 s.haveNotRulesStartWeek = 1;
                 EpisodeEngine.EnableWeek(s); EpisodeEngine.EnableFinale(s); EpisodeEngine.EnableCommitments(s);
                 if (newEconomy.Value) EpisodeEngine.EnableEconomy(s);

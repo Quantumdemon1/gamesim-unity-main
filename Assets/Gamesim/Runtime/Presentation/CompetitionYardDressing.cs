@@ -182,6 +182,40 @@ namespace Gamesim.Presentation
             }
         }
 
+        /// <summary>
+        /// The ring tower's set (competition ring tower, slice 4): every piece of <paramref name="model"/> struck from
+        /// the field stands again - drawn, its collider back - because the competition is played on it. Returns how
+        /// many renderers and colliders came back. Only what <see cref="Strike"/> switched off is touched.
+        /// </summary>
+        public int KeepStanding(string model)
+        {
+            int back = 0;
+            for (int i = renderers.Count - 1; i >= 0; i--)
+                if (renderers[i] != null && IsPiece(renderers[i].transform, model)) { renderers[i].enabled = true; renderers.RemoveAt(i); back++; }
+            bool synced = false;
+            for (int i = colliders.Count - 1; i >= 0; i--)
+                if (colliders[i] != null && IsPiece(colliders[i].transform, model)) { colliders[i].enabled = true; colliders.RemoveAt(i); back++; synced = true; }
+            if (synced) Physics.SyncTransforms();
+            return back;
+        }
+
+        /// <summary>
+        /// Switches one renderer of the deployed set off for this competition and remembers it, so the yard's
+        /// restore switches it back on whatever ends the competition (the ring tower draws its stacks again
+        /// from their own profile). Nothing while the yard is in everyday life.
+        /// </summary>
+        public void Conceal(Renderer renderer)
+        {
+            if (renderer == null || !renderer.enabled || State != YardState.Competition) return;
+            renderer.enabled = false; renderers.Add(renderer);
+        }
+
+        private static bool IsPiece(Transform at, string model)
+        {
+            for (; at != null; at = at.parent) if (CompetitionYardPieces.Stem(at.name) == model) return true;
+            return false;
+        }
+
         /// <summary>Whether a node's name is one of the struck models', allowing the editor's " (2)" suffix.</summary>
         public static bool IsStruck(string name)
         {

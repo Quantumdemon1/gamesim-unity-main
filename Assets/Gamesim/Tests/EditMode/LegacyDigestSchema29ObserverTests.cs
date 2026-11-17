@@ -586,10 +586,11 @@ namespace Gamesim.Tests.EditMode
             // current season to its schema-29 and 28 views, which a season on B9's tuning, a rule of schema 30's, has not.
             // Both modes are held at story rules 9, threads, by name (STORY-RULES-10-PLAN §8), for the same reason: the
             // frozen schema-29 and 28 readers refuse story rules 10.
-            if (mode == 2) { ShippedRules.ApplyFresh(state); state.tuningRulesVersion = TuningRules.Off; state.story.rulesVersion = StoryRules.Threads; }
+            // Held at competition rules 4 too: the frozen schema-29 and 28 readers refuse rules 5, the ring tower's.
+            if (mode == 2) { ShippedRules.ApplyFresh(state); state.tuningRulesVersion = TuningRules.Off; state.story.rulesVersion = StoryRules.Threads; state.competitionRulesVersion = CompetitionRules.Widened; }
             else if (mode == 1)
             {
-                state.competitionRulesVersion = CompetitionRules.Current;
+                state.competitionRulesVersion = CompetitionRules.Widened;
                 state.haveNotRulesStartWeek = state.strategyRulesStartWeek = 1;
                 EpisodeEngine.EnableStory(state); EpisodeEngine.EnableRead(state); EpisodeEngine.EnableLevers(state);
                 EpisodeEngine.EnableWeek(state); EpisodeEngine.EnableAgency(state); EpisodeEngine.EnableFinale(state);

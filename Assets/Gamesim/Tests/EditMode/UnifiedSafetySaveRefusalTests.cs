@@ -193,7 +193,7 @@ namespace Gamesim.Tests.EditMode
         {
             var s = ContentCatalog.Create(2505);
             Assert.That(s.contestants, Has.Count.EqualTo(6), "Use the real authored factory, not injected capacity-test actors.");
-            s.competitionRulesVersion = CompetitionRules.Current;
+            s.competitionRulesVersion = CompetitionRules.Widened;
             s.haveNotRulesStartWeek = 1;
             s.strategyRulesStartWeek = 1;
             EpisodeEngine.EnableStory(s);

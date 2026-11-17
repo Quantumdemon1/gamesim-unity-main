@@ -341,7 +341,16 @@
 # little inside the wait for the field (2), its pace never under the walk nor over the top pace, in time whenever
 # the route is within reach, an unknown or spent route hurried and the last step walked, and a run gait without
 # flicker. Counted by the offline listers; no Unity run has observed them yet.
-Gamesim.EditModeTests 10181
+# 10081 = 10059 + competition ring tower slice 4's 22: CompetitionRules5Tests' 6 and RingTowerPuzzleTests' 12 (shared
+# with the subset), and RingTowerRingRouteTests' 4 (EditMode only): rules 5's selector, the tower's rules and score,
+# and the rings made from the stacks' authored profile. No Unity run has observed them yet.
+# 10197 = 10175 (the staging families' landing head 9edbcd7d, with the menu quick wins and main 25977d60) + the ring
+# tower's 22 (10081 - 10059 on this branch): disjoint cases, so the floor is their sum (the merge of the staging
+# families' landing head into the ring tower for the stacked landing, 2026-11-16). Counted from the two sides.
+# 10203 = 10181 (the staging families' head c6ae66df, with the walk out's pace, the menu quick wins and main 25977d60)
+# + the ring tower's 22 (10197 - 10175 on this branch): disjoint cases, so the floor is their sum (the merge of the
+# staging families' head into the ring tower for the stacked landing, 2026-11-16). Counted from the two sides.
+Gamesim.EditModeTests 10203
 # The UMA-free build. 1215 = 1236, the count after the consolidation's lanes (S2a, S2b, S4a), less the 7
 # farewell probes moved to Gamesim.DiagnosticsPlayModeTests and the 14 farewell readiness tests that now
 # compile only under GAMESIM_UMA (judged on the UMA cast); 1230 = 1215 + S2d's 7, S4b's 2, S4c's 2 and
@@ -566,7 +575,15 @@ Gamesim.EditModeTests 10181
 # competition staging families' 9 (1600 - 1591 on this branch): disjoint cases, so the floor is their sum (the merge
 # of the menu quick wins' head into the staging families for the stacked landing, 2026-11-16). Counted from the two
 # sides.
-Gamesim.PlayModeTests 1605
+# 1579 = 1573 + competition ring tower slice 4's 6 EpisodePlayModeTests.RingTower_* cases (the ranked tower by clicks,
+# a refused move, practice by the keyboard and by the pad, the unplayed routes, a watched veto). No Unity run has
+# 1604 = 1598 (the staging families' landing head 9edbcd7d, with the menu quick wins and main 25977d60) + the ring
+# tower's 6 (1579 - 1573 on this branch): disjoint cases, so the floor is their sum (the merge of the staging
+# families' landing head into the ring tower for the stacked landing, 2026-11-16). Counted from the two sides.
+# 1611 = 1605 (the staging families' head c6ae66df, with the walk out's pace, the menu quick wins and main 25977d60) +
+# the ring tower's 6 (1604 - 1598 on this branch): disjoint cases, so the floor is their sum (the merge of the staging
+# families' head into the ring tower for the stacked landing, 2026-11-16). Counted from the two sides.
+Gamesim.PlayModeTests 1611
 # The UMA build of the same assembly, read by a plan built without -WithoutUma. 1281 = the 1241 above + the
 # 40 tests that compile only under GAMESIM_UMA, as run at r1 (2026-10-16): in EpisodePlayModeTests,
 # GroundedFarewell 11, Creator 9, HouseLife 8, Emotes 3, OpeningCaptures 2, and one each in CreatorEntry,
@@ -719,7 +736,14 @@ Gamesim.PlayModeTests 1605
 # competition staging families' 9 (1645 - 1636 on this branch): disjoint cases, so the floor is their sum (the merge
 # of the menu quick wins' head into the staging families for the stacked landing, 2026-11-16). Counted from the two
 # sides.
-Gamesim.PlayModeTests.UmaBuild 1650
+# 1624 = 1618 + competition ring tower slice 4's same 6 cases (see PlayModeTests above). No Unity run has observed them yet.
+# 1649 = 1643 (the staging families' landing head 9edbcd7d, with the menu quick wins and main 25977d60) + the ring
+# tower's 6 (1624 - 1618 on this branch): disjoint cases, so the floor is their sum (the merge of the staging
+# families' landing head into the ring tower for the stacked landing, 2026-11-16). Counted from the two sides.
+# 1656 = 1650 (the staging families' head c6ae66df, with the walk out's pace, the menu quick wins and main 25977d60) +
+# the ring tower's 6 (1649 - 1643 on this branch): disjoint cases, so the floor is their sum (the merge of the staging
+# families' head into the ring tower for the stacked landing, 2026-11-16). Counted from the two sides.
+Gamesim.PlayModeTests.UmaBuild 1656
 # The UMA bodies: runs only where the GAMESIM_UMA define is set (the working tree and the D: copy).
 # 82 = the 89 run on 2026-10-15, less the 7 farewell probes moved to Gamesim.Uma.DiagnosticsPlayModeTests;
 # 85 = 82 + the 3 farewell readiness decision tests (UmaFarewellReadinessDecisionPlayModeTests, 2026-10-16);
@@ -976,4 +1000,12 @@ Gamesim.Uma.DiagnosticsPlayModeTests 10
 # 34 (16881 - 16847 on this branch): disjoint cases, so the floor is their sum (the merge of the menu quick wins'
 # landing head into the staging families for the stacked landing, 2026-11-16). Counted from the two sides.
 # 16982 = 16976 + the walk out's 6 CompetitionShowPlanTests cases (the same 6 the EditMode floor counts).
-Gamesim.SimulationTests 16982
+# 16899 = 16881 + competition ring tower slice 4's 18 (CompetitionRules5Tests' 6 and RingTowerPuzzleTests' 12, the same
+# 18 the EditMode floor counts): the tower's own run counted 16865 = 16847 + 18 (2026-11-16).
+# 16994 = 16976 (the staging families' landing head 9edbcd7d, with the menu quick wins and main 25977d60) + the ring
+# tower's 18 (16899 - 16881 on this branch): disjoint cases, so the floor is their sum (the merge of the staging
+# families' landing head into the ring tower for the stacked landing, 2026-11-16). Counted from the two sides.
+# 17000 = 16982 (the staging families' head c6ae66df, with the walk out's pace, the menu quick wins and main 25977d60)
+# + the ring tower's 18 (16994 - 16976 on this branch): disjoint cases, so the floor is their sum (the merge of the
+# staging families' head into the ring tower for the stacked landing, 2026-11-16). Counted from the two sides.
+Gamesim.SimulationTests 17000

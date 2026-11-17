@@ -64,7 +64,7 @@ namespace Gamesim.Tests.EditMode
             var s = SeasonBuilder.Create(new SeasonBuilder.Choice { HouseSize = size, Roster = CastTemplates.Roster.Regular }, seed);
             Assert.That(s.contestants.Count, Is.EqualTo(size));
             Assert.That(s.promises.Count, Is.Zero); Assert.That(s.deals.Count, Is.Zero);
-            s.competitionRulesVersion = CompetitionRules.Current; s.haveNotRulesStartWeek = 1; s.strategyRulesStartWeek = 1;
+            s.competitionRulesVersion = CompetitionRules.Widened; s.haveNotRulesStartWeek = 1; s.strategyRulesStartWeek = 1;
             EpisodeEngine.EnableStory(s); EpisodeEngine.EnableRead(s); EpisodeEngine.EnableLevers(s); EpisodeEngine.EnableWeek(s);
             EpisodeEngine.EnableEconomy(s); EpisodeEngine.EnableAgency(s); EpisodeEngine.EnableFinale(s); EpisodeEngine.EnableCommitments(s);
             s.unifiedCommitmentRulesVersion = mode; s.unifiedHearingRulesVersion = mode;

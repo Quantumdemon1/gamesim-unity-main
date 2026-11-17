@@ -125,6 +125,8 @@ namespace Gamesim.Presentation
                         ? "GRIP GAVE OUT AT " + run.Elapsed.ToString("0.0") + " s" : "TIME";
                 case CompetitionMiniGames.Kind.Dice:
                     return run.KeptTotal == 0 ? "TIME" : run.Remaining > 0 ? "KEPT " + run.KeptTotal : "TIME  ·  " + run.KeptTotal + " STANDS";
+                case CompetitionMiniGames.Kind.Tower:
+                    return run.Tower != null && run.Tower.Solved ? "TOWER MOVED" : "TIME";
                 default: return run.Remaining > 0 ? "ATTEMPT OVER" : "TIME";
             }
         }
@@ -143,6 +145,9 @@ namespace Gamesim.Presentation
                     return run.KeptTotal == 0 ? "No roll kept" : "Total " + run.KeptTotal + " of 18  ·  roll " + run.RollsUsed + " of " + MiniGameRun.MaxRolls;
                 case CompetitionMiniGames.Kind.Words:
                     return Plural(run.WordsSolved, "word") + " spelled  ·  " + run.WordPoints.ToString("0.#") + " points";
+                case CompetitionMiniGames.Kind.Tower:
+                    return run.Tower == null ? "" : run.Tower.Solved ? Plural(run.Tower.Moves, "move", "moves") + "  ·  the fewest is " + run.Tower.Minimum
+                        : run.Tower.RingsHome + " of " + run.Tower.Rings + " rings home  ·  " + Plural(run.Tower.Moves, "move", "moves");
                 default: return "";
             }
         }
@@ -166,6 +171,9 @@ namespace Gamesim.Presentation
                     measure = run.KeptTotal == 0 ? "no roll kept" : "kept " + run.KeptTotal + " on roll " + run.RollsUsed + " of " + MiniGameRun.MaxRolls; break;
                 case CompetitionMiniGames.Kind.Words:
                     measure = Plural(run.WordsSolved, "word") + " spelled"; break;
+                case CompetitionMiniGames.Kind.Tower:
+                    measure = run.Tower == null ? "no tower" : run.Tower.Solved ? "tower moved in " + Plural(run.Tower.Moves, "move", "moves")
+                        : run.Tower.RingsHome + " of " + run.Tower.Rings + " rings home"; break;
                 default: return null;
             }
             return "Your attempt  ·  " + measure + "  ·  performance " + (run.Performance * 100).ToString("0") + "%";
@@ -182,6 +190,7 @@ namespace Gamesim.Presentation
             target = null; reactionFocus = null; effortControl = null;
             rollButton = null; keepButton = null; clearButton = null; skipButton = null;
             Array.Clear(tiles, 0, tiles.Length);
+            Array.Clear(towerStacks, 0, towerStacks.Length); towerRings = null; towerChip = null;
             marks.Clear();
             directionGuides[0] = directionGuides[1] = null;
             Array.Clear(legendMarks, 0, legendMarks.Length);
@@ -191,7 +200,7 @@ namespace Gamesim.Presentation
 
         private bool IsGameControl(Selectable selectable) =>
             selectable == reactionFocus || selectable == effortControl || run.Kind == CompetitionMiniGames.Kind.Memory
-            || run.Kind == CompetitionMiniGames.Kind.Dice || run.Kind == CompetitionMiniGames.Kind.Words;
+            || run.Kind == CompetitionMiniGames.Kind.Dice || run.Kind == CompetitionMiniGames.Kind.Words || run.Kind == CompetitionMiniGames.Kind.Tower;
 
         private Selectable DefaultGameFocus
         {
@@ -203,6 +212,7 @@ namespace Gamesim.Presentation
                     case CompetitionMiniGames.Kind.Reaction: return reactionFocus;
                     case CompetitionMiniGames.Kind.Dice: return run.RollsUsed < MiniGameRun.MaxRolls ? (Selectable)rollButton : keepButton;
                     case CompetitionMiniGames.Kind.Words: return tiles[0] != null ? NextOpenTile(-1) : null;
+                    case CompetitionMiniGames.Kind.Tower: return towerStacks[0] != null ? TowerFocus : null;
                     default: return effortControl;
                 }
             }

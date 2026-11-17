@@ -118,7 +118,7 @@ namespace Gamesim.Tests.PlayMode
         {
             director.StartSeason(new SeasonBuilder.Choice());
             yield return null;
-            Assert.That(director.Snapshot.competitionRulesVersion, Is.EqualTo(CompetitionRules.Current), "A season started now plays rules 4.");
+            Assert.That(director.Snapshot.competitionRulesVersion, Is.EqualTo(CompetitionRules.Current), "A season started now plays the current rules (5, the ring tower, since competition slice 4).");
             Assert.That(director.Snapshot.haveNotRulesStartWeek, Is.EqualTo(1), "and names Have-Nots from its first week.");
             Assert.That(director.Snapshot.strategyRulesStartWeek, Is.EqualTo(1), "and opens the strategy windows.");
             // Started without a roster choice - the default cast - it plays the same.
@@ -189,7 +189,7 @@ namespace Gamesim.Tests.PlayMode
         /// </summary>
         private static EpisodeState OpeningThrow(uint seed, out EpisodeState atHoH)
         {
-            var probe = ContentCatalog.Create(seed); probe.competitionRulesVersion = CompetitionRules.Current;
+            var probe = ContentCatalog.Create(seed); probe.competitionRulesVersion = CompetitionRules.Widened;
             var engine = new EpisodeEngine(probe);
             var advanced = engine.Apply(new EpisodeCommand { id = "begin", actorId = probe.playerId, expectedPhase = probe.phase,
                 expectedRevision = probe.revision, kind = EpisodeCommandKind.Advance });

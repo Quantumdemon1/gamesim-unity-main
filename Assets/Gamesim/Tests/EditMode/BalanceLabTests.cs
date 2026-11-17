@@ -601,7 +601,10 @@ namespace Gamesim.Tests.EditMode
         // every season played before B9; its twin below pins the same seasons at tuning 1. From story rules 10's enrolment
         // (STORY-RULES-10-PLAN §8) every cell is held at story rules 9 as well, through the cell's story field, so this and
         // its tuning-1 twin keep exactly the rows B9's own head 7ab18ab0 printed; the rules-10 twins below pin the same
-        // seasons as they play now.
+        // seasons as they play now. Recorded again on competition rules 5, the Ring Tower (pull request 77), on 2026-11-17:
+        // a cell holds tuning and story rules but not competition rules, so every budget-nought season deals rules 5 now,
+        // and all six budget-nought hashes printed what they had recorded on rules 4 (a row names a competition's category,
+        // and the tower is a mental game in a mental game's place). Nothing moved, so no hash changed.
         internal const string BudgetNoughtRows = "5481eec784acd1ed";
 
         /// <summary>
@@ -611,7 +614,7 @@ namespace Gamesim.Tests.EditMode
         /// Re-pinned in round 4 (B9-BALANCE-PLAN, "Round 4: the lab"): the keyed jury tiebreak and the final Head of
         /// Household's half-a-tie read moved it (1bea9cf5), and tuning 1 without the small house's boost moved the beast's
         /// rows again (f5fb8cb6). BALANCE_BASELINE.md, "B9". Held at story rules 9 since story rules 10's enrolment, as
-        /// <see cref="BudgetNoughtRows"/> is.
+        /// <see cref="BudgetNoughtRows"/> is. Recorded again on competition rules 5 (the Ring Tower) on 2026-11-17: unmoved.
         /// </summary>
         internal const string BudgetNoughtTuning1Rows = "a89a8120050e9460";
 
@@ -619,7 +622,7 @@ namespace Gamesim.Tests.EditMode
         /// <see cref="BudgetNoughtRows"/>' seasons, held at tuning 0, at story rules 10, Blame (STORY-RULES-10-PLAN §8): the
         /// story rules every fresh season starts on since the enrolment, recorded at it. Only C1n's veto rule differs from
         /// the held twin, so the rows move where a houseguest used the veto and the season went on from a different grudge:
-        /// 192 of the 564 rows moved.
+        /// 192 of the 564 rows moved. Recorded again on competition rules 5 (the Ring Tower) on 2026-11-17: unmoved.
         /// </summary>
         internal const string BudgetNoughtBlameRows = "63356f631a00ed8a";
 
@@ -627,7 +630,7 @@ namespace Gamesim.Tests.EditMode
         /// <see cref="BudgetNoughtTuning1Rows"/>' seasons at story rules 10, Blame: tuning 1 and story rules 10 together, the
         /// seasons the game ships from the enrolment (STORY-RULES-10-PLAN §8), recorded at it: 209 of the 564 rows moved
         /// from the held tuning-1 twin. Both rules-10 twins name Blame, so a later enrolment holds them there
-        /// (<see cref="BudgetNought"/>).
+        /// (<see cref="BudgetNought"/>). Recorded again on competition rules 5 (the Ring Tower) on 2026-11-17: unmoved.
         /// </summary>
         internal const string BudgetNoughtTuning1BlameRows = "ad1ca9f42d182824";
 
@@ -645,14 +648,16 @@ namespace Gamesim.Tests.EditMode
 
         /// <summary>
         /// <see cref="BudgetNoughtRows"/>' seasons, held at tuning 0, at story rules 11, Roles (ROLE-MOMENTS-PLAN R7): the
-        /// story rules every fresh season starts on since that enrolment, recorded at it.
+        /// story rules every fresh season starts on since that enrolment, recorded at it. Recorded again on competition
+        /// rules 5 (the Ring Tower) on 2026-11-17: unmoved.
         /// </summary>
         internal const string BudgetNoughtRolesRows = "2a39d289ab2e77ec";
 
         /// <summary>
         /// <see cref="BudgetNoughtTuning1Rows"/>' seasons at story rules 11, Roles: tuning 1 and story rules 11 together, the
         /// seasons the game ships from R7's enrolment, recorded at it. Both rules-11 twins name Roles, so a later enrolment
-        /// holds them there (<see cref="BudgetNought"/>).
+        /// holds them there (<see cref="BudgetNought"/>). Recorded again on competition rules 5 (the Ring Tower) on
+        /// 2026-11-17: unmoved.
         /// </summary>
         internal const string BudgetNoughtTuning1RolesRows = "393c1559fd68ed67";
 

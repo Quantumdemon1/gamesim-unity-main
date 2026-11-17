@@ -179,7 +179,7 @@ namespace Gamesim.Tests.PlayMode
             yield return PressOnPad(GamepadButton.Start);
             yield return Frames(2);
             Assert.That(director.WalkingOutId, Is.EqualTo(leaving), "Start is not the walk's skip: they walk on,");
-            Assert.That(ButtonWithCaptionOrNull("Save now  [F5]"), Is.Null, "and it opens no pause menu over them.");
+            Assert.That(director.IsGameMenuOpen || director.AreSettingsSectionsOpen, Is.False, "and it opens no game menu over them.");
 
             // Past the walk's guard on a press, a third of a second on the real clock.
             float guard = Time.realtimeSinceStartup + .5f;
@@ -188,7 +188,7 @@ namespace Gamesim.Tests.PlayMode
             yield return PressKey(Key.Escape);
             yield return Frames(2);
             Assert.That(director.WalkingOutId, Is.Null, "Escape skips the walk out,");
-            Assert.That(ButtonWithCaptionOrNull("Save now  [F5]"), Is.Null, "and stops there: the pause menu is not opened under the goodbye.");
+            Assert.That(director.IsGameMenuOpen || director.AreSettingsSectionsOpen, Is.False, "and stops there: the game menu is not opened under the goodbye.");
         }
 
         private IEnumerator RunBackCase(BackCase item, bool pad, List<string> outcomes)

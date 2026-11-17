@@ -5,8 +5,8 @@ using NUnit.Framework;
 namespace Gamesim.Tests.EditMode
 {
     /// <summary>
-    /// The three text sizes (PLAN A, A8; the lead's decision A-3): their scales, their words, the two
-    /// controls the settings offer at each, and the preference a player's choice is kept under,
+    /// The three text sizes (PLAN A, A8; the lead's decision A-3): their scales, their words, the
+    /// Settings row that chooses them, and the preference a player's choice is kept under,
     /// including the larger text an earlier build kept as a boolean. Unity-free.
     /// </summary>
     public sealed class TextSizesTests
@@ -20,23 +20,26 @@ namespace Gamesim.Tests.EditMode
         }
 
         [Test]
-        public void TheTwoOldCaptions_KeepTheirWords_AndTheThirdIsNew()
+        public void TheTextSizeRow_ReadsEachSizeByItsOwnWord()
         {
-            // Contracts: the verifier, the look sheet and the accessibility suites press these by name.
-            Assert.That(TextSizes.Caption(TextSize.Standard), Is.EqualTo("Use standard text"));
-            Assert.That(TextSizes.Caption(TextSize.Larger), Is.EqualTo("Use larger text"));
-            Assert.That(TextSizes.Caption(TextSize.Largest), Is.EqualTo("Use largest text"));
-            Assert.That(TextSizes.All.Select(TextSizes.Caption).Distinct().Count(), Is.EqualTo(3), "Three controls, three captions.");
+            // Menu slice 4: one row, "Text size", whose value is the size in use; the verifier and the
+            // accessibility suites choose a size by it.
+            Assert.That(SettingRowWords.TextSizeRow, Is.EqualTo("Text size"));
+            Assert.That(TextSizes.All.Select(SettingRowWords.TextSizeValue), Is.EqualTo(new[] { "Standard", "Larger", "Largest" }));
+            Assert.That(SettingRowWords.TextSizeValues.Distinct().Count(), Is.EqualTo(3), "Three sizes, three words.");
         }
 
         [Test]
-        public void TheSettings_OfferTheTwoSizesNotInUse_SmallestFirst()
+        public void TheTextSizeRow_StepsThroughTheSizesInOrder_AndRound()
         {
-            Assert.That(TextSizes.Others(TextSize.Standard), Is.EqualTo(new[] { TextSize.Larger, TextSize.Largest }));
-            Assert.That(TextSizes.Others(TextSize.Larger), Is.EqualTo(new[] { TextSize.Standard, TextSize.Largest }));
-            Assert.That(TextSizes.Others(TextSize.Largest), Is.EqualTo(new[] { TextSize.Standard, TextSize.Larger }));
             foreach (var size in TextSizes.All)
-                Assert.That(TextSizes.Others(size), Has.No.Member(size), "The size in use offers no control of its own.");
+            {
+                int at = SettingRowWords.IndexOf(size);
+                Assert.That(TextSizes.All[at], Is.EqualTo(size), "The row's place is the size's.");
+                Assert.That(TextSizes.All[SettingsWords.ChoiceStepped(at, TextSizes.All.Length, 1)], Is.Not.EqualTo(size), "Right moves to another size.");
+            }
+            Assert.That(TextSizes.All[SettingsWords.ChoiceStepped(SettingRowWords.IndexOf(TextSize.Largest), 3, 1)], Is.EqualTo(TextSize.Standard), "Past the largest, round to the standard.");
+            Assert.That(TextSizes.All[SettingsWords.ChoiceStepped(SettingRowWords.IndexOf(TextSize.Standard), 3, -1)], Is.EqualTo(TextSize.Largest), "Left of the standard, the largest.");
         }
 
         [TestCase(null, null, TextSize.Standard)]

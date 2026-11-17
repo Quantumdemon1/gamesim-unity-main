@@ -11,12 +11,10 @@ namespace Gamesim.Presentation
     }
 
     /// <summary>
-    /// The three text sizes: their scales, their names in the log, their controls' captions, and the
-    /// preference that keeps the choice (PLAN A, A8). "Use larger text" and "Use standard text" are
-    /// contracts - the verifier, the look sheet and the accessibility suites press them by those
-    /// words - so each size keeps a control of its own named for it, and the settings show the two
-    /// sizes not in use: the larger text's control still reads "Use larger text" wherever it is
-    /// offered, and pressing it gives the larger text from either side.
+    /// The three text sizes: their scales, their names in the log, and the preference that keeps the
+    /// choice (PLAN A, A8). Settings show them in one row, "Text size", whose value reads the size in
+    /// use and steps through the three (menu slice 4, <see cref="SettingRowWords.TextSizeValues"/>);
+    /// the verifier and the accessibility suites choose a size by that row.
     ///
     /// <para>The choice is kept as <see cref="SizeKey"/>, 0 to 2. The boolean it replaces,
     /// <see cref="LegacyKey"/>, is read when the new key is absent - a player's larger text from an
@@ -27,10 +25,6 @@ namespace Gamesim.Presentation
     /// </summary>
     public static class TextSizes
     {
-        public const string StandardCaption = "Use standard text";
-        public const string LargerCaption = "Use larger text";
-        public const string LargestCaption = "Use largest text";
-
         /// <summary>The preference the size is kept under, and the one before it.</summary>
         public const string SizeKey = "Gamesim.TextSize", LegacyKey = "Gamesim.LargeText";
 
@@ -42,17 +36,6 @@ namespace Gamesim.Presentation
 
         /// <summary>The size's word in the player log's settings lines.</summary>
         public static string Name(TextSize size) => size == TextSize.Largest ? "largest" : size == TextSize.Larger ? "larger" : "standard";
-
-        /// <summary>The control that chooses the size.</summary>
-        public static string Caption(TextSize size) => size == TextSize.Largest ? LargestCaption : size == TextSize.Larger ? LargerCaption : StandardCaption;
-
-        /// <summary>The settings' controls with this size in use: the other two, smallest first.</summary>
-        public static List<TextSize> Others(TextSize current)
-        {
-            var others = new List<TextSize>();
-            foreach (var size in All) if (size != current) others.Add(size);
-            return others;
-        }
 
         /// <summary>
         /// The size a store's record names: <paramref name="sizeRecord"/> (the new key's value, or

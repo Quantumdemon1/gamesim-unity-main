@@ -60,22 +60,22 @@ namespace Gamesim.Tests.PlayMode
         {
             var audio = director.GetComponent<HouseAudio>();
             Assert.That(audio, Is.Not.Null, "The director carries the house's audio.");
-            director.OpenSettings();
+            director.OpenSettingsAt(Gamesim.Presentation.SettingsSection.Accessibility);
             yield return null;
             Assert.That(director.ReducedAudio, Is.False, "A fresh episode plays full sound.");
             float full = audio.CueVolume;
             Assume.That(full, Is.GreaterThan(0f));
 
-            ButtonWithCaption("Reduce sound").onClick.Invoke();
+            PressSettingRow(Gamesim.Presentation.SettingRowWords.ReducedSoundRow, "On");
             yield return null;
             Assert.That(director.ReducedAudio, Is.True);
             Assert.That(audio.ReducedAudio, Is.True, "The preference reaches the audio.");
             Assert.That(audio.CueVolume, Is.EqualTo(full * 0.5f).Within(0.001f), "The cues play at half.");
             Assert.That(audio.AmbiencePlaying, Is.False, "The room tone stops.");
             Assert.That(audio.RoomTonePlaying, Is.False, "and so does a room's own bed");
-            Assert.That(ButtonWithCaption("Full sound"), Is.Not.Null, "The control now offers the way back.");
+            Assert.That(SettingRowValue(Gamesim.Presentation.SettingRowWords.ReducedSoundRow), Is.EqualTo("On"), "The row says it is on, and a press turns it off.");
 
-            ButtonWithCaption("Full sound").onClick.Invoke();
+            PressSettingRow(Gamesim.Presentation.SettingRowWords.ReducedSoundRow, "Off");
             yield return null;
             Assert.That(director.ReducedAudio, Is.False);
             Assert.That(audio.CueVolume, Is.EqualTo(full).Within(0.001f));

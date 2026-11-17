@@ -117,7 +117,7 @@ namespace Gamesim.Tests.PlayMode
 
         private IEnumerator OpenCastScreen()
         {
-            director.OpenSettings();
+            director.OpenSettingsAt(Gamesim.Presentation.SettingsSection.Saves);
             yield return null;
             director.NewSeason();
             yield return null;
@@ -868,9 +868,9 @@ namespace Gamesim.Tests.PlayMode
         [UnityTest]
         public IEnumerator CastSelect_ReducedMotionHoldsTheModelTheHaloAndThePortraitsStill()
         {
-            director.OpenSettings();
+            director.OpenSettingsAt(Gamesim.Presentation.SettingsSection.Accessibility);
             yield return null;
-            ButtonWithCaption("Reduce character motion").onClick.Invoke();
+            PressSettingRow(Gamesim.Presentation.SettingRowWords.ReducedMotionRow, "On");
             yield return null;
             director.NewSeason();
             yield return null;

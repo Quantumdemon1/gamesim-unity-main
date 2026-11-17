@@ -392,9 +392,9 @@ namespace Gamesim.Tests.PlayMode
         {
             var audio = director.GetComponent<HouseAudio>();
             // Muted, as a player who cannot hear it plays: every cue is still asked for, and none sounds.
-            director.OpenSettings();
+            director.OpenSettingsAt(Gamesim.Presentation.SettingsSection.Sound);
             yield return null; yield return null;
-            ButtonWithCaption("Mute sound").onClick.Invoke();
+            PressSettingRow(Gamesim.Presentation.SettingRowWords.AllSoundRow, "Off");
             yield return null;
             director.ClosePanels();
             yield return null;
@@ -661,35 +661,36 @@ namespace Gamesim.Tests.PlayMode
         public IEnumerator Audio_TheThreeVolumesStandBesideTheMaster()
         {
             var audio = director.GetComponent<HouseAudio>();
-            director.OpenSettings();
+            director.OpenSettingsAt(Gamesim.Presentation.SettingsSection.Sound);
             yield return null; yield return null;
             float master = audio.Volume;
             float nomination = audio.VolumeOf(HouseAudio.Cue.Nomination), button = audio.VolumeOf(HouseAudio.Cue.Button);
             Assert.That(nomination, Is.EqualTo(audio.CueVolume).Within(1e-5f), "At the whole of the master, a cue plays at the master, as it always did.");
 
-            ButtonWithCaption(SoundPictures.DownCaption(SoundChannel.Effects)).onClick.Invoke();
+            // Menu slice 4: each channel's slider row, left a step down and right a step up (the old down and up buttons).
+            StepSettingRow(SoundPictures.MeterCaption(SoundChannel.Effects), UnityEngine.EventSystems.MoveDirection.Left, "90%");
             yield return null;
             Assert.That(director.ChannelVolumePercent(SoundChannel.Effects), Is.EqualTo(90));
             Assert.That(audio.VolumeOf(HouseAudio.Cue.Nomination), Is.EqualTo(nomination * .9f).Within(1e-5f), "The effects' control lowers the game's news,");
             Assert.That(audio.VolumeOf(HouseAudio.Cue.Button), Is.EqualTo(button).Within(1e-5f), "and not the interface's answers.");
 
-            ButtonWithCaption(SoundPictures.DownCaption(SoundChannel.Interface)).onClick.Invoke();
+            StepSettingRow(SoundPictures.MeterCaption(SoundChannel.Interface), UnityEngine.EventSystems.MoveDirection.Left, "90%");
             yield return null;
-            ButtonWithCaption(SoundPictures.DownCaption(SoundChannel.Interface)).onClick.Invoke();
+            StepSettingRow(SoundPictures.MeterCaption(SoundChannel.Interface), UnityEngine.EventSystems.MoveDirection.Left, "80%");
             yield return null;
             Assert.That(director.ChannelVolumePercent(SoundChannel.Interface), Is.EqualTo(80));
             Assert.That(audio.VolumeOf(HouseAudio.Cue.Button), Is.EqualTo(button * .8f).Within(1e-5f), "The interface's control lowers the interface,");
             Assert.That(audio.VolumeOf(HouseAudio.Cue.Nomination), Is.EqualTo(nomination * .9f).Within(1e-5f), "and nothing else.");
 
-            ButtonWithCaption(SoundPictures.DownCaption(SoundChannel.Music)).onClick.Invoke();
+            StepSettingRow(SoundPictures.MeterCaption(SoundChannel.Music), UnityEngine.EventSystems.MoveDirection.Left, "90%");
             yield return null;
             Assert.That(director.ChannelVolumePercent(SoundChannel.Music), Is.EqualTo(90));
             Assert.That(audio.ChannelVolume(SoundChannel.Music), Is.EqualTo(.9f).Within(1e-5f), "The music's control lowers the music's share.");
             Assert.That(audio.Volume, Is.EqualTo(master).Within(1e-5f), "The master stays where it was through all three.");
 
-            ButtonWithCaption(SoundPictures.UpCaption(SoundChannel.Effects)).onClick.Invoke();
+            StepSettingRow(SoundPictures.MeterCaption(SoundChannel.Effects), UnityEngine.EventSystems.MoveDirection.Right, "100%");
             yield return null;
-            ButtonWithCaption(SoundPictures.UpCaption(SoundChannel.Effects)).onClick.Invoke();
+            StepSettingRow(SoundPictures.MeterCaption(SoundChannel.Effects), UnityEngine.EventSystems.MoveDirection.Right, "100%");
             yield return null;
             Assert.That(director.ChannelVolumePercent(SoundChannel.Effects), Is.EqualTo(100), "A share never passes the whole of the master.");
             director.SetChannelVolume(SoundChannel.Music, 100);

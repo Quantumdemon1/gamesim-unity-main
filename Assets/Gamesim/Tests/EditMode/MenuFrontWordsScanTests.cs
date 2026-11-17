@@ -25,6 +25,13 @@ namespace Gamesim.Tests.EditMode
         {
             "Episode/EpisodeDirector.Season.cs", "Episode/EpisodeDirector.Display.cs", "Episode/EpisodeDirector.Career.cs",
             "Episode/EpisodeDirector.Controls.cs", "Episode/EpisodeDirector.CameraSettings.cs",
+            // Menu slice 4: the frame, its sections and the row kit's words.
+            "Episode/EpisodeDirector.SettingsFrame.cs", "Episode/EpisodeDirector.SettingsSaves.cs", "Episode/EpisodeDirector.SettingsPrefs.cs",
+            "Presentation/SettingsWords.cs",
+            // Menu slice 4, part a: the Saves section's words and its season cards.
+            "Presentation/SavesWords.cs", "Episode/EpisodeHud.SeasonCards.cs",
+            // Menu slice 4, part b: the Sound, Display, Accessibility and Controls rows' words.
+            "Presentation/SettingRowWords.cs",
         };
 
         /// <summary>The words Settings used that a player cannot be expected to know.</summary>

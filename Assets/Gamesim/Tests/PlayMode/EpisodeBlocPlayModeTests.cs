@@ -346,9 +346,19 @@ namespace Gamesim.Tests.PlayMode
         private IEnumerator ReloadBlocThroughActualSettings(EpisodeState expected)
         {
             director.ClosePanels();
+            // The rail's Settings opens the game menu card; its Settings row (named apart from the rail's)
+            // opens the frame, and going back to the last save is an Advanced tool (menu slice 4).
             ButtonWithCaption("Settings").onClick.Invoke();
             yield return null; yield return null;
-            ButtonWithCaption("Reload current slot").onClick.Invoke();
+            UnityEngine.UI.Button Named(string name) => director.GetComponentsInChildren<UnityEngine.UI.Button>().Single(button => button.IsActive() && button.name == name);
+            Named(EpisodeHud.GameMenuRowPrefix + Gamesim.Presentation.SettingsWords.SettingsCaption).onClick.Invoke();
+            yield return null; yield return null;
+            Named(Gamesim.Presentation.SettingsWords.TabName(Gamesim.Presentation.SettingsSection.Advanced)).onClick.Invoke();
+            yield return null; yield return null;
+            // Picked, then confirmed on the Settings confirm card (menu slice 4).
+            ButtonWithCaption(Gamesim.Presentation.SavesWords.GoBackCaption).onClick.Invoke();
+            yield return null; yield return null;
+            ButtonWithCaption(Gamesim.Presentation.SavesWords.GoBackResult).onClick.Invoke();
             yield return null; yield return null;
             AssertEquivalent(expected, director.Snapshot);
             Assert.That(director.IsPanelOpen, Is.False);

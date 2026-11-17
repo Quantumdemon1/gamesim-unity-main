@@ -54,8 +54,11 @@ namespace Gamesim.Tests.EditMode
         {
             Assert.That(CaptionTiming.Name(CaptionTime.Standard), Is.EqualTo("standard"));
             Assert.That(CaptionTiming.Name(CaptionTime.Longer), Is.EqualTo("longer"));
-            Assert.That(CaptionTiming.Caption(CaptionTime.Standard), Is.EqualTo("Caption time: Standard  (change)"));
-            Assert.That(CaptionTiming.Caption(CaptionTime.Longer), Is.EqualTo("Caption time: Longer  (change)"));
+            // Menu slice 4: one row, "Caption time", reading "Standard" or "Longer".
+            Assert.That(SettingRowWords.CaptionTimeRow, Is.EqualTo("Caption time"));
+            Assert.That(SettingRowWords.CaptionTimeValues, Is.EqualTo(new[] { "Standard", "Longer" }));
+            Assert.That(SettingRowWords.CaptionTimeAt(0), Is.EqualTo(CaptionTime.Standard));
+            Assert.That(SettingRowWords.CaptionTimeAt(1), Is.EqualTo(CaptionTime.Longer));
             Assert.That(CaptionTiming.FromRecord(1), Is.EqualTo(CaptionTime.Longer));
             Assert.That(CaptionTiming.FromRecord(0), Is.EqualTo(CaptionTime.Standard));
             Assert.That(CaptionTiming.FromRecord(7), Is.EqualTo(CaptionTime.Standard), "Anything but 1 is the standard time.");

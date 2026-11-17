@@ -344,8 +344,8 @@ namespace Gamesim.Tests.PlayMode
             director.ClosePanels();
             director.SuspendNpcAutonomyForDiagnostics();
             yield return null;
-            director.OpenSettings();
-            ButtonWithCaption("Reduce character motion").onClick.Invoke();
+            director.OpenSettingsAt(Gamesim.Presentation.SettingsSection.Accessibility);
+            PressSettingRow(Gamesim.Presentation.SettingRowWords.ReducedMotionRow, "On");
             director.ClosePanels();
             yield return null;
             Assert.That(cameraRig.ReducedMotion, Is.True, "The settings put the rig under reduced motion.");
@@ -385,8 +385,8 @@ namespace Gamesim.Tests.PlayMode
             }
             finally
             {
-                director.OpenSettings();
-                ButtonWithCaption("Enable character motion").onClick.Invoke();
+                director.OpenSettingsAt(Gamesim.Presentation.SettingsSection.Accessibility);
+                PressSettingRow(Gamesim.Presentation.SettingRowWords.ReducedMotionRow, "Off");
                 director.ClosePanels();
             }
             Assert.That(cameraRig.ReducedMotion, Is.False, "Motion is back on.");
@@ -1260,15 +1260,15 @@ namespace Gamesim.Tests.PlayMode
             Application.logMessageReceived += listen;
             try
             {
-                director.OpenSettings();
-                ButtonWithCaption(EpisodeDirector.HouseViewCaption(false)).onClick.Invoke();
+                director.OpenSettingsAt(Gamesim.Presentation.SettingsSection.Display);
+                PressSettingRow(Gamesim.Presentation.SettingRowWords.HouseViewRow, EpisodeDirector.WholeHouseViewName);
                 yield return null;
             }
             finally { Application.logMessageReceived -= listen; }
             Assert.That(director.ShowsWholeHouse, Is.True, "Pressed, the whole house.");
             Assert.That(log.Where(line => line.StartsWith(SettingsEvidence.ChangePrefix)).ToArray(), Does.Contain(SettingsEvidence.ChangePrefix + "house=whole"),
                 "A line for the change: " + string.Join(" | ", log));
-            Assert.That(ButtonWithCaption(EpisodeDirector.HouseViewCaption(true)), Is.Not.Null, "The control says what it shows now.");
+            Assert.That(SettingRowValue(Gamesim.Presentation.SettingRowWords.HouseViewRow), Is.EqualTo(EpisodeDirector.WholeHouseViewName), "The row says what it shows now.");
             Assert.That(cameraRig.DesiredDistance, Is.EqualTo(cameraRig.OwnDistance).Within(.001f), "The free camera goes out to the scene's own distance,");
             Assert.That(cameraRig.Yaw, Is.EqualTo(cameraRig.OwnYaw).Within(.01f), "at its own heading.");
             director.ClosePanels();
@@ -1291,8 +1291,8 @@ namespace Gamesim.Tests.PlayMode
             yield return null;
             Assert.That(director.ViewedRooms.IsWholeHouse, Is.True, "and draws the whole house from the first frame.");
 
-            director.OpenSettings();
-            ButtonWithCaption(EpisodeDirector.HouseViewCaption(true)).onClick.Invoke();
+            director.OpenSettingsAt(Gamesim.Presentation.SettingsSection.Display);
+            PressSettingRow(Gamesim.Presentation.SettingRowWords.HouseViewRow, EpisodeDirector.OneRoomViewName);
             director.ClosePanels();
             yield return null;
             yield return null;
@@ -1306,15 +1306,17 @@ namespace Gamesim.Tests.PlayMode
         }
 
         /// <summary>
-        /// The house view control's caption is new (checked against every HUD control the settings and the
-        /// house draw), follows the settings' pattern for a control that cycles, and draws every letter in a
-        /// label box at least 1.3 times its font at each text size, 1.0, 1.2 and 1.4.
+        /// The house view row's name is new (checked against every HUD control the settings and the house
+        /// draw), it reads "One room" or "Whole house" beside it (menu slice 4), and both its name and its
+        /// value draw every letter in a label box at least 1.3 times its font at each text size, 1.0, 1.2
+        /// and 1.4.
         /// </summary>
         [UnityTest]
         public IEnumerator Settings_TheHouseViewCaptionIsUnusedAndFitsAtEveryTextSize()
         {
-            Assert.That(EpisodeDirector.HouseViewCaption(false), Is.EqualTo("House view: One room  (change)"), "The settings' pattern (D12).");
-            Assert.That(EpisodeDirector.HouseViewCaption(true), Is.EqualTo("House view: Whole house  (change)"));
+            const string name = Gamesim.Presentation.SettingRowWords.HouseViewRow;
+            Assert.That(name, Is.EqualTo("House view"), "The setting's name (D12).");
+            Assert.That(Gamesim.Presentation.SettingRowWords.HouseViewValues, Is.EqualTo(new[] { EpisodeDirector.OneRoomViewName, EpisodeDirector.WholeHouseViewName }));
             director.ClosePanels();
             // A full HUD render between finding the control and reading it destroys the control: no NPC tick to
             // commit, and every body built, so nothing renders the HUD under the measurement.
@@ -1322,32 +1324,36 @@ namespace Gamesim.Tests.PlayMode
             yield return null;
             yield return Rs4BodiesBuilt();
             var houseCaptions = director.GetComponentsInChildren<Button>(true).SelectMany(b => b.GetComponentsInChildren<TMP_Text>(true)).Select(t => t.text).ToList();
-            Assert.That(houseCaptions.Any(text => text != null && text.StartsWith(EpisodeDirector.HouseViewCaptionPrefix, System.StringComparison.Ordinal)), Is.False,
+            Assert.That(houseCaptions.Any(text => text != null && text.StartsWith(name, System.StringComparison.Ordinal)), Is.False,
                 "No control over the house says \"House view\".");
             foreach (var size in new[] { TextSize.Standard, TextSize.Larger, TextSize.Largest })
             {
                 director.SetTextSize(size);
-                director.OpenSettings();
+                director.OpenSettingsAt(Gamesim.Presentation.SettingsSection.Display);
                 yield return null;
                 Canvas.ForceUpdateCanvases();
                 var captions = director.GetComponentsInChildren<Button>(true).Where(b => b.gameObject.activeInHierarchy)
                     .Select(b => b.GetComponentsInChildren<TMP_Text>(true).Select(t => t.text).FirstOrDefault() ?? "").ToList();
-                string mine = EpisodeDirector.HouseViewCaption(director.ShowsWholeHouse);
-                Assert.That(captions.Count(text => text == mine), Is.EqualTo(1), size + ": one control with the house view's caption.");
-                Assert.That(captions.Count(text => text.StartsWith(EpisodeDirector.HouseViewCaptionPrefix, System.StringComparison.Ordinal)), Is.EqualTo(1),
+                Assert.That(captions.Count(text => text == name), Is.EqualTo(1), size + ": one row named for the house view.");
+                Assert.That(captions.Count(text => text.StartsWith(name, System.StringComparison.Ordinal)), Is.EqualTo(1),
                     size + ": and no other control says \"House view\".");
-                Assert.That(ButtonWithCaption(mine), Is.Not.Null, size + ": the control is there.");
+                Assert.That(ButtonWithCaption(name), Is.Not.Null, size + ": the row is there.");
                 yield return null;
                 // Found again after the frame: a render in it would have left the first one on its way out.
-                var button = ButtonWithCaption(mine);
+                var button = ButtonWithCaption(name);
                 Canvas.ForceUpdateCanvases();
-                var label = button.GetComponentsInChildren<TMP_Text>(true).First(t => t.text == mine);
-                label.ForceMeshUpdate();
-                Assert.That(label.rectTransform.rect.height, Is.GreaterThanOrEqualTo(label.fontSize * 1.3f - .01f),
-                    size + ": the label's box (" + label.rectTransform.rect.height + ") is at least 1.3 times its font (" + label.fontSize + ").");
-                int letters = mine.Count(c => !char.IsWhiteSpace(c));
-                int drawn = label.textInfo.characterInfo.Take(label.textInfo.characterCount).Count(glyph => glyph.isVisible);
-                Assert.That(drawn, Is.EqualTo(letters), size + ": every letter of \"" + mine + "\" is drawn.");
+                string shown = director.ShowsWholeHouse ? EpisodeDirector.WholeHouseViewName : EpisodeDirector.OneRoomViewName;
+                foreach (var label in new[] { button.GetComponentsInChildren<TMP_Text>(true).First(t => t.text == name),
+                    button.transform.Find(EpisodeHud.SettingValueName).GetComponent<TMP_Text>() })
+                {
+                    label.ForceMeshUpdate();
+                    Assert.That(label.rectTransform.rect.height, Is.GreaterThanOrEqualTo(label.fontSize * 1.3f - .01f),
+                        size + ": the label's box (" + label.rectTransform.rect.height + ") is at least 1.3 times its font (" + label.fontSize + ").");
+                    int letters = label.text.Count(c => !char.IsWhiteSpace(c));
+                    int drawn = label.textInfo.characterInfo.Take(label.textInfo.characterCount).Count(glyph => glyph.isVisible);
+                    Assert.That(drawn, Is.EqualTo(letters), size + ": every letter of \"" + label.text + "\" is drawn.");
+                }
+                Assert.That(button.transform.Find(EpisodeHud.SettingValueName).GetComponent<TMP_Text>().text, Is.EqualTo(shown), size + ": the value is the view in use.");
                 director.ClosePanels();
                 yield return null;
             }

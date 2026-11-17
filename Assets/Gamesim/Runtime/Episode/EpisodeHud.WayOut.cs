@@ -102,7 +102,7 @@ namespace Gamesim.Episode
                             words.rectTransform.sizeDelta = new Vector2(Mathf.Min(words.rectTransform.sizeDelta.x, room), words.rectTransform.sizeDelta.y);
                     moved = true;
                 }
-                else if (child.name == NotebookHeaderName || child.name == DiaryHeaderName)
+                else if (child.name == NotebookHeaderName || child.name == DiaryHeaderName || child.name == SettingsHeaderName)
                 {
                     // Anchored at the top left with its own width: it moves right and gives up as much.
                     float shift = Mathf.Max(0f, right - 6f - rect.anchoredPosition.x);

@@ -523,6 +523,18 @@
     <Compile Include="$(EditMode)MenuNotebookStripATests.cs" />
     <!-- Menu slice 3, held together: every docked panel's layout has a kind, the faces' rims and the links' rest, in the source. -->
     <Compile Include="$(EditMode)MenuNotebookIntegrationTests.cs" />
+    <!-- Menu slice 4, the foundation: the Settings frame's sections, the row kit's words and steps, and the shell held in the source. -->
+    <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/SettingsWords.cs" />
+    <Compile Include="$(EditMode)MenuSettingsShellTests.cs" />
+    <!-- Menu slice 4, part a: the Saves section's words, and the save store's one delete with its refusals (BCL only, without the store's reader). -->
+    <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/SavesWords.cs" />
+    <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Persistence/EpisodeSaveStore.Delete.cs" />
+    <Compile Include="$(EditMode)MenuSavesStoreTests.cs" />
+    <!-- Menu slice 4, as merged: nothing in the slice's Runtime files deletes but the save store's one delete. -->
+    <Compile Include="$(EditMode)MenuSavesDeleteScanTests.cs" />
+    <!-- Menu slice 4, part b: the Sound, Display, Accessibility and Controls rows' names and values, and the rows held in the source. -->
+    <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/SettingRowWords.cs" />
+    <Compile Include="$(EditMode)MenuSettingRowsTests.cs" />
     <!-- A frame wider than 16:9 lays its canvases out by height (A12b); 16:9 and narrower keep their own match. -->
     <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/FrameMatch.cs" />
     <Compile Include="$(EditMode)FrameMatchTests.cs" />

@@ -24,13 +24,24 @@ namespace Gamesim.Tests.PlayMode
         /// <summary>The words Settings used to say that a player cannot be expected to know.</summary>
         private static readonly string[] DeveloperWords = { "validated", "receipt", "cloud", "AI dialogue", "credentials", "snapshot" };
 
-        /// <summary>The section headings Settings shows, in order, each in the one style.</summary>
-        private static readonly string[] SettingsSections =
-            { "YOUR SAVE", "SOUND", "ACCESSIBILITY", "CEREMONIES", "DISPLAY", "CAMERA", "YOUR CAREER", "IMPORT A WEB SAVE", "CONTROLS" };
-
-        private IEnumerator OpenSettingsForMenuFront()
+        /// <summary>
+        /// The section headings each section of the Settings frame shows (menu slice 4), in order,
+        /// each in the one style: the section's own, then the blocks under it.
+        /// </summary>
+        private static readonly (SettingsSection section, string[] headings)[] SettingsSections =
         {
-            director.OpenSettings();
+            (SettingsSection.Saves, new[] { "SAVES", "IMPORT A WEB SAVE" }),
+            (SettingsSection.Sound, new[] { "SOUND" }),
+            (SettingsSection.Display, new[] { "DISPLAY" }),
+            (SettingsSection.Accessibility, new[] { "ACCESSIBILITY", "CEREMONIES" }),
+            (SettingsSection.Controls, new[] { "CONTROLS", "CAMERA" }),
+            (SettingsSection.Advanced, new[] { "ADVANCED", "YOUR CAREER" }),
+        };
+
+        /// <summary>The Settings frame on <paramref name="section"/>, as the game menu's Settings row and the list open it.</summary>
+        private IEnumerator OpenSettingsForMenuFront(SettingsSection section = SettingsSection.Saves)
+        {
+            director.OpenSettingsAt(section);
             yield return null; yield return null;
         }
 
@@ -42,17 +53,21 @@ namespace Gamesim.Tests.PlayMode
         [UnityTest]
         public IEnumerator MenuFront_SettingsSayItPlainly_AndSayOfflineOnce()
         {
-            yield return OpenSettingsForMenuFront();
-            var texts = MenuFrontTexts();
-            foreach (var word in DeveloperWords)
-                Assert.That(texts.Where(text => text.IndexOf(word, System.StringComparison.OrdinalIgnoreCase) >= 0), Is.Empty,
-                    "Settings no longer say \"" + word + "\".");
-            var offline = texts.Where(text => text.IndexOf("offline", System.StringComparison.OrdinalIgnoreCase) >= 0).ToArray();
-            Assert.That(offline, Has.Length.EqualTo(1), "That the game is offline is said once, in one place.");
-            Assert.That(offline[0], Is.EqualTo(EpisodeDirector.SettingsEyebrowCopy).Or.EqualTo(EpisodeDirector.PausedEyebrow),
-                "The one place is the eyebrow over the title.");
-            Assert.That(ButtonWithCaption(EpisodeDirector.RecoverBackupCaption), Is.Not.Null);
-            Assert.That(ButtonWithCaption(EpisodeDirector.NewSeasonInNewSlotCaption), Is.Not.Null);
+            // Every section of the frame (menu slice 4), each in plain words and saying "offline" once.
+            foreach (var section in SettingsWords.Sections)
+            {
+                yield return OpenSettingsForMenuFront(section);
+                var texts = MenuFrontTexts();
+                foreach (var word in DeveloperWords)
+                    Assert.That(texts.Where(text => text.IndexOf(word, System.StringComparison.OrdinalIgnoreCase) >= 0), Is.Empty,
+                        section + ": Settings no longer say \"" + word + "\".");
+                var offline = texts.Where(text => text.IndexOf("offline", System.StringComparison.OrdinalIgnoreCase) >= 0).ToArray();
+                Assert.That(offline, Has.Length.EqualTo(1), section + ": that the game is offline is said once, in one place.");
+                Assert.That(offline[0], Is.EqualTo(EpisodeDirector.SettingsEyebrowCopy).Or.EqualTo(EpisodeDirector.PausedEyebrow),
+                    "The one place is the eyebrow over the title.");
+                if (section == SettingsSection.Advanced) Assert.That(ButtonWithCaption(EpisodeDirector.RecoverBackupCaption), Is.Not.Null);
+                if (section == SettingsSection.Saves) Assert.That(ButtonWithCaption(EpisodeDirector.NewSeasonInNewSlotCaption), Is.Not.Null);
+            }
             director.ClosePanels();
             yield return null;
         }
@@ -60,23 +75,32 @@ namespace Gamesim.Tests.PlayMode
         [UnityTest]
         public IEnumerator MenuFront_EverySettingsSectionHasTheOneHeadingStyle()
         {
-            yield return OpenSettingsForMenuFront();
-            var boxes = director.GetComponentsInChildren<RectTransform>()
-                .Where(rect => rect.name == EpisodeHud.SectionHeadingName && rect.gameObject.activeInHierarchy).ToArray();
-            var names = boxes.Select(box => box.GetComponentInChildren<TMP_Text>().text).ToArray();
-            Assert.That(names, Is.EqualTo(SettingsSections), "Every section of Settings under the one heading, in order.");
-            foreach (var box in boxes)
+            foreach (var (section, headings) in SettingsSections)
             {
-                var label = box.GetComponentInChildren<TMP_Text>();
-                Assert.That(label.color, Is.EqualTo(UiTheme.Heading), label.text + " is in the theme's heading blue.");
-                Assert.That(label.fontSize, Is.GreaterThanOrEqualTo(14f), label.text + ": no label under 14 px.");
-                Assert.That((label.fontStyle & FontStyles.UpperCase) != 0, Is.True, label.text + " is set in capitals.");
-                Assert.That(label.rectTransform.rect.height, Is.GreaterThanOrEqualTo(label.fontSize * 1.3f - .5f),
-                    label.text + ": a box at least 1.3 times its type.");
-                Assert.That(box.Find(EpisodeHud.SectionRuleName), Is.Not.Null, label.text + " has its rule under it.");
+                yield return OpenSettingsForMenuFront(section);
+                Canvas.ForceUpdateCanvases();
+                var boxes = director.GetComponentsInChildren<RectTransform>()
+                    .Where(rect => rect.name == EpisodeHud.SectionHeadingName && rect.gameObject.activeInHierarchy).ToArray();
+                var names = boxes.Select(box => box.GetComponentInChildren<TMP_Text>().text).ToArray();
+                Assert.That(names, Is.EqualTo(headings), section + ": every block of the section under the one heading, in order.");
+                foreach (var box in boxes)
+                {
+                    var label = box.GetComponentInChildren<TMP_Text>();
+                    Assert.That(label.color, Is.EqualTo(UiTheme.Heading), label.text + " is in the theme's heading blue.");
+                    Assert.That(label.fontSize, Is.GreaterThanOrEqualTo(14f), label.text + ": no label under 14 px.");
+                    Assert.That((label.fontStyle & FontStyles.UpperCase) != 0, Is.True, label.text + " is set in capitals.");
+                    Assert.That(label.rectTransform.rect.height, Is.GreaterThanOrEqualTo(label.fontSize * 1.3f - .5f),
+                        label.text + ": a box at least 1.3 times its type.");
+                    Assert.That(box.Find(EpisodeHud.SectionRuleName), Is.Not.Null, label.text + " has its rule under it.");
+                }
+                // "Display" is a section's name in the list now; as a heading in the rows it was another style.
+                var rows = director.GetComponentsInChildren<TMP_Text>().Where(label => label.gameObject.activeInHierarchy
+                    && label.GetComponentInParent<RectTransform>() != null
+                    && !label.transform.GetComponentsInParent<RectTransform>().Any(parent => parent.name == EpisodeHud.SettingsSectionsName))
+                    .Select(label => label.text).ToArray();
+                foreach (var old in new[] { "Display", "Import a supported web save" })
+                    Assert.That(rows, Does.Not.Contain(old), "\"" + old + "\" was a heading in another style.");
             }
-            foreach (var old in new[] { "Display", "Import a supported web save" })
-                Assert.That(MenuFrontTexts(), Does.Not.Contain(old), "\"" + old + "\" was a heading in another style.");
             director.ClosePanels();
             yield return null;
         }
@@ -86,7 +110,8 @@ namespace Gamesim.Tests.PlayMode
         {
             var tour = DirectorTour();
             if (tour.IsShowing) tour.Skip();
-            yield return OpenSettingsForMenuFront();
+            // The tour is replayed from the Controls section (menu slice 4).
+            yield return OpenSettingsForMenuFront(SettingsSection.Controls);
             ButtonWithCaption(EpisodeDirector.ReplayTourCaption).onClick.Invoke();
             yield return null; yield return null;
             Assert.That(director.IsPanelOpen, Is.False, "Settings close for the tour.");

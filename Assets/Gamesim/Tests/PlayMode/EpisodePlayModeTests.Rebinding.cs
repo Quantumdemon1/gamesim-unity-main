@@ -32,7 +32,7 @@ namespace Gamesim.Tests.PlayMode
         /// <summary>The settings open on their CONTROLS section, unfolded.</summary>
         private IEnumerator OpenTheControlsSection()
         {
-            director.OpenSettings();
+            director.OpenSettingsAt(Gamesim.Presentation.SettingsSection.Controls);
             yield return null; yield return null;
             if (ShowsControl(EpisodeDirector.ShowControlsCaption))
             {

@@ -230,11 +230,13 @@ namespace Gamesim.Tests.PlayMode
 
             Assert.That(Menu().IsShowing, Is.False);
             Assert.That(director.IsPanelOpen, Is.True);
-            Assert.That(CastButtons("Main menu"), Has.Length.EqualTo(1),
+            // The way back at the frame's top left (menu slice 4): it names the main menu and really returns there.
+            string back = Gamesim.Presentation.WayOut.BackTo(Gamesim.Presentation.WayOut.MainMenu);
+            Assert.That(CastButtons(back), Has.Length.EqualTo(1),
                 "Settings must offer a way back to the menu, or it is a one-way door.");
             if (Application.isBatchMode) yield return CaptureFraming("settings");
 
-            CastButtons("Main menu")[0].onClick.Invoke();
+            CastButtons(back)[0].onClick.Invoke();
             yield return null;
             yield return null;
             Assert.That(Menu().IsShowing, Is.True);

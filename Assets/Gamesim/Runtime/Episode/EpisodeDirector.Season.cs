@@ -73,96 +73,6 @@ namespace Gamesim.Episode
             return themeHeld || themeClosing ? HouseAudio.Music.Silent : HouseAudio.Music.Theme;
         }
 
-        private void Settings(EpisodeState state)
-        {
-            // A menu, not a beat of the week: its own tall panel and its own head (mockup
-            // language: the glyph, the title, the eyebrow), with its rows under section labels.
-            hud.SetActivityLayout(EpisodeHud.ActivityLayout.Settings);
-            hud.ScreenHeader(EpisodeHud.SettingsHeaderName, SettingsEyebrow(),
-                blockedRecovery ? "SAVE RECOVERY" : "SETTINGS & SAVES", UiTheme.Icon("settings"));
-            // That the game is offline is said once, by the eyebrow over the title (SettingsEyebrow):
-            // a line here said it a second time, and a paragraph at the foot a third (quick win 13).
-            hud.SectionHeading("YOUR SAVE");
-            // The slot's name, not its path: this panel used to print the full file path,
-            // which on Windows contains the player's user name, and which they can do
-            // nothing with. The name is the part that tells one slot from another.
-            hud.Paragraph("Slot: " + Path.GetFileNameWithoutExtension(saves.SavePath));
-            hud.Aside(message);
-            hud.Action("Save now  [F5]", SaveNow);
-            hud.Action("Reload current slot", LoadNow);
-            hud.Action(RecoverBackupCaption, RecoverBackup);
-            hud.Action(NewSeasonInNewSlotCaption, NewSeason);
-            hud.Action("Main menu", OpenMainMenu);
-            hud.SectionHeading("SOUND");
-            hud.VolumeSlider("Master volume", volumePercent, muted ? UiTheme.Muted : UiTheme.Accent, SetMasterVolumeLive, SetMasterVolumeFromSlider);
-            hud.Action("Volume down", () => { volumePercent = Mathf.Max(0, volumePercent - 10); ApplyPreferences(); Render(); });
-            hud.Action("Volume up", () => { volumePercent = Mathf.Min(100, volumePercent + 10); ApplyPreferences(); Render(); });
-            hud.Action(muted ? "Turn sound on" : "Mute sound", () => { muted = !muted; ApplyPreferences(); Render(); });
-            hud.Action(musicOn ? "Turn music off" : "Turn music on", () => { musicOn = !musicOn; ApplyPreferences(); Render(); });
-            // The music, the effects and the interface, each a share of the master (A11).
-            foreach (var channel in new[] { SoundChannel.Music, SoundChannel.Effects, SoundChannel.Interface })
-            {
-                var each = channel;
-                hud.VolumeSlider(SoundPictures.MeterCaption(each), ChannelVolumePercent(each), muted ? UiTheme.Muted : UiTheme.Accent,
-                    percent => ApplyChannelVolumeLive(each, percent), percent => ApplyChannelVolume(each, percent));
-                hud.Action(SoundPictures.DownCaption(each), () => { SetChannelVolume(each, SoundPictures.Stepped(ChannelVolumePercent(each), false)); hud.FocusWhenWired(SoundPictures.DownCaption(each)); });
-                hud.Action(SoundPictures.UpCaption(each), () => { SetChannelVolume(each, SoundPictures.Stepped(ChannelVolumePercent(each), true)); hud.FocusWhenWired(SoundPictures.UpCaption(each)); });
-            }
-            hud.SectionHeading("ACCESSIBILITY");
-            // What every screen offers, under the section it is about (it stood under the career).
-            hud.Aside(AccessibilityLine);
-            hud.Action(reducedMotion ? "Enable character motion" : "Reduce character motion", () => { reducedMotion = !reducedMotion; ApplyPreferences(); Render(); });
-            hud.Action(reducedAudio ? "Full sound" : "Reduce sound", () => { reducedAudio = !reducedAudio; ApplyPreferences(); Render(); });
-            // The two sizes not in use, each by its own control (A8): "Use larger text" and "Use
-            // standard text" keep their words wherever they are offered, and the largest is a third.
-            foreach (var size in TextSizes.Others(textSize))
-            {
-                var chosen = size;
-                hud.Action(TextSizes.Caption(chosen), () =>
-                {
-                    SetTextSize(chosen);
-                    // The keyboard stays among the sizes: on the first of the two now offered.
-                    hud.FocusWhenWired(TextSizes.Caption(TextSizes.Others(chosen)[0]));
-                });
-            }
-            // How long the ceremony's strip and a witnessed conversation's line stay up (A10).
-            hud.Action(CaptionTiming.Caption(captionTime), () =>
-            {
-                SetCaptionTime(captionTime == CaptionTime.Longer ? CaptionTime.Standard : CaptionTime.Longer);
-                hud.FocusWhenWired(CaptionTiming.Caption(captionTime));
-            });
-            // The first-run tour again, from the house: the tour's own card says it is here.
-            if (CanReplayTour) hud.Action(ReplayTourCaption, ReplayTour);
-            hud.SectionHeading("CEREMONIES");
-            // The key ceremony and the live eviction reveal one name at a time; suspenseful holds a
-            // beat on each, quick keeps them brisk. Either can be sped up or skipped while it plays,
-            // by the keys or the pad's buttons as the device last pressed names them (A4f).
-            hud.Paragraph(InputGlossary.CeremonyPaceLine(ceremonyPace == CeremonyPace.Suspenseful, PressWasPad));
-            hud.Action(ceremonyPace == CeremonyPace.Suspenseful ? QuickCeremoniesCaption : SuspensefulCeremoniesCaption,
-                () => { SetCeremonyPace(ceremonyPace == CeremonyPace.Suspenseful ? CeremonyPace.Quick : CeremonyPace.Suspenseful); Render(); });
-            DisplaySettings();
-            CareerSettings();
-            hud.SectionHeading(ImportHeading);
-            hud.Paragraph(ImportLine);
-            hud.PathInput("Full path to exported JSON", ImportFile);
-            ControlsSettings();
-        }
-
-        /// <summary>
-        /// The panel's words in plain English (the menu review's quick win 13). They spoke of a
-        /// "validated backup", "receipt-free, six-active-cast social snapshots" and a cloud login
-        /// and AI dialogue that "are not configured"; that the game needs no connection is said
-        /// once, by the eyebrow at the top.
-        /// </summary>
-        public const string RecoverBackupCaption = "Recover backup (keeps a copy of this save)";
-        public const string NewSeasonInNewSlotCaption = "New season in a new slot (keeps this season)";
-        public const string AccessibilityLine = "Everything said in the house and at the ceremonies is captioned. Every screen can be used with the keyboard or a controller.";
-        public const string ImportHeading = "IMPORT A WEB SAVE";
-        public const string ImportLine = "Bring in a season saved by the web version of the game. Only simple saves come in: six houseguests still playing, saved between ceremonies, with no ceremony results to carry over. Any other save is set aside unchanged, never cut down to fit.";
-
-        /// <summary>The control that plays the first-run tour again, and the words its card points to.</summary>
-        public const string ReplayTourCaption = "Replay the tour";
-
         /// <summary>
         /// The tour is offered again only from the house's own Settings: from the front door or a
         /// save in recovery there is no house on screen for it to point at, and never while the
@@ -180,6 +90,13 @@ namespace Gamesim.Episode
 
         public void SaveNow()
         {
+            SaveSession();
+            Render();
+        }
+
+        /// <summary>Save now's write, without the drawing: the Saves section's load saves the running season with it first.</summary>
+        private void SaveSession()
+        {
             if (!blockedRecovery && !durableCommitInProgress)
             {
                 // After a failure this is the retry, and it writes exactly the session memory holds. Otherwise
@@ -190,7 +107,6 @@ namespace Gamesim.Episode
                 if (npcSaveSuspended) TryAutosave();
                 else { FlushNpcWholeTicks(); if (!blockedRecovery && !npcSaveSuspended) TryAutosave(); }
             }
-            Render();
         }
 
         private void TryAutosave()
@@ -235,8 +151,10 @@ namespace Gamesim.Episode
             if (player != null) player.SetInputEnabled(false);
             if (cameraRig != null) cameraRig.ControlsEnabled = false;
             bool canContinue = saves != null && (File.Exists(saves.SavePath) || File.Exists(saves.BackupPath));
+            // "Load a season" once any season is saved in the folder (menu slice 4): Settings on Saves.
+            bool anySaved = EpisodeSaveStore.SeasonFiles(saveRoot).Count > 0;
             mainMenu.Show(canContinue, blockedRecovery ? message : null,
-                CloseMainMenu, NewSeason, OpenSettingsFromMenu, QuitGame, CareerLine());
+                CloseMainMenu, NewSeason, OpenSettingsFromMenu, QuitGame, CareerLine(), anySaved ? (Action)OpenSavesFromMenu : null);
             Render();
         }
 
@@ -256,7 +174,19 @@ namespace Gamesim.Episode
             if (mainMenu != null) mainMenu.Hide();
             // Not the pause menu: nothing the player was in is held behind these (A3).
             settingsFromFrontDoor = true;
+            // And their way back is the main menu's (menu slice 4, EpisodeDirector.SettingsFrame.cs).
+            MarkSettingsFromMainMenu();
             OpenSettings();
+        }
+
+        /// <summary>
+        /// The main menu's "Load a season": Settings on Saves, as its Settings row opens them - also in
+        /// blocked recovery, whose frame would otherwise open on Advanced.
+        /// </summary>
+        private void OpenSavesFromMenu()
+        {
+            OpenSettingsFromMenu();
+            if (blockedRecovery) ShowSettingsSection(SettingsSection.Saves);
         }
 
         /// <summary>
@@ -371,8 +301,7 @@ namespace Gamesim.Episode
                 fresh.sessionId = Guid.NewGuid().ToString("N");
                 nextStore.Save(fresh); // Stage and validate on disk before replacing the current in-memory session.
                 MarkSaveFeedback();
-                saves = nextStore; Install(fresh);
-                if (SaveRootOverride == null) { PlayerPrefs.SetString("Gamesim.ActiveSave", Path.GetFileName(saves.SavePath)); PlayerPrefs.Save(); }
+                SwitchToSeason(nextStore, fresh);
                 message = SeasonMessage(fresh, choice);
                 installed = true;
             }
@@ -449,14 +378,25 @@ namespace Gamesim.Episode
                     // As a new season does: the slot being left gets the house's seconds, or refuses once.
                     if (!FlushForLeaving("slot") && !npcSlotRefused) { npcSlotRefused = true; Render(); return; }
                     var importedSlot = new EpisodeSaveStore(Path.Combine(saveRoot,"import-" + Guid.NewGuid().ToString("N") + ".json"));
-                    importedSlot.Save(state); saves = importedSlot; Install(state);
-                    if (SaveRootOverride == null) { PlayerPrefs.SetString("Gamesim.ActiveSave", Path.GetFileName(saves.SavePath)); PlayerPrefs.Save(); }
+                    importedSlot.Save(state); SwitchToSeason(importedSlot, state);
                 }
                 message = result;
             }
             catch (Exception error) when (error is IOException || error is InvalidDataException || error is UnauthorizedAccessException || error is ArgumentException)
             { message = "Import did not change your current slot. " + SaveJson.Explain(error); }
             Render();
+        }
+
+        /// <summary>
+        /// The one switch to another season's save: a new season, an import, or a season loaded from
+        /// the Saves list. The season is installed from <paramref name="store"/>, and the game opens on
+        /// it next time - unless an isolated save root (a test or the verification) is in use, whose
+        /// runs never change the player's own.
+        /// </summary>
+        private void SwitchToSeason(EpisodeSaveStore store, EpisodeState state)
+        {
+            saves = store; Install(state);
+            if (SaveRootOverride == null) { PlayerPrefs.SetString("Gamesim.ActiveSave", Path.GetFileName(saves.SavePath)); PlayerPrefs.Save(); }
         }
 
         private void Install(EpisodeState state)

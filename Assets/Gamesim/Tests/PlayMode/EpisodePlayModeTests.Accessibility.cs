@@ -25,9 +25,6 @@ namespace Gamesim.Tests.PlayMode
     /// </summary>
     public sealed partial class EpisodePlayModeTests
     {
-        private const string LargerTextCaption = "Use larger text";
-        private const string StandardTextCaption = "Use standard text";
-
         [UnityTest]
         public IEnumerator Accessibility_NoCopyIsClippedAtEitherTextSize()
         {
@@ -624,7 +621,9 @@ namespace Gamesim.Tests.PlayMode
                 ("your word", () => { director.ShowNotebookSection(EpisodeDirector.NotebookSection.Word); return director.IsPanelOpen; }),
                 // The episode screen, fitted to what it holds with its way on pinned.
                 ("the episode screen", () => { WarpPlayer(director.StationPosition); return director.TryOpenPhasePanel(); }),
-                ("the settings", () => { director.OpenSettings(); return director.IsPanelOpen; }),
+                // The Settings frame (menu slice 4: the house's door opens the game menu card first), and the card.
+                ("the settings", () => { director.OpenSettingsAt(Gamesim.Presentation.SettingsSection.Saves); return director.IsPanelOpen; }),
+                ("the game menu", () => { director.OpenSettings(); return director.IsGameMenuOpen; }),
                 ("house activities", () => { director.OpenHouseActivities(); return director.IsHouseActivityOpen; }),
                 ("a conversation", () =>
                 {
@@ -701,18 +700,24 @@ namespace Gamesim.Tests.PlayMode
         private IEnumerator ApplyTextSize(bool larger) => ApplyTextSize(larger ? TextSize.Larger : TextSize.Standard);
 
         /// <summary>
-        /// The size chosen as a player chooses it: the settings opened, and the size's own control
-        /// pressed (A8). The settings offer the two sizes not in use, so a size with no control up
-        /// is the one in use already.
+        /// The size chosen as a player chooses it: the settings opened on Accessibility, and the "Text
+        /// size" row stepped left or right until it reads the size (menu slice 4). Where no Settings
+        /// can open, nothing is pressed, as before: the callers assert the size they need.
         /// </summary>
         private IEnumerator ApplyTextSize(TextSize size)
         {
-            director.OpenSettings();
+            director.OpenSettingsAt(Gamesim.Presentation.SettingsSection.Accessibility);
             yield return null; yield return null;
-            var wanted = TextSizes.Caption(size);
-            var toggle = director.GetComponentsInChildren<Button>(true)
-                .FirstOrDefault(button => button.IsActive() && button.name == wanted);
-            if (toggle != null) { toggle.onClick.Invoke(); yield return null; yield return null; }
+            string wanted = SettingRowWords.TextSizeValue(size);
+            for (int press = 0; press < 3; press++)
+            {
+                var row = director.GetComponentsInChildren<SettingRowButton>().LastOrDefault(each => each.name == SettingRowWords.TextSizeRow);
+                if (row == null || ShellValue(row) == wanted) break;
+                // Left or right, as the arrows would: towards the size wanted.
+                int now = SettingRowWords.TextSizeValues.ToList().IndexOf(ShellValue(row));
+                row.Step(SettingRowWords.IndexOf(size) > now ? 1 : -1);
+                yield return null; yield return null;
+            }
             director.ClosePanels();
             yield return null;
         }

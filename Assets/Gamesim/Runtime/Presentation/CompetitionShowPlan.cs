@@ -26,8 +26,10 @@ namespace Gamesim.Presentation
         /// <summary>Whether a competition of this kind is staged as a show.</summary>
         public static bool Shows(string category) => category == EnduranceKind;
 
-        private CompetitionShowPlan(EpisodePhase phase, string category, string playerId, List<string> standings)
+        private CompetitionShowPlan(EpisodePhase phase, string category, string playerId, List<string> standings,
+            CompetitionShowFamily family = CompetitionShowFamily.Hold)
         {
+            Family = family;
             Phase = phase;
             Category = category;
             PlayerId = playerId;
@@ -37,6 +39,9 @@ namespace Gamesim.Presentation
             drops.Reverse();
             DropOrder = drops;
         }
+
+        /// <summary>How the show is staged: a hold at grip rigs (slice 1), or a podium, table or course (slice 3).</summary>
+        public CompetitionShowFamily Family { get; }
 
         /// <summary>The phase the competition was played in (the committed state may have moved on: Part 1 to Part 2).</summary>
         public EpisodePhase Phase { get; }
@@ -76,6 +81,23 @@ namespace Gamesim.Presentation
             return new CompetitionShowPlan(phase, category, committed.playerId, standings);
         }
 
+        /// <summary>
+        /// The show for a competition of the game <paramref name="gameId"/> (null for a season with no
+        /// authored games), staged in the game's family (competition staging, slice 3,
+        /// <see cref="CompetitionShowFamilies"/>); null for a game the show does not know.
+        /// </summary>
+        public static CompetitionShowPlan For(EpisodeState committed, EpisodePhase phase, string category, string gameId)
+        {
+            var family = CompetitionShowFamilies.For(gameId, category);
+            if (family == null) return null;
+            if (family == CompetitionShowFamily.Hold) return For(committed, phase, category);
+            var hold = For(committed, phase, EnduranceKind);
+            return hold == null ? null : new CompetitionShowPlan(phase, category, committed.playerId, hold.Standings.ToList(), family.Value);
+        }
+
+        /// <summary>The timeline of a podium, table or course show for its whole field; null for a hold.</summary>
+        public CompetitionShowTimeline Timeline(bool quick) => CompetitionShowTimeline.For(Family, Standings, quick);
+
         // ------------------------------------------------------------ the beats, in unscaled seconds
 
         /// <summary>
@@ -90,6 +112,65 @@ namespace Gamesim.Presentation
         /// stations; past it the show gives way to the card, so nobody cheers or lets go away from their rig.
         /// </summary>
         public static float PrincipalSeconds(bool quick) => quick ? 7.5f : 11f;
+
+        // ------------------------------------------------------------ the walk out's pace
+
+        /// <summary>The house's walk, metres a second (HouseNpcMotion.DefaultSpeed; the plan names no Unity type).</summary>
+        public const float WalkPace = 2.2f;
+
+        /// <summary>
+        /// The fastest the walk out hurries anybody, metres a second: the player's own run across the
+        /// house (HousePlayerController's run). It carries a 30 m route - the far end of the house to
+        /// the yard's back row - inside the walk out (<see cref="WalkOutSeconds"/>, 7.5 s), and is a
+        /// little over the course's run (3.8 m/s), which covers only a few metres at a time.
+        /// </summary>
+        public const float TopWalkOutPace = 4f;
+
+        /// <summary>At this pace or over, a hurried houseguest takes the run gait.</summary>
+        public const float RunGaitPace = 3f;
+
+        /// <summary>Taken, the run gait is kept until the pace falls under this: no flicker between gaits.</summary>
+        public const float WalkGaitPace = 2.6f;
+
+        /// <summary>The last step to a station, metres: walked, never hurried, so nobody runs on the spot at their station.</summary>
+        public const float LastStepMetres = .5f;
+
+        /// <summary>How often each walker's remaining route is read again and their pace set, seconds.</summary>
+        public const float WalkOutRereadSeconds = .25f;
+
+        /// <summary>How long before the hold's wait is up the walk out means the field to be at its stations.</summary>
+        public static float WalkOutMargin(bool quick) => quick ? 1f : 1.5f;
+
+        /// <summary>
+        /// When, from the show's start, every stationed competitor is meant to stand at their station:
+        /// a little inside the wait for the field (<see cref="AssemblySeconds"/>), so a late start, a
+        /// queue at the yard's door or a detour still has the margin.
+        /// </summary>
+        public static float WalkOutSeconds(bool quick) => AssemblySeconds(quick) - WalkOutMargin(quick);
+
+        /// <summary>
+        /// The pace, metres a second, that brings a walker with <paramref name="remainingMetres"/> of
+        /// route still to go to their station in <paramref name="secondsLeft"/>: never under the house's
+        /// walk and never over <see cref="TopWalkOutPace"/>. A route of unknown length (NaN or infinite)
+        /// or no time left is hurried at the top pace; the last step (<see cref="LastStepMetres"/>) or
+        /// less, a route already walked or a negative length is walked.
+        /// </summary>
+        public static float WalkOutPace(float remainingMetres, float secondsLeft)
+        {
+            if (float.IsNaN(remainingMetres) || float.IsInfinity(remainingMetres)) return TopWalkOutPace;
+            if (remainingMetres <= LastStepMetres) return WalkPace;
+            if (float.IsNaN(secondsLeft) || secondsLeft <= .05f) return TopWalkOutPace;
+            float pace = remainingMetres / secondsLeft;
+            if (pace < WalkPace) return WalkPace;
+            if (pace > TopWalkOutPace) return TopWalkOutPace;
+            return pace;
+        }
+
+        /// <summary>
+        /// Whether a walker at <paramref name="pace"/> runs: from <see cref="RunGaitPace"/> up, and once
+        /// <paramref name="runningNow"/>, until the pace falls under <see cref="WalkGaitPace"/>.
+        /// </summary>
+        public static bool RunsAt(float pace, bool runningNow) => runningNow ? pace >= WalkGaitPace : pace >= RunGaitPace;
 
         /// <summary>Everybody holding on before the first one lets go.</summary>
         public static float OpeningHoldSeconds(bool quick) => quick ? .75f : 1.5f;
@@ -143,7 +224,8 @@ namespace Gamesim.Presentation
         /// The longest a show may run from its start, the walk out included, before it gives way to the
         /// card regardless: the wait for the winner, the whole field's hold, and a second to spare.
         /// </summary>
-        public float HardSeconds(bool quick, bool reduced) => PrincipalSeconds(quick) + CardAt(quick, reduced) + 1f;
+        public float HardSeconds(bool quick, bool reduced) => PrincipalSeconds(quick)
+            + (Family == CompetitionShowFamily.Hold || reduced ? CardAt(quick, reduced) : Timeline(quick).CardAt) + 1f;
 
         /// <summary>
         /// How hard <paramref name="id"/> is working at <paramref name="t"/> seconds into the hold, 0

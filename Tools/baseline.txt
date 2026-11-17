@@ -330,7 +330,18 @@
 # 10141 = 10117 (main 25977d60, with the house talk's manners) + the menu quick wins' 24 (10049 - 10025 on this
 # branch): disjoint cases, so the floor is their sum (the merge of main 25977d60 into the menu quick wins for its
 # landing, 2026-11-16). Counted from the two sides.
-Gamesim.EditModeTests 10141
+# 10059 = 10025 + competition staging slice 3's 34 CompetitionShowFamiliesTests cases (shared with the subset): each
+# game's family (an unknown game keeps its card), the beats telling the committed standings in order, the hard bound
+# for sixteen, and staging that neither writes the season nor draws from it. The offline listers counted 10059 on the
+# slice. No Unity run has observed them yet.
+# 10175 = 10141 (the menu quick wins' landing head e13c428a, with main 25977d60) + the competition staging families'
+# 34 (10059 - 10025 on this branch): disjoint cases, so the floor is their sum (the merge of the menu quick wins'
+# landing head into the staging families for the stacked landing, 2026-11-16). Counted from the two sides.
+# 10181 = 10175 + the walk out's 6 CompetitionShowPlanTests cases (shared with the subset): the walk out ends a
+# little inside the wait for the field (2), its pace never under the walk nor over the top pace, in time whenever
+# the route is within reach, an unknown or spent route hurried and the last step walked, and a run gait without
+# flicker. Counted by the offline listers; no Unity run has observed them yet.
+Gamesim.EditModeTests 10181
 # The UMA-free build. 1215 = 1236, the count after the consolidation's lanes (S2a, S2b, S4a), less the 7
 # farewell probes moved to Gamesim.DiagnosticsPlayModeTests and the 14 farewell readiness tests that now
 # compile only under GAMESIM_UMA (judged on the UMA cast); 1230 = 1215 + S2d's 7, S4b's 2, S4c's 2 and
@@ -542,7 +553,20 @@ Gamesim.EditModeTests 10141
 # 1596 = 1591 + the creator's Settings gear fix's 5 EpisodePlayModeTests.MenuQuickWinsCreator cases (closing Settings
 # with their Close control, Escape and the pad's B, the gear on a creator reached from the main menu, and Settings left
 # for a new season). Counted by the offline listers; no Unity run has observed them yet.
-Gamesim.PlayModeTests 1596
+# 1573 = 1566 + competition staging slice 3's 7 EpisodePlayModeTests.CompetitionStaging_* cases (a podium quiz, a
+# table of dice, a course run, a skip mid-run, reduced motion, sixteen on the course, the same result with shows on
+# and off). The offline listers counted 1573 on the slice. No Unity run has observed them yet.
+# 1598 = 1591 (the menu quick wins' landing head e13c428a, with main 25977d60) + the competition staging families' 7
+# (1573 - 1566 on this branch): disjoint cases, so the floor is their sum (the merge of the menu quick wins' landing
+# head into the staging families for the stacked landing, 2026-11-16). Counted from the two sides.
+# 1600 = 1598 + the walk out's 2 EpisodePlayModeTests.CompetitionWalkOut_* cases (a podium show and an endurance
+# hold with the whole field at its stations inside the wait). Counted by the offline listers; no Unity run has
+# observed them yet.
+# 1605 = 1596 (the menu quick wins' head 9cd0dbc6, with the creator's Settings gear fix and main 25977d60) + the
+# competition staging families' 9 (1600 - 1591 on this branch): disjoint cases, so the floor is their sum (the merge
+# of the menu quick wins' head into the staging families for the stacked landing, 2026-11-16). Counted from the two
+# sides.
+Gamesim.PlayModeTests 1605
 # The UMA build of the same assembly, read by a plan built without -WithoutUma. 1281 = the 1241 above + the
 # 40 tests that compile only under GAMESIM_UMA, as run at r1 (2026-10-16): in EpisodePlayModeTests,
 # GroundedFarewell 11, Creator 9, HouseLife 8, Emotes 3, OpeningCaptures 2, and one each in CreatorEntry,
@@ -684,7 +708,18 @@ Gamesim.PlayModeTests 1596
 # disjoint cases, so the floor is their sum (the merge of main 25977d60 into the menu quick wins for its landing,
 # 2026-11-16). Counted from the two sides.
 # 1641 = 1636 + the creator's Settings gear fix's same 5 cases (see PlayModeTests above).
-Gamesim.PlayModeTests.UmaBuild 1641
+# 1618 = 1611 + competition staging slice 3's same 7 cases (see PlayModeTests above). The offline listers counted 1618
+# on the slice. No Unity run has observed them yet.
+# 1643 = 1636 (the menu quick wins' landing head e13c428a, with main 25977d60) + the competition staging families' 7
+# (1618 - 1611 on this branch): disjoint cases, so the floor is their sum (the merge of the menu quick wins' landing
+# head into the staging families for the stacked landing, 2026-11-16). Counted from the two sides.
+# 1645 = 1643 + the walk out's same 2 cases (see PlayModeTests above). Counted by the offline listers; no Unity run
+# has observed them yet.
+# 1650 = 1641 (the menu quick wins' head 9cd0dbc6, with the creator's Settings gear fix and main 25977d60) + the
+# competition staging families' 9 (1645 - 1636 on this branch): disjoint cases, so the floor is their sum (the merge
+# of the menu quick wins' head into the staging families for the stacked landing, 2026-11-16). Counted from the two
+# sides.
+Gamesim.PlayModeTests.UmaBuild 1650
 # The UMA bodies: runs only where the GAMESIM_UMA define is set (the working tree and the D: copy).
 # 82 = the 89 run on 2026-10-15, less the 7 farewell probes moved to Gamesim.Uma.DiagnosticsPlayModeTests;
 # 85 = 82 + the 3 farewell readiness decision tests (UmaFarewellReadinessDecisionPlayModeTests, 2026-10-16);
@@ -935,4 +970,10 @@ Gamesim.Uma.DiagnosticsPlayModeTests 10
 # 16942 = 16937 (main 25977d60, with the house talk's manners) + the menu quick wins' 5 (16852 - 16847 on this
 # branch): disjoint cases, so the floor is their sum (the merge of main 25977d60 into the menu quick wins for its
 # landing, 2026-11-16). Counted from the two sides.
-Gamesim.SimulationTests 16942
+# 16881 = 16847 + competition staging slice 3's 34 CompetitionShowFamiliesTests cases (the same 34 the EditMode floor
+# counts): dotnet test Tools/SimulationTests ran exactly 16881 of 16881 on the slice at fbb01817 (2026-11-16).
+# 16976 = 16942 (the menu quick wins' landing head e13c428a, with main 25977d60) + the competition staging families'
+# 34 (16881 - 16847 on this branch): disjoint cases, so the floor is their sum (the merge of the menu quick wins'
+# landing head into the staging families for the stacked landing, 2026-11-16). Counted from the two sides.
+# 16982 = 16976 + the walk out's 6 CompetitionShowPlanTests cases (the same 6 the EditMode floor counts).
+Gamesim.SimulationTests 16982

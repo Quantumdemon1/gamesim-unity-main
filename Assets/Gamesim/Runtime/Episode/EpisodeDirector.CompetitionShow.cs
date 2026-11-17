@@ -63,9 +63,15 @@ namespace Gamesim.Episode
             public bool Reduced { get; internal set; }
             /// <summary>How many of the yard's renderers it put away while it ran.</summary>
             public int PutAway { get; internal set; }
+            /// <summary>Who the walk out hurried past the house's walk to reach their station in time, in the order they were first hurried.</summary>
+            public IReadOnlyList<string> Hurried { get; internal set; }
+            /// <summary>Whom the walk out put in the run gait at some point, in the order they first took it.</summary>
+            public IReadOnlyList<string> RanOut { get; internal set; }
+            /// <summary>Seconds from the show's start to its hold - the field assembled, or the wait for it up; NaN when no hold began.</summary>
+            public float AssembledSeconds { get; internal set; } = float.NaN;
         }
 
-        private sealed class CompetitionShowRun
+        private sealed partial class CompetitionShowRun
         {
             public CompetitionShowPlan Plan;
             public CompetitionDefinition Definition;
@@ -87,6 +93,13 @@ namespace Gamesim.Episode
             public float CheerOffset = float.NaN;
             public int PutAway;
             public bool HoldBegun => HoldFrom >= 0f;
+            /// <summary>The walk out: who was ever hurried and who ever ran, in order.</summary>
+            public readonly List<string> Hurried = new List<string>(), RanOut = new List<string>();
+            /// <summary>Whose body the walk out has in the run gait now.</summary>
+            public readonly Dictionary<string, CharacterPresentation> Running = new Dictionary<string, CharacterPresentation>();
+            /// <summary>When the walk out next reads the walkers' routes; whether it is over.</summary>
+            public float NextPaceAt;
+            public bool WalkOutOver;
         }
 
         private CompetitionShowRun competitionShow;
@@ -145,7 +158,8 @@ namespace Gamesim.Episode
         {
             if (!CompetitionShows || competitionLiveCommit || (Application.isBatchMode && !CompetitionShowsInBatchRuns)
                 || before == null || committed == null || playCard == null) return false;
-            var plan = CompetitionShowPlan.For(committed, phase, category);
+            // By game, in the game's family (competition staging, slice 3): a game the show does not know commits to its card at once.
+            var plan = CompetitionShowPlan.For(committed, phase, category, CompetitionDefinitions.For(before)?.Id);
             if (plan == null) return false;
             string declined = CompetitionShowDeclined();
             if (declined != null) { Debug.Log("Competition show declined: " + declined); return false; }
@@ -187,6 +201,8 @@ namespace Gamesim.Episode
             HoldHudForReveal(redraw: true);
             if (player != null) player.SetInputEnabled(false);
             FrameCompetitionShow(run);
+            // The walk out keeps pace with the wait from its first step.
+            PaceCompetitionShowWalkOut(run, now);
             return true;
         }
 
@@ -243,6 +259,7 @@ namespace Gamesim.Episode
                 // there, provided the winner and a stationed player are; past the wait for those two the card
                 // plays without a show, so nobody lets go or cheers away from their rig.
                 float waited = now - run.StartedAt;
+                PaceCompetitionShowWalkOut(run, now);
                 if (!CompetitionShowFieldArrived(run))
                 {
                     if (waited < CompetitionShowPlan.AssemblySeconds(run.Quick)) return;
@@ -262,6 +279,8 @@ namespace Gamesim.Episode
                 if (t >= CompetitionShowPlan.CardAt(drops, run.Quick, true)) FinishCompetitionShow();
                 return;
             }
+            // A podium, table or course show plays its own beats (EpisodeDirector.CompetitionShowFamilies.cs).
+            if (plan.Family != CompetitionShowFamily.Hold) { TickCompetitionShowFamily(run, now, t); return; }
             while (run.NextDrop < drops && t >= CompetitionShowPlan.DropAt(run.NextDrop, drops, run.Quick))
             {
                 DropCompetitionShowEntrant(run, run.DropOrder[run.NextDrop], run.NextDrop == drops - 1 && run.DropOrder[run.NextDrop] == plan.Standings[1]);
@@ -289,6 +308,8 @@ namespace Gamesim.Episode
         private void BeginCompetitionShowHold(CompetitionShowRun run, float now)
         {
             run.HoldFrom = now;
+            // The walk out is over: everybody walks at the house's pace again, a latecomer to the side included.
+            EndCompetitionShowWalkOut(run);
             var holding = new HashSet<string>();
             foreach (var id in run.Stationed)
             {
@@ -321,9 +342,92 @@ namespace Gamesim.Episode
             return !run.Stationed.Contains(run.Plan.PlayerId) || CompetitionShowArrived(run, run.Plan.PlayerId);
         }
 
+        // ------------------------------------------------------------ the walk out keeps pace with the wait
+
+        /// <summary>
+        /// The walk out, a few times a second until the hold: every stationed houseguest not yet at
+        /// their station is paced to reach it by the walk out's time, a little inside the wait for the
+        /// field (<see cref="CompetitionShowPlan.WalkOutSeconds"/>, <see cref="CompetitionShowPlan.WalkOutPace"/>),
+        /// from the route they still have to go - so a late start, a queue at the yard's door or a
+        /// detour is caught up - and takes the run gait when that pace is a run. Never under the
+        /// house's walk and never over the top pace; whoever cannot make it even so is left out at the
+        /// hold, as before. The houseguests of a fresh season stand all over the house when a
+        /// competition is decided, and at the house's walk three of five needed 12.5 to 13 s to reach
+        /// the yard's stations, past both the 9 s wait for the field and the 11 s wait for the winner.
+        ///
+        /// <para>The player's own walk to their station keeps the gait its route deserves - a run past
+        /// 8 m - which their controller owns (<see cref="HousePlayerController.TryBeginActivityMove"/>);
+        /// a pace written over it would be taken for a test's and conceded. Reduced motion paces the
+        /// same way: this is movement, and the body's run gait is not an effect reduced motion holds back.</para>
+        /// </summary>
+        private void PaceCompetitionShowWalkOut(CompetitionShowRun run, float now)
+        {
+            if (run == null || run.WalkOutOver || run.HoldBegun || npcMeetings == null) return;
+            // A runner who has arrived stops running the frame they arrive, not at the next reading.
+            foreach (var id in run.Running.Keys.ToArray())
+                if (npcMeetings.CompetitionActorArrived(id)) { npcMeetings.PaceCompetitionActor(id, 0f); PutBackCompetitionShowWalker(run, id); }
+            if (now < run.NextPaceAt) return;
+            run.NextPaceAt = now + CompetitionShowPlan.WalkOutRereadSeconds;
+            float secondsLeft = run.StartedAt + CompetitionShowPlan.WalkOutSeconds(run.Quick) - now;
+            foreach (var id in run.Stationed)
+            {
+                if (id == run.Plan.PlayerId) continue;
+                float pace = CompetitionShowPlan.WalkPace;
+                if (!npcMeetings.CompetitionActorArrived(id))
+                {
+                    float remaining = npcMeetings.CompetitionActorRemaining(id);
+                    if (remaining < 0f) { PutBackCompetitionShowWalker(run, id); continue; }
+                    pace = CompetitionShowPlan.WalkOutPace(remaining, secondsLeft);
+                }
+                bool hurried = pace > CompetitionShowPlan.WalkPace + .01f;
+                // The house's own pace again on arrival, and for anybody the pace no longer hurries.
+                if (!npcMeetings.PaceCompetitionActor(id, hurried ? pace : 0f)) { PutBackCompetitionShowWalker(run, id); continue; }
+                if (hurried && !run.Hurried.Contains(id)) run.Hurried.Add(id);
+                bool running = run.Running.ContainsKey(id);
+                if (CompetitionShowPlan.RunsAt(pace, running) == running) continue;
+                if (running) { PutBackCompetitionShowWalker(run, id); continue; }
+                var visual = CompetitionShowVisualOf(id);
+                if (visual == null) continue;
+                visual.SetRunning(true);
+                run.Running[id] = visual;
+                if (!run.RanOut.Contains(id)) run.RanOut.Add(id);
+            }
+        }
+
+        /// <summary>One walker out of the walk out's run gait (their pace is the caller's, or went with their route).</summary>
+        private static void PutBackCompetitionShowWalker(CompetitionShowRun run, string id)
+        {
+            if (!run.Running.TryGetValue(id, out var visual)) return;
+            run.Running.Remove(id);
+            if (visual != null) visual.SetRunning(false);
+        }
+
+        /// <summary>
+        /// The walk out is over - the hold began, or the show ended by any path: everybody it hurried
+        /// walks at the house's pace again and nobody keeps its run gait. The course's own legs, later,
+        /// set their own run.
+        /// </summary>
+        private void EndCompetitionShowWalkOut(CompetitionShowRun run)
+        {
+            if (run == null || run.WalkOutOver) return;
+            run.WalkOutOver = true;
+            // A stage already ended released its routes, and with them the pace (HouseNpcMotion.Release).
+            if (npcMeetings != null)
+                foreach (var id in run.Hurried) npcMeetings.PaceCompetitionActor(id, 0f);
+            foreach (var id in run.Running.Keys.ToArray()) PutBackCompetitionShowWalker(run, id);
+        }
+
+        /// <summary>A stationed houseguest's body, or null.</summary>
+        private CharacterPresentation CompetitionShowVisualOf(string id)
+        {
+            if (competitionBodies.TryGetValue(id, out var body) && body.visual != null) return body.visual;
+            var root = BodyFor(id);
+            return root != null ? root.GetComponent<CharacterPresentation>() : null;
+        }
+
         /// <summary>Whether the show has let this competitor go: dropped, or the winner once cheering.</summary>
         private bool CompetitionShowReleased(string id) => competitionShow != null && id != null
-            && (competitionShow.Out.Contains(id) || competitionShow.Cheered && id == competitionShow.Plan.WinnerId);
+            && (competitionShow.Out.Contains(id) || competitionShow.Cheered && id == competitionShow.Plan.WinnerId || CompetitionShowAway(id));
 
         /// <summary>Whether this competitor holds on in the running show now.</summary>
         private bool CompetitionShowGripping(string id) => competitionShow != null && competitionShow.HoldBegun && !CompetitionShowReleased(id);
@@ -428,6 +532,7 @@ namespace Gamesim.Episode
             var visual = body != null ? body.visual : null;
             if (visual == null || competitionShow == null) return;
             visual.SetTalking(false); visual.SetArguing(false); visual.SetSeated(false);
+            if (CompetitionShowAway(id)) { visual.SetFacing(float.NaN); return; }
             if (id == competitionShow.Plan.WinnerId)
             {
                 if (competitionArenaActors.TryGetValue(id, out var anchor) && anchor != null) visual.SetFacing(anchor.Facing);
@@ -443,6 +548,7 @@ namespace Gamesim.Episode
             if (player == null || competitionShow == null) return;
             var visual = player.GetComponent<CharacterPresentation>();
             if (visual == null) return;
+            if (CompetitionShowAway(competitionShow.Plan.PlayerId)) { visual.SetFacing(float.NaN); return; }
             if (competitionShow.Plan.WinnerId == competitionShow.Plan.PlayerId) { visual.SetFacing(competitionPlayerStationFacing); return; }
             bool there = player.ActivityHasArrived(competitionPlayerOwner);
             visual.SetFacing(there && competitionShow.Cheered ? CompetitionShowFacingWinner(player.transform.position) : float.NaN);
@@ -473,11 +579,15 @@ namespace Gamesim.Episode
             var run = competitionShow;
             if (run == null) return;
             competitionShow = null;
+            EndCompetitionShowWalkOut(run);
+            EndCompetitionShowFamily(run);
             LastCompetitionShow = new CompetitionShowRecord
             {
                 Standings = run.Plan.Standings.ToArray(), Stationed = run.Stationed.ToArray(), Drops = run.Dropped.ToArray(), LeftOut = run.LeftOut.ToArray(),
                 Cheered = run.Cheered ? run.Plan.WinnerId : null, CheerOffset = run.CheerOffset, CardPlayed = run.CardPlayed,
                 Skipped = run.Skipped, Reduced = run.Reduced, PutAway = run.PutAway,
+                Hurried = run.Hurried.ToArray(), RanOut = run.RanOut.ToArray(),
+                AssembledSeconds = run.HoldBegun ? run.HoldFrom - run.StartedAt : float.NaN,
             };
             if (skipChip != null) skipChip.Show(false);
             if (!run.CardPlayed)

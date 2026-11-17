@@ -204,6 +204,33 @@ namespace Gamesim.House
             }
         }
 
+        /// <summary>
+        /// How far this body still has to go on the route it holds, in metres, or -1 when it holds
+        /// none. The agent's own remaining distance where it reports one; where it reports none - the
+        /// agent gives Infinity for a route of many corners - the length along the path's corners
+        /// from where the body stands; for a path still pending, the straight line to the destination.
+        /// Never under the straight line, which no route is shorter than.
+        /// </summary>
+        public float RemainingRouteMetres
+        {
+            get
+            {
+                if (!IsBound || leaseId == null || ownedAgent == null) return -1f;
+                var here = transform.position;
+                float straight = Vector3.Distance(here, destination);
+                if (ownedAgent.pathPending || !ownedAgent.hasPath) return straight;
+                float known = ownedAgent.remainingDistance;
+                if (!HouseRoomQuery.Finite(known) || known < 0f)
+                {
+                    var corners = ownedAgent.path.corners;
+                    if (corners.Length < 2) return straight;
+                    known = Vector3.Distance(here, corners[1]);
+                    for (int i = 2; i < corners.Length; i++) known += Vector3.Distance(corners[i - 1], corners[i]);
+                }
+                return known > straight ? known : straight;
+            }
+        }
+
         private bool parked;
         private ObstacleAvoidanceType unparkedAvoidance = ObstacleAvoidanceType.MedQualityObstacleAvoidance;
         /// <summary>A parked agent's radius: a point in the crowd, not a body.</summary>

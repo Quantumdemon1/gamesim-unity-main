@@ -284,6 +284,8 @@ namespace Gamesim.Episode
         {
             if (durableCommitInProgress) return;
             if (castSelect == null) { StartSeason(null); return; }
+            // Settings the creator's gear opened no longer lead back to it (EpisodeDirector.CreatorSettings.cs).
+            ForgetReturnToCreator();
             // The cast screen draws below the menu, so the menu has to step aside rather than sit on
             // top of it — and backing out has to land wherever the player came from, which is the
             // menu when they arrived through it and the settings panel when they did not.

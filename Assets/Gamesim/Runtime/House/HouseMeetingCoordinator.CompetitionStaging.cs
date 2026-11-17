@@ -85,6 +85,37 @@ namespace Gamesim.House
         }
 
         /// <summary>
+        /// How far this staged houseguest's route to their stage place still runs, in metres
+        /// (<see cref="HouseNpcMotion.RemainingRouteMetres"/>), or -1 when they hold no stage route.
+        /// </summary>
+        public float CompetitionActorRemaining(string id)
+        {
+            foreach(var lease in competitionLeases)
+                if(lease.actor.id==id)
+                    return lease.actor.motion!=null && lease.actor.motion.LeaseId==lease.token ? lease.actor.motion.RemainingRouteMetres : -1f;
+            return -1f;
+        }
+
+        /// <summary>
+        /// Walks a staged houseguest's route at another pace, metres a second, or at the house's own
+        /// again for zero or less (<see cref="HouseNpcMotion.SetSpeed"/>): a show's walk out keeping
+        /// pace with its wait. Only while the stage's own route is theirs; releasing it, as every end
+        /// of the stage and every move to another place does, puts the house's pace back. False when
+        /// they hold no stage route.
+        /// </summary>
+        public bool PaceCompetitionActor(string id,float metresPerSecond)
+        {
+            foreach(var lease in competitionLeases)
+                if(lease.actor.id==id)
+                {
+                    if(lease.actor.motion==null || lease.actor.motion.LeaseId!=lease.token)return false;
+                    lease.actor.motion.SetSpeed(metresPerSecond);
+                    return true;
+                }
+            return false;
+        }
+
+        /// <summary>
         /// Sends one staged houseguest on to another stage place - a show's dropped competitor to
         /// the side of the yard - under a new token, keeping them in the stage. When no route
         /// reaches the new place they are kept where they stand under a new token at their own

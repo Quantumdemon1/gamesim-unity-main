@@ -183,6 +183,16 @@ namespace Gamesim.Simulation
             return result;
         }
 
+        /// <summary>A Save plea to a holder whose offer the player took (R8): the offer was the plea.</summary>
+        public const string HolderWordRefusal = "You already have their word.";
+
+        /// <summary>A Save plea to a holder whose offer still waits on the player (R8): it is answered first.</summary>
+        public const string AnswerTheOfferRefusal = "Answer their offer first.";
+
+        /// <summary>This week's offer from this veto holder to the player (R8, <see cref="NpcDeals.OfferTheVeto"/>), answered or not, or null.</summary>
+        public static DealState HolderOfferThisWeek(EpisodeState s, string holderId) =>
+            s?.deals?.FirstOrDefault(d => RoleOffers.IsHolderOffer(s, d) && d.proposerId == holderId);
+
         /// <summary>
         /// Whether the player can put this plea to this houseguest right now.
         ///
@@ -225,6 +235,13 @@ namespace Gamesim.Simulation
                 case LobbyAsk.Save:
                     if (naming || deciderId != s.vetoHolderId) return Refuse(out reason, "Only the veto holder decides whether to use it.");
                     if (subjectId == null || !s.nominees.Contains(subjectId)) return Refuse(out reason, "Name somebody on the block.");
+                    // The holder's offer and a plea substitute for each other (ROLE-MOMENTS-PLAN R8, §3.4b): taken, the offer
+                    // was the player's plea to this holder; waiting, it is answered first. Turned down or lapsed, the seat is open.
+                    if (EpisodeEngine.HolderOfferOn(s) && HolderOfferThisWeek(s, deciderId) is DealState offer)
+                    {
+                        if (offer.status == DealStatus.Proposed) return Refuse(out reason, AnswerTheOfferRefusal);
+                        if (DealStatus.Binds(offer.status)) return Refuse(out reason, HolderWordRefusal);
+                    }
                     return true;
                 case LobbyAsk.Keep:
                     if (naming || deciderId != s.vetoHolderId) return Refuse(out reason, "Only the veto holder decides whether to use it.");

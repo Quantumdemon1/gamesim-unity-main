@@ -87,6 +87,16 @@ namespace Gamesim.Simulation
         /// <summary>Whether a deal's id is a keep-the-block ask's (<see cref="KeepTheBlockPrefix"/>).</summary>
         public static bool IsKeepTheBlockId(string id) => id != null && id.StartsWith(KeepTheBlockPrefix, StringComparison.Ordinal);
 
+        /// <summary>
+        /// How the id of a veto holder's offer to the player begins (<see cref="OfferTheVeto"/>, ROLE-MOMENTS-PLAN R8): a
+        /// question put to the player, like the three above, and the holder's offer's own - validation refuses one in a
+        /// season without it.
+        /// </summary>
+        public const string HolderOfferPrefix = "deal-save-";
+
+        /// <summary>Whether a deal's id is a veto holder's offer's (<see cref="HolderOfferPrefix"/>).</summary>
+        public static bool IsHolderOfferId(string id) => id != null && id.StartsWith(HolderOfferPrefix, StringComparison.Ordinal);
+
         // ---------------------------------------------------------------- reading the room
 
         /// <summary>
@@ -471,6 +481,66 @@ namespace Gamesim.Simulation
                 hoh.name + " put a " + DealKind.Title(DealKind.VetoHold).ToLowerInvariant() + " to you.");
             EpisodeEngine.Log(state, "deal", hoh.name + " is Head of Household and wants your word that the nominations stay as they are.",
                 state.playerId, hoh.id);
+        }
+
+        /// <summary>
+        /// A houseguest who holds the veto offers to use it on the player, for a price (ROLE-MOMENTS-PLAN R8, §3.4b): "I'll
+        /// use it on you, for a price", filed right after the asks the player could answer as holder (<see cref="AskForTheVeto"/>,
+        /// <see cref="AskToKeepTheBlock"/>), which never meet it - they need the player to hold the veto, and this needs a
+        /// houseguest to.
+        ///
+        /// <para>The holder offers when every one of these holds: the holder's offer is on (<see cref="EpisodeEngine.HolderOfferOn"/>);
+        /// the holder is a houseguest in the game, neither on the block nor Head of Household; the veto is undecided and can be
+        /// used; the player is in the game and on the block; the holder reads the player warmly enough to bargain at all
+        /// (<see cref="DealingFloor"/>, on the adjusted warmth every other ask reads); no word on the veto binds the two of them
+        /// already; the player holds no favour over the holder - Call in the Favour already asks for the veto there; the player
+        /// has put no Save plea to them this week - the window after the veto competition, once the holder is known, has the
+        /// seat for one, and a plea made there was the player's ask; no story
+        /// refuses the save (a nemesis, <see cref="StoryConsumers.WillNotSave"/>; a cold partner); a price fits
+        /// (<see cref="Negotiation.HolderOfferPrice"/>); and with the word's own pull the player is the nominee the holder would
+        /// save (<see cref="EpisodeEngine.SavesWithTheWord"/>). Whether they would have saved the player anyway does not matter,
+        /// so an offer never says "they would not save you otherwise", and no offer proves nothing in particular. At most one a
+        /// week, and only with room in the season for the offer and its price (<see cref="DealCeiling"/>).</para>
+        ///
+        /// <para>The row is the offer the player answers: a veto commitment proposed by the holder to the player, binding this
+        /// week, Critical at stake (<see cref="DealKind.DefaultTrust"/>). Its price is the player's to pay, struck with the yes.
+        /// Roll-free, like the rest of this file: which offers arrive is a function of the state.</para>
+        /// </summary>
+        public static void OfferTheVeto(EpisodeState state)
+        {
+            if (!EpisodeEngine.HolderOfferOn(state)) return;
+            var holder = state.Find(state.vetoHolderId);
+            if (holder == null || holder.isPlayer || holder.status != ContestantStatus.Active) return;
+            if (state.nominees.Contains(holder.id) || holder.id == state.hohId) return;
+            if (state.vetoResolved || !StrategyRules.VetoCanBeUsed(state)) return;
+            if (state.Find(state.playerId)?.status != ContestantStatus.Active || !state.nominees.Contains(state.playerId)) return;
+            if (Adjusted(state, holder.id, state.playerId) < DealingFloor) return;
+            if (Negotiation.Binding(state, holder.id, state.playerId, DealKind.VetoUse, null)) return;
+            if (Hooks.Has(state, state.playerId, holder.id)) return;
+            // A Save plea already put to them this week - in the competition's window, once they hold it, before the meeting -
+            // was the player's ask: the plea and the offer substitute for each other, so the offer never follows one.
+            if (state.lobbies.Any(l => l.week == state.week && l.deciderId == holder.id && l.ask == LobbyAsk.Save)) return;
+            if (StoryConsumers.WillNotSave(state, holder.id, state.playerId) || EpisodeEngine.ColdPartnerLeavesThemUp(state, holder.id, state.playerId)) return;
+            // At most one a week: any of this week's, answered or not, counts.
+            if (state.deals.Any(d => IsHolderOfferId(d.id) && d.week == state.week)) return;
+            // Room for the offer and the price its yes strikes.
+            if (UnifiedVoteStore.DealCount(state) + 2 > DealCeiling) return;
+            if (Negotiation.HolderOfferPrice(state, holder.id) == null) return;
+            if (!EpisodeEngine.SavesWithTheWord(state, holder.id, state.playerId)) return;
+            state.deals.Add(new DealState
+            {
+                id = HolderOfferPrefix + state.nextSequence,
+                type = DealKind.VetoUse,
+                proposerId = holder.id,
+                recipientId = state.playerId,
+                status = DealStatus.Proposed,
+                week = state.week,
+                expiresWeek = state.week,
+                trustImpact = DealKind.DefaultTrust(DealKind.VetoUse),
+            });
+            RelationshipLedger.Record(state, holder.id, state.playerId, "deal_proposed", 0,
+                holder.name + " put a " + DealKind.Title(DealKind.VetoUse).ToLowerInvariant() + " to you.");
+            EpisodeEngine.Log(state, "deal", holder.name + " holds the veto and will use it on you, for a price.", state.playerId, holder.id);
         }
 
         /// <summary>

@@ -111,13 +111,13 @@ namespace Gamesim.Simulation
             && (deal.status == DealStatus.Active || deal.status == DealStatus.Accepted || deal.status == DealStatus.Fulfilled || deal.status == DealStatus.Broken);
 
         /// <summary>
-        /// A question a houseguest put to the player - an offer, a nominee's veto ask, or the Head of Household's ask to keep
-        /// the block (R4) - which only the player's yes makes bind.
+        /// A question a houseguest put to the player - an offer, a nominee's veto ask, the Head of Household's ask to keep
+        /// the block (R4), or a veto holder's offer (R8) - which only the player's yes makes bind.
         /// </summary>
         private static bool PutToThePlayer(EpisodeState s, DealState deal) =>
             deal != null && deal.id != null && deal.recipientId == s.playerId
             && (deal.id.StartsWith(NpcDeals.OfferPrefix, StringComparison.Ordinal) || deal.id.StartsWith(NpcDeals.VetoAskPrefix, StringComparison.Ordinal)
-                || NpcDeals.IsKeepTheBlockId(deal.id));
+                || NpcDeals.IsKeepTheBlockId(deal.id) || NpcDeals.IsHolderOfferId(deal.id));
 
         /// <summary>The other party to a deal, from one party's point of view.</summary>
         public static string Partner(DealState deal, string whoId) =>

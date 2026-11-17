@@ -151,6 +151,34 @@ namespace Gamesim.Simulation
         }
 
         /// <summary>
+        /// The price the player pays for a veto holder's word (ROLE-MOMENTS-PLAN R8, §3.4b), struck with their yes to the
+        /// holder's offer (<see cref="Negotiation.HolderOfferPrice"/>): a real deal from the player to the holder, standing at
+        /// once, the offer and the price naming each other - a voting bloc at this week's vote, or a final two. Owed while
+        /// the holder's word stands; void if the holder breaks it (<see cref="VoidThePrice"/>), and owed as struck if they
+        /// keep it. A chance taken (C1). In mode 2 a vote price is the canonical row reserved before the yes, admitted again
+        /// as it is struck, under its own origin (<see cref="UnifiedVoteFamilyValidation.HolderOfferPrice"/>); a final two is
+        /// a plain deal in every mode.
+        /// </summary>
+        private static void StrikeTheHolderOfferPrice(EpisodeState s, DealState offer)
+        {
+            var price = Negotiation.HolderOfferPrice(s, offer.proposerId);
+            Require(price != null, Negotiation.HolderPriceGoneRefusal);
+            string id = Negotiation.PricePrefix + s.nextSequence;
+            var deal = Negotiation.DraftPrice(s, price, offer.id, id);
+            if (UnifiedVoteStore.On(s) && UnifiedVoteStore.IsVote(deal.type))
+                Require(UnifiedVoteStore.TryInstallHolderOfferPrice(s, offer, deal, out string priceError), priceError);
+            else
+            {
+                offer.linkedDealId = id;
+                s.deals.Add(deal);
+            }
+            Opportunity(s, deal.id, OpportunityKinds.Deal, deal.week).response = OpportunityResponse.Taken;
+            Remember(s, offer.proposerId, s.playerId, "They owe me " + (price.kind == DealKind.FinalTwo ? "a final two" : "their vote beside mine this week")
+                + " for my word on the veto, from week " + s.week + ".", true);
+            Log(s, "deal", Negotiation.HolderPriceStruckLine(s, price), s.playerId, offer.proposerId);
+        }
+
+        /// <summary>
         /// A deal broken, under the commitment rules: the price paid for it is void when the one it was
         /// owed to broke it (C7) - the veto the player did not use on the nominee who paid for it, the
         /// pact a houseguest broke after naming their price. The price lapses - nobody broke it, so it

@@ -328,6 +328,12 @@ namespace Gamesim.Simulation
             // week they did not play in.
             if (s.deals.Any(d => (DealKind.RolesOnly(d.type) || NpcDeals.IsKeepTheBlockId(d.id)) && !EpisodeEngine.RolesOnIn(s, d.week)))
                 return Fail(out error, "A season without the role moments has none of their records.");
+            // Nor a veto holder's offer (R8), by its id, from a week the holder's offer did not play in; and the offer is what
+            // the holder files - a veto commitment from a houseguest to the player.
+            if (s.deals.Any(d => NpcDeals.IsHolderOfferId(d.id) && (!EpisodeEngine.HolderOfferOnIn(s, d.week)
+                    || d.type != DealKind.VetoUse || d.recipientId != s.playerId || d.proposerId == s.playerId
+                    || d.trustImpact != DealKind.DefaultTrust(DealKind.VetoUse))))
+                return Fail(out error, "A season without the holder's offer has none of its records.");
             if (s.dealRulesStartWeek < 1 || s.dealRulesStartWeek > Math.Min(101, s.week + 1))
                 return Fail(out error, "A deal rules boundary cannot be further off than next week.");
             // Bought actions are bounded like everything else a player can accumulate: nothing

@@ -2,7 +2,7 @@
 
 Design proposal v2, 2026-10-22. This version answers the feasibility and experience reviews; Appendix A lists what changed and what was rejected.
 
-**Approved by the owner, 2026-10-22.** Asked how to proceed with the fifteen decisions in §6.3, the owner chose "Adopt all, start building": every recommended answer stands as written. Building starts from main after PR #28's merge (eb092c67), on the frozen schema 29. Slices R0 to R6 land one at a time, each built, run in full on the suites it touches, independently reviewed, committed and pushed before the next (handoffs/OWNER-DECISIONS-2026-10-22.md §3). On 2026-10-23 the owner allowed stacked qualification: a full set on the newest committed head qualifies every step beneath it, with at most three steps unqualified at once (same file, §3's amendment). Enrolment in shipped seasons (R7) waits for the B9 balance work, and the holder's offer (R8) for B9 and a second sign-off, as §6 says.
+**Approved by the owner, 2026-10-22.** Asked how to proceed with the fifteen decisions in §6.3, the owner chose "Adopt all, start building": every recommended answer stands as written. Building starts from main after PR #28's merge (eb092c67), on the frozen schema 29. Slices R0 to R6 land one at a time, each built, run in full on the suites it touches, independently reviewed, committed and pushed before the next (handoffs/OWNER-DECISIONS-2026-10-22.md §3). On 2026-10-23 the owner allowed stacked qualification: a full set on the newest committed head qualifies every step beneath it, with at most three steps unqualified at once (same file, §3's amendment). Enrolment in shipped seasons (R7) waits for the B9 balance work, and the holder's offer (R8) for B9 and a second sign-off, as §6 says. *Status, 2026-11-17: R7 is enrolled; R8 is built switched off at story rules 15 and is enrolled after plan 32's house talk (§6.5).*
 
 **Evidence base**
 - Unity: D:/GamesimConsolidation at 6909f2bc, branch pc/v2-lifecycle-20261022. Code paths are relative to `Assets/Gamesim/`; story code is under `Simulation/Story/`. Documents at the repository root are named bare (`BALANCE_BASELINE.md`). Tests were read at git HEAD, because another lane is editing `Tests/EditMode`.
@@ -382,7 +382,7 @@ The owner asked for this moment, and it is the screenshot's mirror image. It is 
 
 | | Spec |
 |---|---|
-| **Fires** | Veto→VetoMeeting, in a new `NpcDeals.OfferTheVeto`, after `AskForTheVeto`. Roll-free. Roles only, once R8 ships. |
+| **Fires** | Veto→VetoMeeting, in a new `NpcDeals.OfferTheVeto`, after `AskForTheVeto`. Roll-free. Roles only, once R8 ships. *As built (§6.5): at story rules 15, `StoryRules.HolderOffer`, after R4's `AskToKeepTheBlock` too.* |
 | **Who** | The veto holder, when all of these hold: **(1)** they are an NPC, neither nominated nor the HoH; **(2)** the veto can be used; **(3)** the player is on the block; **(4)** adjusted warmth (holder→player) ≥ 10; **(5)** the player has made no Save plea to them this week; **(6)** no veto word binds the two of them; **(7)** the player holds no favour over them, since Call in the Favour already covers that case (Simulation/Story/StoryCatalog.BondsAndSecrets.cs:524-526); **(8)** neither `StoryConsumers.WillNotSave` nor `ColdPartnerLeavesThemUp` applies (Simulation/EpisodeEngine.cs:844-845,871-877); **(9)** a price fits; **(10)** with the commitment's +40 (Simulation/StrategyRules.cs:55,473), the player would be the nominee the holder saves: `SaveWeight` + 40 passes `VetoLine` and tops the other nominee (Simulation/EpisodeEngine.cs:829-846). **Whether they would have saved the player anyway does not matter**, so an offer never proves "they would not save you otherwise". At most one per week. |
 | **Row** | `veto_use`, id `deal-save-{seq}`, proposer the holder, recipient the player, trust Critical, this week only. `DealResolution.Veto` already reads the deal from either side (Simulation/DealResolution.cs:165-173). |
 | **Price (the player pays, due this week)** | The first that fits, chosen **from public facts only**: **(1)** a voting bloc with the holder **this week** (`VoteTogether`, judged at this week's reveal; Simulation/DealResolution.cs:185-192), which the player can only pay if saved; **(2)** at 6 or fewer, a final two. If no price fits, no offer is made. |
@@ -685,7 +685,7 @@ Each slice is built, fully tested, independently reviewed and landed on its own.
 | **R5 The pitch board** | Cap of 3 (2 warmest and 1 coolest by the player's reading); any order; Promise pays at the nominations; Turn down eases the grudge; tone decline costs | Subset: **(1)** cap and selection; **(2)** answering in any order; **(3)** nominating clears; **(4)** the +8 lands only for those left off; **(5)** a replacement breaks it; **(6)** the ease. PlayMode: board layouts. | M | Changes E4 behaviour (Roles only) |
 | **R6 Story moments** | **(1)** `the-pawn-talk` and the coin on the backdoor opener, with the Roles twins. **(2)** `quiet-tears`. **(3)** The Fallout's weight 0 under Roles. **(4)** The "nothing" offset. **(5)** The storyline capacity guard. **(6)** Each Roles template asks `RolesOn` in its cast or weight: `Castable` and `StartStory` filter on a template's version alone (Simulation/Story/EpisodeEngine.Story.cs:416,486; Simulation/Story/EpisodeEngine.Threads.cs:155). | EditMode and subset: **(1)** StoryCatalogLintTests; **(2)** old pools unchanged at every anchor; **(3)** the pawn conversation's text identical with and without a backdoor; **(4)** once per HoH per season; **(5)** the twins hidden in old seasons; **(6)** airtime held; **(7)** nameless memories; **(8)** costsAction refused at 0 seats; **(9)** capacity at 92/100; **(10)** no Roles template casts at story rules 11 while `RolesOn` is false | M | Airtime crowding; the backdoor arc's routing |
 | **R7 Enrolment and measurement** | **(1)** `StoryRules.Current = Roles`. **(2)** Re-record BalanceLabGoldens (CommitmentRulesSeasonDigests is held at threads by name, not re-recorded: §6.4). **(3)** B9 cohorts and the pacing lab against §5.5's budget. **(4)** With the old-save lane, a **schema-30, mode-2, Roles fixture saved at the veto meeting with a `veto_hold` pending** (OLD-SAVE-ACCEPTANCE.md cell 2.13; the manifest's cells carry the story version since cell 2.12). **(5)** The abuse checklist. **(6)** Keep R0's web-import story assertion (Tests/EditMode/PersistenceTests.cs): it can fail only once `Current` moves. | The full EditMode run. B9: weekly wins, Winner rate, counter-carry. The lab: minutes a week, decisions per policy, the most storylines at 12. Abuse: **(1)** accepting both asks; **(2)** accept-then-break loops; **(3)** comfort farming; **(4)** renomination; **(5)** a stale card after a phase advance; **(6)** load mid-board; **(7)** a double click; **(8)** a failed save; **(9)** an interrupted NPC approach. | M | Golden churn (expected); the owner signs off on the numbers before merge |
-| **R8 The holder's offer** (only after B9 and the owner's sign-off) | **(1)** `OfferTheVeto`. **(2)** The player-paid price ladder (a voting bloc this week, or a final two). **(3)** The new mode-2 origin with admission, validation and voiding. **(4)** The substitution rule in `CanLobby`. **(5)** Reader wording for a player-owed price. | Subset and EditMode: **(1)** filing conditions, including "would save anyway" makes no difference; **(2)** an NPC breach makes a Betrayal; **(3)** the price voided when the holder breaks; **(4)** the 60d8f629 sibling; **(5)** modes 0/1/2; **(6)** `WillNotSave` and the cold-partner coin. B9 rerun with R8 on. | L | Balance: it makes being nominated survivable |
+| **R8 The holder's offer** (only after B9 and the owner's sign-off) *Built 2026-11-17, switched off at story rules 15: §6.5.* | **(1)** `OfferTheVeto`. **(2)** The player-paid price ladder (a voting bloc this week, or a final two). **(3)** The new mode-2 origin with admission, validation and voiding. **(4)** The substitution rule in `CanLobby`. **(5)** Reader wording for a player-owed price. | Subset and EditMode: **(1)** filing conditions, including "would save anyway" makes no difference; **(2)** an NPC breach makes a Betrayal; **(3)** the price voided when the holder breaks; **(4)** the 60d8f629 sibling; **(5)** modes 0/1/2; **(6)** `WillNotSave` and the cold-partner coin. B9 rerun with R8 on. | L | Balance: it makes being nominated survivable |
 
 Later, outside this plan:
 - **L2, role grants and time** (the ROLE doc), under dialogue rules version 2, after the owner ships dialogue. It needs grant writers, the `Simulation/DialogueRules.cs:182` tick key fixed for zero-tick grant entries, and the B9 measurement the ROLE doc requires.
@@ -718,7 +718,7 @@ Later, outside this plan:
 | 9 | Let quiet tears replace The Fallout under Roles, at most once a week, with role moments adding their weight to "nothing"; cut "a shoulder" from v1? | **Yes.** |
 | 10 | No new currency and no +1 social point; the two "take your time" choices cost the window's seat and pay in visible receipts (a favour owed)? | **Yes.** Defer +1/-1 time to Layer 2. |
 | 11 | Pacing budget: at most +1 modal decision per role week, net ≤ 0 per season at 8 for engaged play, and a three-card board read in ≤ 30 s, measured before enrolment? | **Yes.** |
-| 12 | The holder's priced offer to a nominated player: build it only after B9 and a second sign-off on its numbers (R8)? | **Yes**, to the shape; the go/no-go waits for B9. *B9 merged on 2026-11-09 (PR #46): the go/no-go is the owner's.* |
+| 12 | The holder's priced offer to a nominated player: build it only after B9 and a second sign-off on its numbers (R8)? | **Yes**, to the shape; the go/no-go waits for B9. *B9 merged on 2026-11-09 (PR #46): the go/no-go is the owner's.* *2026-11-17: the owner said go to the build, switched off at story rules 15, enrolled after the house talk; the sign-off on its numbers comes at that enrolment (§6.5).* |
 | 13 | Keep story moments out of week 1 before its eviction night, though screenshot 2 shows week 1 (the board itself plays in week 1)? | **Yes.** |
 | 14 | Keep imported web saves on story rules 9 after enrolment? | **Yes.** |
 | 15 | Trait-picked price kinds, allies approaching the holder, and the nominated holder's "vote to keep me" ask? | **Defer** to after R8. |
@@ -804,6 +804,98 @@ run of every chunk and both twins, which passed with the pasted values.
 
 **Old saves.** OLD-SAVE-ACCEPTANCE.md cell 2.13: a schema-30, mode-2 season at story rules 11, saved at a veto meeting
 with a pending keep-the-block row, written by the enrolled head (its own slice).
+
+### 6.5 R8 as built (2026-11-17), switched off
+
+**The owner's calls, 2026-11-17.** Asked to start R8, the owner chose:
+- **When it reaches players: after the house talk.** The holder's offer is story rules 15 (`StoryRules.HolderOffer`),
+  above plan 32's 12 to 14. It is enrolled only after their three enrolments, with its own measurement and the owner's
+  sign-off on its numbers (decision 12's second sign-off). Until then `StoryRules.Current` stays Roles, so no season the
+  game starts plays it.
+- **The ladder: the documented exception for 15.** `StoryRules.IsDefined` accepts 0 to `Latest` (Manners, 12), and also
+  15. A test or the lab can therefore play the offer while 13 and 14 stay claimed and refused until their stacks define
+  them. `Latest` stays 12. The exception falls away when 15 itself becomes `Latest`. Every frozen reader's ladder ends
+  below 15, so no historical save can hold it.
+
+**Re-anchored against main.** §3.4b was written against 6909f2bc. What moved on the way, and how R8 meets it:
+- **Where it fires.** At Veto to VetoMeeting, in `NpcDeals.OfferTheVeto`, after `AskForTheVeto` and R4's
+  `AskToKeepTheBlock`. Neither of those ever meets it, because both need the player to hold the veto. It is roll-free,
+  draws nothing, and comes at most once a week; any offer of this week, answered or not, counts.
+- **Not a board card.** `RoleOffers.BoardAsks` is the holding player's board (§3.2), which a nominated player never sees,
+  so §3.5's note that the holder's offer "should join that list" is not followed. The offer reaches the player as an
+  incoming offer (`NpcInvitation`'s own opening: "Can we talk? I've got the veto, and I could use it on you."). The log
+  tells them too: "{holder} holds the veto and will use it on you, for a price." `DealResolution.PutToThePlayer` counts
+  it as put to the player. `RoleOffers.MomentOf` reads it as `RoleQuotes.HolderOffer`, in the holder's own tone as
+  holder.
+- **The conditions are §3.4b's (1) to (10), read on main.**
+  - (4) is the adjusted warmth against `NpcDeals.DealingFloor` (10).
+  - (5), no Save plea to them this week, is a real condition. The window after the veto competition has a seat once the
+    holder is known, so a plea made there comes first and is the player's ask.
+  - (8) made `EpisodeEngine.ColdPartnerLeavesThemUp` internal.
+  - (10) is `EpisodeEngine.SavesWithTheWord`: `NpcVetoSave`'s own order, line and refusals, read with the word's +40
+    (`StrategyRules.VetoCommitmentPull`) on the player alone. Whether the holder would have saved them anyway is not
+    asked.
+  - Added: room under `NpcDeals.DealCeiling` for the offer and the price its yes strikes.
+- **The price is its own function.** The existing price paths are keyed on the nominee's `deal-veto-` ask and on
+  houseguest payers (`VetoPriceFits` refuses a player payer), so the price comes from `Negotiation.HolderOfferPrice`. The
+  player pays and the holder is paid. The first that fits:
+  1. A voting bloc due this week (`VoteTogether`), while the eviction is undecided, the holder votes, and no bloc binds
+     the two of them already.
+  2. At 6 or fewer, a final two that does not already bind them.
+
+  If neither fits, no offer is made. The card's line is `HolderOfferPriceLine` ("In return, you would owe {holder} a
+  voting bloc this week."). The struck line is `HolderPriceStruckLine`.
+- **Mode 2: the one new origin.** The new origin value is `holder-offer-price` (`UnifiedVoteFamilyValidation.HolderOfferPrice`).
+  - `UnifiedVoteAdmission` admits it (`TryAcceptedHolderOfferPrice`, `TryStruckHolderOfferPrice`), and
+    `UnifiedVoteStore.TryInstallHolderOfferPrice` installs it.
+  - Validation checks where it came from: the bought deal is a raw `veto_use` row with a `deal-save-` id, filed the same
+    week by the price's payee to the player. The price is a voting bloc the player owes, naming nobody, due that week.
+  - Validation refuses the origin in a week without 15.
+  - The final-two price is a plain row in every mode, as §3.4b said.
+- **The answer.**
+  - **A yes:** +4, as any yes under the commitment rules. The price is struck and linked both ways, and the holder
+    remembers it.
+  - **A no:** costs the holder's tone's no (`RoleTone.Stakes`, read before the answer moves anything).
+  - **Silence:** the offer lapses at the houseguest holder's decision (`SettleTheHolderOffer`). It costs the tone's
+    silence as `deal_lapsed`, the same as the board's asks. The holder column carries no rider.
+- **Plea and offer are substitutes.** `StrategyRules.CanLobby` refuses a Save plea to the holder with "Answer their offer
+  first." while the offer waits, and with "You already have their word." once it is taken. After a no or a lapse the seat
+  is open.
+- **The holder's decision reuses what is there.**
+  - The word pulls +40 in `VetoWillingness`.
+  - `DealResolution.Veto` reads it from either side and judges it kept (Fulfilled; the player owes the bloc at this
+    week's vote) or broken by the holder.
+  - When it is broken, `VoidThePrice` voids the player's price, in `VoidedLine`'s words for a price the player owes, and
+    a Betrayal follows if the holder was the player's ally.
+- **Validation** refuses a `deal-save-` row in a week without 15, and any that is not a Critical `veto_use` from a
+  houseguest to the player: "A season without the holder's offer has none of its records."
+- **The holder is never Threatening** (§3.0, the owner on 2026-11-17), so §3.4b's Threatening line is not in the
+  catalogue.
+
+**Tests.** RoleHolderOfferTests run in the Unity-free subset:
+- the ladder, and every frozen reader's refusal;
+- the row as filed, drawing nothing;
+- nobody offers at Roles;
+- each condition alone keeps the offer away, against a control that offers, with the plea first through the engine;
+- the price ladder;
+- a yes in modes 0, 1 and 2, mode 2's as a canonical row of the new origin;
+- the substitution;
+- the 60d8f629 sibling (at no conversations left, the word moves the decision only with a binding price the player owes,
+  and a plea is refused on top of it);
+- kept;
+- broken in modes 1 and 2, with the price void;
+- the tone's no and silence;
+- validation without 15.
+
+**Left for later.**
+- **On the PC:** the Unity EditMode and PlayMode runs.
+- **The screen:** the incoming offer's card showing its price line. That needs Runtime work and a Unity compile, and is
+  its own slice.
+- **Enrolment, after plan 32's C-ON:**
+  - a lab measurement with the B9 bands rerun with R8 on;
+  - the owner's sign-off on its numbers;
+  - the `Current` switch;
+  - an old-save cell for a season at 15 with a pending offer.
 
 ---
 

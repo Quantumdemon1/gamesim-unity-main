@@ -19,6 +19,18 @@ namespace Gamesim.Presentation
 
         public void Reset() { query = editingQuery = string.Empty; page = 0; }
 
+        /// <summary>
+        /// The creator's row (menu quick win 10): one search box - the magnifier, and a clear mark
+        /// while a search is on, inside it - the pager only when there is a second page, and
+        /// "houseguests" in its captions. Off, the row is drawn as it always was.
+        /// </summary>
+        public bool OneBox { get; set; }
+
+        public const string OneBoxSearchCaption = "Search houseguests";
+        public const string OneBoxPreviousCaption = "Previous houseguests";
+        public const string OneBoxNextCaption = "Next houseguests";
+        public const string ClearSearchCaption = "Clear search";
+
         public IReadOnlyList<CharacterProfile> Draw(Transform row, IReadOnlyList<CharacterProfile> profiles, Action rebuild)
         {
             // Creator and cast FontScale magnify their whole CanvasScaler reference layout.
@@ -58,6 +70,24 @@ namespace Gamesim.Presentation
             input.onValueChanged.AddListener(value => editingQuery = value);
             void Search() => Refresh(() => { query = editingQuery.Trim(); editingQuery = query; page = 0; }, box.name);
             input.onSubmit.AddListener(_ => Search());
+            if (OneBox)
+            {
+                bool searching = !string.IsNullOrEmpty(query);
+                foreach (var label in new[] { text, hint }) label.rectTransform.offsetMax = new Vector2(searching ? -84f : -46f, -3f);
+                InBoxGlyph(row, OneBoxSearchCaption, -90f - 4f - 17f, PackArt.KitIconSearch, Search);
+                if (searching) InBoxGlyph(row, ClearSearchCaption, -90f - 4f - 34f - 4f - 17f, PackArt.KitIconCross, () => Refresh(Reset, box.name));
+                if (pages > 1)
+                {
+                    Button(row, OneBoxPreviousCaption, 0f, 180f,
+                        () => Refresh(() => page--, OneBoxPreviousCaption)).interactable = page > 0;
+                    var count = HudPrimitives.Label("Profile page", row, 15f, UiTheme.Muted, TextAlignmentOptions.Center);
+                    Place(count.rectTransform, 130f, 74f);
+                    count.text = (page + 1) + " / " + pages;
+                    Button(row, OneBoxNextCaption, 260f, 180f,
+                        () => Refresh(() => page++, OneBoxNextCaption)).interactable = page + 1 < pages;
+                }
+                return matches.Skip(page * PageSize).Take(PageSize).ToArray();
+            }
             Button(row, "Search profiles", -25f, 100f, Search);
             Button(row, "Clear search", 85f, 100f, () => Refresh(Reset, box.name));
             Button(row, "Previous profiles", 215f, 115f,
@@ -88,6 +118,27 @@ namespace Gamesim.Presentation
             label.text = caption; label.rectTransform.anchorMin = Vector2.zero; label.rectTransform.anchorMax = Vector2.one;
             label.rectTransform.offsetMin = new Vector2(3f, 0f); label.rectTransform.offsetMax = new Vector2(-3f, 0f);
             var button = box.gameObject.AddComponent<Button>(); button.targetGraphic = box.GetComponent<Image>();
+            button.onClick.AddListener(() => click()); return button;
+        }
+
+        /// <summary>A glyph inside the search box, its caption its name and a text that is never drawn.</summary>
+        private static Button InBoxGlyph(Transform row, string caption, float x, string icon, Action click)
+        {
+            var box = HudPrimitives.Fill(caption, row, UiTheme.SurfaceRaised, 6);
+            box.anchorMin = box.anchorMax = new Vector2(.5f, .5f); box.pivot = new Vector2(.5f, .5f);
+            box.sizeDelta = new Vector2(34f, 30f); box.anchoredPosition = new Vector2(x, 0f);
+            var image = box.GetComponent<Image>(); image.raycastTarget = true;
+            var label = HudPrimitives.Label("Label", box, 15f, UiTheme.Paper, TextAlignmentOptions.Center);
+            label.text = caption; label.enabled = false;
+            label.rectTransform.anchorMin = Vector2.zero; label.rectTransform.anchorMax = Vector2.one;
+            label.rectTransform.offsetMin = label.rectTransform.offsetMax = Vector2.zero;
+            var art = new GameObject("Glyph", typeof(RectTransform), typeof(Image)).GetComponent<Image>();
+            art.rectTransform.SetParent(box, false);
+            art.sprite = UiTheme.Pack(icon); art.color = UiTheme.Accent; art.preserveAspect = true; art.raycastTarget = false;
+            art.enabled = art.sprite != null;
+            art.rectTransform.anchorMin = art.rectTransform.anchorMax = new Vector2(.5f, .5f);
+            art.rectTransform.sizeDelta = new Vector2(20f, 20f);
+            var button = box.gameObject.AddComponent<Button>(); button.targetGraphic = image;
             button.onClick.AddListener(() => click()); return button;
         }
 

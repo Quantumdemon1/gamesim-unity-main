@@ -593,7 +593,7 @@ namespace Gamesim.Tests.PlayMode
 
         /// <summary>
         /// The title card says what the season is: the wordmark, how many are playing for how many
-        /// wins, and the eye over it all. It is the frame the whole opening is judged by, and the
+        /// wins, and the brand mark over it all. It is the frame the whole opening is judged by, and the
         /// count is the one fact on it that changes from season to season.
         /// </summary>
         [UnityTest]
@@ -609,7 +609,7 @@ namespace Gamesim.Tests.PlayMode
             var texts = SequenceLabels(sequence).Select(label => label.text).ToArray();
             Assert.That(texts, Does.Contain("GAMESIM"));
             Assert.That(texts, Does.Contain("8 Houseguests. 1 Winner."), "The title counts the house it opens.");
-            Assert.That(SequenceNode(sequence, "Eye emblem"), Is.Not.Null, "The eye stands over the title.");
+            Assert.That(SequenceNode(sequence, OpeningSequence.BrandEmblemName), Is.Not.Null, "The brand mark stands over the title.");
 
             sequence.Skip();
             yield return null;

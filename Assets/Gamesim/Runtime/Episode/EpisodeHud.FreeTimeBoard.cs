@@ -48,6 +48,12 @@ namespace Gamesim.Episode
             PreparationName = "Preparation", FreeTimeTipName = "Free time tip", SecondaryHeadlineName = "Secondary headline",
             BoardPageName = "Page", MoreWaitingCountName = "More waiting count";
 
+        /// <summary>The weekly budget's one name on the boards (menu review quick win 20), as the top bar's chip says it.</summary>
+        public const string ActionsLeftLabel = "Actions left";
+
+        /// <summary>The budget card's "Actions left" label box: 1.3 times its 14 px and a whisker.</summary>
+        private const float BoardActionsWordBox = 19f;
+
         /// <summary>
         /// The story strip's control for the beats waiting past its room: it opens the first of them
         /// as the step. Its count stands beside it as a label of its own, so the caption never changes.
@@ -102,6 +108,8 @@ namespace Gamesim.Episode
             public IList<BuyButton> Buys;
             /// <summary>The story strip: the play when the hero is not showing it, the threads, the other beats waiting, the preparation banked, and the Have-Not line.</summary>
             public string StripPlay, Threads, Preparation, HaveNot;
+            /// <summary>The player's last move this week and how it went, under the strip (menu review quick win 18); null before the week's first.</summary>
+            public string LastMove;
             public IList<(string Caption, Action Open)> Waiting;
             /// <summary>The house as cards, the page shown, and what the controls on a card do.</summary>
             public IList<HouseCard> Cards;
@@ -161,8 +169,9 @@ namespace Gamesim.Episode
             // height is the cards', as the status cards drop theirs.
             bool lines = s <= 1.05f;
             float head = (lines ? BoardHeadWithLine : BoardHeadHeight) * s;
-            bool haveNot = !string.IsNullOrEmpty(spec.HaveNot);
-            float strip = BoardStripHeight * s + (haveNot ? (BoardHaveNotGap + BoardHaveNotHeight) * s : 0f);
+            bool haveNot = !string.IsNullOrEmpty(spec.HaveNot), lastMove = !string.IsNullOrEmpty(spec.LastMove);
+            float strip = BoardStripHeight * s + (haveNot ? (BoardHaveNotGap + BoardHaveNotHeight) * s : 0f)
+                + (lastMove ? (BoardHaveNotGap + BoardLastMoveHeight) * s : 0f);
 
             // The moves: as many abreast as keep each at its least width - five on the 16:9 frame at
             // either size - and a second row only where the frame is narrow and tall enough for one.
@@ -642,12 +651,16 @@ namespace Gamesim.Episode
             count.textWrappingMode = TextWrappingModes.NoWrap;
             float number = Mathf.Min(left * .5f, Mathf.Ceil(count.GetPreferredValues(count.text).x) + 8f * s);
             count.rectTransform.sizeDelta = new Vector2(number, BoardCountBox * s);
-            var word = FixedText(card, spec.ActionsLeft == 1 ? "ACTION LEFT" : "ACTIONS LEFT", 12, Paper,
-                new Vector2(pad + number, -(y + (BoardCountBox - 16f) * .5f * s)), new Vector2(Mathf.Max(30f * s, left - number), 16f * s));
+            // Its label is the budget's one name, "Actions left", whatever the count (menu review quick
+            // win 19): at 14 px, never less, in a box 1.3 times as tall.
+            var word = FixedText(card, ActionsLeftLabel, 14, Paper,
+                new Vector2(pad + number, -(y + (BoardCountBox - BoardActionsWordBox) * .5f * s)),
+                new Vector2(Mathf.Max(30f * s, left - number), BoardActionsWordBox * s));
             word.name = ActionsLeftWordName;
-            word.characterSpacing = 2f;
             if (semibold != null) word.font = semibold;
-            AutoSize(word, 9);
+            word.textWrappingMode = TextWrappingModes.NoWrap;
+            word.overflowMode = TextOverflowModes.Ellipsis;
+            AutoSize(word, 14);
             y += (BoardCountBox + 2f) * s;
             if (!string.IsNullOrEmpty(spec.Unused))
             {
@@ -780,14 +793,31 @@ namespace Gamesim.Episode
             if (!string.IsNullOrEmpty(spec.StripPlay))
                 x += BoardSegment(strip, CurrentPlayCardName, "PLAY", spec.StripPlay, x, Mathf.Min((right - x) * .4f, 340f * s), height) + gap;
             BoardSegment(strip, ThreadsCardName, "THREADS", spec.Threads, x, Mathf.Max(60f * s, right - x), height);
-            if (string.IsNullOrEmpty(spec.HaveNot)) return;
-            // What being a Have-Not costs, word for word, across the board under the strip.
-            var line = FixedText(board, spec.HaveNot, 12, UiTheme.Warning, new Vector2(0f, -(y + height + BoardHaveNotGap * s)),
-                new Vector2(width, BoardHaveNotHeight * s));
-            line.name = FreeTimeHaveNotName;
-            line.overflowMode = TextOverflowModes.Ellipsis;
-            AutoSize(line, 9);
+            float below = y + height;
+            if (!string.IsNullOrEmpty(spec.HaveNot))
+            {
+                // What being a Have-Not costs, word for word, across the board under the strip.
+                var line = FixedText(board, spec.HaveNot, 12, UiTheme.Warning, new Vector2(0f, -(below + BoardHaveNotGap * s)),
+                    new Vector2(width, BoardHaveNotHeight * s));
+                line.name = FreeTimeHaveNotName;
+                line.overflowMode = TextOverflowModes.Ellipsis;
+                AutoSize(line, 9);
+                below += (BoardHaveNotGap + BoardHaveNotHeight) * s;
+            }
+            if (string.IsNullOrEmpty(spec.LastMove)) return;
+            // The player's last move this week and how it went, which the status line used to say
+            // once and lose (menu review quick win 18): at 14 px, never less, on one line.
+            var last = FixedText(board, spec.LastMove, 14, Paper, new Vector2(0f, -(below + BoardHaveNotGap * s)),
+                new Vector2(width, BoardLastMoveHeight * s));
+            last.name = LastMoveName;
+            last.textWrappingMode = TextWrappingModes.NoWrap;
+            last.overflowMode = TextOverflowModes.Ellipsis;
+            AutoSize(last, 14);
         }
+
+        /// <summary>The "Last move" line under the story strip, by the name a test finds it by, and its height at the resting size: 1.3 times its 14 px and a whisker.</summary>
+        public const string LastMoveName = "Last move line";
+        private const float BoardLastMoveHeight = 20f;
 
         /// <summary>A segment of the story strip: its label in the accent and its words, no wider than <paramref name="most"/>. Returns the width it took.</summary>
         private float BoardSegment(RectTransform strip, string name, string label, string words, float x, float most, float height)

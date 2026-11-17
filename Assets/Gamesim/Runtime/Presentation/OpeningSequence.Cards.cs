@@ -263,7 +263,7 @@ namespace Gamesim.Presentation
             var fader = Fader(card);
             Animate(card, 0.3f, 0.8f, t => fader.alpha = t);
 
-            EyeEmblem(card, new Vector2(0f, 190f));
+            BrandEmblem(card, new Vector2(0f, 190f));
 
             var wordmark = Box("Wordmark", card, new Vector2(1500f, 220f), new Vector2(0f, 4f));
             var wordmarkFader = Fader(wordmark);
@@ -307,14 +307,18 @@ namespace Gamesim.Presentation
             yield return Hold(TitleHold);
         }
 
+        /// <summary>The title card's emblem, by name, so a test finds it.</summary>
+        public const string BrandEmblemName = "Brand emblem", BrandEmblemMarkName = "Mark";
+
         /// <summary>
-        /// The eye: a glow that breathes, two rings, the eye itself and a line scanning down it - the
-        /// reference build's IntroBBEyeLogo, on its own loop timings, drawn from the house's icon set
-        /// in the title blues.
+        /// The emblem: a glow that breathes, two rings, the brand mark and a line scanning down it -
+        /// the reference build's IntroBBEyeLogo, on its own loop timings, in the title blues. The
+        /// mark in it is the one every screen shows (<see cref="BrandMark"/>); it was an eye here and
+        /// a house everywhere else.
         /// </summary>
-        private void EyeEmblem(RectTransform parent, Vector2 position)
+        private void BrandEmblem(RectTransform parent, Vector2 position)
         {
-            var root = Box("Eye emblem", parent, new Vector2(160f, 160f), position);
+            var root = Box(BrandEmblemName, parent, new Vector2(160f, 160f), position);
             Animate(root, 0.2f, 1.0f, t => root.localScale = Vector3.one * t, Settle);
 
             var glowSprite = UiTheme.Pack(PackArt.GlowCyan);
@@ -329,12 +333,12 @@ namespace Gamesim.Presentation
             var middle = Picture("Mid ring", root, ThinRing(), UiTheme.Hex("3A86FF66"), new Vector2(102f, 102f));
             Loop(middle, time => middle.rectTransform.sizeDelta = Vector2.one * (101f - 1f * Mathf.Sin(time * Mathf.PI * 2f / 2.5f)));
 
-            var eyeSprite = UiTheme.Icon("eye");
-            if (eyeSprite != null)
+            var markSprite = BrandMark.Sprite();
+            if (markSprite != null)
             {
-                var eye = Picture("Eye", root, eyeSprite, UiTheme.Hex("9AD4FF"), new Vector2(96f, 96f));
-                eye.preserveAspect = true;
-                Loop(eye, time => eye.rectTransform.localScale = Vector3.one * (1.05f + 0.05f * Mathf.Sin(time * Mathf.PI * 2f / 2f)));
+                var mark = Picture(BrandEmblemMarkName, root, markSprite, UiTheme.Hex("9AD4FF"), new Vector2(84f, 84f));
+                mark.preserveAspect = true;
+                Loop(mark, time => mark.rectTransform.localScale = Vector3.one * (1.05f + 0.05f * Mathf.Sin(time * Mathf.PI * 2f / 2f)));
             }
             else
             {

@@ -10,7 +10,7 @@ namespace Gamesim.Episode
         public const string ConnectCategoryCaption = "Get to know them";
         public const string GameCategoryCaption = "This week's game";
         public const string LearnCategoryCaption = "Learn and share";
-        public const string DealsCategoryCaption = "Deals and promises";
+        public const string DealsCategoryCaption = DealsAndPromisesName;
         public const string PressureCategoryCaption = "Pressure and rumours";
         public const string TogetherCategoryCaption = "Do something together";
         public const string ConversationTopicsBackCaption = "Back to topics";

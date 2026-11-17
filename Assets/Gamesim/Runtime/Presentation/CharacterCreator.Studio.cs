@@ -20,7 +20,8 @@ namespace Gamesim.Presentation
         private string studioPage = "Appearance", appearanceCategory = "Body", libraryMessage;
         private string profileId;
         private CharacterProfileStore profileStore;
-        private readonly CharacterProfileBrowser profileBrowser = new CharacterProfileBrowser();
+        // The creator draws the one-box row: one search box, the pager only on a second page (quick win 10).
+        private readonly CharacterProfileBrowser profileBrowser = new CharacterProfileBrowser { OneBox = true };
         public CharacterProfileStore ProfileStore => profileStore ?? (profileStore = new CharacterProfileStore());
 
         public void ConfigureProfiles(CharacterProfileStore store)
@@ -91,6 +92,29 @@ namespace Gamesim.Presentation
         {
             if (previewStatus != null && studioPreview != null) previewStatus.text = studioPreview.DisplayStatus;
             if (retryPreviewButton != null && studioPreview != null) retryPreviewButton.interactable = studioPreview.CanRetry;
+            bool failed = studioPreview != null && PreviewStatusShows(studioPreview.CanRetry);
+            ShowOnlyOnFailure(previewStatus != null ? previewStatus.gameObject : null, failed);
+            ShowOnlyOnFailure(retryPreviewButton != null ? retryPreviewButton.gameObject : null, failed);
+        }
+
+        /// <summary>
+        /// The preview's words and Retry preview are for a preview that failed: a working one says
+        /// nothing, and neither does one being built.
+        /// </summary>
+        public static bool PreviewStatusShows(bool previewFailed) => previewFailed;
+
+        /// <summary>
+        /// Shown or put out of sight and reach. Kept where it is laid out, so it comes back in place
+        /// the moment the preview fails, under the same name and caption.
+        /// </summary>
+        private static void ShowOnlyOnFailure(GameObject item, bool show)
+        {
+            if (item == null) return;
+            var group = item.GetComponent<CanvasGroup>();
+            if (group == null) group = item.AddComponent<CanvasGroup>();
+            group.alpha = show ? 1f : 0f;
+            group.interactable = show;
+            group.blocksRaycasts = show;
         }
 
         private void OnDestroy()
@@ -141,7 +165,9 @@ namespace Gamesim.Presentation
                 label.text = Localisation.Text(category);
                 var weight = UiTheme.Font(on ? UiTheme.Weight.SemiBold : UiTheme.Weight.Medium); if (weight != null) label.font = weight;
                 Place(label.rectTransform, 62f, 0f, r.width - 90f, tileHeight);
-                Glyph(tile, CategoryIcon(category), on ? UiTheme.Glow : UiTheme.Accent, new Rect(18f, (tileHeight - 30f) * .5f, 30f, 30f));
+                var glyphBox = new Rect(18f, (tileHeight - 30f) * .5f, 30f, 30f);
+                if (CategoryIcon(category) == DrawnSwatches) SwatchesGlyph(tile, glyphBox, on);
+                else Glyph(tile, CategoryIcon(category), on ? UiTheme.Glow : UiTheme.Accent, glyphBox);
                 var button = tile.gameObject.AddComponent<Button>();
                 button.targetGraphic = image;
                 button.onClick.AddListener(() => { appearanceCategory = pick; Rebuild(); });
@@ -150,16 +176,45 @@ namespace Gamesim.Presentation
             }
         }
 
-        private static string CategoryIcon(string category)
+        /// <summary>
+        /// Each category's own glyph: no two alike (three of them were smiling faces; now one, the head with a curl, is Hair). Colors has
+        /// no icon in the sets; its glyph is drawn - three swatches (<see cref="DrawnSwatches"/>).
+        /// </summary>
+        public static string CategoryIcon(string category)
         {
             switch (category)
             {
                 case "Body": return "houseguest";
-                case "Face": return "mood-happy";
+                case "Face": return PackArt.KitIconEye;
                 case "Hair": return "mood-confident";
                 case "Clothing": return PackArt.KitIconArchive;
-                case "Accessories": return "mood-playful";
+                case "Accessories": return "crown";
+                case "Colors": return DrawnSwatches;
                 default: return "star";
+            }
+        }
+
+        /// <summary>The Colors category's glyph, drawn rather than loaded (<see cref="CategoryIcon"/>).</summary>
+        public const string DrawnSwatches = "drawn:swatches";
+
+        /// <summary>The appearance categories, in the order the list shows them.</summary>
+        public static System.Collections.Generic.IReadOnlyList<string> AppearanceCategories => Categories;
+
+        /// <summary>Three overlapping colour discs in the theme's colours, the Colors category's glyph.</summary>
+        private static void SwatchesGlyph(Transform parent, Rect r, bool on)
+        {
+            var holder = new GameObject("Glyph", typeof(RectTransform)).GetComponent<RectTransform>();
+            holder.SetParent(parent, false);
+            Place(holder, r.x, r.y, r.width, r.height);
+            float disc = r.width * .56f;
+            var colours = new[] { UiTheme.Warning, UiTheme.Positive, on ? UiTheme.Glow : UiTheme.Accent };
+            var spots = new[] { new Vector2(0f, 0f), new Vector2(r.width - disc, 0f), new Vector2((r.width - disc) * .5f, r.height - disc) };
+            for (int i = 0; i < colours.Length; i++)
+            {
+                var spot = new GameObject("Swatch " + (i + 1), typeof(RectTransform), typeof(Image)).GetComponent<Image>();
+                spot.rectTransform.SetParent(holder, false);
+                spot.sprite = UiTheme.Circle(); spot.color = colours[i]; spot.raycastTarget = false;
+                Place(spot.rectTransform, spots[i].x, spots[i].y, disc, disc);
             }
         }
 
@@ -180,10 +235,12 @@ namespace Gamesim.Presentation
             // that stands on it.
             float zoom = 36f, chip = Mathf.Min(106f, (r.width - 16f - 2f * zoom - 4f * 6f) / 3.7f);
             bool twoRows = full && ViewsOnTwoRows(chip);
-            float chipsY = r.height - 36f - (twoRows ? ViewRowPitch : 0f);
+            // On the Appearance page the camera's controls - the turntable and the views under it -
+            // stand together in one strip under the body (CameraStripName), clear of the ring.
+            float chipsY = r.height - 36f - (full ? StripPad : 0f) - (twoRows ? ViewRowPitch : 0f);
             float turnY = full ? chipsY - 12f - 52f : r.height - 52f;
             float ringWidth = Mathf.Min(r.width * .86f, 480f), ringHeight = Mathf.Min(ringWidth * .24f, 110f);
-            float floor = turnY - 6f;
+            float floor = full ? turnY - StripPad - 4f - ringHeight * .5f : turnY - 6f;
             float ringX = (r.width - ringWidth) * .5f, ringY = floor - ringHeight * .5f;
 
             Backdrop("Platform light", stage, UiTheme.Pack(PackArt.GlowCyan) ?? UiTheme.Circle(),
@@ -211,7 +268,17 @@ namespace Gamesim.Presentation
             // The studio leaves a margin under the feet; take it back so they meet the ring.
             image.rectTransform.anchoredPosition = new Vector2(0f, -pictureHeight * .05f);
 
-            // The turntable: the arrows either side of its name, on the ring's front edge.
+            if (full)
+            {
+                float top = turnY - StripPad, bottom = chipsY + 36f + (twoRows ? ViewRowPitch : 0f) + StripPad;
+                float wide = twoRows ? r.width : Mathf.Min(r.width, Mathf.Max(300f, 3.7f * chip + 2f * zoom + 4f * 6f) + 2f * StripPad + 8f);
+                var strip = HudPrimitives.Fill(CameraStripName, stage, new Color(UiTheme.GlassFill.r, UiTheme.GlassFill.g, UiTheme.GlassFill.b, .7f), 16);
+                Place(strip, (r.width - wide) * .5f, top, wide, bottom - top);
+                strip.GetComponent<Image>().raycastTarget = false;
+                UiTheme.AddBorder(strip, 16, UiTheme.Edge(UiTheme.Emphasis.Interactive));
+            }
+            // The turntable: the arrows either side of its name - on the Appearance page at the head
+            // of the camera strip, elsewhere on the ring's front edge.
             var turntable = HudPrimitives.Fill("Turntable", stage, new Color(UiTheme.GlassFill.r, UiTheme.GlassFill.g, UiTheme.GlassFill.b, .92f), 26);
             Place(turntable, r.width * .5f - 150f, turnY, 300f, 52f);
             UiTheme.AddBorder(turntable, 26, UiTheme.Edge(UiTheme.Emphasis.Interactive));
@@ -227,6 +294,7 @@ namespace Gamesim.Presentation
             retryPreviewButton = Pill(stage, "Retry preview", new Rect(r.width - 132f, 2f, 132f, 30f), Tone.Quiet,
                 () => studioPreview.Retry(), size: 13f);
             retryPreviewButton.interactable = studioPreview.CanRetry;
+            RefreshPreviewStatus();
             if (!full) return;
             // The camera's other views, and the look the edit began from. Zoom is two glyphs whose
             // captions are their names: as words the pair did not fit a narrow stage.
@@ -244,6 +312,12 @@ namespace Gamesim.Presentation
             Pill(stage, compare, new Rect(x, chipsY, chip * 1.7f, 36f), comparingOriginal ? Tone.Selected : Tone.Quiet,
                 () => { comparingOriginal = !comparingOriginal; Rebuild(); }, size: 14f);
         }
+
+        /// <summary>The one strip under the body that holds the camera's controls on the Appearance page.</summary>
+        public const string CameraStripName = "Camera strip";
+
+        /// <summary>The camera strip's margin round its controls.</summary>
+        private const float StripPad = 8f;
 
         /// <summary>
         /// The narrowest the appearance panel's four actions may stand beside its heading:

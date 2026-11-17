@@ -42,7 +42,7 @@ namespace Gamesim.Presentation
             var profiles = store.List();
             float saveWidth = Mathf.Min(260f, width * .2f);
             SectionHeading(box, x, 20f, width - 2f * saveWidth - 24f, PackArt.KitIconPeople, "MY HOUSEGUESTS");
-            Words(box, profiles.Count + (profiles.Count == 1 ? " saved houseguest" : " saved houseguests") + "  ·  Saved profiles can be reused, renamed, duplicated or deleted. Existing seasons keep their own independent copy.",
+            Words(box, profiles.Count + (profiles.Count == 1 ? " saved houseguest" : " saved houseguests") + "  ·  Saved houseguests can be reused, renamed, duplicated or deleted. Existing seasons keep their own independent copy.",
                 14f, UiTheme.Muted, new Rect(x, 60f, width - 2f * saveWidth - 24f, 40f)).textWrappingMode = TextWrappingModes.Normal;
             Pill(box, "Save this houseguest", new Rect(area.width - 26f - 2f * saveWidth - 12f, 22f, saveWidth, 52f), Tone.Primary,
                 () => SaveProfile(false), icon: PackArt.KitIconSave);
@@ -271,7 +271,7 @@ namespace Gamesim.Presentation
             if (pendingDeleteProfile != entry.id)
             {
                 pendingDeleteProfile = entry.id;
-                libraryMessage = "Delete removes the library profile. Existing seasons and the current draft are unaffected. Press Confirm delete to proceed.";
+                libraryMessage = "Delete removes this saved houseguest. Existing seasons and the current draft are unaffected. Press Confirm delete to proceed.";
             }
             else
             {
@@ -342,7 +342,7 @@ namespace Gamesim.Presentation
             y += 46f;
             Words(box, Summary(), 17f, UiTheme.Muted, new Rect(x, y, width, 24f), name: "Review summary");
             y += 30f;
-            Words(box, draft.Archetype, 16f, UiTheme.Hex("FF7AD9"), new Rect(x, y, width, 22f), name: "Review archetype").fontStyle = FontStyles.Italic;
+            Words(box, draft.Archetype, 16f, UiTheme.Accent, new Rect(x, y, width, 22f), name: "Review archetype").fontStyle = FontStyles.Italic;
             y += 34f;
             if (draft.Traits.Count > 0) { TraitTags(box, new Rect(x, y, width, 32f), TextAlignmentOptions.Left); y += 46f; }
             var bio = Words(box, string.IsNullOrWhiteSpace(draft.Bio) ? "No bio yet." : draft.Bio.Trim(), 16f,

@@ -174,17 +174,18 @@ namespace Gamesim.Presentation
             float wordWidth = Mathf.Ceil(word.GetPreferredValues(word.text).x) + 4f;
             float markSide = 86f, gap = 18f;
             float left = -(markSide + gap + wordWidth) * .5f;
-            var houseMark = UiTheme.Pack(PackArt.IconHome);
+            var brandMark = BrandMark.Sprite();
             var mark = new GameObject("Mark", typeof(RectTransform)).GetComponent<RectTransform>();
             mark.SetParent(brand, false);
             mark.anchorMin = mark.anchorMax = new Vector2(.5f, .5f);
             mark.pivot = new Vector2(0f, .5f);
             mark.sizeDelta = new Vector2(markSide, markSide);
             mark.anchoredPosition = new Vector2(left, 0f);
-            if (houseMark != null || UiTheme.Icon("house") != null)
+            // The one brand mark (BrandMark.cs), as every screen draws it.
+            if (brandMark != null)
             {
                 var image = mark.gameObject.AddComponent<Image>();
-                image.sprite = houseMark != null ? houseMark : UiTheme.Icon("house");
+                image.sprite = brandMark;
                 image.color = UiTheme.Heading;
                 image.preserveAspect = true;
                 image.raycastTarget = false;

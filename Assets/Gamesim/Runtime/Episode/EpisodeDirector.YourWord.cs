@@ -24,8 +24,16 @@ namespace Gamesim.Episode
     /// </summary>
     public sealed partial class EpisodeDirector
     {
-        /// <summary>The Your word page's door on the notes page, and its way back: captions of their own.</summary>
-        public const string YourWordCaption = "Your word", BackToYourNotesCaption = "Back to your notes";
+        /// <summary>
+        /// The one name of the player's deals (menu review quick win 20): the notes page's door, the
+        /// page's title, the conversation's topic and the picker's warning all say it. It was "Your
+        /// word" on the door and the page, "Deals and promises" in a conversation and "commitments" in
+        /// the warning.
+        /// </summary>
+        public const string DealsAndPromisesName = "Deals & promises";
+
+        /// <summary>The Deals &amp; promises page's door on the notes page, and its way back: captions of their own.</summary>
+        public const string YourWordCaption = DealsAndPromisesName, BackToYourNotesCaption = "Back to your notes";
 
         /// <summary>How many commitments a houseguest's card shows before it counts the rest.</summary>
         private const int WordShown = 8;
@@ -79,12 +87,22 @@ namespace Gamesim.Episode
             var breaches = DryRun(state, CommitmentsRead.Decision.Nominate(first, second));
             string words = CommitmentsRead.Warning(state, breaches);
             if (words == null) return null;
-            int lapsing = NominationSteps.LapsingOnNominate(state).Count;
-            brief = "Committing these breaks " + CommitmentsRead.CountOf(breaches) + " of your commitments (see " + YourWordCaption + ")"
-                + (lapsing > 0 ? " and lets " + (lapsing == 1 ? "1 storyline" : lapsing + " storylines") + " pass" : "") + ".";
-            int pitches = state.replyCards.Count(card => card.kind == ReplyCards.Pitch);
-            if (pitches > 0) brief += " " + pitches + (pitches == 1 ? " pitch expires" : " pitches expire") + " when you nominate.";
+            brief = NominationBrief(CommitmentsRead.CountOf(breaches), NominationSteps.LapsingOnNominate(state).Count,
+                state.replyCards.Count(card => card.kind == ReplyCards.Pitch));
             return words;
+        }
+
+        /// <summary>
+        /// The picker's short warning: how many entries in Deals &amp; promises the picks break, named
+        /// as the page is (quick win 20), how many storylines committing lets pass, and the pitches
+        /// that expire when the player nominates.
+        /// </summary>
+        public static string NominationBrief(int breaks, int lapsing, int pitches)
+        {
+            string brief = "Committing these breaks " + breaks + (breaks == 1 ? " entry" : " entries") + " in " + DealsAndPromisesName
+                + (lapsing > 0 ? " and lets " + (lapsing == 1 ? "1 storyline" : lapsing + " storylines") + " pass" : "") + ".";
+            if (pitches > 0) brief += " " + pitches + (pitches == 1 ? " pitch expires" : " pitches expire") + " when you nominate.";
+            return brief;
         }
 
         /// <summary>The picker's picks, warned of in the footer's strip in place: its words, or its short form where they cannot share the strip.</summary>

@@ -485,6 +485,8 @@
     <Compile Include="$(EditMode)DisplayEvidenceSettlementTests.cs" />
     <!-- And the window written only by the window's own controls, the first launch and the verifier (A12, Risk R3). -->
     <Compile Include="$(EditMode)WindowWriteScanTests.cs" />
+    <!-- The menu review's quick wins at the front door and in Settings, held in the source (part b, items 13 to 17). -->
+    <Compile Include="$(EditMode)MenuFrontWordsScanTests.cs" />
     <!-- A frame wider than 16:9 lays its canvases out by height (A12b); 16:9 and narrower keep their own match. -->
     <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/FrameMatch.cs" />
     <Compile Include="$(EditMode)FrameMatchTests.cs" />

@@ -139,13 +139,13 @@ namespace Gamesim.Episode
             // The control opens the cast screen now rather than building a season outright, so this
             // walks the screen the way a player does — and backing out of it is the case worth
             // checking hardest, because a cancel that has already written a slot is unrecoverable.
-            yield return ClickSeasonButton("New season in a NEW slot (preserves this season)");
+            yield return ClickSeasonButton(EpisodeDirector.NewSeasonInNewSlotCaption);
             RequireSeason(seasonDirector.SavePath == previousSlot,"Opening the cast screen must not change the active slot.");
             yield return ClickSeasonButton(CastSelect.CancelCaption);
             RequireSeason(seasonDirector.SavePath == previousSlot && File.Exists(previousSlot)
                 && seasonDirector.Snapshot.contestants.Count == previousCast,"Cancelling the cast screen must leave the running season and its slot untouched.");
 
-            yield return ClickSeasonButton("New season in a NEW slot (preserves this season)");
+            yield return ClickSeasonButton(EpisodeDirector.NewSeasonInNewSlotCaption);
             yield return ClickSeasonButton(CastSelect.StartCaption);
             var fresh = seasonDirector.Snapshot;
             RequireSeason(seasonDirector.SavePath != previousSlot && File.Exists(previousSlot),"Creating the QA season must preserve the profile's previous save slot.");

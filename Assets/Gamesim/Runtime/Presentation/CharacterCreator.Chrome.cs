@@ -42,7 +42,8 @@ namespace Gamesim.Presentation
         private Vector2 frame = new Vector2(1920f, 1080f);
         private bool frameChanged;
 
-        private static readonly string[] Pages = { "Appearance", "Identity", "Personality", "My Houseguests", "Review" };
+        /// <summary>Detailed's steps. My Houseguests is not one: it is the header's button and a panel over the step.</summary>
+        private static readonly string[] Pages = CreatorSteps.Detailed;
 
         /// <summary>
         /// The canvas in reference units: what it is drawn to - the screen, or the camera a capture
@@ -105,45 +106,102 @@ namespace Gamesim.Presentation
             vignette.GetComponent<Image>().color = new Color(1f, 1f, 1f, .7f);
         }
 
+        /// <summary>
+        /// The header (menu slice 2): the one way back at the top left, the title in the middle, My
+        /// Houseguests and the Settings gear at the top right, and the steps under them. The brand
+        /// stands in the footer's corner, where the way back used to be.
+        /// </summary>
         private void BuildHeader(RectTransform scrim)
         {
-            BuildBrand(scrim);
+            float left = BuildWayBack(scrim);
+            float right = BuildHeaderActions(scrim);
             var title = HudPrimitives.Label("Studio title", scrim, 44f, Color.white, TextAlignmentOptions.Center);
-            title.text = Localisation.Text(editingCastSlot ? "EDIT CAST HOUSEGUEST" : "CREATE A HOUSEGUEST");
+            title.text = Localisation.Text(CreatorSteps.Title(editingName));
             var bold = UiTheme.Font(UiTheme.Weight.Bold); if (bold != null) title.font = bold;
             title.characterSpacing = 2f;
             title.enableVertexGradient = true;
             title.colorGradient = new VertexGradient(UiTheme.Paper, UiTheme.Paper, UiTheme.Glow, UiTheme.Glow);
             title.textWrappingMode = TextWrappingModes.NoWrap;
+            title.enableAutoSizing = true; title.fontSizeMax = 44f; title.fontSizeMin = 20f;
+            title.overflowMode = TextOverflowModes.Ellipsis;
             // The title stands alone: no slogan under it and no neon line in the corner (the owner,
-            // 2026-11-14). It is centred in the band above the steps, level with the brand.
-            PlaceTop(title.rectTransform, 0f, 26f, 900f, 58f);
+            // 2026-11-14). It is centred in the band above the steps, clear of the controls beside it.
+            float side = Mathf.Max(left, frame.x - right) + 16f;
+            PlaceTop(title.rectTransform, 0f, 26f, Mathf.Clamp(frame.x - 2f * side, 160f, 900f), 58f);
             BuildSteps(scrim);
             BuildEntryModes(scrim);
-            BuildSettingsGear(scrim);
         }
 
-        private void BuildBrand(RectTransform scrim)
+        /// <summary>
+        /// The one way back, at the top left (menu slice 2, change 1): back to the cast with the draft
+        /// kept, drawn by the shared helper. Editing a houseguest of the cast, leaving throws the edit
+        /// away, so the only way out there says so - "Cancel this edit" - in the same place.
+        /// Returns the right edge it takes.
+        /// </summary>
+        private float BuildWayBack(RectTransform scrim)
+        {
+            const float top = 28f;
+            float inset = WayOut.Inset(1f), height = WayOut.Height(1f);
+            if (editingCastSlot)
+            {
+                float width = WayOut.Width(CancelSlotCaption, 1f, true) + 24f;
+                var cancel = Pill(scrim, CancelSlotCaption, new Rect(Margin, top, width, height), Tone.Secondary, Leave,
+                    icon: PackArt.KitIconCross, size: WayOut.FontSize(1f));
+                cancel.name = CancelSlotCaption;
+                return Margin + width;
+            }
+            // The canvas scaler already magnifies the creator for the larger text sizes, so the
+            // helper draws at its own size here: a text scale passed as well would magnify twice.
+            var band = new GameObject("Way back band", typeof(RectTransform)).GetComponent<RectTransform>();
+            band.SetParent(scrim, false);
+            Place(band, Margin - inset, top - inset, WayOut.Width(BackCaption, 1f, true) + 2f * inset, height + 2f * inset);
+            var back = WayOut.AddBack(band, BackCaption, Leave);
+            return Margin + ((RectTransform)back.transform).sizeDelta.x;
+        }
+
+        /// <summary>My Houseguests, then the gear, at the top right. Returns the left edge they take.</summary>
+        private float BuildHeaderActions(RectTransform scrim)
+        {
+            float right = frame.x - Margin;
+            if (openSettings != null)
+            {
+                var gear = GlyphButton(scrim, SettingsCaption, new Rect(right - 52f, 24f, 52f, 52f), null,
+                    UiTheme.Icon("settings"), OpenSettingsFromGear);
+                gear.name = SettingsCaption;
+                right -= 52f + 12f;
+            }
+            const float width = 236f;
+            var library = Pill(scrim, CreatorSteps.Library, new Rect(right - width, 24f, width, 52f), Tone.Secondary, OpenLibrary,
+                icon: PackArt.KitIconPeople);
+            library.name = CreatorSteps.Library;
+            return right - width;
+        }
+
+        private float BuildBrand(RectTransform parent, float y)
         {
             var mark = new GameObject("Brand mark", typeof(RectTransform), typeof(Image)).GetComponent<Image>();
-            mark.rectTransform.SetParent(scrim, false);
+            mark.rectTransform.SetParent(parent, false);
             mark.sprite = BrandMark.Sprite();
             mark.color = UiTheme.Heading; mark.preserveAspect = true; mark.raycastTarget = false;
-            Place(mark.rectTransform, Margin - 4f, 24f, 54f, 54f);
-            var word = HudPrimitives.Label("Brand word", scrim, 36f, Color.white, TextAlignmentOptions.TopLeft);
+            Place(mark.rectTransform, Margin - 4f, y + 4f, 54f, 54f);
+            var word = HudPrimitives.Label("Brand word", parent, 36f, Color.white, TextAlignmentOptions.TopLeft);
             word.text = Localisation.Text("GAMESIM");
             var bold = UiTheme.Font(UiTheme.Weight.Bold); if (bold != null) word.font = bold;
             word.characterSpacing = 2f; word.enableVertexGradient = true;
             word.colorGradient = new VertexGradient(UiTheme.Hex("6CC0FF"), UiTheme.Hex("6CC0FF"), UiTheme.Hex("3A86FF"), UiTheme.Hex("3A86FF"));
             word.textWrappingMode = TextWrappingModes.NoWrap;
-            Place(word.rectTransform, Margin + 60f, 20f, 240f, 46f);
-            var strap = HudPrimitives.Label("Brand strap", scrim, 14f, UiTheme.Muted, TextAlignmentOptions.TopLeft);
+            Place(word.rectTransform, Margin + 60f, y, 220f, 46f);
+            var strap = HudPrimitives.Label("Brand strap", parent, 14f, UiTheme.Muted, TextAlignmentOptions.TopLeft);
             strap.text = Localisation.Text("THE HOUSE");
             strap.characterSpacing = 3f;
-            Place(strap.rectTransform, Margin + 62f, 64f, 240f, 20f);
+            Place(strap.rectTransform, Margin + 62f, y + 44f, 220f, 20f);
+            return Margin + 60f + 220f;
         }
 
-        /// <summary>The five steps, each a tab with its glyph; the one on screen is lit.</summary>
+        /// <summary>
+        /// The steps (menu slice 2, change 4): the mode's own steps only, numbered from 1, each with
+        /// its done, needs-attention or not-visited mark; the one on screen is the one lit.
+        /// </summary>
         private void BuildSteps(RectTransform scrim)
         {
             var navigation = new GameObject("Setup steps", typeof(RectTransform)).GetComponent<RectTransform>();
@@ -156,9 +214,10 @@ namespace Gamesim.Presentation
                 string page = pages[i];
                 bool on = studioPage == page;
                 var button = Pill(navigation, page, new Rect(i * (tab + gap), 0f, tab, 52f), on ? Tone.TabActive : Tone.Tab,
-                    () => GoTo(page), icon: StepIcon(page));
+                    () => GoTo(page));
                 button.name = page;
                 TabFocus(button);
+                StepDecorations(button, i + 1, MarkOf(page), on, tab);
             }
         }
 
@@ -205,14 +264,6 @@ namespace Gamesim.Presentation
             if (IsShowing) Rebuild();
         }
 
-        private void BuildSettingsGear(RectTransform scrim)
-        {
-            if (openSettings == null) return;
-            var gear = GlyphButton(scrim, SettingsCaption, new Rect(frame.x - Margin - 52f, 24f, 52f, 52f), null,
-                UiTheme.Icon("settings"), OpenSettingsFromGear);
-            gear.name = SettingsCaption;
-        }
-
         /// <summary>
         /// Steps aside for Settings. Nothing of the form is reset: the draft, the step and the way
         /// back stay as they are, and closing Settings puts the form up again on the same step.
@@ -248,30 +299,19 @@ namespace Gamesim.Presentation
             events.SetSelectedGameObject(field.gameObject);
         }
 
-        private static string StepIcon(string page)
-        {
-            switch (page)
-            {
-                case "Appearance": return PackArt.KitIconPerson;
-                case "Identity": return PackArt.KitIconNote;
-                case "Personality": return PackArt.KitIconHeart;
-                case "My Houseguests": return PackArt.KitIconPeople;
-                default: return PackArt.KitIconCheck;
-            }
-        }
-
         private int PageIndex => Math.Max(0, Array.IndexOf(ActivePages, studioPage));
 
         /// <summary>
         /// To another step. What belonged to the page being left goes with it: the comparison with the
-        /// original look, an armed delete, an armed new houseguest.
+        /// original look, an armed delete, and My Houseguests open over it.
         /// </summary>
         private void GoTo(string page)
         {
             SelectPage(page);
             comparingOriginal = false;
             pendingDeleteProfile = null;
-            confirmingNew = false;
+            libraryOpen = false;
+            pendingReplace = null; pendingReplaceName = null;
             Rebuild();
             if (page == "Identity") FocusNameField();
         }
@@ -293,16 +333,15 @@ namespace Gamesim.Presentation
             footer.sizeDelta = new Vector2(0f, FooterHeight); footer.anchoredPosition = Vector2.zero;
             bool ready = draft.TryValidate(out var error);
             float y = 18f;
-            // Wide enough for "Back to the cast (draft kept)" at its own size.
-            const float back = 340f;
-            Pill(footer, editingCastSlot ? CancelSlotCaption : BackCaption, new Rect(Margin, y, back, 64f), Tone.Secondary, Dismiss,
-                icon: PackArt.KitIconArrowBack);
+            // The way back is at the top left now (menu slice 2); the brand keeps this corner.
+            float brand = BuildBrand(footer, y - 2f);
             var pages = ActivePages;
             bool last = PageIndex == pages.Length - 1;
             string start = editingCastSlot ? ApplySlotCaption : StartCaption;
             float right = frame.x - Margin;
-            // One bright way on: the next step, named. Starting from here is the quieter choice
-            // beside it; on the last step starting is the way on.
+            // One bright way on, at the right, in every state (menu slice 2, change 3): the next step,
+            // named; starting from here is the quieter choice beside it. On the last step starting is
+            // the way on, bright even while something is missing - the link beside it says what.
             if (!last)
             {
                 var next = pages[PageIndex + 1];
@@ -313,16 +352,21 @@ namespace Gamesim.Presentation
             }
             float startWidth = last ? 360f : 280f;
             var go = Pill(footer, start, new Rect(right - startWidth, last ? y - 4f : y + 6f, startWidth, last ? 72f : 52f),
-                last && ready ? Tone.Primary : Tone.Secondary, StartSeason,
-                subtitle: last ? (editingCastSlot ? "Back to the cast with this edit" : "Step " + pages.Length + " of " + pages.Length) : null);
+                last ? Tone.Primary : Tone.Secondary, StartSeason,
+                subtitle: last ? "Step " + pages.Length + " of " + pages.Length : null);
             go.name = start;
-            float statusLeft = Margin + back + 24f, statusRight = right - startWidth - 24f;
+            float statusLeft = brand + 24f, statusRight = right - startWidth - 24f;
+            var statusRect = new Rect(statusLeft, y, Mathf.Max(80f, statusRight - statusLeft), 64f);
+            // What is missing is a link to where it is put right (menu slice 2, change 4): the first
+            // thing missing, as the draft's own check finds it.
+            var problem = !ready && string.IsNullOrEmpty(resumeError) ? CreatorSteps.First(draft, entryMode == EntryMode.Quick) : null;
+            if (problem != null) { ProblemLink(footer, problem, statusRect); return; }
             var status = HudPrimitives.Label("Footer status", footer, 16f,
                 ready && string.IsNullOrEmpty(resumeError) ? UiTheme.Positive : UiTheme.Warning, TextAlignmentOptions.Center);
             status.text = Localisation.Text(!string.IsNullOrEmpty(resumeError) ? resumeError : ready
                 ? draft.Remaining > 0 ? "Ready. " + draft.Remaining + " spare point" + (draft.Remaining == 1 ? "" : "s") + " left unspent, which is allowed." : "Ready."
                 : error);
-            Place(status.rectTransform, statusLeft, y, Mathf.Max(80f, statusRight - statusLeft), 64f);
+            Place(status.rectTransform, statusRect.x, statusRect.y, statusRect.width, statusRect.height);
             status.enableAutoSizing = true; status.fontSizeMax = 16f; status.fontSizeMin = 12f;
         }
 

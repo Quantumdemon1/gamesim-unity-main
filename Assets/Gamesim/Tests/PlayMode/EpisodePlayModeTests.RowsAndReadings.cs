@@ -262,7 +262,7 @@ namespace Gamesim.Tests.PlayMode
             yield return null;
             Canvas.ForceUpdateCanvases();
             AssertKitGround(ButtonWithCaption(EpisodeHud.PlanBackdoorCaption), "The picker's '" + EpisodeHud.PlanBackdoorCaption + "'");
-            AssertKitGround(ButtonWithCaption("Close  [Esc]"), "The panel's 'Close  [Esc]'");
+            AssertKitGround(ButtonWithCaption(Gamesim.Presentation.WayOut.CloseCaption), "The panel's 'Close'");
             director.ClosePanels();
             yield return null;
         }

@@ -310,7 +310,7 @@ namespace Gamesim.Presentation
                 if (!Paused) TogglePause();
                 leaveArmed = true;
                 ShowOverlay(OverlayState.Paused, "Leave this ranked attempt? Press " + LegendKey(LegendAction.Leave)
-                    + " again, or choose Back to briefing. The same board will be waiting.");
+                    + " again, or choose " + BackToBriefingCaption + ". The same board will be waiting.");
                 Select(cancel);
                 return;
             }
@@ -422,6 +422,12 @@ namespace Gamesim.Presentation
             var label=HudPrimitives.Label(name,parent,size*FontScale,colour,TextAlignmentOptions.Left);
             label.text=text; label.textWrappingMode=TextWrappingModes.Normal; Place(label.rectTransform,x,y,w,h); return label;
         }
+
+        /// <summary>
+        /// The surface's way back to the briefing, in one wording wherever it stands - the controls
+        /// card's, the assembly's and a practice's finish (menu slice 2: "Back to &lt;place&gt;").
+        /// </summary>
+        public static readonly string BackToBriefingCaption = WayOut.BackTo("the briefing");
 
         private Button Button(string name,Transform parent,string caption,float x,float y,float w,float h,Action action)
         {

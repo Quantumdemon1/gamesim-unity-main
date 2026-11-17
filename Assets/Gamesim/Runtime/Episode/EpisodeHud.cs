@@ -43,19 +43,21 @@ namespace Gamesim.Episode
         public const string VoteReadLineName = "Read";
         public const string DiaryReviewNominationsCaption = "Review nominations";
         public const string DiaryConfirmCaption = "Confirm diary decision";
-        public const string DiaryCancelCaption = "Back to diary (discard choice)";
+        // The review steps' ways back say where they return and, truthfully, what leaving there throws
+        // away (menu slice 2, the review's change 1): the draft is discarded, not kept.
+        public const string DiaryCancelCaption = WayOut.BackPrefix + "the diary (choice discarded)";
         public const string DiarySkipReflectionCaption = "Skip this reflection";
         public const string DiaryVisitReflectionCaption = "Visit diary room to answer";
         public const string DiaryConfirmReflectionCaption = "Confirm private reflection";
-        public const string DiaryCancelReflectionCaption = "Back to reflection (discard answer)";
+        public const string DiaryCancelReflectionCaption = WayOut.BackPrefix + "the reflection (answer discarded)";
         public const string OathDeclareCaption = "Declare my loyalty";
         public const string OathDeclineCaption = "Pass on this loyalty declaration";
         // Captioned by what they do: the "· review" the cards wore explained nothing - the press
         // opens the review under the pending tab, which the diary says itself (UI-UX-PASS-PLAN D0).
         public const string StudyMemorizeCaption = "Memorize the layout";
         public const string StudySneakCaption = "Sneak a peek at production notes";
-        public const string StudyConfirmCaption = "Confirm study · use 1 social action";
-        public const string StudyCancelCaption = "Back to diary (discard study)";
+        public const string StudyConfirmCaption = "Confirm study · use 1 action";
+        public const string StudyCancelCaption = WayOut.BackPrefix + "the diary (study discarded)";
         public const string SimulateCompetitionCaption = "Simulate competition · weighted rules";
         /// <summary>
         /// Throwing is a real strategic option in the reference build, sitting beside playing and
@@ -262,9 +264,6 @@ namespace Gamesim.Episode
             }
         }
 
-        /// <summary>Back from choosing how to put a plea to choosing what to ask.</summary>
-        public const string LobbyBackCaption = "Ask something else";
-
         /// <summary>The words on one answer to a houseguest who came to you: the answer's own label.</summary>
         public static string ReplyCaption(string label) => label;
 
@@ -457,6 +456,7 @@ namespace Gamesim.Episode
             MarkChromeChanged();
             challengeMeter = null; challengeCaption = null;
             modal = null; modalScroll = null; lastSelection = null; restoreSelection = true;
+            ForgetWayBack();
             fitToContent = false; pinnedAction = null; pinnedNoteHeight = 0f; pinnedExtra = 0f; contentCap = 0f; nearbyCard = null; nearbyBar = null; statusRoot = null;
             ForgetStrategyStage();
             activityLayout = ActivityLayout.Standard; relationshipRoot = null;
@@ -611,10 +611,11 @@ namespace Gamesim.Episode
             // "which part of the week is this" is the question every panel is answered against.
             // Built before the Close button so it sits behind it in the hierarchy.
             var band = PhaseBand(modal, state);
-            // Measured off the panel's own width: the button is anchored to the panel's top-LEFT,
-            // so a wider panel leaves it stranded in the middle unless it is moved with it.
-            var close = FixedButton(modal,"Close  [Esc]",new Vector2(ModalWidth - 192f,-15),new Vector2(174,45),director.ClosePanels);
-            Anchor((RectTransform)close.transform,new Vector2(1,1),new Vector2(1,1),new Vector2(-18,-15),new Vector2(174,45));
+            // The panel's one way out (menu slice 2, the review's change 1): "Close" at the top right,
+            // drawn by the shared helper so it looks and sits the same on every panel, with the key
+            // it answers to as a hint beside the words, never in them. A page reached from another
+            // page inside the panel adds its way back at the top left and takes the hint (WayBack).
+            panelClose = WayOut.AddClose(modal,director.ClosePanels,FontScale,InputGlossary.BackKeyHint);
             // LiberationSans SDF is a static atlas without U+2191/U+2193, so the arrow glyphs
             // would render as tofu. Words also read better to a screen reader.
             // "Scroll for more" is said only of a panel that scrolls (FitStandardPanel).
@@ -1080,19 +1081,32 @@ namespace Gamesim.Episode
             // rows' own space so the card still clears the help card.
             bool briefingRow = !Compact && director.IsOverview && !director.IsBriefing;
             float footer = briefingRow ? 44f : 0f;
-            float space = (root.rect.height > 0 ? root.rect.height : 900f) - top - 40f - footer - (CastRail.Bottom + CastRail.Height + 64f);
+            // The house's map, with the briefing put away, is a screen over the house: its one way out
+            // is "Close" at this card's top right (menu slice 2), on a line of its own under the heading
+            // - the card is too narrow for both on one line at the larger text sizes - and the rooms
+            // start under it. Without the key hint, for the same reason; Escape and B close the map
+            // as they always did. The briefing's own Close, with its hint, is on its sheet.
+            bool closeHere = director.IsOverview && !director.IsBriefing;
+            const float closeTop = 36f;
+            float lead = closeHere ? WayOut.Height(FontScale) + 4f : 0f;
+            float space = (root.rect.height > 0 ? root.rect.height : 900f) - top - 40f - footer - lead - (CastRail.Bottom + CastRail.Height + 64f);
             float rowHeight = rooms.Count > 0 ? Mathf.Clamp(space / rooms.Count, 38f, 44f) : 44f;
             var column = Chrome(OverviewColumnName, parent);
             Anchor(column, new Vector2(1, 1), new Vector2(1, 1), new Vector2(-RightColumnInset, -top),
-                new Vector2(RightColumnWidth, 40 + rooms.Count * rowHeight + footer));
+                new Vector2(RightColumnWidth, 40 + lead + rooms.Count * rowHeight + footer));
             CardHeading(column, "Who Is Where");
+            if (closeHere)
+            {
+                var close = (RectTransform)WayOut.AddClose(column, director.EndOverview, FontScale).transform;
+                close.anchoredPosition = new Vector2(close.anchoredPosition.x, -closeTop);
+            }
             if (briefingRow)
-                FixedButton(column, EpisodeDirector.ShowBriefingCaption, new Vector2(14f, -(40f + rooms.Count * rowHeight)),
+                FixedButton(column, EpisodeDirector.ShowBriefingCaption, new Vector2(14f, -(40f + lead + rooms.Count * rowHeight)),
                     new Vector2(RightColumnWidth - 28f, 36f), () => director.ShowBriefing());
             for (int i = 0; i < rooms.Count; i++)
             {
                 var room = rooms[i];
-                float y = -(36 + i * rowHeight);
+                float y = -(36 + lead + i * rowHeight);
                 // The mark each room's chip wears on the map, so a row and its room read as one.
                 HudPrimitives.Glyph("Room mark", column, RoomLabels.Glyph(room.Name), Accent, new Vector2(14, y - 1), 18);
                 // "NOMINATION ROOM" wants 146 at 15; the count keeps a two-digit box at the end.
@@ -2235,6 +2249,8 @@ namespace Gamesim.Episode
             // A name a picker drew over a card that a row drawn after it uses as its caption comes off
             // now the render is done (EpisodeHud.ConversationGroups.cs).
             if (pickerNames.Count > 0) StandDownNamesThatAreCaptions();
+            // A page's way back stands in the panel's top-left corner once the render's layout is done (EpisodeHud.WayOut.cs).
+            if (wayBackRoomOwed) MakeRoomForWayBack();
             // The pad's buttons beside the captions that name a key (EpisodeHud.Glyphs.cs).
             SyncGlyphChips();
             var events = EventSystem.current;

@@ -9,7 +9,9 @@ namespace Gamesim.Episode
     /// <see cref="JuryHouseRead"/>. A view over the station's own panel, as the comparison is: a
     /// free tile opens it in the window at three, and a row after the questioning's and the
     /// speech's own controls opens it at the Final 2, so neither the opening focus nor any
-    /// pinned caption moves. It commits nothing, and "Leave the jury house" goes back.
+    /// pinned caption moves. It commits nothing. Over the station's panel its one way out is the way
+    /// back to that panel at the top left (<see cref="JuryHouseBackCaption"/>); over the house, from
+    /// the strip, it is the panel's own Close - the "Leave the jury house" row that did both went.
     ///
     /// <para>The mockup pass (MOCKUP-PASS-PLAN M12, mockup 56) makes it a dashboard: the stage's
     /// whole width with the station band naming the screen, compact cards across the top, the
@@ -28,7 +30,19 @@ namespace Gamesim.Episode
     public sealed partial class EpisodeDirector
     {
         public const string JuryHouseCaption = "The jury house";
-        public const string LeaveJuryHouseCaption = "Leave the jury house";
+        /// <summary>The way back to the questioning, from the jury house opened over it at the Final 2.</summary>
+        public static readonly string BackToQuestioningCaption = WayOut.BackTo("the questioning");
+        /// <summary>The way back to the speeches, from the jury house opened over them at the Final 2.</summary>
+        public static readonly string BackToSpeechesCaption = WayOut.BackTo("the speeches");
+
+        /// <summary>
+        /// Where the jury house opened over the station's panel goes back to, by that panel: the
+        /// window at three, the questioning or the speeches at the Final 2.
+        /// </summary>
+        public static string JuryHouseBackCaption(EpisodeState state) =>
+            state != null && state.phase == EpisodePhase.JuryQuestioning ? BackToQuestioningCaption
+            : state != null && state.phase == EpisodePhase.FinalSpeeches ? BackToSpeechesCaption
+            : BackToPreparationCaption;
         /// <summary>The jury strip's door. Words of its own: the tile and the Final 2's row carry <see cref="JuryHouseCaption"/>.</summary>
         public const string JuryStripCaption = "Jury house";
 
@@ -46,6 +60,9 @@ namespace Gamesim.Episode
 
         /// <summary>Whether the jury house is open, from any of its doors. A read for tests.</summary>
         public bool InJuryHouse => juryHouseOpen || juryHouseOverHouse;
+
+        /// <summary>Whether the jury house is open over the house, from the strip, where the panel's Close is its way out. A read for tests.</summary>
+        public bool JuryHouseOverTheHouse => juryHouseOverHouse;
 
         /// <summary>
         /// Where the jury strip opens the jury house: wherever the other doors do, and through the
@@ -214,10 +231,10 @@ namespace Gamesim.Episode
             hud.CardLine("The trait each juror leads with is the one their questions come from.", 12, UiTheme.Muted);
             hud.EndSideCard();
             hud.EndColumns();
-            // The way back is the screen's last row, as the final case's is (UI-UX-PASS-PLAN E0): it
-            // stood under the head, a full-width button over the jury it leaves. Nothing here is a
-            // control but it, so the panel still opens on it.
-            hud.Action(LeaveJuryHouseCaption, CloseJuryHouse);
+            // One way out (menu slice 2): over the station's panel, the way back to it at the top
+            // left; over the house, the panel's own Close. "Leave the jury house", a last row that
+            // was a second way out beside the Close, is folded into them.
+            if (!juryHouseOverHouse) hud.DecisionPageBack(JuryHouseBackCaption(state), CloseJuryHouse);
         }
     }
 }

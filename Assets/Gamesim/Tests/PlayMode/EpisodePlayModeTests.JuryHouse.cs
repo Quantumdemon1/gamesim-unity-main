@@ -23,10 +23,15 @@ namespace Gamesim.Tests.PlayMode
             string head = Words(LastActive(EpisodeHud.ScreenHeadName));
             Assert.That(head, Does.Not.Contain("THE JURY HOUSE"), "The head does not repeat the band's title.");
             Assert.That(head, Does.Contain("JUROR").And.Contain("ONE DECISION"), "The head is the jury's size.");
-            // The way back is the screen's last row, under the columns, as the final case's is (E0).
-            var leave = FindButton(EpisodeDirector.LeaveJuryHouseCaption).transform;
-            var rows = leave.parent.Cast<Transform>().Where(row => row.gameObject.activeSelf).ToList();
-            Assert.That(rows.Last(), Is.SameAs(leave), "'Leave the jury house' is the screen's last row.");
+            // One way out (menu slice 2): over the station's panel the way back to it, in the band at
+            // the top left; over the house the panel's own Close, and no row of its own either way.
+            var back = director.GetComponentInChildren<EpisodeHud>().DecisionPageBackControl;
+            if (director.JuryHouseOverTheHouse) Assert.That(back, Is.Null, "Over the house the panel's Close is the way out.");
+            else
+            {
+                Assert.That(back, Is.Not.Null, "Over the station's panel, the way back to it.");
+                Assert.That(WayOut.CaptionOf(back), Is.EqualTo(EpisodeDirector.JuryHouseBackCaption(director.Snapshot)), "It names the panel it goes back to.");
+            }
             Assert.That(LastActive(EpisodeHud.JuryMattersName), Is.Not.Null, "What matters to this jury.");
             var jurors = FinalistRead.Jurors(state);
             Assert.That(jurors, Is.Not.Empty);
@@ -108,7 +113,7 @@ namespace Gamesim.Tests.PlayMode
                 if (Application.isBatchMode)
                     yield return CaptureFraming("endgame-jury-house-three" + TextScales.Suffix(textSize), settle: false,
                         inspect: frame => LogTheFit(where + " on the 16:9 frame"));
-                ButtonWithCaption(EpisodeDirector.LeaveJuryHouseCaption).onClick.Invoke();
+                ButtonWithCaption(EpisodeDirector.BackToPreparationCaption).onClick.Invoke();
                 yield return null; yield return null;
                 Assert.That(director.InJuryHouse, Is.False);
                 Assert.That(Words(LastActive(EpisodeHud.ScreenHeadName)), Does.Contain(EpisodeDirector.EndgamePreparationTitle), "Back in the window.");
@@ -140,7 +145,7 @@ namespace Gamesim.Tests.PlayMode
             Canvas.ForceUpdateCanvases();
             AssertTheJuryHouse(state);
             AssertEquivalent(state, director.Snapshot);
-            ButtonWithCaption(EpisodeDirector.LeaveJuryHouseCaption).onClick.Invoke();
+            ButtonWithCaption(EpisodeDirector.BackToQuestioningCaption).onClick.Invoke();
             yield return null; yield return null;
             Assert.That(director.InJuryHouse, Is.False);
             Assert.That(director.GetComponentsInChildren<Button>().Any(button => button.IsActive()

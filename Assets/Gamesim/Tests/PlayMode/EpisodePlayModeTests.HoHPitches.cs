@@ -103,7 +103,7 @@ namespace Gamesim.Tests.PlayMode
                     yield return OpenStation(); yield return null;
                     var before = director.Snapshot;
                     string where = "HoH pitches at " + size + " contestants / text=" + TextSizes.Name(textSize);
-                    AssertNominationScreen(where, EpisodeHud.BackToNomineesCaption);
+                    AssertNominationScreen(where);
                     Assert.That(ActiveRect(EpisodeHud.NomineeGridName), Is.Null, "The first pending pitch is the current view, not a buried row.");
                     var panel = ActiveRect("Episode panel");
                     Assert.That(panel.GetComponentsInChildren<TMP_Text>().Any(label =>

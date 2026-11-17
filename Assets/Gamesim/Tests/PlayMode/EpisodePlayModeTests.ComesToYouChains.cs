@@ -256,8 +256,9 @@ namespace Gamesim.Tests.PlayMode
             yield return null; yield return null;
             Assert.That(LastLabel(EpisodeHud.AskOutcomeName), Is.Not.Null, "The answer's own line,");
             var somethingElse = FindButton(EpisodeHud.AskSomethingElseCaption);
-            var done = FindButton(EpisodeDirector.SceneCardDoneCaption);
-            Assert.That(somethingElse.transform.parent, Is.SameAs(done.transform.parent), "\"There's something else\" beside Back to the house.");
+            Assert.That(somethingElse, Is.Not.Null, "\"There's something else\" is the card's way on,");
+            Assert.That(ButtonWithCaptionOrNull(EpisodeDirector.SceneCardDoneCaption), Is.Null, "and the panel's Close its one way out, with no row beside it.");
+            Assert.That(PanelCloseButton(), Is.Not.Null);
             Assert.That(SelectedName(), Is.EqualTo(EpisodeHud.AskSomethingElseCaption), "The keyboard is on it.");
             Assert.That(director.AskChainNextRecordId, Is.EqualTo(offerId));
 
@@ -273,9 +274,9 @@ namespace Gamesim.Tests.PlayMode
             AssertIntentCommand(beforeDecline, EpisodeCommandKind.RespondToDeal, offerId, "decline");
             yield return null;
             Assert.That(ButtonWithCaptionOrNull(EpisodeHud.AskSomethingElseCaption), Is.Null, "Nothing else from Maya: the chain ends.");
-            ButtonWithCaption(EpisodeDirector.SceneCardDoneCaption).onClick.Invoke();
+            PanelCloseButton().onClick.Invoke();
             Assert.That(director.IsAskCardOpen, Is.False);
-            Assert.That(director.IsPanelOpen, Is.False, "Back to the house closes the card.");
+            Assert.That(director.IsPanelOpen, Is.False, "The panel's Close closes the card.");
         }
 
         // ------------------------------------------------------------------ C4. a card, then the same sender's next card

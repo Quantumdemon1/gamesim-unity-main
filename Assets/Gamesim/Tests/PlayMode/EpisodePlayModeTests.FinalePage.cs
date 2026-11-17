@@ -771,9 +771,10 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(FinalePanelLines(EpisodeDirector.JuryQuestionsReasonName), Has.Length.EqualTo(ballots.Count), "A line for each juror's ballot.");
             Assert.That(FinaleControlCount(EpisodeDirector.JuryQuestionsCaption), Is.EqualTo(1), "The disclosure is still one control, to fold it.");
             var back = FinaleControl(EpisodeDirector.BackToFinaleCaption);
-            Assert.That(back.transform.parent, Is.SameAs(ActiveRect("Episode panel")), "The way back is pinned in the footer, not in the scroll.");
+            Assert.That(back.name, Is.EqualTo(WayOut.BackObjectName), "The one way back, drawn by the shared helper,");
+            Assert.That(back.transform.parent.name, Is.EqualTo(EpisodeHud.DecisionBandName), "at the top left in the panel's band, not in the scroll.");
             var focus = EventSystem.current.currentSelectedGameObject;
-            Assert.That(focus != null ? focus.name : "nothing", Is.EqualTo(EpisodeDirector.BackToFinaleCaption),
+            Assert.That(focus != null ? focus.name : "nothing", Is.EqualTo(WayOut.BackObjectName),
                 "The keyboard is on the way back as the step opens, so a second Enter goes back.");
             AssertEveryLabelDraws("The jury's questions as the step");
 

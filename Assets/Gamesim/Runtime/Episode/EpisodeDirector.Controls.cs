@@ -229,6 +229,21 @@ namespace Gamesim.Episode
         /// </summary>
         private bool BackPressed() => BackOut(pauseWhenNothingIsOpen: false);
 
+        /// <summary>
+        /// The nested page's way back, for Escape and B: a page reached from another page inside a
+        /// panel - a profile from the directory, Deals &amp; promises from the notes, a beat or a
+        /// houseguest's screen from free time's board, a story's second step - draws "Back to
+        /// &lt;that page&gt;" with the HUD's WayBack, and the key presses it. Any screen's page joins
+        /// by drawing its way back that way; nothing here names a page. Whether one was pressed.
+        /// </summary>
+        private bool BackNestedPage()
+        {
+            var back = hud != null && IsPanelOpen ? hud.WayBackAction : null;
+            if (back == null) return false;
+            back();
+            return true;
+        }
+
         /// <summary>The priority chain Escape, Start and B share. False only for B with nothing open: not taken.</summary>
         private bool BackOut(bool pauseWhenNothingIsOpen)
         {
@@ -257,10 +272,15 @@ namespace Gamesim.Episode
             else if (castSelect != null && castSelect.IsShowing) castSelect.Dismiss();
             // The report draws over the finale panel; Escape closes it and leaves the panel.
             else if (IsSeasonReportOpen) seasonReport.Close();
+            // An earlier week over the recap goes back where its way back says (menu slice 2).
+            else if (weeklyRecap != null && weeklyRecap.GoBack()) { }
             else
             {
                 if (TryDeferVisibleNpcInvitation()) return true;
                 if (BackConversationNavigation()) return true;
+                // A page reached from another page inside the panel goes back a page, as its way
+                // back at the top left does, before anything closes (menu slice 2, the review's change 1).
+                if (BackNestedPage()) return true;
                 // A panel closes. With nothing open at all, Escape and Start are the pause menu,
                 // and B is nothing - not even a redraw; the overview, your moves or a chip's card
                 // close first and the press stops there.

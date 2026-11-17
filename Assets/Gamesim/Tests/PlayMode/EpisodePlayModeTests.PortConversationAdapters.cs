@@ -232,8 +232,9 @@ namespace Gamesim.Tests.PlayMode
                 Assert.That(ButtonWithCaptionOrNull("Promise safety"), Is.Not.Null,
                     "The same-category helper must restore ordinary children, not report a hidden leaf as unavailable.");
                 Assert.That(ButtonWithCaptionOrNull(targetCaption), Is.Null);
-                Assert.That(PortConversationReport<int>(runner, "conversationNavigations"), Is.EqualTo(navigations + 2),
-                    "One actual Back-to-topics and one actual category gesture; no hidden control invocation.");
+                Assert.That(PortConversationReport<int>(runner, "conversationNavigations"), Is.EqualTo(navigations + 3),
+                    "One actual way back out of the target picker (Back to the choices), one actual Back-to-topics and one actual category gesture; no hidden control invocation.");
+                Assert.That(director.ConversationPicker, Is.Null, "The picker was left by its own way back.");
                 Assert.That(PortConversationReport<int>(runner, "commands"), Is.Zero);
                 AssertPortConversationUnchanged(before, primary, backup);
 

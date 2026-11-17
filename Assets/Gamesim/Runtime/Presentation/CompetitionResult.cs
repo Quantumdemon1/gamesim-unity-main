@@ -13,6 +13,9 @@ namespace Gamesim.Presentation
     [DisallowMultipleComponent]
     public sealed class CompetitionResult : MonoBehaviour
     {
+        /// <summary>The score details' way back to the standings, worded as every way back is ("Back to &lt;place&gt;").</summary>
+        public static readonly string BackToStandingsCaption = WayOut.BackTo("the standings");
+
         public readonly struct Standing
         {
             public readonly string Name;
@@ -126,7 +129,7 @@ namespace Gamesim.Presentation
             Build(playedAward,playedCategory,playedWeek,playedStandings,playedExplanation,playedMark);
             column.gameObject.SetActive(true);
             if(details){showingDetails=true;standingsPanel.gameObject.SetActive(false);detailsPanel.gameObject.SetActive(true);
-                detailsButton.GetComponentInChildren<TMP_Text>().text="Back to standings";}
+                detailsButton.GetComponentInChildren<TMP_Text>().text=BackToStandingsCaption;}
             if(EventSystem.current!=null&&selectedName!=null)
                 EventSystem.current.SetSelectedGameObject(selectedName==detailsButton.name?detailsButton.gameObject:continueButton.gameObject);
         }
@@ -365,7 +368,7 @@ namespace Gamesim.Presentation
         {
             if(!playing || elapsed<.25f)return;
             showingDetails=!showingDetails;standingsPanel.gameObject.SetActive(!showingDetails);detailsPanel.gameObject.SetActive(showingDetails);
-            detailsButton.GetComponentInChildren<TMP_Text>().text=showingDetails?"Back to standings":"Score details";
+            detailsButton.GetComponentInChildren<TMP_Text>().text=showingDetails?BackToStandingsCaption:"Score details";
             if(EventSystem.current!=null)EventSystem.current.SetSelectedGameObject(detailsButton.gameObject);
         }
 

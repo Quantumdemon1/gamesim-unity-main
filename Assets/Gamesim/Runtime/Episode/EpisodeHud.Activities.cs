@@ -220,11 +220,12 @@ namespace Gamesim.Episode
                 Stretch((RectTransform)modalScroll.transform, 14f, 58f, 10f, 12f);
                 modalScroll.verticalNormalizedPosition = 1f;
             }
-            var close = modal.Find("Close  [Esc]");
+            // The panel's Close goes with the column, at the size the shared helper drew it.
+            var close = modal.Find(WayOut.CloseObjectName);
             if (close != null)
             {
                 close.SetParent(conversationColumn, false);
-                Anchor((RectTransform)close, new Vector2(1, 1), new Vector2(1, 1), new Vector2(-12f, -10f), new Vector2(150f, 38f));
+                Anchor((RectTransform)close, new Vector2(1, 1), new Vector2(1, 1), new Vector2(-12f, -10f), ((RectTransform)close).sizeDelta);
             }
         }
 

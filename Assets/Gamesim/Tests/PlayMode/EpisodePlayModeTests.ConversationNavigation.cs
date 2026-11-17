@@ -24,6 +24,10 @@ namespace Gamesim.Tests.PlayMode
                 ButtonWithCaption(EpisodeHud.ConversationSkipCaption).onClick.Invoke();
                 yield return null;
             }
+            // A level open inside the page - a verb's people, a plea's approaches - is gone back from first, as a player does.
+            var inner = ButtonWithCaptionOrNull(EpisodeDirector.ConversationChoicesBackCaption)
+                ?? ButtonWithCaptionOrNull(EpisodeDirector.ConversationAsksBackCaption);
+            if (inner != null) { inner.onClick.Invoke(); yield return null; }
             var back = ButtonWithCaptionOrNull(EpisodeDirector.ConversationTopicsBackCaption);
             if (back != null) { back.onClick.Invoke(); yield return null; }
             ButtonWithCaption(caption).onClick.Invoke();
@@ -73,6 +77,10 @@ namespace Gamesim.Tests.PlayMode
                 {
                     yield return PressRow(EpisodeDirector.VentPickerCaption);
                     Assert.That(director.ConversationPicker, Is.EqualTo(EpisodeDirector.VentPickerCaption));
+                    // With a verb's people open, the page's way back goes back that one level first (menu slice 2).
+                    yield return KeyboardSubmit(EpisodeDirector.ConversationChoicesBackCaption);
+                    Assert.That(director.ConversationPicker, Is.Null, "Back to the choices shuts the people,");
+                    Assert.That(director.CurrentConversationCategory, Is.EqualTo(category), "on the same page.");
                 }
                 yield return KeyboardSubmit(EpisodeDirector.ConversationTopicsBackCaption);
                 Assert.That(director.CurrentConversationCategory, Is.Null);

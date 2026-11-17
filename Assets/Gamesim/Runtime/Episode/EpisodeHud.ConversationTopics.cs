@@ -16,7 +16,7 @@ namespace Gamesim.Episode
             SetActivityLayout(ActivityLayout.Conversation);
             if (conversationColumn != null)
             {
-                var close = conversationColumn.Find("Close  [Esc]");
+                var close = conversationColumn.Find(WayOut.CloseObjectName);
                 if (close != null)
                 {
                     close.SetParent(modal, false);

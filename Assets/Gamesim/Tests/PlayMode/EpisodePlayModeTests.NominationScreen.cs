@@ -124,7 +124,7 @@ namespace Gamesim.Tests.PlayMode
             var header = panel.Find(EpisodeHud.StrategyHeaderName);
             Assert.That(header, Is.Not.Null, where + " has its header.");
             Assert.That(header.GetComponentsInChildren<RectTransform>().Where(rect => rect.name.StartsWith("Status card · ")).Select(rect => rect.name),
-                Is.EqualTo(new[] { "Status card · HOH", "Status card · PHASE", "Status card · CONVERSATIONS LEFT", "Status card · OBJECTIVE" }),
+                Is.EqualTo(new[] { "Status card · HOH", "Status card · PHASE", "Status card · " + EpisodeDirector.NominationBudgetLabel, "Status card · OBJECTIVE" }),
                 where + ": the four status cards, in the mockup's order.");
             Assert.That(header.GetComponentsInChildren<RectTransform>().Any(rect => rect.name == EpisodeHud.StepTrackerName), Is.True, where + " has its tracker.");
             var content = ActiveRect("Episode content");
@@ -132,7 +132,7 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(content.rect.height, Is.LessThanOrEqualTo(viewport.rect.height + .5f),
                 where + " holds its step without a scroll: " + content.rect.height.ToString("0") + " in " + viewport.rect.height.ToString("0") + ".");
             var controls = panel.Cast<Transform>().Select(child => child.GetComponent<Button>())
-                .Where(button => button != null && button.IsActive() && button.name != "Close  [Esc]").Select(button => button.name).ToArray();
+                .Where(button => button != null && button.IsActive() && button.name != Gamesim.Presentation.WayOut.CloseObjectName).Select(button => button.name).ToArray();
             Assert.That(controls, Is.EquivalentTo(pinned), where + " pins " + string.Join(" and ", pinned) + ", and nothing else.");
             AssertEveryLabelDraws(panel, where);
         }
@@ -448,7 +448,7 @@ namespace Gamesim.Tests.PlayMode
             int revision = director.Snapshot.revision;
             ButtonWithCaption("1. " + beat.title).onClick.Invoke();
             yield return null;
-            AssertNominationScreen("The story over the picker", EpisodeHud.BackToNomineesCaption);
+            AssertNominationScreen("The story over the picker");
             Assert.That(ActiveRect(EpisodeHud.StoryChoicesName), Is.Not.Null, "The story's options are the step.");
             Assert.That(ActiveRect(EpisodeHud.NomineeGridName), Is.Null, "and the picker waits behind it.");
             ButtonWithCaption(EpisodeHud.BackToNomineesCaption).onClick.Invoke();
@@ -502,7 +502,7 @@ namespace Gamesim.Tests.PlayMode
                 var aims = new List<string>();
                 AssertLargestPages("The backdoor plan" + size, NominationPagesHere(BackdoorOfSixteenLargestPages), page =>
                 {
-                    AssertNominationScreen("The backdoor plan" + size + (page > 1 ? ", page " + page : ""), EpisodeHud.BackToNomineesCaption);
+                    AssertNominationScreen("The backdoor plan" + size + (page > 1 ? ", page " + page : ""));
                     var grid = ActiveRect(EpisodeHud.BackdoorAimsName);
                     Assert.That(grid, Is.Not.Null, "The backdoor plan" + size + " is a grid on every page.");
                     aims.AddRange(grid.GetComponentsInChildren<Button>().Select(aim => aim.name));
@@ -540,10 +540,11 @@ namespace Gamesim.Tests.PlayMode
                 revision = state.revision;
                 ButtonWithCaption(EpisodeHud.EventChoiceCaption(beat.choices[0].label)).onClick.Invoke();
                 yield return null;
-                // Fifteen names at the least a cell reads at are more than the stage holds at the
-                // largest text: the WHO? pages there, every name on one of its pages - the pages the
-                // suite names for the frame running, and at the largest the pages it names for the
-                // 16:9 and the 4:3 frame each, laid out as that frame lays them. On the screen's own
+                // Fifteen names at the least a cell reads at are more than the 16:9 stage holds at the
+                // largest text (the 4:3 one holds them, its way back being in the band): the WHO?
+                // pages where it must, every name on exactly one page - the pages the suite names for
+                // the frame running, and at the largest the pages it names for the 16:9 and the 4:3
+                // frame each, laid out as that frame lays them. On the screen's own
                 // frame each page is the whole nomination screen too.
                 void AssertTheWho(string what, int expected, bool screen)
                 {
@@ -576,14 +577,14 @@ namespace Gamesim.Tests.PlayMode
                             Assert.That(NominationFrameNow(), Is.EqualTo(frame.Name), on + " is laid out for that frame.");
                             AssertTheWho(on, frame.Pages, false);
                         });
-                ShowPageWith(EpisodeHud.StoryBackCaption);
-                ButtonWithCaption(EpisodeHud.StoryBackCaption).onClick.Invoke();
+                // The way back stands at the panel's top left, outside the pages: no page to turn to for it.
+                ButtonWithCaption(EpisodeDirector.BackToStoryChoicesCaption).onClick.Invoke();
                 yield return null;
                 ButtonWithCaption(EpisodeHud.EventChoiceCaption(beat.choices[1].label)).onClick.Invoke();
                 yield return null;
                 AssertNominationScreen("The rule break's confirm" + size, "Continue episode");
                 Assert.That(FindButton(EpisodeHud.StoryConfirmCaption), Is.Not.Null, "A rule break asks to be pressed twice" + size + ".");
-                ButtonWithCaption(EpisodeHud.StoryBackCaption).onClick.Invoke();
+                ButtonWithCaption(EpisodeDirector.BackToStoryChoicesCaption).onClick.Invoke();
                 yield return null;
                 Assert.That(ActiveRect(EpisodeHud.StoryChoicesName), Is.Not.Null, "The way back is the beat" + size + ",");
                 Assert.That(director.Snapshot.revision, Is.EqualTo(revision), "and going there and back commits nothing.");

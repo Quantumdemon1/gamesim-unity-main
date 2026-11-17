@@ -846,8 +846,10 @@ namespace Gamesim.Episode
             // Back to the page it was reached from: OpenJournal opens on the notes.
             string section = journalSection;
             var committed = Snapshot;
+            // Its way back names where it returns (menu slice 2): the notebook, or the house.
             OpenRecap(() => weeklyRecap.Review(committed, week,
-                fromNotebook ? () => OpenNotebookAt(section) : (Action)ClosePanels));
+                fromNotebook ? () => OpenNotebookAt(section) : (Action)ClosePanels,
+                fromNotebook ? WeeklyRecapScreen.NotebookPlace : WayOut.House));
         }
 
         /// <summary>

@@ -101,12 +101,12 @@ namespace Gamesim.Tests.PlayMode
             // The world chrome, then the three panels that are not ceremonies.
             yield return KeyboardSubmit("Notebook [J]");
             yield return AssertKeyboardRing("notebook", ModalRoot);
-            yield return KeyboardSubmit("Close  [Esc]");
+            yield return KeyboardSubmit(Gamesim.Presentation.WayOut.CloseCaption);
             Assert.That(director.IsPanelOpen, Is.False, "Enter on Close must close the notebook.");
 
             yield return KeyboardSubmit("Settings");
             yield return AssertKeyboardRing("settings", ModalRoot);
-            yield return KeyboardSubmit("Close  [Esc]");
+            yield return KeyboardSubmit(Gamesim.Presentation.WayOut.CloseCaption);
             Assert.That(director.IsPanelOpen, Is.False, "Enter on Close must close the settings.");
 
             var maya = SceneComponents<HouseNpc>().Single(npc => npc.Id == ContentCatalog.MayaId);
@@ -193,7 +193,8 @@ namespace Gamesim.Tests.PlayMode
             var report = director.GetComponentsInChildren<SeasonReport>(true).Single();
             Assert.That(report.IsShowing, Is.True, "Enter on the report control must show the report.");
             yield return AssertKeyboardRing("season report", ReportRoot);
-            yield return KeyboardSubmit("Close");
+            // The report's own Close: the finale panel under it has its Close too, by the same word (menu slice 2).
+            yield return KeyboardSubmitTo(() => ReportButtons(SeasonReport.CloseCaption).FirstOrDefault(), "the report's Close");
             Assert.That(report.IsShowing, Is.False, "Enter on Close must dismiss the report.");
         }
 

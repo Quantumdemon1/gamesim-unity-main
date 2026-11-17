@@ -54,7 +54,7 @@ namespace Gamesim.Episode
             CompactClose();
             // The scroll starts near the card's top, over the close control's corner; the control
             // has to be above it or the viewport takes its clicks.
-            if (modal.Find("Close  [Esc]") is RectTransform close) close.SetAsLastSibling();
+            if (modal.Find(WayOut.CloseObjectName) is RectTransform close) close.SetAsLastSibling();
             SetChromeVisible(FollowChipName, false);
             SetChromeVisible("Interaction prompt", false);
             if (modalScroll != null)

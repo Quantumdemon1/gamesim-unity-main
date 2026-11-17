@@ -234,11 +234,13 @@ namespace Gamesim.Tests.PlayMode
         }
 
         /// <summary>
-        /// The rows Season Complete's four ways on stand in at the largest text, on the 16:9 frame and
+        /// The rows Season Complete's ways on stand in at the largest text, on the 16:9 frame and
         /// on the 4:3 (the batch canvas is 4:3): the suite's literals for the owner's contract of
         /// 2026-10-15, measured on 2026-10-16. At the standard and the larger text they are one row.
         /// </summary>
-        private static readonly (int At16x9, int At4x3) ReportFooterRowsLargest = (1, 2);
+        // Three ways since menu slice 2 moved the Close to the card's corner: at the largest text on the 4:3
+        // frame they stand in one row where the four stood in two (worked from the widths, not measured in a run).
+        private static readonly (int At16x9, int At4x3) ReportFooterRowsLargest = (1, 1);
 
         /// <summary>
         /// How many rows the report's ways on stand in, each way inside the footer and the ways read in

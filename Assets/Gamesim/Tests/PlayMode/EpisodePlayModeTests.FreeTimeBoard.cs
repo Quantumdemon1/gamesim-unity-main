@@ -612,7 +612,8 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(director.Snapshot.revision, Is.EqualTo(revision), "Opening the beat commits nothing.");
             yield return null;
             Assert.That(director.FreeTimeBeatOpen, Is.EqualTo(beats[0].id), "The banner's beat is the step.");
-            AssertOnTheStrategyStage(EpisodeDirector.BeginNextCompetitionCaption, "The beat opened as the step", EpisodeDirector.BackToFreeTimeCaption);
+            AssertOnTheStrategyStage(EpisodeDirector.BeginNextCompetitionCaption, "The beat opened as the step");
+            AssertPageWayBack(EpisodeDirector.BackToFreeTimeCaption, "The beat opened as the step");
             Assert.That(ActiveRect(EpisodeHud.FreeTimeBoardName), Is.Null, "The step has the stage to itself.");
             var choices = ActiveRect(EpisodeHud.StoryChoicesName);
             Assert.That(choices, Is.Not.Null, "Its options are on the screen,");
@@ -718,7 +719,7 @@ namespace Gamesim.Tests.PlayMode
                 yield return null; yield return null;
                 Assert.That(director.FreeTimeBeatOpen, Is.EqualTo(beats[0].id), where + ": Answer opens the step,");
                 var focus = EventSystem.current.currentSelectedGameObject;
-                Assert.That(focus != null ? focus.name : "nothing", Is.EqualTo(EpisodeDirector.BackToFreeTimeCaption),
+                Assert.That(focus != null ? focus.name : "nothing", Is.EqualTo(Gamesim.Presentation.WayOut.BackObjectName),
                     where + ": with the keyboard on the way back, not on the first option.");
                 yield return PressKey(Key.Enter);
                 yield return null;
@@ -729,7 +730,7 @@ namespace Gamesim.Tests.PlayMode
                 yield return KeyboardSubmit(EpisodeDirector.AnswerBeatCaption);
                 Assert.That(director.FreeTimeBeatOpen, Is.EqualTo(beats[0].id), where + ": Enter on Answer opens the step,");
                 focus = EventSystem.current.currentSelectedGameObject;
-                Assert.That(focus != null ? focus.name : "nothing", Is.EqualTo(EpisodeDirector.BackToFreeTimeCaption), "on the way back.");
+                Assert.That(focus != null ? focus.name : "nothing", Is.EqualTo(Gamesim.Presentation.WayOut.BackObjectName), "on the way back.");
                 yield return PressKey(Key.Enter);
                 yield return null;
                 Assert.That(director.FreeTimeBeatOpen, Is.Null, where + ": and a second Enter goes back,");

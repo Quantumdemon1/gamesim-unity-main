@@ -118,7 +118,7 @@ namespace Gamesim.Tests.PlayMode
             run.SetHolding(true);
             while (!run.Finished) run.Tick(.1);
             screen.Refresh();
-            screen.ShowFinished("Practice complete.", "Return to briefing", () => continued++, hideCancel: true);
+            screen.ShowFinished("Practice complete.", CompetitionGameScreen.BackToBriefingCaption, () => continued++, hideCancel: true);
             yield return null;
             var clock = Text("Competition clock").text;
             screen.HoldReady("late news from the arena");

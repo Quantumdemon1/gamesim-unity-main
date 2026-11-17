@@ -299,7 +299,7 @@ namespace Gamesim.Tests.PlayMode
                     AssertTheJuryHouse(beforeTheHouse);
                     UvEquivalent(beforeTheHouse, director.Snapshot);
                 });
-                ButtonWithCaption(EpisodeDirector.LeaveJuryHouseCaption).onClick.Invoke();
+                ButtonWithCaption(EpisodeDirector.JuryHouseBackCaption(director.Snapshot)).onClick.Invoke();
                 yield return Frames(2);
             }
             yield return ApplyTextSize(TextSize.Standard);

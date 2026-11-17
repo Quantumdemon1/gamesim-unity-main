@@ -136,7 +136,7 @@ namespace Gamesim.Episode
             if (voters.Count > 0 && state.nominees.Any(id => id != state.playerId))
                 points.Add("Promise a voter to evict one of the nominees. A promise is kept or broken at the vote.");
             if (voters.Any(voter => StrategyRules.CanBeAskedForTheirVote(state, voter.id)))
-                points.Add("From the block, ask each voter to keep you: one plea each, and each costs one of your conversations.");
+                points.Add("From the block, ask each voter to keep you: one plea each, and each costs one of your actions.");
             if (EpisodeEngine.LeverRulesOn(state) && VoteRead.Available(state))
                 foreach (var pact in state.alliances.Where(a => CampaignBrief.CanCallIn(state, a)))
                     points.Add(state.ledger.calls.Any(k => k.week == state.week && k.allianceId == pact.id)

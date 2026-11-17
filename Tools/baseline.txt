@@ -350,7 +350,11 @@
 # 10203 = 10181 (the staging families' head c6ae66df, with the walk out's pace, the menu quick wins and main 25977d60)
 # + the ring tower's 22 (10197 - 10175 on this branch): disjoint cases, so the floor is their sum (the merge of the
 # staging families' head into the ring tower for the stacked landing, 2026-11-16). Counted from the two sides.
-Gamesim.EditModeTests 10203
+# 10209 = 10203 + the competition-rules-5 old-save cell's 6 OldSaveAcceptanceTests cases (OLD-SAVE-ACCEPTANCE 2.14): the
+# new fixture's four per-fixture cases and its two own cases (EditMode only; the subset runs none of them). R8's 31
+# RoleHolderOfferTests cases are still not in this floor (the PC's Unity run raises it for them): the offline lister counts
+# 10240 = 10209 + 31 on this branch.
+Gamesim.EditModeTests 10209
 # The UMA-free build. 1215 = 1236, the count after the consolidation's lanes (S2a, S2b, S4a), less the 7
 # farewell probes moved to Gamesim.DiagnosticsPlayModeTests and the 14 farewell readiness tests that now
 # compile only under GAMESIM_UMA (judged on the UMA cast); 1230 = 1215 + S2d's 7, S4b's 2, S4c's 2 and

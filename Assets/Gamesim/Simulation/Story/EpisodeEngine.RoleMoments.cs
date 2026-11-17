@@ -83,12 +83,13 @@ namespace Gamesim.Simulation
 
         /// <summary>
         /// What an honest no to this offer costs with its maker: under the role moments, for a card of the veto board - a
-        /// nominee's veto ask, or the Head of Household's ask to keep the block (R4) - its card's tone's no
-        /// (<see cref="RoleOffers.ToneOf"/>), read before the answer changes anything; otherwise, and for every other
-        /// offer, the no it always cost (<see cref="PlayerDeals.DeclineImpact"/>).
+        /// nominee's veto ask, or the Head of Household's ask to keep the block (R4) - and under the holder's offer for a veto
+        /// holder's offer (R8), its tone's no (<see cref="RoleOffers.ToneOf"/>), read before the answer changes anything;
+        /// otherwise, and for every other offer, the no it always cost (<see cref="PlayerDeals.DeclineImpact"/>).
         /// </summary>
         private static double DeclineCost(EpisodeState s, DealState offer) =>
-            RolesOn(s) && RoleOffers.IsBoardAsk(s, offer) && RoleTone.Stakes(RoleOffers.ToneOf(s, offer)) is RoleTone.Stake stake
+            RolesOn(s) && (RoleOffers.IsBoardAsk(s, offer) || HolderOfferStands(s, offer))
+            && RoleTone.Stakes(RoleOffers.ToneOf(s, offer)) is RoleTone.Stake stake
                 ? stake.decline : PlayerDeals.DeclineImpact;
 
         /// <summary>
@@ -191,6 +192,54 @@ namespace Gamesim.Simulation
             Rider(s, StoryEffects.Grudge, hoh.id, s.playerId,
                 stake.rider == RoleTone.Riders.HoldsAGrudge ? stake.riderAmount : RoleTone.DefiedGrudge, GrudgeCauses.Story, key);
             Log(s, "deal", "You used the veto after " + hoh.name + " asked you not to.", s.playerId, hoh.id);
+        }
+
+        // ---------------------------------------------------------------- the holder's offer (R8, §3.4b)
+
+        /// <summary>
+        /// This week's offer from a houseguest holding the veto (R8) as the player last saw it, answered or not: the offer,
+        /// the holder, the tone it wore as the holder (<see cref="RoleOffers.ToneOf"/>) and how it stood. Read before the
+        /// houseguest's decision moves anything - its last beats and the decision itself - as the veto board is
+        /// (<see cref="VetoBoardAsSeen"/>). Null without the holder's offer, or with none this week.
+        /// </summary>
+        private static BoardCard HolderOfferAsSeen(EpisodeState s)
+        {
+            if (!HolderOfferOn(s)) return null;
+            var offer = s.deals.FirstOrDefault(d => RoleOffers.IsHolderOffer(s, d));
+            // Still waiting but no longer standing, it lapses as any offer does, costing nothing: the holder took it back.
+            return offer == null || offer.status == DealStatus.Proposed && !HolderOfferStands(s, offer) ? null
+                : new BoardCard { askId = offer.id, askerId = offer.proposerId, tone = RoleOffers.ToneOf(s, offer), status = offer.status };
+        }
+
+        /// <summary>
+        /// Whether this holder's offer (R8) still stands as it was put: waiting, with its price still fitting
+        /// (<see cref="Negotiation.HolderOfferPrice"/>) and the holder still able to keep their word
+        /// (<see cref="SavesWithTheWord"/>). Something can move between the offer and the answer - the week's beats, the
+        /// house's clock, the player's own conversations. One that no longer stands is taken back: a yes is refused, and a no
+        /// or silence costs what any offer's does, not the holder's tone's.
+        /// </summary>
+        public static bool HolderOfferStands(EpisodeState s, DealState offer) =>
+            HolderOfferOn(s) && RoleOffers.IsHolderOffer(s, offer) && offer.status == DealStatus.Proposed
+            && Negotiation.HolderOfferPrice(s, offer.proposerId) != null && SavesWithTheWord(s, offer.proposerId, s.playerId);
+
+        /// <summary>
+        /// A holder's offer the houseguest's decision lapsed - still waiting when they decided - costs its tone's silence with
+        /// the holder (<see cref="RoleTone.Stake.lapse"/>), through <see cref="Change"/>, never a breach, and the player is
+        /// told: silence costs more than a no here too. The holder's column carries no rider (§3.0), so nothing else is
+        /// settled: taken, the decision judged the word (kept +24, or broken by the holder at -45, the player's price void);
+        /// turned down, the no was charged as it was given. Nothing for a holder no longer in the house.
+        /// </summary>
+        private static void SettleTheHolderOffer(EpisodeState s, BoardCard card)
+        {
+            if (card == null) return;
+            var offer = s.deals.FirstOrDefault(d => d.id == card.askId);
+            var holder = s.Find(card.askerId);
+            var stake = RoleTone.Stakes(card.tone);
+            if (offer == null || stake == null || holder == null || holder.status != ContestantStatus.Active) return;
+            if (card.status != DealStatus.Proposed || offer.status != DealStatus.Expired) return;
+            string title = DealKind.Title(offer.type).ToLowerInvariant();
+            Change(s, s.playerId, holder.id, stake.lapse, "Left my " + title + " unanswered.", LapsedOfferEvent);
+            Log(s, "deal", "You left a " + title + " from " + holder.name + " unanswered.", s.playerId, holder.id);
         }
 
         /// <summary>Whether this week's veto was used, as the decision recorded it on the week's power row.</summary>

@@ -254,6 +254,53 @@ namespace Gamesim.Simulation
         }
 
         /// <summary>
+        /// Reservation, on the validated state before the player's yes moves anything (ROLE-MOMENTS-PLAN R8): a veto
+        /// holder's still-pending offer and the voting bloc the player would pay for it - made by the player to the holder,
+        /// due at this week's vote, linked to the offer. Writes nothing.
+        /// </summary>
+        public static bool TryAcceptedHolderOfferPrice(EpisodeState s, string offerId, DealState price,
+            out UnifiedVoteAdmissionPlan plan, out string error)
+        {
+            plan = null; error = null;
+            if (!Ready(s, out error)) return false;
+            var offer = s.deals.FirstOrDefault(old => old.id == offerId);
+            if (offer == null || price == null || DealCount(s) >= UnifiedCommitments.FamilyCapacity || !EpisodeEngine.HolderOfferOn(s)
+                || offer.type != DealKind.VetoUse || offer.status != DealStatus.Proposed || offer.recipientId != s.playerId
+                || offer.linkedDealId != null || !Active(s, offer.proposerId) || !Active(s, s.playerId)
+                || !NpcDeals.IsHolderOfferId(offer.id) || !CurrentDealDraft(s, price)
+                || price.proposerId != s.playerId || price.recipientId != offer.proposerId || price.targetId != null
+                || price.type != DealKind.VoteTogether || price.expiresWeek != s.week || price.linkedDealId != offer.id
+                || Between(s, s.playerId, offer.proposerId).Any(old => old.type == DealKind.VoteTogether))
+                return Fail(out error, "Answer the real holder's offer and the voting bloc the player pays for it, unowed and due this week.");
+            var answered = offer.Clone(); answered.status = DealStatus.Active; answered.expiresWeek = s.week;
+            answered.linkedDealId = price.id;
+            var candidate = FromDeal(price, UnifiedVoteFamilyValidation.HolderOfferPrice, s.week, Floor(s, UnifiedVoteFamilyValidation.HolderOfferPrice));
+            if (!UnifiedVoteFamilyValidation.TryValidateAdmittedDraftBundle(s, new[] { candidate }, Array.Empty<DealState>(), answered, out error)) return false;
+            plan = new UnifiedVoteAdmissionPlan(new[] { candidate }, Array.Empty<DealState>(), answered); return true;
+        }
+
+        /// <summary>
+        /// The holder's offer's price where the source strikes it (R8): after the yes, its warmth, memory and line, at the
+        /// sequence the season has reached by then. <see cref="TryAcceptedHolderOfferPrice"/> reserved it on the still-Proposed
+        /// offer; this admits the struck row itself, judged by the family's complete aggregate.
+        /// </summary>
+        internal static bool TryStruckHolderOfferPrice(EpisodeState s, DealState answeredOffer, DealState price,
+            out UnifiedCommitmentState row, out string error)
+        {
+            row = null; error = null;
+            if (!Ready(s, out error)) return false;
+            if (answeredOffer == null || price == null || !NpcDeals.IsHolderOfferId(answeredOffer.id) || !CurrentDealDraft(s, price)
+                || !EpisodeEngine.HolderOfferOn(s)
+                || price.proposerId != s.playerId || price.recipientId != answeredOffer.proposerId || price.targetId != null
+                || price.type != DealKind.VoteTogether || price.expiresWeek != s.week || price.linkedDealId != answeredOffer.id
+                || Between(s, s.playerId, answeredOffer.proposerId).Any(old => old.type == DealKind.VoteTogether))
+                return Fail(out error, "Strike the real answered holder's offer's voting bloc, unowed and due this week.");
+            var candidate = FromDeal(price, UnifiedVoteFamilyValidation.HolderOfferPrice, s.week, Floor(s, UnifiedVoteFamilyValidation.HolderOfferPrice));
+            if (!UnifiedVoteFamilyValidation.TryValidateAdmittedStruckHolderOfferPrice(s, answeredOffer.id, candidate, out error)) return false;
+            row = candidate.Clone(); return true;
+        }
+
+        /// <summary>
         /// The canonical row a raw Vote or Safety deal source draft becomes, with the given origin and
         /// binding/first-reveal weeks. Pure: it validates nothing and reads only its arguments.
         /// </summary>

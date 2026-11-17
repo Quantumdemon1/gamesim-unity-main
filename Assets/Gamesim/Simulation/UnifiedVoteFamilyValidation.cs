@@ -19,6 +19,13 @@ namespace Gamesim.Simulation
         public const string VoteLobby = "vote-lobby", VetoAskPrice = "veto-ask-price", OwnVetoPrice = "own-veto-price";
 
         /// <summary>
+        /// The price the player pays for a veto holder's word (ROLE-MOMENTS-PLAN R8, §3.4b): a voting bloc with the holder at
+        /// this week's vote, made by the player to the holder and linked to the holder's offer (<see cref="NpcDeals.HolderOfferPrefix"/>),
+        /// which it bought. Refused in any week the holder's offer did not play in.
+        /// </summary>
+        public const string HolderOfferPrice = "holder-offer-price";
+
+        /// <summary>
         /// The live episode schema: the one a new <see cref="EpisodeState"/> is written at, which
         /// whole-episode validation also demands. The aggregate is a live-state leaf with no saved
         /// field of its own, so it reads the schema from the DTO instead of restating it as a
@@ -165,6 +172,28 @@ namespace Gamesim.Simulation
             return TryValidateCore(candidate, candidate.unifiedVoteReveals, new HashSet<string>(StringComparer.Ordinal) { row.id }, out error);
         }
 
+        /// <summary>
+        /// An admission entry for a veto holder's offer's price (R8), as it is struck: the offer this command answered, its
+        /// price at the sequence the season has reached, then the whole family with both in it.
+        /// </summary>
+        internal static bool TryValidateAdmittedStruckHolderOfferPrice(EpisodeState s, string offerId, UnifiedCommitmentState row, out string error)
+        {
+            error = null;
+            int index = s.deals.FindIndex(item => item.id == offerId);
+            var offer = index < 0 ? null : s.deals[index];
+            if (offer == null || offer.type != DealKind.VetoUse || offer.status != DealStatus.Active || offer.linkedDealId != null
+                || offer.expiresWeek != s.week || offer.recipientId != s.playerId || !NpcDeals.IsHolderOfferId(offer.id)
+                || row == null || row.origin != HolderOfferPrice || row.linkedCommitmentId != offerId || row.makerId != s.playerId
+                || row.beneficiaryId != offer.proposerId || row.createdWeek != s.week || row.status != DealStatus.Active
+                || s.nextSequence >= 1000000
+                || !InstalledId(row.id, Prefix(row.origin), s.nextSequence + 1, out long sequence) || sequence != s.nextSequence)
+                return Fail(out error, "Strike only the price of the holder's offer this command answered, at the sequence it has reached.");
+            var candidate = s.Clone();
+            candidate.deals[index].linkedDealId = row.id;
+            candidate.unifiedCommitments.Add(row.Clone());
+            return TryValidateCore(candidate, candidate.unifiedVoteReveals, new HashSet<string>(StringComparer.Ordinal) { row.id }, out error);
+        }
+
         internal static bool TryValidateAnswer(EpisodeState s, UnifiedCommitmentState answered, out string error)
             => EpisodeValidation.TryValidateProspectiveUnifiedVote(s, out error) && TryValidateAdmittedAnswer(s, answered, out error);
 
@@ -276,7 +305,7 @@ namespace Gamesim.Simulation
                     && row.origin != UnifiedCommitments.NpcOffer))
                 return Fail(out error, "A Vote deal retains its reciprocal subtype, target and real source policy.");
             bool playerMaker = row.origin == UnifiedCommitments.PlayerPromise || row.origin == UnifiedCommitments.PlayerDeal
-                || row.origin == UnifiedCommitments.CounterDeal || row.origin == UnifiedCommitments.CounterPrice;
+                || row.origin == UnifiedCommitments.CounterDeal || row.origin == UnifiedCommitments.CounterPrice || row.origin == HolderOfferPrice;
             bool npcPair = row.origin == UnifiedCommitments.NpcPromise || row.origin == UnifiedCommitments.NpcDeal;
             bool playerPayee = row.origin == UnifiedCommitments.NpcOffer || row.origin == VoteLobby
                 || row.origin == VetoAskPrice || row.origin == OwnVetoPrice;
@@ -290,10 +319,13 @@ namespace Gamesim.Simulation
                 || (row.origin == VetoAskPrice || row.origin == OwnVetoPrice)
                     && (row.subtype != DealKind.VoteSave || row.targetId != s.playerId)
                 || row.origin == UnifiedCommitments.CounterPrice && row.subtype == DealKind.VoteEvict
-                || row.origin == UnifiedCommitments.CounterPrice && row.subtype == DealKind.VoteSave && row.targetId != row.beneficiaryId)
+                || row.origin == UnifiedCommitments.CounterPrice && row.subtype == DealKind.VoteSave && row.targetId != row.beneficiaryId
+                || row.origin == HolderOfferPrice && (row.subtype != DealKind.VoteTogether || row.targetId != null))
                 return Fail(out error, "The origin cannot manufacture another Vote subtype or price target.");
+            if (row.origin == HolderOfferPrice && !EpisodeEngine.HolderOfferOnIn(s, row.createdWeek))
+                return Fail(out error, "A season without the holder's offer has none of its records.");
             bool linked = row.origin == UnifiedCommitments.CounterDeal || row.origin == UnifiedCommitments.CounterPrice
-                || row.origin == VetoAskPrice || row.origin == OwnVetoPrice;
+                || row.origin == VetoAskPrice || row.origin == OwnVetoPrice || row.origin == HolderOfferPrice;
             if (linked != (row.linkedCommitmentId != null)
                 || row.linkedCommitmentId != null && (!Token(row.linkedCommitmentId) || row.linkedCommitmentId == row.id))
                 return Fail(out error, "Vote consideration belongs only to the actual linked source owners.");
@@ -536,6 +568,22 @@ namespace Gamesim.Simulation
                     if (own.week != other.week) return Fail(out error, "Unmoved raw consideration retains its original same-week rule.");
                     continue;
                 }
+                if (priceRow?.origin == HolderOfferPrice)
+                {
+                    // R8: a veto holder's offer, raw, which the player took, and the voting bloc they pay for it, canonical:
+                    // struck the same week, the bloc due at that week's vote.
+                    if (boughtRow != null || bought.type != DealKind.VetoUse || bought.targetId != null
+                        || bought.trustImpact != DealKind.DefaultTrust(DealKind.VetoUse)
+                        || (bought.status != DealStatus.Active && bought.status != DealStatus.Fulfilled
+                            && bought.status != DealStatus.Broken && bought.status != DealStatus.Expired)
+                        || bought.week != paid.week || bought.expiresWeek != paid.week
+                        || bought.recipientId != s.playerId || bought.proposerId != paid.recipientId
+                        || paid.proposerId != s.playerId || paid.type != DealKind.VoteTogether || paid.targetId != null
+                        || paid.expiresWeek != paid.week || !EpisodeEngine.HolderOfferOnIn(s, paid.week)
+                        || !InstalledId(bought.id, NpcDeals.HolderOfferPrefix, Limit(bought.id), out _))
+                        return Fail(out error, "A holder's price must retain its accepted offer's provenance, term and link.");
+                    continue;
+                }
                 if (priceRow?.origin == VetoAskPrice || priceRow?.origin == OwnVetoPrice)
                 {
                     bool acceptedAsk = priceRow.origin == VetoAskPrice;
@@ -631,7 +679,7 @@ namespace Gamesim.Simulation
             UnifiedCommitments.NpcDeal => "deal-npc-", UnifiedCommitments.NpcOffer => NpcDeals.OfferPrefix,
             VoteLobby or UnifiedCommitments.Lobby => "deal-lobby-", UnifiedCommitments.StoryDeal => "deal-story-",
             UnifiedCommitments.CounterDeal => Negotiation.CounterDealPrefix,
-            UnifiedCommitments.CounterPrice or VetoAskPrice or OwnVetoPrice => Negotiation.PricePrefix,
+            UnifiedCommitments.CounterPrice or VetoAskPrice or OwnVetoPrice or HolderOfferPrice => Negotiation.PricePrefix,
             _ => null,
         };
         internal static bool IsVoteType(string type) => type == DealKind.VoteTogether || type == DealKind.VoteSave || type == DealKind.VoteEvict;
@@ -639,7 +687,8 @@ namespace Gamesim.Simulation
             || origin == UnifiedCommitments.NpcPromise || origin == UnifiedCommitments.StoryPromise;
         private static bool IsDealOrigin(string origin) => origin == UnifiedCommitments.PlayerDeal || origin == UnifiedCommitments.NpcDeal
             || origin == UnifiedCommitments.NpcOffer || origin == VoteLobby || origin == UnifiedCommitments.StoryDeal
-            || origin == UnifiedCommitments.CounterDeal || origin == UnifiedCommitments.CounterPrice || origin == VetoAskPrice || origin == OwnVetoPrice;
+            || origin == UnifiedCommitments.CounterDeal || origin == UnifiedCommitments.CounterPrice || origin == VetoAskPrice || origin == OwnVetoPrice
+            || origin == HolderOfferPrice;
         private static bool Price(DealState row) => row.id.StartsWith(Negotiation.PricePrefix, StringComparison.Ordinal);
         private static bool SamePair(DealState a, DealState b) => a.proposerId == b.proposerId && a.recipientId == b.recipientId
             || a.proposerId == b.recipientId && a.recipientId == b.proposerId;

@@ -61,7 +61,7 @@ namespace Gamesim.Tests.PlayMode
                 "The status line says all of '" + said.text + "', at " + said.fontSize.ToString("0.#") + " in a box " + said.rectTransform.rect.size + ".");
 
             var pinned = panel.Cast<Transform>().Select(child => child.GetComponent<Button>())
-                .Where(button => button != null && button.IsActive() && button.name != "Close  [Esc]")
+                .Where(button => button != null && button.IsActive() && button.name != Gamesim.Presentation.WayOut.CloseObjectName && button.name != Gamesim.Presentation.WayOut.BackObjectName)
                 .Select(button => button.name).ToArray();
             Assert.That(pinned, Is.EquivalentTo(secondary == null ? new[] { wayOn } : new[] { wayOn, secondary }),
                 where + " pins one way on" + (secondary == null ? ", and only it." : " and its secondary, and only them."));

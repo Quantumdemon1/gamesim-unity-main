@@ -26,7 +26,6 @@ namespace Gamesim.Episode
     public sealed partial class EpisodeDirector
     {
         public const string FinalCaseCaption = "Prepare your final case";
-        public const string LeaveFinalCaseCaption = "Close your final case";
         public const string LockArgumentCaption = "Lock final argument";
 
         /// <summary>The line in the lock's place at three.</summary>
@@ -37,6 +36,22 @@ namespace Gamesim.Episode
 
         /// <summary>Whether the final case is open over the station's panel. View state.</summary>
         private bool finalCaseOpen;
+
+        /// <summary>What a way back says of an unlocked choice it lets go: said only while there is one.</summary>
+        public const string FinalCaseDiscardWords = " (choice discarded)";
+
+        /// <summary>
+        /// The final case's one way back (menu slice 2, change 1): a page over the station's panel, it
+        /// goes back to that panel - the window at three, the questioning or the speeches at the
+        /// Final 2 - and says truthfully when leaving lets an unlocked choice go. It was a last row,
+        /// "Close your final case", beside the panel's own Close.
+        /// </summary>
+        public static string FinalCaseBackCaption(EpisodeState state, bool discarding) =>
+            JuryHouseBackCaption(state) + (discarding ? FinalCaseDiscardWords : "");
+
+        /// <summary>Whether leaving the case now would let a choice go: something chosen and not locked.</summary>
+        private bool FinalCaseHoldsAChoice(EpisodeState state) =>
+            state?.finalArgument == null && (chosenTheme != null || chosenMoments.Count > 0);
 
         /// <summary>Whether the open case was opened at three, to read: it closes with the window rather than carrying on to the Final 2.</summary>
         private bool finalCaseEarly;
@@ -148,9 +163,10 @@ namespace Gamesim.Episode
             hud.FinalCaseHead(argument != null ? "YOUR ARGUMENT IS LOCKED" : "WHAT WILL THE JURY REMEMBER?",
                 "The story of your game and three moments that prove it. Your speech opens with it, and a juror who values it weighs it.",
                 early ? "FINAL 3 · Read early" : "FINAL 2 · Jury review", "gavel", FinalCaseBrandLine);
-            // The way back, "Close your final case", is the screen's last row, under the columns and
-            // the tray: it used to be a full-width button over the form, so the screen's first
-            // control was the one that leaves it (UI-UX-PASS-PLAN E0).
+            // The one way back, at the band's top left beside the panel's Close (Escape and B take it):
+            // the page goes back to the panel it was opened over. It was a last row, "Close your final
+            // case", a second way out beside the Close.
+            hud.DecisionPageBack(FinalCaseBackCaption(state, FinalCaseHoldsAChoice(state)), CloseFinalCase);
 
             hud.BeginCaseColumns(.30f, .34f, .36f);
             hud.SectionHead("journal", "1 · YOUR NARRATIVE", argument != null ? "The story you locked." : "Choose how the jury remembers you.");
@@ -198,7 +214,6 @@ namespace Gamesim.Episode
                 }).ToList());
                 hud.EndCaseColumns();
                 hud.Footnote("Your final speech opens with this argument. You can still change the words, or skip the speech.");
-                hud.Action(LeaveFinalCaseCaption, CloseFinalCase);
                 return;
             }
             hud.SectionHead("star", "3 · SIGNATURE MOMENTS", required == 0 ? "None on the record yet."
@@ -237,7 +252,6 @@ namespace Gamesim.Episode
                 hud.FinalCaseLock(LockArgumentCaption, LockFinalArgument, ready, "Next: deliver your final speech to the jury. Locking is final.",
                     ready ? null : "Choose a narrative and " + (required == 1 ? "one moment" : required + " moments") + " to lock your argument.");
             }
-            hud.Action(LeaveFinalCaseCaption, CloseFinalCase);
         }
 
         private static string ThemeGlyph(string theme)

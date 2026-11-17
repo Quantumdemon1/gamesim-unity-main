@@ -206,7 +206,7 @@ namespace Gamesim.Tests.EditMode
         /// <summary>Every caption and line the HUD draws that names a key, as the code writes them.</summary>
         private static IEnumerable<string> WordsThatNameKeys() => new[]
         {
-            "Close  [Esc]", "Save now  [F5]", "Save [F5]", "Notebook [J]", "Go to diary room [R]", "Interact [E]", "[R]", "[J]", "[F5]", "[Esc]",
+            "Save now  [F5]", "Save [F5]", "Notebook [J]", "Go to diary room [R]", "Interact [E]", "[R]", "[J]", "[F5]", "[Esc]",
             InputGlossary.HouseChallengeStopCaption, "Hit the target  [Space]", "Back to exploring    [Esc]", "Space  Speed up   ·   Enter  Skip",
             InputGlossary.KeyboardHelpCard, InputGlossary.KeyboardTourLine, InputGlossary.KeyboardStationArrived, InputGlossary.KeyboardStationHeading,
             InputGlossary.KeyboardDiaryArrived, InputGlossary.KeyboardDiaryWalk, InputGlossary.KeyboardCeremonySuspenseful, InputGlossary.KeyboardCeremonyQuick,
@@ -238,7 +238,7 @@ namespace Gamesim.Tests.EditMode
             KeyBindings.Show(bindings);
             Assert.That(KeyBindings.Substitute("Notebook [J]"), Is.EqualTo("Notebook [K]"));
             Assert.That(KeyBindings.Substitute("[J]"), Is.EqualTo("[K]"));
-            Assert.That(KeyBindings.Substitute("Close  [Esc]"), Is.EqualTo("Close  [Esc]"), "The ways out are never rebound.");
+            Assert.That(KeyBindings.Substitute("Back to exploring    [Esc]"), Is.EqualTo("Back to exploring    [Esc]"), "The ways out are never rebound.");
             Assert.That(KeyBindings.Substitute("Save now  [F5]"), Is.EqualTo("Save now  [F5]"), "A key still as shipped stays.");
             Assert.That(KeyBindings.Substitute("Interact [E]"), Is.EqualTo("Interact [T]"));
             Assert.That(KeyBindings.Substitute(InputGlossary.HouseChallengeStopCaption), Is.EqualTo("STOP marker  [H]"));

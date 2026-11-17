@@ -24,7 +24,7 @@ namespace Gamesim.Episode
     public sealed partial class EpisodeHud
     {
         /// <summary>The footer's way back to the picker, from a story opened from the tracker or the backdoor view.</summary>
-        public const string BackToNomineesCaption = "Back to your nominees";
+        public const string BackToNomineesCaption = WayOut.BackPrefix + "your nominees";
         /// <summary>The picker's door to the backdoor view, which holds the "Aim this week at" rows.</summary>
         public const string PlanBackdoorCaption = "Plan a backdoor";
         public const string HearHoHPitchesCaption = "Hear houseguest pitches", FeelOutPitchCaption = "Feel them out (free)";

@@ -64,7 +64,8 @@ namespace Gamesim.Presentation
                     .textWrappingMode = TextWrappingModes.Normal;
                 Words(box, "Appearance and identity edits keep these stats and traits. Rebuild explicitly to allocate a fresh gameplay build.", 15f,
                     UiTheme.Muted, new Rect(x, y + 64f, width, 48f)).textWrappingMode = TextWrappingModes.Normal;
-                Pill(box, "Rebuild personality and stats", new Rect(x, y + 124f, Mathf.Min(440f, width), 52f), Tone.Primary,
+                // Quieter than the footer's way on, the screen's one bright button (menu slice 2, change 3).
+                Pill(box, "Rebuild personality and stats", new Rect(x, y + 124f, Mathf.Min(440f, width), 52f), Tone.Secondary,
                     () => { draft = draft.RebuildGameplay(); Rebuild(); }, icon: PackArt.KitIconRefresh);
                 return;
             }

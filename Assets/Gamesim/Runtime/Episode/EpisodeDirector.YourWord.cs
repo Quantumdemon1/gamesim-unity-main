@@ -33,7 +33,7 @@ namespace Gamesim.Episode
         public const string DealsAndPromisesName = "Deals & promises";
 
         /// <summary>The Deals &amp; promises page's door on the notes page, and its way back: captions of their own.</summary>
-        public const string YourWordCaption = DealsAndPromisesName, BackToYourNotesCaption = "Back to your notes";
+        public const string YourWordCaption = DealsAndPromisesName, BackToYourNotesCaption = WayOut.BackPrefix + "your notes";
 
         /// <summary>How many commitments a houseguest's card shows before it counts the rest.</summary>
         private const int WordShown = 8;
@@ -200,7 +200,8 @@ namespace Gamesim.Episode
         /// </summary>
         private void RenderNotebookWord(EpisodeState state)
         {
-            hud.PageDoor(BackToYourNotesCaption, () => ShowNotebookSection(NotebookSection.Notes));
+            // The way back to the notes at the panel's top left; Escape and B press it (menu slice 2).
+            hud.WayBack(BackToYourNotesCaption, () => ShowNotebookSection(NotebookSection.Notes));
             // The mark exists in every state: it is what the notebook scrolls to. The door stands in
             // the page's head, not the column, so the mark goes on the column's first element - the
             // house's reading of the player's word where it keeps one (C8), the page's own otherwise.
@@ -209,7 +210,7 @@ namespace Gamesim.Episode
             var all = CommitmentsRead.Of(state);
             if (all.Count == 0)
             {
-                hud.EmptyState("No commitments", PackArt.KitEmptyPrivate, "Nobody has your word yet, and you have nobody's.",
+                hud.EmptyState("No deals or promises", PackArt.KitEmptyPrivate, "Nobody has your word yet, and you have nobody's.",
                     "Promises, deals, loyalty oaths and the calls you make in an alliance land here as you make them.");
                 if (!reading) hud.Mark(NotebookSection.Word);
             }

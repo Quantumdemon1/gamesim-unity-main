@@ -204,7 +204,9 @@ namespace Gamesim.Episode
             yield return CreatorClick("Identity");
             creator.GetComponentsInChildren<TMP_InputField>().First(field => field.name == "Name field").text = "Unsaved draft change";
             yield return CreatorClick("My Houseguests");
-            yield return CreatorClick(profileName); // Load the saved library row, discarding the unsaved name.
+            yield return CreatorClick(profileName); // Load the saved library row, discarding the unsaved name:
+            CreatorRequire(creator.AsksToReplace, "A draft with unsaved changes must ask before the library replaces it.");
+            yield return CreatorClick(CreatorSteps.ReplaceCaption); // the replace card asks first (menu slice 2).
             creatorReport.librarySaveLoadEqual = creator.Draft.Name == profileName && creator.Draft.Appearance.ContentKey() == authored.ContentKey();
             CreatorRequire(creatorReport.librarySaveLoadEqual, "Library Load must restore both identity and every appearance field.");
             yield return WaitCreatorPreview(creator, "library load");

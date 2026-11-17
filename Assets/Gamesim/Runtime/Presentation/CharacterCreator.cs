@@ -32,14 +32,16 @@ namespace Gamesim.Presentation
     {
         /// <summary>Captions tests and the tour find these controls by.</summary>
         public const string StartCaption = "Start with this houseguest";
-        public const string BackCaption = "Back to the cast (draft kept)";
+        /// <summary>The creator's one way back (menu slice 2), drawn by <see cref="WayOut.AddBack"/> at the
+        /// top left: it is <c>WayOut.BackToKeeping(WayOut.Cast, "draft")</c>, which the helper checks as it draws.</summary>
+        public const string BackCaption = WayOut.BackPrefix + WayOut.Cast + " (draft kept)";
         public const string ApplySlotCaption = "Apply to this houseguest";
         public const string CancelSlotCaption = "Cancel this edit";
         /// <summary>What Identity says while it edits a houseguest already in the season's cast.</summary>
         public const string EditingCastLine = "A member of the cast, as the house will meet them. Changes apply to this houseguest in this season only.";
 
-        /// <summary>How the cast screen offers this one.</summary>
-        public const string CreateCaption = "Create your own houseguest";
+        /// <summary>How the cast screen offers this one: one name for making a houseguest (menu slice 2, W1).</summary>
+        public const string CreateCaption = CreatorSteps.CreateCaption;
         public const string CustomiseCaption = "Edit appearance";
 
         public static string RaiseCaption(string stat) => "Raise " + stat;
@@ -142,12 +144,12 @@ namespace Gamesim.Presentation
             studioPage = DefaultAppearancePage;
             quickScrollY = 0f;
             profileId = focusedProfile = null;
-            confirmingNew = false;
             comparingOriginal = false;
             appearanceNotice = pendingDeleteProfile = libraryMessage = null;
             resumeError = null;
             onStart = commit;
             onBack = back;
+            BeginVisit();
             Rebuild();
             group.alpha = 1f;
             group.blocksRaycasts = true;
@@ -159,13 +161,31 @@ namespace Gamesim.Presentation
         {
             Show(choice, start, result => apply?.Invoke(result.Authored.Copy()), cancel);
             editingCastSlot = true;
+            editingName = string.IsNullOrWhiteSpace(draft.Name) ? string.Empty : draft.Name.Trim();
             Rebuild();
         }
 
-        /// <summary>Closes without building. Escape routes here.</summary>
+        /// <summary>
+        /// Escape and the pad's B (menu slice 2): they do what the way out on top does. The replace
+        /// card keeps the draft; the library panel closes onto the step under it; otherwise the
+        /// creator's own way back - back to the cast with the draft kept, or the cast-slot edit's
+        /// "Cancel this edit".
+        /// </summary>
         public void Dismiss()
         {
             if (!IsShowing) return;
+            if (pendingReplace != null) { KeepDraft(); return; }
+            if (libraryOpen) { CloseLibrary(); return; }
+            Leave();
+        }
+
+        /// <summary>The way back itself: closes without building.</summary>
+        private void Leave()
+        {
+            if (!IsShowing) return;
+            // A draft the player changed and did not save goes back to the cast kept; if the cast
+            // screen hands it back ("Resume setup") it still counts as unsaved.
+            keptUnsavedKey = !editingCastSlot && HasUnsavedChanges ? DraftKey(draft) : null;
             var back = onBack;
             Hide();
             back?.Invoke();
@@ -241,19 +261,25 @@ namespace Gamesim.Presentation
                 ground.sprite = night; ground.type = Image.Type.Simple; ground.color = Color.white;
             }
             BuildBackdrop(scrim);
+            MarkVisited();
             BuildHeader(scrim);
-            switch (studioPage)
-            {
-                case QuickPageCaption: BuildQuickPage(scrim); break;
-                case "Appearance": BuildAppearancePage(scrim); break;
-                case "Identity": BuildIdentityPage(scrim); break;
-                case "Personality": BuildPersonalityPage(scrim); break;
-                case "My Houseguests": BuildLibraryPage(scrim); break;
-                default: BuildReviewPage(scrim); break;
-            }
+            // My Houseguests is a panel over the step (menu slice 2, change 4): it takes the page's
+            // place, with its own Close, and the step under it stays the lit one. The step's own
+            // controls are not built under it, so the keyboard cannot wander behind the panel.
+            if (libraryOpen) BuildLibraryPanel(scrim);
+            else
+                switch (studioPage)
+                {
+                    case QuickPageCaption: BuildQuickPage(scrim); break;
+                    case "Appearance": BuildAppearancePage(scrim); break;
+                    case "Identity": BuildIdentityPage(scrim); break;
+                    case "Personality": BuildPersonalityPage(scrim); break;
+                    default: BuildReviewPage(scrim); break;
+                }
             // Pages without the live preview put it to sleep rather than render it for nobody.
             if (studioPreview != null && !previewOnPage) studioPreview.gameObject.SetActive(false);
             BuildFooter(scrim);
+            if (pendingReplace != null) BuildReplaceCard(scrim);
         }
 
         private string Summary()

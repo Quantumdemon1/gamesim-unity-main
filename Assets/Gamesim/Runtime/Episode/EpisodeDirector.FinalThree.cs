@@ -25,7 +25,7 @@ namespace Gamesim.Episode
     public sealed partial class EpisodeDirector
     {
         public const string CompareFinalistsCaption = "Compare the finalists";
-        public const string BackToPreparationCaption = "Back to endgame preparation";
+        public const string BackToPreparationCaption = WayOut.BackPrefix + "endgame preparation";
         public const string FinalChoiceWarning = "This decision cannot be undone.";
 
         /// <summary>Whether the comparison is open over Endgame Preparation. View state, like a houseguest's screen.</summary>
@@ -67,7 +67,7 @@ namespace Gamesim.Episode
         {
             hud.ScreenHead("COMPARE THE FINALISTS", "WHAT YOU KNOW",
                 "The other two as the house has shown them to you. Nothing here is a prediction.");
-            hud.Action(BackToPreparationCaption, CloseFinalistComparison);
+            hud.DecisionPageBack(BackToPreparationCaption, CloseFinalistComparison);
             hud.CertaintyLegend();
             var others = FinalistRead.Others(state);
             var columns = new List<EpisodeHud.FinalistColumn>();

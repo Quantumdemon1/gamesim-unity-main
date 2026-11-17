@@ -347,10 +347,16 @@
 # 10197 = 10175 (the staging families' landing head 9edbcd7d, with the menu quick wins and main 25977d60) + the ring
 # tower's 22 (10081 - 10059 on this branch): disjoint cases, so the floor is their sum (the merge of the staging
 # families' landing head into the ring tower for the stacked landing, 2026-11-16). Counted from the two sides.
+# 10254 = 10197 + menu slice 2's 57 (one way back, one name per thing, the creator's steps): the foundation's 13
+# (WayOutWordsTests 7, WayOutPlacementTests 6), the creator's 15, the front door's 5, the in-season panels' 7, the
+# boards and decisions' 11 and the integration's 6 (MenuOneWayBackRuleScanTests), 2026-11-16. Counted by the listers.
 # 10203 = 10181 (the staging families' head c6ae66df, with the walk out's pace, the menu quick wins and main 25977d60)
 # + the ring tower's 22 (10197 - 10175 on this branch): disjoint cases, so the floor is their sum (the merge of the
 # staging families' head into the ring tower for the stacked landing, 2026-11-16). Counted from the two sides.
-Gamesim.EditModeTests 10203
+# 10260 = 10254 (menu slice 2, one way back) + the menu quick wins, staging families and ring tower stack 6 (10203 -
+# 10197 on this branch): disjoint cases, so the floor is their sum (menu slice 2 squashed onto the stack). Counted
+# from the two sides.
+Gamesim.EditModeTests 10260
 # The UMA-free build. 1215 = 1236, the count after the consolidation's lanes (S2a, S2b, S4a), less the 7
 # farewell probes moved to Gamesim.DiagnosticsPlayModeTests and the 14 farewell readiness tests that now
 # compile only under GAMESIM_UMA (judged on the UMA cast); 1230 = 1215 + S2d's 7, S4b's 2, S4c's 2 and
@@ -580,10 +586,15 @@ Gamesim.EditModeTests 10203
 # 1604 = 1598 (the staging families' landing head 9edbcd7d, with the menu quick wins and main 25977d60) + the ring
 # tower's 6 (1579 - 1573 on this branch): disjoint cases, so the floor is their sum (the merge of the staging
 # families' landing head into the ring tower for the stacked landing, 2026-11-16). Counted from the two sides.
+# 1633 = 1604 + menu slice 2's 29 PlayMode cases: the creator's 9, the front door's 9, the in-season panels' 6 and the
+# boards and decisions' 5, 2026-11-16. Counted by the listers; no Unity run has observed them yet.
 # 1611 = 1605 (the staging families' head c6ae66df, with the walk out's pace, the menu quick wins and main 25977d60) +
 # the ring tower's 6 (1604 - 1598 on this branch): disjoint cases, so the floor is their sum (the merge of the staging
 # families' head into the ring tower for the stacked landing, 2026-11-16). Counted from the two sides.
-Gamesim.PlayModeTests 1611
+# 1640 = 1633 (menu slice 2, one way back) + the menu quick wins, staging families and ring tower stack 7 (1611 - 1604
+# on this branch): disjoint cases, so the floor is their sum (menu slice 2 squashed onto the stack). Counted from the
+# two sides.
+Gamesim.PlayModeTests 1640
 # The UMA build of the same assembly, read by a plan built without -WithoutUma. 1281 = the 1241 above + the
 # 40 tests that compile only under GAMESIM_UMA, as run at r1 (2026-10-16): in EpisodePlayModeTests,
 # GroundedFarewell 11, Creator 9, HouseLife 8, Emotes 3, OpeningCaptures 2, and one each in CreatorEntry,
@@ -740,10 +751,14 @@ Gamesim.PlayModeTests 1611
 # 1649 = 1643 (the staging families' landing head 9edbcd7d, with the menu quick wins and main 25977d60) + the ring
 # tower's 6 (1624 - 1618 on this branch): disjoint cases, so the floor is their sum (the merge of the staging
 # families' landing head into the ring tower for the stacked landing, 2026-11-16). Counted from the two sides.
+# 1678 = 1649 + menu slice 2's same 29 cases (see PlayModeTests above). No Unity run has observed them yet.
 # 1656 = 1650 (the staging families' head c6ae66df, with the walk out's pace, the menu quick wins and main 25977d60) +
 # the ring tower's 6 (1649 - 1643 on this branch): disjoint cases, so the floor is their sum (the merge of the staging
 # families' head into the ring tower for the stacked landing, 2026-11-16). Counted from the two sides.
-Gamesim.PlayModeTests.UmaBuild 1656
+# 1685 = 1678 (menu slice 2, one way back) + the menu quick wins, staging families and ring tower stack 7 (1656 - 1649
+# on this branch): disjoint cases, so the floor is their sum (menu slice 2 squashed onto the stack). Counted from the
+# two sides.
+Gamesim.PlayModeTests.UmaBuild 1685
 # The UMA bodies: runs only where the GAMESIM_UMA define is set (the working tree and the D: copy).
 # 82 = the 89 run on 2026-10-15, less the 7 farewell probes moved to Gamesim.Uma.DiagnosticsPlayModeTests;
 # 85 = 82 + the 3 farewell readiness decision tests (UmaFarewellReadinessDecisionPlayModeTests, 2026-10-16);
@@ -1005,7 +1020,13 @@ Gamesim.Uma.DiagnosticsPlayModeTests 10
 # 16994 = 16976 (the staging families' landing head 9edbcd7d, with the menu quick wins and main 25977d60) + the ring
 # tower's 18 (16899 - 16881 on this branch): disjoint cases, so the floor is their sum (the merge of the staging
 # families' landing head into the ring tower for the stacked landing, 2026-11-16). Counted from the two sides.
+# 17038 = 16994 + menu slice 2's 44 Unity-free cases: the foundation's 7 (WayOutWordsTests), the creator's 15, the
+# front door's 5, the in-season panels' 6, the boards and decisions' 5 and the integration's 6
+# (MenuOneWayBackRuleScanTests), 2026-11-16.
 # 17000 = 16982 (the staging families' head c6ae66df, with the walk out's pace, the menu quick wins and main 25977d60)
 # + the ring tower's 18 (16994 - 16976 on this branch): disjoint cases, so the floor is their sum (the merge of the
 # staging families' head into the ring tower for the stacked landing, 2026-11-16). Counted from the two sides.
-Gamesim.SimulationTests 17000
+# 17044 = 17038 (menu slice 2, one way back) + the menu quick wins, staging families and ring tower stack 6 (17000 -
+# 16994 on this branch): disjoint cases, so the floor is their sum (menu slice 2 squashed onto the stack). Counted
+# from the two sides.
+Gamesim.SimulationTests 17044

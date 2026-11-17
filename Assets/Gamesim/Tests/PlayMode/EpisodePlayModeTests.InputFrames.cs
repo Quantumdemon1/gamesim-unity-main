@@ -66,7 +66,7 @@ namespace Gamesim.Tests.PlayMode
                 yield return OnBothFrames("input-pause-menu-pad" + size, "The pause menu by Start" + at, where =>
                 {
                     AssertPausedEyebrowFits(where);
-                    AssertGlyphChipsBeside(where, "Close  [Esc]", "Save now  [F5]");
+                    AssertGlyphChipsBeside(where, Gamesim.Presentation.WayOut.CloseCaption, "Save now  [F5]");
                 });
 
                 // The controls page, unfolded, its head at the top of the column.

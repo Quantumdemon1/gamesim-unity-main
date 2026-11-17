@@ -23,7 +23,7 @@ namespace Gamesim.Episode
         public const string SeasonCompleteToast = "Season complete! Thanks for playing.";
 
         /// <summary>The way back from the jury's questions, open as the step, to the page.</summary>
-        public const string BackToFinaleCaption = "Back to the finale";
+        public const string BackToFinaleCaption = WayOut.BackPrefix + "the finale";
 
         /// <summary>The jury card's foot line for the player's own ballot, which carries no reason.</summary>
         public const string YourBallotLine = "Your ballot";
@@ -131,8 +131,8 @@ namespace Gamesim.Episode
             {
                 hud.Disclosure(JuryQuestionsCaption, true, ToggleJuryQuestions);
                 JuryQuestionsRecord(state);
-                hud.PinnedSecondary(BackToFinaleCaption, CloseJuryQuestions);
-                if (finaleFocusBack) hud.FocusWhenWired(BackToFinaleCaption);
+                hud.DecisionPageBack(BackToFinaleCaption, CloseJuryQuestions);
+                if (finaleFocusBack) hud.FocusWhenWired(WayOut.BackObjectName);
                 finaleFocusBack = false;
                 return;
             }

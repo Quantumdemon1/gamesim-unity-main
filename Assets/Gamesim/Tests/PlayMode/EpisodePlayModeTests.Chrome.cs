@@ -394,8 +394,9 @@ namespace Gamesim.Tests.PlayMode
                     Assert.That(ScreenRect(pieces[a]).Overlaps(ScreenRect(pieces[b])), Is.False,
                         about + ": " + Piece(pieces[a]) + " and " + Piece(pieces[b]) + " are drawn over each other.");
             }
+            // Back to topics is no row since menu slice 2: it stands at the column's top left, out of the scroll.
             if (expectedRowCaptions.Length == 0)
-                Assert.That(rows, Is.GreaterThan(3), "The rows were found: " + where + ".");
+                Assert.That(rows, Is.GreaterThan(2), "The rows were found: " + where + ".");
             else
             {
                 Assert.That(rows, Is.EqualTo(expectedRowCaptions.Length), "The selected page has exactly its expected rows: " + where + ".");

@@ -240,7 +240,8 @@ namespace Gamesim.Tests.EditMode
                 Assert.That(row, Is.Not.Null, pair.Key);
                 Assert.That(row.Pad, Is.Not.Empty, pair.Key + " has a pad button to stand beside it.");
             }
-            Assert.That(InputGlossary.CaptionAction("Close  [Esc]"), Is.EqualTo("Shortcuts/Back"));
+            Assert.That(InputGlossary.CaptionAction("Close"), Is.Null, "A panel's Close names no key in its caption (menu slice 2),");
+            Assert.That(InputGlossary.HintAction(InputGlossary.BackKeyHint), Is.EqualTo("Shortcuts/Back"), "its hint does: Escape, the pad's B.");
             Assert.That(InputGlossary.CaptionAction("Save now  [F5]"), Is.EqualTo("Shortcuts/Save"));
             Assert.That(InputGlossary.CaptionAction("Notebook [J]"), Is.EqualTo("Shortcuts/Notebook"));
             Assert.That(InputGlossary.CaptionAction("Go to diary room [R]"), Is.EqualTo("Shortcuts/Diary"));

@@ -80,7 +80,7 @@ namespace Gamesim.Tests.PlayMode
             yield return null;
             Assert.That(EpisodeEngine.OpenStoryBeats(director.Snapshot), Is.Empty, "The answer committed.");
             Assert.That(director.IsSceneCardOpen, Is.True, "The card stays to say what came of it.");
-            ButtonWithCaption(EpisodeDirector.SceneCardDoneCaption).onClick.Invoke();
+            ButtonWithCaption(Gamesim.Presentation.WayOut.CloseCaption).onClick.Invoke();
             yield return null;
             Assert.That(director.IsPanelOpen, Is.False, "And hands the player back to the house.");
             Assert.That(director.PullOffered, Is.Null);

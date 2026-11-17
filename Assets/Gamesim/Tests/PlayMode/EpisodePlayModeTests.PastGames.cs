@@ -447,7 +447,7 @@ namespace Gamesim.Tests.PlayMode
             yield return null;
             CastButtons(will.Name)[0].onClick.Invoke();
             yield return null;
-            CastButtons("Play as Will")[0].onClick.Invoke();
+            CastButtons(FrontDoorWords.StartAs("Will"))[0].onClick.Invoke();
             yield return null;
             yield return null;
             Assert.That(CastScreen().IsShowing, Is.False, "The season started.");

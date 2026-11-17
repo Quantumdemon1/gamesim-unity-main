@@ -174,7 +174,7 @@ namespace Gamesim.Tests.PlayMode
                 Assert.That(MeetingPillOn(MeetingCardOf(panel, before, before.playerId), "Role"), Is.EqualTo("VETO"), "The holder is on the row.");
 
                 var pinned = panel.Cast<Transform>().Select(child => child.GetComponent<Button>())
-                    .Where(button => button != null && button.IsActive() && button.name != "Close  [Esc]").ToArray();
+                    .Where(button => button != null && button.IsActive() && button.name != Gamesim.Presentation.WayOut.CloseObjectName).ToArray();
                 Assert.That(pinned, Is.Empty, "The decision is the way on; nothing is pinned beside it.");
                 AssertEveryLabelDraws(panel, where);
                 AssertNoMeetingLabelOverflows(panel, where);

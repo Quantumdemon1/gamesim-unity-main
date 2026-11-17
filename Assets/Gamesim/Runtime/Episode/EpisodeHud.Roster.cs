@@ -29,7 +29,8 @@ namespace Gamesim.Episode
         public const string ProfileRecordsName = "Profile records";
         /// <summary>The name of a house-talk block's card on the profile: the prefix and the block's heading (plan 32 §C).</summary>
         public const string ProfileBlockPrefix = "Profile block · ";
-        public const string ProfileBackCaption = "Back to Houseguests";
+        /// <summary>A profile's way back to the directory it was opened from, at the panel's top left (menu slice 2).</summary>
+        public const string ProfileBackCaption = WayOut.BackPrefix + "Houseguests";
 
         /// <summary>One row of the directory, in words the director has already decided.</summary>
         public sealed class RosterEntry
@@ -349,12 +350,9 @@ namespace Gamesim.Episode
             Anchor(records, new Vector2(0, 1), new Vector2(0, 1), new Vector2(left + 4f * s, -ry), new Vector2(rightWidth - 4f * s, rh));
             ry += rh + 20f * s;
 
-            if (view.Back != null)
-            {
-                var back = KitButton(root, ProfileBackCaption, PackArt.KitIconArrowBack, view.Back, out _);
-                Anchor(back, new Vector2(0, 1), new Vector2(0, 1), new Vector2(left, -ry), back.sizeDelta);
-                ry += back.sizeDelta.y;
-            }
+            // The way back to the directory stands at the panel's top left, where every page's does,
+            // and Escape and B press it (menu slice 2); it is no longer a row under the records.
+            if (view.Back != null) WayBack(ProfileBackCaption, view.Back);
 
             float total = Mathf.Max(identityHeight, ry);
             Anchor(identity, new Vector2(0, 1), new Vector2(0, 1), Vector2.zero, new Vector2(leftWidth, total));

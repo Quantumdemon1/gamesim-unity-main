@@ -252,8 +252,8 @@ namespace Gamesim.Tests.PlayMode
             yield return null; yield return null;
             Assert.That(director.Snapshot.revision, Is.EqualTo(before.revision), "A practice commits nothing.");
             Assert.That(director.Snapshot.randomState, Is.EqualTo(before.randomState), "and draws nothing.");
-            Assert.That(SurfaceButton(found[0], "Return to briefing"), Is.Not.Null, "The practice's finish offers the way back.");
-            SurfaceButton(found[0], "Return to briefing").onClick.Invoke();
+            Assert.That(SurfaceButton(found[0], CompetitionGameScreen.BackToBriefingCaption), Is.Not.Null, "The practice's finish offers the way back.");
+            SurfaceButton(found[0], CompetitionGameScreen.BackToBriefingCaption).onClick.Invoke();
             yield return null; yield return null;
             AssertTowerPutAway("after the practice returns to the briefing");
             Assert.That(director.Snapshot.revision, Is.EqualTo(before.revision));
@@ -271,7 +271,7 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(run.Finished && run.Tower.Solved, Is.True, "The pad moved the whole tower.");
             yield return null; yield return null;
             Assert.That(director.Snapshot.revision, Is.EqualTo(before.revision));
-            SurfaceButton(found[0], "Return to briefing").onClick.Invoke();
+            SurfaceButton(found[0], CompetitionGameScreen.BackToBriefingCaption).onClick.Invoke();
             yield return null; yield return null;
             AssertTowerPutAway("after the pad's practice");
         }

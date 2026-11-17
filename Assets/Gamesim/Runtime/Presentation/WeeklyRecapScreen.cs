@@ -39,7 +39,16 @@ namespace Gamesim.Presentation
         /// <summary>The words on the controls. Captions are how a test and a screen reader find them.</summary>
         public const string ContinueCaption = "Continue to next week";
         public const string ReviewCaption = "Review earlier weeks";
-        public const string BackCaption = "Back to this week";
+        /// <summary>
+        /// The way back from an earlier week (menu slice 2): it says where it returns. Over the week
+        /// that just finished, to that week; from the notebook, to the notebook; otherwise to the house.
+        /// Drawn by the shared helper at the card's top left; Escape and B press it.
+        /// </summary>
+        public const string BackCaption = WayOut.BackPrefix + "this week";
+        public const string BackToNotebookCaption = WayOut.BackPrefix + NotebookPlace;
+        public const string BackToHouseCaption = WayOut.BackPrefix + WayOut.House;
+        /// <summary>The notebook as a place a way back names.</summary>
+        public const string NotebookPlace = "the notebook";
 
         /// <summary>The player's own week, judged (ACTIONS-DEALS-ALLIANCES-PLAN V4): a tab like the others.</summary>
         public const string YourWeekCaption = "Your week";
@@ -189,9 +198,10 @@ namespace Gamesim.Presentation
         }
 
         /// <summary>Looks back at a week already played. Same screen, no continue.</summary>
-        public void Review(EpisodeState state, int week, Action onDismiss = null)
+        public void Review(EpisodeState state, int week, Action onDismiss = null, string returnsTo = null)
         {
             if (state == null) return;
+            reviewReturnsTo = returnsTo;
             // Looking back from the week that just finished: Back returns there, with its
             // Continue, rather than closing a recap the player has not finished reading. From the
             // notebook there is no live week behind the review, and Back closes as it always did.
@@ -239,7 +249,10 @@ namespace Gamesim.Presentation
             builtFor = room;
             float cardWidth = Mathf.Clamp(room.x - 72f, 860f, 1560f);
             Width = cardWidth - 40f;
-            const float footer = 84f;
+            // An earlier week has no controls at its foot: its way back stands at the top left, and
+            // the head and the week move down to make room for it.
+            float footer = browsing ? 16f : 84f;
+            float backRoom = browsing ? WayOut.Height(1f) + WayOut.Inset(1f) : 0f;
             // The eyebrow and the title, pinned at the card's head outside the scroll: only the
             // body scrolls, and the title stays in view whichever tab is open and however far down.
             const float head = Pad + 22f + TitleBox + 2f;
@@ -272,15 +285,15 @@ namespace Gamesim.Presentation
             top.anchorMin = top.anchorMax = new Vector2(0.5f, 1f);
             top.pivot = new Vector2(0.5f, 1f);
             top.sizeDelta = new Vector2(Width, head);
-            top.anchoredPosition = Vector2.zero;
+            top.anchoredPosition = new Vector2(0f, -backRoom);
             Head(top, recap, Width - Pad * 2f);
 
             viewport = HudPrimitives.Fill("Viewport", card, new Color(0f, 0f, 0f, 0f), 1);
             viewport.anchorMin = new Vector2(0.5f, 0f);
             viewport.anchorMax = new Vector2(0.5f, 1f);
             viewport.pivot = new Vector2(0.5f, 1f);
-            viewport.sizeDelta = new Vector2(Width, -(head + footer + 10f));
-            viewport.anchoredPosition = new Vector2(0f, -head);
+            viewport.sizeDelta = new Vector2(Width, -(head + footer + 10f + backRoom));
+            viewport.anchoredPosition = new Vector2(0f, -(head + backRoom));
             viewport.gameObject.AddComponent<RectMask2D>();
             viewport.GetComponent<Image>().raycastTarget = true;
 
@@ -322,8 +335,13 @@ namespace Gamesim.Presentation
 
             // The card as tall as the week it holds, up to the screen: a short week drew its
             // Continue half-way down a card whose lower half was empty glass.
-            float height = Mathf.Min(room.y - 64f, cursor + head + footer + 24f);
+            float height = Mathf.Min(room.y - 64f, cursor + head + footer + 24f + backRoom);
             card.sizeDelta = new Vector2(cardWidth, height);
+            if (browsing)
+            {
+                var back = WayOut.AddBack(card, BackCaptionNow, Back, 1f, InputGlossary.BackKeyHint);
+                back.transform.SetAsLastSibling();
+            }
         }
 
         /// <summary>The seam's lines: every fact of the week the tabs hold, whichever is open, in the old order, then the player's week judged.</summary>
@@ -1028,11 +1046,8 @@ namespace Gamesim.Presentation
 
         private void Controls(RectTransform foot, WeeklyRecap.Week recap)
         {
-            if (browsing)
-            {
-                Button(foot, BackCaption, (Width - 300f) * .5f, 300f, Back, true, PackArt.KitIconArrowBack, null);
-                return;
-            }
+            // An earlier week's only control is its way back, at the card's top left (Rebuild).
+            if (browsing) return;
             // Continue first, so the keyboard starts on it; Review beside it where there is an
             // earlier week to look at, and a line saying which week is next.
             Button(foot, ContinueCaption, (Width - 340f) * .5f, 340f, Dismiss, true, null, PackArt.KitIconChevronRight);
@@ -1050,6 +1065,20 @@ namespace Gamesim.Presentation
 
         /// <summary>The week a review was opened over, or 0 when it came from the notebook.</summary>
         private int liveWeekBehindReview;
+
+        /// <summary>Where the review was opened from, as its way back names it; null for the house.</summary>
+        private string reviewReturnsTo;
+
+        /// <summary>The way back's words while an earlier week is open: where pressing it really returns.</summary>
+        public string BackCaptionNow => liveWeekBehindReview > 0 ? BackCaption : WayOut.BackTo(reviewReturnsTo ?? WayOut.House);
+
+        /// <summary>What Escape and B do on an earlier week: its way back. False when no earlier week is open.</summary>
+        public bool GoBack()
+        {
+            if (!IsOpen || !browsing) return false;
+            Back();
+            return true;
+        }
 
         private void Back()
         {

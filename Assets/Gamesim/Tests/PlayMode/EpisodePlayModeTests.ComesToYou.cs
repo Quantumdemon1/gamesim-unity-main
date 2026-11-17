@@ -590,7 +590,8 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(NpcRead<HouseNpcInvitationLease>("askVisit"), Is.Null, "The visit went under the panel.");
             Assert.That(NpcRead<float>("askPlayerYaw"), Is.EqualTo(playerYaw), "The visit's going leaves the dialogue's heading the ask's,");
             Assert.That(mine.FacingYaw, Is.EqualTo(playerYaw), "and the player still faces the asker.");
-            Assert.That(SelectedName(), Is.EqualTo(EpisodeDirector.ConversationTopicsBackCaption));
+            Assert.That(SelectedName(), Is.EqualTo(WayOut.BackObjectName));
+            Assert.That(SelectedCarries(EpisodeDirector.ConversationTopicsBackCaption), Is.True, "The keyboard on Back to topics.");
             Assert.That(ShownText(), Does.Contain(EpisodeHud.AskRaisedEyebrow("Maya")));
             Assert.That(ButtonWithCaptionOrNull(EpisodeHud.ThinkItOverCaption), Is.Null, "A raised dialogue has no Think it over.");
 
@@ -1840,8 +1841,8 @@ namespace Gamesim.Tests.PlayMode
                             foreach (var caption in new[] { EpisodeHud.DealAcceptCaption, EpisodeHud.DealDeclineCaption, EpisodeHud.ThinkItOverCaption })
                                 AssertInsideItsViewport(FindButton(caption), at + " at 1920x1080: " + caption);
                         });
-                        // Back to topics is reached by scrolling, not on another page (plan C.3: do not page): scrolled into
-                        // view and pressable, the pointer hold waited out above.
+                        // Back to topics is on the same page (plan C.3: do not page): at the column's top left since menu
+                        // slice 2, on screen and pressable, the pointer hold waited out above.
                         ButtonWithCaption(EpisodeDirector.ConversationTopicsBackCaption);
                     }
                 }
@@ -2004,7 +2005,7 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(expected.accepted, Is.True, expected.reason);
             AssertEquivalent(expected.state, answered);
 
-            // The reply page: the player's words, hers, and the way back to the house.
+            // The reply page: the player's words, hers, and the panel's Close, the card's one way out.
             Assert.That(director.IsAskCardOpen, Is.True, "The card stays up for the reply.");
             Assert.That(director.IsConversationExchangePlaying, Is.False, "No conversation plays it.");
             Assert.That(LastLabel(EpisodeHud.AskYourWordsName)?.text, Is.EqualTo("\"" + said.PlayerLine + "\""));
@@ -2012,9 +2013,9 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(ButtonWithCaptionOrNull(EpisodeHud.ThinkItOverCaption), Is.Null, "Nothing is left to think over.");
             // The ask clock stands still under the card: an answered card is a presentation too, so the gap counts from here.
             float clock = NpcRead<float>("askClock");
-            ButtonWithCaption(EpisodeDirector.SceneCardDoneCaption).onClick.Invoke();
+            PanelCloseButton().onClick.Invoke();
             Assert.That(director.IsAskCardOpen, Is.False);
-            Assert.That(director.IsPanelOpen, Is.False, "Back to the house closes the card.");
+            Assert.That(director.IsPanelOpen, Is.False, "The panel's Close closes the card.");
             Assert.That(NpcRead<float>("askNextAt"), Is.GreaterThanOrEqualTo(clock + EpisodeDirector.AskGapSeconds - .01f),
                 "After an answered card the next ask waits its gap.");
         }
@@ -2067,7 +2068,7 @@ namespace Gamesim.Tests.PlayMode
             ButtonWithCaption(EpisodeHud.DealAcceptCaption).onClick.Invoke();
             Assert.That(LastLabel(EpisodeHud.AskReplyName), Is.Not.Null, "The card shows the reply,");
             Assert.That(NpcRead<string>("conversationNarration"), Is.Null, "and narrates nothing a conversation would show next.");
-            ButtonWithCaption(EpisodeDirector.SceneCardDoneCaption).onClick.Invoke();
+            PanelCloseButton().onClick.Invoke();
             Assert.That(director.IsPanelOpen, Is.False);
             yield return null;
             float deadline = Time.realtimeSinceStartup + 5f;
@@ -2297,7 +2298,8 @@ namespace Gamesim.Tests.PlayMode
                 Assert.That(director.IsAskCardOpen, Is.True, at + ": the card is still up for its answer.");
                 FindButton(EpisodeHud.DealAcceptCaption).onClick.Invoke();
                 yield return null;
-                Assert.That(FindButton(EpisodeDirector.SceneCardDoneCaption), Is.Not.Null, at + ": the reply page's way back.");
+                Assert.That(PanelCloseButton(pressable: false), Is.Not.Null, at + ": the reply page's one way out is the panel's Close,");
+                Assert.That(ButtonWithCaptionOrNull(EpisodeDirector.SceneCardDoneCaption), Is.Null, at + ": with no second row beside it.");
                 AssertEveryLabelDraws(at + ": the card's reply");
                 AssertAskLabelsFit(at + ": the card's reply", EpisodeHud.AskYourWordsName, EpisodeHud.AskReplyName);
                 director.ClosePanels();

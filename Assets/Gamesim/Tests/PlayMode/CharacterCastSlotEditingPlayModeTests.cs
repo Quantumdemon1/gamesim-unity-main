@@ -58,7 +58,8 @@ namespace Gamesim.Tests.PlayMode
             Click(creator, CharacterCreator.CancelSlotCaption);
             yield return null;
             Assert.That(slots[0].name, Is.EqualTo("Edited NPC"));
-            Click(cast, CastSelect.StartCaption);
+            // The one start names the houseguest brought back from the creator (menu slice 2).
+            Click(cast, FrontDoorWords.StartAs(CharacterNames.FirstName(player.Name)));
             Assert.That(committed.Authored.Name, Is.EqualTo(player.Name));
             Assert.That(committed.Authored.Appearance.ContentKey(), Is.EqualTo(player.Appearance.ContentKey()));
             Assert.That(committed.CustomHouseguests[0].name, Is.EqualTo("Edited NPC"));

@@ -88,15 +88,16 @@ namespace Gamesim.Presentation
                 }
                 return matches.Skip(page * PageSize).Take(PageSize).ToArray();
             }
-            Button(row, "Search profiles", -25f, 100f, Search);
-            Button(row, "Clear search", 85f, 100f, () => Refresh(Reset, box.name));
-            Button(row, "Previous profiles", 215f, 115f,
-                () => Refresh(() => page--, "Previous profiles")).interactable = page > 0;
+            // One name per thing (menu slice 2): the row says houseguests, as the one-box row does.
+            Button(row, OneBoxSearchCaption, -25f, 100f, Search);
+            Button(row, ClearSearchCaption, 85f, 100f, () => Refresh(Reset, box.name));
+            Button(row, OneBoxPreviousCaption, 215f, 115f,
+                () => Refresh(() => page--, OneBoxPreviousCaption)).interactable = page > 0;
             var pageLabel = HudPrimitives.Label("Profile page", row, 15f, UiTheme.Muted, TextAlignmentOptions.Center);
             Place(pageLabel.rectTransform, 320f, 74f);
             pageLabel.text = matches.Count == 0 ? "0 / 0" : (page + 1) + " / " + pages;
-            Button(row, "Next profiles", 442f, 130f,
-                () => Refresh(() => page++, "Next profiles")).interactable = page + 1 < pages;
+            Button(row, OneBoxNextCaption, 442f, 130f,
+                () => Refresh(() => page++, OneBoxNextCaption)).interactable = page + 1 < pages;
             return matches.Skip(page * PageSize).Take(PageSize).ToArray();
         }
 

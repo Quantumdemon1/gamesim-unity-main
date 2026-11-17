@@ -435,7 +435,7 @@ namespace Gamesim.Episode
             if (!challengeRun.Finished) return;
             challengeResultShown = true;
             if (challengePractice)
-                competitionScreen.ShowFinished("Practice complete. No competition result or season state was changed.", "Return to briefing", CancelChallenge, hideCancel: true);
+                competitionScreen.ShowFinished("Practice complete. No competition result or season state was changed.", CompetitionGameScreen.BackToBriefingCaption, CancelChallenge, hideCancel: true);
             else
             {
                 competitionScreen.ShowRankedFinish("Your result goes to the standings in a moment. Scores commit once.");
@@ -496,7 +496,7 @@ namespace Gamesim.Episode
             if (challengeRun == null || !challengeRun.Finished || challengePractice || challengeCommitting) return;
             if (!IsCurrentDiaryRevision(challengeOrigin))
             {
-                competitionScreen.ShowFinished("The episode changed during this attempt. Return to the briefing to refresh.", "Return to briefing", CancelChallenge, hideCancel: true);
+                competitionScreen.ShowFinished("The episode changed during this attempt. Go back to the briefing to refresh.", CompetitionGameScreen.BackToBriefingCaption, CancelChallenge, hideCancel: true);
                 return;
             }
             challengeCommitting = true;

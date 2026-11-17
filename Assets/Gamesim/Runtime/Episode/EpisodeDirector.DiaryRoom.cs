@@ -256,9 +256,9 @@ namespace Gamesim.Episode
             {
                 origin = state, kind = EpisodeCommandKind.StudyHouse, target = choiceId,
                 summary = (memorize ? "Memorize the layout." : "Sneak a peek at production notes.")
-                    + "\nCost: 1 social action ("
+                    + "\nCost: 1 action ("
                     + (EpisodeEngine.SocialActionBudget(state) - EpisodeEngine.SocialActionsSpent(state))
-                    + " of " + EpisodeEngine.SocialActionBudget(state) + " remaining this week)."
+                    + " of " + EpisodeEngine.SocialActionBudget(state) + " actions left this week)."
                     + (TuningRules.At(state, TuningRules.Bands) ? StudyReviewTuned(state, memorize, chance)
                     : (memorize ? "\nGuaranteed +1 preparation, up to the limit of 5."
                         : "\nSuccess chance: " + chance + "%. Success adds 2 preparation; failure removes 1.")
@@ -619,13 +619,14 @@ namespace Gamesim.Episode
             hud.DiarySection("STUDY THE HOUSE");
             // Where preparation stands, beside the ways to raise it.
             hud.Paragraph("Study preparation: " + state.playerStudyBonus + "/" + TuningRules.PreparationOutOf(state));
-            string cost = "Study here in the private room during free time. Each confirmed approach uses one of the "
-                + EpisodeEngine.SocialActionBudget(state) + " social actions this week allows. "
+            string cost = "Study here in the private room during free time. Each confirmed approach uses 1 of your actions left: "
+                + Math.Max(0, EpisodeEngine.SocialActionBudget(state) - EpisodeEngine.SocialActionsSpent(state)) + " of "
+                + EpisodeEngine.SocialActionBudget(state) + " this week. "
                 + "Opening, reading, and cancelling cost nothing.";
             if (state.pendingDiary != null)
             { hud.Paragraph("Answer or skip your pending private reflection before studying."); return true; }
             if (EpisodeEngine.SocialActionsSpent(state) >= EpisodeEngine.SocialActionBudget(state))
-            { hud.Paragraph("No social actions remain in this window. Return to the episode screen when ready to continue."); return true; }
+            { hud.Paragraph("No actions left in this window. Return to the episode screen when ready to continue."); return true; }
             if (TuningRules.At(state, TuningRules.Bands)) return RenderStudyTuned(state, cost);
             hud.OptionCard(EpisodeHud.StudyMemorizeCaption, "Guaranteed +1 preparation, up to the limit of 5.", "house",
                 () => ReviewStudyHouse(state, "memorize-layout"));

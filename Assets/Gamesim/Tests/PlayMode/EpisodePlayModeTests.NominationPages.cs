@@ -257,7 +257,7 @@ namespace Gamesim.Tests.PlayMode
             var aims = new List<string>();
             AssertLargestPages(plan, planPages, page =>
             {
-                AssertNominationScreen(plan + ", page " + page, EpisodeHud.BackToNomineesCaption);
+                AssertNominationScreen(plan + ", page " + page);
                 aims.AddRange(ActiveRect(EpisodeHud.BackdoorAimsName).GetComponentsInChildren<Button>().Select(aim => aim.name));
             });
             Assert.That(aims, Is.EquivalentTo(candidates.Select(candidate => "Aim this week at " + candidate.name)), plan + ": every aim on exactly one page.");

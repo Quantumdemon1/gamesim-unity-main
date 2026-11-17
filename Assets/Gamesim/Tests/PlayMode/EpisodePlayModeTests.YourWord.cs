@@ -113,7 +113,7 @@ namespace Gamesim.Tests.PlayMode
                 Canvas.ForceUpdateCanvases();
                 Assert.That(NotebookText(), Does.Contain(EpisodeDirector.YourWordCaption), where + " names itself.");
                 Assert.That(ActiveRect(EpisodeDirector.NotebookSection.Word), Is.Not.Null, where + " carries its mark.");
-                AssertPageDoor(EpisodeDirector.BackToYourNotesCaption, where);
+                AssertPageWayBack(EpisodeDirector.BackToYourNotesCaption, where);
                 var dealCard = ActiveRect(EpisodeHud.WordOpenCardPrefix + seeded.Find(dealWith).name);
                 Assert.That(dealCard, Is.Not.Null, where + ": the deal's partner has a card under STILL OPEN.");
                 Assert.That(Words(dealCard), Does.Contain(CommitmentsRead.Line(read.Single(c => c.id == "deal-your-word"))), where + ": the deal's line.");
@@ -157,7 +157,7 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(head, Is.Not.Null, where + " has its head.");
             Assert.That(door.IsChildOf(head), Is.True, where + ": '" + caption + "' is a door in the page's head,");
             Assert.That(door.IsChildOf(ActiveRect("Episode content")), Is.False, "not a row of the page.");
-            var close = ActiveRect("Close  [Esc]");
+            var close = ActiveRect(Gamesim.Presentation.WayOut.CloseObjectName);
             if (close != null) Assert.That(ScreenRect(door).Overlaps(ScreenRect(close)), Is.False, where + ": '" + caption + "' clears Close.");
             AssertInside(ScreenRect(ActiveRect("Episode panel")), door, where + ": '" + caption + "'");
             foreach (var label in door.GetComponentsInChildren<TMP_Text>())

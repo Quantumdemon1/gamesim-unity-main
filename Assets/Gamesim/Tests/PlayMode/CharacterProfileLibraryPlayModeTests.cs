@@ -85,7 +85,7 @@ namespace Gamesim.Tests.PlayMode
             Click(creator, "Identity");
             creator.GetComponentsInChildren<TMP_InputField>().Single(field => field.name == "Name field").text = "Cast only";
             Click(creator, CharacterCreator.ApplySlotCaption);
-            Click(cast, CastSelect.StartCaption);
+            Click(cast, FrontDoorWords.StartAs("Alex"));
             Assert.That(choice.Authored.Name, Is.EqualTo("Alex Chen"));
             Assert.That(choice.CustomHouseguests[0].name, Is.EqualTo("Cast only"));
             Assert.That(choice.CustomHouseguests[1].name, Is.EqualTo("Isolated A edited"));
@@ -132,6 +132,9 @@ namespace Gamesim.Tests.PlayMode
             Click(creator, "Compare original");
             Click(creator, "My Houseguests");
             Click(creator, "Duplicate Library Bob");
+            // The draft holds a look never saved, so the library asks before replacing it (menu slice 2).
+            Assert.That(creator.AsksToReplace, Is.True);
+            Click(creator, CreatorSteps.ReplaceCaption);
             Click(creator, "Appearance");
             string baseline = creator.Draft.Appearance.ContentKey();
             Assert.That(creator.Draft.Name, Is.EqualTo("Library Bob (copy)"));
@@ -217,7 +220,7 @@ namespace Gamesim.Tests.PlayMode
             Click(cast, "Your houseguests in this season");
             Click(cast, "Add Guest 07 to the cast");
             Click(cast, "Add Guest 07 to the cast");
-            Click(cast, CastSelect.StartCaption);
+            Click(cast, FrontDoorWords.StartAs("Guest"));
             Assert.That(committed.CustomHouseguests, Has.Count.EqualTo(2));
             Assert.That(committed.CustomHouseguests[0].id, Is.EqualTo(last.id));
             Assert.That(committed.CustomHouseguests[1], Is.Not.SameAs(committed.CustomHouseguests[0]));

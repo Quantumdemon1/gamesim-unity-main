@@ -45,7 +45,7 @@ namespace Gamesim.Tests.PlayMode
             director.OpenSettings();
             yield return null;
             Assert.That(audio.LastCue, Is.EqualTo(HouseAudio.Cue.PanelOpen), "A panel arriving says so.");
-            var button = ButtonWithCaption("Close  [Esc]");
+            var button = ButtonWithCaption(Gamesim.Presentation.WayOut.CloseCaption);
             UnityEngine.EventSystems.ExecuteEvents.Execute(button.gameObject,
                 new UnityEngine.EventSystems.PointerEventData(UnityEngine.EventSystems.EventSystem.current),
                 UnityEngine.EventSystems.ExecuteEvents.pointerEnterHandler);

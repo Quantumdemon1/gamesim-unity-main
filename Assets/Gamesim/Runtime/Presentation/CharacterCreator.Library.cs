@@ -27,26 +27,34 @@ namespace Gamesim.Presentation
     /// My Houseguests (the creator's second mockup) - the saved houseguests as cards, a new one at
     /// the head of them, and a bar under them for the one in focus - and the Review step that
     /// closes the creator.
+    ///
+    /// <para>Since menu slice 2 the library is not a step: the header's My Houseguests button opens
+    /// it as a panel over the step, with its one Close at the top right, and the footer's way on
+    /// stays the screen's one bright button.</para>
     /// </summary>
     public sealed partial class CharacterCreator
     {
         private string focusedProfile;
-        private bool confirmingNew;
 
-        private void BuildLibraryPage(RectTransform scrim)
+        private void BuildLibraryPanel(RectTransform scrim)
         {
             var area = PageArea;
-            var box = Panel("My Houseguests", scrim, area, true);
+            var box = Panel(CreatorSteps.Library, scrim, area, true);
             float x = 26f, width = area.width - 52f;
             var store = ProfileStore;
             var profiles = store.List();
+            // The panel's one way out, at its top right; Escape and B do the same (Dismiss).
+            var close = WayOut.AddClose(box, CloseLibrary);
+            float closeLeft = area.width - WayOut.Inset(1f) - ((RectTransform)close.transform).sizeDelta.x;
             float saveWidth = Mathf.Min(260f, width * .2f);
-            SectionHeading(box, x, 20f, width - 2f * saveWidth - 24f, PackArt.KitIconPeople, "MY HOUSEGUESTS");
+            float saveRight = closeLeft - 16f;
+            float headingWidth = saveRight - 2f * saveWidth - 12f - 24f - x;
+            SectionHeading(box, x, 20f, headingWidth, PackArt.KitIconPeople, "MY HOUSEGUESTS");
             Words(box, profiles.Count + (profiles.Count == 1 ? " saved houseguest" : " saved houseguests") + "  ·  Saved houseguests can be reused, renamed, duplicated or deleted. Existing seasons keep their own independent copy.",
-                14f, UiTheme.Muted, new Rect(x, 60f, width - 2f * saveWidth - 24f, 40f)).textWrappingMode = TextWrappingModes.Normal;
-            Pill(box, "Save this houseguest", new Rect(area.width - 26f - 2f * saveWidth - 12f, 22f, saveWidth, 52f), Tone.Primary,
+                14f, UiTheme.Muted, new Rect(x, 60f, headingWidth, 40f)).textWrappingMode = TextWrappingModes.Normal;
+            Pill(box, "Save this houseguest", new Rect(saveRight - 2f * saveWidth - 12f, 22f, saveWidth, 52f), Tone.Secondary,
                 () => SaveProfile(false), icon: PackArt.KitIconSave);
-            Pill(box, "Save a new copy", new Rect(area.width - 26f - saveWidth, 22f, saveWidth, 52f), Tone.Secondary,
+            Pill(box, "Save a new copy", new Rect(saveRight - saveWidth, 22f, saveWidth, 52f), Tone.Secondary,
                 () => SaveProfile(true), icon: PackArt.KitIconSave);
 
             // Everything under the heading scrolls: the search row the cast screen shares - fixed
@@ -61,8 +69,9 @@ namespace Gamesim.Presentation
             var visible = profileBrowser.Draw(searchRow, profiles, Rebuild);
             float y = 58f;
             var messages = new List<(string text, Color colour)>();
-            if (!string.IsNullOrEmpty(libraryMessage)) messages.Add((libraryMessage, UiTheme.Accent));
-            foreach (string error in store.ReadErrors) messages.Add((error, UiTheme.Warning));
+            // The store's own words say "profile"; the screen says houseguest (one name per thing).
+            if (!string.IsNullOrEmpty(libraryMessage)) messages.Add((CreatorSteps.LibraryWords(libraryMessage), UiTheme.Accent));
+            foreach (string error in store.ReadErrors) messages.Add((CreatorSteps.LibraryWords(error), UiTheme.Warning));
             if (profiles.Count > 0 && visible.Count == 0) messages.Add(("No saved houseguests match this name. Clear search to see everyone.", UiTheme.Muted));
             foreach (var (text, colour) in messages)
             {
@@ -90,14 +99,17 @@ namespace Gamesim.Presentation
             if (focus != null) DetailBar(box, focus, new Rect(x, area.height - detail - 14f, width, detail));
         }
 
-        /// <summary>A blank houseguest. Two presses, the second to confirm: it replaces the draft on screen.</summary>
+        /// <summary>
+        /// A blank houseguest. It replaces the draft on screen: at once when the draft holds nothing
+        /// unsaved, otherwise after the replace card asks (menu slice 2).
+        /// </summary>
         private void NewHouseguestCard(Transform parent, Rect r)
         {
-            string caption = confirmingNew ? "Confirm new houseguest" : "Create new houseguest";
+            string caption = CreatorSteps.CreateCaption;
             var card = HudPrimitives.Fill(caption, parent, new Color(UiTheme.AccentDeep.r, UiTheme.AccentDeep.g, UiTheme.AccentDeep.b, .18f), 14);
             Place(card, r.x, r.y, r.width, r.height);
             var image = card.GetComponent<Image>(); image.raycastTarget = true;
-            UiTheme.AddBorder(card, 14, confirmingNew ? UiTheme.Warning : new Color(UiTheme.Glow.r, UiTheme.Glow.g, UiTheme.Glow.b, .75f));
+            UiTheme.AddBorder(card, 14, new Color(UiTheme.Glow.r, UiTheme.Glow.g, UiTheme.Glow.b, .75f));
             var label = Words(card, caption, 17f, Color.white, new Rect(10f, r.height * .5f + 24f, r.width - 20f, 26f), TextAlignmentOptions.Center, "Label");
             var weight = UiTheme.Font(UiTheme.Weight.SemiBold); if (weight != null) label.font = weight;
             label.enableAutoSizing = true; label.fontSizeMax = 17f; label.fontSizeMin = 12f;
@@ -106,17 +118,15 @@ namespace Gamesim.Presentation
             plus.sizeDelta = new Vector2(64f, 64f); plus.anchoredPosition = new Vector2(0f, -(r.height * .5f - 16f));
             plus.GetComponent<Image>().raycastTarget = false;
             Words(plus, "+", 40f, Color.white, new Rect(0f, -4f, 64f, 64f), TextAlignmentOptions.Center, "Plus mark");
-            Words(card, confirmingNew ? "Unsaved changes to this draft will be lost." : "Start from a blank draft", 12f,
-                confirmingNew ? UiTheme.Warning : UiTheme.Muted, new Rect(10f, r.height * .5f + 54f, r.width - 20f, 36f), TextAlignmentOptions.Top)
+            Words(card, "Start from a blank draft", 12f,
+                UiTheme.Muted, new Rect(10f, r.height * .5f + 54f, r.width - 20f, 36f), TextAlignmentOptions.Top)
                 .textWrappingMode = TextWrappingModes.Normal;
-            card.name = "New houseguest"; // named for what it is: the caption flips, and focus is kept by name
+            card.name = "New houseguest"; // named for what it is: focus is kept by name
             var button = card.gameObject.AddComponent<Button>();
             button.targetGraphic = image;
             Seen(button, 14);
-            button.onClick.AddListener(() =>
+            button.onClick.AddListener(() => AskToReplace(null, () =>
             {
-                if (!confirmingNew) { confirmingNew = true; Rebuild(); return; }
-                confirmingNew = false;
                 draft = CharacterDraft.Blank();
                 profileId = focusedProfile = null;
                 draft.Appearance = draft.Appearance ?? new CharacterAppearance();
@@ -127,8 +137,11 @@ namespace Gamesim.Presentation
                 comparingOriginal = false; appearanceNotice = lastSlider = null;
                 libraryMessage = "A blank houseguest. Save it here when you are done.";
                 studioPage = DefaultAppearancePage;
+                libraryOpen = false;
+                if (!editingCastSlot) editingName = null;
+                MarkSaved();
                 Rebuild();
-            });
+            }));
         }
 
         /// <summary>
@@ -173,7 +186,7 @@ namespace Gamesim.Presentation
             {
                 if (pendingDeleteProfile != entry.id) pendingDeleteProfile = null;
                 focusedProfile = entry.id;
-                AdoptLibraryDraft(entry, false, "My Houseguests");
+                AskToReplace(entry.name, () => AdoptLibraryDraft(entry, false));
             });
             // The card loads its houseguest, as it always has; this looks without loading, so the bar's
             // Duplicate and Delete reach any card without replacing the draft on screen.
@@ -233,12 +246,15 @@ namespace Gamesim.Presentation
             // The houseguest already loaded is the draft on screen, edits and all: its actions go to
             // the page and keep them. Any other is loaded from the library first.
             bool loaded = entry.id == profileId;
-            Action open(string page) => () => { if (loaded) GoTo(page); else AdoptLibraryDraft(entry, false, page); };
+            Action open(string page) => () => { if (loaded) GoTo(page); else AskToReplace(entry.name, () => AdoptLibraryDraft(entry, false, page)); };
+            // The footer's way on is the screen's one bright button (menu slice 2, change 3): the
+            // bar's actions are all the quieter kind.
             var buttons = new List<(string caption, Tone tone, string icon, Action act)>
             {
-                ((editingCastSlot ? "Use " : "Play as ") + entry.name, Tone.Primary, PackArt.KitIconChevronRight, open("Review")),
-                ("Edit " + entry.name, Tone.Secondary, PackArt.KitIconPerson, open("Appearance")),
-                ("Duplicate " + entry.name, Tone.Secondary, PackArt.KitIconArchive, () => AdoptLibraryDraft(entry, true)),
+                ((editingCastSlot ? "Use " : "Play as ") + entry.name, Tone.Secondary, PackArt.KitIconChevronRight, open("Review")),
+                (CreatorSteps.EditCaption(entry.name), Tone.Secondary, PackArt.KitIconPerson, open("Appearance")),
+                ("Duplicate " + entry.name, Tone.Secondary, PackArt.KitIconArchive,
+                    () => AskToReplace(entry.name + " (copy)", () => AdoptLibraryDraft(entry, true))),
                 ("Rename " + entry.name, Tone.Secondary, PackArt.KitIconNote, open("Identity")),
                 (deleting ? "Confirm delete " + entry.name : "Delete " + entry.name, Tone.Danger, PackArt.KitIconCross, () => DeleteProfile(entry)),
             };
@@ -251,7 +267,7 @@ namespace Gamesim.Presentation
             {
                 // The name is on the bar already; each control shows its verb and keeps the full caption.
                 var button = Pill(bar, caption, new Rect(bx, (r.height - 60f) * .5f, bw, 60f), tone, act, size: 14f);
-                if (tone == Tone.Danger) button.name = "Delete profile"; // its caption flips; focus is kept by name
+                if (tone == Tone.Danger) button.name = "Delete houseguest"; // its caption flips; focus is kept by name
                 var label = button.transform.Find("Label").GetComponent<TMP_Text>();
                 label.enabled = false;
                 var shown = Words(button.transform, VerbOf(caption, entry.name), 16f, label.color, new Rect(0f, 34f, bw, 20f), TextAlignmentOptions.Center, "Verb");
@@ -277,19 +293,23 @@ namespace Gamesim.Presentation
             {
                 bool removed = ProfileStore.Delete(entry.id, out var deleteError);
                 libraryMessage = removed ? "Deleted " + entry.name + " from My Houseguests." : deleteError;
-                if (removed && profileId == entry.id) profileId = null;
+                // The draft that was this houseguest is no longer saved anywhere.
+                if (removed && profileId == entry.id) { profileId = null; baselineKey = null; }
                 if (removed && focusedProfile == entry.id) focusedProfile = null;
                 pendingDeleteProfile = null;
             }
             Rebuild();
         }
 
+        /// <summary>
+        /// Puts a saved houseguest in the draft's place. With no <paramref name="page"/> a plain load
+        /// stays in My Houseguests; otherwise the panel closes onto that step.
+        /// </summary>
         private void AdoptLibraryDraft(CharacterProfile profile, bool duplicate, string page = null)
         {
             draft = profile.ToDraft();
             if (duplicate) draft.Name += " (copy)";
             profileId = duplicate ? null : profile.id;
-            confirmingNew = false;
             draft.Appearance = draft.Appearance ?? new CharacterAppearance();
             if (Catalog != null) draft.Appearance = Catalog.Materialize(draft.Appearance);
             initialAppearance = draft.Appearance.Clone();
@@ -298,8 +318,11 @@ namespace Gamesim.Presentation
             comparingOriginal = false;
             appearanceNotice = lastSlider = null;
             lastSliderEdit = 0f;
-            SelectPage(page ?? (duplicate ? "Identity" : DefaultAppearancePage));
-            if (!duplicate && page == "My Houseguests") libraryMessage = "Loaded " + profile.name + ".";
+            bool stay = !duplicate && page == null;
+            if (stay) libraryMessage = "Loaded " + profile.name + ".";
+            else { libraryOpen = false; SelectPage(page ?? (duplicate ? "Identity" : DefaultAppearancePage)); }
+            if (!editingCastSlot) editingName = duplicate ? null : profile.name;
+            MarkSaved();
             Rebuild();
         }
 
@@ -308,7 +331,11 @@ namespace Gamesim.Presentation
             if (!draft.TryValidate(out var error)) { libraryMessage = error; Rebuild(); return; }
             string id = duplicate || string.IsNullOrEmpty(profileId) ? Guid.NewGuid().ToString("N") : profileId;
             if (ProfileStore.Save(CharacterProfile.FromDraft(id, draft), out error))
-            { profileId = focusedProfile = id; libraryMessage = "Saved " + draft.Name + "."; }
+            {
+                profileId = focusedProfile = id; libraryMessage = "Saved " + draft.Name + ".";
+                if (!editingCastSlot) editingName = draft.Name;
+                MarkSaved();
+            }
             else libraryMessage = error;
             Rebuild();
         }

@@ -29,9 +29,9 @@ namespace Gamesim.Tests.PlayMode
             yield return null; yield return null;
             Assert.That(director.HasDiaryDecisionDraft, Is.True);
             Assert.That(ActiveDiaryText(), Does.Contain("Guaranteed +1 preparation, up to the limit of 5."));
-            Assert.That(ActiveDiaryText(), Does.Contain("Cost: 1 social action"));
+            Assert.That(ActiveDiaryText(), Does.Contain("Cost: 1 action ("));
             Assert.That(ActiveDiaryText(), Does.Contain(EpisodeEngine.SocialActionBudget(director.Snapshot)
-                + " of " + EpisodeEngine.SocialActionBudget(director.Snapshot) + " remaining this week"));
+                + " of " + EpisodeEngine.SocialActionBudget(director.Snapshot) + " actions left this week"));
             AssertEquivalent(before, director.Snapshot);
             ButtonWithCaption(EpisodeHud.StudyCancelCaption).onClick.Invoke();
             yield return null; yield return null;

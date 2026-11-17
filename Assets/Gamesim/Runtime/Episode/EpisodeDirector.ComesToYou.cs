@@ -799,7 +799,7 @@ namespace Gamesim.Episode
                 hud.DropFocusAsked(); hud.EndPointerHold();
                 hud.SpeakerTitle(npc.id, npc.name, npc.pronouns);
                 if (!string.IsNullOrEmpty(conversationNarration)) { hud.Heading("WHAT HAPPENED"); hud.Paragraph(conversationNarration); }
-                hud.Action(ConversationTopicsBackCaption, () =>
+                hud.DecisionPageBack(ConversationTopicsBackCaption, () =>
                 {
                     if (!ConversationNavigationCurrent(token, state, npc.id)) return;
                     // With nothing said to clear, the topics are simply the next render.
@@ -828,7 +828,7 @@ namespace Gamesim.Episode
                 {
                     if (ConversationNavigationCurrent(token, state, npc.id)) ThinkItOver(id);
                 });
-            hud.Action(ConversationTopicsBackCaption, () =>
+            hud.DecisionPageBack(ConversationTopicsBackCaption, () =>
             {
                 if (ConversationNavigationCurrent(token, state, npc.id)) BackConversationNavigation(true);
             });
@@ -837,7 +837,7 @@ namespace Gamesim.Episode
             {
                 askDialogueFirstRender = false;
                 hud.HoldPointerOffPanel(EpisodeHud.PointerHoldSeconds);
-                hud.FocusWhenWired(walkOver ? EpisodeHud.ThinkItOverCaption : ConversationTopicsBackCaption);
+                hud.FocusWhenWired(walkOver ? EpisodeHud.ThinkItOverCaption : WayOut.BackObjectName);
             }
             else
             {
@@ -919,7 +919,7 @@ namespace Gamesim.Episode
             {
                 if (ConversationNavigationCurrent(token, state, npc.id)) ChainAsk(npc.id);
             });
-            hud.Action(ConversationTopicsBackCaption, () =>
+            hud.DecisionPageBack(ConversationTopicsBackCaption, () =>
             {
                 if (ConversationNavigationCurrent(token, state, npc.id)) BackConversationNavigation(true);
             });
@@ -959,15 +959,16 @@ namespace Gamesim.Episode
         }
 
         /// <summary>
-        /// The card's ways back once its ask is answered: "There's something else" beside Back to the house when the same
-        /// houseguest has another ask that can come (the keyboard on it as the page first draws), else Back to the house alone.
+        /// The card once its ask is answered: a card over the house, its one way out is the panel's own Close (menu
+        /// slice 2, change 1: the "Back to the house" row beside it went, as it did from the story's scene card). When the
+        /// same houseguest has another ask that can come, "There's something else" is the way on, the keyboard on it as
+        /// the page first draws.
         /// </summary>
         private void AskCardWaysOut()
         {
             var answered = askCard;
             var next = askCardAnswered && answered != null ? AskChainNext(answered.askerId, answered.recordId) : null;
             if (next != null) hud.Action(EpisodeHud.AskSomethingElseCaption, () => ChainAskCard(answered));
-            hud.Action(SceneCardDoneCaption, ClosePanels);
             if (next == null) { hud.DropFocusAsked(); return; }
             if (askCardChainFor != answered.recordId) { askCardChainFor = answered.recordId; hud.FocusWhenWired(EpisodeHud.AskSomethingElseCaption); }
             else hud.KeepFocusAsked();
@@ -1081,7 +1082,7 @@ namespace Gamesim.Episode
         /// <summary>
         /// The card's page, on the Stage layout, which frames no two-shot. Under "A WORD IN PRIVATE": the dialogue, the
         /// deal table's own answers with their readings, Think it over and who else wants a word. Once answered, the
-        /// player's words and the reply; once the offer has gone, a line saying so; either way, Back to the house.
+        /// player's words and the reply; once the offer has gone, a line saying so; either way, the panel's Close.
         /// The keyboard opens on Think it over and pointer presses are held off a moment, so a press already on its way
         /// answers nothing.
         /// </summary>
@@ -1125,7 +1126,7 @@ namespace Gamesim.Episode
         /// A reply card's page on the card host (slice 4a): the card's frame and its three answers, Think it over and who
         /// else wants a word. Once answered, the answer's own log line under <see cref="EpisodeHud.AskOutcomeName"/> - an
         /// answer to a card plays no exchange - and never the offer's "no longer on the table"; once the card went before
-        /// any answer, <see cref="EpisodeHud.AskCardGoneLine"/>; either way, Back to the house.
+        /// any answer, <see cref="EpisodeHud.AskCardGoneLine"/>; either way, the panel's Close.
         /// </summary>
         private void ReplyAskCard(EpisodeState state, ComesToYou.Ask ask)
         {
@@ -1158,7 +1159,7 @@ namespace Gamesim.Episode
         }
 
         /// <summary>
-        /// The card goes, as every panel does (ClosePanelsInternal): Think it over, Escape, Back to the house. An ask still
+        /// The card goes, as every panel does (ClosePanelsInternal): Think it over, Escape, Close. An ask still
         /// waiting unanswered is set aside for the phase, and after any card the next ask waits its gap.
         /// </summary>
         private void EndAskCard()

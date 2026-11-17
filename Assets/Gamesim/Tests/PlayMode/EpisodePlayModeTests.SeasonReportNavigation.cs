@@ -44,7 +44,8 @@ namespace Gamesim.Tests.PlayMode
             var footer = Report().GetComponentsInChildren<RectTransform>().Last(rect => rect.name == SeasonReport.FooterName);
             var viewCorners = new Vector3[4];
             scroll.viewport.GetWorldCorners(viewCorners);
-            foreach (string caption in new[] { SeasonReport.NewSeasonCaption, SeasonReport.ReviewCaption, SeasonReport.MainMenuCaption, SeasonReport.CloseCaption })
+            // Close is no way on since menu slice 2: the card's way out, in its top right corner (MenuOneWayBackDecisions).
+            foreach (string caption in new[] { SeasonReport.NewSeasonCaption, SeasonReport.ReviewCaption, SeasonReport.MainMenuCaption })
             {
                 var buttons = ReportButtons(caption);
                 Assert.That(buttons, Has.Length.EqualTo(1), caption + " is offered once.");

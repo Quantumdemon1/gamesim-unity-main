@@ -494,8 +494,8 @@ namespace Gamesim.Simulation
         /// used; the player is in the game and on the block; the holder reads the player warmly enough to bargain at all
         /// (<see cref="DealingFloor"/>, on the adjusted warmth every other ask reads); no word on the veto binds the two of them
         /// already; the player holds no favour over the holder - Call in the Favour already asks for the veto there; the player
-        /// has put no Save plea to them this week - the window after the veto competition, once the holder is known, has the
-        /// seat for one, and a plea made there was the player's ask; no story
+        /// has put no Save plea to them this week (none can come first today: the holder is pleaded with only at the meeting,
+        /// which this opens; kept as a guard); no story
         /// refuses the save (a nemesis, <see cref="StoryConsumers.WillNotSave"/>; a cold partner); a price fits
         /// (<see cref="Negotiation.HolderOfferPrice"/>); and with the word's own pull the player is the nominee the holder would
         /// save (<see cref="EpisodeEngine.SavesWithTheWord"/>). Whether they would have saved the player anyway does not matter,
@@ -517,8 +517,8 @@ namespace Gamesim.Simulation
             if (Adjusted(state, holder.id, state.playerId) < DealingFloor) return;
             if (Negotiation.Binding(state, holder.id, state.playerId, DealKind.VetoUse, null)) return;
             if (Hooks.Has(state, state.playerId, holder.id)) return;
-            // A Save plea already put to them this week - in the competition's window, once they hold it, before the meeting -
-            // was the player's ask: the plea and the offer substitute for each other, so the offer never follows one.
+            // A Save plea already put to them this week was the player's ask: the plea and the offer substitute for each other.
+            // Today none can come first - the holder is pleaded with only at the meeting, which this opens - so this guards it.
             if (state.lobbies.Any(l => l.week == state.week && l.deciderId == holder.id && l.ask == LobbyAsk.Save)) return;
             if (StoryConsumers.WillNotSave(state, holder.id, state.playerId) || EpisodeEngine.ColdPartnerLeavesThemUp(state, holder.id, state.playerId)) return;
             // At most one a week: any of this week's, answered or not, counts.

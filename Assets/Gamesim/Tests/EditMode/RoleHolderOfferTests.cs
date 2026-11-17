@@ -172,26 +172,20 @@ namespace Gamesim.Tests.EditMode
         }
 
         /// <summary>
-        /// A plea comes first where the player makes one: the window after the veto competition has the seat for it once the
-        /// holder is known, and the meeting that follows brings no offer - the plea was the player's ask. The same walk without
-        /// the plea brings one (<see cref="Meeting"/>).
+        /// A plea cannot come before the offer: the holder is someone the player can plead with only at the meeting
+        /// (<see cref="StrategyRules.Deciders"/>), and the offer is filed as it opens. So the offer's "no Save plea to them
+        /// this week" holds by construction today, and its guard (a plea on the record, above) only keeps it so.
         /// </summary>
         [Test]
-        public void APleaInTheCompetitionsWindowIsThePlayersAsk()
+        public void APleaCannotComeBeforeTheOffer()
         {
             var s = BeforeTheMeeting(2, out string holder);
-            Assert.That(StrategyRules.CanLobby(s, holder, LobbyAsk.Save, s.playerId, out string refusal), Is.True, refusal);
-            var engine = new EpisodeEngine(s);
-            var plea = engine.Apply(new EpisodeCommand
-            {
-                id = Guid.NewGuid().ToString("N"), actorId = s.playerId, expectedPhase = s.phase, expectedRevision = s.revision,
-                kind = EpisodeCommandKind.Lobby, targetId = holder, secondTargetId = s.playerId, text = LobbyAsk.Encode(LobbyAsk.Save, LobbyApproach.Emotional),
-            });
-            Assert.That(plea.accepted, Is.True, plea.reason);
-            Assert.That(engine.Snapshot.phase, Is.EqualTo(EpisodePhase.Veto), "Pleaded before the meeting.");
-            var meeting = RoleVetoBoardTests.Apply(engine, RoleVetoBoardTests.Command(engine.Snapshot, EpisodeCommandKind.Advance));
-            Assert.That(meeting.phase, Is.EqualTo(EpisodePhase.VetoMeeting));
-            Assert.That(meeting.deals.Any(d => NpcDeals.IsHolderOfferId(d.id)), Is.False, "No offer after a plea.");
+            Assert.That(s.phase, Is.EqualTo(EpisodePhase.Veto));
+            Assert.That(s.vetoHolderId, Is.EqualTo(holder), "The holder is known.");
+            Assert.That(StrategyRules.CanLobby(s, holder, LobbyAsk.Save, s.playerId, out string refusal), Is.False);
+            Assert.That(refusal, Is.EqualTo("Nobody is deciding anything you could change right now."));
+            var meeting = Meeting(2, out _).Snapshot;
+            Assert.That(meeting.lobbies.Any(l => l.week == meeting.week && l.deciderId == holder), Is.False, "No plea before the offer.");
         }
 
         // ------------------------------------------------------------------ the price

@@ -829,8 +829,9 @@ with a pending keep-the-block row, written by the enrolled head (its own slice).
   holder.
 - **The conditions are §3.4b's (1) to (10), read on main.**
   - (4) is the adjusted warmth against `NpcDeals.DealingFloor` (10).
-  - (5), no Save plea to them this week, is a real condition. The window after the veto competition has a seat once the
-    holder is known, so a plea made there comes first and is the player's ask.
+  - (5), no Save plea to them this week, holds by construction today: the holder is someone the player can plead with
+    only at the meeting (`StrategyRules.Deciders`), and the offer is filed as it opens. It is kept as a guard, so a
+    later window that let a plea come first would still find the offer substituting for it.
   - (8) made `EpisodeEngine.ColdPartnerLeavesThemUp` internal.
   - (10) is `EpisodeEngine.SavesWithTheWord`: `NpcVetoSave`'s own order, line and refusals, read with the word's +40
     (`StrategyRules.VetoCommitmentPull`) on the player alone. Whether the holder would have saved them anyway is not
@@ -876,7 +877,7 @@ with a pending keep-the-block row, written by the enrolled head (its own slice).
 - the ladder, and every frozen reader's refusal;
 - the row as filed, drawing nothing;
 - nobody offers at Roles;
-- each condition alone keeps the offer away, against a control that offers, with the plea first through the engine;
+- each condition alone keeps the offer away, against a control that offers, and a plea cannot come before the offer;
 - the price ladder;
 - a yes in modes 0, 1 and 2, mode 2's as a canonical row of the new origin;
 - the substitution;

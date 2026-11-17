@@ -540,10 +540,11 @@ namespace Gamesim.Tests.PlayMode
                 revision = state.revision;
                 ButtonWithCaption(EpisodeHud.EventChoiceCaption(beat.choices[0].label)).onClick.Invoke();
                 yield return null;
-                // Fifteen names at the least a cell reads at are more than the stage holds at the
-                // largest text: the WHO? pages there, every name on one of its pages - the pages the
-                // suite names for the frame running, and at the largest the pages it names for the
-                // 16:9 and the 4:3 frame each, laid out as that frame lays them. On the screen's own
+                // Fifteen names at the least a cell reads at are more than the 16:9 stage holds at the
+                // largest text (the 4:3 one holds them, its way back being in the band): the WHO?
+                // pages where it must, every name on exactly one page - the pages the suite names for
+                // the frame running, and at the largest the pages it names for the 16:9 and the 4:3
+                // frame each, laid out as that frame lays them. On the screen's own
                 // frame each page is the whole nomination screen too.
                 void AssertTheWho(string what, int expected, bool screen)
                 {

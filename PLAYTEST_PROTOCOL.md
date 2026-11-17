@@ -101,11 +101,12 @@ human's free roam; at 300 ticks a little fewer first-timers at ten and twelve se
 Full tables: `BALANCE_BASELINE.md`, *The projections*. Testers are taken as independent; a human tester is not the
 novice, so treat these as the order of magnitude.
 
-**The week, not the minute, is the unit.** The lab's mechanical minutes a week in the house - ceremonies at the
-suspenseful pace, the competitions played, the NPC free roam, and 30 seconds a decision - are about 8.5 at eight
-(13.6 with five minutes of free roam, 23.7 with fifteen), below E1's own 30–45 minutes an episode. What a person
-spends over a decision is the unknown (B8 measures it), so plan a session as a number of episode-weeks, at E1's
-30–45 minutes each until B8 says otherwise.
+**The season is the unit (the owner, 2026-11-17).** E1 times a whole season: 45 minutes or less for 8 players. The
+lab's mechanical minutes a week in the house - ceremonies at the suspenseful pace, the competitions played, the NPC
+free roam, and 30 seconds a decision - are about 8.5 at eight (13.6 with five minutes of free roam, 23.7 with fifteen).
+Over the weeks of an 8-player season that is already near or past 45 minutes before a person's own thinking time, which
+is the unknown (B8 measures it). So time every week as well as the season (E1), and expect E1 to show where the season
+has to get shorter.
 
 **E4 (a loss that reads as an ending) needs six weeks with three testers, four with four, three with five.** The
 chance at least one tester is out by week k, in the shipped eight-house:
@@ -119,12 +120,11 @@ chance at least one tester is out by week k, in the shipped eight-house:
 Under D2 fewer first-timers go out in week one (11% against B6b's 24%: the house comes to the newcomer before the
 first nominations), so the first week rarely ends anyone's game; by week three the rates are close to B6b's.
 
-Proposed, following the lead's decision for E4: a multi-session protocol on each tester's isolated save
-(`Gamesim > Port > Start Isolated Preview`, resumed, never restarted), two episode-weeks a session (60–90
-minutes at E1's pace), until one tester is out - with three testers expect it by the end of the third session
-(95.5% by week six; 84% after the second). With four testers two sessions (four weeks, 120–180 minutes) reach 91%;
-with five, a single session of three weeks (90–135 minutes) reaches 92.5%. A twelve-house is slower: 90% with three
-testers at week 7, with four at week 6, with five at week 5.
+Following the lead's decision for E4, each tester plays one season on their own isolated save
+(`Gamesim > Port > Start Isolated Preview`), resumed if a sitting ends early, never restarted. E1 adds up the play time
+of every sitting. One tester is out by week six 95.5% of the time with three testers, by week four 91.4% with four,
+and by week three 92.5% with five, so a whole 8-player season gives E4 its loss. A twelve-house is slower: 90% with
+three testers at week 7, with four at week 6, with five at week 5.
 
 **E3 as worded - each tester names a promise or betrayal that changed a later outcome - is out of reach by
 chance for a first-timer.** The chance a novice saw a commitment of theirs settle while still in the house
@@ -143,17 +143,14 @@ Either way a tester evicted before any commitment of theirs settled is "not obse
 
 ## E1 — Pacing
 
-**Threshold: 30–45 minutes to finish one episode, without skipping.**
+**Threshold: a whole 8-player season in 45 minutes or less, without skipping.** A 12-player season may take up to
+about two hours. (The owner, 2026-11-17, carrying in OWNER-DECISIONS-2026-10-22 §6. Until then E1 timed one episode,
+one week, at 30–45 minutes; that band is withdrawn.)
 
-*Open for the owner, 2026-11-17.* The owner set a season-length target on 2026-10-22 (OWNER-DECISIONS-2026-10-22 §6):
-an 8-player season should be playable in 45 minutes or less, and a 12-player season in up to about two hours, and it
-belongs in this protocol. It has not been carried in. It does not fit this threshold, which is per episode (one week):
-at 30–45 minutes a week, an 8-player season takes several hours. The owner decides what E1 measures before the first
-participant.
-
-Start the clock when they take control and stop it at the eviction recap. Record the raw number even
-when it falls outside the band — a 22-minute run and a 70-minute run fail the same criterion and mean
-completely different things.
+Start the clock when they take control and stop it when the season's winner is named. If the season is resumed in a
+later sitting, add the sittings' play time together. Also record each week's own time, from its start to its eviction
+recap, so the total shows which weeks took it. Record the raw number even when it is over the target: a 50-minute
+season and a 120-minute season fail the same criterion and mean completely different things.
 
 Also note where time actually went. The automated season commits 56 decisions in 58 seconds, so all
 of the real duration is reading, deliberating and moving. If the number is wrong, the fix follows from

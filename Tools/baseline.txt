@@ -1008,4 +1008,7 @@ Gamesim.Uma.DiagnosticsPlayModeTests 10
 # 17000 = 16982 (the staging families' head c6ae66df, with the walk out's pace, the menu quick wins and main 25977d60)
 # + the ring tower's 18 (16994 - 16976 on this branch): disjoint cases, so the floor is their sum (the merge of the
 # staging families' head into the ring tower for the stacked landing, 2026-11-16). Counted from the two sides.
-Gamesim.SimulationTests 17000
+# 17024 = 17000 + R8's 24 RoleHolderOfferTests cases (the holder's priced offer, switched off at story rules 15):
+# dotnet test Tools/SimulationTests ran exactly 17024 of 17024 on the slice (2026-11-17). The same 24 raise the
+# EditMode floor once the PC's Unity run has counted them.
+Gamesim.SimulationTests 17024

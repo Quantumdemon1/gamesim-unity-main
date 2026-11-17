@@ -25,8 +25,8 @@ namespace Gamesim.Episode
     public sealed partial class EpisodeDirector
     {
         /// <summary>
-        /// The one name of the player's deals (menu review quick win 20): the notes page's door, the
-        /// page's title, the conversation's topic and the picker's warning all say it. It was "Your
+        /// The one name of the player's deals (menu review quick win 20): the notebook's tab, the rail's
+        /// row, the page's title, the conversation's topic and the picker's warning all say it. It was "Your
         /// word" on the door and the page, "Deals and promises" in a conversation and "commitments" in
         /// the warning.
         /// </summary>

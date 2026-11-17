@@ -88,7 +88,7 @@ namespace Gamesim.Simulation
         /// otherwise, and for every other offer, the no it always cost (<see cref="PlayerDeals.DeclineImpact"/>).
         /// </summary>
         private static double DeclineCost(EpisodeState s, DealState offer) =>
-            RolesOn(s) && (RoleOffers.IsBoardAsk(s, offer) || HolderOfferOn(s) && RoleOffers.IsHolderOffer(s, offer))
+            RolesOn(s) && (RoleOffers.IsBoardAsk(s, offer) || HolderOfferStands(s, offer))
             && RoleTone.Stakes(RoleOffers.ToneOf(s, offer)) is RoleTone.Stake stake
                 ? stake.decline : PlayerDeals.DeclineImpact;
 
@@ -206,9 +206,21 @@ namespace Gamesim.Simulation
         {
             if (!HolderOfferOn(s)) return null;
             var offer = s.deals.FirstOrDefault(d => RoleOffers.IsHolderOffer(s, d));
-            return offer == null ? null
+            // Still waiting but no longer standing, it lapses as any offer does, costing nothing: the holder took it back.
+            return offer == null || offer.status == DealStatus.Proposed && !HolderOfferStands(s, offer) ? null
                 : new BoardCard { askId = offer.id, askerId = offer.proposerId, tone = RoleOffers.ToneOf(s, offer), status = offer.status };
         }
+
+        /// <summary>
+        /// Whether this holder's offer (R8) still stands as it was put: waiting, with its price still fitting
+        /// (<see cref="Negotiation.HolderOfferPrice"/>) and the holder still able to keep their word
+        /// (<see cref="SavesWithTheWord"/>). Something can move between the offer and the answer - the week's beats, the
+        /// house's clock, the player's own conversations. One that no longer stands is taken back: a yes is refused, and a no
+        /// or silence costs what any offer's does, not the holder's tone's.
+        /// </summary>
+        public static bool HolderOfferStands(EpisodeState s, DealState offer) =>
+            HolderOfferOn(s) && RoleOffers.IsHolderOffer(s, offer) && offer.status == DealStatus.Proposed
+            && Negotiation.HolderOfferPrice(s, offer.proposerId) != null && SavesWithTheWord(s, offer.proposerId, s.playerId);
 
         /// <summary>
         /// A holder's offer the houseguest's decision lapsed - still waiting when they decided - costs its tone's silence with

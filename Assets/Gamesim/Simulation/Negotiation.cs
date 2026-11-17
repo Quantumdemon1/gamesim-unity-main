@@ -346,11 +346,7 @@ namespace Gamesim.Simulation
             }
         }
 
-        /// <summary>The price an offer to the player carries, whoever pays it: a nominee's or the Head of Household's ask (<see cref="AskPrice"/>), or a veto holder's offer (<see cref="HolderOfferPrice"/>, R8).</summary>
-        public static Price OfferPrice(EpisodeState s, DealState offer) =>
-            AskPrice(s, offer) ?? (offer?.recipientId == s?.playerId && NpcDeals.IsHolderOfferId(offer?.id) ? HolderOfferPrice(s, offer.proposerId) : null);
-
-        /// <summary>A veto holder's offer's price, said under it: "In return, you would owe Maya Hassan a voting bloc this week." Null where it carries none.</summary>
+        /// <summary>A veto holder's offer's price, said under it - the incoming offer's card's line, for the screen's own slice -: "In return, you would owe Maya Hassan a voting bloc this week." Null where it carries none.</summary>
         public static string HolderOfferPriceLine(EpisodeState s, DealState offer)
         {
             var price = NpcDeals.IsHolderOfferId(offer?.id) ? HolderOfferPrice(s, offer.proposerId) : null;
@@ -363,6 +359,9 @@ namespace Gamesim.Simulation
 
         /// <summary>A holder's offer answered yes after its price stopped fitting: the offer is no longer on the table as it was put.</summary>
         public const string HolderPriceGoneRefusal = "Their price no longer fits, so that offer is no longer on the table.";
+
+        /// <summary>A holder's offer answered yes after the holder stopped being able to keep their word: they have taken it back.</summary>
+        public const string HolderWordGoneRefusal = "They have thought better of it, so that offer is no longer on the table.";
 
         /// <summary>The price as a deal: proposed by the one who pays it, to the one owed it, standing at once, and linked to what it buys.</summary>
         public static DealState DraftPrice(EpisodeState s, Price price, string boughtId, string id) =>

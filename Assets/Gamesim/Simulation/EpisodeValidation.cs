@@ -330,10 +330,13 @@ namespace Gamesim.Simulation
                 return Fail(out error, "A season without the role moments has none of their records.");
             // Nor a veto holder's offer (R8), by its id, from a week the holder's offer did not play in; and the offer is what
             // the holder files - a veto commitment from a houseguest to the player.
-            if (s.deals.Any(d => NpcDeals.IsHolderOfferId(d.id) && (!EpisodeEngine.HolderOfferOnIn(s, d.week)
-                    || d.type != DealKind.VetoUse || d.recipientId != s.playerId || d.proposerId == s.playerId
-                    || d.trustImpact != DealKind.DefaultTrust(DealKind.VetoUse))))
+            var holderOffers = s.deals.Where(d => NpcDeals.IsHolderOfferId(d.id)).ToList();
+            if (holderOffers.Any(d => !EpisodeEngine.HolderOfferOnIn(s, d.week)))
                 return Fail(out error, "A season without the holder's offer has none of its records.");
+            if (holderOffers.Any(d => d.type != DealKind.VetoUse || d.recipientId != s.playerId || d.proposerId == s.playerId
+                    || d.targetId != null || d.expiresWeek != d.week || d.trustImpact != DealKind.DefaultTrust(DealKind.VetoUse))
+                || holderOffers.GroupBy(d => d.week).Any(week => week.Count() > 1))
+                return Fail(out error, HolderOfferShapeRefusal);
             if (s.dealRulesStartWeek < 1 || s.dealRulesStartWeek > Math.Min(101, s.week + 1))
                 return Fail(out error, "A deal rules boundary cannot be further off than next week.");
             // Bought actions are bounded like everything else a player can accumulate: nothing
@@ -545,5 +548,8 @@ namespace Gamesim.Simulation
         private static bool Defined<T>(T value) where T : struct => Enum.IsDefined(typeof(T), value);
         private static bool Finite(double value) => !double.IsNaN(value) && !double.IsInfinity(value);
         private static bool Fail(out string error, string message) { error = message; return false; }
+
+        /// <summary>A holder's offer (R8) of any other shape: it is a veto commitment from a houseguest to the player, for that week alone, one a week.</summary>
+        public const string HolderOfferShapeRefusal = "A holder's offer is a veto commitment from a houseguest to the player, one a week.";
     }
 }

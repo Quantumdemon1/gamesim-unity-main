@@ -289,8 +289,11 @@ namespace Gamesim.Tests.EditMode
             var engine = Meeting(2, out string holder);
             var meeting = engine.Snapshot;
             Spend(meeting);
-            var spent = new EpisodeEngine(meeting);
+            Assert.That(EpisodeEngine.NpcVetoSave(meeting), Is.Not.EqualTo(meeting.playerId), "Without the word, not saved.");
             var offer = OfferOf(meeting);
+            var declined = RoleVetoBoardTests.Apply(new EpisodeEngine(meeting.Clone()), RoleVetoBoardTests.Answer(meeting, offer.id, false));
+            Assert.That(EpisodeEngine.NpcVetoSave(declined), Is.Not.EqualTo(declined.playerId), "The control: turned down, nothing moves.");
+            var spent = new EpisodeEngine(meeting);
             var taken = RoleVetoBoardTests.Apply(spent, RoleVetoBoardTests.Answer(meeting, offer.id, true));
             var price = Negotiation.PriceOf(taken, taken.deals.Single(d => d.id == offer.id));
             Assert.That(price != null && DealStatus.Binds(price.status) && price.proposerId == taken.playerId, Is.True, "A binding price the player owes.");
@@ -307,9 +310,10 @@ namespace Gamesim.Tests.EditMode
             var engine = Meeting(2, out string holder);
             var meeting = engine.Snapshot;
             var offer = OfferOf(meeting);
+            Assert.That(EpisodeEngine.NpcVetoSave(meeting), Is.Not.EqualTo(meeting.playerId), "Without the word, not saved.");
             var taken = RoleVetoBoardTests.Apply(engine, RoleVetoBoardTests.Answer(meeting, offer.id, true));
             var decided = RoleVetoBoardTests.Apply(engine, RoleVetoBoardTests.Command(taken, EpisodeCommandKind.Advance));
-            Assert.That(decided.nominees, Does.Not.Contain(decided.playerId), "Saved.");
+            Assert.That(decided.nominees, Does.Not.Contain(decided.playerId), "Saved, by the word.");
             var word = decided.deals.Single(d => d.id == offer.id);
             Assert.That(word.status, Is.EqualTo(DealStatus.Fulfilled));
             Assert.That(DealStatus.Binds(Negotiation.PriceOf(decided, word).status), Is.True, "The bloc is owed at this week's vote.");
@@ -321,13 +325,17 @@ namespace Gamesim.Tests.EditMode
         /// the player's price is void, never owed for a save that never came.
         /// </summary>
         [Test]
-        public void BrokenByTheHolderThePlayersPriceIsVoid([Values(1, 2)] int mode)
+        public void BrokenByTheHolderThePlayersPriceIsVoid([Values(0, 1, 2)] int mode, [Values(false, true)] bool allies)
         {
             var engine = Meeting(mode, out string holder);
             var meeting = engine.Snapshot;
             var offer = OfferOf(meeting);
             var taken = RoleVetoBoardTests.Apply(engine, RoleVetoBoardTests.Answer(meeting, offer.id, true)).Clone();
             taken.story.grudges.Add(new GrudgeState { holderId = holder, targetId = taken.playerId, cause = GrudgeCauses.Story, severity = 60, originWeek = 1, count = 1 });
+            if (allies) taken.alliances.Add(new AllianceState
+            {
+                id = "alliance-r8", name = "The Veto Pact", active = true, members = new[] { taken.playerId, holder }.ToList(),
+            });
             Assert.That(EpisodeValidation.TryValidate(taken, out string shaped), Is.True, shaped);
             var decided = RoleVetoBoardTests.Apply(new EpisodeEngine(taken), RoleVetoBoardTests.Command(taken, EpisodeCommandKind.Advance));
             Assert.That(decided.nominees, Does.Contain(decided.playerId), "Left on the block.");
@@ -339,6 +347,8 @@ namespace Gamesim.Tests.EditMode
             string name = decided.Find(holder).name;
             Assert.That(decided.events.Count(e => e.text == "You no longer owe " + name + " a voting bloc this week: " + name
                 + " did not keep the veto commitment it paid for."), Is.EqualTo(1), "The player is told, in the words for a price they owe.");
+            Assert.That(RoleVetoBoardTests.Events(decided, decided.playerId, holder, Allegiance.BetrayedType).Count, Is.EqualTo(allies ? 1 : 0),
+                allies ? "An ally who broke it betrayed the pact." : "No pact, no betrayal.");
             Assert.That(EpisodeValidation.TryValidate(decided, out string error), Is.True, error);
         }
 
@@ -376,27 +386,99 @@ namespace Gamesim.Tests.EditMode
 
         // ------------------------------------------------------------------ validation
 
-        /// <summary>A season without the holder's offer holds none of its records: the offer by its id, and mode 2's price by its origin.</summary>
+        /// <summary>
+        /// A season without the holder's offer holds none of its records: the offer by its id, and mode 2's price by its origin,
+        /// which also needs the offer it was paid for. An offer of any other shape - another kind, a named target, a stake but
+        /// Critical, two in a week - is refused in a season with it.
+        /// </summary>
         [Test]
-        public void ValidationRefusesItsRecordsWithoutIt()
+        public void ValidationRefusesItsRecordsWithoutItAndAnyOtherShape()
         {
             var engine = Meeting(2, out string holder);
             var meeting = engine.Snapshot;
             var offer = OfferOf(meeting);
             var taken = RoleVetoBoardTests.Apply(engine, RoleVetoBoardTests.Answer(meeting, offer.id, true));
+            var priceRow = taken.unifiedCommitments.Single(r => r.origin == UnifiedVoteFamilyValidation.HolderOfferPrice);
 
-            var withoutOffer = meeting.Clone();
-            withoutOffer.story.rulesVersion = StoryRules.Roles;
-            Assert.That(EpisodeValidation.TryValidate(withoutOffer, out string offerError), Is.False);
-            Assert.That(offerError, Is.EqualTo("A season without the holder's offer has none of its records."));
+            Assert.That(Refusal(meeting, s => s.story.rulesVersion = StoryRules.Roles), Is.EqualTo("A season without the holder's offer has none of its records."));
+            Assert.That(Refusal(taken, s => s.story.rulesVersion = StoryRules.Roles), Is.EqualTo("A season without the holder's offer has none of its records."),
+                "The offer's own check comes first.");
+            Assert.That(priceRow.origin, Is.EqualTo(UnifiedVoteFamilyValidation.HolderOfferPrice));
+            Assert.That(Refusal(taken, s => s.deals.RemoveAll(d => d.id == offer.id)),
+                Is.EqualTo("Consideration needs two reciprocal true owners, one price and the actual pair."), "A price with no offer behind it.");
 
-            var withoutPrice = taken.Clone();
-            withoutPrice.story.rulesVersion = StoryRules.Roles;
-            Assert.That(EpisodeValidation.TryValidate(withoutPrice, out string priceError), Is.False, "Refused, by the offer or by the price's origin.");
+            foreach (var (name, change) in new (string, Action<EpisodeState>)[]
+            {
+                ("another kind", s => s.deals.Single(d => d.id == offer.id).type = DealKind.VetoHold),
+                ("a named target", s => s.deals.Single(d => d.id == offer.id).targetId = holder),
+                ("a stake but Critical", s => s.deals.Single(d => d.id == offer.id).trustImpact = DealTrust.High),
+                ("past its week", s => s.deals.Single(d => d.id == offer.id).expiresWeek = s.week + 1),
+                ("put by the player", s => { var d = s.deals.Single(x => x.id == offer.id); d.proposerId = s.playerId; d.recipientId = holder; }),
+                ("two in a week", s => { var copy = s.deals.Single(d => d.id == offer.id).Clone(); copy.id = NpcDeals.HolderOfferPrefix + "0"; copy.status = DealStatus.Declined; s.deals.Add(copy); }),
+            })
+                Assert.That(Refusal(meeting, change), Is.EqualTo(EpisodeValidation.HolderOfferShapeRefusal), name);
+        }
 
-            var hollow = meeting.Clone();
-            hollow.deals.Single(d => d.id == offer.id).type = DealKind.SafetyAgreement;
-            Assert.That(EpisodeValidation.TryValidate(hollow, out string kindError), Is.False, "The offer is always a veto commitment.");
+        /// <summary>What validation says of the state with <paramref name="change"/> made to a copy, or null where it validates.</summary>
+        private static string Refusal(EpisodeState state, Action<EpisodeState> change)
+        {
+            var s = state.Clone();
+            change(s);
+            return EpisodeValidation.TryValidate(s, out string error) ? null : error;
+        }
+
+        // ------------------------------------------------------------------ taken back
+
+        /// <summary>
+        /// Something moves between the offer and the answer - here a grudge of sixty - and the holder could no longer keep their
+        /// word: the offer is taken back. A yes is refused and moves nothing; a no costs what any offer's does, not the tone's;
+        /// left, it lapses at the decision as any offer does, costing nothing.
+        /// </summary>
+        [Test]
+        public void AnOfferThatNoLongerStandsIsTakenBack()
+        {
+            var meeting = Meeting(2, out string holder).Snapshot;
+            var offer = OfferOf(meeting);
+            Assert.That(EpisodeEngine.HolderOfferStands(meeting, offer), Is.True);
+            var moved = meeting.Clone();
+            moved.story.grudges.Add(new GrudgeState { holderId = holder, targetId = moved.playerId, cause = GrudgeCauses.Story, severity = 60, originWeek = 1, count = 1 });
+            Assert.That(EpisodeValidation.TryValidate(moved, out string shaped), Is.True, shaped);
+            Assert.That(EpisodeEngine.HolderOfferStands(moved, OfferOf(moved)), Is.False);
+
+            var yes = new EpisodeEngine(moved.Clone()).Apply(RoleVetoBoardTests.Answer(moved, offer.id, true));
+            Assert.That((yes.accepted, yes.reason), Is.EqualTo((false, Negotiation.HolderWordGoneRefusal)));
+
+            var no = RoleVetoBoardTests.Apply(new EpisodeEngine(moved.Clone()), RoleVetoBoardTests.Answer(moved, offer.id, false));
+            Assert.That(RoleVetoBoardTests.Events(no, no.playerId, holder, "deal_declined").Select(e => e.impactScore),
+                Is.EqualTo(new[] { PlayerDeals.DeclineImpact }), "Any offer's no.");
+
+            var left = RoleVetoBoardTests.Apply(new EpisodeEngine(moved.Clone()), RoleVetoBoardTests.Command(moved, EpisodeCommandKind.Advance));
+            Assert.That(left.deals.Single(d => d.id == offer.id).status, Is.EqualTo(DealStatus.Expired));
+            Assert.That(RoleVetoBoardTests.Events(left, left.playerId, holder, EpisodeEngine.LapsedOfferEvent), Is.Empty, "Silence costs nothing.");
+        }
+
+        /// <summary>A yes after the price stopped fitting - a bloc already binding the two of them, past the endgame - is refused and moves nothing.</summary>
+        [Test]
+        public void AYesAfterThePriceStoppedFittingIsRefused()
+        {
+            var meeting = Meeting(1, out string holder).Snapshot;
+            var offer = OfferOf(meeting);
+            var moved = meeting.Clone();
+            moved.deals.Add(Word(moved, holder, DealKind.VoteTogether, "deal-player-9004", by: moved.playerId));
+            Assert.That(Negotiation.HolderOfferPrice(moved, holder), Is.Null);
+            var yes = new EpisodeEngine(moved).Apply(RoleVetoBoardTests.Answer(moved, offer.id, true));
+            Assert.That((yes.accepted, yes.reason), Is.EqualTo((false, Negotiation.HolderPriceGoneRefusal)));
+        }
+
+        /// <summary>While the offer waits, the player's own veto commitment to the holder waits on it too, as a plea does.</summary>
+        [Test]
+        public void ThePlayersOwnVetoDealWaitsOnTheOffer()
+        {
+            var meeting = Meeting(2, out string holder).Snapshot;
+            Assert.That(PlayerDeals.CanPropose(meeting, holder, DealKind.VetoUse, null, out string reason), Is.False);
+            Assert.That(reason, Is.EqualTo(StrategyRules.AnswerTheOfferRefusal));
+            var declined = RoleVetoBoardTests.Apply(new EpisodeEngine(meeting.Clone()), RoleVetoBoardTests.Answer(meeting, OfferOf(meeting).id, false));
+            Assert.That(PlayerDeals.CanPropose(declined, holder, DealKind.VetoUse, null, out string open), Is.True, open);
         }
 
         // ------------------------------------------------------------------ fixtures
@@ -406,7 +488,8 @@ namespace Gamesim.Tests.EditMode
         /// <summary>
         /// The meeting, not yet reached: an eight-house season at the holder's offer in commitment mode <paramref name="mode"/>,
         /// walked through the public engine to a veto competition with the player on the block and not Head of Household; then
-        /// the veto handed to a houseguest who votes, who reads the player warmly.
+        /// the veto handed to a houseguest who votes, who reads the player warmly enough to bargain but would not save them
+        /// without their word - so every test of a kept word is a test of the word.
         /// </summary>
         internal static EpisodeState BeforeTheMeeting(int mode, out string holder)
         {
@@ -435,8 +518,10 @@ namespace Gamesim.Tests.EditMode
                     if (!s.vetoPlayers.Contains(h)) s.vetoPlayers[s.vetoPlayers.Count - 1] = h;
                     s.competitionResolved = true;
                     s.competitionScores = s.vetoPlayers.Select((id, i) => new CompetitionScore { contestantId = id, score = id == h ? 100 : i }).ToList();
-                    Set(s, h, s.playerId, 50);
-                    if (Hooks.Has(s, s.playerId, h) || StoryConsumers.WillNotSave(s, h, s.playerId)
+                    // Warm enough to bargain, short of the line: without the word the holder would not save them.
+                    Set(s, h, s.playerId, 15);
+                    if (NpcDeals.Adjusted(s, h, s.playerId) < NpcDeals.DealingFloor || EpisodeEngine.NpcVetoSave(s) == s.playerId
+                        || Hooks.Has(s, s.playerId, h) || StoryConsumers.WillNotSave(s, h, s.playerId)
                         || !EpisodeEngine.SavesWithTheWord(s, h, s.playerId) || Negotiation.Binding(s, h, s.playerId, DealKind.VetoUse, null)
                         || !EpisodeValidation.TryValidate(s, out _)) continue;
                     walked = s;
@@ -505,7 +590,8 @@ namespace Gamesim.Tests.EditMode
         private static void Fill(EpisodeState s, int count)
         {
             var npcs = s.Active.Where(c => !c.isPlayer).Select(c => c.id).ToList();
-            for (int i = 0; UnifiedVoteStore.DealCount(s) < count; i++)
+            // The ceiling's count in mode 2, where these tests fill it: raw deals and the canonical deal-policy rows.
+            for (int i = 0; s.deals.Count + s.unifiedCommitments.Count(r => r.sourcePolicy == UnifiedCommitments.DealPolicy) < count; i++)
                 s.deals.Add(new DealState
                 {
                     id = "deal-fill-" + i, type = DealKind.InformationSharing, proposerId = npcs[i % npcs.Count], recipientId = npcs[(i + 1) % npcs.Count],

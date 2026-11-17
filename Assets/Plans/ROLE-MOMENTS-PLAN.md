@@ -861,15 +861,25 @@ with a pending keep-the-block row, written by the enrolled head (its own slice).
     silence as `deal_lapsed`, the same as the board's asks. The holder column carries no rider.
 - **Plea and offer are substitutes.** `StrategyRules.CanLobby` refuses a Save plea to the holder with "Answer their offer
   first." while the offer waits, and with "You already have their word." once it is taken. After a no or a lapse the seat
-  is open.
+  is open. The player's own veto commitment to the holder (`PlayerDeals.CanPropose`) waits on the offer the same way, so
+  it cannot buy the word without the price.
+- **An offer that no longer stands is taken back.** Between the offer and the answer, things can move: the week's beats,
+  the house's clock, or the player's own conversations. If the holder could no longer keep the word
+  (`EpisodeEngine.HolderOfferStands`: still waiting, the price still fits, and `SavesWithTheWord` still holds), then:
+  - a yes is refused ("They have thought better of it, so that offer is no longer on the table.", or the price's own
+    refusal) and moves nothing;
+  - a no costs what any offer's no costs, not the tone's;
+  - silence lapses at the decision as any offer's does, at no cost.
 - **The holder's decision reuses what is there.**
   - The word pulls +40 in `VetoWillingness`.
   - `DealResolution.Veto` reads it from either side and judges it kept (Fulfilled; the player owes the bloc at this
     week's vote) or broken by the holder.
   - When it is broken, `VoidThePrice` voids the player's price, in `VoidedLine`'s words for a price the player owes, and
     a Betrayal follows if the holder was the player's ally.
-- **Validation** refuses a `deal-save-` row in a week without 15, and any that is not a Critical `veto_use` from a
-  houseguest to the player: "A season without the holder's offer has none of its records."
+- **Validation** refuses a `deal-save-` row in a week without 15: "A season without the holder's offer has none of its
+  records." In a season with 15 it also refuses any offer of another shape: "A holder's offer is a veto commitment from a
+  houseguest to the player, one a week." That covers a kind other than `veto_use`, a stake other than Critical, a named
+  target, a span past its week, an offer put by the player, and two in one week.
 - **The holder is never Threatening** (§3.0, the owner on 2026-11-17), so §3.4b's Threatening line is not in the
   catalogue.
 
@@ -880,13 +890,19 @@ with a pending keep-the-block row, written by the enrolled head (its own slice).
 - each condition alone keeps the offer away, against a control that offers, and a plea cannot come before the offer;
 - the price ladder;
 - a yes in modes 0, 1 and 2, mode 2's as a canonical row of the new origin;
-- the substitution;
-- the 60d8f629 sibling (at no conversations left, the word moves the decision only with a binding price the player owes,
-  and a plea is refused on top of it);
+- the substitution, the player's own veto deal included;
+- the 60d8f629 sibling: at no conversations left, the word moves the decision only with a binding price the player owes,
+  against a turned-down control, and a plea is refused on top of it;
 - kept;
-- broken in modes 1 and 2, with the price void;
+- broken in modes 0, 1 and 2, with the price void, and a Betrayal when the holder was an ally;
 - the tone's no and silence;
-- validation without 15.
+- an offer taken back, and a yes after the price stopped fitting;
+- validation without 15 and of every other shape, each by its exact refusal.
+
+The fixture's holder reads the player at 15, warm enough to bargain but short of the line. So the holder would not save
+them without the word, and each kept word is a test of the word. Not covered by a test of its own:
+- the cold-partner coin (it reads the same refusal as the decision);
+- the final-two price struck (the same plain-row path as a bloc outside mode 2).
 
 **Left for later.**
 - **On the PC:** the Unity EditMode and PlayMode runs.

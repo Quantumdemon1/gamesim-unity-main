@@ -912,7 +912,7 @@ namespace Gamesim.Simulation
         /// where it would, so a word given is a word the holder can keep. Whether they would have saved them without it is
         /// not asked. False wherever the holder could save nobody, or is on the block.
         /// </summary>
-        internal static bool SavesWithTheWord(EpisodeState s, string holderId, string nomineeId)
+        public static bool SavesWithTheWord(EpisodeState s, string holderId, string nomineeId)
         {
             if (holderId == null || nomineeId == null || VetoIsLockedAtFinalFour(s) || !ReplacementCandidates(s).Any()
                 || s.nominees.Contains(holderId) || !s.nominees.Contains(nomineeId)) return false;
@@ -2273,11 +2273,13 @@ namespace Gamesim.Simulation
                     && Negotiation.AskPrice(s, deal) is Negotiation.Price askPrice && UnifiedVoteStore.IsVote(askPrice.kind))
                     Require(UnifiedVoteStore.CanAddAskPrice(s, deal.id, Negotiation.DraftPrice(s, askPrice, deal.id, Negotiation.PricePrefix + s.nextSequence),
                         out string priceReservation), priceReservation);
-                // A veto holder's offer (R8, §3.4b) is taken at its price, which the player pays: refused once no price fits,
-                // and in mode 2 a vote price is reserved as a canonical row before the yes moves anything, as a nominee's is.
+                // A veto holder's offer (R8, §3.4b) is taken at its price, which the player pays: refused once the holder could
+                // no longer keep their word (something moved since they offered it) or no price fits, and in mode 2 a vote price
+                // is reserved as a canonical row before the yes moves anything, as a nominee's is.
                 bool holderOffer = HolderOfferOn(s) && modeTwo == null && canonical == null && RoleOffers.IsHolderOffer(s, deal);
                 if (holderOffer)
                 {
+                    Require(SavesWithTheWord(s, deal.proposerId, s.playerId), Negotiation.HolderWordGoneRefusal);
                     var holderPrice = Negotiation.HolderOfferPrice(s, deal.proposerId);
                     Require(holderPrice != null, Negotiation.HolderPriceGoneRefusal);
                     if (UnifiedVoteStore.On(s) && UnifiedVoteStore.IsVote(holderPrice.kind))

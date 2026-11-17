@@ -1351,6 +1351,10 @@ documents: nothing in `Simulation`, `Runtime/Persistence`, `Tools/OldSaves` or `
   ended.
 - Checked for anything typed: the player is "You", the cast is the shipped roster, the only text is the walker's fixed
   lines and the house's own, and no path appears.
+- With the cell, the EditMode lister counts 10,240 cases (the floor, 10,209, and R8's 31 `RoleHolderOfferTests` cases
+  main left for the PC's run), and OldSaveAcceptanceTests 303 (6 of them this cell's). The whole class ran under the Mono
+  harness in three parts on the offline compile without UMA at 7a42a3a6: 303 of 303 passed, exactly the listed cases.
+  The Unity EditMode run is the lead's.
 
 **Checkpoints.** As 2.8 to 2.13: a season on the tuning rules has no schema-29 view, whatever its story or competition
 rules. The tuning arm admits it natively at 30, through the live validator, which accepts competition rules 5, and it is

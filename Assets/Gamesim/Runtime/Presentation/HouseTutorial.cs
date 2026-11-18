@@ -174,7 +174,7 @@ namespace Gamesim.Presentation
                 "The week and where the house is in it, how many houseguests are left, the actions you have left this week, and who is Head of Household.",
                 "Week chip", "House pill"),
             new Step("sidemenu", "Side Rail",
-                "The Overview of the whole house and your notebook's pages: Houseguests, Relationships, Who is where, The vote and The story so far. Notebook, Save and Settings are at its foot. After a change, the save feedback tells you when it was saved or if saving failed.",
+                "The Overview of the whole house, then your Notebook: your notes, Deals & promises, Houseguests, Relationships, Who is where, The vote and The story so far. Save and Settings are at its foot. After a change, the save feedback tells you when it was saved or if saving failed.",
                 "Rail ground"),
             new Step("gamephase", "The Episode Screen",
                 "Nominations, votes and the week's other decisions happen at the living-room screen. This button walks you there; " + StationStepKeys,

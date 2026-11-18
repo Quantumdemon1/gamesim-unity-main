@@ -9,9 +9,11 @@ namespace Gamesim.Episode
     {
         /// <summary>
         /// Activities own their layout; they share controls, focus and save semantics. Strategy is
-        /// the week's four strategy screens' taller stage (EpisodeHud.StrategyStage.cs).
+        /// the week's four strategy screens' taller stage (EpisodeHud.StrategyStage.cs). Reading is the
+        /// tall reading frame every page of the notebook opens in (EpisodeHud.ReadingFrame.cs). Each
+        /// layout's kind, READING or QUICK, is listed once in ReadingFrame.Kinds.
         /// </summary>
-        public enum ActivityLayout { Standard, Relationships, Conversation, ConversationNotice, Competition, Creation, Diary, Nominations, HouseEvent, Ballot, Settings, Stage, Strategy }
+        public enum ActivityLayout { Standard, Reading, Conversation, ConversationNotice, Competition, Creation, Diary, Nominations, HouseEvent, Ballot, Settings, Stage, Strategy }
 
         private ActivityLayout activityLayout;
         private RectTransform relationshipRoot;
@@ -75,6 +77,9 @@ namespace Gamesim.Episode
             // A layout starts from the full column: a stage's reading cap belongs to the stage, and
             // a later layout (the briefing after the episode screen's stage) sizes its own.
             UncapContent();
+            // Every layout has a kind (menu slice 3): one opened without one is a mistake to see.
+            if (!ReadingFrame.TryKind(layout.ToString(), out _))
+                Debug.LogError("The docked layout '" + layout + "' has no kind: list it in ReadingFrame.Kinds.");
             ApplyActivityLayout(layout);
             // A dedicated layout sizes itself; only the Standard panel is fitted to its content.
             if (layout != ActivityLayout.Standard) fitToContent = false;
@@ -101,11 +106,11 @@ namespace Gamesim.Episode
             if (layout == ActivityLayout.Settings) { SettingsLayout(canvasWidth, canvasHeight); return; }
             if (layout == ActivityLayout.Stage) { StageLayout(canvasWidth, canvasHeight); return; }
             if (layout == ActivityLayout.Strategy) { StrategyLayout(canvasWidth, canvasHeight); return; }
+            if (layout == ActivityLayout.Reading) { ReadingLayout(canvasWidth, canvasHeight); return; }
             float left = LeftColumnX;
             float right = 24f;
             float availableWidth = canvasWidth - left - right;
             float width = Mathf.Min(1180f, availableWidth);
-            if (layout == ActivityLayout.Relationships) width = availableWidth;
             // An activity stands on the same floor the docked panel does. It used to stand at 100,
             // which was above the lower third while the lower third was on the canvas floor; the
             // caption sits a band higher now and Status is the one piece of chrome an activity does
@@ -114,14 +119,8 @@ namespace Gamesim.Episode
                 ? Mathf.Min(540f * FontScale, canvasHeight - ModalLift - ActivityHeadroom)
                 : canvasHeight - ModalLift - ActivityHeadroom;
             Anchor(modal, new Vector2(1,0), new Vector2(1,0), new Vector2(-right,ModalLift), new Vector2(width,height));
-            // The notebook is a page to read: its ground near opaque, as Refinement Kit 6 asks
-            // (0.94 to 0.98, on the ground Image - never a CanvasGroup, which would fade the words
-            // with it). The house's neon read through the .94 glass as lines across the text.
-            if (layout == ActivityLayout.Relationships)
-            {
-                var ground = modal.GetComponent<Image>();
-                if (ground != null) { var c = ground.color; ground.color = new Color(c.r, c.g, c.b, Mathf.Max(c.a, .97f)); }
-            }
+            // The notebook, a page to read, has its own frame now (ReadingLayout), its ground near
+            // opaque as Refinement Kit 6 asks.
 
             // Context cards return when the player returns to exploration. They remain available
             // through the notebook and the persistent top navigation while an activity uses this space.

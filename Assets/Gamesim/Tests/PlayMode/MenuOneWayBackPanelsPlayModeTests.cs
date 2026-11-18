@@ -70,19 +70,24 @@ namespace Gamesim.Tests.PlayMode
         }
 
         [UnityTest]
-        public IEnumerator MenuWayOutPanels_DealsAndPromisesGoesBackToTheNotes_ByEscape()
+        public IEnumerator MenuWayOutPanels_DealsAndPromisesHasNoWayBack_EscapeClosesTheNotebook()
         {
+            // Menu slice 3: Deals & promises is a tab of the notebook's strip beside the notes, a
+            // sibling, so it has no "Back to your notes"; Escape is Close's, as on the notes.
             director.ShowNotebookSection(EpisodeDirector.NotebookSection.Word);
             yield return Frames(2);
             Assert.That(director.ActiveSection, Is.EqualTo(EpisodeDirector.NotebookSection.Word), "Deals & promises is open.");
-            AssertPageWayBack(EpisodeDirector.BackToYourNotesCaption, "Deals & promises");
+            var panel = LiveReadingPanel(director.GetComponent<EpisodeHud>());
+            Assert.That(panel, Is.Not.Null, "The notebook is up.");
+            Assert.That(WayOutOnFrame(panel, WayOut.BackObjectName), Is.Null, "No way back between the strip's pages.");
+            Assert.That(WayOut.KeyHintOf(WayOutOnFrame(panel, WayOut.CloseObjectName)), Is.EqualTo(InputGlossary.BackKeyHint),
+                "Escape is Close's, and its hint says so.");
             Assert.That(director.GetComponentsInChildren<TMPro.TMP_Text>().Any(text => text.text == "No commitments"), Is.False,
                 "The page calls them deals and promises, never commitments.");
 
             yield return PressKey(Key.Escape);
             yield return null;
-            Assert.That(director.IsPanelOpen, Is.True, "Escape leaves the notebook open");
-            Assert.That(director.ActiveSection, Is.EqualTo(EpisodeDirector.NotebookSection.Notes), "and goes back to the notes.");
+            Assert.That(director.IsPanelOpen, Is.False, "Escape closes the notebook from Deals & promises, as from the notes.");
             director.ClosePanels();
             yield return null;
         }

@@ -29,14 +29,21 @@ namespace Gamesim.Episode
         public const string ProfileRecordsName = "Profile records";
         /// <summary>The name of a house-talk block's card on the profile: the prefix and the block's heading (plan 32 §C).</summary>
         public const string ProfileBlockPrefix = "Profile block · ";
+        /// <summary>The directory's plain name, as a profile's way back says it.</summary>
+        public const string HouseguestsPlace = "Houseguests";
         /// <summary>A profile's way back to the directory it was opened from, at the panel's top left (menu slice 2).</summary>
-        public const string ProfileBackCaption = WayOut.BackPrefix + "Houseguests";
+        public const string ProfileBackCaption = WayOut.BackPrefix + HouseguestsPlace;
+        /// <summary>The directory's first row, the player's own card (menu slice 3, ruling N6 iv): its name and its caption.</summary>
+        public const string YourRowName = "Your card row", YourRowCaption = "You";
+        /// <summary>The words a directory row's last column says: it opens the profile.</summary>
+        public const string ViewProfileWords = "View profile";
 
         /// <summary>One row of the directory, in words the director has already decided.</summary>
         public sealed class RosterEntry
         {
             public string Name, Detail, Status, Trust;
-            public Color TrustTint;
+            /// <summary>Your trust in them, which the row draws as the trust chip (menu slice 3).</summary>
+            public double TrustScore;
             public ContestantState Character;
             public Action Open;
         }
@@ -44,8 +51,13 @@ namespace Gamesim.Episode
         /// <summary>What a profile shows: only records the player's character is allowed to hold.</summary>
         public sealed class ProfileView
         {
-            public string Name, Archetype, Facts, Hometown, About, Status, Mood, Trust, TrustNote;
-            public Color TrustTint;
+            public string Name, Archetype, Facts, Hometown, About, Status, Mood, TrustNote;
+            /// <summary>Where the room directory has them now ("Now in the kitchen"), or null.</summary>
+            public string Location;
+            /// <summary>Your trust in them, drawn as the trust chip; null on the player's own card, which has no trust card.</summary>
+            public double? TrustScore;
+            /// <summary>The way back's caption: the page the profile was opened from (menu slice 3); the directory's when null.</summary>
+            public string BackCaption;
             public ContestantState Character;
             public IList<string> Traits = new List<string>();
             public IList<string> Memories = new List<string>();
@@ -59,6 +71,8 @@ namespace Gamesim.Episode
         }
 
         private readonly List<(GameObject Row, string Key)> rosterRows = new List<(GameObject, string)>();
+        /// <summary>This render's column heads, so the player's own row can stand first under them.</summary>
+        private RectTransform rosterHeads;
         private GameObject rosterEmpty;
         private TMP_Text rosterEmptyLine;
         private string rosterEmptyCopy;
@@ -134,6 +148,7 @@ namespace Gamesim.Episode
 
             var heads = new GameObject("Houseguest columns", typeof(RectTransform), typeof(LayoutElement)).GetComponent<RectTransform>();
             heads.SetParent(content, false);
+            rosterHeads = heads;
             var headSize = heads.GetComponent<LayoutElement>();
             headSize.minHeight = headSize.preferredHeight = 24f * s;
             void Head(string words, float x, float w)
@@ -223,16 +238,12 @@ namespace Gamesim.Episode
             var status = KitPill(row, "Status", entry.Status, UiTheme.SurfaceRaised, Paper, 15, 28f * s);
             Anchor(status, new Vector2(0, .5f), new Vector2(0, .5f), new Vector2(columns.Status, 0f), status.sizeDelta);
 
-            var trust = NewText(row, entry.Trust, 22, entry.TrustTint);
-            trust.gameObject.name = "Trust";
-            var bold = UiTheme.Font(UiTheme.Weight.Bold);
-            if (bold != null) trust.font = bold;
-            trust.alignment = TextAlignmentOptions.MidlineLeft;
-            trust.textWrappingMode = TextWrappingModes.NoWrap;
-            Anchor(trust.rectTransform, new Vector2(0, .5f), new Vector2(0, .5f), new Vector2(columns.Trust, 0f),
-                new Vector2(columns.Profile - columns.Trust - 12f * s, 30f * s));
+            // Your trust, as the one trust chip draws it on every reading page (menu slice 3): the
+            // figure (named "Trust", as it always was) with its sign and a shape beside it.
+            var trust = TrustChip.Build(row, entry.TrustScore, Mathf.Round(22f * s), s, false);
+            Anchor(trust, new Vector2(0, .5f), new Vector2(0, .5f), new Vector2(columns.Trust, 0f), trust.sizeDelta);
 
-            var open = NewText(row, "View profile", 16, Paper);
+            var open = NewText(row, ViewProfileWords, 16, Paper);
             var medium = UiTheme.Font(UiTheme.Weight.Medium);
             if (medium != null) open.font = medium;
             open.alignment = TextAlignmentOptions.MidlineLeft;
@@ -243,6 +254,54 @@ namespace Gamesim.Episode
 
             if (entry.Open != null) Pressable(row, entry.Open);
             rosterRows.Add((row.gameObject, entry.Name + "\n" + entry.Detail));
+        }
+
+        /// <summary>
+        /// The directory's first row (menu slice 3, ruling N6 iv): "You", your face and your card's
+        /// line, your status, and your card - the profile's frame for your own houseguest. Above the
+        /// column heads' rows and outside the filters and the search, which choose among the others.
+        /// No trust: trust is what you hold in someone else. Drawn after <see cref="RosterTable"/>.
+        /// </summary>
+        public RectTransform YourRow(ContestantState you, Action open)
+        {
+            if (content == null || you == null) return null;
+            float s = FontScale, width = ContentWidth(), height = RosterRowHeight * s;
+            var columns = RosterColumns(width, s);
+            var row = HudPrimitives.KitCard(YourRowName, content);
+            row.GetComponent<Image>().raycastTarget = true;
+            var size = row.gameObject.AddComponent<LayoutElement>();
+            size.minHeight = size.preferredHeight = height;
+            // The caption first among the texts: tests and screen readers read it as the control's name.
+            float nameWidth = columns.Status - columns.Name - 16f * s;
+            string detail = EpisodeDirector.CardLine(you);
+            float top = string.IsNullOrEmpty(detail) ? (height - 26f * s) * .5f : 9f * s;
+            var name = FixedText(row, YourRowCaption, 20, Paper, new Vector2(columns.Name, -top), new Vector2(nameWidth, 26f * s));
+            var semibold = UiTheme.Font(UiTheme.Weight.SemiBold);
+            if (semibold != null) name.font = semibold;
+            name.textWrappingMode = TextWrappingModes.NoWrap;
+            var face = HudPrimitives.Portrait(row, CharacterPortraits.Get(you), Accent, RosterFace * s, 2f * s, false, you);
+            face.name = "Face";
+            Anchor(face, new Vector2(0, .5f), new Vector2(0, .5f), new Vector2(columns.Face, 0f), face.sizeDelta);
+            if (!string.IsNullOrEmpty(detail))
+            {
+                var line = FixedText(row, detail, 15, UiTheme.Muted, new Vector2(columns.Name, -(top + 28f * s)), new Vector2(nameWidth, 20f * s));
+                line.textWrappingMode = TextWrappingModes.NoWrap;
+                AutoSize(line, 11);
+            }
+            var status = KitPill(row, "Status", EpisodeDirector.StatusWord(you.status), UiTheme.SurfaceRaised, Paper, 15, 28f * s);
+            Anchor(status, new Vector2(0, .5f), new Vector2(0, .5f), new Vector2(columns.Status, 0f), status.sizeDelta);
+            var view = NewText(row, ViewProfileWords, 16, Paper);
+            var medium = UiTheme.Font(UiTheme.Weight.Medium);
+            if (medium != null) view.font = medium;
+            view.alignment = TextAlignmentOptions.MidlineLeft;
+            view.textWrappingMode = TextWrappingModes.NoWrap;
+            Anchor(view.rectTransform, new Vector2(0, .5f), new Vector2(0, .5f), new Vector2(columns.Profile, 0f),
+                new Vector2(width - columns.Profile - 44f * s, 22f * s));
+            KitGlyph(row, PackArt.KitIconChevronRight, UiTheme.Muted, new Vector2(1, .5f), new Vector2(-16f * s, 0f), 18f * s);
+            if (open != null) Pressable(row, open);
+            // First under the column heads, above everyone else's rows.
+            if (rosterHeads != null && rosterHeads.parent == content) row.SetSiblingIndex(rosterHeads.GetSiblingIndex() + 1);
+            return row;
         }
 
         /// <summary>
@@ -274,6 +333,8 @@ namespace Gamesim.Episode
                 y = PlacedCopy(identity, view.Facts, 17, UiTheme.Weight.Regular, UiTheme.Muted, pad, y, inner);
             if (!string.IsNullOrEmpty(view.Hometown))
                 y = PlacedCopy(identity, view.Hometown, 16, UiTheme.Weight.Regular, UiTheme.Muted, pad, y, inner);
+            if (!string.IsNullOrEmpty(view.Location))
+                y = PlacedCopy(identity, view.Location, 16, UiTheme.Weight.Regular, UiTheme.Muted, pad, y, inner);
             y += 14f * s;
 
             // The pills wrap: traits first, then where they stand in the season, then mood.
@@ -296,22 +357,27 @@ namespace Gamesim.Episode
                 y = PlacedCopy(identity, view.About, 16, UiTheme.Weight.Regular, Paper, pad, y + 16f * s, inner);
             float identityHeight = y + pad;
 
-            // Your trust, and what the number is not.
+            // Your trust, and what the number is not: the trust chip, large (menu slice 3). The
+            // player's own card has none - trust is what you hold in someone else.
             float left = leftWidth + gap, ry = 0f;
-            var trust = HudPrimitives.KitCard(ProfileTrustName, root, false, 14f);
-            float figureWidth = 150f * s;
-            var eyebrow = FixedText(trust, "YOUR TRUST", 13, UiTheme.Muted, new Vector2(pad, -22f * s), new Vector2(figureWidth, 18f * s));
-            var eyebrowFace = UiTheme.Font(UiTheme.Weight.SemiBold);
-            if (eyebrowFace != null) eyebrow.font = eyebrowFace;
-            var figure = FixedText(trust, view.Trust, 40, view.TrustTint, new Vector2(pad, -44f * s), new Vector2(figureWidth, 54f * s));
-            var figureFace = UiTheme.Font(UiTheme.Weight.Bold);
-            if (figureFace != null) figure.font = figureFace;
-            figure.gameObject.name = "Trust";
-            float noteLeft = pad + figureWidth + 16f * s;
-            float noteBottom = PlacedCopy(trust, view.TrustNote, 18, UiTheme.Weight.Regular, Paper, noteLeft, 20f * s, rightWidth - noteLeft - pad);
-            float trustHeight = Mathf.Max(122f * s, noteBottom + 22f * s);
-            Anchor(trust, new Vector2(0, 1), new Vector2(0, 1), new Vector2(left, -ry), new Vector2(rightWidth, trustHeight));
-            ry += trustHeight + 24f * s;
+            if (view.TrustScore.HasValue)
+            {
+                var trust = HudPrimitives.KitCard(ProfileTrustName, root, false, 14f);
+                float figureWidth = 150f * s;
+                var eyebrow = FixedText(trust, "YOUR TRUST", 13, UiTheme.Muted, new Vector2(pad, -22f * s), new Vector2(figureWidth, 18f * s));
+                var eyebrowFace = UiTheme.Font(UiTheme.Weight.SemiBold);
+                if (eyebrowFace != null) eyebrow.font = eyebrowFace;
+                var chip = TrustChip.Build(trust, view.TrustScore.Value, Mathf.Round(40f * s), s, false);
+                chip.anchorMin = chip.anchorMax = new Vector2(0, 1);
+                chip.pivot = new Vector2(0, 1);
+                chip.anchoredPosition = new Vector2(pad, -44f * s);
+                figureWidth = Mathf.Max(figureWidth, chip.sizeDelta.x);
+                float noteLeft = pad + figureWidth + 16f * s;
+                float noteBottom = PlacedCopy(trust, view.TrustNote, 18, UiTheme.Weight.Regular, Paper, noteLeft, 20f * s, rightWidth - noteLeft - pad);
+                float trustHeight = Mathf.Max(Mathf.Max(122f * s, 44f * s + chip.sizeDelta.y + 22f * s), noteBottom + 22f * s);
+                Anchor(trust, new Vector2(0, 1), new Vector2(0, 1), new Vector2(left, -ry), new Vector2(rightWidth, trustHeight));
+                ry += trustHeight + 24f * s;
+            }
 
             // What you remember of them, newest first.
             if (view.Memories.Count > 0)
@@ -352,7 +418,9 @@ namespace Gamesim.Episode
 
             // The way back to the directory stands at the panel's top left, where every page's does,
             // and Escape and B press it (menu slice 2); it is no longer a row under the records.
-            if (view.Back != null) WayBack(ProfileBackCaption, view.Back);
+            // Opened from another notebook page, it names that page (menu slice 3, ruling N6 ii).
+            if (view.Back != null && (view.BackCaption == null || view.BackCaption == ProfileBackCaption)) WayBack(ProfileBackCaption, view.Back);
+            else if (view.Back != null) WayBack(view.BackCaption, view.Back);
 
             float total = Mathf.Max(identityHeight, ry);
             Anchor(identity, new Vector2(0, 1), new Vector2(0, 1), Vector2.zero, new Vector2(leftWidth, total));

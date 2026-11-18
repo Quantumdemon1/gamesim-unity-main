@@ -149,7 +149,7 @@ namespace Gamesim.Tests.PlayMode
                 yield return null; yield return null;
                 Canvas.ForceUpdateCanvases();
                 var hud = director.GetComponent<EpisodeHud>();
-                Assert.That(hud.CurrentActivityLayout, Is.EqualTo(EpisodeHud.ActivityLayout.Relationships));
+                Assert.That(hud.CurrentActivityLayout, Is.EqualTo(EpisodeHud.ActivityLayout.Reading));
                 var graph = Under(Section(), RelationshipWeb.GraphName);
                 var scroll = graph.GetComponentInParent<ScrollRect>();
                 Assert.That(scroll, Is.Not.Null);

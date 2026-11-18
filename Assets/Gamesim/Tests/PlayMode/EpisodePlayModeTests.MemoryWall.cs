@@ -153,7 +153,10 @@ namespace Gamesim.Tests.PlayMode
                 Assert.That(rail, Is.Not.Null, "The HUD should carry the section rail.");
 
                 var buttons = rail.GetComponentsInChildren<UnityEngine.UI.Button>(true);
-                Assert.That(buttons, Has.Length.EqualTo(6), "The rail should carry five sections and the overview.");
+                // Menu slice 3: the overview, then the Notebook group - the notes ("Notebook [J]"), Deals &
+                // promises and these five pages.
+                Assert.That(buttons, Has.Length.EqualTo(1 + NotebookStrip.RailRows.Count), "The rail should carry the overview and the notebook's seven rows.");
+                Assert.That(NotebookStrip.RailRows.Count, Is.EqualTo(7));
 
                 director.ShowNotebookSection(section);
                 yield return null; yield return null;

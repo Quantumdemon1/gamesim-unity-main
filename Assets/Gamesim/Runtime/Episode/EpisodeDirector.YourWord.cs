@@ -25,15 +25,18 @@ namespace Gamesim.Episode
     public sealed partial class EpisodeDirector
     {
         /// <summary>
-        /// The one name of the player's deals (menu review quick win 20): the notes page's door, the
-        /// page's title, the conversation's topic and the picker's warning all say it. It was "Your
+        /// The one name of the player's deals (menu review quick win 20): the notebook's tab, the rail's
+        /// row, the page's title, the conversation's topic and the picker's warning all say it. It was "Your
         /// word" on the door and the page, "Deals and promises" in a conversation and "commitments" in
         /// the warning.
         /// </summary>
         public const string DealsAndPromisesName = "Deals & promises";
 
-        /// <summary>The Deals &amp; promises page's door on the notes page, and its way back: captions of their own.</summary>
-        public const string YourWordCaption = DealsAndPromisesName, BackToYourNotesCaption = WayOut.BackPrefix + "your notes";
+        /// <summary>
+        /// The Deals &amp; promises page's tab in the notebook's strip and its row on the rail. The page
+        /// has no way back since menu slice 3: the notes are the strip's tab beside it, a sibling.
+        /// </summary>
+        public const string YourWordCaption = DealsAndPromisesName;
 
         /// <summary>How many commitments a houseguest's card shows before it counts the rest.</summary>
         private const int WordShown = 8;
@@ -195,15 +198,14 @@ namespace Gamesim.Episode
 
         /// <summary>
         /// The Your word page: every commitment the player is a party to, the open ones first and
-        /// then the settled ones with how each ended, a card a houseguest in each. A door back to the
-        /// notes in the page's head, and the notebook's own foot.
+        /// then the settled ones with how each ended, a card a houseguest in each, and the notebook's
+        /// own foot. The notes are the strip's tab beside it (menu slice 3): no way back between siblings,
+        /// so Escape and B close the notebook here as on the notes.
         /// </summary>
         private void RenderNotebookWord(EpisodeState state)
         {
-            // The way back to the notes at the panel's top left; Escape and B press it (menu slice 2).
-            hud.WayBack(BackToYourNotesCaption, () => ShowNotebookSection(NotebookSection.Notes));
-            // The mark exists in every state: it is what the notebook scrolls to. The door stands in
-            // the page's head, not the column, so the mark goes on the column's first element - the
+            // The mark exists in every state: it is what the notebook scrolls to. The strip stands
+            // under the page's head, not in the column, so the mark goes on the column's first element - the
             // house's reading of the player's word where it keeps one (C8), the page's own otherwise.
             bool reading = YourWord.On(state);
             if (reading) WordInTheHouse(state);

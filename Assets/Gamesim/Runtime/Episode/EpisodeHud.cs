@@ -672,7 +672,7 @@ namespace Gamesim.Episode
         public float HelpBottom => StatusBottom;
         public const float HelpWidth = 285f;
         private const float HelpGutter = 24f + HelpWidth + 12f;
-        private float ModalLift => StatusBottom + StatusHeight * FontScale + 8f;
+        private float ModalLift => PanelFloor(FontScale);
         /// <summary>The proximity prompt shares the panel's band; see <see cref="ModalLift"/>.</summary>
         private float PromptLift => ModalLift;
 
@@ -910,7 +910,7 @@ namespace Gamesim.Episode
         public void SocialGraphPanel(EpisodeState state)
         {
             if (content == null || state == null) return;
-            SetActivityLayout(ActivityLayout.Relationships);
+            SetActivityLayout(ActivityLayout.Reading);
             Canvas.ForceUpdateCanvases();
             relationshipRoot = RelationshipWeb.Build(content, state, FontScale, font, Portrait,
                 id => director.ShowNotebookSection(EpisodeDirector.NotebookSection.Network), modalScroll.viewport.rect.height,
@@ -918,6 +918,8 @@ namespace Gamesim.Episode
             // The graph is the notebook's entry view. Its explanatory heading belongs after the
             // complete graph instead of consuming the top of its only visible viewport.
             relationshipRoot.SetAsFirstSibling();
+            // Its people open their profiles, from Relationships (menu slice 3, N6 ii).
+            WireWebProfiles(relationshipRoot, state);
         }
 
         /// <summary>Adds the room-occupancy cards to the current panel.</summary>

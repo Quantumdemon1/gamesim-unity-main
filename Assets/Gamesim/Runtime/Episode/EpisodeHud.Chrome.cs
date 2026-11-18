@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Linq;
 using Gamesim.Presentation;
 using Gamesim.Simulation;
@@ -589,10 +590,11 @@ namespace Gamesim.Episode
 
         /// <summary>
         /// The left gutter (mockup-01): one glass ground under three lists of the same kind of row -
-        /// the notebook's pages and the overview, the two places to go next, and the notebook, save
-        /// and settings - each list after the first under its name (the style guide's rail).
+        /// the overview and, under one Notebook heading, the notebook's pages; the two places to go
+        /// next under PLAY; and Save and Settings at the foot, under a rule of their own and apart
+        /// from the notebook (menu slice 3, the review's rail line).
         ///
-        /// <para>Three rects, not one, because each is a contract of its own: the tests count six
+        /// <para>Three rects, not one, because each is a contract of its own: the tests count the
         /// buttons under the rail, the keyboard suite reads the navigation's labels, and the
         /// compact HUD keeps its travel buttons in the objective card, so the middle list is the
         /// one the compact HUD goes without.</para>
@@ -601,16 +603,18 @@ namespace Gamesim.Episode
         {
             railScale = RailFit();
             var ground = Chrome("Rail ground", canvas.transform);
-            IconRail.Build(canvas.transform, new[]
+            // The overview first, alone: the house from above is no page of the notebook. Then the
+            // Notebook heading over its rows in reading order (NotebookStrip.RailRows): the notes,
+            // Deals & promises, the people, the web, the rooms, the vote and the season.
+            var entries = new List<IconRail.Entry> { new IconRail.Entry(IconRail.Mark.Overview, EpisodeDirector.OverviewSection, "Overview") };
+            foreach (var row in NotebookStrip.RailRows) entries.Add(new IconRail.Entry(RailMark(row.Section), row.Section, row.Caption));
+            IconRail.Build(canvas.transform, entries, railScale, section =>
             {
-                new IconRail.Entry(IconRail.Mark.Overview, EpisodeDirector.OverviewSection,         "Overview"),
-                new IconRail.Entry(IconRail.Mark.People,   EpisodeDirector.NotebookSection.People,  "Houseguests"),
-                new IconRail.Entry(IconRail.Mark.Network,  EpisodeDirector.NotebookSection.Network, "Relationships"),
-                new IconRail.Entry(IconRail.Mark.Rooms,    EpisodeDirector.NotebookSection.Rooms,   "Who is where"),
-                new IconRail.Entry(IconRail.Mark.Votes,    EpisodeDirector.NotebookSection.Votes,   "The vote"),
-                new IconRail.Entry(IconRail.Mark.Story,    EpisodeDirector.NotebookSection.Story,   "The story so far"),
-            }, railScale, director.ShowNotebookSection, director.ActiveSection);
-            float y = IconRail.Top + IconRail.Height(6, railScale);
+                // "Notebook [J]" opens the notebook on the notes, as the J key does.
+                if (section == EpisodeDirector.NotebookSection.Notes) director.OpenJournal();
+                else director.ShowNotebookSection(section);
+            }, director.ActiveSection, 1, NotebookStrip.RailHeading);
+            float y = IconRail.Top + IconRail.Height(entries.Count, railScale, true);
 
             if (!Compact)
             {
@@ -623,11 +627,11 @@ namespace Gamesim.Episode
                 y += next.sizeDelta.y;
             }
 
-            y = RailLabel("NOTEBOOK & SETTINGS", y);
-            var navigation = RailGroup("Navigation", y, 3);
-            RailButton(navigation, "Notebook [J]", UiTheme.Icon("journal"), 0, director.OpenJournal);
-            RailButton(navigation, "Save [F5]", UiTheme.Pack(PackArt.IconSave), 1, director.SaveNow);
-            RailButton(navigation, "Settings", UiTheme.Icon("settings"), 2, director.OpenSettings);
+            // The foot: Save and Settings, apart from the notebook's group under a rule of their own.
+            y = RailRule(y);
+            var navigation = RailGroup("Navigation", y, NotebookStrip.FootRows.Count);
+            RailButton(navigation, NotebookStrip.FootRows[0], UiTheme.Pack(PackArt.IconSave), 0, director.SaveNow);
+            RailButton(navigation, NotebookStrip.FootRows[1], UiTheme.Icon("settings"), 1, director.OpenSettings);
             y += navigation.sizeDelta.y;
 
             Anchor(ground, new Vector2(0, 1), new Vector2(0, 1), new Vector2(8f, -(IconRail.Top - 6f)),
@@ -650,8 +654,36 @@ namespace Gamesim.Episode
             return group;
         }
 
-        /// <summary>A rail label's band, at the resting text size.</summary>
-        private const float RailLabelBand = 16f;
+        /// <summary>A rail label's band, at the resting text size: the section heading's (IconRail.HeadingBand).</summary>
+        private const float RailLabelBand = IconRail.HeadingBand;
+        /// <summary>The band of the rule over the rail's foot, at the resting text size.</summary>
+        private const float RailRuleBand = 12f;
+        /// <summary>The rule over Save and Settings, its object's name.</summary>
+        public const string RailFootRuleName = "Rail foot rule";
+
+        /// <summary>A notebook section's mark on the rail.</summary>
+        private static IconRail.Mark RailMark(string section)
+        {
+            switch (section)
+            {
+                case EpisodeDirector.NotebookSection.Notes: return IconRail.Mark.Notes;
+                case EpisodeDirector.NotebookSection.Word: return IconRail.Mark.Deals;
+                case EpisodeDirector.NotebookSection.People: return IconRail.Mark.People;
+                case EpisodeDirector.NotebookSection.Network: return IconRail.Mark.Network;
+                case EpisodeDirector.NotebookSection.Rooms: return IconRail.Mark.Rooms;
+                case EpisodeDirector.NotebookSection.Votes: return IconRail.Mark.Votes;
+                default: return IconRail.Mark.Story;
+            }
+        }
+
+        /// <summary>A hairline across the rail at <paramref name="y"/>, setting its foot apart; returns where the foot starts.</summary>
+        private float RailRule(float y)
+        {
+            float band = RailRuleBand * railScale;
+            var rule = HudPrimitives.Fill(RailFootRuleName, canvas.transform, new Color(UiTheme.Hairline.r, UiTheme.Hairline.g, UiTheme.Hairline.b, .45f), 0);
+            Anchor(rule, new Vector2(0, 1), new Vector2(0, 1), new Vector2(14f + IconRail.Pad + 8f, -(y + band * .5f)), new Vector2(IconRail.Width - 2f * IconRail.Pad - 16f, 1f));
+            return y + band;
+        }
 
         /// <summary>The scale the left gutter was last laid out at (<see cref="RailFit"/>).</summary>
         private float railScale = 1f;
@@ -672,7 +704,7 @@ namespace Gamesim.Episode
             float height = bounds.height > 0f ? bounds.height : 900f;
             // Every row and label band in the gutter, at a scale of one; the ground reaches 6 past
             // the last row, and 6 more keep it off the strip.
-            float rows = IconRail.Height(6, 1f) + RailLabelBand + IconRail.Height(3, 1f)
+            float rows = IconRail.Height(1 + NotebookStrip.RailRows.Count, 1f, true) + RailRuleBand + IconRail.Height(NotebookStrip.FootRows.Count, 1f)
                 + (Compact ? 0f : RailLabelBand + IconRail.Height(2, 1f));
             float room = height - (CastRail.Bottom + CastRail.Height * FontScale) - IconRail.Top - 12f;
             return Mathf.Max(1f, Mathf.Min(FontScale, room / rows));
@@ -685,15 +717,10 @@ namespace Gamesim.Episode
         /// </summary>
         private float RailLabel(string words, float y)
         {
-            float band = RailLabelBand * railScale;
-            var label = FixedText((RectTransform)canvas.transform, words, 10, UiTheme.Muted, new Vector2(30f, -(y + 1f)), new Vector2(IconRail.Width - 30f, band));
-            label.gameObject.name = "Rail label";
-            label.characterSpacing = 6f;
-            label.alignment = TextAlignmentOptions.MidlineLeft;
-            var semibold = UiTheme.Font(UiTheme.Weight.SemiBold);
-            if (semibold != null) label.font = semibold;
-            label.raycastTarget = false;
-            return y + band;
+            // The section heading's style, as the Notebook heading in the rail above it (menu slice 3):
+            // it was 10-point muted capitals, under the smallest a label may be.
+            IconRail.Heading((RectTransform)canvas.transform, words, 14f + IconRail.Pad + 8f, y, IconRail.Width - 2f * IconRail.Pad - 8f, railScale);
+            return y + RailLabelBand * railScale;
         }
 
         private Button RailButton(RectTransform group, string caption, Sprite icon, int index, System.Action action,

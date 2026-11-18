@@ -505,6 +505,9 @@
     <!-- The one way out's words and measures (menu slice 2): its plain-C# half, without the builders. -->
     <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/WayOut.cs" />
     <Compile Include="$(EditMode)WayOutWordsTests.cs" />
+    <!-- Menu slice 3, part b: the one trust chip's bands and words (plain C#; its builder is EditMode only), and the scan that every reading page draws it. -->
+    <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/TrustChip.cs" />
+    <Compile Include="$(EditMode)MenuNotebookBTrustChipTests.cs" />
     <!-- Menu slice 2, part a: the creator's steps, marks, missing-thing link and words; plain C#, with its source scans. -->
     <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/CreatorSteps.cs" />
     <Compile Include="$(EditMode)MenuOneWayBackCreatorTests.cs" />
@@ -514,6 +517,14 @@
     <Compile Include="$(EditMode)MenuOneWayBackRuleScanTests.cs" />
     <!-- Menu slice 2's review: every way out is made and dressed by the screen it is on (the HUD's hover tick, dip and guard; the report's own control). -->
     <Compile Include="$(EditMode)MenuWayOutFoleyScanTests.cs" />
+    <!-- Menu slice 3: the tall reading frame's kinds and measures (plain C#; the HUD's half is EditMode only). -->
+    <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/ReadingFrame.cs" />
+    <Compile Include="$(EditMode)MenuReadingFrameTests.cs" />
+    <!-- Menu slice 3, part a: the notebook's tab strip and the rail's Notebook group, in words and order, with their source scans (plain C#). -->
+    <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/NotebookStrip.cs" />
+    <Compile Include="$(EditMode)MenuNotebookStripATests.cs" />
+    <!-- Menu slice 3, held together: every docked panel's layout has a kind, the faces' rims and the links' rest, in the source. -->
+    <Compile Include="$(EditMode)MenuNotebookIntegrationTests.cs" />
     <!-- A frame wider than 16:9 lays its canvases out by height (A12b); 16:9 and narrower keep their own match. -->
     <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/FrameMatch.cs" />
     <Compile Include="$(EditMode)FrameMatchTests.cs" />

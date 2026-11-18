@@ -165,6 +165,9 @@ namespace Gamesim.Tests.PlayMode
         /// <summary>
         /// Escape closes the cast screen rather than the settings panel behind it. Closing the
         /// panel underneath would leave the screen on top of the house with nothing to go back to.
+        /// Then it follows the chain a player has (menu slice 4): Settings opened in the house are a
+        /// frame whose way back goes to the game menu card, so the second Escape presses that way
+        /// back and the third, on the card, does what Resume does.
         /// </summary>
         [UnityTest]
         public IEnumerator CastSelect_EscapeClosesTheScreenAndNotThePanelUnderneath()
@@ -183,13 +186,26 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(director.IsPanelOpen, Is.True,
                 "The first Escape belongs to the screen; the panel behind it stays open.");
             Assert.That(director.Snapshot.sessionId, Is.EqualTo(before.sessionId));
+            Assert.That(director.AreSettingsSectionsOpen && !director.IsGameMenuOpen, Is.True,
+                "The cast screen goes back to the Settings frame it was opened from,");
+            Assert.That(director.SettingsWayBackCaption, Is.EqualTo(WayOut.BackTo(SettingsWords.GameMenuPlace)),
+                "whose way back goes to the game menu.");
 
-            // And a second Escape, now that the screen is gone, closes the panel as it always did.
+            // A second Escape, now that the screen is gone, presses the frame's way back: the card.
             InputSystem.QueueStateEvent(testKeyboard, new KeyboardState(Key.Escape));
             yield return null;
             InputSystem.QueueStateEvent(testKeyboard, new KeyboardState());
             yield return null; yield return null;
-            Assert.That(director.IsPanelOpen, Is.False);
+            Assert.That(director.IsGameMenuOpen, Is.True, "The second Escape goes back a page, to the game menu card.");
+            Assert.That(director.IsPanelOpen, Is.True, "It closes nothing.");
+
+            // And a third, on the card, does what Resume does: nothing is left open.
+            InputSystem.QueueStateEvent(testKeyboard, new KeyboardState(Key.Escape));
+            yield return null;
+            InputSystem.QueueStateEvent(testKeyboard, new KeyboardState());
+            yield return null; yield return null;
+            Assert.That(director.IsGameMenuOpen, Is.False, "The third Escape closes the card,");
+            Assert.That(director.IsPanelOpen, Is.False, "and nothing is open.");
         }
 
         /// <summary>

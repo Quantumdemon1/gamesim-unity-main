@@ -140,8 +140,11 @@ namespace Gamesim.Tests.EditMode
             s.competitionRulesVersion = CompetitionRules.Widened;
             s.haveNotRulesStartWeek = 1; s.strategyRulesStartWeek = 1;
             EpisodeEngine.EnableStory(s); EpisodeEngine.EnableRead(s); EpisodeEngine.EnableLevers(s);
-            // Held at story rules 10, Blame, by name (ROLE-MOMENTS-PLAN R7): the test is about something else, and EnableStory now gives Roles.
-            s.story.rulesVersion = StoryRules.Blame;
+            // Held at story rules 9, Threads, by name: the investigation ran there, and the pair this fixture pins was
+            // recorded there (2 October 2026), before story rules 10 was enrolled. It was held at 10 for a while, which
+            // moved 31 of the 1,500 seasons and the pair with them. The test is about the commitment rules and nothing
+            // else, so both arms stay on the version they were measured at; EnableStory gives the latest.
+            s.story.rulesVersion = StoryRules.Threads;
             EpisodeEngine.EnableWeek(s); EpisodeEngine.EnableAgency(s); EpisodeEngine.EnableFinale(s);
             if (rulesOn) EpisodeEngine.EnableCommitments(s);
             return s;

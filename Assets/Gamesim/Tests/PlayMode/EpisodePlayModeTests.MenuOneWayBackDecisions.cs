@@ -152,6 +152,11 @@ namespace Gamesim.Tests.PlayMode
             var back = Hud.DecisionPageBackControl;
             AssertAPageWayBack(back, EpisodeDirector.ConversationTopicsBackCaption, "A topic's page");
             Assert.That(back.transform.parent.name, Is.EqualTo(EpisodeHud.ConversationColumnName), "In the conversation's column.");
+            UnityEngine.EventSystems.ExecuteEvents.Execute(back.gameObject,
+                new UnityEngine.EventSystems.PointerEventData(UnityEngine.EventSystems.EventSystem.current),
+                UnityEngine.EventSystems.ExecuteEvents.pointerEnterHandler);
+            Assert.That(director.GetComponent<HouseAudio>().LastCue, Is.EqualTo(HouseAudio.Cue.Hover),
+                "The pointer arriving over a page's way back ticks, as over every button of the HUD.");
             back.onClick.Invoke();
             yield return null;
             Assert.That(director.CurrentConversationCategory, Is.Null, "One level up: the topics.");

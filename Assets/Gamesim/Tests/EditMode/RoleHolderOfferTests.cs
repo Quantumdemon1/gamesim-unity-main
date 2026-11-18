@@ -218,7 +218,11 @@ namespace Gamesim.Tests.EditMode
                 gone.status = ContestantStatus.Jury;
             Assert.That(endgame.Active.Count(), Is.EqualTo(NpcDeals.EndgameSize));
             var finalTwo = Negotiation.HolderOfferPrice(endgame, holder);
-            Assert.That((finalTwo?.kind, finalTwo?.payerId, finalTwo?.payeeId, finalTwo?.expiresWeek),
+            // Null first, then the members themselves: read through ?. the week is an int?, so that tuple
+            // ((string, string, string, int?)) is another type than the tuple of values it is compared with, and
+            // Unity's NUnit calls the two unequal though they print alike.
+            Assert.That(finalTwo, Is.Not.Null, "At the endgame, with the bloc held, there is a price.");
+            Assert.That((finalTwo.kind, finalTwo.payerId, finalTwo.payeeId, finalTwo.expiresWeek),
                 Is.EqualTo((DealKind.FinalTwo, endgame.playerId, holder, 0)), "At the endgame, with the bloc held, a final two.");
         }
 

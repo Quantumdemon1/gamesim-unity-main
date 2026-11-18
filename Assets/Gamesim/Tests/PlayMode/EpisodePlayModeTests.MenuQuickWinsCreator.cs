@@ -16,8 +16,6 @@ namespace Gamesim.Tests.PlayMode
     /// </summary>
     public sealed partial class EpisodePlayModeTests
     {
-        private const string SettingsCloseCaption = "Close  [Esc]";
-
         private Button CreatorGear() => Creator().GetComponentsInChildren<Button>()
             .Single(button => button.gameObject.activeInHierarchy && button.GetComponentInChildren<TMPro.TMP_Text>()?.text == CharacterCreator.SettingsCaption);
 
@@ -91,7 +89,7 @@ namespace Gamesim.Tests.PlayMode
         {
             yield return OpenCreator();
             yield return GearIntoSettingsFromIdentity("Close Robin");
-            ButtonWithCaption(SettingsCloseCaption).onClick.Invoke();
+            ButtonWithCaption(WayOut.CloseCaption).onClick.Invoke();
             yield return Frames(3);
             AssertCreatorBackAsItWas("Close Robin", "with their Close control");
         }
@@ -131,7 +129,7 @@ namespace Gamesim.Tests.PlayMode
             yield return Frames(2);
             Assert.That(Creator().Mode, Is.EqualTo(CharacterCreator.EntryMode.Detailed));
             yield return GearIntoSettingsFromIdentity("Menu Robin");
-            ButtonWithCaption(SettingsCloseCaption).onClick.Invoke();
+            ButtonWithCaption(WayOut.CloseCaption).onClick.Invoke();
             yield return Frames(3);
             AssertCreatorBackAsItWas("Menu Robin", "opened over a creator from the main menu");
         }
@@ -152,7 +150,7 @@ namespace Gamesim.Tests.PlayMode
             yield return Frames(2);
             Assert.That(CastScreen().IsShowing, Is.False, "backed out of its cast screen,");
             Assert.That(director.IsPanelOpen, Is.True, "and is in Settings again.");
-            ButtonWithCaption(SettingsCloseCaption).onClick.Invoke();
+            ButtonWithCaption(WayOut.CloseCaption).onClick.Invoke();
             yield return Frames(3);
             Assert.That(Creator().IsShowing, Is.False, "Closing them does not bring back the creator they left,");
             Assert.That(director.IsPanelOpen, Is.False);

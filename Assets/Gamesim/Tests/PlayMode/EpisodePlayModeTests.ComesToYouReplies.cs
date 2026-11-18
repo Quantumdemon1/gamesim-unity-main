@@ -263,7 +263,7 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(director.InvitedDealRecordId, Is.EqualTo(cardId));
             Assert.That(ComesHud.PointerHeld, Is.True);
             yield return null; yield return null;
-            Assert.That(SelectedName(), Is.EqualTo(EpisodeDirector.ConversationTopicsBackCaption), "Raised: the keyboard on Back to topics.");
+            Assert.That(SelectedCarries(EpisodeDirector.ConversationTopicsBackCaption), Is.True, "Raised: the keyboard on Back to topics.");
             Assert.That(ShownText(), Does.Contain(EpisodeHud.AskCardRaisedEyebrow("Maya")), "MAYA WANTS A WORD,");
             Assert.That(ShownText(), Does.Not.Contain(EpisodeHud.AskRaisedEyebrow("Maya")), "never an offer she has not made.");
             Assert.That(ButtonWithCaptionOrNull(EpisodeHud.ThinkItOverCaption), Is.Null, "A raised dialogue has no Think it over.");
@@ -344,9 +344,9 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(ShownText(), Does.Not.Contain(EpisodeHud.AskGoneLine), "Never the offer's \"no longer on the table\".");
             Assert.That(ShownText(), Does.Not.Contain(EpisodeHud.AskCardGoneLine), "It was answered, not gone.");
             Assert.That(ButtonWithCaptionOrNull(EpisodeHud.ThinkItOverCaption), Is.Null, "Nothing is left to think over.");
-            ButtonWithCaption(EpisodeDirector.SceneCardDoneCaption).onClick.Invoke();
+            PanelCloseButton().onClick.Invoke();
             Assert.That(director.IsAskCardOpen, Is.False);
-            Assert.That(director.IsPanelOpen, Is.False, "Back to the house closes the card.");
+            Assert.That(director.IsPanelOpen, Is.False, "The panel's Close closes the card.");
         }
 
         // ------------------------------------------------------------------ R8. off with the switch, and by default
@@ -579,8 +579,8 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(LastLabel(EpisodeHud.AskOutcomeName), Is.Null, "Nothing was answered, so no outcome.");
             foreach (var reply in ReplyCards.Replies(ReplyCards.Confrontation))
                 Assert.That(ButtonWithCaptionOrNull(EpisodeHud.ReplyCaption(reply.Label)), Is.Null, "Nothing left to answer: " + reply.Label);
-            FindButton(EpisodeDirector.SceneCardDoneCaption).onClick.Invoke();
-            Assert.That(director.IsAskCardOpen, Is.False, "Back to the house closes the card.");
+            PanelCloseButton(pressable: false).onClick.Invoke();
+            Assert.That(director.IsAskCardOpen, Is.False, "The panel's Close closes the card.");
             yield return null;
         }
 

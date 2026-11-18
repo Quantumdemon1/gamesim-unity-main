@@ -13,7 +13,8 @@ namespace Gamesim.Presentation
         public const string QuickCaption = "Quick";
         public const string DetailedCaption = "Detailed";
         public const string QuickPageCaption = "Quick setup";
-        private static readonly string[] QuickPages = { QuickPageCaption, "My Houseguests", "Review" };
+        /// <summary>Quick setup's steps: its one page, then Review. My Houseguests is the header's, not a step (menu slice 2).</summary>
+        private static readonly string[] QuickPages = CreatorSteps.Quick;
         private EntryMode entryMode = EntryMode.Detailed;
         private string lastDetailedPage = "Appearance";
         private RectTransform quickControls;
@@ -22,7 +23,7 @@ namespace Gamesim.Presentation
         public EntryMode Mode => entryMode;
         private string[] ActivePages => entryMode == EntryMode.Quick ? QuickPages : Pages;
         private string DefaultAppearancePage => entryMode == EntryMode.Quick ? QuickPageCaption : "Appearance";
-        private static bool SharedPage(string page) => page == "My Houseguests" || page == "Review";
+        private static bool SharedPage(string page) => page == CreatorSteps.Review;
 
         // A presentation change on the same draft: no recipe materialization, history reset or callback replacement.
         private void SwitchMode(EntryMode mode)
@@ -54,7 +55,8 @@ namespace Gamesim.Presentation
 
         private void BuildEntryModes(RectTransform scrim)
         {
-            if (!ModesShowOn(studioPage)) return;
+            // Not over My Houseguests: the panel is no step, and the switch belongs to the look's step.
+            if (!ModesShowOn(studioPage) || libraryOpen) return;
             var row = new GameObject("Creator modes", typeof(RectTransform)).GetComponent<RectTransform>();
             row.SetParent(scrim, false);
             const float label = 200f, gap = 14f;

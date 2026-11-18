@@ -9,7 +9,7 @@ namespace Gamesim.Episode
 {
     /// <summary>
     /// The hints that follow the device (PLAN A, A4). On a pad, a control whose caption names a key
-    /// - "Close  [Esc]", "Save now  [F5]", "Notebook [J]", "Go to diary room [R]" - wears a chip at
+    /// - "Save now  [F5]", "Notebook [J]", "Go to diary room [R]", or a way out wearing the "Esc" hint - wears a chip at
     /// its corner with the pad's button for the same action, read off the actions map; the caption
     /// keeps every one of its words, because the caption is the control's name to the tests and to a
     /// screen reader. A key or a click takes the chips away again. The help card's words swap the
@@ -67,7 +67,8 @@ namespace Gamesim.Episode
                 if (button == null) continue;
                 if (!glyphActions.TryGetValue(button, out var action))
                 {
-                    action = InputGlossary.CaptionAction(button.name);
+                    // A way out names its key in a hint beside its caption (WayOut), not in its name.
+                    action = InputGlossary.CaptionAction(button.name) ?? InputGlossary.HintAction(WayOut.KeyHintOf(button));
                     glyphActions[button] = action;
                 }
                 if (action == null) continue;

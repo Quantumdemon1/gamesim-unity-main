@@ -318,8 +318,14 @@ namespace Gamesim.Episode
                 // The keyboard goes where a second Enter commits nothing: opened from the board, to the
                 // way back; at its second press, to the step's own Back rather than the first person or
                 // the confirm; and back at its options, to the way back again.
-                if (freeTimeBeatFocusBack) hud.FocusWhenWired(BackToFreeTimeCaption);
-                else if (replaced) hud.FocusWhenWired(second ? EpisodeHud.StoryBackCaption : BackToFreeTimeCaption);
+                // The way back is the one at the panel's top left, by the helper's name (menu slice 2).
+                // The step's own way back is that one when the step drew it there, and otherwise a row
+                // of the step, named by its caption.
+                var drawn = hud.PageWayBack;
+                string stepBack = drawn != null && WayOut.CaptionOf(drawn) == Localisation.Text(EpisodeHud.StoryBackCaption)
+                    ? WayOut.BackObjectName : EpisodeHud.StoryBackCaption;
+                if (freeTimeBeatFocusBack) hud.FocusWhenWired(WayOut.BackObjectName);
+                else if (replaced) hud.FocusWhenWired(second ? stepBack : WayOut.BackObjectName);
                 freeTimeBeatFocusBack = false;
             }
             else
@@ -545,7 +551,9 @@ namespace Gamesim.Episode
         {
             var wayOn = hud.PinnedAction(BeginNextCompetitionCaption, () => Commit(state, EpisodeCommandKind.Advance));
             hud.DressWayOn(wayOn, EndFreeTimeHeadline, PackArt.Pack8ContinueButton);
-            if (beatOpen) hud.PinnedSecondary(BackToFreeTimeCaption, CloseFreeTimeBeat);
+            // An opened beat's way back stands at the panel's top left, where every page's does,
+            // and Escape and B press it (menu slice 2); the board's own secondary is the stay.
+            if (beatOpen) hud.WayBack(BackToFreeTimeCaption, CloseFreeTimeBeat);
             else hud.DressSecondary(hud.PinnedSecondary(StayInTheHouseCaption, ClosePanels), ContinueFreeTimeHeadline);
             // A storyline moving on lets pass outranks the rest of the strip.
             AdvanceWarning(state);
@@ -564,7 +572,7 @@ namespace Gamesim.Episode
         {
             var wayOn = hud.PinnedAction(BeginNextCompetitionCaption, () => Commit(state, EpisodeCommandKind.Advance));
             hud.DressWayOn(wayOn, EndFreeTimeHeadline, PackArt.Pack8ContinueButton);
-            hud.PinnedSecondary(BackToFreeTimeCaption, CloseHouseguestScreen);
+            hud.WayBack(BackToFreeTimeCaption, CloseHouseguestScreen);
             AdvanceWarning(state);
             string where = FreeTimeLocationLine(state);
             if (where != null) hud.PinnedNote(where, EpisodeHud.LocationCardName, false);

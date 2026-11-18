@@ -15,7 +15,13 @@ namespace Gamesim.Episode
 
         /// <summary>The confirm on a rule break: a fixed caption, so a test and a screen reader can find it.</summary>
         public const string StoryConfirmCaption = "Do it";
-        public const string StoryBackCaption = "Back";
+        /// <summary>
+        /// A story's second step's way back: to the beat's choices, where pressing it returns (menu
+        /// slice 2: never a bare "Back"). Drawn at the panel's top left by <see cref="WayBack"/>.
+        /// </summary>
+        public const string StoryBackCaption = WayOut.BackPrefix + StoryChoicesPlace;
+        /// <summary>The beat's options as the place a story step's way back names.</summary>
+        public const string StoryChoicesPlace = "the choices";
 
         /// <summary>One option on a story card, as the director has worked it out.</summary>
         public struct StoryChoice

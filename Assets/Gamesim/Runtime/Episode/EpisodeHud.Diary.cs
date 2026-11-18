@@ -151,24 +151,16 @@ namespace Gamesim.Episode
         }
 
         /// <summary>
-        /// Close at the size of its words, for a panel narrower than the docked one: at the docked
-        /// panel's 174 it took half a 384-wide column's head, and the week line under the phase
-        /// band ran beneath it. Returns the width it takes.
+        /// Close tucked into the corner of a panel narrower than the docked one, so the head beside
+        /// it keeps its width. It keeps the size and the words the shared helper drew it with (menu
+        /// slice 2): one Close, the same on every panel, never a smaller copy. Returns the width it takes.
         /// </summary>
         private float CompactClose()
         {
-            float s = FontScale, width = 118f * s;
-            if (!(modal.Find("Close  [Esc]") is RectTransform close)) return width;
-            Anchor(close, new Vector2(1, 1), new Vector2(1, 1), new Vector2(-12f, -12f), new Vector2(width, 34f * s));
-            var words = close.GetComponentInChildren<TMP_Text>();
-            if (words != null)
-            {
-                words.fontSize = Mathf.RoundToInt(15 * s); words.fontSizeMax = words.fontSize;
-                words.fontSizeMin = Mathf.Min(11f, words.fontSize);
-                words.alignment = TextAlignmentOptions.Center;
-                Stretch(words.rectTransform, 6f, 2f, 6f, 2f);
-            }
-            return width;
+            if (!(modal.Find(WayOut.CloseObjectName) is RectTransform close))
+                return WayOut.Width(WayOut.CloseCaption, FontScale, false, InputGlossary.BackKeyHint);
+            Anchor(close, new Vector2(1, 1), new Vector2(1, 1), new Vector2(-12f, -12f), close.sizeDelta);
+            return close.sizeDelta.x;
         }
 
         /// <summary>

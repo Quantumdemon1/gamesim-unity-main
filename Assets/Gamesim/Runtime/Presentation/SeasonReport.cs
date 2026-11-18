@@ -47,7 +47,7 @@ namespace Gamesim.Presentation
     /// a pad's right stick scroll the season itself.</para>
     /// </summary>
     [DisallowMultipleComponent]
-    public sealed partial class SeasonReport : MonoBehaviour
+    public sealed partial class SeasonReport : MonoBehaviour, IWayOutHost
     {
         private const float Pad = 28f;
 
@@ -71,7 +71,7 @@ namespace Gamesim.Presentation
         public const string NewSeasonCaption = "Start a new season";
         public const string MainMenuCaption = "Main menu";
         public const string ReviewCaption = "Review the season";
-        public const string CloseCaption = "Close";
+        public const string CloseCaption = WayOut.CloseCaption;
         /// <summary>The verdict's heading (STRATEGY-LOOP-PLAN.md section 5), and the names of its parts.</summary>
         public const string GameSenseHeading = "Game Sense", GameSenseCardName = "Game Sense card",
             MomentsHeading = "The moments that made the difference", MissedHeading = "The chances missed";
@@ -340,6 +340,7 @@ namespace Gamesim.Presentation
             // The ways on, in a band of their own at the foot of the card. Built before the header
             // so the keyboard starts on the first of them, as it did when they led the header.
             float footer = Footer(sheet, onReview);
+            CloseCorner(sheet);
 
             // The title, the season's numbers and the tabs, fixed at the top of the card.
             content = new GameObject("Fixed header", typeof(RectTransform)).GetComponent<RectTransform>();
@@ -576,10 +577,12 @@ namespace Gamesim.Presentation
             bool spectator = you != null && you.status != ContestantStatus.Winner && you.status != ContestantStatus.RunnerUp;
             float inner = Width - Pad * 2f;
             const float top = 16f, gap = 16f;
+            // The card's one Close stands in its top right corner (CloseCorner): the header's top row stops short of it.
+            float row = inner - CloseCornerRoom();
 
-            bool beside = inner >= TitleCardMinWidth + gap + NumbersMinWidth;
-            float numbersWidth = beside ? Mathf.Clamp(inner * .4f, NumbersMinWidth, 560f) : inner;
-            float titleWidth = beside ? inner - numbersWidth - gap : inner;
+            bool beside = row >= TitleCardMinWidth + gap + NumbersMinWidth;
+            float numbersWidth = beside ? Mathf.Clamp(row * .4f, NumbersMinWidth, 560f) : inner;
+            float titleWidth = beside ? row - numbersWidth - gap : row;
             float titleHeight = TitleCard(box, state, spectator, Pad, top, titleWidth);
             float numbersHeight = beside ? titleHeight : 100f;
             SeasonNumbers(box, state, beside ? Pad + titleWidth + gap : Pad, beside ? top : top + titleHeight + 12f, numbersWidth, numbersHeight);
@@ -750,7 +753,8 @@ namespace Gamesim.Presentation
         /// <summary>
         /// The ways on (MOCKUP-PASS M5), in a band fixed at the foot of the card and outside the
         /// scroll: a new season first, as the web game's primary action is, then the notebook, the
-        /// main menu, and close. Only the ones given are drawn. Each is a wide pack button with its
+        /// main menu. Close is the card's way out, not a way on: it stands in the card's top right
+        /// corner (<see cref="CloseCorner"/>, menu slice 2). Only the ones given are drawn. Each is a wide pack button with its
         /// caption word for word, a glyph, a chevron and a line under the caption saying where it
         /// goes; the main menu wears the pack's gold 'Continue to Legacy' face (decision 21), since
         /// the main menu is where the career line is. Returns the band's height.
@@ -771,7 +775,8 @@ namespace Gamesim.Presentation
                     PackArt.KitIconBook, "journal", "Open your notebook"));
             if (shownMainMenu != null)
                 ways.Add((MainMenuCaption, () => { Hide(); shownMainMenu(); }, PackArt.SeasonButtonLegacy, PackArt.KitIconHome, "house", "Your career record"));
-            ways.Add((CloseCaption, Close, ways.Count == 0 ? PackArt.SeasonButtonPrimary : PackArt.SeasonButton, PackArt.KitIconCross, "exit", "Return to the house"));
+            // Close is not a way on: it is the card's one way out, in its top right corner (CloseCorner).
+            if (ways.Count == 0) return 0f;
 
             // The primary a little wider than the rest; a short row is centred, not stretched.
             const float gap = 12f;
@@ -815,6 +820,24 @@ namespace Gamesim.Presentation
             }
             return height;
         }
+
+        /// <summary>The key the Close answers to, drawn beside its caption, never in it: Escape closes the report.</summary>
+        public const string CloseKeyHint = "Esc";
+
+        /// <summary>
+        /// The card's one way out, by the shared helper: "Close" at the top right, as every panel or
+        /// card over the place the player is on has it. It was the last of the footer's ways on.
+        /// </summary>
+        private Button CloseCorner(RectTransform sheet) => WayOut.AddClose(sheet, Close, TextScale, CloseKeyHint);
+
+        // The Close is a report control as its footer way was (SeasonReportControl): a lean of the right
+        // stick that scrolls the report takes no step off it. Nothing else is added to it.
+        Button IWayOutHost.AddControl(GameObject box) => box.AddComponent<SeasonReportControl>();
+        Action IWayOutHost.Dress(Button control, Action action) => action;
+
+        /// <summary>The room the top right corner keeps for the Close, out of the header's width (which starts 20 in from the card and Pad in from that).</summary>
+        private float CloseCornerRoom() =>
+            Mathf.Max(0f, WayOut.Width(WayOut.CloseCaption, TextScale, false, CloseKeyHint) + WayOut.Inset(TextScale) - 20f - Pad + 12f);
 
         /// <summary>The report's text size: its reference width against the resting 1920 (<see cref="FontScale"/>).</summary>
         private float TextScale => scaler != null && scaler.referenceResolution.x > 0f ? 1920f / scaler.referenceResolution.x : 1f;

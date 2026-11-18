@@ -131,7 +131,7 @@ namespace Gamesim.Tests.PlayMode
                 lastRun.SetHolding(true);
                 while (!lastRun.Finished) lastRun.Tick(.1);
                 probe.Refresh();
-                probe.ShowFinished("Practice complete. No competition result or season state was changed.", "Return to briefing", () => { }, hideCancel: true);
+                probe.ShowFinished("Practice complete. No competition result or season state was changed.", CompetitionGameScreen.BackToBriefingCaption, () => { }, hideCancel: true);
                 if (Application.isBatchMode) yield return CaptureFraming("minigame-finished", false);
             }
             finally { Object.Destroy(probe.gameObject); Object.Destroy(probeOwner); }

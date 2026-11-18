@@ -78,7 +78,7 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(card, Does.Contain("PLAY WON"), "The card says it was won,");
             Assert.That(card, Does.Contain("You learned:"), "and the receipt says what changed.");
 
-            ButtonWithCaption(EpisodeDirector.SceneCardDoneCaption).onClick.Invoke();
+            ButtonWithCaption(Gamesim.Presentation.WayOut.CloseCaption).onClick.Invoke();
             yield return null;
             director.ShowNotebookSection(EpisodeDirector.NotebookSection.Story);
             yield return null;

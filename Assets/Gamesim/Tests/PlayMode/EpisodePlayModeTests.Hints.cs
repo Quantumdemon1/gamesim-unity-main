@@ -31,7 +31,7 @@ namespace Gamesim.Tests.PlayMode
             director.OpenSettings();
             yield return Frames(2);
             Assert.That(director.HintsForPad, Is.False, "A house starts on the keyboard's words.");
-            var captions = new[] { "Close  [Esc]", "Save now  [F5]" };
+            var captions = new[] { Gamesim.Presentation.WayOut.CloseCaption, "Save now  [F5]" };
             var before = captions.Select(caption => CaptionWords(ButtonWithCaption(caption))).ToArray();
             foreach (var caption in captions)
             {
@@ -45,7 +45,7 @@ namespace Gamesim.Tests.PlayMode
             for (int index = 0; index < captions.Length; index++)
             {
                 var control = ButtonWithCaption(captions[index]);
-                Assert.That(control.name, Is.EqualTo(captions[index]), "The control keeps its name.");
+                Assert.That(control.name, Is.EqualTo(index == 0 ? Gamesim.Presentation.WayOut.CloseObjectName : captions[index]), "The control keeps its name.");
                 Assert.That(CaptionWords(control), Is.EqualTo(before[index]), captions[index] + ": the caption is byte for byte what it was.");
                 var chip = Chip(control);
                 Assert.That(chip != null && chip.activeInHierarchy, Is.True, captions[index] + " wears the pad's button beside it.");

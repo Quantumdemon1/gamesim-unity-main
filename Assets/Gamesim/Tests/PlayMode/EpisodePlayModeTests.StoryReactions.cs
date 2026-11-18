@@ -404,7 +404,7 @@ namespace Gamesim.Tests.PlayMode
             var firstRoot = first.transform.position;
             var secondRoot = second.transform.position;
             bool primitive = first.IsPrimitiveBody || second.IsPrimitiveBody;
-            ButtonWithCaption(EpisodeDirector.SceneCardDoneCaption).onClick.Invoke();
+            ButtonWithCaption(WayOut.CloseCaption).onClick.Invoke();
             yield return WaitForHugEndpoint(() => first.LastReaction == CharacterPresentation.Reaction.Embrace
                 && second.LastReaction == CharacterPresentation.Reaction.Embrace
                 && (primitive || director.CurrentEmbrace != null && director.CurrentEmbrace.Fired
@@ -464,7 +464,7 @@ namespace Gamesim.Tests.PlayMode
                 var second = StoryBody(peaceSecondId);
                 bool primitive = first.IsPrimitiveBody || second.IsPrimitiveBody;
 
-                ButtonWithCaption(EpisodeDirector.SceneCardDoneCaption).onClick.Invoke();
+                ButtonWithCaption(WayOut.CloseCaption).onClick.Invoke();
                 yield return null;
                 Assert.That(director.IsSceneCardOpen || director.IsPanelOpen, Is.False, "The card is down and no panel is up.");
                 bool pausedThroughout = true;
@@ -548,7 +548,7 @@ namespace Gamesim.Tests.PlayMode
                 Assert.That(first.LastReaction, Is.Not.EqualTo(CharacterPresentation.Reaction.Embrace), "Nothing while the card is up.");
                 Assert.That(second.LastReaction, Is.Not.EqualTo(CharacterPresentation.Reaction.Embrace));
 
-                ButtonWithCaption(EpisodeDirector.SceneCardDoneCaption).onClick.Invoke();
+                ButtonWithCaption(WayOut.CloseCaption).onClick.Invoke();
                 float nearest = float.MaxValue, begun = -1f;
                 yield return WaitForHugEndpoint(() =>
                     {

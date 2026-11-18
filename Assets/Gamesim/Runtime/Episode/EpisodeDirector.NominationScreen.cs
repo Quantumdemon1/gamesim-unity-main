@@ -8,7 +8,7 @@ namespace Gamesim.Episode
 {
     /// <summary>
     /// The nomination as a screen of steps (PACK8-PASS-PLAN B1, mockup 72). On the strategy stage it
-    /// is four status cards - the Head of Household, the phase, the conversations left and the
+    /// is four status cards - the Head of Household, the phase, the actions left and the
     /// player's objective - over a tracker of this week's steps, one step's body, and a footer with
     /// the way on and what comes next. It replaced a column that stacked every open story beat, the
     /// ceremony, a row of faces and the way on in one scroll (the owner's screenshots 66 to 69).
@@ -36,6 +36,14 @@ namespace Gamesim.Episode
         // Only hides the pitch view. Pending offers and the player's draft picks stay intact.
         private bool nominationPitchesDismissed;
         private object pitchNavigationView;
+        /// <summary>Whether this render drew a story's second press, whose way back is to the story's choices: the footer then draws none of its own.</summary>
+        private bool nominationSecondPressDrawn;
+
+        /// <summary>The budget's status card: the weekly budget of moves by its one name, "Actions left".</summary>
+        public const string NominationBudgetLabel = "ACTIONS LEFT";
+
+        /// <summary>A story's second press (who, or the rule break's confirm) goes back one page, to the story's choices.</summary>
+        public static readonly string BackToStoryChoicesCaption = WayOut.BackTo("the choices");
 
         /// <summary>What closing the panel, or a new week, throws away.</summary>
         private void ForgetNominationView()
@@ -76,6 +84,7 @@ namespace Gamesim.Episode
             var beat = current.kind == NominationSteps.Kind.Story ? open.FirstOrDefault(item => item.id == current.eventId) : null;
             bool pitching = current.kind == NominationSteps.Kind.Picker && !nominationBackdoorView
                 && !nominationPitchesDismissed && HoHPitches.Available(state) && ReplyCards.Pending(state)?.kind == ReplyCards.Pitch;
+            nominationSecondPressDrawn = false;
             if (beat != null) NominationStory(state, beat);
             // Under the role moments the pitches are one board of at most three cards, answered in any order (R5).
             else if (pitching && PitchBoardShows(state)) PitchOfferBoard(state);
@@ -89,7 +98,8 @@ namespace Gamesim.Episode
             else NominationOutcome(state, hoh);
             if (pitching)
             {
-                hud.WearNominationPrimary(hud.PinnedAction(EpisodeHud.BackToNomineesCaption, PitchNavigation(state, false)));
+                // The pitches are a page over the picker: their one way out is the way back to it, at the top left.
+                hud.DecisionPageBack(EpisodeHud.BackToNomineesCaption, PitchNavigation(state, false));
                 hud.PinnedNote("Answering is free. Remaining pitches expire when you nominate.", null, false);
             }
             else NominationFooter(state, hoh, current, picking);
@@ -155,7 +165,7 @@ namespace Gamesim.Episode
 
         /// <summary>
         /// The four status cards (mockup 72): who holds the house, the phase and whose call it is,
-        /// the player's own conversations left and what they count against, and the objective their
+        /// the player's own actions left and what they count against, and the objective their
         /// role gives them this week.
         /// </summary>
         private void NominationStatus(EpisodeState state, ContestantState hoh)
@@ -170,8 +180,9 @@ namespace Gamesim.Episode
                 named ? "The block is set" : playerHoh ? "Your call" : FirstName(hoh.name) + "'s call",
                 PackArt.Pack8StatusPhase, PackArt.Pack8IconPeople, "people", UiTheme.Danger);
             // The player's own budget, the number the top bar's Actions left shows, and what it is
-            // counted against: the week's windows keep their seats apart, the old pool does not.
-            hud.StatusCard(row, 2, 4, "CONVERSATIONS LEFT", active ? ActionsLeftCount(state).ToString() : "None",
+            // counted against: the week's windows keep their seats apart, the old pool does not. Named
+            // as the top bar names it (menu slice 2, one name per thing): it said "conversations left".
+            hud.StatusCard(row, 2, 4, NominationBudgetLabel, active ? ActionsLeftCount(state).ToString() : "None",
                 !active ? "You are watching" : EpisodeEngine.WeekRulesOn(state) ? "This window" : "This week",
                 PackArt.Pack8StatusActions, PackArt.Pack8IconChat, "chat", UiTheme.Accent);
             NominationObjective(state, hoh, out string objective, out string why);
@@ -256,6 +267,16 @@ namespace Gamesim.Episode
         }
 
         /// <summary>
+        /// The second press's one way out: back one page, to the story's choices, at the top left. It
+        /// was a bare "Back" in the column, beside the footer's own way back to the nominees.
+        /// </summary>
+        private void StoryChoicesBack()
+        {
+            nominationSecondPressDrawn = true;
+            hud.DecisionPageBack(BackToStoryChoicesCaption, () => { ClearStoryStep(); Render(); });
+        }
+
+        /// <summary>
         /// A story option's second press on the stage: who, as a grid of faces, for an option that
         /// names somebody; then the confirm, for a rule break. The same commands as the episode
         /// screen's own second press (EpisodeDirector.Story), under the same captions.
@@ -278,7 +299,7 @@ namespace Gamesim.Episode
                         else { ClearStoryStep(); Commit(state, EpisodeCommandKind.ProgressStoryline, eventId, optionId, text: id); }
                     }));
                 }).ToList(), 57f * hud.FontScale + 12f);
-                hud.Action(EpisodeHud.StoryBackCaption, () => { ClearStoryStep(); Render(); });
+                StoryChoicesBack();
                 return;
             }
             // A rule break: said plainly, then pressed twice.
@@ -290,7 +311,7 @@ namespace Gamesim.Episode
                 ClearStoryStep();
                 Commit(state, EpisodeCommandKind.ProgressStoryline, eventId, optionId, text: picked);
             });
-            hud.Action(EpisodeHud.StoryBackCaption, () => { ClearStoryStep(); Render(); });
+            StoryChoicesBack();
         }
 
         /// <summary>
@@ -391,8 +412,9 @@ namespace Gamesim.Episode
         {
             if (picking)
             {
-                if (current.kind != NominationSteps.Kind.Picker || nominationBackdoorView)
-                    hud.PinnedSecondary(EpisodeHud.BackToNomineesCaption, () =>
+                // One way back per page, at the top left: a story's second press has its own, to the choices.
+                if ((current.kind != NominationSteps.Kind.Picker || nominationBackdoorView) && !nominationSecondPressDrawn)
+                    hud.DecisionPageBack(EpisodeHud.BackToNomineesCaption, () =>
                     {
                         nominationOpenedBeat = null;
                         nominationBackdoorView = false;

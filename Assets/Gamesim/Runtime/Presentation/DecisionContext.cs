@@ -69,12 +69,25 @@ namespace Gamesim.Presentation
             item?.involvedIds == null ? Array.Empty<Candidate>() : item.involvedIds.Distinct(StringComparer.Ordinal)
                 .Select(id => ForCandidate(state, id)).Where(candidate => candidate != null).ToArray();
 
+        /// <summary>
+        /// The week's known events, counted in the words the house's own reading names them by
+        /// (HouseVibe's rows): one name per thing, never the event schema's.
+        /// </summary>
         public static string KnownEventSummary(EpisodeState state)
         {
             var reading = HouseVibe.Of(state);
-            return reading.Activity + " activity · " + reading.Commitments + " commitments · "
-                + reading.GameStakes + " game stakes this week";
+            return Counted(reading.Activity, SummaryConversationWord, SummaryConversationsWord) + " · "
+                + Counted(reading.Commitments, SummaryDealWord, SummaryDealsWord) + " · "
+                + Counted(reading.GameStakes, SummaryMoveWord, SummaryMovesWord) + " this week";
         }
+
+        /// <summary>The summary's three counts, worded as the house's reading words its rows, lower case in a sentence.</summary>
+        public const string SummaryConversationsWord = "conversations", SummaryDealsWord = "deals & alliances", SummaryMovesWord = "game moves";
+        /// <summary>The same three, for a count of one: "1 game move", never "1 game moves".</summary>
+        public const string SummaryConversationWord = "conversation", SummaryDealWord = "deal or alliance", SummaryMoveWord = "game move";
+
+        /// <summary>A count and its word: the singular for exactly one, the plural otherwise.</summary>
+        public static string Counted(int count, string one, string many) => count + " " + (count == 1 ? one : many);
 
         private static string PromiseName(PromiseKind kind)
         {

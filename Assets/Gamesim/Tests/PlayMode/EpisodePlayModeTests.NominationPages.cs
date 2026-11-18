@@ -31,8 +31,19 @@ namespace Gamesim.Tests.PlayMode
         private static readonly (int At16x9, int At4x3) PickerOfSixteenLargestPages = (2, 2);
         /// <summary>The picker of sixteen with nothing waiting, and its backdoor plan, at the largest text: on 16:9 and on 4:3.</summary>
         private static readonly (int At16x9, int At4x3) BarePickerOfSixteenLargestPages = (2, 2), BackdoorOfSixteenLargestPages = (2, 2);
+        // The WHO?'s way back stands at the panel's top left (DecisionPageBack, menu slice 2), no
+        // longer a row under the grid, so its column is the step's head and the grid. At 1.4 the head
+        // is eyebrow 24.8 + title 40.0 + heading 47.3, each with its gap of 12 (148.1); the cells
+        // stand at their least, 72.8 high with gaps of 14. The room is the panel less the band (72),
+        // the header (164.8), the footer (105.8), the padding (24) and the margin (2).
+        // 4:3 (canvas 1385.6 x 1039.2): panel 939.2, room 570.6; the column of 1071.6 holds 3
+        // across, 5 lines = 420.0; 148.1 + 420.0 = 568.1 <= 571.1, one page (it was two: line 5 and
+        // the old Back on page 2).
+        // 16:9 (canvas 1600 x 900): panel 800, room 431.4; the column of 1286 holds 4 across, 4 lines
+        // = 333.2; 148.1 + 333.2 = 481.3 > 431.9, so it pages, 383.0 a page (431.4 - 12 - pager
+        // 36.4): the head and lines 1 and 2 (307.7; line 3 would make 394.5), then lines 3 and 4.
         /// <summary>A story's WHO? of the fifteen others in a house of sixteen at the largest text: on 16:9 and on 4:3.</summary>
-        private static readonly (int At16x9, int At4x3) WhoOfSixteenLargestPages = (2, 2);
+        private static readonly (int At16x9, int At4x3) WhoOfSixteenLargestPages = (2, 1);
 
         /// <summary>
         /// The frame the HUD is laid out for now, by its canvas's shape, under the names the
@@ -257,7 +268,7 @@ namespace Gamesim.Tests.PlayMode
             var aims = new List<string>();
             AssertLargestPages(plan, planPages, page =>
             {
-                AssertNominationScreen(plan + ", page " + page, EpisodeHud.BackToNomineesCaption);
+                AssertNominationScreen(plan + ", page " + page);
                 aims.AddRange(ActiveRect(EpisodeHud.BackdoorAimsName).GetComponentsInChildren<Button>().Select(aim => aim.name));
             });
             Assert.That(aims, Is.EquivalentTo(candidates.Select(candidate => "Aim this week at " + candidate.name)), plan + ": every aim on exactly one page.");

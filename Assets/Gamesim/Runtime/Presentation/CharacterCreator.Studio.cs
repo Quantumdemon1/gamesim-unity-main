@@ -139,7 +139,7 @@ namespace Gamesim.Presentation
         private void BuildCategories(RectTransform scrim, Rect r)
         {
             var side = Panel("Appearance categories", scrim, r);
-            Words(side, "CREATE YOUR", 14f, UiTheme.Accent, new Rect(22f, 22f, r.width - 44f, 20f)).characterSpacing = 3f;
+            Words(side, "CREATE A", 14f, UiTheme.Accent, new Rect(22f, 22f, r.width - 44f, 20f)).characterSpacing = 3f;
             var title = Words(side, "HOUSEGUEST", 24f, UiTheme.Paper, new Rect(22f, 42f, r.width - 44f, 32f));
             var bold = UiTheme.Font(UiTheme.Weight.Bold); if (bold != null) title.font = bold;
             // The tiles share what height the panel has: at a fixed 68 apart the sixth hung past the

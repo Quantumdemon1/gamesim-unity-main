@@ -38,7 +38,7 @@ namespace Gamesim.Episode
     {
         /// <summary>The captions of a houseguest's screen: what they are found by.</summary>
         public const string TalkPrivatelyCaption = "Talk privately", AskForInformationCaption = "Ask for information",
-            PitchADealCaption = "Pitch a deal", BackToFreeTimeCaption = "Back to free time";
+            PitchADealCaption = "Pitch a deal", BackToFreeTimeCaption = WayOut.BackPrefix + "free time";
 
         /// <summary>The free-time screen's head at the Final 3 (ENDGAME-PLAN F1).</summary>
         public const string EndgamePreparationTitle = "ENDGAME PREPARATION";
@@ -463,7 +463,8 @@ namespace Gamesim.Episode
             // scrolling under the pinned bar. On the Stage's column, at three, it keeps its own way
             // back, its FREE TIME head and its heads' lines.
             bool stage = hud.CurrentActivityLayout == EpisodeHud.ActivityLayout.Strategy;
-            if (!stage) hud.Action(BackToFreeTimeCaption, CloseHouseguestScreen);
+            // The way back at the panel's top left either way (menu slice 2); on the stage the footer draws it.
+            if (!stage) hud.WayBack(BackToFreeTimeCaption, CloseHouseguestScreen);
             int left = ActionsLeftCount(state);
             hud.ScreenHead(stage ? null : "FREE TIME", left <= 0 ? "NO ACTIONS LEFT" : left == 1 ? "SPEND YOUR LAST ACTION" : "SPEND AN ACTION",
                 stage ? null : "Build relationships, gather information, or make a move. Choose who to interact with and how.");

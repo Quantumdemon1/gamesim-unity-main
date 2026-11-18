@@ -541,9 +541,9 @@ namespace Gamesim.Presentation
             footerCard = Card("Competition controls", panel, true);
             float buttonWidth = SideWidth - 24f;
             pause = Button("Pause competition", footerCard, "Pause", 12, 14, buttonWidth, 44, TogglePause);
-            // Back to briefing asks first in a ranked attempt under way, as Esc does: the button is
+            // Back to the briefing asks first in a ranked attempt under way, as Esc does: the button is
             // one Up away from the top row of the board.
-            cancel = Button("Cancel attempt", footerCard, "Back to briefing", 12, 66, buttonWidth, 44, LeaveRequested);
+            cancel = Button("Cancel attempt", footerCard, BackToBriefingCaption, 12, 66, buttonWidth, 44, LeaveRequested);
             finishAction = Button("Competition result action", footerCard, "Continue", 12, 118, buttonWidth, 44, () => { });
             finishAction.gameObject.SetActive(false);
             Secondary(pause); Secondary(cancel);

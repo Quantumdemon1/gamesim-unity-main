@@ -28,6 +28,9 @@ namespace Gamesim.Tests.PlayMode
         private CastSelect CastScreen() => director.GetComponentInChildren<CastSelect>(true);
 
         /// <summary>Live, interactable buttons on the screen carrying exactly this caption.</summary>
+        /// <summary>The cast screen's one way back as the screen opened from Settings names it (menu slice 2).</summary>
+        private static readonly string BackToSettings = FrontDoorWords.CastBack(false, FrontDoorWords.SettingsPlace);
+
         private Button[] CastButtons(string caption) =>
             director.GetComponentsInChildren<Button>(true)
                 .Where(button => button.IsActive() && button.IsInteractable()
@@ -146,8 +149,8 @@ namespace Gamesim.Tests.PlayMode
 
             yield return OpenCastScreen();
 
-            var cancel = CastButtons(CastSelect.CancelCaption);
-            Assert.That(cancel, Has.Length.EqualTo(1), "Exactly one cancel control should be reachable.");
+            var cancel = CastButtons(BackToSettings);
+            Assert.That(cancel, Has.Length.EqualTo(1), "Exactly one way back should be reachable.");
             cancel[0].onClick.Invoke();
             yield return null;
             yield return null;
@@ -205,7 +208,7 @@ namespace Gamesim.Tests.PlayMode
 
             yield return OpenCastScreen();
 
-            var start = CastButtons(CastSelect.StartCaption);
+            var start = CastButtons(FrontDoorWords.StartAsNewcomer);
             Assert.That(start, Has.Length.EqualTo(1), "Exactly one start control should be reachable.");
             start[0].onClick.Invoke();
             yield return null;
@@ -263,7 +266,7 @@ namespace Gamesim.Tests.PlayMode
             rootField.SetValue(director, blockedRoot);
             try
             {
-                CastButtons(CastSelect.StartCaption)[0].onClick.Invoke();
+                CastButtons(FrontDoorWords.StartAsNewcomer)[0].onClick.Invoke();
                 yield return null;
                 yield return null;
 
@@ -274,7 +277,7 @@ namespace Gamesim.Tests.PlayMode
                     .Single(label => label.gameObject.activeInHierarchy && label.text == director.StatusMessage);
                 Assert.That(visibleError.transform.parent.name, Is.EqualTo("Fixed season footer"),
                     "The failure must be on the active modal beside retry, outside the scrolling cast list.");
-                Assert.That(CastButtons(CastSelect.StartCaption), Has.Length.EqualTo(1));
+                Assert.That(CastButtons(FrontDoorWords.StartAsNewcomer), Has.Length.EqualTo(1));
                 Assert.That(CastButtons("Edit houseguest 1"), Has.Length.EqualTo(1));
                 Assert.That(CastButtons("Edit houseguest 2"), Has.Length.EqualTo(1));
                 Assert.That(CastScreen().GetComponentsInChildren<TMPro.TMP_Text>()
@@ -289,7 +292,7 @@ namespace Gamesim.Tests.PlayMode
                 rootField.SetValue(director, temporaryDirectory);
             }
 
-            CastButtons(CastSelect.StartCaption)[0].onClick.Invoke();
+            CastButtons(FrontDoorWords.StartAsNewcomer)[0].onClick.Invoke();
             yield return null;
             yield return null;
             Assert.That(CastScreen().IsShowing, Is.False);
@@ -318,7 +321,7 @@ namespace Gamesim.Tests.PlayMode
         public IEnumerator CastSelect_ABuiltSeasonGivesEveryHouseguestABody()
         {
             yield return OpenCastScreen();
-            CastButtons(CastSelect.StartCaption)[0].onClick.Invoke();
+            CastButtons(FrontDoorWords.StartAsNewcomer)[0].onClick.Invoke();
             yield return null;
             yield return null;
             yield return SettleCast();
@@ -369,7 +372,7 @@ namespace Gamesim.Tests.PlayMode
             yield return null;
             yield return null;
 
-            CastButtons(CastSelect.StartCaption)[0].onClick.Invoke();
+            CastButtons(FrontDoorWords.StartAs(CharacterNames.FirstName(chosen.Name)))[0].onClick.Invoke();
             yield return null;
             yield return null;
 
@@ -429,7 +432,8 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(Words().Any(word => word.Contains(emma.Hometown)), Is.True, "Where she is from.");
             Assert.That(Words().Any(word => word.Contains(emma.Bio)), Is.True, "Her words, quoted.");
             Assert.That(Words(), Does.Contain(CastTemplates.CategoryDescription(emma.Category)), "What her kind of player is.");
-            Assert.That(CastButtons("Play as Emma"), Has.Length.EqualTo(1));
+            Assert.That(CastButtons(FrontDoorWords.StartAs("Emma")), Has.Length.EqualTo(1), "The one start names her.");
+            Assert.That(CastButtons(FrontDoorWords.Edit("Emma")), Has.Length.EqualTo(1));
             Assert.That(CastButtons(emma.Name), Has.Length.EqualTo(1), "The details add no second control with her name.");
             Assert.That(Model(), Is.Not.Null, "Her model stands in the details.");
             Assert.That(CastScreen().PreviewedId, Is.EqualTo(emma.Id));
@@ -461,7 +465,7 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(CastScreen().PreviewedId, Is.Null);
         }
 
-        /// <summary>Play as - the details' commit - starts the season as that houseguest, like Start.</summary>
+        /// <summary>The one start, after a pick, starts the season as that houseguest - by their first name, as Play as did.</summary>
         [UnityTest]
         public IEnumerator CastSelect_PlayAsStartsTheSeasonAsThatHouseguest()
         {
@@ -471,7 +475,7 @@ namespace Gamesim.Tests.PlayMode
             yield return null;
             CastButtons(will.Name)[0].onClick.Invoke();
             yield return null;
-            var play = CastButtons("Play as Will");
+            var play = CastButtons(FrontDoorWords.StartAs("Will"));
             Assert.That(play, Has.Length.EqualTo(1), "An honorific is not a first name.");
             play[0].onClick.Invoke();
             yield return null;
@@ -483,10 +487,12 @@ namespace Gamesim.Tests.PlayMode
         }
 
         /// <summary>
-        /// "Play as Emma" plays as Emma, whoever else the player built on the way. Building Robin
-        /// in the creator and coming back leaves Robin retained - the footer says so, and Start
-        /// commits Robin - but it used to be what Play as committed too, so the season started with
-        /// Robin as the player and Emma cast as one of the others.
+        /// Emma's card plays as Emma, whoever else the player built on the way. Building Robin in
+        /// the creator and coming back leaves Robin retained - the footer says so, the one start
+        /// names Robin and commits Robin, and no card says PLAYING AS - and pressing Emma's card then
+        /// picks her back: the start names her and plays her, as the details' "Play as Emma" did
+        /// before menu slice 2 folded it into the start. (Play as once committed Robin too, so the
+        /// season started with Robin as the player and Emma cast as one of the others.)
         /// </summary>
         [UnityTest]
         public IEnumerator CastSelect_PlayAsPlaysTheHouseguestItNamesNotADraftOfSomeoneElse()
@@ -505,23 +511,30 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(CastScreen().GetComponentsInChildren<TMPro.TMP_Text>().Any(label => label.text.Contains("You will play as Robin")), Is.True,
                 "Robin is retained and named in the footer - the case this is about.");
 
-            var play = CastButtons("Play as Emma");
-            Assert.That(play, Has.Length.EqualTo(1), "The details still offer Emma, under her own name.");
+            Assert.That(CastButtons(FrontDoorWords.StartAs("Robin")), Has.Length.EqualTo(1), "The start names Robin, who is retained.");
+            Assert.That(CastScreen().GetComponentsInChildren<TMPro.TMP_Text>().Any(label => label.text == "PLAYING AS"), Is.False,
+                "No card says PLAYING AS while the start names someone else.");
+            CastButtons(emma.Name)[0].onClick.Invoke();
+            yield return null;
+            var play = CastButtons(FrontDoorWords.StartAs("Emma"));
+            Assert.That(play, Has.Length.EqualTo(1), "Pressing her card picks Emma back, under her own name.");
+            Assert.That(CastScreen().GetComponentsInChildren<TMPro.TMP_Text>().Count(label => label.text == "PLAYING AS"), Is.EqualTo(1),
+                "and her card says PLAYING AS.");
             play[0].onClick.Invoke();
             yield return null;
             yield return null;
 
             Assert.That(CastScreen().IsShowing, Is.False, "The season started.");
             var fresh = director.Snapshot;
-            Assert.That(fresh.Find(fresh.playerId).name, Is.EqualTo(emma.Name), "Play as Emma plays as Emma.");
+            Assert.That(fresh.Find(fresh.playerId).name, Is.EqualTo(emma.Name), "Start as Emma plays as Emma.");
             Assert.That(fresh.contestants.Count(person => person.name == emma.Name), Is.EqualTo(1), "and she is not also an NPC.");
             Assert.That(fresh.contestants.Any(person => person.name == "Robin"), Is.False, "Robin was never committed.");
         }
 
         /// <summary>
         /// Edits to a houseguest brought back from the creator stay theirs: the live model wears
-        /// them, "Customize Emma" reopens them rather than starting again from her card - which
-        /// used to throw the edits away at the next Back - and "Play as Emma" plays her in them.
+        /// them, "Edit Emma" reopens them rather than starting again from her card - which used to
+        /// throw the edits away at the next Back - and "Start as Emma" plays her in them.
         /// </summary>
         [UnityTest]
         public IEnumerator CastSelect_CustomizeReopensTheEditsBroughtBackForThatHouseguest()
@@ -530,7 +543,7 @@ namespace Gamesim.Tests.PlayMode
             var emma = CastTemplates.Find("emma-brown");
             CastButtons(emma.Name)[0].onClick.Invoke();
             yield return null;
-            CastButtons("Customize Emma")[0].onClick.Invoke();
+            CastButtons(FrontDoorWords.Edit("Emma"))[0].onClick.Invoke();
             yield return null;
             Assert.That(Creator().IsShowing, Is.True);
             CastButtons("Next starting look")[0].onClick.Invoke();
@@ -549,26 +562,26 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(CastScreen().StudioPreview.CompletedKey, Is.EqualTo(edited),
                 "The live model shows Emma as the player left her, not her card's look.");
 
-            CastButtons("Customize Emma")[0].onClick.Invoke();
+            CastButtons(FrontDoorWords.Edit("Emma"))[0].onClick.Invoke();
             yield return null;
             Assert.That(Creator().IsShowing, Is.True);
-            Assert.That(Creator().Draft.Appearance.ContentKey(), Is.EqualTo(edited), "Customize reopens the edits.");
+            Assert.That(Creator().Draft.Appearance.ContentKey(), Is.EqualTo(edited), "Edit reopens the edits.");
             CastButtons(CharacterCreator.BackCaption)[0].onClick.Invoke();
             yield return null;
 
-            CastButtons("Play as Emma")[0].onClick.Invoke();
+            CastButtons(FrontDoorWords.StartAs("Emma"))[0].onClick.Invoke();
             yield return null;
             yield return null;
             Assert.That(CastScreen().IsShowing, Is.False, "The season started.");
             var fresh = director.Snapshot;
             var you = fresh.Find(fresh.playerId);
             Assert.That(you.name, Is.EqualTo(emma.Name));
-            Assert.That(you.appearance.presetId, Is.EqualTo(editedPreset), "Play as Emma plays her in the edited look.");
+            Assert.That(you.appearance.presetId, Is.EqualTo(editedPreset), "Start as Emma plays her in the edited look.");
             Assert.That(fresh.contestants.Count(person => person.name == emma.Name), Is.EqualTo(1));
         }
 
         /// <summary>
-        /// A "Play as" that cannot be saved comes back to the cast screen, with the reason beside
+        /// A start as a picked houseguest ("Play as" until menu slice 2) that cannot be saved comes back to the cast screen, with the reason beside
         /// retry. Every card the screen starts carries a built houseguest, so the director used to
         /// guess the creator: never opened, that left the player on no screen at all; opened
         /// earlier, it came back with its own stale choice, whose Start would commit a season the
@@ -581,10 +594,10 @@ namespace Gamesim.Tests.PlayMode
             var emma = CastTemplates.Find("emma-brown");
             CastButtons(emma.Name)[0].onClick.Invoke();
             yield return null;
-            yield return PlayAsWithTheSaveRootBlocked("Play as Emma");
+            yield return PlayAsWithTheSaveRootBlocked(FrontDoorWords.StartAs("Emma"));
 
             // Now with the creator opened and backed out of first, on another houseguest.
-            CastButtons("Customize Emma")[0].onClick.Invoke();
+            CastButtons(FrontDoorWords.Edit("Emma"))[0].onClick.Invoke();
             yield return null;
             Assert.That(Creator().IsShowing, Is.True);
             CastButtons(CharacterCreator.BackCaption)[0].onClick.Invoke();
@@ -592,10 +605,10 @@ namespace Gamesim.Tests.PlayMode
             var casey = CastTemplates.Find("casey-wilson");
             CastButtons(casey.Name)[0].onClick.Invoke();
             yield return null;
-            yield return PlayAsWithTheSaveRootBlocked("Play as Casey");
+            yield return PlayAsWithTheSaveRootBlocked(FrontDoorWords.StartAs("Casey"));
 
             // And retry, with the disk back, starts the season it says.
-            CastButtons("Play as Casey")[0].onClick.Invoke();
+            CastButtons(FrontDoorWords.StartAs("Casey"))[0].onClick.Invoke();
             yield return null;
             yield return null;
             Assert.That(CastScreen().IsShowing, Is.False);
@@ -658,17 +671,17 @@ namespace Gamesim.Tests.PlayMode
             CastButtons(emma.Name)[0].onClick.Invoke();
             yield return null;
             Assert.That(Studios(), Is.EqualTo(already + 1), "Picking a houseguest stands their model in a studio.");
-            CastButtons(CastSelect.CancelCaption)[0].onClick.Invoke();
+            CastButtons(BackToSettings)[0].onClick.Invoke();
             yield return null;
             Assert.That(CastScreen().IsShowing, Is.False);
-            Assert.That(Studios(), Is.EqualTo(already), "Cancel lets the model go.");
+            Assert.That(Studios(), Is.EqualTo(already), "The way back lets the model go.");
 
             director.NewSeason();
             yield return null;
             CastButtons(emma.Name)[0].onClick.Invoke();
             yield return null;
             Assert.That(Studios(), Is.EqualTo(already + 1));
-            CastButtons("Play as Emma")[0].onClick.Invoke();
+            CastButtons(FrontDoorWords.StartAs("Emma"))[0].onClick.Invoke();
             yield return null;
             yield return null;
             Assert.That(CastScreen().IsShowing, Is.False, "The season started.");
@@ -681,7 +694,7 @@ namespace Gamesim.Tests.PlayMode
             CastButtons(emma.Name)[0].onClick.Invoke();
             yield return null;
             Assert.That(Studios(), Is.EqualTo(already + 1));
-            CastButtons("Customize Emma")[0].onClick.Invoke();
+            CastButtons(FrontDoorWords.Edit("Emma"))[0].onClick.Invoke();
             yield return null;
             Assert.That(Creator().IsShowing, Is.True);
             CastButtons(CharacterCreator.StartCaption)[0].onClick.Invoke();
@@ -693,7 +706,7 @@ namespace Gamesim.Tests.PlayMode
         }
 
         /// <summary>
-        /// Play as and Customize stay inside the details, clear of Start and Cancel, on the short
+        /// Edit (and Play as, until menu slice 2 folded it into the start) stays inside the details, clear of the start and the way back, on the short
         /// wide frames that broke them. The details needed a fixed 448 at least, so at 21:9 with
         /// the larger text (a 375 panel) and at 32:9 with the standard text both buttons sat on the
         /// footer, which drew and took clicks over them.
@@ -720,9 +733,9 @@ namespace Gamesim.Tests.PlayMode
                 {
                     yield return LayCastScreenOutAt(frame.wide, frame.high, frame.text);
                     var panel = ScreenRect(ActiveCastRect(CastSelect.DetailPanelName));
-                    var start = ScreenRect((RectTransform)CastButtons(CastSelect.StartCaption).Single().transform);
-                    var cancel = ScreenRect((RectTransform)CastButtons(CastSelect.CancelCaption).Single().transform);
-                    foreach (string caption in new[] { "Play as Emma", "Customize Emma" })
+                    var start = ScreenRect((RectTransform)CastButtons(FrontDoorWords.StartAs("Emma")).Single().transform);
+                    var cancel = ScreenRect((RectTransform)CastButtons(BackToSettings).Single().transform);
+                    foreach (string caption in new[] { FrontDoorWords.Edit("Emma") })
                     {
                         var buttons = CastButtons(caption);
                         Assert.That(buttons, Has.Length.EqualTo(1), caption + " on " + frame.shape);
@@ -730,7 +743,7 @@ namespace Gamesim.Tests.PlayMode
                         Assert.That(Encloses(panel, button), Is.True,
                             caption + " at " + button + " spills out of the details at " + panel + " on " + frame.shape + ".");
                         Assert.That(button.Overlaps(start), Is.False, caption + " lies on Start on " + frame.shape + ".");
-                        Assert.That(button.Overlaps(cancel), Is.False, caption + " lies on Cancel on " + frame.shape + ".");
+                        Assert.That(button.Overlaps(cancel), Is.False, caption + " lies on the way back on " + frame.shape + ".");
                     }
                     // Room was made without taking her away: the model is still standing there.
                     var model = ActiveCastRect(CastSelect.LiveModelName);
@@ -811,7 +824,8 @@ namespace Gamesim.Tests.PlayMode
         /// A card submitted from the keyboard or a pad hands the focus to Play as, the next thing
         /// to press, and clearing the pick leaves it on that card. The press destroys the card it
         /// was made on, and the HUD's ring used to fall back to its first control - the top nav
-        /// chip, 25 presses from Play as.
+        /// chip, 25 presses from Play as. Since menu slice 2 the next thing to press is the one start,
+        /// which names the pick.
         /// </summary>
         [UnityTest]
         public IEnumerator CastSelect_SubmittingACardPutsTheKeyboardOnPlayAs()
@@ -830,8 +844,8 @@ namespace Gamesim.Tests.PlayMode
             yield return null;
             var selected = events.currentSelectedGameObject;
             Assert.That(selected, Is.Not.Null, "Something has the focus after the pick.");
-            Assert.That(selected.GetComponentsInChildren<TMPro.TMP_Text>(true).Any(label => label.text == "Play as Emma"), Is.True,
-                "The pick hands the focus to Play as, not to " + selected.name + ".");
+            Assert.That(selected.GetComponentsInChildren<TMPro.TMP_Text>(true).Any(label => label.text == FrontDoorWords.StartAs("Emma")), Is.True,
+                "The pick hands the focus to the start, which names her, not to " + selected.name + ".");
 
             card = CastButtons(emma.Name)[0];
             events.SetSelectedGameObject(card.gameObject);
@@ -840,7 +854,7 @@ namespace Gamesim.Tests.PlayMode
             yield return null;
             yield return null;
             selected = events.currentSelectedGameObject;
-            Assert.That(CastButtons("Play as Emma"), Is.Empty, "The pick is cleared.");
+            Assert.That(CastButtons(FrontDoorWords.StartAs("Emma")), Is.Empty, "The pick is cleared.");
             Assert.That(selected, Is.Not.Null);
             Assert.That(selected.name, Is.EqualTo(emma.Name), "Clearing the pick leaves the focus on her card, not on " + selected.name + ".");
             Assert.That(selected.activeInHierarchy, Is.True, "the card as drawn again, not the one the press destroyed.");
@@ -914,9 +928,10 @@ namespace Gamesim.Tests.PlayMode
             yield return null;
             Assert.That(CastScreen().IsShowing, Is.True);
             Assert.That(audio.CurrentMusic, Is.EqualTo(HouseAudio.Music.Silent), "Setup is silent, from settings as from the menu.");
-            CastButtons(CastSelect.CancelCaption)[0].onClick.Invoke();
+            // The way back names wherever the report left the player; the screen says which.
+            CastButtons(CastScreen().BackCaption)[0].onClick.Invoke();
             yield return null;
-            Assert.That(audio.CurrentMusic, Is.Not.EqualTo(HouseAudio.Music.Silent), "and cancelling it gives the music back.");
+            Assert.That(audio.CurrentMusic, Is.Not.EqualTo(HouseAudio.Music.Silent), "and backing out of it gives the music back.");
         }
 
         /// <summary>The cast screen's one live element of this name.</summary>
@@ -991,7 +1006,7 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(group.blocksRaycasts, Is.False);
             Assert.That(group.interactable, Is.False);
             Assert.That(group.alpha, Is.EqualTo(0f));
-            Assert.That(CastButtons(CastSelect.StartCaption), Is.Empty,
+            Assert.That(CastButtons(FrontDoorWords.StartAsNewcomer), Is.Empty,
                 "A hidden screen must offer no reachable controls.");
         }
     }

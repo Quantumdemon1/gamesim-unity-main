@@ -28,12 +28,12 @@ namespace Gamesim.Episode
         public static string LobbyLine(EpisodeState state, ContestantState npc)
         {
             if (state.phase == EpisodePhase.Campaign)
-                return npc.name + " votes on eviction night. You get one plea before the vote, and it costs one of your conversations.";
+                return npc.name + " votes on eviction night. You get one plea before the vote, and it costs one of your actions.";
             string decides = state.phase == EpisodePhase.Nomination ? npc.name + " decides who goes up this week."
                 : npc.id == state.vetoHolderId && npc.id == state.hohId ? npc.name + " holds the veto, and names the replacement if it is used."
                 : npc.id == state.vetoHolderId ? npc.name + " decides whether to use the veto."
                 : "If the veto is used, " + npc.name + " names the replacement.";
-            return decides + " You get one plea before the ceremony, and it costs one of your conversations.";
+            return decides + " You get one plea before the ceremony, and it costs one of your actions.";
         }
 
         /// <summary>
@@ -68,6 +68,19 @@ namespace Gamesim.Episode
             "Your conversation with " + name + " is open: its final plea costs no further action.";
 
         /// <summary>
+        /// Whether the conversation's page shows a plea's approaches - what <see cref="LobbyPanel"/> draws them for:
+        /// the game's category, a plea chosen for this houseguest and still open to make, no plea had and an action
+        /// left. The page's way back and Escape go back from it to what to ask (EpisodeDirector.ConversationNavigation.cs).
+        /// </summary>
+        private bool PleaDraftShowing(EpisodeState state, ContestantState npc) =>
+            state != null && npc != null && conversationCategory == GameCategoryCaption
+            && lobbyDeciderId == npc.id && lobbyAsk != null
+            && StrategyRules.Pleas(state, npc.id).Count > 0
+            && !state.lobbies.Any(l => l.week == state.week && l.phase == state.phase && l.deciderId == npc.id)
+            && EpisodeEngine.SocialActionsSpent(state) < EpisodeEngine.SocialActionBudget(state)
+            && StrategyRules.CanLobby(state, npc.id, lobbyAsk, lobbySubjectId, out _);
+
+        /// <summary>
         /// A plea, in the conversation with whoever is deciding: first what to ask, then how to put
         /// it, each approach with its chance beside it. Drawn above the dial, because in a window the
         /// plea is what the player came for. The chance is the player's read of the houseguest
@@ -84,7 +97,7 @@ namespace Gamesim.Episode
             }
             if (EpisodeEngine.SocialActionsSpent(state) >= EpisodeEngine.SocialActionBudget(state))
             {
-                hud.Paragraph("You have no conversations left this week to spend on a plea.");
+                hud.Paragraph("You have no actions left this week to spend on a plea.");
                 return;
             }
             if (lobbyDeciderId == npc.id && lobbyAsk != null && StrategyRules.CanLobby(state, npc.id, lobbyAsk, lobbySubjectId, out _))
@@ -130,7 +143,8 @@ namespace Gamesim.Episode
                     // other refusal makes it the one-shot plea above. Its tag points to the talk; the caption stays as it is.
                     hud.Tag(button, available ? tag : OpenConversationTag);
                 }
-                hud.Action(EpisodeHud.LobbyBackCaption, () => { ClearLobbyDraft(); Render(); });
+                // Back to what to ask is the page's one way back, at the column's top left (ConversationAsksBackCaption):
+                // the "Ask something else" row that stood here was a second.
                 return;
             }
             hud.Paragraph(LobbyLine(state, npc));

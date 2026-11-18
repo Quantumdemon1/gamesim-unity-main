@@ -436,8 +436,9 @@ namespace Gamesim.Episode
         private IEnumerator CloseEverything()
         {
             var cast = FindAnyObjectByType<CastSelect>();
-            // Its back chip says "Back to the menu" on a first launch's cast screen, and the usual words otherwise.
-            if (cast != null && cast.IsShowing) yield return ClickAny(BackChipCaption());
+            // Its one way back names where it lands - "Back to the main menu" on a first launch's cast
+            // screen, with "(season kept)" otherwise - and the screen says which this showing (menu slice 2).
+            if (cast != null && cast.IsShowing) yield return ClickAny(cast.BackCaption);
             var recap = FindAnyObjectByType<WeeklyRecapScreen>();
             if (recap != null && recap.IsOpen) yield return ClickAny(WeeklyRecapScreen.ContinueCaption);
             // The front door too. The cast screen is reached through the main menu, and a menu left
@@ -461,14 +462,6 @@ namespace Gamesim.Episode
             while (opening != null && opening.IsPlaying && Time.realtimeSinceStartupAsDouble < deadline) yield return null;
             yield return null; yield return null;
         }
-
-        /// <summary>The cast screen's back chip by the words it carries now: either of its two captions.</summary>
-        private static string BackChipCaption() =>
-            SceneManager.GetActiveScene().GetRootGameObjects()
-                .SelectMany(root => root.GetComponentsInChildren<UnityEngine.UI.Button>(true))
-                .Any(b => b.IsActive() && b.IsInteractable()
-                    && b.GetComponentsInChildren<TMPro.TMP_Text>(true).Any(t => t.text == CastSelect.BackToMenuCaption))
-                ? CastSelect.BackToMenuCaption : CastSelect.CancelCaption;
 
         /// <summary>A click on any active button under any root, by caption; the walk's helper only searches under the director.</summary>
         private IEnumerator ClickAny(string caption)

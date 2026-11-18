@@ -54,8 +54,11 @@ namespace Gamesim.Presentation
         public const string NextCaption = "Next";
         public const string FinishCaption = "Let's Go!";
         public const string SkipCaption = "Skip the tour";
-        /// <summary>The step before: on every step but the first, where there is none.</summary>
-        public const string BackCaption = "Back";
+        /// <summary>
+        /// The step before: on every step but the first, where there is none. "Previous", not a bare
+        /// "Back" (menu slice 2): it is not a way out of the tour - "Skip the tour" is, and Escape with it.
+        /// </summary>
+        public const string PreviousCaption = FrontDoorWords.TourPrevious;
 
         /// <summary>
         /// How to see the tour again, on every card, so it is there at the moment of skipping. True
@@ -168,7 +171,7 @@ namespace Gamesim.Presentation
             new Step("welcome", "Welcome to Gamesim: The House!",
                 "Let's take a quick tour so you know how everything works. " + ControlsLine),
             new Step("topbar", "Top Bar",
-                "The week and where the house is in it, how many houseguests are left, the social actions you have left this week, and who is Head of Household.",
+                "The week and where the house is in it, how many houseguests are left, the actions you have left this week, and who is Head of Household.",
                 "Week chip", "House pill"),
             new Step("sidemenu", "Side Rail",
                 "The Overview of the whole house and your notebook's pages: Houseguests, Relationships, Who is where, The vote and The story so far. Notebook, Save and Settings are at its foot. After a change, the save feedback tells you when it was saved or if saving failed.",
@@ -318,7 +321,7 @@ namespace Gamesim.Presentation
             step--;
             fadeFrom = layerGroup.alpha;
             Render();
-            // The keyboard stays on Back while there is a step before; on the first step, Next.
+            // The keyboard stays on Previous while there is a step before; on the first step, Next.
             if (EventSystem.current != null && IsShowing)
                 EventSystem.current.SetSelectedGameObject(step > 0 ? back.gameObject : next.gameObject);
         }
@@ -616,8 +619,8 @@ namespace Gamesim.Presentation
             Row(body.rectTransform, pad, y, inner, bodyHeight);
             y += bodyHeight + 18f * s;
 
-            // Skip at the left, then Back beside Next at the right: the way on and the way back together.
-            float buttonHeight = 36f * s, nextWidth = 124f * s, skipWidth = 116f * s, backWidth = 76f * s;
+            // Skip at the left, then Previous beside Next at the right: the step on and the step back together.
+            float buttonHeight = 36f * s, nextWidth = 124f * s, skipWidth = 116f * s, backWidth = 96f * s;
             Row((RectTransform)skip.transform, pad - 10f * s, y, skipWidth, buttonHeight);
             Row((RectTransform)next.transform, width - pad - nextWidth, y, nextWidth, buttonHeight);
             Row((RectTransform)back.transform, width - pad - nextWidth - 8f * s - backWidth, y, backWidth, buttonHeight);
@@ -719,9 +722,9 @@ namespace Gamesim.Presentation
             skipLabel = skip.GetComponentInChildren<TMP_Text>();
             skip.onClick.AddListener(Skip);
 
-            // Back is quieter than Next: words in the accent with no fill, brightening to the paper
+            // Previous is quieter than Next: words in the accent with no fill, brightening to the paper
             // with the keyboard on them as the skip's do.
-            back = TextButton(BackCaption, card, UiTheme.Accent, 14f);
+            back = TextButton(PreviousCaption, card, UiTheme.Accent, 14f);
             backLabel = back.GetComponentInChildren<TMP_Text>();
             back.onClick.AddListener(Back);
             back.gameObject.SetActive(false);

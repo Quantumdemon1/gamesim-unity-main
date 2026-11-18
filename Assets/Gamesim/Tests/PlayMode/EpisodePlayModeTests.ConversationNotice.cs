@@ -74,7 +74,7 @@ namespace Gamesim.Tests.PlayMode
                 yield return CaptureFraming("conversation-unavailable",
                     panel: (() => LastActive("Episode panel"), "The conversation's notice card"));
 
-            ButtonWithCaption("Close  [Esc]").onClick.Invoke();
+            ButtonWithCaption(Gamesim.Presentation.WayOut.CloseCaption).onClick.Invoke();
             yield return null;
             Assert.That(director.TalkingToId, Is.Null);
             AssertEquivalent(before, director.Snapshot);

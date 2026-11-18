@@ -103,15 +103,29 @@ namespace Gamesim.Presentation
         private float TextScale => textScale;
         private float textScale = 1f;
 
-        /// <summary>The caption the start control carries. Tests and the tour find it by this text.</summary>
-        public const string StartCaption = "Start this season";
-        public const string CancelCaption = "Cancel — keep this season";
         /// <summary>
-        /// The same control's caption on a first launch, reached from a main menu that offered no
-        /// Continue: there is no season to keep, and backing out goes to the menu. Its object keeps
-        /// the <see cref="CancelCaption"/> name.
+        /// The object name of the screen's one main button, whoever its caption names: "Start as
+        /// &lt;name&gt;" (<see cref="FrontDoorWords.StartAs"/>), or <see cref="FrontDoorWords.StartAsNewcomer"/>
+        /// with nobody picked (menu slice 2, the review's change 3). Its caption is what tests find it by.
         /// </summary>
-        public const string BackToMenuCaption = "Back to the menu";
+        public const string StartObjectName = "Start the season";
+
+        /// <summary>
+        /// The caption the one start carries now: the retained houseguest's first name when one was
+        /// brought back from the creator, the picked card's when not, a newcomer with neither.
+        /// </summary>
+        public string StartCaptionNow
+        {
+            get
+            {
+                if (retainedDraft != null) return FrontDoorWords.StartAs(FirstName(retainedDraft.Name));
+                var chosen = string.IsNullOrEmpty(selectedId) ? null : CastTemplates.Find(selectedId);
+                return chosen != null ? FrontDoorWords.StartAs(FirstName(chosen.Name)) : FrontDoorWords.StartAsNewcomer;
+            }
+        }
+
+        /// <summary>The way back's caption this showing: it names where leaving lands (<see cref="FrontDoorWords.CastBack"/>).</summary>
+        public string BackCaption => FrontDoorWords.CastBack(freshStart, backPlace);
 
         /// <summary>Names the card's parts carry, so a test can find them without guessing.</summary>
         public const string CardGlowName = "Glow";
@@ -130,8 +144,8 @@ namespace Gamesim.Presentation
         private RectTransform gridContent;
         /// <summary>Set by whatever shows a different list - a new screen, roster, category or page.</summary>
         private bool scrollToTop = true;
-        /// <summary>The details' Play as, when there is one: where the keyboard goes after a pick.</summary>
-        private Button playButton;
+        /// <summary>The one start: where the keyboard goes after a pick.</summary>
+        private Button startButton;
 
         private CastTemplates.Roster roster = CastTemplates.Roster.Regular;
         private string category = CastTemplates.AllCategories;
@@ -141,8 +155,10 @@ namespace Gamesim.Presentation
         private Action<SeasonBuilder.Choice> onStart;
         private Action onCancel;
         private Action<SeasonBuilder.Choice, CharacterDraft> onCustomise;
-        /// <summary>Whether this showing came from a first launch's menu: the back chip says <see cref="BackToMenuCaption"/>.</summary>
+        /// <summary>Whether this showing came from a first launch's menu: the way back has no season to keep.</summary>
         private bool freshStart;
+        /// <summary>Where the way back lands, in words (<see cref="FrontDoorWords.CastBack"/>); null is the main menu.</summary>
+        private string backPlace;
 
         private CanvasScaler scaler;
         private bool libraryMode;
@@ -309,15 +325,18 @@ namespace Gamesim.Presentation
         /// none. Without it the creator controls are simply not drawn, so a caller that has no
         /// creator still gets a working cast screen. <paramref name="freshStart"/> is true when the
         /// screen was opened from a main menu with no season to continue, and backing out goes back
-        /// to that menu: the back chip then says so rather than offering to keep a season.
+        /// to that menu: the way back then says so rather than keeping a season. <paramref name="backTo"/>
+        /// is where <paramref name="cancel"/> lands, in words - the main menu, Settings, the finale or
+        /// the house - for the way back to name (menu slice 2); null is the main menu.
         /// </summary>
         public void Show(Action<SeasonBuilder.Choice> start, Action cancel,
-            Action<SeasonBuilder.Choice, CharacterDraft> customise, bool freshStart = false)
+            Action<SeasonBuilder.Choice, CharacterDraft> customise, bool freshStart = false, string backTo = null)
         {
             onStart = start;
             onCancel = cancel;
             onCustomise = customise;
             this.freshStart = freshStart;
+            backPlace = backTo;
             roster = CastTemplates.Roster.Regular;
             category = CastTemplates.AllCategories;
             selectedId = null;
@@ -386,7 +405,7 @@ namespace Gamesim.Presentation
             liveModel = null;
             previewStatus = null;
             pickedGlow = null;
-            playButton = null;
+            startButton = null;
             // Deactivated before Destroy, which is deferred to the end of the frame: the screen
             // rebuilds itself on every click, so for one frame the old controls would otherwise
             // still be live alongside the new ones and "the Start button" would match twice.
@@ -403,6 +422,7 @@ namespace Gamesim.Presentation
             float frame = frameRect.width > 1f ? frameRect.width : 1920f;
             frameHeight = frameRect.height > 1f ? frameRect.height : 1080f;
             width = Mathf.Clamp(frame - FrameMargin, MinWidth, MaxWidth);
+            frameWidth = frame;
 
             // Opaque: a chooser this consequential should not have the game showing through it.
             var scrim = HudPrimitives.Fill("Scrim", transform, UiTheme.Background, 1);
@@ -420,7 +440,7 @@ namespace Gamesim.Presentation
             MainMenu.CornerLight(scrim, PackArt.GlowCyan, new Vector2(1f, 1f), new Vector2(1000f, 700f), .28f);
             HudPrimitives.Vignette(scrim);
             float margin = (frame - Width) * .5f;
-            if (margin >= SideDressing) Brand(scrim);
+            if (margin >= SideDressing) Brand(scrim, BrandDrop);
 
             content = new GameObject("Fixed setup navigation", typeof(RectTransform)).GetComponent<RectTransform>();
             content.SetParent(scrim, false);
@@ -477,7 +497,42 @@ namespace Gamesim.Presentation
             content.sizeDelta = new Vector2(Width, FooterHeight + errorHeight);
             cursor = 0f;
             Footer();
+
+            // The one way back (menu slice 2, the review's change 1), last so it draws over the
+            // screen: at its top left, named for where it lands and what it keeps. Escape and the
+            // pad's B do the same (EpisodeDirector.Controls.cs routes them to Dismiss). Text scale 1:
+            // this screen magnifies itself, way back and all, by its reference resolution (FontScale).
+            WayOut.AddBack(scrim, BackCaption, Dismiss, 1f, WayBackKeyHint);
         }
+
+        /// <summary>The key the way back names beside its caption, never in it.</summary>
+        public const string WayBackKeyHint = "Esc";
+
+        /// <summary>How far the brand stands under the frame's top: below the way back, which has the corner.</summary>
+        private static float BrandDrop => WayOut.Inset(1f) + WayOut.Height(1f) + 14f;
+
+        /// <summary>The frame's width in reference units at the last layout: the title keeps clear of the way back in it.</summary>
+        private float frameWidth = 1920f;
+
+        /// <summary>
+        /// The title's box, as (width, its centre's offset from the screen's): the screen's width
+        /// while the centred title stands clear of the way back at the top left; where it would not -
+        /// the larger texts on narrower frames - the room right of the way back, the title centred in
+        /// it and shrinking to fit, so it never runs under the way back.
+        /// </summary>
+        private (float width, float x) TitleBox(float wanted)
+        {
+            float backRight = WayOut.Inset(1f) + WayOut.Width(BackCaption, 1f, true, WayBackKeyHint);
+            float full = Width - Pad * 2f;
+            float centred = Mathf.Min(full, frameWidth - 2f * (backRight + TitleGap));
+            if (wanted <= centred) return (full, 0f);
+            float contentLeft = (frameWidth - Width) * .5f;
+            float left = Mathf.Max(Pad, backRight - contentLeft + TitleGap), right = Width - Pad;
+            return (right - left, (left + right) * .5f - Width * .5f);
+        }
+
+        /// <summary>The least room between the way back and the title.</summary>
+        private const float TitleGap = 12f;
 
         /// <summary>
         /// A thin bar in the gap beside the grid, there only while the grid holds more than it
@@ -615,7 +670,14 @@ namespace Gamesim.Presentation
             }
             else title.text = headline;
             title.characterSpacing = 2f;
-            Place(title.rectTransform, Width - Pad * 2f, 52f, -cursor);
+            title.textWrappingMode = TextWrappingModes.NoWrap;
+            title.gameObject.name = TitleName;
+            // Clear of the way back at the top left: where the centred title would reach it, a box
+            // right of it, the title shrinking to fit (never under 24).
+            var (titleWidth, titleX) = TitleBox(title.GetPreferredValues(title.text, 10000f, 52f).x);
+            title.enableAutoSizing = true; title.fontSizeMax = 42f; title.fontSizeMin = 24f;
+            Place(title.rectTransform, titleWidth, 52f, -cursor);
+            title.rectTransform.anchoredPosition = new Vector2(titleX, -cursor);
             cursor += 52f;
             Text("Pick who you play as, then set the size of the house. Everyone else is cast from the same roster.",
                 16f, UiTheme.Muted, 24f, TextAlignmentOptions.Center);
@@ -714,7 +776,9 @@ namespace Gamesim.Presentation
         /// </summary>
         private void Card(CastTemplates.Template template, int column, float y)
         {
-            bool chosen = string.Equals(selectedId, template.Id, StringComparison.Ordinal);
+            // Picked, and what the one start plays: a houseguest built from somebody else and brought
+            // back from the creator is who the start names then, so no card says PLAYING AS.
+            bool chosen = string.Equals(selectedId, template.Id, StringComparison.Ordinal) && !DraftOfSomeoneElse;
 
             var card = HudPrimitives.Fill(template.Name, content, UiTheme.CardFill, UiTheme.GlassRadius);
             card.anchorMin = new Vector2(0f, 1f);
@@ -725,10 +789,14 @@ namespace Gamesim.Presentation
 
             // The glow and ONE ring on the picked card; the hairline alone on the rest. The picked
             // card's edge is the portrait ring's gold, not the accent edge: that is for the one thing
-            // to act on now, and this screen always shows several active pills.
+            // to act on now, and this screen always shows several active pills. The glow is gold
+            // too (menu slice 2): the theme's blue is the focus ring's (below), and a picked card in
+            // it read as a second focus beside the one the keyboard was on.
             if (chosen)
             {
                 UiTheme.AddGlow(card, UiTheme.GlassRadius);
+                var glow = card.Find(CardGlowName);
+                if (glow != null) glow.GetComponent<Image>().color = new Color(CastSelectArt.Gold.r, CastSelectArt.Gold.g, CastSelectArt.Gold.b, PickedGlowAlpha);
                 UiTheme.AddBorder(card, UiTheme.GlassRadius, new Color(CastSelectArt.Gold.r, CastSelectArt.Gold.g, CastSelectArt.Gold.b, .9f));
             }
             else
@@ -743,13 +811,18 @@ namespace Gamesim.Presentation
             button.targetGraphic = image;
             var pick = template.Id;
             var cardName = template.Name;
+            // Clicked, or confirmed with Enter or the pad's A: the card is picked, and the one start
+            // names them. A second press on the picked card puts it down again - unless the start
+            // names a houseguest built from somebody else, when the press picks this card back.
             button.onClick.AddListener(() =>
             {
+                bool again = string.Equals(selectedId, pick, StringComparison.Ordinal) && !DraftOfSomeoneElse;
                 retainedDraft = null;
-                selectedId = string.Equals(selectedId, pick, StringComparison.Ordinal) ? null : pick;
+                selectedId = again ? null : pick;
                 Rebuild();
                 FocusAfterPick(cardName);
             });
+            AddFocusRing(card);
 
             // The portrait: a glow behind a picked one, the gold ring, the photo inside it.
             var portrait = new GameObject("Portrait", typeof(RectTransform)).GetComponent<RectTransform>();
@@ -969,7 +1042,7 @@ namespace Gamesim.Presentation
         ///
         /// <para>Edits the player made to this same houseguest in the creator and brought back are
         /// what both ways on use, and what the model shows. A draft of anybody else is not: it is
-        /// named in the footer, where Start commits it, and "Play as Emma" never plays as Robin.</para>
+        /// named in the footer and on the start, which commits it, and no card says PLAYING AS then.</para>
         /// </summary>
         private void DetailPanel(RectTransform scrim, float x, float top, float panelWidth, float panelHeight, float reserved)
         {
@@ -1099,21 +1172,18 @@ namespace Gamesim.Presentation
                 Line(panel, Localisation.Text(meaning), 13f, UiTheme.Muted, -y, 22f, 30f + kindWidth, inner - kindWidth - 10f, TextAlignmentOptions.Left);
             y += 32f;
 
-            // Play as them - the same commit as Start - or dress them in the creator first: as the
-            // player left them when they have been in the creator, as their card has them if not.
-            // Named by the name they will play under, which a trip through the creator can change.
+            // Dress them in the creator first: as the player left them when they have been in the
+            // creator, as their card has them if not. Named by the name they will play under, which a
+            // trip through the creator can change. Quiet glass: the one bright button on this screen
+            // is the start at the foot (menu slice 2, the review's change 3), where "Play as" went -
+            // picking the card is the play-as now, and the start names who.
+            if (onCustomise == null) return;
             string first = FirstName(retained != null && !string.IsNullOrWhiteSpace(retained.Name) ? retained.Name : chosen.Name);
-            bool customise = onCustomise != null;
-            float playWidth = customise ? inner * .6f : inner;
-            // Never under the panel's foot. The fit above keeps them in on every shape this screen
-            // is laid out for; on a frame shorter still they cover the category line, not the footer.
+            // Never under the panel's foot. The fit above keeps it in on every shape this screen is
+            // laid out for; on a frame shorter still it covers the category line, not the footer.
             float buttonsY = Mathf.Min(y, Mathf.Max(0f, panelHeight - 46f - 12f));
-            var play = PanelButton(panel, "Play as " + first, 20f, -buttonsY, playWidth, 46f, true, PlayAsChosen);
-            HudPrimitives.Chevron(play.transform, Color.white, 12f).anchoredPosition = new Vector2(-18f, 0f);
-            playButton = play;
-            if (customise)
-                PanelButton(panel, "Customize " + first, 20f + playWidth + 10f, -buttonsY, inner - playWidth - 10f, 46f, false,
-                    () => OpenCreator(retained != null ? retained.Copy() : CharacterDraft.FromAppearance(chosen)));
+            PanelButton(panel, FrontDoorWords.Edit(first), 20f, -buttonsY, inner, 46f, false,
+                () => OpenCreator(retained != null ? retained.Copy() : CharacterDraft.FromAppearance(chosen)));
         }
 
         /// <summary>
@@ -1138,6 +1208,36 @@ namespace Gamesim.Presentation
             return (Mathf.Max(80f, room - line), line);
         }
 
+        /// <summary>
+        /// Whether the start names a houseguest built from somebody other than the picked card - a
+        /// blank one, a saved one, or another card's - brought back from the creator. The pick stays
+        /// what the season is told (the choice's template), but no card says PLAYING AS then.
+        /// </summary>
+        private bool DraftOfSomeoneElse => retainedDraft != null
+            && !string.Equals(retainedDraft.SourceTemplateId, selectedId, StringComparison.Ordinal);
+
+        /// <summary>The picked card's gold glow: as strong as the theme's glow, in the pick's own colour.</summary>
+        private const float PickedGlowAlpha = .35f;
+
+        /// <summary>The ring a card shows while the keyboard or the pad is on it, and only then: the theme's blue, never the pick's gold.</summary>
+        public const string CardFocusRingName = "Focus ring";
+
+        /// <summary>
+        /// The focus ring on a card: the theme's glow blue, just outside the edge, lit only while the
+        /// card is selected (the shared way-out ring's own switch). The pick is gold and says so in a
+        /// word, so a focused card and a picked one never read as two picks.
+        /// </summary>
+        private static void AddFocusRing(RectTransform card)
+        {
+            UiTheme.AddBorder(card, UiTheme.GlassRadius, UiTheme.Glow);
+            var ring = card.GetChild(card.childCount - 1).GetComponent<Image>();
+            ring.name = CardFocusRingName;
+            ring.rectTransform.offsetMin = new Vector2(-4f, -4f); ring.rectTransform.offsetMax = new Vector2(4f, 4f);
+            ring.raycastTarget = false;
+            ring.enabled = false;
+            card.gameObject.AddComponent<WayOut.WayOutFocus>().Ring = ring;
+        }
+
         /// <summary>The retained draft when it is this houseguest's own - edited, brought back from the creator - and null otherwise.</summary>
         private CharacterDraft RetainedFor(CastTemplates.Template template) =>
             retainedDraft != null && template != null && string.Equals(retainedDraft.SourceTemplateId, template.Id, StringComparison.Ordinal)
@@ -1147,17 +1247,19 @@ namespace Gamesim.Presentation
         /// Puts the keyboard back where the player was after a card press rebuilt the screen.
         ///
         /// <para>The press destroys the card it was made on, and when the selection dies the HUD's
-        /// ring falls back to its first control, the top nav chip - after every pick, Play as was
-        /// then 25 presses away and the player's place in the grid was lost. After a pick the next
-        /// thing to press is Play as; after clearing one it is the same card, drawn again. The HUD
-        /// keeps any selection that is still eligible when it rewires, so this one holds.</para>
+        /// ring falls back to its first control, the top nav chip - after every pick, the next
+        /// press was then 25 presses away and the player's place in the grid was lost. After a pick
+        /// the next thing to press is the one start, which names them now (menu slice 2: it took
+        /// over from the details' Play as); after clearing one it is the same card, drawn again.
+        /// The HUD keeps any selection that is still eligible when it rewires, so this one holds.</para>
         /// </summary>
         private void FocusAfterPick(string cardName)
         {
             var events = EventSystem.current;
             if (events == null || events.alreadySelecting) return;
-            var card = playButton == null && gridContent != null ? gridContent.Find(cardName) : null;
-            var next = playButton != null ? playButton.gameObject : card != null ? card.gameObject : null;
+            bool picked = !string.IsNullOrEmpty(selectedId);
+            var card = !picked && gridContent != null ? gridContent.Find(cardName) : null;
+            var next = picked && startButton != null ? startButton.gameObject : card != null ? card.gameObject : null;
             if (next != null) events.SetSelectedGameObject(next);
         }
 
@@ -1321,7 +1423,9 @@ namespace Gamesim.Presentation
                 // 600 for the panel, 320 for the start: the chips beside the count want 140 each to
                 // hold their words at thirteen.
                 HouseSizePanel(bar, left, 600f, true);
-                StartButtons(bar, left + 616f + 160f, 320f, left + 948f + 110f, 220f);
+                // The one start at the row's right end, where cancel stood (menu slice 2): the way
+                // back went to the screen's top left.
+                StartButton(bar, left + group - 160f, 320f);
                 // 500 for the footnote, which sets at 467 at thirteen; the chip's 280 holds its longer
                 // caption at sixteen; the line has the 364 left, two lines of thirteen in a box of 40.
                 var under = Row(ConversationPreviewRowHeight);
@@ -1340,13 +1444,14 @@ namespace Gamesim.Presentation
                 // stops 1 short of the footnote's box, which it ran 7 into (the quick fixes, 2026-11-03). The
                 // footer's first line moved up 4 and the line under the row lost 3 to pay for it.
                 Space(8f);
-                // The chip, the start and cancel as one group of 844, the narrowest frame's row: 17 between
-                // them, so that the start's glow, ten past its edge, stops 7 short of the chip and of cancel.
+                // The chip and the start as one group of 844, the narrowest frame's row: the chip on the
+                // left, the one start at the right end, where cancel stood until the way back went to the
+                // screen's top left (menu slice 2). The start's glow, ten past its edge, stays inside.
                 var row = Row(60f);
                 const float group = 844f;
                 float left = -group * .5f;
                 ConversationPreviewChip(row, left + 130f, 260f, HouseSizeChipHeight);
-                StartButtons(row, left + 277f + 150f, 300f, left + 594f + 125f, 250f);
+                StartButton(row, left + group - 170f - 10f, 340f);
                 // The start's glow reaches 7 under the row's foot, a pixel past its gap of 6: the line, in a box
                 // 1.3 times its thirteen, starts 2 below the glow, and ends 4 above the footer's foot.
                 Space(3f);
@@ -1525,33 +1630,36 @@ namespace Gamesim.Presentation
             return chip;
         }
 
-        /// <summary>The one control this screen exists to reach - wide, the action blue, an arrow saying it leads on - and cancel.</summary>
-        private void StartButtons(RectTransform bar, float startX, float startWidth, float cancelX, float cancelWidth)
+        /// <summary>
+        /// The one control this screen exists to reach, and its one bright button (menu slice 2, the
+        /// review's change 3) - wide, the action blue, an arrow saying it leads on - at the foot's right
+        /// end. It names who the season starts as: the card picked, or the houseguest brought back
+        /// from the creator, or a newcomer with neither (<see cref="StartCaptionNow"/>). The details'
+        /// "Play as", a second bright button, went: picking the card is the play-as now.
+        /// </summary>
+        private void StartButton(RectTransform bar, float startX, float startWidth)
         {
-            var start = Chip(bar, StartCaption, startX, startWidth, true, StartSeason);
+            var start = Chip(bar, StartCaptionNow, startX, startWidth, true, StartSeason);
+            start.gameObject.name = StartObjectName;
             ((RectTransform)start.transform).sizeDelta = new Vector2(startWidth, 54f);
             var startWords = start.GetComponentInChildren<TMP_Text>();
             if (startWords != null) { startWords.fontSizeMax = 20f; startWords.fontSize = 20f; }
             HudPrimitives.Chevron(start.transform, Color.white, 14f).anchoredPosition = new Vector2(-22f, 0f);
-            var cancel = Chip(bar, freshStart ? BackToMenuCaption : CancelCaption, cancelX, cancelWidth, false, Dismiss);
-            // The object keeps its one name whichever words it carries.
-            cancel.gameObject.name = CancelCaption;
-            ((RectTransform)cancel.transform).sizeDelta = new Vector2(cancelWidth, 46f);
+            startButton = start;
         }
 
         /// <summary>
-        /// The footer's commit: the roster, the size, the pick or the retained draft, and the custom
-        /// slots, handed back. The retained draft wins whoever it is, as the line above Start says.
+        /// The one start's commit: the roster, the size, the pick or the retained draft, and the custom
+        /// houseguests, handed back. The retained draft wins whoever it is, as the line above the start
+        /// and its caption say.
+        ///
+        /// <para>The details' "Play as" committed <c>RetainedFor(chosen)</c> instead: the same draft
+        /// whenever the draft was the picked card's own or there was none, and the card alone when the
+        /// draft was somebody else's (so "Play as Emma" after building Robin played Emma). That case is
+        /// one press away still: pressing the picked card puts the other houseguest down and picks the
+        /// card back, and this start then commits exactly what Play as did (menu slice 2).</para>
         /// </summary>
         private void StartSeason() => Commit(retainedDraft);
-
-        /// <summary>
-        /// The details' commit: the same, as the houseguest the Play as button names - their own
-        /// retained edits if the player brought some back from the creator, their card if not.
-        /// A draft of somebody else used to win here too, so "Play as Emma" after building Robin
-        /// started the season as Robin, with Emma cast as one of the others.
-        /// </summary>
-        private void PlayAsChosen() => Commit(RetainedFor(string.IsNullOrEmpty(selectedId) ? null : CastTemplates.Find(selectedId)));
 
         private void Commit(CharacterDraft authored)
         {
@@ -1738,18 +1846,21 @@ namespace Gamesim.Presentation
 
         // ---------------------------------------------------------------- layout
 
+        /// <summary>The screen's title, by name for tests: it keeps clear of the way back.</summary>
+        public const string TitleName = "Cast title";
+
         /// <summary>
         /// The brand in the corner, as every mockup carries it: the house mark and the name in the
         /// title blue, lit from above, and the strap under it.
         /// </summary>
-        private static void Brand(RectTransform scrim)
+        private static void Brand(RectTransform scrim, float drop)
         {
             var brand = new GameObject("Brand", typeof(RectTransform)).GetComponent<RectTransform>();
             brand.SetParent(scrim, false);
             brand.anchorMin = brand.anchorMax = new Vector2(0f, 1f);
             brand.pivot = new Vector2(0f, 1f);
             brand.sizeDelta = new Vector2(300f, 64f);
-            brand.anchoredPosition = new Vector2(32f, -26f);
+            brand.anchoredPosition = new Vector2(32f, -drop);
             float left = 0f;
             var mark = BrandMark.Draw("Brand mark", brand, UiTheme.Heading);
             if (mark != null)

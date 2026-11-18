@@ -13,7 +13,21 @@ namespace Gamesim.Episode
         public const string DealsCategoryCaption = DealsAndPromisesName;
         public const string PressureCategoryCaption = "Pressure and rumours";
         public const string TogetherCategoryCaption = "Do something together";
-        public const string ConversationTopicsBackCaption = "Back to topics";
+        public const string ConversationTopicsBackCaption = WayOut.BackPrefix + "topics";
+        /// <summary>
+        /// A category page's way back while a level inside it is open (menu slice 2, change 1): with one
+        /// verb's people open, back to the page's choices; with a plea's approaches open, back to what
+        /// to ask. Escape and B go back that one level too, so the key beside the words is true. The
+        /// plea's "Ask something else" row is folded into it.
+        /// </summary>
+        public const string ConversationChoicesBackCaption = WayOut.BackPrefix + "the choices";
+        public const string ConversationAsksBackCaption = WayOut.BackPrefix + "the asks";
+
+        /// <summary>The way back of the category page as it stands: an open level inside it first, else the topics.</summary>
+        private string ConversationPageBackCaption(EpisodeState state, ContestantState npc) =>
+            ConversationPicker != null ? ConversationChoicesBackCaption
+            : PleaDraftShowing(state, npc) ? ConversationAsksBackCaption
+            : ConversationTopicsBackCaption;
 
         private string conversationCategory, conversationMenuFor, conversationMenuSession;
         private int conversationMenuRevision;
@@ -70,7 +84,19 @@ namespace Gamesim.Episode
             Render();
         }
 
+        /// <summary>
+        /// One level back: a conversation's own levels first, then - for Escape, Start and the pad's B
+        /// (<paramref name="toTopics"/> false) - a decision page's way back, which they do exactly as
+        /// the control does (EpisodeHud.DecisionPageBack.cs). Without one, false: the panel closes.
+        /// </summary>
         private bool BackConversationNavigation(bool toTopics = false)
+        {
+            if (BackConversationLevel(toTopics)) return true;
+            if (toTopics || hud == null || IsConversationExchangePlaying) return false;
+            return hud.TakeDecisionPageBack();
+        }
+
+        private bool BackConversationLevel(bool toTopics)
         {
             // Back while a line plays is one level, as everywhere in the conversation (PROGRAM.md:14):
             // it skips the line, as the exchange's own Skip does, and leaves the player on the page it
@@ -91,8 +117,10 @@ namespace Gamesim.Episode
                 Render();
                 return true;
             }
+            // One level, the one the page's way back names (ConversationPageBackCaption): a draft the
+            // page does not show is no level of its own.
             if (!toTopics && ConversationPicker != null) conversationPick = null;
-            else if (!toTopics && lobbyAsk != null) ClearLobbyDraft();
+            else if (!toTopics && PleaDraftShowing(projected, projected?.Find(focusedNpc.Id))) ClearLobbyDraft();
             else
             {
                 conversationCategory = null; invitedDealId = null; conversationIntent = null;
@@ -120,7 +148,7 @@ namespace Gamesim.Episode
                 hud.SpeakerTitle(npc.id, npc.name, npc.pronouns);
                 hud.Heading("WHAT HAPPENED");
                 hud.Paragraph(conversationNarration);
-                hud.Action(ConversationTopicsBackCaption, () =>
+                hud.DecisionPageBack(ConversationTopicsBackCaption, () =>
                 {
                     if (ConversationNavigationCurrent(token, state, npc.id)) BackConversationNavigation(true);
                 });
@@ -162,9 +190,11 @@ namespace Gamesim.Episode
             string mood = npc.mood != "Neutral" ? MoodLine(state, npc) : null;
             hud.Paragraph(Standing(state, npc.id) + (mood != null ? " · " + mood.Substring("Mood: ".Length) : ""));
             hud.Paragraph(ActionsLeft(state) + " left");
-            hud.Action(ConversationTopicsBackCaption, () =>
+            string pageBack = ConversationPageBackCaption(state, npc);
+            bool toTopics = pageBack == ConversationTopicsBackCaption;
+            hud.DecisionPageBack(pageBack, () =>
             {
-                if (ConversationNavigationCurrent(token, state, npc.id)) BackConversationNavigation(true);
+                if (ConversationNavigationCurrent(token, state, npc.id)) BackConversationLevel(toTopics);
             });
             if (cameraRig != null) cameraRig.ConversationWindowOffset = hud.ConversationWindowOffset;
             // What came of the act is said on its category's page whether or not its lines were spoken: an ask,

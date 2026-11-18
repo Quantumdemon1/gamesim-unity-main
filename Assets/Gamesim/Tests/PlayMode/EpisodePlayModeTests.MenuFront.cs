@@ -107,7 +107,7 @@ namespace Gamesim.Tests.PlayMode
             yield return TourFrames(2);
             try
             {
-                Assert.That(TourButton(tour, HouseTutorial.BackCaption), Is.Null, "No step before the first.");
+                Assert.That(TourButton(tour, HouseTutorial.PreviousCaption), Is.Null, "No step before the first.");
                 Assert.That(TourButton(tour, "Skip the tour"), Is.Not.Null);
                 var note = tour.GetComponentsInChildren<TMP_Text>(true).Single(label => label.name == HouseTutorial.ReplayNoteName);
                 Assert.That(note.fontSize, Is.GreaterThanOrEqualTo(14f), "No label under 14 px.");
@@ -124,15 +124,15 @@ namespace Gamesim.Tests.PlayMode
                 yield return null;
                 Assert.That(tour.StepIndex, Is.EqualTo(2));
 
-                TourButton(tour, HouseTutorial.BackCaption).onClick.Invoke();
+                TourButton(tour, HouseTutorial.PreviousCaption).onClick.Invoke();
                 yield return null;
                 Assert.That(tour.StepIndex, Is.EqualTo(1), "Back goes to the step before.");
                 Assert.That(TourText(tour, "Title"), Is.EqualTo(second));
                 Assert.That(sounds, Is.EqualTo(2), "Only Next plays the step sound.");
-                TourButton(tour, HouseTutorial.BackCaption).onClick.Invoke();
+                TourButton(tour, HouseTutorial.PreviousCaption).onClick.Invoke();
                 yield return null;
                 Assert.That(tour.StepIndex, Is.EqualTo(0));
-                Assert.That(TourButton(tour, HouseTutorial.BackCaption), Is.Null, "Back goes once the first step is back.");
+                Assert.That(TourButton(tour, HouseTutorial.PreviousCaption), Is.Null, "Previous goes once the first step is back.");
                 tour.StepSound = before;
 
                 TourButton(tour, "Skip the tour").onClick.Invoke();

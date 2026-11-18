@@ -41,7 +41,7 @@ namespace Gamesim.Presentation
             assemblyStatus=Label("Assembly status",assemblyPanel,"Walking to reserved competition stations. The attempt clock has not started.",17,30,60,1000,44,UiTheme.Muted);
             assemblyContinue=Button("Continue to competition",assemblyPanel,"Skip assembly view",30,112,380,48,FinishAssembly);
             assemblyPause=Button("Pause assembly",assemblyPanel,"Pause",426,112,240,48,TogglePause);
-            assemblyCancel=Button("Cancel assembly",assemblyPanel,"Back to briefing",682,112,348,48,()=>cancelAction?.Invoke());
+            assemblyCancel=Button("Cancel assembly",assemblyPanel,BackToBriefingCaption,682,112,348,48,()=>cancelAction?.Invoke());
             Secondary(assemblyPause);Secondary(assemblyCancel);
             var ring=new[]{assemblyContinue,assemblyPause,assemblyCancel};
             for(int i=0;i<ring.Length;i++)

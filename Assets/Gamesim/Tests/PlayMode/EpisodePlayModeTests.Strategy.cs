@@ -117,7 +117,7 @@ namespace Gamesim.Tests.PlayMode
             yield return null;
             Assert.That(ButtonWithCaptionOrNull(EpisodeHud.LobbyApproachCaption(LobbyApproach.Emotional, false)), Is.Not.Null,
                 "A plea for somebody else is put in the reference's other words.");
-            ButtonWithCaption(EpisodeHud.LobbyBackCaption).onClick.Invoke();
+            ButtonWithCaption(EpisodeDirector.ConversationAsksBackCaption).onClick.Invoke();
             yield return null;
             Assert.That(ButtonWithCaptionOrNull(EpisodeHud.LobbyAskCaption(state, name, LobbyAsk.Keep, null)), Is.Not.Null,
                 "Back returns to what to ask.");

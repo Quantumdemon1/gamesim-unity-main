@@ -101,9 +101,13 @@ namespace Gamesim.Episode
             // as a row of its own it was 69 units of the foot the recommended moves did not have.
             // In the button's own chrome: its ground and its edge are FixedButton's (the kit's
             // secondary chrome, T0), never painted over here.
+            // The briefing's one way out is "Close" in the very corner (menu slice 2), with the key it
+            // answers to beside it; the way to the map stands left of it.
+            var close = (RectTransform)WayOut.AddClose(panel, director.EndOverview, FontScale, InputGlossary.BackKeyHint).transform;
+            float mapRight = close.sizeDelta.x + WayOut.Inset(FontScale) + 12f;
             var map = FixedButton(panel, EpisodeDirector.ShowMapCaption, Vector2.zero, new Vector2(MapButtonWidth, MapButtonHeight), director.HideBriefing);
             var mapRect = (RectTransform)map.transform;
-            Anchor(mapRect, new Vector2(1f, 1f), new Vector2(1f, 1f), new Vector2(-18f, -14f), new Vector2(MapButtonWidth, MapButtonHeight));
+            Anchor(mapRect, new Vector2(1f, 1f), new Vector2(1f, 1f), new Vector2(-mapRight, -14f), new Vector2(MapButtonWidth, MapButtonHeight));
             var mapWords = map.GetComponentInChildren<TMPro.TMP_Text>();
             if (mapWords != null) { mapWords.alignment = TMPro.TextAlignmentOptions.Center; mapWords.color = Accent; }
         }

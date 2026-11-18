@@ -110,7 +110,7 @@ namespace Gamesim.Tests.PlayMode
         [UnityTest, Timeout(600000)]
         public IEnumerator FrontDoor_TheKeyboardStartsASeasonFromTheMainMenu()
         {
-            // The first route: a card, then Play as.
+            // The first route: a card, then the one start, which names them (menu slice 2: it took over from Play as).
             string before = director.Snapshot.sessionId;
             director.OpenMainMenu();
             yield return Frames(2);
@@ -118,30 +118,30 @@ namespace Gamesim.Tests.PlayMode
             yield return ReachAndPress(MainMenu.NewSeasonCaption, pad: false);
             Assert.That(CastScreen().IsShowing, Is.True, "Enter on Start a new season opens the cast screen: " + lastSubmit);
             yield return ReachAndPress(IsCastCard, "a cast card", pad: false);
-            Assert.That(SelectedCarries("Play as ", prefix: true), Is.True, "Enter on a card puts the keyboard on Play as, not on " + SelectedName() + ".");
+            Assert.That(SelectedCarries(FrontDoorWords.StartAsPrefix, prefix: true), Is.True, "Enter on a card puts the keyboard on the start, not on " + SelectedName() + ".");
             yield return PressSubmit(false);
             yield return Frames(3);
-            AssertASeasonStarted(before, "The keyboard's Play as");
+            AssertASeasonStarted(before, "The keyboard's start");
 
-            // The second: Customize, the name typed on the Identity step (typing is the allowed raw
-            // read), then Start, reached by Tab past the step's fields.
+            // The second: Edit <name> (Customize until menu slice 2), the name typed on the Identity
+            // step (typing is the allowed raw read), then Start, reached by Tab past the step's fields.
             yield return FreshEpisode();
             before = director.Snapshot.sessionId;
             director.OpenMainMenu();
             yield return Frames(2);
             yield return ReachAndPress(MainMenu.NewSeasonCaption, pad: false);
             yield return ReachAndPress(IsCastCard, "a cast card", pad: false);
-            yield return ReachAndPress("Customize ", pad: false, prefix: true);
-            Assert.That(Creator().IsShowing, Is.True, "Enter on Customize opens the creator: " + lastSubmit);
-            // Customize opens the detailed creator on its Appearance step, which has no fields; the
+            yield return ReachAndPress(FrontDoorWords.Edit(CharacterNames.FirstName(CastTemplates.Find(CastScreen().PreviewedId).Name)), pad: false);
+            Assert.That(Creator().IsShowing, Is.True, "Enter on Edit opens the creator: " + lastSubmit);
+            // Edit opens the detailed creator on its Appearance step, which has no fields; the
             // name is the Identity step's.
-            Assert.That(Creator().Mode, Is.EqualTo(CharacterCreator.EntryMode.Detailed), "Customize opens the detailed creator.");
+            Assert.That(Creator().Mode, Is.EqualTo(CharacterCreator.EntryMode.Detailed), "Edit opens the detailed creator.");
             yield return ReachAndPress("Identity", pad: false);
             CreatorEntryName("Keyboard Kim");
             yield return null;
             yield return TabToAndPress(CharacterCreator.StartCaption);
             yield return Frames(3);
-            AssertASeasonStarted(before, "The keyboard's Customize");
+            AssertASeasonStarted(before, "The keyboard's Edit");
             Assert.That(director.Snapshot.Find(director.Snapshot.playerId).name, Is.EqualTo("Keyboard Kim"), "The typed name is the player's.");
         }
 
@@ -163,10 +163,10 @@ namespace Gamesim.Tests.PlayMode
 
             yield return ReachAndPress(MainMenu.NewSeasonCaption, pad: true);
             yield return ReachAndPress(IsCastCard, "a cast card", pad: true);
-            Assert.That(SelectedCarries("Play as ", prefix: true), Is.True, "A on a card puts the pad on Play as, not on " + SelectedName() + ".");
+            Assert.That(SelectedCarries(FrontDoorWords.StartAsPrefix, prefix: true), Is.True, "A on a card puts the pad on the start, not on " + SelectedName() + ".");
             yield return PressSubmit(true);
             yield return Frames(3);
-            AssertASeasonStarted(before, "The pad's Play as");
+            AssertASeasonStarted(before, "The pad's start");
             Assert.That(director.HintsForPad, Is.True, "The house speaks of the pad it was started with.");
         }
 
@@ -385,7 +385,7 @@ namespace Gamesim.Tests.PlayMode
             yield return ReachAndPress(IsCastCard, "a cast card", pad: true);
             yield return PressSubmit(true);
             yield return Frames(3);
-            AssertASeasonStarted(before, "The pad's Play as");
+            AssertASeasonStarted(before, "The pad's start");
             director.SuspendNpcAutonomyForDiagnostics();
             player.Agent.speed = 25; player.Agent.acceleration = 100;
             director.SetCeremonyPace(CeremonyPace.Quick);

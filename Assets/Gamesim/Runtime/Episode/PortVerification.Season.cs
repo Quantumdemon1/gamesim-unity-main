@@ -141,12 +141,12 @@ namespace Gamesim.Episode
             // checking hardest, because a cancel that has already written a slot is unrecoverable.
             yield return ClickSeasonButton(EpisodeDirector.NewSeasonInNewSlotCaption);
             RequireSeason(seasonDirector.SavePath == previousSlot,"Opening the cast screen must not change the active slot.");
-            yield return ClickSeasonButton(CastSelect.CancelCaption);
+            yield return ClickSeasonButton(FrontDoorWords.CastBack(false, FrontDoorWords.SettingsPlace));
             RequireSeason(seasonDirector.SavePath == previousSlot && File.Exists(previousSlot)
                 && seasonDirector.Snapshot.contestants.Count == previousCast,"Cancelling the cast screen must leave the running season and its slot untouched.");
 
             yield return ClickSeasonButton(EpisodeDirector.NewSeasonInNewSlotCaption);
-            yield return ClickSeasonButton(CastSelect.StartCaption);
+            yield return ClickSeasonButton(FrontDoorWords.StartAsNewcomer);
             var fresh = seasonDirector.Snapshot;
             RequireSeason(seasonDirector.SavePath != previousSlot && File.Exists(previousSlot),"Creating the QA season must preserve the profile's previous save slot.");
             RequireSeason(fresh.phase == EpisodePhase.Social && fresh.week == 1
@@ -650,7 +650,7 @@ namespace Gamesim.Episode
         {
             yield return DismissSeasonCompetitionResult();
             if (seasonDirector.IsWeeklyRecapOpen) yield return ClickSeasonButton(WeeklyRecapScreen.ContinueCaption);
-            else if (seasonDirector.IsPanelOpen) yield return ClickSeasonButton("Close  [Esc]");
+            else if (seasonDirector.IsPanelOpen) yield return ClickSeasonButton(WayOut.CloseCaption);
             var seat=seasonPlayer.GetComponent<Gamesim.House.DiarySeatPose>();
             float deadline=Time.realtimeSinceStartup+3f;
             while(seat!=null && seat.Active && Time.realtimeSinceStartup<deadline)yield return null;

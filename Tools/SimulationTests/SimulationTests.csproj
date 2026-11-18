@@ -89,6 +89,8 @@
     <!-- Competition yard slice 2: the list of what stands in the yard when; pure, so it runs here too. -->
     <Compile Include="$(EditMode)CompetitionYardPiecesTests.cs" />
     <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/CompetitionYardPieces.cs" />
+    <!-- Menu slice 2, part d: the decisions' and the cards' one way out, held in the source; pure, so it runs here too. -->
+    <Compile Include="$(EditMode)MenuOneWayBackDecisionsScanTests.cs" />
     <Compile Include="$(EditMode)HaveNotTests.cs" />
     <Compile Include="$(EditMode)StrategyRulesTests.cs" />
     <Compile Include="$(EditMode)VetoDrawTests.cs" />
@@ -497,6 +499,21 @@
     <Compile Include="$(EditMode)WindowWriteScanTests.cs" />
     <!-- The menu review's quick wins at the front door and in Settings, held in the source (part b, items 13 to 17). -->
     <Compile Include="$(EditMode)MenuFrontWordsScanTests.cs" />
+    <!-- Menu slice 2, part b: the front door's words for the one way back and the one start (plain C#, beside WayOut.cs). -->
+    <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/FrontDoorWords.cs" />
+    <Compile Include="$(EditMode)MenuOneWayBackFrontWordsTests.cs" />
+    <!-- The one way out's words and measures (menu slice 2): its plain-C# half, without the builders. -->
+    <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/WayOut.cs" />
+    <Compile Include="$(EditMode)WayOutWordsTests.cs" />
+    <!-- Menu slice 2, part a: the creator's steps, marks, missing-thing link and words; plain C#, with its source scans. -->
+    <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/CreatorSteps.cs" />
+    <Compile Include="$(EditMode)MenuOneWayBackCreatorTests.cs" />
+    <!-- Menu slice 2, part c: the in-season panels' ways out and words, held in the source (the HUD's own captions are EditMode only). -->
+    <Compile Include="$(EditMode)MenuOneWayBackPanelsTests.cs" />
+    <!-- Menu slice 2, the rule over every screen: ways out drawn and spelled by the helper, no old exit words or old names. -->
+    <Compile Include="$(EditMode)MenuOneWayBackRuleScanTests.cs" />
+    <!-- Menu slice 2's review: every way out is made and dressed by the screen it is on (the HUD's hover tick, dip and guard; the report's own control). -->
+    <Compile Include="$(EditMode)MenuWayOutFoleyScanTests.cs" />
     <!-- A frame wider than 16:9 lays its canvases out by height (A12b); 16:9 and narrower keep their own match. -->
     <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/FrameMatch.cs" />
     <Compile Include="$(EditMode)FrameMatchTests.cs" />

@@ -105,18 +105,23 @@ namespace Gamesim.Tests.PlayMode
                 var tag = row.transform.Find("Tag");
                 Rules2LabelWhole(tag != null ? tag.GetComponentInChildren<TMP_Text>(true) : null, approach + "'s tag" + at, failures);
             }
-            // Every label the plea panel draws, from its heading (drawn just above the question) to its way back: the
-            // heading, the question, the odds note, the no-talk paragraph, each approach's caption and tag, "Ask something else".
+            // Every label the plea panel draws, from its heading (drawn just above the question) to its last approach: the
+            // heading, the question, the odds note, the no-talk paragraph, each approach's caption and tag. Its way back,
+            // to what to ask, is the column's own at its top left (menu slice 2), laid out whole as well.
             var panel = question.transform.parent;
             int first = question.transform.GetSiblingIndex() - 1;
             var heading = first >= 0 ? panel.GetChild(first).GetComponent<TMP_Text>() : null;
             Assert.That(heading != null && heading.text == EpisodeDirector.LobbyHeading(source), Is.True,
                 "The plea panel's heading stands over its question" + at + ".");
-            var back = FindButton(EpisodeHud.LobbyBackCaption);
-            Assert.That(back.transform.parent, Is.SameAs(panel), "The way back is the plea panel's last row" + at + ".");
-            var panelLabels = Rules2LabelsBetween(panel, first, back.transform.GetSiblingIndex());
+            var back = Hud.DecisionPageBackControl;
+            Assert.That(back != null && WayOut.CaptionOf(back) == EpisodeDirector.ConversationAsksBackCaption, Is.True,
+                "The plea's way back is the column's, back to what to ask" + at + ".");
+            Rules2LabelWhole(back.GetComponentsInChildren<TMP_Text>(true).First(label => label.text == EpisodeDirector.ConversationAsksBackCaption),
+                "The plea's way back" + at, failures);
+            int last = LobbyApproach.All.Max(approach => FindButton(EpisodeHud.LobbyApproachCaption(approach, true)).transform.GetSiblingIndex());
+            var panelLabels = Rules2LabelsBetween(panel, first, last);
             foreach (string copy in LobbyApproach.All.Select(approach => EpisodeHud.LobbyApproachCaption(approach, true))
-                .Concat(new[] { EpisodeHud.LobbyBackCaption, line, question.text, heading.text }))
+                .Concat(new[] { line, question.text, heading.text }))
                 Assert.That(panelLabels.Count(label => label.text == copy), Is.EqualTo(1), "'" + copy + "' is one of the plea panel's labels" + at + ".");
             Assert.That(panelLabels.Count(label => label.name == EpisodeHud.OddsNoteName), Is.EqualTo(1), "The odds note is one of them" + at + ".");
             foreach (var label in panelLabels) Rules2LabelWhole(label, "The plea panel" + at, failures);

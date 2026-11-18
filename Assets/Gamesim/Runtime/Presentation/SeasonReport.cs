@@ -47,7 +47,7 @@ namespace Gamesim.Presentation
     /// a pad's right stick scroll the season itself.</para>
     /// </summary>
     [DisallowMultipleComponent]
-    public sealed partial class SeasonReport : MonoBehaviour
+    public sealed partial class SeasonReport : MonoBehaviour, IWayOutHost
     {
         private const float Pad = 28f;
 
@@ -829,6 +829,11 @@ namespace Gamesim.Presentation
         /// card over the place the player is on has it. It was the last of the footer's ways on.
         /// </summary>
         private Button CloseCorner(RectTransform sheet) => WayOut.AddClose(sheet, Close, TextScale, CloseKeyHint);
+
+        // The Close is a report control as its footer way was (SeasonReportControl): a lean of the right
+        // stick that scrolls the report takes no step off it. Nothing else is added to it.
+        Button IWayOutHost.AddControl(GameObject box) => box.AddComponent<SeasonReportControl>();
+        Action IWayOutHost.Dress(Button control, Action action) => action;
 
         /// <summary>The room the top right corner keeps for the Close, out of the header's width (which starts 20 in from the card and Pad in from that).</summary>
         private float CloseCornerRoom() =>

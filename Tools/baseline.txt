@@ -359,6 +359,8 @@
 # 10291 = 10260 + R8's 31 RoleHolderOfferTests cases (the veto holder's priced offer, on main since pull request 80).
 # Main raised the Unity-free suite's floor for them and left this one for the PC's listers: counted by the listers
 # on this branch, 2026-11-17.
+# 10295 = 10291 + menu slice 2's way-out dressing, 4 MenuWayOutFoleyScanTests cases (the HUD's ways out tick, dip and
+# guard as its buttons do; the report's Close is a report control), 2026-11-17.
 # 10209 = 10203 + the competition-rules-5 old-save cell's 6 OldSaveAcceptanceTests cases (OLD-SAVE-ACCEPTANCE 2.14): the
 # new fixture's four per-fixture cases and its two own cases (EditMode only; the subset runs none of them). R8's 31
 # RoleHolderOfferTests cases are still not in this floor (the PC's Unity run raises it for them): the offline lister counts
@@ -366,7 +368,10 @@
 # 10297 = 10291 (menu slice 2's landing head 28c9bff3, with R8's 31 counted) + the Ring Tower old-save cell's 6 (10209
 # - 10203 on this branch): disjoint cases, so the floor is their sum (menu slice 2's head merged under the cell for
 # the next stack's landing, 2026-11-17). Counted from the two sides.
-Gamesim.EditModeTests 10297
+# 10301 = 10295 (main c9c3e21c, menu slice 2 as it landed, with the way-out scan's 4) + the Ring Tower old-save cell's
+# 6 (10297 - 10291 on this branch): disjoint cases, so the floor is their sum (main merged into the cell's branch for
+# the next stack's landing, 2026-11-17). Counted from the two sides.
+Gamesim.EditModeTests 10301
 # The UMA-free build. 1215 = 1236, the count after the consolidation's lanes (S2a, S2b, S4a), less the 7
 # farewell probes moved to Gamesim.DiagnosticsPlayModeTests and the 14 farewell readiness tests that now
 # compile only under GAMESIM_UMA (judged on the UMA cast); 1230 = 1215 + S2d's 7, S4b's 2, S4c's 2 and
@@ -1045,4 +1050,6 @@ Gamesim.Uma.DiagnosticsPlayModeTests 10
 # 17075 = 17031 (main c1a7f40e, with the veto holder's priced offer) + menu slice 2's 44 (17044 - 17000 on this
 # branch): disjoint cases, so the floor is their sum (the second merge of main into menu slice 2 for its landing,
 # 2026-11-17). Counted from the two sides.
-Gamesim.SimulationTests 17075
+# 17079 = 17075 + menu slice 2's way-out dressing, the same 4 MenuWayOutFoleyScanTests cases the EditMode floor
+# counts, 2026-11-17.
+Gamesim.SimulationTests 17079

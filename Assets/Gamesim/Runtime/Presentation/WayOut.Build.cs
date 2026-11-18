@@ -107,14 +107,20 @@ namespace Gamesim.Presentation
             rect.anchorMin = Vector2.zero; rect.anchorMax = Vector2.one;
             rect.offsetMin = new Vector2(padLeft, 0f); rect.offsetMax = new Vector2(-padRight, 0f);
 
-            var button = box.gameObject.AddComponent<Button>();
+            // The screen the frame is on makes the control and dresses it as it does its other buttons
+            // (IWayOutHost): the season's HUD gives it its hover tick, press dip and guarded press, and the
+            // season report its own kind of button. A screen that is no host gets a plain Button.
+            var host = HostOf(frame);
+            var button = host != null ? host.AddControl(box.gameObject) : null;
+            if (button == null) button = box.gameObject.AddComponent<Button>();
             button.targetGraphic = image;
             var colours = button.colors;
             colours.highlightedColor = new Color(1.15f, 1.15f, 1.15f);
             colours.selectedColor = colours.highlightedColor;
             button.colors = colours;
             button.navigation = new Navigation { mode = Navigation.Mode.Automatic };
-            if (action != null) button.onClick.AddListener(() => action());
+            var press = host != null ? host.Dress(button, action) : action;
+            if (press != null) button.onClick.AddListener(() => press());
 
             // The focus ring: the theme's glow, outside the edge, lit only while selected.
             UiTheme.AddBorder(box, 10, UiTheme.Glow);
@@ -126,6 +132,9 @@ namespace Gamesim.Presentation
             box.gameObject.AddComponent<WayOutFocus>().Ring = ring;
             return button;
         }
+
+        /// <summary>The object a way out on <paramref name="frame"/> asks to make and dress it, or null: the nearest above the frame.</summary>
+        public static IWayOutHost HostOf(RectTransform frame) => frame != null ? frame.GetComponentInParent<IWayOutHost>(true) : null;
 
         /// <summary>Lights the ring while the control is selected - by keyboard, pad or pointer - and only then.</summary>
         internal sealed class WayOutFocus : MonoBehaviour, ISelectHandler, IDeselectHandler
@@ -140,5 +149,23 @@ namespace Gamesim.Presentation
                 if (Ring != null) Ring.enabled = EventSystem.current != null && EventSystem.current.currentSelectedGameObject == gameObject;
             }
         }
+    }
+
+    /// <summary>
+    /// A screen whose buttons are dressed in its own way, so that its way out is dressed as they are
+    /// (the review of menu slice 2: the panel's Close had lost the HUD's hover tick). <see cref="WayOut"/>
+    /// asks the nearest host above the frame; the look, place, caption, key hint and focus ring stay the
+    /// helper's.
+    /// </summary>
+    public interface IWayOutHost
+    {
+        /// <summary>Adds the control to <paramref name="box"/>: a Button, or the screen's own kind of button.</summary>
+        Button AddControl(GameObject box);
+
+        /// <summary>
+        /// Gives <paramref name="control"/> what the screen's other buttons carry (a hover, a press) and
+        /// returns what a press runs: <paramref name="action"/>, or the screen's guard around it.
+        /// </summary>
+        Action Dress(Button control, Action action);
     }
 }

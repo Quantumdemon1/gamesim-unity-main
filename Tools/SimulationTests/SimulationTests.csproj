@@ -515,6 +515,8 @@
     <Compile Include="$(EditMode)MenuOneWayBackPanelsTests.cs" />
     <!-- Menu slice 2, the rule over every screen: ways out drawn and spelled by the helper, no old exit words or old names. -->
     <Compile Include="$(EditMode)MenuOneWayBackRuleScanTests.cs" />
+    <!-- Menu slice 2's review: every way out is made and dressed by the screen it is on (the HUD's hover tick, dip and guard; the report's own control). -->
+    <Compile Include="$(EditMode)MenuWayOutFoleyScanTests.cs" />
     <!-- Menu slice 3: the tall reading frame's kinds and measures (plain C#; the HUD's half is EditMode only). -->
     <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/ReadingFrame.cs" />
     <Compile Include="$(EditMode)MenuReadingFrameTests.cs" />

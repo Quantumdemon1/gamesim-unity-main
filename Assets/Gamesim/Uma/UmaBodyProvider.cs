@@ -151,6 +151,8 @@ namespace Gamesim.Uma
             // What each saved wardrobe slot actually put on the body - a substitute, when the saved
             // garment could not be worn - so a fabric tint lands on what is drawn.
             var dressed = new Dictionary<string, UMAWardrobeRecipe>(StringComparer.Ordinal);
+            // The line of the look each of those slots came from: a piece made for the look keeps its own colours.
+            var dressedFrom = new Dictionary<string, string>(StringComparer.Ordinal);
             var wornSet = appearance?.outfits.FirstOrDefault(item => item.id == appearance.activeOutfit)?.wardrobe;
             // Pieces built in code are not UMA recipes: they are fitted once the body is built.
             string grownHair = null;
@@ -180,7 +182,7 @@ namespace Gamesim.Uma
                 umaWorn.Add(recipe.wardrobeSlot);
                 // A saved outfit names its slots; a look straight from the library wears each recipe in its own.
                 string wornSlot = wornSet != null ? wornSet.FirstOrDefault(item => item.itemId == recipeName)?.slot : recipe.wardrobeSlot;
-                if (wornSlot != null) dressed[wornSlot] = recipe;
+                if (wornSlot != null) { dressed[wornSlot] = recipe; dressedFrom[wornSlot] = recipeName; }
             }
             // A UMA item and the code-built piece on the same place are never shown together: a look or a
             // save that names both shows the UMA item. The saved choice is kept as it is.
@@ -201,9 +203,15 @@ namespace Gamesim.Uma
                 foreach (var part in packed.slotsV3)
                     if (part != null && !string.IsNullOrEmpty(part.id)) fabric[part.id] = tint;
             }
-            // A look straight from the library - no saved outfit - wears the library's dyes.
+            // A look straight from the library - no saved outfit - wears the library's dyes, except on a piece
+            // a catalog tag names the look for (UmaAppearanceCatalog.IsLookPiece): that is painted in its own.
             if (wornSet == null && preset.Fabric != null)
-                foreach (var tint in preset.Fabric) Dye(tint.Key, tint.Value);
+            {
+                string lookId = UmaCastLibrary.ResolveId(appearanceId, request.FallbackId);
+                foreach (var tint in preset.Fabric)
+                    if (!(dressedFrom.TryGetValue(tint.Key, out var line) && ((UmaAppearanceCatalog)Catalog).IsLookPiece(lookId, line)))
+                        Dye(tint.Key, tint.Value);
+            }
             if (appearance != null)
             {
                 foreach (var color in appearance.colors)

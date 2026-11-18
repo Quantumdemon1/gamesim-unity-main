@@ -36,8 +36,11 @@ namespace Gamesim.Tests.EditMode
         /// tuningRulesVersion=1 came with B9 (B9-BALANCE-PLAN decision 8): every fresh season plays the balance bands.
         /// story.rulesVersion=10 came with story rules 10's enrolment (STORY-RULES-10-PLAN §8): every fresh season plays Blame.
         /// story.rulesVersion=11 came with story rules 11's enrolment (ROLE-MOMENTS-PLAN R7): every fresh season plays Roles.
+        /// competitionRulesVersion=5 came with the Ring Tower (competition rules 5, pull request 77): every fresh season deals
+        /// the Ring Tower as every other mental competition. Recorded again on rules 5 on 2026-11-17: only this number moved;
+        /// all 48 cells printed the digests below byte for byte (the rows keep a competition's category, not its game).
         /// </summary>
-        internal const string Rules = "competitionRulesVersion=4,readRulesStartWeek=1,leverRulesStartWeek=1,weekRulesStartWeek=1,economyRulesVersion=1,"
+        internal const string Rules = "competitionRulesVersion=5,readRulesStartWeek=1,leverRulesStartWeek=1,weekRulesStartWeek=1,economyRulesVersion=1,"
             + "agencyRulesStartWeek=1,finaleRulesStartWeek=1,commitmentRulesStartWeek=1,unifiedCommitmentRulesVersion=2,unifiedHearingRulesVersion=1,"
             + "blocRulesStartWeek=1,socialBudgetRulesStartWeek=1,dealRulesStartWeek=1,eventRulesStartWeek=1,storyRulesStartWeek=1,haveNotRulesStartWeek=1,"
             + "strategyRulesStartWeek=1,allianceLeakRulesStartWeek=1,pactPlanRulesStartWeek=1,allWeekRulesStartWeek=1,dialogueRulesVersion=0,"
@@ -62,6 +65,9 @@ namespace Gamesim.Tests.EditMode
         /// and the seasons go on from those grudges. All 48 moved again with story rules 11's enrolment (ROLE-MOMENTS-PLAN R7)
         /// and were re-recorded at it: every fresh season starts on Roles, under which the role moments play - the offer and
         /// pitch boards' costs, keep-the-block, the pawn talk and quiet tears - and the seasons go on from what they changed.
+        /// None of the 48 moved with competition rules 5, the Ring Tower (recorded again on 2026-11-17): a season commits the
+        /// same results under rules 4 and 5, and a row names a competition's category, which the tower shares with the game
+        /// it replaces.
         /// </summary>
         internal static readonly string[] Recorded =
         {

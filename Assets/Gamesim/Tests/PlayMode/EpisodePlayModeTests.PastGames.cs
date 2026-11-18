@@ -332,10 +332,13 @@ namespace Gamesim.Tests.PlayMode
         /// The caption audit (§14.F's Layout line, §14.L.G): the past games add captions of their own - "PAST GAMES", "Past
         /// game · " and its faces - and append to none. In the fixture's Regular season, and in an All-Stars season held at
         /// alumni rules 2, the page and the profile show nothing new and the empty line reads as it always did. The same
-        /// season at the latest value carries the very same controls, by caption, on the page and on the profile, its
-        /// headings' words are exactly their captions, and the empty state of the pacts the player knows of says what it
-        /// always said. The page is empty, with the kit's illustration, only at 2; at the latest the player's face on each
-        /// past game says "You".
+        /// season at the latest value carries the very same controls, by caption, on the profile, and on the page the same
+        /// ones and one more for each face of another houseguest on a past game's card - a link to their profile (menu
+        /// slice 3, ruling N6 ii), its caption the face's first name and where they are, in the place it stands - while the
+        /// player's own face is no control. Pressed, such a face opens that profile with its way back naming the alliances,
+        /// and the way back returns to the page as it was. Its headings' words are exactly their captions, and the empty
+        /// state of the pacts the player knows of says what it always said. The page is empty, with the kit's illustration,
+        /// only at 2; at the latest the player's face on each past game says "You".
         /// </summary>
         [UnityTest, Timeout(900000)]
         public IEnumerator PastGames_TheCaptionsAreTheirOwnAndNothingNewShowsBelowThreeOrInARegularSeason()
@@ -405,9 +408,46 @@ namespace Gamesim.Tests.PlayMode
                         Is.EquivalentTo(new[] { EpisodeHud.PastGameCardPrefix + PastGamesHitmen, EpisodeHud.PastGameCardPrefix + PastGamesCommittee,
                             EpisodeDirector.PastGamesHeadingName, EpisodeDirector.PastGamesNoteName }), "Every new part by its own name: " + where);
                     // The player on Cody's card is on both entries: their face says "You".
-                    foreach (var game in KnownBlocs.PastGames(state))
+                    var games = KnownBlocs.PastGames(state);
+                    foreach (var game in games)
                         AssertPastGameFaceNotes(LastActive(EpisodeHud.PastGameCardPrefix + game.FactId), state, game, where);
-                    Assert.That(pageCaptions, Is.EqualTo(heldPage), "The same controls by the same captions, none added and none changed: " + where);
+                    // The one new kind of control (menu slice 3, ruling N6 ii): a face on a card that stands for another
+                    // houseguest of this season is a link to their profile, as a member's face on a pact is; the player's
+                    // own face is not a control. Its caption is the face's own words, the first name and where they are now.
+                    var others = games.Select(game => new[] { state.Find(game.FirstId), state.Find(game.SecondId) }
+                        .Where(member => member != null && member.id != state.playerId).ToArray()).ToArray();
+                    for (int i = 0; i < games.Count; i++)
+                        Assert.That(LastActive(EpisodeHud.PastGameCardPrefix + games[i].FactId).GetComponentsInChildren<Button>().Where(button => button.IsActive())
+                                .Select(button => button.name),
+                            Is.EqualTo(others[i].Select(member => EpisodeHud.PastGameFacePrefix + member.name).ToArray()),
+                            games[i].FactId + ": one control a face of another houseguest's, the player's face none: " + where);
+                    string[] links = others.SelectMany(members => members)
+                        .Select(member => FinalistRead.FirstName(member.name) + " " + EpisodeDirector.StatusWord(member.status)).ToArray();
+                    Assert.That(links, Is.Not.Empty, "The player on Cody's card shares each past game with another houseguest: " + where);
+                    // In the place they stand: after the page's controls above PAST GAMES, before its foot's.
+                    var footer = LastActive("Notebook footer");
+                    Assert.That(footer, Is.Not.Null, where);
+                    int foot = footer.GetComponentsInChildren<Button>().Count(button => button.IsActive());
+                    Assert.That(foot, Is.GreaterThan(0).And.LessThanOrEqualTo(heldPage.Length), "The page's foot carries its action: " + where);
+                    var expected = heldPage.Take(heldPage.Length - foot).Concat(links).Concat(heldPage.Skip(heldPage.Length - foot)).ToArray();
+                    Assert.That(pageCaptions, Is.EqualTo(expected),
+                        "The same controls by the same captions, none changed, and none added but a profile link a face: " + where);
+
+                    // A face opens that houseguest's profile as a page reached from the alliances, and its way back returns there.
+                    var other = others[0][0];
+                    LastActive(EpisodeHud.PastGameCardPrefix + games[0].FactId).GetComponentsInChildren<Button>()
+                        .Single(button => button.IsActive() && button.name == EpisodeHud.PastGameFacePrefix + other.name).onClick.Invoke();
+                    yield return Frames(2);
+                    Assert.That(director.ProfileId, Is.EqualTo(other.id), other.name + "'s face opens their profile: " + where);
+                    Assert.That(director.ProfileReturnsTo, Is.EqualTo(EpisodeDirector.NotebookSection.Alliances), where);
+                    var back = AssertPageWayBack(EpisodeDirector.ProfileBackCaptionFor(EpisodeDirector.NotebookSection.Alliances),
+                        "A profile opened from a past game's face " + where);
+                    back.onClick.Invoke();
+                    yield return Frames(2);
+                    Canvas.ForceUpdateCanvases();
+                    Assert.That(director.ProfileId, Is.Null, "The way back leaves the profile: " + where);
+                    Assert.That(director.ActiveSection, Is.EqualTo(EpisodeDirector.NotebookSection.Alliances), "for the alliances it came from: " + where);
+                    Assert.That(PanelControlCaptions(), Is.EqualTo(expected), "The page as it was: " + where);
                 }
 
                 director.ShowHouseguestProfile(derrick);

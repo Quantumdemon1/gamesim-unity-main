@@ -108,10 +108,8 @@ namespace Gamesim.Presentation
         /// <summary>A step of the volume controls, as the master's.</summary>
         public const int Step = 10;
 
-        /// <summary>The settings' words for a channel's meter and its two controls.</summary>
+        /// <summary>The name of a channel's slider in Settings: "Music volume" (its value reads "70%").</summary>
         public static string MeterCaption(SoundChannel channel) => ChannelName(channel) + " volume";
-        public static string DownCaption(SoundChannel channel) => ChannelName(channel) + " volume down";
-        public static string UpCaption(SoundChannel channel) => ChannelName(channel) + " volume up";
 
         /// <summary>The channel's word in the log: "music", "effects", "interface".</summary>
         public static string LogKey(SoundChannel channel) => channel == SoundChannel.Music ? "music-volume" : channel == SoundChannel.Effects ? "effects-volume" : "interface-volume";

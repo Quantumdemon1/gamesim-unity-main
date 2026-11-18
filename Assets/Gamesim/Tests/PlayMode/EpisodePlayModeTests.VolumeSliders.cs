@@ -23,8 +23,9 @@ namespace Gamesim.Tests.PlayMode
             SoundPictures.MeterCaption(SoundChannel.Effects), SoundPictures.MeterCaption(SoundChannel.Interface),
         };
 
+        /// <summary>A volume's slider row: since menu slice 4 the kit's slider, named for the setting itself.</summary>
         private Slider VolumeControl(string caption) => director.GetComponentsInChildren<Slider>()
-            .Single(slider => slider.gameObject.activeInHierarchy && slider.name == caption + " slider");
+            .Single(slider => slider.gameObject.activeInHierarchy && slider.name == caption);
 
         private IEnumerator OpenIsolatedVolumeSettings()
         {
@@ -33,14 +34,14 @@ namespace Gamesim.Tests.PlayMode
             yield return ReloadEpisode();
             Assert.That(director.PreferenceRouteInUse, Is.EqualTo(PreferenceRoute.RootFile));
             HoldTheHouseForTheFixture();
-            director.OpenSettings();
+            director.OpenSettingsAt(Gamesim.Presentation.SettingsSection.Sound);
             yield return Frames(2);
         }
 
         private IEnumerator ReachVolumeControl(string caption, bool pad)
         {
-            for (int step = 0; step < 180 && SelectedName() != caption + " slider"; step++) yield return StepDown(pad);
-            Assert.That(SelectedName(), Is.EqualTo(caption + " slider"), "Actual navigation must reach the literal volume slider.");
+            for (int step = 0; step < 180 && SelectedName() != caption; step++) yield return StepDown(pad);
+            Assert.That(SelectedName(), Is.EqualTo(caption), "Actual navigation must reach the literal volume slider.");
         }
 
         private void AssertVolumeCaptionsKept()
@@ -49,13 +50,11 @@ namespace Gamesim.Tests.PlayMode
             var buttons = director.GetComponentsInChildren<Button>(true).Where(button => button.IsActive() && button.IsInteractable()).ToArray();
             void Kept(string caption) => Assert.That(buttons.Any(button => button.name == caption
                 && button.GetComponentsInChildren<TMP_Text>(true).Any(label => label.text == caption)), Is.True, caption + " retains its control name and words.");
-            foreach (string caption in new[] { "Volume down", "Volume up" }) Kept(caption);
-            Kept(director.GetComponent<HouseAudio>().Muted ? "Turn sound on" : "Mute sound");
-            foreach (var channel in new[] { SoundChannel.Music, SoundChannel.Effects, SoundChannel.Interface })
-            {
-                Kept(SoundPictures.DownCaption(channel));
-                Kept(SoundPictures.UpCaption(channel));
-            }
+            // Menu slice 4: the sound's two switches beside the sliders, each named for its setting; no step buttons.
+            Kept(SettingRowWords.AllSoundRow);
+            Kept(SettingRowWords.MusicRow);
+            Assert.That(buttons.Any(button => button.name.EndsWith(" volume down") || button.name.EndsWith(" volume up")
+                || button.name == "Volume down" || button.name == "Volume up"), Is.False, "No plus and minus buttons beside the sliders.");
         }
 
         private void AssertVolumeReadback(string caption, int percent)
@@ -87,7 +86,8 @@ namespace Gamesim.Tests.PlayMode
                 Assert.That((slider.minValue, slider.maxValue, slider.wholeNumbers), Is.EqualTo((0f, 100f, true)));
                 int before = Mathf.RoundToInt(slider.value);
                 var shares = VolumeSliderCaptions.Select(name => Mathf.RoundToInt(VolumeControl(name).value)).ToArray();
-                int delta = before == 0 ? 1 : -1;
+                // A press of left or right moves the row's slider one step of ten (menu slice 4).
+                int delta = before < SettingsWords.SliderStep ? SettingsWords.SliderStep : -SettingsWords.SliderStep;
                 if (pad) yield return PressPad(gamepad, delta > 0 ? GamepadButton.DpadRight : GamepadButton.DpadLeft);
                 else yield return PressKey(delta > 0 ? Key.RightArrow : Key.LeftArrow);
                 Assert.That(VolumeControl(caption), Is.SameAs(slider), "Changing the share must not redraw/destroy an active slider.");
@@ -157,7 +157,7 @@ namespace Gamesim.Tests.PlayMode
             director.FreezeForReloadForDiagnostics();
             yield return ReloadEpisode();
             HoldTheHouseForTheFixture();
-            director.OpenSettings();
+            director.OpenSettingsAt(Gamesim.Presentation.SettingsSection.Sound);
             yield return Frames(2);
             for (int index = 0; index < expected.Length; index++) AssertVolumeReadback(VolumeSliderCaptions[index], expected[index]);
             AssertVolumeCaptionsKept();
@@ -170,7 +170,7 @@ namespace Gamesim.Tests.PlayMode
             foreach (var textSize in TextSizes.All)
             {
                 yield return ApplyTextSize(textSize);
-                director.OpenSettings();
+                director.OpenSettingsAt(Gamesim.Presentation.SettingsSection.Sound);
                 yield return Frames(2);
                 for (int index = 0; index < VolumeSliderCaptions.Length; index++)
                 {
@@ -193,7 +193,7 @@ namespace Gamesim.Tests.PlayMode
                         {
                             label.ForceMeshUpdate();
                             Assert.That(label.isTextOverflowing || label.isTextTruncated, Is.False, at + ": " + label.text);
-                            Assert.That(label.fontSize, Is.EqualTo(Mathf.Round(16 * TextSizes.Scale(textSize))).Within(.01f), at + ": the requested text size is not shrunk.");
+                            Assert.That(label.fontSize, Is.EqualTo(Mathf.Round(18 * TextSizes.Scale(textSize))).Within(.01f), at + ": the requested text size is not shrunk.");
                         }
                     }, arrange: () => EventSystem.current.SetSelectedGameObject(VolumeControl(caption).gameObject));
                 }

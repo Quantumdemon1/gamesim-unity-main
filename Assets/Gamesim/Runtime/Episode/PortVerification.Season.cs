@@ -131,7 +131,9 @@ namespace Gamesim.Episode
                 .Equals(Path.GetFullPath(outputDirectory),StringComparison.OrdinalIgnoreCase),"The functional run must retain explicit save isolation.");
             CheckSaveIsIsolated();
             yield return CloseSeasonPanel();
+            // The rail's Settings opens the game menu card; its Settings row opens the frame on Saves (menu slice 4).
             yield return ClickSeasonButton("Settings");
+            yield return ClickSeasonControlNamed(EpisodeHud.GameMenuRowPrefix + SettingsWords.SettingsCaption);
             yield return ClickSeasonButton("Save now  [F5]");
             string previousSlot = seasonDirector.SavePath;
             var previousBytes = File.ReadAllBytes(previousSlot);
@@ -620,13 +622,19 @@ namespace Gamesim.Episode
         private IEnumerator SaveReloadSeason(string checkpoint)
         {
             yield return CloseSeasonPanel();
+            // The rail's Settings opens the game menu card; its Settings row opens the frame on Saves (menu slice 4).
             yield return ClickSeasonButton("Settings");
+            yield return ClickSeasonControlNamed(EpisodeHud.GameMenuRowPrefix + SettingsWords.SettingsCaption);
             yield return ClickSeasonButton("Save now  [F5]");
             var expected = JsonUtility.ToJson(seasonDirector.Snapshot);
             string expectedPath = seasonDirector.SavePath;
             CheckSaveIsIsolated();
             RequireSeason(File.Exists(expectedPath),"The isolated season save must exist at " + checkpoint);
-            yield return ClickSeasonButton("Reload current slot");
+            // Going back to the last save is an Advanced tool (menu slice 4): its entry in the list first.
+            yield return ClickSeasonControlNamed(SettingsWords.TabName(SettingsSection.Advanced));
+            // Picked, then confirmed (menu slice 4): the confirm card's result button loads it.
+            yield return ClickSeasonButton(SavesWords.GoBackCaption);
+            yield return ClickSeasonButton(SavesWords.GoBackResult);
             RequireSeason(seasonDirector.SavePath == expectedPath && JsonUtility.ToJson(seasonDirector.Snapshot) == expected,"Save/reload changed the authoritative snapshot at " + checkpoint);
             RequireSeason(!seasonDirector.IsPanelOpen && seasonDirector.StatusMessage.StartsWith("Local episode loaded and validated.",StringComparison.Ordinal),"Reload must report a validated install, not silently preserve an unsaved in-memory snapshot." + " Panel open: " + seasonDirector.IsPanelOpen + "; status: " + seasonDirector.StatusMessage);
             if (verifyBlocs)
@@ -723,6 +731,24 @@ namespace Gamesim.Episode
                 });
                 if (before.events.Count == 256) seasonReport.fullLogEvictions++;
             }
+        }
+
+        /// <summary>
+        /// Presses the one live control named <paramref name="objectName"/>, as a player presses it:
+        /// for controls whose caption another control on screen shares - the game menu card's Settings
+        /// row beside the rail's (menu slice 4) - or that a list names apart, a Settings section's entry.
+        /// </summary>
+        private IEnumerator ClickSeasonControlNamed(string objectName)
+        {
+            CheckSeasonDeadline();
+            Button[] Named() => VisibleSeasonButtons().Where(button => button.name == objectName).ToArray();
+            var buttons = Named();
+            if (buttons.Length != 1) RequireSeason(false, "Expected one reachable control named " + objectName + " (found " + buttons.Length + ")." + SeasonButtonsOnOffer());
+            buttons[0].Select(); yield return null; yield return null;
+            buttons = Named();
+            if (buttons.Length != 1) RequireSeason(false, "The selected control became unavailable: " + objectName + " (found " + buttons.Length + ")." + SeasonButtonsOnOffer());
+            buttons[0].onClick.Invoke();
+            yield return null; yield return null;
         }
 
         /// <summary>

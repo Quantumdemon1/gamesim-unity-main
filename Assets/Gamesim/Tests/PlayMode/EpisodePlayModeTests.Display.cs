@@ -30,8 +30,8 @@ namespace Gamesim.Tests.PlayMode
             foreach(var textSize in TextSizes.All)
             {
                 yield return ApplyTextSize(textSize);
-                director.OpenSettings();
-                ButtonWithCaption("Use compact HUD").onClick.Invoke();
+                director.OpenSettingsAt(Gamesim.Presentation.SettingsSection.Display);
+                PressSettingRow(Gamesim.Presentation.SettingRowWords.CompactHudRow, "On");
                 Assert.That(director.CompactHud,Is.True);
                 director.ClosePanels();yield return null;Canvas.ForceUpdateCanvases();
                 bool largest=textSize==TextSize.Largest;
@@ -57,7 +57,7 @@ namespace Gamesim.Tests.PlayMode
                 if(largest)
                     Assert.That(destination.rectTransform.rect.height,Is.GreaterThanOrEqualTo(2*destination.fontSize*1.3f),
                         "The next stop holds two of its lines, 1.3 times each, "+TextScales.At(textSize)+".");
-                director.OpenSettings();ButtonWithCaption("Show full HUD").onClick.Invoke();
+                director.OpenSettingsAt(Gamesim.Presentation.SettingsSection.Display);PressSettingRow(Gamesim.Presentation.SettingRowWords.CompactHudRow, "Off");
                 Assert.That(director.CompactHud,Is.False);director.ClosePanels();yield return null;
                 Assert.That(ActiveRect(EpisodeDirector.LiveFeedCardName),Is.Not.Null);
             }
@@ -69,65 +69,69 @@ namespace Gamesim.Tests.PlayMode
             int levelBefore = QualitySettings.GetQualityLevel();
             int vsyncBefore = QualitySettings.vSyncCount;
             int targetBefore = Application.targetFrameRate;
-            director.OpenSettings();
+            director.OpenSettingsAt(Gamesim.Presentation.SettingsSection.Display);
             yield return null;
             try
             {
-                // A platform may exclude levels (batchmode sees one), so the cycle's length is whatever
-                // the platform offers; the control still names the tier and lands where it started.
+                // A platform may exclude levels (batchmode sees one), so the choice's length is whatever
+                // the platform offers; the row names the tier and lands where it started. With one level
+                // there is nothing to choose: the row says so and cannot be pressed (menu slice 4).
                 int levels = QualitySettings.names.Length;
                 int tier = director.QualityTier;
-                ButtonStarting("Quality: ").onClick.Invoke();
-                Assert.That(director.QualityTier, Is.EqualTo((tier + 1) % levels), "The quality control moves to the next tier.");
-                Assert.That(QualitySettings.GetQualityLevel(), Is.EqualTo(director.QualityTier), "and the level is applied.");
-                Assert.That(ButtonStarting("Quality: ").GetComponentInChildren<TMPro.TMP_Text>().text, Does.Contain(EpisodeDirector.QualityName(director.QualityTier)));
-                for (int i = 0; i < levels - 1; i++) ButtonStarting("Quality: ").onClick.Invoke();
-                Assert.That(director.QualityTier, Is.EqualTo(tier), "Round the cycle it is back where it started.");
+                if (levels > 1)
+                {
+                    PressSettingRow(Gamesim.Presentation.SettingRowWords.QualityRow, EpisodeDirector.QualityName((tier + 1) % levels));
+                    Assert.That(director.QualityTier, Is.EqualTo((tier + 1) % levels), "The quality row moves to the next tier.");
+                    Assert.That(QualitySettings.GetQualityLevel(), Is.EqualTo(director.QualityTier), "and the level is applied.");
+                    for (int i = 0; i < levels - 1; i++) ButtonWithCaption(Gamesim.Presentation.SettingRowWords.QualityRow).onClick.Invoke();
+                    Assert.That(director.QualityTier, Is.EqualTo(tier), "Round the choices it is back where it started.");
+                }
+                else Assert.That(FindButton(Gamesim.Presentation.SettingRowWords.QualityRow).interactable, Is.False, "One level: nothing to choose.");
 
-                // VSync is a control of its own beside the frame rate's limit (PLAN A, A12, decision 12):
+                // VSync is a row of its own beside the frame rate's limit (PLAN A, A12, decision 12):
                 // this pin changed on purpose - the limit no longer has a VSync step.
                 Assume.That(director.FrameCap, Is.EqualTo(0), "A fresh episode runs on VSync.");
                 Assert.That(director.VSync, Is.True);
                 Assert.That(QualitySettings.vSyncCount, Is.EqualTo(1), "VSync on paces the frames,");
                 Assert.That(Application.targetFrameRate, Is.EqualTo(-1), "with no limit of its own.");
                 Assert.That(director.FrameLimit, Is.EqualTo(-1), "The limit starts at none.");
-                ButtonWithCaption(EpisodeDirector.VSyncOffCaption).onClick.Invoke();
+                PressSettingRow(Gamesim.Presentation.SettingRowWords.VSyncRow, "Off");
                 Assert.That(director.VSync, Is.False, "VSync off.");
                 Assert.That(QualitySettings.vSyncCount, Is.EqualTo(0));
                 Assert.That(director.FrameCap, Is.EqualTo(-1), "Off with no limit is uncapped.");
-                ButtonStarting("Frame rate: ").onClick.Invoke();
+                PressSettingRow(Gamesim.Presentation.SettingRowWords.FrameRateRow, "30 fps");
                 Assert.That(director.FrameLimit, Is.EqualTo(30), "The first step is the 30 fps limit.");
                 Assert.That(Application.targetFrameRate, Is.EqualTo(30), "and it is the target frame rate with VSync off.");
-                Assert.That(ButtonStarting("Frame rate: ").GetComponentInChildren<TMPro.TMP_Text>().text, Is.EqualTo(EpisodeDirector.FrameRateCaption(30)));
-                for (int i = 0; i < DisplayChoices.FrameLimits.Length - 2; i++) ButtonStarting("Frame rate: ").onClick.Invoke();
+                for (int i = 0; i < DisplayChoices.FrameLimits.Length - 2; i++) ButtonWithCaption(Gamesim.Presentation.SettingRowWords.FrameRateRow).onClick.Invoke();
                 Assert.That(director.FrameLimit, Is.EqualTo(120), "60, then 120.");
-                ButtonStarting("Frame rate: ").onClick.Invoke();
+                PressSettingRow(Gamesim.Presentation.SettingRowWords.FrameRateRow, "Uncapped");
                 Assert.That(director.FrameLimit, Is.EqualTo(-1), "The last step is uncapped.");
                 Assert.That(Application.targetFrameRate, Is.EqualTo(-1));
-                ButtonStarting("Frame rate: ").onClick.Invoke();
+                PressSettingRow(Gamesim.Presentation.SettingRowWords.FrameRateRow, "30 fps");
                 Assert.That(director.FrameLimit, Is.EqualTo(30), "and round again.");
-                ButtonWithCaption(EpisodeDirector.VSyncOnCaption).onClick.Invoke();
+                PressSettingRow(Gamesim.Presentation.SettingRowWords.VSyncRow, "On");
                 Assert.That(QualitySettings.vSyncCount, Is.EqualTo(1), "VSync on again,");
                 Assert.That(Application.targetFrameRate, Is.EqualTo(-1), "pacing the frames over the limit,");
                 Assert.That(director.FrameCap, Is.EqualTo(0), "which code reads as the cap 0 it always was.");
                 Assert.That(director.FrameLimit, Is.EqualTo(30), "and the limit is kept for when it is off.");
 
-                // The full-screen toggle keeps its two captions: one press between a window and borderless.
-                bool full = director.Fullscreen;
+                // The window's mode is one row (the old full-screen toggle and the mode were the same
+                // setting): right moves on a mode, left back, each applying the window.
+                var mode = director.DisplayModeSetting;
                 int applied = director.WindowApplications;
-                ButtonWithCaption(full ? "Play in a window" : "Play full screen").onClick.Invoke();
-                Assert.That(director.Fullscreen, Is.EqualTo(!full), "The window control flips the preference.");
-                Assert.That(director.DisplayModeSetting, Is.EqualTo(full ? DisplayMode.Windowed : DisplayMode.Borderless));
-                ButtonWithCaption(!full ? "Play in a window" : "Play full screen").onClick.Invoke();
-                Assert.That(director.Fullscreen, Is.EqualTo(full));
-                Assert.That(director.WindowApplications, Is.EqualTo(applied + 2), "Each press applies the window.");
+                StepSettingRow(Gamesim.Presentation.SettingRowWords.DisplayModeRow, UnityEngine.EventSystems.MoveDirection.Right, DisplayChoices.ModeName(DisplayChoices.NextMode(mode)));
+                Assert.That(director.DisplayModeSetting, Is.EqualTo(DisplayChoices.NextMode(mode)), "The window row moves the preference.");
+                StepSettingRow(Gamesim.Presentation.SettingRowWords.DisplayModeRow, UnityEngine.EventSystems.MoveDirection.Left, DisplayChoices.ModeName(mode));
+                Assert.That(director.DisplayModeSetting, Is.EqualTo(mode));
+                Assert.That(director.WindowApplications, Is.EqualTo(applied + 2), "Each step applies the window.");
 
                 Assert.That(director.EdgePanOn, Is.True, "Edge panning starts on.");
                 Assert.That(cameraRig.EdgePan, Is.True);
-                ButtonWithCaption("Stop the screen edges panning").onClick.Invoke();
+                director.ShowSettingsSection(Gamesim.Presentation.SettingsSection.Controls);
+                PressSettingRow(Gamesim.Presentation.SettingRowWords.EdgePanningRow, "Off");
                 Assert.That(director.EdgePanOn, Is.False);
                 Assert.That(cameraRig.EdgePan, Is.False, "and the rig hears it.");
-                ButtonWithCaption("Let the screen edges pan").onClick.Invoke();
+                PressSettingRow(Gamesim.Presentation.SettingRowWords.EdgePanningRow, "On");
                 Assert.That(cameraRig.EdgePan, Is.True);
             }
             finally
@@ -151,7 +155,7 @@ namespace Gamesim.Tests.PlayMode
         {
             int vsyncBefore = QualitySettings.vSyncCount;
             int targetBefore = Application.targetFrameRate;
-            director.OpenSettings();
+            director.OpenSettingsAt(Gamesim.Presentation.SettingsSection.Display);
             yield return null;
             try
             {
@@ -160,11 +164,10 @@ namespace Gamesim.Tests.PlayMode
                 {
                     int applied = director.WindowApplications;
                     var before = director.DisplayModeSetting;
-                    ButtonStarting("Display mode: ").onClick.Invoke();
+                    ButtonWithCaption(Gamesim.Presentation.SettingRowWords.DisplayModeRow).onClick.Invoke();
                     Assert.That(director.DisplayModeSetting, Is.EqualTo(DisplayChoices.NextMode(before)), "Press " + press + " moves to the next mode.");
                     Assert.That(director.WindowApplications, Is.EqualTo(applied + 1), "and applies the window once.");
-                    Assert.That(ButtonStarting("Display mode: ").GetComponentInChildren<TMPro.TMP_Text>().text,
-                        Is.EqualTo(EpisodeDirector.DisplayModeCaption(director.DisplayModeSetting)), "The caption names the mode.");
+                    Assert.That(SettingRowValue(Gamesim.Presentation.SettingRowWords.DisplayModeRow), Is.EqualTo(DisplayChoices.ModeName(director.DisplayModeSetting)), "The row's value names the mode.");
                 }
                 Assert.That(director.DisplayModeSetting, Is.EqualTo(start), "Three presses go round.");
 
@@ -178,27 +181,24 @@ namespace Gamesim.Tests.PlayMode
                 for (int press = 0; press < cycle.Count; press++)
                 {
                     int applied = director.WindowApplications;
-                    ButtonStarting("Resolution: ").onClick.Invoke();
+                    ButtonWithCaption(Gamesim.Presentation.SettingRowWords.ResolutionRow).onClick.Invoke();
                     Assert.That(director.Resolution, Is.EqualTo(DisplayChoices.Next(DisplayChoices.Resolutions(offered, resolution), resolution)),
                         "The next resolution after " + resolution + ".");
                     Assert.That(director.WindowApplications, Is.EqualTo(applied + 1));
-                    Assert.That(ButtonStarting("Resolution: ").GetComponentInChildren<TMPro.TMP_Text>().text,
-                        Is.EqualTo(EpisodeDirector.ResolutionCaption(director.Resolution)));
+                    Assert.That(SettingRowValue(Gamesim.Presentation.SettingRowWords.ResolutionRow), Is.EqualTo(director.Resolution), "The row's value names the resolution.");
                     resolution = director.Resolution;
                 }
 
                 var layout = new List<DisplayInfo>();
                 try { Screen.GetDisplayLayout(layout); }
                 catch (System.Exception) { layout.Clear(); }
-                bool monitorShown = director.GetComponentsInChildren<Button>(true).Any(button => button.IsActive()
-                    && button.GetComponentsInChildren<TMPro.TMP_Text>(true).Any(text => text.text.StartsWith("Monitor: ")));
-                Assert.That(monitorShown, Is.EqualTo(layout.Count > 1), "The monitor control is there exactly when there is more than one display ("
+                bool monitorShown = director.GetComponentsInChildren<Button>(true).Any(button => button.IsActive() && button.name == Gamesim.Presentation.SettingRowWords.MonitorRow);
+                Assert.That(monitorShown, Is.EqualTo(layout.Count > 1), "The monitor row is there exactly when there is more than one display ("
                     + layout.Count + ").");
 
-                ButtonWithCaption(EpisodeDirector.VSyncOffCaption).onClick.Invoke();
-                Assert.That(QualitySettings.vSyncCount, Is.Zero);
-                Assert.That(ButtonWithCaption(EpisodeDirector.VSyncOnCaption), Is.Not.Null, "The toggle says what it does next.");
-                ButtonWithCaption(EpisodeDirector.VSyncOnCaption).onClick.Invoke();
+                PressSettingRow(Gamesim.Presentation.SettingRowWords.VSyncRow, "Off");
+                Assert.That(QualitySettings.vSyncCount, Is.Zero, "The row says how VSync stands, and it is off.");
+                PressSettingRow(Gamesim.Presentation.SettingRowWords.VSyncRow, "On");
                 Assert.That(QualitySettings.vSyncCount, Is.EqualTo(1));
             }
             finally
@@ -232,18 +232,28 @@ namespace Gamesim.Tests.PlayMode
                 director.SetCeremonyPace(CeremonyPace.Quick); director.SetCeremonyPace(CeremonyPace.Suspenseful);
                 director.SetCameraSpeed(2f); director.SetCameraSpeed(1f);
                 director.SetInvertTilt(true); director.SetInvertTilt(false);
-                director.OpenSettings();
+                // Each control in its section of the Settings frame (menu slice 4).
+                director.OpenSettingsAt(Gamesim.Presentation.SettingsSection.Sound);
                 yield return null;
-                foreach (var caption in new[] { "Volume up", "Volume down", "Mute sound", "Turn sound on", "Reduce character motion", "Enable character motion",
-                    "Stop the screen edges panning", "Let the screen edges pan" })
-                    ButtonWithCaption(caption).onClick.Invoke();
-                ButtonStarting("Quality: ").onClick.Invoke();
-                ButtonStarting("Frame rate: ").onClick.Invoke();
+                ShellMove(SettingRowControl(Gamesim.Presentation.SettingRowWords.MasterVolumeRow).gameObject, UnityEngine.EventSystems.MoveDirection.Right);
+                ShellMove(SettingRowControl(Gamesim.Presentation.SettingRowWords.MasterVolumeRow).gameObject, UnityEngine.EventSystems.MoveDirection.Left);
+                PressSettingRow(Gamesim.Presentation.SettingRowWords.AllSoundRow, "Off");
+                PressSettingRow(Gamesim.Presentation.SettingRowWords.AllSoundRow, "On");
+                director.ShowSettingsSection(Gamesim.Presentation.SettingsSection.Accessibility);
+                PressSettingRow(Gamesim.Presentation.SettingRowWords.ReducedMotionRow, "On");
+                PressSettingRow(Gamesim.Presentation.SettingRowWords.ReducedMotionRow, "Off");
+                director.ShowSettingsSection(Gamesim.Presentation.SettingsSection.Controls);
+                PressSettingRow(Gamesim.Presentation.SettingRowWords.EdgePanningRow, "Off");
+                PressSettingRow(Gamesim.Presentation.SettingRowWords.EdgePanningRow, "On");
+                director.ShowSettingsSection(Gamesim.Presentation.SettingsSection.Display);
+                var quality = FindButton(Gamesim.Presentation.SettingRowWords.QualityRow);
+                if (quality.interactable) quality.onClick.Invoke();
+                ButtonWithCaption(Gamesim.Presentation.SettingRowWords.FrameRateRow).onClick.Invoke();
                 yield return null;
                 Assert.That(director.WindowApplications, Is.EqualTo(applied), "No setting but the window's own applied the window.");
                 Assert.That(Screen.fullScreenMode, Is.EqualTo(mode), "and the window stands as it stood.");
 
-                ButtonStarting("Display mode: ").onClick.Invoke();
+                ButtonWithCaption(Gamesim.Presentation.SettingRowWords.DisplayModeRow).onClick.Invoke();
                 Assert.That(director.WindowApplications, Is.EqualTo(applied + 1), "The display mode does: the count is live.");
             }
             finally
@@ -290,14 +300,6 @@ namespace Gamesim.Tests.PlayMode
                 director.ClosePanels();
                 director.SetCompactHud(originalCompact);
             }
-        }
-
-        private Button ButtonStarting(string prefix)
-        {
-            var button = director.GetComponentsInChildren<Button>(true).FirstOrDefault(b => b.IsActive()
-                && b.GetComponentsInChildren<TMPro.TMP_Text>(true).Any(t => t.text.StartsWith(prefix)));
-            Assert.That(button, Is.Not.Null, "Expected a control whose caption starts with '" + prefix + "'.");
-            return button;
         }
     }
 }

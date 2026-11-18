@@ -168,6 +168,41 @@ namespace Gamesim.Tests.EditMode
             Assert.That(IconRail.Height(8, 1f, true) - IconRail.Height(8, 1f), Is.EqualTo(IconRail.HeadingBand).Within(.001f));
             Assert.That(IconRail.Height(8, 1.4f, false), Is.EqualTo(IconRail.Height(8, 1.4f)).Within(.001f));
         }
+
+        /// <summary>
+        /// A pad's chip stands above the top edge of the control that wears it, and "Notebook [J]",
+        /// the first row under the rail's Notebook heading, wears one. The heading keeps that rise
+        /// free under its divider, at every text size and every scale the rail can take there (it
+        /// never grows past the text's, and never shrinks under 1): the chip's top stands below the
+        /// divider, which stands below the heading's words. Without the room the chip lay across the
+        /// divider at every size and over the heading's K at the largest text on the 4:3 frame.
+        /// </summary>
+        [Test]
+        public void TheRailsHeading_KeepsThePadChipOfTheRowUnderItClearOfItsDividerAndWords()
+        {
+            string row = NotebookStrip.RailRows[0].Caption;
+            Assert.That(row, Is.EqualTo(NotebookStrip.NotebookRow), "The notebook's row is the first under the heading,");
+            Assert.That(InputGlossary.CaptionAction(row), Is.Not.Null, "and it names a key, so it wears a chip on a pad.");
+            Assert.That(Gamesim.Episode.EpisodeHud.ChipRoomOver("Overview", 1.4f), Is.EqualTo(0f), "A row that names no key gets no room.");
+            foreach (var size in TextSizes.All)
+            {
+                float text = TextSizes.Scale(size);
+                float room = Gamesim.Episode.EpisodeHud.ChipRoomOver(row, text);
+                Assert.That(room, Is.EqualTo(Gamesim.Episode.EpisodeHud.GlyphChipRise * text).Within(.001f), "The room is the chip's rise at " + size + " text.");
+                foreach (float rail in new[] { 1f, (1f + text) * .5f, text })
+                {
+                    string at = size + " text, rail scale " + rail.ToString("0.###");
+                    float band = IconRail.HeadingTop(1, rail);
+                    float words = band + 2f * rail + IconRail.HeadingBox(rail);
+                    float rule = band + IconRail.HeadingRuleOffset(rail);
+                    float chipTop = IconRail.RowTop(1, rail, 1, room) - Gamesim.Episode.EpisodeHud.GlyphChipRise * text;
+                    Assert.That(words, Is.LessThanOrEqualTo(rule), at + ": the heading's words stand over its divider.");
+                    Assert.That(chipTop, Is.GreaterThanOrEqualTo(rule + IconRail.HeadingRuleThickness + 1f), at + ": the chip's top stands under the divider.");
+                    Assert.That(IconRail.RowTop(1, rail, 1, room) - IconRail.RowTop(1, rail, 1), Is.EqualTo(room).Within(.001f), at + ": the room is all the rows move.");
+                    Assert.That(IconRail.RowTop(0, rail, 1, room), Is.EqualTo(IconRail.Pad * rail).Within(.001f), at + ": the overview, over the heading, stays.");
+                }
+            }
+        }
 #endif
 
         private static string Read(string relative) => File.ReadAllText(Path.Combine(RuntimeRoot(), relative));

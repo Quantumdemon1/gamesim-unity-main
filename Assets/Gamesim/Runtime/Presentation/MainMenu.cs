@@ -32,6 +32,8 @@ namespace Gamesim.Presentation
         public const string ContinueCaption = "Continue your season";
         public const string NewSeasonCaption = "Start a new season";
         public const string SettingsCaption = "Settings and saves";
+        /// <summary>Shown once a season is saved (menu slice 4): Settings on Saves, the list of seasons.</summary>
+        public const string LoadCaption = "Load a season";
         public const string QuitCaption = "Quit the game";
 
         private CanvasGroup group;
@@ -45,6 +47,12 @@ namespace Gamesim.Presentation
         /// still has to know whether the player came from a first launch.
         /// </summary>
         public bool OffersContinue { get; private set; }
+
+        /// <summary>Whether the menu has been shown at all this session (with <see cref="OffersContinue"/>: a first launch's menu).</summary>
+        public bool HasShown { get; private set; }
+
+        /// <summary>Whether the last <see cref="Show"/> offered "Load a season".</summary>
+        public bool OffersLoad { get; private set; }
 
         /// <summary>
         /// The "larger text" setting, applied by magnifying the whole screen. The layout is fixed in
@@ -94,21 +102,24 @@ namespace Gamesim.Presentation
         /// <summary>
         /// Opens the menu. <paramref name="canContinue"/> decides whether the first control is
         /// offered at all; <paramref name="note"/> is the one line under the title, which is where
-        /// a failed load or a retained slot gets explained.
+        /// a failed load or a retained slot gets explained. <paramref name="onLoad"/>, when given,
+        /// adds "Load a season" (a saved season exists to load).
         /// </summary>
         public void Show(bool canContinue, string note,
             Action onContinue, Action onNewSeason, Action onSettings, Action onQuit,
-            string career = null)
+            string career = null, Action onLoad = null)
         {
             OffersContinue = canContinue;
-            Rebuild(canContinue, note, onContinue, onNewSeason, onSettings, onQuit, career);
+            OffersLoad = onLoad != null;
+            HasShown = true;
+            Rebuild(canContinue, note, onContinue, onNewSeason, onSettings, onQuit, career, onLoad);
             group.alpha = 1f;
             group.blocksRaycasts = true;
             group.interactable = true;
         }
 
         private void Rebuild(bool canContinue, string note,
-            Action onContinue, Action onNewSeason, Action onSettings, Action onQuit, string career)
+            Action onContinue, Action onNewSeason, Action onSettings, Action onQuit, string career, Action onLoad)
         {
             // Deactivated before Destroy, which runs at the end of the frame: otherwise a rebuild
             // leaves the previous controls live alongside the new ones for a frame.
@@ -229,7 +240,7 @@ namespace Gamesim.Presentation
 
             // The controls on one glass card, the pack's resting panel, as every mockup gathers
             // its choices.
-            int count = (canContinue ? 1 : 0) + 3;
+            int count = (canContinue ? 1 : 0) + (onLoad != null ? 1 : 0) + 3;
             float cardHeight = CardPad * 2f + count * ButtonHeight + (count - 1) * ButtonGap;
             var card = HudPrimitives.Fill("Menu card", column, UiTheme.GlassFill, 16);
             Place(card, CardWidth, cardHeight, -cursor);
@@ -238,6 +249,7 @@ namespace Gamesim.Presentation
             float inner = CardPad;
             if (canContinue) Button(card, ContinueCaption, true, "house", onContinue, ref inner);
             Button(card, NewSeasonCaption, !canContinue, "people", onNewSeason, ref inner);
+            if (onLoad != null) Button(card, LoadCaption, false, "calendar", onLoad, ref inner);
             Button(card, SettingsCaption, false, "settings", onSettings, ref inner);
             Button(card, QuitCaption, false, "exit", onQuit, ref inner);
             cursor += cardHeight + 18f;

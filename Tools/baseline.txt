@@ -356,6 +356,9 @@
 # 10260 = 10254 (menu slice 2, one way back) + the menu quick wins, staging families and ring tower stack 6 (10203 -
 # 10197 on this branch): disjoint cases, so the floor is their sum (menu slice 2 squashed onto the stack). Counted
 # from the two sides.
+# 10297 = 10260 + menu slice 4 (Settings and saves) 37: the foundation's 12 (MenuSettingsShellTests), part a's 15
+# (MenuSavesStoreTests 11, MenuSavesShelfTests 4), part b's 8 (MenuSettingRowsTests) and the integration's 2
+# (MenuSavesDeleteScanTests), 2026-11-17.
 # 10315 = 10260 + menu slice 3 (the notebook)'s 55: the foundation's 9 (MenuReadingFrameTests 5,
 # MenuReadingFrameKindsTests 4), part a's 12 (MenuNotebookStripATests), part b's 31 (MenuNotebookBTrustChipTests 25,
 # MenuNotebookBProfileTests 6) and the integration's 3 (MenuNotebookIntegrationTests), 2026-11-17. Counted by the listers.
@@ -380,7 +383,15 @@
 # 10356 = 10301 (the cell's branch on main c9c3e21c, with the way-out scan's 4) + menu slice 3's 55 (10352 - 10297 on
 # this branch): disjoint cases, so the floor is their sum (main merged up the stack into menu slice 3, 2026-11-17).
 # Counted from the two sides.
-Gamesim.EditModeTests 10356
+# 10389 = 10297 (menu slice 4, Settings and saves, at 62ddab50 on menu slice 2's commit) + the stack's (the Ring Tower
+# cell, R8's cases and menu slice 3 over menu slice 2) 92 (10352 - 10260 on this branch): disjoint cases, so the floor
+# is their sum (menu slice 4 squashed onto the stack for its landing, 2026-11-17). Counted from the two sides.
+# 10393 = 10356 (menu slice 3's branch on main c9c3e21c, with the way-out scan's 4) + menu slice 4's 37 (10389 - 10352
+# on this branch): disjoint cases, so the floor is their sum (main merged up the stack into menu slice 4, 2026-11-17).
+# Counted from the two sides.
+# 10394 = 10393 + the stack's proof fix's 1 (MenuNotebookStripATests' rail heading keeping the pad chip's rise free,
+# an EditMode-only case), 2026-11-17.
+Gamesim.EditModeTests 10394
 # The UMA-free build. 1215 = 1236, the count after the consolidation's lanes (S2a, S2b, S4a), less the 7
 # farewell probes moved to Gamesim.DiagnosticsPlayModeTests and the 14 farewell readiness tests that now
 # compile only under GAMESIM_UMA (judged on the UMA cast); 1230 = 1215 + S2d's 7, S4b's 2, S4c's 2 and
@@ -618,9 +629,14 @@ Gamesim.EditModeTests 10356
 # 1640 = 1633 (menu slice 2, one way back) + the menu quick wins, staging families and ring tower stack 7 (1611 - 1604
 # on this branch): disjoint cases, so the floor is their sum (menu slice 2 squashed onto the stack). Counted from the
 # two sides.
+# 1660 = 1640 + menu slice 4 (Settings and saves) 20: the foundation's 6 (MenuSettingsShell), part a's 7 (MenuSaves),
+# part b's 6 (MenuSettingRows) and the integration's 1 (MenuSettingsIntegrate), 2026-11-17.
 # 1652 = 1640 + menu slice 3 (the notebook)'s 12: the foundation's 5 (MenuReadingFramePlayModeTests), part a's 4
 # (MenuNotebookStripAPlayModeTests) and part b's 3 (MenuNotebookBProfilePlayModeTests), 2026-11-17. Counted by the listers.
-Gamesim.PlayModeTests 1652
+# 1672 = 1660 (menu slice 4, Settings and saves, at 62ddab50 on menu slice 2's commit) + the stack's (the Ring Tower
+# cell, R8's cases and menu slice 3 over menu slice 2) 12 (1652 - 1640 on this branch): disjoint cases, so the floor
+# is their sum (menu slice 4 squashed onto the stack for its landing, 2026-11-17). Counted from the two sides.
+Gamesim.PlayModeTests 1672
 # The UMA build of the same assembly, read by a plan built without -WithoutUma. 1281 = the 1241 above + the
 # 40 tests that compile only under GAMESIM_UMA, as run at r1 (2026-10-16): in EpisodePlayModeTests,
 # GroundedFarewell 11, Creator 9, HouseLife 8, Emotes 3, OpeningCaptures 2, and one each in CreatorEntry,
@@ -784,8 +800,12 @@ Gamesim.PlayModeTests 1652
 # 1685 = 1678 (menu slice 2, one way back) + the menu quick wins, staging families and ring tower stack 7 (1656 - 1649
 # on this branch): disjoint cases, so the floor is their sum (menu slice 2 squashed onto the stack). Counted from the
 # two sides.
+# 1705 = 1685 + menu slice 4's 20 PlayMode cases (the same 20 the no-UMA floor counts), 2026-11-17.
 # 1697 = 1685 + menu slice 3 (the notebook)'s 12, the same 12 PlayMode cases (5 + 4 + 3), 2026-11-17. Counted by the listers.
-Gamesim.PlayModeTests.UmaBuild 1697
+# 1717 = 1705 (menu slice 4, Settings and saves, at 62ddab50 on menu slice 2's commit) + the stack's (the Ring Tower
+# cell, R8's cases and menu slice 3 over menu slice 2) 12 (1697 - 1685 on this branch): disjoint cases, so the floor
+# is their sum (menu slice 4 squashed onto the stack for its landing, 2026-11-17). Counted from the two sides.
+Gamesim.PlayModeTests.UmaBuild 1717
 # The UMA bodies: runs only where the GAMESIM_UMA define is set (the working tree and the D: copy).
 # 82 = the 89 run on 2026-10-15, less the 7 farewell probes moved to Gamesim.Uma.DiagnosticsPlayModeTests;
 # 85 = 82 + the 3 farewell readiness decision tests (UmaFarewellReadinessDecisionPlayModeTests, 2026-10-16);
@@ -1059,6 +1079,8 @@ Gamesim.Uma.DiagnosticsPlayModeTests 10
 # 17044 = 17038 (menu slice 2, one way back) + the menu quick wins, staging families and ring tower stack 6 (17000 -
 # 16994 on this branch): disjoint cases, so the floor is their sum (menu slice 2 squashed onto the stack). Counted
 # from the two sides.
+# 17077 = 17044 + menu slice 4 (Settings and saves) 33: the foundation's 12 (MenuSettingsShellTests), part a's 11
+# (MenuSavesStoreTests), part b's 8 (MenuSettingRowsTests) and the integration's 2 (MenuSavesDeleteScanTests), 2026-11-17.
 # 17082 = 17044 + menu slice 3 (the notebook)'s 38 Unity-free cases: the foundation's 5 (MenuReadingFrameTests), part
 # a's 9 (MenuNotebookStripATests' plain cases), part b's 21 (MenuNotebookBTrustChipTests' plain cases) and the
 # integration's 3 (MenuNotebookIntegrationTests), 2026-11-17.
@@ -1073,4 +1095,10 @@ Gamesim.Uma.DiagnosticsPlayModeTests 10
 # 17117 = 17079 (the cell's branch on main c9c3e21c, with the way-out scan's 4) + menu slice 3's 38 (17113 - 17075 on
 # this branch): disjoint cases, so the floor is their sum (main merged up the stack into menu slice 3, 2026-11-17).
 # Counted from the two sides.
-Gamesim.SimulationTests 17117
+# 17146 = 17077 (menu slice 4, Settings and saves, at 62ddab50 on menu slice 2's commit) + the stack's (the Ring Tower
+# cell, R8's cases and menu slice 3 over menu slice 2) 69 (17113 - 17044 on this branch): disjoint cases, so the floor
+# is their sum (menu slice 4 squashed onto the stack for its landing, 2026-11-17). Counted from the two sides.
+# 17150 = 17117 (menu slice 3's branch on main c9c3e21c, with the way-out scan's 4) + menu slice 4's 33 (17146 - 17113
+# on this branch): disjoint cases, so the floor is their sum (main merged up the stack into menu slice 4, 2026-11-17).
+# Counted from the two sides.
+Gamesim.SimulationTests 17150

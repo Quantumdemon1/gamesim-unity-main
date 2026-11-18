@@ -183,8 +183,10 @@ namespace Gamesim.Tests.PlayMode
             // Starting creates a new slot, while the isolated scene bootstrap deliberately opens
             // episode.json and never changes the user's active-slot preference. Reload this new
             // slot through the actual Settings control, not the test bootstrap's different file.
-            director.OpenSettings();
-            yield return CreatorEntrySubmit("Reload current slot");
+            director.OpenSettingsAt(Gamesim.Presentation.SettingsSection.Advanced);
+            // Picked, then confirmed on the Settings confirm card (menu slice 4).
+            yield return CreatorEntrySubmit(Gamesim.Presentation.SavesWords.GoBackCaption);
+            yield return CreatorEntrySubmit(Gamesim.Presentation.SavesWords.GoBackResult);
             Assert.That(director.SavePath, Is.EqualTo(savedPath));
             Assert.That(director.Snapshot.sessionId, Is.EqualTo(sessionId));
             Assert.That(director.StatusMessage, Does.StartWith("Local episode loaded and validated."));

@@ -16,7 +16,7 @@ using Newtonsoft.Json.Serialization;
 namespace Gamesim.Persistence
 {
     /// <summary>Versioned local saves with explicit recovery and an atomically rotated good backup.</summary>
-    public sealed class EpisodeSaveStore
+    public sealed partial class EpisodeSaveStore
     {
         private const string Format = "gamesim-unity-save";
         private static readonly ConcurrentDictionary<string, object> Gates = new ConcurrentDictionary<string, object>(StringComparer.OrdinalIgnoreCase);

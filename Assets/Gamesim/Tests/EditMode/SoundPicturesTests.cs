@@ -51,15 +51,14 @@ namespace Gamesim.Tests.EditMode
         }
 
         [Test]
-        public void TheVolumeControls_HaveCaptionsOfTheirOwn()
+        public void TheVolumeSliders_AreNamedForTheirChannel_BesideTheSoundRows()
         {
-            var captions = new[] { SoundChannel.Music, SoundChannel.Effects, SoundChannel.Interface }
-                .SelectMany(channel => new[] { SoundPictures.DownCaption(channel), SoundPictures.UpCaption(channel) }).ToList();
-            Assert.That(captions, Is.EqualTo(new[] { "Music volume down", "Music volume up", "Effects volume down", "Effects volume up", "Interface volume down", "Interface volume up" }));
-            // Unique beside the master's own and every sound control already in the settings.
-            foreach (var existing in new[] { "Volume down", "Volume up", "Mute sound", "Turn sound on", "Turn music off", "Turn music on", "Reduce sound", "Full sound" })
-                Assert.That(captions, Has.No.Member(existing));
-            Assert.That(SoundPictures.MeterCaption(SoundChannel.Music), Is.EqualTo("Music volume"));
+            var names = new[] { SoundChannel.Music, SoundChannel.Effects, SoundChannel.Interface }.Select(SoundPictures.MeterCaption).ToList();
+            Assert.That(names, Is.EqualTo(new[] { "Music volume", "Effects volume", "Interface volume" }));
+            // Menu slice 4: each a slider row of its own, its value its percentage; no step buttons beside it,
+            // and no name shared with the master's slider or the sound switches.
+            foreach (var other in new[] { SettingRowWords.MasterVolumeRow, SettingRowWords.AllSoundRow, SettingRowWords.MusicRow, SettingRowWords.ReducedSoundRow })
+                Assert.That(names, Has.No.Member(other));
             Assert.That(new[] { SoundPictures.MusicVolumeKey, SoundPictures.EffectsVolumeKey, SoundPictures.InterfaceVolumeKey },
                 Is.EqualTo(new[] { "Gamesim.MusicVolume", "Gamesim.EffectsVolume", "Gamesim.InterfaceVolume" }));
         }

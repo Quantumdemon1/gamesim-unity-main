@@ -78,9 +78,12 @@ namespace Gamesim.Tests.PlayMode
             finally { Time.captureDeltaTime = 0f; }
         }
 
-        /// <summary>Whether the settings' PAUSED eyebrow is on screen.</summary>
+        /// <summary>
+        /// Whether PAUSED is on screen: the game menu card's label over its title (menu slice 4, what
+        /// Escape opens in the house), or the eyebrow of the Settings frame opened from it.
+        /// </summary>
         private bool PausedEyebrowShown() => director.GetComponentsInChildren<TMPro.TMP_Text>()
-            .Any(text => text.isActiveAndEnabled && text.text == EpisodeDirector.PausedEyebrow);
+            .Any(text => text.isActiveAndEnabled && (text.text == EpisodeDirector.PausedEyebrow || text.text == Gamesim.Presentation.SettingsWords.PausedLabel));
 
         /// <summary>Whether the settings' everyday eyebrow is on screen.</summary>
         private bool SettingsEyebrowShown() => director.GetComponentsInChildren<TMPro.TMP_Text>()

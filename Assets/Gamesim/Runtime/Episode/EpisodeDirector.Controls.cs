@@ -96,7 +96,7 @@ namespace Gamesim.Episode
         /// </summary>
         private void ControlsSettings()
         {
-            hud.SectionHeading("CONTROLS");
+            // The section's heading is the frame's (EpisodeDirector.SettingsFrame.cs).
             hud.Disclosure(controlsShown ? HideControlsCaption : ShowControlsCaption, controlsShown,
                 () =>
                 {
@@ -109,13 +109,14 @@ namespace Gamesim.Episode
             string context = null;
             foreach (var line in ControlsPage.Page(HouseActions))
             {
-                if (line.Context != context) { context = line.Context; hud.Heading(context); }
+                // The section's one heading style (ruling S4/B4), as CAMERA beside it.
+                if (line.Context != context) { context = line.Context; hud.SectionHeading(context); }
                 hud.NamedParagraph(line.Name, line.Text);
             }
             // Rebinding (A5): each of the house's actions given a key, or a pad button, of the
             // player's own. The device that presses "Rebind ..." is the one it listens to, and the
             // lines above say what each answers to now.
-            hud.Heading(RebindHeading);
+            hud.SectionHeading(RebindHeading);
             hud.Paragraph(RebindLine());
             foreach (var target in KeyBindings.Targets)
             {

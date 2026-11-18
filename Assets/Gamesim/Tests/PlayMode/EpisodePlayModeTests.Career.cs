@@ -114,7 +114,7 @@ namespace Gamesim.Tests.PlayMode
         [UnityTest]
         public IEnumerator Career_ResetFromSettingsTakesTwoClicksAndDeletesNothing()
         {
-            director.OpenSettings();
+            director.OpenSettingsAt(Gamesim.Presentation.SettingsSection.Advanced);
             yield return null;
             Assert.That(director.GetComponentsInChildren<UnityEngine.UI.Button>(true).Any(button => button.IsActive()
                     && button.GetComponentsInChildren<TMP_Text>(true).Any(t => t.text == EpisodeDirector.ResetCareerCaption)),
@@ -126,7 +126,7 @@ namespace Gamesim.Tests.PlayMode
             var ledger = Ledger();
             Assert.That(ledger.Record(finished), Is.True);
 
-            director.OpenSettings();
+            director.OpenSettingsAt(Gamesim.Presentation.SettingsSection.Advanced);
             yield return null;
             Assert.That(VisibleText(), Does.Contain("1 season"));
             ButtonWithCaption(EpisodeDirector.ResetCareerCaption).onClick.Invoke();
@@ -173,7 +173,7 @@ namespace Gamesim.Tests.PlayMode
 
             using (new FileStream(ledger.FilePath, FileMode.Open, FileAccess.Read, FileShare.None))
             {
-                director.OpenSettings();
+                director.OpenSettingsAt(Gamesim.Presentation.SettingsSection.Advanced);
                 yield return null;
                 Assert.That(VisibleText(), Does.Contain(EpisodeDirector.UnreadCareerLine), "The record is there and could not be read,");
                 Assert.That(VisibleText(), Does.Not.Contain("No finished seasons yet"), "which is not an empty career.");

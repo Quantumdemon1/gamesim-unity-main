@@ -31,7 +31,7 @@ namespace Gamesim.Tests.PlayMode
                     { "Notebook [J]", "Notizbuch [J]" },
                     { "SETTINGS & SAVES", "EINSTELLUNGEN & SPEICHERSTÄNDE" },
                 });
-                director.OpenSettings();
+                director.OpenSettingsAt(Gamesim.Presentation.SettingsSection.Saves);
                 yield return null;
                 var settingsTitle = director.GetComponentsInChildren<TMP_Text>(true).FirstOrDefault(t => t.text == "EINSTELLUNGEN & SPEICHERSTÄNDE");
                 Assert.That(settingsTitle, Is.Not.Null, "A heading the table holds is drawn in the table's words.");

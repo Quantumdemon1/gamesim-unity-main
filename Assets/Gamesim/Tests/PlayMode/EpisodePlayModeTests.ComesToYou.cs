@@ -1779,9 +1779,9 @@ namespace Gamesim.Tests.PlayMode
                     yield return ApplyTextSize(textSize);
                     if (reduced)
                     {
-                        director.OpenSettings();
+                        director.OpenSettingsAt(Gamesim.Presentation.SettingsSection.Accessibility);
                         yield return null;
-                        ButtonWithCaption("Reduce character motion").onClick.Invoke();
+                        PressSettingRow(Gamesim.Presentation.SettingRowWords.ReducedMotionRow, "On");
                         yield return null;
                         director.ClosePanels();
                         yield return null;

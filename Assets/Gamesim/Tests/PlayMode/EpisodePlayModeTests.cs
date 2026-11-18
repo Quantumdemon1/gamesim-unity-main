@@ -281,10 +281,10 @@ namespace Gamesim.Tests.PlayMode
         [UnityTest]
         public IEnumerator ModalKeyboardFocus_IsRestoredAndScrollsToSelectedControls()
         {
-            director.OpenSettings();
+            director.OpenSettingsAt(Gamesim.Presentation.SettingsSection.Accessibility);
             yield return null;
             yield return null;
-            ButtonWithCaption("Use larger text").onClick.Invoke();
+            PressSettingRow(Gamesim.Presentation.SettingRowWords.TextSizeRow, "Larger");
             yield return null;
             yield return null;
             Assert.That(director.GetComponent<EpisodeHud>().FontScale, Is.EqualTo(1.2f).Within(0.001f));
@@ -299,6 +299,12 @@ namespace Gamesim.Tests.PlayMode
                 "Fixed navigation labels need bounded fitting at the larger text setting.");
             Assert.That(EventSystem.current.currentSelectedGameObject, Is.Not.Null);
             Assert.That(EventSystem.current.currentSelectedGameObject.transform.IsChildOf(modal), Is.True);
+            // The import and "Save now" are the Saves section's (menu slice 4): the section shown, the panel found again.
+            director.ShowSettingsSection(Gamesim.Presentation.SettingsSection.Saves);
+            yield return null;
+            Canvas.ForceUpdateCanvases();
+            modal = director.GetComponentsInChildren<RectTransform>(true)
+                .Single(rect => rect.name == "Episode panel" && rect.gameObject.activeInHierarchy);
             var importButton = ButtonWithCaption("Archive and import this file");
             importButton.Select();
             yield return null;

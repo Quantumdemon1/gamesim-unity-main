@@ -30,9 +30,6 @@ namespace Gamesim.Presentation
         /// <summary>The preference the setting is kept under: 0 standard, 1 longer.</summary>
         public const string Key = "Gamesim.CaptionTime";
 
-        /// <summary>The settings' control for each setting: the setting's name in it, and a press moves to the other.</summary>
-        public const string StandardCaption = "Caption time: Standard  (change)";
-        public const string LongerCaption = "Caption time: Longer  (change)";
 
         /// <summary>The words a reader reads: every run of characters between whitespace.</summary>
         public static int Words(string text)
@@ -64,9 +61,6 @@ namespace Gamesim.Presentation
 
         /// <summary>The setting's word in the player log's settings lines.</summary>
         public static string Name(CaptionTime time) => time == CaptionTime.Longer ? "longer" : "standard";
-
-        /// <summary>The settings' control with this setting in use.</summary>
-        public static string Caption(CaptionTime time) => time == CaptionTime.Longer ? LongerCaption : StandardCaption;
 
         /// <summary>The setting a store's record names: 1 is longer, anything else standard.</summary>
         public static CaptionTime FromRecord(int record) => record == 1 ? CaptionTime.Longer : CaptionTime.Standard;

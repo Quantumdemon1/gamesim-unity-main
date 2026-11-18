@@ -1,4 +1,6 @@
 using System;
+using System.Linq;
+using Gamesim.Presentation;
 using UnityEngine;
 
 namespace Gamesim.Episode
@@ -14,11 +16,6 @@ namespace Gamesim.Episode
     {
         /// <summary>The camera speeds the settings cycle, as percentages of the camera's own: half to twice it.</summary>
         public static readonly int[] CameraSpeeds = { 50, 75, 100, 150, 200 };
-
-        public const string InvertTiltCaption = "Invert camera tilt";
-        public const string RestoreTiltCaption = "Restore camera tilt";
-        /// <summary>The camera speed control's words before its speed: "Camera speed: Normal  (change)".</summary>
-        public const string CameraSpeedCaptionPrefix = "Camera speed: ";
 
         private int cameraSpeedPercent = 100;
         private bool invertTilt;
@@ -41,9 +38,6 @@ namespace Gamesim.Episode
             }
         }
 
-        /// <summary>The speed control's caption for a speed.</summary>
-        public static string CameraSpeedCaption(int percent) => CameraSpeedCaptionPrefix + CameraSpeedName(percent) + "  (change)";
-
         /// <summary>Sets the camera speed, the nearest of <see cref="CameraSpeeds"/>, and keeps it.</summary>
         public void SetCameraSpeed(float share)
         {
@@ -52,6 +46,7 @@ namespace Gamesim.Episode
                 if (Math.Abs(speed - wanted) < Math.Abs(best - wanted)) best = speed;
             cameraSpeedPercent = best;
             ApplyPreferences();
+            RedrawSettingsRows();
         }
 
         /// <summary>Inverts the camera's tilt, or restores it, and keeps the choice.</summary>
@@ -59,6 +54,7 @@ namespace Gamesim.Episode
         {
             invertTilt = inverted;
             ApplyPreferences();
+            RedrawSettingsRows();
         }
 
         private void LoadCameraPreferences()
@@ -81,24 +77,13 @@ namespace Gamesim.Episode
             store.SetInt("Gamesim.InvertY", invertTilt ? 1 : 0);
         }
 
-        /// <summary>The settings' camera block: the speed, cycled, and the tilt, flipped.</summary>
+        /// <summary>The Controls section's camera rows: the speed, a choice of five, and the tilt, normal or inverted.</summary>
         private void CameraSettings()
         {
             hud.SectionHeading("CAMERA");
-            hud.Action(CameraSpeedCaption(cameraSpeedPercent), () =>
-            {
-                int at = Array.IndexOf(CameraSpeeds, cameraSpeedPercent);
-                cameraSpeedPercent = CameraSpeeds[(at + 1) % CameraSpeeds.Length];
-                ApplyPreferences(); Render();
-                // The keyboard stays on the control it pressed, under its new words.
-                hud.FocusWhenWired(CameraSpeedCaption(cameraSpeedPercent));
-            });
-            hud.Action(invertTilt ? RestoreTiltCaption : InvertTiltCaption, () =>
-            {
-                invertTilt = !invertTilt;
-                ApplyPreferences(); Render();
-                hud.FocusWhenWired(invertTilt ? RestoreTiltCaption : InvertTiltCaption);
-            });
+            hud.SettingChoice(SettingRowWords.CameraSpeedRow, CameraSpeeds.Select(CameraSpeedName).ToList(),
+                Math.Max(0, Array.IndexOf(CameraSpeeds, cameraSpeedPercent)), at => SetCameraSpeed(CameraSpeeds[at] / 100f));
+            hud.SettingChoice(SettingRowWords.CameraTiltRow, SettingRowWords.CameraTiltValues, invertTilt ? 1 : 0, at => SetInvertTilt(at == 1));
             hud.Paragraph("The speed is the mouse's drag, the right stick and Q and C alike; the tilt is up and down on each.");
         }
     }

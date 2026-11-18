@@ -38,10 +38,6 @@ namespace Gamesim.Episode
         /// </summary>
         private bool revealRedraws;
 
-        /// <summary>The settings' pace switch, in the words of what pressing it does.</summary>
-        public const string QuickCeremoniesCaption = "Make ceremonies quick";
-        public const string SuspensefulCeremoniesCaption = "Make ceremonies suspenseful";
-
         /// <summary>How the ceremony reveals are paced: suspenseful unless the player asked for quick.</summary>
         public CeremonyPace CeremonyPaceSetting => ceremonyPace;
 

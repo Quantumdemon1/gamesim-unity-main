@@ -188,14 +188,15 @@ namespace Gamesim.Episode
             for (int i = 0; i < 60; i++) yield return null;
             if (graphical) yield return CaptureVerifiedFrame(Path.Combine(outputDirectory, "house.png"), capturedFrames.Add, errors.Add);
             for (int i = 0; i < 20; i++) yield return null;
-            director.OpenSettings();
+            // The text sizes are in the Accessibility section (menu slice 4).
+            director.OpenSettingsAt(Gamesim.Presentation.SettingsSection.Accessibility);
             for (int i = 0; i < 5; i++) yield return null;
             if (graphical) yield return CaptureVerifiedFrame(Path.Combine(outputDirectory, "settings.png"), capturedFrames.Add, errors.Add);
             for (int i = 0; i < 5; i++) yield return null;
             if (graphical)
             {
-                var larger = director.GetComponentsInChildren<Button>().FirstOrDefault(button => button.name == "Use larger text");
-                if (larger != null) larger.onClick.Invoke();
+                // The text size row steps through the sizes (menu slice 4): pressed on to the larger.
+                ChooseTextSize(director, Gamesim.Presentation.TextSize.Larger);
                 for (int i = 0; i < 5; i++) yield return null;
                 yield return CaptureVerifiedFrame(Path.Combine(outputDirectory, "settings-large.png"), capturedFrames.Add, errors.Add);
                 for (int i = 0; i < 10; i++) yield return null;
@@ -206,8 +207,7 @@ namespace Gamesim.Episode
                     yield return CaptureVerifiedFrame(Path.Combine(outputDirectory, "settings-large-1280x" + height + ".png"), capturedFrames.Add, errors.Add);
                     for (int i = 0; i < 10; i++) yield return null;
                 }
-                var standard = director.GetComponentsInChildren<Button>().FirstOrDefault(button => button.name == "Use standard text");
-                if (standard != null) standard.onClick.Invoke();
+                ChooseTextSize(director, Gamesim.Presentation.TextSize.Standard);
                 director.SetDisplay(DisplayMode.Windowed, ProfileWidth, ProfileHeight);
                 for (int i = 0; i < 15; i++) yield return null;
             }
@@ -367,6 +367,24 @@ namespace Gamesim.Episode
             && profileJournalRequests > 0 && profileSettingsRequests > 0 && profileStationRequests > 0;
         private static double Percentile(List<long> values, double p) => values.Count == 0 ? 0 : values[Math.Min(values.Count - 1, (int)Math.Ceiling(values.Count * p) - 1)];
         private void OnDestroy() { Application.logMessageReceived -= CollectError; gc.Dispose(); DisposeMemoryRecorders(); DisposeViews(); }
+
+        /// <summary>
+        /// Chooses a text size as a player does in Settings' Accessibility section (menu slice 4): the
+        /// "Text size" row pressed on until it reads the size. A press draws the panel again, so the
+        /// row is found afresh each time; three presses go round the three sizes.
+        /// </summary>
+        private static void ChooseTextSize(EpisodeDirector director, Gamesim.Presentation.TextSize size)
+        {
+            string wanted = Gamesim.Presentation.SettingRowWords.TextSizeValue(size);
+            for (int press = 0; press < 3; press++)
+            {
+                var row = director.GetComponentsInChildren<SettingRowButton>()
+                    .LastOrDefault(button => button.name == Gamesim.Presentation.SettingRowWords.TextSizeRow);
+                var value = row != null ? row.transform.Find(EpisodeHud.SettingValueName) : null;
+                if (row == null || value == null || value.GetComponent<TMPro.TMP_Text>().text == wanted) return;
+                row.onClick.Invoke();
+            }
+        }
 
         [Serializable] private sealed class VerificationReport
         {

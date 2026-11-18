@@ -613,14 +613,14 @@ namespace Gamesim.Episode
                 // "Notebook [J]" opens the notebook on the notes, as the J key does.
                 if (section == EpisodeDirector.NotebookSection.Notes) director.OpenJournal();
                 else director.ShowNotebookSection(section);
-            }, director.ActiveSection, 1, NotebookStrip.RailHeading);
-            float y = IconRail.Top + IconRail.Height(entries.Count, railScale, true);
+            }, director.ActiveSection, 1, NotebookStrip.RailHeading, NotebookHeadingRoom);
+            float y = IconRail.Top + IconRail.Height(entries.Count, railScale, true) + NotebookHeadingRoom;
 
             if (!Compact)
             {
-                y = RailLabel("PLAY", y);
+                y = RailLabel("PLAY", y, StationTravelCaption);
                 var next = RailGroup("Next move", y, 2);
-                RailButton(next, "Go to episode screen", UiTheme.Icon("camera"), 0, director.GoToStation, true);
+                RailButton(next, StationTravelCaption, UiTheme.Icon("camera"), 0, director.GoToStation, true);
                 // Lit while the player is in the room it goes to, as the notebook's pages are.
                 RailButton(next, DiaryTravelCaption, UiTheme.Icon("chat"), 1, director.GoToDiary, on: director.IsDiaryOpen).interactable =
                     director.HasDiaryRoom && !recovery && state.Find(state.playerId)?.status == ContestantStatus.Active;
@@ -706,7 +706,10 @@ namespace Gamesim.Episode
             // the last row, and 6 more keep it off the strip.
             float rows = IconRail.Height(1 + NotebookStrip.RailRows.Count, 1f, true) + RailRuleBand + IconRail.Height(NotebookStrip.FootRows.Count, 1f)
                 + (Compact ? 0f : RailLabelBand + IconRail.Height(2, 1f));
-            float room = height - (CastRail.Bottom + CastRail.Height * FontScale) - IconRail.Top - 12f;
+            // The room the headings keep for the chips under them grows with the text, not the rail:
+            // it comes off the room first, so the rail still ends where it fits.
+            float room = height - (CastRail.Bottom + CastRail.Height * FontScale) - IconRail.Top - 12f
+                - NotebookHeadingRoom - (Compact ? 0f : PlayLabelRoom);
             return Mathf.Max(1f, Mathf.Min(FontScale, room / rows));
         }
 
@@ -715,13 +718,27 @@ namespace Gamesim.Episode
         /// the style guide's navigation rail, "grouped by context with clear labels". Returns where
         /// the group under it starts.
         /// </summary>
-        private float RailLabel(string words, float y)
+        private float RailLabel(string words, float y, string firstRow)
         {
             // The section heading's style, as the Notebook heading in the rail above it (menu slice 3):
             // it was 10-point muted capitals, under the smallest a label may be.
             IconRail.Heading((RectTransform)canvas.transform, words, 14f + IconRail.Pad + 8f, y, IconRail.Width - 2f * IconRail.Pad - 8f, railScale);
-            return y + RailLabelBand * railScale;
+            // And the room under its divider for a chip on the row under it, as the Notebook heading keeps.
+            return y + RailLabelBand * railScale + ChipRoomOver(firstRow, FontScale);
         }
+
+        /// <summary>The rail's way to the episode screen, the first row under PLAY.</summary>
+        private const string StationTravelCaption = "Go to episode screen";
+
+        /// <summary>
+        /// The room the Notebook heading keeps under its divider for the chip of the row under it
+        /// ("Notebook [J]" names a key, so on a pad it wears one, standing above its top edge):
+        /// without it the chip lay across the divider and, at the largest text, over the heading's words.
+        /// </summary>
+        private float NotebookHeadingRoom => ChipRoomOver(NotebookStrip.RailRows[0].Caption, FontScale);
+
+        /// <summary>The same room under PLAY, for the row under it (none while that row names no key).</summary>
+        private float PlayLabelRoom => ChipRoomOver(StationTravelCaption, FontScale);
 
         private Button RailButton(RectTransform group, string caption, Sprite icon, int index, System.Action action,
             bool primary = false, bool on = false) =>

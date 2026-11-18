@@ -93,6 +93,28 @@ namespace Gamesim.Presentation
         public const float HeadingSize = 14f;
         /// <summary>A rail heading's object name and its divider's.</summary>
         public const string HeadingName = "Rail label", HeadingRuleName = "Rail label rule";
+        /// <summary>The divider's thickness, in canvas units at every scale.</summary>
+        public const float HeadingRuleThickness = 1f;
+
+        /// <summary>The heading's words' box at a scale: 1.3 times its type and 4 more.</summary>
+        public static float HeadingBox(float scale) => Mathf.Ceil(HeadingSize * 1.3f + 4f) * scale;
+
+        /// <summary>How far down its band the heading's divider stands: 2 over the words' box, the box, and 2 under it.</summary>
+        public static float HeadingRuleOffset(float scale) => 2f * scale + HeadingBox(scale) + 2f * scale;
+
+        /// <summary>The top of the heading's band before row <paramref name="headingBefore"/>, down from the rail's top.</summary>
+        public static float HeadingTop(int headingBefore, float scale) => (Pad + headingBefore * (RowHeight + Gap)) * scale;
+
+        /// <summary>
+        /// Row <paramref name="index"/>'s top edge, down from the rail's top: rows from the heading's
+        /// on stand its band lower, and <paramref name="headingRoom"/> lower again - the room the
+        /// heading keeps free under its divider for the chip of the row under it (in canvas units).
+        /// </summary>
+        public static float RowTop(int index, float scale, int headingBefore = -1, float headingRoom = 0f)
+        {
+            bool under = headingBefore >= 0 && index >= headingBefore;
+            return (Pad + index * (RowHeight + Gap) + (under ? HeadingBand : 0f)) * scale + (under ? headingRoom : 0f);
+        }
 
         /// <summary>
         /// A group's heading in the rail (menu slice 3, the review's rail line): the section heading
@@ -103,7 +125,7 @@ namespace Gamesim.Presentation
         /// </summary>
         public static TMP_Text Heading(RectTransform parent, string words, float left, float top, float width, float scale)
         {
-            float box = Mathf.Ceil(HeadingSize * 1.3f + 4f) * scale;
+            float box = HeadingBox(scale);
             var label = HudPrimitives.Label(HeadingName, parent, Mathf.Round(HeadingSize * scale), UiTheme.Heading, TextAlignmentOptions.MidlineLeft);
             label.text = Localisation.Text(words);
             label.fontStyle |= FontStyles.UpperCase;
@@ -120,19 +142,21 @@ namespace Gamesim.Presentation
             var rule = HudPrimitives.Fill(HeadingRuleName, parent, new Color(UiTheme.Heading.r, UiTheme.Heading.g, UiTheme.Heading.b, .35f), 0);
             rule.anchorMin = rule.anchorMax = new Vector2(0f, 1f);
             rule.pivot = new Vector2(0f, 1f);
-            rule.anchoredPosition = new Vector2(left, -(top + 2f * scale + box + 2f * scale));
-            rule.sizeDelta = new Vector2(width, 1f);
+            rule.anchoredPosition = new Vector2(left, -(top + HeadingRuleOffset(scale)));
+            rule.sizeDelta = new Vector2(width, HeadingRuleThickness);
             rule.GetComponent<Image>().raycastTarget = false;
             return label;
         }
 
         /// <summary>
         /// The rail's rows, with an optional heading in the band before row <paramref name="headingBefore"/>
-        /// (the Notebook group's, under the overview): the rows from there down stand a heading's band lower.
+        /// (the Notebook group's, under the overview): the rows from there down stand a heading's band lower,
+        /// and <paramref name="headingRoom"/> (canvas units) lower again: the room the heading keeps free
+        /// under its divider for a pad's chip on the row under it, which stands above that row's top edge.
         /// </summary>
         public static RectTransform Build(
             Transform parent, IList<Entry> entries, float scale, Action<string> jump,
-            string active = null, int headingBefore = -1, string heading = null)
+            string active = null, int headingBefore = -1, string heading = null, float headingRoom = 0f)
         {
             var root = new GameObject(RootName, typeof(RectTransform)).GetComponent<RectTransform>();
             root.SetParent(parent, false);
@@ -145,9 +169,10 @@ namespace Gamesim.Presentation
 
             int count = entries?.Count ?? 0;
             bool headed = !string.IsNullOrEmpty(heading) && headingBefore >= 0 && headingBefore < count;
-            root.sizeDelta = new Vector2(Width, Height(count, scale, headed));
+            if (!headed) headingRoom = 0f;
+            root.sizeDelta = new Vector2(Width, Height(count, scale, headed) + headingRoom);
             if (headed)
-                Heading(root, heading, Pad + 8f, (Pad + headingBefore * (RowHeight + Gap)) * scale, Width - 2f * Pad - 8f, scale);
+                Heading(root, heading, Pad + 8f, HeadingTop(headingBefore, scale), Width - 2f * Pad - 8f, scale);
             for (int i = 0; i < count; i++)
             {
                 var entry = entries[i];
@@ -156,7 +181,7 @@ namespace Gamesim.Presentation
                 var mark = entry.Mark;
                 Row(root, entry.Caption, UiTheme.Icon(IconOf(entry.Mark)),
                     (box, tint) => Draw(mark, box, scale * .8f, tint),
-                    on, (Pad + i * (RowHeight + Gap) + (headed && i >= headingBefore ? HeadingBand : 0f)) * scale, scale,
+                    on, RowTop(i, scale, headed ? headingBefore : -1, headingRoom), scale,
                     jump == null ? (Action)null : () => jump(section));
             }
             return root;

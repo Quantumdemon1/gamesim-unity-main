@@ -389,7 +389,9 @@
 # 10393 = 10356 (menu slice 3's branch on main c9c3e21c, with the way-out scan's 4) + menu slice 4's 37 (10389 - 10352
 # on this branch): disjoint cases, so the floor is their sum (main merged up the stack into menu slice 4, 2026-11-17).
 # Counted from the two sides.
-Gamesim.EditModeTests 10393
+# 10394 = 10393 + the stack's proof fix's 1 (MenuNotebookStripATests' rail heading keeping the pad chip's rise free,
+# an EditMode-only case), 2026-11-17.
+Gamesim.EditModeTests 10394
 # The UMA-free build. 1215 = 1236, the count after the consolidation's lanes (S2a, S2b, S4a), less the 7
 # farewell probes moved to Gamesim.DiagnosticsPlayModeTests and the 14 farewell readiness tests that now
 # compile only under GAMESIM_UMA (judged on the UMA cast); 1230 = 1215 + S2d's 7, S4b's 2, S4c's 2 and

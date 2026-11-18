@@ -60,7 +60,8 @@ namespace Gamesim.Tests.PlayMode
                 ("your word", () => { director.ShowNotebookSection(EpisodeDirector.NotebookSection.Word); return director.IsPanelOpen; }, null),
                 ("the relationships", () => { director.ShowNotebookSection(EpisodeDirector.NotebookSection.Network); return director.IsPanelOpen; }, null),
                 ("the episode screen", () => { WarpPlayer(director.StationPosition); return director.TryOpenPhasePanel(); }, null),
-                ("the settings", () => { director.OpenSettings(); return director.IsPanelOpen; }, null),
+                ("the settings", () => { director.OpenSettingsAt(Gamesim.Presentation.SettingsSection.Saves); return director.IsPanelOpen; }, null),
+                ("the game menu", () => { director.OpenSettings(); return director.IsGameMenuOpen; }, null),
                 ("house activities", () => { director.OpenHouseActivities(); return director.IsHouseActivityOpen; }, null),
                 ("a conversation", () =>
                 {
@@ -117,25 +118,23 @@ namespace Gamesim.Tests.PlayMode
         /// The largest text (the lead's decision A-3), chosen by its own control, reaches every
         /// surface the larger text does and the ones that ignored the size: the HUD and every card at
         /// 1.4, the names over the houseguests' heads, and the witnessed conversation's line, which
-        /// was clamped to the larger size. The settings then offer the other two sizes by the words
-        /// they always had, and the standard size takes everything back.
+        /// was clamped to the larger size. The Settings row reads the size in use, and the standard
+        /// size takes everything back.
         /// </summary>
         [UnityTest]
         public IEnumerator Accessibility_TheLargestTextReachesEverySurface()
         {
             HoldTheHouseForTheFixture();
-            director.OpenSettings();
+            director.OpenSettingsAt(Gamesim.Presentation.SettingsSection.Accessibility);
             yield return null; yield return null;
-            Assert.That(ShowsControl(TextSizes.LargerCaption) && ShowsControl(TextSizes.LargestCaption), Is.True,
-                "At the standard size the settings offer the larger and the largest.");
-            Assert.That(ShowsControl(TextSizes.StandardCaption), Is.False, "and not the size in use.");
-            ButtonWithCaption(TextSizes.LargestCaption).onClick.Invoke();
+            // One row chooses the size (menu slice 4): it reads the size in use, and right steps on to the next.
+            Assert.That(SettingRowValue(SettingRowWords.TextSizeRow), Is.EqualTo("Standard"), "At the standard size the row says so.");
+            StepSettingRow(SettingRowWords.TextSizeRow, UnityEngine.EventSystems.MoveDirection.Right, "Larger");
+            StepSettingRow(SettingRowWords.TextSizeRow, UnityEngine.EventSystems.MoveDirection.Right, "Largest");
             yield return null; yield return null;
             Assert.That(director.TextSize, Is.EqualTo(TextSize.Largest));
             Assert.That(director.LargeText, Is.True, "The largest is larger text, to anything that asks the old question.");
-            Assert.That(ShowsControl(TextSizes.StandardCaption) && ShowsControl(TextSizes.LargerCaption), Is.True,
-                "At the largest the settings offer the standard and the larger, by the words they always had.");
-            Assert.That(ShowsControl(TextSizes.LargestCaption), Is.False);
+            Assert.That(SettingRowValue(SettingRowWords.TextSizeRow), Is.EqualTo("Largest"), "At the largest the row says so.");
             director.ClosePanels();
             yield return null; yield return null;
 

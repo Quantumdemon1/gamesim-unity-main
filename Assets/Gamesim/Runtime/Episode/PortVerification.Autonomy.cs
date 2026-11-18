@@ -78,7 +78,8 @@ namespace Gamesim.Episode
                 && seasonDirector.Snapshot.npcSocial.pending.All(item =>
                     Math.Ceiling(item.durationMs / 1000d) - (seasonDirector.Snapshot.npcSocial.clockTick - item.startedTick) >= 3),
                 "A pending-reload checkpoint needs at least three whole seconds before modal flush.");
-            seasonDirector.OpenSettings(); ObserveAutonomyStep(ref observed);
+            // Advanced, where going back to the last save is (menu slice 4).
+            seasonDirector.OpenSettingsAt(Gamesim.Presentation.SettingsSection.Advanced); ObserveAutonomyStep(ref observed);
             RequireSeason(seasonDirector.Snapshot.npcSocial.pending.Count > 0,
                 "The pending-reload checkpoint must retain an actually started conversation.");
             seasonDirector.SaveNow();
@@ -95,7 +96,9 @@ namespace Gamesim.Episode
                 "Opening a modal must stop actual NPC movement.");
             RequireSeason(string.IsNullOrEmpty(seasonDirector.ObservedNpcConversation), "Paused conversations must not leave a stale caption.");
             autonomyReport.modalSnapshotAndMotionPaused = true;
-            yield return ClickSeasonButton("Reload current slot");
+            // Picked, then confirmed (menu slice 4): the confirm card's result button loads it.
+            yield return ClickSeasonButton(Gamesim.Presentation.SavesWords.GoBackCaption);
+            yield return ClickSeasonButton(Gamesim.Presentation.SavesWords.GoBackResult);
             RequireSeason(JsonUtility.ToJson(seasonDirector.Snapshot) == pausedJson,
                 "Reload must preserve the exact durable NPC receipt without rerolling memory, topic or duration.");
             autonomyReport.pendingReloadPreserved = true;

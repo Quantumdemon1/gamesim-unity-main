@@ -235,7 +235,8 @@ namespace Gamesim.Tests.PlayMode
 
             AssertEquivalent(before, director.Snapshot);
 
-            ButtonWithCaption(WeeklyRecapScreen.BackCaption).onClick.Invoke();
+            // Reviewed from the house, its way back says so (menu slice 2): it closes onto the house.
+            ButtonWithCaption(WeeklyRecapScreen.BackToHouseCaption).onClick.Invoke();
             yield return null;
             Assert.That(screen.IsOpen, Is.False);
             Assert.That(player.InputEnabled, Is.True);

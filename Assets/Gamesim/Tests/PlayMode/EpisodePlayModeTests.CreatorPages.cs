@@ -1507,12 +1507,14 @@ namespace Gamesim.Tests.PlayMode
             creator.Draft.Name = "Keep Me";
             CastButtons("My Houseguests")[0].onClick.Invoke();
             yield return null;
-            CastButtons("Create new houseguest").Single().onClick.Invoke();
+            // One name for making a houseguest, and the replace card asks (menu slice 2).
+            CastButtons(CreatorSteps.CreateCaption).Single(button => button.transform.IsChildOf(creator.transform)).onClick.Invoke();
             yield return null;
             Assert.That(creator.Draft.Name, Is.EqualTo("Keep Me"), "One press asks; it does not throw the draft away.");
-            CastButtons("Confirm new houseguest").Single().onClick.Invoke();
+            Assert.That(creator.AsksToReplace, Is.True);
+            CastButtons(CreatorSteps.ReplaceCaption).Single().onClick.Invoke();
             yield return null;
-            Assert.That(creator.Draft.Name, Is.Empty, "The second press starts a blank houseguest.");
+            Assert.That(creator.Draft.Name, Is.Empty, "Replacing starts a blank houseguest.");
             Assert.That(CastButtons("Next starting look"), Is.Not.Empty, "It opens on the appearance step.");
         }
 

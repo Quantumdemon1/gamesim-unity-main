@@ -21,7 +21,7 @@ namespace Gamesim.Tests.EditMode
         public void TheWayOnNamesTheNextStep()
         {
             Assert.That(CharacterCreator.NextCaption("Identity"), Is.EqualTo("Next: Identity"));
-            Assert.That(CharacterCreator.NextCaption("My Houseguests"), Is.EqualTo("Next: My Houseguests"));
+            Assert.That(CharacterCreator.NextCaption("Review"), Is.EqualTo("Next: Review"));
         }
 
         [Test]

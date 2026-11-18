@@ -92,7 +92,8 @@ namespace Gamesim.Tests.PlayMode
             AssertClearOfTheChrome(panel);
             // The rail stays up beside the stage, its groups under their names.
             var railLabels = director.GetComponentsInChildren<TMP_Text>().Where(text => text.name == "Rail label").Select(text => text.text).ToArray();
-            Assert.That(railLabels, Does.Contain("PLAY").And.Contain("NOTEBOOK & SETTINGS"));
+            // Menu slice 3: the notebook's group under its one heading; Save and Settings sit apart at the foot, under no label.
+            Assert.That(railLabels, Does.Contain("PLAY").And.Contain(NotebookStrip.RailHeading).And.Not.Contain("NOTEBOOK & SETTINGS"));
             var listen = ButtonWithCaption("Listen in on a conversation");
             var moves = ActiveRect(EpisodeHud.HouseMovesName);
             Assert.That(moves, Is.Not.Null, "The moves that name nobody are tiles,");

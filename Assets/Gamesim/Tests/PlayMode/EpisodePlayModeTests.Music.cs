@@ -171,9 +171,9 @@ namespace Gamesim.Tests.PlayMode
             yield return SequenceWait(() => audio.SeasonSamples > 0, 3f);
             Assert.That(audio.SeasonSamples, Is.GreaterThan(0), "The bed is playing.");
 
-            director.OpenSettings();
+            director.OpenSettingsAt(Gamesim.Presentation.SettingsSection.Sound);
             yield return null;
-            ButtonWithCaption("Turn music off").onClick.Invoke();
+            PressSettingRow(Gamesim.Presentation.SettingRowWords.MusicRow, "Off");
             yield return null;
             Assert.That(audio.CurrentMusic, Is.EqualTo(HouseAudio.Music.Silent));
             Assert.That(audio.SeasonLevel, Is.EqualTo(1f), "Turning the music off does not cut it:");
@@ -195,7 +195,7 @@ namespace Gamesim.Tests.PlayMode
             int paused = audio.SeasonSamples;
             Assert.That(paused, Is.GreaterThan(0), "It paused part of the way in.");
 
-            ButtonWithCaption("Turn music on").onClick.Invoke();
+            PressSettingRow(Gamesim.Presentation.SettingRowWords.MusicRow, "On");
             yield return null;
             Assert.That(audio.CurrentMusic, Is.EqualTo(HouseAudio.Music.Season));
             Assert.That(audio.SeasonPaused, Is.False);
@@ -268,16 +268,16 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(audio.SeasonVolume, Is.EqualTo(audio.Volume * MusicFade.SeasonPeak).Within(1e-5f), "as loud as it was,");
             Assert.That(audio.AmbiencePlaying, Is.EqualTo(air), "with the house's air as it was.");
 
-            director.OpenSettings();
+            director.OpenSettingsAt(Gamesim.Presentation.SettingsSection.Sound);
             yield return null;
-            ButtonWithCaption("Turn music off").onClick.Invoke();
+            PressSettingRow(Gamesim.Presentation.SettingRowWords.MusicRow, "Off");
             yield return null;
             audio.TickMusic(MusicFade.SeasonFadeOut);
             Assert.That(audio.SeasonPaused, Is.True, "Turned off, the bed fades and pauses where it is.");
             StopEverySource(audio);
             audio.RecoverFromAudioReset();
             Assert.That(audio.SeasonPaused, Is.False, "A reset loses a paused bed's place: it is stopped now, not paused,");
-            ButtonWithCaption("Turn music on").onClick.Invoke();
+            PressSettingRow(Gamesim.Presentation.SettingRowWords.MusicRow, "On");
             yield return null;
             Assert.That(audio.CurrentMusic, Is.EqualTo(HouseAudio.Music.Season));
             Assert.That(audio.SeasonPlaying, Is.True, "so turned back on it plays again from the top, where resuming would play nothing.");
@@ -325,26 +325,26 @@ namespace Gamesim.Tests.PlayMode
             audio.TickMusic(MusicFade.SeasonFadeIn);
             yield return SequenceWait(() => audio.SeasonSamples > 0, 3f);
             Assert.That(audio.SeasonPlaying, Is.True, "The bed is playing.");
-            director.OpenSettings();
+            director.OpenSettingsAt(Gamesim.Presentation.SettingsSection.Sound);
             yield return null;
 
             StopEverySource(audio);
-            ButtonWithCaption("Turn music off").onClick.Invoke();
+            PressSettingRow(Gamesim.Presentation.SettingRowWords.MusicRow, "Off");
             yield return null;
             Assert.That(audio.SeasonLevel, Is.EqualTo(1f), "Turned off, the bed has not begun its fade");
-            ButtonWithCaption("Turn music on").onClick.Invoke();
+            PressSettingRow(Gamesim.Presentation.SettingRowWords.MusicRow, "On");
             yield return null;
             Assert.That(audio.CurrentMusic, Is.EqualTo(HouseAudio.Music.Season));
             Assert.That(audio.SeasonPlaying, Is.True, "when it is called back: marked playing, its stopped source plays again,");
             Assert.That(audio.SeasonLevel, Is.EqualTo(1f), "at the level the fade had reached.");
 
             StopEverySource(audio);
-            ButtonWithCaption("Turn music off").onClick.Invoke();
+            PressSettingRow(Gamesim.Presentation.SettingRowWords.MusicRow, "Off");
             yield return null;
             audio.TickMusic(MusicFade.SeasonFadeOut);
             Assert.That(audio.SeasonLevel, Is.EqualTo(0f), "Turned off and left, the fade out ends");
             Assert.That(audio.SeasonPaused, Is.False, "on a stopped source, with no place to pause at: the bed is stopped,");
-            ButtonWithCaption("Turn music on").onClick.Invoke();
+            PressSettingRow(Gamesim.Presentation.SettingRowWords.MusicRow, "On");
             yield return null;
             Assert.That(audio.SeasonPlaying, Is.True, "and turned back on it starts again, where a paused one would resume nothing.");
             director.ClosePanels();

@@ -281,10 +281,10 @@ namespace Gamesim.Tests.PlayMode
         [UnityTest]
         public IEnumerator ModalKeyboardFocus_IsRestoredAndScrollsToSelectedControls()
         {
-            director.OpenSettings();
+            director.OpenSettingsAt(Gamesim.Presentation.SettingsSection.Accessibility);
             yield return null;
             yield return null;
-            ButtonWithCaption("Use larger text").onClick.Invoke();
+            PressSettingRow(Gamesim.Presentation.SettingRowWords.TextSizeRow, "Larger");
             yield return null;
             yield return null;
             Assert.That(director.GetComponent<EpisodeHud>().FontScale, Is.EqualTo(1.2f).Within(0.001f));
@@ -299,6 +299,12 @@ namespace Gamesim.Tests.PlayMode
                 "Fixed navigation labels need bounded fitting at the larger text setting.");
             Assert.That(EventSystem.current.currentSelectedGameObject, Is.Not.Null);
             Assert.That(EventSystem.current.currentSelectedGameObject.transform.IsChildOf(modal), Is.True);
+            // The import and "Save now" are the Saves section's (menu slice 4): the section shown, the panel found again.
+            director.ShowSettingsSection(Gamesim.Presentation.SettingsSection.Saves);
+            yield return null;
+            Canvas.ForceUpdateCanvases();
+            modal = director.GetComponentsInChildren<RectTransform>(true)
+                .Single(rect => rect.name == "Episode panel" && rect.gameObject.activeInHierarchy);
             var importButton = ButtonWithCaption("Archive and import this file");
             importButton.Select();
             yield return null;
@@ -486,10 +492,32 @@ namespace Gamesim.Tests.PlayMode
         /// <para>For the handful of tests whose subject IS that a control is unavailable - an
         /// evicted player's travel buttons, a spent action - where insisting on pressability would
         /// assert the opposite of the thing under test.</para>
+        ///
+        /// <para>One name per thing (menu slices 2 and 3) puts a few captions on a row of the left
+        /// rail and on a control of a panel at once - "Deals &amp; promises" is the rail's row, the
+        /// notebook strip's tab and the conversation's topic. Where the rail's row and another control
+        /// carry the words, the other is the one meant: the rail's row is found only when it is the
+        /// only control carrying them. Every other caption is still one control or a failure.</para>
         /// </summary>
-        private Button FindButton(string caption) =>
-            director.GetComponentsInChildren<Button>(true).Single(item => item.IsActive()
-                && item.GetComponentsInChildren<TMPro.TMP_Text>(true).Any(text => text.text == caption));
+        private Button FindButton(string caption)
+        {
+            var carrying = director.GetComponentsInChildren<Button>(true).Where(item => item.IsActive()
+                && item.GetComponentsInChildren<TMPro.TMP_Text>(true).Any(text => text.text == caption)).ToArray();
+            if (carrying.Length > 1)
+            {
+                var offTheRail = carrying.Where(item => !OnTheRail(item.transform)).ToArray();
+                if (offTheRail.Length > 0) carrying = offTheRail;
+            }
+            return carrying.Single();
+        }
+
+        /// <summary>Whether a control is a row of the left rail (under <see cref="IconRail.RootName"/>).</summary>
+        private static bool OnTheRail(Transform item)
+        {
+            for (var at = item; at != null; at = at.parent)
+                if (at.name == IconRail.RootName) return true;
+            return false;
+        }
 
         /// <summary>
         /// Brings a control inside a scroll view into view, the way a player would.

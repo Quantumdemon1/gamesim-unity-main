@@ -9,7 +9,7 @@ namespace Gamesim.Episode
 {
     /// <summary>
     /// The hints that follow the device (PLAN A, A4). On a pad, a control whose caption names a key
-    /// - "Close  [Esc]", "Save now  [F5]", "Notebook [J]", "Go to diary room [R]" - wears a chip at
+    /// - "Save now  [F5]", "Notebook [J]", "Go to diary room [R]", or a way out wearing the "Esc" hint - wears a chip at
     /// its corner with the pad's button for the same action, read off the actions map; the caption
     /// keeps every one of its words, because the caption is the control's name to the tests and to a
     /// screen reader. A key or a click takes the chips away again. The help card's words swap the
@@ -19,6 +19,25 @@ namespace Gamesim.Episode
     {
         /// <summary>The chip's name, so a test can find it beside its control.</summary>
         public const string PadGlyphName = "Pad glyph";
+
+        /// <summary>
+        /// How far a chip stands above the top edge of the control that wears it, at the standard
+        /// text size (it grows with <see cref="FontScale"/>): half its 18 and 2 more. Whatever is
+        /// drawn over such a control keeps this much free above it (<see cref="ChipRoomOver"/>).
+        /// </summary>
+        public const float GlyphChipRise = 11f;
+
+        /// <summary>The chip's height at the standard text size: a 12 in a box 1.3 times it and more.</summary>
+        private const float GlyphChipHeight = 18f;
+
+        /// <summary>
+        /// The room a heading or label drawn over a control keeps free under it for that control's
+        /// chip, at a text scale: the chip's rise when the caption names a key (so the control wears
+        /// a chip on a pad), and none otherwise. Kept on the keyboard too, so nothing moves when the
+        /// device does.
+        /// </summary>
+        public static float ChipRoomOver(string caption, float textScale) =>
+            InputGlossary.CaptionAction(caption) != null ? GlyphChipRise * textScale : 0f;
 
         private bool padHints, glyphsShown;
         private TMP_Text helpText;
@@ -67,7 +86,8 @@ namespace Gamesim.Episode
                 if (button == null) continue;
                 if (!glyphActions.TryGetValue(button, out var action))
                 {
-                    action = InputGlossary.CaptionAction(button.name);
+                    // A way out names its key in a hint beside its caption (WayOut), not in its name.
+                    action = InputGlossary.CaptionAction(button.name) ?? InputGlossary.HintAction(WayOut.KeyHintOf(button));
                     glyphActions[button] = action;
                 }
                 if (action == null) continue;
@@ -99,9 +119,10 @@ namespace Gamesim.Episode
         private void GlyphChip(Button button, string glyph)
         {
             float s = FontScale;
-            var size = new Vector2(Mathf.Max(22f, glyph.Length * 8f + 12f) * s, 18f * s);
+            var size = new Vector2(Mathf.Max(22f, glyph.Length * 8f + 12f) * s, GlyphChipHeight * s);
             var chip = Panel(PadGlyphName, button.transform, new Color(Accent.r, Accent.g, Accent.b, .92f));
-            Anchor(chip, new Vector2(1f, 1f), new Vector2(1f, .5f), new Vector2(3f * s, 2f * s), size);
+            // Its middle 2 above the top edge: its top GlyphChipRise above it, its foot 7 inside.
+            Anchor(chip, new Vector2(1f, 1f), new Vector2(1f, .5f), new Vector2(3f * s, (GlyphChipRise - GlyphChipHeight * .5f) * s), size);
             chip.GetComponent<Image>().raycastTarget = false;
             chip.gameObject.AddComponent<LayoutElement>().ignoreLayout = true;
             // A 12 in a box 18 tall: the 1.3 TMP needs, and more.

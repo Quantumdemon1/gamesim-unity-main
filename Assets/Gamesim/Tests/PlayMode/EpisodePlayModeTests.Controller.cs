@@ -34,7 +34,7 @@ namespace Gamesim.Tests.PlayMode
 
             yield return PressPad(pad, GamepadButton.Select);
             Assert.That(director.IsPanelOpen, Is.True, "Select opens the notebook.");
-            Assert.That(ButtonWithCaption("Close  [Esc]"), Is.Not.Null, "with its close control");
+            Assert.That(ButtonWithCaption(Gamesim.Presentation.WayOut.CloseCaption), Is.Not.Null, "with its close control");
             yield return PressPad(pad, GamepadButton.Start);
             Assert.That(director.IsPanelOpen, Is.False);
 

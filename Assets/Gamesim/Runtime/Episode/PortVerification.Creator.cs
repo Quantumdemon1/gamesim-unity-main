@@ -204,7 +204,9 @@ namespace Gamesim.Episode
             yield return CreatorClick("Identity");
             creator.GetComponentsInChildren<TMP_InputField>().First(field => field.name == "Name field").text = "Unsaved draft change";
             yield return CreatorClick("My Houseguests");
-            yield return CreatorClick(profileName); // Load the saved library row, discarding the unsaved name.
+            yield return CreatorClick(profileName); // Load the saved library row, discarding the unsaved name:
+            CreatorRequire(creator.AsksToReplace, "A draft with unsaved changes must ask before the library replaces it.");
+            yield return CreatorClick(CreatorSteps.ReplaceCaption); // the replace card asks first (menu slice 2).
             creatorReport.librarySaveLoadEqual = creator.Draft.Name == profileName && creator.Draft.Appearance.ContentKey() == authored.ContentKey();
             CreatorRequire(creatorReport.librarySaveLoadEqual, "Library Load must restore both identity and every appearance field.");
             yield return WaitCreatorPreview(creator, "library load");
@@ -282,13 +284,18 @@ namespace Gamesim.Episode
             CreatorRequire(portrait != null, "The saved appearance must produce an isolated portrait.");
             creatorReport.portraitBuildMilliseconds = (Time.realtimeSinceStartupAsDouble - portraitStart) * 1000;
             SaveCreatorTexture(portrait, Path.Combine(outputDirectory, "creator-portrait.png"));
-            director.OpenSettings();
+            director.OpenSettingsAt(SettingsSection.Saves);
             yield return CreatorClick("Save now  [F5]");
             string savedAppearance = director.Snapshot.Find(player.id).appearance.ContentKey();
             string savedPath = director.SavePath;
             CreatorRequire(Path.GetFullPath(savedPath).StartsWith(Path.GetFullPath(outputDirectory) + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase),
                 "The creator workload must save only inside its isolated root.");
-            yield return CreatorClick("Reload current slot");
+            // Going back to the last save is an Advanced tool (menu slice 4).
+            director.ShowSettingsSection(SettingsSection.Advanced);
+            yield return null;
+            // Picked, then confirmed (menu slice 4): the confirm card's result button loads it.
+            yield return CreatorClick(Gamesim.Presentation.SavesWords.GoBackCaption);
+            yield return CreatorClick(Gamesim.Presentation.SavesWords.GoBackResult);
             creatorReport.customCastSaveReloadEqual = director.Snapshot.Find("custom-1")?.appearance.ContentKey() == editedNpcAppearance
                 && director.Snapshot.Find("custom-2")?.appearance.ContentKey() == authored.ContentKey()
                 && director.Snapshot.Find("custom-1")?.name == editedNpcName && director.Snapshot.Find("custom-2")?.name == profileName;

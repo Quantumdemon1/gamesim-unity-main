@@ -50,26 +50,36 @@ namespace Gamesim.Tests.PlayMode
                 yield return Frames(2);
                 Assert.That(director.HintsForPad, Is.False, "The keyboard's words" + at + ".");
                 Assert.That(director.IsPanelOpen && PausedEyebrowShown(), Is.True, "Escape with nothing open is the pause menu" + at + ".");
+                // The pause menu is the game menu card now (menu slice 4); its Settings row opens the frame, whose eyebrow says PAUSED.
+                Assert.That(director.IsGameMenuOpen, Is.True, "Escape opens the game menu card" + at + ".");
+                director.ShowSettingsSection(Gamesim.Presentation.SettingsSection.Saves);
+                yield return Frames(2);
                 yield return OnBothFrames("input-pause-menu" + size, "The pause menu by Escape" + at, where =>
                 {
                     AssertPausedEyebrowFits(where);
                     AssertNoGlyphChips(where);
                 });
 
-                // By Start on a pad: the same menu, with the pad's B beside Close and its L3 beside Save now.
+                // By Start on a pad: the same menu, with the pad's B beside the frame's way back to the card (the
+                // control Escape and B press first there) and its L3 beside Save now.
                 director.ClosePanels();
                 yield return Frames(2);
                 yield return PressOnPad(GamepadButton.Start);
                 yield return Frames(2);
                 Assert.That(director.HintsForPad, Is.True, "The pad's words" + at + ".");
                 Assert.That(director.IsPanelOpen && PausedEyebrowShown(), Is.True, "Start with nothing open is the pause menu" + at + ".");
+                Assert.That(director.IsGameMenuOpen, Is.True, "Start opens the game menu card" + at + ".");
+                director.ShowSettingsSection(Gamesim.Presentation.SettingsSection.Saves);
+                yield return Frames(2);
                 yield return OnBothFrames("input-pause-menu-pad" + size, "The pause menu by Start" + at, where =>
                 {
                     AssertPausedEyebrowFits(where);
-                    AssertGlyphChipsBeside(where, "Close  [Esc]", "Save now  [F5]");
+                    AssertGlyphChipsBeside(where, Gamesim.Presentation.WayOut.BackTo(Gamesim.Presentation.SettingsWords.GameMenuPlace), "Save now  [F5]");
                 });
 
-                // The controls page, unfolded, its head at the top of the column.
+                // The controls page, unfolded, its head at the top of the column: the Controls section.
+                director.ShowSettingsSection(Gamesim.Presentation.SettingsSection.Controls);
+                yield return Frames(2);
                 ButtonWithCaption(EpisodeDirector.ShowControlsCaption).onClick.Invoke();
                 yield return Frames(2);
                 Action head = () => ScrollRowToTheTop((RectTransform)FindButton(EpisodeDirector.HideControlsCaption).transform);

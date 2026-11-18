@@ -12,7 +12,7 @@ namespace Gamesim.Episode
     /// Conversation categories on a ring below the actors. A category replaces the ring with
     /// its own choices; all captions remain available to keyboard navigation and screen readers.
     /// </summary>
-    public sealed partial class EpisodeHud
+    public sealed partial class EpisodeHud : IWayOutHost
     {
         /// <summary>The line at the hub.</summary>
         public const string DialPrompt = "Choose a conversation topic";
@@ -286,17 +286,40 @@ namespace Gamesim.Episode
             colours.selectedColor = colours.highlightedColor;
             colours.pressedColor = new Color(.85f, .85f, .85f);
             button.colors = colours;
-            var press = rect.gameObject.AddComponent<HudPress>();
+            var press = PressLike(button, action);
+            button.onClick.AddListener(() => press());
+            return button;
+        }
+
+        /// <summary>
+        /// What every HUD button carries beyond its look: the press dip (none under reduced motion),
+        /// the hover foley, and a press that does nothing on a control that cannot be pressed. Returns
+        /// what a press runs. Pressable's buttons and the HUD's ways out (<see cref="IWayOutHost"/>) alike.
+        /// </summary>
+        private Action PressLike(Button button, Action action)
+        {
+            var press = button.gameObject.AddComponent<HudPress>();
             press.ReducedMotion = ReducedMotion;
             press.Hovered = () => Foley(HouseAudio.Cue.Hover);
-            button.onClick.AddListener(() =>
+            return () =>
             {
                 // A retained UnityEvent can outlive its control, or be invoked directly while
                 // disabled. Match real button eligibility before calling the bounded UI action.
                 if (button == null || !button.IsActive() || !button.IsInteractable()) return;
                 action?.Invoke();
-            });
-            return button;
+            };
+        }
+
+        // A way out the shared helper draws on the HUD's own canvas is dressed as every HUD button is
+        // (menu slice 2's review: the panel's Close had lost its hover tick). A screen attached beside
+        // the HUD - the cast, the creator, the recap - is not on that canvas and keeps its own buttons.
+        Button IWayOutHost.AddControl(GameObject box) => box.AddComponent<Button>();
+
+        Action IWayOutHost.Dress(Button control, Action action)
+        {
+            if (control == null || canvas == null || !control.transform.IsChildOf(canvas.transform)) return action;
+            var press = PressLike(control, action);
+            return action != null ? press : null;
         }
     }
 }

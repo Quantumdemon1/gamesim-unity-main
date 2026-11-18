@@ -28,10 +28,11 @@ namespace Gamesim.Tests.PlayMode
         [UnityTest]
         public IEnumerator Hints_APadPressShowsGlyphChipsBesideCaptionsThatNameAKey_AndAKeyTakesThemAway()
         {
-            director.OpenSettings();
+            director.OpenSettingsAt(Gamesim.Presentation.SettingsSection.Saves);
             yield return Frames(2);
             Assert.That(director.HintsForPad, Is.False, "A house starts on the keyboard's words.");
-            var captions = new[] { "Close  [Esc]", "Save now  [F5]" };
+            // Opened from the house, the frame's way back to the game menu takes the key (menu slice 4): its hint, and the pad's B.
+            var captions = new[] { Gamesim.Presentation.WayOut.BackTo(Gamesim.Presentation.SettingsWords.GameMenuPlace), "Save now  [F5]" };
             var before = captions.Select(caption => CaptionWords(ButtonWithCaption(caption))).ToArray();
             foreach (var caption in captions)
             {
@@ -45,7 +46,7 @@ namespace Gamesim.Tests.PlayMode
             for (int index = 0; index < captions.Length; index++)
             {
                 var control = ButtonWithCaption(captions[index]);
-                Assert.That(control.name, Is.EqualTo(captions[index]), "The control keeps its name.");
+                Assert.That(control.name, Is.EqualTo(index == 0 ? Gamesim.Presentation.WayOut.BackObjectName : captions[index]), "The control keeps its name.");
                 Assert.That(CaptionWords(control), Is.EqualTo(before[index]), captions[index] + ": the caption is byte for byte what it was.");
                 var chip = Chip(control);
                 Assert.That(chip != null && chip.activeInHierarchy, Is.True, captions[index] + " wears the pad's button beside it.");
@@ -98,7 +99,7 @@ namespace Gamesim.Tests.PlayMode
         [UnityTest]
         public IEnumerator Controls_TheSettingsListEveryActionWithItsKeysAndButtons()
         {
-            director.OpenSettings();
+            director.OpenSettingsAt(Gamesim.Presentation.SettingsSection.Controls);
             yield return Frames(2);
             Assert.That(ControlLines(), Is.Empty, "The section opens folded.");
             ButtonWithCaption(EpisodeDirector.ShowControlsCaption).onClick.Invoke();
@@ -241,7 +242,7 @@ namespace Gamesim.Tests.PlayMode
 
             // 3. The settings' CEREMONIES paragraph, worded again while the settings are open.
             director.ClosePanels();
-            director.OpenSettings();
+            director.OpenSettingsAt(Gamesim.Presentation.SettingsSection.Accessibility);
             yield return Frames(2);
             bool suspenseful = director.CeremonyPaceSetting == CeremonyPace.Suspenseful;
             Assert.That(LabelShows(InputGlossary.CeremonyPaceLine(suspenseful, false)), Is.True, "The keyboard's paragraph first.");

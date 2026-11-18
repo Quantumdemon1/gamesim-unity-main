@@ -131,7 +131,9 @@ namespace Gamesim.Episode
                 .Equals(Path.GetFullPath(outputDirectory),StringComparison.OrdinalIgnoreCase),"The functional run must retain explicit save isolation.");
             CheckSaveIsIsolated();
             yield return CloseSeasonPanel();
+            // The rail's Settings opens the game menu card; its Settings row opens the frame on Saves (menu slice 4).
             yield return ClickSeasonButton("Settings");
+            yield return ClickSeasonControlNamed(EpisodeHud.GameMenuRowPrefix + SettingsWords.SettingsCaption);
             yield return ClickSeasonButton("Save now  [F5]");
             string previousSlot = seasonDirector.SavePath;
             var previousBytes = File.ReadAllBytes(previousSlot);
@@ -141,12 +143,12 @@ namespace Gamesim.Episode
             // checking hardest, because a cancel that has already written a slot is unrecoverable.
             yield return ClickSeasonButton(EpisodeDirector.NewSeasonInNewSlotCaption);
             RequireSeason(seasonDirector.SavePath == previousSlot,"Opening the cast screen must not change the active slot.");
-            yield return ClickSeasonButton(CastSelect.CancelCaption);
+            yield return ClickSeasonButton(FrontDoorWords.CastBack(false, FrontDoorWords.SettingsPlace));
             RequireSeason(seasonDirector.SavePath == previousSlot && File.Exists(previousSlot)
                 && seasonDirector.Snapshot.contestants.Count == previousCast,"Cancelling the cast screen must leave the running season and its slot untouched.");
 
             yield return ClickSeasonButton(EpisodeDirector.NewSeasonInNewSlotCaption);
-            yield return ClickSeasonButton(CastSelect.StartCaption);
+            yield return ClickSeasonButton(FrontDoorWords.StartAsNewcomer);
             var fresh = seasonDirector.Snapshot;
             RequireSeason(seasonDirector.SavePath != previousSlot && File.Exists(previousSlot),"Creating the QA season must preserve the profile's previous save slot.");
             RequireSeason(fresh.phase == EpisodePhase.Social && fresh.week == 1
@@ -620,13 +622,19 @@ namespace Gamesim.Episode
         private IEnumerator SaveReloadSeason(string checkpoint)
         {
             yield return CloseSeasonPanel();
+            // The rail's Settings opens the game menu card; its Settings row opens the frame on Saves (menu slice 4).
             yield return ClickSeasonButton("Settings");
+            yield return ClickSeasonControlNamed(EpisodeHud.GameMenuRowPrefix + SettingsWords.SettingsCaption);
             yield return ClickSeasonButton("Save now  [F5]");
             var expected = JsonUtility.ToJson(seasonDirector.Snapshot);
             string expectedPath = seasonDirector.SavePath;
             CheckSaveIsIsolated();
             RequireSeason(File.Exists(expectedPath),"The isolated season save must exist at " + checkpoint);
-            yield return ClickSeasonButton("Reload current slot");
+            // Going back to the last save is an Advanced tool (menu slice 4): its entry in the list first.
+            yield return ClickSeasonControlNamed(SettingsWords.TabName(SettingsSection.Advanced));
+            // Picked, then confirmed (menu slice 4): the confirm card's result button loads it.
+            yield return ClickSeasonButton(SavesWords.GoBackCaption);
+            yield return ClickSeasonButton(SavesWords.GoBackResult);
             RequireSeason(seasonDirector.SavePath == expectedPath && JsonUtility.ToJson(seasonDirector.Snapshot) == expected,"Save/reload changed the authoritative snapshot at " + checkpoint);
             RequireSeason(!seasonDirector.IsPanelOpen && seasonDirector.StatusMessage.StartsWith("Local episode loaded and validated.",StringComparison.Ordinal),"Reload must report a validated install, not silently preserve an unsaved in-memory snapshot." + " Panel open: " + seasonDirector.IsPanelOpen + "; status: " + seasonDirector.StatusMessage);
             if (verifyBlocs)
@@ -650,7 +658,7 @@ namespace Gamesim.Episode
         {
             yield return DismissSeasonCompetitionResult();
             if (seasonDirector.IsWeeklyRecapOpen) yield return ClickSeasonButton(WeeklyRecapScreen.ContinueCaption);
-            else if (seasonDirector.IsPanelOpen) yield return ClickSeasonButton("Close  [Esc]");
+            else if (seasonDirector.IsPanelOpen) yield return ClickSeasonButton(WayOut.CloseCaption);
             var seat=seasonPlayer.GetComponent<Gamesim.House.DiarySeatPose>();
             float deadline=Time.realtimeSinceStartup+3f;
             while(seat!=null && seat.Active && Time.realtimeSinceStartup<deadline)yield return null;
@@ -725,10 +733,38 @@ namespace Gamesim.Episode
             }
         }
 
-        /// <summary>Every live, pressable control showing this caption.</summary>
-        private Button[] SeasonButtonsCarrying(string caption) => VisibleSeasonButtons()
-            .Where(button => button.IsActive() && button.IsInteractable()
-                && button.GetComponentsInChildren<TMPro.TMP_Text>().Any(label => label.text == caption)).ToArray();
+        /// <summary>
+        /// Presses the one live control named <paramref name="objectName"/>, as a player presses it:
+        /// for controls whose caption another control on screen shares - the game menu card's Settings
+        /// row beside the rail's (menu slice 4) - or that a list names apart, a Settings section's entry.
+        /// </summary>
+        private IEnumerator ClickSeasonControlNamed(string objectName)
+        {
+            CheckSeasonDeadline();
+            Button[] Named() => VisibleSeasonButtons().Where(button => button.name == objectName).ToArray();
+            var buttons = Named();
+            if (buttons.Length != 1) RequireSeason(false, "Expected one reachable control named " + objectName + " (found " + buttons.Length + ")." + SeasonButtonsOnOffer());
+            buttons[0].Select(); yield return null; yield return null;
+            buttons = Named();
+            if (buttons.Length != 1) RequireSeason(false, "The selected control became unavailable: " + objectName + " (found " + buttons.Length + ")." + SeasonButtonsOnOffer());
+            buttons[0].onClick.Invoke();
+            yield return null; yield return null;
+        }
+
+        /// <summary>
+        /// Every live, pressable control showing this caption. One name per thing (menu slice 3) puts
+        /// "Deals &amp; promises" on a row of the left rail and on the conversation's topic at once:
+        /// where the rail's row and another control carry the words, the other is the one meant.
+        /// </summary>
+        private Button[] SeasonButtonsCarrying(string caption)
+        {
+            var carrying = VisibleSeasonButtons()
+                .Where(button => button.IsActive() && button.IsInteractable()
+                    && button.GetComponentsInChildren<TMPro.TMP_Text>().Any(label => label.text == caption)).ToArray();
+            if (carrying.Length < 2) return carrying;
+            var offTheRail = carrying.Where(button => button.GetComponentsInParent<Transform>(true).All(at => at.name != IconRail.RootName)).ToArray();
+            return offTheRail.Length > 0 ? offTheRail : carrying;
+        }
 
         private Button[] VisibleSeasonButtons()
         {

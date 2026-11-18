@@ -51,7 +51,7 @@ namespace Gamesim.Presentation
         private const float LabelSize = 15f;
 
         /// <summary>What a mark stands for, and the drawn shape a clone without the icons gets.</summary>
-        public enum Mark { Network, Rooms, Votes, Story, Overview, People }
+        public enum Mark { Network, Rooms, Votes, Story, Overview, People, Notes, Deals }
 
         /// <summary>
         /// The marker the open item carries, as a child of the row.
@@ -79,9 +79,84 @@ namespace Gamesim.Presentation
         public static float Height(int count, float scale) =>
             count <= 0 ? 0f : (2f * Pad + count * RowHeight + (count - 1) * Gap) * scale;
 
+        /// <summary>The rail's height for <paramref name="count"/> rows with a heading among them (<see cref="HeadingBand"/>).</summary>
+        public static float Height(int count, float scale, bool heading) =>
+            Height(count, scale) + (heading && count > 0 ? HeadingBand * scale : 0f);
+
+        /// <summary>
+        /// The band a group's heading takes in the rail, at the standard size: the words at the
+        /// section heading's size (<see cref="HeadingSize"/>) in a box 1.3 times as tall and more,
+        /// and the divider under them.
+        /// </summary>
+        public const float HeadingBand = 30f;
+        /// <summary>The heading's type size: the section heading's, the smallest a label may be.</summary>
+        public const float HeadingSize = 14f;
+        /// <summary>A rail heading's object name and its divider's.</summary>
+        public const string HeadingName = "Rail label", HeadingRuleName = "Rail label rule";
+        /// <summary>The divider's thickness, in canvas units at every scale.</summary>
+        public const float HeadingRuleThickness = 1f;
+
+        /// <summary>The heading's words' box at a scale: 1.3 times its type and 4 more.</summary>
+        public static float HeadingBox(float scale) => Mathf.Ceil(HeadingSize * 1.3f + 4f) * scale;
+
+        /// <summary>How far down its band the heading's divider stands: 2 over the words' box, the box, and 2 under it.</summary>
+        public static float HeadingRuleOffset(float scale) => 2f * scale + HeadingBox(scale) + 2f * scale;
+
+        /// <summary>The top of the heading's band before row <paramref name="headingBefore"/>, down from the rail's top.</summary>
+        public static float HeadingTop(int headingBefore, float scale) => (Pad + headingBefore * (RowHeight + Gap)) * scale;
+
+        /// <summary>
+        /// Row <paramref name="index"/>'s top edge, down from the rail's top: rows from the heading's
+        /// on stand its band lower, and <paramref name="headingRoom"/> lower again - the room the
+        /// heading keeps free under its divider for the chip of the row under it (in canvas units).
+        /// </summary>
+        public static float RowTop(int index, float scale, int headingBefore = -1, float headingRoom = 0f)
+        {
+            bool under = headingBefore >= 0 && index >= headingBefore;
+            return (Pad + index * (RowHeight + Gap) + (under ? HeadingBand : 0f)) * scale + (under ? headingRoom : 0f);
+        }
+
+        /// <summary>
+        /// A group's heading in the rail (menu slice 3, the review's rail line): the section heading
+        /// style - small letterspaced capitals in the heading blue, with a divider under them - in a
+        /// band <see cref="HeadingBand"/> tall at <paramref name="top"/>, down from the parent's top,
+        /// <paramref name="left"/> in and <paramref name="width"/> wide. The words are kept as given:
+        /// the capitals are the style's, so the text a test reads is the one passed in.
+        /// </summary>
+        public static TMP_Text Heading(RectTransform parent, string words, float left, float top, float width, float scale)
+        {
+            float box = HeadingBox(scale);
+            var label = HudPrimitives.Label(HeadingName, parent, Mathf.Round(HeadingSize * scale), UiTheme.Heading, TextAlignmentOptions.MidlineLeft);
+            label.text = Localisation.Text(words);
+            label.fontStyle |= FontStyles.UpperCase;
+            label.characterSpacing = 4f;
+            label.textWrappingMode = TextWrappingModes.NoWrap;
+            label.raycastTarget = false;
+            var semibold = UiTheme.Font(UiTheme.Weight.SemiBold);
+            if (semibold != null) label.font = semibold;
+            var rect = label.rectTransform;
+            rect.anchorMin = rect.anchorMax = new Vector2(0f, 1f);
+            rect.pivot = new Vector2(0f, 1f);
+            rect.anchoredPosition = new Vector2(left, -(top + 2f * scale));
+            rect.sizeDelta = new Vector2(width, box);
+            var rule = HudPrimitives.Fill(HeadingRuleName, parent, new Color(UiTheme.Heading.r, UiTheme.Heading.g, UiTheme.Heading.b, .35f), 0);
+            rule.anchorMin = rule.anchorMax = new Vector2(0f, 1f);
+            rule.pivot = new Vector2(0f, 1f);
+            rule.anchoredPosition = new Vector2(left, -(top + HeadingRuleOffset(scale)));
+            rule.sizeDelta = new Vector2(width, HeadingRuleThickness);
+            rule.GetComponent<Image>().raycastTarget = false;
+            return label;
+        }
+
+        /// <summary>
+        /// The rail's rows, with an optional heading in the band before row <paramref name="headingBefore"/>
+        /// (the Notebook group's, under the overview): the rows from there down stand a heading's band lower,
+        /// and <paramref name="headingRoom"/> (canvas units) lower again: the room the heading keeps free
+        /// under its divider for a pad's chip on the row under it, which stands above that row's top edge.
+        /// </summary>
         public static RectTransform Build(
             Transform parent, IList<Entry> entries, float scale, Action<string> jump,
-            string active = null)
+            string active = null, int headingBefore = -1, string heading = null, float headingRoom = 0f)
         {
             var root = new GameObject(RootName, typeof(RectTransform)).GetComponent<RectTransform>();
             root.SetParent(parent, false);
@@ -93,7 +168,11 @@ namespace Gamesim.Presentation
             root.anchoredPosition = new Vector2(14f, -Top);
 
             int count = entries?.Count ?? 0;
-            root.sizeDelta = new Vector2(Width, Height(count, scale));
+            bool headed = !string.IsNullOrEmpty(heading) && headingBefore >= 0 && headingBefore < count;
+            if (!headed) headingRoom = 0f;
+            root.sizeDelta = new Vector2(Width, Height(count, scale, headed) + headingRoom);
+            if (headed)
+                Heading(root, heading, Pad + 8f, HeadingTop(headingBefore, scale), Width - 2f * Pad - 8f, scale);
             for (int i = 0; i < count; i++)
             {
                 var entry = entries[i];
@@ -102,7 +181,7 @@ namespace Gamesim.Presentation
                 var mark = entry.Mark;
                 Row(root, entry.Caption, UiTheme.Icon(IconOf(entry.Mark)),
                     (box, tint) => Draw(mark, box, scale * .8f, tint),
-                    on, (Pad + i * (RowHeight + Gap)) * scale, scale,
+                    on, RowTop(i, scale, headed ? headingBefore : -1, headingRoom), scale,
                     jump == null ? (Action)null : () => jump(section));
             }
             return root;
@@ -118,6 +197,8 @@ namespace Gamesim.Presentation
                 case Mark.Network: return "heart";
                 case Mark.Votes: return "gavel";
                 case Mark.Story: return "calendar";
+                case Mark.Notes: return "journal";
+                case Mark.Deals: return "handshake";
                 // No floor plan in the generated set, and the pack's grid is a stroke icon beside
                 // filled ones; the drawn four-rooms mark is the closer match.
                 default: return null;

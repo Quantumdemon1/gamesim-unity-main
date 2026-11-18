@@ -15,7 +15,7 @@ namespace Gamesim.Tests.PlayMode
 
         private void PaintDiceCueFinish(bool practice)
         {
-            if (practice) screen.ShowFinished("Practice complete.", "Return to briefing", () => {}, hideCancel: true);
+            if (practice) screen.ShowFinished("Practice complete.", CompetitionGameScreen.BackToBriefingCaption, () => {}, hideCancel: true);
             else screen.ShowRankedFinish("Your result is ready.");
         }
 

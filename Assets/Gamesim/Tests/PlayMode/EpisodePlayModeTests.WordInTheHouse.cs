@@ -146,7 +146,7 @@ namespace Gamesim.Tests.PlayMode
                 Assert.That(title.text, Is.EqualTo("Your word is good"), where + ": headed 'Your word is good',");
                 Assert.That(title.color, Is.EqualTo(EpisodeDirector.WordReadingInk(YourWord.Good)), where + ": in the allied green;");
                 Assert.That(Words(card), Does.Contain(YourWord.NothingHeard), where + ": the house has heard of nothing.");
-                var empty = ActiveRect("No commitments");
+                var empty = ActiveRect("No deals or promises");
                 Assert.That(empty, Is.Not.Null, where + ": over the page's empty state.");
                 Assert.That(ScreenRect(card).yMin, Is.GreaterThanOrEqualTo(ScreenRect(empty).yMax - 1f), where + ": the reading comes first.");
                 var mark = ActiveRect(EpisodeDirector.NotebookSection.Word);

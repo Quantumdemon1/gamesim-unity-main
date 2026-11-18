@@ -65,7 +65,7 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(File.ReadAllBytes(slot), Is.EqualTo(bytes), "and writes nothing: the choice is held in memory until Start.");
             Assert.That(director.Snapshot.sessionId, Is.EqualTo(before.sessionId));
 
-            CastButtons(CastSelect.StartCaption)[0].onClick.Invoke();
+            CastButtons(FrontDoorWords.StartAsNewcomer)[0].onClick.Invoke();
             yield return null;
             yield return null;
             Assert.That(CastScreen().IsShowing, Is.False);
@@ -80,7 +80,7 @@ namespace Gamesim.Tests.PlayMode
             string previewSession = fresh.sessionId;
             yield return OpenCastScreen();
             AssertPreviewReads(false, "Opened again");
-            CastButtons(CastSelect.StartCaption)[0].onClick.Invoke();
+            CastButtons(FrontDoorWords.StartAsNewcomer)[0].onClick.Invoke();
             yield return null;
             yield return null;
             Assert.That(director.Snapshot.sessionId, Is.Not.EqualTo(previewSession));
@@ -98,14 +98,14 @@ namespace Gamesim.Tests.PlayMode
             PreviewChip(false)[0].onClick.Invoke();
             yield return null;
             AssertPreviewReads(true, "Chosen before the creator");
-            CastButtons("Customize Emma")[0].onClick.Invoke();
+            CastButtons(FrontDoorWords.Edit("Emma"))[0].onClick.Invoke();
             yield return null;
             Assert.That(Creator().IsShowing, Is.True);
             CastButtons(CharacterCreator.BackCaption)[0].onClick.Invoke();
             yield return null;
             Assert.That(CastScreen().IsShowing, Is.True);
             AssertPreviewReads(true, "Back from the creator");
-            CastButtons("Customize Emma")[0].onClick.Invoke();
+            CastButtons(FrontDoorWords.Edit("Emma"))[0].onClick.Invoke();
             yield return null;
             string before = director.Snapshot.sessionId;
             CastButtons(CharacterCreator.StartCaption)[0].onClick.Invoke();
@@ -278,7 +278,7 @@ namespace Gamesim.Tests.PlayMode
             RectTransform Control(string caption) => (RectTransform)CastButtons(caption).Last().transform;
 
             var footer = Own(screen.GetComponentsInChildren<RectTransform>().Last(rect => rect.name == "Fixed season footer" && rect.gameObject.activeInHierarchy));
-            var start = Drawn(Control(CastSelect.StartCaption));
+            var start = Drawn(Control(screen.StartCaptionNow));
             Apart("the start's glow and 'You will play as'", start, Own(Label(label => label.text.StartsWith("You will play as")).rectTransform));
             Apart("the start's glow and the footnote", start, Own(Label(label => label.text.StartsWith("A shorter season")).rectTransform));
             Apart("the start's glow and the preview line", start, Own(Label(label => label.name == CastSelect.ConversationPreviewLineName).rectTransform));
@@ -294,7 +294,8 @@ namespace Gamesim.Tests.PlayMode
             Whole(range);
             Apart("the range line and Fewer", Own(range.rectTransform), fewer);
             Inside("the start in the footer", start, footer);
-            Inside("cancel in the footer", Drawn(Control(CastSelect.CancelCaption)), footer);
+            // The way back left the footer for the screen's top left (menu slice 2): above the footer, clear of it.
+            Apart("the way back and the footer", Drawn(Control(screen.BackCaption)), footer);
         }
 
         private void AssertThePreviewFits(CastSelect screen, string shape, bool on)
@@ -329,7 +330,7 @@ namespace Gamesim.Tests.PlayMode
             }
             // Clear of every other control and line the footer draws.
             var others = new List<RectTransform>();
-            foreach (var caption in new[] { CastSelect.StartCaption, CastSelect.CancelCaption, "Fewer houseguests", "More houseguests" })
+            foreach (var caption in new[] { screen.StartCaptionNow, "Fewer houseguests", "More houseguests" })
                 others.Add((RectTransform)CastButtons(caption).Last().transform);
             others.Add(screen.GetComponentsInChildren<RectTransform>().Last(rect => rect.name == CastSelect.HouseSizePanelName && rect.gameObject.activeInHierarchy));
             others.Add(screen.GetComponentsInChildren<TMP_Text>().Last(label => label.isActiveAndEnabled && label.text.StartsWith("A shorter season")).rectTransform);

@@ -25,7 +25,7 @@ namespace Gamesim.Tests.PlayMode
             yield return null; yield return null;
 
             // Landed at once, as a caller that needs it settled lands it.
-            director.OpenSettings();
+            director.OpenSettingsAt(Gamesim.Presentation.SettingsSection.Saves);
             var panel = EpisodePanel();
             var laidOut = panel.anchoredPosition;
             var reveal = panel.GetComponent<HudReveal>();
@@ -37,7 +37,7 @@ namespace Gamesim.Tests.PlayMode
             yield return null; yield return null;
 
             // And left to rise on its own.
-            director.OpenSettings();
+            director.OpenSettingsAt(Gamesim.Presentation.SettingsSection.Saves);
             laidOut = EpisodePanel().anchoredPosition;
             float settled = Time.realtimeSinceStartup + 0.3f;
             while (Time.realtimeSinceStartup < settled) yield return null;

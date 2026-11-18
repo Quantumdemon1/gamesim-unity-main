@@ -87,11 +87,12 @@ namespace Gamesim.Tests.PlayMode
                 string where = "The final case" + (larger ? " " + TextScales.At(textSize) : "");
                 AssertEveryLabelDraws(where, panel);
                 AssertAStationScreen(where);
-                AssertTheCloseUnderTheTray(early: false);
+                var back = AssertTheFinalCasesOneWayBack(EpisodeDirector.FinalCaseBackCaption(director.Snapshot, false), where);
+                Assert.That(WayOut.CaptionOf(back), Is.EqualTo(EpisodeDirector.BackToQuestioningCaption), "Opened over the questioning, back to it.");
                 if (Application.isBatchMode)
                     yield return CaptureFraming("endgame-final-case" + TextScales.Suffix(textSize), settle: false,
                         inspect: frame => LogTheFit(where + " on the 16:9 frame"));
-                ButtonWithCaption(EpisodeDirector.LeaveFinalCaseCaption).onClick.Invoke();
+                Hud.DecisionPageBackControl.onClick.Invoke();
                 yield return Frames(1);
                 Assert.That(director.InFinalCase, Is.False);
                 director.ClosePanels();
@@ -159,7 +160,8 @@ namespace Gamesim.Tests.PlayMode
             string locked = Words(LastActive(EpisodeHud.FinalCaseMomentsName));
             foreach (var moment in moments.Take(required)) Assert.That(locked, Does.Contain(moment.text), "The locked moments read back.");
             Assert.That(LastActive(EpisodeHud.FinalCaseMomentsName).GetComponentsInChildren<Button>(), Is.Empty, "Read back, not chosen again.");
-            ButtonWithCaption(EpisodeDirector.LeaveFinalCaseCaption).onClick.Invoke();
+            AssertTheFinalCasesOneWayBack(EpisodeDirector.FinalCaseBackCaption(director.Snapshot, false), "The locked case")
+                .onClick.Invoke();
             yield return Frames(1);
 
             // The speeches open with it.
@@ -221,7 +223,7 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(ButtonWithCaptionOrNull(EpisodeDirector.BeginNextCompetitionCaption), Is.Null, where + ": no way on is pinned under a station screen.");
             Assert.That(panel.Find(EpisodeHud.PinnedNoteName), Is.Null, where + ": and no note under it.");
             var pinned = panel.Cast<Transform>().Select(child => child.GetComponent<Button>())
-                .Where(button => button != null && button.IsActive() && button.name != "Close  [Esc]").Select(button => button.name).ToArray();
+                .Where(button => button != null && button.IsActive() && button.name != Gamesim.Presentation.WayOut.CloseObjectName).Select(button => button.name).ToArray();
             Assert.That(pinned, Is.Empty, where + " pins nothing in its footer: " + string.Join(", ", pinned));
             var content = LastActive("Episode content");
             var viewport = (RectTransform)content.parent;
@@ -240,23 +242,23 @@ namespace Gamesim.Tests.PlayMode
                 + viewport.rect.height.ToString("0") + (over > .5f ? ", " + over.ToString("0") + " past it." : ", and holds."));
         }
 
+        /// <summary>The final case's last row before menu slice 2, a second way out beside the panel's Close.</summary>
+        private const string RetiredFinalCaseCloseWords = "Close your final case";
+
         /// <summary>
-        /// "Close your final case" is the screen's last row: under the columns and the tray, after the
-        /// lock at the Final 2 and the lock's line at three - never the full-width button over the
-        /// form it was, which made the screen's first control the one that leaves it (UI-UX-PASS-PLAN E0).
+        /// The final case's one way back (menu slice 2, change 1): the shared helper's "Back to &lt;the
+        /// panel it was opened over&gt;" in the panel's band at the top left, Escape beside it - out of
+        /// the form, so the screen's first control is still not the one that leaves it - and no
+        /// "Close your final case" row beside the panel's Close.
         /// </summary>
-        private void AssertTheCloseUnderTheTray(bool early)
+        private Button AssertTheFinalCasesOneWayBack(string caption, string where)
         {
-            var close = (RectTransform)FindButton(EpisodeDirector.LeaveFinalCaseCaption).transform;
-            var columns = LastActive(EpisodeHud.FinalCaseColumnsName);
-            Assert.That(close.parent, Is.SameAs(columns.parent), "The way back is a row of the column, as the columns are.");
-            Assert.That(close.GetSiblingIndex(), Is.GreaterThan(columns.GetSiblingIndex()), "The way back comes under the columns,");
-            var tray = LastActive(EpisodeHud.FinalCaseTrayName);
-            if (tray != null) Assert.That(close.GetSiblingIndex(), Is.GreaterThan(tray.GetSiblingIndex()), "and under the tray.");
-            if (!early)
-                Assert.That(close.GetSiblingIndex(), Is.GreaterThan(LastActive(EpisodeHud.FinalCaseLockRowName).GetSiblingIndex()), "after the lock.");
-            var rows = close.parent.Cast<Transform>().Where(row => row.gameObject.activeSelf).ToList();
-            Assert.That(rows.Last(), Is.SameAs(close), "The way back is the screen's last row.");
+            var back = Hud.DecisionPageBackControl;
+            AssertAPageWayBack(back, caption, where);
+            Assert.That(back.transform.parent.name, Is.EqualTo(EpisodeHud.DecisionBandName), where + ": in the panel's band.");
+            Assert.That(back.transform.IsChildOf(LastActive("Episode content")), Is.False, where + ": not a row of the form.");
+            Assert.That(ButtonWithCaptionOrNull(RetiredFinalCaseCloseWords), Is.Null, where + ": no second way out of its own.");
+            return back;
         }
 
         /// <summary>The window at three under the finale rules: a season played there from its start, installed and reloaded.</summary>
@@ -334,7 +336,7 @@ namespace Gamesim.Tests.PlayMode
                 // A station screen at three (UI-UX-PASS-PLAN E0): the window's way on and its
                 // unused-actions note, which cut the columns at the bar, are not pinned under it.
                 AssertAStationScreen(where);
-                AssertTheCloseUnderTheTray(early: true);
+                AssertTheFinalCasesOneWayBack(EpisodeDirector.BackToPreparationCaption, where);
                 if (Application.isBatchMode)
                     yield return CaptureFraming("endgame-final-case-three" + TextScales.Suffix(textSize), settle: false,
                         inspect: frame => LogTheFit(where + " on the 16:9 frame"));
@@ -345,7 +347,9 @@ namespace Gamesim.Tests.PlayMode
                 if (moments.Count > 0) { ButtonWithCaption(moments[0].text).onClick.Invoke(); yield return Frames(1); }
                 Assert.That(FindButton(FinalArgument.Label(FinalArgument.Social)).GetComponentsInChildren<Image>().Any(image => image.name == "Chosen mark"), Is.True);
                 AssertEquivalent(before, director.Snapshot);
-                ButtonWithCaption(EpisodeDirector.LeaveFinalCaseCaption).onClick.Invoke();
+                // With a choice made, the way back says truthfully that leaving lets it go.
+                AssertTheFinalCasesOneWayBack(EpisodeDirector.BackToPreparationCaption + EpisodeDirector.FinalCaseDiscardWords, where + " with a choice")
+                    .onClick.Invoke();
                 yield return Frames(2);
                 Assert.That(director.InFinalCase, Is.False);
                 Assert.That(Words(LastActive(EpisodeHud.ScreenHeadName)), Does.Contain(EpisodeDirector.EndgamePreparationTitle), "Back in the window.");

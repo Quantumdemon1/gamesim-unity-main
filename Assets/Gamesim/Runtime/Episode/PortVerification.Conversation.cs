@@ -96,15 +96,17 @@ namespace Gamesim.Episode
             yield return DrainSeasonConversationExchange("before-topics", false);
             var baseline = ConversationBaseline();
             // A category string does not identify its resting page: a person picker or an
-            // incoming offer can own the same category. Use at most one visible Back and one
-            // topic gesture to restore the ordinary page; never invoke hidden child controls.
+            // incoming offer can own the same category. Use at most one visible inner way back, one
+            // Back to topics and one topic gesture to restore the ordinary page; never invoke hidden child controls.
+            // A level open inside the page names its own way back first (menu slice 2).
+            yield return LeaveSeasonConversationInnerLevel();
             if (HasSeasonButtonText(EpisodeDirector.ConversationTopicsBackCaption))
             {
                 yield return ClickSeasonButton(EpisodeDirector.ConversationTopicsBackCaption);
                 seasonReport.conversationNavigations++;
                 RequireSeason(seasonDirector.CurrentConversationCategory == null,
                     "The actual Back gesture did not restore root topics.");
-                RequireConversationUnchanged(baseline, "Back to topics");
+                RequireConversationUnchanged(baseline, EpisodeDirector.ConversationTopicsBackCaption);
             }
             RequireSeason(seasonDirector.CurrentConversationCategory == null,
                 "The current category needs its actual Back-to-topics control.");
@@ -116,11 +118,27 @@ namespace Gamesim.Episode
             RequireConversationUnchanged(baseline, "Selecting " + caption);
         }
 
+        /// <summary>
+        /// A verb's people or a plea's approaches open on the page: its one visible way back names that level
+        /// ("Back to the choices", "Back to the asks"), and the walk takes it as a player does, then the topics.
+        /// </summary>
+        private IEnumerator LeaveSeasonConversationInnerLevel()
+        {
+            foreach (string inner in new[] { EpisodeDirector.ConversationChoicesBackCaption, EpisodeDirector.ConversationAsksBackCaption })
+                if (HasSeasonButtonText(inner))
+                {
+                    yield return ClickSeasonButton(inner);
+                    seasonReport.conversationNavigations++;
+                    yield break;
+                }
+        }
+
         private IEnumerator ReturnSeasonConversationTopics()
         {
             RequireSeason(seasonDirector.IsConversationOpen, "Returning to topics requires an open conversation.");
             yield return DrainSeasonConversationExchange("before-topics", false);
             var baseline = ConversationBaseline();
+            yield return LeaveSeasonConversationInnerLevel();
             if (HasSeasonButtonText(EpisodeDirector.ConversationTopicsBackCaption))
             {
                 yield return ClickSeasonButton(EpisodeDirector.ConversationTopicsBackCaption);

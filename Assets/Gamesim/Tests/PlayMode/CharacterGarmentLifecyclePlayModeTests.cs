@@ -80,7 +80,7 @@ namespace Gamesim.Tests.PlayMode
             Click(cast, "Your houseguests in this season");
             Click(cast, "Add Garment lifecycle guest to the cast");
             Click(cast, "Add Garment lifecycle guest to the cast");
-            Click(cast, CastSelect.StartCaption);
+            Click(cast, FrontDoorWords.StartAs(CharacterNames.FirstName(loadedProfile.name)));
             Assert.That(choice, Is.Not.Null);
             Assert.That(choice.CustomHouseguests, Has.Count.EqualTo(2));
             Assert.That(choice.CustomHouseguests[0].contestant.appearance, Is.Not.SameAs(choice.CustomHouseguests[1].contestant.appearance));

@@ -143,14 +143,14 @@ namespace Gamesim.Tests.PlayMode
 
             Assert.That(Menu().IsShowing, Is.False, "The menu must step aside for the cast screen.");
             Assert.That(CastScreen().IsShowing, Is.True);
-            Assert.That(CastButtons(CastSelect.StartCaption), Has.Length.EqualTo(1),
+            Assert.That(CastButtons(FrontDoorWords.StartAsNewcomer), Has.Length.EqualTo(1),
                 "The cast screen's controls must be reachable, not buried under the menu.");
 
-            Assert.That(CastButtons(CastSelect.CancelCaption), Is.Empty,
-                "With no season on disk there is none to keep: the back chip must not promise one.");
-            var back = CastButtons(CastSelect.BackToMenuCaption);
-            Assert.That(back, Has.Length.EqualTo(1), "On a first launch the back chip says where it goes.");
-            Assert.That(back[0].name, Is.EqualTo(CastSelect.CancelCaption), "The control keeps its one object name.");
+            Assert.That(CastButtons(FrontDoorWords.CastBack(false, WayOut.MainMenu)), Is.Empty,
+                "With no season on disk there is none to keep: the way back must not promise one.");
+            var back = CastButtons(WayOut.BackTo(WayOut.MainMenu));
+            Assert.That(back, Has.Length.EqualTo(1), "On a first launch the way back says where it goes.");
+            Assert.That(back[0].name, Is.EqualTo(WayOut.BackObjectName), "The shared way back, by its one object name.");
             back[0].onClick.Invoke();
             yield return null;
             yield return null;
@@ -181,9 +181,9 @@ namespace Gamesim.Tests.PlayMode
             yield return null;
 
             Assert.That(CastScreen().IsShowing, Is.True);
-            Assert.That(CastButtons(CastSelect.BackToMenuCaption), Is.Empty, "There is a season to keep.");
-            var cancel = CastButtons(CastSelect.CancelCaption);
-            Assert.That(cancel, Has.Length.EqualTo(1), "The back chip offers to keep it.");
+            Assert.That(CastButtons(WayOut.BackTo(WayOut.MainMenu)), Is.Empty, "There is a season to keep.");
+            var cancel = CastButtons(WayOut.BackToKeeping(WayOut.MainMenu, "season"));
+            Assert.That(cancel, Has.Length.EqualTo(1), "The way back says it keeps it, and where it goes.");
             cancel[0].onClick.Invoke();
             yield return null;
             yield return null;
@@ -205,7 +205,7 @@ namespace Gamesim.Tests.PlayMode
             CastButtons(MainMenu.NewSeasonCaption)[0].onClick.Invoke();
             yield return null;
             yield return null;
-            CastButtons(CastSelect.StartCaption)[0].onClick.Invoke();
+            CastButtons(FrontDoorWords.StartAsNewcomer)[0].onClick.Invoke();
             yield return null;
             yield return null;
 
@@ -230,11 +230,13 @@ namespace Gamesim.Tests.PlayMode
 
             Assert.That(Menu().IsShowing, Is.False);
             Assert.That(director.IsPanelOpen, Is.True);
-            Assert.That(CastButtons("Main menu"), Has.Length.EqualTo(1),
+            // The way back at the frame's top left (menu slice 4): it names the main menu and really returns there.
+            string back = Gamesim.Presentation.WayOut.BackTo(Gamesim.Presentation.WayOut.MainMenu);
+            Assert.That(CastButtons(back), Has.Length.EqualTo(1),
                 "Settings must offer a way back to the menu, or it is a one-way door.");
             if (Application.isBatchMode) yield return CaptureFraming("settings");
 
-            CastButtons("Main menu")[0].onClick.Invoke();
+            CastButtons(back)[0].onClick.Invoke();
             yield return null;
             yield return null;
             Assert.That(Menu().IsShowing, Is.True);

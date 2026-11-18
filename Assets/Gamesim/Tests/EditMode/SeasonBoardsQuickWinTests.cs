@@ -15,7 +15,7 @@ namespace Gamesim.Tests.EditMode
         public void ThePlayersDealsHaveOneNameOnTheDoorThePageAndTheConversation()
         {
             Assert.That(EpisodeDirector.DealsAndPromisesName, Is.EqualTo("Deals & promises"));
-            Assert.That(EpisodeDirector.YourWordCaption, Is.EqualTo(EpisodeDirector.DealsAndPromisesName), "The notes page's door says it,");
+            Assert.That(EpisodeDirector.YourWordCaption, Is.EqualTo(EpisodeDirector.DealsAndPromisesName), "The notebook's tab and the rail's row say it,");
             Assert.That(EpisodeDirector.DealsCategoryCaption, Is.EqualTo(EpisodeDirector.DealsAndPromisesName), "and so does the conversation's topic.");
         }
 

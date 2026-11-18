@@ -734,7 +734,7 @@ namespace Gamesim.Tests.PlayMode
 
         private void AssertPickerConversationFits(TextSize textSize, string where, string verb, IEnumerable<string> expectedChoices)
         {
-            AssertConversationFits(textSize, where, EpisodeDirector.ConversationTopicsBackCaption, verb);
+            AssertConversationFits(textSize, where, verb);
             AssertPickerChoices(verb, expectedChoices, where);
         }
 

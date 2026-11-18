@@ -75,6 +75,24 @@ namespace Gamesim.Episode
         }
 
         /// <summary>
+        /// Whether a face's word is the player's own reading of a member in the house (the alliances
+        /// page's Friendly, Neutral, Wary or Hostile), which the trust chip says instead (menu slice 3).
+        /// Where someone is now, for a member out of the house or a past game's, stays in words.
+        /// </summary>
+        private static bool TrustChipFor(PactFace face) =>
+            face != null && !face.Away && face.Actor != null && !face.Actor.isPlayer
+            && (face.Note == AllianceRead.Friendly || face.Note == AllianceRead.Neutral
+                || face.Note == AllianceRead.Wary || face.Note == AllianceRead.Hostile);
+
+        /// <summary>A face's rim: where the chip reads trust, the chip's own band tint, so the page says it one way.</summary>
+        private Color RimTint(PactFace face)
+        {
+            var snapshot = director != null ? director.Snapshot : null;
+            if (!TrustChipFor(face) || snapshot == null) return face.NoteTint;
+            return TrustChip.Tint(TrustChip.BandOf(snapshot.Score(snapshot.playerId, face.Actor.id)));
+        }
+
+        /// <summary>
         /// One pact: the eyebrow in the card's tint, the headline, the members as faces in rows that
         /// wrap to the page's width - each with the word under the name and the line under that -
         /// and then the card's lines of record, each wrapped to as many lines as it needs. Each face is
@@ -101,7 +119,9 @@ namespace Gamesim.Episode
             if (faces != null && faces.Count > 0)
             {
                 float cell = 128f * s, gap = 10f * s, disc = 52f * s;
-                float nameBox = 14f * 1.35f * s + 2f, noteBox = 12f * 1.35f * s + 2f, detailBox = 11f * 1.35f * s + 2f;
+                // A member's reading is the trust chip (menu slice 3), at the HUD's 14 floor: its row is as tall as that needs.
+                bool chips = faces.Any(TrustChipFor);
+                float nameBox = 14f * 1.35f * s + 2f, noteBox = (chips ? 14f * 1.3f + 2f : 12f * 1.35f) * s + 2f, detailBox = 11f * 1.35f * s + 2f;
                 bool details = faces.Any(face => !string.IsNullOrEmpty(face.Detail));
                 float height = disc + 4f * s + 6f * s + nameBox + noteBox + (details ? detailBox : 0f);
                 int columns = Mathf.Max(1, Mathf.FloorToInt((inner + gap) / (cell + gap)));
@@ -113,7 +133,7 @@ namespace Gamesim.Episode
                     holder.SetParent(card, false);
                     Anchor(holder, new Vector2(0, 1), new Vector2(0, 1), new Vector2(x, -top), new Vector2(cell, height));
                     var rim = HudPrimitives.Portrait(holder, face.Actor != null ? CharacterPortraits.Get(face.Actor) : null,
-                        face.Away ? UiTheme.Outline : face.NoteTint, disc, 2f * s, face.Away, face.Actor);
+                        face.Away ? UiTheme.Outline : RimTint(face), disc, 2f * s, face.Away, face.Actor);
                     rim.name = "Face";
                     Anchor(rim, new Vector2(.5f, 1), new Vector2(.5f, 1), Vector2.zero, rim.sizeDelta);
                     float under = rim.sizeDelta.y + 6f * s;
@@ -124,10 +144,29 @@ namespace Gamesim.Episode
                     who.textWrappingMode = TextWrappingModes.NoWrap;
                     who.overflowMode = TextOverflowModes.Ellipsis;
                     under += nameBox;
-                    var note = FixedText(holder, face.Note ?? "", 12, face.NoteTint, new Vector2(0f, -under), new Vector2(cell, noteBox));
-                    note.alignment = TextAlignmentOptions.Top;
-                    note.textWrappingMode = TextWrappingModes.NoWrap;
+                    var snapshot = director != null ? director.Snapshot : null;
+                    if (TrustChipFor(face) && snapshot != null)
+                    {
+                        // Your reading of a member in the house is your trust in them, drawn one way on every reading page.
+                        var chip = TrustChip.Build(holder, snapshot.Score(snapshot.playerId, face.Actor.id), Mathf.Round(14f * s), s, false);
+                        chip.anchorMin = chip.anchorMax = chip.pivot = new Vector2(.5f, 1);
+                        chip.anchoredPosition = new Vector2(0f, -under);
+                    }
+                    else
+                    {
+                        var note = FixedText(holder, face.Note ?? "", 12, face.NoteTint, new Vector2(0f, -under), new Vector2(cell, noteBox));
+                        note.alignment = TextAlignmentOptions.Top;
+                        note.textWrappingMode = TextWrappingModes.NoWrap;
+                    }
                     under += noteBox;
+                    // A member's face is a link to their profile, opened from the alliances (menu slice 3, N6 ii).
+                    if (face.Actor != null && !face.Actor.isPlayer && director != null && snapshot != null && snapshot.Find(face.Actor.id) != null)
+                    {
+                        var press = holder.gameObject.AddComponent<Image>();
+                        press.raycastTarget = true;
+                        string id = face.Actor.id;
+                        LightOnFocus(Pressable(holder, () => director.ShowHouseguestProfile(id, EpisodeDirector.NotebookSection.Alliances)), press);
+                    }
                     if (!string.IsNullOrEmpty(face.Detail))
                     {
                         var detail = FixedText(holder, face.Detail, 11, UiTheme.Muted, new Vector2(0f, -under), new Vector2(cell, detailBox));

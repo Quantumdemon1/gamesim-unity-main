@@ -219,7 +219,7 @@ namespace Gamesim.Episode
                         else { ClearStoryStep(); Commit(state, EpisodeCommandKind.ProgressStoryline, eventId, optionId, text: id); }
                     });
                 }
-                hud.Action(EpisodeHud.StoryBackCaption, () => { ClearStoryStep(); Render(); });
+                hud.WayBack(EpisodeHud.StoryBackCaption, () => { ClearStoryStep(); Render(); });
                 return;
             }
             // A rule break: said plainly, then pressed twice.
@@ -231,7 +231,7 @@ namespace Gamesim.Episode
                 ClearStoryStep();
                 Commit(state, EpisodeCommandKind.ProgressStoryline, eventId, optionId, text: picked);
             });
-            hud.Action(EpisodeHud.StoryBackCaption, () => { ClearStoryStep(); Render(); });
+            hud.WayBack(EpisodeHud.StoryBackCaption, () => { ClearStoryStep(); Render(); });
         }
 
         private void ClearStoryStep()
@@ -356,8 +356,12 @@ namespace Gamesim.Episode
         // comes of it is the status line, the log and the ceremony cards. The episode screen still
         // shows every open beat, so a Pull turned down is never a story lost.
 
-        /// <summary>The caption that takes the player back out of a scene card.</summary>
-        public const string SceneCardDoneCaption = "Back to the house";
+        /// <summary>
+        /// The words the scene card and the answered ask card used to go back out by, "Back to the house". Neither
+        /// draws it any more - each is a card over the house, and the panel's one Close closes it (menu slice 2, the
+        /// review's change 1) - and tests hold that no such row comes back.
+        /// </summary>
+        public const string SceneCardDoneCaption = WayOut.BackPrefix + WayOut.House;
 
         /// <summary>A walk-in the player has found: the pair, the room and the week. Nothing is written until they step in.</summary>
         private string walkInFirst, walkInSecond, walkInRoom;
@@ -794,7 +798,7 @@ namespace Gamesim.Episode
             var outcome = state.events.LastOrDefault(e => e.kind == StoryLog.Outcome
                 && (e.audienceIds.Count == 0 || e.audienceIds.Contains(state.playerId)));
             hud.Paragraph(outcome != null ? StoryText.Log(state, outcome) : "The moment has passed.");
-            hud.Action(SceneCardDoneCaption, ClosePanels);
+            // Its way out is the panel's Close (menu slice 2): a second one here would be two.
         }
 
         /// <summary>The event sequence when the scene card opened: its receipts are the ones logged after it.</summary>
@@ -822,7 +826,6 @@ namespace Gamesim.Episode
                 hud.Paragraph("Goal: " + StoryText.FillDisplay(state, play.goal, cycle.cast) + " It is decided by " + StoryText.ClosesAt(play.deadline) + ".");
             foreach (var receipt in state.events.Where(e => e.kind == StoryLog.Receipt && Mine(e)))
                 hud.Paragraph(receipt.text);
-            hud.Action(SceneCardDoneCaption, ClosePanels);
             return true;
         }
     }

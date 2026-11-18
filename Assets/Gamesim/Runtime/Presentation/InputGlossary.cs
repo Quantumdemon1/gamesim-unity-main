@@ -74,7 +74,7 @@ namespace Gamesim.Presentation
             new Row(CameraContext, "Camera", "Previous", "[ / Shift+Tab", "LB", "Follow the previous houseguest"),
 
             // The house's shortcuts.
-            new Row(HouseContext, "Shortcuts", "Menu", "Esc", "Start", "Close the top panel; with nothing open, the pause menu"),
+            new Row(HouseContext, "Shortcuts", "Menu", "Esc", "Start", "Back a page or close the panel; with nothing open, the pause menu"),
             new Row(HouseContext, "Shortcuts", "Notebook", "J", "Select", "Open the notebook"),
             new Row(HouseContext, "Shortcuts", "Save", "F5", "L3", "Save now"),
             new Row(HouseContext, "Shortcuts", "Diary", "R", "Y", "Walk to the diary room"),
@@ -82,7 +82,7 @@ namespace Gamesim.Presentation
             new Row(HouseContext, "Shortcuts", "Hit", "Space", "A", "Stop the marker in a house challenge"),
             new Row(HouseContext, "Shortcuts", "Overview", "M", "D-pad up", "The whole house from above, and back"),
             new Row(HouseContext, "Shortcuts", "Emote", "G", "D-pad right", "Your moves: cheer, dance, shrug"),
-            new Row(HouseContext, "Shortcuts", "Back", "", "B", "Close the top panel; with nothing open, nothing (Esc is the keyboard's)"),
+            new Row(HouseContext, "Shortcuts", "Back", "", "B", "Back a page or close the panel; with nothing open, nothing (Esc is the keyboard's)"),
 
             // The ceremony cards, and the opening's Space.
             new Row(CeremonyContext, "Ceremony", "Skip", "Enter / Num Enter / Esc / Left click", "A / B", "Skip a reveal to its result; again to close the card"),
@@ -180,8 +180,9 @@ namespace Gamesim.Presentation
 
         /// <summary>
         /// The keys the HUD's captions name, each with the action whose pad button stands beside it:
-        /// "Close  [Esc]" is B, "Save now  [F5]" the left stick's press, "Notebook [J]" Select. The
-        /// caption keeps its words; the pad's button is a chip of its own.
+        /// "Save now  [F5]" is the left stick's press, "Notebook [J]" Select. The caption keeps its
+        /// words; the pad's button is a chip of its own. A panel's Close names Escape in a hint beside
+        /// its caption instead (<see cref="HintAction"/>).
         ///
         /// <para>Space only on the house challenge's "STOP marker  [Space]", whose press is the
         /// shortcuts' Hit and so the pad's A. A competition's Hit has no pad button - a board takes
@@ -201,6 +202,21 @@ namespace Gamesim.Presentation
 
         /// <summary>The house challenge's control, the one caption naming Space that the shortcuts' Hit presses.</summary>
         public const string HouseChallengeStopCaption = "STOP marker  [Space]";
+
+        /// <summary>
+        /// The key hint a panel's way out wears beside its caption (menu slice 2): Escape, which
+        /// presses that control - the panel's Close, or a page's way back where it has one. Never
+        /// rebound (the ways out are not offered), so the hint is always true.
+        /// </summary>
+        public const string BackKeyHint = "Esc";
+
+        /// <summary>
+        /// The map and action whose pad button stands beside a way out wearing this key hint, or
+        /// null: <see cref="BackKeyHint"/> is the shortcuts' Back, the pad's B. A way out names its
+        /// key in a hint of its own, not in its caption (WayOut), so the chip reads the hint.
+        /// </summary>
+        public static string HintAction(string keyHint) =>
+            string.Equals(keyHint, BackKeyHint, StringComparison.Ordinal) ? "Shortcuts/Back" : null;
 
         /// <summary>The map and action whose pad button stands beside a caption naming a key, or null.</summary>
         public static string CaptionAction(string caption)

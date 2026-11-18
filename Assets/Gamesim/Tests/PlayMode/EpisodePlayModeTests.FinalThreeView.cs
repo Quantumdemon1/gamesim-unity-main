@@ -178,7 +178,8 @@ namespace Gamesim.Tests.PlayMode
             yield return Frames(2);
             AssertEquivalent(open, director.Snapshot);
 
-            ButtonWithCaption(EpisodeDirector.LeaveJuryHouseCaption).onClick.Invoke();
+            // Over the house the panel's own Close is the jury house's one way out (menu slice 2): pressed.
+            PanelCloseButton().onClick.Invoke();
             yield return Frames(2);
             Assert.That(director.InJuryHouse, Is.False);
             Assert.That(director.IsPanelOpen, Is.False, "Leaving goes back to the house,");

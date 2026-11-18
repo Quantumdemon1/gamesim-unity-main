@@ -1,6 +1,7 @@
 using System;
 using System.IO;
 using Gamesim.Persistence;
+using Gamesim.Presentation;
 using Gamesim.Simulation;
 
 namespace Gamesim.Episode
@@ -82,14 +83,21 @@ namespace Gamesim.Episode
                 : summary.Line() + ".");
             if (career.Notice != null) hud.Paragraph(career.Notice);
             if (summary.Seasons == 0 && !blocked) { careerResetArmed = false; return; }
-            if (!careerResetArmed)
-            {
-                hud.Action(ResetCareerCaption, () => { careerResetArmed = true; Render(); });
-                return;
-            }
-            hud.Paragraph("This sets the record aside as a dated file beside the saves and starts a fresh one. Nothing is deleted.");
-            hud.Action(ConfirmResetCareerCaption, ResetCareer);
-            hud.Action(KeepCareerCaption, () => { careerResetArmed = false; Render(); });
+            // Picked, then confirmed on the Settings confirm card (menu slice 4): keeping it has the keyboard.
+            hud.Action(ResetCareerCaption, ArmCareerReset);
+            if (!careerResetArmed) return;
+            SavesConfirm("career", SavesWords.ResetCareerQuestion,
+                KeepCareerCaption, () => { careerResetArmed = false; confirmDrawnFor = null; RenderAndFocus(ResetCareerCaption); },
+                ConfirmResetCareerCaption, ResetCareer);
+        }
+
+        private void ArmCareerReset()
+        {
+            savesLoadPick = savesDeletePick = null;
+            advancedPick = AdvancedPick.None;
+            confirmDrawnFor = null;
+            careerResetArmed = true;
+            Render();
         }
 
         /// <summary>

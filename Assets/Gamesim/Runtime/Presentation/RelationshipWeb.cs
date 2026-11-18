@@ -48,6 +48,13 @@ namespace Gamesim.Presentation
         public const string SuspectedLegendCopy = "Suspected pact";
         /// <summary>The column's door to the notebook's alliances page, under the player's counts.</summary>
         public const string AlliancesDoorCaption = "Your alliances";
+        /// <summary>
+        /// A row of the column that names a houseguest and opens their profile (menu slice 3, ruling
+        /// N6 ii): this prefix and their id. The HUD wires the press, from Relationships.
+        /// </summary>
+        public const string ProfileRowPrefix = "Profile row · ";
+        /// <summary>The caption of the link under a chosen houseguest's head: "Dana's profile", as the cast's menu says it.</summary>
+        public static string ProfileLinkCaption(string first) => first + "'s profile";
 
         public const string TitleCopy = "RELATIONSHIP WEB";
         public const string StrapCopy = "See how everyone in the house really connects.";
@@ -952,6 +959,7 @@ namespace Gamesim.Presentation
             bool isPlayer = focus.isPlayer || focus.id == state.playerId;
             Header(column, state, focus, isPlayer, scale, font, portrait);
             Stats(column, state, focus, isPlayer, scale, font);
+            if (!isPlayer) ProfileLinkRow(column, focus, scale, font);
 
             if (isPlayer)
             {
@@ -961,13 +969,13 @@ namespace Gamesim.Presentation
                 SectionHeading(column, AlliesHeading, allies.Count, scale, font);
                 if (allies.Count == 0) Note(column, "No one yet.", scale, font);
                 foreach (var ally in allies.Take(ListLimit))
-                    PersonRow(column, ally, AllyWord(state, ally.id), UiTheme.Allied, scale, font, portrait);
+                    PersonRow(column, state, ally, UiTheme.Allied, scale, font, portrait);
 
                 var rivals = Rivals(state);
                 SectionHeading(column, RivalsHeading, rivals.Count, scale, font);
                 if (rivals.Count == 0) Note(column, "No one yet.", scale, font);
                 foreach (var rival in rivals.Take(ListLimit))
-                    PersonRow(column, rival, RivalWord(state, rival.id), UiTheme.Conflict, scale, font, portrait);
+                    PersonRow(column, state, rival, UiTheme.Conflict, scale, font, portrait);
 
                 // The player's memories as they may know them (KnownBallots.PlayerMemories; decision 4).
                 var secrets = KnownBallots.PlayerMemories(state)
@@ -1035,9 +1043,10 @@ namespace Gamesim.Presentation
         }
 
         /// <summary>
-        /// The column's door to the notebook's alliances page: a quiet glass row with the pact mark,
-        /// its caption and a chevron saying it leads somewhere. The caption is the control's name and
-        /// its key; nothing is ever appended to it.
+        /// The column's link to the notebook's alliances page (menu slice 3: a plain link, no longer a
+        /// door): the pact mark and its caption underlined in the accent, on a quiet ground that shows
+        /// the keyboard's focus. It opens the same page, with its tab strip, as the strip itself. The
+        /// caption is the control's name and its key; nothing is ever appended to it.
         /// </summary>
         private static void AlliancesDoor(RectTransform column, float scale, TMP_FontAsset font, Action open)
         {
@@ -1045,7 +1054,6 @@ namespace Gamesim.Presentation
             var rect = HudPrimitives.Fill(AlliancesDoorCaption, row, UiTheme.GlassFill, 8);
             rect.anchorMin = new Vector2(0f, .5f); rect.anchorMax = new Vector2(1f, .5f); rect.pivot = new Vector2(.5f, .5f);
             rect.anchoredPosition = Vector2.zero; rect.sizeDelta = new Vector2(0f, 36f * scale);
-            UiTheme.AddBorder(rect, 8, new Color(UiTheme.Hairline.r, UiTheme.Hairline.g, UiTheme.Hairline.b, .45f));
             var ground = rect.GetComponent<Image>();
             ground.raycastTarget = true;
             var button = rect.gameObject.AddComponent<Button>();
@@ -1064,13 +1072,10 @@ namespace Gamesim.Presentation
                 mark.sprite = glyph; mark.color = UiTheme.AccentDeep; mark.preserveAspect = true; mark.raycastTarget = false;
                 lead = 36f * scale;
             }
-            var label = Text(rect, AlliancesDoorCaption, 13, UiTheme.Paper, UiTheme.Weight.Medium, scale, font, TextAlignmentOptions.MidlineLeft);
+            var label = Text(rect, AlliancesDoorCaption, 14, UiTheme.Accent, UiTheme.Weight.Medium, scale, font, TextAlignmentOptions.MidlineLeft);
+            label.fontStyle |= FontStyles.Underline;
             label.rectTransform.anchorMin = Vector2.zero; label.rectTransform.anchorMax = Vector2.one;
             label.rectTransform.offsetMin = new Vector2(lead, 0f); label.rectTransform.offsetMax = new Vector2(-30f * scale, 0f);
-            var chevron = HudPrimitives.Chevron(rect, UiTheme.Accent, 10f * scale);
-            chevron.anchorMin = chevron.anchorMax = new Vector2(1f, .5f);
-            chevron.pivot = new Vector2(.5f, .5f);
-            chevron.anchoredPosition = new Vector2(-16f * scale, 0f);
         }
 
         private static void DetailsScrollButton(RectTransform parent,ScrollRect scroll,string caption,int slot,int direction,float scale,TMP_FontAsset font)
@@ -1193,11 +1198,11 @@ namespace Gamesim.Presentation
             }
             else
             {
-                var kind = KindOf(state, focus.id);
+                // Your trust is the one trust chip (menu slice 3): its figure, sign and shape, drawn
+                // below in place of the tile's number. The five-band "Standing" word said it a second way.
                 tiles = new[]
                 {
-                    ("heart", state.Score(state.playerId, focus.id).ToString("0"), "Your trust", EdgeColour(kind)),
-                    ("eye", Localisation.Text(StandingWord(kind)), "Standing", EdgeColour(kind)),
+                    (TrustTile, TrustChip.Figure(state.Score(state.playerId, focus.id)), TrustChip.Label, UiTheme.Muted),
                     ("people", state.alliances.Count(a => a.active && a.members.Contains(state.playerId) && a.members.Contains(focus.id)).ToString(), "Shared", UiTheme.AccentDeep),
                 };
             }
@@ -1207,6 +1212,17 @@ namespace Gamesim.Presentation
             {
                 var (icon, value, caption, tint) = tiles[i];
                 float x = i * width;
+                if (icon == TrustTile)
+                {
+                    var chip = TrustChip.Build(row, state.Score(state.playerId, focus.id), Mathf.Round(16f * scale), scale, false);
+                    chip.anchorMin = chip.anchorMax = new Vector2(0f, 1f);
+                    chip.pivot = new Vector2(.5f, .5f);
+                    chip.anchoredPosition = new Vector2(x + width * .5f, -18f * scale);
+                    var trustCaption = Text(row, caption, 10, UiTheme.Muted, UiTheme.Weight.Regular, scale, font, TextAlignmentOptions.Center);
+                    Fit(trustCaption, 8f * scale);
+                    Place(trustCaption.rectTransform, x, -46f * scale, width, 16f * scale);
+                    continue;
+                }
                 var glyph = UiTheme.Icon(icon);
                 if (glyph != null)
                 {
@@ -1224,6 +1240,34 @@ namespace Gamesim.Presentation
                 var label = Text(row, caption, 10, UiTheme.Muted, UiTheme.Weight.Regular, scale, font, TextAlignmentOptions.Center);
                 Fit(label, 8f * scale);
                 Place(label.rectTransform, x, -46f * scale, width, 16f * scale);
+            }
+        }
+
+        /// <summary>The stats tile that is the trust chip, by a name no icon has.</summary>
+        private const string TrustTile = "trust chip";
+
+        /// <summary>
+        /// The link under a chosen houseguest's head to their profile (menu slice 3, N6 ii): their
+        /// name's caption, underlined, with a chevron saying it leads somewhere. The HUD wires it.
+        /// </summary>
+        private static void ProfileLinkRow(RectTransform column, ContestantState focus, float scale, TMP_FontAsset font)
+        {
+            var row = Row(column, Mathf.Ceil(14f * 1.3f * scale) + 12f * scale);
+            row.name = ProfileRowPrefix + focus.id;
+            var label = Text(row, ProfileLinkCaption(GivenName(focus.name)), 14, UiTheme.Paper, UiTheme.Weight.Medium, scale, font);
+            label.fontStyle |= FontStyles.Underline;
+            label.rectTransform.anchorMin = Vector2.zero; label.rectTransform.anchorMax = Vector2.one;
+            label.rectTransform.offsetMin = new Vector2(4f * scale, 0f); label.rectTransform.offsetMax = new Vector2(-24f * scale, 0f);
+            label.alignment = TextAlignmentOptions.MidlineLeft;
+            var chevron = UiTheme.Icon("chevron-right");
+            if (chevron != null)
+            {
+                var art = new GameObject("Chevron", typeof(RectTransform), typeof(Image)).GetComponent<RectTransform>();
+                art.SetParent(row, false);
+                art.anchorMin = art.anchorMax = new Vector2(1f, .5f); art.pivot = new Vector2(1f, .5f);
+                art.sizeDelta = new Vector2(12f * scale, 12f * scale); art.anchoredPosition = new Vector2(-6f * scale, 0f);
+                var image = art.GetComponent<Image>();
+                image.sprite = chevron; image.color = UiTheme.Muted; image.raycastTarget = false; image.preserveAspect = true;
             }
         }
 
@@ -1246,11 +1290,18 @@ namespace Gamesim.Presentation
         }
 
         /// <summary>A face, a name, and one line in a colour: an ally or a rival.</summary>
+        /// <summary>
+        /// One of the player's allies or rivals: face, name and mood, and your trust in them as the
+        /// one trust chip (menu slice 3; "Close friend", "Friendly", "High tension" and "Distrust" said
+        /// it in words of their own). Named for the profile it opens, which the HUD wires.
+        /// </summary>
         private static void PersonRow(
-            RectTransform column, ContestantState actor, string word, Color tint, float scale, TMP_FontAsset font,
+            RectTransform column, EpisodeState state, ContestantState actor, Color tint, float scale, TMP_FontAsset font,
             Func<string, Texture> portrait)
         {
-            var row = Row(column, 40f * scale);
+            float chipSize = Mathf.Round(14f * scale);
+            var row = Row(column, Mathf.Max(40f * scale, 20f * scale + Mathf.Ceil(chipSize * 1.3f) + 2f));
+            row.name = ProfileRowPrefix + actor.id;
             float face = 30f * scale;
             var rim = HudPrimitives.Portrait(row, portrait != null ? portrait(actor.id) : null, tint, face, 2f * scale, false);
             rim.anchorMin = new Vector2(0f, .5f); rim.anchorMax = new Vector2(0f, .5f);
@@ -1275,9 +1326,10 @@ namespace Gamesim.Presentation
                 image.raycastTarget = false; image.preserveAspect = true;
                 textLeft += 16f * scale;
             }
-            var reason = Text(row, word, 11, tint, UiTheme.Weight.Regular, scale, font);
-            Fit(reason, 8f * scale);
-            Place(reason.rectTransform, textLeft, -19f * scale, width - (textLeft - left), 16f * scale);
+            var chip = TrustChip.Build(row, state.Score(state.playerId, actor.id), chipSize, scale, false);
+            chip.anchorMin = chip.anchorMax = new Vector2(0f, 1f);
+            chip.pivot = new Vector2(0f, 1f);
+            chip.anchoredPosition = new Vector2(textLeft, -18f * scale);
         }
 
         /// <summary>A glyph and a sentence that wraps to as many lines as it needs.</summary>

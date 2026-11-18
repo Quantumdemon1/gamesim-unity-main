@@ -60,9 +60,10 @@ namespace Gamesim.Tests.PlayMode
         /// <summary>
         /// The page: a deal and a promise of the player's, each in a card under its houseguest with
         /// its line as the reader says it, a kept deal under SETTLED, and nothing of a deal between
-        /// two houseguests. Its door is a button in the notes page's head, never a filter among the
-        /// filters, and its way back is a door in its own head; at both text sizes each door clears
-        /// Close and says all of its caption, and every label draws its words.
+        /// two houseguests. Since menu slice 3 it is a tab of the notebook's strip beside the notes,
+        /// never a filter among the filters and never a door: the notes are the tab beside it, with no
+        /// way back between the two. At both text sizes the strip says all of its captions, and every
+        /// label draws its words.
         /// </summary>
         [UnityTest]
         public IEnumerator YourWord_ThePageListsASeededDealAndPromiseAndNothingOfAnybodyElses()
@@ -98,10 +99,10 @@ namespace Gamesim.Tests.PlayMode
                 }
                 string size = larger ? " " + TextScales.At(textSize) : "";
 
-                // The door is in the notes page's head, where "Notebook [J]" opens.
+                // The tab is in the strip under the notes page's head, where "Notebook [J]" opens.
                 yield return OpenNotebook();
                 Assert.That(director.ActiveSection, Is.EqualTo(EpisodeDirector.NotebookSection.Notes));
-                AssertPageDoor(EpisodeDirector.YourWordCaption, "The notes page" + size);
+                AssertNotebookStrip(NotebookStrip.NotesTab, "The notes page" + size);
                 var filters = ActiveRect("Notes filters");
                 Assert.That(filters == null || !FindButton(EpisodeDirector.YourWordCaption).transform.IsChildOf(filters), Is.True,
                     "Your word is a page of its own, never a filter among the notes' filters" + size + ".");
@@ -113,7 +114,7 @@ namespace Gamesim.Tests.PlayMode
                 Canvas.ForceUpdateCanvases();
                 Assert.That(NotebookText(), Does.Contain(EpisodeDirector.YourWordCaption), where + " names itself.");
                 Assert.That(ActiveRect(EpisodeDirector.NotebookSection.Word), Is.Not.Null, where + " carries its mark.");
-                AssertPageDoor(EpisodeDirector.BackToYourNotesCaption, where);
+                AssertNotebookStrip(NotebookStrip.DealsTab, where);
                 var dealCard = ActiveRect(EpisodeHud.WordOpenCardPrefix + seeded.Find(dealWith).name);
                 Assert.That(dealCard, Is.Not.Null, where + ": the deal's partner has a card under STILL OPEN.");
                 Assert.That(Words(dealCard), Does.Contain(CommitmentsRead.Line(read.Single(c => c.id == "deal-your-word"))), where + ": the deal's line.");
@@ -136,36 +137,13 @@ namespace Gamesim.Tests.PlayMode
                     }
                 if (!larger && Application.isBatchMode) yield return CaptureFraming("your-word-page");
 
-                ButtonWithCaption(EpisodeDirector.BackToYourNotesCaption).onClick.Invoke();
+                NotebookStripTab(NotebookStrip.NotesTab).onClick.Invoke();
                 yield return null; yield return null;
-                Assert.That(director.ActiveSection, Is.EqualTo(EpisodeDirector.NotebookSection.Notes), "and back to the notes" + size + ".");
+                Assert.That(director.ActiveSection, Is.EqualTo(EpisodeDirector.NotebookSection.Notes), "and the notes' tab beside it" + size + ".");
             }
             director.ClosePanels();
             yield return null;
             yield return ApplyTextSize(false);
-        }
-
-        /// <summary>
-        /// A door in the notebook page's head: a control under its own caption, a child of the head
-        /// and not of the page's column, clear of Close, inside the panel, and saying all its words.
-        /// </summary>
-        private void AssertPageDoor(string caption, string where)
-        {
-            Canvas.ForceUpdateCanvases();
-            var door = (RectTransform)FindButton(caption).transform;
-            var head = ActiveRect(EpisodeHud.NotebookHeaderName);
-            Assert.That(head, Is.Not.Null, where + " has its head.");
-            Assert.That(door.IsChildOf(head), Is.True, where + ": '" + caption + "' is a door in the page's head,");
-            Assert.That(door.IsChildOf(ActiveRect("Episode content")), Is.False, "not a row of the page.");
-            var close = ActiveRect("Close  [Esc]");
-            if (close != null) Assert.That(ScreenRect(door).Overlaps(ScreenRect(close)), Is.False, where + ": '" + caption + "' clears Close.");
-            AssertInside(ScreenRect(ActiveRect("Episode panel")), door, where + ": '" + caption + "'");
-            foreach (var label in door.GetComponentsInChildren<TMP_Text>())
-            {
-                label.ForceMeshUpdate();
-                Assert.That(label.isTextOverflowing, Is.False, where + ": '" + label.text + "' fits its door.");
-            }
-            AssertEveryLabelDraws(door, where + "'s door");
         }
 
         // ---------------------------------------------------------------- the nomination picker

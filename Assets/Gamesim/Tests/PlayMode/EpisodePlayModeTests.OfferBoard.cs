@@ -416,9 +416,9 @@ namespace Gamesim.Tests.PlayMode
         public IEnumerator OfferBoard_TheCardsCutInAndNothingOnTheBoardMoves()
         {
             yield return InstallOfferBoardMeeting(true);
-            director.OpenSettings();
+            director.OpenSettingsAt(Gamesim.Presentation.SettingsSection.Accessibility);
             yield return null;
-            ButtonWithCaption("Reduce character motion").onClick.Invoke();
+            PressSettingRow(Gamesim.Presentation.SettingRowWords.ReducedMotionRow, "On");
             yield return null;
             director.ClosePanels();
             yield return null;
@@ -437,9 +437,9 @@ namespace Gamesim.Tests.PlayMode
                 Assert.That((card.anchoredPosition, card.sizeDelta, card.localScale), Is.EqualTo(placed[card.name]),
                     card.name + " stands where it was drawn, a third of a second on.");
 
-            director.OpenSettings();
+            director.OpenSettingsAt(Gamesim.Presentation.SettingsSection.Accessibility);
             yield return null;
-            ButtonWithCaption("Enable character motion").onClick.Invoke();
+            PressSettingRow(Gamesim.Presentation.SettingRowWords.ReducedMotionRow, "Off");
             yield return null;
             director.ClosePanels();
             yield return null;

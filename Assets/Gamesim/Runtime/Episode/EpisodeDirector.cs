@@ -790,7 +790,6 @@ namespace Gamesim.Episode
             if (render && hud != null) Render();
         }
 
-        public void OpenSettings() { PauseNpcSocialForPanel(); ClosePanels(); settingsOpen = true; player.SetInputEnabled(false); cameraRig.ControlsEnabled = false; RefreshDisplayRecordFromWindow(); Render(); }
         /// <summary>The notebook, on its own page: your notes on each houseguest. The rail's rows are the other pages.</summary>
         public void OpenJournal() => OpenNotebookAt(NotebookSection.Notes, scroll: false);
 
@@ -1463,29 +1462,15 @@ namespace Gamesim.Episode
                 // Every page of the notebook takes the notebook's own frame, not only the web: the
                 // others were rendered into the docked panel, whose viewport is about 174 units
                 // tall - the room map showed its header and nothing of the map.
-                hud.SetActivityLayout(EpisodeHud.ActivityLayout.Relationships);
-                // The notebook is a place to read, not a beat of the week: a slim head of its own
-                // in place of the phase band, so each page's title - the web's RELATIONSHIP WEB
-                // above all (mockup-07) - is the first thing at the top of the frame.
-                // The redesigned pages (Refinement Kit 6) carry their own title in the head and the
-                // house activities in their foot; the others keep the notebook's title and the
-                // command at their top, where the web's layout and the activities tests expect it.
-                bool kitPage = journalSection == NotebookSection.Rooms || journalSection == NotebookSection.People
-                    || journalSection == NotebookSection.Votes || journalSection == NotebookSection.Notes
-                    || journalSection == NotebookSection.Alliances
-                    || journalSection == NotebookSection.Word;
-                if (kitPage)
-                {
-                    var head = NotebookPageHead(journalSection);
-                    hud.ScreenHeader(EpisodeHud.NotebookHeaderName, EpisodeHud.NotebookEyebrowCopy, head.Title, null, head.Subtitle);
-                }
-                else
-                {
-                    hud.ScreenHeader(EpisodeHud.NotebookHeaderName, EpisodeHud.NotebookEyebrowCopy, null, null);
-                    hud.PanelTitle("YOUR NOTEBOOK", "Private information is limited to what your character knows.");
-                    // A command rather than a section, so it stays put whichever page you are on.
-                    hud.Action("House activities",OpenHouseActivities);
-                }
+                hud.UseReadingFrame();
+                // The notebook is a place to read, not a beat of the week: one head for every page
+                // (menu slice 3, N5) in place of the phase band - the eyebrow, the page's title and
+                // what the page is - and the notebook's one foot at the end of each page. The web
+                // keeps the slim head: its RELATIONSHIP WEB title stands over the graph (mockup-07).
+                var head = ReadingHead(journalSection);
+                hud.ReadingHeader(EpisodeHud.NotebookEyebrowCopy, head.Title, head.Subtitle);
+                // Notes, Deals & promises and Alliances: one group, a strip of three tabs under the head.
+                NotebookTabs(journalSection);
                 // ONE section at a time. The rail's four buttons were four scroll positions in a
                 // single document: every render emitted the relationship web, the house map, every
                 // houseguest, every vote, every finished week, mood, promises, alliances, oaths, the
@@ -1504,6 +1489,7 @@ namespace Gamesim.Episode
                 else if (journalSection == NotebookSection.Story)
                 {
                     RenderNotebookStory(state);
+                    hud.NotebookFooter(StoryFooterNote, "House activities", OpenHouseActivities);
                 }
                 else if (journalSection == NotebookSection.People)
                 {
@@ -1539,6 +1525,8 @@ namespace Gamesim.Episode
                     hud.SpeechBar(state.playerId, EpisodeHud.SelfTitle(state.Find(state.playerId)),
                         "By your own reading: " + allies + (allies == 1 ? " ally, " : " allies, ") + rivals
                         + (rivals == 1 ? " rival, " : " rivals, ") + known + (known == 1 ? " thing" : " things") + " you know.", true);
+                    // The notebook's one foot, as every page has; the graph's legend carries its caveat.
+                    hud.NotebookFooter(null, "House activities", OpenHouseActivities);
                 }
                 hud.ApplyPendingScroll();
                 return;

@@ -177,9 +177,10 @@ namespace Gamesim.Tests.PlayMode
                     Assert.That(Words(context), Does.Contain(EpisodeDirector.NothingDecidedRole).And.Not.Contain("You are safe this week"),
                         "Before anybody is Head of Household nothing is decided, and nobody is 'safe'.");
 
-                // The board's footer: the way on pinned under its headline, the way back in the
-                // secondary slot, and in the strip where the player is over what moving on loses.
-                AssertOnTheStrategyStage("Begin the next competition", where, EpisodeDirector.BackToFreeTimeCaption);
+                // The board's footer: the way on pinned under its headline, and in the strip where the
+                // player is over what moving on loses; the way back at the panel's top left (menu slice 2).
+                AssertOnTheStrategyStage("Begin the next competition", where);
+                AssertPageWayBack(EpisodeDirector.BackToFreeTimeCaption, where);
                 Assert.That(panel.Find(EpisodeHud.PinnedNoteName), Is.Null, "Nothing is wedged under the way on.");
                 var footer = ActiveRect(EpisodeHud.StrategyStripName);
                 Assert.That(footer, Is.Not.Null, "The footer has its strip.");

@@ -27,24 +27,16 @@ namespace Gamesim.Episode
         /// <summary>The frame caps <see cref="SetFrameCap"/> takes: 0 is VSync, -1 neither, the rest a cap with VSync off.</summary>
         public static readonly int[] FrameCaps = { 0, 30, 60, 120, -1 };
 
-        public const string PlayWindowedCaption = "Play in a window";
-        public const string PlayFullScreenCaption = "Play full screen";
-        public const string VSyncOffCaption = "Turn VSync off";
-        public const string VSyncOnCaption = "Turn VSync on";
         /// <summary>What the profile's report says set its window: the same director call the settings make.</summary>
         public const string DisplayRoute = "EpisodeDirector.SetDisplay";
 
         /// <summary>
-        /// The house view control's words before its choice (ROOM-SCOPE-PLAN D12): "House view: One room  (change)"
-        /// or "House view: Whole house  (change)", the settings' pattern for a control that cycles.
+        /// The house view row's two values (ROOM-SCOPE-PLAN D12; menu slice 4 made it the row "House
+        /// view" reading "One room" or "Whole house").
         /// </summary>
-        public const string HouseViewCaptionPrefix = "House view: ";
         public const string OneRoomViewName = "One room", WholeHouseViewName = "Whole house";
         /// <summary>Where "Show the whole house" is kept, in the session's preferences store, never the save (D12).</summary>
         public const string WholeHouseKey = "Gamesim.WholeHouse";
-
-        /// <summary>The house view control's caption for a choice.</summary>
-        public static string HouseViewCaption(bool wholeHouse) => HouseViewCaptionPrefix + (wholeHouse ? WholeHouseViewName : OneRoomViewName) + "  (change)";
 
         /// <summary>
         /// "Show the whole house" (D12, RS5): off by default. On, it holds the whole house drawn for as long
@@ -60,6 +52,7 @@ namespace Gamesim.Episode
         {
             showWholeHouse = wholeHouse;
             ApplyPreferences();
+            RedrawSettingsRows();
         }
 
         /// <summary>The setting's hold, as the preference says: taken while it is on, let go while it is off.</summary>
@@ -130,10 +123,8 @@ namespace Gamesim.Episode
 
         public static string FrameCapName(int cap) => cap == 0 ? "VSync" : DisplayChoices.FrameLimitName(cap);
 
-        public static string DisplayModeCaption(DisplayMode mode) => "Display mode: " + DisplayChoices.ModeName(mode) + "  (change)";
-        public static string ResolutionCaption(string resolution) => "Resolution: " + resolution + "  (change)";
-        public static string MonitorCaption(int number, int count) => "Monitor: " + number + " of " + count + "  (change)";
-        public static string FrameRateCaption(int limit) => "Frame rate: " + DisplayChoices.FrameLimitName(limit) + "  (change)";
+        /// <summary>The display modes in the order the row steps through them: windowed, borderless, exclusive.</summary>
+        private static readonly DisplayMode[] DisplayModes = { DisplayMode.Windowed, DisplayMode.Borderless, DisplayMode.Exclusive };
 
         /// <summary>
         /// Sets the frame-rate preference from code - the verifier's profile, which is a benchmark and
@@ -145,6 +136,7 @@ namespace Gamesim.Episode
         {
             DisplayChoices.FrameFromCap(cap, out vSync, out frameLimit);
             ApplyPreferences();
+            RedrawSettingsRows();
         }
 
         /// <summary>Turns VSync on or off, the limit kept for when it is off.</summary>
@@ -152,6 +144,7 @@ namespace Gamesim.Episode
         {
             vSync = on;
             ApplyPreferences();
+            RedrawSettingsRows();
         }
 
         /// <summary>
@@ -168,6 +161,7 @@ namespace Gamesim.Episode
             if (resolutionKey == DisplayChoices.Desktop || DisplayChoices.TryParseSize(resolutionKey, out _, out _)) resolution = resolutionKey;
             ApplyWindow();
             ApplyPreferences();
+            RedrawSettingsRows();
         }
 
         private static FullScreenMode ToFullScreenMode(DisplayMode mode) =>
@@ -381,86 +375,75 @@ namespace Gamesim.Episode
             if (settingsOpen && recordChanged) Render();
         }
 
-        /// <summary>The display block of the settings panel; each control cycles or flips one preference.</summary>
+        /// <summary>
+        /// The Display section's rows (menu slice 4): each a setting's name and how it stands - the
+        /// HUD's size, the quality, VSync and the frame rate's limit, the window's mode, resolution and
+        /// monitor, the house view and the language - changed by left, right and Enter.
+        /// </summary>
         private void DisplaySettings()
         {
-            // The record as the window stands, so the captions say what the window is (A12).
+            // The record as the window stands, so the rows say what the window is (A12).
             ReadWindowIntoRecord();
-            hud.SectionHeading("DISPLAY");
-            hud.Action(compactHud ? "Show full HUD" : "Use compact HUD",()=>SetCompactHud(!compactHud));
+            // The section's heading is the frame's (EpisodeDirector.SettingsFrame.cs).
+            hud.SettingSwitch(SettingRowWords.CompactHudRow, compactHud, SetCompactHud);
             hud.Paragraph("Compact HUD keeps the cast, next objective and controls visible. House details stay in the notebook and Overview.");
-            hud.Action("Quality: " + QualityName(qualityTier) + "  (change)", () =>
+            int levels = Mathf.Max(1, QualitySettings.names.Length);
+            var qualities = new List<string>();
+            for (int tier = 0; tier < levels; tier++) qualities.Add(QualityName(tier));
+            hud.SettingChoice(SettingRowWords.QualityRow, qualities, qualityTier, tier =>
             {
-                qualityTier = (qualityTier + 1) % Mathf.Max(1, QualitySettings.names.Length); ApplyPreferences(); Render();
-            });
-            // The frame rate's limit, and VSync beside it (A12, the lead's decision 12).
-            hud.Action(FrameRateCaption(frameLimit), () =>
+                qualityTier = tier; ApplyPreferences(); Render();
+            }, levels > 1 ? null : SettingRowWords.OneQualityLevelLine);
+            // VSync, and the frame rate's limit beside it (A12, the lead's decision 12).
+            hud.SettingSwitch(SettingRowWords.VSyncRow, vSync, SetVSync);
+            int limitAt = Mathf.Max(0, Array.IndexOf(DisplayChoices.FrameLimits, frameLimit));
+            hud.SettingChoice(SettingRowWords.FrameRateRow, DisplayChoices.FrameLimits.Select(DisplayChoices.FrameLimitName).ToList(), limitAt, at =>
             {
-                int at = Array.IndexOf(DisplayChoices.FrameLimits, frameLimit);
-                frameLimit = DisplayChoices.FrameLimits[(at + 1) % DisplayChoices.FrameLimits.Length]; ApplyPreferences(); Render();
-                hud.FocusWhenWired(FrameRateCaption(frameLimit));
-            });
-            hud.Action(vSync ? VSyncOffCaption : VSyncOnCaption, () =>
-            {
-                SetVSync(!vSync); Render();
-                hud.FocusWhenWired(vSync ? VSyncOffCaption : VSyncOnCaption);
+                frameLimit = DisplayChoices.FrameLimits[at]; ApplyPreferences(); Render();
             });
             hud.Paragraph("With VSync on the display paces the frames; the frame rate's limit holds with VSync off.");
             // The window: how it stands, its size and, with more than one, its monitor (A12). Each
-            // press steps on from the window as it stands now, not as the panel was drawn.
-            hud.Action(fullscreenToggleCaption, () =>
+            // press reads the window as it stands now; SetDisplay draws the rows again.
+            hud.SettingChoice(SettingRowWords.DisplayModeRow, DisplayModes.Select(DisplayChoices.ModeName).ToList(), Array.IndexOf(DisplayModes, displayMode), at =>
             {
                 ReadWindowIntoRecord();
-                SetDisplay(Fullscreen ? DisplayMode.Windowed : DisplayMode.Borderless, resolution); Render();
-                hud.FocusWhenWired(fullscreenToggleCaption);
+                SetDisplay(DisplayModes[at], resolution);
             });
-            hud.Action(DisplayModeCaption(displayMode), () =>
+            var resolutions = ResolutionChoices();
+            hud.SettingChoice(SettingRowWords.ResolutionRow, resolutions, Mathf.Max(0, resolutions.IndexOf(resolution)), at =>
             {
                 ReadWindowIntoRecord();
-                SetDisplay(DisplayChoices.NextMode(displayMode), resolution); Render();
-                hud.FocusWhenWired(DisplayModeCaption(displayMode));
+                SetDisplay(displayMode, resolutions[at]);
             });
-            hud.Action(ResolutionCaption(resolution), () =>
-            {
-                ReadWindowIntoRecord();
-                SetDisplay(displayMode, DisplayChoices.Next(ResolutionChoices(), resolution)); Render();
-                hud.FocusWhenWired(ResolutionCaption(resolution));
-            });
-            // Only with more than one display, as Language below: a control that cycles one is a dead control.
+            // Only with more than one display, as Language below: a choice of one is a dead control.
             var layout = Displays();
             if (layout.Count > 1)
             {
                 int at = monitorChosen >= 0 ? monitorChosen : Mathf.Max(0, layout.IndexOf(Screen.mainWindowDisplayInfo));
                 int count = layout.Count;
-                hud.Action(MonitorCaption(at + 1, count), () =>
-                {
-                    MoveToMonitor((at + 1) % count); Render();
-                    hud.FocusWhenWired(MonitorCaption((at + 1) % count + 1, count));
-                });
+                var monitors = new List<string>();
+                for (int number = 1; number <= count; number++) monitors.Add(SettingRowWords.MonitorValue(number, count));
+                hud.SettingChoice(SettingRowWords.MonitorRow, monitors, at, chosen => { MoveToMonitor(chosen); Render(); });
             }
-            hud.Action(edgePan ? "Stop the screen edges panning" : "Let the screen edges pan", () => { edgePan = !edgePan; ApplyPreferences(); Render(); });
-            hud.Paragraph("The edges pan the camera only in full screen, where the cursor cannot leave the game.");
-            // One room at a time, or the whole house as the overview draws it (D12): a control that cycles.
-            hud.Action(HouseViewCaption(showWholeHouse), () =>
-            {
-                SetWholeHouse(!showWholeHouse); Render();
-                hud.FocusWhenWired(HouseViewCaption(showWholeHouse));
-            });
+            // One room at a time, or the whole house as the overview draws it (D12).
+            hud.SettingChoice(SettingRowWords.HouseViewRow, SettingRowWords.HouseViewValues, showWholeHouse ? 1 : 0, at => SetWholeHouse(at == 1));
             hud.Paragraph("One room draws the room you are in and frames it; the whole house draws every room, as the overview does.");
-            // Only when a table ships: a control that cycles one language is a dead control.
+            // Only when a table ships: a choice of one language is a dead control.
             var languages = Localisation.Available();
             if (languages.Count > 1)
-                hud.Action("Language: " + language + "  (change)", () =>
+                hud.SettingChoice(SettingRowWords.LanguageRow, languages, Mathf.Max(0, languages.IndexOf(language)), at =>
                 {
-                    int at = languages.IndexOf(language);
-                    language = languages[(at + 1) % languages.Count]; ApplyPreferences(); Render();
+                    language = languages[at]; ApplyPreferences(); Render();
                 });
-            // The camera's speed and tilt, after the display (A7).
-            CameraSettings();
+            // The camera's speed and tilt (A7) and the edges' pan are the Controls section's now (menu slice 4).
         }
 
-        /// <summary>The full-screen toggle's words: the one press between a window and borderless full screen.</summary>
-        private string fullscreenToggleCaption => Fullscreen ? PlayWindowedCaption : PlayFullScreenCaption;
+        /// <summary>Whether the screen edges pan the camera: a row of the Controls section, under the camera's.</summary>
+        private void EdgePanRows()
+        {
+            hud.SettingSwitch(SettingRowWords.EdgePanningRow, edgePan, on => { edgePan = on; ApplyPreferences(); Render(); });
+            hud.Paragraph("The edges pan the camera only in full screen, where the cursor cannot leave the game.");
+        }
 
         // ---------------------------------------------------------------- the first launch (A12, decision A-4)
 

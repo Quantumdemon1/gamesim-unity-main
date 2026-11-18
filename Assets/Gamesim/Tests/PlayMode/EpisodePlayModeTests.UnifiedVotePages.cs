@@ -299,7 +299,7 @@ namespace Gamesim.Tests.PlayMode
                     AssertTheJuryHouse(beforeTheHouse);
                     UvEquivalent(beforeTheHouse, director.Snapshot);
                 });
-                ButtonWithCaption(EpisodeDirector.LeaveJuryHouseCaption).onClick.Invoke();
+                ButtonWithCaption(EpisodeDirector.JuryHouseBackCaption(director.Snapshot)).onClick.Invoke();
                 yield return Frames(2);
             }
             yield return ApplyTextSize(TextSize.Standard);
@@ -488,7 +488,7 @@ namespace Gamesim.Tests.PlayMode
             }
         }
 
-        /// <summary>The notes page's door to Your word, pressed by its caption.</summary>
+        /// <summary>Deals &amp; promises, by its tab in the notebook's strip beside the notes (menu slice 3), pressed by its caption.</summary>
         private IEnumerator UvpOpenYourWord(string where)
         {
             yield return OpenNotebook();

@@ -366,7 +366,7 @@ namespace Gamesim.Tests.PlayMode
                         yield return AtBothFrames(frame =>
                         {
                             string at = open + " on the " + frame + " frame";
-                            AssertRowsHaveRoom(textSize, at, EpisodeDirector.ConversationTopicsBackCaption, verb);
+                            AssertRowsHaveRoom(textSize, at, verb);
                             AssertPickerChoices(verb,
                                 ExpectedPickers(director.Snapshot, listener.id).Single(picker => picker.verb == verb).people, at);
                             AssertCopyHolds(at);

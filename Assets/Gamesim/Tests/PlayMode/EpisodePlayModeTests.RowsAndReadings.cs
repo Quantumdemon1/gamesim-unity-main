@@ -221,9 +221,9 @@ namespace Gamesim.Tests.PlayMode
         public IEnumerator RowsAndReadings_FixedButtonsStandOnTheKitsGround()
         {
             HoldTheHouseForTheFixture();
-            director.OpenSettings();
+            director.OpenSettingsAt(Gamesim.Presentation.SettingsSection.Display);
             yield return null;
-            ButtonWithCaption("Use compact HUD").onClick.Invoke();
+            PressSettingRow(Gamesim.Presentation.SettingRowWords.CompactHudRow, "On");
             Assert.That(director.CompactHud, Is.True);
             director.ClosePanels();
             yield return null;
@@ -240,9 +240,9 @@ namespace Gamesim.Tests.PlayMode
             diary.interactable = true;
             yield return null;
             Assert.That(edge.color, Is.EqualTo(resting), "and puts it back when it can.");
-            director.OpenSettings();
+            director.OpenSettingsAt(Gamesim.Presentation.SettingsSection.Display);
             yield return null;
-            ButtonWithCaption("Show full HUD").onClick.Invoke();
+            PressSettingRow(Gamesim.Presentation.SettingRowWords.CompactHudRow, "Off");
             Assert.That(director.CompactHud, Is.False);
             director.ClosePanels();
             yield return null;
@@ -262,7 +262,7 @@ namespace Gamesim.Tests.PlayMode
             yield return null;
             Canvas.ForceUpdateCanvases();
             AssertKitGround(ButtonWithCaption(EpisodeHud.PlanBackdoorCaption), "The picker's '" + EpisodeHud.PlanBackdoorCaption + "'");
-            AssertKitGround(ButtonWithCaption("Close  [Esc]"), "The panel's 'Close  [Esc]'");
+            AssertKitGround(ButtonWithCaption(Gamesim.Presentation.WayOut.CloseCaption), "The panel's 'Close'");
             director.ClosePanels();
             yield return null;
         }

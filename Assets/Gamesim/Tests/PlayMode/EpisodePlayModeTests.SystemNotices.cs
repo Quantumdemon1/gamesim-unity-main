@@ -224,7 +224,7 @@ namespace Gamesim.Tests.PlayMode
 
             using (new FileStream(ledger.FilePath, FileMode.Open, FileAccess.Read, FileShare.None))
             {
-                director.OpenSettings();
+                director.OpenSettingsAt(Gamesim.Presentation.SettingsSection.Advanced);
                 yield return null;
                 ButtonWithCaption(EpisodeDirector.ResetCareerCaption).onClick.Invoke();
                 yield return null;

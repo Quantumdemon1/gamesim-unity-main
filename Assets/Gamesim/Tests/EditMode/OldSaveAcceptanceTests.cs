@@ -55,7 +55,8 @@ namespace Gamesim.Tests.EditMode
     /// checkpointed at 30 alone by the same arm. The enrolled head of story rules 10 (5863d964) wrote the story-rules-10
     /// cell: the shipped Regular season every new season is since the enrolment, on Blame and tuning rules 1, saved after a
     /// houseguest's veto and played on through another, so the Blame rule decides a holder's grudge on both sides of the
-    /// save.</para>
+    /// save. Main after the Ring Tower (c1a7f40e) wrote the competition-rules-5 cell: the same shipped season at competition
+    /// rules 5, saved at the veto meeting right after the season's first Ring Tower.</para>
     ///
     /// <para>Three digests (<see cref="OldSaveTrace"/>): the season's - the cross-build gate - must be the reference
     /// build's; the whole state's, blind to prose, and the verbatim text are this build's, pinned when the fixture was
@@ -138,6 +139,10 @@ namespace Gamesim.Tests.EditMode
             // rules 11 on tuning rules 1: a fresh shipped Regular season, saved at a veto meeting with the Head of Household's
             // keep-the-block ask to the player waiting for its answer.
             "s30-mode2-allweek-story11-tuning1-w3-veto-meeting",
+            // Written by main after the Ring Tower (c1a7f40e; OLD-SAVE-ACCEPTANCE 2.14), schema 30 at competition rules 5 on
+            // story rules 11 and tuning rules 1: a fresh shipped Regular season, saved at the veto meeting right after the
+            // season's first Ring Tower.
+            "s30-mode2-allweek-story11-competition5-tuning1-w1-veto-meeting",
         };
 
         /// <summary>
@@ -197,6 +202,9 @@ namespace Gamesim.Tests.EditMode
                     Assert.That((int)entry["rules"]["dialogueRulesVersion"], Is.EqualTo((int)saved["dialogueRulesVersion"]), (string)entry["id"] + ": the save's own dialogue rules.");
                     Assert.That((int)entry["story"]["rulesVersion"], Is.EqualTo((int)saved["story"]["rulesVersion"]), (string)entry["id"] + ": the save's own story rules.");
                     Assert.That((int)entry["story"]["rulesStartWeek"], Is.EqualTo((int)saved["story"]["rulesStartWeek"]), (string)entry["id"] + ": the save's own story start week.");
+                    // Since the competition-rules-5 cell (OLD-SAVE-ACCEPTANCE 2.14) the competition rules name a cell from the
+                    // Ring Tower on, so they are read back from the save too.
+                    Assert.That((int)entry["rules"]["competitionRulesVersion"], Is.EqualTo((int)saved["competitionRulesVersion"]), (string)entry["id"] + ": the save's own competition rules.");
                 }
             }
             // One replayed fixture per cell of the plan's matrix: every schema a build wrote (not 1 or 8, which no surviving
@@ -213,7 +221,8 @@ namespace Gamesim.Tests.EditMode
             // whose chip starts rules 1, and from the chip-2 stack's head the same season on dialogue rules 2, written by the
             // build whose chip starts rules 2, and from story rules 10's enrolment the shipped Regular season at story rules 10,
             // which every new season starts on (a cell names its story rules only from Blame on, so every earlier cell keeps its
-            // name), and from the role moments' enrolment the same season at story rules 11. A cell counts only a fixture saved in a week, before the
+            // name), and from the role moments' enrolment the same season at story rules 11, and from the Ring Tower the same
+            // season at competition rules 5 (a cell names its competition rules only from the Ring Tower on). A cell counts only a fixture saved in a week, before the
             // finale, with a script to play: one saved at the finale or after it is read, never a cell's replay.
             var replayed = Manifest["episodes"].Where(e => (int)e["commands"] > 0 && !FinalePhases.Contains((string)e["phase"])).ToList();
             Assert.That(Manifest["episodes"].Except(replayed).Select(e => (string)e["id"]), Is.EquivalentTo(ReadOnly),
@@ -248,6 +257,7 @@ namespace Gamesim.Tests.EditMode
                 "30/director/uc2/allweek1/leaks1/plans1/dialogue2/alumni0/regular/tuning1",
                 "30/director/uc2/allweek1/leaks1/plans1/dialogue0/alumni0/regular/tuning1/story10",
                 "30/director/uc2/allweek1/leaks1/plans1/dialogue0/alumni0/regular/tuning1/story11",
+                "30/director/uc2/allweek1/leaks1/plans1/dialogue0/alumni0/regular/tuning1/story11/competition5",
             }));
         }
 
@@ -264,6 +274,7 @@ namespace Gamesim.Tests.EditMode
                 + (schema >= 30 ? "/alumni" + (int)e["rules"]["alumniRulesVersion"] + "/" + (string)e["cast"] : "")
                 + (schema >= 30 && ((int?)e["rules"]["tuningRulesVersion"] ?? 0) != 0 ? "/tuning" + (int)e["rules"]["tuningRulesVersion"] : "")
                 + (e["story"] is JObject story && (int)story["rulesVersion"] >= StoryRules.Blame ? "/story" + (int)story["rulesVersion"] : "")
+                + (((int?)e["rules"]["competitionRulesVersion"] ?? 0) >= CompetitionRules.RingTower ? "/competition" + (int)e["rules"]["competitionRulesVersion"] : "")
                 + ((string)e["walker"] is string walker && walker != "plain" ? "/" + walker : "");
         }
 
@@ -1128,6 +1139,175 @@ namespace Gamesim.Tests.EditMode
                     "Used anyway, the Head of Household was defied.");
                 Assert.That(NpcDeals.BrokenDeals(decided, decided.playerId), Is.EqualTo(broken), "A lapse is never a breach.");
             }
+        }
+
+        private const string CompetitionFiveCell = "s30-mode2-allweek-story11-competition5-tuning1-w1-veto-meeting";
+
+        /// <summary>
+        /// The first cell at competition rules 5 (the Ring Tower, competition slice 4; OLD-SAVE-ACCEPTANCE 2.14): the shipped
+        /// Regular season of 8 as every new season starts since the Ring Tower, on Roles and tuning rules 1, saved at the first
+        /// state of week 1's veto meeting, right after the season's first Ring Tower. The four cases every fixture has load and
+        /// replay it, read it with every reader, pin its seventeen holds and recover it from the backup; this one holds the
+        /// file to the point it was saved at and to the competition it was chosen for: week 1's veto was the tower, its
+        /// standings are the state's, and its winner, a nominee, holds the veto at the meeting. Seed 3101, the first from 3101
+        /// (every rules-5 season deals its first Ring Tower in weeks 1 to 3).
+        /// </summary>
+        [Test]
+        public void TheCompetitionRulesFiveCellIsSavedAtTheVetoMeetingRightAfterTheSeasonsFirstRingTower()
+        {
+            var entry = Entry(CompetitionFiveCell);
+            using var slot = new Slot((string)entry["save"]);
+            Assert.That(slot.Store.TryLoad(out var s, out string message), Is.True, message);
+            Assert.That(message, Does.Not.Contain("migrated"), "Saved at 30, it loads as it is.");
+            Assert.That(s.schemaVersion, Is.EqualTo(30));
+            Assert.That(s.competitionRulesVersion, Is.EqualTo(CompetitionRules.RingTower), "Saved at competition rules 5, every new season's since the Ring Tower.");
+            Assert.That((int)entry["rules"]["competitionRulesVersion"], Is.EqualTo(CompetitionRules.RingTower));
+            Assert.That(s.story.rulesVersion, Is.EqualTo(StoryRules.Roles), "On story rules 11, as every fresh season its writer starts.");
+            Assert.That(s.story.rulesStartWeek, Is.EqualTo(1));
+            Assert.That(s.tuningRulesVersion, Is.EqualTo(TuningRules.Bands), "On tuning rules 1, as every fresh season from B9.");
+            Assert.That(s.dialogueRulesVersion, Is.EqualTo(0), "A shipped season without the conversation preview.");
+            Assert.That(s.alumniRulesVersion, Is.EqualTo(0), "The Regular cast: no alumnus, alumni rules 0.");
+            Assert.That(s.alumniCatalogEdition, Is.Null);
+            Assert.That(s.unifiedCommitmentRulesVersion, Is.EqualTo(2), "The shipped mode 2.");
+            Assert.That(s.contestants.Count, Is.EqualTo(8));
+            Assert.That(s.Find(s.playerId).name, Is.EqualTo("You"));
+
+            // The stop point: the first state of week 1's veto meeting, before the holder decides.
+            Assert.That(s.week, Is.EqualTo(1));
+            Assert.That(s.phase, Is.EqualTo(EpisodePhase.VetoMeeting));
+            Assert.That(s.vetoResolved, Is.False, "The veto is not decided yet.");
+            Assert.That(s.revision, Is.EqualTo(10));
+            var replay = JObject.Parse(File.ReadAllText(Path.Combine(Root, (string)entry["replay"])));
+            Assert.That((int)replay["checkpoints"][0]["revision"], Is.EqualTo(s.revision), "The script starts where the file stops.");
+
+            // The tower: what the season dealt, as its log says, is rules 5's selection, and week 1's veto - the season's first
+            // mental competition - is the Ring Tower, where rules 4 would have dealt a memory board.
+            var dealt = s.events.Where(e => e.kind == "competition-definition").ToList();
+            Assert.That(dealt.Select(e => e.week + " " + e.phase + " " + e.text.Substring(0, e.text.IndexOf(' '))),
+                Is.EqualTo(new[] { "1 HoH houseguest-scramble-v4", "1 Veto ring-tower-v5" }));
+            foreach (var e in dealt)
+                Assert.That(e.text, Does.StartWith(CompetitionDefinitions.Version5(s.seed, e.week, e.phase).Id + " "), "Rules 5's own selection.");
+            Assert.That(CompetitionDefinitions.Version5(s.seed, 1, EpisodePhase.Veto), Is.SameAs(CompetitionDefinitions.RingTower));
+            Assert.That(CompetitionDefinitions.Version4(s.seed, 1, EpisodePhase.Veto), Is.Not.SameAs(CompetitionDefinitions.RingTower));
+            Assert.That(CompetitionDefinitions.Version4(s.seed, 1, EpisodePhase.Veto).Category, Is.EqualTo(CompetitionRules.Mental), "Rules 4 deal a memory board there.");
+
+            // Its result: the standings the state keeps are the tower's, over the six who played it, and its winner, a nominee,
+            // holds the veto at the meeting.
+            var tower = dealt.Single(e => e.text.StartsWith(CompetitionDefinitions.RingTower.Id + " ", StringComparison.Ordinal));
+            var afterTower = s.events.Where(e => e.sequence > tower.sequence && e.week == 1 && e.phase == EpisodePhase.Veto).ToList();
+            Assert.That(afterTower.Count(e => e.kind == "competition" && e.text.StartsWith("Competition winner: " + s.Find("jordan-taylor").name + " ", StringComparison.Ordinal)),
+                Is.EqualTo(1), "The tower's winner, as the log has it.");
+            Assert.That(afterTower.Count(e => e.kind == "competition-standings"), Is.EqualTo(1));
+            Assert.That(s.vetoPlayers.Count, Is.EqualTo(6));
+            Assert.That(s.competitionScores.Select(c => c.contestantId), Is.EquivalentTo(s.vetoPlayers), "The standings kept are the tower's.");
+            Assert.That(s.competitionScores.OrderByDescending(c => c.score).First().contestantId, Is.EqualTo("jordan-taylor"));
+            Assert.That(s.vetoHolderId, Is.EqualTo("jordan-taylor"));
+            Assert.That(s.hohId, Is.EqualTo("jamie-roberts"));
+            Assert.That(s.nominees, Is.EquivalentTo(new[] { "jordan-taylor", "quinn-martinez" }));
+            Assert.That(EpisodeValidation.TryValidate(s, out string error), Is.True, error);
+        }
+
+        /// <summary>
+        /// The control: the same file with its competition rules resealed to 4 (the save's competitionRulesVersion rewritten
+        /// and its checksum computed again, as the store computes it). Rules 5 change only which mental game is dealt, and in a
+        /// season of eight they part from rules 4 only at its first mental competition, the tower the file has already
+        /// played. So the store loads it and leaves it as it was, every command of the script is accepted, and the season -
+        /// hashed with the rules put back to 5, so the field alone cannot part them - is the recorded one at every checkpoint,
+        /// in all three digests, the same games dealt after the load. As it is, the season's own competition rules part it at
+        /// the load. A season at rules 4 is never refused for a tower in its log, and plays on as rules 4 deal.
+        /// </summary>
+        [Test]
+        public void TheCompetitionRulesFiveCellResealedAtCompetitionRulesFourLoadsAndPlaysTheSameSeasonAfterTheLoad()
+        {
+            var entry = Entry(CompetitionFiveCell);
+            using var slot = new Slot((string)entry["save"]);
+            var saveJson = typeof(EpisodeSaveStore).Assembly.GetType("Gamesim.Persistence.SaveJson", true);
+            var envelope = (JObject)saveJson.GetMethod("ParseObject", BindingFlags.Public | BindingFlags.Static)
+                .Invoke(null, new object[] { File.ReadAllText(slot.Store.SavePath) });
+            var payload = (JObject)envelope["state"];
+            Assert.That((int)payload["competitionRulesVersion"], Is.EqualTo(CompetitionRules.RingTower));
+            payload["competitionRulesVersion"] = CompetitionRules.Widened;
+            string canonical = (string)saveJson.GetMethod("Canonical", BindingFlags.Public | BindingFlags.Static).Invoke(null, new object[] { payload });
+            envelope["checksum"] = (string)saveJson.GetMethod("Hash", BindingFlags.Public | BindingFlags.Static).Invoke(null, new object[] { canonical });
+            File.WriteAllText(slot.Store.SavePath, envelope.ToString(Formatting.None));
+            var resealed = File.ReadAllBytes(slot.Store.SavePath);
+
+            Assert.That(new EpisodeSaveStore(slot.Store.SavePath).TryLoad(out var forced, out string message), Is.True, message);
+            Assert.That(message, Does.Not.Contain("migrated"));
+            Assert.That(File.ReadAllBytes(slot.Store.SavePath), Is.EqualTo(resealed), "Loading never rewrites the save.");
+            Assert.That(forced.competitionRulesVersion, Is.EqualTo(CompetitionRules.Widened));
+            Assert.That(EpisodeValidation.TryValidate(forced, out string error), Is.True, error);
+
+            // At rules 5, as recorded: the games dealt after the load.
+            List<string> DealtSince(EpisodeState before, EpisodeState after)
+            {
+                int last = before.events.Count == 0 ? -1 : before.events.Max(e => e.sequence);
+                return after.events.Where(e => e.sequence > last && e.kind == "competition-definition")
+                    .Select(e => e.week + " " + e.phase + " " + e.text.Substring(0, e.text.IndexOf(' '))).ToList();
+            }
+            var atFive = new List<string>();
+            using (var original = new Slot((string)entry["save"]))
+            {
+                Assert.That(original.Store.TryLoad(out var loaded, out string loadedMessage), Is.True, loadedMessage);
+                var (digest, _, _, _) = Replay(CompetitionFiveCell, loaded, (before, after) => { if (before != null) atFive.AddRange(DealtSince(before, after)); });
+                Assert.That(digest, Is.EqualTo((string)entry["digest"]));
+            }
+
+            // At rules 4: every command, hashed as it is and with the rules put back to 5.
+            var replay = JObject.Parse(File.ReadAllText(Path.Combine(Root, (string)entry["replay"])));
+            var checkpoints = (JArray)replay["checkpoints"];
+            var asItIs = new List<string>();
+            var putBack = new List<string>();
+            var putBackState = new List<string>();
+            var putBackText = new List<string>();
+            int partsAsItIs = -1, partsPutBack = -1;
+            void Check(EpisodeState s, int at)
+            {
+                string recorded = (string)checkpoints[at]["season"];
+                string season = CurrentOldSaveTrace.Checkpoint(s, CurrentOldSaveTrace.Current).season;
+                asItIs.Add(season);
+                if (partsAsItIs < 0 && season.Substring(0, 16) != recorded) partsAsItIs = at;
+                s.competitionRulesVersion = CompetitionRules.RingTower;
+                var back = CurrentOldSaveTrace.Checkpoint(s, CurrentOldSaveTrace.Current);
+                s.competitionRulesVersion = CompetitionRules.Widened;
+                putBack.Add(back.season); putBackState.Add(back.blind); putBackText.Add(back.text);
+                if (partsPutBack < 0 && back.season.Substring(0, 16) != recorded) partsPutBack = at;
+            }
+            Check(forced, 0);
+            var engine = new EpisodeEngine(forced);
+            var atFour = new List<string>();
+            int i = 0;
+            foreach (JObject row in (JArray)replay["commands"])
+            {
+                var before = engine.Snapshot;
+                var applied = engine.Apply(row.ToObject<EpisodeCommand>());
+                i++;
+                Assert.That(applied.accepted, Is.True, "At competition rules 4, command " + i + " (week " + before.week + " " + before.phase + ") refused: " + applied.reason);
+                Assert.That(applied.state.competitionRulesVersion, Is.EqualTo(CompetitionRules.Widened), "A season keeps the rules it was loaded at.");
+                Check(applied.state, i);
+                atFour.AddRange(DealtSince(before, applied.state));
+            }
+            Assert.That(i, Is.EqualTo(checkpoints.Count - 1), "Every command of the script is played at competition rules 4 too.");
+            Assert.That(engine.Snapshot.phase, Is.EqualTo(EpisodePhase.Finished));
+            Assert.That(engine.Snapshot.winnerId, Is.EqualTo((string)entry["winnerId"]));
+
+            Assert.That(partsAsItIs, Is.EqualTo(0), "As it is, the season's own competition rules part it at the load.");
+            Assert.That(OldSaveTrace.Digest(asItIs), Is.Not.EqualTo((string)entry["digest"]));
+            Assert.That(partsPutBack, Is.EqualTo(-1), "With the rules put back to 5, every checkpoint is the recorded season: rules 4 commit the same results.");
+            Assert.That(OldSaveTrace.Digest(putBack), Is.EqualTo((string)entry["digest"]));
+            Assert.That(OldSaveTrace.Digest(putBackState), Is.EqualTo((string)entry["stateDigest"]), "Blind to prose, the log's lines are the same too.");
+            Assert.That(OldSaveTrace.Digest(putBackText), Is.EqualTo((string)entry["textDigest"]), "Word for word, the log is the recorded one too: no game after the load is dealt otherwise.");
+
+            // Why: after the load the season deals, under both rules, the games rules 4 deal - week 3's Head of Household is
+            // the season's second mental competition, a memory board both selectors pick alike - and no second tower (a
+            // season of eight plays no third mental competition). The save's own tower stays in its log as it was played.
+            Assert.That(atFive, Is.Not.Empty);
+            Assert.That(atFour, Is.EqualTo(atFive), "Rules 4 deal every game after the load that rules 5 deal.");
+            Assert.That(atFive, Does.Contain("3 HoH " + CompetitionDefinitions.Version5(forced.seed, 3, EpisodePhase.HoH).Id));
+            Assert.That(CompetitionDefinitions.Version5(forced.seed, 3, EpisodePhase.HoH).Category, Is.EqualTo(CompetitionRules.Mental));
+            Assert.That(atFive.Where(line => line.EndsWith(" " + CompetitionDefinitions.RingTower.Id, StringComparison.Ordinal)), Is.Empty, "No second tower.");
+            Assert.That(forced.events.Count(e => e.kind == "competition-definition" && e.text.StartsWith(CompetitionDefinitions.RingTower.Id + " ", StringComparison.Ordinal)),
+                Is.EqualTo(1), "Loaded at rules 4, the season keeps in its log the tower it played before the save.");
         }
 
         private static EpisodeCommand Act(EpisodeState s, EpisodeCommandKind kind, string target = null, string second = null, string text = null) =>

@@ -611,10 +611,28 @@ namespace Gamesim.Persistence
             // threads landed (a8122c7b), and what every old-save fixture was recorded under
             // (Assets/Plans/OLD-SAVE-ACCEPTANCE.md, F6). Lore.Cast does not read the version.
             cast.story.rulesVersion = 9;
-            result.Add("story", JObject.FromObject(cast.story, serializer));
+            // The live StoryWorldState writes the bundle, but this step's output is historical: only the story keys the
+            // frozen schema-16 contract reads, in their order. A story field a later schema adds (schema 31's talk fields)
+            // would otherwise reach the schema-16 reader and have every schema 2 to 15 save refused; its own step adds it.
+            var live = JObject.FromObject(cast.story, serializer);
+            var story = new JObject();
+            foreach (var key in StoryKeysV16)
+            {
+                if (!live.TryGetValue(key, StringComparison.Ordinal, out var value))
+                    throw new InvalidDataException("The schema-16 story bundle lacks " + key + ".");
+                story.Add(key, value);
+            }
+            result.Add("story", story);
             result["schemaVersion"] = 16;
             return result;
         }
+
+        /// <summary>The story bundle's keys at schema 16, in the order the schema-16 step writes them.</summary>
+        public static readonly IReadOnlyList<string> StoryKeysV16 = Array.AsReadOnly(new[]
+        {
+            "rulesStartWeek", "rulesVersion", "productionStrictness", "romanceStorylines", "grudges", "facts", "bonds", "hooks",
+            "contacts", "lore", "knownFacts", "conduct", "removals", "pendingRemovalId", "cooldowns", "reckonings",
+        });
 
         /// <summary>Frozen v1-v14-to-v15 dispatch.</summary>
         public static JObject PrepareV15Payload(JObject original, out bool migrated)

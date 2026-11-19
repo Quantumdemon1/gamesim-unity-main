@@ -422,7 +422,8 @@ namespace Gamesim.Tests.EditMode
             if (!HasSchema30Data(payload)) return payload;
             string before = payload.ToString(Formatting.None);
             Assert.That(payload["schemaVersion"]?.Type, Is.EqualTo(JTokenType.Integer));
-            Assert.That((long)payload["schemaVersion"], Is.EqualTo(31), "Only the exact retained30 may cross this test boundary.");
+            // The retained 30 (StripSchema31 has taken a live 31 to it above): its header is 30.
+            Assert.That((long)payload["schemaVersion"], Is.EqualTo(30), "Only the exact retained30 may cross this test boundary.");
             Assert.DoesNotThrow(() =>
             {
                 var fixed30 = typeof(EpisodeSaveStore).Assembly.GetType("Gamesim.Persistence.FrozenEpisodeV30", true);

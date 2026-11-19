@@ -10,13 +10,13 @@ namespace Gamesim.Simulation
     /// started on. A level is defined here before its slice reads it, and admitted only from the schema that introduced it
     /// (<see cref="Admits"/>: every level from 31). A fresh season's level is written in
     /// <see cref="ShippedRules.ApplyFresh(EpisodeState)"/> and only there, as <see cref="Shipped"/>; each level is ENROLLED
-    /// (moved into Shipped) only by its slice's integrator, after a balance measurement (ruling R4). Load, migration,
+    /// (moved into Shipped) only by its slice's integrator, as the slice lands (ruling R16; level 1 is enrolled). Load, migration,
     /// recovery and the importer never infer a level: an old save migrates at 0 and keeps free talk off. Every rule reads
     /// the level that introduced it as a lower bound (<see cref="At"/>), never <see cref="Latest"/>.</para>
     /// </summary>
     public static class TalkRules
     {
-        /// <summary>No free talk: every season before schema 31, and every season the game starts until level 1's enrolment.</summary>
+        /// <summary>No free talk: every season before schema 31, every old save, and every season the game started before level 1's enrolment.</summary>
         public const int Off = 0;
 
         /// <summary>Slice S1: the free talk on every housemate, its window cap, rapport tenths, the insight layers and where they stand.</summary>
@@ -38,10 +38,12 @@ namespace Gamesim.Simulation
         public const int Latest = ComesToTalk;
 
         /// <summary>
-        /// The level a season the game starts plays under (<see cref="ShippedRules.ApplyFresh(EpisodeState)"/>): off, until
-        /// level 1's integrator enrols it after its balance measurement (ruling R4). Never <see cref="Latest"/>.
+        /// The level a season the game starts plays under (<see cref="ShippedRules.ApplyFresh(EpisodeState)"/>): level 1,
+        /// <see cref="Talk"/>, enrolled by slice 1's integrator as the slice lands (ruling R16, which replaces R4's gate: the
+        /// balance arm runs afterwards and tunes the gains). It was <see cref="Off"/> from schema 31 until then. Never
+        /// <see cref="Latest"/>: each later level is enrolled only by its own slice's integrator.
         /// </summary>
-        public const int Shipped = Off;
+        public const int Shipped = Talk;
 
         /// <summary>The schema that introduced the ladder and every level on it.</summary>
         public const int Schema = 31;

@@ -588,7 +588,8 @@ namespace Gamesim.Tests.EditMode
             // Both modes are held at story rules 9, threads, by name (STORY-RULES-10-PLAN §8), for the same reason: the
             // frozen schema-29 and 28 readers refuse story rules 10.
             // Held at competition rules 4 too: the frozen schema-29 and 28 readers refuse rules 5, the ring tower's.
-            if (mode == 2) { ShippedRules.ApplyFresh(state); state.tuningRulesVersion = TuningRules.Off; state.story.rulesVersion = StoryRules.Threads; state.competitionRulesVersion = CompetitionRules.Widened; }
+            // Held at talk rules 0 as well: level 1 (free talk slice 1's enrolment) is newer than every older schema's reader.
+            if (mode == 2) { ShippedRules.ApplyFresh(state); state.tuningRulesVersion = TuningRules.Off; state.story.rulesVersion = StoryRules.Threads; state.competitionRulesVersion = CompetitionRules.Widened; state.story.talkRules = TalkRules.Off; }
             else if (mode == 1)
             {
                 state.competitionRulesVersion = CompetitionRules.Widened;

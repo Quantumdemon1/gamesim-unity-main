@@ -251,6 +251,7 @@ namespace Gamesim.Tests.EditMode
                 start.tuningRulesVersion = TuningRules.Off;
                 start.story.rulesVersion = StoryRules.Threads;
                 start.competitionRulesVersion = CompetitionRules.Widened; // Held at competition rules 4: rules 5 (the ring tower) is newer than every older schema's reader.
+                start.story.talkRules = TalkRules.Off; // Held at talk rules 0: level 1 (free talk slice 1's enrolment) is newer than every older schema's reader.
                 var engine = new EpisodeEngine(start);
                 for (int step = 0; step < 800 && engine.Snapshot.phase != EpisodePhase.Finished && engine.Snapshot.week <= 6; step++)
                 {

@@ -26,6 +26,13 @@ namespace Gamesim.Uma.Tests
     /// to the rules a delivered part's files must meet: a named thumbnail is valid, each slot carries
     /// its own name and has vertices, and the part is worn after a save and a reload and keeps a
     /// marked finish through a rebuild. Stock UMA entries (<c>uma-</c> ids) are not held to those.</para>
+    ///
+    /// <para>A recipe's slot entry flagged <c>isPlaceholderSlot</c> (a painted face piece's form) is not the part's
+    /// own slot: UMA builds no slot under its id and hands its overlays to the built slots that carry one of its
+    /// tags (DynamicCharacterAvatar.PostProcessSlots). For such an entry the contract is that each of its overlays
+    /// is on a built slot carrying one of the entry's tags after a save and a reload and through a rebuild, an
+    /// overlay sharing a colour still shares that colour, and an overlay with a colour of its own keeps it. Every
+    /// other entry is held to the slot rules above.</para>
     /// </summary>
     [TestFixture]
     public sealed class UmaWardrobeContractPlayModeTests
@@ -93,8 +100,104 @@ namespace Gamesim.Uma.Tests
         private static bool Authored(UmaWardrobeEntry entry) =>
             entry.pickerHidden || (entry.id != null && entry.id.StartsWith("gamesim.", StringComparison.Ordinal));
 
+        /// <summary>The ids of the recipe's own slots: every slot entry but a placeholder, which builds no slot of its id.</summary>
         private static string[] SlotIds(UMAWardrobeRecipe recipe) => (recipe.PackedLoad().slotsV3 ?? Array.Empty<UMAPackedRecipeBase.PackedSlotDataV3>())
-            .Where(part => part != null && !string.IsNullOrEmpty(part.id)).Select(part => part.id).Distinct().ToArray();
+            .Where(part => part != null && !string.IsNullOrEmpty(part.id) && !part.isPlaceholderSlot).Select(part => part.id).Distinct().ToArray();
+
+        /// <summary>An overlay of a placeholder entry, with the colour the recipe gives it.</summary>
+        private sealed class PlaceholderOverlay
+        {
+            public string Id;
+            /// <summary>Whether the recipe names a colour for it; when false its colour is not judged.</summary>
+            public bool KnownColour;
+            public bool Shared;
+            public string Colour;
+            public Color Multiply, Additive;
+        }
+
+        /// <summary>A slot entry flagged isPlaceholderSlot: the tags its overlays find built slots by, and the overlays.</summary>
+        private sealed class Placeholder
+        {
+            public string Id;
+            public string[] Tags;
+            public List<PlaceholderOverlay> Overlays;
+        }
+
+        private static List<Placeholder> Placeholders(UMAWardrobeRecipe recipe)
+        {
+            var packed = recipe.PackedLoad();
+            var colours = packed.fColors ?? Array.Empty<UMAPackedRecipeBase.PackedOverlayColorDataV3>();
+            PlaceholderOverlay Read(UMAPackedRecipeBase.PackedOverlayDataV3 overlay)
+            {
+                var read = new PlaceholderOverlay { Id = overlay.id };
+                var colour = overlay.colorIdx >= 0 && overlay.colorIdx < colours.Length ? colours[overlay.colorIdx] : null;
+                if (colour == null) return read;
+                read.Shared = overlay.colorIdx < packed.sharedColorCount;
+                read.Colour = colour.name;
+                if (read.Shared) { read.KnownColour = true; return read; }
+                if (colour.colors == null || colour.colors.Length < 8) return read;
+                read.KnownColour = true;
+                read.Multiply = new Color(colour.colors[0] / 255f, colour.colors[1] / 255f, colour.colors[2] / 255f, colour.colors[3] / 255f);
+                read.Additive = new Color(colour.colors[4] / 255f, colour.colors[5] / 255f, colour.colors[6] / 255f, colour.colors[7] / 255f);
+                return read;
+            }
+            return (packed.slotsV3 ?? Array.Empty<UMAPackedRecipeBase.PackedSlotDataV3>())
+                .Where(part => part != null && !string.IsNullOrEmpty(part.id) && part.isPlaceholderSlot)
+                .Select(part => new Placeholder
+                {
+                    Id = part.id,
+                    Tags = part.Tags ?? Array.Empty<string>(),
+                    Overlays = (part.overlays ?? Array.Empty<UMAPackedRecipeBase.PackedOverlayDataV3>())
+                        .Where(overlay => overlay != null && !string.IsNullOrEmpty(overlay.id)).Select(Read).ToList(),
+                }).ToList();
+        }
+
+        private static bool Near(Color a, Color b) =>
+            Mathf.Abs(a.r - b.r) <= .003f && Mathf.Abs(a.g - b.g) <= .003f && Mathf.Abs(a.b - b.b) <= .003f && Mathf.Abs(a.a - b.a) <= .003f;
+
+        /// <summary>
+        /// Where a built body breaks the placeholder contract: an overlay of a placeholder entry that is on no built
+        /// slot carrying one of the entry's tags (UMA's own test, SlotData.HasTag), an overlay that shared a colour and
+        /// no longer shares it, and an overlay with a colour of its own that lost it. Empty when the body keeps it.
+        /// </summary>
+        private static List<string> PlaceholderMisses(DynamicCharacterAvatar avatar, string id, IEnumerable<Placeholder> placeholders, string when)
+        {
+            var misses = new List<string>();
+            var slots = avatar.umaData.umaRecipe.slotDataList.Where(slot => slot != null && !slot.isPlaceholderSlot).ToList();
+            foreach (var placeholder in placeholders)
+            {
+                var tagged = slots.Where(slot => slot.HasTag(placeholder.Tags)).ToList();
+                foreach (var overlay in placeholder.Overlays)
+                {
+                    var on = tagged.SelectMany(slot => slot.GetOverlayList()).Where(value => value != null && value.asset != null && value.overlayName == overlay.Id).ToList();
+                    if (on.Count == 0)
+                    {
+                        var elsewhere = slots.Where(slot => slot.GetOverlayList().Any(value => value != null && value.asset != null && value.overlayName == overlay.Id)).Select(slot => slot.slotName);
+                        misses.Add(id + ": the overlay " + overlay.Id + " of the placeholder entry " + placeholder.Id + " is on no built slot tagged "
+                            + string.Join("/", placeholder.Tags) + " " + when + "; it is on [" + string.Join(", ", elsewhere) + "].");
+                        continue;
+                    }
+                    if (!overlay.KnownColour) continue;
+                    foreach (var worn in on)
+                    {
+                        var colour = worn.colorData;
+                        if (overlay.Shared)
+                        {
+                            if (colour == null || !colour.IsASharedColor || colour.name != overlay.Colour)
+                                misses.Add(id + ": the overlay " + overlay.Id + " no longer shares the colour " + overlay.Colour + " " + when + "; it has "
+                                    + (colour == null ? "none" : "'" + colour.name + "'") + ".");
+                        }
+                        else if (colour == null || colour.IsASharedColor || colour.channelMask == null || colour.channelMask.Length == 0
+                            || colour.channelAdditiveMask == null || colour.channelAdditiveMask.Length == 0
+                            || !Near(colour.channelMask[0], overlay.Multiply) || !Near(colour.channelAdditiveMask[0], overlay.Additive))
+                            misses.Add(id + ": the overlay " + overlay.Id + " does not keep its own colour (multiply " + overlay.Multiply + ", additive "
+                                + overlay.Additive + ") " + when + "; it has " + (colour == null ? "none" : "'" + colour.name + "' multiply "
+                                + (colour.channelMask != null && colour.channelMask.Length > 0 ? colour.channelMask[0].ToString() : "none")) + ".");
+                    }
+                }
+            }
+            return misses;
+        }
 
         private static IEnumerable<SlotDataAsset> SlotAssets(UMAWardrobeRecipe recipe) =>
             SlotIds(recipe).Select(id => UMAAssetIndexer.Instance.GetAsset<SlotDataAsset>(id));
@@ -356,6 +459,7 @@ namespace Gamesim.Uma.Tests
             public readonly UMAAssetIndexer Index = UMAAssetIndexer.Instance;
             public readonly UmaWardrobeCatalog Extension = ScriptableObject.CreateInstance<UmaWardrobeCatalog>();
             private readonly List<UMAWardrobeRecipe> added = new List<UMAWardrobeRecipe>();
+            private readonly List<OverlayDataAsset> addedOverlays = new List<OverlayDataAsset>();
             private readonly int originalCount;
 
             public RuntimeContent()
@@ -375,17 +479,187 @@ namespace Gamesim.Uma.Tests
                 return recipe;
             }
 
+            /// <summary>A runtime copy of an installed overlay under a name of its own, registered in UMA's index.</summary>
+            public OverlayDataAsset Overlay(string sourceOverlay, string kind)
+            {
+                var stock = Index.GetAsset<OverlayDataAsset>(sourceOverlay);
+                Assert.That(stock, Is.Not.Null, sourceOverlay + " is in UMA's index.");
+                var overlay = Object.Instantiate(stock);
+                overlay.name = overlay._oldOverlayName = "GamesimContract-" + kind + "-" + Guid.NewGuid().ToString("N");
+                overlay.hideFlags = HideFlags.DontSave;
+                addedOverlays.Add(overlay);
+                Assert.That(Index.AddAssetItem(new AssetItem(typeof(OverlayDataAsset), overlay.name, "", overlay), noDirty: true), Is.True);
+                return overlay;
+            }
+
+            /// <summary>
+            /// A painted face piece in the form the game wears one: a copy of UMA's stock face recipe, whose one slot
+            /// entry is a placeholder on the head slot, tagged <paramref name="tag"/> and carrying two overlays made from
+            /// the stock one: a skin layer sharing the colour Skin and a features layer on a colour of its own (white
+            /// multiply, zero additive). Its catalog entry is picker-hidden, so it is held to the authored part rules.
+            /// </summary>
+            public UmaWardrobeEntry FacePiece(string id, string tag)
+            {
+                var skin = Overlay(FaceSourceOverlay, "FaceSkin");
+                var features = Overlay(FaceSourceOverlay, "FaceFeatures");
+                var recipe = Copy(FaceSource, "Face");
+                var packed = recipe.PackedLoad();
+                var part = packed.slotsV3.Single(value => value != null && !string.IsNullOrEmpty(value.id));
+                Assert.That(part.isPlaceholderSlot && part.id == HeadSlot && part.overlays != null && part.overlays.Length == 1
+                    && part.overlays[0].colorIdx == 0 && packed.sharedColorCount == 1 && packed.fColors[0].name == "Skin", Is.True,
+                    "UMA's stock " + FaceSource + " is still one placeholder entry on " + HeadSlot + " with one overlay on the shared colour Skin.");
+                part.Tags = new[] { tag };
+                part.overlays[0].id = skin.overlayName;
+                var own = JsonUtility.FromJson<UMAPackedRecipeBase.PackedOverlayDataV3>(JsonUtility.ToJson(part.overlays[0]));
+                own.id = features.overlayName;
+                own.colorIdx = packed.fColors.Length;
+                part.overlays = new[] { part.overlays[0], own };
+                int channels = Math.Max(1, packed.fColors[0].colors.Length / 8);
+                var white = Enumerable.Range(0, channels).SelectMany(_ => new short[] { 255, 255, 255, 255, 0, 0, 0, 0 }).ToArray();
+                packed.fColors = packed.fColors.Concat(new[]
+                {
+                    new UMAPackedRecipeBase.PackedOverlayColorDataV3 { name = OverlayColorData.UNSHARED, colors = white, displayColor = -1 },
+                }).ToArray();
+                recipe.PackedSave(packed);
+                var entry = new UmaWardrobeEntry { id = id, recipeName = recipe.name, label = "Contract " + id, pickerHidden = true };
+                Extension.entries.Add(entry);
+                return entry;
+            }
+
             public UmaAppearanceCatalog Catalog() =>
                 new UmaAppearanceCatalog(Resources.LoadAll<UmaWardrobeCatalog>(CatalogFolder).Concat(new[] { Extension }));
 
             public void Dispose()
             {
                 foreach (var recipe in added) Index.RemoveAsset(typeof(UMAWardrobeRecipe), recipe.name, refresh: false);
+                foreach (var overlay in addedOverlays) Index.RemoveAsset(typeof(OverlayDataAsset), overlay.name, refresh: false);
                 while (Index.SerializedItems.Count > originalCount && Index.SerializedItems.Last() == null)
                     Index.SerializedItems.RemoveAt(Index.SerializedItems.Count - 1);
                 foreach (var recipe in added) Object.Destroy(recipe);
+                foreach (var overlay in addedOverlays) Object.Destroy(overlay);
                 Object.Destroy(Extension);
             }
+        }
+
+        /// <summary>UMA's stock face recipe in the placeholder form (one entry on the head slot, tagged Face) and its overlay.</summary>
+        private const string FaceSource = "Freckled_Light_U_Wardrobe", FaceSourceOverlay = "Freckled_Light_U_Overlay", HeadSlot = "UMA30_Body_UDIM1001_slot";
+
+        /// <summary>Builds a body wearing <paramref name="entry"/>'s item after a save and a reload, on the first body it fits.</summary>
+        private IEnumerator WearOne(UmaAppearanceCatalog catalog, UmaWardrobeEntry entry, Transform parent, BuiltBody into)
+        {
+            var item = catalog.Items.FirstOrDefault(value => value.Id == entry.id);
+            Assert.That(item, Is.Not.Null, entry.id + " is an item.");
+            var appearance = catalog.ChangeBody(catalog.Materialize(CharacterAppearance.Preset("player")), item.CompatibleBodies[0]);
+            AppearanceEditing.Wear(appearance, item, catalog);
+            var loaded = JsonUtility.FromJson<CharacterAppearance>(JsonUtility.ToJson(appearance));
+            yield return Build(new UmaBodyProvider(catalog), loaded, parent, into);
+            Assert.That(into.Avatar.GetWardrobeItem(item.Slot)?.name, Is.EqualTo(entry.recipeName), entry.id + " is worn.");
+        }
+
+        /// <summary>
+        /// The placeholder contract on a face piece made from UMA's stock face recipe: its files pass (no slot of its own
+        /// is asked of it), and on a body, after a save and a reload and through a rebuild, both its overlays are on a
+        /// built slot tagged Face, the skin layer sharing Skin and the features layer keeping its own white.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator APlaceholderFacePieceIsHeldToThePlaceholderContract()
+        {
+            owned.Add(new GameObject("Contract provider", typeof(GamesimUmaCast)));
+            yield return null;
+            using (var content = new RuntimeContent())
+            {
+                var entry = content.FacePiece("contract-face", "Face");
+                var catalog = content.Catalog();
+                Assert.That(catalog.Diagnostics, Is.Empty);
+                Assert.That(Authored(entry), Is.True, "The piece is held to the authored part rules.");
+                var recipe = content.Index.GetAsset<UMAWardrobeRecipe>(entry.recipeName);
+                Assert.That(SlotIds(recipe), Is.Empty, "A placeholder entry is not the part's own slot.");
+                var placeholder = Placeholders(recipe).Single();
+                Assert.That(placeholder.Id, Is.EqualTo(HeadSlot));
+                Assert.That(placeholder.Tags, Is.EqualTo(new[] { "Face" }));
+                Assert.That(placeholder.Overlays.Select(overlay => overlay.KnownColour + " " + overlay.Shared + " " + overlay.Colour),
+                    Is.EqualTo(new[] { "True True Skin", "True False " + OverlayColorData.UNSHARED }), "A skin layer sharing Skin and a features layer on its own colour.");
+                Assert.That(placeholder.Overlays[1].Multiply, Is.EqualTo(Color.white));
+                Assert.That(placeholder.Overlays[1].Additive, Is.EqualTo(new Color(0f, 0f, 0f, 0f)));
+                AssertPartFiles(content.Index, entry);
+                yield return WearEachPart(catalog, new[] { entry });
+            }
+            yield return null;
+        }
+
+        /// <summary>
+        /// The control: a face piece whose placeholder is tagged with a tag no built slot carries is still worn, but
+        /// UMA hands its overlays to no slot, and the contract says so for each overlay.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator APlaceholderWhoseOverlaysReachNoTaggedSlotFailsThePlaceholderContract()
+        {
+            var cast = new GameObject("Contract provider", typeof(GamesimUmaCast));
+            var actor = new GameObject("Contract actor");
+            owned.Add(actor); owned.Add(cast);
+            yield return null;
+            using (var content = new RuntimeContent())
+            {
+                var entry = content.FacePiece("contract-face-untagged", "GamesimContractNoSuchTag");
+                var catalog = content.Catalog();
+                Assert.That(catalog.Diagnostics, Is.Empty);
+                var built = new BuiltBody();
+                yield return WearOne(catalog, entry, actor.transform, built);
+                var placeholders = Placeholders(content.Index.GetAsset<UMAWardrobeRecipe>(entry.recipeName));
+                var misses = PlaceholderMisses(built.Avatar, entry.id, placeholders, "on its first build");
+                var overlays = placeholders.Single().Overlays;
+                Assert.That(overlays.Count, Is.EqualTo(2));
+                foreach (var overlay in overlays)
+                    Assert.That(misses.Any(miss => miss.Contains(overlay.Id) && miss.Contains("is on no built slot tagged GamesimContractNoSuchTag")), Is.True,
+                        "The contract reports that " + overlay.Id + " reached no tagged slot; it reported: " + string.Join(" | ", misses));
+                Assert.That(misses.Count, Is.EqualTo(overlays.Count), string.Join(" | ", misses));
+            }
+            yield return null;
+        }
+
+        /// <summary>
+        /// The control for the colours: on a body wearing the face piece the contract holds; once the built skin layer
+        /// stops sharing Skin and the built features layer loses its own white, the contract reports each.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator APlaceholderOverlayThatLosesItsColourFailsThePlaceholderContract()
+        {
+            var cast = new GameObject("Contract provider", typeof(GamesimUmaCast));
+            var actor = new GameObject("Contract actor");
+            owned.Add(actor); owned.Add(cast);
+            yield return null;
+            using (var content = new RuntimeContent())
+            {
+                var entry = content.FacePiece("contract-face-colours", "Face");
+                var catalog = content.Catalog();
+                Assert.That(catalog.Diagnostics, Is.Empty);
+                var built = new BuiltBody();
+                yield return WearOne(catalog, entry, actor.transform, built);
+                var placeholders = Placeholders(content.Index.GetAsset<UMAWardrobeRecipe>(entry.recipeName));
+                var before = PlaceholderMisses(built.Avatar, entry.id, placeholders, "on its first build");
+                Assert.That(before, Is.Empty, "Control: the body keeps the contract. " + string.Join(" | ", before));
+
+                var skin = placeholders.Single().Overlays[0];
+                var features = placeholders.Single().Overlays[1];
+                var worn = built.Avatar.umaData.umaRecipe.slotDataList.Where(slot => slot != null).SelectMany(slot => slot.GetOverlayList())
+                    .Where(overlay => overlay != null && overlay.asset != null).ToList();
+                foreach (var overlay in worn.Where(value => value.overlayName == skin.Id))
+                {
+                    var unshared = overlay.colorData.Clone();
+                    unshared.name = OverlayColorData.UNSHARED;
+                    overlay.colorData = unshared;
+                }
+                foreach (var overlay in worn.Where(value => value.overlayName == features.Id))
+                {
+                    var red = overlay.colorData.Clone();
+                    red.channelMask[0] = Color.red;
+                    overlay.colorData = red;
+                }
+                var after = PlaceholderMisses(built.Avatar, entry.id, placeholders, "once repainted");
+                Assert.That(after.Any(miss => miss.Contains(skin.Id) && miss.Contains("no longer shares the colour Skin")), Is.True, string.Join(" | ", after));
+                Assert.That(after.Any(miss => miss.Contains(features.Id) && miss.Contains("does not keep its own colour")), Is.True, string.Join(" | ", after));
+            }
+            yield return null;
         }
 
         [UnityTest]
@@ -552,21 +826,37 @@ namespace Gamesim.Uma.Tests
         public void EveryAuthoredPartsSlotsCarryTheirOwnNameAndHaveVertices()
         {
             var index = UMAAssetIndexer.Instance;
-            foreach (var entry in Entries().Where(entry => entry.available && Authored(entry)))
+            foreach (var entry in Entries().Where(entry => entry.available && Authored(entry))) AssertPartFiles(index, entry);
+        }
+
+        /// <summary>
+        /// One entry's files: each slot of its own is in UMA's index under its name, with vertices; each placeholder
+        /// entry names a tag to find built slots by and carries overlays that are all in UMA's index.
+        /// </summary>
+        private void AssertPartFiles(UMAAssetIndexer index, UmaWardrobeEntry entry)
+        {
+            var recipe = index.GetAsset<UMAWardrobeRecipe>(entry.recipeName);
+            Assert.That(recipe, Is.Not.Null, entry.id);
+            var slots = SlotIds(recipe);
+            var placeholders = Placeholders(recipe);
+            Assert.That(slots.Length + placeholders.Count, Is.GreaterThan(0), entry.id + " builds no slot.");
+            foreach (string id in slots)
             {
-                var recipe = index.GetAsset<UMAWardrobeRecipe>(entry.recipeName);
-                Assert.That(recipe, Is.Not.Null, entry.id);
-                var slots = SlotIds(recipe);
-                Assert.That(slots, Is.Not.Empty, entry.id + " builds no slot.");
-                foreach (string id in slots)
-                {
-                    var slot = index.GetAsset<SlotDataAsset>(id);
-                    Assert.That(slot, Is.Not.Null, entry.id + ": slot " + id + " is not in UMA's index.");
-                    Assert.That(slot.meshData, Is.Not.Null, entry.id + ": " + id + " has no mesh.");
-                    Assert.That(slot.meshData.vertexCount, Is.GreaterThan(0), entry.id + ": " + id + " has no vertices.");
-                    string label = meshLabels != null && meshLabels.TryGetValue(slot.slotName, out var before) ? before : slot.meshData.SlotName;
-                    Assert.That(label, Is.EqualTo(slot.slotName), entry.id + ": the mesh of " + id + " carries another slot's name.");
-                }
+                var slot = index.GetAsset<SlotDataAsset>(id);
+                Assert.That(slot, Is.Not.Null, entry.id + ": slot " + id + " is not in UMA's index.");
+                Assert.That(slot.meshData, Is.Not.Null, entry.id + ": " + id + " has no mesh.");
+                Assert.That(slot.meshData.vertexCount, Is.GreaterThan(0), entry.id + ": " + id + " has no vertices.");
+                string label = meshLabels != null && meshLabels.TryGetValue(slot.slotName, out var before) ? before : slot.meshData.SlotName;
+                Assert.That(label, Is.EqualTo(slot.slotName), entry.id + ": the mesh of " + id + " carries another slot's name.");
+            }
+            foreach (var placeholder in placeholders)
+            {
+                Assert.That(placeholder.Tags.Where(tag => !string.IsNullOrEmpty(tag)), Is.Not.Empty,
+                    entry.id + ": the placeholder entry " + placeholder.Id + " names no tag for its overlays to find a built slot by.");
+                Assert.That(placeholder.Overlays, Is.Not.Empty, entry.id + ": the placeholder entry " + placeholder.Id + " carries no overlay.");
+                foreach (var overlay in placeholder.Overlays)
+                    Assert.That(index.GetAsset<OverlayDataAsset>(overlay.Id), Is.Not.Null,
+                        entry.id + ": the overlay " + overlay.Id + " of the placeholder entry " + placeholder.Id + " is not in UMA's index.");
             }
         }
 
@@ -653,7 +943,9 @@ namespace Gamesim.Uma.Tests
         /// The game's own parts on a real avatar: saved and read back as a season save is, built with
         /// no substitute, each slot of the part built with vertices, and a marked finish kept on the
         /// first build and after a rebuild (a colour change rebuilds and runs the flattening again).
-        /// Parts are worn several to an avatar where their places differ, one avatar per round.
+        /// Parts are worn several to an avatar where their places differ, one avatar per round. A placeholder
+        /// entry's overlays are on a built slot carrying one of its tags, with their colours, on the first
+        /// build and after the rebuild.
         /// </summary>
         [UnityTest]
         public IEnumerator EveryAuthoredPartIsWornAfterASaveAndReloadAndKeepsItsFinishThroughARebuild()
@@ -661,18 +953,23 @@ namespace Gamesim.Uma.Tests
             var cast = new GameObject("Contract provider", typeof(GamesimUmaCast));
             owned.Add(cast);
             yield return null;
+            yield return WearEachPart(new UmaAppearanceCatalog(), Entries().Where(entry => entry.available && Authored(entry)));
+        }
+
+        /// <summary>The walk of <see cref="EveryAuthoredPartIsWornAfterASaveAndReloadAndKeepsItsFinishThroughARebuild"/> over <paramref name="entries"/>.</summary>
+        private IEnumerator WearEachPart(UmaAppearanceCatalog catalog, IEnumerable<UmaWardrobeEntry> entries)
+        {
             var index = UMAAssetIndexer.Instance;
-            var catalog = new UmaAppearanceCatalog();
             var provider = new UmaBodyProvider(catalog);
-            var parts = new List<(AppearanceItem Item, string Body, string[] Slots, List<Finish> Finishes)>();
-            foreach (var entry in Entries().Where(entry => entry.available && Authored(entry)))
+            var parts = new List<(AppearanceItem Item, string Body, string[] Slots, List<Finish> Finishes, List<Placeholder> Placeholders)>();
+            foreach (var entry in entries)
             {
                 var recipe = index.GetAsset<UMAWardrobeRecipe>(entry.recipeName);
                 var item = catalog.Items.FirstOrDefault(value => value.Id == entry.id);
                 Assert.That(item, Is.Not.Null, entry.id + " is an item.");
                 var finishes = SlotMaterials(recipe).Where(slot => UmaStylizer.KeepsAuthoredFinish(slot.Material.material))
                     .Select(slot => new Finish(slot.Material.material)).ToList();
-                parts.Add((item, item.CompatibleBodies[0], SlotIds(recipe), finishes));
+                parts.Add((item, item.CompatibleBodies[0], SlotIds(recipe), finishes, Placeholders(recipe)));
             }
             Assert.That(parts, Is.Not.Empty);
             int round = 0;
@@ -683,7 +980,7 @@ namespace Gamesim.Uma.Tests
                 // finish is read off what the avatar draws.
                 foreach (var group in parts.GroupBy(part => part.Body).ToList())
                 {
-                    var taken = new List<(AppearanceItem Item, string Body, string[] Slots, List<Finish> Finishes)>();
+                    var taken = new List<(AppearanceItem Item, string Body, string[] Slots, List<Finish> Finishes, List<Placeholder> Placeholders)>();
                     foreach (var part in group)
                         if (taken.All(other => other.Item.Slot != part.Item.Slot && !WardrobeSlots.Twins(other.Item.Slot).Contains(part.Item.Slot)
                             && (other.Finishes.Count == 0 || part.Finishes.Count == 0)))
@@ -710,6 +1007,8 @@ namespace Gamesim.Uma.Tests
                             Assert.That(slot, Is.Not.Null, part.Item.Id + ": " + id + " is built.");
                             Assert.That(slot.asset.meshData.vertexCount, Is.GreaterThan(0), part.Item.Id + ": " + id + " has vertices.");
                         }
+                        var misses = PlaceholderMisses(built.Avatar, part.Item.Id, part.Placeholders, "on its first build");
+                        Assert.That(misses, Is.Empty, string.Join(" ", misses));
                         AssertFinishes(built.Avatar, part.Item.Id, part.Finishes, "on its first build");
                     }
                     Assert.That(built.Avatar.GetRenderers().Sum(renderer => renderer != null && renderer.sharedMesh != null ? renderer.sharedMesh.vertexCount : 0),
@@ -724,7 +1023,12 @@ namespace Gamesim.Uma.Tests
                     built.Avatar.OnCharacterUpdated -= Updated;
                     Assert.That(updates, Is.GreaterThan(0), "The body rebuilt.");
                     yield return null;
-                    foreach (var part in taken) AssertFinishes(built.Avatar, part.Item.Id, part.Finishes, "after a rebuild");
+                    foreach (var part in taken)
+                    {
+                        var misses = PlaceholderMisses(built.Avatar, part.Item.Id, part.Placeholders, "after a rebuild");
+                        Assert.That(misses, Is.Empty, string.Join(" ", misses));
+                        AssertFinishes(built.Avatar, part.Item.Id, part.Finishes, "after a rebuild");
+                    }
 
                     Object.Destroy(actor);
                     foreach (var part in taken) parts.Remove(part);

@@ -289,19 +289,58 @@ namespace Gamesim.Uma.Tests
         [UnityTest]
         public IEnumerator WillsBuiltBodyCarriesHisFittedFace()
         {
-            var cast = new GameObject("Will's face provider", typeof(GamesimUmaCast));
-            var actor = new GameObject("Will's face houseguest");
+            return BuiltBodyCarriesFittedFace(Will, WillFitted, "LookPiecesTests.E10");
+        }
+
+        // ------------------------------------------------------------------------- Dan's face, on his built body
+
+        private const string Dan = "dan-gheesling";
+
+        /// <summary>
+        /// Dan's face: fitted to his reference with the game's own face sliders, then built in the game and compared
+        /// (18 November 2026). The fit set's 26 changed values, as UmaCastLibrary's look gives them.
+        /// </summary>
+        private static readonly Dictionary<string, float> DanFitted = new Dictionary<string, float>(StringComparer.Ordinal)
+        {
+            ["BrowPosition"] = .70f, ["cheekPosition"] = .51f, ["cheekPronounced"] = .57f, ["cheekSize"] = .65f,
+            ["chinPosition"] = .25f, ["chinPronounced"] = .75f, ["chinSize"] = .25f, ["eyeRotation"] = .35f,
+            ["eyeSize"] = .25f, ["foreheadPosition"] = .54f, ["foreheadSize"] = .25f, ["headWidth"] = .85f,
+            ["jawsPosition"] = .52f, ["jawsSize"] = .70f, ["lipsSize"] = .25f, ["lowCheekPosition"] = .43f,
+            ["lowCheekPronounced"] = .53f, ["mandibleSize"] = .57f, ["mouthSize"] = .39f, ["noseBroken"] = .45f,
+            ["noseCurve"] = .53f, ["noseInclination"] = .44f, ["nosePosition"] = .75f, ["nosePronounced"] = .46f,
+            ["noseSize"] = .25f, ["noseWidth"] = .73f,
+        };
+
+        /// <summary>
+        /// Dan, as a season puts him in the house, built by the game's own provider: his built body's DNA carries each of
+        /// his 26 fitted values within .001, the same check as Will's. headWidth .85 lies outside the creator sliders'
+        /// .25 to .75, so a clamp on the route from his look to his body would move it first.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator DansBuiltBodyCarriesHisFittedFace()
+        {
+            return BuiltBodyCarriesFittedFace(Dan, DanFitted, "LookPiecesTests.E12");
+        }
+
+        /// <summary>
+        /// One houseguest, as a season puts him in the house: his template's contestant, its appearance resolved by the
+        /// season's snapshot, attached through the registered provider; his built body's DNA must carry every fitted value.
+        /// </summary>
+        private static IEnumerator BuiltBodyCarriesFittedFace(string id, Dictionary<string, float> fitted, string linePin)
+        {
+            var cast = new GameObject(id + "'s face provider", typeof(GamesimUmaCast));
+            var actor = new GameObject(id + "'s face houseguest");
             try
             {
                 yield return null;
                 Assert.That(CharacterBodySource.Provider, Is.TypeOf<UmaBodyProvider>(), "The game's own provider builds him.");
-                Assert.That(UmaCastLibrary.TryGet(Will, out var look), Is.True);
-                foreach (var entry in WillFitted)
+                Assert.That(UmaCastLibrary.TryGet(id, out var look), Is.True);
+                foreach (var entry in fitted)
                     Assert.That(look.Dna.TryGetValue(entry.Key, out float own) && own == entry.Value, Is.True,
-                        "His look sets " + entry.Key + " " + entry.Value + " (LookPiecesTests.E10 pins his line).");
+                        "His look sets " + entry.Key + " " + entry.Value + " (" + linePin + " pins his line).");
 
                 var season = new EpisodeState();
-                season.contestants.Add(CastTemplates.ToContestant(CastTemplates.Find(Will), false));
+                season.contestants.Add(CastTemplates.ToContestant(CastTemplates.Find(id), false));
                 CharacterAppearanceSnapshots.Materialize(season);
                 var houseguest = season.contestants.Single();
 
@@ -314,12 +353,12 @@ namespace Gamesim.Uma.Tests
                 string canonical = ContentCatalog.CanonicalId(houseguest.id);
                 string lookId = appearance.presetId ?? canonical;
                 string fallback = CharacterPresentation.AppearanceId(houseguest, canonical);
-                Assert.That(UmaCastLibrary.ResolveId(lookId, fallback), Is.EqualTo(Will), "The provider finds his look by his own id.");
+                Assert.That(UmaCastLibrary.ResolveId(lookId, fallback), Is.EqualTo(id), "The provider finds his look by his own id.");
                 Assert.That(UmaCastLibrary.Resolve(lookId, fallback, out var resolved) && ReferenceEquals(resolved, look), Is.True,
                     "The provider's lookup gives his library look itself.");
                 Assert.That(appearance.bodyId, Is.EqualTo(look.Race), "The season builds him on his look's race.");
                 // The provider writes the season's appearance over the look (appearance.dna wins), so the season carries his values.
-                foreach (var entry in WillFitted)
+                foreach (var entry in fitted)
                 {
                     var saved = appearance.dna.Where(value => value.id == entry.Key).Select(value => value.value).ToArray();
                     Assert.That(saved.Length == 1 && Math.Abs(saved[0] - entry.Value) <= .001f, Is.True,
@@ -348,13 +387,13 @@ namespace Gamesim.Uma.Tests
 
                 var dna = avatar.GetDNA();
                 var off = new List<string>();
-                foreach (var entry in WillFitted)
+                foreach (var entry in fitted)
                 {
                     if (!dna.TryGetValue(entry.Key, out var setter)) off.Add(entry.Key + " missing (wanted " + entry.Value + ")");
                     else if (Math.Abs(setter.Value - entry.Value) > .001f) off.Add(entry.Key + " " + setter.Value + " (wanted " + entry.Value + ")");
                 }
-                Assert.That(off, Is.Empty, "His built body's DNA must carry his 26 fitted values within .001. eyeSize .13 and headWidth .91 lie "
-                    + "outside the creator sliders' .25 to .75: a clamp on the route from his look to his body moves them first. Off: "
+                Assert.That(off, Is.Empty, id + "'s built body's DNA must carry his 26 fitted values within .001. A value outside the creator sliders' "
+                    + ".25 to .75 is the first a clamp on the route from his look to his body would move. Off: "
                     + string.Join(", ", off));
             }
             finally { Object.Destroy(actor); Object.Destroy(cast); }

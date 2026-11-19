@@ -12,7 +12,7 @@ namespace Gamesim.Tests.EditMode
 {
     /// <summary>
     /// A look wears the pieces a catalog entry's <c>worn-by:</c> tag names it for (<see cref="LookPieces.Apply"/>),
-    /// and LibraryLooks.txt's line (<see cref="LookPieces.LibraryLine"/>), and Will's fitted face in the file. Plain strings
+    /// and LibraryLooks.txt's line (<see cref="LookPieces.LibraryLine"/>), and Will's and Dan's fitted faces in the file. Plain strings
     /// and one plain file read: no UMA, no engine.
     /// </summary>
     public sealed class LookPiecesTests
@@ -219,18 +219,59 @@ namespace Gamesim.Tests.EditMode
         [Test]
         public void E10_WillsLineCarriesHisFittedFaceAndKeepsHisOtherValues()
         {
+            AssertFittedLine("dr-will-kirby", WillFitted, WillKept);
+        }
+
+        // ------------------------------------------------------------------------- Dan's face
+
+        /// <summary>
+        /// Dan's face: fitted to his reference with the game's own face sliders, then built in the game and compared
+        /// (18 November 2026). The fit set's 26 changed values, as UmaCastLibrary's look gives them.
+        /// </summary>
+        private static readonly Dictionary<string, float> DanFitted = new Dictionary<string, float>(StringComparer.Ordinal)
+        {
+            ["BrowPosition"] = .70f, ["cheekPosition"] = .51f, ["cheekPronounced"] = .57f, ["cheekSize"] = .65f,
+            ["chinPosition"] = .25f, ["chinPronounced"] = .75f, ["chinSize"] = .25f, ["eyeRotation"] = .35f,
+            ["eyeSize"] = .25f, ["foreheadPosition"] = .54f, ["foreheadSize"] = .25f, ["headWidth"] = .85f,
+            ["jawsPosition"] = .52f, ["jawsSize"] = .70f, ["lipsSize"] = .25f, ["lowCheekPosition"] = .43f,
+            ["lowCheekPronounced"] = .53f, ["mandibleSize"] = .57f, ["mouthSize"] = .39f, ["noseBroken"] = .45f,
+            ["noseCurve"] = .53f, ["noseInclination"] = .44f, ["nosePosition"] = .75f, ["nosePronounced"] = .46f,
+            ["noseSize"] = .25f, ["noseWidth"] = .73f,
+        };
+
+        /// <summary>His other merged values, as they were before the fit (main at 8cb31666): the house's, and his own height and build.</summary>
+        private static readonly Dictionary<string, float> DanKept = new Dictionary<string, float>(StringComparer.Ordinal)
+        {
+            ["armWidth"] = .62f, ["feetSize"] = .66f, ["forearmWidth"] = .62f, ["handsSize"] = .68f, ["headSize"] = .72f,
+            ["height"] = .2f, ["legsSize"] = .62f, ["lowerMuscle"] = .58f, ["neckThickness"] = .6f, ["upperMuscle"] = .58f,
+            ["upperWeight"] = .58f,
+        };
+
+        /// <summary>
+        /// Dan's line in LibraryLooks.txt holds his 26 fitted face values and, for every other name, the value it had
+        /// before the fit, and no name besides: the same check as Will's (E10).
+        /// </summary>
+        [Test]
+        public void E12_DansLineCarriesHisFittedFaceAndKeepsHisOtherValues()
+        {
+            AssertFittedLine("dan-gheesling", DanFitted, DanKept);
+        }
+
+        private static void AssertFittedLine(string id, Dictionary<string, float> fitted, Dictionary<string, float> kept)
+        {
             string line = File.ReadAllText(LibraryLooksPath(), Encoding.UTF8).Split('\n')
-                .Single(text => text.StartsWith("dr-will-kirby\t", StringComparison.Ordinal));
+                .Single(text => text.StartsWith(id + "\t", StringComparison.Ordinal));
             string[] fields = line.Split('\t');
             Assert.That(fields[1], Is.EqualTo(Male));
             var values = fields.Skip(2).Select(field => field.Split('=')).ToDictionary(pair => pair[0],
                 pair => float.Parse(pair[1], NumberStyles.Float, CultureInfo.InvariantCulture), StringComparer.Ordinal);
-            Assert.That(WillFitted.Keys.Intersect(WillKept.Keys), Is.Empty, "A name is fitted or kept, not both.");
-            Assert.That(values.Keys, Is.EquivalentTo(WillFitted.Keys.Concat(WillKept.Keys)), "His names are the 26 fitted and the kept, no other.");
-            foreach (var entry in WillFitted)
-                Assert.That(values[entry.Key], Is.EqualTo(entry.Value), "fitted " + entry.Key);
-            foreach (var entry in WillKept)
-                Assert.That(values[entry.Key], Is.EqualTo(entry.Value), "kept " + entry.Key);
+            Assert.That(fitted, Has.Count.EqualTo(26), id + ": the fit set's 26 changed values.");
+            Assert.That(fitted.Keys.Intersect(kept.Keys), Is.Empty, "A name is fitted or kept, not both.");
+            Assert.That(values.Keys, Is.EquivalentTo(fitted.Keys.Concat(kept.Keys)), id + ": his names are the 26 fitted and the kept, no other.");
+            foreach (var entry in fitted)
+                Assert.That(values[entry.Key], Is.EqualTo(entry.Value), id + " fitted " + entry.Key);
+            foreach (var entry in kept)
+                Assert.That(values[entry.Key], Is.EqualTo(entry.Value), id + " kept " + entry.Key);
         }
 
         // ------------------------------------------------------------------------- The measured ranges (Part B)

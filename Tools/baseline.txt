@@ -391,7 +391,9 @@
 # Counted from the two sides.
 # 10394 = 10393 + the stack's proof fix's 1 (MenuNotebookStripATests' rail heading keeping the pad chip's rise free,
 # an EditMode-only case), 2026-11-17.
-Gamesim.EditModeTests 10394
+# 10395 = 10394 + Dan's face's 1 LookPiecesTests case (E12: Dan's line in LibraryLooks.txt holds his 26 fitted face
+# values and keeps his other values), 2026-11-18.
+Gamesim.EditModeTests 10395
 # The UMA-free build. 1215 = 1236, the count after the consolidation's lanes (S2a, S2b, S4a), less the 7
 # farewell probes moved to Gamesim.DiagnosticsPlayModeTests and the 14 farewell readiness tests that now
 # compile only under GAMESIM_UMA (judged on the UMA cast); 1230 = 1215 + S2d's 7, S4b's 2, S4c's 2 and
@@ -849,7 +851,9 @@ Gamesim.PlayModeTests.UmaBuild 1717
 # name clash is refused; a slot, overlay and recipe made in code are registered and the look tagged for them wears them;
 # a look's garment dye is not laid on a piece made for it): counted by the offline lister in the UMA build of
 # claude/allstar-private-shelf (2026-11-18); no Unity run has observed them yet.
-Gamesim.Uma.PlayModeTests 179
+# 180 = 179 + Dan's face's 1 (UmaAllStarPiecesPlayModeTests.DansBuiltBodyCarriesHisFittedFace: Dan built by the game's
+# own provider carries his 26 fitted face values), 2026-11-18; counted by the offline lister in the UMA build.
+Gamesim.Uma.PlayModeTests 180
 # Diagnostics: feasibility and diagnostic probes, never shipping acceptance. They compile only under
 # GAMESIM_DIAGNOSTICS, which only a diagnostic run adds to the test copy (GAMESIM_DIAGNOSTICS=1 with
 # sync-and-run.sh or the locked runner); the UMA one needs GAMESIM_UMA too. The floor counts that they
@@ -1105,4 +1109,5 @@ Gamesim.Uma.DiagnosticsPlayModeTests 10
 # 17150 = 17117 (menu slice 3's branch on main c9c3e21c, with the way-out scan's 4) + menu slice 4's 33 (17146 - 17113
 # on this branch): disjoint cases, so the floor is their sum (main merged up the stack into menu slice 4, 2026-11-17).
 # Counted from the two sides.
-Gamesim.SimulationTests 17150
+# 17151 = 17150 + Dan's face's 1 LookPiecesTests case (E12, the same case the EditMode floor counts), 2026-11-18.
+Gamesim.SimulationTests 17151

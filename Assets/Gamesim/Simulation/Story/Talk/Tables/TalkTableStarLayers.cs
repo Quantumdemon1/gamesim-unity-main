@@ -312,7 +312,7 @@ namespace Gamesim.Simulation
             {
                 Id = "star.l2.wrongread", Pool = TalkPools.Star, Kind = TalkKind.Layer, Layer = 2, Reveals = true,
                 When = new TalkGate { Layer = 2 },
-                Open = "(holding a cold mug, not drinking it) \"Anyone who's played twice trusted one wrong read the first time. Know what that teaches you?\"",
+                Open = "(holding a cold mug, not drinking it) \"Most players trust one wrong read in their first game. Know what that teaches you?\"",
                 Replies = new[]
                 {
                     new TalkReply
@@ -331,10 +331,10 @@ namespace Gamesim.Simulation
                     },
                     new TalkReply
                     {
-                        Tone = TalkRules.CallOut, Line = "\"Was it the read, or was it you?\"",
-                        Lands = "\"Me. Fine. That's the right question. Here's what changed.\"",
-                        Even = "\"Me, mostly. Here's what I took from it.\"",
-                        Grates = "\"Careful. That's not your story to grade.\"",
+                        Tone = TalkRules.CallOut, Line = "\"Is it ever the read, or is it the player?\"",
+                        Lands = "\"The player. That's the right question. Here's what changes.\"",
+                        Even = "\"The player, mostly. Here's what to take from it.\"",
+                        Grates = "\"Careful. You're grading games you didn't play.\"",
                     },
                 },
             },
@@ -492,14 +492,14 @@ namespace Gamesim.Simulation
             {
                 Id = "star.l2.lens", Pool = TalkPools.Star, Kind = TalkKind.Layer, Layer = 2, Reveals = true,
                 When = new TalkGate { Layer = 2 },
-                Open = "(at the bathroom mirror, not fixing anything) \"The cameras taught me something my first time in. Not about them. About me under them.\"",
+                Open = "(at the bathroom mirror, not fixing anything) \"Here's what the cameras teach every player. Not how you look on them. How you play when they're on.\"",
                 Replies = new[]
                 {
                     new TalkReply
                     {
-                        Tone = TalkRules.LetGo, Line = "\"You don't have to share that.\"",
+                        Tone = TalkRules.LetGo, Line = "\"You don't have to give that away.\"",
                         Lands = "\"I know. Which is why you get it.\"",
-                        Even = "\"I'll give you the game half of it.\"",
+                        Even = "\"Short version. It's all about the game.\"",
                         Grates = "\"Good. Leave it, then.\"",
                     },
                     new TalkReply
@@ -552,19 +552,19 @@ namespace Gamesim.Simulation
             {
                 Id = "star.l2.underrated", Pool = TalkPools.Star, Kind = TalkKind.Layer, Layer = 2, Reveals = true,
                 When = new TalkGate { Layer = 2 },
-                Open = "(in the yard at dusk, by a comp prop nobody cleared) \"Some lessons you only learn by losing to someone you underrated. I'm still learning that one.\"",
+                Open = "(in the yard at dusk, by a comp prop nobody cleared) \"Some players only learn it by losing to someone they underrated. Don't be one of them.\"",
                 Replies = new[]
                 {
                     new TalkReply
                     {
-                        Tone = TalkRules.Warm, Line = "\"Then you're ahead of most people here.\"",
-                        Lands = "\"Maybe. Here's what it taught me.\"",
-                        Even = "\"A little. Here's the takeaway.\"",
+                        Tone = TalkRules.Warm, Line = "\"Then I'm glad I'm hearing it from you.\"",
+                        Lands = "\"Good. Here's what to watch for.\"",
+                        Even = "\"Then listen. Here's the takeaway.\"",
                         Grates = "\"Don't flatter a veteran. We notice.\"",
                     },
                     new TalkReply
                     {
-                        Tone = TalkRules.CallOut, Line = "\"Who did you underrate?\"",
+                        Tone = TalkRules.CallOut, Line = "\"So who got underrated?\"",
                         Lands = "\"No names. Ever. Here's what I watch for now.\"",
                         Even = "\"No names. Here's what's left.\"",
                         Grates = "\"No names, and that question's a strike.\"",

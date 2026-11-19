@@ -136,6 +136,10 @@
     <!-- Schema 31's last field, the housemates' minds' ladder: its bounds, the fresh level, validation and both 30 views. -->
     <Compile Include="$(EditMode)MindRulesSchema31Tests.cs" />
     <Compile Include="$(EditMode)TalkSpentToneTests.cs" />
+    <!-- The free talk's slice S1 (talk rules 1): the command's cost, cap, stream and gains, and the layers it teaches, on the tests' own table. -->
+    <Compile Include="$(EditMode)FreeTalkFixture.cs" />
+    <Compile Include="$(EditMode)FreeTalkEngineTests.cs" />
+    <Compile Include="$(EditMode)FreeTalkLayerTests.cs" />
     <Compile Include="$(EditMode)PooledSchema30ShapeTests.cs" />
     <Compile Include="$(EditMode)OldSaveTrace.cs" />
     <Compile Include="$(EditMode)CurrentOldSaveTrace.cs" />

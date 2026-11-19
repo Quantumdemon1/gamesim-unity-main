@@ -279,7 +279,8 @@ namespace Gamesim.Simulation
 
             var result = new TalkResult
             {
-                NpcId = npcId, TalkId = talk.Id, Tone = tone, Landing = landing, Reply = reply.Line,
+                // The player's line as said: its tokens filled as the reply's button showed them (TalkScreenLines.Replies).
+                NpcId = npcId, TalkId = talk.Id, Tone = tone, Landing = landing, Reply = TalkText.Fill(s, npcId, reply.Line ?? ""),
                 Reaction = TalkText.Fill(s, npcId, ReactionAt(reply, landing)),
                 Outcome = landing > 0 ? Landed : landing < 0 ? WrongNote : NothingMuchMoved,
                 Warmth = warmth, Tenths = tenths, RapportBefore = rapportBefore, TenthsBefore = tenthsBefore,

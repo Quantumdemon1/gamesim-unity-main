@@ -35,7 +35,7 @@ namespace Gamesim.Tests.EditMode
         }
 
         /// <summary>A dark swatch (no channel above the texture's grey) draws exactly: tint times grey is the swatch.</summary>
-        [TestCase("1B120C")] [TestCase("2E1D12")] [TestCase("4A2F1C")] [TestCase("4B6E3E")]
+        [TestCase("1B120C")] [TestCase("2E1D12")] [TestCase("4A2F1C")] [TestCase("1F3A5C")]
         public void ADarkSwatchComesOutExact(string hex)
         {
             var swatch = Linear(hex);

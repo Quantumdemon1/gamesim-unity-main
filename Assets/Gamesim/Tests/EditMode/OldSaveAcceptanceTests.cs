@@ -703,7 +703,7 @@ namespace Gamesim.Tests.EditMode
             var entry = Entry(id);
             using var slot = new Slot((string)entry["save"]);
             Assert.That(slot.Store.TryLoad(out var s, out string message), Is.True, message);
-            Assert.That(message, Does.Not.Contain("migrated"), "Saved at 30, it loads as it is.");
+            Assert.That(message, Does.Contain("Schema 30 history was migrated to schema 31 in memory."), "Saved at 30, it migrates in memory to the live 31.");
             Assert.That(s.schemaVersion, Is.EqualTo(31));
             Assert.That(s.dialogueRulesVersion, Is.EqualTo(DialogueRules.Rules1), "Saved on dialogue rules 1, the chip's before rules 2.");
             Assert.That((int)entry["rules"]["dialogueRulesVersion"], Is.EqualTo(DialogueRules.Rules1));
@@ -764,7 +764,7 @@ namespace Gamesim.Tests.EditMode
             var entry = Entry(id);
             using var slot = new Slot((string)entry["save"]);
             Assert.That(slot.Store.TryLoad(out var s, out string message), Is.True, message);
-            Assert.That(message, Does.Not.Contain("migrated"), "Saved at 30, it loads as it is.");
+            Assert.That(message, Does.Contain("Schema 30 history was migrated to schema 31 in memory."), "Saved at 30, it migrates in memory to the live 31.");
             Assert.That(s.schemaVersion, Is.EqualTo(31));
             Assert.That(s.dialogueRulesVersion, Is.EqualTo(DialogueRules.Rules2), "Saved on dialogue rules 2, the chip's since the chip-2 stack.");
             Assert.That((int)entry["rules"]["dialogueRulesVersion"], Is.EqualTo(DialogueRules.Rules2));
@@ -827,7 +827,7 @@ namespace Gamesim.Tests.EditMode
             var entry = Entry(StoryTenCell);
             using var slot = new Slot((string)entry["save"]);
             Assert.That(slot.Store.TryLoad(out var s, out string message), Is.True, message);
-            Assert.That(message, Does.Not.Contain("migrated"), "Saved at 30, it loads as it is.");
+            Assert.That(message, Does.Contain("Schema 30 history was migrated to schema 31 in memory."), "Saved at 30, it migrates in memory to the live 31.");
             Assert.That(s.schemaVersion, Is.EqualTo(31));
             Assert.That(s.story.rulesVersion, Is.EqualTo(StoryRules.Blame), "Saved at story rules 10, every new season's since the enrolment.");
             Assert.That((int)entry["story"]["rulesVersion"], Is.EqualTo(StoryRules.Blame));
@@ -994,7 +994,7 @@ namespace Gamesim.Tests.EditMode
             var entry = Entry(StoryElevenCell);
             using var slot = new Slot((string)entry["save"]);
             Assert.That(slot.Store.TryLoad(out var s, out string message), Is.True, message);
-            Assert.That(message, Does.Not.Contain("migrated"), "Saved at 30, it loads as it is.");
+            Assert.That(message, Does.Contain("Schema 30 history was migrated to schema 31 in memory."), "Saved at 30, it migrates in memory to the live 31.");
             Assert.That(s.schemaVersion, Is.EqualTo(31));
             Assert.That(s.story.rulesVersion, Is.EqualTo(StoryRules.Roles), "Saved at story rules 11, every new season's since the role moments' enrolment.");
             Assert.That((int)entry["story"]["rulesVersion"], Is.EqualTo(StoryRules.Roles));
@@ -1161,7 +1161,7 @@ namespace Gamesim.Tests.EditMode
             var entry = Entry(CompetitionFiveCell);
             using var slot = new Slot((string)entry["save"]);
             Assert.That(slot.Store.TryLoad(out var s, out string message), Is.True, message);
-            Assert.That(message, Does.Not.Contain("migrated"), "Saved at 30, it loads as it is.");
+            Assert.That(message, Does.Contain("Schema 30 history was migrated to schema 31 in memory."), "Saved at 30, it migrates in memory to the live 31.");
             Assert.That(s.schemaVersion, Is.EqualTo(31));
             Assert.That(s.competitionRulesVersion, Is.EqualTo(CompetitionRules.RingTower), "Saved at competition rules 5, every new season's since the Ring Tower.");
             Assert.That((int)entry["rules"]["competitionRulesVersion"], Is.EqualTo(CompetitionRules.RingTower));
@@ -1236,7 +1236,7 @@ namespace Gamesim.Tests.EditMode
             var resealed = File.ReadAllBytes(slot.Store.SavePath);
 
             Assert.That(new EpisodeSaveStore(slot.Store.SavePath).TryLoad(out var forced, out string message), Is.True, message);
-            Assert.That(message, Does.Not.Contain("migrated"));
+            Assert.That(message, Does.Contain("Schema 30 history was migrated to schema 31 in memory."), "Saved at 30, it migrates in memory to the live 31.");
             Assert.That(File.ReadAllBytes(slot.Store.SavePath), Is.EqualTo(resealed), "Loading never rewrites the save.");
             Assert.That(forced.competitionRulesVersion, Is.EqualTo(CompetitionRules.Widened));
             Assert.That(EpisodeValidation.TryValidate(forced, out string error), Is.True, error);

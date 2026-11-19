@@ -82,6 +82,38 @@ namespace Gamesim.Simulation
         /// <summary>Bounds of the saved fields (FIELDS.md): a spent-talk list, a talk id, a flag list, the pair list.</summary>
         public const int MostSpentTalks = 128, MostIdLength = 64, MostFlags = 16, MostPairs = 120, MostStandingLength = 256;
 
+        /// <summary>
+        /// One entry of <c>contact.spentTalks</c>: the talk's id, then, when the player answered it, a colon and the tone they
+        /// answered in ("<c>casey.l1.bywater:warm</c>"). The tone is what a later callback talk's gate reads (spec 5.3,
+        /// <c>callback=&lt;talk id&gt;:&lt;tone&gt;</c>); a talk with no answer is spent as its bare id. A talk id holds no colon.
+        /// </summary>
+        public const char ToneMark = ':';
+
+        /// <summary>The spent entry for a talk answered in a tone, or its bare id when there was no answer.</summary>
+        public static string Spent(string id, string tone) => string.IsNullOrEmpty(tone) ? id : id + ToneMark + tone;
+
+        /// <summary>The talk id of a spent entry.</summary>
+        public static string SpentId(string entry)
+        {
+            int at = entry.IndexOf(ToneMark);
+            return at < 0 ? entry : entry.Substring(0, at);
+        }
+
+        /// <summary>The tone a spent talk was answered in, or "" when it had no answer.</summary>
+        public static string SpentTone(string entry)
+        {
+            int at = entry.IndexOf(ToneMark);
+            return at < 0 ? "" : entry.Substring(at + 1);
+        }
+
+        /// <summary>Whether a spent entry is a talk id of 1 to <see cref="MostIdLength"/> characters, then nothing or a colon and a tone.</summary>
+        public static bool IsSpentEntry(string entry)
+        {
+            if (entry == null) return false;
+            string id = SpentId(entry);
+            return id.Length >= 1 && id.Length <= MostIdLength && (id.Length == entry.Length || IsTone(SpentTone(entry)));
+        }
+
         /// <summary>The largest counted-talk, flirt and anchor counts a season can reach (808 windows in 101 weeks).</summary>
         public const int MostCount = 1000;
 

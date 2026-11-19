@@ -133,6 +133,7 @@
     <Compile Include="$(EditMode)LegacyDigestSchema31Observer.cs" />
     <Compile Include="$(EditMode)LegacyDigestSchema31ObserverTests.cs" />
     <Compile Include="$(EditMode)TalkRulesSchema31Tests.cs" />
+    <Compile Include="$(EditMode)TalkSpentToneTests.cs" />
     <Compile Include="$(EditMode)PooledSchema30ShapeTests.cs" />
     <Compile Include="$(EditMode)OldSaveTrace.cs" />
     <Compile Include="$(EditMode)CurrentOldSaveTrace.cs" />

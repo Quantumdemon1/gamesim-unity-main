@@ -16,7 +16,8 @@ namespace Gamesim.Simulation
     {
         /// <summary>
         /// Schema 31's contact fields (the free talk, FIELDS.md), each within its bound: the window keys within the season's
-        /// last key, the counts, the tenths, the spent talks and flags as closed, distinct, bounded lists, the tones and the
+        /// last key, the counts, the tenths, the spent talks (each a distinct talk id, with the tone it was answered in when it
+        /// was answered) and the flags as bounded lists, the tones and the
         /// romance from their closed sets, the weeks within the season, and the standing snapshot dated exactly when it is held.
         /// </summary>
         private static bool ValidTalkContact(EpisodeState s, ContactState c)
@@ -29,7 +30,8 @@ namespace Gamesim.Simulation
                 && ids.All(id => id != null && id.Length >= 1 && id.Length <= TalkRules.MostIdLength && known(id))
                 && ids.Distinct(StringComparer.Ordinal).Count() == ids.Count;
             return c.talkWindow >= 0 && c.talkWindow <= lastKey && Count(c.talks) && c.talkTenths >= 0 && c.talkTenths <= 9
-                && Ids(c.spentTalks, TalkRules.MostSpentTalks, id => true)
+                && c.spentTalks != null && c.spentTalks.Count <= TalkRules.MostSpentTalks && c.spentTalks.All(TalkRules.IsSpentEntry)
+                && c.spentTalks.Select(TalkRules.SpentId).Distinct(StringComparer.Ordinal).Count() == c.spentTalks.Count
                 && c.talkPending != null && c.talkPending.Length <= TalkRules.MostIdLength
                 && c.agreement >= -TalkRules.MostAgreement && c.agreement <= TalkRules.MostAgreement
                 && c.lastTone != null && (c.lastTone.Length == 0 || TalkRules.IsTone(c.lastTone))

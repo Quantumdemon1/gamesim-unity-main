@@ -38,6 +38,8 @@ namespace Gamesim.Episode
             CancelConversationExchange(false);
             acceptedExchangeWasPresented = false;
             conversationNarration = null;
+            // A free talk plays its three beats on its own panel, never a spoken exchange (EpisodeDirector.JustTalk.cs).
+            if (TakeJustTalkCommand(result, command)) return;
             if (!result.accepted)
             {
                 lastSocialAction = null;

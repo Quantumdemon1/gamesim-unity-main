@@ -473,7 +473,8 @@ namespace Gamesim.Episode
             string id = who.id;
             hud.BeginColumns(300f);
             hud.SectionHead("chat", "TALK TO " + who.name.ToUpperInvariant(), stage ? null : "Choose how you want to spend your action with " + first + ".");
-            hud.Tiles("Interaction tiles", new List<EpisodeHud.MoveTile>
+            // The free talk's tile joins the three at talk rules 1 and later (EpisodeDirector.JustTalk.cs).
+            hud.Tiles(InteractionTilesName, WithJustTalkTile(state, who, new List<EpisodeHud.MoveTile>
             {
                 new EpisodeHud.MoveTile
                 {
@@ -496,7 +497,8 @@ namespace Gamesim.Episode
                     Corner = "Medium risk", CornerTint = UiTheme.Joke, Glyph = "handshake", Foot = "Cost: 1 action",
                     Choose = () => TalkWithIntent(id, IntentDeal),
                 },
-            });
+            }));
+            LockJustTalkTile(state, who);
             // One head over the moves: WHOLE HOUSE MOVES, never "OTHER WAYS TO SPEND YOUR TIME" under
             // it as well (UI-UX-PASS-PLAN U0's review: two heads back to back, 50 units of the stage).
             hud.SectionHead("people", "WHOLE HOUSE MOVES", stage ? null : "Spend your action on a move that affects everyone.");

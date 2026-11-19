@@ -290,6 +290,11 @@ namespace Gamesim.Episode
         public const string StrategicDiscussionCaption = "Talk tactics";
         public const string DiscussGameCaption = "Talk game openly";
         public const string ShareSecretCaption = "Trust them with a secret";
+        /// <summary>
+        /// The free conversation (free talk slice 1, talk rules 1): first on the Connect page and a tile on a houseguest's
+        /// free-time screen. Free, once per housemate per window; never shown at talk rules 0. A contract like the rest.
+        /// </summary>
+        public const string JustTalkCaption = "Just talk";
         public static string WhisperCaption(string about) => "Whisper about " + about;
         public static string CalloutCaption(string about) => "Call " + about + " out publicly";
         public const string RallyHouseCaption = "Call a house meeting and rally the room";

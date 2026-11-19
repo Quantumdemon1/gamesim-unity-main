@@ -1,0 +1,59 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Independent fixed30 reader compile gate (schema 31 step 1), as Frozen29.Tests is Frozen29's: warnings as errors. Not a
+       replacement for the native SaveStore tests. -->
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <LangVersion>9.0</LangVersion>
+    <Nullable>disable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <IsTestProject>true</IsTestProject>
+    <IsPackable>false</IsPackable>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <RootDir>$(MSBuildThisFileDirectory)../../../</RootDir>
+    <Persistence>$(RootDir)Assets/Gamesim/Runtime/Persistence/</Persistence>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="$(Persistence)FrozenEpisodeV30.cs" />
+    <Compile Include="$(Persistence)FrozenV30CommitmentReferences.cs" />
+    <Compile Include="$(Persistence)FrozenV30Data.cs" />
+    <Compile Include="$(Persistence)FrozenV30Input.cs" />
+    <Compile Include="$(Persistence)FrozenV30ReadOnly.Core.cs" />
+    <Compile Include="$(Persistence)FrozenV30ReadOnly.Dialogue.cs" />
+    <Compile Include="$(Persistence)FrozenV30ReadOnly.Dialogue2.cs" />
+    <Compile Include="$(Persistence)FrozenV30ReadOnly.Schema30.cs" />
+    <Compile Include="$(Persistence)FrozenV30ReadOnly.Leaves.cs" />
+    <Compile Include="$(Persistence)FrozenV30ReadOnly.LiteralRows.cs" />
+    <Compile Include="$(Persistence)FrozenV30ReadOnly.Privacy.cs" />
+    <Compile Include="$(Persistence)FrozenV30ReadOnly.Safety.cs" />
+    <Compile Include="$(Persistence)FrozenV30ReferenceRows.cs" />
+    <Compile Include="$(Persistence)FrozenV30SafetyStorage.cs" />
+    <Compile Include="$(Persistence)FrozenV30Shape.cs" />
+    <Compile Include="$(Persistence)FrozenV30SocialHistory.cs" />
+    <Compile Include="$(Persistence)FrozenV30VoteStorage.cs" />
+    <Compile Include="$(Persistence)FrozenV30ReadOnly.VoteHistory.cs" />
+    <Compile Include="$(Persistence)FrozenV30UnifiedVoteCompletedReveal.cs" />
+    <Compile Include="$(Persistence)FrozenV30UnifiedVoteFamilyValidation.cs" />
+    <Compile Include="$(Persistence)FrozenV30UnifiedVoteRevealArchive.cs" />
+    <Compile Include="FrozenV30DataShapeTests.cs" />
+    <Compile Include="FrozenV30InputTests.cs" />
+    <Compile Include="FrozenV30ReadOnly.SemanticTests.cs" />
+    <Compile Include="FrozenV30ReferenceTests.cs" />
+    <Compile Include="FrozenV30SafetyStorageTests.cs" />
+    <Compile Include="FrozenV30SocialHistoryTests.cs" />
+    <Compile Include="FrozenV30VoteStorageTests.cs" />
+    <Compile Include="FrozenV30WholeBoundaryTests.cs" />
+    <Compile Include="FrozenV30VoteAggregateTests.cs" />
+    <Compile Include="FrozenV30VoteHistoryTests.cs" />
+    <Compile Include="Frozen30LiteralFixtureTests.cs" />
+    <Compile Include="$(RootDir)Assets/Gamesim/Tests/EditMode/FrozenV30SerializerCacheTests.cs" />
+    <None Include="$(RootDir)Assets/Gamesim/Tests/EditMode/Fixtures/OldSaves/*.json"
+          Link="OldSaves/%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+    <PackageReference Include="NUnit" Version="3.14.0" />
+    <PackageReference Include="NUnit3TestAdapter" Version="4.6.0" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.12.0" />
+  </ItemGroup>
+</Project>

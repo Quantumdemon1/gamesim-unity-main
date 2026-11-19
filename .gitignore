@@ -91,6 +91,9 @@ Tools/SimulationTests/Frozen28/obj/
 !Tools/SimulationTests/Frozen29/Frozen29.Tests.csproj
 Tools/SimulationTests/Frozen29/bin/
 Tools/SimulationTests/Frozen29/obj/
+!Tools/SimulationTests/Frozen30/Frozen30.Tests.csproj
+Tools/SimulationTests/Frozen30/bin/
+Tools/SimulationTests/Frozen30/obj/
 
 # Wardrobe pieces a copy holds that source control never sees (Gamesim.Uma.PrivatePieceShelf registers
 # them with UMA at run time): the shelf and its catalog entries, with the folders' own metas.

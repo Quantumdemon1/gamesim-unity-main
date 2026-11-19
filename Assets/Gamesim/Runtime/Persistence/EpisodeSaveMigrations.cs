@@ -21,9 +21,16 @@ namespace Gamesim.Persistence
             if (original == null || original["schemaVersion"]?.Type != JTokenType.Integer)
                 throw new InvalidDataException("Simulation schema version must be an integer.");
             long version = (long)original["schemaVersion"];
-            if (version == 30) return (JObject)original.DeepClone();
+            // Schema 31's step 1 (the free talk's S0): the frozen schema-30 whole reader holds every direct-30 save, and
+            // the end of every older chain, before the live schema moves on. Schema 30 is closed from here.
+            if (version == 30)
+            {
+                FrozenEpisodeV30.Validate(original);
+                return (JObject)original.DeepClone();
+            }
             if (version < 1 || version > 29) throw new InvalidDataException("Unsupported simulation schema version.");
             var result = UpgradeV29ToV30(version == 29 ? original : PrepareV29Payload(original, out _));
+            FrozenEpisodeV30.Validate(result);
             migrated = true;
             return result;
         }

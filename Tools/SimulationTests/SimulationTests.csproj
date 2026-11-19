@@ -136,6 +136,8 @@
     <!-- Schema 31's last field, the housemates' minds' ladder: its bounds, the fresh level, validation and both 30 views. -->
     <Compile Include="$(EditMode)MindRulesSchema31Tests.cs" />
     <Compile Include="$(EditMode)TalkSpentToneTests.cs" />
+    <!-- Free talk slice 1: the talk tables' checks (ids, 140-character spoken text, vocabulary, R9 coverage, the real-people deny-list). -->
+    <Compile Include="$(EditMode)TalkTablesTests.cs" />
     <Compile Include="$(EditMode)PooledSchema30ShapeTests.cs" />
     <Compile Include="$(EditMode)OldSaveTrace.cs" />
     <Compile Include="$(EditMode)CurrentOldSaveTrace.cs" />

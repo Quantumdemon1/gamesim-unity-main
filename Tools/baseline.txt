@@ -400,9 +400,13 @@
 # PersistenceV16StoryKeysTests 2 (the schema-16 step keeps its own story keys), 2026-11-19.
 # 10647 = 10609 + schema 31's minds ladder (story.mindRules, MindRules): MindRulesSchema31Tests 25 and
 # MindRulesSchema31MigrationTests 13, counted in the offline lister's list of the branch's head (10647 cases), 2026-11-19.
+# 10653 = 10647 + free talk slice 1's screen: TalkScreenLinesTests 6 (the words the Just talk panel, tile and notebook
+# blocks show, and the command a reply sends), 2026-11-19.
 # 10685 = 10647 + the free talk's slice S1 engine: FreeTalkEngineTests 28 and FreeTalkLayerTests 10, 2026-11-19.
 # 10704 = 10685 + the free talk slice 1 tables' TalkTablesTests 19 (11 tests and 8 deny-list TestCase rows), 2026-11-19.
-Gamesim.EditModeTests 10704
+# 10710 = 10653 (screen) + engine-tables 57 (10704 - 10647 on this branch): disjoint cases, so the floor is their sum
+# (merge). Counted from the two sides.
+Gamesim.EditModeTests 10710
 # The UMA-free build. 1215 = 1236, the count after the consolidation's lanes (S2a, S2b, S4a), less the 7
 # farewell probes moved to Gamesim.DiagnosticsPlayModeTests and the 14 farewell readiness tests that now
 # compile only under GAMESIM_UMA (judged on the UMA cast); 1230 = 1215 + S2d's 7, S4b's 2, S4c's 2 and
@@ -647,7 +651,8 @@ Gamesim.EditModeTests 10704
 # 1672 = 1660 (menu slice 4, Settings and saves, at 62ddab50 on menu slice 2's commit) + the stack's (the Ring Tower
 # cell, R8's cases and menu slice 3 over menu slice 2) 12 (1652 - 1640 on this branch): disjoint cases, so the floor
 # is their sum (menu slice 4 squashed onto the stack for its landing, 2026-11-17). Counted from the two sides.
-Gamesim.PlayModeTests 1672
+# 1674 = 1672 + free talk slice 1's screen: EpisodePlayModeTests.JustTalk 2, 2026-11-19.
+Gamesim.PlayModeTests 1674
 # The UMA build of the same assembly, read by a plan built without -WithoutUma. 1281 = the 1241 above + the
 # 40 tests that compile only under GAMESIM_UMA, as run at r1 (2026-10-16): in EpisodePlayModeTests,
 # GroundedFarewell 11, Creator 9, HouseLife 8, Emotes 3, OpeningCaptures 2, and one each in CreatorEntry,
@@ -816,7 +821,8 @@ Gamesim.PlayModeTests 1672
 # 1717 = 1705 (menu slice 4, Settings and saves, at 62ddab50 on menu slice 2's commit) + the stack's (the Ring Tower
 # cell, R8's cases and menu slice 3 over menu slice 2) 12 (1697 - 1685 on this branch): disjoint cases, so the floor
 # is their sum (menu slice 4 squashed onto the stack for its landing, 2026-11-17). Counted from the two sides.
-Gamesim.PlayModeTests.UmaBuild 1717
+# 1719 = 1717 + free talk slice 1's screen: the same 2 EpisodePlayModeTests.JustTalk cases, 2026-11-19.
+Gamesim.PlayModeTests.UmaBuild 1719
 # The UMA bodies: runs only where the GAMESIM_UMA define is set (the working tree and the D: copy).
 # 82 = the 89 run on 2026-10-15, less the 7 farewell probes moved to Gamesim.Uma.DiagnosticsPlayModeTests;
 # 85 = 82 + the 3 farewell readiness decision tests (UmaFarewellReadinessDecisionPlayModeTests, 2026-10-16);
@@ -1129,7 +1135,10 @@ Gamesim.Uma.DiagnosticsPlayModeTests 10
 # Tools/SimulationTests ran on the review branch (22721 passed, 0 failed), 2026-11-19.
 # 22746 = 22721 + schema 31's minds ladder: MindRulesSchema31Tests 25 (the same cases the EditMode floor counts; its
 # migration file is editor only): what dotnet test Tools/SimulationTests ran on the branch (22746 passed, 0 failed), 2026-11-19.
+# 22752 = 22746 + free talk slice 1's screen: TalkScreenLinesTests 6 (the same cases the EditMode floor counts), 2026-11-19.
 # 22784 = 22746 + the free talk's slice S1 engine: FreeTalkEngineTests 28 and FreeTalkLayerTests 10 (the same cases the
 # EditMode floor counts), 2026-11-19.
 # 22803 = 22784 + the free talk slice 1 tables' TalkTablesTests 19 (the same cases the EditMode floor counts), 2026-11-19.
-Gamesim.SimulationTests 22803
+# 22809 = 22752 (screen) + engine-tables 57 (22803 - 22746 on this branch): disjoint cases, so the floor is their sum
+# (merge). Counted from the two sides.
+Gamesim.SimulationTests 22809

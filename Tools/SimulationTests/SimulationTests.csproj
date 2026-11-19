@@ -454,6 +454,8 @@
     <Compile Include="$(EditMode)LineBankLintTests.cs" />
     <Compile Include="$(EditMode)HouseTalkNotesTests.cs" />
     <Compile Include="$(EditMode)HouseTalkValidationTests.cs" />
+    <!-- Free talk slice 1, the screen: the words the panel, the tile and the notebook blocks show, and the command a reply sends. -->
+    <Compile Include="$(EditMode)TalkScreenLinesTests.cs" />
     <Compile Include="$(EditMode)NominationStepsTests.cs" />
     <Compile Include="$(EditMode)ThreatAssessmentTests.cs" />
     <Compile Include="$(EditMode)WebDiaryParityTests.cs" />

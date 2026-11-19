@@ -489,6 +489,8 @@ namespace Gamesim.Episode
             // A page reached from a page: its way back names the page it came from (N6 ii).
             view.BackCaption = ProfileBackCaptionFor(profileFrom);
             HouseTalkBlocks(state, actor, view);
+            // The free talk's blocks, "What you know about them" and "This week, from them" (EpisodeDirector.JustTalk.cs).
+            TalkBlocks(state, actor, view);
             // What the notes, the vote and the alliances pages show of them, by their own words (N6 i).
             ProfileSourceBlocks(state, actor, view);
             hud.HouseguestProfile(view);

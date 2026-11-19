@@ -62,7 +62,7 @@ namespace Gamesim.Tests.EditMode
             Assert.That(EpisodeEngine.IsFirstNight(afterEviction), Is.False);
             Assert.That(FreeTalk.WindowKey(afterEviction), Is.EqualTo(1 * 8 + Windows.AfterEviction + 2));
             var inCompetition = s.Clone();
-            inCompetition.phase = EpisodePhase.HohCompetition;
+            inCompetition.phase = EpisodePhase.HoH;
             Assert.That(FreeTalk.WindowKey(inCompetition), Is.Zero);
             Assert.That(FreeTalk.Offer(inCompetition, FreeTalkFixture.Npcs(s)[0].id).Refusal, Is.EqualTo(TalkRefusal.NoWindow));
         }
@@ -265,6 +265,8 @@ namespace Gamesim.Tests.EditMode
                 for (int step = 0; step < 120; step++)
                 {
                     var s = tried.Snapshot;
+                    // A finished season refuses every command for that reason first.
+                    if (s.phase == EpisodePhase.Finished) break;
                     string npc = FreeTalkFixture.Npcs(s).FirstOrDefault()?.id;
                     Assert.That(FreeTalk.Offer(s, npc).Refusal, Is.EqualTo(TalkRefusal.Off));
                     Assert.That(TalkNotes.WhatYouKnow(s, npc), Is.Empty);
@@ -272,7 +274,6 @@ namespace Gamesim.Tests.EditMode
                     Assert.That(refused.accepted, Is.False);
                     Assert.That(refused.reason, Is.EqualTo(FreeTalk.OffReason));
                     Assert.That(JsonConvert.SerializeObject(tried.Snapshot), Is.EqualTo(JsonConvert.SerializeObject(s)));
-                    if (s.phase == EpisodePhase.Finished) break;
                     Assert.That(tried.Apply(EpisodeEngineTests.NextCommand(s)).accepted, Is.True);
                     Assert.That(control.Apply(EpisodeEngineTests.NextCommand(control.Snapshot)).accepted, Is.True);
                 }

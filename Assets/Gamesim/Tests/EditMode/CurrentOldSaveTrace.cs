@@ -11,6 +11,11 @@ namespace Gamesim.Tests.EditMode
     /// </summary>
     internal static class CurrentOldSaveTrace
     {
+        /// <summary>
+        /// The newest schema a reference fixture is recorded at. It stays 30 at schema 31 (the free talk's S0): no schema-31
+        /// reference exists yet, and a live 31 state is checkpointed at 30 through LegacyDigestSchema31Observer's view,
+        /// which holds every talk field at its default, so no recorded digest moves.
+        /// </summary>
         internal const int Current = 30;
 
         /// <summary>
@@ -44,7 +49,7 @@ namespace Gamesim.Tests.EditMode
             if (LegacyDigestSchema30Observer.OnTheAlumniRules(state))
             {
                 if (schema != Current) throw new InvalidDataException("A season on the alumni rules has no reference schema below " + Current + ".");
-                return Hash(LegacyDigestSchema30Observer.AdmitNative30(state, own));
+                return Hash(LegacyDigestSchema31Observer.View30(LegacyDigestSchema30Observer.AdmitNative30(state, own)));
             }
             // B9: a season on the tuning rules (every fresh Regular season from B9-3) has no 29 or 28 view either: tuning 1
             // exists only from 30. The tuning arm admits it natively, and it is checkpointed at the live 30 alone, as the
@@ -52,13 +57,13 @@ namespace Gamesim.Tests.EditMode
             if (LegacyDigestSchema30Observer.OnTheTuningRulesAlone(state))
             {
                 if (schema != Current) throw new InvalidDataException("A season on the tuning rules has no reference schema below " + Current + ".");
-                return Hash(LegacyDigestSchema30Observer.AdmitNativeTuned30(state, own));
+                return Hash(LegacyDigestSchema31Observer.View30(LegacyDigestSchema30Observer.AdmitNativeTuned30(state, own)));
             }
             // The dialogue arm (DIALOGUE-PLAN D2): a season on dialogue rules 2 and neither pooled rules. The schema-30
             // observer admits it natively, and it is checkpointed at 30 alone: the boundary above has refused every other
             // schema. On the alumni or the tuning rules too, it is their arm's above, which holds its dialogue rules the same way.
             if (LegacyDigestSchema30Observer.OnDialogueRules2Alone(state))
-                return Hash(LegacyDigestSchema30Observer.Rules2Fields30(state, own));
+                return Hash(LegacyDigestSchema31Observer.View30(LegacyDigestSchema30Observer.Rules2Fields30(state, own)));
             // The native-29 arm (DIALOGUE-PLAN D1): a season on dialogue rules 1 is written at 29 by the build that
             // started it, so it has no older reference and no schema-28 form. Since SCH30 it loads at 30: the schema-30
             // observer binds the state, admits it whole and by the pilot's own validator, and takes it to its 29 with the
@@ -74,7 +79,7 @@ namespace Gamesim.Tests.EditMode
                 // 29: the tests and the recorder cannot part here either.
                 if (!JToken.DeepEquals(OldSaveTrace.Project(own, NativeSchema), native29))
                     throw new InvalidDataException("OldSaveTrace's schema-30 additions do not take this rules-1 state to the native arm's schema 29.");
-                return Hash(schema == Current ? own : native29);
+                return Hash(schema == Current ? LegacyDigestSchema31Observer.View30(own) : native29);
             }
             // Always check complete current validity and inert additions, even for a
             // same-schema checkpoint. Never use Project's same-header early return as admission.
@@ -88,7 +93,7 @@ namespace Gamesim.Tests.EditMode
                 throw new InvalidDataException("OldSaveTrace's schema-30 additions do not take this state to the guarded boundary's schema 29.");
             if (!JToken.DeepEquals(OldSaveTrace.Project(own, 28), historical))
                 throw new InvalidDataException("OldSaveTrace's schema-29 additions do not take this state to the guarded boundary's schema 28.");
-            return Hash(schema == Current ? own : schema == 29 ? retained29 : OldSaveTrace.Project(historical, schema));
+            return Hash(schema == Current ? LegacyDigestSchema31Observer.View30(own) : schema == 29 ? retained29 : OldSaveTrace.Project(historical, schema));
         }
 
         private static (string season, string blind, string text) Hash(JObject fields)

@@ -52,10 +52,10 @@ namespace Gamesim.Tests.EditMode
             Assert.That(Text(inverse), Is.EqualTo(before), "Every old token, property order, rule, RNG and history survives exactly.");
             var originals = new HashSet<JToken>(original.DescendantsAndSelf(), new Identity());
             Assert.That(next.DescendantsAndSelf().Any(token => originals.Contains(token)), Is.False, "A detached result.");
-            // The live 30 shape and saved semantics take it as it is.
-            var state = next.ToObject<EpisodeState>(Serializer());
+            // Since schema 31 the live shape and saved semantics take it one step on, with schema 31's literals only.
+            var state = EpisodeSaveMigrations.UpgradeV30ToV31(next).ToObject<EpisodeState>(Serializer());
             Assert.DoesNotThrow(() => EpisodeSaveValidation.Validate(state));
-            Assert.That(Text(Payload(state)), Is.EqualTo(Text(next)), "Today's serializer writes the step's exact tokens.");
+            Assert.That(Text(Payload(state)), Is.EqualTo(Text(PersistenceMigrationTests.Lift31(next))), "Today's serializer writes the steps' exact tokens.");
         }
 
         [TestCase("null-input")] [TestCase("missing-header")] [TestCase("text-header")] [TestCase("fraction-header")]
@@ -112,13 +112,13 @@ namespace Gamesim.Tests.EditMode
             using var slot = new Slot();
             slot.Write(slot.Store.SavePath, source);
             Assert.That(slot.Store.TryLoad(out var loaded, out string message), Is.True, message);
-            Assert.That(message, Does.Contain("Schema 29").And.Contain("schema 30 in memory"));
+            Assert.That(message, Does.Contain("Schema 29").And.Contain("schema 31 in memory"));
             Assert.That(File.ReadAllBytes(slot.Store.SavePath), Is.EqualTo(source), "Loading is read-only.");
-            Assert.That(Text(Payload(loaded)), Is.EqualTo(Text(EpisodeSaveMigrations.UpgradeV29ToV30(Fixture(id)))));
+            Assert.That(Text(Payload(loaded)), Is.EqualTo(Text(EpisodeSaveMigrations.UpgradeV30ToV31(EpisodeSaveMigrations.UpgradeV29ToV30(Fixture(id))))));
             slot.Store.Save(loaded);
             Assert.That(File.ReadAllBytes(slot.Store.BackupPath), Is.EqualTo(source), "Rotation keeps the 29 writer's envelope.");
             var saved = JObject.Parse(File.ReadAllText(slot.Store.SavePath));
-            Assert.That((int)saved["state"]["schemaVersion"], Is.EqualTo(30));
+            Assert.That((int)saved["state"]["schemaVersion"], Is.EqualTo(31), "Saved at the live schema since schema 31.");
             Assert.That(slot.Store.TryLoad(out var again, out message), Is.True, message);
             Assert.That(message ?? "", Does.Not.Contain("migrated"));
             Assert.That(Text(Payload(again)), Is.EqualTo(Text(Payload(loaded))));
@@ -141,7 +141,7 @@ namespace Gamesim.Tests.EditMode
                 case "alumni-unedited": current["alumniRulesVersion"] = 1; break;
                 case "alumni-edition": current["alumniCatalogEdition"] = "allstar-histories-1"; break;
                 case "tuning-rule": current["tuningRulesVersion"] = TuningRules.Latest + 1; break;
-                case "future-header": current["schemaVersion"] = 31; break;
+                case "future-header": current["schemaVersion"] = 32; break; // 31 is the live schema since the free talk's S0.
                 default: current.Remove("tuningRulesVersion"); break;
             }
             using var slot = new Slot();

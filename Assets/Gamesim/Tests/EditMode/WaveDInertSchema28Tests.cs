@@ -27,7 +27,7 @@ namespace Gamesim.Tests.EditMode
         {
             var s = builder ? SeasonBuilder.Create(new SeasonBuilder.Choice(), 2805) : ContentCatalog.Create(2805);
             Accepted(s);
-            Assert.That(s.schemaVersion, Is.EqualTo(30));
+            Assert.That(s.schemaVersion, Is.EqualTo(31));
             Inert(s);
         }
 

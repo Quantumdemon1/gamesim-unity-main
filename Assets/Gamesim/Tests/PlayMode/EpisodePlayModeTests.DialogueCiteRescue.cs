@@ -165,6 +165,8 @@ namespace Gamesim.Tests.PlayMode
             Assert.That((int)lifted["schemaVersion"], Is.EqualTo(29), "The carrier is a schema-29 capture.");
             lifted.Add("alumniRulesVersion", 0); lifted.Add("alumniCatalogEdition", JValue.CreateNull()); lifted.Add("tuningRulesVersion", 0);
             lifted["schemaVersion"] = 30;
+            // Since schema 31 (the free talk's S0) the live schema is one step on: the real step, behind its frozen reader.
+            lifted = Gamesim.Persistence.EpisodeSaveMigrations.UpgradeV30ToV31(lifted);
             return lifted.ToString(Formatting.None);
         }
 

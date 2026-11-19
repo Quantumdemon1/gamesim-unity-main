@@ -64,6 +64,9 @@ namespace Gamesim.Simulation
             // arcs, grudges, lore, bonds and production. Seasons built directly by tests and
             // the default scene engine stay off unless they switch it on themselves.
             EpisodeEngine.EnableStory(fresh);
+            // The free talk's ladder (TalkRules, the lead's ruling R3): written here and only here. Shipped is level 0, off,
+            // until level 1's integrator enrols it after its balance measurement (R4); a plain int, drawing nothing.
+            fresh.story.talkRules = TalkRules.Shipped;
             EpisodeEngine.EnableRead(fresh);
             EpisodeEngine.EnableLevers(fresh);
             EpisodeEngine.EnableWeek(fresh);
@@ -144,6 +147,7 @@ namespace Gamesim.Simulation
                 Field("npcSocial.rulesStartWeek", s.npcSocial?.rulesStartWeek ?? 0),
                 Field("story.rulesStartWeek", s.story?.rulesStartWeek ?? 0),
                 Field("story.rulesVersion", s.story?.rulesVersion ?? 0),
+                Field("story.talkRules", s.story?.talkRules ?? 0),
             };
         }
 

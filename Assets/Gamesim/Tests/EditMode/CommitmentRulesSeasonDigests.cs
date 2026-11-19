@@ -387,7 +387,8 @@ namespace Gamesim.Tests.EditMode
             Assert.That(o["schemaVersion"]?.Type, Is.EqualTo(JTokenType.Integer));
             if ((long)o["schemaVersion"] >= 30 || pooled)
             {
-                Assert.That((long)o["schemaVersion"], Is.EqualTo(30), "Do not project future or wrongly grouped pooled storage.");
+                // Since schema 31 the live state is read at 30 by the schema-30 observer through LegacyDigestSchema31Observer.
+                Assert.That((long)o["schemaVersion"], Is.EqualTo(31).Or.EqualTo(30), "Do not project future or wrongly grouped pooled storage.");
                 var observer30 = typeof(CommitmentRulesSeasonDigests).Assembly
                     .GetType("Gamesim.Tests.EditMode.LegacyDigestSchema30Observer", true);
                 // The dialogue arm (DIALOGUE-PLAN D2): a season on dialogue rules 2 exists only from 30, so it has no 29, no
@@ -403,6 +404,11 @@ namespace Gamesim.Tests.EditMode
                     Assert.That(rules2, Is.Not.Null, "A rules-2 season needs the observer's native-30 admission; it never skips coverage.");
                     Assert.That(rules2.ReturnType, Is.EqualTo(typeof(JObject)));
                     var native = (JObject)rules2.Invoke(null, new object[] { s, o });
+                    // Since schema 31 the native arm hands back the live JSON; its schema-30 view is what is digested.
+                    var view30 = typeof(CommitmentRulesSeasonDigests).Assembly.GetType("Gamesim.Tests.EditMode.LegacyDigestSchema31Observer", true)
+                        .GetMethod("View30", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
+                    Assert.That(view30, Is.Not.Null, "A live 31 needs the schema-31 boundary's view; it never skips coverage.");
+                    native = (JObject)view30.Invoke(null, new object[] { native });
                     Assert.That((long)native["schemaVersion"], Is.EqualTo(30), "Rules 2 has no older form: the season is digested at 30, store and all.");
                     trace.Append(native.ToString(Formatting.None)).Append('\n');
                     Readers(s, trace);

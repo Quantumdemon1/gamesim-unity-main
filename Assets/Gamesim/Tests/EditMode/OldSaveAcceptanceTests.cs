@@ -292,13 +292,16 @@ namespace Gamesim.Tests.EditMode
             // The source-bound current adapter owns the live schema's admission; since SCH30 a schema-29 fixture migrates
             // to 30 in memory like every older one. Historical fixtures and their reference-schema checkpoint algorithm
             // are not rewritten.
+            // Since schema 31 (the free talk's S0) the live schema is one past the newest reference schema (Current, 30):
+            // every fixture migrates in memory, and its checkpoints are still taken at its reference schema.
             const int current = CurrentOldSaveTrace.Current;
+            const int live = EpisodeState.LiveSchema;
             Assert.That(slot.Store.TryLoad(out var loaded, out string message), Is.True, message);
-            if (schema < current) Assert.That(message, Does.Contain("Schema " + schema + " history was migrated to schema " + current + " in memory."));
+            if (schema < live) Assert.That(message, Does.Contain("Schema " + schema + " history was migrated to schema " + live + " in memory."));
             else Assert.That(message, Does.Not.Contain("migrated"));
             Assert.That(File.ReadAllBytes(slot.Store.SavePath), Is.EqualTo(slot.Original), "Loading never rewrites the save.");
             Assert.That(File.Exists(slot.Store.BackupPath), Is.False, "Loading neither creates nor rotates a backup.");
-            Assert.That(loaded.schemaVersion, Is.EqualTo(current));
+            Assert.That(loaded.schemaVersion, Is.EqualTo(live));
             Assert.That(EpisodeValidation.TryValidate(loaded, out var error), Is.True, error);
             AssertRulesKept(payload, loaded);
 
@@ -701,7 +704,7 @@ namespace Gamesim.Tests.EditMode
             using var slot = new Slot((string)entry["save"]);
             Assert.That(slot.Store.TryLoad(out var s, out string message), Is.True, message);
             Assert.That(message, Does.Not.Contain("migrated"), "Saved at 30, it loads as it is.");
-            Assert.That(s.schemaVersion, Is.EqualTo(30));
+            Assert.That(s.schemaVersion, Is.EqualTo(31));
             Assert.That(s.dialogueRulesVersion, Is.EqualTo(DialogueRules.Rules1), "Saved on dialogue rules 1, the chip's before rules 2.");
             Assert.That((int)entry["rules"]["dialogueRulesVersion"], Is.EqualTo(DialogueRules.Rules1));
             Assert.That(s.tuningRulesVersion, Is.EqualTo(TuningRules.Bands), "On tuning rules 1, as every fresh season from B9.");
@@ -762,7 +765,7 @@ namespace Gamesim.Tests.EditMode
             using var slot = new Slot((string)entry["save"]);
             Assert.That(slot.Store.TryLoad(out var s, out string message), Is.True, message);
             Assert.That(message, Does.Not.Contain("migrated"), "Saved at 30, it loads as it is.");
-            Assert.That(s.schemaVersion, Is.EqualTo(30));
+            Assert.That(s.schemaVersion, Is.EqualTo(31));
             Assert.That(s.dialogueRulesVersion, Is.EqualTo(DialogueRules.Rules2), "Saved on dialogue rules 2, the chip's since the chip-2 stack.");
             Assert.That((int)entry["rules"]["dialogueRulesVersion"], Is.EqualTo(DialogueRules.Rules2));
             Assert.That(s.tuningRulesVersion, Is.EqualTo(TuningRules.Bands), "On tuning rules 1, as every fresh season from B9.");
@@ -825,7 +828,7 @@ namespace Gamesim.Tests.EditMode
             using var slot = new Slot((string)entry["save"]);
             Assert.That(slot.Store.TryLoad(out var s, out string message), Is.True, message);
             Assert.That(message, Does.Not.Contain("migrated"), "Saved at 30, it loads as it is.");
-            Assert.That(s.schemaVersion, Is.EqualTo(30));
+            Assert.That(s.schemaVersion, Is.EqualTo(31));
             Assert.That(s.story.rulesVersion, Is.EqualTo(StoryRules.Blame), "Saved at story rules 10, every new season's since the enrolment.");
             Assert.That((int)entry["story"]["rulesVersion"], Is.EqualTo(StoryRules.Blame));
             Assert.That(s.story.rulesStartWeek, Is.EqualTo(1));
@@ -992,7 +995,7 @@ namespace Gamesim.Tests.EditMode
             using var slot = new Slot((string)entry["save"]);
             Assert.That(slot.Store.TryLoad(out var s, out string message), Is.True, message);
             Assert.That(message, Does.Not.Contain("migrated"), "Saved at 30, it loads as it is.");
-            Assert.That(s.schemaVersion, Is.EqualTo(30));
+            Assert.That(s.schemaVersion, Is.EqualTo(31));
             Assert.That(s.story.rulesVersion, Is.EqualTo(StoryRules.Roles), "Saved at story rules 11, every new season's since the role moments' enrolment.");
             Assert.That((int)entry["story"]["rulesVersion"], Is.EqualTo(StoryRules.Roles));
             Assert.That(s.story.rulesStartWeek, Is.EqualTo(1));
@@ -1159,7 +1162,7 @@ namespace Gamesim.Tests.EditMode
             using var slot = new Slot((string)entry["save"]);
             Assert.That(slot.Store.TryLoad(out var s, out string message), Is.True, message);
             Assert.That(message, Does.Not.Contain("migrated"), "Saved at 30, it loads as it is.");
-            Assert.That(s.schemaVersion, Is.EqualTo(30));
+            Assert.That(s.schemaVersion, Is.EqualTo(31));
             Assert.That(s.competitionRulesVersion, Is.EqualTo(CompetitionRules.RingTower), "Saved at competition rules 5, every new season's since the Ring Tower.");
             Assert.That((int)entry["rules"]["competitionRulesVersion"], Is.EqualTo(CompetitionRules.RingTower));
             Assert.That(s.story.rulesVersion, Is.EqualTo(StoryRules.Roles), "On story rules 11, as every fresh season its writer starts.");
@@ -1368,7 +1371,8 @@ namespace Gamesim.Tests.EditMode
             var payload = (JObject)Envelope(reference.Store.SavePath)["state"];
             Assert.That(reference.Store.TryLoad(out var loaded, out string loadMessage), Is.True, loadMessage);
             var migrated = EpisodeSaveMigrations.PrepareCurrentPayload((JObject)payload.DeepClone(), out bool stepped);
-            Assert.That(stepped, Is.EqualTo(schema < current));
+            const int live = EpisodeState.LiveSchema; // Since schema 31 one past the newest reference schema (Current).
+            Assert.That(stepped, Is.EqualTo(schema < live));
             // Read as the store reads it: a saved 0.62 is a double in the tree and a float in the state.
             var expected = Payload(migrated.ToObject<EpisodeState>(Serializer()));
 
@@ -1389,11 +1393,11 @@ namespace Gamesim.Tests.EditMode
                 Assert.That(message, Is.EqualTo("Backup restored and validated. The backup remains available."
                     + (damaged ? " Your previous save file was kept alongside it." : "")
                     + loadMessage.Substring("Local episode loaded and validated.".Length)), primary + ": recovery says what loading the file says.");
-                if (schema < current) Assert.That(message, Does.Contain("Schema " + schema + " history was migrated to schema " + current + " in memory."));
-                Assert.That(recovered.schemaVersion, Is.EqualTo(current), primary);
+                if (schema < live) Assert.That(message, Does.Contain("Schema " + schema + " history was migrated to schema " + live + " in memory."));
+                Assert.That(recovered.schemaVersion, Is.EqualTo(live), primary);
                 Assert.That(EpisodeValidation.TryValidate(recovered, out var error), Is.True, primary + ": " + error);
                 Assert.That(JToken.DeepEquals(Payload(recovered), expected), Is.True,
-                    primary + ": the recovered season is the save's own, through the frozen gates and the steps to 30.");
+                    primary + ": the recovered season is the save's own, through the frozen gates and the steps to the live schema.");
                 Assert.That(CurrentOldSaveTrace.Checkpoint(recovered, current), Is.EqualTo(CurrentOldSaveTrace.Checkpoint(loaded, current)),
                     primary + ": the season loading the same file as the primary gives.");
                 if (schema == 28)
@@ -1402,9 +1406,12 @@ namespace Gamesim.Tests.EditMode
                 else if (schema == 29)
                     Assert.That(PersistenceMigrationTests.StripSchema30(Payload(recovered)).ToString(Formatting.None),
                         Is.EqualTo(payload.ToString(Formatting.None)), primary + ": without schema 30's literals, the schema-29 save token for token as its build wrote it.");
-                else if (schema == current)
+                else if (schema == 30)
+                    Assert.That(PersistenceMigrationTests.StripSchema31(Payload(recovered)).ToString(Formatting.None),
+                        Is.EqualTo(payload.ToString(Formatting.None)), primary + ": without schema 31's literals, the schema-30 save token for token as its build wrote it.");
+                else if (schema == live)
                     Assert.That(Payload(recovered).ToString(Formatting.None), Is.EqualTo(payload.ToString(Formatting.None)),
-                        primary + ": a schema-30 save is this build's own, recovered token for token as it wrote it.");
+                        primary + ": a save at the live schema is this build's own, recovered token for token as it wrote it.");
 
                 Assert.That(File.ReadAllBytes(slot.Store.BackupPath), Is.EqualTo(slot.Original), primary + ": recovery never rewrites or rotates the backup.");
                 Assert.That(File.ReadAllBytes(slot.Store.SavePath), Is.EqualTo(slot.Original),

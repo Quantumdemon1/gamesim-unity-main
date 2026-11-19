@@ -18,7 +18,7 @@ namespace Gamesim.Tests.EditMode
         public void FreshGamesStartInWeekOneAndThePrimitiveIsDetachedInEverySnapshot()
         {
             var input = ContentCatalog.Create(501);
-            Assert.That(input.schemaVersion, Is.EqualTo(30));
+            Assert.That(input.schemaVersion, Is.EqualTo(31));
             Assert.That(input.dialogueRulesVersion, Is.Zero);
             Assert.That(input.dialogue, Is.Not.Null);
             Assert.That(input.dialogue.episodes, Is.Not.Null.And.Empty);
@@ -42,7 +42,7 @@ namespace Gamesim.Tests.EditMode
             var v4 = version < 4 ? EpisodeSaveMigrations.PrepareV4Payload(original, out _) : original;
             var migrated = EpisodeSaveMigrations.PrepareCurrentPayload(original, out bool changed);
             Assert.That(changed, Is.True);
-            Assert.That((int)migrated["schemaVersion"], Is.EqualTo(30));
+            Assert.That((int)migrated["schemaVersion"], Is.EqualTo(31));
             Assert.That((int)migrated["blocRulesStartWeek"], Is.EqualTo(8));
             Assert.That((int)migrated["economyRulesVersion"], Is.Zero);
             Assert.That((int)migrated["moveInExtrasSpent"], Is.Zero);

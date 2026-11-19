@@ -15,7 +15,9 @@ namespace Gamesim.Tests.EditMode
     /// <summary>
     /// Schema 31's step 1 (the free talk's S0): the frozen schema-30 whole reader on the real save paths, and its parity
     /// with the live validator, in FrozenEpisodeV29IntegrationTests' form. Written at the live 30, where
-    /// PrepareCurrentPayload runs the reader on every direct 30 and on the end of every older chain. Reflection reaches
+    /// PrepareCurrentPayload ran the reader on every direct 30 and on the end of every older chain; since the bump (step
+    /// 2) it is UpgradeV30ToV31's first step and a direct 30 migrates, the live side reading it with schema 31's
+    /// literals added by hand (PersistenceMigrationTests.Lift31). Reflection reaches
     /// the internal reader; direct calls prove the dispatch wiring (a malformed 30 is refused by PrepareCurrentPayload
     /// itself, so the case fails if the call is removed); real temporary slots prove load, save, rotation and reload.
     /// The parity matrix holds the reader to the live validator: every retained fixture as the chain hands it on at
@@ -45,9 +47,10 @@ namespace Gamesim.Tests.EditMode
             var before = new TokenImage(payload);
             Frozen(30, payload);
             var result = EpisodeSaveMigrations.PrepareCurrentPayload(payload, out bool migrated);
-            Assert.That(migrated, Is.False, "At the live 30 a direct 30 is current: held to its frozen reader, then copied.");
+            Assert.That(migrated, Is.True, "A direct 30 is historical since schema 31: held to its frozen reader, then the talk step.");
             Assert.That(result, Is.Not.SameAs(payload));
-            Assert.That(result.ToString(Formatting.None), Is.EqualTo(payload.ToString(Formatting.None)));
+            Assert.That(result.ToString(Formatting.None), Is.EqualTo(PersistenceMigrationTests.Lift31(payload).ToString(Formatting.None)));
+            Assert.That(result.ToString(Formatting.None), Is.EqualTo(EpisodeSaveMigrations.UpgradeV30ToV31(payload).ToString(Formatting.None)));
             var originals = new HashSet<JToken>(payload.DescendantsAndSelf(), TokenIdentity.Instance);
             foreach (var copy in result.DescendantsAndSelf())
                 Assert.That(originals.Contains(copy), Is.False, "No returned token aliases any retained input token.");
@@ -101,8 +104,8 @@ namespace Gamesim.Tests.EditMode
             var current = EpisodeSaveMigrations.PrepareCurrentPayload(original, out bool migrated);
             Assert.That(migrated, Is.True);
             Assert.That(current, Is.Not.SameAs(original));
-            Assert.That(current.ToString(Formatting.None), Is.EqualTo(expected.ToString(Formatting.None)));
-            Assert.That((int)current["schemaVersion"], Is.EqualTo(30));
+            Assert.That(current.ToString(Formatting.None), Is.EqualTo(PersistenceMigrationTests.Lift31(expected).ToString(Formatting.None)));
+            Assert.That((int)current["schemaVersion"], Is.EqualTo(31));
             before.AssertUnchanged(original);
         }
 
@@ -115,8 +118,10 @@ namespace Gamesim.Tests.EditMode
             Assert.That(slot.Store.TryLoad(out var loaded, out string message), Is.True, message);
             Assert.That(File.ReadAllBytes(slot.Store.SavePath), Is.EqualTo(source), "Loading is read-only.");
             var loadedImage = Payload(loaded);
-            Assert.That(JToken.DeepEquals(loadedImage, Fixture(id)), Is.True, "The writer's state, as it wrote it.");
-            Frozen(30, (JObject)loadedImage.DeepClone());
+            Assert.That(message, Does.Contain("Schema 30").And.Contain("schema 31 in memory"), "A direct 30 migrates in memory.");
+            Assert.That(JToken.DeepEquals(loadedImage, PersistenceMigrationTests.Lift31(Fixture(id))), Is.True, "The writer's state, with schema 31's literals.");
+            var retained30 = (JObject)loadedImage.DeepClone(); PersistenceMigrationTests.StripSchema31(retained30);
+            Frozen(30, retained30);
             slot.Store.Save(loaded);
             Assert.That(File.ReadAllBytes(slot.Store.BackupPath), Is.EqualTo(source), "Rotation retains the exact writer envelope.");
             Assert.That(slot.Store.TryLoad(out var again, out message), Is.True, message);
@@ -180,7 +185,7 @@ namespace Gamesim.Tests.EditMode
             Assert.That(accepted, Is.EqualTo(compared), "Every fixture that reaches 30 is a lawful schema-30 season.");
         }
 
-        /// <summary>Fresh seasons the game starts at 64d52f59 (ShippedRules.ApplyFresh): lawful schema-30 seasons to both.</summary>
+        /// <summary>Fresh seasons the game starts (ShippedRules.ApplyFresh), at their retained 30: lawful schema-30 seasons to both.</summary>
         [TestCase(8, 1u)]
         [TestCase(12, 4242u)]
         public void FreshSeasonsTheGameStartsAreAcceptedByBoth(int houseSize, uint seed)
@@ -188,7 +193,8 @@ namespace Gamesim.Tests.EditMode
             var s = SeasonBuilder.Create(new SeasonBuilder.Choice { HouseSize = houseSize }, seed);
             ShippedRules.ApplyFresh(s);
             var payload = Payload(s);
-            Assert.That((int)payload["schemaVersion"], Is.EqualTo(30));
+            Assert.That((int)payload["schemaVersion"], Is.EqualTo(31));
+            PersistenceMigrationTests.StripSchema31(payload); // The retained 30: talk rules 0, every talk field at its default.
             Assert.That(Agree(payload, "fresh-" + houseSize + "-" + seed), Is.Null);
         }
 
@@ -241,7 +247,7 @@ namespace Gamesim.Tests.EditMode
         {
             var before = new TokenImage(payload);
             string frozen = FrozenVerdict((JObject)payload.DeepClone());
-            string live = Live((JObject)payload.DeepClone());
+            string live = Live(PersistenceMigrationTests.Lift31(payload));
             before.AssertUnchanged(payload);
             Assert.That(frozen == null, Is.EqualTo(live == null), label + ": frozen '" + frozen + "', live '" + live + "'.");
             if (frozen != null && !live.StartsWith("shape: ", StringComparison.Ordinal) && !IsFrozenShape(frozen))

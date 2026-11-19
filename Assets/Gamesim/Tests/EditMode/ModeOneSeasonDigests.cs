@@ -239,11 +239,12 @@ namespace Gamesim.Tests.EditMode
             var o = JObject.FromObject(s);
             Assert.That(o["schemaVersion"]?.Type, Is.EqualTo(JTokenType.Integer));
             if ((long)o["schemaVersion"] < 29) return direct;
-            Assert.That((long)o["schemaVersion"], Is.EqualTo(30).Or.EqualTo(29),
-                "Only schema 30's pooled storage and schema 29's dialogue storage have a projection to the recorded schema 28.");
+            Assert.That((long)o["schemaVersion"], Is.EqualTo(31).Or.EqualTo(30).Or.EqualTo(29),
+                "Only schema 31's talk fields, schema 30's pooled storage and schema 29's dialogue storage have a projection to the recorded schema 28.");
             Assert.That(o.ToString(Formatting.None), Is.EqualTo(direct),
                 "The JSON tree must write the state exactly as SerializeObject does, or the projection would hash other bytes.");
-            string observer = (long)o["schemaVersion"] == 30 ? "LegacyDigestSchema30Observer" : "LegacyDigestSchema29Observer";
+            // The schema-30 observer reads a live 31 through LegacyDigestSchema31Observer's schema-30 view.
+            string observer = (long)o["schemaVersion"] >= 30 ? "LegacyDigestSchema30Observer" : "LegacyDigestSchema29Observer";
             var observerType = typeof(ModeOneSeasonDigests).Assembly.GetType("Gamesim.Tests.EditMode." + observer, true);
             var project28 = observerType.GetMethod("ProjectTrace28", BindingFlags.NonPublic | BindingFlags.Static,
                 null, new[] { typeof(EpisodeState), typeof(JObject) }, null);

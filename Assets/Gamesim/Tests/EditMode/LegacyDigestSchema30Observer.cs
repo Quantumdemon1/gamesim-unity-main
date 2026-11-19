@@ -105,9 +105,10 @@ namespace Gamesim.Tests.EditMode
             try
             {
                 Require(state != null && fields != null, "A current source state and its own JSON are required.");
+                var given = fields; fields = LegacyDigestSchema31Observer.View30(fields);
                 LegacyDigestSchema27Observer.RequireValidSource(state);
                 Require(Integer(fields["schemaVersion"], 30), "Only literal schema30 is a native input.");
-                string stateBefore = Json(JObject.FromObject(state)), sourceBefore = Json(fields);
+                string stateBefore = Json(Own(state)), sourceBefore = Json(fields);
                 Require(AlumniRules.On(state) && Integer(fields["alumniRulesVersion"], state.alumniRulesVersion),
                     "Only a season on the alumni rules is admitted natively.");
                 RequireOwnDialogue(state, fields);
@@ -120,10 +121,10 @@ namespace Gamesim.Tests.EditMode
                 int dialogue = names.IndexOf("dialogue");
                 Require(dialogue >= 0 && Pooled.Select((name, i) => names.IndexOf(name) == dialogue + 1 + i).All(at => at),
                     "The pooled fields must follow the dialogue store, in their declared order.");
-                Require(Json(WithoutGetters(JObject.FromObject(state))) == sourceBefore, "The JSON is not this current state's exact own view.");
-                Require(Json(fields) == sourceBefore && Json(JObject.FromObject(state)) == stateBefore,
+                Require(Json(WithoutGetters(Own(state))) == sourceBefore, "The JSON is not this current state's exact own view.");
+                Require(Json(fields) == sourceBefore && Json(Own(state)) == stateBefore,
                     "The current source, JSON, numeric tokens and property/list order must remain unchanged.");
-                return fields;
+                return given; // The caller's own JSON, as it went in (since schema 31 read through the schema-30 view).
             }
             catch (Exception error) when (error is JsonException || error is OverflowException
                 || error is ArgumentException || error is InvalidOperationException || error is FormatException)
@@ -144,9 +145,10 @@ namespace Gamesim.Tests.EditMode
             try
             {
                 Require(state != null && fields != null, "A current source state and its own JSON are required.");
+                var given = fields; fields = LegacyDigestSchema31Observer.View30(fields);
                 LegacyDigestSchema27Observer.RequireValidSource(state);
                 Require(Integer(fields["schemaVersion"], 30), "Only literal schema30 is a native input.");
-                string stateBefore = Json(JObject.FromObject(state)), sourceBefore = Json(fields);
+                string stateBefore = Json(Own(state)), sourceBefore = Json(fields);
                 Require(OnTheTuningRulesAlone(state) && TuningRules.At(state, TuningRules.Bands),
                     "Only a season on the tuning rules alone is admitted natively by the tuning arm.");
                 RequireOwnDialogue(state, fields);
@@ -157,10 +159,10 @@ namespace Gamesim.Tests.EditMode
                 int dialogue = names.IndexOf("dialogue");
                 Require(dialogue >= 0 && Pooled.Select((name, i) => names.IndexOf(name) == dialogue + 1 + i).All(at => at),
                     "The pooled fields must follow the dialogue store, in their declared order.");
-                Require(Json(WithoutGetters(JObject.FromObject(state))) == sourceBefore, "The JSON is not this current state's exact own view.");
-                Require(Json(fields) == sourceBefore && Json(JObject.FromObject(state)) == stateBefore,
+                Require(Json(WithoutGetters(Own(state))) == sourceBefore, "The JSON is not this current state's exact own view.");
+                Require(Json(fields) == sourceBefore && Json(Own(state)) == stateBefore,
                     "The current source, JSON, numeric tokens and property/list order must remain unchanged.");
-                return fields;
+                return given; // The caller's own JSON, as it went in (since schema 31 read through the schema-30 view).
             }
             catch (Exception error) when (error is JsonException || error is OverflowException
                 || error is ArgumentException || error is InvalidOperationException || error is FormatException)
@@ -191,14 +193,14 @@ namespace Gamesim.Tests.EditMode
         /// </summary>
         internal static JArray FindDecisionAnswers28(EpisodeState state)
         {
-            string before = state == null ? null : Json(JObject.FromObject(state));
+            string before = state == null ? null : Json(Own(state));
             if (OnTheAlumniRules(state)) AdmitNative30(state, OldSaveTrace.Fields(state));
             else if (OnTheTuningRulesAlone(state)) AdmitNativeTuned30(state, OldSaveTrace.Fields(state));
             else if (OnDialogueRules2Alone(state)) Rules2Fields30(state, OldSaveTrace.Fields(state));
             else if (IsNative29(state)) NativeFields29(state, OldSaveTrace.Fields(state));
             else ProjectFields28(state, state == null ? null : OldSaveTrace.Fields(state));
             var answers = LegacyDigestSchema29Observer.FindDecisionAnswersOfAnAdmittedSource28(state);
-            Require(Json(JObject.FromObject(state)) == before,
+            Require(Json(Own(state)) == before,
                 "The actual FindDecision source and all its fields/order/numbers must remain unchanged.");
             return answers;
         }
@@ -208,9 +210,10 @@ namespace Gamesim.Tests.EditMode
             try
             {
                 Require(state != null && source != null, "A current source state and its own JSON are required.");
+                source = LegacyDigestSchema31Observer.View30(source);
                 LegacyDigestSchema27Observer.RequireValidSource(state);
                 Require(Integer(source["schemaVersion"], 30), "Only literal schema30 is a current projection input.");
-                string stateBefore = Json(JObject.FromObject(state)), sourceBefore = Json(source);
+                string stateBefore = Json(Own(state)), sourceBefore = Json(source);
                 Require(Integer(source["alumniRulesVersion"], 0), "Only present integer-zero alumni rules may be projected.");
                 Require(source["alumniCatalogEdition"]?.Type == JTokenType.Null, "Only a present-null alumni edition may be projected.");
                 Require(Integer(source["tuningRulesVersion"], 0), "Only present integer-zero tuning rules may be projected.");
@@ -219,7 +222,7 @@ namespace Gamesim.Tests.EditMode
                 Require(dialogue >= 0 && Pooled.Select((name, i) => names.IndexOf(name) == dialogue + 1 + i).All(at => at),
                     "The pooled fields must follow the dialogue store, in their declared order.");
                 // Both entry points require the complete same current state and its exact corresponding JSON.
-                var own = JObject.FromObject(state);
+                var own = Own(state);
                 if (!getterTrace) own = WithoutGetters(own);
                 Require(Json(own) == sourceBefore, "The JSON is not this current state's exact own view.");
 
@@ -238,7 +241,7 @@ namespace Gamesim.Tests.EditMode
 #endif
                 Require(Json(Restore(projected, source)) == sourceBefore,
                     "The current projection must have the exact three-addition/header structural and order inverse.");
-                Require(Json(source) == sourceBefore && Json(JObject.FromObject(state)) == stateBefore,
+                Require(Json(source) == sourceBefore && Json(Own(state)) == stateBefore,
                     "The current source, JSON, numeric tokens and property/list order must remain unchanged.");
                 return projected;
             }
@@ -253,18 +256,19 @@ namespace Gamesim.Tests.EditMode
             {
                 // D1's admission, in D1's order, at the live header: each refusal comes from the check that owns it.
                 Require(state != null && source != null, "A current source state and its own JSON are required.");
+                source = LegacyDigestSchema31Observer.View30(source);
                 LegacyDigestSchema27Observer.RequireValidSource(state);
-                Require(Integer(source["schemaVersion"], 30) && state.schemaVersion == 30, "Only literal schema30 is a native input.");
-                string stateBefore = Json(JObject.FromObject(state)), sourceBefore = Json(source);
+                Require(Integer(source["schemaVersion"], 30) && state.schemaVersion == LegacyDigestSchema31Observer.Live, "Only literal schema30 is a native input.");
+                string stateBefore = Json(Own(state)), sourceBefore = Json(source);
                 // Rules 1 by its literal, whatever the state says: the only dialogue rules with a schema-29 view.
                 RequireFrozenDialogue(state, source, 1);
-                var own = JObject.FromObject(state);
+                var own = Own(state);
                 if (!getterTrace) own = WithoutGetters(own);
                 Require(Json(own) == sourceBefore, "The JSON is not this current state's exact own view.");
                 // The 30-to-29 layer: this boundary's own projection (the pooled fields off and in order, the frozen
                 // schema-29 reader, the migration's exact inverse), which keeps the store; then the native contract at 29.
                 var native = LegacyDigestSchema29Observer.NativeRetained29(Project(state, source, getterTrace), getterTrace);
-                Require(Json(source) == sourceBefore && Json(JObject.FromObject(state)) == stateBefore,
+                Require(Json(source) == sourceBefore && Json(Own(state)) == stateBefore,
                     "The native source, JSON, numeric tokens and property/list order must remain unchanged.");
                 return native;
             }
@@ -280,9 +284,10 @@ namespace Gamesim.Tests.EditMode
                 // D1's order at the live header, then the native-30 arms' pooled contract: each refusal comes from the
                 // check that owns it, ahead of the binding, which alone would refuse every edited JSON.
                 Require(state != null && source != null, "A current source state and its own JSON are required.");
+                var given = source; source = LegacyDigestSchema31Observer.View30(source);
                 LegacyDigestSchema27Observer.RequireValidSource(state);
-                Require(Integer(source["schemaVersion"], 30) && state.schemaVersion == 30, "Only literal schema30 is a native input.");
-                string stateBefore = Json(JObject.FromObject(state)), sourceBefore = Json(source);
+                Require(Integer(source["schemaVersion"], 30) && state.schemaVersion == LegacyDigestSchema31Observer.Live, "Only literal schema30 is a native input.");
+                string stateBefore = Json(Own(state)), sourceBefore = Json(source);
                 Require(OnDialogueRules2Alone(state), "Only a season on dialogue rules 2 alone is admitted natively by the dialogue arm.");
                 RequireOwnDialogue(state, source);
                 Require(Integer(source["alumniRulesVersion"], 0), "Only present integer-zero alumni rules are admitted by the dialogue arm.");
@@ -292,12 +297,12 @@ namespace Gamesim.Tests.EditMode
                 int dialogue = names.IndexOf("dialogue");
                 Require(dialogue >= 0 && Pooled.Select((name, i) => names.IndexOf(name) == dialogue + 1 + i).All(at => at),
                     "The pooled fields must follow the dialogue store, in their declared order.");
-                var own = JObject.FromObject(state);
+                var own = Own(state);
                 if (!getterTrace) own = WithoutGetters(own);
                 Require(Json(own) == sourceBefore, "The JSON is not this current state's exact own view.");
-                Require(Json(source) == sourceBefore && Json(JObject.FromObject(state)) == stateBefore,
+                Require(Json(source) == sourceBefore && Json(Own(state)) == stateBefore,
                     "The native source, JSON, numeric tokens and property/list order must remain unchanged.");
-                return (JObject)source.DeepClone();
+                return (JObject)given.DeepClone(); // The caller's own JSON, detached.
             }
             catch (Exception error) when (error is JsonException || error is OverflowException
                 || error is ArgumentException || error is InvalidOperationException || error is FormatException)
@@ -375,6 +380,12 @@ namespace Gamesim.Tests.EditMode
             try { method.Invoke(null, new object[] { fields }); }
             catch (TargetInvocationException error) { throw error.InnerException ?? error; }
         }
+
+        /// <summary>
+        /// The state's own default JSON as the schema-30 contract reads it: since schema 31, through the schema-31 boundary
+        /// (<see cref="LegacyDigestSchema31Observer.OwnView30"/>), which requires every talk field at its default.
+        /// </summary>
+        private static JObject Own(EpisodeState state) => LegacyDigestSchema31Observer.OwnView30(state);
 
         private static bool Integer(JToken token, long expected) => token?.Type == JTokenType.Integer && (long)token == expected;
         private static string Json(JToken token) => token.ToString(Formatting.None);

@@ -73,6 +73,8 @@ namespace Gamesim.Tests.EditMode
             { "story.rulesStartWeek", 1 },
             // Story rules 11, Roles, from its enrolment (ROLE-MOMENTS-PLAN R7; it was 10, Blame, from STORY-RULES-10-PLAN §8, and 9, threads, before).
             { "story.rulesVersion", 11 },
+            // The free talk's ladder (TalkRules, schema 31): 0, off, until level 1's enrolment (the lead's rulings R3 and R4).
+            { "story.talkRules", 0 },
         };
 
         /// <summary>
@@ -140,6 +142,8 @@ namespace Gamesim.Tests.EditMode
             fresh.haveNotRulesStartWeek = 1;
             fresh.strategyRulesStartWeek = 1;
             EpisodeEngine.EnableStory(fresh);
+            // The free talk's ladder (schema 31, the lead's ruling R3): written in ApplyFresh only, at TalkRules.Shipped, 0.
+            fresh.story.talkRules = TalkRules.Shipped;
             EpisodeEngine.EnableRead(fresh);
             EpisodeEngine.EnableLevers(fresh);
             EpisodeEngine.EnableWeek(fresh);
@@ -176,24 +180,27 @@ namespace Gamesim.Tests.EditMode
         /// and tuning rules 0. From H1b a season that seats an alumnus (All-Stars, and the stress house) starts on alumni
         /// rules 1 with edition 1; a season that seats none stays at 0 with no edition. Earlier names:
         /// TheLiveSchemaStaysAt28UntilFrozenEpisodeV28FreezesTheModeTwoCore, TheLiveSchemaIs29AndAShippedSeasonStartsOnDialogueRules0,
-        /// then TheLiveSchemaIs30AndAShippedSeasonStartsWithEveryPooledFieldOff (SCH30).
+        /// then TheLiveSchemaIs30AndAShippedSeasonStartsWithEveryPooledFieldOff (SCH30), then
+        /// TheLiveSchemaIs30AndOnlyASeasonThatSeatsAnAlumnusStartsOnTheAlumniRules; since schema 31 (the free talk's S0) a
+        /// shipped season also starts with the talk rules off.
         /// </summary>
         [TestCaseSource(nameof(Builders))]
-        public void TheLiveSchemaIs30AndOnlyASeasonThatSeatsAnAlumnusStartsOnTheAlumniRules(string builder, int size, CastTemplates.Roster roster)
+        public void TheLiveSchemaIs31AndOnlyASeasonThatSeatsAnAlumnusStartsOnTheAlumniRules(string builder, int size, CastTemplates.Roster roster)
         {
-            Assert.That(new EpisodeState().schemaVersion, Is.EqualTo(30),
-                "The live save schema is 30. Another persisted field needs the next schema, its migration and old-save fixtures.");
-            Assert.That(EpisodeState.LiveSchema, Is.EqualTo(30));
+            Assert.That(new EpisodeState().schemaVersion, Is.EqualTo(31),
+                "The live save schema is 31. Another persisted field needs the next schema, its migration and old-save fixtures.");
+            Assert.That(EpisodeState.LiveSchema, Is.EqualTo(31));
             foreach (uint seed in new[] { 1u, 77u, 2929u })
             {
                 var s = Build(builder, size, roster, seed);
                 ShippedRules.ApplyFresh(s);
-                Assert.That(s.schemaVersion, Is.EqualTo(30), "A shipped season saves at the live schema.");
+                Assert.That(s.schemaVersion, Is.EqualTo(31), "A shipped season saves at the live schema.");
                 Assert.That(s.dialogueRulesVersion, Is.Zero, "A shipped season starts with the dialogue rules off.");
                 bool alumni = SeatsAlumni(builder, roster);
                 Assert.That(s.alumniRulesVersion, Is.EqualTo(alumni ? AlumniRules.Latest : AlumniRules.Off), builder + " " + size + " " + roster + ": the cast's alumni rules.");
                 Assert.That(s.alumniCatalogEdition, Is.EqualTo(alumni ? AlumniEditions.Histories1Id : null), "Edition 1 with the alumni rules, none without.");
                 Assert.That(s.tuningRulesVersion, Is.EqualTo(TuningRules.Bands), "A shipped season starts on B9's tuning (TuningRules.Shipped, a pinned 1).");
+                Assert.That(s.story.talkRules, Is.EqualTo(TalkRules.Off), "A shipped season starts with free talk off until level 1's enrolment.");
                 Assert.That(EpisodeValidation.TryValidate(s, out string error), Is.True, error);
             }
         }
@@ -377,7 +384,9 @@ namespace Gamesim.Tests.EditMode
             {
                 foreach (var field in owner.GetType().GetFields(BindingFlags.Instance | BindingFlags.Public)
                     .Where(f => f.FieldType == typeof(int) && (f.Name.EndsWith("RulesStartWeek", StringComparison.Ordinal)
-                        || f.Name.EndsWith("RulesVersion", StringComparison.Ordinal) || f.Name == "rulesStartWeek" || f.Name == "rulesVersion")))
+                        || f.Name.EndsWith("RulesVersion", StringComparison.Ordinal) || f.Name == "rulesStartWeek" || f.Name == "rulesVersion"
+                        // The free talk's ladder (schema 31, the lead's ruling R3), the story's own rules field by another name.
+                        || f.Name == "talkRules")))
                 {
                     field.SetValue(owner, next++);
                     expected.Add(prefix + field.Name + "=" + field.GetValue(owner));

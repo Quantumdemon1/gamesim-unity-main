@@ -73,7 +73,7 @@ namespace Gamesim.Tests.EditMode
             AssertNoSharedTokens(original, actual);
             var current = EpisodeSaveMigrations.PrepareCurrentPayload(original, out bool currentMigrated);
             Assert.That(currentMigrated, Is.True);
-            Assert.That(Text(current), Is.EqualTo(Text(Current30(expected))), "The chain goes on to 30 with the pooled off literals only.");
+            Assert.That(Text(current), Is.EqualTo(Text(PersistenceMigrationTests.Lift31(Current30(expected)))), "The chain goes on to 31 with the pooled off literals and schema 31's only.");
             var beforeFutureReader = new TokenImage(actual);
             Assert.That(Assert.Throws<InvalidDataException>(() => Frozen(28, actual)).Message, Is.Not.Empty,
                 "A historical reader never accepts the new current wire contract.");
@@ -83,7 +83,7 @@ namespace Gamesim.Tests.EditMode
             slot.Write(source);
             Assert.That(slot.Store.TryLoad(out var loaded, out string message), Is.True, message);
             var loadedPayload = Payload(loaded);
-            Assert.That(JToken.DeepEquals(loadedPayload, Current30(expected)), Is.True,
+            Assert.That(JToken.DeepEquals(loadedPayload, PersistenceMigrationTests.Lift31(Current30(expected))), Is.True,
                 id + ": the actual serialized SaveJson wire payload must equal the complete retained migrated wire.");
             slot.Unchanged(source);
             ((JArray)actual["dialogue"]["episodes"]).Add(new JObject { ["caller-only"] = true });
@@ -104,7 +104,7 @@ namespace Gamesim.Tests.EditMode
             var actual = EpisodeSaveMigrations.PrepareV29Payload(original, out bool migrated);
             Assert.That(migrated, Is.True);
             ExactInertStep(fixed28, actual);
-            Assert.That(Text(EpisodeSaveMigrations.PrepareCurrentPayload(original, out _)), Is.EqualTo(Text(Current30(actual))));
+            Assert.That(Text(EpisodeSaveMigrations.PrepareCurrentPayload(original, out _)), Is.EqualTo(Text(PersistenceMigrationTests.Lift31(Current30(actual)))));
             intermediate.AssertUnchanged(fixed28);
             before.AssertUnchanged(original);
         }
@@ -172,29 +172,36 @@ namespace Gamesim.Tests.EditMode
             var before = new TokenImage(current);
             var migratedPayload = EpisodeSaveMigrations.PrepareCurrentPayload(current, out bool migrated);
             Assert.That(migrated, Is.True);
-            Assert.That(Text(migratedPayload), Is.EqualTo(Text(Current30(current))));
+            Assert.That(Text(migratedPayload), Is.EqualTo(Text(PersistenceMigrationTests.Lift31(Current30(current)))));
             AssertNoSharedTokens(current, migratedPayload);
             using var slot = new Slot();
             byte[] bytes = Envelope(current);
             slot.Write(bytes);
             Assert.That(slot.Store.TryLoad(out var loaded, out string message), Is.True, message);
-            Assert.That(message, Does.Contain("Schema 29").And.Contain("schema 30 in memory"));
-            Assert.That(JToken.DeepEquals(Payload(loaded), Current30(current)), Is.True);
+            Assert.That(message, Does.Contain("Schema 29").And.Contain("schema 31 in memory"));
+            Assert.That(JToken.DeepEquals(Payload(loaded), PersistenceMigrationTests.Lift31(Current30(current))), Is.True);
             Assert.That((int)Payload(loaded)["dialogueRulesVersion"], Is.Zero);
             Assert.That((int)Payload(loaded)["alumniRulesVersion"], Is.Zero);
             slot.Unchanged(bytes);
             before.AssertUnchanged(current);
         }
 
-        /// <summary>A direct 30, the live schema, loads without migration (the former direct-29 control's assertion).</summary>
+        /// <summary>
+        /// A direct 30 migrates to 31 since schema 31, gaining the talk literals only, and a direct 31, the live schema, loads
+        /// without migration (the former direct-30 control's assertion).
+        /// </summary>
         [TestCase("s28-default-w1-social")]
         [TestCase("s28-mode1-allweek-w2-campaign")]
         [TestCase("s28-mode2-allweek-w3-campaign")]
-        public void Direct30OffControlsLoadWithoutEnrollmentOrMigration(string id)
+        public void Direct31OffControlsLoadWithoutEnrollmentOrMigration(string id)
         {
             var historical = Fixture(id);
             Frozen(28, historical);
-            var current = Current30(Inert29(historical));
+            var at30 = Current30(Inert29(historical));
+            var lifted = EpisodeSaveMigrations.PrepareCurrentPayload(at30, out bool migrated30);
+            Assert.That(migrated30, Is.True);
+            Assert.That(Text(lifted), Is.EqualTo(Text(PersistenceMigrationTests.Lift31(at30))));
+            var current = PersistenceMigrationTests.Lift31(at30);
             var before = new TokenImage(current);
             var detached = EpisodeSaveMigrations.PrepareCurrentPayload(current, out bool migrated);
             Assert.That(migrated, Is.False);
@@ -224,7 +231,7 @@ namespace Gamesim.Tests.EditMode
             using var slot = new Slot();
             byte[] good = Envelope(current); slot.Write(good);
             Assert.That(slot.Store.TryLoad(out var control, out string message), Is.True, message);
-            Assert.That(JToken.DeepEquals(Payload(control), Current30(current)), Is.True);
+            Assert.That(JToken.DeepEquals(Payload(control), PersistenceMigrationTests.Lift31(Current30(current))), Is.True);
             slot.Unchanged(good);
             var bad = (JObject)current.DeepClone();
             var dialogue = (JObject)bad["dialogue"];
@@ -268,7 +275,7 @@ namespace Gamesim.Tests.EditMode
         [TestCase("s28-mode2-finished")]
         public void ActualSaveJsonWireComparisonChecksEveryScalarAndNeverMasksAChangedValue(string id)
         {
-            var expected = Current30(Inert29(Fixture(id)));
+            var expected = PersistenceMigrationTests.Lift31(Current30(Inert29(Fixture(id))));
             using var slot = new Slot();
             byte[] source = corpus[id + ".save.json"]; slot.Write(source);
             Assert.That(slot.Store.TryLoad(out var loaded, out string message), Is.True, message);

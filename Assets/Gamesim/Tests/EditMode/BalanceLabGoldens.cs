@@ -39,13 +39,15 @@ namespace Gamesim.Tests.EditMode
         /// competitionRulesVersion=5 came with the Ring Tower (competition rules 5, pull request 77): every fresh season deals
         /// the Ring Tower as every other mental competition. Recorded again on rules 5 on 2026-11-17: only this number moved;
         /// all 48 cells printed the digests below byte for byte (the rows keep a competition's category, not its game).
+        /// story.talkRules=0 came with schema 31 (the free talk's S0, TalkRules): a fresh season plays no free talk, the
+        /// field is written 0 and nothing reads it, so no cell moves; level 1's enrolment re-records the cells (ruling R11).
         /// </summary>
         internal const string Rules = "competitionRulesVersion=5,readRulesStartWeek=1,leverRulesStartWeek=1,weekRulesStartWeek=1,economyRulesVersion=1,"
             + "agencyRulesStartWeek=1,finaleRulesStartWeek=1,commitmentRulesStartWeek=1,unifiedCommitmentRulesVersion=2,unifiedHearingRulesVersion=1,"
             + "blocRulesStartWeek=1,socialBudgetRulesStartWeek=1,dealRulesStartWeek=1,eventRulesStartWeek=1,storyRulesStartWeek=1,haveNotRulesStartWeek=1,"
             + "strategyRulesStartWeek=1,allianceLeakRulesStartWeek=1,pactPlanRulesStartWeek=1,allWeekRulesStartWeek=1,dialogueRulesVersion=0,"
             + "alumniRulesVersion=0,tuningRulesVersion=1,"
-            + "npcSocial.rulesStartWeek=1,story.rulesStartWeek=1,story.rulesVersion=11";
+            + "npcSocial.rulesStartWeek=1,story.rulesStartWeek=1,story.rulesVersion=11,story.talkRules=0";
 
         /// <summary>
         /// Each cell's digest: "policy/roster/size/npcN hash". Recorded with every shipped rule on: the war rooms played,

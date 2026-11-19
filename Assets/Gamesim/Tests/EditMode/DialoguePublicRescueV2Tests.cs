@@ -100,7 +100,7 @@ namespace Gamesim.Tests.EditMode
             Assert.That(entered.windowActions[Windows.AfterVeto], Is.EqualTo(source.windowActions[Windows.AfterVeto] + 1));
             Assert.That(episode.evidence, Is.Empty); Assert.That(cycle.path.Count, Is.EqualTo(1));
             Assert.That(entered.houseEvents.Count(e => e.cycleId == episode.id), Is.EqualTo(2));
-            Assert.That(entered.schemaVersion, Is.EqualTo(30));
+            Assert.That(entered.schemaVersion, Is.EqualTo(31));
         }
 
         [TestCase("crossed-v1")]
@@ -824,6 +824,8 @@ namespace Gamesim.Tests.EditMode
             Assert.That((int)lifted["schemaVersion"], Is.EqualTo(29), "The carrier is a schema-29 capture.");
             lifted.Add("alumniRulesVersion", 0); lifted.Add("alumniCatalogEdition", JValue.CreateNull()); lifted.Add("tuningRulesVersion", 0);
             lifted["schemaVersion"] = 30;
+            // Since schema 31 (the free talk's S0) the live schema is one step on: schema 31's literals, by hand.
+            PersistenceMigrationTests.AddSchema31Literals(lifted);
             return lifted.ToString(Formatting.None);
         }
         private static string Sha(byte[] bytes) { using var hash = SHA256.Create(); return BitConverter.ToString(hash.ComputeHash(bytes)).Replace("-", ""); }

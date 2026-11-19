@@ -35,8 +35,8 @@ namespace Gamesim.Tests.EditMode
             Assert.That(projectedFields.Property("Active"), Is.Null);
             Assert.That(projectedTrace["unifiedCommitmentRulesVersion"].Value<int>(), Is.EqualTo(mode));
             if (mode > 0) Assert.That(((JArray)projectedTrace["unifiedCommitments"]).Count, Is.GreaterThanOrEqualTo(2));
-            Assert.That(Text(Restore30(projectedTrace)), Is.EqualTo(traceBefore));
-            Assert.That(Text(Restore30(projectedFields)), Is.EqualTo(fieldsBefore));
+            Assert.That(Text(Restore30(projectedTrace)), Is.EqualTo(Text(LegacyDigestSchema31Observer.View30(JObject.Parse(traceBefore)))));
+            Assert.That(Text(Restore30(projectedFields)), Is.EqualTo(Text(LegacyDigestSchema31Observer.View30(JObject.Parse(fieldsBefore)))));
             projectedTrace["contestants"][0]["name"] = "Detached trace";
             projectedFields["contestants"][0]["name"] = "Detached fields";
             Assert.That(Text(state), Is.EqualTo(stateBefore));
@@ -173,7 +173,7 @@ namespace Gamesim.Tests.EditMode
                 case "unknown-row": trace["unifiedCommitments"][1]["unknown29"] = JValue.CreateNull(); break;
                 case "order":
                     var moved = trace.Property("dialogue"); moved.Remove(); trace.AddFirst(moved); break;
-                case "future": trace["schemaVersion"] = 31; break;
+                case "future": trace["schemaVersion"] = 32; break;
             }
             Refused(state, trace);
         }
@@ -192,7 +192,7 @@ namespace Gamesim.Tests.EditMode
             var state = Fresh(1);
             string before = Text(state);
             var own = OldSaveTrace.Fields(state);
-            var expected = target == 30 ? own : target == 29 ? Expected29(own) : OldSaveTrace.Project(Expected28(own), target);
+            var expected = target == 30 ? LegacyDigestSchema31Observer.View30(own) : target == 29 ? Expected29(own) : OldSaveTrace.Project(Expected28(own), target);
             var season = (JObject)expected.DeepClone(); season.Remove("events");
             var actual = CurrentOldSaveTrace.Checkpoint(state, target);
             Assert.That(actual.season, Is.EqualTo(OldSaveTrace.Sha256(OldSaveTrace.Canonical(season, true))));
@@ -363,7 +363,7 @@ namespace Gamesim.Tests.EditMode
             var witness = DialoguePreviewWitness.Find();
             var state = which == "campaign" ? witness.Campaign : witness.Conversation;
             Valid(state);
-            Assert.That(state.schemaVersion, Is.EqualTo(30), "The live schema.");
+            Assert.That(state.schemaVersion, Is.EqualTo(31), "The live schema.");
             Assert.That(state.dialogueRulesVersion, Is.EqualTo(1));
             Assert.That(state.dialogue.episodes.Count, Is.EqualTo(which == "campaign" ? 0 : 1));
             string stateBefore = Text(state);
@@ -393,11 +393,12 @@ namespace Gamesim.Tests.EditMode
             Assert.That(actual.text, Is.EqualTo(OldSaveTrace.Sha256(OldSaveTrace.Canonical(fields29, false))));
             Assert.That(actual, Is.EqualTo(OldSaveTrace.Checkpoint(state, 29)), "The recorder hashes the same state the same way.");
             var live = CurrentOldSaveTrace.Checkpoint(state, 30);
-            var liveSeason = (JObject)fields.DeepClone();
+            var fields30 = LegacyDigestSchema31Observer.View30(fields); // Since schema 31: the live fields at their schema-30 view.
+            var liveSeason = (JObject)fields30.DeepClone();
             liveSeason.Remove("events");
             Assert.That(live.season, Is.EqualTo(OldSaveTrace.Sha256(OldSaveTrace.Canonical(liveSeason, true))));
-            Assert.That(live.blind, Is.EqualTo(OldSaveTrace.Sha256(OldSaveTrace.Canonical(fields, true))));
-            Assert.That(live.text, Is.EqualTo(OldSaveTrace.Sha256(OldSaveTrace.Canonical(fields, false))));
+            Assert.That(live.blind, Is.EqualTo(OldSaveTrace.Sha256(OldSaveTrace.Canonical(fields30, true))));
+            Assert.That(live.text, Is.EqualTo(OldSaveTrace.Sha256(OldSaveTrace.Canonical(fields30, false))));
             Assert.That(live, Is.EqualTo(OldSaveTrace.Checkpoint(state, 30)), "At the live schema, as it is.");
             foreach (int older in new[] { 28, 26 })
                 Assert.Throws<InvalidDataException>(() => CurrentOldSaveTrace.Checkpoint(state, older), "No schema-" + older + " form.");
@@ -474,8 +475,8 @@ namespace Gamesim.Tests.EditMode
                     }
                     break;
                 case "future":
-                    trace["schemaVersion"] = 31;
-                    fields["schemaVersion"] = 31;
+                    trace["schemaVersion"] = 32;
+                    fields["schemaVersion"] = 32;
                     retainedTrace["schemaVersion"] = 30;
                     retainedFields["schemaVersion"] = 30;
                     break;
@@ -562,7 +563,7 @@ namespace Gamesim.Tests.EditMode
         {
             var state = UnifiedVotePublicCommandTests.Play(6u, 8, held: true).Final.Clone();
             Valid(state);
-            Assert.That(state.schemaVersion, Is.EqualTo(30));
+            Assert.That(state.schemaVersion, Is.EqualTo(31));
             Assert.That(state.unifiedCommitmentRulesVersion, Is.EqualTo(2));
             Assert.That(state.phase, Is.EqualTo(EpisodePhase.Finished));
             Assert.That(UnifiedVoteHistory.Decisions(state).Count, Is.GreaterThan(0));
@@ -581,7 +582,7 @@ namespace Gamesim.Tests.EditMode
         private static EpisodeState Fresh(int mode)
         {
             var state = ContentCatalog.Create(2939u);
-            Assert.That(state.schemaVersion, Is.EqualTo(30), "The live schema; never relabel an older object.");
+            Assert.That(state.schemaVersion, Is.EqualTo(31), "The live schema; never relabel an older object.");
             // Mode 2 is a fresh shipped season held at tuning 0 (B9-BALANCE-PLAN decision 8): these observers take a
             // current season to its schema-29 and 28 views, which a season on B9's tuning, a rule of schema 30's, has not.
             // Both modes are held at story rules 9, threads, by name (STORY-RULES-10-PLAN §8), for the same reason: the
@@ -623,7 +624,7 @@ namespace Gamesim.Tests.EditMode
         /// <summary>A current (30) view without schema 30's pooled fields, at 29: what the retained-29 observer receives.</summary>
         private static JObject Expected29(JObject source)
         {
-            var result = (JObject)source.DeepClone();
+            var result = (JObject)LegacyDigestSchema31Observer.View30(source).DeepClone(); // A live 31 at its schema-30 view.
             foreach (string name in LegacyDigestSchema30Observer.Pooled) result.Remove(name);
             result["schemaVersion"] = 29;
             return result;

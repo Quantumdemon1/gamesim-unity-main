@@ -445,7 +445,7 @@ namespace Gamesim.Tests.EditMode
         {
             Assert.That(mode, Is.InRange(0, 2));
             var state = ContentCatalog.Create(seed);
-            Assert.That(state.schemaVersion, Is.EqualTo(30));
+            Assert.That(state.schemaVersion, Is.EqualTo(31));
             Assert.That(state.allianceLeakRulesStartWeek + state.pactPlanRulesStartWeek + state.allWeekRulesStartWeek, Is.Zero);
             Assert.That(state.unifiedCommitmentRulesVersion, Is.Zero);
             Assert.That(state.unifiedHearingRulesVersion, Is.Zero);
@@ -506,7 +506,7 @@ namespace Gamesim.Tests.EditMode
         internal static void Valid(EpisodeState state)
         {
             string before = Text(state);
-            Assert.That(state.schemaVersion, Is.EqualTo(30));
+            Assert.That(state.schemaVersion, Is.EqualTo(31));
             Assert.That(EpisodeValidation.TryValidate(state, out string reason), Is.True, reason);
             // Schema 28's Wave D storage stays inert in every witness: nothing in this build enables it.
             Assert.That(state.allianceLeakRulesStartWeek == 0 && state.pactPlanRulesStartWeek == 0 && state.allWeekRulesStartWeek == 0, Is.True);

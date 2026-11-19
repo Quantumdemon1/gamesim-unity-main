@@ -129,6 +129,10 @@
     <Compile Include="$(EditMode)LegacyDigestSchema29ObserverTests.cs" />
     <Compile Include="$(EditMode)LegacyDigestSchema30Observer.cs" />
     <Compile Include="$(EditMode)LegacyDigestSchema30ObserverTests.cs" />
+    <!-- Schema 31 (the free talk's S0): the current31 boundary every digest reads, and the talk ladder and bounds. -->
+    <Compile Include="$(EditMode)LegacyDigestSchema31Observer.cs" />
+    <Compile Include="$(EditMode)LegacyDigestSchema31ObserverTests.cs" />
+    <Compile Include="$(EditMode)TalkRulesSchema31Tests.cs" />
     <Compile Include="$(EditMode)PooledSchema30ShapeTests.cs" />
     <Compile Include="$(EditMode)OldSaveTrace.cs" />
     <Compile Include="$(EditMode)CurrentOldSaveTrace.cs" />

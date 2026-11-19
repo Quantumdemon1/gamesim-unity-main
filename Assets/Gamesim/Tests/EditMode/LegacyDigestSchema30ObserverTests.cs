@@ -23,7 +23,7 @@ namespace Gamesim.Tests.EditMode
             var trace = JObject.FromObject(state);
             var fields = OldSaveTrace.Fields(state);
             string stateBefore = Text(state), traceBefore = Text(trace), fieldsBefore = Text(fields);
-            Assert.That((int)trace["schemaVersion"], Is.EqualTo(30));
+            Assert.That((int)trace["schemaVersion"], Is.EqualTo(31), "The live schema since the free talk's S0.");
             var projectedTrace = LegacyDigestSchema30Observer.ProjectTrace29(state, trace);
             var projectedFields = LegacyDigestSchema30Observer.ProjectFields29(state, fields);
             Assert.That(Text(projectedTrace), Is.EqualTo(Text(Expected29(trace))), "Every retained number, property and list position stays.");
@@ -84,7 +84,7 @@ namespace Gamesim.Tests.EditMode
             Refused(state, trace, "in their declared order");
         }
 
-        [TestCase("unknown-root")] [TestCase("header-29")] [TestCase("header-31")] [TestCase("header-text")]
+        [TestCase("unknown-root")] [TestCase("header-29")] [TestCase("header-32")] [TestCase("header-text")]
         [TestCase("session")] [TestCase("rng")]
         public void AValidSourceCannotAuthorizeUnknownFutureOrForeignJson(string defect)
         {
@@ -97,7 +97,7 @@ namespace Gamesim.Tests.EditMode
             {
                 case "unknown-root": trace["unknown30"] = 0; break;
                 case "header-29": trace["schemaVersion"] = 29; break;
-                case "header-31": trace["schemaVersion"] = 31; break;
+                case "header-32": trace["schemaVersion"] = 32; break;
                 case "header-text": trace["schemaVersion"] = "30"; break;
             }
             Refused(state, trace, defect.StartsWith("header-", StringComparison.Ordinal) ? "Only literal schema30" : null);
@@ -348,7 +348,7 @@ namespace Gamesim.Tests.EditMode
                 { HouseSize = 8, Roster = CastTemplates.Roster.AllStars, CampaignConversations = true });
             Assert.That(chip.alumniRulesVersion, Is.EqualTo(AlumniRules.Latest), "The chip season seats its alumni's histories.");
             Assert.That(chip.dialogueRulesVersion, Is.EqualTo(2), "The chip season plays the preview: rules 2, which the chip writes since this change.");
-            Assert.That(chip.schemaVersion, Is.EqualTo(30));
+            Assert.That(chip.schemaVersion, Is.EqualTo(31));
             Assert.That(EpisodeValidation.TryValidate(chip, out string reason), Is.True, reason);
             Assert.That(LegacyDigestSchema30Observer.OnTheAlumniRules(chip), Is.True);
             Assert.That(LegacyDigestSchema30Observer.IsNative29(chip), Is.False, "Rules 2 has no schema-29 view: only the alumni arm's test holds.");
@@ -399,7 +399,7 @@ namespace Gamesim.Tests.EditMode
             Assert.That(twin.dialogueRulesVersion, Is.Zero, "A shipped season starts on dialogue rules 0.");
             twin.dialogueRulesVersion = 1;
             Assert.That(twin.alumniRulesVersion, Is.EqualTo(AlumniRules.Latest), "The season seats its alumni's histories.");
-            Assert.That(twin.schemaVersion, Is.EqualTo(30));
+            Assert.That(twin.schemaVersion, Is.EqualTo(31));
             Assert.That(EpisodeValidation.TryValidate(twin, out string reason), Is.True, reason);
             Assert.That(LegacyDigestSchema30Observer.OnTheAlumniRules(twin), Is.True);
             Assert.That(LegacyDigestSchema30Observer.IsNative29(twin), Is.True, "Both arms' tests hold; the order decides.");
@@ -442,7 +442,7 @@ namespace Gamesim.Tests.EditMode
         public void ASeasonOnDialogueRules2IsAdmittedNativelyAtThirtyAndOnlyThere(string arm, string stage)
         {
             var state = Rules2Season(stage, tuningHeld: arm == "alone");
-            Assert.That(state.schemaVersion, Is.EqualTo(30), "The live schema.");
+            Assert.That(state.schemaVersion, Is.EqualTo(31), "The live schema.");
             Assert.That(state.dialogueRulesVersion, Is.EqualTo(2));
             Assert.That(state.dialogue.episodes.Count, Is.EqualTo(stage == "campaign" ? 0 : 1));
             Assert.That((state.alumniRulesVersion, state.tuningRulesVersion),
@@ -624,7 +624,7 @@ namespace Gamesim.Tests.EditMode
         /// getters. Each is refused by the check that owns it, and leaves the state and the JSON as they were.
         /// </summary>
         [TestCase("rules-1")] [TestCase("tuning-1")] [TestCase("alumni-json")] [TestCase("edition-text")] [TestCase("tuning-json")]
-        [TestCase("order")] [TestCase("header-29")] [TestCase("header-31")] [TestCase("unknown-root")] [TestCase("foreign")]
+        [TestCase("order")] [TestCase("header-29")] [TestCase("header-32")] [TestCase("unknown-root")] [TestCase("foreign")]
         [TestCase("getters")] [TestCase("grants")]
         public void TheDialogueArmAdmitsNothingButAValidRules2SeasonAloneAndItsOwnJson(string defect)
         {
@@ -650,7 +650,7 @@ namespace Gamesim.Tests.EditMode
                     // The tuning rules are the state's last field, as in the tuning arm's test: they go ahead of the alumni rules.
                     case "order": { var p = json.Property("tuningRulesVersion"); p.Remove(); json.Property("alumniRulesVersion").AddBeforeSelf(p); break; }
                     case "header-29": json["schemaVersion"] = 29; break;
-                    case "header-31": json["schemaVersion"] = 31; break;
+                    case "header-32": json["schemaVersion"] = 32; break;
                     case "unknown-root": json["unknown30"] = 0; break;
                 }
             if (defect == "getters") { var swap = trace; trace = fields; fields = swap; }
@@ -718,7 +718,7 @@ namespace Gamesim.Tests.EditMode
             ShippedRules.ApplyFresh(state);
             Assert.That(state.dialogueRulesVersion, Is.Zero, "A shipped season starts on dialogue rules 0.");
             state.dialogueRulesVersion = 2;
-            Assert.That((state.alumniRulesVersion, state.schemaVersion), Is.EqualTo((AlumniRules.Latest, 30)));
+            Assert.That((state.alumniRulesVersion, state.schemaVersion), Is.EqualTo((AlumniRules.Latest, 31)));
             Assert.That(EpisodeValidation.TryValidate(state, out string reason), Is.True, reason);
             return state;
         }
@@ -753,7 +753,7 @@ namespace Gamesim.Tests.EditMode
 
         private static JObject Expected29(JObject source)
         {
-            var result = (JObject)source.DeepClone();
+            var result = (JObject)LegacyDigestSchema31Observer.View30(source).DeepClone();
             foreach (string name in LegacyDigestSchema30Observer.Pooled) result.Remove(name);
             result["schemaVersion"] = 29;
             return result;

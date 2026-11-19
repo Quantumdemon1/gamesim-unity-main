@@ -21,16 +21,80 @@ namespace Gamesim.Persistence
             if (original == null || original["schemaVersion"]?.Type != JTokenType.Integer)
                 throw new InvalidDataException("Simulation schema version must be an integer.");
             long version = (long)original["schemaVersion"];
-            // Schema 31's step 1 (the free talk's S0): the frozen schema-30 whole reader holds every direct-30 save, and
-            // the end of every older chain, before the live schema moves on. Schema 30 is closed from here.
-            if (version == 30)
+            if (version == 31) return (JObject)original.DeepClone();
+            if (version < 1 || version > 30) throw new InvalidDataException("Unsupported simulation schema version.");
+            var result = UpgradeV30ToV31(version == 30 ? original : PrepareV30Payload(original, out _));
+            migrated = true;
+            return result;
+        }
+
+        /// <summary>
+        /// Adds only schema 31's literals (the free "Just talk" feature's S0, FIELDS.md), every one at its default: on the
+        /// story, after its reckonings, the talk rules 0 (free talk off), a lean of 0 and no housemate pairs; on every one of
+        /// the story's contacts, after its last week, the free talk's fields at their defaults. The complete frozen
+        /// schema-30 whole reader must accept the untouched original before any clone or literal, so this also holds the
+        /// end of every older chain to it. Nothing is inferred: rapport, the story rules and every other value carry over
+        /// as they are, and an old season keeps free talk off for ever. Literals written by hand, never from a live DTO.
+        /// </summary>
+        public static JObject UpgradeV30ToV31(JObject original)
+        {
+            FrozenEpisodeV30.Validate(original);
+            var result = (JObject)original.DeepClone();
+            if (result["story"] is JObject story)
             {
-                FrozenEpisodeV30.Validate(original);
-                return (JObject)original.DeepClone();
+                story.Add("talkRules", 0);
+                story.Add("talkLean", 0);
+                story.Add("talkPairs", new JArray());
+                if (story["contacts"] is JArray contacts)
+                    foreach (var token in contacts)
+                        if (token is JObject contact) AddContactLiterals(contact);
             }
+            result["schemaVersion"] = 31;
+            return result;
+        }
+
+        /// <summary>Schema 31's contact literals, in ContactState's declared order after lastWeek.</summary>
+        private static void AddContactLiterals(JObject contact)
+        {
+            contact.Add("talkWindow", 0);
+            contact.Add("talks", 0);
+            contact.Add("talkTenths", 0);
+            contact.Add("spentTalks", new JArray());
+            contact.Add("talkPending", "");
+            contact.Add("agreement", 0);
+            contact.Add("lastTone", "");
+            contact.Add("priorTone", "");
+            contact.Add("standingWeek", 0);
+            contact.Add("standing", "");
+            contact.Add("stageReached", 0);
+            contact.Add("cool", 0);
+            contact.Add("spark", 0);
+            contact.Add("romance", "");
+            contact.Add("romanceWeek", 0);
+            contact.Add("romanceClosedUntil", 0);
+            contact.Add("flirts", 0);
+            contact.Add("notYets", 0);
+            contact.Add("turnAsides", 0);
+            contact.Add("coupleAnchors", 0);
+            contact.Add("walkUpWindow", 0);
+            contact.Add("notNows", 0);
+            contact.Add("walkUpsOffUntil", 0);
+            contact.Add("talkFlags", new JArray());
+        }
+
+        /// <summary>
+        /// Frozen v1-v29-to-v30 dispatch; every historical step retains its original output. A direct 30 is returned as a
+        /// detached copy: <see cref="UpgradeV30ToV31"/> runs the frozen schema-30 reader on whatever this hands on.
+        /// </summary>
+        public static JObject PrepareV30Payload(JObject original, out bool migrated)
+        {
+            migrated = false;
+            if (original == null || original["schemaVersion"]?.Type != JTokenType.Integer)
+                throw new InvalidDataException("Simulation schema version must be an integer.");
+            long version = (long)original["schemaVersion"];
+            if (version == 30) return (JObject)original.DeepClone();
             if (version < 1 || version > 29) throw new InvalidDataException("Unsupported simulation schema version.");
             var result = UpgradeV29ToV30(version == 29 ? original : PrepareV29Payload(original, out _));
-            FrozenEpisodeV30.Validate(result);
             migrated = true;
             return result;
         }

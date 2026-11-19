@@ -34,9 +34,10 @@ namespace Gamesim.Tests.EditMode
         {
             foreach (var state in new[] { DialoguePreviewWitness.Find().Campaign, DialoguePreviewWitness.Find().Conversation })
             {
-                Assert.That(state.schemaVersion, Is.EqualTo(30), "The live schema.");
+                Assert.That(state.schemaVersion, Is.EqualTo(31), "The live schema.");
                 string before = JObject.FromObject(state).ToString(Formatting.None);
-                var at29 = JObject.FromObject(state);
+                // Since schema 31 the live JSON is read at its schema-30 view (every talk field at its default, removed).
+                var at29 = LegacyDigestSchema31Observer.View30(JObject.FromObject(state));
                 foreach (string pooled in LegacyDigestSchema30Observer.Pooled)
                 {
                     Assert.That(at29[pooled].Type, Is.EqualTo(pooled == "alumniCatalogEdition" ? JTokenType.Null : JTokenType.Integer), pooled);
@@ -81,12 +82,14 @@ namespace Gamesim.Tests.EditMode
             {
                 var state = LegacyDigestSchema30ObserverTests.Rules2Season(stage, tuningHeld: true);
                 string before = JObject.FromObject(state).ToString(Formatting.None);
+                // Since schema 31 the digest is the state's schema-30 view (every talk field at its default, removed).
+                string at30 = LegacyDigestSchema31Observer.View30(JObject.FromObject(state)).ToString(Formatting.None);
                 var trace = new StringBuilder();
                 Invoke("Checkpoint", state, trace);
                 var readers = new StringBuilder();
                 Invoke("Readers", state, readers);
                 Assert.That(readers.Length, Is.GreaterThan(0), "The readers have lines to give.");
-                Assert.That(trace.ToString(), Is.EqualTo(before + "\n" + readers),
+                Assert.That(trace.ToString(), Is.EqualTo(at30 + "\n" + readers),
                     stage + ": the state's JSON at 30 as it is - nothing projected, nothing removed - then the readers' lines.");
                 Assert.That(JObject.FromObject(state).ToString(Formatting.None), Is.EqualTo(before), "Digesting changes nothing.");
             }

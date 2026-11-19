@@ -2,9 +2,9 @@
 // copy of the whole schema-30 validator as 64d52f59 has it, carried from Frozen29 by exactly the live validators'
 // changes since its image (b208d46d): schema 30's pooled fields, dialogue rules 2, competition rules 5, story rules
 // 10, 12 and 15, the holder's offer, the tuning rules' bounds and jury tiebreak, the alumni histories' receipts and
-// the house talk's records. BCL and Newtonsoft only, never a live DTO. Wired: at the live 30,
-// EpisodeSaveMigrations.PrepareCurrentPayload calls Validate on every direct-30 save and on the end of every older
-// chain before it returns.
+// the house talk's records. BCL and Newtonsoft only, never a live DTO. Wired: EpisodeSaveMigrations.UpgradeV30ToV31
+// calls Validate on every schema 1 to 30 save before it adds schema 31's literals (at the live 30, schema 31's step 1,
+// PrepareCurrentPayload called it on every direct-30 save and chain end).
 using System;
 using System.IO;
 using Newtonsoft.Json.Linq;

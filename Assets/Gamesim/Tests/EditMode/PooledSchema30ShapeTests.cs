@@ -36,7 +36,7 @@ namespace Gamesim.Tests.EditMode
         [Test]
         public void ThePooledFieldsHaveTheirTypesAndOffDefaults()
         {
-            Assert.That(EpisodeState.LiveSchema, Is.EqualTo(30));
+            Assert.That(EpisodeState.LiveSchema, Is.EqualTo(31), "The live schema since the free talk's S0; the pooled fields are schema 30's.");
             var fresh = new EpisodeState();
             Assert.That(fresh.schemaVersion, Is.EqualTo(EpisodeState.LiveSchema));
             Assert.That(Member("alumniRulesVersion").FieldType, Is.EqualTo(typeof(int)));
@@ -55,7 +55,7 @@ namespace Gamesim.Tests.EditMode
         public void DefaultFactoriesAdoptSchemaThirtyWithEveryPooledFieldOff(bool builder)
         {
             var state = builder ? SeasonBuilder.Create(new SeasonBuilder.Choice(), 3001u) : ContentCatalog.Create(3001u);
-            Assert.That(state.schemaVersion, Is.EqualTo(30));
+            Assert.That(state.schemaVersion, Is.EqualTo(31));
             Assert.That(state.alumniRulesVersion, Is.Zero);
             Assert.That(state.alumniCatalogEdition, Is.Null);
             Assert.That(state.tuningRulesVersion, Is.Zero);
@@ -93,7 +93,7 @@ namespace Gamesim.Tests.EditMode
             Assert.That(EpisodeValidation.TryValidate(state, out reason), Is.True, "The control is untouched: " + reason);
         }
 
-        [TestCase(29)] [TestCase(31)]
+        [TestCase(30)] [TestCase(32)]
         public void TheLiveValidatorHoldsASeasonToTheLiveSchemaOnly(int schema)
         {
             var state = ContentCatalog.Create(3003u);

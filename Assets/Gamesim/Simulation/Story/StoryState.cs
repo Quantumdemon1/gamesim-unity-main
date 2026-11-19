@@ -83,6 +83,23 @@ namespace Gamesim.Simulation
         /// </summary>
         public List<ReckoningState> reckonings = new List<ReckoningState>();
 
+        // Schema 31 (the free "Just talk" feature's S0, FIELDS.md): appended last, in this fixed order. Every season holds
+        // them at their defaults until the slice that writes them; a migrated season holds them at their defaults for ever.
+
+        /// <summary>The free talk's ladder (<see cref="TalkRules"/>): the level this season was started on. 0 is off.</summary>
+        public int talkRules;
+
+        /// <summary>The lean of the player's answers, -6 to 6 (slice S2): which way the house reads the player.</summary>
+        public int talkLean;
+
+        /// <summary>Housemate pairs and their spark (slice S4): at most <see cref="TalkRules.MostPairs"/> rows.</summary>
+        public List<TalkPairState> talkPairs = new List<TalkPairState>();
+
+        // Schema 31 too, after the talk fields: the housemates' minds' ladder. Declared last so the talk fields' order holds.
+
+        /// <summary>The housemates' minds' ladder (<see cref="MindRules"/>): the level this season was started on. 0 is off.</summary>
+        public int mindRules;
+
         public StoryWorldState Clone()
         {
             var copy = (StoryWorldState)MemberwiseClone();
@@ -97,6 +114,7 @@ namespace Gamesim.Simulation
             copy.removals = removals.Select(x => x.Clone()).ToList();
             copy.cooldowns = cooldowns.Select(x => x.Clone()).ToList();
             copy.reckonings = reckonings.Select(x => x.Clone()).ToList();
+            copy.talkPairs = talkPairs.Select(x => x.Clone()).ToList();
             return copy;
         }
     }
@@ -151,7 +169,60 @@ namespace Gamesim.Simulation
     {
         public string npcId;
         public int rapport, weekCount, lastWeek;
-        public ContactState Clone() => (ContactState)MemberwiseClone();
+
+        // Schema 31 (the free "Just talk" feature's S0, FIELDS.md): appended last, in this fixed order, each at its default
+        // until the slice that writes it. The bounds are EpisodeStoryValidation's.
+
+        /// <summary>The window key of the last counted free talk (the cap, written by attempt; TalkRules.LastWindowKey).</summary>
+        public int talkWindow;
+        /// <summary>Counted free talks with them.</summary>
+        public int talks;
+        /// <summary>Rapport tenths beside <see cref="rapport"/>, 0 to 9.</summary>
+        public int talkTenths;
+        /// <summary>The talks they have used up, by id.</summary>
+        public List<string> spentTalks = new List<string>();
+        /// <summary>The talk whose continuation choice is open, or empty.</summary>
+        public string talkPending = "";
+        /// <summary>How compatible the player's answers have been with them, -10 to 10.</summary>
+        public int agreement;
+        /// <summary>The tones of the last two counted talks (<see cref="TalkRules.Tones"/>), or empty.</summary>
+        public string lastTone = "", priorTone = "";
+        /// <summary>The week of the weekly "where they stand" snapshot, and the snapshot itself.</summary>
+        public int standingWeek;
+        public string standing = "";
+        /// <summary>The highest friendship stage reached, 0 to 5 (slice S2).</summary>
+        public int stageReached;
+        /// <summary>Talks left one step lower after a pushed turn-aside, 0 to 2 (slice S3).</summary>
+        public int cool;
+        /// <summary>The player's romance spark with them, 0 to 100 (slice S3).</summary>
+        public int spark;
+        /// <summary>Where a romance stands (<see cref="TalkRules.Romances"/>), or empty (slice S3).</summary>
+        public string romance = "";
+        /// <summary>The week the romance last changed, and the week it is closed until (slice S3).</summary>
+        public int romanceWeek, romanceClosedUntil;
+        /// <summary>Flirt answers to them, "Not yet" answers, turn-aside attempts, anchors since a couple formed (slice S3).</summary>
+        public int flirts, notYets, turnAsides, coupleAnchors;
+        /// <summary>Their last walk-up's window key, "Not now"s in a row, and the week their walk-ups resume (slice S5).</summary>
+        public int walkUpWindow, notNows, walkUpsOffUntil;
+        /// <summary>One-off marks (<see cref="TalkRules.Flags"/>).</summary>
+        public List<string> talkFlags = new List<string>();
+
+        public ContactState Clone()
+        {
+            var copy = (ContactState)MemberwiseClone();
+            copy.spentTalks = new List<string>(spentTalks);
+            copy.talkFlags = new List<string>(talkFlags);
+            return copy;
+        }
+    }
+
+    /// <summary>Two housemates' spark (the free talk's slice S4): aId before bId in ordinal order, neither the player.</summary>
+    [Serializable]
+    public sealed class TalkPairState
+    {
+        public string aId, bId;
+        public int spark, apartAnchors, formedWeek, endedWeek;
+        public TalkPairState Clone() => (TalkPairState)MemberwiseClone();
     }
 
     /// <summary>The lore a houseguest was cast with. Snapshotted, so a later catalogue never changes a running season.</summary>

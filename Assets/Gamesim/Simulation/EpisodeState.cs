@@ -249,7 +249,7 @@ namespace Gamesim.Simulation
         /// EpisodeSaveValidation): named once, so the next bump is this line. A rule that a schema introduced reads a
         /// lower bound on the schema that introduced it (DialogueRules.On: 29 or later), never this.
         /// </summary>
-        public const int LiveSchema = 30;
+        public const int LiveSchema = 31;
 
         public int schemaVersion = LiveSchema;
         public int competitionRulesVersion = 1;

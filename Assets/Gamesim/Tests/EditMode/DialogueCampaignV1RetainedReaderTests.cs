@@ -185,7 +185,7 @@ namespace Gamesim.Tests.EditMode
             Assert.That(File.Exists(reader.BackupPath), Is.False, "Each role is a strict primary read, never an automatic recovery.");
             Assert.That(reader.TryLoad(out var loaded, out string message), Is.True, message);
             Valid(loaded);
-            Assert.That(loaded.schemaVersion, Is.EqualTo(30));
+            Assert.That(loaded.schemaVersion, Is.EqualTo(31));
             Assert.That(loaded.dialogueRulesVersion, Is.EqualTo(1));
             if (id == "case" && role == "backup")
             {

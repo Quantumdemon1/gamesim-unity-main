@@ -206,7 +206,8 @@ namespace Gamesim.Tests.EditMode
             foreach (JObject oldRow in (JArray)payload["unifiedCommitments"]) oldRow.Add("conditionalVeto", JValue.CreateNull());
             // Schema 30's pooled off literals (SCH30): the season is a current one.
             payload.Add("alumniRulesVersion", 0); payload.Add("alumniCatalogEdition", JValue.CreateNull()); payload.Add("tuningRulesVersion", 0);
-            payload["schemaVersion"] = 30;
+            // Schema 31 (the free talk's S0): the header 31; its fields take their defaults from the DTO, as the migration writes them.
+            payload["schemaVersion"] = 31;
             var state = payload.ToObject<EpisodeState>(JsonSerializer.Create(new JsonSerializerSettings
             {
                 ObjectCreationHandling = ObjectCreationHandling.Replace,
@@ -260,7 +261,7 @@ namespace Gamesim.Tests.EditMode
 
         private static void Accepted29(EpisodeState state)
         {
-            Assert.That(state.schemaVersion, Is.EqualTo(30), "The live schema; never mask this as an ignored test.");
+            Assert.That(state.schemaVersion, Is.EqualTo(31), "The live schema; never mask this as an ignored test.");
             Assert.That(EpisodeValidation.TryValidate(state, out string reason), Is.True, reason);
         }
         private static void RefusedUnchanged(EpisodeState state)

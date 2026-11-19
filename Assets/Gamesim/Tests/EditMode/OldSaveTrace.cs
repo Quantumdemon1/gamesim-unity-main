@@ -100,7 +100,7 @@ namespace Gamesim.Tests.EditMode
 
         /// <summary>
         /// What each schema from 21 on added, as its migration wrote it (EpisodeSaveMigrations.UpgradeV20ToV21 to
-        /// UpgradeV29ToV30), with the literal value it wrote. Every one is a rule switched off or storage that stays
+        /// UpgradeV30ToV31), with the literal value it wrote. Every one is a rule switched off or storage that stays
         /// empty while it is, so a season saved before it plays with each still at that value to its end: removing
         /// them gives back the schema the reference build stored. A value that moved is refused, never dropped.
         /// </summary>
@@ -126,10 +126,18 @@ namespace Gamesim.Tests.EditMode
             (29, "dialogue", new JObject { ["episodes"] = new JArray(), ["grants"] = new JArray(), ["vetoOccasions"] = new JArray() }),
             (29, "unifiedCommitments[].conditionalVeto", JValue.CreateNull()),
             (30, "alumniRulesVersion", 0), (30, "alumniCatalogEdition", JValue.CreateNull()), (30, "tuningRulesVersion", 0),
+            // Schema 31 (the free talk's S0): the story's ladder, lean and pairs, the minds' ladder, and every contact's talk fields, at their defaults.
+            (31, "story.talkRules", 0), (31, "story.talkLean", 0), (31, "story.talkPairs", new JArray()), (31, "story.mindRules", 0),
+            (31, "story.contacts[].talkWindow", 0), (31, "story.contacts[].talks", 0), (31, "story.contacts[].talkTenths", 0), (31, "story.contacts[].spentTalks", new JArray()),
+            (31, "story.contacts[].talkPending", (JToken)""), (31, "story.contacts[].agreement", 0), (31, "story.contacts[].lastTone", (JToken)""), (31, "story.contacts[].priorTone", (JToken)""),
+            (31, "story.contacts[].standingWeek", 0), (31, "story.contacts[].standing", (JToken)""), (31, "story.contacts[].stageReached", 0), (31, "story.contacts[].cool", 0),
+            (31, "story.contacts[].spark", 0), (31, "story.contacts[].romance", (JToken)""), (31, "story.contacts[].romanceWeek", 0), (31, "story.contacts[].romanceClosedUntil", 0),
+            (31, "story.contacts[].flirts", 0), (31, "story.contacts[].notYets", 0), (31, "story.contacts[].turnAsides", 0), (31, "story.contacts[].coupleAnchors", 0),
+            (31, "story.contacts[].walkUpWindow", 0), (31, "story.contacts[].notNows", 0), (31, "story.contacts[].walkUpsOffUntil", 0), (31, "story.contacts[].talkFlags", new JArray()),
         };
 
         /// <summary>The newest schema <see cref="Project"/> knows: a state above it is refused rather than guessed at.</summary>
-        internal const int Newest = 30;
+        internal const int Newest = 31;
 
         /// <summary>The oldest schema a projection reaches: the first whose later additions are all switched off (schema 20).</summary>
         internal const int Oldest = 20;

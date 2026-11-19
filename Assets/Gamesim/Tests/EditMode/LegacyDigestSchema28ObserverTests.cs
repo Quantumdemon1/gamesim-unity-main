@@ -114,7 +114,7 @@ namespace Gamesim.Tests.EditMode
             }, defect.StartsWith("header-", StringComparison.Ordinal) ? "Only literal schema28 is an observer input."
                 // The fixed27 chain's frozen shape refuses the unknown member, before the trace binding.
                 : "contains missing or unknown schema25 fields.",
-                defect == "header-29" ? (Action<JObject>)(live => live["schemaVersion"] = 31) : null);  // A future header on the live (30) view.
+                defect == "header-29" ? (Action<JObject>)(live => live["schemaVersion"] = 32) : null);  // A future header on the live (31) view.
         }
 
         /// <summary>

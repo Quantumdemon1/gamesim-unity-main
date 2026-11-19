@@ -21,6 +21,79 @@ namespace Gamesim.Persistence
             if (original == null || original["schemaVersion"]?.Type != JTokenType.Integer)
                 throw new InvalidDataException("Simulation schema version must be an integer.");
             long version = (long)original["schemaVersion"];
+            if (version == 31) return (JObject)original.DeepClone();
+            if (version < 1 || version > 30) throw new InvalidDataException("Unsupported simulation schema version.");
+            var result = UpgradeV30ToV31(version == 30 ? original : PrepareV30Payload(original, out _));
+            migrated = true;
+            return result;
+        }
+
+        /// <summary>
+        /// Adds only schema 31's literals (the free "Just talk" feature's S0, FIELDS.md), every one at its default: on the
+        /// story, after its reckonings, the talk rules 0 (free talk off), a lean of 0, no housemate pairs and the minds'
+        /// rules 0 (MindRules: the housemates' decision-making ladder, off); on every one of
+        /// the story's contacts, after its last week, the free talk's fields at their defaults. The complete frozen
+        /// schema-30 whole reader must accept the untouched original before any clone or literal, so this also holds the
+        /// end of every older chain to it. Nothing is inferred: rapport, the story rules and every other value carry over
+        /// as they are, and an old season keeps free talk off for ever. Literals written by hand, never from a live DTO.
+        /// </summary>
+        public static JObject UpgradeV30ToV31(JObject original)
+        {
+            FrozenEpisodeV30.Validate(original);
+            var result = (JObject)original.DeepClone();
+            if (result["story"] is JObject story)
+            {
+                story.Add("talkRules", 0);
+                story.Add("talkLean", 0);
+                story.Add("talkPairs", new JArray());
+                story.Add("mindRules", 0);
+                if (story["contacts"] is JArray contacts)
+                    foreach (var token in contacts)
+                        if (token is JObject contact) AddContactLiterals(contact);
+            }
+            result["schemaVersion"] = 31;
+            return result;
+        }
+
+        /// <summary>Schema 31's contact literals, in ContactState's declared order after lastWeek.</summary>
+        private static void AddContactLiterals(JObject contact)
+        {
+            contact.Add("talkWindow", 0);
+            contact.Add("talks", 0);
+            contact.Add("talkTenths", 0);
+            contact.Add("spentTalks", new JArray());
+            contact.Add("talkPending", "");
+            contact.Add("agreement", 0);
+            contact.Add("lastTone", "");
+            contact.Add("priorTone", "");
+            contact.Add("standingWeek", 0);
+            contact.Add("standing", "");
+            contact.Add("stageReached", 0);
+            contact.Add("cool", 0);
+            contact.Add("spark", 0);
+            contact.Add("romance", "");
+            contact.Add("romanceWeek", 0);
+            contact.Add("romanceClosedUntil", 0);
+            contact.Add("flirts", 0);
+            contact.Add("notYets", 0);
+            contact.Add("turnAsides", 0);
+            contact.Add("coupleAnchors", 0);
+            contact.Add("walkUpWindow", 0);
+            contact.Add("notNows", 0);
+            contact.Add("walkUpsOffUntil", 0);
+            contact.Add("talkFlags", new JArray());
+        }
+
+        /// <summary>
+        /// Frozen v1-v29-to-v30 dispatch; every historical step retains its original output. A direct 30 is returned as a
+        /// detached copy: <see cref="UpgradeV30ToV31"/> runs the frozen schema-30 reader on whatever this hands on.
+        /// </summary>
+        public static JObject PrepareV30Payload(JObject original, out bool migrated)
+        {
+            migrated = false;
+            if (original == null || original["schemaVersion"]?.Type != JTokenType.Integer)
+                throw new InvalidDataException("Simulation schema version must be an integer.");
+            long version = (long)original["schemaVersion"];
             if (version == 30) return (JObject)original.DeepClone();
             if (version < 1 || version > 29) throw new InvalidDataException("Unsupported simulation schema version.");
             var result = UpgradeV29ToV30(version == 29 ? original : PrepareV29Payload(original, out _));
@@ -540,10 +613,28 @@ namespace Gamesim.Persistence
             // threads landed (a8122c7b), and what every old-save fixture was recorded under
             // (Assets/Plans/OLD-SAVE-ACCEPTANCE.md, F6). Lore.Cast does not read the version.
             cast.story.rulesVersion = 9;
-            result.Add("story", JObject.FromObject(cast.story, serializer));
+            // The live StoryWorldState writes the bundle, but this step's output is historical: only the story keys the
+            // frozen schema-16 contract reads, in their order. A story field a later schema adds (schema 31's talk fields)
+            // would otherwise reach the schema-16 reader and have every schema 2 to 15 save refused; its own step adds it.
+            var live = JObject.FromObject(cast.story, serializer);
+            var bundle = new JObject();
+            foreach (var key in StoryKeysV16)
+            {
+                if (!live.TryGetValue(key, StringComparison.Ordinal, out var value))
+                    throw new InvalidDataException("The schema-16 story bundle lacks " + key + ".");
+                bundle.Add(key, value);
+            }
+            result.Add("story", bundle);
             result["schemaVersion"] = 16;
             return result;
         }
+
+        /// <summary>The story bundle's keys at schema 16, in the order the schema-16 step writes them.</summary>
+        public static readonly IReadOnlyList<string> StoryKeysV16 = Array.AsReadOnly(new[]
+        {
+            "rulesStartWeek", "rulesVersion", "productionStrictness", "romanceStorylines", "grudges", "facts", "bonds", "hooks",
+            "contacts", "lore", "knownFacts", "conduct", "removals", "pendingRemovalId", "cooldowns", "reckonings",
+        });
 
         /// <summary>Frozen v1-v14-to-v15 dispatch.</summary>
         public static JObject PrepareV15Payload(JObject original, out bool migrated)

@@ -51,8 +51,8 @@ namespace Gamesim.Tests.EditMode
             var result = EpisodeSaveMigrations.PrepareCurrentPayload(payload, out bool migrated);
             Assert.That(migrated, Is.True, "A direct 29 is historical since SCH30: held to its frozen reader, then the pooled step.");
             Assert.That(result, Is.Not.SameAs(payload));
-            Assert.That(result.ToString(Formatting.None), Is.EqualTo(Pooled30(payload).ToString(Formatting.None)));
-            Assert.That(result.ToString(Formatting.None), Is.EqualTo(EpisodeSaveMigrations.UpgradeV29ToV30(payload).ToString(Formatting.None)));
+            Assert.That(result.ToString(Formatting.None), Is.EqualTo(PersistenceMigrationTests.Lift31(Pooled30(payload)).ToString(Formatting.None)));
+            Assert.That(result.ToString(Formatting.None), Is.EqualTo(EpisodeSaveMigrations.UpgradeV30ToV31(EpisodeSaveMigrations.UpgradeV29ToV30(payload)).ToString(Formatting.None)));
             var originals = new HashSet<JToken>(payload.DescendantsAndSelf(), TokenIdentity.Instance);
             foreach (var copy in result.DescendantsAndSelf())
                 Assert.That(originals.Contains(copy), Is.False, "No returned token aliases any retained input token.");
@@ -112,8 +112,8 @@ namespace Gamesim.Tests.EditMode
             var current = EpisodeSaveMigrations.PrepareCurrentPayload(original, out bool migrated);
             Assert.That(migrated, Is.True);
             Assert.That(current, Is.Not.SameAs(original));
-            Assert.That(current.ToString(Formatting.None), Is.EqualTo(Pooled30(expected).ToString(Formatting.None)));
-            Assert.That((int)current["schemaVersion"], Is.EqualTo(30));
+            Assert.That(current.ToString(Formatting.None), Is.EqualTo(PersistenceMigrationTests.Lift31(Pooled30(expected)).ToString(Formatting.None)));
+            Assert.That((int)current["schemaVersion"], Is.EqualTo(31));
             Assert.That((int)current["dialogueRulesVersion"], Is.Zero);
             before.AssertUnchanged(original);
         }
@@ -152,10 +152,10 @@ namespace Gamesim.Tests.EditMode
             using var slot = new Slot();
             slot.Write(slot.Store.SavePath, source);
             Assert.That(slot.Store.TryLoad(out var loaded, out string message), Is.True, message);
-            Assert.That(message, Does.Contain("Schema 29").And.Contain("schema 30 in memory"), "A direct 29 migrates in memory.");
+            Assert.That(message, Does.Contain("Schema 29").And.Contain("schema 31 in memory"), "A direct 29 migrates in memory.");
             Assert.That(File.ReadAllBytes(slot.Store.SavePath), Is.EqualTo(source), "Loading is read-only.");
             var loadedImage = Payload(loaded);
-            Assert.That(JToken.DeepEquals(loadedImage, Pooled30(Fixture(id))), Is.True, "The writer's state, with the pooled off literals.");
+            Assert.That(JToken.DeepEquals(loadedImage, PersistenceMigrationTests.Lift31(Pooled30(Fixture(id)))), Is.True, "The writer's state, with the pooled off literals and schema 31's.");
             var retained29 = (JObject)loadedImage.DeepClone(); PersistenceMigrationTests.StripSchema30(retained29);
             Frozen(29, retained29);
             slot.Store.Save(loaded);
@@ -417,13 +417,13 @@ namespace Gamesim.Tests.EditMode
             using var slot = new Slot();
             slot.Store.Save(played);
             var written = (JObject)JObject.Parse(File.ReadAllText(slot.Store.SavePath))["state"];
-            Assert.That((int)written["schemaVersion"], Is.EqualTo(30));
+            Assert.That((int)written["schemaVersion"], Is.EqualTo(31), "The live schema since the free talk's S0.");
             Assert.That((int)written["story"]["rulesVersion"], Is.EqualTo(StoryRules.Blame));
             byte[] bytes = File.ReadAllBytes(slot.Store.SavePath);
             Assert.That(slot.Store.TryLoad(out var loaded, out string message), Is.True, message);
             Assert.That(File.ReadAllBytes(slot.Store.SavePath), Is.EqualTo(bytes), "Loading current data never rewrites it.");
-            Assert.That(loaded.schemaVersion, Is.EqualTo(30));
-            Assert.That(JToken.DeepEquals(Payload(loaded), Payload(played)), Is.True, "Every saved field survives at 30.");
+            Assert.That(loaded.schemaVersion, Is.EqualTo(31));
+            Assert.That(JToken.DeepEquals(Payload(loaded), Payload(played)), Is.True, "Every saved field survives at the live schema.");
             slot.Store.Save(loaded);
             Assert.That(slot.Store.TryLoad(out var again, out message), Is.True, message);
             Assert.That(JToken.DeepEquals(Payload(again), Payload(played)), Is.True, "And again, from its own save.");
@@ -464,7 +464,7 @@ namespace Gamesim.Tests.EditMode
         private static JObject Retained29(EpisodeState state)
         {
             var payload = Payload(state);
-            Assert.That((int)payload["schemaVersion"], Is.EqualTo(30));
+            Assert.That((int)payload["schemaVersion"], Is.EqualTo(31));
             PersistenceMigrationTests.StripSchema30(payload);
             return payload;
         }
@@ -495,6 +495,8 @@ namespace Gamesim.Tests.EditMode
         /// <summary>The live path TryRead takes after the dispatch: the live shape, the live DTO and the live validation.</summary>
         private static string Live(JObject payload)
         {
+            // Since schema 31 the live side's input is the 30 one step on, with schema 31's literals by hand.
+            if (payload["schemaVersion"]?.Type == JTokenType.Integer && (int)payload["schemaVersion"] == 30) payload = PersistenceMigrationTests.Lift31(payload);
             var saveJson = typeof(EpisodeSaveStore).Assembly.GetType("Gamesim.Persistence.SaveJson", true);
             var serializer = (JsonSerializer)saveJson.GetMethod("Serializer").Invoke(null, null);
             try

@@ -491,6 +491,9 @@ namespace Gamesim.Tests.EditMode
             Assert.That((int)lifted["schemaVersion"], Is.EqualTo(29), "The carrier is a schema-29 capture.");
             lifted.Add("alumniRulesVersion", 0); lifted.Add("alumniCatalogEdition", JValue.CreateNull()); lifted.Add("tuningRulesVersion", 0);
             lifted["schemaVersion"] = 30;
+            // Since schema 31 (the free talk's S0) the live schema is one step on: the header 31, and schema 31's fields take
+            // their defaults from the DTO, as the migration writes them (this file is in the Unity-free subset too).
+            lifted["schemaVersion"] = 31;
             var s = JsonConvert.DeserializeObject<EpisodeState>(lifted.ToString(Formatting.None), new JsonSerializerSettings
             {
                 TypeNameHandling = TypeNameHandling.None, DateParseHandling = DateParseHandling.None,

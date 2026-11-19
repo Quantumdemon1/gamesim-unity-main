@@ -211,6 +211,8 @@ namespace Gamesim.Tests.EditMode
                 dialogue.AddAfterSelf(new JProperty("alumniCatalogEdition", JValue.CreateNull()));
                 dialogue.AddAfterSelf(new JProperty("alumniRulesVersion", 0));
                 state["schemaVersion"] = 30;
+                // Since schema 31 (the free talk's S0): schema 31's literals, by hand, in place.
+                PersistenceMigrationTests.AddSchema31Literals(state);
                 lifted++;
             }
             Assert.That(lifted, Is.GreaterThan(0), "Every captured image holds a schema-29 state.");

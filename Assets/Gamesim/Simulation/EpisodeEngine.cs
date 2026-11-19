@@ -71,7 +71,9 @@ namespace Gamesim.Simulation
                 // command's own effects, inside the same candidate, so a pact a beat forms is reconciled and
                 // validated with it. Player-free where the command put a counter on the table (decision 6).
                 int beatsFrom = 0;
-                if (AllWeekOn(next))
+                // A free talk (talk rules 1) spends no seat, so no beat falls due on it: the house catches up on the next command,
+                // as it would have without the talk, and the talk leaves the season's stream byte-equal (ruling R5).
+                if (AllWeekOn(next) && command.kind != EpisodeCommandKind.JustTalk)
                 {
                     beatsFrom = next.nextSequence;
                     CatchUp(next, CounterOnTheTable(next, current.nextSequence), pending?.SealedFor(next));
@@ -236,6 +238,8 @@ namespace Gamesim.Simulation
                 // Free, like a reply: a question is not an action, and the read is the play.
                 case EpisodeCommandKind.AskVote: AskVote(s, c); break;
                 case EpisodeCommandKind.ReadPerson: ReadPerson(s, c); break;
+                // Free, like a question (talk rules 1, ruling R5): no action is spent and nothing is drawn from the season's stream.
+                case EpisodeCommandKind.JustTalk: ResolveJustTalk(s, c); break;
                 case EpisodeCommandKind.LockFinalArgument: LockFinalArgument(s, c); break;
                 // Under the commitment rules (C2) cutting ties with an ally who turned on the pact this
                 // week, once the player can know it, is free: no action, no warmth, no grudge. Any other

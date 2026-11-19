@@ -455,7 +455,21 @@ namespace Gamesim.Uma
                 Hair = Hair("Dark blonde"),
                 Brows = Hair("Dark blonde"),
                 Eyes = Eyes("Blue"),
-                Dna = new Dictionary<string, float> { ["height"] = .18f, ["armWidth"] = .7f, ["upperMuscle"] = .68f, ["upperWeight"] = .62f, ["headWidth"] = .62f },
+                // His face: fitted to his reference with the game's own face sliders (19 November 2026). These are
+                // the fit set's 22 changed values; head size and the rest are the house's.
+                Dna = new Dictionary<string, float>
+                {
+                    ["height"] = .18f,
+                    ["armWidth"] = .70f,
+                    ["upperMuscle"] = .68f,
+                    ["upperWeight"] = .62f,
+                    ["BrowPosition"] = .25f, ["cheekPosition"] = .25f, ["cheekPronounced"] = .75f, ["cheekSize"] = .28f,
+                    ["chinPosition"] = .64f, ["chinPronounced"] = .67f, ["chinSize"] = .75f, ["eyeRotation"] = .41f,
+                    ["foreheadPosition"] = .26f, ["foreheadSize"] = .63f, ["headWidth"] = 1f, ["jawsPosition"] = .25f,
+                    ["jawsSize"] = .75f, ["mandibleSize"] = .47f, ["mouthSize"] = .25f, ["noseBroken"] = .53f,
+                    ["noseCurve"] = .46f, ["noseInclination"] = .54f, ["nosePosition"] = .56f, ["nosePronounced"] = .47f,
+                    ["noseSize"] = .40f, ["noseWidth"] = .75f,
+                },
             },
 
             // The Comp Queen. Platinum hair worn long and down, a coral top, a beaded necklace.
@@ -566,7 +580,20 @@ namespace Gamesim.Uma
                 Hair = Hair("Honey blonde"),
                 Brows = Hair("Light brown"),
                 Eyes = Eyes("Blue"),
-                Dna = new Dictionary<string, float> { ["height"] = .22f, ["upperMuscle"] = .64f, ["belly"] = .38f },
+                // His face: fitted to his reference with the game's own face sliders (18 November 2026). These are
+                // the fit set's 22 changed values; head size and the rest are the house's.
+                Dna = new Dictionary<string, float>
+                {
+                    ["height"] = .22f,
+                    ["upperMuscle"] = .64f,
+                    ["belly"] = .38f,
+                    ["BrowPosition"] = .35f, ["cheekPosition"] = .51f, ["cheekPronounced"] = .59f, ["cheekSize"] = .38f,
+                    ["chinPosition"] = .35f, ["chinPronounced"] = .75f, ["chinSize"] = .56f, ["eyeRotation"] = .28f,
+                    ["foreheadPosition"] = .46f, ["foreheadSize"] = .40f, ["headWidth"] = 1f, ["jawsPosition"] = .68f,
+                    ["jawsSize"] = .64f, ["lowCheekPosition"] = .27f, ["lowCheekPronounced"] = .55f, ["mandibleSize"] = .52f,
+                    ["mouthSize"] = .45f, ["noseCurve"] = .54f, ["noseInclination"] = .33f, ["nosePosition"] = .65f,
+                    ["nosePronounced"] = .64f, ["noseWidth"] = .58f,
+                },
             },
 
             // The Assassin. Deep brown skin, long dark waves worn down, gold hoops, a hot-pink tank.

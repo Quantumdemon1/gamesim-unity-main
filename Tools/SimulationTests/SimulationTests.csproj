@@ -145,6 +145,9 @@
     <!-- Free talk slice 1 as it ships (level 1 enrolled): the shipped tables in a fresh season, the third beat's line, the schema-30 view since the enrolment, a short walk taking every talk; and the whole-season soak, [Explicit] and compiled out of Unity, run by name. -->
     <Compile Include="$(EditMode)FreeTalkIntegrationTests.cs" />
     <Compile Include="$(EditMode)FreeTalkSeasonSoak.cs" />
+    <!-- Free talk slice 1's review: a free talk does not date the edges (no contact this week), and the star pool's game register. -->
+    <Compile Include="$(EditMode)FreeTalkEdgeTouchTests.cs" />
+    <Compile Include="$(EditMode)StarTalkRegisterTests.cs" />
     <Compile Include="$(EditMode)PooledSchema30ShapeTests.cs" />
     <Compile Include="$(EditMode)OldSaveTrace.cs" />
     <Compile Include="$(EditMode)CurrentOldSaveTrace.cs" />

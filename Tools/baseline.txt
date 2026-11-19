@@ -409,7 +409,9 @@
 # 10717 = 10710 + free talk slice 1's integration: FreeTalkIntegrationTests 7 (the shipped tables in a fresh season of
 # each cast 2, the third beat's line 1, the schema-30 view since level 1's enrolment 2, a two-week walk taking every
 # free talk 2), 2026-11-19. FreeTalkSeasonSoak is compiled out of Unity and adds no case.
-Gamesim.EditModeTests 10717
+# 10720 = 10717 + slice 1's review: FreeTalkEdgeTouchTests 2 (a warm and a cold free talk leave the edges undated) and
+# StarTalkRegisterTests 1 (the star pool's game register), 2026-11-19.
+Gamesim.EditModeTests 10720
 # The UMA-free build. 1215 = 1236, the count after the consolidation's lanes (S2a, S2b, S4a), less the 7
 # farewell probes moved to Gamesim.DiagnosticsPlayModeTests and the 14 farewell readiness tests that now
 # compile only under GAMESIM_UMA (judged on the UMA cast); 1230 = 1215 + S2d's 7, S4b's 2, S4c's 2 and
@@ -1146,4 +1148,6 @@ Gamesim.Uma.DiagnosticsPlayModeTests 10
 # (merge). Counted from the two sides.
 # 22816 = 22809 + free talk slice 1's integration: FreeTalkIntegrationTests 7 (the same cases the EditMode floor counts).
 # FreeTalkSeasonSoak's two cases are [Explicit], run by name, and not counted, as BalanceLabGoldens' are, 2026-11-19.
-Gamesim.SimulationTests 22816
+# 22819 = 22816 + slice 1's review: FreeTalkEdgeTouchTests 2 and StarTalkRegisterTests 1 (the same cases the EditMode
+# floor counts), 2026-11-19.
+Gamesim.SimulationTests 22819

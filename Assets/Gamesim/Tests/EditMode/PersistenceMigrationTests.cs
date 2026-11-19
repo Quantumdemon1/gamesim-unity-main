@@ -278,8 +278,8 @@ namespace Gamesim.Tests.EditMode
         /// <summary>Schema 30's pooled root fields (SCH30, ALL-STAR-HISTORIES-PLAN 5.1), in their declared order, and their off literals.</summary>
         public static readonly string[] Schema30Root = { "alumniRulesVersion", "alumniCatalogEdition", "tuningRulesVersion" };
 
-        /// <summary>Schema 31's story fields (the free talk's S0, FIELDS.md), in their declared order, after the reckonings.</summary>
-        public static readonly string[] Schema31Story = { "talkRules", "talkLean", "talkPairs" };
+        /// <summary>Schema 31's story fields (the free talk's S0 and the minds' ladder, FIELDS.md), in their declared order, after the reckonings.</summary>
+        public static readonly string[] Schema31Story = { "talkRules", "talkLean", "talkPairs", "mindRules" };
 
         /// <summary>Schema 31's contact fields, in ContactState's declared order after lastWeek.</summary>
         public static readonly string[] Schema31Contact =
@@ -291,7 +291,7 @@ namespace Gamesim.Tests.EditMode
 
         /// <summary>
         /// Native test-only inverse of schema 31's literals, the current schema's (the free talk's S0). The real current JSON
-        /// shape and saved semantics, every talk field at its default and in its declared place - the story's three last
+        /// shape and saved semantics, every talk field at its default and in its declared place - the story's four last
         /// on the story, each contact's last on the contact - and the exact UpgradeV30ToV31 inverse precede any caller
         /// mutation. Not a save migration: a talk value that left its default is never erased.
         /// </summary>
@@ -317,6 +317,7 @@ namespace Gamesim.Tests.EditMode
             Assert.That(story["talkRules"]?.Type == JTokenType.Integer && (long)story["talkRules"] == 0, Is.True, "Never erase enabled talk rules.");
             Assert.That(story["talkLean"]?.Type == JTokenType.Integer && (long)story["talkLean"] == 0, Is.True, "Never erase a lean.");
             Assert.That(story["talkPairs"] is JArray pairs && pairs.Count == 0, Is.True, "Never erase housemate pairs.");
+            Assert.That(story["mindRules"]?.Type == JTokenType.Integer && (long)story["mindRules"] == 0, Is.True, "Never erase enabled mind rules.");
             Assert.That(story["contacts"], Is.TypeOf<JArray>());
             foreach (var token in (JArray)story["contacts"])
             {
@@ -349,7 +350,7 @@ namespace Gamesim.Tests.EditMode
 
         /// <summary>
         /// UpgradeV30ToV31's literals by hand, on a detached copy, without the frozen gate (a test's expectation of the
-        /// current form of a schema-30 payload): the story's talk rules 0, lean 0 and no pairs after its reckonings, every
+        /// current form of a schema-30 payload): the story's talk rules 0, lean 0, no pairs and mind rules 0 after its reckonings, every
         /// contact's talk fields at their defaults after its last week, and the header 31.
         /// </summary>
         public static JObject Lift31(JObject payload30)
@@ -362,7 +363,7 @@ namespace Gamesim.Tests.EditMode
 
         /// <summary>
         /// UpgradeV30ToV31's literals by hand, in place, on one schema-30 state object (a captured image's nested state
-        /// too): the story's three and every contact's, at their defaults, in their declared places, and the header 31.
+        /// too): the story's four and every contact's, at their defaults, in their declared places, and the header 31.
         /// </summary>
         internal static void AddSchema31Literals(JObject state)
         {
@@ -372,6 +373,7 @@ namespace Gamesim.Tests.EditMode
                 story.Add("talkRules", 0);
                 story.Add("talkLean", 0);
                 story.Add("talkPairs", new JArray());
+                story.Add("mindRules", 0);
                 if (story["contacts"] is JArray contacts)
                     foreach (var token in contacts)
                     {

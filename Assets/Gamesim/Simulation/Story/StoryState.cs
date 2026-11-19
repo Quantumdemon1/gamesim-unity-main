@@ -95,6 +95,11 @@ namespace Gamesim.Simulation
         /// <summary>Housemate pairs and their spark (slice S4): at most <see cref="TalkRules.MostPairs"/> rows.</summary>
         public List<TalkPairState> talkPairs = new List<TalkPairState>();
 
+        // Schema 31 too, after the talk fields: the housemates' minds' ladder. Declared last so the talk fields' order holds.
+
+        /// <summary>The housemates' minds' ladder (<see cref="MindRules"/>): the level this season was started on. 0 is off.</summary>
+        public int mindRules;
+
         public StoryWorldState Clone()
         {
             var copy = (StoryWorldState)MemberwiseClone();

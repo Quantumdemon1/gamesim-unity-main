@@ -10,7 +10,7 @@ namespace Gamesim.Tests.EditMode
     /// Test-only current31 to retained30 boundary (the free talk's S0). Not a save migration and not an authority to
     /// discard any rule. Every digest of a current state is taken by <see cref="LegacyDigestSchema30Observer"/>, which since
     /// schema 31 reads the current JSON and the state's own view through <see cref="View30"/>: a schema-31 JSON with every
-    /// talk field at its default and in its declared place - the story's three last on the story, each contact's last on
+    /// talk field at its default and in its declared place - the story's four (the talk's three and the minds' ladder) last on the story, each contact's last on
     /// the contact - loses them on a detached copy and gains the header 30, so the schema-30 observer's own contract, and
     /// every older one behind it, sees exactly the schema-30 JSON a schema-30 build wrote. A recorded digest therefore never
     /// moves for the bump: one that moves is a regression, never a re-record. A season with any talk field away from its
@@ -21,8 +21,8 @@ namespace Gamesim.Tests.EditMode
         /// <summary>The live schema this boundary reads.</summary>
         internal const int Live = 31;
 
-        /// <summary>Schema 31's story fields, in their declared order after the reckonings.</summary>
-        internal static readonly string[] Story = { "talkRules", "talkLean", "talkPairs" };
+        /// <summary>Schema 31's story fields, in their declared order after the reckonings: the talk's three, then the minds' ladder.</summary>
+        internal static readonly string[] Story = { "talkRules", "talkLean", "talkPairs", "mindRules" };
 
         /// <summary>Schema 31's contact fields, in ContactState's declared order after lastWeek.</summary>
         internal static readonly string[] Contact =
@@ -47,6 +47,7 @@ namespace Gamesim.Tests.EditMode
                 "The talk fields must stand last on the story, in their declared order.");
             Require(Integer(story["talkRules"], 0) && Integer(story["talkLean"], 0) && story["talkPairs"] is JArray pairs && pairs.Count == 0,
                 "Only a season without free talk has a schema-30 view.");
+            Require(Integer(story["mindRules"], 0), "Only a season without the housemates' minds has a schema-30 view.");
             Require(story["contacts"] is JArray, "A schema-31 source holds its contacts.");
             foreach (var token in (JArray)story["contacts"])
             {

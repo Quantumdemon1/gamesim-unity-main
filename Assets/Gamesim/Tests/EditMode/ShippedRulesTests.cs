@@ -75,6 +75,8 @@ namespace Gamesim.Tests.EditMode
             { "story.rulesVersion", 11 },
             // The free talk's ladder (TalkRules, schema 31): 0, off, until level 1's enrolment (the lead's rulings R3 and R4).
             { "story.talkRules", 0 },
+            // The housemates' minds' ladder (MindRules, schema 31): 0, off; no level is enrolled.
+            { "story.mindRules", 0 },
         };
 
         /// <summary>
@@ -144,6 +146,8 @@ namespace Gamesim.Tests.EditMode
             EpisodeEngine.EnableStory(fresh);
             // The free talk's ladder (schema 31, the lead's ruling R3): written in ApplyFresh only, at TalkRules.Shipped, 0.
             fresh.story.talkRules = TalkRules.Shipped;
+            // The housemates' minds' ladder (MindRules, schema 31): written in ApplyFresh only, at MindRules.Shipped, 0.
+            fresh.story.mindRules = MindRules.Shipped;
             EpisodeEngine.EnableRead(fresh);
             EpisodeEngine.EnableLevers(fresh);
             EpisodeEngine.EnableWeek(fresh);
@@ -386,7 +390,9 @@ namespace Gamesim.Tests.EditMode
                     .Where(f => f.FieldType == typeof(int) && (f.Name.EndsWith("RulesStartWeek", StringComparison.Ordinal)
                         || f.Name.EndsWith("RulesVersion", StringComparison.Ordinal) || f.Name == "rulesStartWeek" || f.Name == "rulesVersion"
                         // The free talk's ladder (schema 31, the lead's ruling R3), the story's own rules field by another name.
-                        || f.Name == "talkRules")))
+                        || f.Name == "talkRules"
+                        // The housemates' minds' ladder (schema 31), likewise.
+                        || f.Name == "mindRules")))
                 {
                     field.SetValue(owner, next++);
                     expected.Add(prefix + field.Name + "=" + field.GetValue(owner));

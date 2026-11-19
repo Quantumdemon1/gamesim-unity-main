@@ -2082,10 +2082,12 @@ The same pattern, one schema on (2026-11-19, `claude/talk-0-schema-31`):
    validator; `PrepareCurrentPayload` runs it on every direct-30 save and on the end of every older chain. Proof: its
    own project `Tools/SimulationTests/Frozen30` over every schema-30 fixture and their mutations.
 2. **The bump (step 2).** The live schema is 31. `UpgradeV30ToV31` runs `FrozenEpisodeV30` first, then writes every
-   talk field at its default and talk rules 0. **The newest reference schema stays 30** (`CurrentOldSaveTrace.Current`;
-   `OldSaveTrace.Newest` is 31): no schema-31 cell exists yet, and a live 31 state is checkpointed at 30 through
-   `LegacyDigestSchema31Observer`'s view, which refuses any talk field away from its default, so no recorded digest
-   moves. A schema-31 cell is owed when a talk level is first enrolled, written by the build that enrols it.
+   talk field at its default and talk rules 0, then the housemates' minds' ladder `story.mindRules` at 0 (`MindRules`,
+   added to the same step so the minds track needs no schema of its own). **The newest reference schema stays 30**
+   (`CurrentOldSaveTrace.Current`; `OldSaveTrace.Newest` is 31): no schema-31 cell exists yet, and a live 31 state is
+   checkpointed at 30 through `LegacyDigestSchema31Observer`'s view, which refuses any talk field or mind rules away
+   from its default, so no recorded digest moves. A schema-31 cell is owed when a talk or mind level is first enrolled,
+   written by the build that enrols it.
 3. **The schema-16 step keeps its own story keys** (the review fix): `UpgradeV15ToV16` writes the bundle from the live
    `StoryWorldState`, so the talk fields once reached the schema-16 reader and had every schema 2 to 15 save refused.
    It now keeps only the 16 keys of schema 16, in order (`EpisodeSaveMigrations.StoryKeysV16`,

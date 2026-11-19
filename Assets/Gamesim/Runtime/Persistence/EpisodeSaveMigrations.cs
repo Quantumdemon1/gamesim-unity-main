@@ -30,7 +30,8 @@ namespace Gamesim.Persistence
 
         /// <summary>
         /// Adds only schema 31's literals (the free "Just talk" feature's S0, FIELDS.md), every one at its default: on the
-        /// story, after its reckonings, the talk rules 0 (free talk off), a lean of 0 and no housemate pairs; on every one of
+        /// story, after its reckonings, the talk rules 0 (free talk off), a lean of 0, no housemate pairs and the minds'
+        /// rules 0 (MindRules: the housemates' decision-making ladder, off); on every one of
         /// the story's contacts, after its last week, the free talk's fields at their defaults. The complete frozen
         /// schema-30 whole reader must accept the untouched original before any clone or literal, so this also holds the
         /// end of every older chain to it. Nothing is inferred: rapport, the story rules and every other value carry over
@@ -45,6 +46,7 @@ namespace Gamesim.Persistence
                 story.Add("talkRules", 0);
                 story.Add("talkLean", 0);
                 story.Add("talkPairs", new JArray());
+                story.Add("mindRules", 0);
                 if (story["contacts"] is JArray contacts)
                     foreach (var token in contacts)
                         if (token is JObject contact) AddContactLiterals(contact);

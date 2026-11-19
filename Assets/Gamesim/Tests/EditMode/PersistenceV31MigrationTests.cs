@@ -13,7 +13,7 @@ namespace Gamesim.Tests.EditMode
 {
     /// <summary>
     /// Schema 31 (the free "Just talk" feature's S0, FIELDS.md): UpgradeV30ToV31 adds only the talk fields at their defaults
-    /// - the story's three after its reckonings, every contact's after its last week - behind the frozen schema-30 whole
+    /// - the story's four after its reckonings, every contact's after its last week - behind the frozen schema-30 whole
     /// reader, and nothing else; the store loads every schema-30 writer fixture read-only, saves it at 31 and reloads it
     /// unmigrated; and the store refuses a 31 holding a talk value this build does not admit without changing a file.
     /// </summary>
@@ -39,7 +39,7 @@ namespace Gamesim.Tests.EditMode
             Assert.That(next.Properties().Select(p => p.Name), Is.EqualTo(original.Properties().Select(p => p.Name)), "No root field is added.");
             var story = (JObject)next["story"];
             var names = story.Properties().Select(p => p.Name).ToList();
-            Assert.That(names.Skip(names.Count - 3), Is.EqualTo(PersistenceMigrationTests.Schema31Story));
+            Assert.That(names.Skip(names.Count - PersistenceMigrationTests.Schema31Story.Length), Is.EqualTo(PersistenceMigrationTests.Schema31Story));
             Assert.That((int)story["talkRules"], Is.Zero, "Old saves load with free talk off.");
             Assert.That((int)story["talkLean"], Is.Zero);
             Assert.That((JArray)story["talkPairs"], Is.Empty);

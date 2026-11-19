@@ -83,6 +83,9 @@ namespace Gamesim.Simulation
             if (w.talkRules == TalkRules.Off && (w.talkLean != 0 || w.talkPairs.Count != 0
                     || w.contacts != null && w.contacts.Any(c => c != null && !TalkContactAtDefaults(c))))
                 return Fail(out error, "A season without free talk has none of its records.");
+            // Schema 31's minds ladder (MindRules): a level this build defines at this schema. No other saved field hangs on it.
+            if (!MindRules.Admits(w.mindRules, s.schemaVersion))
+                return Fail(out error, "Unsupported mind rules version.");
 
             if (w.grudges == null || w.grudges.Count > 256 || w.grudges.Any(g => g == null || !Id(g.holderId) || !Id(g.targetId)
                     || g.holderId == g.targetId || !GrudgeCauses.IsKnown(g.cause) || !Finite(g.severity) || g.severity < 0 || g.severity > 100

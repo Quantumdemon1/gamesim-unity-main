@@ -126,8 +126,8 @@ namespace Gamesim.Tests.EditMode
             (29, "dialogue", new JObject { ["episodes"] = new JArray(), ["grants"] = new JArray(), ["vetoOccasions"] = new JArray() }),
             (29, "unifiedCommitments[].conditionalVeto", JValue.CreateNull()),
             (30, "alumniRulesVersion", 0), (30, "alumniCatalogEdition", JValue.CreateNull()), (30, "tuningRulesVersion", 0),
-            // Schema 31 (the free talk's S0): the story's ladder, lean and pairs, and every contact's talk fields, at their defaults.
-            (31, "story.talkRules", 0), (31, "story.talkLean", 0), (31, "story.talkPairs", new JArray()),
+            // Schema 31 (the free talk's S0): the story's ladder, lean and pairs, the minds' ladder, and every contact's talk fields, at their defaults.
+            (31, "story.talkRules", 0), (31, "story.talkLean", 0), (31, "story.talkPairs", new JArray()), (31, "story.mindRules", 0),
             (31, "story.contacts[].talkWindow", 0), (31, "story.contacts[].talks", 0), (31, "story.contacts[].talkTenths", 0), (31, "story.contacts[].spentTalks", new JArray()),
             (31, "story.contacts[].talkPending", (JToken)""), (31, "story.contacts[].agreement", 0), (31, "story.contacts[].lastTone", (JToken)""), (31, "story.contacts[].priorTone", (JToken)""),
             (31, "story.contacts[].standingWeek", 0), (31, "story.contacts[].standing", (JToken)""), (31, "story.contacts[].stageReached", 0), (31, "story.contacts[].cool", 0),

@@ -49,8 +49,9 @@ namespace Gamesim.Tests.EditMode
             ShippedRules.ApplyFresh(s);
             Assert.That(s.story.talkRules, Is.EqualTo(TalkRules.Shipped));
             var fields = ShippedRules.Fields(s);
-            Assert.That(fields.Last().Key, Is.EqualTo("story.talkRules"));
-            Assert.That(fields.Last().Value, Is.EqualTo(TalkRules.Off));
+            // Second to last since the minds' ladder (story.mindRules) joined the list after it in the same schema.
+            Assert.That(fields[fields.Count - 2].Key, Is.EqualTo("story.talkRules"));
+            Assert.That(fields[fields.Count - 2].Value, Is.EqualTo(TalkRules.Off));
         }
 
         [Test]

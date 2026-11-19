@@ -67,6 +67,9 @@ namespace Gamesim.Simulation
             // The free talk's ladder (TalkRules, the lead's ruling R3): written here and only here. Shipped is level 0, off,
             // until level 1's integrator enrols it after its balance measurement (R4); a plain int, drawing nothing.
             fresh.story.talkRules = TalkRules.Shipped;
+            // The housemates' minds' ladder (MindRules, schema 31): written here and only here, at Shipped, level 0, off,
+            // until a level is enrolled after its balance measurement; a plain int, drawing nothing.
+            fresh.story.mindRules = MindRules.Shipped;
             EpisodeEngine.EnableRead(fresh);
             EpisodeEngine.EnableLevers(fresh);
             EpisodeEngine.EnableWeek(fresh);
@@ -148,6 +151,7 @@ namespace Gamesim.Simulation
                 Field("story.rulesStartWeek", s.story?.rulesStartWeek ?? 0),
                 Field("story.rulesVersion", s.story?.rulesVersion ?? 0),
                 Field("story.talkRules", s.story?.talkRules ?? 0),
+                Field("story.mindRules", s.story?.mindRules ?? 0),
             };
         }
 

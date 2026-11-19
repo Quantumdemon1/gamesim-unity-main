@@ -41,13 +41,15 @@ namespace Gamesim.Tests.EditMode
         /// all 48 cells printed the digests below byte for byte (the rows keep a competition's category, not its game).
         /// story.talkRules=0 came with schema 31 (the free talk's S0, TalkRules): a fresh season plays no free talk, the
         /// field is written 0 and nothing reads it, so no cell moves; level 1's enrolment re-records the cells (ruling R11).
+        /// story.mindRules=0 came with schema 31 too (MindRules, the housemates' minds): written 0 and read by nothing, so no
+        /// cell moves; a level's enrolment re-records the cells.
         /// </summary>
         internal const string Rules = "competitionRulesVersion=5,readRulesStartWeek=1,leverRulesStartWeek=1,weekRulesStartWeek=1,economyRulesVersion=1,"
             + "agencyRulesStartWeek=1,finaleRulesStartWeek=1,commitmentRulesStartWeek=1,unifiedCommitmentRulesVersion=2,unifiedHearingRulesVersion=1,"
             + "blocRulesStartWeek=1,socialBudgetRulesStartWeek=1,dealRulesStartWeek=1,eventRulesStartWeek=1,storyRulesStartWeek=1,haveNotRulesStartWeek=1,"
             + "strategyRulesStartWeek=1,allianceLeakRulesStartWeek=1,pactPlanRulesStartWeek=1,allWeekRulesStartWeek=1,dialogueRulesVersion=0,"
             + "alumniRulesVersion=0,tuningRulesVersion=1,"
-            + "npcSocial.rulesStartWeek=1,story.rulesStartWeek=1,story.rulesVersion=11,story.talkRules=0";
+            + "npcSocial.rulesStartWeek=1,story.rulesStartWeek=1,story.rulesVersion=11,story.talkRules=0,story.mindRules=0";
 
         /// <summary>
         /// Each cell's digest: "policy/roster/size/npcN hash". Recorded with every shipped rule on: the war rooms played,

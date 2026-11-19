@@ -78,6 +78,8 @@ namespace Gamesim.Uma
         {
             var index = UMAAssetIndexer.Instance;
             if (index == null) return;
+            // Pieces kept out of source control are on UMA's index before any recipe is read (PrivatePieceShelf).
+            PrivatePieceShelf.Ensure(index);
             AddBody(index, UmaCastLibrary.FemaleRace, "Body A");
             AddBody(index, UmaCastLibrary.MaleRace, "Body B");
             foreach (var body in bodies) dnaByBody[body.Id] = index.GetRace(body.Id).GetDNANames().Distinct().ToArray();
@@ -178,6 +180,19 @@ namespace Gamesim.Uma
         public static bool IsGrown(string id) => ProceduralHair.IsProcedural(id) || ProceduralAccessories.IsProcedural(id);
 
         /// <summary>
+        /// Whether <paramref name="itemId"/> (an item's id or alias) is a piece a catalog tag names the library look
+        /// <paramref name="lookId"/> for (<see cref="LookPieces.WornBy"/>). Such a piece is made in its own colours,
+        /// so the look's garment dye, chosen for the house garment it replaces, is not laid on it.
+        /// </summary>
+        public bool IsLookPiece(string lookId, string itemId)
+        {
+            if (lookId == null || itemId == null || tagged.Count == 0) return false;
+            string id = AppearanceEditing.Find(this, itemId)?.Id ?? itemId;
+            string tag = LookPieces.WornBy + lookId;
+            return tagged.Any(piece => piece.Id == id && Array.IndexOf(piece.Tags, tag) >= 0);
+        }
+
+        /// <summary>
         /// The library look <paramref name="lookId"/> resolved by, as it is worn: its wardrobe with the pieces a
         /// catalog tag names it for (<see cref="LookPieces.Apply"/>); its own array when none is. Warns once per catalog.
         /// </summary>
@@ -229,8 +244,9 @@ namespace Gamesim.Uma
             if (!appearance.colors.Any(value => value.id == "Brows")) AppearanceEditing.SetColor(appearance, "Brows", look.Brows);
             if (!appearance.colors.Any(value => value.id == "Eyes")) AppearanceEditing.SetColor(appearance, "Eyes", look.Eyes);
             var outfit = AppearanceEditing.Outfit(appearance);
+            string lookId = UmaCastLibrary.ResolveId(appearance.presetId, appearance.fallbackId);
             if (outfit.wardrobe.Count == 0)
-                foreach (string id in LookWardrobe(UmaCastLibrary.ResolveId(appearance.presetId, appearance.fallbackId), look.Race, look.Wardrobe))
+                foreach (string id in LookWardrobe(lookId, look.Race, look.Wardrobe))
                 {
                     var grown = IsGrown(id) ? AppearanceEditing.Find(this, id) : null;
                     if (grown != null) { outfit.wardrobe.Add(new AppearanceWardrobe { slot = grown.Slot, itemId = grown.Id }); continue; }
@@ -240,10 +256,11 @@ namespace Gamesim.Uma
                     // Missing selections retain their ID too; installing the content later restores them.
                     else outfit.wardrobe.Add(new AppearanceWardrobe { slot = "Missing-" + outfit.wardrobe.Count, itemId = id });
                 }
-            // The look's garment colours, saved with the outfit as any dye is.
+            // The look's garment colours, saved with the outfit as any dye is; never on a piece made for the look.
             if (outfit.colors.Count == 0 && look.Fabric != null)
                 foreach (var tint in look.Fabric)
-                    if (outfit.wardrobe.Any(worn => worn.slot == tint.Key)) AppearanceEditing.SetFabric(appearance, tint.Key, tint.Value);
+                    if (outfit.wardrobe.Any(worn => worn.slot == tint.Key && !IsLookPiece(lookId, worn.itemId)))
+                        AppearanceEditing.SetFabric(appearance, tint.Key, tint.Value);
             return appearance;
         }
 

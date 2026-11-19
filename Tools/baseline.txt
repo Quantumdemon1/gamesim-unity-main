@@ -845,7 +845,11 @@ Gamesim.PlayModeTests.UmaBuild 1717
 # the floor is the sum (the merge of main into face slice 3 at its landing, 2026-11-13). Each slice's batch ran the whole
 # assembly as it stood on that slice (175 and 170); counted from the two sides, no run has observed 176.
 # 176 observed: the full UMA suite (set s1full1, 2026-11-14, on the stack's combined test head) ran 176 of 176.
-Gamesim.Uma.PlayModeTests 176
+# 179 = 176 + the private shelf's 3 (UmaPrivatePieceShelfPlayModeTests: an empty or repeated shelf changes nothing and a
+# name clash is refused; a slot, overlay and recipe made in code are registered and the look tagged for them wears them;
+# a look's garment dye is not laid on a piece made for it): counted by the offline lister in the UMA build of
+# claude/allstar-private-shelf (2026-11-18); no Unity run has observed them yet.
+Gamesim.Uma.PlayModeTests 179
 # Diagnostics: feasibility and diagnostic probes, never shipping acceptance. They compile only under
 # GAMESIM_DIAGNOSTICS, which only a diagnostic run adds to the test copy (GAMESIM_DIAGNOSTICS=1 with
 # sync-and-run.sh or the locked runner); the UMA one needs GAMESIM_UMA too. The floor counts that they

@@ -398,7 +398,9 @@
 # offline lister's list of the step's head (10590 cases), 2026-11-19. PlayMode, its UMA build and the Uma suite add none.
 # 10609 = 10590 + the S0 review fixes' 19: TalkSpentToneTests 17 (a spent talk keeps its tone) and
 # PersistenceV16StoryKeysTests 2 (the schema-16 step keeps its own story keys), 2026-11-19.
-Gamesim.EditModeTests 10609
+# 10647 = 10609 + schema 31's minds ladder (story.mindRules, MindRules): MindRulesSchema31Tests 25 and
+# MindRulesSchema31MigrationTests 13, counted in the offline lister's list of the branch's head (10647 cases), 2026-11-19.
+Gamesim.EditModeTests 10647
 # The UMA-free build. 1215 = 1236, the count after the consolidation's lanes (S2a, S2b, S4a), less the 7
 # farewell probes moved to Gamesim.DiagnosticsPlayModeTests and the 14 farewell readiness tests that now
 # compile only under GAMESIM_UMA (judged on the UMA cast); 1230 = 1215 + S2d's 7, S4b's 2, S4c's 2 and
@@ -1123,4 +1125,6 @@ Gamesim.Uma.DiagnosticsPlayModeTests 10
 # dotnet test Tools/SimulationTests ran on the step's head (22704 passed, 0 failed), 2026-11-19.
 # 22721 = 22704 + the S0 review fixes' TalkSpentToneTests 17 (the same cases the EditMode floor counts): what dotnet test
 # Tools/SimulationTests ran on the review branch (22721 passed, 0 failed), 2026-11-19.
-Gamesim.SimulationTests 22721
+# 22746 = 22721 + schema 31's minds ladder: MindRulesSchema31Tests 25 (the same cases the EditMode floor counts; its
+# migration file is editor only): what dotnet test Tools/SimulationTests ran on the branch (22746 passed, 0 failed), 2026-11-19.
+Gamesim.SimulationTests 22746

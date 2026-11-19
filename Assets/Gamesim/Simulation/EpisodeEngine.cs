@@ -2547,12 +2547,15 @@ namespace Gamesim.Simulation
                     s.oathOpportunities.Add(to);
                 Log(s, "relationship-milestone", "Your bond with " + Name(s, to) + " crossed 75. A personal loyalty declaration is available during social time.", s.playerId);
             }
+            // Arcless also leaves the edges untouched: lastInteractionWeek is the contact this week that shows an ally's pact
+            // terms in the vote read (Allegiance.CommitmentKnown). A free talk is not that contact, whatever its warmth; a
+            // neutral one never reaches here, so a warm or cold one must not count either.
+            if (arcless) return;
             foreach (var relation in s.relationships.Where(r => (r.fromId == from && r.toId == to) || (r.fromId == to && r.toId == from)))
             {
                 relation.lastInteractionWeek = s.week;
                 if (note != null) { relation.notes.Add(note); if (relation.notes.Count > 256) relation.notes.RemoveAt(0); }
             }
-            if (arcless) return;
             if (from == s.playerId || to == s.playerId) Arc(s, from == s.playerId ? to : from, adjusted, reason);
             else { Arc(s, to, adjusted, reason); Arc(s, from, adjusted, reason); }
         }

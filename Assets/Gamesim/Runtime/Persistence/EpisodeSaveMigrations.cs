@@ -615,14 +615,14 @@ namespace Gamesim.Persistence
             // frozen schema-16 contract reads, in their order. A story field a later schema adds (schema 31's talk fields)
             // would otherwise reach the schema-16 reader and have every schema 2 to 15 save refused; its own step adds it.
             var live = JObject.FromObject(cast.story, serializer);
-            var story = new JObject();
+            var bundle = new JObject();
             foreach (var key in StoryKeysV16)
             {
                 if (!live.TryGetValue(key, StringComparison.Ordinal, out var value))
                     throw new InvalidDataException("The schema-16 story bundle lacks " + key + ".");
-                story.Add(key, value);
+                bundle.Add(key, value);
             }
-            result.Add("story", story);
+            result.Add("story", bundle);
             result["schemaVersion"] = 16;
             return result;
         }

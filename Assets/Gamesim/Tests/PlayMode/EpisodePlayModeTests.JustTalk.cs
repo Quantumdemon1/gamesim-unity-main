@@ -1,6 +1,7 @@
 using System.Collections;
 using System.Linq;
 using Gamesim.Episode;
+using Gamesim.House;
 using Gamesim.Simulation;
 using NUnit.Framework;
 using TMPro;

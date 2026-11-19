@@ -2523,8 +2523,10 @@ namespace Gamesim.Simulation
 
         // Shared source reducer. The ordinary player path keeps its original stream;
         // trusted NPC completion injects a separate saved stream, without duplicating rules.
+        // Arcless (the free talk, talk rules 1, ruling R5): the scores move and nothing else - no relationship arc step, no weekly
+        // arc history row, no oath milestone - so free chatter never escalates a friendship arc or opens the oath.
         private static void ChangeWithRoll(EpisodeState s, string from, string to, double delta, Func<double> nextRoll,
-            string note = null, string eventType = null)
+            string note = null, string eventType = null, bool arcless = false)
         {
             if (from == to) return;
             double beforeScore = s.Score(from, to);
@@ -2538,7 +2540,7 @@ namespace Gamesim.Simulation
             }
             WriteScore(s, from, to, adjusted);
             WriteScore(s, to, from, WebRules.ReciprocalDelta(delta, nextRoll()));
-            if (from == s.playerId && adjusted > 0 && beforeScore < 75 && s.Score(from, to) >= 75 && !s.shownOathMilestones.Contains(to))
+            if (!arcless && from == s.playerId && adjusted > 0 && beforeScore < 75 && s.Score(from, to) >= 75 && !s.shownOathMilestones.Contains(to))
             {
                 s.shownOathMilestones.Add(to);
                 if (s.Find(to).status == ContestantStatus.Active && s.Active.Count() > 2)
@@ -2550,6 +2552,7 @@ namespace Gamesim.Simulation
                 relation.lastInteractionWeek = s.week;
                 if (note != null) { relation.notes.Add(note); if (relation.notes.Count > 256) relation.notes.RemoveAt(0); }
             }
+            if (arcless) return;
             if (from == s.playerId || to == s.playerId) Arc(s, from == s.playerId ? to : from, adjusted, reason);
             else { Arc(s, to, adjusted, reason); Arc(s, from, adjusted, reason); }
         }

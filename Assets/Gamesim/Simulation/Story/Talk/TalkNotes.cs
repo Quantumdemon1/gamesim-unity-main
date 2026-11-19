@@ -40,10 +40,28 @@ namespace Gamesim.Simulation
         }
 
         /// <summary>"What you know about them": the layers holding at least one learned fact, in layer order; empty when off or nothing is known.</summary>
-        public static List<Layer> WhatYouKnow(EpisodeState s, string npcId) => new List<Layer>();
+        public static List<Layer> WhatYouKnow(EpisodeState s, string npcId)
+        {
+            var layers = new List<Layer>();
+            if (!FreeTalk.On(s) || string.IsNullOrEmpty(npcId)) return layers;
+            foreach (var fact in Lore.Learned(s, npcId))
+            {
+                int number = Math.Max(1, Math.Min(4, fact.depth));
+                var layer = layers.FirstOrDefault(l => l.Number == number);
+                if (layer == null) layers.Add(layer = new Layer { Number = number, Heading = HeadingOf(number) });
+                layer.Facts.Add(fact.text);
+            }
+            return layers.OrderBy(l => l.Number).ToList();
+        }
 
         /// <summary>"This week, from them": the latest snapshot, or null when off or none was taken.</summary>
-        public static Standing FromThem(EpisodeState s, string npcId) => null;
+        public static Standing FromThem(EpisodeState s, string npcId)
+        {
+            if (!FreeTalk.On(s)) return null;
+            var contact = FreeTalk.Contact(s, npcId);
+            if (contact == null || contact.standingWeek <= 0 || string.IsNullOrEmpty(contact.standing)) return null;
+            return new Standing { Week = contact.standingWeek, Line = contact.standing, Current = contact.standingWeek == s.week };
+        }
 
         /// <summary>A layer's heading.</summary>
         public static string HeadingOf(int layer) =>

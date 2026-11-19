@@ -134,9 +134,108 @@ namespace Gamesim.Simulation
             return window == Windows.None ? 0 : s.week * 8 + window + 2;
         }
 
-        /// <summary>What the tile offers for a housemate now, or why nothing.</summary>
-        public static TalkOffer Offer(EpisodeState s, string npcId) =>
-            new TalkOffer { Refusal = TalkRefusal.Off, Reason = OffReason };
+        /// <summary>
+        /// What the tile offers for a housemate now, or why nothing. The talk is the highest-priority one whose gates hold and that
+        /// they have not yet spent (ties on the talk's own keyed coin, so adding a talk reshuffles no other); a spent standing talk
+        /// comes round again once all of theirs are spent; and once nothing unspent is due, a spent "the usual" comes round again
+        /// (ruling R9), its coin keyed to the window so the usuals take turns.
+        /// </summary>
+        public static TalkOffer Offer(EpisodeState s, string npcId)
+        {
+            if (!On(s)) return Refused(TalkRefusal.Off, OffReason);
+            if (s.Find(s.playerId)?.status != ContestantStatus.Active) return Refused(TalkRefusal.PlayerOut, PlayerOutReason);
+            var npc = s.Find(npcId);
+            if (npc == null || npc.isPlayer || npc.status != ContestantStatus.Active) return Refused(TalkRefusal.NotInHouse, NotInHouseReason);
+            int key = WindowKey(s);
+            if (key == 0) return Refused(TalkRefusal.NoWindow, NoWindowReason);
+            var contact = Contact(s, npcId);
+            if (contact != null && contact.talkWindow == key) return Refused(TalkRefusal.TalkedThisWindow, TalkedReason);
+
+            var spent = new HashSet<string>((contact?.spentTalks ?? new List<string>()).Select(TalkRules.SpentId), StringComparer.Ordinal);
+            bool full = spent.Count >= TalkRules.MostSpentTalks;
+            var rows = TalkBank.Rows.Where(t => Holds(s, npc, contact, t)).ToList();
+            bool standingLeft = rows.Any(t => t.Kind == TalkKind.Standing && !spent.Contains(t.Id));
+            TalkRow best = null; bool bestRepeat = false; int bestPriority = int.MinValue; double bestCoin = 2;
+            void Consider(TalkRow t, bool repeat)
+            {
+                int priority = PriorityOf(t);
+                double coin = StoryRandom.Unit(s, repeat ? "talk:v1:r:" + npcId + ":" + key + ":" + t.Id : "talk:v1:q:" + npcId + ":" + t.Id);
+                if (priority < bestPriority || priority == bestPriority && coin >= bestCoin) return;
+                best = t; bestRepeat = repeat; bestPriority = priority; bestCoin = coin;
+            }
+            foreach (var t in rows)
+            {
+                if (!spent.Contains(t.Id)) { if (!full) Consider(t, false); }
+                else if (t.Kind == TalkKind.Standing && !standingLeft) Consider(t, true);
+            }
+            if (best == null)
+                foreach (var t in rows)
+                    if (t.Usual && spent.Contains(t.Id)) Consider(t, true);
+            if (best == null) return Refused(TalkRefusal.NothingToSay, NothingReason);
+            return new TalkOffer { Refusal = TalkRefusal.None, Talk = best, Repeat = bestRepeat };
+        }
+
+        private static TalkOffer Refused(TalkRefusal refusal, string reason) => new TalkOffer { Refusal = refusal, Reason = reason };
+
+        /// <summary>The player's contact row with a housemate, or null before any talk of either kind.</summary>
+        public static ContactState Contact(EpisodeState s, string npcId) =>
+            s?.story?.contacts?.FirstOrDefault(c => c != null && c.npcId == npcId);
+
+        /// <summary>Whether a talk may be said by this housemate now: their pool, a well-formed row, its gates, and a fact or a stance to give.</summary>
+        private static bool Holds(EpisodeState s, ContestantState npc, ContactState contact, TalkRow t)
+        {
+            if (t == null || string.IsNullOrEmpty(t.Id) || t.Id.Length > TalkRules.MostIdLength || t.Id.IndexOf(TalkRules.ToneMark) >= 0
+                || string.IsNullOrEmpty(t.Open) || t.Replies == null || t.Replies.Length == 0
+                || t.Replies.Any(r => r == null || !TalkRules.IsTone(r.Tone) || r.Tone == TalkRules.Flirt)) return false;
+            // The pool (ruling R7): an All-Star template only ever draws the star pool or its own table, and never layer 3.
+            bool star = IsAllStar(npc);
+            string templateId = StoryPeople.TemplateOf(npc)?.Id;
+            bool mine = t.Owner != null ? templateId != null && t.Owner == templateId : t.Pool == (star ? TalkPools.Star : ClassOf(npc));
+            if (!mine || star && (t.Layer == 3 || t.When?.Layer == 3)) return false;
+            // The gates (spec 5.3, the slice-1 subset).
+            var when = t.When ?? new TalkGate();
+            int talks = contact?.talks ?? 0;
+            if (when.First && talks != 0) return false;
+            if (when.Week > 0 && s.week < when.Week) return false;
+            if (when.Window != null && !InWindow(s, when.Window)) return false;
+            if (when.Layer > 0 && !AtLayer(s, npc.id, talks, when.Layer)) return false;
+            // What it gives: a standing talk needs layer 4 and no snapshot yet this week; a layer frame needs a fact within its
+            // layer to lead to, unless it is a first talk, which is said whatever it can give.
+            switch (t.Kind)
+            {
+                case TalkKind.Standing:
+                    return t.Standing != null && StandingOpen(s, npc.id) && (contact == null || contact.standingWeek != s.week);
+                case TalkKind.Layer:
+                    return !t.Reveals || when.First || NextFact(s, npc.id, RevealDepth(s, npc.id, t)) != null;
+                default:
+                    return true;
+            }
+        }
+
+        private static bool InWindow(EpisodeState s, string window)
+        {
+            bool firstNight = EpisodeEngine.IsFirstNight(s);
+            int open = EpisodeEngine.Window(s);
+            switch (window)
+            {
+                case TalkWindows.MoveIn: return firstNight;
+                case TalkWindows.AfterHoH: return open == Windows.AfterHoH;
+                case TalkWindows.AfterNoms: return open == Windows.AfterNominations;
+                case TalkWindows.AfterVeto: return open == Windows.AfterVeto;
+                case TalkWindows.AfterEviction: return open == Windows.AfterEviction && !firstNight;
+                default: return false;
+            }
+        }
+
+        /// <summary><c>layer&gt;=N</c>: 1 after the first counted talk, 2 and 3 by <see cref="OpenLayer"/>, 4 by <see cref="StandingOpen"/>.</summary>
+        private static bool AtLayer(EpisodeState s, string npcId, int talks, int layer)
+        {
+            if (layer <= 0) return true;
+            if (layer == 1) return talks >= 1;
+            if (layer <= 3) return OpenLayer(s, npcId) >= layer;
+            if (layer == 4) return StandingOpen(s, npcId);
+            return false;
+        }
 
         /// <summary>The command's text: <c>talkId|tone</c>, the target the housemate.</summary>
         public static string CommandText(string talkId, string tone) => (talkId ?? "") + "|" + (tone ?? "");
@@ -157,19 +256,145 @@ namespace Gamesim.Simulation
         /// What answering the talk on offer in <paramref name="tone"/> does, on the state the command is submitted against: null when
         /// the command would be refused. The engine applies exactly this result.
         /// </summary>
-        public static TalkResult Result(EpisodeState s, string npcId, string talkId, string tone) => null;
+        public static TalkResult Result(EpisodeState s, string npcId, string talkId, string tone)
+        {
+            var offer = Offer(s, npcId);
+            if (!offer.Available || !string.Equals(offer.Talk.Id, talkId, StringComparison.Ordinal)) return null;
+            var talk = offer.Talk;
+            var reply = talk.Replies.FirstOrDefault(r => r.Tone == tone);
+            if (reply == null) return null;
+            var npc = s.Find(npcId);
+            var contact = Contact(s, npcId);
+            int landing = Landing(s, npc, tone);
 
-        /// <summary>The deepest of layers 1 to 3 open with a housemate (spec 3.7); an All-Star's stops at 2 (ruling R7). 0 when off.</summary>
-        public static int OpenLayer(EpisodeState s, string npcId) => 0;
+            // Warmth (R5): +1, 0, -1; a repeat never gains (R9's small gain); a positive gain stops when either side is at 25.
+            int warmth = landing;
+            if (offer.Repeat) warmth = Math.Min(0, warmth);
+            if (warmth > 0 && (s.Score(npcId, s.playerId) >= WarmthStop || s.Score(s.playerId, npcId) >= WarmthStop)) warmth = 0;
 
-        /// <summary>Whether layer 4, where they stand, is open with a housemate (spec 3.7).</summary>
-        public static bool StandingOpen(EpisodeState s, string npcId) => false;
+            // Rapport in tenths beside the integer (spec 3.4, D1), by the listener's class; a repeat at most a neutral talk's.
+            int tenths = Tenths(landing, offer.Repeat, ClassOf(npc));
+            int rapportBefore = contact?.rapport ?? 0, tenthsBefore = contact?.talkTenths ?? 0;
+            int total = tenthsBefore + tenths;
+
+            var result = new TalkResult
+            {
+                NpcId = npcId, TalkId = talk.Id, Tone = tone, Landing = landing, Reply = reply.Line,
+                Reaction = TalkText.Fill(s, npcId, ReactionAt(reply, landing)),
+                Outcome = landing > 0 ? Landed : landing < 0 ? WrongNote : NothingMuchMoved,
+                Warmth = warmth, Tenths = tenths, RapportBefore = rapportBefore, TenthsBefore = tenthsBefore,
+                RapportAfter = Math.Min(100, rapportBefore + total / 10), TenthsAfter = total % 10, Repeat = offer.Repeat,
+            };
+
+            // A layer frame leads to the next fact within its layer; a grating landing or a reply that holds back learns nothing.
+            if (talk.Kind == TalkKind.Layer && talk.Reveals && landing > -1 && !reply.HoldsBack)
+            {
+                var fact = NextFact(s, npcId, RevealDepth(s, npcId, talk));
+                if (fact != null) { result.FactId = fact.id; result.Fact = fact.text; result.FactLayer = fact.depth; }
+            }
+
+            // Where they stand (R6): in Candour's stance for the week; after a grating landing, the short version (neutral, no
+            // names); a reply that holds back gets nothing.
+            if (talk.Kind == TalkKind.Standing && !reply.HoldsBack)
+            {
+                string stance = landing < 0 ? Candour.Neutral : TalkStanding.Stance(s, npcId);
+                result.Stance = stance;
+                result.StandingLine = TalkStanding.Line(s, npcId, talk, stance);
+            }
+            return result;
+        }
+
+        private static string ReactionAt(TalkReply reply, int landing)
+        {
+            string line = landing > 0 ? reply.Lands : landing < 0 ? reply.Grates : reply.Even;
+            return string.IsNullOrEmpty(line) ? reply.Even ?? "" : line;
+        }
+
+        /// <summary>
+        /// How a tone lands on a housemate (spec 3.3): their reception of its approach plus the approach weights on their own lore
+        /// sheet (every fact, known or not), clamped to -1..+1.
+        /// </summary>
+        public static int Landing(EpisodeState s, ContestantState npc, string tone)
+        {
+            string approach = TalkTone.Approach(tone);
+            if (npc == null || approach == null) return 0;
+            int value = Personality.Reception(npc, approach)
+                + Lore.FactsOf(s, npc.id).Where(f => f.approach == approach).Sum(f => f.sign);
+            return Math.Max(-1, Math.Min(1, value));
+        }
+
+        /// <summary>Rapport tenths a counted talk gains (spec 3.4): 8, 5 or 2 by landing, at most 5 on a repeat; x1.2 Spark, x0.8 Guarded, rounded half up, at least 1.</summary>
+        public static int Tenths(int landing, bool repeat, string listenerClass)
+        {
+            int baseTenths = landing > 0 ? TenthsLands : landing < 0 ? TenthsGrates : TenthsEven;
+            if (repeat) baseTenths = Math.Min(baseTenths, TenthsEven);
+            int times = listenerClass == TalkPools.Spark ? 12 : listenerClass == TalkPools.Guarded ? 8 : 10;
+            return Math.Max(1, (baseTenths * times + 5) / 10);
+        }
+
+        /// <summary>The deepest fact a talk may lead to: its own layer within what is open with them (a first talk: layer 1).</summary>
+        private static int RevealDepth(EpisodeState s, string npcId, TalkRow talk)
+        {
+            int open = Math.Max(1, OpenLayer(s, npcId));
+            return talk.Layer >= 1 && talk.Layer <= 3 ? Math.Min(talk.Layer, open) : open;
+        }
+
+        /// <summary>
+        /// The next fact a free talk leads to: the shallowest hidden one on their snapshotted sheet no deeper than
+        /// <paramref name="depth"/>, never a secret (depth 4 or the secret facet), in the profile's facet order; null when none, or
+        /// when the player already knows the 200 they can.
+        /// </summary>
+        public static Lore.Fact NextFact(EpisodeState s, string npcId, int depth)
+        {
+            if (s?.story?.knownFacts == null || s.story.knownFacts.Count >= 200) return null;
+            return Lore.FactsOf(s, npcId)
+                .Where(f => f.depth >= 1 && f.depth <= depth && f.depth < 4 && f.facet != Lore.Facets.Secret && !Lore.Knows(s, f.id))
+                .OrderBy(f => f.depth).ThenBy(f => Array.IndexOf(Lore.Facets.All, f.facet)).ThenBy(f => f.id, StringComparer.Ordinal)
+                .FirstOrDefault();
+        }
+
+        /// <summary>
+        /// The deepest of layers 1 to 3 open with a housemate (spec 3.7, D13): 1 from the first talk, 2 at rapport 3, 3 at rapport 6
+        /// with their view of you 15 or a finished personal story. An All-Star's stops at 2 (ruling R7). 0 when off or not a housemate.
+        /// </summary>
+        public static int OpenLayer(EpisodeState s, string npcId)
+        {
+            if (!On(s)) return 0;
+            var npc = s.Find(npcId);
+            if (npc == null || npc.isPlayer) return 0;
+            int rapport = Contact(s, npcId)?.rapport ?? 0;
+            if (rapport < BackgroundRapport) return 1;
+            if (IsAllStar(npc) || rapport < DrivesRapport) return 2;
+            return s.Score(npcId, s.playerId) >= DrivesView || EpisodeEngine.FinishedPersonalBeat(s, npcId) ? 3 : 2;
+        }
+
+        /// <summary>
+        /// Whether layer 4, where they stand, is open with a housemate (spec 3.7, the Friend numbers): rapport 6 (Guarded 8), their
+        /// view of you 35, from week 2.
+        /// </summary>
+        public static bool StandingOpen(EpisodeState s, string npcId)
+        {
+            if (!On(s)) return false;
+            var npc = s.Find(npcId);
+            if (npc == null || npc.isPlayer || s.week < StandingWeek) return false;
+            int need = ClassOf(npc) == TalkPools.Guarded ? StandingRapportGuarded : StandingRapport;
+            return (Contact(s, npcId)?.rapport ?? 0) >= need && s.Score(npcId, s.playerId) >= StandingView;
+        }
 
         /// <summary>The pool a housemate's talks come from: <see cref="TalkPools.Star"/> for any All-Star template, else their class.</summary>
-        public static string PoolOf(ContestantState who) => TalkPools.Steady;
+        public static string PoolOf(ContestantState who) => IsAllStar(who) ? TalkPools.Star : ClassOf(who);
 
-        /// <summary>A housemate's temperament class from their six axes (spec 3.5): Spark, Steady or Guarded.</summary>
-        public static string ClassOf(ContestantState who) => TalkPools.Steady;
+        /// <summary>
+        /// A housemate's temperament class from their six axes (spec 3.5): Spark at Sociable 2 or more with Bold or Warm 1 or more;
+        /// Guarded at Sociable -1 or less, or Steady 3 or more with Sociable 0 or less; Steady otherwise.
+        /// </summary>
+        public static string ClassOf(ContestantState who)
+        {
+            var a = Personality.Of(who);
+            if (a.Sociable >= 2 && (a.Bold >= 1 || a.Warm >= 1)) return TalkPools.Spark;
+            if (a.Sociable <= -1 || a.Steady >= 3 && a.Sociable <= 0) return TalkPools.Guarded;
+            return TalkPools.Steady;
+        }
 
         /// <summary>Whether a card was built from an All-Stars template, whatever it is now named (ruling R7).</summary>
         public static bool IsAllStar(ContestantState who) =>

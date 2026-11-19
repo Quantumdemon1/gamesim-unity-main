@@ -310,7 +310,7 @@ namespace Gamesim.Simulation
         }
 
         /// <summary>Whether the player has finished a personal story with somebody: the key to depth three.</summary>
-        private static bool FinishedPersonalBeat(EpisodeState s, string npcId) =>
+        internal static bool FinishedPersonalBeat(EpisodeState s, string npcId) =>
             s.storylines.Any(x => x.lane == StoryLanes.Personal && x.status == StorylineStatus.Completed
                                   && x.cast.Any(r => r.contestantId == npcId) && x.path.Any(p => p.result != StoryResults.Lapsed));
 

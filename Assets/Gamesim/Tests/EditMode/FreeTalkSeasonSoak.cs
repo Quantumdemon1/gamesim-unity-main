@@ -28,7 +28,8 @@ namespace Gamesim.Tests.EditMode
             var tallies = new List<FreeTalkIntegrationTests.Tally>();
             for (uint seed = first; seed < first + 12; seed++)
             {
-                var tally = FreeTalkIntegrationTests.Soak(seed, roster, 0);
+                // Twelve housemates: the longest season either cast seats (all twelve All-Stars), so the bank is asked the most.
+                var tally = FreeTalkIntegrationTests.Soak(seed, roster, 0, 12);
                 TestContext.WriteLine(tally.Line(roster + "/" + seed));
                 Assert.That(tally.Finished, Is.True, roster + "/" + seed + ": the season reached its end.");
                 tallies.Add(tally);

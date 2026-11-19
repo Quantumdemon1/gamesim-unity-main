@@ -77,6 +77,9 @@ namespace Gamesim.Tests.EditMode
             Assert.That(json.ToString(Formatting.None), Is.EqualTo(before), "The input is never changed.");
             Assert.That(view.ToString(Formatting.None), Is.EqualTo(LegacyDigestSchema31Observer.View30(JObject.FromObject(atZero)).ToString(Formatting.None)),
                 "A season nobody talked in is the same schema-30 JSON at level 1 as at 0.");
+            // The old-save recorder's projection (OldSaveTrace) takes it down the same way: the same three hashes.
+            Assert.That(OldSaveTrace.Checkpoint(s, 30), Is.EqualTo(OldSaveTrace.Checkpoint(atZero, 30)),
+                "The recorder's checkpoint at 30 of a season nobody talked in is the same at level 1 as at 0.");
         }
 
         [Test]
@@ -89,6 +92,8 @@ namespace Gamesim.Tests.EditMode
             Assert.That(engine.Apply(FreeTalkFixture.Command(s, npc, offer.Talk.Id, offer.Talk.Replies[0].Tone)).accepted, Is.True);
             Assert.Throws<InvalidDataException>(() => LegacyDigestSchema31Observer.View30(JObject.FromObject(engine.Snapshot)),
                 "A talk had writes the contact's window and count: refused, never viewed as a season without free talk.");
+            Assert.Throws<InvalidDataException>(() => OldSaveTrace.Checkpoint(engine.Snapshot, 30),
+                "The recorder's projection refuses it too: the contact's talk fields left their literals.");
         }
 
         // ------------------------------------------------------------------ a short walk taking every talk on offer
@@ -105,10 +110,10 @@ namespace Gamesim.Tests.EditMode
 
         // ------------------------------------------------------------------ the soak (shared with FreeTalkSeasonSoak)
 
-        /// <summary>A fresh season the game starts, of eight, at its shipped rules (talk rules 1).</summary>
-        internal static EpisodeState FreshShipped(uint seed, CastTemplates.Roster roster)
+        /// <summary>A fresh season the game starts, of eight unless said, at its shipped rules (talk rules 1).</summary>
+        internal static EpisodeState FreshShipped(uint seed, CastTemplates.Roster roster, int size = 8)
         {
-            var s = SeasonBuilder.Create(new SeasonBuilder.Choice { HouseSize = 8, Roster = roster }, seed);
+            var s = SeasonBuilder.Create(new SeasonBuilder.Choice { HouseSize = size, Roster = roster }, seed);
             ShippedRules.ApplyFresh(s);
             return s;
         }
@@ -116,13 +121,14 @@ namespace Gamesim.Tests.EditMode
         /// <summary>What a soak saw.</summary>
         internal sealed class Tally
         {
-            public int Talks, Windows, Repeats, StandingRepeats, Facts, StandingLines, StarTalks, Steps, MostRapport, Week;
+            public int Talks, Windows, Repeats, StandingRepeats, Facts, StandingLines, StarTalks, Steps, MostRapport, Week, PlayerInWeek;
             public bool Finished;
 
             public string Line(string label) =>
                 "SOAK " + label + ": talks " + Talks + ", windows " + Windows + ", usual repeats " + Repeats + ", standing repeats "
                 + StandingRepeats + ", facts " + Facts + ", standing lines " + StandingLines + ", star-pool talks " + StarTalks
-                + ", most rapport " + MostRapport + ", steps " + Steps + ", last week " + Week + (Finished ? ", finished" : "");
+                + ", most rapport " + MostRapport + ", steps " + Steps + ", player in to week " + PlayerInWeek + ", last week " + Week
+                + (Finished ? ", finished" : "");
         }
 
         private static readonly JsonSerializerSettings Reload = new JsonSerializerSettings { ObjectCreationHandling = ObjectCreationHandling.Replace };
@@ -136,10 +142,10 @@ namespace Gamesim.Tests.EditMode
         /// (ruling R9); an All-Star only ever given star-pool talks of layers 1, 2 and 4 (and house-life rhythm), never a fact
         /// past layer 2; every state after a talk or a house step valid, and the same after a save and reload.
         /// </summary>
-        internal static Tally Soak(uint seed, CastTemplates.Roster roster, int untilWeek)
+        internal static Tally Soak(uint seed, CastTemplates.Roster roster, int untilWeek, int size = 8)
         {
             var tally = new Tally();
-            var engine = new EpisodeEngine(FreshShipped(seed, roster));
+            var engine = new EpisodeEngine(FreshShipped(seed, roster, size));
             var seen = new Dictionary<string, HashSet<string>>(StringComparer.Ordinal);
             var talked = new HashSet<string>(StringComparer.Ordinal);
             int lastKey = -1;
@@ -151,19 +157,33 @@ namespace Gamesim.Tests.EditMode
                 if (untilWeek > 0 && s.week >= untilWeek) return tally;
                 int key = FreeTalk.WindowKey(s);
                 bool playerIn = s.Find(s.playerId).status == ContestantStatus.Active;
+                if (playerIn) tally.PlayerInWeek = s.week;
                 if (key != 0 && playerIn && key != lastKey) { tally.Windows++; lastKey = key; }
                 if (key != 0 && playerIn)
                     foreach (var npc in s.Active.Where(c => !c.isPlayer).Select(c => c.id).ToList())
                         TalkOnce(engine, npc, key, seen, talked, tally);
                 s = engine.Snapshot;
                 if (s.phase == EpisodePhase.Finished) { tally.Finished = true; return tally; }
-                var result = engine.Apply(EpisodeEngineTests.NextCommand(s));
+                var result = engine.Apply(Next(s));
                 Assert.That(result.accepted, Is.True, "The house's step: " + result.reason);
                 tally.Steps++;
                 ValidAndReloads(engine.Snapshot, "after a house step");
             }
             Assert.Fail("The season did not finish within its step budget.");
             return tally;
+        }
+
+        /// <summary>The engine tests' next lawful command, answering a finale question with an offered response (as AllWeekCadenceTests' walk does).</summary>
+        private static EpisodeCommand Next(EpisodeState state)
+        {
+            var command = EpisodeEngineTests.NextCommand(state);
+            if (command.kind == EpisodeCommandKind.AnswerJury && EpisodeEngine.FinaleOn(state))
+            {
+                var exchange = state.juryExchanges[state.juryQuestionIndex];
+                if (exchange.finalistId == state.playerId)
+                    command.secondTargetId = FinaleQuestions.Offered(exchange.category, exchange.receiptKind).First();
+            }
+            return command;
         }
 
         private static void TalkOnce(EpisodeEngine engine, string npcId, int key, Dictionary<string, HashSet<string>> seen,

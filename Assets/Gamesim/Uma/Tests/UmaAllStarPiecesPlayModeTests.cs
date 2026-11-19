@@ -322,6 +322,64 @@ namespace Gamesim.Uma.Tests
             return BuiltBodyCarriesFittedFace(Dan, DanFitted, "LookPiecesTests.E12");
         }
 
+        // ------------------------------------------------------------------------- Tyler's face, on his built body
+
+        private const string Tyler = "tyler-crispen";
+
+        /// <summary>
+        /// Tyler's face: fitted to his reference with the game's own face sliders, then built in the game and compared
+        /// (18 November 2026). The fit set's 22 changed values, as UmaCastLibrary's look gives them.
+        /// </summary>
+        private static readonly Dictionary<string, float> TylerFitted = new Dictionary<string, float>(StringComparer.Ordinal)
+        {
+            ["BrowPosition"] = .35f, ["cheekPosition"] = .51f, ["cheekPronounced"] = .59f, ["cheekSize"] = .38f,
+            ["chinPosition"] = .35f, ["chinPronounced"] = .75f, ["chinSize"] = .56f, ["eyeRotation"] = .28f,
+            ["foreheadPosition"] = .46f, ["foreheadSize"] = .40f, ["headWidth"] = 1f, ["jawsPosition"] = .68f,
+            ["jawsSize"] = .64f, ["lowCheekPosition"] = .27f, ["lowCheekPronounced"] = .55f, ["mandibleSize"] = .52f,
+            ["mouthSize"] = .45f, ["noseCurve"] = .54f, ["noseInclination"] = .33f, ["nosePosition"] = .65f,
+            ["nosePronounced"] = .64f, ["noseWidth"] = .58f,
+        };
+
+        /// <summary>
+        /// Tyler, as a season puts him in the house, built by the game's own provider: his built body's DNA carries each of
+        /// his 22 fitted values within .001, the same check as Will's. headWidth 1 lies outside the creator sliders'
+        /// .25 to .75, so a clamp on the route from his look to his body would move it first.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator TylersBuiltBodyCarriesHisFittedFace()
+        {
+            return BuiltBodyCarriesFittedFace(Tyler, TylerFitted, "LookPiecesTests.E13");
+        }
+
+        // ------------------------------------------------------------------------- Derrick's face, on his built body
+
+        private const string Derrick = "derrick-levasseur";
+
+        /// <summary>
+        /// Derrick's face: fitted to his reference with the game's own face sliders, then built in the game and compared
+        /// (19 November 2026). The fit set's 22 changed values, as UmaCastLibrary's look gives them.
+        /// </summary>
+        private static readonly Dictionary<string, float> DerrickFitted = new Dictionary<string, float>(StringComparer.Ordinal)
+        {
+            ["BrowPosition"] = .25f, ["cheekPosition"] = .25f, ["cheekPronounced"] = .75f, ["cheekSize"] = .28f,
+            ["chinPosition"] = .64f, ["chinPronounced"] = .67f, ["chinSize"] = .75f, ["eyeRotation"] = .41f,
+            ["foreheadPosition"] = .26f, ["foreheadSize"] = .63f, ["headWidth"] = 1f, ["jawsPosition"] = .25f,
+            ["jawsSize"] = .75f, ["mandibleSize"] = .47f, ["mouthSize"] = .25f, ["noseBroken"] = .53f,
+            ["noseCurve"] = .46f, ["noseInclination"] = .54f, ["nosePosition"] = .56f, ["nosePronounced"] = .47f,
+            ["noseSize"] = .40f, ["noseWidth"] = .75f,
+        };
+
+        /// <summary>
+        /// Derrick, as a season puts him in the house, built by the game's own provider: his built body's DNA carries each
+        /// of his 22 fitted values within .001, the same check as Will's. headWidth 1 lies outside the creator sliders'
+        /// .25 to .75, so a clamp on the route from his look to his body would move it first.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator DerricksBuiltBodyCarriesHisFittedFace()
+        {
+            return BuiltBodyCarriesFittedFace(Derrick, DerrickFitted, "LookPiecesTests.E14");
+        }
+
         /// <summary>
         /// One houseguest, as a season puts him in the house: his template's contestant, its appearance resolved by the
         /// season's snapshot, attached through the registered provider; his built body's DNA must carry every fitted value.
@@ -392,7 +450,7 @@ namespace Gamesim.Uma.Tests
                     if (!dna.TryGetValue(entry.Key, out var setter)) off.Add(entry.Key + " missing (wanted " + entry.Value + ")");
                     else if (Math.Abs(setter.Value - entry.Value) > .001f) off.Add(entry.Key + " " + setter.Value + " (wanted " + entry.Value + ")");
                 }
-                Assert.That(off, Is.Empty, id + "'s built body's DNA must carry his 26 fitted values within .001. A value outside the creator sliders' "
+                Assert.That(off, Is.Empty, id + "'s built body's DNA must carry his " + fitted.Count + " fitted values within .001. A value outside the creator sliders' "
                     + ".25 to .75 is the first a clamp on the route from his look to his body would move. Off: "
                     + string.Join(", ", off));
             }

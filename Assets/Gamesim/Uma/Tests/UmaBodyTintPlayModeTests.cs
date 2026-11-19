@@ -396,6 +396,35 @@ namespace Gamesim.Uma.Tests
             }
         }
 
+        /// <summary>
+        /// The iris shows the eye colour: UMA multiplies its grey iris texture by the body's eye colour, so the body is
+        /// given the swatch over that grey (UmaBodyProvider.IrisColour), and the iris overlay carries it. Given the swatch
+        /// itself, a dark brown iris drew near black. The saved appearance keeps the swatch.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator TheIrisIsGivenTheEyeColourOverTheIrisTexturesGrey()
+        {
+            yield return null;
+            var brown = CharacterPalettes.Named(CharacterPalettes.Eyes, "Dark brown");
+            var appearance = Look(ContentCatalog.PlayerId);
+            AppearanceEditing.SetColor(appearance, "Eyes", brown);
+            var built = new Built(); yield return Build(built, ContentCatalog.PlayerId, appearance);
+            var avatar = built.Body.Root.GetComponent<DynamicCharacterAvatar>();
+            var given = UmaBodyProvider.IrisColour(brown);
+            Assert.That(given.maxColorComponent, Is.GreaterThan(brown.maxColorComponent * 2f), "The colour given is lighter than the swatch.");
+
+            var shared = avatar.GetColor("Eyes");
+            Assert.That(shared, Is.Not.Null, "The body has an eye colour.");
+            Assert.That(Apart(shared.channelMask[0], given), Is.LessThan(.02f), "The body's eye colour is the swatch over the iris's grey.");
+            var irises = avatar.umaData.umaRecipe.slotDataList.Where(slot => slot != null).SelectMany(slot => slot.GetOverlayList())
+                .Where(overlay => overlay?.colorData != null && overlay.overlayName == "UMA30_Eyes_Iris").ToArray();
+            Assert.That(irises, Is.Not.Empty, "The iris is built.");
+            foreach (var iris in irises)
+                Assert.That(Apart(iris.colorData.channelMask[0], given), Is.LessThan(.02f), "The iris carries the colour given.");
+            Assert.That(Apart(AppearanceEditing.ColorValue(appearance, "Eyes", Color.clear), brown), Is.LessThan(1e-5f),
+                "The saved appearance keeps the swatch.");
+        }
+
         /// <summary>The slots a wardrobe recipe put on a built body.</summary>
         private static SlotData[] Slots(UMAData data, string recipeName)
         {

@@ -12,7 +12,7 @@ namespace Gamesim.Tests.EditMode
 {
     /// <summary>
     /// A look wears the pieces a catalog entry's <c>worn-by:</c> tag names it for (<see cref="LookPieces.Apply"/>),
-    /// and LibraryLooks.txt's line (<see cref="LookPieces.LibraryLine"/>), and Will's, Dan's, Tyler's and Derrick's fitted faces in the file. Plain strings
+    /// and LibraryLooks.txt's line (<see cref="LookPieces.LibraryLine"/>), and Will's, Dan's, Tyler's, Derrick's and Danielle's fitted faces in the file. Plain strings
     /// and one plain file read: no UMA, no engine.
     /// </summary>
     public sealed class LookPiecesTests
@@ -328,17 +328,55 @@ namespace Gamesim.Tests.EditMode
             AssertFittedLine("derrick-levasseur", DerrickFitted, DerrickKept, 22);
         }
 
-        private static void AssertFittedLine(string id, Dictionary<string, float> fitted, Dictionary<string, float> kept, int count = 26)
+        // ------------------------------------------------------------------------- Danielle's face
+
+        /// <summary>
+        /// Danielle's face: fitted to her reference with the game's own face sliders, then built in the game and compared
+        /// (19 November 2026). The fit set's 22 changed values, as UmaCastLibrary's look gives them.
+        /// </summary>
+        private static readonly Dictionary<string, float> DanielleFitted = new Dictionary<string, float>(StringComparer.Ordinal)
+        {
+            ["cheekPosition"] = .51f, ["cheekPronounced"] = .46f, ["cheekSize"] = .53f, ["chinPosition"] = .54f,
+            ["chinPronounced"] = .54f, ["chinSize"] = .41f, ["eyeRotation"] = .64f, ["foreheadPosition"] = .57f,
+            ["foreheadSize"] = .25f, ["headWidth"] = .62f, ["jawsPosition"] = .37f, ["jawsSize"] = .53f,
+            ["lowCheekPosition"] = .53f, ["lowCheekPronounced"] = .47f, ["mandibleSize"] = .48f, ["noseBroken"] = .46f,
+            ["noseCurve"] = .28f, ["noseInclination"] = .48f, ["nosePosition"] = .43f, ["nosePronounced"] = .46f,
+            ["noseSize"] = .42f, ["noseWidth"] = .74f,
+        };
+
+        /// <summary>
+        /// Her other merged values, as they were before the fit: the house's, and her own height, eye spacing and lips.
+        /// Her old cheek size (.58) and head width (.58) are not kept: both are fitted values.
+        /// </summary>
+        private static readonly Dictionary<string, float> DanielleKept = new Dictionary<string, float>(StringComparer.Ordinal)
+        {
+            ["armWidth"] = .62f, ["eyeSize"] = .62f, ["eyeSpacing"] = .56f, ["feetSize"] = .66f, ["forearmWidth"] = .62f,
+            ["handsSize"] = .68f, ["headSize"] = .72f, ["height"] = .13f, ["legsSize"] = .62f, ["lipsSize"] = .6f,
+            ["lowerMuscle"] = .58f, ["neckThickness"] = .6f, ["upperMuscle"] = .58f,
+        };
+
+        /// <summary>
+        /// Danielle's line in LibraryLooks.txt, on the female race, holds her 22 fitted face values and, for every other
+        /// name, the value it had before the fit, and no name besides: the same check as Will's (E10).
+        /// </summary>
+        [Test]
+        public void E15_DaniellesLineCarriesHerFittedFaceAndKeepsHerOtherValues()
+        {
+            AssertFittedLine("danielle-reyes", DanielleFitted, DanielleKept, 22, Female);
+        }
+
+        private static void AssertFittedLine(string id, Dictionary<string, float> fitted, Dictionary<string, float> kept, int count = 26,
+            string race = Male)
         {
             string line = File.ReadAllText(LibraryLooksPath(), Encoding.UTF8).Split('\n')
                 .Single(text => text.StartsWith(id + "\t", StringComparison.Ordinal));
             string[] fields = line.Split('\t');
-            Assert.That(fields[1], Is.EqualTo(Male));
+            Assert.That(fields[1], Is.EqualTo(race), id + "'s race.");
             var values = fields.Skip(2).Select(field => field.Split('=')).ToDictionary(pair => pair[0],
                 pair => float.Parse(pair[1], NumberStyles.Float, CultureInfo.InvariantCulture), StringComparer.Ordinal);
             Assert.That(fitted, Has.Count.EqualTo(count), id + ": the fit set's " + count + " changed values.");
             Assert.That(fitted.Keys.Intersect(kept.Keys), Is.Empty, "A name is fitted or kept, not both.");
-            Assert.That(values.Keys, Is.EquivalentTo(fitted.Keys.Concat(kept.Keys)), id + ": his names are the " + count + " fitted and the kept, no other.");
+            Assert.That(values.Keys, Is.EquivalentTo(fitted.Keys.Concat(kept.Keys)), id + ": the names are the " + count + " fitted and the kept, no other.");
             foreach (var entry in fitted)
                 Assert.That(values[entry.Key], Is.EqualTo(entry.Value), id + " fitted " + entry.Key);
             foreach (var entry in kept)

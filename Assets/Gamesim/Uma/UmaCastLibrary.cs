@@ -537,7 +537,20 @@ namespace Gamesim.Uma
                 Brows = Hair("Soft black"),
                 Eyes = Eyes("Dark brown"),
                 Fabric = new Dictionary<string, Color> { ["Chest"] = Hex("E7D9C0") },
-                Dna = new Dictionary<string, float> { ["height"] = .13f, ["cheekSize"] = .58f, ["eyeSpacing"] = .56f, ["lipsSize"] = .6f },
+                // Her face: fitted to her reference with the game's own face sliders (19 November 2026). These are
+                // the fit set's 22 changed values; head size and the rest are the house's.
+                Dna = new Dictionary<string, float>
+                {
+                    ["height"] = .13f,
+                    ["eyeSpacing"] = .56f,
+                    ["lipsSize"] = .60f,
+                    ["cheekPosition"] = .51f, ["cheekPronounced"] = .46f, ["cheekSize"] = .53f, ["chinPosition"] = .54f,
+                    ["chinPronounced"] = .54f, ["chinSize"] = .41f, ["eyeRotation"] = .64f, ["foreheadPosition"] = .57f,
+                    ["foreheadSize"] = .25f, ["headWidth"] = .62f, ["jawsPosition"] = .37f, ["jawsSize"] = .53f,
+                    ["lowCheekPosition"] = .53f, ["lowCheekPronounced"] = .47f, ["mandibleSize"] = .48f, ["noseBroken"] = .46f,
+                    ["noseCurve"] = .28f, ["noseInclination"] = .48f, ["nosePosition"] = .43f, ["nosePronounced"] = .46f,
+                    ["noseSize"] = .42f, ["noseWidth"] = .74f,
+                },
             },
 
             // The Poker Player. Long straight blonde hair under a black trucker cap, a black blazer.

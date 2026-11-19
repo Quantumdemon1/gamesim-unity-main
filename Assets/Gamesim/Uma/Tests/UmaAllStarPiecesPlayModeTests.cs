@@ -380,6 +380,34 @@ namespace Gamesim.Uma.Tests
             return BuiltBodyCarriesFittedFace(Derrick, DerrickFitted, "LookPiecesTests.E14");
         }
 
+        // ------------------------------------------------------------------------- Danielle's face, on her built body
+
+        private const string Danielle = "danielle-reyes";
+
+        /// <summary>
+        /// Danielle's face: fitted to her reference with the game's own face sliders, then built in the game and compared
+        /// (19 November 2026). The fit set's 22 changed values, as UmaCastLibrary's look gives them.
+        /// </summary>
+        private static readonly Dictionary<string, float> DanielleFitted = new Dictionary<string, float>(StringComparer.Ordinal)
+        {
+            ["cheekPosition"] = .51f, ["cheekPronounced"] = .46f, ["cheekSize"] = .53f, ["chinPosition"] = .54f,
+            ["chinPronounced"] = .54f, ["chinSize"] = .41f, ["eyeRotation"] = .64f, ["foreheadPosition"] = .57f,
+            ["foreheadSize"] = .25f, ["headWidth"] = .62f, ["jawsPosition"] = .37f, ["jawsSize"] = .53f,
+            ["lowCheekPosition"] = .53f, ["lowCheekPronounced"] = .47f, ["mandibleSize"] = .48f, ["noseBroken"] = .46f,
+            ["noseCurve"] = .28f, ["noseInclination"] = .48f, ["nosePosition"] = .43f, ["nosePronounced"] = .46f,
+            ["noseSize"] = .42f, ["noseWidth"] = .74f,
+        };
+
+        /// <summary>
+        /// Danielle, as a season puts her in the house, built by the game's own provider on her look's race (the female
+        /// one): her built body's DNA carries each of her 22 fitted values within .001, the same check as Will's.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator DaniellesBuiltBodyCarriesHerFittedFace()
+        {
+            return BuiltBodyCarriesFittedFace(Danielle, DanielleFitted, "LookPiecesTests.E15");
+        }
+
         /// <summary>
         /// One houseguest, as a season puts him in the house: his template's contestant, its appearance resolved by the
         /// season's snapshot, attached through the registered provider; his built body's DNA must carry every fitted value.
@@ -450,7 +478,7 @@ namespace Gamesim.Uma.Tests
                     if (!dna.TryGetValue(entry.Key, out var setter)) off.Add(entry.Key + " missing (wanted " + entry.Value + ")");
                     else if (Math.Abs(setter.Value - entry.Value) > .001f) off.Add(entry.Key + " " + setter.Value + " (wanted " + entry.Value + ")");
                 }
-                Assert.That(off, Is.Empty, id + "'s built body's DNA must carry his " + fitted.Count + " fitted values within .001. A value outside the creator sliders' "
+                Assert.That(off, Is.Empty, id + "'s built body's DNA must carry the " + fitted.Count + " fitted values within .001. A value outside the creator sliders' "
                     + ".25 to .75 is the first a clamp on the route from his look to his body would move. Off: "
                     + string.Join(", ", off));
             }

@@ -297,14 +297,15 @@ namespace Gamesim.Tests.EditMode
 
         /// <summary>
         /// Derrick's face: fitted with the game's own face sliders, then built in the game and compared
-        /// (19 November 2026). The fit set's 22 changed values, as UmaCastLibrary's look gives them.
+        /// (19 November 2026). The fit set's 22 changed values, as UmaCastLibrary's look gives them; mandibleSize .50 in
+        /// place of the fit's .47 since 20 November 2026, so the lips stay closed.
         /// </summary>
         private static readonly Dictionary<string, float> DerrickFitted = new Dictionary<string, float>(StringComparer.Ordinal)
         {
             ["BrowPosition"] = .25f, ["cheekPosition"] = .25f, ["cheekPronounced"] = .75f, ["cheekSize"] = .28f,
             ["chinPosition"] = .64f, ["chinPronounced"] = .67f, ["chinSize"] = .75f, ["eyeRotation"] = .41f,
             ["foreheadPosition"] = .26f, ["foreheadSize"] = .63f, ["headWidth"] = 1f, ["jawsPosition"] = .25f,
-            ["jawsSize"] = .75f, ["mandibleSize"] = .47f, ["mouthSize"] = .25f, ["noseBroken"] = .53f,
+            ["jawsSize"] = .75f, ["mandibleSize"] = .50f, ["mouthSize"] = .25f, ["noseBroken"] = .53f,
             ["noseCurve"] = .46f, ["noseInclination"] = .54f, ["nosePosition"] = .56f, ["nosePronounced"] = .47f,
             ["noseSize"] = .40f, ["noseWidth"] = .75f,
         };
@@ -327,7 +328,7 @@ namespace Gamesim.Tests.EditMode
         [Test]
         public void E14_DerricksLineCarriesHisFittedFaceAndKeepsHisOtherValues()
         {
-            AssertFittedLine("derrick-levasseur", DerrickFitted, DerrickKept, 22);
+            AssertFittedLine("derrick-levasseur", DerrickFitted, DerrickKept, 22, Male, DerrickEyeMouth);
         }
 
         // ------------------------------------------------------------------------- Danielle's face
@@ -497,6 +498,11 @@ namespace Gamesim.Tests.EditMode
         private static readonly Dictionary<string, float> ChelsieEyeMouth = new Dictionary<string, float>(StringComparer.Ordinal)
         {
             ["mouthSize"] = .37f,
+        };
+
+        private static readonly Dictionary<string, float> DerrickEyeMouth = new Dictionary<string, float>(StringComparer.Ordinal)
+        {
+            ["eyeSize"] = .36f, ["eyeRotation"] = .53f,
         };
 
         private static readonly Dictionary<string, float> CodyEyeMouth = new Dictionary<string, float>(StringComparer.Ordinal)

@@ -226,14 +226,15 @@ namespace Gamesim.Tests.EditMode
 
         /// <summary>
         /// Dan's face: fitted with the game's own face sliders, then built in the game and compared
-        /// (18 November 2026). The fit set's 26 changed values, as UmaCastLibrary's look gives them.
+        /// (18 November 2026). The fit set's 26 changed values, as UmaCastLibrary's look gives them; lipsSize .38 in place of
+        /// the fit's .25 since 20 November 2026, so the lips stay closed.
         /// </summary>
         private static readonly Dictionary<string, float> DanFitted = new Dictionary<string, float>(StringComparer.Ordinal)
         {
             ["BrowPosition"] = .70f, ["cheekPosition"] = .51f, ["cheekPronounced"] = .57f, ["cheekSize"] = .65f,
             ["chinPosition"] = .25f, ["chinPronounced"] = .75f, ["chinSize"] = .25f, ["eyeRotation"] = .35f,
             ["eyeSize"] = .25f, ["foreheadPosition"] = .54f, ["foreheadSize"] = .25f, ["headWidth"] = .85f,
-            ["jawsPosition"] = .52f, ["jawsSize"] = .70f, ["lipsSize"] = .25f, ["lowCheekPosition"] = .43f,
+            ["jawsPosition"] = .52f, ["jawsSize"] = .70f, ["lipsSize"] = .38f, ["lowCheekPosition"] = .43f,
             ["lowCheekPronounced"] = .53f, ["mandibleSize"] = .57f, ["mouthSize"] = .39f, ["noseBroken"] = .45f,
             ["noseCurve"] = .53f, ["noseInclination"] = .44f, ["nosePosition"] = .75f, ["nosePronounced"] = .46f,
             ["noseSize"] = .25f, ["noseWidth"] = .73f,

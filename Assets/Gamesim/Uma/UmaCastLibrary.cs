@@ -389,8 +389,8 @@ namespace Gamesim.Uma
                 Brows = Hair("Dark brown"),
                 Eyes = Eyes("Brown"),
                 Fabric = new Dictionary<string, Color> { ["Chest"] = Hex("1E2126") },
-                // His face: fitted with the game's own face sliders (18 November 2026). These are
-                // the fit set's 26 changed values; head size and the rest are the house's.
+                // His face: fitted with the game's own face sliders (18 November 2026). On 20 November 2026
+                // lipsSize .25 -> .38 so the lips stay closed. Head size and the rest are the house's.
                 Dna = new Dictionary<string, float>
                 {
                     ["height"] = .20f,
@@ -398,7 +398,7 @@ namespace Gamesim.Uma
                     ["BrowPosition"] = .70f, ["cheekPosition"] = .51f, ["cheekPronounced"] = .57f, ["cheekSize"] = .65f,
                     ["chinPosition"] = .25f, ["chinPronounced"] = .75f, ["chinSize"] = .25f, ["eyeRotation"] = .35f,
                     ["eyeSize"] = .25f, ["foreheadPosition"] = .54f, ["foreheadSize"] = .25f, ["headWidth"] = .85f,
-                    ["jawsPosition"] = .52f, ["jawsSize"] = .70f, ["lipsSize"] = .25f, ["lowCheekPosition"] = .43f,
+                    ["jawsPosition"] = .52f, ["jawsSize"] = .70f, ["lipsSize"] = .38f, ["lowCheekPosition"] = .43f,
                     ["lowCheekPronounced"] = .53f, ["mandibleSize"] = .57f, ["mouthSize"] = .39f, ["noseBroken"] = .45f,
                     ["noseCurve"] = .53f, ["noseInclination"] = .44f, ["nosePosition"] = .75f, ["nosePronounced"] = .46f,
                     ["noseSize"] = .25f, ["noseWidth"] = .73f,

@@ -418,7 +418,9 @@
 # swatch over the iris texture's grey in linear light), 2026-11-19.
 # 10736 = 10720 (free talk slice 1) + 10663 (the All-Star looks) - 10647 (their merge base): disjoint cases, so the floor
 # is the sum (merge of main into the free talk slice), 2026-11-19.
-Gamesim.EditModeTests 10736
+# 10740 = 10736 + the third looks change's 4 LookPiecesTests cases (E16 to E18: Rachel's, Chelsie's and Cody's lines hold
+# their fitted face values and keep their other values; E19: Xavier's and Janelle's lines hold their eye tilt), 2026-11-20.
+Gamesim.EditModeTests 10740
 # The UMA-free build. 1215 = 1236, the count after the consolidation's lanes (S2a, S2b, S4a), less the 7
 # farewell probes moved to Gamesim.DiagnosticsPlayModeTests and the 14 farewell readiness tests that now
 # compile only under GAMESIM_UMA (judged on the UMA cast); 1230 = 1215 + S2d's 7, S4b's 2, S4c's 2 and
@@ -890,7 +892,9 @@ Gamesim.PlayModeTests.UmaBuild 1719
 # contract's round picker's 1 (UmaWardrobeContractPlayModeTests.TheRoundPickerNeverPutsTwoPartsWhereWearingOneTakesTheOtherOffOnOneBody)
 # and the eyes' 1 (UmaBodyTintPlayModeTests.TheIrisIsGivenTheEyeColourOverTheIrisTexturesGrey), 2026-11-19; counted by
 # the offline lister in the UMA build.
-Gamesim.Uma.PlayModeTests 188
+# 191 = 188 + the third looks change's 3 (UmaAllStarPiecesPlayModeTests.RachelsBuiltBodyCarriesHerFittedFace,
+# ChelsiesBuiltBodyCarriesHerFittedFace and CodysBuiltBodyCarriesHisFittedFace), 2026-11-20.
+Gamesim.Uma.PlayModeTests 191
 # Diagnostics: feasibility and diagnostic probes, never shipping acceptance. They compile only under
 # GAMESIM_DIAGNOSTICS, which only a diagnostic run adds to the test copy (GAMESIM_DIAGNOSTICS=1 with
 # sync-and-run.sh or the locked runner); the UMA one needs GAMESIM_UMA too. The floor counts that they
@@ -1170,4 +1174,6 @@ Gamesim.Uma.DiagnosticsPlayModeTests 10
 # EditMode floor counts), 2026-11-19.
 # 22835 = 22819 (free talk slice 1) + 22762 (the All-Star looks) - 22746 (their merge base): disjoint cases, so the floor
 # is the sum (merge of main into the free talk slice), 2026-11-19.
-Gamesim.SimulationTests 22835
+# 22839 = 22835 + the third looks change's 4 LookPiecesTests cases (E16 to E19, the same cases the EditMode floor
+# counts), 2026-11-20.
+Gamesim.SimulationTests 22839

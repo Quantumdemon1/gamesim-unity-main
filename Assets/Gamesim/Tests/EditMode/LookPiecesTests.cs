@@ -12,7 +12,7 @@ namespace Gamesim.Tests.EditMode
 {
     /// <summary>
     /// A look wears the pieces a catalog entry's <c>worn-by:</c> tag names it for (<see cref="LookPieces.Apply"/>),
-    /// and LibraryLooks.txt's line (<see cref="LookPieces.LibraryLine"/>), and Will's, Dan's, Tyler's, Derrick's and Danielle's fitted faces in the file. Plain strings
+    /// and LibraryLooks.txt's line (<see cref="LookPieces.LibraryLine"/>), and the fitted faces in the file (Will, Dan, Tyler, Derrick, Danielle, Rachel, Chelsie, Cody). Plain strings
     /// and one plain file read: no UMA, no engine.
     /// </summary>
     public sealed class LookPiecesTests
@@ -188,7 +188,7 @@ namespace Gamesim.Tests.EditMode
         // ------------------------------------------------------------------------- Will's face
 
         /// <summary>
-        /// Will's face: fitted to his reference with the game's own face sliders, then built in the game and compared
+        /// Will's face: fitted with the game's own face sliders, then built in the game and compared
         /// (12 November 2026). The fit set's 26 changed values, as UmaCastLibrary's look gives them.
         /// </summary>
         private static readonly Dictionary<string, float> WillFitted = new Dictionary<string, float>(StringComparer.Ordinal)
@@ -225,7 +225,7 @@ namespace Gamesim.Tests.EditMode
         // ------------------------------------------------------------------------- Dan's face
 
         /// <summary>
-        /// Dan's face: fitted to his reference with the game's own face sliders, then built in the game and compared
+        /// Dan's face: fitted with the game's own face sliders, then built in the game and compared
         /// (18 November 2026). The fit set's 26 changed values, as UmaCastLibrary's look gives them.
         /// </summary>
         private static readonly Dictionary<string, float> DanFitted = new Dictionary<string, float>(StringComparer.Ordinal)
@@ -260,7 +260,7 @@ namespace Gamesim.Tests.EditMode
         // ------------------------------------------------------------------------- Tyler's face
 
         /// <summary>
-        /// Tyler's face: fitted to his reference with the game's own face sliders, then built in the game and compared
+        /// Tyler's face: fitted with the game's own face sliders, then built in the game and compared
         /// (18 November 2026). The fit set's 22 changed values, as UmaCastLibrary's look gives them.
         /// </summary>
         private static readonly Dictionary<string, float> TylerFitted = new Dictionary<string, float>(StringComparer.Ordinal)
@@ -288,13 +288,13 @@ namespace Gamesim.Tests.EditMode
         [Test]
         public void E13_TylersLineCarriesHisFittedFaceAndKeepsHisOtherValues()
         {
-            AssertFittedLine("tyler-crispen", TylerFitted, TylerKept, 22);
+            AssertFittedLine("tyler-crispen", TylerFitted, TylerKept, 22, Male, TylerEyeMouth);
         }
 
         // ------------------------------------------------------------------------- Derrick's face
 
         /// <summary>
-        /// Derrick's face: fitted to his reference with the game's own face sliders, then built in the game and compared
+        /// Derrick's face: fitted with the game's own face sliders, then built in the game and compared
         /// (19 November 2026). The fit set's 22 changed values, as UmaCastLibrary's look gives them.
         /// </summary>
         private static readonly Dictionary<string, float> DerrickFitted = new Dictionary<string, float>(StringComparer.Ordinal)
@@ -331,7 +331,7 @@ namespace Gamesim.Tests.EditMode
         // ------------------------------------------------------------------------- Danielle's face
 
         /// <summary>
-        /// Danielle's face: fitted to her reference with the game's own face sliders, then built in the game and compared
+        /// Danielle's face: fitted with the game's own face sliders, then built in the game and compared
         /// (19 November 2026). The fit set's 22 changed values, as UmaCastLibrary's look gives them.
         /// </summary>
         private static readonly Dictionary<string, float> DanielleFitted = new Dictionary<string, float>(StringComparer.Ordinal)
@@ -362,12 +362,181 @@ namespace Gamesim.Tests.EditMode
         [Test]
         public void E15_DaniellesLineCarriesHerFittedFaceAndKeepsHerOtherValues()
         {
-            AssertFittedLine("danielle-reyes", DanielleFitted, DanielleKept, 22, Female);
+            AssertFittedLine("danielle-reyes", DanielleFitted, DanielleKept, 22, Female, DanielleEyeMouth);
         }
 
-        private static void AssertFittedLine(string id, Dictionary<string, float> fitted, Dictionary<string, float> kept, int count = 26,
-            string race = Male)
+        // ------------------------------------------------------------------------- Rachel's face
+
+        /// <summary>
+        /// Rachel's face: fitted with the game's own face sliders, then built in the game and compared
+        /// (20 November 2026). The fit set's 11 changed values, as UmaCastLibrary's look gives them.
+        /// </summary>
+        private static readonly Dictionary<string, float> RachelFitted = new Dictionary<string, float>(StringComparer.Ordinal)
         {
+            ["BrowPosition"] = .48f, ["cheekPronounced"] = .26f, ["chinPosition"] = .25f, ["chinPronounced"] = .61f,
+            ["chinSize"] = .25f, ["foreheadPosition"] = .37f, ["foreheadSize"] = .25f, ["jawsPosition"] = .37f,
+            ["jawsSize"] = .51f, ["lowCheekPosition"] = .75f, ["lowCheekPronounced"] = .52f,
+        };
+
+        /// <summary>Her other merged values, as they were before the fit: the house's, and her own height, eyes and lips.</summary>
+        private static readonly Dictionary<string, float> RachelKept = new Dictionary<string, float>(StringComparer.Ordinal)
+        {
+            ["armWidth"] = .62f, ["eyeSize"] = .7f, ["feetSize"] = .66f, ["forearmWidth"] = .62f, ["handsSize"] = .68f,
+            ["headSize"] = .72f, ["headWidth"] = .58f, ["height"] = .18f, ["legsSize"] = .62f, ["lipsSize"] = .64f,
+            ["lowerMuscle"] = .58f, ["neckThickness"] = .6f, ["upperMuscle"] = .58f,
+        };
+
+        /// <summary>
+        /// Rachel's line in LibraryLooks.txt, on the female race, holds her 11 fitted face values and, for every other
+        /// name, the value it had before the fit, and no name besides: the same check as Will's (E10).
+        /// </summary>
+        [Test]
+        public void E16_RachelsLineCarriesHerFittedFaceAndKeepsHerOtherValues()
+        {
+            AssertFittedLine("rachel-reilly", RachelFitted, RachelKept, 11, Female, RachelEyeMouth);
+        }
+
+        // ------------------------------------------------------------------------- Chelsie's face
+
+        /// <summary>
+        /// Chelsie's face: fitted with the game's own face sliders, then built in the game and compared
+        /// (20 November 2026). The fit set's 21 changed values, as UmaCastLibrary's look gives them.
+        /// </summary>
+        private static readonly Dictionary<string, float> ChelsieFitted = new Dictionary<string, float>(StringComparer.Ordinal)
+        {
+            ["cheekPosition"] = .49f, ["cheekPronounced"] = .52f, ["cheekSize"] = .54f, ["chinPosition"] = .49f,
+            ["chinPronounced"] = .60f, ["chinSize"] = .55f, ["eyeRotation"] = .57f, ["foreheadPosition"] = .52f,
+            ["foreheadSize"] = .33f, ["headWidth"] = .60f, ["jawsPosition"] = .45f, ["jawsSize"] = .57f,
+            ["lowCheekPosition"] = .49f, ["lowCheekPronounced"] = .51f, ["mandibleSize"] = .55f, ["noseBroken"] = .47f,
+            ["noseCurve"] = .36f, ["noseInclination"] = .47f, ["nosePronounced"] = .47f, ["noseSize"] = .46f,
+            ["noseWidth"] = .55f,
+        };
+
+        /// <summary>
+        /// Her other merged values, as they were before the fit: the house's, and her own height, head size, mouth and lips.
+        /// Her old head width (.58, the house's) is not kept: headWidth is one of her fitted values.
+        /// </summary>
+        private static readonly Dictionary<string, float> ChelsieKept = new Dictionary<string, float>(StringComparer.Ordinal)
+        {
+            ["armWidth"] = .62f, ["eyeSize"] = .62f, ["feetSize"] = .66f, ["forearmWidth"] = .62f, ["handsSize"] = .68f,
+            ["headSize"] = .74f, ["height"] = .14f, ["legsSize"] = .62f, ["lipsSize"] = .6f, ["lowerMuscle"] = .58f,
+            ["mouthSize"] = .54f, ["neckThickness"] = .6f, ["upperMuscle"] = .58f,
+        };
+
+        /// <summary>
+        /// Chelsie's line in LibraryLooks.txt, on the female race, holds her 21 fitted face values and, for every other
+        /// name, the value it had before the fit, and no name besides: the same check as Will's (E10).
+        /// </summary>
+        [Test]
+        public void E17_ChelsiesLineCarriesHerFittedFaceAndKeepsHerOtherValues()
+        {
+            AssertFittedLine("chelsie-baham", ChelsieFitted, ChelsieKept, 21, Female, ChelsieEyeMouth);
+        }
+
+        // ------------------------------------------------------------------------- Cody's face
+
+        /// <summary>
+        /// Cody's face: fitted with the game's own face sliders, then built in the game and compared
+        /// (20 November 2026). The fit set's 10 changed values, as UmaCastLibrary's look gives them.
+        /// </summary>
+        private static readonly Dictionary<string, float> CodyFitted = new Dictionary<string, float>(StringComparer.Ordinal)
+        {
+            ["cheekPosition"] = .25f, ["cheekPronounced"] = .29f, ["cheekSize"] = .75f, ["chinPosition"] = .40f,
+            ["foreheadPosition"] = .25f, ["foreheadSize"] = .25f, ["jawsPosition"] = .25f, ["jawsSize"] = .65f,
+            ["lowCheekPronounced"] = .68f, ["mandibleSize"] = .55f,
+        };
+
+        /// <summary>
+        /// His other merged values, as they were before the fit: the house's, and his own height and build.
+        /// His old jaw size (.6) is not kept: jawsSize is one of his fitted values.
+        /// </summary>
+        private static readonly Dictionary<string, float> CodyKept = new Dictionary<string, float>(StringComparer.Ordinal)
+        {
+            ["armWidth"] = .62f, ["eyeSize"] = .62f, ["feetSize"] = .66f, ["forearmWidth"] = .62f, ["handsSize"] = .68f,
+            ["headSize"] = .72f, ["headWidth"] = .58f, ["height"] = .24f, ["legsSize"] = .62f, ["lowerMuscle"] = .58f,
+            ["neckThickness"] = .6f, ["upperMuscle"] = .72f, ["waist"] = .4f,
+        };
+
+        /// <summary>
+        /// Cody's line in LibraryLooks.txt holds his 10 fitted face values and, for every other name, the value it had
+        /// before the fit, and no name besides: the same check as Will's (E10).
+        /// </summary>
+        [Test]
+        public void E18_CodysLineCarriesHisFittedFaceAndKeepsHisOtherValues()
+        {
+            AssertFittedLine("cody-calafiore", CodyFitted, CodyKept, 10, Male, CodyEyeMouth);
+        }
+
+        // ------------------------------------------------------------------------- Eyes and mouths
+
+        // Each person's own eye and mouth values (20 November 2026), laid over the fitted and kept
+        // values above. Each was held to the lips' seal: at rest the inner mouth shows no more than on the person's house
+        // head and the lips part by no more than 0.3 mm.
+        private static readonly Dictionary<string, float> TylerEyeMouth = new Dictionary<string, float>(StringComparer.Ordinal)
+        {
+            ["eyeSize"] = .41f, ["eyeRotation"] = .44f,
+        };
+
+        private static readonly Dictionary<string, float> DanielleEyeMouth = new Dictionary<string, float>(StringComparer.Ordinal)
+        {
+            ["eyeRotation"] = .46f,
+        };
+
+        private static readonly Dictionary<string, float> RachelEyeMouth = new Dictionary<string, float>(StringComparer.Ordinal)
+        {
+            ["eyeSize"] = .56f,
+        };
+
+        private static readonly Dictionary<string, float> ChelsieEyeMouth = new Dictionary<string, float>(StringComparer.Ordinal)
+        {
+            ["mouthSize"] = .37f,
+        };
+
+        private static readonly Dictionary<string, float> CodyEyeMouth = new Dictionary<string, float>(StringComparer.Ordinal)
+        {
+            ["eyeSize"] = .36f, ["eyeRotation"] = .43f,
+        };
+
+        private static readonly Dictionary<string, float> NoFit = new Dictionary<string, float>(StringComparer.Ordinal);
+
+        /// <summary>Xavier's merged values besides his eye tilt: the house's, and his own height, build and nose.</summary>
+        private static readonly Dictionary<string, float> XavierKept = new Dictionary<string, float>(StringComparer.Ordinal)
+        {
+            ["armWidth"] = .68f, ["eyeSize"] = .62f, ["feetSize"] = .66f, ["forearmWidth"] = .62f, ["handsSize"] = .68f,
+            ["headSize"] = .72f, ["headWidth"] = .58f, ["height"] = .25f, ["legsSize"] = .62f, ["lowerMuscle"] = .58f,
+            ["neckThickness"] = .6f, ["noseWidth"] = .58f, ["upperMuscle"] = .62f,
+        };
+
+        /// <summary>Janelle's merged values besides her eye tilt: the house's, and her own height and build.</summary>
+        private static readonly Dictionary<string, float> JanelleKept = new Dictionary<string, float>(StringComparer.Ordinal)
+        {
+            ["armWidth"] = .62f, ["eyeSize"] = .62f, ["feetSize"] = .66f, ["forearmWidth"] = .62f, ["handsSize"] = .68f,
+            ["headSize"] = .72f, ["headWidth"] = .58f, ["height"] = .23f, ["legsSize"] = .62f, ["lowerMuscle"] = .66f,
+            ["neckThickness"] = .6f, ["upperMuscle"] = .68f,
+        };
+
+        /// <summary>
+        /// Xavier and Janelle have no fitted face: each line holds their own eye tilt (Xavier .44,
+        /// Janelle .65) and every other value as before, and no name besides.
+        /// </summary>
+        [Test]
+        public void E19_XaviersAndJanellesLinesCarryTheirEyeTilt()
+        {
+            AssertFittedLine("xavier-prather", NoFit, XavierKept, 0, Male,
+                new Dictionary<string, float>(StringComparer.Ordinal) { ["eyeRotation"] = .44f });
+            AssertFittedLine("janelle-pierzina", NoFit, JanelleKept, 0, Female,
+                new Dictionary<string, float>(StringComparer.Ordinal) { ["eyeRotation"] = .65f });
+        }
+
+        /// <summary>
+        /// A look's line holds the fit set's values, the kept values and the person's own eye and mouth values
+        /// (<paramref name="eyeMouth"/>, 20 November 2026), and no name besides. An eye or mouth value is laid
+        /// over a fitted or kept one of the same name, as the look sets it last.
+        /// </summary>
+        private static void AssertFittedLine(string id, Dictionary<string, float> fitted, Dictionary<string, float> kept, int count = 26,
+            string race = Male, Dictionary<string, float> eyeMouth = null)
+        {
+            eyeMouth = eyeMouth ?? new Dictionary<string, float>(StringComparer.Ordinal);
             string line = File.ReadAllText(LibraryLooksPath(), Encoding.UTF8).Split('\n')
                 .Single(text => text.StartsWith(id + "\t", StringComparison.Ordinal));
             string[] fields = line.Split('\t');
@@ -376,11 +545,14 @@ namespace Gamesim.Tests.EditMode
                 pair => float.Parse(pair[1], NumberStyles.Float, CultureInfo.InvariantCulture), StringComparer.Ordinal);
             Assert.That(fitted, Has.Count.EqualTo(count), id + ": the fit set's " + count + " changed values.");
             Assert.That(fitted.Keys.Intersect(kept.Keys), Is.Empty, "A name is fitted or kept, not both.");
-            Assert.That(values.Keys, Is.EquivalentTo(fitted.Keys.Concat(kept.Keys)), id + ": the names are the " + count + " fitted and the kept, no other.");
-            foreach (var entry in fitted)
+            Assert.That(values.Keys, Is.EquivalentTo(fitted.Keys.Concat(kept.Keys).Concat(eyeMouth.Keys).Distinct()),
+                id + ": the names are the " + count + " fitted, the kept and the eye and mouth values, no other.");
+            foreach (var entry in fitted.Where(entry => !eyeMouth.ContainsKey(entry.Key)))
                 Assert.That(values[entry.Key], Is.EqualTo(entry.Value), id + " fitted " + entry.Key);
-            foreach (var entry in kept)
+            foreach (var entry in kept.Where(entry => !eyeMouth.ContainsKey(entry.Key)))
                 Assert.That(values[entry.Key], Is.EqualTo(entry.Value), id + " kept " + entry.Key);
+            foreach (var entry in eyeMouth)
+                Assert.That(values[entry.Key], Is.EqualTo(entry.Value), id + " eye and mouth " + entry.Key);
         }
 
         // ------------------------------------------------------------------------- The measured ranges (Part B)

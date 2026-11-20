@@ -264,7 +264,7 @@ namespace Gamesim.Uma.Tests
         private const string Will = "dr-will-kirby";
 
         /// <summary>
-        /// Will's face: fitted to his reference with the game's own face sliders, then built in the game and compared
+        /// Will's face: fitted with the game's own face sliders, then built in the game and compared
         /// (12 November 2026). The fit set's 26 changed values, as UmaCastLibrary's look gives them.
         /// </summary>
         private static readonly Dictionary<string, float> WillFitted = new Dictionary<string, float>(StringComparer.Ordinal)
@@ -297,7 +297,7 @@ namespace Gamesim.Uma.Tests
         private const string Dan = "dan-gheesling";
 
         /// <summary>
-        /// Dan's face: fitted to his reference with the game's own face sliders, then built in the game and compared
+        /// Dan's face: fitted with the game's own face sliders, then built in the game and compared
         /// (18 November 2026). The fit set's 26 changed values, as UmaCastLibrary's look gives them.
         /// </summary>
         private static readonly Dictionary<string, float> DanFitted = new Dictionary<string, float>(StringComparer.Ordinal)
@@ -327,7 +327,7 @@ namespace Gamesim.Uma.Tests
         private const string Tyler = "tyler-crispen";
 
         /// <summary>
-        /// Tyler's face: fitted to his reference with the game's own face sliders, then built in the game and compared
+        /// Tyler's face: fitted with the game's own face sliders, then built in the game and compared
         /// (18 November 2026). The fit set's 22 changed values, as UmaCastLibrary's look gives them.
         /// </summary>
         private static readonly Dictionary<string, float> TylerFitted = new Dictionary<string, float>(StringComparer.Ordinal)
@@ -348,7 +348,7 @@ namespace Gamesim.Uma.Tests
         [UnityTest]
         public IEnumerator TylersBuiltBodyCarriesHisFittedFace()
         {
-            return BuiltBodyCarriesFittedFace(Tyler, TylerFitted, "LookPiecesTests.E13");
+            return BuiltBodyCarriesFittedFace(Tyler, TylerFitted, "LookPiecesTests.E13", TylerEyeMouth);
         }
 
         // ------------------------------------------------------------------------- Derrick's face, on his built body
@@ -356,7 +356,7 @@ namespace Gamesim.Uma.Tests
         private const string Derrick = "derrick-levasseur";
 
         /// <summary>
-        /// Derrick's face: fitted to his reference with the game's own face sliders, then built in the game and compared
+        /// Derrick's face: fitted with the game's own face sliders, then built in the game and compared
         /// (19 November 2026). The fit set's 22 changed values, as UmaCastLibrary's look gives them.
         /// </summary>
         private static readonly Dictionary<string, float> DerrickFitted = new Dictionary<string, float>(StringComparer.Ordinal)
@@ -385,7 +385,7 @@ namespace Gamesim.Uma.Tests
         private const string Danielle = "danielle-reyes";
 
         /// <summary>
-        /// Danielle's face: fitted to her reference with the game's own face sliders, then built in the game and compared
+        /// Danielle's face: fitted with the game's own face sliders, then built in the game and compared
         /// (19 November 2026). The fit set's 22 changed values, as UmaCastLibrary's look gives them.
         /// </summary>
         private static readonly Dictionary<string, float> DanielleFitted = new Dictionary<string, float>(StringComparer.Ordinal)
@@ -405,15 +405,127 @@ namespace Gamesim.Uma.Tests
         [UnityTest]
         public IEnumerator DaniellesBuiltBodyCarriesHerFittedFace()
         {
-            return BuiltBodyCarriesFittedFace(Danielle, DanielleFitted, "LookPiecesTests.E15");
+            return BuiltBodyCarriesFittedFace(Danielle, DanielleFitted, "LookPiecesTests.E15", DanielleEyeMouth);
         }
+
+        // ------------------------------------------------------------------------- Rachel's face, on her built body
+
+        private const string Rachel = "rachel-reilly";
+
+        /// <summary>
+        /// Rachel's face: fitted with the game's own face sliders, then built in the game and compared
+        /// (20 November 2026). The fit set's 11 changed values, as UmaCastLibrary's look gives them.
+        /// </summary>
+        private static readonly Dictionary<string, float> RachelFitted = new Dictionary<string, float>(StringComparer.Ordinal)
+        {
+            ["BrowPosition"] = .48f, ["cheekPronounced"] = .26f, ["chinPosition"] = .25f, ["chinPronounced"] = .61f,
+            ["chinSize"] = .25f, ["foreheadPosition"] = .37f, ["foreheadSize"] = .25f, ["jawsPosition"] = .37f,
+            ["jawsSize"] = .51f, ["lowCheekPosition"] = .75f, ["lowCheekPronounced"] = .52f,
+        };
+
+        /// <summary>
+        /// Rachel, as a season puts her in the house, built by the game's own provider on her look's race (the female
+        /// one): her built body's DNA carries each of her 11 fitted values within .001, the same check as Will's.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator RachelsBuiltBodyCarriesHerFittedFace()
+        {
+            return BuiltBodyCarriesFittedFace(Rachel, RachelFitted, "LookPiecesTests.E16", RachelEyeMouth);
+        }
+
+        // ------------------------------------------------------------------------- Chelsie's face, on her built body
+
+        private const string Chelsie = "chelsie-baham";
+
+        /// <summary>
+        /// Chelsie's face: fitted with the game's own face sliders, then built in the game and compared
+        /// (20 November 2026). The fit set's 21 changed values, as UmaCastLibrary's look gives them.
+        /// </summary>
+        private static readonly Dictionary<string, float> ChelsieFitted = new Dictionary<string, float>(StringComparer.Ordinal)
+        {
+            ["cheekPosition"] = .49f, ["cheekPronounced"] = .52f, ["cheekSize"] = .54f, ["chinPosition"] = .49f,
+            ["chinPronounced"] = .60f, ["chinSize"] = .55f, ["eyeRotation"] = .57f, ["foreheadPosition"] = .52f,
+            ["foreheadSize"] = .33f, ["headWidth"] = .60f, ["jawsPosition"] = .45f, ["jawsSize"] = .57f,
+            ["lowCheekPosition"] = .49f, ["lowCheekPronounced"] = .51f, ["mandibleSize"] = .55f, ["noseBroken"] = .47f,
+            ["noseCurve"] = .36f, ["noseInclination"] = .47f, ["nosePronounced"] = .47f, ["noseSize"] = .46f,
+            ["noseWidth"] = .55f,
+        };
+
+        /// <summary>
+        /// Chelsie, as a season puts her in the house, built by the game's own provider on her look's race (the female
+        /// one): her built body's DNA carries each of her 21 fitted values within .001, the same check as Will's.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator ChelsiesBuiltBodyCarriesHerFittedFace()
+        {
+            return BuiltBodyCarriesFittedFace(Chelsie, ChelsieFitted, "LookPiecesTests.E17", ChelsieEyeMouth);
+        }
+
+        // ------------------------------------------------------------------------- Cody's face, on his built body
+
+        private const string Cody = "cody-calafiore";
+
+        /// <summary>
+        /// Cody's face: fitted with the game's own face sliders, then built in the game and compared
+        /// (20 November 2026). The fit set's 10 changed values, as UmaCastLibrary's look gives them.
+        /// </summary>
+        private static readonly Dictionary<string, float> CodyFitted = new Dictionary<string, float>(StringComparer.Ordinal)
+        {
+            ["cheekPosition"] = .25f, ["cheekPronounced"] = .29f, ["cheekSize"] = .75f, ["chinPosition"] = .40f,
+            ["foreheadPosition"] = .25f, ["foreheadSize"] = .25f, ["jawsPosition"] = .25f, ["jawsSize"] = .65f,
+            ["lowCheekPronounced"] = .68f, ["mandibleSize"] = .55f,
+        };
+
+        /// <summary>
+        /// Cody, as a season puts him in the house, built by the game's own provider: his built body's DNA carries each of
+        /// his 10 fitted values within .001, the same check as Will's.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator CodysBuiltBodyCarriesHisFittedFace()
+        {
+            return BuiltBodyCarriesFittedFace(Cody, CodyFitted, "LookPiecesTests.E18", CodyEyeMouth);
+        }
+
+        // ------------------------------------------------------------------------- Eyes and mouths
+
+        // Each person's own eye and mouth values (20 November 2026), laid over the fitted values;
+        // the same dictionaries as LookPiecesTests'.
+        private static readonly Dictionary<string, float> TylerEyeMouth = new Dictionary<string, float>(StringComparer.Ordinal)
+        {
+            ["eyeSize"] = .41f, ["eyeRotation"] = .44f,
+        };
+
+        private static readonly Dictionary<string, float> DanielleEyeMouth = new Dictionary<string, float>(StringComparer.Ordinal)
+        {
+            ["eyeRotation"] = .46f,
+        };
+
+        private static readonly Dictionary<string, float> RachelEyeMouth = new Dictionary<string, float>(StringComparer.Ordinal)
+        {
+            ["eyeSize"] = .56f,
+        };
+
+        private static readonly Dictionary<string, float> ChelsieEyeMouth = new Dictionary<string, float>(StringComparer.Ordinal)
+        {
+            ["mouthSize"] = .37f,
+        };
+
+        private static readonly Dictionary<string, float> CodyEyeMouth = new Dictionary<string, float>(StringComparer.Ordinal)
+        {
+            ["eyeSize"] = .36f, ["eyeRotation"] = .43f,
+        };
 
         /// <summary>
         /// One houseguest, as a season puts him in the house: his template's contestant, its appearance resolved by the
-        /// season's snapshot, attached through the registered provider; his built body's DNA must carry every fitted value.
+        /// season's snapshot, attached through the registered provider; his built body's DNA must carry every fitted value,
+        /// with the person's own eye and mouth values (<paramref name="eyeMouth"/>) laid over them.
         /// </summary>
-        private static IEnumerator BuiltBodyCarriesFittedFace(string id, Dictionary<string, float> fitted, string linePin)
+        private static IEnumerator BuiltBodyCarriesFittedFace(string id, Dictionary<string, float> fittedFace, string linePin,
+            Dictionary<string, float> eyeMouth = null)
         {
+            var fitted = new Dictionary<string, float>(fittedFace, StringComparer.Ordinal);
+            if (eyeMouth != null)
+                foreach (var entry in eyeMouth) fitted[entry.Key] = entry.Value;
             var cast = new GameObject(id + "'s face provider", typeof(GamesimUmaCast));
             var actor = new GameObject(id + "'s face houseguest");
             try

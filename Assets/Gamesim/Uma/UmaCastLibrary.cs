@@ -389,7 +389,7 @@ namespace Gamesim.Uma
                 Brows = Hair("Dark brown"),
                 Eyes = Eyes("Brown"),
                 Fabric = new Dictionary<string, Color> { ["Chest"] = Hex("1E2126") },
-                // His face: fitted to his reference with the game's own face sliders (18 November 2026). These are
+                // His face: fitted with the game's own face sliders (18 November 2026). These are
                 // the fit set's 26 changed values; head size and the rest are the house's.
                 Dna = new Dictionary<string, float>
                 {
@@ -423,7 +423,7 @@ namespace Gamesim.Uma
                 Brows = Hair("Soft black"),
                 Eyes = Eyes("Dark brown"),
                 Fabric = new Dictionary<string, Color> { ["Chest"] = Hex("5A4636") },
-                // His face: fitted to his reference with the game's own face sliders, then built in the game and compared
+                // His face: fitted with the game's own face sliders, then built in the game and compared
                 // (12 November 2026). These are the fit set's 26 changed values; head size and the rest are the house's.
                 Dna = new Dictionary<string, float>
                 {
@@ -455,7 +455,7 @@ namespace Gamesim.Uma
                 Hair = Hair("Dark blonde"),
                 Brows = Hair("Dark blonde"),
                 Eyes = Eyes("Blue"),
-                // His face: fitted to his reference with the game's own face sliders (19 November 2026). These are
+                // His face: fitted with the game's own face sliders (19 November 2026). These are
                 // the fit set's 22 changed values; head size and the rest are the house's.
                 Dna = new Dictionary<string, float>
                 {
@@ -492,7 +492,8 @@ namespace Gamesim.Uma
                 Brows = Hair("Honey blonde"),
                 Eyes = Eyes("Blue"),
                 Fabric = new Dictionary<string, Color> { ["Chest"] = Hex("F08A80") },
-                Dna = new Dictionary<string, float> { ["height"] = .23f, ["upperMuscle"] = .68f, ["lowerMuscle"] = .66f },
+                // Her eye tilt (20 November 2026).
+                Dna = new Dictionary<string, float> { ["height"] = .23f, ["upperMuscle"] = .68f, ["lowerMuscle"] = .66f, ["eyeRotation"] = .65f },
             },
 
             // The Hitman's Partner. Tousled brown hair, a blue V-neck.
@@ -513,7 +514,19 @@ namespace Gamesim.Uma
                 Brows = Hair("Medium brown"),
                 Eyes = Eyes("Hazel"),
                 Fabric = new Dictionary<string, Color> { ["Chest"] = Hex("3F78C8") },
-                Dna = new Dictionary<string, float> { ["height"] = .24f, ["upperMuscle"] = .72f, ["waist"] = .4f, ["jawsSize"] = .6f },
+                // His face: fitted with the game's own face sliders (20 November 2026). These are
+                // the fit set's 10 changed values; head size and the rest are the house's.
+                Dna = new Dictionary<string, float>
+                {
+                    ["height"] = .24f,
+                    ["upperMuscle"] = .72f,
+                    ["waist"] = .40f,
+                    ["cheekPosition"] = .25f, ["cheekPronounced"] = .29f, ["cheekSize"] = .75f, ["chinPosition"] = .40f,
+                    ["foreheadPosition"] = .25f, ["foreheadSize"] = .25f, ["jawsPosition"] = .25f, ["jawsSize"] = .65f,
+                    ["lowCheekPronounced"] = .68f, ["mandibleSize"] = .55f,
+                    // His eye size and tilt (20 November 2026).
+                    ["eyeSize"] = .36f, ["eyeRotation"] = .43f,
+                },
             },
 
             // The Black Widow. Medium-deep brown skin, shoulder-length dark hair flipped out at the ends, studs, a
@@ -533,11 +546,11 @@ namespace Gamesim.Uma
                     "gs-acc-studs",
                 },
                 Skin = Skin("Sienna"),
-                Hair = Hair("Soft black"),
+                Hair = Hair("Dark brown"),
                 Brows = Hair("Soft black"),
                 Eyes = Eyes("Dark brown"),
                 Fabric = new Dictionary<string, Color> { ["Chest"] = Hex("E7D9C0") },
-                // Her face: fitted to her reference with the game's own face sliders (19 November 2026). These are
+                // Her face: fitted with the game's own face sliders (19 November 2026). These are
                 // the fit set's 22 changed values; head size and the rest are the house's.
                 Dna = new Dictionary<string, float>
                 {
@@ -545,11 +558,13 @@ namespace Gamesim.Uma
                     ["eyeSpacing"] = .56f,
                     ["lipsSize"] = .60f,
                     ["cheekPosition"] = .51f, ["cheekPronounced"] = .46f, ["cheekSize"] = .53f, ["chinPosition"] = .54f,
-                    ["chinPronounced"] = .54f, ["chinSize"] = .41f, ["eyeRotation"] = .64f, ["foreheadPosition"] = .57f,
+                    ["chinPronounced"] = .54f, ["chinSize"] = .41f, ["foreheadPosition"] = .57f,
                     ["foreheadSize"] = .25f, ["headWidth"] = .62f, ["jawsPosition"] = .37f, ["jawsSize"] = .53f,
                     ["lowCheekPosition"] = .53f, ["lowCheekPronounced"] = .47f, ["mandibleSize"] = .48f, ["noseBroken"] = .46f,
                     ["noseCurve"] = .28f, ["noseInclination"] = .48f, ["nosePosition"] = .43f, ["nosePronounced"] = .46f,
                     ["noseSize"] = .42f, ["noseWidth"] = .74f,
+                    // Her eye tilt (20 November 2026), in place of the fit's .64.
+                    ["eyeRotation"] = .46f,
                 },
             },
 
@@ -590,10 +605,10 @@ namespace Gamesim.Uma
                     "male_shoe_low_white.001_Recipe",
                 },
                 Skin = Skin("Golden"),
-                Hair = Hair("Honey blonde"),
+                Hair = Hair("Golden blonde"),
                 Brows = Hair("Light brown"),
                 Eyes = Eyes("Blue"),
-                // His face: fitted to his reference with the game's own face sliders (18 November 2026). These are
+                // His face: fitted with the game's own face sliders (18 November 2026). These are
                 // the fit set's 22 changed values; head size and the rest are the house's.
                 Dna = new Dictionary<string, float>
                 {
@@ -601,11 +616,13 @@ namespace Gamesim.Uma
                     ["upperMuscle"] = .64f,
                     ["belly"] = .38f,
                     ["BrowPosition"] = .35f, ["cheekPosition"] = .51f, ["cheekPronounced"] = .59f, ["cheekSize"] = .38f,
-                    ["chinPosition"] = .35f, ["chinPronounced"] = .75f, ["chinSize"] = .56f, ["eyeRotation"] = .28f,
+                    ["chinPosition"] = .35f, ["chinPronounced"] = .75f, ["chinSize"] = .56f,
                     ["foreheadPosition"] = .46f, ["foreheadSize"] = .40f, ["headWidth"] = 1f, ["jawsPosition"] = .68f,
                     ["jawsSize"] = .64f, ["lowCheekPosition"] = .27f, ["lowCheekPronounced"] = .55f, ["mandibleSize"] = .52f,
                     ["mouthSize"] = .45f, ["noseCurve"] = .54f, ["noseInclination"] = .33f, ["nosePosition"] = .65f,
                     ["nosePronounced"] = .64f, ["noseWidth"] = .58f,
+                    // His eye size and tilt (20 November 2026), the tilt in place of the fit's .28.
+                    ["eyeSize"] = .41f, ["eyeRotation"] = .44f,
                 },
             },
 
@@ -629,7 +646,22 @@ namespace Gamesim.Uma
                 Brows = Hair("Black"),
                 Eyes = Eyes("Dark brown"),
                 Fabric = new Dictionary<string, Color> { ["Chest"] = Hex("E23D8A") },
-                Dna = new Dictionary<string, float> { ["height"] = .14f, ["headSize"] = .74f, ["mouthSize"] = .54f, ["lipsSize"] = .6f },
+                // Her face: fitted with the game's own face sliders (20 November 2026). These are
+                // the fit set's 21 changed values; the rest are the house's.
+                Dna = new Dictionary<string, float>
+                {
+                    ["height"] = .14f,
+                    ["headSize"] = .74f,
+                    // Her mouth width (20 November 2026).
+                    ["mouthSize"] = .37f,
+                    ["lipsSize"] = .60f,
+                    ["cheekPosition"] = .49f, ["cheekPronounced"] = .52f, ["cheekSize"] = .54f, ["chinPosition"] = .49f,
+                    ["chinPronounced"] = .60f, ["chinSize"] = .55f, ["eyeRotation"] = .57f, ["foreheadPosition"] = .52f,
+                    ["foreheadSize"] = .33f, ["headWidth"] = .60f, ["jawsPosition"] = .45f, ["jawsSize"] = .57f,
+                    ["lowCheekPosition"] = .49f, ["lowCheekPronounced"] = .51f, ["mandibleSize"] = .55f, ["noseBroken"] = .47f,
+                    ["noseCurve"] = .36f, ["noseInclination"] = .47f, ["nosePronounced"] = .47f, ["noseSize"] = .46f,
+                    ["noseWidth"] = .55f,
+                },
             },
 
             // The Vegas Showgirl. Deep auburn waves, blue eyes, a red dress, a gold collar.
@@ -652,7 +684,18 @@ namespace Gamesim.Uma
                 Brows = Hair("Auburn"),
                 Eyes = Eyes("Blue"),
                 Fabric = new Dictionary<string, Color> { ["Chest"] = Hex("B0201E") },
-                Dna = new Dictionary<string, float> { ["height"] = .18f, ["eyeSize"] = .7f, ["lipsSize"] = .64f },
+                // Her face: fitted with the game's own face sliders (20 November 2026). These are
+                // the fit set's 11 changed values; head size and the rest are the house's.
+                Dna = new Dictionary<string, float>
+                {
+                    ["height"] = .18f,
+                    // Her eye size (20 November 2026).
+                    ["eyeSize"] = .56f,
+                    ["lipsSize"] = .64f,
+                    ["BrowPosition"] = .48f, ["cheekPronounced"] = .26f, ["chinPosition"] = .25f, ["chinPronounced"] = .61f,
+                    ["chinSize"] = .25f, ["foreheadPosition"] = .37f, ["foreheadSize"] = .25f, ["jawsPosition"] = .37f,
+                    ["jawsSize"] = .51f, ["lowCheekPosition"] = .75f, ["lowCheekPronounced"] = .52f,
+                },
             },
 
             // The Cookout Captain. Deep brown skin, a shaved head, a full short beard, an orange polo.
@@ -673,7 +716,8 @@ namespace Gamesim.Uma
                 Brows = Hair("Black"),
                 Eyes = Eyes("Black-brown"),
                 Fabric = new Dictionary<string, Color> { ["Chest"] = Hex("E8892B") },
-                Dna = new Dictionary<string, float> { ["height"] = .25f, ["armWidth"] = .68f, ["upperMuscle"] = .62f, ["noseWidth"] = .58f },
+                // His eye tilt (20 November 2026).
+                Dna = new Dictionary<string, float> { ["height"] = .25f, ["armWidth"] = .68f, ["upperMuscle"] = .62f, ["noseWidth"] = .58f, ["eyeRotation"] = .44f },
             },
 
             // The Floater Queen. East Asian, long reddish-brown hair, drop earrings, a black halter.

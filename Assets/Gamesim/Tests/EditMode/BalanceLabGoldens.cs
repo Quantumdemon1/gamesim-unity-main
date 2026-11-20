@@ -45,9 +45,9 @@ namespace Gamesim.Tests.EditMode
         /// cell moves; a level's enrolment re-records the cells.
         /// story.talkRules=1 came with level 1's enrolment (free talk slice 1, ruling R16): every fresh season offers the free
         /// "Just talk". Only the player's JustTalk command reads the level and no lab policy sends one, so the cells are the
-        /// same seasons. Recorded again on talk rules 1 on 2026-11-19: only this number moved. Seven of the eight cases, run by
-        /// name on the slice's integration branch, passed (the digests below, byte for byte); Budget300Size8Third was cut off
-        /// by that run's time limit and is still to run on the enrolled head.
+        /// same seasons. Recorded again on talk rules 1 on 2026-11-19: only this number moved. All eight cases, run by name,
+        /// passed (the digests below, byte for byte): seven on the slice's integration branch, and Budget300Size8Third, cut off
+        /// there by a time limit, on the slice's merge with main.
         /// </summary>
         internal const string Rules = "competitionRulesVersion=5,readRulesStartWeek=1,leverRulesStartWeek=1,weekRulesStartWeek=1,economyRulesVersion=1,"
             + "agencyRulesStartWeek=1,finaleRulesStartWeek=1,commitmentRulesStartWeek=1,unifiedCommitmentRulesVersion=2,unifiedHearingRulesVersion=1,"

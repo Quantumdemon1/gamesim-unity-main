@@ -192,7 +192,7 @@ namespace Gamesim.Uma
             avatar.SetRawColor(SkinColor, SkinColour(look.Skin), false);
             avatar.SetRawColor(HairColor, HairColour(look.Hair), false);
             avatar.SetColor(BrowsColor, look.Brows);
-            avatar.SetColor(EyesColor, look.Eyes);
+            avatar.SetColor(EyesColor, IrisColour(look.Eyes));
             var fabric = new Dictionary<string, Color>(StringComparer.Ordinal);
             // A fabric tint belongs to one garment: the slots its recipe builds, found here so the
             // tint can be laid on those overlays and no others.
@@ -215,13 +215,13 @@ namespace Gamesim.Uma
             if (appearance != null)
             {
                 foreach (var color in appearance.colors)
-                    if (color.id != HairColor && color.id != SkinColor) avatar.SetColor(color.id, new Color(color.r, color.g, color.b, color.a));
+                    if (color.id != HairColor && color.id != SkinColor) avatar.SetColor(color.id, PersonColour(color.id, new Color(color.r, color.g, color.b, color.a)));
                 var outfit = appearance.outfits.FirstOrDefault(item => item.id == appearance.activeOutfit);
                 if (outfit != null)
                 {
                     foreach (var color in outfit.colors)
                         if (!AppearanceEditing.IsFabricChannel(color.id))
-                            avatar.SetColor(color.id, new Color(color.r, color.g, color.b, color.a));
+                            avatar.SetColor(color.id, PersonColour(color.id, new Color(color.r, color.g, color.b, color.a)));
                     foreach (string slot in AppearanceEditing.FabricSlots)
                         if (AppearanceEditing.TryFabric(outfit, slot, out var tint)) Dye(slot, tint);
                 }
@@ -248,6 +248,19 @@ namespace Gamesim.Uma
             race == UmaCastLibrary.MaleRace ? BodyFrame.Masculine
             : race == UmaCastLibrary.FemaleRace ? BodyFrame.Feminine
             : BodyFrame.Unknown;
+
+        /// <summary>
+        /// The colour the body's eyes are given for the eye colour <paramref name="swatch"/>: UMA multiplies its grey
+        /// iris texture by it, so the swatch is divided by that grey first (<see cref="IrisTint"/>). The alpha is kept.
+        /// </summary>
+        public static Color IrisColour(Color swatch)
+        {
+            IrisTint.FromSwatch(swatch.r, swatch.g, swatch.b, out float r, out float g, out float b);
+            return new Color(r, g, b, swatch.a);
+        }
+
+        /// <summary>A person colour as the body is given it: the eyes through <see cref="IrisColour"/>, the rest as saved.</summary>
+        private static Color PersonColour(string id, Color value) => id == EyesColor ? IrisColour(value) : value;
 
         /// <summary>
         /// The skin's own albedo, averaged in linear light: <c>UMA_F_Diffuse.100x</c>, the one skin

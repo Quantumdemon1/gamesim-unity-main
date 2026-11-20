@@ -192,6 +192,10 @@ namespace Gamesim.Tests.EditMode
         {
             var s = SeasonBuilder.Create(new SeasonBuilder.Choice { HouseSize = houseSize }, seed);
             ShippedRules.ApplyFresh(s);
+            // Held at talk rules 0 by name: level 1 (enrolled with free talk slice 1) is newer than every older schema's reader,
+            // and the exact schema-31 inverse never erases a level that is on.
+            Assert.That(s.story.talkRules, Is.EqualTo(TalkRules.Talk));
+            s.story.talkRules = TalkRules.Off;
             var payload = Payload(s);
             Assert.That((int)payload["schemaVersion"], Is.EqualTo(31));
             PersistenceMigrationTests.StripSchema31(payload); // The retained 30: talk rules 0, every talk field at its default.

@@ -116,7 +116,9 @@ namespace Gamesim.Tests.EditMode
             // so recorded seasons replay as they were.
             Assert.That((int)EpisodeCommandKind.StartDialogue, Is.EqualTo(64));
             Assert.That((int)EpisodeCommandKind.ChooseDialogue, Is.EqualTo(65));
-            Assert.That(Enum.GetValues(typeof(EpisodeCommandKind)).Cast<int>().Max(), Is.EqualTo(65));
+            // The free talk (schema 31's slice S1) appends JustTalk after them, at 66.
+            Assert.That((int)EpisodeCommandKind.JustTalk, Is.EqualTo(66));
+            Assert.That(Enum.GetValues(typeof(EpisodeCommandKind)).Cast<int>().Max(), Is.EqualTo(66));
         }
 
         /// <summary>

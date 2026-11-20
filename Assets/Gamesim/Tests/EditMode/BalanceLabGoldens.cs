@@ -43,13 +43,18 @@ namespace Gamesim.Tests.EditMode
         /// field is written 0 and nothing reads it, so no cell moves; level 1's enrolment re-records the cells (ruling R11).
         /// story.mindRules=0 came with schema 31 too (MindRules, the housemates' minds): written 0 and read by nothing, so no
         /// cell moves; a level's enrolment re-records the cells.
+        /// story.talkRules=1 came with level 1's enrolment (free talk slice 1, ruling R16): every fresh season offers the free
+        /// "Just talk". Only the player's JustTalk command reads the level and no lab policy sends one, so the cells are the
+        /// same seasons. Recorded again on talk rules 1 on 2026-11-19: only this number moved. All eight cases, run by name,
+        /// passed (the digests below, byte for byte): seven on the slice's integration branch, and Budget300Size8Third, cut off
+        /// there by a time limit, on the slice's merge with main.
         /// </summary>
         internal const string Rules = "competitionRulesVersion=5,readRulesStartWeek=1,leverRulesStartWeek=1,weekRulesStartWeek=1,economyRulesVersion=1,"
             + "agencyRulesStartWeek=1,finaleRulesStartWeek=1,commitmentRulesStartWeek=1,unifiedCommitmentRulesVersion=2,unifiedHearingRulesVersion=1,"
             + "blocRulesStartWeek=1,socialBudgetRulesStartWeek=1,dealRulesStartWeek=1,eventRulesStartWeek=1,storyRulesStartWeek=1,haveNotRulesStartWeek=1,"
             + "strategyRulesStartWeek=1,allianceLeakRulesStartWeek=1,pactPlanRulesStartWeek=1,allWeekRulesStartWeek=1,dialogueRulesVersion=0,"
             + "alumniRulesVersion=0,tuningRulesVersion=1,"
-            + "npcSocial.rulesStartWeek=1,story.rulesStartWeek=1,story.rulesVersion=11,story.talkRules=0,story.mindRules=0";
+            + "npcSocial.rulesStartWeek=1,story.rulesStartWeek=1,story.rulesVersion=11,story.talkRules=1,story.mindRules=0";
 
         /// <summary>
         /// Each cell's digest: "policy/roster/size/npcN hash". Recorded with every shipped rule on: the war rooms played,

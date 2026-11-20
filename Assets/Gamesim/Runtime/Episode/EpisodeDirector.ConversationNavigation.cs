@@ -42,6 +42,7 @@ namespace Gamesim.Episode
             conversationCategory = conversationMenuFor = conversationMenuSession = invitedDealId = null;
             conversationMenuToken = null;
             conversationNavigationShowing = false;
+            ClearJustTalk();
         }
 
         private void PrepareConversationNavigation(EpisodeState state, ContestantState npc)
@@ -51,7 +52,10 @@ namespace Gamesim.Episode
                 conversationMenuFor = npc.id;
                 conversationMenuSession = state.sessionId;
                 conversationCategory = conversationIntent == IntentAsk ? LearnCategoryCaption
-                    : conversationIntent == IntentDeal ? DealsCategoryCaption : null;
+                    : conversationIntent == IntentDeal ? DealsCategoryCaption
+                    : conversationIntent == IntentJustTalk && TalkScreenLines.Shown(state, npc.id) ? ConnectCategoryCaption : null;
+                // A free talk's tile opens the conversation on the talk's panel (EpisodeDirector.JustTalk.cs).
+                PrepareJustTalk(state, npc);
                 conversationMenuToken = new object();
             }
             if (conversationMenuRevision != state.revision)
@@ -109,6 +113,18 @@ namespace Gamesim.Episode
             }
             if (!conversationNavigationShowing || focusedNpc == null
                 || IsConversationExchangePlaying) return false;
+            // The free talk's panel is one level of the Connect page: back from it lands there (EpisodeDirector.JustTalk.cs).
+            if (justTalkWith != null)
+            {
+                ClearJustTalk();
+                if (!toTopics)
+                {
+                    conversationCategory = ConnectCategoryCaption;
+                    conversationMenuToken = new object();
+                    Render();
+                    return true;
+                }
+            }
             if (conversationCategory == null)
             {
                 if (acceptedExchangeWasPresented || string.IsNullOrEmpty(conversationNarration)) return false;
@@ -185,6 +201,10 @@ namespace Gamesim.Episode
                 && invitedDealId == askDialogueRecordId && RenderAskDialogue(state, npc, token))
             { hud.GuardConversationChoices(() => ConversationNavigationCurrent(token, state, npc.id)); return; }
 
+            // The free talk's panel, while it is open, in place of the Connect page (EpisodeDirector.JustTalk.cs).
+            if (RenderJustTalk(state, npc, token))
+            { hud.GuardConversationChoices(() => ConversationNavigationCurrent(token, state, npc.id)); return; }
+
             hud.SpeakerTitle(npc.id, npc.name, npc.pronouns + " · " + string.Join(" / ", npc.traits));
             hud.Heading(conversationCategory.ToUpperInvariant());
             string mood = npc.mood != "Neutral" ? MoodLine(state, npc) : null;
@@ -208,6 +228,8 @@ namespace Gamesim.Episode
             switch (conversationCategory)
             {
                 case ConnectCategoryCaption:
+                    // The free talk first (free talk slice 1): absent at talk rules 0.
+                    JustTalkRow(state, npc, token);
                     ConversationAction(state, npc, EpisodeHud.SmallTalkCaption, EpisodeCommandKind.SmallTalk);
                     ConversationAction(state, npc, EpisodeHud.PersonalChatCaption, EpisodeCommandKind.PersonalChat);
                     ConversationAction(state, npc, EpisodeHud.RelationshipBuildingCaption, EpisodeCommandKind.RelationshipBuilding);

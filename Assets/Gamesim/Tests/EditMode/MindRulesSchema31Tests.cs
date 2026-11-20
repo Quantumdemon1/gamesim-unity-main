@@ -77,13 +77,13 @@ namespace Gamesim.Tests.EditMode
             Assert.That(error, Is.EqualTo("Unsupported mind rules version."));
         }
 
-        /// <summary>A defined level is admitted at 31 on its own: no other saved field hangs on it, and free talk stays off.</summary>
+        /// <summary>A defined level is admitted at 31 on its own: no other saved field hangs on it, and free talk stays at its shipped level.</summary>
         [TestCase(1)] [TestCase(5)]
         public void ADefinedMindLevelIsAcceptedAtThirtyOne(int level)
         {
             var s = Shipped();
             s.story.mindRules = level;
-            Assert.That(s.story.talkRules, Is.EqualTo(TalkRules.Off));
+            Assert.That(s.story.talkRules, Is.EqualTo(TalkRules.Shipped), "Free talk's level 1 since its enrolment; the minds' ladder moves nothing of it.");
             Assert.That(EpisodeValidation.TryValidate(s, out string reason), Is.True, reason);
         }
 

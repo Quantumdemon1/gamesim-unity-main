@@ -71,7 +71,9 @@ namespace Gamesim.Simulation
                 // command's own effects, inside the same candidate, so a pact a beat forms is reconciled and
                 // validated with it. Player-free where the command put a counter on the table (decision 6).
                 int beatsFrom = 0;
-                if (AllWeekOn(next))
+                // A free talk (talk rules 1) spends no seat, so no beat falls due on it: the house catches up on the next command,
+                // as it would have without the talk, and the talk leaves the season's stream byte-equal (ruling R5).
+                if (AllWeekOn(next) && command.kind != EpisodeCommandKind.JustTalk)
                 {
                     beatsFrom = next.nextSequence;
                     CatchUp(next, CounterOnTheTable(next, current.nextSequence), pending?.SealedFor(next));
@@ -236,6 +238,8 @@ namespace Gamesim.Simulation
                 // Free, like a reply: a question is not an action, and the read is the play.
                 case EpisodeCommandKind.AskVote: AskVote(s, c); break;
                 case EpisodeCommandKind.ReadPerson: ReadPerson(s, c); break;
+                // Free, like a question (talk rules 1, ruling R5): no action is spent and nothing is drawn from the season's stream.
+                case EpisodeCommandKind.JustTalk: ResolveJustTalk(s, c); break;
                 case EpisodeCommandKind.LockFinalArgument: LockFinalArgument(s, c); break;
                 // Under the commitment rules (C2) cutting ties with an ally who turned on the pact this
                 // week, once the player can know it, is free: no action, no warmth, no grudge. Any other
@@ -2519,8 +2523,10 @@ namespace Gamesim.Simulation
 
         // Shared source reducer. The ordinary player path keeps its original stream;
         // trusted NPC completion injects a separate saved stream, without duplicating rules.
+        // Arcless (the free talk, talk rules 1, ruling R5): the scores move and nothing else - no relationship arc step, no weekly
+        // arc history row, no oath milestone - so free chatter never escalates a friendship arc or opens the oath.
         private static void ChangeWithRoll(EpisodeState s, string from, string to, double delta, Func<double> nextRoll,
-            string note = null, string eventType = null)
+            string note = null, string eventType = null, bool arcless = false)
         {
             if (from == to) return;
             double beforeScore = s.Score(from, to);
@@ -2534,13 +2540,17 @@ namespace Gamesim.Simulation
             }
             WriteScore(s, from, to, adjusted);
             WriteScore(s, to, from, WebRules.ReciprocalDelta(delta, nextRoll()));
-            if (from == s.playerId && adjusted > 0 && beforeScore < 75 && s.Score(from, to) >= 75 && !s.shownOathMilestones.Contains(to))
+            if (!arcless && from == s.playerId && adjusted > 0 && beforeScore < 75 && s.Score(from, to) >= 75 && !s.shownOathMilestones.Contains(to))
             {
                 s.shownOathMilestones.Add(to);
                 if (s.Find(to).status == ContestantStatus.Active && s.Active.Count() > 2)
                     s.oathOpportunities.Add(to);
                 Log(s, "relationship-milestone", "Your bond with " + Name(s, to) + " crossed 75. A personal loyalty declaration is available during social time.", s.playerId);
             }
+            // Arcless also leaves the edges untouched: lastInteractionWeek is the contact this week that shows an ally's pact
+            // terms in the vote read (Allegiance.CommitmentKnown). A free talk is not that contact, whatever its warmth; a
+            // neutral one never reaches here, so a warm or cold one must not count either.
+            if (arcless) return;
             foreach (var relation in s.relationships.Where(r => (r.fromId == from && r.toId == to) || (r.fromId == to && r.toId == from)))
             {
                 relation.lastInteractionWeek = s.week;

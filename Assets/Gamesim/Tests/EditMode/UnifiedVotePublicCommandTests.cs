@@ -65,6 +65,7 @@ namespace Gamesim.Tests.EditMode
                 played.Fresh.tuningRulesVersion = TuningRules.Off;
                 played.Fresh.story.rulesVersion = StoryRules.Threads;
                 played.Fresh.competitionRulesVersion = CompetitionRules.Widened; // Held at competition rules 4: rules 5 (the ring tower) is newer than every older schema's reader.
+                played.Fresh.story.talkRules = TalkRules.Off; // Held at talk rules 0: level 1 (free talk slice 1's enrolment) is newer than every older schema's reader.
             }
             Assert.That(played.Fresh.unifiedCommitmentRulesVersion, Is.EqualTo(UnifiedVoteFamilyValidation.Version), "A fresh season is mode 2.");
             var engine = new EpisodeEngine(played.Fresh);

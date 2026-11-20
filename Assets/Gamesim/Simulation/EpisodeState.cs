@@ -714,7 +714,15 @@ namespace Gamesim.Simulation
         /// <summary>Accept the first paid dialogue choice, under its explicit saved rule.</summary>
         StartDialogue,
         /// <summary>Continue an already funded dialogue by its exact episode, node and option.</summary>
-        ChooseDialogue
+        ChooseDialogue,
+        // The free "Just talk" (talk rules 1, schema 31's slice S1), appended after ChooseDialogue so no recorded ordinal moves.
+        /// <summary>
+        /// A free talk with one housemate: <c>targetId</c> the housemate, <c>text</c> <c>talkId|tone</c>
+        /// (<see cref="FreeTalk.CommandText"/>), the talk on offer (<see cref="FreeTalk.Offer"/>) and one of its replies' tones.
+        /// Free: no action is spent, nothing is drawn from the season's stream and the house does not catch up on it. One counted
+        /// talk per housemate per window; refused at talk rules 0 before anything is read, written or logged.
+        /// </summary>
+        JustTalk
     }
 
     /// <summary>

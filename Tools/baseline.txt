@@ -400,12 +400,25 @@
 # PersistenceV16StoryKeysTests 2 (the schema-16 step keeps its own story keys), 2026-11-19.
 # 10647 = 10609 + schema 31's minds ladder (story.mindRules, MindRules): MindRulesSchema31Tests 25 and
 # MindRulesSchema31MigrationTests 13, counted in the offline lister's list of the branch's head (10647 cases), 2026-11-19.
+# 10653 = 10647 + free talk slice 1's screen: TalkScreenLinesTests 6 (the words the Just talk panel, tile and notebook
+# blocks show, and the command a reply sends), 2026-11-19.
+# 10685 = 10647 + the free talk's slice S1 engine: FreeTalkEngineTests 28 and FreeTalkLayerTests 10, 2026-11-19.
+# 10704 = 10685 + the free talk slice 1 tables' TalkTablesTests 19 (11 tests and 8 deny-list TestCase rows), 2026-11-19.
+# 10710 = 10653 (screen) + engine-tables 57 (10704 - 10647 on this branch): disjoint cases, so the floor is their sum
+# (merge). Counted from the two sides.
+# 10717 = 10710 + free talk slice 1's integration: FreeTalkIntegrationTests 7 (the shipped tables in a fresh season of
+# each cast 2, the third beat's line 1, the schema-30 view since level 1's enrolment 2, a two-week walk taking every
+# free talk 2), 2026-11-19. FreeTalkSeasonSoak is compiled out of Unity and adds no case.
+# 10720 = 10717 + slice 1's review: FreeTalkEdgeTouchTests 2 (a warm and a cold free talk leave the edges undated) and
+# StarTalkRegisterTests 1 (the star pool's game register), 2026-11-19.
 # 10649 = 10647 + Tyler's and Derrick's faces' 2 LookPiecesTests cases (E13 and E14: each man's line in LibraryLooks.txt
 # holds his 22 fitted face values and keeps his other values), 2026-11-19.
 # 10663 = 10649 + Danielle's face's 1 LookPiecesTests case (E15: her line in LibraryLooks.txt, on the female race, holds
 # her 22 fitted face values and keeps her other values) and the eyes' 13 IrisTintTests cases (the body's eye colour is the
 # swatch over the iris texture's grey in linear light), 2026-11-19.
-Gamesim.EditModeTests 10663
+# 10736 = 10720 (free talk slice 1) + 10663 (the All-Star looks) - 10647 (their merge base): disjoint cases, so the floor
+# is the sum (merge of main into the free talk slice), 2026-11-19.
+Gamesim.EditModeTests 10736
 # The UMA-free build. 1215 = 1236, the count after the consolidation's lanes (S2a, S2b, S4a), less the 7
 # farewell probes moved to Gamesim.DiagnosticsPlayModeTests and the 14 farewell readiness tests that now
 # compile only under GAMESIM_UMA (judged on the UMA cast); 1230 = 1215 + S2d's 7, S4b's 2, S4c's 2 and
@@ -650,7 +663,8 @@ Gamesim.EditModeTests 10663
 # 1672 = 1660 (menu slice 4, Settings and saves, at 62ddab50 on menu slice 2's commit) + the stack's (the Ring Tower
 # cell, R8's cases and menu slice 3 over menu slice 2) 12 (1652 - 1640 on this branch): disjoint cases, so the floor
 # is their sum (menu slice 4 squashed onto the stack for its landing, 2026-11-17). Counted from the two sides.
-Gamesim.PlayModeTests 1672
+# 1674 = 1672 + free talk slice 1's screen: EpisodePlayModeTests.JustTalk 2, 2026-11-19.
+Gamesim.PlayModeTests 1674
 # The UMA build of the same assembly, read by a plan built without -WithoutUma. 1281 = the 1241 above + the
 # 40 tests that compile only under GAMESIM_UMA, as run at r1 (2026-10-16): in EpisodePlayModeTests,
 # GroundedFarewell 11, Creator 9, HouseLife 8, Emotes 3, OpeningCaptures 2, and one each in CreatorEntry,
@@ -819,7 +833,8 @@ Gamesim.PlayModeTests 1672
 # 1717 = 1705 (menu slice 4, Settings and saves, at 62ddab50 on menu slice 2's commit) + the stack's (the Ring Tower
 # cell, R8's cases and menu slice 3 over menu slice 2) 12 (1697 - 1685 on this branch): disjoint cases, so the floor
 # is their sum (menu slice 4 squashed onto the stack for its landing, 2026-11-17). Counted from the two sides.
-Gamesim.PlayModeTests.UmaBuild 1717
+# 1719 = 1717 + free talk slice 1's screen: the same 2 EpisodePlayModeTests.JustTalk cases, 2026-11-19.
+Gamesim.PlayModeTests.UmaBuild 1719
 # The UMA bodies: runs only where the GAMESIM_UMA define is set (the working tree and the D: copy).
 # 82 = the 89 run on 2026-10-15, less the 7 farewell probes moved to Gamesim.Uma.DiagnosticsPlayModeTests;
 # 85 = 82 + the 3 farewell readiness decision tests (UmaFarewellReadinessDecisionPlayModeTests, 2026-10-16);
@@ -1139,8 +1154,20 @@ Gamesim.Uma.DiagnosticsPlayModeTests 10
 # Tools/SimulationTests ran on the review branch (22721 passed, 0 failed), 2026-11-19.
 # 22746 = 22721 + schema 31's minds ladder: MindRulesSchema31Tests 25 (the same cases the EditMode floor counts; its
 # migration file is editor only): what dotnet test Tools/SimulationTests ran on the branch (22746 passed, 0 failed), 2026-11-19.
+# 22752 =22746 + free talk slice 1's screen: TalkScreenLinesTests 6 (the same cases the EditMode floor counts), 2026-11-19.
+# 22784 = 22746 + the free talk's slice S1 engine: FreeTalkEngineTests 28 and FreeTalkLayerTests 10 (the same cases the
+# EditMode floor counts), 2026-11-19.
+# 22803 = 22784 + the free talk slice 1 tables' TalkTablesTests 19 (the same cases the EditMode floor counts), 2026-11-19.
+# 22809 = 22752 (screen) + engine-tables 57 (22803 - 22746 on this branch): disjoint cases, so the floor is their sum
+# (merge). Counted from the two sides.
+# 22816 = 22809 + free talk slice 1's integration: FreeTalkIntegrationTests 7 (the same cases the EditMode floor counts).
+# FreeTalkSeasonSoak's two cases are [Explicit], run by name, and not counted, as BalanceLabGoldens' are, 2026-11-19.
+# 22819 = 22816 + slice 1's review: FreeTalkEdgeTouchTests 2 and StarTalkRegisterTests 1 (the same cases the EditMode
+# floor counts), 2026-11-19.
 # 22748 = 22746 + Tyler's and Derrick's faces' 2 LookPiecesTests cases (E13 and E14, the same cases the EditMode floor
 # counts), 2026-11-19.
 # 22762 = 22748 + Danielle's face's 1 LookPiecesTests case (E15) and the eyes' 13 IrisTintTests cases (the same cases the
 # EditMode floor counts), 2026-11-19.
-Gamesim.SimulationTests 22762
+# 22835 = 22819 (free talk slice 1) + 22762 (the All-Star looks) - 22746 (their merge base): disjoint cases, so the floor
+# is the sum (merge of main into the free talk slice), 2026-11-19.
+Gamesim.SimulationTests 22835

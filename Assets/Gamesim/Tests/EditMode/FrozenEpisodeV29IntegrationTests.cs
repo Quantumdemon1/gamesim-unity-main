@@ -694,6 +694,7 @@ namespace Gamesim.Tests.EditMode
                 s.story.rulesVersion = StoryRules.Roles; // The tests' opt-in until the enrolment (ROLE-MOMENTS-PLAN §4.2).
                 s.tuningRulesVersion = TuningRules.Off; // Held: a schema-29 season has no tuning field (B9-BALANCE-PLAN decision 8).
                 s.competitionRulesVersion = CompetitionRules.Widened; // Held at competition rules 4: rules 5 (the ring tower) is newer than every older schema's reader.
+                s.story.talkRules = TalkRules.Off; // Held at talk rules 0: level 1 (free talk slice 1's enrolment) is newer than every older schema's reader.
                 BuiltCache[season] = s;
             }
             else if (season == "roles-pitch-board")
@@ -738,6 +739,7 @@ namespace Gamesim.Tests.EditMode
             var held = s.Clone();
             held.tuningRulesVersion = TuningRules.Off;
             if (held.competitionRulesVersion == CompetitionRules.RingTower) held.competitionRulesVersion = CompetitionRules.Widened; // Held at competition rules 4: rules 5 (the ring tower) is newer than every older schema's reader.
+            if (held.story.talkRules == TalkRules.Talk) held.story.talkRules = TalkRules.Off; // Held at talk rules 0: level 1 (free talk slice 1's enrolment) is newer than every older schema's reader; the walk had no free talk.
             return held;
         }
 
@@ -790,6 +792,7 @@ namespace Gamesim.Tests.EditMode
             fresh.tuningRulesVersion = TuningRules.Off; // D1's schema-29 build predates B9's tuning (B9-BALANCE-PLAN decision 8).
             fresh.story.rulesVersion = StoryRules.Threads; // ...and story rules 10, which Frozen29 refuses (STORY-RULES-10-PLAN §8).
             fresh.competitionRulesVersion = CompetitionRules.Widened; // Held at competition rules 4: rules 5 (the ring tower) is newer than every older schema's reader.
+            fresh.story.talkRules = TalkRules.Off; // Held at talk rules 0: level 1 (free talk slice 1's enrolment) is newer than every older schema's reader.
             var engine = new EpisodeEngine(fresh);
             for (int step = 0; step < 96 && engine.Snapshot.phase != EpisodePhase.Campaign; step++)
             {

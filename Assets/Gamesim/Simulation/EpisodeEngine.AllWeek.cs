@@ -273,10 +273,11 @@ namespace Gamesim.Simulation
 
         /// <summary>
         /// The engine's relationship path on a given stream: a beat that involves the player moves the pair as
-        /// the player's own acts do, its draws from the beat's keyed stream rather than the season's.
+        /// the player's own acts do, its draws from the beat's keyed stream rather than the season's. Arcless for the free talk
+        /// (ruling R5): the scores only, no arc step, no arc history row, no oath milestone.
         /// </summary>
         internal static void ChangeOnStream(EpisodeState s, string from, string to, double delta, Func<double> roll,
-            string note = null, string eventType = null) => ChangeWithRoll(s, from, to, delta, roll, note, eventType);
+            string note = null, string eventType = null, bool arcless = false) => ChangeWithRoll(s, from, to, delta, roll, note, eventType, arcless);
 
         // ---------------------------------------------------------------- what the player sees (D2-S2)
 

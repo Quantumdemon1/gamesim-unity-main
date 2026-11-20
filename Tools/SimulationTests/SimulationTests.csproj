@@ -136,6 +136,18 @@
     <!-- Schema 31's last field, the housemates' minds' ladder: its bounds, the fresh level, validation and both 30 views. -->
     <Compile Include="$(EditMode)MindRulesSchema31Tests.cs" />
     <Compile Include="$(EditMode)TalkSpentToneTests.cs" />
+    <!-- The free talk's slice S1 (talk rules 1): the command's cost, cap, stream and gains, and the layers it teaches, on the tests' own table. -->
+    <Compile Include="$(EditMode)FreeTalkFixture.cs" />
+    <Compile Include="$(EditMode)FreeTalkEngineTests.cs" />
+    <Compile Include="$(EditMode)FreeTalkLayerTests.cs" />
+    <!-- Free talk slice 1: the talk tables' checks (ids, 140-character spoken text, vocabulary, R9 coverage, the real-people deny-list). -->
+    <Compile Include="$(EditMode)TalkTablesTests.cs" />
+    <!-- Free talk slice 1 as it ships (level 1 enrolled): the shipped tables in a fresh season, the third beat's line, the schema-30 view since the enrolment, a short walk taking every talk; and the whole-season soak, [Explicit] and compiled out of Unity, run by name. -->
+    <Compile Include="$(EditMode)FreeTalkIntegrationTests.cs" />
+    <Compile Include="$(EditMode)FreeTalkSeasonSoak.cs" />
+    <!-- Free talk slice 1's review: a free talk does not date the edges (no contact this week), and the star pool's game register. -->
+    <Compile Include="$(EditMode)FreeTalkEdgeTouchTests.cs" />
+    <Compile Include="$(EditMode)StarTalkRegisterTests.cs" />
     <Compile Include="$(EditMode)PooledSchema30ShapeTests.cs" />
     <Compile Include="$(EditMode)OldSaveTrace.cs" />
     <Compile Include="$(EditMode)CurrentOldSaveTrace.cs" />
@@ -448,6 +460,8 @@
     <Compile Include="$(EditMode)LineBankLintTests.cs" />
     <Compile Include="$(EditMode)HouseTalkNotesTests.cs" />
     <Compile Include="$(EditMode)HouseTalkValidationTests.cs" />
+    <!-- Free talk slice 1, the screen: the words the panel, the tile and the notebook blocks show, and the command a reply sends. -->
+    <Compile Include="$(EditMode)TalkScreenLinesTests.cs" />
     <Compile Include="$(EditMode)NominationStepsTests.cs" />
     <Compile Include="$(EditMode)ThreatAssessmentTests.cs" />
     <Compile Include="$(EditMode)WebDiaryParityTests.cs" />

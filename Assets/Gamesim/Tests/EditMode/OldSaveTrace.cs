@@ -136,6 +136,18 @@ namespace Gamesim.Tests.EditMode
             (31, "story.contacts[].walkUpWindow", 0), (31, "story.contacts[].notNows", 0), (31, "story.contacts[].walkUpsOffUntil", 0), (31, "story.contacts[].talkFlags", new JArray()),
         };
 
+        /// <summary>
+        /// The one addition a season may hold away from its literal and still be the season the reference build played: free
+        /// talk's level, at 1 (enrolled for every season the game starts since free talk slice 1). Only the player's own free
+        /// talk reads it, and a talk had always writes its contact's window and count, which the rows above still hold to
+        /// their literals in the same projection; so a season at level 1 with no talk had played exactly as at 0 and is taken
+        /// down the same. A literal 1, not the TalkRules constant: this file is compiled against older builds too.
+        /// </summary>
+        private static readonly Dictionary<string, JToken> Enrolled = new Dictionary<string, JToken>(StringComparer.Ordinal)
+        {
+            { "story.talkRules", 1 },
+        };
+
         /// <summary>The newest schema <see cref="Project"/> knows: a state above it is refused rather than guessed at.</summary>
         internal const int Newest = 31;
 
@@ -157,17 +169,17 @@ namespace Gamesim.Tests.EditMode
                 throw new InvalidDataException("A projection runs from a known schema down to " + Oldest + " or later, never up: " + from + " to " + schema + ".");
             var result = (JObject)fields.DeepClone();
             foreach (var (added, path, literal) in Additions.Where(a => a.schema > schema && a.schema <= from).OrderByDescending(a => a.schema))
-                Remove(result, path, literal);
+                Remove(result, path, literal, Enrolled.TryGetValue(path, out var also) ? also : null);
             result["schemaVersion"] = schema;
             return result;
         }
 
-        private static void Remove(JObject root, string path, JToken literal)
+        private static void Remove(JObject root, string path, JToken literal, JToken also = null)
         {
             int dot = path.IndexOf('.');
             if (dot < 0)
             {
-                Take(root, path, literal, path);
+                Take(root, path, literal, path, also);
                 return;
             }
             string head = path.Substring(0, dot), rest = path.Substring(dot + 1);
@@ -183,14 +195,14 @@ namespace Gamesim.Tests.EditMode
                 return;
             }
             if (!(root[head] is JObject child)) throw new InvalidDataException("Not an object: " + head);
-            Remove(child, rest, literal);
+            Remove(child, rest, literal, also);
         }
 
-        private static void Take(JObject owner, string name, JToken literal, string where)
+        private static void Take(JObject owner, string name, JToken literal, string where, JToken also = null)
         {
             var property = owner.Property(name);
             if (property == null) throw new InvalidDataException("Missing addition: " + where);
-            if (!JToken.DeepEquals(property.Value, literal))
+            if (!JToken.DeepEquals(property.Value, literal) && (also == null || !JToken.DeepEquals(property.Value, also)))
                 throw new InvalidDataException("A later schema's field left its switched-off value, so the season did not play as the reference build played it: "
                     + where + " = " + property.Value.ToString(Formatting.None) + ", not " + literal.ToString(Formatting.None) + ".");
             property.Remove();

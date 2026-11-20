@@ -73,8 +73,9 @@ namespace Gamesim.Tests.EditMode
             { "story.rulesStartWeek", 1 },
             // Story rules 11, Roles, from its enrolment (ROLE-MOMENTS-PLAN R7; it was 10, Blame, from STORY-RULES-10-PLAN §8, and 9, threads, before).
             { "story.rulesVersion", 11 },
-            // The free talk's ladder (TalkRules, schema 31): 0, off, until level 1's enrolment (the lead's rulings R3 and R4).
-            { "story.talkRules", 0 },
+            // The free talk's ladder (TalkRules, schema 31): 1, the free "Just talk", from level 1's enrolment as free talk slice 1
+            // landed (the lead's rulings R3 and R16); it was 0, off, from schema 31 until then.
+            { "story.talkRules", 1 },
             // The housemates' minds' ladder (MindRules, schema 31): 0, off; no level is enrolled.
             { "story.mindRules", 0 },
         };
@@ -144,7 +145,7 @@ namespace Gamesim.Tests.EditMode
             fresh.haveNotRulesStartWeek = 1;
             fresh.strategyRulesStartWeek = 1;
             EpisodeEngine.EnableStory(fresh);
-            // The free talk's ladder (schema 31, the lead's ruling R3): written in ApplyFresh only, at TalkRules.Shipped, 0.
+            // The free talk's ladder (schema 31, the lead's ruling R3): written in ApplyFresh only, at TalkRules.Shipped, 1 since level 1's enrolment.
             fresh.story.talkRules = TalkRules.Shipped;
             // The housemates' minds' ladder (MindRules, schema 31): written in ApplyFresh only, at MindRules.Shipped, 0.
             fresh.story.mindRules = MindRules.Shipped;
@@ -204,7 +205,7 @@ namespace Gamesim.Tests.EditMode
                 Assert.That(s.alumniRulesVersion, Is.EqualTo(alumni ? AlumniRules.Latest : AlumniRules.Off), builder + " " + size + " " + roster + ": the cast's alumni rules.");
                 Assert.That(s.alumniCatalogEdition, Is.EqualTo(alumni ? AlumniEditions.Histories1Id : null), "Edition 1 with the alumni rules, none without.");
                 Assert.That(s.tuningRulesVersion, Is.EqualTo(TuningRules.Bands), "A shipped season starts on B9's tuning (TuningRules.Shipped, a pinned 1).");
-                Assert.That(s.story.talkRules, Is.EqualTo(TalkRules.Off), "A shipped season starts with free talk off until level 1's enrolment.");
+                Assert.That(s.story.talkRules, Is.EqualTo(TalkRules.Talk), "A shipped season starts on free talk's level 1 since its enrolment.");
                 Assert.That(EpisodeValidation.TryValidate(s, out string error), Is.True, error);
             }
         }

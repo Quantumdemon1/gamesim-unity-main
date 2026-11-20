@@ -15,6 +15,14 @@ namespace Gamesim.Tests.EditMode
     /// every older one behind it, sees exactly the schema-30 JSON a schema-30 build wrote. A recorded digest therefore never
     /// moves for the bump: one that moves is a regression, never a re-record. A season with any talk field away from its
     /// default has no schema-30 view, and is refused here, in this observer's words.
+    ///
+    /// <para>One exception, since level 1's enrolment (free talk slice 1): <c>story.talkRules</c> may be the enrolled level,
+    /// <see cref="TalkRules.Talk"/>, when every other talk field is at its default - a fresh season the game starts in which
+    /// no free talk was had. Level 1 is read only by the player's own JustTalk command (and the screens), and that command
+    /// always writes the contact's window and count, so such a season played exactly as it would have at 0, and its view is
+    /// the same JSON. It is B9's pattern: the tuning arm admits a fresh season's own native tuning value
+    /// (<see cref="LegacyDigestSchema30Observer.AdmitNativeTuned30"/>). Any talk had, a lean, a pair, or a level past 1 is
+    /// still refused.</para>
     /// </summary>
     internal static class LegacyDigestSchema31Observer
     {
@@ -45,7 +53,9 @@ namespace Gamesim.Tests.EditMode
             var names = story.Properties().Select(p => p.Name).ToList();
             Require(names.Count >= Story.Length && names.Skip(names.Count - Story.Length).SequenceEqual(Story),
                 "The talk fields must stand last on the story, in their declared order.");
-            Require(Integer(story["talkRules"], 0) && Integer(story["talkLean"], 0) && story["talkPairs"] is JArray pairs && pairs.Count == 0,
+            // Level 1, enrolled, is admitted with nothing else of free talk written (the class summary: no talk was had).
+            Require((Integer(story["talkRules"], 0) || Integer(story["talkRules"], TalkRules.Talk))
+                    && Integer(story["talkLean"], 0) && story["talkPairs"] is JArray pairs && pairs.Count == 0,
                 "Only a season without free talk has a schema-30 view.");
             Require(Integer(story["mindRules"], 0), "Only a season without the housemates' minds has a schema-30 view.");
             Require(story["contacts"] is JArray, "A schema-31 source holds its contacts.");

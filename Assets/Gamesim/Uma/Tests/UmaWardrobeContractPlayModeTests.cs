@@ -975,16 +975,12 @@ namespace Gamesim.Uma.Tests
             int round = 0;
             while (parts.Count > 0)
             {
-                // One avatar per body per round, wearing at most one part per place, and at most one part
-                // with a marked finish: two marked metal parts usually share a shader, and each part's
-                // finish is read off what the avatar draws.
+                // One avatar per body per round, wearing no two parts where wearing one takes the other off
+                // (RoundPick), and at most one part with a marked finish: two marked metal parts usually share
+                // a shader, and each part's finish is read off what the avatar draws.
                 foreach (var group in parts.GroupBy(part => part.Body).ToList())
                 {
-                    var taken = new List<(AppearanceItem Item, string Body, string[] Slots, List<Finish> Finishes, List<Placeholder> Placeholders)>();
-                    foreach (var part in group)
-                        if (taken.All(other => other.Item.Slot != part.Item.Slot && !WardrobeSlots.Twins(other.Item.Slot).Contains(part.Item.Slot)
-                            && (other.Finishes.Count == 0 || part.Finishes.Count == 0)))
-                            taken.Add(part);
+                    var taken = RoundPick(group, part => part.Item, part => part.Finishes.Count > 0);
                     var appearance = catalog.ChangeBody(catalog.Materialize(CharacterAppearance.Preset("player")), group.Key);
                     foreach (var part in taken) AppearanceEditing.Wear(appearance, part.Item, catalog);
                     var loaded = JsonUtility.FromJson<CharacterAppearance>(JsonUtility.ToJson(appearance));
@@ -1036,6 +1032,92 @@ namespace Gamesim.Uma.Tests
                 }
             }
             yield return null;
+        }
+
+        /// <summary>
+        /// The parts one avatar wears in a round, in their order: each part joins unless wearing it beside one already
+        /// taken would take one of the two off (<see cref="WearingEitherTakesTheOtherOff"/>), or unless both carry a
+        /// marked finish.
+        /// </summary>
+        private static List<T> RoundPick<T>(IEnumerable<T> parts, Func<T, AppearanceItem> item, Func<T, bool> marked)
+        {
+            var taken = new List<T>();
+            foreach (var part in parts)
+                if (taken.All(other => !WearingEitherTakesTheOtherOff(item(other), item(part)) && !(marked(other) && marked(part))))
+                    taken.Add(part);
+            return taken;
+        }
+
+        /// <summary>
+        /// What AppearanceEditing.Wear takes off, read both ways: wearing either item takes the other off when they are
+        /// in one slot or twin slots, when either suppresses the other's slot (a dress that suppresses Legs and a pair of
+        /// trousers), or when either names the other as a conflict.
+        /// </summary>
+        private static bool WearingEitherTakesTheOtherOff(AppearanceItem a, AppearanceItem b) =>
+            a.Slot == b.Slot || WardrobeSlots.Twins(a.Slot).Contains(b.Slot) || WardrobeSlots.Twins(b.Slot).Contains(a.Slot)
+            || a.SuppressedSlots.Contains(b.Slot) || b.SuppressedSlots.Contains(a.Slot)
+            || a.Conflicts.Any(b.Matches) || b.Conflicts.Any(a.Matches);
+
+        /// <summary>A catalog of the given items only, for AppearanceEditing.Wear.</summary>
+        private sealed class ItemsOnly : ICharacterAppearanceCatalog
+        {
+            public ItemsOnly(IReadOnlyList<AppearanceItem> items) { Items = items; }
+            public IReadOnlyList<AppearanceBodyOption> Bodies { get; } = new[] { new AppearanceBodyOption("test-body", "Body") };
+            public IReadOnlyList<AppearanceControl> Controls { get; } = new AppearanceControl[0];
+            public IReadOnlyList<AppearanceItem> Items { get; }
+            public CharacterAppearance Materialize(CharacterAppearance appearance) => appearance;
+            public CharacterAppearance ChangeBody(CharacterAppearance appearance, string bodyId) => appearance;
+        }
+
+        /// <summary>
+        /// The round picker keeps apart two parts where wearing one takes the other off: a dress that suppresses Legs and
+        /// a Legs part (either order), and two parts that conflict, as AppearanceEditing.Wear would take the first off and
+        /// the round would then miss it. Parts in different, unsuppressed places still share a round, and the walk puts
+        /// every part in some round.
+        /// </summary>
+        [Test]
+        public void TheRoundPickerNeverPutsTwoPartsWhereWearingOneTakesTheOtherOffOnOneBody()
+        {
+            AppearanceItem Item(string id, string slot, string[] suppressed = null, string[] conflicts = null) => new AppearanceItem
+            {
+                Id = id, Label = id, Slot = slot, SuppressedSlots = suppressed ?? Array.Empty<string>(), Conflicts = conflicts ?? Array.Empty<string>(),
+            };
+            var dress = Item("test.dress", "Chest", new[] { "Legs" });
+            var trousers = Item("test.trousers", "Legs");
+            var shoes = Item("test.shoes", "Feet");
+            var hat = Item("test.hat", "Helmet", conflicts: new[] { "test.hair" });
+            var hair = Item("test.hair", "Hair");
+
+            foreach (var order in new[] { new[] { dress, trousers, shoes }, new[] { trousers, dress, shoes } })
+            {
+                var round = RoundPick(order, value => value, value => false);
+                Assert.That(round, Is.EqualTo(new[] { order[0], shoes }), "The dress and the trousers are never worn together; the shoes join.");
+            }
+            Assert.That(RoundPick(new[] { hat, hair }, value => value, value => false), Is.EqualTo(new[] { hat }), "Conflicting parts, either way.");
+            Assert.That(RoundPick(new[] { hair, hat }, value => value, value => false), Is.EqualTo(new[] { hair }), "Conflicting parts, either way.");
+            Assert.That(RoundPick(new[] { shoes, hair, trousers }, value => value, value => true), Is.EqualTo(new[] { shoes }), "One marked finish a round.");
+
+            // The walk: rounds until every part is worn once.
+            var left = new List<AppearanceItem> { dress, trousers, shoes, hat, hair };
+            var rounds = new List<List<AppearanceItem>>();
+            while (left.Count > 0)
+            {
+                var round = RoundPick(left, value => value, value => false);
+                Assert.That(round, Is.Not.Empty, "Each round wears a part.");
+                rounds.Add(round);
+                foreach (var part in round) left.Remove(part);
+            }
+            Assert.That(rounds.SelectMany(round => round), Is.EquivalentTo(new[] { dress, trousers, shoes, hat, hair }));
+            Assert.That(rounds, Has.Count.EqualTo(2));
+            foreach (var round in rounds)
+            {
+                var catalog = new ItemsOnly(new[] { dress, trousers, shoes, hat, hair });
+                var appearance = new CharacterAppearance { bodyId = "test-body", activeOutfit = "Everyday" };
+                appearance.outfits.Add(new CharacterOutfit { id = "Everyday" });
+                foreach (var part in round) AppearanceEditing.Wear(appearance, part, catalog);
+                Assert.That(appearance.outfits.SelectMany(set => set.wardrobe).Select(worn => worn.itemId),
+                    Is.EquivalentTo(round.Select(part => part.Id)), "Wear keeps every part a round picks.");
+            }
         }
 
         // ------------------------------------------------------------------- the finish mark

@@ -502,6 +502,9 @@
     <!-- A look wears the pieces tagged for it, and LibraryLooks.txt's line: plain strings, no engine. -->
     <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/LookPieces.cs" />
     <Compile Include="$(EditMode)LookPiecesTests.cs" />
+    <!-- The colour a body's eyes are given: the swatch over the iris texture's grey, in linear light; plain numbers. -->
+    <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/IrisTint.cs" />
+    <Compile Include="$(EditMode)IrisTintTests.cs" />
     <!-- The UMA content folder's binary pin in .gitattributes: reads the repository's files, so it lives here. -->
     <Compile Include="UmaContentBinaryPinTests.cs" />
     <!-- The UMA face-fit export's engine-free half (its files, job, plan and assembly; Gamesim.Uma.Editor compiles the same files) and its tests. -->

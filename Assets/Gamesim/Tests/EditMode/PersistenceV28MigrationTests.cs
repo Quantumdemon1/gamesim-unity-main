@@ -79,7 +79,7 @@ namespace Gamesim.Tests.EditMode
             var social = ((JObject)next["npcSocial"]).Properties().Select(p => p.Name).ToArray();
             Assert.That(social.Skip(social.Length - 6), Is.EqualTo(PersistenceMigrationTests.Schema28NpcSocial));
             Assert.That(((JObject)next["ledger"]).Properties().Last().Name, Is.EqualTo("plans"));
-            // Today's serializer writes only a current30 state, never a historical28 DTO with new defaults.
+            // Today's serializer writes only a current31 state, never a historical28 DTO with new defaults.
             var current = EpisodeSaveMigrations.UpgradeV30ToV31(EpisodeSaveMigrations.UpgradeV29ToV30(EpisodeSaveMigrations.UpgradeV28ToV29(next))); Current(current);
             var written = Payload(current.ToObject<EpisodeState>(Serializer()));
             Assert.That(Text(written), Is.EqualTo(Text(current)));

@@ -379,7 +379,7 @@ namespace Gamesim.Tests.EditMode
         private static void Fixed(JObject payload) => Invoke(Frozen26, "Validate", payload);
         /// <summary>
         /// A historical27/28 payload must satisfy its independent frozen contract before the actual
-        /// inert next step. Only a current30 payload is hydrated against today's shape and saved semantics.
+        /// inert next step. Only a current31 payload is hydrated against today's shape and saved semantics.
         /// </summary>
         private static void Current(JObject payload)
         {

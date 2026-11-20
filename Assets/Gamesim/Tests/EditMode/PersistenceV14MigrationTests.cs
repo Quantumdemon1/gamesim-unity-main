@@ -92,12 +92,12 @@ namespace Gamesim.Tests.EditMode
                 "The supported-current semantic companion adds only the reviewed inert29 literals.");
             Assert.That(current28.ToString(Formatting.None), Is.EqualTo(frozen28));
             string frozen29 = current29.ToString(Formatting.None);
-            var current30 = EpisodeSaveMigrations.UpgradeV30ToV31(EpisodeSaveMigrations.UpgradeV29ToV30(current29));
-            Assert.That((int)current30["schemaVersion"], Is.EqualTo(31));
-            Assert.That(JToken.DeepEquals(PersistenceMigrationTests.StripSchema30((JObject)current30.DeepClone()), current29), Is.True,
+            var current31 = EpisodeSaveMigrations.UpgradeV30ToV31(EpisodeSaveMigrations.UpgradeV29ToV30(current29));
+            Assert.That((int)current31["schemaVersion"], Is.EqualTo(31));
+            Assert.That(JToken.DeepEquals(PersistenceMigrationTests.StripSchema30((JObject)current31.DeepClone()), current29), Is.True,
                 "Schema 30 adds only its pooled off literals.");
             Assert.That(current29.ToString(Formatting.None), Is.EqualTo(frozen29));
-            var state = current30.ToObject<EpisodeState>(Serializer());
+            var state = current31.ToObject<EpisodeState>(Serializer());
             Assert.That(state.haveNotRulesStartWeek, Is.Zero);
             Assert.That(state.haveNots, Is.Empty);
             Assert.That(EpisodeEngine.EconomyRulesOn(state), Is.False);

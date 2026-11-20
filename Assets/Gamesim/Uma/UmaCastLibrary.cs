@@ -424,17 +424,20 @@ namespace Gamesim.Uma
                 Eyes = Eyes("Dark brown"),
                 Fabric = new Dictionary<string, Color> { ["Chest"] = Hex("5A4636") },
                 // His face: fitted with the game's own face sliders, then built in the game and compared
-                // (12 November 2026). These are the fit set's 26 changed values; head size and the rest are the house's.
+                // (12 November 2026); mandibleSize put back at the house's and lipsSize .34 -> .49 (20 November 2026: his
+                // lips stay closed). The fit's 25 changed values that remain; head size and the rest are the house's.
                 Dna = new Dictionary<string, float>
                 {
                     ["height"] = .21f,
                     ["BrowPosition"] = .56f, ["cheekPosition"] = .52f, ["cheekPronounced"] = .49f, ["cheekSize"] = .34f,
-                    ["chinPosition"] = .36f, ["chinPronounced"] = .58f, ["chinSize"] = .46f, ["eyeRotation"] = .53f,
-                    ["eyeSize"] = .13f, ["foreheadPosition"] = .40f, ["foreheadSize"] = .41f, ["headWidth"] = .91f,
-                    ["jawsPosition"] = .29f, ["jawsSize"] = .72f, ["lipsSize"] = .34f, ["lowCheekPosition"] = .53f,
-                    ["lowCheekPronounced"] = .52f, ["mandibleSize"] = .43f, ["mouthSize"] = .53f, ["noseBroken"] = .51f,
-                    ["noseCurve"] = .38f, ["noseInclination"] = .27f, ["nosePosition"] = .75f, ["nosePronounced"] = .57f,
-                    ["noseSize"] = .37f, ["noseWidth"] = .60f,
+                    ["chinPosition"] = .36f, ["chinPronounced"] = .58f, ["chinSize"] = .46f,
+                    ["foreheadPosition"] = .40f, ["foreheadSize"] = .41f, ["headWidth"] = .91f,
+                    ["jawsPosition"] = .29f, ["jawsSize"] = .72f, ["lipsSize"] = .49f, ["lowCheekPosition"] = .53f,
+                    ["lowCheekPronounced"] = .52f, ["mouthSize"] = .53f, ["noseBroken"] = .51f, ["noseCurve"] = .38f,
+                    ["noseInclination"] = .27f, ["nosePosition"] = .75f, ["nosePronounced"] = .57f, ["noseSize"] = .37f,
+                    ["noseWidth"] = .60f,
+                    // His eye size and tilt (20 November 2026), in place of the fit's .13 and .53.
+                    ["eyeSize"] = .40f, ["eyeRotation"] = .49f,
                 },
             },
 

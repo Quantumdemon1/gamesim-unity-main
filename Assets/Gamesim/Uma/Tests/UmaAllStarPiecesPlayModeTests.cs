@@ -265,31 +265,32 @@ namespace Gamesim.Uma.Tests
 
         /// <summary>
         /// Will's face: fitted with the game's own face sliders, then built in the game and compared
-        /// (12 November 2026). The fit set's 26 changed values, as UmaCastLibrary's look gives them.
+        /// (12 November 2026). The fit set's 25 changed values that remain, as UmaCastLibrary's look gives them: since
+        /// 20 November 2026 mandibleSize is the house's and lipsSize .49 replaces the fit's .34: the lips stay closed.
         /// </summary>
         private static readonly Dictionary<string, float> WillFitted = new Dictionary<string, float>(StringComparer.Ordinal)
         {
             ["BrowPosition"] = .56f, ["cheekPosition"] = .52f, ["cheekPronounced"] = .49f, ["cheekSize"] = .34f,
             ["chinPosition"] = .36f, ["chinPronounced"] = .58f, ["chinSize"] = .46f, ["eyeRotation"] = .53f,
             ["eyeSize"] = .13f, ["foreheadPosition"] = .40f, ["foreheadSize"] = .41f, ["headWidth"] = .91f,
-            ["jawsPosition"] = .29f, ["jawsSize"] = .72f, ["lipsSize"] = .34f, ["lowCheekPosition"] = .53f,
-            ["lowCheekPronounced"] = .52f, ["mandibleSize"] = .43f, ["mouthSize"] = .53f, ["noseBroken"] = .51f,
-            ["noseCurve"] = .38f, ["noseInclination"] = .27f, ["nosePosition"] = .75f, ["nosePronounced"] = .57f,
-            ["noseSize"] = .37f, ["noseWidth"] = .60f,
+            ["jawsPosition"] = .29f, ["jawsSize"] = .72f, ["lipsSize"] = .49f, ["lowCheekPosition"] = .53f,
+            ["lowCheekPronounced"] = .52f, ["mouthSize"] = .53f, ["noseBroken"] = .51f, ["noseCurve"] = .38f,
+            ["noseInclination"] = .27f, ["nosePosition"] = .75f, ["nosePronounced"] = .57f, ["noseSize"] = .37f,
+            ["noseWidth"] = .60f,
         };
 
         /// <summary>
         /// Will, as a season puts him in the house: his template's contestant, its appearance resolved by the season's
         /// snapshot, attached through the registered provider. The provider's own lookup (the appearance's presetId in
         /// UmaCastLibrary) finds his library look, and the season's appearance, which the provider writes over that
-        /// look, carries his 26 fitted values. His built body's DNA carries every one of them within .001. Nothing on
-        /// the route from his look to the body may clamp: two of them, eyeSize .13 and headWidth .91, lie outside the
-        /// creator sliders' .25 to .75, and a clamp anywhere on the route would move those first.
+        /// look, carries his 25 fitted values and his own eye values. His built body's DNA carries every one of them
+        /// within .001. Nothing on the route from his look to the body may clamp: headWidth .91 lies outside the creator
+        /// sliders' .25 to .75, and a clamp anywhere on the route would move it first.
         /// </summary>
         [UnityTest]
         public IEnumerator WillsBuiltBodyCarriesHisFittedFace()
         {
-            return BuiltBodyCarriesFittedFace(Will, WillFitted, "LookPiecesTests.E10");
+            return BuiltBodyCarriesFittedFace(Will, WillFitted, "LookPiecesTests.E10", WillEyeMouth);
         }
 
         // ------------------------------------------------------------------------- Dan's face, on his built body
@@ -491,6 +492,11 @@ namespace Gamesim.Uma.Tests
 
         // Each person's own eye and mouth values (20 November 2026), laid over the fitted values;
         // the same dictionaries as LookPiecesTests'.
+        private static readonly Dictionary<string, float> WillEyeMouth = new Dictionary<string, float>(StringComparer.Ordinal)
+        {
+            ["eyeSize"] = .40f, ["eyeRotation"] = .49f,
+        };
+
         private static readonly Dictionary<string, float> TylerEyeMouth = new Dictionary<string, float>(StringComparer.Ordinal)
         {
             ["eyeSize"] = .41f, ["eyeRotation"] = .44f,

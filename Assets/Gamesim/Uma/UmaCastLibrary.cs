@@ -593,7 +593,19 @@ namespace Gamesim.Uma
                 Brows = Hair("Light brown"),
                 Eyes = Eyes("Brown"),
                 Fabric = new Dictionary<string, Color> { ["Chest"] = Hex("1E2126") },
-                Dna = new Dictionary<string, float> { ["height"] = .15f, ["lipsSize"] = .44f, ["foreheadSize"] = .58f },
+                // Her face: fitted with the game's own face sliders (19 November 2026). These are
+                // the fit set's 20 changed values; head size and the rest are the house's.
+                Dna = new Dictionary<string, float>
+                {
+                    ["height"] = .15f,
+                    ["lipsSize"] = .44f,
+                    ["foreheadSize"] = .58f,
+                    ["BrowPosition"] = .25f, ["cheekPosition"] = .29f, ["cheekPronounced"] = .31f, ["cheekSize"] = .58f,
+                    ["chinPosition"] = .48f, ["chinPronounced"] = .32f, ["chinSize"] = .39f, ["headWidth"] = .53f,
+                    ["jawsPosition"] = .65f, ["jawsSize"] = .25f, ["lowCheekPosition"] = .75f, ["lowCheekPronounced"] = .75f,
+                    ["mandibleSize"] = .54f, ["noseBroken"] = .45f, ["noseCurve"] = .38f, ["noseInclination"] = .43f,
+                    ["nosePosition"] = .34f, ["nosePronounced"] = .61f, ["noseSize"] = .64f, ["noseWidth"] = .66f,
+                },
             },
 
             // The Surfer Strategist. Sun-bleached curls, a white island shirt.

@@ -489,6 +489,33 @@ namespace Gamesim.Uma.Tests
             return BuiltBodyCarriesFittedFace(Cody, CodyFitted, "LookPiecesTests.E18", CodyEyeMouth);
         }
 
+        // ------------------------------------------------------------------------- Vanessa's face, on her built body
+
+        private const string Vanessa = "vanessa-rousso";
+
+        /// <summary>
+        /// Vanessa's face: fitted with the game's own face sliders, then built in the game and compared
+        /// (19 November 2026). The fit set's 20 changed values, as UmaCastLibrary's look gives them.
+        /// </summary>
+        private static readonly Dictionary<string, float> VanessaFitted = new Dictionary<string, float>(StringComparer.Ordinal)
+        {
+            ["BrowPosition"] = .25f, ["cheekPosition"] = .29f, ["cheekPronounced"] = .31f, ["cheekSize"] = .58f,
+            ["chinPosition"] = .48f, ["chinPronounced"] = .32f, ["chinSize"] = .39f, ["headWidth"] = .53f,
+            ["jawsPosition"] = .65f, ["jawsSize"] = .25f, ["lowCheekPosition"] = .75f, ["lowCheekPronounced"] = .75f,
+            ["mandibleSize"] = .54f, ["noseBroken"] = .45f, ["noseCurve"] = .38f, ["noseInclination"] = .43f,
+            ["nosePosition"] = .34f, ["nosePronounced"] = .61f, ["noseSize"] = .64f, ["noseWidth"] = .66f,
+        };
+
+        /// <summary>
+        /// Vanessa, as a season puts her in the house, built by the game's own provider on her look's race (the female
+        /// one): her built body's DNA carries each of her 20 fitted values within .001, the same check as Will's.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator VanessasBuiltBodyCarriesHerFittedFace()
+        {
+            return BuiltBodyCarriesFittedFace(Vanessa, VanessaFitted, "LookPiecesTests.E20");
+        }
+
         // ------------------------------------------------------------------------- Eyes and mouths
 
         // Each person's own eye and mouth values (20 November 2026), laid over the fitted values;

@@ -470,6 +470,42 @@ namespace Gamesim.Tests.EditMode
             AssertFittedLine("cody-calafiore", CodyFitted, CodyKept, 10, Male, CodyEyeMouth);
         }
 
+        // ------------------------------------------------------------------------- Vanessa's face
+
+        /// <summary>
+        /// Vanessa's face: fitted with the game's own face sliders, then built in the game and compared
+        /// (19 November 2026). The fit set's 20 changed values, as UmaCastLibrary's look gives them.
+        /// </summary>
+        private static readonly Dictionary<string, float> VanessaFitted = new Dictionary<string, float>(StringComparer.Ordinal)
+        {
+            ["BrowPosition"] = .25f, ["cheekPosition"] = .29f, ["cheekPronounced"] = .31f, ["cheekSize"] = .58f,
+            ["chinPosition"] = .48f, ["chinPronounced"] = .32f, ["chinSize"] = .39f, ["headWidth"] = .53f,
+            ["jawsPosition"] = .65f, ["jawsSize"] = .25f, ["lowCheekPosition"] = .75f, ["lowCheekPronounced"] = .75f,
+            ["mandibleSize"] = .54f, ["noseBroken"] = .45f, ["noseCurve"] = .38f, ["noseInclination"] = .43f,
+            ["nosePosition"] = .34f, ["nosePronounced"] = .61f, ["noseSize"] = .64f, ["noseWidth"] = .66f,
+        };
+
+        /// <summary>
+        /// Her other merged values, as they were before the fit: the house's, and her own height, forehead and lips.
+        /// Her old head width (.58, the house's) is not kept: headWidth is one of her fitted values.
+        /// </summary>
+        private static readonly Dictionary<string, float> VanessaKept = new Dictionary<string, float>(StringComparer.Ordinal)
+        {
+            ["armWidth"] = .62f, ["eyeSize"] = .62f, ["feetSize"] = .66f, ["forearmWidth"] = .62f, ["foreheadSize"] = .58f,
+            ["handsSize"] = .68f, ["headSize"] = .72f, ["height"] = .15f, ["legsSize"] = .62f, ["lipsSize"] = .44f,
+            ["lowerMuscle"] = .58f, ["neckThickness"] = .6f, ["upperMuscle"] = .58f,
+        };
+
+        /// <summary>
+        /// Vanessa's line in LibraryLooks.txt, on the female race, holds her 20 fitted face values and, for every other
+        /// name, the value it had before the fit, and no name besides: the same check as Will's (E10).
+        /// </summary>
+        [Test]
+        public void E20_VanessasLineCarriesHerFittedFaceAndKeepsHerOtherValues()
+        {
+            AssertFittedLine("vanessa-rousso", VanessaFitted, VanessaKept, 20, Female);
+        }
+
         // ------------------------------------------------------------------------- Eyes and mouths
 
         // Each person's own eye and mouth values (20 November 2026), laid over the fitted and kept

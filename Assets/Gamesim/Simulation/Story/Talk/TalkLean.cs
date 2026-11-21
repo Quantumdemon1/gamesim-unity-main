@@ -16,6 +16,12 @@ namespace Gamesim.Simulation
         /// <summary>The profile words (spec 3.6). "A flirt" is the game's word for a bold talker; nothing romantic follows from it in slice 2.</summary>
         public const string SparkWord = "a flirt", SteadyWord = "easy to talk to", GuardedWord = "hard to read";
 
+        /// <summary>
+        /// The Spark word when the player's own card is a real person (an All-Stars card, <see cref="StoryPeople.IsRealPerson(ContestantState)"/>):
+        /// a word about the game only, never "a flirt" (rulings R7 and R14).
+        /// </summary>
+        public const string RealSparkWord = "a bold talker";
+
         /// <summary>The player's own line: "The house reads you as " + the word + ".".</summary>
         public const string ReadsYouAs = "The house reads you as ";
 
@@ -57,11 +63,12 @@ namespace Gamesim.Simulation
         public static string PlayerClass(EpisodeState s) =>
             TalkChemistry.On(s) ? ClassAt(StartClass(s), s.story.talkLean) : null;
 
-        /// <summary>A class's profile word.</summary>
-        public static string Word(string playerClass) =>
-            playerClass == TalkPools.Spark ? SparkWord : playerClass == TalkPools.Guarded ? GuardedWord : SteadyWord;
+        /// <summary>A class's profile word; for a real person's card the Spark word is <see cref="RealSparkWord"/>.</summary>
+        public static string Word(string playerClass, bool realPerson = false) =>
+            playerClass == TalkPools.Spark ? (realPerson ? RealSparkWord : SparkWord)
+            : playerClass == TalkPools.Guarded ? GuardedWord : SteadyWord;
 
-        /// <summary>"The house reads you as a flirt." for a class.</summary>
-        public static string LineFor(string playerClass) => ReadsYouAs + Word(playerClass) + ".";
+        /// <summary>"The house reads you as a flirt." for a class ("a bold talker" on a real person's card).</summary>
+        public static string LineFor(string playerClass, bool realPerson = false) => ReadsYouAs + Word(playerClass, realPerson) + ".";
     }
 }

@@ -245,7 +245,7 @@ namespace Gamesim.Simulation
             new TalkRow
             {
                 Id = "star.stage.friend.3", Pool = TalkPools.Star, Kind = TalkKind.Stage, Stage = FriendStage.Friend,
-                Open = "(sitting with you on the stairs after the eviction) \"Plenty of people in here want to beat me. You're one of the few I wouldn't mind losing to. Take that however you like.\"",
+                Open = "(sitting with you on the stairs after the eviction) \"Plenty of people in here want to beat me. You're one of the few I wouldn't mind losing to.\"",
                 Replies = new[]
                 {
                     new TalkReply
@@ -274,7 +274,7 @@ namespace Gamesim.Simulation
             new TalkRow
             {
                 Id = "star.stage.close.1", Pool = TalkPools.Star, Kind = TalkKind.Stage, Stage = FriendStage.CloseFriend,
-                Open = "(pulling you into the storage room, door half shut) \"I need a favor, game to game. If my name comes up in the HoH room, tell me first. Before anyone.\"",
+                Open = "(catching you alone by the storage room) \"I need a favor, game to game. If my name comes up in the HoH room, tell me first. Before anyone.\"",
                 Replies = new[]
                 {
                     new TalkReply

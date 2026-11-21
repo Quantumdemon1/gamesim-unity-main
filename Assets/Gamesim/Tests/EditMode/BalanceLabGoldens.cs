@@ -51,8 +51,10 @@ namespace Gamesim.Tests.EditMode
         /// story.talkRules=2 came with level 2's enrolment (free talk slice 2, ruling R16): every fresh season plays chemistry and
         /// the friendship stages. No lab policy sends JustTalk, but paid talk builds rapport too, so a housemate can reach Friend
         /// in a lab season, and at level 2 a Friend answers a vote question more honestly and costs 8 more to nominate: a cell can
-        /// move. PROVISIONAL until all eight cases are run by name at the slice's head: the digests below are the level-1
-        /// recordings except where a case run at the slice's integration head printed a new one (its commit says which).
+        /// move, and cells did: Budget0Size12, run by name at the slice's integration head (629c53de), printed six cells moved
+        /// (social, schemer, floater, beast, oracle-reader, oracle-skilled at size 12, budget 0), recorded below; its other six
+        /// printed their level-1 digests byte for byte. PROVISIONAL: the other seven cases (Budget0Size8 was cut off by a time
+        /// limit; the six budget-300 cases were not run) still hold their level-1 digests until they are run by name.
         /// </summary>
         internal const string Rules = "competitionRulesVersion=5,readRulesStartWeek=1,leverRulesStartWeek=1,weekRulesStartWeek=1,economyRulesVersion=1,"
             + "agencyRulesStartWeek=1,finaleRulesStartWeek=1,commitmentRulesStartWeek=1,unifiedCommitmentRulesVersion=2,unifiedHearingRulesVersion=1,"
@@ -99,16 +101,16 @@ namespace Gamesim.Tests.EditMode
             "oracle-skilled/Regular/8/npc0 c45a31d5b8b014d9",
             "passive/Regular/12/npc0 c2657b1559c01f73",
             "random/Regular/12/npc0 a5bf441940905c68",
-            "social/Regular/12/npc0 5bd50de396b9c5a4",
+            "social/Regular/12/npc0 ef779b6d3cc8da95",
             "reader/Regular/12/npc0 b40129f82d7e4e64",
-            "schemer/Regular/12/npc0 615c595ac70b06b3",
+            "schemer/Regular/12/npc0 45d6b8c3089765c3",
             "loyalist/Regular/12/npc0 1a0bd847f9ec563d",
-            "floater/Regular/12/npc0 8631a4e0665513a7",
-            "beast/Regular/12/npc0 88d9d5a0a55d38cd",
+            "floater/Regular/12/npc0 ef5049109a043fb0",
+            "beast/Regular/12/npc0 c6e7db942219b6fa",
             "novice/Regular/12/npc0 fe438f71319bbffa",
             "exploit/Regular/12/npc0 bf864c335b708bd0",
-            "oracle-reader/Regular/12/npc0 0611f0922e27e33b",
-            "oracle-skilled/Regular/12/npc0 f13c58ad9c0294ca",
+            "oracle-reader/Regular/12/npc0 e0567f9572f2f91f",
+            "oracle-skilled/Regular/12/npc0 d8e0bf4642a4cd04",
             "passive/Regular/8/npc300 e19cca6ff3f8a36a",
             "random/Regular/8/npc300 2f32a8f76503bb3b",
             "social/Regular/8/npc300 72bd344cdeb49ed8",

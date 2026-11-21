@@ -53,7 +53,7 @@ namespace Gamesim.Tests.EditMode
         [Test]
         public void TheRegistryJoinsEveryTableAndEveryPoolHasEachKind()
         {
-            Assert.That(TalkTables.Tables.Count, Is.EqualTo(12), "Four pools, three kinds each.");
+            Assert.That(TalkTables.Tables.Count, Is.EqualTo(16), "Four pools, three kinds each, and each pool's stage talks (slice 2).");
             Assert.That(TalkTables.All.Count, Is.EqualTo(TalkTables.Tables.Sum(t => t.Length)));
             Assert.That(TalkTables.All.Count, Is.EqualTo(276), "The converter read 276 talks from the source and wrote 276 rows.");
             foreach (string pool in TalkPools.All)

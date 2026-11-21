@@ -35,7 +35,7 @@ namespace Gamesim.Simulation
                         Tone = TalkRules.Careful, Line = "\"Good to know you're watching.\"",
                         Lands = "\"Everyone's watching. I'm just honest about it. Respect.\"",
                         Even = "\"Always. Get used to it.\"",
-                        Grates = "\"Don't get nervous. It's not that kind of watching.\"",
+                        Grates = "\"Don't get nervous. It's just the game.\"",
                     },
                 },
             },

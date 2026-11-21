@@ -104,13 +104,14 @@ namespace Gamesim.Simulation
         }
 
         /// <summary>
-        /// The player's own line, "The house reads you as easy to talk to.", or null below talk rules 2. When the player's own card is a
-        /// real person (an All-Stars card) the Spark word is "a bold talker", never "a flirt" (rulings R7 and R14).
+        /// The player's own line, "The house reads you as easy to talk to.", or null below talk rules 2. When the player's own card was
+        /// built from an All-Stars template, whatever it is now named, the Spark word is "a bold talker", never "a flirt" (rulings R7
+        /// and R14).
         /// </summary>
         public static string HouseReadsYou(EpisodeState s)
         {
             string playerClass = TalkLean.PlayerClass(s);
-            return playerClass == null ? null : TalkLean.LineFor(playerClass, StoryPeople.IsRealPerson(s, s.playerId));
+            return playerClass == null ? null : TalkLean.LineFor(playerClass, FreeTalk.IsAllStar(s.Find(s.playerId)));
         }
 
         /// <summary>A layer's heading.</summary>

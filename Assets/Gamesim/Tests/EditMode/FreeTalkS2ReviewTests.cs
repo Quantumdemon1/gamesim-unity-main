@@ -35,10 +35,18 @@ namespace Gamesim.Tests.EditMode
                 Assert.That(shown.Where(l => l.IndexOf("flirt", StringComparison.OrdinalIgnoreCase) >= 0), Is.Empty, start);
             }
 
-            // A renamed card is not a real person, and keeps the game's word.
+            // A renamed card keeps its template, so it keeps the same word (R7: by the template, whatever the card is named).
             s.Find(s.playerId).name = "Pat Example";
             Assert.That(StoryPeople.IsRealPerson(s, s.playerId), Is.False, "The control: a renamed card.");
-            Assert.That(TalkNotes.HouseReadsYou(s), Is.EqualTo("The house reads you as a flirt."));
+            Assert.That(FreeTalk.IsAllStar(s.Find(s.playerId)), Is.True, "The control: the card was built from an All-Stars template.");
+            Assert.That(TalkNotes.HouseReadsYou(s), Is.EqualTo("The house reads you as a bold talker."));
+
+            // A card of the regular cast keeps the game's word.
+            var regular = FreeTalkFixture.Fresh(TalkRules.Chemistry, seed: 3112u);
+            FreeTalkS2Fixture.ClassAs(regular, regular.playerId, TalkPools.Spark);
+            regular.story.talkLean = TalkRules.MostLean;
+            Assert.That(FreeTalk.IsAllStar(regular.Find(regular.playerId)), Is.False, "The control: a regular card.");
+            Assert.That(TalkNotes.HouseReadsYou(regular), Is.EqualTo("The house reads you as a flirt."));
         }
 
         /// <summary>A housemate made a Friend: kindred, rapport 8, their view of you 40 (as <see cref="FreeTalkFriendTests"/> does).</summary>

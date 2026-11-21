@@ -154,6 +154,8 @@
     <Compile Include="$(EditMode)FreeTalkLeanTests.cs" />
     <Compile Include="$(EditMode)FreeTalkStageTests.cs" />
     <Compile Include="$(EditMode)FreeTalkFriendTests.cs" />
+    <!-- Free talk slice 2: the friendship stage talks' tables (three per stage per pool, the favor's two replies, the star pool's register). -->
+    <Compile Include="$(EditMode)TalkStageTablesTests.cs" />
     <Compile Include="$(EditMode)PooledSchema30ShapeTests.cs" />
     <Compile Include="$(EditMode)OldSaveTrace.cs" />
     <Compile Include="$(EditMode)CurrentOldSaveTrace.cs" />

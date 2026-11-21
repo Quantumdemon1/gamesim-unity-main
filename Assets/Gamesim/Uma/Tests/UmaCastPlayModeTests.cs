@@ -169,17 +169,25 @@ namespace Gamesim.Uma.Tests
         public IEnumerator BuiltBody_IsFlattenedTowardTheHouseLook()
         {
             yield return null;
-            CharacterPresentation.Attach(actor, Houseguest(), Color.cyan);
+            var presentation = CharacterPresentation.Attach(actor, Houseguest(), Color.cyan);
 
+            // UMA's incremental combiner parents its new renderer under the body, disabled and
+            // carrying fresh generated materials, a step before it commits the build; the commit,
+            // the Show that enables the renderer and CharacterUpdated (the stylize pass) come
+            // together, and a time slice that runs out between the two leaves that staged renderer
+            // there for a frame. The body is finished - stylized, sized and tinted - when it stops
+            // assembling, so that is what this waits for, not the first renderer to appear.
             SkinnedMeshRenderer mesh = null;
-            for (int frame = 0; frame < BuildTimeoutFrames && mesh == null; frame++)
+            for (int frame = 0; frame < BuildTimeoutFrames && (mesh == null || presentation.IsBodyAssembling); frame++)
             {
                 yield return null;
                 mesh = UmaMesh();
             }
             Assert.That(mesh, Is.Not.Null);
+            Assert.That(presentation.IsBodyAssembling, Is.False, "The body never finished assembling.");
+            Assert.That(mesh.enabled, Is.True, "A finished body is drawn.");
 
-            // The stylize pass runs on CharacterUpdated, which is the same frame the mesh appears.
+            // The stylize pass runs on CharacterUpdated, in the same generator call that enables the mesh.
             // A part marked to keep its authored finish is left alone; everything else is flattened,
             // and at least one material is judged, so the test cannot pass on a body of marked parts.
             int judged = 0;
@@ -256,12 +264,17 @@ namespace Gamesim.Uma.Tests
         private int VisibleRenderers() =>
             actor.GetComponentsInChildren<Renderer>(true).Count(renderer => renderer.enabled);
 
-        /// <summary>The UMA body's mesh specifically: the one under "UMA Body".</summary>
+        /// <summary>
+        /// The UMA body's mesh specifically: the one under "UMA Body" that UMA itself built. A finished
+        /// body can also carry grown pieces (hair strands) as skinned renderers of their own; those are
+        /// not the body and the house look leaves them alone.
+        /// </summary>
         private SkinnedMeshRenderer UmaMesh()
         {
             var body = actor.GetComponentsInChildren<Transform>(true)
                 .FirstOrDefault(child => child.name == "UMA Body");
-            return body == null ? null : body.GetComponentInChildren<SkinnedMeshRenderer>(true);
+            return body == null ? null : body.GetComponentsInChildren<SkinnedMeshRenderer>(true)
+                .FirstOrDefault(renderer => renderer.GetComponent<GrownPiece>() == null);
         }
 
         /// <summary>House proportions with this houseguest's own overrides applied, as the provider composes them.</summary>

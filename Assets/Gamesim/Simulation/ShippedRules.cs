@@ -64,9 +64,11 @@ namespace Gamesim.Simulation
             // arcs, grudges, lore, bonds and production. Seasons built directly by tests and
             // the default scene engine stay off unless they switch it on themselves.
             EpisodeEngine.EnableStory(fresh);
-            // The free talk's ladder (TalkRules, the lead's ruling R3): written here and only here. Shipped is level 1, the free
-            // "Just talk", enrolled as its slice landed (R16); a plain int, drawing nothing. Only the player's JustTalk command
-            // reads it, so a season nobody talks in plays as it did at 0.
+            // The free talk's ladder (TalkRules, the lead's ruling R3): written here and only here. Shipped is level 2: the free
+            // "Just talk" (level 1) with chemistry, the player's read and the friendship stages (level 2), each enrolled as its
+            // slice landed (R16); a plain int, drawing nothing. At level 2 a housemate who reaches Friend through the rest of the
+            // game (paid talk builds rapport too) answers a vote question more honestly and costs more to nominate, so a fresh
+            // season can play differently from level 1 even when nobody free-talks.
             fresh.story.talkRules = TalkRules.Shipped;
             // The housemates' minds' ladder (MindRules, schema 31): written here and only here, at Shipped, level 0, off,
             // until a level is enrolled after its balance measurement; a plain int, drawing nothing.

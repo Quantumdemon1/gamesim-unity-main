@@ -58,8 +58,8 @@ namespace Gamesim.Tests.EditMode
             var contact = (JObject)story["contacts"][0];
             switch (defect)
             {
-                // A level past the enrolled one: level 1 with nothing else written is admitted since its enrolment (the observer's summary).
-                case "talk-rules": story["talkRules"] = TalkRules.Talk + 1; break;
+                // A level past the enrolled ones: levels 1 and 2 with nothing else written are admitted since their enrolment (the observer's summary).
+                case "talk-rules": story["talkRules"] = TalkRules.Chemistry + 1; break;
                 case "lean": story["talkLean"] = -1; break;
                 case "pair": ((JArray)story["talkPairs"]).Add(new JObject()); break;
                 case "talks": contact["talks"] = 1; break;

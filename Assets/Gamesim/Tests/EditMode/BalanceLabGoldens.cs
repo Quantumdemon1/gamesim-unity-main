@@ -48,13 +48,18 @@ namespace Gamesim.Tests.EditMode
         /// same seasons. Recorded again on talk rules 1 on 2026-11-19: only this number moved. All eight cases, run by name,
         /// passed (the digests below, byte for byte): seven on the slice's integration branch, and Budget300Size8Third, cut off
         /// there by a time limit, on the slice's merge with main.
+        /// story.talkRules=2 came with level 2's enrolment (free talk slice 2, ruling R16): every fresh season plays chemistry and
+        /// the friendship stages. No lab policy sends JustTalk, but paid talk builds rapport too, so a housemate can reach Friend
+        /// in a lab season, and at level 2 a Friend answers a vote question more honestly and costs 8 more to nominate: a cell can
+        /// move. PROVISIONAL until all eight cases are run by name at the slice's head: the digests below are the level-1
+        /// recordings except where a case run at the slice's integration head printed a new one (its commit says which).
         /// </summary>
         internal const string Rules = "competitionRulesVersion=5,readRulesStartWeek=1,leverRulesStartWeek=1,weekRulesStartWeek=1,economyRulesVersion=1,"
             + "agencyRulesStartWeek=1,finaleRulesStartWeek=1,commitmentRulesStartWeek=1,unifiedCommitmentRulesVersion=2,unifiedHearingRulesVersion=1,"
             + "blocRulesStartWeek=1,socialBudgetRulesStartWeek=1,dealRulesStartWeek=1,eventRulesStartWeek=1,storyRulesStartWeek=1,haveNotRulesStartWeek=1,"
             + "strategyRulesStartWeek=1,allianceLeakRulesStartWeek=1,pactPlanRulesStartWeek=1,allWeekRulesStartWeek=1,dialogueRulesVersion=0,"
             + "alumniRulesVersion=0,tuningRulesVersion=1,"
-            + "npcSocial.rulesStartWeek=1,story.rulesStartWeek=1,story.rulesVersion=11,story.talkRules=1,story.mindRules=0";
+            + "npcSocial.rulesStartWeek=1,story.rulesStartWeek=1,story.rulesVersion=11,story.talkRules=2,story.mindRules=0";
 
         /// <summary>
         /// Each cell's digest: "policy/roster/size/npcN hash". Recorded with every shipped rule on: the war rooms played,

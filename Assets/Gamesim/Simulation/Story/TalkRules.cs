@@ -10,7 +10,7 @@ namespace Gamesim.Simulation
     /// started on. A level is defined here before its slice reads it, and admitted only from the schema that introduced it
     /// (<see cref="Admits"/>: every level from 31). A fresh season's level is written in
     /// <see cref="ShippedRules.ApplyFresh(EpisodeState)"/> and only there, as <see cref="Shipped"/>; each level is ENROLLED
-    /// (moved into Shipped) only by its slice's integrator, as the slice lands (ruling R16; level 1 is enrolled). Load, migration,
+    /// (moved into Shipped) only by its slice's integrator, as the slice lands (ruling R16; levels 1 and 2 are enrolled). Load, migration,
     /// recovery and the importer never infer a level: an old save migrates at 0 and keeps free talk off. Every rule reads
     /// the level that introduced it as a lower bound (<see cref="At"/>), never <see cref="Latest"/>.</para>
     /// </summary>
@@ -42,12 +42,13 @@ namespace Gamesim.Simulation
         public const int Latest = ComesToTalk;
 
         /// <summary>
-        /// The level a season the game starts plays under (<see cref="ShippedRules.ApplyFresh(EpisodeState)"/>): level 1,
-        /// <see cref="Talk"/>, enrolled by slice 1's integrator as the slice lands (ruling R16, which replaces R4's gate: the
-        /// balance arm runs afterwards and tunes the gains). It was <see cref="Off"/> from schema 31 until then. Never
-        /// <see cref="Latest"/>: each later level is enrolled only by its own slice's integrator.
+        /// The level a season the game starts plays under (<see cref="ShippedRules.ApplyFresh(EpisodeState)"/>): level 2,
+        /// <see cref="Chemistry"/>, enrolled by slice 2's integrator as the slice lands (ruling R16, which replaces R4's gate: the
+        /// balance arm runs afterwards and tunes the gains). It was <see cref="Off"/> from schema 31, then <see cref="Talk"/>
+        /// from slice 1's enrolment; a season keeps the level it started on. Never <see cref="Latest"/>: each later level is
+        /// enrolled only by its own slice's integrator.
         /// </summary>
-        public const int Shipped = Talk;
+        public const int Shipped = Chemistry;
 
         /// <summary>The schema that introduced the ladder and every level on it.</summary>
         public const int Schema = 31;

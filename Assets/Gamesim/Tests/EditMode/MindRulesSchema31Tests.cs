@@ -83,7 +83,7 @@ namespace Gamesim.Tests.EditMode
         {
             var s = Shipped();
             s.story.mindRules = level;
-            Assert.That(s.story.talkRules, Is.EqualTo(TalkRules.Shipped), "Free talk's level 1 since its enrolment; the minds' ladder moves nothing of it.");
+            Assert.That(s.story.talkRules, Is.EqualTo(TalkRules.Shipped), "Free talk's level 2 since its enrolment; the minds' ladder moves nothing of it.");
             Assert.That(EpisodeValidation.TryValidate(s, out string reason), Is.True, reason);
         }
 

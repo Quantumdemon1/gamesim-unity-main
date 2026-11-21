@@ -189,17 +189,18 @@ namespace Gamesim.Tests.EditMode
 
         /// <summary>
         /// Will's face: fitted with the game's own face sliders, then built in the game and compared
-        /// (12 November 2026). The fit set's 26 changed values, as UmaCastLibrary's look gives them.
+        /// (12 November 2026). The fit set's 25 changed values that remain, as UmaCastLibrary's look gives them: since
+        /// 20 November 2026 mandibleSize is the house's and lipsSize .49 replaces the fit's .34: the lips stay closed.
         /// </summary>
         private static readonly Dictionary<string, float> WillFitted = new Dictionary<string, float>(StringComparer.Ordinal)
         {
             ["BrowPosition"] = .56f, ["cheekPosition"] = .52f, ["cheekPronounced"] = .49f, ["cheekSize"] = .34f,
             ["chinPosition"] = .36f, ["chinPronounced"] = .58f, ["chinSize"] = .46f, ["eyeRotation"] = .53f,
             ["eyeSize"] = .13f, ["foreheadPosition"] = .40f, ["foreheadSize"] = .41f, ["headWidth"] = .91f,
-            ["jawsPosition"] = .29f, ["jawsSize"] = .72f, ["lipsSize"] = .34f, ["lowCheekPosition"] = .53f,
-            ["lowCheekPronounced"] = .52f, ["mandibleSize"] = .43f, ["mouthSize"] = .53f, ["noseBroken"] = .51f,
-            ["noseCurve"] = .38f, ["noseInclination"] = .27f, ["nosePosition"] = .75f, ["nosePronounced"] = .57f,
-            ["noseSize"] = .37f, ["noseWidth"] = .60f,
+            ["jawsPosition"] = .29f, ["jawsSize"] = .72f, ["lipsSize"] = .49f, ["lowCheekPosition"] = .53f,
+            ["lowCheekPronounced"] = .52f, ["mouthSize"] = .53f, ["noseBroken"] = .51f, ["noseCurve"] = .38f,
+            ["noseInclination"] = .27f, ["nosePosition"] = .75f, ["nosePronounced"] = .57f, ["noseSize"] = .37f,
+            ["noseWidth"] = .60f,
         };
 
         /// <summary>His other merged values, as they were before the fit (main at 7a3038a9): the house's, and his own height.</summary>
@@ -210,8 +211,8 @@ namespace Gamesim.Tests.EditMode
         };
 
         /// <summary>
-        /// Will's line in LibraryLooks.txt holds his 26 fitted face values and, for every other name, the value it had
-        /// before the fit, and no name besides. UmaAllStarPiecesPlayModeTests.LibraryLooksTxtIsTheLibraryByteForByte holds
+        /// Will's line in LibraryLooks.txt holds his 25 fitted face values, his own eye values, and, for every other name,
+        /// the value it had before the fit, and no name besides. UmaAllStarPiecesPlayModeTests.LibraryLooksTxtIsTheLibraryByteForByte holds
         /// the file to the merge the game makes for his body (the house's values, then his look's), so the body gets these.
         /// Plain file reading: the editor finds the file through <c>Application.dataPath</c>, the subset by walking up
         /// from its own binary.
@@ -219,21 +220,22 @@ namespace Gamesim.Tests.EditMode
         [Test]
         public void E10_WillsLineCarriesHisFittedFaceAndKeepsHisOtherValues()
         {
-            AssertFittedLine("dr-will-kirby", WillFitted, WillKept);
+            AssertFittedLine("dr-will-kirby", WillFitted, WillKept, 25, Male, WillEyeMouth);
         }
 
         // ------------------------------------------------------------------------- Dan's face
 
         /// <summary>
         /// Dan's face: fitted with the game's own face sliders, then built in the game and compared
-        /// (18 November 2026). The fit set's 26 changed values, as UmaCastLibrary's look gives them.
+        /// (18 November 2026). The fit set's 26 changed values, as UmaCastLibrary's look gives them; lipsSize .38 in place of
+        /// the fit's .25 since 20 November 2026, so the lips stay closed.
         /// </summary>
         private static readonly Dictionary<string, float> DanFitted = new Dictionary<string, float>(StringComparer.Ordinal)
         {
             ["BrowPosition"] = .70f, ["cheekPosition"] = .51f, ["cheekPronounced"] = .57f, ["cheekSize"] = .65f,
             ["chinPosition"] = .25f, ["chinPronounced"] = .75f, ["chinSize"] = .25f, ["eyeRotation"] = .35f,
             ["eyeSize"] = .25f, ["foreheadPosition"] = .54f, ["foreheadSize"] = .25f, ["headWidth"] = .85f,
-            ["jawsPosition"] = .52f, ["jawsSize"] = .70f, ["lipsSize"] = .25f, ["lowCheekPosition"] = .43f,
+            ["jawsPosition"] = .52f, ["jawsSize"] = .70f, ["lipsSize"] = .38f, ["lowCheekPosition"] = .43f,
             ["lowCheekPronounced"] = .53f, ["mandibleSize"] = .57f, ["mouthSize"] = .39f, ["noseBroken"] = .45f,
             ["noseCurve"] = .53f, ["noseInclination"] = .44f, ["nosePosition"] = .75f, ["nosePronounced"] = .46f,
             ["noseSize"] = .25f, ["noseWidth"] = .73f,
@@ -295,14 +297,15 @@ namespace Gamesim.Tests.EditMode
 
         /// <summary>
         /// Derrick's face: fitted with the game's own face sliders, then built in the game and compared
-        /// (19 November 2026). The fit set's 22 changed values, as UmaCastLibrary's look gives them.
+        /// (19 November 2026). The fit set's 22 changed values, as UmaCastLibrary's look gives them; mandibleSize .50 in
+        /// place of the fit's .47 since 20 November 2026, so the lips stay closed.
         /// </summary>
         private static readonly Dictionary<string, float> DerrickFitted = new Dictionary<string, float>(StringComparer.Ordinal)
         {
             ["BrowPosition"] = .25f, ["cheekPosition"] = .25f, ["cheekPronounced"] = .75f, ["cheekSize"] = .28f,
             ["chinPosition"] = .64f, ["chinPronounced"] = .67f, ["chinSize"] = .75f, ["eyeRotation"] = .41f,
             ["foreheadPosition"] = .26f, ["foreheadSize"] = .63f, ["headWidth"] = 1f, ["jawsPosition"] = .25f,
-            ["jawsSize"] = .75f, ["mandibleSize"] = .47f, ["mouthSize"] = .25f, ["noseBroken"] = .53f,
+            ["jawsSize"] = .75f, ["mandibleSize"] = .50f, ["mouthSize"] = .25f, ["noseBroken"] = .53f,
             ["noseCurve"] = .46f, ["noseInclination"] = .54f, ["nosePosition"] = .56f, ["nosePronounced"] = .47f,
             ["noseSize"] = .40f, ["noseWidth"] = .75f,
         };
@@ -325,7 +328,7 @@ namespace Gamesim.Tests.EditMode
         [Test]
         public void E14_DerricksLineCarriesHisFittedFaceAndKeepsHisOtherValues()
         {
-            AssertFittedLine("derrick-levasseur", DerrickFitted, DerrickKept, 22);
+            AssertFittedLine("derrick-levasseur", DerrickFitted, DerrickKept, 22, Male, DerrickEyeMouth);
         }
 
         // ------------------------------------------------------------------------- Danielle's face
@@ -467,11 +470,52 @@ namespace Gamesim.Tests.EditMode
             AssertFittedLine("cody-calafiore", CodyFitted, CodyKept, 10, Male, CodyEyeMouth);
         }
 
+        // ------------------------------------------------------------------------- Vanessa's face
+
+        /// <summary>
+        /// Vanessa's face: fitted with the game's own face sliders, then built in the game and compared
+        /// (19 November 2026). The fit set's 20 changed values, as UmaCastLibrary's look gives them.
+        /// </summary>
+        private static readonly Dictionary<string, float> VanessaFitted = new Dictionary<string, float>(StringComparer.Ordinal)
+        {
+            ["BrowPosition"] = .25f, ["cheekPosition"] = .29f, ["cheekPronounced"] = .31f, ["cheekSize"] = .58f,
+            ["chinPosition"] = .48f, ["chinPronounced"] = .32f, ["chinSize"] = .39f, ["headWidth"] = .53f,
+            ["jawsPosition"] = .65f, ["jawsSize"] = .25f, ["lowCheekPosition"] = .75f, ["lowCheekPronounced"] = .75f,
+            ["mandibleSize"] = .54f, ["noseBroken"] = .45f, ["noseCurve"] = .38f, ["noseInclination"] = .43f,
+            ["nosePosition"] = .34f, ["nosePronounced"] = .61f, ["noseSize"] = .64f, ["noseWidth"] = .66f,
+        };
+
+        /// <summary>
+        /// Her other merged values, as they were before the fit: the house's, and her own height, forehead and lips.
+        /// Her old head width (.58, the house's) is not kept: headWidth is one of her fitted values.
+        /// </summary>
+        private static readonly Dictionary<string, float> VanessaKept = new Dictionary<string, float>(StringComparer.Ordinal)
+        {
+            ["armWidth"] = .62f, ["eyeSize"] = .62f, ["feetSize"] = .66f, ["forearmWidth"] = .62f, ["foreheadSize"] = .58f,
+            ["handsSize"] = .68f, ["headSize"] = .72f, ["height"] = .15f, ["legsSize"] = .62f, ["lipsSize"] = .44f,
+            ["lowerMuscle"] = .58f, ["neckThickness"] = .6f, ["upperMuscle"] = .58f,
+        };
+
+        /// <summary>
+        /// Vanessa's line in LibraryLooks.txt, on the female race, holds her 20 fitted face values and, for every other
+        /// name, the value it had before the fit, and no name besides: the same check as Will's (E10).
+        /// </summary>
+        [Test]
+        public void E20_VanessasLineCarriesHerFittedFaceAndKeepsHerOtherValues()
+        {
+            AssertFittedLine("vanessa-rousso", VanessaFitted, VanessaKept, 20, Female);
+        }
+
         // ------------------------------------------------------------------------- Eyes and mouths
 
         // Each person's own eye and mouth values (20 November 2026), laid over the fitted and kept
         // values above. Each was held to the lips' seal: at rest the inner mouth shows no more than on the person's house
         // head and the lips part by no more than 0.3 mm.
+        private static readonly Dictionary<string, float> WillEyeMouth = new Dictionary<string, float>(StringComparer.Ordinal)
+        {
+            ["eyeSize"] = .40f, ["eyeRotation"] = .49f,
+        };
+
         private static readonly Dictionary<string, float> TylerEyeMouth = new Dictionary<string, float>(StringComparer.Ordinal)
         {
             ["eyeSize"] = .41f, ["eyeRotation"] = .44f,
@@ -490,6 +534,11 @@ namespace Gamesim.Tests.EditMode
         private static readonly Dictionary<string, float> ChelsieEyeMouth = new Dictionary<string, float>(StringComparer.Ordinal)
         {
             ["mouthSize"] = .37f,
+        };
+
+        private static readonly Dictionary<string, float> DerrickEyeMouth = new Dictionary<string, float>(StringComparer.Ordinal)
+        {
+            ["eyeSize"] = .36f, ["eyeRotation"] = .53f,
         };
 
         private static readonly Dictionary<string, float> CodyEyeMouth = new Dictionary<string, float>(StringComparer.Ordinal)

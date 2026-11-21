@@ -22,7 +22,11 @@ namespace Gamesim.Simulation
         /// <summary>Slice S1: the free talk on every housemate, its window cap, rapport tenths, the insight layers and where they stand.</summary>
         public const int Talk = 1;
 
-        /// <summary>Slice S2: chemistry from your answers and the friendship stages.</summary>
+        /// <summary>
+        /// Slice S2: chemistry from your answers (<see cref="TalkChemistry"/>), the player's own read from the lean of their tones
+        /// (<see cref="TalkLean"/>, the one field it writes: <c>story.talkLean</c>), and the friendship stages with their stage talks,
+        /// the favour, a friend's honesty and the cost of nominating one (<see cref="TalkFriendship"/>).
+        /// </summary>
         public const int Chemistry = 2;
 
         /// <summary>Slice S3: romance, the All-Stars' turn-asides and the house's reaction to a couple.</summary>

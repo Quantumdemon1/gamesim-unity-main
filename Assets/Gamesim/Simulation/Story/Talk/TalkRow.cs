@@ -12,6 +12,13 @@ namespace Gamesim.Simulation
         Layer,
         Rhythm,
         Standing,
+
+        /// <summary>
+        /// A friendship stage talk (slice S2, talk rules 2): said once, the first time its <see cref="TalkRow.Stage"/> holds with
+        /// the housemate, ahead of every other talk (<see cref="TalkFriendship"/>). Never offered below talk rules 2, and never as
+        /// an ordinary talk. The Close friend talk asks a favour: its replies carry <see cref="TalkReply.Favour"/>.
+        /// </summary>
+        Stage,
     }
 
     /// <summary>
@@ -61,6 +68,13 @@ namespace Gamesim.Simulation
 
         /// <summary>A standing talk's three forms (the source's <c>standing:</c> lines); null on every other kind.</summary>
         public TalkStandingLines Standing;
+
+        /// <summary>
+        /// A <see cref="TalkKind.Stage"/> talk's stage: <see cref="FriendStage.Acquainted"/>, <see cref="FriendStage.Friendly"/>,
+        /// <see cref="FriendStage.Friend"/> or <see cref="FriendStage.CloseFriend"/>. <see cref="FriendStage.Stranger"/> (the default)
+        /// on every other kind; a stage talk holding any other value is never offered.
+        /// </summary>
+        public FriendStage Stage;
     }
 
     /// <summary>
@@ -96,6 +110,24 @@ namespace Gamesim.Simulation
 
         /// <summary>The reply keeps the fact back: whatever the landing, a layer talk answered this way teaches nothing.</summary>
         public bool HoldsBack;
+
+        /// <summary>
+        /// On the Close friend stage talk only (slice S2): the reply answers their favour, <see cref="TalkFavour.Keep"/> ("I've got
+        /// you", +2 warmth both ways as one act) or <see cref="TalkFavour.Refuse"/> ("Can't promise that", -2). <see cref="TalkFavour.None"/>
+        /// (the default) everywhere else, and ignored on every other talk.
+        /// </summary>
+        public TalkFavour Favour;
+    }
+
+    /// <summary>What a reply to the Close friend stage talk does with their favour (slice S2, ruling T6).</summary>
+    public enum TalkFavour
+    {
+        /// <summary>Not a favour reply.</summary>
+        None,
+        /// <summary>"I've got you": +2 warmth both ways, one act, not stopped at 25.</summary>
+        Keep,
+        /// <summary>"Can't promise that": -2 warmth both ways.</summary>
+        Refuse,
     }
 
     /// <summary>

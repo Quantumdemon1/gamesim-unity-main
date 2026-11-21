@@ -113,7 +113,8 @@ namespace Gamesim.Episode
                 if (!string.IsNullOrEmpty(shown.Reply)) hud.Paragraph("You: “" + TalkText.Spoken(shown.Reply) + "”");
                 if (!string.IsNullOrEmpty(shown.Reaction)) hud.Paragraph(first + ": " + shown.Reaction);
                 hud.Heading(TalkScreenLines.ChangedHeading);
-                foreach (string line in TalkScreenLines.Aftermath(shown)) hud.Paragraph(line);
+                // At talk rules 2 also the favour given or turned down, the chemistry once it first shows, and a stage reached.
+                foreach (string line in TalkScreenLines.Aftermath(shown, first)) hud.Paragraph(line);
                 return true;
             }
 
@@ -130,7 +131,8 @@ namespace Gamesim.Episode
             {
                 string tone = reply.Tone;
                 hud.Tag(hud.Action(reply.Words, () => AnswerJustTalk(token, state, id, talkId, tone)),
-                    reply.ToneCaption + " · " + FreeTag);
+                    // The pill: the tone's caption, or on a Close friend's favour the favour's words (talk rules 2).
+                    reply.Pill + " · " + FreeTag);
             }
             if (!string.IsNullOrEmpty(justTalkRefused)) hud.Paragraph(justTalkRefused);
             return true;
@@ -200,11 +202,24 @@ namespace Gamesim.Episode
         /// <summary>The houseguest screen's grid of ways to spend time on them.</summary>
         private const string InteractionTilesName = "Interaction tiles";
 
-        /// <summary>The notebook page's free-talk blocks, "What you know about them" and "This week, from them": none at talk rules 0.</summary>
+        /// <summary>
+        /// The notebook page's free-talk blocks, "What you know about them" and "This week, from them": none at talk rules 0. At
+        /// talk rules 2, above them, "Between you": the friendship stage and, once shown, the chemistry, in one line.
+        /// </summary>
         private static void TalkBlocks(EpisodeState state, ContestantState actor, EpisodeHud.ProfileView view)
         {
             if (state == null || actor == null || view == null) return;
+            foreach (var block in TalkScreenLines.BondBlocks(state, actor.id))
+                view.Blocks.Add((block.Heading, (IList<string>)block.Lines));
             foreach (var block in TalkScreenLines.NotebookBlocks(state, actor.id))
+                view.Blocks.Add((block.Heading, (IList<string>)block.Lines));
+        }
+
+        /// <summary>The player's own card's free-talk block at talk rules 2, "How you come across": "The house reads you as a flirt.". None below.</summary>
+        private static void YourTalkReadBlocks(EpisodeState state, EpisodeHud.ProfileView view)
+        {
+            if (state == null || view == null) return;
+            foreach (var block in TalkScreenLines.YourReadBlocks(state))
                 view.Blocks.Add((block.Heading, (IList<string>)block.Lines));
         }
     }

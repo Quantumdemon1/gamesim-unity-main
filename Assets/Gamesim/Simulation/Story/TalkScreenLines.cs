@@ -50,7 +50,16 @@ namespace Gamesim.Simulation
         public sealed class Reply
         {
             public string Tone, ToneCaption, Words;
+
+            /// <summary>On a Close friend's stage talk (talk rules 2), the favour this reply grants or turns down; else None.</summary>
+            public TalkFavour Favour;
+
+            /// <summary>The button's pill: the favour's words on a favour reply, else the tone's caption.</summary>
+            public string Pill => Favour == TalkFavour.Keep ? FavourKeepPill : Favour == TalkFavour.Refuse ? FavourRefusePill : ToneCaption;
         }
+
+        /// <summary>The pills of a Close friend's two favour replies (talk rules 2): the reply's own words stay its caption.</summary>
+        public const string FavourKeepPill = "Do the favor", FavourRefusePill = "Turn it down";
 
         /// <summary>
         /// The player's replies, one per tone, in the talk's order: the caption is the spoken words with tokens filled (what a
@@ -66,7 +75,12 @@ namespace Gamesim.Simulation
                 if (reply == null || string.IsNullOrEmpty(reply.Tone)) continue;
                 string words = TalkText.Spoken(TalkText.Fill(s, npcId, reply.Line ?? ""));
                 if (string.IsNullOrEmpty(words) || replies.Any(r => r.Words == words)) continue;
-                replies.Add(new Reply { Tone = reply.Tone, ToneCaption = TalkTone.Caption(reply.Tone), Words = words });
+                replies.Add(new Reply
+                {
+                    Tone = reply.Tone, ToneCaption = TalkTone.Caption(reply.Tone), Words = words,
+                    // The favour is the Close friend's stage talk's alone (the engine ignores it on any other row).
+                    Favour = talk.Kind == TalkKind.Stage && talk.Stage == FriendStage.CloseFriend ? reply.Favour : TalkFavour.None,
+                });
             }
             return replies;
         }
@@ -82,24 +96,100 @@ namespace Gamesim.Simulation
                 kind = EpisodeCommandKind.JustTalk, targetId = npcId, text = FreeTalk.CommandText(talkId, tone),
             };
 
-        /// <summary>What changed, in one line: the fact learned first, then the standing note, else nothing new.</summary>
+        /// <summary>
+        /// What changed, in one line: a stage reached first (talk rules 2: the engine's event line, "You and Dana are friendly
+        /// now."), then the fact learned, then the standing note, else nothing new.
+        /// </summary>
         public static string ChangeLine(TalkResult result)
         {
             if (result == null) return NothingNew;
+            if (!string.IsNullOrEmpty(result.StageEvent)) return result.StageEvent;
             if (!string.IsNullOrEmpty(result.Fact)) return LearnedPrefix + result.Fact;
             if (!string.IsNullOrEmpty(result.StandingLine)) return StandingNote;
             return NothingNew;
         }
 
         /// <summary>The lines the third beat shows under their reaction, in order: the standing line (their words), the outcome and the change.</summary>
-        public static List<string> Aftermath(TalkResult result)
+        public static List<string> Aftermath(TalkResult result) => Aftermath(result, null);
+
+        /// <summary>
+        /// The third beat's lines for a housemate by first name: the standing line, the outcome, then at talk rules 2 the favour
+        /// given or turned down and, on the talk that first shows it, the chemistry, then the change. Below talk rules 2 the
+        /// result's slice-2 fields are at their defaults, so the lines are exactly S1's.
+        /// </summary>
+        public static List<string> Aftermath(TalkResult result, string firstName)
         {
             var lines = new List<string>();
             if (result == null) return lines;
             if (!string.IsNullOrEmpty(result.StandingLine)) lines.Add(result.StandingLine);
             if (!string.IsNullOrEmpty(result.Outcome)) lines.Add(result.Outcome);
+            string favour = FavourLine(result.Favour, firstName);
+            if (favour != null) lines.Add(favour);
+            string chemistry = ChemistryFirstLine(result.ChemistryShown);
+            if (chemistry != null) lines.Add(chemistry);
             lines.Add(ChangeLine(result));
             return lines;
+        }
+
+        // ------------------------------------------------------------------ talk rules 2 (free talk slice 2)
+
+        /// <summary>The housemate page's block of where you stand with them, and the player's own card's block of how the house reads them.</summary>
+        public const string BetweenYouHeading = "Between you", YourReadHeading = "How you come across";
+
+        /// <summary>The favour given or turned down, said once after a Close friend's stage talk: null for any other reply.</summary>
+        public static string FavourLine(TalkFavour favour, string firstName)
+        {
+            string who = string.IsNullOrEmpty(firstName) ? "them" : firstName;
+            switch (favour)
+            {
+                case TalkFavour.Keep: return "You gave " + who + " your word.";
+                case TalkFavour.Refuse: return "You didn't promise " + who + " anything.";
+                default: return null;
+            }
+        }
+
+        /// <summary>The chemistry said once, on the talk that first shows it ("You two are easy company."); null for no word.</summary>
+        public static string ChemistryFirstLine(string chemistryWord)
+        {
+            switch (chemistryWord)
+            {
+                case TalkChemistry.KindredWord: return "You two are kindred.";
+                case TalkChemistry.EasyWord: return "You two are easy company.";
+                case TalkChemistry.NeitherWord: return "Between you two: no chemistry either way.";
+                case TalkChemistry.GratingWord: return "You two grate on each other.";
+                default: return null;
+            }
+        }
+
+        /// <summary>
+        /// The one plain line of where you stand with a housemate: the stage word (none for a Stranger) and, once shown, the
+        /// chemistry ("Friend · Chemistry: easy company"); null when there is neither.
+        /// </summary>
+        public static string BondLine(TalkNotes.Bond bond)
+        {
+            if (bond == null) return null;
+            var parts = new List<string>();
+            if (bond.Stage != FriendStage.Stranger && !string.IsNullOrEmpty(bond.StageWord)) parts.Add(bond.StageWord);
+            if (!string.IsNullOrEmpty(bond.ChemistryLine)) parts.Add(bond.ChemistryLine);
+            return parts.Count == 0 ? null : string.Join(" · ", parts);
+        }
+
+        /// <summary>The housemate page's "Between you" block, above the free talk's other blocks: none below talk rules 2 or with nothing to say.</summary>
+        public static List<Block> BondBlocks(EpisodeState s, string npcId)
+        {
+            var blocks = new List<Block>();
+            string line = BondLine(TalkNotes.BondWith(s, npcId));
+            if (line != null) blocks.Add(new Block { Heading = BetweenYouHeading, Lines = { line } });
+            return blocks;
+        }
+
+        /// <summary>The player's own card's "How you come across" block, "The house reads you as a flirt.": none below talk rules 2.</summary>
+        public static List<Block> YourReadBlocks(EpisodeState s)
+        {
+            var blocks = new List<Block>();
+            string line = s == null ? null : TalkNotes.HouseReadsYou(s);
+            if (!string.IsNullOrEmpty(line)) blocks.Add(new Block { Heading = YourReadHeading, Lines = { line } });
+            return blocks;
         }
 
         /// <summary>One block of a housemate's notebook page: its heading and its lines.</summary>

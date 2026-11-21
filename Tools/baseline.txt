@@ -422,7 +422,9 @@
 # their fitted face values and keep their other values; E19: Xavier's and Janelle's lines hold their eye tilt), 2026-11-20.
 # 10741 = 10740 + the fourth looks change's 1 LookPiecesTests case (E20: Vanessa's line holds her fitted face values and
 # keeps her other values), 2026-11-20.
-Gamesim.EditModeTests 10741
+# 10813 = 10741 + free talk slice 2's engine: FreeTalkChemistryTests 22, FreeTalkLeanTests 20, FreeTalkStageTests 25 and
+# FreeTalkFriendTests 5 (72 cases, all also in the dotnet subset), 2026-11-20.
+Gamesim.EditModeTests 10813
 # The UMA-free build. 1215 = 1236, the count after the consolidation's lanes (S2a, S2b, S4a), less the 7
 # farewell probes moved to Gamesim.DiagnosticsPlayModeTests and the 14 farewell readiness tests that now
 # compile only under GAMESIM_UMA (judged on the UMA cast); 1230 = 1215 + S2d's 7, S4b's 2, S4c's 2 and
@@ -1181,4 +1183,5 @@ Gamesim.Uma.DiagnosticsPlayModeTests 10
 # counts), 2026-11-20.
 # 22840 = 22839 + the fourth looks change's 1 LookPiecesTests case (E20, the same case the EditMode floor counts),
 # 2026-11-20.
-Gamesim.SimulationTests 22840
+# 22912 = 22840 + free talk slice 2's engine: the same 72 cases the EditMode floor counts, 2026-11-20.
+Gamesim.SimulationTests 22912

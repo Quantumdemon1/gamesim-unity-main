@@ -53,9 +53,9 @@ namespace Gamesim.Tests.EditMode
         [Test]
         public void TheRegistryJoinsEveryTableAndEveryPoolHasEachKind()
         {
-            Assert.That(TalkTables.Tables.Count, Is.EqualTo(12), "Four pools, three kinds each.");
+            Assert.That(TalkTables.Tables.Count, Is.EqualTo(16), "Four pools, three kinds each, and slice 2's stage table for each pool.");
             Assert.That(TalkTables.All.Count, Is.EqualTo(TalkTables.Tables.Sum(t => t.Length)));
-            Assert.That(TalkTables.All.Count, Is.EqualTo(276), "The converter read 276 talks from the source and wrote 276 rows.");
+            Assert.That(TalkTables.All.Count, Is.EqualTo(276 + 48), "The converter read 276 talks from the source and wrote 276 rows; slice 2 adds 48 stage talks.");
             foreach (string pool in TalkPools.All)
                 foreach (TalkKind kind in new[] { TalkKind.Layer, TalkKind.Rhythm, TalkKind.Standing })
                     Assert.That(Rows.Count(r => r.Pool == pool && r.Kind == kind), Is.GreaterThan(0), pool + " " + kind);
@@ -164,7 +164,7 @@ namespace Gamesim.Tests.EditMode
                 if (g.Layer < 0 || g.Layer > 4) bad.Add(row.Id + ": layer gate " + g.Layer);
                 if (g.Week < 0 || g.Week > 20) bad.Add(row.Id + ": week gate " + g.Week);
                 if (g.First && (g.Layer != 0 || g.Week != 0 || g.Window != null)) bad.Add(row.Id + ": a first talk with other gates");
-                if (!g.First && g.Layer == 0) bad.Add(row.Id + ": neither first nor a layer gate");
+                if (!g.First && g.Layer == 0 && row.Kind != TalkKind.Stage) bad.Add(row.Id + ": neither first nor a layer gate");
                 if (row.Priority < 0 || row.Priority > 100) bad.Add(row.Id + ": priority " + row.Priority);
                 switch (row.Kind)
                 {
@@ -181,6 +181,10 @@ namespace Gamesim.Tests.EditMode
                         if (row.Layer != 0 || g.First || row.Reveals || row.Standing != null) bad.Add(row.Id + ": a rhythm talk is layer 0 and reveals nothing");
                         if (g.Layer > 1) bad.Add(row.Id + ": a rhythm talk gated past layer 1");
                         break;
+                    case TalkKind.Stage:
+                        // Slice 2: the stage itself is the gate (TalkStageTablesTests checks the rest).
+                        if (row.Layer != 0 || g.First || g.Layer != 0 || row.Reveals || row.Usual || row.Standing != null) bad.Add(row.Id + ": a stage talk is layer 0 and gated by its stage");
+                        break;
                     default:
                         bad.Add(row.Id + ": kind " + row.Kind + " is not in slice 1");
                         break;
@@ -195,14 +199,16 @@ namespace Gamesim.Tests.EditMode
             var bad = new List<string>();
             foreach (var row in Rows)
             {
-                if (row.Replies == null || row.Replies.Length != 3) { bad.Add(row.Id + ": " + (row.Replies?.Length ?? 0) + " replies"); continue; }
+                // Slice 2: the Close friend stage talk offers its favor's two replies.
+                int want = row.Kind == TalkKind.Stage && row.Stage == FriendStage.CloseFriend ? 2 : 3;
+                if (row.Replies == null || row.Replies.Length != want) { bad.Add(row.Id + ": " + (row.Replies?.Length ?? 0) + " replies"); continue; }
                 foreach (var r in row.Replies)
                 {
                     if (!TalkRules.IsTone(r.Tone) || r.Tone == TalkRules.Flirt) bad.Add(row.Id + ": tone " + r.Tone);
                     if (TalkTone.Approach(r.Tone) == null || TalkTone.Caption(r.Tone) == "") bad.Add(row.Id + ": tone " + r.Tone + " has no approach or caption");
                     if (r.HoldsBack) bad.Add(row.Id + ": no source talk holds a fact back by its reply");
                 }
-                if (row.Replies.Select(r => r.Tone).Distinct().Count() != 3) bad.Add(row.Id + ": a tone offered twice");
+                if (row.Replies.Select(r => r.Tone).Distinct().Count() != want) bad.Add(row.Id + ": a tone offered twice");
             }
             Assert.That(bad, Is.Empty);
         }
@@ -243,7 +249,8 @@ namespace Gamesim.Tests.EditMode
             var bad = Rows.Where(r => r.Pool == TalkPools.Star)
                 .Where(r => !(r.Kind == TalkKind.Rhythm && r.Layer == 0
                               || r.Kind == TalkKind.Layer && (r.Layer == 1 || r.Layer == 2) && r.When.Layer <= 2
-                              || r.Kind == TalkKind.Standing && r.Layer == 4))
+                              || r.Kind == TalkKind.Standing && r.Layer == 4
+                              || r.Kind == TalkKind.Stage && r.Layer == 0))
                 .Select(r => r.Id + " " + r.Kind + " " + r.Layer).ToList();
             Assert.That(bad, Is.Empty, "An All-Star's talks cover layers 1, 2 and 4 only (R7): no layer 3, no private background.");
         }

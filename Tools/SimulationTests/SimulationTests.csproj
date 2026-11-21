@@ -148,6 +148,8 @@
     <!-- Free talk slice 1's review: a free talk does not date the edges (no contact this week), and the star pool's game register. -->
     <Compile Include="$(EditMode)FreeTalkEdgeTouchTests.cs" />
     <Compile Include="$(EditMode)StarTalkRegisterTests.cs" />
+    <!-- Free talk slice 2: the friendship stage talks' tables (three per stage per pool, the favor's two replies, the star pool's register). -->
+    <Compile Include="$(EditMode)TalkStageTablesTests.cs" />
     <Compile Include="$(EditMode)PooledSchema30ShapeTests.cs" />
     <Compile Include="$(EditMode)OldSaveTrace.cs" />
     <Compile Include="$(EditMode)CurrentOldSaveTrace.cs" />

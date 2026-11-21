@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 
 namespace Gamesim.Simulation
@@ -10,6 +11,19 @@ namespace Gamesim.Simulation
     /// </summary>
     public sealed partial class EpisodeEngine
     {
+        /// <summary>
+        /// Free talk's rules 2 (ruling T7): each Friend or closer the player has just put on the block thinks the further
+        /// <see cref="TalkFriendship.BetrayalCost"/> less of them, on top of the nomination's own costs. The player's own act, through
+        /// the player's relationship path on a keyed story stream: nothing is drawn from the season's stream. The list is
+        /// <see cref="TalkFriendship.FriendsNamed"/>'s, read before the nomination's effects; empty below talk rules 2.
+        /// </summary>
+        private static void FriendsBetrayed(EpisodeState s, List<string> friendIds)
+        {
+            if (friendIds == null) return;
+            foreach (var id in friendIds)
+                ChangeOnStream(s, id, s.playerId, TalkFriendship.BetrayalCost, StoryRandom.Stream(s, "talk:v1:betray:" + id + ":" + s.week));
+        }
+
         private static void ResolveJustTalk(EpisodeState s, EpisodeCommand c)
         {
             // Talk rules 0: refused before anything else is read, written or logged.
@@ -42,7 +56,7 @@ namespace Gamesim.Simulation
 
             contact.rapport = result.RapportAfter;
             contact.talkTenths = result.TenthsAfter;
-            contact.agreement = Math.Max(-TalkRules.MostAgreement, Math.Min(TalkRules.MostAgreement, contact.agreement + result.Landing));
+            contact.agreement = result.AgreementAfter;
             contact.priorTone = contact.lastTone;
             contact.lastTone = tone;
             // Spent once, with the tone it was answered in; a repeat of "the usual" adds nothing (R9).
@@ -59,6 +73,16 @@ namespace Gamesim.Simulation
             {
                 contact.standingWeek = s.week;
                 contact.standing = result.StandingLine;
+            }
+
+            // Talk rules 2 (slice S2): the lean moves by the tone (T4), the one field slice 2 writes; a stage talk writes its one
+            // event row (T5; it is spent above, so it is never offered again). The favour's warmth is result.Warmth, applied above as
+            // one arcless act on the story stream (T6).
+            if (TalkChemistry.On(s))
+            {
+                s.story.talkLean = result.LeanAfter;
+                if (!string.IsNullOrEmpty(result.StageEvent))
+                    Log(s, TalkFriendship.StageEventKind, result.StageEvent, s.playerId, npc.id);
             }
         }
     }

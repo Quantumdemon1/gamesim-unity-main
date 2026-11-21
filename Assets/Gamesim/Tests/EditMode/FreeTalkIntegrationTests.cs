@@ -25,7 +25,7 @@ namespace Gamesim.Tests.EditMode
         {
             var s = SeasonBuilder.Create(new SeasonBuilder.Choice { HouseSize = 8, Roster = roster }, 3301u);
             ShippedRules.ApplyFresh(s);
-            Assert.That(s.story.talkRules, Is.EqualTo(TalkRules.Talk), "Level 1 is enrolled for fresh seasons.");
+            Assert.That(s.story.talkRules, Is.EqualTo(TalkRules.Chemistry), "Level 2 is enrolled for fresh seasons (free talk slice 2).");
             Assert.That(FreeTalk.On(s), Is.True);
             Assert.That(FreeTalk.WindowKey(s), Is.EqualTo(1), "Move-in night.");
             foreach (var npc in s.Active.Where(c => !c.isPlayer))
@@ -68,7 +68,7 @@ namespace Gamesim.Tests.EditMode
         {
             var s = SeasonBuilder.Create(new SeasonBuilder.Choice { HouseSize = 8 }, 3302u);
             ShippedRules.ApplyFresh(s);
-            Assert.That(s.story.talkRules, Is.EqualTo(TalkRules.Talk));
+            Assert.That(s.story.talkRules, Is.EqualTo(TalkRules.Chemistry), "Level 2 since its enrolment: an unplayed season is the same JSON as at 0.");
             var atZero = s.Clone();
             atZero.story.talkRules = TalkRules.Off;
             var json = JObject.FromObject(s);

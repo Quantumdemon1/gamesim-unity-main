@@ -962,6 +962,8 @@ namespace Gamesim.Simulation
             Require(first != second && eligible.Contains(first ?? "") && eligible.Contains(second ?? ""), "Choose two distinct eligible houseguests.");
             s.replyCards.RemoveAll(card => card.kind == ReplyCards.Pitch);
             s.nominees = new List<string> { first, second };
+            // Free talk's rules 2 (T7): a Friend or closer the player nominates pays a further cost, read before the nomination's effects.
+            var friendsNamed = TalkFriendship.FriendsNamed(s, s.nominees);
             foreach (var nominee in s.nominees) NominationEffects(s, nominee);
             // Under the role moments a nominee the player turned down at their pitch takes the ceremony's grudge easier (R5).
             var honestNos = HonestNos(s, s.nominees);
@@ -975,6 +977,8 @@ namespace Gamesim.Simulation
             if (s.hohId != s.playerId && s.nominees.Contains(s.playerId)) Betrayal(s, s.hohId, Allegiance.Nominated, false);
             // Under the role moments the player's pitch board settles with the names (R5): a promise kept pays.
             SettleThePitchBoard(s);
+            // Last, after every draw of the ceremony, so the friends' cost moves no draw of it.
+            FriendsBetrayed(s, friendsNamed);
         }
 
         private static void NominationEffects(EpisodeState s, string id, bool initial = true)
@@ -1081,6 +1085,7 @@ namespace Gamesim.Simulation
             // The block as it stood before this decision. A veto commitment is kept by lifting the
             // partner off it, and reading the block afterwards would find them already gone.
             var blockBefore = s.nominees.ToList();
+            List<string> friendsNamed = null;
             if (use)
             {
                 Require(!VetoIsLockedAtFinalFour(s),
@@ -1089,6 +1094,8 @@ namespace Gamesim.Simulation
                 Require(ReplacementCandidates(s).Any(), "The veto cannot be used because no legal replacement exists.");
                 if (s.hohId != s.playerId) replacement = NpcReplacement(s);
                 Require(ReplacementCandidates(s).Any(c => c.id == replacement), "Choose an eligible replacement; the HoH and veto holder are immune.");
+                // Free talk's rules 2 (T7): a Friend or closer the player names pays a further cost, read before the nomination's effects.
+                friendsNamed = TalkFriendship.FriendsNamed(s, new[] { replacement });
                 s.nominees.Remove(saved); s.nominees.Add(replacement); NominationEffects(s, replacement, false);
                 MoodLift(s, saved);
                 // Under the role moments a replacement the player turned down at their pitch takes it easier (R5).
@@ -1135,6 +1142,8 @@ namespace Gamesim.Simulation
             if (StrategyRules.Apply(s))
                 foreach (var offer in s.deals.Where(d => d.status == DealStatus.Proposed && Negotiation.IsVetoWord(d.type)))
                     offer.status = DealStatus.Expired;
+            // Last, after every draw of the meeting, so the friend's cost moves no draw of it.
+            FriendsBetrayed(s, friendsNamed);
         }
 
         /// <summary>

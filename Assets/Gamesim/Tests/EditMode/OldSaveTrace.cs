@@ -141,11 +141,15 @@ namespace Gamesim.Tests.EditMode
         /// talk's level, at 1 (enrolled for every season the game starts since free talk slice 1). Only the player's own free
         /// talk reads it, and a talk had always writes its contact's window and count, which the rows above still hold to
         /// their literals in the same projection; so a season at level 1 with no talk had played exactly as at 0 and is taken
-        /// down the same. A literal 1, not the TalkRules constant: this file is compiled against older builds too.
+        /// down the same. Since free talk slice 2, also at 2 (enrolled for every season the game starts since slice 2): it is
+        /// taken down the same way, but it is NOT always the season level 1 played: a housemate who reaches Friend through paid
+        /// talk answers a vote question more honestly and costs more to nominate. Such a season shows as a moved digest in the
+        /// fixture that walked it, never as a refusal here; that fixture holds its level by name or is re-recorded with the
+        /// reason. Literals 1 and 2, not the TalkRules constants: this file is compiled against older builds too.
         /// </summary>
-        private static readonly Dictionary<string, JToken> Enrolled = new Dictionary<string, JToken>(StringComparer.Ordinal)
+        private static readonly Dictionary<string, JToken[]> Enrolled = new Dictionary<string, JToken[]>(StringComparer.Ordinal)
         {
-            { "story.talkRules", 1 },
+            { "story.talkRules", new JToken[] { 1, 2 } },
         };
 
         /// <summary>The newest schema <see cref="Project"/> knows: a state above it is refused rather than guessed at.</summary>
@@ -174,7 +178,7 @@ namespace Gamesim.Tests.EditMode
             return result;
         }
 
-        private static void Remove(JObject root, string path, JToken literal, JToken also = null)
+        private static void Remove(JObject root, string path, JToken literal, JToken[] also = null)
         {
             int dot = path.IndexOf('.');
             if (dot < 0)
@@ -198,11 +202,11 @@ namespace Gamesim.Tests.EditMode
             Remove(child, rest, literal, also);
         }
 
-        private static void Take(JObject owner, string name, JToken literal, string where, JToken also = null)
+        private static void Take(JObject owner, string name, JToken literal, string where, JToken[] also = null)
         {
             var property = owner.Property(name);
             if (property == null) throw new InvalidDataException("Missing addition: " + where);
-            if (!JToken.DeepEquals(property.Value, literal) && (also == null || !JToken.DeepEquals(property.Value, also)))
+            if (!JToken.DeepEquals(property.Value, literal) && (also == null || !also.Any(a => JToken.DeepEquals(property.Value, a))))
                 throw new InvalidDataException("A later schema's field left its switched-off value, so the season did not play as the reference build played it: "
                     + where + " = " + property.Value.ToString(Formatting.None) + ", not " + literal.ToString(Formatting.None) + ".");
             property.Remove();

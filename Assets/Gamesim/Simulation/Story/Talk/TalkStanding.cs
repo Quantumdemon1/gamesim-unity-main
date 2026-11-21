@@ -26,8 +26,16 @@ namespace Gamesim.Simulation
         /// <summary>When nobody else is left to name.</summary>
         public const string Nobody = "nobody";
 
-        /// <summary>The stance this week, from Candour's own keyed coin for the "where" question (R6).</summary>
-        public static string Stance(EpisodeState s, string npcId) => Candour.Choose(s, npcId, Candour.Where, null);
+        /// <summary>
+        /// The stance this week, from Candour's own keyed coin for the "where" question (R6). From talk rules 2 a Close friend or
+        /// closer never lies about it (T7): a dishonest draw becomes neutral; the same coin is drawn either way.
+        /// </summary>
+        public static string Stance(EpisodeState s, string npcId)
+        {
+            string stance = Candour.Choose(s, npcId, Candour.Where, null);
+            if (stance == Candour.Dishonest && TalkFriendship.AtLeast(s, npcId, FriendStage.CloseFriend)) return Candour.Neutral;
+            return stance;
+        }
 
         /// <summary>The {close}, {worry} and {safe} parts in a stance: the true names, or in the dishonest stance the decoys.</summary>
         public static Dictionary<string, string> Parts(EpisodeState s, string npcId, string stance)

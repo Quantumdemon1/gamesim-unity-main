@@ -63,6 +63,57 @@ namespace Gamesim.Simulation
             return new Standing { Week = contact.standingWeek, Line = contact.standing, Current = contact.standingWeek == s.week };
         }
 
+        // ------------------------------------------------------------------ slice S2 (talk rules 2): stage, chemistry, your read
+
+        /// <summary>The labels before the housemate page's two slice-2 words: "Friendship: Friend", "Chemistry: easy company".</summary>
+        public const string FriendshipLabel = "Friendship", ChemistryLabel = "Chemistry";
+
+        /// <summary>A housemate's friendship stage and chemistry, for their page.</summary>
+        public sealed class Bond
+        {
+            public FriendStage Stage;
+
+            /// <summary>"Stranger" to "Ride or die".</summary>
+            public string StageWord;
+
+            /// <summary>The chemistry in effect (Neither until it shows).</summary>
+            public ChemistryBand Chemistry;
+
+            /// <summary>The chemistry's word, or null before their third counted talk (then nothing is shown for it).</summary>
+            public string ChemistryWord;
+
+            /// <summary>"Friendship: Friend".</summary>
+            public string StageLine => FriendshipLabel + ": " + StageWord;
+
+            /// <summary>"Chemistry: kindred", or null while it is not shown.</summary>
+            public string ChemistryLine => ChemistryWord == null ? null : ChemistryLabel + ": " + ChemistryWord;
+        }
+
+        /// <summary>A housemate's stage and chemistry for their page, or null below talk rules 2 or for somebody who is not a housemate (nothing shown).</summary>
+        public static Bond BondWith(EpisodeState s, string npcId)
+        {
+            if (!TalkChemistry.On(s) || string.IsNullOrEmpty(npcId)) return null;
+            var npc = s.Find(npcId);
+            if (npc == null || npc.isPlayer) return null;
+            var stage = TalkFriendship.Stage(s, npcId);
+            return new Bond
+            {
+                Stage = stage, StageWord = TalkFriendship.Word(stage),
+                Chemistry = TalkChemistry.Band(s, npcId), ChemistryWord = TalkChemistry.WordFor(s, npcId),
+            };
+        }
+
+        /// <summary>
+        /// The player's own line, "The house reads you as easy to talk to.", or null below talk rules 2. When the player's own card was
+        /// built from an All-Stars template, whatever it is now named, the Spark word is "a bold talker", never "a flirt" (rulings R7
+        /// and R14).
+        /// </summary>
+        public static string HouseReadsYou(EpisodeState s)
+        {
+            string playerClass = TalkLean.PlayerClass(s);
+            return playerClass == null ? null : TalkLean.LineFor(playerClass, FreeTalk.IsAllStar(s.Find(s.playerId)));
+        }
+
         /// <summary>A layer's heading.</summary>
         public static string HeadingOf(int layer) =>
             layer == 1 ? WhoTheyAre : layer == 2 ? Background : layer == 3 ? Drives : layer == 4 ? Secrets : "";

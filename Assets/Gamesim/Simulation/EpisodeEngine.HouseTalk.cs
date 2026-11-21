@@ -61,7 +61,10 @@ namespace Gamesim.Simulation
             bool deflects = !ally && target.traits.Contains("Strategic") && !target.traits.Contains("Loyal") && view < 25;
             if (!ally && !deflects) Roll(s);
             var truth = ProjectBallot(s, target.id);
-            string stance = Candour.Choose(s, target.id, Candour.Vote, null);
+            // Free talk's rules 2 (T7): a Friend or closer answers honestly at least 0.8 of the time, on the same keyed coin.
+            string stance = TalkFriendship.AtLeast(s, target.id, FriendStage.Friend)
+                ? Candour.Choose(s, target.id, Candour.Vote, null, TalkFriendship.FriendHonesty)
+                : Candour.Choose(s, target.id, Candour.Vote, null);
             string other = s.nominees.FirstOrDefault(id => id != truth.selectedNomineeId);
             if (stance == Candour.Dishonest && other == null) stance = Candour.Honest;
             string stated = stance == Candour.Honest ? truth.selectedNomineeId : stance == Candour.Dishonest ? other : null;

@@ -67,7 +67,7 @@ namespace Gamesim.Simulation
         /// <summary>A standing talk's line, filled with this week's names, or null; and the candour it was said in.</summary>
         public string StandingLine, Stance;
 
-        /// <summary>The free warmth applied from the player to them: +1, 0 or -1 (their side moves 0.8 to 1.2 of it).</summary>
+        /// <summary>The free warmth applied from the player to them: +1, 0 or -1 (their side moves 0.8 to 1.2 of it); the favour's +2 or -2 (talk rules 2).</summary>
         public int Warmth;
 
         /// <summary>Rapport tenths gained, and the rapport before and after (integer and tenths).</summary>
@@ -75,6 +75,26 @@ namespace Gamesim.Simulation
 
         /// <summary>A spent "the usual" said again, with the small gain (ruling R9).</summary>
         public bool Repeat;
+
+        // ------------------------------------------------------------------ talk rules 2 (slice S2); at their defaults below it
+
+        /// <summary>The stage this talk marks when it is a stage talk (T5): its event row is <see cref="StageEvent"/>. Stranger otherwise.</summary>
+        public FriendStage StageReached;
+
+        /// <summary>The stage's event row as written to the season's log (<see cref="TalkFriendship.EventLine"/>), or null.</summary>
+        public string StageEvent;
+
+        /// <summary>The Close friend talk's favour as answered (T6): Keep (+2 warmth both ways) or Refuse (-2); None otherwise. <see cref="Warmth"/> holds its ±2.</summary>
+        public TalkFavour Favour;
+
+        /// <summary>The chemistry's word when this talk is the one that first shows it (the third counted talk, T1), else null.</summary>
+        public string ChemistryShown;
+
+        /// <summary>The player's lean before and after (T4): equal below talk rules 2.</summary>
+        public int LeanBefore, LeanAfter;
+
+        /// <summary>The agreement with them after the talk (-10..10): the saved agreement plus <see cref="Landing"/>, clamped.</summary>
+        public int AgreementAfter;
     }
 
     /// <summary>
@@ -151,9 +171,14 @@ namespace Gamesim.Simulation
             var contact = Contact(s, npcId);
             if (contact != null && contact.talkWindow == key) return Refused(TalkRefusal.TalkedThisWindow, TalkedReason);
 
+            // Talk rules 2 (T5): a stage talk that has come due is the talk on offer, ahead of every other.
+            var stageTalk = TalkFriendship.DueTalk(s, npcId);
+            if (stageTalk != null) return new TalkOffer { Refusal = TalkRefusal.None, Talk = stageTalk };
+
             var spent = new HashSet<string>((contact?.spentTalks ?? new List<string>()).Select(TalkRules.SpentId), StringComparer.Ordinal);
             bool full = spent.Count >= TalkRules.MostSpentTalks;
-            var rows = TalkBank.Rows.Where(t => Holds(s, npc, contact, t)).ToList();
+            // A stage talk is only ever offered as one (above), never as an ordinary talk, at any level.
+            var rows = TalkBank.Rows.Where(t => t != null && t.Kind != TalkKind.Stage && Holds(s, npc, contact, t)).ToList();
             bool standingLeft = rows.Any(t => t.Kind == TalkKind.Standing && !spent.Contains(t.Id));
             TalkRow best = null; bool bestRepeat = false; int bestPriority = int.MinValue; double bestCoin = 2;
             void Consider(TalkRow t, bool repeat)
@@ -181,8 +206,11 @@ namespace Gamesim.Simulation
         public static ContactState Contact(EpisodeState s, string npcId) =>
             s?.story?.contacts?.FirstOrDefault(c => c != null && c.npcId == npcId);
 
-        /// <summary>Whether a talk may be said by this housemate now: their pool, a well-formed row, its gates, and a fact or a stance to give.</summary>
-        private static bool Holds(EpisodeState s, ContestantState npc, ContactState contact, TalkRow t)
+        /// <summary>
+        /// Whether a talk may be said by this housemate now: their pool, a well-formed row, its gates, and a fact or a stance to give.
+        /// Its week gate reads through <see cref="TalkChemistry.WeekGate"/> (unchanged below talk rules 2).
+        /// </summary>
+        internal static bool Holds(EpisodeState s, ContestantState npc, ContactState contact, TalkRow t)
         {
             if (t == null || string.IsNullOrEmpty(t.Id) || t.Id.Length > TalkRules.MostIdLength || t.Id.IndexOf(TalkRules.ToneMark) >= 0
                 || string.IsNullOrEmpty(t.Open) || t.Replies == null || t.Replies.Length == 0
@@ -196,7 +224,7 @@ namespace Gamesim.Simulation
             var when = t.When ?? new TalkGate();
             int talks = contact?.talks ?? 0;
             if (when.First && talks != 0) return false;
-            if (when.Week > 0 && s.week < when.Week) return false;
+            if (when.Week > 0 && s.week < TalkChemistry.WeekGate(s, npc.id, when.Week)) return false;
             if (when.Window != null && !InWindow(s, when.Window)) return false;
             if (when.Layer > 0 && !AtLayer(s, npc.id, talks, when.Layer)) return false;
             // What it gives: a standing talk needs layer 4 and no snapshot yet this week; a layer frame needs a fact within its
@@ -265,17 +293,29 @@ namespace Gamesim.Simulation
             if (reply == null) return null;
             var npc = s.Find(npcId);
             var contact = Contact(s, npcId);
-            int landing = Landing(s, npc, tone);
+            // Talk rules 2 (slice S2): nothing below reads a slice-2 rule unless this holds.
+            bool two = TalkChemistry.On(s);
+            int landing = two ? LandingNow(s, npcId, tone) : Landing(s, npc, tone);
 
             // Warmth (R5): +1, 0, -1; a repeat never gains (R9's small gain); a positive gain stops when either side is at 25.
             int warmth = landing;
             if (offer.Repeat) warmth = Math.Min(0, warmth);
             if (warmth > 0 && (s.Score(npcId, s.playerId) >= WarmthStop || s.Score(s.playerId, npcId) >= WarmthStop)) warmth = 0;
+            // The Close friend's favour (T6): the reply is the act, +2 or -2, in place of the free warmth and past the stop.
+            var favour = TalkFavour.None;
+            if (two && talk.Kind == TalkKind.Stage && talk.Stage == FriendStage.CloseFriend && reply.Favour != TalkFavour.None)
+            {
+                favour = reply.Favour;
+                warmth = favour == TalkFavour.Keep ? TalkFriendship.FavourWarmth : -TalkFriendship.FavourWarmth;
+            }
 
-            // Rapport in tenths beside the integer (spec 3.4, D1), by the listener's class; a repeat at most a neutral talk's.
-            int tenths = Tenths(landing, offer.Repeat, ClassOf(npc));
+            // Rapport in tenths beside the integer (spec 3.4, D1), by the listener's class; a repeat at most a neutral talk's; from
+            // talk rules 2 by the chemistry too (T2), rounded once.
+            int tenths = two ? Tenths(landing, offer.Repeat, ClassOf(npc), TalkChemistry.Band(s, npcId)) : Tenths(landing, offer.Repeat, ClassOf(npc));
             int rapportBefore = contact?.rapport ?? 0, tenthsBefore = contact?.talkTenths ?? 0;
             int total = tenthsBefore + tenths;
+            int agreementAfter = Math.Max(-TalkRules.MostAgreement, Math.Min(TalkRules.MostAgreement, (contact?.agreement ?? 0) + landing));
+            int leanBefore = two ? s.story.talkLean : 0;
 
             var result = new TalkResult
             {
@@ -285,7 +325,22 @@ namespace Gamesim.Simulation
                 Outcome = landing > 0 ? Landed : landing < 0 ? WrongNote : NothingMuchMoved,
                 Warmth = warmth, Tenths = tenths, RapportBefore = rapportBefore, TenthsBefore = tenthsBefore,
                 RapportAfter = Math.Min(100, rapportBefore + total / 10), TenthsAfter = total % 10, Repeat = offer.Repeat,
+                Favour = favour, AgreementAfter = agreementAfter, LeanBefore = leanBefore,
+                LeanAfter = two ? TalkLean.After(leanBefore, tone) : leanBefore,
             };
+
+            if (two)
+            {
+                // A stage talk marks its stage with one event row (T5).
+                if (talk.Kind == TalkKind.Stage)
+                {
+                    result.StageReached = talk.Stage;
+                    result.StageEvent = TalkFriendship.EventLine(talk.Stage, npc.name);
+                }
+                // The third counted talk shows the chemistry for the first time (T1), as it stands after this talk.
+                if ((contact?.talks ?? 0) == TalkChemistry.ShownAfterTalks - 1)
+                    result.ChemistryShown = TalkChemistry.Word(TalkChemistry.BandOf(TalkChemistry.ValueOf(agreementAfter, TalkChemistry.Affinity(s, npcId))));
+            }
 
             // A layer frame leads to the next fact within its layer; a grating landing or a reply that holds back learns nothing.
             if (talk.Kind == TalkKind.Layer && talk.Reveals && landing > -1 && !reply.HoldsBack)
@@ -322,6 +377,33 @@ namespace Gamesim.Simulation
             int value = Personality.Reception(npc, approach)
                 + Lore.FactsOf(s, npc.id).Where(f => f.approach == approach).Sum(f => f.sign);
             return Math.Max(-1, Math.Min(1, value));
+        }
+
+        /// <summary>
+        /// How a tone lands on a housemate now: <see cref="Landing"/>, and from talk rules 2 (ruling R10) one step lower, not below -1,
+        /// when the player answered them in the same tone in either of the last two counted talks (<c>lastTone</c>, <c>priorTone</c>).
+        /// Below talk rules 2 exactly <see cref="Landing"/>.
+        /// </summary>
+        public static int LandingNow(EpisodeState s, string npcId, string tone)
+        {
+            var npc = s?.Find(npcId);
+            int landing = Landing(s, npc, tone);
+            if (!TalkChemistry.On(s) || string.IsNullOrEmpty(tone)) return landing;
+            var contact = Contact(s, npcId);
+            if (contact != null && (contact.lastTone == tone || contact.priorTone == tone)) landing = Math.Max(-1, landing - 1);
+            return landing;
+        }
+
+        /// <summary>
+        /// Rapport tenths at talk rules 2 (T2): <see cref="Tenths(int, bool, string)"/>'s base by landing, times the listener's class
+        /// (1.2, 1.0, 0.8) and the chemistry (<see cref="TalkChemistry.TenthsTimes"/>), rounded half up once, at least 1.
+        /// </summary>
+        public static int Tenths(int landing, bool repeat, string listenerClass, ChemistryBand chemistry)
+        {
+            int baseTenths = landing > 0 ? TenthsLands : landing < 0 ? TenthsGrates : TenthsEven;
+            if (repeat) baseTenths = Math.Min(baseTenths, TenthsEven);
+            int times = listenerClass == TalkPools.Spark ? 12 : listenerClass == TalkPools.Guarded ? 8 : 10;
+            return Math.Max(1, (baseTenths * times * TalkChemistry.TenthsTimes(chemistry) + 500) / 1000);
         }
 
         /// <summary>Rapport tenths a counted talk gains (spec 3.4): 8, 5 or 2 by landing, at most 5 on a repeat; x1.2 Spark, x0.8 Guarded, rounded half up, at least 1.</summary>
@@ -364,8 +446,9 @@ namespace Gamesim.Simulation
             var npc = s.Find(npcId);
             if (npc == null || npc.isPlayer) return 0;
             int rapport = Contact(s, npcId)?.rapport ?? 0;
-            if (rapport < BackgroundRapport) return 1;
-            if (IsAllStar(npc) || rapport < DrivesRapport) return 2;
+            // Talk rules 2 (T2): the rapport gates read through the chemistry's one gate path.
+            if (rapport < TalkChemistry.RapportGate(s, npcId, BackgroundRapport)) return 1;
+            if (IsAllStar(npc) || rapport < TalkChemistry.RapportGate(s, npcId, DrivesRapport)) return 2;
             return s.Score(npcId, s.playerId) >= DrivesView || EpisodeEngine.FinishedPersonalBeat(s, npcId) ? 3 : 2;
         }
 
@@ -377,9 +460,9 @@ namespace Gamesim.Simulation
         {
             if (!On(s)) return false;
             var npc = s.Find(npcId);
-            if (npc == null || npc.isPlayer || s.week < StandingWeek) return false;
+            if (npc == null || npc.isPlayer || s.week < TalkChemistry.WeekGate(s, npcId, StandingWeek)) return false;
             int need = ClassOf(npc) == TalkPools.Guarded ? StandingRapportGuarded : StandingRapport;
-            return (Contact(s, npcId)?.rapport ?? 0) >= need && s.Score(npcId, s.playerId) >= StandingView;
+            return (Contact(s, npcId)?.rapport ?? 0) >= TalkChemistry.RapportGate(s, npcId, need) && s.Score(npcId, s.playerId) >= StandingView;
         }
 
         /// <summary>The pool a housemate's talks come from: <see cref="TalkPools.Star"/> for any All-Star template, else their class.</summary>

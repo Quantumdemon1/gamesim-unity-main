@@ -19,6 +19,7 @@ namespace Gamesim.Simulation
             TalkTableSteadyLayers.Rows, TalkTableSteadyRhythm.Rows, TalkTableSteadyStanding.Rows,
             TalkTableGuardedLayers.Rows, TalkTableGuardedRhythm.Rows, TalkTableGuardedStanding.Rows,
             TalkTableStarLayers.Rows, TalkTableStarRhythm.Rows, TalkTableStarStanding.Rows,
+            TalkTableSparkStages.Rows, TalkTableSteadyStages.Rows, TalkTableGuardedStages.Rows, TalkTableStarStages.Rows,
         };
 
         /// <summary>Every talk, in table order. Read only.</summary>

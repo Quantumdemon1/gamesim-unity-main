@@ -148,6 +148,20 @@ namespace Gamesim.Simulation
             double u = StoryRandom.Unit(s, Key(s, npcId, question, subjectId));
             return u < w.Honest ? Honest : u < w.Honest + w.Neutral ? Neutral : Dishonest;
         }
+
+        /// <summary>
+        /// <see cref="Choose(EpisodeState, string, string, string)"/> with a floor on the honest weight (free talk's rules 2, ruling T7:
+        /// a friend asked the vote): the same fixed values, the same weights and the same keyed coin; a coin under the floor is
+        /// honest, and above it the neutral and dishonest bands are where they were. Draws nothing from the main stream.
+        /// </summary>
+        public static string Choose(EpisodeState s, string npcId, string question, string subjectId, double honestFloor)
+        {
+            string fixedStance = Fixed(s, npcId);
+            if (fixedStance != null) return fixedStance;
+            var w = WeightsFor(s, npcId, question, subjectId);
+            double u = StoryRandom.Unit(s, Key(s, npcId, question, subjectId));
+            return u < Math.Max(w.Honest, honestFloor) ? Honest : u < w.Honest + w.Neutral ? Neutral : Dishonest;
+        }
     }
 
     /// <summary>

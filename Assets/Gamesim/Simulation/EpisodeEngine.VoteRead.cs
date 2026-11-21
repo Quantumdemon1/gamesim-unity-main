@@ -87,7 +87,8 @@ namespace Gamesim.Simulation
             var truth = ProjectBallot(s, target.id);
             // An ally's answer is decided, so nothing is drawn for it (C6); anybody else's word is a roll
             // on how they see the player, as it always was.
-            bool honest = ally || Roll(s) < VoteHonesty(target, view);
+            // Free talk's rules 2 (T7): a Friend or closer tells the truth at least 0.8 of the time; the same one roll is drawn.
+            bool honest = ally || Roll(s) < FriendHonesty(s, target.id, VoteHonesty(target, view));
             string stated = honest ? truth.selectedNomineeId : s.nominees.First(id => id != truth.selectedNomineeId);
             SeasonLedger.Append(s.ledger, s.ledger.claims, new ClaimRow { week = s.week, voterId = target.id, targetId = stated, source = ClaimSource.Told });
             Log(s, "vote-read", "You asked " + target.name + " where their head is at. \"" + Name(s, stated) + ".\"", s.playerId, target.id);
@@ -103,6 +104,14 @@ namespace Gamesim.Simulation
         public static double VoteHonesty(ContestantState voter, double viewOfPlayer) =>
             voter.traits.Contains("Loyal") ? 1 : voter.traits.Contains("Sneaky") ? 0.25
                 : Math.Max(0.2, Math.Min(0.95, 0.5 + viewOfPlayer / 100));
+
+        /// <summary>
+        /// The honesty an asked voter answers the player's AskVote with (free talk's rules 2, ruling T7): at least
+        /// <see cref="TalkFriendship.FriendHonesty"/> when they are at Friend or closer, otherwise <paramref name="honesty"/> as it
+        /// was. Only the threshold a drawn value is compared with: it never draws.
+        /// </summary>
+        public static double FriendHonesty(EpisodeState s, string voterId, double honesty) =>
+            TalkFriendship.AtLeast(s, voterId, FriendStage.Friend) ? Math.Max(honesty, TalkFriendship.FriendHonesty) : honesty;
 
         /// <summary>Reading a person: on a hit, how they see you becomes known; on a miss, they may notice.</summary>
         private static void ReadPerson(EpisodeState s, EpisodeCommand c)

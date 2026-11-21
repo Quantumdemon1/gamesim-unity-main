@@ -162,6 +162,8 @@ namespace Gamesim.Episode
             view.Records = new List<string> { CeremonyRecord(you) };
             view.Back = BackToHouseguests;
             view.BackCaption = ProfileBackCaptionFor(profileFrom);
+            // Free talk at talk rules 2: how the house reads the player (EpisodeDirector.JustTalk.cs); nothing below that level.
+            YourTalkReadBlocks(state, view);
             AddBlock(view, YourWeekHeading, YourWeekLines(state));
             var deals = YourDealLines(state, out int more);
             if (more > 0) deals.Add("and " + more + " more in " + DealsAndPromisesName);

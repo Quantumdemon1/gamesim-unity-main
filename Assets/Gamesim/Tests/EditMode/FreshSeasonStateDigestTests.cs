@@ -125,7 +125,8 @@ namespace Gamesim.Tests.EditMode
             // Free talk's level 1 (talk rules 1, free talk slice 1's enrolment): a fresh season starts on it, a plain int that
             // draws, mints and logs nothing; only the player's JustTalk command reads it. Held at 0 by name, as B9's tuning is,
             // the season must hash to its schema-29 record, so the int is the enrolment's only change to a fresh season.
-            Assert.That(s.story.talkRules, Is.EqualTo(applyFresh ? TalkRules.Talk : TalkRules.Off), "Talk rules 1: new seasons offer the free talk.");
+            // Level 2 (free talk slice 2's enrolment) is held the same way: an unplayed season reads nothing of it.
+            Assert.That(s.story.talkRules, Is.EqualTo(applyFresh ? TalkRules.Chemistry : TalkRules.Off), "Talk rules 2: new seasons offer the free talk with its stages.");
             s.story.talkRules = TalkRules.Off;
             var payload = Payload(s);
             // SCH30 step 2: the live schema is 30; the test inverse takes the season back to the retained 29 (the pooled

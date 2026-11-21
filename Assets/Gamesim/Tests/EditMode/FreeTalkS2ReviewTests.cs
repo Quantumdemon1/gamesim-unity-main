@@ -49,11 +49,16 @@ namespace Gamesim.Tests.EditMode
             Assert.That(TalkNotes.HouseReadsYou(regular), Is.EqualTo("The house reads you as a flirt."));
         }
 
-        /// <summary>A housemate made a Friend: kindred, rapport 8, their view of you 40 (as <see cref="FreeTalkFriendTests"/> does).</summary>
+        /// <summary>
+        /// A housemate made a Friend: kindred, rapport 8, their view of you 80 and yours of them 40. Their view stands well clear
+        /// of the Friend stage's 35: the house's last beats before the veto is used run inside the veto's own command, before the
+        /// replacement is named, and one rumour among them costs a view 15, so a Friend at 40 can be only Friendly by the time
+        /// they are named - and the engine reads the stage as it stands then, as it does at the ceremony.
+        /// </summary>
         private static void MakeFriend(EpisodeState s, string npcId)
         {
             FreeTalkS2Fixture.Kindred(s, npcId).rapport = 8;
-            FreeTalkS2Fixture.Views(s, npcId, 40, 40);
+            FreeTalkS2Fixture.Views(s, npcId, 80, 40);
             Assert.That(TalkFriendship.AtLeast(s, npcId, FriendStage.Friend), Is.True, "The control: a Friend.");
         }
 
@@ -65,51 +70,74 @@ namespace Gamesim.Tests.EditMode
         }
 
         /// <summary>
-        /// A season at a veto meeting where the player is Head of Household and the veto will be used, with a Friend among the
-        /// replacements: the meeting's state, the nominee saved and the Friend.
+        /// The first season of a fixed run of seeds walked to a veto meeting, not yet resolved and with a replacement to name, that
+        /// <paramref name="fits"/>: a copy of the meeting's state.
         /// </summary>
-        private static EpisodeState PlayerReplaces(out string saved, out string friend)
+        private static EpisodeState AtAVetoMeeting(Func<EpisodeState, bool> fits, string what)
         {
             for (uint seed = 3201u; seed < 3401u; seed++)
             {
                 var engine = new EpisodeEngine(FreeTalkFixture.Fresh(TalkRules.Chemistry, seed: seed));
-                FreeTalkFixture.WalkUntil(engine, x => x.phase == EpisodePhase.VetoMeeting && !x.vetoResolved && x.hohId == x.playerId
+                FreeTalkFixture.WalkUntil(engine, x => x.phase == EpisodePhase.VetoMeeting && !x.vetoResolved && fits(x)
                     || x.week > 4 || x.Find(x.playerId).status != ContestantStatus.Active || x.phase == EpisodePhase.Finished);
                 var at = engine.Snapshot;
-                if (!(at.phase == EpisodePhase.VetoMeeting && !at.vetoResolved && at.hohId == at.playerId)) continue;
-                var candidate = EpisodeEngine.ReplacementCandidates(at).FirstOrDefault();
-                if (candidate == null) continue;
-                var s = at.Clone();
-                MakeFriend(s, candidate.id);
-                saved = s.vetoHolderId == s.playerId ? s.nominees[0] : EpisodeEngine.NpcVetoSave(s);
-                if (saved == null) continue;
-                friend = candidate.id;
-                return s;
+                if (at.phase == EpisodePhase.VetoMeeting && !at.vetoResolved && fits(at) && EpisodeEngine.ReplacementCandidates(at).Any())
+                    return at.Clone();
             }
-            Assert.Fail("No seed made the player Head of Household at a used veto by week 4.");
-            saved = friend = null;
+            Assert.Fail("No seed reached a veto meeting by week 4 where " + what + ".");
             return null;
         }
+
+        /// <summary>The veto used on <paramref name="saved"/>, the player naming <paramref name="replacement"/> where they may: the states after it at talk rules 1 and 2.</summary>
+        private static List<EpisodeState> UseTheVetoAtBothLevels(EpisodeState s, string saved, string replacement) =>
+            new[] { TalkRules.Talk, TalkRules.Chemistry }.Select(level =>
+            {
+                var at = AtTalkRules(s, level);
+                var command = EpisodeEngineTests.Command(at, EpisodeCommandKind.ResolveVeto);
+                command.useVeto = true; command.targetId = saved; command.secondTargetId = replacement;
+                var result = new EpisodeEngine(at).Apply(command);
+                Assert.That(result.accepted, Is.True, "Talk rules " + level + ": " + result.reason);
+                Assert.That(result.state.vetoResolved, Is.True, "The control: the veto meeting is over.");
+                return result.state;
+            }).ToList();
 
         [Test]
         public void NamingAFriendAsTheReplacementCostsEightMoreAtTalkRulesTwoOnlyWithTheSameDraws()
         {
-            var s = PlayerReplaces(out string saved, out string friend);
+            // The player is Head of Household and a housemate holds the veto and uses it: the player names the replacement.
+            var s = AtAVetoMeeting(x => x.hohId == x.playerId && x.vetoHolderId != x.playerId && EpisodeEngine.NpcVetoSave(x) != null,
+                "the player is Head of Household and a housemate uses the veto");
+            string friend = EpisodeEngine.ReplacementCandidates(s).First().id;
+            MakeFriend(s, friend);
+            string saved = EpisodeEngine.NpcVetoSave(s);
+            Assert.That(saved, Is.Not.Null, "The control: the housemate still uses the veto.");
             FreeTalkS2Fixture.AssertValid(s);
-            var states = new[] { TalkRules.Talk, TalkRules.Chemistry }.Select(level =>
-            {
-                var at = AtTalkRules(s, level);
-                var command = EpisodeEngineTests.Command(at, EpisodeCommandKind.ResolveVeto);
-                command.useVeto = true; command.targetId = saved; command.secondTargetId = friend;
-                var result = new EpisodeEngine(at).Apply(command);
-                Assert.That(result.accepted, Is.True, "Talk rules " + level + ": " + result.reason);
-                Assert.That(result.state.nominees, Does.Contain(friend), "The control: the Friend is the replacement.");
-                return result.state;
-            }).ToList();
+            var states = UseTheVetoAtBothLevels(s, saved, friend);
+            foreach (var state in states)
+                Assert.That(state.nominees, Does.Contain(friend).And.Not.Contain(saved), "The control: the Friend is the replacement.");
             Assert.That(states[1].randomState, Is.EqualTo(states[0].randomState), "The veto meeting draws what it drew.");
             double friendCost = states[0].Score(friend, s.playerId) - states[1].Score(friend, s.playerId);
             // The house's beats after the commit read the scores, so allow them a point or two either way.
             Assert.That(friendCost, Is.InRange(6.0, 10.0), "A Friend named as the replacement pays a further 8 at talk rules 2.");
+        }
+
+        [Test]
+        public void AFriendAHousemateHeadOfHouseholdNamesAfterThePlayersVetoCostsThePlayerNothingMore()
+        {
+            // The player holds the veto and uses it; the Head of Household, a housemate, names the replacement.
+            var s = AtAVetoMeeting(x => x.vetoHolderId == x.playerId && x.hohId != x.playerId,
+                "the player holds the veto and is not Head of Household");
+            foreach (var candidate in EpisodeEngine.ReplacementCandidates(s).ToList()) MakeFriend(s, candidate.id);
+            FreeTalkS2Fixture.AssertValid(s);
+            string saved = s.nominees[0];
+            var states = UseTheVetoAtBothLevels(s, saved, null);
+            Assert.That(states[1].nominees, Is.EqualTo(states[0].nominees), "The control: the Head of Household names the same housemate.");
+            string named = states[0].nominees.Single(id => !s.nominees.Contains(id));
+            Assert.That(TalkFriendship.AtLeast(states[1], named, FriendStage.Friend), Is.True,
+                "The control: the one named is a Friend of the player's, still, after the meeting.");
+            Assert.That(states[1].randomState, Is.EqualTo(states[0].randomState), "The veto meeting draws what it drew.");
+            Assert.That(states[1].Score(named, s.playerId), Is.EqualTo(states[0].Score(named, s.playerId)).Within(2.0),
+                "Only the player's own naming costs: a Friend the Head of Household names thinks no less of the player for it.");
         }
 
         /// <summary>Stage directions and asides that read as coy or romantic rather than the game: none in an All-Star's talk.</summary>

@@ -422,12 +422,15 @@
 # their fitted face values and keep their other values; E19: Xavier's and Janelle's lines hold their eye tilt), 2026-11-20.
 # 10741 = 10740 + the fourth looks change's 1 LookPiecesTests case (E20: Vanessa's line holds her fitted face values and
 # keeps her other values), 2026-11-20.
+# 10746 = 10741 + free talk slice 2's screen: TalkScreenStageLinesTests 5, 2026-11-20.
 # 10754 = 10741 + free talk slice 2's 13 TalkStageTablesTests cases (the stage talks' tables), 2026-11-20.
 # 10813 = 10741 + free talk slice 2's engine: FreeTalkChemistryTests 22, FreeTalkLeanTests 20, FreeTalkStageTests 25 and
 # FreeTalkFriendTests 5 (72 cases, all also in the dotnet subset), 2026-11-20.
 # 10826 = 10754 (the tables) + the engine 72 (10813 - 10741 on this branch): disjoint cases, so the floor is their sum
 # (slice 2). Counted from the two sides.
-Gamesim.EditModeTests 10826
+# 10831 = 10746 (the screen) + slice 2 with tables 85 (10826 - 10741 on this branch): disjoint cases, so the floor is
+# their sum (slice 2). Counted from the two sides.
+Gamesim.EditModeTests 10831
 # The UMA-free build. 1215 = 1236, the count after the consolidation's lanes (S2a, S2b, S4a), less the 7
 # farewell probes moved to Gamesim.DiagnosticsPlayModeTests and the 14 farewell readiness tests that now
 # compile only under GAMESIM_UMA (judged on the UMA cast); 1230 = 1215 + S2d's 7, S4b's 2, S4c's 2 and
@@ -673,7 +676,8 @@ Gamesim.EditModeTests 10826
 # cell, R8's cases and menu slice 3 over menu slice 2) 12 (1652 - 1640 on this branch): disjoint cases, so the floor
 # is their sum (menu slice 4 squashed onto the stack for its landing, 2026-11-17). Counted from the two sides.
 # 1674 = 1672 + free talk slice 1's screen: EpisodePlayModeTests.JustTalk 2, 2026-11-19.
-Gamesim.PlayModeTests 1674
+# 1676 = 1674 + free talk slice 2's screen: EpisodePlayModeTests.JustTalkStages 2, 2026-11-20.
+Gamesim.PlayModeTests 1676
 # The UMA build of the same assembly, read by a plan built without -WithoutUma. 1281 = the 1241 above + the
 # 40 tests that compile only under GAMESIM_UMA, as run at r1 (2026-10-16): in EpisodePlayModeTests,
 # GroundedFarewell 11, Creator 9, HouseLife 8, Emotes 3, OpeningCaptures 2, and one each in CreatorEntry,
@@ -843,7 +847,8 @@ Gamesim.PlayModeTests 1674
 # cell, R8's cases and menu slice 3 over menu slice 2) 12 (1697 - 1685 on this branch): disjoint cases, so the floor
 # is their sum (menu slice 4 squashed onto the stack for its landing, 2026-11-17). Counted from the two sides.
 # 1719 = 1717 + free talk slice 1's screen: the same 2 EpisodePlayModeTests.JustTalk cases, 2026-11-19.
-Gamesim.PlayModeTests.UmaBuild 1719
+# 1721 = 1719 + free talk slice 2's screen: the same 2 EpisodePlayModeTests.JustTalkStages cases, 2026-11-20.
+Gamesim.PlayModeTests.UmaBuild 1721
 # The UMA bodies: runs only where the GAMESIM_UMA define is set (the working tree and the D: copy).
 # 82 = the 89 run on 2026-10-15, less the 7 farewell probes moved to Gamesim.Uma.DiagnosticsPlayModeTests;
 # 85 = 82 + the 3 farewell readiness decision tests (UmaFarewellReadinessDecisionPlayModeTests, 2026-10-16);
@@ -1186,8 +1191,11 @@ Gamesim.Uma.DiagnosticsPlayModeTests 10
 # counts), 2026-11-20.
 # 22840 = 22839 + the fourth looks change's 1 LookPiecesTests case (E20, the same case the EditMode floor counts),
 # 2026-11-20.
+# 22845 = 22840 + free talk slice 2's screen: TalkScreenStageLinesTests 5 (the same cases the EditMode floor counts), 2026-11-20.
 # 22853 = 22840 + free talk slice 2's 13 TalkStageTablesTests cases (the same cases the EditMode floor counts), 2026-11-20.
 # 22912 = 22840 + free talk slice 2's engine: the same 72 cases the EditMode floor counts, 2026-11-20.
 # 22925 = 22853 (the tables) + the engine 72 (22912 - 22840 on this branch): disjoint cases, so the floor is their sum
 # (slice 2). Counted from the two sides.
-Gamesim.SimulationTests 22925
+# 22930 = 22845 (the screen) + slice 2 with tables 85 (22925 - 22840 on this branch): disjoint cases, so the floor is
+# their sum (slice 2). Counted from the two sides.
+Gamesim.SimulationTests 22930

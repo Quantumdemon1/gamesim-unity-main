@@ -42,7 +42,7 @@ namespace Gamesim.Presentation
         public double Score { get; private set; }
 
         /// <summary>What the <c>Compete</c> command should carry.</summary>
-        public double Performance => CompetitionMiniGames.Performance(Score);
+        public double Performance => Kind == CompetitionMiniGames.Kind.Trivia ? TriviaPerformance : CompetitionMiniGames.Performance(Score);
 
         private readonly SeededRandom random;
 
@@ -96,8 +96,9 @@ namespace Gamesim.Presentation
         private double flipBackAt;
 
         /// <param name="words">The houseguest scramble's names; the reference's words when null. Words only.</param>
+        /// <param name="quiz">The trivia's questions, in the order they are asked (MiniGameRun.Trivia.cs). Trivia only.</param>
         public MiniGameRun(CompetitionMiniGames.Kind kind, uint seed, int rulesVersion = CompetitionMiniGames.LegacyRules,
-            CompetitionDefinition definition = null, IReadOnlyList<string> words = null)
+            CompetitionDefinition definition = null, IReadOnlyList<string> words = null, IReadOnlyList<TriviaQuestion> quiz = null)
         {
             Kind = kind;
             if (rulesVersion < CompetitionMiniGames.LegacyRules || rulesVersion > CompetitionMiniGames.CurrentRules)
@@ -111,12 +112,13 @@ namespace Gamesim.Presentation
                 throw new ArgumentException("The ring tower plays the ring tower's definition only.", nameof(definition));
             if (kind != CompetitionMiniGames.Kind.Tower && definition != null && definition.Pattern == CompetitionPattern.RingTower)
                 throw new ArgumentException("The ring tower's definition plays the ring tower only.", nameof(definition));
+            CheckTrivia(kind, rulesVersion, definition);
             RulesVersion = rulesVersion;
             string category = CompetitionMiniGames.CategoryOf(kind);
             if (definition != null && (rulesVersion < 3 || definition.Category != category))
                 throw new ArgumentException("The competition definition must match the game and rules version.", nameof(definition));
             Definition = rulesVersion >= 3 ? definition ?? (kind == CompetitionMiniGames.Kind.Tower ? CompetitionDefinitions.RingTower
-                : CompetitionDefinitions.Standard(category)) : null;
+                : kind == CompetitionMiniGames.Kind.Trivia ? CompetitionDefinitions.Trivia : CompetitionDefinitions.Standard(category)) : null;
             TimeLimit = Definition?.Duration ?? CompetitionMiniGames.TimeLimit(kind);
             random = new SeededRandom(seed);
             if (kind == CompetitionMiniGames.Kind.Memory) Deal();
@@ -124,6 +126,7 @@ namespace Gamesim.Presentation
             if (kind == CompetitionMiniGames.Kind.Dice) { DealDice(); Feedback = "Roll the dice"; }
             if (kind == CompetitionMiniGames.Kind.Words) { DealWords(words); Feedback = "Spell the word"; }
             if (kind == CompetitionMiniGames.Kind.Tower) { Tower = new RingTowerPuzzle(); Feedback = "Pick a stack to lift its top ring"; }
+            if (kind == CompetitionMiniGames.Kind.Trivia) DealTrivia(quiz);
         }
 
         // ---------------------------------------------------------------- the clock
@@ -185,6 +188,7 @@ namespace Gamesim.Presentation
 
                 case CompetitionMiniGames.Kind.Dice: StepDice(); if (Finished) return; break;
                 case CompetitionMiniGames.Kind.Words: StepWords(); break;
+                case CompetitionMiniGames.Kind.Trivia: StepTrivia(delta); if (Finished) return; break;
             }
 
             if (TimeLimit > 0 && Elapsed >= TimeLimit) Finish();
@@ -228,6 +232,7 @@ namespace Gamesim.Presentation
                 case CompetitionMiniGames.Kind.Dice: Score = DiceScore(); break;
                 case CompetitionMiniGames.Kind.Words: Score = WordsScore(); break;
                 case CompetitionMiniGames.Kind.Tower: Score = Tower.Score(Remaining, TimeLimit); break;
+                case CompetitionMiniGames.Kind.Trivia: FinishTrivia(); break;
             }
         }
 

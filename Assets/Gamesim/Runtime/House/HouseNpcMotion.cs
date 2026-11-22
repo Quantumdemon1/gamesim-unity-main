@@ -176,6 +176,29 @@ namespace Gamesim.House
             return ownedAgent.CalculatePath(sampled, probePath) && probePath.status == NavMeshPathStatus.PathComplete;
         }
 
+        /// <summary>
+        /// Puts this body on the destination its reservation is walking it to, now, through the
+        /// agent's own warp onto the walking map (no transform write, nothing carved): a competition
+        /// show's walk out at its last moment, so a houseguest still on the way starts the show at their
+        /// station rather than being left out of it (competition show edges). The arrival is then proved
+        /// as any other is, by <see cref="PhysicalArrival"/> over the next frames. Refused - false, the
+        /// body walking on as before - for another reservation, a paused or parked body, or an agent off
+        /// the walking map.
+        /// </summary>
+        public bool PlaceAtDestination(string reservationId)
+        {
+            if (!IsBound || reservationId == null || reservationId != leaseId || paused || parked
+                || ownedAgent == null || !ownedAgent.enabled || !ownedAgent.isOnNavMesh || !HouseRoomQuery.Finite(destination)) return false;
+            if (!ownedAgent.Warp(destination)) return false;
+            ownedAgent.ResetPath();
+            ownedAgent.velocity = Vector3.zero;
+            ownedAgent.isStopped = true;
+            arrivalFrames = 0;
+            state = HouseNpcMotionState.Walking;
+            Physics.SyncTransforms();
+            return true;
+        }
+
         public bool HasArrivedAt(string reservationId) => reservationId != null && reservationId == leaseId
             && !paused && state == HouseNpcMotionState.Arrived && PhysicalArrival();
 

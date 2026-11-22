@@ -56,6 +56,9 @@
     <!-- Rules 2's budget and room refusals, at each limit and one step short of it, since the chip writes rules 2. -->
     <Compile Include="$(EditMode)DialogueRules2CapacityTests.cs" />
     <Compile Include="$(EditMode)DialogueCampaignPleaFallbackTests.cs" />
+    <!-- Dialogue rules 3 (DIALOGUE-PLAN D3): the four campaign trees and the appeal to the veto holder. -->
+    <Compile Include="$(EditMode)DialogueRules3Season.cs" />
+    <Compile Include="$(EditMode)DialogueRules3Tests.cs" />
     <!-- The seasons the rules-2 HUD's PlayMode tests replay, proven headlessly (EpisodePlayModeTests.DialogueRules2Hud). -->
     <Compile Include="$(EditMode)DialogueRules2HudWitnessTests.cs" />
     <!-- NpcInvitation.cs is included by the whole Simulation glob above. -->
@@ -89,8 +92,16 @@
     <!-- Competition yard slice 2: the list of what stands in the yard when; pure, so it runs here too. -->
     <Compile Include="$(EditMode)CompetitionYardPiecesTests.cs" />
     <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/CompetitionYardPieces.cs" />
+    <!-- The weekly recap's arrival: when a queued recap is still due, keyed to the week; pure, so it runs here too. -->
+    <Compile Include="$(EditMode)WeeklyRecapArrivalTests.cs" />
+    <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/WeeklyRecapArrival.cs" />
+    <!-- The finale page set aside for the cast screen: when backing out brings it back; pure, so it runs here too. -->
+    <Compile Include="$(EditMode)FinaleAsideTests.cs" />
+    <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/FinaleAside.cs" />
     <!-- Menu slice 2, part d: the decisions' and the cards' one way out, held in the source; pure, so it runs here too. -->
     <Compile Include="$(EditMode)MenuOneWayBackDecisionsScanTests.cs" />
+    <!-- No slogan on a screen or a sign (the owner, 2026-11-14 and 2026-11-21), held in the source and the scenes. -->
+    <Compile Include="$(EditMode)SloganScanTests.cs" />
     <Compile Include="$(EditMode)HaveNotTests.cs" />
     <Compile Include="$(EditMode)StrategyRulesTests.cs" />
     <Compile Include="$(EditMode)VetoDrawTests.cs" />
@@ -223,6 +234,10 @@
     <Compile Include="$(EditMode)YourWordInTheHouseTests.cs" />
     <Compile Include="$(EditMode)FinalChoiceTests.cs" />
     <Compile Include="$(EditMode)EndgameCommitmentsTests.cs" />
+    <Compile Include="$(EditMode)FinalTwoDealsTests.cs" />
+    <Compile Include="$(EditMode)FinalTwoDealsReviewTests.cs" />
+    <!-- Compiled out of Unity: the final two deal's lockstep seasons, and its soak (explicit, run by name). -->
+    <Compile Include="$(EditMode)FinalTwoDealsSeasonSoak.cs" />
     <!-- Explicit, and compiled out of Unity: the commitment rules' recorded-season evidence, run on demand. -->
     <Compile Include="$(EditMode)CommitmentRulesSeasonDigests.cs" />
     <!-- Compiled out of Unity with the digests it reaches: their checkpoint's native-29 arm (dialogue D1). -->
@@ -617,6 +632,8 @@
     <Compile Include="$(EditMode)MenuSavesStoreTests.cs" />
     <!-- Menu slice 4, as merged: nothing in the slice's Runtime files deletes but the save store's one delete. -->
     <Compile Include="$(EditMode)MenuSavesDeleteScanTests.cs" />
+    <!-- The settings and saves leftovers: an interrupted delete's files swept by the store's one remover, a held save told apart, Recover backup greyed without a backup, Escape on a confirm card, PAUSED's size (BCL only, with source scans). -->
+    <Compile Include="$(EditMode)MenuSavesLeftoversTests.cs" />
     <!-- Menu slice 4, part b: the Sound, Display, Accessibility and Controls rows' names and values, and the rows held in the source. -->
     <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/SettingRowWords.cs" />
     <Compile Include="$(EditMode)MenuSettingRowsTests.cs" />

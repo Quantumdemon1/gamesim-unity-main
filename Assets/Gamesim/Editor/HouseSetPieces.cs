@@ -83,7 +83,7 @@ namespace Gamesim.Editor
             "bb_set_podium", "bb_set_compring",
             "bb_set_comp_lane", "bb_set_comp_gate", "bb_set_comp_stack", "bb_set_comp_crate",
             "bb_set_comp_backdrop",
-            "bb_set_sign_hoh", "bb_set_sign_pillars", "bb_set_sign_samehouse",
+            "bb_set_sign_hoh", "bb_set_sign_pillars",
         };
 
         // Heights are in metres and chosen to read at a glance rather than to be exact: a stove
@@ -846,7 +846,8 @@ namespace Gamesim.Editor
             float face = deck.max.z - 0.28f;
             placed += Stand("bb_set_sign_pillars", group, new Vector3(deck.center.x - 7.5f, top + 1.20f, face), null);
             placed += Stand("bb_set_sign_hoh", group, new Vector3(deck.center.x, top + 1.85f, face), null);
-            placed += Stand("bb_set_sign_samehouse", group, new Vector3(deck.center.x + 7.5f, top + 1.50f, face), null);
+            // No slogan sign beside them: the slogan lettering (its model ends in _samehouse) is not placed
+            // (the owner, 2026-11-21: no slogan on the signs). Its model stays in the art folder, unused.
 
             for (int lane = 0; lane < blocks.Length; lane++)
             {

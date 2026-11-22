@@ -28,7 +28,7 @@ namespace Gamesim.Episode
     public sealed partial class EpisodeHud
     {
         /// <summary>The final case's parts a test finds by name.</summary>
-        public const string FinalCaseHeadName = "Final case head", FinalCaseChipName = "Final case chip", FinalCaseQuoteName = "Final case quote",
+        public const string FinalCaseHeadName = "Final case head", FinalCaseChipName = "Final case chip",
             FinalCaseColumnsName = "Final case columns", FinalCaseStatsName = "Résumé stats", FinalCaseTrayName = "Final case tray",
             FinalCaseSlotPrefix = "Tray slot · ", FinalCaseLockRowName = "Final case lock", FinalCaseLockedName = "Locked narrative";
 
@@ -76,27 +76,23 @@ namespace Gamesim.Episode
         }
 
         /// <summary>
-        /// The final case's head: the case's state large on the left - what the jury will remember,
-        /// or that the argument is locked - with the line under it and a chip that is not a door;
-        /// the brand's line in Season Complete's quote frame on the right, unattributed. One under
-        /// the other at the larger text or on a narrow stage.
+        /// The final case's head: the case's state large - what the jury will remember, or that the
+        /// argument is locked - with the line under it and a chip that is not a door. The brand's
+        /// line that stood in a quote frame beside it is gone (the owner, 2026-11-21: no slogan on
+        /// the season's screens), so the head takes the page's whole width at every text size.
         /// </summary>
-        public void FinalCaseHead(string headline, string line, string chip, string chipGlyph, string quote)
+        public void FinalCaseHead(string headline, string line, string chip, string chipGlyph)
         {
             if (content == null) return;
-            float s = FontScale, width = ContentWidth(), gap = 18f * s;
-            bool beside = width >= 760f && s <= 1.05f && !string.IsNullOrEmpty(quote);
+            float s = FontScale, width = ContentWidth();
             var head = new GameObject(FinalCaseHeadName, typeof(RectTransform)).GetComponent<RectTransform>();
             head.SetParent(content, false);
-            HorizontalOrVerticalLayoutGroup layout = beside
-                ? (HorizontalOrVerticalLayoutGroup)head.gameObject.AddComponent<HorizontalLayoutGroup>()
-                : head.gameObject.AddComponent<VerticalLayoutGroup>();
-            layout.spacing = beside ? gap : 10f * s; layout.childAlignment = TextAnchor.MiddleLeft;
+            var layout = head.gameObject.AddComponent<VerticalLayoutGroup>();
+            layout.spacing = 10f * s; layout.childAlignment = TextAnchor.MiddleLeft;
             layout.childControlWidth = true; layout.childControlHeight = true;
             layout.childForceExpandWidth = false; layout.childForceExpandHeight = false;
-            float quoteWidth = beside ? Mathf.Min(380f * s, width * .36f) : width;
-            float words = beside ? width - quoteWidth - gap : width;
-            var column = Column("Final case headline", head, words, beside ? 1f : 0f);
+            float words = width;
+            var column = Column("Final case headline", head, words, 0f);
             column.GetComponent<VerticalLayoutGroup>().spacing = 4f * s;
             PushContent(column, words - 4f);
             var big = FlowText(headline, 26, UiTheme.Glow);
@@ -107,7 +103,6 @@ namespace Gamesim.Episode
             if (!string.IsNullOrEmpty(line)) FlowText(line, 14, UiTheme.Muted);
             if (!string.IsNullOrEmpty(chip)) GlyphChip(FinalCaseChipName, chip, chipGlyph, UiTheme.Gold);
             PopContent();
-            if (!string.IsNullOrEmpty(quote)) BrandQuote(head, quote, quoteWidth);
         }
 
         /// <summary>A chip with a glyph in it, on a row of its own in the current column. Words, never a control.</summary>
@@ -123,23 +118,6 @@ namespace Gamesim.Episode
             Anchor(chip, new Vector2(0f, .5f), new Vector2(0f, .5f), Vector2.zero, chip.sizeDelta);
             if (chip.Find("Word") is RectTransform label) label.offsetMin = new Vector2(lead, 0f);
             HudPrimitives.Glyph("Chip mark", chip, glyph, tint, new Vector2(8f * s, -(height - mark) * .5f), mark);
-        }
-
-        /// <summary>A line of the brand's in Season Complete's quote frame, centred and in italics, as tall as its words.</summary>
-        private void BrandQuote(RectTransform parent, string quote, float width)
-        {
-            float s = FontScale, pad = 16f * s;
-            var frame = new GameObject(FinalCaseQuoteName, typeof(RectTransform), typeof(LayoutElement)).GetComponent<RectTransform>();
-            frame.SetParent(parent, false);
-            EndScreenKit.Frame(frame, PackArt.SeasonQuote, 14f, new Color(UiTheme.Surface.r, UiTheme.Surface.g, UiTheme.Surface.b, .92f));
-            var words = NewText(frame, quote, 17, Paper);
-            words.fontStyle = FontStyles.Italic;
-            words.alignment = TextAlignmentOptions.Center;
-            float height = Mathf.Max(Mathf.Ceil(words.GetPreferredValues(words.text, width - 2f * pad, 0f).y) + 2f, words.fontSize * 1.32f);
-            Stretch(words.rectTransform, pad, 10f * s, pad, 10f * s);
-            var element = frame.GetComponent<LayoutElement>();
-            element.preferredWidth = width;
-            element.minHeight = element.preferredHeight = height + 20f * s;
         }
 
         // ------------------------------------------------------------ the columns

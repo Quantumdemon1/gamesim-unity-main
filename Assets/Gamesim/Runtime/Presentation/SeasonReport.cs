@@ -308,9 +308,8 @@ namespace Gamesim.Presentation
             {
                 // The lighter dim stops above the house's cast strip. The strip runs the frame's
                 // whole width, under the rail's column as well as the card, and it is the house's,
-                // not the rail's: at the rail's dim its first chips showed at half light, with the
-                // brand line drawn over their faces. The corner under the rail is dimmed as the
-                // house is, and the brand line stands on that dark ground.
+                // not the rail's: at the rail's dim its first chips showed at half light. The
+                // corner under the rail is dimmed as the house is.
                 float strip = StripTop();
                 var railDim = HudPrimitives.Fill("Rail dim", scrim, new Color(UiTheme.Ink.r, UiTheme.Ink.g, UiTheme.Ink.b, RailDimAlpha), 1);
                 railDim.anchorMin = Vector2.zero; railDim.anchorMax = new Vector2(0f, 1f);
@@ -326,7 +325,8 @@ namespace Gamesim.Presentation
             houseDim.anchorMin = Vector2.zero; houseDim.anchorMax = Vector2.one;
             houseDim.offsetMin = new Vector2(dimFrom, 0f); houseDim.offsetMax = Vector2.zero;
             HudPrimitives.Vignette(scrim);
-            if (besideRail) BrandLine(scrim, rail);
+            // The corner under the rail holds no brand line (the owner, 2026-11-21: no slogan on the
+            // season's screens); it stays the dimmed corner of the cast strip.
 
             var sheet = HudPrimitives.Fill("Report card", scrim, new Color(UiTheme.GlassFill.r, UiTheme.GlassFill.g, UiTheme.GlassFill.b, .94f), UiTheme.GlassRadius);
             sheet.anchorMin = Vector2.zero;
@@ -558,8 +558,6 @@ namespace Gamesim.Presentation
         /// <summary>The season-number tiles' captions (decisions 9 and 14): weeks, never days, and never Game Sense's COMPETITIONS.</summary>
         public const string HouseguestsTileCaption = "Houseguests", CompetitionsTileCaption = "Competitions held";
 
-        /// <summary>The house's brand line (decisions 10 and 23), under the rail where the mockup has its night exterior.</summary>
-        public const string BrandWords = "Same house. Different stories.";
 
         /// <summary>The narrowest the title card and the numbers card are drawn beside each other.</summary>
         private const float TitleCardMinWidth = 520f, NumbersMinWidth = 480f;
@@ -873,32 +871,6 @@ namespace Gamesim.Presentation
                 probe.gameObject.SetActive(false);
                 Destroy(probe.gameObject);
             }
-        }
-
-        /// <summary>
-        /// The house's brand line in the corner under the rail (MOCKUP-PASS M5, decision 23): the
-        /// mockup's night exterior has no set and no photo art, so its place holds the line the cast
-        /// screen already says, over the scrim's vignette. Decoration: it takes no click.
-        ///
-        /// <para>The corner is the cast strip's, dimmed as the house is (<see cref="StripTop"/>),
-        /// and the line keeps inside it: two lines of 16 from 32 up at either text size, about 72,
-        /// under a strip that stands at least 135 report units.</para>
-        /// </summary>
-        private static void BrandLine(RectTransform scrim, float rail)
-        {
-            float width = rail - 40f;
-            if (width < 120f) return;
-            var line = HudPrimitives.Label("Brand line", scrim, 16f, new Color(UiTheme.Heading.r, UiTheme.Heading.g, UiTheme.Heading.b, .8f),
-                TextAlignmentOptions.BottomLeft);
-            line.text = Localisation.Text(BrandWords);
-            var semibold = UiTheme.Font(UiTheme.Weight.SemiBold);
-            if (semibold != null) line.font = semibold;
-            line.characterSpacing = 1f;
-            var rect = line.rectTransform;
-            rect.anchorMin = rect.anchorMax = Vector2.zero;
-            rect.pivot = Vector2.zero;
-            EndScreenKit.Wrapped(line, width);
-            rect.anchoredPosition = new Vector2(20f, SheetMargin);
         }
 
         /// <summary>

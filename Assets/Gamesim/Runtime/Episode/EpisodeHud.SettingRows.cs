@@ -152,8 +152,9 @@ namespace Gamesim.Episode
             UiTheme.AddBorder(go, UiTheme.GlassRadius, UiTheme.Danger);
             go.gameObject.AddComponent<LayoutElement>().minHeight = 52 * s;
             FinishButton(go, resultCaption, result, 16f, 16f);
-            // The safe choice has the keyboard: a second Enter keeps what is there.
+            // The safe choice has the keyboard: a second Enter keeps what is there. Escape and B take it too.
             FocusWhenWired(safeCaption);
+            ConfirmCancelAction = safe;
             return safeButton;
         }
 

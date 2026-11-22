@@ -131,7 +131,7 @@ namespace Gamesim.Episode
         /// its foot.</para>
         ///
         /// <para>Where the folded column would still come down onto the card - the Final 3's
-        /// objectives with their tagline or the spectator's line are 224 tall, and at the larger text
+        /// objectives with the spectator's line are 224 tall, and at the larger text
         /// on 16:9 even Recent Events' heading alone ended 9 units into the card - the live feed goes
         /// too, and the rows its room buys come back. Only there: a column that clears the card once
         /// folded keeps its feed (the fix lane's review, finding 2).</para>
@@ -859,14 +859,11 @@ namespace Gamesim.Episode
         public const string SpectatorLineName = "Spectator line";
         public const string JuryStripName = "Jury strip";
         /// <summary>
-        /// The card's crown before its heading, its tagline, and a done row's check. Each is named
-        /// apart from the rows' 'Objective mark', which a test counts one to a row.
+        /// The card's crown before its heading and a done row's check. Each is named apart from the
+        /// rows' 'Objective mark', which a test counts one to a row.
         /// </summary>
         public const string ObjectivesCrownName = "Objectives crown";
-        public const string ObjectivesTaglineName = "Objectives tagline";
         public const string ObjectiveCheckName = "Objective check";
-        /// <summary>The mockups' line under the Final 3's heading (59, 60), moved off the objective chip, whose next stop is pinned.</summary>
-        public const string ObjectivesTagline = "Last competition. Last decision.";
         private const float ObjectiveRowHeight = 34f;
         private const float JurorDisc = 22f;
 
@@ -878,7 +875,7 @@ namespace Gamesim.Episode
             public Objective(string word, string status, bool done) { Word = word; Status = status; Done = done; }
         }
 
-        /// <summary>The endgame card's rows' top, its jury strip's and its height: a line under the heading when it carries the spectator's or the tagline.</summary>
+        /// <summary>The endgame card's rows' top, its jury strip's and its height: a line under the heading when it carries the spectator's.</summary>
         private static float EndgameCardShape(int objectives, bool line, out float rowsTop, out float juryTop)
         {
             rowsTop = line ? 60f : 42f;
@@ -890,7 +887,7 @@ namespace Gamesim.Episode
         private static float EndgameCardHeight(EpisodeState state)
         {
             bool watching = EpisodeDirector.Spectating(state);
-            return EndgameCardShape(EndgameObjectives(state).Count, watching || ObjectivesTaglineShows(state), out _, out _);
+            return EndgameCardShape(EndgameObjectives(state).Count, watching, out _, out _);
         }
 
         /// <summary>
@@ -905,9 +902,9 @@ namespace Gamesim.Episode
         /// cards and the gap between them did not fit, and a strip at the foot of one does.</para>
         ///
         /// <para>Dressed as the mockups' gold card (MOCKUP-PASS M3): its own edge in gold, a crown
-        /// before the heading, and for a finalist at three the tagline under it. The tagline takes
-        /// the spectator line's slot and a spectator is never a finalist, so the card is never
-        /// taller than the spectator's was.</para>
+        /// before the heading. The Final 3's tagline that stood under it is gone (the owner,
+        /// 2026-11-21: no slogan on the season's screens), so a finalist's rows start right under
+        /// the heading.</para>
         /// </summary>
         private float EndgameCard(Transform parent, float top, EpisodeState state)
         {
@@ -916,8 +913,7 @@ namespace Gamesim.Episode
             float width = RightColumnWidth;
             // A player out of the game reads it here, in the frame, with no panel open (ENDGAME-PLAN F6).
             bool watching = EpisodeDirector.Spectating(state);
-            bool tagline = !watching && ObjectivesTaglineShows(state);
-            float height = EndgameCardShape(rows.Count, watching || tagline, out float rowsTop, out float juryTop);
+            float height = EndgameCardShape(rows.Count, watching, out float rowsTop, out float juryTop);
             var card = Chrome(ObjectivesCardName, parent);
             Anchor(card, new Vector2(1, 1), new Vector2(1, 1), new Vector2(-RightColumnInset, -top), new Vector2(width, height));
             // The card's own hairline turned gold, not a second edge drawn over it: every card
@@ -947,11 +943,6 @@ namespace Gamesim.Episode
                 var line = FixedText(card, SpectatorCaption, 11, UiTheme.Warning, new Vector2(14f, -36f), new Vector2(width - 28f, 16f));
                 line.name = SpectatorLineName;
                 line.characterSpacing = 3f;
-            }
-            else if (tagline)
-            {
-                var line = FixedText(card, ObjectivesTagline, 11, UiTheme.Muted, new Vector2(14f, -36f), new Vector2(width - 28f, 16f));
-                line.name = ObjectivesTaglineName;
             }
 
             var open = UiTheme.Muted; open.a = .8f;
@@ -1053,31 +1044,6 @@ namespace Gamesim.Episode
 
         /// <summary>The Final 2's leading row under the finale rules: the screen it names is the final case's.</summary>
         public const string FinalCaseObjective = "Prepare your final case";
-
-        /// <summary>
-        /// Whether the Final 3's tagline heads the card: for a finalist, while the competition or
-        /// the decision it names is still theirs to come. A finalist who lost the final Head of
-        /// Household has neither left, and the line would not be true of them.
-        ///
-        /// <para>Part 3 is the Part 1 and Part 2 winners' (EpisodeEngine.CompetitionPlayers), so
-        /// a finalist beaten in Part 2 has played their last competition from the moment Part 2 is
-        /// decided, and sits Part 3 out. Once Part 3 is decided the decision is its winner's alone,
-        /// though the phase holds until the house moves on.</para>
-        /// </summary>
-        public static bool ObjectivesTaglineShows(EpisodeState state)
-        {
-            if (!IsFinalThree(state)) return false;
-            var me = state.Find(state.playerId);
-            if (me == null || me.status != ContestantStatus.Active) return false;
-            bool inPartThree = state.playerId == state.finalPart1WinnerId || state.playerId == state.finalPart2WinnerId;
-            switch (state.phase)
-            {
-                case EpisodePhase.FinalHoHPart2: return !state.competitionResolved || inPartThree;
-                case EpisodePhase.FinalHoHPart3: return inPartThree && (!state.competitionResolved || state.hohId == state.playerId);
-                case EpisodePhase.FinalEviction: return state.hohId == state.playerId;
-                default: return true;
-            }
-        }
 
         /// <summary>
         /// The endgame's three objectives, from the committed state: for a finalist, the outline's

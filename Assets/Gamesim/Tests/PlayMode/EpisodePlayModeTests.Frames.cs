@@ -300,7 +300,8 @@ namespace Gamesim.Tests.PlayMode
                 Assert.That(director.TextSize, Is.EqualTo(textSize));
                 director.ClosePanels();
                 yield return null;
-                Assert.That(ActiveChromePanel(EpisodeHud.ObjectivesTaglineName), Is.Not.Null, "A finalist's objectives carry the tagline at three.");
+                Assert.That(ActiveChromePanel(EpisodeHud.ObjectivesCardName), Is.Not.Null, "A finalist's objectives stand at three.");
+                Assert.That(ActiveChromePanel("Objectives tagline"), Is.Null, "with no tagline under their heading.");
                 bool feedUp = ActiveChromePanel(EpisodeDirector.LiveFeedCardName) != null;
                 ButtonWithCaption(ExpandControlsCaption).onClick.Invoke();
                 yield return null;

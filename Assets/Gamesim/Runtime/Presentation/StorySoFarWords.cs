@@ -30,8 +30,18 @@ namespace Gamesim.Presentation
             if (weeks.Count == 1)
                 return line + " Week " + weeks[0] + " is under " + WeeksSoFarHeading + " above: " + caption(weeks[0]) + ".";
             int first = weeks[0], last = weeks[weeks.Count - 1];
-            return line + " Weeks " + first + " to " + last + " are under " + WeeksSoFarHeading + " above: "
-                + caption(first) + " to " + caption(last) + ".";
+            if (last - first + 1 == weeks.Count)
+                return line + " Weeks " + first + " to " + last + " are under " + WeeksSoFarHeading + " above: "
+                    + caption(first) + " to " + caption(last) + ".";
+            // A week with no recap button inside the span: a range would cover it, so name each week.
+            return line + " Weeks " + Listed(weeks.Select(week => week.ToString())) + " are under " + WeeksSoFarHeading + " above: "
+                + Listed(weeks.Select(caption)) + ".";
+        }
+
+        private static string Listed(IEnumerable<string> items)
+        {
+            var list = items.ToList();
+            return string.Join(", ", list.Take(list.Count - 1)) + " and " + list[list.Count - 1];
         }
     }
 }

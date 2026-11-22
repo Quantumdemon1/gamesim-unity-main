@@ -21,8 +21,8 @@ namespace Gamesim.Episode
     /// equipment away.</para>
     ///
     /// <para>A ring tower competition that is not played - watched, simulated, thrown, or taken by the
-    /// accessible route - commits straight to the standings card, as every game but endurance does today.
-    /// Nothing here runs for a staged show.</para>
+    /// accessible route - commits at once and is staged as a tower show before its standings card
+    /// (EpisodeDirector.TowerShow.cs): the same tower stands, and its rings follow the show's solve.</para>
     /// </summary>
     public sealed partial class EpisodeDirector
     {
@@ -41,9 +41,13 @@ namespace Gamesim.Episode
         /// </summary>
         public const float RingTowerShotShift = 1.6f;
 
-        /// <summary>Whether this arena plays the player's ring tower: the tower's definition, and no staged show.</summary>
+        /// <summary>
+        /// Whether this arena stands at the ring tower: the tower's definition, for the player's own game or for
+        /// a tower show of one not played (EpisodeDirector.TowerShow.cs); no other show.
+        /// </summary>
         private bool RingTowerArena(CompetitionDefinition definition) =>
-            competitionShow == null && definition != null && definition.Pattern == CompetitionPattern.RingTower;
+            (competitionShow == null || competitionShow.Plan.Family == CompetitionShowFamily.Tower)
+            && definition != null && definition.Pattern == CompetitionPattern.RingTower;
 
         /// <summary>
         /// The arena's set for a ring tower (called as the arena is built, after the yard is deployed and its
@@ -58,8 +62,9 @@ namespace Gamesim.Episode
             var stacks = RingTowerStacks(floor);
             // The stacks are drawn again before the stations are placed, so every reservation clears them.
             competitionScenery = CompetitionStageScenery.Collect(floor, competitionArenaRoot.transform);
-            competitionRingTower = CompetitionRingTower.Build(competitionArenaRoot.transform, stacks, RingTowerPuzzle.StandardRings,
-                () => challengeRun, () => reducedMotion, competitionYard.Conceal);
+            // The rings follow the player's attempt, or a tower show's own solve.
+            competitionRingTower = CompetitionRingTower.BuildFollowing(competitionArenaRoot.transform, stacks, RingTowerPuzzle.StandardRings,
+                () => competitionShow != null ? CompetitionTowerShowPuzzle() : challengeRun?.Tower, () => reducedMotion, competitionYard.Conceal);
             if (competitionRingTower == null)
                 Debug.LogWarning("[Gamesim ring tower] the yard has " + stacks.Count + " stacks to play on; the board plays the tower alone.", this);
         }

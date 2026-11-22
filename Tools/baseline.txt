@@ -480,7 +480,12 @@
 # 11019 = 10990 (the role moments' held replay on the new main) + the competition show's edges' 29 (10864 - 10835 on
 # this branch): disjoint cases, so the floor is their sum (the competition landing of 22 November 2026). Counted from
 # the two sides.
-Gamesim.EditModeTests 11019
+# 10860 = 10852 + competition drop-outs and tower show: CompetitionDropoutsTests 8 (the preview is the commit, the field lets go under the player, the tower show's order and rings), 2026-11-22.
+# 10872 = 10864 (the corrected competition show's edges) + the drop-outs and the tower show's 8 (10860 - 10852 on this
+# 11027 = 11019 (the competition show's edges on the new main) + the drop-outs and the tower show's 8 (10872 - 10864
+# on this branch): disjoint cases, so the floor is their sum (the competition landing of 22 November 2026). Counted
+# from the two sides.
+Gamesim.EditModeTests 11027
 # The UMA-free build. 1215 = 1236, the count after the consolidation's lanes (S2a, S2b, S4a), less the 7
 # farewell probes moved to Gamesim.DiagnosticsPlayModeTests and the 14 farewell readiness tests that now
 # compile only under GAMESIM_UMA (judged on the UMA cast); 1230 = 1215 + S2d's 7, S4b's 2, S4c's 2 and
@@ -741,7 +746,11 @@ Gamesim.EditModeTests 11019
 # 1684 = 1682 (the role moments' held replay on the new main) + the competition show's edges' 2 (1678 - 1676 on this
 # branch): disjoint cases, so the floor is their sum (the competition landing of 22 November 2026). Counted from the
 # two sides.
-Gamesim.PlayModeTests 1684
+# 1680 = 1678 + competition drop-outs and tower show: the 2 EpisodePlayModeTests.CompetitionDropouts cases (the field lets go around you; a simulated ring tower at the stacks), 2026-11-22.
+# 1686 = 1684 (the competition show's edges on the new main) + the drop-outs and the tower show's 2 (1680 - 1678 on
+# this branch): disjoint cases, so the floor is their sum (the competition landing of 22 November 2026). Counted from
+# the two sides.
+Gamesim.PlayModeTests 1686
 # The UMA build of the same assembly, read by a plan built without -WithoutUma. 1281 = the 1241 above + the
 # 40 tests that compile only under GAMESIM_UMA, as run at r1 (2026-10-16): in EpisodePlayModeTests,
 # GroundedFarewell 11, Creator 9, HouseLife 8, Emotes 3, OpeningCaptures 2, and one each in CreatorEntry,
@@ -926,7 +935,11 @@ Gamesim.PlayModeTests 1684
 # 1729 = 1727 (the role moments' held replay on the new main) + the competition show's edges' 2 (1723 - 1721 on this
 # branch): disjoint cases, so the floor is their sum (the competition landing of 22 November 2026). Counted from the
 # two sides.
-Gamesim.PlayModeTests.UmaBuild 1729
+# 1725 = 1723 + competition drop-outs and tower show: the 2 EpisodePlayModeTests.CompetitionDropouts cases (the field lets go around you; a simulated ring tower at the stacks), 2026-11-22.
+# 1731 = 1729 (the competition show's edges on the new main) + the drop-outs and the tower show's 2 (1725 - 1723 on
+# this branch): disjoint cases, so the floor is their sum (the competition landing of 22 November 2026). Counted from
+# the two sides.
+Gamesim.PlayModeTests.UmaBuild 1731
 # The UMA bodies: runs only where the GAMESIM_UMA define is set (the working tree and the D: copy).
 # 82 = the 89 run on 2026-10-15, less the 7 farewell probes moved to Gamesim.Uma.DiagnosticsPlayModeTests;
 # 85 = 82 + the 3 farewell readiness decision tests (UmaFarewellReadinessDecisionPlayModeTests, 2026-10-16);
@@ -1331,4 +1344,9 @@ Gamesim.Uma.DiagnosticsPlayModeTests 10
 # 23123 = 23094 (the role moments' held replay on the new main) + the competition show's edges' 29 (22963 - 22934 on
 # this branch): disjoint cases, so the floor is their sum (the competition landing of 22 November 2026). Counted from
 # the two sides.
-Gamesim.SimulationTests 23123
+# 22959 = 22951 + competition drop-outs and tower show: CompetitionDropoutsTests 8 (the preview is the commit, the field lets go under the player, the tower show's order and rings), 2026-11-22.
+# 22971 = 22963 (the corrected competition show's edges) + the drop-outs and the tower show's 8 (22959 - 22951 on this
+# 23131 = 23123 (the competition show's edges on the new main) + the drop-outs and the tower show's 8 (22971 - 22963
+# on this branch): disjoint cases, so the floor is their sum (the competition landing of 22 November 2026). Counted
+# from the two sides.
+Gamesim.SimulationTests 23131

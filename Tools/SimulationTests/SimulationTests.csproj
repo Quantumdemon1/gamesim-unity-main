@@ -102,6 +102,10 @@
     <Compile Include="$(EditMode)CompetitionShowEdgesTests.cs" />
     <Compile Include="$(EditMode)CompetitionShowEdgesFixTests.cs" />
     <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/CompetitionCourseLegs.cs" />
+    <!-- Competition drop-outs and the tower show: the field lets go from a preview of the commit, the tower's rings from the beats; pure, so they run here too. -->
+    <Compile Include="$(EditMode)CompetitionDropoutsTests.cs" />
+    <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/CompetitionHoldDropouts.cs" />
+    <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/CompetitionTowerShowRings.cs" />
     <Compile Include="$(EditMode)CompetitionCourseMarkPassesTests.cs" />
     <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/CompetitionCourseMarkPasses.cs" />
     <!-- Competition yard slice 2: the list of what stands in the yard when; pure, so it runs here too. -->

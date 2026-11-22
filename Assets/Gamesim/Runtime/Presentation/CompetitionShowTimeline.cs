@@ -71,6 +71,12 @@ namespace Gamesim.Presentation
         /// <summary>The table's first finish - the winner's - after this long at work.</summary>
         public static float WorkSeconds(bool quick) => quick ? 1.5f : 2.5f;
 
+        /// <summary>
+        /// Ring tower: the first finish - the winner's - after this long at the stacks: long enough for the
+        /// tower's fifteen moves to be seen (competition drop-outs and tower show).
+        /// </summary>
+        public static float TowerWorkSeconds(bool quick) => quick ? 5f : 8f;
+
         /// <summary>Course: from the start to the run out, while the pads are slapped.</summary>
         public static float GoSeconds(bool quick) => quick ? .35f : .5f;
 
@@ -219,6 +225,9 @@ namespace Gamesim.Presentation
             {
                 case CompetitionShowFamily.Podium: timeline.BuildPodium(); break;
                 case CompetitionShowFamily.Table: timeline.BuildTable(); break;
+                // The ring tower plays the table's beats - all at work, finishes in the standings' order, time
+                // called on the last - with longer at work, for the tower's moves to be seen.
+                case CompetitionShowFamily.Tower: timeline.BuildTable(); break;
                 case CompetitionShowFamily.Course: timeline.BuildCourse(); break;
             }
             return timeline;
@@ -255,7 +264,8 @@ namespace Gamesim.Presentation
         private void BuildTable()
         {
             int last = Standings.Count - 1;
-            float work = WorkSeconds(Quick), spacing = Spacing(CompetitionShowFamily.Table, last, Quick);
+            float work = Family == CompetitionShowFamily.Tower ? TowerWorkSeconds(Quick) : WorkSeconds(Quick);
+            float spacing = Spacing(CompetitionShowFamily.Table, last, Quick);
             Add(0f, CompetitionShowBeatKind.Work, -1, Standings.ToArray());
             for (int i = 0; i < last; i++)
             {

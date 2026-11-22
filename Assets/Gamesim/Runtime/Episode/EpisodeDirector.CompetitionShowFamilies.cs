@@ -22,6 +22,8 @@ namespace Gamesim.Episode
     /// finish in the standings' order, the winner first and cheering; time is called on the last.</para>
     /// <para><b>Course</b>: a slap of the reaction pad, a run out to a turn mark and back; the field
     /// turns for home in the standings' order and slaps the pad on getting back, the winner first.</para>
+    /// <para><b>Tower</b>: the table's beats at the ring tower, with no instrument of anyone's own
+    /// (EpisodeDirector.TowerShow.cs).</para>
     ///
     /// <para>Presentation only: nothing here is saved, draws from the season's generator or changes
     /// what was committed. Bodies move with what the cast has (poses, the cooking loop's hand work,
@@ -60,6 +62,12 @@ namespace Gamesim.Episode
             public Dictionary<string, Vector3> LegFrom { get; } = new Dictionary<string, Vector3>();
             /// <summary>Course: each staged runner's turn mark, where their leg turns for home; none for a post with no leg.</summary>
             public Dictionary<string, Vector3> LegTo { get; } = new Dictionary<string, Vector3>();
+            /// <summary>Tower: whose tower the stacks showed - the player's when they competed, else the winner's; null otherwise.</summary>
+            public string TowerSubject { get; internal set; }
+            /// <summary>Tower: the most moves the stacks showed done.</summary>
+            public int TowerMovesShown { get; internal set; }
+            /// <summary>Tower: whether the stacks showed the tower solved.</summary>
+            public bool TowerSolved { get; internal set; }
         }
 
         /// <summary>The last podium, table or course show's record; null before the first.</summary>
@@ -149,6 +157,8 @@ namespace Gamesim.Episode
                 else if (competitionArenaActors.TryGetValue(id, out var post) && post != null) run.FamilyRecord.LegFrom[id] = post.Position;
                 if (run.CourseMarks.TryGetValue(id, out var mark) && mark != null) run.FamilyRecord.LegTo[id] = mark.Position;
             }
+            // A ring tower's rings follow the one at the stacks (EpisodeDirector.TowerShow.cs).
+            BeginCompetitionTowerShow(run, staged);
             return true;
         }
 
@@ -502,6 +512,8 @@ namespace Gamesim.Episode
             switch (show.Plan.Family)
             {
                 case CompetitionShowFamily.Table: return;
+                // The ring tower's field stays at its places, as a table's does (EpisodeDirector.TowerShow.cs).
+                case CompetitionShowFamily.Tower: return;
                 case CompetitionShowFamily.Course: ReserveCompetitionCourseMarks(show, state, staged, rooms, filter, floor, used, places); return;
                 default: ReserveCompetitionShowSideMarks(show, state, staged, rooms, filter, floor, places, used); return;
             }

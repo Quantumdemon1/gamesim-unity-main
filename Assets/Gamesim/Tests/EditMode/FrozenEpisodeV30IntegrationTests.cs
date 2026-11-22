@@ -221,8 +221,8 @@ namespace Gamesim.Tests.EditMode
             yield return new TestCaseData("s30-mode2-allstars-alumni1-w3-campaign", "unknown-edition", "refuse");
             yield return new TestCaseData("s30-mode2-allweek-story11-competition5-tuning1-w1-veto-meeting", "competition-6", "refuse");
             yield return new TestCaseData("s30-mode2-allweek-story11-competition5-tuning1-w1-veto-meeting", "competition-3", "refuse");
-            // Dialogue rules 3 is defined from 30 since D3, so the parity row takes 4, which neither reader defines.
-            yield return new TestCaseData("s30-mode2-dialogue2-tuning1-w1-campaign", "dialogue-rules-4", "refuse");
+            // Dialogue rules 3 is defined from 30 since D3 and rules 4 since D4, so the parity row takes 5, which neither reader defines.
+            yield return new TestCaseData("s30-mode2-dialogue2-tuning1-w1-campaign", "dialogue-rules-5", "refuse");
             yield return new TestCaseData("s30-mode2-dialogue2-tuning1-w1-campaign", "response-key", "refuse");
             yield return new TestCaseData("s30-mode2-dialogue2-tuning1-w1-campaign", "entry-grant", "refuse");
             yield return new TestCaseData("s30-mode2-dialogue1-tuning1-w1-campaign", "response-key", "refuse");
@@ -343,7 +343,7 @@ namespace Gamesim.Tests.EditMode
                 case "competition-6": s["competitionRulesVersion"] = 6; break;
                 case "competition-3": s["competitionRulesVersion"] = 3; break;
                 case "dialogue-rules-3": s["dialogueRulesVersion"] = 3; break;
-                case "dialogue-rules-4": s["dialogueRulesVersion"] = 4; break;
+                case "dialogue-rules-5": s["dialogueRulesVersion"] = 5; break;
                 case "response-key":
                 {
                     var key = s["dialogue"]["episodes"][0]["responses"][0]["responseKey"];

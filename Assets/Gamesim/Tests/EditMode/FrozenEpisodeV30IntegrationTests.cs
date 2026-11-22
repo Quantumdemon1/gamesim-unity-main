@@ -219,7 +219,7 @@ namespace Gamesim.Tests.EditMode
             yield return new TestCaseData("s30-mode2-allweek-w3-campaign", "study-6", "refuse");
             yield return new TestCaseData("s30-mode2-allstars-alumni5-w3-campaign", "alumni-receipt-words", "refuse");
             yield return new TestCaseData("s30-mode2-allstars-alumni1-w3-campaign", "unknown-edition", "refuse");
-            yield return new TestCaseData("s30-mode2-allweek-story11-competition5-tuning1-w1-veto-meeting", "competition-6", "refuse");
+            yield return new TestCaseData("s30-mode2-allweek-story11-competition5-tuning1-w1-veto-meeting", "competition-7", "refuse"); // 7, not 6: the live validator takes competition rules 6 (the trivia) since it was defined; a schema-30 save at 6 is refused by the frozen reader alone
             yield return new TestCaseData("s30-mode2-allweek-story11-competition5-tuning1-w1-veto-meeting", "competition-3", "refuse");
             yield return new TestCaseData("s30-mode2-dialogue2-tuning1-w1-campaign", "dialogue-rules-3", "refuse");
             yield return new TestCaseData("s30-mode2-dialogue2-tuning1-w1-campaign", "response-key", "refuse");
@@ -339,7 +339,7 @@ namespace Gamesim.Tests.EditMode
                     receipt["description"] = (string)receipt["description"] + " ";
                     break;
                 }
-                case "competition-6": s["competitionRulesVersion"] = 6; break;
+                case "competition-7": s["competitionRulesVersion"] = 7; break;
                 case "competition-3": s["competitionRulesVersion"] = 3; break;
                 case "dialogue-rules-3": s["dialogueRulesVersion"] = 3; break;
                 case "response-key":

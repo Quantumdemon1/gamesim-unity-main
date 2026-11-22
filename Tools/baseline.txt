@@ -434,8 +434,13 @@
 # 10835 = 10834 + the review's veto fix: FreeTalkS2ReviewTests' case for a Friend a housemate Head of Household names
 # after the player's veto (also in the dotnet subset), 2026-11-21.
 # 10852 = 10835 + competition show edges: CompetitionShowEdgesTests 17 (the walk out waits for its whole field, the course's legs, a late runner), 2026-11-21.
+# 10859 = 10852 + the edges' fix after the built house's run: CompetitionShowEdgesFixTests 7 (nobody left out at any cast size or pace, the player's leg found every way), 2026-11-22.
+# 10864 = 10859 + the edges' second fix: CompetitionCourseMarkPassesTests 5 (the course's marks looked for in passes, a straggler tried again), 2026-11-22.
 # 10860 = 10852 + competition drop-outs and tower show: CompetitionDropoutsTests 8 (the preview is the commit, the field lets go under the player, the tower show's order and rings), 2026-11-22.
-Gamesim.EditModeTests 10860
+# 10872 = 10864 (the corrected competition show's edges) + the drop-outs and the tower show's 8 (10860 - 10852 on this
+# branch): disjoint cases, so the floor is their sum (the competition landing of 22 November 2026). Counted from the
+# two sides.
+Gamesim.EditModeTests 10872
 # The UMA-free build. 1215 = 1236, the count after the consolidation's lanes (S2a, S2b, S4a), less the 7
 # farewell probes moved to Gamesim.DiagnosticsPlayModeTests and the 14 farewell readiness tests that now
 # compile only under GAMESIM_UMA (judged on the UMA cast); 1230 = 1215 + S2d's 7, S4b's 2, S4c's 2 and
@@ -1210,5 +1215,10 @@ Gamesim.Uma.DiagnosticsPlayModeTests 10
 # 22933 = 22930 + slice 2's review fixes: the same 3 FreeTalkS2ReviewTests cases, 2026-11-21.
 # 22934 = 22933 + the same FreeTalkS2ReviewTests case the EditMode floor counts, 2026-11-21.
 # 22951 = 22934 + competition show edges: CompetitionShowEdgesTests 17 (the walk out waits for its whole field, the course's legs, a late runner), 2026-11-21.
+# 22958 = 22951 + the edges' fix after the built house's run: the same 7 CompetitionShowEdgesFixTests cases, 2026-11-22.
+# 22963 = 22958 + the edges' second fix: the same 5 CompetitionCourseMarkPassesTests cases, 2026-11-22.
 # 22959 = 22951 + competition drop-outs and tower show: CompetitionDropoutsTests 8 (the preview is the commit, the field lets go under the player, the tower show's order and rings), 2026-11-22.
-Gamesim.SimulationTests 22959
+# 22971 = 22963 (the corrected competition show's edges) + the drop-outs and the tower show's 8 (22959 - 22951 on this
+# branch): disjoint cases, so the floor is their sum (the competition landing of 22 November 2026). Counted from the
+# two sides.
+Gamesim.SimulationTests 22971

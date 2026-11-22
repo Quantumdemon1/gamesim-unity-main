@@ -38,6 +38,23 @@ namespace Gamesim.House
             ApplyGait(run);return true;
         }
 
+        /// <summary>
+        /// Puts the player on the destination of the activity move <paramref name="owner"/> holds, now,
+        /// through the agent's own warp onto the walking map: a competition show's walk out at its last
+        /// moment, so the player starts the show at their station (competition show edges). The move
+        /// stays the owner's and counts as arrived (<see cref="ActivityHasArrived"/>); the gait goes back
+        /// to the walk. False, and nothing moved, for another owner or an agent off the walking map.
+        /// </summary>
+        public bool TryPlaceAtActivityDestination(object owner)
+        {
+            if(owner==null || !ReferenceEquals(owner,activityOwner) || !isActiveAndEnabled || Agent==null || !Agent.enabled || !Agent.isOnNavMesh)return false;
+            if(!Agent.Warp(activityDestination))return false;
+            Agent.ResetPath();Agent.velocity=Vector3.zero;
+            RouteMetres=0f;ApplyGait(false);
+            Physics.SyncTransforms();
+            return true;
+        }
+
         /// <summary>Whether something - an activity, the diary chair, a competition station - owns the player's movement now.</summary>
         public bool HasActivityOwner => activityOwner!=null;
 

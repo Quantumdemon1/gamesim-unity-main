@@ -160,7 +160,7 @@ namespace Gamesim.Presentation
         /// <summary>
         /// The longest the walk out may run from the show's start, seconds: the far end of the house
         /// with the whole of a sixteen-strong cast queuing at the yard's door. Past it whoever is still
-        /// walking is left out at the hold, as before.
+        /// walking is put on their station (<see cref="PlaceBy"/>).
         /// </summary>
         public static float MostWalkOutSeconds(bool quick) => quick ? 12f : 14f;
 
@@ -190,6 +190,55 @@ namespace Gamesim.Presentation
 
         /// <summary>When the wait for the winner and a stationed player is up, for a walk out meant to be over by <paramref name="walkOutBy"/>.</summary>
         public static float PrincipalBy(float walkOutBy, bool quick) => AssemblyBy(walkOutBy, quick) + (PrincipalSeconds(quick) - AssemblySeconds(quick));
+
+        // ------------------------------------------------------------ nobody is left out
+
+        /// <summary>
+        /// When a competitor still on their way is put on their station, for a walk out meant to be over
+        /// by <paramref name="walkOutBy"/> (competition show edges, after the built house's run): half
+        /// the walk out's margin later, so a walker in their last steps still arrives on foot, and the
+        /// hold still begins inside the wait for the field (<see cref="AssemblyBy"/>). However long a
+        /// route, a queue at the yard's door or a cast of sixteen at the quick pace, the show starts
+        /// with its whole field.
+        /// </summary>
+        public static float PlaceBy(float walkOutBy, bool quick) => walkOutBy + WalkOutMargin(quick) * .5f;
+
+        /// <summary>
+        /// Puts every one of <paramref name="stationed"/> who has not <paramref name="arrived"/> and is
+        /// not yet in <paramref name="placed"/> on their station by <paramref name="place"/>, and adds
+        /// each one put there to <paramref name="placed"/>. Returns how many are still neither: those
+        /// whose body could not be put there, who wait for the field as before.
+        /// </summary>
+        public static int PlaceStragglers(IEnumerable<string> stationed, System.Func<string, bool> arrived,
+            System.Func<string, bool> place, ICollection<string> placed)
+        {
+            int still = 0;
+            if (stationed == null || arrived == null || placed == null) return 0;
+            foreach (var id in stationed)
+            {
+                if (id == null || arrived(id) || placed.Contains(id)) continue;
+                if (place != null && place(id)) placed.Add(id);
+                else still++;
+            }
+            return still;
+        }
+
+        /// <summary>
+        /// The field when the hold begins: each of <paramref name="stationed"/> who <paramref name="arrived"/>
+        /// or was <paramref name="placed"/> holds on; anybody else - only a body that could not be put on
+        /// its station - is left out, as before.
+        /// </summary>
+        public static void SplitAtHold(IEnumerable<string> stationed, System.Func<string, bool> arrived,
+            ICollection<string> placed, ICollection<string> holding, ICollection<string> leftOut)
+        {
+            if (stationed == null || arrived == null) return;
+            foreach (var id in stationed)
+            {
+                if (id == null) continue;
+                if (arrived(id) || placed != null && placed.Contains(id)) holding?.Add(id);
+                else leftOut?.Add(id);
+            }
+        }
 
         /// <summary>
         /// The pace, metres a second, that brings a walker with <paramref name="remainingMetres"/> of

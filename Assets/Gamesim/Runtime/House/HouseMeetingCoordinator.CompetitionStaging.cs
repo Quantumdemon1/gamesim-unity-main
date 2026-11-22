@@ -97,6 +97,29 @@ namespace Gamesim.House
         }
 
         /// <summary>
+        /// Puts a staged houseguest still on the way on their stage place now
+        /// (<see cref="HouseNpcMotion.PlaceAtDestination"/>): a show's walk out at its last moment, so
+        /// the show starts with its whole field. False when they hold no stage route or the walking map
+        /// refused the place.
+        /// </summary>
+        public bool PlaceCompetitionActor(string id)
+        {
+            foreach(var lease in competitionLeases)
+                if(lease.actor.id==id)
+                    return lease.actor.motion!=null && lease.actor.motion.PlaceAtDestination(lease.token);
+            return false;
+        }
+
+        /// <summary>Why a staged houseguest does not count as at their stage place now (<see cref="HouseNpcMotion.ArrivalFailure"/>), null when they do or hold no stage place.</summary>
+        public string CompetitionActorArrivalFailure(string id)
+        {
+            foreach(var lease in competitionLeases)
+                if(lease.actor.id==id)
+                    return lease.actor.motion!=null ? lease.actor.motion.ArrivalFailure : "no motion";
+            return null;
+        }
+
+        /// <summary>
         /// Walks a staged houseguest's route at another pace, metres a second, or at the house's own
         /// again for zero or less (<see cref="HouseNpcMotion.SetSpeed"/>): a show's walk out keeping
         /// pace with its wait. Only while the stage's own route is theirs; releasing it, as every end

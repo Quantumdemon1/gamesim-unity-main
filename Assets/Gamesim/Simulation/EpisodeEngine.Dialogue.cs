@@ -15,9 +15,9 @@ namespace Gamesim.Simulation
         {
             bool choice = command.kind == EpisodeCommandKind.StartDialogue || command.kind == EpisodeCommandKind.ChooseDialogue;
             var active = DialogueRules.Active(current);
-            bool advance = active != null && command.kind == EpisodeCommandKind.Advance && current.phase == EpisodePhase.Campaign;
+            bool advance = active != null && command.kind == EpisodeCommandKind.Advance && current.phase == DialogueRules.PhaseOf(active);
             bool lobby = active != null && command.kind == EpisodeCommandKind.Lobby && command.targetId == active.npcId
-                && LobbyAsk.TryDecode(command.text, out string ask, out _) && ask == LobbyAsk.Vote;
+                && LobbyAsk.TryDecode(command.text, out string ask, out _) && DialogueRules.ClosesOnPlea(active, ask);
             if (!choice && !advance && !lobby) return null;
             Require(DialogueRules.On(current), "Paid dialogue is not enabled for this season.");
             Require(pendingDialogue == null && ReferenceEquals(candidate, applyingDialogueCandidate)
@@ -65,6 +65,7 @@ namespace Gamesim.Simulation
                     Require(originalEpisode != null && request.targetId == originalEpisode.id, "That dialogue has already ended.");
                     var cycle = original.storylines.Single(x => x.id == originalEpisode.id);
                     // Rules 2 and later have their own nodes and evidence (EpisodeEngine.Dialogue.Rules2.cs); rules 1 is as merged.
+                    if (original.dialogueRulesVersion >= DialogueRules.Rules3) { PrepareRules3Choice(cycle, out lieSource); return; }
                     if (original.dialogueRulesVersion >= DialogueRules.Rules2) { PrepareRules2Choice(cycle, out citationSource, out lieSource); return; }
                     var template = DialogueRules.CampaignTemplate(cycle.templateId, originalEpisode.contentVersion);
                     Require(template != null && request.text == cycle.beatId
@@ -86,11 +87,11 @@ namespace Gamesim.Simulation
                     if (request.kind == EpisodeCommandKind.Lobby)
                     {
                         Require(request.targetId == originalEpisode.npcId && LobbyAsk.TryDecode(request.text, out string ask, out _)
-                            && ask == LobbyAsk.Vote, "This is not the open conversation's voter.");
-                        Require(StrategyRules.CanLobby(original, request.targetId, LobbyAsk.Vote, request.secondTargetId, out string error), error);
+                            && DialogueRules.ClosesOnPlea(originalEpisode, ask), "This is not the open conversation's voter.");
+                        Require(StrategyRules.CanLobby(original, request.targetId, DialogueRules.AskOf(request.text), request.secondTargetId, out string error), error);
                         Require(SocialActionsSpent(original) < SocialActionBudget(original), "You have no conversations left this week.");
                     }
-                    else Require(request.kind == EpisodeCommandKind.Advance && original.phase == EpisodePhase.Campaign,
+                    else Require(request.kind == EpisodeCommandKind.Advance && original.phase == DialogueRules.PhaseOf(originalEpisode),
                         "Only the campaign boundary can lapse this conversation.");
                 }
             }
@@ -152,6 +153,7 @@ namespace Gamesim.Simulation
                 Require(Bound(state) && !resolved && !sealedDelta && Same(source, original), "The paid choice is no longer owned.");
                 Require(request.kind == EpisodeCommandKind.StartDialogue || request.kind == EpisodeCommandKind.ChooseDialogue,
                     "This command does not own a paid choice.");
+                if (source.dialogueRulesVersion >= DialogueRules.Rules3) { ResolveRules3(state); resolved = true; Seal(state); return; }
                 if (source.dialogueRulesVersion >= DialogueRules.Rules2) { ResolveRules2(state); resolved = true; Seal(state); return; }
                 DialogueEpisodeState episode;
                 StorylineState cycle;
@@ -250,7 +252,7 @@ namespace Gamesim.Simulation
                 cycle.status = StorylineStatus.Completed; cycle.endedWeek = state.week; cycle.endingId = ending;
                 cycle.nextAnchor = null; cycle.nextWeek = 0;
                 var time = new DialogueTimeReceiptState { revision = revision, sequence = logSequence,
-                    window = Windows.AfterVeto, reason = lapsed ? "occasion-closed" : ending };
+                    window = episode.window, reason = lapsed ? "occasion-closed" : ending };
                 Require(episode.time == null && expectedEpisode.time == null, "This conversation already has its ending receipt.");
                 episode.time = time; expectedEpisode.time = time.Clone(); future.Add(time, DialogueRevisionField.Time);
             }
@@ -272,8 +274,8 @@ namespace Gamesim.Simulation
                 Require(Bound(state) && !resolved && !sealedDelta && state.lobbies.Count == original.lobbies.Count + 1,
                     "The independent plea does not own this closure.");
                 var actual = state.lobbies.Last();
-                Require(actual.deciderId == voterId && actual.week == original.week && actual.phase == EpisodePhase.Campaign
-                    && actual.ask == LobbyAsk.Vote && actual.subjectId == original.playerId
+                Require(actual.deciderId == voterId && actual.week == original.week && actual.phase == DialogueRules.PhaseOf(originalEpisode)
+                    && actual.ask == DialogueRules.AskOf(request.text) && actual.subjectId == request.secondTargetId
                     && LobbyAsk.TryDecode(request.text, out _, out string approach) && actual.approach == approach,
                     "The independent plea changed its source.");
                 var episode = state.dialogue.episodes.Single(x => x.id == originalEpisode.id);

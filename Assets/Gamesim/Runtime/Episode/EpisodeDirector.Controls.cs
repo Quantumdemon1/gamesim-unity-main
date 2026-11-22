@@ -239,7 +239,8 @@ namespace Gamesim.Episode
         /// </summary>
         private bool BackNestedPage()
         {
-            var back = hud != null && IsPanelOpen ? hud.WayBackAction : null;
+            // A confirm card's safe answer first: Escape and B on a card that asks answer "no".
+            var back = hud != null && IsPanelOpen ? hud.ConfirmCancelAction ?? hud.WayBackAction : null;
             if (back == null) return false;
             back();
             return true;

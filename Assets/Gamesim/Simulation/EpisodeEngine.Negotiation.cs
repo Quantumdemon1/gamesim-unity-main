@@ -196,6 +196,7 @@ namespace Gamesim.Simulation
             if (price == null || breakerId == null || !DealStatus.Binds(price.status) || price.recipientId != breakerId) return;
             if (KnownBallots.SettledByABallot(bought)) return;
             if (price.expiresWeek != 0 && s.week > price.expiresWeek) return;
+            if (FinalTwoDeals.KeepsThePrice(s, price)) return;
             if (UnifiedCommitments.SafetyAuthorityOn(s))
             {
                 // Mode 2: the safety store voids a canonical safety price as in mode 1 (vote family V3b), and the

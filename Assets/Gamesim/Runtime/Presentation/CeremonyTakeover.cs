@@ -39,7 +39,6 @@ namespace Gamesim.Presentation
     public sealed class CeremonyTakeover : MonoBehaviour
     {
         private const float FadeIn = 0.30f;
-        private const float Hold = 2.6f;
         private const float FadeOut = 0.45f;
         private const float Rise = 26f;
 
@@ -61,6 +60,18 @@ namespace Gamesim.Presentation
         /// <summary>What the card says it is waiting for, matching the web build's wording.</summary>
         public const string DismissCaption = "Click anywhere to continue";
 
+        /// <summary>What the card says takes it down, on a keyboard (<see cref="CeremonyCardWords"/>).</summary>
+        public const string CloseCaption = CeremonyCardWords.CloseCaption;
+
+        /// <summary>The same line for a player on a pad.</summary>
+        public const string PadCloseCaption = CeremonyCardWords.PadCloseCaption;
+
+        /// <summary>What the veto draw says turns every chip still in the bag, on a keyboard.</summary>
+        public const string SkipToResultCaption = CeremonyCardWords.SkipToResultCaption;
+
+        /// <summary>The same line for a player on a pad.</summary>
+        public const string PadSkipToResultCaption = CeremonyCardWords.PadSkipToResultCaption;
+
         /// <summary>
         /// What the key ceremony and the live eviction say speeds them up and skips them, on a
         /// keyboard. A caption other code and tests identify the line by, like <see cref="DismissCaption"/>.
@@ -76,6 +87,12 @@ namespace Gamesim.Presentation
 
         /// <summary>The controls line for the device last used on a card.</summary>
         public static string ControlsFor(bool pad) => pad ? PadControlsCaption : ControlsCaption;
+
+        /// <summary>The card's closing line for the device last used on a card.</summary>
+        public static string CloseFor(bool pad) => CeremonyCardWords.CloseFor(pad);
+
+        /// <summary>The veto draw's line for the device last used on it.</summary>
+        public static string SkipToResultFor(bool pad) => CeremonyCardWords.SkipToResultFor(pad);
 
         /// <summary>
         /// A press that moves a ceremony card on: a left click, Enter (either one), Escape, or the
@@ -101,6 +118,12 @@ namespace Gamesim.Presentation
         /// </summary>
         public event System.Action<CeremonyBeat> BeatReached;
 
+        /// <summary>
+        /// The player sped the veto meeting up, or back to its own pace: the speed it runs at now. The
+        /// director keeps it for the session's later reveals (CeremonyPacing.SessionSpeed).
+        /// </summary>
+        public event System.Action<float> SpeedChanged;
+
         private RectTransform rule, glassGround;
         private TMP_Text dismiss;
         private CanvasGroup group;
@@ -108,7 +131,10 @@ namespace Gamesim.Presentation
         private TMP_Text eyebrow, title, flavour;
         private RectTransform markOuter, markInner;
         private float elapsed;
-        private bool playing, reduced;
+        private bool playing, reduced, usingPad;
+
+        /// <summary>How long this card holds between its fades: its line's reading time, at least 2.6 seconds.</summary>
+        private float hold = CeremonyPacing.CardAuthoredHold;
 
         /// <summary>
         /// The frame the card was played in. Neither it nor the next is the card's own time, nor the
@@ -121,6 +147,12 @@ namespace Gamesim.Presentation
 
         /// <summary>Matches the HUD's accessibility preference so a large-text player gets a large card.</summary>
         public float FontScale { get; set; } = 1f;
+
+        /// <summary>The caption reading time in use (A10): a long line holds longer, and longer still under "Longer".</summary>
+        public CaptionTime CaptionTime { get; set; }
+
+        /// <summary>How long the card holds between its fades, in seconds: a read for tests.</summary>
+        public float HoldSeconds => hold;
 
         public bool IsPlaying => playing;
 
@@ -295,6 +327,10 @@ namespace Gamesim.Presentation
             eyebrow.text = "WEEK " + Mathf.Max(1, week);
             title.text = name;
             flavour.text = string.IsNullOrEmpty(line) ? FlavourFor(kind) : line;
+            // Long enough to read the title and the line under it, as the strip holds (UI-UX plan U5).
+            hold = CeremonyPacing.CardHold(title.text, flavour.text, CaptionTime);
+            // The press that takes it down, in the words of the device last used.
+            dismiss.text = Localisation.Text(CloseFor(usingPad));
             // The veto meeting leads with its own mark, drawn as authored, as its screen and the strip
             // reporting it do (UI-UX-PASS-PLAN V0): one meeting, one mark. Every other beat has a
             // generated glyph when the icon set exists, and the two-disc mark when it does not.
@@ -337,7 +373,7 @@ namespace Gamesim.Presentation
                 if (was) BeatReached?.Invoke(new CeremonyBeat(CeremonyBeatKind.Closed, -1, null, elapsed < MeetingEnd));
                 return;
             }
-            if (was) BeatReached?.Invoke(new CeremonyBeat(CeremonyBeatKind.Closed, -1, null, elapsed < FadeIn + Hold));
+            if (was) BeatReached?.Invoke(new CeremonyBeat(CeremonyBeatKind.Closed, -1, null, elapsed < FadeIn + hold));
         }
 
         /// <summary>
@@ -354,9 +390,10 @@ namespace Gamesim.Presentation
             if (Held) return;
             // Nothing from before its first frame on screen is the card's time (playedFrame).
             if (Time.frameCount - playedFrame <= 1) return;
-            elapsed += Time.unscaledDeltaTime;
-            // The meeting on the set's screen keeps its own pages; the HUD's card below is as it was.
+            // The meeting on the set's screen keeps its own pages, on its own clock; the HUD's card below is as it was.
             if (meeting != null) { TickMeeting(); return; }
+            elapsed += Time.unscaledDeltaTime;
+            FollowDevice();
 
             // Read the devices directly rather than through the event system. The card carries no
             // GraphicRaycaster and every graphic on it is non-raycasting — an acceptance criterion,
@@ -369,17 +406,29 @@ namespace Gamesim.Presentation
             {
                 // No movement and no fade, but the same time on screen: a player who asked for less
                 // motion asked for less motion, not less of the episode.
-                if (elapsed >= FadeIn + Hold + FadeOut) { Cancel(); return; }
+                if (elapsed >= FadeIn + hold + FadeOut) { Cancel(); return; }
                 Apply(1f);
                 return;
             }
 
             if (elapsed < FadeIn) { Apply(elapsed / FadeIn); return; }
-            if (elapsed < FadeIn + Hold) { Apply(1f); return; }
+            if (elapsed < FadeIn + hold) { Apply(1f); return; }
 
-            float exit = (elapsed - FadeIn - Hold) / FadeOut;
+            float exit = (elapsed - FadeIn - hold) / FadeOut;
             if (exit >= 1f) { Cancel(); return; }
             Apply(1f - exit);
+        }
+
+        /// <summary>
+        /// The closing line follows the device last used on the card, as the reveals' key hints do: a
+        /// pad press names A, a key or a click the click and Enter.
+        /// </summary>
+        private void FollowDevice()
+        {
+            var pad = PadUsed();
+            if (!pad.HasValue || pad.Value == usingPad) return;
+            usingPad = pad.Value;
+            if (dismiss != null) dismiss.text = Localisation.Text(CloseFor(usingPad));
         }
 
         private void Apply(float t)
@@ -457,7 +506,7 @@ namespace Gamesim.Presentation
             rule = NewPanel("Takeover rule", column, new Color(UiTheme.Muted.r, UiTheme.Muted.g, UiTheme.Muted.b, 0.35f), 1);
             dismiss = NewText("Takeover dismiss", column, 15f, UiTheme.Muted);
             dismiss.alignment = TextAlignmentOptions.Center;
-            dismiss.text = DismissCaption;
+            dismiss.text = Localisation.Text(CloseFor(usingPad));
 
             Layout();
         }
@@ -652,7 +701,7 @@ namespace Gamesim.Presentation
         private bool mounted;
         private MeetingPage page;
         private CeremonyPace meetingPace = CeremonyPace.Suspenseful;
-        private float upFor;
+        private float upFor, meetingSpeed = 1f;
         private RectTransform meetingRoot, meetingFaces;
         private TMP_Text meetingWeek, meetingHeadline, meetingLine;
 
@@ -675,6 +724,9 @@ namespace Gamesim.Presentation
         /// <summary>The pace the meeting was played at.</summary>
         public CeremonyPace MeetingPace => meetingPace;
 
+        /// <summary>How fast the meeting's clock runs: 1, or <see cref="CeremonyPacing.SpeedUp"/> while the player has sped it up.</summary>
+        public float MeetingSpeed => meetingSpeed;
+
         /// <summary>How long the meeting takes at its own pace, start to finish, when nobody skips it.</summary>
         public float MeetingDuration => meeting != null ? MeetingEnd + CeremonyPacing.FadeOut : 0f;
 
@@ -693,7 +745,8 @@ namespace Gamesim.Presentation
         /// on the HUD - without a screen, or a meeting it cannot tell; the HUD, a batch run and
         /// reduced motion never come here.
         /// </summary>
-        public bool PlayVetoMeeting(VetoMeetingScript script, bool reducedMotion, CeremonyPace pace, ScreenSurface screen)
+        public bool PlayVetoMeeting(VetoMeetingScript script, bool reducedMotion, CeremonyPace pace, ScreenSurface screen,
+            float speed = 1f)
         {
             if (screen == null || script == null || !script.Playable) return false;
             playingKind = CeremonySting.VetoKind;
@@ -704,6 +757,8 @@ namespace Gamesim.Presentation
             meeting = script;
             surface = screen;
             meetingPace = pace;
+            // At the speed the player left the last reveal at, this session (UI-UX plan D2).
+            meetingSpeed = CeremonyPacing.SessionSpeed(speed);
             BuildMeeting();
             // Off any screen it was still on first, so that screen's idle graphic comes back.
             var canvas = GetComponent<Canvas>();
@@ -742,13 +797,22 @@ namespace Gamesim.Presentation
         private void TickMeeting()
         {
             upFor += Time.unscaledDeltaTime;
+            bool readable = upFor >= CeremonyPacing.FadeIn + MeetingReadDelay;
+            // Space (the pad's X) runs the meeting faster, or back at its own pace, as it does every
+            // reveal: how long the pages take, never what they say.
+            if (readable && SpeedPressed())
+            {
+                meetingSpeed = meetingSpeed > 1f ? 1f : CeremonyPacing.SpeedUp;
+                SpeedChanged?.Invoke(meetingSpeed);
+            }
             // The card says nothing of its controls on the screen: the skip chip names the press.
-            if (upFor >= CeremonyPacing.FadeIn + MeetingReadDelay && SkipPressed())
+            if (readable && SkipPressed())
             {
                 if (page == MeetingPage.Final) { Cancel(); return; }
                 SkipToResult();
                 return;
             }
+            elapsed += Time.unscaledDeltaTime * meetingSpeed;
             float end = MeetingEnd;
             if (reduced)
             {

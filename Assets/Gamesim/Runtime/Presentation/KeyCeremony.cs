@@ -86,10 +86,16 @@ namespace Gamesim.Presentation
         /// </summary>
         public event System.Action<CeremonyBeat> BeatReached;
 
+        /// <summary>
+        /// The player sped this reveal up, or back to its own pace: the speed it runs at now. The
+        /// director keeps it for the session's later reveals (CeremonyPacing.SessionSpeed).
+        /// </summary>
+        public event System.Action<float> SpeedChanged;
+
         private CanvasGroup group;
         private RectTransform column, scrim, slotRow, stage, faces, rosterRow, titleMark;
         private Image heldKey;
-        private TMP_Text eyebrow, title, hohLine, progress, controls, speedMark;
+        private TMP_Text eyebrow, title, hohLine, progress, controls, speedMark, dismiss;
         private readonly List<RectTransform> slots = new List<RectTransform>();
         private readonly List<RosterEntry> roster = new List<RosterEntry>();
         private List<Person> safe = new List<Person>();
@@ -192,7 +198,7 @@ namespace Gamesim.Presentation
         /// </summary>
         public bool Play(int week, string hohName, bool hohIsPlayer, IList<Person> safeHouseguests,
             IList<Person> block, bool reducedMotion, CeremonyPace pace = CeremonyPace.Suspenseful, ScreenSurface screen = null,
-            IList<Person> roster = null)
+            IList<Person> roster = null, float speed = 1f)
         {
             if (safeHouseguests == null || block == null || block.Count == 0) return false;
 
@@ -212,8 +218,9 @@ namespace Gamesim.Presentation
             shown = -1;
             blockShown = false;
             lastKeyPending = false;
-            // Every ceremony starts at its own pace; speeding one up is for that one.
-            SetSpeed(1f);
+            // At the speed the player left the last reveal at, this session (UI-UX plan D2): a caller
+            // that gives none starts it at its own pace.
+            SetSpeed(CeremonyPacing.SessionSpeed(speed));
             playing = true;
 
             eyebrow.text = "WEEK " + Mathf.Max(1, week);
@@ -290,7 +297,11 @@ namespace Gamesim.Presentation
             // own pace; it changes how long the order takes, never the order. The first skip hands
             // out every remaining key and shows the block - skipping the order, never the result -
             // and a skip on the block ends the card.
-            if (Dismissable && CeremonyTakeover.SpeedPressed()) SetSpeed(speed > 1f ? 1f : CeremonyPacing.SpeedUp);
+            if (Dismissable && CeremonyTakeover.SpeedPressed())
+            {
+                SetSpeed(speed > 1f ? 1f : CeremonyPacing.SpeedUp);
+                SpeedChanged?.Invoke(speed);
+            }
             if (Dismissable && CeremonyTakeover.SkipPressed())
             {
                 if (blockShown) { Cancel(); return; }
@@ -368,6 +379,7 @@ namespace Gamesim.Presentation
             if (!pad.HasValue || pad.Value == usingPad) return;
             usingPad = pad.Value;
             if (controls != null) controls.text = CeremonyTakeover.ControlsFor(usingPad);
+            if (dismiss != null) dismiss.gameObject.SetActive(CeremonyCardWords.ShowsClickLine(usingPad));
         }
 
         private void Raise(HouseAudio.Cue cue) => CueRequested?.Invoke(cue);
@@ -725,10 +737,13 @@ namespace Gamesim.Presentation
                 Place(rule, 96f * scale, 1f, f.RuleY);
                 rule.GetComponent<Image>().raycastTarget = false;
 
-                var dismiss = HudPrimitives.Label("Dismiss", column, 11f * scale, UiTheme.Muted, TextAlignmentOptions.Center);
+                dismiss = HudPrimitives.Label("Dismiss", column, 11f * scale, UiTheme.Muted, TextAlignmentOptions.Center);
                 dismiss.text = CeremonyTakeover.DismissCaption;
                 Place(dismiss.rectTransform, width, f.DismissH, f.DismissY);
+                // A pad has no click: on a pad the controls line under it names A alone (UI-UX plan U5).
+                dismiss.gameObject.SetActive(CeremonyCardWords.ShowsClickLine(usingPad));
             }
+            else dismiss = null;
 
             // And what else it answers to: the reveal can be sped up, or skipped to the block. The
             // keys named follow the device last used on the card.

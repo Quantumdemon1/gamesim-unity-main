@@ -29,16 +29,10 @@ namespace Gamesim.Presentation
     [DisallowMultipleComponent]
     public sealed class VetoDrawReveal : MonoBehaviour
     {
-        private const float FadeIn = 0.30f;
-        /// <summary>The beat with every chip in the bag, before the first comes out.</summary>
-        private const float Intro = 0.70f;
-        /// <summary>How long each chip holds the stage: out of the bag, the slot lit, the face turned over.</summary>
-        private const float PerChip = 0.90f;
-        /// <summary>How long a chip takes to leave the bag, and then its face to turn over.</summary>
-        private const float Turn = 0.30f;
-        /// <summary>How long the whole field holds once every chip is out.</summary>
-        private const float FieldHold = 2.6f;
-        private const float FadeOut = 0.45f;
+        // The draw's timings are CeremonyPacing's (UI-UX plan D2): the Suspenseful column is the
+        // numbers this card always had, and the Quick setting has a column of its own.
+        private const float FadeIn = CeremonyPacing.FadeIn;
+        private const float FadeOut = CeremonyPacing.FadeOut;
         /// <summary>How long past its fade before a press moves it on: a press in flight as it appears is not one.</summary>
         private const float ReadDelay = 0.35f;
 
@@ -74,8 +68,9 @@ namespace Gamesim.Presentation
         private readonly List<GameObject> litSlots = new List<GameObject>();
         private readonly List<Player> drawn = new List<Player>();
         private readonly List<string> order = new List<string>();
-        private float elapsed, upFor, chipLift;
-        private bool playing, reduced, fieldShown;
+        private float elapsed, upFor, chipLift, speed = 1f;
+        private bool playing, reduced, fieldShown, usingPad;
+        private CeremonyPace pace = CeremonyPace.Suspenseful;
         private int turned = -1;
 
         /// <summary>
@@ -87,6 +82,12 @@ namespace Gamesim.Presentation
         /// drawn, and made a press in flight look read.
         /// </summary>
         private int playedFrame;
+
+        /// <summary>
+        /// The player sped the draw up, or back to its own pace: the speed it runs at now. The director
+        /// keeps it for the session's later reveals (CeremonyPacing.SessionSpeed).
+        /// </summary>
+        public event System.Action<float> SpeedChanged;
 
         /// <summary>Matches the HUD's text size, so a large-text player gets a large card.</summary>
         public float FontScale { get; set; } = 1f;
@@ -102,10 +103,19 @@ namespace Gamesim.Presentation
         /// <summary>Who the chips turn into, in the order they come out.</summary>
         public IReadOnlyList<string> Order => order;
 
-        /// <summary>How long the card runs start to finish when nobody moves it on, in real seconds.</summary>
-        public float Duration => FieldAt + FieldHold + FadeOut;
+        /// <summary>How long the card runs start to finish when nobody speeds it up or moves it on, in real seconds.</summary>
+        public float Duration => CeremonyPacing.VetoDraw(pace, drawn.Count);
 
-        private float DrawStart => FadeIn + Intro;
+        /// <summary>The pace the draw was played at.</summary>
+        public CeremonyPace Pace => pace;
+
+        /// <summary>How fast the card's clock runs: 1, or <see cref="CeremonyPacing.SpeedUp"/> while the player has sped it up.</summary>
+        public float SpeedMultiplier => speed;
+
+        private float PerChip => CeremonyPacing.PerChip(pace);
+        private float Turn => CeremonyPacing.ChipTurn(pace);
+        private float FieldHold => CeremonyPacing.FieldHold(pace);
+        private float DrawStart => FadeIn + CeremonyPacing.DrawIntro(pace);
         private float FieldAt => DrawStart + drawn.Count * PerChip;
 
         /// <summary>Creates the card as a root object in <paramref name="owner"/>'s scene, as every ceremony card is.</summary>
@@ -132,15 +142,19 @@ namespace Gamesim.Presentation
         /// left, the bag with a chip for each of <paramref name="drawnPlayers"/>, and a slot for each
         /// that the chip turns into their face, in the order given. <paramref name="fieldLine"/> is the
         /// line under the title. Declines a draw with nobody drawn - everyone played - and the caller
-        /// plays the field card instead, so the beat is never silent.
+        /// plays the field card instead, so the beat is never silent. It plays at <paramref name="pace"/>,
+        /// starting at the speed the player left the last reveal at (<paramref name="speed"/>).
         /// </summary>
-        public bool Play(int week, IList<Player> byRight, IList<Player> drawnPlayers, string fieldLine, bool reducedMotion)
+        public bool Play(int week, IList<Player> byRight, IList<Player> drawnPlayers, string fieldLine, bool reducedMotion,
+            CeremonyPace pace = CeremonyPace.Suspenseful, float speed = 1f)
         {
             if (drawnPlayers == null || drawnPlayers.Count == 0) return false;
             drawn.Clear();
             drawn.AddRange(drawnPlayers);
             order.Clear();
             foreach (var player in drawn) order.Add(player.Id);
+            this.pace = pace;
+            this.speed = CeremonyPacing.SessionSpeed(speed);
 
             Build();
             reduced = reducedMotion;
@@ -154,7 +168,7 @@ namespace Gamesim.Presentation
             eyebrow.text = Localisation.Text("WEEK " + Mathf.Max(1, week));
             title.text = Localisation.Text("Power of Veto");
             line.text = Localisation.Text(fieldLine ?? string.Empty);
-            dismiss.text = Localisation.Text(CeremonyTakeover.DismissCaption);
+            dismiss.text = Localisation.Text(CeremonyTakeover.SkipToResultFor(usingPad));
             Lay(byRight ?? new List<Player>());
 
             column.gameObject.SetActive(true);
@@ -178,6 +192,16 @@ namespace Gamesim.Presentation
             Field();
         }
 
+        /// <summary>
+        /// The card's last line names the press that works, in the words of the device last used: the
+        /// skip to the field while chips are in the bag, and the close once the field is up (UI-UX plan U5).
+        /// </summary>
+        private void SayThePress()
+        {
+            if (dismiss == null) return;
+            dismiss.text = Localisation.Text(fieldShown ? CeremonyTakeover.CloseFor(usingPad) : CeremonyTakeover.SkipToResultFor(usingPad));
+        }
+
         /// <summary>Takes the card down at once: a new beat, a scene change, or a press on the field.</summary>
         public void Cancel()
         {
@@ -197,7 +221,16 @@ namespace Gamesim.Presentation
             if (Time.frameCount - playedFrame <= 1) return;
             float step = Time.unscaledDeltaTime;
             upFor += step;
+            var pad = CeremonyTakeover.PadUsed();
+            if (pad.HasValue && pad.Value != usingPad) { usingPad = pad.Value; SayThePress(); }
 
+            // Space (the pad's X) runs the draw faster, or back at its own pace, as it does every
+            // reveal (UI-UX plan D2): how long the chips take, never who they name.
+            if (Dismissable && CeremonyTakeover.SpeedPressed())
+            {
+                speed = speed > 1f ? 1f : CeremonyPacing.SpeedUp;
+                SpeedChanged?.Invoke(speed);
+            }
             if (Dismissable && CeremonyTakeover.SkipPressed())
             {
                 if (fieldShown) { Cancel(); return; }
@@ -205,7 +238,7 @@ namespace Gamesim.Presentation
                 return;
             }
 
-            elapsed += step;
+            elapsed += step * speed;
             float end = FieldAt + FieldHold;
             if (reduced) group.alpha = 1f;
             else if (elapsed < FadeIn) group.alpha = Eased(elapsed / FadeIn);
@@ -249,6 +282,7 @@ namespace Gamesim.Presentation
             fieldShown = true;
             turned = drawn.Count;
             progress.text = Localisation.Text(FieldCaption);
+            SayThePress();
             Animate();
         }
 

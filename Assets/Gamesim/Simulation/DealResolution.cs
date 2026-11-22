@@ -191,6 +191,19 @@ namespace Gamesim.Simulation
         }
 
         /// <summary>
+        /// A veto decision, against a conditional veto promise (<see cref="DealKind.VetoIf"/>, DIALOGUE-PLAN §4.2 point 4):
+        /// <see cref="Veto"/>'s rule for a promise whose condition was met - its maker holds the veto and its target was on the
+        /// block at the decision. Used on the target, it is kept; otherwise its maker broke it. Null for any other deal or
+        /// holder. Never called by <see cref="Verdicts"/>: the promise settles in its own step, with no spread and no draw
+        /// (EpisodeEngine.Dialogue.Rules4.cs).
+        /// </summary>
+        public static string VetoIf(DealState deal, string holderId, string savedId, bool used)
+        {
+            if (deal == null || deal.type != DealKind.VetoIf || deal.proposerId != holderId || string.IsNullOrEmpty(deal.targetId)) return null;
+            return used && savedId == deal.targetId ? DealStatus.Fulfilled : DealStatus.Broken;
+        }
+
+        /// <summary>
         /// A veto decision, against a keep-the-block deal (ROLE-MOMENTS-PLAN R4, §3.3): the Head of Household asked the
         /// holder to leave the nominations as they are. Not used, it is kept; used - on whichever nominee - the holder
         /// broke it. Only a deal the holder is party to answers to their decision.

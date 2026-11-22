@@ -489,7 +489,9 @@ namespace Gamesim.Simulation
             double willingness = s.Score(holderId, nomineeId);
             if (!Apply(s)) return willingness;
             if (Allegiance.Holds(s, holderId, nomineeId)) willingness += VetoAllyPull;
-            if (NpcDeals.Between(s, holderId, nomineeId).Any(d => d.type == DealKind.VetoUse)) willingness += VetoCommitmentPull;
+            // A met conditional promise (dialogue rules 4, DIALOGUE-PLAN §4.2 point 5) pulls as a veto commitment does, and once with one.
+            if (NpcDeals.Between(s, holderId, nomineeId).Any(d => d.type == DealKind.VetoUse || DialogueRules.IsMetVetoIf(s, d, holderId)))
+                willingness += VetoCommitmentPull;
             willingness += s.lobbies.Where(l => l.week == s.week && l.deciderId == holderId && l.ask == LobbyAsk.Save
                 && l.subjectId == nomineeId).Sum(l => l.influence);
             return willingness;

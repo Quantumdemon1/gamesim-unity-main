@@ -123,7 +123,21 @@ namespace Gamesim.Simulation
             FinalThree, VetoHold,
         };
 
-        public static bool IsKnown(string type) => type != null && Array.IndexOf(All, type) >= 0;
+        /// <summary>
+        /// Native, dialogue's own (DIALOGUE-PLAN §4.2, dialogue rules 4): a veto player's promise to a nominated player, made
+        /// in the veto question after they said yes, to use the veto on the player if they win it. A closed kind nobody ever
+        /// proposes (<see cref="PlayerDeals.CanPropose"/> refuses it): the conversation writes it, with the veto player as
+        /// proposer and the player as recipient and target, and its own settlement step judges it
+        /// (<see cref="DealResolution.VetoIf"/>), never the deal verdicts. Kept OUT of <see cref="All"/>, which several readers
+        /// and recorded digests walk in order: <see cref="IsKnown"/> admits it beside that list, and validation refuses it below
+        /// dialogue rules 4 (<see cref="DialogueOnly"/>).
+        /// </summary>
+        public const string VetoIf = "veto_if";
+
+        public static bool IsKnown(string type) => type != null && (Array.IndexOf(All, type) >= 0 || type == VetoIf);
+
+        /// <summary>Whether this kind exists only under dialogue rules 4 and later: the conditional veto promise.</summary>
+        public static bool DialogueOnly(string type) => type == VetoIf;
 
         /// <summary>Whether this kind exists only under the commitment rules (<see cref="EpisodeEngine.CommitmentRulesOn"/>): the final three deal.</summary>
         public static bool CommitmentRulesOnly(string type) => type == FinalThree;
@@ -143,6 +157,8 @@ namespace Gamesim.Simulation
             switch (type)
             {
                 case VetoUse:
+                // Dialogue's conditional veto promise (DIALOGUE-PLAN §4.2): the Critical trust of a veto commitment.
+                case VetoIf:
                 case FinalTwo: return DealTrust.Critical;
                 case TargetAgreement:
                 case SafetyAgreement:
@@ -180,6 +196,8 @@ namespace Gamesim.Simulation
                 // Its own (R4): the default would call it a partnership, and a reader that rebuilds the engine's line
                 // from the title (YourWeek.ReadDeal) would read its settlement as a partnership's.
                 case VetoHold: return "Keep-the-Block Deal";
+                // Dialogue's own (DIALOGUE-PLAN §4.2): the conditional veto promise.
+                case VetoIf: return "Veto Promise";
                 default: return "Partnership";
             }
         }

@@ -71,7 +71,7 @@ namespace Gamesim.Simulation
             // keep-the-block deal (ROLE-MOMENTS-PLAN R4) is the Head of Household's ask of the player, never the
             // player's to put to anybody: refused so in every season, as it was before there was one.
             if (!DealKind.IsKnown(type) || (DealKind.CommitmentRulesOnly(type) && !EpisodeEngine.CommitmentRulesOn(state))
-                || type == DealKind.VetoHold)
+                || type == DealKind.VetoHold || type == DealKind.VetoIf)
                 return Refuse(out reason, "That is not a deal anybody in this house would recognise.");
             if (state.week < state.dealRulesStartWeek)
                 return Refuse(out reason, "The house is not making deals this week.");

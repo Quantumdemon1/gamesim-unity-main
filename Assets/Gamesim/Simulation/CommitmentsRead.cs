@@ -426,6 +426,8 @@ namespace Gamesim.Simulation
                 case DealKind.FinalThree: return "final three deal";
                 // The role moments' own (ROLE-MOMENTS-PLAN R4): the Head of Household's ask to leave the block alone.
                 case DealKind.VetoHold: return "keep-the-block deal";
+                // Dialogue's own (DIALOGUE-PLAN §4.2): a veto player's promise to the player, made in the veto question.
+                case DealKind.VetoIf: return "veto promise";
                 default: return "partnership";
             }
         }
@@ -459,9 +461,14 @@ namespace Gamesim.Simulation
                 // The role moments' own (R4): what breaks it is the veto used, by whichever of them holds it
                 // (DealResolution.Hold) - nobody is assumed to hold it, as with a veto deal.
                 case DealKind.VetoHold: return KeepTheBlockBinds;
+                // Dialogue's own (§4.2): the maker is bound only if they win the veto, and the player is its target.
+                case DealKind.VetoIf: return VetoIfBinds;
                 default: return "to work together";
             }
         }
+
+        /// <summary>What a conditional veto promise binds, in words (dialogue rules 4, DIALOGUE-PLAN §4.2).</summary>
+        public const string VetoIfBinds = "if they win the veto, to use it on you";
 
         /// <summary>What a final three deal binds, in words (C9): a safety pact's act, until the final three.</summary>
         public const string FinalThreeBinds = "to take each other to the final three: neither nominates the other";
@@ -563,7 +570,8 @@ namespace Gamesim.Simulation
                         || FinalTwoAtStake(s);
                 // So is a keep-the-block deal (R4), by the veto, as a veto deal is.
                 case DecisionKinds.Veto:
-                    return DealStanding(s, DealKind.VetoUse, DealKind.SafetyAgreement, DealKind.TargetAgreement, DealKind.FinalThree, DealKind.VetoHold)
+                    return DealStanding(s, DealKind.VetoUse, DealKind.SafetyAgreement, DealKind.TargetAgreement, DealKind.FinalThree, DealKind.VetoHold,
+                            DealKind.VetoIf)
                         || PromiseStanding(s, PromiseKind.Safety, PromiseKind.AllianceLoyalty) || OathStanding(s) || FinalTwoAtStake(s);
                 case DecisionKinds.Vote:
                     return DealStanding(s, DealKind.VoteSave, DealKind.VoteEvict) || PromiseStanding(s, PromiseKind.Vote) || OathStanding(s)

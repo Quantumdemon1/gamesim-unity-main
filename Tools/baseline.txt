@@ -450,7 +450,11 @@
 # 10872 = 10859 (the recap, the finale page and the saves leftovers on the new main) + dialogue rules 3's 13 (10848 -
 # 10835 on this branch): disjoint cases, so the floor is their sum (the stacked landing of 22 November 2026). Counted
 # from the two sides.
-Gamesim.EditModeTests 10872
+# 10850 = 10835 + the final two deal at minds level 1: FinalTwoDealsTests 15 (all also in the dotnet subset), 2026-11-21.
+# 10857 = 10850 + the review's fixes: FinalTwoDealsReviewTests 7 (all also in the dotnet subset), 2026-11-22.
+# 10894 = 10872 (dialogue rules 3 on top of the three fixes) + the final two deal's 22 (10857 - 10835 on this branch):
+# disjoint cases, so the floor is their sum (the stacked landing of 22 November 2026). Counted from the two sides.
+Gamesim.EditModeTests 10894
 # The UMA-free build. 1215 = 1236, the count after the consolidation's lanes (S2a, S2b, S4a), less the 7
 # farewell probes moved to Gamesim.DiagnosticsPlayModeTests and the 14 farewell readiness tests that now
 # compile only under GAMESIM_UMA (judged on the UMA cast); 1230 = 1215 + S2d's 7, S4b's 2, S4c's 2 and
@@ -1243,4 +1247,9 @@ Gamesim.Uma.DiagnosticsPlayModeTests 10
 # 22969 = 22956 (the recap, the finale page and the saves leftovers on the new main) + dialogue rules 3's 13 (22947 -
 # 22934 on this branch): disjoint cases, so the floor is their sum (the stacked landing of 22 November 2026). Counted
 # from the two sides.
-Gamesim.SimulationTests 22969
+# 22952 = 22934 + the final two deal at minds level 1: the same 15 FinalTwoDealsTests cases and FinalTwoDealsSeasonSoak's
+# 3 lockstep seasons (dotnet only; its soak is explicit and counts nowhere), 2026-11-21.
+# 22959 = 22952 + the review's fixes: the same 7 FinalTwoDealsReviewTests cases, 2026-11-22.
+# 22994 = 22969 (dialogue rules 3 on top of the three fixes) + the final two deal's 25 (22959 - 22934 on this branch):
+# disjoint cases, so the floor is their sum (the stacked landing of 22 November 2026). Counted from the two sides.
+Gamesim.SimulationTests 22994

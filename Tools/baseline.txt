@@ -500,7 +500,10 @@
 # 11021 = 10958 + the tour offered and docked: TourDockTests 63 (all also in the dotnet subset), 2026-11-22.
 # 11201 = 11138 (the season card on the new main) + the tour's 63 (11021 - 10958 on this branch): disjoint cases, so
 # the floor is their sum (the second wave's landing of 22 November 2026). Counted from the two sides.
-Gamesim.EditModeTests 11201
+# 11129 = 11027 (the new main) + 102: the cases added by the season card and the tour. The 11201 above counted 72
+# cases twice: those of the first wave's changes, which this branch held from an older chain and the new main holds
+# too. Corrected 2026-11-22; the floor is the count the test lists give.
+Gamesim.EditModeTests 11129
 # The UMA-free build. 1215 = 1236, the count after the consolidation's lanes (S2a, S2b, S4a), less the 7
 # farewell probes moved to Gamesim.DiagnosticsPlayModeTests and the 14 farewell readiness tests that now
 # compile only under GAMESIM_UMA (judged on the UMA cast); 1230 = 1215 + S2d's 7, S4b's 2, S4c's 2 and
@@ -775,7 +778,10 @@ Gamesim.EditModeTests 11201
 # 1687 = 1685 + the tour offered and docked: the 2 EpisodePlayModeTests.TourOffer cases, 2026-11-22.
 # 1695 = 1693 (the season card on the new main) + the tour's 2 (1687 - 1685 on this branch): disjoint cases, so the
 # floor is their sum (the second wave's landing of 22 November 2026). Counted from the two sides.
-Gamesim.PlayModeTests 1695
+# 1689 = 1686 (the new main) + 3: the cases added by the season card and the tour. The 1695 above counted 6 cases
+# twice: those of the first wave's changes, which this branch held from an older chain and the new main holds too.
+# Corrected 2026-11-22; the floor is the count the test lists give.
+Gamesim.PlayModeTests 1689
 # The UMA build of the same assembly, read by a plan built without -WithoutUma. 1281 = the 1241 above + the
 # 40 tests that compile only under GAMESIM_UMA, as run at r1 (2026-10-16): in EpisodePlayModeTests,
 # GroundedFarewell 11, Creator 9, HouseLife 8, Emotes 3, OpeningCaptures 2, and one each in CreatorEntry,
@@ -974,7 +980,10 @@ Gamesim.PlayModeTests 1695
 # 1732 = 1730 + the tour offered and docked: the 2 EpisodePlayModeTests.TourOffer cases, 2026-11-22.
 # 1740 = 1738 (the season card on the new main) + the tour's 2 (1732 - 1730 on this branch): disjoint cases, so the
 # floor is their sum (the second wave's landing of 22 November 2026). Counted from the two sides.
-Gamesim.PlayModeTests.UmaBuild 1740
+# 1734 = 1731 (the new main) + 3: the cases added by the season card and the tour. The 1740 above counted 6 cases
+# twice: those of the first wave's changes, which this branch held from an older chain and the new main holds too.
+# Corrected 2026-11-22; the floor is the count the test lists give.
+Gamesim.PlayModeTests.UmaBuild 1734
 # The UMA bodies: runs only where the GAMESIM_UMA define is set (the working tree and the D: copy).
 # 82 = the 89 run on 2026-10-15, less the 7 farewell probes moved to Gamesim.Uma.DiagnosticsPlayModeTests;
 # 85 = 82 + the 3 farewell readiness decision tests (UmaFarewellReadinessDecisionPlayModeTests, 2026-10-16);
@@ -1398,4 +1407,7 @@ Gamesim.Uma.DiagnosticsPlayModeTests 10
 # 23116 = 23053 + the tour offered and docked: TourDockTests 63, 2026-11-22.
 # 23301 = 23238 (the season card on the new main) + the tour's 63 (23116 - 23053 on this branch): disjoint cases, so
 # the floor is their sum (the second wave's landing of 22 November 2026). Counted from the two sides.
-Gamesim.SimulationTests 23301
+# 23228 = 23131 (the new main) + 97: the cases added by the season card and the tour. The 23301 above counted 73 cases
+# twice: those of the first wave's changes, which this branch held from an older chain and the new main holds too.
+# Corrected 2026-11-22; the floor is the count the test lists give.
+Gamesim.SimulationTests 23228

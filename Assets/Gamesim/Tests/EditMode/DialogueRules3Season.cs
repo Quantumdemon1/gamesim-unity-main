@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using Gamesim.Simulation;
 using NUnit.Framework;
@@ -66,34 +67,46 @@ namespace Gamesim.Tests.EditMode
         }
 
         /// <summary>
-        /// The first veto meeting in seeds 1 to 60 (weeks 1 to 3) where the player is nominated, does not hold the veto, the
+        /// The first veto meeting in seeds 1 to 60 (weeks 1 to 5) where the player is nominated, does not hold the veto, the
         /// decision is still open, the asks are answered and the appeal to the holder can start. A detached copy; its one
-        /// person is the holder.
+        /// person is the holder. The walk is the plain public walk except that the player plays every competition at zero:
+        /// at the walk's usual 0.5 the player won the veto in 39 of the 40 nominated meetings it met (d3c1).
         /// </summary>
         internal static Stop FindVetoMeeting()
         {
+            // Why each nominated veto meeting the walk met was passed over, for the failure's message.
+            var passed = new Dictionary<string, int>(StringComparer.Ordinal);
+            void Pass(string why) => passed[why] = passed.TryGetValue(why, out int n) ? n + 1 : 1;
             for (uint seed = 1; seed <= 60; seed++)
             {
                 var engine = new EpisodeEngine(Start(seed));
-                for (int step = 0; step < 400; step++)
+                for (int step = 0; step < 600; step++)
                 {
                     var s = engine.Snapshot;
-                    if (s.week > 3 || s.phase == EpisodePhase.Finished || s.Find(s.playerId).status != ContestantStatus.Active) break;
-                    if (s.phase == EpisodePhase.VetoMeeting && !s.vetoResolved && s.nominees.Contains(s.playerId)
-                        && s.vetoHolderId != null && s.vetoHolderId != s.playerId)
+                    if (s.week > 5 || s.phase == EpisodePhase.Finished || s.Find(s.playerId).status != ContestantStatus.Active) break;
+                    if (s.phase == EpisodePhase.VetoMeeting && !s.vetoResolved && s.nominees.Contains(s.playerId))
                     {
-                        DialogueRules2Season.CloseAsks(engine);
-                        s = engine.Snapshot;
-                        if (DialogueRules.CanStart(s, s.vetoHolderId, out _))
+                        if (s.vetoHolderId == null || s.vetoHolderId == s.playerId) Pass("the player holds the veto or nobody does");
+                        else if (s.nominees.Contains(s.vetoHolderId)) Pass("the holder is the other nominee");
+                        else
                         {
-                            TestContext.Out.WriteLine("Rules-3 veto meeting: seed " + seed + ", week " + s.week + ", revision " + s.revision + ".");
-                            return new Stop { Seed = seed, State = s.Clone(), People = new[] { s.vetoHolderId } };
+                            DialogueRules2Season.CloseAsks(engine);
+                            s = engine.Snapshot;
+                            if (DialogueRules.CanStart(s, s.vetoHolderId, out string why))
+                            {
+                                TestContext.Out.WriteLine("Rules-3 veto meeting: seed " + seed + ", week " + s.week + ", revision " + s.revision + ".");
+                                return new Stop { Seed = seed, State = s.Clone(), People = new[] { s.vetoHolderId } };
+                            }
+                            Pass("CanStart: " + why);
                         }
                     }
-                    DialogueRules2Season.Accepted(engine, EpisodeEngineTests.NextCommand(engine.Snapshot));
+                    var next = EpisodeEngineTests.NextCommand(engine.Snapshot);
+                    if (next.kind == EpisodeCommandKind.Compete) next.performance = 0;
+                    DialogueRules2Season.Accepted(engine, next);
                 }
             }
-            Assert.Fail("No rules-3 season of 60 met a veto meeting with the player nominated and the holder free to talk.");
+            Assert.Fail("No rules-3 season of 60 met a veto meeting with the player nominated and the holder free to talk. Passed over: "
+                + string.Join("; ", passed.Select(kv => kv.Key + " x" + kv.Value)));
             return null;
         }
 

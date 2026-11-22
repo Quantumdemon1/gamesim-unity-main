@@ -349,7 +349,7 @@ namespace Gamesim.Tests.EditMode
         /// starts its histories whatever the player chose. The All-Stars roster of eight and the stress house, through
         /// <see cref="ShippedRules.ApplyFresh(EpisodeState, SeasonBuilder.Choice)"/>, build exactly the season
         /// <see cref="ShippedRules.ApplyFresh(EpisodeState)"/> builds, the latest alumni rules and edition 1 included; with the
-        /// preview chip on as well, the same season on the chip's dialogue rules - 2 since the chip moved from D1's 1 -
+        /// preview chip on as well, the same season on the chip's dialogue rules - 3 since D3 moved the chip from 2 -
         /// its histories still written last.
         /// </summary>
         [Test]
@@ -367,9 +367,9 @@ namespace Gamesim.Tests.EditMode
                     Assert.That(Json(given), Is.EqualTo(Json(shipped)), builder + " seed " + seed + ": the options form is the shipped season, histories included.");
                     var chip = Build(builder, size, roster, seed);
                     ShippedRules.ApplyFresh(chip, new SeasonBuilder.Choice { Roster = roster, HouseSize = size, CampaignConversations = true });
-                    shipped.dialogueRulesVersion = 2;
+                    shipped.dialogueRulesVersion = 3;
                     Assert.That(Json(chip), Is.EqualTo(Json(shipped)), builder + " seed " + seed
-                        + ": the chip adds dialogue rules 2 (its version since this change) and nothing else.");
+                        + ": the chip adds dialogue rules 3 (its version since D3) and nothing else.");
                     Assert.That(chip.alumniRulesVersion, Is.EqualTo(AlumniRules.Latest));
                     Assert.That(EpisodeValidation.TryValidate(chip, out string error), Is.True, error);
                 }

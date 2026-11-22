@@ -194,7 +194,8 @@ namespace Gamesim.Tests.EditMode
             var answered = Accepted(engine, Choice(opened, DialogueCampaignTrees.BringUp));
             var episode = DialogueRules3Season.Open(answered);
             Assert.That(DialogueRules3Season.Beat(answered), Is.EqualTo(DialogueCampaignTrees.ReplyBeat(DialogueCampaignTrees.Kept)));
-            Assert.That((episode.statement?.targetId, episode.statement?.week), Is.EqualTo((target, s.week - 1)), "The kept claim, copied.");
+            Assert.That(episode.statement, Is.Not.Null, "The kept claim, copied.");
+            Assert.That((episode.statement.targetId, episode.statement.week), Is.EqualTo((target, s.week - 1)), "The kept claim, copied.");
             Assert.That(answered.randomState, Is.EqualTo(s.randomState));
             var reacted = Accepted(engine, Choice(answered, DialogueCampaignTrees.CountOnWord));
             Assert.That(DialogueRules3Season.Open(reacted).evidence.Single().kind, Is.EqualTo(DialogueCampaignTrees.StatementEvidence));
@@ -254,7 +255,8 @@ namespace Gamesim.Tests.EditMode
             var lapsed = Accepted(engine, EpisodeEngineTests.NextCommand(opened));
             var episode = lapsed.dialogue.episodes.Single();
             var cycle = DialogueRules.Cycle(lapsed, episode);
-            Assert.That((cycle.status, cycle.endingId, episode.time?.reason), Is.EqualTo((StorylineStatus.Completed, "lapsed", "occasion-closed")));
+            Assert.That(episode.time, Is.Not.Null);
+            Assert.That((cycle.status, cycle.endingId, episode.time.reason), Is.EqualTo((StorylineStatus.Completed, "lapsed", "occasion-closed")));
             Assert.That(lapsed.vetoResolved, Is.True);
             var decided = Accepted(twin, EpisodeEngineTests.NextCommand(left));
             Assert.That(lapsed.randomState, Is.EqualTo(decided.randomState), "The lapse draws nothing: the decision rolls as it would have.");

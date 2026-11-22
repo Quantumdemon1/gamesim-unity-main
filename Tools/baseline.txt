@@ -1207,4 +1207,6 @@ Gamesim.Uma.DiagnosticsPlayModeTests 10
 # 22934 = 22933 + the same FreeTalkS2ReviewTests case the EditMode floor counts, 2026-11-21.
 # 22935 = 22934 + the same SloganScanTests case the EditMode floor counts, 2026-11-21.
 # 22936 = 22935 + the same SloganScanTests case the EditMode floor counts, 2026-11-22.
-Gamesim.SimulationTests 22936
+# 22941 = 22936 + HeldReplayShapeTests' 5 cases (compiled out of Unity, so the EditMode floor is unchanged): every held
+# replay digests the state below the live schema, through its observer, 2026-11-22.
+Gamesim.SimulationTests 22941

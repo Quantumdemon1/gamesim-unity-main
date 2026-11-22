@@ -491,6 +491,8 @@
     <Compile Include="$(EditMode)OverhearValidationTests.cs" />
     <Compile Include="$(EditMode)HouseTalkS1FollowUpTests.cs" />
     <Compile Include="$(EditMode)HouseTalkLab.cs" />
+    <!-- Plan 32 S2b: overhearing on screen - the hunches, the catch risk and the walk-over's reads. -->
+    <Compile Include="$(EditMode)OverhearingScreenTests.cs" />
     <!-- Free talk slice 1, the screen: the words the panel, the tile and the notebook blocks show, and the command a reply sends. -->
     <Compile Include="$(EditMode)TalkScreenLinesTests.cs" />
     <!-- Free talk slice 2, the screen: the "Between you" and "How you come across" lines, the favour's pills and the third beat at talk rules 2. -->

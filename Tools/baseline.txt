@@ -434,7 +434,8 @@
 # 10835 = 10834 + the review's veto fix: FreeTalkS2ReviewTests' case for a Friend a housemate Head of Household names
 # after the player's veto (also in the dotnet subset), 2026-11-21.
 # 10836 = 10835 + the slogan removal's SloganScanTests 1 (also in the dotnet subset), 2026-11-21.
-Gamesim.EditModeTests 10836
+# 10837 = 10836 + the slogan review fix's SloganScanTests.TheScanCatchesTheSlogansAndNotEverydayWords 1 (also in the dotnet subset), 2026-11-22.
+Gamesim.EditModeTests 10837
 # The UMA-free build. 1215 = 1236, the count after the consolidation's lanes (S2a, S2b, S4a), less the 7
 # farewell probes moved to Gamesim.DiagnosticsPlayModeTests and the 14 farewell readiness tests that now
 # compile only under GAMESIM_UMA (judged on the UMA cast); 1230 = 1215 + S2d's 7, S4b's 2, S4c's 2 and
@@ -1205,4 +1206,5 @@ Gamesim.Uma.DiagnosticsPlayModeTests 10
 # 22933 = 22930 + slice 2's review fixes: the same 3 FreeTalkS2ReviewTests cases, 2026-11-21.
 # 22934 = 22933 + the same FreeTalkS2ReviewTests case the EditMode floor counts, 2026-11-21.
 # 22935 = 22934 + the same SloganScanTests case the EditMode floor counts, 2026-11-21.
-Gamesim.SimulationTests 22935
+# 22936 = 22935 + the same SloganScanTests case the EditMode floor counts, 2026-11-22.
+Gamesim.SimulationTests 22936

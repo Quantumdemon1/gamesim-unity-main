@@ -20,11 +20,16 @@ namespace Gamesim.Tests.EditMode
     /// </summary>
     public sealed class SloganScanTests
     {
-        /// <summary>The slogans' words, lower case with single spaces, as any screen or sign wrote them.</summary>
+        /// <summary>
+        /// The slogans whole, as words only: lower case, punctuation and line breaks read as single
+        /// spaces, so "GOOD PEOPLE · BIGGER STORIES" and "Good People\nBigger Stories" both match.
+        /// Whole slogans, never a two-word piece of one, so an everyday line such as "they're good
+        /// people" stays free to be written (the review, finding 3).
+        /// </summary>
         private static readonly string[] SloganWords =
         {
-            "same house. different stories", "different stories", "good people", "bigger stories",
-            "real players bigger possibilities", "last competition. last decision",
+            "same house different stories", "good people bigger stories", "good people better stories",
+            "real players bigger possibilities", "last competition last decision",
         };
 
         /// <summary>The neon lettering models that spell a slogan, which no scene and no builder may place.</summary>
@@ -32,8 +37,6 @@ namespace Gamesim.Tests.EditMode
 
         /// <summary>The code whose strings reach a screen or a sign, relative to Assets/Gamesim.</summary>
         private static readonly string[] CodeFolders = { "Runtime", "Simulation", "Editor" };
-
-        private static readonly Regex Spaces = new Regex(@"\s+", RegexOptions.CultureInvariant);
 
         [Test]
         public void NoScreenAndNoSignCarriesASlogan()
@@ -45,8 +48,7 @@ namespace Gamesim.Tests.EditMode
                 foreach (var file in Directory.GetFiles(Path.Combine(root, folder), "*.cs", SearchOption.AllDirectories))
                 {
                     string code = Code(File.ReadAllText(file));
-                    string words = Normal(code);
-                    foreach (var slogan in SloganWords.Where(words.Contains))
+                    foreach (var slogan in SlogansIn(code))
                         problems.Add(Relative(root, file) + " holds the slogan words \"" + slogan + "\".");
                     foreach (var sign in SloganSigns.Where(code.Contains))
                         problems.Add(Relative(root, file) + " names the slogan sign " + sign + ".");
@@ -75,8 +77,7 @@ namespace Gamesim.Tests.EditMode
                     if (trimmed.StartsWith("m_text:", StringComparison.Ordinal) || trimmed.StartsWith("m_Text:", StringComparison.Ordinal)
                         || trimmed.StartsWith("value:", StringComparison.Ordinal))
                     {
-                        string words = Normal(trimmed);
-                        foreach (var slogan in SloganWords.Where(words.Contains))
+                        foreach (var slogan in SlogansIn(trimmed))
                             problems.Add(Relative(root, scene) + ":" + number + " shows the slogan words \"" + slogan + "\".");
                     }
                     foreach (var sign in SloganSigns.Where(line.Contains))
@@ -89,9 +90,35 @@ namespace Gamesim.Tests.EditMode
             Assert.That(problems, Is.Empty, string.Join("\n", problems));
         }
 
-        /// <summary>Lower case, every run of white space one space, and a string's escaped line breaks as spaces.</summary>
+        /// <summary>
+        /// The matcher alone, on lines a screen could show: every way the slogans were written is
+        /// caught, and the same words in an everyday line are not.
+        /// </summary>
+        [Test]
+        public void TheScanCatchesTheSlogansAndNotEverydayWords()
+        {
+            Assert.That(SlogansIn("strap.text = \"SAME HOUSE. DIFFERENT STORIES.\";"), Is.EqualTo(new[] { "same house different stories" }));
+            Assert.That(SlogansIn("neon.text = \"Good People\\nBigger Stories\";"), Is.EqualTo(new[] { "good people bigger stories" }));
+            Assert.That(SlogansIn("Text(column, \"GOOD PEOPLE  \\u00b7  BIGGER STORIES\", 15f);"), Is.EqualTo(new[] { "good people bigger stories" }));
+            Assert.That(SlogansIn("  m_text: Good people, better stories"), Is.EqualTo(new[] { "good people better stories" }));
+            Assert.That(SlogansIn("FixedText(card, \"Last competition. Last decision.\", 11);"), Is.EqualTo(new[] { "last competition last decision" }));
+            Assert.That(SlogansIn("Say(\"They're good people, and the house has different stories to tell.\");"), Is.Empty);
+            Assert.That(SlogansIn("Say(\"Same house, same rules, bigger stakes.\");"), Is.Empty);
+        }
+
+        /// <summary>The slogans a text holds, read as words: lower case, escapes and punctuation as spaces.</summary>
+        private static string[] SlogansIn(string text)
+        {
+            string words = Normal(text);
+            return SloganWords.Where(slogan => words.Contains(" " + slogan + " ")).ToArray();
+        }
+
+        private static readonly Regex Escapes = new Regex(@"\\(u[0-9A-Fa-f]{4}|x[0-9A-Fa-f]{1,4}|[ntr])", RegexOptions.CultureInvariant);
+        private static readonly Regex NotWords = new Regex(@"[^\p{L}\p{Nd}]+", RegexOptions.CultureInvariant);
+
+        /// <summary>Lower case words with single spaces between them and one at each end; a string's escapes and every mark read as a space.</summary>
         private static string Normal(string text) =>
-            Spaces.Replace(text.Replace("\\n", " ").Replace("\\t", " "), " ").ToLowerInvariant();
+            " " + NotWords.Replace(Escapes.Replace(text, " "), " ").Trim().ToLowerInvariant() + " ";
 
         private static string Relative(string root, string file) =>
             file.Substring(root.Length).TrimStart(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar).Replace('\\', '/');

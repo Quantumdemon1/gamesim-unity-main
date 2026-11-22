@@ -163,6 +163,49 @@ namespace Gamesim.Presentation
             }
         }
 
+        /// <summary>How far out a turn mark is tried when every way is tried, metres, longest first: the course's own, then a shorter one.</summary>
+        public static readonly float[] EveryWayDistances = { 4.5f, 4f, 3.5f, 3f, 2.5f, 2f, 1.5f };
+
+        /// <summary>The widest a leg is tried at when every way is tried, degrees from straight back: past it a leg would run forward into the runner's own equipment.</summary>
+        public const float EveryWayMostDegrees = 90f;
+
+        /// <summary>
+        /// Every turn mark for <paramref name="id"/> that keeps their leg clear, for a runner who must
+        /// have a leg - the player's own houseguest (competition show edges, after the built house's
+        /// run): the course's own candidates first (<see cref="Candidates"/>), then every 15 degrees
+        /// either side of straight back up to <see cref="EveryWayMostDegrees"/> at every one of
+        /// <see cref="EveryWayDistances"/>, then any of <paramref name="places"/> - the yard's own grid
+        /// of clear places - from 1.5 to 6 m away and not ahead of the post, nearest first. Each is
+        /// checked as <see cref="Clears"/> checks the course's own; the arena still checks every one
+        /// against the walking map and the scenery.
+        /// </summary>
+        public IEnumerable<Spot> EveryWayCandidates(string id, IEnumerable<Spot> places = null)
+        {
+            if (id == null || !postAt.TryGetValue(id, out var post)) yield break;
+            foreach (var spot in Candidates(id)) yield return spot;
+            for (float angle = 0f; angle <= EveryWayMostDegrees + .01f; angle += 15f)
+                foreach (float signed in angle == 0f ? new[] { 0f } : new[] { angle, -angle })
+                {
+                    var direction = Direction(id, signed);
+                    foreach (float distance in EveryWayDistances)
+                    {
+                        if (marks.ContainsKey(id)) yield break;
+                        var end = new Spot(post.X + direction.X * distance, post.Z + direction.Z * distance);
+                        if (Clears(id, end)) yield return end;
+                    }
+                }
+            if (places == null) yield break;
+            foreach (var spot in places.Where(p => p.Z <= post.Z + runnerRadius)
+                .Select(p => (spot: p, distance: Distance(post, p))).Where(p => p.distance >= 1.5f && p.distance <= 6f)
+                .OrderBy(p => p.distance).ThenBy(p => p.spot.X).ThenBy(p => p.spot.Z).Select(p => p.spot).ToList())
+            {
+                if (marks.ContainsKey(id)) yield break;
+                if (Clears(id, spot)) yield return spot;
+            }
+        }
+
+        private static float Distance(Spot a, Spot b) => (float)Math.Sqrt((a.X - b.X) * (a.X - b.X) + (a.Z - b.Z) * (a.Z - b.Z));
+
         /// <summary>Whether a leg from <paramref name="id"/>'s post to <paramref name="mark"/> stays on the floor and clear of every station, body and leg taken.</summary>
         public bool Clears(string id, Spot mark)
         {

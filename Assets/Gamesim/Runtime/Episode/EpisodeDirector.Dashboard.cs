@@ -99,7 +99,15 @@ namespace Gamesim.Episode
                     Choose = () => { EndOverview(); TalkFromCastMenu(id); },
                 });
             }
-            if (freeTime && left > 0 && state.Active.Count(c => !c.isPlayer) >= 2)
+            // At story rules 12 listening in is free and walks you over (EpisodeDirector.Overhear.cs).
+            if (freeTime && Overhearing.On(state) && state.Active.Count(c => !c.isPlayer) >= 2)
+                tiles.Add(new EpisodeHud.MoveTile
+                {
+                    Caption = OverviewListenCaption, Description = "Walk over to two houseguests talking and stay close. Twice a week.", Glyph = "eye",
+                    Value = "Good intel", ValueTint = UiTheme.Accent, Corner = "They may notice", CornerTint = UiTheme.Joke, Foot = TileFree,
+                    Choose = () => { EndOverview(); WalkOverToListen(); },
+                });
+            else if (freeTime && left > 0 && state.Active.Count(c => !c.isPlayer) >= 2)
                 tiles.Add(new EpisodeHud.MoveTile
                 {
                     Caption = OverviewListenCaption, Description = "Find out what people are really saying. Works seven times in ten.", Glyph = "eye",

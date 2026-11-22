@@ -82,6 +82,15 @@
     <Compile Include="$(EditMode)CompetitionRules5Tests.cs" />
     <Compile Include="$(EditMode)RingTowerPuzzleTests.cs" />
     <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/RingTowerPuzzle.cs" />
+    <!-- The trivia competition: rules 6's selector, eligibility, quiz and result; pure, so they run here too. The soak is
+         compiled here only and run by name. -->
+    <Compile Include="$(EditMode)CompetitionTriviaTests.cs" />
+    <Compile Include="$(EditMode)CompetitionTriviaSeasonSoak.cs" />
+    <!-- The trivia's screen: the round's model (which question, what an answer does, the result card's count); pure. -->
+    <Compile Include="$(EditMode)TriviaRoundTests.cs" />
+    <!-- Its review: a ranked answer names nothing, a left ranked quiz counts as it stands; pure. -->
+    <Compile Include="$(EditMode)TriviaRankedLeaveTests.cs" />
+    <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/TriviaRound.cs" />
     <!-- Competition show slice 1: the show's plan reads the committed standings and draws nothing; pure, so it runs here too. -->
     <Compile Include="$(EditMode)CompetitionShowPlanTests.cs" />
     <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/CompetitionShowPlan.cs" />
@@ -91,11 +100,14 @@
     <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/CompetitionShowTimeline.cs" />
     <!-- Competition show edges: the walk out waits for its whole field, the course's legs and a late runner; pure, so they run here too. -->
     <Compile Include="$(EditMode)CompetitionShowEdgesTests.cs" />
+    <Compile Include="$(EditMode)CompetitionShowEdgesFixTests.cs" />
     <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/CompetitionCourseLegs.cs" />
     <!-- Competition drop-outs and the tower show: the field lets go from a preview of the commit, the tower's rings from the beats; pure, so they run here too. -->
     <Compile Include="$(EditMode)CompetitionDropoutsTests.cs" />
     <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/CompetitionHoldDropouts.cs" />
     <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/CompetitionTowerShowRings.cs" />
+    <Compile Include="$(EditMode)CompetitionCourseMarkPassesTests.cs" />
+    <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/CompetitionCourseMarkPasses.cs" />
     <!-- Competition yard slice 2: the list of what stands in the yard when; pure, so it runs here too. -->
     <Compile Include="$(EditMode)CompetitionYardPiecesTests.cs" />
     <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/CompetitionYardPieces.cs" />
@@ -493,6 +505,8 @@
     <Compile Include="$(EditMode)HouseTalkRulesTests.cs" />
     <!-- Explicit, and compiled out of Unity: story rules 11's held seasons, the house talk's replay guard, run on demand. -->
     <Compile Include="$(EditMode)RolesSeasonDigests.cs" />
+    <!-- Compiled out of Unity as well: every held replay digests the state below the live schema, through its observer. -->
+    <Compile Include="$(EditMode)HeldReplayShapeTests.cs" />
     <!-- Plan 32 S1: the story's cooldown table holds the house talk's keys at sixteen seats (compiled out of Unity). -->
     <Compile Include="$(EditMode)HouseTalkCapacityTests.cs" />
     <!-- Plan 32 S1: Regard, Candour and the manners; the vote answer at 12; its bank; the notes and the profile blocks. -->
@@ -502,6 +516,13 @@
     <Compile Include="$(EditMode)LineBankLintTests.cs" />
     <Compile Include="$(EditMode)HouseTalkNotesTests.cs" />
     <Compile Include="$(EditMode)HouseTalkValidationTests.cs" />
+    <!-- Plan 32 S2a: overhearing in the rules - the Notice and the Listen, their records, S1's follow-up cases, and the lab arm (compiled out of Unity). -->
+    <Compile Include="$(EditMode)OverhearTests.cs" />
+    <Compile Include="$(EditMode)OverhearValidationTests.cs" />
+    <Compile Include="$(EditMode)HouseTalkS1FollowUpTests.cs" />
+    <Compile Include="$(EditMode)HouseTalkLab.cs" />
+    <!-- Plan 32 S2b: overhearing on screen - the hunches, the catch risk and the walk-over's reads. -->
+    <Compile Include="$(EditMode)OverhearingScreenTests.cs" />
     <!-- Free talk slice 1, the screen: the words the panel, the tile and the notebook blocks show, and the command a reply sends. -->
     <Compile Include="$(EditMode)TalkScreenLinesTests.cs" />
     <!-- Free talk slice 2, the screen: the "Between you" and "How you come across" lines, the favour's pills and the third beat at talk rules 2. -->
@@ -569,6 +590,8 @@
     <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/MiniGameRun.Dice.cs" />
     <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/MiniGameRun.Words.cs" />
     <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/MiniGameRun.Tower.cs" />
+    <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/MiniGameRun.Trivia.cs" />
+    <Compile Include="$(EditMode)MiniGameRunTriviaTests.cs" />
     <Compile Include="$(EditMode)ScrambleDealTests.cs" />
     <!-- The input glossary (PLAN A, A0): every thing the player presses, and the raw-read guard over Runtime's scripts. -->
     <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/InputGlossary.cs" />

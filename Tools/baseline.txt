@@ -468,7 +468,8 @@
 # 10935 = 10933 + the review's LinesWrongWordsReviewTests 2 (also in the dotnet subset), 2026-11-22.
 # 10940 = 10935 + notebook rows open profiles (backlog 21): NotebookProfileNotesTests 3 (also in the dotnet subset) and
 # NotebookRowsProfilesTests 2, 2026-11-22.
-Gamesim.EditModeTests 10940
+# 10944 = 10940 + pick, then commit (backlog 29): DecisionPickTests 4 (also in the dotnet subset), 2026-11-22.
+Gamesim.EditModeTests 10944
 # The UMA-free build. 1215 = 1236, the count after the consolidation's lanes (S2a, S2b, S4a), less the 7
 # farewell probes moved to Gamesim.DiagnosticsPlayModeTests and the 14 farewell readiness tests that now
 # compile only under GAMESIM_UMA (judged on the UMA cast); 1230 = 1215 + S2d's 7, S4b's 2, S4c's 2 and
@@ -729,7 +730,8 @@ Gamesim.EditModeTests 10940
 # 1686 = 1684 + lines that said the wrong thing and a competition result that can be read: the 2
 # CompetitionSurfacePlayModeTests.ResultReads cases (Enter or A skips a practice's count; the card's attempt headline), 2026-11-22.
 # 1688 = 1686 + notebook rows open profiles (backlog 21): EpisodePlayModeTests.NotebookRowsProfiles 2, 2026-11-22.
-Gamesim.PlayModeTests 1688
+# 1690 = 1688 + pick, then commit (backlog 29): EpisodePlayModeTests.PickThenConfirm 2, 2026-11-22.
+Gamesim.PlayModeTests 1690
 # The UMA build of the same assembly, read by a plan built without -WithoutUma. 1281 = the 1241 above + the
 # 40 tests that compile only under GAMESIM_UMA, as run at r1 (2026-10-16): in EpisodePlayModeTests,
 # GroundedFarewell 11, Creator 9, HouseLife 8, Emotes 3, OpeningCaptures 2, and one each in CreatorEntry,
@@ -914,7 +916,8 @@ Gamesim.PlayModeTests 1688
 # 1731 = 1729 + lines that said the wrong thing and a competition result that can be read: the same 2
 # CompetitionSurfacePlayModeTests.ResultReads cases, 2026-11-22.
 # 1733 = 1731 + notebook rows open profiles (backlog 21): the same 2 EpisodePlayModeTests.NotebookRowsProfiles, 2026-11-22.
-Gamesim.PlayModeTests.UmaBuild 1733
+# 1735 = 1733 + pick, then commit (backlog 29): the same 2 EpisodePlayModeTests.PickThenConfirm, 2026-11-22.
+Gamesim.PlayModeTests.UmaBuild 1735
 # The UMA bodies: runs only where the GAMESIM_UMA define is set (the working tree and the D: copy).
 # 82 = the 89 run on 2026-10-15, less the 7 farewell probes moved to Gamesim.Uma.DiagnosticsPlayModeTests;
 # 85 = 82 + the 3 farewell readiness decision tests (UmaFarewellReadinessDecisionPlayModeTests, 2026-10-16);
@@ -1301,4 +1304,5 @@ Gamesim.Uma.DiagnosticsPlayModeTests 10
 # LinesWrongWordsTests 7, 2026-11-22.
 # 23031 = 23029 + the review's LinesWrongWordsReviewTests 2, 2026-11-22.
 # 23034 = 23031 + notebook rows open profiles (backlog 21): NotebookProfileNotesTests 3, 2026-11-22.
-Gamesim.SimulationTests 23034
+# 23038 = 23034 + pick, then commit (backlog 29): DecisionPickTests 4, 2026-11-22.
+Gamesim.SimulationTests 23038

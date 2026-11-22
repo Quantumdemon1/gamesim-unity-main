@@ -553,6 +553,9 @@
     <Compile Include="$(EditMode)TuningCopyTests.cs" />
     <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/FinalChoiceWords.cs" />
     <Compile Include="$(EditMode)FinalChoiceWordsTests.cs" />
+    <!-- Pick, then commit (UI-UX-PLAN O1): the commit's caption, its command and when a pick holds. -->
+    <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/DecisionPick.cs" />
+    <Compile Include="$(EditMode)DecisionPickTests.cs" />
     <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/ObjectiveWords.cs" />
     <Compile Include="$(EditMode)ObjectiveWordsTests.cs" />
     <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/CompetitionMiniGames.cs" />

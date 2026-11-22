@@ -410,6 +410,7 @@ namespace Gamesim.Simulation
                     if (!s.vetoResolved)
                     {
                         Require(s.vetoHolderId != s.playerId, "Choose whether to use the veto first.");
+                        pending?.LapseHolderAppeal(s); // Dialogue rules 3: an appeal to the holder still open ends at the decision, drawing nothing.
                         var saved = NpcVetoSave(s);
                         Require(saved == null || s.hohId != s.playerId, "The veto will be used. As HoH, choose the replacement nominee.");
                         // A holder's offer to the player (R8), as the player last saw it, before anything moves.
@@ -1304,6 +1305,7 @@ namespace Gamesim.Simulation
 
         private static void Social(EpisodeState s, EpisodeCommand c)
         {
+            Require(c.kind != EpisodeCommandKind.Eavesdrop || !StoryAt(s, StoryRules.Manners), WalkOverToListenRefusal); // plan 32 §I5: from 12 the house's free Listen
             RequireConversationWindow(s, c);
             Require(s.Find(s.playerId).status == ContestantStatus.Active, "Evicted players can follow the season but cannot influence it.");
             var target = s.Find(c.targetId);
@@ -2375,6 +2377,7 @@ namespace Gamesim.Simulation
             {
                 // A partnership kept at a vote stands (C1): nothing to settle, a small record of the keep.
                 if (verdict.stands) { KeptAndStanding(s, verdict); continue; }
+                if (verdict.lapses) { FinalTwoDeals.Lapse(s, verdict); continue; }
                 // Under the commitment rules (C7) a verdict is passed over once an earlier one in the same
                 // act ended its deal: a price voided by the breach of what it bought, judged by the same
                 // nomination, lapsed - its void line said - and is not broken again on top of it.

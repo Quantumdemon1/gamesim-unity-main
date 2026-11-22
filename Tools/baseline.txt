@@ -433,9 +433,42 @@
 # 10834 = 10831 + slice 2's review fixes: FreeTalkS2ReviewTests 3 (all also in the dotnet subset), 2026-11-21.
 # 10835 = 10834 + the review's veto fix: FreeTalkS2ReviewTests' case for a Friend a housemate Head of Household names
 # after the player's veto (also in the dotnet subset), 2026-11-21.
+# 10836 = 10835 + the slogan removal's SloganScanTests 1 (also in the dotnet subset), 2026-11-21.
+# 10837 = 10836 + the slogan review fix's SloganScanTests.TheScanCatchesTheSlogansAndNotEverydayWords 1 (also in the dotnet subset), 2026-11-22.
+# 10840 = 10835 + the weekly recap's arrival: WeeklyRecapArrivalTests 5 (all also in the dotnet subset), 2026-11-21.
+# 10842 = 10837 (main, with the slogans off the screens and signs) + the weekly recap's 5 (10840 - 10835 on this
+# branch): disjoint cases, so the floor is their sum (the stacked landing of 22 November 2026). Counted from the two
+# sides.
+# 10845 = 10840 + the finale page set aside for the cast screen: FinaleAsideTests 5 (all also in the dotnet subset), 2026-11-22.
+# 10847 = 10842 (the weekly recap on the new main) + the finale page's 5 (10845 - 10840 on this branch): disjoint
+# cases, so the floor is their sum (the stacked landing of 22 November 2026). Counted from the two sides.
+# 10857 = 10845 + the settings and saves leftovers: MenuSavesLeftoversTests 10 (all also in the dotnet subset) and MenuSavesLeftoversShelfTests 2, 2026-11-22.
+# 10859 = 10847 (the finale page with the recap on the new main) + the settings and saves leftovers' 12 (10857 - 10845
+# on this branch): disjoint cases, so the floor is their sum (the stacked landing of 22 November 2026). Counted from
+# the two sides.
+# 10848 = 10835 + dialogue D3's 13 DialogueRules3Tests cases (2026-11-21); the re-pinned and renamed chip tests add none.
+# 10872 = 10859 (the recap, the finale page and the saves leftovers on the new main) + dialogue rules 3's 13 (10848 -
+# 10835 on this branch): disjoint cases, so the floor is their sum (the stacked landing of 22 November 2026). Counted
+# from the two sides.
+# 10850 = 10835 + the final two deal at minds level 1: FinalTwoDealsTests 15 (all also in the dotnet subset), 2026-11-21.
+# 10857 = 10850 + the review's fixes: FinalTwoDealsReviewTests 7 (all also in the dotnet subset), 2026-11-22.
+# 10894 = 10872 (dialogue rules 3 on top of the three fixes) + the final two deal's 22 (10857 - 10835 on this branch):
+# disjoint cases, so the floor is their sum (the stacked landing of 22 November 2026). Counted from the two sides.
+# 10889 = 10835 + the house talk's slice S2a (overhearing in the rules): OverhearTests 18, OverhearValidationTests 24 and
+# HouseTalkS1FollowUpTests 11 (all also in the dotnet subset), and NpcPairingRoomTests 1 (EditMode only), 2026-11-21.
+# 10948 = 10894 (the new main, with the recap, the finale page, the saves leftovers, the campaign conversations and
+# the final two deal) + overhearing in the rules' 54 (10889 - 10835 on this branch): disjoint cases, so the floor is
+# their sum (the stacked landing of 22 November 2026). Counted from the two sides.
+# 10908 = 10889 + the house talk's slice S2b (overhearing on screen): OverhearingScreenTests 19 (also in the dotnet
+# subset), 2026-11-22.
+# 10967 = 10948 (overhearing in the rules on the new main) + overhearing on screen's 19 (10908 - 10889 on this
+# branch): disjoint cases, so the floor is their sum (the stacked landing of 22 November 2026). Counted from the two
+# sides.
 # 10843 = 10835 + the trivia competition's rules (competition rules 6): CompetitionTriviaTests 8 (all also in the dotnet
 # subset; its season soak is compiled out of the editor), 2026-11-21.
-Gamesim.EditModeTests 10843
+# 10975 = 10967 (the two overhearing changes on the new main) + the trivia rules' 8 (10843 - 10835 on this branch):
+# disjoint cases, so the floor is their sum (the stacked landing of 22 November 2026). Counted from the two sides.
+Gamesim.EditModeTests 10975
 # The UMA-free build. 1215 = 1236, the count after the consolidation's lanes (S2a, S2b, S4a), less the 7
 # farewell probes moved to Gamesim.DiagnosticsPlayModeTests and the 14 farewell readiness tests that now
 # compile only under GAMESIM_UMA (judged on the UMA cast); 1230 = 1215 + S2d's 7, S4b's 2, S4c's 2 and
@@ -682,7 +715,13 @@ Gamesim.EditModeTests 10843
 # is their sum (menu slice 4 squashed onto the stack for its landing, 2026-11-17). Counted from the two sides.
 # 1674 = 1672 + free talk slice 1's screen: EpisodePlayModeTests.JustTalk 2, 2026-11-19.
 # 1676 = 1674 + free talk slice 2's screen: EpisodePlayModeTests.JustTalkStages 2, 2026-11-20.
-Gamesim.PlayModeTests 1676
+# 1677 = 1676 + the weekly recap's arrival: EpisodePlayModeTests.RecapArrives 1, 2026-11-21.
+# 1678 = 1677 + the finale page set aside for the cast screen: EpisodePlayModeTests.FinaleNewSeason 1, 2026-11-22.
+# 1680 = 1678 + the settings and saves leftovers: EpisodePlayModeTests.MenuSavesLeftovers 2, 2026-11-22.
+# 1677 = 1676 + the house talk's slice S2b: EpisodePlayModeTests.Overhear_HunchLinesAndTheirChipDrawOnTheWebAtTwelve 1, 2026-11-22.
+# 1681 = 1680 (overhearing in the rules on the new main) + overhearing on screen's 1 (1677 - 1676 on this branch):
+# disjoint cases, so the floor is their sum (the stacked landing of 22 November 2026). Counted from the two sides.
+Gamesim.PlayModeTests 1681
 # The UMA build of the same assembly, read by a plan built without -WithoutUma. 1281 = the 1241 above + the
 # 40 tests that compile only under GAMESIM_UMA, as run at r1 (2026-10-16): in EpisodePlayModeTests,
 # GroundedFarewell 11, Creator 9, HouseLife 8, Emotes 3, OpeningCaptures 2, and one each in CreatorEntry,
@@ -853,7 +892,13 @@ Gamesim.PlayModeTests 1676
 # is their sum (menu slice 4 squashed onto the stack for its landing, 2026-11-17). Counted from the two sides.
 # 1719 = 1717 + free talk slice 1's screen: the same 2 EpisodePlayModeTests.JustTalk cases, 2026-11-19.
 # 1721 = 1719 + free talk slice 2's screen: the same 2 EpisodePlayModeTests.JustTalkStages cases, 2026-11-20.
-Gamesim.PlayModeTests.UmaBuild 1721
+# 1722 = 1721 + the weekly recap's arrival: the same 1 EpisodePlayModeTests.RecapArrives case, 2026-11-21.
+# 1723 = 1722 + the finale page set aside for the cast screen: the same 1 EpisodePlayModeTests.FinaleNewSeason case, 2026-11-22.
+# 1725 = 1723 + the settings and saves leftovers: the same 2 EpisodePlayModeTests.MenuSavesLeftovers cases, 2026-11-22.
+# 1722 = 1721 + the house talk's slice S2b: the same EpisodePlayModeTests.Overhear_ case, 2026-11-22.
+# 1726 = 1725 (overhearing in the rules on the new main) + overhearing on screen's 1 (1722 - 1721 on this branch):
+# disjoint cases, so the floor is their sum (the stacked landing of 22 November 2026). Counted from the two sides.
+Gamesim.PlayModeTests.UmaBuild 1726
 # The UMA bodies: runs only where the GAMESIM_UMA define is set (the working tree and the D: copy).
 # 82 = the 89 run on 2026-10-15, less the 7 farewell probes moved to Gamesim.Uma.DiagnosticsPlayModeTests;
 # 85 = 82 + the 3 farewell readiness decision tests (UmaFarewellReadinessDecisionPlayModeTests, 2026-10-16);
@@ -1205,6 +1250,40 @@ Gamesim.Uma.DiagnosticsPlayModeTests 10
 # their sum (slice 2). Counted from the two sides.
 # 22933 = 22930 + slice 2's review fixes: the same 3 FreeTalkS2ReviewTests cases, 2026-11-21.
 # 22934 = 22933 + the same FreeTalkS2ReviewTests case the EditMode floor counts, 2026-11-21.
+# 22935 = 22934 + the same SloganScanTests case the EditMode floor counts, 2026-11-21.
+# 22936 = 22935 + the same SloganScanTests case the EditMode floor counts, 2026-11-22.
+# 22939 = 22934 + the weekly recap's arrival: the same 5 WeeklyRecapArrivalTests cases the EditMode floor counts, 2026-11-21.
+# 22941 = 22936 (main, with the slogans off the screens and signs) + the weekly recap's 5 (22939 - 22934 on this
+# branch): disjoint cases, so the floor is their sum (the stacked landing of 22 November 2026). Counted from the two
+# sides.
+# 22944 = 22939 + the finale page set aside for the cast screen: the same 5 FinaleAsideTests cases the EditMode floor counts, 2026-11-22.
+# 22946 = 22941 (the weekly recap on the new main) + the finale page's 5 (22944 - 22939 on this branch): disjoint
+# cases, so the floor is their sum (the stacked landing of 22 November 2026). Counted from the two sides.
+# 22954 = 22944 + the settings and saves leftovers: the same 10 MenuSavesLeftoversTests cases the EditMode floor counts, 2026-11-22.
+# 22956 = 22946 (the finale page with the recap on the new main) + the settings and saves leftovers' 10 (22954 - 22944
+# on this branch): disjoint cases, so the floor is their sum (the stacked landing of 22 November 2026). Counted from
+# the two sides.
+# 22947 = 22934 + dialogue D3's 13 DialogueRules3Tests cases, shared (2026-11-21).
+# 22969 = 22956 (the recap, the finale page and the saves leftovers on the new main) + dialogue rules 3's 13 (22947 -
+# 22934 on this branch): disjoint cases, so the floor is their sum (the stacked landing of 22 November 2026). Counted
+# from the two sides.
+# 22952 = 22934 + the final two deal at minds level 1: the same 15 FinalTwoDealsTests cases and FinalTwoDealsSeasonSoak's
+# 3 lockstep seasons (dotnet only; its soak is explicit and counts nowhere), 2026-11-21.
+# 22959 = 22952 + the review's fixes: the same 7 FinalTwoDealsReviewTests cases, 2026-11-22.
+# 22994 = 22969 (dialogue rules 3 on top of the three fixes) + the final two deal's 25 (22959 - 22934 on this branch):
+# disjoint cases, so the floor is their sum (the stacked landing of 22 November 2026). Counted from the two sides.
+# 22988 = 22934 + the house talk's slice S2a: the same 53 OverhearTests, OverhearValidationTests and
+# HouseTalkS1FollowUpTests cases the EditMode floor counts, and HouseTalkLab's one walker case (compiled out of Unity; its
+# Stack A report is [Explicit], run by name, and not counted), 2026-11-21.
+# 23048 = 22994 (the new main, with the recap, the finale page, the saves leftovers, the campaign conversations and
+# the final two deal) + overhearing in the rules' 54 (22988 - 22934 on this branch): disjoint cases, so the floor is
+# their sum (the stacked landing of 22 November 2026). Counted from the two sides.
+# 23007 = 22988 + the house talk's slice S2b: the same 19 OverhearingScreenTests cases the EditMode floor counts, 2026-11-22.
+# 23067 = 23048 (overhearing in the rules on the new main) + overhearing on screen's 19 (23007 - 22988 on this
+# branch): disjoint cases, so the floor is their sum (the stacked landing of 22 November 2026). Counted from the two
+# sides.
 # 22942 = 22934 + the same 8 CompetitionTriviaTests cases the EditMode floor counts (the two soak cases are [Explicit],
 # run by name only), 2026-11-21.
-Gamesim.SimulationTests 22942
+# 23075 = 23067 (the two overhearing changes on the new main) + the trivia rules' 8 (22942 - 22934 on this branch):
+# disjoint cases, so the floor is their sum (the stacked landing of 22 November 2026). Counted from the two sides.
+Gamesim.SimulationTests 23075

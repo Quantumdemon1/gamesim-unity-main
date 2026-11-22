@@ -26,6 +26,23 @@ namespace Gamesim.Simulation
             "living-east-chat", "kitchen-west-chat", "bedroom-south-chat", "yard-south-chat", "kitchen-table-chat", "yard-lounger-chat",
         };
 
+        /// <summary>
+        /// The room a rendezvous is in, as a <see cref="RoomWords"/> id, or null for an id it does not know (plan 32 §I2): a
+        /// saved conversation holds only its rendezvous, so the Notice line reads its room from here. The same rooms the
+        /// house's meeting anchors are authored in (HouseInteractionAnchors.Meetings). Pure.
+        /// </summary>
+        public static string RoomOf(string rendezvousId)
+        {
+            switch (rendezvousId)
+            {
+                case "living-east-chat": return "Living";
+                case "kitchen-west-chat": case "kitchen-table-chat": return "Kitchen";
+                case "bedroom-south-chat": return "Bedroom";
+                case "yard-south-chat": case "yard-lounger-chat": return "Yard";
+                default: return null;
+            }
+        }
+
         /// <summary>The houseguests the saved world holds back from a new pairing: both of every pending pair, and everybody on a conversation cooldown.</summary>
         public static HashSet<string> Busy(EpisodeState s)
         {

@@ -23,6 +23,15 @@ namespace Gamesim.Presentation
         public const string GameMenuTitle = "Game menu";
         /// <summary>The small label over the title, shown only while the house's clock really is held.</summary>
         public const string PausedLabel = "PAUSED";
+        /// <summary>
+        /// The label's size at standard text: 15 px (it was the head's 12 px eyebrow, muted, and
+        /// free to shrink). It grows with the text size and never shrinks below that.
+        /// </summary>
+        public const int PausedLabelSize = 15;
+        /// <summary>The label's font size at a text-size scale.</summary>
+        public static int PausedLabelFont(float scale) => (int)Math.Round(PausedLabelSize * Math.Max(1f, scale), MidpointRounding.AwayFromZero);
+        /// <summary>The label's box height for a font size: the row kit's 1.3 times, so the line is never cut off.</summary>
+        public static float PausedLabelBox(int font) => (float)Math.Ceiling(font * WayOut.LabelBoxRatio);
         /// <summary>The card as a place a way back returns to: Settings opened from it go back there.</summary>
         public const string GameMenuPlace = "the game menu";
         /// <summary>The card's one main button: back to the house.</summary>

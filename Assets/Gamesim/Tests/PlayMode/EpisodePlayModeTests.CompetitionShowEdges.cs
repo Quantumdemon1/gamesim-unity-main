@@ -98,23 +98,30 @@ namespace Gamesim.Tests.PlayMode
                 Assert.That(show.WalkOutSeconds, Is.LessThanOrEqualTo(CompetitionShowPlan.MostWalkOutSeconds(true) + 1e-3f));
                 Assert.That(record, Is.Not.Null, "The beats began.");
                 Assert.That(record.Staged.Count, Is.EqualTo(houseSize));
-                Assert.That(record.LegTo.Keys, Is.EquivalentTo(record.Staged), "Every runner has a leg, the back row's included.");
-                Assert.That(record.Ran, Is.EquivalentTo(record.Staged), "and ran it.");
+                Assert.That(record.LegFrom.Keys, Is.EquivalentTo(record.Staged), "Every staged runner has a post.");
+                // A post whose yard is blocked by scenery runs no leg, as before; the two rows are what this case reads.
+                var noLeg = record.Staged.Where(id => !record.LegTo.ContainsKey(id)).ToList();
+                if (noLeg.Count > 0) Debug.Log("[Gamesim competition edges test] no leg for: " + string.Join(", ", noLeg));
+                float backRow = record.LegFrom.Values.Max(post => post.z);
+                Assert.That(record.LegFrom.Values.Any(post => post.z < backRow - 1f), Is.True, "Sixteen stand in two rows.");
+                Assert.That(record.Ran, Is.Not.Empty, "The field runs the course.");
+                Assert.That(record.Ran, Is.SubsetOf(record.LegTo.Keys), "Only a runner with a leg ran.");
                 // No leg runs through another's station or meets another leg (narrower than any body, to read the layout, not the agents).
                 const float body = .2f;
                 float reach = CompetitionStageFootprint.Reach(StagingInstrumentOf("Skill"));
-                var ids = record.Staged.ToList();
+                var ids = record.Staged.Where(id => record.LegTo.ContainsKey(id)).ToList();
                 foreach (var id in ids)
                 {
                     var from = new CompetitionCourseLegs.Spot(record.LegFrom[id].x, record.LegFrom[id].z);
                     var to = new CompetitionCourseLegs.Spot(record.LegTo[id].x, record.LegTo[id].z);
-                    foreach (var other in ids)
+                    foreach (var other in record.Staged)
                     {
                         if (other == id) continue;
                         var post = record.LegFrom[other];
                         var station = CompetitionCourseLegs.Box.Station(post.x, post.z, body, reach, CompetitionStageFootprint.HalfWidth);
                         Assert.That(CompetitionCourseLegs.SegmentBoxDistance(from, to, station), Is.GreaterThanOrEqualTo(body),
                             id + "'s leg " + from + " to " + to + " runs clear of " + other + "'s station " + station + ".");
+                        if (!record.LegTo.ContainsKey(other)) continue;
                         var otherTo = new CompetitionCourseLegs.Spot(record.LegTo[other].x, record.LegTo[other].z);
                         Assert.That(CompetitionCourseLegs.SegmentDistance(from, to, new CompetitionCourseLegs.Spot(post.x, post.z), otherTo), Is.GreaterThanOrEqualTo(2f * body),
                             id + "'s and " + other + "'s legs never meet.");

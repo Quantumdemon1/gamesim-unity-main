@@ -317,7 +317,7 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(fresh.Find(fresh.playerId).name, Is.EqualTo("You"));
             Assert.That(fresh.Find("custom-1").name, Is.EqualTo("Retry guest"));
             Assert.That(fresh.Find("custom-2").name, Is.EqualTo("Library guest"));
-            Assert.That(fresh.dialogueRulesVersion, Is.EqualTo(2), "The retry keeps the preview chosen before the failure: rules 2, the chip's since this change.");
+            Assert.That(fresh.dialogueRulesVersion, Is.EqualTo(3), "The retry keeps the preview chosen before the failure: rules 3, the chip's since D3.");
             var allStars = CastTemplates.In(CastTemplates.Roster.AllStars).Select(template => template.Id).ToArray();
             Assert.That(fresh.contestants.Where(person => !person.isPlayer && !person.id.StartsWith("custom-"))
                 .All(person => allStars.Contains(person.id)), Is.True, "Retry must retain the selected roster.");

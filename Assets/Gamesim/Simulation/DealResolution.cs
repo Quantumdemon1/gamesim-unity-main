@@ -342,6 +342,13 @@ namespace Gamesim.Simulation
                 switch (action)
                 {
                     case Nominates:
+                        // From minds level 1 a final two deal answers to a nomination between its two (FinalTwoDeals).
+                        if (deal.type == DealKind.FinalTwo && FinalTwoDeals.On(state))
+                        {
+                            var finalTwo = FinalTwoDeals.AtNomination(state, deal, actorId, nominees);
+                            if (finalTwo != null) verdicts.Add(finalTwo);
+                            continue;
+                        }
                         outcome = Nomination(deal, actorId, nominees);
                         break;
                     case Vetoes:
@@ -418,6 +425,12 @@ namespace Gamesim.Simulation
             /// small kept record (<c>EpisodeEngine.SettleDeals</c>). False for every other verdict.
             /// </summary>
             public bool stands;
+
+            /// <summary>
+            /// Lapsed, from minds level 1: a final two deal whose partner nominated the player (<see cref="FinalTwoDeals"/>).
+            /// It ends with no breach, no record and no roll (<c>FinalTwoDeals.Lapse</c>). False for every other verdict.
+            /// </summary>
+            public bool lapses;
         }
     }
 }

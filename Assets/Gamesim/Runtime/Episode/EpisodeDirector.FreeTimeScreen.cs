@@ -347,7 +347,11 @@ namespace Gamesim.Episode
             // The final case to read early, beside the jury house, under the finale rules (MOCKUP-PASS M15).
             if (asCards && FinalCaseEarlyAvailable(state)) tiles.Insert(JuryHouseAvailable(state) ? 2 : 1, FinalCaseTile(OpenFinalCase));
             // Listening in needs no one to talk to, so it sits here rather than in a conversation.
-            if (state.Active.Count(c => !c.isPlayer) >= 2)
+            // At story rules 12 it is free and walks you over (EpisodeDirector.Overhear.cs).
+            if (state.Active.Count(c => !c.isPlayer) >= 2 && Overhearing.On(state))
+                tiles.Add(Tile("Listen in on a conversation", "Walk over to two houseguests talking and stay close. Twice a week.",
+                    EpisodeCommandKind.Eavesdrop, "eye", WalkOverToListen, "They may notice", TileFree));
+            else if (state.Active.Count(c => !c.isPlayer) >= 2)
                 tiles.Add(Tile("Listen in on a conversation", "Works seven times in ten; the rest of the time somebody notices.",
                     EpisodeCommandKind.Eavesdrop, "eye", () => Commit(state, EpisodeCommandKind.Eavesdrop)));
             int left = WebSocialVocabulary.PurchaseCeiling - state.boughtActionPoints;

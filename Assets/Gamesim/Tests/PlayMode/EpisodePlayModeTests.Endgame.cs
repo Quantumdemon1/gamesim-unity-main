@@ -82,11 +82,12 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(words, Does.Contain("The jury (" + jurors + ")"), "The jury's size heads its faces.");
             Assert.That(card.GetComponentsInChildren<Image>().Count(image => image.name == "Objective mark"), Is.EqualTo(3),
                 "A mark per row.");
-            // MOCKUP-PASS M3: the mockups' tagline under the heading, for a finalist with the final
-            // Head of Household ahead, and the crown in the objective chip's ring's place.
+            // No tagline under the heading (the owner, 2026-11-21: no slogan on the season's screens),
+            // and MOCKUP-PASS M3's crown in the objective chip's ring's place.
             var lines = CardLines(card);
-            Assert.That(lines.IndexOf(EpisodeHud.ObjectivesTagline), Is.EqualTo(lines.IndexOf("FINAL 3 OBJECTIVES") + 1),
-                "The tagline sits under the heading.");
+            Assert.That(lines, Has.None.EqualTo("Last competition. Last decision."), "The Final 3's card carries no tagline.");
+            Assert.That(card.GetComponentsInChildren<RectTransform>(true).Any(part => part.name == "Objectives tagline"), Is.False,
+                "and keeps no slot for one.");
             if (CrownArt())
             {
                 Assert.That(objective.GetComponentsInChildren<Image>().Count(image => image.name == EpisodeHud.ObjectiveCrownName), Is.EqualTo(1),
@@ -177,7 +178,7 @@ namespace Gamesim.Tests.PlayMode
 
             // MOCKUP-PASS M3: the pill carries the jury all finale night, whoever holds the house, and
             // the Final 2 in the actions' place; the strap names the finale; the card keeps a mark a
-            // row, and the rules-off rows above, with its tagline left to the Final 3.
+            // row, and the rules-off rows above, with no tagline.
             Assume.That(jurors, Is.GreaterThan(0), "A jury is seated by the Final 2.");
             var pill = ActiveRect("House pill");
             Assert.That(pill, Is.Not.Null);
@@ -188,7 +189,7 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(Words(ActiveRect("Brand")), Does.Contain(EpisodeHud.BrandStrap(state, director.SeasonNumber(state))).And.Contain("FINALE"),
                 "The strap under the wordmark names the finale.");
             Assert.That(card.GetComponentsInChildren<Image>().Count(image => image.name == "Objective mark"), Is.EqualTo(3), "A mark per row.");
-            Assert.That(Words(card), Does.Not.Contain(EpisodeHud.ObjectivesTagline), "The tagline is the Final 3's.");
+            Assert.That(Words(card), Does.Not.Contain("Last competition. Last decision."), "No tagline on the Final 2's card either.");
             if (Application.isBatchMode) yield return CaptureFraming("endgame-final-two", settle: false);
         }
 
@@ -347,34 +348,6 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(EpisodeDirector.PhaseTitle(three), Is.EqualTo("CHOOSE YOUR FINAL TWO"));
             three.hohId = three.Active.First(actor => !actor.isPlayer).id;
             Assert.That(EpisodeDirector.PhaseTitle(three), Is.EqualTo("THE FINAL EVICTION"), "Somebody else decides.");
-
-            // The objectives card's tagline, a finalist's only while the competition or the decision
-            // it names is still theirs to come: Part 3 is the Part 1 and Part 2 winners', and the
-            // decision is the Part 3 winner's.
-            var parts = three.Clone();
-            var rivals = parts.Active.Where(actor => !actor.isPlayer).Select(actor => actor.id).ToList();
-            parts.hohId = null; parts.competitionResolved = false; parts.finalPart1WinnerId = null; parts.finalPart2WinnerId = null;
-            parts.phase = EpisodePhase.FinalHoHPart1;
-            Assert.That(EpisodeHud.ObjectivesTaglineShows(parts), Is.True, "Every finalist plays Part 1.");
-            parts.phase = EpisodePhase.FinalHoHPart2; parts.finalPart1WinnerId = rivals[0];
-            Assert.That(EpisodeHud.ObjectivesTaglineShows(parts), Is.True, "Beaten in Part 1, the player plays Part 2.");
-            parts.competitionResolved = true; parts.finalPart2WinnerId = rivals[1];
-            Assert.That(EpisodeHud.ObjectivesTaglineShows(parts), Is.False, "Beaten in Part 2, the player has played their last competition,");
-            parts.phase = EpisodePhase.FinalHoHPart3; parts.competitionResolved = false;
-            Assert.That(EpisodeHud.ObjectivesTaglineShows(parts), Is.False, "and sits Part 3 out.");
-            parts.finalPart2WinnerId = parts.playerId;
-            Assert.That(EpisodeHud.ObjectivesTaglineShows(parts), Is.True, "Part 2's winner has Part 3 ahead,");
-            parts.competitionResolved = true; parts.hohId = rivals[0];
-            Assert.That(EpisodeHud.ObjectivesTaglineShows(parts), Is.False, "and nothing left once Part 3 goes to somebody else.");
-            parts.hohId = parts.playerId;
-            Assert.That(EpisodeHud.ObjectivesTaglineShows(parts), Is.True, "Part 3's winner has the decision to come.");
-            parts.phase = EpisodePhase.FinalHoHPart2; parts.hohId = null;
-            parts.finalPart1WinnerId = parts.playerId; parts.finalPart2WinnerId = rivals[1];
-            Assert.That(EpisodeHud.ObjectivesTaglineShows(parts), Is.True, "Part 1's winner sits Part 2 out with Part 3 still ahead.");
-            parts.phase = EpisodePhase.FinalEviction; parts.competitionResolved = false; parts.hohId = parts.playerId;
-            Assert.That(EpisodeHud.ObjectivesTaglineShows(parts), Is.True, "The final Head of Household makes the decision,");
-            parts.hohId = rivals[0];
-            Assert.That(EpisodeHud.ObjectivesTaglineShows(parts), Is.False, "and nobody else does.");
 
             // The strap: the season's size through the weeks, the finale all finale night, by its
             // number wherever the career record gives one (review correction 22).

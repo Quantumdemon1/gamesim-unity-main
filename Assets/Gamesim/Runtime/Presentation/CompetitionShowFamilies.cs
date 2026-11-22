@@ -41,6 +41,8 @@ namespace Gamesim.Presentation
             // Memory consoles: a quiz at a console, answers locked in and revealed on the display.
             { CompetitionDefinitions.HouseMemory.Id, CompetitionShowFamily.Podium },
             { CompetitionDefinitions.FirstImpressions.Id, CompetitionShowFamily.Podium },
+            // The trivia (rules 6) is a quiz at the same consoles: its show is the memory games' own.
+            { CompetitionDefinitions.Trivia.Id, CompetitionShowFamily.Podium },
             // A dice tray (throw) and letter consoles (spell): work with the hands at a table.
             { CompetitionDefinitions.RollTheDice.Id, CompetitionShowFamily.Table },
             { CompetitionDefinitions.WordScramble.Id, CompetitionShowFamily.Table },

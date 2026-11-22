@@ -59,7 +59,9 @@ namespace Gamesim.Presentation
 
         private CanvasGroup group;
         private RectTransform column, scrim, glass, row, rule;
-        private TMP_Text eyebrow, title, line, progress, dismiss;
+        private TMP_Text eyebrow, title, line, progress;
+        /// <summary>The controls chip every ceremony card closes with, holding the line that names the press that works.</summary>
+        private CeremonyControlsChip closeChip;
         private readonly List<RectTransform> chips = new List<RectTransform>();
         private readonly List<RectTransform> faces = new List<RectTransform>();
         private readonly List<GameObject> emptySlots = new List<GameObject>();
@@ -170,7 +172,7 @@ namespace Gamesim.Presentation
             eyebrow.text = Localisation.Text("WEEK " + Mathf.Max(1, week));
             title.text = Localisation.Text("Power of Veto");
             line.text = Localisation.Text(fieldLine ?? string.Empty);
-            dismiss.text = Localisation.Text(CeremonyTakeover.SkipToResultFor(clock.OnPad));
+            closeChip.Say(Localisation.Text(CeremonyTakeover.SkipToResultFor(clock.OnPad)));
             Lay(byRight ?? new List<Player>());
 
             column.gameObject.SetActive(true);
@@ -200,8 +202,8 @@ namespace Gamesim.Presentation
         /// </summary>
         private void SayThePress()
         {
-            if (dismiss == null) return;
-            dismiss.text = Localisation.Text(fieldShown ? CeremonyTakeover.CloseFor(clock.OnPad) : CeremonyTakeover.SkipToResultFor(clock.OnPad));
+            if (closeChip == null) return;
+            closeChip.Say(Localisation.Text(fieldShown ? CeremonyTakeover.CloseFor(clock.OnPad) : CeremonyTakeover.SkipToResultFor(clock.OnPad)));
         }
 
         /// <summary>Takes the card down at once: a new beat, a scene change, or a press on the field.</summary>
@@ -348,13 +350,16 @@ namespace Gamesim.Presentation
                 line.fontStyle = FontStyles.Italic;
                 progress = HudPrimitives.Label(ProgressName, column, 17f, UiTheme.Gold, TextAlignmentOptions.Center);
                 rule = HudPrimitives.Fill("Draw rule", column, new Color(UiTheme.Muted.r, UiTheme.Muted.g, UiTheme.Muted.b, 0.35f), 1);
-                dismiss = HudPrimitives.Label("Draw dismiss", column, 15f, UiTheme.Muted, TextAlignmentOptions.Center);
+                // In the controls chip every ceremony card closes with, under its name and its caption.
+                closeChip = CeremonyControlsChip.Build(column, "Draw dismiss");
             }
             eyebrow.fontSize = 15f * s;
             title.fontSize = 44f * s;
             line.fontSize = 18f * s;
             progress.fontSize = 17f * s;
-            dismiss.fontSize = 15f * s;
+            // At the size it is on every card: 26 tall at the standard size, where the line was 15
+            // points in a 24 box.
+            closeChip.SizeForHud(s);
         }
 
         /// <summary>
@@ -386,7 +391,8 @@ namespace Gamesim.Presentation
             rule.sizeDelta = new Vector2(132f * s, 1f);
             rule.anchoredPosition = new Vector2(0f, -y);
             y += 1f + 10f * s;
-            y = Place(dismiss.rectTransform, width, 24f * s, y);
+            closeChip.PlaceAt(-y);
+            y += closeChip.Height;
             column.sizeDelta = new Vector2(width, y);
             glass.offsetMin = new Vector2(-36f * s, -28f * s);
             glass.offsetMax = new Vector2(36f * s, 28f * s);

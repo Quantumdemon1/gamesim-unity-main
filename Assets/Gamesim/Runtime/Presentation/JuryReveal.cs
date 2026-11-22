@@ -563,9 +563,14 @@ namespace Gamesim.Presentation
             bannerText.rectTransform.offsetMin = Vector2.zero; bannerText.rectTransform.offsetMax = Vector2.zero;
             banner.gameObject.SetActive(false);
 
-            controls = HudPrimitives.Label("Controls", column, 12f * scale, UiTheme.Muted, TextAlignmentOptions.Center);
-            controls.text = CeremonyTakeover.ControlsFor(clock.OnPad);
-            Place(controls.rectTransform, 900f * scale, 18f * scale, -(100f + portrait + 130f + face + 244f) * scale);
+            // What the card answers to, in the controls chip every ceremony card closes with (26 tall
+            // at the standard size, where the line was 12 points in an 18 box): the vote can be sped
+            // up, or skipped to the winner. The keys named follow the device last used on the card.
+            var controlsChip = CeremonyControlsChip.Build(column, "Controls");
+            controlsChip.SizeForHud(scale);
+            controlsChip.PlaceAt(-(100f + portrait + 130f + face + 244f) * scale);
+            controls = controlsChip.Label;
+            controlsChip.Say(CeremonyTakeover.ControlsFor(clock.OnPad));
 
             // Fitted afresh: this jury and this text size make a card of their own size.
             column.localScale = Vector3.one;

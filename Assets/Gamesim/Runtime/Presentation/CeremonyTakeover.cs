@@ -133,7 +133,8 @@ namespace Gamesim.Presentation
         public System.Func<bool> PadHints { get; set; }
 
         private RectTransform rule, glassGround;
-        private TMP_Text dismiss;
+        /// <summary>The controls chip every ceremony card closes with, holding the closing line.</summary>
+        private CeremonyControlsChip closeChip;
         private CanvasGroup group;
         private RectTransform column, scrim, faces;
         private TMP_Text eyebrow, title, flavour;
@@ -338,7 +339,7 @@ namespace Gamesim.Presentation
             // Long enough to read the title and the line under it, as the strip holds (UI-UX plan U5).
             hold = CeremonyPacing.CardHold(title.text, flavour.text, CaptionTime);
             // The press that takes it down, in the words of the device last used.
-            dismiss.text = Localisation.Text(CloseFor(clock.OnPad));
+            closeChip.Say(Localisation.Text(CloseFor(clock.OnPad)));
             // The veto meeting leads with its own mark, drawn as authored, as its screen and the strip
             // reporting it do (UI-UX-PASS-PLAN V0): one meeting, one mark. Every other beat has a
             // generated glyph when the icon set exists, and the two-disc mark when it does not.
@@ -430,7 +431,7 @@ namespace Gamesim.Presentation
         /// </summary>
         private void SayTheClose()
         {
-            if (dismiss != null) dismiss.text = Localisation.Text(CloseFor(clock.OnPad));
+            if (closeChip != null) closeChip.Say(Localisation.Text(CloseFor(clock.OnPad)));
         }
 
         private void Apply(float t)
@@ -506,9 +507,9 @@ namespace Gamesim.Presentation
             // It is the thing that tells you the card is waiting for you rather than simply playing
             // at you, and without it a card that also happens to time out reads as a cutscene.
             rule = NewPanel("Takeover rule", column, new Color(UiTheme.Muted.r, UiTheme.Muted.g, UiTheme.Muted.b, 0.35f), 1);
-            dismiss = NewText("Takeover dismiss", column, 15f, UiTheme.Muted);
-            dismiss.alignment = TextAlignmentOptions.Center;
-            dismiss.text = Localisation.Text(CloseFor(clock.OnPad));
+            // In the controls chip every ceremony card closes with, under its name and its caption.
+            closeChip = CeremonyControlsChip.Build(column, "Takeover dismiss");
+            closeChip.Say(Localisation.Text(CloseFor(clock.OnPad)));
 
             Layout();
         }
@@ -533,9 +534,10 @@ namespace Gamesim.Presentation
             float facesH = faces.childCount > 0 ? 116f * scale : 0f;
             float gap = 14f * scale;
             float ruleH = 1f;
-            float dismissH = 24f * scale;
-
-            dismiss.fontSize = 15f * scale;
+            // The controls chip, at the size it is on every card: 26 tall at the standard size,
+            // where the closing line was 15 points in a 24 box.
+            closeChip.SizeForHud(scale);
+            float dismissH = closeChip.Height;
 
             float total = eyebrowH + gap + mark + gap + titleH + flavourH
                 + (facesH > 0f ? gap + facesH : 0f)
@@ -571,7 +573,8 @@ namespace Gamesim.Presentation
             y -= gap * 1.6f;
             PlaceRect(rule, 132f * scale, ruleH, ref y);
             y -= gap;
-            Place(dismiss.rectTransform, width * scale, dismissH, ref y);
+            closeChip.PlaceAt(y);
+            y -= dismissH;
         }
 
         private void Place(RectTransform rect, float width, float height, ref float y)

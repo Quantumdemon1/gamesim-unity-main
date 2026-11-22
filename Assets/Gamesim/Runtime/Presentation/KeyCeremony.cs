@@ -434,68 +434,93 @@ namespace Gamesim.Presentation
         }
 
         /// <summary>
-        /// The card's frame: how big its parts are and where they sit, in canvas units. The HUD's
-        /// is the board under the top bar at the standard text size, scaled by the large-text
-        /// preference; the screen's is the screen's whole face at 3:2, the roster's band over half
-        /// its height, the keys along the foot at key size - each about a twelfth of the width,
-        /// closer together only when more keys are in play than that leaves room for - and the
-        /// HUD's margin under the controls line, so nothing is drawn on the face's edge.
+        /// The card's frame: how big its parts are and where they sit, in canvas units - a table of
+        /// named rows, each read by its name (CE-C2: it was a constructor of thirty positional
+        /// numbers). The HUD's is the board under the top bar at the standard text size, scaled by
+        /// the large-text preference; the screen's is the screen's whole face at 3:2, the roster's
+        /// band over half its height, the keys along the foot at key size - each about a twelfth of
+        /// the width, closer together only when more keys are in play than that leaves room for - and
+        /// the HUD's margin under the controls chip, so nothing is drawn on the face's edge.
         /// </summary>
-        private readonly struct Frame
+        private struct Frame
         {
-            public readonly bool Screen;
+            public bool Screen;
             /// <summary>The column's size, and how far under the top of the canvas it hangs.</summary>
-            public readonly float Width, Height, Top;
+            public float Width, Height, Top;
             /// <summary>One face on the stage (the beat's disc, on the screen); the block's faces, side by side, and their spacing.</summary>
-            public readonly float SlotW, SlotH, BlockW, BlockH, BlockStep;
+            public float SlotW, SlotH, BlockW, BlockH, BlockStep;
             /// <summary>A key's size and the spacing of the row.</summary>
-            public readonly float Pip, Step;
+            public float Pip, Step;
             /// <summary>The type's scale relative to the HUD's at the standard size.</summary>
-            public readonly float Text;
+            public float Text;
             /// <summary>Where the rows sit, from the top, and how tall each is.</summary>
-            public readonly float EyebrowY, EyebrowH, TitleY, TitleH, Trophy, HohY, HohH, StageY, KeysY, KeysH,
-                ProgressY, ProgressH, RuleY, DismissY, DismissH, ControlsY, ControlsH, Glass, Neon;
+            public float EyebrowY, EyebrowH, TitleY, TitleH, Trophy, HohY, HohH, StageY, KeysY, KeysH, ProgressY, ProgressH, RuleY;
+            /// <summary>The click line under the rule, its type and its box (1.3 of it and more), on the HUD alone.</summary>
+            public float DismissY, DismissH, DismissPt;
+            /// <summary>The controls chip's top (<see cref="CeremonyControlsChip"/>).</summary>
+            public float ChipY;
+            /// <summary>The glass's margin and the neon's.</summary>
+            public float Glass, Neon;
 
-            private Frame(bool screen, float width, float height, float top, float slotW, float slotH, float blockW, float blockH,
-                float blockStep, float pip, float step, float text, float eyebrowY, float eyebrowH, float titleY, float titleH,
-                float trophy, float hohY, float hohH, float stageY, float keysY, float keysH, float progressY, float progressH,
-                float ruleY, float dismissY, float dismissH, float controlsY, float controlsH, float glass, float neon)
-            {
-                Screen = screen; Width = width; Height = height; Top = top; SlotW = slotW; SlotH = slotH;
-                BlockW = blockW; BlockH = blockH; BlockStep = blockStep; Pip = pip; Step = step; Text = text;
-                EyebrowY = eyebrowY; EyebrowH = eyebrowH; TitleY = titleY; TitleH = titleH; Trophy = trophy; HohY = hohY; HohH = hohH;
-                StageY = stageY; KeysY = keysY; KeysH = keysH; ProgressY = progressY; ProgressH = progressH; RuleY = ruleY;
-                DismissY = dismissY; DismissH = dismissH; ControlsY = controlsY; ControlsH = controlsH;
-                Glass = glass; Neon = neon;
-            }
-
-            /// <summary>The HUD's board: 420 × 330 under the top bar, a 104 × 134 face, 16-unit keys.</summary>
+            /// <summary>
+            /// The HUD's board: 420 wide under the top bar, a 104 x 134 face, 16-unit keys. Under the
+            /// rule the click line at 13 points in an 18 box, and the controls chip (26 tall at the
+            /// standard size) fourteen units clear of the board's foot: 342 high, where the two lines
+            /// at 11 points in 16 boxes made it 330.
+            /// </summary>
             public static Frame Hud(float scale)
             {
                 const float slotH = SlotHeight;
-                return new Frame(false, CardWidth * scale, CardHeight * scale, CardTop * scale, SlotWidth * scale, slotH * scale,
-                    SlotWidth * scale, slotH * scale, (SlotWidth + 44f) * scale, 16f * scale, 24f * scale, scale,
-                    -10f * scale, 16f * scale, -26f * scale, 30f * scale, 24f * scale, -58f * scale, 22f * scale, -88f * scale,
-                    -(96f + slotH) * scale, 20f * scale, -(120f + slotH) * scale, 18f * scale, -(144f + slotH) * scale,
-                    -(150f + slotH) * scale, 16f * scale, -(168f + slotH) * scale, 16f * scale,
-                    12f * scale, 30f * scale);
+                return new Frame
+                {
+                    Screen = false,
+                    Width = CardWidth * scale, Height = CardHeight * scale, Top = CardTop * scale,
+                    SlotW = SlotWidth * scale, SlotH = slotH * scale,
+                    BlockW = SlotWidth * scale, BlockH = slotH * scale, BlockStep = (SlotWidth + 44f) * scale,
+                    Pip = 16f * scale, Step = 24f * scale, Text = scale,
+                    EyebrowY = -10f * scale, EyebrowH = 16f * scale,
+                    TitleY = -26f * scale, TitleH = 30f * scale, Trophy = 24f * scale,
+                    HohY = -58f * scale, HohH = 22f * scale,
+                    StageY = -88f * scale,
+                    KeysY = -(96f + slotH) * scale, KeysH = 20f * scale,
+                    ProgressY = -(120f + slotH) * scale, ProgressH = 18f * scale,
+                    RuleY = -(144f + slotH) * scale,
+                    DismissY = -(148f + slotH) * scale, DismissPt = CeremonyChipMetrics.HudSize(scale),
+                    DismissH = CeremonyChipMetrics.Line(CeremonyChipMetrics.HudSize(scale)),
+                    ChipY = -(168f + slotH) * scale,
+                    Glass = 12f * scale, Neon = 30f * scale,
+                };
             }
 
             /// <summary>
             /// The set's screen: its whole face, the roster's band from the Head of Household's line
-            /// to the keys, the keys at key size, and thirty units of air under the controls line
-            /// (the HUD's own margin, 12 of 330), where the line used to end four units off the edge.
+            /// to the keys, the keys at key size, and thirty units of air under the controls chip
+            /// (the HUD's own margin, 12 of 330), where the line used to end four units off the edge:
+            /// the chip is the frame's 36-unit row, 26-point words with no padding above or below.
             /// The eyebrow starts 3 % of the face's height inside its top and ends where the title
             /// starts; no two rows' boxes cross.
             /// </summary>
             public static Frame OnScreen(int keys)
             {
-                const float text = 2.4f;
                 float step = keys > 0 ? Mathf.Min(96f, 1100f / keys) : 96f;
-                return new Frame(true, ScreenSurface.ReferenceWidth, ScreenSurface.ReferenceHeight, 0f, ScreenRoster.BeatFace, ScreenRoster.BandHeight,
-                    ScreenRoster.BlockFace, ScreenRoster.BlockFace, ScreenRoster.BlockStep, Mathf.Min(76f, step * 0.8f), step, text,
-                    -24f, 36f, -60f, 72f, 58f, -136f, 52f, ScreenRoster.BandTop, -596f, 88f, -690f, 40f, float.NaN, float.NaN, 0f,
-                    -734f, 36f, 0f, 16f);
+                return new Frame
+                {
+                    Screen = true,
+                    Width = ScreenSurface.ReferenceWidth, Height = ScreenSurface.ReferenceHeight, Top = 0f,
+                    SlotW = ScreenRoster.BeatFace, SlotH = ScreenRoster.BandHeight,
+                    BlockW = ScreenRoster.BlockFace, BlockH = ScreenRoster.BlockFace, BlockStep = ScreenRoster.BlockStep,
+                    Pip = Mathf.Min(76f, step * 0.8f), Step = step, Text = 2.4f,
+                    EyebrowY = -24f, EyebrowH = 36f,
+                    TitleY = -60f, TitleH = 72f, Trophy = 58f,
+                    HohY = -136f, HohH = 52f,
+                    StageY = ScreenRoster.BandTop,
+                    KeysY = -596f, KeysH = 88f,
+                    ProgressY = -690f, ProgressH = 40f,
+                    RuleY = float.NaN,
+                    DismissY = float.NaN, DismissH = 0f, DismissPt = 0f,
+                    ChipY = -734f,
+                    Glass = 0f, Neon = 16f,
+                };
             }
         }
 
@@ -716,25 +741,29 @@ namespace Gamesim.Presentation
                 Place(rule, 96f * scale, 1f, f.RuleY);
                 rule.GetComponent<Image>().raycastTarget = false;
 
-                dismiss = HudPrimitives.Label("Dismiss", column, 11f * scale, UiTheme.Muted, TextAlignmentOptions.Center);
+                // At the chip's 13 points, never the 11 it was (CE-U11), in a box 1.3 times it and more.
+                dismiss = HudPrimitives.Label("Dismiss", column, f.DismissPt, UiTheme.Muted, TextAlignmentOptions.Center);
                 dismiss.text = CeremonyTakeover.DismissCaption;
                 Place(dismiss.rectTransform, width, f.DismissH, f.DismissY);
-                // A pad has no click: on a pad the controls line under it names A alone (UI-UX plan U5).
+                // A pad has no click: on a pad the controls chip under it names A alone (UI-UX plan U5).
                 dismiss.gameObject.SetActive(CeremonyCardWords.ShowsClickLine(clock.OnPad));
             }
             else dismiss = null;
 
-            // And what else it answers to: the reveal can be sped up, or skipped to the block. The
-            // keys named follow the device last used on the card.
-            controls = HudPrimitives.Label("Controls", column, 11f * scale, UiTheme.Muted, TextAlignmentOptions.Center);
-            controls.text = CeremonyTakeover.ControlsFor(clock.OnPad);
-            Place(controls.rectTransform, width, f.ControlsH, f.ControlsY);
-            // No slogan under the board (the owner, 2026-11-21): the controls line closes the card.
+            // And what else it answers to, in the controls chip every ceremony card closes with: the
+            // reveal can be sped up, or skipped to the block. The keys named follow the device last
+            // used on the card.
+            var controlsChip = CeremonyControlsChip.Build(column, "Controls");
+            if (f.Screen) controlsChip.SizeForScreen(); else controlsChip.SizeForHud(scale);
+            controlsChip.PlaceAt(f.ChipY);
+            controls = controlsChip.Label;
+            controlsChip.Say(CeremonyTakeover.ControlsFor(clock.OnPad));
+            // No slogan under the board (the owner, 2026-11-21): the controls chip closes the card.
         }
 
         /// <summary>The screen's size and where it hangs, in reference units at the standard text size.</summary>
         private const float CardWidth = 420f;
-        private const float CardHeight = 330f;
+        private const float CardHeight = 342f;
         private const float CardTop = 96f;
         private const float SlotWidth = 104f;
         private const float SlotHeight = 134f;

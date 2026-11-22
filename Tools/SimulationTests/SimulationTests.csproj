@@ -105,6 +105,10 @@
     <!-- The finale page set aside for the cast screen: when backing out brings it back; pure, so it runs here too. -->
     <Compile Include="$(EditMode)FinaleAsideTests.cs" />
     <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/FinaleAside.cs" />
+    <!-- The main menu's season card (change 10): a read-only look at a save's header, and its words; System and Newtonsoft only, so it runs here too. -->
+    <Compile Include="$(EditMode)SaveHeaderTests.cs" />
+    <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Persistence/SaveHeader.cs" />
+    <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/SeasonCardWords.cs" />
     <!-- Menu slice 2, part d: the decisions' and the cards' one way out, held in the source; pure, so it runs here too. -->
     <Compile Include="$(EditMode)MenuOneWayBackDecisionsScanTests.cs" />
     <!-- No slogan on a screen or a sign (the owner, 2026-11-14 and 2026-11-21), held in the source and the scenes. -->

@@ -35,6 +35,8 @@ namespace Gamesim.Tests.EditMode
                 { CompetitionDefinitions.SwitchbackSignals, CompetitionShowFamily.Course },
                 // The ring tower has its own show since the tower show (competition drop-outs and tower show).
                 { CompetitionDefinitions.RingTower, CompetitionShowFamily.Tower },
+                // The trivia (rules 6) is a quiz at the memory consoles.
+                { CompetitionDefinitions.Trivia, CompetitionShowFamily.Podium },
             };
             Assert.That(expected.Keys, Is.EquivalentTo(CompetitionDefinitions.Catalogue), "Every game of the catalogue has its family decided here.");
             foreach (var pair in expected)

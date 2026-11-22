@@ -61,6 +61,8 @@ namespace Gamesim.Episode
                 if (state.phase != EpisodePhase.Social && state.phase != EpisodePhase.Campaign) return false;
                 if (state.Find(state.playerId)?.status != ContestantStatus.Active) return false;
                 if (state.Active.Count(c => !c.isPlayer) < 2) return false;
+                // At story rules 12 listening in is free (EpisodeDirector.Overhear.cs): a Listen left and the witnessed one open.
+                if (OverhearFree) return FreeListenOnOffer;
                 return EpisodeEngine.SocialActionsSpent(state) < EpisodeEngine.SocialActionBudget(state);
             }
         }
@@ -73,6 +75,7 @@ namespace Gamesim.Episode
         public void ListenInNearby()
         {
             if (!CanListenIn || IsPanelOpen) return;
+            if (OverhearFree) { ListenInFree(); return; }
             var witnessed = npcShownLease;
             Commit(projected, EpisodeCommandKind.Eavesdrop, witnessed?.FirstId, witnessed?.SecondId);
         }
@@ -256,6 +259,7 @@ namespace Gamesim.Episode
             // start in one sample make one write, and a walking pair does not hold it back.
             if (npcSaveCadence.Due && NpcCanAdvance) FlushUnsavedNpcTime("periodic");
             UpdateNpcConversationPresentation();
+            WatchOverhearing(elapsed);
         }
 
         private void RestorePendingNpcMeetings()

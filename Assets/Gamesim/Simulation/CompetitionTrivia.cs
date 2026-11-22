@@ -22,7 +22,7 @@ namespace Gamesim.Simulation
 
         public string AnswerText => Choices[Answer];
 
-        internal TriviaQuestion(string fact, int week, string text, IReadOnlyList<string> choices, int answer)
+        public TriviaQuestion(string fact, int week, string text, IReadOnlyList<string> choices, int answer)
         { Fact = fact; Week = week; Text = text; Choices = choices; Answer = answer; }
     }
 

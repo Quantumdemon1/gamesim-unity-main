@@ -309,6 +309,8 @@ namespace Gamesim.Episode
             {
                 case CompetitionMiniGames.Kind.Tower:
                     facts.Add(new EpisodeHud.BriefingFact(target, RingTowerPuzzle.StandardRings + " rings, 3 stacks", "First stack to the last")); break;
+                case CompetitionMiniGames.Kind.Trivia:
+                    facts.Add(TriviaBriefingFact()); break;
                 case CompetitionMiniGames.Kind.Memory:
                     facts.Add(new EpisodeHud.BriefingFact(UiTheme.Pack("Pack1_Foundation/Icons_PNG/grid"), "Eight pairs", "A 4 by 4 board")); break;
                 case CompetitionMiniGames.Kind.Reaction:
@@ -330,6 +332,7 @@ namespace Gamesim.Episode
                     : game == CompetitionMiniGames.Kind.Dice ? "Keep a high total"
                     : game == CompetitionMiniGames.Kind.Words ? "Spell as many as you can"
                     : game == CompetitionMiniGames.Kind.Tower ? "Move the tower"
+                    : game == CompetitionMiniGames.Kind.Trivia ? "Answer every question"
                     : state.competitionRulesVersion >= CompetitionMiniGames.ImprovedRules
                         ? "Hold " + (seconds * .65).ToString("0.#") + " for full marks" : "Hold as long as you can";
                 facts.Add(new EpisodeHud.BriefingFact(clock, seconds.ToString("0") + " seconds", goal));
@@ -365,7 +368,7 @@ namespace Gamesim.Episode
                 : CompetitionGame(state);
             challengeRun = kind == CompetitionMiniGames.Kind.Precision ? null : new MiniGameRun(kind,
                 CompetitionMiniGames.AttemptSeed(state.seed, state.week, (int)state.phase, state.competitionRulesVersion, practice),
-                state.competitionRulesVersion, CompetitionDefinitions.For(state), ScrambleWords(state));
+                state.competitionRulesVersion, CompetitionDefinitions.For(state), ScrambleWords(state), TriviaQuiz(state, practice));
             if (challengeRun != null)
             {
                 if (competitionScreen == null)

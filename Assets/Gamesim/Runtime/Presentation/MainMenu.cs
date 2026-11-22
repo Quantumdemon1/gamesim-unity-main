@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -54,6 +55,9 @@ namespace Gamesim.Presentation
         /// <summary>Whether the last <see cref="Show"/> offered "Load a season".</summary>
         public bool OffersLoad { get; private set; }
 
+        /// <summary>The season card's line of facts as the last <see cref="Show"/> drew it, or null (no card, or a card without facts).</summary>
+        public string SeasonFacts { get; private set; }
+
         /// <summary>
         /// The "larger text" setting, applied by magnifying the whole screen. The layout is fixed in
         /// reference pixels, so growing the type alone would push it out of boxes that did not grow.
@@ -103,23 +107,29 @@ namespace Gamesim.Presentation
         /// Opens the menu. <paramref name="canContinue"/> decides whether the first control is
         /// offered at all; <paramref name="note"/> is the one line under the title, which is where
         /// a failed load or a retained slot gets explained. <paramref name="onLoad"/>, when given,
-        /// adds "Load a season" (a saved season exists to load).
+        /// adds "Load a season" (a saved season exists to load). <paramref name="career"/> is the
+        /// career strip's figures (<see cref="CareerStrip.Of"/>), drawn under the controls once a
+        /// season has finished. <paramref name="seasonFacts"/> is the season card's line
+        /// (<see cref="SeasonCardWords.Facts"/>): with Continue offered, the card stands above the
+        /// controls, and without facts it shows its heading alone.
         /// </summary>
         public void Show(bool canContinue, string note,
             Action onContinue, Action onNewSeason, Action onSettings, Action onQuit,
-            string career = null, Action onLoad = null)
+            IReadOnlyList<CareerStat> career = null, Action onLoad = null, string seasonFacts = null)
         {
             OffersContinue = canContinue;
             OffersLoad = onLoad != null;
             HasShown = true;
-            Rebuild(canContinue, note, onContinue, onNewSeason, onSettings, onQuit, career, onLoad);
+            SeasonFacts = canContinue ? seasonFacts : null;
+            Rebuild(canContinue, note, onContinue, onNewSeason, onSettings, onQuit, career, onLoad, SeasonFacts);
             group.alpha = 1f;
             group.blocksRaycasts = true;
             group.interactable = true;
         }
 
         private void Rebuild(bool canContinue, string note,
-            Action onContinue, Action onNewSeason, Action onSettings, Action onQuit, string career, Action onLoad)
+            Action onContinue, Action onNewSeason, Action onSettings, Action onQuit,
+            IReadOnlyList<CareerStat> career, Action onLoad, string seasonFacts)
         {
             // Deactivated before Destroy, which runs at the end of the frame: otherwise a rebuild
             // leaves the previous controls live alongside the new ones for a frame.
@@ -238,6 +248,16 @@ namespace Gamesim.Presentation
             }
             cursor += 34f;
 
+            // Which season Continue opens, on a card of its own just above it (change 10): read
+            // from the save's header by the director, never by loading the season. It is a label,
+            // not a control - nothing on it takes a click or the keyboard - and "Continue your
+            // season" keeps its caption and stays the control.
+            if (canContinue)
+            {
+                SeasonCard(column, seasonFacts, ref cursor);
+                cursor += 14f;
+            }
+
             // The controls on one glass card, the pack's resting panel, as every mockup gathers
             // its choices.
             int count = (canContinue ? 1 : 0) + (onLoad != null ? 1 : 0) + 3;
@@ -254,16 +274,104 @@ namespace Gamesim.Presentation
             Button(card, QuitCaption, false, "exit", onQuit, ref inner);
             cursor += cardHeight + 18f;
 
-            // The career line, once there is a career: what the seasons so far add up to. It
-            // sits under the buttons rather than the title because it is a fact about the
-            // player, not a note about this launch.
-            if (!string.IsNullOrEmpty(career)) Text(column, career, 15f, UiTheme.Accent, 26f, ref cursor);
+            // The career strip, once there is a career: what the seasons so far add up to, each
+            // figure with its label in words. It sits under the buttons rather than the title
+            // because it is a fact about the player, not a note about this launch. It grows with
+            // the text size as the whole menu does (FontScale magnifies the screen).
+            if (career != null && career.Count > 0) Strip(column, career, ref cursor);
 
             cursor += 6f;
             Text(column, "Plays offline. No account, no connection, and nothing is uploaded.",
                 13f, UiTheme.Muted, 24f, ref cursor);
 
             column.sizeDelta = new Vector2(CardWidth, cursor);
+            // The card and the strip make the column taller than the screen at the largest text
+            // (1.4 leaves 771 of the reference's 1080): then it is drawn smaller to fit, whole. The
+            // room is the scaler's reference height, which FontScale has already set, rather than
+            // the canvas's own rect, which the scaler brings up to date only on its next update.
+            float room = (scaler != null ? scaler.referenceResolution.y : 1080f) - 32f;
+            column.localScale = room > 0f && cursor > room ? Vector3.one * (room / cursor) : Vector3.one;
+        }
+
+        /// <summary>
+        /// The season card above "Continue your season": its heading, and the save's facts when they
+        /// were read. Art and labels only, none of which takes a click.
+        /// </summary>
+        private static void SeasonCard(Transform parent, string facts, ref float cursor)
+        {
+            const float pad = 12f, headingBox = 20f, factsBox = 30f, gap = 4f;
+            bool hasFacts = !string.IsNullOrEmpty(facts);
+            float height = pad * 2f + headingBox + (hasFacts ? gap + factsBox : 0f);
+            var card = HudPrimitives.Fill("Season card", parent, UiTheme.GlassFill, 14);
+            Place(card, CardWidth, height, -cursor);
+            UiTheme.AddBorder(card, 14, UiTheme.Outline);
+
+            // 14 px type in a 20 px box and 21 px in 30: each box at least 1.3 times its font (Inter).
+            var heading = HudPrimitives.Label("Heading", card, 14f, UiTheme.Muted, TextAlignmentOptions.Center);
+            heading.text = Localisation.Text(SeasonCardWords.Heading);
+            heading.textWrappingMode = TextWrappingModes.NoWrap;
+            Place(heading.rectTransform, CardWidth - pad * 2f, headingBox, -pad);
+            if (hasFacts)
+            {
+                var line = HudPrimitives.Label("Facts", card, 21f, UiTheme.Paper, TextAlignmentOptions.Center);
+                line.text = Localisation.Text(facts);
+                var weight = UiTheme.Font(UiTheme.Weight.SemiBold);
+                if (weight != null) line.font = weight;
+                line.textWrappingMode = TextWrappingModes.NoWrap;
+                line.enableAutoSizing = true;
+                line.fontSizeMin = 14f;
+                line.fontSizeMax = 21f;
+                Place(line.rectTransform, CardWidth - pad * 2f, factsBox, -(pad + headingBox + gap));
+            }
+            cursor += height;
+        }
+
+        /// <summary>
+        /// The career strip: its heading, then three figures to a row, each a number over its label
+        /// in words. Labels only, none of which takes a click.
+        /// </summary>
+        private static void Strip(Transform parent, IReadOnlyList<CareerStat> stats, ref float cursor)
+        {
+            const int perRow = 3;
+            const float headingBox = 20f, valueBox = 32f, labelBox = 22f, rowGap = 6f;
+            var strip = new GameObject("Career strip", typeof(RectTransform)).GetComponent<RectTransform>();
+            strip.SetParent(parent, false);
+            int rows = (stats.Count + perRow - 1) / perRow;
+            float height = headingBox + rows * (rowGap + valueBox + labelBox);
+            Place(strip, CardWidth, height, -cursor);
+
+            var heading = HudPrimitives.Label("Heading", strip, 14f, UiTheme.Muted, TextAlignmentOptions.Center);
+            heading.text = Localisation.Text(CareerStrip.Heading);
+            heading.textWrappingMode = TextWrappingModes.NoWrap;
+            Place(heading.rectTransform, CardWidth, headingBox, 0f);
+
+            float cell = CardWidth / perRow;
+            var bold = UiTheme.Font(UiTheme.Weight.Bold);
+            for (int i = 0; i < stats.Count; i++)
+            {
+                int row = i / perRow, slot = i % perRow;
+                int inRow = Mathf.Min(perRow, stats.Count - row * perRow);
+                var holder = new GameObject("Stat", typeof(RectTransform)).GetComponent<RectTransform>();
+                holder.SetParent(strip, false);
+                Place(holder, cell, valueBox + labelBox, -(headingBox + rowGap + row * (rowGap + valueBox + labelBox)));
+                holder.anchoredPosition = new Vector2((slot - (inRow - 1) * .5f) * cell, holder.anchoredPosition.y);
+
+                // 24 px figures in a 32 px box and 15 px words in 22: each at least 1.3 times its font.
+                var value = HudPrimitives.Label("Value", holder, 24f, UiTheme.Accent, TextAlignmentOptions.Center);
+                value.text = Localisation.Text(stats[i].Value);
+                if (bold != null) value.font = bold;
+                value.textWrappingMode = TextWrappingModes.NoWrap;
+                Place(value.rectTransform, cell - 8f, valueBox, 0f);
+                var label = HudPrimitives.Label("Label", holder, 15f, UiTheme.Paper, TextAlignmentOptions.Center);
+                label.text = Localisation.Text(stats[i].Label);
+                label.textWrappingMode = TextWrappingModes.NoWrap;
+                label.enableAutoSizing = true;
+                // Never under 13: the smallest type the menu draws (the offline line), above the 12 px floor.
+                label.fontSizeMin = 13f;
+                label.fontSizeMax = 15f;
+                Place(label.rectTransform, cell - 8f, labelBox, -valueBox);
+            }
+            cursor += height + 10f;
         }
 
         // ---------------------------------------------------------------- pieces

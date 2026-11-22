@@ -463,8 +463,14 @@
 # 10919 = 10897 (dialogue rules 3 on top of the competition slices and the three fixes) + the final two deal's 22
 # (10857 - 10835 on this branch): disjoint cases, so the floor is their sum (the stacked landing of 22 November 2026).
 # Counted from the two sides.
+# 10958 = 10919 + the main menu's season card: SaveHeaderTests 34 (all also in the dotnet subset) and
+# MainMenuSeasonCardSaveTests 5, 2026-11-22.
+# 11021 = 10958 + the tour offered and docked: TourDockTests 63 (all also in the dotnet subset), 2026-11-22.
 # 10923 = 10919 + the whole-house move lock's 4 WholeHouseMoveLockTests cases, 2026-11-22.
-Gamesim.EditModeTests 10923
+# 11025 = 11021 (the main menu's season card and the tour) + the whole-house moves' lock's 4 (10923 - 10919 on this
+# branch): disjoint cases, so the floor is their sum (the second wave's landing of 22 November 2026). Counted from the
+# two sides.
+Gamesim.EditModeTests 11025
 # The UMA-free build. 1215 = 1236, the count after the consolidation's lanes (S2a, S2b, S4a), less the 7
 # farewell probes moved to Gamesim.DiagnosticsPlayModeTests and the 14 farewell readiness tests that now
 # compile only under GAMESIM_UMA (judged on the UMA cast); 1230 = 1215 + S2d's 7, S4b's 2, S4c's 2 and
@@ -722,8 +728,13 @@ Gamesim.EditModeTests 10923
 # 1684 = 1682 (the show's edges on top of the recap, finale and saves fixes) + the drop-outs and tower show's 2 (1680
 # - 1678 on this branch): disjoint cases, so the floor is their sum (the stacked landing of 22 November 2026). Counted
 # from the two sides.
+# 1685 = 1684 + the main menu's season card: the 1 EpisodePlayModeTests.MainMenuSeasonCard case, 2026-11-22.
+# 1687 = 1685 + the tour offered and docked: the 2 EpisodePlayModeTests.TourOffer cases, 2026-11-22.
 # 1685 = 1684 + the whole-house move lock's 1 HouseMoveLocks case, 2026-11-22.
-Gamesim.PlayModeTests 1685
+# 1688 = 1687 (the main menu's season card and the tour) + the whole-house moves' lock's 1 (1685 - 1684 on this
+# branch): disjoint cases, so the floor is their sum (the second wave's landing of 22 November 2026). Counted from the
+# two sides.
+Gamesim.PlayModeTests 1688
 # The UMA build of the same assembly, read by a plan built without -WithoutUma. 1281 = the 1241 above + the
 # 40 tests that compile only under GAMESIM_UMA, as run at r1 (2026-10-16): in EpisodePlayModeTests,
 # GroundedFarewell 11, Creator 9, HouseLife 8, Emotes 3, OpeningCaptures 2, and one each in CreatorEntry,
@@ -905,8 +916,13 @@ Gamesim.PlayModeTests 1685
 # 1729 = 1727 (the show's edges on top of the recap, finale and saves fixes) + the drop-outs and tower show's 2 (1725
 # - 1723 on this branch): disjoint cases, so the floor is their sum (the stacked landing of 22 November 2026). Counted
 # from the two sides.
+# 1730 = 1729 + the main menu's season card: the 1 EpisodePlayModeTests.MainMenuSeasonCard case, 2026-11-22.
+# 1732 = 1730 + the tour offered and docked: the 2 EpisodePlayModeTests.TourOffer cases, 2026-11-22.
 # 1730 = 1729 + the whole-house move lock's 1 HouseMoveLocks case, 2026-11-22.
-Gamesim.PlayModeTests.UmaBuild 1730
+# 1733 = 1732 (the main menu's season card and the tour) + the whole-house moves' lock's 1 (1730 - 1729 on this
+# branch): disjoint cases, so the floor is their sum (the second wave's landing of 22 November 2026). Counted from the
+# two sides.
+Gamesim.PlayModeTests.UmaBuild 1733
 # The UMA bodies: runs only where the GAMESIM_UMA define is set (the working tree and the D: copy).
 # 82 = the 89 run on 2026-10-15, less the 7 farewell probes moved to Gamesim.Uma.DiagnosticsPlayModeTests;
 # 85 = 82 + the 3 farewell readiness decision tests (UmaFarewellReadinessDecisionPlayModeTests, 2026-10-16);
@@ -1289,5 +1305,10 @@ Gamesim.Uma.DiagnosticsPlayModeTests 10
 # 23019 = 22994 (dialogue rules 3 on top of the competition slices and the three fixes) + the final two deal's 25
 # (22959 - 22934 on this branch): disjoint cases, so the floor is their sum (the stacked landing of 22 November 2026).
 # Counted from the two sides.
+# 23053 = 23019 + the main menu's season card: SaveHeaderTests 34, 2026-11-22.
+# 23116 = 23053 + the tour offered and docked: TourDockTests 63, 2026-11-22.
 # 23023 = 23019 + the whole-house move lock's 4 WholeHouseMoveLockTests cases, 2026-11-22.
-Gamesim.SimulationTests 23023
+# 23120 = 23116 (the main menu's season card and the tour) + the whole-house moves' lock's 4 (23023 - 23019 on this
+# branch): disjoint cases, so the floor is their sum (the second wave's landing of 22 November 2026). Counted from the
+# two sides.
+Gamesim.SimulationTests 23120

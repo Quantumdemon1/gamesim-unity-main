@@ -105,6 +105,14 @@
     <!-- The finale page set aside for the cast screen: when backing out brings it back; pure, so it runs here too. -->
     <Compile Include="$(EditMode)FinaleAsideTests.cs" />
     <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/FinaleAside.cs" />
+    <!-- The main menu's season card (change 10): a read-only look at a save's header, and its words; System and Newtonsoft only, so it runs here too. -->
+    <Compile Include="$(EditMode)SaveHeaderTests.cs" />
+    <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Persistence/SaveHeader.cs" />
+    <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/SeasonCardWords.cs" />
+    <!-- The tour offered, not replayed, and its card docked beside what each step lights: the placement arithmetic and the offer's words; pure, so they run here too. -->
+    <Compile Include="$(EditMode)TourDockTests.cs" />
+    <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/TourDock.cs" />
+    <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/TourOfferWords.cs" />
     <!-- Menu slice 2, part d: the decisions' and the cards' one way out, held in the source; pure, so it runs here too. -->
     <Compile Include="$(EditMode)MenuOneWayBackDecisionsScanTests.cs" />
     <!-- No slogan on a screen or a sign (the owner, 2026-11-14 and 2026-11-21), held in the source and the scenes. -->

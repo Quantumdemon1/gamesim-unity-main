@@ -932,7 +932,7 @@ namespace Gamesim.Episode
             System.Collections.Generic.IList<HouseMap.Occupant> unplaced = null, HouseMap.Filter filter = HouseMap.Filter.All)
         {
             if (content == null) return;
-            HouseMap.Build(content, rooms, unplaced, filter, FontScale, font, ContentWidth());
+            WireRoomProfiles(HouseMap.Build(content, rooms, unplaced, filter, FontScale, font, ContentWidth()));
         }
 
         /// <summary>

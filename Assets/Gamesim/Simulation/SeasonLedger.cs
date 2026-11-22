@@ -245,11 +245,20 @@ namespace Gamesim.Simulation
         public const string Told = "told", Overheard = "overheard", Ally = "ally", Read = "read";
         /// <summary>A juror's view of the player as they left, kept for the verdict.</summary>
         public const string Juror = "juror";
-        /// <summary>A read that missed: the attempt is on the record (once a week is once a week), and nothing was learned.</summary>
+        /// <summary>
+        /// A read that missed, or a Listen that was caught (plan 32 §I3, story rules 12, between the two overheard): the
+        /// attempt is on the record (once a week is once a week), and nothing was learned.
+        /// </summary>
         public const string Missed = "missed";
         /// <summary>A voter asked straight who kept it to themselves: the week's ask, on the record, and nothing learned.</summary>
         public const string Deflected = "deflected";
-        public static readonly string[] All = { Told, Overheard, Ally, Read, Juror, Missed, Deflected };
+        /// <summary>
+        /// A hunch (plan 32 §I2, story rules 12): two houseguests the player noticed together, the standing's score their
+        /// <see cref="HunchTone"/> (1 to 3), never a reading of how they stand. Standings only, refused below 12, and read
+        /// by no real reading (<see cref="VoteRead.StandingKnown"/> leaves it out).
+        /// </summary>
+        public const string Seen = "seen";
+        public static readonly string[] All = { Told, Overheard, Ally, Read, Juror, Missed, Deflected, Seen };
         /// <summary>Whether a standing row of this source taught the player nothing: an attempt on the record, not a standing.</summary>
         public static bool IsAttempt(string source) => source == Missed || source == Deflected;
         public static bool IsKnown(string source) => source != null && Array.IndexOf(All, source) >= 0;

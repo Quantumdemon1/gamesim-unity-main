@@ -38,9 +38,9 @@ namespace Gamesim.Tests.PlayMode
         }
 
         [UnityTest]
-        public IEnumerator CastSelect_TheConversationPreviewIsOffUntilChosenAndStartsTheSeasonOnDialogueRules2()
+        public IEnumerator CastSelect_TheConversationPreviewIsOffUntilChosenAndStartsTheSeasonOnDialogueRules3()
         {
-            Assert.That(DialogueRules.Offered, Is.EqualTo(2), "The chip writes dialogue rules 2 since this change: D2's vote-word tree, frozen by the move.");
+            Assert.That(DialogueRules.Offered, Is.EqualTo(3), "The chip writes dialogue rules 3 since D3: the four trees and the holder appeal, frozen by the move.");
             var before = director.Snapshot;
             string slot = director.SavePath;
             new Gamesim.Persistence.EpisodeSaveStore(slot).Save(before);
@@ -71,10 +71,10 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(CastScreen().IsShowing, Is.False);
             var fresh = director.Snapshot;
             Assert.That(fresh.sessionId, Is.Not.EqualTo(before.sessionId), "A new season started.");
-            Assert.That(fresh.dialogueRulesVersion, Is.EqualTo(2), "The preview's season plays dialogue rules 2, the chip's since this change.");
+            Assert.That(fresh.dialogueRulesVersion, Is.EqualTo(3), "The preview's season plays dialogue rules 3, the chip's since D3.");
             Assert.That(DialogueRules.On(fresh), Is.True);
             Assert.That(new Gamesim.Persistence.EpisodeSaveStore(director.SavePath).TryLoad(out var disk, out string message), Is.True, message);
-            Assert.That(disk.dialogueRulesVersion, Is.EqualTo(2), "The season carries it on disk, as its own rule.");
+            Assert.That(disk.dialogueRulesVersion, Is.EqualTo(3), "The season carries it on disk, as its own rule.");
 
             // The next time the screen opens it is off again: nothing remembered the last choice.
             string previewSession = fresh.sessionId;
@@ -113,8 +113,8 @@ namespace Gamesim.Tests.PlayMode
             yield return null;
             Assert.That(Creator().IsShowing, Is.False, "The season started from the creator.");
             Assert.That(director.Snapshot.sessionId, Is.Not.EqualTo(before));
-            Assert.That(director.Snapshot.dialogueRulesVersion, Is.EqualTo(2),
-                "The creator's start keeps the preview chosen on the cast screen: rules 2, the chip's since this change.");
+            Assert.That(director.Snapshot.dialogueRulesVersion, Is.EqualTo(3),
+                "The creator's start keeps the preview chosen on the cast screen: rules 3, the chip's since D3.");
         }
 
         /// <summary>

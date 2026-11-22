@@ -103,6 +103,7 @@ namespace Gamesim.Episode
         {
             finalePressedJurorId = null;
             finaleFocusBack = false;
+            finaleFocusNewSeason = false;
         }
 
         /// <summary>
@@ -139,6 +140,9 @@ namespace Gamesim.Episode
             finaleFocusBack = false;
             hud.StrategyWholeWidth();
             hud.FinalePage(FinaleSpec(state, winner, runnerUp));
+            // Back from the cast screen, the keyboard is on the control that left (EpisodeDirector.FinaleAside.cs).
+            if (finaleFocusNewSeason) hud.FocusWhenWired(SeasonReport.NewSeasonCaption);
+            finaleFocusNewSeason = false;
         }
 
         /// <summary>The jury's questions opened as the step, or folded again by their disclosure. View state.</summary>

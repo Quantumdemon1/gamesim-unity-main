@@ -558,11 +558,13 @@ namespace Gamesim.Simulation
                 // A final three deal (C9) is settled by a nomination, as a safety deal is.
                 case DecisionKinds.Nominate:
                     return DealStanding(s, DealKind.SafetyAgreement, DealKind.TargetAgreement, DealKind.FinalThree)
-                        || PromiseStanding(s, PromiseKind.Safety, PromiseKind.AllianceLoyalty) || OathStanding(s);
+                        || PromiseStanding(s, PromiseKind.Safety, PromiseKind.AllianceLoyalty) || OathStanding(s)
+                        // From minds level 1 a final two deal too (FinalTwoDeals): naming the partner breaks it.
+                        || FinalTwoAtStake(s);
                 // So is a keep-the-block deal (R4), by the veto, as a veto deal is.
                 case DecisionKinds.Veto:
                     return DealStanding(s, DealKind.VetoUse, DealKind.SafetyAgreement, DealKind.TargetAgreement, DealKind.FinalThree, DealKind.VetoHold)
-                        || PromiseStanding(s, PromiseKind.Safety, PromiseKind.AllianceLoyalty) || OathStanding(s);
+                        || PromiseStanding(s, PromiseKind.Safety, PromiseKind.AllianceLoyalty) || OathStanding(s) || FinalTwoAtStake(s);
                 case DecisionKinds.Vote:
                     return DealStanding(s, DealKind.VoteSave, DealKind.VoteEvict) || PromiseStanding(s, PromiseKind.Vote) || OathStanding(s)
                         // Under the commitment rules the vote judges a partnership too (C1).
@@ -573,6 +575,8 @@ namespace Gamesim.Simulation
                     return false;
             }
         }
+
+        private static bool FinalTwoAtStake(EpisodeState s) => FinalTwoDeals.On(s) && DealStanding(s, DealKind.FinalTwo);
 
         private static bool DealStanding(EpisodeState s, params string[] types) =>
             s.deals != null && ReadDeals(s).Any(d => d != null && d.status == DealStatus.Active
@@ -703,7 +707,9 @@ namespace Gamesim.Simulation
         /// </summary>
         private static bool SettledByThePlayer(EpisodeState s, Decision d, string type)
         {
-            bool nomination = type == DealKind.SafetyAgreement || type == DealKind.TargetAgreement || type == DealKind.FinalThree;
+            bool nomination = type == DealKind.SafetyAgreement || type == DealKind.TargetAgreement || type == DealKind.FinalThree
+                // From minds level 1 the player's nomination of their final two partner breaks that deal (FinalTwoDeals).
+                || (type == DealKind.FinalTwo && d.kind != DecisionKinds.FinalEviction && FinalTwoDeals.On(s));
             switch (d.kind)
             {
                 case DecisionKinds.Nominate: return nomination;

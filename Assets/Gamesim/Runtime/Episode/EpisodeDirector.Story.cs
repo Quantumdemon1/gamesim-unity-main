@@ -91,6 +91,9 @@ namespace Gamesim.Episode
         {
             string speaker = state.Find(word.SpeakerId)?.name, target = state.Find(word.TargetId)?.name;
             if (speaker == null || target == null) return null;
+            // Dialogue rules 3's memory tree: a vote they told the player about in an earlier week, which the reveal showed they kept.
+            if (word.Week < state.week)
+                return speaker + " told you in week " + word.Week + " they would vote out " + target + ", and they did.";
             return word.TargetId == state.playerId
                 ? speaker + " told you this week they are voting you out."
                 : speaker + " told you this week they are voting out " + target + ".";
@@ -108,7 +111,8 @@ namespace Gamesim.Episode
                 if (line != null) hud.Paragraph(line);
             }
             // Dialogue rules 2: the word the voter gave the player, as they gave it. What they said, never their ballot.
-            if (item.contentId?.StartsWith(DialogueCampaignWord.TemplateId + ":", StringComparison.Ordinal) == true
+            if ((item.contentId?.StartsWith(DialogueCampaignWord.TemplateId + ":", StringComparison.Ordinal) == true
+                    || item.contentId?.StartsWith(DialogueCampaignTrees.TemplateId + ":", StringComparison.Ordinal) == true)
                 && DialogueRules.TryReadStatement(state, item.id, out var word))
             {
                 string line = StatementLine(state, word);

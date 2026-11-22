@@ -557,34 +557,90 @@ namespace Gamesim.Episode
                     : CompetitionCourseLegs.Box.Body(at.x, at.z, runnerRadius));
                 if (pair.Value.Seated) legs.AddObstacle(CompetitionCourseLegs.Box.Body(pair.Value.Approach.x, pair.Value.Approach.z, runnerRadius));
             }
+            // Everybody on their way to a stage place (the field and the audience, the player too) stands
+            // wherever the house left them while the marks are chosen; by the time a runner sets off each
+            // stands at the place the plan above keeps clear (CompetitionCourseMarkPasses.MoversAside).
+            var movers = new HashSet<Transform>(competitionRouteOwners);
+            movers.Add(player.transform);
+            foreach (string id in staged)
+                if (competitionBodies.TryGetValue(id, out var body) && body.root != null) movers.Add(body.root.transform);
             foreach (string id in legs.Order)
             {
                 var runner = runners[id];
                 bool isPlayer = id == state.playerId;
-                int tried = 0, floorMisses = 0, legMisses = 0, spacingMisses = 0, bodyMisses = 0, footprintMisses = 0;
-                foreach (var spot in isPlayer ? legs.EveryWayCandidates(id, placeSpots) : legs.Candidates(id))
+                var tally = new CompetitionCourseMarkPasses.Tally();
+                Vector3 position = default;
+                CompetitionStageFootprint footprint = default;
+                bool found = CompetitionCourseMarkPasses.TryChoose(legs, id, isPlayer,
+                    () => isPlayer ? legs.EveryWayCandidates(id, placeSpots) : legs.Candidates(id),
+                    (CompetitionCourseLegs.Spot spot, CompetitionCourseMarkPasses.Pass pass, out CompetitionCourseLegs.Spot taken) =>
+                    {
+                        taken = spot;
+                        var wanted = new Vector3(spot.X, runner.post.y, spot.Z);
+                        if (!rooms.TrySampleFloor(wanted, runner.radius, filter, .25f, out position, out var room) || room != "Yard")
+                            return CompetitionCourseMarkPasses.Refusal.Floor;
+                        // The floor's own point, not the one asked for: the leg is checked again from there.
+                        taken = new CompetitionCourseLegs.Spot(position.x, position.z);
+                        if (!legs.Clears(id, taken)) return CompetitionCourseMarkPasses.Refusal.Legs;
+                        var at = position;
+                        if (used.Any(p => (p - at).sqrMagnitude < 1.6f)) return CompetitionCourseMarkPasses.Refusal.Spacing;
+                        footprint = CompetitionStageFootprint.Actor(position, runner.radius, runner.height);
+                        if (CompetitionCourseMarkPasses.ReadsBodies(pass))
+                        {
+                            bool bodyClear = CompetitionCourseMarkPasses.CountsMovers(pass)
+                                ? rooms.HasCapsuleClearance(position, runner.radius, runner.height, runner.self)
+                                : CompetitionCourseMarkClearOfStill(position, runner.radius, runner.height, runner.self, floor, movers);
+                            if (!bodyClear) return CompetitionCourseMarkPasses.Refusal.Body;
+                            bool fits = CompetitionCourseMarkPasses.CountsMovers(pass)
+                                ? FitsCompetitionFootprint(footprint, floor, runner.self)
+                                : FitsCompetitionCourseMark(footprint, floor) && footprint.HasStaticClearance(gameObject.scene.GetPhysicsScene(), floor,
+                                    competitionPlacementHits, movers, runner.self);
+                            if (!fits) return CompetitionCourseMarkPasses.Refusal.Footprint;
+                        }
+                        else if (!FitsCompetitionCourseMark(footprint, floor)) return CompetitionCourseMarkPasses.Refusal.Footprint;
+                        return CompetitionCourseMarkPasses.Refusal.None;
+                    }, tally, out _, out var takenIn);
+                if (found)
                 {
-                    tried++;
-                    var wanted = new Vector3(spot.X, runner.post.y, spot.Z);
-                    if (!rooms.TrySampleFloor(wanted, runner.radius, filter, .25f, out var position, out var room) || room != "Yard") { floorMisses++; continue; }
-                    // The floor's own point, not the one asked for: the leg is checked again from there.
-                    var taken = new CompetitionCourseLegs.Spot(position.x, position.z);
-                    if (!legs.Clears(id, taken)) { legMisses++; continue; }
-                    if (used.Any(p => (p - position).sqrMagnitude < 1.6f)) { spacingMisses++; continue; }
-                    if (!rooms.HasCapsuleClearance(position, runner.radius, runner.height, runner.self)) { bodyMisses++; continue; }
-                    var footprint = CompetitionStageFootprint.Actor(position, runner.radius, runner.height);
-                    if (!FitsCompetitionFootprint(footprint, floor, runner.self)) { footprintMisses++; continue; }
                     var mark = HouseInteractionAnchor.Create(competitionArenaRoot.transform, "competition-course", "Yard", 200 + show.CourseMarks.Count,
                         position, CompetitionContestantFacing, false);
                     show.CourseMarks[id] = mark; used.Add(mark.Approach); competitionFootprints[id + ":course"] = footprint;
-                    legs.Accept(id, taken);
-                    break;
+                    if (takenIn != CompetitionCourseMarkPasses.Pass.Strict)
+                        Debug.Log("[Gamesim competition show] turn mark for " + (isPlayer ? "your houseguest " : "") + id + " at " + position.ToString("F2")
+                            + " found in the " + takenIn + " pass (" + tally + ").", this);
                 }
-                if (!show.CourseMarks.ContainsKey(id))
+                else
                     Debug.Log("[Gamesim competition show] no clear turn mark for " + (isPlayer ? "your houseguest " : "") + id + " at " + runner.post.ToString("F2")
-                        + ": tried " + tried + ", floor " + floorMisses + ", legs " + legMisses + ", spacing " + spacingMisses
-                        + ", body " + bodyMisses + ", footprint " + footprintMisses + "; they run no leg.", this);
+                        + ": " + tally + "; they run no leg.", this);
             }
+        }
+
+        /// <summary>A course mark's reservation on the deck, clear of every other reservation and of the scenery: the yard's plan, no collider read.</summary>
+        private bool FitsCompetitionCourseMark(CompetitionStageFootprint footprint, Collider floor)
+            => footprint.FitsOn(floor.bounds) && ClearsCompetitionNeighbours(footprint) && (competitionScenery == null || competitionScenery.Clears(footprint));
+
+        /// <summary>
+        /// Whether a body standing at <paramref name="feet"/> meets nothing but the yard's floor, itself
+        /// and those on their way to a stage place (<paramref name="movers"/>): the capsule the house
+        /// reads for a body (HouseRoomQuery.HasCapsuleClearance), with the movers set aside.
+        /// </summary>
+        private bool CompetitionCourseMarkClearOfStill(Vector3 feet, float radius, float height, Transform self, Collider floor, ISet<Transform> movers)
+        {
+            Physics.SyncTransforms();
+            if (height < radius * 2f) return false;
+            int count = gameObject.scene.GetPhysicsScene().OverlapCapsule(feet + Vector3.up * radius, feet + Vector3.up * (height - radius), radius,
+                competitionPlacementHits, HouseLayers.Sight, QueryTriggerInteraction.Ignore);
+            if (count == competitionPlacementHits.Length) return false;
+            for (int i = 0; i < count; i++)
+            {
+                var hit = competitionPlacementHits[i];
+                if (hit == null) return false;
+                if (hit == floor) continue;
+                bool moving = false;
+                for (var at = hit.transform; at != null && !moving; at = at.parent) moving = at == self || movers.Contains(at);
+                if (!moving) return false;
+            }
+            return true;
         }
     }
 }

@@ -286,7 +286,7 @@ namespace Gamesim.Episode
                 if (!CompetitionShowFieldArrived(run))
                 {
                     if (now < CompetitionShowPlan.PlaceBy(run.WalkOutBy, run.Quick)) return;
-                    if (!run.StragglersPlaced) PlaceCompetitionShowStragglers(run, now);
+                    if (!run.StragglersPlaced) PlaceCompetitionShowStragglers(run, now); else PlaceCompetitionShowStragglersAgain(run);
                     if (!CompetitionShowFieldReady(run) && now < CompetitionShowPlan.AssemblyBy(run.WalkOutBy, run.Quick)) return;
                     if (!CompetitionShowFieldReady(run) && !CompetitionShowPrincipalsArrived(run))
                     {
@@ -376,6 +376,21 @@ namespace Gamesim.Episode
             Debug.Log("[Gamesim competition show] still on the way at the walk out's last moment, " + (now - run.StartedAt).ToString("0.00")
                 + " s in (walk out " + walkOut.ToString("0.00") + " s, its cap " + CompetitionShowPlan.MostWalkOutSeconds(run.Quick).ToString("0") + " s"
                 + (walkOut >= CompetitionShowPlan.MostWalkOutSeconds(run.Quick) - .001f ? ", reached" : "") + "): " + string.Join(", ", why), this);
+        }
+
+        /// <summary>
+        /// Each frame after the walk out's last moment until the hold begins: anybody whose body could not
+        /// be put on their station then (paused, parked or off the walking map for a moment) is tried
+        /// again, so a body that can be put there a frame later still starts the show with the field.
+        /// </summary>
+        private void PlaceCompetitionShowStragglersAgain(CompetitionShowRun run)
+        {
+            int before = run.Placed.Count;
+            CompetitionShowPlan.PlaceStragglers(run.Stationed, id => CompetitionShowArrived(run, id), id =>
+                id == run.Plan.PlayerId ? player != null && player.TryPlaceAtActivityDestination(competitionPlayerOwner)
+                    : npcMeetings != null && npcMeetings.PlaceCompetitionActor(id), run.Placed);
+            if (run.Placed.Count > before)
+                Debug.Log("[Gamesim competition show] put on their station on a later try: " + string.Join(", ", run.Placed.Skip(before)), this);
         }
 
         /// <summary>Whether this stationed competitor stands at their station or was put there.</summary>

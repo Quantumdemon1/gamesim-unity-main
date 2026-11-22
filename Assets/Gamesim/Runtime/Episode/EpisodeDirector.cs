@@ -1656,7 +1656,7 @@ namespace Gamesim.Episode
                     // Ranked as the engine ranks them, as rows: a face, a name, the winner's badge -
                     // the crown, or the veto's medal - and no score (UI-UX-PASS-PLAN C0). The rows
                     // are the result card's own standings, so the two never disagree.
-                    hud.Section("FINAL STANDINGS");
+                    hud.Section(CompetitionWords.StandingsHeading);
                     hud.CompetitionStandings(CompetitionStandings(state), WinnersMark(state.phase));
                     // The way on, pinned: it used to sit under the standings, well past the fold.
                     AdvanceWarning(state);

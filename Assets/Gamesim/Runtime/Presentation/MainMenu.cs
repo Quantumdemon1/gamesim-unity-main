@@ -286,8 +286,10 @@ namespace Gamesim.Presentation
 
             column.sizeDelta = new Vector2(CardWidth, cursor);
             // The card and the strip make the column taller than the screen at the largest text
-            // (1.4 leaves 771 of the reference's 1080): then it is drawn smaller to fit, whole.
-            float room = ((RectTransform)transform).rect.height - 32f;
+            // (1.4 leaves 771 of the reference's 1080): then it is drawn smaller to fit, whole. The
+            // room is the scaler's reference height, which FontScale has already set, rather than
+            // the canvas's own rect, which the scaler brings up to date only on its next update.
+            float room = (scaler != null ? scaler.referenceResolution.y : 1080f) - 32f;
             column.localScale = room > 0f && cursor > room ? Vector3.one * (room / cursor) : Vector3.one;
         }
 
@@ -364,7 +366,8 @@ namespace Gamesim.Presentation
                 label.text = Localisation.Text(stats[i].Label);
                 label.textWrappingMode = TextWrappingModes.NoWrap;
                 label.enableAutoSizing = true;
-                label.fontSizeMin = 11f;
+                // Never under 13: the smallest type the menu draws (the offline line), above the 12 px floor.
+                label.fontSizeMin = 13f;
                 label.fontSizeMax = 15f;
                 Place(label.rectTransform, cell - 8f, labelBox, -valueBox);
             }

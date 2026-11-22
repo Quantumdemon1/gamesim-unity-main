@@ -626,6 +626,9 @@
     <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/StorySoFarWords.cs" />
     <Compile Include="$(EditMode)LinesWrongWordsTests.cs" />
     <Compile Include="$(EditMode)LinesWrongWordsReviewTests.cs" />
+    <!-- Notebook rows open profiles (backlog 21): a profile keeps the notes card's alliance-call notes, each once, and leaves out its promises and memories (plain C#). -->
+    <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/ProfileNotes.cs" />
+    <Compile Include="$(EditMode)NotebookProfileNotesTests.cs" />
     <!-- Menu slice 3, held together: every docked panel's layout has a kind, the faces' rims and the links' rest, in the source. -->
     <Compile Include="$(EditMode)MenuNotebookIntegrationTests.cs" />
     <!-- Menu slice 4, the foundation: the Settings frame's sections, the row kit's words and steps, and the shell held in the source. -->

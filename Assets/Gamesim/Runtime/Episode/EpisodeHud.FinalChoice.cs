@@ -47,6 +47,9 @@ namespace Gamesim.Episode
     /// </summary>
     public sealed partial class EpisodeHud
     {
+        /// <summary>The lit edge of the card whose choice is picked and waiting for the commit under the page.</summary>
+        public const string PickedEdgeName = "Picked edge";
+
         /// <summary>The page's parts, by the names a test finds them by.</summary>
         public const string FinalChoicePageName = "Final choice page", FinalistStatsName = "Finalist stats", JuryChipsName = "Jury chips",
             JurorChipPrefix = "Juror chip · ", JurorChipWordName = "Juror name", ChipGroupPrefix = "Chip group · ", ChipLegendName = "Chip legend",
@@ -75,6 +78,8 @@ namespace Gamesim.Episode
             public IList<string> Bullets;
             public string Caption, Warning, Consequence, Breach;
             public Action Choose;
+            /// <summary>Whether this column's choice is the one picked and waiting for the commit under the page: its card stays lit.</summary>
+            public bool Picked;
         }
 
         /// <summary>What the director hands the page: the line under the band, what breaks whichever finalist is taken, and the two columns.</summary>
@@ -537,6 +542,14 @@ namespace Gamesim.Episode
                 new Color(Surface.r, Surface.g, Surface.b, .94f), new Color(UiTheme.Hairline.r, UiTheme.Hairline.g, UiTheme.Hairline.b, .5f),
                 null, UiTheme.CardFill);
             var chosen = ChosenEdge(card);
+            // The choice picked keeps its card lit, whatever the keyboard or the pointer is on: an edge
+            // of its own, which the lights never turn off.
+            if (column.Picked)
+            {
+                var picked = ChosenEdge(card);
+                picked.name = PickedEdgeName;
+                picked.SetActive(true);
+            }
 
             // Who they are and the jury's read, on every page but the largest text's second, where
             // the card names them over what taking them means.
@@ -591,7 +604,10 @@ namespace Gamesim.Episode
             }
             // The column's one control, its caption the choice's two halves.
             if (!string.IsNullOrEmpty(column.Caption) && column.Choose != null)
-                FinalChoiceControl(box, column.Caption, column.Choose, layout.ControlY, layout.ColumnWidth, layout.ControlH, chosen);
+            {
+                var control = FinalChoiceControl(box, column.Caption, column.Choose, layout.ControlY, layout.ColumnWidth, layout.ControlH, chosen);
+                if (column.Picked) MeetingPicked(control, true);
+            }
         }
 
         /// <summary>
@@ -764,7 +780,8 @@ namespace Gamesim.Episode
         /// ring before the caption and the chevron after it. The caption is the control's name and its
         /// first label, word for word - every lookup by caption finds it - kept to one line and shrunk
         /// to fit rather than cut. The ring and the card's gold edge light while it is the control a
-        /// press would take (<see cref="ChoiceLight"/>); one press commits.
+        /// press would take (<see cref="ChoiceLight"/>); a press picks the choice, and the commit pinned
+        /// under the page makes it (EpisodeDirector.PickThenConfirm.cs).
         /// </summary>
         private Button FinalChoiceControl(RectTransform column, string caption, Action choose, float y, float width, float height, GameObject edge)
         {

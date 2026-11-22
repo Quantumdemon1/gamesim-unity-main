@@ -736,6 +736,7 @@ namespace Gamesim.Episode
             if (focusedNpc != null) conversationIntent = null;
             moveScreenId = null; comparingFinalists = false; juryHouseOpen = false; juryHouseOverHouse = false; reviewingSpeeches = false; juryQuestionsOpen = false;
             finalCaseOpen = false; ForgetFinalCaseChoice();
+            ForgetDecisionPick();
             // The finale page's open reason goes with the panel too.
             ForgetFinaleView();
             // The nomination's view goes with the panel, which opens again on the week's current step,
@@ -1528,6 +1529,7 @@ namespace Gamesim.Episode
                     // The notebook's one foot, as every page has; the graph's legend carries its caveat.
                     hud.NotebookFooter(null, "House activities", OpenHouseActivities);
                 }
+                DecisionPeekWayBack();
                 hud.ApplyPendingScroll();
                 return;
             }

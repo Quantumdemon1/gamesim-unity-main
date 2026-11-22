@@ -51,12 +51,12 @@ namespace Gamesim.Tests.EditMode
             var run = Run(quiz);
             Assert.That(run.Trivia.Current, Is.SameAs(quiz[0]));
             Assert.That(run.AnswerTrivia(1), Is.True);
-            Assert.That(run.Feedback, Is.EqualTo("Right: Blair"));
+            Assert.That(run.Feedback, Is.EqualTo("Right"), "A ranked quiz says right or wrong (TriviaRankedLeaveTests).");
             Assert.That(run.AnswerTrivia(0), Is.False, "One answer a question.");
             run.Tick(TriviaRound.RevealSeconds + .05);
             Assert.That(run.Trivia.Current, Is.SameAs(quiz[1]));
             Assert.That(run.AnswerTrivia(2), Is.True);
-            Assert.That(run.Feedback, Is.EqualTo("Wrong: the answer was Dana"));
+            Assert.That(run.Feedback, Is.EqualTo("Wrong"));
             run.Tick(TriviaRound.RevealSeconds + .05);
             Assert.That(run.AnswerTrivia(2), Is.True);
             Assert.That(run.Finished, Is.False, "The last answer is shown before the end.");

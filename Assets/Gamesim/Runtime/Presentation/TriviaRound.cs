@@ -11,7 +11,7 @@ namespace Gamesim.Presentation
     /// round around them.
     ///
     /// <para>One question at a time, in the quiz's order. An answer is taken once: it is shown right or wrong
-    /// at once (the right choice is named when the answer was wrong) for <see cref="RevealSeconds"/>, and then
+    /// at once (in practice the right choice is named when the answer was wrong) for <see cref="RevealSeconds"/>, and then
     /// the next question comes up. While an answer is shown another answer is refused. The round is over when
     /// the last answer has been shown, or when the clock runs out; a question never answered is wrong.</para>
     ///
@@ -31,14 +31,33 @@ namespace Gamesim.Presentation
         private double revealLeft;
 
         /// <param name="quiz">The questions, in the order they are asked. None makes a round that is over at once.</param>
-        public TriviaRound(IReadOnlyList<TriviaQuestion> quiz)
+        /// <param name="namesAnswers">Whether a wrong answer names the right one. Practice does; a ranked quiz says
+        /// only right or wrong, so leaving and coming back to the same quiz does not hand over its answers.</param>
+        public TriviaRound(IReadOnlyList<TriviaQuestion> quiz, bool namesAnswers = true)
         {
             Questions = (quiz ?? Array.Empty<TriviaQuestion>()).Where(q => q != null).ToList().AsReadOnly();
             chosen = Enumerable.Repeat(-1, Questions.Count).ToArray();
             Revealed = -1;
+            NamesAnswers = namesAnswers;
         }
 
         public IReadOnlyList<TriviaQuestion> Questions { get; }
+
+        /// <summary>Whether a wrong answer names (and the board lights) the right one: practice only.</summary>
+        public bool NamesAnswers { get; }
+
+        /// <summary>Whether every question has an answer, even while the last one is still being shown.</summary>
+        public bool AllAnswered => Answered >= Count;
+
+        /// <summary>The finish plate's headline: "QUIZ OVER" once every question has an answer, "TIME" when the clock ended it first.</summary>
+        public string FinishWord => AllAnswered ? "QUIZ OVER" : "TIME";
+
+        /// <summary>The briefing's count of a quiz: "5 questions", "1 question" - the board's own count, never the rules' target.</summary>
+        public static string BriefingCount(IReadOnlyList<TriviaQuestion> quiz)
+        {
+            int count = new TriviaRound(quiz).Count;
+            return count + (count == 1 ? " question" : " questions");
+        }
 
         /// <summary>The questions the round asks.</summary>
         public int Count => Questions.Count;
@@ -86,7 +105,8 @@ namespace Gamesim.Presentation
             Revealed = choice;
             revealLeft = RevealSeconds;
             bool right = choice == question.Answer;
-            Feedback = right ? "Right: " + question.AnswerText : "Wrong: the answer was " + question.AnswerText;
+            Feedback = !NamesAnswers ? (right ? "Right" : "Wrong")
+                : right ? "Right: " + question.AnswerText : "Wrong: the answer was " + question.AnswerText;
             return right ? Outcome.Right : Outcome.Wrong;
         }
 

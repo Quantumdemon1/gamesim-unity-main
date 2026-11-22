@@ -30,8 +30,24 @@ namespace Gamesim.Presentation
 
         private void DealTrivia(IReadOnlyList<TriviaQuestion> quiz)
         {
-            Trivia = new TriviaRound(quiz);
+            // Only practice's house-rules quiz names a missed answer; the ranked quiz is the same after a cancel or
+            // a reload, so it says right or wrong and nothing more.
+            Trivia = new TriviaRound(quiz, namesAnswers: ReferenceEquals(quiz, TriviaRound.PracticeQuiz));
             Feedback = Trivia.Feedback;
+        }
+
+        /// <summary>
+        /// Leaving a ranked quiz after its first answer counts it as it stands: the run finishes here (what was not
+        /// answered is wrong) and true says the caller commits it. Without this, leaving and coming back to the same
+        /// quiz would let a player try each answer in turn. False - leave freely - for practice, for any other game,
+        /// and before the first answer.
+        /// </summary>
+        public bool LockInOnLeave(bool practice)
+        {
+            if (practice || Kind != CompetitionMiniGames.Kind.Trivia || Trivia == null || Trivia.NamesAnswers
+                || Trivia.Answered == 0) return false;
+            Finish();
+            return true;
         }
 
         /// <summary>
@@ -60,7 +76,7 @@ namespace Gamesim.Presentation
         {
             Trivia?.Stop();
             Score = TriviaPerformance * 10;
-            if (Trivia != null && !Trivia.Done)
+            if (Trivia != null && !Trivia.AllAnswered)
                 Feedback = "Time: " + Trivia.Answered + " of " + Trivia.Count + " answered";
         }
     }

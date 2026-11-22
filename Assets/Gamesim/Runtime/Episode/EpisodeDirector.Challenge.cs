@@ -231,11 +231,12 @@ namespace Gamesim.Episode
                 CompetitionWords.PerformanceRule(PerformanceRange(state), state.phase == EpisodePhase.FinalHoHPart1),
             };
             if (state.competitionRulesVersion >= 3) rules.Add(CompetitionWords.EarnedRule(state));
+            if (game == CompetitionMiniGames.Kind.Trivia) rules.Add(TriviaLeaveRule);
             hud.CompetitionActions("Practice this competition", () => StartChallenge(state, true), rules);
 
             hud.Section("COMPETE FOR REAL");
             hud.OptionCard(CompetitionMiniGames.EnterCaption(game),
-                "Ranked. The same board after a cancel or a reload; pause stops the clock.", "trophy",
+                game == CompetitionMiniGames.Kind.Trivia ? TriviaRankedDescription : "Ranked. The same board after a cancel or a reload; pause stops the clock.", "trophy",
                 () => StartChallenge(state), compact: true);
             bool widened = state.competitionRulesVersion >= CompetitionRules.Widened;
             hud.OptionCard(AccessibleCompetitionCaption(state.competitionRulesVersion),
@@ -310,7 +311,7 @@ namespace Gamesim.Episode
                 case CompetitionMiniGames.Kind.Tower:
                     facts.Add(new EpisodeHud.BriefingFact(target, RingTowerPuzzle.StandardRings + " rings, 3 stacks", "First stack to the last")); break;
                 case CompetitionMiniGames.Kind.Trivia:
-                    facts.Add(TriviaBriefingFact()); break;
+                    facts.Add(TriviaBriefingFact(state)); break;
                 case CompetitionMiniGames.Kind.Memory:
                     facts.Add(new EpisodeHud.BriefingFact(UiTheme.Pack("Pack1_Foundation/Icons_PNG/grid"), "Eight pairs", "A 4 by 4 board")); break;
                 case CompetitionMiniGames.Kind.Reaction:
@@ -383,7 +384,7 @@ namespace Gamesim.Episode
                 var field = EpisodeEngine.CompetitionPlayers(state).ToList();
                 competitionScreen.Show(challengeRun, CompetitionTitle(state),
                     string.Join("\n", field.Select(c => HudPrimitives.WithYou(c.name, c.isPlayer))),
-                    practice, FlipCard, TapTarget, TapDirection, ToggleChallengeGrip, CancelChallenge, MissReactionTarget, !reducedMotion,
+                    practice, FlipCard, TapTarget, TapDirection, ToggleChallengeGrip, LeaveChallenge, MissReactionTarget, !reducedMotion,
                     field.Select(c => new CompetitionEntrant(c.id, c.name, c.isPlayer, CharacterPortraits.Get(c), c)).ToList(),
                     // A final part carries its bracket onto the game screen (MOCKUP-PASS-PLAN M13); null otherwise.
                     FinalBracket.For(state));

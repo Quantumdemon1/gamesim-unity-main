@@ -128,7 +128,7 @@ namespace Gamesim.Presentation
                 case CompetitionMiniGames.Kind.Tower:
                     return run.Tower != null && run.Tower.Solved ? "TOWER MOVED" : "TIME";
                 case CompetitionMiniGames.Kind.Trivia:
-                    return run.Trivia != null && run.Trivia.Done ? "QUIZ OVER" : "TIME";
+                    return run.Trivia != null ? run.Trivia.FinishWord : "TIME";
                 default: return run.Remaining > 0 ? "ATTEMPT OVER" : "TIME";
             }
         }

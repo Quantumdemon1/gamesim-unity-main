@@ -145,7 +145,8 @@ namespace Gamesim.Presentation
                 if (!shown) continue;
                 triviaCaptions[i].text = hidden ? "?" : question.Choices[i];
                 bool revealing = round.Revealing && !hidden;
-                bool right = i == question.Answer, picked = i == round.Revealed;
+                // A ranked quiz lights only the pick, green or red: the right answer is named in practice alone.
+                bool right = i == question.Answer && (round.NamesAnswers || i == round.Revealed), picked = i == round.Revealed;
                 Color face = !revealing ? UiTheme.ActionBlue
                     : right ? UiTheme.Positive
                     : picked ? UiTheme.Danger

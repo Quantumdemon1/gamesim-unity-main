@@ -437,7 +437,8 @@
 # subset; its season soak is compiled out of the editor), 2026-11-21.
 # 10854 = 10843 + the trivia's screen: TriviaRoundTests 7 (all also in the dotnet subset) and MiniGameRunTriviaTests 4
 # (3 also in the dotnet subset), 2026-11-22.
-Gamesim.EditModeTests 10854
+# 10858 = 10854 + the trivia screen's review: TriviaRankedLeaveTests 4 (shared with the subset), 2026-11-22.
+Gamesim.EditModeTests 10858
 # The UMA-free build. 1215 = 1236, the count after the consolidation's lanes (S2a, S2b, S4a), less the 7
 # farewell probes moved to Gamesim.DiagnosticsPlayModeTests and the 14 farewell readiness tests that now
 # compile only under GAMESIM_UMA (judged on the UMA cast); 1230 = 1215 + S2d's 7, S4b's 2, S4c's 2 and
@@ -1213,4 +1214,5 @@ Gamesim.Uma.DiagnosticsPlayModeTests 10
 # run by name only), 2026-11-21.
 # 22952 = 22942 + the trivia's screen: the same 7 TriviaRoundTests cases the EditMode floor counts and 3 of
 # MiniGameRunTriviaTests' 4 (its attempt-line case reads the board's component and is compiled out here), 2026-11-22.
-Gamesim.SimulationTests 22952
+# 22956 = 22952 + the same 4 TriviaRankedLeaveTests cases, 2026-11-22.
+Gamesim.SimulationTests 22956

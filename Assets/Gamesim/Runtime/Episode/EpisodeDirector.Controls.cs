@@ -250,7 +250,7 @@ namespace Gamesim.Episode
         {
             // The game surface consumes Escape / Start / B itself, including the dismissal frame.
             if (competitionScreen != null && competitionScreen.OwnsMenuInput) return true;
-            if (challengeActive) { CancelChallenge(); return true; }
+            if (challengeActive) { LeaveChallenge(); return true; }
             // The opening before anything: it draws over every screen, and Escape underneath it
             // used to close panels and release the shot it was holding.
             if (OpeningOwnsHouse) { OpeningMenuPressed(); return true; }

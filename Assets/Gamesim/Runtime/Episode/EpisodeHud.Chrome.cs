@@ -132,7 +132,8 @@ namespace Gamesim.Episode
         ///
         /// <para>Where the folded column would still come down onto the card - the Final 3's
         /// objectives with the spectator's line are 224 tall, and at the larger text
-        /// on 16:9 even Recent Events' heading alone ended 9 units into the card - the live feed goes
+        /// on 16:9 even Recent Events' heading alone ends 9 units into the card; a finalist's, 206
+        /// tall with no line, comes down onto it only at the largest - the live feed goes
         /// too, and the rows its room buys come back. Only there: a column that clears the card once
         /// folded keeps its feed (the fix lane's review, finding 2).</para>
         ///

@@ -11,7 +11,7 @@ namespace Gamesim.Episode
 {
     /// <summary>
     /// Prepare your final case as a screen (MOCKUP-PASS M15, mockup 57): the station's band named
-    /// for it, a head with the case's state, the jury chip and the brand line, then three columns -
+    /// for it, a head with the case's state, and the jury chip, then three columns -
     /// the narratives, the season's résumé, the moments as cards with the faces they are about - and
     /// under them the tray of the moments chosen and the gold lock.
     ///

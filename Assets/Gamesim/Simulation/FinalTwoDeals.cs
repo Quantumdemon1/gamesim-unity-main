@@ -25,7 +25,12 @@ namespace Gamesim.Simulation
     ///
     /// <para><b>The player who nominates their partner</b> breaks the deal (<see cref="DealStatus.Broken"/>, theirs), as
     /// nominating a safety pact or final three partner breaks it: the partner holds it against them, and the decision
-    /// screen's dry run warns them first. A deal between two houseguests answers to no nomination, as before.</para>
+    /// screen's dry run warns them first (<see cref="CommitmentsRead.WouldBreak"/>). A deal between two houseguests answers
+    /// to no nomination, as before.</para>
+    ///
+    /// <para><b>A replacement nobody chose</b> (<see cref="Forced"/>) - the veto leaves the partner, or the player, as the
+    /// only name the Head of Household can give, as it always does at the final four - neither breaks nor lapses the
+    /// deal: nobody chose it.</para>
     ///
     /// <para>Below the level every season plays exactly as it did: nothing here is read, and nothing draws from the
     /// season's stream that did not before. No saved field: the level is the saved <c>story.mindRules</c>.</para>
@@ -48,11 +53,26 @@ namespace Gamesim.Simulation
             if (s == null || deal == null || deal.type != DealKind.FinalTwo || nominees == null) return null;
             string partner = DealResolution.Partner(deal, nominatorId);
             if (partner == null) return null;
+            // A replacement nobody chose - the only name left (at the final four, always) - ends nothing, either way.
+            if (Forced(s, nominatorId, nominees)) return null;
             if (nominatorId != s.playerId && partner == s.playerId && nominees.Contains(s.playerId))
                 return new DealResolution.Verdict { deal = deal, status = DealStatus.Expired, actorId = nominatorId, lapses = true };
             if (nominatorId == s.playerId && nominees.Contains(partner))
                 return new DealResolution.Verdict { deal = deal, status = DealStatus.Broken, actorId = nominatorId };
             return null;
+        }
+
+        /// <summary>
+        /// Whether a nomination is the veto's replacement that the Head of Household had no choice about: one name, and
+        /// nobody else who could go up - not the Head of Household, not the veto holder, not on the block and not named
+        /// this week (the one the veto saved). Read alike before the replacement is made and after it. Pure.
+        /// </summary>
+        public static bool Forced(EpisodeState s, string nominatorId, IReadOnlyList<string> nominees)
+        {
+            if (s == null || nominees == null || nominees.Count != 1 || string.IsNullOrEmpty(s.vetoHolderId) || nominatorId != s.hohId) return false;
+            string named = nominees[0];
+            return !s.Active.Any(c => c.id != named && c.id != s.hohId && c.id != s.vetoHolderId
+                && !s.nominees.Contains(c.id) && !c.nominationWeeks.Contains(s.week));
         }
 
         /// <summary>

@@ -41,8 +41,9 @@ namespace Gamesim.Tests.EditMode
             // refusal is this boundary's, in rules 2's own words, ahead of every arm: the fresh rules-2 season is on the
             // tuning rules and an All-Stars one on the alumni rules, and each is refused below 30 for its dialogue rules
             // first. An undefined version is no rules-2 season: it falls through, and the validator refuses it.
-            if (state != null && state.dialogueRulesVersion == 2 && schema != Rules2Schema)
-                throw new InvalidDataException("A season on dialogue rules 2 has no reference schema below " + Rules2Schema + ".");
+            // Rules 3 (D3) is defined from 30 too, and is refused below it in its own words the same way.
+            if (state != null && (state.dialogueRulesVersion == 2 || state.dialogueRulesVersion == 3) && schema != Rules2Schema)
+                throw new InvalidDataException("A season on dialogue rules " + state.dialogueRulesVersion + " has no reference schema below " + Rules2Schema + ".");
             // H1b: a season on the alumni rules holds histories that exist only from schema 30, so it has no 29 or 28
             // view. The schema-30 observer admits it natively, and it is checkpointed at the live 30 alone, as the
             // recorder's OldSaveTrace.Checkpoint does a state at its own schema.

@@ -446,7 +446,11 @@
 # 10859 = 10847 (the finale page with the recap on the new main) + the settings and saves leftovers' 12 (10857 - 10845
 # on this branch): disjoint cases, so the floor is their sum (the stacked landing of 22 November 2026). Counted from
 # the two sides.
-Gamesim.EditModeTests 10859
+# 10848 = 10835 + dialogue D3's 13 DialogueRules3Tests cases (2026-11-21); the re-pinned and renamed chip tests add none.
+# 10872 = 10859 (the recap, the finale page and the saves leftovers on the new main) + dialogue rules 3's 13 (10848 -
+# 10835 on this branch): disjoint cases, so the floor is their sum (the stacked landing of 22 November 2026). Counted
+# from the two sides.
+Gamesim.EditModeTests 10872
 # The UMA-free build. 1215 = 1236, the count after the consolidation's lanes (S2a, S2b, S4a), less the 7
 # farewell probes moved to Gamesim.DiagnosticsPlayModeTests and the 14 farewell readiness tests that now
 # compile only under GAMESIM_UMA (judged on the UMA cast); 1230 = 1215 + S2d's 7, S4b's 2, S4c's 2 and
@@ -1235,4 +1239,8 @@ Gamesim.Uma.DiagnosticsPlayModeTests 10
 # 22956 = 22946 (the finale page with the recap on the new main) + the settings and saves leftovers' 10 (22954 - 22944
 # on this branch): disjoint cases, so the floor is their sum (the stacked landing of 22 November 2026). Counted from
 # the two sides.
-Gamesim.SimulationTests 22956
+# 22947 = 22934 + dialogue D3's 13 DialogueRules3Tests cases, shared (2026-11-21).
+# 22969 = 22956 (the recap, the finale page and the saves leftovers on the new main) + dialogue rules 3's 13 (22947 -
+# 22934 on this branch): disjoint cases, so the floor is their sum (the stacked landing of 22 November 2026). Counted
+# from the two sides.
+Gamesim.SimulationTests 22969

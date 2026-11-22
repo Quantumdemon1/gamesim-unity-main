@@ -4,7 +4,7 @@ using System.Globalization;
 
 namespace Gamesim.Simulation
 {
-    public enum CompetitionPattern { Standard, AlternatingWindows, PreviewPairs, PressureWaves, HouseguestNames, RingTower }
+    public enum CompetitionPattern { Standard, AlternatingWindows, PreviewPairs, PressureWaves, HouseguestNames, RingTower, Trivia }
 
     /// <summary>Immutable authored mechanics. Published IDs and their rules must never be repurposed.</summary>
     public sealed class CompetitionDefinition
@@ -74,6 +74,13 @@ namespace Gamesim.Simulation
             "Move the tower of four rings from the first stack to the last, one ring at a time, never a larger ring on a smaller one. "
             + "Finishing earns most; fewer moves and time left add to it. Fifteen moves is the fewest it can be done in.");
 
+        // Rules 6 (the trivia competition): a mental game about this season's own public events, dealt only further
+        // along in a season (CompetitionTrivia says when and what it asks).
+        public static readonly CompetitionDefinition Trivia = new CompetitionDefinition(
+            "season-trivia-v6", "Season Trivia", "Mental", CompetitionPattern.Trivia, 60,
+            "Five questions about what has happened in this house this season: who won, who went on the block, who left and by what vote. "
+            + "Each right answer counts the same.");
+
         /// <summary>
         /// Every console game: the boards rules 3 and 4 deal, each played on a station's console. The ring
         /// tower is played on the yard's stacks instead, so it is not here (every console's tests walk this
@@ -83,16 +90,17 @@ namespace Gamesim.Simulation
             SignalSprint, SwitchbackSignals, HouseMemory, FirstImpressions, HoldYourGround, PressureCooker,
             RollTheDice, WordScramble, HouseguestScramble });
 
-        /// <summary>Every game any rules deal: the console games and rules 5's ring tower. Published ids, never reused.</summary>
+        /// <summary>Every game any rules deal: the console games, rules 5's ring tower and rules 6's trivia. Published ids, never reused.</summary>
         public static IReadOnlyList<CompetitionDefinition> Catalogue { get; } = Array.AsReadOnly(new[] {
             SignalSprint, SwitchbackSignals, HouseMemory, FirstImpressions, HoldYourGround, PressureCooker,
-            RollTheDice, WordScramble, HouseguestScramble, RingTower });
+            RollTheDice, WordScramble, HouseguestScramble, RingTower, Trivia });
 
         public static CompetitionDefinition Standard(string category) => category == "Skill" ? SignalSprint
             : category == "Mental" ? HouseMemory : category == "Endurance" ? HoldYourGround
             : category == "Luck" ? RollTheDice : category == "Social" ? WordScramble : null;
 
         public static CompetitionDefinition For(EpisodeState state) => state.competitionRulesVersion < 3 ? null
+            : state.competitionRulesVersion >= CompetitionRules.Trivia ? Version6(state, state.week, state.phase)
             : state.competitionRulesVersion >= CompetitionRules.RingTower ? Version5(state.seed, state.week, state.phase)
             : state.competitionRulesVersion >= CompetitionRules.Widened ? Version4(state.seed, state.week, state.phase)
             : Version3(state.seed, state.week, state.phase);
@@ -162,6 +170,22 @@ namespace Gamesim.Simulation
             uint offset = SeededRandom.HashSeed(seasonSeed.ToString(CultureInfo.InvariantCulture) + "/" + CompetitionRules.Mental + "/competition-v5");
             bool variant = ((offset + (uint)(appearance / 2)) & 1u) != 0;
             return variant ? FirstImpressions : HouseMemory;
+        }
+
+        /// <summary>
+        /// Rules 6's selector: rules 5's, but a weekly mental competition rules 5 deals as a memory board is the
+        /// <see cref="Trivia"/> once the season is far enough along to ask about (<see cref="CompetitionTrivia.Eligible(EpisodeState, int)"/>).
+        /// The Ring Tower keeps every one of its competitions and the Final HoH keeps its rounds. It reads the season's
+        /// seed and its saved ledger for the weeks before <paramref name="week"/>, nothing the week itself changes, so a
+        /// competition is the same game from its briefing to its commit and after a reload. No season random state is read.
+        /// </summary>
+        public static CompetitionDefinition Version6(EpisodeState state, int week, EpisodePhase phase)
+        {
+            if (state == null) throw new ArgumentNullException(nameof(state));
+            var dealt = Version5(state.seed, week, phase);
+            if (phase != EpisodePhase.HoH && phase != EpisodePhase.Veto) return dealt;
+            if (dealt != HouseMemory && dealt != FirstImpressions) return dealt;
+            return CompetitionTrivia.Eligible(state, week) ? Trivia : dealt;
         }
 
         /// <summary>

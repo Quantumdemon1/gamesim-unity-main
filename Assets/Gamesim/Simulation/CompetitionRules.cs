@@ -49,10 +49,26 @@ namespace Gamesim.Simulation
         public const int RingTower = 5;
 
         /// <summary>
-        /// The newest rules a season may be played under: a bound for validation, and the rules
-        /// <c>ShippedRules.ApplyFresh</c> starts every season the game starts on. Never a behaviour.
+        /// Rules 6 (the trivia competition): rules 5 with one more mental game, a quiz about this season's own public
+        /// events (<see cref="CompetitionTrivia"/>), dealt only further along in a season: from week 4, after three
+        /// evictions, and only when enough can be asked. It takes the place of a memory board, never of the Ring Tower.
+        /// The kinds, their order, the weights, the rolls and the throw are rules 5's, so the housemates' scores draw
+        /// exactly what they drew. Defined and not enrolled: no season the game starts plays it until
+        /// <see cref="Current"/> moves to it.
+        /// </summary>
+        public const int Trivia = 6;
+
+        /// <summary>
+        /// The rules <c>ShippedRules.ApplyFresh</c> starts every season the game starts on, and the bound the frozen
+        /// readers of older saves hold. Never a behaviour.
         /// </summary>
         public const int Current = RingTower;
+
+        /// <summary>
+        /// The newest rules a season may be played under: the live validation's bound. Above <see cref="Current"/>
+        /// while a level is defined and not yet enrolled. Never a behaviour.
+        /// </summary>
+        public const int Newest = Trivia;
 
         public const string Skill = "Skill", Mental = "Mental", Endurance = "Endurance", Luck = "Luck", Social = "Social";
 

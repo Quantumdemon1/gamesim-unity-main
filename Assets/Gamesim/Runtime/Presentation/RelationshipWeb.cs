@@ -46,6 +46,18 @@ namespace Gamesim.Presentation
         public const string SuspectedMarkerName = "Suspected pact";
         /// <summary>The key's word for that line.</summary>
         public const string SuspectedLegendCopy = "Suspected pact";
+        /// <summary>
+        /// A hunch between two houseguests (story rules 12, plan 32 §I4): what the player noticed them doing together,
+        /// read from their own sightings alone (<see cref="Overhearing.Hunches"/>), never from the real pacts. Dashed in a
+        /// pattern per tone that reads without colour - warm a long dash, scheming dotted with a "?", tense a zigzag - and
+        /// faded when no sighting is current. Not an <see cref="EdgeName"/>, and never a <see cref="SuspectedMarkerName"/>.
+        /// </summary>
+        public const string HunchMarkerName = "Hunch line";
+        /// <summary>The label at a hunch line's middle: its confidence, "maybe", "probably" or "often".</summary>
+        public const string HunchLabelName = "Hunch label";
+        /// <summary>The filter chip that shows or hides the hunch lines; its caption is <see cref="Overhearing.HunchesCaption"/>.</summary>
+        public const string HunchesChipName = "Filter relationships: " + Overhearing.HunchesCaption;
+        public const string HunchesHeading = "Your hunches";
         /// <summary>The column's door to the notebook's alliances page, under the player's counts.</summary>
         public const string AlliancesDoorCaption = "Your alliances";
         /// <summary>
@@ -165,6 +177,19 @@ namespace Gamesim.Presentation
         private static string filterSession;
         private static Filter filter;
         public static Filter CurrentFilter => filter;
+
+        /// <summary>Whether the hunch lines are hidden by their chip, for one session; a new session shows them.</summary>
+        private static string hunchSession;
+        private static bool hunchesHidden;
+        public static bool HunchesShown(EpisodeState state) => !(hunchSession == state?.sessionId && hunchesHidden);
+        public static void ToggleHunches(EpisodeState state)
+        {
+            bool shown = HunchesShown(state);
+            hunchSession = state?.sessionId; hunchesHidden = shown;
+        }
+        /// <summary>Domain reload is off at play start: the chip's state does not outlive a play session.</summary>
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        private static void ResetHunches() { hunchSession = null; hunchesHidden = false; }
 
         public static void SetFilter(EpisodeState state,Filter value)
         {
@@ -439,7 +464,10 @@ namespace Gamesim.Presentation
             }
             // The mockup's tab pills: a glyph and a word each, the one showing in the action blue.
             const float pill = 104f, step = 110f;
-            toolbar.sizeDelta=new Vector2(4f*step*scale,34f*scale);
+            // At story rules 12, once the player holds a hunch, a fifth chip shows or hides the hunch lines (§I4).
+            bool hunchChip=Overhearing.Hunches(state).Count>0;
+            toolbar.sizeDelta=new Vector2((hunchChip?5f:4f)*step*scale,34f*scale);
+            if(hunchChip)HunchesChip(toolbar,state,4f*step*scale,pill*scale,scale,font,refresh);
             var values=new[]{Filter.All,Filter.Allies,Filter.Friends,Filter.Tension};
             var glyphs=new[]{"people","handshake","heart","target"};
             for(int i=0;i<values.Length;i++)
@@ -476,6 +504,36 @@ namespace Gamesim.Presentation
                     selectedMark.GetComponent<Image>().raycastTarget = false;
                 }
             }
+        }
+
+        /// <summary>
+        /// The hunch lines' chip (§I4), after the four filters and drawn as they are: the action blue while the lines show.
+        /// A toggle, not a fifth filter: the faces on the ring stay as the filter has them. Its caption, "Hunches", is the
+        /// control's name after the filters' own "Filter relationships: " and is never decorated.
+        /// </summary>
+        private static void HunchesChip(RectTransform toolbar,EpisodeState state,float x,float width,float scale,TMP_FontAsset font,Action<string> refresh)
+        {
+            bool on=HunchesShown(state);
+            var rect=HudPrimitives.Fill(HunchesChipName,toolbar,on ? UiTheme.ActionBlue : UiTheme.GlassFill,16);
+            Place(rect,x,0,width,34f*scale);
+            UiTheme.AddBorder(rect,16,on ? UiTheme.Glow : new Color(UiTheme.Hairline.r,UiTheme.Hairline.g,UiTheme.Hairline.b,.45f));
+            var button=rect.gameObject.AddComponent<Button>();button.targetGraphic=rect.GetComponent<Image>();
+            button.targetGraphic.raycastTarget=true;
+            button.onClick.AddListener(()=>{ToggleHunches(state);refresh?.Invoke(SelectedFor(state)?.id);});
+            float lead=10f*scale;
+            var icon=UiTheme.Icon("eye");
+            if(icon!=null)
+            {
+                var mark=new GameObject("Filter mark",typeof(RectTransform),typeof(Image)).GetComponent<Image>();
+                mark.rectTransform.SetParent(rect,false);
+                mark.rectTransform.anchorMin=mark.rectTransform.anchorMax=new Vector2(0f,.5f);mark.rectTransform.pivot=new Vector2(0f,.5f);
+                mark.rectTransform.anchoredPosition=new Vector2(12f*scale,0f);mark.rectTransform.sizeDelta=new Vector2(16f*scale,16f*scale);
+                mark.sprite=icon;mark.color=on?Color.white:UiTheme.Heading;mark.preserveAspect=true;mark.raycastTarget=false;
+                lead=32f*scale;
+            }
+            var label=Text(rect,Overhearing.HunchesCaption,13,on?Color.white:UiTheme.Paper,on?UiTheme.Weight.SemiBold:UiTheme.Weight.Medium,scale,font,TextAlignmentOptions.MidlineLeft);
+            label.rectTransform.anchorMin=Vector2.zero;label.rectTransform.anchorMax=Vector2.one;
+            label.rectTransform.offsetMin=new Vector2(lead,0f);label.rectTransform.offsetMax=new Vector2(-6f*scale,0f);
         }
 
         private static Vector2 Ring(int index, int count, float radius, float stretch)
@@ -537,6 +595,17 @@ namespace Gamesim.Presentation
                 SuspectedMarker(hub, Ring(all.IndexOf(a), all.Count, radius, shape.Stretch),
                     Ring(all.IndexOf(b), all.Count, radius, shape.Stretch), scale);
             }
+            // And the player's hunches (story rules 12), while their chip shows them: what the player saw, between two
+            // houseguests both in view. Never filtered by the real pacts, so a missing line proves nothing.
+            if (HunchesShown(state))
+                foreach (var hunch in Overhearing.Hunches(state))
+                {
+                    var a = others.FirstOrDefault(actor => actor.id == hunch.firstId);
+                    var b = others.FirstOrDefault(actor => actor.id == hunch.secondId);
+                    if (a == null || b == null) continue;
+                    HunchMarker(hub, Ring(all.IndexOf(a), all.Count, radius, shape.Stretch),
+                        Ring(all.IndexOf(b), all.Count, radius, shape.Stretch), hunch, scale, font);
+                }
 
             string focusId = focus != null ? focus.id : null;
             for (int i = 0; i < others.Count; i++)
@@ -627,6 +696,55 @@ namespace Gamesim.Presentation
             float dash = 6f * scale, gap = 7f * scale;
             for (float at = 0f; at < length; at += dash + gap)
                 Segment(marker, at, Mathf.Min(dash, length - at), weight, tint);
+        }
+
+        /// <summary>
+        /// A hunch between two faces on the ring (§I4): thin, in the paper's ink rather than any standing's hue, so it never
+        /// reads as the key's distrust or the purple pact. Its pattern carries the tone without colour: warm a long dash,
+        /// scheming short dots, tense a zigzag. Two tones on one pair sit side by side. A hunch with no current sighting
+        /// fades. The label at its middle says how sure the player can be: "maybe", "probably", "often", with a "?" on a
+        /// scheming one.
+        /// </summary>
+        private static void HunchMarker(RectTransform hub, Vector2 from, Vector2 to, Overhearing.Hunch hunch, float scale, TMP_FontAsset font)
+        {
+            var delta = to - from;
+            float length = delta.magnitude;
+            if (length <= 1f) return;
+            float weight = 2f * scale, side = (hunch.tone - HunchTone.Scheming) * 5f * scale;
+            var ink = UiTheme.Paper;
+            var tint = new Color(ink.r, ink.g, ink.b, hunch.current ? .8f : .3f);
+            var marker = new GameObject(HunchMarkerName, typeof(RectTransform)).GetComponent<RectTransform>();
+            marker.SetParent(hub, false);
+            marker.anchorMin = new Vector2(.5f, .5f); marker.anchorMax = new Vector2(.5f, .5f);
+            marker.pivot = new Vector2(0f, .5f);
+            marker.anchoredPosition = from;
+            marker.sizeDelta = new Vector2(length, weight);
+            marker.localRotation = Quaternion.Euler(0f, 0f, Mathf.Atan2(delta.y, delta.x) * Mathf.Rad2Deg);
+            if (hunch.tone == HunchTone.Scheming)
+            {
+                float dot = 3f * scale, gap = 5f * scale;
+                for (float at = 0f; at < length; at += dot + gap)
+                    Segment(marker, at, Mathf.Min(dot, length - at), weight, tint, side);
+            }
+            else if (hunch.tone == HunchTone.Tense)
+            {
+                // A zigzag: short dashes stepping either side of the line in turn.
+                float dash = 6f * scale, step = 2.5f * scale; int turn = 0;
+                for (float at = 0f; at < length; at += dash, turn++)
+                    Segment(marker, at, Mathf.Min(dash, length - at), weight, tint, side + (turn % 2 == 0 ? step : -step));
+            }
+            else
+            {
+                float dash = 16f * scale, gap = 6f * scale;
+                for (float at = 0f; at < length; at += dash + gap)
+                    Segment(marker, at, Mathf.Min(dash, length - at), weight, tint, side);
+            }
+            // Upright at the middle, on the hub rather than the turned line.
+            var label = Text(hub, Overhearing.Label(hunch), 11, tint, UiTheme.Weight.Medium, scale, font, TextAlignmentOptions.Center);
+            label.gameObject.name = HunchLabelName;
+            label.raycastTarget = false;
+            var normal = new Vector2(-delta.y, delta.x) / length;
+            Centre(label.rectTransform, from + delta * .5f + normal * (side + 9f * scale), 72f * scale, 16f * scale);
         }
 
         /// <summary>One bar of a line, <paramref name="offset"/> across it from its middle (a double line's two bars).</summary>
@@ -984,6 +1102,7 @@ namespace Gamesim.Presentation
                 if (secrets.Count == 0) Note(column, "Nothing yet.", scale, font);
                 foreach (var secret in secrets.Take(ListLimit))
                     TextRow(column, secret.isPrivate ? "eye" : "journal", UiTheme.Strategic, secret.text, scale, font);
+                HunchRows(column, state, null, scale, font);
             }
             else
             {
@@ -1027,6 +1146,7 @@ namespace Gamesim.Presentation
                 foreach (var memory in known.Take(ListLimit))
                     TextRow(column, memory.isPrivate ? "eye" : "journal", UiTheme.Strategic,
                         Localisation.Text("Week") + " " + memory.week + ": " + NarrativeDisplay.Render(state, MemoryWords.Said(state, memory)), scale, font);
+                HunchRows(column, state, focus.id, scale, font);
 
                 var record = state.relationships.FirstOrDefault(r => r.fromId == state.playerId && r.toId == focus.id);
                 var history = record != null
@@ -1040,6 +1160,20 @@ namespace Gamesim.Presentation
                         entry.impactScore >= 0 ? UiTheme.Allied : UiTheme.Conflict,
                         Localisation.Text("Week") + " " + entry.week + " · " + entry.description, scale, font);
             }
+        }
+
+        /// <summary>
+        /// The player's hunches in the side column (story rules 12, §I4): "Your hunch: Maya and Taylor seem close (noticed
+        /// in weeks 4 and 5).", those naming <paramref name="aboutId"/> when given. Nothing at all, heading included, while
+        /// there are none, so a season below 12 reads as it always has.
+        /// </summary>
+        private static void HunchRows(RectTransform column, EpisodeState state, string aboutId, float scale, TMP_FontAsset font)
+        {
+            var hunches = Overhearing.Hunches(state).Where(h => aboutId == null || h.firstId == aboutId || h.secondId == aboutId).ToList();
+            if (hunches.Count == 0) return;
+            SectionHeading(column, HunchesHeading, hunches.Count, scale, font);
+            foreach (var hunch in hunches.Take(ListLimit))
+                TextRow(column, "eye", hunch.current ? UiTheme.Paper : UiTheme.Muted, Overhearing.Line(state, hunch), scale, font);
         }
 
         /// <summary>

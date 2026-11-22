@@ -56,6 +56,9 @@
     <!-- Rules 2's budget and room refusals, at each limit and one step short of it, since the chip writes rules 2. -->
     <Compile Include="$(EditMode)DialogueRules2CapacityTests.cs" />
     <Compile Include="$(EditMode)DialogueCampaignPleaFallbackTests.cs" />
+    <!-- Dialogue rules 3 (DIALOGUE-PLAN D3): the four campaign trees and the appeal to the veto holder. -->
+    <Compile Include="$(EditMode)DialogueRules3Season.cs" />
+    <Compile Include="$(EditMode)DialogueRules3Tests.cs" />
     <!-- The seasons the rules-2 HUD's PlayMode tests replay, proven headlessly (EpisodePlayModeTests.DialogueRules2Hud). -->
     <Compile Include="$(EditMode)DialogueRules2HudWitnessTests.cs" />
     <!-- NpcInvitation.cs is included by the whole Simulation glob above. -->

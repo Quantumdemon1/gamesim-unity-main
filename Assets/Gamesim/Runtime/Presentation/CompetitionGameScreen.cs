@@ -249,6 +249,9 @@ namespace Gamesim.Presentation
         {
             if (!IsShowing || run == null || run.Finished) return;
             if (IsAssembling) { ToggleAssemblyPause(); return; }
+            // Pause holds the focus through a practice's count, so Enter or A reaches it as a Submit
+            // too: that press skips the count (SkipPracticeCount), whichever of the two reads it first.
+            if (ConfirmSkipsTheCount()) return;
             RememberGameFocus();
             Paused = !Paused; controls.interactable = playing && !Paused;
             pause.GetComponentInChildren<TMP_Text>().text = Paused ? "Resume" : "Pause";
@@ -275,6 +278,8 @@ namespace Gamesim.Presentation
             var input = Gamesim.House.HouseInput.Actions;
             NoteInputDevice();
             if (input.CompetitionBack.WasPressedThisFrame()) { LeaveRequested(); return; }
+            // Enter or the pad's A skips a practice's 3-2-1: nothing rides on a practice's start.
+            if (input.CompetitionConfirm.WasPressedThisFrame()) SkipPracticeCount();
             // On the word board every letter spells while it is played, P among them: the key's
             // pause waits, the pad's Start does not.
             var pause = input.CompetitionPause;
@@ -296,6 +301,29 @@ namespace Gamesim.Presentation
         // briefing), which one stray key should not do. A practice, or a board not yet started,
         // leaves on the first press as it always has.
         private bool leaveArmed;
+
+        /// <summary>
+        /// Ends a practice's ready count at once, so <see cref="AdvanceReady"/> on the next frame says GO:
+        /// Confirm (Enter, the pad's A) presses it. Only the plain 3-2-1 of a practice shown on an
+        /// earlier frame - never a ranked board's count, a memory preview, a held, paused or
+        /// assembling board, or the frame the board opened on. Whether the count was skipped.
+        /// </summary>
+        public bool SkipPracticeCount()
+        {
+            if (ranked || !IsShowing || playing || previewStarted || held || Paused || IsAssembling) return false;
+            if (run == null || run.Finished || countdownLeft <= 0 || Time.frameCount <= shownFrame) return false;
+            // GO on the next frame, as after the opening press: the press that skipped is no play.
+            countdownLeft = 0f; shownFrame = countSkippedFrame = Time.frameCount;
+            return true;
+        }
+
+        /// <summary>The frame a practice's count was skipped on: that frame's Submit on Pause is the same press.</summary>
+        private int countSkippedFrame = -1;
+
+        /// <summary>Whether this frame's Confirm skipped (or now skips) a practice's count, so Pause leaves it alone.</summary>
+        private bool ConfirmSkipsTheCount() =>
+            countSkippedFrame == Time.frameCount
+            || (Gamesim.House.HouseInput.Actions.CompetitionConfirm.WasPressedThisFrame() && SkipPracticeCount());
 
         /// <summary>Whether leaving asks first: a ranked attempt under way.</summary>
         private bool LeavingAsks => ranked && playing && run != null && !run.Finished;

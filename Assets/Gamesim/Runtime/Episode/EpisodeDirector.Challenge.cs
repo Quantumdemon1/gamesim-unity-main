@@ -502,12 +502,12 @@ namespace Gamesim.Episode
             if (challengeRun == null || !challengeRun.Finished || challengePractice || challengeCommitting) return;
             if (!IsCurrentDiaryRevision(challengeOrigin))
             {
-                competitionScreen.ShowFinished("The episode changed during this attempt. Go back to the briefing to refresh.", CompetitionGameScreen.BackToBriefingCaption, CancelChallenge, hideCancel: true);
+                competitionScreen.ShowFinished("The episode changed during this attempt. Choose " + CompetitionGameScreen.BackToBriefingCaption + " to refresh.", CompetitionGameScreen.BackToBriefingCaption, CancelChallenge, hideCancel: true);
                 return;
             }
             challengeCommitting = true;
-            // Said on the standings card the commit opens, then forgotten.
-            pendingAttemptLine = CompetitionGameScreen.AttemptLine(challengeRun);
+            // Said on the standings card the commit opens, then forgotten: the finish plate's headline over the measure.
+            pendingAttemptLine = CompetitionGameScreen.AttemptBlock(challengeRun);
             EndCompetitionArena();
             challengeActive = false;
             // Played live: the ranked game's own arena was the show (EpisodeDirector.CompetitionShow.cs).

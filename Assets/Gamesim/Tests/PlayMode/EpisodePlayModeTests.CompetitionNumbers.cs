@@ -207,7 +207,7 @@ namespace Gamesim.Tests.PlayMode
         {
             foreach (var text in card.GetComponentsInChildren<TMP_Text>(true))
             {
-                if (text.name == "Player attempt") continue;
+                if (text.name == "Player attempt" || text.name == "Attempt headline") continue;
                 Assert.That(CompetitionWords.HasDecimal(text.text), Is.False, where + ": '" + text.name + "' says a number: " + text.text);
             }
         }

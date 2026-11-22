@@ -101,7 +101,7 @@ namespace Gamesim.Presentation
         {
             finishPlate.gameObject.SetActive(true);
             finishPlate.SetAsLastSibling();
-            finishHeadline.text = FinishHeadline();
+            finishHeadline.text = FinishHeadline(run);
             finishMeasure.text = FinishMeasure();
             finishPerformance.text = "Performance " + (run.Performance * 100).ToString("0") + "%";
             finishSummary.text = summary ?? "";
@@ -114,7 +114,7 @@ namespace Gamesim.Presentation
             LayoutFinishPlate();
         }
 
-        private string FinishHeadline()
+        private static string FinishHeadline(MiniGameRun run)
         {
             switch (run.Kind)
             {
@@ -177,6 +177,17 @@ namespace Gamesim.Presentation
                 default: return null;
             }
             return "Your attempt  ·  " + measure + "  ·  performance " + (run.Performance * 100).ToString("0") + "%";
+        }
+
+        /// <summary>
+        /// The player's attempt as the standings card says it: the finish plate's headline ("BOARD
+        /// CLEARED", "TIME") over <see cref="AttemptLine"/>, joined by <see cref="CompetitionResult.AttemptHeadlineBreak"/>;
+        /// null where there is no attempt line to say. Presentation only - nothing saves it.
+        /// </summary>
+        public static string AttemptBlock(MiniGameRun run)
+        {
+            string line = AttemptLine(run);
+            return line == null ? null : CompetitionResult.JoinAttempt(FinishHeadline(run), line);
         }
 
         // ---------------------------------------------------------------- per-game plumbing

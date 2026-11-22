@@ -48,7 +48,7 @@ namespace Gamesim.Presentation
             policyMark = Picture("Policy mark", challengeCard, UiTheme.Pack(PackArt.KitIconInfo), UiTheme.Muted);
             policyLabel = Label("Attempt policy", challengeCard, practice
                 ? CompetitionWords.PracticePolicy
-                : "Cancel or reload returns to this same ranked board. Scores commit once, after play ends.",
+                : CompetitionWords.RankedPolicy,
                 12, 0, 0, 10, 10, UiTheme.Muted);
             policyLabel.alignment = TextAlignmentOptions.TopLeft; Fit(policyLabel, 10);
         }

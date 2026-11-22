@@ -433,7 +433,8 @@
 # 10834 = 10831 + slice 2's review fixes: FreeTalkS2ReviewTests 3 (all also in the dotnet subset), 2026-11-21.
 # 10835 = 10834 + the review's veto fix: FreeTalkS2ReviewTests' case for a Friend a housemate Head of Household names
 # after the player's veto (also in the dotnet subset), 2026-11-21.
-Gamesim.EditModeTests 10835
+# 10852 = 10835 + competition show edges: CompetitionShowEdgesTests 17 (the walk out waits for its whole field, the course's legs, a late runner), 2026-11-21.
+Gamesim.EditModeTests 10852
 # The UMA-free build. 1215 = 1236, the count after the consolidation's lanes (S2a, S2b, S4a), less the 7
 # farewell probes moved to Gamesim.DiagnosticsPlayModeTests and the 14 farewell readiness tests that now
 # compile only under GAMESIM_UMA (judged on the UMA cast); 1230 = 1215 + S2d's 7, S4b's 2, S4c's 2 and
@@ -680,7 +681,8 @@ Gamesim.EditModeTests 10835
 # is their sum (menu slice 4 squashed onto the stack for its landing, 2026-11-17). Counted from the two sides.
 # 1674 = 1672 + free talk slice 1's screen: EpisodePlayModeTests.JustTalk 2, 2026-11-19.
 # 1676 = 1674 + free talk slice 2's screen: EpisodePlayModeTests.JustTalkStages 2, 2026-11-20.
-Gamesim.PlayModeTests 1676
+# 1678 = 1676 + competition show edges: the 2 EpisodePlayModeTests.CompetitionShowEdges cases (the player runs the course leg; sixteen at the quick pace), 2026-11-21.
+Gamesim.PlayModeTests 1678
 # The UMA build of the same assembly, read by a plan built without -WithoutUma. 1281 = the 1241 above + the
 # 40 tests that compile only under GAMESIM_UMA, as run at r1 (2026-10-16): in EpisodePlayModeTests,
 # GroundedFarewell 11, Creator 9, HouseLife 8, Emotes 3, OpeningCaptures 2, and one each in CreatorEntry,
@@ -851,7 +853,8 @@ Gamesim.PlayModeTests 1676
 # is their sum (menu slice 4 squashed onto the stack for its landing, 2026-11-17). Counted from the two sides.
 # 1719 = 1717 + free talk slice 1's screen: the same 2 EpisodePlayModeTests.JustTalk cases, 2026-11-19.
 # 1721 = 1719 + free talk slice 2's screen: the same 2 EpisodePlayModeTests.JustTalkStages cases, 2026-11-20.
-Gamesim.PlayModeTests.UmaBuild 1721
+# 1723 = 1721 + competition show edges: the 2 EpisodePlayModeTests.CompetitionShowEdges cases (the player runs the course leg; sixteen at the quick pace), 2026-11-21.
+Gamesim.PlayModeTests.UmaBuild 1723
 # The UMA bodies: runs only where the GAMESIM_UMA define is set (the working tree and the D: copy).
 # 82 = the 89 run on 2026-10-15, less the 7 farewell probes moved to Gamesim.Uma.DiagnosticsPlayModeTests;
 # 85 = 82 + the 3 farewell readiness decision tests (UmaFarewellReadinessDecisionPlayModeTests, 2026-10-16);
@@ -1203,4 +1206,5 @@ Gamesim.Uma.DiagnosticsPlayModeTests 10
 # their sum (slice 2). Counted from the two sides.
 # 22933 = 22930 + slice 2's review fixes: the same 3 FreeTalkS2ReviewTests cases, 2026-11-21.
 # 22934 = 22933 + the same FreeTalkS2ReviewTests case the EditMode floor counts, 2026-11-21.
-Gamesim.SimulationTests 22934
+# 22951 = 22934 + competition show edges: CompetitionShowEdgesTests 17 (the walk out waits for its whole field, the course's legs, a late runner), 2026-11-21.
+Gamesim.SimulationTests 22951

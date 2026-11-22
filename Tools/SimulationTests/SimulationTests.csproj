@@ -109,8 +109,6 @@
     <Compile Include="$(EditMode)CeremonyCardPressTests.cs" />
     <Compile Include="$(EditMode)CeremonyCardDeviceTests.cs" />
     <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/CeremonyCardWords.cs" />
-    <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/CeremonyPacing.cs" />
-    <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/CaptionTiming.cs" />
     <!-- The main menu's season card (change 10): a read-only look at a save's header, and its words; System and Newtonsoft only, so it runs here too. -->
     <Compile Include="$(EditMode)SaveHeaderTests.cs" />
     <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Persistence/SaveHeader.cs" />

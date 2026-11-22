@@ -72,7 +72,7 @@ namespace Gamesim.Episode
                     new Vector2((10f + column * CastMenuGap) * scale + column * cell, -(EmoteMenuHead + line * (CastMenuRow + CastMenuGap)) * scale),
                     new Vector2(cell, CastMenuRow * scale), rows[i].action);
                 var words = button.GetComponentInChildren<TMP_Text>();
-                if (words != null) { words.fontSize = 16; words.fontSizeMax = 16; }
+                if (words != null) words.fontSize = words.fontSizeMax = TextSizeFit.Font(TextSizeFit.MenuRowFont, scale);
             }
             bool onTheCard = false;
             foreach (var row in rows) onTheCard |= row.caption == preferredSelection;

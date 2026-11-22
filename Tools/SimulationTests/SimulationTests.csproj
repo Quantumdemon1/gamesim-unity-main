@@ -109,12 +109,18 @@
     <Compile Include="$(EditMode)CeremonyCardPressTests.cs" />
     <Compile Include="$(EditMode)CeremonyCardDeviceTests.cs" />
     <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/CeremonyCardWords.cs" />
-    <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/CeremonyPacing.cs" />
-    <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/CaptionTiming.cs" />
     <!-- One card clock and one controls chip on every ceremony card (UI-UX plan D3a, D3b): pure, so it runs here too. -->
     <Compile Include="$(EditMode)CeremonyCardClockTests.cs" />
     <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/CeremonyCardClock.cs" />
     <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/CeremonyChipMetrics.cs" />
+    <!-- The main menu's season card (change 10): a read-only look at a save's header, and its words; System and Newtonsoft only, so it runs here too. -->
+    <Compile Include="$(EditMode)SaveHeaderTests.cs" />
+    <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Persistence/SaveHeader.cs" />
+    <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/SeasonCardWords.cs" />
+    <!-- The tour offered, not replayed, and its card docked beside what each step lights: the placement arithmetic and the offer's words; pure, so they run here too. -->
+    <Compile Include="$(EditMode)TourDockTests.cs" />
+    <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/TourDock.cs" />
+    <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/TourOfferWords.cs" />
     <!-- Menu slice 2, part d: the decisions' and the cards' one way out, held in the source; pure, so it runs here too. -->
     <Compile Include="$(EditMode)MenuOneWayBackDecisionsScanTests.cs" />
     <!-- No slogan on a screen or a sign (the owner, 2026-11-14 and 2026-11-21), held in the source and the scenes. -->
@@ -463,6 +469,7 @@
     <Compile Include="$(EditMode)RelationshipLedgerTests.cs" />
     <Compile Include="$(EditMode)SocialActionParityTests.cs" />
     <Compile Include="$(EditMode)SocialVocabularyTests.cs" />
+    <Compile Include="$(EditMode)WholeHouseMoveLockTests.cs" />
     <Compile Include="$(EditMode)StorylineTests.cs" />
     <Compile Include="$(EditMode)StorySeasonTests.cs" />
     <Compile Include="$(EditMode)StoryCatalogLintTests.cs" />
@@ -577,6 +584,7 @@
     <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/KeyBindings.cs" />
     <Compile Include="$(EditMode)KeyBindingsTests.cs" />
     <Compile Include="$(EditMode)InputGlossaryTests.cs" />
+    <Compile Include="$(EditMode)InputGlossaryDeviceHintsTests.cs" />
     <Compile Include="$(EditMode)InputRawReadScanTests.cs" />
     <!-- The ceremony cards' press guard (A4f), the Back matrix's representative rows rest on it. -->
     <Compile Include="$(EditMode)CeremonyCardInputScanTests.cs" />
@@ -613,6 +621,9 @@
     <!-- The one way out's words and measures (menu slice 2): its plain-C# half, without the builders. -->
     <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/WayOut.cs" />
     <Compile Include="$(EditMode)WayOutWordsTests.cs" />
+    <!-- Largest text (U9, backlog item 23): the menus, side cards and ways out follow the text size; plain C#, with its source scan. -->
+    <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/TextSizeFit.cs" />
+    <Compile Include="$(EditMode)TextSizeFitTests.cs" />
     <!-- Menu slice 3, part b: the one trust chip's bands and words (plain C#; its builder is EditMode only), and the scan that every reading page draws it. -->
     <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/TrustChip.cs" />
     <Compile Include="$(EditMode)MenuNotebookBTrustChipTests.cs" />

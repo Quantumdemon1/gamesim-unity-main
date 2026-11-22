@@ -63,12 +63,16 @@ namespace Gamesim.Episode
         /// <summary>Whether the hints are in the pad's words: the device last pressed on was a pad.</summary>
         public bool PadHints => padHints;
 
-        /// <summary>The device last pressed on, as the director hears it: the help card is reworded at once, the chips at the frame's end.</summary>
+        /// <summary>
+        /// The device last pressed on, as the director hears it: the help card, the panel's hint and
+        /// the follow chip are reworded at once (RewordPanelHint), the button chips at the frame's end.
+        /// </summary>
         public void SetPadHints(bool pad)
         {
             if (pad == padHints) return;
             padHints = pad;
             if (helpText != null) helpText.text = Localisation.Text(InputGlossary.HelpCard(pad));
+            RewordPanelHint();
         }
 
         /// <summary>

@@ -502,7 +502,7 @@ namespace Gamesim.Episode
             switch (show.Plan.Family)
             {
                 case CompetitionShowFamily.Table: return;
-                case CompetitionShowFamily.Course: ReserveCompetitionCourseMarks(show, state, staged, rooms, filter, floor, used); return;
+                case CompetitionShowFamily.Course: ReserveCompetitionCourseMarks(show, state, staged, rooms, filter, floor, used, places); return;
                 default: ReserveCompetitionShowSideMarks(show, state, staged, rooms, filter, floor, places, used); return;
             }
         }
@@ -516,9 +516,13 @@ namespace Gamesim.Episode
         /// post with no clear mark runs no leg.
         /// </summary>
         private void ReserveCompetitionCourseMarks(CompetitionShowRun show, EpisodeState state, IReadOnlyCollection<string> staged,
-            HouseRoomQuery rooms, NavMeshQueryFilter filter, Collider floor, List<Vector3> used)
+            HouseRoomQuery rooms, NavMeshQueryFilter filter, Collider floor, List<Vector3> used, IEnumerable<Vector3> places = null)
         {
             var playerCapsule = player.GetComponent<CapsuleCollider>();
+            // The player's own houseguest always runs a leg (competition show edges, after the built
+            // house's run, where their post at the middle of the yard found none of the course's own
+            // marks): theirs is tried every way and at the yard's own clear places too.
+            var placeSpots = places != null ? places.Select(p => new CompetitionCourseLegs.Spot(p.x, p.z)).ToList() : null;
             var runners = new Dictionary<string, (Transform self, float radius, float height, Vector3 post)>();
             foreach (string id in show.Plan.Standings)
             {
@@ -556,22 +560,30 @@ namespace Gamesim.Episode
             foreach (string id in legs.Order)
             {
                 var runner = runners[id];
-                foreach (var spot in legs.Candidates(id))
+                bool isPlayer = id == state.playerId;
+                int tried = 0, floorMisses = 0, legMisses = 0, spacingMisses = 0, bodyMisses = 0, footprintMisses = 0;
+                foreach (var spot in isPlayer ? legs.EveryWayCandidates(id, placeSpots) : legs.Candidates(id))
                 {
+                    tried++;
                     var wanted = new Vector3(spot.X, runner.post.y, spot.Z);
-                    if (!rooms.TrySampleFloor(wanted, runner.radius, filter, .25f, out var position, out var room) || room != "Yard") continue;
+                    if (!rooms.TrySampleFloor(wanted, runner.radius, filter, .25f, out var position, out var room) || room != "Yard") { floorMisses++; continue; }
                     // The floor's own point, not the one asked for: the leg is checked again from there.
                     var taken = new CompetitionCourseLegs.Spot(position.x, position.z);
-                    if (!legs.Clears(id, taken)) continue;
-                    if (used.Any(p => (p - position).sqrMagnitude < 1.6f) || !rooms.HasCapsuleClearance(position, runner.radius, runner.height, runner.self)) continue;
+                    if (!legs.Clears(id, taken)) { legMisses++; continue; }
+                    if (used.Any(p => (p - position).sqrMagnitude < 1.6f)) { spacingMisses++; continue; }
+                    if (!rooms.HasCapsuleClearance(position, runner.radius, runner.height, runner.self)) { bodyMisses++; continue; }
                     var footprint = CompetitionStageFootprint.Actor(position, runner.radius, runner.height);
-                    if (!FitsCompetitionFootprint(footprint, floor, runner.self)) continue;
+                    if (!FitsCompetitionFootprint(footprint, floor, runner.self)) { footprintMisses++; continue; }
                     var mark = HouseInteractionAnchor.Create(competitionArenaRoot.transform, "competition-course", "Yard", 200 + show.CourseMarks.Count,
                         position, CompetitionContestantFacing, false);
                     show.CourseMarks[id] = mark; used.Add(mark.Approach); competitionFootprints[id + ":course"] = footprint;
                     legs.Accept(id, taken);
                     break;
                 }
+                if (!show.CourseMarks.ContainsKey(id))
+                    Debug.Log("[Gamesim competition show] no clear turn mark for " + (isPlayer ? "your houseguest " : "") + id + " at " + runner.post.ToString("F2")
+                        + ": tried " + tried + ", floor " + floorMisses + ", legs " + legMisses + ", spacing " + spacingMisses
+                        + ", body " + bodyMisses + ", footprint " + footprintMisses + "; they run no leg.", this);
             }
         }
     }

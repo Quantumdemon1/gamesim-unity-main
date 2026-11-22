@@ -104,6 +104,8 @@ namespace Gamesim.Tests.EditMode
             Assert.That(SlogansIn("FixedText(card, \"Last competition. Last decision.\", 11);"), Is.EqualTo(new[] { "last competition last decision" }));
             Assert.That(SlogansIn("Say(\"They're good people, and the house has different stories to tell.\");"), Is.Empty);
             Assert.That(SlogansIn("Say(\"Same house, same rules, bigger stakes.\");"), Is.Empty);
+            // The import settings name the unused pack art by its file; a path is not a screen.
+            Assert.That(SlogansIn("new Entry(\"Art/Packs/NeonMasks/neon_same_house_different_stories_mask.png\", Kind.NeonMask);"), Is.Empty);
         }
 
         /// <summary>The slogans a text holds, read as words: lower case, escapes and punctuation as spaces.</summary>
@@ -114,7 +116,8 @@ namespace Gamesim.Tests.EditMode
         }
 
         private static readonly Regex Escapes = new Regex(@"\\(u[0-9A-Fa-f]{4}|x[0-9A-Fa-f]{1,4}|[ntr])", RegexOptions.CultureInvariant);
-        private static readonly Regex NotWords = new Regex(@"[^\p{L}\p{Nd}]+", RegexOptions.CultureInvariant);
+        /// <summary>Anything but a letter, a digit or an underscore: a snake_case file name stays one word, never a line on a screen.</summary>
+        private static readonly Regex NotWords = new Regex(@"[^\p{L}\p{Nd}_]+", RegexOptions.CultureInvariant);
 
         /// <summary>Lower case words with single spaces between them and one at each end; a string's escapes and every mark read as a space.</summary>
         private static string Normal(string text) =>

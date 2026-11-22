@@ -621,6 +621,10 @@
     <!-- Menu slice 3, part a: the notebook's tab strip and the rail's Notebook group, in words and order, with their source scans (plain C#). -->
     <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/NotebookStrip.cs" />
     <Compile Include="$(EditMode)MenuNotebookStripATests.cs" />
+    <!-- Lines that said the wrong thing (backlog 20, 30): the tour names only rail captions and says what a face click opens; the old wordings gone; the notes page's line names its week buttons; the ranking is HOW THEY PLACED (plain C#, with source scans). -->
+    <Compile Include="$(EditMode)TourNamesRailTests.cs" />
+    <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/StorySoFarWords.cs" />
+    <Compile Include="$(EditMode)LinesWrongWordsTests.cs" />
     <!-- Menu slice 3, held together: every docked panel's layout has a kind, the faces' rims and the links' rest, in the source. -->
     <Compile Include="$(EditMode)MenuNotebookIntegrationTests.cs" />
     <!-- Menu slice 4, the foundation: the Settings frame's sections, the row kit's words and steps, and the shell held in the source. -->

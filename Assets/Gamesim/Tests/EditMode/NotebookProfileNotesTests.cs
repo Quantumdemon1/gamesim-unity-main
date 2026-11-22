@@ -47,8 +47,11 @@ namespace Gamesim.Tests.EditMode
             Assert.That(shown.Select(n => n.text).Count(t => t == call), Is.EqualTo(1), "The profile says it, once.");
             Assert.That(shown.Select(n => n.text), Has.None.StartsWith(first + " promised you"), "The promise is the profile's records', not said again.");
             Assert.That(shown.Any(n => n.kind == HouseguestNotes.Kinds.Memory), Is.False, "Memories are the profile's own block.");
-            Assert.That(shown, Is.SubsetOf(card), "Nothing the notes card does not say.");
-            Assert.That(shown, Is.EqualTo(card.Where(shown.Contains).ToList()), "In the card's order.");
+            // Each reading builds its notes anew, so they are compared as the lines they print.
+            var cardLines = card.Select(n => n.ToString()).ToList();
+            var shownLines = shown.Select(n => n.ToString()).ToList();
+            Assert.That(shownLines, Is.SubsetOf(cardLines), "Nothing the notes card does not say.");
+            Assert.That(shownLines, Is.EqualTo(cardLines.Where(shownLines.Contains).ToList()), "In the card's order.");
         }
 
         [Test]

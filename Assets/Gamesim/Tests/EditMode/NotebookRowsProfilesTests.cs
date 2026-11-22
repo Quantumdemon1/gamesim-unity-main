@@ -36,7 +36,7 @@ namespace Gamesim.Tests.EditMode
             var others = s.contestants.Where(c => !c.isPlayer).ToList();
             var a = others[0]; var c = others[2];
             string first = a.name.Split(' ')[0];
-            s.promises.Add(new PromiseState { id = "p1", fromId = a.id, toId = s.playerId, kind = PromiseKind.Safety, status = PromiseStatus.Kept, week = 2 });
+            s.promises.Add(new PromiseState { id = "p1", fromId = a.id, toId = s.playerId, kind = PromiseKind.Safety, status = PromiseStatus.Fulfilled, week = 2 });
             s.ledger.calls.Add(new BlocCallRow { week = 3, allianceId = "alliance-x", callerId = s.playerId, targetId = c.id, followed = new List<string> { a.id } });
             s.alliances.Add(new AllianceState { id = "alliance-x", name = "The Pact", members = new List<string> { s.playerId, a.id }, active = true });
             s.ledger.alliances.Add(new AllianceRow { id = "alliance-x", startedWeek = 2 });

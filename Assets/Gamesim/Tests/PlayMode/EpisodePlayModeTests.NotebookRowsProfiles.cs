@@ -38,7 +38,9 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(links, Is.Not.Empty, "The houseguests' names on the map are links.");
             var link = links[0];
             var actor = state.contestants.Single(c => EpisodeHud.ProfileLinkPrefix + c.name == link.name);
-            Assert.That(link.GetComponent<TMP_Text>().text, Is.EqualTo(CharacterNames.FirstName(actor.name)), "Its caption is the name the map shows.");
+            // A room card shows the first name; the card of those the house cannot place shows the whole name.
+            Assert.That(link.GetComponent<TMP_Text>().text, Is.EqualTo(CharacterNames.FirstName(actor.name)).Or.EqualTo(actor.name),
+                "Its caption is the name the map shows.");
 
             link.onClick.Invoke();
             yield return Frames(2);

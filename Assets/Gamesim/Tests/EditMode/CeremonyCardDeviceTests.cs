@@ -37,7 +37,8 @@ namespace Gamesim.Tests.EditMode
                 // Every Play opens on the house's device, before its first line is worded.
                 int plays = Count(source, "public bool Play(") + Count(source, "public void Play(string kind, int week, IList<Subject> subjects, bool reducedMotion, string titleText")
                     + Count(source, "public bool PlayVetoMeeting(");
-                int asks = Count(source, "usingPad = CeremonyCardWords.StartsOnPad(PadHints, usingPad);");
+                // Asked of the card's clock, which keeps the device it last saw (CeremonyCardClock.OnPad).
+                int asks = Count(source, "CeremonyCardWords.StartsOnPad(PadHints, clock.OnPad);");
                 if (plays == 0 || asks != plays) missing.Add(card + ": " + plays + " Play, " + asks + " asking the device");
             }
 

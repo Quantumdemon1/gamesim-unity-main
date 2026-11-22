@@ -51,12 +51,6 @@ namespace Gamesim.Presentation
     public sealed class VoteReveal : MonoBehaviour
     {
         /// <summary>
-        /// How long past its fade the card must have been up, in real seconds, before a press moves it
-        /// on - the key ceremony's delay, on the wall clock so a sped-up count does not shorten it.
-        /// </summary>
-        private const float ReadDelay = 0.35f;
-
-        /// <summary>
         /// One committed ballot, as the card needs it: whom it went against, and whether it is the
         /// deciding vote. It carries no voter - no id, no name, no look - because the card never
         /// says who cast a vote (UI-UX-PASS-PLAN B0): the count is read, the ballots are not.
@@ -131,18 +125,15 @@ namespace Gamesim.Presentation
         private Ballot? tieBreak;
         private string evictedId, evictedName, hohName;
         private CeremonyPace pace = CeremonyPace.Suspenseful;
-        private float elapsed, upFor, speed = 1f;
 
         /// <summary>
-        /// The frame the card was played in. Neither it nor the next is the card's own time, as on the
-        /// takeover and the strip: the first update's delta can be the frame before the card was
-        /// played, and the next's is the frame it was played in - the commit, the house's render and
-        /// this card's own build - before anybody had seen it. Counted, a long one spent the fade, the
-        /// block and even votes before the card was drawn, and made a press in flight look read.
+        /// The card's clock, the one every ceremony card runs on (<see cref="CeremonyCardClock"/>): the
+        /// frame it was played in, the key ceremony's read delay on the wall clock so a sped-up count
+        /// does not shorten it, its speed and the device it names.
         /// </summary>
-        private int playedFrame;
+        private CeremonyCardClock clock;
         private int shown = -1;
-        private bool playing, reduced, hohIsPlayer, evictedIsPlayer, lastVotePending, tieCalled, tieBroken, usingPad;
+        private bool playing, reduced, hohIsPlayer, evictedIsPlayer, lastVotePending, tieCalled, tieBroken;
         private Frame frame;
         private ScreenSurface surface;
 
@@ -166,7 +157,7 @@ namespace Gamesim.Presentation
         public CeremonyPace Pace => pace;
 
         /// <summary>How fast the card's clock runs: 1, or <see cref="CeremonyPacing.SpeedUp"/> while the player has sped it up.</summary>
-        public float SpeedMultiplier => speed;
+        public float SpeedMultiplier => clock.Speed;
 
         /// <summary>How many ballots are on the board: the house's so far, and the Head of Household's once it is cast.</summary>
         public int VotesShown => Mathf.Max(0, shown) + (tieBroken ? 1 : 0);
@@ -246,7 +237,7 @@ namespace Gamesim.Presentation
             bool evictedIsPlayer = false, ScreenSurface screen = null, float speed = 1f)
         {
             if (block == null || block.Count != 2 || votes == null || votes.Count == 0) return false;
-            usingPad = CeremonyCardWords.StartsOnPad(PadHints, usingPad);
+            clock.OnPad = CeremonyCardWords.StartsOnPad(PadHints, clock.OnPad);
 
             nominees = new List<Nominee>(block);
             // Reveal in a stable order, and never one that leaks the result: committed order is the
@@ -270,16 +261,14 @@ namespace Gamesim.Presentation
 
             Build();
             reduced = reducedMotion;
-            elapsed = 0f;
-            upFor = 0f;
-            playedFrame = Time.frameCount;
+            // At the speed the player left the last reveal at, this session (UI-UX plan D2): a caller
+            // that gives none starts it at its own pace.
+            clock.Start(Time.frameCount, CeremonyPacing.SessionSpeed(speed), clock.OnPad);
             shown = -1;
             lastVotePending = false;
             tieCalled = false;
             tieBroken = false;
-            // At the speed the player left the last reveal at, this session (UI-UX plan D2): a caller
-            // that gives none starts it at its own pace.
-            SetSpeed(CeremonyPacing.SessionSpeed(speed));
+            MarkSpeed();
             Held = false;
             playing = true;
 
@@ -315,18 +304,11 @@ namespace Gamesim.Presentation
         public void SkipToResult()
         {
             if (!playing || ShowingResult) return;
-            elapsed = Mathf.Max(elapsed, ResultAt);
+            clock.Elapsed = Mathf.Max(clock.Elapsed, ResultAt);
             Tally(house.Count, false, false);
             if (tieBreak.HasValue) { CallTie(); BreakTie(false); }
             Result();
         }
-
-        /// <summary>
-        /// True once the card has been up long enough to have been read; after that a press moves it
-        /// on. A press already in flight when the card appears - the Enter that cast the last ballot -
-        /// must not skip a count nobody has seen.
-        /// </summary>
-        private bool Dismissable => upFor >= CeremonyPacing.FadeIn + ReadDelay;
 
         /// <summary>
         /// Holds the card where it is: its clock stops, so nothing advances, fades or hands over, while
@@ -343,43 +325,34 @@ namespace Gamesim.Presentation
             // never stamped it, so a click on the tally was a click on the floor behind it as well.
             CeremonyOverlays.Showing();
             if (Held) return;
-            // Nothing from before its first frame on screen is the card's time (playedFrame).
-            if (Time.frameCount - playedFrame <= 1) return;
-            upFor += Time.unscaledDeltaTime;
-            FollowDevice();
+            // Nothing from before its first frame on screen is the card's time (the clock's Counts).
+            if (!clock.Counts(Time.frameCount)) return;
 
             // The key ceremony's controls, read off the devices for the same reason: speed the count
             // up or back to its own pace, skip straight to the result - every vote on the board and
             // the result read, giving up the count's order and never the result - and a skip on the
-            // result ends the card.
-            if (Dismissable && CeremonyTakeover.SpeedPressed())
+            // result ends the card. A press already in flight when the card appears - the Enter that
+            // cast the last ballot - must not skip a count nobody has seen (the clock's read delay).
+            var presses = clock.Step(Time.unscaledDeltaTime, CeremonyTakeover.PadUsed(),
+                CeremonyTakeover.SpeedPressed(), CeremonyTakeover.SkipPressed());
+            if (presses.DeviceChanged) SayTheControls();
+            if (presses.SpeedChanged)
             {
-                SetSpeed(speed > 1f ? 1f : CeremonyPacing.SpeedUp);
-                SpeedChanged?.Invoke(speed);
+                MarkSpeed();
+                SpeedChanged?.Invoke(clock.Speed);
             }
-            if (Dismissable && CeremonyTakeover.SkipPressed())
+            if (presses.Skip)
             {
                 if (ShowingResult) { Cancel(); return; }
                 SkipToResult();
                 return;
             }
 
-            elapsed += Time.unscaledDeltaTime * speed;
-            float resultEnd = ResultAt + CeremonyPacing.ResultHold(pace);
-
-            // Fade.
-            if (reduced) group.alpha = 1f;
-            else if (elapsed < CeremonyPacing.FadeIn) group.alpha = Eased(elapsed / CeremonyPacing.FadeIn);
-            else if (elapsed < resultEnd) group.alpha = 1f;
-            else
-            {
-                float exit = (elapsed - resultEnd) / CeremonyPacing.FadeOut;
-                if (exit >= 1f) { Cancel(); return; }
-                group.alpha = 1f - Eased(exit);
-            }
-
-            // Reduced motion keeps the timings: they are reading time, not movement.
-            if (reduced && elapsed >= Duration) { Cancel(); return; }
+            float elapsed = clock.Run(Time.unscaledDeltaTime);
+            // Fade. Reduced motion keeps the timings: they are reading time, not movement.
+            bool up = CeremonyCardClock.Fade(elapsed, ResultAt + CeremonyPacing.ResultHold(pace), reduced, out float alpha);
+            group.alpha = alpha;
+            if (!up) { Cancel(); return; }
 
             // How many of the house's ballots are on the board by now, and whether the last of them
             // is being held back.
@@ -395,13 +368,11 @@ namespace Gamesim.Presentation
             // sped-up count hands over sooner. Reduced motion swapped them at once in Result.
             if (ShowingResult && boardGroup != null && blockGroup != null && !reduced)
             {
-                float swap = Eased(Mathf.Clamp01((elapsed - resultShownAt) / ScreenBoard.ResultFade));
+                float swap = CeremonyCardClock.Eased(Mathf.Clamp01((elapsed - resultShownAt) / ScreenBoard.ResultFade));
                 boardGroup.alpha = 1f - swap;
                 blockGroup.alpha = swap;
             }
         }
-
-        private static float Eased(float t) => 1f - (1f - t) * (1f - t);
 
         /// <summary>How many of the house's ballots are on the board at <paramref name="t"/> on the card's clock.</summary>
         private int VotesDue(float t)
@@ -417,20 +388,16 @@ namespace Gamesim.Presentation
         private bool LastVotePendingAt(float t) =>
             house.Count > 0 && LastVoteWait > 0f && t >= LastVoteCalled && t < LastVoteCalled + LastVoteWait;
 
-        /// <summary>Runs the card's clock at <paramref name="value"/>, and says so in the corner while it is fast.</summary>
-        private void SetSpeed(float value)
+        /// <summary>Says in the corner that the card's clock runs fast, while it does.</summary>
+        private void MarkSpeed()
         {
-            speed = value;
-            if (speedMark != null) speedMark.gameObject.SetActive(speed > 1f);
+            if (speedMark != null) speedMark.gameObject.SetActive(clock.SpedUp);
         }
 
         /// <summary>The key hints follow the device last used on the card, as the key ceremony's do.</summary>
-        private void FollowDevice()
+        private void SayTheControls()
         {
-            var pad = CeremonyTakeover.PadUsed();
-            if (!pad.HasValue || pad.Value == usingPad) return;
-            usingPad = pad.Value;
-            if (controls != null) controls.text = CeremonyTakeover.ControlsFor(usingPad);
+            if (controls != null) controls.text = CeremonyTakeover.ControlsFor(clock.OnPad);
         }
 
         private void Raise(HouseAudio.Cue cue) => CueRequested?.Invoke(cue);
@@ -543,7 +510,7 @@ namespace Gamesim.Presentation
             host.text = Verdict();
             if (resultBlock != null) ReadTheResultOnTheScreen();
             Raise(HouseAudio.Cue.Eviction);
-            Beat(new CeremonyBeat(CeremonyBeatKind.ResultShown, -1, evictedId, elapsed < ResultAt));
+            Beat(new CeremonyBeat(CeremonyBeatKind.ResultShown, -1, evictedId, clock.Elapsed < ResultAt));
         }
 
         /// <summary>
@@ -619,7 +586,7 @@ namespace Gamesim.Presentation
             }
 
             resultBlock.gameObject.SetActive(true);
-            resultShownAt = elapsed;
+            resultShownAt = clock.Elapsed;
             // Reduced motion swaps them at once; otherwise Update crossfades them on the card's clock.
             boardGroup.alpha = reduced ? 0f : 1f;
             blockGroup.alpha = reduced ? 1f : 0f;
@@ -1026,7 +993,7 @@ namespace Gamesim.Presentation
             // What the card answers to: the count can be sped up, or skipped to the result. The keys
             // named follow the device last used on the card.
             controls = HudPrimitives.Label("Controls", column, f.ControlsPt, UiTheme.Muted, TextAlignmentOptions.Center);
-            controls.text = CeremonyTakeover.ControlsFor(usingPad);
+            controls.text = CeremonyTakeover.ControlsFor(clock.OnPad);
             Place(controls.rectTransform, width, f.ControlsH, f.ControlsY);
         }
 

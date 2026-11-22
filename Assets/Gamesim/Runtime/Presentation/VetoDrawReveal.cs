@@ -33,8 +33,6 @@ namespace Gamesim.Presentation
         // numbers this card always had, and the Quick setting has a column of its own.
         private const float FadeIn = CeremonyPacing.FadeIn;
         private const float FadeOut = CeremonyPacing.FadeOut;
-        /// <summary>How long past its fade before a press moves it on: a press in flight as it appears is not one.</summary>
-        private const float ReadDelay = 0.35f;
 
         /// <summary>One houseguest on the card: who, the pill they wear, and the face it shows.</summary>
         public readonly struct Player
@@ -68,20 +66,18 @@ namespace Gamesim.Presentation
         private readonly List<GameObject> litSlots = new List<GameObject>();
         private readonly List<Player> drawn = new List<Player>();
         private readonly List<string> order = new List<string>();
-        private float elapsed, upFor, chipLift, speed = 1f;
-        private bool playing, reduced, fieldShown, usingPad;
+        private float chipLift;
+        private bool playing, reduced, fieldShown;
         private CeremonyPace pace = CeremonyPace.Suspenseful;
         private int turned = -1;
 
         /// <summary>
-        /// The frame the card was played in. Neither it nor the next is the card's own time, as on the
-        /// key ceremony and the live eviction: the first update's delta can be the frame before the
-        /// card was played, and the next's is the frame it was played in - the commit, its save, the
-        /// house's render and this card's own build - before anybody had seen it. Counted, a long one
-        /// spent the fade, the beat with every chip in the bag and even chips before the card was
-        /// drawn, and made a press in flight look read.
+        /// The card's clock, the one every ceremony card runs on (<see cref="CeremonyCardClock"/>): the
+        /// frame it was played in - neither it nor the next is the card's own time, or a long one spent
+        /// the fade and even chips before the card was drawn - the read delay that keeps a press in
+        /// flight as it appears from counting, its speed and the device it names.
         /// </summary>
-        private int playedFrame;
+        private CeremonyCardClock clock;
 
         /// <summary>
         /// The player sped the draw up, or back to its own pace: the speed it runs at now. The director
@@ -117,7 +113,7 @@ namespace Gamesim.Presentation
         public CeremonyPace Pace => pace;
 
         /// <summary>How fast the card's clock runs: 1, or <see cref="CeremonyPacing.SpeedUp"/> while the player has sped it up.</summary>
-        public float SpeedMultiplier => speed;
+        public float SpeedMultiplier => clock.Speed;
 
         private float PerChip => CeremonyPacing.PerChip(pace);
         private float Turn => CeremonyPacing.ChipTurn(pace);
@@ -156,19 +152,17 @@ namespace Gamesim.Presentation
             CeremonyPace pace = CeremonyPace.Suspenseful, float speed = 1f)
         {
             if (drawnPlayers == null || drawnPlayers.Count == 0) return false;
-            usingPad = CeremonyCardWords.StartsOnPad(PadHints, usingPad);
+            bool onPad = CeremonyCardWords.StartsOnPad(PadHints, clock.OnPad);
             drawn.Clear();
             drawn.AddRange(drawnPlayers);
             order.Clear();
             foreach (var player in drawn) order.Add(player.Id);
             this.pace = pace;
-            this.speed = CeremonyPacing.SessionSpeed(speed);
 
             Build();
             reduced = reducedMotion;
-            elapsed = 0f;
-            upFor = 0f;
-            playedFrame = Time.frameCount;
+            // At the speed the player left the last reveal at, this session (UI-UX plan D2).
+            clock.Start(Time.frameCount, CeremonyPacing.SessionSpeed(speed), onPad);
             turned = -1;
             fieldShown = false;
             playing = true;
@@ -176,7 +170,7 @@ namespace Gamesim.Presentation
             eyebrow.text = Localisation.Text("WEEK " + Mathf.Max(1, week));
             title.text = Localisation.Text("Power of Veto");
             line.text = Localisation.Text(fieldLine ?? string.Empty);
-            dismiss.text = Localisation.Text(CeremonyTakeover.SkipToResultFor(usingPad));
+            dismiss.text = Localisation.Text(CeremonyTakeover.SkipToResultFor(clock.OnPad));
             Lay(byRight ?? new List<Player>());
 
             column.gameObject.SetActive(true);
@@ -195,7 +189,7 @@ namespace Gamesim.Presentation
         public void SkipToField()
         {
             if (!playing || fieldShown) return;
-            elapsed = Mathf.Max(elapsed, FieldAt);
+            clock.Elapsed = Mathf.Max(clock.Elapsed, FieldAt);
             Show(drawn.Count);
             Field();
         }
@@ -207,7 +201,7 @@ namespace Gamesim.Presentation
         private void SayThePress()
         {
             if (dismiss == null) return;
-            dismiss.text = Localisation.Text(fieldShown ? CeremonyTakeover.CloseFor(usingPad) : CeremonyTakeover.SkipToResultFor(usingPad));
+            dismiss.text = Localisation.Text(fieldShown ? CeremonyTakeover.CloseFor(clock.OnPad) : CeremonyTakeover.SkipToResultFor(clock.OnPad));
         }
 
         /// <summary>Takes the card down at once: a new beat, a scene change, or a press on the field.</summary>
@@ -219,45 +213,31 @@ namespace Gamesim.Presentation
             if (scrim != null) scrim.gameObject.SetActive(false);
         }
 
-        private bool Dismissable => upFor >= FadeIn + ReadDelay;
-
         private void Update()
         {
             if (!playing) return;
             CeremonyOverlays.Showing();
-            // Nothing from before its first frame on screen is the card's time (playedFrame).
-            if (Time.frameCount - playedFrame <= 1) return;
+            // Nothing from before its first frame on screen is the card's time (the clock's Counts).
+            if (!clock.Counts(Time.frameCount)) return;
             float step = Time.unscaledDeltaTime;
-            upFor += step;
-            var pad = CeremonyTakeover.PadUsed();
-            if (pad.HasValue && pad.Value != usingPad) { usingPad = pad.Value; SayThePress(); }
 
             // Space (the pad's X) runs the draw faster, or back at its own pace, as it does every
             // reveal (UI-UX plan D2): how long the chips take, never who they name.
-            if (Dismissable && CeremonyTakeover.SpeedPressed())
-            {
-                speed = speed > 1f ? 1f : CeremonyPacing.SpeedUp;
-                SpeedChanged?.Invoke(speed);
-            }
-            if (Dismissable && CeremonyTakeover.SkipPressed())
+            var presses = clock.Step(step, CeremonyTakeover.PadUsed(), CeremonyTakeover.SpeedPressed(),
+                CeremonyTakeover.SkipPressed(), FadeIn);
+            if (presses.DeviceChanged) SayThePress();
+            if (presses.SpeedChanged) SpeedChanged?.Invoke(clock.Speed);
+            if (presses.Skip)
             {
                 if (fieldShown) { Cancel(); return; }
                 SkipToField();
                 return;
             }
 
-            elapsed += step * speed;
-            float end = FieldAt + FieldHold;
-            if (reduced) group.alpha = 1f;
-            else if (elapsed < FadeIn) group.alpha = Eased(elapsed / FadeIn);
-            else if (elapsed < end) group.alpha = 1f;
-            else
-            {
-                float exit = (elapsed - end) / FadeOut;
-                if (exit >= 1f) { Cancel(); return; }
-                group.alpha = 1f - Eased(exit);
-            }
-            if (reduced && elapsed >= end + FadeOut) { Cancel(); return; }
+            float elapsed = clock.Run(step);
+            bool up = CeremonyCardClock.Fade(elapsed, FieldAt + FieldHold, reduced, FadeIn, FadeOut, out float alpha);
+            group.alpha = alpha;
+            if (!up) { Cancel(); return; }
 
             if (!fieldShown)
             {
@@ -267,8 +247,6 @@ namespace Gamesim.Presentation
             }
             Animate();
         }
-
-        private static float Eased(float t) => 1f - (1f - t) * (1f - t);
 
         /// <summary>How many chips are out at <paramref name="t"/> on the card's clock.</summary>
         private int Due(float t) => t < DrawStart ? 0 : Mathf.Min(drawn.Count, Mathf.FloorToInt((t - DrawStart) / PerChip) + 1);
@@ -303,7 +281,7 @@ namespace Gamesim.Presentation
         {
             for (int i = 0; i < drawn.Count; i++)
             {
-                float local = elapsed - (DrawStart + i * PerChip);
+                float local = clock.Elapsed - (DrawStart + i * PerChip);
                 bool isOut = i < turned;
                 float lift = isOut ? Mathf.Clamp01(local / Turn) : 0f;
                 float flip = isOut ? Mathf.Clamp01((local - Turn) / Turn) : 0f;
@@ -321,7 +299,7 @@ namespace Gamesim.Presentation
                 if (i < faces.Count)
                 {
                     faces[i].gameObject.SetActive(isOut && flip > 0f);
-                    faces[i].localScale = new Vector3(reduced ? 1f : Eased(flip), 1f, 1f);
+                    faces[i].localScale = new Vector3(reduced ? 1f : CeremonyCardClock.Eased(flip), 1f, 1f);
                 }
             }
         }

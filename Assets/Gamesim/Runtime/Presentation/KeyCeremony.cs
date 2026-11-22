@@ -50,12 +50,6 @@ namespace Gamesim.Presentation
     [DisallowMultipleComponent]
     public sealed class KeyCeremony : MonoBehaviour
     {
-        /// <summary>
-        /// How long past its fade the card must have been up, in real seconds, before a press moves it
-        /// on. Real seconds rather than the card's own clock, so a sped-up reveal does not shorten it.
-        /// </summary>
-        private const float ReadDelay = 0.35f;
-
         /// <summary>One houseguest in the ceremony, with the face the card shows.</summary>
         public readonly struct Person
         {
@@ -111,18 +105,14 @@ namespace Gamesim.Presentation
         private string hohName;
         private CeremonyPace pace = CeremonyPace.Suspenseful;
         private int shown = -1;
-        private float elapsed, upFor, speed = 1f;
 
         /// <summary>
-        /// The frame the card was played in. Neither it nor the next is the card's own time, as on the
-        /// takeover and the strip: the first update's delta can be the frame before the card was
-        /// played, and the next's is the frame it was played in - the commit, the house's render and
-        /// this card's own build - before anybody had seen it. Counted, a long one spent the fade, the
-        /// Head of Household's line and even keys before the card was drawn, and made a press in
-        /// flight look read.
+        /// The card's clock, the one every ceremony card runs on (<see cref="CeremonyCardClock"/>): the
+        /// frame it was played in, its read delay, its speed and the device it names. Real seconds for
+        /// the read delay, so a sped-up reveal does not shorten it.
         /// </summary>
-        private int playedFrame;
-        private bool playing, reduced, blockShown, lastKeyPending, usingPad, markPlaced;
+        private CeremonyCardClock clock;
+        private bool playing, reduced, blockShown, lastKeyPending, markPlaced;
         private Frame frame;
         private ScreenSurface surface;
 
@@ -136,7 +126,7 @@ namespace Gamesim.Presentation
         public CeremonyPace Pace => pace;
 
         /// <summary>How fast the card's clock runs: 1, or <see cref="CeremonyPacing.SpeedUp"/> while the player has sped it up.</summary>
-        public float SpeedMultiplier => speed;
+        public float SpeedMultiplier => clock.Speed;
 
         /// <summary>How many keys have been handed out so far.</summary>
         public int KeysShown => Mathf.Max(0, shown);
@@ -208,7 +198,7 @@ namespace Gamesim.Presentation
             IList<Person> roster = null, float speed = 1f)
         {
             if (safeHouseguests == null || block == null || block.Count == 0) return false;
-            usingPad = CeremonyCardWords.StartsOnPad(PadHints, usingPad);
+            clock.OnPad = CeremonyCardWords.StartsOnPad(PadHints, clock.OnPad);
 
             safe = new List<Person>(safeHouseguests);
             nominated = new List<Person>(block);
@@ -220,15 +210,13 @@ namespace Gamesim.Presentation
 
             Build();
             reduced = reducedMotion;
-            elapsed = 0f;
-            upFor = 0f;
-            playedFrame = Time.frameCount;
+            // At the speed the player left the last reveal at, this session (UI-UX plan D2): a caller
+            // that gives none starts it at its own pace.
+            clock.Start(Time.frameCount, CeremonyPacing.SessionSpeed(speed), clock.OnPad);
             shown = -1;
             blockShown = false;
             lastKeyPending = false;
-            // At the speed the player left the last reveal at, this session (UI-UX plan D2): a caller
-            // that gives none starts it at its own pace.
-            SetSpeed(CeremonyPacing.SessionSpeed(speed));
+            MarkSpeed();
             playing = true;
 
             eyebrow.text = "WEEK " + Mathf.Max(1, week);
@@ -277,7 +265,7 @@ namespace Gamesim.Presentation
         public void SkipToResult()
         {
             if (!playing || blockShown) return;
-            elapsed = Mathf.Max(elapsed, KeysEnd);
+            clock.Elapsed = Mathf.Max(clock.Elapsed, KeysEnd);
             Show(safe.Count, false, false);
             Block(true);
         }
@@ -288,50 +276,39 @@ namespace Gamesim.Presentation
         /// already in flight when the card appears - the Enter that committed the nominations, say -
         /// must not skip what it has not yet shown.
         /// </summary>
-        private bool Dismissable => upFor >= CeremonyPacing.FadeIn + ReadDelay;
-
         private void Update()
         {
             if (!playing) return;
             CeremonyOverlays.Showing();
-            // Nothing from before its first frame on screen is the card's time (playedFrame).
-            if (Time.frameCount - playedFrame <= 1) return;
-            upFor += Time.unscaledDeltaTime;
-            FollowDevice();
+            // Nothing from before its first frame on screen is the card's time (the clock's Counts).
+            if (!clock.Counts(Time.frameCount)) return;
 
             // The card says what moves it on, so those presses do. Read from the devices rather than
             // through a raycaster for the takeover's reason: nothing on a ceremony card may take a
             // click meant for the house. Space (the pad's X) runs the reveal faster, or back at its
             // own pace; it changes how long the order takes, never the order. The first skip hands
             // out every remaining key and shows the block - skipping the order, never the result -
-            // and a skip on the block ends the card.
-            if (Dismissable && CeremonyTakeover.SpeedPressed())
+            // and a skip on the block ends the card. Neither counts until the card has been read.
+            var presses = clock.Step(Time.unscaledDeltaTime, CeremonyTakeover.PadUsed(),
+                CeremonyTakeover.SpeedPressed(), CeremonyTakeover.SkipPressed());
+            if (presses.DeviceChanged) SayTheControls();
+            if (presses.SpeedChanged)
             {
-                SetSpeed(speed > 1f ? 1f : CeremonyPacing.SpeedUp);
-                SpeedChanged?.Invoke(speed);
+                MarkSpeed();
+                SpeedChanged?.Invoke(clock.Speed);
             }
-            if (Dismissable && CeremonyTakeover.SkipPressed())
+            if (presses.Skip)
             {
                 if (blockShown) { Cancel(); return; }
                 SkipToResult();
                 return;
             }
 
-            elapsed += Time.unscaledDeltaTime * speed;
-            float blockEnd = KeysEnd + CeremonyPacing.BlockHold(pace);
-
-            if (reduced) group.alpha = 1f;
-            else if (elapsed < CeremonyPacing.FadeIn) group.alpha = Eased(elapsed / CeremonyPacing.FadeIn);
-            else if (elapsed < blockEnd) group.alpha = 1f;
-            else
-            {
-                float exit = (elapsed - blockEnd) / CeremonyPacing.FadeOut;
-                if (exit >= 1f) { Cancel(); return; }
-                group.alpha = 1f - Eased(exit);
-            }
-
+            float elapsed = clock.Run(Time.unscaledDeltaTime);
             // Reduced motion keeps the timings: they are reading time, not movement.
-            if (reduced && elapsed >= Duration) { Cancel(); return; }
+            bool up = CeremonyCardClock.Fade(elapsed, KeysEnd + CeremonyPacing.BlockHold(pace), reduced, out float alpha);
+            group.alpha = alpha;
+            if (!up) { Cancel(); return; }
 
             int due = KeysDue(elapsed);
             bool pending = LastKeyPendingAt(elapsed);
@@ -354,8 +331,6 @@ namespace Gamesim.Presentation
             PlaceTitleMark();
         }
 
-        private static float Eased(float t) => 1f - (1f - t) * (1f - t);
-
         /// <summary>How many keys are out at <paramref name="t"/> on the card's clock.</summary>
         private int KeysDue(float t)
         {
@@ -370,24 +345,20 @@ namespace Gamesim.Presentation
         private bool LastKeyPendingAt(float t) =>
             safe.Count > 0 && LastKeyWait > 0f && t >= LastKeyCalled && t < LastKeyCalled + LastKeyWait;
 
-        /// <summary>Runs the card's clock at <paramref name="value"/>, and says so in the corner while it is fast.</summary>
-        private void SetSpeed(float value)
+        /// <summary>Says in the corner that the card's clock runs fast, while it does.</summary>
+        private void MarkSpeed()
         {
-            speed = value;
-            if (speedMark != null) speedMark.gameObject.SetActive(speed > 1f);
+            if (speedMark != null) speedMark.gameObject.SetActive(clock.SpedUp);
         }
 
         /// <summary>
         /// The key hints follow the device last used on the card, as the competition screen's do: a
         /// pad press shows the pad's buttons, a key or a click the keyboard's.
         /// </summary>
-        private void FollowDevice()
+        private void SayTheControls()
         {
-            var pad = CeremonyTakeover.PadUsed();
-            if (!pad.HasValue || pad.Value == usingPad) return;
-            usingPad = pad.Value;
-            if (controls != null) controls.text = CeremonyTakeover.ControlsFor(usingPad);
-            if (dismiss != null) dismiss.gameObject.SetActive(CeremonyCardWords.ShowsClickLine(usingPad));
+            if (controls != null) controls.text = CeremonyTakeover.ControlsFor(clock.OnPad);
+            if (dismiss != null) dismiss.gameObject.SetActive(CeremonyCardWords.ShowsClickLine(clock.OnPad));
         }
 
         private void Raise(HouseAudio.Cue cue) => CueRequested?.Invoke(cue);
@@ -749,14 +720,14 @@ namespace Gamesim.Presentation
                 dismiss.text = CeremonyTakeover.DismissCaption;
                 Place(dismiss.rectTransform, width, f.DismissH, f.DismissY);
                 // A pad has no click: on a pad the controls line under it names A alone (UI-UX plan U5).
-                dismiss.gameObject.SetActive(CeremonyCardWords.ShowsClickLine(usingPad));
+                dismiss.gameObject.SetActive(CeremonyCardWords.ShowsClickLine(clock.OnPad));
             }
             else dismiss = null;
 
             // And what else it answers to: the reveal can be sped up, or skipped to the block. The
             // keys named follow the device last used on the card.
             controls = HudPrimitives.Label("Controls", column, 11f * scale, UiTheme.Muted, TextAlignmentOptions.Center);
-            controls.text = CeremonyTakeover.ControlsFor(usingPad);
+            controls.text = CeremonyTakeover.ControlsFor(clock.OnPad);
             Place(controls.rectTransform, width, f.ControlsH, f.ControlsY);
             // No slogan under the board (the owner, 2026-11-21): the controls line closes the card.
         }

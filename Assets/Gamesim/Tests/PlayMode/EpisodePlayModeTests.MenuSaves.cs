@@ -279,6 +279,8 @@ namespace Gamesim.Tests.PlayMode
             director.ClosePanels();
             yield return Frames(2);
             director.SaveNow();
+            // Saved twice, so the slot has a backup: Recover backup is greyed where there is none.
+            director.SaveNow();
             string path = director.SavePath;
             var bytes = File.ReadAllBytes(path);
             director.OpenSettingsAt(SettingsSection.Advanced);

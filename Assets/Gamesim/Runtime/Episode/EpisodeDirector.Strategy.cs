@@ -106,8 +106,9 @@ namespace Gamesim.Episode
                 hud.Paragraph(EpisodeHud.LobbyAskCaption(state, npc.name, ask, subject) + ". How do you put it?");
                 OddsAreYourRead(state, npc);
                 bool forYourself = subject == state.playerId;
-                bool paidCampaign = DialogueRules.On(state) && state.phase == EpisodePhase.Campaign
-                    && ask == LobbyAsk.Vote && forYourself;
+                // The Emotional plea for the player's own vote in the Campaign, and from dialogue rules 3 the Emotional plea
+                // to the veto holder at the veto meeting, open a conversation (DialogueRules.IsConversationPlea).
+                bool paidCampaign = DialogueRules.IsConversationPlea(state, decider, ask, subject);
                 // A conversation that cannot start never takes the plea away (DIALOGUE-PLAN §5.5; owner, 2026-10-25: "Never
                 // lose the plea"), in rules 1 as in every later version: the Emotional button makes the ordinary one-shot
                 // plea, by the very command a season without dialogue commits, the panel says why there is no talk in

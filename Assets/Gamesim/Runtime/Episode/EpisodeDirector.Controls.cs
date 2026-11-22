@@ -239,7 +239,8 @@ namespace Gamesim.Episode
         /// </summary>
         private bool BackNestedPage()
         {
-            var back = hud != null && IsPanelOpen ? hud.WayBackAction : null;
+            // A confirm card's safe answer first: Escape and B on a card that asks answer "no".
+            var back = hud != null && IsPanelOpen ? hud.ConfirmCancelAction ?? hud.WayBackAction : null;
             if (back == null) return false;
             back();
             return true;
@@ -250,7 +251,7 @@ namespace Gamesim.Episode
         {
             // The game surface consumes Escape / Start / B itself, including the dismissal frame.
             if (competitionScreen != null && competitionScreen.OwnsMenuInput) return true;
-            if (challengeActive) { CancelChallenge(); return true; }
+            if (challengeActive) { LeaveChallenge(); return true; }
             // The opening before anything: it draws over every screen, and Escape underneath it
             // used to close panels and release the shot it was holding.
             if (OpeningOwnsHouse) { OpeningMenuPressed(); return true; }

@@ -435,7 +435,8 @@
 # after the player's veto (also in the dotnet subset), 2026-11-21.
 # 10840 = 10835 + the weekly recap's arrival: WeeklyRecapArrivalTests 5 (all also in the dotnet subset), 2026-11-21.
 # 10845 = 10840 + the finale page set aside for the cast screen: FinaleAsideTests 5 (all also in the dotnet subset), 2026-11-22.
-Gamesim.EditModeTests 10845
+# 10857 = 10845 + the settings and saves leftovers: MenuSavesLeftoversTests 10 (all also in the dotnet subset) and MenuSavesLeftoversShelfTests 2, 2026-11-22.
+Gamesim.EditModeTests 10857
 # The UMA-free build. 1215 = 1236, the count after the consolidation's lanes (S2a, S2b, S4a), less the 7
 # farewell probes moved to Gamesim.DiagnosticsPlayModeTests and the 14 farewell readiness tests that now
 # compile only under GAMESIM_UMA (judged on the UMA cast); 1230 = 1215 + S2d's 7, S4b's 2, S4c's 2 and
@@ -684,7 +685,8 @@ Gamesim.EditModeTests 10845
 # 1676 = 1674 + free talk slice 2's screen: EpisodePlayModeTests.JustTalkStages 2, 2026-11-20.
 # 1677 = 1676 + the weekly recap's arrival: EpisodePlayModeTests.RecapArrives 1, 2026-11-21.
 # 1678 = 1677 + the finale page set aside for the cast screen: EpisodePlayModeTests.FinaleNewSeason 1, 2026-11-22.
-Gamesim.PlayModeTests 1678
+# 1680 = 1678 + the settings and saves leftovers: EpisodePlayModeTests.MenuSavesLeftovers 2, 2026-11-22.
+Gamesim.PlayModeTests 1680
 # The UMA build of the same assembly, read by a plan built without -WithoutUma. 1281 = the 1241 above + the
 # 40 tests that compile only under GAMESIM_UMA, as run at r1 (2026-10-16): in EpisodePlayModeTests,
 # GroundedFarewell 11, Creator 9, HouseLife 8, Emotes 3, OpeningCaptures 2, and one each in CreatorEntry,
@@ -857,7 +859,8 @@ Gamesim.PlayModeTests 1678
 # 1721 = 1719 + free talk slice 2's screen: the same 2 EpisodePlayModeTests.JustTalkStages cases, 2026-11-20.
 # 1722 = 1721 + the weekly recap's arrival: the same 1 EpisodePlayModeTests.RecapArrives case, 2026-11-21.
 # 1723 = 1722 + the finale page set aside for the cast screen: the same 1 EpisodePlayModeTests.FinaleNewSeason case, 2026-11-22.
-Gamesim.PlayModeTests.UmaBuild 1723
+# 1725 = 1723 + the settings and saves leftovers: the same 2 EpisodePlayModeTests.MenuSavesLeftovers cases, 2026-11-22.
+Gamesim.PlayModeTests.UmaBuild 1725
 # The UMA bodies: runs only where the GAMESIM_UMA define is set (the working tree and the D: copy).
 # 82 = the 89 run on 2026-10-15, less the 7 farewell probes moved to Gamesim.Uma.DiagnosticsPlayModeTests;
 # 85 = 82 + the 3 farewell readiness decision tests (UmaFarewellReadinessDecisionPlayModeTests, 2026-10-16);
@@ -1211,4 +1214,5 @@ Gamesim.Uma.DiagnosticsPlayModeTests 10
 # 22934 = 22933 + the same FreeTalkS2ReviewTests case the EditMode floor counts, 2026-11-21.
 # 22939 = 22934 + the weekly recap's arrival: the same 5 WeeklyRecapArrivalTests cases the EditMode floor counts, 2026-11-21.
 # 22944 = 22939 + the finale page set aside for the cast screen: the same 5 FinaleAsideTests cases the EditMode floor counts, 2026-11-22.
-Gamesim.SimulationTests 22944
+# 22954 = 22944 + the settings and saves leftovers: the same 10 MenuSavesLeftoversTests cases the EditMode floor counts, 2026-11-22.
+Gamesim.SimulationTests 22954

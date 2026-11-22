@@ -616,6 +616,8 @@
     <Compile Include="$(EditMode)MenuSavesStoreTests.cs" />
     <!-- Menu slice 4, as merged: nothing in the slice's Runtime files deletes but the save store's one delete. -->
     <Compile Include="$(EditMode)MenuSavesDeleteScanTests.cs" />
+    <!-- The settings and saves leftovers: an interrupted delete's files swept by the store's one remover, a held save told apart, Recover backup greyed without a backup, Escape on a confirm card, PAUSED's size (BCL only, with source scans). -->
+    <Compile Include="$(EditMode)MenuSavesLeftoversTests.cs" />
     <!-- Menu slice 4, part b: the Sound, Display, Accessibility and Controls rows' names and values, and the rows held in the source. -->
     <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/SettingRowWords.cs" />
     <Compile Include="$(EditMode)MenuSettingRowsTests.cs" />

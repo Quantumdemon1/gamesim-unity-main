@@ -105,6 +105,11 @@
     <!-- The finale page set aside for the cast screen: when backing out brings it back; pure, so it runs here too. -->
     <Compile Include="$(EditMode)FinaleAsideTests.cs" />
     <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/FinaleAside.cs" />
+    <!-- The ceremony cards name the press that works, hold a long line and remember Speed up (UI-UX plan U5, D2): pure, so it runs here too. -->
+    <Compile Include="$(EditMode)CeremonyCardPressTests.cs" />
+    <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/CeremonyCardWords.cs" />
+    <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/CeremonyPacing.cs" />
+    <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/CaptionTiming.cs" />
     <!-- Menu slice 2, part d: the decisions' and the cards' one way out, held in the source; pure, so it runs here too. -->
     <Compile Include="$(EditMode)MenuOneWayBackDecisionsScanTests.cs" />
     <!-- No slogan on a screen or a sign (the owner, 2026-11-14 and 2026-11-21), held in the source and the scenes. -->

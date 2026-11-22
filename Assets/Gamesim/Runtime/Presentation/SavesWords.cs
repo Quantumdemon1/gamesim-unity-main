@@ -27,6 +27,12 @@ namespace Gamesim.Presentation
         public const string DeleteCaption = "Delete";
         /// <summary>The title of a card whose save cannot be read.</summary>
         public const string Unreadable = "This save cannot be opened";
+        /// <summary>The title of a card whose save another program holds for a moment (a backup or sync client): it may be a good save.</summary>
+        public const string InUseTitle = "This save is in use";
+        /// <summary>The muted line under that card.</summary>
+        public const string InUseLine = "Another program has it open for a moment. Try again shortly.";
+        /// <summary>That card's one control: the list looks again.</summary>
+        public const string TryAgainCaption = "Try again";
         /// <summary>What Saves says with no season at all.</summary>
         public const string NoSaves = "No saved seasons yet.";
         /// <summary>The muted line under the running season's card, which has no Delete.</summary>
@@ -118,6 +124,8 @@ namespace Gamesim.Presentation
         public const string KeepMySave = "Keep my save";
         /// <summary>The backup's result.</summary>
         public const string RestoreResult = "Restore the backup";
+        /// <summary>Why Recover backup cannot be used: there is no backup file yet.</summary>
+        public const string NoBackupWhy = "There is no backup yet. The game keeps one once it has saved this season twice.";
         /// <summary>The career reset's question (its two captions are the career's own, EpisodeDirector.Career.cs).</summary>
         public const string ResetCareerQuestion = "Set your career record aside? It is kept as a dated file beside the saves, a fresh one starts, and nothing is deleted.";
 

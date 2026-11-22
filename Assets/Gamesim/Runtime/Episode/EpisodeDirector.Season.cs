@@ -230,6 +230,9 @@ namespace Gamesim.Episode
             // the house with nothing open.
             string backTo = fromMenu ? WayOut.MainMenu : settingsOpen ? FrontDoorWords.SettingsPlace
                 : IsPanelOpen ? FrontDoorWords.FinalePlace : WayOut.House;
+            // The finale's page closes under the cast screen and its way back puts it back as it was
+            // (EpisodeDirector.FinaleAside.cs). After the words above, which read the page as open.
+            if (!fromMenu && SetFinaleAsideForCast()) back = ReturnToFinaleFromCast;
             // Each screen that can commit is named as the way back from a failed start, so the
             // player lands where they pressed it: see StartSeason(choice, failed).
             castSelect.Show(choice => StartSeason(choice, castSelect.Resume), back,
@@ -317,6 +320,8 @@ namespace Gamesim.Episode
             // when it starts one itself; a start from the creator leaves it asleep behind, holding
             // the last houseguest it showed - body, textures and target - for the whole season.
             if (installed && castSelect != null) castSelect.ReleasePreview();
+            // Nor does the old season's finale page wait behind the cast screen for a way back.
+            if (installed) ForgetFinaleAside();
             // The opening sequence, on the only path that reaches it.
             //
             // It has five authored beats, it owns the tutorial, and it is where a season's first

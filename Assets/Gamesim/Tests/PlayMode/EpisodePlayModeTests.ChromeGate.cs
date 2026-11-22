@@ -418,7 +418,7 @@ namespace Gamesim.Tests.PlayMode
                 .Find("Set Pieces/Competition course");
             Assert.That(course, Is.Not.Null);
             var lettering = new List<Renderer>();
-            foreach (string name in new[] { "bb_set_sign_hoh", "bb_set_sign_pillars", "bb_set_sign_samehouse" })
+            foreach (string name in new[] { "bb_set_sign_hoh", "bb_set_sign_pillars" })
             {
                 var model = course.Find(name);
                 Assert.That(model, Is.Not.Null, "The actual authored yard carries " + name + ".");

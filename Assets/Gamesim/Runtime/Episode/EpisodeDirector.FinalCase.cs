@@ -31,9 +31,6 @@ namespace Gamesim.Episode
         /// <summary>The line in the lock's place at three.</summary>
         public const string FinalCaseLockLaterLine = "The lock opens at the Final 2.";
 
-        /// <summary>The brand's line over the case (decision 10): an existing one, unattributed.</summary>
-        public const string FinalCaseBrandLine = "“Same house. Different stories.”";
-
         /// <summary>Whether the final case is open over the station's panel. View state.</summary>
         private bool finalCaseOpen;
 
@@ -162,7 +159,7 @@ namespace Gamesim.Episode
             hud.StationScreen("PREPARE YOUR FINAL CASE", "Shape your story. Show the jury why you should win.", "crown", UiTheme.Gold);
             hud.FinalCaseHead(argument != null ? "YOUR ARGUMENT IS LOCKED" : "WHAT WILL THE JURY REMEMBER?",
                 "The story of your game and three moments that prove it. Your speech opens with it, and a juror who values it weighs it.",
-                early ? "FINAL 3 · Read early" : "FINAL 2 · Jury review", "gavel", FinalCaseBrandLine);
+                early ? "FINAL 3 · Read early" : "FINAL 2 · Jury review", "gavel");
             // The one way back, at the band's top left beside the panel's Close (Escape and B take it):
             // the page goes back to the panel it was opened over. It was a last row, "Close your final
             // case", a second way out beside the Close.

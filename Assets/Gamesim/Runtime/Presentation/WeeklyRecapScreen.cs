@@ -37,7 +37,7 @@ namespace Gamesim.Presentation
         private const float Pad = 26f;
 
         /// <summary>The words on the controls. Captions are how a test and a screen reader find them.</summary>
-        public const string ContinueCaption = "Continue to next week";
+        public const string ContinueCaption = "Return to the house";
         public const string ReviewCaption = "Review earlier weeks";
         /// <summary>
         /// The way back from an earlier week (menu slice 2): it says where it returns. Over the week

@@ -435,7 +435,9 @@
 # after the player's veto (also in the dotnet subset), 2026-11-21.
 # 10843 = 10835 + the trivia competition's rules (competition rules 6): CompetitionTriviaTests 8 (all also in the dotnet
 # subset; its season soak is compiled out of the editor), 2026-11-21.
-Gamesim.EditModeTests 10843
+# 10854 = 10843 + the trivia's screen: TriviaRoundTests 7 (all also in the dotnet subset) and MiniGameRunTriviaTests 4
+# (3 also in the dotnet subset), 2026-11-22.
+Gamesim.EditModeTests 10854
 # The UMA-free build. 1215 = 1236, the count after the consolidation's lanes (S2a, S2b, S4a), less the 7
 # farewell probes moved to Gamesim.DiagnosticsPlayModeTests and the 14 farewell readiness tests that now
 # compile only under GAMESIM_UMA (judged on the UMA cast); 1230 = 1215 + S2d's 7, S4b's 2, S4c's 2 and
@@ -682,7 +684,8 @@ Gamesim.EditModeTests 10843
 # is their sum (menu slice 4 squashed onto the stack for its landing, 2026-11-17). Counted from the two sides.
 # 1674 = 1672 + free talk slice 1's screen: EpisodePlayModeTests.JustTalk 2, 2026-11-19.
 # 1676 = 1674 + free talk slice 2's screen: EpisodePlayModeTests.JustTalkStages 2, 2026-11-20.
-Gamesim.PlayModeTests 1676
+# 1677 = 1676 + the trivia's screen: EpisodePlayModeTests.TriviaBoard 1, 2026-11-22.
+Gamesim.PlayModeTests 1677
 # The UMA build of the same assembly, read by a plan built without -WithoutUma. 1281 = the 1241 above + the
 # 40 tests that compile only under GAMESIM_UMA, as run at r1 (2026-10-16): in EpisodePlayModeTests,
 # GroundedFarewell 11, Creator 9, HouseLife 8, Emotes 3, OpeningCaptures 2, and one each in CreatorEntry,
@@ -853,7 +856,8 @@ Gamesim.PlayModeTests 1676
 # is their sum (menu slice 4 squashed onto the stack for its landing, 2026-11-17). Counted from the two sides.
 # 1719 = 1717 + free talk slice 1's screen: the same 2 EpisodePlayModeTests.JustTalk cases, 2026-11-19.
 # 1721 = 1719 + free talk slice 2's screen: the same 2 EpisodePlayModeTests.JustTalkStages cases, 2026-11-20.
-Gamesim.PlayModeTests.UmaBuild 1721
+# 1722 = 1721 + the trivia's screen: the same EpisodePlayModeTests.TriviaBoard case, 2026-11-22.
+Gamesim.PlayModeTests.UmaBuild 1722
 # The UMA bodies: runs only where the GAMESIM_UMA define is set (the working tree and the D: copy).
 # 82 = the 89 run on 2026-10-15, less the 7 farewell probes moved to Gamesim.Uma.DiagnosticsPlayModeTests;
 # 85 = 82 + the 3 farewell readiness decision tests (UmaFarewellReadinessDecisionPlayModeTests, 2026-10-16);
@@ -1207,4 +1211,6 @@ Gamesim.Uma.DiagnosticsPlayModeTests 10
 # 22934 = 22933 + the same FreeTalkS2ReviewTests case the EditMode floor counts, 2026-11-21.
 # 22942 = 22934 + the same 8 CompetitionTriviaTests cases the EditMode floor counts (the two soak cases are [Explicit],
 # run by name only), 2026-11-21.
-Gamesim.SimulationTests 22942
+# 22952 = 22942 + the trivia's screen: the same 7 TriviaRoundTests cases the EditMode floor counts and 3 of
+# MiniGameRunTriviaTests' 4 (its attempt-line case reads the board's component and is compiled out here), 2026-11-22.
+Gamesim.SimulationTests 22952

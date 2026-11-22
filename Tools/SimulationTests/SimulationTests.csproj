@@ -83,6 +83,9 @@
          compiled here only and run by name. -->
     <Compile Include="$(EditMode)CompetitionTriviaTests.cs" />
     <Compile Include="$(EditMode)CompetitionTriviaSeasonSoak.cs" />
+    <!-- The trivia's screen: the round's model (which question, what an answer does, the result card's count); pure. -->
+    <Compile Include="$(EditMode)TriviaRoundTests.cs" />
+    <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/TriviaRound.cs" />
     <!-- Competition show slice 1: the show's plan reads the committed standings and draws nothing; pure, so it runs here too. -->
     <Compile Include="$(EditMode)CompetitionShowPlanTests.cs" />
     <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/CompetitionShowPlan.cs" />
@@ -542,6 +545,8 @@
     <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/MiniGameRun.Dice.cs" />
     <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/MiniGameRun.Words.cs" />
     <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/MiniGameRun.Tower.cs" />
+    <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/MiniGameRun.Trivia.cs" />
+    <Compile Include="$(EditMode)MiniGameRunTriviaTests.cs" />
     <Compile Include="$(EditMode)ScrambleDealTests.cs" />
     <!-- The input glossary (PLAN A, A0): every thing the player presses, and the raw-read guard over Runtime's scripts. -->
     <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/InputGlossary.cs" />

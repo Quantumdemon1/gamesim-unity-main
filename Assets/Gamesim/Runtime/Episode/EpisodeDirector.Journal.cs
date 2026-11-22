@@ -833,8 +833,16 @@ namespace Gamesim.Episode
         {
             if (weeklyRecap == null || week < 1) return;
             if (recapWait != null) StopCoroutine(recapWait);
-            recapWait = StartCoroutine(OpenWeeklyRecap(week, Snapshot.revision));
+            // Keyed to the week the eviction left the season in, not to its revision: the house's
+            // NPC tick commits as the notebook opens, and a save writes one too (WeeklyRecapArrival).
+            recapWait = StartCoroutine(OpenWeeklyRecap(WeeklyRecapArrival.For(Snapshot, acceptedPlayerDecisions)));
         }
+
+        /// <summary>
+        /// The player's decisions this director has committed through <see cref="Submit"/>. A count
+        /// in memory only, read by the weekly recap's wait: never saved, never shown.
+        /// </summary>
+        private int acceptedPlayerDecisions;
 
         /// <summary>
         /// Phases where there is no next week to continue to.
@@ -849,7 +857,7 @@ namespace Gamesim.Episode
             || phase == EpisodePhase.FinalSpeeches || phase == EpisodePhase.Jury
             || phase == EpisodePhase.Finished;
 
-        private IEnumerator OpenWeeklyRecap(int week, int queuedAt)
+        private IEnumerator OpenWeeklyRecap(WeeklyRecapArrival due)
         {
             // Nothing here is timed. It waits on the cards' own state, so reduced motion and
             // batchmode — where those beats collapse to nothing — cost exactly one frame.
@@ -862,10 +870,11 @@ namespace Gamesim.Episode
             var committed = Snapshot;
             if (SeasonIsEnding(committed.phase)) yield break;
             if (seasonReport != null && seasonReport.IsShowing) yield break;
-            // The player has already moved on. Nothing commits while the reveal plays unless
-            // somebody pressed something, and a recap that arrives after the next decision has been
-            // taken is an interruption rather than a summary.
-            if (committed.revision != queuedAt) yield break;
+            // The player has already moved on: a recap that arrives after the next decision has been
+            // taken is an interruption rather than a summary. Asked of the week and the player's own
+            // decisions, never the revision: the house commits its own ticks while the reveal plays,
+            // one as any panel opens, and those dropped the week's recap for good.
+            if (!due.StillDue(committed, acceptedPlayerDecisions)) yield break;
             // ClosePanels is what dismissing does: it puts the player back in the house and
             // repaints, which hiding the screen on its own would not.
             OpenRecap(() => weeklyRecap.Show(committed, ClosePanels));

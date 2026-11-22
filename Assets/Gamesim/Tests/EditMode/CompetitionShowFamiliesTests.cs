@@ -33,11 +33,14 @@ namespace Gamesim.Tests.EditMode
                 { CompetitionDefinitions.HouseguestScramble, CompetitionShowFamily.Table },
                 { CompetitionDefinitions.SignalSprint, CompetitionShowFamily.Course },
                 { CompetitionDefinitions.SwitchbackSignals, CompetitionShowFamily.Course },
+                // The trivia (rules 6) is a quiz at the memory consoles.
+                { CompetitionDefinitions.Trivia, CompetitionShowFamily.Podium },
             };
-            Assert.That(expected.Keys, Is.EquivalentTo(CompetitionDefinitions.All), "Every game of the catalogue has its family decided here.");
+            var staged = CompetitionDefinitions.All.Concat(new[] { CompetitionDefinitions.Trivia }).ToList();
+            Assert.That(expected.Keys, Is.EquivalentTo(staged), "Every game of the catalogue but the ring tower has its family decided here.");
             foreach (var pair in expected)
                 Assert.That(CompetitionShowFamilies.For(pair.Key.Id, pair.Key.Category), Is.EqualTo(pair.Value), pair.Key.Title);
-            Assert.That(CompetitionShowFamilies.Games.Keys, Is.EquivalentTo(CompetitionDefinitions.All.Select(game => game.Id)), "The show knows these games and no others.");
+            Assert.That(CompetitionShowFamilies.Games.Keys, Is.EquivalentTo(staged.Select(game => game.Id)), "The show knows these games and no others.");
         }
 
         [TestCase("Skill")]

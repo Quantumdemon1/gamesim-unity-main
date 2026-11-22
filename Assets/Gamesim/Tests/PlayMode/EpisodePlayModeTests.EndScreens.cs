@@ -268,7 +268,7 @@ namespace Gamesim.Tests.PlayMode
         /// The head of Season Complete (MOCKUP-PASS M5): the season's number over the title, the
         /// season's numbers in tiles, its counts in a line, and the card beside the house's rail
         /// rather than over it at both text sizes - the rail dimmed down to the cast strip, the
-        /// corner under it dimmed as the house is, the scrim still taking every click, and the
+        /// corner under it dimmed as the house is, the scrim still taking every click, and no
         /// brand line in that corner. The ways on in one row at the standard and the larger text; at
         /// the largest, where one row cannot draw every caption whole, in the suite's literal rows for
         /// the frame (<see cref="ReportFooterRowsLargest"/>), the season scrolling under them with its
@@ -332,13 +332,11 @@ namespace Gamesim.Tests.PlayMode
                 var houseDim = ReportPart("House dim").GetComponent<Image>();
                 Assert.That(railDim.color.a, Is.LessThan(houseDim.color.a), "The rail is dimmed beside the card, not blacked out.");
                 Assert.That(railDim.raycastTarget || houseDim.raycastTarget, Is.False, "The clear scrim under them takes the clicks.");
-                var brand = ReportPart("Brand line").GetComponent<TMP_Text>();
-                Assert.That(brand.text, Is.EqualTo(SeasonReport.BrandWords));
-                Assert.That(ScreenRect(brand.rectTransform).xMax, Is.LessThanOrEqualTo(ScreenRect(sheet).xMin + .5f), "The brand line is beside the card.");
+                // No slogan in the corner under the rail (the owner, 2026-11-21).
+                Assert.That(ReportPart("Brand line"), Is.Null, size + "the corner under the rail carries no brand line.");
 
                 // The cast strip runs under the rail's column too. The rail's lighter dim stops
-                // above it, the corner under the rail is dimmed as the house is, and the brand line
-                // stands in that corner rather than over the first chips at half light. The strip's
+                // above it and the corner under the rail is dimmed as the house is. The strip's
                 // top is where the HUD draws it at the report's text size; the HUD here may be at
                 // resting text, and a strip at resting text only stands lower.
                 var stripDim = ReportPart("Strip dim").GetComponent<Image>();
@@ -347,9 +345,6 @@ namespace Gamesim.Tests.PlayMode
                 Assert.That(stripDim.raycastTarget, Is.False, "The clear scrim under it takes the clicks.");
                 Assert.That(ScreenRect(stripDim.rectTransform).yMax, Is.GreaterThanOrEqualTo(stripTop - .5f), size + "the corner's dim covers the strip.");
                 Assert.That(ScreenRect(railDim.rectTransform).yMin, Is.GreaterThanOrEqualTo(stripTop - .5f), size + "the rail's lighter dim stops above the strip.");
-                var brandRect = ScreenRect(brand.rectTransform);
-                Assert.That(brandRect.yMax, Is.LessThanOrEqualTo(ScreenRect(stripDim.rectTransform).yMax + .5f), size + "the brand line stands in the dark corner.");
-                Assert.That(brandRect.xMax, Is.LessThanOrEqualTo(ScreenRect(stripDim.rectTransform).xMax + .5f), size + "the brand line stands in the dark corner.");
                 if (Application.isBatchMode) yield return CaptureFraming("season-complete-head" + TextScales.Suffix(textSize));
                 // At the largest text the report laid again for the 16:9 frame and the 4:3, and
                 // photographed on each: its ways on in the suite's rows for the frame, every caption whole.

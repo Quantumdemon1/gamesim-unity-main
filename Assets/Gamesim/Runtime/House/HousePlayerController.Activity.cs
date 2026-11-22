@@ -25,6 +25,19 @@ namespace Gamesim.House
             ApplyPauseState();return true;
         }
 
+        /// <summary>
+        /// Sets the gait of the activity move <paramref name="owner"/> holds: a competition course's leg
+        /// is run whatever its length, where a trip of a few metres would be walked. A run is only set
+        /// for the owner of the move; the walk is put back for the owner, or once nobody owns the move
+        /// (the show let the player go before its runners were stood down). False when it was refused.
+        /// </summary>
+        public bool SetActivityGait(object owner,bool run)
+        {
+            if(owner==null)return false;
+            if(run ? !ReferenceEquals(owner,activityOwner) : activityOwner!=null && !ReferenceEquals(owner,activityOwner))return false;
+            ApplyGait(run);return true;
+        }
+
         /// <summary>Whether something - an activity, the diary chair, a competition station - owns the player's movement now.</summary>
         public bool HasActivityOwner => activityOwner!=null;
 

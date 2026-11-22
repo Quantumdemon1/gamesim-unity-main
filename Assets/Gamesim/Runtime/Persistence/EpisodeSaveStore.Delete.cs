@@ -61,7 +61,9 @@ namespace Gamesim.Persistence
         /// played (<paramref name="playingSavePath"/>); when the folder or any of the files is a link;
         /// or when any of the files is held by another program. A held file is found before anything
         /// is touched, and the files are then renamed aside one by one - a rename a hold refuses puts
-        /// back those already moved - and only once all are aside are they deleted.</para>
+        /// back those already moved - and only once all are aside are they deleted, by the store's one
+        /// remover (<see cref="RemoveSetAside"/>); any it could not delete then are removed by
+        /// <see cref="SweepInterruptedDeletes"/> the next time the list looks.</para>
         ///
         /// <para><paramref name="isLink"/> is <see cref="IsLink"/> unless a test names another: making a
         /// real link on Windows needs a privilege a test run does not have.</para>
@@ -139,13 +141,85 @@ namespace Gamesim.Persistence
                     return error is UnauthorizedAccessException || error.GetType() != typeof(IOException) ? SeasonDeleteResult.Failed : SeasonDeleteResult.InUse;
                 }
             }
-            foreach (var (_, to) in moved)
-            {
-                try { File.Delete(to); }
-                catch (Exception error) when (error is IOException || error is UnauthorizedAccessException) { }
-            }
+            RemoveSetAside(moved.Select(pair => pair.to));
             return SeasonDeleteResult.Deleted;
         }
+
+        /// <summary>
+        /// The store's one remover: deletes files <see cref="DeleteSeason"/> set aside, and nothing
+        /// else: a file without the ".deleting-&lt;32 hex&gt;" a delete gives the files it sets aside, which
+        /// no season's save, backup or career file ever has, is passed over. A
+        /// file it cannot delete (held, denied) is left for the next look. How many it deleted.
+        /// </summary>
+        private static int RemoveSetAside(IEnumerable<string> aside)
+        {
+            int removed = 0;
+            foreach (var file in aside)
+            {
+                if (!DeletingMark.IsMatch(Path.GetFileName(file) ?? "")) continue;
+                try { File.Delete(file); removed++; }
+                catch (Exception error) when (error is IOException || error is UnauthorizedAccessException) { }
+            }
+            return removed;
+        }
+
+        /// <summary>The mark a delete puts after the name of each file it sets aside.</summary>
+        private static readonly Regex DeletingMark = new Regex(@"\.deleting-[0-9a-f]{32}$", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+
+        /// <summary>
+        /// A file a delete set aside: one of a season's own files (its save, its backup, a write left in
+        /// progress, a copy Recover backup kept) with ".deleting-&lt;32 hex&gt;" after its name. Group 1 is
+        /// the season's save name.
+        /// </summary>
+        private static readonly Regex SetAsideName = new Regex(
+            @"^((?:episode|(?:episode|import)-[0-9a-f]{32})\.json)(?:\.backup|\.pending-[0-9a-f]{32}|\.before-recovery-[0-9a-f]{32}\.json)?\.deleting-[0-9a-f]{32}$",
+            RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+
+        /// <summary>
+        /// Files an interrupted delete left behind (a crash between setting a season's files aside and
+        /// deleting them, or a delete a hold refused) are removed: what the player already confirmed.
+        /// The season list calls this each time it looks at the folder.
+        ///
+        /// <para>Only files named as <see cref="DeleteSeason"/> names what it sets aside, directly inside
+        /// <paramref name="folder"/>, and only when the season they belonged to has no save under its
+        /// own name any more: a season whose save is there (one by the same name started since, or a
+        /// put-back that half failed) keeps every file beside it. Never a file that is a save, a backup,
+        /// the career record or anything else; never through a link (the folder or the file). A file
+        /// that cannot be deleted now is left for the next look. How many were removed.</para>
+        /// </summary>
+        public static int SweepInterruptedDeletes(string folder, Func<string, bool> isLink = null)
+        {
+            if (isLink == null) isLink = IsLink;
+            try
+            {
+                if (string.IsNullOrEmpty(folder) || !Directory.Exists(folder)) return 0;
+                string root = Path.GetFullPath(folder).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+                if (isLink(root)) return 0;
+                var leftovers = new List<string>();
+                foreach (var file in Directory.GetFiles(root))
+                {
+                    var match = SetAsideName.Match(Path.GetFileName(file));
+                    if (!match.Success) continue;
+                    string path = Path.Combine(root, match.Value);
+                    if (File.Exists(Path.Combine(root, match.Groups[1].Value)) || isLink(path)) continue;
+                    leftovers.Add(path);
+                }
+                return leftovers.Count == 0 ? 0 : RemoveSetAside(leftovers);
+            }
+            catch (Exception error) when (error is IOException || error is UnauthorizedAccessException || error is ArgumentException
+                || error is NotSupportedException)
+            {
+                return 0;
+            }
+        }
+
+        /// <summary>
+        /// Whether a failure to open a file is another program holding it for a moment - a backup or
+        /// sync client, an indexer - rather than the file being missing, denied or damaged: exactly a
+        /// plain IOException (a sharing violation), never one of its subclasses. Such a file may be a
+        /// perfectly good save, and looking again shortly is the answer.
+        /// </summary>
+        public static bool IsHeld(Exception error) => error != null && error.GetType() == typeof(IOException);
 
         /// <summary>
         /// The files that are one season's, in <paramref name="root"/>: the save named

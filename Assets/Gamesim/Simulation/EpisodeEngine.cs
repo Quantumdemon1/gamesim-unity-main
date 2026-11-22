@@ -410,6 +410,7 @@ namespace Gamesim.Simulation
                     if (!s.vetoResolved)
                     {
                         Require(s.vetoHolderId != s.playerId, "Choose whether to use the veto first.");
+                        pending?.LapseHolderAppeal(s); // Dialogue rules 3: an appeal to the holder still open ends at the decision, drawing nothing.
                         var saved = NpcVetoSave(s);
                         Require(saved == null || s.hohId != s.playerId, "The veto will be used. As HoH, choose the replacement nominee.");
                         // A holder's offer to the player (R8), as the player last saw it, before anything moves.

@@ -57,11 +57,11 @@ namespace Gamesim.Tests.PlayMode
             var screen = director.GetComponentInChildren<WeeklyRecapScreen>(true);
             try
             {
-                Localisation.Use("de", new Dictionary<string, string> { { WeeklyRecapScreen.ContinueCaption, "Weiter zur nächsten Woche" } });
+                Localisation.Use("de", new Dictionary<string, string> { { WeeklyRecapScreen.ContinueCaption, "Zurück ins Haus" } });
                 screen.Show(director.Snapshot, () => { });
                 yield return null;
                 var shown = director.GetComponentsInChildren<Button>(true).FirstOrDefault(b => b.IsActive()
-                    && b.GetComponentsInChildren<TMP_Text>(true).Any(x => x.text == "Weiter zur nächsten Woche"));
+                    && b.GetComponentsInChildren<TMP_Text>(true).Any(x => x.text == "Zurück ins Haus"));
                 Assert.That(shown, Is.Not.Null, "The recap's Continue is drawn in the table's words.");
                 Assert.That(ButtonWithCaptionOrNull(WeeklyRecapScreen.ContinueCaption), Is.Null);
             }

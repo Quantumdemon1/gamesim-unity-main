@@ -1305,6 +1305,7 @@ namespace Gamesim.Simulation
 
         private static void Social(EpisodeState s, EpisodeCommand c)
         {
+            Require(c.kind != EpisodeCommandKind.Eavesdrop || !StoryAt(s, StoryRules.Manners), WalkOverToListenRefusal); // plan 32 §I5: from 12 the house's free Listen
             RequireConversationWindow(s, c);
             Require(s.Find(s.playerId).status == ContestantStatus.Active, "Evicted players can follow the season but cannot influence it.");
             var target = s.Find(c.targetId);

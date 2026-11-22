@@ -1255,18 +1255,25 @@ namespace Gamesim.Episode
                 words.alignment = TextAlignmentOptions.Center;
                 if (semibold != null) words.font = semibold;
             }
-            var odds = FixedText(nearbyCard, "Uses an action \u00b7 works about 7 times in 10", 11, UiTheme.Muted, new Vector2(14f, -(140f + grown)), new Vector2(width - 28f, 18f));
+            // At story rules 12 listening in is free, and the foot carries the pair's catch risk, set as the card comes up.
+            bool free = director.OverhearFree;
+            var odds = FixedText(nearbyCard, free ? Overhearing.FreeFoot : "Uses an action \u00b7 works about 7 times in 10", 11, UiTheme.Muted, new Vector2(14f, -(140f + grown)), new Vector2(width - 28f, 18f));
             odds.alignment = TextAlignmentOptions.Center;
+            if (free) AutoSize(odds, 9);
+            nearbyOdds = free ? odds : null;
             nearbyCard.gameObject.SetActive(false);
 
             // And mockup-06's bar low in the frame, in the status line's place while it holds.
             var state = director.Snapshot;
             nearbyBar = state != null ? SpeechBar(state.playerId, SelfTitle(state.Find(state.playerId)),
-                "Two houseguests are talking within earshot. Listening in uses an action, and somebody may notice.", false) : null;
+                free ? "Two houseguests are talking within earshot. Listening in is free if you stay close, and one of them may notice."
+                    : "Two houseguests are talking within earshot. Listening in uses an action, and somebody may notice.", false) : null;
             if (nearbyBar != null) nearbyBar.gameObject.SetActive(false);
         }
 
         private RectTransform nearbyBar;
+        /// <summary>At story rules 12, the Nearby card's foot: the catch risk of the pair being witnessed, set as the card comes up.</summary>
+        private TMP_Text nearbyOdds;
         /// <summary>Whether the director last asked for the Nearby card: kept, so a rebuild can put it back as asked.</summary>
         private bool nearbyWanted;
 
@@ -1291,6 +1298,7 @@ namespace Gamesim.Episode
             bool changed = nearbyCard.gameObject.activeSelf != visible;
             if (changed)
             {
+                if (visible && nearbyOdds != null) nearbyOdds.text = director.NearbyListenFoot;
                 nearbyCard.gameObject.SetActive(visible);
                 SyncWeekCard();
             }

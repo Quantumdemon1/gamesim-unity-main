@@ -122,10 +122,14 @@ namespace Gamesim.Tests.EditMode
         public void Sweep_LeavesAHeldLeftoverForTheNextLook()
         {
             string leftover = Put("episode-" + Hex() + ".json.deleting-" + Hex());
+            // Windows, where the game runs, refuses to delete a file another handle holds. A system that
+            // lets a held file be removed (the Linux machine the pull request checks run on) removes it
+            // at the first look; either way nothing throws and the leftover is gone in the end.
+            bool aHoldRefusesADelete = Path.DirectorySeparatorChar == '\\';
             using (new FileStream(leftover, FileMode.Open, FileAccess.Read, FileShare.Read))
-                Assert.That(EpisodeSaveStore.SweepInterruptedDeletes(folder), Is.Zero, "Held, it cannot go now, and nothing throws,");
-            Assert.That(File.Exists(leftover), Is.True);
-            Assert.That(EpisodeSaveStore.SweepInterruptedDeletes(folder), Is.EqualTo(1), "and once let go it does.");
+                Assert.That(EpisodeSaveStore.SweepInterruptedDeletes(folder), Is.EqualTo(aHoldRefusesADelete ? 0 : 1), "Held, it cannot go now where a hold refuses a delete, and nothing throws,");
+            Assert.That(File.Exists(leftover), Is.EqualTo(aHoldRefusesADelete));
+            Assert.That(EpisodeSaveStore.SweepInterruptedDeletes(folder), Is.EqualTo(aHoldRefusesADelete ? 1 : 0), "and once let go it does.");
             Assert.That(File.Exists(leftover), Is.False);
         }
 

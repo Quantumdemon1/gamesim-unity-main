@@ -434,7 +434,8 @@
 # 10835 = 10834 + the review's veto fix: FreeTalkS2ReviewTests' case for a Friend a housemate Head of Household names
 # after the player's veto (also in the dotnet subset), 2026-11-21.
 # 10852 = 10835 + competition show edges: CompetitionShowEdgesTests 17 (the walk out waits for its whole field, the course's legs, a late runner), 2026-11-21.
-Gamesim.EditModeTests 10852
+# 10859 = 10852 + the edges' fix after the built house's run: CompetitionShowEdgesFixTests 7 (nobody left out at any cast size or pace, the player's leg found every way), 2026-11-22.
+Gamesim.EditModeTests 10859
 # The UMA-free build. 1215 = 1236, the count after the consolidation's lanes (S2a, S2b, S4a), less the 7
 # farewell probes moved to Gamesim.DiagnosticsPlayModeTests and the 14 farewell readiness tests that now
 # compile only under GAMESIM_UMA (judged on the UMA cast); 1230 = 1215 + S2d's 7, S4b's 2, S4c's 2 and
@@ -1207,4 +1208,5 @@ Gamesim.Uma.DiagnosticsPlayModeTests 10
 # 22933 = 22930 + slice 2's review fixes: the same 3 FreeTalkS2ReviewTests cases, 2026-11-21.
 # 22934 = 22933 + the same FreeTalkS2ReviewTests case the EditMode floor counts, 2026-11-21.
 # 22951 = 22934 + competition show edges: CompetitionShowEdgesTests 17 (the walk out waits for its whole field, the course's legs, a late runner), 2026-11-21.
-Gamesim.SimulationTests 22951
+# 22958 = 22951 + the edges' fix after the built house's run: the same 7 CompetitionShowEdgesFixTests cases, 2026-11-22.
+Gamesim.SimulationTests 22958

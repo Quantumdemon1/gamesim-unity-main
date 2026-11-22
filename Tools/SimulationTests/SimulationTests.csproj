@@ -88,6 +88,7 @@
     <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/CompetitionShowTimeline.cs" />
     <!-- Competition show edges: the walk out waits for its whole field, the course's legs and a late runner; pure, so they run here too. -->
     <Compile Include="$(EditMode)CompetitionShowEdgesTests.cs" />
+    <Compile Include="$(EditMode)CompetitionShowEdgesFixTests.cs" />
     <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/CompetitionCourseLegs.cs" />
     <!-- Competition yard slice 2: the list of what stands in the yard when; pure, so it runs here too. -->
     <Compile Include="$(EditMode)CompetitionYardPiecesTests.cs" />

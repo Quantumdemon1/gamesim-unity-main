@@ -170,10 +170,10 @@ namespace Gamesim.Tests.EditMode
             Assert.That(promise, Is.Not.Null, "A promise by a veto player who then lost.");
             var engine = new EpisodeEngine(promise.Promised.Clone());
             var played = Accepted(engine, DialogueRules4Season.Compete(promise.Promised));
-            Assert.That(played.dialogue.vetoOccasions, Is.Empty, "The occasion is written as the meeting opens.");
+            Assert.That(played.dialogue.vetoOccasions.Any(o => o.week == played.week), Is.False, "The occasion is written as the meeting opens.");
             var opening = Accepted(engine, EpisodeEngineTests.NextCommand(played));
             Assert.That(opening.phase, Is.EqualTo(EpisodePhase.VetoMeeting));
-            var occasion = opening.dialogue.vetoOccasions.Single();
+            var occasion = opening.dialogue.vetoOccasions.Single(o => o.week == opening.week);
             Assert.That((occasion.week, occasion.holderId, occasion.hohId), Is.EqualTo((opening.week, opening.vetoHolderId, opening.hohId)));
             Assert.That(occasion.participants, Is.EqualTo(opening.vetoPlayers));
             Assert.That(occasion.nomineesAtResult, Is.EqualTo(opening.nominees));
@@ -304,7 +304,7 @@ namespace Gamesim.Tests.EditMode
                 var engine = new EpisodeEngine(source.Clone());
                 Accepted(engine, DialogueRules4Season.Compete(source));
                 source = Accepted(engine, EpisodeEngineTests.NextCommand(engine.Snapshot));
-                Assert.That(source.dialogue.vetoOccasions, Has.Count.EqualTo(1));
+                Assert.That(source.dialogue.vetoOccasions.Count(o => o.week == source.week), Is.EqualTo(1));
             }
             Assert.That(EpisodeValidation.TryValidate(source, out string error), Is.True, error);
             var bad = source.Clone();

@@ -42,35 +42,40 @@ namespace Gamesim.Tests.EditMode
         {
             if (stops != null) return stops;
             var found = new List<Stop>();
-            for (uint seed = 1; seed <= 60; seed++)
-            {
-                var engine = new EpisodeEngine(Start(seed));
-                int lastWeek = 0;
-                for (int step = 0; step < 600; step++)
-                {
-                    var s = engine.Snapshot;
-                    if (s.week > 5 || s.phase == EpisodePhase.Finished || s.Find(s.playerId).status != ContestantStatus.Active) break;
-                    if (s.phase == EpisodePhase.Veto && !s.competitionResolved && s.nominees.Contains(s.playerId) && s.week != lastWeek)
-                    {
-                        lastWeek = s.week;
-                        DialogueRules2Season.CloseAsks(engine);
-                        s = engine.Snapshot;
-                        var people = s.vetoPlayers.Where(id => id != s.playerId && DialogueRules.CanStart(s, id, out _)).ToArray();
-                        if (people.Length > 0)
-                        {
-                            var probe = new EpisodeEngine(s.Clone());
-                            var played = Accepted(probe, Compete(s));
-                            found.Add(new Stop { Seed = seed, State = s.Clone(), People = people, Winner = played.vetoHolderId });
-                        }
-                    }
-                    var next = EpisodeEngineTests.NextCommand(engine.Snapshot);
-                    if (next.kind == EpisodeCommandKind.Compete) next.performance = 0;
-                    DialogueRules2Season.Accepted(engine, next);
-                }
-            }
+            for (uint seed = 1; seed <= 60; seed++) found.AddRange(StopsOf(seed));
             TestContext.Out.WriteLine("Rules-4 veto competitions with the player nominated: " + found.Count + ".");
             Assert.That(found, Is.Not.Empty, "No rules-4 season of 60 met a veto competition with the player nominated and somebody to ask.");
             return stops = found;
+        }
+
+        /// <summary>One seed's walk to week 5, and each veto competition on it with the player nominated and somebody to ask.</summary>
+        internal static List<Stop> StopsOf(uint seed)
+        {
+            var found = new List<Stop>();
+            var engine = new EpisodeEngine(Start(seed));
+            int lastWeek = 0;
+            for (int step = 0; step < 600; step++)
+            {
+                var s = engine.Snapshot;
+                if (s.week > 5 || s.phase == EpisodePhase.Finished || s.Find(s.playerId).status != ContestantStatus.Active) break;
+                if (s.phase == EpisodePhase.Veto && !s.competitionResolved && s.nominees.Contains(s.playerId) && s.week != lastWeek)
+                {
+                    lastWeek = s.week;
+                    DialogueRules2Season.CloseAsks(engine);
+                    s = engine.Snapshot;
+                    var people = s.vetoPlayers.Where(id => id != s.playerId && DialogueRules.CanStart(s, id, out _)).ToArray();
+                    if (people.Length > 0)
+                    {
+                        var probe = new EpisodeEngine(s.Clone());
+                        var played = Accepted(probe, Compete(s));
+                        found.Add(new Stop { Seed = seed, State = s.Clone(), People = people, Winner = played.vetoHolderId });
+                    }
+                }
+                var next = EpisodeEngineTests.NextCommand(engine.Snapshot);
+                if (next.kind == EpisodeCommandKind.Compete) next.performance = 0;
+                DialogueRules2Season.Accepted(engine, next);
+            }
+            return found;
         }
 
         internal static EpisodeState Accepted(EpisodeEngine engine, EpisodeCommand command) => DialogueRules2Season.Accepted(engine, command);
@@ -130,39 +135,49 @@ namespace Gamesim.Tests.EditMode
         internal static IReadOnlyList<Promise> Promises()
         {
             if (promises != null) return promises;
-            var found = new List<Promise>();
-            foreach (var stop in Stops())
-            {
-                var asked = stop.People.Where(id => id == stop.Winner).Concat(stop.People.Where(id => id != stop.Winner).Take(1));
-                foreach (string npc in asked)
-                {
-                    var engine = new EpisodeEngine(stop.State.Clone());
-                    var opened = Accepted(engine, Ask(stop.State, npc));
-                    if (Question(opened, npc).statement.answer != DialogueVetoQuestion.Yes) continue;
-                    var promised = Accepted(new EpisodeEngine(opened.Clone()), Choice(opened, DialogueVetoQuestion.AskPromise));
-                    if (Suffix(Question(promised, npc).responses[1]) != DialogueVetoQuestion.PromiseMade) continue;
-                    var thanked = Accepted(new EpisodeEngine(opened.Clone()), Choice(opened, DialogueVetoQuestion.Thank));
-                    found.Add(new Promise { Stop = stop, Maker = npc, Asked = opened, Promised = promised, Thanked = thanked });
-                }
-            }
+            var found = Stops().SelectMany(stop => PromisesAt(stop, false)).ToList();
             TestContext.Out.WriteLine("Rules-4 promises: " + found.Count + " (" + found.Count(p => p.Maker == p.Stop.Winner) + " by the winner).");
             return promises = found;
         }
 
-        /// <summary>The first promise whose maker wins the veto and whose meeting the house decides with the given outcome.</summary>
+        /// <summary>One stop's yeses made promises, each with its thanked twin: the eventual winner's, and unless only that is asked, one other's.</summary>
+        private static IEnumerable<Promise> PromisesAt(Stop stop, bool winnerOnly)
+        {
+            var asked = stop.People.Where(id => id == stop.Winner).Concat(winnerOnly ? Enumerable.Empty<string>() : stop.People.Where(id => id != stop.Winner).Take(1));
+            foreach (string npc in asked.ToList())
+            {
+                var engine = new EpisodeEngine(stop.State.Clone());
+                var opened = Accepted(engine, Ask(stop.State, npc));
+                if (Question(opened, npc).statement.answer != DialogueVetoQuestion.Yes) continue;
+                var promised = Accepted(new EpisodeEngine(opened.Clone()), Choice(opened, DialogueVetoQuestion.AskPromise));
+                if (Suffix(Question(promised, npc).responses[1]) != DialogueVetoQuestion.PromiseMade) continue;
+                var thanked = Accepted(new EpisodeEngine(opened.Clone()), Choice(opened, DialogueVetoQuestion.Thank));
+                yield return new Promise { Stop = stop, Maker = npc, Asked = opened, Promised = promised, Thanked = thanked };
+            }
+        }
+
+        /// <summary>
+        /// The first promise whose maker wins the veto and whose meeting the house decides with the given outcome: among the
+        /// cached walk's first, then on further seeds (61 to 240), each walked only as far as the search needs.
+        /// </summary>
         internal static (Promise promise, EpisodeState[] with, EpisodeState[] without) Settled(string status)
         {
-            foreach (var promise in Promises().Where(p => p.Maker == p.Stop.Winner))
+            var winners = Promises().Where(p => p.Maker == p.Stop.Winner)
+                .Concat(Enumerable.Range(61, 180).SelectMany(seed => StopsOf((uint)seed)).SelectMany(stop => PromisesAt(stop, true)));
+            int tried = 0;
+            foreach (var promise in winners)
             {
+                tried++;
                 var with = ToTheDecision(new EpisodeEngine(promise.Promised.Clone()));
                 var deal = with[with.Length - 1].deals.Single(d => d.type == DealKind.VetoIf);
                 if (deal.status != status) continue;
                 var without = ToTheDecision(new EpisodeEngine(promise.Thanked.Clone()));
-                TestContext.Out.WriteLine("Rules-4 " + status + " promise: seed " + promise.Stop.Seed + ", week " + promise.Promised.week
-                    + ", maker " + promise.Maker + (promise.Promised.nominees.Contains(promise.Maker) ? " (a fellow nominee)." : "."));
+                TestContext.Out.WriteLine("Rules-4 " + status + " promise, the " + tried + "th by a winner tried: seed " + promise.Stop.Seed
+                    + ", week " + promise.Promised.week + ", maker " + promise.Maker
+                    + (promise.Promised.nominees.Contains(promise.Maker) ? " (a fellow nominee)." : "."));
                 return (promise, with, without);
             }
-            Assert.Fail("No promise of " + Promises().Count + " was made by the veto's winner and settled " + status + ".");
+            Assert.Fail("No promise of " + tried + " by the veto's winner in seeds 1 to 240 settled " + status + ".");
             return default;
         }
 

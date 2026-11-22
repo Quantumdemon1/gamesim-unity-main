@@ -561,6 +561,13 @@ namespace Gamesim.Episode
         /// <summary>The controls card's height while it is open: the toggle's row over the card's lines.</summary>
         private float ExpandedHelpHeight => HelpCardTop + HelpWordsHeight + HelpCardFoot;
 
+        /// <summary>
+        /// Whether the live feed gave way to the open controls card. The card grows with the text,
+        /// so on a 900-tall canvas at the Larger and the Largest text no folded column with the feed
+        /// clears it (FoldColumn): the feed goes while the card is open and comes back as it closes.
+        /// </summary>
+        public bool LiveFeedGivesWayToTheControls => helpExpanded && columnFold.HasValue && columnFold.Value.FeedShed;
+
         private void BuildExplorationHelp()
         {
             if (explorationHelp != null)

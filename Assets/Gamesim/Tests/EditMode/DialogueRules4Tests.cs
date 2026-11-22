@@ -288,8 +288,8 @@ namespace Gamesim.Tests.EditMode
             var settled = DialogueRules4Season.ToTheDecision(new EpisodeEngine(loaded));
             var live = DialogueRules4Season.ToTheDecision(new EpisodeEngine(promise.Promised.Clone()));
             Assert.That(DialogueRules2Season.Json(settled[settled.Length - 1]), Is.EqualTo(DialogueRules2Season.Json(live[live.Length - 1])));
-            Assert.That(settled[settled.Length - 1].deals.Single(d => d.type == DealKind.VetoIf).status,
-                Is.AnyOf(DealStatus.Fulfilled, DealStatus.Broken, DealStatus.Expired));
+            Assert.That(new[] { DealStatus.Fulfilled, DealStatus.Broken, DealStatus.Expired },
+                Does.Contain(settled[settled.Length - 1].deals.Single(d => d.type == DealKind.VetoIf).status), "The veto settled it.");
         }
 
         [TestCase("below-rules-4")] [TestCase("id")] [TestCase("maker")] [TestCase("trust")] [TestCase("unlinked-prefix")]

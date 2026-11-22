@@ -89,6 +89,9 @@
     <!-- Competition yard slice 2: the list of what stands in the yard when; pure, so it runs here too. -->
     <Compile Include="$(EditMode)CompetitionYardPiecesTests.cs" />
     <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/CompetitionYardPieces.cs" />
+    <!-- The weekly recap's arrival: when a queued recap is still due, keyed to the week; pure, so it runs here too. -->
+    <Compile Include="$(EditMode)WeeklyRecapArrivalTests.cs" />
+    <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/WeeklyRecapArrival.cs" />
     <!-- Menu slice 2, part d: the decisions' and the cards' one way out, held in the source; pure, so it runs here too. -->
     <Compile Include="$(EditMode)MenuOneWayBackDecisionsScanTests.cs" />
     <Compile Include="$(EditMode)HaveNotTests.cs" />

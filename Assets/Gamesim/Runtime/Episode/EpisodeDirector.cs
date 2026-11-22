@@ -870,7 +870,7 @@ namespace Gamesim.Episode
                 // A competition show still running is over: this commit has the screen now, and its card stays unplayed.
                 if (competitionShow != null) EndCompetitionArena();
                 if (TryPersistTimed(result.state, "command", out var installed, out var failure))
-                { engine = new EpisodeEngine(installed); result.state = engine.Snapshot; }
+                { engine = new EpisodeEngine(installed); result.state = engine.Snapshot; acceptedPlayerDecisions++; }
                 else
                 {
                     BeginPersistenceNotice(failure);

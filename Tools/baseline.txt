@@ -433,7 +433,9 @@
 # 10834 = 10831 + slice 2's review fixes: FreeTalkS2ReviewTests 3 (all also in the dotnet subset), 2026-11-21.
 # 10835 = 10834 + the review's veto fix: FreeTalkS2ReviewTests' case for a Friend a housemate Head of Household names
 # after the player's veto (also in the dotnet subset), 2026-11-21.
-Gamesim.EditModeTests 10835
+# 10889 = 10835 + the house talk's slice S2a (overhearing in the rules): OverhearTests 18, OverhearValidationTests 24 and
+# HouseTalkS1FollowUpTests 11 (all also in the dotnet subset), and NpcPairingRoomTests 1 (EditMode only), 2026-11-21.
+Gamesim.EditModeTests 10889
 # The UMA-free build. 1215 = 1236, the count after the consolidation's lanes (S2a, S2b, S4a), less the 7
 # farewell probes moved to Gamesim.DiagnosticsPlayModeTests and the 14 farewell readiness tests that now
 # compile only under GAMESIM_UMA (judged on the UMA cast); 1230 = 1215 + S2d's 7, S4b's 2, S4c's 2 and
@@ -1203,4 +1205,7 @@ Gamesim.Uma.DiagnosticsPlayModeTests 10
 # their sum (slice 2). Counted from the two sides.
 # 22933 = 22930 + slice 2's review fixes: the same 3 FreeTalkS2ReviewTests cases, 2026-11-21.
 # 22934 = 22933 + the same FreeTalkS2ReviewTests case the EditMode floor counts, 2026-11-21.
-Gamesim.SimulationTests 22934
+# 22988 = 22934 + the house talk's slice S2a: the same 53 OverhearTests, OverhearValidationTests and
+# HouseTalkS1FollowUpTests cases the EditMode floor counts, and HouseTalkLab's one walker case (compiled out of Unity; its
+# Stack A report is [Explicit], run by name, and not counted), 2026-11-21.
+Gamesim.SimulationTests 22988

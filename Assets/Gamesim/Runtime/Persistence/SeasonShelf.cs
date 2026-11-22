@@ -23,6 +23,12 @@ namespace Gamesim.Persistence
         public int Left;
         /// <summary>When the file was last written (UTC), or null for a season never written.</summary>
         public DateTime? SavedUtc;
+        /// <summary>
+        /// Whether another program held the file for a moment as the list looked (it is not
+        /// <see cref="Readable"/> then, but may be a good save): its card says "in use, try again",
+        /// not "cannot be opened". In memory only, for the card; nothing about a save changes.
+        /// </summary>
+        public bool InUse;
 
         /// <summary>A season as <paramref name="state"/> holds it: the running one, read from memory.</summary>
         public static SavedSeason Of(EpisodeState state, string path, DateTime? savedUtc) => new SavedSeason
@@ -41,7 +47,8 @@ namespace Gamesim.Persistence
     /// The saved seasons in a save folder, newest first (menu slice 4, the review's change 2: "older
     /// seasons can never be opened again"). Each save is read with the check a load makes - old
     /// versions are brought up to date in memory only - and nothing is ever written: no file, no
-    /// file time, no migration on disk. A save is read again only when its size or its time
+    /// file time, no migration on disk. (The one thing a look removes is what an interrupted delete
+    /// left set aside, by the store's one remover.) A save is read again only when its size or its time
     /// changes, so drawing the list on every render costs a look at the folder.
     /// </summary>
     public sealed class SeasonShelf
@@ -52,10 +59,15 @@ namespace Gamesim.Persistence
         /// <summary>How many saves the last <see cref="Read"/> opened (a test's window on the cache).</summary>
         public int LastOpened { get; private set; }
 
-        /// <summary>Every season's save in <paramref name="folder"/>, newest first.</summary>
+        /// <summary>
+        /// Every season's save in <paramref name="folder"/>, newest first. Files an interrupted delete
+        /// left set aside are removed first, by the store (<see cref="EpisodeSaveStore.SweepInterruptedDeletes"/>):
+        /// the only files a look at the folder ever removes, and never a save.
+        /// </summary>
         public IReadOnlyList<SavedSeason> Read(string folder)
         {
             LastOpened = 0;
+            EpisodeSaveStore.SweepInterruptedDeletes(folder);
             var seasons = new List<SavedSeason>();
             var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             foreach (var file in EpisodeSaveStore.SeasonFiles(folder))
@@ -71,9 +83,11 @@ namespace Gamesim.Persistence
                 seen.Add(file);
                 if (known.TryGetValue(file, out var held) && held.length == length && held.written == written) { seasons.Add(held.season); continue; }
                 LastOpened++;
-                bool readable = EpisodeSaveStore.TryPeek(file, out var state, out bool unopened);
+                bool readable = EpisodeSaveStore.TryPeek(file, out var state, out Exception unopenedError);
+                bool unopened = unopenedError != null;
                 var season = readable ? SavedSeason.Of(state, file, written)
-                    : new SavedSeason { Path = file, Key = Path.GetFileNameWithoutExtension(file), Readable = false, SavedUtc = written };
+                    : new SavedSeason { Path = file, Key = Path.GetFileNameWithoutExtension(file), Readable = false, SavedUtc = written,
+                        InUse = EpisodeSaveStore.IsHeld(unopenedError) };
                 // A file another program held for a moment is looked at again next time.
                 if (readable || !unopened) known[file] = (length, written, season);
                 else known.Remove(file);
@@ -94,13 +108,10 @@ namespace Gamesim.Persistence
         /// <summary>
         /// Reads <paramref name="file"/> as a load would - its envelope, its checksum, its version
         /// brought up to date in memory, its rules - and writes nothing. <paramref name="unopened"/>
-        /// says the file could not be opened at all (held, or denied), which says nothing about it.
+        /// is the filesystem error when the file could not be opened at all (held, or denied), which
+        /// says nothing about it; null otherwise. <see cref="IsHeld"/> tells a hold from the rest.
         /// </summary>
-        internal static bool TryPeek(string file, out EpisodeState state, out bool unopened)
-        {
-            bool read = TryRead(file, null, out state, out _, out var error, out _);
-            unopened = error != null;
-            return read;
-        }
+        internal static bool TryPeek(string file, out EpisodeState state, out Exception unopened) =>
+            TryRead(file, null, out state, out _, out unopened, out _);
     }
 }

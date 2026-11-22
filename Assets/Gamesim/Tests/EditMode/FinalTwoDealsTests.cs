@@ -271,11 +271,12 @@ namespace Gamesim.Tests.EditMode
         private static EpisodeState PartnerHoldsTheNominations(int level, out string partner)
         {
             var s = Season(29);
-            partner = s.Active.First(c => !c.isPlayer).id;
+            string head = s.Active.First(c => !c.isPlayer).id;
+            partner = head;
             s.phase = EpisodePhase.Nomination;
-            s.hohId = partner;
-            foreach (var other in s.contestants.Where(c => c.id != partner)) SetScore(s, partner, other.id, other.isPlayer ? -90 : 60);
-            s.deals.Add(Deal(s, "f2", s.playerId, partner));
+            s.hohId = head;
+            foreach (var other in s.contestants.Where(c => c.id != head)) SetScore(s, head, other.id, other.isPlayer ? -90 : 60);
+            s.deals.Add(Deal(s, "f2", s.playerId, head));
             EpisodeEngine.EnableCommitments(s);
             s.story.mindRules = level;
             Valid(s);

@@ -1306,4 +1306,9 @@ Gamesim.Uma.DiagnosticsPlayModeTests 10
 # 23089 = 23075 (the trivia rules on top of the two overhearing changes) + the trivia screen's 14 (22956 - 22942 on
 # this branch): disjoint cases, so the floor is their sum (the stacked landing of 22 November 2026). Counted from the
 # two sides.
-Gamesim.SimulationTests 23089
+# 22941 = 22936 + HeldReplayShapeTests' 5 cases (compiled out of Unity, so the EditMode floor is unchanged): every held
+# replay digests the state below the live schema, through its observer, 2026-11-22.
+# 23094 = 23089 (the new main, with overhearing and the trivia competition) + the role moments' held replay's 5 (22941
+# - 22936 on this branch): disjoint cases, so the floor is their sum (the competition landing of 22 November 2026).
+# Counted from the two sides.
+Gamesim.SimulationTests 23094

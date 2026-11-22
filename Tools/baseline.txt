@@ -464,7 +464,8 @@
 # (10857 - 10835 on this branch): disjoint cases, so the floor is their sum (the stacked landing of 22 November 2026).
 # Counted from the two sides.
 # 10925 = 10919 + the ceremony cards' press and speed: CeremonyCardPressTests 6 (all also in the dotnet subset), 2026-11-22.
-Gamesim.EditModeTests 10925
+# 10926 = 10925 + the review's fix: CeremonyCardDeviceTests 1 (also in the dotnet subset), 2026-11-22.
+Gamesim.EditModeTests 10926
 # The UMA-free build. 1215 = 1236, the count after the consolidation's lanes (S2a, S2b, S4a), less the 7
 # farewell probes moved to Gamesim.DiagnosticsPlayModeTests and the 14 farewell readiness tests that now
 # compile only under GAMESIM_UMA (judged on the UMA cast); 1230 = 1215 + S2d's 7, S4b's 2, S4c's 2 and
@@ -1290,4 +1291,5 @@ Gamesim.Uma.DiagnosticsPlayModeTests 10
 # (22959 - 22934 on this branch): disjoint cases, so the floor is their sum (the stacked landing of 22 November 2026).
 # Counted from the two sides.
 # 23025 = 23019 + the ceremony cards' press and speed: the same 6 CeremonyCardPressTests cases, 2026-11-22.
-Gamesim.SimulationTests 23025
+# 23026 = 23025 + the review's fix: the same CeremonyCardDeviceTests case, 2026-11-22.
+Gamesim.SimulationTests 23026

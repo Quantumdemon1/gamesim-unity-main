@@ -73,6 +73,20 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(draw.ShowingField, Is.True, "and takes the draw to its field,");
             Assert.That(Text(draw, "Draw dismiss").text, Is.EqualTo(CeremonyTakeover.CloseCaption),
                 "where the next press closes it, and the line says so in the keyboard's words.");
+
+            // A card handed the house's device opens in it: a controller player's first card names A
+            // before any press on the card itself, whose first frames ignore input (the director hands
+            // every card its hints' device). The last press here was the keyboard's Enter.
+            var first = CeremonyTakeover.Attach(owner);
+            cards.Add(first.gameObject);
+            first.PadHints = () => true;
+            first.Play(CeremonySting.EvictionKind, 3, new[] { new CeremonyTakeover.Subject("Casey Wilson", "EVICTED", null) }, true);
+            var firstKeys = Keys(1f, () => true);
+            var firstDraw = Draw(1f, () => true);
+            Assert.That(Text(first, "Takeover dismiss").text, Is.EqualTo(CeremonyTakeover.PadCloseCaption),
+                "A pad player's first card names A from its first frame,");
+            Assert.That(Text(firstKeys, "Dismiss").gameObject.activeSelf, Is.False, "their first key ceremony has no click line,");
+            Assert.That(Text(firstDraw, "Draw dismiss").text, Is.EqualTo(CeremonyTakeover.PadSkipToResultCaption), "and their first draw names A.");
         }
 
         [UnityTest]
@@ -112,20 +126,22 @@ namespace Gamesim.Tests.PlayMode
 
         // ------------------------------------------------------------------ helpers
 
-        private KeyCeremony Keys(float speed = 1f)
+        private KeyCeremony Keys(float speed = 1f, System.Func<bool> padHints = null)
         {
             var keys = KeyCeremony.Attach(owner);
             cards.Add(keys.gameObject);
+            keys.PadHints = padHints;
             var safe = new[] { new KeyCeremony.Person("s0", "Emma Brown", null), new KeyCeremony.Person("s1", "Riley Johnson", null) };
             var block = new[] { new KeyCeremony.Person(Jordan, "Jordan Taylor", null), new KeyCeremony.Person(Casey, "Casey Wilson", null) };
             Assert.That(keys.Play(1, "Maya Hassan", false, safe, block, true, CeremonyPace.Suspenseful, null, null, speed), Is.True);
             return keys;
         }
 
-        private VetoDrawReveal Draw(float speed)
+        private VetoDrawReveal Draw(float speed, System.Func<bool> padHints = null)
         {
             var draw = VetoDrawReveal.Attach(owner);
             cards.Add(draw.gameObject);
+            draw.PadHints = padHints;
             var byRight = new[]
             {
                 new VetoDrawReveal.Player("h", "Maya Hassan", "HOH", null),
